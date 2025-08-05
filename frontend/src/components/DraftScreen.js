@@ -13,6 +13,7 @@ const DraftScreen = ({ userId, isAdmin }) => {
     const [bidAmount, setBidAmount] = useState(1);
     const [timer, setTimer] = useState(0);
 
+    // This useEffect will be responsible for triggering the EndBiddingPhase function
     useEffect(() => {
         if (draftState?.status === 'drafting') {
             const intervalId = setInterval(async () => {
@@ -27,6 +28,7 @@ const DraftScreen = ({ userId, isAdmin }) => {
         }
     }, [draftState, leagueId]);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         const setupConnection = async () => {
             const info = await getSignalRInfo();
@@ -55,7 +57,7 @@ const DraftScreen = ({ userId, isAdmin }) => {
         return () => {
             if (hubConnection) hubConnection.stop();
         };
-    }, [leagueId, getSignalRInfo]);
+    }, [leagueId]);
 
     useEffect(() => {
         if (!draftState || draftState.status !== 'drafting') return;
