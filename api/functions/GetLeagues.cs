@@ -43,4 +43,4 @@ public static class GetLeagues
         
         return new OkObjectResult(leagues);
     }
-} 
+}  
