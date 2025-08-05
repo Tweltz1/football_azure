@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { HubConnectionBuilder } from '@microsoft/signalr';
+import { getSignalRInfo, placeBid } from '../api';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
@@ -12,7 +13,6 @@ const DraftScreen = ({ userId, isAdmin }) => {
     const [bidAmount, setBidAmount] = useState(1);
     const [timer, setTimer] = useState(0);
 
-    // This useEffect will be responsible for triggering the EndBiddingPhase function
     useEffect(() => {
         if (draftState?.status === 'drafting') {
             const intervalId = setInterval(async () => {
@@ -21,16 +21,15 @@ const DraftScreen = ({ userId, isAdmin }) => {
                 } catch (error) {
                     console.error("Error calling EndBiddingPhase:", error);
                 }
-            }, 5000); // Calls the function every 5 seconds
+            }, 5000);
 
-            return () => clearInterval(intervalId); // Clear the interval when the component unmounts
+            return () => clearInterval(intervalId);
         }
     }, [draftState, leagueId]);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         const setupConnection = async () => {
-            const info = await axios.get(`${API_BASE_URL}/GetSignalRInfo`);
+            const info = await getSignalRInfo();
             const hubConnection = new HubConnectionBuilder()
                 .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
                 .withAutomaticReconnect()
@@ -56,7 +55,7 @@ const DraftScreen = ({ userId, isAdmin }) => {
         return () => {
             if (hubConnection) hubConnection.stop();
         };
-    }, [leagueId]);
+    }, [leagueId, getSignalRInfo]);
 
     useEffect(() => {
         if (!draftState || draftState.status !== 'drafting') return;
