@@ -9,11 +9,10 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api
 const DraftScreen = ({ userId, isAdmin }) => {
     const { leagueId } = useParams();
     const [hubConnection, setHubConnection] = useState(null);
-    const [draftState, setDraftState] = useState(null);
+    const [draftState] = useState(null);
     const [bidAmount, setBidAmount] = useState(1);
     const [timer, setTimer] = useState(0);
 
-    // This useEffect will be responsible for triggering the EndBiddingPhase function
     useEffect(() => {
         if (draftState?.status === 'drafting') {
             const intervalId = setInterval(async () => {
@@ -57,7 +56,7 @@ const DraftScreen = ({ userId, isAdmin }) => {
         return () => {
             if (hubConnection) hubConnection.stop();
         };
-    }, [leagueId]);
+    }, [leagueId,hubConnection]);
 
     useEffect(() => {
         if (!draftState || draftState.status !== 'drafting') return;
