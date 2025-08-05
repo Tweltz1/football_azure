@@ -1,0 +1,6 @@
+{
+  "extensions":[
+    { "name": "CosmosDB", "typeName":"Microsoft.Azure.WebJobs.Extensions.CosmosDB.CosmosDBWebJobsStartup, Microsoft.Azure.WebJobs.Extensions.CosmosDB, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35"},
+    { "name": "SignalR", "typeName":"Microsoft.Azure.WebJobs.Extensions.SignalRService.SignalRWebJobsStartup, Microsoft.Azure.WebJobs.Extensions.SignalRService, Version=1.6.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60"}
+  ]
+}

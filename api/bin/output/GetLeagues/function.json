@@ -1,0 +1,25 @@
+{
+  "generatedBy": "Microsoft.NET.Sdk.Functions.Generator-4.1.1",
+  "configurationSource": "attributes",
+  "bindings": [
+    {
+      "type": "httpTrigger",
+      "methods": [
+        "get"
+      ],
+      "authLevel": "anonymous",
+      "name": "req"
+    },
+    {
+      "type": "cosmosDB",
+      "connection": "CosmosDbConnectionString",
+      "databaseName": "Fantasy Football",
+      "containerName": "Leagues",
+      "createIfNotExists": false,
+      "name": "cosmosClient"
+    }
+  ],
+  "disabled": false,
+  "scriptFile": "../bin/FantasyFootballApi.dll",
+  "entryPoint": "GetLeagues.Run"
+}
