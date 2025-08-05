@@ -1,7 +1,10 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Cosmos;
 using System.Collections.Generic;
@@ -10,13 +13,13 @@ using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 public static class EndBiddingPhase
 {
     [FunctionName("EndBiddingPhase")]
-    public static async Task Run(
-        [TimerTrigger("*/5 * * * * *")] TimerInfo myTimer,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+    public static async Task<IActionResult> Run(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
+        [CosmosDB(databaseName: "FantasyFootball", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
+        var container = cosmosClient.GetContainer("FantasyFootball", "Leagues");
         var query = new QueryDefinition("SELECT * FROM c WHERE c.status = 'drafting' AND c.auctionTimer.isPaused = false");
 
         using (FeedIterator<League> feed = container.GetItemQueryIterator<League>(query))
@@ -29,25 +32,19 @@ public static class EndBiddingPhase
                     {
                         var winningBid = league.ActiveBids.OrderByDescending(b => b.Value.Amount).FirstOrDefault();
 
-                        // --- Logic to process winner or handle ties ---
-                        // For a real app, check for ties first.
-                        
                         var winningTeam = league.Teams.Find(t => t.OwnerId == winningBid.Key);
                         var draftedPlayer = league.DraftPlayers.Find(p => p.Id == league.CurrentPlayerId);
-                        
-                        // Update Roster and Budget
+
                         winningTeam.Roster.Add(new RosterSpot { Player = draftedPlayer });
                         winningTeam.Budget -= winningBid.Value.Amount;
                         draftedPlayer.IsDrafted = true;
 
-                        // Reset for next player
                         league.Status = "intermission";
                         league.CurrentPlayerId = GetNextPlayerId(league);
                         league.ActiveBids.Clear();
 
                         await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
 
-                        // Broadcast winner and updated league state
                         await signalRMessages.AddAsync(new SignalRMessage
                         {
                             Target = "draftWinnerAnnounced",
@@ -57,11 +54,11 @@ public static class EndBiddingPhase
                 }
             }
         }
+        return new OkResult();
     }
-    
+
     private static string GetNextPlayerId(League league)
     {
-        // Your logic to select the next player (e.g., random from undrafted)
         return league.DraftPlayers.Where(p => !p.IsDrafted).OrderBy(p => Guid.NewGuid()).FirstOrDefault()?.Id;
     }
 }
