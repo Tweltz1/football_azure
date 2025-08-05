@@ -48,5 +48,5 @@ const Leagues = ({ userId }) => {
     </div>
   );
 };
-
+ 
 export default Leagues;
