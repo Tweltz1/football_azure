@@ -23,7 +23,7 @@ public static class PlaceBid
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var bidRequest = JsonConvert.DeserializeObject<BidRequest>(requestBody);
 
-        var container = cosmosClient.GetContainer("FantasyFootball", "Leagues");
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
         var league = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
 
         // --- Bidding and validation logic ---

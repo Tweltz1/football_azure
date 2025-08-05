@@ -15,11 +15,11 @@ public static class EndBiddingPhase
     [FunctionName("EndBiddingPhase")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
-        [CosmosDB(databaseName: "FantasyFootball", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
-        var container = cosmosClient.GetContainer("FantasyFootball", "Leagues");
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
         var query = new QueryDefinition("SELECT * FROM c WHERE c.status = 'drafting' AND c.auctionTimer.isPaused = false");
 
         using (FeedIterator<League> feed = container.GetItemQueryIterator<League>(query))
