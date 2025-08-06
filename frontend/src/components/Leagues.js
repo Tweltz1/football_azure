@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
@@ -16,7 +16,7 @@ const Leagues = ({ userId }) => {
   const [rosterSettings, setRosterSettings] = useState({});
   const [draftTimers, setDraftTimers] = useState({});
 
-  const fetchLeagues = async () => {
+  const fetchLeagues = useCallback(async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/GetLeagues?userId=${userId}`);
       setLeagues(response.data);
@@ -26,11 +26,11 @@ const Leagues = ({ userId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]); // Add userId to the dependency array
 
   useEffect(() => {
     fetchLeagues();
-  }, [userId, fetchLeagues]);
+  }, [fetchLeagues]); // Now this dependency is correct
 
   const handleDelete = async (leagueId) => {
     if (window.confirm("Are you sure you want to delete this league?")) {
