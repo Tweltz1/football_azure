@@ -28,12 +28,9 @@ public static class CreateLeague
             return new BadRequestObjectResult("Please provide a league name and admin ID.");
         }
 
-        // --- NEW LOGIC: Fetch User's Profile ---
         var userProfile = await GetUserProfile(cosmosClient, data.AdminId, log);
         var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
-        // --- END NEW LOGIC ---
-
-        // Get the shared player pool
+        
         var playerPool = PlayerData.GetInitialPlayerPool();
 
         var newLeague = new League
@@ -50,7 +47,7 @@ public static class CreateLeague
                     Name = "Admin Team",
                     Budget = 200,
                     Roster = new List<RosterSpot>(),
-                    FavoritePlayerIds = userMasterFavorites // <-- USE THE MASTER LIST HERE
+                    FavoritePlayerIds = userMasterFavorites
                 }
             },
             Status = "created",
@@ -73,7 +70,7 @@ public static class CreateLeague
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             log.LogWarning($"Profile not found for user {userId} during league creation.");
-            return null; // Return null if the profile doesn't exist
+            return null;
         }
     }
 
@@ -81,6 +78,6 @@ public static class CreateLeague
     {
         public string Name { get; set; }
         public string AdminId { get; set; }
-        public string Password { get.set; }
+        public string Password { get; set; } // <--- THIS LINE IS NOW FIXED
     }
 }
