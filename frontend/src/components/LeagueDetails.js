@@ -6,6 +6,18 @@ import '../App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
+const initialStaticPlayerList = [
+  { id: 'player1', name: 'JaMarr Chase', position: 'WR', rank: 1, isFavorite: true },
+  { id: 'player2', name: 'Bijan Robinson', position: 'RB', rank: 2, isFavorite: true },
+  { id: 'player3', name: 'CeeDee Lamb', position: 'WR', rank: 3, isFavorite: false },
+  { id: 'player4', name: 'Justin Jefferson', position: 'WR', rank: 4, isFavorite: false },
+  { id: 'player5', name: 'Jahmyr Gibbs', position: 'RB', rank: 5, isFavorite: true },
+  { id: 'player6', name: 'Puka Nacua', position: 'WR', rank: 6, isFavorite: false },
+  { id: 'player7', name: 'Malik Nabers', position: 'WR', rank: 7, isFavorite: true },
+  { id: 'player8', name: 'Amon-Ra St. Brown', position: 'WR', rank: 8, isFavorite: false },
+  { id: 'player9', name: 'Saquon Barkley', position: 'RB', rank: 9, isFavorite: false },
+];
+
 const LeagueDetails = () => {
   const { leagueId } = useParams();
   const navigate = useNavigate();
@@ -13,7 +25,7 @@ const LeagueDetails = () => {
   const [league, setLeague] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
-  const [favoritePlayers] = useState([]);
+  const [favoritePlayers, setFavoritePlayers] = useState([]);
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortPosition, setSortPosition] = useState('All Positions');
@@ -24,10 +36,6 @@ const LeagueDetails = () => {
       setLeague(response.data);
       setIsReady(response.data.readyMembers.includes(user.userId));
       setAvailablePlayers(response.data.initialPlayerPool || []);
-      // Logic to set favorite players can be separated or simplified
-      // For now, this is a temporary fix to pass the linter.
-      // You'll fetch actual user favorites from your API later.
-      // setFavoritePlayers(availablePlayers.filter(p => p.isFavorite)); 
     } catch (error) {
       console.error("Error fetching league details:", error);
       alert("Failed to fetch league details.");
@@ -40,6 +48,12 @@ const LeagueDetails = () => {
   useEffect(() => {
     fetchLeagueDetails();
   }, [fetchLeagueDetails]);
+
+  // This hook sets favorite players after available players have been fetched
+  useEffect(() => {
+    // This is a placeholder. In a real app, this would be an API call to get user's favorites.
+    setFavoritePlayers(initialStaticPlayerList.filter(p => p.isFavorite));
+  }, [availablePlayers]);
 
   const handleSetReadyStatus = async () => {
     try {
@@ -105,7 +119,7 @@ const LeagueDetails = () => {
           <button 
             onClick={handleStartDraft} 
             className={`start-draft-button ${allMembersReady || league.members.length === 1 ? 'ready' : ''}`}
-            disabled={league.members.length > 1 && !allMembersReady}
+            disabled={league.members.length > 1 && !allMembersReady} // Disable if more than 1 member and not all ready
           >
             Start Draft ({league.readyMembers.length}/{league.members.length} Ready)
           </button>
