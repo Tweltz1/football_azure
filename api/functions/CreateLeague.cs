@@ -14,7 +14,7 @@ public static class CreateLeague
     [FunctionName("CreateLeague")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")]IAsyncCollector<League> leagues,
+        [CosmosDB(databaseName: "Fantasty Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")]IAsyncCollector<League> leagues,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -42,7 +42,11 @@ public static class CreateLeague
                 } 
             },
             Status = "created",
-            DraftPlayers = new List<Player>()
+            DraftPlayers = new List<Player>(),
+            // The RosterSettings and DraftTimers will be automatically
+            // set to their default values by the constructor.
+            // You can override them here if you want:
+            // RosterSettings = new RosterSettings { QB = 2, WR = 4, ... }
         };
 
         await leagues.AddAsync(newLeague);
