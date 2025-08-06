@@ -30,6 +30,10 @@ public class League
     public AuctionTimer AuctionTimer { get; set; }
     [JsonProperty("draftLog")]
     public List<DraftPick> DraftLog { get; set; } = new List<DraftPick>();
+	[JsonProperty("rosterSettings")]
+	public RosterSettings RosterSettings { get; set; }
+	[JsonProperty("draftTimers")]
+	public DraftTimers DraftTimers { get; set; }
 }
 
 public class Team
@@ -90,4 +94,36 @@ public class DraftPick
     public string TeamId { get; set; }
     [JsonProperty("price")]
     public int Price { get; set; }
+}
+
+public class RosterSettings
+{
+    [JsonProperty("qb")]
+    public int QB { get; set; }
+    [JsonProperty("wr")]
+    public int WR { get; set; }
+    [JsonProperty("rb")]
+    public int RB { get; set; }
+    [JsonProperty("te")]
+    public int TE { get; set; }
+    [JsonProperty("k")]
+    public int K { get; set; }
+    [JsonProperty("def")]
+    public int DEF { get; set; }
+    [JsonProperty("flex")]
+    public int FLEX { get; set; }
+    [JsonProperty("superFlex")]
+    public int SuperFlex { get; set; }
+    [JsonProperty("bench")]
+    public int Bench { get; set; }
+}
+
+public class DraftTimers
+{
+    [JsonProperty("bidTimer")]
+    public int BidTimer { get; set; } // e.g., 20 or 15 seconds
+    [JsonProperty("intermissionTimer")]
+    public int IntermissionTimer { get; set; } // e.g., 60 seconds
+    [JsonProperty("rebidTimer")]
+    public int RebidTimer { get; set; } // for tie-breaking, e.g., 10 seconds
 }
