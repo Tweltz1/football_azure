@@ -126,7 +126,7 @@ const Leagues = ({ userId }) => {
                   <td>
                     {league.name}
                     <br />
-                    <span>Your Team: {league.teams.find(t => t.ownerId === userId)?.name || 'N/A'} <button className="edit-profile-link" onClick={() => {
+                    <span>Your Team: {league.teams.find(t => t.ownerId === userId)?.name || 'N/A'} <button className="link-button" onClick={() => {
                         setShowEditModal(true);
                         setCurrentLeague(league);
                         setNewTeamName(league.teams.find(t => t.ownerId === userId)?.name || '');
@@ -207,7 +207,7 @@ const Leagues = ({ userId }) => {
             
             <label>bidDuration:<input type="number" value={draftTimers.bidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, bidTimer: parseInt(e.target.value)})}/></label>
             <label>intermission:<input type="number" value={draftTimers.intermissionTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, intermissionTimer: parseInt(e.target.value)})}/></label>
-            <label>rebidDuration:<input type="number" value={draftTimers.rebidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, rebidDuration: parseInt(e.target.value)})}/></label>
+            <label>rebidDuration:<input type="number" value={draftTimers.rebidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, rebidTimer: parseInt(e.target.value)})}/></label>
 
             <div style={{ gridColumn: 'span 2', marginTop: '20px', textAlign: 'center' }}>
               <button onClick={handleUpdateRosterSettings}>Save Settings</button>
