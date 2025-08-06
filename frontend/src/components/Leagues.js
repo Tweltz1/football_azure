@@ -10,7 +10,7 @@ const Leagues = ({ userId }) => {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRosterModal, setShowRosterModal] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false); // New state for join modal
+  const [showJoinModal, setShowJoinModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [currentLeague, setCurrentLeague] = useState(null);
   
@@ -101,11 +101,11 @@ const Leagues = ({ userId }) => {
   return (
     <div>
       <h2>My Leagues</h2>
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+      <div className="button-group">
         <Link to="/create-league">
           <button className="create-button">Create a League</button>
         </Link>
-        <button className="join-button" onClick={() => setShowJoinModal(true)}>Join League</button>
+        <button onClick={() => setShowJoinModal(true)} className="join-button">Join League</button>
       </div>
       
       {leagues.length > 0 ? (
@@ -126,11 +126,11 @@ const Leagues = ({ userId }) => {
                   <td>
                     {league.name}
                     <br />
-                    <span>Your Team: {league.teams.find(t => t.ownerId === userId)?.name || 'N/A'} (<button onClick={() => {
+                    <span>Your Team: {league.teams.find(t => t.ownerId === userId)?.name || 'N/A'} <button className="edit-profile-link" onClick={() => {
                         setShowEditModal(true);
                         setCurrentLeague(league);
                         setNewTeamName(league.teams.find(t => t.ownerId === userId)?.name || '');
-                    }} className="link-button">(Edit Profile)</button>)</span>
+                    }}>Edit Profile</button></span>
                   </td>
                   <td>
                     {league.adminId === userId ? "You (Admin)" : "Other"}
@@ -138,9 +138,9 @@ const Leagues = ({ userId }) => {
                   <td>
                     {league.members.length}/12
                   </td>
-                  <td className="actions-cell">
+                  <td className="actions-cell-flex">
                     <Link to={`/leagues/${league.id}`}>
-                      <button className="details-button">View Details</button>
+                      <button className="view-details-button">View Details</button>
                     </Link>
                     {league.adminId === userId && (
                       <>
@@ -207,7 +207,7 @@ const Leagues = ({ userId }) => {
             
             <label>bidDuration:<input type="number" value={draftTimers.bidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, bidTimer: parseInt(e.target.value)})}/></label>
             <label>intermission:<input type="number" value={draftTimers.intermissionTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, intermissionTimer: parseInt(e.target.value)})}/></label>
-            <label>rebidDuration:<input type="number" value={draftTimers.rebidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, rebidTimer: parseInt(e.target.value)})}/></label>
+            <label>rebidDuration:<input type="number" value={draftTimers.rebidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, rebidDuration: parseInt(e.target.value)})}/></label>
 
             <div style={{ gridColumn: 'span 2', marginTop: '20px', textAlign: 'center' }}>
               <button onClick={handleUpdateRosterSettings}>Save Settings</button>
