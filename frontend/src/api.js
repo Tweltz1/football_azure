@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Get this URL from your Azure Static Web App or local Func dev host
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 export const getSignalRInfo = async () => {

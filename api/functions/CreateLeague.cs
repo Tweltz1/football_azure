@@ -32,21 +32,17 @@ public static class CreateLeague
             AdminId = data.AdminId,
             Password = data.Password,
             Members = new List<string> { data.AdminId },
-            Teams = new List<Team> { 
-                new Team { 
-                    Id = Guid.NewGuid().ToString(), 
-                    OwnerId = data.AdminId, 
-                    Name = "Admin Team", 
-                    Budget = 200, 
-                    Roster = new List<RosterSpot>() 
-                } 
+            Teams = new List<Team> {
+                new Team {
+                    Id = Guid.NewGuid().ToString(),
+                    OwnerId = data.AdminId,
+                    Name = "Admin Team",
+                    Budget = 200,
+                    Roster = new List<RosterSpot>()
+                }
             },
             Status = "created",
             DraftPlayers = new List<Player>(),
-            // The RosterSettings and DraftTimers will be automatically
-            // set to their default values by the constructor.
-            // You can override them here if you want:
-            // RosterSettings = new RosterSettings { QB = 2, WR = 4, ... }
         };
 
         await leagues.AddAsync(newLeague);
