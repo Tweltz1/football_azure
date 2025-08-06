@@ -6,6 +6,7 @@ import LeagueDetails from './components/LeagueDetails';
 import DraftScreen from './components/DraftScreen';
 import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
+import Profile from './components/Profile'; // <--- 1. IMPORT THE NEW COMPONENT
 import { useAuth } from './AuthContext';
 import './App.css';
 
@@ -29,6 +30,7 @@ function App() {
         <Link to="/">Home</Link>
         <Link to="/leagues">My Leagues</Link>
         <Link to="/create-league">Create a League</Link>
+        <Link to="/profile">My Profile</Link> {/* <--- 2. ADD THE NAV LINK */}
         <a href="/.auth/logout">Logout</a>
         <span>Welcome, {user.userDetails}!</span>
       </nav>
@@ -38,6 +40,7 @@ function App() {
         <Route path="/leagues/:leagueId" element={<LeagueDetails userId={userId} />} />
         <Route path="/draft/:leagueId" element={<DraftScreen userId={userId} />} />
         <Route path="/create-league" element={<CreateLeague userId={userId} />} />
+        <Route path="/profile" element={<Profile userId={userId} />} /> {/* <--- 3. ADD THE ROUTE */}
       </Routes>
     </Router>
   );
