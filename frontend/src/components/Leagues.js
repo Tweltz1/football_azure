@@ -22,7 +22,7 @@ const Leagues = ({ userId }) => {
     };
     fetchLeagues();
   }, [userId]);
- 
+
   if (loading) {
     return <div>Loading leagues...</div>;
   }
@@ -33,20 +33,55 @@ const Leagues = ({ userId }) => {
       <Link to="/create-league">
         <button>Create a League</button>
       </Link>
+      <button>Join League</button>
       
       {leagues.length > 0 ? (
-        <ul>
-          {leagues.map(league => (
-            <li key={league.id}>
-              {league.name} - Status: {league.status}
-            </li>
-          ))}
-        </ul>
+        <div>
+          <h3>Your Active Leagues</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f2f2f2' }}>
+                <th style={{ padding: '10px', border: '1px solid #ddd' }}>League Name</th>
+                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Admin</th>
+                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Teams Joined</th>
+                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leagues.map(league => (
+                <tr key={league.id}>
+                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                    {league.name}
+                    <br />
+                    <span>Your Team: JROP (Edit Profile)</span>
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                    {league.adminId === userId ? "You (Admin)" : "Other"}
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                    {league.members.length}/12
+                  </td>
+                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                    <Link to={`/leagues/${league.id}`}>
+                      <button>View Details</button>
+                    </Link>
+                    {league.adminId === userId && (
+                      <>
+                        <button style={{ backgroundColor: 'orange', marginLeft: '5px' }}>Edit Roster</button>
+                        <button style={{ backgroundColor: 'red', marginLeft: '5px' }}>Delete</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <p>You are not a member of any leagues yet.</p>
       )}
     </div>
   );
 };
- 
+
 export default Leagues;
