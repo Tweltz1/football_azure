@@ -10,7 +10,7 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService; // Add this line
+using Microsoft.Azure.WebJobs.Extensions.SignalRService; // New import
 
 public static class SetReadyStatus
 {
@@ -22,7 +22,7 @@ public static class SetReadyStatus
             databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
-        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages, // Add this line
+        [SignalR(HubName = "draftHub", ConnectionStringSetting = "AzureSignalRConnectionString")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -55,14 +55,13 @@ public static class SetReadyStatus
             await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
             
             // Broadcast the updated league object to all clients
-            await signalRMessages.AddAsync(
-                new SignalRMessage
-                {
-                    Target = "readyStatusUpdate",
-                    Arguments = new object[] { leagueToUpdate }
-                });
+            await signalRMessages.AddAsync(new SignalRMessage
+            {
+                Target = "readyStatusUpdate",
+                Arguments = new object[] { leagueToUpdate }
+            });
 
-            return new OkObjectResult(leagueToUpdate);
+            return new OkResult();
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
