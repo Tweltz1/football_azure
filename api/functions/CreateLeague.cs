@@ -8,14 +8,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Collections.Generic;
-using System.Linq;
+using System.Linq; 
 
 public static class CreateLeague
 {
     [FunctionName("CreateLeague")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
-        [CosmosDB(databaseName: "Fantasty Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")]IAsyncCollector<League> leagues,
+        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")]IAsyncCollector<League> leagues,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
