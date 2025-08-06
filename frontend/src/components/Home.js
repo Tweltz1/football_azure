@@ -1,8 +1,7 @@
-import React, { useState} from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext'; // Import the useAuth hook
 
-// This is a static list of players for now.
-// In a real application, you would fetch this data from an API endpoint.
 const initialPlayerList = [
   { name: 'JaMarr Chase', position: 'WR', rank: 1, isFavorite: false },
   { name: 'Bijan Robinson', position: 'RB', rank: 2, isFavorite: false },
@@ -15,11 +14,16 @@ const initialPlayerList = [
   { name: 'Saquon Barkley', position: 'RB', rank: 9, isFavorite: false },
 ];
 
-const Home = ({ userId }) => {
+const Home = () => { // No longer receiving userId as a prop
+  const { user, loading } = useAuth(); // Get user from AuthContext
   const [players, setPlayers] = useState(initialPlayerList);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortPosition, setSortPosition] = useState('All Positions');
   const navigate = useNavigate();
+
+  if (loading) {
+    return <div>Loading user data...</div>;
+  }
 
   const filteredPlayers = players
     .filter(player => 
@@ -37,21 +41,11 @@ const Home = ({ userId }) => {
     ));
   };
   
-  // A hook to fetch data. Uncomment this in a real app.
-  // useEffect(() => {
-  //   const fetchPlayers = async () => {
-  //     const response = await fetch('YOUR_API_ENDPOINT/players');
-  //     const data = await response.json();
-  //     setPlayers(data);
-  //   };
-  //   fetchPlayers();
-  // }, []);
-
   return (
     <div style={{ padding: '20px', textAlign: 'center' }}>
-      <h1>Welcome, tyler.weltzin@gmail.com!</h1>
+      <h1>Welcome, {user.userDetails}!</h1>
       <p>Get ready for your fantasy football auction draft!</p>
-      <p>Your full User ID: {userId}</p>
+      <p>Your full User ID: {user.userId}</p>
       <button 
         onClick={() => navigate('/leagues')}
         style={{ padding: '10px 20px', fontSize: '18px', cursor: 'pointer' }}
@@ -68,7 +62,6 @@ const Home = ({ userId }) => {
               <option>All Positions</option>
               <option>WR</option>
               <option>RB</option>
-              {/* Add more positions as needed */}
             </select>
           </div>
           <input
