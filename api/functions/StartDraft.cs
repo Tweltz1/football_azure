@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
+using System.Collections.Generic;
 
 public static class StartDraft
 {
@@ -17,7 +18,7 @@ public static class StartDraft
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/startDraft")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasy Football", // Corrected database name
+            databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -39,17 +40,14 @@ public static class StartDraft
 
             if (leagueToUpdate.AdminId != data.AdminId)
             {
-                return new UnauthorizedResult(); // Only the admin can start the draft
+                return new UnauthorizedResult();
             }
 
-            // Allow the draft to start with only one member, as per your request
-            // The logic to check for all members ready is now optional based on this
             if (leagueToUpdate.Members.Count > 1 && leagueToUpdate.ReadyMembers.Count != leagueToUpdate.Members.Count)
             {
                 return new BadRequestObjectResult("Not all members are ready.");
             }
 
-            // Update league status and set the first player
             leagueToUpdate.Status = "drafting";
             leagueToUpdate.CurrentPlayerId = GetRandomPlayerId(leagueToUpdate);
             leagueToUpdate.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(leagueToUpdate.DraftTimers.BidTimer), IsPaused = false };
@@ -71,7 +69,6 @@ public static class StartDraft
 
     private static string GetRandomPlayerId(League league)
     {
-        // Logic to get a random player from the undrafted pool
         return league.DraftPlayers.Where(p => !p.IsDrafted).OrderBy(p => Guid.NewGuid()).FirstOrDefault()?.Id;
     }
 
