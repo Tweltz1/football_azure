@@ -76,7 +76,6 @@ const LeagueDetails = () => {
     const userFavorites = userTeam?.favoritePlayerIds || [];
     const allPlayers = league.initialPlayerPool || [];
 
-    // Filter players into two separate lists
     const favoritePlayers = allPlayers
         .filter(p => userFavorites.includes(p.id))
         .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -95,7 +94,27 @@ const LeagueDetails = () => {
     return (
         <div style={{ padding: '20px' }}>
             <h2>Drafting in {league.name}</h2>
-            {/* ... other components ... */}
+            
+            <div className="card">
+                <h3>Draft Controls & Overview</h3>
+                 {isCurrentUserAdmin ? (
+                    <button
+                        onClick={() => alert("Start Draft logic to be implemented.")}
+                        className={`start-draft-button ${canStartDraft ? 'ready' : ''}`}
+                        disabled={!canStartDraft} // This line fixes the error
+                    >
+                        Start Draft ({league.readyMembers.length}/{league.members.length} Ready)
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => alert("Set Ready Status logic to be implemented.")}
+                        className={`ready-button ${league.readyMembers.includes(user.userId) ? 'ready' : ''}`}
+                    >
+                        {league.readyMembers.includes(user.userId) ? "You are Ready!" : "Click to Ready Up"}
+                    </button>
+                )}
+            </div>
+
             <div className="card" style={{ marginTop: '20px' }}>
                 <h3>Player Lists</h3>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
