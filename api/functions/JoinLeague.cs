@@ -17,7 +17,7 @@ public static class JoinLeague
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "joinLeague")] HttpRequest req,
         [CosmosDB(
-            databaseName: "Fantasty Football", // Corrected database name
+            databaseName: "Fantasy Football", // Corrected database name
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -30,7 +30,7 @@ public static class JoinLeague
             return new BadRequestObjectResult("User ID and league name are required.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasty Football", "Leagues");
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
         try
         {
