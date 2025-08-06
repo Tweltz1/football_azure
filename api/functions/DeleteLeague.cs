@@ -16,7 +16,7 @@ public static class DeleteLeague
         [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "leagues/{leagueId}")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasty Football",
+            databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -29,7 +29,7 @@ public static class DeleteLeague
             return new BadRequestObjectResult("Admin ID is required to delete a league.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasty Football", "Leagues");
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
         try
         {
