@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using System.Linq;
 
 public static class CreateLeague
 {
@@ -24,6 +25,20 @@ public static class CreateLeague
         {
             return new BadRequestObjectResult("Please provide a league name and admin ID.");
         }
+        
+        // This is a static list of players for now, as per your design
+        var playerPool = new List<Player>
+        {
+            new Player { Id = Guid.NewGuid().ToString(), Name = "JaMarr Chase", Position = "WR", IsDrafted = false },
+            new Player { Id = Guid.NewGuid().ToString(), Name = "Bijan Robinson", Position = "RB", IsDrafted = false },
+            new Player { Id = Guid.NewGuid().ToString(), Name = "CeeDee Lamb", Position = "WR", IsDrafted = false },
+            new Player { Id = Guid.NewGuid().ToString(), Name = "Justin Jefferson", Position = "WR", IsDrafted = false },
+            new Player { Id = Guid.NewGuid().ToString(), Name = "Jahmyr Gibbs", Position = "RB", IsDrafted = false },
+            new Player { Id = Guid.NewGuid().ToString(), Name = "Puka Nacua", Position = "WR", IsDrafted = false },
+            new Player { Id = Guid.NewGuid().ToString(), Name = "Malik Nabers", Position = "WR", IsDrafted = false },
+            new Player { Id = Guid.NewGuid().ToString(), Name = "Amon-Ra St. Brown", Position = "WR", IsDrafted = false },
+            new Player { Id = Guid.NewGuid().ToString(), Name = "Saquon Barkley", Position = "RB", IsDrafted = false },
+        };
 
         var newLeague = new League
         {
@@ -42,7 +57,8 @@ public static class CreateLeague
                 }
             },
             Status = "created",
-            DraftPlayers = new List<Player>(),
+            InitialPlayerPool = playerPool,
+            DraftPlayers = playerPool,
         };
 
         await leagues.AddAsync(newLeague);
