@@ -43,9 +43,14 @@ public static class StartDraft
                 return new UnauthorizedResult();
             }
 
-            if (leagueToUpdate.Members.Count > 1 && leagueToUpdate.ReadyMembers.Count != leagueToUpdate.Members.Count)
+            // Corrected logic: Check if all non-admin members are ready
+            if (leagueToUpdate.Members.Count > 1) 
             {
-                return new BadRequestObjectResult("Not all members are ready.");
+                var nonAdminMembers = leagueToUpdate.Members.Where(m => m != leagueToUpdate.AdminId).ToList();
+                if (leagueToUpdate.ReadyMembers.Count != nonAdminMembers.Count)
+                {
+                    return new BadRequestObjectResult("Not all non-admin members are ready.");
+                }
             }
 
             leagueToUpdate.Status = "drafting";
