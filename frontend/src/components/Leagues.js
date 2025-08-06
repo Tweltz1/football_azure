@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import './App.css'; // Ensure you have this import
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
@@ -9,8 +10,13 @@ const Leagues = ({ userId }) => {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRosterModal, setShowRosterModal] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false); // New state for join modal
   const [newTeamName, setNewTeamName] = useState('');
   const [currentLeague, setCurrentLeague] = useState(null);
+  
+  // States for Join League modal
+  const [joinLeagueName, setJoinLeagueName] = useState('');
+  const [joinPassword, setJoinPassword] = useState('');
   
   // States for Roster Settings from the pop-up
   const [rosterSettings, setRosterSettings] = useState({});
@@ -26,11 +32,11 @@ const Leagues = ({ userId }) => {
     } finally {
       setLoading(false);
     }
-  }, [userId]); // Add userId to the dependency array
+  }, [userId]);
 
   useEffect(() => {
     fetchLeagues();
-  }, [fetchLeagues]); // Now this dependency is correct
+  }, [fetchLeagues]);
 
   const handleDelete = async (leagueId) => {
     if (window.confirm("Are you sure you want to delete this league?")) {
@@ -72,6 +78,21 @@ const Leagues = ({ userId }) => {
       alert(`Failed to update settings: ${error.response?.data || error.message}`);
     }
   };
+  
+  const handleJoinLeague = async () => {
+    try {
+        const response = await axios.post(`${API_BASE_URL}/JoinLeague`, {
+            userId: userId,
+            leagueName: joinLeagueName,
+            password: joinPassword
+        });
+        alert(`Successfully joined league '${response.data.name}'!`);
+        setShowJoinModal(false);
+        fetchLeagues();
+    } catch (error) {
+        alert(`Failed to join league: ${error.response?.data || error.message}`);
+    }
+  };
 
   if (loading) {
     return <div>Loading leagues...</div>;
@@ -80,44 +101,46 @@ const Leagues = ({ userId }) => {
   return (
     <div>
       <h2>My Leagues</h2>
-      <Link to="/create-league">
-        <button>Create a League</button>
-      </Link>
-      <button>Join League</button>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <Link to="/create-league">
+          <button className="create-button">Create a League</button>
+        </Link>
+        <button className="join-button" onClick={() => setShowJoinModal(true)}>Join League</button>
+      </div>
       
       {leagues.length > 0 ? (
         <div>
           <h3>Your Active Leagues</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+          <table className="leagues-table">
             <thead>
-              <tr style={{ backgroundColor: '#f2f2f2' }}>
-                <th style={{ padding: '10px', border: '1px solid #ddd' }}>League Name</th>
-                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Admin</th>
-                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Teams Joined</th>
-                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Actions</th>
+              <tr>
+                <th>League Name</th>
+                <th>Admin</th>
+                <th>Teams Joined</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {leagues.map(league => (
                 <tr key={league.id}>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                  <td>
                     {league.name}
                     <br />
-                    <span>Your Team: JROP (<button onClick={() => {
+                    <span>Your Team: {league.teams.find(t => t.ownerId === userId)?.name || 'N/A'} (<button onClick={() => {
                         setShowEditModal(true);
                         setCurrentLeague(league);
                         setNewTeamName(league.teams.find(t => t.ownerId === userId)?.name || '');
-                    }}>(Edit Profile)</button>)</span>
+                    }} className="link-button">(Edit Profile)</button>)</span>
                   </td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                  <td>
                     {league.adminId === userId ? "You (Admin)" : "Other"}
                   </td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                  <td>
                     {league.members.length}/12
                   </td>
-                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                  <td className="actions-cell">
                     <Link to={`/leagues/${league.id}`}>
-                      <button>View Details</button>
+                      <button className="details-button">View Details</button>
                     </Link>
                     {league.adminId === userId && (
                       <>
@@ -128,12 +151,12 @@ const Leagues = ({ userId }) => {
                             setRosterSettings(league.rosterSettings || {});
                             setDraftTimers(league.draftTimers || {});
                           }} 
-                          style={{ backgroundColor: 'orange', marginLeft: '5px' }}>
+                          className="edit-roster-button">
                           Edit Roster
                         </button>
                         <button 
                           onClick={() => handleDelete(league.id)} 
-                          style={{ backgroundColor: 'red', marginLeft: '5px' }}>
+                          className="delete-button">
                           Delete
                         </button>
                       </>
@@ -149,8 +172,8 @@ const Leagues = ({ userId }) => {
       )}
       
       {showEditModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '5px' }}>
+        <div className="modal-overlay">
+          <div className="modal-content">
             <h3>Edit Team Name</h3>
             <label>
               New Team Name:
@@ -162,14 +185,14 @@ const Leagues = ({ userId }) => {
             </label>
             <br />
             <button onClick={handleEditTeamName}>Save</button>
-            <button onClick={() => setShowEditModal(false)} style={{ marginLeft: '10px' }}>Cancel</button>
+            <button onClick={() => setShowEditModal(false)} className="cancel-button">Cancel</button>
           </div>
         </div>
       )}
 
       {showRosterModal && currentLeague && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '5px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', minWidth: '400px' }}>
+        <div className="modal-overlay">
+          <div className="modal-content">
             <h3 style={{ gridColumn: 'span 2' }}>Edit Roster Settings for {currentLeague.name}</h3>
             
             <label>QB:<input type="number" value={rosterSettings.qb || 0} onChange={(e) => setRosterSettings({...rosterSettings, qb: parseInt(e.target.value)})}/></label>
@@ -188,9 +211,38 @@ const Leagues = ({ userId }) => {
 
             <div style={{ gridColumn: 'span 2', marginTop: '20px', textAlign: 'center' }}>
               <button onClick={handleUpdateRosterSettings}>Save Settings</button>
-              <button onClick={() => setShowRosterModal(false)} style={{ marginLeft: '10px' }}>Cancel</button>
+              <button onClick={() => setShowRosterModal(false)} className="cancel-button" style={{ marginLeft: '10px' }}>Cancel</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {showJoinModal && (
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <h3>Join a League</h3>
+                <label>
+                    League Name:
+                    <input 
+                        type="text" 
+                        value={joinLeagueName} 
+                        onChange={(e) => setJoinLeagueName(e.target.value)} 
+                        required 
+                    />
+                </label>
+                <br />
+                <label>
+                    Password (optional):
+                    <input 
+                        type="password" 
+                        value={joinPassword} 
+                        onChange={(e) => setJoinPassword(e.target.value)} 
+                    />
+                </label>
+                <br />
+                <button onClick={handleJoinLeague}>Join League</button>
+                <button onClick={() => setShowJoinModal(false)} className="cancel-button" style={{ marginLeft: '10px' }}>Cancel</button>
+            </div>
         </div>
       )}
     </div>
