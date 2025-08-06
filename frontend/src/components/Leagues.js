@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import '../App.css';
+import '../App.css'; // Ensure you have this import
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
@@ -10,7 +10,7 @@ const Leagues = ({ userId }) => {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRosterModal, setShowRosterModal] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false); // New state for join modal
   const [newTeamName, setNewTeamName] = useState('');
   const [currentLeague, setCurrentLeague] = useState(null);
   
@@ -32,11 +32,11 @@ const Leagues = ({ userId }) => {
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId]); // Add userId to the dependency array
 
   useEffect(() => {
     fetchLeagues();
-  }, [fetchLeagues]);
+  }, [fetchLeagues]); // Now this dependency is correct
 
   const handleDelete = async (leagueId) => {
     if (window.confirm("Are you sure you want to delete this league?")) {
@@ -126,7 +126,7 @@ const Leagues = ({ userId }) => {
                   <td>
                     {league.name}
                     <br />
-                    <span>Your Team: {league.teams.find(t => t.ownerId === userId)?.name || 'N/A'} <button className="link-button" onClick={() => {
+                    <span>Your Team: {league.teams.find(t => t.ownerId === userId)?.name || 'N/A'} <button className="edit-profile-link" onClick={() => {
                         setShowEditModal(true);
                         setCurrentLeague(league);
                         setNewTeamName(league.teams.find(t => t.ownerId === userId)?.name || '');
