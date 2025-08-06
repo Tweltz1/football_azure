@@ -13,7 +13,7 @@ const LeagueDetails = () => {
   const [league, setLeague] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
-  const [favoritePlayers, setFavoritePlayers] = useState([]);
+  const [favoritePlayers] = useState([]);
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortPosition, setSortPosition] = useState('All Positions');
