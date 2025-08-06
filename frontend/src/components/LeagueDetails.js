@@ -42,36 +42,36 @@ const LeagueDetails = () => {
         fetchLeagueDetails();
     }, [fetchLeagueDetails]);
 
-    // New SignalR hook for real-time updates
+    // Corrected useEffect for SignalR
     useEffect(() => {
-        const setupConnection = async () => {
-            try {
-                const info = await axios.get(`${API_BASE_URL}/GetSignalRInfo`);
-                const newConnection = new HubConnectionBuilder()
-                    .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-                    .withAutomaticReconnect()
-                    .build();
+      const setupConnection = async () => {
+        try {
+          const info = await axios.get(`${API_BASE_URL}/GetSignalRInfo`);
+          const newConnection = new HubConnectionBuilder()
+              .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
+              .withAutomaticReconnect()
+              .build();
 
-                newConnection.on('readyStatusUpdate', (updatedLeague) => {
-                    setLeague(updatedLeague);
-                    setIsReady(updatedLeague.readyMembers.includes(user.userId));
-                });
-                
-                await newConnection.start();
-                setHubConnection(newConnection);
-            } catch (e) {
-                console.error('SignalR Connection Error: ', e);
-            }
-        };
-
-        if (!hubConnection) {
-            setupConnection();
+          newConnection.on('readyStatusUpdate', (updatedLeague) => {
+            setLeague(updatedLeague);
+            setIsReady(updatedLeague.readyMembers.includes(user.userId));
+          });
+          
+          await newConnection.start();
+          setHubConnection(newConnection);
+        } catch (e) {
+          console.error('SignalR Connection Error: ', e);
         }
+      };
 
-        return () => {
-            if (hubConnection) hubConnection.stop();
-        };
-    }, [hubConnection, user.userId, API_BASE_URL, leagueId]); // added leagueId to dependency
+      if (!hubConnection) {
+        setupConnection();
+      }
+
+      return () => {
+        if (hubConnection) hubConnection.stop();
+      };
+    }, [hubConnection, user.userId, leagueId]); // API_BASE_URL has been removed
 
     const handleSetReadyStatus = async () => {
         try {
