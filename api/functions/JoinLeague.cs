@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Extensions.SignalRService; // New import
 
 public static class JoinLeague
 {
@@ -20,6 +21,7 @@ public static class JoinLeague
             databaseName: "Fantasy Football", // Corrected database name
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [SignalR(HubName = "draftHub", ConnectionStringSetting = "AzureSignalRConnectionString")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -69,6 +71,13 @@ public static class JoinLeague
             });
 
             await container.ReplaceItemAsync(leagueToJoin, leagueToJoin.Id, new PartitionKey(leagueToJoin.Id));
+            
+            // Broadcast the updated league object to all clients
+            await signalRMessages.AddAsync(new SignalRMessage
+            {
+                Target = "leagueUpdate",
+                Arguments = new object[] { leagueToJoin }
+            });
 
             return new OkObjectResult(new { id = leagueToJoin.Id, name = leagueToJoin.Name });
         }

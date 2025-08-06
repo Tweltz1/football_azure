@@ -1,233 +1,279 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
+import { HubConnectionBuilder } from '@microsoft/signalr';
 import '../App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
-const LeagueDetails = () => {
-  const { leagueId } = useParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [league, setLeague] = useState(null);
+const Leagues = ({ userId }) => {
+  const [leagues, setLeagues] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isReady, setIsReady] = useState(false);
-  const [favoritePlayers, setFavoritePlayers] = useState([]);
-  const [availablePlayers, setAvailablePlayers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortPosition, setSortPosition] = useState('All Positions');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showRosterModal, setShowRosterModal] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [currentLeague, setCurrentLeague] = useState(null);
+  const [joinLeagueName, setJoinLeagueName] = useState('');
+  const [joinPassword, setJoinPassword] = useState('');
+  
+  const [rosterSettings, setRosterSettings] = useState({});
+  const [draftTimers, setDraftTimers] = useState({});
 
-  const fetchLeagueDetails = useCallback(async () => {
+  const fetchLeagues = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/details`);
-      setLeague(response.data);
-      setIsReady(response.data.readyMembers.includes(user.userId));
-      setAvailablePlayers(response.data.initialPlayerPool || []);
+      const response = await axios.get(`${API_BASE_URL}/GetLeagues?userId=${userId}`);
+      setLeagues(response.data);
     } catch (error) {
-      console.error("Error fetching league details:", error);
-      alert("Failed to fetch league details.");
-      navigate('/leagues');
+      console.error("Error fetching leagues:", error);
+      alert("Failed to fetch leagues.");
     } finally {
       setLoading(false);
     }
-  }, [leagueId, user.userId, navigate]);
+  }, [userId]);
 
   useEffect(() => {
-    fetchLeagueDetails();
-  }, [fetchLeagueDetails]);
+    fetchLeagues();
+  }, [fetchLeagues]);
 
+  // This useEffect hook sets up the SignalR connection for real-time updates
   useEffect(() => {
-    const initialStaticPlayerList = [
-      { id: 'player1', name: 'JaMarr Chase', position: 'WR', rank: 1, isFavorite: true },
-      { id: 'player2', name: 'Bijan Robinson', position: 'RB', rank: 2, isFavorite: true },
-      { id: 'player3', name: 'CeeDee Lamb', position: 'WR', rank: 3, isFavorite: false },
-      { id: 'player4', name: 'Justin Jefferson', position: 'WR', rank: 4, isFavorite: false },
-      { id: 'player5', name: 'Jahmyr Gibbs', position: 'RB', rank: 5, isFavorite: true },
-      { id: 'player6', name: 'Puka Nacua', position: 'WR', rank: 6, isFavorite: false },
-      { id: 'player7', name: 'Malik Nabers', position: 'WR', rank: 7, isFavorite: true },
-      { id: 'player8', name: 'Amon-Ra St. Brown', position: 'WR', rank: 8, isFavorite: false },
-      { id: 'player9', name: 'Saquon Barkley', position: 'RB', rank: 9, isFavorite: false },
-    ];
-    setFavoritePlayers(initialStaticPlayerList.filter(p => p.isFavorite));
-  }, [availablePlayers]);
+    let hubConnection = null;
+    const setupConnection = async () => {
+      try {
+        const info = await axios.get(`${API_BASE_URL}/GetSignalRInfo`);
+        const newConnection = new HubConnectionBuilder()
+          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
+          .withAutomaticReconnect()
+          .build();
 
-  const handleSetReadyStatus = async () => {
-    try {
-      const newStatus = !isReady;
-      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/ready`, {
-        userId: user.userId,
-        isReady: newStatus
-      });
-      setIsReady(newStatus);
-      fetchLeagueDetails();
-    } catch (error) {
-      alert(`Failed to update ready status: ${error.response?.data || error.message}`);
+        newConnection.on('leagueUpdate', (updatedLeague) => {
+          setLeagues(prevLeagues => prevLeagues.map(l => l.id === updatedLeague.id ? updatedLeague : l));
+        });
+
+        await newConnection.start();
+        hubConnection = newConnection;
+      } catch (e) {
+        console.error('SignalR Connection Error: ', e);
+      }
+    };
+
+    setupConnection();
+    return () => {
+      if (hubConnection) hubConnection.stop();
+    };
+  }, []);
+
+  const handleDelete = async (leagueId) => {
+    if (window.confirm("Are you sure you want to delete this league?")) {
+      try {
+        await axios.delete(`${API_BASE_URL}/leagues/${leagueId}`, { data: { adminId: userId } });
+        alert("League deleted successfully!");
+        fetchLeagues();
+      } catch (error) {
+        alert(`Failed to delete league: ${error.response?.data || error.message}`);
+      }
     }
   };
 
-  const handleStartDraft = async () => {
+  const handleEditTeamName = async () => {
     try {
-      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/startDraft`, {
-        adminId: user.userId
+      await axios.post(`${API_BASE_URL}/leagues/${currentLeague.id}/teams`, {
+        userId: userId,
+        newTeamName: newTeamName
       });
-      alert("Draft starting soon!");
-      navigate(`/draft/${leagueId}`);
+      alert("Team name updated successfully!");
+      setShowEditModal(false);
+      fetchLeagues();
     } catch (error) {
-      alert(`Failed to start draft: ${error.response?.data || error.message}`);
+      alert(`Failed to update team name: ${error.response?.data || error.message}`);
+    }
+  };
+
+  const handleUpdateRosterSettings = async () => {
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${currentLeague.id}/settings`, {
+        adminId: userId,
+        rosterSettings: rosterSettings,
+        draftTimers: draftTimers
+      });
+      alert("Roster settings updated successfully!");
+      setShowRosterModal(false);
+      fetchLeagues();
+    } catch (error) {
+      alert(`Failed to update settings: ${error.response?.data || error.message}`);
+    }
+  };
+  
+  const handleJoinLeague = async () => {
+    try {
+        const response = await axios.post(`${API_BASE_URL}/JoinLeague`, {
+            userId: userId,
+            leagueName: joinLeagueName,
+            password: joinPassword
+        });
+        alert(`Successfully joined league '${response.data.name}'!`);
+        setShowJoinModal(false);
+        fetchLeagues();
+    } catch (error) {
+        alert(`Failed to join league: ${error.response?.data || error.message}`);
     }
   };
 
   if (loading) {
-    return <div>Loading league details...</div>;
+    return <div>Loading leagues...</div>;
   }
-
-  if (!league) {
-    return <div>League not found.</div>;
-  }
-
-  const isCurrentUserAdmin = league.adminId === user.userId;
-  const allMembersReady = league.readyMembers.length === league.members.length;
-  const canStartDraft = (league.members.length > 1 && allMembersReady) || (league.members.length === 1 && isCurrentUserAdmin);
-
-  const userTeam = league.teams.find(team => team.ownerId === user.userId);
-  const userTotalPlayersPicked = userTeam?.roster.filter(spot => spot.player).length || 0;
-  const userTotalSpent = userTeam?.budget ? (200 - userTeam.budget) : 0;
-  const remainingRosterSpots = (league.rosterSettings.qb + league.rosterSettings.rb + league.rosterSettings.wr + league.rosterSettings.te + league.rosterSettings.k + league.rosterSettings.def + league.rosterSettings.flex + league.rosterSettings.superFlex + league.rosterSettings.bench) - userTotalPlayersPicked;
-  const userMaxBidForNextPlayer = userTeam?.budget ? Math.max(0, userTeam.budget - (remainingRosterSpots - 1)) : 0;
-
-  const filteredAvailablePlayers = availablePlayers
-    .filter(player => !player.isDrafted)
-    .filter(player => player.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    .filter(player => sortPosition === 'All Positions' || player.position === sortPosition);
-
-  const filteredFavoritePlayers = favoritePlayers
-    .filter(player => !player.isDrafted)
-    .filter(player => player.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    .filter(player => sortPosition === 'All Positions' || player.position === sortPosition);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>Drafting in {league.name}</h2>
-      <p>League Status: {league.status.toUpperCase()}</p>
-
-      <div className="card">
-        <h3>Draft Controls & Overview</h3>
-        {isCurrentUserAdmin ? (
-          <button 
-            onClick={handleStartDraft} 
-            className={`start-draft-button ${canStartDraft ? 'ready' : ''}`}
-            disabled={!canStartDraft}
-          >
-            Start Draft ({league.readyMembers.length}/{league.members.length} Ready)
-          </button>
-        ) : (
-          <button 
-            onClick={handleSetReadyStatus} 
-            className={`ready-button ${isReady ? 'ready' : ''}`}
-          >
-            {isReady ? "I'm Ready!" : "Waiting for Admin..."}
-          </button>
-        )}
+    <div>
+      <h2>My Leagues</h2>
+      <div className="button-group">
+        <Link to="/create-league">
+          <button className="create-button">Create a League</button>
+        </Link>
+        <button onClick={() => setShowJoinModal(true)} className="join-button">Join League</button>
       </div>
-
-      <div className="card" style={{ marginTop: '20px' }}>
-        <h3>League Teams</h3>
-        {league.teams.map(team => (
-          <div key={team.id} style={{ marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-            <p><strong>Team {team.name}</strong> ({team.ownerId === user.userId ? 'YOUR TEAM' : 'Other Team'})</p>
-            <p>Roster: {team.roster.filter(spot => spot.player).length} players</p>
-            {team.ownerId === user.userId && (
-              <>
-                <p>Budget: ${userTeam.budget}</p>
-                <p>Total Spent: ${userTotalSpent}</p>
-                <p>Max Bid for Next Player: ${userMaxBidForNextPlayer} (to fill all spots)</p>
-                <h4>Roster Spots:</h4>
-                <ul>
-                  <li>QB: {team.roster.filter(p => p.position === 'QB').length}/{league.rosterSettings.qb}</li>
-                  <li>RB: {team.roster.filter(p => p.position === 'RB').length}/{league.rosterSettings.rb}</li>
-                  <li>WR: {team.roster.filter(p => p.position === 'WR').length}/{league.rosterSettings.wr}</li>
-                  <li>TE: {team.roster.filter(p => p.position === 'TE').length}/{league.rosterSettings.te}</li>
-                  <li>DEF: {team.roster.filter(p => p.position === 'DEF').length}/{league.rosterSettings.def}</li>
-                  <li>K: {team.roster.filter(p => p.position === 'K').length}/{league.rosterSettings.k}</li>
-                  <li>FLEX: {team.roster.filter(p => p.position === 'FLEX').length}/{league.rosterSettings.flex}</li>
-                  <li>SUPERFLEX: {team.roster.filter(p => p.position === 'SUPERFLEX').length}/{league.rosterSettings.superFlex}</li>
-                  <li>BENCH: {team.roster.filter(p => p.position === 'BENCH').length}/{league.rosterSettings.bench}</li>
-                </ul>
-                <h4>Your Drafted Players:</h4>
-                {team.roster.filter(spot => spot.player).length > 0 ? (
-                  <ul>
-                    {team.roster.filter(spot => spot.player).map((spot, index) => (
-                      <li key={index}>{spot.player.name} ({spot.player.position}) - ${spot.player.price} (Assigned to {spot.position})</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No players drafted yet.</p>
-                )}
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="card" style={{ marginTop: '20px' }}>
-        <h3>Your Favorited & Available Players (Collapse)</h3>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-          <select onChange={(e) => setSortPosition(e.target.value)}>
-            <option>All Positions</option>
-            <option>QB</option>
-            <option>RB</option>
-            <option>WR</option>
-            <option>TE</option>
-            <option>K</option>
-            <option>DEF</option>
-            <option>FLEX</option>
-            <option>SUPERFLEX</option>
-            <option>BENCH</option>
-          </select>
-          <input
-            type="text"
-            placeholder="Search for a player..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ padding: '8px' }}
-          />
+      
+      {leagues.length > 0 ? (
+        <div>
+          <h3>Your Active Leagues</h3>
+          <table className="leagues-table">
+            <thead>
+              <tr>
+                <th>League Name</th>
+                <th>Admin</th>
+                <th>Teams Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leagues.map(league => (
+                <tr key={league.id}>
+                  <td>
+                    {league.name}
+                    <br />
+                    <span>Your Team: {league.teams.find(t => t.ownerId === userId)?.name || 'N/A'} <button className="link-button" onClick={() => {
+                        setShowEditModal(true);
+                        setCurrentLeague(league);
+                        setNewTeamName(league.teams.find(t => t.ownerId === userId)?.name || '');
+                    }}>Edit Profile</button></span>
+                  </td>
+                  <td>
+                    {league.adminId === userId ? "You (Admin)" : "Other"}
+                  </td>
+                  <td>
+                    {league.members.length}/12
+                  </td>
+                  <td className="actions-cell-flex">
+                    <Link to={`/leagues/${league.id}`}>
+                      <button className="view-details-button">View Details</button>
+                    </Link>
+                    {league.adminId === userId && (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setShowRosterModal(true);
+                            setCurrentLeague(league);
+                            setRosterSettings(league.rosterSettings || {});
+                            setDraftTimers(league.draftTimers || {});
+                          }} 
+                          className="edit-roster-button">
+                          Edit Roster
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(league.id)} 
+                          className="delete-button">
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {filteredFavoritePlayers.length > 0 ? (
-            filteredFavoritePlayers.map(player => (
-              <li key={player.id} className="player-list-item">
-                <span>{player.name} ({player.position}) - Rank: {player.rank}</span>
-                <span style={{ color: 'red', cursor: 'pointer' }}>X</span>
-              </li>
-            ))
-          ) : (
-            <p>No favorited players available.</p>
-          )}
-        </ul>
-      </div>
+      ) : (
+        <p>You are not a member of any leagues yet.</p>
+      )}
+      
+      {showEditModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Edit Team Name</h3>
+            <label>
+              New Team Name:
+              <input 
+                type="text" 
+                value={newTeamName} 
+                onChange={(e) => setNewTeamName(e.target.value)} 
+              />
+            </label>
+            <br />
+            <button onClick={handleEditTeamName}>Save</button>
+            <button onClick={() => setShowEditModal(false)} className="cancel-button">Cancel</button>
+          </div>
+        </div>
+      )}
 
-      <div className="card" style={{ marginTop: '20px' }}>
-        <h3>Available Players (Collapse)</h3>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {filteredAvailablePlayers.length > 0 ? (
-            filteredAvailablePlayers.map(player => (
-              <li key={player.id} className="player-list-item">
-                <span>{player.name} ({player.position}) - Rank: {player.rank}</span>
-                <span style={{ color: 'gold', cursor: 'pointer' }}>★</span>
-              </li>
-            ))
-          ) : (
-            <p>No available players.</p>
-          )}
-        </ul>
-      </div>
+      {showRosterModal && currentLeague && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 style={{ gridColumn: 'span 2' }}>Edit Roster Settings for {currentLeague.name}</h3>
+            
+            <label>QB:<input type="number" value={rosterSettings.qb || 0} onChange={(e) => setRosterSettings({...rosterSettings, qb: parseInt(e.target.value)})}/></label>
+            <label>RB:<input type="number" value={rosterSettings.rb || 0} onChange={(e) => setRosterSettings({...rosterSettings, rb: parseInt(e.target.value)})}/></label>
+            <label>WR:<input type="number" value={rosterSettings.wr || 0} onChange={(e) => setRosterSettings({...rosterSettings, wr: parseInt(e.target.value)})}/></label>
+            <label>TE:<input type="number" value={rosterSettings.te || 0} onChange={(e) => setRosterSettings({...rosterSettings, te: parseInt(e.target.value)})}/></label>
+            <label>DEF:<input type="number" value={rosterSettings.def || 0} onChange={(e) => setRosterSettings({...rosterSettings, def: parseInt(e.target.value)})}/></label>
+            <label>K:<input type="number" value={rosterSettings.k || 0} onChange={(e) => setRosterSettings({...rosterSettings, k: parseInt(e.target.value)})}/></label>
+            <label>FLEX:<input type="number" value={rosterSettings.flex || 0} onChange={(e) => setRosterSettings({...rosterSettings, flex: parseInt(e.target.value)})}/></label>
+            <label>SUPERFLEX:<input type="number" value={rosterSettings.superFlex || 0} onChange={(e) => setRosterSettings({...rosterSettings, superFlex: parseInt(e.target.value)})}/></label>
+            <label>BENCH:<input type="number" value={rosterSettings.bench || 0} onChange={(e) => setRosterSettings({...rosterSettings, bench: parseInt(e.target.value)})}/></label>
+            
+            <label>bidDuration:<input type="number" value={draftTimers.bidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, bidTimer: parseInt(e.target.value)})}/></label>
+            <label>intermission:<input type="number" value={draftTimers.intermissionTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, intermissionTimer: parseInt(e.target.value)})}/></label>
+            <label>rebidDuration:<input type="number" value={draftTimers.rebidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, rebidDuration: parseInt(e.target.value)})}/></label>
 
-      <div style={{ marginTop: '20px', textAlign: 'center' }}>
-        <button onClick={() => navigate('/leagues')} className="exit-draft-button">Exit Draft</button>
-      </div>
+            <div style={{ gridColumn: 'span 2', marginTop: '20px', textAlign: 'center' }}>
+              <button onClick={handleUpdateRosterSettings}>Save Settings</button>
+              <button onClick={() => setShowRosterModal(false)} className="cancel-button" style={{ marginLeft: '10px' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showJoinModal && (
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <h3>Join a League</h3>
+                <label>
+                    League Name:
+                    <input 
+                        type="text" 
+                        value={joinLeagueName} 
+                        onChange={(e) => setJoinLeagueName(e.target.value)} 
+                        required 
+                    />
+                </label>
+                <br />
+                <label>
+                    Password (optional):
+                    <input 
+                        type="password" 
+                        value={joinPassword} 
+                        onChange={(e) => setJoinPassword(e.target.value)} 
+                    />
+                </label>
+                <br />
+                <button onClick={handleJoinLeague}>Join League</button>
+                <button onClick={() => setShowJoinModal(false)} className="cancel-button" style={{ marginLeft: '10px' }}>Cancel</button>
+            </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default LeagueDetails;
+export default Leagues;
