@@ -16,12 +16,12 @@ public static class GetLeagueDetails
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "leagues/{leagueId}/details")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasty Football",
+            databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
     {
-        var container = cosmosClient.GetContainer("Fantasty Football", "Leagues");
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
         try
         {

@@ -17,7 +17,7 @@ public static class StartDraft
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/startDraft")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasty Football",
+            databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -30,7 +30,7 @@ public static class StartDraft
             return new BadRequestObjectResult("Admin ID is required to start the draft.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasty Football", "Leagues");
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
         try
         {

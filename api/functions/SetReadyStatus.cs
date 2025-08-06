@@ -18,7 +18,7 @@ public static class SetReadyStatus
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/ready")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasty Football",
+            databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -31,7 +31,7 @@ public static class SetReadyStatus
             return new BadRequestObjectResult("User ID is required.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasty Football", "Leagues");
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
         try
         {
