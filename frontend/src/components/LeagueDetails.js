@@ -21,11 +21,14 @@ const LeagueDetails = () => {
   const fetchLeagueDetails = useCallback(async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/details`);
+      const allPlayers = response.data.initialPlayerPool || [];
+      
       setLeague(response.data);
       setIsReady(response.data.readyMembers.includes(user.userId));
-      setAvailablePlayers(response.data.initialPlayerPool || []);
-      // For demo, we'll use a static list to represent favorites
-      setFavoritePlayers(availablePlayers.filter(p => p.isFavorite));
+      setAvailablePlayers(allPlayers);
+      
+      // Filter favorite players directly from the fetched data
+      setFavoritePlayers(allPlayers.filter(p => p.isFavorite));
     } catch (error) {
       console.error("Error fetching league details:", error);
       alert("Failed to fetch league details.");
