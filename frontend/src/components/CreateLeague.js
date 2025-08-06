@@ -1,66 +1,83 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+using System;
+using System.IO;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Azure.Cosmos;
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
+public static class CreateLeague
+{
+    [FunctionName("CreateLeague")]
+    public static async Task<IActionResult> Run(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest req,
+        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] IAsyncCollector<League> leaguesOut,
+        [CosmosDB(databaseName: "Fantasy Football", containerName: "Users", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        ILogger log)
+    {
+        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+        var data = JsonConvert.DeserializeObject<CreateLeagueRequest>(requestBody);
 
-const CreateLeague = ({ userId }) => {
-  const [leagueName, setLeagueName] = useState('');
-  const [password, setPassword] = useState('');
-  const navigate = useNavigate();
+        if (string.IsNullOrEmpty(data?.Name) || string.IsNullOrEmpty(data.AdminId))
+        {
+            return new BadRequestObjectResult("Please provide a league name and admin ID.");
+        }
 
-  const handleCreateLeague = async (e) => {
-    e.preventDefault();
+        var userProfile = await GetUserProfile(cosmosClient, data.AdminId, log);
+        var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
+        
+        var playerPool = PlayerData.GetInitialPlayerPool();
 
-    try {
-      // Step 1: Check if the league name is unique
-      const uniqueCheck = await axios.get(`${API_BASE_URL}/CheckLeagueName?leagueName=${leagueName}`);
-      
-      if (!uniqueCheck.data.isUnique) {
-        alert(`A league with the name '${leagueName}' already exists.`);
-        return;
-      }
+        var newLeague = new League
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = data.Name,
+            AdminId = data.AdminId,
+            Password = data.Password,
+            Members = new List<string> { data.AdminId },
+            Teams = new List<Team> {
+                new Team {
+                    Id = Guid.NewGuid().ToString(),
+                    OwnerId = data.AdminId,
+                    Name = "Admin Team",
+                    Budget = 200,
+                    Roster = new List<RosterSpot>(),
+                    FavoritePlayerIds = userMasterFavorites
+                }
+            },
+            Status = "created",
+            InitialPlayerPool = playerPool,
+            DraftPlayers = playerPool,
+        };
 
-      // Step 2: Create the league if the name is unique
-      const response = await axios.post(`${API_BASE_URL}/CreateLeague`, {
-        name: leagueName,
-        adminId: userId,
-        password: password
-      });
-      alert(`League '${response.data.name}' created successfully!`);
-      navigate('/leagues'); // Redirect to the leagues page
-    } catch (error) {
-      alert(`Failed to create league: ${error.response?.data || error.message}`);
+        await leaguesOut.AddAsync(newLeague);
+
+        return new OkObjectResult(new { id = newLeague.Id, name = newLeague.Name });
     }
-  };
 
-  return (
-    <div>
-      <h3>Create a New League</h3>
-      <form onSubmit={handleCreateLeague}>
-        <label>
-          League Name:
-          <input 
-            type="text" 
-            value={leagueName} 
-            onChange={(e) => setLeagueName(e.target.value)} 
-            required 
-          />
-        </label>
-        <br />
-        <label>
-          Password (optional):
-          <input 
-            type="password" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-          />
-        </label>
-        <br />
-        <button type="submit">Create League</button>
-      </form>
-    </div>
-  );
-};
+    private static async Task<UserProfile> GetUserProfile(CosmosClient cosmosClient, string userId, ILogger log)
+    {
+        var container = cosmosClient.GetContainer("Fantasy Football", "Users");
+        try
+        {
+            return await container.ReadItemAsync<UserProfile>(userId, new PartitionKey(userId));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            log.LogWarning($"Profile not found for user {userId} during league creation.");
+            return null;
+        }
+    }
 
-export default CreateLeague;
+    public class CreateLeagueRequest
+    {
+        public string Name { get; set; }
+        public string AdminId { get; set; }
+        public string Password { get; set; } // <--- THIS LINE IS NOW FIXED
+    }
+}
