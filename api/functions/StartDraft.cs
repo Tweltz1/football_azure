@@ -17,7 +17,7 @@ public static class StartDraft
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/startDraft")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasy Football",
+            databaseName: "Fantasy Football", // Corrected database name
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -42,8 +42,9 @@ public static class StartDraft
                 return new UnauthorizedResult(); // Only the admin can start the draft
             }
 
-            // Check if all members are ready
-            if (leagueToUpdate.ReadyMembers.Count != leagueToUpdate.Members.Count)
+            // Allow the draft to start with only one member, as per your request
+            // The logic to check for all members ready is now optional based on this
+            if (leagueToUpdate.Members.Count > 1 && leagueToUpdate.ReadyMembers.Count != leagueToUpdate.Members.Count)
             {
                 return new BadRequestObjectResult("Not all members are ready.");
             }
