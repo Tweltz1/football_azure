@@ -54,6 +54,19 @@ const LeagueDetails = () => {
     setFavoritePlayers(initialStaticPlayerList.filter(p => p.isFavorite));
   }, [availablePlayers]);
 
+  const toggleFavorite = (playerToToggle) => {
+    setAvailablePlayers(availablePlayers.map(player => 
+      player.id === playerToToggle.id 
+        ? { ...player, isFavorite: !player.isFavorite }
+        : player
+    ));
+    setFavoritePlayers(favoritePlayers.map(player =>
+        player.id === playerToToggle.id
+            ? { ...player, isFavorite: !player.isFavorite }
+            : player
+    ));
+  };
+  
   const handleSetReadyStatus = async () => {
     try {
       const newStatus = !isReady;
@@ -118,7 +131,7 @@ const LeagueDetails = () => {
           <button 
             onClick={handleStartDraft} 
             className={`start-draft-button ${allMembersReady || league.members.length === 1 ? 'ready' : ''}`}
-            disabled={league.members.length > 1 && !allMembersReady} // Disable if more than 1 member and not all ready
+            disabled={league.members.length > 1 && !allMembersReady}
           >
             Start Draft ({league.readyMembers.length}/{league.members.length} Ready)
           </button>
