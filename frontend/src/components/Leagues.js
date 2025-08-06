@@ -22,7 +22,7 @@ const Leagues = ({ userId }) => {
     };
     fetchLeagues();
   }, [userId]);
-
+ 
   if (loading) {
     return <div>Loading leagues...</div>;
   }
