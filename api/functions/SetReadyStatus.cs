@@ -18,7 +18,7 @@ public static class SetReadyStatus
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/ready")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasy Football",
+            databaseName: "Fantasy Football", // Corrected database name
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
