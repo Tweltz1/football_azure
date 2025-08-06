@@ -83,6 +83,12 @@ const LeagueDetails = () => {
     if (!league) return <div>League not found.</div>;
 
     const userTeam = league.teams.find(team => team.ownerId === user.userId);
+	
+	console.log("--- DEBUGGING FAVORITES ---");
+    console.log("User's Team Object:", userTeam);
+    console.log("Favorite Player IDs from Database:", userTeam?.favoritePlayerIds);
+    console.log("All Players in Pool:", league.initialPlayerPool);
+    console.log("---------------------------");
     const userFavorites = userTeam?.favoritePlayerIds || [];
 
     // Derive player lists from the single source of truth: `league.initialPlayerPool`
