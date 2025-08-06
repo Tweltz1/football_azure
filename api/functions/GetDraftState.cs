@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
+using System.Linq; // <-- Add this line
 
 public static class GetDraftState
 {
@@ -16,7 +17,7 @@ public static class GetDraftState
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "leagues/{leagueId}/draftState")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasy Football", // Corrected database name
+            databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
