@@ -13,7 +13,7 @@ public static class CheckLeagueName
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "CheckLeagueName")] HttpRequest req,
         [CosmosDB(
-            databaseName: "FantasyFootball",
+            databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -25,7 +25,7 @@ public static class CheckLeagueName
             return new BadRequestObjectResult("Please provide a league name.");
         }
 
-        var container = cosmosClient.GetContainer("FantasyFootball", "Leagues");
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
         var query = new QueryDefinition("SELECT * FROM c WHERE c.name = @leagueName");
         query.WithParameter("@leagueName", leagueName);
 
