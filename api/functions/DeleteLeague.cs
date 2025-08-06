@@ -43,7 +43,7 @@ public static class DeleteLeague
             }
 
             // Delete the league document using the correct PartitionKey
-            await container.DeleteItemAsync<League>(leagueId, new PartitionKey(leagueToDelete.Id));
+            await container.DeleteItemAsync<League>(leagueId, new PartitionKey(leagueId));
 
             return new OkResult();
         }
