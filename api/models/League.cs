@@ -54,6 +54,10 @@ public class Team
     public int Budget { get; set; }
     [JsonProperty("roster")]
     public List<RosterSpot> Roster { get; set; } = new List<RosterSpot>();
+    
+    // The new line is added here
+    [JsonProperty("favoritePlayerIds")]
+    public List<string> FavoritePlayerIds { get; set; } = new List<string>();
 }
 
 public class Player
