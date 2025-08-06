@@ -6,18 +6,6 @@ import '../App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
-const initialStaticPlayerList = [
-  { id: 'player1', name: 'JaMarr Chase', position: 'WR', rank: 1, isFavorite: true },
-  { id: 'player2', name: 'Bijan Robinson', position: 'RB', rank: 2, isFavorite: true },
-  { id: 'player3', name: 'CeeDee Lamb', position: 'WR', rank: 3, isFavorite: false },
-  { id: 'player4', name: 'Justin Jefferson', position: 'WR', rank: 4, isFavorite: false },
-  { id: 'player5', name: 'Jahmyr Gibbs', position: 'RB', rank: 5, isFavorite: true },
-  { id: 'player6', name: 'Puka Nacua', position: 'WR', rank: 6, isFavorite: false },
-  { id: 'player7', name: 'Malik Nabers', position: 'WR', rank: 7, isFavorite: true },
-  { id: 'player8', name: 'Amon-Ra St. Brown', position: 'WR', rank: 8, isFavorite: false },
-  { id: 'player9', name: 'Saquon Barkley', position: 'RB', rank: 9, isFavorite: false },
-];
-
 const LeagueDetails = () => {
   const { leagueId } = useParams();
   const navigate = useNavigate();
@@ -36,6 +24,8 @@ const LeagueDetails = () => {
       setLeague(response.data);
       setIsReady(response.data.readyMembers.includes(user.userId));
       setAvailablePlayers(response.data.initialPlayerPool || []);
+      // For demo, we'll use a static list to represent favorites
+      setFavoritePlayers(availablePlayers.filter(p => p.isFavorite));
     } catch (error) {
       console.error("Error fetching league details:", error);
       alert("Failed to fetch league details.");
@@ -49,33 +39,16 @@ const LeagueDetails = () => {
     fetchLeagueDetails();
   }, [fetchLeagueDetails]);
 
-  useEffect(() => {
-    // This hook sets favorite players after available players have been fetched
-    setFavoritePlayers(initialStaticPlayerList.filter(p => p.isFavorite));
-  }, [availablePlayers]);
-
-  const toggleFavorite = (playerToToggle) => {
-    setAvailablePlayers(availablePlayers.map(player => 
-      player.id === playerToToggle.id 
-        ? { ...player, isFavorite: !player.isFavorite }
-        : player
-    ));
-    setFavoritePlayers(favoritePlayers.map(player =>
-        player.id === playerToToggle.id
-            ? { ...player, isFavorite: !player.isFavorite }
-            : player
-    ));
-  };
-  
   const handleSetReadyStatus = async () => {
     try {
       const newStatus = !isReady;
-      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/ready`, {
+      const response = await axios.post(`${API_BASE_URL}/leagues/${leagueId}/ready`, {
         userId: user.userId,
         isReady: newStatus
       });
-      setIsReady(newStatus);
-      fetchLeagueDetails();
+      // The state is now updated based on the server's response
+      setLeague(response.data);
+      setIsReady(response.data.readyMembers.includes(user.userId));
     } catch (error) {
       alert(`Failed to update ready status: ${error.response?.data || error.message}`);
     }
@@ -103,7 +76,9 @@ const LeagueDetails = () => {
 
   const isCurrentUserAdmin = league.adminId === user.userId;
   const allMembersReady = league.readyMembers.length === league.members.length;
+  const canStartDraft = (league.members.length > 1 && allMembersReady) || (league.members.length === 1 && isCurrentUserAdmin);
 
+  // Calculate user's team stats
   const userTeam = league.teams.find(team => team.ownerId === user.userId);
   const userTotalPlayersPicked = userTeam?.roster.filter(spot => spot.player).length || 0;
   const userTotalSpent = userTeam?.budget ? (200 - userTeam.budget) : 0;
@@ -130,8 +105,8 @@ const LeagueDetails = () => {
         {isCurrentUserAdmin ? (
           <button 
             onClick={handleStartDraft} 
-            className={`start-draft-button ${allMembersReady || league.members.length === 1 ? 'ready' : ''}`}
-            disabled={league.members.length > 1 && !allMembersReady}
+            className={`start-draft-button ${canStartDraft ? 'ready' : ''}`}
+            disabled={!canStartDraft}
           >
             Start Draft ({league.readyMembers.length}/{league.members.length} Ready)
           </button>
@@ -140,7 +115,7 @@ const LeagueDetails = () => {
             onClick={handleSetReadyStatus} 
             className={`ready-button ${isReady ? 'ready' : ''}`}
           >
-            {isReady ? "I'm Ready!" : "Waiting for Admin..."}
+            {isReady ? "Waiting for Admin..." : "Ready up!"}
           </button>
         )}
       </div>
