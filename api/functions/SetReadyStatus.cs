@@ -18,7 +18,7 @@ public static class SetReadyStatus
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/ready")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasy Football", // Corrected database name
+            databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -52,7 +52,7 @@ public static class SetReadyStatus
 
             await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
 
-            return new OkObjectResult(new { readyMembersCount = leagueToUpdate.ReadyMembers.Count, totalMembers = leagueToUpdate.Members.Count });
+            return new OkObjectResult(leagueToUpdate); // Return the updated league object
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
