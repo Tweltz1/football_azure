@@ -7,28 +7,18 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-
-// Note: We need a reference to our UserProfile model
-// Make sure your .csproj file includes the models directory
+using Microsoft.Azure.Cosmos;
 
 public static class GetOrCreateUserProfile
 {
     [FunctionName("GetOrCreateUserProfile")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "user-profile")] HttpRequest req,
-        // This input binding tries to GET a document from the 'Users' container
-        // with an 'id' that matches the 'userId' from the request body.
+        // We will use the CosmosClient, which is the most reliable pattern.
         [CosmosDB(
             databaseName: "Fantasy Football",
             containerName: "Users",
-            Connection = "CosmosDbConnectionString",
-            Id = "{userId}", // Binds to the 'userId' property from the request body
-            PartitionKey = "{userId}")] UserProfile userProfile,
-        // This is an output binding to CREATE a document if the input was null.
-        [CosmosDB(
-            databaseName: "Fantasy Football",
-            containerName: "Users",
-            Connection = "CosmosDbConnectionString")] IAsyncCollector<UserProfile> profilesOut,
+            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -39,12 +29,20 @@ public static class GetOrCreateUserProfile
             return new BadRequestObjectResult("UserId is required.");
         }
 
-        // If the input binding is null, it means no profile was found for this user.
-        if (userProfile == null)
+        var container = cosmosClient.GetContainer("Fantasy Football", "Users");
+
+        try
         {
+            // Try to read the user's profile directly.
+            UserProfile userProfile = await container.ReadItemAsync<UserProfile>(data.UserId, new PartitionKey(data.UserId));
+            log.LogInformation($"Found profile for user {data.UserId}.");
+            return new OkObjectResult(userProfile);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            // If the profile is not found, create a new one.
             log.LogInformation($"No profile found for user {data.UserId}. Creating a new one.");
 
-            // Create a new profile object.
             var newProfile = new UserProfile
             {
                 Id = data.UserId, // The document 'id' must be the user's ID
@@ -53,19 +51,18 @@ public static class GetOrCreateUserProfile
                 FavoritePlayerIds = new System.Collections.Generic.List<string>()
             };
 
-            // Use the output binding to save the new profile to the database.
-            await profilesOut.AddAsync(newProfile);
-
-            // Return the newly created profile.
+            // Save the new profile to the database.
+            await container.CreateItemAsync(newProfile, new PartitionKey(newProfile.UserId));
+            
             return new OkObjectResult(newProfile);
         }
-
-        log.LogInformation($"Found profile for user {data.UserId}.");
-        // Otherwise, if a profile was found, just return it.
-        return new OkObjectResult(userProfile);
+        catch (Exception ex)
+        {
+            log.LogError(ex, $"Error processing profile for user {data.UserId}.");
+            return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+        }
     }
 
-    // A helper class for the request body
     public class UserProfileRequest
     {
         public string UserId { get; set; }
