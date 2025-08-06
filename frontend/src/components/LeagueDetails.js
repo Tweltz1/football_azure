@@ -38,17 +38,16 @@ const LeagueDetails = () => {
   }, [fetchLeagueDetails]);
 
   useEffect(() => {
-    // This hook sets favorite players after available players have been fetched
     const initialStaticPlayerList = [
-      { id: 'player1', name: 'JaMarr Chase', position = 'WR', rank: 1, isFavorite: true },
-      { id: 'player2', name: 'Bijan Robinson', position = 'RB', rank: 2, isFavorite: true },
-      { id: 'player3', name: 'CeeDee Lamb', position = 'WR', rank: 3, isFavorite: false },
-      { id: 'player4', name: 'Justin Jefferson', position = 'WR', rank: 4, isFavorite: false },
-      { id: 'player5', name: 'Jahmyr Gibbs', position = 'RB', rank: 5, isFavorite: true },
-      { id: 'player6', name: 'Puka Nacua', position = 'WR', rank: 6, isFavorite: false },
-      { id: 'player7', name: 'Malik Nabers', position = 'WR', rank: 7, isFavorite: true },
-      { id: 'player8', name: 'Amon-Ra St. Brown', position = 'WR', rank: 8, isFavorite: false },
-      { id: 'player9', name: 'Saquon Barkley', position = 'RB', rank: 9, isFavorite: false },
+      { id: 'player1', name: 'JaMarr Chase', position: 'WR', rank: 1, isFavorite: true },
+      { id: 'player2', name: 'Bijan Robinson', position: 'RB', rank: 2, isFavorite: true },
+      { id: 'player3', name: 'CeeDee Lamb', position: 'WR', rank: 3, isFavorite: false },
+      { id: 'player4', name: 'Justin Jefferson', position: 'WR', rank: 4, isFavorite: false },
+      { id: 'player5', name: 'Jahmyr Gibbs', position: 'RB', rank: 5, isFavorite: true },
+      { id: 'player6', name: 'Puka Nacua', position: 'WR', rank: 6, isFavorite: false },
+      { id: 'player7', name: 'Malik Nabers', position: 'WR', rank: 7, isFavorite: true },
+      { id: 'player8', name: 'Amon-Ra St. Brown', position: 'WR', rank: 8, isFavorite: false },
+      { id: 'player9', name: 'Saquon Barkley', position: 'RB', rank: 9, isFavorite: false },
     ];
     setFavoritePlayers(initialStaticPlayerList.filter(p => p.isFavorite));
   }, [availablePlayers]);
