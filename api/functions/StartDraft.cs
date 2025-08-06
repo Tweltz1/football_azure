@@ -8,8 +8,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
-using System.Linq; // Make sure this is present
-using System.Collections.Generic; // Make sure this is present
+using System.Linq;
+using System.Collections.Generic;
 
 public static class StartDraft
 {
@@ -18,7 +18,7 @@ public static class StartDraft
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/startDraft")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasy Football", // Corrected database name
+            databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -42,20 +42,16 @@ public static class StartDraft
             {
                 return new UnauthorizedResult();
             }
-            
-            // CORRECTED LOGIC: Allow draft to start if there's only one member (admin only)
-            // For multi-member leagues, check if all NON-ADMIN members are ready.
-            if (leagueToUpdate.Members.Count > 1) 
+
+            // Corrected logic:
+            // Allow the draft to start with only one member, as per your design.
+            // For multi-member leagues, all members must be ready.
+            bool allMembersReady = leagueToUpdate.ReadyMembers.Count == leagueToUpdate.Members.Count;
+            bool canStart = (leagueToUpdate.Members.Count == 1) || (leagueToUpdate.Members.Count > 1 && allMembersReady);
+
+            if (!canStart)
             {
-                // Get all members who are NOT the admin
-                var nonAdminMembers = leagueToUpdate.Members.Where(m => m != leagueToUpdate.AdminId).ToList();
-                
-                // Check if the count of ready members matches the count of non-admin members
-                // And ensure the admin is NOT in the ReadyMembers list (optional, but good for clarity)
-                if (leagueToUpdate.ReadyMembers.Count != nonAdminMembers.Count || leagueToUpdate.ReadyMembers.Contains(leagueToUpdate.AdminId))
-                {
-                    return new BadRequestObjectResult("Not all non-admin members are ready or admin is incorrectly marked as ready.");
-                }
+                return new BadRequestObjectResult("Not all members are ready.");
             }
 
             leagueToUpdate.Status = "drafting";
