@@ -9,6 +9,7 @@ const Leagues = ({ userId }) => {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRosterModal, setShowRosterModal] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
   const [currentLeague, setCurrentLeague] = useState(null);
   
   // States for Roster Settings from the pop-up
@@ -43,16 +44,30 @@ const Leagues = ({ userId }) => {
     }
   };
 
+  const handleEditTeamName = async () => {
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${currentLeague.id}/teams`, {
+        userId: userId,
+        newTeamName: newTeamName
+      });
+      alert("Team name updated successfully!");
+      setShowEditModal(false);
+      fetchLeagues();
+    } catch (error) {
+      alert(`Failed to update team name: ${error.response?.data || error.message}`);
+    }
+  };
+
   const handleUpdateRosterSettings = async () => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/leagues/${currentLeague.id}/settings`, {
+      await axios.post(`${API_BASE_URL}/leagues/${currentLeague.id}/settings`, {
         adminId: userId,
         rosterSettings: rosterSettings,
         draftTimers: draftTimers
       });
       alert("Roster settings updated successfully!");
       setShowRosterModal(false);
-      fetchLeagues(); // Refresh the list of leagues
+      fetchLeagues();
     } catch (error) {
       alert(`Failed to update settings: ${error.response?.data || error.message}`);
     }
@@ -90,7 +105,7 @@ const Leagues = ({ userId }) => {
                     <br />
                     <span>Your Team: JROP (<button onClick={() => {
                         setShowEditModal(true);
-                        setCurrentLeagueId(league.id);
+                        setCurrentLeague(league);
                         setNewTeamName(league.teams.find(t => t.ownerId === userId)?.name || '');
                     }}>(Edit Profile)</button>)</span>
                   </td>
