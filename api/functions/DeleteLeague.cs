@@ -16,7 +16,7 @@ public static class DeleteLeague
         [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "leagues/{leagueId}")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasty Football", // Corrected database name
+            databaseName: "Fantasty Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -33,7 +33,7 @@ public static class DeleteLeague
 
         try
         {
-            // First, retrieve the league to verify admin privileges
+            // First, retrieve the league to verify admin privileges and get the correct PartitionKey
             ItemResponse<League> leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             League leagueToDelete = leagueResponse.Resource;
 
@@ -42,8 +42,8 @@ public static class DeleteLeague
                 return new UnauthorizedResult(); // User is not the admin
             }
 
-            // Delete the league document
-            await container.DeleteItemAsync<League>(leagueId, new PartitionKey(leagueId));
+            // Delete the league document using the correct PartitionKey
+            await container.DeleteItemAsync<League>(leagueId, new PartitionKey(leagueToDelete.Id));
 
             return new OkResult();
         }
