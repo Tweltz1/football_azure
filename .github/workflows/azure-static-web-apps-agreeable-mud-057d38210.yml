@@ -16,6 +16,7 @@ jobs:
     name: Build and Deploy Job
     env:
       NODE_OPTIONS: --openssl-legacy-provider
+      REACT_APP_API_URL: "/api"
     steps:
       - uses: actions/checkout@v3
         with:
@@ -46,5 +47,6 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_AGREEABLE_MUD_057D38210 }}
           action: "close"
+
 
 
