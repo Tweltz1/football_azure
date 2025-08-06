@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
+import { HubConnectionBuilder } from '@microsoft/signalr';
 import '../App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
@@ -17,13 +18,15 @@ const LeagueDetails = () => {
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortPosition, setSortPosition] = useState('All Positions');
+  const [hubConnection, setHubConnection] = useState(null);
 
   const fetchLeagueDetails = useCallback(async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/details`);
-      setLeague(response.data);
-      setIsReady(response.data.readyMembers.includes(user.userId));
-      setAvailablePlayers(response.data.initialPlayerPool || []);
+      const updatedLeague = response.data;
+      setLeague(updatedLeague);
+      setIsReady(updatedLeague.readyMembers.includes(user.userId));
+      setAvailablePlayers(updatedLeague.initialPlayerPool || []);
     } catch (error) {
       console.error("Error fetching league details:", error);
       alert("Failed to fetch league details.");
@@ -37,21 +40,36 @@ const LeagueDetails = () => {
     fetchLeagueDetails();
   }, [fetchLeagueDetails]);
 
+  // New useEffect hook to handle real-time updates from SignalR
   useEffect(() => {
-    // This hook sets favorite players after available players have been fetched
-    const initialStaticPlayerList = [
-      { id: 'player1', name: 'JaMarr Chase', position: 'WR', rank: 1, isFavorite: true },
-      { id: 'player2', name: 'Bijan Robinson', position: 'RB', rank: 2, isFavorite: true },
-      { id: 'player3', name: 'CeeDee Lamb', position: 'WR', rank: 3, isFavorite: false },
-      { id: 'player4', name: 'Justin Jefferson', position: 'WR', rank: 4, isFavorite: false },
-      { id: 'player5', name: 'Jahmyr Gibbs', position: 'RB', rank: 5, isFavorite: true },
-      { id: 'player6', name: 'Puka Nacua', position: 'WR', rank: 6, isFavorite: false },
-      { id: 'player7', name: 'Malik Nabers', position: 'WR', rank: 7, isFavorite: true },
-      { id: 'player8', name: 'Amon-Ra St. Brown', position: 'WR', rank: 8, isFavorite: false },
-      { id: 'player9', name: 'Saquon Barkley', position: 'RB', rank: 9, isFavorite: false },
-    ];
-    setFavoritePlayers(initialStaticPlayerList.filter(p => p.isFavorite));
-  }, [availablePlayers]);
+    const setupConnection = async () => {
+      try {
+        const info = await axios.get(`${API_BASE_URL}/GetSignalRInfo`);
+        const newConnection = new HubConnectionBuilder()
+          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
+          .withAutomaticReconnect()
+          .build();
+
+        newConnection.on('readyStatusUpdate', (updatedLeague) => {
+          setLeague(updatedLeague);
+          setIsReady(updatedLeague.readyMembers.includes(user.userId));
+        });
+
+        await newConnection.start();
+        setHubConnection(newConnection);
+      } catch (e) {
+        console.error('SignalR Connection Error: ', e);
+      }
+    };
+
+    if (!hubConnection) {
+      setupConnection();
+    }
+
+    return () => {
+      if (hubConnection) hubConnection.stop();
+    };
+  }, [hubConnection, user.userId, API_BASE_URL, leagueId]);
 
   const handleSetReadyStatus = async () => {
     try {
@@ -60,8 +78,8 @@ const LeagueDetails = () => {
         userId: user.userId,
         isReady: newStatus
       });
-      setIsReady(newStatus);
-      fetchLeagueDetails();
+      // The state is now updated based on the server's response
+      // through the SignalR event handler, so we don't need to call fetchLeagueDetails()
     } catch (error) {
       alert(`Failed to update ready status: ${error.response?.data || error.message}`);
     }

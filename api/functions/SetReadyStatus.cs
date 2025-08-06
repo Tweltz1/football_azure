@@ -10,7 +10,7 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService; // New import
+using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
 public static class SetReadyStatus
 {
