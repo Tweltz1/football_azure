@@ -17,7 +17,7 @@ public static class EditTeamName
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/teams")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasty Football", // Corrected database name
+            databaseName: "Fantasy Football", // Corrected database name
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -30,7 +30,7 @@ public static class EditTeamName
             return new BadRequestObjectResult("User ID and a new team name are required.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasty Football", "Leagues");
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
         try
         {

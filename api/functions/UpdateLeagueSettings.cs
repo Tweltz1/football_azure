@@ -16,7 +16,7 @@ public static class UpdateLeagueSettings
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/settings")] HttpRequest req,
         string leagueId,
         [CosmosDB(
-            databaseName: "Fantasty Football", // Corrected database name
+            databaseName: "Fantasy Football", // Corrected database name
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
@@ -29,7 +29,7 @@ public static class UpdateLeagueSettings
             return new BadRequestObjectResult("Admin ID is required to update league settings.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasty Football", "Leagues");
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
         try
         {
