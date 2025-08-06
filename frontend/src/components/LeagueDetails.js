@@ -17,7 +17,6 @@ const LeagueDetails = () => {
 
     const fetchLeagueDetails = useCallback(async () => {
         try {
-            // The endpoint remains the same, it now returns the extra 'favoritePlayerIds' field
             const response = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/details`);
             setLeague(response.data);
         } catch (error) {
@@ -43,37 +42,28 @@ const LeagueDetails = () => {
             alert("Your team could not be found in this league.");
             return;
         }
-
-        // Determine the new list of favorite IDs
+        
         const currentFavorites = userTeam.favoritePlayerIds || [];
         const isCurrentlyFavorite = currentFavorites.includes(playerIdToToggle);
         const newFavoriteIds = isCurrentlyFavorite
             ? currentFavorites.filter(id => id !== playerIdToToggle)
             : [...currentFavorites, playerIdToToggle];
 
-        // --- Optimistic UI Update ---
-        // To make the UI feel instant, we update the local state first.
         const updatedTeams = league.teams.map(team =>
             team.ownerId === user.userId
                 ? { ...team, favoritePlayerIds: newFavoriteIds }
                 : team
         );
         setLeague({ ...league, teams: updatedTeams });
-        // --- End Optimistic UI Update ---
 
         try {
-            // Call the new backend function
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/favorites`, {
                 userId: user.userId,
                 playerIds: newFavoriteIds
             });
-            // If the API call is successful, our optimistic update is now confirmed.
-            // No need to re-fetch, as the local state is already correct.
-
         } catch (error) {
             console.error("Error updating favorite players:", error);
             alert("Failed to update your favorite players. Reverting change.");
-            // If the API call fails, revert the change in the UI
             setLeague({ ...league, teams: userTeam });
         }
     };
@@ -83,17 +73,10 @@ const LeagueDetails = () => {
     if (!league) return <div>League not found.</div>;
 
     const userTeam = league.teams.find(team => team.ownerId === user.userId);
-	
-	console.log("--- DEBUGGING FAVORITES ---");
-    console.log("User's Team Object:", userTeam);
-    console.log("Favorite Player IDs from Database:", userTeam?.favoritePlayerIds);
-    console.log("All Players in Pool:", league.initialPlayerPool);
-    console.log("---------------------------");
     const userFavorites = userTeam?.favoritePlayerIds || [];
-
-    // Derive player lists from the single source of truth: `league.initialPlayerPool`
     const allPlayers = league.initialPlayerPool || [];
 
+    // Filter players into two separate lists
     const favoritePlayers = allPlayers
         .filter(p => userFavorites.includes(p.id))
         .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -112,29 +95,7 @@ const LeagueDetails = () => {
     return (
         <div style={{ padding: '20px' }}>
             <h2>Drafting in {league.name}</h2>
-            <p>League Status: {league.status.toUpperCase()}</p>
-
-            <div className="card">
-                <h3>Draft Controls & Overview</h3>
-                {isCurrentUserAdmin ? (
-                    <button
-                        onClick={() => alert("Start Draft logic to be implemented.")}
-                        className={`start-draft-button ${canStartDraft ? 'ready' : ''}`}
-                        disabled={!canStartDraft}
-                    >
-                        Start Draft ({league.readyMembers.length}/{league.members.length} Ready)
-                    </button>
-                ) : (
-                    <button
-                        onClick={() => alert("Set Ready Status logic to be implemented.")}
-                        className={`ready-button ${league.readyMembers.includes(user.userId) ? 'ready' : ''}`}
-                    >
-                        {league.readyMembers.includes(user.userId) ? "You are Ready!" : "Click to Ready Up"}
-                    </button>
-                )}
-            </div>
-
-            {/* --- Player Lists Section --- */}
+            {/* ... other components ... */}
             <div className="card" style={{ marginTop: '20px' }}>
                 <h3>Player Lists</h3>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
@@ -151,14 +112,17 @@ const LeagueDetails = () => {
                     />
                 </div>
 
-                {/* FAVORITED PLAYERS */}
+                {/* FAVORITED PLAYERS LIST */}
                 <h4>Your Favorited Players ({favoritePlayers.length})</h4>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {favoritePlayers.length > 0 ? (
                         favoritePlayers.map(player => (
                             <li key={player.id} className="player-list-item">
                                 <span>{player.name} ({player.position})</span>
-                                <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer' }}>X</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
+                                    <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
+                                </div>
                             </li>
                         ))
                     ) : (
@@ -166,14 +130,14 @@ const LeagueDetails = () => {
                     )}
                 </ul>
 
-                {/* AVAILABLE PLAYERS */}
+                {/* AVAILABLE PLAYERS LIST */}
                 <h4 style={{marginTop: '20px'}}>Available Players ({availablePlayers.length})</h4>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {availablePlayers.length > 0 ? (
                         availablePlayers.map(player => (
                             <li key={player.id} className="player-list-item">
                                 <span>{player.name} ({player.position})</span>
-                                <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'gold', cursor: 'pointer' }}>★</span>
+                                <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
                             </li>
                         ))
                     ) : (
@@ -181,8 +145,7 @@ const LeagueDetails = () => {
                     )}
                 </ul>
             </div>
-             {/* --- End Player Lists Section --- */}
-
+            
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
                 <button onClick={() => navigate('/leagues')} className="exit-draft-button">Back to Leagues</button>
             </div>
