@@ -30,7 +30,7 @@ const Leagues = ({ userId }) => {
 
   useEffect(() => {
     fetchLeagues();
-  }, [userId]);
+  }, [userId, fetchLeagues]);
 
   const handleDelete = async (leagueId) => {
     if (window.confirm("Are you sure you want to delete this league?")) {
