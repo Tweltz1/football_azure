@@ -2,21 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import '../App.css';
+import { initialPlayerList } from '../data/playerData';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
-
-// For now, we will use the same static player list. A future improvement could be to fetch this from an API.
-const initialPlayerList = [
-  { id: 'player1', name: 'JaMarr Chase', position: 'WR' },
-  { id: 'player2', name: 'Bijan Robinson', position: 'RB' },
-  { id: 'player3', name: 'CeeDee Lamb', position: 'WR' },
-  { id: 'player4', name: 'Justin Jefferson', position: 'WR' },
-  { id: 'player5', name: 'Jahmyr Gibbs', position: 'RB' },
-  { id: 'player6', name: 'Puka Nacua', position: 'WR' },
-  { id: 'player7', name: 'Malik Nabers', position: 'WR' },
-  { id: 'player8', name: 'Amon-Ra St. Brown', position: 'WR' },
-  { id: 'player9', name: 'Saquon Barkley', position: 'RB' },
-];
 
 const Profile = () => {
     const { user } = useAuth();

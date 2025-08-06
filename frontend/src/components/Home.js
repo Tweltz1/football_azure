@@ -1,18 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext'; // Import the useAuth hook
-
-const initialPlayerList = [
-  { name: 'JaMarr Chase', position: 'WR', rank: 1, isFavorite: false },
-  { name: 'Bijan Robinson', position: 'RB', rank: 2, isFavorite: false },
-  { name: 'CeeDee Lamb', position: 'WR', rank: 3, isFavorite: false },
-  { name: 'Justin Jefferson', position: 'WR', rank: 4, isFavorite: false },
-  { name: 'Jahmyr Gibbs', position: 'RB', rank: 5, isFavorite: false },
-  { name: 'Puka Nacua', position: 'WR', rank: 6, isFavorite: false },
-  { name: 'Malik Nabers', position: 'WR', rank: 7, isFavorite: false },
-  { name: 'Amon-Ra St. Brown', position: 'WR', rank: 8, isFavorite: false },
-  { name: 'Saquon Barkley', position: 'RB', rank: 9, isFavorite: false },
-];
+import { initialPlayerList } from '../data/playerData';
 
 const Home = () => { // No longer receiving userId as a prop
   const { user, loading } = useAuth(); // Get user from AuthContext
