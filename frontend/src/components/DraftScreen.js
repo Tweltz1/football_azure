@@ -369,13 +369,18 @@ const AuctionView = ({ league, user, leagueId }) => {
     useEffect(() => {
         const debounceBid = setTimeout(() => {
             if (league.auctionTimer?.isPaused) { return; }
-            if (bidAmount !== currentServerBid && bidAmount > 0) {
-                axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+
+            if (bidAmount !== currentServerBid) {
+                if (bidAmount > 0) {
+                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+                } else if (bidAmount === 0 && userHasActiveBid) {
+                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
+                }
             }
         }, 250);
 
         return () => clearTimeout(debounceBid);
-    }, [bidAmount, leagueId, user.userId, league.auctionTimer?.isPaused, currentServerBid]);
+    }, [bidAmount, leagueId, user.userId, league.auctionTimer?.isPaused, userHasActiveBid, currentServerBid]);
 
     useEffect(() => {
         const { auctionTimer } = league;
@@ -397,14 +402,8 @@ const AuctionView = ({ league, user, leagueId }) => {
         return () => { if (intervalId) { clearInterval(intervalId); }};
     }, [league]);
 
-    const handleCancelBid = async () => {
-        setBidAmount(0); // Optimistic update
-        try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
-        } catch (error) {
-            alert(`Error cancelling bid: ${error.response?.data || error.message}`);
-            setBidAmount(currentServerBid); // Revert on error
-        }
+    const handleCancelBid = () => {
+        setBidAmount(0);
     };
     
     const incrementBid = () => setBidAmount(prev => prev + 1);
