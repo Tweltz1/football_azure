@@ -16,7 +16,10 @@ public static class PauseDraft
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/pause")] HttpRequest req,
         string leagueId,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [CosmosDB(
+            databaseName: "Fantasy Football",
+            containerName: "Leagues",
+            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
@@ -29,31 +32,38 @@ public static class PauseDraft
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             var league = leagueResponse.Resource;
+            var timer = league.CurrentAuction.AuctionTimer;
 
-            if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
+            if (league.AdminId != data.AdminId)
+                return new UnauthorizedResult();
 
             // Toggle the paused state
-            league.AuctionTimer.IsPaused = !league.AuctionTimer.IsPaused;
+            timer.IsPaused = !timer.IsPaused;
 
-            if (league.AuctionTimer.IsPaused)
+            if (timer.IsPaused)
             {
                 // PAUSING THE DRAFT
-                var timeRemaining = (league.AuctionTimer.EndTime - DateTime.UtcNow).TotalSeconds;
-                league.AuctionTimer.TimeRemainingOnPause = (int)Math.Max(0, timeRemaining);
-                log.LogInformation($"Draft paused for league {league.Name} with {league.AuctionTimer.TimeRemainingOnPause}s left.");
+                var timeRemaining = (timer.EndTime - DateTime.UtcNow).TotalSeconds;
+                timer.TimeRemainingOnPause = (int)Math.Max(0, timeRemaining);
+                log.LogInformation($"Draft paused for league {league.Name} with {timer.TimeRemainingOnPause}s left.");
             }
             else
             {
                 // RESUMING THE DRAFT
-                var newEndTime = DateTime.UtcNow.AddSeconds(league.AuctionTimer.TimeRemainingOnPause);
-                league.AuctionTimer.EndTime = newEndTime;
-                log.LogInformation($"Draft resumed for league {league.Name}. New end time: {newEndTime}");
+                timer.EndTime = DateTime.UtcNow.AddSeconds(timer.TimeRemainingOnPause);
+                log.LogInformation($"Draft resumed for league {league.Name}. New end time: {timer.EndTime}");
             }
 
+            // Save and broadcast
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+            await signalRMessages.AddAsync(new SignalRMessage 
+            { 
+                Target = "draftStateUpdate", 
+                Arguments = new object[] { league } 
+            });
 
-            return new OkObjectResult(league.AuctionTimer);
+            // Return the updated timer
+            return new OkObjectResult(timer);
         }
         catch (Exception ex)
         {
@@ -62,7 +72,6 @@ public static class PauseDraft
         }
     }
 
-    // You can create a shared file for this class later if you want
     public class AdminActionRequest
     {
         public string AdminId { get; set; }

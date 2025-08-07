@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -8,9 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
-using System.Linq;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
-using System.Collections.Generic;
 
 public static class StartDraft
 {
@@ -18,7 +17,10 @@ public static class StartDraft
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/startDraft")] HttpRequest req,
         string leagueId,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [CosmosDB(
+            databaseName: "Fantasy Football",
+            containerName: "Leagues",
+            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
@@ -28,33 +30,45 @@ public static class StartDraft
 
         try
         {
-            ItemResponse<League> leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-            League leagueToUpdate = leagueResponse.Resource;
+            // Load league
+            var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
+            var league = leagueResponse.Resource;
 
-            if (leagueToUpdate.AdminId != data.AdminId)
-            {
+            // Only admin can start
+            if (league.AdminId != data.AdminId)
                 return new UnauthorizedResult();
-            }
 
-            var nonAdminMembers = leagueToUpdate.Members.Where(id => id != leagueToUpdate.AdminId).ToList();
-            bool allNonAdminsReady = nonAdminMembers.All(memberId => leagueToUpdate.ReadyMembers.Contains(memberId));
-            
-            if (!allNonAdminsReady && nonAdminMembers.Any())
-            {
+            // Ensure readiness
+            var nonAdmins = league.Members.Where(id => id != league.AdminId).ToList();
+            var allReady = !nonAdmins.Any() || nonAdmins.All(id => league.ReadyMembers.Contains(id));
+            if (!allReady)
                 return new BadRequestObjectResult("Not all other members are ready.");
-            }
 
-            leagueToUpdate.Status = "drafting";
-            leagueToUpdate.CurrentPlayerId = GetRandomPlayerId(leagueToUpdate);
-            leagueToUpdate.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(leagueToUpdate.DraftTimers.BidTimer), IsPaused = false };
+            // Transition to drafting
+            league.Status = "drafting";
+            // Initialize CurrentAuction if missing
+            if (league.CurrentAuction == null)
+                league.CurrentAuction = new CurrentAuction();
 
-            await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
+            // Pick random player
+            league.CurrentAuction.PlayerId = GetRandomPlayerId(league);
+            // Set up timer
+            league.CurrentAuction.Status = "bidding";
+            league.CurrentAuction.AuctionTimer = new AuctionTimer
+            {
+                EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer),
+                IsPaused = false,
+                TimeRemainingOnPause = 0
+            };
+            // Clear any prior bids
+            league.CurrentAuction.FinalBids.Clear();
 
-            // Send the full, updated league state
+            // Persist and broadcast
+            await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
             await signalRMessages.AddAsync(new SignalRMessage
             {
                 Target = "draftStateUpdate",
-                Arguments = new object[] { leagueToUpdate }
+                Arguments = new object[] { league }
             });
 
             return new OkResult();
@@ -67,10 +81,10 @@ public static class StartDraft
 
     private static string GetRandomPlayerId(League league)
     {
-        var undraftedPlayers = league.InitialPlayerPool.Where(p => !p.IsDrafted).ToList();
-        if (!undraftedPlayers.Any()) return null;
-        var random = new Random();
-        return undraftedPlayers[random.Next(undraftedPlayers.Count)].Id;
+        var undrafted = league.InitialPlayerPool.Where(p => !p.IsDrafted).ToList();
+        if (!undrafted.Any()) return null;
+        var rnd = new Random();
+        return undrafted[rnd.Next(undrafted.Count)].Id;
     }
 
     public class StartDraftRequest

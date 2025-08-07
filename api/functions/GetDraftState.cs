@@ -30,14 +30,15 @@ public static class GetDraftState
             League league = leagueResponse.Resource;
 
             // Find the current player in the league's player pool
-            var currentPlayer = league.InitialPlayerPool.FirstOrDefault(p => p.Id == league.CurrentPlayerId);
+            var currentPlayer = league.InitialPlayerPool
+				.FirstOrDefault(p => p.Id == league.CurrentAuction.PlayerId);
 
-            return new OkObjectResult(new {
-                leagueStatus = league.Status,
-                currentPlayer = currentPlayer,
-                auctionTimer = league.AuctionTimer,
-                teams = league.Teams
-            });
+			return new OkObjectResult(new {
+				leagueStatus     = league.Status,
+				currentPlayer   = currentPlayer,
+				auctionTimer    = league.CurrentAuction.AuctionTimer,
+				teams           = league.Teams
+			});
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {

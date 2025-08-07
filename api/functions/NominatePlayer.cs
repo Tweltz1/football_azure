@@ -17,7 +17,10 @@ public static class NominatePlayer
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/nominate")] HttpRequest req,
         string leagueId,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [CosmosDB(
+            databaseName: "Fantasy Football",
+            containerName: "Leagues",
+            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
@@ -30,24 +33,35 @@ public static class NominatePlayer
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             var league = leagueResponse.Resource;
 
-            if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
-            if (!league.AuctionTimer.IsPaused) { return new BadRequestObjectResult("Draft must be paused to nominate a player."); }
+            // Admin check
+            if (league.AdminId != data.AdminId)
+                return new UnauthorizedResult();
 
+            // Require pause on the nested timer
+            if (!league.CurrentAuction.AuctionTimer.IsPaused)
+                return new BadRequestObjectResult("Draft must be paused to nominate a player.");
+
+            // Ensure the player exists and is undrafted
             var playerToNominate = league.InitialPlayerPool.FirstOrDefault(p => p.Id == data.PlayerId);
             if (playerToNominate == null || playerToNominate.IsDrafted)
-            {
                 return new BadRequestObjectResult("Player is not available to be nominated.");
-            }
 
             log.LogInformation($"Admin nominating player {playerToNominate.Name} in league {league.Name}.");
 
+            // Transition to drafting on the nominated player
             league.Status = "drafting";
-            league.CurrentPlayerId = playerToNominate.Id;
-            league.AuctionTimer.IsPaused = false;
-            league.AuctionTimer.EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer);
+            league.CurrentAuction.PlayerId = playerToNominate.Id;
+            league.CurrentAuction.AuctionTimer.IsPaused = false;
+            league.CurrentAuction.AuctionTimer.EndTime = 
+                DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer);
 
+            // Save and broadcast
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+            await signalRMessages.AddAsync(new SignalRMessage 
+            { 
+                Target = "draftStateUpdate", 
+                Arguments = new object[] { league } 
+            });
 
             return new OkObjectResult("Player nominated successfully.");
         }
