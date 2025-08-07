@@ -2,6 +2,23 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
+// --- NEW CLASS to manage the state of the current auction ---
+public class CurrentAuction
+{
+    [JsonProperty("playerId")]
+    public string PlayerId { get; set; }
+
+    [JsonProperty("status")]
+    public string Status { get; set; } // Will be used for "bidding", "awaiting_final_bids", "intermission"
+
+    [JsonProperty("auctionTimer")]
+    public AuctionTimer AuctionTimer { get; set; }
+
+    // This new dictionary will store the final bid from each team (TeamId, Amount)
+    [JsonProperty("finalBids")]
+    public Dictionary<string, int> FinalBids { get; set; } = new Dictionary<string, int>();
+}
+
 public class League
 {
     [JsonProperty("id")]
@@ -31,16 +48,19 @@ public class League
     public List<Player> InitialPlayerPool { get; set; } = new List<Player>();
     [JsonProperty("draftPlayers")]
     public List<Player> DraftPlayers { get; set; } = new List<Player>();
-    [JsonProperty("currentPlayerId")]
-    public string CurrentPlayerId { get; set; }
+    
+    // --- ADDED --- Replaces the individual properties below
+    [JsonProperty("currentAuction")]
+    public CurrentAuction CurrentAuction { get; set; }
 
-    [JsonProperty("activeBids")]
-    public Dictionary<string, Bid> ActiveBids { get; set; } = new Dictionary<string, Bid>();
-    [JsonProperty("auctionTimer")]
-    public AuctionTimer AuctionTimer { get; set; }
+    // --- REMOVED --- Properties that are now inside the CurrentAuction object
+    // [JsonProperty("currentPlayerId")]
+    // [JsonProperty("auctionTimer")]
+    // [JsonProperty("activeBids")]
+    
     [JsonProperty("draftLog")]
     public List<DraftPick> DraftLog { get; set; } = new List<DraftPick>();
-	[JsonProperty("beerBitchTeamId")]
+    [JsonProperty("beerBitchTeamId")]
     public string BeerBitchTeamId { get; set; }
 }
 
@@ -69,9 +89,9 @@ public class Player
     public string Name { get; set; }
     [JsonProperty("position")]
     public string Position { get; set; }
-	[JsonProperty("Team")]
+    [JsonProperty("team")]
     public string Team { get; set; }
-    [JsonProperty("Rank")]
+    [JsonProperty("rank")]
     public int Rank { get; set; }
     [JsonProperty("isDrafted")]
     public bool IsDrafted { get; set; }
@@ -79,6 +99,7 @@ public class Player
     public int Price { get; set; }
 }
 
+// NOTE: We keep the Bid class because it's still used in the DraftPick class for logging.
 public class Bid
 {
     [JsonProperty("amount")]
@@ -119,32 +140,20 @@ public class DraftPick
 
 public class RosterSettings
 {
-    [JsonProperty("qb")]
-    public int QB { get; set; } = 1;
-    [JsonProperty("wr")]
-    public int WR { get; set; } = 3;
-    [JsonProperty("rb")]
-    public int RB { get; set; } = 2;
-    [JsonProperty("te")]
-    public int TE { get; set; } = 1;
-    [JsonProperty("k")]
-    public int K { get; set; } = 1;
-    [JsonProperty("def")]
-    public int DEF { get; set; } = 1;
-    [JsonProperty("flex")]
-    public int FLEX { get; set; } = 1;
-    [JsonProperty("superFlex")]
-    public int SuperFlex { get; set; } = 1;
-    [JsonProperty("bench")]
-    public int Bench { get; set; } = 6;
+    [JsonProperty("qb")] public int QB { get; set; } = 1;
+    [JsonProperty("wr")] public int WR { get; set; } = 3;
+    [JsonProperty("rb")] public int RB { get; set; } = 2;
+    [JsonProperty("te")] public int TE { get; set; } = 1;
+    [JsonProperty("k")] public int K { get; set; } = 1;
+    [JsonProperty("def")] public int DEF { get; set; } = 1;
+    [JsonProperty("flex")] public int FLEX { get; set; } = 1;
+    [JsonProperty("superFlex")] public int SuperFlex { get; set; } = 1;
+    [JsonProperty("bench")] public int Bench { get; set; } = 6;
 }
 
 public class DraftTimers
 {
-    [JsonProperty("bidTimer")]
-    public int BidTimer { get; set; } = 20;
-    [JsonProperty("intermissionTimer")]
-    public int IntermissionTimer { get; set; } = 30;
-    [JsonProperty("rebidTimer")]
-    public int RebidTimer { get; set; } = 15;
+    [JsonProperty("bidTimer")] public int BidTimer { get; set; } = 20;
+    [JsonProperty("intermissionTimer")] public int IntermissionTimer { get; set; } = 30;
+    [JsonProperty("rebidTimer")] public int RebidTimer { get; set; } = 15;
 }
