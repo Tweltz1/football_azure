@@ -40,6 +40,8 @@ public class League
     public AuctionTimer AuctionTimer { get; set; }
     [JsonProperty("draftLog")]
     public List<DraftPick> DraftLog { get; set; } = new List<DraftPick>();
+	[JsonProperty("beerBitchTeamId")]
+    public string BeerBitchTeamId { get; set; }
 }
 
 public class Team
