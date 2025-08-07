@@ -125,7 +125,7 @@ const Home = () => {
                 padding: '10px', border: '1px solid #ddd', marginBottom: '5px'
               }}
             >
-              <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+              <span>{player.name} ({player.position})</span>
             </li>
           ))}
         </ul>
