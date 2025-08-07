@@ -79,16 +79,12 @@ const DraftScreen = () => {
 const LobbyView = ({ league, user, leagueId }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortPosition, setSortPosition] = useState('All Positions');
-
     const userTeam = league.teams.find(team => team.ownerId === user.userId);
     const userFavorites = userTeam?.favoritePlayerIds || [];
     const allPlayers = league.initialPlayerPool || [];
-
     const favoritePlayers = allPlayers.filter(p => userFavorites.includes(p.id) && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
     const availablePlayers = allPlayers.filter(p => !userFavorites.includes(p.id) && !p.isDrafted && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
-    
     const isCurrentUserAdmin = league.adminId === user.userId;
-    
     const nonAdminMembers = league.members.filter(id => id !== league.adminId);
     const allNonAdminsReady = nonAdminMembers.every(memberId => league.readyMembers.includes(memberId));
     const canStartDraft = isCurrentUserAdmin && (nonAdminMembers.length === 0 || allNonAdminsReady);
@@ -135,12 +131,10 @@ const LobbyView = ({ league, user, leagueId }) => {
                     </button>
                 )}
             </div>
-
             <div className="card" style={{marginTop: '20px'}}>
                 <h3>League Teams</h3>
                  <TeamListViewer league={league} user={user} />
             </div>
-
             <div className="card" style={{ marginTop: '20px' }}>
                 <h3>Player Lists</h3>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
@@ -292,7 +286,7 @@ const AuctionView = ({ league, user, leagueId }) => {
                 clearInterval(intervalId);
             }
         };
-    }, [league.auctionTimer]);
+    }, [league]); // <-- THIS IS THE FIX: DEPEND ON THE WHOLE LEAGUE OBJECT
 
     const handlePlaceBid = async () => {
         try {
@@ -341,7 +335,7 @@ const IntermissionView = ({ league }) => {
         };
         const interval = setInterval(() => setTimer(calculateTimeLeft()), 1000);
         return () => clearInterval(interval);
-    }, [league.auctionTimer]);
+    }, [league]); // <-- THIS IS THE FIX: DEPEND ON THE WHOLE LEAGUE OBJECT
 
     if (!lastPick) return <div className="card">Getting ready for the next player...</div>;
 
