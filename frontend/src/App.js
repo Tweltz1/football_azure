@@ -37,7 +37,6 @@ function App() {
       <Routes>
         <Route path="/" element={<Home userId={userId} />} />
         <Route path="/leagues" element={<Leagues userId={userId} />} />
-        <Route path="/leagues/:leagueId" element={<LeagueDetails userId={userId} />} />
         <Route path="/draft/:leagueId" element={<DraftScreen userId={userId} />} />
         <Route path="/create-league" element={<CreateLeague userId={userId} />} />
         <Route path="/profile" element={<Profile userId={userId} />} /> {/* <--- 3. ADD THE ROUTE */}

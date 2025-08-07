@@ -139,8 +139,8 @@ const Leagues = ({ userId }) => {
                     {league.members.length}/12
                   </td>
                   <td className="actions-cell-flex">
-                    <Link to={`/leagues/${league.id}`}>
-                      <button className="view-details-button">View Details</button>
+					<Link to={`/draft/${league.id}`}>
+                      <button className="view-details-button">Enter Draft Room</button>
                     </Link>
                     {league.adminId === userId && (
                       <>
