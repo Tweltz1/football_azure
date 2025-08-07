@@ -39,7 +39,7 @@ public static class RequestBeer
         }
 
         // Send a targeted message only to the user on beer duty
-        var beerDutyTeam = league.Teams.FirstOrDefault(t => t.id == league.BeerBitchTeamId);
+        var beerDutyTeam = league.Teams.FirstOrDefault(t => t.Id == league.BeerBitchTeamId); // <-- THIS LINE IS FIXED (t.Id)
         if (beerDutyTeam != null)
         {
             await signalRMessages.AddAsync(new SignalRMessage
