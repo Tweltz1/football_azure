@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Home from './components/Home';
 import Leagues from './components/Leagues';
-import LeagueDetails from './components/LeagueDetails';
 import DraftScreen from './components/DraftScreen';
 import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
