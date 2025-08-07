@@ -165,7 +165,7 @@ const LobbyView = ({ league, user, leagueId }) => {
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {favoritePlayers.map(player => (
                         <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                            <span>{player.name} ({player.position}) - {player.Team} - Rank: {player.Rank}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                 <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
                                 <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
@@ -177,7 +177,7 @@ const LobbyView = ({ league, user, leagueId }) => {
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {availablePlayers.map(player => (
                         <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                            <span>{player.name} ({player.position}) - {player.Team} - Rank: {player.Rank}</span>
                             <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
                         </li>
                     ))}
@@ -364,20 +364,24 @@ const AuctionView = ({ league, user, leagueId }) => {
 
     const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
     const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
+    const currentServerBid = userHasActiveBid ? league.activeBids[user.userId].amount : 0;
 
     useEffect(() => {
         const debounceBid = setTimeout(() => {
             if (league.auctionTimer?.isPaused) { return; }
 
-            if (bidAmount > 0) {
-                axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
-            } else if (bidAmount === 0 && userHasActiveBid) {
-                axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
+            // Only send an update if the user's typed amount is different from their current server bid
+            if (bidAmount !== currentServerBid) {
+                if (bidAmount > 0) {
+                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+                } else if (bidAmount === 0 && userHasActiveBid) {
+                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
+                }
             }
         }, 250);
 
         return () => clearTimeout(debounceBid);
-    }, [bidAmount, leagueId, user.userId, league.auctionTimer?.isPaused, userHasActiveBid]);
+    }, [bidAmount, leagueId, user.userId, league.auctionTimer?.isPaused, userHasActiveBid, currentServerBid]);
 
     useEffect(() => {
         const { auctionTimer } = league;
@@ -411,8 +415,8 @@ const AuctionView = ({ league, user, leagueId }) => {
     return (
         <div className="card" style={{marginTop: '20px'}}>
             <h3>Current Player Up for Bid:</h3>
-            <h2>{currentPlayer.name} - {currentPlayer.position} - {currentPlayer.team}</h2>
-            <p>Rank: {currentPlayer.rank}</p>
+            <h2>{currentPlayer.name} - {currentPlayer.position} - {currentPlayer.Team}</h2>
+            <p>Rank: {currentPlayer.Rank}</p>
             <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Bid Ends In: {timer}s</p>
             
             {userHasActiveBid && (
@@ -474,7 +478,7 @@ const IntermissionView = ({ league }) => {
             <div style={{marginTop: '20px'}}>
                 <h4>Last Player Drafted:</h4>
                 <p>
-                    <strong>{lastPick.player.name} ({lastPick.player.position} - {lastPick.player.team})</strong> was drafted by 
+                    <strong>{lastPick.player.name} ({lastPick.player.position} - {lastPick.player.Team})</strong> was drafted by 
                     <strong> {winningTeam?.name || 'N/A'}</strong> for 
                     <strong> ${lastPick.winningBid}</strong>!
                 </p>
@@ -571,7 +575,7 @@ const NominatePlayerModal = ({ league, onNominate, onClose }) => {
                 <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
                     {undraftedPlayers.map(player => (
                         <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                            <span>{player.name} ({player.position}) - {player.Team} - Rank: {player.Rank}</span>
                             <button onClick={() => onNominate(player.id)}>Nominate</button>
                         </li>
                     ))}
