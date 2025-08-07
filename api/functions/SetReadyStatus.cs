@@ -22,7 +22,7 @@ public static class SetReadyStatus
             databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
-        [SignalR(HubName = "draftHub", ConnectionStringSetting = "AzureSignalRConnectionString")] IAsyncCollector<SignalRMessage> signalRMessages,
+        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -54,10 +54,10 @@ public static class SetReadyStatus
 
             await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
             
-            // Broadcast the updated league object to all clients
+            // Broadcast the full updated state
             await signalRMessages.AddAsync(new SignalRMessage
             {
-                Target = "readyStatusUpdate",
+                Target = "draftStateUpdate",
                 Arguments = new object[] { leagueToUpdate }
             });
 
@@ -66,11 +66,6 @@ public static class SetReadyStatus
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             return new NotFoundObjectResult($"League with ID '{leagueId}' not found.");
-        }
-        catch (Exception ex)
-        {
-            log.LogError(ex, "Error setting ready status.");
-            return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
     }
 

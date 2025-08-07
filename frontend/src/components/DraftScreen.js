@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom'; // 'useNavigate' has been removed
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { HubConnectionBuilder } from '@microsoft/signalr';
@@ -10,7 +10,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api
 
 const DraftScreen = () => {
     const { leagueId } = useParams();
-    const navigate = useNavigate();
+    // const navigate = useNavigate(); // This line has been deleted
     const { user } = useAuth();
     const [league, setLeague] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -76,6 +76,9 @@ const DraftScreen = () => {
         </div>
     );
 };
+
+// The LobbyView and DraftingView sub-components are unchanged from the previous version.
+// They are included here in their entirety.
 
 const LobbyView = ({ league, user, leagueId }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -209,7 +212,7 @@ const DraftingView = ({ league, user, leagueId }) => {
             return 0;
         };
         
-        setTimer(calculateTimeLeft()); // Set timer immediately on render
+        setTimer(calculateTimeLeft());
         const interval = setInterval(() => {
             setTimer(calculateTimeLeft());
         }, 1000);
