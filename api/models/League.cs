@@ -55,7 +55,6 @@ public class Team
     [JsonProperty("roster")]
     public List<RosterSpot> Roster { get; set; } = new List<RosterSpot>();
     
-    // The new line is added here
     [JsonProperty("favoritePlayerIds")]
     public List<string> FavoritePlayerIds { get; set; } = new List<string>();
 }
@@ -71,7 +70,7 @@ public class Player
     [JsonProperty("isDrafted")]
     public bool IsDrafted { get; set; }
     [JsonProperty("price")]
-    public int Price { get; set; } // Added for drafted players
+    public int Price { get; set; }
 }
 
 public class Bid
@@ -88,6 +87,8 @@ public class AuctionTimer
     public DateTime EndTime { get; set; }
     [JsonProperty("isPaused")]
     public bool IsPaused { get; set; }
+    [JsonProperty("timeRemainingOnPause")]
+    public int TimeRemainingOnPause { get; set; }
 }
 
 public class RosterSpot
@@ -100,17 +101,12 @@ public class RosterSpot
 
 public class DraftPick
 {
-    // And replace it with this new version
     [JsonProperty("winningTeamId")]
     public string WinningTeamId { get; set; }
-
     [JsonProperty("winningBid")]
     public int WinningBid { get; set; }
-
     [JsonProperty("player")]
     public Player Player { get; set; }
-
-    // We will store all bids for this player to show during intermission
     [JsonProperty("allBids")]
     public Dictionary<string, Bid> AllBids { get; set; } = new Dictionary<string, Bid>();
 }
@@ -145,16 +141,4 @@ public class DraftTimers
     public int IntermissionTimer { get; set; } = 30;
     [JsonProperty("rebidTimer")]
     public int RebidTimer { get; set; } = 15;
-}
-
-public class AuctionTimer
-{
-    [JsonProperty("endTime")]
-    public DateTime EndTime { get; set; }
-    [JsonProperty("isPaused")]
-    public bool IsPaused { get; set; }
-    
-    // V V V ADD THIS LINE V V V
-    [JsonProperty("timeRemainingOnPause")]
-    public int TimeRemainingOnPause { get; set; }
 }
