@@ -146,3 +146,15 @@ public class DraftTimers
     [JsonProperty("rebidTimer")]
     public int RebidTimer { get; set; } = 15;
 }
+
+public class AuctionTimer
+{
+    [JsonProperty("endTime")]
+    public DateTime EndTime { get; set; }
+    [JsonProperty("isPaused")]
+    public bool IsPaused { get; set; }
+    
+    // V V V ADD THIS LINE V V V
+    [JsonProperty("timeRemainingOnPause")]
+    public int TimeRemainingOnPause { get; set; }
+}
