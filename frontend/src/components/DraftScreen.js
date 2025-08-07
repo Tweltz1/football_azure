@@ -677,7 +677,7 @@ useEffect(() => {
         !hasSubmittedFinalBid
     ) {
         const timeout = setTimeout(() => {
-            axios.post(`${API_BASE_URL}/leagues/${leagueId}/submit-bid`, {, {
+            axios.post(`${API_BASE_URL}/leagues/${leagueId}/submit-bid`, {
                 teamId: userTeam?.id,
                 bidAmount: myCurrentBid,
             })
