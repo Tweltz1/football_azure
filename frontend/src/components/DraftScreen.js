@@ -582,7 +582,7 @@ const TeamListViewer = ({ league, user, leagueId }) => {
                                 </button>
                             )}
                         </div>
-      _Bitch(team.id)}>Assign</button>
+      <button onClick={() => handleAssignBeerBitch(team.id)}>Assign</button>
                                 </li>
                             ))}
                         </ul>
