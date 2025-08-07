@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
+using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 using System.Collections.Generic;
 
 public static class StartDraft
@@ -17,19 +18,12 @@ public static class StartDraft
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/startDraft")] HttpRequest req,
         string leagueId,
-        [CosmosDB(
-            databaseName: "Fantasy Football",
-            containerName: "Leagues",
-            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<StartDraftRequest>(requestBody);
-
-        if (string.IsNullOrEmpty(data?.AdminId))
-        {
-            return new BadRequestObjectResult("Admin ID is required to start the draft.");
-        }
 
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
@@ -43,16 +37,17 @@ public static class StartDraft
                 return new UnauthorizedResult();
             }
 
-            // Corrected logic:
-            // Allow the draft to start with only one member, as per your design.
-            // For multi-member leagues, all members must be ready.
-            bool allMembersReady = leagueToUpdate.ReadyMembers.Count == leagueToUpdate.Members.Count;
-            bool canStart = (leagueToUpdate.Members.Count == 1) || (leagueToUpdate.Members.Count > 1 && allMembersReady);
-
-            if (!canStart)
+            // --- CORRECTED LOGIC ---
+            // The draft can start if all non-admin members are ready.
+            var nonAdminMembers = leagueToUpdate.Members.Where(id => id != leagueToUpdate.AdminId).ToList();
+            bool allNonAdminsReady = nonAdminMembers.All(memberId => leagueToUpdate.ReadyMembers.Contains(memberId));
+            
+            // Allow start if there are no other members, OR if all other members are ready.
+            if (!allNonAdminsReady && nonAdminMembers.Any())
             {
-                return new BadRequestObjectResult("Not all members are ready.");
+                return new BadRequestObjectResult("Not all other members are ready.");
             }
+            // --- END CORRECTED LOGIC ---
 
             leagueToUpdate.Status = "drafting";
             leagueToUpdate.CurrentPlayerId = GetRandomPlayerId(leagueToUpdate);
@@ -60,22 +55,26 @@ public static class StartDraft
 
             await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
 
+            await signalRMessages.AddAsync(new SignalRMessage
+            {
+                Target = "draftStarted",
+                Arguments = new object[] { leagueToUpdate.Id }
+            });
+
             return new OkResult();
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             return new NotFoundObjectResult($"League with ID '{leagueId}' not found.");
         }
-        catch (Exception ex)
-        {
-            log.LogError(ex, "Error starting draft.");
-            return new StatusCodeResult(StatusCodes.Status500InternalServerError);
-        }
     }
 
     private static string GetRandomPlayerId(League league)
     {
-        return league.DraftPlayers.Where(p => !p.IsDrafted).OrderBy(p => Guid.NewGuid()).FirstOrDefault()?.Id;
+        var undraftedPlayers = league.InitialPlayerPool.Where(p => !p.IsDrafted).ToList();
+        if (!undraftedPlayers.Any()) return null; // No players left
+        var random = new Random();
+        return undraftedPlayers[random.Next(undraftedPlayers.Count)].Id;
     }
 
     public class StartDraftRequest

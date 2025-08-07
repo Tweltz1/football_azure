@@ -15,7 +15,6 @@ const DraftScreen = () => {
     const [league, setLeague] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // --- Data Fetching and Real-Time Setup ---
     useEffect(() => {
         const fetchLeagueState = async () => {
             if (!user?.userId) return;
@@ -65,7 +64,6 @@ const DraftScreen = () => {
         };
     }, [leagueId, navigate]);
 
-    // --- Main Render ---
     if (loading) return <div>Loading Draft Room...</div>;
     if (!league) return <div>Could not load league.</div>;
 
@@ -85,7 +83,6 @@ const DraftScreen = () => {
     );
 };
 
-// --- Sub-Component for Lobby View ---
 const LobbyView = ({ league, user, leagueId }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortPosition, setSortPosition] = useState('All Positions');
@@ -98,12 +95,15 @@ const LobbyView = ({ league, user, leagueId }) => {
     const availablePlayers = allPlayers.filter(p => !userFavorites.includes(p.id) && !p.isDrafted && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
     
     const isCurrentUserAdmin = league.adminId === user.userId;
-    const allMembersReady = league.members.length > 0 && league.readyMembers.length === league.members.length;
-    const canStartDraft = isCurrentUserAdmin && allMembersReady;
+    
+    const nonAdminMembers = league.members.filter(id => id !== league.adminId);
+    const allNonAdminsReady = nonAdminMembers.every(memberId => league.readyMembers.includes(memberId));
+    const canStartDraft = isCurrentUserAdmin && (nonAdminMembers.length === 0 || allNonAdminsReady);
 
     const handleSetReadyStatus = async () => {
         const currentStatus = league.readyMembers.includes(user.userId);
         try {
+            // Note: The backend will broadcast a 'draftStateUpdate' on success
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/ready`, { userId: user.userId, isReady: !currentStatus });
         } catch (error) {
             alert(`Failed to update ready status: ${error.response?.data || error.message}`);
@@ -112,6 +112,7 @@ const LobbyView = ({ league, user, leagueId }) => {
     
     const handleStartDraft = async () => {
         try {
+            // Note: The backend will broadcast a 'draftStarted' on success
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/startDraft`, { adminId: user.userId });
         } catch (error) {
             alert(`Failed to start draft: ${error.response?.data || error.message}`);
@@ -122,7 +123,7 @@ const LobbyView = ({ league, user, leagueId }) => {
         const isCurrentlyFavorite = userFavorites.includes(playerIdToToggle);
         const newFavoriteIds = isCurrentlyFavorite ? userFavorites.filter(id => id !== playerIdToToggle) : [...userFavorites, playerIdToToggle];
         try {
-            // NOTE: This sends a 'draftStateUpdate' from the backend, which our main component listens for.
+            // Note: The backend will broadcast a 'draftStateUpdate' on success
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/favorites`, { userId: user.userId, playerIds: newFavoriteIds });
         } catch (error) {
             console.error("Error updating favorite players:", error);
@@ -136,13 +137,18 @@ const LobbyView = ({ league, user, leagueId }) => {
                 <h3>Draft Controls & Overview</h3>
                 {isCurrentUserAdmin ? (
                     <button onClick={handleStartDraft} className={`start-draft-button ${canStartDraft ? 'ready' : ''}`} disabled={!canStartDraft}>
-                        Start Draft ({league.readyMembers.length}/{league.members.length} Ready)
+                        Start Draft ({league.readyMembers.length}/{nonAdminMembers.length} Ready)
                     </button>
                 ) : (
                     <button onClick={handleSetReadyStatus} className={`ready-button ${league.readyMembers.includes(user.userId) ? 'ready' : ''}`}>
                         {league.readyMembers.includes(user.userId) ? "You are Ready!" : "I'm Ready!"}
                     </button>
                 )}
+            </div>
+
+            <div className="card" style={{marginTop: '20px'}}>
+                <h3>League Teams</h3>
+                {/* Team list UI can be added here */}
             </div>
 
             <div className="card" style={{ marginTop: '20px' }}>
@@ -180,8 +186,6 @@ const LobbyView = ({ league, user, leagueId }) => {
     );
 };
 
-
-// --- Sub-Component for Drafting View ---
 const DraftingView = ({ league, user, leagueId }) => {
     const [bidAmount, setBidAmount] = useState(1);
     const [timer, setTimer] = useState(0);
@@ -226,7 +230,7 @@ const DraftingView = ({ league, user, leagueId }) => {
     };
 
     if (!currentPlayer) {
-        return <div className="card">Waiting for next player...</div>;
+        return <div className="card">Waiting for next player... or the draft is over!</div>;
     }
 
     return (
@@ -260,8 +264,7 @@ const DraftingView = ({ league, user, leagueId }) => {
                     <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
                         <p style={{margin: '5px 0'}}>
                             <strong>{team.name}</strong> ({team.ownerId === user.userId ? 'You' : ''}) - 
-                            Budget: <strong>${team.budget}</strong> - 
-                            Roster Spots Left: [Count]
+                            Budget: <strong>${team.budget}</strong>
                         </p>
                     </div>
                 ))}

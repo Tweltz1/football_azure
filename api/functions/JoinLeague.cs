@@ -10,18 +10,15 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService; // New import
+using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
 public static class JoinLeague
 {
     [FunctionName("JoinLeague")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "joinLeague")] HttpRequest req,
-        [CosmosDB(
-            databaseName: "Fantasy Football", // Corrected database name
-            containerName: "Leagues",
-            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
-        [SignalR(HubName = "draftHub", ConnectionStringSetting = "AzureSignalRConnectionString")] IAsyncCollector<SignalRMessage> signalRMessages,
+        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -33,49 +30,38 @@ public static class JoinLeague
         }
 
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-
         try
         {
             var query = new QueryDefinition("SELECT * FROM c WHERE c.name = @leagueName");
             query.WithParameter("@leagueName", data.LeagueName);
-            
             var queryIterator = container.GetItemQueryIterator<League>(query);
             var leagueResponse = await queryIterator.ReadNextAsync();
-
-            if (!leagueResponse.Any())
-            {
-                return new NotFoundObjectResult("League not found.");
-            }
+            if (!leagueResponse.Any()) { return new NotFoundObjectResult("League not found."); }
 
             var leagueToJoin = leagueResponse.First();
 
-            if (!string.IsNullOrEmpty(leagueToJoin.Password) && leagueToJoin.Password != data.Password)
-            {
-                return new UnauthorizedResult(); // Incorrect password
-            }
+            if (!string.IsNullOrEmpty(leagueToJoin.Password) && leagueToJoin.Password != data.Password) { return new UnauthorizedResult(); }
+            if (leagueToJoin.Members.Contains(data.UserId)) { return new ConflictObjectResult("You are already a member of this league."); }
 
-            if (leagueToJoin.Members.Contains(data.UserId))
-            {
-                return new ConflictObjectResult("You are already a member of this league.");
-            }
+            var userProfile = await GetUserProfile(cosmosClient, data.UserId, log);
+            var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
 
-            // Add the user to the league
             leagueToJoin.Members.Add(data.UserId);
-            leagueToJoin.Teams.Add(new Team 
-            { 
-                Id = Guid.NewGuid().ToString(), 
-                OwnerId = data.UserId, 
-                Name = "New Team", // Placeholder name
-                Budget = 200, 
-                Roster = new List<RosterSpot>() 
+            leagueToJoin.Teams.Add(new Team
+            {
+                Id = Guid.NewGuid().ToString(),
+                OwnerId = data.UserId,
+                Name = "New Team",
+                Budget = 200,
+                Roster = new List<RosterSpot>(),
+                FavoritePlayerIds = userMasterFavorites
             });
 
             await container.ReplaceItemAsync(leagueToJoin, leagueToJoin.Id, new PartitionKey(leagueToJoin.Id));
-            
-            // Broadcast the updated league object to all clients
+
             await signalRMessages.AddAsync(new SignalRMessage
             {
-                Target = "leagueUpdate",
+                Target = "draftStateUpdate",
                 Arguments = new object[] { leagueToJoin }
             });
 
@@ -85,6 +71,20 @@ public static class JoinLeague
         {
             log.LogError(ex, "Error joining league.");
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    private static async Task<UserProfile> GetUserProfile(CosmosClient cosmosClient, string userId, ILogger log)
+    {
+        var container = cosmosClient.GetContainer("Fantasy Football", "Users");
+        try
+        {
+            return await container.ReadItemAsync<UserProfile>(userId, new PartitionKey(userId));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            log.LogWarning($"Profile not found for user {userId} when joining league.");
+            return null;
         }
     }
 
