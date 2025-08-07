@@ -138,7 +138,7 @@ const LobbyView = ({ league, user, leagueId }) => {
 
             <div className="card" style={{marginTop: '20px'}}>
                 <h3>League Teams</h3>
-                <TeamListViewer league={league} user={user} />
+                 <TeamListViewer league={league} user={user} />
             </div>
 
             <div className="card" style={{ marginTop: '20px' }}>
@@ -182,10 +182,9 @@ const DraftingView = ({ league, user, leagueId }) => {
     useEffect(() => {
         let pollInterval;
         if (!isIntermission) {
-            // This calls the backend to check if the auction timer is done
             pollInterval = setInterval(() => {
                 axios.post(`${API_BASE_URL}/leagues/${leagueId}/endBidding`);
-            }, 3000); // Poll every 3 seconds
+            }, 3000);
         }
         return () => clearInterval(pollInterval);
     }, [isIntermission, leagueId]);
@@ -193,10 +192,9 @@ const DraftingView = ({ league, user, leagueId }) => {
     useEffect(() => {
         let pollInterval;
         if (isIntermission) {
-            // This calls the backend to check if the intermission timer is done
             pollInterval = setInterval(() => {
                 axios.post(`${API_BASE_URL}/leagues/${leagueId}/nextRound`);
-            }, 3000); // Poll every 3 seconds
+            }, 3000);
         }
         return () => clearInterval(pollInterval);
     }, [isIntermission, leagueId]);
@@ -224,8 +222,16 @@ const DraftingView = ({ league, user, leagueId }) => {
 };
 
 const AdminControls = ({ league, user, leagueId }) => {
+    const handlePauseDraft = async () => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/pause`, { adminId: user.userId });
+        } catch (error) {
+            alert(`Error: ${error.response?.data || error.message}`);
+        }
+    };
+    
     const handleSkipPlayer = async () => {
-        if (window.confirm("Are you sure you want to skip this player and move to the next?")) {
+        if (window.confirm("Are you sure you want to skip this player?")) {
             try {
                 await axios.post(`${API_BASE_URL}/leagues/${leagueId}/skip`, { adminId: user.userId });
             } catch (error) {
@@ -234,14 +240,18 @@ const AdminControls = ({ league, user, leagueId }) => {
         }
     };
 
+    const isPaused = league.auctionTimer?.isPaused;
+
     return (
         <div>
-            <button>Pause Draft</button>
-            <button onClick={handleSkipPlayer}>Skip Player</button>
-            <button>Nominate Player</button>
-            <button>Manage Members</button>
-            <button>Beer B!tch</button>
-            <button>Complete Draft</button>
+            <button onClick={handlePauseDraft}>
+                {isPaused ? 'Resume Draft' : 'Pause Draft'}
+            </button>
+            <button onClick={handleSkipPlayer} disabled={isPaused}>Skip Player</button>
+            <button disabled={!isPaused}>Nominate Player</button>
+            <button disabled={!isPaused}>Manage Members</button>
+            <button disabled={!isPaused}>Beer B!tch</button>
+            <button disabled={!isPaused}>Complete Draft</button>
         </div>
     );
 };
@@ -253,16 +263,35 @@ const AuctionView = ({ league, user, leagueId }) => {
     const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
 
     useEffect(() => {
-        const calculateTimeLeft = () => {
-            if (league.auctionTimer?.endTime) {
-                const endTime = new Date(league.auctionTimer.endTime).getTime();
-                const now = new Date().getTime();
-                return Math.max(0, Math.floor((endTime - now) / 1000));
+        const { auctionTimer } = league;
+        let intervalId = null;
+
+        if (intervalId) {
+            clearInterval(intervalId);
+        }
+
+        if (auctionTimer?.isPaused) {
+            setTimer(auctionTimer.timeRemainingOnPause);
+        } else {
+            const calculateTimeLeft = () => {
+                if (auctionTimer?.endTime) {
+                    const endTime = new Date(auctionTimer.endTime).getTime();
+                    const now = new Date().getTime();
+                    setTimer(Math.max(0, Math.floor((endTime - now) / 1000)));
+                } else {
+                    setTimer(0);
+                }
+            };
+            
+            calculateTimeLeft();
+            intervalId = setInterval(calculateTimeLeft, 1000);
+        }
+        
+        return () => {
+            if (intervalId) {
+                clearInterval(intervalId);
             }
-            return 0;
         };
-        const interval = setInterval(() => setTimer(calculateTimeLeft()), 1000);
-        return () => clearInterval(interval);
     }, [league.auctionTimer]);
 
     const handlePlaceBid = async () => {
@@ -288,10 +317,10 @@ const AuctionView = ({ league, user, leagueId }) => {
             </p>
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
                 Your Bid: 
-                <button onClick={decrementBid}>-</button>
-                <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value) || 1)} style={{width: '60px', textAlign: 'center'}} />
-                <button onClick={incrementBid}>+</button>
-                <button onClick={handlePlaceBid} style={{marginLeft: '10px'}}>Place Bid</button>
+                <button onClick={decrementBid} disabled={league.auctionTimer?.isPaused}>-</button>
+                <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value) || 1)} style={{width: '60px', textAlign: 'center'}} disabled={league.auctionTimer?.isPaused} />
+                <button onClick={incrementBid} disabled={league.auctionTimer?.isPaused}>+</button>
+                <button onClick={handlePlaceBid} style={{marginLeft: '10px'}} disabled={league.auctionTimer?.isPaused}>Place Bid</button>
             </div>
         </div>
     );
@@ -346,34 +375,39 @@ const IntermissionView = ({ league }) => {
 
 const TeamListViewer = ({ league, user }) => {
     const { rosterSettings } = league;
-    const totalRosterSpots = Object.values(rosterSettings).reduce((sum, val) => sum + val, 0);
-
-    const userTeam = league.teams.find(t => t.ownerId === user.userId);
-
-    if (!userTeam) return null;
-
-    const rosterSpotsFilled = userTeam.roster.length;
-    const remainingRosterSpots = totalRosterSpots - rosterSpotsFilled;
-    const maxBid = userTeam.budget - (remainingRosterSpots > 0 ? remainingRosterSpots - 1 : 0);
+    if (!rosterSettings) return null;
+    const totalRosterSpots = Object.values(rosterSettings).reduce((sum, val) => sum + (val || 0), 0);
 
     return (
         <div>
             {league.teams.map(team => {
-                if (team.ownerId === user.userId) {
+                const isUserTeam = team.ownerId === user.userId;
+                const rosterSpotsFilled = team.roster?.length || 0;
+                
+                if (isUserTeam) {
+                    const remainingRosterSpots = totalRosterSpots - rosterSpotsFilled;
+                    const maxBid = team.budget - (remainingRosterSpots > 0 ? remainingRosterSpots - 1 : 0);
                     return (
-                        <div key={team.id} className="user-team-details">
+                        <div key={team.id} className="user-team-details" style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
                             <h4>{team.name} (You)</h4>
-                            <p>
+                            <p style={{margin: '5px 0'}}>
                                 Roster: {rosterSpotsFilled} / {totalRosterSpots} | 
                                 Budget: ${team.budget} | 
                                 Total Spent: ${200 - team.budget} | 
                                 Max Bid: ${maxBid}
                             </p>
-                            {/* Detailed roster spot breakdown can be added here */}
+                        </div>
+                    );
+                } else {
+                     return (
+                        <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
+                            <p style={{margin: '5px 0'}}>
+                                <strong>{team.name}</strong> - 
+                                Budget: <strong>${team.budget}</strong>
+                            </p>
                         </div>
                     );
                 }
-                return null;
             })}
         </div>
     );
