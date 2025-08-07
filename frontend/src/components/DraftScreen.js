@@ -9,167 +9,6 @@ import '../App.css';
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 const DraftScreen = () => {
-    // This main component is unchanged
-    // ...
-};
-
-// ... LobbyView component is unchanged ...
-
-const DraftingView = ({ league, user, leagueId }) => {
-    // This component is unchanged
-    // ...
-};
-
-const AdminControls = ({ league, user, leagueId }) => {
-    const [showBeerBitchModal, setShowBeerBitchModal] = useState(false);
-    const [showNominateModal, setShowNominateModal] = useState(false);
-    const [showManageMembersModal, setShowManageMembersModal] = useState(false);
-
-    // ... handlePauseDraft, handleSkipPlayer, handleAssignBeerBitch are unchanged ...
-    
-    const handleNominatePlayer = async (playerId) => {
-        try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/nominate`, { adminId: user.userId, playerId });
-            setShowNominateModal(false);
-        } catch (error) {
-            alert(`Error nominating player: ${error.response?.data || error.message}`);
-        }
-    };
-
-    const handleKickMember = async (teamIdToKick) => {
-        const team = league.teams.find(t => t.id === teamIdToKick);
-        if (window.confirm(`Are you sure you want to kick ${team.name}? This will return all their drafted players to the pool.`)) {
-            try {
-                await axios.post(`${API_BASE_URL}/leagues/${leagueId}/kick`, { adminId: user.userId, teamIdToKick });
-            } catch (error) {
-                alert(`Error kicking member: ${error.response?.data || error.message}`);
-            }
-        }
-    };
-
-    const handleAdjustBudget = async (teamId, newBudget) => {
-        try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/adjust-budget`, { adminId: user.userId, teamId, newBudget: parseInt(newBudget) });
-        } catch (error) {
-            alert(`Error adjusting budget: ${error.response?.data || error.message}`);
-        }
-    };
-
-    const isPaused = league.auctionTimer?.isPaused;
-
-    return (
-        <>
-            <div>
-                <button onClick={handlePauseDraft}>{isPaused ? 'Resume Draft' : 'Pause Draft'}</button>
-                <button onClick={handleSkipPlayer} disabled={isPaused}>Skip Player</button>
-                <button onClick={() => setShowNominateModal(true)} disabled={!isPaused}>Nominate Player</button>
-                <button onClick={() => setShowManageMembersModal(true)} disabled={!isPaused}>Manage Members</button>
-                <button onClick={() => setShowBeerBitchModal(true)} disabled={!isPaused}>Beer B!tch</button>
-                <button disabled={!isPaused}>Complete Draft</button>
-            </div>
-
-            {/* --- Modals --- */}
-            {showBeerBitchModal && ( /* ... unchanged ... */ )}
-            
-            {showNominateModal && (
-                <NominatePlayerModal
-                    league={league}
-                    onNominate={handleNominatePlayer}
-                    onClose={() => setShowNominateModal(false)}
-                />
-            )}
-
-            {showManageMembersModal && (
-                <ManageMembersModal
-                    league={league}
-                    onKick={handleKickMember}
-                    onAdjustBudget={handleAdjustBudget}
-                    onClose={() => setShowManageMembersModal(false)}
-                />
-            )}
-        </>
-    );
-};
-
-// ... AuctionView, IntermissionView, TeamListViewer components are unchanged ...
-
-// --- NEW MODAL COMPONENTS ---
-
-const NominatePlayerModal = ({ league, onNominate, onClose }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const undraftedPlayers = league.initialPlayerPool.filter(p => !p.isDrafted)
-        .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <h3>Nominate a Player</h3>
-                <input type="text" placeholder="Search for a player..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{width: '95%', marginBottom: '10px'}}/>
-                <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
-                    {undraftedPlayers.map(player => (
-                        <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position})</span>
-                            <button onClick={() => onNominate(player.id)}>Nominate</button>
-                        </li>
-                    ))}
-                </ul>
-                <button onClick={onClose} className="cancel-button">Cancel</button>
-            </div>
-        </div>
-    );
-};
-
-const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
-    const [budgets, setBudgets] = useState(league.teams.reduce((acc, team) => ({...acc, [team.id]: team.budget }), {}));
-
-    const handleBudgetChange = (teamId, value) => {
-        setBudgets(prev => ({ ...prev, [teamId]: value }));
-    };
-
-    return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <h3>Manage Members</h3>
-                <ul style={{listStyle: 'none', padding: 0}}>
-                    {league.teams.map(team => (
-                        <li key={team.id} className="player-list-item">
-                            <span>{team.name}</span>
-                            <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
-                                Budget: $
-                                <input 
-                                    type="number" 
-                                    value={budgets[team.id]} 
-                                    onChange={e => handleBudgetChange(team.id, e.target.value)} 
-                                    style={{width: '60px'}}
-                                />
-                                <button onClick={() => onAdjustBudget(team.id, budgets[team.id])}>Set</button>
-                                {team.ownerId !== league.adminId && (
-                                    <button onClick={() => onKick(team.id)} style={{backgroundColor: '#dc3545'}}>Kick</button>
-                                )}
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-                <button onClick={onClose} className="cancel-button">Cancel</button>
-            </div>
-        </div>
-    );
-};
-
-
-// --- FULL CODE ---
-// ... (The rest of DraftScreen.js, including all sub-components, is below)
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import axios from 'axios';
-import { useAuth } from '../AuthContext';
-import { HubConnectionBuilder } from '@microsoft/signalr';
-import { getSignalRInfo } from '../api';
-import '../App.css';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
-
-const DraftScreen = () => {
     const { leagueId } = useParams();
     const { user } = useAuth();
     const [league, setLeague] = useState(null);
@@ -438,6 +277,7 @@ const AdminControls = ({ league, user, leagueId }) => {
     const handleAdjustBudget = async (teamId, newBudget) => {
         try {
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/adjust-budget`, { adminId: user.userId, teamId, newBudget: parseInt(newBudget) });
+            // The modal will close on its own if you want, or you can add logic to keep it open
         } catch (error) {
             alert(`Error adjusting budget: ${error.response?.data || error.message}`);
         }
@@ -494,9 +334,151 @@ const AdminControls = ({ league, user, leagueId }) => {
     );
 };
 
-const AuctionView = ({ league, user, leagueId }) => { /* ... */ };
-const IntermissionView = ({ league }) => { /* ... */ };
-const TeamListViewer = ({ league, user }) => { /* ... */ };
+const AuctionView = ({ league, user, leagueId }) => {
+    const [bidAmount, setBidAmount] = useState(1);
+    const [timer, setTimer] = useState(0);
+    const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
+
+    useEffect(() => {
+        const { auctionTimer } = league;
+        let intervalId = null;
+
+        if (intervalId) { clearInterval(intervalId); }
+
+        if (auctionTimer?.isPaused) {
+            setTimer(auctionTimer.timeRemainingOnPause);
+        } else {
+            const calculateTimeLeft = () => {
+                if (auctionTimer?.endTime) {
+                    const endTime = new Date(auctionTimer.endTime).getTime();
+                    const now = new Date().getTime();
+                    setTimer(Math.max(0, Math.floor((endTime - now) / 1000)));
+                } else {
+                    setTimer(0);
+                }
+            };
+            calculateTimeLeft();
+            intervalId = setInterval(calculateTimeLeft, 1000);
+        }
+        
+        return () => { if (intervalId) { clearInterval(intervalId); }};
+    }, [league]);
+
+    const handlePlaceBid = async () => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+        } catch (error) {
+            alert(`Error placing bid: ${error.response?.data || error.message}`);
+        }
+    };
+    
+    const incrementBid = () => setBidAmount(prev => prev + 1);
+    const decrementBid = () => setBidAmount(prev => Math.max(1, prev - 1));
+
+    if (!currentPlayer) return <div className="card">Waiting for player nomination...</div>;
+
+    return (
+        <div className="card" style={{marginTop: '20px'}}>
+            <h3>Current Player Up for Bid:</h3>
+            <h2>{currentPlayer.name} - {currentPlayer.position}</h2>
+            <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Bid Ends In: {timer}s</p>
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
+                Your Bid: 
+                <button onClick={decrementBid} disabled={league.auctionTimer?.isPaused}>-</button>
+                <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value) || 1)} style={{width: '60px', textAlign: 'center'}} disabled={league.auctionTimer?.isPaused} />
+                <button onClick={incrementBid} disabled={league.auctionTimer?.isPaused}>+</button>
+                <button onClick={handlePlaceBid} style={{marginLeft: '10px'}} disabled={league.auctionTimer?.isPaused}>Place Bid</button>
+            </div>
+        </div>
+    );
+};
+
+const IntermissionView = ({ league }) => {
+    const [timer, setTimer] = useState(0);
+    const lastPick = league.draftLog && league.draftLog.length > 0 ? league.draftLog[league.draftLog.length - 1] : null;
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            if (league.auctionTimer?.endTime) {
+                const endTime = new Date(league.auctionTimer.endTime).getTime();
+                const now = new Date().getTime();
+                return Math.max(0, Math.floor((endTime - now) / 1000));
+            }
+            return 0;
+        };
+        const interval = setInterval(() => setTimer(calculateTimeLeft()), 1000);
+        return () => clearInterval(interval);
+    }, [league]);
+
+    if (!lastPick) return <div className="card">Getting ready for the next player...</div>;
+
+    const winningTeam = league.teams.find(t => t.id === lastPick.winningTeamId);
+    const allBids = Object.entries(lastPick.allBids).sort(([,a],[,b]) => b.amount - a.amount);
+
+    return (
+        <div className="card" style={{marginTop: '20px', backgroundColor: '#e6ffed'}}>
+            <h2>Intermission!</h2>
+            <p style={{fontSize: '20px'}}>Next player in: <strong>{timer}s</strong></p>
+            <div style={{marginTop: '20px'}}>
+                <h4>Last Player Drafted:</h4>
+                <p>
+                    <strong>{lastPick.player.name}</strong> was drafted by 
+                    <strong> {winningTeam?.name || 'N/A'}</strong> for 
+                    <strong> ${lastPick.winningBid}</strong>!
+                </p>
+            </div>
+            <div style={{marginTop: '20px'}}>
+                <h4>All Bids for this Player:</h4>
+                <ul style={{listStyle: 'none', padding: 0}}>
+                    {allBids.map(([userId, bid]) => {
+                        const team = league.teams.find(t => t.ownerId === userId);
+                        return <li key={userId}>{team?.name || 'Unknown Team'}: ${bid.amount}</li>;
+                    })}
+                </ul>
+            </div>
+        </div>
+    );
+};
+
+const TeamListViewer = ({ league, user }) => {
+    const { rosterSettings } = league;
+    if (!rosterSettings) return null;
+    const totalRosterSpots = Object.values(rosterSettings).reduce((sum, val) => sum + (val || 0), 0);
+
+    return (
+        <div>
+            {league.teams.map(team => {
+                const isUserTeam = team.ownerId === user.userId;
+                const rosterSpotsFilled = team.roster?.length || 0;
+                
+                if (isUserTeam) {
+                    const remainingRosterSpots = totalRosterSpots - rosterSpotsFilled;
+                    const maxBid = team.budget - (remainingRosterSpots > 0 ? remainingRosterSpots - 1 : 0);
+                    return (
+                        <div key={team.id} className="user-team-details" style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
+                            <h4>{team.name} (You)</h4>
+                            <p style={{margin: '5px 0'}}>
+                                Roster: {rosterSpotsFilled} / {totalRosterSpots} | 
+                                Budget: ${team.budget} | 
+                                Total Spent: ${200 - team.budget} | 
+                                Max Bid: ${maxBid}
+                            </p>
+                        </div>
+                    );
+                } else {
+                     return (
+                        <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
+                            <p style={{margin: '5px 0'}}>
+                                <strong>{team.name}</strong> - 
+                                Budget: <strong>${team.budget}</strong>
+                            </p>
+                        </div>
+                    );
+                }
+            })}
+        </div>
+    );
+};
 
 const NominatePlayerModal = ({ league, onNominate, onClose }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -559,5 +541,4 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
     );
 };
 
-// ... (Rest of full file with all components)
 export default DraftScreen;
