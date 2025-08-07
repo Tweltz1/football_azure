@@ -294,7 +294,7 @@ const AuctionView = ({ league, user, leagueId }) => {
 };
 
 const IntermissionView = ({ league }) => {
-    const [timer, setTimer] = = useState(0);
+    const [timer, setTimer] = useState(0);
     const lastPick = league.draftLog && league.draftLog.length > 0 ? league.draftLog[league.draftLog.length - 1] : null;
 
     useEffect(() => {
