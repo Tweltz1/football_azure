@@ -69,9 +69,9 @@ public class Player
     public string Name { get; set; }
     [JsonProperty("position")]
     public string Position { get; set; }
-	[JsonProperty("team")]
+	[JsonProperty("Team")]
     public string Team { get; set; }
-    [JsonProperty("rank")]
+    [JsonProperty("Rank")]
     public int Rank { get; set; }
     [JsonProperty("isDrafted")]
     public bool IsDrafted { get; set; }

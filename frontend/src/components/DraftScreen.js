@@ -165,7 +165,7 @@ const LobbyView = ({ league, user, leagueId }) => {
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {favoritePlayers.map(player => (
                         <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position}) - {player.Team} - Rank: {player.Rank}</span>
+                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                 <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
                                 <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
@@ -177,7 +177,7 @@ const LobbyView = ({ league, user, leagueId }) => {
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {availablePlayers.map(player => (
                         <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position}) - {player.Team} - Rank: {player.Rank}</span>
+                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
                             <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
                         </li>
                     ))}
@@ -477,7 +477,7 @@ const IntermissionView = ({ league }) => {
             <div style={{marginTop: '20px'}}>
                 <h4>Last Player Drafted:</h4>
                 <p>
-                    <strong>{lastPick.player.name} ({lastPick.player.position} - {lastPick.player.Team})</strong> was drafted by 
+                    <strong>{lastPick.player.name} ({lastPick.player.position} - {lastPick.player.team})</strong> was drafted by 
                     <strong> {winningTeam?.name || 'N/A'}</strong> for 
                     <strong> ${lastPick.winningBid}</strong>!
                 </p>
@@ -574,7 +574,7 @@ const NominatePlayerModal = ({ league, onNominate, onClose }) => {
                 <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
                     {undraftedPlayers.map(player => (
                         <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position}) - {player.Team} - Rank: {player.Rank}</span>
+                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
                             <button onClick={() => onNominate(player.id)}>Nominate</button>
                         </li>
                     ))}
