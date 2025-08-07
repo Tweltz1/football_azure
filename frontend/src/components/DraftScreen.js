@@ -391,11 +391,19 @@ const AuctionView = ({ league, user, leagueId }) => {
     }, [league]);
 
     const handleCancelBid = async () => {
+        const lastBidAmount = userHasActiveBid ? league.activeBids[user.userId].amount : 0;
+        
+        // --- THIS IS THE FIX: Optimistic Update ---
+        // 1. Immediately update the UI to 0
+        setBidAmount(0); 
+
         try {
+            // 2. Tell the server to cancel the bid
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
-            setBidAmount(0);
         } catch (error) {
             alert(`Error cancelling bid: ${error.response?.data || error.message}`);
+            // 3. If the server fails, revert the UI change
+            setBidAmount(lastBidAmount);
         }
     };
     
