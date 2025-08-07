@@ -138,14 +138,7 @@ const LobbyView = ({ league, user, leagueId }) => {
 
             <div className="card" style={{marginTop: '20px'}}>
                 <h3>League Teams</h3>
-                 {league.teams.map(team => (
-                    <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
-                        <p style={{margin: '5px 0'}}>
-                            <strong>{team.name}</strong> ({team.ownerId === user.userId ? 'You' : ''}) - 
-                            Budget: <strong>${team.budget}</strong>
-                        </p>
-                    </div>
-                ))}
+                <TeamListViewer league={league} user={user} />
             </div>
 
             <div className="card" style={{ marginTop: '20px' }}>
@@ -188,10 +181,22 @@ const DraftingView = ({ league, user, leagueId }) => {
 
     useEffect(() => {
         let pollInterval;
+        if (!isIntermission) {
+            // This calls the backend to check if the auction timer is done
+            pollInterval = setInterval(() => {
+                axios.post(`${API_BASE_URL}/leagues/${leagueId}/endBidding`);
+            }, 3000); // Poll every 3 seconds
+        }
+        return () => clearInterval(pollInterval);
+    }, [isIntermission, leagueId]);
+
+    useEffect(() => {
+        let pollInterval;
         if (isIntermission) {
+            // This calls the backend to check if the intermission timer is done
             pollInterval = setInterval(() => {
                 axios.post(`${API_BASE_URL}/leagues/${leagueId}/nextRound`);
-            }, 5000);
+            }, 3000); // Poll every 3 seconds
         }
         return () => clearInterval(pollInterval);
     }, [isIntermission, leagueId]);
@@ -212,14 +217,7 @@ const DraftingView = ({ league, user, leagueId }) => {
 
             <div className="card" style={{marginTop: '20px'}}>
                 <h3>League Teams:</h3>
-                {league.teams.map(team => (
-                    <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
-                        <p style={{margin: '5px 0'}}>
-                            <strong>{team.name}</strong> ({team.ownerId === user.userId ? 'You' : ''}) - 
-                            Budget: <strong>${team.budget}</strong>
-                        </p>
-                    </div>
-                ))}
+                <TeamListViewer league={league} user={user} />
             </div>
         </>
     );
@@ -238,7 +236,7 @@ const AdminControls = ({ league, user, leagueId }) => {
 
     return (
         <div>
-            <button>Resume Draft</button>
+            <button>Pause Draft</button>
             <button onClick={handleSkipPlayer}>Skip Player</button>
             <button>Nominate Player</button>
             <button>Manage Members</button>
@@ -274,6 +272,9 @@ const AuctionView = ({ league, user, leagueId }) => {
             alert(`Error placing bid: ${error.response?.data || error.message}`);
         }
     };
+    
+    const incrementBid = () => setBidAmount(prev => prev + 1);
+    const decrementBid = () => setBidAmount(prev => Math.max(1, prev - 1));
 
     if (!currentPlayer) return <div className="card">Waiting for player nomination...</div>;
 
@@ -285,9 +286,12 @@ const AuctionView = ({ league, user, leagueId }) => {
             <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>
                 Bid Ends In: {timer}s
             </p>
-            <div>
-                Your Bid: <input type="number" value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{width: '60px', margin: '0 10px'}} />
-                <button onClick={handlePlaceBid}>Place Bid</button>
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
+                Your Bid: 
+                <button onClick={decrementBid}>-</button>
+                <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value) || 1)} style={{width: '60px', textAlign: 'center'}} />
+                <button onClick={incrementBid}>+</button>
+                <button onClick={handlePlaceBid} style={{marginLeft: '10px'}}>Place Bid</button>
             </div>
         </div>
     );
@@ -336,6 +340,41 @@ const IntermissionView = ({ league }) => {
                     })}
                 </ul>
             </div>
+        </div>
+    );
+};
+
+const TeamListViewer = ({ league, user }) => {
+    const { rosterSettings } = league;
+    const totalRosterSpots = Object.values(rosterSettings).reduce((sum, val) => sum + val, 0);
+
+    const userTeam = league.teams.find(t => t.ownerId === user.userId);
+
+    if (!userTeam) return null;
+
+    const rosterSpotsFilled = userTeam.roster.length;
+    const remainingRosterSpots = totalRosterSpots - rosterSpotsFilled;
+    const maxBid = userTeam.budget - (remainingRosterSpots > 0 ? remainingRosterSpots - 1 : 0);
+
+    return (
+        <div>
+            {league.teams.map(team => {
+                if (team.ownerId === user.userId) {
+                    return (
+                        <div key={team.id} className="user-team-details">
+                            <h4>{team.name} (You)</h4>
+                            <p>
+                                Roster: {rosterSpotsFilled} / {totalRosterSpots} | 
+                                Budget: ${team.budget} | 
+                                Total Spent: ${200 - team.budget} | 
+                                Max Bid: ${maxBid}
+                            </p>
+                            {/* Detailed roster spot breakdown can be added here */}
+                        </div>
+                    );
+                }
+                return null;
+            })}
         </div>
     );
 };
