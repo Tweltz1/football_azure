@@ -100,12 +100,19 @@ public class RosterSpot
 
 public class DraftPick
 {
-    [JsonProperty("playerId")]
-    public string PlayerId { get; set; }
-    [JsonProperty("teamId")]
-    public string TeamId { get; set; }
-    [JsonProperty("price")]
-    public int Price { get; set; }
+    // And replace it with this new version
+    [JsonProperty("winningTeamId")]
+    public string WinningTeamId { get; set; }
+
+    [JsonProperty("winningBid")]
+    public int WinningBid { get; set; }
+
+    [JsonProperty("player")]
+    public Player Player { get; set; }
+
+    // We will store all bids for this player to show during intermission
+    [JsonProperty("allBids")]
+    public Dictionary<string, Bid> AllBids { get; set; } = new Dictionary<string, Bid>();
 }
 
 public class RosterSettings

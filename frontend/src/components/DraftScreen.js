@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom'; // 'useNavigate' has been removed
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { HubConnectionBuilder } from '@microsoft/signalr';
@@ -10,7 +10,6 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api
 
 const DraftScreen = () => {
     const { leagueId } = useParams();
-    // const navigate = useNavigate(); // This line has been deleted
     const { user } = useAuth();
     const [league, setLeague] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -76,9 +75,6 @@ const DraftScreen = () => {
         </div>
     );
 };
-
-// The LobbyView and DraftingView sub-components are unchanged from the previous version.
-// They are included here in their entirety.
 
 const LobbyView = ({ league, user, leagueId }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -188,77 +184,31 @@ const LobbyView = ({ league, user, leagueId }) => {
 };
 
 const DraftingView = ({ league, user, leagueId }) => {
-    const [bidAmount, setBidAmount] = useState(1);
-    const [timer, setTimer] = useState(0);
-
-    const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
-
-    let highBid = { amount: 0, teamName: "No bids yet" };
-    if (league.activeBids && Object.keys(league.activeBids).length > 0) {
-        const bids = Object.entries(league.activeBids);
-        const [topBidderId, topBid] = bids.sort(([,a],[,b]) => b.amount - a.amount)[0];
-        const topBidderTeam = league.teams.find(t => t.ownerId === topBidderId);
-        highBid = { amount: topBid.amount, teamName: topBidderTeam.name };
-    }
+    const isIntermission = league.status.toLowerCase() === 'intermission';
 
     useEffect(() => {
-        const calculateTimeLeft = () => {
-            if (league.auctionTimer?.endTime) {
-                const endTime = new Date(league.auctionTimer.endTime).getTime();
-                const now = new Date().getTime();
-                const difference = endTime - now;
-                return Math.max(0, Math.floor(difference / 1000));
-            }
-            return 0;
-        };
-        
-        setTimer(calculateTimeLeft());
-        const interval = setInterval(() => {
-            setTimer(calculateTimeLeft());
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, [league.auctionTimer]);
-
-    const handlePlaceBid = async () => {
-        try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { 
-                userId: user.userId, 
-                amount: parseInt(bidAmount) 
-            });
-        } catch (error) {
-            alert(`Error placing bid: ${error.response?.data || error.message}`);
+        let pollInterval;
+        if (isIntermission) {
+            pollInterval = setInterval(() => {
+                axios.post(`${API_BASE_URL}/leagues/${leagueId}/nextRound`);
+            }, 5000);
         }
-    };
+        return () => clearInterval(pollInterval);
+    }, [isIntermission, leagueId]);
 
-    if (!currentPlayer) {
-        return <div className="card">Waiting for next player... or the draft is over!</div>;
-    }
 
     return (
         <>
             <div className="card">
                 <h3>Draft Controls & Overview</h3>
-                {league.adminId === user.userId && (
-                    <div>
-                        <button>Resume Draft</button> <button>Skip Player</button> <button>Nominate Player</button>
-                    </div>
-                )}
+                {league.adminId === user.userId && <AdminControls league={league} user={user} leagueId={leagueId} />}
             </div>
             
-            <div className="card" style={{marginTop: '20px'}}>
-                <h3>Current Player Up for Bid:</h3>
-                <h2>{currentPlayer.name} - {currentPlayer.position}</h2>
-                <p>High Bid: ${highBid.amount} ({highBid.teamName})</p>
-                <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>
-                    Bid Ends In: {timer}s
-                </p>
-                
-                <div>
-                    Your Bid: <input type="number" value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{width: '60px', margin: '0 10px'}} />
-                    <button onClick={handlePlaceBid}>Place Bid</button>
-                </div>
-            </div>
+            {isIntermission ? (
+                <IntermissionView league={league} />
+            ) : (
+                <AuctionView league={league} user={user} leagueId={leagueId} />
+            )}
 
             <div className="card" style={{marginTop: '20px'}}>
                 <h3>League Teams:</h3>
@@ -272,6 +222,121 @@ const DraftingView = ({ league, user, leagueId }) => {
                 ))}
             </div>
         </>
+    );
+};
+
+const AdminControls = ({ league, user, leagueId }) => {
+    const handleSkipPlayer = async () => {
+        if (window.confirm("Are you sure you want to skip this player and move to the next?")) {
+            try {
+                await axios.post(`${API_BASE_URL}/leagues/${leagueId}/skip`, { adminId: user.userId });
+            } catch (error) {
+                alert(`Error skipping player: ${error.response?.data || error.message}`);
+            }
+        }
+    };
+
+    return (
+        <div>
+            <button>Resume Draft</button>
+            <button onClick={handleSkipPlayer}>Skip Player</button>
+            <button>Nominate Player</button>
+            <button>Manage Members</button>
+            <button>Beer B!tch</button>
+            <button>Complete Draft</button>
+        </div>
+    );
+};
+
+const AuctionView = ({ league, user, leagueId }) => {
+    const [bidAmount, setBidAmount] = useState(1);
+    const [timer, setTimer] = useState(0);
+
+    const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            if (league.auctionTimer?.endTime) {
+                const endTime = new Date(league.auctionTimer.endTime).getTime();
+                const now = new Date().getTime();
+                return Math.max(0, Math.floor((endTime - now) / 1000));
+            }
+            return 0;
+        };
+        const interval = setInterval(() => setTimer(calculateTimeLeft()), 1000);
+        return () => clearInterval(interval);
+    }, [league.auctionTimer]);
+
+    const handlePlaceBid = async () => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+        } catch (error) {
+            alert(`Error placing bid: ${error.response?.data || error.message}`);
+        }
+    };
+
+    if (!currentPlayer) return <div className="card">Waiting for player nomination...</div>;
+
+    return (
+        <div className="card" style={{marginTop: '20px'}}>
+            <h3>Current Player Up for Bid:</h3>
+            <h2>{currentPlayer.name} - {currentPlayer.position}</h2>
+            
+            <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>
+                Bid Ends In: {timer}s
+            </p>
+            <div>
+                Your Bid: <input type="number" value={bidAmount} onChange={e => setBidAmount(e.target.value)} style={{width: '60px', margin: '0 10px'}} />
+                <button onClick={handlePlaceBid}>Place Bid</button>
+            </div>
+        </div>
+    );
+};
+
+const IntermissionView = ({ league }) => {
+    const [timer, setTimer] = = useState(0);
+    const lastPick = league.draftLog && league.draftLog.length > 0 ? league.draftLog[league.draftLog.length - 1] : null;
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            if (league.auctionTimer?.endTime) {
+                const endTime = new Date(league.auctionTimer.endTime).getTime();
+                const now = new Date().getTime();
+                return Math.max(0, Math.floor((endTime - now) / 1000));
+            }
+            return 0;
+        };
+        const interval = setInterval(() => setTimer(calculateTimeLeft()), 1000);
+        return () => clearInterval(interval);
+    }, [league.auctionTimer]);
+
+    if (!lastPick) return <div className="card">Getting ready for the next player...</div>;
+
+    const winningTeam = league.teams.find(t => t.id === lastPick.winningTeamId);
+    const allBids = Object.entries(lastPick.allBids).sort(([,a],[,b]) => b.amount - a.amount);
+
+    return (
+        <div className="card" style={{marginTop: '20px', backgroundColor: '#e6ffed'}}>
+            <h2>Intermission!</h2>
+            <p style={{fontSize: '20px'}}>Next player in: <strong>{timer}s</strong></p>
+            <div style={{marginTop: '20px'}}>
+                <h4>Last Player Drafted:</h4>
+                <p>
+                    <strong>{lastPick.player.name}</strong> was drafted by 
+                    <strong> {winningTeam?.name || 'N/A'}</strong> for 
+                    <strong> ${lastPick.winningBid}</strong>!
+                </p>
+            </div>
+            <div style={{marginTop: '20px'}}>
+                <h4>All Bids for this Player:</h4>
+                <ul style={{listStyle: 'none', padding: 0}}>
+                    {allBids.map(([userId, bid]) => {
+                        const team = league.teams.find(t => t.ownerId === userId);
+                        return <li key={userId}>{team?.name || 'Unknown Team'}: ${bid.amount}</li>;
+                    })}
+                </ul>
+            </div>
+        </div>
     );
 };
 
