@@ -668,3 +668,26 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
 
 
 export default DraftScreen;
+
+useEffect(() => {
+    if (
+        league?.currentAuction?.status === "active" &&
+        timer === 0 &&
+        myCurrentBid > 0 &&
+        !hasSubmittedFinalBid
+    ) {
+        const timeout = setTimeout(() => {
+            axios.post(`${API_BASE_URL}/leagues/${leagueId}/submit-bid`, {, {
+                teamId: userTeam?.id,
+                bidAmount: myCurrentBid,
+            })
+            .then(() => {
+                console.log("✅ Final bid submitted:", myCurrentBid);
+                setHasSubmittedFinalBid(true);
+            })
+            .catch((err) => console.error("❌ Failed to submit final bid:", err));
+        }, 2000); // 2-second buffer
+
+        return () => clearTimeout(timeout);
+    }
+}, [league?.currentAuction?.status, timer, myCurrentBid]);
