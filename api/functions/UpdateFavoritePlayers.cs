@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using System.Collections.Generic;
+using Microsoft.Azure.WebJobs.Extensions.SignalRService; // <-- 1. ADD THIS LINE
 
 public static class UpdateFavoritePlayers
 {
@@ -21,6 +22,7 @@ public static class UpdateFavoritePlayers
             databaseName: "Fantasy Football",
             containerName: "Leagues",
             Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages, // <-- 2. ADD THIS BINDING
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -35,23 +37,28 @@ public static class UpdateFavoritePlayers
 
         try
         {
-            // 1. READ: Get the league document from the database
             ItemResponse<League> leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             League leagueToUpdate = leagueResponse.Resource;
 
-            // 2. MODIFY: Find the user's team and update their favorite players list
             var teamToUpdate = leagueToUpdate.Teams.FirstOrDefault(t => t.OwnerId == data.UserId);
             if (teamToUpdate == null)
             {
                 return new NotFoundObjectResult($"Team for user '{data.UserId}' not found in league '{leagueId}'.");
             }
 
-            // Replace the old list of favorites with the new one from the client
             teamToUpdate.FavoritePlayerIds = data.PlayerIds;
             log.LogInformation($"Updated favorite players for user {data.UserId} in league {leagueId}.");
 
-            // 3. REPLACE: Save the updated league document back to the database
             await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
+
+            // --- 3. ADD THIS BROADCAST MESSAGE ---
+            // This tells all clients that the state has changed and sends them the new data.
+            await signalRMessages.AddAsync(new SignalRMessage
+            {
+                Target = "draftStateUpdate",
+                Arguments = new object[] { leagueToUpdate }
+            });
+            // --- END OF CHANGE ---
 
             return new OkObjectResult(new { message = "Favorite players updated successfully." });
         }
@@ -66,7 +73,6 @@ public static class UpdateFavoritePlayers
         }
     }
 
-    // Helper class for deserializing the request body
     public class UpdateFavoritesRequest
     {
         public string UserId { get; set; }
