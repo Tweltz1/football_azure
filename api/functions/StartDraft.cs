@@ -24,7 +24,6 @@ public static class StartDraft
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<StartDraftRequest>(requestBody);
-
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
         try
@@ -37,17 +36,13 @@ public static class StartDraft
                 return new UnauthorizedResult();
             }
 
-            // --- CORRECTED LOGIC ---
-            // The draft can start if all non-admin members are ready.
             var nonAdminMembers = leagueToUpdate.Members.Where(id => id != leagueToUpdate.AdminId).ToList();
             bool allNonAdminsReady = nonAdminMembers.All(memberId => leagueToUpdate.ReadyMembers.Contains(memberId));
             
-            // Allow start if there are no other members, OR if all other members are ready.
             if (!allNonAdminsReady && nonAdminMembers.Any())
             {
                 return new BadRequestObjectResult("Not all other members are ready.");
             }
-            // --- END CORRECTED LOGIC ---
 
             leagueToUpdate.Status = "drafting";
             leagueToUpdate.CurrentPlayerId = GetRandomPlayerId(leagueToUpdate);
@@ -55,10 +50,11 @@ public static class StartDraft
 
             await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
 
+            // Send the full, updated league state
             await signalRMessages.AddAsync(new SignalRMessage
             {
-                Target = "draftStarted",
-                Arguments = new object[] { leagueToUpdate.Id }
+                Target = "draftStateUpdate",
+                Arguments = new object[] { leagueToUpdate }
             });
 
             return new OkResult();
@@ -72,7 +68,7 @@ public static class StartDraft
     private static string GetRandomPlayerId(League league)
     {
         var undraftedPlayers = league.InitialPlayerPool.Where(p => !p.IsDrafted).ToList();
-        if (!undraftedPlayers.Any()) return null; // No players left
+        if (!undraftedPlayers.Any()) return null;
         var random = new Random();
         return undraftedPlayers[random.Next(undraftedPlayers.Count)].Id;
     }

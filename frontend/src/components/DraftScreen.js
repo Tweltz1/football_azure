@@ -46,12 +46,6 @@ const DraftScreen = () => {
                     }
                 });
                 
-                connection.on('draftStarted', (startedLeagueId) => {
-                     if (startedLeagueId === leagueId) {
-                        window.location.reload(); 
-                    }
-                });
-
                 await connection.start();
             } catch (e) {
                 console.error("SignalR Connection Failed: ", e);
@@ -62,7 +56,7 @@ const DraftScreen = () => {
         return () => {
             if (connection) connection.stop();
         };
-    }, [leagueId, navigate]);
+    }, [leagueId]);
 
     if (loading) return <div>Loading Draft Room...</div>;
     if (!league) return <div>Could not load league.</div>;
@@ -103,7 +97,6 @@ const LobbyView = ({ league, user, leagueId }) => {
     const handleSetReadyStatus = async () => {
         const currentStatus = league.readyMembers.includes(user.userId);
         try {
-            // Note: The backend will broadcast a 'draftStateUpdate' on success
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/ready`, { userId: user.userId, isReady: !currentStatus });
         } catch (error) {
             alert(`Failed to update ready status: ${error.response?.data || error.message}`);
@@ -112,7 +105,6 @@ const LobbyView = ({ league, user, leagueId }) => {
     
     const handleStartDraft = async () => {
         try {
-            // Note: The backend will broadcast a 'draftStarted' on success
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/startDraft`, { adminId: user.userId });
         } catch (error) {
             alert(`Failed to start draft: ${error.response?.data || error.message}`);
@@ -123,7 +115,6 @@ const LobbyView = ({ league, user, leagueId }) => {
         const isCurrentlyFavorite = userFavorites.includes(playerIdToToggle);
         const newFavoriteIds = isCurrentlyFavorite ? userFavorites.filter(id => id !== playerIdToToggle) : [...userFavorites, playerIdToToggle];
         try {
-            // Note: The backend will broadcast a 'draftStateUpdate' on success
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/favorites`, { userId: user.userId, playerIds: newFavoriteIds });
         } catch (error) {
             console.error("Error updating favorite players:", error);
@@ -148,7 +139,14 @@ const LobbyView = ({ league, user, leagueId }) => {
 
             <div className="card" style={{marginTop: '20px'}}>
                 <h3>League Teams</h3>
-                {/* Team list UI can be added here */}
+                 {league.teams.map(team => (
+                    <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
+                        <p style={{margin: '5px 0'}}>
+                            <strong>{team.name}</strong> ({team.ownerId === user.userId ? 'You' : ''}) - 
+                            Budget: <strong>${team.budget}</strong>
+                        </p>
+                    </div>
+                ))}
             </div>
 
             <div className="card" style={{ marginTop: '20px' }}>
@@ -210,7 +208,8 @@ const DraftingView = ({ league, user, leagueId }) => {
             }
             return 0;
         };
-
+        
+        setTimer(calculateTimeLeft()); // Set timer immediately on render
         const interval = setInterval(() => {
             setTimer(calculateTimeLeft());
         }, 1000);

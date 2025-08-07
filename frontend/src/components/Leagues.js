@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import '../App.css'; // Ensure you have this import
+import { HubConnectionBuilder } from '@microsoft/signalr';
+import { getSignalRInfo } from '../api';
+import '../App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
@@ -10,15 +12,13 @@ const Leagues = ({ userId }) => {
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRosterModal, setShowRosterModal] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false); // New state for join modal
+  const [showJoinModal, setShowJoinModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [currentLeague, setCurrentLeague] = useState(null);
   
-  // States for Join League modal
   const [joinLeagueName, setJoinLeagueName] = useState('');
   const [joinPassword, setJoinPassword] = useState('');
   
-  // States for Roster Settings from the pop-up
   const [rosterSettings, setRosterSettings] = useState({});
   const [draftTimers, setDraftTimers] = useState({});
 
@@ -32,11 +32,40 @@ const Leagues = ({ userId }) => {
     } finally {
       setLoading(false);
     }
-  }, [userId]); // Add userId to the dependency array
+  }, [userId]);
 
   useEffect(() => {
     fetchLeagues();
-  }, [fetchLeagues]); // Now this dependency is correct
+  }, [fetchLeagues]);
+
+  useEffect(() => {
+    let connection;
+    const setupSignalR = async () => {
+        try {
+            const info = await getSignalRInfo();
+            connection = new HubConnectionBuilder()
+                .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('draftStateUpdate', (updatedLeague) => {
+                console.log("League update received on Leagues page:", updatedLeague);
+                setLeagues(currentLeagues => 
+                    currentLeagues.map(l => l.id === updatedLeague.id ? updatedLeague : l)
+                );
+            });
+
+            await connection.start();
+        } catch (e) {
+            console.error("SignalR Connection Failed on Leagues page: ", e);
+        }
+    };
+
+    setupSignalR();
+    return () => {
+        if (connection) connection.stop();
+    };
+  }, []);
 
   const handleDelete = async (leagueId) => {
     if (window.confirm("Are you sure you want to delete this league?")) {
@@ -139,7 +168,7 @@ const Leagues = ({ userId }) => {
                     {league.members.length}/12
                   </td>
                   <td className="actions-cell-flex">
-					<Link to={`/draft/${league.id}`}>
+                    <Link to={`/draft/${league.id}`}>
                       <button className="view-details-button">Enter Draft Room</button>
                     </Link>
                     {league.adminId === userId && (
