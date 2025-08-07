@@ -333,29 +333,41 @@ const AuctionView = ({
 
   // Reset on new player
   useEffect(() => {
-    setMyCurrentBid(0);
-    setHasSubmittedFinalBid(false);
-  }, [league.currentAuction.playerId]);
+	  setMyCurrentBid(0);
+	  setHasSubmittedFinalBid(false);
+	}, [
+	  league.currentAuction.playerId,
+	  setMyCurrentBid,
+	  setHasSubmittedFinalBid
+	]);
 
   // Final-bid-only submission
   useEffect(() => {
-    if (
-      league.currentAuction.status === 'awaiting_final_bids' &&
-      timer === 0 &&
-      myCurrentBid > 0 &&
-      !hasSubmittedFinalBid
-    ) {
-      const timeout = setTimeout(() => {
-        axios.post(
-          `${API_BASE_URL}/leagues/${leagueId}/submit-bid`,
-          { teamId: userTeam.id, bidAmount: myCurrentBid }
-        )
-        .then(() => setHasSubmittedFinalBid(true))
-        .catch(err => console.error(err));
-      }, 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [league.currentAuction.status, timer, myCurrentBid, hasSubmittedFinalBid, leagueId, userTeam]);
+	  if (
+		league.currentAuction.status === 'awaiting_final_bids' &&
+		timer === 0 &&
+		myCurrentBid > 0 &&
+		!hasSubmittedFinalBid
+	  ) {
+		const timeout = setTimeout(() => {
+		  axios.post(
+			`${API_BASE_URL}/leagues/${leagueId}/submit-bid`,
+			{ teamId: userTeam.id, bidAmount: myCurrentBid }
+		  )
+		  .then(() => setHasSubmittedFinalBid(true))
+		  .catch(err => console.error(err));
+		}, 2000);
+		return () => clearTimeout(timeout);
+	  }
+	}, [
+	  league.currentAuction.status,
+	  timer,
+	  myCurrentBid,
+	  hasSubmittedFinalBid,
+	  leagueId,
+	  userTeam,
+	  setHasSubmittedFinalBid
+	]);
 
   const player = league.draftPlayers.find(p => p.id === league.currentAuction.playerId);
   const isAwaiting = league.currentAuction.status === 'awaiting_final_bids';
