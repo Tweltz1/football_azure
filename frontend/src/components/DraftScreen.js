@@ -10,21 +10,8 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api
 
 const ToastNotification = ({ message, show, onClose }) => {
     if (!show) return null;
-
     return (
-        <div style={{
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            backgroundColor: '#28a745',
-            color: 'white',
-            padding: '15px',
-            borderRadius: '5px',
-            zIndex: 1000,
-            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-            transition: 'opacity 0.5s ease-in-out',
-            opacity: show ? 1 : 0,
-        }}>
+        <div style={{ position: 'fixed', top: '20px', right: '20px', backgroundColor: '#28a745', color: 'white', padding: '15px', borderRadius: '5px', zIndex: 1000, boxShadow: '0 4px 8px rgba(0,0,0,0.2)', transition: 'opacity 0.5s ease-in-out', opacity: show ? 1 : 0 }}>
             {message}
             <button onClick={onClose} style={{ marginLeft: '15px', border: 'none', background: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>&times;</button>
         </div>
@@ -373,13 +360,9 @@ const AuctionView = ({ league, user, leagueId }) => {
     useEffect(() => {
         const debounceBid = setTimeout(() => {
             if (bidAmount > 0) {
-                // To avoid sending a bid when the component first mounts with bidAmount=1,
-                // we can check if the user actually has a bid already.
-                // A better check would be to see if the user's bid is different from the input.
-                // For now, this is simple.
                 axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
             }
-        }, 250); // 250ms (a quarter of a second) delay
+        }, 250);
 
         return () => clearTimeout(debounceBid);
     }, [bidAmount, leagueId, user.userId]);
@@ -502,9 +485,7 @@ const IntermissionView = ({ league }) => {
 };
 
 const TeamListViewer = ({ league, user, leagueId }) => {
-    const { rosterSettings } = league;
-    if (!rosterSettings) return null;
-    const totalRosterSpots = Object.values(rosterSettings).reduce((sum, val) => sum + (val || 0), 0);
+    // --- THIS IS THE FIX: Move Hooks to the top ---
     const [beerRequestCooldown, setBeerRequestCooldown] = useState(0);
     const userTeam = league.teams.find(t => t.ownerId === user.userId);
 
@@ -514,6 +495,11 @@ const TeamListViewer = ({ league, user, leagueId }) => {
             return () => clearTimeout(timer);
         }
     }, [beerRequestCooldown]);
+    // --- END OF FIX ---
+
+    const { rosterSettings } = league;
+    if (!rosterSettings) return null; // Early return is now AFTER hooks
+    const totalRosterSpots = Object.values(rosterSettings).reduce((sum, val) => sum + (val || 0), 0);
 
     const handleRequestBeer = async () => {
         if (!userTeam) return;
