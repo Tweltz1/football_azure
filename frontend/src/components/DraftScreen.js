@@ -8,11 +8,35 @@ import '../App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
+const ToastNotification = ({ message, show, onClose }) => {
+    if (!show) return null;
+
+    return (
+        <div style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            backgroundColor: '#28a745',
+            color: 'white',
+            padding: '15px',
+            borderRadius: '5px',
+            zIndex: 1000,
+            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+            transition: 'opacity 0.5s ease-in-out',
+            opacity: show ? 1 : 0,
+        }}>
+            {message}
+            <button onClick={onClose} style={{ marginLeft: '15px', border: 'none', background: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>&times;</button>
+        </div>
+    );
+};
+
 const DraftScreen = () => {
     const { leagueId } = useParams();
     const { user } = useAuth();
     const [league, setLeague] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState({ show: false, message: '' });
 
     useEffect(() => {
         const fetchLeagueState = async () => {
@@ -44,6 +68,11 @@ const DraftScreen = () => {
                         setLeague(updatedLeague);
                     }
                 });
+
+                connection.on('beerRequestReceived', (requestingTeamName) => {
+                    setToast({ show: true, message: `${requestingTeamName} wants a beer!` });
+                    setTimeout(() => setToast({ show: false, message: '' }), 5000);
+                });
                 
                 await connection.start();
             } catch (e) {
@@ -64,6 +93,7 @@ const DraftScreen = () => {
     
     return (
         <div style={{ padding: '20px' }}>
+            <ToastNotification message={toast.message} show={toast.show} onClose={() => setToast({ show: false, message: '' })} />
             <h2>Drafting in {league.name}</h2>
             <p>League Status: <span style={{fontWeight: 'bold'}}>{league.status.toUpperCase()}</span></p>
 
@@ -133,7 +163,7 @@ const LobbyView = ({ league, user, leagueId }) => {
             </div>
             <div className="card" style={{marginTop: '20px'}}>
                 <h3>League Teams</h3>
-                 <TeamListViewer league={league} user={user} />
+                 <TeamListViewer league={league} user={user} leagueId={leagueId} />
             </div>
             <div className="card" style={{ marginTop: '20px' }}>
                 <h3>Player Lists</h3>
@@ -201,13 +231,6 @@ const DraftingView = ({ league, user, leagueId }) => {
                 {league.adminId === user.userId && <AdminControls league={league} user={user} leagueId={leagueId} />}
             </div>
 
-            {beerBitchTeam && (
-                <div className="card" style={{marginTop: '20px', backgroundColor: 'lightgoldenrodyellow'}}>
-                    <h3>Beer Duty!</h3>
-                    <p><strong>{beerBitchTeam.name}</strong> has been assigned to Beer Duty!</p>
-                </div>
-            )}
-            
             {isIntermission ? (
                 <IntermissionView league={league} />
             ) : (
@@ -216,8 +239,15 @@ const DraftingView = ({ league, user, leagueId }) => {
 
             <div className="card" style={{marginTop: '20px'}}>
                 <h3>League Teams:</h3>
-                <TeamListViewer league={league} user={user} />
+                <TeamListViewer league={league} user={user} leagueId={leagueId} />
             </div>
+
+            {beerBitchTeam && (
+                <div className="card" style={{marginTop: '20px', backgroundColor: 'lightgoldenrodyellow'}}>
+                    <h3>Beer Duty!</h3>
+                    <p><strong>{beerBitchTeam.name}</strong> has been assigned to Beer Duty!</p>
+                </div>
+            )}
         </>
     );
 };
@@ -277,7 +307,6 @@ const AdminControls = ({ league, user, leagueId }) => {
     const handleAdjustBudget = async (teamId, newBudget) => {
         try {
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/adjust-budget`, { adminId: user.userId, teamId, newBudget: parseInt(newBudget) });
-            // The modal will close on its own if you want, or you can add logic to keep it open
         } catch (error) {
             alert(`Error adjusting budget: ${error.response?.data || error.message}`);
         }
@@ -337,7 +366,23 @@ const AdminControls = ({ league, user, leagueId }) => {
 const AuctionView = ({ league, user, leagueId }) => {
     const [bidAmount, setBidAmount] = useState(1);
     const [timer, setTimer] = useState(0);
+
     const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
+    const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
+
+    useEffect(() => {
+        const debounceBid = setTimeout(() => {
+            if (bidAmount > 0) {
+                // To avoid sending a bid when the component first mounts with bidAmount=1,
+                // we can check if the user actually has a bid already.
+                // A better check would be to see if the user's bid is different from the input.
+                // For now, this is simple.
+                axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+            }
+        }, 250); // 250ms (a quarter of a second) delay
+
+        return () => clearTimeout(debounceBid);
+    }, [bidAmount, leagueId, user.userId]);
 
     useEffect(() => {
         const { auctionTimer } = league;
@@ -364,11 +409,11 @@ const AuctionView = ({ league, user, leagueId }) => {
         return () => { if (intervalId) { clearInterval(intervalId); }};
     }, [league]);
 
-    const handlePlaceBid = async () => {
+    const handleCancelBid = async () => {
         try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
         } catch (error) {
-            alert(`Error placing bid: ${error.response?.data || error.message}`);
+            alert(`Error cancelling bid: ${error.response?.data || error.message}`);
         }
     };
     
@@ -382,12 +427,28 @@ const AuctionView = ({ league, user, leagueId }) => {
             <h3>Current Player Up for Bid:</h3>
             <h2>{currentPlayer.name} - {currentPlayer.position}</h2>
             <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Bid Ends In: {timer}s</p>
+            
+            {userHasActiveBid && (
+                <p style={{fontSize: '18px', color: 'green'}}>Your current bid is: ${league.activeBids[user.userId].amount}</p>
+            )}
+
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
                 Your Bid: 
                 <button onClick={decrementBid} disabled={league.auctionTimer?.isPaused}>-</button>
-                <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value) || 1)} style={{width: '60px', textAlign: 'center'}} disabled={league.auctionTimer?.isPaused} />
+                <input 
+                    type="number" 
+                    value={bidAmount} 
+                    onChange={e => setBidAmount(parseInt(e.target.value) || 1)}
+                    style={{width: '60px', textAlign: 'center'}} 
+                    disabled={league.auctionTimer?.isPaused} 
+                />
                 <button onClick={incrementBid} disabled={league.auctionTimer?.isPaused}>+</button>
-                <button onClick={handlePlaceBid} style={{marginLeft: '10px'}} disabled={league.auctionTimer?.isPaused}>Place Bid</button>
+                
+                {userHasActiveBid && (
+                    <button onClick={handleCancelBid} style={{marginLeft: '10px', backgroundColor: '#dc3545', color: 'white'}} disabled={league.auctionTimer?.isPaused}>
+                        Cancel Bid
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -440,10 +501,30 @@ const IntermissionView = ({ league }) => {
     );
 };
 
-const TeamListViewer = ({ league, user }) => {
+const TeamListViewer = ({ league, user, leagueId }) => {
     const { rosterSettings } = league;
     if (!rosterSettings) return null;
     const totalRosterSpots = Object.values(rosterSettings).reduce((sum, val) => sum + (val || 0), 0);
+    const [beerRequestCooldown, setBeerRequestCooldown] = useState(0);
+    const userTeam = league.teams.find(t => t.ownerId === user.userId);
+
+    useEffect(() => {
+        if (beerRequestCooldown > 0) {
+            const timer = setTimeout(() => setBeerRequestCooldown(prev => prev - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [beerRequestCooldown]);
+
+    const handleRequestBeer = async () => {
+        if (!userTeam) return;
+        setBeerRequestCooldown(300);
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/request-beer`, { requestingTeamId: userTeam.id });
+        } catch (error) {
+            alert(`Error requesting beer: ${error.response?.data || error.message}`);
+            setBeerRequestCooldown(0);
+        }
+    };
 
     return (
         <div>
@@ -463,6 +544,11 @@ const TeamListViewer = ({ league, user }) => {
                                 Total Spent: ${200 - team.budget} | 
                                 Max Bid: ${maxBid}
                             </p>
+                            {league.beerBitchTeamId && league.beerBitchTeamId !== team.id && (
+                                <button onClick={handleRequestBeer} disabled={beerRequestCooldown > 0}>
+                                    {beerRequestCooldown > 0 ? `Request Beer (${beerRequestCooldown}s)` : 'Request a Beer'}
+                                </button>
+                            )}
                         </div>
                     );
                 } else {
@@ -508,7 +594,7 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
     const [budgets, setBudgets] = useState(league.teams.reduce((acc, team) => ({...acc, [team.id]: team.budget }), {}));
 
     const handleBudgetChange = (teamId, value) => {
-        setBudgets(prev => ({ ...prev, [teamId]: value }));
+        setBudgets(prev => ({ ...prev, [teamId]: parseInt(value) || 0 }));
     };
 
     return (
