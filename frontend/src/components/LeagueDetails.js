@@ -137,7 +137,7 @@ const LeagueDetails = () => {
                     {favoritePlayers.length > 0 ? (
                         favoritePlayers.map(player => (
                             <li key={player.id} className="player-list-item">
-                                <span>{player.name} ({player.position})</span>
+                                <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                     <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
                                     <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
@@ -155,7 +155,7 @@ const LeagueDetails = () => {
                     {availablePlayers.length > 0 ? (
                         availablePlayers.map(player => (
                             <li key={player.id} className="player-list-item">
-                                <span>{player.name} ({player.position})</span>
+                                <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
                                 <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
                             </li>
                         ))

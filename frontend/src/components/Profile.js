@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
+import { initialPlayerList } from '../data/playerData'; // Using our central player list
 import '../App.css';
-import { initialPlayerList } from '../data/playerData';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
@@ -17,7 +17,6 @@ const Profile = () => {
         const getProfile = async () => {
             if (!user) return;
             try {
-                // Call our new GetOrCreateUserProfile function
                 const response = await axios.post(`${API_BASE_URL}/user-profile`, {
                     userId: user.userId,
                     displayName: user.userDetails
@@ -42,19 +41,16 @@ const Profile = () => {
             ? currentFavorites.filter(id => id !== playerIdToToggle)
             : [...currentFavorites, playerIdToToggle];
 
-        // Optimistic UI update
         const updatedProfile = { ...userProfile, favoritePlayerIds: newFavoriteIds };
         setUserProfile(updatedProfile);
 
         try {
-            // Call our new UpdateUserProfile function
             await axios.post(`${API_BASE_URL}/user-profile/${user.userId}`, {
                 favoritePlayerIds: newFavoriteIds
             });
         } catch (error) {
             console.error("Error updating profile:", error);
             alert("Failed to save your favorites. Reverting change.");
-            // Revert optimistic update on failure
             setUserProfile(userProfile);
         }
     };
@@ -93,7 +89,8 @@ const Profile = () => {
                         const isFavorite = userProfile.favoritePlayerIds.includes(player.id);
                         return (
                             <li key={player.id} className="player-list-item">
-                                <span>{player.name} ({player.position})</span>
+                                {/* --- THIS IS THE FIX --- */}
+                                <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
                                 <span 
                                     onClick={() => handleToggleGlobalFavorite(player.id)} 
                                     style={{
