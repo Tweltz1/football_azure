@@ -80,22 +80,28 @@ const DraftScreen = () => {
     // --- ADDED (Step 3) ---
     // This hook handles the automatic submission of the final bid
     useEffect(() => {
-        if (league && league.currentAuction && league.currentAuction.status === 'awaiting_final_bids') {
-            if (myCurrentBid > 0) {
-                console.log(`Bidding ended. Submitting my final bid of $${myCurrentBid}`);
-                axios.post(`${API_BASE_URL}/leagues/${leagueId}/submit-bid`, { bidAmount: myCurrentBid })
-                    .catch(error => {
-                        console.error("Failed to submit bid:", error);
-                        // Optionally show a toast notification for failed bids
-                        const errorMessage = error.response?.data || "An unknown error occurred.";
-                        setToast({ show: true, message: `Bid Failed: ${errorMessage}` });
-                        setTimeout(() => setToast({ show: false, message: '' }), 5000);
-                    });
-            }
-            // Reset the bid input for the next round
-            setMyCurrentBid(0);
-        }
-    }, [league?.currentAuction?.status, leagueId, myCurrentBid]);
+		// This effect will now re-run whenever the league object changes, which is correct.
+		
+		// Check if the server has signaled the start of the grace period
+		if (league && league.currentAuction && league.currentAuction.status === 'awaiting_final_bids') {
+			
+			// Only submit if the user actually has a bid entered.
+			if (myCurrentBid > 0) {
+				console.log(`Bidding ended. Submitting my final bid of $${myCurrentBid}`);
+
+				axios.post(`${API_BASE_URL}/leagues/${leagueId}/submit-bid`, { bidAmount: myCurrentBid })
+					.catch(error => {
+						console.error("Failed to submit bid:", error);
+						const errorMessage = error.response?.data || "An unknown error occurred.";
+						setToast({ show: true, message: `Bid Failed: ${errorMessage}` });
+						setTimeout(() => setToast({ show: false, message: '' }), 5000);
+					});
+			}
+			// Reset the bid input for the next round
+			setMyCurrentBid(0);
+		}
+	// The dependency array now includes 'league' to satisfy the linter.
+	}, [league, leagueId, myCurrentBid, setToast]);
 
 
     if (loading) return <div>Loading Draft Room...</div>;
