@@ -370,7 +370,6 @@ const AuctionView = ({ league, user, leagueId }) => {
         const debounceBid = setTimeout(() => {
             if (league.auctionTimer?.isPaused) { return; }
 
-            // Only send an update if the user's typed amount is different from their current server bid
             if (bidAmount !== currentServerBid) {
                 if (bidAmount > 0) {
                     axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
@@ -415,8 +414,8 @@ const AuctionView = ({ league, user, leagueId }) => {
     return (
         <div className="card" style={{marginTop: '20px'}}>
             <h3>Current Player Up for Bid:</h3>
-            <h2>{currentPlayer.name} - {currentPlayer.position} - {currentPlayer.Team}</h2>
-            <p>Rank: {currentPlayer.Rank}</p>
+            <h2>{currentPlayer.name} - {currentPlayer.position} - {currentPlayer.team}</h2>
+            <p>Rank: {currentPlayer.rank}</p>
             <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Bid Ends In: {timer}s</p>
             
             {userHasActiveBid && (
