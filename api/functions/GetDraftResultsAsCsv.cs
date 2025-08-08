@@ -1,3 +1,4 @@
+using System; // <-- THIS LINE FIXES THE ERROR
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
@@ -25,10 +26,8 @@ public static class GetDraftResultsAsCsv
             var league = leagueResponse.Resource;
 
             var csvBuilder = new StringBuilder();
-            // Add Header Row
             csvBuilder.AppendLine("Pick Number,Player Name,Position,NFL Team,Winning Bid,Drafted By");
 
-            // Add Data Rows
             int pickNumber = 1;
             foreach (var pick in league.DraftLog)
             {
