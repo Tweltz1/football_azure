@@ -41,26 +41,8 @@ public static class ResolveTie
 
         log.LogInformation($"Admin resolved tie, awarding {draftedPlayer.Name} to {winningTeam.Name}.");
 
-        // Award the player to the admin-selected winner
-        draftedPlayer.IsDrafted = true;
-        draftedPlayer.Price = league.TieBreaker.TieAmount;
-        winningTeam.Budget -= league.TieBreaker.TieAmount;
-        winningTeam.Roster.Add(new RosterSpot { Player = draftedPlayer, Position = draftedPlayer.Position });
-
-        league.DraftLog.Add(new DraftPick
-        {
-            WinningTeamId = winningTeam.Id,
-            WinningBid = league.TieBreaker.TieAmount,
-            Player = draftedPlayer,
-            AllBids = new Dictionary<string, Bid>(league.ActiveBids)
-        });
-
-        // Transition to Intermission
-        league.Status = "intermission";
-        league.ActiveBids.Clear();
-        league.CurrentPlayerId = null;
-        league.TieBreaker = null; // Clear the tie-breaker state
-        league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
+        // --- USE SHARED LOGIC ---
+        DraftLogic.AwardPlayerToTeam(league, draftedPlayer, winningTeam, league.TieBreaker.TieAmount);
         
         await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
         await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
