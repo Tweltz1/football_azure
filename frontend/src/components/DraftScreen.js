@@ -41,6 +41,8 @@ const DraftScreen = () => {
     }, [leagueId, user]);
 
     useEffect(() => {
+        if (!user?.userId) return;
+
         let connection;
         const setupSignalR = async () => {
             try {
@@ -62,16 +64,22 @@ const DraftScreen = () => {
                 });
                 
                 await connection.start();
+                await axios.post(`${API_BASE_URL}/leagues/${leagueId}/connect`, { userId: user.userId });
+
             } catch (e) {
                 console.error("SignalR Connection Failed: ", e);
             }
         };
 
         setupSignalR();
+
         return () => {
-            if (connection) connection.stop();
+            if (connection) {
+                axios.post(`${API_BASE_URL}/leagues/${leagueId}/disconnect`, { userId: user.userId });
+                connection.stop();
+            }
         };
-    }, [leagueId]);
+    }, [leagueId, user]);
 
     if (loading) return <div>Loading Draft Room...</div>;
     if (!league) return <div>Could not load league.</div>;
@@ -403,7 +411,7 @@ const AuctionView = ({ league, user, leagueId }) => {
             highBid = Math.max(...Object.values(league.activeBids).map(b => b.amount));
         }
         setBidAmount(highBid + 1);
-    }, [league.currentPlayerId]);
+    }, [league.currentPlayerId, league.activeBids]);
 
     useEffect(() => {
         const { auctionTimer } = league;
@@ -688,35 +696,35 @@ const TeamListViewer = ({ league, user, leagueId }) => {
                 const isUserTeam = team.ownerId === user.userId;
                 const rosterSpotsFilled = team.roster?.length || 0;
                 
-                if (isUserTeam) {
-                    const remainingRosterSpots = totalRosterSpots - rosterSpotsFilled;
-                    const maxBid = team.budget - (remainingRosterSpots > 0 ? remainingRosterSpots - 1 : 0);
-                    return (
-                        <div key={team.id} className="user-team-details" style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
-                            <h4>{team.name} (You)</h4>
-                            <p style={{margin: '5px 0'}}>
-                                Roster: {rosterSpotsFilled} / {totalRosterSpots} | 
-                                Budget: ${team.budget} | 
-                                Total Spent: ${200 - team.budget} | 
-                                Max Bid: ${maxBid}
-                            </p>
-                            {league.beerBitchTeamId && league.beerBitchTeamId !== team.id && (
-                                <button onClick={handleRequestBeer} disabled={beerRequestCooldown > 0}>
-                                    {beerRequestCooldown > 0 ? `Request Beer (${beerRequestCooldown}s)` : 'Request a Beer'}
-                                </button>
-                            )}
+                return (
+                    <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <div>
+                            <span style={{
+                                height: '10px',
+                                width: '10px',
+                                backgroundColor: league.onlineUserIds.includes(team.ownerId) ? '#28a745' : '#6c757d',
+                                borderRadius: '50%',
+                                display: 'inline-block',
+                                marginRight: '8px'
+                            }}></span>
+                            <strong>{team.name}</strong> {isUserTeam ? '(You)' : ''}
                         </div>
-                    );
-                } else {
-                     return (
-                        <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
-                            <p style={{margin: '5px 0'}}>
-                                <strong>{team.name}</strong> - 
-                                Budget: <strong>${team.budget}</strong>
-                            </p>
-                        </div>
-                    );
-                }
+                        {isUserTeam ? (
+                            <span>
+                                Roster: {rosterSpotsFilled}/{totalRosterSpots} | Budget: ${team.budget}
+                            </span>
+                        ) : (
+                            <span>
+                                Roster: {rosterSpotsFilled}/{totalRosterSpots}
+                            </span>
+                        )}
+                         {isUserTeam && league.beerBitchTeamId && league.beerBitchTeamId !== team.id && (
+                            <button onClick={handleRequestBeer} disabled={beerRequestCooldown > 0}>
+                                {beerRequestCooldown > 0 ? `Request Beer (${beerRequestCooldown}s)` : 'Request a Beer'}
+                            </button>
+                        )}
+                    </div>
+                );
             })}
         </div>
     );

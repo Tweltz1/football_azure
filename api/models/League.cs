@@ -45,6 +45,8 @@ public class League
     public string BeerBitchTeamId { get; set; }
 	[JsonProperty("tieBreaker")]
     public TieBreakerInfo TieBreaker { get; set; }
+	[JsonProperty("onlineUserIds")]
+    public List<string> OnlineUserIds { get; set; } = new List<string>();
 }
 
 public class TieBreakerInfo
