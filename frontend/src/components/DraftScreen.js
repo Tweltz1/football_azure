@@ -239,7 +239,7 @@ const DraftingView = ({ league, user, leagueId }) => {
             )}
 
             <div className="card" style={{marginTop: '20px'}}>
-                <h3>League Teams</h3>
+                <h3>League Teams:</h3>
                 <TeamListViewer league={league} user={user} leagueId={leagueId} />
             </div>
 
@@ -404,14 +404,24 @@ const AuctionView = ({ league, user, leagueId }) => {
     const [timer, setTimer] = useState(0);
 
     const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
-    
+    const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
+    const currentServerBid = userHasActiveBid ? league.activeBids[user.userId].amount : 0;
+
     useEffect(() => {
-        let highBid = 0;
-        if (league.activeBids && Object.keys(league.activeBids).length > 0) {
-            highBid = Math.max(...Object.values(league.activeBids).map(b => b.amount));
-        }
-        setBidAmount(highBid + 1);
-    }, [league.currentPlayerId, league.activeBids]);
+        const debounceBid = setTimeout(() => {
+            if (league.auctionTimer?.isPaused) { return; }
+
+            if (bidAmount !== currentServerBid) {
+                if (bidAmount > 0) {
+                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+                } else if (bidAmount === 0 && userHasActiveBid) {
+                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
+                }
+            }
+        }, 250);
+
+        return () => clearTimeout(debounceBid);
+    }, [bidAmount, leagueId, user.userId, league.auctionTimer?.isPaused, userHasActiveBid, currentServerBid]);
 
     useEffect(() => {
         const { auctionTimer } = league;
@@ -433,38 +443,14 @@ const AuctionView = ({ league, user, leagueId }) => {
         return () => { if (intervalId) { clearInterval(intervalId); }};
     }, [league]);
 
-    const handlePlaceBid = async () => {
-        if (bidAmount <= 0) {
-            alert("Bid must be at least $1.");
-            return;
-        }
-        try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
-        } catch (error) {
-            alert(`Error placing bid: ${error.response?.data || error.message}`);
-        }
-    };
-
-    const handleCancelBid = async () => {
-        try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
-        } catch (error) {
-            alert(`Error cancelling bid: ${error.response?.data || error.message}`);
-        }
-    };
-
-    const handleKeyDown = (event) => {
-        if (event.key === 'Enter') {
-            handlePlaceBid();
-        }
+    const handleCancelBid = () => {
+        setBidAmount(0);
     };
     
     const incrementBid = () => setBidAmount(prev => prev + 1);
     const decrementBid = () => setBidAmount(prev => Math.max(0, prev - 1));
 
     if (!currentPlayer) return <div className="card">Waiting for player nomination...</div>;
-
-    const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
 
     return (
         <div className="card" style={{marginTop: '20px'}}>
@@ -479,26 +465,18 @@ const AuctionView = ({ league, user, leagueId }) => {
 
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
                 Your Bid: 
-                <button onClick={decrementBid} disabled={league.auctionTimer?.isPaused}>-</button>
+                <button onClick={decrementBid}>-</button>
                 <input 
                     type="number" 
                     value={bidAmount} 
                     onChange={e => setBidAmount(parseInt(e.target.value) || 0)}
-                    onKeyDown={handleKeyDown}
                     style={{width: '60px', textAlign: 'center'}} 
-                    disabled={league.auctionTimer?.isPaused} 
                 />
-                <button onClick={incrementBid} disabled={league.auctionTimer?.isPaused}>+</button>
+                <button onClick={incrementBid}>+</button>
                 
-                <button onClick={handlePlaceBid} style={{marginLeft: '10px'}} disabled={league.auctionTimer?.isPaused}>
-                    Place Bid
+                <button onClick={handleCancelBid} style={{marginLeft: '10px', backgroundColor: '#dc3545', color: 'white'}} disabled={!userHasActiveBid || league.auctionTimer?.isPaused}>
+                    Cancel Bid
                 </button>
-                
-                {userHasActiveBid && (
-                    <button onClick={handleCancelBid} style={{backgroundColor: '#dc3545', color: 'white'}} disabled={league.auctionTimer?.isPaused}>
-                        Cancel Bid
-                    </button>
-                )}
             </div>
         </div>
     );
