@@ -239,7 +239,7 @@ const DraftingView = ({ league, user, leagueId }) => {
             )}
 
             <div className="card" style={{marginTop: '20px'}}>
-                <h3>League Teams:</h3>
+                <h3>League Teams</h3>
                 <TeamListViewer league={league} user={user} leagueId={leagueId} />
             </div>
 
@@ -696,35 +696,58 @@ const TeamListViewer = ({ league, user, leagueId }) => {
                 const isUserTeam = team.ownerId === user.userId;
                 const rosterSpotsFilled = team.roster?.length || 0;
                 
-                return (
-                    <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <div>
-                            <span style={{
-                                height: '10px',
-                                width: '10px',
-                                backgroundColor: league.onlineUserIds.includes(team.ownerId) ? '#28a745' : '#6c757d',
-                                borderRadius: '50%',
-                                display: 'inline-block',
-                                marginRight: '8px'
-                            }}></span>
-                            <strong>{team.name}</strong> {isUserTeam ? '(You)' : ''}
+                if (isUserTeam) {
+                    const remainingRosterSpots = totalRosterSpots - rosterSpotsFilled;
+                    const maxBid = team.budget - (remainingRosterSpots > 0 ? remainingRosterSpots - 1 : 0);
+                    return (
+                        <div key={team.id} className="user-team-details" style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
+                            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                                <h4>
+                                    <span style={{ height: '10px', width: '10px', backgroundColor: league.onlineUserIds.includes(team.ownerId) ? '#28a745' : '#6c757d', borderRadius: '50%', display: 'inline-block', marginRight: '8px' }}></span>
+                                    {team.name} (You)
+                                </h4>
+                                <span>Roster: {rosterSpotsFilled} / {totalRosterSpots}</span>
+                            </div>
+                            <p style={{margin: '5px 0'}}>
+                                Budget: ${team.budget} | 
+                                Total Spent: ${200 - team.budget} | 
+                                Max Bid: ${maxBid}
+                            </p>
+                            <div>
+                                <h5>Your Roster:</h5>
+                                <ul style={{listStyle: 'none', paddingLeft: '10px'}}>
+                                    {team.roster.map((spot, index) => (
+                                        <li key={index}>{spot.player.name} ({spot.player.position}) - ${spot.player.price}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                            {league.beerBitchTeamId && league.beerBitchTeamId !== team.id && (
+                                <button onClick={handleRequestBeer} disabled={beerRequestCooldown > 0}>
+                                    {beerRequestCooldown > 0 ? `Request Beer (${beerRequestCooldown}s)` : 'Request a Beer'}
+                                </button>
+                            )}
                         </div>
-                        {isUserTeam ? (
-                            <span>
-                                Roster: {rosterSpotsFilled}/{totalRosterSpots} | Budget: ${team.budget}
-                            </span>
-                        ) : (
+                    );
+                } else {
+                     return (
+                        <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <div>
+                                <span style={{
+                                    height: '10px',
+                                    width: '10px',
+                                    backgroundColor: league.onlineUserIds.includes(team.ownerId) ? '#28a745' : '#6c757d',
+                                    borderRadius: '50%',
+                                    display: 'inline-block',
+                                    marginRight: '8px'
+                                }}></span>
+                                <strong>{team.name}</strong>
+                            </div>
                             <span>
                                 Roster: {rosterSpotsFilled}/{totalRosterSpots}
                             </span>
-                        )}
-                         {isUserTeam && league.beerBitchTeamId && league.beerBitchTeamId !== team.id && (
-                            <button onClick={handleRequestBeer} disabled={beerRequestCooldown > 0}>
-                                {beerRequestCooldown > 0 ? `Request Beer (${beerRequestCooldown}s)` : 'Request a Beer'}
-                            </button>
-                        )}
-                    </div>
-                );
+                        </div>
+                    );
+                }
             })}
         </div>
     );
