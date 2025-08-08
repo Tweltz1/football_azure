@@ -24,9 +24,11 @@ public static class StartNextAuctionRound
         var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
         var league = leagueResponse.Resource;
 
-        if (league == null || league.Status != "intermission" || DateTime.UtcNow < league.AuctionTimer.EndTime)
+        // --- THIS IS THE FIX ---
+        // We now also check if the timer is paused.
+        if (league == null || league.Status != "intermission" || league.AuctionTimer.IsPaused || DateTime.UtcNow < league.AuctionTimer.EndTime)
         {
-            // The intermission timer hasn't expired yet. Do nothing.
+            // The intermission timer hasn't expired or is paused. Do nothing.
             return new OkResult();
         }
 
