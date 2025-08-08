@@ -74,6 +74,7 @@ const DraftScreen = () => {
         setupSignalR();
 
         const handleVisibilityChange = () => {
+            if (!user?.userId) return;
             if (document.visibilityState === 'hidden') {
                 axios.post(`${API_BASE_URL}/leagues/${leagueId}/disconnect`, { userId: user.userId });
             } else {
@@ -690,7 +691,7 @@ const TeamListViewer = ({ league, user, leagueId }) => {
                                     <h5>Your Roster:</h5>
                                     <ul style={{listStyle: 'none', paddingLeft: '10px', margin: 0}}>
                                         {team.roster.map((spot, index) => (
-                                            <li key={index}>{spot.player.name} ({spot.player.position}) - ${spot.player.price}</li>
+                                            <li key={index}>{spot.player.name} ({spot.player.position} - Bye: {spot.player.bye}) - ${spot.player.price}</li>
                                         ))}
                                     </ul>
                                 </div>
@@ -761,7 +762,7 @@ const PlayerListViewer = ({ league, user, leagueId }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
                 {favoritePlayers.map(player => (
                     <li key={player.id} className="player-list-item">
-                        <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                        <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
                             <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
@@ -773,7 +774,7 @@ const PlayerListViewer = ({ league, user, leagueId }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
                 {availablePlayers.map(player => (
                     <li key={player.id} className="player-list-item">
-                        <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                        <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
                         <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
                     </li>
                 ))}
@@ -795,7 +796,7 @@ const NominatePlayerModal = ({ league, onNominate, onClose }) => {
                 <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
                     {undraftedPlayers.map(player => (
                         <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
                             <button onClick={() => onNominate(player.id)}>Nominate</button>
                         </li>
                     ))}
@@ -864,7 +865,7 @@ const CompletedView = ({ league, leagueId }) => {
                         <ul style={{listStyle: 'none', padding: 0}}>
                             {team.roster.map((spot, index) => (
                                 <li key={index}>
-                                    {spot.player.name} ({spot.player.position}) - ${spot.player.price}
+                                    {spot.player.name} ({spot.player.position} - Bye: {spot.player.bye}) - ${spot.player.price}
                                 </li>
                             ))}
                         </ul>

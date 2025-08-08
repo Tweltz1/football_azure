@@ -20,7 +20,6 @@ public static class CreateLeague
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Users", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
     {
-        log.LogInformation("CreateLeague function started.");
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<CreateLeagueRequest>(requestBody);
 
@@ -29,13 +28,31 @@ public static class CreateLeague
             return new BadRequestObjectResult("Please provide a league name and admin ID.");
         }
 
-        log.LogInformation($"Attempting to fetch profile for AdminId: {data.AdminId}");
         var userProfile = await GetUserProfile(cosmosClient, data.AdminId, log);
-        
         var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
-        log.LogInformation($"Found {userMasterFavorites.Count} favorite players in user's master list.");
+        
+        // Use the provided roster settings, or the default if none are sent
+        var rosterSettings = data.RosterSettings ?? new RosterSettings();
+        
+        // Get the full player pool from our shared data file
+        var fullPlayerPool = PlayerData.GetInitialPlayerPool();
 
-        var playerPool = PlayerData.GetInitialPlayerPool();
+        // --- NEW FILTERING LOGIC ---
+        var filteredPlayerPool = fullPlayerPool.Where(p =>
+        {
+            switch (p.Position.ToUpper())
+            {
+                case "QB": return rosterSettings.QB > 0;
+                case "RB": return rosterSettings.RB > 0;
+                case "WR": return rosterSettings.WR > 0;
+                case "TE": return rosterSettings.TE > 0;
+                case "K": return rosterSettings.K > 0;
+                case "DST":
+                case "DEF": return rosterSettings.DEF > 0;
+                default: return true; // Failsafe for unknown positions
+            }
+        }).ToList();
+        // --- END OF NEW LOGIC ---
 
         var newLeague = new League
         {
@@ -51,16 +68,17 @@ public static class CreateLeague
                     Name = "Admin Team",
                     Budget = 200,
                     Roster = new List<RosterSpot>(),
-                    FavoritePlayerIds = userMasterFavorites 
+                    FavoritePlayerIds = userMasterFavorites
                 }
             },
             Status = "created",
-            InitialPlayerPool = playerPool,
-            DraftPlayers = playerPool,
+            RosterSettings = rosterSettings, // Save the chosen settings
+            InitialPlayerPool = filteredPlayerPool, // Save the filtered pool
+            DraftPlayers = filteredPlayerPool,
         };
 
         await leaguesOut.AddAsync(newLeague);
-        log.LogInformation($"Successfully created league: {newLeague.Name}");
+
         return new OkObjectResult(new { id = newLeague.Id, name = newLeague.Name });
     }
 
@@ -69,14 +87,11 @@ public static class CreateLeague
         var container = cosmosClient.GetContainer("Fantasy Football", "Users");
         try
         {
-            log.LogInformation($"Querying Users container for id: {userId}");
-            UserProfile profile = await container.ReadItemAsync<UserProfile>(userId, new PartitionKey(userId));
-            log.LogInformation($"Successfully found profile for user {userId}.");
-            return profile;
+            return await container.ReadItemAsync<UserProfile>(userId, new PartitionKey(userId));
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            log.LogWarning($"Profile NOT FOUND for user {userId} during league creation.");
+            log.LogWarning($"Profile not found for user {userId} during league creation.");
             return null;
         }
     }
@@ -86,5 +101,6 @@ public static class CreateLeague
         public string Name { get; set; }
         public string AdminId { get; set; }
         public string Password { get; set; }
+        public RosterSettings RosterSettings { get; set; } // Now accepts roster settings
     }
 }

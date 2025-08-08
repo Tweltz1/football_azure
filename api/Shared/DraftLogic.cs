@@ -75,7 +75,12 @@ public static class DraftLogic
             case "WR": return settings.WR;
             case "TE": return settings.TE;
             case "K": return settings.K;
-            case "DEF": return settings.DEF;
+            // --- THIS IS THE FIX ---
+            // Treat both "DEF" and "DST" as the same position
+            case "DEF":
+            case "DST": 
+                return settings.DEF;
+            // --- END OF FIX ---
             case "FLEX": return settings.FLEX;
             case "SUPERFLEX": return settings.SuperFlex;
             case "BENCH": return settings.Bench;
