@@ -1,5 +1,3 @@
-// src/components/DraftScreen.js
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -11,569 +9,609 @@ import '../App.css';
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 const ToastNotification = ({ message, show, onClose }) => {
-  if (!show) return null;
-  return (
-    <div style={{
-      position: 'fixed', top: '20px', right: '20px',
-      backgroundColor: '#28a745', color: 'white',
-      padding: '15px', borderRadius: '5px', zIndex: 1000,
-      boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-      transition: 'opacity 0.5s ease-in-out', opacity: show ? 1 : 0
-    }}>
-      {message}
-      <button onClick={onClose} style={{
-        marginLeft: '15px', border: 'none', background: 'none',
-        color: 'white', fontWeight: 'bold', cursor: 'pointer',
-        fontSize: '16px'
-      }}>&times;</button>
-    </div>
-  );
+    if (!show) return null;
+    return (
+        <div style={{ position: 'fixed', top: '20px', right: '20px', backgroundColor: '#28a745', color: 'white', padding: '15px', borderRadius: '5px', zIndex: 1000, boxShadow: '0 4px 8px rgba(0,0,0,0.2)', transition: 'opacity 0.5s ease-in-out', opacity: show ? 1 : 0 }}>
+            {message}
+            <button onClick={onClose} style={{ marginLeft: '15px', border: 'none', background: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>&times;</button>
+        </div>
+    );
 };
 
 const DraftScreen = () => {
-  const { leagueId } = useParams();
-  const { user } = useAuth();
-  const [league, setLeague] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState({ show: false, message: '' });
+    const { leagueId } = useParams();
+    const { user } = useAuth();
+    const [league, setLeague] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState({ show: false, message: '' });
 
-  // Local bid state
-  const [myCurrentBid, setMyCurrentBid] = useState(0);
-  const [hasSubmittedFinalBid, setHasSubmittedFinalBid] = useState(false);
+    useEffect(() => {
+        const fetchLeagueState = async () => {
+            if (!user?.userId) return;
+            try {
+                const response = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/state`);
+                setLeague(response.data);
+            } catch (error) {
+                console.error("Error fetching league state:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchLeagueState();
+    }, [leagueId, user]);
 
-  useEffect(() => {
-    const fetchLeagueState = async () => {
-      if (!user?.userId) return;
-      try {
-        const response = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/state`);
-        setLeague(response.data);
-      } catch (error) {
-        console.error("Error fetching league state:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchLeagueState();
-  }, [leagueId, user]);
+    useEffect(() => {
+        let connection;
+        const setupSignalR = async () => {
+            try {
+                const info = await getSignalRInfo();
+                connection = new HubConnectionBuilder()
+                    .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
+                    .withAutomaticReconnect()
+                    .build();
 
-  useEffect(() => {
-    let connection;
-    const setupSignalR = async () => {
-      try {
-        const info = await getSignalRInfo();
-        connection = new HubConnectionBuilder()
-          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-          .withAutomaticReconnect()
-          .build();
+                connection.on('draftStateUpdate', (updatedLeague) => {
+                    if (updatedLeague.id === leagueId) {
+                        setLeague(updatedLeague);
+                    }
+                });
 
-        connection.on('draftStateUpdate', updatedLeague => {
-          if (updatedLeague.id === leagueId) {
-            setLeague(updatedLeague);
-          }
-        });
-        connection.on('beerRequestReceived', requestingTeamName => {
-          setToast({ show: true, message: `${requestingTeamName} wants a beer!` });
-          setTimeout(() => setToast({ show: false, message: '' }), 5000);
-        });
+                connection.on('beerRequestReceived', (requestingTeamName) => {
+                    setToast({ show: true, message: `${requestingTeamName} wants a beer!` });
+                    setTimeout(() => setToast({ show: false, message: '' }), 5000);
+                });
+                
+                await connection.start();
+            } catch (e) {
+                console.error("SignalR Connection Failed: ", e);
+            }
+        };
 
-        await connection.start();
-      } catch (e) {
-        console.error("SignalR Connection Failed: ", e);
-      }
-    };
-    setupSignalR();
-    return () => connection && connection.stop();
-  }, [leagueId]);
+        setupSignalR();
+        return () => {
+            if (connection) connection.stop();
+        };
+    }, [leagueId]);
 
-  if (loading) return <div>Loading Draft Room...</div>;
-  if (!league) return <div>Could not load league.</div>;
+    if (loading) return <div>Loading Draft Room...</div>;
+    if (!league) return <div>Could not load league.</div>;
 
-  const isLobbyPhase = ['created', 'lobby'].includes(league.status.toLowerCase());
+    const isLobbyPhase = league.status.toLowerCase() === 'created' || league.status.toLowerCase() === 'lobby';
+    
+    return (
+        <div style={{ padding: '20px' }}>
+            <ToastNotification message={toast.message} show={toast.show} onClose={() => setToast({ show: false, message: '' })} />
+            <h2>Drafting in {league.name}</h2>
+            <p>League Status: <span style={{fontWeight: 'bold'}}>{league.status.toUpperCase()}</span></p>
 
-  return (
-    <div style={{ padding: '20px' }}>
-      <ToastNotification
-        message={toast.message}
-        show={toast.show}
-        onClose={() => setToast({ show: false, message: '' })}
-      />
-      <h2>Drafting in {league.name}</h2>
-      <p>League Status: <strong>{league.status.toUpperCase()}</strong></p>
-
-      {isLobbyPhase
-        ? <LobbyView league={league} user={user} leagueId={leagueId} />
-        : <DraftingView
-            league={league}
-            user={user}
-            leagueId={leagueId}
-            myCurrentBid={myCurrentBid}
-            setMyCurrentBid={setMyCurrentBid}
-            hasSubmittedFinalBid={hasSubmittedFinalBid}
-            setHasSubmittedFinalBid={setHasSubmittedFinalBid}
-          />
-      }
-    </div>
-  );
+            {isLobbyPhase ? (
+                <LobbyView league={league} user={user} leagueId={leagueId} />
+            ) : (
+                <DraftingView league={league} user={user} leagueId={leagueId} />
+            )}
+        </div>
+    );
 };
 
-// ----------------- LOBBY VIEW -----------------
 const LobbyView = ({ league, user, leagueId }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortPosition, setSortPosition] = useState('All Positions');
-  const userTeam = league.teams.find(t => t.ownerId === user.userId);
-  const userFavorites = userTeam?.favoritePlayerIds || [];
-  const allPlayers = league.initialPlayerPool || [];
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortPosition, setSortPosition] = useState('All Positions');
+    const userTeam = league.teams.find(team => team.ownerId === user.userId);
+    const userFavorites = userTeam?.favoritePlayerIds || [];
+    const allPlayers = league.initialPlayerPool || [];
+    const favoritePlayers = allPlayers.filter(p => userFavorites.includes(p.id) && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
+    const availablePlayers = allPlayers.filter(p => !userFavorites.includes(p.id) && !p.isDrafted && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
+    const isCurrentUserAdmin = league.adminId === user.userId;
+    const nonAdminMembers = league.members.filter(id => id !== league.adminId);
+    const allNonAdminsReady = nonAdminMembers.every(memberId => league.readyMembers.includes(memberId));
+    const canStartDraft = isCurrentUserAdmin && (nonAdminMembers.length === 0 || allNonAdminsReady);
 
-  const favoritePlayers = allPlayers.filter(p =>
-    userFavorites.includes(p.id) &&
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (sortPosition === 'All Positions' || p.position === sortPosition)
-  );
-  const availablePlayers = allPlayers.filter(p =>
-    !userFavorites.includes(p.id) &&
-    !p.isDrafted &&
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (sortPosition === 'All Positions' || p.position === sortPosition)
-  );
-
-  const isAdmin = league.adminId === user.userId;
-  const nonAdmins = league.members.filter(id => id !== league.adminId);
-  const allNonAdminsReady = nonAdmins.every(id => league.readyMembers.includes(id));
-
-  const handleReady = async () => {
-    const isReady = league.readyMembers.includes(user.userId);
-    try {
-      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/ready`, {
-        userId: user.userId, isReady: !isReady
-      });
-    } catch (e) {
-      alert(`Ready toggle failed: ${e.response?.data || e.message}`);
-    }
-  };
-  const handleStart = async () => {
-    try {
-      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/startDraft`, { adminId: user.userId });
-    } catch (e) {
-      alert(`Start draft failed: ${e.response?.data || e.message}`);
-    }
-  };
-  const handleToggleFav = async pid => {
-    const isFav = userFavorites.includes(pid);
-    const newFavs = isFav
-      ? userFavorites.filter(id => id !== pid)
-      : [...userFavorites, pid];
-    try {
-      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/favorites`, {
-        userId: user.userId, playerIds: newFavs
-      });
-    } catch {
-      alert('Failed to update favorites.');
-    }
-  };
-
-  return (
-    <>
-      <div className="card">
-        {isAdmin
-          ? <button
-              onClick={handleStart}
-              disabled={!nonAdmins.length || !allNonAdminsReady}
-            >
-              Start Draft ({league.readyMembers.length}/{nonAdmins.length} Ready)
-            </button>
-          : <button onClick={handleReady}>
-              {league.readyMembers.includes(user.userId) ? "Ready!" : "I'm Ready"}
-            </button>
+    const handleSetReadyStatus = async () => {
+        const currentStatus = league.readyMembers.includes(user.userId);
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/ready`, { userId: user.userId, isReady: !currentStatus });
+        } catch (error) {
+            alert(`Failed to update ready status: ${error.response?.data || error.message}`);
         }
-      </div>
-      <div className="card" style={{ marginTop: '20px' }}>
-        <h3>Your Favorited Players ({favoritePlayers.length})</h3>
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-          <input
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-          <select
-            value={sortPosition}
-            onChange={e => setSortPosition(e.target.value)}
-          >
-            <option>All Positions</option>
-            <option>QB</option><option>RB</option><option>WR</option>
-            <option>TE</option><option>K</option><option>DEF</option>
-          </select>
-        </div>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {favoritePlayers.map(p => (
-            <li key={p.id} className="player-list-item">
-              <span>{p.name} ({p.position}) - {p.team}</span>
-              <button onClick={() => handleToggleFav(p.id)}>X</button>
-            </li>
-          ))}
-        </ul>
-        <h3 style={{ marginTop: '20px' }}>
-          Available Players ({availablePlayers.length})
-        </h3>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-          {availablePlayers.map(p => (
-            <li key={p.id} className="player-list-item">
-              <span>{p.name} ({p.position}) - {p.team}</span>
-              <button onClick={() => handleToggleFav(p.id)}>☆</button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </>
-  );
-};
-
-// ----------------- DRAFTING VIEW -----------------
-const DraftingView = ({
-  league, user, leagueId,
-  myCurrentBid, setMyCurrentBid,
-  hasSubmittedFinalBid, setHasSubmittedFinalBid
-}) => {
-  const isIntermission = league.currentAuction?.status === 'intermission';
-
-  useEffect(() => {
-    let poll;
-    if (!isIntermission) {
-      poll = setInterval(() => {
-        axios.post(`${API_BASE_URL}/leagues/${leagueId}/endBidding`)
-          .catch(err => console.error(err));
-      }, 3000);
-    }
-    return () => clearInterval(poll);
-  }, [isIntermission, leagueId]);
-
-  return (
-    <>
-      <div className="card">
-        <AdminControls league={league} user={user} leagueId={leagueId} />
-      </div>
-      {isIntermission
-        ? <IntermissionView league={league} />
-        : <AuctionView
-            league={league} user={user}
-            leagueId={leagueId}
-            myCurrentBid={myCurrentBid}
-            setMyCurrentBid={setMyCurrentBid}
-            hasSubmittedFinalBid={hasSubmittedFinalBid}
-            setHasSubmittedFinalBid={setHasSubmittedFinalBid}
-          />
-      }
-      <div className="card" style={{ marginTop: '20px' }}>
-        <h3>League Teams:</h3>
-        <TeamListViewer league={league} user={user} leagueId={leagueId} />
-      </div>
-    </>
-  );
-};
-
-// ----------------- ADMIN CONTROLS -----------------
-const AdminControls = ({ league, user, leagueId }) => {
-  const [showBeerBitchModal, setShowBeerBitchModal] = useState(false);
-  const [showNominateModal, setShowNominateModal] = useState(false);
-  const [showManageModal, setShowManageModal] = useState(false);
-
-  const handlePause = async () => {
-    await axios.post(`${API_BASE_URL}/leagues/${leagueId}/pause`, { adminId: user.userId });
-  };
-  const handleSkip = async () => {
-    await axios.post(`${API_BASE_URL}/leagues/${leagueId}/skip`, { adminId: user.userId });
-  };
-
-  return (
-    <>
-      <button onClick={handlePause}>Pause/Resume</button>
-      <button onClick={handleSkip}>Skip Player</button>
-      <button onClick={() => setShowNominateModal(true)} disabled={!league.currentAuction.auctionTimer.isPaused}>
-        Nominate Player
-      </button>
-      <button onClick={() => setShowManageModal(true)} disabled={!league.currentAuction.auctionTimer.isPaused}>
-        Manage Members
-      </button>
-      <button onClick={() => setShowBeerBitchModal(true)} disabled={!league.currentAuction.auctionTimer.isPaused}>
-        Beer Duty
-      </button>
-
-      {showBeerBitchModal && <BeerBitchModal league={league} onClose={() => setShowBeerBitchModal(false)} />}
-      {showNominateModal && <NominatePlayerModal league={league} onClose={() => setShowNominateModal(false)} />}
-      {showManageModal && <ManageMembersModal league={league} onClose={() => setShowManageModal(false)} />}
-    </>
-  );
-};
-
-// ----------------- AUCTION VIEW -----------------
-const AuctionView = ({
-  league, user, leagueId,
-  myCurrentBid, setMyCurrentBid,
-  hasSubmittedFinalBid, setHasSubmittedFinalBid
-}) => {
-  const [timer, setTimer] = useState(0);
-  const userTeam = league.teams.find(t => t.ownerId === user.userId);
-
-  // Countdown logic
-  useEffect(() => {
-    const auctionTimer = league.currentAuction.auctionTimer;
-    let intervalId;
-    if (auctionTimer.isPaused) {
-      setTimer(auctionTimer.timeRemainingOnPause);
-    } else {
-      const tick = () => {
-        const now = Date.now();
-        const end = new Date(auctionTimer.endTime).getTime();
-        setTimer(Math.max(0, Math.floor((end - now) / 1000)));
-      };
-      tick();
-      intervalId = setInterval(tick, 1000);
-    }
-    return () => clearInterval(intervalId);
-  }, [league.currentAuction.auctionTimer]);
-
-  // Reset on new player
-  useEffect(() => {
-	  setMyCurrentBid(0);
-	  setHasSubmittedFinalBid(false);
-	}, [
-	  league.currentAuction.playerId,
-	  setMyCurrentBid,
-	  setHasSubmittedFinalBid
-	]);
-
-  // Final-bid-only submission
-  useEffect(() => {
-	  if (
-		league.currentAuction.status === 'awaiting_final_bids' &&
-		timer === 0 &&
-		myCurrentBid > 0 &&
-		!hasSubmittedFinalBid
-	  ) {
-		const timeout = setTimeout(() => {
-		  axios.post(
-			`${API_BASE_URL}/leagues/${leagueId}/submit-bid`,
-			{ teamId: userTeam.id, bidAmount: myCurrentBid }
-		  )
-		  .then(() => setHasSubmittedFinalBid(true))
-		  .catch(err => console.error(err));
-		}, 2000);
-		return () => clearTimeout(timeout);
-	  }
-	}, [
-	  league.currentAuction.status,
-	  timer,
-	  myCurrentBid,
-	  hasSubmittedFinalBid,
-	  leagueId,
-	  userTeam,
-	  setHasSubmittedFinalBid
-	]);
-
-  const player = league.draftPlayers.find(p => p.id === league.currentAuction.playerId);
-  const isAwaiting = league.currentAuction.status === 'awaiting_final_bids';
-
-  if (!player) return <div className="card">Waiting for player nomination...</div>;
-
-  return (
-    <div className="card" style={{ marginTop: '20px' }}>
-      <h3>Player:</h3>
-      <h2>{player.name} - {player.position}</h2>
-      {isAwaiting
-        ? <p style={{ color:'blue', fontWeight:'bold' }}>Awaiting Results…</p>
-        : <p style={{ color:'red', fontWeight:'bold' }}>Ends In: {timer}s</p>
-      }
-
-      {!isAwaiting && myCurrentBid > 0 && (
-        <p style={{ color:'green' }}>Your bid: ${myCurrentBid}</p>
-      )}
-
-      <div style={{ display:'flex', gap: '5px', marginTop:'10px', justifyContent:'center' }}>
-        <button onClick={() => setMyCurrentBid(prev => prev - 1)} disabled={isAwaiting}>-</button>
-        <input
-          type="number"
-          value={myCurrentBid}
-          onChange={e => setMyCurrentBid(Math.max(0, parseInt(e.target.value,10)||0))}
-          disabled={isAwaiting}
-          style={{ width:'60px', textAlign:'center' }}
-        />
-        <button onClick={() => setMyCurrentBid(prev => prev + 1)} disabled={isAwaiting}>+</button>
-        <button
-          onClick={() => setMyCurrentBid(0)}
-          disabled={isAwaiting}
-          style={{ backgroundColor:'#dc3545', color:'white' }}
-        >Reset</button>
-      </div>
-    </div>
-  );
-};
-
-// ----------------- INTERMISSION VIEW -----------------
-const IntermissionView = ({ league }) => {
-  const [timer, setTimer] = useState(0);
-  const lastPick = league.draftLog.slice(-1)[0];
-  useEffect(() => {
-    const auctionTimer = league.currentAuction.auctionTimer;
-    let intervalId;
-    if (auctionTimer.isPaused) {
-      setTimer(auctionTimer.timeRemainingOnPause);
-    } else {
-      const tick = () => {
-        const now = Date.now();
-        const end = new Date(auctionTimer.endTime).getTime();
-        setTimer(Math.max(0, Math.floor((end - now) / 1000)));
-      };
-      tick();
-      intervalId = setInterval(tick, 1000);
-    }
-    return () => clearInterval(intervalId);
-  }, [league.currentAuction.auctionTimer]);
-
-  if (!lastPick) return <div className="card">Preparing next player…</div>;
-
-  const winner = league.teams.find(t => t.id === lastPick.winningTeamId);
-
-  return (
-    <div className="card" style={{ backgroundColor:'#e6ffed', marginTop:'20px' }}>
-      <h2>Intermission!</h2>
-      <p>Next in: <strong>{timer}s</strong></p>
-      <h4>Last Pick:</h4>
-      <p>
-        {lastPick.player.name} drafted by <strong>{winner?.name}</strong> for <strong>${lastPick.winningBid}</strong>
-      </p>
-    </div>
-  );
-};
-
-// ----------------- TEAM LIST -----------------
-const TeamListViewer = ({ league, user, leagueId }) => {
-  const [cooldown, setCooldown] = useState(0);
-  const userTeam = league.teams.find(t => t.ownerId === user.userId);
-  useEffect(() => {
-    if (cooldown > 0) {
-      const id = setTimeout(() => setCooldown(c => c - 1), 1000);
-      return () => clearTimeout(id);
-    }
-  }, [cooldown]);
-
-  const totalSpots = Object.values(league.rosterSettings).reduce((a,b) => a+b,0);
-
-  const handleBeer = async () => {
-    setCooldown(300);
-    await axios.post(`${API_BASE_URL}/leagues/${leagueId}/request-beer`, { requestingTeamId: userTeam.id });
-  };
-
-  return (
-    <div>
-      {league.teams.map(team => (
-        <div key={team.id} style={{ padding:'5px 0', borderBottom:'1px solid #eee' }}>
-          {team.ownerId === user.userId
-            ? <>
-                <h4>{team.name} (You)</h4>
-                <p>
-                  Budget: ${team.budget} | Roster: {team.roster.length}/{totalSpots}
-                </p>
-                {league.beerBitchTeamId && league.beerBitchTeamId !== team.id && (
-                  <button onClick={handleBeer} disabled={cooldown > 0}>
-                    {cooldown>0 ? `Request Beer (${cooldown}s)` : 'Request a Beer'}
-                  </button>
+    };
+    
+    const handleStartDraft = async () => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/startDraft`, { adminId: user.userId });
+        } catch (error) {
+            alert(`Failed to start draft: ${error.response?.data || error.message}`);
+        }
+    };
+    
+    const handleToggleFavorite = async (playerIdToToggle) => {
+        const isCurrentlyFavorite = userFavorites.includes(playerIdToToggle);
+        const newFavoriteIds = isCurrentlyFavorite ? userFavorites.filter(id => id !== playerIdToToggle) : [...userFavorites, playerIdToToggle];
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/favorites`, { userId: user.userId, playerIds: newFavoriteIds });
+        } catch (error) {
+            console.error("Error updating favorite players:", error);
+            alert("Failed to update your favorite players.");
+        }
+    };
+    
+    return (
+        <>
+            <div className="card">
+                <h3>Draft Controls & Overview</h3>
+                {isCurrentUserAdmin ? (
+                    <button onClick={handleStartDraft} className={`start-draft-button ${canStartDraft ? 'ready' : ''}`} disabled={!canStartDraft}>
+                        Start Draft ({league.readyMembers.length}/{nonAdminMembers.length} Ready)
+                    </button>
+                ) : (
+                    <button onClick={handleSetReadyStatus} className={`ready-button ${league.readyMembers.includes(user.userId) ? 'ready' : ''}`}>
+                        {league.readyMembers.includes(user.userId) ? "You are Ready!" : "I'm Ready!"}
+                    </button>
                 )}
-              </>
-            : <>
-                <strong>{team.name}</strong> – Budget: ${team.budget}
-              </>
-          }
+            </div>
+            <div className="card" style={{marginTop: '20px'}}>
+                <h3>League Teams</h3>
+                 <TeamListViewer league={league} user={user} leagueId={leagueId} />
+            </div>
+            <div className="card" style={{ marginTop: '20px' }}>
+                <h3>Player Lists</h3>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
+                    <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition}>
+                        <option>All Positions</option>
+                        <option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>K</option><option>DEF</option>
+                    </select>
+                    <input type="text" placeholder="Search for a player..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ padding: '8px' }} />
+                </div>
+                <h4>Your Favorited Players ({favoritePlayers.length})</h4>
+                <ul style={{ listStyle: 'none', padding: 0 }}>
+                    {favoritePlayers.map(player => (
+                        <li key={player.id} className="player-list-item">
+                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
+                                <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+                <h4 style={{marginTop: '20px'}}>Available Players ({availablePlayers.length})</h4>
+                <ul style={{ listStyle: 'none', padding: 0 }}>
+                    {availablePlayers.map(player => (
+                        <li key={player.id} className="player-list-item">
+                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                            <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </>
+    );
+};
+
+const DraftingView = ({ league, user, leagueId }) => {
+    const isIntermission = league.status.toLowerCase() === 'intermission';
+    const beerBitchTeam = league.teams.find(t => t.id === league.beerBitchTeamId);
+
+    useEffect(() => {
+        let pollInterval;
+        if (league.status.toLowerCase() === 'drafting') {
+            pollInterval = setInterval(() => {
+                axios.post(`${API_BASE_URL}/leagues/${leagueId}/endBidding`);
+            }, 3000);
+        }
+        return () => clearInterval(pollInterval);
+    }, [league.status, leagueId]);
+
+    useEffect(() => {
+        let pollInterval;
+        if (isIntermission) {
+            pollInterval = setInterval(() => {
+                axios.post(`${API_BASE_URL}/leagues/${leagueId}/nextRound`);
+            }, 3000);
+        }
+        return () => clearInterval(pollInterval);
+    }, [isIntermission, leagueId]);
+
+    return (
+        <>
+            <div className="card">
+                <h3>Draft Controls & Overview</h3>
+                {league.adminId === user.userId && <AdminControls league={league} user={user} leagueId={leagueId} />}
+            </div>
+            
+            {isIntermission ? (
+                <IntermissionView league={league} />
+            ) : (
+                <AuctionView league={league} user={user} leagueId={leagueId} />
+            )}
+
+            <div className="card" style={{marginTop: '20px'}}>
+                <h3>League Teams:</h3>
+                <TeamListViewer league={league} user={user} leagueId={leagueId} />
+            </div>
+
+            {beerBitchTeam && (
+                <div className="card" style={{marginTop: '20px', backgroundColor: 'lightgoldenrodyellow'}}>
+                    <h3>Beer Duty!</h3>
+                    <p><strong>{beerBitchTeam.name}</strong> has been assigned to Beer Duty!</p>
+                </div>
+            )}
+        </>
+    );
+};
+
+const AdminControls = ({ league, user, leagueId }) => {
+    const [showBeerBitchModal, setShowBeerBitchModal] = useState(false);
+    const [showNominateModal, setShowNominateModal] = useState(false);
+    const [showManageMembersModal, setShowManageMembersModal] = useState(false);
+
+    const handlePauseDraft = async () => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/pause`, { adminId: user.userId });
+        } catch (error) {
+            alert(`Error: ${error.response?.data || error.message}`);
+        }
+    };
+    
+    const handleSkipPlayer = async () => {
+        if (window.confirm("Are you sure you want to skip this player?")) {
+            try {
+                await axios.post(`${API_BASE_URL}/leagues/${leagueId}/skip`, { adminId: user.userId });
+            } catch (error) {
+                alert(`Error skipping player: ${error.response?.data || error.message}`);
+            }
+        }
+    };
+
+    const handleAssignBeerBitch = async (teamId) => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/beer-bitch`, { adminId: user.userId, teamId: teamId });
+            setShowBeerBitchModal(false);
+        } catch (error) {
+            alert(`Error assigning beer duty: ${error.response?.data || error.message}`);
+        }
+    };
+
+    const handleNominatePlayer = async (playerId) => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/nominate`, { adminId: user.userId, playerId });
+            setShowNominateModal(false);
+        } catch (error) {
+            alert(`Error nominating player: ${error.response?.data || error.message}`);
+        }
+    };
+
+    const handleKickMember = async (teamIdToKick) => {
+        const team = league.teams.find(t => t.id === teamIdToKick);
+        if (window.confirm(`Are you sure you want to kick ${team.name}? This will return all their drafted players to the pool.`)) {
+            try {
+                await axios.post(`${API_BASE_URL}/leagues/${leagueId}/kick`, { adminId: user.userId, teamIdToKick });
+            } catch (error) {
+                alert(`Error kicking member: ${error.response?.data || error.message}`);
+            }
+        }
+    };
+
+    const handleAdjustBudget = async (teamId, newBudget) => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/adjust-budget`, { adminId: user.userId, teamId, newBudget: parseInt(newBudget) });
+        } catch (error) {
+            alert(`Error adjusting budget: ${error.response?.data || error.message}`);
+        }
+    };
+
+    const isPaused = league.auctionTimer?.isPaused;
+    const isIntermission = league.status.toLowerCase() === 'intermission';
+
+    const pauseButtonText = () => {
+        if (isIntermission) {
+            return isPaused ? 'Resume Intermission' : 'Pause Intermission';
+        }
+        return isPaused ? 'Resume Draft' : 'Pause Draft';
+    };
+
+    return (
+        <>
+            <div>
+                <button onClick={handlePauseDraft}>{pauseButtonText()}</button>
+                <button onClick={handleSkipPlayer} disabled={isPaused || isIntermission}>Skip Player</button>
+                <button onClick={() => setShowNominateModal(true)} disabled={!isPaused}>Nominate Player</button>
+                <button onClick={() => setShowManageMembersModal(true)} disabled={!isPaused}>Manage Members</button>
+                <button onClick={() => setShowBeerBitchModal(true)} disabled={!isPaused}>Beer B!tch</button>
+                <button disabled={!isPaused}>Complete Draft</button>
+            </div>
+
+            {showBeerBitchModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h3>Assign Beer B!tch</h3>
+                        <p>Select a team to assign beer duty to.</p>
+                        <ul style={{listStyle: 'none', padding: 0}}>
+                            {league.teams.map(team => (
+                                <li key={team.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid #eee'}}>
+                                    <span>{team.name}</span>
+                                    <button onClick={() => handleAssignBeerBitch(team.id)}>Assign</button>
+                                </li>
+                            ))}
+                        </ul>
+                        <button onClick={() => setShowBeerBitchModal(false)} className="cancel-button">Cancel</button>
+                    </div>
+                </div>
+            )}
+            
+            {showNominateModal && (
+                <NominatePlayerModal
+                    league={league}
+                    onNominate={handleNominatePlayer}
+                    onClose={() => setShowNominateModal(false)}
+                />
+            )}
+
+            {showManageMembersModal && (
+                <ManageMembersModal
+                    league={league}
+                    onKick={handleKickMember}
+                    onAdjustBudget={handleAdjustBudget}
+                    onClose={() => setShowManageMembersModal(false)}
+                />
+            )}
+        </>
+    );
+};
+
+const AuctionView = ({ league, user, leagueId }) => {
+    const [bidAmount, setBidAmount] = useState(0);
+    const [timer, setTimer] = useState(0);
+    const [bidSubmitted, setBidSubmitted] = useState(false);
+
+    const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
+
+    useEffect(() => {
+        const { auctionTimer } = league;
+        let intervalId = null;
+
+        const calculateTimeLeft = () => {
+            if (auctionTimer?.endTime) {
+                const endTime = new Date(auctionTimer.endTime).getTime();
+                const now = new Date().getTime();
+                const timeLeft = Math.max(0, Math.floor((endTime - now) / 1000));
+                setTimer(timeLeft);
+
+                if (timeLeft === 0 && !bidSubmitted && !auctionTimer.isPaused) {
+                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/submit-final-bid`, { 
+                        userId: user.userId, 
+                        amount: bidAmount 
+                    });
+                    setBidSubmitted(true);
+                }
+            } else {
+                setTimer(0);
+            }
+        };
+
+        if (auctionTimer?.isPaused) {
+            setTimer(auctionTimer.timeRemainingOnPause);
+        } else {
+            calculateTimeLeft();
+            intervalId = setInterval(calculateTimeLeft, 1000);
+        }
+        
+        return () => { if (intervalId) { clearInterval(intervalId); }};
+    }, [league, leagueId, user.userId, bidAmount, bidSubmitted]);
+
+    useEffect(() => {
+        setBidAmount(0);
+        setBidSubmitted(false);
+    }, [league.currentPlayerId]);
+
+    const incrementBid = () => setBidAmount(prev => prev + 1);
+    const decrementBid = () => setBidAmount(prev => Math.max(0, prev - 1));
+
+    if (!currentPlayer) return <div className="card">Waiting for player nomination...</div>;
+
+    return (
+        <div className="card" style={{marginTop: '20px'}}>
+            <h3>Current Player Up for Bid:</h3>
+            <h2>{currentPlayer.name} - {currentPlayer.position} - {currentPlayer.team}</h2>
+            <p>Rank: {currentPlayer.rank}</p>
+            <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>
+                {timer > 0 ? `Bid Ends In: ${timer}s` : "Waiting for results..."}
+            </p>
+            
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
+                Your Final Bid: 
+                <button onClick={decrementBid} disabled={league.auctionTimer?.isPaused}>-</button>
+                <input 
+                    type="number" 
+                    value={bidAmount} 
+                    onChange={e => setBidAmount(parseInt(e.target.value) || 0)}
+                    style={{width: '60px', textAlign: 'center'}} 
+                    disabled={league.auctionTimer?.isPaused}
+                />
+                <button onClick={incrementBid} disabled={league.auctionTimer?.isPaused}>+</button>
+            </div>
         </div>
-      ))}
-    </div>
-  );
+    );
 };
 
-// ----------------- MODALS -----------------
-const NominatePlayerModal = ({ league, onClose }) => {
-  const [search, setSearch] = useState('');
-  const candidates = league.initialPlayerPool.filter(p => !p.isDrafted)
-    .filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h3>Nominate Player</h3>
-        <input
-          placeholder="Search..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <ul style={{ listStyle:'none', padding:0, maxHeight:'300px', overflowY:'auto' }}>
-          {candidates.map(p => (
-            <li key={p.id} className="player-list-item">
-              <span>{p.name}</span>
-              <button onClick={() => {
-                axios.post(`${API_BASE_URL}/leagues/${league.id}/nominate`, {
-                  adminId: league.adminId, playerId: p.id
-                });
-                onClose();
-              }}>Nominate</button>
-            </li>
-          ))}
-        </ul>
-        <button className="cancel-button" onClick={onClose}>Cancel</button>
-      </div>
-    </div>
-  );
+const IntermissionView = ({ league }) => {
+    const [timer, setTimer] = useState(0);
+    const lastPick = league.draftLog && league.draftLog.length > 0 ? league.draftLog[league.draftLog.length - 1] : null;
+
+    useEffect(() => {
+        const { auctionTimer } = league;
+        let intervalId = null;
+        if (intervalId) { clearInterval(intervalId); }
+        if (auctionTimer?.isPaused) {
+            setTimer(auctionTimer.timeRemainingOnPause);
+        } else {
+            const calculateTimeLeft = () => {
+                if (auctionTimer?.endTime) {
+                    const endTime = new Date(auctionTimer.endTime).getTime();
+                    const now = new Date().getTime();
+                    setTimer(Math.max(0, Math.floor((endTime - now) / 1000)));
+                } else { setTimer(0); }
+            };
+            calculateTimeLeft();
+            intervalId = setInterval(calculateTimeLeft, 1000);
+        }
+        return () => { if (intervalId) { clearInterval(intervalId); }};
+    }, [league]);
+
+    if (!lastPick) return <div className="card">Getting ready for the next player...</div>;
+
+    const winningTeam = league.teams.find(t => t.id === lastPick.winningTeamId);
+    const allBids = Object.entries(lastPick.allBids).sort(([,a],[,b]) => b.amount - a.amount);
+
+    return (
+        <div className="card" style={{marginTop: '20px', backgroundColor: '#e6ffed'}}>
+            <h2>Intermission!</h2>
+            <p style={{fontSize: '20px'}}>Next player in: <strong>{timer}s</strong></p>
+            <div style={{marginTop: '20px'}}>
+                <h4>Last Player Drafted:</h4>
+                <p>
+                    <strong>{lastPick.player.name} ({lastPick.player.position} - {lastPick.player.team})</strong> was drafted by 
+                    <strong> {winningTeam?.name || 'N/A'}</strong> for 
+                    <strong> ${lastPick.winningBid}</strong>!
+                </p>
+            </div>
+            <div style={{marginTop: '20px'}}>
+                <h4>All Bids for this Player:</h4>
+                <ul style={{listStyle: 'none', padding: 0}}>
+                    {allBids.map(([userId, bid]) => {
+                        const team = league.teams.find(t => t.ownerId === userId);
+                        return <li key={userId}>{team?.name || 'Unknown Team'}: ${bid.amount}</li>;
+                    })}
+                </ul>
+            </div>
+        </div>
+    );
 };
 
-const ManageMembersModal = ({ league, onClose }) => {
-  const [budgets, setBudgets] = useState(
-    Object.fromEntries(league.teams.map(t => [t.id, t.budget]))
-  );
-  return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <h3>Manage Members</h3>
-        <ul style={{ listStyle:'none', padding:0, maxHeight:'300px', overflowY:'auto' }}>
-          {league.teams.map(t => (
-            <li key={t.id} style={{ padding:'10px', borderBottom:'1px solid #eee', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <span>{t.name}</span>
-              <input
-                type="number"
-                value={budgets[t.id]}
-                onChange={e => setBudgets(bs => ({ ...bs, [t.id]: parseInt(e.target.value,10)||0 }))}
-                style={{ width:'60px' }}
-              />
-              <button onClick={() => {
-                axios.post(`${API_BASE_URL}/leagues/${league.id}/adjust-budget`, {
-                  adminId: league.adminId, teamId: t.id, newBudget: budgets[t.id]
-                });
-              }}>Set</button>
-            </li>
-          ))}
-        </ul>
-        <button className="cancel-button" onClick={onClose}>Cancel</button>
-      </div>
-    </div>
-  );
+const TeamListViewer = ({ league, user, leagueId }) => {
+    const [beerRequestCooldown, setBeerRequestCooldown] = useState(0);
+    const userTeam = league.teams.find(t => t.ownerId === user.userId);
+
+    useEffect(() => {
+        if (beerRequestCooldown > 0) {
+            const timer = setTimeout(() => setBeerRequestCooldown(prev => prev - 1), 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [beerRequestCooldown]);
+
+    const { rosterSettings } = league;
+    if (!rosterSettings) return null;
+    const totalRosterSpots = Object.values(rosterSettings).reduce((sum, val) => sum + (val || 0), 0);
+
+    const handleRequestBeer = async () => {
+        if (!userTeam) return;
+        setBeerRequestCooldown(300);
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/request-beer`, { requestingTeamId: userTeam.id });
+        } catch (error) {
+            alert(`Error requesting beer: ${error.response?.data || error.message}`);
+            setBeerRequestCooldown(0);
+        }
+    };
+
+    return (
+        <div>
+            {league.teams.map(team => {
+                const isUserTeam = team.ownerId === user.userId;
+                const rosterSpotsFilled = team.roster?.length || 0;
+                
+                if (isUserTeam) {
+                    const remainingRosterSpots = totalRosterSpots - rosterSpotsFilled;
+                    const maxBid = team.budget - (remainingRosterSpots > 0 ? remainingRosterSpots - 1 : 0);
+                    return (
+                        <div key={team.id} className="user-team-details" style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
+                            <h4>{team.name} (You)</h4>
+                            <p style={{margin: '5px 0'}}>
+                                Roster: {rosterSpotsFilled} / {totalRosterSpots} | 
+                                Budget: ${team.budget} | 
+                                Total Spent: ${200 - team.budget} | 
+                                Max Bid: ${maxBid}
+                            </p>
+                            {league.beerBitchTeamId && league.beerBitchTeamId !== team.id && (
+                                <button onClick={handleRequestBeer} disabled={beerRequestCooldown > 0}>
+                                    {beerRequestCooldown > 0 ? `Request Beer (${beerRequestCooldown}s)` : 'Request a Beer'}
+                                </button>
+                            )}
+                        </div>
+                    );
+                } else {
+                     return (
+                        <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
+                            <p style={{margin: '5px 0'}}>
+                                <strong>{team.name}</strong> - 
+                                Budget: <strong>${team.budget}</strong>
+                            </p>
+                        </div>
+                    );
+                }
+            })}
+        </div>
+    );
 };
 
-// A simple BeerBitch modal for completeness
-const BeerBitchModal = ({ league, onClose }) => (
-  <div className="modal-overlay">
-    <div className="modal-content">
-      <h3>Assign Beer Duty</h3>
-      <ul style={{ listStyle:'none', padding:0 }}>
-        {league.teams.map(t => (
-          <li key={t.id} style={{ display:'flex', justifyContent:'space-between', padding:'10px', borderBottom:'1px solid #eee' }}>
-            <span>{t.name}</span>
-            <button onClick={() => {
-              axios.post(`${API_BASE_URL}/leagues/${league.id}/beer-bitch`, {
-                adminId: league.adminId, teamId: t.id
-              });
-              onClose();
-            }}>Assign</button>
-          </li>
-        ))}
-      </ul>
-      <button className="cancel-button" onClick={onClose}>Cancel</button>
-    </div>
-  </div>
-);
+const NominatePlayerModal = ({ league, onNominate, onClose }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const undraftedPlayers = league.initialPlayerPool.filter(p => !p.isDrafted)
+        .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <h3>Nominate a Player</h3>
+                <input type="text" placeholder="Search for a player..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{width: '95%', marginBottom: '10px'}}/>
+                <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
+                    {undraftedPlayers.map(player => (
+                        <li key={player.id} className="player-list-item">
+                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                            <button onClick={() => onNominate(player.id)}>Nominate</button>
+                        </li>
+                    ))}
+                </ul>
+                <button onClick={onClose} className="cancel-button">Cancel</button>
+            </div>
+        </div>
+    );
+};
+
+const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
+    const [budgets, setBudgets] = useState(league.teams.reduce((acc, team) => ({...acc, [team.id]: team.budget }), {}));
+
+    const handleBudgetChange = (teamId, value) => {
+        setBudgets(prev => ({ ...prev, [teamId]: parseInt(value) || 0 }));
+    };
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <h3>Manage Members</h3>
+                <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
+                    {league.teams.map(team => (
+                        <li key={team.id} className="player-list-item">
+                            <span>{team.name}</span>
+                            <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
+                                Budget: $
+                                <input 
+                                    type="number" 
+                                    value={budgets[team.id]} 
+                                    onChange={e => handleBudgetChange(team.id, e.target.value)} 
+                                    style={{width: '60px'}}
+                                />
+                                <button onClick={() => onAdjustBudget(team.id, budgets[team.id])}>Set</button>
+                                {team.ownerId !== league.adminId && (
+                                    <button onClick={() => onKick(team.id)} style={{backgroundColor: '#dc3545', color: 'white'}}>Kick</button>
+                                )}
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+                <button onClick={onClose} className="cancel-button">Cancel</button>
+            </div>
+        </div>
+    );
+};
 
 export default DraftScreen;

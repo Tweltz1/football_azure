@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
+using System.Collections.Generic;
 
 public static class EndBiddingPhase
 {
@@ -15,104 +16,53 @@ public static class EndBiddingPhase
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/endBidding")] HttpRequest req,
         string leagueId,
-        [CosmosDB(
-            databaseName: "Fantasy Football",
-            containerName: "Leagues",
-            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        var response  = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-        var league    = response.Resource;
-        var auction   = league.CurrentAuction;
+        var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
+        var league = leagueResponse.Resource;
 
-        // Only proceed if bidding is over and we haven't already moved on
-        if (auction == null
-            || auction.Status == "awaiting_final_bids"
-            || auction.Status == "intermission"
-            || DateTime.UtcNow < auction.AuctionTimer.EndTime
-            || auction.AuctionTimer.IsPaused)
+        // The grace period is 2 seconds after the timer ends
+        var gracePeriodEndTime = league.AuctionTimer.EndTime.AddSeconds(2);
+
+        if (league.Status != "drafting" || DateTime.UtcNow < gracePeriodEndTime)
         {
-            return new OkObjectResult("No action needed.");
+            // The grace period is not over yet. Do nothing.
+            return new OkResult();
         }
 
-        // 1) Signal clients that bidding window has closed
-        auction.Status = "awaiting_final_bids";
-        auction.FinalBids.Clear(); // reset any leftover
-        await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-        await signalRMessages.AddAsync(new SignalRMessage
+        var draftedPlayer = league.InitialPlayerPool.FirstOrDefault(p => p.Id == league.CurrentPlayerId);
+        if (draftedPlayer == null) { return new BadRequestObjectResult("Player not found."); }
+
+        if (league.ActiveBids.Any())
         {
-            Target    = "draftStateUpdate",
-            Arguments = new object[] { league }
-        });
+            var winningBidEntry = league.ActiveBids.OrderByDescending(b => b.Value.Amount).First();
+            var winningTeam = league.Teams.First(t => t.OwnerId == winningBidEntry.Key);
 
-        // 2) Wait grace period
-        await Task.Delay(TimeSpan.FromSeconds(2));
-
-        // 3) Process auction results
-        var bids = auction.FinalBids;
-        var player = league.DraftPlayers.FirstOrDefault(p => p.Id == auction.PlayerId);
-        if (player != null && bids.Any())
-        {
-            // Determine winner: highest bid, tiebreak by team ID
-            var winnerEntry = bids
-                .OrderByDescending(b => b.Value)
-                .ThenBy(b => b.Key)
-                .First();
-            var winningTeamId = winnerEntry.Key;
-            var winningBid    = winnerEntry.Value;
-            var winningTeam   = league.Teams.First(t => t.Id == winningTeamId);
-
-            // Update player/team
-            player.IsDrafted = true;
-            player.Price     = winningBid;
-            winningTeam.Budget -= winningBid;
-            winningTeam.Roster.Add(new RosterSpot
-            {
-                Player   = player,
-                Position = player.Position
-            });
+            draftedPlayer.IsDrafted = true;
+            draftedPlayer.Price = winningBidEntry.Value.Amount;
+            winningTeam.Budget -= winningBidEntry.Value.Amount;
+            winningTeam.Roster.Add(new RosterSpot { Player = draftedPlayer, Position = draftedPlayer.Position });
 
             league.DraftLog.Add(new DraftPick
             {
-                WinningTeamId = winningTeamId,
-                WinningBid    = winningBid,
-                Player        = player,
-                AllBids       = bids.ToDictionary(
-                    kv => kv.Key,
-                    kv => new Bid { Amount = kv.Value, Timestamp = DateTime.UtcNow }
-                )
+                WinningTeamId = winningTeam.Id,
+                WinningBid = winningBidEntry.Value.Amount,
+                Player = draftedPlayer,
+                AllBids = new Dictionary<string, Bid>(league.ActiveBids)
             });
         }
-        else
-        {
-            log.LogInformation($"No bids received for player {auction.PlayerId}.");
-        }
+        
+        league.Status = "intermission";
+        league.ActiveBids.Clear();
+        league.CurrentPlayerId = null;
+        league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
 
-        // 4) Transition to intermission
-        league.Status = "drafting";
-        league.CurrentAuction = new CurrentAuction
-        {
-            Status       = "intermission",
-            AuctionTimer = new AuctionTimer
-            {
-                EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer),
-                IsPaused = false,
-                TimeRemainingOnPause = 0
-            },
-            PlayerId = null,
-            FinalBids = new System.Collections.Generic.Dictionary<string,int>()
-        };
-
-        // 5) Save and broadcast final results
         await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-        await signalRMessages.AddAsync(new SignalRMessage
-        {
-            Target    = "draftStateUpdate",
-            Arguments = new object[] { league }
-        });
+        await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
 
-        return new OkObjectResult("Auction results processed.");
+        return new OkObjectResult("Bidding phase ended and winner determined.");
     }
-} 
+}
