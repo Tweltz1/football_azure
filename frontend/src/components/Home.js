@@ -114,7 +114,7 @@ const Home = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ padding: '8px' }}
           />
-        </div>
+        </div> 
         
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 auto', maxWidth: '600px' }}>
           {filteredPlayers.map((player) => (
