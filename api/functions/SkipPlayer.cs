@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
+using System.Collections.Generic;
 
 public static class SkipPlayer
 {
@@ -17,10 +18,7 @@ public static class SkipPlayer
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/skip")] HttpRequest req,
         string leagueId,
-        [CosmosDB(
-            databaseName: "Fantasy Football",
-            containerName: "Leagues",
-            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
@@ -33,37 +31,21 @@ public static class SkipPlayer
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             var league = leagueResponse.Resource;
-            var auction = league.CurrentAuction;
 
-            // Only the admin can skip a player
             if (league.AdminId != data.AdminId)
-                return new UnauthorizedResult();
-
-            log.LogInformation($"Admin is skipping player {auction.PlayerId} in league {league.Name}.");
-
-            // Clear any final bids from this auction
-            auction.FinalBids.Clear();
-
-            // Pick next random player
-            var nextId = GetNextRandomPlayerId(league);
-
-            // Reset auction state
-            league.Status = "drafting";
-            auction.PlayerId = nextId;
-            auction.AuctionTimer = new AuctionTimer
             {
-                EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer),
-                IsPaused = false,
-                TimeRemainingOnPause = 0
-            };
+                return new UnauthorizedResult();
+            }
 
-            // Save & broadcast
+            log.LogInformation($"Admin is skipping player {league.CurrentPlayerId}.");
+
+            league.Status = "drafting";
+            league.ActiveBids.Clear();
+            league.CurrentPlayerId = GetNextRandomPlayerId(league);
+            league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer) };
+
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage 
-            { 
-                Target = "draftStateUpdate", 
-                Arguments = new object[] { league } 
-            });
+            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
 
             return new OkObjectResult("Player skipped successfully.");
         }
@@ -76,15 +58,17 @@ public static class SkipPlayer
 
     private static string GetNextRandomPlayerId(League league)
     {
-        var undrafted = league.InitialPlayerPool.Where(p => !p.IsDrafted).ToList();
-        var current = league.CurrentAuction.PlayerId;
-        if (current != null)
-            undrafted.RemoveAll(p => p.Id == current);
+        var undraftedPlayers = league.InitialPlayerPool.Where(p => !p.IsDrafted).ToList();
+        
+        if (league.CurrentPlayerId != null)
+        {
+            undraftedPlayers.RemoveAll(p => p.Id == league.CurrentPlayerId);
+        }
 
-        if (!undrafted.Any()) return null;
-
-        var rnd = new Random();
-        return undrafted[rnd.Next(undrafted.Count)].Id;
+        if (!undraftedPlayers.Any()) return null;
+        
+        var random = new Random();
+        return undraftedPlayers[random.Next(undraftedPlayers.Count)].Id;
     }
 
     public class AdminActionRequest
