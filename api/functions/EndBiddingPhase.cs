@@ -14,7 +14,7 @@ public static class EndBiddingPhase
 {
     [FunctionName("EndBiddingPhase")]
     public static async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/endBidding")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "leagues/{leagueId}/endBidding")] HttpRequest req,
         string leagueId,
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
@@ -24,12 +24,10 @@ public static class EndBiddingPhase
         var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
         var league = leagueResponse.Resource;
 
-        // The grace period is 2 seconds after the timer ends
-        var gracePeriodEndTime = league.AuctionTimer.EndTime.AddSeconds(2);
-
-        if (league.Status != "drafting" || DateTime.UtcNow < gracePeriodEndTime)
+        // --- THIS IS THE FIX ---
+        // We now also check if the timer is paused. If it is, we do nothing.
+        if (league == null || league.Status != "drafting" || league.AuctionTimer.IsPaused || DateTime.UtcNow < league.AuctionTimer.EndTime)
         {
-            // The grace period is not over yet. Do nothing.
             return new OkResult();
         }
 
@@ -63,6 +61,6 @@ public static class EndBiddingPhase
         await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
         await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
 
-        return new OkObjectResult("Bidding phase ended and winner determined.");
+        return new OkObjectResult("Bidding phase ended.");
     }
 }
