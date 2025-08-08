@@ -404,24 +404,14 @@ const AuctionView = ({ league, user, leagueId }) => {
     const [timer, setTimer] = useState(0);
 
     const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
-    const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
-    const currentServerBid = userHasActiveBid ? league.activeBids[user.userId].amount : 0;
-
+    
     useEffect(() => {
-        const debounceBid = setTimeout(() => {
-            if (league.auctionTimer?.isPaused) { return; }
-
-            if (bidAmount !== currentServerBid) {
-                if (bidAmount > 0) {
-                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
-                } else if (bidAmount === 0 && userHasActiveBid) {
-                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
-                }
-            }
-        }, 250);
-
-        return () => clearTimeout(debounceBid);
-    }, [bidAmount, leagueId, user.userId, league.auctionTimer?.isPaused, userHasActiveBid, currentServerBid]);
+        let highBid = 0;
+        if (league.activeBids && Object.keys(league.activeBids).length > 0) {
+            highBid = Math.max(...Object.values(league.activeBids).map(b => b.amount));
+        }
+        setBidAmount(highBid + 1);
+    }, [league.currentPlayerId, league.activeBids]);
 
     useEffect(() => {
         const { auctionTimer } = league;
@@ -443,14 +433,38 @@ const AuctionView = ({ league, user, leagueId }) => {
         return () => { if (intervalId) { clearInterval(intervalId); }};
     }, [league]);
 
-    const handleCancelBid = () => {
-        setBidAmount(0);
+    const handlePlaceBid = async () => {
+        if (bidAmount <= 0) {
+            alert("Bid must be at least $1.");
+            return;
+        }
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+        } catch (error) {
+            alert(`Error placing bid: ${error.response?.data || error.message}`);
+        }
+    };
+
+    const handleCancelBid = async () => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
+        } catch (error) {
+            alert(`Error cancelling bid: ${error.response?.data || error.message}`);
+        }
+    };
+
+    const handleKeyDown = (event) => {
+        if (event.key === 'Enter') {
+            handlePlaceBid();
+        }
     };
     
     const incrementBid = () => setBidAmount(prev => prev + 1);
     const decrementBid = () => setBidAmount(prev => Math.max(0, prev - 1));
 
     if (!currentPlayer) return <div className="card">Waiting for player nomination...</div>;
+
+    const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
 
     return (
         <div className="card" style={{marginTop: '20px'}}>
@@ -465,18 +479,26 @@ const AuctionView = ({ league, user, leagueId }) => {
 
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
                 Your Bid: 
-                <button onClick={decrementBid}>-</button>
+                <button onClick={decrementBid} disabled={league.auctionTimer?.isPaused}>-</button>
                 <input 
                     type="number" 
                     value={bidAmount} 
                     onChange={e => setBidAmount(parseInt(e.target.value) || 0)}
+                    onKeyDown={handleKeyDown}
                     style={{width: '60px', textAlign: 'center'}} 
+                    disabled={league.auctionTimer?.isPaused} 
                 />
-                <button onClick={incrementBid}>+</button>
+                <button onClick={incrementBid} disabled={league.auctionTimer?.isPaused}>+</button>
                 
-                <button onClick={handleCancelBid} style={{marginLeft: '10px', backgroundColor: '#dc3545', color: 'white'}} disabled={!userHasActiveBid || league.auctionTimer?.isPaused}>
-                    Cancel Bid
+                <button onClick={handlePlaceBid} style={{marginLeft: '10px'}} disabled={league.auctionTimer?.isPaused}>
+                    Place Bid
                 </button>
+                
+                {userHasActiveBid && (
+                    <button onClick={handleCancelBid} style={{backgroundColor: '#dc3545', color: 'white'}} disabled={league.auctionTimer?.isPaused}>
+                        Cancel Bid
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -677,6 +699,12 @@ const TeamListViewer = ({ league, user, leagueId }) => {
                 if (isUserTeam) {
                     const remainingRosterSpots = totalRosterSpots - rosterSpotsFilled;
                     const maxBid = team.budget - (remainingRosterSpots > 0 ? remainingRosterSpots - 1 : 0);
+                    
+                    const positionCounts = {};
+                    for (const pos in rosterSettings) {
+                        positionCounts[pos.toUpperCase()] = team.roster.filter(s => s.position === pos.toUpperCase()).length;
+                    }
+
                     return (
                         <div key={team.id} className="user-team-details" style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
                             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
@@ -691,16 +719,26 @@ const TeamListViewer = ({ league, user, leagueId }) => {
                                 Total Spent: ${200 - team.budget} | 
                                 Max Bid: ${maxBid}
                             </p>
-                            <div>
-                                <h5>Your Roster:</h5>
-                                <ul style={{listStyle: 'none', paddingLeft: '10px'}}>
-                                    {team.roster.map((spot, index) => (
-                                        <li key={index}>{spot.player.name} ({spot.player.position}) - ${spot.player.price}</li>
-                                    ))}
-                                </ul>
+                            <div style={{display: 'flex', flexWrap: 'wrap', gap: '15px'}}>
+                                <div>
+                                    <h5>Roster Spots:</h5>
+                                    <ul style={{listStyle: 'none', paddingLeft: '10px', margin: 0}}>
+                                        {Object.entries(rosterSettings).map(([pos, count]) => (
+                                            <li key={pos}>{pos.toUpperCase()}: {positionCounts[pos.toUpperCase()] || 0} / {count}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h5>Your Roster:</h5>
+                                    <ul style={{listStyle: 'none', paddingLeft: '10px', margin: 0}}>
+                                        {team.roster.map((spot, index) => (
+                                            <li key={index}>{spot.player.name} ({spot.player.position}) - ${spot.player.price}</li>
+                                        ))}
+                                    </ul>
+                                </div>
                             </div>
                             {league.beerBitchTeamId && league.beerBitchTeamId !== team.id && (
-                                <button onClick={handleRequestBeer} disabled={beerRequestCooldown > 0}>
+                                <button onClick={handleRequestBeer} disabled={beerRequestCooldown > 0} style={{marginTop: '10px'}}>
                                     {beerRequestCooldown > 0 ? `Request Beer (${beerRequestCooldown}s)` : 'Request a Beer'}
                                 </button>
                             )}
