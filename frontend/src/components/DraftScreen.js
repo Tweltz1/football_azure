@@ -105,13 +105,6 @@ const DraftScreen = () => {
 };
 
 const LobbyView = ({ league, user, leagueId }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [sortPosition, setSortPosition] = useState('All Positions');
-    const userTeam = league.teams.find(team => team.ownerId === user.userId);
-    const userFavorites = userTeam?.favoritePlayerIds || [];
-    const allPlayers = league.initialPlayerPool || [];
-    const favoritePlayers = allPlayers.filter(p => userFavorites.includes(p.id) && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
-    const availablePlayers = allPlayers.filter(p => !userFavorites.includes(p.id) && !p.isDrafted && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
     const isCurrentUserAdmin = league.adminId === user.userId;
     const nonAdminMembers = league.members.filter(id => id !== league.adminId);
     const allNonAdminsReady = nonAdminMembers.every(memberId => league.readyMembers.includes(memberId));
@@ -134,17 +127,6 @@ const LobbyView = ({ league, user, leagueId }) => {
         }
     };
     
-    const handleToggleFavorite = async (playerIdToToggle) => {
-        const isCurrentlyFavorite = userFavorites.includes(playerIdToToggle);
-        const newFavoriteIds = isCurrentlyFavorite ? userFavorites.filter(id => id !== playerIdToToggle) : [...userFavorites, playerIdToToggle];
-        try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/favorites`, { userId: user.userId, playerIds: newFavoriteIds });
-        } catch (error) {
-            console.error("Error updating favorite players:", error);
-            alert("Failed to update your favorite players.");
-        }
-    };
-    
     return (
         <>
             <div className="card">
@@ -163,37 +145,7 @@ const LobbyView = ({ league, user, leagueId }) => {
                 <h3>League Teams</h3>
                  <TeamListViewer league={league} user={user} leagueId={leagueId} />
             </div>
-            <div className="card" style={{ marginTop: '20px' }}>
-                <h3>Player Lists</h3>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-                    <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition}>
-                        <option>All Positions</option>
-                        <option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>K</option><option>DEF</option>
-                    </select>
-                    <input type="text" placeholder="Search for a player..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ padding: '8px' }} />
-                </div>
-                <h4>Your Favorited Players ({favoritePlayers.length})</h4>
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {favoritePlayers.map(player => (
-                        <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
-                                <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-                <h4 style={{marginTop: '20px'}}>Available Players ({availablePlayers.length})</h4>
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {availablePlayers.map(player => (
-                        <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
-                            <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
-                        </li>
-                    ))}
-                </ul>
-            </div>
+            <PlayerListViewer league={league} user={user} leagueId={leagueId} />
         </>
     );
 };
@@ -249,6 +201,8 @@ const DraftingView = ({ league, user, leagueId }) => {
                     <p><strong>{beerBitchTeam.name}</strong> has been assigned to Beer Duty!</p>
                 </div>
             )}
+            
+            <PlayerListViewer league={league} user={user} leagueId={leagueId} />
         </>
     );
 };
@@ -750,6 +704,61 @@ const TeamListViewer = ({ league, user, leagueId }) => {
     );
 };
 
+const PlayerListViewer = ({ league, user, leagueId }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [sortPosition, setSortPosition] = useState('All Positions');
+    const userTeam = league.teams.find(team => team.ownerId === user.userId);
+    const userFavorites = userTeam?.favoritePlayerIds || [];
+    const allPlayers = league.initialPlayerPool || [];
+    const favoritePlayers = allPlayers.filter(p => userFavorites.includes(p.id) && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
+    const availablePlayers = allPlayers.filter(p => !userFavorites.includes(p.id) && !p.isDrafted && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
+
+    const handleToggleFavorite = async (playerIdToToggle) => {
+        const isCurrentlyFavorite = userFavorites.includes(playerIdToToggle);
+        const newFavoriteIds = isCurrentlyFavorite ? userFavorites.filter(id => id !== playerIdToToggle) : [...userFavorites, playerIdToToggle];
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/favorites`, { userId: user.userId, playerIds: newFavoriteIds });
+        } catch (error) {
+            console.error("Error updating favorite players:", error);
+            alert("Failed to update your favorite players.");
+        }
+    };
+
+    return (
+        <div className="card" style={{ marginTop: '20px' }}>
+            <h3>Player Lists</h3>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
+                <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition}>
+                    <option>All Positions</option>
+                    <option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>K</option><option>DEF</option>
+                </select>
+                <input type="text" placeholder="Search for a player..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ padding: '8px' }} />
+            </div>
+            <h4>Your Favorited Players ({favoritePlayers.length})</h4>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+                {favoritePlayers.map(player => (
+                    <li key={player.id} className="player-list-item">
+                        <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
+                            <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
+                        </div>
+                    </li>
+                ))}
+            </ul>
+            <h4 style={{marginTop: '20px'}}>Available Players ({availablePlayers.length})</h4>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+                {availablePlayers.map(player => (
+                    <li key={player.id} className="player-list-item">
+                        <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank}</span>
+                        <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+};
+
 const NominatePlayerModal = ({ league, onNominate, onClose }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const undraftedPlayers = league.initialPlayerPool.filter(p => !p.isDrafted)
@@ -844,3 +853,4 @@ const CompletedView = ({ league, leagueId }) => {
 };
 
 export default DraftScreen;
+ 
