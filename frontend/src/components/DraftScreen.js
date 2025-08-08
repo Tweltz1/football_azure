@@ -77,6 +77,7 @@ const DraftScreen = () => {
     if (!league) return <div>Could not load league.</div>;
 
     const isLobbyPhase = league.status.toLowerCase() === 'created' || league.status.toLowerCase() === 'lobby';
+    const isCompleted = league.status.toLowerCase() === 'completed';
     
     return (
         <div style={{ padding: '20px' }}>
@@ -86,6 +87,8 @@ const DraftScreen = () => {
 
             {isLobbyPhase ? (
                 <LobbyView league={league} user={user} leagueId={leagueId} />
+            ) : isCompleted ? (
+                <CompletedView league={league} leagueId={leagueId} />
             ) : (
                 <DraftingView league={league} user={user} leagueId={leagueId} />
             )}
@@ -262,6 +265,16 @@ const AdminControls = ({ league, user, leagueId }) => {
         }
     };
 
+    const handleSkipIntermission = async () => {
+        if (window.confirm("Are you sure you want to skip the intermission and start the next auction immediately?")) {
+            try {
+                await axios.post(`${API_BASE_URL}/leagues/${leagueId}/skip-intermission`, { adminId: user.userId });
+            } catch (error) {
+                alert(`Error skipping intermission: ${error.response?.data || error.message}`);
+            }
+        }
+    };
+
     const handleAssignBeerBitch = async (teamId) => {
         try {
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/beer-bitch`, { adminId: user.userId, teamId: teamId });
@@ -299,6 +312,16 @@ const AdminControls = ({ league, user, leagueId }) => {
         }
     };
 
+    const handleCompleteDraft = async () => {
+        if (window.confirm("Are you sure you want to end this draft? This cannot be undone.")) {
+            try {
+                await axios.post(`${API_BASE_URL}/leagues/${leagueId}/complete`, { adminId: user.userId });
+            } catch (error) {
+                alert(`Error completing draft: ${error.response?.data || error.message}`);
+            }
+        }
+    };
+
     const isPaused = league.auctionTimer?.isPaused;
     const isIntermission = league.status.toLowerCase() === 'intermission';
 
@@ -313,11 +336,17 @@ const AdminControls = ({ league, user, leagueId }) => {
         <>
             <div>
                 <button onClick={handlePauseDraft}>{pauseButtonText()}</button>
-                <button onClick={handleSkipPlayer} disabled={isPaused || isIntermission}>Skip Player</button>
+                
+                {isIntermission ? (
+                    <button onClick={handleSkipIntermission} disabled={isPaused}>Skip Intermission</button>
+                ) : (
+                    <button onClick={handleSkipPlayer} disabled={isPaused}>Skip Player</button>
+                )}
+
                 <button onClick={() => setShowNominateModal(true)} disabled={!isPaused}>Nominate Player</button>
                 <button onClick={() => setShowManageMembersModal(true)} disabled={!isPaused}>Manage Members</button>
                 <button onClick={() => setShowBeerBitchModal(true)} disabled={!isPaused}>Beer B!tch</button>
-                <button disabled={!isPaused}>Complete Draft</button>
+                <button onClick={handleCompleteDraft} disabled={!isPaused}>Complete Draft</button>
             </div>
 
             {showBeerBitchModal && (
@@ -361,48 +390,51 @@ const AdminControls = ({ league, user, leagueId }) => {
 const AuctionView = ({ league, user, leagueId }) => {
     const [bidAmount, setBidAmount] = useState(0);
     const [timer, setTimer] = useState(0);
-    const [bidSubmitted, setBidSubmitted] = useState(false);
 
     const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
+    const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
+    const currentServerBid = userHasActiveBid ? league.activeBids[user.userId].amount : 0;
+
+    useEffect(() => {
+        const debounceBid = setTimeout(() => {
+            if (league.auctionTimer?.isPaused) { return; }
+
+            if (bidAmount !== currentServerBid) {
+                if (bidAmount > 0) {
+                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+                } else if (bidAmount === 0 && userHasActiveBid) {
+                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
+                }
+            }
+        }, 250);
+
+        return () => clearTimeout(debounceBid);
+    }, [bidAmount, leagueId, user.userId, league.auctionTimer?.isPaused, userHasActiveBid, currentServerBid]);
 
     useEffect(() => {
         const { auctionTimer } = league;
         let intervalId = null;
-
-        const calculateTimeLeft = () => {
-            if (auctionTimer?.endTime) {
-                const endTime = new Date(auctionTimer.endTime).getTime();
-                const now = new Date().getTime();
-                const timeLeft = Math.max(0, Math.floor((endTime - now) / 1000));
-                setTimer(timeLeft);
-
-                if (timeLeft === 0 && !bidSubmitted && !auctionTimer.isPaused) {
-                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/submit-final-bid`, { 
-                        userId: user.userId, 
-                        amount: bidAmount 
-                    });
-                    setBidSubmitted(true);
-                }
-            } else {
-                setTimer(0);
-            }
-        };
-
+        if (intervalId) { clearInterval(intervalId); }
         if (auctionTimer?.isPaused) {
             setTimer(auctionTimer.timeRemainingOnPause);
         } else {
+            const calculateTimeLeft = () => {
+                if (auctionTimer?.endTime) {
+                    const endTime = new Date(auctionTimer.endTime).getTime();
+                    const now = new Date().getTime();
+                    setTimer(Math.max(0, Math.floor((endTime - now) / 1000)));
+                } else { setTimer(0); }
+            };
             calculateTimeLeft();
             intervalId = setInterval(calculateTimeLeft, 1000);
         }
-        
         return () => { if (intervalId) { clearInterval(intervalId); }};
-    }, [league, leagueId, user.userId, bidAmount, bidSubmitted]);
+    }, [league]);
 
-    useEffect(() => {
+    const handleCancelBid = () => {
         setBidAmount(0);
-        setBidSubmitted(false);
-    }, [league.currentPlayerId]);
-
+    };
+    
     const incrementBid = () => setBidAmount(prev => prev + 1);
     const decrementBid = () => setBidAmount(prev => Math.max(0, prev - 1));
 
@@ -413,21 +445,26 @@ const AuctionView = ({ league, user, leagueId }) => {
             <h3>Current Player Up for Bid:</h3>
             <h2>{currentPlayer.name} - {currentPlayer.position} - {currentPlayer.team}</h2>
             <p>Rank: {currentPlayer.rank}</p>
-            <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>
-                {timer > 0 ? `Bid Ends In: ${timer}s` : "Waiting for results..."}
-            </p>
+            <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Bid Ends In: {timer}s</p>
             
+            {userHasActiveBid && (
+                <p style={{fontSize: '18px', color: 'green'}}>Your current bid is: ${league.activeBids[user.userId].amount}</p>
+            )}
+
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
-                Your Final Bid: 
-                <button onClick={decrementBid} disabled={league.auctionTimer?.isPaused}>-</button>
+                Your Bid: 
+                <button onClick={decrementBid}>-</button>
                 <input 
                     type="number" 
                     value={bidAmount} 
                     onChange={e => setBidAmount(parseInt(e.target.value) || 0)}
                     style={{width: '60px', textAlign: 'center'}} 
-                    disabled={league.auctionTimer?.isPaused}
                 />
-                <button onClick={incrementBid} disabled={league.auctionTimer?.isPaused}>+</button>
+                <button onClick={incrementBid}>+</button>
+                
+                <button onClick={handleCancelBid} style={{marginLeft: '10px', backgroundColor: '#dc3545', color: 'white'}} disabled={!userHasActiveBid || league.auctionTimer?.isPaused}>
+                    Cancel Bid
+                </button>
             </div>
         </div>
     );
@@ -609,6 +646,38 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
                     ))}
                 </ul>
                 <button onClick={onClose} className="cancel-button">Cancel</button>
+            </div>
+        </div>
+    );
+};
+
+const CompletedView = ({ league, leagueId }) => {
+    return (
+        <div className="card" style={{textAlign: 'center'}}>
+            <h2>The Draft is Complete!</h2>
+            <p>Thank you for playing. You can now view the final results and rosters.</p>
+            <div style={{marginTop: '20px'}}>
+                <a 
+                    href={`${API_BASE_URL}/leagues/${leagueId}/results.csv`} 
+                    download
+                >
+                    <button className="create-button">Download Draft Results (CSV)</button>
+                </a>
+            </div>
+            <div style={{marginTop: '40px'}}>
+                <h3>Final Rosters</h3>
+                {league.teams.map(team => (
+                    <div key={team.id} style={{padding: '10px', borderBottom: '1px solid #eee'}}>
+                        <h4>{team.name} (Budget Remaining: ${team.budget})</h4>
+                        <ul style={{listStyle: 'none', padding: 0}}>
+                            {team.roster.map((spot, index) => (
+                                <li key={index}>
+                                    {spot.player.name} ({spot.player.position}) - ${spot.player.price}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ))}
             </div>
         </div>
     );
