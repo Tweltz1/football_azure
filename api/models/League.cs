@@ -43,6 +43,20 @@ public class League
     
     [JsonProperty("beerBitchTeamId")]
     public string BeerBitchTeamId { get; set; }
+	[JsonProperty("tieBreaker")]
+    public TieBreakerInfo TieBreaker { get; set; }
+}
+
+public class TieBreakerInfo
+{
+    [JsonProperty("tiedTeamIds")]
+    public List<string> TiedTeamIds { get; set; } = new List<string>();
+
+    [JsonProperty("tieAmount")]
+    public int TieAmount { get; set; }
+
+    [JsonProperty("round")]
+    public int Round { get; set; } // Will be 1 or 2
 }
 
 public class Team

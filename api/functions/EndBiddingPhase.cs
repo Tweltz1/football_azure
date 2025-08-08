@@ -24,8 +24,6 @@ public static class EndBiddingPhase
         var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
         var league = leagueResponse.Resource;
 
-        // --- THIS IS THE FIX ---
-        // We now also check if the timer is paused. If it is, we do nothing.
         if (league == null || league.Status != "drafting" || league.AuctionTimer.IsPaused || DateTime.UtcNow < league.AuctionTimer.EndTime)
         {
             return new OkResult();
@@ -36,28 +34,60 @@ public static class EndBiddingPhase
 
         if (league.ActiveBids.Any())
         {
-            var winningBidEntry = league.ActiveBids.OrderByDescending(b => b.Value.Amount).First();
-            var winningTeam = league.Teams.First(t => t.OwnerId == winningBidEntry.Key);
+            // Find the highest bid amount
+            var highBidAmount = league.ActiveBids.Max(b => b.Value.Amount);
+            // Find all teams that made that highest bid
+            var winningBids = league.ActiveBids.Where(b => b.Value.Amount == highBidAmount).ToList();
 
-            draftedPlayer.IsDrafted = true;
-            draftedPlayer.Price = winningBidEntry.Value.Amount;
-            winningTeam.Budget -= winningBidEntry.Value.Amount;
-            winningTeam.Roster.Add(new RosterSpot { Player = draftedPlayer, Position = draftedPlayer.Position });
-
-            league.DraftLog.Add(new DraftPick
+            if (winningBids.Count == 1)
             {
-                WinningTeamId = winningTeam.Id,
-                WinningBid = winningBidEntry.Value.Amount,
-                Player = draftedPlayer,
-                AllBids = new Dictionary<string, Bid>(league.ActiveBids)
-            });
+                // --- SINGLE WINNER ---
+                var winningBidEntry = winningBids.First();
+                var winningTeam = league.Teams.First(t => t.OwnerId == winningBidEntry.Key);
+
+                draftedPlayer.IsDrafted = true;
+                draftedPlayer.Price = winningBidEntry.Value.Amount;
+                winningTeam.Budget -= winningBidEntry.Value.Amount;
+                winningTeam.Roster.Add(new RosterSpot { Player = draftedPlayer, Position = draftedPlayer.Position });
+
+                league.DraftLog.Add(new DraftPick
+                {
+                    WinningTeamId = winningTeam.Id,
+                    WinningBid = winningBidEntry.Value.Amount,
+                    Player = draftedPlayer,
+                    AllBids = new Dictionary<string, Bid>(league.ActiveBids)
+                });
+                
+                // Transition to Intermission
+                league.Status = "intermission";
+                league.ActiveBids.Clear();
+                league.CurrentPlayerId = null;
+                league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
+            }
+            else
+            {
+                // --- TIE BREAKER ---
+                log.LogInformation($"Tie detected at ${highBidAmount} for player {draftedPlayer.Name}.");
+                league.Status = "tiebreaker";
+                league.TieBreaker = new TieBreakerInfo
+                {
+                    TiedTeamIds = winningBids.Select(wb => wb.Key).ToList(),
+                    TieAmount = highBidAmount,
+                    Round = 1
+                };
+                // Start a new, shorter timer for the re-bid
+                league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.RebidTimer) };
+                // Clear bids for the re-bid round
+                league.ActiveBids.Clear();
+            }
+        }
+        else 
+        {
+            // No bids, go to intermission
+            league.Status = "intermission";
+            league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
         }
         
-        league.Status = "intermission";
-        league.ActiveBids.Clear();
-        league.CurrentPlayerId = null;
-        league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
-
         await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
         await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
 

@@ -192,17 +192,18 @@ const LobbyView = ({ league, user, leagueId }) => {
 
 const DraftingView = ({ league, user, leagueId }) => {
     const isIntermission = league.status.toLowerCase() === 'intermission';
+    const isTieBreaker = league.status.toLowerCase() === 'tiebreaker';
     const beerBitchTeam = league.teams.find(t => t.id === league.beerBitchTeamId);
 
     useEffect(() => {
         let pollInterval;
-        if (league.status.toLowerCase() === 'drafting') {
+        if (league.status.toLowerCase() === 'drafting' || isTieBreaker) {
             pollInterval = setInterval(() => {
                 axios.post(`${API_BASE_URL}/leagues/${leagueId}/endBidding`);
             }, 3000);
         }
         return () => clearInterval(pollInterval);
-    }, [league.status, leagueId]);
+    }, [league.status, isTieBreaker, leagueId]);
 
     useEffect(() => {
         let pollInterval;
@@ -223,6 +224,8 @@ const DraftingView = ({ league, user, leagueId }) => {
             
             {isIntermission ? (
                 <IntermissionView league={league} />
+            ) : isTieBreaker ? (
+                <TieBreakerView league={league} user={user} leagueId={leagueId} />
             ) : (
                 <AuctionView league={league} user={user} leagueId={leagueId} />
             )}
@@ -324,10 +327,11 @@ const AdminControls = ({ league, user, leagueId }) => {
 
     const isPaused = league.auctionTimer?.isPaused;
     const isIntermission = league.status.toLowerCase() === 'intermission';
+    const isTieBreaker = league.status.toLowerCase() === 'tiebreaker';
 
     const pauseButtonText = () => {
-        if (isIntermission) {
-            return isPaused ? 'Resume Intermission' : 'Pause Intermission';
+        if (isIntermission || isTieBreaker) {
+            return isPaused ? 'Resume Tie-Breaker' : 'Pause Tie-Breaker';
         }
         return isPaused ? 'Resume Draft' : 'Pause Draft';
     };
@@ -340,7 +344,7 @@ const AdminControls = ({ league, user, leagueId }) => {
                 {isIntermission ? (
                     <button onClick={handleSkipIntermission} disabled={isPaused}>Skip Intermission</button>
                 ) : (
-                    <button onClick={handleSkipPlayer} disabled={isPaused}>Skip Player</button>
+                    <button onClick={handleSkipPlayer} disabled={isPaused || isTieBreaker}>Skip Player</button>
                 )}
 
                 <button onClick={() => setShowNominateModal(true)} disabled={!isPaused}>Nominate Player</button>
@@ -392,24 +396,14 @@ const AuctionView = ({ league, user, leagueId }) => {
     const [timer, setTimer] = useState(0);
 
     const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
-    const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
-    const currentServerBid = userHasActiveBid ? league.activeBids[user.userId].amount : 0;
-
+    
     useEffect(() => {
-        const debounceBid = setTimeout(() => {
-            if (league.auctionTimer?.isPaused) { return; }
-
-            if (bidAmount !== currentServerBid) {
-                if (bidAmount > 0) {
-                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
-                } else if (bidAmount === 0 && userHasActiveBid) {
-                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
-                }
-            }
-        }, 250);
-
-        return () => clearTimeout(debounceBid);
-    }, [bidAmount, leagueId, user.userId, league.auctionTimer?.isPaused, userHasActiveBid, currentServerBid]);
+        let highBid = 0;
+        if (league.activeBids && Object.keys(league.activeBids).length > 0) {
+            highBid = Math.max(...Object.values(league.activeBids).map(b => b.amount));
+        }
+        setBidAmount(highBid + 1);
+    }, [league.currentPlayerId]);
 
     useEffect(() => {
         const { auctionTimer } = league;
@@ -431,14 +425,38 @@ const AuctionView = ({ league, user, leagueId }) => {
         return () => { if (intervalId) { clearInterval(intervalId); }};
     }, [league]);
 
-    const handleCancelBid = () => {
-        setBidAmount(0);
+    const handlePlaceBid = async () => {
+        if (bidAmount <= 0) {
+            alert("Bid must be at least $1.");
+            return;
+        }
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+        } catch (error) {
+            alert(`Error placing bid: ${error.response?.data || error.message}`);
+        }
+    };
+
+    const handleCancelBid = async () => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
+        } catch (error) {
+            alert(`Error cancelling bid: ${error.response?.data || error.message}`);
+        }
+    };
+
+    const handleKeyDown = (event) => {
+        if (event.key === 'Enter') {
+            handlePlaceBid();
+        }
     };
     
     const incrementBid = () => setBidAmount(prev => prev + 1);
     const decrementBid = () => setBidAmount(prev => Math.max(0, prev - 1));
 
     if (!currentPlayer) return <div className="card">Waiting for player nomination...</div>;
+
+    const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
 
     return (
         <div className="card" style={{marginTop: '20px'}}>
@@ -453,18 +471,26 @@ const AuctionView = ({ league, user, leagueId }) => {
 
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
                 Your Bid: 
-                <button onClick={decrementBid}>-</button>
+                <button onClick={decrementBid} disabled={league.auctionTimer?.isPaused}>-</button>
                 <input 
                     type="number" 
                     value={bidAmount} 
                     onChange={e => setBidAmount(parseInt(e.target.value) || 0)}
+                    onKeyDown={handleKeyDown}
                     style={{width: '60px', textAlign: 'center'}} 
+                    disabled={league.auctionTimer?.isPaused} 
                 />
-                <button onClick={incrementBid}>+</button>
+                <button onClick={incrementBid} disabled={league.auctionTimer?.isPaused}>+</button>
                 
-                <button onClick={handleCancelBid} style={{marginLeft: '10px', backgroundColor: '#dc3545', color: 'white'}} disabled={!userHasActiveBid || league.auctionTimer?.isPaused}>
-                    Cancel Bid
+                <button onClick={handlePlaceBid} style={{marginLeft: '10px'}} disabled={league.auctionTimer?.isPaused}>
+                    Place Bid
                 </button>
+                
+                {userHasActiveBid && (
+                    <button onClick={handleCancelBid} style={{backgroundColor: '#dc3545', color: 'white'}} disabled={league.auctionTimer?.isPaused}>
+                        Cancel Bid
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -520,6 +546,112 @@ const IntermissionView = ({ league }) => {
                     })}
                 </ul>
             </div>
+        </div>
+    );
+};
+
+const TieBreakerView = ({ league, user, leagueId }) => {
+    const [bidAmount, setBidAmount] = useState(0);
+    const [timer, setTimer] = useState(0);
+    const [showResolveTieModal, setShowResolveTieModal] = useState(false);
+
+    const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
+    const userIsTied = league.tieBreaker?.tiedTeamIds.includes(user.userId);
+    const isSecondRoundTie = league.tieBreaker?.round === 2;
+    const isCurrentUserAdmin = league.adminId === user.userId;
+
+    useEffect(() => {
+        if (league.tieBreaker) {
+            setBidAmount(league.tieBreaker.tieAmount + 1);
+        }
+    }, [league.tieBreaker]);
+
+    useEffect(() => {
+        const { auctionTimer } = league;
+        let intervalId = null;
+        if (intervalId) { clearInterval(intervalId); }
+        if (auctionTimer?.isPaused) {
+            setTimer(auctionTimer.timeRemainingOnPause);
+        } else {
+            const calculateTimeLeft = () => {
+                if (auctionTimer?.endTime) {
+                    const endTime = new Date(auctionTimer.endTime).getTime();
+                    const now = new Date().getTime();
+                    setTimer(Math.max(0, Math.floor((endTime - now) / 1000)));
+                } else { setTimer(0); }
+            };
+            calculateTimeLeft();
+            intervalId = setInterval(calculateTimeLeft, 1000);
+        }
+        return () => { if (intervalId) { clearInterval(intervalId); }};
+    }, [league]);
+
+    const handlePlaceTieBid = async () => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/tiebreaker-bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+        } catch (error) {
+            alert(`Error placing tie-breaker bid: ${error.response?.data || error.message}`);
+        }
+    };
+    
+    const handleResolveTie = async (winningTeamId) => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/resolve-tie`, { adminId: user.userId, winningTeamId });
+            setShowResolveTieModal(false);
+        } catch (error) {
+            alert(`Error resolving tie: ${error.response?.data || error.message}`);
+        }
+    };
+
+    if (!currentPlayer || !league.tieBreaker) return <div className="card">Loading tie-breaker...</div>;
+
+    return (
+        <div className="card" style={{marginTop: '20px', backgroundColor: '#fff3cd'}}>
+            <h2>Tie Breaker!</h2>
+            <p>A tie was detected for <strong>{currentPlayer.name}</strong> at <strong>${league.tieBreaker.tieAmount}</strong>.</p>
+            <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Re-bid Ends In: {timer}s</p>
+
+            {userIsTied ? (
+                <div>
+                    <h4>You are in the tie-breaker!</h4>
+                    <p>You must bid at least ${league.tieBreaker.tieAmount + 1}.</p>
+                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
+                        Your Bid:
+                        <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value) || 0)} style={{width: '60px'}} disabled={league.auctionTimer?.isPaused} />
+                        <button onClick={handlePlaceTieBid} disabled={league.auctionTimer?.isPaused}>Place Tie-Breaker Bid</button>
+                    </div>
+                </div>
+            ) : (
+                <p>Waiting for the tied teams to resolve the bid...</p>
+            )}
+
+            {isSecondRoundTie && isCurrentUserAdmin && (
+                <div style={{marginTop: '20px'}}>
+                    <p><strong>This is the second tie!</strong> As the admin, you must resolve it.</p>
+                    <button onClick={() => setShowResolveTieModal(true)}>Resolve Tie</button>
+                </div>
+            )}
+
+            {showResolveTieModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h3>Resolve Final Tie</h3>
+                        <p>Please select the winner for {currentPlayer.name} at ${league.tieBreaker.tieAmount}.</p>
+                        <ul style={{listStyle: 'none', padding: 0}}>
+                            {league.tieBreaker.tiedTeamIds.map(teamId => {
+                                const team = league.teams.find(t => t.ownerId === teamId);
+                                return (
+                                    <li key={teamId} className="player-list-item">
+                                        <span>{team.name}</span>
+                                        <button onClick={() => handleResolveTie(team.id)}>Award Player</button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                        <button onClick={() => setShowResolveTieModal(false)} className="cancel-button">Cancel</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
