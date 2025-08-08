@@ -89,6 +89,8 @@ public class Player
     public string Team { get; set; }
     [JsonProperty("rank")]
     public int Rank { get; set; }
+	    [JsonProperty("bye")]
+    public int Bye { get; set; }
     [JsonProperty("isDrafted")]
     public bool IsDrafted { get; set; }
     [JsonProperty("price")]
