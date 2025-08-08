@@ -287,6 +287,16 @@ const AdminControls = ({ league, user, leagueId }) => {
         }
     };
 
+    const handleUndoPick = async () => {
+        if (window.confirm("Are you sure you want to undo the last pick? This will return the player to the pool and refund the winning team.")) {
+            try {
+                await axios.post(`${API_BASE_URL}/leagues/${leagueId}/undo-pick`, { adminId: user.userId });
+            } catch (error) {
+                alert(`Error undoing pick: ${error.response?.data || error.message}`);
+            }
+        }
+    };
+
     const isPaused = league.auctionTimer?.isPaused;
     const isIntermission = league.status.toLowerCase() === 'intermission';
     const isTieBreaker = league.status.toLowerCase() === 'tiebreaker';
@@ -311,6 +321,8 @@ const AdminControls = ({ league, user, leagueId }) => {
                 ) : (
                     <button onClick={handleSkipPlayer} disabled={isPaused || isTieBreaker}>Skip Player</button>
                 )}
+
+                {isIntermission && <button onClick={handleUndoPick} disabled={isPaused}>Undo Last Pick</button>}
 
                 <button onClick={() => setShowNominateModal(true)} disabled={!isPaused}>Nominate Player</button>
                 <button onClick={() => setShowManageMembersModal(true)} disabled={!isPaused}>Manage Members</button>
@@ -853,4 +865,3 @@ const CompletedView = ({ league, leagueId }) => {
 };
 
 export default DraftScreen;
- 

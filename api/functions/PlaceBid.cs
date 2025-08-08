@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
+using System.Linq;
 
 public static class PlaceBid
 {
@@ -27,7 +28,20 @@ public static class PlaceBid
         var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
         var league = leagueResponse.Resource;
 
-        // Add or update the user's bid
+        // --- MAX BID VALIDATION ---
+        var biddingTeam = league.Teams.FirstOrDefault(t => t.OwnerId == bidRequest.UserId);
+        if (biddingTeam == null) return new NotFoundObjectResult("Team not found.");
+
+        var totalRosterSpots = league.RosterSettings.QB + league.RosterSettings.RB + league.RosterSettings.WR + league.RosterSettings.TE + league.RosterSettings.K + league.RosterSettings.DEF + league.RosterSettings.FLEX + league.RosterSettings.SuperFlex + league.RosterSettings.Bench;
+        var spotsToFill = totalRosterSpots - biddingTeam.Roster.Count;
+        var maxBid = biddingTeam.Budget - (spotsToFill > 0 ? spotsToFill - 1 : 0);
+
+        if (bidRequest.Amount > maxBid)
+        {
+            return new BadRequestObjectResult($"Your bid of ${bidRequest.Amount} exceeds your max bid of ${maxBid}.");
+        }
+        // --- END VALIDATION ---
+
         league.ActiveBids[bidRequest.UserId] = new Bid { Amount = bidRequest.Amount, Timestamp = DateTime.UtcNow };
 
         await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
