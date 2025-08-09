@@ -167,25 +167,8 @@ const DraftingView = ({ league, user, leagueId }) => {
     const isTieBreaker = league.status.toLowerCase() === 'tiebreaker';
     const beerBitchTeam = league.teams.find(t => t.id === league.beerBitchTeamId);
 
-    useEffect(() => {
-        let pollInterval;
-        if (league.status.toLowerCase() === 'drafting' || isTieBreaker) {
-            pollInterval = setInterval(() => {
-                axios.post(`${API_BASE_URL}/leagues/${leagueId}/endBidding`);
-            }, 3000);
-        }
-        return () => clearInterval(pollInterval);
-    }, [league.status, isTieBreaker, leagueId]);
-
-    useEffect(() => {
-        let pollInterval;
-        if (isIntermission) {
-            pollInterval = setInterval(() => {
-                axios.post(`${API_BASE_URL}/leagues/${leagueId}/nextRound`);
-            }, 3000);
-        }
-        return () => clearInterval(pollInterval);
-    }, [isIntermission, leagueId]);
+    // The old polling useEffect hooks have been removed from here.
+    // The UI will now rely solely on SignalR messages for updates.
 
     return (
         <>
