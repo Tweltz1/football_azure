@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Collections.Generic;
+using System;
 
 public static class DraftLogic
 {
@@ -25,14 +26,30 @@ public static class DraftLogic
         league.ActiveBids.Clear();
         league.CurrentPlayerId = null;
         league.TieBreaker = null;
-        league.AuctionTimer = new AuctionTimer { EndTime = System.DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
+        league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
     }
+
+    // --- THIS IS THE NEW, MISSING FUNCTION ---
+    public static string GetNextRandomPlayerId(League league, string currentPlayerId = null)
+    {
+        var undraftedPlayers = league.InitialPlayerPool.Where(p => !p.IsDrafted).ToList();
+        
+        if (currentPlayerId != null)
+        {
+            undraftedPlayers.RemoveAll(p => p.Id == currentPlayerId);
+        }
+
+        if (!undraftedPlayers.Any()) return null;
+        
+        var random = new Random();
+        return undraftedPlayers[random.Next(undraftedPlayers.Count)].Id;
+    }
+    // --- END OF NEW FUNCTION ---
 
     private static string GetBestAvailableRosterSpot(RosterSettings settings, List<RosterSpot> currentRoster, Player player)
     {
         string naturalPosition = player.Position.ToUpper();
 
-        // 1. Try to fill the player's natural position first
         int maxForPosition = GetMaxForPosition(settings, naturalPosition);
         int currentOnRoster = currentRoster.Count(s => s.Position == naturalPosition);
         if (currentOnRoster < maxForPosition)
@@ -40,7 +57,6 @@ public static class DraftLogic
             return naturalPosition;
         }
 
-        // 2. If natural position is full, try to fill FLEX spot (for RB, WR, TE)
         if (naturalPosition == "RB" || naturalPosition == "WR" || naturalPosition == "TE")
         {
             int maxFlex = GetMaxForPosition(settings, "FLEX");
@@ -51,7 +67,6 @@ public static class DraftLogic
             }
         }
 
-        // 3. If FLEX is full, try SUPERFLEX (for QB, RB, WR, TE)
         if (naturalPosition == "QB" || naturalPosition == "RB" || naturalPosition == "WR" || naturalPosition == "TE")
         {
             int maxSuperFlex = GetMaxForPosition(settings, "SUPERFLEX");
@@ -62,7 +77,6 @@ public static class DraftLogic
             }
         }
 
-        // 4. If all other options are exhausted, place them on the BENCH
         return "BENCH";
     }
 
@@ -75,12 +89,9 @@ public static class DraftLogic
             case "WR": return settings.WR;
             case "TE": return settings.TE;
             case "K": return settings.K;
-            // --- THIS IS THE FIX ---
-            // Treat both "DEF" and "DST" as the same position
             case "DEF":
             case "DST": 
                 return settings.DEF;
-            // --- END OF FIX ---
             case "FLEX": return settings.FLEX;
             case "SUPERFLEX": return settings.SuperFlex;
             case "BENCH": return settings.Bench;

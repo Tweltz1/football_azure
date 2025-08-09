@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
+using Azure.Storage.Queues;
 
 public static class PauseDraft
 {
@@ -18,7 +19,7 @@ public static class PauseDraft
         string leagueId,
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
-        [Queue("auction-timers", Connection = "DraftStorageQueueConnection")] IAsyncCollector<string> timerMessages, // <-- CHANGED
+        [Queue("auction-timers", Connection = "DraftStorageQueueConnection")] QueueClient timerQueue,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -44,9 +45,9 @@ public static class PauseDraft
                 var newEndTime = DateTime.UtcNow.AddSeconds(league.AuctionTimer.TimeRemainingOnPause);
                 league.AuctionTimer.EndTime = newEndTime;
                 
-                string expectedStatus = league.Status.ToLower() == "intermission" ? "intermission" : "drafting";
+                string expectedStatus = league.Status.ToLower();
                 string playerId = league.Status.ToLower() == "intermission" ? null : league.CurrentPlayerId;
-                await QueueNextTimer(timerMessages, league.Id, playerId, expectedStatus, league.AuctionTimer.TimeRemainingOnPause);
+                await QueueNextTimer(timerQueue, league.Id, playerId, expectedStatus, league.AuctionTimer.TimeRemainingOnPause);
             }
 
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
@@ -61,11 +62,11 @@ public static class PauseDraft
         }
     }
     
-    private static async Task QueueNextTimer(IAsyncCollector<string> queue, string leagueId, string playerId, string expectedStatus, int delayInSeconds)
+    private static async Task QueueNextTimer(QueueClient queue, string leagueId, string playerId, string expectedStatus, int delayInSeconds)
     {
         var timerInfo = new { LeagueId = leagueId, PlayerId = playerId, ExpectedStatus = expectedStatus };
         var message = JsonConvert.SerializeObject(timerInfo);
-        await queue.AddAsync(message, DateTime.UtcNow.AddSeconds(delayInSeconds));
+        await queue.SendMessageAsync(message, TimeSpan.FromSeconds(delayInSeconds));
     }
 
     public class AdminActionRequest { public string AdminId { get; set; } }
