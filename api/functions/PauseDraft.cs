@@ -18,7 +18,7 @@ public static class PauseDraft
         string leagueId,
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
-        [Queue("auction-timers", Connection = "AzureWebJobsStorage")] IAsyncCollector<string> timerMessages,
+        [Queue("auction-timers", Connection = "DraftStorageQueueConnection")] IAsyncCollector<string> timerMessages, // <-- CHANGED
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -44,7 +44,6 @@ public static class PauseDraft
                 var newEndTime = DateTime.UtcNow.AddSeconds(league.AuctionTimer.TimeRemainingOnPause);
                 league.AuctionTimer.EndTime = newEndTime;
                 
-                // --- RE-QUEUE THE TIMER ---
                 string expectedStatus = league.Status.ToLower() == "intermission" ? "intermission" : "drafting";
                 string playerId = league.Status.ToLower() == "intermission" ? null : league.CurrentPlayerId;
                 await QueueNextTimer(timerMessages, league.Id, playerId, expectedStatus, league.AuctionTimer.TimeRemainingOnPause);

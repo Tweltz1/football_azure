@@ -20,7 +20,7 @@ public static class SkipPlayer
         string leagueId,
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
-        [Queue("auction-timers", Connection = "AzureWebJobsStorage")] IAsyncCollector<string> timerMessages,
+        [Queue("auction-timers", Connection = "DraftStorageQueueConnection")] IAsyncCollector<string> timerMessages, // <-- CHANGED
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -36,10 +36,9 @@ public static class SkipPlayer
 
             league.Status = "drafting";
             league.ActiveBids.Clear();
-            league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league, league.CurrentPlayerId); // Exclude current player
+            league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league, league.CurrentPlayerId);
             league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer) };
 
-            // --- QUEUE THE TIMER ---
             await QueueNextTimer(timerMessages, league.Id, league.CurrentPlayerId, "drafting", league.DraftTimers.BidTimer);
 
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));

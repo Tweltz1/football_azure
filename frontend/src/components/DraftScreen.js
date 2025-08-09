@@ -167,8 +167,8 @@ const DraftingView = ({ league, user, leagueId }) => {
     const isTieBreaker = league.status.toLowerCase() === 'tiebreaker';
     const beerBitchTeam = league.teams.find(t => t.id === league.beerBitchTeamId);
 
-    // The old polling useEffect hooks have been removed from here.
-    // The UI will now rely solely on SignalR messages for updates.
+    // The polling useEffect hooks have been removed. The component now relies
+    // entirely on SignalR messages to receive updates.
 
     return (
         <>
