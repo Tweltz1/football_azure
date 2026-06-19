@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
 public static class PauseDraft
 {
@@ -16,14 +15,12 @@ public static class PauseDraft
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/pause")] HttpRequest req,
         string leagueId,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
-        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
+        var container = AppServices.LeaguesContainer;
+
         try
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
@@ -46,7 +43,7 @@ public static class PauseDraft
             }
 
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+            await AppServices.SendToAllAsync("draftStateUpdate", league.ForBroadcast());
 
             return new OkObjectResult(league.AuctionTimer);
         }
