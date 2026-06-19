@@ -23,44 +23,53 @@ public static class StartDraft
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
+
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
         try
         {
-            var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-            var league = leagueResponse.Resource;
-
-            if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
-
-            var nonAdminMembers = league.Members.Where(id => id != league.AdminId).ToList();
-            bool allNonAdminsReady = nonAdminMembers.All(memberId => league.ReadyMembers.Contains(memberId));
-            if (!allNonAdminsReady && nonAdminMembers.Any())
+            var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
-                return new BadRequestObjectResult("Not all other members are ready.");
-            }
+                if (league.AdminId != data.AdminId)
+                    return new UnauthorizedResult();
 
-            league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
-            league.ActiveBids.Clear();
-            league.TieBreaker = null;
+                var nonAdminMembers = league.Members.Where(id => id != league.AdminId).ToList();
+                bool allNonAdminsReady = nonAdminMembers.All(memberId => league.ReadyMembers.Contains(memberId));
 
-            if (league.CurrentPlayerId == null)
-            {
-                league.Status = "completed";
-                league.AuctionTimer = null;
-            }
-            else
-            {
-                league.Status = "drafting";
-                league.AuctionTimer = new AuctionTimer
+                if (!allNonAdminsReady && nonAdminMembers.Any())
+                    return new BadRequestObjectResult("Not all other members are ready.");
+
+                league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
+                league.ActiveBids.Clear();
+                league.TieBreaker = null;
+
+                if (league.CurrentPlayerId == null)
                 {
-                    EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer),
-                    IsPaused = false,
-                    TimeRemainingOnPause = 0
-                };
-            }
+                    league.Status = "completed";
+                    league.AuctionTimer = null;
+                }
+                else
+                {
+                    league.Status = "drafting";
+                    league.AuctionTimer = new AuctionTimer
+                    {
+                        EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer),
+                        IsPaused = false,
+                        TimeRemainingOnPause = 0
+                    };
+                }
 
-            await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+                return null;
+            }, log);
+
+            if (error != null) return error;
+
+            await signalRMessages.AddAsync(new SignalRMessage
+            {
+                GroupName = leagueId,
+                Target = "draftStateUpdate",
+                Arguments = new object[] { league.ForBroadcast() }
+            });
 
             return new OkResult();
         }
@@ -70,6 +79,9 @@ public static class StartDraft
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
     }
-    
-    public class AdminActionRequest { public string AdminId { get; set; } }
+
+    public class AdminActionRequest
+    {
+        public string AdminId { get; set; }
+    }
 }
