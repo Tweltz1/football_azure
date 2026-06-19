@@ -1,5 +1,3 @@
-using System.IO;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -12,7 +10,7 @@ public static class GetSignalRInfo
     [FunctionName("GetSignalRInfo")]
     public static IActionResult Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
-        [SignalRConnectionInfo(HubName = "draftHub")] string connectionInfo,
+        [SignalRConnectionInfo(HubName = "draftHub", UserId = "{query.userId}")] string connectionInfo,
         ILogger log)
     {
         return connectionInfo != null
