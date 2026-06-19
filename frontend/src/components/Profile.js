@@ -21,11 +21,23 @@ const Profile = () => {
     const { user } = useAuth();
     const [userProfile, setUserProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [displayName, setDisplayName] = useState('');
+    const [defaultTeamName, setDefaultTeamName] = useState('');
+    const [profileMessage, setProfileMessage] = useState('');
+    const [noteDrafts, setNoteDrafts] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
     const [positionFilter, setPositionFilter] = useState('ALL');
     const [scoringMode, setScoringMode] = useState('PPR');
     const [sortBy, setSortBy] = useState('rank');
     const [playerLimit, setPlayerLimit] = useState(350);
+
+    const syncProfileFields = (profile, syncNotes = true) => {
+        setDisplayName(profile?.displayName || '');
+        setDefaultTeamName(profile?.defaultTeamName || '');
+        if (syncNotes) {
+            setNoteDrafts(profile?.playerNotes || {});
+        }
+    };
 
     useEffect(() => {
         const getProfile = async () => {
@@ -36,6 +48,7 @@ const Profile = () => {
                     displayName: user.userDetails
                 });
                 setUserProfile(response.data);
+                syncProfileFields(response.data);
             } catch (error) {
                 console.error('Error fetching user profile:', error);
                 alert('Could not fetch your profile.');
@@ -55,23 +68,52 @@ const Profile = () => {
     const visiblePlayers = filteredPlayerPool.slice(0, playerLimit);
     const scoringLabel = getScoringLabel(scoringMode);
     const favoriteIds = userProfile?.favoritePlayerIds || [];
+    const favoritePlayers = playerBoard.filter(player => favoriteIds.includes(player.id));
     const unavailableFavoriteIds = getUnavailableFavoriteIds(favoriteIds, playerBoard);
 
-    const saveFavoriteIds = async (newFavoriteIds, previousProfile = userProfile) => {
-        if (!userProfile) return;
-
-        const updatedProfile = { ...userProfile, favoritePlayerIds: newFavoriteIds };
-        setUserProfile(updatedProfile);
+    const saveProfilePatch = async (patch, { previousProfile = userProfile, syncNotes = false, successMessage = 'Saved' } = {}) => {
+        if (!userProfile) return null;
 
         try {
-            await axios.post(`${API_BASE_URL}/user-profile/${user.userId}`, {
-                favoritePlayerIds: newFavoriteIds
-            });
+            const response = await axios.post(`${API_BASE_URL}/user-profile/${user.userId}`, patch);
+            setUserProfile(response.data);
+            syncProfileFields(response.data, syncNotes);
+            setProfileMessage(successMessage);
+            setTimeout(() => setProfileMessage(''), 2500);
+            return response.data;
         } catch (error) {
             console.error('Error updating profile:', error);
-            alert('Failed to save your favorites. Reverting change.');
+            alert(`Failed to save profile: ${error.response?.data || error.message}`);
             setUserProfile(previousProfile);
+            syncProfileFields(previousProfile, syncNotes);
+            return null;
         }
+    };
+
+    const handleSaveProfileSettings = async (event) => {
+        event.preventDefault();
+
+        const trimmedDisplayName = displayName.trim();
+        const trimmedTeamName = defaultTeamName.trim();
+        if (!trimmedDisplayName || !trimmedTeamName) {
+            alert('Display name and team name are required.');
+            return;
+        }
+
+        await saveProfilePatch({
+            displayName: trimmedDisplayName,
+            defaultTeamName: trimmedTeamName,
+        }, { successMessage: 'Profile saved' });
+    };
+
+    const saveFavoriteIds = async (newFavoriteIds, previousProfile = userProfile) => {
+        const optimisticProfile = { ...userProfile, favoritePlayerIds: newFavoriteIds };
+        setUserProfile(optimisticProfile);
+        await saveProfilePatch({ favoritePlayerIds: newFavoriteIds }, {
+            previousProfile,
+            syncNotes: false,
+            successMessage: 'Favorites saved',
+        });
     };
 
     const handleToggleGlobalFavorite = async (playerIdToToggle) => {
@@ -90,6 +132,26 @@ const Profile = () => {
         await saveFavoriteIds(favoriteIds.filter((playerId) => activePlayerIds.has(playerId)));
     };
 
+    const handleNoteChange = (playerId, value) => {
+        setNoteDrafts(prev => ({ ...prev, [playerId]: value }));
+    };
+
+    const handleSavePlayerNote = async (playerId) => {
+        const nextNotes = { ...(userProfile?.playerNotes || {}) };
+        const trimmedNote = (noteDrafts[playerId] || '').trim();
+
+        if (trimmedNote) {
+            nextNotes[playerId] = trimmedNote;
+        } else {
+            delete nextNotes[playerId];
+        }
+
+        await saveProfilePatch({ playerNotes: nextNotes }, {
+            syncNotes: true,
+            successMessage: 'Note saved',
+        });
+    };
+
     if (loading) return <div className="loading-panel">Loading your profile...</div>;
     if (!userProfile) return <div className="empty-state">Could not load your profile.</div>;
 
@@ -103,10 +165,46 @@ const Profile = () => {
                 <p>{userProfile.displayName}, tune the master favorites list that seeds your new leagues.</p>
                 <div className="scoreboard-strip">
                     <span>{favoriteCount} favorites</span>
+                    <span>{favoritePlayers.length} active favorites</span>
                     <span>{visiblePlayers.length} players in view</span>
                     <span>{scoringLabel}</span>
                     <span>Updated {formatDate(playerPoolMeta.fetchedAt)}</span>
                 </div>
+            </section>
+
+            <section className="card profile-settings-panel">
+                <div className="player-board-heading">
+                    <div>
+                        <p className="section-kicker">Profile identity</p>
+                        <h2>Name & Team</h2>
+                    </div>
+                    {profileMessage && <div className="board-count">{profileMessage}</div>}
+                </div>
+                <form onSubmit={handleSaveProfileSettings} className="profile-settings-form">
+                    <div className="form-grid">
+                        <label>
+                            Display Name
+                            <input
+                                type="text"
+                                value={displayName}
+                                onChange={(event) => setDisplayName(event.target.value)}
+                                required
+                            />
+                        </label>
+                        <label>
+                            Default Team Name
+                            <input
+                                type="text"
+                                value={defaultTeamName}
+                                onChange={(event) => setDefaultTeamName(event.target.value)}
+                                required
+                            />
+                        </label>
+                    </div>
+                    <div className="form-actions" style={{ marginTop: '18px' }}>
+                        <button type="submit" className="create-button">Save Profile</button>
+                    </div>
+                </form>
             </section>
 
             {unavailableFavoriteIds.length > 0 && (
@@ -119,6 +217,50 @@ const Profile = () => {
                     <button className="cancel-button" onClick={handleClearUnavailableFavorites}>Remove Unavailable</button>
                 </section>
             )}
+
+            <section className="player-pool-panel">
+                <div className="player-board-heading">
+                    <div>
+                        <p className="section-kicker">Private board</p>
+                        <h2>Favorites & Notes</h2>
+                    </div>
+                    <div className="board-count">{favoritePlayers.length} active</div>
+                </div>
+
+                {favoritePlayers.length > 0 ? (
+                    <ul className="player-list favorite-note-list">
+                        {favoritePlayers.map(player => (
+                            <li key={player.id} className="player-list-item favorite-note-row">
+                                <div className="player-main">
+                                    <span className="rank-chip">#{player.scoringRank}</span>
+                                    <span>
+                                        <span className="player-name">{player.name}</span>
+                                        <span className="player-subline">
+                                            <span className="position-badge">{player.position}</span>
+                                            <span className="team-badge">{player.team}</span>
+                                            <span className="note-badge">Bye {player.bye || '-'}</span>
+                                        </span>
+                                    </span>
+                                </div>
+                                <div className="favorite-note-editor">
+                                    <textarea
+                                        value={noteDrafts[player.id] || ''}
+                                        onChange={(event) => handleNoteChange(player.id, event.target.value)}
+                                        placeholder="Private player note"
+                                        maxLength={1000}
+                                    />
+                                    <div className="player-row-actions">
+                                        <button className="edit-roster-button" onClick={() => handleSavePlayerNote(player.id)}>Save Note</button>
+                                        <button className="cancel-button" onClick={() => handleToggleGlobalFavorite(player.id)}>Remove</button>
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <div className="empty-state">No favorite players yet.</div>
+                )}
+            </section>
 
             <section className="player-pool-panel">
                 <div className="player-board-heading">
@@ -170,6 +312,7 @@ const Profile = () => {
                 <ul className="player-list player-board-list">
                     {visiblePlayers.map(player => {
                         const isFavorite = favoriteIds.includes(player.id);
+                        const hasNote = Boolean(userProfile.playerNotes?.[player.id]);
                         return (
                             <li key={player.id} className={`player-list-item player-board-row ${isFavorite ? 'is-favorite' : ''}`}>
                                 <div className="player-main">
@@ -179,6 +322,7 @@ const Profile = () => {
                                         <span className="player-subline">
                                             <span className="position-badge">{player.position}</span>
                                             <span className="team-badge">{player.team}</span>
+                                            {hasNote && <span className="note-badge">Note</span>}
                                         </span>
                                     </span>
                                 </div>
