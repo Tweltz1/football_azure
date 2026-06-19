@@ -1,12 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Microsoft.Azure.Cosmos;
+using Newtonsoft.Json.Linq;
 
 public static class GetOrCreateUserProfile
 {
@@ -18,33 +19,33 @@ public static class GetOrCreateUserProfile
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<UserProfileRequest>(requestBody);
 
-        if (string.IsNullOrEmpty(data?.UserId))
+        if (string.IsNullOrWhiteSpace(data?.UserId))
         {
             return new BadRequestObjectResult("UserId is required.");
         }
 
-        var container = AppServices.UsersContainer;
-
         try
         {
-            UserProfile userProfile = await container.ReadItemAsync<UserProfile>(data.UserId, new PartitionKey(data.UserId));
-            log.LogInformation("Found profile for user {UserId}.", data.UserId);
-            return new OkObjectResult(userProfile);
-        }
-        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            log.LogInformation("No profile found for user {UserId}. Creating a new one.", data.UserId);
-
-            var newProfile = new UserProfile
+            var userProfile = await UserProfileStore.FindAsync(data.UserId);
+            if (userProfile == null)
             {
-                Id = data.UserId,
-                UserId = data.UserId,
-                DisplayName = data.DisplayName,
-                FavoritePlayerIds = new System.Collections.Generic.List<string>()
-            };
+                log.LogInformation("No profile found for user {UserId}. Creating a new one.", data.UserId);
+                userProfile = new UserProfile
+                {
+                    Id = data.UserId,
+                    UserId = data.UserId,
+                    DisplayName = GetDisplayName(data.DisplayName, data.UserId),
+                    FavoritePlayerIds = new List<string>()
+                };
 
-            await container.CreateItemAsync(newProfile, new PartitionKey(newProfile.UserId));
-            return new OkObjectResult(newProfile);
+                await UserProfileStore.UpsertAsync(userProfile);
+            }
+            else
+            {
+                log.LogInformation("Found profile for user {UserId}.", data.UserId);
+            }
+
+            return new OkObjectResult(UserProfileStore.ToResponse(userProfile));
         }
         catch (Exception ex)
         {
@@ -53,9 +54,27 @@ public static class GetOrCreateUserProfile
         }
     }
 
+    private static string GetDisplayName(JToken displayName, string fallback)
+    {
+        if (displayName == null || displayName.Type == JTokenType.Null)
+        {
+            return fallback;
+        }
+
+        if (displayName.Type == JTokenType.String)
+        {
+            return displayName.Value<string>();
+        }
+
+        return displayName["displayName"]?.Value<string>()
+            ?? displayName["name"]?.Value<string>()
+            ?? displayName["userDetails"]?.Value<string>()
+            ?? fallback;
+    }
+
     public class UserProfileRequest
     {
         public string UserId { get; set; }
-        public string DisplayName { get; set; }
+        public JToken DisplayName { get; set; }
     }
 }
