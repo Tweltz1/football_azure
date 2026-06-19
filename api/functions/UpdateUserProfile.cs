@@ -19,7 +19,6 @@ public static class UpdateUserProfile
         ["te"] = "te",
         ["flex"] = "flex",
         ["superFlex"] = "superFlex",
-        ["superflex"] = "superFlex",
         ["k"] = "k",
         ["def"] = "def",
         ["dst"] = "def",
