@@ -51,6 +51,16 @@ public static class UpdateFavoritePlayers
             League leagueToUpdate = leagueResponse.Resource;
             leagueToUpdate.EnsureDefaults();
 
+            var teamToUpdate = leagueToUpdate.Teams.FirstOrDefault(t =>
+                t != null && string.Equals(t.OwnerId, userId, StringComparison.OrdinalIgnoreCase));
+            var userIsLeagueMember = leagueToUpdate.Members.Any(memberId =>
+                string.Equals(memberId, userId, StringComparison.OrdinalIgnoreCase));
+
+            if (teamToUpdate == null && !userIsLeagueMember)
+            {
+                return new NotFoundObjectResult($"Team for user '{userId}' not found in league '{leagueId}'.");
+            }
+
             var userProfile = await UserProfileStore.FindAsync(userId) ?? new UserProfile
             {
                 Id = userId,
@@ -67,11 +77,6 @@ public static class UpdateFavoritePlayers
             userProfile.FavoritePlayerIds = favoriteIds;
             await UserProfileStore.UpsertAsync(userProfile);
 
-            var teamToUpdate = leagueToUpdate.Teams.FirstOrDefault(t =>
-                t != null && string.Equals(t.OwnerId, userId, StringComparison.OrdinalIgnoreCase));
-            var userIsLeagueMember = leagueToUpdate.Members.Any(memberId =>
-                string.Equals(memberId, userId, StringComparison.OrdinalIgnoreCase));
-
             var leagueTeamSynced = false;
             if (teamToUpdate != null)
             {
@@ -83,16 +88,12 @@ public static class UpdateFavoritePlayers
                     await TryBroadcastLeagueAsync(leagueToUpdate, log);
                 }
             }
-            else if (userIsLeagueMember)
+            else
             {
                 log?.LogWarning(
                     "User {UserId} is a member of league {LeagueId}, but no team copy was found while syncing favorites. Profile favorites were updated.",
                     userId,
                     leagueId);
-            }
-            else
-            {
-                return new NotFoundObjectResult($"Team for user '{userId}' not found in league '{leagueId}'.");
             }
 
             log?.LogInformation("Updated favorite players for user {UserId} in league {LeagueId}.", userId, leagueId);
