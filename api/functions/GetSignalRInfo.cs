@@ -25,7 +25,13 @@ public static class GetSignalRInfo
 
     private static string TryGetStaticWebAppsUserId(HttpRequest req)
     {
-        if (!req.Headers.TryGetValue("x-ms-client-principal", out var encodedPrincipal) || string.IsNullOrEmpty(encodedPrincipal))
+        if (!req.Headers.TryGetValue("x-ms-client-principal", out var encodedPrincipalValues))
+        {
+            return null;
+        }
+
+        var encodedPrincipal = encodedPrincipalValues.ToString();
+        if (string.IsNullOrEmpty(encodedPrincipal))
         {
             return null;
         }
