@@ -18,12 +18,18 @@ public static class PauseDraft
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
+        if (string.IsNullOrWhiteSpace(data?.AdminId))
+        {
+            return new BadRequestObjectResult("Admin ID is required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         try
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             var league = leagueResponse.Resource;
+            league.EnsureDefaults();
 
             if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
             if (league.AuctionTimer == null) { return new BadRequestObjectResult("There is no active draft timer to pause."); }
@@ -42,7 +48,7 @@ public static class PauseDraft
             }
 
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await AppServices.SendToAllAsync("draftStateUpdate", league.ForBroadcast());
+            await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
 
             return new OkObjectResult(league.AuctionTimer);
         }
