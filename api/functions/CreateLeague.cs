@@ -35,9 +35,12 @@ public static class CreateLeague
         var rosterSettings = data.RosterSettings ?? new RosterSettings();
         var draftTimers = data.DraftTimers ?? new DraftTimers();
         var fullPlayerPool = PlayerData.GetInitialPlayerPool();
+        NflByeWeeks.ApplyToPlayers(fullPlayerPool);
 
         var filteredPlayerPool = fullPlayerPool.Where(p =>
         {
+            if (!NflByeWeeks.IsKnownTeam(p.Team)) return false;
+
             switch (p.Position.ToUpperInvariant())
             {
                 case "QB": return rosterSettings.QB > 0;

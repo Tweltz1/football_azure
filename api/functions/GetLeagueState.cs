@@ -17,7 +17,9 @@ public static class GetLeagueState
         try
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-            return new OkObjectResult(leagueResponse.Resource);
+            var league = leagueResponse.Resource;
+            NflByeWeeks.ApplyToLeague(league);
+            return new OkObjectResult(league);
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {

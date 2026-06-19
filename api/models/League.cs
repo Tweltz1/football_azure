@@ -63,13 +63,13 @@ public class League
     public List<string> OnlineUserIds { get; set; } = new List<string>();
 
     /// <summary>
-    /// Returns a lightweight copy for SignalR broadcasts.
-    /// Strips InitialPlayerPool (~100KB), DraftPlayers, and Password.
-    /// The frontend keeps its own copy of the player pool from the initial HTTP load.
+    /// Returns a SignalR-safe copy for broadcasts.
+    /// Keeps InitialPlayerPool because the draft room needs it to resolve the current player and render player lists.
+    /// Strips DraftPlayers and Password.
     /// </summary>
     public League ForBroadcast()
     {
-        return new League
+        var broadcast = new League
         {
             Id = this.Id,
             Name = this.Name,
@@ -81,7 +81,7 @@ public class League
             ReadyMembers = this.ReadyMembers,
             RosterSettings = this.RosterSettings,
             DraftTimers = this.DraftTimers,
-            InitialPlayerPool = null,
+            InitialPlayerPool = this.InitialPlayerPool,
             DraftPlayers = null,
             CurrentPlayerId = this.CurrentPlayerId,
             ActiveBids = this.ActiveBids,
@@ -91,6 +91,9 @@ public class League
             TieBreaker = this.TieBreaker,
             OnlineUserIds = this.OnlineUserIds,
         };
+
+        NflByeWeeks.ApplyToLeague(broadcast);
+        return broadcast;
     }
 }
 

@@ -29,10 +29,12 @@ public static class DraftLogic
         league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
     }
 
-    // --- THIS IS THE NEW, MISSING FUNCTION ---
     public static string GetNextRandomPlayerId(League league, string currentPlayerId = null)
     {
-        var undraftedPlayers = league.InitialPlayerPool.Where(p => !p.IsDrafted).ToList();
+        var playerPool = league.InitialPlayerPool ?? new List<Player>();
+        var undraftedPlayers = playerPool
+            .Where(p => !p.IsDrafted && NflByeWeeks.IsKnownTeam(p.Team))
+            .ToList();
         
         if (currentPlayerId != null)
         {
@@ -44,7 +46,6 @@ public static class DraftLogic
         var random = new Random();
         return undraftedPlayers[random.Next(undraftedPlayers.Count)].Id;
     }
-    // --- END OF NEW FUNCTION ---
 
     private static string GetBestAvailableRosterSpot(RosterSettings settings, List<RosterSpot> currentRoster, Player player)
     {

@@ -15,47 +15,64 @@ public static class SkipIntermission
         string leagueId,
         ILogger log)
     {
-        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
-        var container = AppServices.LeaguesContainer;
-
-        var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
+        try
         {
-            if (league.AdminId != data.AdminId)
-                return new UnauthorizedResult();
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
 
-            if (league.Status.ToLower() != "intermission")
-                return new BadRequestObjectResult("Can only skip during intermission.");
-
-            log.LogInformation("Admin skipping intermission for league {LeagueName}.", league.Name);
-
-            league.Status = "drafting";
-            league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
-
-            if (league.CurrentPlayerId == null)
+            if (string.IsNullOrEmpty(data?.AdminId))
             {
-                league.Status = "completed";
-                log.LogInformation("Draft completed for league {LeagueName}.", league.Name);
+                return new BadRequestObjectResult("Admin ID is required.");
             }
-            else
+
+            var container = AppServices.LeaguesContainer;
+
+            var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
-                league.AuctionTimer = new AuctionTimer
+                if (league.AdminId != data.AdminId)
+                    return new UnauthorizedResult();
+
+                if (league.Status?.ToLowerInvariant() != "intermission")
+                    return new BadRequestObjectResult("Can only skip during intermission.");
+
+                log?.LogInformation("Admin skipping intermission for league {LeagueName}.", league.Name);
+
+                league.Status = "drafting";
+                league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
+
+                if (league.CurrentPlayerId == null)
                 {
-                    EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer),
-                    IsPaused = false,
-                    TimeRemainingOnPause = 0
-                };
-                league.ActiveBids.Clear();
-                league.TieBreaker = null;
-            }
+                    league.Status = "completed";
+                    league.AuctionTimer = null;
+                    league.ActiveBids.Clear();
+                    league.TieBreaker = null;
+                    log?.LogInformation("Draft completed for league {LeagueName}.", league.Name);
+                }
+                else
+                {
+                    league.AuctionTimer = new AuctionTimer
+                    {
+                        EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer),
+                        IsPaused = false,
+                        TimeRemainingOnPause = 0
+                    };
+                    league.ActiveBids.Clear();
+                    league.TieBreaker = null;
+                }
 
-            return null;
-        }, log);
+                return null;
+            }, log);
 
-        if (error != null) return error;
+            if (error != null) return error;
 
-        await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
-        return new OkObjectResult("Intermission skipped.");
+            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+            return new OkObjectResult("Intermission skipped.");
+        }
+        catch (Exception ex)
+        {
+            log?.LogError(ex, "Error skipping intermission for league {LeagueId}.", leagueId);
+            return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+        }
     }
 
     public class AdminActionRequest
