@@ -11,6 +11,7 @@ import {
   SCORING_MODES,
   SORT_OPTIONS,
 } from '../data/playerBoardUtils';
+import '../PlayerBoard.css';
 
 const Home = () => {
   const { user, loading } = useAuth();
