@@ -95,6 +95,10 @@
   background: #18a957;
 }
 
+.presence-light.away {
+  background: #d8aa3d;
+}
+
 .presence-light.offline {
   background: #c83f3f;
 }
@@ -113,6 +117,18 @@
   color: #65746f;
   font-size: 0.86rem;
   font-weight: 750;
+}
+
+.team-presence-meta.online {
+  color: #11723f;
+}
+
+.team-presence-meta.away {
+  color: #9b711c;
+}
+
+.team-presence-meta.offline {
+  color: #9d3131;
 }
 
 .quick-bid-row {
