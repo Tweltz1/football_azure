@@ -60,14 +60,7 @@ public static class CompleteDraft
             log?.LogInformation("Draft completed for league {LeagueName}.", league.Name);
 
             var broadcast = league.ForBroadcast();
-            try
-            {
-                await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", broadcast);
-            }
-            catch (Exception broadcastEx)
-            {
-                log?.LogWarning(broadcastEx, "Draft was completed, but the completion broadcast failed for league {LeagueId}.", leagueId);
-            }
+            await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
 
             return new OkObjectResult(broadcast);
         }
