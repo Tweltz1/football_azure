@@ -29,6 +29,8 @@ public static class SkipIntermission
 
             var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
+                league.EnsureDefaults();
+
                 if (league.AdminId != data.AdminId)
                     return new UnauthorizedResult();
 
@@ -44,7 +46,7 @@ public static class SkipIntermission
                 {
                     league.Status = "completed";
                     league.AuctionTimer = null;
-                    league.ActiveBids.Clear();
+                    league.ClearActiveBids();
                     league.TieBreaker = null;
                     log?.LogInformation("Draft completed for league {LeagueName}.", league.Name);
                 }
@@ -56,7 +58,7 @@ public static class SkipIntermission
                         IsPaused = false,
                         TimeRemainingOnPause = 0
                     };
-                    league.ActiveBids.Clear();
+                    league.ClearActiveBids();
                     league.TieBreaker = null;
                 }
 
