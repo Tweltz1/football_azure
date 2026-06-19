@@ -31,7 +31,8 @@ public static class DraftLogic
 
     public static string GetNextRandomPlayerId(League league, string currentPlayerId = null)
     {
-        var undraftedPlayers = league.InitialPlayerPool
+        var playerPool = league.InitialPlayerPool ?? new List<Player>();
+        var undraftedPlayers = playerPool
             .Where(p => !p.IsDrafted && NflByeWeeks.IsKnownTeam(p.Team))
             .ToList();
         
