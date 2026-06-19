@@ -20,6 +20,7 @@ public static class StartNextRound
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             var league = leagueResponse.Resource;
+            league.EnsureDefaults();
 
             if (league.Status?.ToLowerInvariant() != "intermission" || league.AuctionTimer == null)
             {
@@ -31,7 +32,7 @@ public static class StartNextRound
                 return new OkObjectResult("Intermission timer is still active.");
             }
 
-            league.ActiveBids.Clear();
+            league.ClearActiveBids();
             league.TieBreaker = null;
             league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
 
@@ -56,7 +57,7 @@ public static class StartNextRound
                 league.Id,
                 new PartitionKey(league.Id),
                 new ItemRequestOptions { IfMatchEtag = leagueResponse.ETag });
-            await AppServices.SendToAllAsync("draftStateUpdate", league.ForBroadcast());
+            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
 
             return new OkObjectResult("Next round started.");
         }
