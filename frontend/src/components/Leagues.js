@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { HubConnectionBuilder } from '@microsoft/signalr';
 import { getSignalRInfo } from '../api';
+import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '../data/strategyUtils';
 import '../App.css';
+import './LeagueTools.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
@@ -13,10 +15,14 @@ const Leagues = ({ userId }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRosterModal, setShowRosterModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showAnalyzerModal, setShowAnalyzerModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [currentLeague, setCurrentLeague] = useState(null);
+  const [analyzerLeague, setAnalyzerLeague] = useState(null);
   const [joinLeagueName, setJoinLeagueName] = useState('');
   const [joinPassword, setJoinPassword] = useState('');
+  const [joinInviteId, setJoinInviteId] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
   const [rosterSettings, setRosterSettings] = useState({});
   const [draftTimers, setDraftTimers] = useState({});
 
@@ -35,6 +41,15 @@ const Leagues = ({ userId }) => {
   useEffect(() => {
     fetchLeagues();
   }, [fetchLeagues]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteId = params.get('join');
+    if (inviteId) {
+      setJoinInviteId(inviteId);
+      setShowJoinModal(true);
+    }
+  }, []);
 
   useEffect(() => {
     let connection;
@@ -63,6 +78,8 @@ const Leagues = ({ userId }) => {
       if (connection) connection.stop();
     };
   }, []);
+
+  const commissionerLeagues = useMemo(() => leagues.filter((league) => league.adminId === userId), [leagues, userId]);
 
   const handleDelete = async (leagueId) => {
     if (window.confirm('Are you sure you want to delete this league?')) {
@@ -109,15 +126,37 @@ const Leagues = ({ userId }) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/JoinLeague`, {
         userId,
-        leagueName: joinLeagueName,
-        password: joinPassword
+        leagueId: joinInviteId || undefined,
+        leagueName: joinInviteId ? undefined : joinLeagueName,
+        password: joinInviteId ? undefined : joinPassword
       });
       alert(`Successfully joined league '${response.data.name}'!`);
       setShowJoinModal(false);
+      setJoinInviteId('');
+      setJoinLeagueName('');
+      setJoinPassword('');
+      window.history.replaceState({}, '', '/leagues');
       fetchLeagues();
     } catch (error) {
       alert(`Failed to join league: ${error.response?.data || error.message}`);
     }
+  };
+
+  const handleCopyInvite = async (league) => {
+    const inviteUrl = `${window.location.origin}/leagues?join=${league.id}`;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setInviteMessage(`Invite copied for ${league.name}`);
+    } catch (error) {
+      window.prompt('Copy this invite link:', inviteUrl);
+      setInviteMessage(`Invite ready for ${league.name}`);
+    }
+    setTimeout(() => setInviteMessage(''), 3000);
+  };
+
+  const openAnalyzer = (league) => {
+    setAnalyzerLeague(league);
+    setShowAnalyzerModal(true);
   };
 
   if (loading) {
@@ -129,12 +168,30 @@ const Leagues = ({ userId }) => {
       <section className="page-hero">
         <p className="page-kicker">League control</p>
         <h1>My Leagues</h1>
-        <p>Jump into a live draft room, join a league, or tune commissioner settings before the auction starts.</p>
+        <p>Jump into a live draft room, share invites, and inspect commissioner health before the auction starts.</p>
         <div className="scoreboard-strip">
           <span>{leagues.length} active league{leagues.length === 1 ? '' : 's'}</span>
-          <span>{leagues.filter(league => league.adminId === userId).length} commissioner table{leagues.filter(league => league.adminId === userId).length === 1 ? '' : 's'}</span>
+          <span>{commissionerLeagues.length} commissioner table{commissionerLeagues.length === 1 ? '' : 's'}</span>
+          {inviteMessage && <span>{inviteMessage}</span>}
         </div>
       </section>
+
+      {commissionerLeagues.length > 0 && (
+        <section className="card commissioner-dashboard">
+          <div className="player-board-heading">
+            <div>
+              <p className="section-kicker">Commissioner dashboard</p>
+              <h2>League Health</h2>
+            </div>
+            <div className="board-count">{commissionerLeagues.length} managed</div>
+          </div>
+          <div className="commissioner-grid">
+            {commissionerLeagues.map((league) => (
+              <CommissionerCard key={league.id} league={league} userId={userId} onCopyInvite={handleCopyInvite} onAnalyze={openAnalyzer} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="league-toolbar">
         <div>
@@ -180,8 +237,10 @@ const Leagues = ({ userId }) => {
                     <Link to={`/draft/${league.id}`}>
                       <button className="view-details-button">Enter Draft Room</button>
                     </Link>
+                    <button type="button" className="edit-roster-button" onClick={() => openAnalyzer(league)}>Analyze</button>
                     {league.adminId === userId && (
                       <>
+                        <button type="button" onClick={() => handleCopyInvite(league)} className="join-button">Copy Invite</button>
                         <button
                           onClick={() => {
                             setShowRosterModal(true);
@@ -225,6 +284,10 @@ const Leagues = ({ userId }) => {
         </div>
       )}
 
+      {showAnalyzerModal && analyzerLeague && (
+        <LeagueAnalyzerModal league={analyzerLeague} onClose={() => setShowAnalyzerModal(false)} />
+      )}
+
       {showRosterModal && currentLeague && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -259,18 +322,28 @@ const Leagues = ({ userId }) => {
       {showJoinModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>Join a League</h3>
-            <label>
-              League Name
-              <input type="text" value={joinLeagueName} onChange={(e) => setJoinLeagueName(e.target.value)} required />
-            </label>
-            <label>
-              Password
-              <input type="password" value={joinPassword} onChange={(e) => setJoinPassword(e.target.value)} />
-            </label>
+            <h3>{joinInviteId ? 'Join League Invite' : 'Join a League'}</h3>
+            {joinInviteId ? (
+              <div className="league-invite-note">This invite link will add you to the league automatically.</div>
+            ) : (
+              <>
+                <label>
+                  League Name
+                  <input type="text" value={joinLeagueName} onChange={(e) => setJoinLeagueName(e.target.value)} required />
+                </label>
+                <label>
+                  Password
+                  <input type="password" value={joinPassword} onChange={(e) => setJoinPassword(e.target.value)} />
+                </label>
+              </>
+            )}
             <div className="form-actions">
               <button onClick={handleJoinLeague}>Join League</button>
-              <button onClick={() => setShowJoinModal(false)} className="cancel-button">Cancel</button>
+              <button onClick={() => {
+                setShowJoinModal(false);
+                setJoinInviteId('');
+                window.history.replaceState({}, '', '/leagues');
+              }} className="cancel-button">Cancel</button>
             </div>
           </div>
         </div>
@@ -278,5 +351,86 @@ const Leagues = ({ userId }) => {
     </div>
   );
 };
+
+const CommissionerCard = ({ league, userId, onCopyInvite, onAnalyze }) => {
+  const health = buildCommissionerHealth(league, userId);
+  return (
+    <div className="commissioner-card">
+      <h3>{league.name}</h3>
+      <div className="health-row"><span>Status</span><strong>{health.status}</strong></div>
+      <div className="health-row"><span>Ready</span><strong>{health.readyCount}/{health.memberCount}</strong></div>
+      <div className="health-row"><span>Timer</span><strong>{health.timerLabel}</strong></div>
+      {health.needsAttention && <span className="health-warning">Waiting on ready checks</span>}
+      <div className="form-actions">
+        <button type="button" className="join-button" onClick={() => onCopyInvite(league)}>Copy Invite</button>
+        <button type="button" className="edit-roster-button" onClick={() => onAnalyze(league)}>Analyze</button>
+      </div>
+    </div>
+  );
+};
+
+const LeagueAnalyzerModal = ({ league, onClose }) => {
+  const byeRows = buildByeWeekAnalyzer(league);
+  const recap = buildDraftRecap(league);
+  const hasDraftLog = recap.picks > 0;
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="player-board-heading">
+          <div>
+            <p className="section-kicker">League analyzer</p>
+            <h3>{league.name}</h3>
+          </div>
+          <button type="button" className="cancel-button" onClick={onClose}>Close</button>
+        </div>
+
+        <section className="league-analyzer-panel">
+          <h3>Bye-Week Conflicts</h3>
+          <ul className="analyzer-list">
+            {byeRows.map((row) => (
+              <li key={row.teamId} className="analyzer-team-row">
+                <strong>{row.teamName}</strong>
+                <div>
+                  {Object.keys(row.byeCounts).length > 0 ? Object.entries(row.byeCounts).map(([week, count]) => (
+                    <span key={week} className={`conflict-pill ${count >= 3 ? 'warn' : ''}`}>Week {week}: {count}</span>
+                  )) : <span className="conflict-pill">No byes yet</span>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="league-analyzer-panel">
+          <h3>Draft Recap</h3>
+          {hasDraftLog ? (
+            <div className="recap-grid">
+              <RecapCard title="Best Value" pick={recap.bestValue} detail={(pick) => `$${pick.winningBid} vs est. $${pick.estimate}`} />
+              <RecapCard title="Biggest Overpay" pick={recap.biggestOverpay} detail={(pick) => `$${pick.winningBid} vs est. $${pick.estimate}`} />
+              <RecapCard title="Bidding War" pick={recap.biggestWar} detail={(pick) => `${pick.bidCount} bids`} />
+            </div>
+          ) : (
+            <div className="empty-state">Draft recap appears once players have been awarded.</div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+};
+
+const RecapCard = ({ title, pick, detail }) => (
+  <div className="recap-card">
+    <p className="section-kicker">{title}</p>
+    {pick ? (
+      <>
+        <h3>{pick.player?.name || 'Unknown Player'}</h3>
+        <div className="recap-row"><span>Bid</span><strong>${pick.winningBid}</strong></div>
+        <div className="recap-row"><span>Context</span><strong>{detail(pick)}</strong></div>
+      </>
+    ) : (
+      <p>No data yet.</p>
+    )}
+  </div>
+);
 
 export default Leagues;

@@ -12,6 +12,8 @@ import {
   SCORING_MODES,
   SORT_OPTIONS,
 } from '../data/playerBoardUtils';
+import { getPlayerAvailability } from '../data/strategyUtils';
+import MockDraftLab from './MockDraftLab';
 import PlayerComparison from './PlayerComparison';
 import '../PlayerBoard.css';
 
@@ -129,6 +131,8 @@ const Home = () => {
         </div>
       </section>
 
+      <MockDraftLab players={playerBoard} scoringLabel={scoringLabel} />
+
       <section className="player-pool-panel">
         <div className="player-board-heading">
           <div>
@@ -193,33 +197,37 @@ const Home = () => {
         />
 
         <ul className="player-list player-board-list">
-          {visiblePlayers.map((player) => (
-            <li key={player.id} className="player-list-item player-board-row has-compare-action">
-              <div className="player-main">
-                <span className="rank-chip">#{player.scoringRank}</span>
-                <span>
-                  <span className="player-name">{player.name}</span>
-                  <span className="player-subline">
-                    <span className="position-badge">{player.position}</span>
-                    <span className="team-badge">{player.team}</span>
+          {visiblePlayers.map((player) => {
+            const availability = getPlayerAvailability(player);
+            return (
+              <li key={player.id} className="player-list-item player-board-row has-compare-action">
+                <div className="player-main">
+                  <span className="rank-chip">#{player.scoringRank}</span>
+                  <span>
+                    <span className="player-name">{player.name}</span>
+                    <span className="player-subline">
+                      <span className="position-badge">{player.position}</span>
+                      <span className="team-badge">{player.team}</span>
+                      <span className={`status-badge ${availability.tone}`} title={availability.text}>{availability.label}</span>
+                    </span>
                   </span>
-                </span>
-              </div>
-              <div className="player-data-strip">
-                <span>Bye {player.bye || '-'}</span>
-                <span>{scoringLabel}</span>
-              </div>
-              <button
-                type="button"
-                className={`compare-toggle${isInCompare(player.id) ? ' active' : ''}`}
-                onClick={() => toggleCompare(player)}
-                disabled={!isInCompare(player.id) && compareIds.length >= MAX_COMPARE}
-                aria-pressed={isInCompare(player.id)}
-              >
-                {isInCompare(player.id) ? 'Remove' : 'Compare'}
-              </button>
-            </li>
-          ))}
+                </div>
+                <div className="player-data-strip">
+                  <span>Bye {player.bye || '-'}</span>
+                  <span>{scoringLabel}</span>
+                </div>
+                <button
+                  type="button"
+                  className={`compare-toggle${isInCompare(player.id) ? ' active' : ''}`}
+                  onClick={() => toggleCompare(player)}
+                  disabled={!isInCompare(player.id) && compareIds.length >= MAX_COMPARE}
+                  aria-pressed={isInCompare(player.id)}
+                >
+                  {isInCompare(player.id) ? 'Remove' : 'Compare'}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </section>
     </div>

@@ -66,6 +66,16 @@ public static class UpdateUserProfile
                 userProfile.PlayerNotes = SanitizePlayerNotes(data.PlayerNotes);
             }
 
+            if (data.PlayerTiers != null)
+            {
+                userProfile.PlayerTiers = SanitizePlayerTiers(data.PlayerTiers);
+            }
+
+            if (data.BudgetPlan != null)
+            {
+                userProfile.BudgetPlan = SanitizeBudgetPlan(data.BudgetPlan);
+            }
+
             log?.LogInformation("Updating profile for user {UserId}.", userId);
 
             await UserProfileStore.UpsertAsync(userProfile);
@@ -90,6 +100,28 @@ public static class UpdateUserProfile
                 StringComparer.OrdinalIgnoreCase);
     }
 
+    private static Dictionary<string, int> SanitizePlayerTiers(Dictionary<string, int> playerTiers)
+    {
+        return playerTiers
+            .Where(tier => !string.IsNullOrWhiteSpace(tier.Key) && tier.Value >= 1 && tier.Value <= 5)
+            .GroupBy(tier => tier.Key.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Last().Value,
+                StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static Dictionary<string, int> SanitizeBudgetPlan(Dictionary<string, int> budgetPlan)
+    {
+        return budgetPlan
+            .Where(item => !string.IsNullOrWhiteSpace(item.Key))
+            .GroupBy(item => item.Key.Trim().ToUpperInvariant(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => Math.Max(0, Math.Min(200, group.Last().Value)),
+                StringComparer.OrdinalIgnoreCase);
+    }
+
     private static string Truncate(string value, int maxLength)
     {
         if (string.IsNullOrEmpty(value) || value.Length <= maxLength) return value;
@@ -102,13 +134,17 @@ public static class UpdateUserProfile
         public string DefaultTeamName { get; set; }
         public List<string> FavoritePlayerIds { get; set; }
         public Dictionary<string, string> PlayerNotes { get; set; }
+        public Dictionary<string, int> PlayerTiers { get; set; }
+        public Dictionary<string, int> BudgetPlan { get; set; }
 
         public bool HasUpdates()
         {
             return DisplayName != null
                 || DefaultTeamName != null
                 || FavoritePlayerIds != null
-                || PlayerNotes != null;
+                || PlayerNotes != null
+                || PlayerTiers != null
+                || BudgetPlan != null;
         }
     }
 }

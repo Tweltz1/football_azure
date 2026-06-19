@@ -8,6 +8,7 @@ import Login from './components/Login';
 import Profile from './components/Profile';
 import { useAuth } from './AuthContext';
 import './App.css';
+import './DraftMobile.css';
 
 function App() {
   const { user, loading } = useAuth();

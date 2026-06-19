@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { getEstimatedAuctionValue, getPlayerAvailability } from '../data/strategyUtils';
 import './PlayerComparison.css';
 
 const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers = 3, onRemove, onClear }) => {
@@ -28,7 +29,7 @@ const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers =
         <>
           <div className="compare-insight-grid" aria-label="Comparison summary">
             <ComparisonInsight label="Best Rank" value={formatPlayerRank(analysis.bestOverall)} />
-            <ComparisonInsight label="Rank Spread" value={`${analysis.rankSpread} spots`} />
+            <ComparisonInsight label="Best Value" value={formatPlayerValue(analysis.bestValue)} />
             <ComparisonInsight label="Bye Overlap" value={analysis.byeOverlapLabel} tone={analysis.hasByeOverlap ? 'warn' : 'good'} />
             <ComparisonInsight label="Positions" value={analysis.positionMix} />
           </div>
@@ -91,6 +92,11 @@ const CompareValue = ({ player, row, analysis, positionRanks }) => {
     return <span className="team-badge">{player.team}</span>;
   }
 
+  if (row.key === 'status') {
+    const availability = getPlayerAvailability(player);
+    return <span className={`status-badge ${availability.tone}`}>{availability.label}</span>;
+  }
+
   if (row.key === 'bye') {
     return <span>{player.bye ? `Week ${player.bye}` : '-'}</span>;
   }
@@ -101,6 +107,10 @@ const CompareValue = ({ player, row, analysis, positionRanks }) => {
 
   if (row.key === 'positionRank') {
     return <RankValue value={positionRanks[player.id]} note={`${player.position} board`} />;
+  }
+
+  if (row.key === 'estimatedValue') {
+    return <RankValue value={`$${getEstimatedAuctionValue(player)}`} note="est. auction" />;
   }
 
   if (row.key === 'rankGap') {
@@ -117,7 +127,7 @@ const CompareValue = ({ player, row, analysis, positionRanks }) => {
 
 const RankValue = ({ value, note }) => (
   <span className="compare-rank-value">
-    <strong>#{value || '-'}</strong>
+    <strong>{typeof value === 'number' ? `#${value}` : value || '-'}</strong>
     {note && <small>{note}</small>}
   </span>
 );
@@ -125,7 +135,9 @@ const RankValue = ({ value, note }) => (
 const getComparisonRows = (scoringLabel) => [
   { key: 'overallRank', label: 'Overall Rank' },
   { key: 'positionRank', label: 'Position Rank' },
+  { key: 'estimatedValue', label: 'Est. Value' },
   { key: 'rankGap', label: 'Gap vs Best' },
+  { key: 'status', label: 'Status' },
   { key: 'bye', label: 'Bye Week' },
   { key: 'position', label: 'Position' },
   { key: 'team', label: 'Team' },
@@ -143,7 +155,15 @@ const getCellClassName = (row, player, analysis) => {
     classNames.push('is-best');
   }
 
+  if (row.key === 'estimatedValue' && player.id === analysis.bestValue?.id) {
+    classNames.push('is-best');
+  }
+
   if (row.key === 'bye' && player.bye && analysis.overlapByeWeeks.has(player.bye)) {
+    classNames.push('is-warning');
+  }
+
+  if (row.key === 'status' && getPlayerAvailability(player).tone === 'danger') {
     classNames.push('is-warning');
   }
 
@@ -155,6 +175,7 @@ const buildComparisonAnalysis = (players = [], positionRanks = {}) => {
   const bestRank = selectedRanks.length ? Math.min(...selectedRanks) : 0;
   const worstRank = selectedRanks.length ? Math.max(...selectedRanks) : 0;
   const bestOverall = players.find((player) => player.scoringRank === bestRank) || players[0];
+  const bestValue = [...players].sort((a, b) => getEstimatedAuctionValue(b) - getEstimatedAuctionValue(a))[0];
   const bestPositionRankByPosition = {};
 
   players.forEach((player) => {
@@ -182,6 +203,7 @@ const buildComparisonAnalysis = (players = [], positionRanks = {}) => {
     bestRank,
     worstRank,
     bestOverall,
+    bestValue,
     rankSpread: Math.max(0, worstRank - bestRank),
     bestPositionRankByPosition,
     positionRanks,
@@ -212,6 +234,11 @@ const getOverallRankNote = (player, analysis) => {
 const formatPlayerRank = (player) => {
   if (!player) return '-';
   return `${player.name} #${player.scoringRank}`;
+};
+
+const formatPlayerValue = (player) => {
+  if (!player) return '-';
+  return `${player.name} $${getEstimatedAuctionValue(player)}`;
 };
 
 export default PlayerComparison;

@@ -20,26 +20,22 @@ public static class JoinLeague
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<JoinLeagueRequest>(requestBody);
 
-        if (string.IsNullOrEmpty(data?.UserId) || string.IsNullOrEmpty(data.LeagueName))
+        if (string.IsNullOrEmpty(data?.UserId) || (string.IsNullOrEmpty(data.LeagueName) && string.IsNullOrEmpty(data.LeagueId)))
         {
-            return new BadRequestObjectResult("User ID and league name are required.");
+            return new BadRequestObjectResult("User ID and league name or invite ID are required.");
         }
 
         var container = AppServices.LeaguesContainer;
         try
         {
-            var query = new QueryDefinition("SELECT * FROM c WHERE c.name = @leagueName")
-                .WithParameter("@leagueName", data.LeagueName);
-            var queryIterator = container.GetItemQueryIterator<League>(query);
-            var leagueResponse = await queryIterator.ReadNextAsync();
-            if (!leagueResponse.Any())
+            var leagueToJoin = await FindLeagueToJoin(container, data);
+            if (leagueToJoin == null)
             {
                 return new NotFoundObjectResult("League not found.");
             }
 
-            var leagueToJoin = leagueResponse.First();
-
-            if (!string.IsNullOrEmpty(leagueToJoin.Password) && leagueToJoin.Password != data.Password)
+            var isInviteJoin = !string.IsNullOrWhiteSpace(data.LeagueId);
+            if (!isInviteJoin && !string.IsNullOrEmpty(leagueToJoin.Password) && leagueToJoin.Password != data.Password)
             {
                 return new UnauthorizedResult();
             }
@@ -82,10 +78,33 @@ public static class JoinLeague
         }
     }
 
+    private static async Task<League> FindLeagueToJoin(Container container, JoinLeagueRequest data)
+    {
+        if (!string.IsNullOrWhiteSpace(data.LeagueId))
+        {
+            try
+            {
+                var response = await container.ReadItemAsync<League>(data.LeagueId, new PartitionKey(data.LeagueId));
+                return response.Resource;
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+        }
+
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.name = @leagueName")
+            .WithParameter("@leagueName", data.LeagueName);
+        var queryIterator = container.GetItemQueryIterator<League>(query);
+        var leagueResponse = await queryIterator.ReadNextAsync();
+        return leagueResponse.FirstOrDefault();
+    }
+
     public class JoinLeagueRequest
     {
         public string UserId { get; set; }
         public string LeagueName { get; set; }
+        public string LeagueId { get; set; }
         public string Password { get; set; }
     }
 }
