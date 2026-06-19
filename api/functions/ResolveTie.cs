@@ -10,7 +10,6 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
-using System.Collections.Generic;
 
 public static class ResolveTie
 {
@@ -24,28 +23,37 @@ public static class ResolveTie
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<ResolveTieRequest>(requestBody);
+
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
-        var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-        var league = leagueResponse.Resource;
 
-        if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
-        if (league.Status.ToLower() != "tiebreaker" || league.TieBreaker?.Round != 2)
+        var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
         {
-            return new BadRequestObjectResult("Can only resolve a second-round tie.");
-        }
+            if (league.AdminId != data.AdminId)
+                return new UnauthorizedResult();
 
-        var winningTeam = league.Teams.FirstOrDefault(t => t.Id == data.WinningTeamId);
-        var draftedPlayer = league.InitialPlayerPool.FirstOrDefault(p => p.Id == league.CurrentPlayerId);
-        if (winningTeam == null || draftedPlayer == null) { return new NotFoundObjectResult("Team or player not found."); }
+            if (league.Status.ToLower() != "tiebreaker" || league.TieBreaker?.Round != 2)
+                return new BadRequestObjectResult("Can only resolve a second-round tie.");
 
-        log.LogInformation($"Admin resolved tie, awarding {draftedPlayer.Name} to {winningTeam.Name}.");
+            var winningTeam = league.Teams.FirstOrDefault(t => t.Id == data.WinningTeamId);
+            var draftedPlayer = league.InitialPlayerPool.FirstOrDefault(p => p.Id == league.CurrentPlayerId);
 
-        // --- USE SHARED LOGIC ---
-        DraftLogic.AwardPlayerToTeam(league, draftedPlayer, winningTeam, league.TieBreaker.TieAmount);
-        
-        await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-        await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+            if (winningTeam == null || draftedPlayer == null)
+                return new NotFoundObjectResult("Team or player not found.");
+
+            log.LogInformation("Admin resolved tie, awarding {PlayerName} to {TeamName}.", draftedPlayer.Name, winningTeam.Name);
+            DraftLogic.AwardPlayerToTeam(league, draftedPlayer, winningTeam, league.TieBreaker.TieAmount);
+
+            return null;
+        }, log);
+
+        if (error != null) return error;
+
+        await signalRMessages.AddAsync(new SignalRMessage
+        {
+            GroupName = leagueId,
+            Target = "draftStateUpdate",
+            Arguments = new object[] { league.ForBroadcast() }
+        });
 
         return new OkObjectResult("Tie resolved.");
     }
