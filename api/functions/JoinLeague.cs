@@ -49,7 +49,12 @@ public static class JoinLeague
                 return new ConflictObjectResult("You are already a member of this league.");
             }
 
-            var userProfile = await GetUserProfile(data.UserId, log);
+            var userProfile = await UserProfileStore.FindAsync(data.UserId);
+            if (userProfile == null)
+            {
+                log?.LogWarning("Profile not found for user {UserId} when joining league.", data.UserId);
+            }
+
             var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
 
             leagueToJoin.Members.Add(data.UserId);
@@ -70,21 +75,8 @@ public static class JoinLeague
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Error joining league.");
+            log?.LogError(ex, "Error joining league.");
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
-        }
-    }
-
-    private static async Task<UserProfile> GetUserProfile(string userId, ILogger log)
-    {
-        try
-        {
-            return await AppServices.UsersContainer.ReadItemAsync<UserProfile>(userId, new PartitionKey(userId));
-        }
-        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            log.LogWarning("Profile not found for user {UserId} when joining league.", userId);
-            return null;
         }
     }
 
