@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
@@ -43,7 +43,7 @@ const Profile = () => {
     const [sortBy, setSortBy] = useState('rank');
     const [playerLimit, setPlayerLimit] = useState(350);
 
-    const syncProfileFields = (profile, syncNotes = true, syncStrategy = true) => {
+    const syncProfileFields = useCallback((profile, syncNotes = true, syncStrategy = true) => {
         setDisplayName(profile?.displayName || '');
         setDefaultTeamName(profile?.defaultTeamName || '');
         if (syncNotes) {
@@ -53,7 +53,7 @@ const Profile = () => {
             setTierAssignments(profile?.playerTiers || {});
             setBudgetPlan(normalizeBudgetPlan(profile?.budgetPlan || DEFAULT_BUDGET_PLAN));
         }
-    };
+    }, []);
 
     useEffect(() => {
         const getProfile = async () => {
@@ -73,7 +73,7 @@ const Profile = () => {
             }
         };
         getProfile();
-    }, [user]);
+    }, [user, syncProfileFields]);
 
     const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode]);
     const filteredPlayerPool = useMemo(() => filterPlayerBoard(playerBoard, {
