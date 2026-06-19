@@ -9,6 +9,14 @@ import '../App.css';
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 const TIMER_POLL_MS = 1000;
 const POSITION_OPTIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DST'];
+const POSITION_PLAN_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'K', 'DST', 'BENCH'];
+const EMPTY_DRAFT_PROFILE = {
+    loaded: false,
+    favoritePlayerIds: [],
+    playerNotes: {},
+    playerTiers: {},
+    budgetPlan: {},
+};
 
 const useTimerTransition = (enabled, auctionTimer, transitionUrl) => {
     const timerEndTime = auctionTimer?.endTime;
@@ -51,7 +59,7 @@ const DraftScreen = () => {
     const { user } = useAuth();
     const [league, setLeague] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [playerNotes, setPlayerNotes] = useState({});
+    const [draftProfile, setDraftProfile] = useState(EMPTY_DRAFT_PROFILE);
     const [toast, setToast] = useState({ show: false, message: '' });
 
     useEffect(() => {
@@ -61,7 +69,7 @@ const DraftScreen = () => {
                 const response = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/state`);
                 setLeague(response.data);
             } catch (error) {
-                console.error("Error fetching league state:", error);
+                console.error('Error fetching league state:', error);
             } finally {
                 setLoading(false);
             }
@@ -70,20 +78,21 @@ const DraftScreen = () => {
     }, [leagueId, user]);
 
     useEffect(() => {
-        const fetchPlayerNotes = async () => {
+        const fetchDraftProfile = async () => {
             if (!user?.userId) return;
             try {
                 const response = await axios.post(`${API_BASE_URL}/user-profile`, {
                     userId: user.userId,
                     displayName: user.userDetails,
                 });
-                setPlayerNotes(response.data?.playerNotes || {});
+                setDraftProfile(normalizeDraftProfile(response.data));
             } catch (error) {
-                console.error('Error fetching draft player notes:', error);
+                console.error('Error fetching draft profile strategy data:', error);
+                setDraftProfile(EMPTY_DRAFT_PROFILE);
             }
         };
 
-        fetchPlayerNotes();
+        fetchDraftProfile();
     }, [user]);
 
     useEffect(() => {
@@ -113,7 +122,7 @@ const DraftScreen = () => {
                 await axios.post(`${API_BASE_URL}/leagues/${leagueId}/connect`, { userId: user.userId });
 
             } catch (e) {
-                console.error("SignalR Connection Failed: ", e);
+                console.error('SignalR Connection Failed: ', e);
             }
         };
 
@@ -139,37 +148,47 @@ const DraftScreen = () => {
         };
     }, [leagueId, user]);
 
+    const handleFavoriteIdsChange = (favoritePlayerIds) => {
+        setDraftProfile((current) => ({
+            ...current,
+            loaded: true,
+            favoritePlayerIds: normalizeIdList(favoritePlayerIds),
+        }));
+    };
+
     if (loading) return <div>Loading Draft Room...</div>;
     if (!league) return <div>Could not load league.</div>;
 
-    const isLobbyPhase = league.status.toLowerCase() === 'created' || league.status.toLowerCase() === 'lobby';
-    const isCompleted = league.status.toLowerCase() === 'completed';
+    const normalizedStatus = String(league.status || '').toLowerCase();
+    const isLobbyPhase = normalizedStatus === 'created' || normalizedStatus === 'lobby';
+    const isCompleted = normalizedStatus === 'completed';
     
     return (
         <div style={{ padding: '20px' }}>
             <ToastNotification message={toast.message} show={toast.show} onClose={() => setToast({ show: false, message: '' })} />
             <h2>Drafting in {league.name}</h2>
-            <p>League Status: <span style={{fontWeight: 'bold'}}>{league.status.toUpperCase()}</span></p>
+            <p>League Status: <span style={{fontWeight: 'bold'}}>{String(league.status || 'unknown').toUpperCase()}</span></p>
 
             {isLobbyPhase ? (
-                <LobbyView league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
+                <LobbyView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} onFavoriteIdsChange={handleFavoriteIdsChange} />
             ) : isCompleted ? (
-                <CompletedView league={league} leagueId={leagueId} playerNotes={playerNotes} />
+                <CompletedView league={league} leagueId={leagueId} draftProfile={draftProfile} />
             ) : (
-                <DraftingView league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
+                <DraftingView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} onFavoriteIdsChange={handleFavoriteIdsChange} />
             )}
         </div>
     );
 };
 
-const LobbyView = ({ league, user, leagueId, playerNotes }) => {
+const LobbyView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }) => {
     const isCurrentUserAdmin = league.adminId === user.userId;
-    const nonAdminMembers = league.members.filter(id => id !== league.adminId);
-    const allNonAdminsReady = nonAdminMembers.every(memberId => league.readyMembers.includes(memberId));
+    const nonAdminMembers = (league.members || []).filter(id => id !== league.adminId);
+    const readyMembers = league.readyMembers || [];
+    const allNonAdminsReady = nonAdminMembers.every(memberId => readyMembers.includes(memberId));
     const canStartDraft = isCurrentUserAdmin && (nonAdminMembers.length === 0 || allNonAdminsReady);
 
     const handleSetReadyStatus = async () => {
-        const currentStatus = league.readyMembers.includes(user.userId);
+        const currentStatus = readyMembers.includes(user.userId);
         try {
             await axios.post(`${API_BASE_URL}/leagues/${leagueId}/ready`, { userId: user.userId, isReady: !currentStatus });
         } catch (error) {
@@ -191,29 +210,29 @@ const LobbyView = ({ league, user, leagueId, playerNotes }) => {
                 <h3>Draft Controls & Overview</h3>
                 {isCurrentUserAdmin ? (
                     <button onClick={handleStartDraft} className={`start-draft-button ${canStartDraft ? 'ready' : ''}`} disabled={!canStartDraft}>
-                        Start Draft ({league.readyMembers.length}/{nonAdminMembers.length} Ready)
+                        Start Draft ({readyMembers.length}/{nonAdminMembers.length} Ready)
                     </button>
                 ) : (
-                    <button onClick={handleSetReadyStatus} className={`ready-button ${league.readyMembers.includes(user.userId) ? 'ready' : ''}`}>
-                        {league.readyMembers.includes(user.userId) ? "You are Ready!" : "I'm Ready!"}
+                    <button onClick={handleSetReadyStatus} className={`ready-button ${readyMembers.includes(user.userId) ? 'ready' : ''}`}>
+                        {readyMembers.includes(user.userId) ? 'You are Ready!' : "I'm Ready!"}
                     </button>
                 )}
             </div>
             <div className="card" style={{marginTop: '20px'}}>
                 <h3>League Teams</h3>
-                 <TeamListViewer league={league} user={user} leagueId={leagueId} />
+                 <TeamListViewer league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
             </div>
-            <PlayerListViewer league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
+            <PlayerListViewer league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} onFavoriteIdsChange={onFavoriteIdsChange} />
         </>
     );
 };
 
-const DraftingView = ({ league, user, leagueId, playerNotes }) => {
-    const normalizedStatus = league.status.toLowerCase();
+const DraftingView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }) => {
+    const normalizedStatus = String(league.status || '').toLowerCase();
     const isIntermission = normalizedStatus === 'intermission';
     const isTieBreaker = normalizedStatus === 'tiebreaker';
     const isAuctionPhase = normalizedStatus === 'drafting' || isTieBreaker;
-    const beerBitchTeam = league.teams.find(t => t.id === league.beerBitchTeamId);
+    const beerBitchTeam = (league.teams || []).find(t => t.id === league.beerBitchTeamId);
 
     useTimerTransition(
         isAuctionPhase,
@@ -230,20 +249,20 @@ const DraftingView = ({ league, user, leagueId, playerNotes }) => {
         <>
             <div className="card">
                 <h3>Draft Controls & Overview</h3>
-                {league.adminId === user.userId && <AdminControls league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />}
+                {league.adminId === user.userId && <AdminControls league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />}
             </div>
             
             {isIntermission ? (
-                <IntermissionView league={league} playerNotes={playerNotes} />
+                <IntermissionView league={league} draftProfile={draftProfile} />
             ) : isTieBreaker ? (
-                <TieBreakerView league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
+                <TieBreakerView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
             ) : (
-                <AuctionView league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
+                <AuctionView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
             )}
 
             <div className="card" style={{marginTop: '20px'}}>
                 <h3>League Teams:</h3>
-                <TeamListViewer league={league} user={user} leagueId={leagueId} />
+                <TeamListViewer league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
             </div>
 
             {beerBitchTeam && (
@@ -253,12 +272,12 @@ const DraftingView = ({ league, user, leagueId, playerNotes }) => {
                 </div>
             )}
             
-            <PlayerListViewer league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
+            <PlayerListViewer league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} onFavoriteIdsChange={onFavoriteIdsChange} />
         </>
     );
 };
 
-const AdminControls = ({ league, user, leagueId, playerNotes }) => {
+const AdminControls = ({ league, user, leagueId, draftProfile }) => {
     const [showBeerBitchModal, setShowBeerBitchModal] = useState(false);
     const [showNominateModal, setShowNominateModal] = useState(false);
     const [showManageMembersModal, setShowManageMembersModal] = useState(false);
@@ -272,7 +291,7 @@ const AdminControls = ({ league, user, leagueId, playerNotes }) => {
     };
     
     const handleSkipPlayer = async () => {
-        if (window.confirm("Are you sure you want to skip this player?")) {
+        if (window.confirm('Are you sure you want to skip this player?')) {
             try {
                 await axios.post(`${API_BASE_URL}/leagues/${leagueId}/skip`, { adminId: user.userId });
             } catch (error) {
@@ -282,7 +301,7 @@ const AdminControls = ({ league, user, leagueId, playerNotes }) => {
     };
 
     const handleSkipIntermission = async () => {
-        if (window.confirm("Are you sure you want to skip the intermission and start the next auction immediately?")) {
+        if (window.confirm('Are you sure you want to skip the intermission and start the next auction immediately?')) {
             try {
                 await axios.post(`${API_BASE_URL}/leagues/${leagueId}/skip-intermission`, { adminId: user.userId });
             } catch (error) {
@@ -293,7 +312,7 @@ const AdminControls = ({ league, user, leagueId, playerNotes }) => {
 
     const handleAssignBeerBitch = async (teamId) => {
         try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/beer-bitch`, { adminId: user.userId, teamId: teamId });
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/beer-bitch`, { adminId: user.userId, teamId });
             setShowBeerBitchModal(false);
         } catch (error) {
             alert(`Error assigning beer duty: ${error.response?.data || error.message}`);
@@ -310,8 +329,8 @@ const AdminControls = ({ league, user, leagueId, playerNotes }) => {
     };
 
     const handleKickMember = async (teamIdToKick) => {
-        const team = league.teams.find(t => t.id === teamIdToKick);
-        if (window.confirm(`Are you sure you want to kick ${team.name}? This will return all their drafted players to the pool.`)) {
+        const team = (league.teams || []).find(t => t.id === teamIdToKick);
+        if (window.confirm(`Are you sure you want to kick ${team?.name || 'this team'}? This will return all their drafted players to the pool.`)) {
             try {
                 await axios.post(`${API_BASE_URL}/leagues/${leagueId}/kick`, { adminId: user.userId, teamIdToKick });
             } catch (error) {
@@ -322,14 +341,14 @@ const AdminControls = ({ league, user, leagueId, playerNotes }) => {
 
     const handleAdjustBudget = async (teamId, newBudget) => {
         try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/adjust-budget`, { adminId: user.userId, teamId, newBudget: parseInt(newBudget) });
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/adjust-budget`, { adminId: user.userId, teamId, newBudget: parseInt(newBudget, 10) || 0 });
         } catch (error) {
             alert(`Error adjusting budget: ${error.response?.data || error.message}`);
         }
     };
 
     const handleCompleteDraft = async () => {
-        if (window.confirm("Are you sure you want to end this draft? This cannot be undone.")) {
+        if (window.confirm('Are you sure you want to end this draft? This cannot be undone.')) {
             try {
                 await axios.post(`${API_BASE_URL}/leagues/${leagueId}/complete`, { adminId: user.userId });
             } catch (error) {
@@ -339,7 +358,7 @@ const AdminControls = ({ league, user, leagueId, playerNotes }) => {
     };
 
     const handleUndoPick = async () => {
-        if (window.confirm("Are you sure you want to undo the last pick? This will return the player to the pool and refund the winning team.")) {
+        if (window.confirm('Are you sure you want to undo the last pick? This will return the player to the pool and refund the winning team.')) {
             try {
                 await axios.post(`${API_BASE_URL}/leagues/${leagueId}/undo-pick`, { adminId: user.userId });
             } catch (error) {
@@ -349,8 +368,9 @@ const AdminControls = ({ league, user, leagueId, playerNotes }) => {
     };
 
     const isPaused = league.auctionTimer?.isPaused;
-    const isIntermission = league.status.toLowerCase() === 'intermission';
-    const isTieBreaker = league.status.toLowerCase() === 'tiebreaker';
+    const normalizedStatus = String(league.status || '').toLowerCase();
+    const isIntermission = normalizedStatus === 'intermission';
+    const isTieBreaker = normalizedStatus === 'tiebreaker';
 
     const pauseButtonText = () => {
         if (isTieBreaker) {
@@ -387,7 +407,7 @@ const AdminControls = ({ league, user, leagueId, playerNotes }) => {
                         <h3>Assign Beer B!tch</h3>
                         <p>Select a team to assign beer duty to.</p>
                         <ul style={{listStyle: 'none', padding: 0}}>
-                            {league.teams.map(team => (
+                            {(league.teams || []).map(team => (
                                 <li key={team.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid #eee'}}>
                                     <span>{team.name}</span>
                                     <button onClick={() => handleAssignBeerBitch(team.id)}>Assign</button>
@@ -402,7 +422,7 @@ const AdminControls = ({ league, user, leagueId, playerNotes }) => {
             {showNominateModal && (
                 <NominatePlayerModal
                     league={league}
-                    playerNotes={playerNotes}
+                    draftProfile={draftProfile}
                     onNominate={handleNominatePlayer}
                     onClose={() => setShowNominateModal(false)}
                 />
@@ -420,12 +440,11 @@ const AdminControls = ({ league, user, leagueId, playerNotes }) => {
     );
 };
 
-const AuctionView = ({ league, user, leagueId, playerNotes }) => {
+const AuctionView = ({ league, user, leagueId, draftProfile }) => {
     const [bidAmount, setBidAmount] = useState(0);
     const [timer, setTimer] = useState(0);
 
-    const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
-    const currentPlayerNote = getPlayerNote(playerNotes, currentPlayer?.id);
+    const currentPlayer = (league.initialPlayerPool || []).find(p => p.id === league.currentPlayerId);
     const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
     const currentServerBid = userHasActiveBid ? league.activeBids[user.userId].amount : 0;
 
@@ -435,7 +454,7 @@ const AuctionView = ({ league, user, leagueId, playerNotes }) => {
 
             if (bidAmount !== currentServerBid) {
                 if (bidAmount > 0) {
-                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+                    axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount: parseInt(bidAmount, 10) || 0 });
                 } else if (bidAmount === 0 && userHasActiveBid) {
                     axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
                 }
@@ -448,7 +467,6 @@ const AuctionView = ({ league, user, leagueId, playerNotes }) => {
     useEffect(() => {
         const { auctionTimer } = league;
         let intervalId = null;
-        if (intervalId) { clearInterval(intervalId); }
         if (auctionTimer?.isPaused) {
             setTimer(auctionTimer.timeRemainingOnPause);
         } else {
@@ -479,7 +497,7 @@ const AuctionView = ({ league, user, leagueId, playerNotes }) => {
             <h3>Current Player Up for Bid:</h3>
             <h2>{currentPlayer.name} - {currentPlayer.position} - {currentPlayer.team}</h2>
             <p>Rank: {currentPlayer.rank} | Bye Week: {currentPlayer.bye}</p>
-            <PlayerNote note={currentPlayerNote} />
+            <PlayerStrategy draftProfile={draftProfile} playerId={currentPlayer.id} />
             <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Bid Ends In: {timer}s</p>
             
             {userHasActiveBid && (
@@ -492,7 +510,7 @@ const AuctionView = ({ league, user, leagueId, playerNotes }) => {
                 <input 
                     type="number" 
                     value={bidAmount} 
-                    onChange={e => setBidAmount(parseInt(e.target.value) || 0)}
+                    onChange={e => setBidAmount(parseInt(e.target.value, 10) || 0)}
                     style={{width: '60px', textAlign: 'center'}} 
                 />
                 <button onClick={incrementBid}>+</button>
@@ -505,14 +523,13 @@ const AuctionView = ({ league, user, leagueId, playerNotes }) => {
     );
 };
 
-const IntermissionView = ({ league, playerNotes }) => {
+const IntermissionView = ({ league, draftProfile }) => {
     const [timer, setTimer] = useState(0);
     const lastPick = league.draftLog && league.draftLog.length > 0 ? league.draftLog[league.draftLog.length - 1] : null;
 
     useEffect(() => {
         const { auctionTimer } = league;
         let intervalId = null;
-        if (intervalId) { clearInterval(intervalId); }
         if (auctionTimer?.isPaused) {
             setTimer(auctionTimer.timeRemainingOnPause);
         } else {
@@ -531,9 +548,8 @@ const IntermissionView = ({ league, playerNotes }) => {
 
     if (!lastPick) return <div className="card">Getting ready for the next player...</div>;
 
-    const winningTeam = league.teams.find(t => t.id === lastPick.winningTeamId);
-    const allBids = Object.entries(lastPick.allBids).sort(([,a],[,b]) => b.amount - a.amount);
-    const lastPickNote = getPlayerNote(playerNotes, lastPick.player?.id);
+    const winningTeam = (league.teams || []).find(t => t.id === lastPick.winningTeamId);
+    const allBids = Object.entries(lastPick.allBids || {}).sort(([,a],[,b]) => b.amount - a.amount);
 
     return (
         <div className="card" style={{marginTop: '20px', backgroundColor: '#e6ffed'}}>
@@ -546,13 +562,13 @@ const IntermissionView = ({ league, playerNotes }) => {
                     <strong> {winningTeam?.name || 'N/A'}</strong> for 
                     <strong> ${lastPick.winningBid}</strong>!
                 </p>
-                <PlayerNote note={lastPickNote} />
+                <PlayerStrategy draftProfile={draftProfile} playerId={lastPick.player?.id} />
             </div>
             <div style={{marginTop: '20px'}}>
                 <h4>All Bids for this Player:</h4>
                 <ul style={{listStyle: 'none', padding: 0}}>
                     {allBids.map(([userId, bid]) => {
-                        const team = league.teams.find(t => t.ownerId === userId);
+                        const team = (league.teams || []).find(t => t.ownerId === userId);
                         return <li key={userId}>{team?.name || 'Unknown Team'}: ${bid.amount}</li>;
                     })}
                 </ul>
@@ -561,14 +577,14 @@ const IntermissionView = ({ league, playerNotes }) => {
     );
 };
 
-const TieBreakerView = ({ league, user, leagueId, playerNotes }) => {
+const TieBreakerView = ({ league, user, leagueId, draftProfile }) => {
     const [bidAmount, setBidAmount] = useState(0);
     const [timer, setTimer] = useState(0);
     const [showResolveTieModal, setShowResolveTieModal] = useState(false);
 
-    const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
-    const currentPlayerNote = getPlayerNote(playerNotes, currentPlayer?.id);
-    const userIsTied = league.tieBreaker?.tiedTeamIds.includes(user.userId);
+    const currentPlayer = (league.initialPlayerPool || []).find(p => p.id === league.currentPlayerId);
+    const tiedTeamIds = league.tieBreaker?.tiedTeamIds || [];
+    const userIsTied = tiedTeamIds.includes(user.userId);
     const isSecondRoundTie = league.tieBreaker?.round === 2;
     const isCurrentUserAdmin = league.adminId === user.userId;
 
@@ -581,7 +597,6 @@ const TieBreakerView = ({ league, user, leagueId, playerNotes }) => {
     useEffect(() => {
         const { auctionTimer } = league;
         let intervalId = null;
-        if (intervalId) { clearInterval(intervalId); }
         if (auctionTimer?.isPaused) {
             setTimer(auctionTimer.timeRemainingOnPause);
         } else {
@@ -600,7 +615,7 @@ const TieBreakerView = ({ league, user, leagueId, playerNotes }) => {
 
     const handlePlaceTieBid = async () => {
         try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/tiebreaker-bid`, { userId: user.userId, amount: parseInt(bidAmount) });
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/tiebreaker-bid`, { userId: user.userId, amount: parseInt(bidAmount, 10) || 0 });
         } catch (error) {
             alert(`Error placing tie-breaker bid: ${error.response?.data || error.message}`);
         }
@@ -621,7 +636,7 @@ const TieBreakerView = ({ league, user, leagueId, playerNotes }) => {
         <div className="card" style={{marginTop: '20px', backgroundColor: '#fff3cd'}}>
             <h2>Tie Breaker!</h2>
             <p>A tie was detected for <strong>{currentPlayer.name}</strong> at <strong>${league.tieBreaker.tieAmount}</strong>.</p>
-            <PlayerNote note={currentPlayerNote} />
+            <PlayerStrategy draftProfile={draftProfile} playerId={currentPlayer.id} />
             <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Re-bid Ends In: {timer}s</p>
 
             {userIsTied ? (
@@ -630,7 +645,7 @@ const TieBreakerView = ({ league, user, leagueId, playerNotes }) => {
                     <p>You must bid at least ${league.tieBreaker.tieAmount + 1}.</p>
                     <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
                         Your Bid:
-                        <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value) || 0)} style={{width: '60px'}} disabled={league.auctionTimer?.isPaused} />
+                        <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value, 10) || 0)} style={{width: '60px'}} disabled={league.auctionTimer?.isPaused} />
                         <button onClick={handlePlaceTieBid} disabled={league.auctionTimer?.isPaused}>Place Tie-Breaker Bid</button>
                     </div>
                 </div>
@@ -651,12 +666,12 @@ const TieBreakerView = ({ league, user, leagueId, playerNotes }) => {
                         <h3>Resolve Final Tie</h3>
                         <p>Please select the winner for {currentPlayer.name} at ${league.tieBreaker.tieAmount}.</p>
                         <ul style={{listStyle: 'none', padding: 0}}>
-                            {league.tieBreaker.tiedTeamIds.map(teamId => {
-                                const team = league.teams.find(t => t.ownerId === teamId);
+                            {tiedTeamIds.map(teamId => {
+                                const team = (league.teams || []).find(t => t.ownerId === teamId);
                                 return (
                                     <li key={teamId} className="player-list-item">
-                                        <span>{team.name}</span>
-                                        <button onClick={() => handleResolveTie(team.id)}>Award Player</button>
+                                        <span>{team?.name || 'Unknown Team'}</span>
+                                        {team && <button onClick={() => handleResolveTie(team.id)}>Award Player</button>}
                                     </li>
                                 );
                             })}
@@ -669,9 +684,9 @@ const TieBreakerView = ({ league, user, leagueId, playerNotes }) => {
     );
 };
 
-const TeamListViewer = ({ league, user, leagueId }) => {
+const TeamListViewer = ({ league, user, leagueId, draftProfile }) => {
     const [beerRequestCooldown, setBeerRequestCooldown] = useState(0);
-    const userTeam = league.teams.find(t => t.ownerId === user.userId);
+    const userTeam = (league.teams || []).find(t => t.ownerId === user.userId);
 
     useEffect(() => {
         if (beerRequestCooldown > 0) {
@@ -697,30 +712,21 @@ const TeamListViewer = ({ league, user, leagueId }) => {
 
     return (
         <div>
-            {league.teams.map(team => {
+            {(league.teams || []).map(team => {
                 const isUserTeam = team.ownerId === user.userId;
-                const rosterSpotsFilled = team.roster?.length || 0;
+                const roster = team.roster || [];
+                const rosterSpotsFilled = roster.length;
                 
                 if (isUserTeam) {
                     const remainingRosterSpots = totalRosterSpots - rosterSpotsFilled;
                     const maxBid = team.budget - (remainingRosterSpots > 0 ? remainingRosterSpots - 1 : 0);
-                    
-                    const positionCounts = {};
-                    for (const pos in rosterSettings) {
-                        const displayPosition = pos.toUpperCase();
-                        const playerPosition = displayPosition === 'DEF' ? 'DST' : displayPosition;
-                        positionCounts[displayPosition] = team.roster.filter(spot =>
-                            spot.position === displayPosition ||
-                            spot.position === playerPosition ||
-                            spot.player.position === playerPosition
-                        ).length;
-                    }
+                    const positionCounts = getPositionCounts(rosterSettings, roster);
 
                     return (
                         <div key={team.id} className="user-team-details" style={{padding: '5px 0', borderBottom: '1px solid #eee'}}>
                             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
                                 <h4>
-                                    <span style={{ height: '10px', width: '10px', backgroundColor: league.onlineUserIds.includes(team.ownerId) ? '#28a745' : '#6c757d', borderRadius: '50%', display: 'inline-block', marginRight: '8px' }}></span>
+                                    <span style={{ height: '10px', width: '10px', backgroundColor: (league.onlineUserIds || []).includes(team.ownerId) ? '#28a745' : '#6c757d', borderRadius: '50%', display: 'inline-block', marginRight: '8px' }}></span>
                                     {team.name} (You)
                                 </h4>
                                 <span>Roster: {rosterSpotsFilled} / {totalRosterSpots}</span>
@@ -728,22 +734,28 @@ const TeamListViewer = ({ league, user, leagueId }) => {
                             <p style={{margin: '5px 0'}}>
                                 Budget: ${team.budget} | 
                                 Total Spent: ${200 - team.budget} | 
-                                Max Bid: ${maxBid}
+                                Max Bid: ${Math.max(0, maxBid)}
                             </p>
                             <div style={{display: 'flex', flexWrap: 'wrap', gap: '15px'}}>
                                 <div>
-                                    <h5>Roster Spots:</h5>
+                                    <h5>Your Position Needs:</h5>
                                     <ul style={{listStyle: 'none', paddingLeft: '10px', margin: 0}}>
-                                        {Object.entries(rosterSettings).map(([pos, count]) => (
-                                            <li key={pos}>{pos.toUpperCase()}: {positionCounts[pos.toUpperCase()] || 0} / {count}</li>
-                                        ))}
+                                        {Object.entries(rosterSettings).map(([pos, count]) => {
+                                            const displayPosition = pos.toUpperCase();
+                                            const filled = positionCounts[displayPosition] || 0;
+                                            const remaining = Math.max(0, (count || 0) - filled);
+                                            return (
+                                                <li key={pos}>{displayPosition}: {filled} / {count}{remaining > 0 ? ` - need ${remaining}` : ' - filled'}</li>
+                                            );
+                                        })}
                                     </ul>
                                 </div>
+                                <BudgetPlanPanel draftProfile={draftProfile} />
                                 <div>
                                     <h5>Your Roster:</h5>
                                     <ul style={{listStyle: 'none', paddingLeft: '10px', margin: 0}}>
-                                        {team.roster.map((spot, index) => (
-                                            <li key={index}>{spot.player.name} ({spot.player.position} - Bye: {spot.player.bye}) - ${spot.player.price}</li>
+                                        {roster.map((spot, index) => (
+                                            <li key={index}>{spot.player?.name || 'Unknown Player'} ({spot.player?.position || spot.position} - Bye: {spot.player?.bye || '-'}) - ${spot.player?.price || 0}</li>
                                         ))}
                                     </ul>
                                 </div>
@@ -755,54 +767,64 @@ const TeamListViewer = ({ league, user, leagueId }) => {
                             )}
                         </div>
                     );
-                } else {
-                     return (
-                        <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <div>
-                                <span style={{
-                                    height: '10px',
-                                    width: '10px',
-                                    backgroundColor: league.onlineUserIds.includes(team.ownerId) ? '#28a745' : '#6c757d',
-                                    borderRadius: '50%',
-                                    display: 'inline-block',
-                                    marginRight: '8px'
-                                }}></span>
-                                <strong>{team.name}</strong>
-                            </div>
-                            <span>
-                                Roster: {rosterSpotsFilled}/{totalRosterSpots}
-                            </span>
-                        </div>
-                    );
                 }
+
+                return (
+                    <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <div>
+                            <span style={{
+                                height: '10px',
+                                width: '10px',
+                                backgroundColor: (league.onlineUserIds || []).includes(team.ownerId) ? '#28a745' : '#6c757d',
+                                borderRadius: '50%',
+                                display: 'inline-block',
+                                marginRight: '8px'
+                            }}></span>
+                            <strong>{team.name}</strong>
+                        </div>
+                        <span>
+                            Roster: {rosterSpotsFilled}/{totalRosterSpots}
+                        </span>
+                    </div>
+                );
             })}
         </div>
     );
 };
 
-const PlayerListViewer = ({ league, user, leagueId, playerNotes }) => {
+const PlayerListViewer = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortPosition, setSortPosition] = useState('All Positions');
-    const userTeam = league.teams.find(team => team.ownerId === user.userId);
-    const userFavorites = userTeam?.favoritePlayerIds || [];
+    const userTeam = (league.teams || []).find(team => team.ownerId === user.userId);
+    const userFavorites = getDraftFavoriteIds(draftProfile, userTeam);
+    const favoriteSet = new Set(userFavorites);
     const allPlayers = league.initialPlayerPool || [];
-    const favoritePlayers = allPlayers.filter(p => userFavorites.includes(p.id) && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
-    const availablePlayers = allPlayers.filter(p => !userFavorites.includes(p.id) && !p.isDrafted && p.name.toLowerCase().includes(searchTerm.toLowerCase()) && (sortPosition === 'All Positions' || p.position === sortPosition));
+    const query = searchTerm.toLowerCase();
+    const favoritePlayers = allPlayers.filter(p => favoriteSet.has(p.id) && p.name.toLowerCase().includes(query) && (sortPosition === 'All Positions' || p.position === sortPosition));
+    const availablePlayers = allPlayers.filter(p => !favoriteSet.has(p.id) && !p.isDrafted && p.name.toLowerCase().includes(query) && (sortPosition === 'All Positions' || p.position === sortPosition));
 
     const handleToggleFavorite = async (playerIdToToggle) => {
-        const isCurrentlyFavorite = userFavorites.includes(playerIdToToggle);
+        const isCurrentlyFavorite = favoriteSet.has(playerIdToToggle);
         const newFavoriteIds = isCurrentlyFavorite ? userFavorites.filter(id => id !== playerIdToToggle) : [...userFavorites, playerIdToToggle];
+        onFavoriteIdsChange(newFavoriteIds);
         try {
-            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/favorites`, { userId: user.userId, playerIds: newFavoriteIds });
+            const response = await axios.post(`${API_BASE_URL}/leagues/${leagueId}/favorites`, { userId: user.userId, playerIds: newFavoriteIds });
+            if (Array.isArray(response.data?.favoritePlayerIds)) {
+                onFavoriteIdsChange(response.data.favoritePlayerIds);
+            }
         } catch (error) {
-            console.error("Error updating favorite players:", error);
-            alert("Failed to update your favorite players.");
+            onFavoriteIdsChange(userFavorites);
+            console.error('Error updating favorite players:', error);
+            alert('Failed to update your favorite players.');
         }
     };
 
     return (
         <div className="card" style={{ marginTop: '20px' }}>
             <h3>Player Lists</h3>
+            <p style={{ marginTop: 0, color: '#65746f', fontWeight: 700 }}>
+                Favorites, tiers, notes, and budget plan come from your Profile and stay synced here.
+            </p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
                 <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition}>
                     <option>All Positions</option>
@@ -814,10 +836,7 @@ const PlayerListViewer = ({ league, user, leagueId, playerNotes }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
                 {favoritePlayers.map(player => (
                     <li key={player.id} className="player-list-item">
-                        <div>
-                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
-                            <PlayerNote note={getPlayerNote(playerNotes, player.id)} compact />
-                        </div>
+                        <PlayerSummary player={player} draftProfile={draftProfile} />
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
                             <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
@@ -829,10 +848,7 @@ const PlayerListViewer = ({ league, user, leagueId, playerNotes }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
                 {availablePlayers.map(player => (
                     <li key={player.id} className="player-list-item">
-                        <div>
-                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
-                            <PlayerNote note={getPlayerNote(playerNotes, player.id)} compact />
-                        </div>
+                        <PlayerSummary player={player} draftProfile={draftProfile} />
                         <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
                     </li>
                 ))}
@@ -841,9 +857,9 @@ const PlayerListViewer = ({ league, user, leagueId, playerNotes }) => {
     );
 };
 
-const NominatePlayerModal = ({ league, playerNotes, onNominate, onClose }) => {
+const NominatePlayerModal = ({ league, draftProfile, onNominate, onClose }) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const undraftedPlayers = league.initialPlayerPool.filter(p => !p.isDrafted)
+    const undraftedPlayers = (league.initialPlayerPool || []).filter(p => !p.isDrafted)
         .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
@@ -854,10 +870,7 @@ const NominatePlayerModal = ({ league, playerNotes, onNominate, onClose }) => {
                 <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
                     {undraftedPlayers.map(player => (
                         <li key={player.id} className="player-list-item">
-                            <div>
-                                <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
-                                <PlayerNote note={getPlayerNote(playerNotes, player.id)} compact />
-                            </div>
+                            <PlayerSummary player={player} draftProfile={draftProfile} />
                             <button onClick={() => onNominate(player.id)}>Nominate</button>
                         </li>
                     ))}
@@ -869,10 +882,10 @@ const NominatePlayerModal = ({ league, playerNotes, onNominate, onClose }) => {
 };
 
 const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
-    const [budgets, setBudgets] = useState(league.teams.reduce((acc, team) => ({...acc, [team.id]: team.budget }), {}));
+    const [budgets, setBudgets] = useState((league.teams || []).reduce((acc, team) => ({...acc, [team.id]: team.budget }), {}));
 
     const handleBudgetChange = (teamId, value) => {
-        setBudgets(prev => ({ ...prev, [teamId]: parseInt(value) || 0 }));
+        setBudgets(prev => ({ ...prev, [teamId]: parseInt(value, 10) || 0 }));
     };
 
     return (
@@ -880,7 +893,7 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
             <div className="modal-content">
                 <h3>Manage Members</h3>
                 <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
-                    {league.teams.map(team => (
+                    {(league.teams || []).map(team => (
                         <li key={team.id} className="player-list-item">
                             <span>{team.name}</span>
                             <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
@@ -905,7 +918,7 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
     );
 };
 
-const CompletedView = ({ league, leagueId, playerNotes }) => {
+const CompletedView = ({ league, leagueId, draftProfile }) => {
     return (
         <div className="card" style={{textAlign: 'center'}}>
             <h2>The Draft is Complete!</h2>
@@ -920,14 +933,14 @@ const CompletedView = ({ league, leagueId, playerNotes }) => {
             </div>
             <div style={{marginTop: '40px'}}>
                 <h3>Final Rosters</h3>
-                {league.teams.map(team => (
+                {(league.teams || []).map(team => (
                     <div key={team.id} style={{padding: '10px', borderBottom: '1px solid #eee'}}>
                         <h4>{team.name} (Budget Remaining: ${team.budget})</h4>
                         <ul style={{listStyle: 'none', padding: 0}}>
-                            {team.roster.map((spot, index) => (
+                            {(team.roster || []).map((spot, index) => (
                                 <li key={index}>
-                                    <span>{spot.player.name} ({spot.player.position} - Bye: {spot.player.bye}) - ${spot.player.price}</span>
-                                    <PlayerNote note={getPlayerNote(playerNotes, spot.player.id)} compact />
+                                    <span>{spot.player?.name || 'Unknown Player'} ({spot.player?.position || spot.position} - Bye: {spot.player?.bye || '-'}) - ${spot.player?.price || 0}</span>
+                                    <PlayerStrategy draftProfile={draftProfile} playerId={spot.player?.id} compact />
                                 </li>
                             ))}
                         </ul>
@@ -938,22 +951,95 @@ const CompletedView = ({ league, leagueId, playerNotes }) => {
     );
 };
 
-const getPlayerNote = (playerNotes = {}, playerId) => {
-    const note = playerId ? playerNotes[playerId] : '';
-    return typeof note === 'string' ? note.trim() : '';
-};
+const PlayerSummary = ({ player, draftProfile }) => (
+    <div>
+        <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
+        <PlayerStrategy draftProfile={draftProfile} playerId={player.id} compact />
+    </div>
+);
 
-const PlayerNote = ({ note, compact = false }) => {
-    if (!note) return null;
+const PlayerStrategy = ({ draftProfile, playerId, compact = false }) => {
+    const tier = getPlayerTier(draftProfile, playerId);
+    const note = getPlayerNote(draftProfile, playerId);
+    if (!tier && !note) return null;
 
     return (
-        <div style={compact ? compactNoteStyle : noteStyle}>
-            <strong>Your note:</strong> {note}
+        <div style={compact ? compactStrategyStyle : strategyStyle}>
+            {tier && <span style={tierBadgeStyle}>T{tier}</span>}
+            {note && <span><strong>Your note:</strong> {note}</span>}
         </div>
     );
 };
 
-const noteStyle = {
+const BudgetPlanPanel = ({ draftProfile }) => {
+    const rows = getBudgetPlanRows(draftProfile);
+    if (rows.length === 0) return null;
+
+    return (
+        <div>
+            <h5>Budget Plan:</h5>
+            <ul style={{listStyle: 'none', paddingLeft: '10px', margin: 0}}>
+                {rows.map(([position, amount]) => (
+                    <li key={position}>{position}: ${amount}</li>
+                ))}
+            </ul>
+        </div>
+    );
+};
+
+const normalizeDraftProfile = (profile) => ({
+    loaded: true,
+    favoritePlayerIds: normalizeIdList(profile?.favoritePlayerIds),
+    playerNotes: profile?.playerNotes || {},
+    playerTiers: profile?.playerTiers || {},
+    budgetPlan: profile?.budgetPlan || {},
+});
+
+const normalizeIdList = (ids = []) => [...new Set((ids || []).filter(Boolean))];
+
+const getDraftFavoriteIds = (draftProfile, userTeam) => {
+    if (draftProfile?.loaded) {
+        return normalizeIdList(draftProfile.favoritePlayerIds);
+    }
+
+    return normalizeIdList(userTeam?.favoritePlayerIds);
+};
+
+const getPlayerNote = (draftProfile = EMPTY_DRAFT_PROFILE, playerId) => {
+    const note = playerId ? draftProfile.playerNotes?.[playerId] : '';
+    return typeof note === 'string' ? note.trim() : '';
+};
+
+const getPlayerTier = (draftProfile = EMPTY_DRAFT_PROFILE, playerId) => {
+    const tier = playerId ? Number(draftProfile.playerTiers?.[playerId]) : 0;
+    return Number.isFinite(tier) && tier > 0 ? tier : 0;
+};
+
+const getBudgetPlanRows = (draftProfile = EMPTY_DRAFT_PROFILE) => {
+    const plan = draftProfile.budgetPlan || {};
+    return POSITION_PLAN_ORDER
+        .map((position) => [position, Number(plan[position]) || 0])
+        .filter(([, amount]) => amount > 0);
+};
+
+const getPositionCounts = (rosterSettings, roster) => {
+    const counts = {};
+    for (const pos in rosterSettings) {
+        const displayPosition = pos.toUpperCase();
+        const playerPosition = displayPosition === 'DEF' ? 'DST' : displayPosition;
+        counts[displayPosition] = (roster || []).filter(spot =>
+            spot.position === displayPosition ||
+            spot.position === playerPosition ||
+            spot.player?.position === playerPosition
+        ).length;
+    }
+    return counts;
+};
+
+const strategyStyle = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
     margin: '10px auto',
     maxWidth: '680px',
     padding: '10px 12px',
@@ -964,11 +1050,27 @@ const noteStyle = {
     fontWeight: 700,
 };
 
-const compactNoteStyle = {
+const compactStrategyStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '6px',
     marginTop: '4px',
     color: '#65746f',
     fontSize: '0.82rem',
     fontWeight: 700,
+};
+
+const tierBadgeStyle = {
+    display: 'inline-flex',
+    minHeight: '22px',
+    alignItems: 'center',
+    padding: '2px 7px',
+    borderRadius: '8px',
+    color: '#11442f',
+    backgroundColor: 'rgba(20, 92, 57, 0.1)',
+    border: '1px solid rgba(20, 92, 57, 0.18)',
+    fontWeight: 900,
 };
 
 export default DraftScreen;

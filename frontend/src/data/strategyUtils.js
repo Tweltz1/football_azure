@@ -8,6 +8,30 @@ export const TIER_DEFINITIONS = [
 
 export const POSITION_PLAN_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'K', 'DST', 'BENCH'];
 
+export const BUDGET_ROSTER_FIELDS = [
+  { key: 'qb', position: 'QB', label: 'QB' },
+  { key: 'rb', position: 'RB', label: 'RB' },
+  { key: 'wr', position: 'WR', label: 'WR' },
+  { key: 'te', position: 'TE', label: 'TE' },
+  { key: 'flex', position: 'FLEX', label: 'FLEX' },
+  { key: 'superFlex', position: 'SUPERFLEX', label: 'SUPERFLEX' },
+  { key: 'k', position: 'K', label: 'K' },
+  { key: 'def', position: 'DST', label: 'DST' },
+  { key: 'bench', position: 'BENCH', label: 'Bench' },
+];
+
+export const DEFAULT_BUDGET_ROSTER_SETTINGS = {
+  qb: 1,
+  rb: 2,
+  wr: 3,
+  te: 1,
+  flex: 1,
+  superFlex: 1,
+  k: 1,
+  def: 1,
+  bench: 6,
+};
+
 export const DEFAULT_BUDGET_PLAN = {
   QB: 22,
   RB: 72,
@@ -100,13 +124,14 @@ export const runMockAuction = (player, bidCap = 35) => {
   };
 };
 
-export const buildBudgetPlannerSummary = (budgetPlan = DEFAULT_BUDGET_PLAN, rosterSettings = {}) => {
+export const buildBudgetPlannerSummary = (budgetPlan = DEFAULT_BUDGET_PLAN, rosterSettings = DEFAULT_BUDGET_ROSTER_SETTINGS) => {
   const normalizedPlan = normalizeBudgetPlan(budgetPlan);
+  const normalizedRosterSettings = normalizeBudgetRosterSettings(rosterSettings);
   const total = POSITION_PLAN_ORDER.reduce((sum, position) => sum + toNumber(normalizedPlan[position], 0), 0);
   const remaining = 200 - total;
   const rows = POSITION_PLAN_ORDER.map((position) => {
     const planned = toNumber(normalizedPlan[position], 0);
-    const slots = getRosterSlotCount(rosterSettings, position);
+    const slots = getRosterSlotCount(normalizedRosterSettings, position);
     return {
       position,
       planned,
@@ -115,13 +140,23 @@ export const buildBudgetPlannerSummary = (budgetPlan = DEFAULT_BUDGET_PLAN, rost
     };
   });
 
-  return { total, remaining, rows, normalizedPlan };
+  return { total, remaining, rows, normalizedPlan, normalizedRosterSettings };
 };
 
 export const normalizeBudgetPlan = (budgetPlan = {}) => {
   return POSITION_PLAN_ORDER.reduce((plan, position) => {
     plan[position] = Math.max(0, Math.min(200, toNumber(budgetPlan[position] ?? DEFAULT_BUDGET_PLAN[position], 0)));
     return plan;
+  }, {});
+};
+
+export const normalizeBudgetRosterSettings = (rosterSettings = {}) => {
+  return BUDGET_ROSTER_FIELDS.reduce((settings, field) => {
+    const value = field.key === 'superFlex'
+      ? rosterSettings.superFlex ?? rosterSettings.superflex ?? DEFAULT_BUDGET_ROSTER_SETTINGS.superFlex
+      : rosterSettings[field.key] ?? DEFAULT_BUDGET_ROSTER_SETTINGS[field.key];
+    settings[field.key] = Math.max(0, Math.min(30, toNumber(value, DEFAULT_BUDGET_ROSTER_SETTINGS[field.key])));
+    return settings;
   }, {});
 };
 

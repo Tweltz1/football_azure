@@ -11,6 +11,20 @@ using Newtonsoft.Json;
 
 public static class UpdateUserProfile
 {
+    private static readonly Dictionary<string, string> BudgetRosterSettingKeys = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["qb"] = "qb",
+        ["rb"] = "rb",
+        ["wr"] = "wr",
+        ["te"] = "te",
+        ["flex"] = "flex",
+        ["superFlex"] = "superFlex",
+        ["k"] = "k",
+        ["def"] = "def",
+        ["dst"] = "def",
+        ["bench"] = "bench"
+    };
+
     [Function("UpdateUserProfile")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "user-profile/{userId}")] HttpRequest req,
@@ -76,6 +90,11 @@ public static class UpdateUserProfile
                 userProfile.BudgetPlan = SanitizeBudgetPlan(data.BudgetPlan);
             }
 
+            if (data.BudgetRosterSettings != null)
+            {
+                userProfile.BudgetRosterSettings = SanitizeBudgetRosterSettings(data.BudgetRosterSettings);
+            }
+
             log?.LogInformation("Updating profile for user {UserId}.", userId);
 
             await UserProfileStore.UpsertAsync(userProfile);
@@ -122,6 +141,22 @@ public static class UpdateUserProfile
                 StringComparer.OrdinalIgnoreCase);
     }
 
+    private static Dictionary<string, int> SanitizeBudgetRosterSettings(Dictionary<string, int> rosterSettings)
+    {
+        var sanitized = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in rosterSettings)
+        {
+            if (string.IsNullOrWhiteSpace(item.Key)) continue;
+
+            if (BudgetRosterSettingKeys.TryGetValue(item.Key.Trim(), out var canonicalKey))
+            {
+                sanitized[canonicalKey] = Math.Max(0, Math.Min(30, item.Value));
+            }
+        }
+
+        return sanitized;
+    }
+
     private static string Truncate(string value, int maxLength)
     {
         if (string.IsNullOrEmpty(value) || value.Length <= maxLength) return value;
@@ -136,6 +171,7 @@ public static class UpdateUserProfile
         public Dictionary<string, string> PlayerNotes { get; set; }
         public Dictionary<string, int> PlayerTiers { get; set; }
         public Dictionary<string, int> BudgetPlan { get; set; }
+        public Dictionary<string, int> BudgetRosterSettings { get; set; }
 
         public bool HasUpdates()
         {
@@ -144,7 +180,8 @@ public static class UpdateUserProfile
                 || FavoritePlayerIds != null
                 || PlayerNotes != null
                 || PlayerTiers != null
-                || BudgetPlan != null;
+                || BudgetPlan != null
+                || BudgetRosterSettings != null;
         }
     }
 }

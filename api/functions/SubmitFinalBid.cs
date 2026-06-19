@@ -17,6 +17,11 @@ public static class SubmitFinalBid
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<FinalBidRequest>(requestBody);
+        if (string.IsNullOrWhiteSpace(data?.UserId))
+        {
+            return new BadRequestObjectResult("User ID is required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         try
@@ -25,6 +30,7 @@ public static class SubmitFinalBid
 
             var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
+                league.EnsureDefaults();
                 league.ActiveBids[data.UserId] = new Bid { Amount = data.Amount, Timestamp = DateTime.UtcNow };
                 return null;
             }, log);

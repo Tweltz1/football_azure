@@ -18,12 +18,19 @@ public static class NominatePlayer
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<NominatePlayerRequest>(requestBody);
+        if (string.IsNullOrWhiteSpace(data?.AdminId) || string.IsNullOrWhiteSpace(data.PlayerId))
+        {
+            return new BadRequestObjectResult("Admin ID and player ID are required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         try
         {
             var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
+                league.EnsureDefaults();
+
                 if (league.AdminId != data.AdminId)
                     return new UnauthorizedResult();
 
@@ -36,7 +43,7 @@ public static class NominatePlayer
 
                 league.Status = "drafting";
                 league.CurrentPlayerId = playerToNominate.Id;
-                league.ActiveBids.Clear();
+                league.ClearActiveBids();
                 league.TieBreaker = null;
                 league.AuctionTimer = new AuctionTimer
                 {

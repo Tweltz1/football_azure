@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
+import { playerInsightsMeta, playerRankMovements, sleeperTrending } from '../data/playerInsights';
 import {
   buildPlayerBoard,
   filterPlayerBoard,
@@ -19,6 +20,8 @@ import '../PlayerBoard.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 const MAX_COMPARE = 3;
+const SLEEPER_TRENDING_BASE_URL = 'https://api.sleeper.app/v1/players/nfl/trending';
+const LIVE_TREND_LIMIT = 8;
 
 const Home = () => {
   const { user, loading } = useAuth();
@@ -29,6 +32,7 @@ const Home = () => {
   const [sortBy, setSortBy] = useState('rank');
   const [playerLimit, setPlayerLimit] = useState(300);
   const [compareIds, setCompareIds] = useState([]);
+  const [trendData, setTrendData] = useState({ add: [], drop: [], loading: false, error: null });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,6 +54,10 @@ const Home = () => {
   }, [user]);
 
   const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode]);
+  const rankMovementItems = useMemo(() => ({
+    risers: hydrateMovementItems(playerRankMovements.risers, playerBoard),
+    fallers: hydrateMovementItems(playerRankMovements.fallers, playerBoard),
+  }), [playerBoard]);
   const comparePlayers = useMemo(() => compareIds
     .map((playerId) => playerBoard.find((player) => player.id === playerId))
     .filter(Boolean), [compareIds, playerBoard]);
@@ -61,6 +69,46 @@ const Home = () => {
   const visiblePlayers = matchingPlayers.slice(0, playerLimit);
   const scoringLabel = getScoringLabel(scoringMode);
   const greetingName = userProfile?.displayName || user?.userDetails || 'Commissioner';
+
+  useEffect(() => {
+    let isActive = true;
+    const fallbackTrends = {
+      add: hydrateTrendItems(sleeperTrending.add, playerBoard, LIVE_TREND_LIMIT),
+      drop: hydrateTrendItems(sleeperTrending.drop, playerBoard, LIVE_TREND_LIMIT),
+    };
+
+    const fetchLiveTrends = async () => {
+      setTrendData({ ...fallbackTrends, loading: true, error: null });
+
+      try {
+        const [addItems, dropItems] = await Promise.all([
+          fetchSleeperTrend('add'),
+          fetchSleeperTrend('drop'),
+        ]);
+
+        if (!isActive) return;
+        setTrendData({
+          add: hydrateTrendItems(addItems, playerBoard, LIVE_TREND_LIMIT),
+          drop: hydrateTrendItems(dropItems, playerBoard, LIVE_TREND_LIMIT),
+          loading: false,
+          error: null,
+        });
+      } catch (error) {
+        if (!isActive) return;
+        console.warn('Sleeper trend fetch failed:', error);
+        setTrendData({
+          ...fallbackTrends,
+          loading: false,
+          error: 'Live Sleeper trends unavailable',
+        });
+      }
+    };
+
+    fetchLiveTrends();
+    return () => {
+      isActive = false;
+    };
+  }, [playerBoard]);
 
   const toggleCompare = (player) => {
     setCompareIds((previousIds) => {
@@ -130,6 +178,12 @@ const Home = () => {
           <button className="edit-roster-button" onClick={() => navigate('/profile')}>Tune Profile</button>
         </div>
       </section>
+
+      <PlayerUpdatesPanel
+        trends={trendData}
+        rankMovements={rankMovementItems}
+        lookbackHours={getTrendLookbackHours()}
+      />
 
       <MockDraftLab players={playerBoard} scoringLabel={scoringLabel} />
 
@@ -215,6 +269,9 @@ const Home = () => {
                 <div className="player-data-strip">
                   <span>Bye {player.bye || '-'}</span>
                   <span>{scoringLabel}</span>
+                  {Number.isFinite(player.rankMovement) && player.rankMovement !== 0 && (
+                    <span>{player.rankMovement > 0 ? `Up ${player.rankMovement}` : `Down ${Math.abs(player.rankMovement)}`}</span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -232,6 +289,155 @@ const Home = () => {
       </section>
     </div>
   );
+};
+
+const PlayerUpdatesPanel = ({ trends, rankMovements, lookbackHours }) => (
+  <section className="player-updates-panel">
+    <div className="player-board-heading">
+      <div>
+        <p className="section-kicker">Player updates</p>
+        <h2>Market Watch</h2>
+      </div>
+      <div className="board-count">Sleeper {lookbackHours}h</div>
+    </div>
+
+    <div className="player-update-grid">
+      <PlayerUpdateColumn
+        title="Trending Adds"
+        eyebrow="Waiver heat"
+        items={trends.add}
+        tone="up"
+        emptyText={trends.loading ? 'Loading live trends...' : 'No add trends yet'}
+        getMetric={(item) => `${formatCompactCount(item.count)} adds`}
+      />
+      <PlayerUpdateColumn
+        title="Trending Drops"
+        eyebrow="Cooling off"
+        items={trends.drop}
+        tone="down"
+        emptyText={trends.loading ? 'Loading live trends...' : 'No drop trends yet'}
+        getMetric={(item) => `${formatCompactCount(item.count)} drops`}
+      />
+      <PlayerUpdateColumn
+        title="Rank Risers"
+        eyebrow="Pool movement"
+        items={rankMovements.risers}
+        tone="up"
+        emptyText="Rank movement appears after the next pool refresh."
+        getMetric={(item) => formatMovementMetric(item)}
+      />
+      <PlayerUpdateColumn
+        title="Rank Fallers"
+        eyebrow="Pool movement"
+        items={rankMovements.fallers}
+        tone="down"
+        emptyText="Rank movement appears after the next pool refresh."
+        getMetric={(item) => formatMovementMetric(item)}
+      />
+    </div>
+
+    {trends.error && <p className="player-update-footnote">{trends.error}. Showing the last generated snapshot when available.</p>}
+  </section>
+);
+
+const PlayerUpdateColumn = ({ title, eyebrow, items, tone, emptyText, getMetric }) => (
+  <div className="player-update-card">
+    <div className="player-update-card-header">
+      <span>{eyebrow}</span>
+      <strong>{title}</strong>
+    </div>
+    {(items || []).length > 0 ? (
+      <ul className="player-update-list">
+        {(items || []).slice(0, 5).map((item) => (
+          <li key={`${title}-${item.playerId || item.name}`}>
+            <span>
+              <strong>{item.name}</strong>
+              <small>{formatPlayerMeta(item)}</small>
+            </span>
+            <em className={`player-update-metric ${tone}`}>{getMetric(item)}</em>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className="player-update-empty">{emptyText}</p>
+    )}
+  </div>
+);
+
+const fetchSleeperTrend = async (type) => {
+  const params = new URLSearchParams({
+    lookback_hours: String(getTrendLookbackHours()),
+    limit: String(LIVE_TREND_LIMIT),
+  });
+  const response = await fetch(`${SLEEPER_TRENDING_BASE_URL}/${type}?${params.toString()}`);
+  if (!response.ok) throw new Error(`${type} trends returned ${response.status}`);
+  return response.json();
+};
+
+const hydrateTrendItems = (items, playerBoard, limit = LIVE_TREND_LIMIT) => {
+  const playerMap = buildPlayerMap(playerBoard);
+
+  return (items || [])
+    .map((item) => {
+      const sleeperId = item.sleeperId || item.player_id || item.id || String(item.playerId || '').replace(/^sleeper-/, '');
+      const playerId = item.playerId || (sleeperId ? `sleeper-${sleeperId}` : null);
+      const player = playerId ? playerMap.get(playerId) : null;
+      if (!player && !item.name) return null;
+
+      return {
+        playerId,
+        sleeperId,
+        name: player?.name || item.name || sleeperId,
+        position: player?.position || item.position || '-',
+        team: player?.team || item.team || '-',
+        rank: player?.scoringRank || item.rank || null,
+        count: toNumber(item.count, 0),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, limit);
+};
+
+const hydrateMovementItems = (items, playerBoard) => {
+  const playerMap = buildPlayerMap(playerBoard);
+
+  return (items || []).map((item) => {
+    const player = playerMap.get(item.playerId);
+    return {
+      ...item,
+      name: player?.name || item.name,
+      position: player?.position || item.position || '-',
+      team: player?.team || item.team || '-',
+      rank: player?.scoringRank || item.rank || null,
+      rankMovement: toNumber(item.rankMovement, 0),
+    };
+  }).filter((item) => item.name);
+};
+
+const buildPlayerMap = (playerBoard) => new Map((playerBoard || []).map((player) => [player.id, player]));
+
+const formatPlayerMeta = (item) => {
+  const pieces = [item.position, item.team, item.rank ? `#${item.rank}` : null].filter(Boolean);
+  return pieces.join(' / ') || 'Player pool';
+};
+
+const formatMovementMetric = (item) => {
+  const movement = toNumber(item.rankMovement, 0);
+  if (!movement) return 'new';
+  return movement > 0 ? `+${movement}` : `${movement}`;
+};
+
+const formatCompactCount = (value) => {
+  const count = toNumber(value, 0);
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
+  return String(count);
+};
+
+const getTrendLookbackHours = () => toNumber(playerInsightsMeta.trendsLookbackHours, 24) || 24;
+
+const toNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
 const formatDate = (value) => {

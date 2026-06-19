@@ -26,6 +26,12 @@ public static class UpdateFavoritePlayers
             return new BadRequestObjectResult("User ID and a list of player IDs are required.");
         }
 
+        var favoriteIds = data.PlayerIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         var container = AppServices.LeaguesContainer;
 
         try
@@ -39,13 +45,25 @@ public static class UpdateFavoritePlayers
                 return new NotFoundObjectResult($"Team for user '{data.UserId}' not found in league '{leagueId}'.");
             }
 
-            teamToUpdate.FavoritePlayerIds = data.PlayerIds;
+            teamToUpdate.FavoritePlayerIds = favoriteIds;
+
+            var userProfile = await UserProfileStore.FindAsync(data.UserId);
+            if (userProfile != null)
+            {
+                userProfile.FavoritePlayerIds = favoriteIds;
+                await UserProfileStore.UpsertAsync(userProfile);
+            }
+            else
+            {
+                log?.LogWarning("Profile not found for user {UserId} while syncing draft favorites.", data.UserId);
+            }
+
             log.LogInformation("Updated favorite players for user {UserId} in league {LeagueId}.", data.UserId, leagueId);
 
             await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
             await AppServices.SendToAllAsync("draftStateUpdate", leagueToUpdate.ForBroadcast());
 
-            return new OkObjectResult(new { message = "Favorite players updated successfully." });
+            return new OkObjectResult(new { message = "Favorite players updated successfully.", favoritePlayerIds = favoriteIds });
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
