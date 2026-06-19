@@ -19,7 +19,10 @@ const COLLAPSIBLE_CARD_TITLES = [
 ];
 
 const DraftRoomEnhanced = ({ userId }) => {
+  const { leagueId } = useParams();
+  const { user } = useAuth();
   useDraftCardCollapsers();
+  useDraftPresenceReporter(leagueId, user?.userId || userId);
 
   return (
     <div className="draft-room-enhanced">
@@ -161,11 +164,14 @@ const DraftRoomCommandPanel = () => {
           ) : teams.map((team) => {
             const filled = (team.roster || []).length;
             const isOnline = (league?.onlineUserIds || []).includes(team.ownerId);
+            const isAway = isOnline && (league?.awayUserIds || []).includes(team.ownerId);
+            const presenceStatus = !isOnline ? 'offline' : isAway ? 'away' : 'online';
+            const presenceLabel = presenceStatus === 'online' ? 'Active' : presenceStatus === 'away' ? 'Away' : 'Offline';
             return (
               <div className="team-presence-row" key={team.id}>
-                <span className={`presence-light ${isOnline ? 'online' : 'offline'}`} aria-label={isOnline ? 'Online' : 'Offline'} />
+                <span className={`presence-light ${presenceStatus}`} aria-label={presenceLabel} />
                 <span className="team-presence-name">{team.name}</span>
-                <span className="team-presence-meta">{filled}/{rosterTotal} spots</span>
+                <span className={`team-presence-meta ${presenceStatus}`}>{presenceLabel} | {filled}/{rosterTotal} spots</span>
               </div>
             );
           })}
@@ -245,6 +251,54 @@ const CollapsiblePanel = ({ title, storageKey, defaultOpen = false, children }) 
       {isOpen && <div className="draft-command-body">{children}</div>}
     </section>
   );
+};
+
+const useDraftPresenceReporter = (leagueId, userId) => {
+  useEffect(() => {
+    if (!leagueId || !userId) return;
+
+    let lastStatus = '';
+    let reportTimer;
+
+    const postPresence = async (status) => {
+      if (lastStatus === status) return;
+      lastStatus = status;
+      try {
+        await axios.post(`${API_BASE_URL}/leagues/${leagueId}/presence`, { userId, status });
+      } catch (error) {
+        console.warn('Unable to update draft presence:', error);
+      }
+    };
+
+    const reportCurrentPresence = () => {
+      const nextStatus = document.visibilityState === 'hidden' || !document.hasFocus() ? 'away' : 'active';
+      window.clearTimeout(reportTimer);
+      reportTimer = window.setTimeout(() => postPresence(nextStatus), nextStatus === 'away' ? 90 : 0);
+    };
+
+    const sendDisconnectBeacon = () => {
+      const payload = JSON.stringify({ userId });
+      if (navigator.sendBeacon) {
+        const body = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon(`${API_BASE_URL}/leagues/${leagueId}/disconnect`, body);
+      }
+    };
+
+    postPresence('active');
+    document.addEventListener('visibilitychange', reportCurrentPresence);
+    window.addEventListener('focus', reportCurrentPresence);
+    window.addEventListener('blur', reportCurrentPresence);
+    window.addEventListener('pagehide', sendDisconnectBeacon);
+
+    return () => {
+      window.clearTimeout(reportTimer);
+      document.removeEventListener('visibilitychange', reportCurrentPresence);
+      window.removeEventListener('focus', reportCurrentPresence);
+      window.removeEventListener('blur', reportCurrentPresence);
+      window.removeEventListener('pagehide', sendDisconnectBeacon);
+      axios.post(`${API_BASE_URL}/leagues/${leagueId}/disconnect`, { userId }).catch(() => {});
+    };
+  }, [leagueId, userId]);
 };
 
 const useDraftCardCollapsers = () => {
