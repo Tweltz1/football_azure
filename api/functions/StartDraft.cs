@@ -18,12 +18,19 @@ public static class StartDraft
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
+        if (string.IsNullOrWhiteSpace(data?.AdminId))
+        {
+            return new BadRequestObjectResult("Admin ID is required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         try
         {
             var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
+                league.EnsureDefaults();
+
                 if (league.AdminId != data.AdminId)
                     return new UnauthorizedResult();
 
@@ -34,7 +41,7 @@ public static class StartDraft
                     return new BadRequestObjectResult("Not all other members are ready.");
 
                 league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
-                league.ActiveBids.Clear();
+                league.ClearActiveBids();
                 league.TieBreaker = null;
 
                 if (league.CurrentPlayerId == null)
