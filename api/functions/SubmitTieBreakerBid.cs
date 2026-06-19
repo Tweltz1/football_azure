@@ -18,11 +18,18 @@ public static class SubmitTieBreakerBid
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var bidRequest = JsonConvert.DeserializeObject<BidRequest>(requestBody);
+        if (string.IsNullOrWhiteSpace(bidRequest?.UserId))
+        {
+            return new BadRequestObjectResult("User ID is required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
         {
-            if (league.Status.ToLower() != "tiebreaker")
+            league.EnsureDefaults();
+
+            if (league.Status?.ToLowerInvariant() != "tiebreaker")
                 return new BadRequestObjectResult("Not in a tie-breaker round.");
 
             if (league.TieBreaker == null || !league.TieBreaker.TiedTeamIds.Contains(bidRequest.UserId))
@@ -37,7 +44,7 @@ public static class SubmitTieBreakerBid
             var totalRosterSpots = league.RosterSettings.QB + league.RosterSettings.RB + league.RosterSettings.WR +
                                    league.RosterSettings.TE + league.RosterSettings.K + league.RosterSettings.DEF +
                                    league.RosterSettings.FLEX + league.RosterSettings.SuperFlex + league.RosterSettings.Bench;
-            var spotsToFill = totalRosterSpots - biddingTeam.Roster.Count;
+            var spotsToFill = totalRosterSpots - (biddingTeam.Roster?.Count ?? 0);
             var maxBid = biddingTeam.Budget - (spotsToFill > 0 ? spotsToFill - 1 : 0);
 
             if (bidRequest.Amount > maxBid)
