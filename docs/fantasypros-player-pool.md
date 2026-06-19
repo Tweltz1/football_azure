@@ -9,12 +9,13 @@ The app can refresh its master player pool from an external NFL player source. T
 
 The weekly workflow uses Sleeper by default. Sleeper does not require an API key.
 
-- Endpoint: `https://api.sleeper.app/v1/players/nfl`
+- Player endpoint: `https://api.sleeper.app/v1/players/nfl`
+- Bye-week endpoint: ESPN public NFL scoreboard, one regular-season request per week
 - Player limit: `350`
 - Positions: `QB`, `RB`, `WR`, `TE`, `K`, `DST`
 - Ranking method: local sort by Sleeper `search_rank`, depth chart order, position, and name
 
-Sleeper gives us a strong free player universe, but it does not provide expert consensus draft rankings or bye weeks from this endpoint. Generated Sleeper player rows use `bye: 0` until we add a separate bye-week source.
+Sleeper gives us a strong free player universe, but it does not provide expert consensus draft rankings. The updater filters to active players with current NFL teams, requires non-DST players to appear on a Sleeper depth chart, adds DST team rows, and fills bye weeks from ESPN `teamsOnBye` schedule data.
 
 ## Optional Source: FantasyPros
 
@@ -45,7 +46,7 @@ The workflow also runs every Tuesday at 11:00 UTC. It opens a PR only when the g
 
 The updater stores only the fields the app uses: player ID, name, team, position, rank, and bye week.
 
-Generated player IDs are source-prefixed, for example `sleeper-9509` or `fp-13948`. That keeps favorites tied to the same player across weekly ranking changes. The first generated update may require users with old `player1`-style favorites to reselect favorites once.
+Generated player IDs are source-prefixed, for example `sleeper-9509`, `sleeper-BUF`, or `fp-13948`. That keeps favorites tied to the same player across weekly ranking changes. The first generated update may require users with old `player1`-style favorites to reselect favorites once.
 
 Existing leagues are not mutated by weekly updates. A league copies the player pool when it is created, so in-progress drafts stay stable. New leagues created after a player-pool PR is merged use the latest merged pool.
 
