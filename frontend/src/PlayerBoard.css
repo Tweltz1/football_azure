@@ -51,7 +51,8 @@
   flex: 2 1 260px;
 }
 
-.player-board-list {
+.player-board-list,
+.favorite-note-list {
   display: grid;
   gap: 8px;
 }
@@ -105,7 +106,8 @@
   flex-wrap: wrap;
 }
 
-.player-data-strip span {
+.player-data-strip span,
+.note-badge {
   display: inline-flex;
   align-items: center;
   min-height: 30px;
@@ -117,6 +119,12 @@
   font-size: 0.78rem;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.note-badge {
+  color: var(--field-deep);
+  background: rgba(216, 170, 61, 0.2);
+  border-color: rgba(216, 170, 61, 0.34);
 }
 
 .player-row-actions button {
@@ -136,10 +144,53 @@
   margin-bottom: 0;
 }
 
+.profile-settings-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.profile-settings-form {
+  display: grid;
+  gap: 0;
+}
+
+.favorite-note-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.58fr) minmax(280px, 1fr);
+  align-items: stretch;
+  margin-bottom: 0;
+}
+
+.favorite-note-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.favorite-note-editor textarea {
+  width: 100%;
+  min-height: 82px;
+  resize: vertical;
+  border: 1px solid rgba(17, 24, 22, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.88);
+  outline: none;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.favorite-note-editor textarea:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px rgba(216, 170, 61, 0.22);
+  background: #fff;
+}
+
 @media (max-width: 760px) {
   .player-board-heading,
   .unavailable-favorites,
   .player-board-row,
+  .favorite-note-row,
   .player-main,
   .player-row-actions,
   .player-data-strip {
@@ -147,6 +198,7 @@
   }
 
   .player-board-row,
+  .favorite-note-row,
   .unavailable-favorites {
     grid-template-columns: 1fr;
   }
