@@ -13,6 +13,7 @@ import {
     SORT_OPTIONS,
 } from '../data/playerBoardUtils';
 import '../App.css';
+import '../PlayerBoard.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
