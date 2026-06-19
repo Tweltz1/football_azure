@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,9 +20,9 @@ public static class UpdateUserProfile
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<UpdateUserProfileRequest>(requestBody);
 
-        if (data?.FavoritePlayerIds == null)
+        if (data == null || !data.HasUpdates())
         {
-            return new BadRequestObjectResult("A list of favoritePlayerIds is required.");
+            return new BadRequestObjectResult("At least one profile field is required.");
         }
 
         try
@@ -32,8 +33,40 @@ public static class UpdateUserProfile
                 return new NotFoundObjectResult($"User profile for '{userId}' not found.");
             }
 
-            userProfile.FavoritePlayerIds = data.FavoritePlayerIds;
-            log?.LogInformation("Updating favorite players for user {UserId}.", userId);
+            if (data.DisplayName != null)
+            {
+                if (string.IsNullOrWhiteSpace(data.DisplayName))
+                {
+                    return new BadRequestObjectResult("Display name cannot be empty.");
+                }
+
+                userProfile.DisplayName = data.DisplayName.Trim();
+            }
+
+            if (data.DefaultTeamName != null)
+            {
+                if (string.IsNullOrWhiteSpace(data.DefaultTeamName))
+                {
+                    return new BadRequestObjectResult("Default team name cannot be empty.");
+                }
+
+                userProfile.DefaultTeamName = data.DefaultTeamName.Trim();
+            }
+
+            if (data.FavoritePlayerIds != null)
+            {
+                userProfile.FavoritePlayerIds = data.FavoritePlayerIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct()
+                    .ToList();
+            }
+
+            if (data.PlayerNotes != null)
+            {
+                userProfile.PlayerNotes = SanitizePlayerNotes(data.PlayerNotes);
+            }
+
+            log?.LogInformation("Updating profile for user {UserId}.", userId);
 
             await UserProfileStore.UpsertAsync(userProfile);
 
@@ -46,8 +79,36 @@ public static class UpdateUserProfile
         }
     }
 
+    private static Dictionary<string, string> SanitizePlayerNotes(Dictionary<string, string> playerNotes)
+    {
+        return playerNotes
+            .Where(note => !string.IsNullOrWhiteSpace(note.Key) && !string.IsNullOrWhiteSpace(note.Value))
+            .GroupBy(note => note.Key.Trim())
+            .ToDictionary(
+                group => group.Key,
+                group => Truncate(group.Last().Value.Trim(), 1000),
+                StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength) return value;
+        return value.Substring(0, maxLength);
+    }
+
     public class UpdateUserProfileRequest
     {
+        public string DisplayName { get; set; }
+        public string DefaultTeamName { get; set; }
         public List<string> FavoritePlayerIds { get; set; }
+        public Dictionary<string, string> PlayerNotes { get; set; }
+
+        public bool HasUpdates()
+        {
+            return DisplayName != null
+                || DefaultTeamName != null
+                || FavoritePlayerIds != null
+                || PlayerNotes != null;
+        }
     }
 }
