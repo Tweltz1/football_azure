@@ -1,19 +1,35 @@
 import React from 'react';
+import '../App.css';
 
 const Login = () => {
   return (
-    <div style={{ textAlign: 'center', padding: '50px' }}>
-      <h1>Welcome to Fantasy Football Auction</h1>
-      <p>Please log in to continue.</p>
-      <div style={{ marginTop: '20px' }}>
-        <a href="/.auth/login/github" style={{ marginRight: '10px' }}>
-          <button>Login with GitHub</button>
-        </a>
-        <a href="/.auth/login/google">
-          <button>Login with Google</button>
-        </a>
-      </div>
-    </div>
+    <main className="login-page">
+      <section className="login-hero">
+        <div>
+          <p className="page-kicker">Auction draft night</p>
+          <h1>Hood League</h1>
+          <p>Sign in to open your leagues, set your board, and run the live auction room.</p>
+          <div className="scoreboard-strip">
+            <span>Live bidding</span>
+            <span>Roster tracking</span>
+            <span>Draft room sync</span>
+          </div>
+        </div>
+
+        <div className="login-panel">
+          <p className="section-kicker">Sign in</p>
+          <h2>Enter the room</h2>
+          <div className="login-actions">
+            <a href="/.auth/login/github">
+              <button>Login with GitHub</button>
+            </a>
+            <a href="/.auth/login/google">
+              <button className="edit-roster-button">Login with Google</button>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
   );
 };
 
