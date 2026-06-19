@@ -24,34 +24,46 @@ public static class UndoLastPick
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
+
         try
         {
-            var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-            var league = leagueResponse.Resource;
-
-            if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
-            if (league.Status.ToLower() != "intermission") { return new BadRequestObjectResult("Can only undo a pick during intermission."); }
-            if (!league.DraftLog.Any()) { return new BadRequestObjectResult("There are no picks to undo."); }
-
-            var lastPick = league.DraftLog.Last();
-            
-            var winningTeam = league.Teams.FirstOrDefault(t => t.Id == lastPick.WinningTeamId);
-            var playerInPool = league.InitialPlayerPool.FirstOrDefault(p => p.Id == lastPick.Player.Id);
-
-            if (winningTeam != null && playerInPool != null)
+            var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
-                log.LogInformation($"Admin is undoing the last pick: {playerInPool.Name} from {winningTeam.Name}.");
+                if (league.AdminId != data.AdminId)
+                    return new UnauthorizedResult();
 
-                winningTeam.Budget += lastPick.WinningBid;
-                winningTeam.Roster.RemoveAll(spot => spot.Player.Id == playerInPool.Id);
-                playerInPool.IsDrafted = false;
-                playerInPool.Price = 0;
-                league.DraftLog.Remove(lastPick);
-            }
+                if (league.Status.ToLower() != "intermission")
+                    return new BadRequestObjectResult("Can only undo a pick during intermission.");
 
-            await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+                if (!league.DraftLog.Any())
+                    return new BadRequestObjectResult("There are no picks to undo.");
+
+                var lastPick = league.DraftLog.Last();
+                var winningTeam = league.Teams.FirstOrDefault(t => t.Id == lastPick.WinningTeamId);
+                var playerInPool = league.InitialPlayerPool.FirstOrDefault(p => p.Id == lastPick.Player.Id);
+
+                if (winningTeam != null && playerInPool != null)
+                {
+                    log.LogInformation("Admin is undoing the last pick: {PlayerName} from {TeamName}.", playerInPool.Name, winningTeam.Name);
+
+                    winningTeam.Budget += lastPick.WinningBid;
+                    winningTeam.Roster.RemoveAll(spot => spot.Player.Id == playerInPool.Id);
+                    playerInPool.IsDrafted = false;
+                    playerInPool.Price = 0;
+                    league.DraftLog.Remove(lastPick);
+                }
+
+                return null;
+            }, log);
+
+            if (error != null) return error;
+
+            await signalRMessages.AddAsync(new SignalRMessage
+            {
+                GroupName = leagueId,
+                Target = "draftStateUpdate",
+                Arguments = new object[] { league.ForBroadcast() }
+            });
 
             return new OkObjectResult("Last pick has been undone.");
         }
