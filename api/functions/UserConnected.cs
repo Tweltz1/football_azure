@@ -41,6 +41,8 @@ public static class UserConnected
             {
                 league.OnlineUserIds.Add(data.UserId);
             }
+
+            league.AwayUserIds.Remove(data.UserId);
             return null;
         }, log);
 
