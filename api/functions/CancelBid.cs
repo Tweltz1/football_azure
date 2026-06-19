@@ -7,8 +7,6 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
 public static class CancelBid
 {
@@ -16,13 +14,11 @@ public static class CancelBid
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/cancel-bid")] HttpRequest req,
         string leagueId,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
-        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<CancelBidRequest>(requestBody);
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
+        var container = AppServices.LeaguesContainer;
 
         try
         {
@@ -38,13 +34,7 @@ public static class CancelBid
 
             if (error != null) return error;
 
-            await signalRMessages.AddAsync(new SignalRMessage
-            {
-                GroupName = leagueId,
-                Target = "draftStateUpdate",
-                Arguments = new object[] { league.ForBroadcast() }
-            });
-
+            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
             return new OkObjectResult("Bid cancelled successfully.");
         }
         catch (Exception ex)
