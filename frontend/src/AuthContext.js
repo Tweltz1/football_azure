@@ -14,13 +14,14 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await axios.get('/.auth/me');
+        const response = await axios.get('/.auth/me', { timeout: 10000 });
         if (response.data && response.data.clientPrincipal) {
           setUser(response.data.clientPrincipal);
         } else {
           setUser(null);
         }
       } catch (error) {
+        console.error('Error fetching auth status:', error);
         setUser(null);
       } finally {
         setLoading(false);
@@ -37,7 +38,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };
