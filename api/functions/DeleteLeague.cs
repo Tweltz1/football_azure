@@ -15,10 +15,6 @@ public static class DeleteLeague
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "leagues/{leagueId}")] HttpRequest req,
         string leagueId,
-        [CosmosDB(
-            databaseName: "Fantasy Football",
-            containerName: "Leagues",
-            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -29,22 +25,19 @@ public static class DeleteLeague
             return new BadRequestObjectResult("Admin ID is required to delete a league.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
+        var container = AppServices.LeaguesContainer;
 
         try
         {
-            // First, retrieve the league to verify admin privileges and get the correct PartitionKey
             ItemResponse<League> leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             League leagueToDelete = leagueResponse.Resource;
 
             if (leagueToDelete.AdminId != data.AdminId)
             {
-                return new UnauthorizedResult(); // User is not the admin
+                return new UnauthorizedResult();
             }
 
-            // Delete the league document using the correct PartitionKey
             await container.DeleteItemAsync<League>(leagueId, new PartitionKey(leagueId));
-
             return new OkResult();
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
