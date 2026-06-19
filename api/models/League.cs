@@ -62,6 +62,38 @@ public class League
     [JsonProperty("onlineUserIds")]
     public List<string> OnlineUserIds { get; set; } = new List<string>();
 
+    public void EnsureDefaults()
+    {
+        Members = Members ?? new List<string>();
+        Teams = Teams ?? new List<Team>();
+        ReadyMembers = ReadyMembers ?? new List<string>();
+        RosterSettings = RosterSettings ?? new RosterSettings();
+        DraftTimers = DraftTimers ?? new DraftTimers();
+        InitialPlayerPool = InitialPlayerPool ?? new List<Player>();
+        DraftPlayers = DraftPlayers ?? new List<Player>();
+        ActiveBids = ActiveBids ?? new Dictionary<string, Bid>();
+        DraftLog = DraftLog ?? new List<DraftPick>();
+        OnlineUserIds = OnlineUserIds ?? new List<string>();
+
+        foreach (var team in Teams)
+        {
+            if (team == null) continue;
+            team.Roster = team.Roster ?? new List<RosterSpot>();
+            team.FavoritePlayerIds = team.FavoritePlayerIds ?? new List<string>();
+        }
+
+        foreach (var pick in DraftLog)
+        {
+            if (pick == null) continue;
+            pick.AllBids = pick.AllBids ?? new Dictionary<string, Bid>();
+        }
+    }
+
+    public void ClearActiveBids()
+    {
+        ActiveBids = new Dictionary<string, Bid>();
+    }
+
     /// <summary>
     /// Returns a SignalR-safe copy for broadcasts.
     /// Keeps InitialPlayerPool because the draft room needs it to resolve the current player and render player lists.
@@ -69,6 +101,8 @@ public class League
     /// </summary>
     public League ForBroadcast()
     {
+        EnsureDefaults();
+
         var broadcast = new League
         {
             Id = this.Id,
