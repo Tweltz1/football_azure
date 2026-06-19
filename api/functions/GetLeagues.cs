@@ -1,13 +1,10 @@
-using System;
-using System.IO;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using System.Collections.Generic;
 using Microsoft.Azure.Cosmos;
 
 public static class GetLeagues
@@ -15,7 +12,6 @@ public static class GetLeagues
     [FunctionName("GetLeagues")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
     {
         string userId = req.Query["userId"];
@@ -25,9 +21,9 @@ public static class GetLeagues
             return new BadRequestObjectResult("Please provide a userId in the query string.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        var query = new QueryDefinition("SELECT * FROM c WHERE ARRAY_CONTAINS(c.members, @userId)");
-        query.WithParameter("@userId", userId);
+        var container = AppServices.LeaguesContainer;
+        var query = new QueryDefinition("SELECT * FROM c WHERE ARRAY_CONTAINS(c.members, @userId)")
+            .WithParameter("@userId", userId);
 
         var leagues = new List<League>();
         using (FeedIterator<League> feedIterator = container.GetItemQueryIterator<League>(query))
@@ -40,7 +36,7 @@ public static class GetLeagues
                 }
             }
         }
-        
+
         return new OkObjectResult(leagues);
     }
 }
