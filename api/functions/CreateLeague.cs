@@ -32,6 +32,8 @@ public static class CreateLeague
         }
 
         var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
+        var preferredTeamName = TeamNameHelper.GetPreferredTeamName(userProfile, data.AdminId);
+        var adminTeamName = TeamNameHelper.GetUniqueTeamName(new List<Team>(), preferredTeamName, userProfile?.DisplayName ?? data.AdminId);
         var rosterSettings = data.RosterSettings ?? new RosterSettings();
         var draftTimers = data.DraftTimers ?? new DraftTimers();
         var fullPlayerPool = PlayerData.GetInitialPlayerPool();
@@ -67,7 +69,7 @@ public static class CreateLeague
                 {
                     Id = Guid.NewGuid().ToString(),
                     OwnerId = data.AdminId,
-                    Name = "Admin Team",
+                    Name = adminTeamName,
                     Budget = 200,
                     Roster = new List<RosterSpot>(),
                     FavoritePlayerIds = userMasterFavorites
