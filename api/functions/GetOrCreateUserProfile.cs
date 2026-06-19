@@ -48,7 +48,10 @@ public static class GetOrCreateUserProfile
                     DisplayName = displayName,
                     DefaultTeamName = $"{displayName}'s Team",
                     FavoritePlayerIds = new List<string>(),
-                    PlayerNotes = new Dictionary<string, string>()
+                    PlayerNotes = new Dictionary<string, string>(),
+                    PlayerTiers = new Dictionary<string, int>(),
+                    BudgetPlan = new Dictionary<string, int>(),
+                    BudgetRosterSettings = new Dictionary<string, int>()
                 };
 
                 await UserProfileStore.UpsertAsync(userProfile);
