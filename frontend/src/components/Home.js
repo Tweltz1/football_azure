@@ -104,7 +104,7 @@ const Home = () => {
             <select onChange={(e) => setSortPosition(e.target.value)}>
               <option>All Positions</option>
               <option>WR</option><option>RB</option><option>TE</option>
-              <option>QB</option><option>K</option><option>DEF</option>
+              <option>QB</option><option>K</option><option>DST</option>
             </select>
           </div>
           <input
