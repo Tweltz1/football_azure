@@ -2,8 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -11,14 +10,10 @@ using Microsoft.Azure.Cosmos;
 
 public static class UpdateLeagueSettings
 {
-    [FunctionName("UpdateLeagueSettings")]
+    [Function("UpdateLeagueSettings")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/settings")] HttpRequest req,
         string leagueId,
-        [CosmosDB(
-            databaseName: "Fantasy Football", // Corrected database name
-            containerName: "Leagues",
-            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -29,7 +24,7 @@ public static class UpdateLeagueSettings
             return new BadRequestObjectResult("Admin ID is required to update league settings.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
+        var container = AppServices.LeaguesContainer;
 
         try
         {
@@ -38,16 +33,14 @@ public static class UpdateLeagueSettings
 
             if (leagueToUpdate.AdminId != data.AdminId)
             {
-                return new UnauthorizedResult(); // User is not the admin
+                return new UnauthorizedResult();
             }
 
-            // Update roster settings if provided
             if (data.RosterSettings != null)
             {
                 leagueToUpdate.RosterSettings = data.RosterSettings;
             }
 
-            // Update draft timers if provided
             if (data.DraftTimers != null)
             {
                 leagueToUpdate.DraftTimers = data.DraftTimers;

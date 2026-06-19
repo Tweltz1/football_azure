@@ -2,8 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -12,14 +11,10 @@ using System.Linq;
 
 public static class EditTeamName
 {
-    [FunctionName("EditTeamName")]
+    [Function("EditTeamName")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/teams")] HttpRequest req,
         string leagueId,
-        [CosmosDB(
-            databaseName: "Fantasy Football", // Corrected database name
-            containerName: "Leagues",
-            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -30,22 +25,20 @@ public static class EditTeamName
             return new BadRequestObjectResult("User ID and a new team name are required.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
+        var container = AppServices.LeaguesContainer;
 
         try
         {
             ItemResponse<League> leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             League leagueToUpdate = leagueResponse.Resource;
 
-            // Find the user's team and update the name
             var teamToUpdate = leagueToUpdate.Teams.FirstOrDefault(t => t.OwnerId == data.UserId);
             if (teamToUpdate == null)
             {
                 return new NotFoundObjectResult($"Team for user '{data.UserId}' not found in league '{leagueId}'.");
             }
-            teamToUpdate.Name = data.NewTeamName;
 
-            // Update the league document
+            teamToUpdate.Name = data.NewTeamName;
             await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
 
             return new OkObjectResult(new { newTeamName = data.NewTeamName });

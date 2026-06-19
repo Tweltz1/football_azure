@@ -1,8 +1,7 @@
-using System; // <-- THIS LINE FIXES THE ERROR
+using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Cosmos;
@@ -11,18 +10,15 @@ using System.Text;
 
 public static class GetDraftResultsAsCsv
 {
-    [FunctionName("GetDraftResultsAsCsv")]
+    [Function("GetDraftResultsAsCsv")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "leagues/{leagueId}/results.csv")] HttpRequest req,
         string leagueId,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
     {
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
         try
         {
-            var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
+            var leagueResponse = await AppServices.LeaguesContainer.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             var league = leagueResponse.Resource;
 
             var csvBuilder = new StringBuilder();
@@ -34,11 +30,11 @@ public static class GetDraftResultsAsCsv
                 var winningTeam = league.Teams.FirstOrDefault(t => t.Id == pick.WinningTeamId);
                 csvBuilder.AppendLine(
                     $"{pickNumber}," +
-                    $"\"{pick.Player.Name}\"," +
-                    $"{pick.Player.Position}," +
-                    $"{pick.Player.Team}," +
+                    $"\"{EscapeCsv(pick.Player.Name)}\"," +
+                    $"{EscapeCsv(pick.Player.Position)}," +
+                    $"{EscapeCsv(pick.Player.Team)}," +
                     $"{pick.WinningBid}," +
-                    $"\"{winningTeam?.Name ?? "N/A"}\""
+                    $"\"{EscapeCsv(winningTeam?.Name ?? "N/A")}\""
                 );
                 pickNumber++;
             }
@@ -48,10 +44,19 @@ public static class GetDraftResultsAsCsv
                 FileDownloadName = $"{league.Name}-DraftResults.csv"
             };
         }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new NotFoundObjectResult($"League with ID '{leagueId}' not found.");
+        }
         catch (Exception ex)
         {
             log.LogError(ex, "Error generating CSV.");
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
+    }
+
+    private static string EscapeCsv(string value)
+    {
+        return string.IsNullOrEmpty(value) ? string.Empty : value.Replace("\"", "\"\"");
     }
 }

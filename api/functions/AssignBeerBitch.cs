@@ -2,29 +2,24 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
 public static class AssignBeerBitch
 {
-    [FunctionName("AssignBeerBitch")]
+    [Function("AssignBeerBitch")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/beer-bitch")] HttpRequest req,
         string leagueId,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
-        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<AssignBeerBitchRequest>(requestBody);
+        var container = AppServices.LeaguesContainer;
 
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
         try
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
@@ -33,10 +28,10 @@ public static class AssignBeerBitch
             if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
 
             league.BeerBitchTeamId = data.TeamId;
-            log.LogInformation($"Team {data.TeamId} assigned beer duty in league {league.Name}.");
+            log.LogInformation("Team {TeamId} assigned beer duty in league {LeagueName}.", data.TeamId, league.Name);
 
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+            await AppServices.SendToAllAsync("draftStateUpdate", league.ForBroadcast());
 
             return new OkObjectResult("Beer Bitch assigned successfully.");
         }

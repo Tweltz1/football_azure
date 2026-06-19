@@ -1,20 +1,48 @@
+using System;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService;
+using Newtonsoft.Json.Linq;
 
 public static class GetSignalRInfo
 {
-    [FunctionName("GetSignalRInfo")]
+    [Function("GetSignalRInfo")]
     public static IActionResult Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)] HttpRequest req,
-        [SignalRConnectionInfo(HubName = "draftHub", UserId = "{query.userId}")] string connectionInfo,
         ILogger log)
     {
-        return connectionInfo != null
-            ? (ActionResult)new OkObjectResult(connectionInfo)
-            : new NotFoundObjectResult("SignalR connection info not found.");
+        string userId = req.Query["userId"];
+        if (string.IsNullOrEmpty(userId))
+        {
+            userId = TryGetStaticWebAppsUserId(req);
+        }
+
+        return new OkObjectResult(AppServices.GetSignalRConnectionInfo(userId));
+    }
+
+    private static string TryGetStaticWebAppsUserId(HttpRequest req)
+    {
+        if (!req.Headers.TryGetValue("x-ms-client-principal", out var encodedPrincipalValues))
+        {
+            return null;
+        }
+
+        var encodedPrincipal = encodedPrincipalValues.ToString();
+        if (string.IsNullOrEmpty(encodedPrincipal))
+        {
+            return null;
+        }
+
+        try
+        {
+            var json = Encoding.UTF8.GetString(Convert.FromBase64String(encodedPrincipal));
+            return JObject.Parse(json)["userId"]?.ToString();
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

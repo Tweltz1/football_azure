@@ -2,27 +2,20 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService; // <-- 1. ADD THIS LINE
 
 public static class UpdateFavoritePlayers
 {
-    [FunctionName("UpdateFavoritePlayers")]
+    [Function("UpdateFavoritePlayers")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/favorites")] HttpRequest req,
         string leagueId,
-        [CosmosDB(
-            databaseName: "Fantasy Football",
-            containerName: "Leagues",
-            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
-        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages, // <-- 2. ADD THIS BINDING
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -33,7 +26,7 @@ public static class UpdateFavoritePlayers
             return new BadRequestObjectResult("User ID and a list of player IDs are required.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
+        var container = AppServices.LeaguesContainer;
 
         try
         {
@@ -47,18 +40,10 @@ public static class UpdateFavoritePlayers
             }
 
             teamToUpdate.FavoritePlayerIds = data.PlayerIds;
-            log.LogInformation($"Updated favorite players for user {data.UserId} in league {leagueId}.");
+            log.LogInformation("Updated favorite players for user {UserId} in league {LeagueId}.", data.UserId, leagueId);
 
             await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
-
-            // --- 3. ADD THIS BROADCAST MESSAGE ---
-            // This tells all clients that the state has changed and sends them the new data.
-            await signalRMessages.AddAsync(new SignalRMessage
-            {
-                Target = "draftStateUpdate",
-                Arguments = new object[] { leagueToUpdate }
-            });
-            // --- END OF CHANGE ---
+            await AppServices.SendToAllAsync("draftStateUpdate", leagueToUpdate.ForBroadcast());
 
             return new OkObjectResult(new { message = "Favorite players updated successfully." });
         }
