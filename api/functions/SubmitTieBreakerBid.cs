@@ -35,6 +35,9 @@ public static class SubmitTieBreakerBid
             if (league.TieBreaker == null || !league.TieBreaker.TiedTeamIds.Contains(bidRequest.UserId))
                 return new UnauthorizedResult();
 
+            if (league.TieBreaker.Round >= 2)
+                return new BadRequestObjectResult("This tie is locked for admin resolution.");
+
             if (bidRequest.Amount <= league.TieBreaker.TieAmount)
                 return new BadRequestObjectResult($"Bid must be greater than the tie amount of ${league.TieBreaker.TieAmount}.");
 
@@ -56,7 +59,7 @@ public static class SubmitTieBreakerBid
 
         if (error != null) return error;
 
-        await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+        await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
         return new OkObjectResult("Tie-breaker bid submitted.");
     }
 
