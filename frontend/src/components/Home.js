@@ -3,133 +3,94 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList } from '../data/playerData';
 
+const POSITION_OPTIONS = ['WR', 'RB', 'TE', 'QB', 'K', 'DST'];
+
 const Home = () => {
   const { user, loading } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortPosition, setSortPosition] = useState('All Positions');
   const navigate = useNavigate();
 
-  // --- Card Styles ---
-  // I'm defining the styles here to keep the JSX clean.
-  // You could also move these to your App.css file.
-  const dashboardStyle = {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '30px',
-    marginTop: '40px',
-    flexWrap: 'wrap'
-  };
-
-  const cardStyle = {
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    padding: '20px',
-    width: '300px',
-    boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between'
-  };
-
-  const cardButtonStyle = {
-    padding: '10px 20px',
-    fontSize: '16px',
-    cursor: 'pointer',
-    border: 'none',
-    borderRadius: '5px',
-    backgroundColor: '#007bff',
-    color: 'white',
-    marginTop: '15px'
-  };
-  // --- End Styles ---
-
   if (loading) {
-    return <div>Loading user data...</div>;
+    return <div className="loading-panel">Loading user data...</div>;
   }
 
   const filteredPlayers = initialPlayerList
-    .filter(player => 
-      player.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-    .filter(player =>
-      sortPosition === 'All Positions' || player.position === sortPosition
-    );
-  
+    .filter(player => player.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    .filter(player => sortPosition === 'All Positions' || player.position === sortPosition);
+
+  const topPlayers = filteredPlayers.slice(0, 80);
+
   return (
-    <div style={{ padding: '20px', textAlign: 'center' }}>
-      <h1>Welcome, {user.userDetails}!</h1>
-      <p>Your fantasy football auction draft hub. What would you like to do?</p>
+    <div className="page-shell home-page">
+      <section className="page-hero">
+        <p className="page-kicker">Live auction draft hub</p>
+        <h1>Welcome back, {user.userDetails}</h1>
+        <p>Build leagues, scan the player pool, and jump into the room when the bidding clock starts.</p>
+        <div className="scoreboard-strip">
+          <span>{initialPlayerList.length} players loaded</span>
+          <span>{POSITION_OPTIONS.length} positions tracked</span>
+          <span>Auction draft ready</span>
+        </div>
+      </section>
 
-      {/* --- New Dashboard Section --- */}
-      <div style={dashboardStyle}>
-        <div style={cardStyle}>
+      <section className="dashboard-grid" aria-label="Draft actions">
+        <div className="action-card">
           <div>
+            <p className="section-kicker">Command</p>
             <h2>My Leagues</h2>
-            <p>View all your active leagues, manage your teams, and enter your draft rooms.</p>
+            <p>Open your draft rooms, review league settings, and get straight back into active auctions.</p>
           </div>
-          <button style={cardButtonStyle} onClick={() => navigate('/leagues')}>
-            Go to My Leagues
-          </button>
+          <button onClick={() => navigate('/leagues')}>Open Leagues</button>
         </div>
 
-        <div style={cardStyle}>
+        <div className="action-card">
           <div>
-            <h2>Create a League</h2>
-            <p>Start a new league as the commissioner. Customize settings and invite friends to join.</p>
+            <p className="section-kicker">Commissioner</p>
+            <h2>Create League</h2>
+            <p>Set the roster build, timer pace, and invite your crew into a new auction room.</p>
           </div>
-          <button style={cardButtonStyle} onClick={() => navigate('/create-league')}>
-            Create a New League
-          </button>
+          <button className="create-button" onClick={() => navigate('/create-league')}>Create League</button>
         </div>
 
-        <div style={cardStyle}>
+        <div className="action-card">
           <div>
+            <p className="section-kicker">Board</p>
             <h2>My Profile</h2>
-            <p>Manage your global player preferences. This master list will be used as a template for new leagues you create.</p>
+            <p>Keep your master player list tuned before every league copies it into draft night.</p>
           </div>
-          <button style={cardButtonStyle} onClick={() => navigate('/profile')}>
-            Go to My Profile
-          </button>
+          <button className="edit-roster-button" onClick={() => navigate('/profile')}>Tune Profile</button>
         </div>
-      </div>
-      {/* --- End Dashboard Section --- */}
+      </section>
 
-
-      <div style={{ marginTop: '50px' }}>
-        <h2>Global Player Pool</h2>
-        {/* Search and filter controls remain the same */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span>Sort by Position:</span>
-            <select onChange={(e) => setSortPosition(e.target.value)}>
-              <option>All Positions</option>
-              <option>WR</option><option>RB</option><option>TE</option>
-              <option>QB</option><option>K</option><option>DST</option>
-            </select>
-          </div>
+      <section className="player-pool-panel">
+        <p className="section-kicker">Global board</p>
+        <h2>Player Pool</h2>
+        <div className="filter-bar">
+          <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition} aria-label="Sort by position">
+            <option>All Positions</option>
+            {POSITION_OPTIONS.map(position => <option key={position}>{position}</option>)}
+          </select>
           <input
             type="text"
             placeholder="Search for a player..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ padding: '8px' }}
           />
-        </div> 
-        
-        <ul style={{ listStyle: 'none', padding: 0, margin: '0 auto', maxWidth: '600px' }}>
-          {filteredPlayers.map((player) => (
-            <li 
-              key={player.id}
-              style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                padding: '10px', border: '1px solid #ddd', marginBottom: '5px'
-              }}
-            >
-              <span>{player.name} ({player.position})</span>
+        </div>
+
+        <ul className="player-list">
+          {topPlayers.map((player) => (
+            <li key={player.id} className="player-list-item">
+              <span className="player-name">{player.name}</span>
+              <span>
+                <span className="position-badge">{player.position}</span>{' '}
+                <span className="team-badge">{player.team}</span>
+              </span>
             </li>
           ))}
         </ul>
-      </div>
+      </section>
     </div>
   );
 };
