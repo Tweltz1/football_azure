@@ -1,8 +1,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -11,7 +10,7 @@ using System.Linq;
 
 public static class RequestBeer
 {
-    [FunctionName("RequestBeer")]
+    [Function("RequestBeer")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/request-beer")] HttpRequest req,
         string leagueId,
