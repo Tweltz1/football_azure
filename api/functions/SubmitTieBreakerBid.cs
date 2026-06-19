@@ -23,39 +23,51 @@ public static class SubmitTieBreakerBid
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var bidRequest = JsonConvert.DeserializeObject<BidRequest>(requestBody);
+
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
-        var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-        var league = leagueResponse.Resource;
 
-        if (league.Status.ToLower() != "tiebreaker") 
-            return new BadRequestObjectResult("Not in a tie-breaker round.");
-        if (league.TieBreaker == null || !league.TieBreaker.TiedTeamIds.Contains(bidRequest.UserId))
-            return new UnauthorizedResult();
-        if (bidRequest.Amount <= league.TieBreaker.TieAmount)
-            return new BadRequestObjectResult($"Bid must be greater than the tie amount of ${league.TieBreaker.TieAmount}.");
-
-        // --- MAX BID VALIDATION ---
-        var biddingTeam = league.Teams.FirstOrDefault(t => t.OwnerId == bidRequest.UserId);
-        if (biddingTeam == null) return new NotFoundObjectResult("Team not found.");
-
-        var totalRosterSpots = league.RosterSettings.QB + league.RosterSettings.RB + league.RosterSettings.WR + league.RosterSettings.TE + league.RosterSettings.K + league.RosterSettings.DEF + league.RosterSettings.FLEX + league.RosterSettings.SuperFlex + league.RosterSettings.Bench;
-        var spotsToFill = totalRosterSpots - biddingTeam.Roster.Count;
-        var maxBid = biddingTeam.Budget - (spotsToFill > 0 ? spotsToFill - 1 : 0);
-
-        if (bidRequest.Amount > maxBid)
+        var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
         {
-            return new BadRequestObjectResult($"Your bid of ${bidRequest.Amount} exceeds your max bid of ${maxBid}.");
-        }
-        // --- END VALIDATION ---
+            if (league.Status.ToLower() != "tiebreaker")
+                return new BadRequestObjectResult("Not in a tie-breaker round.");
 
-        league.ActiveBids[bidRequest.UserId] = new Bid { Amount = bidRequest.Amount, Timestamp = DateTime.UtcNow };
+            if (league.TieBreaker == null || !league.TieBreaker.TiedTeamIds.Contains(bidRequest.UserId))
+                return new UnauthorizedResult();
 
-        await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-        await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+            if (bidRequest.Amount <= league.TieBreaker.TieAmount)
+                return new BadRequestObjectResult($"Bid must be greater than the tie amount of ${league.TieBreaker.TieAmount}.");
+
+            var biddingTeam = league.Teams.FirstOrDefault(t => t.OwnerId == bidRequest.UserId);
+            if (biddingTeam == null) return new NotFoundObjectResult("Team not found.");
+
+            var totalRosterSpots = league.RosterSettings.QB + league.RosterSettings.RB + league.RosterSettings.WR +
+                                   league.RosterSettings.TE + league.RosterSettings.K + league.RosterSettings.DEF +
+                                   league.RosterSettings.FLEX + league.RosterSettings.SuperFlex + league.RosterSettings.Bench;
+            var spotsToFill = totalRosterSpots - biddingTeam.Roster.Count;
+            var maxBid = biddingTeam.Budget - (spotsToFill > 0 ? spotsToFill - 1 : 0);
+
+            if (bidRequest.Amount > maxBid)
+                return new BadRequestObjectResult($"Your bid of ${bidRequest.Amount} exceeds your max bid of ${maxBid}.");
+
+            league.ActiveBids[bidRequest.UserId] = new Bid { Amount = bidRequest.Amount, Timestamp = DateTime.UtcNow };
+            return null;
+        }, log);
+
+        if (error != null) return error;
+
+        await signalRMessages.AddAsync(new SignalRMessage
+        {
+            GroupName = leagueId,
+            Target = "draftStateUpdate",
+            Arguments = new object[] { league.ForBroadcast() }
+        });
 
         return new OkObjectResult("Tie-breaker bid submitted.");
     }
 
-    public class BidRequest { public string UserId { get; set; } public int Amount { get; set; } }
+    public class BidRequest
+    {
+        public string UserId { get; set; }
+        public int Amount { get; set; }
+    }
 }
