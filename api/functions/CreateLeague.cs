@@ -28,7 +28,7 @@ public static class CreateLeague
         var userProfile = await UserProfileStore.FindAsync(data.AdminId);
         if (userProfile == null)
         {
-            log.LogWarning("Profile not found for user {UserId} during league creation.", data.AdminId);
+            log?.LogWarning("Profile not found for user {UserId} during league creation.", data.AdminId);
         }
 
         var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
