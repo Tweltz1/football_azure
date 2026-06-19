@@ -56,13 +56,15 @@ public static class JoinLeague
             }
 
             var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
+            var preferredTeamName = TeamNameHelper.GetPreferredTeamName(userProfile, data.UserId);
+            var teamName = TeamNameHelper.GetUniqueTeamName(leagueToJoin.Teams, preferredTeamName, userProfile?.DisplayName ?? data.UserId);
 
             leagueToJoin.Members.Add(data.UserId);
             leagueToJoin.Teams.Add(new Team
             {
                 Id = Guid.NewGuid().ToString(),
                 OwnerId = data.UserId,
-                Name = "New Team",
+                Name = teamName,
                 Budget = 200,
                 Roster = new List<RosterSpot>(),
                 FavoritePlayerIds = userMasterFavorites
