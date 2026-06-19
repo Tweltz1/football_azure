@@ -10,6 +10,6 @@
     }
   },
   "platform": {
-    "apiRuntime": "dotnet:8.0"
+    "apiRuntime": "dotnet:6.0"
   }
 }
