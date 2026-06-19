@@ -54,7 +54,7 @@ public static class SkipPlayer
             }
 
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+            await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
 
             return new OkObjectResult("Player skipped successfully.");
         }
