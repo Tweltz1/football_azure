@@ -29,4 +29,7 @@ public class UserProfile
 
     [JsonProperty("budgetPlan")]
     public Dictionary<string, int> BudgetPlan { get; set; } = new Dictionary<string, int>();
+
+    [JsonProperty("budgetRosterSettings")]
+    public Dictionary<string, int> BudgetRosterSettings { get; set; } = new Dictionary<string, int>();
 }
