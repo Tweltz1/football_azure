@@ -5,7 +5,7 @@ import Leagues from './components/Leagues';
 import DraftScreen from './components/DraftScreen';
 import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
-import Profile from './components/Profile'; // <--- 1. IMPORT THE NEW COMPONENT
+import Profile from './components/Profile';
 import { useAuth } from './AuthContext';
 import './App.css';
 
@@ -13,10 +13,16 @@ function App() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div>Loading authentication...</div>;
+    return (
+      <div className="loading-screen">
+        <div className="loading-panel">
+          <span className="loading-mark" />
+          <p>Loading draft command...</p>
+        </div>
+      </div>
+    );
   }
 
-  // If user is not logged in, only show the Login component
   if (!user) {
     return <Login />;
   }
@@ -25,21 +31,39 @@ function App() {
 
   return (
     <Router>
-      <nav>
-        <Link to="/">Home</Link>
-        <Link to="/leagues">My Leagues</Link>
-        <Link to="/create-league">Create a League</Link>
-        <Link to="/profile">My Profile</Link> {/* <--- 2. ADD THE NAV LINK */}
-        <a href="/.auth/logout">Logout</a>
-        <span>Welcome, {user.userDetails}!</span>
-      </nav>
-      <Routes>
-        <Route path="/" element={<Home userId={userId} />} />
-        <Route path="/leagues" element={<Leagues userId={userId} />} />
-        <Route path="/draft/:leagueId" element={<DraftScreen userId={userId} />} />
-        <Route path="/create-league" element={<CreateLeague userId={userId} />} />
-        <Route path="/profile" element={<Profile userId={userId} />} /> {/* <--- 3. ADD THE ROUTE */}
-      </Routes>
+      <div className="app-shell">
+        <nav className="top-nav">
+          <Link to="/" className="brand-lockup" aria-label="Hood League home">
+            <span className="brand-mark">HL</span>
+            <span>
+              <strong>Hood League</strong>
+              <small>Auction Draft</small>
+            </span>
+          </Link>
+
+          <div className="nav-links" aria-label="Primary navigation">
+            <Link to="/">Home</Link>
+            <Link to="/leagues">Leagues</Link>
+            <Link to="/create-league">Create</Link>
+            <Link to="/profile">Profile</Link>
+          </div>
+
+          <div className="nav-user">
+            <span>Welcome, {user.userDetails}</span>
+            <a href="/.auth/logout" className="logout-link">Logout</a>
+          </div>
+        </nav>
+
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={<Home userId={userId} />} />
+            <Route path="/leagues" element={<Leagues userId={userId} />} />
+            <Route path="/draft/:leagueId" element={<DraftScreen userId={userId} />} />
+            <Route path="/create-league" element={<CreateLeague userId={userId} />} />
+            <Route path="/profile" element={<Profile userId={userId} />} />
+          </Routes>
+        </main>
+      </div>
     </Router>
   );
 }
