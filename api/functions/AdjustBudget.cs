@@ -17,31 +17,61 @@ public static class AdjustBudget
         string leagueId,
         ILogger log)
     {
-        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        var data = JsonConvert.DeserializeObject<AdjustBudgetRequest>(requestBody);
+        AdjustBudgetRequest data;
+        try
+        {
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            data = JsonConvert.DeserializeObject<AdjustBudgetRequest>(requestBody);
+        }
+        catch (JsonException ex)
+        {
+            log?.LogWarning(ex, "Invalid budget adjustment payload for league {LeagueId}.", leagueId);
+            return new BadRequestObjectResult("Invalid budget adjustment payload.");
+        }
+
+        if (string.IsNullOrWhiteSpace(data?.AdminId) || string.IsNullOrWhiteSpace(data.TeamId))
+        {
+            return new BadRequestObjectResult("Admin ID and team ID are required.");
+        }
+
+        if (data.NewBudget < 0)
+        {
+            return new BadRequestObjectResult("Budget cannot be negative.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         try
         {
-            var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-            var league = leagueResponse.Resource;
+            var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
+            {
+                league.EnsureDefaults();
 
-            if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
+                if (league.AdminId != data.AdminId)
+                    return new UnauthorizedResult();
 
-            var teamToUpdate = league.Teams.FirstOrDefault(t => t.Id == data.TeamId);
-            if (teamToUpdate == null) { return new NotFoundObjectResult("Team not found."); }
+                var teamToUpdate = league.Teams.FirstOrDefault(t => t?.Id == data.TeamId);
+                if (teamToUpdate == null)
+                    return new NotFoundObjectResult("Team not found.");
 
-            teamToUpdate.Budget = data.NewBudget;
-            log.LogInformation("Budget for team {TeamName} adjusted to {NewBudget}.", teamToUpdate.Name, data.NewBudget);
+                teamToUpdate.Budget = data.NewBudget;
+                log?.LogInformation("Budget for team {TeamName} adjusted to {NewBudget}.", teamToUpdate.Name, data.NewBudget);
 
-            await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await AppServices.SendToAllAsync("draftStateUpdate", league.ForBroadcast());
+                return null;
+            }, log);
 
+            if (error != null) return error;
+
+            await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
             return new OkObjectResult("Budget adjusted successfully.");
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new NotFoundObjectResult($"League with ID '{leagueId}' not found.");
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Error adjusting budget.");
+            log?.LogError(ex, "Error adjusting budget for league {LeagueId}.", leagueId);
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
     }
