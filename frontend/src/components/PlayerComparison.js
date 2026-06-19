@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
+import { playerInsightsMeta, playerStatsById, positionAverages } from '../data/playerInsights';
 import { getEstimatedAuctionValue, getPlayerAvailability } from '../data/strategyUtils';
 import './PlayerComparison.css';
 
 const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers = 3, onRemove, onClear }) => {
   const positionRanks = useMemo(() => buildPositionRankMap(allPlayers), [allPlayers]);
   const analysis = useMemo(() => buildComparisonAnalysis(players, positionRanks), [players, positionRanks]);
+  const comparisonRows = useMemo(() => getComparisonRows(scoringLabel, playerInsightsMeta.statsSeason), [scoringLabel]);
 
   if (!players || players.length === 0) return null;
 
@@ -32,6 +34,7 @@ const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers =
             <ComparisonInsight label="Best Value" value={formatPlayerValue(analysis.bestValue)} />
             <ComparisonInsight label="Bye Overlap" value={analysis.byeOverlapLabel} tone={analysis.hasByeOverlap ? 'warn' : 'good'} />
             <ComparisonInsight label="Positions" value={analysis.positionMix} />
+            <ComparisonInsight label="Stats" value={formatStatsSeason(playerInsightsMeta.statsSeason)} />
           </div>
 
           <div className="compare-table-wrap">
@@ -57,11 +60,11 @@ const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers =
                 </tr>
               </thead>
               <tbody>
-                {getComparisonRows(scoringLabel).map((row) => (
+                {comparisonRows.map((row) => (
                   <tr key={row.key}>
                     <td className="compare-label-cell">{row.label}</td>
                     {players.map((player) => (
-                      <td key={player.id} className={getCellClassName(row, player, analysis)}>
+                      <td key={player.id} className={getCellClassName(row, player, analysis, players)}>
                         <CompareValue player={player} row={row} analysis={analysis} positionRanks={positionRanks} />
                       </td>
                     ))}
@@ -84,6 +87,10 @@ const ComparisonInsight = ({ label, value, tone }) => (
 );
 
 const CompareValue = ({ player, row, analysis, positionRanks }) => {
+  if (row.type === 'stat') {
+    return <StatValue stat={row.render(player)} />;
+  }
+
   if (row.key === 'position') {
     return <span className="position-badge">{player.position}</span>;
   }
@@ -132,19 +139,209 @@ const RankValue = ({ value, note }) => (
   </span>
 );
 
-const getComparisonRows = (scoringLabel) => [
-  { key: 'overallRank', label: 'Overall Rank' },
-  { key: 'positionRank', label: 'Position Rank' },
-  { key: 'estimatedValue', label: 'Est. Value' },
-  { key: 'rankGap', label: 'Gap vs Best' },
-  { key: 'status', label: 'Status' },
-  { key: 'bye', label: 'Bye Week' },
-  { key: 'position', label: 'Position' },
-  { key: 'team', label: 'Team' },
-  { key: 'scoring', label: 'Scoring', value: scoringLabel },
-];
+const StatValue = ({ stat }) => {
+  if (!stat || stat.value === null || stat.value === undefined || stat.value === '') {
+    return <span className="compare-muted">-</span>;
+  }
 
-const getCellClassName = (row, player, analysis) => {
+  return (
+    <span className="compare-stat-value">
+      <strong>{stat.value}</strong>
+      {stat.note && <small>{stat.note}</small>}
+    </span>
+  );
+};
+
+const getComparisonRows = (scoringLabel, statsSeason) => {
+  const seasonLabel = statsSeason || 'Last';
+
+  return [
+    { key: 'overallRank', label: 'Overall Rank' },
+    { key: 'positionRank', label: 'Position Rank' },
+    { key: 'estimatedValue', label: 'Est. Value' },
+    { key: 'rankGap', label: 'Gap vs Best' },
+    { key: 'status', label: 'Status' },
+    { key: 'bye', label: 'Bye Week' },
+    { key: 'position', label: 'Position' },
+    { key: 'team', label: 'Team' },
+    { key: 'scoring', label: 'Scoring', value: scoringLabel },
+    {
+      key: 'games',
+      label: `${seasonLabel} Games`,
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['games'], formatInteger),
+      getNumericValue: (player) => getStatsNumber(player, ['games']),
+    },
+    {
+      key: 'pprPerGame',
+      label: 'PPR / Week',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['perGame', 'fantasyPointsPpr'], formatDecimal, 'per game'),
+      getNumericValue: (player) => getStatsNumber(player, ['perGame', 'fantasyPointsPpr']),
+    },
+    {
+      key: 'yardsPerGame',
+      label: 'Yards / Week',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['perGame', 'totalYards'], formatDecimal, 'pass + rush + rec'),
+      getNumericValue: (player) => getStatsNumber(player, ['perGame', 'totalYards']),
+    },
+    {
+      key: 'vsPositionAverage',
+      label: 'Vs Pos Avg',
+      type: 'stat',
+      higherIsBetter: true,
+      render: renderPositionAverage,
+      getNumericValue: (player) => getPositionAverageDelta(player),
+    },
+    {
+      key: 'totalYards',
+      label: 'Total Yards',
+      type: 'stat',
+      higherIsBetter: true,
+      render: renderTotalYards,
+      getNumericValue: (player) => getStatsNumber(player, ['totals', 'totalYards']),
+    },
+    {
+      key: 'totalTds',
+      label: 'Total TDs',
+      type: 'stat',
+      higherIsBetter: true,
+      render: renderTotalTds,
+      getNumericValue: (player) => getStatsNumber(player, ['totals', 'totalTds']),
+    },
+    {
+      key: 'catches',
+      label: 'Catches',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['totals', 'receptions'], formatInteger),
+      getNumericValue: (player) => getStatsNumber(player, ['totals', 'receptions']),
+    },
+    {
+      key: 'targets',
+      label: 'Targets',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['totals', 'targets'], formatInteger),
+      getNumericValue: (player) => getStatsNumber(player, ['totals', 'targets']),
+    },
+    {
+      key: 'receivingYards',
+      label: 'Rec Yards',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['totals', 'receivingYards'], formatInteger),
+      getNumericValue: (player) => getStatsNumber(player, ['totals', 'receivingYards']),
+    },
+    {
+      key: 'carries',
+      label: 'Carries',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['totals', 'carries'], formatInteger),
+      getNumericValue: (player) => getStatsNumber(player, ['totals', 'carries']),
+    },
+    {
+      key: 'rushingYards',
+      label: 'Rush Yards',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['totals', 'rushingYards'], formatInteger),
+      getNumericValue: (player) => getStatsNumber(player, ['totals', 'rushingYards']),
+    },
+    {
+      key: 'passingLine',
+      label: 'Passing',
+      type: 'stat',
+      higherIsBetter: true,
+      render: renderPassingLine,
+      getNumericValue: (player) => getStatsNumber(player, ['totals', 'attempts']),
+    },
+    {
+      key: 'passingYards',
+      label: 'Pass Yards',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['totals', 'passingYards'], formatInteger),
+      getNumericValue: (player) => getStatsNumber(player, ['totals', 'passingYards']),
+    },
+    {
+      key: 'bestWeek',
+      label: 'Best Week',
+      type: 'stat',
+      higherIsBetter: true,
+      render: renderBestWeek,
+      getNumericValue: (player) => getBestWeekScore(player),
+    },
+  ];
+};
+
+const renderStat = (player, path, formatter = formatInteger, note = null) => {
+  const stats = getPlayerStats(player);
+  if (!stats) return null;
+  const value = getPathValue(stats, path);
+  if (!Number.isFinite(value)) return null;
+  return { value: formatter(value), note };
+};
+
+const renderTotalYards = (player) => {
+  const stats = getPlayerStats(player);
+  if (!stats) return null;
+  const totals = stats.totals || {};
+  return {
+    value: formatInteger(totals.totalYards),
+    note: `${formatInteger(totals.passingYards)} pass / ${formatInteger(totals.rushingYards)} rush / ${formatInteger(totals.receivingYards)} rec`,
+  };
+};
+
+const renderTotalTds = (player) => {
+  const stats = getPlayerStats(player);
+  if (!stats) return null;
+  const totals = stats.totals || {};
+  return {
+    value: formatInteger(totals.totalTds),
+    note: `${formatInteger(totals.passingTds)} pass / ${formatInteger(totals.rushingTds)} rush / ${formatInteger(totals.receivingTds)} rec`,
+  };
+};
+
+const renderPassingLine = (player) => {
+  const stats = getPlayerStats(player);
+  if (!stats) return null;
+  const completions = getPathValue(stats, ['totals', 'completions']);
+  const attempts = getPathValue(stats, ['totals', 'attempts']);
+  if (!attempts) return null;
+  return { value: `${formatInteger(completions)}/${formatInteger(attempts)}`, note: 'comp/att' };
+};
+
+const renderBestWeek = (player) => {
+  const stats = getPlayerStats(player);
+  const bestWeek = stats?.bestWeek;
+  if (!bestWeek?.week) return null;
+
+  return {
+    value: `Week ${bestWeek.week}`,
+    note: `${formatDecimal(bestWeek.fantasyPointsPpr)} PPR, ${formatInteger(bestWeek.totalYards)} yds, ${formatInteger(bestWeek.totalTds)} TD`,
+  };
+};
+
+const renderPositionAverage = (player) => {
+  const stats = getPlayerStats(player);
+  const playerAverage = stats?.perGame?.fantasyPointsPpr;
+  const positionAverage = positionAverages[player.position]?.perGame?.fantasyPointsPpr;
+  if (!Number.isFinite(playerAverage) || !Number.isFinite(positionAverage)) return null;
+
+  const delta = playerAverage - positionAverage;
+  return {
+    value: `${delta >= 0 ? '+' : ''}${formatDecimal(delta)}`,
+    note: `${formatDecimal(playerAverage)} vs ${formatDecimal(positionAverage)} ${player.position} avg`,
+  };
+};
+
+const getCellClassName = (row, player, analysis, players) => {
   const classNames = ['compare-value-cell'];
 
   if (row.key === 'overallRank' && player.scoringRank === analysis.bestRank) {
@@ -165,6 +362,15 @@ const getCellClassName = (row, player, analysis) => {
 
   if (row.key === 'status' && getPlayerAvailability(player).tone === 'danger') {
     classNames.push('is-warning');
+  }
+
+  if (row.type === 'stat' && row.higherIsBetter && row.getNumericValue) {
+    const values = players.map((selectedPlayer) => row.getNumericValue(selectedPlayer)).filter(Number.isFinite);
+    const bestValue = values.length ? Math.max(...values) : null;
+    const currentValue = row.getNumericValue(player);
+    if (Number.isFinite(bestValue) && bestValue > 0 && currentValue === bestValue) {
+      classNames.push('is-best');
+    }
   }
 
   return classNames.join(' ');
@@ -226,10 +432,47 @@ const buildPositionRankMap = (players = []) => {
     }, {});
 };
 
+const getPlayerStats = (player) => playerStatsById[player.id];
+
+const getStatsNumber = (player, path) => {
+  const value = getPathValue(getPlayerStats(player), path);
+  return Number.isFinite(value) ? value : null;
+};
+
+const getBestWeekScore = (player) => {
+  const value = getPlayerStats(player)?.bestWeek?.fantasyPointsPpr;
+  return Number.isFinite(value) ? value : null;
+};
+
+const getPositionAverageDelta = (player) => {
+  const stats = getPlayerStats(player);
+  const playerAverage = stats?.perGame?.fantasyPointsPpr;
+  const positionAverage = positionAverages[player.position]?.perGame?.fantasyPointsPpr;
+  if (!Number.isFinite(playerAverage) || !Number.isFinite(positionAverage)) return null;
+  return playerAverage - positionAverage;
+};
+
+const getPathValue = (source, path) => {
+  const value = path.reduce((current, key) => current?.[key], source);
+  return Number.isFinite(value) ? value : null;
+};
+
 const getOverallRankNote = (player, analysis) => {
   const gap = player.scoringRank - analysis.bestRank;
   return gap === 0 ? 'Best selected' : `+${gap} overall`;
 };
+
+const formatInteger = (value) => {
+  if (!Number.isFinite(value)) return '-';
+  return Math.round(value).toLocaleString();
+};
+
+const formatDecimal = (value) => {
+  if (!Number.isFinite(value)) return '-';
+  return Number(value).toFixed(1);
+};
+
+const formatStatsSeason = (season) => (season ? `${season} stats` : 'Pending');
 
 const formatPlayerRank = (player) => {
   if (!player) return '-';
