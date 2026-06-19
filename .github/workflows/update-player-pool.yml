@@ -1,0 +1,80 @@
+name: Update Player Pool
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Player pool source.
+        required: false
+        default: sleeper
+        type: choice
+        options:
+          - sleeper
+          - fantasypros
+      season:
+        description: FantasyPros NFL season year. Leave blank to use the current UTC year.
+        required: false
+        type: string
+      scoring:
+        description: FantasyPros scoring format.
+        required: false
+        default: PPR
+        type: choice
+        options:
+          - PPR
+          - HALF
+          - STD
+      limit:
+        description: Number of players to write into the app pool.
+        required: false
+        default: "350"
+        type: string
+  schedule:
+    - cron: "0 11 * * 2"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-player-pool:
+    name: Update player pool
+    runs-on: ubuntu-latest
+    env:
+      PLAYER_POOL_SOURCE: ${{ github.event.inputs.source || 'sleeper' }}
+      PLAYER_POOL_LIMIT: ${{ github.event.inputs.limit || '350' }}
+      FANTASYPROS_API_KEY: ${{ secrets.FANTASYPROS_API_KEY }}
+      FANTASYPROS_SEASON: ${{ github.event.inputs.season }}
+      FANTASYPROS_SCORING: ${{ github.event.inputs.scoring || 'PPR' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Show update source
+        run: echo "Updating player pool from $PLAYER_POOL_SOURCE"
+
+      - name: Generate player pool
+        run: node scripts/update-player-pool.mjs
+
+      - name: Open player pool update PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: automation/player-pool
+          delete-branch: true
+          commit-message: Update generated player pool
+          title: Update generated player pool
+          body: |
+            Updates the generated player pool.
+
+            Notes:
+            - Uses Sleeper by default with no API key required.
+            - Manual runs can choose FantasyPros when `FANTASYPROS_API_KEY` is configured.
+            - Writes the top 350 players by default.
+            - Existing leagues keep their copied draft pool; new leagues use this generated pool after the PR is merged.
