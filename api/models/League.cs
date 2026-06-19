@@ -62,6 +62,9 @@ public class League
     [JsonProperty("onlineUserIds")]
     public List<string> OnlineUserIds { get; set; } = new List<string>();
 
+    [JsonProperty("awayUserIds")]
+    public List<string> AwayUserIds { get; set; } = new List<string>();
+
     public void EnsureDefaults()
     {
         Members = Members ?? new List<string>();
@@ -74,6 +77,7 @@ public class League
         ActiveBids = ActiveBids ?? new Dictionary<string, Bid>();
         DraftLog = DraftLog ?? new List<DraftPick>();
         OnlineUserIds = OnlineUserIds ?? new List<string>();
+        AwayUserIds = AwayUserIds ?? new List<string>();
 
         if (TieBreaker != null)
         {
@@ -129,6 +133,7 @@ public class League
             BeerBitchTeamId = this.BeerBitchTeamId,
             TieBreaker = this.TieBreaker,
             OnlineUserIds = this.OnlineUserIds,
+            AwayUserIds = this.AwayUserIds,
         };
 
         NflByeWeeks.ApplyToLeague(broadcast);
