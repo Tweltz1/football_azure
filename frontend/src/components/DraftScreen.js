@@ -10,18 +10,16 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api
 const TIMER_POLL_MS = 1000;
 const POSITION_OPTIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DST'];
 
-const isTimerExpired = (auctionTimer) => {
-    if (!auctionTimer?.endTime || auctionTimer.isPaused) return false;
-    return new Date(auctionTimer.endTime).getTime() <= Date.now();
-};
-
 const useTimerTransition = (enabled, auctionTimer, transitionUrl) => {
+    const timerEndTime = auctionTimer?.endTime;
+    const timerIsPaused = auctionTimer?.isPaused;
+
     useEffect(() => {
-        if (!enabled || !auctionTimer?.endTime || auctionTimer.isPaused) return;
+        if (!enabled || !timerEndTime || timerIsPaused) return;
 
         let hasRequestedTransition = false;
         const requestTransitionIfExpired = async () => {
-            if (hasRequestedTransition || !isTimerExpired(auctionTimer)) return;
+            if (hasRequestedTransition || new Date(timerEndTime).getTime() > Date.now()) return;
             hasRequestedTransition = true;
 
             try {
@@ -35,7 +33,7 @@ const useTimerTransition = (enabled, auctionTimer, transitionUrl) => {
         requestTransitionIfExpired();
         const intervalId = setInterval(requestTransitionIfExpired, TIMER_POLL_MS);
         return () => clearInterval(intervalId);
-    }, [enabled, auctionTimer?.endTime, auctionTimer?.isPaused, transitionUrl]);
+    }, [enabled, timerEndTime, timerIsPaused, transitionUrl]);
 };
 
 const ToastNotification = ({ message, show, onClose }) => {
