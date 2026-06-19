@@ -6,7 +6,7 @@ import './PlayerComparison.css';
 const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers = 3, onRemove, onClear }) => {
   const positionRanks = useMemo(() => buildPositionRankMap(allPlayers), [allPlayers]);
   const analysis = useMemo(() => buildComparisonAnalysis(players, positionRanks), [players, positionRanks]);
-  const comparisonRows = useMemo(() => getComparisonRows(scoringLabel, playerInsightsMeta.statsSeason), [scoringLabel]);
+  const comparisonRows = useMemo(() => getComparisonRows(scoringLabel, playerInsightsMeta.statsSeason), [scoringLabel, playerInsightsMeta.statsSeason]);
 
   if (!players || players.length === 0) return null;
 
