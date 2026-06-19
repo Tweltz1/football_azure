@@ -17,12 +17,19 @@ public static class CancelBid
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<CancelBidRequest>(requestBody);
+        if (string.IsNullOrWhiteSpace(data?.UserId))
+        {
+            return new BadRequestObjectResult("User ID is required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         try
         {
             var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
+                league.EnsureDefaults();
+
                 if (league.ActiveBids.ContainsKey(data.UserId))
                 {
                     league.ActiveBids.Remove(data.UserId);
