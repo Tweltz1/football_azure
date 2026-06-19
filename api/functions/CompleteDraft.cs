@@ -16,32 +16,68 @@ public static class CompleteDraft
         string leagueId,
         ILogger log)
     {
-        string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
+        AdminActionRequest data;
+        try
+        {
+            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+            data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
+        }
+        catch (JsonException ex)
+        {
+            log?.LogWarning(ex, "Invalid complete draft payload for league {LeagueId}.", leagueId);
+            return new BadRequestObjectResult("Invalid complete draft payload.");
+        }
+
+        if (string.IsNullOrWhiteSpace(data?.AdminId))
+        {
+            return new BadRequestObjectResult("Admin ID is required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         try
         {
-            var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-            var league = leagueResponse.Resource;
+            var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
+            {
+                league.EnsureDefaults();
 
-            if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
+                if (league.AdminId != data.AdminId)
+                {
+                    return new UnauthorizedResult();
+                }
 
-            league.Status = "completed";
-            league.CurrentPlayerId = null;
-            league.ActiveBids.Clear();
-            league.AuctionTimer = null;
+                league.Status = "completed";
+                league.CurrentPlayerId = null;
+                league.ClearActiveBids();
+                league.AuctionTimer = null;
+                league.TieBreaker = null;
 
-            log.LogInformation("Draft completed for league {LeagueName}.", league.Name);
+                return null;
+            }, log);
 
-            await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await AppServices.SendToAllAsync("draftStateUpdate", league.ForBroadcast());
+            if (error != null) return error;
 
-            return new OkObjectResult("Draft completed successfully.");
+            log?.LogInformation("Draft completed for league {LeagueName}.", league.Name);
+
+            var broadcast = league.ForBroadcast();
+            try
+            {
+                await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", broadcast);
+            }
+            catch (Exception broadcastEx)
+            {
+                log?.LogWarning(broadcastEx, "Draft was completed, but the completion broadcast failed for league {LeagueId}.", leagueId);
+            }
+
+            return new OkObjectResult(broadcast);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return new NotFoundObjectResult($"League with ID '{leagueId}' not found.");
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Error completing draft.");
+            log?.LogError(ex, "Error completing draft for league {LeagueId}.", leagueId);
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
     }
