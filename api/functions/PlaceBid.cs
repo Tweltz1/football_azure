@@ -18,17 +18,24 @@ public static class PlaceBid
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var bidRequest = JsonConvert.DeserializeObject<BidRequest>(requestBody);
+        if (string.IsNullOrWhiteSpace(bidRequest?.UserId))
+        {
+            return new BadRequestObjectResult("User ID is required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
         {
+            league.EnsureDefaults();
+
             var biddingTeam = league.Teams.FirstOrDefault(t => t.OwnerId == bidRequest.UserId);
             if (biddingTeam == null) return new NotFoundObjectResult("Team not found.");
 
             var totalRosterSpots = league.RosterSettings.QB + league.RosterSettings.RB + league.RosterSettings.WR +
                                    league.RosterSettings.TE + league.RosterSettings.K + league.RosterSettings.DEF +
                                    league.RosterSettings.FLEX + league.RosterSettings.SuperFlex + league.RosterSettings.Bench;
-            var spotsToFill = totalRosterSpots - biddingTeam.Roster.Count;
+            var spotsToFill = totalRosterSpots - (biddingTeam.Roster?.Count ?? 0);
             var maxBid = biddingTeam.Budget - (spotsToFill > 0 ? spotsToFill - 1 : 0);
 
             if (bidRequest.Amount > maxBid)
