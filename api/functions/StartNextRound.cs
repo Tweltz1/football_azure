@@ -6,7 +6,6 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
 public static class StartNextRound
 {
@@ -14,11 +13,9 @@ public static class StartNextRound
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/nextRound")] HttpRequest req,
         string leagueId,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
-        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
+        var container = AppServices.LeaguesContainer;
 
         try
         {
@@ -60,7 +57,7 @@ public static class StartNextRound
                 league.Id,
                 new PartitionKey(league.Id),
                 new ItemRequestOptions { IfMatchEtag = leagueResponse.ETag });
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+            await AppServices.SendToAllAsync("draftStateUpdate", league.ForBroadcast());
 
             return new OkObjectResult("Next round started.");
         }
