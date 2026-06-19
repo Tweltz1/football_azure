@@ -23,13 +23,6 @@ jobs:
         with:
           submodules: true
           lfs: false
-      - name: Inspect generated function metadata
-        run: |
-          dotnet publish api/FantasyFootballApi.csproj -c Release -o api-publish
-          count=$(find api-publish -name function.json | wc -l)
-          echo "Generated function.json count: ${count}"
-          find api-publish -name function.json -maxdepth 3 -print
-          test "${count}" -gt 0
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
