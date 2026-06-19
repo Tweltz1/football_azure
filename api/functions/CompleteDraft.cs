@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
 public static class CompleteDraft
 {
@@ -16,14 +15,12 @@ public static class CompleteDraft
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/complete")] HttpRequest req,
         string leagueId,
-        [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
-        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
+        var container = AppServices.LeaguesContainer;
+
         try
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
@@ -34,12 +31,12 @@ public static class CompleteDraft
             league.Status = "completed";
             league.CurrentPlayerId = null;
             league.ActiveBids.Clear();
-            league.AuctionTimer = null; // Clear the timer
+            league.AuctionTimer = null;
 
-            log.LogInformation($"Draft completed for league {league.Name}.");
+            log.LogInformation("Draft completed for league {LeagueName}.", league.Name);
 
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+            await AppServices.SendToAllAsync("draftStateUpdate", league.ForBroadcast());
 
             return new OkObjectResult("Draft completed successfully.");
         }
@@ -49,8 +46,7 @@ public static class CompleteDraft
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
     }
-    
-    // Using the same request class as other admin functions
+
     public class AdminActionRequest
     {
         public string AdminId { get; set; }
