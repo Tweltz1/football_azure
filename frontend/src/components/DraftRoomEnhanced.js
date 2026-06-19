@@ -296,7 +296,6 @@ const useDraftPresenceReporter = (leagueId, userId) => {
       window.removeEventListener('focus', reportCurrentPresence);
       window.removeEventListener('blur', reportCurrentPresence);
       window.removeEventListener('pagehide', sendDisconnectBeacon);
-      axios.post(`${API_BASE_URL}/leagues/${leagueId}/disconnect`, { userId }).catch(() => {});
     };
   }, [leagueId, userId]);
 };
