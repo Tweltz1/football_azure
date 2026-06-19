@@ -33,7 +33,7 @@ public static class UpdateUserProfile
             }
 
             userProfile.FavoritePlayerIds = data.FavoritePlayerIds;
-            log.LogInformation("Updating favorite players for user {UserId}.", userId);
+            log?.LogInformation("Updating favorite players for user {UserId}.", userId);
 
             await UserProfileStore.UpsertAsync(userProfile);
 
@@ -41,7 +41,7 @@ public static class UpdateUserProfile
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Error updating profile for user {UserId}.", userId);
+            log?.LogError(ex, "Error updating profile for user {UserId}.", userId);
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
     }
