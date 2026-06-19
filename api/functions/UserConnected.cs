@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
-using System.Linq;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
 public static class UserConnected
@@ -18,24 +17,44 @@ public static class UserConnected
         string leagueId,
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
+        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRGroupAction> signalRGroupActions,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<PresenceRequest>(requestBody);
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
-        var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-        var league = leagueResponse.Resource;
 
-        if (!league.OnlineUserIds.Contains(data.UserId))
+        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
+
+        await signalRGroupActions.AddAsync(new SignalRGroupAction
         {
-            league.OnlineUserIds.Add(data.UserId);
-            await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
-        }
+            UserId = data.UserId,
+            GroupName = leagueId,
+            Action = GroupAction.Add
+        });
+
+        var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
+        {
+            if (!league.OnlineUserIds.Contains(data.UserId))
+            {
+                league.OnlineUserIds.Add(data.UserId);
+            }
+            return null;
+        }, log);
+
+        if (error != null) return error;
+
+        await signalRMessages.AddAsync(new SignalRMessage
+        {
+            GroupName = leagueId,
+            Target = "draftStateUpdate",
+            Arguments = new object[] { league.ForBroadcast() }
+        });
 
         return new OkResult();
     }
 
-    public class PresenceRequest { public string UserId { get; set; } }
+    public class PresenceRequest
+    {
+        public string UserId { get; set; }
+    }
 }
