@@ -73,7 +73,7 @@ const Profile = () => {
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
                     <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition}>
                         <option>All Positions</option>
-                        <option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>K</option><option>DEF</option>
+                        <option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>K</option><option>DST</option>
                     </select>
                     <input
                         type="text"
