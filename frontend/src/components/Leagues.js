@@ -15,10 +15,8 @@ const Leagues = ({ userId }) => {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [currentLeague, setCurrentLeague] = useState(null);
-  
   const [joinLeagueName, setJoinLeagueName] = useState('');
   const [joinPassword, setJoinPassword] = useState('');
-  
   const [rosterSettings, setRosterSettings] = useState({});
   const [draftTimers, setDraftTimers] = useState({});
 
@@ -27,8 +25,8 @@ const Leagues = ({ userId }) => {
       const response = await axios.get(`${API_BASE_URL}/GetLeagues?userId=${userId}`);
       setLeagues(response.data);
     } catch (error) {
-      console.error("Error fetching leagues:", error);
-      alert("Failed to fetch leagues.");
+      console.error('Error fetching leagues:', error);
+      alert('Failed to fetch leagues.');
     } finally {
       setLoading(false);
     }
@@ -41,37 +39,36 @@ const Leagues = ({ userId }) => {
   useEffect(() => {
     let connection;
     const setupSignalR = async () => {
-        try {
-            const info = await getSignalRInfo();
-            connection = new HubConnectionBuilder()
-                .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-                .withAutomaticReconnect()
-                .build();
+      try {
+        const info = await getSignalRInfo();
+        connection = new HubConnectionBuilder()
+          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
+          .withAutomaticReconnect()
+          .build();
 
-            connection.on('draftStateUpdate', (updatedLeague) => {
-                console.log("League update received on Leagues page:", updatedLeague);
-                setLeagues(currentLeagues => 
-                    currentLeagues.map(l => l.id === updatedLeague.id ? updatedLeague : l)
-                );
-            });
+        connection.on('draftStateUpdate', (updatedLeague) => {
+          setLeagues(currentLeagues =>
+            currentLeagues.map(l => l.id === updatedLeague.id ? updatedLeague : l)
+          );
+        });
 
-            await connection.start();
-        } catch (e) {
-            console.error("SignalR Connection Failed on Leagues page: ", e);
-        }
+        await connection.start();
+      } catch (e) {
+        console.error('SignalR Connection Failed on Leagues page: ', e);
+      }
     };
 
     setupSignalR();
     return () => {
-        if (connection) connection.stop();
+      if (connection) connection.stop();
     };
   }, []);
 
   const handleDelete = async (leagueId) => {
-    if (window.confirm("Are you sure you want to delete this league?")) {
+    if (window.confirm('Are you sure you want to delete this league?')) {
       try {
         await axios.delete(`${API_BASE_URL}/leagues/${leagueId}`, { data: { adminId: userId } });
-        alert("League deleted successfully!");
+        alert('League deleted successfully!');
         fetchLeagues();
       } catch (error) {
         alert(`Failed to delete league: ${error.response?.data || error.message}`);
@@ -82,10 +79,10 @@ const Leagues = ({ userId }) => {
   const handleEditTeamName = async () => {
     try {
       await axios.post(`${API_BASE_URL}/leagues/${currentLeague.id}/teams`, {
-        userId: userId,
-        newTeamName: newTeamName
+        userId,
+        newTeamName
       });
-      alert("Team name updated successfully!");
+      alert('Team name updated successfully!');
       setShowEditModal(false);
       fetchLeagues();
     } catch (error) {
@@ -97,124 +94,133 @@ const Leagues = ({ userId }) => {
     try {
       await axios.post(`${API_BASE_URL}/leagues/${currentLeague.id}/settings`, {
         adminId: userId,
-        rosterSettings: rosterSettings,
-        draftTimers: draftTimers
+        rosterSettings,
+        draftTimers
       });
-      alert("Roster settings updated successfully!");
+      alert('Roster settings updated successfully!');
       setShowRosterModal(false);
       fetchLeagues();
     } catch (error) {
       alert(`Failed to update settings: ${error.response?.data || error.message}`);
     }
   };
-  
+
   const handleJoinLeague = async () => {
     try {
-        const response = await axios.post(`${API_BASE_URL}/JoinLeague`, {
-            userId: userId,
-            leagueName: joinLeagueName,
-            password: joinPassword
-        });
-        alert(`Successfully joined league '${response.data.name}'!`);
-        setShowJoinModal(false);
-        fetchLeagues();
+      const response = await axios.post(`${API_BASE_URL}/JoinLeague`, {
+        userId,
+        leagueName: joinLeagueName,
+        password: joinPassword
+      });
+      alert(`Successfully joined league '${response.data.name}'!`);
+      setShowJoinModal(false);
+      fetchLeagues();
     } catch (error) {
-        alert(`Failed to join league: ${error.response?.data || error.message}`);
+      alert(`Failed to join league: ${error.response?.data || error.message}`);
     }
   };
 
   if (loading) {
-    return <div>Loading leagues...</div>;
+    return <div className="loading-panel">Loading leagues...</div>;
   }
 
   return (
-    <div>
-      <h2>My Leagues</h2>
-      <div className="button-group">
-        <Link to="/create-league">
-          <button className="create-button">Create a League</button>
-        </Link>
-        <button onClick={() => setShowJoinModal(true)} className="join-button">Join League</button>
-      </div>
-      
-      {leagues.length > 0 ? (
+    <div className="page-shell league-page">
+      <section className="page-hero">
+        <p className="page-kicker">League control</p>
+        <h1>My Leagues</h1>
+        <p>Jump into a live draft room, join a league, or tune commissioner settings before the auction starts.</p>
+        <div className="scoreboard-strip">
+          <span>{leagues.length} active league{leagues.length === 1 ? '' : 's'}</span>
+          <span>{leagues.filter(league => league.adminId === userId).length} commissioner table{leagues.filter(league => league.adminId === userId).length === 1 ? '' : 's'}</span>
+        </div>
+      </section>
+
+      <div className="league-toolbar">
         <div>
-          <h3>Your Active Leagues</h3>
-          <table className="leagues-table">
-            <thead>
-              <tr>
-                <th>League Name</th>
-                <th>Admin</th>
-                <th>Teams Joined</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leagues.map(league => (
+          <p className="section-kicker">Draft rooms</p>
+          <h2>Your Active Leagues</h2>
+        </div>
+        <div className="button-group">
+          <Link to="/create-league">
+            <button className="create-button">Create League</button>
+          </Link>
+          <button onClick={() => setShowJoinModal(true)} className="join-button">Join League</button>
+        </div>
+      </div>
+
+      {leagues.length > 0 ? (
+        <table className="leagues-table">
+          <thead>
+            <tr>
+              <th>League</th>
+              <th>Role</th>
+              <th>Teams</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leagues.map(league => {
+              const teamName = league.teams.find(t => t.ownerId === userId)?.name || 'N/A';
+              return (
                 <tr key={league.id}>
                   <td>
-                    {league.name}
+                    <strong>{league.name}</strong>
                     <br />
-                    <span>Your Team: {league.teams.find(t => t.ownerId === userId)?.name || 'N/A'} <button className="edit-profile-link" onClick={() => {
-                        setShowEditModal(true);
-                        setCurrentLeague(league);
-                        setNewTeamName(league.teams.find(t => t.ownerId === userId)?.name || '');
-                    }}>Edit Profile</button></span>
+                    <span>Your Team: {teamName} </span>
+                    <button className="edit-profile-link" onClick={() => {
+                      setShowEditModal(true);
+                      setCurrentLeague(league);
+                      setNewTeamName(teamName === 'N/A' ? '' : teamName);
+                    }}>Edit Team</button>
                   </td>
-                  <td>
-                    {league.adminId === userId ? "You (Admin)" : "Other"}
-                  </td>
-                  <td>
-                    {league.members.length}/12
-                  </td>
+                  <td>{league.adminId === userId ? 'Commissioner' : 'Member'}</td>
+                  <td>{league.members.length}/12</td>
                   <td className="actions-cell-flex">
                     <Link to={`/draft/${league.id}`}>
                       <button className="view-details-button">Enter Draft Room</button>
                     </Link>
                     {league.adminId === userId && (
                       <>
-                        <button 
+                        <button
                           onClick={() => {
                             setShowRosterModal(true);
                             setCurrentLeague(league);
                             setRosterSettings(league.rosterSettings || {});
                             setDraftTimers(league.draftTimers || {});
-                          }} 
-                          className="edit-roster-button">
+                          }}
+                          className="edit-roster-button"
+                        >
                           Edit Roster
                         </button>
-                        <button 
-                          onClick={() => handleDelete(league.id)} 
-                          className="delete-button">
-                          Delete
-                        </button>
+                        <button onClick={() => handleDelete(league.id)} className="delete-button">Delete</button>
                       </>
                     )}
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              );
+            })}
+          </tbody>
+        </table>
       ) : (
-        <p>You are not a member of any leagues yet.</p>
+        <div className="empty-state">
+          <h3>No leagues yet</h3>
+          <p>Create one or join an existing league to start building your auction board.</p>
+        </div>
       )}
-      
+
       {showEditModal && (
         <div className="modal-overlay">
           <div className="modal-content">
             <h3>Edit Team Name</h3>
             <label>
-              New Team Name:
-              <input 
-                type="text" 
-                value={newTeamName} 
-                onChange={(e) => setNewTeamName(e.target.value)} 
-              />
+              New Team Name
+              <input type="text" value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} />
             </label>
-            <br />
-            <button onClick={handleEditTeamName}>Save</button>
-            <button onClick={() => setShowEditModal(false)} className="cancel-button">Cancel</button>
+            <div className="form-actions">
+              <button onClick={handleEditTeamName}>Save</button>
+              <button onClick={() => setShowEditModal(false)} className="cancel-button">Cancel</button>
+            </div>
           </div>
         </div>
       )}
@@ -222,25 +228,29 @@ const Leagues = ({ userId }) => {
       {showRosterModal && currentLeague && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3 style={{ gridColumn: 'span 2' }}>Edit Roster Settings for {currentLeague.name}</h3>
-            
-            <label>QB:<input type="number" value={rosterSettings.qb || 0} onChange={(e) => setRosterSettings({...rosterSettings, qb: parseInt(e.target.value)})}/></label>
-            <label>RB:<input type="number" value={rosterSettings.rb || 0} onChange={(e) => setRosterSettings({...rosterSettings, rb: parseInt(e.target.value)})}/></label>
-            <label>WR:<input type="number" value={rosterSettings.wr || 0} onChange={(e) => setRosterSettings({...rosterSettings, wr: parseInt(e.target.value)})}/></label>
-            <label>TE:<input type="number" value={rosterSettings.te || 0} onChange={(e) => setRosterSettings({...rosterSettings, te: parseInt(e.target.value)})}/></label>
-            <label>DEF:<input type="number" value={rosterSettings.def || 0} onChange={(e) => setRosterSettings({...rosterSettings, def: parseInt(e.target.value)})}/></label>
-            <label>K:<input type="number" value={rosterSettings.k || 0} onChange={(e) => setRosterSettings({...rosterSettings, k: parseInt(e.target.value)})}/></label>
-            <label>FLEX:<input type="number" value={rosterSettings.flex || 0} onChange={(e) => setRosterSettings({...rosterSettings, flex: parseInt(e.target.value)})}/></label>
-            <label>SUPERFLEX:<input type="number" value={rosterSettings.superFlex || 0} onChange={(e) => setRosterSettings({...rosterSettings, superFlex: parseInt(e.target.value)})}/></label>
-            <label>BENCH:<input type="number" value={rosterSettings.bench || 0} onChange={(e) => setRosterSettings({...rosterSettings, bench: parseInt(e.target.value)})}/></label>
-            
-            <label>bidDuration:<input type="number" value={draftTimers.bidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, bidTimer: parseInt(e.target.value)})}/></label>
-            <label>intermission:<input type="number" value={draftTimers.intermissionTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, intermissionTimer: parseInt(e.target.value)})}/></label>
-            <label>rebidDuration:<input type="number" value={draftTimers.rebidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, rebidTimer: parseInt(e.target.value)})}/></label>
+            <h3>Edit Roster Settings for {currentLeague.name}</h3>
+            <div className="settings-grid">
+              <label>QB<input type="number" value={rosterSettings.qb || 0} onChange={(e) => setRosterSettings({...rosterSettings, qb: parseInt(e.target.value)})}/></label>
+              <label>RB<input type="number" value={rosterSettings.rb || 0} onChange={(e) => setRosterSettings({...rosterSettings, rb: parseInt(e.target.value)})}/></label>
+              <label>WR<input type="number" value={rosterSettings.wr || 0} onChange={(e) => setRosterSettings({...rosterSettings, wr: parseInt(e.target.value)})}/></label>
+              <label>TE<input type="number" value={rosterSettings.te || 0} onChange={(e) => setRosterSettings({...rosterSettings, te: parseInt(e.target.value)})}/></label>
+              <label>DEF<input type="number" value={rosterSettings.def || 0} onChange={(e) => setRosterSettings({...rosterSettings, def: parseInt(e.target.value)})}/></label>
+              <label>K<input type="number" value={rosterSettings.k || 0} onChange={(e) => setRosterSettings({...rosterSettings, k: parseInt(e.target.value)})}/></label>
+              <label>FLEX<input type="number" value={rosterSettings.flex || 0} onChange={(e) => setRosterSettings({...rosterSettings, flex: parseInt(e.target.value)})}/></label>
+              <label>SUPERFLEX<input type="number" value={rosterSettings.superFlex || 0} onChange={(e) => setRosterSettings({...rosterSettings, superFlex: parseInt(e.target.value)})}/></label>
+              <label>BENCH<input type="number" value={rosterSettings.bench || 0} onChange={(e) => setRosterSettings({...rosterSettings, bench: parseInt(e.target.value)})}/></label>
+            </div>
 
-            <div style={{ gridColumn: 'span 2', marginTop: '20px', textAlign: 'center' }}>
+            <div className="divider" />
+            <div className="settings-grid">
+              <label>Bid Timer<input type="number" value={draftTimers.bidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, bidTimer: parseInt(e.target.value)})}/></label>
+              <label>Intermission<input type="number" value={draftTimers.intermissionTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, intermissionTimer: parseInt(e.target.value)})}/></label>
+              <label>Re-bid Timer<input type="number" value={draftTimers.rebidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, rebidTimer: parseInt(e.target.value)})}/></label>
+            </div>
+
+            <div className="form-actions">
               <button onClick={handleUpdateRosterSettings}>Save Settings</button>
-              <button onClick={() => setShowRosterModal(false)} className="cancel-button" style={{ marginLeft: '10px' }}>Cancel</button>
+              <button onClick={() => setShowRosterModal(false)} className="cancel-button">Cancel</button>
             </div>
           </div>
         </div>
@@ -248,30 +258,21 @@ const Leagues = ({ userId }) => {
 
       {showJoinModal && (
         <div className="modal-overlay">
-            <div className="modal-content">
-                <h3>Join a League</h3>
-                <label>
-                    League Name:
-                    <input 
-                        type="text" 
-                        value={joinLeagueName} 
-                        onChange={(e) => setJoinLeagueName(e.target.value)} 
-                        required 
-                    />
-                </label>
-                <br />
-                <label>
-                    Password (optional):
-                    <input 
-                        type="password" 
-                        value={joinPassword} 
-                        onChange={(e) => setJoinPassword(e.target.value)} 
-                    />
-                </label>
-                <br />
-                <button onClick={handleJoinLeague}>Join League</button>
-                <button onClick={() => setShowJoinModal(false)} className="cancel-button" style={{ marginLeft: '10px' }}>Cancel</button>
+          <div className="modal-content">
+            <h3>Join a League</h3>
+            <label>
+              League Name
+              <input type="text" value={joinLeagueName} onChange={(e) => setJoinLeagueName(e.target.value)} required />
+            </label>
+            <label>
+              Password
+              <input type="password" value={joinPassword} onChange={(e) => setJoinPassword(e.target.value)} />
+            </label>
+            <div className="form-actions">
+              <button onClick={handleJoinLeague}>Join League</button>
+              <button onClick={() => setShowJoinModal(false)} className="cancel-button">Cancel</button>
             </div>
+          </div>
         </div>
       )}
     </div>
