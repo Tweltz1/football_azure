@@ -25,7 +25,12 @@ public static class CreateLeague
             return new BadRequestObjectResult("Please provide a league name and admin ID.");
         }
 
-        var userProfile = await GetUserProfile(data.AdminId, log);
+        var userProfile = await UserProfileStore.FindAsync(data.AdminId);
+        if (userProfile == null)
+        {
+            log.LogWarning("Profile not found for user {UserId} during league creation.", data.AdminId);
+        }
+
         var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
         var rosterSettings = data.RosterSettings ?? new RosterSettings();
         var draftTimers = data.DraftTimers ?? new DraftTimers();
@@ -75,19 +80,6 @@ public static class CreateLeague
         await AppServices.LeaguesContainer.CreateItemAsync(newLeague, new PartitionKey(newLeague.Id));
 
         return new OkObjectResult(new { id = newLeague.Id, name = newLeague.Name });
-    }
-
-    private static async Task<UserProfile> GetUserProfile(string userId, ILogger log)
-    {
-        try
-        {
-            return await AppServices.UsersContainer.ReadItemAsync<UserProfile>(userId, new PartitionKey(userId));
-        }
-        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            log.LogWarning("Profile not found for user {UserId} during league creation.", userId);
-            return null;
-        }
     }
 
     public class CreateLeagueRequest
