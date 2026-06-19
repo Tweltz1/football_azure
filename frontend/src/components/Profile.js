@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
-import { initialPlayerList } from '../data/playerData'; // Using our central player list
+import { initialPlayerList } from '../data/playerData';
 import '../App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
+const POSITION_OPTIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DST'];
 
 const Profile = () => {
     const { user } = useAuth();
@@ -23,8 +24,8 @@ const Profile = () => {
                 });
                 setUserProfile(response.data);
             } catch (error) {
-                console.error("Error fetching user profile:", error);
-                alert("Could not fetch your profile.");
+                console.error('Error fetching user profile:', error);
+                alert('Could not fetch your profile.');
             } finally {
                 setLoading(false);
             }
@@ -49,63 +50,71 @@ const Profile = () => {
                 favoritePlayerIds: newFavoriteIds
             });
         } catch (error) {
-            console.error("Error updating profile:", error);
-            alert("Failed to save your favorites. Reverting change.");
+            console.error('Error updating profile:', error);
+            alert('Failed to save your favorites. Reverting change.');
             setUserProfile(userProfile);
         }
     };
 
-    if (loading) return <div>Loading your profile...</div>;
-    if (!userProfile) return <div>Could not load your profile.</div>;
+    if (loading) return <div className="loading-panel">Loading your profile...</div>;
+    if (!userProfile) return <div className="empty-state">Could not load your profile.</div>;
 
+    const favoriteCount = userProfile.favoritePlayerIds?.length || 0;
     const filteredPlayerPool = initialPlayerList
         .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
         .filter(p => sortPosition === 'All Positions' || p.position === sortPosition);
 
     return (
-        <div style={{ padding: '20px' }}>
-            <h2>My Profile</h2>
-            <p>Welcome, {userProfile.displayName}. Manage your master list of favorite players here.</p>
-            <p>This list will be used as the default for any new leagues you create.</p>
+        <div className="page-shell profile-page">
+            <section className="page-hero">
+                <p className="page-kicker">Personal draft board</p>
+                <h1>My Profile</h1>
+                <p>{userProfile.displayName}, tune the master favorites list that seeds your new leagues.</p>
+                <div className="scoreboard-strip">
+                    <span>{favoriteCount} favorites</span>
+                    <span>{filteredPlayerPool.length} players in view</span>
+                </div>
+            </section>
 
-            <div className="card" style={{ marginTop: '20px' }}>
-                <h3>Master Player List</h3>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-                    <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition}>
+            <section className="player-pool-panel">
+                <p className="section-kicker">Master player list</p>
+                <h2>Player Board</h2>
+                <div className="filter-bar">
+                    <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition} aria-label="Sort by position">
                         <option>All Positions</option>
-                        <option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>K</option><option>DEF</option>
+                        {POSITION_OPTIONS.map(position => <option key={position}>{position}</option>)}
                     </select>
                     <input
                         type="text"
                         placeholder="Search for a player..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ padding: '8px' }}
                     />
                 </div>
 
-                <ul style={{ listStyle: 'none', padding: 0 }}>
+                <ul className="player-list">
                     {filteredPlayerPool.map(player => {
                         const isFavorite = userProfile.favoritePlayerIds.includes(player.id);
                         return (
                             <li key={player.id} className="player-list-item">
-                                <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
-                                <span 
-                                    onClick={() => handleToggleGlobalFavorite(player.id)} 
-                                    style={{
-                                        cursor: 'pointer',
-                                        color: isFavorite ? 'gold' : '#ccc',
-                                        fontSize: '24px'
-                                    }}
+                                <span>
+                                    <span className="player-name">{player.name}</span>{' '}
+                                    <span className="position-badge">{player.position}</span>{' '}
+                                    <span className="team-badge">{player.team}</span>{' '}
+                                    <span>Rank: {player.rank} | Bye: {player.bye}</span>
+                                </span>
+                                <button
+                                    onClick={() => handleToggleGlobalFavorite(player.id)}
+                                    className={isFavorite ? 'edit-roster-button' : 'join-button'}
                                     title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
                                 >
-                                    {isFavorite ? '★' : '☆'}
-                                </span>
+                                    {isFavorite ? 'Favorited' : 'Favorite'}
+                                </button>
                             </li>
                         );
                     })}
                 </ul>
-            </div>
+            </section>
         </div>
     );
 };

@@ -10,7 +10,6 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
-using Azure.Storage.Queues;
 
 public static class NominatePlayer
 {
@@ -20,37 +19,49 @@ public static class NominatePlayer
         string leagueId,
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
-        [Queue("auction-timers", Connection = "DraftStorageQueueConnection")] QueueClient timerQueue,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<NominatePlayerRequest>(requestBody);
+
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
+
         try
         {
-            var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-            var league = leagueResponse.Resource;
-
-            if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
-            if (!league.AuctionTimer.IsPaused) { return new BadRequestObjectResult("Draft must be paused to nominate a player."); }
-
-            var playerToNominate = league.InitialPlayerPool.FirstOrDefault(p => p.Id == data.PlayerId);
-            if (playerToNominate == null || playerToNominate.IsDrafted)
+            var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
-                return new BadRequestObjectResult("Player is not available to be nominated.");
-            }
+                if (league.AdminId != data.AdminId)
+                    return new UnauthorizedResult();
 
-            league.Status = "drafting";
-            league.CurrentPlayerId = playerToNominate.Id;
-            league.AuctionTimer.IsPaused = false;
-            league.AuctionTimer.EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer);
-            league.ActiveBids.Clear();
+                if (league.AuctionTimer == null || !league.AuctionTimer.IsPaused)
+                    return new BadRequestObjectResult("Draft must be paused to nominate a player.");
 
-            await QueueNextTimer(timerQueue, league.Id, league.CurrentPlayerId, "drafting", league.DraftTimers.BidTimer);
+                var playerToNominate = league.InitialPlayerPool.FirstOrDefault(p => p.Id == data.PlayerId);
+                if (playerToNominate == null || playerToNominate.IsDrafted)
+                    return new BadRequestObjectResult("Player is not available to be nominated.");
 
-            await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+                league.Status = "drafting";
+                league.CurrentPlayerId = playerToNominate.Id;
+                league.ActiveBids.Clear();
+                league.TieBreaker = null;
+                league.AuctionTimer = new AuctionTimer
+                {
+                    EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer),
+                    IsPaused = false,
+                    TimeRemainingOnPause = 0
+                };
+
+                return null;
+            }, log);
+
+            if (error != null) return error;
+
+            await signalRMessages.AddAsync(new SignalRMessage
+            {
+                GroupName = leagueId,
+                Target = "draftStateUpdate",
+                Arguments = new object[] { league.ForBroadcast() }
+            });
 
             return new OkObjectResult("Player nominated successfully.");
         }
@@ -60,13 +71,10 @@ public static class NominatePlayer
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
     }
-    
-    private static async Task QueueNextTimer(QueueClient queue, string leagueId, string playerId, string expectedStatus, int delayInSeconds)
-    {
-        var timerInfo = new { LeagueId = leagueId, PlayerId = playerId, ExpectedStatus = expectedStatus };
-        var message = JsonConvert.SerializeObject(timerInfo);
-        await queue.SendMessageAsync(message, TimeSpan.FromSeconds(delayInSeconds));
-    }
 
-    public class NominatePlayerRequest { public string AdminId { get; set; } public string PlayerId { get; set; } }
+    public class NominatePlayerRequest
+    {
+        public string AdminId { get; set; }
+        public string PlayerId { get; set; }
+    }
 }

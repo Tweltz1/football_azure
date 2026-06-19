@@ -7,6 +7,34 @@ import { getSignalRInfo } from '../api';
 import '../App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
+const TIMER_POLL_MS = 1000;
+const POSITION_OPTIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DST'];
+
+const useTimerTransition = (enabled, auctionTimer, transitionUrl) => {
+    const timerEndTime = auctionTimer?.endTime;
+    const timerIsPaused = auctionTimer?.isPaused;
+
+    useEffect(() => {
+        if (!enabled || !timerEndTime || timerIsPaused) return;
+
+        let hasRequestedTransition = false;
+        const requestTransitionIfExpired = async () => {
+            if (hasRequestedTransition || new Date(timerEndTime).getTime() > Date.now()) return;
+            hasRequestedTransition = true;
+
+            try {
+                await axios.post(transitionUrl);
+            } catch (error) {
+                console.error('Error advancing draft timer:', error);
+                hasRequestedTransition = false;
+            }
+        };
+
+        requestTransitionIfExpired();
+        const intervalId = setInterval(requestTransitionIfExpired, TIMER_POLL_MS);
+        return () => clearInterval(intervalId);
+    }, [enabled, timerEndTime, timerIsPaused, transitionUrl]);
+};
 
 const ToastNotification = ({ message, show, onClose }) => {
     if (!show) return null;
@@ -163,12 +191,22 @@ const LobbyView = ({ league, user, leagueId }) => {
 };
 
 const DraftingView = ({ league, user, leagueId }) => {
-    const isIntermission = league.status.toLowerCase() === 'intermission';
-    const isTieBreaker = league.status.toLowerCase() === 'tiebreaker';
+    const normalizedStatus = league.status.toLowerCase();
+    const isIntermission = normalizedStatus === 'intermission';
+    const isTieBreaker = normalizedStatus === 'tiebreaker';
+    const isAuctionPhase = normalizedStatus === 'drafting' || isTieBreaker;
     const beerBitchTeam = league.teams.find(t => t.id === league.beerBitchTeamId);
 
-    // The polling useEffect hooks have been removed. The component now relies
-    // entirely on SignalR messages to receive updates.
+    useTimerTransition(
+        isAuctionPhase,
+        league.auctionTimer,
+        `${API_BASE_URL}/leagues/${leagueId}/endBidding`
+    );
+    useTimerTransition(
+        isIntermission,
+        league.auctionTimer,
+        `${API_BASE_URL}/leagues/${leagueId}/nextRound`
+    );
 
     return (
         <>
@@ -644,7 +682,13 @@ const TeamListViewer = ({ league, user, leagueId }) => {
                     
                     const positionCounts = {};
                     for (const pos in rosterSettings) {
-                        positionCounts[pos.toUpperCase()] = team.roster.filter(s => s.player.position === pos.toUpperCase()).length;
+                        const displayPosition = pos.toUpperCase();
+                        const playerPosition = displayPosition === 'DEF' ? 'DST' : displayPosition;
+                        positionCounts[displayPosition] = team.roster.filter(spot =>
+                            spot.position === displayPosition ||
+                            spot.position === playerPosition ||
+                            spot.player.position === playerPosition
+                        ).length;
                     }
 
                     return (
@@ -737,7 +781,7 @@ const PlayerListViewer = ({ league, user, leagueId }) => {
             <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
                 <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition}>
                     <option>All Positions</option>
-                    <option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>K</option><option>DEF</option>
+                    {POSITION_OPTIONS.map(position => <option key={position}>{position}</option>)}
                 </select>
                 <input type="text" placeholder="Search for a player..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ padding: '8px' }} />
             </div>

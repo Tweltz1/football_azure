@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
-using System.Linq;
+using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 
 public static class SubmitFinalBid
 {
@@ -17,23 +17,32 @@ public static class SubmitFinalBid
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "leagues/{leagueId}/submit-final-bid")] HttpRequest req,
         string leagueId,
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
+        [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<FinalBidRequest>(requestBody);
+
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
+
         try
         {
-            var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-            var league = leagueResponse.Resource;
+            if (data.Amount <= 0) return new OkResult();
 
-            // Only record bids that are greater than 0
-            if (data.Amount > 0)
+            var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
                 league.ActiveBids[data.UserId] = new Bid { Amount = data.Amount, Timestamp = DateTime.UtcNow };
-                await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            }
+                return null;
+            }, log);
+
+            if (error != null) return error;
+
+            await signalRMessages.AddAsync(new SignalRMessage
+            {
+                GroupName = leagueId,
+                Target = "draftStateUpdate",
+                Arguments = new object[] { league.ForBroadcast() }
+            });
 
             return new OkResult();
         }

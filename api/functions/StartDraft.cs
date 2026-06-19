@@ -10,8 +10,6 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
-using System.Collections.Generic;
-using Azure.Storage.Queues;
 
 public static class StartDraft
 {
@@ -21,35 +19,57 @@ public static class StartDraft
         string leagueId,
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
-        [Queue("auction-timers", Connection = "DraftStorageQueueConnection")] QueueClient timerQueue,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
+
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
 
         try
         {
-            var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
-            var league = leagueResponse.Resource;
-
-            if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
-
-            var nonAdminMembers = league.Members.Where(id => id != league.AdminId).ToList();
-            bool allNonAdminsReady = nonAdminMembers.All(memberId => league.ReadyMembers.Contains(memberId));
-            if (!allNonAdminsReady && nonAdminMembers.Any())
+            var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
-                return new BadRequestObjectResult("Not all other members are ready.");
-            }
+                if (league.AdminId != data.AdminId)
+                    return new UnauthorizedResult();
 
-            league.Status = "drafting";
-            league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
-            league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer) };
+                var nonAdminMembers = league.Members.Where(id => id != league.AdminId).ToList();
+                bool allNonAdminsReady = nonAdminMembers.All(memberId => league.ReadyMembers.Contains(memberId));
 
-            await QueueNextTimer(timerQueue, league.Id, league.CurrentPlayerId, "drafting", league.DraftTimers.BidTimer);
+                if (!allNonAdminsReady && nonAdminMembers.Any())
+                    return new BadRequestObjectResult("Not all other members are ready.");
 
-            await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+                league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
+                league.ActiveBids.Clear();
+                league.TieBreaker = null;
+
+                if (league.CurrentPlayerId == null)
+                {
+                    league.Status = "completed";
+                    league.AuctionTimer = null;
+                }
+                else
+                {
+                    league.Status = "drafting";
+                    league.AuctionTimer = new AuctionTimer
+                    {
+                        EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer),
+                        IsPaused = false,
+                        TimeRemainingOnPause = 0
+                    };
+                }
+
+                return null;
+            }, log);
+
+            if (error != null) return error;
+
+            await signalRMessages.AddAsync(new SignalRMessage
+            {
+                GroupName = leagueId,
+                Target = "draftStateUpdate",
+                Arguments = new object[] { league.ForBroadcast() }
+            });
 
             return new OkResult();
         }
@@ -60,12 +80,8 @@ public static class StartDraft
         }
     }
 
-    private static async Task QueueNextTimer(QueueClient queue, string leagueId, string playerId, string expectedStatus, int delayInSeconds)
+    public class AdminActionRequest
     {
-        var timerInfo = new { LeagueId = leagueId, PlayerId = playerId, ExpectedStatus = expectedStatus };
-        var message = JsonConvert.SerializeObject(timerInfo);
-        await queue.SendMessageAsync(message, TimeSpan.FromSeconds(delayInSeconds));
+        public string AdminId { get; set; }
     }
-    
-    public class AdminActionRequest { public string AdminId { get; set; } }
 }
