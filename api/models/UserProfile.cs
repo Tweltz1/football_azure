@@ -23,4 +23,10 @@ public class UserProfile
 
     [JsonProperty("playerNotes")]
     public Dictionary<string, string> PlayerNotes { get; set; } = new Dictionary<string, string>();
+
+    [JsonProperty("playerTiers")]
+    public Dictionary<string, int> PlayerTiers { get; set; } = new Dictionary<string, int>();
+
+    [JsonProperty("budgetPlan")]
+    public Dictionary<string, int> BudgetPlan { get; set; } = new Dictionary<string, int>();
 }
