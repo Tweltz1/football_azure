@@ -17,7 +17,17 @@ public static class GetOrCreateUserProfile
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        var data = JsonConvert.DeserializeObject<UserProfileRequest>(requestBody);
+        UserProfileRequest data;
+
+        try
+        {
+            data = JsonConvert.DeserializeObject<UserProfileRequest>(requestBody);
+        }
+        catch (JsonException ex)
+        {
+            log?.LogWarning(ex, "Invalid profile payload.");
+            return new BadRequestObjectResult("Invalid profile payload.");
+        }
 
         if (string.IsNullOrWhiteSpace(data?.UserId))
         {
@@ -29,7 +39,7 @@ public static class GetOrCreateUserProfile
             var userProfile = await UserProfileStore.FindAsync(data.UserId);
             if (userProfile == null)
             {
-                log.LogInformation("No profile found for user {UserId}. Creating a new one.", data.UserId);
+                log?.LogInformation("No profile found for user {UserId}. Creating a new one.", data.UserId);
                 userProfile = new UserProfile
                 {
                     Id = data.UserId,
@@ -42,14 +52,14 @@ public static class GetOrCreateUserProfile
             }
             else
             {
-                log.LogInformation("Found profile for user {UserId}.", data.UserId);
+                log?.LogInformation("Found profile for user {UserId}.", data.UserId);
             }
 
             return new OkObjectResult(UserProfileStore.ToResponse(userProfile));
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Error processing profile for user {UserId}.", data.UserId);
+            log?.LogError(ex, "Error processing profile for user {UserId}.", data.UserId);
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
     }
