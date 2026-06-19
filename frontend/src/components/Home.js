@@ -183,6 +183,15 @@ const Home = () => {
           </div>
         )}
 
+        <PlayerComparison
+          players={comparePlayers}
+          allPlayers={playerBoard}
+          scoringLabel={scoringLabel}
+          maxPlayers={MAX_COMPARE}
+          onRemove={removeFromCompare}
+          onClear={clearCompare}
+        />
+
         <ul className="player-list player-board-list">
           {visiblePlayers.map((player) => (
             <li key={player.id} className="player-list-item player-board-row has-compare-action">
@@ -212,13 +221,6 @@ const Home = () => {
             </li>
           ))}
         </ul>
-
-        <PlayerComparison
-          players={comparePlayers}
-          scoringLabel={scoringLabel}
-          onRemove={removeFromCompare}
-          onClear={clearCompare}
-        />
       </section>
     </div>
   );
