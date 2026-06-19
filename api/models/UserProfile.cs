@@ -14,7 +14,13 @@ public class UserProfile
     [JsonProperty("displayName")]
     public string DisplayName { get; set; }
 
+    [JsonProperty("defaultTeamName")]
+    public string DefaultTeamName { get; set; }
+
     // This is the user's master list of favorite players
     [JsonProperty("favoritePlayerIds")]
     public List<string> FavoritePlayerIds { get; set; } = new List<string>();
+
+    [JsonProperty("playerNotes")]
+    public Dictionary<string, string> PlayerNotes { get; set; } = new Dictionary<string, string>();
 }
