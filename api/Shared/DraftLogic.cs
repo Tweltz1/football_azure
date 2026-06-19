@@ -6,6 +6,9 @@ public static class DraftLogic
 {
     public static void AwardPlayerToTeam(League league, Player player, Team winningTeam, int amount)
     {
+        league.EnsureDefaults();
+        winningTeam.Roster = winningTeam.Roster ?? new List<RosterSpot>();
+
         player.IsDrafted = true;
         player.Price = amount;
         winningTeam.Budget -= amount;
@@ -19,11 +22,11 @@ public static class DraftLogic
             WinningTeamId = winningTeam.Id,
             WinningBid = amount,
             Player = player,
-            AllBids = new Dictionary<string, Bid>(league.ActiveBids)
+            AllBids = new Dictionary<string, Bid>(league.ActiveBids ?? new Dictionary<string, Bid>())
         });
         
         league.Status = "intermission";
-        league.ActiveBids.Clear();
+        league.ClearActiveBids();
         league.CurrentPlayerId = null;
         league.TieBreaker = null;
         league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
@@ -31,6 +34,8 @@ public static class DraftLogic
 
     public static string GetNextRandomPlayerId(League league, string currentPlayerId = null)
     {
+        league.EnsureDefaults();
+
         var playerPool = league.InitialPlayerPool ?? new List<Player>();
         var undraftedPlayers = playerPool
             .Where(p => !p.IsDrafted && NflByeWeeks.IsKnownTeam(p.Team))
@@ -49,7 +54,9 @@ public static class DraftLogic
 
     private static string GetBestAvailableRosterSpot(RosterSettings settings, List<RosterSpot> currentRoster, Player player)
     {
-        string naturalPosition = player.Position.ToUpper();
+        settings = settings ?? new RosterSettings();
+        currentRoster = currentRoster ?? new List<RosterSpot>();
+        string naturalPosition = (player?.Position ?? string.Empty).ToUpperInvariant();
 
         int maxForPosition = GetMaxForPosition(settings, naturalPosition);
         int currentOnRoster = currentRoster.Count(s => s.Position == naturalPosition);
@@ -83,7 +90,7 @@ public static class DraftLogic
 
     private static int GetMaxForPosition(RosterSettings settings, string position)
     {
-        switch (position.ToUpper())
+        switch ((position ?? string.Empty).ToUpperInvariant())
         {
             case "QB": return settings.QB;
             case "RB": return settings.RB;
