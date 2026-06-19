@@ -7,7 +7,8 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
 using System.Collections.Generic;
 using Newtonsoft.Json;
-using Azure.Storage.Queues; // <-- NEW IMPORT
+using Azure.Storage.Queues;
+using Microsoft.AspNetCore.Mvc;
 
 public static class ProcessAuctionTimer
 {
@@ -16,84 +17,134 @@ public static class ProcessAuctionTimer
         [QueueTrigger("auction-timers", Connection = "DraftStorageQueueConnection")] string queueItem,
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
-        [Queue("auction-timers", Connection = "DraftStorageQueueConnection")] QueueClient timerQueue, // <-- CORRECTED BINDING
+        [Queue("auction-timers", Connection = "DraftStorageQueueConnection")] QueueClient timerQueue,
         ILogger log)
     {
         var timerInfo = JsonConvert.DeserializeObject<TimerInfo>(queueItem);
         var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
-        
+
+        string nextTimerPlayerId = null;
+        string nextTimerStatus = null;
+        int nextTimerDelay = 0;
+        bool shouldQueueTimer = false;
+
         try
         {
-            var leagueResponse = await container.ReadItemAsync<League>(timerInfo.LeagueId, new PartitionKey(timerInfo.LeagueId));
-            var league = leagueResponse.Resource;
-
-            if (league.AuctionTimer.IsPaused || league.Status.ToLower() != timerInfo.ExpectedStatus || league.CurrentPlayerId != timerInfo.PlayerId)
+            var (league, aborted) = await CosmosHelper.UpdateLeagueAsync(container, timerInfo.LeagueId, league =>
             {
-                log.LogInformation($"Ignoring stale timer for league {league.Name}.");
-                return;
-            }
-
-            if (league.Status.ToLower() == "drafting" || league.Status.ToLower() == "tiebreaker")
-            {
-                var draftedPlayer = league.InitialPlayerPool.FirstOrDefault(p => p.Id == league.CurrentPlayerId);
-                if (draftedPlayer == null) return;
-
-                if (league.ActiveBids.Any())
+                if (league.AuctionTimer.IsPaused ||
+                    league.Status.ToLower() != timerInfo.ExpectedStatus ||
+                    league.CurrentPlayerId != timerInfo.PlayerId)
                 {
-                    var highBidAmount = league.ActiveBids.Max(b => b.Value.Amount);
-                    var winningBids = league.ActiveBids.Where(b => b.Value.Amount == highBidAmount).ToList();
+                    log.LogInformation("Ignoring stale timer for league {LeagueName}.", league.Name);
+                    return new OkResult();
+                }
 
-                    if (winningBids.Count == 1)
+                if (league.Status.ToLower() == "drafting" || league.Status.ToLower() == "tiebreaker")
+                {
+                    var draftedPlayer = league.InitialPlayerPool.FirstOrDefault(p => p.Id == league.CurrentPlayerId);
+                    if (draftedPlayer == null) return new OkResult();
+
+                    if (league.ActiveBids.Any())
                     {
-                        var winningBidEntry = winningBids.First();
-                        var winningTeam = league.Teams.First(t => t.OwnerId == winningBidEntry.Key);
-                        DraftLogic.AwardPlayerToTeam(league, draftedPlayer, winningTeam, winningBidEntry.Value.Amount);
-                        await QueueNextTimer(timerQueue, league.Id, null, "intermission", league.DraftTimers.IntermissionTimer);
+                        var highBidAmount = league.ActiveBids.Max(b => b.Value.Amount);
+                        var winningBids = league.ActiveBids.Where(b => b.Value.Amount == highBidAmount).ToList();
+
+                        if (winningBids.Count == 1)
+                        {
+                            var winningBidEntry = winningBids.First();
+                            var winningTeam = league.Teams.First(t => t.OwnerId == winningBidEntry.Key);
+                            DraftLogic.AwardPlayerToTeam(league, draftedPlayer, winningTeam, winningBidEntry.Value.Amount);
+                            nextTimerPlayerId = null;
+                            nextTimerStatus = "intermission";
+                            nextTimerDelay = league.DraftTimers.IntermissionTimer;
+                            shouldQueueTimer = true;
+                        }
+                        else
+                        {
+                            league.Status = "tiebreaker";
+                            league.TieBreaker = new TieBreakerInfo
+                            {
+                                TiedTeamIds = winningBids.Select(wb => wb.Key).ToList(),
+                                TieAmount = highBidAmount,
+                                Round = (league.TieBreaker?.Round ?? 0) + 1
+                            };
+                            league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.RebidTimer) };
+                            league.ActiveBids.Clear();
+                            nextTimerPlayerId = league.CurrentPlayerId;
+                            nextTimerStatus = "tiebreaker";
+                            nextTimerDelay = league.DraftTimers.RebidTimer;
+                            shouldQueueTimer = true;
+                        }
                     }
                     else
                     {
-                        league.Status = "tiebreaker";
-                        league.TieBreaker = new TieBreakerInfo { TiedTeamIds = winningBids.Select(wb => wb.Key).ToList(), TieAmount = highBidAmount, Round = (league.TieBreaker?.Round ?? 0) + 1 };
-                        league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.RebidTimer) };
-                        league.ActiveBids.Clear();
-                        await QueueNextTimer(timerQueue, league.Id, league.CurrentPlayerId, "tiebreaker", league.DraftTimers.RebidTimer);
+                        league.Status = "intermission";
+                        league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
+                        nextTimerPlayerId = null;
+                        nextTimerStatus = "intermission";
+                        nextTimerDelay = league.DraftTimers.IntermissionTimer;
+                        shouldQueueTimer = true;
                     }
                 }
-                else 
+                else if (league.Status.ToLower() == "intermission")
                 {
-                    league.Status = "intermission";
-                    league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
-                    await QueueNextTimer(timerQueue, league.Id, null, "intermission", league.DraftTimers.IntermissionTimer);
+                    league.Status = "drafting";
+                    league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
+
+                    if (league.CurrentPlayerId == null)
+                    {
+                        league.Status = "completed";
+                    }
+                    else
+                    {
+                        league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer) };
+                        nextTimerPlayerId = league.CurrentPlayerId;
+                        nextTimerStatus = "drafting";
+                        nextTimerDelay = league.DraftTimers.BidTimer;
+                        shouldQueueTimer = true;
+                    }
                 }
-            }
-            else if (league.Status.ToLower() == "intermission")
+
+                return null;
+            }, log);
+
+            if (aborted != null) return;
+
+            if (shouldQueueTimer)
             {
-                league.Status = "drafting";
-                league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
-                
-                if (league.CurrentPlayerId == null) { league.Status = "completed"; }
-                else
-                {
-                    league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer) };
-                    await QueueNextTimer(timerQueue, league.Id, league.CurrentPlayerId, "drafting", league.DraftTimers.BidTimer);
-                }
+                await QueueNextTimer(timerQueue, league.Id, nextTimerPlayerId, nextTimerStatus, nextTimerDelay);
             }
-            
-            await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
+
+            await signalRMessages.AddAsync(new SignalRMessage
+            {
+                GroupName = timerInfo.LeagueId,
+                Target = "draftStateUpdate",
+                Arguments = new object[] { league.ForBroadcast() }
+            });
         }
         catch (Exception ex)
         {
-            log.LogError(ex, $"Error processing auction timer for league {timerInfo.LeagueId}.");
+            log.LogError(ex, "Error processing auction timer for league {LeagueId}.", timerInfo.LeagueId);
         }
     }
 
     private static async Task QueueNextTimer(QueueClient queue, string leagueId, string playerId, string expectedStatus, int delayInSeconds)
     {
-        var timerInfo = new TimerInfo { LeagueId = leagueId, PlayerId = playerId, ExpectedStatus = expectedStatus };
+        var timerInfo = new TimerInfo
+        {
+            LeagueId = leagueId,
+            PlayerId = playerId,
+            ExpectedStatus = expectedStatus
+        };
         var message = JsonConvert.SerializeObject(timerInfo);
         await queue.SendMessageAsync(message, TimeSpan.FromSeconds(delayInSeconds));
     }
 
-    public class TimerInfo { public string LeagueId { get; set; } public string PlayerId { get; set; } public string ExpectedStatus { get; set; } }
+    public class TimerInfo
+    {
+        public string LeagueId { get; set; }
+        public string PlayerId { get; set; }
+        public string ExpectedStatus { get; set; }
+    }
 }
