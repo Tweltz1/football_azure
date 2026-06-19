@@ -57,7 +57,7 @@ public static class StartNextRound
                 league.Id,
                 new PartitionKey(league.Id),
                 new ItemRequestOptions { IfMatchEtag = leagueResponse.ETag });
-            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+            await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
 
             return new OkObjectResult("Next round started.");
         }
