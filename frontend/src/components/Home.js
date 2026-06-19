@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
@@ -13,14 +14,35 @@ import {
 } from '../data/playerBoardUtils';
 import '../PlayerBoard.css';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
+
 const Home = () => {
   const { user, loading } = useAuth();
+  const [userProfile, setUserProfile] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [positionFilter, setPositionFilter] = useState('ALL');
   const [scoringMode, setScoringMode] = useState('PPR');
   const [sortBy, setSortBy] = useState('rank');
   const [playerLimit, setPlayerLimit] = useState(300);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user?.userId) return;
+
+      try {
+        const response = await axios.post(`${API_BASE_URL}/user-profile`, {
+          userId: user.userId,
+          displayName: user.userDetails,
+        });
+        setUserProfile(response.data);
+      } catch (error) {
+        console.error('Error fetching profile for home page:', error);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
 
   const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode]);
   const matchingPlayers = useMemo(() => filterPlayerBoard(playerBoard, {
@@ -30,6 +52,7 @@ const Home = () => {
   }), [playerBoard, searchTerm, positionFilter, sortBy]);
   const visiblePlayers = matchingPlayers.slice(0, playerLimit);
   const scoringLabel = getScoringLabel(scoringMode);
+  const greetingName = userProfile?.displayName || user?.userDetails || 'Commissioner';
 
   if (loading) {
     return <div className="loading-panel">Loading user data...</div>;
@@ -39,12 +62,13 @@ const Home = () => {
     <div className="page-shell home-page">
       <section className="page-hero">
         <p className="page-kicker">Live auction draft hub</p>
-        <h1>Welcome back, {user.userDetails}</h1>
+        <h1>Welcome back, {greetingName}</h1>
         <p>Build leagues, scan the player pool, and jump into the room when the bidding clock starts.</p>
         <div className="scoreboard-strip">
           <span>{initialPlayerList.length} players loaded</span>
           <span>{POSITION_FILTERS.length - 1} board filters</span>
           <span>{scoringLabel}</span>
+          <span>{userProfile?.defaultTeamName || 'Team profile ready'}</span>
           <span>Updated {formatDate(playerPoolMeta.fetchedAt)}</span>
         </div>
       </section>
