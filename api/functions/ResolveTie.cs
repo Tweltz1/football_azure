@@ -18,14 +18,21 @@ public static class ResolveTie
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<ResolveTieRequest>(requestBody);
+        if (string.IsNullOrWhiteSpace(data?.AdminId) || string.IsNullOrWhiteSpace(data.WinningTeamId))
+        {
+            return new BadRequestObjectResult("Admin ID and winning team ID are required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
         {
+            league.EnsureDefaults();
+
             if (league.AdminId != data.AdminId)
                 return new UnauthorizedResult();
 
-            if (league.Status.ToLower() != "tiebreaker" || league.TieBreaker?.Round != 2)
+            if (league.Status?.ToLowerInvariant() != "tiebreaker" || league.TieBreaker?.Round != 2)
                 return new BadRequestObjectResult("Can only resolve a second-round tie.");
 
             var winningTeam = league.Teams.FirstOrDefault(t => t.Id == data.WinningTeamId);
