@@ -8,5 +8,8 @@
       "rewrite": "/index.html",
       "statusCode": 200
     }
+  },
+  "platform": {
+    "apiRuntime": "dotnet:8.0"
   }
 }

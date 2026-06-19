@@ -7,7 +7,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.CosmosDB" Version="4.4.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.SignalRService" Version="1.14.0" />
-    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.3.0" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.6.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
   <ItemGroup>
