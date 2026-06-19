@@ -12,13 +12,9 @@ public static class GetLeagueState
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "leagues/{leagueId}/state")] HttpRequest req,
         string leagueId,
-        [CosmosDB( // <--- THIS LINE IS NOW FIXED
-            databaseName: "Fantasy Football",
-            containerName: "Leagues",
-            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
     {
-        var container = cosmosClient.GetContainer("Fantasy Football", "Leagues");
+        var container = AppServices.LeaguesContainer;
         try
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
