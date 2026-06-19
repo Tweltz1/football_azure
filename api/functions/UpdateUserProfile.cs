@@ -16,10 +16,6 @@ public static class UpdateUserProfile
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "user-profile/{userId}")] HttpRequest req,
         string userId,
-        [CosmosDB(
-            databaseName: "Fantasy Football",
-            containerName: "Users",
-            Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -30,24 +26,19 @@ public static class UpdateUserProfile
             return new BadRequestObjectResult("A list of favoritePlayerIds is required.");
         }
 
-        var container = cosmosClient.GetContainer("Fantasy Football", "Users");
+        var container = AppServices.UsersContainer;
 
         try
         {
-            // 1. READ: Get the existing profile from the database
             UserProfile userProfile = await container.ReadItemAsync<UserProfile>(userId, new PartitionKey(userId));
-
             if (userProfile == null)
             {
-                // This case should be rare since GetOrCreateUserProfile runs first, but it's good practice to handle it.
                 return new NotFoundObjectResult($"User profile for '{userId}' not found.");
             }
 
-            // 2. MODIFY: Update the favorites list with the new list from the client
             userProfile.FavoritePlayerIds = data.FavoritePlayerIds;
-            log.LogInformation($"Updating favorite players for user {userId}.");
+            log.LogInformation("Updating favorite players for user {UserId}.", userId);
 
-            // 3. REPLACE: Save the updated profile document back to the database
             await container.ReplaceItemAsync(userProfile, userProfile.Id, new PartitionKey(userProfile.UserId));
 
             return new OkObjectResult(userProfile);
@@ -58,12 +49,11 @@ public static class UpdateUserProfile
         }
         catch (Exception ex)
         {
-            log.LogError(ex, $"Error updating profile for user {userId}.");
+            log.LogError(ex, "Error updating profile for user {UserId}.", userId);
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
     }
 
-    // A helper class for the request body
     public class UpdateUserProfileRequest
     {
         public List<string> FavoritePlayerIds { get; set; }
