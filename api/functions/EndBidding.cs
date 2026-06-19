@@ -21,6 +21,7 @@ public static class EndBidding
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             var league = leagueResponse.Resource;
+            league.EnsureDefaults();
             var status = league.Status?.ToLowerInvariant();
 
             if ((status != "drafting" && status != "tiebreaker") || league.AuctionTimer == null)
@@ -70,7 +71,7 @@ public static class EndBidding
                         IsPaused = false,
                         TimeRemainingOnPause = 0
                     };
-                    league.ActiveBids.Clear();
+                    league.ClearActiveBids();
                 }
             }
             else
@@ -91,7 +92,7 @@ public static class EndBidding
                 league.Id,
                 new PartitionKey(league.Id),
                 new ItemRequestOptions { IfMatchEtag = leagueResponse.ETag });
-            await AppServices.SendToAllAsync("draftStateUpdate", league.ForBroadcast());
+            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
 
             return new OkObjectResult("Auction closed.");
         }
