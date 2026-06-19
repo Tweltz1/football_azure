@@ -41,6 +41,7 @@ const DraftRoomCommandPanel = () => {
   const [quickBidAmount, setQuickBidAmount] = useState(1);
   const [quickBidStatus, setQuickBidStatus] = useState('');
   const chatEndRef = useRef(null);
+  const autoTieBidKeyRef = useRef('');
 
   useEffect(() => {
     if (!leagueId) return;
@@ -116,6 +117,35 @@ const DraftRoomCommandPanel = () => {
   const isFinalTie = isTieBreaker && (league?.tieBreaker?.round || 0) >= 2;
   const quickBidDisabled = !user?.userId || !league || isFinalTie || (normalizedStatus !== 'drafting' && normalizedStatus !== 'tiebreaker');
   const activeBid = user?.userId ? league?.activeBids?.[user.userId]?.amount : null;
+
+  useEffect(() => {
+    if (!league || !user?.userId || !isTieBreaker || isFinalTie) return;
+
+    const tieBreaker = league.tieBreaker;
+    const tiedUserIds = tieBreaker?.tiedTeamIds || [];
+    if (!tieBreaker || !tiedUserIds.includes(user.userId)) return;
+
+    const requiredAmount = (Number(tieBreaker.tieAmount) || 0) + 1;
+    if (requiredAmount <= 1) return;
+
+    const bidKey = `${league.id || leagueId}:${league.currentPlayerId}:${tieBreaker.round}:${tieBreaker.tieAmount}:${user.userId}`;
+    if (autoTieBidKeyRef.current === bidKey) return;
+
+    const currentAmount = Number(league.activeBids?.[user.userId]?.amount) || 0;
+    if (currentAmount >= requiredAmount) {
+      autoTieBidKeyRef.current = bidKey;
+      return;
+    }
+
+    autoTieBidKeyRef.current = bidKey;
+    axios.post(`${API_BASE_URL}/leagues/${leagueId}/tiebreaker-bid`, {
+      userId: user.userId,
+      amount: requiredAmount,
+    }).catch((error) => {
+      autoTieBidKeyRef.current = '';
+      console.warn('Unable to auto-submit default tie-breaker bid:', error);
+    });
+  }, [league, leagueId, user?.userId, isTieBreaker, isFinalTie]);
 
   const handleSendChat = async (event) => {
     event.preventDefault();
