@@ -67,7 +67,7 @@ public static class SkipIntermission
 
             if (error != null) return error;
 
-            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+            await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
             return new OkObjectResult("Intermission skipped.");
         }
         catch (Exception ex)
