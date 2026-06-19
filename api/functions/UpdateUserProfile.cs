@@ -1,13 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Microsoft.Azure.Cosmos;
-using System.Collections.Generic;
 
 public static class UpdateUserProfile
 {
@@ -25,11 +24,9 @@ public static class UpdateUserProfile
             return new BadRequestObjectResult("A list of favoritePlayerIds is required.");
         }
 
-        var container = AppServices.UsersContainer;
-
         try
         {
-            UserProfile userProfile = await container.ReadItemAsync<UserProfile>(userId, new PartitionKey(userId));
+            var userProfile = await UserProfileStore.FindAsync(userId);
             if (userProfile == null)
             {
                 return new NotFoundObjectResult($"User profile for '{userId}' not found.");
@@ -38,13 +35,9 @@ public static class UpdateUserProfile
             userProfile.FavoritePlayerIds = data.FavoritePlayerIds;
             log.LogInformation("Updating favorite players for user {UserId}.", userId);
 
-            await container.ReplaceItemAsync(userProfile, userProfile.Id, new PartitionKey(userProfile.UserId));
+            await UserProfileStore.UpsertAsync(userProfile);
 
-            return new OkObjectResult(userProfile);
-        }
-        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            return new NotFoundObjectResult($"User profile for '{userId}' not found.");
+            return new OkObjectResult(UserProfileStore.ToResponse(userProfile));
         }
         catch (Exception ex)
         {
