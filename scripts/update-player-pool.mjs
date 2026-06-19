@@ -7,6 +7,7 @@ const API_BASE_URL = 'https://api.fantasypros.com/v2/json/nfl';
 const DEFAULT_LIMIT = 350;
 const DEFAULT_SCORING = 'PPR';
 const DEFAULT_POSITION = 'ALL';
+const APP_POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DST'];
 const OUTPUTS = {
   csharp: path.join('api', 'Shared', 'PlayerData.cs'),
   javascript: path.join('frontend', 'src', 'data', 'playerData.js'),
@@ -133,7 +134,7 @@ function normalizeScoring(value) {
 
 function normalizePosition(value) {
   const positionValue = String(value).trim().toUpperCase();
-  const allowed = ['ALL', 'QB', 'RB', 'WR', 'TE', 'K', 'DST', 'FLX', 'IDP', 'DL', 'LB', 'DB'];
+  const allowed = ['ALL', ...APP_POSITIONS];
   if (!allowed.includes(positionValue)) {
     fail(`Unsupported FANTASYPROS_POSITION '${value}'. Use one of: ${allowed.join(', ')}.`);
   }
@@ -142,9 +143,8 @@ function normalizePosition(value) {
 
 function normalizePlayerPosition(value) {
   const raw = String(value || '').split(',')[0].trim().toUpperCase();
-  if (raw === 'DEF' || raw === 'D/ST') return 'DST';
-  if (['QB', 'RB', 'WR', 'TE', 'K', 'DST'].includes(raw)) return raw;
-  return raw || null;
+  const normalized = raw === 'DEF' || raw === 'D/ST' ? 'DST' : raw;
+  return APP_POSITIONS.includes(normalized) ? normalized : null;
 }
 
 function firstString(...values) {
