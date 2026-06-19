@@ -37,10 +37,8 @@ public static class UserDisconnected
         {
             league.EnsureDefaults();
 
-            if (league.OnlineUserIds.Contains(data.UserId))
-            {
-                league.OnlineUserIds.Remove(data.UserId);
-            }
+            league.OnlineUserIds.Remove(data.UserId);
+            league.AwayUserIds.Remove(data.UserId);
             return null;
         }, log);
 
