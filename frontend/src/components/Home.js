@@ -12,9 +12,11 @@ import {
   SCORING_MODES,
   SORT_OPTIONS,
 } from '../data/playerBoardUtils';
+import PlayerComparison from './PlayerComparison';
 import '../PlayerBoard.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
+const MAX_COMPARE = 3;
 
 const Home = () => {
   const { user, loading } = useAuth();
@@ -24,6 +26,7 @@ const Home = () => {
   const [scoringMode, setScoringMode] = useState('PPR');
   const [sortBy, setSortBy] = useState('rank');
   const [playerLimit, setPlayerLimit] = useState(300);
+  const [compareIds, setCompareIds] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,6 +48,9 @@ const Home = () => {
   }, [user]);
 
   const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode]);
+  const comparePlayers = useMemo(() => compareIds
+    .map((playerId) => playerBoard.find((player) => player.id === playerId))
+    .filter(Boolean), [compareIds, playerBoard]);
   const matchingPlayers = useMemo(() => filterPlayerBoard(playerBoard, {
     searchTerm,
     positionFilter,
@@ -53,6 +59,27 @@ const Home = () => {
   const visiblePlayers = matchingPlayers.slice(0, playerLimit);
   const scoringLabel = getScoringLabel(scoringMode);
   const greetingName = userProfile?.displayName || user?.userDetails || 'Commissioner';
+
+  const toggleCompare = (player) => {
+    setCompareIds((previousIds) => {
+      if (previousIds.includes(player.id)) {
+        return previousIds.filter((playerId) => playerId !== player.id);
+      }
+
+      if (previousIds.length >= MAX_COMPARE) {
+        return previousIds;
+      }
+
+      return [...previousIds, player.id];
+    });
+  };
+
+  const removeFromCompare = (playerId) => {
+    setCompareIds((previousIds) => previousIds.filter((id) => id !== playerId));
+  };
+
+  const clearCompare = () => setCompareIds([]);
+  const isInCompare = (playerId) => compareIds.includes(playerId);
 
   if (loading) {
     return <div className="loading-panel">Loading user data...</div>;
@@ -149,9 +176,16 @@ const Home = () => {
           </label>
         </div>
 
+        {comparePlayers.length > 0 && (
+          <div className="compare-bar">
+            <span>Comparing {comparePlayers.length} of {MAX_COMPARE} players - {comparePlayers.map((player) => player.name).join(', ')}</span>
+            <button type="button" onClick={clearCompare}>Clear</button>
+          </div>
+        )}
+
         <ul className="player-list player-board-list">
           {visiblePlayers.map((player) => (
-            <li key={player.id} className="player-list-item player-board-row">
+            <li key={player.id} className="player-list-item player-board-row has-compare-action">
               <div className="player-main">
                 <span className="rank-chip">#{player.scoringRank}</span>
                 <span>
@@ -166,9 +200,25 @@ const Home = () => {
                 <span>Bye {player.bye || '-'}</span>
                 <span>{scoringLabel}</span>
               </div>
+              <button
+                type="button"
+                className={`compare-toggle${isInCompare(player.id) ? ' active' : ''}`}
+                onClick={() => toggleCompare(player)}
+                disabled={!isInCompare(player.id) && compareIds.length >= MAX_COMPARE}
+                aria-pressed={isInCompare(player.id)}
+              >
+                {isInCompare(player.id) ? 'Remove' : 'Compare'}
+              </button>
             </li>
           ))}
         </ul>
+
+        <PlayerComparison
+          players={comparePlayers}
+          scoringLabel={scoringLabel}
+          onRemove={removeFromCompare}
+          onClear={clearCompare}
+        />
       </section>
     </div>
   );
