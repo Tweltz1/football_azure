@@ -18,16 +18,22 @@ public static class SkipPlayer
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<AdminActionRequest>(requestBody);
+        if (string.IsNullOrWhiteSpace(data?.AdminId))
+        {
+            return new BadRequestObjectResult("Admin ID is required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         try
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             var league = leagueResponse.Resource;
+            league.EnsureDefaults();
 
             if (league.AdminId != data.AdminId) { return new UnauthorizedResult(); }
 
-            league.ActiveBids.Clear();
+            league.ClearActiveBids();
             league.TieBreaker = null;
             league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league, league.CurrentPlayerId);
 
@@ -48,7 +54,7 @@ public static class SkipPlayer
             }
 
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
-            await AppServices.SendToAllAsync("draftStateUpdate", league.ForBroadcast());
+            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
 
             return new OkObjectResult("Player skipped successfully.");
         }
