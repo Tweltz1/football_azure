@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 public static class AppServices
@@ -35,6 +36,23 @@ public static class AppServices
             url,
             accessToken = GenerateAccessToken(url, userId, TimeSpan.FromHours(1))
         };
+    }
+
+    public static async Task BroadcastDraftStateAsync(string leagueId, League league, ILogger log = null)
+    {
+        if (league == null)
+        {
+            return;
+        }
+
+        try
+        {
+            await SendToAllAsync("draftStateUpdate", league.ForBroadcast());
+        }
+        catch (Exception ex)
+        {
+            log?.LogWarning(ex, "Draft state update broadcast failed for league {LeagueId} after the league was saved.", leagueId);
+        }
     }
 
     public static Task SendToAllAsync(string target, params object[] arguments)

@@ -19,13 +19,24 @@ public static class UpdateFavoritePlayers
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-        var data = JsonConvert.DeserializeObject<UpdateFavoritesRequest>(requestBody);
+        UpdateFavoritesRequest data;
 
-        if (string.IsNullOrEmpty(data?.UserId) || data.PlayerIds == null)
+        try
+        {
+            data = JsonConvert.DeserializeObject<UpdateFavoritesRequest>(requestBody);
+        }
+        catch (JsonException ex)
+        {
+            log?.LogWarning(ex, "Invalid favorite player payload for league {LeagueId}.", leagueId);
+            return new BadRequestObjectResult("Invalid favorite player payload.");
+        }
+
+        if (string.IsNullOrWhiteSpace(data?.UserId) || data.PlayerIds == null)
         {
             return new BadRequestObjectResult("User ID and a list of player IDs are required.");
         }
 
+        var userId = data.UserId.Trim();
         var favoriteIds = data.PlayerIds
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Select(id => id.Trim())
@@ -38,32 +49,61 @@ public static class UpdateFavoritePlayers
         {
             ItemResponse<League> leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             League leagueToUpdate = leagueResponse.Resource;
+            leagueToUpdate.EnsureDefaults();
 
-            var teamToUpdate = leagueToUpdate.Teams.FirstOrDefault(t => t.OwnerId == data.UserId);
-            if (teamToUpdate == null)
+            var teamToUpdate = leagueToUpdate.Teams.FirstOrDefault(t =>
+                t != null && string.Equals(t.OwnerId, userId, StringComparison.OrdinalIgnoreCase));
+            var userIsLeagueMember = leagueToUpdate.Members.Any(memberId =>
+                string.Equals(memberId, userId, StringComparison.OrdinalIgnoreCase));
+
+            if (teamToUpdate == null && !userIsLeagueMember)
             {
-                return new NotFoundObjectResult($"Team for user '{data.UserId}' not found in league '{leagueId}'.");
+                return new NotFoundObjectResult($"Team for user '{userId}' not found in league '{leagueId}'.");
             }
 
-            teamToUpdate.FavoritePlayerIds = favoriteIds;
-
-            var userProfile = await UserProfileStore.FindAsync(data.UserId);
-            if (userProfile != null)
+            var userProfile = await UserProfileStore.FindAsync(userId) ?? new UserProfile
             {
-                userProfile.FavoritePlayerIds = favoriteIds;
-                await UserProfileStore.UpsertAsync(userProfile);
+                Id = userId,
+                UserId = userId,
+                DisplayName = userId,
+                DefaultTeamName = $"{userId}'s Team",
+                FavoritePlayerIds = new List<string>(),
+                PlayerNotes = new Dictionary<string, string>(),
+                PlayerTiers = new Dictionary<string, int>(),
+                BudgetPlan = new Dictionary<string, int>(),
+                BudgetRosterSettings = new Dictionary<string, int>()
+            };
+
+            userProfile.FavoritePlayerIds = favoriteIds;
+            await UserProfileStore.UpsertAsync(userProfile);
+
+            var leagueTeamSynced = false;
+            if (teamToUpdate != null)
+            {
+                teamToUpdate.FavoritePlayerIds = favoriteIds;
+                leagueTeamSynced = await TryReplaceLeagueAsync(container, leagueToUpdate, log);
+
+                if (leagueTeamSynced)
+                {
+                    await TryBroadcastLeagueAsync(leagueToUpdate, log);
+                }
             }
             else
             {
-                log?.LogWarning("Profile not found for user {UserId} while syncing draft favorites.", data.UserId);
+                log?.LogWarning(
+                    "User {UserId} is a member of league {LeagueId}, but no team copy was found while syncing favorites. Profile favorites were updated.",
+                    userId,
+                    leagueId);
             }
 
-            log.LogInformation("Updated favorite players for user {UserId} in league {LeagueId}.", data.UserId, leagueId);
+            log?.LogInformation("Updated favorite players for user {UserId} in league {LeagueId}.", userId, leagueId);
 
-            await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
-            await AppServices.SendToAllAsync("draftStateUpdate", leagueToUpdate.ForBroadcast());
-
-            return new OkObjectResult(new { message = "Favorite players updated successfully.", favoritePlayerIds = favoriteIds });
+            return new OkObjectResult(new
+            {
+                message = "Favorite players updated successfully.",
+                favoritePlayerIds = favoriteIds,
+                leagueTeamSynced
+            });
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -71,8 +111,37 @@ public static class UpdateFavoritePlayers
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Error updating favorite players.");
-            return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+            log?.LogError(ex, "Error updating favorite players for user {UserId} in league {LeagueId}.", userId, leagueId);
+            return new ObjectResult("Could not update favorite players. Please try again.")
+            {
+                StatusCode = StatusCodes.Status500InternalServerError
+            };
+        }
+    }
+
+    private static async Task<bool> TryReplaceLeagueAsync(Container container, League leagueToUpdate, ILogger log)
+    {
+        try
+        {
+            await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log?.LogWarning(ex, "Profile favorites were updated, but the league team favorite copy could not be saved for league {LeagueId}.", leagueToUpdate.Id);
+            return false;
+        }
+    }
+
+    private static async Task TryBroadcastLeagueAsync(League leagueToUpdate, ILogger log)
+    {
+        try
+        {
+            await AppServices.SendToAllAsync("draftStateUpdate", leagueToUpdate.ForBroadcast());
+        }
+        catch (Exception ex)
+        {
+            log?.LogWarning(ex, "Favorite players were saved, but the draft favorite broadcast failed for league {LeagueId}.", leagueToUpdate.Id);
         }
     }
 

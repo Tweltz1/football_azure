@@ -33,13 +33,16 @@ public static class ResolveTie
                 return new UnauthorizedResult();
 
             if (league.Status?.ToLowerInvariant() != "tiebreaker" || league.TieBreaker?.Round != 2)
-                return new BadRequestObjectResult("Can only resolve a second-round tie.");
+                return new BadRequestObjectResult("Can only resolve a final tie after the rebid round also tied.");
 
             var winningTeam = league.Teams.FirstOrDefault(t => t.Id == data.WinningTeamId);
             var draftedPlayer = league.InitialPlayerPool.FirstOrDefault(p => p.Id == league.CurrentPlayerId);
 
             if (winningTeam == null || draftedPlayer == null)
                 return new NotFoundObjectResult("Team or player not found.");
+
+            if (!league.TieBreaker.TiedTeamIds.Contains(winningTeam.OwnerId))
+                return new BadRequestObjectResult("Winner must be one of the tied teams.");
 
             log.LogInformation("Admin resolved tie, awarding {PlayerName} to {TeamName}.", draftedPlayer.Name, winningTeam.Name);
             DraftLogic.AwardPlayerToTeam(league, draftedPlayer, winningTeam, league.TieBreaker.TieAmount);
@@ -49,7 +52,7 @@ public static class ResolveTie
 
         if (error != null) return error;
 
-        await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+        await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
         return new OkObjectResult("Tie resolved.");
     }
 

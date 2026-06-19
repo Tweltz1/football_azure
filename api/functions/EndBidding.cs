@@ -58,20 +58,34 @@ public static class EndBidding
                 }
                 else
                 {
+                    var previousTieRound = status == "tiebreaker" ? (league.TieBreaker?.Round ?? 1) : 0;
                     league.Status = "tiebreaker";
                     league.TieBreaker = new TieBreakerInfo
                     {
                         TiedTeamIds = winningBids.Select(wb => wb.Key).ToList(),
                         TieAmount = highBidAmount,
-                        Round = (league.TieBreaker?.Round ?? 0) + 1
-                    };
-                    league.AuctionTimer = new AuctionTimer
-                    {
-                        EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.RebidTimer),
-                        IsPaused = false,
-                        TimeRemainingOnPause = 0
+                        Round = previousTieRound >= 1 ? 2 : 1
                     };
                     league.ClearActiveBids();
+
+                    if (league.TieBreaker.Round == 2)
+                    {
+                        league.AuctionTimer = new AuctionTimer
+                        {
+                            EndTime = DateTime.UtcNow,
+                            IsPaused = true,
+                            TimeRemainingOnPause = 0
+                        };
+                    }
+                    else
+                    {
+                        league.AuctionTimer = new AuctionTimer
+                        {
+                            EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.RebidTimer),
+                            IsPaused = false,
+                            TimeRemainingOnPause = 0
+                        };
+                    }
                 }
             }
             else
@@ -92,7 +106,7 @@ public static class EndBidding
                 league.Id,
                 new PartitionKey(league.Id),
                 new ItemRequestOptions { IfMatchEtag = leagueResponse.ETag });
-            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+            await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
 
             return new OkObjectResult("Auction closed.");
         }

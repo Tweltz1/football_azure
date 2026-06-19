@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Home from './components/Home';
 import Leagues from './components/Leagues';
-import DraftScreen from './components/DraftScreen';
+import DraftRoomEnhanced from './components/DraftRoomEnhanced';
 import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
 import Profile from './components/Profile';
@@ -59,7 +59,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home userId={userId} />} />
             <Route path="/leagues" element={<Leagues userId={userId} />} />
-            <Route path="/draft/:leagueId" element={<DraftScreen userId={userId} />} />
+            <Route path="/draft/:leagueId" element={<DraftRoomEnhanced userId={userId} />} />
             <Route path="/create-league" element={<CreateLeague userId={userId} />} />
             <Route path="/profile" element={<Profile userId={userId} />} />
           </Routes>

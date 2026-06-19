@@ -40,7 +40,7 @@ public static class CancelBid
 
             if (error != null) return error;
 
-            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+            await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
             return new OkObjectResult("Bid cancelled successfully.");
         }
         catch (Exception ex)

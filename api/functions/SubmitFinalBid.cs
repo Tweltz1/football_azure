@@ -37,7 +37,7 @@ public static class SubmitFinalBid
 
             if (error != null) return error;
 
-            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+            await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
             return new OkResult();
         }
         catch (Exception ex)

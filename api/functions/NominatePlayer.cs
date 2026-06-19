@@ -57,7 +57,7 @@ public static class NominatePlayer
 
             if (error != null) return error;
 
-            await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+            await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
             return new OkObjectResult("Player nominated successfully.");
         }
         catch (Exception ex)
