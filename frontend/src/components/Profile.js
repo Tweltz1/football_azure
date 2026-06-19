@@ -14,9 +14,12 @@ import {
 } from '../data/playerBoardUtils';
 import {
     buildBudgetPlannerSummary,
+    BUDGET_ROSTER_FIELDS,
     DEFAULT_BUDGET_PLAN,
+    DEFAULT_BUDGET_ROSTER_SETTINGS,
     getPlayerAvailability,
     normalizeBudgetPlan,
+    normalizeBudgetRosterSettings,
     POSITION_PLAN_ORDER,
     TIER_DEFINITIONS,
 } from '../data/strategyUtils';
@@ -36,6 +39,7 @@ const Profile = () => {
     const [noteDrafts, setNoteDrafts] = useState({});
     const [tierAssignments, setTierAssignments] = useState({});
     const [budgetPlan, setBudgetPlan] = useState(DEFAULT_BUDGET_PLAN);
+    const [budgetRosterSettings, setBudgetRosterSettings] = useState(DEFAULT_BUDGET_ROSTER_SETTINGS);
     const [boardView, setBoardView] = useState('list');
     const [searchTerm, setSearchTerm] = useState('');
     const [positionFilter, setPositionFilter] = useState('ALL');
@@ -52,6 +56,7 @@ const Profile = () => {
         if (syncStrategy) {
             setTierAssignments(profile?.playerTiers || {});
             setBudgetPlan(normalizeBudgetPlan(profile?.budgetPlan || DEFAULT_BUDGET_PLAN));
+            setBudgetRosterSettings(normalizeBudgetRosterSettings(profile?.budgetRosterSettings || DEFAULT_BUDGET_ROSTER_SETTINGS));
         }
     }, []);
 
@@ -90,7 +95,8 @@ const Profile = () => {
         const activePlayerIds = new Set(playerBoard.map((player) => player.id));
         return Object.keys(tierAssignments).filter((playerId) => !activePlayerIds.has(playerId));
     }, [playerBoard, tierAssignments]);
-    const budgetSummary = useMemo(() => buildBudgetPlannerSummary(budgetPlan), [budgetPlan]);
+    const budgetSummary = useMemo(() => buildBudgetPlannerSummary(budgetPlan, budgetRosterSettings), [budgetPlan, budgetRosterSettings]);
+    const rosterSlotCount = budgetSummary.rows.reduce((sum, row) => sum + row.slots, 0);
 
     const saveProfilePatch = async (patch, { previousProfile = userProfile, syncNotes = false, syncStrategy = true, successMessage = 'Saved' } = {}) => {
         if (!userProfile) return null;
@@ -202,10 +208,19 @@ const Profile = () => {
         setBudgetPlan((current) => ({ ...current, [position]: Math.max(0, Number(value) || 0) }));
     };
 
+    const handleRosterSettingChange = (key, value) => {
+        setBudgetRosterSettings((current) => ({ ...current, [key]: Math.max(0, Number(value) || 0) }));
+    };
+
     const handleSaveBudgetPlan = async () => {
         const normalizedPlan = normalizeBudgetPlan(budgetPlan);
+        const normalizedRosterSettings = normalizeBudgetRosterSettings(budgetRosterSettings);
         setBudgetPlan(normalizedPlan);
-        await saveProfilePatch({ budgetPlan: normalizedPlan }, {
+        setBudgetRosterSettings(normalizedRosterSettings);
+        await saveProfilePatch({
+            budgetPlan: normalizedPlan,
+            budgetRosterSettings: normalizedRosterSettings,
+        }, {
             syncNotes: false,
             successMessage: 'Budget plan saved',
         });
@@ -346,9 +361,37 @@ const Profile = () => {
                 <div className="budget-summary-grid">
                     <div className="budget-summary-card"><span>Total</span><strong>${budgetSummary.total}</strong></div>
                     <div className="budget-summary-card"><span>Remaining</span><strong>${budgetSummary.remaining}</strong></div>
+                    <div className="budget-summary-card"><span>Roster Slots</span><strong>{rosterSlotCount}</strong></div>
                     <div className="budget-summary-card"><span>Status</span><strong>{budgetSummary.remaining >= 0 ? 'Balanced' : 'Over budget'}</strong></div>
                 </div>
 
+                <div className="player-board-heading" style={{ marginTop: '22px' }}>
+                    <div>
+                        <p className="section-kicker">Roster layout</p>
+                        <h3>Slot Counts</h3>
+                    </div>
+                </div>
+                <div className="budget-planner-grid roster-layout-grid">
+                    {BUDGET_ROSTER_FIELDS.map((field) => (
+                        <label key={field.key} className="filter-field">
+                            <span>{field.label}</span>
+                            <input
+                                type="number"
+                                min="0"
+                                max="30"
+                                value={budgetRosterSettings[field.key] || 0}
+                                onChange={(event) => handleRosterSettingChange(field.key, event.target.value)}
+                            />
+                        </label>
+                    ))}
+                </div>
+
+                <div className="player-board-heading" style={{ marginTop: '22px' }}>
+                    <div>
+                        <p className="section-kicker">Budget buckets</p>
+                        <h3>Dollars by Position</h3>
+                    </div>
+                </div>
                 <div className="budget-planner-grid">
                     {POSITION_PLAN_ORDER.map((position) => (
                         <label key={position} className="filter-field">
@@ -358,11 +401,11 @@ const Profile = () => {
                     ))}
                 </div>
                 <div className="budget-row-list">
-                    {budgetSummary.rows.filter((row) => row.planned > 0).map((row) => (
+                    {budgetSummary.rows.filter((row) => row.planned > 0 || row.slots > 0).map((row) => (
                         <div key={row.position} className="budget-row">
                             <strong>{row.position}</strong>
                             <div className="budget-meter"><span style={{ width: `${Math.min(100, (row.planned / 200) * 100)}%` }} /></div>
-                            <span>${row.planned}{row.slots ? ` / ${row.slots} slots` : ''}{row.perSlot ? ` (${row.perSlot} each)` : ''}</span>
+                            <span>${row.planned}{row.slots ? ` / ${row.slots} slots` : ''}{row.slots ? ` (${row.perSlot} each)` : ''}</span>
                         </div>
                     ))}
                 </div>
