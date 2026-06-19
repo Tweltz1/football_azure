@@ -52,7 +52,7 @@ public static class JoinLeague
             var userProfile = await UserProfileStore.FindAsync(data.UserId);
             if (userProfile == null)
             {
-                log.LogWarning("Profile not found for user {UserId} when joining league.", data.UserId);
+                log?.LogWarning("Profile not found for user {UserId} when joining league.", data.UserId);
             }
 
             var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
@@ -75,7 +75,7 @@ public static class JoinLeague
         }
         catch (Exception ex)
         {
-            log.LogError(ex, "Error joining league.");
+            log?.LogError(ex, "Error joining league.");
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
     }
