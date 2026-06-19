@@ -10,8 +10,6 @@ using Newtonsoft.Json;
 using Microsoft.Azure.Cosmos;
 using System.Linq;
 using Microsoft.Azure.WebJobs.Extensions.SignalRService;
-using System.Collections.Generic;
-using Azure.Storage.Queues;
 
 public static class StartDraft
 {
@@ -21,7 +19,6 @@ public static class StartDraft
         string leagueId,
         [CosmosDB(databaseName: "Fantasy Football", containerName: "Leagues", Connection = "CosmosDbConnectionString")] CosmosClient cosmosClient,
         [SignalR(HubName = "draftHub")] IAsyncCollector<SignalRMessage> signalRMessages,
-        [Queue("auction-timers", Connection = "DraftStorageQueueConnection")] QueueClient timerQueue,
         ILogger log)
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -42,11 +39,25 @@ public static class StartDraft
                 return new BadRequestObjectResult("Not all other members are ready.");
             }
 
-            league.Status = "drafting";
             league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
-            league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer) };
+            league.ActiveBids.Clear();
+            league.TieBreaker = null;
 
-            await QueueNextTimer(timerQueue, league.Id, league.CurrentPlayerId, "drafting", league.DraftTimers.BidTimer);
+            if (league.CurrentPlayerId == null)
+            {
+                league.Status = "completed";
+                league.AuctionTimer = null;
+            }
+            else
+            {
+                league.Status = "drafting";
+                league.AuctionTimer = new AuctionTimer
+                {
+                    EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.BidTimer),
+                    IsPaused = false,
+                    TimeRemainingOnPause = 0
+                };
+            }
 
             await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
             await signalRMessages.AddAsync(new SignalRMessage { Target = "draftStateUpdate", Arguments = new object[] { league } });
@@ -58,13 +69,6 @@ public static class StartDraft
             log.LogError(ex, "Error starting draft.");
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
-    }
-
-    private static async Task QueueNextTimer(QueueClient queue, string leagueId, string playerId, string expectedStatus, int delayInSeconds)
-    {
-        var timerInfo = new { LeagueId = leagueId, PlayerId = playerId, ExpectedStatus = expectedStatus };
-        var message = JsonConvert.SerializeObject(timerInfo);
-        await queue.SendMessageAsync(message, TimeSpan.FromSeconds(delayInSeconds));
     }
     
     public class AdminActionRequest { public string AdminId { get; set; } }
