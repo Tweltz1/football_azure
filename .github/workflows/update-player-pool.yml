@@ -1,10 +1,18 @@
-name: Update FantasyPros Player Pool
+name: Update Player Pool
 
 on:
   workflow_dispatch:
     inputs:
+      source:
+        description: Player pool source.
+        required: false
+        default: sleeper
+        type: choice
+        options:
+          - sleeper
+          - fantasypros
       season:
-        description: NFL season year. Leave blank to use the current UTC year.
+        description: FantasyPros NFL season year. Leave blank to use the current UTC year.
         required: false
         type: string
       scoring:
@@ -17,7 +25,7 @@ on:
           - HALF
           - STD
       limit:
-        description: Number of ranked players to write into the app pool.
+        description: Number of players to write into the app pool.
         required: false
         default: "350"
         type: string
@@ -33,10 +41,11 @@ jobs:
     name: Update player pool
     runs-on: ubuntu-latest
     env:
+      PLAYER_POOL_SOURCE: ${{ github.event.inputs.source || 'sleeper' }}
+      PLAYER_POOL_LIMIT: ${{ github.event.inputs.limit || '350' }}
       FANTASYPROS_API_KEY: ${{ secrets.FANTASYPROS_API_KEY }}
       FANTASYPROS_SEASON: ${{ github.event.inputs.season }}
       FANTASYPROS_SCORING: ${{ github.event.inputs.scoring || 'PPR' }}
-      FANTASYPROS_LIMIT: ${{ github.event.inputs.limit || '350' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,12 +55,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Verify FantasyPros API key
-        run: |
-          if [ -z "$FANTASYPROS_API_KEY" ]; then
-            echo "::error::Add FANTASYPROS_API_KEY as a repository secret before running this workflow."
-            exit 1
-          fi
+      - name: Show update source
+        run: echo "Updating player pool from $PLAYER_POOL_SOURCE"
 
       - name: Generate player pool
         run: node scripts/update-player-pool.mjs
@@ -61,15 +66,15 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: main
-          branch: automation/fantasypros-player-pool
+          branch: automation/player-pool
           delete-branch: true
-          commit-message: Update FantasyPros player pool
-          title: Update FantasyPros player pool
+          commit-message: Update generated player pool
+          title: Update generated player pool
           body: |
-            Updates the generated player pool from FantasyPros NFL consensus rankings.
+            Updates the generated player pool.
 
             Notes:
-            - Uses PPR scoring by default and writes the top 350 players.
-            - Keeps player image URLs out of the repository.
+            - Uses Sleeper by default with no API key required.
+            - Manual runs can choose FantasyPros when `FANTASYPROS_API_KEY` is configured.
+            - Writes the top 350 players by default.
             - Existing leagues keep their copied draft pool; new leagues use this generated pool after the PR is merged.
-            - Rankings data from FantasyPros.
