@@ -1,0 +1,48 @@
+@media (max-width: 760px) {
+  .app-main > div[style*="padding: 20px"] {
+    padding: 0 !important;
+    display: grid;
+    gap: 14px;
+  }
+
+  .app-main > div[style*="padding: 20px"] > h2,
+  .app-main > div[style*="padding: 20px"] > p {
+    margin-left: 2px;
+    margin-right: 2px;
+  }
+
+  .app-main > div[style*="padding: 20px"] .card {
+    overflow: hidden;
+  }
+
+  .app-main > div[style*="padding: 20px"] .card > div[style*="display: flex"],
+  .app-main > div[style*="padding: 20px"] .player-list-item > div[style*="display: flex"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+  }
+
+  .app-main > div[style*="padding: 20px"] input,
+  .app-main > div[style*="padding: 20px"] select {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .app-main > div[style*="padding: 20px"] .player-list-item {
+    white-space: normal;
+  }
+
+  .app-main > div[style*="padding: 20px"] .user-team-details > div,
+  .app-main > div[style*="padding: 20px"] .user-team-details div[style*="display: flex"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .app-main > div[style*="padding: 20px"] ul {
+    padding-left: 0 !important;
+  }
+
+  .app-main > div[style*="padding: 20px"] h2 {
+    line-height: 1.08;
+  }
+}
