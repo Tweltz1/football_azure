@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,7 +15,7 @@ public static class UserProfileStore
         }
 
         var query = new QueryDefinition(
-            "SELECT TOP 1 c.id, c.userId, c.displayName, c.favoritePlayerIds FROM c WHERE c.userId = @userId OR c.id = @userId")
+            "SELECT TOP 1 c.id, c.userId, c.displayName, c.defaultTeamName, c.favoritePlayerIds, c.playerNotes FROM c WHERE c.userId = @userId OR c.id = @userId")
             .WithParameter("@userId", userId);
 
         using (var iterator = AppServices.UsersContainer.GetItemQueryIterator<JObject>(query))
@@ -48,7 +49,9 @@ public static class UserProfileStore
             id = profile.Id,
             userId = profile.UserId,
             displayName = profile.DisplayName,
-            favoritePlayerIds = profile.FavoritePlayerIds
+            defaultTeamName = profile.DefaultTeamName,
+            favoritePlayerIds = profile.FavoritePlayerIds,
+            playerNotes = profile.PlayerNotes
         };
     }
 
@@ -59,9 +62,15 @@ public static class UserProfileStore
             Id = document.Value<string>("id") ?? fallbackUserId,
             UserId = document.Value<string>("userId") ?? fallbackUserId,
             DisplayName = document.Value<string>("displayName"),
+            DefaultTeamName = document.Value<string>("defaultTeamName"),
             FavoritePlayerIds = document["favoritePlayerIds"] is JArray favorites
                 ? favorites.Values<string>().Where(id => !string.IsNullOrWhiteSpace(id)).ToList()
-                : new List<string>()
+                : new List<string>(),
+            PlayerNotes = document["playerNotes"] is JObject notes
+                ? notes.Properties()
+                    .Where(property => !string.IsNullOrWhiteSpace(property.Name) && property.Value.Type != JTokenType.Null)
+                    .ToDictionary(property => property.Name, property => property.Value.Value<string>() ?? string.Empty)
+                : new Dictionary<string, string>()
         };
 
         Normalize(profile);
@@ -75,7 +84,9 @@ public static class UserProfileStore
             ["id"] = profile.Id,
             ["userId"] = profile.UserId,
             ["displayName"] = profile.DisplayName,
-            ["favoritePlayerIds"] = JArray.FromObject(profile.FavoritePlayerIds ?? new List<string>())
+            ["defaultTeamName"] = profile.DefaultTeamName,
+            ["favoritePlayerIds"] = JArray.FromObject(profile.FavoritePlayerIds ?? new List<string>()),
+            ["playerNotes"] = JObject.FromObject(profile.PlayerNotes ?? new Dictionary<string, string>())
         };
     }
 
@@ -84,6 +95,8 @@ public static class UserProfileStore
         profile.UserId = string.IsNullOrWhiteSpace(profile.UserId) ? profile.Id : profile.UserId;
         profile.Id = string.IsNullOrWhiteSpace(profile.Id) ? profile.UserId : profile.Id;
         profile.DisplayName = string.IsNullOrWhiteSpace(profile.DisplayName) ? profile.UserId : profile.DisplayName;
+        profile.DefaultTeamName = string.IsNullOrWhiteSpace(profile.DefaultTeamName) ? $"{profile.DisplayName}'s Team" : profile.DefaultTeamName;
         profile.FavoritePlayerIds = profile.FavoritePlayerIds ?? new List<string>();
+        profile.PlayerNotes = profile.PlayerNotes ?? new Dictionary<string, string>();
     }
 }

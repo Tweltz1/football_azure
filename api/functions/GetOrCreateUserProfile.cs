@@ -40,12 +40,15 @@ public static class GetOrCreateUserProfile
             if (userProfile == null)
             {
                 log?.LogInformation("No profile found for user {UserId}. Creating a new one.", data.UserId);
+                var displayName = GetDisplayName(data.DisplayName, data.UserId);
                 userProfile = new UserProfile
                 {
                     Id = data.UserId,
                     UserId = data.UserId,
-                    DisplayName = GetDisplayName(data.DisplayName, data.UserId),
-                    FavoritePlayerIds = new List<string>()
+                    DisplayName = displayName,
+                    DefaultTeamName = $"{displayName}'s Team",
+                    FavoritePlayerIds = new List<string>(),
+                    PlayerNotes = new Dictionary<string, string>()
                 };
 
                 await UserProfileStore.UpsertAsync(userProfile);

@@ -1,0 +1,224 @@
+.player-board-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.player-board-heading h2 {
+  margin-bottom: 0;
+}
+
+.board-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 11px;
+  border-radius: 8px;
+  color: var(--field-deep);
+  background: rgba(216, 170, 61, 0.2);
+  border: 1px solid rgba(216, 170, 61, 0.34);
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.player-board-controls {
+  align-items: flex-end;
+}
+
+.filter-field {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 132px;
+  min-width: 132px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.filter-field select,
+.filter-field input {
+  width: 100%;
+  min-width: 0;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.search-field {
+  flex: 2 1 260px;
+}
+
+.player-board-list,
+.favorite-note-list {
+  display: grid;
+  gap: 8px;
+}
+
+.player-board-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.player-board-row.is-favorite {
+  border-color: rgba(216, 170, 61, 0.55);
+  background: linear-gradient(90deg, rgba(216, 170, 61, 0.17), rgba(255, 255, 255, 0.72));
+}
+
+.player-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.rank-chip {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 52px;
+  min-height: 36px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--field-dark), var(--field));
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.player-subline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.player-data-strip,
+.player-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.player-data-strip span,
+.note-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(20, 92, 57, 0.08);
+  border: 1px solid rgba(20, 92, 57, 0.13);
+  font-size: 0.78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.note-badge {
+  color: var(--field-deep);
+  background: rgba(216, 170, 61, 0.2);
+  border-color: rgba(216, 170, 61, 0.34);
+}
+
+.player-row-actions button {
+  min-width: 108px;
+}
+
+.unavailable-favorites {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  text-align: left;
+}
+
+.unavailable-favorites h3,
+.unavailable-favorites p {
+  margin-bottom: 0;
+}
+
+.profile-settings-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.profile-settings-form {
+  display: grid;
+  gap: 0;
+}
+
+.favorite-note-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.58fr) minmax(280px, 1fr);
+  align-items: stretch;
+  margin-bottom: 0;
+}
+
+.favorite-note-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.favorite-note-editor textarea {
+  width: 100%;
+  min-height: 82px;
+  resize: vertical;
+  border: 1px solid rgba(17, 24, 22, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.88);
+  outline: none;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.favorite-note-editor textarea:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px rgba(216, 170, 61, 0.22);
+  background: #fff;
+}
+
+@media (max-width: 760px) {
+  .player-board-heading,
+  .unavailable-favorites,
+  .player-board-row,
+  .favorite-note-row,
+  .player-main,
+  .player-row-actions,
+  .player-data-strip {
+    align-items: stretch;
+  }
+
+  .player-board-row,
+  .favorite-note-row,
+  .unavailable-favorites {
+    grid-template-columns: 1fr;
+  }
+
+  .player-board-row,
+  .player-main,
+  .player-row-actions {
+    flex-direction: column;
+  }
+
+  .player-board-row {
+    display: flex;
+  }
+
+  .player-row-actions,
+  .player-data-strip {
+    justify-content: flex-start;
+  }
+
+  .rank-chip {
+    width: fit-content;
+  }
+}
