@@ -75,6 +75,11 @@ public class League
         DraftLog = DraftLog ?? new List<DraftPick>();
         OnlineUserIds = OnlineUserIds ?? new List<string>();
 
+        if (TieBreaker != null)
+        {
+            TieBreaker.TiedTeamIds = TieBreaker.TiedTeamIds ?? new List<string>();
+        }
+
         foreach (var team in Teams)
         {
             if (team == null) continue;
