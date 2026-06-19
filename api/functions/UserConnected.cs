@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -16,12 +17,26 @@ public static class UserConnected
     {
         string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
         var data = JsonConvert.DeserializeObject<PresenceRequest>(requestBody);
+        if (string.IsNullOrWhiteSpace(data?.UserId))
+        {
+            return new BadRequestObjectResult("User ID is required.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
-        await AppServices.AddUserToGroupAsync(data.UserId, leagueId);
+        try
+        {
+            await AppServices.AddUserToGroupAsync(data.UserId, leagueId);
+        }
+        catch (Exception ex)
+        {
+            log?.LogWarning(ex, "Unable to add user {UserId} to draft group {LeagueId}.", data.UserId, leagueId);
+        }
 
         var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
         {
+            league.EnsureDefaults();
+
             if (!league.OnlineUserIds.Contains(data.UserId))
             {
                 league.OnlineUserIds.Add(data.UserId);
@@ -31,7 +46,7 @@ public static class UserConnected
 
         if (error != null) return error;
 
-        await AppServices.SendToGroupAsync(leagueId, "draftStateUpdate", league.ForBroadcast());
+        await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
         return new OkResult();
     }
 
