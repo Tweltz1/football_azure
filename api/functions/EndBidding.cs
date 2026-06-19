@@ -40,6 +40,15 @@ public static class EndBidding
                 return new BadRequestObjectResult("Current player was not found.");
             }
 
+            if (status == "tiebreaker")
+            {
+                var tieDefaultsError = AddDefaultTieBreakerBids(league, log);
+                if (tieDefaultsError != null)
+                {
+                    return tieDefaultsError;
+                }
+            }
+
             if (league.ActiveBids.Any())
             {
                 var highBidAmount = league.ActiveBids.Max(b => b.Value.Amount);
@@ -120,5 +129,62 @@ public static class EndBidding
             log.LogError(ex, "Error ending bidding for league {LeagueId}.", leagueId);
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
         }
+    }
+
+    private static IActionResult AddDefaultTieBreakerBids(League league, ILogger log)
+    {
+        if (league.TieBreaker == null || league.TieBreaker.TiedTeamIds == null || !league.TieBreaker.TiedTeamIds.Any())
+        {
+            return new BadRequestObjectResult("Tie-breaker state is missing tied teams.");
+        }
+
+        if (league.TieBreaker.Round >= 2)
+        {
+            return null;
+        }
+
+        var requiredBid = league.TieBreaker.TieAmount + 1;
+        foreach (var tiedUserId in league.TieBreaker.TiedTeamIds.Distinct())
+        {
+            if (league.ActiveBids.ContainsKey(tiedUserId))
+            {
+                continue;
+            }
+
+            var tiedTeam = league.Teams.FirstOrDefault(t => t.OwnerId == tiedUserId);
+            if (tiedTeam == null)
+            {
+                log?.LogWarning("Unable to find tied team for user {UserId} while adding default tie-breaker bid.", tiedUserId);
+                continue;
+            }
+
+            var maxBid = GetMaxBid(league, tiedTeam);
+            if (requiredBid > maxBid)
+            {
+                log?.LogWarning(
+                    "Team {TeamName} could not receive default tie-breaker bid of {RequiredBid}; max bid is {MaxBid}.",
+                    tiedTeam.Name,
+                    requiredBid,
+                    maxBid);
+                continue;
+            }
+
+            league.ActiveBids[tiedUserId] = new Bid
+            {
+                Amount = requiredBid,
+                Timestamp = DateTime.UtcNow
+            };
+        }
+
+        return null;
+    }
+
+    private static int GetMaxBid(League league, Team team)
+    {
+        var totalRosterSpots = league.RosterSettings.QB + league.RosterSettings.RB + league.RosterSettings.WR +
+                               league.RosterSettings.TE + league.RosterSettings.K + league.RosterSettings.DEF +
+                               league.RosterSettings.FLEX + league.RosterSettings.SuperFlex + league.RosterSettings.Bench;
+        var spotsToFill = totalRosterSpots - (team.Roster?.Count ?? 0);
+        return team.Budget - (spotsToFill > 0 ? spotsToFill - 1 : 0);
     }
 }
