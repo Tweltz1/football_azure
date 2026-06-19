@@ -59,8 +59,8 @@ const CreateLeague = ({ userId }) => {
         <h1>Create League</h1>
         <p>Choose the room name, roster build, and clock speed before inviting the league in.</p>
         <div className="scoreboard-strip">
-          <span>${draftTimers.bidTimer}s bid clock</span>
-          <span>${draftTimers.intermissionTimer}s intermission</span>
+          <span>{draftTimers.bidTimer}s bid clock</span>
+          <span>{draftTimers.intermissionTimer}s intermission</span>
           <span>{Object.values(rosterSettings).reduce((sum, value) => sum + value, 0)} roster spots</span>
         </div>
       </section>
