@@ -51,6 +51,7 @@ const DraftScreen = () => {
     const { user } = useAuth();
     const [league, setLeague] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [playerNotes, setPlayerNotes] = useState({});
     const [toast, setToast] = useState({ show: false, message: '' });
 
     useEffect(() => {
@@ -67,6 +68,23 @@ const DraftScreen = () => {
         };
         fetchLeagueState();
     }, [leagueId, user]);
+
+    useEffect(() => {
+        const fetchPlayerNotes = async () => {
+            if (!user?.userId) return;
+            try {
+                const response = await axios.post(`${API_BASE_URL}/user-profile`, {
+                    userId: user.userId,
+                    displayName: user.userDetails,
+                });
+                setPlayerNotes(response.data?.playerNotes || {});
+            } catch (error) {
+                console.error('Error fetching draft player notes:', error);
+            }
+        };
+
+        fetchPlayerNotes();
+    }, [user]);
 
     useEffect(() => {
         if (!user?.userId) return;
@@ -134,17 +152,17 @@ const DraftScreen = () => {
             <p>League Status: <span style={{fontWeight: 'bold'}}>{league.status.toUpperCase()}</span></p>
 
             {isLobbyPhase ? (
-                <LobbyView league={league} user={user} leagueId={leagueId} />
+                <LobbyView league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
             ) : isCompleted ? (
-                <CompletedView league={league} leagueId={leagueId} />
+                <CompletedView league={league} leagueId={leagueId} playerNotes={playerNotes} />
             ) : (
-                <DraftingView league={league} user={user} leagueId={leagueId} />
+                <DraftingView league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
             )}
         </div>
     );
 };
 
-const LobbyView = ({ league, user, leagueId }) => {
+const LobbyView = ({ league, user, leagueId, playerNotes }) => {
     const isCurrentUserAdmin = league.adminId === user.userId;
     const nonAdminMembers = league.members.filter(id => id !== league.adminId);
     const allNonAdminsReady = nonAdminMembers.every(memberId => league.readyMembers.includes(memberId));
@@ -185,12 +203,12 @@ const LobbyView = ({ league, user, leagueId }) => {
                 <h3>League Teams</h3>
                  <TeamListViewer league={league} user={user} leagueId={leagueId} />
             </div>
-            <PlayerListViewer league={league} user={user} leagueId={leagueId} />
+            <PlayerListViewer league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
         </>
     );
 };
 
-const DraftingView = ({ league, user, leagueId }) => {
+const DraftingView = ({ league, user, leagueId, playerNotes }) => {
     const normalizedStatus = league.status.toLowerCase();
     const isIntermission = normalizedStatus === 'intermission';
     const isTieBreaker = normalizedStatus === 'tiebreaker';
@@ -212,15 +230,15 @@ const DraftingView = ({ league, user, leagueId }) => {
         <>
             <div className="card">
                 <h3>Draft Controls & Overview</h3>
-                {league.adminId === user.userId && <AdminControls league={league} user={user} leagueId={leagueId} />}
+                {league.adminId === user.userId && <AdminControls league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />}
             </div>
             
             {isIntermission ? (
-                <IntermissionView league={league} />
+                <IntermissionView league={league} playerNotes={playerNotes} />
             ) : isTieBreaker ? (
-                <TieBreakerView league={league} user={user} leagueId={leagueId} />
+                <TieBreakerView league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
             ) : (
-                <AuctionView league={league} user={user} leagueId={leagueId} />
+                <AuctionView league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
             )}
 
             <div className="card" style={{marginTop: '20px'}}>
@@ -235,12 +253,12 @@ const DraftingView = ({ league, user, leagueId }) => {
                 </div>
             )}
             
-            <PlayerListViewer league={league} user={user} leagueId={leagueId} />
+            <PlayerListViewer league={league} user={user} leagueId={leagueId} playerNotes={playerNotes} />
         </>
     );
 };
 
-const AdminControls = ({ league, user, leagueId }) => {
+const AdminControls = ({ league, user, leagueId, playerNotes }) => {
     const [showBeerBitchModal, setShowBeerBitchModal] = useState(false);
     const [showNominateModal, setShowNominateModal] = useState(false);
     const [showManageMembersModal, setShowManageMembersModal] = useState(false);
@@ -384,6 +402,7 @@ const AdminControls = ({ league, user, leagueId }) => {
             {showNominateModal && (
                 <NominatePlayerModal
                     league={league}
+                    playerNotes={playerNotes}
                     onNominate={handleNominatePlayer}
                     onClose={() => setShowNominateModal(false)}
                 />
@@ -401,11 +420,12 @@ const AdminControls = ({ league, user, leagueId }) => {
     );
 };
 
-const AuctionView = ({ league, user, leagueId }) => {
+const AuctionView = ({ league, user, leagueId, playerNotes }) => {
     const [bidAmount, setBidAmount] = useState(0);
     const [timer, setTimer] = useState(0);
 
     const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
+    const currentPlayerNote = getPlayerNote(playerNotes, currentPlayer?.id);
     const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
     const currentServerBid = userHasActiveBid ? league.activeBids[user.userId].amount : 0;
 
@@ -459,6 +479,7 @@ const AuctionView = ({ league, user, leagueId }) => {
             <h3>Current Player Up for Bid:</h3>
             <h2>{currentPlayer.name} - {currentPlayer.position} - {currentPlayer.team}</h2>
             <p>Rank: {currentPlayer.rank} | Bye Week: {currentPlayer.bye}</p>
+            <PlayerNote note={currentPlayerNote} />
             <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Bid Ends In: {timer}s</p>
             
             {userHasActiveBid && (
@@ -484,7 +505,7 @@ const AuctionView = ({ league, user, leagueId }) => {
     );
 };
 
-const IntermissionView = ({ league }) => {
+const IntermissionView = ({ league, playerNotes }) => {
     const [timer, setTimer] = useState(0);
     const lastPick = league.draftLog && league.draftLog.length > 0 ? league.draftLog[league.draftLog.length - 1] : null;
 
@@ -512,6 +533,7 @@ const IntermissionView = ({ league }) => {
 
     const winningTeam = league.teams.find(t => t.id === lastPick.winningTeamId);
     const allBids = Object.entries(lastPick.allBids).sort(([,a],[,b]) => b.amount - a.amount);
+    const lastPickNote = getPlayerNote(playerNotes, lastPick.player?.id);
 
     return (
         <div className="card" style={{marginTop: '20px', backgroundColor: '#e6ffed'}}>
@@ -524,6 +546,7 @@ const IntermissionView = ({ league }) => {
                     <strong> {winningTeam?.name || 'N/A'}</strong> for 
                     <strong> ${lastPick.winningBid}</strong>!
                 </p>
+                <PlayerNote note={lastPickNote} />
             </div>
             <div style={{marginTop: '20px'}}>
                 <h4>All Bids for this Player:</h4>
@@ -538,12 +561,13 @@ const IntermissionView = ({ league }) => {
     );
 };
 
-const TieBreakerView = ({ league, user, leagueId }) => {
+const TieBreakerView = ({ league, user, leagueId, playerNotes }) => {
     const [bidAmount, setBidAmount] = useState(0);
     const [timer, setTimer] = useState(0);
     const [showResolveTieModal, setShowResolveTieModal] = useState(false);
 
     const currentPlayer = league.initialPlayerPool.find(p => p.id === league.currentPlayerId);
+    const currentPlayerNote = getPlayerNote(playerNotes, currentPlayer?.id);
     const userIsTied = league.tieBreaker?.tiedTeamIds.includes(user.userId);
     const isSecondRoundTie = league.tieBreaker?.round === 2;
     const isCurrentUserAdmin = league.adminId === user.userId;
@@ -597,6 +621,7 @@ const TieBreakerView = ({ league, user, leagueId }) => {
         <div className="card" style={{marginTop: '20px', backgroundColor: '#fff3cd'}}>
             <h2>Tie Breaker!</h2>
             <p>A tie was detected for <strong>{currentPlayer.name}</strong> at <strong>${league.tieBreaker.tieAmount}</strong>.</p>
+            <PlayerNote note={currentPlayerNote} />
             <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Re-bid Ends In: {timer}s</p>
 
             {userIsTied ? (
@@ -755,7 +780,7 @@ const TeamListViewer = ({ league, user, leagueId }) => {
     );
 };
 
-const PlayerListViewer = ({ league, user, leagueId }) => {
+const PlayerListViewer = ({ league, user, leagueId, playerNotes }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortPosition, setSortPosition] = useState('All Positions');
     const userTeam = league.teams.find(team => team.ownerId === user.userId);
@@ -789,7 +814,10 @@ const PlayerListViewer = ({ league, user, leagueId }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
                 {favoritePlayers.map(player => (
                     <li key={player.id} className="player-list-item">
-                        <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
+                        <div>
+                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
+                            <PlayerNote note={getPlayerNote(playerNotes, player.id)} compact />
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                             <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
                             <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
@@ -801,7 +829,10 @@ const PlayerListViewer = ({ league, user, leagueId }) => {
             <ul style={{ listStyle: 'none', padding: 0 }}>
                 {availablePlayers.map(player => (
                     <li key={player.id} className="player-list-item">
-                        <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
+                        <div>
+                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
+                            <PlayerNote note={getPlayerNote(playerNotes, player.id)} compact />
+                        </div>
                         <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
                     </li>
                 ))}
@@ -810,7 +841,7 @@ const PlayerListViewer = ({ league, user, leagueId }) => {
     );
 };
 
-const NominatePlayerModal = ({ league, onNominate, onClose }) => {
+const NominatePlayerModal = ({ league, playerNotes, onNominate, onClose }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const undraftedPlayers = league.initialPlayerPool.filter(p => !p.isDrafted)
         .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -823,7 +854,10 @@ const NominatePlayerModal = ({ league, onNominate, onClose }) => {
                 <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
                     {undraftedPlayers.map(player => (
                         <li key={player.id} className="player-list-item">
-                            <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
+                            <div>
+                                <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
+                                <PlayerNote note={getPlayerNote(playerNotes, player.id)} compact />
+                            </div>
                             <button onClick={() => onNominate(player.id)}>Nominate</button>
                         </li>
                     ))}
@@ -871,7 +905,7 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
     );
 };
 
-const CompletedView = ({ league, leagueId }) => {
+const CompletedView = ({ league, leagueId, playerNotes }) => {
     return (
         <div className="card" style={{textAlign: 'center'}}>
             <h2>The Draft is Complete!</h2>
@@ -892,7 +926,8 @@ const CompletedView = ({ league, leagueId }) => {
                         <ul style={{listStyle: 'none', padding: 0}}>
                             {team.roster.map((spot, index) => (
                                 <li key={index}>
-                                    {spot.player.name} ({spot.player.position} - Bye: {spot.player.bye}) - ${spot.player.price}
+                                    <span>{spot.player.name} ({spot.player.position} - Bye: {spot.player.bye}) - ${spot.player.price}</span>
+                                    <PlayerNote note={getPlayerNote(playerNotes, spot.player.id)} compact />
                                 </li>
                             ))}
                         </ul>
@@ -901,6 +936,39 @@ const CompletedView = ({ league, leagueId }) => {
             </div>
         </div>
     );
+};
+
+const getPlayerNote = (playerNotes = {}, playerId) => {
+    const note = playerId ? playerNotes[playerId] : '';
+    return typeof note === 'string' ? note.trim() : '';
+};
+
+const PlayerNote = ({ note, compact = false }) => {
+    if (!note) return null;
+
+    return (
+        <div style={compact ? compactNoteStyle : noteStyle}>
+            <strong>Your note:</strong> {note}
+        </div>
+    );
+};
+
+const noteStyle = {
+    margin: '10px auto',
+    maxWidth: '680px',
+    padding: '10px 12px',
+    borderRadius: '8px',
+    color: '#11442f',
+    backgroundColor: 'rgba(216, 170, 61, 0.18)',
+    border: '1px solid rgba(216, 170, 61, 0.35)',
+    fontWeight: 700,
+};
+
+const compactNoteStyle = {
+    marginTop: '4px',
+    color: '#65746f',
+    fontSize: '0.82rem',
+    fontWeight: 700,
 };
 
 export default DraftScreen;
