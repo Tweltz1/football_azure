@@ -66,10 +66,15 @@ public static class GetOrCreateUserProfile
             return displayName.Value<string>();
         }
 
-        return displayName["displayName"]?.Value<string>()
-            ?? displayName["name"]?.Value<string>()
-            ?? displayName["userDetails"]?.Value<string>()
-            ?? fallback;
+        if (displayName.Type == JTokenType.Object)
+        {
+            return displayName["displayName"]?.Value<string>()
+                ?? displayName["name"]?.Value<string>()
+                ?? displayName["userDetails"]?.Value<string>()
+                ?? fallback;
+        }
+
+        return fallback;
     }
 
     public class UserProfileRequest
