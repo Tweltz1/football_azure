@@ -83,7 +83,7 @@ public static class UpdateUserProfile
     {
         return playerNotes
             .Where(note => !string.IsNullOrWhiteSpace(note.Key) && !string.IsNullOrWhiteSpace(note.Value))
-            .GroupBy(note => note.Key.Trim())
+            .GroupBy(note => note.Key.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 group => group.Key,
                 group => Truncate(group.Last().Value.Trim(), 1000),
