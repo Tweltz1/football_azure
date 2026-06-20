@@ -4,6 +4,7 @@ import axios from 'axios';
 import { HubConnectionBuilder } from '@microsoft/signalr';
 import { useAuth } from '../AuthContext';
 import { getSignalRInfo } from '../api';
+import { subscribeProfileUpdates } from '../profileSync';
 import DraftScreen from './DraftScreen';
 import './DraftRoomEnhanced.css';
 
@@ -26,6 +27,7 @@ const DraftRoomEnhanced = ({ userId }) => {
   const [leagueLoaded, setLeagueLoaded] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [beerRequest, setBeerRequest] = useState(null);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
 
   const handleLeagueUpdate = useCallback((updatedLeague) => {
     setLeague(updatedLeague);
@@ -41,6 +43,10 @@ const DraftRoomEnhanced = ({ userId }) => {
     onChatMessage: setChatMessages,
     onBeerRequest: setBeerRequest,
   });
+
+  useEffect(() => {
+    return subscribeProfileUpdates(() => setProfileRefreshKey((current) => current + 1));
+  }, []);
 
   useEffect(() => {
     if (!leagueId) return;
@@ -68,6 +74,7 @@ const DraftRoomEnhanced = ({ userId }) => {
   return (
     <div className="draft-room-enhanced">
       <DraftScreen
+        key={profileRefreshKey}
         userId={userId}
         sharedLiveState
         league={league}
@@ -101,11 +108,23 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
   const normalizedStatus = String(league?.status || '').toLowerCase();
   const isTieBreaker = normalizedStatus === 'tiebreaker';
   const isFinalTie = isTieBreaker && (league?.tieBreaker?.round || 0) >= 2;
-  const quickBidDisabled = !user?.userId || !league || isFinalTie || (normalizedStatus !== 'drafting' && normalizedStatus !== 'tiebreaker');
+  const tiedUserIds = league?.tieBreaker?.tiedTeamIds || [];
+  const currentTeam = user?.userId ? teams.find((team) => team.ownerId === user.userId) : null;
+  const quickBidMax = currentTeam ? getMaxBid(league?.rosterSettings, currentTeam) : 0;
+  const quickBidMin = isTieBreaker ? (Number(league?.tieBreaker?.tieAmount) || 0) + 1 : 1;
+  const userCanBidInPhase = !isTieBreaker || tiedUserIds.includes(user?.userId);
+  const isCappedBelowMinimum = Boolean(currentTeam) && quickBidMax < quickBidMin;
+  const quickBidDisabled = !user?.userId
+    || !league
+    || !currentTeam
+    || isFinalTie
+    || !userCanBidInPhase
+    || isCappedBelowMinimum
+    || (normalizedStatus !== 'drafting' && normalizedStatus !== 'tiebreaker');
   const activeBid = user?.userId ? league?.activeBids?.[user.userId]?.amount : null;
 
   useEffect(() => {
-    if (!league || !user?.userId || !isTieBreaker || isFinalTie) return;
+    if (!league || !user?.userId || !currentTeam || !isTieBreaker || isFinalTie) return;
 
     const tieBreaker = league.tieBreaker;
     const tiedUserIds = tieBreaker?.tiedTeamIds || [];
@@ -116,6 +135,13 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
 
     const bidKey = `${league.id || leagueId}:${league.currentPlayerId}:${tieBreaker.round}:${tieBreaker.tieAmount}:${user.userId}`;
     if (autoTieBidKeyRef.current === bidKey) return;
+
+    const maxBid = getMaxBid(league.rosterSettings, currentTeam);
+    if (requiredAmount > maxBid) {
+      autoTieBidKeyRef.current = bidKey;
+      setQuickBidStatus(`Max bid is $${maxBid}; waiting for admin if no team can go higher.`);
+      return;
+    }
 
     const currentAmount = Number(league.activeBids?.[user.userId]?.amount) || 0;
     if (currentAmount >= requiredAmount) {
@@ -131,7 +157,7 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
       autoTieBidKeyRef.current = '';
       console.warn('Unable to auto-submit default tie-breaker bid:', error);
     });
-  }, [league, leagueId, user?.userId, isTieBreaker, isFinalTie]);
+  }, [league, leagueId, user?.userId, currentTeam, isTieBreaker, isFinalTie]);
 
   const handleSendChat = async (event) => {
     event.preventDefault();
@@ -154,16 +180,22 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
   const handleQuickBid = async () => {
     if (quickBidDisabled) return;
 
-    const amount = Math.max(1, parseInt(quickBidAmount, 10) || 1);
+    const requestedAmount = Math.max(quickBidMin, parseInt(quickBidAmount, 10) || quickBidMin);
+    if (requestedAmount > quickBidMax) {
+      setQuickBidAmount(quickBidMax);
+      alert(`You cannot bid $${requestedAmount}. Your current max bid is $${quickBidMax} because you must keep $1 for each remaining roster spot.`);
+      return;
+    }
+
     const endpoint = isTieBreaker ? 'tiebreaker-bid' : 'bid';
     setQuickBidStatus('Sending...');
 
     try {
       await axios.post(`${API_BASE_URL}/leagues/${leagueId}/${endpoint}`, {
         userId: user.userId,
-        amount,
+        amount: requestedAmount,
       });
-      setQuickBidStatus(`Bid $${amount} sent`);
+      setQuickBidStatus(`Bid $${requestedAmount} sent`);
       setTimeout(() => setQuickBidStatus(''), 1800);
     } catch (error) {
       setQuickBidStatus('');
@@ -200,7 +232,8 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
           <input
             id="quick-bid-amount"
             type="number"
-            min="1"
+            min={quickBidMin}
+            max={quickBidMax || undefined}
             value={quickBidAmount}
             onChange={(event) => setQuickBidAmount(event.target.value)}
             disabled={quickBidDisabled}
@@ -209,7 +242,10 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
             Bid
           </button>
         </div>
+        {currentTeam && <p className="draft-muted">Max bid: ${quickBidMax} | Minimum: ${quickBidMin}</p>}
         {typeof activeBid === 'number' && <p className="draft-muted">Your active bid: ${activeBid}</p>}
+        {isCappedBelowMinimum && <p className="draft-muted">You are capped below the minimum bid for this player.</p>}
+        {isTieBreaker && !userCanBidInPhase && <p className="draft-muted">Only tied teams can bid in this round.</p>}
         {isFinalTie && <p className="draft-muted">Final tie is locked for admin resolution.</p>}
         {quickBidStatus && <p className="quick-bid-status">{quickBidStatus}</p>}
       </CollapsiblePanel>
@@ -415,6 +451,16 @@ const useDraftCardCollapsers = () => {
 };
 
 const getRosterTotal = (settings = {}) => Object.values(settings || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+
+const getMaxBid = (settings, team) => {
+  if (!team) return 0;
+  const totalRosterSpots = getRosterTotal(settings);
+  const openRosterSpots = Math.max(0, totalRosterSpots - ((team.roster || []).length));
+  if (openRosterSpots <= 0) return 0;
+
+  const reserveForRemainingPlayers = openRosterSpots - 1;
+  return Math.max(0, (Number(team.budget) || 0) - reserveForRemainingPlayers);
+};
 
 const formatChatTime = (value) => {
   if (!value) return '';

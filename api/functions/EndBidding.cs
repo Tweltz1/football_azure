@@ -79,12 +79,7 @@ public static class EndBidding
 
                     if (league.TieBreaker.Round == 2)
                     {
-                        league.AuctionTimer = new AuctionTimer
-                        {
-                            EndTime = DateTime.UtcNow,
-                            IsPaused = true,
-                            TimeRemainingOnPause = 0
-                        };
+                        PauseForAdminTieResolution(league);
                     }
                     else
                     {
@@ -95,6 +90,14 @@ public static class EndBidding
                             TimeRemainingOnPause = 0
                         };
                     }
+                }
+            }
+            else if (status == "tiebreaker")
+            {
+                var cappedTieError = MoveCappedTieToAdminResolution(league, log);
+                if (cappedTieError != null)
+                {
+                    return cappedTieError;
                 }
             }
             else
@@ -158,11 +161,11 @@ public static class EndBidding
                 continue;
             }
 
-            var maxBid = GetMaxBid(league, tiedTeam);
+            var maxBid = BidRules.GetMaxBid(league, tiedTeam);
             if (requiredBid > maxBid)
             {
-                log?.LogWarning(
-                    "Team {TeamName} could not receive default tie-breaker bid of {RequiredBid}; max bid is {MaxBid}.",
+                log?.LogInformation(
+                    "Team {TeamName} cannot receive default tie-breaker bid of {RequiredBid}; max bid is {MaxBid}.",
                     tiedTeam.Name,
                     requiredBid,
                     maxBid);
@@ -179,12 +182,51 @@ public static class EndBidding
         return null;
     }
 
-    private static int GetMaxBid(League league, Team team)
+    private static IActionResult MoveCappedTieToAdminResolution(League league, ILogger log)
     {
-        var totalRosterSpots = league.RosterSettings.QB + league.RosterSettings.RB + league.RosterSettings.WR +
-                               league.RosterSettings.TE + league.RosterSettings.K + league.RosterSettings.DEF +
-                               league.RosterSettings.FLEX + league.RosterSettings.SuperFlex + league.RosterSettings.Bench;
-        var spotsToFill = totalRosterSpots - (team.Roster?.Count ?? 0);
-        return team.Budget - (spotsToFill > 0 ? spotsToFill - 1 : 0);
+        if (league.TieBreaker == null || league.TieBreaker.TiedTeamIds == null || !league.TieBreaker.TiedTeamIds.Any())
+        {
+            return new BadRequestObjectResult("Tie-breaker state is missing tied teams.");
+        }
+
+        var requiredBid = league.TieBreaker.TieAmount + 1;
+        var tiedTeams = league.TieBreaker.TiedTeamIds
+            .Distinct()
+            .Select(userId => league.Teams.FirstOrDefault(team => team.OwnerId == userId))
+            .Where(team => team != null)
+            .ToList();
+
+        if (!tiedTeams.Any())
+        {
+            return new BadRequestObjectResult("No tied teams were found.");
+        }
+
+        var teamsAbleToRebid = tiedTeams.Where(team => BidRules.GetMaxBid(league, team) >= requiredBid).ToList();
+        if (teamsAbleToRebid.Any())
+        {
+            log?.LogWarning(
+                "Tie-breaker ended with no active bids even though {Count} tied team(s) could still bid. Moving to admin resolution to avoid skipping the player.",
+                teamsAbleToRebid.Count);
+        }
+        else
+        {
+            log?.LogInformation("All tied teams are capped at the tie amount. Moving to admin resolution.");
+        }
+
+        league.Status = "tiebreaker";
+        league.TieBreaker.Round = 2;
+        league.ClearActiveBids();
+        PauseForAdminTieResolution(league);
+        return null;
+    }
+
+    private static void PauseForAdminTieResolution(League league)
+    {
+        league.AuctionTimer = new AuctionTimer
+        {
+            EndTime = DateTime.UtcNow,
+            IsPaused = true,
+            TimeRemainingOnPause = 0
+        };
     }
 }

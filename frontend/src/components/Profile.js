@@ -24,6 +24,7 @@ import {
     TIER_DEFINITIONS,
 } from '../data/strategyUtils';
 import TierBoard from './TierBoard';
+import { notifyProfileUpdated } from '../profileSync';
 import '../App.css';
 import '../PlayerBoard.css';
 
@@ -105,6 +106,7 @@ const Profile = () => {
             const response = await axios.post(`${API_BASE_URL}/user-profile/${user.userId}`, patch);
             setUserProfile(response.data);
             syncProfileFields(response.data, syncNotes, syncStrategy);
+            notifyProfileUpdated();
             setProfileMessage(successMessage);
             setTimeout(() => setProfileMessage(''), 2500);
             return response.data;

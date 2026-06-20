@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
@@ -14,6 +14,7 @@ import {
   SORT_OPTIONS,
 } from '../data/playerBoardUtils';
 import { getPlayerAvailability } from '../data/strategyUtils';
+import { subscribeProfileUpdates } from '../profileSync';
 import MockDraftLab from './MockDraftLab';
 import PlayerComparison from './PlayerComparison';
 import '../PlayerBoard.css';
@@ -35,23 +36,27 @@ const Home = () => {
   const [trendData, setTrendData] = useState({ add: [], drop: [], loading: false, error: null });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user?.userId) return;
+  const fetchProfile = useCallback(async () => {
+    if (!user?.userId) return;
 
-      try {
-        const response = await axios.post(`${API_BASE_URL}/user-profile`, {
-          userId: user.userId,
-          displayName: user.userDetails,
-        });
-        setUserProfile(response.data);
-      } catch (error) {
-        console.error('Error fetching profile for home page:', error);
-      }
-    };
-
-    fetchProfile();
+    try {
+      const response = await axios.post(`${API_BASE_URL}/user-profile`, {
+        userId: user.userId,
+        displayName: user.userDetails,
+      });
+      setUserProfile(response.data);
+    } catch (error) {
+      console.error('Error fetching profile for home page:', error);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  useEffect(() => {
+    return subscribeProfileUpdates(fetchProfile, { includeFocus: true });
+  }, [fetchProfile]);
 
   const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode]);
   const rankMovementItems = useMemo(() => ({
@@ -69,6 +74,9 @@ const Home = () => {
   const visiblePlayers = matchingPlayers.slice(0, playerLimit);
   const scoringLabel = getScoringLabel(scoringMode);
   const greetingName = userProfile?.displayName || user?.userDetails || 'Commissioner';
+  const favoriteSet = useMemo(() => new Set(userProfile?.favoritePlayerIds || []), [userProfile]);
+  const playerNotes = userProfile?.playerNotes || {};
+  const playerTiers = userProfile?.playerTiers || {};
 
   useEffect(() => {
     let isActive = true;
@@ -253,8 +261,11 @@ const Home = () => {
         <ul className="player-list player-board-list">
           {visiblePlayers.map((player) => {
             const availability = getPlayerAvailability(player);
+            const isFavorite = favoriteSet.has(player.id);
+            const playerNote = typeof playerNotes[player.id] === 'string' ? playerNotes[player.id].trim() : '';
+            const tier = Number(playerTiers[player.id]) || 0;
             return (
-              <li key={player.id} className="player-list-item player-board-row has-compare-action">
+              <li key={player.id} className={`player-list-item player-board-row has-compare-action ${isFavorite ? 'is-favorite' : ''}`}>
                 <div className="player-main">
                   <span className="rank-chip">#{player.scoringRank}</span>
                   <span>
@@ -263,6 +274,9 @@ const Home = () => {
                       <span className="position-badge">{player.position}</span>
                       <span className="team-badge">{player.team}</span>
                       <span className={`status-badge ${availability.tone}`} title={availability.text}>{availability.label}</span>
+                      {isFavorite && <span className="note-badge">Favorite</span>}
+                      {tier > 0 && <span className="note-badge">T{tier}</span>}
+                      {playerNote && <span className="note-badge" title={playerNote}>Note</span>}
                     </span>
                   </span>
                 </div>

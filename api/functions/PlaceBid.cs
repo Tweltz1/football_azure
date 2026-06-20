@@ -23,6 +23,11 @@ public static class PlaceBid
             return new BadRequestObjectResult("User ID is required.");
         }
 
+        if (bidRequest.Amount <= 0)
+        {
+            return new BadRequestObjectResult("Bid must be at least $1.");
+        }
+
         var container = AppServices.LeaguesContainer;
 
         var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
@@ -32,14 +37,9 @@ public static class PlaceBid
             var biddingTeam = league.Teams.FirstOrDefault(t => t.OwnerId == bidRequest.UserId);
             if (biddingTeam == null) return new NotFoundObjectResult("Team not found.");
 
-            var totalRosterSpots = league.RosterSettings.QB + league.RosterSettings.RB + league.RosterSettings.WR +
-                                   league.RosterSettings.TE + league.RosterSettings.K + league.RosterSettings.DEF +
-                                   league.RosterSettings.FLEX + league.RosterSettings.SuperFlex + league.RosterSettings.Bench;
-            var spotsToFill = totalRosterSpots - (biddingTeam.Roster?.Count ?? 0);
-            var maxBid = biddingTeam.Budget - (spotsToFill > 0 ? spotsToFill - 1 : 0);
-
+            var maxBid = BidRules.GetMaxBid(league, biddingTeam);
             if (bidRequest.Amount > maxBid)
-                return new BadRequestObjectResult($"Your bid of ${bidRequest.Amount} exceeds your max bid of ${maxBid}.");
+                return new BadRequestObjectResult($"Your bid of ${bidRequest.Amount} exceeds your max bid of ${maxBid}. You must keep at least $1 for each remaining roster spot.");
 
             league.ActiveBids[bidRequest.UserId] = new Bid { Amount = bidRequest.Amount, Timestamp = DateTime.UtcNow };
             return null;
