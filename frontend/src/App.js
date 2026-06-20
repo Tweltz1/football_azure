@@ -9,6 +9,7 @@ import Profile from './components/Profile';
 import { useAuth } from './AuthContext';
 import './App.css';
 import './DraftMobile.css';
+import './MobileDensity.css';
 
 function App() {
   const { user, loading } = useAuth();
