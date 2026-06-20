@@ -25,7 +25,7 @@ on:
           - HALF
           - STD
       limit:
-        description: Number of players to write into the app pool.
+        description: Number of ranked players to write before appending missing K/DST team coverage.
         required: false
         default: "350"
         type: string
@@ -61,6 +61,9 @@ jobs:
       - name: Generate player pool
         run: node scripts/update-player-pool.mjs
 
+      - name: Ensure kicker and defense coverage
+        run: node scripts/ensure-player-pool-coverage.mjs
+
       - name: Open player pool update PR
         uses: peter-evans/create-pull-request@v6
         with:
@@ -76,5 +79,5 @@ jobs:
             Notes:
             - Uses Sleeper by default with no API key required.
             - Manual runs can choose FantasyPros when `FANTASYPROS_API_KEY` is configured.
-            - Writes the top 350 players by default.
+            - Writes the top ranked player limit first, then appends any missing 32-team K/DST coverage.
             - Existing leagues keep their copied draft pool; new leagues use this generated pool after the PR is merged.
