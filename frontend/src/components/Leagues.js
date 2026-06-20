@@ -237,6 +237,9 @@ const Leagues = ({ userId }) => {
                     <Link to={`/draft/${league.id}`}>
                       <button className="view-details-button">Enter Draft Room</button>
                     </Link>
+                    <Link to={`/draft/${league.id}/tv`} target="_blank" rel="noreferrer">
+                      <button className="edit-roster-button">TV Board</button>
+                    </Link>
                     <button type="button" className="edit-roster-button" onClick={() => openAnalyzer(league)}>Analyze</button>
                     {league.adminId === userId && (
                       <>

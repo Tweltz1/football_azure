@@ -27,6 +27,7 @@ const DraftRoomEnhanced = ({ userId }) => {
   const [leagueLoaded, setLeagueLoaded] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [beerRequest, setBeerRequest] = useState(null);
+  const [adminNotice, setAdminNotice] = useState(null);
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
 
   const handleLeagueUpdate = useCallback((updatedLeague) => {
@@ -34,15 +35,36 @@ const DraftRoomEnhanced = ({ userId }) => {
     setLeagueLoaded(true);
   }, []);
 
+  const showAdminNotice = useCallback((message) => {
+    setAdminNotice({ id: `${Date.now()}-${message}`, message });
+  }, []);
+
+  const handleBudgetReviewNotice = useCallback((notice) => {
+    showAdminNotice(`${notice?.adminTeamName || 'Commissioner'} opened budget controls.`);
+  }, [showAdminNotice]);
+
+  const handleBudgetAdjustmentNotice = useCallback((notice) => {
+    showAdminNotice(`${notice?.teamName || 'A team'} budget changed from $${notice?.oldBudget ?? '?'} to $${notice?.newBudget ?? '?'}.`);
+  }, [showAdminNotice]);
+
   useDraftCardCollapsers();
   useDraftPresenceReporter(leagueId, resolvedUserId);
+  useAdminBudgetReviewReporter(leagueId, resolvedUserId, league?.adminId);
   useSharedDraftConnection({
     leagueId,
     userId: resolvedUserId,
     onLeagueUpdate: handleLeagueUpdate,
     onChatMessage: setChatMessages,
     onBeerRequest: setBeerRequest,
+    onBudgetReviewNotice: handleBudgetReviewNotice,
+    onBudgetAdjustmentNotice: handleBudgetAdjustmentNotice,
   });
+
+  useEffect(() => {
+    if (!adminNotice) return undefined;
+    const timer = window.setTimeout(() => setAdminNotice(null), 7000);
+    return () => window.clearTimeout(timer);
+  }, [adminNotice]);
 
   useEffect(() => {
     return subscribeProfileUpdates(() => setProfileRefreshKey((current) => current + 1));
@@ -73,6 +95,7 @@ const DraftRoomEnhanced = ({ userId }) => {
 
   return (
     <div className="draft-room-enhanced">
+      <AdminNoticeToast notice={adminNotice} onClose={() => setAdminNotice(null)} />
       <DraftScreen
         key={profileRefreshKey}
         userId={userId}
@@ -88,6 +111,17 @@ const DraftRoomEnhanced = ({ userId }) => {
         chatMessages={chatMessages}
         setChatMessages={setChatMessages}
       />
+    </div>
+  );
+};
+
+const AdminNoticeToast = ({ notice, onClose }) => {
+  if (!notice) return null;
+
+  return (
+    <div className="admin-audit-toast" role="status" aria-live="polite">
+      <span>{notice.message}</span>
+      <button type="button" onClick={onClose} aria-label="Dismiss admin notice">Dismiss</button>
     </div>
   );
 };
@@ -305,7 +339,15 @@ const CollapsiblePanel = ({ title, storageKey, defaultOpen = false, children }) 
   );
 };
 
-const useSharedDraftConnection = ({ leagueId, userId, onLeagueUpdate, onChatMessage, onBeerRequest }) => {
+const useSharedDraftConnection = ({
+  leagueId,
+  userId,
+  onLeagueUpdate,
+  onChatMessage,
+  onBeerRequest,
+  onBudgetReviewNotice,
+  onBudgetAdjustmentNotice,
+}) => {
   useEffect(() => {
     if (!userId || !leagueId) return;
 
@@ -341,6 +383,18 @@ const useSharedDraftConnection = ({ leagueId, userId, onLeagueUpdate, onChatMess
           });
         });
 
+        connection.on('budgetReviewNotice', (notice) => {
+          if (notice?.leagueId === leagueId) {
+            onBudgetReviewNotice?.(notice);
+          }
+        });
+
+        connection.on('budgetAdjustmentNotice', (notice) => {
+          if (notice?.leagueId === leagueId) {
+            onBudgetAdjustmentNotice?.(notice);
+          }
+        });
+
         await connection.start();
         await axios.post(`${API_BASE_URL}/leagues/${leagueId}/connect`, { userId });
       } catch (error) {
@@ -357,7 +411,7 @@ const useSharedDraftConnection = ({ leagueId, userId, onLeagueUpdate, onChatMess
         connection.stop();
       }
     };
-  }, [leagueId, userId, onLeagueUpdate, onChatMessage, onBeerRequest]);
+  }, [leagueId, userId, onLeagueUpdate, onChatMessage, onBeerRequest, onBudgetReviewNotice, onBudgetAdjustmentNotice]);
 };
 
 const useDraftPresenceReporter = (leagueId, userId) => {
@@ -405,6 +459,24 @@ const useDraftPresenceReporter = (leagueId, userId) => {
       window.removeEventListener('pagehide', sendDisconnectBeacon);
     };
   }, [leagueId, userId]);
+};
+
+const useAdminBudgetReviewReporter = (leagueId, userId, adminId) => {
+  useEffect(() => {
+    if (!leagueId || !userId || userId !== adminId) return undefined;
+
+    const handleClick = (event) => {
+      const button = event.target?.closest?.('button');
+      if (!button || button.disabled || button.textContent?.trim() !== 'Manage Members') return;
+
+      axios.post(`${API_BASE_URL}/leagues/${leagueId}/budget-review`, { adminId: userId }).catch((error) => {
+        console.warn('Unable to send budget review notice:', error);
+      });
+    };
+
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, [leagueId, userId, adminId]);
 };
 
 const useDraftCardCollapsers = () => {
