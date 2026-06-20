@@ -6,6 +6,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System.Linq;
 
 public static class SubmitFinalBid
 {
@@ -26,11 +27,19 @@ public static class SubmitFinalBid
 
         try
         {
-            if (data.Amount <= 0) return new OkResult();
+            if (data.Amount <= 0) return new BadRequestObjectResult("Bid must be at least $1.");
 
             var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
                 league.EnsureDefaults();
+
+                var biddingTeam = league.Teams.FirstOrDefault(t => t.OwnerId == data.UserId);
+                if (biddingTeam == null) return new NotFoundObjectResult("Team not found.");
+
+                var maxBid = BidRules.GetMaxBid(league, biddingTeam);
+                if (data.Amount > maxBid)
+                    return new BadRequestObjectResult($"Your bid of ${data.Amount} exceeds your max bid of ${maxBid}. You must keep at least $1 for each remaining roster spot.");
+
                 league.ActiveBids[data.UserId] = new Bid { Amount = data.Amount, Timestamp = DateTime.UtcNow };
                 return null;
             }, log);
