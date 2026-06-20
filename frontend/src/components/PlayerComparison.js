@@ -1,12 +1,22 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { playerInsightsMeta, playerStatsById, positionAverages } from '../data/playerInsights';
 import { getEstimatedAuctionValue, getPlayerAvailability } from '../data/strategyUtils';
 import './PlayerComparison.css';
 
+const SLEEPER_PLAYER_STATS_BASE_URL = 'https://api.sleeper.app/stats/nfl/player';
+const liveStatsCache = new Map();
+
 const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers = 3, onRemove, onClear }) => {
+  const statsSeason = String(playerInsightsMeta.statsSeason || getDefaultStatsSeason());
+  const liveStatsState = useLivePlayerStats(players, statsSeason);
+  const playersWithStats = useMemo(
+    () => hydratePlayersWithStats(players, liveStatsState.byPlayerId),
+    [players, liveStatsState.byPlayerId]
+  );
   const positionRanks = useMemo(() => buildPositionRankMap(allPlayers), [allPlayers]);
-  const analysis = useMemo(() => buildComparisonAnalysis(players, positionRanks), [players, positionRanks]);
-  const comparisonRows = getComparisonRows(scoringLabel, playerInsightsMeta.statsSeason);
+  const analysis = useMemo(() => buildComparisonAnalysis(playersWithStats, positionRanks), [playersWithStats, positionRanks]);
+  const comparisonRows = getComparisonRows(scoringLabel, statsSeason);
+  const statsStatus = getStatsStatus(playersWithStats, liveStatsState, statsSeason);
 
   if (!players || players.length === 0) return null;
 
@@ -22,10 +32,10 @@ const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers =
         </button>
       </div>
 
-      {players.length < 2 ? (
+      {playersWithStats.length < 2 ? (
         <div className="compare-empty-state">
-          <strong>{players[0].name} is ready to compare.</strong>
-          <span>Select {maxPlayers - players.length === 1 ? '1 more player' : `up to ${maxPlayers - players.length} more players`} for the side-by-side view.</span>
+          <strong>{playersWithStats[0].name} is ready to compare.</strong>
+          <span>Select {maxPlayers - playersWithStats.length === 1 ? '1 more player' : `up to ${maxPlayers - playersWithStats.length} more players`} for the side-by-side view.</span>
         </div>
       ) : (
         <>
@@ -34,7 +44,7 @@ const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers =
             <ComparisonInsight label="Best Value" value={formatPlayerValue(analysis.bestValue)} />
             <ComparisonInsight label="Bye Overlap" value={analysis.byeOverlapLabel} tone={analysis.hasByeOverlap ? 'warn' : 'good'} />
             <ComparisonInsight label="Positions" value={analysis.positionMix} />
-            <ComparisonInsight label="Stats" value={formatStatsSeason(playerInsightsMeta.statsSeason)} />
+            <ComparisonInsight label="Stats" value={statsStatus.label} tone={statsStatus.tone} />
           </div>
 
           <div className="compare-table-wrap">
@@ -42,7 +52,7 @@ const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers =
               <thead>
                 <tr>
                   <th className="compare-label-col">Metric</th>
-                  {players.map((player) => (
+                  {playersWithStats.map((player) => (
                     <th key={player.id} className="compare-player-col">
                       <div className="compare-player-header">
                         <span className="compare-player-name">{player.name}</span>
@@ -63,9 +73,9 @@ const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers =
                 {comparisonRows.map((row) => (
                   <tr key={row.key}>
                     <td className="compare-label-cell">{row.label}</td>
-                    {players.map((player) => (
-                      <td key={player.id} className={getCellClassName(row, player, analysis, players)}>
-                        <CompareValue player={player} row={row} analysis={analysis} positionRanks={positionRanks} />
+                    {playersWithStats.map((player) => (
+                      <td key={player.id} className={getCellClassName(row, player, analysis, playersWithStats)}>
+                        <CompareValue player={player} row={row} analysis={analysis} positionRanks={positionRanks} statsLoading={liveStatsState.loading} />
                       </td>
                     ))}
                   </tr>
@@ -86,9 +96,9 @@ const ComparisonInsight = ({ label, value, tone }) => (
   </div>
 );
 
-const CompareValue = ({ player, row, analysis, positionRanks }) => {
+const CompareValue = ({ player, row, analysis, positionRanks, statsLoading }) => {
   if (row.type === 'stat') {
-    return <StatValue stat={row.render(player)} />;
+    return <StatValue stat={row.render(player)} loading={statsLoading} />;
   }
 
   if (row.key === 'position') {
@@ -139,9 +149,9 @@ const RankValue = ({ value, note }) => (
   </span>
 );
 
-const StatValue = ({ stat }) => {
+const StatValue = ({ stat, loading }) => {
   if (!stat || stat.value === null || stat.value === undefined || stat.value === '') {
-    return <span className="compare-muted">-</span>;
+    return <span className="compare-muted">{loading ? 'Loading...' : '-'}</span>;
   }
 
   return (
@@ -154,6 +164,8 @@ const StatValue = ({ stat }) => {
 
 const getComparisonRows = (scoringLabel, statsSeason) => {
   const seasonLabel = statsSeason || 'Last';
+  const fantasyPointsKey = getFantasyPointsKey(scoringLabel);
+  const fantasyLabel = `${getShortScoringLabel(scoringLabel)} / Week`;
 
   return [
     { key: 'overallRank', label: 'Overall Rank' },
@@ -174,12 +186,12 @@ const getComparisonRows = (scoringLabel, statsSeason) => {
       getNumericValue: (player) => getStatsNumber(player, ['games']),
     },
     {
-      key: 'pprPerGame',
-      label: 'PPR / Week',
+      key: 'fantasyPerGame',
+      label: fantasyLabel,
       type: 'stat',
       higherIsBetter: true,
-      render: (player) => renderStat(player, ['perGame', 'fantasyPointsPpr'], formatDecimal, 'per game'),
-      getNumericValue: (player) => getStatsNumber(player, ['perGame', 'fantasyPointsPpr']),
+      render: (player) => renderStat(player, ['perGame', fantasyPointsKey], formatDecimal, 'per game'),
+      getNumericValue: (player) => getStatsNumber(player, ['perGame', fantasyPointsKey]),
     },
     {
       key: 'yardsPerGame',
@@ -188,6 +200,46 @@ const getComparisonRows = (scoringLabel, statsSeason) => {
       higherIsBetter: true,
       render: (player) => renderStat(player, ['perGame', 'totalYards'], formatDecimal, 'pass + rush + rec'),
       getNumericValue: (player) => getStatsNumber(player, ['perGame', 'totalYards']),
+    },
+    {
+      key: 'tdsPerGame',
+      label: 'TD / Week',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['perGame', 'totalTds'], formatDecimal, 'pass + rush + rec'),
+      getNumericValue: (player) => getStatsNumber(player, ['perGame', 'totalTds']),
+    },
+    {
+      key: 'receptionsPerGame',
+      label: 'Rec / Week',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['perGame', 'receptions'], formatDecimal),
+      getNumericValue: (player) => getStatsNumber(player, ['perGame', 'receptions']),
+    },
+    {
+      key: 'targetsPerGame',
+      label: 'Targets / Week',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['perGame', 'targets'], formatDecimal),
+      getNumericValue: (player) => getStatsNumber(player, ['perGame', 'targets']),
+    },
+    {
+      key: 'carriesPerGame',
+      label: 'Carries / Week',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderStat(player, ['perGame', 'carries'], formatDecimal),
+      getNumericValue: (player) => getStatsNumber(player, ['perGame', 'carries']),
+    },
+    {
+      key: 'passingPerGame',
+      label: 'Pass / Week',
+      type: 'stat',
+      higherIsBetter: true,
+      render: renderPassingPerGame,
+      getNumericValue: (player) => getStatsNumber(player, ['perGame', 'passingYards']),
     },
     {
       key: 'vsPositionAverage',
@@ -317,6 +369,18 @@ const renderPassingLine = (player) => {
   return { value: `${formatInteger(completions)}/${formatInteger(attempts)}`, note: 'comp/att' };
 };
 
+const renderPassingPerGame = (player) => {
+  const stats = getPlayerStats(player);
+  if (!stats) return null;
+  const attempts = getPathValue(stats, ['perGame', 'attempts']);
+  const passingYards = getPathValue(stats, ['perGame', 'passingYards']);
+  if (!attempts && !passingYards) return null;
+  return {
+    value: formatDecimal(passingYards || 0),
+    note: `${formatDecimal(attempts || 0)} att/week`,
+  };
+};
+
 const renderBestWeek = (player) => {
   const stats = getPlayerStats(player);
   const bestWeek = stats?.bestWeek;
@@ -339,6 +403,259 @@ const renderPositionAverage = (player) => {
     value: `${delta >= 0 ? '+' : ''}${formatDecimal(delta)}`,
     note: `${formatDecimal(playerAverage)} vs ${formatDecimal(positionAverage)} ${player.position} avg`,
   };
+};
+
+const useLivePlayerStats = (players = [], statsSeason) => {
+  const playerStatsKey = useMemo(
+    () => players.map((player) => `${player.id}:${getSleeperPlayerId(player) || ''}`).join('|'),
+    [players]
+  );
+  const [state, setState] = useState({ byPlayerId: {}, loading: false, error: null, season: statsSeason });
+
+  useEffect(() => {
+    const targets = players
+      .map((player) => ({ playerId: player.id, sleeperId: getSleeperPlayerId(player) }))
+      .filter((target) => target.sleeperId);
+
+    if (!statsSeason || targets.length === 0) {
+      setState({ byPlayerId: {}, loading: false, error: null, season: statsSeason });
+      return undefined;
+    }
+
+    const cachedStats = {};
+    const missingTargets = [];
+
+    for (const target of targets) {
+      const cacheKey = getLiveStatsCacheKey(statsSeason, target.sleeperId);
+      if (liveStatsCache.has(cacheKey)) {
+        cachedStats[target.playerId] = liveStatsCache.get(cacheKey);
+      } else {
+        missingTargets.push(target);
+      }
+    }
+
+    setState({ byPlayerId: cachedStats, loading: missingTargets.length > 0, error: null, season: statsSeason });
+    if (missingTargets.length === 0) return undefined;
+
+    let isActive = true;
+    const controller = new AbortController();
+
+    Promise.allSettled(missingTargets.map(async (target) => {
+      const stats = await fetchSleeperSeasonStats(target.sleeperId, statsSeason, controller.signal);
+      return { ...target, stats };
+    })).then((results) => {
+      if (!isActive) return;
+      const nextStats = { ...cachedStats };
+      const errors = [];
+
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          nextStats[result.value.playerId] = result.value.stats;
+        } else if (result.reason?.name !== 'AbortError') {
+          errors.push(result.reason?.message || 'Unknown stats error');
+        }
+      }
+
+      setState({
+        byPlayerId: nextStats,
+        loading: false,
+        error: errors[0] || null,
+        season: statsSeason,
+      });
+    });
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [players, playerStatsKey, statsSeason]);
+
+  return state;
+};
+
+const fetchSleeperSeasonStats = async (sleeperId, season, signal) => {
+  const cacheKey = getLiveStatsCacheKey(season, sleeperId);
+  if (liveStatsCache.has(cacheKey)) return liveStatsCache.get(cacheKey);
+
+  const params = new URLSearchParams({
+    season_type: 'regular',
+    season: String(season),
+    grouping: 'week',
+  });
+  const response = await fetch(`${SLEEPER_PLAYER_STATS_BASE_URL}/${encodeURIComponent(sleeperId)}?${params.toString()}`, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Sleeper stats failed for ${sleeperId}: ${response.status}`);
+  }
+
+  const weeklyPayload = await response.json();
+  const stats = aggregateSleeperWeeklyStats(weeklyPayload, season);
+  liveStatsCache.set(cacheKey, stats);
+  return stats;
+};
+
+const aggregateSleeperWeeklyStats = (weeklyPayload, season) => {
+  const weekly = Object.entries(weeklyPayload || {})
+    .map(([weekKey, weekEntry]) => {
+      const stats = weekEntry?.stats || {};
+      const week = Number.parseInt(weekKey, 10) || Number.parseInt(weekEntry?.week, 10) || 0;
+      const extracted = extractSleeperWeekStats(stats);
+      return week && extracted.hasActivity ? { week, ...extracted } : null;
+    })
+    .filter(Boolean);
+
+  const games = weekly.length;
+  const totals = createEmptyTotals();
+
+  for (const week of weekly) {
+    for (const key of Object.keys(totals)) {
+      totals[key] += week[key] || 0;
+    }
+  }
+
+  const roundedTotals = Object.fromEntries(Object.entries(totals).map(([key, value]) => ([
+    key,
+    key.startsWith('fantasyPoints') ? roundNumber(value, 1) : roundInteger(value),
+  ])));
+  const divisor = Math.max(games, 1);
+  const bestWeek = [...weekly].sort((a, b) => b.fantasyPointsPpr - a.fantasyPointsPpr || b.totalYards - a.totalYards)[0] || null;
+
+  return {
+    season: String(season),
+    source: 'Sleeper live weekly stats',
+    games,
+    totals: roundedTotals,
+    perGame: {
+      fantasyPoints: roundNumber(roundedTotals.fantasyPoints / divisor, 1),
+      fantasyPointsHalfPpr: roundNumber(roundedTotals.fantasyPointsHalfPpr / divisor, 1),
+      fantasyPointsPpr: roundNumber(roundedTotals.fantasyPointsPpr / divisor, 1),
+      totalYards: roundNumber(roundedTotals.totalYards / divisor, 1),
+      totalTds: roundNumber(roundedTotals.totalTds / divisor, 2),
+      completions: roundNumber(roundedTotals.completions / divisor, 1),
+      attempts: roundNumber(roundedTotals.attempts / divisor, 1),
+      carries: roundNumber(roundedTotals.carries / divisor, 1),
+      receptions: roundNumber(roundedTotals.receptions / divisor, 1),
+      targets: roundNumber(roundedTotals.targets / divisor, 1),
+      passingYards: roundNumber(roundedTotals.passingYards / divisor, 1),
+      rushingYards: roundNumber(roundedTotals.rushingYards / divisor, 1),
+      receivingYards: roundNumber(roundedTotals.receivingYards / divisor, 1),
+    },
+    bestWeek: bestWeek ? {
+      week: bestWeek.week,
+      fantasyPointsPpr: roundNumber(bestWeek.fantasyPointsPpr, 1),
+      totalYards: roundInteger(bestWeek.totalYards),
+      totalTds: roundInteger(bestWeek.totalTds),
+      receptions: roundInteger(bestWeek.receptions),
+      passingYards: roundInteger(bestWeek.passingYards),
+      rushingYards: roundInteger(bestWeek.rushingYards),
+      receivingYards: roundInteger(bestWeek.receivingYards),
+    } : null,
+  };
+};
+
+const extractSleeperWeekStats = (stats) => {
+  const completions = statNumber(stats, ['pass_cmp']);
+  const attempts = statNumber(stats, ['pass_att']);
+  const passingYards = statNumber(stats, ['pass_yd']);
+  const passingTds = statNumber(stats, ['pass_td']);
+  const interceptions = statNumber(stats, ['pass_int']);
+  const carries = statNumber(stats, ['rush_att']);
+  const rushingYards = statNumber(stats, ['rush_yd']);
+  const rushingTds = statNumber(stats, ['rush_td']);
+  const receptions = statNumber(stats, ['rec']);
+  const targets = statNumber(stats, ['rec_tgt']);
+  const receivingYards = statNumber(stats, ['rec_yd']);
+  const receivingTds = statNumber(stats, ['rec_td']);
+  const fantasyPoints = statNumber(stats, ['pts_std']);
+  const fantasyPointsHalfPpr = statNumber(stats, ['pts_half_ppr', 'pts_ppr']);
+  const fantasyPointsPpr = statNumber(stats, ['pts_ppr', 'pts_half_ppr', 'pts_std']);
+  const totalYards = passingYards + rushingYards + receivingYards;
+  const totalTds = passingTds + rushingTds + receivingTds;
+  const hasActivity = [
+    completions,
+    attempts,
+    passingYards,
+    passingTds,
+    interceptions,
+    carries,
+    rushingYards,
+    rushingTds,
+    receptions,
+    targets,
+    receivingYards,
+    receivingTds,
+    fantasyPoints,
+    fantasyPointsPpr,
+  ].some((value) => Number.isFinite(value) && Math.abs(value) > 0);
+
+  return {
+    completions,
+    attempts,
+    passingYards,
+    passingTds,
+    interceptions,
+    carries,
+    rushingYards,
+    rushingTds,
+    receptions,
+    targets,
+    receivingYards,
+    receivingTds,
+    fantasyPoints,
+    fantasyPointsHalfPpr,
+    fantasyPointsPpr,
+    totalYards,
+    totalTds,
+    hasActivity,
+  };
+};
+
+const createEmptyTotals = () => ({
+  completions: 0,
+  attempts: 0,
+  passingYards: 0,
+  passingTds: 0,
+  interceptions: 0,
+  carries: 0,
+  rushingYards: 0,
+  rushingTds: 0,
+  receptions: 0,
+  targets: 0,
+  receivingYards: 0,
+  receivingTds: 0,
+  fantasyPoints: 0,
+  fantasyPointsHalfPpr: 0,
+  fantasyPointsPpr: 0,
+  totalYards: 0,
+  totalTds: 0,
+});
+
+const hydratePlayersWithStats = (players = [], liveStatsByPlayerId = {}) => players.map((player) => ({
+  ...player,
+  comparisonStats: liveStatsByPlayerId[player.id] || playerStatsById[player.id] || null,
+}));
+
+const getStatsStatus = (players, liveStatsState, statsSeason) => {
+  const hasLiveStats = players.some((player) => liveStatsState.byPlayerId[player.id]);
+  const hasAnyStats = players.some((player) => getPlayerStats(player));
+
+  if (liveStatsState.loading) {
+    return { label: `Loading ${statsSeason} live`, tone: null };
+  }
+
+  if (hasLiveStats) {
+    return { label: `${statsSeason} live Sleeper`, tone: 'good' };
+  }
+
+  if (hasAnyStats) {
+    return { label: formatStatsSeason(statsSeason), tone: 'good' };
+  }
+
+  if (liveStatsState.error) {
+    return { label: `${statsSeason} unavailable`, tone: 'warn' };
+  }
+
+  return { label: `${statsSeason} pending`, tone: null };
 };
 
 const getCellClassName = (row, player, analysis, players) => {
@@ -432,7 +749,7 @@ const buildPositionRankMap = (players = []) => {
     }, {});
 };
 
-const getPlayerStats = (player) => playerStatsById[player.id];
+const getPlayerStats = (player) => player?.comparisonStats || playerStatsById[player?.id];
 
 const getStatsNumber = (player, path) => {
   const value = getPathValue(getPlayerStats(player), path);
@@ -462,6 +779,36 @@ const getOverallRankNote = (player, analysis) => {
   return gap === 0 ? 'Best selected' : `+${gap} overall`;
 };
 
+const getSleeperPlayerId = (player) => {
+  if (player?.sleeperId) return String(player.sleeperId);
+  const match = String(player?.id || '').match(/^sleeper-(.+)$/);
+  return match?.[1] || null;
+};
+
+const getLiveStatsCacheKey = (season, sleeperId) => `${season}:${sleeperId}`;
+
+const getFantasyPointsKey = (scoringLabel = '') => {
+  const normalized = String(scoringLabel).toLowerCase();
+  if (normalized.includes('half')) return 'fantasyPointsHalfPpr';
+  if (normalized.includes('standard') || normalized.includes('std')) return 'fantasyPoints';
+  return 'fantasyPointsPpr';
+};
+
+const getShortScoringLabel = (scoringLabel = '') => {
+  const normalized = String(scoringLabel).toLowerCase();
+  if (normalized.includes('half')) return 'Half PPR';
+  if (normalized.includes('standard') || normalized.includes('std')) return 'STD';
+  return 'PPR';
+};
+
+const statNumber = (stats, keys) => {
+  for (const key of keys) {
+    const parsed = Number.parseFloat(stats?.[key]);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+};
+
 const formatInteger = (value) => {
   if (!Number.isFinite(value)) return '-';
   return Math.round(value).toLocaleString();
@@ -472,7 +819,16 @@ const formatDecimal = (value) => {
   return Number(value).toFixed(1);
 };
 
+const roundInteger = (value) => Math.round(Number.isFinite(value) ? value : 0);
+
+const roundNumber = (value, digits = 1) => {
+  if (!Number.isFinite(value)) return 0;
+  return Number(value.toFixed(digits));
+};
+
 const formatStatsSeason = (season) => (season ? `${season} stats` : 'Pending');
+
+const getDefaultStatsSeason = () => Math.max(2020, new Date().getUTCFullYear() - 1);
 
 const formatPlayerRank = (player) => {
   if (!player) return '-';
