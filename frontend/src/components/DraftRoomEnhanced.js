@@ -49,6 +49,7 @@ const DraftRoomEnhanced = ({ userId }) => {
 
   useDraftCardCollapsers();
   useDraftPresenceReporter(leagueId, resolvedUserId);
+  useAdminBudgetReviewReporter(leagueId, resolvedUserId, league?.adminId);
   useSharedDraftConnection({
     leagueId,
     userId: resolvedUserId,
@@ -458,6 +459,24 @@ const useDraftPresenceReporter = (leagueId, userId) => {
       window.removeEventListener('pagehide', sendDisconnectBeacon);
     };
   }, [leagueId, userId]);
+};
+
+const useAdminBudgetReviewReporter = (leagueId, userId, adminId) => {
+  useEffect(() => {
+    if (!leagueId || !userId || userId !== adminId) return undefined;
+
+    const handleClick = (event) => {
+      const button = event.target?.closest?.('button');
+      if (!button || button.disabled || button.textContent?.trim() !== 'Manage Members') return;
+
+      axios.post(`${API_BASE_URL}/leagues/${leagueId}/budget-review`, { adminId: userId }).catch((error) => {
+        console.warn('Unable to send budget review notice:', error);
+      });
+    };
+
+    document.addEventListener('click', handleClick, true);
+    return () => document.removeEventListener('click', handleClick, true);
+  }, [leagueId, userId, adminId]);
 };
 
 const useDraftCardCollapsers = () => {
