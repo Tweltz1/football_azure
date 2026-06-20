@@ -37,6 +37,7 @@ public static class CreateLeague
         var rosterSettings = data.RosterSettings ?? new RosterSettings();
         var draftTimers = data.DraftTimers ?? new DraftTimers();
         var fullPlayerPool = PlayerData.GetInitialPlayerPool();
+        await PlayerPoolCoverage.EnsureSpecialTeamsCoverageAsync(fullPlayerPool, rosterSettings.K > 0, rosterSettings.DEF > 0, log);
         NflByeWeeks.ApplyToPlayers(fullPlayerPool);
 
         var filteredPlayerPool = fullPlayerPool.Where(p =>
