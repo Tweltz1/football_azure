@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -47,6 +48,8 @@ public static class UpdateUserProfile
                 return new NotFoundObjectResult($"User profile for '{userId}' not found.");
             }
 
+            var shouldSyncLeagueFavorites = data.FavoritePlayerIds != null;
+
             if (data.DisplayName != null)
             {
                 if (string.IsNullOrWhiteSpace(data.DisplayName))
@@ -71,7 +74,8 @@ public static class UpdateUserProfile
             {
                 userProfile.FavoritePlayerIds = data.FavoritePlayerIds
                     .Where(id => !string.IsNullOrWhiteSpace(id))
-                    .Distinct()
+                    .Select(id => id.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
             }
 
@@ -99,12 +103,62 @@ public static class UpdateUserProfile
 
             await UserProfileStore.UpsertAsync(userProfile);
 
+            if (shouldSyncLeagueFavorites)
+            {
+                await SyncFavoritePlayersToLeagueTeamsAsync(userId, userProfile.FavoritePlayerIds, log);
+            }
+
             return new OkObjectResult(UserProfileStore.ToResponse(userProfile));
         }
         catch (Exception ex)
         {
             log?.LogError(ex, "Error updating profile for user {UserId}.", userId);
             return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    private static async Task SyncFavoritePlayersToLeagueTeamsAsync(string userId, List<string> favoritePlayerIds, ILogger log)
+    {
+        var favoriteIds = favoritePlayerIds ?? new List<string>();
+        var query = new QueryDefinition("SELECT * FROM c WHERE ARRAY_CONTAINS(c.members, @userId)")
+            .WithParameter("@userId", userId);
+
+        using (var iterator = AppServices.LeaguesContainer.GetItemQueryIterator<League>(query))
+        {
+            while (iterator.HasMoreResults)
+            {
+                var page = await iterator.ReadNextAsync();
+                foreach (var league in page)
+                {
+                    try
+                    {
+                        league.EnsureDefaults();
+                        var changed = false;
+
+                        foreach (var team in league.Teams.Where(team => team != null && string.Equals(team.OwnerId, userId, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            var currentFavoriteIds = team.FavoritePlayerIds ?? new List<string>();
+                            if (!currentFavoriteIds.SequenceEqual(favoriteIds, StringComparer.OrdinalIgnoreCase))
+                            {
+                                team.FavoritePlayerIds = new List<string>(favoriteIds);
+                                changed = true;
+                            }
+                        }
+
+                        if (!changed)
+                        {
+                            continue;
+                        }
+
+                        await AppServices.LeaguesContainer.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
+                        await AppServices.BroadcastDraftStateAsync(league.Id, league, log);
+                    }
+                    catch (Exception ex)
+                    {
+                        log?.LogWarning(ex, "Profile favorites were saved, but league {LeagueId} could not be synced for user {UserId}.", league?.Id, userId);
+                    }
+                }
+            }
         }
     }
 
