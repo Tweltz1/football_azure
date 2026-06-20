@@ -27,7 +27,9 @@ public static class BidRules
     {
         if (league == null || team == null) return 0;
         var openRosterSpots = GetOpenRosterSpots(league, team);
-        var reserveForRemainingPlayers = openRosterSpots > 0 ? openRosterSpots - 1 : 0;
+        if (openRosterSpots <= 0) return 0;
+
+        var reserveForRemainingPlayers = openRosterSpots - 1;
         return Math.Max(0, team.Budget - reserveForRemainingPlayers);
     }
 }
