@@ -135,6 +135,7 @@ public static class UpdateUserProfile
                         var favoritesChanged = false;
                         var (updatedLeague, error) = await CosmosHelper.UpdateLeagueAsync(AppServices.LeaguesContainer, leagueId, league =>
                         {
+                            favoritesChanged = false;
                             league.EnsureDefaults();
 
                             foreach (var team in league.Teams.Where(team => team != null && string.Equals(team.OwnerId, userId, StringComparison.OrdinalIgnoreCase)))
