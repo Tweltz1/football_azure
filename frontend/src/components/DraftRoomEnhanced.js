@@ -39,6 +39,14 @@ const DraftRoomEnhanced = ({ userId }) => {
     setAdminNotice({ id: `${Date.now()}-${message}`, message });
   }, []);
 
+  const handleBudgetReviewNotice = useCallback((notice) => {
+    showAdminNotice(`${notice?.adminTeamName || 'Commissioner'} opened budget controls.`);
+  }, [showAdminNotice]);
+
+  const handleBudgetAdjustmentNotice = useCallback((notice) => {
+    showAdminNotice(`${notice?.teamName || 'A team'} budget changed from $${notice?.oldBudget ?? '?'} to $${notice?.newBudget ?? '?'}.`);
+  }, [showAdminNotice]);
+
   useDraftCardCollapsers();
   useDraftPresenceReporter(leagueId, resolvedUserId);
   useSharedDraftConnection({
@@ -47,12 +55,8 @@ const DraftRoomEnhanced = ({ userId }) => {
     onLeagueUpdate: handleLeagueUpdate,
     onChatMessage: setChatMessages,
     onBeerRequest: setBeerRequest,
-    onBudgetReviewNotice: (notice) => {
-      showAdminNotice(`${notice?.adminTeamName || 'Commissioner'} opened budget controls.`);
-    },
-    onBudgetAdjustmentNotice: (notice) => {
-      showAdminNotice(`${notice?.teamName || 'A team'} budget changed from $${notice?.oldBudget ?? '?'} to $${notice?.newBudget ?? '?'}.`);
-    },
+    onBudgetReviewNotice: handleBudgetReviewNotice,
+    onBudgetAdjustmentNotice: handleBudgetAdjustmentNotice,
   });
 
   useEffect(() => {
