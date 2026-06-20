@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { HubConnectionBuilder } from '@microsoft/signalr';
@@ -21,37 +21,41 @@ const COLLAPSIBLE_CARD_TITLES = [
 const DraftRoomEnhanced = ({ userId }) => {
   const { leagueId } = useParams();
   const { user } = useAuth();
-  useDraftCardCollapsers();
-  useDraftPresenceReporter(leagueId, user?.userId || userId);
-
-  return (
-    <div className="draft-room-enhanced">
-      <DraftScreen userId={userId} />
-      <DraftRoomCommandPanel />
-    </div>
-  );
-};
-
-const DraftRoomCommandPanel = () => {
-  const { leagueId } = useParams();
-  const { user } = useAuth();
+  const resolvedUserId = user?.userId || userId;
   const [league, setLeague] = useState(null);
+  const [leagueLoaded, setLeagueLoaded] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
-  const [chatText, setChatText] = useState('');
-  const [quickBidAmount, setQuickBidAmount] = useState(1);
-  const [quickBidStatus, setQuickBidStatus] = useState('');
-  const chatEndRef = useRef(null);
+  const [beerRequest, setBeerRequest] = useState(null);
+
+  const handleLeagueUpdate = useCallback((updatedLeague) => {
+    setLeague(updatedLeague);
+    setLeagueLoaded(true);
+  }, []);
+
+  useDraftCardCollapsers();
+  useDraftPresenceReporter(leagueId, resolvedUserId);
+  useSharedDraftConnection({
+    leagueId,
+    userId: resolvedUserId,
+    onLeagueUpdate: handleLeagueUpdate,
+    onChatMessage: setChatMessages,
+    onBeerRequest: setBeerRequest,
+  });
 
   useEffect(() => {
     if (!leagueId) return;
 
     let isMounted = true;
     const fetchLeague = async () => {
+      setLeagueLoaded(false);
       try {
         const response = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/state`);
-        if (isMounted) setLeague(response.data);
+        if (isMounted) {
+          handleLeagueUpdate(response.data);
+        }
       } catch (error) {
-        console.error('Error loading enhanced draft room state:', error);
+        console.error('Error loading draft room state:', error);
+        if (isMounted) setLeagueLoaded(true);
       }
     };
 
@@ -59,51 +63,34 @@ const DraftRoomCommandPanel = () => {
     return () => {
       isMounted = false;
     };
-  }, [leagueId]);
+  }, [leagueId, handleLeagueUpdate]);
 
-  useEffect(() => {
-    if (!user?.userId || !leagueId) return;
+  return (
+    <div className="draft-room-enhanced">
+      <DraftScreen
+        userId={userId}
+        sharedLiveState
+        league={league}
+        leagueLoaded={leagueLoaded}
+        beerRequest={beerRequest}
+      />
+      <DraftRoomCommandPanel
+        leagueId={leagueId}
+        user={user}
+        league={league}
+        chatMessages={chatMessages}
+        setChatMessages={setChatMessages}
+      />
+    </div>
+  );
+};
 
-    let connection;
-    let isMounted = true;
-
-    const setupConnection = async () => {
-      try {
-        const info = await getSignalRInfo(user.userId);
-        if (!isMounted) return;
-
-        connection = new HubConnectionBuilder()
-          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-          .withAutomaticReconnect()
-          .build();
-
-        connection.on('draftStateUpdate', (updatedLeague) => {
-          if (updatedLeague?.id === leagueId) {
-            setLeague(updatedLeague);
-          }
-        });
-
-        connection.on('draftChatMessage', (message) => {
-          if (message?.leagueId === leagueId) {
-            setChatMessages((current) => [...current.slice(-59), message]);
-          }
-        });
-
-        await connection.start();
-      } catch (error) {
-        console.error('Enhanced draft SignalR connection failed:', error);
-      }
-    };
-
-    setupConnection();
-
-    return () => {
-      isMounted = false;
-      if (connection) {
-        connection.stop();
-      }
-    };
-  }, [leagueId, user]);
+const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMessages }) => {
+  const [chatText, setChatText] = useState('');
+  const [quickBidAmount, setQuickBidAmount] = useState(1);
+  const [quickBidStatus, setQuickBidStatus] = useState('');
+  const chatEndRef = useRef(null);
+  const autoTieBidKeyRef = useRef('');
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -116,6 +103,35 @@ const DraftRoomCommandPanel = () => {
   const isFinalTie = isTieBreaker && (league?.tieBreaker?.round || 0) >= 2;
   const quickBidDisabled = !user?.userId || !league || isFinalTie || (normalizedStatus !== 'drafting' && normalizedStatus !== 'tiebreaker');
   const activeBid = user?.userId ? league?.activeBids?.[user.userId]?.amount : null;
+
+  useEffect(() => {
+    if (!league || !user?.userId || !isTieBreaker || isFinalTie) return;
+
+    const tieBreaker = league.tieBreaker;
+    const tiedUserIds = tieBreaker?.tiedTeamIds || [];
+    if (!tieBreaker || !tiedUserIds.includes(user.userId)) return;
+
+    const requiredAmount = (Number(tieBreaker.tieAmount) || 0) + 1;
+    if (requiredAmount <= 1) return;
+
+    const bidKey = `${league.id || leagueId}:${league.currentPlayerId}:${tieBreaker.round}:${tieBreaker.tieAmount}:${user.userId}`;
+    if (autoTieBidKeyRef.current === bidKey) return;
+
+    const currentAmount = Number(league.activeBids?.[user.userId]?.amount) || 0;
+    if (currentAmount >= requiredAmount) {
+      autoTieBidKeyRef.current = bidKey;
+      return;
+    }
+
+    autoTieBidKeyRef.current = bidKey;
+    axios.post(`${API_BASE_URL}/leagues/${leagueId}/tiebreaker-bid`, {
+      userId: user.userId,
+      amount: requiredAmount,
+    }).catch((error) => {
+      autoTieBidKeyRef.current = '';
+      console.warn('Unable to auto-submit default tie-breaker bid:', error);
+    });
+  }, [league, leagueId, user?.userId, isTieBreaker, isFinalTie]);
 
   const handleSendChat = async (event) => {
     event.preventDefault();
@@ -251,6 +267,61 @@ const CollapsiblePanel = ({ title, storageKey, defaultOpen = false, children }) 
       {isOpen && <div className="draft-command-body">{children}</div>}
     </section>
   );
+};
+
+const useSharedDraftConnection = ({ leagueId, userId, onLeagueUpdate, onChatMessage, onBeerRequest }) => {
+  useEffect(() => {
+    if (!userId || !leagueId) return;
+
+    let connection;
+    let isMounted = true;
+
+    const setupConnection = async () => {
+      try {
+        const info = await getSignalRInfo(userId);
+        if (!isMounted) return;
+
+        connection = new HubConnectionBuilder()
+          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
+          .withAutomaticReconnect()
+          .build();
+
+        connection.on('draftStateUpdate', (updatedLeague) => {
+          if (updatedLeague?.id === leagueId) {
+            onLeagueUpdate(updatedLeague);
+          }
+        });
+
+        connection.on('draftChatMessage', (message) => {
+          if (message?.leagueId === leagueId) {
+            onChatMessage((current) => [...current.slice(-59), message]);
+          }
+        });
+
+        connection.on('beerRequestReceived', (requestingTeamName) => {
+          onBeerRequest({
+            id: `${Date.now()}-${requestingTeamName}`,
+            message: `${requestingTeamName} wants a beer!`,
+          });
+        });
+
+        await connection.start();
+        await axios.post(`${API_BASE_URL}/leagues/${leagueId}/connect`, { userId });
+      } catch (error) {
+        console.error('Shared draft SignalR connection failed:', error);
+      }
+    };
+
+    setupConnection();
+
+    return () => {
+      isMounted = false;
+      axios.post(`${API_BASE_URL}/leagues/${leagueId}/disconnect`, { userId }).catch(() => {});
+      if (connection) {
+        connection.stop();
+      }
+    };
+  }, [leagueId, userId, onLeagueUpdate, onChatMessage, onBeerRequest]);
 };
 
 const useDraftPresenceReporter = (leagueId, userId) => {
