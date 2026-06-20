@@ -194,6 +194,22 @@ const getComparisonRows = (scoringLabel, statsSeason) => {
       getNumericValue: (player) => getStatsNumber(player, ['perGame', fantasyPointsKey]),
     },
     {
+      key: 'totalPprPoints',
+      label: 'Total PPR',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderTotalFantasyPoints(player, 'fantasyPointsPpr', `${seasonLabel} total`),
+      getNumericValue: (player) => getTotalFantasyPoints(player, 'fantasyPointsPpr'),
+    },
+    {
+      key: 'totalHalfPprPoints',
+      label: 'Total Half PPR',
+      type: 'stat',
+      higherIsBetter: true,
+      render: (player) => renderTotalFantasyPoints(player, 'fantasyPointsHalfPpr', `${seasonLabel} total`),
+      getNumericValue: (player) => getTotalFantasyPoints(player, 'fantasyPointsHalfPpr'),
+    },
+    {
       key: 'yardsPerGame',
       label: 'Yards / Week',
       type: 'stat',
@@ -338,6 +354,29 @@ const renderStat = (player, path, formatter = formatInteger, note = null) => {
   const value = getPathValue(stats, path);
   if (!Number.isFinite(value)) return null;
   return { value: formatter(value), note };
+};
+
+const renderTotalFantasyPoints = (player, pointsKey, note) => {
+  const value = getTotalFantasyPoints(player, pointsKey);
+  if (!Number.isFinite(value)) return null;
+  return { value: formatDecimal(value), note };
+};
+
+const getTotalFantasyPoints = (player, pointsKey) => {
+  const stats = getPlayerStats(player);
+  const totals = stats?.totals || {};
+  const directValue = totals[pointsKey];
+  if (Number.isFinite(directValue)) return directValue;
+
+  if (pointsKey === 'fantasyPointsHalfPpr') {
+    const standardPoints = totals.fantasyPoints;
+    const receptions = totals.receptions;
+    if (Number.isFinite(standardPoints) && Number.isFinite(receptions)) {
+      return standardPoints + receptions * 0.5;
+    }
+  }
+
+  return null;
 };
 
 const renderTotalYards = (player) => {
