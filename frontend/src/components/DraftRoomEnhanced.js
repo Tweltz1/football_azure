@@ -456,7 +456,9 @@ const getMaxBid = (settings, team) => {
   if (!team) return 0;
   const totalRosterSpots = getRosterTotal(settings);
   const openRosterSpots = Math.max(0, totalRosterSpots - ((team.roster || []).length));
-  const reserveForRemainingPlayers = openRosterSpots > 0 ? openRosterSpots - 1 : 0;
+  if (openRosterSpots <= 0) return 0;
+
+  const reserveForRemainingPlayers = openRosterSpots - 1;
   return Math.max(0, (Number(team.budget) || 0) - reserveForRemainingPlayers);
 };
 
