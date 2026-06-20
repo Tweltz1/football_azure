@@ -27,11 +27,16 @@ const DraftRoomEnhanced = ({ userId }) => {
   const [leagueLoaded, setLeagueLoaded] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [beerRequest, setBeerRequest] = useState(null);
+  const [adminNotice, setAdminNotice] = useState(null);
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
 
   const handleLeagueUpdate = useCallback((updatedLeague) => {
     setLeague(updatedLeague);
     setLeagueLoaded(true);
+  }, []);
+
+  const showAdminNotice = useCallback((message) => {
+    setAdminNotice({ id: `${Date.now()}-${message}`, message });
   }, []);
 
   useDraftCardCollapsers();
@@ -42,7 +47,19 @@ const DraftRoomEnhanced = ({ userId }) => {
     onLeagueUpdate: handleLeagueUpdate,
     onChatMessage: setChatMessages,
     onBeerRequest: setBeerRequest,
+    onBudgetReviewNotice: (notice) => {
+      showAdminNotice(`${notice?.adminTeamName || 'Commissioner'} opened budget controls.`);
+    },
+    onBudgetAdjustmentNotice: (notice) => {
+      showAdminNotice(`${notice?.teamName || 'A team'} budget changed from $${notice?.oldBudget ?? '?'} to $${notice?.newBudget ?? '?'}.`);
+    },
   });
+
+  useEffect(() => {
+    if (!adminNotice) return undefined;
+    const timer = window.setTimeout(() => setAdminNotice(null), 7000);
+    return () => window.clearTimeout(timer);
+  }, [adminNotice]);
 
   useEffect(() => {
     return subscribeProfileUpdates(() => setProfileRefreshKey((current) => current + 1));
@@ -73,6 +90,7 @@ const DraftRoomEnhanced = ({ userId }) => {
 
   return (
     <div className="draft-room-enhanced">
+      <AdminNoticeToast notice={adminNotice} onClose={() => setAdminNotice(null)} />
       <DraftScreen
         key={profileRefreshKey}
         userId={userId}
@@ -88,6 +106,17 @@ const DraftRoomEnhanced = ({ userId }) => {
         chatMessages={chatMessages}
         setChatMessages={setChatMessages}
       />
+    </div>
+  );
+};
+
+const AdminNoticeToast = ({ notice, onClose }) => {
+  if (!notice) return null;
+
+  return (
+    <div className="admin-audit-toast" role="status" aria-live="polite">
+      <span>{notice.message}</span>
+      <button type="button" onClick={onClose} aria-label="Dismiss admin notice">Dismiss</button>
     </div>
   );
 };
@@ -305,7 +334,15 @@ const CollapsiblePanel = ({ title, storageKey, defaultOpen = false, children }) 
   );
 };
 
-const useSharedDraftConnection = ({ leagueId, userId, onLeagueUpdate, onChatMessage, onBeerRequest }) => {
+const useSharedDraftConnection = ({
+  leagueId,
+  userId,
+  onLeagueUpdate,
+  onChatMessage,
+  onBeerRequest,
+  onBudgetReviewNotice,
+  onBudgetAdjustmentNotice,
+}) => {
   useEffect(() => {
     if (!userId || !leagueId) return;
 
@@ -341,6 +378,18 @@ const useSharedDraftConnection = ({ leagueId, userId, onLeagueUpdate, onChatMess
           });
         });
 
+        connection.on('budgetReviewNotice', (notice) => {
+          if (notice?.leagueId === leagueId) {
+            onBudgetReviewNotice?.(notice);
+          }
+        });
+
+        connection.on('budgetAdjustmentNotice', (notice) => {
+          if (notice?.leagueId === leagueId) {
+            onBudgetAdjustmentNotice?.(notice);
+          }
+        });
+
         await connection.start();
         await axios.post(`${API_BASE_URL}/leagues/${leagueId}/connect`, { userId });
       } catch (error) {
@@ -357,7 +406,7 @@ const useSharedDraftConnection = ({ leagueId, userId, onLeagueUpdate, onChatMess
         connection.stop();
       }
     };
-  }, [leagueId, userId, onLeagueUpdate, onChatMessage, onBeerRequest]);
+  }, [leagueId, userId, onLeagueUpdate, onChatMessage, onBeerRequest, onBudgetReviewNotice, onBudgetAdjustmentNotice]);
 };
 
 const useDraftPresenceReporter = (leagueId, userId) => {
