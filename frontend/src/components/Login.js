@@ -23,7 +23,7 @@ const Login = () => {
             <a href="/.auth/login/github">
               <button>Login with GitHub</button>
             </a>
-            <a href="/.auth/login/google">
+            <a href="/.auth/login/google?prompt=select_account">
               <button className="edit-roster-button">Login with Google</button>
             </a>
           </div>
