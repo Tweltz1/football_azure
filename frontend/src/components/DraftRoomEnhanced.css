@@ -4,6 +4,38 @@
   padding-right: min(390px, 26vw);
 }
 
+.admin-audit-toast {
+  position: fixed;
+  top: 92px;
+  left: 50%;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(620px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border-radius: 8px;
+  color: #fffdf6;
+  background: #7a381d;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 16px 36px rgba(7, 41, 29, 0.3);
+  transform: translateX(-50%);
+}
+
+.admin-audit-toast span {
+  min-width: 0;
+  flex: 1;
+  font-weight: 850;
+}
+
+.admin-audit-toast button {
+  min-height: 34px;
+  padding: 7px 10px;
+  color: #7a381d;
+  background: #f3d073;
+  box-shadow: none;
+}
+
 .draft-command-panel {
   position: fixed;
   top: 92px;
@@ -245,6 +277,12 @@
 }
 
 @media (max-width: 640px) {
+  .admin-audit-toast {
+    top: 76px;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .draft-command-panel {
     margin: 10px;
     padding: 8px;
