@@ -43,8 +43,14 @@ public static class AdjustBudget
 
         try
         {
+            var oldBudget = 0;
+            var teamName = string.Empty;
+            var budgetChanged = false;
             var (league, error) = await CosmosHelper.UpdateLeagueAsync(container, leagueId, league =>
             {
+                oldBudget = 0;
+                teamName = string.Empty;
+                budgetChanged = false;
                 league.EnsureDefaults();
 
                 if (league.AdminId != data.AdminId)
@@ -54,8 +60,11 @@ public static class AdjustBudget
                 if (teamToUpdate == null)
                     return new NotFoundObjectResult("Team not found.");
 
+                oldBudget = teamToUpdate.Budget;
+                teamName = teamToUpdate.Name;
+                budgetChanged = oldBudget != data.NewBudget;
                 teamToUpdate.Budget = data.NewBudget;
-                log?.LogInformation("Budget for team {TeamName} adjusted to {NewBudget}.", teamToUpdate.Name, data.NewBudget);
+                log?.LogInformation("Budget for team {TeamName} adjusted from {OldBudget} to {NewBudget}.", teamToUpdate.Name, oldBudget, data.NewBudget);
 
                 return null;
             }, log);
@@ -63,6 +72,27 @@ public static class AdjustBudget
             if (error != null) return error;
 
             await AppServices.BroadcastDraftStateAsync(leagueId, league, log);
+            if (budgetChanged)
+            {
+                try
+                {
+                    await AppServices.SendToGroupAsync(leagueId, "budgetAdjustmentNotice", new
+                    {
+                        leagueId,
+                        adminId = data.AdminId,
+                        teamId = data.TeamId,
+                        teamName,
+                        oldBudget,
+                        newBudget = data.NewBudget,
+                        sentAt = DateTime.UtcNow
+                    });
+                }
+                catch (Exception ex)
+                {
+                    log?.LogWarning(ex, "Budget adjustment notice failed for league {LeagueId}.", leagueId);
+                }
+            }
+
             return new OkObjectResult("Budget adjusted successfully.");
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
