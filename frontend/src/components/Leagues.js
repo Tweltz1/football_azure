@@ -25,6 +25,7 @@ const Leagues = ({ userId }) => {
   const [inviteMessage, setInviteMessage] = useState('');
   const [rosterSettings, setRosterSettings] = useState({});
   const [draftTimers, setDraftTimers] = useState({});
+  const [draftMode, setDraftMode] = useState('auction');
 
   const fetchLeagues = useCallback(async () => {
     try {
@@ -111,6 +112,7 @@ const Leagues = ({ userId }) => {
     try {
       await axios.post(`${API_BASE_URL}/leagues/${currentLeague.id}/settings`, {
         adminId: userId,
+        draftMode,
         rosterSettings,
         draftTimers
       });
@@ -218,13 +220,14 @@ const Leagues = ({ userId }) => {
           </thead>
           <tbody>
             {leagues.map(league => {
-              const teamName = league.teams.find(t => t.ownerId === userId)?.name || 'N/A';
+              const teamName = (league.teams || []).find(t => t.ownerId === userId)?.name || 'N/A';
               return (
                 <tr key={league.id}>
                   <td>
                     <strong>{league.name}</strong>
                     <br />
                     <span>Your Team: {teamName} </span>
+                    <span>Mode: {league.draftMode === 'manual' ? 'Manual' : 'Auction'} </span>
                     <button className="edit-profile-link" onClick={() => {
                       setShowEditModal(true);
                       setCurrentLeague(league);
@@ -250,6 +253,7 @@ const Leagues = ({ userId }) => {
                             setCurrentLeague(league);
                             setRosterSettings(league.rosterSettings || {});
                             setDraftTimers(league.draftTimers || {});
+                            setDraftMode(league.draftMode || 'auction');
                           }}
                           className="edit-roster-button"
                         >
@@ -295,6 +299,25 @@ const Leagues = ({ userId }) => {
         <div className="modal-overlay">
           <div className="modal-content">
             <h3>Edit Roster Settings for {currentLeague.name}</h3>
+            <p className="section-kicker">Draft mode</p>
+            <div className="button-group" role="group" aria-label="Draft mode">
+              <button
+                type="button"
+                className={draftMode === 'auction' ? 'create-button' : 'edit-roster-button'}
+                onClick={() => setDraftMode('auction')}
+              >
+                Auction Draft
+              </button>
+              <button
+                type="button"
+                className={draftMode === 'manual' ? 'create-button' : 'edit-roster-button'}
+                onClick={() => setDraftMode('manual')}
+              >
+                Manual Draft
+              </button>
+            </div>
+            <div className="divider" />
+
             <div className="settings-grid">
               <label>QB<input type="number" value={rosterSettings.qb || 0} onChange={(e) => setRosterSettings({...rosterSettings, qb: parseInt(e.target.value)})}/></label>
               <label>RB<input type="number" value={rosterSettings.rb || 0} onChange={(e) => setRosterSettings({...rosterSettings, rb: parseInt(e.target.value)})}/></label>

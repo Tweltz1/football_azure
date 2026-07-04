@@ -45,8 +45,9 @@ public static class UndoLastPick
                 if (league.AdminId != data.AdminId)
                     return new UnauthorizedResult();
 
-                if (league.Status?.ToLowerInvariant() != "intermission")
-                    return new BadRequestObjectResult("Can only undo a pick during intermission.");
+                var status = league.Status?.ToLowerInvariant();
+                if (status != "intermission" && status != DraftModeHelper.Manual)
+                    return new BadRequestObjectResult("Can only undo a pick during intermission or manual draft mode.");
 
                 var lastPick = league.DraftLog.LastOrDefault();
                 if (lastPick == null)
@@ -78,6 +79,11 @@ public static class UndoLastPick
                 league.ClearActiveBids();
                 league.TieBreaker = null;
                 league.CurrentPlayerId = null;
+                if (DraftModeHelper.IsManual(league.DraftMode))
+                {
+                    league.Status = DraftModeHelper.Manual;
+                    league.AuctionTimer = null;
+                }
 
                 log?.LogInformation("Admin undid the last pick: {PlayerName} from {TeamName} for league {LeagueName}.", playerInPool.Name, winningTeam.Name, league.Name);
                 return null;

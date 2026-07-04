@@ -40,9 +40,19 @@ public static class StartDraft
                 if (!allNonAdminsReady && nonAdminMembers.Any())
                     return new BadRequestObjectResult("Not all other members are ready.");
 
-                league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
                 league.ClearActiveBids();
                 league.TieBreaker = null;
+                league.DraftMode = DraftModeHelper.Normalize(league.DraftMode);
+
+                if (DraftModeHelper.IsManual(league.DraftMode))
+                {
+                    league.CurrentPlayerId = null;
+                    league.Status = DraftModeHelper.Manual;
+                    league.AuctionTimer = null;
+                    return null;
+                }
+
+                league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
 
                 if (league.CurrentPlayerId == null)
                 {

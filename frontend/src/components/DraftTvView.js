@@ -90,6 +90,7 @@ const DraftTvView = () => {
   }
 
   const isAuction = status === 'drafting' || status === 'tiebreaker';
+  const isManual = status === 'manual';
   const isIntermissionLike = status === 'intermission' || status === 'completed' || !isAuction;
 
   return (
@@ -137,14 +138,21 @@ const DraftTvView = () => {
       {isIntermissionLike && (
         <section className="tv-result-strip">
           <div>
-            <p className="tv-kicker">Last Result</p>
+            <p className="tv-kicker">{isManual ? 'Manual Tracker' : 'Last Result'}</p>
             {lastPick ? (
               <h2>{lastPick.player?.name || 'Unknown Player'} to {winningTeam?.name || 'Unknown Team'} for ${lastPick.winningBid}</h2>
             ) : (
               <h2>Waiting for the first pick</h2>
             )}
           </div>
-          <BidBoard title="Last Player Bids" bids={lastPickBids} emptyText="No completed bids yet." compact />
+          {isManual ? (
+            <div className="tv-bid-board compact">
+              <p className="tv-kicker">Latest Entry</p>
+              <div className="tv-empty-bids">{lastPick ? `Commissioner entered $${lastPick.winningBid}` : 'No picks entered yet.'}</div>
+            </div>
+          ) : (
+            <BidBoard title="Last Player Bids" bids={lastPickBids} emptyText="No completed bids yet." compact />
+          )}
         </section>
       )}
 

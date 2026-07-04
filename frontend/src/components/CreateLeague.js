@@ -8,6 +8,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api
 const CreateLeague = ({ userId }) => {
   const [leagueName, setLeagueName] = useState('');
   const [password, setPassword] = useState('');
+  const [draftMode, setDraftMode] = useState('auction');
   const navigate = useNavigate();
   const [rosterSettings, setRosterSettings] = useState({
     qb: 1, rb: 2, wr: 3, te: 1, k: 1, def: 1, flex: 1, superFlex: 1, bench: 6
@@ -41,6 +42,7 @@ const CreateLeague = ({ userId }) => {
         name: leagueName,
         adminId: userId,
         password,
+        draftMode,
         rosterSettings,
         draftTimers
       });
@@ -61,6 +63,7 @@ const CreateLeague = ({ userId }) => {
         <div className="scoreboard-strip">
           <span>{draftTimers.bidTimer}s bid clock</span>
           <span>{draftTimers.intermissionTimer}s intermission</span>
+          <span>{draftMode === 'manual' ? 'Manual tracking' : 'Live auction'}</span>
           <span>{Object.values(rosterSettings).reduce((sum, value) => sum + value, 0)} roster spots</span>
         </div>
       </section>
@@ -77,6 +80,26 @@ const CreateLeague = ({ userId }) => {
               Password
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </label>
+          </div>
+
+          <div className="divider" />
+
+          <p className="section-kicker">Draft mode</p>
+          <div className="button-group" role="group" aria-label="Draft mode">
+            <button
+              type="button"
+              className={draftMode === 'auction' ? 'create-button' : 'edit-roster-button'}
+              onClick={() => setDraftMode('auction')}
+            >
+              Auction Draft
+            </button>
+            <button
+              type="button"
+              className={draftMode === 'manual' ? 'create-button' : 'edit-roster-button'}
+              onClick={() => setDraftMode('manual')}
+            >
+              Manual Draft
+            </button>
           </div>
 
           <div className="divider" />
