@@ -4,7 +4,13 @@ using System;
 
 public static class DraftLogic
 {
-    public static void AwardPlayerToTeam(League league, Player player, Team winningTeam, int amount)
+    public static void AwardPlayerToTeam(
+        League league,
+        Player player,
+        Team winningTeam,
+        int amount,
+        string nextStatus = "intermission",
+        bool startIntermissionTimer = true)
     {
         league.EnsureDefaults();
         winningTeam.Roster = winningTeam.Roster ?? new List<RosterSpot>();
@@ -25,11 +31,18 @@ public static class DraftLogic
             AllBids = new Dictionary<string, Bid>(league.ActiveBids ?? new Dictionary<string, Bid>())
         });
         
-        league.Status = "intermission";
+        league.Status = string.IsNullOrWhiteSpace(nextStatus) ? "intermission" : nextStatus;
         league.ClearActiveBids();
         league.CurrentPlayerId = null;
         league.TieBreaker = null;
-        league.AuctionTimer = new AuctionTimer { EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer) };
+        league.AuctionTimer = startIntermissionTimer
+            ? new AuctionTimer
+            {
+                EndTime = DateTime.UtcNow.AddSeconds(league.DraftTimers.IntermissionTimer),
+                IsPaused = false,
+                TimeRemainingOnPause = 0
+            }
+            : null;
     }
 
     public static string GetNextRandomPlayerId(League league, string currentPlayerId = null)

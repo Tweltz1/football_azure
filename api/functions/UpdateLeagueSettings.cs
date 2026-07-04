@@ -30,10 +30,26 @@ public static class UpdateLeagueSettings
         {
             ItemResponse<League> leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             League leagueToUpdate = leagueResponse.Resource;
+            leagueToUpdate.EnsureDefaults();
 
             if (leagueToUpdate.AdminId != data.AdminId)
             {
                 return new UnauthorizedResult();
+            }
+
+            if (!string.IsNullOrWhiteSpace(data.DraftMode))
+            {
+                var nextDraftMode = DraftModeHelper.Normalize(data.DraftMode);
+                if (nextDraftMode != leagueToUpdate.DraftMode)
+                {
+                    var status = (leagueToUpdate.Status ?? string.Empty).ToLowerInvariant();
+                    if (status != "created" && status != "lobby")
+                    {
+                        return new BadRequestObjectResult("Draft mode can only be changed before the draft starts.");
+                    }
+
+                    leagueToUpdate.DraftMode = nextDraftMode;
+                }
             }
 
             if (data.RosterSettings != null)
@@ -47,6 +63,7 @@ public static class UpdateLeagueSettings
             }
 
             await container.ReplaceItemAsync(leagueToUpdate, leagueToUpdate.Id, new PartitionKey(leagueToUpdate.Id));
+            await AppServices.BroadcastDraftStateAsync(leagueId, leagueToUpdate, log);
 
             return new OkObjectResult(leagueToUpdate);
         }
@@ -64,6 +81,7 @@ public static class UpdateLeagueSettings
     public class UpdateLeagueSettingsRequest
     {
         public string AdminId { get; set; }
+        public string DraftMode { get; set; }
         public RosterSettings RosterSettings { get; set; }
         public DraftTimers DraftTimers { get; set; }
     }

@@ -26,6 +26,9 @@ public class League
     [JsonProperty("status")]
     public string Status { get; set; }
 
+    [JsonProperty("draftMode")]
+    public string DraftMode { get; set; } = DraftModeHelper.Auction;
+
     [JsonProperty("readyMembers")]
     public List<string> ReadyMembers { get; set; } = new List<string>();
 
@@ -78,6 +81,7 @@ public class League
         DraftLog = DraftLog ?? new List<DraftPick>();
         OnlineUserIds = OnlineUserIds ?? new List<string>();
         AwayUserIds = AwayUserIds ?? new List<string>();
+        DraftMode = DraftModeHelper.Normalize(DraftMode);
 
         if (TieBreaker != null)
         {
@@ -121,6 +125,7 @@ public class League
             Members = this.Members,
             Teams = this.Teams,
             Status = this.Status,
+            DraftMode = this.DraftMode,
             ReadyMembers = this.ReadyMembers,
             RosterSettings = this.RosterSettings,
             DraftTimers = this.DraftTimers,

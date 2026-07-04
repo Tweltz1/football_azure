@@ -34,6 +34,18 @@ public static class StartDraft
                 if (league.AdminId != data.AdminId)
                     return new UnauthorizedResult();
 
+                league.ClearActiveBids();
+                league.TieBreaker = null;
+                league.DraftMode = DraftModeHelper.Normalize(league.DraftMode);
+
+                if (DraftModeHelper.IsManual(league.DraftMode))
+                {
+                    league.CurrentPlayerId = null;
+                    league.Status = DraftModeHelper.Manual;
+                    league.AuctionTimer = null;
+                    return null;
+                }
+
                 var nonAdminMembers = league.Members.Where(id => id != league.AdminId).ToList();
                 bool allNonAdminsReady = nonAdminMembers.All(memberId => league.ReadyMembers.Contains(memberId));
 
@@ -41,8 +53,6 @@ public static class StartDraft
                     return new BadRequestObjectResult("Not all other members are ready.");
 
                 league.CurrentPlayerId = DraftLogic.GetNextRandomPlayerId(league);
-                league.ClearActiveBids();
-                league.TieBreaker = null;
 
                 if (league.CurrentPlayerId == null)
                 {

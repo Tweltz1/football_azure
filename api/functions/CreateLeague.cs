@@ -36,6 +36,7 @@ public static class CreateLeague
         var adminTeamName = TeamNameHelper.GetUniqueTeamName(new List<Team>(), preferredTeamName, userProfile?.DisplayName ?? data.AdminId);
         var rosterSettings = data.RosterSettings ?? new RosterSettings();
         var draftTimers = data.DraftTimers ?? new DraftTimers();
+        var draftMode = DraftModeHelper.Normalize(data.DraftMode);
         var fullPlayerPool = PlayerData.GetInitialPlayerPool();
         await PlayerPoolCoverage.EnsureSpecialTeamsCoverageAsync(fullPlayerPool, rosterSettings.K > 0, rosterSettings.DEF > 0, log);
         NflByeWeeks.ApplyToPlayers(fullPlayerPool);
@@ -77,6 +78,7 @@ public static class CreateLeague
                 }
             },
             Status = "created",
+            DraftMode = draftMode,
             RosterSettings = rosterSettings,
             DraftTimers = draftTimers,
             InitialPlayerPool = filteredPlayerPool,
@@ -93,6 +95,7 @@ public static class CreateLeague
         public string Name { get; set; }
         public string AdminId { get; set; }
         public string Password { get; set; }
+        public string DraftMode { get; set; }
         public RosterSettings RosterSettings { get; set; }
         public DraftTimers DraftTimers { get; set; }
     }
