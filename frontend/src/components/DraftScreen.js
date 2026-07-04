@@ -54,28 +54,37 @@ const ToastNotification = ({ message, show, onClose }) => {
     );
 };
 
-const DraftScreen = () => {
+const DraftScreen = ({
+    sharedLiveState = false,
+    league: sharedLeague = null,
+    leagueLoaded = false,
+    beerRequest = null,
+} = {}) => {
     const { leagueId } = useParams();
     const { user } = useAuth();
-    const [league, setLeague] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [localLeague, setLocalLeague] = useState(null);
+    const [localLoading, setLocalLoading] = useState(true);
     const [draftProfile, setDraftProfile] = useState(EMPTY_DRAFT_PROFILE);
     const [toast, setToast] = useState({ show: false, message: '' });
+    const league = sharedLiveState ? sharedLeague : localLeague;
+    const loading = sharedLiveState ? !leagueLoaded : localLoading;
 
     useEffect(() => {
+        if (sharedLiveState) return;
+
         const fetchLeagueState = async () => {
             if (!user?.userId) return;
             try {
                 const response = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/state`);
-                setLeague(response.data);
+                setLocalLeague(response.data);
             } catch (error) {
                 console.error('Error fetching league state:', error);
             } finally {
-                setLoading(false);
+                setLocalLoading(false);
             }
         };
         fetchLeagueState();
-    }, [leagueId, user]);
+    }, [leagueId, user, sharedLiveState]);
 
     useEffect(() => {
         const fetchDraftProfile = async () => {
@@ -96,7 +105,7 @@ const DraftScreen = () => {
     }, [user]);
 
     useEffect(() => {
-        if (!user?.userId) return;
+        if (sharedLiveState || !user?.userId) return;
 
         let connection;
         const setupSignalR = async () => {
@@ -109,7 +118,7 @@ const DraftScreen = () => {
 
                 connection.on('draftStateUpdate', (updatedLeague) => {
                     if (updatedLeague.id === leagueId) {
-                        setLeague(updatedLeague);
+                        setLocalLeague(updatedLeague);
                     }
                 });
 
@@ -146,7 +155,15 @@ const DraftScreen = () => {
                 connection.stop();
             }
         };
-    }, [leagueId, user]);
+    }, [leagueId, user, sharedLiveState]);
+
+    useEffect(() => {
+        if (!sharedLiveState || !beerRequest?.message) return undefined;
+
+        setToast({ show: true, message: beerRequest.message });
+        const timer = window.setTimeout(() => setToast({ show: false, message: '' }), 5000);
+        return () => window.clearTimeout(timer);
+    }, [sharedLiveState, beerRequest]);
 
     const handleFavoriteIdsChange = (favoritePlayerIds) => {
         setDraftProfile((current) => ({
