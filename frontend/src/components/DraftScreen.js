@@ -162,12 +162,21 @@ const DraftScreen = () => {
     const normalizedStatus = String(league.status || '').toLowerCase();
     const isLobbyPhase = normalizedStatus === 'created' || normalizedStatus === 'lobby';
     const isCompleted = normalizedStatus === 'completed';
+    const isManualDraft = league.draftMode === 'manual';
     
     return (
         <div style={{ padding: '20px' }}>
             <ToastNotification message={toast.message} show={toast.show} onClose={() => setToast({ show: false, message: '' })} />
             <h2>Drafting in {league.name}</h2>
-            <p>League Status: <span style={{fontWeight: 'bold'}}>{String(league.status || 'unknown').toUpperCase()}</span></p>
+            <p>
+                League Status: <span style={{fontWeight: 'bold'}}>{String(league.status || 'unknown').toUpperCase()}</span>
+                {isManualDraft && <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>Manual Tracker</span>}
+            </p>
+            <div className="button-group">
+                <a href={`/draft/${leagueId}/tv`} target="_blank" rel="noreferrer">
+                    <button type="button" className="edit-roster-button">TV Board</button>
+                </a>
+            </div>
 
             {isLobbyPhase ? (
                 <LobbyView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} onFavoriteIdsChange={handleFavoriteIdsChange} />
@@ -182,10 +191,11 @@ const DraftScreen = () => {
 
 const LobbyView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }) => {
     const isCurrentUserAdmin = league.adminId === user.userId;
+    const isManualDraft = league.draftMode === 'manual';
     const nonAdminMembers = (league.members || []).filter(id => id !== league.adminId);
     const readyMembers = league.readyMembers || [];
     const allNonAdminsReady = nonAdminMembers.every(memberId => readyMembers.includes(memberId));
-    const canStartDraft = isCurrentUserAdmin && (nonAdminMembers.length === 0 || allNonAdminsReady);
+    const canStartDraft = isCurrentUserAdmin && (isManualDraft || nonAdminMembers.length === 0 || allNonAdminsReady);
 
     const handleSetReadyStatus = async () => {
         const currentStatus = readyMembers.includes(user.userId);
@@ -210,8 +220,10 @@ const LobbyView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }
                 <h3>Draft Controls & Overview</h3>
                 {isCurrentUserAdmin ? (
                     <button onClick={handleStartDraft} className={`start-draft-button ${canStartDraft ? 'ready' : ''}`} disabled={!canStartDraft}>
-                        Start Draft ({readyMembers.length}/{nonAdminMembers.length} Ready)
+                        {isManualDraft ? 'Start Manual Tracker' : `Start Draft (${readyMembers.length}/${nonAdminMembers.length} Ready)`}
                     </button>
+                ) : isManualDraft ? (
+                    <p style={{ color: '#65746f', fontWeight: 700 }}>Waiting for the commissioner.</p>
                 ) : (
                     <button onClick={handleSetReadyStatus} className={`ready-button ${readyMembers.includes(user.userId) ? 'ready' : ''}`}>
                         {readyMembers.includes(user.userId) ? 'You are Ready!' : "I'm Ready!"}
@@ -350,6 +362,18 @@ const AdminControls = ({ league, user, leagueId, draftProfile }) => {
         }
     };
 
+    const handleAddManualTeam = async (teamName, budget) => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/manual-teams`, {
+                adminId: user.userId,
+                teamName,
+                budget: parseInt(budget, 10) || 200,
+            });
+        } catch (error) {
+            alert(`Error adding manual team: ${error.response?.data || error.message}`);
+        }
+    };
+
     const handleCompleteDraft = async () => {
         if (window.confirm('Are you sure you want to end this draft? This cannot be undone.')) {
             try {
@@ -443,6 +467,7 @@ const AdminControls = ({ league, user, leagueId, draftProfile }) => {
                     league={league}
                     onKick={handleKickMember}
                     onAdjustBudget={handleAdjustBudget}
+                    onAddManualTeam={handleAddManualTeam}
                     onClose={() => setShowManageMembersModal(false)}
                 />
             )}
@@ -1053,17 +1078,54 @@ const NominatePlayerModal = ({ league, draftProfile, onNominate, onClose }) => {
     );
 };
 
-const ManageMembersModal = ({ league, onKick, onAdjustBudget, onClose }) => {
+const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, onClose }) => {
     const [budgets, setBudgets] = useState((league.teams || []).reduce((acc, team) => ({...acc, [team.id]: team.budget }), {}));
+    const [manualTeamName, setManualTeamName] = useState('');
+    const [manualTeamBudget, setManualTeamBudget] = useState(200);
+    const isManualDraft = league.draftMode === 'manual';
 
     const handleBudgetChange = (teamId, value) => {
         setBudgets(prev => ({ ...prev, [teamId]: parseInt(value, 10) || 0 }));
     };
 
+    const handleAddManualTeam = async () => {
+        await onAddManualTeam(manualTeamName, manualTeamBudget);
+        setManualTeamName('');
+        setManualTeamBudget(200);
+    };
+
     return (
         <div className="modal-overlay">
             <div className="modal-content">
-                <h3>Manage Members</h3>
+                <h3>{isManualDraft ? 'Manage Teams' : 'Manage Members'}</h3>
+                {isManualDraft && (
+                    <>
+                        <div className="form-grid">
+                            <label>
+                                Team Name
+                                <input
+                                    type="text"
+                                    value={manualTeamName}
+                                    onChange={(e) => setManualTeamName(e.target.value)}
+                                    placeholder={`Team ${(league.teams || []).length + 1}`}
+                                />
+                            </label>
+                            <label>
+                                Starting Budget
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={manualTeamBudget}
+                                    onChange={(e) => setManualTeamBudget(parseInt(e.target.value, 10) || 0)}
+                                />
+                            </label>
+                        </div>
+                        <div className="form-actions">
+                            <button type="button" onClick={handleAddManualTeam}>Add Team</button>
+                        </div>
+                        <div className="divider" />
+                    </>
+                )}
                 <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
                     {(league.teams || []).map(team => (
                         <li key={team.id} className="player-list-item">
