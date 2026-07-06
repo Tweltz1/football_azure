@@ -395,6 +395,18 @@ const AdminControls = ({ league, user, leagueId, draftProfile }) => {
         }
     };
 
+    const handleAssignManualTeam = async (teamId, memberId) => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/manual-teams/assign`, {
+                adminId: user.userId,
+                teamId,
+                userId: memberId,
+            });
+        } catch (error) {
+            alert(`Error assigning manual team: ${error.response?.data || error.message}`);
+        }
+    };
+
     const handleCompleteDraft = async () => {
         if (window.confirm('Are you sure you want to end this draft? This cannot be undone.')) {
             try {
@@ -489,6 +501,7 @@ const AdminControls = ({ league, user, leagueId, draftProfile }) => {
                     onKick={handleKickMember}
                     onAdjustBudget={handleAdjustBudget}
                     onAddManualTeam={handleAddManualTeam}
+                    onAssignManualTeam={handleAssignManualTeam}
                     onClose={() => setShowManageMembersModal(false)}
                 />
             )}
@@ -1260,11 +1273,17 @@ const NominatePlayerModal = ({ league, draftProfile, onNominate, onClose }) => {
     );
 };
 
-const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, onClose }) => {
+const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, onAssignManualTeam, onClose }) => {
     const [budgets, setBudgets] = useState((league.teams || []).reduce((acc, team) => ({...acc, [team.id]: team.budget }), {}));
     const [manualTeamName, setManualTeamName] = useState('');
     const [manualTeamBudget, setManualTeamBudget] = useState(200);
+    const [manualAssignments, setManualAssignments] = useState({});
     const isManualDraft = league.draftMode === 'manual';
+    const memberIds = league.members || [];
+    const assignedMemberIds = new Set((league.teams || [])
+        .map(team => team.ownerId)
+        .filter(ownerId => memberIds.includes(ownerId)));
+    const unassignedMemberIds = memberIds.filter(memberId => !assignedMemberIds.has(memberId));
 
     const handleBudgetChange = (teamId, value) => {
         setBudgets(prev => ({ ...prev, [teamId]: parseInt(value, 10) || 0 }));
@@ -1274,6 +1293,14 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, o
         await onAddManualTeam(manualTeamName, manualTeamBudget);
         setManualTeamName('');
         setManualTeamBudget(200);
+    };
+
+    const handleAssignManualTeam = async (teamId) => {
+        const memberId = manualAssignments[teamId];
+        if (!memberId) return;
+
+        await onAssignManualTeam(teamId, memberId);
+        setManualAssignments(prev => ({ ...prev, [teamId]: '' }));
     };
 
     return (
@@ -1305,13 +1332,24 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, o
                         <div className="form-actions">
                             <button type="button" onClick={handleAddManualTeam}>Add Team</button>
                         </div>
+                        <div className="manual-assignment-panel">
+                            <p className="section-kicker">Unassigned joiners</p>
+                            <div className="manual-assignment-list">
+                                {unassignedMemberIds.length > 0 ? unassignedMemberIds.map(memberId => (
+                                    <span key={memberId}>{formatMemberLabel(memberId)}</span>
+                                )) : <span>Everyone is assigned</span>}
+                            </div>
+                        </div>
                         <div className="divider" />
                     </>
                 )}
                 <ul style={{listStyle: 'none', padding: 0, maxHeight: '300px', overflowY: 'auto'}}>
                     {(league.teams || []).map(team => (
                         <li key={team.id} className="player-list-item">
-                            <span>{team.name}</span>
+                            <span>
+                                <strong>{team.name}</strong>
+                                {isManualDraft && <small style={{ display: 'block', color: '#65746f', fontWeight: 700 }}>Owner: {formatTeamOwnerLabel(team.ownerId, memberIds)}</small>}
+                            </span>
                             <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
                                 Budget: $
                                 <input 
@@ -1321,6 +1359,20 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, o
                                     style={{width: '60px'}}
                                 />
                                 <button onClick={() => onAdjustBudget(team.id, budgets[team.id])}>Set</button>
+                                {isManualDraft && (
+                                    <>
+                                        <select
+                                            value={manualAssignments[team.id] || ''}
+                                            onChange={(event) => setManualAssignments(prev => ({ ...prev, [team.id]: event.target.value }))}
+                                        >
+                                            <option value="">Assign member</option>
+                                            {memberIds.map(memberId => (
+                                                <option key={memberId} value={memberId}>{formatMemberLabel(memberId)}</option>
+                                            ))}
+                                        </select>
+                                        <button onClick={() => handleAssignManualTeam(team.id)} disabled={!manualAssignments[team.id]}>Assign</button>
+                                    </>
+                                )}
                                 {team.ownerId !== league.adminId && (
                                     <button onClick={() => onKick(team.id)} style={{backgroundColor: '#dc3545', color: 'white'}}>Kick</button>
                                 )}
@@ -1416,6 +1468,18 @@ const normalizeIdList = (ids = []) => [...new Set((ids || []).filter(Boolean))];
 const pickRandomItem = (items = []) => {
     if (!items.length) return null;
     return items[Math.floor(Math.random() * items.length)];
+};
+
+const formatMemberLabel = (memberId = '') => {
+    if (!memberId) return 'Unknown member';
+    const value = String(memberId);
+    const emailName = value.includes('@') ? value.split('@')[0] : value;
+    return emailName.replace(/[._-]+/g, ' ').replace(/\b\w/g, character => character.toUpperCase());
+};
+
+const formatTeamOwnerLabel = (ownerId, memberIds = []) => {
+    if (!ownerId || String(ownerId).startsWith('manual-')) return 'Unassigned';
+    return memberIds.includes(ownerId) ? formatMemberLabel(ownerId) : 'Manual team';
 };
 
 const getDraftFavoriteIds = (draftProfile, userTeam) => {

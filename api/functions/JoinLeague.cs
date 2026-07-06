@@ -45,17 +45,27 @@ public static class JoinLeague
                 return new ConflictObjectResult("You are already a member of this league.");
             }
 
+            leagueToJoin.EnsureDefaults();
             var userProfile = await UserProfileStore.FindAsync(data.UserId);
             if (userProfile == null)
             {
                 log?.LogWarning("Profile not found for user {UserId} when joining league.", data.UserId);
             }
 
+            leagueToJoin.Members.Add(data.UserId);
+
+            if (DraftModeHelper.IsManual(leagueToJoin.DraftMode))
+            {
+                await container.ReplaceItemAsync(leagueToJoin, leagueToJoin.Id, new PartitionKey(leagueToJoin.Id));
+                await AppServices.SendToAllAsync("draftStateUpdate", leagueToJoin.ForBroadcast());
+
+                return new OkObjectResult(new { id = leagueToJoin.Id, name = leagueToJoin.Name });
+            }
+
             var userMasterFavorites = userProfile?.FavoritePlayerIds ?? new List<string>();
             var preferredTeamName = TeamNameHelper.GetPreferredTeamName(userProfile, data.UserId);
             var teamName = TeamNameHelper.GetUniqueTeamName(leagueToJoin.Teams, preferredTeamName, userProfile?.DisplayName ?? data.UserId);
 
-            leagueToJoin.Members.Add(data.UserId);
             leagueToJoin.Teams.Add(new Team
             {
                 Id = Guid.NewGuid().ToString(),
