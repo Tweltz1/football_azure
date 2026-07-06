@@ -138,8 +138,10 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
   }, [chatMessages]);
 
   const teams = league?.teams || [];
+  const memberIds = league?.members || [];
   const rosterTotal = useMemo(() => getRosterTotal(league?.rosterSettings), [league]);
   const normalizedStatus = String(league?.status || '').toLowerCase();
+  const isManualDraft = league?.draftMode === 'manual';
   const isTieBreaker = normalizedStatus === 'tiebreaker';
   const isFinalTie = isTieBreaker && (league?.tieBreaker?.round || 0) >= 2;
   const tiedUserIds = league?.tieBreaker?.tiedTeamIds || [];
@@ -156,6 +158,8 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
     || isCappedBelowMinimum
     || (normalizedStatus !== 'drafting' && normalizedStatus !== 'tiebreaker');
   const activeBid = user?.userId ? league?.activeBids?.[user.userId]?.amount : null;
+  const assignedOwnerIds = new Set(teams.map((team) => team.ownerId).filter(Boolean));
+  const unassignedMemberIds = memberIds.filter((memberId) => !assignedOwnerIds.has(memberId));
 
   useEffect(() => {
     if (!league || !user?.userId || !currentTeam || !isTieBreaker || isFinalTie) return;
@@ -257,32 +261,49 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
               </div>
             );
           })}
+          {unassignedMemberIds.map((memberId) => {
+            const isOnline = (league?.onlineUserIds || []).includes(memberId);
+            const isAway = isOnline && (league?.awayUserIds || []).includes(memberId);
+            const presenceStatus = !isOnline ? 'offline' : isAway ? 'away' : 'online';
+            const presenceLabel = presenceStatus === 'online' ? 'Active' : presenceStatus === 'away' ? 'Away' : 'Offline';
+            return (
+              <div className="team-presence-row" key={`unassigned-${memberId}`}>
+                <span className={`presence-light ${presenceStatus}`} aria-label={presenceLabel} />
+                <span className="team-presence-name">{formatMemberLabel(memberId)}</span>
+                <span className={`team-presence-meta ${presenceStatus}`}>{presenceLabel} | Unassigned</span>
+              </div>
+            );
+          })}
         </div>
       </CollapsiblePanel>
 
-      <CollapsiblePanel title="Quick Bid" storageKey="draft-panel-quick-bid" defaultOpen>
-        <div className="quick-bid-row">
-          <label htmlFor="quick-bid-amount">Amount</label>
-          <input
-            id="quick-bid-amount"
-            type="number"
-            min={quickBidMin}
-            max={quickBidMax || undefined}
-            value={quickBidAmount}
-            onChange={(event) => setQuickBidAmount(event.target.value)}
-            disabled={quickBidDisabled}
-          />
-          <button type="button" onClick={handleQuickBid} disabled={quickBidDisabled}>
-            Bid
-          </button>
-        </div>
-        {currentTeam && <p className="draft-muted">Max bid: ${quickBidMax} | Minimum: ${quickBidMin}</p>}
-        {typeof activeBid === 'number' && <p className="draft-muted">Your active bid: ${activeBid}</p>}
-        {isCappedBelowMinimum && <p className="draft-muted">You are capped below the minimum bid for this player.</p>}
-        {isTieBreaker && !userCanBidInPhase && <p className="draft-muted">Only tied teams can bid in this round.</p>}
-        {isFinalTie && <p className="draft-muted">Final tie is locked for admin resolution.</p>}
-        {quickBidStatus && <p className="quick-bid-status">{quickBidStatus}</p>}
-      </CollapsiblePanel>
+      {isManualDraft ? (
+        <ManualCompanionPanel leagueId={leagueId} league={league} user={user} currentTeam={currentTeam} rosterTotal={rosterTotal} />
+      ) : (
+        <CollapsiblePanel title="Quick Bid" storageKey="draft-panel-quick-bid" defaultOpen>
+          <div className="quick-bid-row">
+            <label htmlFor="quick-bid-amount">Amount</label>
+            <input
+              id="quick-bid-amount"
+              type="number"
+              min={quickBidMin}
+              max={quickBidMax || undefined}
+              value={quickBidAmount}
+              onChange={(event) => setQuickBidAmount(event.target.value)}
+              disabled={quickBidDisabled}
+            />
+            <button type="button" onClick={handleQuickBid} disabled={quickBidDisabled}>
+              Bid
+            </button>
+          </div>
+          {currentTeam && <p className="draft-muted">Max bid: ${quickBidMax} | Minimum: ${quickBidMin}</p>}
+          {typeof activeBid === 'number' && <p className="draft-muted">Your active bid: ${activeBid}</p>}
+          {isCappedBelowMinimum && <p className="draft-muted">You are capped below the minimum bid for this player.</p>}
+          {isTieBreaker && !userCanBidInPhase && <p className="draft-muted">Only tied teams can bid in this round.</p>}
+          {isFinalTie && <p className="draft-muted">Final tie is locked for admin resolution.</p>}
+          {quickBidStatus && <p className="quick-bid-status">{quickBidStatus}</p>}
+        </CollapsiblePanel>
+      )}
 
       <CollapsiblePanel title="Draft Chat" storageKey="draft-panel-chat" defaultOpen>
         <div className="draft-chat-log" aria-live="polite">
@@ -311,6 +332,106 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
         </form>
       </CollapsiblePanel>
     </aside>
+  );
+};
+
+const ManualCompanionPanel = ({ leagueId, league, user, currentTeam, rosterTotal }) => {
+  const [beerRequestCooldown, setBeerRequestCooldown] = useState(0);
+  const currentPlayer = useMemo(
+    () => (league?.initialPlayerPool || []).find((player) => player.id === league?.currentPlayerId),
+    [league]
+  );
+  const beerDutyTeam = (league?.teams || []).find((team) => team.id === league?.beerBitchTeamId);
+  const favoriteSet = new Set(currentTeam?.favoritePlayerIds || []);
+  const favoritePlayers = (league?.initialPlayerPool || [])
+    .filter((player) => favoriteSet.has(player.id) && !player.isDrafted)
+    .slice(0, 6);
+
+  useEffect(() => {
+    if (beerRequestCooldown <= 0) return undefined;
+    const timer = window.setTimeout(() => setBeerRequestCooldown((current) => current - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [beerRequestCooldown]);
+
+  const handleRequestBeer = async () => {
+    if (!currentTeam) return;
+
+    setBeerRequestCooldown(300);
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/request-beer`, { requestingTeamId: currentTeam.id });
+    } catch (error) {
+      setBeerRequestCooldown(0);
+      alert(`Error requesting beer: ${error.response?.data || error.message}`);
+    }
+  };
+
+  const canRequestBeer = Boolean(currentTeam && beerDutyTeam && beerDutyTeam.id !== currentTeam.id);
+
+  return (
+    <CollapsiblePanel title="Manual Room" storageKey="draft-panel-manual-room" defaultOpen>
+      <div className="manual-companion-panel">
+        <section className="manual-companion-card">
+          <p className="draft-command-kicker">Up Now</p>
+          {currentPlayer ? (
+            <>
+              <h3>{currentPlayer.name}</h3>
+              <p>{currentPlayer.position} / {currentPlayer.team} / Bye {currentPlayer.bye || '-'} / Rank #{currentPlayer.rank || '-'}</p>
+            </>
+          ) : (
+            <p className="draft-muted">Waiting for the commissioner to pick a player.</p>
+          )}
+        </section>
+
+        <section className="manual-companion-card">
+          <p className="draft-command-kicker">Your Team</p>
+          {currentTeam ? (
+            <>
+              <h3>{currentTeam.name}</h3>
+              <div className="manual-companion-stats">
+                <span>${currentTeam.budget} budget</span>
+                <span>{(currentTeam.roster || []).length}/{rosterTotal} roster</span>
+              </div>
+              {(currentTeam.roster || []).length > 0 && (
+                <ul className="manual-companion-list">
+                  {(currentTeam.roster || []).slice(-5).map((spot, index) => (
+                    <li key={`${spot.player?.id || index}-${index}`}>
+                      <strong>{spot.player?.name || 'Unknown Player'}</strong>
+                      <span>{spot.player?.position || spot.position || '-'}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : (
+            <p className="draft-muted">You are in the room. The commissioner can assign you to a manual team.</p>
+          )}
+        </section>
+
+        <section className="manual-companion-card">
+          <p className="draft-command-kicker">Favorites</p>
+          {favoritePlayers.length > 0 ? (
+            <ul className="manual-companion-list">
+              {favoritePlayers.map((player) => (
+                <li key={player.id}>
+                  <strong>{player.name}</strong>
+                  <span>{player.position} / {player.team}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="draft-muted">Favorite players from your profile show here after your team is assigned.</p>
+          )}
+        </section>
+
+        <section className="manual-companion-card">
+          <p className="draft-command-kicker">Beer</p>
+          <p className="draft-muted">{beerDutyTeam ? `${beerDutyTeam.name} is on beer duty.` : 'No beer duty assigned.'}</p>
+          <button type="button" onClick={handleRequestBeer} disabled={!canRequestBeer || beerRequestCooldown > 0}>
+            {beerRequestCooldown > 0 ? `Request Beer (${beerRequestCooldown}s)` : 'Request Beer'}
+          </button>
+        </section>
+      </div>
+    </CollapsiblePanel>
   );
 };
 
@@ -537,6 +658,13 @@ const getMaxBid = (settings, team) => {
 const formatChatTime = (value) => {
   if (!value) return '';
   return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+};
+
+const formatMemberLabel = (memberId = '') => {
+  if (!memberId) return 'Unknown member';
+  const value = String(memberId);
+  const emailName = value.includes('@') ? value.split('@')[0] : value;
+  return emailName.replace(/[._-]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
 };
 
 export default DraftRoomEnhanced;

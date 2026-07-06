@@ -874,6 +874,30 @@ hr {
   width: 100%;
 }
 
+.manual-assignment-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--field-deep);
+  background: rgba(216,170,61,0.14);
+  border: 1px solid rgba(216,170,61,0.28);
+}
+
+.manual-assignment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.manual-assignment-list span {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(255,253,246,0.86);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
 .user-team-details {
   padding: 16px !important;
   border: 1px solid rgba(17,24,22,0.12) !important;

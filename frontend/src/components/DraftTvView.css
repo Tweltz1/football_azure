@@ -64,6 +64,16 @@
   line-height: 0.86;
 }
 
+.tv-status-strip strong.manual-current-player {
+  max-width: min(460px, 38vw);
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(1.25rem, 2.2vw, 2.9rem);
+  line-height: 1;
+}
+
 .tv-auction-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.5fr) minmax(260px, 0.85fr);
@@ -258,5 +268,10 @@
 
   .tv-status-strip {
     justify-items: start;
+  }
+
+  .tv-status-strip strong.manual-current-player {
+    max-width: 100%;
+    text-align: left;
   }
 }
