@@ -102,7 +102,9 @@ const DraftTvView = () => {
         </div>
         <div className="tv-status-strip">
           <span>{String(league.status || 'waiting').toUpperCase()}</span>
-          <strong>{formatTimer(timer)}</strong>
+          <strong className={isManual ? 'manual-current-player' : ''}>
+            {isManual ? (currentPlayer?.name || 'No player up') : formatTimer(timer)}
+          </strong>
         </div>
       </header>
 
@@ -138,8 +140,18 @@ const DraftTvView = () => {
       {isIntermissionLike && (
         <section className="tv-result-strip">
           <div>
-            <p className="tv-kicker">{isManual ? 'Manual Tracker' : 'Last Result'}</p>
-            {lastPick ? (
+            <p className="tv-kicker">{isManual && currentPlayer ? 'Up Now' : isManual ? 'Manual Tracker' : 'Last Result'}</p>
+            {isManual && currentPlayer ? (
+              <>
+                <h2>{currentPlayer.name}</h2>
+                <div className="tv-player-meta">
+                  <span>{currentPlayer.position}</span>
+                  <span>{currentPlayer.team}</span>
+                  <span>Bye {currentPlayer.bye || '-'}</span>
+                  <span>Rank #{currentPlayer.rank || '-'}</span>
+                </div>
+              </>
+            ) : lastPick ? (
               <h2>{lastPick.player?.name || 'Unknown Player'} to {winningTeam?.name || 'Unknown Team'} for ${lastPick.winningBid}</h2>
             ) : (
               <h2>Waiting for the first pick</h2>
@@ -147,8 +159,12 @@ const DraftTvView = () => {
           </div>
           {isManual ? (
             <div className="tv-bid-board compact">
-              <p className="tv-kicker">Latest Entry</p>
-              <div className="tv-empty-bids">{lastPick ? `Commissioner entered $${lastPick.winningBid}` : 'No picks entered yet.'}</div>
+              <p className="tv-kicker">{currentPlayer ? 'Selected Player' : 'Latest Entry'}</p>
+              <div className="tv-empty-bids">
+                {currentPlayer
+                  ? `${currentPlayer.position} / ${currentPlayer.team} / Bye ${currentPlayer.bye || '-'}`
+                  : lastPick ? `Commissioner entered $${lastPick.winningBid}` : 'No picks entered yet.'}
+              </div>
             </div>
           ) : (
             <BidBoard title="Last Player Bids" bids={lastPickBids} emptyText="No completed bids yet." compact />

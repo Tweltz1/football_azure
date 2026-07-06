@@ -705,10 +705,15 @@ const ManualDraftView = ({ league, user, leagueId, draftProfile }) => {
     }, [selectedTeamId, league.teams]);
 
     useEffect(() => {
+        if (league.currentPlayerId && availablePlayers.some(player => player.id === league.currentPlayerId)) {
+            setSelectedPlayerId(league.currentPlayerId);
+            return;
+        }
+
         if (selectedPlayerId && !availablePlayers.some(player => player.id === selectedPlayerId)) {
             setSelectedPlayerId('');
         }
-    }, [availablePlayers, selectedPlayerId]);
+    }, [availablePlayers, league.currentPlayerId, selectedPlayerId]);
 
     const handleDrawTeam = () => {
         const openTeams = teams.filter(team => rosterTotal <= 0 || (team.roster || []).length < rosterTotal);
@@ -716,9 +721,24 @@ const ManualDraftView = ({ league, user, leagueId, draftProfile }) => {
         if (team) setSelectedTeamId(team.id);
     };
 
+    const handleSelectPlayer = async (playerId) => {
+        if (!playerId) return;
+
+        setSelectedPlayerId(playerId);
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/manual-current-player`, {
+                adminId: user.userId,
+                playerId,
+            });
+        } catch (error) {
+            alert(`Error setting current player: ${error.response?.data || error.message}`);
+            setSelectedPlayerId(league.currentPlayerId || '');
+        }
+    };
+
     const handleDrawPlayer = () => {
         const player = pickRandomItem(matchingPlayers.length > 0 ? matchingPlayers : availablePlayers);
-        if (player) setSelectedPlayerId(player.id);
+        if (player) handleSelectPlayer(player.id);
     };
 
     const handleAwardPlayer = async () => {
@@ -809,7 +829,7 @@ const ManualDraftView = ({ league, user, leagueId, draftProfile }) => {
                                         type="button"
                                         key={player.id}
                                         className={`manual-player-option ${player.id === selectedPlayerId ? 'selected' : ''}`}
-                                        onClick={() => setSelectedPlayerId(player.id)}
+                                        onClick={() => handleSelectPlayer(player.id)}
                                     >
                                         <span className="manual-player-rank">#{player.rank || '-'}</span>
                                         <span>
