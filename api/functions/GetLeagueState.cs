@@ -18,6 +18,10 @@ public static class GetLeagueState
         {
             var leagueResponse = await container.ReadItemAsync<League>(leagueId, new PartitionKey(leagueId));
             var league = leagueResponse.Resource;
+            if (await LeagueMemberProfileHelper.HydrateMissingAsync(league))
+            {
+                await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
+            }
             NflByeWeeks.ApplyToLeague(league);
             return new OkObjectResult(league);
         }
