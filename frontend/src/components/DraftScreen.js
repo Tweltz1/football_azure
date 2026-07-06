@@ -59,6 +59,7 @@ const DraftScreen = ({
     league: sharedLeague = null,
     leagueLoaded = false,
     beerRequest = null,
+    chatMessages = [],
 } = {}) => {
     const { leagueId } = useParams();
     const { user } = useAuth();
@@ -200,7 +201,7 @@ const DraftScreen = ({
             ) : isCompleted ? (
                 <CompletedView league={league} leagueId={leagueId} draftProfile={draftProfile} />
             ) : (
-                <DraftingView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} onFavoriteIdsChange={handleFavoriteIdsChange} />
+                <DraftingView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} chatMessages={chatMessages} onFavoriteIdsChange={handleFavoriteIdsChange} />
             )}
         </div>
     );
@@ -260,7 +261,7 @@ const LobbyView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }
     );
 };
 
-const DraftingView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }) => {
+const DraftingView = ({ league, user, leagueId, draftProfile, chatMessages = [], onFavoriteIdsChange }) => {
     const normalizedStatus = String(league.status || '').toLowerCase();
     const isIntermission = normalizedStatus === 'intermission';
     const isTieBreaker = normalizedStatus === 'tiebreaker';
@@ -287,7 +288,7 @@ const DraftingView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChang
             </div>
             
             {isManual ? (
-                <ManualDraftView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
+                <ManualDraftView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} chatMessages={chatMessages} />
             ) : isIntermission ? (
                 <IntermissionView league={league} draftProfile={draftProfile} />
             ) : isTieBreaker ? (
@@ -677,7 +678,7 @@ const ManualTeamSetupPanel = ({ league, user, leagueId, selectedTeamId = '', onS
     );
 };
 
-const ManualDraftView = ({ league, user, leagueId, draftProfile }) => {
+const ManualDraftView = ({ league, user, leagueId, draftProfile, chatMessages = [] }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPlayerId, setSelectedPlayerId] = useState('');
     const [selectedTeamId, setSelectedTeamId] = useState('');
@@ -897,9 +898,13 @@ const ManualDraftView = ({ league, user, leagueId, draftProfile }) => {
                     )}
                 </>
             ) : (
-                <p style={{ color: '#65746f', fontWeight: 700 }}>
-                    The commissioner is tracking this draft manually. Picks update here and on the TV board as they are entered.
-                </p>
+                <ManualParticipantView
+                    league={league}
+                    user={user}
+                    leagueId={leagueId}
+                    draftProfile={draftProfile}
+                    chatMessages={chatMessages}
+                />
             )}
 
             {lastPick && (
@@ -911,6 +916,175 @@ const ManualDraftView = ({ league, user, leagueId, draftProfile }) => {
                     <PlayerStrategy draftProfile={draftProfile} playerId={lastPick.player?.id} />
                 </div>
             )}
+        </div>
+    );
+};
+
+const ManualParticipantView = ({ league, user, leagueId, draftProfile, chatMessages = [] }) => {
+    const [beerRequestCooldown, setBeerRequestCooldown] = useState(0);
+    const [chatText, setChatText] = useState('');
+    const teams = league.teams || [];
+    const currentTeam = teams.find(team => team.ownerId === user.userId);
+    const currentPlayer = (league.initialPlayerPool || []).find(player => player.id === league.currentPlayerId);
+    const beerDutyTeam = teams.find(team => team.id === league.beerBitchTeamId);
+    const rosterTotal = getRosterTotal(league.rosterSettings);
+    const roster = currentTeam?.roster || [];
+    const openRosterSpots = rosterTotal > 0 ? Math.max(0, rosterTotal - roster.length) : 0;
+    const maxManualSpend = currentTeam ? Math.max(0, (Number(currentTeam.budget) || 0) - Math.max(0, openRosterSpots - 1)) : 0;
+    const favoriteSet = new Set(getDraftFavoriteIds(draftProfile, currentTeam));
+    const favoritePlayers = (league.initialPlayerPool || [])
+        .filter(player => favoriteSet.has(player.id) && !player.isDrafted)
+        .sort((a, b) => (a.rank || 9999) - (b.rank || 9999))
+        .slice(0, 8);
+    const recentRoster = roster.slice(-6).reverse();
+    const canRequestBeer = Boolean(currentTeam && beerDutyTeam && beerDutyTeam.id !== currentTeam.id);
+
+    useEffect(() => {
+        if (beerRequestCooldown <= 0) return undefined;
+        const timer = window.setTimeout(() => setBeerRequestCooldown(current => current - 1), 1000);
+        return () => window.clearTimeout(timer);
+    }, [beerRequestCooldown]);
+
+    const handleRequestBeer = async () => {
+        if (!currentTeam || !canRequestBeer || beerRequestCooldown > 0) return;
+
+        setBeerRequestCooldown(300);
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/request-beer`, { requestingTeamId: currentTeam.id });
+        } catch (error) {
+            setBeerRequestCooldown(0);
+            alert(`Error requesting beer: ${error.response?.data || error.message}`);
+        }
+    };
+
+    const handleSendChat = async (event) => {
+        event.preventDefault();
+        const message = chatText.trim();
+        if (!message || !user?.userId) return;
+
+        setChatText('');
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/chat`, {
+                userId: user.userId,
+                displayName: user.userDetails,
+                message,
+            });
+        } catch (error) {
+            setChatText(message);
+            alert(`Error sending chat: ${error.response?.data || error.message}`);
+        }
+    };
+
+    const beerButtonLabel = beerRequestCooldown > 0
+        ? `Request Beer (${beerRequestCooldown}s)`
+        : !currentTeam
+            ? 'Waiting for Team'
+            : beerDutyTeam?.id === currentTeam.id
+                ? 'You Are on Duty'
+                : 'Request Beer';
+
+    return (
+        <div className="manual-participant-view">
+            <section className="manual-participant-card manual-participant-feature">
+                <p className="section-kicker">Up Now</p>
+                {currentPlayer ? (
+                    <>
+                        <h3>{currentPlayer.name}</h3>
+                        <div className="manual-participant-tags">
+                            <span>{currentPlayer.position}</span>
+                            <span>{currentPlayer.team}</span>
+                            <span>Bye {currentPlayer.bye || '-'}</span>
+                            <span>Rank #{currentPlayer.rank || '-'}</span>
+                        </div>
+                        <PlayerStrategy draftProfile={draftProfile} playerId={currentPlayer.id} />
+                    </>
+                ) : (
+                    <p className="draft-muted">Waiting for the next player.</p>
+                )}
+            </section>
+
+            <section className="manual-participant-card">
+                <p className="section-kicker">Your Team</p>
+                {currentTeam ? (
+                    <>
+                        <h3>{currentTeam.name}</h3>
+                        <div className="manual-participant-stats">
+                            <span>${currentTeam.budget} budget</span>
+                            <span>Max ${maxManualSpend}</span>
+                            <span>{roster.length}/{rosterTotal} roster</span>
+                        </div>
+                        {recentRoster.length > 0 ? (
+                            <ul className="manual-participant-list">
+                                {recentRoster.map((spot, index) => (
+                                    <li key={`${spot.player?.id || index}-${index}`}>
+                                        <strong>{spot.player?.name || 'Unknown Player'}</strong>
+                                        <span>{spot.player?.position || spot.position || '-'} / {spot.player?.team || '-'} / Bye {spot.player?.bye || '-'}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="draft-muted">No picks yet.</p>
+                        )}
+                    </>
+                ) : (
+                    <>
+                        <h3>Unassigned</h3>
+                        <p className="draft-muted">Waiting for commissioner assignment.</p>
+                    </>
+                )}
+            </section>
+
+            <section className="manual-participant-card">
+                <p className="section-kicker">Beer</p>
+                <h3>{beerDutyTeam ? beerDutyTeam.name : 'No duty set'}</h3>
+                <button type="button" onClick={handleRequestBeer} disabled={!canRequestBeer || beerRequestCooldown > 0}>
+                    {beerButtonLabel}
+                </button>
+            </section>
+
+            <section className="manual-participant-card manual-participant-chat">
+                <p className="section-kicker">Draft Chat</p>
+                <div className="draft-chat-log" aria-live="polite">
+                    {chatMessages.length === 0 ? (
+                        <p className="draft-muted">No messages yet.</p>
+                    ) : chatMessages.map((message, index) => (
+                        <div className="draft-chat-message" key={`${message.sentAt || index}-${index}`}>
+                            <div className="draft-chat-meta">
+                                <strong>{message.teamName || message.displayName || 'Team'}</strong>
+                                <span>{formatDraftChatTime(message.sentAt)}</span>
+                            </div>
+                            <p>{message.message}</p>
+                        </div>
+                    ))}
+                </div>
+                <form className="draft-chat-form" onSubmit={handleSendChat}>
+                    <input
+                        type="text"
+                        maxLength="240"
+                        placeholder="Talk smack..."
+                        value={chatText}
+                        onChange={(event) => setChatText(event.target.value)}
+                    />
+                    <button type="submit" disabled={!chatText.trim()}>Send</button>
+                </form>
+            </section>
+
+            <section className="manual-participant-card manual-participant-favorites">
+                <p className="section-kicker">Targets</p>
+                {favoritePlayers.length > 0 ? (
+                    <ul className="manual-participant-list">
+                        {favoritePlayers.map(player => (
+                            <li key={player.id}>
+                                <strong>{player.name}</strong>
+                                <span>{player.position} / {player.team} / Bye {player.bye || '-'}</span>
+                                <PlayerStrategy draftProfile={draftProfile} playerId={player.id} compact />
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="draft-muted">No available favorites.</p>
+                )}
+            </section>
         </div>
     );
 };
@@ -1480,6 +1654,11 @@ const formatMemberLabel = (memberId = '') => {
 const formatTeamOwnerLabel = (ownerId, memberIds = []) => {
     if (!ownerId || String(ownerId).startsWith('manual-')) return 'Unassigned';
     return memberIds.includes(ownerId) ? formatMemberLabel(ownerId) : 'Manual team';
+};
+
+const formatDraftChatTime = (value) => {
+    if (!value) return '';
+    return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
 const getDraftFavoriteIds = (draftProfile, userTeam) => {

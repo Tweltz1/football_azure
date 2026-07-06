@@ -103,6 +103,7 @@ const DraftRoomEnhanced = ({ userId }) => {
         league={league}
         leagueLoaded={leagueLoaded}
         beerRequest={beerRequest}
+        chatMessages={chatMessages}
       />
       <DraftRoomCommandPanel
         leagueId={leagueId}
@@ -366,6 +367,13 @@ const ManualCompanionPanel = ({ leagueId, league, user, currentTeam, rosterTotal
   };
 
   const canRequestBeer = Boolean(currentTeam && beerDutyTeam && beerDutyTeam.id !== currentTeam.id);
+  const beerButtonLabel = beerRequestCooldown > 0
+    ? `Request Beer (${beerRequestCooldown}s)`
+    : !currentTeam
+      ? 'Waiting for Team'
+      : beerDutyTeam?.id === currentTeam.id
+        ? 'You Are on Duty'
+        : 'Request Beer';
 
   return (
     <CollapsiblePanel title="Manual Room" storageKey="draft-panel-manual-room" defaultOpen>
@@ -427,7 +435,7 @@ const ManualCompanionPanel = ({ leagueId, league, user, currentTeam, rosterTotal
           <p className="draft-command-kicker">Beer</p>
           <p className="draft-muted">{beerDutyTeam ? `${beerDutyTeam.name} is on beer duty.` : 'No beer duty assigned.'}</p>
           <button type="button" onClick={handleRequestBeer} disabled={!canRequestBeer || beerRequestCooldown > 0}>
-            {beerRequestCooldown > 0 ? `Request Beer (${beerRequestCooldown}s)` : 'Request Beer'}
+            {beerButtonLabel}
           </button>
         </section>
       </div>
