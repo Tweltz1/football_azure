@@ -898,6 +898,100 @@ hr {
   font-weight: 850;
 }
 
+.manual-participant-view {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 14px;
+}
+
+.manual-participant-card {
+  grid-column: span 4;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(17,24,22,0.12);
+  background: rgba(255,255,255,0.66);
+}
+
+.manual-participant-feature,
+.manual-participant-chat {
+  grid-column: span 8;
+}
+
+.manual-participant-favorites {
+  grid-column: span 4;
+}
+
+.manual-participant-card h3 {
+  margin: 0;
+  color: var(--field-deep);
+  font-size: 1.18rem;
+}
+
+.manual-participant-feature h3 {
+  font-size: clamp(2rem, 4vw, 4rem);
+  line-height: 0.95;
+}
+
+.manual-participant-tags,
+.manual-participant-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.manual-participant-tags span,
+.manual-participant-stats span {
+  padding: 7px 9px;
+  border-radius: 8px;
+  color: var(--field-deep);
+  background: rgba(216,170,61,0.18);
+  border: 1px solid rgba(216,170,61,0.26);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.manual-participant-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manual-participant-list li {
+  display: grid;
+  gap: 3px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(17,24,22,0.08);
+}
+
+.manual-participant-list li:last-child {
+  border-bottom: 0;
+}
+
+.manual-participant-list strong,
+.manual-participant-list span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.manual-participant-list span {
+  color: #65746f;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.manual-participant-card .draft-chat-log {
+  max-height: 260px;
+}
+
+.manual-participant-card .draft-chat-form {
+  margin-top: 0;
+}
+
 .user-team-details {
   padding: 16px !important;
   border: 1px solid rgba(17,24,22,0.12) !important;
@@ -1031,9 +1125,17 @@ hr {
 
   .dashboard-grid,
   .draft-grid,
+  .manual-participant-view,
   .manual-console-grid,
   .login-hero {
     grid-template-columns: 1fr;
+  }
+
+  .manual-participant-card,
+  .manual-participant-feature,
+  .manual-participant-chat,
+  .manual-participant-favorites {
+    grid-column: 1;
   }
 
   .form-grid,
@@ -1086,6 +1188,10 @@ hr {
   .bid-control-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .manual-participant-feature h3 {
+    font-size: 2.2rem;
   }
 
   .leagues-table {
