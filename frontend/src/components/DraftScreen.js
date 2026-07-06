@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
@@ -247,10 +247,14 @@ const LobbyView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }
                     </button>
                 )}
             </div>
-            <div className="card" style={{marginTop: '20px'}}>
-                <h3>League Teams</h3>
-                 <TeamListViewer league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
-            </div>
+            {isManualDraft && isCurrentUserAdmin ? (
+                <ManualTeamSetupPanel league={league} user={user} leagueId={leagueId} />
+            ) : (
+                <div className="card" style={{marginTop: '20px'}}>
+                    <h3>League Teams</h3>
+                    <TeamListViewer league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
+                </div>
+            )}
             <PlayerListViewer league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} onFavoriteIdsChange={onFavoriteIdsChange} />
         </>
     );
@@ -447,7 +451,7 @@ const AdminControls = ({ league, user, leagueId, draftProfile }) => {
                 )}
 
                 {!isManual && <button onClick={() => setShowNominateModal(true)} disabled={!isPaused}>Nominate Player</button>}
-                <button onClick={() => setShowManageMembersModal(true)} disabled={!isManual && !isPaused}>Manage Members</button>
+                <button onClick={() => setShowManageMembersModal(true)} disabled={!isManual && !isPaused}>{isManual ? 'Manage Teams' : 'Manage Members'}</button>
                 <button onClick={() => setShowBeerBitchModal(true)} disabled={!isManual && !isPaused}>Beer B!tch</button>
                 <button onClick={handleCompleteDraft} disabled={!isManual && !isPaused}>Complete Draft</button>
             </div>
@@ -575,26 +579,113 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
     );
 };
 
+const ManualTeamSetupPanel = ({ league, user, leagueId, selectedTeamId = '', onSelectTeam, onDrawTeam, embedded = false }) => {
+    const [manualTeamName, setManualTeamName] = useState('');
+    const [manualTeamBudget, setManualTeamBudget] = useState(200);
+    const [isAddingTeam, setIsAddingTeam] = useState(false);
+    const teams = league.teams || [];
+    const rosterTotal = getRosterTotal(league.rosterSettings);
+
+    const handleAddManualTeam = async () => {
+        setIsAddingTeam(true);
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/manual-teams`, {
+                adminId: user.userId,
+                teamName: manualTeamName,
+                budget: parseInt(manualTeamBudget, 10) || 200,
+            });
+            setManualTeamName('');
+            setManualTeamBudget(200);
+        } catch (error) {
+            alert(`Error adding manual team: ${error.response?.data || error.message}`);
+        } finally {
+            setIsAddingTeam(false);
+        }
+    };
+
+    return (
+        <div className={`${embedded ? '' : 'card '}manual-team-setup-card`} style={embedded ? undefined : { marginTop: '20px' }}>
+            <div className="manual-section-heading">
+                <div>
+                    <p className="section-kicker">Manual teams</p>
+                    <h3>Team Setup</h3>
+                </div>
+                <div className="board-count">{teams.length} team{teams.length === 1 ? '' : 's'}</div>
+            </div>
+
+            <div className="manual-add-team-row">
+                <label>
+                    Team Name
+                    <input
+                        type="text"
+                        value={manualTeamName}
+                        onChange={(e) => setManualTeamName(e.target.value)}
+                        placeholder={`Team ${teams.length + 1}`}
+                    />
+                </label>
+                <label>
+                    Starting Budget
+                    <input
+                        type="number"
+                        min="1"
+                        value={manualTeamBudget}
+                        onChange={(e) => setManualTeamBudget(parseInt(e.target.value, 10) || 0)}
+                    />
+                </label>
+                <button type="button" onClick={handleAddManualTeam} disabled={isAddingTeam}>
+                    {isAddingTeam ? 'Adding...' : 'Add Team'}
+                </button>
+                {onDrawTeam && (
+                    <button type="button" className="edit-roster-button" onClick={onDrawTeam} disabled={teams.length === 0}>
+                        Draw Team
+                    </button>
+                )}
+            </div>
+
+            <div className="manual-team-grid">
+                {teams.map(team => {
+                    const rosterCount = (team.roster || []).length;
+                    const isSelected = team.id === selectedTeamId;
+                    return (
+                        <button
+                            type="button"
+                            key={team.id}
+                            className={`manual-team-tile ${isSelected ? 'selected' : ''}`}
+                            onClick={() => onSelectTeam && onSelectTeam(team.id)}
+                        >
+                            <strong>{team.name}</strong>
+                            <span>${team.budget} left</span>
+                            <span>{rosterCount}/{rosterTotal} roster</span>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
 const ManualDraftView = ({ league, user, leagueId, draftProfile }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPlayerId, setSelectedPlayerId] = useState('');
     const [selectedTeamId, setSelectedTeamId] = useState('');
+    const [positionFilter, setPositionFilter] = useState('ALL');
     const [amount, setAmount] = useState(1);
     const [isSaving, setIsSaving] = useState(false);
     const isAdmin = league.adminId === user.userId;
     const teams = league.teams || [];
-    const availablePlayers = (league.initialPlayerPool || [])
-        .filter(player => !player.isDrafted)
-        .sort((a, b) => (a.rank || 9999) - (b.rank || 9999));
     const query = searchTerm.trim().toLowerCase();
-    const filteredPlayers = availablePlayers
+    const availablePlayers = useMemo(() => (league.initialPlayerPool || [])
+        .filter(player => !player.isDrafted)
+        .sort((a, b) => (a.rank || 9999) - (b.rank || 9999)), [league.initialPlayerPool]);
+    const matchingPlayers = useMemo(() => availablePlayers
+        .filter(player => positionFilter === 'ALL' || player.position === positionFilter)
         .filter(player => {
             if (!query) return true;
-            return [player.name, player.team, player.position]
+            return [player.name, player.team, player.position, player.rank]
                 .filter(Boolean)
                 .some(value => String(value).toLowerCase().includes(query));
-        })
-        .slice(0, 100);
+        }), [availablePlayers, positionFilter, query]);
+    const visiblePlayers = matchingPlayers.slice(0, 24);
     const selectedTeam = teams.find(team => team.id === selectedTeamId);
     const selectedPlayer = availablePlayers.find(player => player.id === selectedPlayerId);
     const rosterTotal = getRosterTotal(league.rosterSettings);
@@ -612,6 +703,23 @@ const ManualDraftView = ({ league, user, leagueId, draftProfile }) => {
             setSelectedTeamId(leagueTeams[0].id);
         }
     }, [selectedTeamId, league.teams]);
+
+    useEffect(() => {
+        if (selectedPlayerId && !availablePlayers.some(player => player.id === selectedPlayerId)) {
+            setSelectedPlayerId('');
+        }
+    }, [availablePlayers, selectedPlayerId]);
+
+    const handleDrawTeam = () => {
+        const openTeams = teams.filter(team => rosterTotal <= 0 || (team.roster || []).length < rosterTotal);
+        const team = pickRandomItem(openTeams.length > 0 ? openTeams : teams);
+        if (team) setSelectedTeamId(team.id);
+    };
+
+    const handleDrawPlayer = () => {
+        const player = pickRandomItem(matchingPlayers.length > 0 ? matchingPlayers : availablePlayers);
+        if (player) setSelectedPlayerId(player.id);
+    };
 
     const handleAwardPlayer = async () => {
         if (!selectedTeamId || !selectedPlayerId) {
@@ -649,72 +757,109 @@ const ManualDraftView = ({ league, user, leagueId, draftProfile }) => {
     };
 
     return (
-        <div className="card" style={{ marginTop: '20px', backgroundColor: '#f8fff5' }}>
+        <div className="card manual-draft-console" style={{ marginTop: '20px', backgroundColor: '#f8fff5' }}>
             <div className="player-board-heading">
                 <div>
                     <p className="section-kicker">Manual draft</p>
-                    <h2>Commissioner Tracking Board</h2>
+                    <h2>Commissioner Console</h2>
                 </div>
                 <div className="board-count">{availablePlayers.length} available</div>
             </div>
 
             {isAdmin ? (
                 <>
-                    <div className="settings-grid">
-                        <label>
-                            Team
-                            <select value={selectedTeamId} onChange={(e) => setSelectedTeamId(e.target.value)}>
-                                {teams.map(team => (
-                                    <option key={team.id} value={team.id}>
-                                        {team.name} (${team.budget}, {(team.roster || []).length}/{rosterTotal})
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <label>
-                            Price
-                            <input
-                                type="number"
-                                min="1"
-                                max={maxAwardAmount || undefined}
-                                value={amount}
-                                onChange={(e) => setAmount(parseInt(e.target.value, 10) || 0)}
-                            />
-                        </label>
-                        <label>
-                            Search Player
-                            <input
-                                type="text"
-                                placeholder="Name, team, or position"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </label>
-                        <label>
-                            Player
-                            <select value={selectedPlayerId} onChange={(e) => setSelectedPlayerId(e.target.value)}>
-                                <option value="">Select player</option>
-                                {filteredPlayers.map(player => (
-                                    <option key={player.id} value={player.id}>
-                                        #{player.rank || '-'} {player.name} - {player.position} - {player.team} - Bye {player.bye || '-'}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                    </div>
+                    <ManualTeamSetupPanel
+                        league={league}
+                        user={user}
+                        leagueId={leagueId}
+                        selectedTeamId={selectedTeamId}
+                        onSelectTeam={setSelectedTeamId}
+                        onDrawTeam={handleDrawTeam}
+                        embedded
+                    />
 
-                    <div className="scoreboard-strip">
-                        <span>Max for selected team: ${maxAwardAmount}</span>
-                        <span>Roster left: {remainingRosterSpots}</span>
-                        <span>Showing {filteredPlayers.length} players</span>
+                    <div className="manual-console-grid">
+                        <section className="manual-picker-panel">
+                            <div className="manual-section-heading">
+                                <div>
+                                    <p className="section-kicker">Player draw</p>
+                                    <h3>Pick Board</h3>
+                                </div>
+                                <button type="button" className="edit-roster-button" onClick={handleDrawPlayer} disabled={availablePlayers.length === 0}>
+                                    Draw Player
+                                </button>
+                            </div>
+
+                            <div className="manual-player-filters">
+                                <select value={positionFilter} onChange={(e) => setPositionFilter(e.target.value)}>
+                                    <option value="ALL">All Positions</option>
+                                    {POSITION_OPTIONS.map(position => <option key={position} value={position}>{position}</option>)}
+                                </select>
+                                <input
+                                    type="text"
+                                    placeholder="Search player, team, rank"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="manual-player-list">
+                                {visiblePlayers.length > 0 ? visiblePlayers.map(player => (
+                                    <button
+                                        type="button"
+                                        key={player.id}
+                                        className={`manual-player-option ${player.id === selectedPlayerId ? 'selected' : ''}`}
+                                        onClick={() => setSelectedPlayerId(player.id)}
+                                    >
+                                        <span className="manual-player-rank">#{player.rank || '-'}</span>
+                                        <span>
+                                            <strong>{player.name}</strong>
+                                            <small>{player.position} / {player.team} / Bye {player.bye || '-'}</small>
+                                        </span>
+                                    </button>
+                                )) : (
+                                    <div className="empty-state">No players match that search.</div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="manual-award-panel">
+                            <p className="section-kicker">Award pick</p>
+                            <h3>{selectedPlayer ? selectedPlayer.name : 'No player selected'}</h3>
+                            <div className="manual-award-meta">
+                                <span>{selectedTeam?.name || 'No team selected'}</span>
+                                <span>Max ${maxAwardAmount}</span>
+                                <span>{remainingRosterSpots} roster left</span>
+                            </div>
+                            {selectedPlayer && <PlayerStrategy draftProfile={draftProfile} playerId={selectedPlayer.id} />}
+                            <label>
+                                Price
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max={maxAwardAmount || undefined}
+                                    value={amount}
+                                    onChange={(e) => setAmount(parseInt(e.target.value, 10) || 0)}
+                                />
+                            </label>
+                            <button
+                                type="button"
+                                className="create-button"
+                                onClick={handleAwardPlayer}
+                                disabled={isSaving || !selectedTeamId || !selectedPlayerId || maxAwardAmount < 1}
+                            >
+                                {isSaving ? 'Awarding...' : 'Award Player'}
+                            </button>
+                            <div className="scoreboard-strip">
+                                <span>{matchingPlayers.length} matching</span>
+                                <span>{teams.length} teams</span>
+                            </div>
+                        </section>
                     </div>
 
                     {selectedPlayer && (
-                        <div className="player-list-item" style={{ marginTop: '18px' }}>
+                        <div className="manual-selected-strip">
                             <PlayerSummary player={selectedPlayer} draftProfile={draftProfile} />
-                            <button type="button" onClick={handleAwardPlayer} disabled={isSaving || !selectedTeamId}>
-                                {isSaving ? 'Awarding...' : 'Award Player'}
-                            </button>
                         </div>
                     )}
                 </>
@@ -1247,6 +1392,11 @@ const normalizeDraftProfile = (profile) => ({
 });
 
 const normalizeIdList = (ids = []) => [...new Set((ids || []).filter(Boolean))];
+
+const pickRandomItem = (items = []) => {
+    if (!items.length) return null;
+    return items[Math.floor(Math.random() * items.length)];
+};
 
 const getDraftFavoriteIds = (draftProfile, userTeam) => {
     if (draftProfile?.loaded) {
