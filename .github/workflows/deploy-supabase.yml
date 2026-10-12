@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      # The migration branch deploys too, so the new Supabase project can be tested before merging.
+      - claude/project-thread-6lgsrr
     paths:
       - "supabase/**"
       - ".github/workflows/deploy-supabase.yml"
@@ -35,13 +37,27 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
     steps:
+      - name: Check Supabase secrets
+        id: secrets
+        run: |
+          if [ -z "$SUPABASE_PROJECT_ID" ] || [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::notice::Supabase secrets are not set yet, so nothing was deployed. See docs/supabase-cloudflare-setup.md, Part 2."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ready == 'true'
       - uses: supabase/setup-cli@v1
+        if: steps.secrets.outputs.ready == 'true'
         with:
           version: latest
       - name: Link project
+        if: steps.secrets.outputs.ready == 'true'
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
       - name: Apply database changes
+        if: steps.secrets.outputs.ready == 'true'
         run: supabase db push --password "$SUPABASE_DB_PASSWORD"
       - name: Deploy API function
+        if: steps.secrets.outputs.ready == 'true'
         run: supabase functions deploy api --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
