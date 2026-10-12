@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { HubConnectionBuilder } from '@microsoft/signalr';
-import { getSignalRInfo } from '../api';
+import { createDraftConnection } from '../realtime';
+import { API_BASE_URL } from '../api';
 import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '../data/strategyUtils';
 import '../App.css';
 import './LeagueTools.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 const Leagues = ({ userId }) => {
   const [leagues, setLeagues] = useState([]);
@@ -52,33 +51,23 @@ const Leagues = ({ userId }) => {
     }
   }, []);
 
+  const leagueIdsKey = useMemo(() => leagues.map((league) => league.id).sort().join(','), [leagues]);
+
   useEffect(() => {
-    let connection;
-    const setupSignalR = async () => {
-      try {
-        const info = await getSignalRInfo();
-        connection = new HubConnectionBuilder()
-          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-          .withAutomaticReconnect()
-          .build();
+    if (!leagueIdsKey) return undefined;
 
-        connection.on('draftStateUpdate', (updatedLeague) => {
-          setLeagues(currentLeagues =>
-            currentLeagues.map(l => l.id === updatedLeague.id ? updatedLeague : l)
-          );
-        });
+    const connection = createDraftConnection({ leagueIds: leagueIdsKey.split(','), userId });
+    connection.on('draftStateUpdate', (updatedLeague) => {
+      setLeagues(currentLeagues =>
+        currentLeagues.map(l => l.id === updatedLeague.id ? updatedLeague : l)
+      );
+    });
+    connection.start().catch((e) => {
+      console.error('Live connection failed on Leagues page: ', e);
+    });
 
-        await connection.start();
-      } catch (e) {
-        console.error('SignalR Connection Failed on Leagues page: ', e);
-      }
-    };
-
-    setupSignalR();
-    return () => {
-      if (connection) connection.stop();
-    };
-  }, []);
+    return () => connection.stop();
+  }, [leagueIdsKey, userId]);
 
   const commissionerLeagues = useMemo(() => leagues.filter((league) => league.adminId === userId), [leagues, userId]);
 

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
@@ -19,7 +20,6 @@ import MockDraftLab from './MockDraftLab';
 import PlayerComparison from './PlayerComparison';
 import '../PlayerBoard.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 const MAX_COMPARE = 3;
 const SLEEPER_TRENDING_BASE_URL = 'https://api.sleeper.app/v1/players/nfl/trending';
 const LIVE_TREND_LIMIT = 8;

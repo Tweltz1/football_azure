@@ -7,7 +7,7 @@ import DraftTvView from './components/DraftTvView';
 import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
 import Profile from './components/Profile';
-import { useAuth } from './AuthContext';
+import { useAuth, signOut } from './AuthContext';
 import './App.css';
 import './DraftMobile.css';
 import './MobileDensity.css';
@@ -53,7 +53,7 @@ function App() {
 
           <div className="nav-user">
             <span>Welcome, {user.userDetails}</span>
-            <a href="/.auth/logout" className="logout-link">Logout</a>
+            <button type="button" className="logout-link" onClick={signOut}>Logout</button>
           </div>
         </nav>
 

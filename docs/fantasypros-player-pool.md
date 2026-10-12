@@ -2,7 +2,7 @@
 
 The app can refresh its master player pool from an external NFL player source. The updater writes the same normalized player list into both app surfaces:
 
-- `api/Shared/PlayerData.cs` for new league creation
+- `supabase/functions/_shared/playerData.ts` for new league creation
 - `frontend/src/data/playerData.js` for profile/favorites UI
 
 ## Default Source: Sleeper

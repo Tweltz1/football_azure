@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { HubConnectionBuilder } from '@microsoft/signalr';
+import { createDraftConnection } from '../realtime';
 import { useAuth } from '../AuthContext';
-import { getSignalRInfo } from '../api';
+import { API_BASE_URL } from '../api';
 import './DraftTvView.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 const DraftTvView = () => {
   const { leagueId } = useParams();
@@ -43,13 +42,8 @@ const DraftTvView = () => {
 
     const setupConnection = async () => {
       try {
-        const info = await getSignalRInfo(user?.userId || 'tv-board');
         if (!isMounted) return;
-
-        connection = new HubConnectionBuilder()
-          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-          .withAutomaticReconnect()
-          .build();
+        connection = createDraftConnection({ leagueIds: [leagueId], userId: user?.userId });
 
         connection.on('draftStateUpdate', (updatedLeague) => {
           if (updatedLeague?.id === leagueId) {
@@ -60,7 +54,7 @@ const DraftTvView = () => {
 
         await connection.start();
       } catch (error) {
-        console.error('TV draft board SignalR connection failed:', error);
+        console.error('TV draft board live connection failed:', error);
       }
     };
 

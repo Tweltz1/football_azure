@@ -287,6 +287,7 @@ p {
   border-radius: 8px;
   color: var(--field-deep);
   background: var(--gold);
+  box-shadow: none;
   font-weight: 900;
 }
 

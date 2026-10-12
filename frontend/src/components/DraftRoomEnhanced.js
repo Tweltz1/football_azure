@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { HubConnectionBuilder } from '@microsoft/signalr';
+import { createDraftConnection } from '../realtime';
 import { useAuth } from '../AuthContext';
-import { getSignalRInfo } from '../api';
+import { API_BASE_URL } from '../api';
 import { subscribeProfileUpdates } from '../profileSync';
 import DraftScreen from './DraftScreen';
 import './DraftRoomEnhanced.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 const COLLAPSIBLE_CARD_TITLES = [
   'Draft Controls & Overview',
   'League Teams',
@@ -485,13 +484,8 @@ const useSharedDraftConnection = ({
 
     const setupConnection = async () => {
       try {
-        const info = await getSignalRInfo(userId);
         if (!isMounted) return;
-
-        connection = new HubConnectionBuilder()
-          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-          .withAutomaticReconnect()
-          .build();
+        connection = createDraftConnection({ leagueIds: [leagueId], userId });
 
         connection.on('draftStateUpdate', (updatedLeague) => {
           if (updatedLeague?.id === leagueId) {
@@ -527,7 +521,7 @@ const useSharedDraftConnection = ({
         await connection.start();
         await axios.post(`${API_BASE_URL}/leagues/${leagueId}/connect`, { userId });
       } catch (error) {
-        console.error('Shared draft SignalR connection failed:', error);
+        console.error('Shared draft live connection failed:', error);
       }
     };
 

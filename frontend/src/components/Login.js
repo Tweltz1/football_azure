@@ -1,4 +1,5 @@
 import React from 'react';
+import { signIn } from '../AuthContext';
 import '../App.css';
 
 const Login = () => {
@@ -20,12 +21,8 @@ const Login = () => {
           <p className="section-kicker">Sign in</p>
           <h2>Enter the room</h2>
           <div className="login-actions">
-            <a href="/.auth/login/github">
-              <button>Login with GitHub</button>
-            </a>
-            <a href="/.auth/login/google?prompt=select_account">
-              <button className="edit-roster-button">Login with Google</button>
-            </a>
+            <button type="button" onClick={() => signIn('github')}>Login with GitHub</button>
+            <button type="button" className="edit-roster-button" onClick={() => signIn('google')}>Login with Google</button>
           </div>
         </div>
       </section>

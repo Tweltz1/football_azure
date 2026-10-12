@@ -2,11 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../AuthContext';
-import { HubConnectionBuilder } from '@microsoft/signalr';
-import { getSignalRInfo } from '../api';
+import { createDraftConnection } from '../realtime';
+import { API_BASE_URL } from '../api';
 import '../App.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 const TIMER_POLL_MS = 1000;
 const POSITION_OPTIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DST'];
 const POSITION_PLAN_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'K', 'DST', 'BENCH'];
@@ -109,13 +108,9 @@ const DraftScreen = ({
         if (sharedLiveState || !user?.userId) return;
 
         let connection;
-        const setupSignalR = async () => {
+        const setupLiveUpdates = async () => {
             try {
-                const info = await getSignalRInfo();
-                connection = new HubConnectionBuilder()
-                    .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-                    .withAutomaticReconnect()
-                    .build();
+                connection = createDraftConnection({ leagueIds: [leagueId], userId: user.userId });
 
                 connection.on('draftStateUpdate', (updatedLeague) => {
                     if (updatedLeague.id === leagueId) {
@@ -132,11 +127,11 @@ const DraftScreen = ({
                 await axios.post(`${API_BASE_URL}/leagues/${leagueId}/connect`, { userId: user.userId });
 
             } catch (e) {
-                console.error('SignalR Connection Failed: ', e);
+                console.error('Live draft connection failed: ', e);
             }
         };
 
-        setupSignalR();
+        setupLiveUpdates();
 
         const handleVisibilityChange = () => {
             if (!user?.userId) return;

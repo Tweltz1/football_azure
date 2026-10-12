@@ -1,7 +1,5 @@
 # dependencies
 frontend/node_modules
-/api/bin
-/api/obj
 
 # build output
 /frontend/build
@@ -18,7 +16,8 @@ yarn-debug.log*
 yarn-error.log*
 *.vscode
 
-# local settings
-/api/local.settings.json
 
 /frontend/node_modules/public-encrypt/test/test_rsa_privkey.pem
+# Supabase CLI
+supabase/.temp
+supabase/.branches

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../api';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
 import {
@@ -28,7 +29,6 @@ import { notifyProfileUpdated } from '../profileSync';
 import '../App.css';
 import '../PlayerBoard.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 const Profile = () => {
     const { user } = useAuth();

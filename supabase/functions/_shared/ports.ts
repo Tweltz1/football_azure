@@ -1,0 +1,44 @@
+// Storage and live-update interfaces. The Supabase versions live in functions/api/;
+// tests use the in-memory versions in supabase/tests/.
+
+import type { League, UserProfile } from './models.ts';
+
+export interface StoredLeague {
+  league: League;
+  version: number;
+}
+
+export interface LightLeagueState {
+  status: string | null;
+  auctionTimer: League['auctionTimer'];
+  version: number;
+}
+
+export interface LeagueStore {
+  get(id: string): Promise<StoredLeague | null>;
+  /** Cheap read of the few fields timer callbacks check first. */
+  getLight(id: string): Promise<LightLeagueState | null>;
+  /** Inserts a new league. */
+  create(league: League): Promise<number>;
+  /** Saves only if the stored version still equals expectedVersion. Returns the new version, or null on conflict. */
+  replace(league: League, expectedVersion: number): Promise<number | null>;
+  delete(id: string): Promise<void>;
+  findByName(name: string): Promise<StoredLeague | null>;
+  listForMember(userId: string): Promise<StoredLeague[]>;
+}
+
+export interface ProfileStore {
+  find(userId: string): Promise<UserProfile | null>;
+  upsert(profile: UserProfile): Promise<void>;
+}
+
+export interface Broadcaster {
+  /** Sends an event to everyone watching a league. When toUserId is set, only that user's browser acts on it. */
+  send(leagueId: string, event: string, payload: unknown, toUserId?: string): Promise<void>;
+}
+
+export interface Logger {
+  info(message: string, ...args: unknown[]): void;
+  warn(message: string, ...args: unknown[]): void;
+  error(message: string, ...args: unknown[]): void;
+}

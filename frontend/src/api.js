@@ -1,10 +1,34 @@
 import axios from 'axios';
+import { SUPABASE_URL, supabase } from './supabaseClient';
+import { rememberLeagues } from './realtime';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
+export const API_BASE_URL = process.env.REACT_APP_API_URL
+    || (SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/api` : 'http://localhost:54321/functions/v1/api');
 
-if (!axios.__hoodLeagueBidLimitInterceptor) {
+const isApiRequest = (url) => typeof url === 'string' && url.startsWith(API_BASE_URL);
+
+if (!axios.__hoodLeagueInterceptors) {
+    // Sign every API call with the Supabase session; the server reads the user from this token.
+    axios.interceptors.request.use(async (config) => {
+        if (isApiRequest(config.url)) {
+            const { data } = await supabase.auth.getSession();
+            const token = data?.session?.access_token;
+            config.headers = config.headers || {};
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        }
+        return config;
+    });
+
     axios.interceptors.response.use(
-        (response) => response,
+        (response) => {
+            // Seeds the live-update cache so draft updates can be applied as small diffs.
+            if (isApiRequest(response.config?.url)) {
+                rememberLeagues(response.data);
+            }
+            return response;
+        },
         (error) => {
             const url = error.config?.url || '';
             const isRegularBidPost = String(error.config?.method || '').toLowerCase() === 'post'
@@ -20,24 +44,10 @@ if (!axios.__hoodLeagueBidLimitInterceptor) {
             return Promise.reject(error);
         }
     );
-    axios.__hoodLeagueBidLimitInterceptor = true;
+    axios.__hoodLeagueInterceptors = true;
 }
 
-export const getSignalRInfo = async (userId) => {
-    let resolvedUserId = userId;
-
-    if (!resolvedUserId) {
-        try {
-            const authResponse = await axios.get('/.auth/me', { timeout: 10000 });
-            resolvedUserId = authResponse.data?.clientPrincipal?.userId;
-        } catch (error) {
-            console.warn('Unable to resolve Static Web Apps user for SignalR token:', error);
-        }
-    }
-
-    const config = resolvedUserId ? { params: { userId: resolvedUserId } } : undefined;
-    return axios.get(`${API_BASE_URL}/GetSignalRInfo`, config);
-};
+export const fetchLeagueState = (leagueId) => axios.get(`${API_BASE_URL}/leagues/${leagueId}/state`);
 
 export const placeBid = async (leagueId, bidData) => {
     return axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, bidData);
