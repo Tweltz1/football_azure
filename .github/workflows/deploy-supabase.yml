@@ -51,7 +51,7 @@ jobs:
       - uses: supabase/setup-cli@v1
         if: steps.secrets.outputs.ready == 'true'
         with:
-          version: latest
+          version: 2.119.0
       - name: Link project
         if: steps.secrets.outputs.ready == 'true'
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
