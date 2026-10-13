@@ -1,6 +1,6 @@
 // Ports of api/Shared/{BidRules,DraftLogic,NflByeWeeks,TeamNameHelper}.cs
 
-import type { League, Player, RosterSettings, RosterSpot, Team, UserProfile } from './models.ts';
+import type { Bid, League, Player, RosterSettings, RosterSpot, Team, UserProfile } from './models.ts';
 import { ensureDefaults } from './models.ts';
 
 // ---- Bye weeks -------------------------------------------------------------
@@ -73,6 +73,49 @@ export const secondsFromNow = (now: Date, seconds: number) =>
 
 export function clearActiveBids(league: League) {
   league.activeBids = {};
+  league.boardReview = null;
+}
+
+// ---- Whiteboard boards ------------------------------------------------------
+
+export const BOARD_LIMITS = { strokes: 30, points: 2000, bytes: 6000 };
+
+/**
+ * Checks a drawing sent with a bid: up to 30 strokes, each a flat [x, y, x, y, ...] list of numbers in 0-100,
+ * at most 2,000 points and ~6 KB in all. Numbers are rounded. A missing or empty drawing is `board: null`.
+ */
+export function parseBoard(value: unknown): { board: number[][] | null } | { error: string } {
+  if (value == null) return { board: null };
+  const invalid = { error: 'The drawing could not be read. Clear the board and try again.' };
+  if (!Array.isArray(value)) return invalid;
+  if (value.length === 0) return { board: null };
+  if (value.length > BOARD_LIMITS.strokes) {
+    return { error: `That drawing has too many strokes (${BOARD_LIMITS.strokes} max). Clear the board and try again.` };
+  }
+  const board: number[][] = [];
+  let points = 0;
+  for (const stroke of value) {
+    if (!Array.isArray(stroke) || stroke.length < 2 || stroke.length % 2 !== 0) return invalid;
+    points += stroke.length / 2;
+    if (points > BOARD_LIMITS.points) return { error: 'That drawing is too detailed. Clear the board and try again.' };
+    const out: number[] = [];
+    for (const n of stroke) {
+      if (typeof n !== 'number' || !Number.isFinite(n) || n < 0 || n > 100) return invalid;
+      out.push(Math.round(n));
+    }
+    board.push(out);
+  }
+  if (JSON.stringify(board).length > BOARD_LIMITS.bytes) return { error: 'That drawing is too large. Clear the board and try again.' };
+  return { board };
+}
+
+/** Only the newest pick keeps its drawings, so the league document doesn't grow every round. */
+export function stripOldBoards(league: League) {
+  for (const pick of league.draftLog ?? []) {
+    for (const bid of Object.values(pick?.allBids ?? {}) as Bid[]) {
+      if (bid && 'board' in bid) delete bid.board;
+    }
+  }
 }
 
 function getMaxForPosition(settings: RosterSettings, position: string): number {
@@ -120,6 +163,7 @@ export function awardPlayerToTeam(
   const rosterPosition = getBestAvailableRosterSpot(league.rosterSettings, winningTeam.roster, player);
   winningTeam.roster.push({ player: { ...player }, position: rosterPosition });
 
+  stripOldBoards(league);
   league.draftLog.push({
     winningTeamId: winningTeam.id,
     winningBid: amount,

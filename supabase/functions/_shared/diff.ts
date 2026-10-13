@@ -28,6 +28,23 @@ export function diffObjects(prev: Record<string, unknown>, next: Record<string, 
         ops.push({ k, append: b.slice(a.length) });
         continue;
       }
+      // A few existing items edited plus new ones appended (a whiteboard award trims the previous
+      // pick's drawings and adds a pick): send the edits, then the append. applyOps runs them in order.
+      if (b.length > a.length && a.length > 0) {
+        const items: Record<string, unknown> = {};
+        let changed = 0;
+        for (let i = 0; i < a.length; i += 1) {
+          if (!same(a[i], b[i])) {
+            items[i] = b[i];
+            changed += 1;
+          }
+        }
+        if (changed * 2 <= b.length) {
+          ops.push({ k, items });
+          ops.push({ k, append: b.slice(a.length) });
+          continue;
+        }
+      }
       if (b.length === a.length) {
         const items: Record<string, unknown> = {};
         let changed = 0;

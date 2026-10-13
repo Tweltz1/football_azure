@@ -4,6 +4,9 @@ import axios from 'axios';
 import { createDraftConnection } from '../realtime';
 import { API_BASE_URL } from '../api';
 import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '../data/strategyUtils';
+import BiddingStyleField from '../whiteboard/BiddingStyleField';
+import { biddingStyleLabel, isWhiteboardLeague, normalizeBiddingMode } from '../whiteboard/biddingStyle';
+import '../whiteboard/whiteboard.css';
 import '../App.css';
 import './LeagueTools.css';
 
@@ -27,6 +30,7 @@ const Leagues = ({ userId }) => {
   const [rosterSettings, setRosterSettings] = useState({});
   const [draftTimers, setDraftTimers] = useState({});
   const [draftMode, setDraftMode] = useState('auction');
+  const [biddingMode, setBiddingMode] = useState('standard');
 
   const fetchLeagues = useCallback(async () => {
     try {
@@ -115,6 +119,7 @@ const Leagues = ({ userId }) => {
       await axios.post(`${API_BASE_URL}/leagues/${currentLeague.id}/settings`, {
         adminId: userId,
         draftMode,
+        ...(draftMode === 'manual' ? {} : { biddingMode }),
         rosterSettings,
         draftTimers
       });
@@ -239,7 +244,7 @@ const Leagues = ({ userId }) => {
                     <strong>{league.name}</strong>
                     <br />
                     <span>Your Team: {teamName} </span>
-                    <span>Mode: {league.draftMode === 'manual' ? 'Manual' : 'Auction'} </span>
+                    <span>Mode: {league.draftMode === 'manual' ? 'Manual' : isWhiteboardLeague(league) ? `Auction (${biddingStyleLabel(league.biddingMode)})` : 'Auction'} </span>
                     <button className="edit-profile-link" onClick={() => {
                       setShowEditModal(true);
                       setCurrentLeague(league);
@@ -274,6 +279,7 @@ const Leagues = ({ userId }) => {
                             setRosterSettings(league.rosterSettings || {});
                             setDraftTimers(league.draftTimers || {});
                             setDraftMode(league.draftMode || 'auction');
+                            setBiddingMode(normalizeBiddingMode(league.biddingMode));
                           }}
                           className="edit-roster-button"
                         >
@@ -336,6 +342,7 @@ const Leagues = ({ userId }) => {
                 Manual Draft
               </button>
             </div>
+            {draftMode === 'auction' && <BiddingStyleField value={biddingMode} onChange={setBiddingMode} />}
             <div className="divider" />
 
             <div className="settings-grid">

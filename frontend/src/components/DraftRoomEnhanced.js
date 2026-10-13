@@ -6,6 +6,8 @@ import { useAuth } from '../AuthContext';
 import { API_BASE_URL } from '../api';
 import { subscribeProfileUpdates } from '../profileSync';
 import DraftScreen from './DraftScreen';
+import WhiteboardPad from '../whiteboard/WhiteboardPad';
+import { isAutoReadLeague, isWhiteboardLeague } from '../whiteboard/biddingStyle';
 import './DraftRoomEnhanced.css';
 
 const COLLAPSIBLE_CARD_TITLES = [
@@ -15,7 +17,8 @@ const COLLAPSIBLE_CARD_TITLES = [
   'Player Lists',
   'Current Player Up for Bid:',
   'Intermission!',
-  'Tie Breaker!'
+  'Tie Breaker!',
+  'Boards Up!'
 ];
 
 const DraftRoomEnhanced = ({ userId }) => {
@@ -142,6 +145,7 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
   const rosterTotal = useMemo(() => getRosterTotal(league?.rosterSettings), [league]);
   const normalizedStatus = String(league?.status || '').toLowerCase();
   const isManualDraft = league?.draftMode === 'manual';
+  const isWhiteboard = !isManualDraft && isWhiteboardLeague(league);
   const isTieBreaker = normalizedStatus === 'tiebreaker';
   const isFinalTie = isTieBreaker && (league?.tieBreaker?.round || 0) >= 2;
   const tiedUserIds = league?.tieBreaker?.tiedTeamIds || [];
@@ -241,6 +245,22 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
     }
   };
 
+  const handleLockInBoard = async (amount, board) => {
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount, board }, { suppressBidLimitAlert: true });
+    } catch (error) {
+      throw new Error(error.response?.data || error.message);
+    }
+  };
+
+  const boardPadReason = !currentTeam
+    ? 'You need a team in this league to bid.'
+    : normalizedStatus === 'boardreview'
+      ? 'Boards are up. The commissioner is awarding this player.'
+      : league?.auctionTimer?.isPaused && normalizedStatus === 'drafting'
+        ? 'The draft is paused.'
+        : 'Boards open when the next player is up.';
+
   return (
     <aside className="draft-command-panel" aria-label="Draft room command panel">
       <CollapsiblePanel title="Teams Live" storageKey="draft-panel-teams" defaultOpen>
@@ -279,6 +299,17 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
 
       {isManualDraft ? (
         <ManualCompanionPanel leagueId={leagueId} league={league} user={user} currentTeam={currentTeam} rosterTotal={rosterTotal} />
+      ) : isWhiteboard ? (
+        <CollapsiblePanel title="Quick Bid" storageKey="draft-panel-quick-bid" defaultOpen>
+          <WhiteboardPad
+            compact
+            autoRead={isAutoReadLeague(league)}
+            activeBid={user?.userId ? league?.activeBids?.[user.userId] || null : null}
+            disabled={!currentTeam || normalizedStatus !== 'drafting' || Boolean(league?.auctionTimer?.isPaused)}
+            disabledReason={boardPadReason}
+            onLockIn={handleLockInBoard}
+          />
+        </CollapsiblePanel>
       ) : (
         <CollapsiblePanel title="Quick Bid" storageKey="draft-panel-quick-bid" defaultOpen>
           <div className="quick-bid-row">

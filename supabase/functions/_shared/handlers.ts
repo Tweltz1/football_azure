@@ -6,12 +6,13 @@
 import type { Broadcaster, HistoryStore, LeagueStore, Logger, ProfileStore, StoredLeague } from './ports.ts';
 import type { Bid, League, Player, RosterSettings, Team, UserProfile } from './models.ts';
 import {
-  clone, ensureDefaults, forClient, isManual, MANUAL, normalizeDraftMode, normalizeDraftTimers,
-  normalizeRosterSettings,
+  clone, ensureDefaults, forClient, isManual, isWhiteboard, MANUAL, normalizeBiddingMode, normalizeDraftMode,
+  normalizeDraftTimers, normalizeRosterSettings, WHITEBOARD_AUTO,
 } from './models.ts';
 import {
-  applyByesToLeague, applyByesToPlayers, awardPlayerToTeam, clearActiveBids, getMaxBid, getPreferredTeamName,
-  getRosterSpotTotal, getUniqueTeamName, isKnownTeam, maxBidMessage, secondsFromNow, startNextPlayer,
+  applyByesToLeague, applyByesToPlayers, awardPlayerToTeam, clearActiveBids, getMaxBid, getOpenRosterSpots,
+  getPreferredTeamName, getRosterSpotTotal, getUniqueTeamName, isKnownTeam, maxBidMessage, parseBoard,
+  secondsFromNow, startNextPlayer,
 } from './draftLogic.ts';
 import { diffObjects } from './diff.ts';
 import { draftNumberOf, historySummary, isCompleted, snapshotDraft } from './history.ts';
@@ -246,6 +247,7 @@ async function createLeague(ctx: Ctx, data: Body): Promise<Res> {
     }],
     status: 'created',
     draftMode: normalizeDraftMode(data.draftMode),
+    biddingMode: normalizeBiddingMode(data.biddingMode),
     readyMembers: [],
     rosterSettings,
     draftTimers,
@@ -256,6 +258,7 @@ async function createLeague(ctx: Ctx, data: Body): Promise<Res> {
     draftLog: [],
     beerBitchTeamId: null,
     tieBreaker: null,
+    boardReview: null,
     onlineUserIds: [],
     awayUserIds: [],
   } as League);
@@ -451,6 +454,16 @@ async function updateSettings(ctx: Ctx, leagueId: string, data: Body): Promise<R
         league.draftMode = nextMode;
       }
     }
+    if (!blank(data.biddingMode)) {
+      const nextStyle = normalizeBiddingMode(data.biddingMode);
+      if (nextStyle !== league.biddingMode) {
+        const status = str(league.status).toLowerCase();
+        if (status === 'drafting' || status === 'tiebreaker' || status === BOARD_REVIEW) {
+          return bad('Bidding style can only be changed between players.');
+        }
+        league.biddingMode = nextStyle;
+      }
+    }
     if (data.rosterSettings) league.rosterSettings = normalizeRosterSettings(data.rosterSettings);
     if (data.draftTimers) league.draftTimers = normalizeDraftTimers(data.draftTimers);
     return null;
@@ -486,6 +499,9 @@ async function kickMember(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
 
 // ---- Auction draft --------------------------------------------------------------
 
+/** Whiteboard styles: the clock has ended, every board is revealed, and the commissioner awards the player. */
+const BOARD_REVIEW = 'boardreview';
+
 const newTimer = (ctx: Ctx, seconds: number) => ({ endTime: secondsFromNow(ctx.now(), seconds), isPaused: false, timeRemainingOnPause: 0 });
 
 async function startDraft(ctx: Ctx, leagueId: string): Promise<Res> {
@@ -520,11 +536,28 @@ function validateBid(league: League, userId: string, amount: number): Res | null
   return null;
 }
 
+/**
+ * Whiteboard styles: "Lock in board". The drawing is the bid; `amount` is only the auto-read guess (0 in the
+ * manual style). Max bid is not checked here because the read may be wrong; the commissioner's award checks it.
+ */
+function lockInBoard(ctx: Ctx, league: League, userId: string, amount: number, board: number[][] | null): Res | null {
+  if (str(league.status).toLowerCase() !== 'drafting') return bad('Boards can only be locked in while a player is up for bid.');
+  if (!league.teams.some((t) => t.ownerId === userId)) return notFound('Team not found.');
+  if (!board) return bad('Draw your bid on the board before locking it in.');
+  const read = league.biddingMode === WHITEBOARD_AUTO ? Math.min(9999, Math.max(0, amount)) : 0;
+  league.activeBids[userId] = { amount: read, timestamp: ctx.now().toISOString(), board };
+  return null;
+}
+
 async function placeBid(ctx: Ctx, leagueId: string, data: Body, okBody?: unknown): Promise<Res> {
   const amount = int(data.amount);
-  if (amount <= 0) return bad('Bid must be at least $1.');
+  const parsed = parseBoard(data.board);
+  if ('error' in parsed) return bad(parsed.error);
+  if (amount <= 0 && !parsed.board) return bad('Bid must be at least $1.');
   const userId = ctx.userId!;
   const result = await updateLeague(ctx, leagueId, (league) => {
+    if (isWhiteboard(league.biddingMode)) return lockInBoard(ctx, league, userId, amount, parsed.board);
+    if (amount <= 0) return bad('Bid must be at least $1.');
     const error = validateBid(league, userId, amount);
     if (error) return error;
     league.activeBids[userId] = { amount, timestamp: ctx.now().toISOString() };
@@ -600,6 +633,25 @@ function moveCappedTieToAdminResolution(ctx: Ctx, league: League): Res | null {
   return null;
 }
 
+/** Whiteboard styles: the clock ended, so reveal every board and wait for the commissioner. No tie-breaker round. */
+function openBoardReview(ctx: Ctx, league: League) {
+  const bids = league.activeBids;
+  let topRead: { userIds: string[]; amount: number } | null = null;
+  if (league.biddingMode === WHITEBOARD_AUTO) {
+    const reads = Object.entries(bids).filter(([, bid]) => (bid?.amount ?? 0) > 0);
+    if (reads.length > 0) {
+      const high = Math.max(...reads.map(([, bid]) => bid.amount));
+      topRead = { userIds: reads.filter(([, bid]) => bid.amount === high).map(([id]) => id), amount: high };
+    }
+  }
+  league.activeBids = {};
+  league.tieBreaker = null;
+  league.status = BOARD_REVIEW;
+  league.boardReview = { playerId: league.currentPlayerId, bids, topRead };
+  // Paused at zero: no countdown, and the commissioner's paused-only tools (nominate, members) stay usable.
+  pauseForAdminTieResolution(ctx, league);
+}
+
 const timerRunning = (ctx: Ctx, timer: League['auctionTimer']) =>
   !!timer && (timer.isPaused || new Date(timer.endTime).getTime() > ctx.now().getTime());
 
@@ -618,6 +670,11 @@ async function endBidding(ctx: Ctx, leagueId: string): Promise<Res> {
 
     const player = league.initialPlayerPool.find((p) => p.id === league.currentPlayerId);
     if (!player) return bad('Current player was not found.');
+
+    if (status === 'drafting' && isWhiteboard(league.biddingMode)) {
+      openBoardReview(ctx, league);
+      return null;
+    }
 
     if (status === 'tiebreaker') {
       const error = addDefaultTieBreakerBids(ctx, league);
@@ -768,6 +825,40 @@ async function resolveTie(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
     return null;
   });
   return done(result, 'Tie resolved.');
+}
+
+/** Whiteboard styles: the commissioner reads the revealed boards and awards the player. */
+async function awardBoard(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const winningTeamId = str(data.winningTeamId);
+  const amount = int(data.amount);
+  if (!winningTeamId) return bad('Choose the winning team.');
+  if (amount < 1) return bad('Bid must be at least $1.');
+
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (league.adminId !== ctx.userId) return unauthorized();
+    const review = league.boardReview;
+    if (str(league.status).toLowerCase() !== BOARD_REVIEW || !review) return bad('There are no boards waiting to be awarded.');
+
+    const team = league.teams.find((t) => t?.id === winningTeamId);
+    if (!team) return notFound('Winning team not found.');
+    const player = league.initialPlayerPool.find((p) => p.id === league.currentPlayerId);
+    if (!player) return notFound('Current player not found.');
+    const winnerBid = review.bids[team.ownerId];
+    if (!winnerBid) return bad('The winner must be a team that locked in a board.');
+
+    if (getOpenRosterSpots(league, team) <= 0) return bad(`${team.name} already has a full roster.`);
+    const maxBid = getMaxBid(league, team);
+    if (amount > maxBid) {
+      return bad(`${team.name} can spend up to $${Math.max(0, maxBid)} and still keep $1 for each remaining roster spot.`);
+    }
+
+    // The pick keeps this round's boards; the winner's amount is what the commissioner entered.
+    league.activeBids = { ...review.bids, [team.ownerId]: { ...winnerBid, amount } };
+    ctx.log.info(`Admin awarded ${player.name} to ${team.name} for $${amount} from the whiteboards.`);
+    awardPlayerToTeam(league, player, team, amount, ctx.now());
+    return null;
+  });
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 async function undoLastPick(ctx: Ctx, leagueId: string): Promise<Res> {
@@ -1296,6 +1387,7 @@ const LEAGUE_POSTS: Record<string, LeagueAction> = {
   nominate: nominatePlayer,
   skip: (ctx, id) => skipPlayer(ctx, id),
   'resolve-tie': resolveTie,
+  'board-award': awardBoard,
   'undo-pick': (ctx, id) => undoLastPick(ctx, id),
   complete: (ctx, id) => completeDraft(ctx, id),
   'new-season': (ctx, id) => startNewSeason(ctx, id),

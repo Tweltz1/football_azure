@@ -685,3 +685,253 @@ test('the current week rolls over on Tuesday morning, ahead of Sleeper', async (
   assert.equal(weekByTuesday(opener, Date.parse('2027-03-01T00:00:00Z')), 18);
   assert.equal(weekByTuesday('', Date.parse('2026-10-13T19:48:00Z')), 0);
 });
+
+// ---- Whiteboard bidding ---------------------------------------------------------
+
+const board = (seed = 1) => [[10, 10 + seed, 20, 40, 30, 80], [50, 20, 60, 60]];
+
+async function setupWhiteboardLeague(world: ReturnType<typeof memoryWorld>, style = 'whiteboard-auto', members = ['admin', 'bob', 'cara', 'dan']) {
+  const leagueId = await setupAuctionLeague(world, members);
+  const set = await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { biddingMode: style });
+  assert.equal(set.status, 200, String(set.body));
+  await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  return leagueId;
+}
+
+test('bidding style defaults to standard and can be set on create or in settings', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world);
+  const state = (await world.call('bob', 'GET', `leagues/${leagueId}/state`)).body as any;
+  assert.equal(state.biddingMode, 'standard');
+  assert.equal(state.boardReview, null);
+
+  // Leagues saved before the setting existed read as standard.
+  delete (world.league(leagueId) as any).biddingMode;
+  assert.equal(((await world.call('bob', 'GET', `leagues/${leagueId}/state`)).body as any).biddingMode, 'standard');
+
+  const created = await world.call('admin', 'POST', 'CreateLeague', { name: 'Boards', biddingMode: 'whiteboard-auto' });
+  assert.equal(world.league((created.body as any).id).biddingMode, 'whiteboard-auto');
+  const odd = await world.call('admin', 'POST', 'CreateLeague', { name: 'Odd', biddingMode: 'crayons' });
+  assert.equal(world.league((odd.body as any).id).biddingMode, 'standard');
+
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/settings`, { biddingMode: 'whiteboard-manual' })).status, 401);
+  await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { biddingMode: 'whiteboard-manual' });
+  assert.equal(world.league(leagueId).biddingMode, 'whiteboard-manual');
+
+  await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  const midRound = await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { biddingMode: 'standard' });
+  assert.equal(midRound.status, 400, 'the style cannot change while a player is up for bid');
+});
+
+test('standard mode ignores drawings and keeps its tie-breaker', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world);
+  await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 7, board: board() });
+  await world.call('cara', 'POST', `leagues/${leagueId}/bid`, { amount: 7 });
+  assert.deepEqual(world.league(leagueId).activeBids.bob, { amount: 7, timestamp: world.league(leagueId).activeBids.bob.timestamp });
+  const noAmount = await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { board: board() });
+  assert.equal(noAmount.status, 400);
+  assert.equal(noAmount.body, 'Bid must be at least $1.');
+  world.advance(21);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  assert.equal(world.league(leagueId).status, 'tiebreaker');
+  assert.equal(world.league(leagueId).boardReview, null);
+});
+
+test('whiteboard: boards are stored with the bid and sealed until the clock ends', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world);
+  const sentBefore = world.sent.length;
+
+  const locked = await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 34, board: board(1) });
+  assert.equal(locked.status, 200, String(locked.body));
+  const own = (locked.body as any).activeBids;
+  assert.deepEqual(Object.keys(own), ['bob']);
+  assert.equal(own.bob.amount, 34);
+  assert.deepEqual(own.bob.board, board(1), 'the bidder gets their own board back');
+
+  // Lock in again: the new board replaces the old one.
+  await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 35, board: board(2) });
+  assert.deepEqual(world.league(leagueId).activeBids.bob.board, board(2));
+  // No max-bid check at lock-in: the read could be wrong. The commissioner's award checks it.
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/bid`, { amount: 999, board: board(3) })).status, 200);
+
+  for (const viewer of ['admin', 'cara', 'dan']) {
+    const state = (await world.call(viewer, 'GET', `leagues/${leagueId}/state`)).body as any;
+    const expected = viewer === 'cara' ? ['cara'] : [];
+    assert.deepEqual(Object.keys(state.activeBids), expected, `${viewer} sees only their own board`);
+    assert.equal(state.boardReview, null);
+    assert.ok(!JSON.stringify(state).includes('"board"') || viewer === 'cara');
+  }
+  const list = (await world.call('admin', 'GET', 'GetLeagues')).body as any[];
+  assert.deepEqual(list[0].activeBids, {});
+
+  const live = world.sent.slice(sentBefore);
+  assert.ok(live.length >= 3);
+  assert.ok(live.every((m) => !JSON.stringify(m.payload).includes('board')), 'live updates never carry boards before the reveal');
+});
+
+test('whiteboard: drawings are validated and capped', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world);
+  const bid = (b: unknown) => world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 5, board: b });
+  const line = (n: number) => Array.from({ length: n * 2 }, (_, i) => (i * 7) % 100);
+
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 5 })).status, 400, 'a board is required');
+  assert.equal((await bid('34')).status, 400);
+  assert.equal((await bid([[1, 2, 3]])).status, 400, 'odd coordinate count');
+  assert.equal((await bid([[1, 2, 101, 4]])).status, 400, 'outside the 0-100 box');
+  assert.equal((await bid([[1, 2, -1, 4]])).status, 400);
+  assert.equal((await bid([[1, 'x']])).status, 400);
+  assert.equal((await bid([{ x: 1 }])).status, 400);
+  assert.equal((await bid(Array.from({ length: 31 }, () => [1, 1, 2, 2]))).status, 400, 'more than 30 strokes');
+  assert.equal((await bid(Array.from({ length: 21 }, () => line(100)))).status, 400, 'more than 2,000 points');
+  const tooBig = await bid(Array.from({ length: 30 }, () => Array.from({ length: 120 }, () => 100)));
+  assert.equal(tooBig.status, 400, 'more than ~6 KB');
+  assert.match(String(tooBig.body), /too large/);
+  assert.deepEqual(world.league(leagueId).activeBids, {}, 'nothing bad was stored');
+
+  const ok = await bid([[10.4, 20.6, 30, 40]]);
+  assert.equal(ok.status, 200);
+  assert.deepEqual(world.league(leagueId).activeBids.bob.board, [[10, 21, 30, 40]], 'coordinates are rounded');
+});
+
+test('whiteboard: the clock ends in a review that reveals every board, with the auto-read prefill', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world);
+  await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 10, board: board(1) });
+  await world.call('cara', 'POST', `leagues/${leagueId}/bid`, { amount: 12, board: board(2) });
+  await world.call('admin', 'POST', `leagues/${leagueId}/bid`, { amount: 0, board: board(3) }); // unreadable
+  const sentBefore = world.sent.length;
+
+  world.advance(21);
+  assert.equal((await world.call('dan', 'POST', `leagues/${leagueId}/endBidding`)).body, 'Auction closed.');
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`)).body, 'No active auction to close.');
+
+  const league = world.league(leagueId);
+  assert.equal(league.status, 'boardreview');
+  assert.equal(league.tieBreaker, null);
+  assert.equal(league.auctionTimer!.isPaused, true, 'no countdown while the commissioner decides');
+  assert.equal(league.teams.every((t) => t.roster.length === 0), true, 'nothing is awarded automatically');
+
+  for (const viewer of ['dan', 'bob', 'admin']) {
+    const state = (await world.call(viewer, 'GET', `leagues/${leagueId}/state`)).body as any;
+    assert.deepEqual(Object.keys(state.boardReview.bids).sort(), ['admin', 'bob', 'cara'], `${viewer} sees every board`);
+    assert.deepEqual(state.boardReview.bids.cara.board, board(2));
+    assert.deepEqual(state.boardReview.topRead, { userIds: ['cara'], amount: 12 });
+    assert.equal(state.boardReview.playerId, state.currentPlayerId);
+  }
+  const reveal = world.sent.slice(sentBefore).find((m) => m.event === 'draftStateDiff')!;
+  assert.ok(JSON.stringify(reveal.payload).includes('"board"'), 'the reveal goes out live to everyone');
+
+  // Late boards are refused once the clock has ended.
+  assert.equal((await world.call('dan', 'POST', `leagues/${leagueId}/bid`, { amount: 50, board: board(4) })).status, 400);
+});
+
+test('whiteboard: ties at the top are flagged for the commissioner, never sent to a tie-breaker', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world);
+  await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 20, board: board(1) });
+  await world.call('cara', 'POST', `leagues/${leagueId}/bid`, { amount: 20, board: board(2) });
+  world.advance(21);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  const league = world.league(leagueId);
+  assert.equal(league.status, 'boardreview');
+  assert.deepEqual(league.boardReview!.topRead, { userIds: ['bob', 'cara'], amount: 20 });
+});
+
+test('whiteboard: only the commissioner awards, within the max bid, and the pick keeps its boards', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world, 'whiteboard-manual');
+  await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 40, board: board(1) });
+  await world.call('cara', 'POST', `leagues/${leagueId}/bid`, { board: board(2) });
+  assert.equal(world.league(leagueId).activeBids.bob.amount, 0, 'manual style stores no read amount');
+
+  const bobTeam = world.league(leagueId).teams.find((t) => t.ownerId === 'bob')!;
+  const danTeam = world.league(leagueId).teams.find((t) => t.ownerId === 'dan')!;
+  const early = await world.call('admin', 'POST', `leagues/${leagueId}/board-award`, { winningTeamId: bobTeam.id, amount: 30 });
+  assert.equal(early.status, 400, 'no award before the clock ends');
+
+  world.advance(21);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  assert.equal(world.league(leagueId).boardReview!.topRead, null, 'manual style has no prefill');
+
+  const award = (userId: string, body: unknown) => world.call(userId, 'POST', `leagues/${leagueId}/board-award`, body);
+  assert.equal((await award('bob', { winningTeamId: bobTeam.id, amount: 30 })).status, 401, 'members cannot award');
+  assert.equal(world.league(leagueId).status, 'boardreview');
+
+  const tooMuch = await award('admin', { winningTeamId: bobTeam.id, amount: 185 });
+  assert.equal(tooMuch.status, 400);
+  assert.match(String(tooMuch.body), /can spend up to \$184/);
+  assert.equal((await award('admin', { winningTeamId: bobTeam.id, amount: 0 })).body, 'Bid must be at least $1.');
+  assert.equal((await award('admin', { winningTeamId: danTeam.id, amount: 5 })).status, 400, 'dan locked in no board');
+
+  const done = await award('admin', { winningTeamId: bobTeam.id, amount: 31 });
+  assert.equal(done.status, 200, String(done.body));
+  const league = world.league(leagueId);
+  assert.equal(league.status, 'intermission');
+  assert.equal(league.boardReview, null);
+  assert.equal(league.teams.find((t) => t.ownerId === 'bob')!.budget, 169);
+  const pick = league.draftLog[league.draftLog.length - 1];
+  assert.equal(pick.winningBid, 31);
+  assert.equal(pick.allBids.bob.amount, 31, 'the winner shows the awarded amount');
+  assert.deepEqual(pick.allBids.bob.board, board(1));
+  assert.deepEqual(pick.allBids.cara.board, board(2));
+  assert.equal(pick.allBids.cara.amount, 0);
+  assert.equal((await award('admin', { winningTeamId: bobTeam.id, amount: 31 })).status, 400, 'no double award');
+});
+
+test('whiteboard: older picks drop their drawings, and the live update stays small', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world);
+  const cara = world.league(leagueId).teams.find((t) => t.ownerId === 'cara')!;
+  for (let round = 0; round < 2; round += 1) {
+    await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 3, board: board(round) });
+    await world.call('cara', 'POST', `leagues/${leagueId}/bid`, { amount: 4, board: board(round + 5) });
+    world.advance(21);
+    await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+    const before = world.sent.length;
+    assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/board-award`, { winningTeamId: cara.id, amount: 4 })).status, 200);
+    if (round === 1) {
+      const ops = world.sent.slice(before).find((m) => m.event === 'draftStateDiff')!.payload.ops;
+      const logOps = ops.filter((op: any) => op.k === 'draftLog');
+      assert.ok(logOps.every((op: any) => !('set' in op)), 'the draft log is patched, not resent');
+    }
+    world.advance(31);
+    await world.call('admin', 'POST', `leagues/${leagueId}/nextRound`);
+  }
+  const log = world.league(leagueId).draftLog;
+  assert.equal(log.length, 2);
+  assert.ok(Object.values(log[0].allBids).every((bid) => !('board' in bid)), 'the older pick lost its boards');
+  assert.deepEqual(Object.keys(log[0].allBids).sort(), ['bob', 'cara'], 'but keeps its amounts');
+  assert.ok(Object.values(log[1].allBids).every((bid) => Array.isArray(bid.board)), 'the newest pick keeps them');
+
+  // The diffs still rebuild the same league a fresh load returns.
+  const state = (await world.call('bob', 'GET', `leagues/${leagueId}/state`)).body as any;
+  assert.equal(state.draftLog.length, 2);
+});
+
+test('whiteboard: the commissioner can skip a player from the review', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world);
+  const playerId = world.league(leagueId).currentPlayerId;
+  world.advance(21);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  assert.equal(world.league(leagueId).status, 'boardreview');
+  assert.deepEqual(world.league(leagueId).boardReview!.bids, {});
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/skip`)).status, 401);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/skip`)).status, 200);
+  const league = world.league(leagueId);
+  assert.equal(league.status, 'drafting');
+  assert.equal(league.boardReview, null);
+  assert.notEqual(league.currentPlayerId, playerId);
+});
+
+test('diff patches edited items and appends in one update', () => {
+  const a = { log: [{ id: 1, board: [[1, 2]] }] };
+  const b = { log: [{ id: 1 }, { id: 2, board: [[3, 4]] }] };
+  const ops = diffObjects(a, b);
+  assert.deepEqual(ops.map((op) => Object.keys(op)[1]), ['items', 'append']);
+  assert.deepEqual(applyOps(a, ops), b);
+});

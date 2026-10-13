@@ -16,6 +16,7 @@
 .tv-header,
 .tv-auction-grid,
 .tv-result-strip,
+.tv-board-reveal,
 .tv-roster-board {
   width: min(1800px, 100%);
   margin: 0 auto;
@@ -332,6 +333,56 @@
 
 .tv-result-strip h2 {
   font-size: clamp(1.8rem, 3.4vw, 4.2rem);
+}
+
+/* Whiteboard styles: every team's board, held up at once. */
+.tv-board-reveal {
+  margin-bottom: clamp(10px, 1vw, 16px);
+  padding: clamp(14px, 1.4vw, 24px);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(139, 108, 255, 0.35);
+  background:
+    radial-gradient(ellipse 70% 80% at 50% 0%, rgba(139, 108, 255, 0.16), transparent 70%),
+    var(--surface);
+  box-shadow: var(--tight-shadow);
+}
+
+.tv-board-reveal > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 18px;
+  margin-bottom: clamp(12px, 1.2vw, 20px);
+}
+
+.tv-board-reveal h2 {
+  font-size: clamp(2rem, 4vw, 4.6rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.tv-board-reveal > header > span {
+  color: var(--text-2);
+  font-size: clamp(0.95rem, 1.2vw, 1.4rem);
+  font-weight: 600;
+}
+
+.tv-board-reveal.is-result {
+  border-color: var(--hairline);
+  background: var(--surface);
+}
+
+.tv-result-strip.has-boards {
+  grid-template-columns: 1fr;
+}
+
+.tv-status-bug.status-boardreview {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: rgba(139, 108, 255, 0.3);
 }
 
 .tv-roster-board {

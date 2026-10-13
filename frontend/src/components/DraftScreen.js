@@ -4,6 +4,9 @@ import axios from 'axios';
 import { useAuth } from '../AuthContext';
 import { createDraftConnection } from '../realtime';
 import { API_BASE_URL } from '../api';
+import WhiteboardPad from '../whiteboard/WhiteboardPad';
+import { BoardAwardPanel, BoardGrid, BoardSketch, pickLabel, reviewLabel } from '../whiteboard/BoardViews';
+import { biddingStyleLabel, isAutoReadLeague, isWhiteboardLeague } from '../whiteboard/biddingStyle';
 import '../App.css';
 
 const TIMER_POLL_MS = 1000;
@@ -176,14 +179,17 @@ const DraftScreen = ({
     const isLobbyPhase = normalizedStatus === 'created' || normalizedStatus === 'lobby';
     const isCompleted = normalizedStatus === 'completed';
     const isManualDraft = league.draftMode === 'manual';
+    const isWhiteboard = !isManualDraft && isWhiteboardLeague(league);
+    const statusLabel = normalizedStatus === 'boardreview' ? 'BOARDS UP' : String(league.status || 'unknown').toUpperCase();
     
     return (
         <div className="draft-screen" style={{ padding: '20px' }}>
             <ToastNotification message={toast.message} show={toast.show} onClose={() => setToast({ show: false, message: '' })} />
             <h2 className="draft-screen-title">Drafting in {league.name}</h2>
             <p className="draft-screen-status">
-                League Status: <span className={`draft-status-bug status-${normalizedStatus || 'unknown'}`}>{String(league.status || 'unknown').toUpperCase()}</span>
+                League Status: <span className={`draft-status-bug status-${normalizedStatus || 'unknown'}`}>{statusLabel}</span>
                 {isManualDraft && <span className="draft-mode-tag">Manual Tracker</span>}
+                {isWhiteboard && <span className="draft-mode-tag is-whiteboard">{biddingStyleLabel(league.biddingMode)}</span>}
             </p>
             <div className="button-group">
                 <a href={`/draft/${leagueId}/tv`} target="_blank" rel="noreferrer">
@@ -261,6 +267,7 @@ const DraftingView = ({ league, user, leagueId, draftProfile, chatMessages = [],
     const isIntermission = normalizedStatus === 'intermission';
     const isTieBreaker = normalizedStatus === 'tiebreaker';
     const isManual = normalizedStatus === 'manual';
+    const isBoardReview = normalizedStatus === 'boardreview';
     const isAuctionPhase = normalizedStatus === 'drafting' || isTieBreaker;
     const beerBitchTeam = (league.teams || []).find(t => t.id === league.beerBitchTeamId);
 
@@ -286,6 +293,8 @@ const DraftingView = ({ league, user, leagueId, draftProfile, chatMessages = [],
                 <ManualDraftView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} chatMessages={chatMessages} />
             ) : isIntermission ? (
                 <IntermissionView league={league} draftProfile={draftProfile} />
+            ) : isBoardReview ? (
+                <BoardReviewView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
             ) : isTieBreaker ? (
                 <TieBreakerView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
             ) : (
@@ -428,6 +437,7 @@ const AdminControls = ({ league, user, leagueId, draftProfile }) => {
     const isIntermission = normalizedStatus === 'intermission';
     const isTieBreaker = normalizedStatus === 'tiebreaker';
     const isManual = normalizedStatus === 'manual';
+    const isBoardReview = normalizedStatus === 'boardreview';
 
     const pauseButtonText = () => {
         if (isTieBreaker) {
@@ -442,13 +452,13 @@ const AdminControls = ({ league, user, leagueId, draftProfile }) => {
     return (
         <>
             <div className="admin-control-row">
-                {!isManual && <button onClick={handlePauseDraft}>{pauseButtonText()}</button>}
+                {!isManual && !isBoardReview && <button onClick={handlePauseDraft}>{pauseButtonText()}</button>}
                 
                 {!isManual && (
                     isIntermission ? (
                         <button onClick={handleSkipIntermission} disabled={isPaused}>Skip Intermission</button>
                     ) : (
-                        <button onClick={handleSkipPlayer} disabled={isPaused || isTieBreaker}>Skip Player</button>
+                        <button onClick={handleSkipPlayer} disabled={!isBoardReview && (isPaused || isTieBreaker)}>Skip Player</button>
                     )
                 )}
 
@@ -512,8 +522,13 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
     const currentPlayer = (league.initialPlayerPool || []).find(p => p.id === league.currentPlayerId);
     const userHasActiveBid = league.activeBids && league.activeBids[user.userId];
     const currentServerBid = userHasActiveBid ? league.activeBids[user.userId].amount : 0;
+    const isWhiteboard = isWhiteboardLeague(league);
+    const isAutoRead = isAutoReadLeague(league);
+    const userHasTeam = (league.teams || []).some(t => t.ownerId === user.userId);
 
     useEffect(() => {
+        // Whiteboard styles lock in drawings explicitly instead of sending the typed amount.
+        if (isWhiteboard) return undefined;
         const debounceBid = setTimeout(() => {
             if (league.auctionTimer?.isPaused) { return; }
 
@@ -527,7 +542,7 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
         }, 250);
 
         return () => clearTimeout(debounceBid);
-    }, [bidAmount, leagueId, user.userId, league.auctionTimer?.isPaused, userHasActiveBid, currentServerBid]);
+    }, [bidAmount, leagueId, user.userId, league.auctionTimer?.isPaused, userHasActiveBid, currentServerBid, isWhiteboard]);
 
     useEffect(() => {
         const { auctionTimer } = league;
@@ -555,6 +570,22 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
     const incrementBid = () => setBidAmount(prev => prev + 1);
     const decrementBid = () => setBidAmount(prev => Math.max(0, prev - 1));
 
+    const handleLockInBoard = async (amount, board) => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount, board }, { suppressBidLimitAlert: true });
+        } catch (error) {
+            throw new Error(error.response?.data || error.message);
+        }
+    };
+
+    const handleWithdrawBoard = async () => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/cancel-bid`, { userId: user.userId });
+        } catch (error) {
+            alert(`Error withdrawing your board: ${error.response?.data || error.message}`);
+        }
+    };
+
     if (!currentPlayer) return <div className="card">Waiting for player nomination...</div>;
 
     return (
@@ -578,7 +609,14 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
                         <span className="auction-clock-label">Bid Ends In</span>
                         <strong className="auction-clock-value">{timer}s</strong>
                     </p>
-                    {userHasActiveBid && (
+                    {userHasActiveBid && isWhiteboard && (
+                        <div className="auction-your-bid is-board">
+                            <span>Your board</span>
+                            <BoardSketch board={league.activeBids[user.userId].board} className="wb-mine-thumb" strokeWidth={2.5} title="Your locked-in board" />
+                            {isAutoRead && league.activeBids[user.userId].amount > 0 && <em>Reads ${league.activeBids[user.userId].amount}</em>}
+                        </div>
+                    )}
+                    {userHasActiveBid && !isWhiteboard && (
                         <p className="auction-your-bid">
                             <span>Your current bid</span>
                             <strong key={league.activeBids[user.userId].amount} className="bid-flash">${league.activeBids[user.userId].amount}</strong>
@@ -587,6 +625,17 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
                 </div>
             </div>
 
+            {isWhiteboard ? (
+                <WhiteboardPad
+                    autoRead={isAutoRead}
+                    activeBid={league.activeBids?.[user.userId] || null}
+                    disabled={!userHasTeam || Boolean(league.auctionTimer?.isPaused)}
+                    disabledReason={!userHasTeam ? 'You need a team in this league to bid.' : 'The draft is paused.'}
+                    onLockIn={handleLockInBoard}
+                    onWithdraw={handleWithdrawBoard}
+                    showLocked={false}
+                />
+            ) : (
             <div className="bid-control-row auction-bid-controls">
                 <span className="bid-control-label">Your Bid:</span>
                 <button className="bid-step-button" onClick={decrementBid} aria-label="Lower bid">-</button>
@@ -602,6 +651,7 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
                     Cancel Bid
                 </button>
             </div>
+            )}
         </div>
     );
 };
@@ -1129,6 +1179,7 @@ const IntermissionView = ({ league, draftProfile }) => {
 
     const winningTeam = (league.teams || []).find(t => t.id === lastPick.winningTeamId);
     const allBids = Object.entries(lastPick.allBids || {}).sort(([,a],[,b]) => b.amount - a.amount);
+    const showBoards = isWhiteboardLeague(league) || allBids.some(([, bid]) => bid?.board);
 
     return (
         <div className="card intermission-card" style={{marginTop: '20px'}}>
@@ -1143,6 +1194,18 @@ const IntermissionView = ({ league, draftProfile }) => {
                 </p>
                 <PlayerStrategy draftProfile={draftProfile} playerId={lastPick.player?.id} />
             </div>
+            {showBoards ? (
+                <div style={{marginTop: '20px'}}>
+                    <h4>Everyone's Boards:</h4>
+                    <BoardGrid
+                        league={league}
+                        bids={lastPick.allBids || {}}
+                        winnerId={winningTeam?.ownerId}
+                        label={pickLabel(league, lastPick)}
+                        revealKey={`${lastPick.player?.id}-${league.draftLog.length}`}
+                    />
+                </div>
+            ) : (
             <div style={{marginTop: '20px'}}>
                 <h4>All Bids for this Player:</h4>
                 <ul className="bid-history-list">
@@ -1152,6 +1215,41 @@ const IntermissionView = ({ league, draftProfile }) => {
                     })}
                 </ul>
             </div>
+            )}
+        </div>
+    );
+};
+
+const BoardReviewView = ({ league, user, leagueId, draftProfile }) => {
+    const [selectedId, setSelectedId] = useState(null);
+    const review = league.boardReview;
+    const currentPlayer = (league.initialPlayerPool || []).find(p => p.id === league.currentPlayerId);
+    const isCurrentUserAdmin = league.adminId === user.userId;
+    const boardCount = Object.keys(review?.bids || {}).length;
+
+    if (!review) return <div className="card">Collecting the boards...</div>;
+
+    return (
+        <div className="card board-review-card" style={{marginTop: '20px'}}>
+            <h2>Boards Up!</h2>
+            <p className="board-review-player">
+                {boardCount} board{boardCount === 1 ? '' : 's'} for <strong>{currentPlayer?.name || 'this player'}</strong>
+                {currentPlayer ? ` (${currentPlayer.position} - ${currentPlayer.team})` : ''}
+            </p>
+            {currentPlayer && <PlayerStrategy draftProfile={draftProfile} playerId={currentPlayer.id} />}
+            <BoardGrid
+                league={league}
+                bids={review.bids}
+                label={reviewLabel(league)}
+                selectedId={isCurrentUserAdmin ? selectedId : null}
+                onSelect={isCurrentUserAdmin ? setSelectedId : undefined}
+                revealKey={review.playerId || ''}
+            />
+            {isCurrentUserAdmin ? (
+                <BoardAwardPanel league={league} leagueId={leagueId} selectedId={selectedId} onSelect={setSelectedId} />
+            ) : (
+                <p className="board-review-wait">Waiting for the commissioner to award {currentPlayer?.name || 'the player'}.</p>
+            )}
         </div>
     );
 };

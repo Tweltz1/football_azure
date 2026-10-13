@@ -4,6 +4,8 @@ import axios from 'axios';
 import { createDraftConnection } from '../realtime';
 import { useAuth } from '../AuthContext';
 import { API_BASE_URL } from '../api';
+import { BoardGrid, pickLabel, reviewLabel } from '../whiteboard/BoardViews';
+import { isWhiteboardLeague } from '../whiteboard/biddingStyle';
 import './DraftTvView.css';
 
 
@@ -83,7 +85,12 @@ const DraftTvView = () => {
 
   const isAuction = status === 'drafting' || status === 'tiebreaker';
   const isManual = status === 'manual';
-  const isIntermissionLike = status === 'intermission' || status === 'completed' || !isAuction;
+  const isBoardReview = status === 'boardreview' && Boolean(league.boardReview);
+  const isIntermissionLike = !isBoardReview && (status === 'intermission' || status === 'completed' || !isAuction);
+  const isWhiteboard = !isManual && isWhiteboardLeague(league);
+  const lastPickHasBoards = Object.values(lastPick?.allBids || {}).some((bid) => bid?.board);
+  const showPickBoards = isIntermissionLike && !isManual && lastPick && (isWhiteboard || lastPickHasBoards);
+  const boardCount = Object.keys(league.boardReview?.bids || {}).length;
 
   return (
     <div className="draft-tv-view">
@@ -93,12 +100,12 @@ const DraftTvView = () => {
           <h1>{league.name}</h1>
         </div>
         <div className="tv-status-strip">
-          <span className={`tv-status-bug status-${status || 'waiting'}`}>{String(league.status || 'waiting').toUpperCase()}</span>
+          <span className={`tv-status-bug status-${status || 'waiting'}`}>{isBoardReview ? 'BOARDS UP' : String(league.status || 'waiting').toUpperCase()}</span>
           <strong
-            className={isManual ? 'manual-current-player' : `tv-clock${isAuction && timer > 0 && timer <= 5 ? ' is-urgent' : ''}`}
+            className={isManual || isBoardReview ? 'manual-current-player' : `tv-clock${isAuction && timer > 0 && timer <= 5 ? ' is-urgent' : ''}`}
             style={isAuction ? { '--timer-progress': Math.min(1, Math.max(0, timer / (Number(status === 'tiebreaker' ? league.draftTimers?.rebidTimer : league.draftTimers?.bidTimer) || 20))) } : undefined}
           >
-            {isManual ? (currentPlayer?.name || 'No player up') : formatTimer(timer)}
+            {isManual ? (currentPlayer?.name || 'No player up') : isBoardReview ? 'Commissioner deciding' : formatTimer(timer)}
           </strong>
         </div>
       </header>
@@ -123,9 +130,9 @@ const DraftTvView = () => {
           </div>
 
           <div className="tv-current-bid tv-sealed-bids">
-            <p className="tv-kicker">Blind Auction</p>
+            <p className="tv-kicker">{isWhiteboard ? 'Whiteboard Auction' : 'Blind Auction'}</p>
             <strong>Sealed</strong>
-            <span>Bids are revealed when the clock hits 0</span>
+            <span>{isWhiteboard ? 'Boards flip when the clock hits 0' : 'Bids are revealed when the clock hits 0'}</span>
           </div>
 
           <div className="tv-bid-board">
@@ -142,8 +149,21 @@ const DraftTvView = () => {
         </section>
       )}
 
+      {isBoardReview && (
+        <section className="tv-board-reveal">
+          <header>
+            <div>
+              <p className="tv-kicker">Boards Up</p>
+              <h2>{currentPlayer?.name || 'Current player'}</h2>
+            </div>
+            <span>{boardCount} board{boardCount === 1 ? '' : 's'} · waiting for the commissioner</span>
+          </header>
+          <BoardGrid league={league} bids={league.boardReview.bids} label={reviewLabel(league)} revealKey={league.boardReview.playerId || ''} size="tv" />
+        </section>
+      )}
+
       {isIntermissionLike && (
-        <section className="tv-result-strip">
+        <section className={`tv-result-strip${showPickBoards ? ' has-boards' : ''}`}>
           <div>
             <p className="tv-kicker">{isManual && currentPlayer ? 'Up Now' : isManual ? 'Manual Tracker' : 'Last Result'}</p>
             {isManual && currentPlayer ? (
@@ -171,9 +191,22 @@ const DraftTvView = () => {
                   : lastPick ? `Commissioner entered $${lastPick.winningBid}` : 'No picks entered yet.'}
               </div>
             </div>
-          ) : (
+          ) : showPickBoards ? null : (
             <BidBoard title="Last Player Bids" bids={lastPickBids} emptyText="No completed bids yet." compact />
           )}
+        </section>
+      )}
+
+      {showPickBoards && (
+        <section className="tv-board-reveal is-result">
+          <BoardGrid
+            league={league}
+            bids={lastPick.allBids || {}}
+            winnerId={winningTeam?.ownerId}
+            label={pickLabel(league, lastPick)}
+            revealKey={`${lastPick.player?.id}-${league.draftLog.length}`}
+            size="tv"
+          />
         </section>
       )}
 

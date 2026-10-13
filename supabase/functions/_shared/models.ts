@@ -17,6 +17,23 @@ export interface Player {
 export interface Bid {
   amount: number;
   timestamp: string;
+  /** Whiteboard styles only: the bidder's drawing, strokes of flat [x, y, x, y, ...] ints in a 0-100 box. */
+  board?: number[][];
+}
+
+export const STANDARD = 'standard';
+export const WHITEBOARD_MANUAL = 'whiteboard-manual';
+export const WHITEBOARD_AUTO = 'whiteboard-auto';
+export type BiddingMode = typeof STANDARD | typeof WHITEBOARD_MANUAL | typeof WHITEBOARD_AUTO;
+
+/**
+ * Whiteboard styles: once the clock ends every locked-in board is revealed here (to everyone) until the
+ * commissioner awards the player. `topRead` is the auto-read prefill: the highest read amount and who wrote it.
+ */
+export interface BoardReview {
+  playerId: string | null;
+  bids: Record<string, Bid>;
+  topRead: { userIds: string[]; amount: number } | null;
 }
 
 export interface AuctionTimer {
@@ -79,6 +96,7 @@ export interface League {
   teams: Team[];
   status: string | null;
   draftMode: string;
+  biddingMode: BiddingMode;
   readyMembers: string[];
   rosterSettings: RosterSettings;
   draftTimers: DraftTimers;
@@ -89,6 +107,7 @@ export interface League {
   draftLog: DraftPick[];
   beerBitchTeamId: string | null;
   tieBreaker: TieBreakerInfo | null;
+  boardReview: BoardReview | null;
   onlineUserIds: string[];
   awayUserIds: string[];
   /** Counts drafts run in this league; a new season starts the next one. Missing on older leagues (= 1). */
@@ -176,6 +195,20 @@ export const normalizeDraftMode = (value: unknown): string =>
 
 export const isManual = (value: unknown): boolean => normalizeDraftMode(value) === MANUAL;
 
+export function normalizeBiddingMode(value: unknown): BiddingMode {
+  switch (String(value ?? '').trim().toLowerCase()) {
+    case WHITEBOARD_AUTO:
+      return WHITEBOARD_AUTO;
+    case WHITEBOARD_MANUAL:
+    case 'whiteboard':
+      return WHITEBOARD_MANUAL;
+    default:
+      return STANDARD;
+  }
+}
+
+export const isWhiteboard = (value: unknown): boolean => normalizeBiddingMode(value) !== STANDARD;
+
 export function ensureDefaults(league: League): League {
   league.members = league.members ?? [];
   league.teams = league.teams ?? [];
@@ -188,6 +221,8 @@ export function ensureDefaults(league: League): League {
   league.onlineUserIds = league.onlineUserIds ?? [];
   league.awayUserIds = league.awayUserIds ?? [];
   league.draftMode = normalizeDraftMode(league.draftMode);
+  league.biddingMode = normalizeBiddingMode(league.biddingMode);
+  league.boardReview = league.boardReview ?? null;
   league.currentPlayerId = league.currentPlayerId ?? null;
   league.auctionTimer = league.auctionTimer ?? null;
   league.tieBreaker = league.tieBreaker ?? null;

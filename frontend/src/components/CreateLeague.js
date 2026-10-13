@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import { useNavigate } from 'react-router-dom';
+import BiddingStyleField from '../whiteboard/BiddingStyleField';
+import { STANDARD, WHITEBOARD_AUTO, WHITEBOARD_MANUAL } from '../whiteboard/biddingStyle';
+import '../whiteboard/whiteboard.css';
 import '../App.css';
 
 
@@ -9,6 +12,7 @@ const CreateLeague = ({ userId }) => {
   const [leagueName, setLeagueName] = useState('');
   const [password, setPassword] = useState('');
   const [draftMode, setDraftMode] = useState('auction');
+  const [biddingMode, setBiddingMode] = useState(STANDARD);
   const navigate = useNavigate();
   const [rosterSettings, setRosterSettings] = useState({
     qb: 1, rb: 2, wr: 3, te: 1, k: 1, def: 1, flex: 1, superFlex: 1, bench: 6
@@ -43,6 +47,7 @@ const CreateLeague = ({ userId }) => {
         adminId: userId,
         password,
         draftMode,
+        biddingMode: draftMode === 'manual' ? STANDARD : biddingMode,
         rosterSettings,
         draftTimers
       });
@@ -63,7 +68,7 @@ const CreateLeague = ({ userId }) => {
         <div className="scoreboard-strip">
           <span>{draftTimers.bidTimer}s bid clock</span>
           <span>{draftTimers.intermissionTimer}s intermission</span>
-          <span>{draftMode === 'manual' ? 'Manual tracking' : 'Live auction'}</span>
+          <span>{draftMode === 'manual' ? 'Manual tracking' : biddingMode === WHITEBOARD_AUTO ? 'Whiteboard auction, auto-read' : biddingMode === WHITEBOARD_MANUAL ? 'Whiteboard auction' : 'Live auction'}</span>
           <span>{Object.values(rosterSettings).reduce((sum, value) => sum + value, 0)} roster spots</span>
         </div>
       </section>
@@ -101,6 +106,8 @@ const CreateLeague = ({ userId }) => {
               Manual Draft
             </button>
           </div>
+
+          {draftMode === 'auction' && <BiddingStyleField value={biddingMode} onChange={setBiddingMode} />}
 
           <div className="divider" />
 
