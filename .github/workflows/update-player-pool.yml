@@ -76,7 +76,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: ${{ env.PRODUCTION_BRANCH }}
-          branch: automation/player-pool
+          branch: automation/player-pool-live
           delete-branch: true
           commit-message: Update generated player pool
           title: Update generated player pool
