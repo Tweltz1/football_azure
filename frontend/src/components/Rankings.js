@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import { defenseMatchup, isUnavailable, trendFor, withProjections } from '../data/startSitUtils';
@@ -228,16 +229,16 @@ const Rankings = ({ userId }) => {
     choice, setChoice, scoring, profile, options: scoringOptions,
   } = useLeagueScoring(sleeperTeams);
   const projections = useMemo(() => applyLeagueScoring(rawProjections, profile), [rawProjections, profile]);
-  // Free agents get an asterisk: in the league picked under Scoring, or the viewer's only Sleeper league.
+  // The league picked here (shared with Start/Sit): its scoring, and its free agents get an asterisk.
+  const leagueTeam = profile ? sleeperTeams.find((t) => `league:${t.leagueId}` === profile.value) || null : null;
+  const standardOptions = scoringOptions.filter((o) => !o.value.startsWith('league:'));
   const waivers = useMemo(() => {
-    const team = profile
-      ? sleeperTeams.find((t) => `league:${t.leagueId}` === profile.value)
-      : (sleeperTeams.length === 1 ? sleeperTeams[0] : null);
+    const team = leagueTeam;
     if (!team) return null;
     const rostered = new Set(team.players.map((p) => p.id));
     (team.opponents || []).forEach((o) => o.players.forEach((p) => rostered.add(p.id)));
     return { leagueName: team.leagueName, rostered, fetchedAt: team.fetchedAt };
-  }, [profile, sleeperTeams]);
+  }, [leagueTeam]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [insightId, setInsightId] = useState(null);
@@ -325,18 +326,41 @@ const Rankings = ({ userId }) => {
               </select>
             </label>
           )}
-          {view === 'week' && (
+          <label>
+            League
+            <select
+              value={leagueTeam ? profile.value : ''}
+              onChange={(e) => setChoice(e.target.value || (profile ? profile.base : choice))}
+              disabled={sleeperTeams.length === 0}
+            >
+              {sleeperTeams.map((t) => (
+                <option key={t.leagueId} value={`league:${t.leagueId}`}>{t.leagueName} ({t.teamName})</option>
+              ))}
+              <option value="">{sleeperTeams.length ? 'No league' : 'None connected'}</option>
+            </select>
+          </label>
+          {view === 'week' && !leagueTeam && (
             <label>
               Scoring
               <select value={choice} onChange={(e) => setChoice(e.target.value)}>
-                {scoringOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {standardOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </label>
           )}
         </div>
-        {view === 'week' && profile?.custom && (
+        {sleeperTeams.length === 0 && (
+          <p className="startsit-help">
+            <Link to="/start-sit">Connect your Sleeper team on Start/Sit</Link> to rank with your league's scoring and see who's available on waivers.
+          </p>
+        )}
+        {leagueTeam && !profile.custom && (
           <p className="startsit-help league-scoring-note">
-            Scored with {profile.leagueName}'s rules: {profile.details.join(', ')}.
+            Ranked with {leagueTeam.leagueName}'s scoring ({standardOptions.find((o) => o.value === profile.base)?.label || profile.base}). * marks players nobody in the league has.
+          </p>
+        )}
+        {leagueTeam && profile.custom && (
+          <p className="startsit-help league-scoring-note">
+            Ranked with {profile.leagueName}'s rules: {profile.details.join(', ')}. * marks players nobody in the league has.
           </p>
         )}
       </section>
