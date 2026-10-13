@@ -71,6 +71,7 @@ export const withProjections = (players, projectionsById, scoring, week) => play
     recent: projection?.recent || [],
     seasonAvg: projection?.seasonAvg || null,
     gamesPlayed: projection?.gamesPlayed || 0,
+    age: player.age ?? null,
   };
 });
 
@@ -309,6 +310,34 @@ export const replacementLevels = (allPlayers, teamCount, rosterSettings, scoring
   return levels;
 };
 
+// Dynasty: how much of a player's value is still ahead of them, by position and age.
+// Running backs fade earliest, quarterbacks last.
+const AGE_CURVES = {
+  RB: [[24, 1.3], [25, 1.15], [26, 1], [27, 0.85], [28, 0.7], [Infinity, 0.5]],
+  WR: [[24, 1.3], [26, 1.2], [27, 1.1], [28, 1], [29, 0.85], [30, 0.7], [Infinity, 0.55]],
+  TE: [[25, 1.25], [28, 1.1], [29, 0.95], [30, 0.8], [Infinity, 0.6]],
+  QB: [[26, 1.25], [30, 1.1], [33, 1], [35, 0.8], [Infinity, 0.6]],
+};
+
+export const ageMultiplier = (position, age) => {
+  const curve = AGE_CURVES[normalizePosition(position)];
+  if (!curve || !Number.isFinite(Number(age)) || !age) return 1;
+  const years = Math.floor(Number(age));
+  return curve.find(([maxAge]) => years <= maxAge)[1];
+};
+
+// Rookie picks in the same units as player trade value: a 1st is worth about a solid starter.
+const PICK_ROUND_VALUE = { 1: 6, 2: 2.5, 3: 1 };
+
+export const pickValue = (pick, firstSeason) => {
+  const base = PICK_ROUND_VALUE[pick.round] ?? 0.4;
+  const yearsOut = Math.max(0, Number(pick.season) - Number(firstSeason || pick.season));
+  return Math.round(base * 0.85 ** yearsOut * 10) / 10;
+};
+
+const ordinalRound = (round) => ({ 1: '1st', 2: '2nd', 3: '3rd' })[round] || `${round}th`;
+export const pickLabel = (pick, ownTeamName) => `${pick.season} ${ordinalRound(pick.round)}${pick.originalTeam && pick.originalTeam !== ownTeamName ? ` (from ${pick.originalTeam})` : ''}`;
+
 const weeklyLineupTotal = (players, rosterSettings, scoring) => {
   const valued = players.map((p) => ({ ...p, points: tradeValue(p, scoring), onBye: false, injury: null }));
   return buildLineup(valued, rosterSettings).total;
@@ -318,17 +347,22 @@ const weeklyLineupTotal = (players, rosterSettings, scoring) => {
  * Rates a trade. give/get are players (with projections attached); myRoster/theirRoster are the full
  * rosters before the trade. Returns per-player values, totals, each side's weekly lineup change and a verdict.
  */
-export const analyzeTrade = ({ give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount }) => {
+export const analyzeTrade = ({
+  give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount,
+  dynasty = false, givePicks = [], getPicks = [], firstPickSeason = null,
+}) => {
   const levels = replacementLevels(allPlayers, teamCount, rosterSettings, scoring);
   const rate = (p) => {
     const value = tradeValue(p, scoring);
     const surplus = Math.max(0, value - (levels[p.position] ?? 0));
     // Mostly what they score above a waiver starter, plus a little raw scoring so depth isn't worth zero.
-    const score = surplus + 0.2 * value;
-    return { ...p, value, surplus: Math.round(surplus * 10) / 10, score: Math.round(score * 10) / 10 };
+    const ageFactor = dynasty ? ageMultiplier(p.position, p.age) : 1;
+    const score = (surplus + 0.2 * value) * ageFactor;
+    return { ...p, value, surplus: Math.round(surplus * 10) / 10, ageFactor, score: Math.round(score * 10) / 10 };
   };
-  const giveRated = give.map(rate);
-  const getRated = get.map(rate);
+  const ratePick = (pick) => ({ ...pick, score: pickValue(pick, firstPickSeason) });
+  const giveRated = [...give.map(rate), ...givePicks.map(ratePick)];
+  const getRated = [...get.map(rate), ...getPicks.map(ratePick)];
   const sum = (list) => Math.round(list.reduce((total, p) => total + p.score, 0) * 10) / 10;
   const giveTotal = sum(giveRated);
   const getTotal = sum(getRated);

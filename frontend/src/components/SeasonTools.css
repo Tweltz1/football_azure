@@ -489,3 +489,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+.trade-picks-title {
+  margin-top: 12px !important;
+}
+
+.trade-pick-list {
+  max-height: 200px;
+}

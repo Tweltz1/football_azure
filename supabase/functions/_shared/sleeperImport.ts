@@ -14,17 +14,31 @@ export interface LineupSlot {
   positions: string[];
 }
 
+export interface DraftPick {
+  id: string;
+  season: number;
+  round: number;
+  /** The team the pick originally belonged to (it decides the draft slot). */
+  originalTeam: string;
+}
+
+type RosterPlayer = Pick<Player, 'id' | 'name' | 'position' | 'team' | 'bye'> & { age: number | null };
+
 export interface SleeperTeam {
   leagueId: string;
   leagueName: string;
   teamName: string;
   scoring: 'ppr' | 'half' | 'std';
   slots: LineupSlot[];
-  players: Pick<Player, 'id' | 'name' | 'position' | 'team' | 'bye'>[];
+  players: RosterPlayer[];
+  /** Dynasty league (Sleeper league type 2): player age and draft picks matter in trades. */
+  dynasty: boolean;
+  /** Future rookie draft picks this team owns (dynasty leagues only). */
+  picks: DraftPick[];
   /** Who is in the Sleeper lineup right now, as our player ids. */
   starters: string[];
   /** The other teams in the league, for the trade tool. */
-  opponents: { teamName: string; players: SleeperTeam['players'] }[];
+  opponents: { teamName: string; players: RosterPlayer[]; picks: DraftPick[] }[];
 }
 
 export interface SleeperImport {
@@ -54,9 +68,61 @@ const SLOT_LABELS: Record<string, string> = {
 };
 
 const cache = new Map<string, { at: number; value: SleeperImport }>();
+const SLEEPER_PLAYERS_URL = `${SLEEPER_API}/players/nfl`;
+const AGES_CACHE_MS = 24 * 60 * 60 * 1000;
+const PICK_SEASONS = 3;
+const ages: { at: number; value: Map<string, number> | null } = { at: 0, value: null };
 
 export function clearSleeperCache() {
   cache.clear();
+  ages.at = 0;
+  ages.value = null;
+}
+
+/**
+ * Ages of every NFL player, keyed by our player id. Sleeper only offers them in its full player
+ * database (a few MB), so it is loaded at most once a day and only when a dynasty league needs it.
+ */
+async function getAges(fetchJson: FetchJson, now: Date): Promise<Map<string, number>> {
+  if (ages.value && now.getTime() - ages.at < AGES_CACHE_MS) return ages.value;
+  const raw = await fetchJson(SLEEPER_PLAYERS_URL);
+  const map = new Map<string, number>();
+  for (const [sleeperId, info] of Object.entries((raw ?? {}) as Record<string, Record<string, unknown> | null>)) {
+    if (!info) continue;
+    const birth = Date.parse(text(info.birth_date));
+    const age = Number.isFinite(birth)
+      ? (now.getTime() - birth) / (365.25 * 24 * 60 * 60 * 1000)
+      : Number(info.age);
+    if (Number.isFinite(age) && age > 15) map.set(`sleeper-${sleeperId}`, Math.round(age * 10) / 10);
+  }
+  ages.at = now.getTime();
+  ages.value = map;
+  return map;
+}
+
+/**
+ * Who owns which rookie picks for the next few drafts: every team starts with its own picks
+ * and Sleeper's traded_picks list says where the traded ones went.
+ */
+function buildPicks(
+  rosterIds: string[], tradedPicks: unknown, firstSeason: number, rounds: number, teamName: (rosterId: string) => string,
+): Map<string, DraftPick[]> {
+  const owner = new Map<string, string>();
+  for (const traded of Array.isArray(tradedPicks) ? tradedPicks : []) {
+    const t = traded as Record<string, unknown>;
+    owner.set(`${text(t?.season)}-${text(t?.round)}-${text(t?.roster_id)}`, text(t?.owner_id));
+  }
+  const byOwner = new Map<string, DraftPick[]>(rosterIds.map((id) => [id, []]));
+  for (let season = firstSeason; season < firstSeason + PICK_SEASONS; season += 1) {
+    for (let round = 1; round <= rounds; round += 1) {
+      for (const original of rosterIds) {
+        const key = `${season}-${round}-${original}`;
+        const current = owner.get(key) || original;
+        byOwner.get(current)?.push({ id: key, season, round, originalTeam: teamName(original) });
+      }
+    }
+  }
+  return byOwner;
 }
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : typeof value === 'number' ? String(value) : '');
@@ -117,37 +183,70 @@ export async function getSleeperTeams(
       // keep going with generic names
     }
 
-    const toPlayers = (roster: Record<string, unknown>) => (Array.isArray(roster.players) ? roster.players : [])
+    const settings = (l.settings ?? {}) as Record<string, unknown>;
+    const dynasty = Number(settings.type) === 2;
+    let ageById: Map<string, number> | null = null;
+    let tradedPicks: unknown = [];
+    if (dynasty) {
+      try {
+        ageById = await getAges(fetchJson, now);
+      } catch {
+        ageById = null;
+      }
+      try {
+        tradedPicks = await fetchJson(`${SLEEPER_API}/league/${leagueId}/traded_picks`);
+      } catch {
+        tradedPicks = [];
+      }
+    }
+
+    const toPlayers = (roster: Record<string, unknown>): RosterPlayer[] => (Array.isArray(roster.players) ? roster.players : [])
       .map(text).filter(Boolean).map((sleeperId) => {
         const id = `sleeper-${sleeperId}`;
         const known = poolById.get(id);
         const isDefense = /^[A-Z]{2,3}$/.test(sleeperId);
+        const age = ageById?.get(id) ?? null;
         return known
-          ? { id, name: known.name, position: known.position, team: known.team, bye: known.bye }
-          : { id, name: isDefense ? `${sleeperId} Defense` : `Player ${sleeperId}`, position: isDefense ? 'DST' : '', team: isDefense ? sleeperId : '', bye: 0 };
+          ? { id, name: known.name, position: known.position, team: known.team, bye: known.bye, age }
+          : { id, name: isDefense ? `${sleeperId} Defense` : `Player ${sleeperId}`, position: isDefense ? 'DST' : '', team: isDefense ? sleeperId : '', bye: 0, age };
       });
+    const rosterName = (roster: Record<string, unknown>, fallback: string) => {
+      const rosterMeta = (roster.metadata ?? {}) as Record<string, unknown>;
+      return text(rosterMeta.team_name) || ownerNames.get(text(roster.owner_id)) || fallback;
+    };
+    const myName = rosterName(mine, text(user?.display_name) || username);
+
+    // Rookie drafts not yet held: this season's while the league hasn't drafted, then the next ones.
+    const status = text(l.status);
+    const firstPickSeason = status === 'pre_draft' || status === 'drafting' ? season : season + 1;
+    const rounds = Math.max(1, Math.min(7, Math.trunc(Number(settings.draft_rounds)) || 4));
+    const rosterIds = rosterList.map((roster) => text(roster.roster_id)).filter(Boolean);
+    const nameByRosterId = new Map(rosterList.map((roster, index) => [text(roster.roster_id), rosterName(roster, `Team ${text(roster.roster_id) || index + 1}`)]));
+    const picksByRoster = dynasty
+      ? buildPicks(rosterIds, tradedPicks, firstPickSeason, rounds, (id) => nameByRosterId.get(id) ?? `Team ${id}`)
+      : new Map<string, DraftPick[]>();
+
     const players = toPlayers(mine);
     const opponents = rosterList
       .filter((roster) => roster !== mine)
-      .map((roster, index) => {
-        const rosterMeta = (roster.metadata ?? {}) as Record<string, unknown>;
-        return {
-          teamName: text(rosterMeta.team_name) || ownerNames.get(text(roster.owner_id)) || `Team ${text(roster.roster_id) || index + 1}`,
-          players: toPlayers(roster),
-        };
-      })
-      .filter((team) => team.players.length > 0);
+      .map((roster, index) => ({
+        teamName: rosterName(roster, `Team ${text(roster.roster_id) || index + 1}`),
+        players: toPlayers(roster),
+        picks: picksByRoster.get(text(roster.roster_id)) ?? [],
+      }))
+      .filter((team) => team.players.length > 0 || team.picks.length > 0);
 
     const slots = (Array.isArray(l.roster_positions) ? l.roster_positions : [])
       .map(text)
       .filter((slot) => SLOT_POSITIONS[slot])
       .map((slot) => ({ label: SLOT_LABELS[slot] ?? slot, positions: SLOT_POSITIONS[slot] }));
 
-    const metadata = (mine.metadata ?? {}) as Record<string, unknown>;
     teams.push({
       leagueId,
       leagueName: text(l.name) || 'Sleeper league',
-      teamName: text(metadata.team_name) || text(user?.display_name) || username,
+      teamName: myName,
+      dynasty,
+      picks: picksByRoster.get(text(mine.roster_id)) ?? [],
       scoring: scoringFor(l.scoring_settings),
       slots,
       players,

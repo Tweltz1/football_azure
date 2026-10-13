@@ -601,6 +601,47 @@ test('start/sit: import a Sleeper team with its lineup slots, scoring and curren
   assert.deepEqual(team.opponents.map((o: any) => [o.teamName, o.players.length]), [['Rival', 1]]);
 });
 
+test('start/sit: dynasty Sleeper leagues bring player ages and who owns which draft picks', async () => {
+  clearStartSitCache();
+  clearSleeperCache();
+  const world = memoryWorld();
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week: 6, season_type: 'regular' };
+    if (url.endsWith('/user/dyn')) return { user_id: 'u1', display_name: 'Dyn' };
+    if (url.endsWith('/user/u1/leagues/nfl/2026')) {
+      return [{ league_id: 'D1', name: 'Dynasty', status: 'in_season', settings: { type: 2, draft_rounds: 2 }, roster_positions: ['QB'] }];
+    }
+    if (url.endsWith('/league/D1/rosters')) {
+      return [
+        { roster_id: 1, owner_id: 'u1', players: ['4984'], metadata: { team_name: 'Mine' } },
+        { roster_id: 2, owner_id: 'u2', players: ['9509'] },
+      ];
+    }
+    if (url.endsWith('/league/D1/users')) return [{ user_id: 'u2', display_name: 'Other' }];
+    if (url.endsWith('/league/D1/traded_picks')) {
+      // Our 2027 1st went to team 2; we got their 2028 2nd.
+      return [
+        { season: '2027', round: 1, roster_id: 1, owner_id: 2, previous_owner_id: 1 },
+        { season: '2028', round: 2, roster_id: 2, owner_id: 1, previous_owner_id: 2 },
+      ];
+    }
+    if (url.endsWith('/players/nfl')) {
+      return { 4984: { birth_date: '1996-05-21', age: 30 }, 9509: { age: 24 }, 1: null };
+    }
+    throw new Error(`unexpected ${url}`);
+  });
+
+  const res = await world.call('bob', 'GET', 'startsit/sleeper', undefined, 'username=dyn');
+  assert.equal(res.status, 200, String(res.body));
+  const team = (res.body as any).teams[0];
+  assert.equal(team.dynasty, true);
+  assert.equal(team.players[0].age, 30.3);
+  assert.equal(team.opponents[0].players[0].age, 24);
+  const label = (p: any) => `${p.season}-${p.round}-${p.originalTeam}`;
+  assert.deepEqual(team.picks.map(label), ['2027-2-Mine', '2028-1-Mine', '2028-2-Mine', '2028-2-Other', '2029-1-Mine', '2029-2-Mine']);
+  assert.deepEqual(team.opponents[0].picks.map(label), ['2027-1-Mine', '2027-1-Other', '2027-2-Other', '2028-1-Other', '2029-1-Other', '2029-2-Other']);
+});
+
 test('blind auction: nobody sees other teams\' bids until the round closes', async () => {
   const world = memoryWorld();
   const leagueId = await setupAuctionLeague(world);
