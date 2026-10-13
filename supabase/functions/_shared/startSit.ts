@@ -14,6 +14,8 @@ export interface GameLine {
   week: number;
   opponent: string | null;
   points: Points;
+  /** The game's box score with zero stats left out, so pages can score it for any league's settings. */
+  stats?: Partial<BoxScore>;
 }
 
 export interface ProjectedPlayer {
@@ -24,10 +26,14 @@ export interface ProjectedPlayer {
   opponent: string | null;
   injury: string | null;
   points: Points;
+  /** Projected box score (zero stats left out), for scoring the projection with a league's own settings. */
+  stats: Partial<BoxScore>;
   /** Up to the last 4 games played before this week, oldest first. */
   recent: GameLine[];
   /** Average over every game played this season before this week, or null when none. */
   seasonAvg: Points | null;
+  /** Per-game average box score over the same games (zero stats left out). */
+  seasonStats: Partial<BoxScore> | null;
   gamesPlayed: number;
 }
 
@@ -43,6 +49,9 @@ export interface BoxScore {
   rec: number;
   recYd: number;
   recTd: number;
+  fumLost: number;
+  /** Two-point conversions: passing, rushing and receiving together. */
+  twoPt: number;
 }
 
 /** What a defense has given up to one position this season, per game. */
@@ -166,13 +175,30 @@ const positionsQuery = () => POSITIONS.map((p) => `position[]=${p}`).join('&');
 const BOX_KEYS: [keyof BoxScore, string][] = [
   ['passYd', 'pass_yd'], ['passTd', 'pass_td'], ['int', 'pass_int'], ['rushAtt', 'rush_att'], ['rushYd', 'rush_yd'],
   ['rushTd', 'rush_td'], ['tgt', 'rec_tgt'], ['rec', 'rec'], ['recYd', 'rec_yd'], ['recTd', 'rec_td'],
+  ['fumLost', 'fum_lost'], ['twoPt', ''],
 ];
 
 function boxFrom(stats: Record<string, unknown>): BoxScore {
   const box = {} as BoxScore;
-  for (const [key, sleeperKey] of BOX_KEYS) box[key] = num(stats[sleeperKey]);
+  for (const [key, sleeperKey] of BOX_KEYS) box[key] = sleeperKey ? num(stats[sleeperKey]) : 0;
+  box.twoPt = num(stats.pass_2pt) + num(stats.rush_2pt) + num(stats.rec_2pt);
   return box;
 }
+
+/** A box score without its zero stats, to keep the response small. */
+const compactBox = (box: BoxScore): Partial<BoxScore> => {
+  const out: Partial<BoxScore> = {};
+  for (const [key] of BOX_KEYS) if (box[key]) out[key] = round1(box[key]);
+  return out;
+};
+
+const averageBox = (boxes: BoxScore[]): Partial<BoxScore> | null => {
+  if (boxes.length === 0) return null;
+  const total = boxFrom({});
+  for (const box of boxes) for (const [key] of BOX_KEYS) total[key] += box[key];
+  for (const [key] of BOX_KEYS) total[key] /= boxes.length;
+  return compactBox(total);
+};
 
 function pointsFrom(stats: Record<string, unknown>): Points {
   const std = num(stats.pts_std);
@@ -194,7 +220,7 @@ const sleeperIdOf = (id: string) => id.replace(/^sleeper-/, '');
 const playedGame = (stats: Record<string, unknown>) =>
   stats.gp != null ? num(stats.gp) > 0 : Object.keys(stats).some((key) => key.startsWith('pts_'));
 
-function toPlayer(row: Record<string, unknown>): Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'gamesPlayed'> | null {
+function toPlayer(row: Record<string, unknown>): Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'seasonStats' | 'gamesPlayed'> | null {
   const info = (row.player ?? {}) as Record<string, unknown>;
   const stats = (row.stats ?? {}) as Record<string, unknown>;
   const rawPosition = text(info.position) || (Array.isArray(info.fantasy_positions) ? text(info.fantasy_positions[0]) : '');
@@ -217,6 +243,7 @@ function toPlayer(row: Record<string, unknown>): Omit<ProjectedPlayer, 'recent' 
     opponent: text(row.opponent) || null,
     injury: text(info.injury_status) || null,
     points: pointsFrom(stats),
+    stats: compactBox(boxFrom(stats)),
   };
 }
 
@@ -283,12 +310,13 @@ export async function getWeekProjections(fetchJson: FetchJson, now: Date, reques
       games.get(id)!.push(line);
     }
   }
-  const withHistory = (player: Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'gamesPlayed'>): ProjectedPlayer => {
+  const withHistory = (player: Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'seasonStats' | 'gamesPlayed'>): ProjectedPlayer => {
     const played = games.get(player.id) ?? [];
     return {
       ...player,
-      recent: played.slice(-RECENT_GAMES).map(({ week: w, opponent, points }) => ({ week: w, opponent, points })),
+      recent: played.slice(-RECENT_GAMES).map(({ week: w, opponent, points, box }) => ({ week: w, opponent, points, stats: compactBox(box) })),
       seasonAvg: averagePoints(played),
+      seasonStats: averageBox(played.map((line) => line.box)),
       gamesPlayed: played.length,
     };
   };
@@ -310,7 +338,7 @@ export async function getWeekProjections(fetchJson: FetchJson, now: Date, reques
     if (byId.has(id) || !latest.injury) continue;
     byId.set(id, withHistory({
       id, name: latest.name, position: latest.position, team: latest.team, opponent: null,
-      injury: latest.injury, points: { ppr: 0, half: 0, std: 0 },
+      injury: latest.injury, points: { ppr: 0, half: 0, std: 0 }, stats: {},
     }));
   }
 

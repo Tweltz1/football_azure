@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../api';
-import { SCORING_OPTIONS, defenseMatchup, isUnavailable, trendFor, withProjections } from '../data/startSitUtils';
+import { defenseMatchup, isUnavailable, trendFor, withProjections } from '../data/startSitUtils';
 import { POSITION_TABS, rankLabel, seasonRankings, weeklyRankings } from '../data/rankings';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
+import {
+  LeagueScoringContext, applyLeagueScoring, useLeagueScoring, useSavedSleeperTeams,
+} from '../data/leagueScoring';
 import { PlayerInsight } from './StartSit';
 import UpdatedAt from './UpdatedAt';
 import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
@@ -210,13 +213,18 @@ const SeasonTable = ({ rows, tab, mine, week }) => (
 const Rankings = ({ userId }) => {
   const [view, setView] = useState(() => readSetting('hl-rankings-view', 'week'));
   const [tab, setTab] = useState(() => readSetting('hl-rankings-position', 'QB'));
-  const [scoring, setScoring] = useState(() => readSetting('hl-startsit-scoring', 'ppr'));
   // null means "this week", whatever Sleeper says that is.
   const [week, setWeek] = useState(null);
   const [search, setSearch] = useState('');
   const [onlyMine, setOnlyMine] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  const [projections, setProjections] = useState(null);
+  const [rawProjections, setProjections] = useState(null);
+  // Same scoring choice as Start/Sit, including the viewer's Sleeper leagues.
+  const sleeperTeams = useSavedSleeperTeams();
+  const {
+    choice, setChoice, scoring, profile, options: scoringOptions,
+  } = useLeagueScoring(sleeperTeams);
+  const projections = useMemo(() => applyLeagueScoring(rawProjections, profile), [rawProjections, profile]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [insightId, setInsightId] = useState(null);
@@ -224,7 +232,6 @@ const Rankings = ({ userId }) => {
 
   useEffect(() => writeSetting('hl-rankings-view', view), [view]);
   useEffect(() => writeSetting('hl-rankings-position', tab), [tab]);
-  useEffect(() => writeSetting('hl-startsit-scoring', scoring), [scoring]);
   useEffect(() => setShowAll(false), [view, tab, week, onlyMine]);
 
   useEffect(() => {
@@ -282,6 +289,7 @@ const Rankings = ({ userId }) => {
   const tabLabel = POSITION_TABS.find((t) => t.value === tab)?.label || tab;
 
   return (
+    <LeagueScoringContext.Provider value={profile}>
     <div className="page-shell startsit-page rankings-page">
       <section className="page-hero">
         <p className="page-kicker">In-season help</p>
@@ -307,12 +315,17 @@ const Rankings = ({ userId }) => {
           {view === 'week' && (
             <label>
               Scoring
-              <select value={scoring} onChange={(e) => setScoring(e.target.value)}>
-                {SCORING_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <select value={choice} onChange={(e) => setChoice(e.target.value)}>
+                {scoringOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </label>
           )}
         </div>
+        {view === 'week' && profile?.custom && (
+          <p className="startsit-help league-scoring-note">
+            Scored with {profile.leagueName}'s rules: {profile.details.join(', ')}.
+          </p>
+        )}
       </section>
 
       <section className="card startsit-panel">
@@ -404,6 +417,7 @@ const Rankings = ({ userId }) => {
         down at their position since the week before. Tap a player for recent games and past games against this opponent.
       </p>
     </div>
+    </LeagueScoringContext.Provider>
   );
 };
 
