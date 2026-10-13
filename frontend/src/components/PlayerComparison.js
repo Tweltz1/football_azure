@@ -10,7 +10,9 @@ const liveStatsCache = new Map();
 const liveStatsFetchedAt = new Map();
 
 const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers = 3, onRemove, onClear }) => {
-  const statsSeason = String(playerInsightsMeta.statsSeason || getDefaultStatsSeason());
+  // Live stats come from Sleeper for any season, so use last season even when the generated
+  // snapshot only has an older one.
+  const statsSeason = String(Math.max(Number(playerInsightsMeta.statsSeason) || 0, getDefaultStatsSeason()));
   const liveStatsState = useLivePlayerStats(players, statsSeason);
   const playersWithStats = useMemo(
     () => hydratePlayersWithStats(players, liveStatsState.byPlayerId),
@@ -53,7 +55,7 @@ const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers =
           <div className="updated-row">
             {liveStatsState.fetchedAt && <UpdatedAt at={liveStatsState.fetchedAt} label={`${statsSeason} stats updated`} />}
             {!liveStatsState.fetchedAt && !liveStatsState.loading && (
-              <UpdatedAt at={playerInsightsMeta.generatedAt} label={`${statsSeason} stats snapshot taken`} staleAfterHours={8 * 24} />
+              <UpdatedAt at={playerInsightsMeta.generatedAt} label={`${playerInsightsMeta.statsSeason || statsSeason} stats snapshot taken`} staleAfterHours={8 * 24} />
             )}
             <UpdatedAt at={playerInsightsMeta.playerPoolFetchedAt || playerInsightsMeta.generatedAt} label="Ranks and ADP updated" staleAfterHours={8 * 24} />
           </div>
