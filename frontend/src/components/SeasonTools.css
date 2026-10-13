@@ -752,3 +752,16 @@
     padding: 6px 5px;
   }
 }
+
+.startsit-nowrap {
+  white-space: nowrap;
+}
+
+/* Player names are text links, not buttons: drop the global button height and inset shadow. */
+.startsit-name,
+.startsit-name:hover:not(:disabled) {
+  min-height: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}

@@ -6,7 +6,9 @@ import {
   vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds,
 } from '../data/startSitUtils';
 import { positionRanks, rankLabel } from '../data/rankings';
-import UpdatedAt from './UpdatedAt';
+import UpdatedAt, { timeAgo } from './UpdatedAt';
+import WhyButton from './WhyButton';
+import { explainBench, explainPair, explainStarter } from '../data/startSitWhy';
 import '../App.css';
 import './SeasonTools.css';
 
@@ -61,12 +63,14 @@ const TrendBadge = ({ player, scoring }) => {
   );
 };
 
-const PlayerName = ({ player, scoring, onOpen }) => (
+const PlayerName = ({ player, scoring, onOpen, children = null }) => (
   <>
     <button type="button" className="startsit-name" onClick={() => onOpen(player.id)}>{player.name}</button>
     {' '}<small title={player.posRank ? `${rankLabel(player.position, player.posRank)} by projection this week` : undefined}>
       {rankLabel(player.position, player.posRank)}
-    </small> <StatusTag player={player} /> <TrendBadge player={player} scoring={scoring} />
+    </small> <StatusTag player={player} />{' '}
+    {/* Keeps the trend badge and any "?" together when the line wraps. */}
+    <span className="startsit-nowrap"><TrendBadge player={player} scoring={scoring} />{children}</span>
   </>
 );
 
@@ -712,6 +716,9 @@ const StartSit = ({ userId }) => {
     compareIds.map((id) => projectionsById.get(id)).filter(Boolean), projectionsById, scoring, shownWeek,
   ).map((player) => ({ ...player, posRank: posRanks.get(player.id) || null }));
   const verdict = compareVerdict(comparePlayers);
+  // What the "?" buttons explain their calls with.
+  const whyCtx = { defense: projections?.defense, allPlayers: projections?.players || [], scoring };
+  const whyUpdated = projections?.fetchedAt ? `updated ${timeAgo(new Date(projections.fetchedAt).getTime())}` : null;
   const maxComparePoints = Math.max(1, ...comparePlayers.map((p) => p.points || 0));
   const insightPlayer = insightId
     ? [...roster, ...comparePlayers].find((p) => p.id === insightId)
@@ -864,6 +871,13 @@ const StartSit = ({ userId }) => {
                               {sit ? <> over <strong>{sit.name}</strong> <small>{sit.position}</small>{benchReason(sit) ? ` (${benchReason(sit)})` : ''}</> : ' in an empty slot'}
                               {gain > 0 ? ` (+${gain.toFixed(1)} pts)` : ''}
                               {shuffle && <small> (move other starters between slots to match the lineup below)</small>}
+                              {sit && (
+                                <WhyButton
+                                  label={`Why start ${start.name} over ${sit.name}?`}
+                                  explain={() => explainPair(start, sit, whyCtx)}
+                                  updatedLabel={whyUpdated}
+                                />
+                              )}
                             </li>
                           ) : (
                             <li key={sit.id}>Bench <strong>{sit.name}</strong> <small>{sit.position}</small></li>
@@ -891,7 +905,13 @@ const StartSit = ({ userId }) => {
                         <td>
                           {player ? (
                             <>
-                              <PlayerName player={player} scoring={scoring} onOpen={setInsightId} />
+                              <PlayerName player={player} scoring={scoring} onOpen={setInsightId}>
+                                <WhyButton
+                                  label={`Why start ${player.name}?`}
+                                  explain={() => explainStarter(lineup, slot.key, whyCtx)}
+                                  updatedLabel={whyUpdated}
+                                />
+                              </PlayerName>
                             </>
                           ) : <span className="startsit-empty">Nobody available</span>}
                         </td>
@@ -919,7 +939,9 @@ const StartSit = ({ userId }) => {
                   {lineup.bench.map((p) => (
                     <li key={p.id}>
                       <div>
-                        <PlayerName player={p} scoring={scoring} onOpen={setInsightId} />
+                        <PlayerName player={p} scoring={scoring} onOpen={setInsightId}>
+                          <WhyButton label={`Why sit ${p.name}?`} explain={() => explainBench(lineup, p.id, whyCtx)} updatedLabel={whyUpdated} />
+                        </PlayerName>
                         <br />
                         <Matchup player={p} />
                       </div>
@@ -997,6 +1019,11 @@ const StartSit = ({ userId }) => {
                   ? `Toss-up: ${verdict.winner.name} is only ${verdict.margin.toFixed(1)} pts ahead of ${verdict.runnerUp.name}. Go with your gut or the better matchup.`
                   : `Start ${verdict.winner.name}. Projected ${verdict.margin.toFixed(1)} pts more than ${verdict.runnerUp.name}.`}
                 {isUnavailable(verdict.winner.injury) && ` Heads up: ${verdict.winner.name} is listed ${verdict.winner.injury}.`}
+                <WhyButton
+                  label={`Why ${verdict.winner.name}?`}
+                  explain={() => explainPair(verdict.winner, verdict.runnerUp, whyCtx)}
+                  updatedLabel={whyUpdated}
+                />
               </div>
             )}
           </section>
@@ -1031,7 +1058,7 @@ const StartSit = ({ userId }) => {
           )}
 
           <p className="startsit-footnote">
-            Tap a player for recent games, past games against this opponent, and injured teammates. WR12 means the 12th-most projected points among WRs this week (see Rankings for the full list). ▲/▼ shows the last 3 games against the season average.
+            Tap a player for recent games, past games against this opponent, and injured teammates, or tap ? for why we made a call. WR12 means the 12th-most projected points among WRs this week (see Rankings for the full list). ▲/▼ shows the last 3 games against the season average.
             Projections and stats from Sleeper for the {projections.season} season, refreshed every 30 minutes (hit Refresh on your Sleeper team to reload a roster).
             Players listed Out, Doubtful or IR, and players on bye, are kept out of the lineup.
           </p>

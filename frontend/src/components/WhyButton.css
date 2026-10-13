@@ -1,0 +1,303 @@
+.why-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin-left: 6px;
+  padding: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: 1px;
+  cursor: pointer;
+}
+
+.why-btn:hover:not(:disabled),
+.why-btn.open {
+  color: var(--accent-text);
+  border-color: var(--accent-ring);
+  background: var(--accent-soft);
+}
+
+.why-btn:active:not(:disabled) {
+  transform: none;
+}
+
+/* Bigger tap target on touch screens without making the dot itself bigger. */
+@media (pointer: coarse) {
+  .why-btn {
+    position: relative;
+  }
+
+  .why-btn::after {
+    content: '';
+    position: absolute;
+    inset: -11px;
+  }
+}
+
+.why-pop {
+  position: fixed;
+  z-index: 1200;
+  width: min(380px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  padding: 14px 16px 12px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  text-align: left;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  outline: none;
+  animation: why-in 140ms var(--ease, ease-out);
+}
+
+.why-pop::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--why-arrow, 50%) - 6px);
+  width: 10px;
+  height: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline-strong);
+  transform: rotate(45deg);
+}
+
+.why-pop[data-side='below']::before {
+  top: -6px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.why-pop[data-side='above']::before {
+  bottom: -6px;
+  border-left: none;
+  border-top: none;
+}
+
+@keyframes why-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.why-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.why-call {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+
+.why-call.clear {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.why-call.tossup {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.why-close {
+  min-height: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.why-close:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-3);
+  border: none;
+}
+
+.why-headline {
+  margin: 8px 0 4px;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.why-summary {
+  margin: 0 0 12px;
+  color: var(--text-2);
+}
+
+.why-grid {
+  display: grid;
+  border-top: 1px solid var(--hairline);
+  font-variant-numeric: tabular-nums;
+}
+
+.why-row {
+  display: grid;
+  grid-template-columns: minmax(84px, 0.9fr) 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.why-row-head {
+  padding: 6px 0;
+}
+
+.why-name {
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.why-name.start {
+  color: var(--text);
+}
+
+.why-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.why-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.why-value {
+  align-self: flex-start;
+  padding: 0 6px;
+  margin-left: -6px;
+  border-radius: 6px;
+  font-weight: 650;
+}
+
+.why-cell.win .why-value {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.why-cell small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.why-watch {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--warning);
+  background: var(--warning-soft);
+  font-size: 0.82rem;
+}
+
+.why-watch span {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--warning);
+  color: var(--bg);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.why-foot {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.why-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1199;
+  background: rgba(0, 0, 0, 0.5);
+  animation: why-fade 160ms ease-out;
+}
+
+.why-pop.sheet {
+  top: auto !important;
+  left: 0 !important;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-height: 82vh;
+  padding: 10px 18px calc(16px + env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
+  border-bottom: none;
+  animation: why-up 200ms var(--ease, ease-out);
+}
+
+.why-pop.sheet::before {
+  position: static;
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 0 auto 10px;
+  border: none;
+  border-radius: 2px;
+  background: var(--hairline-strong);
+  transform: none;
+}
+
+@keyframes why-up {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+@keyframes why-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .why-pop,
+  .why-pop.sheet,
+  .why-backdrop {
+    animation: none;
+  }
+}
