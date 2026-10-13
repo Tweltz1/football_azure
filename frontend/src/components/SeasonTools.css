@@ -1,0 +1,504 @@
+/* Layout for the Start/Sit and Draft History pages. Colors come from the theme tokens in App.css. */
+
+.startsit-controls {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.startsit-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.startsit-controls select {
+  min-width: 150px;
+  max-width: 100%;
+}
+
+.startsit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.startsit-panel {
+  margin-bottom: 18px;
+}
+
+.startsit-grid .startsit-panel {
+  margin-bottom: 0;
+}
+
+.startsit-help,
+.startsit-footnote {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.startsit-footnote {
+  margin: 4px 0 24px;
+}
+
+.startsit-search {
+  width: 100%;
+  max-width: 420px;
+}
+
+.startsit-results {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.startsit-results small,
+.startsit-table small,
+.startsit-bench small,
+.startsit-compare small,
+.history-player small {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.startsit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.startsit-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.startsit-slot {
+  display: inline-block;
+  min-width: 44px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.startsit-tag {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.startsit-tag.warn {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.startsit-tag.caution {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.startsit-matchup {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.startsit-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.startsit-bench,
+.startsit-compare,
+.history-roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.startsit-bench li,
+.startsit-compare li,
+.history-roster li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.startsit-bench li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.startsit-points {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+  text-align: right;
+}
+
+.startsit-compare-name {
+  flex: 0 0 40%;
+  min-width: 0;
+}
+
+.startsit-bar {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.startsit-bar span {
+  display: block;
+  height: 100%;
+  background: var(--teal);
+}
+
+.startsit-compare li.winner .startsit-bar span {
+  background: var(--gold);
+}
+
+.startsit-remove {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.startsit-verdict {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border-left: 4px solid var(--gold);
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+
+.startsit-verdict.close {
+  border-left-color: var(--teal);
+  background: var(--success-soft);
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.history-card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.history-card:hover {
+  transform: translateY(-2px);
+}
+
+.history-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.history-team.mine {
+  outline: 2px solid var(--accent);
+}
+
+.history-player {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .startsit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .startsit-compare-name {
+    flex-basis: 50%;
+  }
+
+  .startsit-table th:nth-child(3),
+  .startsit-table td:nth-child(3) {
+    display: none;
+  }
+}
+
+.startsit-name {
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.startsit-trend {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--muted);
+  background: var(--border);
+}
+
+.startsit-trend.up {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.startsit-trend.down {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.startsit-insight {
+  max-width: 640px;
+  width: 100%;
+}
+
+.startsit-insight h4 {
+  margin: 18px 0 6px;
+}
+
+.startsit-insight-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.startsit-insight-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.startsit-insight-stats span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.startsit-insight-stats strong {
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+  .startsit-insight-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.startsit-defense {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.startsit-defense th,
+.startsit-defense td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+.startsit-defense th:first-child,
+.startsit-defense td:first-child {
+  text-align: left;
+}
+
+.startsit-defense th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.startsit-defense td.easier {
+  color: var(--teal);
+  font-weight: 800;
+}
+
+.startsit-defense td.harder {
+  color: var(--red);
+  font-weight: 800;
+}
+
+.startsit-sleeper-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.startsit-sleeper-form input {
+  flex: 1 1 200px;
+  max-width: 320px;
+}
+
+.startsit-changes {
+  margin: 0 0 12px;
+}
+
+.startsit-changes ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-weight: 600;
+}
+
+.trade-partner {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.trade-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.trade-side h4 {
+  margin: 0 0 6px;
+}
+
+.trade-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.trade-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trade-list li.picked {
+  background: var(--accent-soft);
+}
+
+.trade-list label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.trade-list input {
+  width: auto;
+  margin: 0;
+}
+
+.trade-result {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 8px;
+  border-left: 5px solid var(--teal);
+  background: var(--success-soft);
+}
+
+.trade-result.win {
+  border-left-color: var(--gold);
+  background: var(--accent-soft);
+}
+
+.trade-result.lose {
+  border-left-color: var(--red);
+  background: var(--danger-soft);
+}
+
+.trade-verdict {
+  font-size: 1.3rem;
+}
+
+.trade-breakdown {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.trade-breakdown li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.trade-breakdown .startsit-points {
+  margin-left: auto;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 760px) {
+  .trade-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trade-picks-title {
+  margin-top: 12px !important;
+}
+
+.trade-pick-list {
+  max-height: 200px;
+}
+
+.startsit-sleeper-form + .updated-at {
+  display: block;
+  margin-top: 8px;
+}

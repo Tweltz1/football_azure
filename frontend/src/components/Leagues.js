@@ -22,6 +22,8 @@ const Leagues = ({ userId }) => {
   const [joinPassword, setJoinPassword] = useState('');
   const [joinInviteId, setJoinInviteId] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
+  const [invitePreview, setInvitePreview] = useState(null);
+  const [invitePreviewError, setInvitePreviewError] = useState('');
   const [rosterSettings, setRosterSettings] = useState({});
   const [draftTimers, setDraftTimers] = useState({});
   const [draftMode, setDraftMode] = useState('auction');
@@ -48,8 +50,19 @@ const Leagues = ({ userId }) => {
     if (inviteId) {
       setJoinInviteId(inviteId);
       setShowJoinModal(true);
+      axios.get(`${API_BASE_URL}/invite/${encodeURIComponent(inviteId)}`)
+        .then((response) => setInvitePreview(response.data))
+        .catch((error) => setInvitePreviewError(error.response?.data || 'This invite link could not be checked.'));
     }
   }, []);
+
+  const closeJoinModal = () => {
+    setShowJoinModal(false);
+    setJoinInviteId('');
+    setInvitePreview(null);
+    setInvitePreviewError('');
+    window.history.replaceState({}, '', '/leagues');
+  };
 
   const leagueIdsKey = useMemo(() => leagues.map((league) => league.id).sort().join(','), [leagues]);
 
@@ -122,14 +135,24 @@ const Leagues = ({ userId }) => {
         password: joinInviteId ? undefined : joinPassword
       });
       alert(`Successfully joined league '${response.data.name}'!`);
-      setShowJoinModal(false);
-      setJoinInviteId('');
+      closeJoinModal();
       setJoinLeagueName('');
       setJoinPassword('');
-      window.history.replaceState({}, '', '/leagues');
       fetchLeagues();
     } catch (error) {
       alert(`Failed to join league: ${error.response?.data || error.message}`);
+    }
+  };
+
+  const handleNewSeason = async (league) => {
+    const message = `Start a new season for ${league.name}? This draft is saved in Draft History, then every team's roster is cleared and budgets reset to $200 so you can draft again.`;
+    if (!window.confirm(message)) return;
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${league.id}/new-season`, {});
+      alert(`${league.name} is ready for a new draft. Last season's draft is in Draft History.`);
+      fetchLeagues();
+    } catch (error) {
+      alert(`Failed to start a new season: ${error.response?.data || error.message}`);
     }
   };
 
@@ -233,8 +256,16 @@ const Leagues = ({ userId }) => {
                       <button className="edit-roster-button">TV Board</button>
                     </Link>
                     <button type="button" className="edit-roster-button" onClick={() => openAnalyzer(league)}>Analyze</button>
+                    {league.status === 'completed' && (
+                      <Link to="/history">
+                        <button type="button" className="edit-roster-button">Past Drafts</button>
+                      </Link>
+                    )}
                     {league.adminId === userId && (
                       <>
+                        {league.status === 'completed' && (
+                          <button type="button" className="create-button" onClick={() => handleNewSeason(league)}>Start New Season</button>
+                        )}
                         <button type="button" onClick={() => handleCopyInvite(league)} className="join-button">Copy Invite</button>
                         <button
                           onClick={() => {
@@ -337,9 +368,23 @@ const Leagues = ({ userId }) => {
       {showJoinModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>{joinInviteId ? 'Join League Invite' : 'Join a League'}</h3>
+            <h3>{joinInviteId ? `Join ${invitePreview?.name || 'League'}` : 'Join a League'}</h3>
             {joinInviteId ? (
-              <div className="league-invite-note">This invite link will add you to the league automatically.</div>
+              <div className="league-invite-note">
+                {invitePreviewError && String(invitePreviewError)}
+                {!invitePreviewError && !invitePreview && 'Checking your invite...'}
+                {invitePreview && invitePreview.isMember && `You're already in ${invitePreview.name}.`}
+                {invitePreview && !invitePreview.isMember && invitePreview.status === 'completed' && (
+                  `${invitePreview.name} has already finished its draft. Ask the commissioner to start a new season first.`
+                )}
+                {invitePreview && !invitePreview.isMember && invitePreview.status !== 'completed' && (
+                  <>
+                    You've been invited to <strong>{invitePreview.name}</strong>
+                    {invitePreview.commissionerTeamName ? ` by ${invitePreview.commissionerTeamName}` : ''}.
+                    {' '}{invitePreview.memberCount} member{invitePreview.memberCount === 1 ? '' : 's'} so far. No password needed.
+                  </>
+                )}
+              </div>
             ) : (
               <>
                 <label>
@@ -353,12 +398,19 @@ const Leagues = ({ userId }) => {
               </>
             )}
             <div className="form-actions">
-              <button onClick={handleJoinLeague}>Join League</button>
-              <button onClick={() => {
-                setShowJoinModal(false);
-                setJoinInviteId('');
-                window.history.replaceState({}, '', '/leagues');
-              }} className="cancel-button">Cancel</button>
+              {invitePreview?.isMember ? (
+                <Link to={`/draft/${invitePreview.id}`} onClick={closeJoinModal}>
+                  <button type="button">Open Draft Room</button>
+                </Link>
+              ) : (
+                <button
+                  onClick={handleJoinLeague}
+                  disabled={!!joinInviteId && (!!invitePreviewError || !invitePreview || invitePreview.status === 'completed')}
+                >
+                  Join League
+                </button>
+              )}
+              <button onClick={closeJoinModal} className="cancel-button">Cancel</button>
             </div>
           </div>
         </div>

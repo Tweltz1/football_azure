@@ -32,6 +32,11 @@ on:
   schedule:
     - cron: "0 11 * * 2"
 
+# The live site (Cloudflare Pages) builds from this branch. Scheduled runs always use the
+# default branch's copy of this file, so it must name the live branch explicitly.
+env:
+  PRODUCTION_BRANCH: claude/project-thread-6lgsrr
+
 permissions:
   contents: write
   pull-requests: write
@@ -49,6 +54,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PRODUCTION_BRANCH }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -68,8 +75,8 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
-          branch: automation/player-pool
+          base: ${{ env.PRODUCTION_BRANCH }}
+          branch: automation/player-pool-live
           delete-branch: true
           commit-message: Update generated player pool
           title: Update generated player pool
@@ -81,3 +88,4 @@ jobs:
             - Manual runs can choose FantasyPros when `FANTASYPROS_API_KEY` is configured.
             - Writes the top ranked player limit first, then appends any missing 32-team K/DST coverage.
             - Existing leagues keep their copied draft pool; new leagues use this generated pool after the PR is merged.
+            - Merging this PR deploys the new data to hood-league.com.

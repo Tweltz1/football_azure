@@ -7,6 +7,8 @@ import DraftTvView from './components/DraftTvView';
 import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
 import Profile from './components/Profile';
+import StartSit from './components/StartSit';
+import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory';
 import { useAuth, signOut } from './AuthContext';
 import './App.css';
 import './DraftMobile.css';
@@ -48,6 +50,8 @@ function App() {
             <NavLink to="/" end>Home</NavLink>
             <NavLink to="/leagues">Leagues</NavLink>
             <NavLink to="/create-league">Create</NavLink>
+            <NavLink to="/start-sit">Start/Sit</NavLink>
+            <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>
           </div>
 
@@ -65,6 +69,9 @@ function App() {
             <Route path="/draft/:leagueId" element={<DraftRoomEnhanced userId={userId} />} />
             <Route path="/create-league" element={<CreateLeague userId={userId} />} />
             <Route path="/profile" element={<Profile userId={userId} />} />
+            <Route path="/start-sit" element={<StartSit userId={userId} />} />
+            <Route path="/history" element={<DraftHistoryList userId={userId} />} />
+            <Route path="/history/:historyId" element={<DraftHistoryDetail userId={userId} />} />
           </Routes>
         </main>
       </div>

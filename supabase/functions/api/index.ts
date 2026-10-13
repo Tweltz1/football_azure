@@ -5,7 +5,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4';
 import { handle, type Ctx } from '../_shared/handlers.ts';
 import { getInitialPlayerPool } from '../_shared/playerData.ts';
-import { createBroadcaster, createLeagueStore, createProfileStore } from './supabaseAdapters.ts';
+import { createBroadcaster, createHistoryStore, createLeagueStore, createProfileStore } from './supabaseAdapters.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -15,6 +15,13 @@ const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 });
 const leagues = createLeagueStore(db);
 const profiles = createProfileStore(db);
+const history = createHistoryStore(db);
+
+async function fetchJson(url: string): Promise<unknown> {
+  const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) });
+  if (!response.ok) throw new Error(`GET ${url} failed with ${response.status}`);
+  return await response.json();
+}
 const broadcaster = createBroadcaster(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 const corsHeaders = {
@@ -74,11 +81,13 @@ Deno.serve(async (req) => {
     const ctx: Ctx = {
       leagues,
       profiles,
+      history,
       broadcaster,
       log,
       now: () => new Date(),
       newId: () => crypto.randomUUID(),
       playerPool: getInitialPlayerPool,
+      fetchJson,
       userId: user?.id ?? null,
       displayName: user?.displayName ?? null,
     };

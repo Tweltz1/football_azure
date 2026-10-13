@@ -4,14 +4,19 @@ import assert from 'node:assert/strict';
 import { handle, type Ctx } from '../functions/_shared/handlers.ts';
 import { applyOps, diffObjects } from '../functions/_shared/diff.ts';
 import { getInitialPlayerPool } from '../functions/_shared/playerData.ts';
-import type { League, UserProfile } from '../functions/_shared/models.ts';
-import type { LeagueStore, ProfileStore, StoredLeague } from '../functions/_shared/ports.ts';
+import { buildDefenseTable, clearStartSitCache } from '../functions/_shared/startSit.ts';
+import { clearSleeperCache } from '../functions/_shared/sleeperImport.ts';
+import type { DraftHistoryEntry, League, UserProfile } from '../functions/_shared/models.ts';
+import type { HistoryStore, LeagueStore, ProfileStore, StoredLeague } from '../functions/_shared/ports.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
 function memoryWorld() {
   const leagueRows = new Map<string, StoredLeague>();
   const profileRows = new Map<string, UserProfile>();
+  const historyRows = new Map<string, DraftHistoryEntry>();
+  const fetched: string[] = [];
+  let fetchResponses: (url: string) => unknown = () => { throw new Error('offline'); };
   const sent: { leagueId: string; event: string; payload: any; toUserId?: string }[] = [];
   let clock = Date.parse('2026-09-01T18:00:00Z');
   let ids = 0;
@@ -38,14 +43,22 @@ function memoryWorld() {
     async upsert(p) { profileRows.set(p.userId, clone(p)); },
   };
 
+  const history: HistoryStore = {
+    async save(entry) { historyRows.set(entry.id, clone(entry)); },
+    async get(id) { const e = historyRows.get(id); return e ? clone(e) : null; },
+    async listForMember(userId) { return [...historyRows.values()].filter((e) => e.members.includes(userId)).map(clone); },
+  };
+
   const ctxFor = (userId: string | null): Ctx => ({
     leagues,
     profiles,
+    history,
     broadcaster: { async send(leagueId, event, payload, toUserId) { sent.push({ leagueId, event, payload: clone(payload), toUserId }); } },
     log: { info() {}, warn() {}, error() {} },
     now: () => new Date(clock),
     newId: () => `id-${++ids}`,
     playerPool: getInitialPlayerPool,
+    async fetchJson(url) { fetched.push(url); return clone(fetchResponses(url)); },
     userId,
     displayName: userId ? `${userId}-name` : null,
   });
@@ -54,7 +67,8 @@ function memoryWorld() {
     handle(ctxFor(userId), method, path, new URLSearchParams(query), body);
 
   return {
-    call, sent, leagueRows,
+    call, sent, leagueRows, historyRows, fetched,
+    respondWith: (fn: (url: string) => unknown) => { fetchResponses = fn; },
     advance: (seconds: number) => { clock += seconds * 1000; },
     league: (id: string) => leagueRows.get(id)!.league as League,
   };
@@ -322,6 +336,311 @@ test('diff handles appends, item edits, deletes and replacements', () => {
   const a = { list: [1, 2], items: [{ id: 1 }, { id: 2 }, { id: 3 }], gone: 1, obj: { x: 1 } };
   const b = { list: [1, 2, 3], items: [{ id: 1 }, { id: 9 }, { id: 3 }], obj: { x: 2 }, added: true };
   assert.deepEqual(applyOps(a, diffObjects(a, b)), b);
+});
+
+test('invite links: preview, join without a password, already a member, finished drafts', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world, ['admin', 'bob']);
+
+  const preview = await world.call('dan', 'GET', `invite/${leagueId}`);
+  assert.equal(preview.status, 200);
+  assert.equal((preview.body as any).name, 'Hood');
+  assert.equal((preview.body as any).memberCount, 2);
+  assert.equal((preview.body as any).isMember, false);
+  assert.equal((preview.body as any).password, undefined);
+  assert.equal((await world.call('bob', 'GET', `invite/${leagueId}`)).body.isMember, true);
+  assert.equal((await world.call('dan', 'GET', 'invite/nope')).status, 404);
+  assert.equal((await world.call(null, 'GET', `invite/${leagueId}`)).status, 401);
+
+  const joined = await world.call('dan', 'POST', 'JoinLeague', { leagueId });
+  assert.equal(joined.status, 200);
+  assert.ok(world.league(leagueId).members.includes('dan'));
+  assert.equal((await world.call('dan', 'POST', 'JoinLeague', { leagueId })).status, 409);
+
+  await world.call('admin', 'POST', `leagues/${leagueId}/complete`);
+  const late = await world.call('erin', 'POST', 'JoinLeague', { leagueId });
+  assert.equal(late.status, 400);
+  assert.match(String(late.body), /already finished/);
+});
+
+async function draftOnePick(world: ReturnType<typeof memoryWorld>, leagueId: string, bidder: string, amount: number) {
+  await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  await world.call(bidder, 'POST', `leagues/${leagueId}/bid`, { amount });
+  world.advance(21);
+  await world.call(bidder, 'POST', `leagues/${leagueId}/endBidding`);
+  return world.league(leagueId).draftLog[0].player;
+}
+
+test('draft history: saved on completion, private to members, survives a new season', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world, ['admin', 'bob']);
+  const player = await draftOnePick(world, leagueId, 'bob', 25);
+  assert.equal(world.historyRows.size, 0, 'nothing is saved until the draft is finished');
+
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/new-season`)).status, 401);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/new-season`)).status, 400);
+
+  await world.call('admin', 'POST', `leagues/${leagueId}/complete`);
+  assert.equal(world.historyRows.size, 1);
+  const firstId = `${leagueId}-draft-1`;
+  const saved = world.historyRows.get(firstId)!;
+  assert.equal(saved.season, 2026);
+  assert.equal(saved.draftLog[0].player.id, player.id);
+  assert.equal(saved.draftLog[0].winningBid, 25);
+  assert.equal((saved as any).initialPlayerPool, undefined, 'the player pool is not copied');
+
+  const list = await world.call('bob', 'GET', 'history');
+  assert.equal(list.status, 200);
+  assert.equal((list.body as any[]).length, 1);
+  assert.equal((list.body as any[])[0].myTeamName, world.league(leagueId).teams.find((t) => t.ownerId === 'bob')!.name);
+  assert.deepEqual((list.body as any[])[0].topPick, { name: player.name, position: player.position, price: 25 });
+  assert.equal(((await world.call('stranger', 'GET', 'history')).body as any[]).length, 0);
+  assert.equal((await world.call('stranger', 'GET', `history/${firstId}`)).status, 404);
+  assert.equal((await world.call('bob', 'GET', `history/${firstId}`)).status, 200);
+
+  world.advance(3600);
+  const reset = await world.call('admin', 'POST', `leagues/${leagueId}/new-season`);
+  assert.equal(reset.status, 200, String(reset.body));
+  const league = world.league(leagueId);
+  assert.equal(league.status, 'created');
+  assert.equal(league.draftNumber, 2);
+  assert.equal(league.draftLog.length, 0);
+  assert.deepEqual(league.readyMembers, []);
+  assert.ok(league.teams.every((t) => t.budget === 200 && t.roster.length === 0));
+  assert.equal(league.initialPlayerPool.find((p) => p.id === player.id)!.isDrafted, false);
+  assert.equal(world.historyRows.get(firstId)!.completedAt, saved.completedAt, 'new season keeps the original finish time');
+
+  // Second draft is saved separately.
+  await world.call('bob', 'POST', `leagues/${leagueId}/ready`, { isReady: true });
+  await draftOnePick(world, leagueId, 'admin', 40);
+  await world.call('admin', 'POST', `leagues/${leagueId}/complete`);
+  assert.equal(world.historyRows.size, 2);
+  assert.equal(world.historyRows.get(`${leagueId}-draft-2`)!.draftLog[0].winningBid, 40);
+});
+
+test('draft history: drafts finished before history existed show up', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world, ['admin', 'bob']);
+  await draftOnePick(world, leagueId, 'bob', 7);
+  await world.call('admin', 'POST', `leagues/${leagueId}/complete`);
+  world.historyRows.clear();
+
+  const list = await world.call('admin', 'GET', 'history');
+  assert.equal((list.body as any[]).length, 1);
+  assert.equal(world.historyRows.size, 1);
+  assert.equal(((await world.call('admin', 'GET', 'history')).body as any[]).length, 1, 'not duplicated');
+});
+
+test('start/sit: weekly projections from Sleeper, cached, with ids that match the draft pool', async () => {
+  clearStartSitCache();
+  const world = memoryWorld();
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week: 6, display_week: 6, season_type: 'regular' };
+    return [
+      { player_id: '4984', team: 'BUF', opponent: 'KC', stats: { pts_ppr: 24.31, pts_half_ppr: 24.31, pts_std: 24.31 },
+        player: { first_name: 'Josh', last_name: 'Allen', position: 'QB', injury_status: null } },
+      { player_id: '9509', team: 'ATL', opponent: 'TB', stats: { pts_std: 14, rec: 4 },
+        player: { first_name: 'Bijan', last_name: 'Robinson', position: 'RB', injury_status: 'Questionable' } },
+      { player_id: 'BUF', team: 'BUF', opponent: 'KC', stats: { pts_std: 7, pts_ppr: 7, pts_half_ppr: 7 },
+        player: { first_name: 'Buffalo', last_name: 'Bills', position: 'DEF' } },
+      { player_id: '1', team: 'NYJ', stats: { pts_ppr: 0, pts_std: 0 }, player: { first_name: 'No', last_name: 'Points', position: 'WR' } },
+      { player_id: '2', team: 'NYJ', stats: { pts_ppr: 9 }, player: { first_name: 'Some', last_name: 'Lineman', position: 'OL' } },
+    ];
+  });
+
+  assert.equal((await world.call(null, 'GET', 'startsit')).status, 401);
+  const res = await world.call('bob', 'GET', 'startsit');
+  assert.equal(res.status, 200, String(res.body));
+  const body = res.body as any;
+  assert.equal(body.season, 2026);
+  assert.equal(body.week, 6);
+  assert.deepEqual(body.players.map((p: any) => p.id), ['sleeper-4984', 'sleeper-9509', 'sleeper-BUF']);
+  assert.deepEqual(body.players[1].points, { ppr: 18, half: 16, std: 14 });
+  assert.equal(body.players[1].injury, 'Questionable');
+  assert.equal(body.players[2].position, 'DST');
+  assert.equal(body.players[0].opponent, 'KC');
+  assert.ok(getInitialPlayerPool().some((p) => p.id === 'sleeper-4984'));
+  assert.ok(getInitialPlayerPool().some((p) => p.id === 'sleeper-BUF'));
+
+  const before = world.fetched.length;
+  await world.call('cara', 'GET', 'startsit');
+  assert.equal(world.fetched.length, before, 'second request is served from cache');
+
+  await world.call('cara', 'GET', 'startsit', undefined, 'week=7');
+  assert.match(world.fetched.at(-1)!, /\/2026\/7\?season_type=regular/);
+
+  clearStartSitCache();
+  world.respondWith(() => { throw new Error('down'); });
+  assert.equal((await world.call('bob', 'GET', 'startsit')).status, 502);
+});
+
+test('start/sit: recent games, season average, injured teammates, and past matchups', async () => {
+  clearStartSitCache();
+  const world = memoryWorld();
+  const row = (id: string, team: string, opponent: string, pts: number, position = 'WR', injury: string | null = null) => ({
+    player_id: id, team, opponent, stats: { pts_ppr: pts, pts_half_ppr: pts - 1, pts_std: pts - 2, gp: 1 },
+    player: { first_name: `P${id}`, last_name: 'Test', position, injury_status: injury },
+  });
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week: 6, display_week: 6, season_type: 'regular' };
+    if (url.includes('/projections/')) return [row('10', 'LAR', 'SF', 15), row('11', 'LAR', 'SF', 0, 'WR', 'Out')];
+    if (url.includes('/stats/nfl/player/10')) {
+      const season = Number(url.match(/season=(\d+)/)![1]);
+      if (season === 2023) throw new Error('not found');
+      return {
+        1: { week: 1, team: 'LAR', opponent: 'SF', stats: { pts_ppr: season - 2000, gp: 1 } },
+        2: null,
+        3: { week: 3, team: 'LAR', opponent: 'SEA', stats: { pts_ppr: 5, gp: 1 } },
+        9: { week: 9, team: 'LAR', opponent: 'SF', stats: { gp: 0 } },
+      };
+    }
+    const week = Number(url.match(/\/stats\/nfl\/2026\/(\d+)/)![1]);
+    if (week === 3) throw new Error('missing week');
+    // Player 12 got hurt after week 2 and has no projection now.
+    const rows: unknown[] = [row('10', 'LAR', 'SEA', week * 2), row('11', 'LAR', 'SEA', 20, 'WR', 'Out')];
+    if (week <= 2) rows.push(row('12', 'LAR', 'SEA', 9, 'RB', 'IR'));
+    rows.push({ player_id: '13', team: 'LAR', stats: {}, player: { first_name: 'Bench', last_name: 'Guy', position: 'WR' } });
+    return rows;
+  });
+
+  const res = await world.call('bob', 'GET', 'startsit');
+  assert.equal(res.status, 200, String(res.body));
+  const players = new Map((res.body as any).players.map((p: any) => [p.id, p]));
+  const p10 = players.get('sleeper-10') as any;
+  assert.deepEqual(p10.recent.map((g: any) => g.week), [1, 2, 4, 5], 'week 3 failed to load and is skipped');
+  assert.deepEqual(p10.recent.map((g: any) => g.points.ppr), [2, 4, 8, 10]);
+  assert.equal(p10.seasonAvg.ppr, 6);
+  assert.equal(p10.gamesPlayed, 4);
+  assert.equal((players.get('sleeper-11') as any).injury, 'Out', 'injured players stay in the list');
+  assert.equal((players.get('sleeper-11') as any).seasonAvg.ppr, 20);
+  const p12 = players.get('sleeper-12') as any;
+  assert.equal(p12.injury, 'IR', 'long-term injured players come from their last game');
+  assert.equal(p12.points.ppr, 0);
+  assert.equal(players.has('sleeper-13'), false, 'rows without a game played are ignored');
+
+  const matchup = await world.call('bob', 'GET', 'startsit/matchup/sleeper-10', undefined, 'opponent=sf');
+  assert.equal(matchup.status, 200, String(matchup.body));
+  const body = matchup.body as any;
+  assert.equal(body.opponent, 'SF');
+  assert.deepEqual(body.games.map((g: any) => [g.season, g.week, g.points.ppr]), [[2026, 1, 26], [2025, 1, 25], [2024, 1, 24]]);
+  assert.equal(body.average.ppr, 25);
+  assert.equal(body.games[0].box.rec, 0);
+  assert.equal((res.body as any).defense.SEA.WR.games, 4, 'SEA faced the LAR receivers in weeks 1, 2, 4 and 5');
+  assert.equal((await world.call('bob', 'GET', 'startsit/matchup/sleeper-10', undefined, 'opponent=x')).status, 400);
+  assert.equal((await world.call('bob', 'GET', 'startsit/matchup/../x', undefined, 'opponent=SF')).status, 404);
+});
+
+test('start/sit: defense table sums each game per week and ranks the easiest matchups first', () => {
+  const box = (rec: number, recYd: number, recTd: number, rushAtt = 0, rushYd = 0) =>
+    ({ passYd: 0, passTd: 0, int: 0, rushAtt, rushYd, rushTd: 0, tgt: rec + 2, rec, recYd, recTd });
+  const line = (week: number, opponent: string, position: string, ppr: number, b: any) =>
+    ({ week, opponent, position, points: { ppr, half: ppr, std: ppr }, box: b, injury: null, name: 'x', team: 'T' });
+  const week1 = new Map<string, any>([
+    ['a', line(1, 'KC', 'WR', 20, box(6, 90, 1))],
+    ['b', line(1, 'KC', 'WR', 10, box(4, 50, 0))],
+    ['c', line(1, 'DAL', 'WR', 8, box(3, 40, 0))],
+    ['d', line(1, 'KC', 'RB', 12, box(2, 10, 0, 15, 60))],
+    ['k', line(1, 'KC', 'K', 9, box(0, 0, 0))],
+  ]);
+  const week2 = new Map<string, any>([['a', line(2, 'KC', 'WR', 6, box(2, 30, 0))]]);
+  const table = buildDefenseTable([week1, week2] as any);
+  assert.deepEqual(table.KC.WR.games, 2);
+  assert.equal(table.KC.WR.points.ppr, 18, '(20 + 10 + 6) over 2 games');
+  assert.equal(table.KC.WR.box.rec, 6);
+  assert.equal(table.KC.WR.box.recTd, 0.5);
+  assert.equal(table.KC.WR.rank, 1);
+  assert.equal(table.DAL.WR.rank, 2);
+  assert.equal(table.KC.WR.teams, 2);
+  assert.equal(table.KC.RB.box.rushYd, 60);
+  assert.equal(table.KC.K, undefined, 'kickers are not tracked');
+});
+
+test('start/sit: import a Sleeper team with its lineup slots, scoring and current starters', async () => {
+  clearStartSitCache();
+  clearSleeperCache();
+  const world = memoryWorld();
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week: 6, season_type: 'regular' };
+    if (url.endsWith('/user/nobody')) return null;
+    if (url.endsWith('/user/tyler_w')) return { user_id: 'u1', display_name: 'TylerW' };
+    if (url.endsWith('/user/u1/leagues/nfl/2026')) {
+      return [
+        { league_id: 'L1', name: 'Hood Sleeper', scoring_settings: { rec: 0.5 },
+          roster_positions: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'REC_FLEX', 'K', 'DEF', 'BN', 'BN', 'IR', 'DL'] },
+        { league_id: 'L2', name: 'Not my roster', scoring_settings: { rec: 1 }, roster_positions: ['QB'] },
+      ];
+    }
+    if (url.endsWith('/league/L1/rosters')) {
+      return [
+        { owner_id: 'u9', players: ['1'], starters: ['1'] },
+        { owner_id: 'u1', players: ['4984', '9509', 'BUF', '999999'], starters: ['4984', '0', 'BUF'], metadata: { team_name: 'Tyler Squad' } },
+      ];
+    }
+    if (url.endsWith('/league/L2/rosters')) return [{ owner_id: 'u9', co_owners: ['u8'], players: [] }];
+    if (url.endsWith('/league/L1/users')) return [{ user_id: 'u9', display_name: 'Rival', metadata: {} }];
+    throw new Error(`unexpected ${url}`);
+  });
+
+  assert.equal((await world.call('bob', 'GET', 'startsit/sleeper', undefined, 'username=a b')).status, 400);
+  assert.equal((await world.call('bob', 'GET', 'startsit/sleeper', undefined, 'username=nobody')).status, 404);
+  const res = await world.call('bob', 'GET', 'startsit/sleeper', undefined, 'username=tyler_w');
+  assert.equal(res.status, 200, String(res.body));
+  const body = res.body as any;
+  assert.equal(body.season, 2026);
+  assert.ok(!Number.isNaN(Date.parse(body.fetchedAt)), 'the import says when it was read from Sleeper');
+  assert.equal(body.teams.length, 1, 'leagues without a roster for this user are skipped');
+  const team = body.teams[0];
+  assert.equal(team.teamName, 'Tyler Squad');
+  assert.equal(team.scoring, 'half');
+  assert.deepEqual(team.slots.map((s: any) => s.label), ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'W/T', 'K', 'DST']);
+  assert.deepEqual(team.slots[8].positions, ['WR', 'TE']);
+  assert.deepEqual(team.players.map((p: any) => p.id), ['sleeper-4984', 'sleeper-9509', 'sleeper-BUF', 'sleeper-999999']);
+  assert.equal(team.players[0].name, 'Josh Allen');
+  assert.equal(team.players[2].position, 'DST');
+  assert.equal(team.players[3].name, 'Player 999999');
+  assert.deepEqual(team.starters, ['sleeper-4984', 'sleeper-BUF']);
+  assert.deepEqual(team.opponents.map((o: any) => [o.teamName, o.players.length]), [['Rival', 1]]);
+});
+
+test('start/sit: dynasty Sleeper leagues bring player ages and who owns which draft picks', async () => {
+  clearStartSitCache();
+  clearSleeperCache();
+  const world = memoryWorld();
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week: 6, season_type: 'regular' };
+    if (url.endsWith('/user/dyn')) return { user_id: 'u1', display_name: 'Dyn' };
+    if (url.endsWith('/user/u1/leagues/nfl/2026')) {
+      return [{ league_id: 'D1', name: 'Dynasty', status: 'in_season', settings: { type: 2, draft_rounds: 2 }, roster_positions: ['QB'] }];
+    }
+    if (url.endsWith('/league/D1/rosters')) {
+      return [
+        { roster_id: 1, owner_id: 'u1', players: ['4984'], metadata: { team_name: 'Mine' } },
+        { roster_id: 2, owner_id: 'u2', players: ['9509'] },
+      ];
+    }
+    if (url.endsWith('/league/D1/users')) return [{ user_id: 'u2', display_name: 'Other' }];
+    if (url.endsWith('/league/D1/traded_picks')) {
+      // Our 2027 1st went to team 2; we got their 2028 2nd.
+      return [
+        { season: '2027', round: 1, roster_id: 1, owner_id: 2, previous_owner_id: 1 },
+        { season: '2028', round: 2, roster_id: 2, owner_id: 1, previous_owner_id: 2 },
+      ];
+    }
+    if (url.endsWith('/players/nfl')) {
+      return { 4984: { birth_date: '1996-05-21', age: 30 }, 9509: { age: 24 }, 1: null };
+    }
+    throw new Error(`unexpected ${url}`);
+  });
+
+  const res = await world.call('bob', 'GET', 'startsit/sleeper', undefined, 'username=dyn');
+  assert.equal(res.status, 200, String(res.body));
+  const team = (res.body as any).teams[0];
+  assert.equal(team.dynasty, true);
+  assert.equal(team.players[0].age, 30.3);
+  assert.equal(team.opponents[0].players[0].age, 24);
+  const label = (p: any) => `${p.season}-${p.round}-${p.originalTeam}`;
+  assert.deepEqual(team.picks.map(label), ['2027-2-Mine', '2028-1-Mine', '2028-2-Mine', '2028-2-Other', '2029-1-Mine', '2029-2-Mine']);
+  assert.deepEqual(team.opponents[0].picks.map(label), ['2027-1-Mine', '2027-1-Other', '2027-2-Other', '2028-1-Other', '2029-1-Other', '2029-2-Other']);
 });
 
 test('blind auction: nobody sees other teams\' bids until the round closes', async () => {

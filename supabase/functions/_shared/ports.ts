@@ -1,7 +1,7 @@
 // Storage and live-update interfaces. The Supabase versions live in functions/api/;
 // tests use the in-memory versions in supabase/tests/.
 
-import type { League, UserProfile } from './models.ts';
+import type { DraftHistoryEntry, League, UserProfile } from './models.ts';
 
 export interface StoredLeague {
   league: League;
@@ -30,6 +30,13 @@ export interface LeagueStore {
 export interface ProfileStore {
   find(userId: string): Promise<UserProfile | null>;
   upsert(profile: UserProfile): Promise<void>;
+}
+
+export interface HistoryStore {
+  /** Inserts or replaces the entry with the same id. */
+  save(entry: DraftHistoryEntry): Promise<void>;
+  get(id: string): Promise<DraftHistoryEntry | null>;
+  listForMember(userId: string): Promise<DraftHistoryEntry[]>;
 }
 
 export interface Broadcaster {
