@@ -8,7 +8,7 @@ import {
 import { positionRanks, rankLabel } from '../data/rankings';
 import UpdatedAt, { timeAgo } from './UpdatedAt';
 import WhyButton from './WhyButton';
-import { explainBench, explainPair, explainStarter } from '../data/startSitWhy';
+import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
 import '../App.css';
 import './SeasonTools.css';
 
@@ -406,6 +406,14 @@ const TradeCheck = ({
     setter((ids) => (action === 'add' ? [...ids, item.id] : ids.filter((id) => id !== item.id)));
   };
   const clearAll = () => { setGiveIds([]); setGetIds([]); setGivePickIds([]); setGetPickIds([]); };
+  // The "?" explanations: worked out when tapped, from the same values as the verdicts.
+  const whyUpdated = projectionsAt ? `updated ${timeAgo(new Date(projectionsAt).getTime())}` : null;
+  const whyTrade = (rated, partnerName) => explainTrade(rated, { allPlayers, scoring, dynasty, partnerName });
+  const whyIdea = (idea) => whyTrade(analyzeTrade({
+    give: idea.give, get: idea.get, myRoster,
+    theirRoster: partnerRosters.find((p) => p.key === idea.partnerKey)?.roster || [],
+    rosterSettings, scoring, allPlayers, teamCount: partners.length + 1, dynasty,
+  }), idea.partnerName);
 
   return (
     <section className="card startsit-panel">
@@ -451,6 +459,7 @@ const TradeCheck = ({
                       </div>
                       <small>
                         {idea.verdict.label}. Your lineup {signed(idea.myChange)} pts a week, theirs {signed(idea.theirChange)}.
+                        <WhyButton label="Why this trade?" explain={() => whyIdea(idea)} updatedLabel={whyUpdated} />
                       </small>
                     </div>
                     <button type="button" className="edit-roster-button" onClick={() => tryIdea(idea)}>Check it</button>
@@ -495,7 +504,10 @@ const TradeCheck = ({
           {!result && <p className="startsit-help">Tick at least one player{dynasty ? ' or pick' : ''} on each side. Numbers are expected points per game for the rest of the season.</p>}
           {result && (
             <div className={`trade-result ${result.verdict.tone}`}>
-              <strong className="trade-verdict">{result.verdict.label}</strong>
+              <strong className="trade-verdict">
+                {result.verdict.label}
+                <WhyButton label="Why this verdict?" explain={() => whyTrade(result, partner?.name)} updatedLabel={whyUpdated} />
+              </strong>
               <p>{result.verdict.detail}</p>
               {result.valueVerdict.label !== result.verdict.label && (
                 <p className="startsit-help">On player value alone: {result.valueVerdict.label.toLowerCase()}.</p>

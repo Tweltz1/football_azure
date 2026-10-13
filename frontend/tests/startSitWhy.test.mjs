@@ -1,8 +1,8 @@
 // Reasons behind Start/Sit calls: `node --test frontend/tests/startSitWhy.test.mjs`
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { explainBench, explainPair, explainStarter } from '../src/data/startSitWhy.js';
-import { buildLineup } from '../src/data/startSitUtils.js';
+import { explainBench, explainPair, explainStarter, explainTrade } from '../src/data/startSitWhy.js';
+import { analyzeTrade, buildLineup } from '../src/data/startSitUtils.js';
 
 const games = (...values) => values.map((v, i) => ({ week: i + 1, opponent: 'NYJ', points: { ppr: v, half: v, std: v } }));
 const avg = (v) => ({ ppr: v, half: v, std: v });
@@ -85,4 +85,43 @@ test('a starter with nobody behind them gets a short explanation', () => {
   const lineup = buildLineup(roster, { slots: [{ label: 'K', positions: ['K'] }, { label: 'WR', positions: ['WR'] }] });
   const why = explainStarter(lineup, lineup.starters[0].slot.key, ctx());
   assert.match(why.summary, /Nobody on your bench can play K, so K1 starts/);
+});
+
+// ---- Trades ----
+const slots = { slots: [{ label: 'RB', positions: ['RB'] }, { label: 'WR', positions: ['WR'] }, { label: 'WR', positions: ['WR'] }] };
+const pool = (n, pos, top) => Array.from({ length: n }, (_, i) => player(`${pos}${i}`, pos, top - i));
+const allPlayers = [...pool(30, 'RB', 20), ...pool(40, 'WR', 20)];
+const trade = (give, get, myRoster, theirRoster) => analyzeTrade({
+  give, get, myRoster, theirRoster, rosterSettings: slots, scoring: 'ppr', allPlayers, teamCount: 10,
+});
+
+test('a trade that fills a weak starting spot explains the lineup gain and who would start', () => {
+  const mine = [player('MyRB', 'RB', 18), player('MyRB2', 'RB', 15), player('MyWR', 'WR', 16), player('WeakWR', 'WR', 4)];
+  const theirs = [player('TheirWR', 'WR', 13), player('TheirRB', 'RB', 9)];
+  const result = trade([mine[1]], [theirs[0]], mine, theirs);
+  const why = explainTrade(result, { allPlayers, scoring: 'ppr', partnerName: 'Blitz' });
+  assert.deepEqual(why.names, ['You get', 'You give']);
+  assert.match(why.summary, /Your starting lineup gains [\d.]+ pts a week because TheirWR would start for you/);
+  assert.equal(why.factors.find((f) => f.key === 'lineup').edge, 'start');
+  assert.ok(['clear', 'lean'].includes(why.call.key));
+});
+
+test('an injured player in the trade gets a heads-up, and value tracks the injury', () => {
+  const mine = [player('MyWR', 'WR', 15), player('MyWR2', 'WR', 14), player('MyRB', 'RB', 14)];
+  const theirs = [player('HurtWR', 'WR', 16, { injury: 'Questionable' }), player('TheirRB', 'RB', 9)];
+  const result = trade([mine[0]], [theirs[0]], mine, theirs);
+  const why = explainTrade(result, { allPlayers, scoring: 'ppr', partnerName: 'Blitz' });
+  assert.match(why.watch, /HurtWR is listed Questionable/);
+  assert.match(why.watch, /gets better for you/);
+  assert.equal(why.factors.find((f) => f.key === 'health').edge, 'sit');
+});
+
+test('a lopsided trade against you says how much value you give up', () => {
+  const mine = [player('Star', 'WR', 22), player('MyWR2', 'WR', 12), player('MyRB', 'RB', 14)];
+  const theirs = [player('Scrub', 'WR', 6), player('TheirRB', 'RB', 9)];
+  const result = trade([mine[0]], [theirs[0]], mine, theirs);
+  const why = explainTrade(result, { allPlayers, scoring: 'ppr', partnerName: 'Blitz' });
+  assert.equal(why.call.key, 'lose');
+  assert.match(why.summary, /You give up [\d.]+ more in trade value than you get/);
+  assert.match(why.summary, /Your starting lineup drops [\d.]+ pts a week without Star/);
 });

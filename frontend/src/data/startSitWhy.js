@@ -263,3 +263,182 @@ export const explainBench = (lineup, playerId, ctx) => {
   }
   return explainPair(starter, player, ctx, { headline: `Sit ${player.name}, start ${starter.name}` });
 };
+
+// ---- Trades -----------------------------------------------------------------------------
+
+const TRADE_CALLS = {
+  win: { key: 'clear', label: 'Good for you' },
+  fair: { key: 'lean', label: 'Fair' },
+  lose: { key: 'lose', label: 'Bad for you' },
+};
+
+const signedPts = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${pts(Math.abs(n))}`;
+const sumOf = (list, pick) => round1(list.reduce((total, item) => total + (pick(item) || 0), 0));
+const namesOf = (list) => joinWords(list.map((p) => p.name));
+
+/** Who on one side of a trade is hurt or on bye, as a short note. */
+const sideHealth = (players) => {
+  const hurt = players.filter((p) => p.injury || p.onBye);
+  if (!hurt.length) return 'All healthy';
+  return hurt.map((p) => `${firstName(p)} ${p.onBye ? 'bye' : p.injury}`).join(', ');
+};
+
+/**
+ * Why the trade checker rated a trade the way it did. `result` is analyzeTrade's result; ctx is
+ * { allPlayers, scoring, dynasty, partnerName }. Returns the same shape as explainPair, with the
+ * left column for what you get and the right for what you give.
+ */
+export const explainTrade = (result, ctx) => {
+  const getPlayers = result.get.filter((p) => !p.round);
+  const givePlayers = result.give.filter((p) => !p.round);
+  const getPicks = result.get.filter((p) => p.round);
+  const givePicks = result.give.filter((p) => p.round);
+  const them = ctx.partnerName || 'them';
+  const factors = [];
+
+  const valueEdge = result.share > 0.15 ? 'start' : result.share < -0.15 ? 'sit' : 'even';
+  factors.push({
+    key: 'value', label: 'Trade value',
+    start: pts(result.getTotal), sit: pts(result.giveTotal),
+    detail: [getPicks.length ? `incl. ${getPicks.length} pick${getPicks.length > 1 ? 's' : ''}` : null, givePicks.length ? `incl. ${givePicks.length} pick${givePicks.length > 1 ? 's' : ''}` : null],
+    edge: valueEdge,
+  });
+
+  const getPpg = sumOf(getPlayers, (p) => p.value);
+  const givePpg = sumOf(givePlayers, (p) => p.value);
+  factors.push({
+    key: 'ppg', label: 'Points per game',
+    start: pts(getPpg), sit: pts(givePpg),
+    detail: [getPlayers, givePlayers].map((list) => (list.length > 1 ? `${list.length} players, rest of season` : 'rest of season')),
+    edge: edgeBy(getPpg, givePpg, 1.5),
+  });
+
+  const hasWeek = [...getPlayers, ...givePlayers].some((p) => p.points != null);
+  if (hasWeek) {
+    const getWeek = sumOf(getPlayers, (p) => p.points);
+    const giveWeek = sumOf(givePlayers, (p) => p.points);
+    factors.push({
+      key: 'week', label: 'This week',
+      start: pts(getWeek), sit: pts(giveWeek),
+      detail: [null, null],
+      edge: edgeBy(getWeek, giveWeek, 1.5),
+    });
+  }
+
+  const trends = (list) => list.map((p) => trendFor(p, ctx.scoring)).filter((t) => t.lastThree != null);
+  const getTrends = trends(getPlayers);
+  const giveTrends = trends(givePlayers);
+  if (getTrends.length || giveTrends.length) {
+    const getForm = sumOf(getTrends, (t) => t.lastThree);
+    const giveForm = sumOf(giveTrends, (t) => t.lastThree);
+    const heat = (list) => {
+      const up = list.filter((t) => t.direction === 'up').length;
+      const down = list.filter((t) => t.direction === 'down').length;
+      return up > down ? 'Heating up' : down > up ? 'Cooling off' : null;
+    };
+    factors.push({
+      key: 'form', label: 'Last 3 games',
+      start: pts(getForm), sit: pts(giveForm),
+      detail: [heat(getTrends), heat(giveTrends)],
+      edge: edgeBy(getForm, giveForm, 2),
+    });
+  }
+
+  factors.push({
+    key: 'lineup', label: 'Weekly lineup',
+    start: `You ${signedPts(result.myChange)}`, sit: `Them ${signedPts(result.theirChange)}`,
+    detail: [
+      getPlayers.length ? getPlayers.map((p) => (p.role === 'would sit on your bench' ? `${firstName(p)} to bench` : `${firstName(p)} starts`)).join(', ') : null,
+      givePlayers.some((p) => p.role && p.role !== 'your bench') ? `you lose ${givePlayers.filter((p) => p.role && p.role !== 'your bench').length} starter${givePlayers.filter((p) => p.role && p.role !== 'your bench').length > 1 ? 's' : ''}` : 'from your bench',
+    ],
+    // Their change is shown for context only; the highlight is about your lineup.
+    edge: result.myChange >= 1.5 ? 'start' : result.myChange <= -1.5 ? 'startLose' : 'even',
+  });
+
+  const getVacated = sumOf(getPlayers, (p) => vacatedPoints(teammatesOut(p, ctx.allPlayers, ctx.scoring)));
+  const giveVacated = sumOf(givePlayers, (p) => vacatedPoints(teammatesOut(p, ctx.allPlayers, ctx.scoring)));
+  if (getVacated >= 3 || giveVacated >= 3) {
+    factors.push({
+      key: 'opportunity', label: 'Teammates out',
+      start: getVacated >= 3 ? `+${pts(getVacated)} pts of work` : '–',
+      sit: giveVacated >= 3 ? `+${pts(giveVacated)} pts of work` : '–',
+      detail: [null, null],
+      edge: edgeBy(getVacated, giveVacated, 3),
+    });
+  }
+
+  const getHurt = getPlayers.filter((p) => p.injury || p.onBye);
+  const giveHurt = givePlayers.filter((p) => p.injury || p.onBye);
+  if (getHurt.length || giveHurt.length) {
+    factors.push({
+      key: 'health', label: 'Status',
+      start: sideHealth(getPlayers), sit: sideHealth(givePlayers),
+      detail: [null, null],
+      edge: getHurt.length && !giveHurt.length ? 'sit' : giveHurt.length && !getHurt.length ? 'start' : 'even',
+    });
+  }
+
+  if (ctx.dynasty) {
+    const age = (list) => {
+      const ages = list.map((p) => Number(p.age)).filter((a) => a > 0);
+      return ages.length ? round1(ages.reduce((s, a) => s + a, 0) / ages.length) : null;
+    };
+    const getAge = age(getPlayers);
+    const giveAge = age(givePlayers);
+    if (getAge || giveAge) {
+      factors.push({
+        key: 'age', label: 'Average age',
+        start: getAge ? pts(getAge) : '–', sit: giveAge ? pts(giveAge) : '–',
+        detail: [null, null],
+        edge: edgeBy(getAge, giveAge, 2, false),
+      });
+    }
+  }
+
+  // The summary: value first, then what it does to your lineup, then whether they'd take it.
+  const valueGap = pts(Math.abs(result.getTotal - result.giveTotal));
+  const sentences = [];
+  if (valueEdge === 'even') sentences.push(`The value is close: ${pts(result.getTotal)} coming in for ${pts(result.giveTotal)} going out.`);
+  else if (valueEdge === 'start') sentences.push(`You get ${valueGap} more in trade value than you give (${pts(result.getTotal)} vs ${pts(result.giveTotal)}).`);
+  else sentences.push(`You give up ${valueGap} more in trade value than you get (${pts(result.giveTotal)} vs ${pts(result.getTotal)}).`);
+
+  const starting = getPlayers.filter((p) => p.role && p.role.startsWith('would start'));
+  const lostStarters = givePlayers.filter((p) => p.role && p.role !== 'your bench');
+  if (result.myChange >= 1.5) {
+    sentences.push(`Your starting lineup gains ${pts(result.myChange)} pts a week${starting.length ? ` because ${namesOf(starting)} would start for you` : ''}.`);
+  } else if (result.myChange <= -1.5) {
+    const benched = getPlayers.filter((p) => !starting.includes(p));
+    sentences.push(`Your starting lineup drops ${pts(-result.myChange)} pts a week${lostStarters.length ? ` without ${namesOf(lostStarters)}` : ''}`
+      + `${benched.length ? `, and ${namesOf(benched)} would sit on your bench behind your current starters` : ''}.`);
+  } else if (getPlayers.length && !starting.length) {
+    sentences.push(`${namesOf(getPlayers)} would sit on your bench, so your lineup barely changes.`);
+  } else {
+    sentences.push('Your starting lineup barely changes.');
+  }
+  if (result.theirChange >= 1.5) sentences.push(`It helps ${them} too (${signedPts(result.theirChange)} a week), so they have a reason to say yes.`);
+  else if (result.theirChange <= -1.5 && valueEdge !== 'sit') sentences.push(`It costs ${them} ${pts(-result.theirChange)} pts a week, so expect them to push back.`);
+
+  const formEdge = factors.find((f) => f.key === 'form');
+  if (formEdge?.edge === 'start') sentences.push('Recent form also favors what you get.');
+  else if (formEdge?.edge === 'sit') sentences.push('Recent form favors what you give up, so you would be trading away players who are playing well right now.');
+
+  let watch = null;
+  const hurt = [...getHurt, ...giveHurt].filter((p) => !p.onBye);
+  if (hurt.length) {
+    const p = hurt[0];
+    const mine = getHurt.includes(p);
+    watch = `${p.name} is listed ${p.injury}, which lowers ${firstName(p)}'s value here. `
+      + (mine ? 'If the injury clears up, this trade gets better for you.' : 'If the injury clears up, you are giving up more than this shows.');
+  } else if (Math.abs(result.share) <= 0.2 && Math.abs(result.myChange) < 1.5) {
+    watch = 'Values blend season averages with this week\'s projection, so a close trade like this can tip either way as the weeks go by.';
+  }
+
+  return {
+    call: TRADE_CALLS[result.verdict.tone] || TRADE_CALLS.fair,
+    headline: result.verdict.label,
+    names: ['You get', 'You give'],
+    factors,
+    summary: sentences.join(' '),
+    watch,
+  };
+};

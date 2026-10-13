@@ -301,3 +301,13 @@
     animation: none;
   }
 }
+
+.why-call.lose {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.why-cell.lose .why-value {
+  color: var(--danger);
+  background: var(--danger-soft);
+}

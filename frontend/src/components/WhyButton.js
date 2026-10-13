@@ -18,7 +18,7 @@ const Factors = ({ names, factors }) => (
       <div className="why-row" role="row" key={factor.key}>
         <span role="rowheader" className="why-label">{factor.label}</span>
         {['start', 'sit'].map((side, index) => (
-          <span role="cell" key={side} className={`why-cell ${factor.edge === side ? 'win' : ''}`}>
+          <span role="cell" key={side} className={`why-cell ${factor.edge === side ? 'win' : ''} ${factor.edge === `${side}Lose` ? 'lose' : ''}`}>
             <span className="why-value">{factor[side]}</span>
             {factor.detail?.[index] && <small>{factor.detail[index]}</small>}
           </span>
