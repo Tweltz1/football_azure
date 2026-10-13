@@ -190,10 +190,16 @@ export function ensureDefaults(league: League): League {
 }
 
 /** Copy sent to browsers: never includes the league password. */
-export function forClient(league: League, version?: number): Record<string, unknown> {
+/**
+ * The league as browsers may see it. Bids are sealed until the round ends, so `activeBids` only ever
+ * carries the viewer's own bid (none at all for live broadcasts, which every member receives).
+ */
+export function forClient(league: League, version?: number, viewerId: string | null = null): Record<string, unknown> {
   ensureDefaults(league);
   const { password: _password, ...rest } = league;
-  const copy: Record<string, unknown> = { ...rest, password: null, draftPlayers: null };
+  const ownBid = viewerId ? league.activeBids[viewerId] : undefined;
+  const activeBids = ownBid ? { [viewerId as string]: ownBid } : {};
+  const copy: Record<string, unknown> = { ...rest, password: null, draftPlayers: null, activeBids };
   if (version !== undefined) copy._version = version;
   return copy;
 }

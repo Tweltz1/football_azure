@@ -69,9 +69,7 @@ const DraftTvView = () => {
   const status = String(league?.status || '').toLowerCase();
   const currentPlayer = useMemo(() => findPlayer(league, league?.currentPlayerId), [league]);
   const lastPick = league?.draftLog?.length ? league.draftLog[league.draftLog.length - 1] : null;
-  const currentBids = useMemo(() => buildBidRows(league, league?.activeBids), [league]);
   const lastPickBids = useMemo(() => buildBidRows(league, lastPick?.allBids), [league, lastPick]);
-  const topBid = currentBids[0];
   const winningTeam = getTeamById(league, lastPick?.winningTeamId);
   const rosterTotal = getRosterTotal(league?.rosterSettings);
 
@@ -124,13 +122,23 @@ const DraftTvView = () => {
             )}
           </div>
 
-          <div className="tv-current-bid">
-            <p className="tv-kicker">Current Bid</p>
-            <strong key={topBid ? `${topBid.userId}-${topBid.amount}` : 'none'} className="bid-flash">{topBid ? `$${topBid.amount}` : '$0'}</strong>
-            <span>{topBid ? topBid.teamName : 'No bids yet'}</span>
+          <div className="tv-current-bid tv-sealed-bids">
+            <p className="tv-kicker">Blind Auction</p>
+            <strong>Sealed</strong>
+            <span>Bids are revealed when the clock hits 0</span>
           </div>
 
-          <BidBoard title="All Current Bids" bids={currentBids} emptyText="No teams have bid yet." />
+          <div className="tv-bid-board">
+            <p className="tv-kicker">Last Pick</p>
+            {lastPick ? (
+              <div className="tv-last-pick">
+                <strong>{lastPick.player?.name || 'Unknown Player'}</strong>
+                <span>{winningTeam?.name || 'Unknown Team'} for ${lastPick.winningBid}</span>
+              </div>
+            ) : (
+              <div className="tv-empty-bids">No picks yet.</div>
+            )}
+          </div>
         </section>
       )}
 
