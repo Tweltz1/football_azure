@@ -438,9 +438,9 @@ const fitVerdict = (valueVerdict, myChange, getBenched) => {
  */
 export const analyzeTrade = ({
   give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount,
-  dynasty = false, givePicks = [], getPicks = [], firstPickSeason = null,
+  dynasty = false, givePicks = [], getPicks = [], firstPickSeason = null, levels: knownLevels = null,
 }) => {
-  const levels = replacementLevels(allPlayers, teamCount, rosterSettings, scoring);
+  const levels = knownLevels || replacementLevels(allPlayers, teamCount, rosterSettings, scoring);
   const rate = (p) => {
     const value = tradeValue(p, scoring);
     const surplus = Math.max(0, value - (levels[p.position] ?? 0));
@@ -502,4 +502,78 @@ export const analyzeTrade = ({
     give: giveRated, get: getRated, giveTotal, getTotal, myChange, theirChange, levels,
     valueVerdict: verdict, verdict: fitVerdict(verdict, myChange, getBenched),
   };
+};
+
+// ---- Trade finder -------------------------------------------------------------------------
+
+const TRADE_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
+// Only the players worth trading for are tried, which keeps the search quick.
+const FINDER_PLAYERS_PER_TEAM = 10;
+
+/**
+ * Looks through every other team for 1-for-1 and 2-for-1 trades (either way) that improve your
+ * starting lineup, don't hurt theirs much, and are fair enough on value that they might say yes.
+ * partners: [{ key, name, roster }] with projections attached. Returns the best few, best first.
+ */
+export const findTrades = ({
+  myRoster, partners, rosterSettings, scoring, allPlayers, dynasty = false, limit = 6,
+}) => {
+  const teamCount = partners.length + 1;
+  const levels = replacementLevels(allPlayers, teamCount, rosterSettings, scoring);
+  const tradeable = (roster) => roster
+    .filter((p) => TRADE_POSITIONS.includes(p.position))
+    .map((p) => ({ p, value: tradeValue(p, scoring) }))
+    .filter(({ value }) => value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, FINDER_PLAYERS_PER_TEAM)
+    .map(({ p }) => p);
+  const pairs = (list) => list.flatMap((a, i) => list.slice(i + 1).map((b) => [a, b]));
+  const mine = tradeable(myRoster);
+
+  const found = [];
+  partners.forEach((partner) => {
+    const theirs = tradeable(partner.roster);
+    const packages = [
+      ...mine.flatMap((a) => theirs.map((b) => [[a], [b]])),
+      ...pairs(mine).flatMap((two) => theirs.map((b) => [two, [b]])),
+      ...mine.flatMap((a) => pairs(theirs).map((two) => [[a], two])),
+    ];
+    packages.forEach(([give, get]) => {
+      const result = analyzeTrade({
+        give, get, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount, dynasty, levels,
+      });
+      const share = (result.getTotal - result.giveTotal) / Math.max(result.giveTotal, result.getTotal, 10);
+      // Worth suggesting: your lineup gets clearly better, theirs doesn't get clearly worse,
+      // and the values are close enough that they might accept.
+      if (result.myChange < 1 || result.theirChange < -1 || Math.abs(share) > 0.25) return;
+      found.push({
+        partnerKey: partner.key,
+        partnerName: partner.name,
+        give,
+        get,
+        myChange: result.myChange,
+        theirChange: result.theirChange,
+        verdict: result.verdict,
+        valueVerdict: result.valueVerdict,
+        // Your gain counts most; their gain helps it get accepted; taking far more value than you give doesn't.
+        rank: result.myChange + 0.5 * result.theirChange - 20 * Math.max(0, share - 0.1),
+      });
+    });
+  });
+
+  // Best first, no more than two ideas per partner so the list covers the league, and only the
+  // best way to get any one set of their players.
+  const perPartner = new Map();
+  const seen = new Set();
+  return found
+    .sort((a, b) => b.rank - a.rank)
+    .filter((idea) => {
+      const target = `${idea.partnerKey}:${idea.get.map((p) => p.id).sort().join(',')}`;
+      const count = perPartner.get(idea.partnerKey) || 0;
+      if (count >= 2 || seen.has(target)) return false;
+      seen.add(target);
+      perPartner.set(idea.partnerKey, count + 1);
+      return true;
+    })
+    .slice(0, limit);
 };

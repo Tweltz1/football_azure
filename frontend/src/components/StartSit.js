@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
   SCORING_OPTIONS, STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
-  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue,
+  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades,
 } from '../data/startSitUtils';
 import UpdatedAt from './UpdatedAt';
 import '../App.css';
@@ -270,8 +270,34 @@ const TradeCheck = ({
   const [givePickIds, setGivePickIds] = useState([]);
   const [getPickIds, setGetPickIds] = useState([]);
 
+  const [ideas, setIdeas] = useState(null);
+  const [searching, setSearching] = useState(false);
+
   const partner = partners.find((p) => p.key === partnerKey) || partners[0];
-  useEffect(() => { setGetIds([]); setGetPickIds([]); }, [partner?.key]);
+  const choosePartner = (key) => { setPartnerKey(key); setGetIds([]); setGetPickIds([]); };
+  // Suggestions go stale when the scoring or week changes.
+  useEffect(() => { setIdeas(null); }, [scoring, week]);
+
+  const findIdeas = () => {
+    setSearching(true);
+    // Let the button show "Searching" before the work blocks the page for a moment.
+    window.setTimeout(() => {
+      setIdeas(findTrades({
+        myRoster,
+        partners: partners.map((p) => ({ key: p.key, name: p.name, roster: withProjections(p.players, projectionsById, scoring, week) })),
+        rosterSettings, scoring, allPlayers, dynasty,
+      }));
+      setSearching(false);
+    }, 30);
+  };
+  const tryIdea = (idea) => {
+    setPartnerKey(idea.partnerKey);
+    setGiveIds(idea.give.map((p) => p.id));
+    setGetIds(idea.get.map((p) => p.id));
+    setGivePickIds([]);
+    setGetPickIds([]);
+    window.setTimeout(() => document.querySelector('.trade-result')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  };
   const allPicks = [...myPicks, ...partners.flatMap((p) => p.picks || [])];
   const firstPickSeason = allPicks.length ? Math.min(...allPicks.map((pick) => pick.season)) : null;
 
@@ -313,9 +339,43 @@ const TradeCheck = ({
         <p className="startsit-help">Pick a Sleeper or Hood League team in the Roster menu to trade with the other teams in that league.</p>
       ) : (
         <>
+          <div className="trade-finder">
+            <div className="trade-finder-head">
+              <div>
+                <strong>Trade finder</strong>
+                <p className="startsit-help">Looks at every team in the league for trades that improve your starting lineup without gutting theirs.</p>
+              </div>
+              <button type="button" className="create-button" onClick={findIdeas} disabled={searching}>
+                {searching ? 'Searching...' : ideas ? 'Search again' : 'Find trades for me'}
+              </button>
+            </div>
+            {ideas && ideas.length === 0 && (
+              <p className="startsit-empty">No trades found that clearly help you and look fair to them. Your lineup may already be well balanced.</p>
+            )}
+            {ideas && ideas.length > 0 && (
+              <ul className="trade-ideas">
+                {ideas.map((idea) => (
+                  <li key={`${idea.partnerKey}-${idea.give.map((p) => p.id).join()}-${idea.get.map((p) => p.id).join()}`}>
+                    <div className="trade-idea-main">
+                      <small>With {idea.partnerName}</small>
+                      <div>
+                        Give <strong>{idea.give.map((p) => `${p.name} (${p.position})`).join(' + ')}</strong>
+                        {' '}for <strong>{idea.get.map((p) => `${p.name} (${p.position})`).join(' + ')}</strong>
+                      </div>
+                      <small>
+                        {idea.verdict.label}. Your lineup {signed(idea.myChange)} pts a week, theirs {signed(idea.theirChange)}.
+                      </small>
+                    </div>
+                    <button type="button" className="edit-roster-button" onClick={() => tryIdea(idea)}>Check it</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <label className="trade-partner">
             Trade with
-            <select value={partner?.key || ''} onChange={(e) => setPartnerKey(e.target.value)}>
+            <select value={partner?.key || ''} onChange={(e) => choosePartner(e.target.value)}>
               {partners.map((p) => <option key={p.key} value={p.key}>{p.name}</option>)}
             </select>
           </label>
