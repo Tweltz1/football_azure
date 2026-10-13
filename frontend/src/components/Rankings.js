@@ -6,6 +6,7 @@ import { POSITION_TABS, rankLabel, seasonRankings, weeklyRankings } from '../dat
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
 import { PlayerInsight } from './StartSit';
 import UpdatedAt from './UpdatedAt';
+import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
 import '../App.css';
 import './SeasonTools.css';
 import './Rankings.css';
@@ -237,6 +238,18 @@ const Rankings = ({ userId }) => {
     return () => { cancelled = true; };
   }, [week]);
 
+  // Pick up new projections and injury news while the page stays open, without a loading screen.
+  const refreshTick = useRefreshTick();
+  useEffect(() => {
+    if (refreshTick === 0) return undefined;
+    let cancelled = false;
+    axios.get(`${API_BASE_URL}/startsit${week ? `?week=${week}` : ''}`)
+      .then((response) => { if (!cancelled) setProjections(response.data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTick]);
+
   const season = useMemo(() => seasonRankings(initialPlayerList, tab), [tab]);
   const seasonRankById = useMemo(() => {
     const byId = new Map();
@@ -385,7 +398,7 @@ const Rankings = ({ userId }) => {
       )}
 
       <p className="startsit-footnote">
-        This week ranks players by their Sleeper projection for the week, refreshed every 30 minutes. Matchup compares this week's
+        This week ranks players by their Sleeper projection for the week, refreshed every {REFRESH_MINUTES} minutes, and this page updates itself while it's open. Matchup compares this week's
         opponent with what other defenses have allowed to that position (Easy is the top third, Tough the bottom third).
         Season rankings are Sleeper's overall rankings, updated every Tuesday morning; Move is how many spots a player went up or
         down at their position since the week before. Tap a player for recent games and past games against this opponent.
