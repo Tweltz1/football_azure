@@ -472,3 +472,57 @@ test('start/sit: weekly projections from Sleeper, cached, with ids that match th
   world.respondWith(() => { throw new Error('down'); });
   assert.equal((await world.call('bob', 'GET', 'startsit')).status, 502);
 });
+
+test('start/sit: recent games, season average, injured teammates, and past matchups', async () => {
+  clearStartSitCache();
+  const world = memoryWorld();
+  const row = (id: string, team: string, opponent: string, pts: number, position = 'WR', injury: string | null = null) => ({
+    player_id: id, team, opponent, stats: { pts_ppr: pts, pts_half_ppr: pts - 1, pts_std: pts - 2, gp: 1 },
+    player: { first_name: `P${id}`, last_name: 'Test', position, injury_status: injury },
+  });
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week: 6, display_week: 6, season_type: 'regular' };
+    if (url.includes('/projections/')) return [row('10', 'LAR', 'SF', 15), row('11', 'LAR', 'SF', 0, 'WR', 'Out')];
+    if (url.includes('/stats/nfl/player/10')) {
+      const season = Number(url.match(/season=(\d+)/)![1]);
+      if (season === 2023) throw new Error('not found');
+      return {
+        1: { week: 1, team: 'LAR', opponent: 'SF', stats: { pts_ppr: season - 2000, gp: 1 } },
+        2: null,
+        3: { week: 3, team: 'LAR', opponent: 'SEA', stats: { pts_ppr: 5, gp: 1 } },
+        9: { week: 9, team: 'LAR', opponent: 'SF', stats: { gp: 0 } },
+      };
+    }
+    const week = Number(url.match(/\/stats\/nfl\/2026\/(\d+)/)![1]);
+    if (week === 3) throw new Error('missing week');
+    // Player 12 got hurt after week 2 and has no projection now.
+    const rows: unknown[] = [row('10', 'LAR', 'SEA', week * 2), row('11', 'LAR', 'SEA', 20, 'WR', 'Out')];
+    if (week <= 2) rows.push(row('12', 'LAR', 'SEA', 9, 'RB', 'IR'));
+    rows.push({ player_id: '13', team: 'LAR', stats: {}, player: { first_name: 'Bench', last_name: 'Guy', position: 'WR' } });
+    return rows;
+  });
+
+  const res = await world.call('bob', 'GET', 'startsit');
+  assert.equal(res.status, 200, String(res.body));
+  const players = new Map((res.body as any).players.map((p: any) => [p.id, p]));
+  const p10 = players.get('sleeper-10') as any;
+  assert.deepEqual(p10.recent.map((g: any) => g.week), [1, 2, 4, 5], 'week 3 failed to load and is skipped');
+  assert.deepEqual(p10.recent.map((g: any) => g.points.ppr), [2, 4, 8, 10]);
+  assert.equal(p10.seasonAvg.ppr, 6);
+  assert.equal(p10.gamesPlayed, 4);
+  assert.equal((players.get('sleeper-11') as any).injury, 'Out', 'injured players stay in the list');
+  assert.equal((players.get('sleeper-11') as any).seasonAvg.ppr, 20);
+  const p12 = players.get('sleeper-12') as any;
+  assert.equal(p12.injury, 'IR', 'long-term injured players come from their last game');
+  assert.equal(p12.points.ppr, 0);
+  assert.equal(players.has('sleeper-13'), false, 'rows without a game played are ignored');
+
+  const matchup = await world.call('bob', 'GET', 'startsit/matchup/sleeper-10', undefined, 'opponent=sf');
+  assert.equal(matchup.status, 200, String(matchup.body));
+  const body = matchup.body as any;
+  assert.equal(body.opponent, 'SF');
+  assert.deepEqual(body.games.map((g: any) => [g.season, g.week, g.points.ppr]), [[2026, 1, 26], [2025, 1, 25], [2024, 1, 24]]);
+  assert.equal(body.average.ppr, 25);
+  assert.equal((await world.call('bob', 'GET', 'startsit/matchup/sleeper-10', undefined, 'opponent=x')).status, 400);
+  assert.equal((await world.call('bob', 'GET', 'startsit/matchup/../x', undefined, 'opponent=SF')).status, 404);
+});

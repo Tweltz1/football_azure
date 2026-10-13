@@ -15,7 +15,7 @@ import {
 } from './draftLogic.ts';
 import { diffObjects } from './diff.ts';
 import { draftNumberOf, historySummary, isCompleted, snapshotDraft } from './history.ts';
-import { type FetchJson, getWeekProjections } from './startSit.ts';
+import { type FetchJson, getMatchupHistory, getWeekProjections } from './startSit.ts';
 
 export interface Ctx {
   leagues: LeagueStore;
@@ -893,6 +893,18 @@ async function startSit(ctx: Ctx, query: URLSearchParams): Promise<Res> {
   }
 }
 
+async function startSitMatchup(ctx: Ctx, playerId: string, query: URLSearchParams): Promise<Res> {
+  const opponent = str(query.get('opponent')).trim();
+  if (!/^[A-Za-z]{2,4}$/.test(opponent)) return bad('Please provide the opponent team, like KC.');
+  if (!/^sleeper-[A-Za-z0-9]+$/.test(playerId)) return bad('Unknown player.');
+  try {
+    return ok(await getMatchupHistory(ctx.fetchJson, ctx.now(), playerId, opponent));
+  } catch (error) {
+    ctx.log.warn(`Loading matchup history failed for ${playerId}.`, error);
+    return { status: 502, body: 'Past matchups are not available right now. Please try again in a few minutes.' };
+  }
+}
+
 // ---- Manual draft ----------------------------------------------------------------
 
 async function manualSelectPlayer(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
@@ -1316,6 +1328,7 @@ export async function handle(ctx: Ctx, method: string, path: string, query: URLS
 
   if (parts.length === 2 && method === 'GET' && parts[0] === 'history') return getHistoryEntry(ctx, parts[1]);
   if (parts.length === 2 && method === 'GET' && parts[0] === 'invite') return getInvite(ctx, parts[1]);
+  if (parts.length === 3 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'matchup') return startSitMatchup(ctx, parts[2], query);
 
   if (parts.length === 2 && parts[0] === 'user-profile' && method === 'POST') return updateProfile(ctx, parts[1], data);
 

@@ -58,6 +58,9 @@ export const withProjections = (players, projectionsById, scoring, week) => play
     injury: projection?.injury || null,
     onBye: onBye && !projection,
     points: projection ? Number(projection.points?.[scoring] ?? 0) : null,
+    recent: projection?.recent || [],
+    seasonAvg: projection?.seasonAvg || null,
+    gamesPlayed: projection?.gamesPlayed || 0,
   };
 });
 
@@ -98,3 +101,57 @@ export const compareVerdict = (players) => {
   const margin = Math.round((first.points - second.points) * 10) / 10;
   return { winner: first, runnerUp: second, margin, close: margin < 1.5 };
 };
+
+const average = (values) => (values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null);
+const round1 = (value) => Math.round(value * 10) / 10;
+
+/**
+ * How a player has been trending: average of their last 3 games against their season average.
+ * direction is 'up' or 'down' when the gap is at least 15% (and 1.5 pts), else 'flat'.
+ */
+export const trendFor = (player, scoring) => {
+  const recent = (player?.recent || []).map((game) => ({ ...game, value: Number(game.points?.[scoring] ?? 0) }));
+  const lastThree = average(recent.slice(-3).map((game) => game.value));
+  const season = player?.seasonAvg ? Number(player.seasonAvg[scoring] ?? 0) : null;
+  let direction = 'flat';
+  if (lastThree != null && season != null && season > 0) {
+    const gap = lastThree - season;
+    if (Math.abs(gap) >= 1.5 && Math.abs(gap) / season >= 0.15) direction = gap > 0 ? 'up' : 'down';
+  }
+  return {
+    recent,
+    lastThree: lastThree == null ? null : round1(lastThree),
+    season: season == null ? null : round1(season),
+    gamesPlayed: player?.gamesPlayed || 0,
+    direction,
+  };
+};
+
+// Teammates whose absence moves touches: skill players only, and not kickers or defenses.
+const SKILL_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
+const HURT = new Set(['out', 'ir', 'doubtful', 'questionable', 'pup', 'sus']);
+
+/** Injured teammates of a player, biggest season average first. */
+export const teammatesOut = (player, allPlayers, scoring) => {
+  if (!player?.team || !SKILL_POSITIONS.includes(player.position)) return [];
+  return (allPlayers || [])
+    .filter((p) => p.team === player.team && p.id !== player.id && SKILL_POSITIONS.includes(normalizePosition(p.position)))
+    .filter((p) => HURT.has(String(p.injury || '').toLowerCase()))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      position: normalizePosition(p.position),
+      injury: p.injury,
+      seasonAvg: p.seasonAvg ? round1(Number(p.seasonAvg[scoring] ?? 0)) : null,
+      // Same position, or any pass catcher when the player is one too, competes for the same work.
+      overlaps: normalizePosition(p.position) === player.position
+        || (['WR', 'TE', 'RB'].includes(player.position) && ['WR', 'TE'].includes(normalizePosition(p.position))),
+    }))
+    .sort((a, b) => (b.seasonAvg ?? 0) - (a.seasonAvg ?? 0));
+};
+
+/** Points lost to injured teammates who do the same job, as a rough "extra work available" number. */
+export const vacatedPoints = (teammates) => round1(
+  teammates.filter((t) => t.overlaps && !['questionable'].includes(String(t.injury).toLowerCase()))
+    .reduce((sum, t) => sum + (t.seasonAvg || 0), 0),
+);

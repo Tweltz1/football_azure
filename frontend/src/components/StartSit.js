@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
-  SCORING_OPTIONS, STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, withProjections,
+  SCORING_OPTIONS, STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
+  vacatedPoints, withProjections,
 } from '../data/startSitUtils';
 import '../App.css';
 import './SeasonTools.css';
@@ -43,6 +44,143 @@ const StatusTag = ({ player }) => {
   return null;
 };
 
+const TREND_ICON = { up: '▲', down: '▼', flat: '▬' };
+
+const TrendBadge = ({ player, scoring }) => {
+  const trend = trendFor(player, scoring);
+  if (trend.lastThree == null) return null;
+  return (
+    <span className={`startsit-trend ${trend.direction}`} title={`Last 3 games avg ${trend.lastThree}, season avg ${trend.season}`}>
+      {TREND_ICON[trend.direction]} {trend.lastThree.toFixed(1)}
+    </span>
+  );
+};
+
+const PlayerName = ({ player, scoring, onOpen }) => (
+  <>
+    <button type="button" className="startsit-name" onClick={() => onOpen(player.id)}>{player.name}</button>
+    {' '}<small>{player.position}</small> <StatusTag player={player} /> <TrendBadge player={player} scoring={scoring} />
+  </>
+);
+
+/** Pop-up with one player's recent games, past games against this week's opponent, and injured teammates. */
+const PlayerInsight = ({ player, allPlayers, scoring, week, onClose }) => {
+  const [matchup, setMatchup] = useState(null);
+  const [matchupError, setMatchupError] = useState('');
+  const trend = trendFor(player, scoring);
+  const teammates = teammatesOut(player, allPlayers, scoring);
+  const vacated = vacatedPoints(teammates);
+  const maxRecent = Math.max(1, ...trend.recent.map((g) => g.value), player.points || 0);
+
+  useEffect(() => {
+    if (!player.opponent) return undefined;
+    let cancelled = false;
+    setMatchup(null);
+    setMatchupError('');
+    axios.get(`${API_BASE_URL}/startsit/matchup/${encodeURIComponent(player.id)}?opponent=${encodeURIComponent(player.opponent)}`)
+      .then((response) => { if (!cancelled) setMatchup(response.data); })
+      .catch((error) => { if (!cancelled) setMatchupError(error.response?.data || 'Past matchups are not available right now.'); });
+    return () => { cancelled = true; };
+  }, [player.id, player.opponent]);
+
+  const matchupAvg = matchup?.average ? Number(matchup.average[scoring] ?? 0) : null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content startsit-insight" onClick={(e) => e.stopPropagation()}>
+        <div className="player-board-heading">
+          <div>
+            <p className="section-kicker">{player.position} · {player.team || 'FA'}{player.opponent ? ` vs ${player.opponent}` : ''} · Week {week}</p>
+            <h3>{player.name} <StatusTag player={player} /></h3>
+          </div>
+          <button type="button" className="cancel-button" onClick={onClose}>Close</button>
+        </div>
+
+        <div className="startsit-insight-stats">
+          <div><span>Projected</span><strong>{formatPoints(player.points)}</strong></div>
+          <div><span>Last 3 avg</span><strong>{trend.lastThree == null ? '-' : trend.lastThree.toFixed(1)}</strong></div>
+          <div><span>Season avg</span><strong>{trend.season == null ? '-' : trend.season.toFixed(1)}</strong></div>
+          <div><span>vs {player.opponent || 'opp'}</span><strong>{matchupAvg == null ? '-' : matchupAvg.toFixed(1)}</strong></div>
+        </div>
+
+        <section>
+          <h4>Recent games {trend.direction !== 'flat' && <span className={`startsit-trend ${trend.direction}`}>{trend.direction === 'up' ? 'Trending up' : 'Trending down'}</span>}</h4>
+          {trend.recent.length === 0 ? <p className="startsit-empty">No games played yet this season.</p> : (
+            <ul className="startsit-compare">
+              {trend.recent.map((game) => (
+                <li key={game.week}>
+                  <div className="startsit-compare-name">Week {game.week} {game.opponent ? `vs ${game.opponent}` : ''}</div>
+                  <div className="startsit-bar"><span style={{ width: `${Math.max(4, (game.value / maxRecent) * 100)}%` }} /></div>
+                  <span className="startsit-points">{game.value.toFixed(1)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {player.opponent && (
+          <section>
+            <h4>Past games vs {player.opponent}</h4>
+            {matchupError && <p className="startsit-empty">{String(matchupError)}</p>}
+            {!matchupError && !matchup && <p className="startsit-empty">Looking up past matchups...</p>}
+            {matchup && matchup.games.length === 0 && <p className="startsit-empty">No games against {player.opponent} in the last four seasons.</p>}
+            {matchup && matchup.games.length > 0 && (
+              <>
+                <ul className="startsit-compare">
+                  {matchup.games.map((game) => {
+                    const value = Number(game.points?.[scoring] ?? 0);
+                    return (
+                      <li key={`${game.season}-${game.week}`}>
+                        <div className="startsit-compare-name">
+                          {game.season} week {game.week}
+                          {game.team && game.team !== player.team ? <small> (with {game.team})</small> : null}
+                        </div>
+                        <div className="startsit-bar"><span style={{ width: `${Math.max(4, (value / Math.max(maxRecent, value, 1)) * 100)}%` }} /></div>
+                        <span className="startsit-points">{value.toFixed(1)}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {trend.season != null && matchupAvg != null && (
+                  <p className="startsit-help">
+                    Averages {matchupAvg.toFixed(1)} against {player.opponent} vs {trend.season.toFixed(1)} this season
+                    {matchupAvg >= trend.season + 2 ? ', so this matchup has gone well for them.' : matchupAvg <= trend.season - 2 ? ', so this matchup has been tough.' : '.'}
+                  </p>
+                )}
+              </>
+            )}
+          </section>
+        )}
+
+        {['QB', 'RB', 'WR', 'TE'].includes(player.position) && (
+          <section>
+            <h4>Injured teammates</h4>
+            {teammates.length === 0 ? <p className="startsit-empty">No injured {player.team} skill players listed.</p> : (
+              <>
+                <ul className="startsit-bench">
+                  {teammates.map((mate) => (
+                    <li key={mate.id}>
+                      <div>
+                        <strong>{mate.name}</strong> <small>{mate.position}</small> <span className={`startsit-tag ${isUnavailable(mate.injury) || mate.injury === 'IR' ? 'warn' : 'caution'}`}>{mate.injury}</span>
+                      </div>
+                      <span className="startsit-points" title="Season average">{mate.seasonAvg == null ? '-' : `${mate.seasonAvg.toFixed(1)} avg`}</span>
+                    </li>
+                  ))}
+                </ul>
+                {vacated > 0 && (
+                  <p className="startsit-help">
+                    About {vacated.toFixed(1)} pts/game from teammates in a similar role are out, which can mean more targets or touches for {player.name}.
+                  </p>
+                )}
+              </>
+            )}
+          </section>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const StartSit = ({ userId }) => {
   const [projections, setProjections] = useState(null);
   const [projectionError, setProjectionError] = useState('');
@@ -56,6 +194,7 @@ const StartSit = ({ userId }) => {
   const [compareIds, setCompareIds] = useState([]);
   const [rosterSearch, setRosterSearch] = useState('');
   const [compareSearch, setCompareSearch] = useState('');
+  const [insightId, setInsightId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +266,10 @@ const StartSit = ({ userId }) => {
   );
   const verdict = compareVerdict(comparePlayers);
   const maxComparePoints = Math.max(1, ...comparePlayers.map((p) => p.points || 0));
+  const insightPlayer = insightId
+    ? [...roster, ...comparePlayers].find((p) => p.id === insightId)
+      || withProjections([projectionsById.get(insightId)].filter(Boolean), projectionsById, scoring, shownWeek)[0]
+    : null;
 
   return (
     <div className="page-shell startsit-page">
@@ -241,7 +384,7 @@ const StartSit = ({ userId }) => {
                         <td>
                           {player ? (
                             <>
-                              <strong>{player.name}</strong> <small>{player.position}</small> <StatusTag player={player} />
+                              <PlayerName player={player} scoring={scoring} onOpen={setInsightId} />
                             </>
                           ) : <span className="startsit-empty">Nobody available</span>}
                         </td>
@@ -269,7 +412,7 @@ const StartSit = ({ userId }) => {
                   {lineup.bench.map((p) => (
                     <li key={p.id}>
                       <div>
-                        <strong>{p.name}</strong> <small>{p.position}</small> <StatusTag player={p} />
+                        <PlayerName player={p} scoring={scoring} onOpen={setInsightId} />
                         <br />
                         <Matchup player={p} />
                       </div>
@@ -327,7 +470,7 @@ const StartSit = ({ userId }) => {
                 {[...comparePlayers].sort((a, b) => (b.points || 0) - (a.points || 0)).map((p) => (
                   <li key={p.id} className={verdict?.winner.id === p.id ? 'winner' : ''}>
                     <div className="startsit-compare-name">
-                      <strong>{p.name}</strong> <small>{p.position}</small> <StatusTag player={p} />
+                      <PlayerName player={p} scoring={scoring} onOpen={setInsightId} />
                       <br />
                       <Matchup player={p} />
                     </div>
@@ -351,8 +494,19 @@ const StartSit = ({ userId }) => {
             )}
           </section>
 
+          {insightPlayer && (
+            <PlayerInsight
+              player={insightPlayer}
+              allPlayers={projections.players}
+              scoring={scoring}
+              week={projections.week}
+              onClose={() => setInsightId(null)}
+            />
+          )}
+
           <p className="startsit-footnote">
-            Projections from Sleeper for the {projections.season} season, refreshed every 30 minutes.
+            Tap a player for recent games, past games against this opponent, and injured teammates. ▲/▼ shows the last 3 games against the season average.
+            Projections and stats from Sleeper for the {projections.season} season, refreshed every 30 minutes.
             Players listed Out, Doubtful or IR, and players on bye, are kept out of the lineup.
           </p>
         </>
