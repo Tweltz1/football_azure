@@ -342,6 +342,9 @@ const TradeCheck = ({
             <div className={`trade-result ${result.verdict.tone}`}>
               <strong className="trade-verdict">{result.verdict.label}</strong>
               <p>{result.verdict.detail}</p>
+              {result.valueVerdict.label !== result.verdict.label && (
+                <p className="startsit-help">On player value alone: {result.valueVerdict.label.toLowerCase()}.</p>
+              )}
               <div className="startsit-insight-stats">
                 <div><span>Value you give</span><strong>{result.giveTotal.toFixed(1)}</strong></div>
                 <div><span>Value you get</span><strong>{result.getTotal.toFixed(1)}</strong></div>
@@ -351,7 +354,8 @@ const TradeCheck = ({
               <p className="startsit-help">
                 Trade value mostly counts what a player scores above a starter you could find on waivers, plus a little for raw points
                 ({Object.entries(result.levels).filter(([pos]) => ['QB', 'RB', 'WR', 'TE'].includes(pos)).map(([pos, v]) => `${pos} ${v.toFixed(1)}`).join(', ')} pts/game in this league).
-                Lineup numbers are the change in each team's best weekly lineup.
+                Lineup numbers are the change in each team's best weekly lineup, and the verdict counts yours: a trade that fills a
+                weak starting spot is worth more to you, and one whose players would sit on your bench is worth less.
                 {give.length !== get.length && ` This is a ${give.length}-for-${get.length} in players, so ${give.length > get.length ? 'you free up' : 'they free up'} a roster spot.`}
               </p>
               <ul className="trade-breakdown">
@@ -366,7 +370,7 @@ const TradeCheck = ({
                     ) : (
                       <>
                         <button type="button" className="startsit-name" onClick={() => onOpen(p.id)}>{p.name}</button>
-                        <small>{p.position}{dynasty && p.age ? `, age ${Math.floor(p.age)}` : ''}</small>
+                        <small>{p.position}{dynasty && p.age ? `, age ${Math.floor(p.age)}` : ''}{p.role ? `, ${p.role}` : ''}</small>
                         <span className="startsit-points">
                           {p.value.toFixed(1)} pts/game, {p.surplus.toFixed(1)} above waiver
                           {dynasty && p.ageFactor !== 1 ? `, age x${p.ageFactor}` : ''}, value {p.score.toFixed(1)}
@@ -504,7 +508,7 @@ const StartSit = ({ userId }) => {
     [rosterPlayers, projectionsById, scoring, shownWeek],
   );
   const lineup = useMemo(() => buildLineup(roster, rosterSettings), [roster, rosterSettings]);
-  const changes = activeSleeper ? lineupChanges(lineup, activeSleeper.starters, roster) : [];
+  const changes = activeSleeper ? lineupChanges(lineup, activeSleeper.starters, roster, activeSleeper.startersBySlot) : [];
 
   const tradePartners = useMemo(() => {
     if (activeSleeper) {
@@ -678,13 +682,16 @@ const StartSit = ({ userId }) => {
                       <>
                         <span>Changes from your current Sleeper lineup:</span>
                         <ul>
-                          {changes.map(({ start, sit, gain }) => (
+                          {changes.map(({ start, sit, shuffle, gain }) => (start ? (
                             <li key={start.id}>
-                              Start <strong>{start.name}</strong>
-                              {sit ? <> over <strong>{sit.name}</strong>{benchReason(sit) ? ` (${benchReason(sit)})` : ''}</> : ' in an empty slot'}
+                              Start <strong>{start.name}</strong> <small>{start.position}</small>
+                              {sit ? <> over <strong>{sit.name}</strong> <small>{sit.position}</small>{benchReason(sit) ? ` (${benchReason(sit)})` : ''}</> : ' in an empty slot'}
                               {gain > 0 ? ` (+${gain.toFixed(1)} pts)` : ''}
+                              {shuffle && <small> (move other starters between slots to match the lineup below)</small>}
                             </li>
-                          ))}
+                          ) : (
+                            <li key={sit.id}>Bench <strong>{sit.name}</strong> <small>{sit.position}</small></li>
+                          )))}
                         </ul>
                       </>
                     )}

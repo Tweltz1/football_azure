@@ -37,6 +37,8 @@ export interface SleeperTeam {
   picks: DraftPick[];
   /** Who is in the Sleeper lineup right now, as our player ids. */
   starters: string[];
+  /** The same lineup slot by slot, lined up with `slots` (null for an empty slot). */
+  startersBySlot: (string | null)[];
   /** The other teams in the league, for the trade tool. */
   opponents: { teamName: string; players: RosterPlayer[]; picks: DraftPick[] }[];
 }
@@ -65,6 +67,7 @@ const SLOT_POSITIONS: Record<string, string[]> = {
   REC_FLEX: ['WR', 'TE'],
   SUPER_FLEX: ['QB', 'RB', 'WR', 'TE'],
 };
+const NON_STARTER_SLOTS = new Set(['BN', 'IR', 'TAXI']);
 const SLOT_LABELS: Record<string, string> = {
   DEF: 'DST', WRRB_FLEX: 'W/R', REC_FLEX: 'W/T', SUPER_FLEX: 'SUPERFLEX',
 };
@@ -238,10 +241,20 @@ export async function getSleeperTeams(
       }))
       .filter((team) => team.players.length > 0 || team.picks.length > 0);
 
-    const slots = (Array.isArray(l.roster_positions) ? l.roster_positions : [])
+    // Sleeper's starters list follows roster_positions minus the bench, IR and taxi spots, so it can be
+    // lined up with the slots to know which slot each starter is in.
+    const starterSlots = (Array.isArray(l.roster_positions) ? l.roster_positions : [])
       .map(text)
-      .filter((slot) => SLOT_POSITIONS[slot])
-      .map((slot) => ({ label: SLOT_LABELS[slot] ?? slot, positions: SLOT_POSITIONS[slot] }));
+      .filter((slot) => slot && !NON_STARTER_SLOTS.has(slot));
+    const currentStarters = Array.isArray(mine.starters) ? mine.starters.map(text) : [];
+    const slots: LineupSlot[] = [];
+    const startersBySlot: (string | null)[] = [];
+    starterSlots.forEach((slot, index) => {
+      if (!SLOT_POSITIONS[slot]) return;
+      slots.push({ label: SLOT_LABELS[slot] ?? slot, positions: SLOT_POSITIONS[slot] });
+      const id = currentStarters[index];
+      startersBySlot.push(id && id !== '0' ? `sleeper-${id}` : null);
+    });
 
     teams.push({
       leagueId,
@@ -253,7 +266,8 @@ export async function getSleeperTeams(
       slots,
       players,
       opponents,
-      starters: (Array.isArray(mine.starters) ? mine.starters : []).map(text).filter((id) => id && id !== '0').map((id) => `sleeper-${id}`),
+      starters: currentStarters.filter((id) => id && id !== '0').map((id) => `sleeper-${id}`),
+      startersBySlot,
     });
   }
 

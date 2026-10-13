@@ -241,9 +241,12 @@ export const boxLine = (position, box) => {
 
 /**
  * Changes from the lineup someone has set (e.g. on Sleeper) to the recommended one, best upgrade first:
- * [{ start: player, sit: player | null, gain }].
+ * [{ start: player | null, sit: player | null, shuffle, gain }]. Each player to start is paired with a
+ * starter whose slot they can actually fill (startersBySlot says who is in which slot now); shuffle
+ * means the swap only works after other starters move between slots. start is null for a starter to
+ * bench with nobody taking their place.
  */
-export const lineupChanges = (lineup, currentStarterIds, roster) => {
+export const lineupChanges = (lineup, currentStarterIds, roster, startersBySlot = null) => {
   const current = new Set(currentStarterIds || []);
   const recommended = new Set(lineup.starters.map((s) => s.player?.id).filter(Boolean));
   const byId = new Map(roster.map((p) => [p.id, p]));
@@ -251,12 +254,62 @@ export const lineupChanges = (lineup, currentStarterIds, roster) => {
     .sort((a, b) => (b.points || 0) - (a.points || 0));
   const toSit = [...current].filter((id) => !recommended.has(id)).map((id) => byId.get(id)).filter(Boolean)
     .sort((a, b) => (a.points ?? -1) - (b.points ?? -1));
-  return toStart.map((player, i) => {
-    const sit = toSit[i] || null;
+
+  // The slot a current starter is in on Sleeper; without that, every slot their position could fill.
+  const slotted = Array.isArray(startersBySlot) && startersBySlot.length === lineup.starters.length;
+  const slotsOf = (player) => {
+    const index = slotted ? startersBySlot.indexOf(player.id) : -1;
+    if (index >= 0) return [lineup.starters[index].slot];
+    return lineup.starters.map((s) => s.slot).filter((slot) => slot.positions.includes(player.position));
+  };
+  const sharedSlots = (start, sit) => slotsOf(sit).filter((slot) => slot.positions.includes(start.position)).length;
+
+  // Pair each player to start with a starter whose slot they can legally take: same position first,
+  // then someone not already paired, then the most slots in common. An earlier pair is re-paired
+  // only when that is the only way to fit a later player.
+  const startForSit = new Map();
+  const assign = (start, seen) => {
+    const rank = (sit) => [sit.position === start.position ? 0 : 1, startForSit.has(sit.id) ? 1 : 0, -sharedSlots(start, sit)];
+    const candidates = toSit
+      .filter((sit) => sharedSlots(start, sit) > 0)
+      .sort((a, b) => {
+        const [ra, rb] = [rank(a), rank(b)];
+        return ra[0] - rb[0] || ra[1] - rb[1] || ra[2] - rb[2];
+      });
+    return candidates.some((sit) => {
+      if (seen.has(sit.id)) return false;
+      seen.add(sit.id);
+      const holder = startForSit.get(sit.id);
+      if (holder && !assign(holder, seen)) return false;
+      startForSit.set(sit.id, start);
+      return true;
+    });
+  };
+  toStart.forEach((start) => assign(start, new Set()));
+  const sitForStart = new Map([...startForSit].map(([sitId, start]) => [start.id, byId.get(sitId)]));
+
+  // Anyone left over only fits after other starters move between slots (or fills an empty slot).
+  const leftoverSits = toSit.filter((sit) => !startForSit.has(sit.id));
+  const emptySlots = slotted ? startersBySlot.filter((id) => !id).length : Math.max(0, lineup.starters.length - current.size);
+  let leftoverIndex = 0;
+  let emptyUsed = 0;
+  const changes = toStart.map((start) => {
+    let sit = sitForStart.get(start.id) || null;
+    let shuffle = false;
+    if (!sit) {
+      if (emptyUsed < emptySlots) emptyUsed += 1;
+      else {
+        sit = leftoverSits[leftoverIndex] || null;
+        leftoverIndex += 1;
+        shuffle = true;
+      }
+    }
     // A starter who won't play scores nothing, whatever their projection says.
     const sitPoints = sit && !benchReason(sit) ? (sit.points || 0) : 0;
-    return { start: player, sit, gain: Math.round(((player.points || 0) - sitPoints) * 10) / 10 };
+    return { start, sit, shuffle, gain: Math.round(((start.points || 0) - sitPoints) * 10) / 10 };
   });
+  const benchOnly = leftoverSits.slice(leftoverIndex).map((sit) => ({ start: null, sit, shuffle: false, gain: 0 }));
+  return [...changes, ...benchOnly];
 };
 
 // ---- Trades -----------------------------------------------------------------------------
@@ -338,14 +391,50 @@ export const pickValue = (pick, firstSeason) => {
 const ordinalRound = (round) => ({ 1: '1st', 2: '2nd', 3: '3rd' })[round] || `${round}th`;
 export const pickLabel = (pick, ownTeamName) => `${pick.season} ${ordinalRound(pick.round)}${pick.originalTeam && pick.originalTeam !== ownTeamName ? ` (from ${pick.originalTeam})` : ''}`;
 
-const weeklyLineupTotal = (players, rosterSettings, scoring) => {
-  const valued = players.map((p) => ({ ...p, points: tradeValue(p, scoring), onBye: false, injury: null }));
-  return buildLineup(valued, rosterSettings).total;
+// Best weekly lineup when every player is valued at their rest-of-season points per game.
+const seasonLineup = (players, rosterSettings, scoring) => buildLineup(
+  players.map((p) => ({ ...p, points: tradeValue(p, scoring), onBye: false, injury: null })),
+  rosterSettings,
+);
+const slotById = (lineup) => new Map(lineup.starters.filter((s) => s.player).map((s) => [s.player.id, s.slot.label]));
+
+// A weekly lineup change this size (pts) or more counts as helping or hurting the team.
+const FIT_THRESHOLD = 1.5;
+
+/** Combines the value verdict with how the trade changes your own starting lineup. */
+const fitVerdict = (valueVerdict, myChange, getBenched) => {
+  const pts = Math.abs(myChange).toFixed(1);
+  const value = valueVerdict.tone;
+  if (myChange >= FIT_THRESHOLD) {
+    if (value === 'lose') {
+      return { tone: 'fair', label: 'Overpaying, but it fills a need', detail: `You give up more value than you get, but your starting lineup gains ${pts} pts a week.` };
+    }
+    if (value === 'fair') {
+      return { tone: 'win', label: 'Good trade for your team', detail: `Fair value, and your starting lineup gains ${pts} pts a week.` };
+    }
+    return { ...valueVerdict, detail: `${valueVerdict.detail} Your starting lineup also gains ${pts} pts a week.` };
+  }
+  if (myChange <= -FIT_THRESHOLD) {
+    if (value === 'win') {
+      return {
+        tone: 'fair',
+        label: 'Wins on value, but weakens your lineup',
+        detail: `You get more value, but your starting lineup drops ${pts} pts a week. Worth it only if you have depth or are building for later.`,
+      };
+    }
+    if (value === 'fair') {
+      return { tone: 'lose', label: 'Fair value, but weakens your lineup', detail: `Your starting lineup drops ${pts} pts a week.` };
+    }
+    return { ...valueVerdict, detail: `${valueVerdict.detail} Your starting lineup also drops ${pts} pts a week.` };
+  }
+  const benchNote = getBenched ? ' What you get would sit on your bench.' : '';
+  return { ...valueVerdict, detail: `${valueVerdict.detail} Your starting lineup barely changes.${benchNote}` };
 };
 
 /**
  * Rates a trade. give/get are players (with projections attached); myRoster/theirRoster are the full
- * rosters before the trade. Returns per-player values, totals, each side's weekly lineup change and a verdict.
+ * rosters before the trade. Returns per-player values and roles on your team, totals, each side's weekly
+ * lineup change, the value-only verdict, and a verdict that also weighs how your own lineup changes.
  */
 export const analyzeTrade = ({
   give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount,
@@ -372,8 +461,26 @@ export const analyzeTrade = ({
   const myAfter = [...myRoster.filter((p) => !giveIds.has(p.id)), ...get];
   const theirAfter = [...theirRoster.filter((p) => !getIds.has(p.id)), ...give];
   const round = (n) => Math.round(n * 10) / 10;
-  const myChange = round(weeklyLineupTotal(myAfter, rosterSettings, scoring) - weeklyLineupTotal(myRoster, rosterSettings, scoring));
-  const theirChange = round(weeklyLineupTotal(theirAfter, rosterSettings, scoring) - weeklyLineupTotal(theirRoster, rosterSettings, scoring));
+  const myLineupBefore = seasonLineup(myRoster, rosterSettings, scoring);
+  const myLineupAfter = seasonLineup(myAfter, rosterSettings, scoring);
+  const myChange = round(myLineupAfter.total - myLineupBefore.total);
+  const theirChange = round(seasonLineup(theirAfter, rosterSettings, scoring).total - seasonLineup(theirRoster, rosterSettings, scoring).total);
+
+  // Where each player fits on your team: who you give up from your lineup, and where new players would start.
+  const startingBefore = slotById(myLineupBefore);
+  const startingAfter = slotById(myLineupAfter);
+  giveRated.forEach((p) => {
+    if (p.round) return;
+    const slot = startingBefore.get(p.id);
+    p.role = slot ? `your starting ${slot}` : 'your bench';
+  });
+  getRated.forEach((p) => {
+    if (p.round) return;
+    const slot = startingAfter.get(p.id);
+    p.role = slot ? `would start at ${slot}` : 'would sit on your bench';
+  });
+  const getPlayers = getRated.filter((p) => !p.round);
+  const getBenched = getPlayers.length > 0 && getPlayers.every((p) => !startingAfter.has(p.id));
 
   const gap = getTotal - giveTotal;
   // A floor keeps small trades (a point or two either way) from reading as lopsided.
@@ -391,5 +498,8 @@ export const analyzeTrade = ({
       : { tone: 'lose', label: 'They win this trade', detail: 'You give up more value than you get.' };
   }
 
-  return { give: giveRated, get: getRated, giveTotal, getTotal, myChange, theirChange, verdict, levels };
+  return {
+    give: giveRated, get: getRated, giveTotal, getTotal, myChange, theirChange, levels,
+    valueVerdict: verdict, verdict: fitVerdict(verdict, myChange, getBenched),
+  };
 };
