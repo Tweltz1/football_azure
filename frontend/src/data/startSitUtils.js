@@ -391,14 +391,50 @@ export const pickValue = (pick, firstSeason) => {
 const ordinalRound = (round) => ({ 1: '1st', 2: '2nd', 3: '3rd' })[round] || `${round}th`;
 export const pickLabel = (pick, ownTeamName) => `${pick.season} ${ordinalRound(pick.round)}${pick.originalTeam && pick.originalTeam !== ownTeamName ? ` (from ${pick.originalTeam})` : ''}`;
 
-const weeklyLineupTotal = (players, rosterSettings, scoring) => {
-  const valued = players.map((p) => ({ ...p, points: tradeValue(p, scoring), onBye: false, injury: null }));
-  return buildLineup(valued, rosterSettings).total;
+// Best weekly lineup when every player is valued at their rest-of-season points per game.
+const seasonLineup = (players, rosterSettings, scoring) => buildLineup(
+  players.map((p) => ({ ...p, points: tradeValue(p, scoring), onBye: false, injury: null })),
+  rosterSettings,
+);
+const slotById = (lineup) => new Map(lineup.starters.filter((s) => s.player).map((s) => [s.player.id, s.slot.label]));
+
+// A weekly lineup change this size (pts) or more counts as helping or hurting the team.
+const FIT_THRESHOLD = 1.5;
+
+/** Combines the value verdict with how the trade changes your own starting lineup. */
+const fitVerdict = (valueVerdict, myChange, getBenched) => {
+  const pts = Math.abs(myChange).toFixed(1);
+  const value = valueVerdict.tone;
+  if (myChange >= FIT_THRESHOLD) {
+    if (value === 'lose') {
+      return { tone: 'fair', label: 'Overpaying, but it fills a need', detail: `You give up more value than you get, but your starting lineup gains ${pts} pts a week.` };
+    }
+    if (value === 'fair') {
+      return { tone: 'win', label: 'Good trade for your team', detail: `Fair value, and your starting lineup gains ${pts} pts a week.` };
+    }
+    return { ...valueVerdict, detail: `${valueVerdict.detail} Your starting lineup also gains ${pts} pts a week.` };
+  }
+  if (myChange <= -FIT_THRESHOLD) {
+    if (value === 'win') {
+      return {
+        tone: 'fair',
+        label: 'Wins on value, but weakens your lineup',
+        detail: `You get more value, but your starting lineup drops ${pts} pts a week. Worth it only if you have depth or are building for later.`,
+      };
+    }
+    if (value === 'fair') {
+      return { tone: 'lose', label: 'Fair value, but weakens your lineup', detail: `Your starting lineup drops ${pts} pts a week.` };
+    }
+    return { ...valueVerdict, detail: `${valueVerdict.detail} Your starting lineup also drops ${pts} pts a week.` };
+  }
+  const benchNote = getBenched ? ' What you get would sit on your bench.' : '';
+  return { ...valueVerdict, detail: `${valueVerdict.detail} Your starting lineup barely changes.${benchNote}` };
 };
 
 /**
  * Rates a trade. give/get are players (with projections attached); myRoster/theirRoster are the full
- * rosters before the trade. Returns per-player values, totals, each side's weekly lineup change and a verdict.
+ * rosters before the trade. Returns per-player values and roles on your team, totals, each side's weekly
+ * lineup change, the value-only verdict, and a verdict that also weighs how your own lineup changes.
  */
 export const analyzeTrade = ({
   give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount,
@@ -425,8 +461,26 @@ export const analyzeTrade = ({
   const myAfter = [...myRoster.filter((p) => !giveIds.has(p.id)), ...get];
   const theirAfter = [...theirRoster.filter((p) => !getIds.has(p.id)), ...give];
   const round = (n) => Math.round(n * 10) / 10;
-  const myChange = round(weeklyLineupTotal(myAfter, rosterSettings, scoring) - weeklyLineupTotal(myRoster, rosterSettings, scoring));
-  const theirChange = round(weeklyLineupTotal(theirAfter, rosterSettings, scoring) - weeklyLineupTotal(theirRoster, rosterSettings, scoring));
+  const myLineupBefore = seasonLineup(myRoster, rosterSettings, scoring);
+  const myLineupAfter = seasonLineup(myAfter, rosterSettings, scoring);
+  const myChange = round(myLineupAfter.total - myLineupBefore.total);
+  const theirChange = round(seasonLineup(theirAfter, rosterSettings, scoring).total - seasonLineup(theirRoster, rosterSettings, scoring).total);
+
+  // Where each player fits on your team: who you give up from your lineup, and where new players would start.
+  const startingBefore = slotById(myLineupBefore);
+  const startingAfter = slotById(myLineupAfter);
+  giveRated.forEach((p) => {
+    if (p.round) return;
+    const slot = startingBefore.get(p.id);
+    p.role = slot ? `your starting ${slot}` : 'your bench';
+  });
+  getRated.forEach((p) => {
+    if (p.round) return;
+    const slot = startingAfter.get(p.id);
+    p.role = slot ? `would start at ${slot}` : 'would sit on your bench';
+  });
+  const getPlayers = getRated.filter((p) => !p.round);
+  const getBenched = getPlayers.length > 0 && getPlayers.every((p) => !startingAfter.has(p.id));
 
   const gap = getTotal - giveTotal;
   // A floor keeps small trades (a point or two either way) from reading as lopsided.
@@ -444,5 +498,8 @@ export const analyzeTrade = ({
       : { tone: 'lose', label: 'They win this trade', detail: 'You give up more value than you get.' };
   }
 
-  return { give: giveRated, get: getRated, giveTotal, getTotal, myChange, theirChange, verdict, levels };
+  return {
+    give: giveRated, get: getRated, giveTotal, getTotal, myChange, theirChange, levels,
+    valueVerdict: verdict, verdict: fitVerdict(verdict, myChange, getBenched),
+  };
 };

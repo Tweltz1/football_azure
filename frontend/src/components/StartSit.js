@@ -342,6 +342,9 @@ const TradeCheck = ({
             <div className={`trade-result ${result.verdict.tone}`}>
               <strong className="trade-verdict">{result.verdict.label}</strong>
               <p>{result.verdict.detail}</p>
+              {result.valueVerdict.label !== result.verdict.label && (
+                <p className="startsit-help">On player value alone: {result.valueVerdict.label.toLowerCase()}.</p>
+              )}
               <div className="startsit-insight-stats">
                 <div><span>Value you give</span><strong>{result.giveTotal.toFixed(1)}</strong></div>
                 <div><span>Value you get</span><strong>{result.getTotal.toFixed(1)}</strong></div>
@@ -351,7 +354,8 @@ const TradeCheck = ({
               <p className="startsit-help">
                 Trade value mostly counts what a player scores above a starter you could find on waivers, plus a little for raw points
                 ({Object.entries(result.levels).filter(([pos]) => ['QB', 'RB', 'WR', 'TE'].includes(pos)).map(([pos, v]) => `${pos} ${v.toFixed(1)}`).join(', ')} pts/game in this league).
-                Lineup numbers are the change in each team's best weekly lineup.
+                Lineup numbers are the change in each team's best weekly lineup, and the verdict counts yours: a trade that fills a
+                weak starting spot is worth more to you, and one whose players would sit on your bench is worth less.
                 {give.length !== get.length && ` This is a ${give.length}-for-${get.length} in players, so ${give.length > get.length ? 'you free up' : 'they free up'} a roster spot.`}
               </p>
               <ul className="trade-breakdown">
@@ -366,7 +370,7 @@ const TradeCheck = ({
                     ) : (
                       <>
                         <button type="button" className="startsit-name" onClick={() => onOpen(p.id)}>{p.name}</button>
-                        <small>{p.position}{dynasty && p.age ? `, age ${Math.floor(p.age)}` : ''}</small>
+                        <small>{p.position}{dynasty && p.age ? `, age ${Math.floor(p.age)}` : ''}{p.role ? `, ${p.role}` : ''}</small>
                         <span className="startsit-points">
                           {p.value.toFixed(1)} pts/game, {p.surplus.toFixed(1)} above waiver
                           {dynasty && p.ageFactor !== 1 ? `, age x${p.ageFactor}` : ''}, value {p.score.toFixed(1)}
