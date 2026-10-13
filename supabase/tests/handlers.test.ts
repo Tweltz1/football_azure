@@ -587,6 +587,7 @@ test('start/sit: import a Sleeper team with its lineup slots, scoring and curren
   assert.equal(res.status, 200, String(res.body));
   const body = res.body as any;
   assert.equal(body.season, 2026);
+  assert.ok(!Number.isNaN(Date.parse(body.fetchedAt)), 'the import says when it was read from Sleeper');
   assert.equal(body.teams.length, 1, 'leagues without a roster for this user are skipped');
   const team = body.teams[0];
   assert.equal(team.teamName, 'Tyler Squad');

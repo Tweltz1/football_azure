@@ -45,6 +45,8 @@ export interface SleeperImport {
   username: string;
   displayName: string;
   season: number;
+  /** When these rosters were read from Sleeper (they are cached for a few minutes). */
+  fetchedAt: string;
   teams: SleeperTeam[];
 }
 
@@ -255,7 +257,7 @@ export async function getSleeperTeams(
     });
   }
 
-  const value = { username, displayName: text(user?.display_name) || username, season, teams };
+  const value = { username, displayName: text(user?.display_name) || username, season, fetchedAt: now.toISOString(), teams };
   cache.set(key, { at: nowMs, value });
   return value;
 }

@@ -18,6 +18,7 @@ import { getPlayerAvailability } from '../data/strategyUtils';
 import { subscribeProfileUpdates } from '../profileSync';
 import MockDraftLab from './MockDraftLab';
 import PlayerComparison from './PlayerComparison';
+import UpdatedAt from './UpdatedAt';
 import '../PlayerBoard.css';
 
 const MAX_COMPARE = 3;
@@ -33,7 +34,7 @@ const Home = () => {
   const [sortBy, setSortBy] = useState('rank');
   const [playerLimit, setPlayerLimit] = useState(300);
   const [compareIds, setCompareIds] = useState([]);
-  const [trendData, setTrendData] = useState({ add: [], drop: [], loading: false, error: null });
+  const [trendData, setTrendData] = useState({ add: [], drop: [], loading: false, error: null, fetchedAt: null });
   const navigate = useNavigate();
 
   const fetchProfile = useCallback(async () => {
@@ -83,6 +84,7 @@ const Home = () => {
     const fallbackTrends = {
       add: hydrateTrendItems(sleeperTrending.add, playerBoard, LIVE_TREND_LIMIT),
       drop: hydrateTrendItems(sleeperTrending.drop, playerBoard, LIVE_TREND_LIMIT),
+      fetchedAt: playerInsightsMeta.generatedAt || null,
     };
 
     const fetchLiveTrends = async () => {
@@ -100,6 +102,7 @@ const Home = () => {
           drop: hydrateTrendItems(dropItems, playerBoard, LIVE_TREND_LIMIT),
           loading: false,
           error: null,
+          fetchedAt: new Date().toISOString(),
         });
       } catch (error) {
         if (!isActive) return;
@@ -154,7 +157,7 @@ const Home = () => {
           <span>{POSITION_FILTERS.length - 1} board filters</span>
           <span>{scoringLabel}</span>
           <span>{userProfile?.defaultTeamName || 'Team profile ready'}</span>
-          <span>Updated {formatDate(playerPoolMeta.fetchedAt)}</span>
+          <UpdatedAt at={playerPoolMeta.fetchedAt} label="Player pool updated" staleAfterHours={POOL_STALE_HOURS} />
         </div>
       </section>
 
@@ -314,6 +317,16 @@ const PlayerUpdatesPanel = ({ trends, rankMovements, lookbackHours }) => (
       </div>
       <div className="board-count">Sleeper {lookbackHours}h</div>
     </div>
+    <div className="updated-row">
+      {!trends.loading && (
+        <UpdatedAt
+          at={trends.fetchedAt}
+          label={trends.error ? 'Trends snapshot taken' : 'Trends updated'}
+          staleAfterHours={trends.error ? lookbackHours : null}
+        />
+      )}
+      <UpdatedAt at={playerInsightsMeta.generatedAt} label="Rank movement updated" staleAfterHours={POOL_STALE_HOURS} />
+    </div>
 
     <div className="player-update-grid">
       <PlayerUpdateColumn
@@ -447,18 +460,14 @@ const formatCompactCount = (value) => {
   return String(count);
 };
 
+// The player pool is rebuilt weekly, so a pool more than about a week old has missed an update.
+const POOL_STALE_HOURS = 8 * 24;
+
 const getTrendLookbackHours = () => toNumber(playerInsightsMeta.trendsLookbackHours, 24) || 24;
 
 const toNumber = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-const formatDate = (value) => {
-  if (!value) return 'recently';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'recently';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
 export default Home;

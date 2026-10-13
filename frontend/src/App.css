@@ -2020,3 +2020,25 @@ hr {
     transform: none;
   }
 }
+
+/* "Updated 12 min ago" labels on live data. */
+.updated-at {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.updated-at.stale {
+  color: var(--warning);
+}
+
+.updated-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 2px 0 10px;
+}
+
+.scoreboard-strip .updated-at.stale {
+  color: var(--warning);
+}

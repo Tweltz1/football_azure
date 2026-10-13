@@ -497,3 +497,8 @@
 .trade-pick-list {
   max-height: 200px;
 }
+
+.startsit-sleeper-form + .updated-at {
+  display: block;
+  margin-top: 8px;
+}

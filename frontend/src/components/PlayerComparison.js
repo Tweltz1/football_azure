@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { playerInsightsMeta, playerStatsById, positionAverages } from '../data/playerInsights';
 import { getEstimatedAuctionValue, getPlayerAvailability } from '../data/strategyUtils';
+import UpdatedAt from './UpdatedAt';
 import './PlayerComparison.css';
 
 const SLEEPER_PLAYER_STATS_BASE_URL = 'https://api.sleeper.app/stats/nfl/player';
 const liveStatsCache = new Map();
+// When each cached live stat line was fetched, keyed like liveStatsCache.
+const liveStatsFetchedAt = new Map();
 
 const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers = 3, onRemove, onClear }) => {
   const statsSeason = String(playerInsightsMeta.statsSeason || getDefaultStatsSeason());
@@ -45,6 +48,14 @@ const PlayerComparison = ({ players, allPlayers = [], scoringLabel, maxPlayers =
             <ComparisonInsight label="Bye Overlap" value={analysis.byeOverlapLabel} tone={analysis.hasByeOverlap ? 'warn' : 'good'} />
             <ComparisonInsight label="Positions" value={analysis.positionMix} />
             <ComparisonInsight label="Stats" value={statsStatus.label} tone={statsStatus.tone} />
+          </div>
+
+          <div className="updated-row">
+            {liveStatsState.fetchedAt && <UpdatedAt at={liveStatsState.fetchedAt} label={`${statsSeason} stats updated`} />}
+            {!liveStatsState.fetchedAt && !liveStatsState.loading && (
+              <UpdatedAt at={playerInsightsMeta.generatedAt} label={`${statsSeason} stats snapshot taken`} staleAfterHours={8 * 24} />
+            )}
+            <UpdatedAt at={playerInsightsMeta.playerPoolFetchedAt || playerInsightsMeta.generatedAt} label="Ranks and ADP updated" staleAfterHours={8 * 24} />
           </div>
 
           <div className="compare-table-wrap">
@@ -444,12 +455,20 @@ const renderPositionAverage = (player) => {
   };
 };
 
+// The oldest fetch among the players shown, so the label never overstates how fresh the table is.
+const oldestFetch = (targets, season) => {
+  const times = targets
+    .map((target) => liveStatsFetchedAt.get(getLiveStatsCacheKey(season, target.sleeperId)))
+    .filter(Boolean);
+  return times.length ? Math.min(...times) : null;
+};
+
 const useLivePlayerStats = (players = [], statsSeason) => {
   const playerStatsKey = useMemo(
     () => players.map((player) => `${player.id}:${getSleeperPlayerId(player) || ''}`).join('|'),
     [players]
   );
-  const [state, setState] = useState({ byPlayerId: {}, loading: false, error: null, season: statsSeason });
+  const [state, setState] = useState({ byPlayerId: {}, loading: false, error: null, season: statsSeason, fetchedAt: null });
 
   useEffect(() => {
     const targets = players
@@ -457,7 +476,7 @@ const useLivePlayerStats = (players = [], statsSeason) => {
       .filter((target) => target.sleeperId);
 
     if (!statsSeason || targets.length === 0) {
-      setState({ byPlayerId: {}, loading: false, error: null, season: statsSeason });
+      setState({ byPlayerId: {}, loading: false, error: null, season: statsSeason, fetchedAt: null });
       return undefined;
     }
 
@@ -473,7 +492,9 @@ const useLivePlayerStats = (players = [], statsSeason) => {
       }
     }
 
-    setState({ byPlayerId: cachedStats, loading: missingTargets.length > 0, error: null, season: statsSeason });
+    setState({
+      byPlayerId: cachedStats, loading: missingTargets.length > 0, error: null, season: statsSeason, fetchedAt: oldestFetch(targets, statsSeason),
+    });
     if (missingTargets.length === 0) return undefined;
 
     let isActive = true;
@@ -500,6 +521,7 @@ const useLivePlayerStats = (players = [], statsSeason) => {
         loading: false,
         error: errors[0] || null,
         season: statsSeason,
+        fetchedAt: oldestFetch(targets, statsSeason),
       });
     });
 
@@ -530,6 +552,7 @@ const fetchSleeperSeasonStats = async (sleeperId, season, signal) => {
   const weeklyPayload = await response.json();
   const stats = aggregateSleeperWeeklyStats(weeklyPayload, season);
   liveStatsCache.set(cacheKey, stats);
+  liveStatsFetchedAt.set(cacheKey, Date.now());
   return stats;
 };
 

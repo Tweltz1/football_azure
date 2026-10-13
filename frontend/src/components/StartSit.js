@@ -5,11 +5,14 @@ import {
   SCORING_OPTIONS, STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
   vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue,
 } from '../data/startSitUtils';
+import UpdatedAt from './UpdatedAt';
 import '../App.css';
 import './SeasonTools.css';
 
 const CUSTOM = 'custom';
 const SLEEPER_PREFIX = 'sleeper:';
+// Projections refresh every 30 minutes on the server, so anything older than this is suspect.
+const PROJECTIONS_STALE_HOURS = 2;
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1);
 
 // Per-browser conveniences only; the page works without them.
@@ -65,7 +68,7 @@ const PlayerName = ({ player, scoring, onOpen }) => (
 );
 
 /** Pop-up with one player's recent games, past games against this week's opponent, and injured teammates. */
-const PlayerInsight = ({ player, allPlayers, defense, scoring, week, onClose }) => {
+const PlayerInsight = ({ player, allPlayers, defense, scoring, week, updatedAt, onClose }) => {
   const [matchup, setMatchup] = useState(null);
   const [matchupError, setMatchupError] = useState('');
   const trend = trendFor(player, scoring);
@@ -94,6 +97,7 @@ const PlayerInsight = ({ player, allPlayers, defense, scoring, week, onClose }) 
           <div>
             <p className="section-kicker">{player.position} · {player.team || 'FA'}{player.opponent ? ` vs ${player.opponent}` : ''} · Week {week}</p>
             <h3>{player.name} <StatusTag player={player} /></h3>
+            <UpdatedAt at={updatedAt} label="Stats and projection updated" staleAfterHours={PROJECTIONS_STALE_HOURS} />
           </div>
           <button type="button" className="cancel-button" onClick={onClose}>Close</button>
         </div>
@@ -258,7 +262,7 @@ const TradePicks = ({
 /** Pick a team in the same league and players on each side; rates the trade by rest-of-season value. */
 const TradeCheck = ({
   myRoster, partners, rosterSettings, scoring, allPlayers, projectionsById, week, onOpen,
-  dynasty = false, myPicks = [], myTeamName = '',
+  dynasty = false, myPicks = [], myTeamName = '', projectionsAt = null, rostersAt = null,
 }) => {
   const [partnerKey, setPartnerKey] = useState('');
   const [giveIds, setGiveIds] = useState([]);
@@ -298,6 +302,12 @@ const TradeCheck = ({
           <h2>Is this trade fair?</h2>
         </div>
         {anything && <button type="button" className="cancel-button" onClick={clearAll}>Clear</button>}
+      </div>
+      <div className="updated-row">
+        <UpdatedAt at={projectionsAt} label="Player values updated" staleAfterHours={PROJECTIONS_STALE_HOURS} />
+        {rostersAt
+          ? <UpdatedAt at={rostersAt} label="Sleeper rosters updated" staleAfterHours={24} />
+          : partners.length > 0 && <span className="updated-at">Rosters are live from this league</span>}
       </div>
       {partners.length === 0 ? (
         <p className="startsit-help">Pick a Sleeper or Hood League team in the Roster menu to trade with the other teams in that league.</p>
@@ -598,6 +608,9 @@ const StartSit = ({ userId }) => {
               />
               <button type="submit" className="create-button">{sleeperTeams.length ? 'Refresh' : 'Import'}</button>
             </form>
+            {sleeperTeams.length > 0 && !sleeperStatus && (
+              <UpdatedAt at={sleeperImport.fetchedAt} label="Rosters loaded from Sleeper" staleAfterHours={24} />
+            )}
             <p className="startsit-help">
               {sleeperStatus || 'Uses your Sleeper roster, lineup slots and scoring. Only your username is needed, no password.'}
             </p>
@@ -652,6 +665,10 @@ const StartSit = ({ userId }) => {
                   <h2>Start these</h2>
                 </div>
                 <div className="board-count">{lineup.total.toFixed(1)} pts</div>
+              </div>
+              <div className="updated-row">
+                <UpdatedAt at={projections.fetchedAt} label="Projections updated" staleAfterHours={PROJECTIONS_STALE_HOURS} />
+                {activeSleeper && <UpdatedAt at={sleeperImport.fetchedAt} label="Sleeper lineup updated" staleAfterHours={24} />}
               </div>
               {activeSleeper && roster.length > 0 && (
                 <div className={`startsit-verdict ${changes.length ? '' : 'close'} startsit-changes`}>
@@ -814,6 +831,8 @@ const StartSit = ({ userId }) => {
             projectionsById={projectionsById}
             week={shownWeek}
             onOpen={setInsightId}
+            projectionsAt={projections.fetchedAt}
+            rostersAt={activeSleeper ? sleeperImport.fetchedAt : null}
           />
 
           {insightPlayer && (
@@ -823,13 +842,14 @@ const StartSit = ({ userId }) => {
               defense={projections.defense}
               scoring={scoring}
               week={projections.week}
+              updatedAt={projections.fetchedAt}
               onClose={() => setInsightId(null)}
             />
           )}
 
           <p className="startsit-footnote">
             Tap a player for recent games, past games against this opponent, and injured teammates. ▲/▼ shows the last 3 games against the season average.
-            Projections and stats from Sleeper for the {projections.season} season, refreshed every 30 minutes.
+            Projections and stats from Sleeper for the {projections.season} season, refreshed every 30 minutes (hit Refresh on your Sleeper team to reload a roster).
             Players listed Out, Doubtful or IR, and players on bye, are kept out of the lineup.
           </p>
         </>
