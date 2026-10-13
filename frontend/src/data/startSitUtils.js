@@ -241,9 +241,12 @@ export const boxLine = (position, box) => {
 
 /**
  * Changes from the lineup someone has set (e.g. on Sleeper) to the recommended one, best upgrade first:
- * [{ start: player, sit: player | null, gain }].
+ * [{ start: player | null, sit: player | null, shuffle, gain }]. Each player to start is paired with a
+ * starter whose slot they can actually fill (startersBySlot says who is in which slot now); shuffle
+ * means the swap only works after other starters move between slots. start is null for a starter to
+ * bench with nobody taking their place.
  */
-export const lineupChanges = (lineup, currentStarterIds, roster) => {
+export const lineupChanges = (lineup, currentStarterIds, roster, startersBySlot = null) => {
   const current = new Set(currentStarterIds || []);
   const recommended = new Set(lineup.starters.map((s) => s.player?.id).filter(Boolean));
   const byId = new Map(roster.map((p) => [p.id, p]));
@@ -251,12 +254,62 @@ export const lineupChanges = (lineup, currentStarterIds, roster) => {
     .sort((a, b) => (b.points || 0) - (a.points || 0));
   const toSit = [...current].filter((id) => !recommended.has(id)).map((id) => byId.get(id)).filter(Boolean)
     .sort((a, b) => (a.points ?? -1) - (b.points ?? -1));
-  return toStart.map((player, i) => {
-    const sit = toSit[i] || null;
+
+  // The slot a current starter is in on Sleeper; without that, every slot their position could fill.
+  const slotted = Array.isArray(startersBySlot) && startersBySlot.length === lineup.starters.length;
+  const slotsOf = (player) => {
+    const index = slotted ? startersBySlot.indexOf(player.id) : -1;
+    if (index >= 0) return [lineup.starters[index].slot];
+    return lineup.starters.map((s) => s.slot).filter((slot) => slot.positions.includes(player.position));
+  };
+  const sharedSlots = (start, sit) => slotsOf(sit).filter((slot) => slot.positions.includes(start.position)).length;
+
+  // Pair each player to start with a starter whose slot they can legally take: same position first,
+  // then someone not already paired, then the most slots in common. An earlier pair is re-paired
+  // only when that is the only way to fit a later player.
+  const startForSit = new Map();
+  const assign = (start, seen) => {
+    const rank = (sit) => [sit.position === start.position ? 0 : 1, startForSit.has(sit.id) ? 1 : 0, -sharedSlots(start, sit)];
+    const candidates = toSit
+      .filter((sit) => sharedSlots(start, sit) > 0)
+      .sort((a, b) => {
+        const [ra, rb] = [rank(a), rank(b)];
+        return ra[0] - rb[0] || ra[1] - rb[1] || ra[2] - rb[2];
+      });
+    return candidates.some((sit) => {
+      if (seen.has(sit.id)) return false;
+      seen.add(sit.id);
+      const holder = startForSit.get(sit.id);
+      if (holder && !assign(holder, seen)) return false;
+      startForSit.set(sit.id, start);
+      return true;
+    });
+  };
+  toStart.forEach((start) => assign(start, new Set()));
+  const sitForStart = new Map([...startForSit].map(([sitId, start]) => [start.id, byId.get(sitId)]));
+
+  // Anyone left over only fits after other starters move between slots (or fills an empty slot).
+  const leftoverSits = toSit.filter((sit) => !startForSit.has(sit.id));
+  const emptySlots = slotted ? startersBySlot.filter((id) => !id).length : Math.max(0, lineup.starters.length - current.size);
+  let leftoverIndex = 0;
+  let emptyUsed = 0;
+  const changes = toStart.map((start) => {
+    let sit = sitForStart.get(start.id) || null;
+    let shuffle = false;
+    if (!sit) {
+      if (emptyUsed < emptySlots) emptyUsed += 1;
+      else {
+        sit = leftoverSits[leftoverIndex] || null;
+        leftoverIndex += 1;
+        shuffle = true;
+      }
+    }
     // A starter who won't play scores nothing, whatever their projection says.
     const sitPoints = sit && !benchReason(sit) ? (sit.points || 0) : 0;
-    return { start: player, sit, gain: Math.round(((player.points || 0) - sitPoints) * 10) / 10 };
+    return { start, sit, shuffle, gain: Math.round(((start.points || 0) - sitPoints) * 10) / 10 };
   });
+  const benchOnly = leftoverSits.slice(leftoverIndex).map((sit) => ({ start: null, sit, shuffle: false, gain: 0 }));
+  return [...changes, ...benchOnly];
 };
 
 // ---- Trades -----------------------------------------------------------------------------

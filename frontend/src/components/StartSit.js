@@ -504,7 +504,7 @@ const StartSit = ({ userId }) => {
     [rosterPlayers, projectionsById, scoring, shownWeek],
   );
   const lineup = useMemo(() => buildLineup(roster, rosterSettings), [roster, rosterSettings]);
-  const changes = activeSleeper ? lineupChanges(lineup, activeSleeper.starters, roster) : [];
+  const changes = activeSleeper ? lineupChanges(lineup, activeSleeper.starters, roster, activeSleeper.startersBySlot) : [];
 
   const tradePartners = useMemo(() => {
     if (activeSleeper) {
@@ -678,13 +678,16 @@ const StartSit = ({ userId }) => {
                       <>
                         <span>Changes from your current Sleeper lineup:</span>
                         <ul>
-                          {changes.map(({ start, sit, gain }) => (
+                          {changes.map(({ start, sit, shuffle, gain }) => (start ? (
                             <li key={start.id}>
-                              Start <strong>{start.name}</strong>
-                              {sit ? <> over <strong>{sit.name}</strong>{benchReason(sit) ? ` (${benchReason(sit)})` : ''}</> : ' in an empty slot'}
+                              Start <strong>{start.name}</strong> <small>{start.position}</small>
+                              {sit ? <> over <strong>{sit.name}</strong> <small>{sit.position}</small>{benchReason(sit) ? ` (${benchReason(sit)})` : ''}</> : ' in an empty slot'}
                               {gain > 0 ? ` (+${gain.toFixed(1)} pts)` : ''}
+                              {shuffle && <small> (move other starters between slots to match the lineup below)</small>}
                             </li>
-                          ))}
+                          ) : (
+                            <li key={sit.id}>Bench <strong>{sit.name}</strong> <small>{sit.position}</small></li>
+                          )))}
                         </ul>
                       </>
                     )}

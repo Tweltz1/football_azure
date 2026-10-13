@@ -597,6 +597,8 @@ test('start/sit: import a Sleeper team with its lineup slots, scoring and curren
   assert.deepEqual(team.players.map((p: any) => p.id), ['sleeper-4984', 'sleeper-9509', 'sleeper-BUF', 'sleeper-999999']);
   assert.equal(team.players[0].name, 'Josh Allen');
   assert.equal(team.players[2].position, 'DST');
+  assert.deepEqual(team.startersBySlot.slice(0, 3), ['sleeper-4984', null, 'sleeper-BUF'], 'starters line up with the slots they fill');
+  assert.equal(team.startersBySlot.length, team.slots.length);
   assert.equal(team.players[3].name, 'Player 999999');
   assert.deepEqual(team.starters, ['sleeper-4984', 'sleeper-BUF']);
   assert.deepEqual(team.opponents.map((o: any) => [o.teamName, o.players.length]), [['Rival', 1]]);

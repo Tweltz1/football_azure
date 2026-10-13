@@ -502,3 +502,28 @@
   display: block;
   margin-top: 8px;
 }
+
+/* Phones make every button full width (App.css); these sit inline with text. */
+.startsit-name,
+.startsit-chip,
+.startsit-remove {
+  width: auto;
+}
+
+@media (max-width: 640px) {
+  /* Let the lineup table wrap to the screen instead of scrolling sideways. */
+  .leagues-table.startsit-table {
+    display: table;
+    white-space: normal;
+  }
+
+  .leagues-table.startsit-table th,
+  .leagues-table.startsit-table td {
+    padding: 10px 8px;
+  }
+
+  .leagues-table.startsit-table td:last-child {
+    white-space: nowrap;
+    text-align: right;
+  }
+}
