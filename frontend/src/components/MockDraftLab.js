@@ -42,7 +42,7 @@ const MockDraftLab = ({ players, scoringLabel }) => {
         <button type="button" className="create-button" onClick={handleRunMock}>Run Mock</button>
       </div>
 
-      <div className="mock-draft-card">
+      <div className={`mock-draft-card pos-${String(selectedPlayer.position || '').toLowerCase()}`}>
         <div className="mock-player-line">
           <span className="rank-chip">#{selectedPlayer.scoringRank}</span>
           <div>

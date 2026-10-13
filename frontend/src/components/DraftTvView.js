@@ -69,9 +69,7 @@ const DraftTvView = () => {
   const status = String(league?.status || '').toLowerCase();
   const currentPlayer = useMemo(() => findPlayer(league, league?.currentPlayerId), [league]);
   const lastPick = league?.draftLog?.length ? league.draftLog[league.draftLog.length - 1] : null;
-  const currentBids = useMemo(() => buildBidRows(league, league?.activeBids), [league]);
   const lastPickBids = useMemo(() => buildBidRows(league, lastPick?.allBids), [league, lastPick]);
-  const topBid = currentBids[0];
   const winningTeam = getTeamById(league, lastPick?.winningTeamId);
   const rosterTotal = getRosterTotal(league?.rosterSettings);
 
@@ -95,8 +93,11 @@ const DraftTvView = () => {
           <h1>{league.name}</h1>
         </div>
         <div className="tv-status-strip">
-          <span>{String(league.status || 'waiting').toUpperCase()}</span>
-          <strong className={isManual ? 'manual-current-player' : ''}>
+          <span className={`tv-status-bug status-${status || 'waiting'}`}>{String(league.status || 'waiting').toUpperCase()}</span>
+          <strong
+            className={isManual ? 'manual-current-player' : `tv-clock${isAuction && timer > 0 && timer <= 5 ? ' is-urgent' : ''}`}
+            style={isAuction ? { '--timer-progress': Math.min(1, Math.max(0, timer / (Number(status === 'tiebreaker' ? league.draftTimers?.rebidTimer : league.draftTimers?.bidTimer) || 20))) } : undefined}
+          >
             {isManual ? (currentPlayer?.name || 'No player up') : formatTimer(timer)}
           </strong>
         </div>
@@ -110,7 +111,7 @@ const DraftTvView = () => {
               <>
                 <h2>{currentPlayer.name}</h2>
                 <div className="tv-player-meta">
-                  <span>{currentPlayer.position}</span>
+                  <span className={`pos-badge pos-${String(currentPlayer.position || '').toLowerCase()}`}>{currentPlayer.position}</span>
                   <span>{currentPlayer.team}</span>
                   <span>Bye {currentPlayer.bye || '-'}</span>
                   <span>Rank #{currentPlayer.rank || '-'}</span>
@@ -121,13 +122,23 @@ const DraftTvView = () => {
             )}
           </div>
 
-          <div className="tv-current-bid">
-            <p className="tv-kicker">Current Bid</p>
-            <strong>{topBid ? `$${topBid.amount}` : '$0'}</strong>
-            <span>{topBid ? topBid.teamName : 'No bids yet'}</span>
+          <div className="tv-current-bid tv-sealed-bids">
+            <p className="tv-kicker">Blind Auction</p>
+            <strong>Sealed</strong>
+            <span>Bids are revealed when the clock hits 0</span>
           </div>
 
-          <BidBoard title="All Current Bids" bids={currentBids} emptyText="No teams have bid yet." />
+          <div className="tv-bid-board">
+            <p className="tv-kicker">Last Pick</p>
+            {lastPick ? (
+              <div className="tv-last-pick">
+                <strong>{lastPick.player?.name || 'Unknown Player'}</strong>
+                <span>{winningTeam?.name || 'Unknown Team'} for ${lastPick.winningBid}</span>
+              </div>
+            ) : (
+              <div className="tv-empty-bids">No picks yet.</div>
+            )}
+          </div>
         </section>
       )}
 
@@ -139,7 +150,7 @@ const DraftTvView = () => {
               <>
                 <h2>{currentPlayer.name}</h2>
                 <div className="tv-player-meta">
-                  <span>{currentPlayer.position}</span>
+                  <span className={`pos-badge pos-${String(currentPlayer.position || '').toLowerCase()}`}>{currentPlayer.position}</span>
                   <span>{currentPlayer.team}</span>
                   <span>Bye {currentPlayer.bye || '-'}</span>
                   <span>Rank #{currentPlayer.rank || '-'}</span>
@@ -177,7 +188,7 @@ const DraftTvView = () => {
               {(team.roster || []).length > 0 ? (team.roster || []).map((spot, index) => {
                 const player = spot.player || {};
                 return (
-                  <li key={`${team.id}-${player.id || index}`}>
+                  <li key={`${team.id}-${player.id || index}`} className={`pos-${String(player.position || spot.position || '').toLowerCase()}`}>
                     <strong>{player.name || 'Unknown Player'}</strong>
                     <span>{player.position || spot.position || '-'} / {player.team || '-'} / Bye {player.bye || '-'}</span>
                   </li>

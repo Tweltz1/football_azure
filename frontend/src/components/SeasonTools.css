@@ -1,4 +1,4 @@
-/* Layout for the Start/Sit and Draft History pages. Colors come from the shared tokens in App.css. */
+/* Layout for the Start/Sit and Draft History pages. Colors come from the theme tokens in App.css. */
 
 .startsit-controls {
   position: relative;
@@ -94,8 +94,8 @@
   min-width: 44px;
   padding: 2px 6px;
   border-radius: 4px;
-  background: var(--field);
-  color: #fff;
+  background: var(--accent-soft);
+  color: var(--accent-text);
   font-size: 0.75rem;
   font-weight: 800;
   text-align: center;
@@ -112,13 +112,13 @@
 }
 
 .startsit-tag.warn {
-  background: var(--red);
-  color: #fff;
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .startsit-tag.caution {
-  background: var(--gold);
-  color: var(--ink);
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 
 .startsit-matchup {
@@ -199,13 +199,13 @@
   padding: 12px 14px;
   border-radius: 8px;
   border-left: 4px solid var(--gold);
-  background: rgba(216, 170, 61, 0.14);
+  background: var(--accent-soft);
   font-weight: 700;
 }
 
 .startsit-verdict.close {
   border-left-color: var(--teal);
-  background: rgba(15, 118, 110, 0.1);
+  background: var(--success-soft);
 }
 
 .history-grid {
@@ -232,7 +232,7 @@
 }
 
 .history-team.mine {
-  outline: 3px solid var(--gold);
+  outline: 2px solid var(--accent);
 }
 
 .history-player {
@@ -281,13 +281,13 @@
 }
 
 .startsit-trend.up {
-  color: #fff;
-  background: var(--teal);
+  color: var(--success);
+  background: var(--success-soft);
 }
 
 .startsit-trend.down {
-  color: #fff;
-  background: var(--orange);
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .startsit-insight {
@@ -427,7 +427,7 @@
 }
 
 .trade-list li.picked {
-  background: rgba(216, 170, 61, 0.14);
+  background: var(--accent-soft);
 }
 
 .trade-list label {
@@ -449,17 +449,17 @@
   padding: 14px;
   border-radius: 8px;
   border-left: 5px solid var(--teal);
-  background: rgba(15, 118, 110, 0.08);
+  background: var(--success-soft);
 }
 
 .trade-result.win {
   border-left-color: var(--gold);
-  background: rgba(216, 170, 61, 0.12);
+  background: var(--accent-soft);
 }
 
 .trade-result.lose {
   border-left-color: var(--red);
-  background: rgba(180, 59, 59, 0.08);
+  background: var(--danger-soft);
 }
 
 .trade-verdict {

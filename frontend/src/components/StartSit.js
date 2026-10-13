@@ -297,7 +297,7 @@ const TradeCheck = ({ myRoster, partners, rosterSettings, scoring, allPlayers, p
                 <div><span>Their lineup</span><strong>{signed(result.theirChange)}</strong></div>
               </div>
               <p className="startsit-help">
-                Value counts only what each player scores above a starter you could find on waivers
+                Trade value mostly counts what a player scores above a starter you could find on waivers, plus a little for raw points
                 ({Object.entries(result.levels).filter(([pos]) => ['QB', 'RB', 'WR', 'TE'].includes(pos)).map(([pos, v]) => `${pos} ${v.toFixed(1)}`).join(', ')} pts/game in this league).
                 Lineup numbers are the change in each team's best weekly lineup.
                 {give.length !== get.length && ` This is a ${give.length}-for-${get.length}, so ${give.length > get.length ? 'you free up' : 'they free up'} a roster spot.`}
@@ -308,7 +308,7 @@ const TradeCheck = ({ myRoster, partners, rosterSettings, scoring, allPlayers, p
                     <span className={`startsit-tag ${p.side === 'give' ? 'warn' : 'caution'}`}>{p.side === 'give' ? 'Give' : 'Get'}</span>
                     <button type="button" className="startsit-name" onClick={() => onOpen(p.id)}>{p.name}</button>
                     <small>{p.position}</small>
-                    <span className="startsit-points">{p.value.toFixed(1)} / {p.surplus.toFixed(1)} above waiver</span>
+                    <span className="startsit-points">{p.value.toFixed(1)} pts/game, {p.surplus.toFixed(1)} above waiver, value {p.score.toFixed(1)}</span>
                   </li>
                 ))}
               </ul>

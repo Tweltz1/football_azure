@@ -72,8 +72,8 @@ async function broadcastLeagueChange(ctx: Ctx, before: League | null, beforeVers
     applyByesToLeague(after);
     const next = forClient(clone(after));
     const prev = before ? forClient(clone(before)) : {};
+    // Sent even when empty (a sealed bid changes nothing others may see) so every browser's version keeps up.
     const ops = diffObjects(prev, next);
-    if (ops.length === 0) return;
     await ctx.broadcaster.send(after.id, 'draftStateDiff', {
       leagueId: after.id,
       baseVersion: before ? beforeVersion : null,
@@ -137,9 +137,9 @@ async function readLeague(ctx: Ctx, leagueId: string): Promise<StoredLeague | Re
   return stored;
 }
 
-function clientLeague(league: League, version: number) {
+function clientLeague(ctx: Ctx, league: League, version: number) {
   applyByesToLeague(league);
-  return forClient(league, version);
+  return forClient(league, version, ctx.userId ?? null);
 }
 
 // ---- Profiles (port of UserProfileStore) --------------------------------------
@@ -194,7 +194,7 @@ const profileResponse = (profile: UserProfile) => {
 
 async function getLeagues(ctx: Ctx): Promise<Res> {
   const leagues = await ctx.leagues.listForMember(ctx.userId!);
-  return ok(leagues.map(({ league, version }) => clientLeague(ensureDefaults(league), version)));
+  return ok(leagues.map(({ league, version }) => clientLeague(ctx, ensureDefaults(league), version)));
 }
 
 async function checkLeagueName(ctx: Ctx, query: URLSearchParams): Promise<Res> {
@@ -319,7 +319,7 @@ async function getInvite(ctx: Ctx, leagueId: string): Promise<Res> {
 async function getLeagueState(ctx: Ctx, leagueId: string): Promise<Res> {
   const stored = await readLeague(ctx, leagueId);
   if (isRes(stored)) return stored;
-  return ok(clientLeague(stored.league, stored.version));
+  return ok(clientLeague(ctx, stored.league, stored.version));
 }
 
 async function deleteLeague(ctx: Ctx, leagueId: string): Promise<Res> {
@@ -397,7 +397,7 @@ const done = (result: Updated | Res | 'conflict', body?: unknown | ((u: Updated)
   return ok(typeof body === 'function' ? (body as (u: Updated) => unknown)(result) : body);
 };
 
-const leagueBody = (u: Updated) => clientLeague(clone(u.league), u.version);
+const leagueBody = (ctx: Ctx, u: Updated) => clientLeague(ctx, clone(u.league), u.version);
 
 async function setPresence(ctx: Ctx, leagueId: string, status: 'active' | 'away' | 'offline', requireMember: boolean): Promise<Res> {
   const userId = ctx.userId!;
@@ -455,7 +455,7 @@ async function updateSettings(ctx: Ctx, leagueId: string, data: Body): Promise<R
     if (data.draftTimers) league.draftTimers = normalizeDraftTimers(data.draftTimers);
     return null;
   });
-  return done(result, leagueBody);
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 async function kickMember(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
@@ -530,7 +530,8 @@ async function placeBid(ctx: Ctx, leagueId: string, data: Body, okBody?: unknown
     league.activeBids[userId] = { amount, timestamp: ctx.now().toISOString() };
     return null;
   });
-  return done(result, okBody);
+  // Bids are sealed from the live updates, so the bidder learns their own bid from this response.
+  return done(result, okBody ?? ((u: Updated) => leagueBody(ctx, u)));
 }
 
 async function cancelBid(ctx: Ctx, leagueId: string): Promise<Res> {
@@ -542,7 +543,7 @@ async function cancelBid(ctx: Ctx, leagueId: string): Promise<Res> {
     }
     return null;
   });
-  return done(result, 'Bid cancelled successfully.');
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 async function tieBreakerBid(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
@@ -558,7 +559,7 @@ async function tieBreakerBid(ctx: Ctx, leagueId: string, data: Body): Promise<Re
     league.activeBids[userId] = { amount, timestamp: ctx.now().toISOString() };
     return null;
   });
-  return done(result, 'Tie-breaker bid submitted.');
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 function pauseForAdminTieResolution(ctx: Ctx, league: League) {
@@ -818,7 +819,7 @@ async function completeDraft(ctx: Ctx, leagueId: string): Promise<Res> {
     league.tieBreaker = null;
     return null;
   });
-  return done(result, leagueBody);
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 // ---- Draft history and new seasons ----------------------------------------------------
@@ -879,7 +880,7 @@ async function startNewSeason(ctx: Ctx, leagueId: string): Promise<Res> {
     return null;
   });
   if (!isRes(result) && result !== 'conflict' && finished.league) await archiveDraft(ctx, finished.league, true);
-  return done(result, leagueBody);
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 // ---- Start/Sit -------------------------------------------------------------------
@@ -937,7 +938,7 @@ async function manualSelectPlayer(ctx: Ctx, leagueId: string, data: Body): Promi
     league.auctionTimer = null;
     return null;
   });
-  return done(result, leagueBody);
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 async function manualAward(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
@@ -971,7 +972,7 @@ async function manualAward(ctx: Ctx, leagueId: string, data: Body): Promise<Res>
     awardPlayerToTeam(league, player, team, amount, ctx.now(), MANUAL, false);
     return null;
   });
-  return done(result, leagueBody);
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 async function addManualTeam(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
@@ -992,7 +993,7 @@ async function addManualTeam(ctx: Ctx, leagueId: string, data: Body): Promise<Re
     });
     return null;
   });
-  return done(result, leagueBody);
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 async function assignManualTeamOwner(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
@@ -1016,7 +1017,7 @@ async function assignManualTeamOwner(ctx: Ctx, leagueId: string, data: Body): Pr
     target.favoritePlayerIds = profile?.favoritePlayerIds ?? [];
     return null;
   });
-  return done(result, leagueBody);
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 // ---- Commissioner tools, beer, chat -------------------------------------------------

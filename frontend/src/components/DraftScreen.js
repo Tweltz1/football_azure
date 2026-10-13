@@ -46,9 +46,9 @@ const useTimerTransition = (enabled, auctionTimer, transitionUrl) => {
 const ToastNotification = ({ message, show, onClose }) => {
     if (!show) return null;
     return (
-        <div style={{ position: 'fixed', top: '20px', right: '20px', backgroundColor: '#28a745', color: 'white', padding: '15px', borderRadius: '5px', zIndex: 1000, boxShadow: '0 4px 8px rgba(0,0,0,0.2)', transition: 'opacity 0.5s ease-in-out', opacity: show ? 1 : 0 }}>
+        <div className="toast draft-toast" role="status">
             {message}
-            <button onClick={onClose} style={{ marginLeft: '15px', border: 'none', background: 'none', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>&times;</button>
+            <button onClick={onClose} aria-label="Dismiss">&times;</button>
         </div>
     );
 };
@@ -178,12 +178,12 @@ const DraftScreen = ({
     const isManualDraft = league.draftMode === 'manual';
     
     return (
-        <div style={{ padding: '20px' }}>
+        <div className="draft-screen" style={{ padding: '20px' }}>
             <ToastNotification message={toast.message} show={toast.show} onClose={() => setToast({ show: false, message: '' })} />
-            <h2>Drafting in {league.name}</h2>
-            <p>
-                League Status: <span style={{fontWeight: 'bold'}}>{String(league.status || 'unknown').toUpperCase()}</span>
-                {isManualDraft && <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>Manual Tracker</span>}
+            <h2 className="draft-screen-title">Drafting in {league.name}</h2>
+            <p className="draft-screen-status">
+                League Status: <span className={`draft-status-bug status-${normalizedStatus || 'unknown'}`}>{String(league.status || 'unknown').toUpperCase()}</span>
+                {isManualDraft && <span className="draft-mode-tag">Manual Tracker</span>}
             </p>
             <div className="button-group">
                 <a href={`/draft/${leagueId}/tv`} target="_blank" rel="noreferrer">
@@ -236,7 +236,7 @@ const LobbyView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }
                         {isManualDraft ? 'Start Manual Tracker' : `Start Draft (${readyMembers.length}/${nonAdminMembers.length} Ready)`}
                     </button>
                 ) : isManualDraft ? (
-                    <p style={{ color: '#65746f', fontWeight: 700 }}>Waiting for the commissioner.</p>
+                    <p className="draft-muted">Waiting for the commissioner.</p>
                 ) : (
                     <button onClick={handleSetReadyStatus} className={`ready-button ${readyMembers.includes(user.userId) ? 'ready' : ''}`}>
                         {readyMembers.includes(user.userId) ? 'You are Ready!' : "I'm Ready!"}
@@ -298,7 +298,7 @@ const DraftingView = ({ league, user, leagueId, draftProfile, chatMessages = [],
             </div>
 
             {beerBitchTeam && (
-                <div className="card" style={{marginTop: '20px', backgroundColor: 'lightgoldenrodyellow'}}>
+                <div className="card beer-duty-card" style={{marginTop: '20px'}}>
                     <h3>Beer Duty!</h3>
                     <p><strong>{beerBitchTeam.name}</strong> has been assigned to Beer Duty!</p>
                 </div>
@@ -441,7 +441,7 @@ const AdminControls = ({ league, user, leagueId, draftProfile }) => {
 
     return (
         <>
-            <div>
+            <div className="admin-control-row">
                 {!isManual && <button onClick={handlePauseDraft}>{pauseButtonText()}</button>}
                 
                 {!isManual && (
@@ -471,7 +471,7 @@ const AdminControls = ({ league, user, leagueId, draftProfile }) => {
                         <p>Select a team to assign beer duty to.</p>
                         <ul style={{listStyle: 'none', padding: 0}}>
                             {(league.teams || []).map(team => (
-                                <li key={team.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid #eee'}}>
+                                <li key={team.id} className="player-list-item">
                                     <span>{team.name}</span>
                                     <button onClick={() => handleAssignBeerBitch(team.id)}>Assign</button>
                                 </li>
@@ -558,29 +558,47 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
     if (!currentPlayer) return <div className="card">Waiting for player nomination...</div>;
 
     return (
-        <div className="card" style={{marginTop: '20px'}}>
+        <div className="card auction-stage" style={{marginTop: '20px'}}>
             <h3>Current Player Up for Bid:</h3>
-            <h2>{currentPlayer.name} - {currentPlayer.position} - {currentPlayer.team}</h2>
-            <p>Rank: {currentPlayer.rank} | Bye Week: {currentPlayer.bye}</p>
-            <PlayerStrategy draftProfile={draftProfile} playerId={currentPlayer.id} />
-            <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Bid Ends In: {timer}s</p>
-            
-            {userHasActiveBid && (
-                <p style={{fontSize: '18px', color: 'green'}}>Your current bid is: ${league.activeBids[user.userId].amount}</p>
-            )}
+            <div className="auction-scoreboard-body">
+                <div className="auction-player-block">
+                    <h2 className="auction-player-name">{currentPlayer.name}</h2>
+                    <div className="auction-player-tags">
+                        <span className={`position-badge pos-${String(currentPlayer.position || '').toLowerCase()}`}>{currentPlayer.position}</span>
+                        <span className="team-badge">{currentPlayer.team}</span>
+                    </div>
+                    <p className="auction-player-facts">Rank: {currentPlayer.rank} | Bye Week: {currentPlayer.bye}</p>
+                    <PlayerStrategy draftProfile={draftProfile} playerId={currentPlayer.id} />
+                </div>
+                <div className="auction-clock-block">
+                    <p
+                        className={`auction-clock${timer > 0 && timer <= 5 ? ' is-urgent' : ''}${league.auctionTimer?.isPaused ? ' is-paused' : ''}`}
+                        style={{ '--timer-progress': Math.min(1, Math.max(0, timer / (Number(league.draftTimers?.bidTimer) || 20))) }}
+                    >
+                        <span className="auction-clock-label">Bid Ends In</span>
+                        <strong className="auction-clock-value">{timer}s</strong>
+                    </p>
+                    {userHasActiveBid && (
+                        <p className="auction-your-bid">
+                            <span>Your current bid</span>
+                            <strong key={league.activeBids[user.userId].amount} className="bid-flash">${league.activeBids[user.userId].amount}</strong>
+                        </p>
+                    )}
+                </div>
+            </div>
 
-            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
-                Your Bid: 
-                <button onClick={decrementBid}>-</button>
+            <div className="bid-control-row auction-bid-controls">
+                <span className="bid-control-label">Your Bid:</span>
+                <button className="bid-step-button" onClick={decrementBid} aria-label="Lower bid">-</button>
                 <input 
                     type="number" 
                     value={bidAmount} 
                     onChange={e => setBidAmount(parseInt(e.target.value, 10) || 0)}
-                    style={{width: '60px', textAlign: 'center'}} 
+                    aria-label="Your bid"
                 />
-                <button onClick={incrementBid}>+</button>
+                <button className="bid-step-button" onClick={incrementBid} aria-label="Raise bid">+</button>
                 
-                <button onClick={handleCancelBid} style={{marginLeft: '10px', backgroundColor: '#dc3545', color: 'white'}} disabled={!userHasActiveBid || league.auctionTimer?.isPaused}>
+                <button onClick={handleCancelBid} className="delete-button cancel-bid-button" disabled={!userHasActiveBid || league.auctionTimer?.isPaused}>
                     Cancel Bid
                 </button>
             </div>
@@ -786,7 +804,7 @@ const ManualDraftView = ({ league, user, leagueId, draftProfile, chatMessages = 
     };
 
     return (
-        <div className="card manual-draft-console" style={{ marginTop: '20px', backgroundColor: '#f8fff5' }}>
+        <div className="card manual-draft-console" style={{ marginTop: '20px' }}>
             <div className="player-board-heading">
                 <div>
                     <p className="section-kicker">Manual draft</p>
@@ -986,7 +1004,7 @@ const ManualParticipantView = ({ league, user, leagueId, draftProfile, chatMessa
                     <>
                         <h3>{currentPlayer.name}</h3>
                         <div className="manual-participant-tags">
-                            <span>{currentPlayer.position}</span>
+                            <span className={`pos-badge pos-${String(currentPlayer.position || '').toLowerCase()}`}>{currentPlayer.position}</span>
                             <span>{currentPlayer.team}</span>
                             <span>Bye {currentPlayer.bye || '-'}</span>
                             <span>Rank #{currentPlayer.rank || '-'}</span>
@@ -1113,9 +1131,9 @@ const IntermissionView = ({ league, draftProfile }) => {
     const allBids = Object.entries(lastPick.allBids || {}).sort(([,a],[,b]) => b.amount - a.amount);
 
     return (
-        <div className="card" style={{marginTop: '20px', backgroundColor: '#e6ffed'}}>
+        <div className="card intermission-card" style={{marginTop: '20px'}}>
             <h2>Intermission!</h2>
-            <p style={{fontSize: '20px'}}>Next player in: <strong>{timer}s</strong></p>
+            <p className="intermission-clock">Next player in: <strong>{timer}s</strong></p>
             <div style={{marginTop: '20px'}}>
                 <h4>Last Player Drafted:</h4>
                 <p>
@@ -1127,7 +1145,7 @@ const IntermissionView = ({ league, draftProfile }) => {
             </div>
             <div style={{marginTop: '20px'}}>
                 <h4>All Bids for this Player:</h4>
-                <ul style={{listStyle: 'none', padding: 0}}>
+                <ul className="bid-history-list">
                     {allBids.map(([userId, bid]) => {
                         const team = (league.teams || []).find(t => t.ownerId === userId);
                         return <li key={userId}>{team?.name || 'Unknown Team'}: ${bid.amount}</li>;
@@ -1194,19 +1212,25 @@ const TieBreakerView = ({ league, user, leagueId, draftProfile }) => {
     if (!currentPlayer || !league.tieBreaker) return <div className="card">Loading tie-breaker...</div>;
 
     return (
-        <div className="card" style={{marginTop: '20px', backgroundColor: '#fff3cd'}}>
+        <div className="card tiebreaker-card" style={{marginTop: '20px'}}>
             <h2>Tie Breaker!</h2>
             <p>A tie was detected for <strong>{currentPlayer.name}</strong> at <strong>${league.tieBreaker.tieAmount}</strong>.</p>
             <PlayerStrategy draftProfile={draftProfile} playerId={currentPlayer.id} />
-            <p style={{fontSize: '24px', color: 'red', fontWeight: 'bold'}}>Re-bid Ends In: {timer}s</p>
+            <p
+                className={`auction-clock tiebreaker-clock${timer > 0 && timer <= 5 ? ' is-urgent' : ''}${league.auctionTimer?.isPaused ? ' is-paused' : ''}`}
+                style={{ '--timer-progress': Math.min(1, Math.max(0, timer / (Number(league.draftTimers?.rebidTimer) || 15))) }}
+            >
+                <span className="auction-clock-label">Re-bid Ends In</span>
+                <strong className="auction-clock-value">{timer}s</strong>
+            </p>
 
             {userIsTied ? (
                 <div>
                     <h4>You are in the tie-breaker!</h4>
                     <p>You must bid at least ${league.tieBreaker.tieAmount + 1}.</p>
-                    <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'}}>
-                        Your Bid:
-                        <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value, 10) || 0)} style={{width: '60px'}} disabled={league.auctionTimer?.isPaused} />
+                    <div className="bid-control-row">
+                        <span className="bid-control-label">Your Bid:</span>
+                        <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value, 10) || 0)} aria-label="Tie-breaker bid" disabled={league.auctionTimer?.isPaused} />
                         <button onClick={handlePlaceTieBid} disabled={league.auctionTimer?.isPaused}>Place Tie-Breaker Bid</button>
                     </div>
                 </div>
@@ -1331,7 +1355,7 @@ const TeamListViewer = ({ league, user, leagueId, draftProfile }) => {
                 }
 
                 return (
-                    <div key={team.id} style={{padding: '5px 0', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <div key={team.id} className="team-row" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                         <div>
                             <span style={{
                                 height: '10px',
@@ -1383,7 +1407,7 @@ const PlayerListViewer = ({ league, user, leagueId, draftProfile, onFavoriteIdsC
     return (
         <div className="card" style={{ marginTop: '20px' }}>
             <h3>Player Lists</h3>
-            <p style={{ marginTop: 0, color: '#65746f', fontWeight: 700 }}>
+            <p className="draft-muted" style={{ marginTop: 0 }}>
                 Favorites, tiers, notes, and budget plan come from your Profile and stay synced here.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
@@ -1399,8 +1423,8 @@ const PlayerListViewer = ({ league, user, leagueId, draftProfile, onFavoriteIdsC
                     <li key={player.id} className="player-list-item">
                         <PlayerSummary player={player} draftProfile={draftProfile} />
                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
-                            <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
+                            <span className="favorite-star">★</span>
+                            <span onClick={() => handleToggleFavorite(player.id)} className="favorite-remove">X</span>
                         </div>
                     </li>
                 ))}
@@ -1410,7 +1434,7 @@ const PlayerListViewer = ({ league, user, leagueId, draftProfile, onFavoriteIdsC
                 {availablePlayers.map(player => (
                     <li key={player.id} className="player-list-item">
                         <PlayerSummary player={player} draftProfile={draftProfile} />
-                        <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
+                        <span onClick={() => handleToggleFavorite(player.id)} className="favorite-add" title="Add to Favorites">☆</span>
                     </li>
                 ))}
             </ul>
@@ -1517,7 +1541,7 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, o
                         <li key={team.id} className="player-list-item">
                             <span>
                                 <strong>{team.name}</strong>
-                                {isManualDraft && <small style={{ display: 'block', color: '#65746f', fontWeight: 700 }}>Owner: {formatTeamOwnerLabel(team.ownerId, memberIds)}</small>}
+                                {isManualDraft && <small className="draft-muted" style={{ display: 'block' }}>Owner: {formatTeamOwnerLabel(team.ownerId, memberIds)}</small>}
                             </span>
                             <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
                                 Budget: $
@@ -1543,7 +1567,7 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, o
                                     </>
                                 )}
                                 {team.ownerId !== league.adminId && (
-                                    <button onClick={() => onKick(team.id)} style={{backgroundColor: '#dc3545', color: 'white'}}>Kick</button>
+                                    <button onClick={() => onKick(team.id)} className="delete-button">Kick</button>
                                 )}
                             </div>
                         </li>
@@ -1571,7 +1595,7 @@ const CompletedView = ({ league, leagueId, draftProfile }) => {
             <div style={{marginTop: '40px'}}>
                 <h3>Final Rosters</h3>
                 {(league.teams || []).map(team => (
-                    <div key={team.id} style={{padding: '10px', borderBottom: '1px solid #eee'}}>
+                    <div key={team.id} className="team-row">
                         <h4>{team.name} (Budget Remaining: ${team.budget})</h4>
                         <ul style={{listStyle: 'none', padding: 0}}>
                             {(team.roster || []).map((spot, index) => (
@@ -1590,7 +1614,7 @@ const CompletedView = ({ league, leagueId, draftProfile }) => {
 
 const PlayerSummary = ({ player, draftProfile }) => (
     <div>
-        <span>{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
+        <span className="player-summary-line"><span className={`pos-dot pos-${String(player.position || '').toLowerCase()}`} aria-hidden="true" />{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
         <PlayerStrategy draftProfile={draftProfile} playerId={player.id} compact />
     </div>
 );
@@ -1601,8 +1625,8 @@ const PlayerStrategy = ({ draftProfile, playerId, compact = false }) => {
     if (!tier && !note) return null;
 
     return (
-        <div style={compact ? compactStrategyStyle : strategyStyle}>
-            {tier && <span style={tierBadgeStyle}>T{tier}</span>}
+        <div className={compact ? 'player-strategy compact' : 'player-strategy'}>
+            {tier && <span className="player-strategy-tier">T{tier}</span>}
             {note && <span><strong>Your note:</strong> {note}</span>}
         </div>
     );
@@ -1695,43 +1719,6 @@ const getPositionCounts = (rosterSettings, roster) => {
         ).length;
     }
     return counts;
-};
-
-const strategyStyle = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-    margin: '10px auto',
-    maxWidth: '680px',
-    padding: '10px 12px',
-    borderRadius: '8px',
-    color: '#11442f',
-    backgroundColor: 'rgba(216, 170, 61, 0.18)',
-    border: '1px solid rgba(216, 170, 61, 0.35)',
-    fontWeight: 700,
-};
-
-const compactStrategyStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: '6px',
-    marginTop: '4px',
-    color: '#65746f',
-    fontSize: '0.82rem',
-    fontWeight: 700,
-};
-
-const tierBadgeStyle = {
-    display: 'inline-flex',
-    minHeight: '22px',
-    alignItems: 'center',
-    padding: '2px 7px',
-    borderRadius: '8px',
-    color: '#11442f',
-    backgroundColor: 'rgba(20, 92, 57, 0.1)',
-    border: '1px solid rgba(20, 92, 57, 0.18)',
-    fontWeight: 900,
 };
 
 export default DraftScreen;

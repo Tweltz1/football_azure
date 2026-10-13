@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { SUPABASE_URL, supabase } from './supabaseClient';
-import { rememberLeagues } from './realtime';
+import { acceptLeagues } from './realtime';
 
 export const API_BASE_URL = process.env.REACT_APP_API_URL
     || (SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/api` : 'http://localhost:54321/functions/v1/api');
@@ -25,7 +25,7 @@ if (!axios.__hoodLeagueInterceptors) {
         (response) => {
             // Seeds the live-update cache so draft updates can be applied as small diffs.
             if (isApiRequest(response.config?.url)) {
-                rememberLeagues(response.data);
+                acceptLeagues(response.data);
             }
             return response;
         },

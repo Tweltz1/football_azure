@@ -17,17 +17,31 @@ const refetches = new Map(); // leagueId -> Promise
 
 const isLeague = (value) => value && typeof value === 'object' && typeof value.id === 'string' && Number.isFinite(value._version);
 
-/** Remembers leagues returned by API calls so later diffs can be applied to them. */
+/** Remembers leagues returned by API calls so later diffs can be applied to them. Returns the ones it kept. */
 export const rememberLeagues = (data) => {
   const list = Array.isArray(data) ? data : [data];
+  const kept = [];
   for (const league of list) {
     if (!isLeague(league)) continue;
     const cached = leagueCache.get(league.id);
     if (!cached || cached._version <= league._version) {
       leagueCache.set(league.id, league);
+      kept.push(league);
     }
   }
+  return kept;
 };
+
+/**
+ * Like rememberLeagues, and also passes each kept league to the screens watching it. Bids are sealed
+ * from the live updates, so this is how a bidder's own bid (returned by the bid call) reaches the page.
+ */
+export const acceptLeagues = (data) => {
+  rememberLeagues(data).forEach((league) => emit(league.id, 'draftStateUpdate', league));
+};
+
+// Keys whose change means a bidding round started, ended or went to a tie-breaker.
+const ROUND_KEYS = new Set(['status', 'currentPlayer', 'tieBreaker']);
 
 // Mirror of supabase/functions/_shared/diff.ts applyOps; keep the two in sync.
 const applyOps = (target, ops) => {
@@ -83,8 +97,13 @@ const handleDiff = (message) => {
   if (cached && cached._version === baseVersion) {
     const next = applyOps(cached, ops);
     next._version = version;
+    const newRound = (ops || []).some((op) => ROUND_KEYS.has(op.k));
+    // Live updates never carry bids, so a new round clears ours here and the refetch below
+    // brings back any bid the server placed for us (a tie-breaker carries tied bids over).
+    if (newRound) next.activeBids = {};
     leagueCache.set(leagueId, next);
     emit(leagueId, 'draftStateUpdate', next);
+    if (newRound) refetchLeague(leagueId);
     return;
   }
   refetchLeague(leagueId);

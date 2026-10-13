@@ -1,78 +1,78 @@
 @media (max-width: 760px) {
-  .app-main > div[style*="padding: 20px"] {
+  .draft-screen {
     padding: 0 !important;
     display: grid;
     gap: 10px;
     font-size: 0.92rem;
   }
 
-  .app-main > div[style*="padding: 20px"] > h2,
-  .app-main > div[style*="padding: 20px"] > p {
+  .draft-screen > h2,
+  .draft-screen > p {
     margin: 0 2px 6px;
   }
 
-  .app-main > div[style*="padding: 20px"] h2,
-  .app-main > div[style*="padding: 20px"] h3,
-  .app-main > div[style*="padding: 20px"] h4,
-  .app-main > div[style*="padding: 20px"] h5 {
+  .draft-screen h2,
+  .draft-screen h3,
+  .draft-screen h4,
+  .draft-screen h5 {
     margin-bottom: 8px;
     line-height: 1.08;
   }
 
-  .app-main > div[style*="padding: 20px"] p {
+  .draft-screen p {
     line-height: 1.35;
   }
 
-  .app-main > div[style*="padding: 20px"] .card {
+  .draft-screen .card {
     overflow: hidden;
     padding: 14px !important;
   }
 
-  .app-main > div[style*="padding: 20px"] .card::before {
+  .draft-screen .card::before {
     margin: -14px -14px 10px;
   }
 
-  .app-main > div[style*="padding: 20px"] .card > div[style*="display: flex"],
-  .app-main > div[style*="padding: 20px"] .player-list-item > div[style*="display: flex"] {
+  .draft-screen .card > div[style*="display: flex"],
+  .draft-screen .player-list-item > div[style*="display: flex"] {
     flex-direction: column !important;
     align-items: stretch !important;
     justify-content: flex-start !important;
     gap: 8px !important;
   }
 
-  .app-main > div[style*="padding: 20px"] input,
-  .app-main > div[style*="padding: 20px"] select {
+  .draft-screen input,
+  .draft-screen select {
     width: 100% !important;
     min-width: 0 !important;
     min-height: 36px !important;
     padding: 8px 10px !important;
   }
 
-  .app-main > div[style*="padding: 20px"] button {
+  .draft-screen button {
     min-height: 36px;
     padding: 8px 11px;
   }
 
-  .app-main > div[style*="padding: 20px"] .player-list-item {
+  .draft-screen .player-list-item {
     white-space: normal;
     gap: 9px;
     padding: 10px 11px;
     margin-bottom: 6px;
   }
 
-  .app-main > div[style*="padding: 20px"] .user-team-details {
+  .draft-screen .user-team-details {
     padding: 12px !important;
     margin-bottom: 8px;
   }
 
-  .app-main > div[style*="padding: 20px"] .user-team-details > div,
-  .app-main > div[style*="padding: 20px"] .user-team-details div[style*="display: flex"] {
+  .draft-screen .user-team-details > div,
+  .draft-screen .user-team-details div[style*="display: flex"] {
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 8px !important;
   }
 
-  .app-main > div[style*="padding: 20px"] ul {
+  .draft-screen ul {
     padding-left: 0 !important;
   }
 }

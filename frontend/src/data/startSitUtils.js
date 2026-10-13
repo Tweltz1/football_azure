@@ -323,11 +323,13 @@ export const analyzeTrade = ({ give, get, myRoster, theirRoster, rosterSettings,
   const rate = (p) => {
     const value = tradeValue(p, scoring);
     const surplus = Math.max(0, value - (levels[p.position] ?? 0));
-    return { ...p, value, surplus: Math.round(surplus * 10) / 10 };
+    // Mostly what they score above a waiver starter, plus a little raw scoring so depth isn't worth zero.
+    const score = surplus + 0.2 * value;
+    return { ...p, value, surplus: Math.round(surplus * 10) / 10, score: Math.round(score * 10) / 10 };
   };
   const giveRated = give.map(rate);
   const getRated = get.map(rate);
-  const sum = (list) => Math.round(list.reduce((total, p) => total + p.surplus, 0) * 10) / 10;
+  const sum = (list) => Math.round(list.reduce((total, p) => total + p.score, 0) * 10) / 10;
   const giveTotal = sum(giveRated);
   const getTotal = sum(getRated);
 
@@ -340,7 +342,8 @@ export const analyzeTrade = ({ give, get, myRoster, theirRoster, rosterSettings,
   const theirChange = round(weeklyLineupTotal(theirAfter, rosterSettings, scoring) - weeklyLineupTotal(theirRoster, rosterSettings, scoring));
 
   const gap = getTotal - giveTotal;
-  const scale = Math.max(giveTotal, getTotal, 3);
+  // A floor keeps small trades (a point or two either way) from reading as lopsided.
+  const scale = Math.max(giveTotal, getTotal, 10);
   const share = gap / scale;
   let verdict;
   if (Math.abs(share) <= 0.15) verdict = { tone: 'fair', label: 'Fair trade', detail: 'Both sides get about the same value.' };

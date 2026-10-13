@@ -1,10 +1,8 @@
+/* TV board: high-contrast, large type for across-the-room viewing. */
 .draft-tv-view {
   min-height: calc(100vh - 92px);
-  padding: clamp(12px, 1.4vw, 22px);
-  color: #fffdf6;
-  background:
-    linear-gradient(145deg, rgba(7, 41, 29, 0.96), rgba(12, 61, 41, 0.94)),
-    repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 1px, transparent 1px 96px);
+  padding: clamp(8px, 1.2vw, 20px) 0;
+  color: var(--text);
 }
 
 .draft-tv-view h1,
@@ -25,43 +23,110 @@
 
 .tv-header {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
-  padding-bottom: clamp(12px, 1.4vw, 18px);
+  margin-bottom: clamp(14px, 1.4vw, 22px);
 }
 
 .tv-header p,
 .tv-kicker {
-  color: #f3d073;
-  font-size: clamp(0.68rem, 0.78vw, 0.9rem);
-  font-weight: 950;
-  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-size: clamp(0.74rem, 0.85vw, 0.95rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
+.tv-kicker {
+  margin-bottom: 8px !important;
+}
+
 .tv-header h1 {
-  font-size: clamp(2rem, 4vw, 4.8rem);
-  line-height: 0.9;
+  margin-top: 4px !important;
+  font-size: clamp(2rem, 4vw, 4.4rem);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .tv-status-strip {
+  position: relative;
   display: grid;
   justify-items: end;
   gap: 6px;
-  min-width: 180px;
+  min-width: clamp(170px, 14vw, 260px);
 }
 
-.tv-status-strip span {
-  color: rgba(255, 253, 246, 0.72);
-  font-size: clamp(0.72rem, 0.9vw, 1rem);
-  font-weight: 900;
+.tv-status-bug {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  line-height: 1.2;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+  font-size: clamp(0.72rem, 0.85vw, 0.95rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.tv-status-bug::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.tv-status-bug.status-drafting,
+.tv-status-bug.status-tiebreaker,
+.tv-status-bug.status-manual {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: rgba(139, 108, 255, 0.3);
+}
+
+.tv-status-bug.status-intermission {
+  color: var(--warning);
+  background: var(--warning-soft);
 }
 
 .tv-status-strip strong {
-  color: #f3d073;
-  font-size: clamp(2rem, 4.2vw, 5rem);
-  line-height: 0.86;
+  position: relative;
+  padding-bottom: 12px;
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-size: clamp(3rem, 6vw, 7rem);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Progress bar under the clock, driven by --timer-progress. */
+.tv-status-strip strong.tv-clock::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, var(--accent) 0 calc(var(--timer-progress, 0) * 100%), rgba(255, 255, 255, 0.08) 0);
+  transition: --timer-progress 1s linear;
+}
+
+.tv-status-strip strong.is-urgent {
+  color: var(--danger);
+}
+
+.tv-status-strip strong.is-urgent::after {
+  background:
+    linear-gradient(90deg, var(--danger) 0 calc(var(--timer-progress, 0) * 100%), rgba(255, 255, 255, 0.08) 0);
 }
 
 .tv-status-strip strong.manual-current-player {
@@ -70,15 +135,15 @@
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(1.25rem, 2.2vw, 2.9rem);
-  line-height: 1;
+  font-size: clamp(1.3rem, 2.4vw, 2.8rem);
+  line-height: 1.1;
 }
 
 .tv-auction-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.5fr) minmax(260px, 0.85fr);
-  gap: clamp(10px, 1.2vw, 16px);
-  margin-bottom: clamp(10px, 1.2vw, 16px);
+  grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.55fr) minmax(280px, 0.8fr);
+  gap: clamp(10px, 1vw, 16px);
+  margin-bottom: clamp(10px, 1vw, 16px);
 }
 
 .tv-current-player,
@@ -87,60 +152,118 @@
 .tv-result-strip,
 .tv-team-card,
 .tv-loading {
-  border-radius: 8px;
-  border: 1px solid rgba(255, 253, 246, 0.14);
-  background: rgba(255, 253, 246, 0.08);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  box-shadow: var(--tight-shadow);
 }
 
 .tv-current-player,
 .tv-current-bid,
 .tv-bid-board,
 .tv-result-strip {
-  padding: clamp(12px, 1.4vw, 18px);
+  padding: clamp(16px, 1.6vw, 26px);
+}
+
+.tv-current-player {
+  background:
+    radial-gradient(ellipse 70% 100% at 0% 0%, rgba(139, 108, 255, 0.12), transparent 70%),
+    var(--surface);
 }
 
 .tv-current-player h2,
 .tv-result-strip h2 {
   margin-top: 6px;
-  font-size: clamp(2rem, 4.8vw, 6.4rem);
-  line-height: 0.9;
+  font-size: clamp(2.4rem, 5vw, 6.2rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .tv-player-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: clamp(10px, 1vw, 14px);
+  margin-top: clamp(12px, 1.2vw, 18px);
 }
 
 .tv-player-meta span {
-  min-height: 28px;
-  padding: 5px 9px;
-  border-radius: 8px;
-  color: #07291d;
-  background: #f3d073;
-  font-size: clamp(0.74rem, 0.95vw, 1rem);
-  font-weight: 950;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  line-height: 1.2;
+  padding: 3px 12px;
+  border-radius: 999px;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+  font-size: clamp(0.85rem, 1.05vw, 1.2rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
+/* Current bid: the one place the accent fills a surface. */
 .tv-current-bid {
   display: grid;
   align-content: center;
+  justify-items: center;
   gap: 8px;
   text-align: center;
+  border-color: rgba(139, 108, 255, 0.4);
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 0%, rgba(139, 108, 255, 0.32), transparent 75%),
+    var(--surface);
+  box-shadow: 0 0 0 1px rgba(139, 108, 255, 0.12), 0 0 50px rgba(109, 74, 255, 0.18);
+}
+
+.tv-current-bid .tv-kicker {
+  color: var(--accent-text);
 }
 
 .tv-current-bid strong {
-  color: #f3d073;
-  font-size: clamp(3.4rem, 7vw, 8.5rem);
+  display: inline-block;
+  color: #fff;
+  font-family: var(--font-heading);
+  font-size: clamp(4rem, 8vw, 10rem);
+  font-weight: 700;
+  letter-spacing: -0.05em;
   line-height: 0.9;
+  font-variant-numeric: tabular-nums;
 }
 
 .tv-current-bid span {
-  color: rgba(255, 253, 246, 0.84);
-  font-size: clamp(1rem, 1.4vw, 1.55rem);
-  font-weight: 900;
+  max-width: 100%;
+  color: var(--text-2);
+  font-size: clamp(1rem, 1.5vw, 1.7rem);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Blind auction: amounts stay hidden until the round closes. */
+.tv-sealed-bids strong {
+  font-size: clamp(2.4rem, 3.8vw, 5rem);
+  letter-spacing: -0.03em;
+}
+
+.tv-last-pick {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.tv-last-pick strong {
+  font-family: var(--font-heading);
+  font-size: clamp(1.4rem, 2.4vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.tv-last-pick span {
+  color: var(--text-2);
+  font-size: clamp(1rem, 1.3vw, 1.5rem);
+  font-weight: 600;
 }
 
 .tv-bid-board ol,
@@ -153,57 +276,83 @@
 .tv-bid-board li {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 253, 246, 0.12);
-  font-size: clamp(0.82rem, 1vw, 1.08rem);
-  font-weight: 850;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: clamp(0.98rem, 1.15vw, 1.35rem);
+  font-weight: 550;
+  animation: row-in 240ms var(--ease) both;
 }
 
 .tv-bid-board li:last-child {
   border-bottom: 0;
 }
 
+.tv-bid-board li:first-child {
+  color: #fff;
+}
+
+.tv-bid-board li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .tv-bid-board strong {
-  color: #f3d073;
+  color: var(--text-2);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-bid-board li:first-child strong {
+  color: var(--accent-text);
 }
 
 .tv-empty-bids,
 .tv-empty-roster {
-  color: rgba(255, 253, 246, 0.62);
-  font-weight: 800;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.tv-empty-bids {
+  font-size: clamp(0.95rem, 1.1vw, 1.25rem);
 }
 
 .tv-result-strip {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.8fr);
-  gap: clamp(12px, 1.4vw, 20px);
-  margin-bottom: clamp(10px, 1.2vw, 16px);
+  gap: clamp(12px, 1.4vw, 22px);
+  margin-bottom: clamp(10px, 1vw, 16px);
+}
+
+.tv-result-strip .tv-bid-board {
+  background: var(--surface-2);
+  box-shadow: none;
 }
 
 .tv-result-strip h2 {
-  font-size: clamp(1.6rem, 3.4vw, 4.2rem);
+  font-size: clamp(1.8rem, 3.4vw, 4.2rem);
 }
 
 .tv-roster-board {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: clamp(8px, 0.8vw, 12px);
   align-items: start;
 }
 
 .tv-team-card {
   min-width: 0;
-  padding: clamp(8px, 0.8vw, 12px);
+  overflow: hidden;
 }
 
 .tv-team-card header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255, 253, 246, 0.14);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
 }
 
 .tv-team-card h3 {
@@ -211,26 +360,40 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: clamp(0.9rem, 1.05vw, 1.18rem);
+  font-size: clamp(1rem, 1.15vw, 1.35rem);
 }
 
 .tv-team-card header span {
-  color: #f3d073;
-  font-size: clamp(0.7rem, 0.82vw, 0.95rem);
-  font-weight: 950;
+  flex: none;
+  color: var(--muted);
+  font-size: clamp(0.85rem, 0.95vw, 1.05rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-team-card ul {
+  margin: 0;
+  padding: 6px 14px 10px;
 }
 
 .tv-team-card li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
-  padding: 4px 0;
-  border-bottom: 1px solid rgba(255, 253, 246, 0.08);
-  font-size: clamp(0.62rem, 0.72vw, 0.84rem);
+  padding: 6px 0 6px 10px;
+  border-bottom: 1px solid var(--hairline);
+  box-shadow: inset 2px 0 0 var(--pos, var(--hairline-strong));
+  font-size: clamp(0.82rem, 0.9vw, 1.02rem);
+  animation: row-in 260ms var(--ease) both;
 }
 
 .tv-team-card li:last-child {
   border-bottom: 0;
+}
+
+.tv-team-card li.tv-empty-roster {
+  box-shadow: none;
+  padding-left: 0;
 }
 
 .tv-team-card li strong {
@@ -238,12 +401,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 550;
 }
 
 .tv-team-card li span {
-  color: rgba(255, 253, 246, 0.68);
-  font-weight: 800;
+  color: var(--muted);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .tv-loading {
@@ -251,8 +415,8 @@
   margin: 15vh auto 0;
   padding: 28px;
   text-align: center;
-  font-size: 1.2rem;
-  font-weight: 900;
+  font-size: 1.1rem;
+  font-weight: 550;
 }
 
 @media (max-width: 980px) {
@@ -273,5 +437,16 @@
   .tv-status-strip strong.manual-current-player {
     max-width: 100%;
     text-align: left;
+  }
+}
+
+@media (max-width: 640px) {
+  .tv-team-card li {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .tv-team-card li span {
+    white-space: normal;
   }
 }

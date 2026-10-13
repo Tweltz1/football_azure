@@ -600,3 +600,33 @@ test('start/sit: import a Sleeper team with its lineup slots, scoring and curren
   assert.deepEqual(team.starters, ['sleeper-4984', 'sleeper-BUF']);
   assert.deepEqual(team.opponents.map((o: any) => [o.teamName, o.players.length]), [['Rival', 1]]);
 });
+
+test('blind auction: nobody sees other teams\' bids until the round closes', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world);
+  await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  const sentBefore = world.sent.length;
+
+  const bobBid = (await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 10 })).body as any;
+  assert.deepEqual(Object.keys(bobBid.activeBids), ['bob'], 'the bidder gets back only their own bid');
+  await world.call('cara', 'POST', `leagues/${leagueId}/bid`, { amount: 12 });
+
+  const asBob = (await world.call('bob', 'GET', `leagues/${leagueId}/state`)).body as any;
+  assert.deepEqual(asBob.activeBids, { bob: asBob.activeBids.bob });
+  assert.equal(asBob.activeBids.bob.amount, 10);
+  const asAdmin = (await world.call('admin', 'GET', `leagues/${leagueId}/state`)).body as any;
+  assert.deepEqual(asAdmin.activeBids, {}, 'even the commissioner cannot peek');
+  const list = (await world.call('admin', 'GET', 'GetLeagues')).body as any[];
+  assert.deepEqual(list[0].activeBids, {});
+
+  const live = world.sent.slice(sentBefore).filter((m) => m.event === 'draftStateDiff');
+  assert.equal(live.length, 2, 'each sealed bid still advances the version');
+  assert.ok(live.every((m) => !JSON.stringify(m.payload).includes('activeBids')), 'live updates never carry bids');
+
+  world.advance(21);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  const after = (await world.call('admin', 'GET', `leagues/${leagueId}/state`)).body as any;
+  const pick = after.draftLog[after.draftLog.length - 1];
+  assert.equal(pick.winningBid, 12);
+  assert.deepEqual(Object.keys(pick.allBids).sort(), ['bob', 'cara'], 'all bids are revealed once the clock is done');
+});
