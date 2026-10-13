@@ -229,14 +229,55 @@ export const explainAlone = (player, slotLabel, ctx) => {
 
 const healthy = (player) => !benchReason(player);
 
+// A pickup has to beat the starter by this much to be worth a waiver claim.
+const WAIVER_MIN_GAIN = 1.5;
+const MAX_WAIVERS = 3;
+
+/**
+ * Players nobody in the league has rostered who project more than `player` this week at a position
+ * the slot takes. ctx.waiverPool is those unrostered players (already scored for the league);
+ * ctx.waiverNote says how sure we are they're free. Returns { note, players } or null.
+ */
+export const waiverOptions = (player, positions, ctx) => {
+  if (!player || !ctx.waiverPool?.length) return null;
+  const allowed = positions?.length ? positions : [player.position];
+  const target = player.points || 0;
+  const players = ctx.waiverPool
+    .filter((p) => allowed.includes(p.position) && healthy(p) && p.points - target >= WAIVER_MIN_GAIN)
+    .sort((x, y) => y.points - x.points)
+    .slice(0, MAX_WAIVERS)
+    .map((p) => {
+      const matchup = defenseMatchup(p, ctx.defense, ctx.scoring);
+      const trend = trendFor(p, ctx.scoring);
+      const bits = [p.posRank ? rankLabel(p.position, p.posRank) : null];
+      if (matchup) bits.push(`${{ good: 'easy', average: 'average', tough: 'tough' }[matchup.verdict]} matchup vs ${p.opponent}`);
+      else if (p.opponent) bits.push(`vs ${p.opponent}`);
+      if (trend.direction === 'up') bits.push('heating up');
+      if (p.injury) bits.push(p.injury);
+      return {
+        id: p.id,
+        name: p.name,
+        team: p.team,
+        position: p.position,
+        points: round1(p.points),
+        gain: round1(p.points - target),
+        detail: bits.filter(Boolean).join(' · '),
+      };
+    });
+  if (!players.length) return null;
+  return { note: ctx.waiverNote || null, players };
+};
+
+const withWaivers = (why, player, positions, ctx) => (why ? { ...why, waivers: waiverOptions(player, positions, ctx) } : why);
+
 /** Why the player in this lineup slot starts: compared with the best bench player who could take the slot. */
 export const explainStarter = (lineup, slotKey, ctx) => {
   const entry = lineup.starters.find((s) => s.slot.key === slotKey);
   if (!entry?.player) return null;
   const rivals = lineup.bench.filter((p) => entry.slot.positions.includes(p.position));
   const rival = rivals.find(healthy) || rivals[0];
-  if (!rival) return explainAlone(entry.player, entry.slot.label, ctx);
-  return explainPair(entry.player, rival, ctx);
+  const why = rival ? explainPair(entry.player, rival, ctx) : explainAlone(entry.player, entry.slot.label, ctx);
+  return withWaivers(why, entry.player, entry.slot.positions, ctx);
 };
 
 /** Why a bench player sits: compared with the weakest starter whose spot they could take. */

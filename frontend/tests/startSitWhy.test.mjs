@@ -125,3 +125,24 @@ test('a lopsided trade against you says how much value you give up', () => {
   assert.match(why.summary, /You give up [\d.]+ more in trade value than you get/);
   assert.match(why.summary, /Your starting lineup drops [\d.]+ pts a week without Star/);
 });
+
+test('a starter card lists free agents who project more at the slot, best first', () => {
+  const lineup = buildLineup([player('MyDef', 'DST', 6, { opponent: 'BUF' })], { slots: [{ label: 'DST', positions: ['DST'] }] });
+  const waiverPool = [
+    player('Waiver1', 'DST', 9, { opponent: 'LV', posRank: 3 }),
+    player('Waiver2', 'DST', 11, { opponent: 'T20' }),
+    player('Close', 'DST', 7),
+    player('Hurt', 'DST', 12, { injury: 'Out' }),
+    player('WrongPos', 'WR', 20),
+  ];
+  const why = explainStarter(lineup, lineup.starters[0].slot.key, { ...ctx(), waiverPool, waiverNote: 'Not on any roster.' });
+  assert.deepEqual(why.waivers.players.map((p) => [p.name, p.gain]), [['Waiver2', 5], ['Waiver1', 3]]);
+  assert.equal(why.waivers.note, 'Not on any roster.');
+  assert.match(why.waivers.players[1].detail, /DST3/);
+});
+
+test('no waiver section when nobody free beats the starter', () => {
+  const lineup = buildLineup([player('Star', 'WR', 20)], { slots: [{ label: 'WR', positions: ['WR'] }] });
+  const why = explainStarter(lineup, lineup.starters[0].slot.key, { ...ctx(), waiverPool: [player('Meh', 'WR', 10)] });
+  assert.equal(why.waivers, null);
+});

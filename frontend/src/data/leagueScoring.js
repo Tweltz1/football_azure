@@ -171,7 +171,11 @@ export const useSavedSleeperTeams = () => {
     if (!username) return undefined;
     let cancelled = false;
     axios.get(`${API_BASE_URL}/startsit/sleeper?username=${encodeURIComponent(username)}`)
-      .then((response) => { if (!cancelled) setTeams(response.data?.teams || []); })
+      .then((response) => {
+        if (cancelled) return;
+        // Each team carries when its rosters were read, for "Rosters checked" labels.
+        setTeams((response.data?.teams || []).map((team) => ({ ...team, fetchedAt: response.data.fetchedAt })));
+      })
       .catch(() => { /* Rankings still works with the standard formats. */ });
     return () => { cancelled = true; };
   }, []);

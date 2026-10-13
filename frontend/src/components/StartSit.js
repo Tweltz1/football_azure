@@ -752,8 +752,25 @@ const StartSit = ({ userId }) => {
     compareIds.map((id) => projectionsById.get(id)).filter(Boolean), projectionsById, scoring, shownWeek,
   ).map((player) => ({ ...player, posRank: posRanks.get(player.id) || null }));
   const verdict = compareVerdict(comparePlayers);
+  // Players no team in this league has, for waiver suggestions on the "?" cards. Without a league
+  // we only know the viewer's own list, so those suggestions come with a caveat.
+  const waiverPool = useMemo(() => {
+    if (!projections) return [];
+    const rostered = new Set(rosterPlayers.map((p) => p.id));
+    tradePartners.forEach((team) => team.players.forEach((p) => rostered.add(p.id)));
+    const free = projections.players.filter((p) => !rostered.has(p.id));
+    return withProjections(free, projectionsById, scoring, shownWeek)
+      .map((player) => ({ ...player, posRank: posRanks.get(player.id) || null }));
+  }, [projections, rosterPlayers, tradePartners, projectionsById, scoring, shownWeek, posRanks]);
+  const waiverNote = activeSleeper
+    ? 'Not on any roster in this league right now. Check your waiver order before claiming.'
+    : activeTeam
+      ? 'Not on any team in this league.'
+      : "We can't see your league's rosters, so check these are still free agents.";
   // What the "?" buttons explain their calls with.
-  const whyCtx = { defense: projections?.defense, allPlayers: projections?.players || [], scoring };
+  const whyCtx = {
+    defense: projections?.defense, allPlayers: projections?.players || [], scoring, waiverPool, waiverNote,
+  };
   const whyUpdated = projections?.fetchedAt ? `updated ${timeAgo(new Date(projections.fetchedAt).getTime())}` : null;
   const maxComparePoints = Math.max(1, ...comparePlayers.map((p) => p.points || 0));
   const insightPlayer = insightId
