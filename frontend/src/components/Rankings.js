@@ -103,7 +103,7 @@ const useMyPlayers = (userId) => {
   return mine;
 };
 
-const WeeklyTable = ({ rows, tab, scoring, defense, mine, onOpen }) => (
+const WeeklyTable = ({ rows, tab, scoring, defense, mine, waivers, onOpen }) => (
   <div className="rank-table-wrap">
     <table className="rank-table">
       <thead>
@@ -131,6 +131,9 @@ const WeeklyTable = ({ rows, tab, scoring, defense, mine, onOpen }) => (
               </td>
               <td>
                 <button type="button" className="startsit-name" onClick={() => onOpen(player.id)}>{player.name}</button>
+                {waivers && !waivers.rostered.has(player.id) && (
+                  <span className="rank-waiver" title={`Not on any roster in ${waivers.leagueName}`} aria-label={`Available on waivers in ${waivers.leagueName}`}>*</span>
+                )}
                 <div className="rank-sub">
                   {player.team || 'FA'}
                   {player.injury && (
@@ -225,6 +228,16 @@ const Rankings = ({ userId }) => {
     choice, setChoice, scoring, profile, options: scoringOptions,
   } = useLeagueScoring(sleeperTeams);
   const projections = useMemo(() => applyLeagueScoring(rawProjections, profile), [rawProjections, profile]);
+  // Free agents get an asterisk: in the league picked under Scoring, or the viewer's only Sleeper league.
+  const waivers = useMemo(() => {
+    const team = profile
+      ? sleeperTeams.find((t) => `league:${t.leagueId}` === profile.value)
+      : (sleeperTeams.length === 1 ? sleeperTeams[0] : null);
+    if (!team) return null;
+    const rostered = new Set(team.players.map((p) => p.id));
+    (team.opponents || []).forEach((o) => o.players.forEach((p) => rostered.add(p.id)));
+    return { leagueName: team.leagueName, rostered, fetchedAt: team.fetchedAt };
+  }, [profile, sleeperTeams]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [insightId, setInsightId] = useState(null);
@@ -364,7 +377,13 @@ const Rankings = ({ userId }) => {
                 </div>
                 {rows.length === 0
                   ? <p className="startsit-empty">{onlyMine ? `None of your players are ranked at ${tabLabel} this week.` : 'No players match.'}</p>
-                  : <WeeklyTable rows={rows} tab={tab} scoring={scoring} defense={projections.defense} mine={mine} onOpen={setInsightId} />}
+                  : <WeeklyTable rows={rows} tab={tab} scoring={scoring} defense={projections.defense} mine={mine} waivers={waivers} onOpen={setInsightId} />}
+                {waivers && rows.length > 0 && (
+                  <p className="startsit-help">
+                    <span className="rank-waiver">*</span> Not on any roster in {waivers.leagueName}, so available on waivers or free agency.{' '}
+                    <UpdatedAt at={waivers.fetchedAt} label="Rosters checked" staleAfterHours={1} />
+                  </p>
+                )}
                 {weekly.hidden > 0 && !query && !onlyMine && (
                   <p className="startsit-help">{weekly.hidden} {tabLabel} player{weekly.hidden === 1 ? ' has' : 's have'} no projection this week (out, on bye or not expected to play) and {weekly.hidden === 1 ? 'is' : 'are'} left off.</p>
                 )}

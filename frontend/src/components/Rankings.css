@@ -165,6 +165,13 @@
   background: var(--accent-soft);
 }
 
+.rank-waiver {
+  margin-left: 3px;
+  color: var(--success);
+  font-weight: 900;
+  cursor: help;
+}
+
 .rank-matchup {
   display: inline-block;
   margin-left: 6px;

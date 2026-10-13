@@ -242,6 +242,75 @@
   font-weight: 900;
 }
 
+.why-waivers {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--surface-3);
+}
+
+.why-waivers-title {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.why-waivers ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.why-waivers li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+}
+
+.why-waivers li + li {
+  border-top: 1px solid var(--hairline);
+}
+
+.why-waiver-name {
+  min-width: 0;
+  font-weight: 650;
+}
+
+.why-waiver-name small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.why-waiver-detail {
+  display: block;
+  font-size: 0.74rem;
+}
+
+.why-waiver-pts {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.why-waiver-pts small {
+  display: block;
+  color: var(--success);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.why-waivers-note {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
 .why-foot {
   margin: 10px 0 0;
   color: var(--muted);

@@ -135,6 +135,26 @@ const WhyButton = ({ explain, label = 'Why?', updatedLabel = null }) => {
             <p className="why-summary">{why.summary}</p>
             {why.factors.length > 0 && why.names[1] && <Factors names={why.names} factors={why.factors} />}
             {why.watch && <p className="why-watch"><span aria-hidden="true">!</span>{why.watch}</p>}
+            {why.waivers && (
+              <div className="why-waivers">
+                <p className="why-waivers-title">Possible waiver pickups</p>
+                <ul>
+                  {why.waivers.players.map((p) => (
+                    <li key={p.id}>
+                      <span className="why-waiver-name">
+                        {p.name} <small>{p.position} · {p.team}</small>
+                        {p.detail && <small className="why-waiver-detail">{p.detail}</small>}
+                      </span>
+                      <span className="why-waiver-pts">
+                        {p.points.toFixed(1)}
+                        <small>+{p.gain.toFixed(1)}</small>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {why.waivers.note && <p className="why-waivers-note">{why.waivers.note}</p>}
+              </div>
+            )}
             <p className="why-foot">Based on Sleeper projections, this season's games and the injury report{updatedLabel ? `, ${updatedLabel}` : ''}.</p>
           </div>
         </>,
