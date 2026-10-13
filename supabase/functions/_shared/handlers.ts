@@ -568,6 +568,9 @@ async function placeBid(ctx: Ctx, leagueId: string, data: Body, okBody?: unknown
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (isWhiteboard(league.biddingMode)) return lockInBoard(ctx, league, userId, amount, parsed.board);
     if (amount <= 0) return bad('Bid must be at least $1.');
+    // A bid that lands after the clock ran out (or once a rebid round began) is too late, so it can't sneak into the next round.
+    if (str(league.status).toLowerCase() !== 'drafting') return bad('Bidding is closed for this player.');
+    if (!timerRunning(ctx, league.auctionTimer)) return bad("Time's up for this player.");
     const error = validateBid(league, userId, amount);
     if (error) return error;
     league.activeBids[userId] = { amount, timestamp: ctx.now().toISOString() };
@@ -597,6 +600,7 @@ async function tieBreakerBid(ctx: Ctx, leagueId: string, data: Body): Promise<Re
     if (!league.tieBreaker || !league.tieBreaker.tiedTeamIds.includes(userId)) return unauthorized();
     if (league.tieBreaker.round >= 2) return bad('This tie is locked for admin resolution.');
     if (amount <= league.tieBreaker.tieAmount) return bad(`Bid must be greater than the tie amount of $${league.tieBreaker.tieAmount}.`);
+    if (!timerRunning(ctx, league.auctionTimer)) return bad("Time's up for this player.");
     const error = validateBid(league, userId, amount);
     if (error) return error;
     league.activeBids[userId] = { amount, timestamp: ctx.now().toISOString() };

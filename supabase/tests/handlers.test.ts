@@ -1102,3 +1102,36 @@ test('ten managers bidding in the same instant all get their bids saved', async 
   assert.deepEqual(Object.keys(bids).sort(), [...members].sort());
   members.forEach((m, i) => assert.equal(bids[m].amount, 5 + i));
 });
+
+test('a bid that lands after the clock ran out is refused and never joins the rebid round', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world, ['admin', 'bob', 'cara', 'dan']);
+  await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 7 });
+  await world.call('cara', 'POST', `leagues/${leagueId}/bid`, { amount: 7 });
+  await world.call('dan', 'POST', `leagues/${leagueId}/bid`, { amount: 3 });
+
+  // The clock has run out but nobody has closed the round yet.
+  world.advance(21);
+  const afterZero = await world.call('dan', 'POST', `leagues/${leagueId}/bid`, { amount: 30 });
+  assert.equal(afterZero.status, 400);
+  assert.equal(world.league(leagueId).activeBids.dan.amount, 3);
+
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  assert.equal(world.league(leagueId).status, 'tiebreaker');
+
+  // dan's bid box sends its last amount after the rebid round began: refused, so dan can't win the tie.
+  const late = await world.call('dan', 'POST', `leagues/${leagueId}/bid`, { amount: 30 });
+  assert.equal(late.status, 400);
+  assert.ok(!('dan' in world.league(leagueId).activeBids));
+
+  await world.call('cara', 'POST', `leagues/${leagueId}/tiebreaker-bid`, { amount: 9 });
+  world.advance(16);
+  const lateRebid = await world.call('bob', 'POST', `leagues/${leagueId}/tiebreaker-bid`, { amount: 12 });
+  assert.equal(lateRebid.status, 400);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  const league = world.league(leagueId);
+  const cara = league.teams.find((t) => t.ownerId === 'cara')!;
+  assert.equal(league.draftLog.at(-1)!.winningTeamId, cara.id);
+  assert.equal(league.draftLog.at(-1)!.winningBid, 9);
+});
