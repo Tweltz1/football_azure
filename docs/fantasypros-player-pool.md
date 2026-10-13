@@ -38,9 +38,9 @@ To run the workflow manually:
 1. Open GitHub Actions.
 2. Run `Update Player Pool`.
 3. Leave `source` as `sleeper` unless you want FantasyPros.
-4. Review and merge the generated PR.
+4. The generated PR merges itself once the API tests pass, then the API redeploys.
 
-The workflow also runs every Tuesday at 11:00 UTC. It opens a PR only when the generated files change.
+The workflow also runs every Tuesday at 11:00 UTC. It opens a PR only when the generated files change, and merges it automatically so the site updates the same morning.
 
 ## Data Rules
 
@@ -48,7 +48,7 @@ The updater stores only the fields the app uses: player ID, name, team, position
 
 Generated player IDs are source-prefixed, for example `sleeper-9509`, `sleeper-BUF`, or `fp-13948`. That keeps favorites tied to the same player across weekly ranking changes. The first generated update may require users with old `player1`-style favorites to reselect favorites once.
 
-Existing leagues are not mutated by weekly updates. A league copies the player pool when it is created, so in-progress drafts stay stable. New leagues created after a player-pool PR is merged use the latest merged pool.
+Existing leagues are not mutated by weekly updates. A league copies the player pool when it is created, so in-progress drafts stay stable. New leagues created after a weekly update use the latest pool.
 
 ## Local Run
 

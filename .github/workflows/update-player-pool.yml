@@ -38,6 +38,7 @@ env:
   PRODUCTION_BRANCH: claude/project-thread-6lgsrr
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -60,7 +61,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Show update source
         run: echo "Updating player pool from $PLAYER_POOL_SOURCE"
@@ -71,7 +72,11 @@ jobs:
       - name: Ensure kicker and defense coverage
         run: node scripts/ensure-player-pool-coverage.mjs
 
+      - name: Check the API still passes its tests
+        run: node --test supabase/tests/handlers.test.ts
+
       - name: Open player pool update PR
+        id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -88,4 +93,15 @@ jobs:
             - Manual runs can choose FantasyPros when `FANTASYPROS_API_KEY` is configured.
             - Writes the top ranked player limit first, then appends any missing 32-team K/DST coverage.
             - Existing leagues keep their copied draft pool; new leagues use this generated pool after the PR is merged.
-            - Merging this PR deploys the new data to hood-league.com.
+            - This PR merges itself and deploys the new data to hood-league.com.
+
+      # Merges made with GITHUB_TOKEN don't start other workflows, so the Supabase deploy is
+      # started by hand here. Cloudflare Pages deploys the site on its own.
+      - name: Merge the update and deploy the API
+        if: steps.cpr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.cpr.outputs.pull-request-number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --squash --delete-branch
+          gh workflow run deploy-supabase.yml --repo "$GITHUB_REPOSITORY" --ref "$PRODUCTION_BRANCH"
