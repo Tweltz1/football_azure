@@ -674,3 +674,14 @@ test('blind auction: nobody sees other teams\' bids until the round closes', asy
   assert.equal(pick.winningBid, 12);
   assert.deepEqual(Object.keys(pick.allBids).sort(), ['bob', 'cara'], 'all bids are revealed once the clock is done');
 });
+
+test('the current week rolls over on Tuesday morning, ahead of Sleeper', async () => {
+  const { weekByTuesday } = await import('../functions/_shared/startSit.ts');
+  const opener = '2026-09-10'; // Thursday; week 1 starts Tuesday 2026-09-08 at 10:00 UTC
+  assert.equal(weekByTuesday(opener, Date.parse('2026-09-08T09:59:00Z')), 0);
+  assert.equal(weekByTuesday(opener, Date.parse('2026-09-08T10:00:00Z')), 1);
+  assert.equal(weekByTuesday(opener, Date.parse('2026-10-13T09:00:00Z')), 5, 'Monday night of week 5 is still week 5');
+  assert.equal(weekByTuesday(opener, Date.parse('2026-10-13T19:48:00Z')), 6, 'Tuesday afternoon is week 6');
+  assert.equal(weekByTuesday(opener, Date.parse('2027-03-01T00:00:00Z')), 18);
+  assert.equal(weekByTuesday('', Date.parse('2026-10-13T19:48:00Z')), 0);
+});

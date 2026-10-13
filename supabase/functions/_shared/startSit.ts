@@ -127,13 +127,35 @@ const num = (value: unknown): number => {
 const round1 = (value: number) => Math.round(value * 10) / 10;
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * The regular-season week by the calendar: week 1 starts the Tuesday before the season opener, and each
+ * week rolls over at 6am Eastern (10:00 UTC) on Tuesday, once the Monday night game is done. Returns 0 when
+ * the start date is missing or unreadable, so the caller falls back to Sleeper's week.
+ */
+export function weekByTuesday(seasonStartDate: string, nowMs: number): number {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(seasonStartDate);
+  if (!match) return 0;
+  const opener = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  if (!Number.isFinite(opener)) return 0;
+  const daysBackToTuesday = (new Date(opener).getUTCDay() - 2 + 7) % 7;
+  const weekOneStart = opener - daysBackToTuesday * DAY_MS + 10 * 60 * 60 * 1000;
+  if (nowMs < weekOneStart) return 0;
+  return Math.min(18, Math.floor((nowMs - weekOneStart) / (7 * DAY_MS)) + 1);
+}
+
 export async function currentState(fetchJson: FetchJson, nowMs: number) {
   const cached = stateCache.entry;
   if (cached && nowMs - cached.at < CACHE_MS) return cached.value;
   const raw = (await fetchJson(SLEEPER_STATE_URL)) as Record<string, unknown>;
   const seasonType = text(raw?.season_type) || 'regular';
   // In the off-season and preseason Sleeper reports week 0 or 1; week 1 is the first one worth showing.
-  const week = Math.max(1, Math.trunc(num(raw?.display_week ?? raw?.week)));
+  const sleeperWeek = Math.max(1, Math.trunc(num(raw?.display_week ?? raw?.week)));
+  // Sleeper moves on to the next week midweek; the league treats Tuesday as the start of a new week.
+  const week = seasonType === 'regular'
+    ? Math.max(sleeperWeek, weekByTuesday(text(raw?.season_start_date), nowMs))
+    : sleeperWeek;
   const value = { season: Math.trunc(num(raw?.season)) || new Date(nowMs).getUTCFullYear(), week, seasonType };
   stateCache.entry = { at: nowMs, value };
   return value;
