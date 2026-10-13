@@ -91,6 +91,25 @@ export interface League {
   tieBreaker: TieBreakerInfo | null;
   onlineUserIds: string[];
   awayUserIds: string[];
+  /** Counts drafts run in this league; a new season starts the next one. Missing on older leagues (= 1). */
+  draftNumber?: number;
+}
+
+/** A finished draft, saved so it can still be viewed after the league starts a new season. */
+export interface DraftHistoryEntry {
+  id: string;
+  leagueId: string;
+  leagueName: string;
+  draftNumber: number;
+  /** NFL season the draft was for (drafts in Jan/Feb count toward the season before). */
+  season: number;
+  completedAt: string;
+  draftMode: string;
+  adminId: string;
+  members: string[];
+  rosterSettings: RosterSettings;
+  teams: { id: string; ownerId: string; name: string; budget: number; roster: RosterSpot[] }[];
+  draftLog: { player: Player; winningTeamId: string; winningBid: number; allBids: Record<string, Bid> }[];
 }
 
 export interface UserProfile {

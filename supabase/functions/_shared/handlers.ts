@@ -3,8 +3,8 @@
 // with one deliberate change: the acting user always comes from the sign-in token,
 // never from a userId/adminId the browser puts in the request body.
 
-import type { Broadcaster, LeagueStore, Logger, ProfileStore, StoredLeague } from './ports.ts';
-import type { Bid, League, Player, Team, UserProfile } from './models.ts';
+import type { Broadcaster, HistoryStore, LeagueStore, Logger, ProfileStore, StoredLeague } from './ports.ts';
+import type { Bid, League, Player, RosterSettings, Team, UserProfile } from './models.ts';
 import {
   clone, ensureDefaults, forClient, isManual, MANUAL, normalizeDraftMode, normalizeDraftTimers,
   normalizeRosterSettings,
@@ -14,15 +14,20 @@ import {
   getRosterSpotTotal, getUniqueTeamName, isKnownTeam, maxBidMessage, secondsFromNow, startNextPlayer,
 } from './draftLogic.ts';
 import { diffObjects } from './diff.ts';
+import { draftNumberOf, historySummary, isCompleted, snapshotDraft } from './history.ts';
+import { type FetchJson, getWeekProjections } from './startSit.ts';
 
 export interface Ctx {
   leagues: LeagueStore;
   profiles: ProfileStore;
+  history: HistoryStore;
   broadcaster: Broadcaster;
   log: Logger;
   now: () => Date;
   newId: () => string;
   playerPool: () => Player[];
+  /** GETs a URL and parses the JSON body; used for Sleeper's weekly projections. */
+  fetchJson: FetchJson;
   /** Signed-in user's id, or null when the request had no valid token. */
   userId: string | null;
   /** Name from the sign-in provider, used when a profile is first created. */
@@ -100,12 +105,25 @@ async function updateLeague(
 
     const version = await ctx.leagues.replace(league, stored.version);
     if (version != null) {
+      if (!isCompleted(before) && isCompleted(league)) await archiveDraft(ctx, league);
       await broadcastLeagueChange(ctx, before, stored.version, league, version);
       return { league, version };
     }
     ctx.log.warn(`Version conflict on attempt ${attempt + 1}/${retries} for league ${leagueId}.`);
   }
   return retries === 0 ? 'conflict' : { status: 409, body: 'The league was busy. Please try again.' };
+}
+
+/** Saves a finished draft to history. A failure here never undoes the save that finished the draft. */
+async function archiveDraft(ctx: Ctx, league: League, onlyIfMissing = false) {
+  if ((league.draftLog ?? []).length === 0) return;
+  try {
+    const entry = snapshotDraft(league, ctx.now());
+    if (onlyIfMissing && await ctx.history.get(entry.id)) return;
+    await ctx.history.save(entry);
+  } catch (error) {
+    ctx.log.warn(`Saving draft history failed for league ${league.id}.`, error);
+  }
 }
 
 const isRes = (value: unknown): value is Res =>
@@ -185,6 +203,22 @@ async function checkLeagueName(ctx: Ctx, query: URLSearchParams): Promise<Res> {
   return ok({ isUnique: existing == null });
 }
 
+/** A fresh copy of the master player list, minus positions the league doesn't roster. */
+function buildPlayerPool(ctx: Ctx, rosterSettings: RosterSettings): Player[] {
+  const pool = ctx.playerPool();
+  applyByesToPlayers(pool);
+
+  const positionAllowed: Record<string, number> = {
+    QB: rosterSettings.qb, RB: rosterSettings.rb, WR: rosterSettings.wr, TE: rosterSettings.te,
+    K: rosterSettings.k, DST: rosterSettings.def, DEF: rosterSettings.def,
+  };
+  return pool.filter((player) => {
+    if (!isKnownTeam(player.team)) return false;
+    const limit = positionAllowed[(player.position ?? '').toUpperCase()];
+    return limit === undefined ? true : limit > 0;
+  });
+}
+
 async function createLeague(ctx: Ctx, data: Body): Promise<Res> {
   const adminId = ctx.userId!;
   const name = str(data.name);
@@ -193,18 +227,7 @@ async function createLeague(ctx: Ctx, data: Body): Promise<Res> {
   const profile = await findProfile(ctx, adminId);
   const rosterSettings = normalizeRosterSettings(data.rosterSettings);
   const draftTimers = normalizeDraftTimers(data.draftTimers);
-  const pool = ctx.playerPool();
-  applyByesToPlayers(pool);
-
-  const positionAllowed: Record<string, number> = {
-    QB: rosterSettings.qb, RB: rosterSettings.rb, WR: rosterSettings.wr, TE: rosterSettings.te,
-    K: rosterSettings.k, DST: rosterSettings.def, DEF: rosterSettings.def,
-  };
-  const filteredPool = pool.filter((player) => {
-    if (!isKnownTeam(player.team)) return false;
-    const limit = positionAllowed[(player.position ?? '').toUpperCase()];
-    return limit === undefined ? true : limit > 0;
-  });
+  const filteredPool = buildPlayerPool(ctx, rosterSettings);
 
   const league: League = ensureDefaults({
     id: ctx.newId(),
@@ -255,6 +278,7 @@ async function joinLeague(ctx: Ctx, data: Body): Promise<Res> {
   const result = await updateLeague(ctx, found.league.id, (league) => {
     if (!isInviteJoin && league.password && league.password !== str(data.password)) return unauthorized();
     if (league.members.includes(userId)) return conflict('You are already a member of this league.');
+    if (isCompleted(league)) return bad('This draft is already finished. Ask the commissioner to start a new season first.');
 
     league.members.push(userId);
     if (isManual(league.draftMode)) return null;
@@ -272,6 +296,23 @@ async function joinLeague(ctx: Ctx, data: Body): Promise<Res> {
   if (isRes(result)) return result;
   if (result === 'conflict') return conflict('The league was busy. Please try again.');
   return ok({ id: result.league.id, name: result.league.name });
+}
+
+/** What an invite link shows before joining: enough to recognize the league, nothing private. */
+async function getInvite(ctx: Ctx, leagueId: string): Promise<Res> {
+  const stored = await ctx.leagues.get(leagueId);
+  if (!stored) return notFound('This invite link is not valid anymore. Ask the commissioner for a new one.');
+  const league = ensureDefaults(stored.league);
+  const commissionerTeam = league.teams.find((team) => team?.ownerId === league.adminId);
+  return ok({
+    id: league.id,
+    name: league.name,
+    status: league.status,
+    draftMode: league.draftMode,
+    memberCount: league.members.length,
+    commissionerTeamName: commissionerTeam?.name ?? null,
+    isMember: league.members.includes(ctx.userId!),
+  });
 }
 
 async function getLeagueState(ctx: Ctx, leagueId: string): Promise<Res> {
@@ -779,6 +820,79 @@ async function completeDraft(ctx: Ctx, leagueId: string): Promise<Res> {
   return done(result, leagueBody);
 }
 
+// ---- Draft history and new seasons ----------------------------------------------------
+
+async function listHistory(ctx: Ctx): Promise<Res> {
+  const userId = ctx.userId!;
+  const entries = await ctx.history.listForMember(userId);
+  const saved = new Set(entries.map((entry) => entry.id));
+
+  // Drafts that finished before history existed get saved the first time anyone looks.
+  const leagues = await ctx.leagues.listForMember(userId);
+  for (const { league } of leagues) {
+    ensureDefaults(league);
+    if (!isCompleted(league) || league.draftLog.length === 0) continue;
+    const entry = snapshotDraft(league, ctx.now());
+    if (saved.has(entry.id)) continue;
+    try {
+      await ctx.history.save(entry);
+      entries.push(entry);
+    } catch (error) {
+      ctx.log.warn(`Saving draft history failed for league ${league.id}.`, error);
+    }
+  }
+
+  entries.sort((a, b) => b.completedAt.localeCompare(a.completedAt));
+  return ok(entries.map((entry) => historySummary(entry, userId)));
+}
+
+async function getHistoryEntry(ctx: Ctx, historyId: string): Promise<Res> {
+  const entry = await ctx.history.get(historyId);
+  if (!entry || !entry.members.includes(ctx.userId!)) return notFound('That draft was not found.');
+  return ok(entry);
+}
+
+/** Commissioner only: saves the finished draft to history and resets the league for next year's draft. */
+async function startNewSeason(ctx: Ctx, leagueId: string): Promise<Res> {
+  const finished: { league: League | null } = { league: null };
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCompleted(league)) return bad('Finish the current draft before starting a new season.');
+    finished.league = clone(league);
+
+    league.draftNumber = draftNumberOf(league) + 1;
+    league.status = 'created';
+    league.readyMembers = [];
+    league.initialPlayerPool = buildPlayerPool(ctx, league.rosterSettings);
+    league.currentPlayerId = null;
+    league.activeBids = {};
+    league.auctionTimer = null;
+    league.draftLog = [];
+    league.beerBitchTeamId = null;
+    league.tieBreaker = null;
+    for (const team of league.teams) {
+      if (!team) continue;
+      team.budget = 200;
+      team.roster = [];
+    }
+    return null;
+  });
+  if (!isRes(result) && result !== 'conflict' && finished.league) await archiveDraft(ctx, finished.league, true);
+  return done(result, leagueBody);
+}
+
+// ---- Start/Sit -------------------------------------------------------------------
+
+async function startSit(ctx: Ctx, query: URLSearchParams): Promise<Res> {
+  const week = int(query.get('week'));
+  try {
+    return ok(await getWeekProjections(ctx.fetchJson, ctx.now(), week || null));
+  } catch (error) {
+    ctx.log.warn('Loading Sleeper projections failed.', error);
+    return { status: 502, body: 'Weekly projections are not available right now. Please try again in a few minutes.' };
+  }
+}
+
 // ---- Manual draft ----------------------------------------------------------------
 
 async function manualSelectPlayer(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
@@ -1158,6 +1272,7 @@ const LEAGUE_POSTS: Record<string, LeagueAction> = {
   'resolve-tie': resolveTie,
   'undo-pick': (ctx, id) => undoLastPick(ctx, id),
   complete: (ctx, id) => completeDraft(ctx, id),
+  'new-season': (ctx, id) => startNewSeason(ctx, id),
   'manual-current-player': manualSelectPlayer,
   'manual-award': manualAward,
   'manual-teams': addManualTeam,
@@ -1195,7 +1310,12 @@ export async function handle(ctx: Ctx, method: string, path: string, query: URLS
     if (method === 'POST' && name === 'createleague') return createLeague(ctx, data);
     if (method === 'POST' && name === 'joinleague') return joinLeague(ctx, data);
     if (method === 'POST' && name === 'user-profile') return getOrCreateProfile(ctx, data);
+    if (method === 'GET' && name === 'history') return listHistory(ctx);
+    if (method === 'GET' && name === 'startsit') return startSit(ctx, query);
   }
+
+  if (parts.length === 2 && method === 'GET' && parts[0] === 'history') return getHistoryEntry(ctx, parts[1]);
+  if (parts.length === 2 && method === 'GET' && parts[0] === 'invite') return getInvite(ctx, parts[1]);
 
   if (parts.length === 2 && parts[0] === 'user-profile' && method === 'POST') return updateProfile(ctx, parts[1], data);
 

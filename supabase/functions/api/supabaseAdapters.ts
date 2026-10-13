@@ -2,8 +2,8 @@
 // Row Level Security is on with no policies, so only this function can read or write the tables.
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.49.4';
-import type { Broadcaster, LeagueStore, LightLeagueState, ProfileStore, StoredLeague } from '../_shared/ports.ts';
-import type { League, UserProfile } from '../_shared/models.ts';
+import type { Broadcaster, HistoryStore, LeagueStore, LightLeagueState, ProfileStore, StoredLeague } from '../_shared/ports.ts';
+import type { DraftHistoryEntry, League, UserProfile } from '../_shared/models.ts';
 
 const rowToStored = (row: { data: League; version: number }): StoredLeague => ({ league: row.data, version: Number(row.version) });
 
@@ -83,6 +83,36 @@ export function createProfileStore(db: SupabaseClient): ProfileStore {
         .from('profiles')
         .upsert({ id: profile.userId, data: profile, updated_at: new Date().toISOString() });
       if (error) throw error;
+    },
+  };
+}
+
+export function createHistoryStore(db: SupabaseClient): HistoryStore {
+  return {
+    async save(entry) {
+      const { error } = await db.from('draft_history').upsert({
+        id: entry.id,
+        league_id: entry.leagueId,
+        season: entry.season,
+        members: entry.members,
+        completed_at: entry.completedAt,
+        data: entry,
+      });
+      if (error) throw error;
+    },
+    async get(id) {
+      const { data, error } = await db.from('draft_history').select('data').eq('id', id).maybeSingle();
+      if (error) throw error;
+      return data ? (data.data as DraftHistoryEntry) : null;
+    },
+    async listForMember(userId) {
+      const { data, error } = await db
+        .from('draft_history')
+        .select('data')
+        .contains('members', [userId])
+        .order('completed_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((row) => row.data as DraftHistoryEntry);
     },
   };
 }

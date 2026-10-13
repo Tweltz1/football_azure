@@ -4,14 +4,18 @@ import assert from 'node:assert/strict';
 import { handle, type Ctx } from '../functions/_shared/handlers.ts';
 import { applyOps, diffObjects } from '../functions/_shared/diff.ts';
 import { getInitialPlayerPool } from '../functions/_shared/playerData.ts';
-import type { League, UserProfile } from '../functions/_shared/models.ts';
-import type { LeagueStore, ProfileStore, StoredLeague } from '../functions/_shared/ports.ts';
+import { clearStartSitCache } from '../functions/_shared/startSit.ts';
+import type { DraftHistoryEntry, League, UserProfile } from '../functions/_shared/models.ts';
+import type { HistoryStore, LeagueStore, ProfileStore, StoredLeague } from '../functions/_shared/ports.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
 function memoryWorld() {
   const leagueRows = new Map<string, StoredLeague>();
   const profileRows = new Map<string, UserProfile>();
+  const historyRows = new Map<string, DraftHistoryEntry>();
+  const fetched: string[] = [];
+  let fetchResponses: (url: string) => unknown = () => { throw new Error('offline'); };
   const sent: { leagueId: string; event: string; payload: any; toUserId?: string }[] = [];
   let clock = Date.parse('2026-09-01T18:00:00Z');
   let ids = 0;
@@ -38,14 +42,22 @@ function memoryWorld() {
     async upsert(p) { profileRows.set(p.userId, clone(p)); },
   };
 
+  const history: HistoryStore = {
+    async save(entry) { historyRows.set(entry.id, clone(entry)); },
+    async get(id) { const e = historyRows.get(id); return e ? clone(e) : null; },
+    async listForMember(userId) { return [...historyRows.values()].filter((e) => e.members.includes(userId)).map(clone); },
+  };
+
   const ctxFor = (userId: string | null): Ctx => ({
     leagues,
     profiles,
+    history,
     broadcaster: { async send(leagueId, event, payload, toUserId) { sent.push({ leagueId, event, payload: clone(payload), toUserId }); } },
     log: { info() {}, warn() {}, error() {} },
     now: () => new Date(clock),
     newId: () => `id-${++ids}`,
     playerPool: getInitialPlayerPool,
+    async fetchJson(url) { fetched.push(url); return clone(fetchResponses(url)); },
     userId,
     displayName: userId ? `${userId}-name` : null,
   });
@@ -54,7 +66,8 @@ function memoryWorld() {
     handle(ctxFor(userId), method, path, new URLSearchParams(query), body);
 
   return {
-    call, sent, leagueRows,
+    call, sent, leagueRows, historyRows, fetched,
+    respondWith: (fn: (url: string) => unknown) => { fetchResponses = fn; },
     advance: (seconds: number) => { clock += seconds * 1000; },
     league: (id: string) => leagueRows.get(id)!.league as League,
   };
@@ -322,4 +335,140 @@ test('diff handles appends, item edits, deletes and replacements', () => {
   const a = { list: [1, 2], items: [{ id: 1 }, { id: 2 }, { id: 3 }], gone: 1, obj: { x: 1 } };
   const b = { list: [1, 2, 3], items: [{ id: 1 }, { id: 9 }, { id: 3 }], obj: { x: 2 }, added: true };
   assert.deepEqual(applyOps(a, diffObjects(a, b)), b);
+});
+
+test('invite links: preview, join without a password, already a member, finished drafts', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world, ['admin', 'bob']);
+
+  const preview = await world.call('dan', 'GET', `invite/${leagueId}`);
+  assert.equal(preview.status, 200);
+  assert.equal((preview.body as any).name, 'Hood');
+  assert.equal((preview.body as any).memberCount, 2);
+  assert.equal((preview.body as any).isMember, false);
+  assert.equal((preview.body as any).password, undefined);
+  assert.equal((await world.call('bob', 'GET', `invite/${leagueId}`)).body.isMember, true);
+  assert.equal((await world.call('dan', 'GET', 'invite/nope')).status, 404);
+  assert.equal((await world.call(null, 'GET', `invite/${leagueId}`)).status, 401);
+
+  const joined = await world.call('dan', 'POST', 'JoinLeague', { leagueId });
+  assert.equal(joined.status, 200);
+  assert.ok(world.league(leagueId).members.includes('dan'));
+  assert.equal((await world.call('dan', 'POST', 'JoinLeague', { leagueId })).status, 409);
+
+  await world.call('admin', 'POST', `leagues/${leagueId}/complete`);
+  const late = await world.call('erin', 'POST', 'JoinLeague', { leagueId });
+  assert.equal(late.status, 400);
+  assert.match(String(late.body), /already finished/);
+});
+
+async function draftOnePick(world: ReturnType<typeof memoryWorld>, leagueId: string, bidder: string, amount: number) {
+  await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  await world.call(bidder, 'POST', `leagues/${leagueId}/bid`, { amount });
+  world.advance(21);
+  await world.call(bidder, 'POST', `leagues/${leagueId}/endBidding`);
+  return world.league(leagueId).draftLog[0].player;
+}
+
+test('draft history: saved on completion, private to members, survives a new season', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world, ['admin', 'bob']);
+  const player = await draftOnePick(world, leagueId, 'bob', 25);
+  assert.equal(world.historyRows.size, 0, 'nothing is saved until the draft is finished');
+
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/new-season`)).status, 401);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/new-season`)).status, 400);
+
+  await world.call('admin', 'POST', `leagues/${leagueId}/complete`);
+  assert.equal(world.historyRows.size, 1);
+  const firstId = `${leagueId}-draft-1`;
+  const saved = world.historyRows.get(firstId)!;
+  assert.equal(saved.season, 2026);
+  assert.equal(saved.draftLog[0].player.id, player.id);
+  assert.equal(saved.draftLog[0].winningBid, 25);
+  assert.equal((saved as any).initialPlayerPool, undefined, 'the player pool is not copied');
+
+  const list = await world.call('bob', 'GET', 'history');
+  assert.equal(list.status, 200);
+  assert.equal((list.body as any[]).length, 1);
+  assert.equal((list.body as any[])[0].myTeamName, world.league(leagueId).teams.find((t) => t.ownerId === 'bob')!.name);
+  assert.deepEqual((list.body as any[])[0].topPick, { name: player.name, position: player.position, price: 25 });
+  assert.equal(((await world.call('stranger', 'GET', 'history')).body as any[]).length, 0);
+  assert.equal((await world.call('stranger', 'GET', `history/${firstId}`)).status, 404);
+  assert.equal((await world.call('bob', 'GET', `history/${firstId}`)).status, 200);
+
+  world.advance(3600);
+  const reset = await world.call('admin', 'POST', `leagues/${leagueId}/new-season`);
+  assert.equal(reset.status, 200, String(reset.body));
+  const league = world.league(leagueId);
+  assert.equal(league.status, 'created');
+  assert.equal(league.draftNumber, 2);
+  assert.equal(league.draftLog.length, 0);
+  assert.deepEqual(league.readyMembers, []);
+  assert.ok(league.teams.every((t) => t.budget === 200 && t.roster.length === 0));
+  assert.equal(league.initialPlayerPool.find((p) => p.id === player.id)!.isDrafted, false);
+  assert.equal(world.historyRows.get(firstId)!.completedAt, saved.completedAt, 'new season keeps the original finish time');
+
+  // Second draft is saved separately.
+  await world.call('bob', 'POST', `leagues/${leagueId}/ready`, { isReady: true });
+  await draftOnePick(world, leagueId, 'admin', 40);
+  await world.call('admin', 'POST', `leagues/${leagueId}/complete`);
+  assert.equal(world.historyRows.size, 2);
+  assert.equal(world.historyRows.get(`${leagueId}-draft-2`)!.draftLog[0].winningBid, 40);
+});
+
+test('draft history: drafts finished before history existed show up', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world, ['admin', 'bob']);
+  await draftOnePick(world, leagueId, 'bob', 7);
+  await world.call('admin', 'POST', `leagues/${leagueId}/complete`);
+  world.historyRows.clear();
+
+  const list = await world.call('admin', 'GET', 'history');
+  assert.equal((list.body as any[]).length, 1);
+  assert.equal(world.historyRows.size, 1);
+  assert.equal(((await world.call('admin', 'GET', 'history')).body as any[]).length, 1, 'not duplicated');
+});
+
+test('start/sit: weekly projections from Sleeper, cached, with ids that match the draft pool', async () => {
+  clearStartSitCache();
+  const world = memoryWorld();
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week: 6, display_week: 6, season_type: 'regular' };
+    return [
+      { player_id: '4984', team: 'BUF', opponent: 'KC', stats: { pts_ppr: 24.31, pts_half_ppr: 24.31, pts_std: 24.31 },
+        player: { first_name: 'Josh', last_name: 'Allen', position: 'QB', injury_status: null } },
+      { player_id: '9509', team: 'ATL', opponent: 'TB', stats: { pts_std: 14, rec: 4 },
+        player: { first_name: 'Bijan', last_name: 'Robinson', position: 'RB', injury_status: 'Questionable' } },
+      { player_id: 'BUF', team: 'BUF', opponent: 'KC', stats: { pts_std: 7, pts_ppr: 7, pts_half_ppr: 7 },
+        player: { first_name: 'Buffalo', last_name: 'Bills', position: 'DEF' } },
+      { player_id: '1', team: 'NYJ', stats: { pts_ppr: 0, pts_std: 0 }, player: { first_name: 'No', last_name: 'Points', position: 'WR' } },
+      { player_id: '2', team: 'NYJ', stats: { pts_ppr: 9 }, player: { first_name: 'Some', last_name: 'Lineman', position: 'OL' } },
+    ];
+  });
+
+  assert.equal((await world.call(null, 'GET', 'startsit')).status, 401);
+  const res = await world.call('bob', 'GET', 'startsit');
+  assert.equal(res.status, 200, String(res.body));
+  const body = res.body as any;
+  assert.equal(body.season, 2026);
+  assert.equal(body.week, 6);
+  assert.deepEqual(body.players.map((p: any) => p.id), ['sleeper-4984', 'sleeper-9509', 'sleeper-BUF']);
+  assert.deepEqual(body.players[1].points, { ppr: 18, half: 16, std: 14 });
+  assert.equal(body.players[1].injury, 'Questionable');
+  assert.equal(body.players[2].position, 'DST');
+  assert.equal(body.players[0].opponent, 'KC');
+  assert.ok(getInitialPlayerPool().some((p) => p.id === 'sleeper-4984'));
+  assert.ok(getInitialPlayerPool().some((p) => p.id === 'sleeper-BUF'));
+
+  const before = world.fetched.length;
+  await world.call('cara', 'GET', 'startsit');
+  assert.equal(world.fetched.length, before, 'second request is served from cache');
+
+  await world.call('cara', 'GET', 'startsit', undefined, 'week=7');
+  assert.match(world.fetched.at(-1)!, /\/2026\/7\?season_type=regular/);
+
+  clearStartSitCache();
+  world.respondWith(() => { throw new Error('down'); });
+  assert.equal((await world.call('bob', 'GET', 'startsit')).status, 502);
 });
