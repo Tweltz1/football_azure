@@ -8,6 +8,7 @@ import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
 import Profile from './components/Profile';
 import StartSit from './components/StartSit';
+import Rankings from './components/Rankings';
 import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory';
 import { useAuth, signOut } from './AuthContext';
 import './App.css';
@@ -51,6 +52,7 @@ function App() {
             <NavLink to="/leagues">Leagues</NavLink>
             <NavLink to="/create-league">Create</NavLink>
             <NavLink to="/start-sit">Start/Sit</NavLink>
+            <NavLink to="/rankings">Rankings</NavLink>
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>
           </div>
@@ -70,6 +72,7 @@ function App() {
             <Route path="/create-league" element={<CreateLeague userId={userId} />} />
             <Route path="/profile" element={<Profile userId={userId} />} />
             <Route path="/start-sit" element={<StartSit userId={userId} />} />
+            <Route path="/rankings" element={<Rankings userId={userId} />} />
             <Route path="/history" element={<DraftHistoryList userId={userId} />} />
             <Route path="/history/:historyId" element={<DraftHistoryDetail userId={userId} />} />
           </Routes>

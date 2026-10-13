@@ -1,0 +1,287 @@
+.rank-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  max-width: 100%;
+}
+
+.rank-segmented button {
+  border: none;
+  background: none;
+  color: var(--text-2);
+  padding: 6px 12px;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  min-height: 0;
+  box-shadow: none;
+}
+
+.rank-segmented button:hover {
+  color: var(--text);
+}
+
+.rank-segmented button.active {
+  color: var(--text);
+  background: var(--surface-3);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.rank-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.rank-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.rank-filters .startsit-search {
+  margin: 0;
+  min-width: 220px;
+}
+
+.rank-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.rank-check input {
+  width: auto;
+  margin: 0;
+}
+
+.rank-table-wrap {
+  overflow-x: auto;
+}
+
+.rank-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--hairline-strong);
+  white-space: nowrap;
+}
+
+.rank-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: middle;
+}
+
+.rank-table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.rank-table tr.mine td:first-child {
+  box-shadow: 3px 0 0 var(--accent) inset;
+}
+
+.rank-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rank-num {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.rank-num strong {
+  display: inline-block;
+  min-width: 1.6em;
+}
+
+.rank-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.rank-sub .startsit-tag {
+  margin-left: 2px;
+}
+
+.rank-pos {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+
+.rank-pos.pos-qb { color: var(--pos-qb); }
+.rank-pos.pos-rb { color: var(--pos-rb); }
+.rank-pos.pos-wr { color: var(--pos-wr); }
+.rank-pos.pos-te { color: var(--pos-te); }
+.rank-pos.pos-k { color: var(--pos-k); }
+.rank-pos.pos-dst { color: var(--pos-def); }
+
+.rank-mine {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+
+.rank-matchup {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface-3);
+}
+
+.rank-matchup.good {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.rank-matchup.tough {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.rank-trend.up { color: var(--success); }
+.rank-trend.down { color: var(--danger); }
+.rank-trend.up::before { content: '▲ '; font-size: 0.7em; }
+.rank-trend.down::before { content: '▼ '; font-size: 0.7em; }
+
+.rank-change {
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.rank-change.up { color: var(--success); }
+.rank-change.down { color: var(--danger); }
+.rank-change.flat { color: var(--muted); }
+
+.rank-change.new {
+  color: var(--accent-text);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.rank-more {
+  margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .rank-hide-sm {
+    display: none;
+  }
+
+  .rank-table th,
+  .rank-table td {
+    padding: 8px 6px;
+  }
+
+  .rank-filters,
+  .rank-filters .startsit-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .rank-segmented button {
+    padding: 6px 9px;
+  }
+}
+
+.rank-segmented button:hover:not(:disabled):not(.active) {
+  background: none;
+}
+
+.rank-table .startsit-name,
+.rank-table .startsit-name:hover:not(:disabled) {
+  min-height: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+}
+
+.rank-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rank-segmented button {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.rank-check input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 4px;
+  accent-color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .rank-segmented {
+    display: flex;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .rank-segmented button {
+    flex: 1 0 auto;
+    min-height: 34px;
+  }
+
+  .rank-control {
+    width: 100%;
+  }
+}

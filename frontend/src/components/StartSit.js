@@ -5,6 +5,7 @@ import {
   SCORING_OPTIONS, STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
   vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds,
 } from '../data/startSitUtils';
+import { positionRanks, rankLabel } from '../data/rankings';
 import UpdatedAt from './UpdatedAt';
 import '../App.css';
 import './SeasonTools.css';
@@ -63,12 +64,14 @@ const TrendBadge = ({ player, scoring }) => {
 const PlayerName = ({ player, scoring, onOpen }) => (
   <>
     <button type="button" className="startsit-name" onClick={() => onOpen(player.id)}>{player.name}</button>
-    {' '}<small>{player.position}</small> <StatusTag player={player} /> <TrendBadge player={player} scoring={scoring} />
+    {' '}<small title={player.posRank ? `${rankLabel(player.position, player.posRank)} by projection this week` : undefined}>
+      {rankLabel(player.position, player.posRank)}
+    </small> <StatusTag player={player} /> <TrendBadge player={player} scoring={scoring} />
   </>
 );
 
 /** Pop-up with one player's recent games, past games against this week's opponent, and injured teammates. */
-const PlayerInsight = ({ player, allPlayers, defense, scoring, week, updatedAt, onClose }) => {
+export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, updatedAt, onClose }) => {
   const [matchup, setMatchup] = useState(null);
   const [matchupError, setMatchupError] = useState('');
   const trend = trendFor(player, scoring);
@@ -673,9 +676,12 @@ const StartSit = ({ userId }) => {
   };
 
   const shownWeek = projections?.week || week;
+  // This week's rank at each position (e.g. WR12), shown next to every player.
+  const posRanks = useMemo(() => positionRanks(projections?.players || [], scoring), [projections, scoring]);
   const roster = useMemo(
-    () => withProjections(rosterPlayers, projectionsById, scoring, shownWeek),
-    [rosterPlayers, projectionsById, scoring, shownWeek],
+    () => withProjections(rosterPlayers, projectionsById, scoring, shownWeek)
+      .map((player) => ({ ...player, posRank: posRanks.get(player.id) || null })),
+    [rosterPlayers, projectionsById, scoring, shownWeek, posRanks],
   );
   const lineup = useMemo(() => buildLineup(roster, rosterSettings), [roster, rosterSettings]);
   const changes = activeSleeper ? lineupChanges(lineup, activeSleeper.starters, roster, activeSleeper.startersBySlot) : [];
@@ -704,7 +710,7 @@ const StartSit = ({ userId }) => {
 
   const comparePlayers = withProjections(
     compareIds.map((id) => projectionsById.get(id)).filter(Boolean), projectionsById, scoring, shownWeek,
-  );
+  ).map((player) => ({ ...player, posRank: posRanks.get(player.id) || null }));
   const verdict = compareVerdict(comparePlayers);
   const maxComparePoints = Math.max(1, ...comparePlayers.map((p) => p.points || 0));
   const insightPlayer = insightId
@@ -1025,7 +1031,7 @@ const StartSit = ({ userId }) => {
           )}
 
           <p className="startsit-footnote">
-            Tap a player for recent games, past games against this opponent, and injured teammates. ▲/▼ shows the last 3 games against the season average.
+            Tap a player for recent games, past games against this opponent, and injured teammates. WR12 means the 12th-most projected points among WRs this week (see Rankings for the full list). ▲/▼ shows the last 3 games against the season average.
             Projections and stats from Sleeper for the {projections.season} season, refreshed every 30 minutes (hit Refresh on your Sleeper team to reload a roster).
             Players listed Out, Doubtful or IR, and players on bye, are kept out of the lineup.
           </p>
