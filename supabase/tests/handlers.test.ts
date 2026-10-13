@@ -12,7 +12,7 @@ import type { HistoryStore, LeagueStore, ProfileStore, StoredLeague } from '../f
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
-function memoryWorld() {
+function memoryWorld({ latencyMs = 0 } = {}) {
   const leagueRows = new Map<string, StoredLeague>();
   const profileRows = new Map<string, UserProfile>();
   const historyRows = new Map<string, DraftHistoryEntry>();
@@ -22,14 +22,17 @@ function memoryWorld() {
   let clock = Date.parse('2026-09-01T18:00:00Z');
   let ids = 0;
 
+  // Optional delay on reads and saves, like a real database, so concurrent requests overlap.
+  const lag = () => (latencyMs ? new Promise((resolve) => setTimeout(resolve, latencyMs)) : null);
   const leagues: LeagueStore = {
-    async get(id) { const r = leagueRows.get(id); return r ? clone(r) : null; },
+    async get(id) { await lag(); const r = leagueRows.get(id); return r ? clone(r) : null; },
     async getLight(id) {
       const r = leagueRows.get(id);
       return r ? clone({ status: r.league.status, auctionTimer: r.league.auctionTimer, version: r.version }) : null;
     },
     async create(league) { leagueRows.set(league.id, { league: clone(league), version: 1 }); return 1; },
     async replace(league, expected) {
+      await lag();
       const r = leagueRows.get(league.id);
       if (!r || r.version !== expected) return null;
       leagueRows.set(league.id, { league: clone(league), version: expected + 1 });
@@ -1085,4 +1088,17 @@ test('handwriting: digit split, rescaling and stored-data validation', () => {
   assert.deepEqual(clean['7'][0], [[3, 0, 3, 100]], 'keeps the newest');
   assert.deepEqual(sanitizeHandwriting('nope'), {});
   assert.deepEqual(sanitizeHandwriting([1, 2]), {});
+});
+
+test('ten managers bidding in the same instant all get their bids saved', async () => {
+  const world = memoryWorld({ latencyMs: 20 });
+  const members = ['admin', ...Array.from({ length: 9 }, (_, i) => `m${i + 1}`)];
+  const leagueId = await setupAuctionLeague(world, members);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {})).status, 200);
+
+  const results = await Promise.all(members.map((m, i) => world.call(m, 'POST', `leagues/${leagueId}/bid`, { amount: 5 + i })));
+  assert.deepEqual(results.map((r) => r.status), members.map(() => 200));
+  const bids = world.league(leagueId).activeBids;
+  assert.deepEqual(Object.keys(bids).sort(), [...members].sort());
+  members.forEach((m, i) => assert.equal(bids[m].amount, 5 + i));
 });

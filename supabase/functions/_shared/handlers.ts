@@ -87,6 +87,11 @@ async function broadcastLeagueChange(ctx: Ctx, before: League | null, beforeVers
   }
 }
 
+// A short random wait before retrying a save that clashed with someone else's, growing with each try.
+// Without it, bids sent in the same instant keep re-reading and clashing in lockstep.
+const conflictBackoff = (attempt: number) =>
+  new Promise((resolve) => setTimeout(resolve, Math.random() * Math.min(400, 25 * 2 ** attempt)));
+
 /**
  * Read-modify-write with optimistic concurrency (the port of CosmosHelper.UpdateLeagueAsync).
  * With retries = 0 a conflict is reported instead of retried, for the timer callbacks every browser fires at once.
@@ -95,7 +100,7 @@ async function updateLeague(
   ctx: Ctx,
   leagueId: string,
   modify: Modify,
-  retries = 5,
+  retries = 10,
 ): Promise<Updated | Res | 'conflict'> {
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     const stored = await ctx.leagues.get(leagueId);
@@ -113,6 +118,7 @@ async function updateLeague(
       return { league, version };
     }
     ctx.log.warn(`Version conflict on attempt ${attempt + 1}/${retries} for league ${leagueId}.`);
+    if (attempt < retries) await conflictBackoff(attempt);
   }
   return retries === 0 ? 'conflict' : { status: 409, body: 'The league was busy. Please try again.' };
 }
