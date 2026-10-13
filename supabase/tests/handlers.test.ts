@@ -577,6 +577,7 @@ test('start/sit: import a Sleeper team with its lineup slots, scoring and curren
       ];
     }
     if (url.endsWith('/league/L2/rosters')) return [{ owner_id: 'u9', co_owners: ['u8'], players: [] }];
+    if (url.endsWith('/league/L1/users')) return [{ user_id: 'u9', display_name: 'Rival', metadata: {} }];
     throw new Error(`unexpected ${url}`);
   });
 
@@ -597,4 +598,5 @@ test('start/sit: import a Sleeper team with its lineup slots, scoring and curren
   assert.equal(team.players[2].position, 'DST');
   assert.equal(team.players[3].name, 'Player 999999');
   assert.deepEqual(team.starters, ['sleeper-4984', 'sleeper-BUF']);
+  assert.deepEqual(team.opponents.map((o: any) => [o.teamName, o.players.length]), [['Rival', 1]]);
 });

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
   SCORING_OPTIONS, STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
-  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges,
+  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue,
 } from '../data/startSitUtils';
 import '../App.css';
 import './SeasonTools.css';
@@ -216,6 +216,110 @@ const PlayerInsight = ({ player, allPlayers, defense, scoring, week, onClose }) 
   );
 };
 
+const signed = (n) => `${n > 0 ? '+' : ''}${n.toFixed(1)}`;
+
+const TradePicks = ({ title, players, ids, onToggle, scoring }) => (
+  <div className="trade-side">
+    <h4>{title}</h4>
+    <ul className="trade-list">
+      {[...players].sort((a, b) => tradeValue(b, scoring) - tradeValue(a, scoring)).map((p) => (
+        <li key={p.id} className={ids.includes(p.id) ? 'picked' : ''}>
+          <label>
+            <input type="checkbox" checked={ids.includes(p.id)} onChange={() => onToggle(p.id)} />
+            <span>
+              {p.name} <small>{p.position} · {p.team || 'FA'}</small> <StatusTag player={p} />
+            </span>
+          </label>
+          <span className="startsit-points" title="Expected points per game, rest of season">{tradeValue(p, scoring).toFixed(1)}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
+/** Pick a team in the same league and players on each side; rates the trade by rest-of-season value. */
+const TradeCheck = ({ myRoster, partners, rosterSettings, scoring, allPlayers, projectionsById, week, onOpen }) => {
+  const [partnerKey, setPartnerKey] = useState('');
+  const [giveIds, setGiveIds] = useState([]);
+  const [getIds, setGetIds] = useState([]);
+
+  const partner = partners.find((p) => p.key === partnerKey) || partners[0];
+  useEffect(() => { setGetIds([]); }, [partner?.key]);
+
+  const theirRoster = useMemo(
+    () => (partner ? withProjections(partner.players, projectionsById, scoring, week) : []),
+    [partner, projectionsById, scoring, week],
+  );
+  const toggle = (setIds) => (id) => setIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+
+  const give = myRoster.filter((p) => giveIds.includes(p.id));
+  const get = theirRoster.filter((p) => getIds.includes(p.id));
+  const result = give.length && get.length
+    ? analyzeTrade({
+      give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount: partners.length + 1,
+    })
+    : null;
+
+  return (
+    <section className="card startsit-panel">
+      <div className="player-board-heading">
+        <div>
+          <p className="section-kicker">Trade check</p>
+          <h2>Is this trade fair?</h2>
+        </div>
+        {(giveIds.length > 0 || getIds.length > 0) && (
+          <button type="button" className="cancel-button" onClick={() => { setGiveIds([]); setGetIds([]); }}>Clear</button>
+        )}
+      </div>
+      {partners.length === 0 ? (
+        <p className="startsit-help">Pick a Sleeper or Hood League team in the Roster menu to trade with the other teams in that league.</p>
+      ) : (
+        <>
+          <label className="trade-partner">
+            Trade with
+            <select value={partner?.key || ''} onChange={(e) => setPartnerKey(e.target.value)}>
+              {partners.map((p) => <option key={p.key} value={p.key}>{p.name}</option>)}
+            </select>
+          </label>
+          <div className="trade-grid">
+            <TradePicks title="You give" players={myRoster} ids={giveIds} onToggle={toggle(setGiveIds)} scoring={scoring} />
+            <TradePicks title={`You get from ${partner?.name || 'them'}`} players={theirRoster} ids={getIds} onToggle={toggle(setGetIds)} scoring={scoring} />
+          </div>
+          {!result && <p className="startsit-help">Tick at least one player on each side. Numbers are expected points per game for the rest of the season.</p>}
+          {result && (
+            <div className={`trade-result ${result.verdict.tone}`}>
+              <strong className="trade-verdict">{result.verdict.label}</strong>
+              <p>{result.verdict.detail}</p>
+              <div className="startsit-insight-stats">
+                <div><span>Value you give</span><strong>{result.giveTotal.toFixed(1)}</strong></div>
+                <div><span>Value you get</span><strong>{result.getTotal.toFixed(1)}</strong></div>
+                <div><span>Your lineup</span><strong>{signed(result.myChange)}</strong></div>
+                <div><span>Their lineup</span><strong>{signed(result.theirChange)}</strong></div>
+              </div>
+              <p className="startsit-help">
+                Value counts only what each player scores above a starter you could find on waivers
+                ({Object.entries(result.levels).filter(([pos]) => ['QB', 'RB', 'WR', 'TE'].includes(pos)).map(([pos, v]) => `${pos} ${v.toFixed(1)}`).join(', ')} pts/game in this league).
+                Lineup numbers are the change in each team's best weekly lineup.
+                {give.length !== get.length && ` This is a ${give.length}-for-${get.length}, so ${give.length > get.length ? 'you free up' : 'they free up'} a roster spot.`}
+              </p>
+              <ul className="trade-breakdown">
+                {[...result.give.map((p) => ({ ...p, side: 'give' })), ...result.get.map((p) => ({ ...p, side: 'get' }))].map((p) => (
+                  <li key={`${p.side}-${p.id}`}>
+                    <span className={`startsit-tag ${p.side === 'give' ? 'warn' : 'caution'}`}>{p.side === 'give' ? 'Give' : 'Get'}</span>
+                    <button type="button" className="startsit-name" onClick={() => onOpen(p.id)}>{p.name}</button>
+                    <small>{p.position}</small>
+                    <span className="startsit-points">{p.value.toFixed(1)} / {p.surplus.toFixed(1)} above waiver</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+};
+
 const StartSit = ({ userId }) => {
   const [projections, setProjections] = useState(null);
   const [projectionError, setProjectionError] = useState('');
@@ -337,6 +441,18 @@ const StartSit = ({ userId }) => {
   );
   const lineup = useMemo(() => buildLineup(roster, rosterSettings), [roster, rosterSettings]);
   const changes = activeSleeper ? lineupChanges(lineup, activeSleeper.starters, roster) : [];
+
+  const tradePartners = useMemo(() => {
+    if (activeSleeper) {
+      return (activeSleeper.opponents || []).map((team, index) => ({ key: `s${index}`, name: team.teamName, players: team.players }));
+    }
+    if (activeTeam) {
+      return (activeTeam.league.teams || [])
+        .filter((team) => team && team.ownerId !== userId && (team.roster || []).length > 0)
+        .map((team) => ({ key: team.id, name: team.name, players: team.roster.map((spot) => spot.player).filter(Boolean) }));
+    }
+    return [];
+  }, [activeSleeper, activeTeam, userId]);
 
   const searchPlayers = (query, excludeIds) => {
     const q = query.trim().toLowerCase();
@@ -628,6 +744,18 @@ const StartSit = ({ userId }) => {
               </div>
             )}
           </section>
+
+          <TradeCheck
+            key={activeSource}
+            myRoster={roster}
+            partners={tradePartners}
+            rosterSettings={rosterSettings}
+            scoring={scoring}
+            allPlayers={projections.players}
+            projectionsById={projectionsById}
+            week={shownWeek}
+            onOpen={setInsightId}
+          />
 
           {insightPlayer && (
             <PlayerInsight

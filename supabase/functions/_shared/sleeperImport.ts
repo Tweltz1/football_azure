@@ -23,6 +23,8 @@ export interface SleeperTeam {
   players: Pick<Player, 'id' | 'name' | 'position' | 'team' | 'bye'>[];
   /** Who is in the Sleeper lineup right now, as our player ids. */
   starters: string[];
+  /** The other teams in the league, for the trade tool. */
+  opponents: { teamName: string; players: SleeperTeam['players'] }[];
 }
 
 export interface SleeperImport {
@@ -97,21 +99,44 @@ export async function getSleeperTeams(
     } catch {
       continue;
     }
-    const mine = (Array.isArray(rosters) ? rosters : []).find((r) => {
-      const roster = r as Record<string, unknown> | null;
-      return text(roster?.owner_id) === userId
-        || (Array.isArray(roster?.co_owners) && (roster!.co_owners as unknown[]).map(text).includes(userId));
-    }) as Record<string, unknown> | undefined;
+    const rosterList = (Array.isArray(rosters) ? rosters : []).filter((r) => r && typeof r === 'object') as Record<string, unknown>[];
+    const mine = rosterList.find((roster) => text(roster.owner_id) === userId
+      || (Array.isArray(roster.co_owners) && (roster.co_owners as unknown[]).map(text).includes(userId)));
     if (!mine) continue;
 
-    const ids = (Array.isArray(mine.players) ? mine.players : []).map(text).filter(Boolean);
-    const players = ids.map((sleeperId) => {
-      const id = `sleeper-${sleeperId}`;
-      const known = poolById.get(id);
-      return known
-        ? { id, name: known.name, position: known.position, team: known.team, bye: known.bye }
-        : { id, name: /^[A-Z]{2,3}$/.test(sleeperId) ? `${sleeperId} Defense` : `Player ${sleeperId}`, position: /^[A-Z]{2,3}$/.test(sleeperId) ? 'DST' : '', team: /^[A-Z]{2,3}$/.test(sleeperId) ? sleeperId : '', bye: 0 };
-    });
+    // League members' names, for labelling the other teams. Not essential, so a failure is ignored.
+    const ownerNames = new Map<string, string>();
+    try {
+      const users = await fetchJson(`${SLEEPER_API}/league/${leagueId}/users`);
+      for (const u of Array.isArray(users) ? users : []) {
+        const member = u as Record<string, unknown>;
+        const memberMeta = (member?.metadata ?? {}) as Record<string, unknown>;
+        ownerNames.set(text(member?.user_id), text(memberMeta.team_name) || text(member?.display_name));
+      }
+    } catch {
+      // keep going with generic names
+    }
+
+    const toPlayers = (roster: Record<string, unknown>) => (Array.isArray(roster.players) ? roster.players : [])
+      .map(text).filter(Boolean).map((sleeperId) => {
+        const id = `sleeper-${sleeperId}`;
+        const known = poolById.get(id);
+        const isDefense = /^[A-Z]{2,3}$/.test(sleeperId);
+        return known
+          ? { id, name: known.name, position: known.position, team: known.team, bye: known.bye }
+          : { id, name: isDefense ? `${sleeperId} Defense` : `Player ${sleeperId}`, position: isDefense ? 'DST' : '', team: isDefense ? sleeperId : '', bye: 0 };
+      });
+    const players = toPlayers(mine);
+    const opponents = rosterList
+      .filter((roster) => roster !== mine)
+      .map((roster, index) => {
+        const rosterMeta = (roster.metadata ?? {}) as Record<string, unknown>;
+        return {
+          teamName: text(rosterMeta.team_name) || ownerNames.get(text(roster.owner_id)) || `Team ${text(roster.roster_id) || index + 1}`,
+          players: toPlayers(roster),
+        };
+      })
+      .filter((team) => team.players.length > 0);
 
     const slots = (Array.isArray(l.roster_positions) ? l.roster_positions : [])
       .map(text)
@@ -126,6 +151,7 @@ export async function getSleeperTeams(
       scoring: scoringFor(l.scoring_settings),
       slots,
       players,
+      opponents,
       starters: (Array.isArray(mine.starters) ? mine.starters : []).map(text).filter((id) => id && id !== '0').map((id) => `sleeper-${id}`),
     });
   }

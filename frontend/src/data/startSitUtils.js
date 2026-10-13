@@ -257,3 +257,102 @@ export const lineupChanges = (lineup, currentStarterIds, roster) => {
     return { start: player, sit, gain: Math.round(((player.points || 0) - sitPoints) * 10) / 10 };
   });
 };
+
+// ---- Trades -----------------------------------------------------------------------------
+
+// How much an injury designation cuts a player's rest-of-season value.
+const INJURY_DISCOUNT = { out: 0.85, doubtful: 0.9, questionable: 0.97, ir: 0.35, pup: 0.4, sus: 0.8 };
+
+/**
+ * A player's expected points per game for the rest of the season: mostly their season average,
+ * nudged by this week's projection, discounted for injuries.
+ */
+export const tradeValue = (player, scoring) => {
+  if (!player) return 0;
+  const projection = Number(player.points ?? 0);
+  const average = player.seasonAvg ? Number(player.seasonAvg[scoring] ?? 0) : 0;
+  let value;
+  if ((player.gamesPlayed || 0) >= 2 && average > 0) value = 0.6 * average + 0.4 * (projection > 0 ? projection : average);
+  else value = projection > 0 ? projection : average;
+  const discount = INJURY_DISCOUNT[String(player.injury || '').toLowerCase()] ?? 1;
+  return Math.round(value * discount * 10) / 10;
+};
+
+/**
+ * Value of the last starter-quality player at each position in a league this size: anyone at or
+ * below it is easy to find on waivers, so only the value above it counts in a trade.
+ */
+export const replacementLevels = (allPlayers, teamCount, rosterSettings, scoring) => {
+  const slots = buildSlots(rosterSettings);
+  const starters = { QB: 0, RB: 0, WR: 0, TE: 0, K: 0, DST: 0 };
+  slots.forEach((slot) => {
+    if (slot.positions.length === 1) starters[slot.positions[0]] = (starters[slot.positions[0]] || 0) + 1;
+    else if (slot.positions.includes('QB')) { starters.QB += 0.8; starters.RB += 0.1; starters.WR += 0.1; }
+    else {
+      const share = { RB: 0.4, WR: 0.5, TE: 0.1 };
+      const allowed = slot.positions.filter((p) => share[p]);
+      const total = allowed.reduce((sum, p) => sum + share[p], 0) || 1;
+      allowed.forEach((p) => { starters[p] += share[p] / total; });
+    }
+  });
+
+  const teams = Math.max(2, teamCount || 10);
+  const levels = {};
+  Object.keys(starters).forEach((position) => {
+    const values = (allPlayers || [])
+      .filter((p) => normalizePosition(p.position) === position)
+      .map((p) => tradeValue(p, scoring))
+      .sort((a, b) => b - a);
+    const index = Math.max(0, Math.round(teams * Math.max(starters[position], 1)) - 1);
+    levels[position] = values.length ? values[Math.min(index, values.length - 1)] : 0;
+  });
+  return levels;
+};
+
+const weeklyLineupTotal = (players, rosterSettings, scoring) => {
+  const valued = players.map((p) => ({ ...p, points: tradeValue(p, scoring), onBye: false, injury: null }));
+  return buildLineup(valued, rosterSettings).total;
+};
+
+/**
+ * Rates a trade. give/get are players (with projections attached); myRoster/theirRoster are the full
+ * rosters before the trade. Returns per-player values, totals, each side's weekly lineup change and a verdict.
+ */
+export const analyzeTrade = ({ give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount }) => {
+  const levels = replacementLevels(allPlayers, teamCount, rosterSettings, scoring);
+  const rate = (p) => {
+    const value = tradeValue(p, scoring);
+    const surplus = Math.max(0, value - (levels[p.position] ?? 0));
+    return { ...p, value, surplus: Math.round(surplus * 10) / 10 };
+  };
+  const giveRated = give.map(rate);
+  const getRated = get.map(rate);
+  const sum = (list) => Math.round(list.reduce((total, p) => total + p.surplus, 0) * 10) / 10;
+  const giveTotal = sum(giveRated);
+  const getTotal = sum(getRated);
+
+  const giveIds = new Set(give.map((p) => p.id));
+  const getIds = new Set(get.map((p) => p.id));
+  const myAfter = [...myRoster.filter((p) => !giveIds.has(p.id)), ...get];
+  const theirAfter = [...theirRoster.filter((p) => !getIds.has(p.id)), ...give];
+  const round = (n) => Math.round(n * 10) / 10;
+  const myChange = round(weeklyLineupTotal(myAfter, rosterSettings, scoring) - weeklyLineupTotal(myRoster, rosterSettings, scoring));
+  const theirChange = round(weeklyLineupTotal(theirAfter, rosterSettings, scoring) - weeklyLineupTotal(theirRoster, rosterSettings, scoring));
+
+  const gap = getTotal - giveTotal;
+  const scale = Math.max(giveTotal, getTotal, 3);
+  const share = gap / scale;
+  let verdict;
+  if (Math.abs(share) <= 0.15) verdict = { tone: 'fair', label: 'Fair trade', detail: 'Both sides get about the same value.' };
+  else if (share > 0) {
+    verdict = share > 0.4
+      ? { tone: 'win', label: 'Lopsided in your favor', detail: 'You get a lot more value. The other team may say no.' }
+      : { tone: 'win', label: 'You win this trade', detail: 'You get more value than you give.' };
+  } else {
+    verdict = share < -0.4
+      ? { tone: 'lose', label: 'Lopsided against you', detail: 'You give up a lot more value than you get.' }
+      : { tone: 'lose', label: 'They win this trade', detail: 'You give up more value than you get.' };
+  }
+
+  return { give: giveRated, get: getRated, giveTotal, getTotal, myChange, theirChange, verdict, levels };
+};
