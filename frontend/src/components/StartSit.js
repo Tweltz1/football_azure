@@ -10,6 +10,7 @@ import {
   LeagueScoringContext, applyLeagueScoring, applyLeagueScoringToMatchup, useLeagueScoring,
 } from '../data/leagueScoring';
 import UpdatedAt, { timeAgo } from './UpdatedAt';
+import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
 import WhyButton from './WhyButton';
 import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
 import '../App.css';
@@ -17,7 +18,7 @@ import './SeasonTools.css';
 
 const CUSTOM = 'custom';
 const SLEEPER_PREFIX = 'sleeper:';
-// Projections refresh every 30 minutes on the server, so anything older than this is suspect.
+// Projections refresh every few minutes, so anything older than this is suspect.
 const PROJECTIONS_STALE_HOURS = 2;
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1);
 
@@ -626,6 +627,18 @@ const StartSit = ({ userId }) => {
     return () => { cancelled = true; };
   }, [week]);
 
+  // Pick up new projections and injury news while the page stays open, without a loading screen.
+  const refreshTick = useRefreshTick();
+  useEffect(() => {
+    if (refreshTick === 0) return undefined;
+    let cancelled = false;
+    axios.get(`${API_BASE_URL}/startsit${week ? `?week=${week}` : ''}`)
+      .then((response) => { if (!cancelled) setProjections(response.data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTick]);
+
   useEffect(() => {
     axios.get(`${API_BASE_URL}/GetLeagues`)
       .then((response) => setLeagues(response.data || []))
@@ -1088,7 +1101,7 @@ const StartSit = ({ userId }) => {
 
           <p className="startsit-footnote">
             Tap a player for recent games, past games against this opponent, and injured teammates, or tap ? for why we made a call. WR12 means the 12th-most projected points among WRs this week (see Rankings for the full list). ▲/▼ shows the last 3 games against the season average.
-            Projections and stats from Sleeper for the {projections.season} season, refreshed every 30 minutes (hit Refresh on your Sleeper team to reload a roster).
+            Projections and stats from Sleeper for the {projections.season} season, refreshed every {REFRESH_MINUTES} minutes, and this page updates itself while it's open (hit Refresh on your Sleeper team to reload a roster).
             Players listed Out, Doubtful or IR, and players on bye, are kept out of the lineup.
           </p>
         </>
