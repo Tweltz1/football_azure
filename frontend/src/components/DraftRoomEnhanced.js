@@ -308,6 +308,7 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
             disabled={!currentTeam || normalizedStatus !== 'drafting' || Boolean(league?.auctionTimer?.isPaused)}
             disabledReason={boardPadReason}
             onLockIn={handleLockInBoard}
+            maxAmount={quickBidMax}
           />
         </CollapsiblePanel>
       ) : (

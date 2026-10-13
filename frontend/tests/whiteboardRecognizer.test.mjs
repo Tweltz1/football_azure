@@ -1,59 +1,72 @@
-// Accuracy check for the whiteboard number reader: `node --test frontend/tests/whiteboardRecognizer.test.mjs`
-// Synthesises handwriting for every bid from $1 to $200 (see handwriting.mjs), then reads it back.
+// Accuracy checks for the whiteboard number reader: `node --test frontend/tests/whiteboardRecognizer.test.mjs`
+// Synthesises handwriting for every bid from $1 to $200 and reads it back: neat writing (handwriting.mjs)
+// and a much harder messy set (messyHandwriting.mjs). Neither shares shapes with the recognizer's
+// templates. Full report with confusion matrices: `node frontend/tests/benchmark.mjs`.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readNumber, segmentStrokes } from '../src/whiteboard/recognizer.js';
 import { encodeBoard, decodeBoard, BOARD_LIMITS } from '../src/whiteboard/boardCodec.js';
 import { rng, writeNumber } from './handwriting.mjs';
+import { WRITERS, confusion, formatConfusion, numberAccuracy } from './benchmark.mjs';
 
-const measure = (trials, options = {}, throughBoard = false) => {
-  const random = rng(1234);
-  let correct = 0;
-  let total = 0;
-  const misses = {};
-  for (let trial = 0; trial < trials; trial += 1) {
-    for (let value = 1; value <= 200; value += 1) {
-      let strokes = writeNumber(value, random, options);
-      if (throughBoard) strokes = decodeBoard(encodeBoard(strokes));
-      const { amount } = readNumber(strokes);
-      total += 1;
-      if (amount === value) correct += 1;
-      else misses[`${value}->${amount}`] = (misses[`${value}->${amount}`] || 0) + 1;
-    }
-  }
-  return { accuracy: correct / total, correct, total, misses };
-};
-
-const report = (label, result) => {
+const summary = (label, result) => {
   const worst = Object.entries(result.misses).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, n]) => `${k}${n > 1 ? `x${n}` : ''}`);
   console.log(`${label}: ${(result.accuracy * 100).toFixed(1)}% (${result.correct}/${result.total})${worst.length ? `; misses e.g. ${worst.join(', ')}` : ''}`);
 };
 
-test('reads synthetic handwritten bids $1-$200 at 95% or better', () => {
-  const result = measure(3);
-  report('raw strokes, 3 writers per bid', result);
-  assert.ok(result.accuracy >= 0.95, `accuracy ${(result.accuracy * 100).toFixed(1)}%`);
+test('neat handwriting: bids $1-$200 read at 98% or better', () => {
+  const result = numberAccuracy(WRITERS.clean, { trials: 3 });
+  summary('neat, 3 writers per bid', result);
+  assert.ok(result.accuracy >= 0.98, `accuracy ${(result.accuracy * 100).toFixed(1)}%`);
+  const digits = confusion(WRITERS.clean);
+  console.log(`neat, isolated digits ${(digits.accuracy * 100).toFixed(1)}%\n${formatConfusion(digits)}`);
+  assert.ok(digits.accuracy >= 0.98);
 });
 
 test('reads boards after compression to the stored 0-100 format', () => {
-  const result = measure(1, {}, true);
-  report('compressed boards', result);
-  assert.ok(result.accuracy >= 0.93, `accuracy ${(result.accuracy * 100).toFixed(1)}%`);
+  const read = (strokes) => readNumber(decodeBoard(encodeBoard(strokes)));
+  const neat = numberAccuracy(WRITERS.clean, { trials: 1, read });
+  summary('neat, compressed boards', neat);
+  assert.ok(neat.accuracy >= 0.97);
+  const messy = numberAccuracy(WRITERS.messy, { trials: 1, read });
+  summary('messy, compressed boards', messy);
+  assert.ok(messy.accuracy >= 0.9);
 });
 
-test('messier writing (more slant and rotation) still mostly reads', () => {
-  const result = measure(1, { rotation: 12, slant: 0.3, jitter: 1.6 });
-  report('messy (+-12 deg, slant 0.3)', result);
-  assert.ok(result.accuracy >= 0.8);
+test('messy handwriting: rotated, slanted, shaky, touching and finger-sized bids still read', () => {
+  const result = numberAccuracy(WRITERS.messy, { trials: 3 });
+  summary('messy, 3 writers per bid', result);
+  assert.ok(result.accuracy >= 0.94, `accuracy ${(result.accuracy * 100).toFixed(1)}%`);
+  const digits = confusion(WRITERS.messy);
+  console.log(`messy, isolated digits ${(digits.accuracy * 100).toFixed(1)}%\n${formatConfusion(digits)}`);
+  assert.ok(digits.accuracy >= 0.97);
+  digits.matrix.forEach((row, digit) => assert.ok((row[String(digit)] || 0) >= 90, `digit ${digit}`));
 });
 
-test('two-stroke 4, 5 and 7 stay one digit each', () => {
+test('the max-bid hint turns impossible reads into the close runner-up', () => {
+  const plain = numberAccuracy(WRITERS.messy, { trials: 3 });
+  const hinted = numberAccuracy(WRITERS.messy, { trials: 3, read: (strokes) => readNumber(strokes, { max: 200 }) });
+  summary('messy, max bid $200', hinted);
+  assert.ok(hinted.accuracy >= plain.accuracy && hinted.accuracy >= 0.95, `accuracy ${(hinted.accuracy * 100).toFixed(1)}%`);
+  // Never invents an amount over the max, and leaves a read alone when nothing close fits.
+  const random = rng(5);
+  for (const value of [7, 74, 177, 199]) {
+    const strokes = writeNumber(value, random);
+    const { amount } = readNumber(strokes, { max: 120 });
+    assert.ok(amount === value || amount <= 120, `${value} -> ${amount}`);
+  }
+  assert.equal(readNumber(writeNumber(42, rng(1)), { max: 500 }).amount, 42);
+});
+
+test('segmentation: two-stroke 4, 5 and 7 stay one digit; side-by-side 1s split', () => {
   const random = rng(7);
   for (const value of [4, 5, 7, 47, 75, 145]) {
     const strokes = writeNumber(value, random);
     assert.equal(segmentStrokes(strokes).length, String(value).length, `${value}`);
   }
-  assert.deepEqual(readNumber([]), { amount: null, digits: [] });
+  // Two upright strokes side by side are 11, not a thick 1.
+  assert.equal(readNumber([[{ x: 0, y: 0 }, { x: 1, y: 100 }], [{ x: 14, y: 0 }, { x: 15, y: 100 }]]).amount, 11);
+  assert.deepEqual(readNumber([]), { amount: null, digits: [], groups: [] });
 });
 
 test('encoded boards are small and inside the server caps', () => {

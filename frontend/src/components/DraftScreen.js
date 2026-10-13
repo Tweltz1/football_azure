@@ -6,7 +6,7 @@ import { createDraftConnection } from '../realtime';
 import { API_BASE_URL } from '../api';
 import WhiteboardPad from '../whiteboard/WhiteboardPad';
 import { BoardAwardPanel, BoardGrid, BoardSketch, pickLabel, reviewLabel } from '../whiteboard/BoardViews';
-import { biddingStyleLabel, isAutoReadLeague, isWhiteboardLeague } from '../whiteboard/biddingStyle';
+import { biddingStyleLabel, isAutoReadLeague, isWhiteboardLeague, maxBidFor } from '../whiteboard/biddingStyle';
 import '../App.css';
 
 const TIMER_POLL_MS = 1000;
@@ -634,6 +634,7 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
                     onLockIn={handleLockInBoard}
                     onWithdraw={handleWithdrawBoard}
                     showLocked={false}
+                    maxAmount={maxBidFor(league, (league.teams || []).find(t => t.ownerId === user.userId))}
                 />
             ) : (
             <div className="bid-control-row auction-bid-controls">

@@ -12,6 +12,7 @@ const MAX_STROKES = 30;
  * commissioner decides the award once the boards are revealed.
  *
  * onLockIn(amount, board) should return a promise; reject with a message to show it under the pad.
+ * maxAmount (the bidder's max bid) lets the reader prefer a reading they could actually bid.
  */
 const WhiteboardPad = ({
   autoRead = false,
@@ -22,6 +23,7 @@ const WhiteboardPad = ({
   onWithdraw,
   compact = false,
   showLocked = true,
+  maxAmount = null,
 }) => {
   const canvasRef = useRef(null);
   const sizeRef = useRef({ width: 0, height: 0 });
@@ -91,9 +93,10 @@ const WhiteboardPad = ({
       setRead(null);
       return undefined;
     }
-    const timer = window.setTimeout(() => setRead(readNumber(strokes).amount), 120);
+    const max = Number(maxAmount) > 0 ? Number(maxAmount) : null;
+    const timer = window.setTimeout(() => setRead(readNumber(strokes, { max }).amount), 120);
     return () => window.clearTimeout(timer);
-  }, [autoRead, strokes]);
+  }, [autoRead, strokes, maxAmount]);
 
   const pointFrom = (event) => {
     const rect = canvasRef.current.getBoundingClientRect();

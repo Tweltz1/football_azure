@@ -9,6 +9,7 @@ Live fantasy football auction draft room at https://hood-league.com.
 | `supabase/functions/_shared/` | Draft rules, handlers and the generated player pool |
 | `supabase/migrations/` | Database tables |
 | `supabase/tests/` | API tests: `node --test supabase/tests/handlers.test.ts` |
+| `frontend/tests/` | Whiteboard handwriting reader: `node --test frontend/tests/whiteboardRecognizer.test.mjs`; accuracy report with per-digit confusion matrices: `node frontend/tests/benchmark.mjs` |
 | `scripts/` | Weekly player pool generator (run by the Update Player Pool action) |
 
 Setup steps for a new environment are in [docs/supabase-cloudflare-setup.md](docs/supabase-cloudflare-setup.md).
