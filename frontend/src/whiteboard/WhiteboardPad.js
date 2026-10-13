@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { encodeBoard } from './boardCodec';
 import { readNumber } from './recognizer';
 import { BoardSketch } from './BoardViews';
+import { usePersonalHandwriting } from './personalHandwriting';
 import './whiteboard.css';
 
 const MAX_STROKES = 30;
@@ -12,7 +13,8 @@ const MAX_STROKES = 30;
  * commissioner decides the award once the boards are revealed.
  *
  * onLockIn(amount, board) should return a promise; reject with a message to show it under the pad.
- * maxAmount (the bidder's max bid) lets the reader prefer a reading they could actually bid.
+ * userId loads the bidder's own past digits so the reader learns their handwriting; maxAmount (their
+ * max bid) lets it prefer a reading they could actually bid.
  */
 const WhiteboardPad = ({
   autoRead = false,
@@ -23,6 +25,7 @@ const WhiteboardPad = ({
   onWithdraw,
   compact = false,
   showLocked = true,
+  userId = null,
   maxAmount = null,
 }) => {
   const canvasRef = useRef(null);
@@ -32,6 +35,7 @@ const WhiteboardPad = ({
   const [read, setRead] = useState(null);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState('');
+  const personal = usePersonalHandwriting(userId, autoRead);
 
   const paint = useCallback((list = strokes) => {
     const canvas = canvasRef.current;
@@ -94,9 +98,9 @@ const WhiteboardPad = ({
       return undefined;
     }
     const max = Number(maxAmount) > 0 ? Number(maxAmount) : null;
-    const timer = window.setTimeout(() => setRead(readNumber(strokes, { max }).amount), 120);
+    const timer = window.setTimeout(() => setRead(readNumber(strokes, { personal, max }).amount), 120);
     return () => window.clearTimeout(timer);
-  }, [autoRead, strokes, maxAmount]);
+  }, [autoRead, strokes, personal, maxAmount]);
 
   const pointFrom = (event) => {
     const rect = canvasRef.current.getBoundingClientRect();

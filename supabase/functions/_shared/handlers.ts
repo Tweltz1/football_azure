@@ -15,6 +15,7 @@ import {
   secondsFromNow, startNextPlayer,
 } from './draftLogic.ts';
 import { diffObjects } from './diff.ts';
+import { learnFromBoard, sanitizeHandwriting } from './handwriting.ts';
 import { draftNumberOf, historySummary, isCompleted, snapshotDraft } from './history.ts';
 import { type FetchJson, getMatchupHistory, getWeekProjections } from './startSit.ts';
 import { getSleeperTeams, isValidSleeperUsername, SleeperUserNotFound } from './sleeperImport.ts';
@@ -155,6 +156,7 @@ function normalizeProfile(profile: UserProfile): UserProfile {
   profile.playerTiers = profile.playerTiers ?? {};
   profile.budgetPlan = profile.budgetPlan ?? {};
   profile.budgetRosterSettings = profile.budgetRosterSettings ?? {};
+  profile.handwriting = sanitizeHandwriting(profile.handwriting);
   return profile;
 }
 
@@ -168,6 +170,7 @@ const newProfile = (userId: string, displayName: string): UserProfile => ({
   playerTiers: {},
   budgetPlan: {},
   budgetRosterSettings: {},
+  handwriting: {},
 });
 
 async function findProfile(ctx: Ctx, userId: string): Promise<UserProfile | null> {
@@ -188,6 +191,7 @@ const profileResponse = (profile: UserProfile) => {
     playerTiers: p.playerTiers,
     budgetPlan: p.budgetPlan,
     budgetRosterSettings: p.budgetRosterSettings,
+    handwriting: p.handwriting,
   };
 };
 
@@ -834,7 +838,10 @@ async function awardBoard(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
   if (!winningTeamId) return bad('Choose the winning team.');
   if (amount < 1) return bad('Bid must be at least $1.');
 
+  // Set inside the update (which can retry), used once the award has been saved.
+  let learn = null as { userId: string; board: number[][] } | null;
   const result = await updateLeague(ctx, leagueId, (league) => {
+    learn = null;
     if (league.adminId !== ctx.userId) return unauthorized();
     const review = league.boardReview;
     if (str(league.status).toLowerCase() !== BOARD_REVIEW || !review) return bad('There are no boards waiting to be awarded.');
@@ -856,9 +863,32 @@ async function awardBoard(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
     league.activeBids = { ...review.bids, [team.ownerId]: { ...winnerBid, amount } };
     ctx.log.info(`Admin awarded ${player.name} to ${team.name} for $${amount} from the whiteboards.`);
     awardPlayerToTeam(league, player, team, amount, ctx.now());
+    if (league.biddingMode === WHITEBOARD_AUTO && Array.isArray(winnerBid.board)) {
+      learn = { userId: team.ownerId, board: winnerBid.board };
+    }
     return null;
   });
-  return done(result, (u: Updated) => leagueBody(ctx, u));
+  const response = done(result, (u: Updated) => leagueBody(ctx, u));
+  if (response.status === 200 && learn) await learnHandwriting(ctx, learn, amount);
+  return response;
+}
+
+/**
+ * Auto-read leagues: the awarded board is now public and its amount confirmed by the commissioner, so
+ * it becomes labelled handwriting for the winner (only boards revealed in the review ever get here).
+ * Best effort: a failure is logged and never undoes the award.
+ */
+async function learnHandwriting(ctx: Ctx, { userId, board }: { userId: string; board: number[][] }, amount: number) {
+  try {
+    const profile = await findProfile(ctx, userId);
+    if (!profile) return;
+    const handwriting = learnFromBoard(profile.handwriting, board, amount);
+    if (!handwriting) return;
+    profile.handwriting = handwriting;
+    await ctx.profiles.upsert(normalizeProfile(profile));
+  } catch (error) {
+    ctx.log.warn(`Could not save handwriting examples for user ${userId}.`, error);
+  }
 }
 
 async function undoLastPick(ctx: Ctx, leagueId: string): Promise<Res> {

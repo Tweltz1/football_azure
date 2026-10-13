@@ -6,7 +6,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readNumber, segmentStrokes } from '../src/whiteboard/recognizer.js';
 import { encodeBoard, decodeBoard, BOARD_LIMITS } from '../src/whiteboard/boardCodec.js';
+import { learnFromBoard } from '../../supabase/functions/_shared/handwriting.ts';
 import { rng, writeNumber } from './handwriting.mjs';
+import { MESSY_GLYPHS, writeMessy } from './messyHandwriting.mjs';
 import { WRITERS, confusion, formatConfusion, numberAccuracy } from './benchmark.mjs';
 
 const summary = (label, result) => {
@@ -67,6 +69,48 @@ test('segmentation: two-stroke 4, 5 and 7 stay one digit; side-by-side 1s split'
   // Two upright strokes side by side are 11, not a thick 1.
   assert.equal(readNumber([[{ x: 0, y: 0 }, { x: 1, y: 100 }], [{ x: 14, y: 0 }, { x: 15, y: 100 }]]).amount, 11);
   assert.deepEqual(readNumber([]), { amount: null, digits: [], groups: [] });
+});
+
+// A writer whose 4 is a rounded, closed loop on a stem: to the built-in templates it is a 9.
+const S = (...pts) => ({ smooth: true, pts });
+const L = (...pts) => ({ smooth: false, pts });
+const ODD_FOUR = [S([66, 30], [50, 8], [30, 16], [28, 42], [48, 54], [70, 50]), L([66, 10], [64, 96])];
+
+test('personal handwriting: learning a writer\'s 4 that looks like a 9', () => {
+  const random = rng(4);
+  // This writer has one way of writing each digit; their 9 has a curved tail.
+  const theirs = Object.fromEntries(Object.entries(MESSY_GLYPHS).map(([d, styles]) => [d, [styles[Math.floor(random() * styles.length)]]]));
+  theirs[4] = [ODD_FOUR];
+  theirs[9] = [MESSY_GLYPHS[9][1]];
+  const write = (value) => writeMessy(value, random, { rotation: 10, slant: 12, finger: false, glyphs: theirs });
+
+  // What the server saves from their awarded boards (the same code as a real award): a few $4 and $9 bids.
+  let personal = {};
+  for (let i = 0; i < 4; i += 1) {
+    personal = learnFromBoard(personal, encodeBoard(write(4)), 4);
+    personal = learnFromBoard(personal, encodeBoard(write(9)), 9);
+  }
+  assert.equal(personal['4'].length, 4);
+
+  const tally = { fours: [0, 0], nines: [0, 0], numbers: [0, 0] };
+  const N = 120;
+  for (let i = 0; i < N; i += 1) {
+    const four = write(4);
+    tally.fours[0] += readNumber(four).amount === 4;
+    tally.fours[1] += readNumber(four, { personal }).amount === 4;
+    const nine = write(9);
+    tally.nines[0] += readNumber(nine).amount === 9;
+    tally.nines[1] += readNumber(nine, { personal }).amount === 9;
+    const value = 1 + Math.floor(random() * 200);
+    const number = write(value);
+    tally.numbers[0] += readNumber(number).amount === value;
+    tally.numbers[1] += readNumber(number, { personal }).amount === value;
+  }
+  console.log(`odd-4 writer, of ${N}: their 4s ${tally.fours.join(' -> ')}, their 9s ${tally.nines.join(' -> ')}, their bids ${tally.numbers.join(' -> ')} (generic -> with personal examples)`);
+  assert.ok(tally.fours[0] < N * 0.2, 'the generic templates read their 4 as something else');
+  assert.ok(tally.fours[1] >= N * 0.7, 'their own examples fix it');
+  assert.ok(tally.nines[1] >= N * 0.9, 'their 9s still read');
+  assert.ok(tally.numbers[1] > tally.numbers[0], 'their bids read better overall');
 });
 
 test('encoded boards are small and inside the server caps', () => {

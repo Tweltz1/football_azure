@@ -634,6 +634,7 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
                     onLockIn={handleLockInBoard}
                     onWithdraw={handleWithdrawBoard}
                     showLocked={false}
+                    userId={user.userId}
                     maxAmount={maxBidFor(league, (league.teams || []).find(t => t.ownerId === user.userId))}
                 />
             ) : (

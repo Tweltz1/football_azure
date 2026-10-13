@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { handle, type Ctx } from '../functions/_shared/handlers.ts';
 import { applyOps, diffObjects } from '../functions/_shared/diff.ts';
+import { HANDWRITING_LIMITS, learnFromBoard, sanitizeHandwriting, splitBoardDigits } from '../functions/_shared/handwriting.ts';
 import { getInitialPlayerPool } from '../functions/_shared/playerData.ts';
 import { buildDefenseTable, clearStartSitCache } from '../functions/_shared/startSit.ts';
 import { clearSleeperCache } from '../functions/_shared/sleeperImport.ts';
@@ -970,4 +971,113 @@ test('whiteboard leagues: invite join, finish, history without drawings, and a n
   assert.equal(league.status, 'created');
   assert.equal(league.biddingMode, 'whiteboard-auto', 'the bidding style carries into the new season');
   assert.equal(league.boardReview, null);
+});
+
+// ---- Personal handwriting (whiteboard auto-read) --------------------------------------------
+
+// "41" drawn as a two-stroke 4 and a 1, with a clear gap between them.
+const board41 = (wiggle = 0) => [[30, 0, 5 + wiggle, 60, 45, 60], [35, 30, 35, 100], [70, 0, 70 + wiggle, 100]];
+// "14": a 1, then a 4.
+const board14 = (wiggle = 0) => [[5, 0, 5 + wiggle, 100], [50, 0, 25 + wiggle, 60, 65, 60], [55, 30, 55, 100]];
+
+async function boardRound(world: ReturnType<typeof memoryWorld>, leagueId: string, bids: Record<string, { amount: number; board: number[][] }>, award: { owner: string; amount: number }) {
+  for (const [userId, bid] of Object.entries(bids)) {
+    assert.equal((await world.call(userId, 'POST', `leagues/${leagueId}/bid`, bid)).status, 200);
+  }
+  world.advance(21);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  const team = world.league(leagueId).teams.find((t) => t.ownerId === award.owner)!;
+  const res = await world.call('admin', 'POST', `leagues/${leagueId}/board-award`, { winningTeamId: team.id, amount: award.amount });
+  assert.equal(res.status, 200, String(res.body));
+  world.advance(31);
+  await world.call('admin', 'POST', `leagues/${leagueId}/nextRound`);
+}
+
+const handwritingOf = async (world: ReturnType<typeof memoryWorld>, userId: string) =>
+  ((await world.call(userId, 'POST', 'user-profile', {})).body as any).handwriting;
+
+test('handwriting: an awarded auto-read board teaches the winner their own digits', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world);
+  for (const userId of ['admin', 'bob', 'cara', 'dan']) await world.call(userId, 'POST', 'user-profile', {});
+  assert.deepEqual(await handwritingOf(world, 'bob'), {});
+
+  // Locking in (a sealed bid) teaches nothing.
+  await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 47, board: board41() });
+  await world.call('cara', 'POST', `leagues/${leagueId}/bid`, { amount: 12, board: board41(3) });
+  assert.deepEqual(await handwritingOf(world, 'bob'), {});
+  world.advance(21);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  assert.deepEqual(await handwritingOf(world, 'bob'), {}, 'not even once the boards are revealed');
+
+  // The commissioner corrects the read to $41: that is the label.
+  const bobTeam = world.league(leagueId).teams.find((t) => t.ownerId === 'bob')!;
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/board-award`, { winningTeamId: bobTeam.id, amount: 41 })).status, 200);
+
+  const learned = await handwritingOf(world, 'bob');
+  assert.deepEqual(Object.keys(learned).sort(), ['1', '4']);
+  assert.equal(learned['4'].length, 1);
+  assert.deepEqual(learned['4'][0], [[25, 0, 0, 60, 40, 60], [30, 30, 30, 100]], 'each digit is rescaled to its own 0-100 box');
+  assert.deepEqual(learned['1'][0], [[0, 0, 0, 100]]);
+  for (const other of ['admin', 'cara', 'dan']) assert.deepEqual(await handwritingOf(world, other), {}, `${other} learned nothing`);
+
+  // A profile edit from the client can't overwrite (or plant) handwriting.
+  const edit = await world.call('bob', 'POST', 'user-profile/bob', { defaultTeamName: 'Bobcats', handwriting: { 7: [[[0, 0, 100, 100]]] } });
+  assert.equal(edit.status, 200);
+  assert.deepEqual((edit.body as any).handwriting, learned);
+});
+
+test('handwriting: keeps the newest six per digit and skips boards that do not split cleanly', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world);
+  await world.call('bob', 'POST', 'user-profile', {});
+  for (let round = 0; round < 7; round += 1) {
+    await boardRound(world, leagueId, { bob: { amount: 14, board: board14(round) } }, { owner: 'bob', amount: 14 });
+  }
+  const learned = await handwritingOf(world, 'bob');
+  assert.equal(learned['4'].length, HANDWRITING_LIMITS.perDigit);
+  assert.equal(learned['1'].length, HANDWRITING_LIMITS.perDigit);
+  assert.deepEqual(learned['1'][5], learnFromBoard({}, board14(6), 14)!['1'][0], 'the newest example is last');
+  assert.deepEqual(learned['1'][0], learnFromBoard({}, board14(1), 14)!['1'][0], 'the oldest was dropped');
+
+  // Three groups for a two-digit amount: nothing is learned.
+  await boardRound(world, leagueId, { bob: { amount: 14, board: [...board14(), [90, 0, 90, 100]] } }, { owner: 'bob', amount: 14 });
+  assert.deepEqual(await handwritingOf(world, 'bob'), learned);
+  // Overlapping digits merge into one group: nothing is learned.
+  await boardRound(world, leagueId, { bob: { amount: 14, board: [[28, 0, 28, 100], [50, 0, 25, 60, 65, 60], [55, 30, 55, 100]] } }, { owner: 'bob', amount: 14 });
+  assert.deepEqual(await handwritingOf(world, 'bob'), learned);
+});
+
+test('handwriting: manual whiteboard leagues never save examples', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world, 'whiteboard-manual');
+  await world.call('bob', 'POST', 'user-profile', {});
+  await boardRound(world, leagueId, { bob: { amount: 0, board: board41() } }, { owner: 'bob', amount: 41 });
+  assert.deepEqual(await handwritingOf(world, 'bob'), {});
+});
+
+test('handwriting: digit split, rescaling and stored-data validation', () => {
+  assert.deepEqual(splitBoardDigits(board41()).map((g) => g.length), [2, 1]);
+  assert.deepEqual(splitBoardDigits([[60, 0, 60, 100], [0, 0, 10, 100]]).map((g) => g[0][0]), [0, 60], 'left to right');
+  assert.equal(learnFromBoard({}, board41(), 4), null, 'two groups, one digit');
+  assert.equal(learnFromBoard({}, board41(), 0), null);
+  assert.equal(learnFromBoard({}, [], 41), null);
+
+  // A long scribble is thinned to the per-example point cap.
+  const scribble = [Array.from({ length: 400 }, (_, i) => (i % 2 ? (i * 13) % 101 : Math.round(i / 8)))];
+  const thin = learnFromBoard({}, scribble, 8)!['8'][0];
+  assert.ok(thin[0].length / 2 <= HANDWRITING_LIMITS.points);
+
+  const stored = {
+    4: [[[0, 0, 100, 100]], 'junk', [[0, 0, 101, 5]], [[1.5, 2, 3, 4]], [[1, 2, 3]]],
+    x: [[[0, 0, 1, 1]]],
+    7: Array.from({ length: 9 }, (_, i) => [[i, 0, i, 100]]),
+  };
+  const clean = sanitizeHandwriting(stored);
+  assert.deepEqual(clean['4'], [[[0, 0, 100, 100]]]);
+  assert.equal(clean.x, undefined);
+  assert.equal(clean['7'].length, 6);
+  assert.deepEqual(clean['7'][0], [[3, 0, 3, 100]], 'keeps the newest');
+  assert.deepEqual(sanitizeHandwriting('nope'), {});
+  assert.deepEqual(sanitizeHandwriting([1, 2]), {});
 });

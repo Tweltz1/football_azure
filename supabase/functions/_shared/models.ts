@@ -141,6 +141,8 @@ export interface UserProfile {
   playerTiers: Record<string, number>;
   budgetPlan: Record<string, number>;
   budgetRosterSettings: Record<string, number>;
+  /** Labelled digits from the user's awarded whiteboard bids (see handwriting.ts). Written by the server only. */
+  handwriting?: Record<string, number[][][]>;
 }
 
 export const defaultRosterSettings = (): RosterSettings => ({
