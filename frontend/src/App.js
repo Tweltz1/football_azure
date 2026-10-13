@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
 import Home from './components/Home';
 import Leagues from './components/Leagues';
 import DraftRoomEnhanced from './components/DraftRoomEnhanced';
@@ -45,10 +45,10 @@ function App() {
           </Link>
 
           <div className="nav-links" aria-label="Primary navigation">
-            <Link to="/">Home</Link>
-            <Link to="/leagues">Leagues</Link>
-            <Link to="/create-league">Create</Link>
-            <Link to="/profile">Profile</Link>
+            <NavLink to="/" end>Home</NavLink>
+            <NavLink to="/leagues">Leagues</NavLink>
+            <NavLink to="/create-league">Create</NavLink>
+            <NavLink to="/profile">Profile</NavLink>
           </div>
 
           <div className="nav-user">

@@ -102,7 +102,7 @@ const CompareValue = ({ player, row, analysis, positionRanks, statsLoading }) =>
   }
 
   if (row.key === 'position') {
-    return <span className="position-badge">{player.position}</span>;
+    return <span className={`position-badge pos-${String(player.position || '').toLowerCase()}`}>{player.position}</span>;
   }
 
   if (row.key === 'team') {

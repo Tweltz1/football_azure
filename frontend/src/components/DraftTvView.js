@@ -95,8 +95,11 @@ const DraftTvView = () => {
           <h1>{league.name}</h1>
         </div>
         <div className="tv-status-strip">
-          <span>{String(league.status || 'waiting').toUpperCase()}</span>
-          <strong className={isManual ? 'manual-current-player' : ''}>
+          <span className={`tv-status-bug status-${status || 'waiting'}`}>{String(league.status || 'waiting').toUpperCase()}</span>
+          <strong
+            className={isManual ? 'manual-current-player' : `tv-clock${isAuction && timer > 0 && timer <= 5 ? ' is-urgent' : ''}`}
+            style={isAuction ? { '--timer-progress': Math.min(1, Math.max(0, timer / (Number(status === 'tiebreaker' ? league.draftTimers?.rebidTimer : league.draftTimers?.bidTimer) || 20))) } : undefined}
+          >
             {isManual ? (currentPlayer?.name || 'No player up') : formatTimer(timer)}
           </strong>
         </div>
@@ -110,7 +113,7 @@ const DraftTvView = () => {
               <>
                 <h2>{currentPlayer.name}</h2>
                 <div className="tv-player-meta">
-                  <span>{currentPlayer.position}</span>
+                  <span className={`pos-badge pos-${String(currentPlayer.position || '').toLowerCase()}`}>{currentPlayer.position}</span>
                   <span>{currentPlayer.team}</span>
                   <span>Bye {currentPlayer.bye || '-'}</span>
                   <span>Rank #{currentPlayer.rank || '-'}</span>
@@ -123,7 +126,7 @@ const DraftTvView = () => {
 
           <div className="tv-current-bid">
             <p className="tv-kicker">Current Bid</p>
-            <strong>{topBid ? `$${topBid.amount}` : '$0'}</strong>
+            <strong key={topBid ? `${topBid.userId}-${topBid.amount}` : 'none'} className="bid-flash">{topBid ? `$${topBid.amount}` : '$0'}</strong>
             <span>{topBid ? topBid.teamName : 'No bids yet'}</span>
           </div>
 
@@ -139,7 +142,7 @@ const DraftTvView = () => {
               <>
                 <h2>{currentPlayer.name}</h2>
                 <div className="tv-player-meta">
-                  <span>{currentPlayer.position}</span>
+                  <span className={`pos-badge pos-${String(currentPlayer.position || '').toLowerCase()}`}>{currentPlayer.position}</span>
                   <span>{currentPlayer.team}</span>
                   <span>Bye {currentPlayer.bye || '-'}</span>
                   <span>Rank #{currentPlayer.rank || '-'}</span>
@@ -177,7 +180,7 @@ const DraftTvView = () => {
               {(team.roster || []).length > 0 ? (team.roster || []).map((spot, index) => {
                 const player = spot.player || {};
                 return (
-                  <li key={`${team.id}-${player.id || index}`}>
+                  <li key={`${team.id}-${player.id || index}`} className={`pos-${String(player.position || spot.position || '').toLowerCase()}`}>
                     <strong>{player.name || 'Unknown Player'}</strong>
                     <span>{player.position || spot.position || '-'} / {player.team || '-'} / Bye {player.bye || '-'}</span>
                   </li>

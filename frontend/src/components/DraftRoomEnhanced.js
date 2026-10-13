@@ -297,7 +297,7 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
             </button>
           </div>
           {currentTeam && <p className="draft-muted">Max bid: ${quickBidMax} | Minimum: ${quickBidMin}</p>}
-          {typeof activeBid === 'number' && <p className="draft-muted">Your active bid: ${activeBid}</p>}
+          {typeof activeBid === 'number' && <p key={activeBid} className="draft-muted quick-bid-active bid-flash">Your active bid: <strong>${activeBid}</strong></p>}
           {isCappedBelowMinimum && <p className="draft-muted">You are capped below the minimum bid for this player.</p>}
           {isTieBreaker && !userCanBidInPhase && <p className="draft-muted">Only tied teams can bid in this round.</p>}
           {isFinalTie && <p className="draft-muted">Final tie is locked for admin resolution.</p>}

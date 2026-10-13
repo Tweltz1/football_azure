@@ -271,7 +271,7 @@ const Home = () => {
                   <span>
                     <span className="player-name">{player.name}</span>
                     <span className="player-subline">
-                      <span className="position-badge">{player.position}</span>
+                      <span className={`position-badge pos-${String(player.position || '').toLowerCase()}`}>{player.position}</span>
                       <span className="team-badge">{player.team}</span>
                       <span className={`status-badge ${availability.tone}`} title={availability.text}>{availability.label}</span>
                       {isFavorite && <span className="note-badge">Favorite</span>}
