@@ -3,12 +3,13 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
   SCORING_OPTIONS, STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
-  vacatedPoints, withProjections, defenseMatchup, boxLine,
+  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges,
 } from '../data/startSitUtils';
 import '../App.css';
 import './SeasonTools.css';
 
 const CUSTOM = 'custom';
+const SLEEPER_PREFIX = 'sleeper:';
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1);
 
 // Per-browser conveniences only; the page works without them.
@@ -229,6 +230,9 @@ const StartSit = ({ userId }) => {
   const [rosterSearch, setRosterSearch] = useState('');
   const [compareSearch, setCompareSearch] = useState('');
   const [insightId, setInsightId] = useState(null);
+  const [sleeperName, setSleeperName] = useState(() => readSetting('hl-startsit-sleeper-user', ''));
+  const [sleeperImport, setSleeperImport] = useState(null);
+  const [sleeperStatus, setSleeperStatus] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -258,14 +262,49 @@ const StartSit = ({ userId }) => {
   useEffect(() => writeSetting('hl-startsit-source', source), [source]);
   useEffect(() => writeSetting('hl-startsit-custom', customIds), [customIds]);
 
+  const importSleeper = async (username, { selectFirst }) => {
+    const name = String(username || '').trim();
+    if (!name) return;
+    setSleeperStatus('Loading your Sleeper teams...');
+    try {
+      const response = await axios.get(`${API_BASE_URL}/startsit/sleeper?username=${encodeURIComponent(name)}`);
+      const data = response.data;
+      setSleeperImport(data);
+      writeSetting('hl-startsit-sleeper-user', name);
+      if (data.teams.length === 0) {
+        setSleeperStatus(`${data.displayName} has no Sleeper teams for the ${data.season} season.`);
+        return;
+      }
+      setSleeperStatus('');
+      if (selectFirst) {
+        setSource(`${SLEEPER_PREFIX}${data.teams[0].leagueId}`);
+        setScoring(data.teams[0].scoring);
+      }
+    } catch (error) {
+      setSleeperStatus(String(error.response?.data || 'Could not reach Sleeper. Please try again.'));
+    }
+  };
+
+  // Reload the Sleeper teams for a username saved on an earlier visit.
+  useEffect(() => {
+    const saved = readSetting('hl-startsit-sleeper-user', '');
+    if (saved) importSleeper(saved, { selectFirst: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const sleeperTeams = sleeperImport?.teams || [];
+
   const myTeams = useMemo(() => leagues
     .map((league) => ({ league, team: (league.teams || []).find((t) => t.ownerId === userId) }))
     .filter(({ team }) => team && (team.roster || []).length > 0), [leagues, userId]);
 
-  // Default to the first league with a drafted roster, unless the viewer picked something else before.
-  const activeSource = source === CUSTOM || myTeams.some(({ league }) => league.id === source)
+  // Keep the viewer's last pick when it still exists; otherwise a Sleeper team, then a drafted roster.
+  const sourceExists = source === CUSTOM
+    || myTeams.some(({ league }) => league.id === source)
+    || sleeperTeams.some((t) => `${SLEEPER_PREFIX}${t.leagueId}` === source);
+  const activeSource = sourceExists
     ? source
-    : (myTeams[0]?.league.id || CUSTOM);
+    : (sleeperTeams[0] ? `${SLEEPER_PREFIX}${sleeperTeams[0].leagueId}` : (myTeams[0]?.league.id || CUSTOM));
 
   const projectionsById = useMemo(
     () => new Map((projections?.players || []).map((p) => [p.id, p])),
@@ -273,12 +312,23 @@ const StartSit = ({ userId }) => {
   );
 
   const activeTeam = myTeams.find(({ league }) => league.id === activeSource);
-  const rosterSettings = activeTeam ? activeTeam.league.rosterSettings : STANDARD_LINEUP;
+  const activeSleeper = sleeperTeams.find((t) => `${SLEEPER_PREFIX}${t.leagueId}` === activeSource);
+  const rosterSettings = useMemo(() => {
+    if (activeSleeper) return { slots: activeSleeper.slots };
+    return activeTeam ? activeTeam.league.rosterSettings : STANDARD_LINEUP;
+  }, [activeSleeper, activeTeam]);
 
   const rosterPlayers = useMemo(() => {
+    if (activeSleeper) return activeSleeper.players;
     if (activeTeam) return (activeTeam.team.roster || []).map((spot) => spot.player).filter(Boolean);
     return customIds.map((id) => projectionsById.get(id) || { id, name: id, position: '', team: '' });
-  }, [activeTeam, customIds, projectionsById]);
+  }, [activeSleeper, activeTeam, customIds, projectionsById]);
+
+  const changeSource = (value) => {
+    setSource(value);
+    const team = sleeperTeams.find((t) => `${SLEEPER_PREFIX}${t.leagueId}` === value);
+    if (team) setScoring(team.scoring);
+  };
 
   const shownWeek = projections?.week || week;
   const roster = useMemo(
@@ -286,6 +336,7 @@ const StartSit = ({ userId }) => {
     [rosterPlayers, projectionsById, scoring, shownWeek],
   );
   const lineup = useMemo(() => buildLineup(roster, rosterSettings), [roster, rosterSettings]);
+  const changes = activeSleeper ? lineupChanges(lineup, activeSleeper.starters, roster) : [];
 
   const searchPlayers = (query, excludeIds) => {
     const q = query.trim().toLowerCase();
@@ -330,7 +381,10 @@ const StartSit = ({ userId }) => {
           </label>
           <label>
             Roster
-            <select value={activeSource} onChange={(e) => setSource(e.target.value)}>
+            <select value={activeSource} onChange={(e) => changeSource(e.target.value)}>
+              {sleeperTeams.map((t) => (
+                <option key={t.leagueId} value={`${SLEEPER_PREFIX}${t.leagueId}`}>{t.teamName} (Sleeper: {t.leagueName})</option>
+              ))}
               {myTeams.map(({ league, team }) => (
                 <option key={league.id} value={league.id}>{team.name} ({league.name})</option>
               ))}
@@ -350,6 +404,33 @@ const StartSit = ({ userId }) => {
 
       {projections && !loadingProjections && (
         <>
+          <section className="card startsit-panel">
+            <div className="player-board-heading">
+              <div>
+                <p className="section-kicker">Sleeper</p>
+                <h2>{sleeperTeams.length ? `Connected as ${sleeperImport.displayName}` : 'Import your Sleeper team'}</h2>
+              </div>
+              {sleeperTeams.length > 0 && <div className="board-count">{sleeperTeams.length} team{sleeperTeams.length === 1 ? '' : 's'}</div>}
+            </div>
+            <form
+              className="startsit-sleeper-form"
+              onSubmit={(e) => { e.preventDefault(); importSleeper(sleeperName, { selectFirst: true }); }}
+            >
+              <input
+                type="text"
+                placeholder="Sleeper username"
+                value={sleeperName}
+                autoCapitalize="none"
+                autoCorrect="off"
+                onChange={(e) => setSleeperName(e.target.value)}
+              />
+              <button type="submit" className="create-button">{sleeperTeams.length ? 'Refresh' : 'Import'}</button>
+            </form>
+            <p className="startsit-help">
+              {sleeperStatus || 'Uses your Sleeper roster, lineup slots and scoring. Only your username is needed, no password.'}
+            </p>
+          </section>
+
           {activeSource === CUSTOM && (
             <section className="card startsit-panel">
               <div className="player-board-heading">
@@ -400,6 +481,26 @@ const StartSit = ({ userId }) => {
                 </div>
                 <div className="board-count">{lineup.total.toFixed(1)} pts</div>
               </div>
+              {activeSleeper && roster.length > 0 && (
+                <div className={`startsit-verdict ${changes.length ? '' : 'close'} startsit-changes`}>
+                  {changes.length === 0
+                    ? 'Your Sleeper lineup already matches the best projected lineup.'
+                    : (
+                      <>
+                        <span>Changes from your current Sleeper lineup:</span>
+                        <ul>
+                          {changes.map(({ start, sit, gain }) => (
+                            <li key={start.id}>
+                              Start <strong>{start.name}</strong>
+                              {sit ? <> over <strong>{sit.name}</strong>{benchReason(sit) ? ` (${benchReason(sit)})` : ''}</> : ' in an empty slot'}
+                              {gain > 0 ? ` (+${gain.toFixed(1)} pts)` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                </div>
+              )}
               {roster.length === 0 ? (
                 <div className="empty-state">
                   {activeSource === CUSTOM

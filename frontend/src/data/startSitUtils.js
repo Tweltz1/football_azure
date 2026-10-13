@@ -26,8 +26,18 @@ const toCount = (value) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 };
 
-/** Starting slots for a league's roster settings, in the order they are filled. */
+/**
+ * Starting slots for a league's roster settings, in display order. Settings can also carry an explicit
+ * `slots` list ([{ label, positions }]), as imported Sleeper leagues do.
+ */
 export const buildSlots = (rosterSettings = STANDARD_LINEUP) => {
+  if (Array.isArray(rosterSettings?.slots)) {
+    return rosterSettings.slots.map((slot, index) => ({
+      key: `${slot.label}-${index}`,
+      label: slot.label,
+      positions: (slot.positions || []).map(normalizePosition),
+    }));
+  }
   const settings = { ...STANDARD_LINEUP, ...rosterSettings };
   const slots = [];
   const add = (label, positions, count) => {
@@ -74,11 +84,15 @@ export const buildLineup = (players, rosterSettings) => {
     .sort(sortByPoints);
   const used = new Set();
 
-  const starters = slots.map((slot) => {
+  // Fill the narrowest slots first (QB before FLEX before SUPERFLEX), then show them in league order.
+  const fillOrder = slots.map((slot, index) => ({ slot, index })).sort((a, b) => a.slot.positions.length - b.slot.positions.length || a.index - b.index);
+  const picks = new Map();
+  fillOrder.forEach(({ slot }) => {
     const pick = available.find((p) => !used.has(p.id) && slot.positions.includes(p.position));
     if (pick) used.add(pick.id);
-    return { slot, player: pick || null };
+    picks.set(slot.key, pick || null);
   });
+  const starters = slots.map((slot) => ({ slot, player: picks.get(slot.key) }));
 
   const bench = players.filter((p) => !used.has(p.id)).sort(sortByPoints);
   const total = starters.reduce((sum, s) => sum + (s.player?.points || 0), 0);
@@ -222,4 +236,24 @@ export const boxLine = (position, box) => {
   const tds = position === 'QB' ? box.rushTd : box.rushTd + box.recTd;
   if (tds) parts.push(`${tds} TD${tds === 1 ? '' : 's'}${position === 'QB' ? ' rush' : ''}`);
   return parts.join(', ');
+};
+
+/**
+ * Changes from the lineup someone has set (e.g. on Sleeper) to the recommended one, best upgrade first:
+ * [{ start: player, sit: player | null, gain }].
+ */
+export const lineupChanges = (lineup, currentStarterIds, roster) => {
+  const current = new Set(currentStarterIds || []);
+  const recommended = new Set(lineup.starters.map((s) => s.player?.id).filter(Boolean));
+  const byId = new Map(roster.map((p) => [p.id, p]));
+  const toStart = lineup.starters.map((s) => s.player).filter((p) => p && !current.has(p.id))
+    .sort((a, b) => (b.points || 0) - (a.points || 0));
+  const toSit = [...current].filter((id) => !recommended.has(id)).map((id) => byId.get(id)).filter(Boolean)
+    .sort((a, b) => (a.points ?? -1) - (b.points ?? -1));
+  return toStart.map((player, i) => {
+    const sit = toSit[i] || null;
+    // A starter who won't play scores nothing, whatever their projection says.
+    const sitPoints = sit && !benchReason(sit) ? (sit.points || 0) : 0;
+    return { start: player, sit, gain: Math.round(((player.points || 0) - sitPoints) * 10) / 10 };
+  });
 };

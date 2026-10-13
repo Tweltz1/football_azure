@@ -5,6 +5,7 @@ import { handle, type Ctx } from '../functions/_shared/handlers.ts';
 import { applyOps, diffObjects } from '../functions/_shared/diff.ts';
 import { getInitialPlayerPool } from '../functions/_shared/playerData.ts';
 import { buildDefenseTable, clearStartSitCache } from '../functions/_shared/startSit.ts';
+import { clearSleeperCache } from '../functions/_shared/sleeperImport.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../functions/_shared/models.ts';
 import type { HistoryStore, LeagueStore, ProfileStore, StoredLeague } from '../functions/_shared/ports.ts';
 
@@ -552,4 +553,48 @@ test('start/sit: defense table sums each game per week and ranks the easiest mat
   assert.equal(table.KC.WR.teams, 2);
   assert.equal(table.KC.RB.box.rushYd, 60);
   assert.equal(table.KC.K, undefined, 'kickers are not tracked');
+});
+
+test('start/sit: import a Sleeper team with its lineup slots, scoring and current starters', async () => {
+  clearStartSitCache();
+  clearSleeperCache();
+  const world = memoryWorld();
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week: 6, season_type: 'regular' };
+    if (url.endsWith('/user/nobody')) return null;
+    if (url.endsWith('/user/tyler_w')) return { user_id: 'u1', display_name: 'TylerW' };
+    if (url.endsWith('/user/u1/leagues/nfl/2026')) {
+      return [
+        { league_id: 'L1', name: 'Hood Sleeper', scoring_settings: { rec: 0.5 },
+          roster_positions: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'REC_FLEX', 'K', 'DEF', 'BN', 'BN', 'IR', 'DL'] },
+        { league_id: 'L2', name: 'Not my roster', scoring_settings: { rec: 1 }, roster_positions: ['QB'] },
+      ];
+    }
+    if (url.endsWith('/league/L1/rosters')) {
+      return [
+        { owner_id: 'u9', players: ['1'], starters: ['1'] },
+        { owner_id: 'u1', players: ['4984', '9509', 'BUF', '999999'], starters: ['4984', '0', 'BUF'], metadata: { team_name: 'Tyler Squad' } },
+      ];
+    }
+    if (url.endsWith('/league/L2/rosters')) return [{ owner_id: 'u9', co_owners: ['u8'], players: [] }];
+    throw new Error(`unexpected ${url}`);
+  });
+
+  assert.equal((await world.call('bob', 'GET', 'startsit/sleeper', undefined, 'username=a b')).status, 400);
+  assert.equal((await world.call('bob', 'GET', 'startsit/sleeper', undefined, 'username=nobody')).status, 404);
+  const res = await world.call('bob', 'GET', 'startsit/sleeper', undefined, 'username=tyler_w');
+  assert.equal(res.status, 200, String(res.body));
+  const body = res.body as any;
+  assert.equal(body.season, 2026);
+  assert.equal(body.teams.length, 1, 'leagues without a roster for this user are skipped');
+  const team = body.teams[0];
+  assert.equal(team.teamName, 'Tyler Squad');
+  assert.equal(team.scoring, 'half');
+  assert.deepEqual(team.slots.map((s: any) => s.label), ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'W/T', 'K', 'DST']);
+  assert.deepEqual(team.slots[8].positions, ['WR', 'TE']);
+  assert.deepEqual(team.players.map((p: any) => p.id), ['sleeper-4984', 'sleeper-9509', 'sleeper-BUF', 'sleeper-999999']);
+  assert.equal(team.players[0].name, 'Josh Allen');
+  assert.equal(team.players[2].position, 'DST');
+  assert.equal(team.players[3].name, 'Player 999999');
+  assert.deepEqual(team.starters, ['sleeper-4984', 'sleeper-BUF']);
 });

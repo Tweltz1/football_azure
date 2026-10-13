@@ -16,6 +16,7 @@ import {
 import { diffObjects } from './diff.ts';
 import { draftNumberOf, historySummary, isCompleted, snapshotDraft } from './history.ts';
 import { type FetchJson, getMatchupHistory, getWeekProjections } from './startSit.ts';
+import { getSleeperTeams, isValidSleeperUsername, SleeperUserNotFound } from './sleeperImport.ts';
 
 export interface Ctx {
   leagues: LeagueStore;
@@ -893,6 +894,18 @@ async function startSit(ctx: Ctx, query: URLSearchParams): Promise<Res> {
   }
 }
 
+async function startSitSleeper(ctx: Ctx, query: URLSearchParams): Promise<Res> {
+  const username = str(query.get('username')).trim();
+  if (!isValidSleeperUsername(username)) return bad('Please enter your Sleeper username.');
+  try {
+    return ok(await getSleeperTeams(ctx.fetchJson, ctx.now(), username, ctx.playerPool()));
+  } catch (error) {
+    if (error instanceof SleeperUserNotFound) return notFound(`No Sleeper account is named '${username}'.`);
+    ctx.log.warn(`Loading Sleeper teams failed for ${username}.`, error);
+    return { status: 502, body: 'Sleeper is not answering right now. Please try again in a few minutes.' };
+  }
+}
+
 async function startSitMatchup(ctx: Ctx, playerId: string, query: URLSearchParams): Promise<Res> {
   const opponent = str(query.get('opponent')).trim();
   if (!/^[A-Za-z]{2,4}$/.test(opponent)) return bad('Please provide the opponent team, like KC.');
@@ -1328,6 +1341,7 @@ export async function handle(ctx: Ctx, method: string, path: string, query: URLS
 
   if (parts.length === 2 && method === 'GET' && parts[0] === 'history') return getHistoryEntry(ctx, parts[1]);
   if (parts.length === 2 && method === 'GET' && parts[0] === 'invite') return getInvite(ctx, parts[1]);
+  if (parts.length === 2 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'sleeper') return startSitSleeper(ctx, query);
   if (parts.length === 3 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'matchup') return startSitMatchup(ctx, parts[2], query);
 
   if (parts.length === 2 && parts[0] === 'user-profile' && method === 'POST') return updateProfile(ctx, parts[1], data);

@@ -127,7 +127,7 @@ const num = (value: unknown): number => {
 const round1 = (value: number) => Math.round(value * 10) / 10;
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
-async function currentState(fetchJson: FetchJson, nowMs: number) {
+export async function currentState(fetchJson: FetchJson, nowMs: number) {
   const cached = stateCache.entry;
   if (cached && nowMs - cached.at < CACHE_MS) return cached.value;
   const raw = (await fetchJson(SLEEPER_STATE_URL)) as Record<string, unknown>;
