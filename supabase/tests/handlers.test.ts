@@ -479,7 +479,7 @@ test('start/sit: recent games, season average, injured teammates, and past match
   clearStartSitCache();
   const world = memoryWorld();
   const row = (id: string, team: string, opponent: string, pts: number, position = 'WR', injury: string | null = null) => ({
-    player_id: id, team, opponent, stats: { pts_ppr: pts, pts_half_ppr: pts - 1, pts_std: pts - 2, gp: 1 },
+    player_id: id, team, opponent, stats: { pts_ppr: pts, pts_half_ppr: pts - 1, pts_std: pts - 2, gp: 1, rec: 2, rec_yd: pts * 5, rec_2pt: 1, rush_yd: 0 },
     player: { first_name: `P${id}`, last_name: 'Test', position, injury_status: injury },
   });
   world.respondWith((url) => {
@@ -511,6 +511,10 @@ test('start/sit: recent games, season average, injured teammates, and past match
   assert.deepEqual(p10.recent.map((g: any) => g.week), [1, 2, 4, 5], 'week 3 failed to load and is skipped');
   assert.deepEqual(p10.recent.map((g: any) => g.points.ppr), [2, 4, 8, 10]);
   assert.equal(p10.seasonAvg.ppr, 6);
+  // Box scores (zero stats dropped) let the page score players with any league's settings.
+  assert.deepEqual(p10.stats, { rec: 2, recYd: 75, twoPt: 1 });
+  assert.deepEqual(p10.recent[0].stats, { rec: 2, recYd: 10, twoPt: 1 });
+  assert.deepEqual(p10.seasonStats, { rec: 2, recYd: 30, twoPt: 1 });
   assert.equal(p10.gamesPlayed, 4);
   assert.equal((players.get('sleeper-11') as any).injury, 'Out', 'injured players stay in the list');
   assert.equal((players.get('sleeper-11') as any).seasonAvg.ppr, 20);
@@ -566,7 +570,7 @@ test('start/sit: import a Sleeper team with its lineup slots, scoring and curren
     if (url.endsWith('/user/tyler_w')) return { user_id: 'u1', display_name: 'TylerW' };
     if (url.endsWith('/user/u1/leagues/nfl/2026')) {
       return [
-        { league_id: 'L1', name: 'Hood Sleeper', scoring_settings: { rec: 0.5 },
+        { league_id: 'L1', name: 'Hood Sleeper', scoring_settings: { rec: 0.5, pass_td: 6, bonus_rec_te: 0.5, blk_kick: 2 },
           roster_positions: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'SUPER_FLEX', 'REC_FLEX', 'K', 'DEF', 'BN', 'BN', 'IR', 'DL'] },
         { league_id: 'L2', name: 'Not my roster', scoring_settings: { rec: 1 }, roster_positions: ['QB'] },
       ];
@@ -593,6 +597,7 @@ test('start/sit: import a Sleeper team with its lineup slots, scoring and curren
   const team = body.teams[0];
   assert.equal(team.teamName, 'Tyler Squad');
   assert.equal(team.scoring, 'half');
+  assert.deepEqual(team.scoringSettings, { pass_td: 6, rec: 0.5, bonus_rec_te: 0.5 }, 'only the scoring rules the site can apply');
   assert.deepEqual(team.slots.map((s: any) => s.label), ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'W/T', 'K', 'DST']);
   assert.deepEqual(team.slots[8].positions, ['WR', 'TE']);
   assert.deepEqual(team.players.map((p: any) => p.id), ['sleeper-4984', 'sleeper-9509', 'sleeper-BUF', 'sleeper-999999']);

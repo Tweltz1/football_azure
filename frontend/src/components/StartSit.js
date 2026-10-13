@@ -1,11 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
-  SCORING_OPTIONS, STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
+  STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
   vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds,
 } from '../data/startSitUtils';
 import { positionRanks, rankLabel } from '../data/rankings';
+import {
+  LeagueScoringContext, applyLeagueScoring, applyLeagueScoringToMatchup, useLeagueScoring,
+} from '../data/leagueScoring';
 import UpdatedAt, { timeAgo } from './UpdatedAt';
 import WhyButton from './WhyButton';
 import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
@@ -76,8 +79,13 @@ const PlayerName = ({ player, scoring, onOpen, children = null }) => (
 
 /** Pop-up with one player's recent games, past games against this week's opponent, and injured teammates. */
 export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, updatedAt, onClose }) => {
-  const [matchup, setMatchup] = useState(null);
+  const [rawMatchup, setMatchup] = useState(null);
   const [matchupError, setMatchupError] = useState('');
+  const leagueScoring = useContext(LeagueScoringContext);
+  const matchup = useMemo(
+    () => applyLeagueScoringToMatchup(rawMatchup, player.position, leagueScoring),
+    [rawMatchup, player.position, leagueScoring],
+  );
   const trend = trendFor(player, scoring);
   const teammates = teammatesOut(player, allPlayers, scoring);
   const vacated = vacatedPoints(teammates);
@@ -578,12 +586,11 @@ const TradeCheck = ({
 };
 
 const StartSit = ({ userId }) => {
-  const [projections, setProjections] = useState(null);
+  const [rawProjections, setProjections] = useState(null);
   const [projectionError, setProjectionError] = useState('');
   const [loadingProjections, setLoadingProjections] = useState(true);
   // null means "this week", whatever Sleeper says that is.
   const [week, setWeek] = useState(null);
-  const [scoring, setScoring] = useState(() => readSetting('hl-startsit-scoring', 'ppr'));
   const [leagues, setLeagues] = useState([]);
   const [source, setSource] = useState(() => readSetting('hl-startsit-source', ''));
   const [customIds, setCustomIds] = useState(() => readSetting('hl-startsit-custom', []));
@@ -594,6 +601,12 @@ const StartSit = ({ userId }) => {
   const [sleeperName, setSleeperName] = useState(() => readSetting('hl-startsit-sleeper-user', ''));
   const [sleeperImport, setSleeperImport] = useState(null);
   const [sleeperStatus, setSleeperStatus] = useState('');
+  const sleeperTeams = useMemo(() => sleeperImport?.teams || [], [sleeperImport]);
+  // Points follow the scoring of the league being looked at (or the standard format picked).
+  const {
+    choice, setChoice, scoring, profile, options: scoringOptions, leagueValue,
+  } = useLeagueScoring(sleeperTeams);
+  const projections = useMemo(() => applyLeagueScoring(rawProjections, profile), [rawProjections, profile]);
 
   useEffect(() => {
     let cancelled = false;
@@ -619,7 +632,6 @@ const StartSit = ({ userId }) => {
       .catch((error) => console.error('Error fetching leagues for start/sit:', error));
   }, []);
 
-  useEffect(() => writeSetting('hl-startsit-scoring', scoring), [scoring]);
   useEffect(() => writeSetting('hl-startsit-source', source), [source]);
   useEffect(() => writeSetting('hl-startsit-custom', customIds), [customIds]);
 
@@ -639,7 +651,7 @@ const StartSit = ({ userId }) => {
       setSleeperStatus('');
       if (selectFirst) {
         setSource(`${SLEEPER_PREFIX}${data.teams[0].leagueId}`);
-        setScoring(data.teams[0].scoring);
+        setChoice(leagueValue(data.teams[0].leagueId));
       }
     } catch (error) {
       setSleeperStatus(String(error.response?.data || 'Could not reach Sleeper. Please try again.'));
@@ -653,7 +665,6 @@ const StartSit = ({ userId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const sleeperTeams = sleeperImport?.teams || [];
 
   const myTeams = useMemo(() => leagues
     .map((league) => ({ league, team: (league.teams || []).find((t) => t.ownerId === userId) }))
@@ -688,7 +699,7 @@ const StartSit = ({ userId }) => {
   const changeSource = (value) => {
     setSource(value);
     const team = sleeperTeams.find((t) => `${SLEEPER_PREFIX}${t.leagueId}` === value);
-    if (team) setScoring(team.scoring);
+    if (team) setChoice(leagueValue(team.leagueId));
   };
 
   const shownWeek = projections?.week || week;
@@ -738,6 +749,7 @@ const StartSit = ({ userId }) => {
     : null;
 
   return (
+    <LeagueScoringContext.Provider value={profile}>
     <div className="page-shell startsit-page">
       <section className="page-hero">
         <p className="page-kicker">In-season help</p>
@@ -756,8 +768,8 @@ const StartSit = ({ userId }) => {
           </label>
           <label>
             Scoring
-            <select value={scoring} onChange={(e) => setScoring(e.target.value)}>
-              {SCORING_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <select value={choice} onChange={(e) => setChoice(e.target.value)}>
+              {scoringOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </label>
           <label>
@@ -773,6 +785,11 @@ const StartSit = ({ userId }) => {
             </select>
           </label>
         </div>
+        {profile?.custom && (
+          <p className="startsit-help league-scoring-note">
+            Scored with {profile.leagueName}'s rules: {profile.details.join(', ')}.
+          </p>
+        )}
       </section>
 
       {loadingProjections && <div className="loading-panel">Loading projections...</div>}
@@ -1077,6 +1094,7 @@ const StartSit = ({ userId }) => {
         </>
       )}
     </div>
+    </LeagueScoringContext.Provider>
   );
 };
 

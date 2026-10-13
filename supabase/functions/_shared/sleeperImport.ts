@@ -29,6 +29,8 @@ export interface SleeperTeam {
   leagueName: string;
   teamName: string;
   scoring: 'ppr' | 'half' | 'std';
+  /** The league's own scoring rules that differ between leagues (see SCORING_KEYS), for scoring players its way. */
+  scoringSettings: Record<string, number>;
   slots: LineupSlot[];
   players: RosterPlayer[];
   /** Dynasty league (Sleeper league type 2): player age and draft picks matter in trades. */
@@ -131,6 +133,21 @@ function buildPicks(
 }
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : typeof value === 'number' ? String(value) : '');
+
+// Sleeper scoring_settings keys the site can apply to box scores.
+const SCORING_KEYS = [
+  'pass_yd', 'pass_td', 'pass_int', 'pass_2pt', 'rush_yd', 'rush_td', 'rush_att', 'rush_2pt',
+  'rec', 'rec_yd', 'rec_td', 'rec_2pt', 'fum_lost', 'bonus_rec_te', 'bonus_rec_rb', 'bonus_rec_wr',
+];
+const scoringSettingsOf = (settings: unknown): Record<string, number> => {
+  const raw = (settings ?? {}) as Record<string, unknown>;
+  const out: Record<string, number> = {};
+  for (const key of SCORING_KEYS) {
+    const value = Number(raw[key]);
+    if (raw[key] != null && Number.isFinite(value)) out[key] = value;
+  }
+  return out;
+};
 
 const scoringFor = (settings: unknown): SleeperTeam['scoring'] => {
   const rec = Number((settings as Record<string, unknown> | null)?.rec ?? 1);
@@ -263,6 +280,7 @@ export async function getSleeperTeams(
       dynasty,
       picks: picksByRoster.get(text(mine.roster_id)) ?? [],
       scoring: scoringFor(l.scoring_settings),
+      scoringSettings: scoringSettingsOf(l.scoring_settings),
       slots,
       players,
       opponents,
