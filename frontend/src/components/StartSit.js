@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
   SCORING_OPTIONS, STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
-  vacatedPoints, withProjections,
+  vacatedPoints, withProjections, defenseMatchup, boxLine,
 } from '../data/startSitUtils';
 import '../App.css';
 import './SeasonTools.css';
@@ -64,12 +64,13 @@ const PlayerName = ({ player, scoring, onOpen }) => (
 );
 
 /** Pop-up with one player's recent games, past games against this week's opponent, and injured teammates. */
-const PlayerInsight = ({ player, allPlayers, scoring, week, onClose }) => {
+const PlayerInsight = ({ player, allPlayers, defense, scoring, week, onClose }) => {
   const [matchup, setMatchup] = useState(null);
   const [matchupError, setMatchupError] = useState('');
   const trend = trendFor(player, scoring);
   const teammates = teammatesOut(player, allPlayers, scoring);
   const vacated = vacatedPoints(teammates);
+  const vsDefense = defenseMatchup(player, defense, scoring);
   const maxRecent = Math.max(1, ...trend.recent.map((g) => g.value), player.points || 0);
 
   useEffect(() => {
@@ -118,6 +119,38 @@ const PlayerInsight = ({ player, allPlayers, scoring, week, onClose }) => {
           )}
         </section>
 
+        {vsDefense && (
+          <section>
+            <h4>
+              {vsDefense.opponent} defense vs {vsDefense.position}s{' '}
+              <span className={`startsit-trend ${vsDefense.verdict === 'good' ? 'up' : vsDefense.verdict === 'tough' ? 'down' : 'flat'}`}>
+                {vsDefense.verdict === 'good' ? 'Good matchup' : vsDefense.verdict === 'tough' ? 'Tough matchup' : 'Average matchup'}
+              </span>
+            </h4>
+            <p className="startsit-help">
+              {vsDefense.rankLabel}. Per game over {vsDefense.games} game{vsDefense.games === 1 ? '' : 's'} this season:
+            </p>
+            <table className="startsit-defense">
+              <thead>
+                <tr><th /><th>{vsDefense.opponent} allows</th><th>League avg</th></tr>
+              </thead>
+              <tbody>
+                {vsDefense.rows.map((row) => {
+                  const easier = row.higherIsEasier ? row.value > row.league : row.value < row.league;
+                  const gap = Math.abs(row.value - row.league) / Math.max(row.league, 0.1);
+                  return (
+                    <tr key={row.label}>
+                      <td>{row.label}</td>
+                      <td className={gap >= 0.1 ? (easier ? 'easier' : 'harder') : ''}>{row.value}</td>
+                      <td>{row.league}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </section>
+        )}
+
         {player.opponent && (
           <section>
             <h4>Past games vs {player.opponent}</h4>
@@ -134,6 +167,7 @@ const PlayerInsight = ({ player, allPlayers, scoring, week, onClose }) => {
                         <div className="startsit-compare-name">
                           {game.season} week {game.week}
                           {game.team && game.team !== player.team ? <small> (with {game.team})</small> : null}
+                          {boxLine(player.position, game.box) && <><br /><small>{boxLine(player.position, game.box)}</small></>}
                         </div>
                         <div className="startsit-bar"><span style={{ width: `${Math.max(4, (value / Math.max(maxRecent, value, 1)) * 100)}%` }} /></div>
                         <span className="startsit-points">{value.toFixed(1)}</span>
@@ -498,6 +532,7 @@ const StartSit = ({ userId }) => {
             <PlayerInsight
               player={insightPlayer}
               allPlayers={projections.players}
+              defense={projections.defense}
               scoring={scoring}
               week={projections.week}
               onClose={() => setInsightId(null)}

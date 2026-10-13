@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { handle, type Ctx } from '../functions/_shared/handlers.ts';
 import { applyOps, diffObjects } from '../functions/_shared/diff.ts';
 import { getInitialPlayerPool } from '../functions/_shared/playerData.ts';
-import { clearStartSitCache } from '../functions/_shared/startSit.ts';
+import { buildDefenseTable, clearStartSitCache } from '../functions/_shared/startSit.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../functions/_shared/models.ts';
 import type { HistoryStore, LeagueStore, ProfileStore, StoredLeague } from '../functions/_shared/ports.ts';
 
@@ -523,6 +523,33 @@ test('start/sit: recent games, season average, injured teammates, and past match
   assert.equal(body.opponent, 'SF');
   assert.deepEqual(body.games.map((g: any) => [g.season, g.week, g.points.ppr]), [[2026, 1, 26], [2025, 1, 25], [2024, 1, 24]]);
   assert.equal(body.average.ppr, 25);
+  assert.equal(body.games[0].box.rec, 0);
+  assert.equal((res.body as any).defense.SEA.WR.games, 4, 'SEA faced the LAR receivers in weeks 1, 2, 4 and 5');
   assert.equal((await world.call('bob', 'GET', 'startsit/matchup/sleeper-10', undefined, 'opponent=x')).status, 400);
   assert.equal((await world.call('bob', 'GET', 'startsit/matchup/../x', undefined, 'opponent=SF')).status, 404);
+});
+
+test('start/sit: defense table sums each game per week and ranks the easiest matchups first', () => {
+  const box = (rec: number, recYd: number, recTd: number, rushAtt = 0, rushYd = 0) =>
+    ({ passYd: 0, passTd: 0, int: 0, rushAtt, rushYd, rushTd: 0, tgt: rec + 2, rec, recYd, recTd });
+  const line = (week: number, opponent: string, position: string, ppr: number, b: any) =>
+    ({ week, opponent, position, points: { ppr, half: ppr, std: ppr }, box: b, injury: null, name: 'x', team: 'T' });
+  const week1 = new Map<string, any>([
+    ['a', line(1, 'KC', 'WR', 20, box(6, 90, 1))],
+    ['b', line(1, 'KC', 'WR', 10, box(4, 50, 0))],
+    ['c', line(1, 'DAL', 'WR', 8, box(3, 40, 0))],
+    ['d', line(1, 'KC', 'RB', 12, box(2, 10, 0, 15, 60))],
+    ['k', line(1, 'KC', 'K', 9, box(0, 0, 0))],
+  ]);
+  const week2 = new Map<string, any>([['a', line(2, 'KC', 'WR', 6, box(2, 30, 0))]]);
+  const table = buildDefenseTable([week1, week2] as any);
+  assert.deepEqual(table.KC.WR.games, 2);
+  assert.equal(table.KC.WR.points.ppr, 18, '(20 + 10 + 6) over 2 games');
+  assert.equal(table.KC.WR.box.rec, 6);
+  assert.equal(table.KC.WR.box.recTd, 0.5);
+  assert.equal(table.KC.WR.rank, 1);
+  assert.equal(table.DAL.WR.rank, 2);
+  assert.equal(table.KC.WR.teams, 2);
+  assert.equal(table.KC.RB.box.rushYd, 60);
+  assert.equal(table.KC.K, undefined, 'kickers are not tracked');
 });

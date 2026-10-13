@@ -155,3 +155,71 @@ export const vacatedPoints = (teammates) => round1(
   teammates.filter((t) => t.overlaps && !['questionable'].includes(String(t.injury).toLowerCase()))
     .reduce((sum, t) => sum + (t.seasonAvg || 0), 0),
 );
+
+const ordinal = (n) => {
+  const rem = n % 100;
+  if (rem >= 11 && rem <= 13) return `${n}th`;
+  return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' })[n % 10] || 'th'}`;
+};
+
+const ypc = (box) => (box.rushAtt > 0 ? Math.round((box.rushYd / box.rushAtt) * 10) / 10 : 0);
+
+/** Stats worth showing for a position, as [label, value from a box score]. */
+const DEFENSE_STATS = {
+  QB: [['Pass yds', (b) => b.passYd], ['Pass TD', (b) => b.passTd], ['INT', (b) => b.int], ['Rush yds', (b) => b.rushYd]],
+  RB: [['Carries', (b) => b.rushAtt], ['Rush yds', (b) => b.rushYd], ['Yds/carry', ypc], ['Catches', (b) => b.rec], ['TDs', (b) => b.rushTd + b.recTd]],
+  WR: [['Targets', (b) => b.tgt], ['Catches', (b) => b.rec], ['Rec yds', (b) => b.recYd], ['Rec TD', (b) => b.recTd]],
+  TE: [['Targets', (b) => b.tgt], ['Catches', (b) => b.rec], ['Rec yds', (b) => b.recYd], ['Rec TD', (b) => b.recTd]],
+};
+
+/**
+ * How this week's opponent has defended the player's position, next to the league average.
+ * Returns null when there is no data (week 1, kickers, defenses).
+ */
+export const defenseMatchup = (player, defense, scoring) => {
+  const stats = DEFENSE_STATS[player?.position];
+  const row = player?.opponent && defense?.[player.opponent]?.[player.position];
+  if (!stats || !row) return null;
+
+  const all = Object.values(defense || {}).map((byPosition) => byPosition[player.position]).filter(Boolean);
+  const leagueAvg = (pick) => (all.length ? Math.round((all.reduce((sum, r) => sum + pick(r), 0) / all.length) * 10) / 10 : 0);
+  const pointsOf = (r) => Number(r.points?.[scoring] ?? 0);
+
+  const third = Math.ceil(row.teams / 3);
+  const verdict = row.rank <= third ? 'good' : row.rank > row.teams - third ? 'tough' : 'average';
+  return {
+    opponent: player.opponent,
+    position: player.position,
+    games: row.games,
+    rankLabel: `${ordinal(row.rank)} most points allowed to ${player.position}s of ${row.teams}`,
+    verdict,
+    rows: [
+      { label: 'Fantasy pts', value: pointsOf(row), league: leagueAvg(pointsOf), higherIsEasier: true },
+      ...stats.map(([label, pick]) => ({
+        label,
+        value: Math.round(pick(row.box) * 10) / 10,
+        league: leagueAvg((r) => pick(r.box)),
+        higherIsEasier: label !== 'INT',
+      })),
+    ],
+  };
+};
+
+/** One past game as a short stat line, e.g. "6 rec, 90 yds, 1 TD". */
+export const boxLine = (position, box) => {
+  if (!box) return '';
+  const parts = [];
+  if (position === 'QB') {
+    parts.push(`${box.passYd} pass yds`, `${box.passTd} TD`);
+    if (box.int) parts.push(`${box.int} INT`);
+    if (box.rushYd) parts.push(`${box.rushYd} rush yds`);
+  } else if (position === 'RB') {
+    parts.push(`${box.rushAtt} car`, `${box.rushYd} yds`);
+    if (box.rec) parts.push(`${box.rec} rec`);
+  } else if (position === 'WR' || position === 'TE') {
+    parts.push(`${box.rec}/${box.tgt} rec`, `${box.recYd} yds`);
+  }
+  const tds = position === 'QB' ? box.rushTd : box.rushTd + box.recTd;
+  if (tds) parts.push(`${tds} TD${tds === 1 ? '' : 's'}${position === 'QB' ? ' rush' : ''}`);
+  return parts.join(', ');
+};

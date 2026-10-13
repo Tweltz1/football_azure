@@ -31,11 +31,36 @@ export interface ProjectedPlayer {
   gamesPlayed: number;
 }
 
+/** Box-score numbers from one game (or per-game averages). */
+export interface BoxScore {
+  passYd: number;
+  passTd: number;
+  int: number;
+  rushAtt: number;
+  rushYd: number;
+  rushTd: number;
+  tgt: number;
+  rec: number;
+  recYd: number;
+  recTd: number;
+}
+
+/** What a defense has given up to one position this season, per game. */
+export interface DefenseVsPosition {
+  games: number;
+  points: Points;
+  box: BoxScore;
+  /** 1 = gave up the most fantasy points to this position (easiest matchup), 32 = the fewest. */
+  rank: number;
+  teams: number;
+}
+
 export interface MatchupGame {
   season: number;
   week: number;
   team: string | null;
   points: Points;
+  box: BoxScore;
 }
 
 export interface MatchupHistory {
@@ -52,6 +77,8 @@ export interface WeekProjections {
   seasonType: string;
   fetchedAt: string;
   players: ProjectedPlayer[];
+  /** defense[team][position]: what that defense allowed to QBs, RBs, WRs and TEs in the weeks before this one. */
+  defense: Record<string, Record<string, DefenseVsPosition>>;
 }
 
 const SLEEPER_STATE_URL = 'https://api.sleeper.app/v1/state/nfl';
@@ -78,6 +105,7 @@ interface SeasonGame extends MatchupGame {
 }
 
 interface StatLine extends GameLine {
+  box: BoxScore;
   injury: string | null;
   name: string;
   position: string;
@@ -112,6 +140,17 @@ async function currentState(fetchJson: FetchJson, nowMs: number) {
 }
 
 const positionsQuery = () => POSITIONS.map((p) => `position[]=${p}`).join('&');
+
+const BOX_KEYS: [keyof BoxScore, string][] = [
+  ['passYd', 'pass_yd'], ['passTd', 'pass_td'], ['int', 'pass_int'], ['rushAtt', 'rush_att'], ['rushYd', 'rush_yd'],
+  ['rushTd', 'rush_td'], ['tgt', 'rec_tgt'], ['rec', 'rec'], ['recYd', 'rec_yd'], ['recTd', 'rec_td'],
+];
+
+function boxFrom(stats: Record<string, unknown>): BoxScore {
+  const box = {} as BoxScore;
+  for (const [key, sleeperKey] of BOX_KEYS) box[key] = num(stats[sleeperKey]);
+  return box;
+}
 
 function pointsFrom(stats: Record<string, unknown>): Points {
   const std = num(stats.pts_std);
@@ -177,6 +216,7 @@ async function getWeekStats(fetchJson: FetchJson, season: number, week: number, 
       week,
       opponent: parsed.opponent,
       points: parsed.points,
+      box: boxFrom((record.stats ?? {}) as Record<string, unknown>),
       injury: parsed.injury,
       name: parsed.name,
       position: parsed.position,
@@ -253,6 +293,7 @@ export async function getWeekProjections(fetchJson: FetchJson, now: Date, reques
   }
 
   const value: WeekProjections = {
+    defense: buildDefenseTable(pastWeeks),
     season: state.season,
     week,
     currentWeek: state.week,
@@ -286,6 +327,7 @@ async function getPlayerSeason(fetchJson: FetchJson, playerId: string, season: n
       week,
       team: text(record.team) || null,
       points: pointsFrom(stats),
+      box: boxFrom(stats),
       opponent: text(record.opponent) || null,
     });
   }
@@ -307,8 +349,60 @@ export async function getMatchupHistory(
   const games = results
     .flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
     .filter((game) => (game.opponent ?? '').toUpperCase() === target)
-    .map(({ season, week, team, points }) => ({ season, week, team, points }))
+    .map(({ season, week, team, points, box }) => ({ season, week, team, points, box }))
     .sort((a, b) => b.season - a.season || b.week - a.week);
 
   return { playerId, opponent: target, games, average: averagePoints(games) };
+}
+
+const DEFENSE_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
+
+/**
+ * Per-game totals each defense allowed to each position: every player's game is credited to the
+ * team they played against, then summed per week (so three WRs in one game count as one game).
+ */
+export function buildDefenseTable(pastWeeks: Map<string, StatLine>[]): Record<string, Record<string, DefenseVsPosition>> {
+  type Totals = { weeks: Set<number>; points: Points; box: BoxScore };
+  const totals = new Map<string, Totals>();
+  for (const weekLines of pastWeeks) {
+    for (const line of weekLines.values()) {
+      if (!line.opponent || !DEFENSE_POSITIONS.includes(line.position)) continue;
+      const key = `${line.opponent}|${line.position}`;
+      let entry = totals.get(key);
+      if (!entry) {
+        entry = { weeks: new Set(), points: { ppr: 0, half: 0, std: 0 }, box: boxFrom({}) };
+        totals.set(key, entry);
+      }
+      entry.weeks.add(line.week);
+      for (const k of ['ppr', 'half', 'std'] as const) entry.points[k] += line.points[k];
+      for (const [k] of BOX_KEYS) entry.box[k] += line.box[k];
+    }
+  }
+
+  const table: Record<string, Record<string, DefenseVsPosition>> = {};
+  for (const [key, entry] of totals) {
+    const [team, position] = key.split('|');
+    const games = entry.weeks.size;
+    const per = (value: number) => round1(value / games);
+    const box = {} as BoxScore;
+    for (const [k] of BOX_KEYS) box[k] = per(entry.box[k]);
+    table[team] = table[team] ?? {};
+    table[team][position] = {
+      games,
+      points: { ppr: per(entry.points.ppr), half: per(entry.points.half), std: per(entry.points.std) },
+      box,
+      rank: 0,
+      teams: 0,
+    };
+  }
+
+  for (const position of DEFENSE_POSITIONS) {
+    const rows = Object.values(table).map((byPosition) => byPosition[position]).filter(Boolean);
+    rows.sort((a, b) => b.points.ppr - a.points.ppr);
+    rows.forEach((row, index) => {
+      row.rank = index + 1;
+      row.teams = rows.length;
+    });
+  }
+  return table;
 }

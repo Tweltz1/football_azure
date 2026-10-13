@@ -332,3 +332,37 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.startsit-defense {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.startsit-defense th,
+.startsit-defense td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+.startsit-defense th:first-child,
+.startsit-defense td:first-child {
+  text-align: left;
+}
+
+.startsit-defense th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.startsit-defense td.easier {
+  color: var(--teal);
+  font-weight: 800;
+}
+
+.startsit-defense td.harder {
+  color: var(--red);
+  font-weight: 800;
+}
