@@ -37,7 +37,8 @@ export function snapshotDraft(league: League, now: Date): DraftHistoryEntry {
       player: clone(pick.player),
       winningTeamId: pick.winningTeamId,
       winningBid: pick.winningBid,
-      allBids: clone(pick.allBids ?? {}),
+      // Whiteboard drawings stay with the live league only; history keeps the amounts.
+      allBids: Object.fromEntries(Object.entries(clone(pick.allBids ?? {})).map(([id, { board: _board, ...bid }]) => [id, bid])),
     })),
   };
 }

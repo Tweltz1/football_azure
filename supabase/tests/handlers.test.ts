@@ -935,3 +935,39 @@ test('diff patches edited items and appends in one update', () => {
   assert.deepEqual(ops.map((op) => Object.keys(op)[1]), ['items', 'append']);
   assert.deepEqual(applyOps(a, ops), b);
 });
+
+test('whiteboard leagues: invite join, finish, history without drawings, and a new season keep working', async () => {
+  const world = memoryWorld();
+  const created = await world.call('admin', 'POST', 'CreateLeague', { name: 'Boards', biddingMode: 'whiteboard-auto' });
+  const leagueId = (created.body as any).id;
+  assert.equal(((await world.call('bob', 'GET', `invite/${leagueId}`)).body as any).isMember, false);
+  assert.equal((await world.call('bob', 'POST', 'JoinLeague', { leagueId })).status, 200);
+  await world.call('bob', 'POST', `leagues/${leagueId}/ready`, { isReady: true });
+  await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+
+  await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 9, board: board(1) });
+  world.advance(21);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  const bobTeam = world.league(leagueId).teams.find((t) => t.ownerId === 'bob')!;
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/board-award`, { winningTeamId: bobTeam.id, amount: 9 })).status, 200);
+
+  // Ending the draft while boards are up clears the review.
+  world.advance(31);
+  await world.call('admin', 'POST', `leagues/${leagueId}/nextRound`);
+  world.advance(21);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+  assert.equal(world.league(leagueId).status, 'boardreview');
+  await world.call('admin', 'POST', `leagues/${leagueId}/complete`);
+  assert.equal(world.league(leagueId).status, 'completed');
+  assert.equal(world.league(leagueId).boardReview, null);
+
+  const saved = world.historyRows.get(`${leagueId}-draft-1`)!;
+  assert.equal(saved.draftLog[0].allBids.bob.amount, 9);
+  assert.ok(!JSON.stringify(saved).includes('"board"'), 'history keeps amounts, not drawings');
+
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/new-season`)).status, 200);
+  const league = world.league(leagueId);
+  assert.equal(league.status, 'created');
+  assert.equal(league.biddingMode, 'whiteboard-auto', 'the bidding style carries into the new season');
+  assert.equal(league.boardReview, null);
+});

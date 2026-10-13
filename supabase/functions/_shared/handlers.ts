@@ -963,6 +963,7 @@ async function startNewSeason(ctx: Ctx, leagueId: string): Promise<Res> {
     league.draftLog = [];
     league.beerBitchTeamId = null;
     league.tieBreaker = null;
+    league.boardReview = null;
     for (const team of league.teams) {
       if (!team) continue;
       team.budget = 200;
