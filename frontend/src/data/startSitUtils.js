@@ -438,9 +438,9 @@ const fitVerdict = (valueVerdict, myChange, getBenched) => {
  */
 export const analyzeTrade = ({
   give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount,
-  dynasty = false, givePicks = [], getPicks = [], firstPickSeason = null,
+  dynasty = false, givePicks = [], getPicks = [], firstPickSeason = null, levels: knownLevels = null,
 }) => {
-  const levels = replacementLevels(allPlayers, teamCount, rosterSettings, scoring);
+  const levels = knownLevels || replacementLevels(allPlayers, teamCount, rosterSettings, scoring);
   const rate = (p) => {
     const value = tradeValue(p, scoring);
     const surplus = Math.max(0, value - (levels[p.position] ?? 0));
@@ -499,7 +499,177 @@ export const analyzeTrade = ({
   }
 
   return {
-    give: giveRated, get: getRated, giveTotal, getTotal, myChange, theirChange, levels,
+    give: giveRated, get: getRated, giveTotal, getTotal, myChange, theirChange, levels, share,
     valueVerdict: verdict, verdict: fitVerdict(verdict, myChange, getBenched),
+  };
+};
+
+// ---- Trade finder -------------------------------------------------------------------------
+
+const TRADE_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
+// Only the players worth trading for are tried, which keeps the search quick.
+const FINDER_PLAYERS_PER_TEAM = 10;
+
+/**
+ * Looks through every other team for 1-for-1 and 2-for-1 trades (either way) that improve your
+ * starting lineup, don't hurt theirs much, and are fair enough on value that they might say yes.
+ * partners: [{ key, name, roster }] with projections attached. Returns the best few, best first.
+ */
+export const findTrades = ({
+  myRoster, partners, rosterSettings, scoring, allPlayers, dynasty = false, limit = 6,
+}) => {
+  const teamCount = partners.length + 1;
+  const levels = replacementLevels(allPlayers, teamCount, rosterSettings, scoring);
+  const tradeable = (roster) => roster
+    .filter((p) => TRADE_POSITIONS.includes(p.position))
+    .map((p) => ({ p, value: tradeValue(p, scoring) }))
+    .filter(({ value }) => value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, FINDER_PLAYERS_PER_TEAM)
+    .map(({ p }) => p);
+  const pairs = (list) => list.flatMap((a, i) => list.slice(i + 1).map((b) => [a, b]));
+  const mine = tradeable(myRoster);
+
+  const found = [];
+  partners.forEach((partner) => {
+    const theirs = tradeable(partner.roster);
+    const packages = [
+      ...mine.flatMap((a) => theirs.map((b) => [[a], [b]])),
+      ...pairs(mine).flatMap((two) => theirs.map((b) => [two, [b]])),
+      ...mine.flatMap((a) => pairs(theirs).map((two) => [[a], two])),
+    ];
+    packages.forEach(([give, get]) => {
+      const result = analyzeTrade({
+        give, get, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount, dynasty, levels,
+      });
+      const share = (result.getTotal - result.giveTotal) / Math.max(result.giveTotal, result.getTotal, 10);
+      // Worth suggesting: your lineup gets clearly better, theirs doesn't get clearly worse,
+      // and the values are close enough that they might accept.
+      if (result.myChange < 1 || result.theirChange < -1 || Math.abs(share) > 0.25) return;
+      found.push({
+        partnerKey: partner.key,
+        partnerName: partner.name,
+        give,
+        get,
+        myChange: result.myChange,
+        theirChange: result.theirChange,
+        verdict: result.verdict,
+        valueVerdict: result.valueVerdict,
+        // Your gain counts most; their gain helps it get accepted; taking far more value than you give doesn't.
+        rank: result.myChange + 0.5 * result.theirChange - 20 * Math.max(0, share - 0.1),
+      });
+    });
+  });
+
+  // Best first, no more than two ideas per partner so the list covers the league, and only the
+  // best way to get any one set of their players.
+  const perPartner = new Map();
+  const seen = new Set();
+  return found
+    .sort((a, b) => b.rank - a.rank)
+    .filter((idea) => {
+      const target = `${idea.partnerKey}:${idea.get.map((p) => p.id).sort().join(',')}`;
+      const count = perPartner.get(idea.partnerKey) || 0;
+      if (count >= 2 || seen.has(target)) return false;
+      seen.add(target);
+      perPartner.set(idea.partnerKey, count + 1);
+      return true;
+    })
+    .slice(0, limit);
+};
+
+// ---- Balancing a trade --------------------------------------------------------------------
+
+// Value gap (as a share of the bigger side) that still counts as a fair trade.
+const FAIR_SHARE = 0.15;
+
+/**
+ * Ways to make an uneven trade fair: add one of their players or picks when you give more, add one
+ * of yours when you get more, or drop something from the heavier side. Takes analyzeTrade's
+ * arguments plus the pick lists you could add (myPickPool / theirPickPool). Best options first.
+ */
+export const balanceTrade = ({ myPickPool = [], theirPickPool = [], limit = 3, ...args }) => {
+  const levels = args.levels || replacementLevels(args.allPlayers, args.teamCount, args.rosterSettings, args.scoring);
+  const base = analyzeTrade({ ...args, levels });
+  if (Math.abs(base.share) <= FAIR_SHARE) return [];
+  const youGiveMore = base.share < 0;
+  const { give, get, givePicks = [], getPicks = [], myRoster, theirRoster, dynasty } = args;
+  const inTrade = new Set([...give, ...get, ...givePicks, ...getPicks].map((x) => x.id));
+  const tradeable = (roster) => roster.filter((p) => !inTrade.has(p.id) && TRADE_POSITIONS.includes(p.position));
+  const freePicks = (pool) => (dynasty ? pool.filter((pick) => !inTrade.has(pick.id)) : []);
+
+  const options = [];
+  if (youGiveMore) {
+    tradeable(theirRoster).forEach((p) => options.push({ action: 'add', side: 'get', item: p, change: { get: [...get, p] } }));
+    freePicks(theirPickPool).forEach((pick) => options.push({ action: 'add', side: 'get', item: pick, change: { getPicks: [...getPicks, pick] } }));
+    if (give.length + givePicks.length > 1) {
+      give.forEach((p) => options.push({ action: 'remove', side: 'give', item: p, change: { give: give.filter((x) => x !== p) } }));
+      givePicks.forEach((pick) => options.push({ action: 'remove', side: 'give', item: pick, change: { givePicks: givePicks.filter((x) => x !== pick) } }));
+    }
+  } else {
+    tradeable(myRoster).forEach((p) => options.push({ action: 'add', side: 'give', item: p, change: { give: [...give, p] } }));
+    freePicks(myPickPool).forEach((pick) => options.push({ action: 'add', side: 'give', item: pick, change: { givePicks: [...givePicks, pick] } }));
+    if (get.length + getPicks.length > 1) {
+      get.forEach((p) => options.push({ action: 'remove', side: 'get', item: p, change: { get: get.filter((x) => x !== p) } }));
+      getPicks.forEach((pick) => options.push({ action: 'remove', side: 'get', item: pick, change: { getPicks: getPicks.filter((x) => x !== pick) } }));
+    }
+  }
+
+  return options
+    .map((option) => {
+      const result = analyzeTrade({ ...args, ...option.change, levels });
+      return { ...option, share: result.share, myChange: result.myChange, verdict: result.verdict, valueVerdict: result.valueVerdict };
+    })
+    .filter((option) => Math.abs(option.share) <= FAIR_SHARE)
+    // Closest to even first; between similar ones, the one that's better for your lineup.
+    .sort((a, b) => Math.abs(a.share) - Math.abs(b.share) + 0.02 * (b.myChange - a.myChange))
+    .slice(0, limit)
+    .map(({ change, ...option }) => option);
+};
+
+// ---- Team needs ---------------------------------------------------------------------------
+
+/**
+ * How strong each team is at each position: the points per game its best lineup gets from that
+ * position, ranked across the league (1 = best). The top third is 'strong', the bottom third 'weak'.
+ * teams: [{ key, name, roster }] with projections attached.
+ */
+export const teamNeeds = ({ teams, rosterSettings, scoring }) => {
+  const rows = teams.map((team) => {
+    const lineup = seasonLineup(team.roster, rosterSettings, scoring);
+    const points = Object.fromEntries(TRADE_POSITIONS.map((pos) => [pos, 0]));
+    lineup.starters.forEach(({ player }) => {
+      if (player && points[player.position] != null) points[player.position] += player.points;
+    });
+    return { key: team.key, name: team.name, mine: !!team.mine, total: round1(lineup.total), points };
+  });
+  const count = rows.length;
+  const tierFor = (rank) => {
+    if (count < 3) return 'average';
+    if (rank <= Math.ceil(count / 3)) return 'strong';
+    if (rank > count - Math.ceil(count / 3)) return 'weak';
+    return 'average';
+  };
+  const rankBy = (value) => {
+    const sorted = [...rows].sort((a, b) => value(b) - value(a));
+    return new Map(sorted.map((row, index) => [row.key, index + 1]));
+  };
+  const totalRanks = rankBy((row) => row.total);
+  const positionRanks = Object.fromEntries(TRADE_POSITIONS.map((pos) => [pos, rankBy((row) => row.points[pos])]));
+  return {
+    positions: TRADE_POSITIONS,
+    rows: rows
+      .map((row) => ({
+        key: row.key,
+        name: row.name,
+        mine: row.mine,
+        total: row.total,
+        totalRank: totalRanks.get(row.key),
+        cells: Object.fromEntries(TRADE_POSITIONS.map((pos) => {
+          const rank = positionRanks[pos].get(row.key);
+          return [pos, { points: round1(row.points[pos]), rank, tier: tierFor(rank) }];
+        })),
+      }))
+      .sort((a, b) => a.totalRank - b.totalRank),
   };
 };

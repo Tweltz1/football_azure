@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
   SCORING_OPTIONS, STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
-  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue,
+  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds,
 } from '../data/startSitUtils';
 import UpdatedAt from './UpdatedAt';
 import '../App.css';
@@ -259,6 +259,67 @@ const TradePicks = ({
   </div>
 );
 
+/** Value balance of the trade so far, updated on every tick: the needle leans toward the side getting more. */
+const TradeMeter = ({ live, complete }) => {
+  const lean = Math.max(-1, Math.min(1, live.share / 0.6));
+  const fair = Math.abs(live.share) <= 0.15;
+  return (
+    <div className="trade-meter" aria-label="Trade balance">
+      <div className="trade-meter-labels">
+        <span>You give <strong>{live.giveTotal.toFixed(1)}</strong></span>
+        <span className={`trade-meter-state ${complete ? (fair ? 'fair' : live.share > 0 ? 'win' : 'lose') : ''}`}>
+          {!complete ? 'Add the other side' : fair ? 'Even' : live.share > 0 ? 'Leans your way' : 'Leans their way'}
+        </span>
+        <span>You get <strong>{live.getTotal.toFixed(1)}</strong></span>
+      </div>
+      <div className="trade-meter-track">
+        <div className="trade-meter-fair" />
+        <div className="trade-meter-needle" style={{ left: `${50 + lean * 50}%` }} />
+      </div>
+      {complete && <div className="trade-meter-lineup">Your lineup {signed(live.myChange)} pts a week · theirs {signed(live.theirChange)}</div>}
+    </div>
+  );
+};
+
+/** Each team's strength by position across the league; tap a team to trade with it. */
+const TeamNeeds = ({ needs, partnerKey, onPick }) => (
+  <div className="trade-needs-wrap">
+    <table className="trade-needs-table">
+      <thead>
+        <tr>
+          <th>Team</th>
+          {needs.positions.map((pos) => <th key={pos}>{pos}</th>)}
+          <th>Lineup</th>
+        </tr>
+      </thead>
+      <tbody>
+        {needs.rows.map((row) => (
+          <tr key={row.key} className={`${row.mine ? 'mine' : ''} ${row.key === partnerKey ? 'partner' : ''}`}>
+            <td>
+              {row.mine ? <strong>{row.name} (you)</strong> : (
+                <button type="button" className="startsit-name" onClick={() => onPick(row.key)}>{row.name}</button>
+              )}
+            </td>
+            {needs.positions.map((pos) => {
+              const cell = row.cells[pos];
+              return (
+                <td key={pos} className={`need-${cell.tier}`} title={`${cell.points} pts/game from ${pos}s, #${cell.rank} in the league`}>
+                  #{cell.rank}
+                </td>
+              );
+            })}
+            <td>#{row.totalRank}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    <p className="startsit-help">
+      Rank of the points each team's best lineup gets from each position (#1 is best). Green is a top-third strength, red a bottom-third need.
+      A good trade partner is strong where you're weak and weak where you're strong. Tap a team to trade with it.
+    </p>
+  </div>
+);
+
 /** Pick a team in the same league and players on each side; rates the trade by rest-of-season value. */
 const TradeCheck = ({
   myRoster, partners, rosterSettings, scoring, allPlayers, projectionsById, week, onOpen,
@@ -270,14 +331,48 @@ const TradeCheck = ({
   const [givePickIds, setGivePickIds] = useState([]);
   const [getPickIds, setGetPickIds] = useState([]);
 
+  const [ideas, setIdeas] = useState(null);
+  const [searching, setSearching] = useState(false);
+
   const partner = partners.find((p) => p.key === partnerKey) || partners[0];
-  useEffect(() => { setGetIds([]); setGetPickIds([]); }, [partner?.key]);
+  const choosePartner = (key) => { setPartnerKey(key); setGetIds([]); setGetPickIds([]); };
+  // Suggestions go stale when the scoring or week changes.
+  useEffect(() => { setIdeas(null); }, [scoring, week]);
+
+  const partnerRosters = useMemo(
+    () => partners.map((p) => ({ key: p.key, name: p.name, roster: withProjections(p.players, projectionsById, scoring, week) })),
+    [partners, projectionsById, scoring, week],
+  );
+  const needs = useMemo(
+    () => (partners.length ? teamNeeds({
+      teams: [{ key: 'mine', name: myTeamName || 'Your team', roster: myRoster, mine: true }, ...partnerRosters],
+      rosterSettings, scoring,
+    }) : null),
+    [partners.length, partnerRosters, myRoster, myTeamName, rosterSettings, scoring],
+  );
+
+  const findIdeas = () => {
+    setSearching(true);
+    // Let the button show "Searching" before the work blocks the page for a moment.
+    window.setTimeout(() => {
+      setIdeas(findTrades({ myRoster, partners: partnerRosters, rosterSettings, scoring, allPlayers, dynasty }));
+      setSearching(false);
+    }, 30);
+  };
+  const tryIdea = (idea) => {
+    setPartnerKey(idea.partnerKey);
+    setGiveIds(idea.give.map((p) => p.id));
+    setGetIds(idea.get.map((p) => p.id));
+    setGivePickIds([]);
+    setGetPickIds([]);
+    window.setTimeout(() => document.querySelector('.trade-result')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  };
   const allPicks = [...myPicks, ...partners.flatMap((p) => p.picks || [])];
   const firstPickSeason = allPicks.length ? Math.min(...allPicks.map((pick) => pick.season)) : null;
 
   const theirRoster = useMemo(
-    () => (partner ? withProjections(partner.players, projectionsById, scoring, week) : []),
-    [partner, projectionsById, scoring, week],
+    () => partnerRosters.find((p) => p.key === partner?.key)?.roster || [],
+    [partnerRosters, partner],
   );
   const toggle = (setIds) => (id) => setIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
 
@@ -285,14 +380,25 @@ const TradeCheck = ({
   const get = theirRoster.filter((p) => getIds.includes(p.id));
   const givePicks = dynasty ? myPicks.filter((pick) => givePickIds.includes(pick.id)) : [];
   const getPicks = dynasty ? (partner?.picks || []).filter((pick) => getPickIds.includes(pick.id)) : [];
-  const result = (give.length || givePicks.length) && (get.length || getPicks.length)
-    ? analyzeTrade({
-      give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount: partners.length + 1,
-      dynasty, givePicks, getPicks, firstPickSeason,
-    })
-    : null;
-  const clearAll = () => { setGiveIds([]); setGetIds([]); setGivePickIds([]); setGetPickIds([]); };
   const anything = giveIds.length + getIds.length + givePickIds.length + getPickIds.length > 0;
+  const bothSides = (give.length || givePicks.length) && (get.length || getPicks.length);
+  const tradeArgs = {
+    give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount: partners.length + 1,
+    dynasty, givePicks, getPicks, firstPickSeason,
+  };
+  // Re-rated on every tick, so the meter moves as players are added or removed.
+  const live = anything ? analyzeTrade(tradeArgs) : null;
+  const result = bothSides ? live : null;
+  const balance = result
+    ? balanceTrade({ ...tradeArgs, levels: result.levels, myPickPool: myPicks, theirPickPool: partner?.picks || [] })
+    : [];
+  const applyBalance = (option) => {
+    const { item, side, action } = option;
+    const isPick = !!item.round;
+    const setter = side === 'give' ? (isPick ? setGivePickIds : setGiveIds) : (isPick ? setGetPickIds : setGetIds);
+    setter((ids) => (action === 'add' ? [...ids, item.id] : ids.filter((id) => id !== item.id)));
+  };
+  const clearAll = () => { setGiveIds([]); setGetIds([]); setGivePickIds([]); setGetPickIds([]); };
 
   return (
     <section className="card startsit-panel">
@@ -313,9 +419,50 @@ const TradeCheck = ({
         <p className="startsit-help">Pick a Sleeper or Hood League team in the Roster menu to trade with the other teams in that league.</p>
       ) : (
         <>
+          <div className="trade-finder">
+            <div className="trade-finder-head">
+              <div>
+                <strong>Trade finder</strong>
+                <p className="startsit-help">Looks at every team in the league for trades that improve your starting lineup without gutting theirs.</p>
+              </div>
+              <button type="button" className="create-button" onClick={findIdeas} disabled={searching}>
+                {searching ? 'Searching...' : ideas ? 'Search again' : 'Find trades for me'}
+              </button>
+            </div>
+            {ideas && ideas.length === 0 && (
+              <p className="startsit-empty">No trades found that clearly help you and look fair to them. Your lineup may already be well balanced.</p>
+            )}
+            {ideas && ideas.length > 0 && (
+              <ul className="trade-ideas">
+                {ideas.map((idea) => (
+                  <li key={`${idea.partnerKey}-${idea.give.map((p) => p.id).join()}-${idea.get.map((p) => p.id).join()}`}>
+                    <div className="trade-idea-main">
+                      <small>With {idea.partnerName}</small>
+                      <div>
+                        Give <strong>{idea.give.map((p) => `${p.name} (${p.position})`).join(' + ')}</strong>
+                        {' '}for <strong>{idea.get.map((p) => `${p.name} (${p.position})`).join(' + ')}</strong>
+                      </div>
+                      <small>
+                        {idea.verdict.label}. Your lineup {signed(idea.myChange)} pts a week, theirs {signed(idea.theirChange)}.
+                      </small>
+                    </div>
+                    <button type="button" className="edit-roster-button" onClick={() => tryIdea(idea)}>Check it</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {needs && (
+            <details className="trade-needs">
+              <summary>League needs: who is strong and weak at each position</summary>
+              <TeamNeeds needs={needs} partnerKey={partner?.key} onPick={choosePartner} />
+            </details>
+          )}
+
           <label className="trade-partner">
             Trade with
-            <select value={partner?.key || ''} onChange={(e) => setPartnerKey(e.target.value)}>
+            <select value={partner?.key || ''} onChange={(e) => choosePartner(e.target.value)}>
               {partners.map((p) => <option key={p.key} value={p.key}>{p.name}</option>)}
             </select>
           </label>
@@ -337,6 +484,7 @@ const TradeCheck = ({
               teamName={partner?.name} firstPickSeason={firstPickSeason}
             />
           </div>
+          {live && <TradeMeter live={live} complete={!!result} />}
           {!result && <p className="startsit-help">Tick at least one player{dynasty ? ' or pick' : ''} on each side. Numbers are expected points per game for the rest of the season.</p>}
           {result && (
             <div className={`trade-result ${result.verdict.tone}`}>
@@ -344,6 +492,28 @@ const TradeCheck = ({
               <p>{result.verdict.detail}</p>
               {result.valueVerdict.label !== result.verdict.label && (
                 <p className="startsit-help">On player value alone: {result.valueVerdict.label.toLowerCase()}.</p>
+              )}
+              {balance.length > 0 && (
+                <div className="trade-balance">
+                  <strong>Make it fair</strong>
+                  <ul>
+                    {balance.map((option) => {
+                      const name = option.item.round ? pickLabel(option.item, option.side === 'give' ? myTeamName : partner?.name) : `${option.item.name} (${option.item.position})`;
+                      const verb = option.action === 'add'
+                        ? (option.side === 'give' ? 'Also give' : 'Also ask for')
+                        : (option.side === 'give' ? 'Keep' : 'Leave out');
+                      return (
+                        <li key={`${option.action}-${option.side}-${option.item.id}`}>
+                          <span>
+                            {verb} <strong>{name}</strong>
+                            <small> {option.verdict.label.toLowerCase()}, your lineup {signed(option.myChange)}</small>
+                          </span>
+                          <button type="button" className="edit-roster-button" onClick={() => applyBalance(option)}>Apply</button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
               )}
               <div className="startsit-insight-stats">
                 <div><span>Value you give</span><strong>{result.giveTotal.toFixed(1)}</strong></div>
