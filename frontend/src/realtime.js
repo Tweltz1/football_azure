@@ -41,7 +41,7 @@ export const acceptLeagues = (data) => {
 };
 
 // Keys whose change means a bidding round started, ended or went to a tie-breaker.
-const ROUND_KEYS = new Set(['status', 'currentPlayer', 'tieBreaker']);
+const ROUND_KEYS = new Set(['status', 'currentPlayer', 'currentPlayerId', 'tieBreaker']);
 
 // Mirror of supabase/functions/_shared/diff.ts applyOps; keep the two in sync.
 const applyOps = (target, ops) => {
