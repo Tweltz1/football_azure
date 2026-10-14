@@ -85,3 +85,8 @@ export const buildMarket = (data, allPlayers, ownScore) => {
     toMarket: (score) => Math.max(0, Math.round(toMarket(score))),
   };
 };
+
+/** Market position ranks by player id, used as a prior for players with little or no season to go on. */
+export const marketRanksFrom = (data) => (data?.players
+  ? new Map(Object.entries(data.players).filter(([, v]) => v.positionRank != null).map(([id, v]) => [id, v.positionRank]))
+  : null);

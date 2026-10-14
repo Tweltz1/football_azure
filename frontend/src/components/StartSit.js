@@ -7,7 +7,10 @@ import {
 } from '../data/startSitUtils';
 import { POSITION_TABS, positionRanks, rankLabel, seasonRankings } from '../data/rankings';
 import { buildOutlooks } from '../data/outlook';
-import { buildMarket, describeMarketSettings, marketSettingsFor, useMarketValues } from '../data/market';
+import {
+  buildMarket, describeMarketSettings, marketRanksFrom, marketSettingsFor, useMarketValues,
+} from '../data/market';
+import { suggestWaiverMoves } from '../data/waiverMoves';
 import { initialPlayerList } from '../data/playerData';
 import {
   LeagueScoringContext, applyLeagueScoring, applyLeagueScoringToMatchup, useLeagueScoring,
@@ -373,6 +376,107 @@ const seasonRanks = () => {
 
 const PPR_BY_SCORING = { ppr: 1, half: 0.5, std: 0 };
 
+/** Who to drop for which free agent, judged on rest-of-season value (and the trade market when loaded). */
+const WaiverMoves = ({
+  roster: rosterRaw, pool: poolRaw, rosterSettings, scoring, allPlayers: allPlayersRaw, week, defense, dynasty, teamCount, ppr, note, onOpen,
+}) => {
+  const settings = useMemo(() => marketSettingsFor({ dynasty, teamCount, rosterSettings, ppr }), [dynasty, teamCount, rosterSettings, ppr]);
+  const { data: marketData } = useMarketValues(settings);
+  const marketRanks = useMemo(() => marketRanksFrom(marketData), [marketData]);
+  const outlooks = useMemo(
+    () => buildOutlooks(allPlayersRaw, { scoring, week, defense, seasonRanks: seasonRanks(), marketRanks }),
+    [allPlayersRaw, scoring, week, defense, marketRanks],
+  );
+  const withOutlook = useMemo(() => (list) => list.map((p) => ({ ...p, outlook: outlooks.get(p.id) || null })), [outlooks]);
+  const allPlayers = useMemo(() => withOutlook(allPlayersRaw), [withOutlook, allPlayersRaw]);
+  const roster = useMemo(() => withOutlook(rosterRaw), [withOutlook, rosterRaw]);
+  const pool = useMemo(() => withOutlook(poolRaw), [withOutlook, poolRaw]);
+  const levels = useMemo(() => replacementLevels(allPlayers, teamCount, rosterSettings, scoring), [allPlayers, teamCount, rosterSettings, scoring]);
+  const market = useMemo(
+    () => buildMarket(marketData, allPlayers, (p) => ownTradeScore(p, levels, scoring, dynasty).score),
+    [marketData, allPlayers, levels, scoring, dynasty],
+  );
+  const { drops, holds, moves } = useMemo(
+    () => suggestWaiverMoves({ roster, pool, rosterSettings, scoring, levels, market, dynasty }),
+    [roster, pool, rosterSettings, scoring, levels, market, dynasty],
+  );
+  const value = (info) => (info.display != null ? info.display.toLocaleString() : info.score.toFixed(1));
+  const name = (p, open = true) => (open
+    ? <button type="button" className="startsit-name" onClick={() => onOpen(p.id)}>{p.name}</button>
+    : <span>{p.name}</span>);
+
+  return (
+    <section className="card startsit-panel waiver-moves">
+      <div className="player-board-heading">
+        <div>
+          <p className="section-kicker">Waiver moves</p>
+          <h2>Who to drop, who to add</h2>
+        </div>
+      </div>
+      <p className="startsit-help">
+        Ranked on rest-of-season value: points per game for the games left, games each player is expected to miss, role and schedule
+        {market ? ', blended with the trade market' : ''}. Starters in your best lineup aren't listed as drops, and injured players who are
+        worth a starting spot once healthy are held.
+      </p>
+
+      <h4 className="waiver-title">Best pickups</h4>
+      {moves.length === 0 ? (
+        <p className="startsit-empty">No free agent is clearly worth more than anyone on your bench right now.</p>
+      ) : (
+        <ul className="waiver-list">
+          {moves.map((m) => (
+            <li key={`${m.add.player.id}-${m.drop.player.id}`}>
+              <div className="waiver-move">
+                <span><span className="startsit-tag good">Add</span> {name(m.add.player, false)} <small>{m.add.player.position} · {m.add.player.team || 'FA'}</small> <StatusTag player={m.add.player} /></span>
+                <small>{m.add.reason}</small>
+                <span><span className="startsit-tag warn">Drop</span> {name(m.drop.player)} <small>{m.drop.player.position} · {m.drop.info.perGame.toFixed(1)} pts/game</small></span>
+              </div>
+              <span className="startsit-points" title="Gain in rest-of-season value">
+                +{m.displayGain != null ? m.displayGain.toLocaleString() : m.gain.toFixed(1)}
+                {Math.abs(m.lineupChange) >= 0.1 && <small>lineup {signed(m.lineupChange)}</small>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h4 className="waiver-title">Drop candidates</h4>
+      {drops.length === 0 ? <p className="startsit-empty">Everyone on your roster is either starting or worth holding.</p> : (
+        <ul className="waiver-list">
+          {drops.map((d) => (
+            <li key={d.player.id}>
+              <div className="waiver-move">
+                <span>{name(d.player)} <small>{d.player.position} · {d.player.team || 'FA'}</small> <StatusTag player={d.player} /></span>
+                <small>{d.reason}</small>
+              </div>
+              <span className="startsit-points" title="Rest-of-season value">{value(d.info)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {holds.length > 0 && (
+        <>
+          <h4 className="waiver-title">Hurt, but hold</h4>
+          <ul className="waiver-list">
+            {holds.map((h) => (
+              <li key={h.player.id}>
+                <div className="waiver-move">
+                  <span>{name(h.player)} <small>{h.player.position} · {h.player.team || 'FA'}</small> <StatusTag player={h.player} /></span>
+                  <small>{h.reason}</small>
+                </div>
+                <span className="startsit-points" title="Rest-of-season value">{value(h.info)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {note && <p className="startsit-help">{note}</p>}
+    </section>
+  );
+};
+
+
 /** Pick a team in the same league and players on each side; rates the trade by rest-of-season value. */
 const TradeCheck = ({
   myRoster: myRosterRaw, partners, rosterSettings, scoring, allPlayers: allPlayersRaw, projectionsById, week, onOpen,
@@ -380,20 +484,22 @@ const TradeCheck = ({
 }) => {
   // Every player's rest-of-season outlook (injuries, teammates, schedule, Sleeper's weeks ahead),
   // which is what trade values are built on.
-  const outlooks = useMemo(
-    () => buildOutlooks(allPlayersRaw, { scoring, week, defense, seasonRanks: seasonRanks() }),
-    [allPlayersRaw, scoring, week, defense],
-  );
-  const withOutlook = useMemo(() => (list) => list.map((p) => ({ ...p, outlook: outlooks.get(p.id) || null })), [outlooks]);
-  const myRoster = useMemo(() => withOutlook(myRosterRaw), [withOutlook, myRosterRaw]);
-  const allPlayers = useMemo(() => withOutlook(allPlayersRaw), [withOutlook, allPlayersRaw]);
   // Market values from real trades in leagues set up like this one, blended with our projections.
+  // Market ranks also steady the outlook of players with little season to go on (hurt early, say).
   const teamCount = partners.length + 1;
   const marketSettings = useMemo(
     () => (partners.length ? marketSettingsFor({ dynasty, teamCount, rosterSettings, ppr }) : null),
     [partners.length, dynasty, teamCount, rosterSettings, ppr],
   );
   const { data: marketData, error: marketError } = useMarketValues(marketSettings);
+  const marketRanks = useMemo(() => marketRanksFrom(marketData), [marketData]);
+  const outlooks = useMemo(
+    () => buildOutlooks(allPlayersRaw, { scoring, week, defense, seasonRanks: seasonRanks(), marketRanks }),
+    [allPlayersRaw, scoring, week, defense, marketRanks],
+  );
+  const withOutlook = useMemo(() => (list) => list.map((p) => ({ ...p, outlook: outlooks.get(p.id) || null })), [outlooks]);
+  const myRoster = useMemo(() => withOutlook(myRosterRaw), [withOutlook, myRosterRaw]);
+  const allPlayers = useMemo(() => withOutlook(allPlayersRaw), [withOutlook, allPlayersRaw]);
   const levels = useMemo(() => replacementLevels(allPlayers, teamCount, rosterSettings, scoring), [allPlayers, teamCount, rosterSettings, scoring]);
   // Ages only come with rostered players, so they're copied over before the market is lined up with our values.
   const agedPlayers = useMemo(() => {
@@ -870,6 +976,9 @@ const StartSit = ({ userId }) => {
     return withProjections(free, projectionsById, scoring, shownWeek)
       .map((player) => ({ ...player, posRank: posRanks.get(player.id) || null }));
   }, [projections, rosterPlayers, tradePartners, projectionsById, scoring, shownWeek, posRanks]);
+  const leaguePpr = activeSleeper
+    ? Number(activeSleeper.scoringSettings?.rec ?? PPR_BY_SCORING[activeSleeper.scoring] ?? 1)
+    : PPR_BY_SCORING[scoring] ?? 1;
   const waiverNote = activeSleeper
     ? 'Not on any roster in this league right now. Check your waiver order before claiming.'
     : activeTeam
@@ -1120,6 +1229,23 @@ const StartSit = ({ userId }) => {
             </section>
           </div>
 
+          {tradePartners.length > 0 && (
+            <WaiverMoves
+              roster={roster}
+              pool={waiverPool}
+              rosterSettings={rosterSettings}
+              scoring={scoring}
+              allPlayers={projections.players}
+              week={shownWeek}
+              defense={projections.defense}
+              dynasty={!!activeSleeper?.dynasty}
+              teamCount={tradePartners.length + 1}
+              ppr={leaguePpr}
+              note={waiverNote}
+              onOpen={setInsightId}
+            />
+          )}
+
           <section className="card startsit-panel">
             <div className="player-board-heading">
               <div>
@@ -1198,7 +1324,7 @@ const StartSit = ({ userId }) => {
           <TradeCheck
             key={activeSource}
             dynasty={!!activeSleeper?.dynasty}
-            ppr={activeSleeper ? Number(activeSleeper.scoringSettings?.rec ?? PPR_BY_SCORING[activeSleeper.scoring] ?? 1) : PPR_BY_SCORING[scoring] ?? 1}
+            ppr={leaguePpr}
             myPicks={activeSleeper?.picks || []}
             myTeamName={activeSleeper?.teamName || ''}
             myRoster={roster}
