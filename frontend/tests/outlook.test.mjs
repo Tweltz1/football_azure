@@ -112,3 +112,29 @@ test('teammate role notes need at least 3 games to go on', () => {
   const o = outlookFor([wr, mate], 'w1');
   assert.ok(!o.notes.some((n) => /Mate WR/.test(n)));
 });
+
+test('a returning teammate takes more work when he was the planned starter, less when he was the backup', () => {
+  const rbField = Array.from({ length: 40 }, (_, i) => ({
+    id: `rb${i}x`, name: `RB ${i}`, position: 'RB', team: `R${i}`, gamesPlayed: 6,
+    seasonAvg: pts(22 - i * 0.4), recent: games([1, 2, 3, 4, 5, 6], 22 - i * 0.4), points: pts(22 - i * 0.4),
+    upcoming: upcoming([8, 9, 10, 11], 22 - i * 0.4),
+  }));
+  const lead = {
+    id: 'war', name: 'Lead RB', position: 'RB', team: 'PIT', gamesPlayed: 6,
+    seasonAvg: pts(15), recent: games([1, 2, 3, 4, 5, 6], 15), points: pts(13), upcoming: upcoming([8, 9, 10, 11], 13),
+  };
+  const back = {
+    id: 'dow', name: 'Back RB', position: 'RB', team: 'PIT', gamesPlayed: 0,
+    seasonAvg: null, recent: [], points: pts(9), upcoming: upcoming([8, 9, 10, 11], 9),
+  };
+  const run = (ranks) => buildOutlooks([...field, ...rbField, lead, back], {
+    scoring: 'ppr', week: 7, seasonRanks: new Map(Object.entries(ranks)),
+  }).get('war');
+  const backup = run({ war: 18, dow: 32 });
+  const starter = run({ war: 32, dow: 12 });
+  const unranked = run({});
+  assert.ok(backup.roleChange < 0 && starter.roleChange < backup.roleChange, `${backup.roleChange} vs ${starter.roleChange}`);
+  assert.ok(Math.abs(backup.roleChange) < Math.abs(unranked.roleChange));
+  assert.ok(backup.notes.some((n) => /RB18 vs RB32 before the season, so Lead RB should lead the split/.test(n)));
+  assert.ok(starter.notes.some((n) => /so Back RB should lead the split/.test(n)));
+});

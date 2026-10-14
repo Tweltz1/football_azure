@@ -81,6 +81,26 @@ const mateLevel = (mate, scoring) => {
   return mean(ahead) ?? 0;
 };
 
+/** Preseason position rank, or today's trade-market rank when the player wasn't on the preseason list. */
+const startingRank = (player, ctx) => ctx.seasonRanks?.get(player.id) || ctx.marketRanks?.get(player.id) || null;
+
+/**
+ * How the work splits between two backs (or receivers) at the same position, from where each was
+ * ranked before the season: the higher-ranked one was expected to start and keeps the bigger share.
+ * Returns the teammate's share of the pair (0.5 = even) and the two ranks, or null without both ranks.
+ */
+const expectedSplit = (player, mate, position, ctx) => {
+  const mine = startingRank(player, ctx);
+  const theirs = startingRank(mate, ctx);
+  if (!mine || !theirs) return null;
+  const myLevel = ctx.priors?.(position, mine);
+  const mateLevelPrior = ctx.priors?.(position, theirs);
+  const mateShare = myLevel > 0 && mateLevelPrior > 0
+    ? mateLevelPrior / (myLevel + mateLevelPrior)
+    : (1 / theirs) / (1 / mine + 1 / theirs);
+  return { mateShare: Math.min(0.75, Math.max(0.25, mateShare)), mine, theirs };
+};
+
 const OVERLAP_PASS_CATCHERS = ['WR', 'TE'];
 const sharesWork = (position, mate) => position === mate
   || (OVERLAP_PASS_CATCHERS.includes(position) && OVERLAP_PASS_CATCHERS.includes(mate));
@@ -114,7 +134,11 @@ const roleChanges = (player, ctx, healthy, remaining) => {
       if (Math.abs(shift) < 0.2) return null;
 
       const mateAvg = mateLevel(mate, ctx.scoring);
-      const share = normalizePosition(mate.position) === position ? ROLE_SHARE[position] : CROSS_SHARE;
+      const samePosition = normalizePosition(mate.position) === position;
+      // The usual share of work a teammate takes, scaled by who was expected to start: a backup
+      // coming back takes less than the usual share, the planned starter coming back takes more.
+      const split = samePosition ? expectedSplit(player, mate, position, ctx) : null;
+      const share = samePosition ? ROLE_SHARE[position] * (split ? 2 * split.mateShare : 1) : CROSS_SHARE;
       const measured = without.length && withMate.length ? mean(without.map((g) => g.value)) - mean(withMate.map((g) => g.value)) : null;
       // A measured split is noisy over a few games, so it's blended with the usual share.
       const gain = Math.min(Math.max(measured == null ? share * mateAvg : 0.5 * measured + 0.5 * share * mateAvg, 0), 0.4 * healthy);
@@ -125,6 +149,11 @@ const roleChanges = (player, ctx, healthy, remaining) => {
       if (change < 0) {
         const when = mateMissed?.backWeek ? `expected back in week ${mateMissed.backWeek}` : mateOut ? 'due back' : 'back healthy';
         note = `${mate.name} (${mate.position}) is ${when} after missing ${plural(without.length, 'game')} of ${player.name}'s last ${myGames.length}: about ${round1(-change)} fewer pts a game with less work to go around.`;
+        if (split) {
+          const mySide = Math.round((1 - split.mateShare) * 100);
+          const lead = split.mine <= split.theirs ? player.name : mate.name;
+          note += ` Ranked ${position}${split.mine} vs ${position}${split.theirs} before the season, so ${lead} should lead the split (about ${mySide}/${100 - mySide}).`;
+        }
       } else {
         note = `${mate.name} (${mate.position}) is ${mate.injury}${mateMissed?.longTerm ? ' with no return in sight' : ''}: about ${round1(change)} more pts a game for ${player.name} while out.`;
       }
