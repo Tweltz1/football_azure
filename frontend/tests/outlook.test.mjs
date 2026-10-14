@@ -152,3 +152,12 @@ test("a hurt player's preseason ranking outweighs a market rank that already pri
   }).get('hurt9');
   assert.ok(o.notes.some((n) => /preseason and trade-market rankings \(WR15/.test(n)), o.notes.join(' | '));
 });
+
+test("Sleeper's trimmed numbers for a player just back from injury don't drag his value down much", () => {
+  const star = {
+    id: 'ret', name: 'Returning WR', position: 'WR', team: 'NE', injury: 'IR', gamesPlayed: 0,
+    seasonAvg: null, recent: [], points: pts(0), upcoming: [...upcoming([8], 0), ...upcoming([9, 10, 11], 8)],
+  };
+  const o = buildOutlooks([...field, star], { scoring: 'ppr', week: 7, seasonRanks: new Map([['ret', 5]]) }).get('ret');
+  assert.ok(o.perGame > 0.75 * o.healthy, `perGame ${o.perGame} healthy ${o.healthy}`);
+});

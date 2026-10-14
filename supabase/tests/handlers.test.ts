@@ -495,12 +495,15 @@ test('start/sit: upcoming weeks mark games a player is not expected to play, and
     if (url.includes('/stats/')) return [];
     if (url.includes('/2026/6?')) return [qb, wr, other];
     if (url.includes('/2026/7?')) return [qb, other];          // the WR is still out
-    if (url.includes('/2026/8?')) return [other];              // Buffalo's bye
+    // Buffalo's bye: Sleeper still lists its players, with no opponent and no points.
+    if (url.includes('/2026/8?')) return [other, { ...qb, opponent: null, stats: {} }, { ...wr, opponent: null, stats: {} }];
     return [qb, wr, other];                                    // back from week 9
   });
   const body = (await world.call('bob', 'GET', 'startsit')).body as any;
   const hurt = body.players.find((p: any) => p.id === 'sleeper-7');
   assert.deepEqual(hurt.upcoming.map((g: any) => [g.week, g.points.ppr]), [[7, 0], [9, 12], [10, 12]]);
+  const allen = body.players.find((p: any) => p.id === 'sleeper-4984');
+  assert.deepEqual(allen.upcoming.map((g: any) => g.week), [7, 9, 10]);
 });
 
 test('start/sit: recent games, season average, injured teammates, and past matchups', async () => {
