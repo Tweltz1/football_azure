@@ -207,6 +207,11 @@ export const defenseMatchup = (player, defense, scoring) => {
     position: player.position,
     games: row.games,
     rankLabel: `${ordinal(row.rank)} most points allowed to ${player.position}s of ${row.teams}`,
+    // Biggest games against this defense, best first in the chosen scoring (other players only).
+    notable: (row.top || [])
+      .filter((game) => game.id !== player.id)
+      .map((game) => ({ ...game, value: pointsOf(game) }))
+      .sort((a, b) => b.value - a.value),
     verdict,
     rows: [
       { label: 'Fantasy pts', value: pointsOf(row), league: leagueAvg(pointsOf), higherIsEasier: true },

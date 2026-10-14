@@ -1,5 +1,5 @@
 import {
-  analyzeTrade, balanceTrade, buildLineup, findTrades, lineupChanges, teamNeeds,
+  analyzeTrade, balanceTrade, buildLineup, defenseMatchup, findTrades, lineupChanges, teamNeeds,
 } from './startSitUtils';
 
 const player = (id, position, avg, extra = {}) => ({
@@ -171,4 +171,15 @@ describe('teamNeeds', () => {
     expect(row('me').mine).toBe(true);
     expect(needs.rows[needs.rows.length - 1].key).toBe('weak');
   });
+});
+
+test('defenseMatchup lists the biggest games against the defense, scored for the chosen format', () => {
+  const row = (ppr, half, top = []) => ({ games: 3, points: { ppr, half, std: half }, box: { rec: 5, tgt: 7, recYd: 60, recTd: 0.3 }, rank: 1, teams: 2, top });
+  const game = (id, week, ppr, half) => ({ id, name: id, team: 'T', week, points: { ppr, half, std: half }, box: {} });
+  const defense = {
+    KC: { WR: row(40, 35, [game('me', 1, 30, 25), game('a', 2, 28, 20), game('b', 3, 26, 24)]) },
+    DAL: { WR: row(30, 26) },
+  };
+  const result = defenseMatchup({ id: 'me', position: 'WR', opponent: 'KC' }, defense, 'half');
+  expect(result.notable.map((g) => [g.id, g.value])).toEqual([['b', 24], ['a', 20]]);
 });
