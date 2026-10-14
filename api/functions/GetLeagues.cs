@@ -31,6 +31,10 @@ public static class GetLeagues
             {
                 foreach (var league in await feedIterator.ReadNextAsync())
                 {
+                    if (await LeagueMemberProfileHelper.HydrateMissingAsync(league))
+                    {
+                        await container.ReplaceItemAsync(league, league.Id, new PartitionKey(league.Id));
+                    }
                     leagues.Add(league);
                 }
             }

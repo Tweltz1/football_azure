@@ -1510,7 +1510,7 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, o
                             <p className="section-kicker">Unassigned joiners</p>
                             <div className="manual-assignment-list">
                                 {unassignedMemberIds.length > 0 ? unassignedMemberIds.map(memberId => (
-                                    <span key={memberId}>{formatMemberLabel(memberId)}</span>
+                                    <span key={memberId}>{formatMemberLabel(league, memberId)}</span>
                                 )) : <span>Everyone is assigned</span>}
                             </div>
                         </div>
@@ -1522,7 +1522,7 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, o
                         <li key={team.id} className="player-list-item">
                             <span>
                                 <strong>{team.name}</strong>
-                                {isManualDraft && <small style={{ display: 'block', color: '#65746f', fontWeight: 700 }}>Owner: {formatTeamOwnerLabel(team.ownerId, memberIds)}</small>}
+                                {isManualDraft && <small style={{ display: 'block', color: '#65746f', fontWeight: 700 }}>Owner: {formatTeamOwnerLabel(league, team.ownerId, memberIds)}</small>}
                             </span>
                             <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
                                 Budget: $
@@ -1541,7 +1541,7 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, o
                                         >
                                             <option value="">Assign member</option>
                                             {memberIds.map(memberId => (
-                                                <option key={memberId} value={memberId}>{formatMemberLabel(memberId)}</option>
+                                                <option key={memberId} value={memberId}>{formatMemberLabel(league, memberId)}</option>
                                             ))}
                                         </select>
                                         <button onClick={() => handleAssignManualTeam(team.id)} disabled={!manualAssignments[team.id]}>Assign</button>
@@ -1644,16 +1644,20 @@ const pickRandomItem = (items = []) => {
     return items[Math.floor(Math.random() * items.length)];
 };
 
-const formatMemberLabel = (memberId = '') => {
+const formatMemberLabel = (league, memberId = '') => {
     if (!memberId) return 'Unknown member';
+    const profile = league?.memberProfiles?.[memberId];
+    if (profile?.email) return profile.email;
+    if (profile?.displayName) return profile.displayName;
+
     const value = String(memberId);
     const emailName = value.includes('@') ? value.split('@')[0] : value;
     return emailName.replace(/[._-]+/g, ' ').replace(/\b\w/g, character => character.toUpperCase());
 };
 
-const formatTeamOwnerLabel = (ownerId, memberIds = []) => {
+const formatTeamOwnerLabel = (league, ownerId, memberIds = []) => {
     if (!ownerId || String(ownerId).startsWith('manual-')) return 'Unassigned';
-    return memberIds.includes(ownerId) ? formatMemberLabel(ownerId) : 'Manual team';
+    return memberIds.includes(ownerId) ? formatMemberLabel(league, ownerId) : 'Manual team';
 };
 
 const formatDraftChatTime = (value) => {
