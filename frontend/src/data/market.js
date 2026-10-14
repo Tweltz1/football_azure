@@ -86,6 +86,12 @@ export const buildMarket = (data, allPlayers, ownScore) => {
   };
 };
 
+/**
+ * Points per game are about this season, so in dynasty leagues the outlook ranks come from the
+ * redraft market (same team count, QBs and scoring): dynasty ranks also price in age and future years.
+ */
+export const seasonMarketSettings = (settings) => (settings?.dynasty ? { ...settings, dynasty: false } : null);
+
 /** Market position ranks by player id, used as a prior for players with little or no season to go on. */
 export const marketRanksFrom = (data) => (data?.players
   ? new Map(Object.entries(data.players).filter(([, v]) => v.positionRank != null).map(([id, v]) => [id, v.positionRank]))

@@ -81,6 +81,35 @@ const mateLevel = (mate, scoring) => {
   return mean(ahead) ?? 0;
 };
 
+/** Preseason position rank, or today's trade-market rank when the player wasn't on the preseason list. */
+const startingRank = (player, ctx) => ctx.seasonRanks?.get(player.id) || ctx.marketRanks?.get(player.id) || null;
+
+/**
+ * How the work splits between two players at the same position once both are healthy. It starts from
+ * where each was ranked before the season, with this player's own production this season mixed in
+ * (a fill-in who has played well earns more of the work). Close ranks mean a real split; a big gap
+ * means the planned starter takes nearly all of it back (a star returning gets about 90%).
+ * Returns the teammate's share of the pair's work, the two ranks, and whether it's a close call.
+ */
+const expectedSplit = (player, mate, position, ctx, playedLevel) => {
+  const mine = startingRank(player, ctx);
+  const theirs = startingRank(mate, ctx);
+  if (!mine || !theirs) return null;
+  const myPrior = ctx.priors?.(position, mine);
+  const matePrior = ctx.priors?.(position, theirs);
+  let ratio;
+  if (myPrior > 0 && matePrior > 0) {
+    const myLevel = playedLevel > 0 ? 0.5 * myPrior + 0.5 * playedLevel : myPrior;
+    ratio = matePrior / myLevel;
+  } else {
+    ratio = mine / theirs;
+  }
+  // Steep curve: even levels split 50/50, a 1.5x gap is about 77/23, 2x about 89/11.
+  const weight = ratio ** 3;
+  const mateShare = Math.min(0.9, Math.max(0.1, weight / (1 + weight)));
+  return { mateShare, mine, theirs, close: mateShare >= 0.3 && mateShare <= 0.7 };
+};
+
 const OVERLAP_PASS_CATCHERS = ['WR', 'TE'];
 const sharesWork = (position, mate) => position === mate
   || (OVERLAP_PASS_CATCHERS.includes(position) && OVERLAP_PASS_CATCHERS.includes(mate));
@@ -114,10 +143,21 @@ const roleChanges = (player, ctx, healthy, remaining) => {
       if (Math.abs(shift) < 0.2) return null;
 
       const mateAvg = mateLevel(mate, ctx.scoring);
-      const share = normalizePosition(mate.position) === position ? ROLE_SHARE[position] : CROSS_SHARE;
-      const measured = without.length && withMate.length ? mean(without.map((g) => g.value)) - mean(withMate.map((g) => g.value)) : null;
+      const samePosition = normalizePosition(mate.position) === position;
+      // When a teammate at the same position comes back, preseason ranks (and how this player has
+      // done without them) decide the split.
+      const soloLevel = without.length ? mean(without.map((g) => g.value)) : healthy;
+      const split = samePosition ? expectedSplit(player, mate, position, ctx, soloLevel) : null;
+      const share = samePosition ? ROLE_SHARE[position] : CROSS_SHARE;
+      const measured = without.length && withMate.length ? soloLevel - mean(withMate.map((g) => g.value)) : null;
       // A measured split is noisy over a few games, so it's blended with the usual share.
-      const gain = Math.min(Math.max(measured == null ? share * mateAvg : 0.5 * measured + 0.5 * share * mateAvg, 0), 0.4 * healthy);
+      let gain = Math.min(Math.max(measured == null ? share * mateAvg : 0.5 * measured + 0.5 * share * mateAvg, 0), 0.4 * healthy);
+      if (split && shift < 0) {
+        // Teammate coming back: this player keeps their side of the split. Sharing the work never
+        // costs all of it (some touches stay), so the loss is capped at 85%.
+        const expectedLoss = Math.min(0.85, split.mateShare) * healthy;
+        gain = measured == null ? expectedLoss : 0.5 * measured + 0.5 * expectedLoss;
+      }
       const change = gain * shift;
       if (Math.abs(change) < 0.4) return null;
 
@@ -125,6 +165,18 @@ const roleChanges = (player, ctx, healthy, remaining) => {
       if (change < 0) {
         const when = mateMissed?.backWeek ? `expected back in week ${mateMissed.backWeek}` : mateOut ? 'due back' : 'back healthy';
         note = `${mate.name} (${mate.position}) is ${when} after missing ${plural(without.length, 'game')} of ${player.name}'s last ${myGames.length}: about ${round1(-change)} fewer pts a game with less work to go around.`;
+        if (split) {
+          const mySide = Math.round((1 - split.mateShare) * 100);
+          const ranks = `${player.name} was ${position}${split.mine} and ${mate.name} ${position}${split.theirs} before the season`;
+          if (split.close) {
+            const lead = mySide >= 50 ? player.name : mate.name;
+            note += ` ${ranks}, close enough (with how ${player.name} has played) for a real split, ${lead} leading (about ${mySide}/${100 - mySide}).`;
+          } else if (mySide < 50) {
+            note += ` ${ranks}, so ${mate.name} should take most of the work back (about ${100 - mySide}/${mySide}).`;
+          } else {
+            note += ` ${ranks}, so ${player.name} should keep most of the work (about ${mySide}/${100 - mySide}).`;
+          }
+        }
       } else {
         note = `${mate.name} (${mate.position}) is ${mate.injury}${mateMissed?.longTerm ? ' with no return in sight' : ''}: about ${round1(change)} more pts a game for ${player.name} while out.`;
       }
@@ -180,7 +232,12 @@ export const playerOutlook = (player, ctx) => {
   const preseasonRank = ctx.seasonRanks?.get(player.id) || null;
   const marketRank = ctx.marketRanks?.get(player.id) || null;
   // Preseason ranking and today's trade-market ranking at the position, averaged when we have both.
-  const rank = preseasonRank && marketRank ? Math.round((preseasonRank + marketRank) / 2) : preseasonRank || marketRank;
+  // The market already marks a hurt player down for the games they'll miss, which are counted
+  // separately here, so for them the preseason ranking carries two thirds of the weight.
+  const preseasonWeight = statusOf(player) ? 2 / 3 : 1 / 2;
+  const rank = preseasonRank && marketRank
+    ? Math.round(preseasonWeight * preseasonRank + (1 - preseasonWeight) * marketRank)
+    : preseasonRank || marketRank;
   const prior = rank && ctx.priors ? ctx.priors(position, rank) : null;
 
   let gp = player.gamesPlayed || 0;
