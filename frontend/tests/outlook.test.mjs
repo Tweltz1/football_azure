@@ -113,28 +113,31 @@ test('teammate role notes need at least 3 games to go on', () => {
   assert.ok(!o.notes.some((n) => /Mate WR/.test(n)));
 });
 
-test('a returning teammate takes more work when he was the planned starter, less when he was the backup', () => {
+test('a star coming back takes nearly all the work; close preseason ranks mean a real split', () => {
   const rbField = Array.from({ length: 40 }, (_, i) => ({
     id: `rb${i}x`, name: `RB ${i}`, position: 'RB', team: `R${i}`, gamesPlayed: 6,
-    seasonAvg: pts(22 - i * 0.4), recent: games([1, 2, 3, 4, 5, 6], 22 - i * 0.4), points: pts(22 - i * 0.4),
-    upcoming: upcoming([8, 9, 10, 11], 22 - i * 0.4),
+    seasonAvg: pts(24 - i * 0.45), recent: games([1, 2, 3, 4, 5, 6], 24 - i * 0.45), points: pts(24 - i * 0.45),
+    upcoming: upcoming([8, 9, 10, 11], 24 - i * 0.45),
   }));
-  const lead = {
-    id: 'war', name: 'Lead RB', position: 'RB', team: 'PIT', gamesPlayed: 6,
-    seasonAvg: pts(15), recent: games([1, 2, 3, 4, 5, 6], 15), points: pts(13), upcoming: upcoming([8, 9, 10, 11], 13),
+  const fillIn = {
+    id: 'fill', name: 'Fill-in RB', position: 'RB', team: 'SF', gamesPlayed: 6,
+    seasonAvg: pts(16), recent: games([1, 2, 3, 4, 5, 6], 16), points: pts(14), upcoming: upcoming([8, 9, 10, 11], 14),
   };
-  const back = {
-    id: 'dow', name: 'Back RB', position: 'RB', team: 'PIT', gamesPlayed: 0,
-    seasonAvg: null, recent: [], points: pts(9), upcoming: upcoming([8, 9, 10, 11], 9),
+  const star = {
+    id: 'star', name: 'Star RB', position: 'RB', team: 'SF', gamesPlayed: 0,
+    seasonAvg: null, recent: [], points: pts(20), upcoming: upcoming([8, 9, 10, 11], 20),
   };
-  const run = (ranks) => buildOutlooks([...field, ...rbField, lead, back], {
+  const run = (ranks) => buildOutlooks([...field, ...rbField, fillIn, star], {
     scoring: 'ppr', week: 7, seasonRanks: new Map(Object.entries(ranks)),
-  }).get('war');
-  const backup = run({ war: 18, dow: 32 });
-  const starter = run({ war: 32, dow: 12 });
+  }).get('fill');
+  const starBack = run({ fill: 40, star: 1 });
+  const closeCall = run({ fill: 18, star: 22 });
   const unranked = run({});
-  assert.ok(backup.roleChange < 0 && starter.roleChange < backup.roleChange, `${backup.roleChange} vs ${starter.roleChange}`);
-  assert.ok(Math.abs(backup.roleChange) < Math.abs(unranked.roleChange));
-  assert.ok(backup.notes.some((n) => /RB18 vs RB32 before the season, so Lead RB should lead the split/.test(n)));
-  assert.ok(starter.notes.some((n) => /so Back RB should lead the split/.test(n)));
+  // The star takes most of it back: the fill-in loses well over half his production.
+  assert.ok(starBack.roleChange < -8, `star back ${starBack.roleChange}`);
+  assert.ok(starBack.notes.some((n) => /Star RB should take most of the work back \(about (8\d\/1\d|90\/10)\)/.test(n)), starBack.notes.join(' | '));
+  // Close ranks and a fill-in who has played well: a split he leads, a much smaller loss.
+  assert.ok(closeCall.roleChange < 0 && closeCall.roleChange > -8, `close ${closeCall.roleChange}`);
+  assert.ok(closeCall.notes.some((n) => /real split, Fill-in RB leading/.test(n)), closeCall.notes.join(' | '));
+  assert.ok(Math.abs(starBack.roleChange) > Math.abs(unranked.roleChange));
 });
