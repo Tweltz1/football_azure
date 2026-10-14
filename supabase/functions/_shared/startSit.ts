@@ -338,6 +338,8 @@ async function getFutureWeek(fetchJson: FetchJson, season: number, seasonType: s
     const player = toPlayer(row as Record<string, unknown>);
     if (!player) continue;
     if (player.team && player.opponent) teams.add(player.team);
+    // Sleeper lists players on bye with no opponent and no points; a bye isn't a missed game.
+    if (!player.opponent) continue;
     const existing = lines.get(player.id);
     if (!existing || existing.points.ppr < player.points.ppr) {
       lines.set(player.id, { week, opponent: player.opponent, points: player.points, stats: player.stats });

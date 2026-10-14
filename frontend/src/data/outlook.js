@@ -272,9 +272,12 @@ export const playerOutlook = (player, ctx) => {
   const roleChange = roles.reduce((sum, r) => sum + r.change, 0);
   const schedule = scheduleAhead(player, ctx);
   const healthy = Math.max(0, (base + roleChange) * (schedule?.multiplier ?? 1));
-  const perGame = sleeperAhead != null && base > 0 ? 0.55 * healthy + 0.45 * sleeperAhead : healthy || sleeperAhead || 0;
-
   const availability = expectedMissed(player, remaining, ctx.scoring);
+  // Sleeper trims its projections for players just back from injury, and the games they'll miss are
+  // already counted, so for hurt players Sleeper's weeks ahead count for less.
+  const sleeperWeight = statusOf(player) && availability.missed >= 1 ? 0.2 : 0.45;
+  const perGame = sleeperAhead != null && base > 0 ? (1 - sleeperWeight) * healthy + sleeperWeight * sleeperAhead : healthy || sleeperAhead || 0;
+
   const share = Math.max(0, (remaining - availability.missed) / remaining);
   const value = round1(perGame * share);
 
