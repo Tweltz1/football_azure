@@ -5,7 +5,9 @@ import {
   STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
   vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds,
 } from '../data/startSitUtils';
-import { positionRanks, rankLabel } from '../data/rankings';
+import { POSITION_TABS, positionRanks, rankLabel, seasonRankings } from '../data/rankings';
+import { buildOutlooks } from '../data/outlook';
+import { initialPlayerList } from '../data/playerData';
 import {
   LeagueScoringContext, applyLeagueScoring, applyLeagueScoringToMatchup, useLeagueScoring,
 } from '../data/leagueScoring';
@@ -336,11 +338,32 @@ const TeamNeeds = ({ needs, partnerKey, onPick }) => (
   </div>
 );
 
+// Preseason position ranks (WR15...), which outlooks lean on for players who have barely played.
+let seasonRanksCache = null;
+const seasonRanks = () => {
+  if (!seasonRanksCache) {
+    seasonRanksCache = new Map();
+    POSITION_TABS.filter((t) => t.positions.length === 1).forEach((t) => {
+      seasonRankings(initialPlayerList, t.value).forEach((p) => seasonRanksCache.set(p.id, p.positionRank));
+    });
+  }
+  return seasonRanksCache;
+};
+
 /** Pick a team in the same league and players on each side; rates the trade by rest-of-season value. */
 const TradeCheck = ({
-  myRoster, partners, rosterSettings, scoring, allPlayers, projectionsById, week, onOpen,
-  dynasty = false, myPicks = [], myTeamName = '', projectionsAt = null, rostersAt = null,
+  myRoster: myRosterRaw, partners, rosterSettings, scoring, allPlayers: allPlayersRaw, projectionsById, week, onOpen,
+  defense = null, dynasty = false, myPicks = [], myTeamName = '', projectionsAt = null, rostersAt = null,
 }) => {
+  // Every player's rest-of-season outlook (injuries, teammates, schedule, Sleeper's weeks ahead),
+  // which is what trade values are built on.
+  const outlooks = useMemo(
+    () => buildOutlooks(allPlayersRaw, { scoring, week, defense, seasonRanks: seasonRanks() }),
+    [allPlayersRaw, scoring, week, defense],
+  );
+  const withOutlook = useMemo(() => (list) => list.map((p) => ({ ...p, outlook: outlooks.get(p.id) || null })), [outlooks]);
+  const myRoster = useMemo(() => withOutlook(myRosterRaw), [withOutlook, myRosterRaw]);
+  const allPlayers = useMemo(() => withOutlook(allPlayersRaw), [withOutlook, allPlayersRaw]);
   const [partnerKey, setPartnerKey] = useState('');
   const [giveIds, setGiveIds] = useState([]);
   const [getIds, setGetIds] = useState([]);
@@ -356,8 +379,8 @@ const TradeCheck = ({
   useEffect(() => { setIdeas(null); }, [scoring, week]);
 
   const partnerRosters = useMemo(
-    () => partners.map((p) => ({ key: p.key, name: p.name, roster: withProjections(p.players, projectionsById, scoring, week) })),
-    [partners, projectionsById, scoring, week],
+    () => partners.map((p) => ({ key: p.key, name: p.name, roster: withOutlook(withProjections(p.players, projectionsById, scoring, week)) })),
+    [partners, projectionsById, scoring, week, withOutlook],
   );
   const needs = useMemo(
     () => (partners.length ? teamNeeds({
@@ -550,7 +573,9 @@ const TradeCheck = ({
                 <div><span>Their lineup</span><strong>{signed(result.theirChange)}</strong></div>
               </div>
               <p className="startsit-help">
-                Trade value mostly counts what a player scores above a starter you could find on waivers, plus a little for raw points
+                Points per game are a rest-of-season outlook: what each player has scored (or their preseason ranking if they've barely
+                played), Sleeper's projections for the weeks ahead, games they're likely to miss, teammates coming back or going out, and
+                the defenses left on their schedule. Trade value mostly counts what a player scores above a starter you could find on waivers, plus a little for raw points
                 ({Object.entries(result.levels).filter(([pos]) => ['QB', 'RB', 'WR', 'TE'].includes(pos)).map(([pos, v]) => `${pos} ${v.toFixed(1)}`).join(', ')} pts/game in this league).
                 Lineup numbers are the change in each team's best weekly lineup, and the verdict counts yours: a trade that fills a
                 weak starting spot is worth more to you, and one whose players would sit on your bench is worth less.
@@ -573,6 +598,11 @@ const TradeCheck = ({
                           {p.value.toFixed(1)} pts/game, {p.surplus.toFixed(1)} above waiver
                           {dynasty && p.ageFactor !== 1 ? `, age x${p.ageFactor}` : ''}, value {p.score.toFixed(1)}
                         </span>
+                        {p.outlook?.notes?.length > 0 && (
+                          <ul className="trade-outlook">
+                            {p.outlook.notes.slice(0, 3).map((note) => <li key={note}>{note}</li>)}
+                          </ul>
+                        )}
                       </>
                     )}
                   </li>
@@ -1099,6 +1129,7 @@ const StartSit = ({ userId }) => {
             allPlayers={projections.players}
             projectionsById={projectionsById}
             week={shownWeek}
+            defense={projections.defense}
             onOpen={setInsightId}
             projectionsAt={projections.fetchedAt}
             rostersAt={activeSleeper ? sleeperImport.fetchedAt : null}

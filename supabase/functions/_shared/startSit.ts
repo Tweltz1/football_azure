@@ -35,6 +35,12 @@ export interface ProjectedPlayer {
   /** Per-game average box score over the same games (zero stats left out). */
   seasonStats: Partial<BoxScore> | null;
   gamesPlayed: number;
+  /**
+   * Sleeper's projections for the next few weeks, soonest first: who they play and what they're
+   * expected to score. A week with zero points means Sleeper doesn't expect them to play; bye weeks
+   * are left out.
+   */
+  upcoming: GameLine[];
 }
 
 /** Box-score numbers from one game (or per-game averages). */
@@ -86,6 +92,8 @@ export interface WeekProjections {
   seasonType: string;
   fetchedAt: string;
   players: ProjectedPlayer[];
+  /** Weeks covered by each player's `upcoming` list (the weeks after this one). */
+  upcomingWeeks: number[];
   /** defense[team][position]: what that defense allowed to QBs, RBs, WRs and TEs in the weeks before this one. */
   defense: Record<string, Record<string, DefenseVsPosition>>;
 }
@@ -98,6 +106,9 @@ const CACHE_MS = 30 * 60 * 1000;
 // Finished weeks don't change, so they can be kept much longer.
 const PAST_CACHE_MS = 12 * 60 * 60 * 1000;
 const RECENT_GAMES = 4;
+// How far ahead trade values look at Sleeper's weekly projections.
+const UPCOMING_WEEKS = 4;
+const LAST_REGULAR_WEEK = 18;
 const MATCHUP_SEASONS = 4;
 
 interface CacheEntry<T> {
@@ -108,6 +119,7 @@ const stateCache: { entry: CacheEntry<{ season: number; week: number; seasonType
 const projectionCache = new Map<string, CacheEntry<WeekProjections>>();
 const weekStatsCache = new Map<string, CacheEntry<Map<string, StatLine>>>();
 const playerSeasonCache = new Map<string, CacheEntry<SeasonGame[]>>();
+const futureCache = new Map<string, CacheEntry<{ teams: Set<string>; lines: Map<string, GameLine> }>>();
 
 interface SeasonGame extends MatchupGame {
   opponent: string | null;
@@ -123,6 +135,7 @@ interface StatLine extends GameLine {
 
 /** For tests: forget cached Sleeper responses. */
 export function clearStartSitCache() {
+  futureCache.clear();
   stateCache.entry = null;
   projectionCache.clear();
   weekStatsCache.clear();
@@ -220,7 +233,7 @@ const sleeperIdOf = (id: string) => id.replace(/^sleeper-/, '');
 const playedGame = (stats: Record<string, unknown>) =>
   stats.gp != null ? num(stats.gp) > 0 : Object.keys(stats).some((key) => key.startsWith('pts_'));
 
-function toPlayer(row: Record<string, unknown>): Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'seasonStats' | 'gamesPlayed'> | null {
+function toPlayer(row: Record<string, unknown>): Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'seasonStats' | 'gamesPlayed' | 'upcoming'> | null {
   const info = (row.player ?? {}) as Record<string, unknown>;
   const stats = (row.stats ?? {}) as Record<string, unknown>;
   const rawPosition = text(info.position) || (Array.isArray(info.fantasy_positions) ? text(info.fantasy_positions[0]) : '');
@@ -284,6 +297,30 @@ async function getPastWeeks(fetchJson: FetchJson, season: number, week: number, 
   return results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
 }
 
+/** Sleeper's projections for a future week: each player's line, and which teams play that week. */
+async function getFutureWeek(fetchJson: FetchJson, season: number, seasonType: string, week: number, nowMs: number) {
+  const key = `${season}-${seasonType}-${week}`;
+  const cached = futureCache.get(key);
+  if (cached && nowMs - cached.at < CACHE_MS) return cached.value;
+  const rows = await fetchJson(`${SLEEPER_PROJECTIONS_URL}/${season}/${week}?season_type=${seasonType}&${positionsQuery()}&order_by=pts_ppr`);
+  if (!Array.isArray(rows)) throw new Error('Sleeper projections response was not a list.');
+  const teams = new Set<string>();
+  const lines = new Map<string, GameLine>();
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const player = toPlayer(row as Record<string, unknown>);
+    if (!player) continue;
+    if (player.team && player.opponent) teams.add(player.team);
+    const existing = lines.get(player.id);
+    if (!existing || existing.points.ppr < player.points.ppr) {
+      lines.set(player.id, { week, opponent: player.opponent, points: player.points, stats: player.stats });
+    }
+  }
+  const value = { teams, lines };
+  futureCache.set(key, { at: nowMs, value });
+  return value;
+}
+
 /** Projections for one week (the current week when week is not given). Cached for 30 minutes. */
 export async function getWeekProjections(fetchJson: FetchJson, now: Date, requestedWeek?: number | null): Promise<WeekProjections> {
   const nowMs = now.getTime();
@@ -296,10 +333,16 @@ export async function getWeekProjections(fetchJson: FetchJson, now: Date, reques
   if (cached && nowMs - cached.at < CACHE_MS) return cached.value;
 
   const url = `${SLEEPER_PROJECTIONS_URL}/${state.season}/${week}?season_type=${seasonType}&${positionsQuery()}&order_by=pts_ppr`;
-  const [rows, pastWeeks] = await Promise.all([
+  const futureWeeks = seasonType === 'regular'
+    ? Array.from({ length: UPCOMING_WEEKS }, (_, i) => week + 1 + i).filter((w) => w <= LAST_REGULAR_WEEK)
+    : [];
+  const [rows, pastWeeks, futureResults] = await Promise.all([
     fetchJson(url),
     seasonType === 'regular' ? getPastWeeks(fetchJson, state.season, week, state.week, nowMs) : Promise.resolve([]),
+    // A future week Sleeper can't serve is simply left out.
+    Promise.allSettled(futureWeeks.map((w) => getFutureWeek(fetchJson, state.season, seasonType, w, nowMs))),
   ]);
+  const future = futureResults.flatMap((result, i) => (result.status === 'fulfilled' ? [{ week: futureWeeks[i], ...result.value }] : []));
   if (!Array.isArray(rows)) throw new Error('Sleeper projections response was not a list.');
 
   // Every game each player has played this season, oldest first.
@@ -310,7 +353,7 @@ export async function getWeekProjections(fetchJson: FetchJson, now: Date, reques
       games.get(id)!.push(line);
     }
   }
-  const withHistory = (player: Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'seasonStats' | 'gamesPlayed'>): ProjectedPlayer => {
+  const withHistory = (player: Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'seasonStats' | 'gamesPlayed' | 'upcoming'>): ProjectedPlayer => {
     const played = games.get(player.id) ?? [];
     return {
       ...player,
@@ -318,6 +361,12 @@ export async function getWeekProjections(fetchJson: FetchJson, now: Date, reques
       seasonAvg: averagePoints(played),
       seasonStats: averageBox(played.map((line) => line.box)),
       gamesPlayed: played.length,
+      upcoming: future.flatMap((f) => {
+        const line = f.lines.get(player.id);
+        if (line) return [line];
+        // No line on a week their team plays means Sleeper doesn't expect them to; on a bye it's left out.
+        return f.teams.has(player.team) ? [{ week: f.week, opponent: null, points: { ppr: 0, half: 0, std: 0 } }] : [];
+      }),
     };
   };
 
@@ -347,6 +396,7 @@ export async function getWeekProjections(fetchJson: FetchJson, now: Date, reques
     season: state.season,
     week,
     currentWeek: state.week,
+    upcomingWeeks: future.map((f) => f.week),
     seasonType,
     fetchedAt: now.toISOString(),
     players: [...byId.values()].sort((a, b) => b.points.ppr - a.points.ppr),

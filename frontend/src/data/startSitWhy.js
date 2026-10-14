@@ -463,15 +463,20 @@ export const explainTrade = (result, ctx) => {
   if (formEdge?.edge === 'start') sentences.push('Recent form also favors what you get.');
   else if (formEdge?.edge === 'sit') sentences.push('Recent form favors what you give up, so you would be trading away players who are playing well right now.');
 
+  // What moved each player's rest-of-season value: injuries, teammates, schedule (see outlook.js).
+  const details = [...getPlayers.map((p) => ({ p, side: 'Get' })), ...givePlayers.map((p) => ({ p, side: 'Give' }))]
+    .filter(({ p }) => p.outlook?.notes?.length)
+    .map(({ p, side }) => ({ name: p.name, side, notes: p.outlook.notes.slice(0, 2) }));
+
   let watch = null;
   const hurt = [...getHurt, ...giveHurt].filter((p) => !p.onBye);
   if (hurt.length) {
     const p = hurt[0];
     const mine = getHurt.includes(p);
-    watch = `${p.name} is listed ${p.injury}, which lowers ${firstName(p)}'s value here. `
-      + (mine ? 'If the injury clears up, this trade gets better for you.' : 'If the injury clears up, you are giving up more than this shows.');
+    watch = `${p.name} is listed ${p.injury}. The value counts the games ${firstName(p)} is expected to miss, `
+      + (mine ? 'so a quicker return makes this trade better for you.' : 'so a quicker return means you are giving up more than this shows.');
   } else if (Math.abs(result.share) <= 0.2 && Math.abs(result.myChange) < 1.5) {
-    watch = 'Values blend season averages with this week\'s projection, so a close trade like this can tip either way as the weeks go by.';
+    watch = 'This is close enough that a change in health or role on either side could tip it as the weeks go by.';
   }
 
   return {
@@ -481,5 +486,6 @@ export const explainTrade = (result, ctx) => {
     factors,
     summary: sentences.join(' '),
     watch,
+    details,
   };
 };

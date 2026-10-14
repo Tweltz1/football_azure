@@ -104,6 +104,7 @@ export const applyLeagueScoring = (projections, profile) => {
     points: withLeaguePoints(p.points, p.stats, p.position, profile),
     seasonAvg: withLeaguePoints(p.seasonAvg, p.seasonStats, p.position, profile),
     recent: (p.recent || []).map((game) => ({ ...game, points: withLeaguePoints(game.points, game.stats, p.position, profile) })),
+    upcoming: (p.upcoming || []).map((game) => ({ ...game, points: withLeaguePoints(game.points, game.stats, p.position, profile) })),
   }));
   const defense = {};
   Object.entries(projections.defense || {}).forEach(([team, byPosition]) => {

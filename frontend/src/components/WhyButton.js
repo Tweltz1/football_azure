@@ -135,6 +135,17 @@ const WhyButton = ({ explain, label = 'Why?', updatedLabel = null }) => {
             <p className="why-summary">{why.summary}</p>
             {why.factors.length > 0 && why.names[1] && <Factors names={why.names} factors={why.factors} />}
             {why.watch && <p className="why-watch"><span aria-hidden="true">!</span>{why.watch}</p>}
+            {why.details?.length > 0 && (
+              <div className="why-details">
+                <p className="why-waivers-title">Behind the values</p>
+                {why.details.map((d) => (
+                  <div key={`${d.side}-${d.name}`} className="why-detail">
+                    <strong>{d.name}</strong> <small>{d.side === 'Get' ? 'you get' : 'you give'}</small>
+                    <ul>{d.notes.map((note) => <li key={note}>{note}</li>)}</ul>
+                  </div>
+                ))}
+              </div>
+            )}
             {why.waivers && (
               <div className="why-waivers">
                 <p className="why-waivers-title">Possible waiver pickups</p>
