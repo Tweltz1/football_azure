@@ -7,9 +7,12 @@ import { API_BASE_URL } from '../api';
 import WhiteboardPad from '../whiteboard/WhiteboardPad';
 import { BoardAwardPanel, BoardGrid, BoardSketch, pickLabel, reviewLabel } from '../whiteboard/BoardViews';
 import { biddingStyleLabel, isAutoReadLeague, isWhiteboardLeague, maxBidFor } from '../whiteboard/biddingStyle';
+import { formatClock, leagueStatusLabel } from '../data/leagueLabels';
+import { ShowMoreButton, useShowMore } from './ShowMore';
 import '../App.css';
 
 const TIMER_POLL_MS = 1000;
+const AVAILABLE_PAGE_SIZE = 40;
 const POSITION_OPTIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DST'];
 const POSITION_PLAN_ORDER = ['QB', 'RB', 'WR', 'TE', 'FLEX', 'SUPERFLEX', 'K', 'DST', 'BENCH'];
 const EMPTY_DRAFT_PROFILE = {
@@ -180,15 +183,15 @@ const DraftScreen = ({
     const isCompleted = normalizedStatus === 'completed';
     const isManualDraft = league.draftMode === 'manual';
     const isWhiteboard = !isManualDraft && isWhiteboardLeague(league);
-    const statusLabel = normalizedStatus === 'boardreview' ? 'BOARDS UP' : String(league.status || 'unknown').toUpperCase();
-    
+    const statusLabel = leagueStatusLabel(league);
+
     return (
         <div className="draft-screen" style={{ padding: '20px' }}>
             <ToastNotification message={toast.message} show={toast.show} onClose={() => setToast({ show: false, message: '' })} />
-            <h2 className="draft-screen-title">Drafting in {league.name}</h2>
+            <h2 className="draft-screen-title">{league.name}</h2>
             <p className="draft-screen-status">
-                League Status: <span className={`draft-status-bug status-${normalizedStatus || 'unknown'}`}>{statusLabel}</span>
-                {isManualDraft && <span className="draft-mode-tag">Manual Tracker</span>}
+                <span className={`draft-status-bug status-${normalizedStatus || 'unknown'}`}>{statusLabel}</span>
+                {isManualDraft && normalizedStatus !== 'manual' && <span className="draft-mode-tag">Manual Tracker</span>}
                 {isWhiteboard && <span className="draft-mode-tag is-whiteboard">{biddingStyleLabel(league.biddingMode)}</span>}
             </p>
             <div className="button-group">
@@ -236,7 +239,7 @@ const LobbyView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }
     return (
         <>
             <div className="card">
-                <h3>Draft Controls & Overview</h3>
+                <h3>{isCurrentUserAdmin ? 'Start the Draft' : 'Before the Draft'}</h3>
                 {isCurrentUserAdmin ? (
                     <button onClick={handleStartDraft} className={`start-draft-button ${canStartDraft ? 'ready' : ''}`} disabled={!canStartDraft}>
                         {isManualDraft ? 'Start Manual Tracker' : `Start Draft (${readyMembers.length}/${nonAdminMembers.length} Ready)`}
@@ -284,11 +287,6 @@ const DraftingView = ({ league, user, leagueId, draftProfile, chatMessages = [],
 
     return (
         <>
-            <div className="card">
-                <h3>Draft Controls & Overview</h3>
-                {league.adminId === user.userId && <AdminControls league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />}
-            </div>
-            
             {isManual ? (
                 <ManualDraftView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} chatMessages={chatMessages} />
             ) : isIntermission ? (
@@ -301,8 +299,15 @@ const DraftingView = ({ league, user, leagueId, draftProfile, chatMessages = [],
                 <AuctionView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
             )}
 
+            {league.adminId === user.userId && (
+                <div className="card commissioner-controls-card" style={{marginTop: '20px'}}>
+                    <h3>Commissioner Controls</h3>
+                    <AdminControls league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
+                </div>
+            )}
+
             <div className="card" style={{marginTop: '20px'}}>
-                <h3>League Teams:</h3>
+                <h3>League Teams</h3>
                 <TeamListViewer league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
             </div>
 
@@ -607,7 +612,7 @@ const AuctionView = ({ league, user, leagueId, draftProfile }) => {
                         style={{ '--timer-progress': Math.min(1, Math.max(0, timer / (Number(league.draftTimers?.bidTimer) || 20))) }}
                     >
                         <span className="auction-clock-label">Bid Ends In</span>
-                        <strong className="auction-clock-value">{timer}s</strong>
+                        <strong className={`auction-clock-value${timer >= 3600 ? ' is-hours' : timer >= 60 ? ' is-minutes' : ''}`}>{formatClock(timer)}{timer < 60 ? 's' : ''}</strong>
                     </p>
                     {userHasActiveBid && isWhiteboard && (
                         <div className="auction-your-bid is-board">
@@ -1185,8 +1190,8 @@ const IntermissionView = ({ league, draftProfile }) => {
 
     return (
         <div className="card intermission-card" style={{marginTop: '20px'}}>
-            <h2>Intermission!</h2>
-            <p className="intermission-clock">Next player in: <strong>{timer}s</strong></p>
+            <h2>Between Players</h2>
+            <p className="intermission-clock">Next player in: <strong>{formatClock(timer)}{timer < 60 ? 's' : ''}</strong></p>
             <div style={{marginTop: '20px'}}>
                 <h4>Last Player Drafted:</h4>
                 <p>
@@ -1321,17 +1326,17 @@ const TieBreakerView = ({ league, user, leagueId, draftProfile }) => {
                 style={{ '--timer-progress': Math.min(1, Math.max(0, timer / (Number(league.draftTimers?.rebidTimer) || 15))) }}
             >
                 <span className="auction-clock-label">Re-bid Ends In</span>
-                <strong className="auction-clock-value">{timer}s</strong>
+                <strong className={`auction-clock-value${timer >= 3600 ? ' is-hours' : timer >= 60 ? ' is-minutes' : ''}`}>{formatClock(timer)}{timer < 60 ? 's' : ''}</strong>
             </p>
 
             {userIsTied ? (
                 <div>
                     <h4>You are in the tie-breaker!</h4>
                     <p>You must bid at least ${league.tieBreaker.tieAmount + 1}.</p>
-                    <div className="bid-control-row">
+                    <div className="bid-control-row tiebreaker-bid-row">
                         <span className="bid-control-label">Your Bid:</span>
                         <input type="number" value={bidAmount} onChange={e => setBidAmount(parseInt(e.target.value, 10) || 0)} aria-label="Tie-breaker bid" disabled={league.auctionTimer?.isPaused} />
-                        <button onClick={handlePlaceTieBid} disabled={league.auctionTimer?.isPaused}>Place Tie-Breaker Bid</button>
+                        <button className="create-button" onClick={handlePlaceTieBid} disabled={league.auctionTimer?.isPaused}>Place Tie-Breaker Bid</button>
                     </div>
                 </div>
             ) : (
@@ -1424,13 +1429,15 @@ const TeamListViewer = ({ league, user, leagueId, draftProfile }) => {
                             <div style={{display: 'flex', flexWrap: 'wrap', gap: '15px'}}>
                                 <div>
                                     <h5>Your Position Needs:</h5>
-                                    <ul style={{listStyle: 'none', paddingLeft: '10px', margin: 0}}>
-                                        {Object.entries(rosterSettings).map(([pos, count]) => {
+                                    <ul className="need-chip-list">
+                                        {Object.entries(rosterSettings).filter(([, count]) => Number(count) > 0).map(([pos, count]) => {
                                             const displayPosition = pos.toUpperCase();
                                             const filled = positionCounts[displayPosition] || 0;
                                             const remaining = Math.max(0, (count || 0) - filled);
                                             return (
-                                                <li key={pos}>{displayPosition}: {filled} / {count}{remaining > 0 ? ` - need ${remaining}` : ' - filled'}</li>
+                                                <li key={pos} className={remaining > 0 ? 'need-chip' : 'need-chip is-filled'}>
+                                                    <strong>{displayPosition === 'SUPERFLEX' ? 'SFLEX' : displayPosition}</strong> {filled}/{count}
+                                                </li>
                                             );
                                         })}
                                     </ul>
@@ -1438,6 +1445,7 @@ const TeamListViewer = ({ league, user, leagueId, draftProfile }) => {
                                 <BudgetPlanPanel draftProfile={draftProfile} />
                                 <div>
                                     <h5>Your Roster:</h5>
+                                    {roster.length === 0 && <p className="draft-muted">No players yet.</p>}
                                     <ul style={{listStyle: 'none', paddingLeft: '10px', margin: 0}}>
                                         {roster.map((spot, index) => (
                                             <li key={index}>{spot.player?.name || 'Unknown Player'} ({spot.player?.position || spot.position} - Bye: {spot.player?.bye || '-'}) - ${spot.player?.price || 0}</li>
@@ -1487,6 +1495,7 @@ const PlayerListViewer = ({ league, user, leagueId, draftProfile, onFavoriteIdsC
     const query = searchTerm.toLowerCase();
     const favoritePlayers = allPlayers.filter(p => favoriteSet.has(p.id) && p.name.toLowerCase().includes(query) && (sortPosition === 'All Positions' || p.position === sortPosition));
     const availablePlayers = allPlayers.filter(p => !favoriteSet.has(p.id) && !p.isDrafted && p.name.toLowerCase().includes(query) && (sortPosition === 'All Positions' || p.position === sortPosition));
+    const availablePage = useShowMore(availablePlayers, AVAILABLE_PAGE_SIZE, `${searchTerm}|${sortPosition}`);
 
     const handleToggleFavorite = async (playerIdToToggle) => {
         const isCurrentlyFavorite = favoriteSet.has(playerIdToToggle);
@@ -1510,34 +1519,33 @@ const PlayerListViewer = ({ league, user, leagueId, draftProfile, onFavoriteIdsC
             <p className="draft-muted" style={{ marginTop: 0 }}>
                 Favorites, tiers, notes, and budget plan come from your Profile and stay synced here.
             </p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
-                <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition}>
+            <div className="draft-player-filters">
+                <select onChange={(e) => setSortPosition(e.target.value)} value={sortPosition} aria-label="Filter by position">
                     <option>All Positions</option>
                     {POSITION_OPTIONS.map(position => <option key={position}>{position}</option>)}
                 </select>
-                <input type="text" placeholder="Search for a player..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ padding: '8px' }} />
+                <input type="text" placeholder="Search for a player..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} aria-label="Search players" />
             </div>
             <h4>Your Favorited Players ({favoritePlayers.length})</h4>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
+            {favoritePlayers.length === 0 && <p className="draft-muted">Tap the ☆ next to a player to keep them up here.</p>}
+            <ul className="draft-player-list">
                 {favoritePlayers.map(player => (
-                    <li key={player.id} className="player-list-item">
+                    <li key={player.id} className="player-list-item draft-player-row">
                         <PlayerSummary player={player} draftProfile={draftProfile} />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <span className="favorite-star">★</span>
-                            <span onClick={() => handleToggleFavorite(player.id)} className="favorite-remove">X</span>
-                        </div>
+                        <button type="button" onClick={() => handleToggleFavorite(player.id)} className="favorite-toggle is-on" title="Remove from Favorites" aria-label={`Remove ${player.name} from favorites`}>★</button>
                     </li>
                 ))}
             </ul>
             <h4 style={{marginTop: '20px'}}>Available Players ({availablePlayers.length})</h4>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-                {availablePlayers.map(player => (
-                    <li key={player.id} className="player-list-item">
+            <ul className="draft-player-list">
+                {availablePage.shown.map(player => (
+                    <li key={player.id} className="player-list-item draft-player-row">
                         <PlayerSummary player={player} draftProfile={draftProfile} />
-                        <span onClick={() => handleToggleFavorite(player.id)} className="favorite-add" title="Add to Favorites">☆</span>
+                        <button type="button" onClick={() => handleToggleFavorite(player.id)} className="favorite-toggle" title="Add to Favorites" aria-label={`Add ${player.name} to favorites`}>☆</button>
                     </li>
                 ))}
             </ul>
+            <ShowMoreButton hidden={availablePage.hidden} step={AVAILABLE_PAGE_SIZE} onClick={availablePage.showMore} />
         </div>
     );
 };
@@ -1681,7 +1689,7 @@ const ManageMembersModal = ({ league, onKick, onAdjustBudget, onAddManualTeam, o
 
 const CompletedView = ({ league, leagueId, draftProfile }) => {
     return (
-        <div className="card" style={{textAlign: 'center'}}>
+        <div className="card completed-draft-card">
             <h2>The Draft is Complete!</h2>
             <p>Thank you for playing. You can now view the final results and rosters.</p>
             <div style={{marginTop: '20px'}}>
@@ -1692,20 +1700,27 @@ const CompletedView = ({ league, leagueId, draftProfile }) => {
                     <button className="create-button">Download Draft Results (CSV)</button>
                 </a>
             </div>
-            <div style={{marginTop: '40px'}}>
+            <div className="final-rosters">
                 <h3>Final Rosters</h3>
                 {(league.teams || []).map(team => (
-                    <div key={team.id} className="team-row">
-                        <h4>{team.name} (Budget Remaining: ${team.budget})</h4>
-                        <ul style={{listStyle: 'none', padding: 0}}>
+                    <details key={team.id} className="final-roster">
+                        <summary>
+                            <strong>{team.name}</strong>
+                            <span>{(team.roster || []).length} players &middot; ${team.budget} left</span>
+                        </summary>
+                        <ul>
                             {(team.roster || []).map((spot, index) => (
                                 <li key={index}>
-                                    <span>{spot.player?.name || 'Unknown Player'} ({spot.player?.position || spot.position} - Bye: {spot.player?.bye || '-'}) - ${spot.player?.price || 0}</span>
-                                    <PlayerStrategy draftProfile={draftProfile} playerId={spot.player?.id} compact />
+                                    <span className={`position-badge pos-${String(spot.player?.position || spot.position || '').toLowerCase()}`}>{spot.player?.position || spot.position}</span>
+                                    <span className="final-roster-name">
+                                        {spot.player?.name || 'Unknown Player'}
+                                        <PlayerStrategy draftProfile={draftProfile} playerId={spot.player?.id} compact />
+                                    </span>
+                                    <strong>${spot.player?.price || 0}</strong>
                                 </li>
                             ))}
                         </ul>
-                    </div>
+                    </details>
                 ))}
             </div>
         </div>
@@ -1713,8 +1728,9 @@ const CompletedView = ({ league, leagueId, draftProfile }) => {
 };
 
 const PlayerSummary = ({ player, draftProfile }) => (
-    <div>
-        <span className="player-summary-line"><span className={`pos-dot pos-${String(player.position || '').toLowerCase()}`} aria-hidden="true" />{player.name} ({player.position}) - {player.team} - Rank: {player.rank} (Bye: {player.bye})</span>
+    <div className="player-summary">
+        <span className="player-summary-line"><span className={`pos-dot pos-${String(player.position || '').toLowerCase()}`} aria-hidden="true" />{player.name}</span>
+        <span className="player-summary-meta">{player.position} &middot; {player.team} &middot; Rank {player.rank} &middot; Bye {player.bye || '-'}</span>
         <PlayerStrategy draftProfile={draftProfile} playerId={player.id} compact />
     </div>
 );

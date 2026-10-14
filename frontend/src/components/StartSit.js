@@ -426,7 +426,7 @@ const WaiverMoves = ({
     : <span>{p.name}</span>);
 
   return (
-    <section className="card startsit-panel waiver-moves">
+    <section id="startsit-waivers" className="card startsit-panel waiver-moves">
       <div className="player-board-heading">
         <div>
           <p className="section-kicker">Waiver moves</p>
@@ -649,7 +649,7 @@ const TradeCheck = ({
   }), idea.partnerName);
 
   return (
-    <section className="card startsit-panel">
+    <section id="startsit-trades" className="card startsit-panel">
       <div className="player-board-heading">
         <div>
           <p className="section-kicker">Trade check</p>
@@ -1103,6 +1103,12 @@ const StartSit = ({ userId }) => {
 
       {projections && !loadingProjections && (
         <>
+          <nav className="section-jumps" aria-label="Jump to a section">
+            <a href="#startsit-lineup">Lineup</a>
+            {tradePartners.length > 0 && <a href="#startsit-waivers">Waivers</a>}
+            <a href="#startsit-compare">Who to start</a>
+            <a href="#startsit-trades">Trades</a>
+          </nav>
           <section className="card startsit-panel">
             <div className="player-board-heading">
               <div>
@@ -1174,7 +1180,7 @@ const StartSit = ({ userId }) => {
             </section>
           )}
 
-          <div className="startsit-grid">
+          <div className="startsit-grid" id="startsit-lineup">
             <section className="card startsit-panel">
               <div className="player-board-heading">
                 <div>
@@ -1303,7 +1309,7 @@ const StartSit = ({ userId }) => {
             />
           )}
 
-          <section className="card startsit-panel">
+          <section id="startsit-compare" className="card startsit-panel">
             <div className="player-board-heading">
               <div>
                 <p className="section-kicker">Head to head</p>

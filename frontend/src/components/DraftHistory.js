@@ -171,14 +171,14 @@ export const DraftHistoryDetail = ({ userId }) => {
 
       <section className="history-teams">
         {teamsWithPicks.map(({ team, picks, spent }) => (
-          <div key={team.id} className={`card history-team ${team.ownerId === userId ? 'mine' : ''}`}>
-            <div className="player-board-heading">
-              <div>
-                <p className="section-kicker">{team.ownerId === userId ? 'Your team' : 'Team'}</p>
-                <h3>{team.name}</h3>
-              </div>
-              <div className="board-count">${spent}</div>
-            </div>
+          <details key={team.id} className={`card history-team ${team.ownerId === userId ? 'mine' : ''}`} open={team.ownerId === userId}>
+            <summary className="history-team-summary">
+              <span>
+                <span className="section-kicker">{team.ownerId === userId ? 'Your team' : `${picks.length} players`}</span>
+                <strong>{team.name}</strong>
+              </span>
+              <span className="board-count">${spent}</span>
+            </summary>
             {picks.length === 0 ? <p className="startsit-empty">No players.</p> : (
               <ul className="history-roster">
                 {picks.map((pick) => (
@@ -190,29 +190,28 @@ export const DraftHistoryDetail = ({ userId }) => {
                 ))}
               </ul>
             )}
-          </div>
+          </details>
         ))}
       </section>
 
-      <section className="card">
-        <h2>Every Pick</h2>
-        <table className="leagues-table">
-          <thead>
-            <tr><th>#</th><th>Player</th><th>Pos</th><th>Price</th><th>Team</th></tr>
-          </thead>
-          <tbody>
-            {entry.draftLog.map((pick, index) => (
-              <tr key={`${pick.player.id}-${index}`}>
-                <td>{index + 1}</td>
-                <td>{pick.player.name} <small>{pick.player.team}</small></td>
-                <td>{pick.player.position}</td>
-                <td>${pick.winningBid}</td>
-                <td>{teamName(pick.winningTeamId)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      <details className="card history-picks">
+        <summary className="history-team-summary">
+          <strong>Every Pick, in Order</strong>
+          <span className="board-count">{entry.draftLog.length}</span>
+        </summary>
+        <ol className="history-pick-list">
+          {entry.draftLog.map((pick, index) => (
+            <li key={`${pick.player.id}-${index}`}>
+              <span className="history-pick-number">{index + 1}</span>
+              <span className="history-player">
+                {pick.player.name} <small>{pick.player.position} &middot; {pick.player.team}</small>
+                <small className="history-pick-team">{teamName(pick.winningTeamId)}</small>
+              </span>
+              <strong>${pick.winningBid}</strong>
+            </li>
+          ))}
+        </ol>
+      </details>
     </div>
   );
 };

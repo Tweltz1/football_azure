@@ -1,3 +1,5 @@
+import { formatDuration } from './leagueLabels';
+
 export const TIER_DEFINITIONS = [
   { value: 1, label: 'Tier 1', name: 'Elite', accent: 'gold' },
   { value: 2, label: 'Tier 2', name: 'Strong Starter', accent: 'green' },
@@ -194,7 +196,7 @@ export const buildCommissionerHealth = (league, userId) => {
     memberCount,
     readyCount,
     status: league?.status || 'unknown',
-    timerLabel: `${draftTimers.bidTimer || 0}s bid / ${draftTimers.intermissionTimer || 0}s break`,
+    timerLabel: `${formatDuration(draftTimers.bidTimer)} bids, ${formatDuration(draftTimers.intermissionTimer)} breaks`,
     needsAttention: isCommissioner && memberCount > 0 && readyCount < memberCount && String(league?.status || '').toLowerCase() === 'created',
   };
 };

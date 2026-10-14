@@ -1,0 +1,514 @@
+/* Phone layout pass: no sideways scrolling, menus that wrap, and shorter pages.
+   Loaded last so it wins over the older mobile rules. */
+
+.nav-short {
+  display: none;
+}
+
+/* "Show more" under long player lists */
+.show-more-button {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: rgba(139, 108, 255, 0.3);
+}
+
+.show-more-button span {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Draft room player lists: one tidy line per player with a star to favorite. */
+.draft-player-filters {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.4fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.draft-player-list {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.draft-player-list .draft-player-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 10px;
+}
+
+.player-summary {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.player-summary-line {
+  font-weight: 600;
+}
+
+.player-summary-meta {
+  padding-left: 15px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.draft-screen .favorite-toggle,
+.favorite-toggle {
+  flex: none;
+  width: 40px;
+  min-width: 40px;
+  min-height: 36px;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border-color: var(--hairline);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.favorite-toggle.is-on {
+  color: var(--warning);
+  border-color: rgba(245, 184, 74, 0.35);
+  background: var(--warning-soft);
+}
+
+/* Your position needs as small chips instead of a long list */
+.need-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.need-chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--text-2);
+  background: var(--warning-soft);
+  border: 1px solid rgba(245, 184, 74, 0.25);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.need-chip strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.need-chip.is-filled {
+  background: var(--success-soft);
+  border-color: rgba(61, 220, 151, 0.25);
+}
+
+/* Finished draft: every team folds open to its roster */
+.completed-draft-card {
+  text-align: center;
+}
+
+.final-rosters {
+  display: grid;
+  gap: 8px;
+  margin-top: 28px;
+  text-align: left;
+}
+
+.final-roster {
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+}
+
+.final-roster summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.final-roster summary span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.final-roster ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0 14px 12px;
+  list-style: none;
+}
+
+.final-roster li {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.final-roster li .position-badge {
+  justify-content: center;
+}
+
+.final-roster-name {
+  min-width: 0;
+}
+
+.tiebreaker-bid-row input {
+  width: 120px;
+}
+
+/* Long countdowns (minutes or hours) shrink so they stay inside the clock ring. */
+.auction-clock-value.is-minutes {
+  font-size: 2.6rem;
+}
+
+.auction-clock-value.is-hours,
+.tiebreaker-clock .auction-clock-value.is-hours {
+  font-size: 1.5rem;
+}
+
+@media (max-width: 980px) {
+  .auction-clock-value.is-minutes {
+    font-size: 2.1rem;
+  }
+
+  .auction-clock-value.is-hours {
+    font-size: 1.35rem;
+  }
+}
+
+@media (max-width: 640px) {
+  /* The header scrolls away on phones so it doesn't eat the screen. */
+  .top-nav {
+    position: static;
+    grid-template-columns: 1fr auto;
+    padding: 10px 10px 8px;
+  }
+
+  .nav-user span {
+    display: none;
+  }
+
+  .nav-links {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .nav-links a {
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 0.82rem;
+  }
+
+  .nav-long {
+    display: none;
+  }
+
+  .nav-short {
+    display: inline;
+  }
+
+  /* Leagues */
+  .league-card-list {
+    grid-template-columns: 1fr;
+  }
+
+  .league-card {
+    padding: 14px;
+  }
+
+  .league-toolbar .button-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin: 0;
+  }
+
+  .league-toolbar .button-group button {
+    width: 100%;
+  }
+
+  /* Home and Profile player boards: compact rows */
+  .player-board-controls.filter-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+
+  .player-board-controls .filter-field {
+    flex: none;
+    min-width: 0;
+  }
+
+  .player-board-controls .search-field {
+    grid-column: 1 / -1;
+  }
+
+  .player-board-list .player-board-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 8px 10px;
+  }
+
+  .player-board-row .player-main {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .player-board-row .rank-chip {
+    min-width: 40px;
+    min-height: 28px;
+    padding: 2px 6px;
+  }
+
+  .player-board-row .player-subline {
+    margin-top: 3px;
+  }
+
+  .player-board-row .player-data-strip {
+    justify-content: flex-end;
+  }
+
+  .player-board-row .data-scoring {
+    display: none;
+  }
+
+  .player-board-row .compare-toggle {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 32px;
+    padding: 4px 10px;
+  }
+
+  /* Profile rows: name and Favorite on top; tier, note and Save on one line below */
+  .player-board-list .player-board-row:not(.has-compare-action) {
+    grid-template-columns: 76px minmax(0, 1fr) auto;
+    grid-template-areas: "main main fav" "tier note save";
+  }
+
+  .player-board-row:not(.has-compare-action) .player-main {
+    grid-area: main;
+  }
+
+  .player-board-row .player-row-actions {
+    display: contents;
+  }
+
+  .player-board-row .player-row-actions .player-data-strip {
+    display: none;
+  }
+
+  .player-board-row .player-row-actions .tier-select {
+    grid-area: tier;
+    min-width: 0;
+  }
+
+  .player-board-row .player-row-actions .quick-note-field {
+    grid-area: note;
+    min-width: 0;
+  }
+
+  .player-board-row .player-row-actions button {
+    min-width: 0;
+    width: auto;
+    min-height: 34px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+  }
+
+  .player-board-row .player-row-actions button:first-of-type {
+    grid-area: save;
+  }
+
+  .player-board-row .player-row-actions button:last-of-type {
+    grid-area: fav;
+    align-self: start;
+  }
+
+  .profile-board-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .profile-board-actions .board-count {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  /* Number inputs (roster spots, timers, budgets) three to a row */
+  .settings-grid,
+  .budget-planner-grid,
+  .roster-layout-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .settings-grid label,
+  .budget-planner-grid .filter-field,
+  .settings-grid input,
+  .budget-planner-grid input {
+    min-width: 0;
+  }
+
+  .budget-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .budget-row {
+    grid-template-columns: 74px minmax(0, 1fr) auto;
+    gap: 8px;
+    font-size: 0.78rem;
+  }
+
+  /* Home shortcut cards don't need to be tall on a phone */
+  .action-card {
+    min-height: 0;
+    gap: 10px;
+  }
+
+  .action-card .section-kicker {
+    display: none;
+  }
+
+  .action-card h2 {
+    margin-bottom: 4px;
+  }
+
+  .action-card p {
+    margin-bottom: 0;
+    font-size: 0.9rem;
+  }
+
+  .player-update-card {
+    min-height: 0;
+  }
+
+  /* Home rows: name and badges on the left; bye and a small Compare on the right */
+  .player-board-list .player-board-row.has-compare-action {
+    grid-template-areas: "main strip" "main compare";
+  }
+
+  .player-board-row.has-compare-action .player-main {
+    grid-area: main;
+  }
+
+  .player-board-row.has-compare-action .player-data-strip {
+    grid-area: strip;
+  }
+
+  .player-board-row.has-compare-action .compare-toggle {
+    grid-area: compare;
+    grid-column: auto;
+    width: auto;
+    min-height: 28px;
+    padding: 2px 10px;
+    font-size: 0.8rem;
+  }
+
+  /* Draft room */
+  .draft-player-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .draft-screen .draft-player-list .draft-player-row {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .draft-screen .favorite-toggle {
+    width: 40px;
+  }
+
+  .tiebreaker-bid-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .tiebreaker-bid-row input {
+    width: 100% !important;
+    font-size: 1.3rem;
+    text-align: center;
+  }
+
+  .draft-screen .user-team-details .need-chip-list {
+    flex-direction: row !important;
+  }
+
+  .final-roster li {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+}
+
+/* Quick links to the sections of a long page (Start/Sit & Trades) */
+.section-jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.section-jumps a {
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border: 1px solid rgba(139, 108, 255, 0.28);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+#startsit-lineup,
+#startsit-waivers,
+#startsit-compare,
+#startsit-trades {
+  scroll-margin-top: 80px;
+}
+
+@media (max-width: 640px) {
+  /* League needs table fits a phone: tighter cells, team names wrap */
+  .trade-needs-table {
+    font-size: 0.8rem;
+  }
+
+  .trade-needs-table th,
+  .trade-needs-table td {
+    padding: 6px 4px;
+  }
+
+  .trade-needs-table td:first-child {
+    max-width: 110px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  #startsit-lineup,
+  #startsit-waivers,
+  #startsit-compare,
+  #startsit-trades {
+    scroll-margin-top: 10px;
+  }
+}

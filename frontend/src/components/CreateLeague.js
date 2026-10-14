@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../api';
 import { useNavigate } from 'react-router-dom';
 import BiddingStyleField from '../whiteboard/BiddingStyleField';
 import { STANDARD, WHITEBOARD_AUTO, WHITEBOARD_MANUAL } from '../whiteboard/biddingStyle';
+import { formatDuration } from '../data/leagueLabels';
 import '../whiteboard/whiteboard.css';
 import '../App.css';
 
@@ -66,8 +67,8 @@ const CreateLeague = ({ userId }) => {
         <h1>Create League</h1>
         <p>Choose the room name, roster build, and clock speed before inviting the league in.</p>
         <div className="scoreboard-strip">
-          <span>{draftTimers.bidTimer}s bid clock</span>
-          <span>{draftTimers.intermissionTimer}s intermission</span>
+          <span>{formatDuration(draftTimers.bidTimer)} bid clock</span>
+          <span>{formatDuration(draftTimers.intermissionTimer)} between players</span>
           <span>{draftMode === 'manual' ? 'Manual tracking' : biddingMode === WHITEBOARD_AUTO ? 'Whiteboard auction, auto-read' : biddingMode === WHITEBOARD_MANUAL ? 'Whiteboard auction' : 'Live auction'}</span>
           <span>{Object.values(rosterSettings).reduce((sum, value) => sum + value, 0)} roster spots</span>
         </div>
@@ -126,7 +127,7 @@ const CreateLeague = ({ userId }) => {
 
           <div className="divider" />
 
-          <p className="section-kicker">Draft timers</p>
+          <p className="section-kicker">Draft timers (seconds)</p>
           <div className="settings-grid">
             <label>Bid Timer<input type="number" name="bidTimer" value={draftTimers.bidTimer} onChange={handleTimerChange} /></label>
             <label>Intermission<input type="number" name="intermissionTimer" value={draftTimers.intermissionTimer} onChange={handleTimerChange} /></label>

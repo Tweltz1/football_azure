@@ -4,6 +4,7 @@ import axios from 'axios';
 import { createDraftConnection } from '../realtime';
 import { API_BASE_URL } from '../api';
 import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '../data/strategyUtils';
+import { isDraftLive, leagueStatusKey, leagueStatusLabel } from '../data/leagueLabels';
 import BiddingStyleField from '../whiteboard/BiddingStyleField';
 import { biddingStyleLabel, isWhiteboardLeague, normalizeBiddingMode } from '../whiteboard/biddingStyle';
 import '../whiteboard/whiteboard.css';
@@ -182,40 +183,38 @@ const Leagues = ({ userId }) => {
     return <div className="loading-panel">Loading leagues...</div>;
   }
 
+  const openSettings = (league) => {
+    setShowRosterModal(true);
+    setCurrentLeague(league);
+    setRosterSettings(league.rosterSettings || {});
+    setDraftTimers(league.draftTimers || {});
+    setDraftMode(league.draftMode || 'auction');
+    setBiddingMode(normalizeBiddingMode(league.biddingMode));
+  };
+
+  const openRename = (league, teamName) => {
+    setShowEditModal(true);
+    setCurrentLeague(league);
+    setNewTeamName(teamName);
+  };
+
   return (
     <div className="page-shell league-page">
       <section className="page-hero">
         <p className="page-kicker">League control</p>
         <h1>My Leagues</h1>
-        <p>Jump into a live draft room, share invites, and inspect commissioner health before the auction starts.</p>
+        <p>Tap a league to open its draft room. Commissioners will find invites and settings under Commissioner tools.</p>
         <div className="scoreboard-strip">
-          <span>{leagues.length} active league{leagues.length === 1 ? '' : 's'}</span>
-          <span>{commissionerLeagues.length} commissioner table{commissionerLeagues.length === 1 ? '' : 's'}</span>
-          {inviteMessage && <span>{inviteMessage}</span>}
+          <span>{leagues.length} league{leagues.length === 1 ? '' : 's'}</span>
+          {commissionerLeagues.length > 0 && <span>{commissionerLeagues.length} you run</span>}
+          {inviteMessage && <span className="invite-message">{inviteMessage}</span>}
         </div>
       </section>
-
-      {commissionerLeagues.length > 0 && (
-        <section className="card commissioner-dashboard">
-          <div className="player-board-heading">
-            <div>
-              <p className="section-kicker">Commissioner dashboard</p>
-              <h2>League Health</h2>
-            </div>
-            <div className="board-count">{commissionerLeagues.length} managed</div>
-          </div>
-          <div className="commissioner-grid">
-            {commissionerLeagues.map((league) => (
-              <CommissionerCard key={league.id} league={league} userId={userId} onCopyInvite={handleCopyInvite} onAnalyze={openAnalyzer} />
-            ))}
-          </div>
-        </section>
-      )}
 
       <div className="league-toolbar">
         <div>
           <p className="section-kicker">Draft rooms</p>
-          <h2>Your Active Leagues</h2>
+          <h2>Your Leagues</h2>
         </div>
         <div className="button-group">
           <Link to="/create-league">
@@ -226,74 +225,21 @@ const Leagues = ({ userId }) => {
       </div>
 
       {leagues.length > 0 ? (
-        <table className="leagues-table">
-          <thead>
-            <tr>
-              <th>League</th>
-              <th>Role</th>
-              <th>Teams</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leagues.map(league => {
-              const teamName = (league.teams || []).find(t => t.ownerId === userId)?.name || 'N/A';
-              return (
-                <tr key={league.id}>
-                  <td>
-                    <strong>{league.name}</strong>
-                    <br />
-                    <span>Your Team: {teamName} </span>
-                    <span>Mode: {league.draftMode === 'manual' ? 'Manual' : isWhiteboardLeague(league) ? `Auction (${biddingStyleLabel(league.biddingMode)})` : 'Auction'} </span>
-                    <button className="edit-profile-link" onClick={() => {
-                      setShowEditModal(true);
-                      setCurrentLeague(league);
-                      setNewTeamName(teamName === 'N/A' ? '' : teamName);
-                    }}>Edit Team</button>
-                  </td>
-                  <td>{league.adminId === userId ? 'Commissioner' : 'Member'}</td>
-                  <td>{league.members.length}/12</td>
-                  <td className="actions-cell-flex">
-                    <Link to={`/draft/${league.id}`}>
-                      <button className="view-details-button">Enter Draft Room</button>
-                    </Link>
-                    <Link to={`/draft/${league.id}/tv`} target="_blank" rel="noreferrer">
-                      <button className="edit-roster-button">TV Board</button>
-                    </Link>
-                    <button type="button" className="edit-roster-button" onClick={() => openAnalyzer(league)}>Analyze</button>
-                    {league.status === 'completed' && (
-                      <Link to="/history">
-                        <button type="button" className="edit-roster-button">Past Drafts</button>
-                      </Link>
-                    )}
-                    {league.adminId === userId && (
-                      <>
-                        {league.status === 'completed' && (
-                          <button type="button" className="create-button" onClick={() => handleNewSeason(league)}>Start New Season</button>
-                        )}
-                        <button type="button" onClick={() => handleCopyInvite(league)} className="join-button">Copy Invite</button>
-                        <button
-                          onClick={() => {
-                            setShowRosterModal(true);
-                            setCurrentLeague(league);
-                            setRosterSettings(league.rosterSettings || {});
-                            setDraftTimers(league.draftTimers || {});
-                            setDraftMode(league.draftMode || 'auction');
-                            setBiddingMode(normalizeBiddingMode(league.biddingMode));
-                          }}
-                          className="edit-roster-button"
-                        >
-                          Edit Roster
-                        </button>
-                        <button onClick={() => handleDelete(league.id)} className="delete-button">Delete</button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="league-card-list">
+          {leagues.map((league) => (
+            <LeagueCard
+              key={league.id}
+              league={league}
+              userId={userId}
+              onRename={openRename}
+              onAnalyze={openAnalyzer}
+              onCopyInvite={handleCopyInvite}
+              onSettings={openSettings}
+              onNewSeason={handleNewSeason}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
       ) : (
         <div className="empty-state">
           <h3>No leagues yet</h3>
@@ -324,7 +270,7 @@ const Leagues = ({ userId }) => {
       {showRosterModal && currentLeague && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>Edit Roster Settings for {currentLeague.name}</h3>
+            <h3>League settings: {currentLeague.name}</h3>
             <p className="section-kicker">Draft mode</p>
             <div className="button-group" role="group" aria-label="Draft mode">
               <button
@@ -344,7 +290,7 @@ const Leagues = ({ userId }) => {
             </div>
             {draftMode === 'auction' && <BiddingStyleField value={biddingMode} onChange={setBiddingMode} />}
             <div className="divider" />
-
+            <p className="section-kicker">Roster spots</p>
             <div className="settings-grid">
               <label>QB<input type="number" value={rosterSettings.qb || 0} onChange={(e) => setRosterSettings({...rosterSettings, qb: parseInt(e.target.value)})}/></label>
               <label>RB<input type="number" value={rosterSettings.rb || 0} onChange={(e) => setRosterSettings({...rosterSettings, rb: parseInt(e.target.value)})}/></label>
@@ -358,6 +304,7 @@ const Leagues = ({ userId }) => {
             </div>
 
             <div className="divider" />
+            <p className="section-kicker">Timers (seconds)</p>
             <div className="settings-grid">
               <label>Bid Timer<input type="number" value={draftTimers.bidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, bidTimer: parseInt(e.target.value)})}/></label>
               <label>Intermission<input type="number" value={draftTimers.intermissionTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, intermissionTimer: parseInt(e.target.value)})}/></label>
@@ -426,20 +373,74 @@ const Leagues = ({ userId }) => {
   );
 };
 
-const CommissionerCard = ({ league, userId, onCopyInvite, onAnalyze }) => {
+const draftModeLabel = (league) => {
+  if (league.draftMode === 'manual') return 'Manual draft';
+  return isWhiteboardLeague(league) ? `Auction, ${biddingStyleLabel(league.biddingMode).toLowerCase()}` : 'Auction';
+};
+
+const LeagueCard = ({ league, userId, onRename, onAnalyze, onCopyInvite, onSettings, onNewSeason, onDelete }) => {
+  const isAdmin = league.adminId === userId;
   const health = buildCommissionerHealth(league, userId);
+  const statusKey = leagueStatusKey(league);
+  const teamName = (league.teams || []).find((t) => t.ownerId === userId)?.name || '';
+  const finished = statusKey === 'completed';
+  const live = isDraftLive(league);
+  const memberCount = (league.members || []).length;
+  const enterLabel = live ? 'Join Live Draft' : finished ? 'See Draft Results' : 'Enter Draft Room';
+
   return (
-    <div className="commissioner-card">
-      <h3>{league.name}</h3>
-      <div className="health-row"><span>Status</span><strong>{health.status}</strong></div>
-      <div className="health-row"><span>Ready</span><strong>{health.readyCount}/{health.memberCount}</strong></div>
-      <div className="health-row"><span>Timer</span><strong>{health.timerLabel}</strong></div>
-      {health.needsAttention && <span className="health-warning">Waiting on ready checks</span>}
-      <div className="form-actions">
-        <button type="button" className="join-button" onClick={() => onCopyInvite(league)}>Copy Invite</button>
-        <button type="button" className="edit-roster-button" onClick={() => onAnalyze(league)}>Analyze</button>
+    <article className={`league-card${live ? ' is-live' : ''}`}>
+      <header className="league-card-head">
+        <div className="league-card-title">
+          <h3>{league.name}</h3>
+          <p>{draftModeLabel(league)} &middot; {memberCount}/12 teams{isAdmin && <> &middot; You run it</>}</p>
+        </div>
+        <span className={`league-status league-status-${statusKey || 'none'}`}>{leagueStatusLabel(league)}</span>
+      </header>
+
+      <div className="league-card-team">
+        <span>Your team</span>
+        <strong>{teamName || 'No name yet'}</strong>
+        <button type="button" className="link-button" onClick={() => onRename(league, teamName)}>
+          {teamName ? 'Rename' : 'Name it'}
+        </button>
       </div>
-    </div>
+
+      {health.needsAttention && (
+        <span className="health-warning">{health.readyCount} of {health.memberCount} teams ready</span>
+      )}
+
+      <Link to={`/draft/${league.id}`} className="league-card-enter">
+        <button type="button" className="view-details-button">{enterLabel}</button>
+      </Link>
+
+      <div className="league-card-more">
+        <Link to={`/draft/${league.id}/tv`} target="_blank" rel="noreferrer">
+          <button type="button" className="join-button">TV Board</button>
+        </Link>
+        <button type="button" className="join-button" onClick={() => onAnalyze(league)}>Analyze</button>
+        {finished && (
+          <Link to="/history">
+            <button type="button" className="join-button">Past Drafts</button>
+          </Link>
+        )}
+      </div>
+
+      {isAdmin && (
+        <details className="league-card-admin">
+          <summary>Commissioner tools</summary>
+          <p className="league-card-admin-note">Timers: {health.timerLabel}</p>
+          <div className="league-card-more">
+            <button type="button" className="edit-roster-button" onClick={() => onCopyInvite(league)}>Copy Invite Link</button>
+            <button type="button" className="edit-roster-button" onClick={() => onSettings(league)}>League Settings</button>
+            {finished && (
+              <button type="button" className="create-button" onClick={() => onNewSeason(league)}>Start New Season</button>
+            )}
+            <button type="button" className="delete-button" onClick={() => onDelete(league.id)}>Delete League</button>
+          </div>
+        </details>
+      )}
+    </article>
   );
 };
 

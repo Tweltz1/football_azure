@@ -8,6 +8,7 @@ import { subscribeProfileUpdates } from '../profileSync';
 import DraftScreen from './DraftScreen';
 import WhiteboardPad from '../whiteboard/WhiteboardPad';
 import { isAutoReadLeague, isWhiteboardLeague } from '../whiteboard/biddingStyle';
+import { isDraftLive } from '../data/leagueLabels';
 import './DraftRoomEnhanced.css';
 
 const COLLAPSIBLE_CARD_TITLES = [
@@ -299,7 +300,7 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
 
       {isManualDraft ? (
         <ManualCompanionPanel leagueId={leagueId} league={league} user={user} currentTeam={currentTeam} rosterTotal={rosterTotal} />
-      ) : isWhiteboard ? (
+      ) : !isDraftLive(league) ? null : isWhiteboard ? (
         <CollapsiblePanel title="Quick Bid" storageKey="draft-panel-quick-bid" defaultOpen>
           <WhiteboardPad
             compact

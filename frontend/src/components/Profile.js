@@ -25,6 +25,7 @@ import {
     TIER_DEFINITIONS,
 } from '../data/strategyUtils';
 import TierBoard from './TierBoard';
+import { ShowMoreButton, useShowMore } from './ShowMore';
 import { notifyProfileUpdated } from '../profileSync';
 import '../App.css';
 import '../PlayerBoard.css';
@@ -88,6 +89,7 @@ const Profile = () => {
         sortBy,
     }), [playerBoard, searchTerm, positionFilter, sortBy]);
     const visiblePlayers = filteredPlayerPool.slice(0, playerLimit);
+    const playerPage = useShowMore(visiblePlayers, PLAYER_PAGE_SIZE, `${searchTerm}|${positionFilter}|${sortBy}|${playerLimit}|${scoringMode}`);
     const scoringLabel = getScoringLabel(scoringMode);
     const favoriteIds = userProfile?.favoritePlayerIds || [];
     const favoritePlayers = playerBoard.filter(player => favoriteIds.includes(player.id));
@@ -425,7 +427,7 @@ const Profile = () => {
                     <div className="profile-board-actions">
                         <button type="button" className={boardView === 'list' ? 'edit-roster-button' : ''} onClick={() => setBoardView('list')}>List View</button>
                         <button type="button" className={boardView === 'tiers' ? 'edit-roster-button' : ''} onClick={() => setBoardView('tiers')}>Tier View</button>
-                        <div className="board-count">Showing {visiblePlayers.length} of {filteredPlayerPool.length}</div>
+                        <div className="board-count">Showing {boardView === 'list' ? playerPage.shown.length : visiblePlayers.length} of {filteredPlayerPool.length}</div>
                     </div>
                 </div>
 
@@ -474,8 +476,9 @@ const Profile = () => {
                         onTierChange={handleTierChange}
                     />
                 ) : (
+                    <>
                     <ul className="player-list player-board-list">
-                        {visiblePlayers.map(player => {
+                        {playerPage.shown.map(player => {
                             const isFavorite = favoriteIds.includes(player.id);
                             const hasNote = Boolean(userProfile.playerNotes?.[player.id]);
                             const availability = getPlayerAvailability(player);
@@ -497,7 +500,7 @@ const Profile = () => {
                                     <div className="player-row-actions">
                                         <div className="player-data-strip">
                                             <span>Bye {player.bye || '-'}</span>
-                                            <span>{scoringLabel}</span>
+                                            <span className="data-scoring">{scoringLabel}</span>
                                         </div>
                                         <select
                                             className="tier-select"
@@ -529,11 +532,15 @@ const Profile = () => {
                             );
                         })}
                     </ul>
+                    <ShowMoreButton hidden={playerPage.hidden} step={PLAYER_PAGE_SIZE} onClick={playerPage.showMore} />
+                    </>
                 )}
             </section>
         </div>
     );
 };
+
+const PLAYER_PAGE_SIZE = 50;
 
 const formatDate = (value) => {
     if (!value) return 'recently';

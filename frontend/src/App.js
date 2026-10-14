@@ -14,6 +14,7 @@ import { useAuth, signOut } from './AuthContext';
 import './App.css';
 import './DraftMobile.css';
 import './MobileDensity.css';
+import './MobileFlow.css';
 
 function App() {
   const { user, loading } = useAuth();
@@ -51,7 +52,7 @@ function App() {
             <NavLink to="/" end>Home</NavLink>
             <NavLink to="/leagues">Leagues</NavLink>
             <NavLink to="/create-league">Create</NavLink>
-            <NavLink to="/start-sit">Start/Sit &amp; Trades</NavLink>
+            <NavLink to="/start-sit"><span className="nav-long">Start/Sit &amp; Trades</span><span className="nav-short">Start/Sit</span></NavLink>
             <NavLink to="/rankings">Rankings</NavLink>
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>

@@ -19,6 +19,7 @@ import { subscribeProfileUpdates } from '../profileSync';
 import MockDraftLab from './MockDraftLab';
 import PlayerComparison from './PlayerComparison';
 import UpdatedAt from './UpdatedAt';
+import { ShowMoreButton, useShowMore } from './ShowMore';
 import '../PlayerBoard.css';
 
 const MAX_COMPARE = 3;
@@ -73,6 +74,7 @@ const Home = () => {
     sortBy,
   }), [playerBoard, searchTerm, positionFilter, sortBy]);
   const visiblePlayers = matchingPlayers.slice(0, playerLimit);
+  const playerPage = useShowMore(visiblePlayers, PLAYER_PAGE_SIZE, `${searchTerm}|${positionFilter}|${sortBy}|${playerLimit}|${scoringMode}`);
   const scoringLabel = getScoringLabel(scoringMode);
   const greetingName = userProfile?.displayName || user?.userDetails || 'Commissioner';
   const favoriteSet = useMemo(() => new Set(userProfile?.favoritePlayerIds || []), [userProfile]);
@@ -205,7 +207,7 @@ const Home = () => {
             <h2>Player Pool</h2>
           </div>
           <div className="board-count">
-            Showing {visiblePlayers.length} of {matchingPlayers.length}
+            Showing {playerPage.shown.length} of {matchingPlayers.length}
           </div>
         </div>
 
@@ -262,7 +264,7 @@ const Home = () => {
         />
 
         <ul className="player-list player-board-list">
-          {visiblePlayers.map((player) => {
+          {playerPage.shown.map((player) => {
             const availability = getPlayerAvailability(player);
             const isFavorite = favoriteSet.has(player.id);
             const playerNote = typeof playerNotes[player.id] === 'string' ? playerNotes[player.id].trim() : '';
@@ -285,7 +287,7 @@ const Home = () => {
                 </div>
                 <div className="player-data-strip">
                   <span>Bye {player.bye || '-'}</span>
-                  <span>{scoringLabel}</span>
+                  <span className="data-scoring">{scoringLabel}</span>
                   {Number.isFinite(player.rankMovement) && player.rankMovement !== 0 && (
                     <span>{player.rankMovement > 0 ? `Up ${player.rankMovement}` : `Down ${Math.abs(player.rankMovement)}`}</span>
                   )}
@@ -303,6 +305,7 @@ const Home = () => {
             );
           })}
         </ul>
+        <ShowMoreButton hidden={playerPage.hidden} step={PLAYER_PAGE_SIZE} onClick={playerPage.showMore} />
       </section>
     </div>
   );
@@ -409,12 +412,14 @@ const hydrateTrendItems = (items, playerBoard, limit = LIVE_TREND_LIMIT) => {
       const sleeperId = item.sleeperId || item.player_id || item.id || String(item.playerId || '').replace(/^sleeper-/, '');
       const playerId = item.playerId || (sleeperId ? `sleeper-${sleeperId}` : null);
       const player = playerId ? playerMap.get(playerId) : null;
-      if (!player && !item.name) return null;
+      // Skip players we can't name (Sleeper sends bare IDs for players outside our pool).
+      const name = player?.name || (item.name && String(item.name) !== String(sleeperId) && !/^\d+$/.test(String(item.name)) ? item.name : null);
+      if (!name) return null;
 
       return {
         playerId,
         sleeperId,
-        name: player?.name || item.name || sleeperId,
+        name,
         position: player?.position || item.position || '-',
         team: player?.team || item.team || '-',
         rank: player?.scoringRank || item.rank || null,
@@ -462,6 +467,7 @@ const formatCompactCount = (value) => {
 
 // The player pool is rebuilt weekly, so a pool more than about a week old has missed an update.
 const POOL_STALE_HOURS = 8 * 24;
+const PLAYER_PAGE_SIZE = 50;
 
 const getTrendLookbackHours = () => toNumber(playerInsightsMeta.trendsLookbackHours, 24) || 24;
 
