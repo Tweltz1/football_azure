@@ -689,6 +689,7 @@ test('start/sit: import a Sleeper team with its lineup slots, scoring and curren
   assert.equal(team.players[3].name, 'Player 999999');
   assert.deepEqual(team.starters, ['sleeper-4984', 'sleeper-BUF']);
   assert.deepEqual(team.opponents.map((o: any) => [o.teamName, o.players.length]), [['Rival', 1]]);
+  assert.deepEqual(team.opponents[0].starters, ['sleeper-1'], "other teams' lineups come along too");
 });
 
 test('start/sit: dynasty Sleeper leagues bring player ages and who owns which draft picks', async () => {

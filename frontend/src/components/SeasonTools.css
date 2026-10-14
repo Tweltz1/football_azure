@@ -843,3 +843,38 @@
   color: var(--muted);
   font-weight: 500;
 }
+
+.waiver-depth {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.waiver-depth li {
+  display: grid;
+  grid-template-columns: 3.5em 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.waiver-depth small,
+.trade-demand {
+  color: var(--muted);
+}
+
+.trade-demand {
+  display: block;
+  margin-top: 4px;
+}
+
+@media (max-width: 560px) {
+  .waiver-depth li {
+    grid-template-columns: 3em 1fr;
+  }
+
+  .waiver-depth small {
+    grid-column: 2;
+  }
+}

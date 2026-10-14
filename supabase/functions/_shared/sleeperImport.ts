@@ -42,7 +42,7 @@ export interface SleeperTeam {
   /** The same lineup slot by slot, lined up with `slots` (null for an empty slot). */
   startersBySlot: (string | null)[];
   /** The other teams in the league, for the trade tool. */
-  opponents: { teamName: string; players: RosterPlayer[]; picks: DraftPick[] }[];
+  opponents: { teamName: string; players: RosterPlayer[]; picks: DraftPick[]; starters: string[] }[];
 }
 
 export interface SleeperImport {
@@ -255,6 +255,8 @@ export async function getSleeperTeams(
         teamName: rosterName(roster, `Team ${text(roster.roster_id) || index + 1}`),
         players: toPlayers(roster),
         picks: picksByRoster.get(text(roster.roster_id)) ?? [],
+        starters: (Array.isArray(roster.starters) ? roster.starters.map(text) : [])
+          .filter((id) => id && id !== '0').map((id) => `sleeper-${id}`),
       }))
       .filter((team) => team.players.length > 0 || team.picks.length > 0);
 

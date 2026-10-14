@@ -7,6 +7,9 @@ import {
 } from '../data/startSitUtils';
 import { POSITION_TABS, positionRanks, rankLabel, seasonRankings } from '../data/rankings';
 import { PRESEASON_POSITION_RANKS } from '../data/preseasonRanks';
+import {
+  blendLevels, demandNote, playerDemand, positionDemand, realWaiverLevels,
+} from '../data/leagueDemand';
 import { buildOutlooks } from '../data/outlook';
 import {
   buildMarket, describeMarketSettings, marketRanksFrom, marketSettingsFor, seasonMarketSettings, useMarketValues,
@@ -382,6 +385,7 @@ const PPR_BY_SCORING = { ppr: 1, half: 0.5, std: 0 };
 /** Who to drop for which free agent, judged on rest-of-season value (and the trade market when loaded). */
 const WaiverMoves = ({
   roster: rosterRaw, pool: poolRaw, rosterSettings, scoring, allPlayers: allPlayersRaw, week, defense, dynasty, teamCount, ppr, note, onOpen,
+  rosteredIds = null, demand = null, league = null,
 }) => {
   const settings = useMemo(() => marketSettingsFor({ dynasty, teamCount, rosterSettings, ppr }), [dynasty, teamCount, rosterSettings, ppr]);
   const { data: marketData } = useMarketValues(settings);
@@ -395,16 +399,28 @@ const WaiverMoves = ({
   const allPlayers = useMemo(() => withOutlook(allPlayersRaw), [withOutlook, allPlayersRaw]);
   const roster = useMemo(() => withOutlook(rosterRaw), [withOutlook, rosterRaw]);
   const pool = useMemo(() => withOutlook(poolRaw), [withOutlook, poolRaw]);
-  const levels = useMemo(() => replacementLevels(allPlayers, teamCount, rosterSettings, scoring), [allPlayers, teamCount, rosterSettings, scoring]);
+  const realWaiver = useMemo(() => realWaiverLevels(allPlayers, rosteredIds, scoring), [allPlayers, rosteredIds, scoring]);
+  const levels = useMemo(
+    () => blendLevels(replacementLevels(allPlayers, teamCount, rosterSettings, scoring), realWaiver),
+    [allPlayers, teamCount, rosterSettings, scoring, realWaiver],
+  );
+  const depth = useMemo(
+    () => (league ? positionDemand(league, rosterSettings, (p) => p.position, realWaiver) : []),
+    [league, rosterSettings, realWaiver],
+  );
   const market = useMemo(
     () => buildMarket(marketData, allPlayers, (p) => ownTradeScore(p, levels, scoring, dynasty).score),
     [marketData, allPlayers, levels, scoring, dynasty],
   );
   const { drops, holds, moves } = useMemo(
-    () => suggestWaiverMoves({ roster, pool, rosterSettings, scoring, levels, market, dynasty }),
-    [roster, pool, rosterSettings, scoring, levels, market, dynasty],
+    () => suggestWaiverMoves({ roster, pool, rosterSettings, scoring, levels, market, dynasty, allPlayers }),
+    [roster, pool, rosterSettings, scoring, levels, market, dynasty, allPlayers],
   );
   const value = (info) => (info.display != null ? info.display.toLocaleString() : info.score.toFixed(1));
+  const withDemand = (reason, id) => {
+    const extra = demandNote(id, demand);
+    return extra ? `${reason}. ${extra}` : reason;
+  };
   const name = (p, open = true) => (open
     ? <button type="button" className="startsit-name" onClick={() => onOpen(p.id)}>{p.name}</button>
     : <span>{p.name}</span>);
@@ -432,7 +448,7 @@ const WaiverMoves = ({
             <li key={`${m.add.player.id}-${m.drop.player.id}`}>
               <div className="waiver-move">
                 <span><span className="startsit-tag good">Add</span> {name(m.add.player, false)} <small>{m.add.player.position} · {m.add.player.team || 'FA'}</small> <StatusTag player={m.add.player} /></span>
-                <small>{m.add.reason}</small>
+                <small>{withDemand(m.add.reason, m.add.player.id)}</small>
                 <span><span className="startsit-tag warn">Drop</span> {name(m.drop.player)} <small>{m.drop.player.position} · {m.drop.info.perGame.toFixed(1)} pts/game</small></span>
               </div>
               <span className="startsit-points" title="Gain in rest-of-season value">
@@ -451,7 +467,7 @@ const WaiverMoves = ({
             <li key={d.player.id}>
               <div className="waiver-move">
                 <span>{name(d.player)} <small>{d.player.position} · {d.player.team || 'FA'}</small> <StatusTag player={d.player} /></span>
-                <small>{d.reason}</small>
+                <small>{withDemand(d.reason, d.player.id)}</small>
               </div>
               <span className="startsit-points" title="Rest-of-season value">{value(d.info)}</span>
             </li>
@@ -475,6 +491,24 @@ const WaiverMoves = ({
           </ul>
         </>
       )}
+      {depth.length > 0 && (
+        <>
+          <h4 className="waiver-title">How deep teams go in this league</h4>
+          <ul className="waiver-depth">
+            {depth.map((d) => (
+              <li key={d.position}>
+                <strong>{d.position}</strong>
+                <span>{d.perTeam} per team for {d.starting} starting spot{d.starting === 1 ? '' : 's'}</span>
+                <small>{d.bestFree != null ? `best free agents ${d.bestFree.toFixed(1)} a game` : 'few free agents'}</small>
+              </li>
+            ))}
+          </ul>
+          <p className="startsit-help">
+            Positions teams stock deep leave less on waivers, so players there are worth more. "Above waiver" blends what the best free
+            agents in this league actually project with the usual estimate.
+          </p>
+        </>
+      )}
       {note && <p className="startsit-help">{note}</p>}
     </section>
   );
@@ -485,6 +519,7 @@ const WaiverMoves = ({
 const TradeCheck = ({
   myRoster: myRosterRaw, partners, rosterSettings, scoring, allPlayers: allPlayersRaw, projectionsById, week, onOpen,
   defense = null, dynasty = false, myPicks = [], myTeamName = '', projectionsAt = null, rostersAt = null, ppr = 1,
+  rosteredIds = null, demand = null,
 }) => {
   // Every player's rest-of-season outlook (injuries, teammates, schedule, Sleeper's weeks ahead),
   // which is what trade values are built on.
@@ -505,7 +540,11 @@ const TradeCheck = ({
   const withOutlook = useMemo(() => (list) => list.map((p) => ({ ...p, outlook: outlooks.get(p.id) || null })), [outlooks]);
   const myRoster = useMemo(() => withOutlook(myRosterRaw), [withOutlook, myRosterRaw]);
   const allPlayers = useMemo(() => withOutlook(allPlayersRaw), [withOutlook, allPlayersRaw]);
-  const levels = useMemo(() => replacementLevels(allPlayers, teamCount, rosterSettings, scoring), [allPlayers, teamCount, rosterSettings, scoring]);
+  const realWaiver = useMemo(() => realWaiverLevels(allPlayers, rosteredIds, scoring), [allPlayers, rosteredIds, scoring]);
+  const levels = useMemo(
+    () => blendLevels(replacementLevels(allPlayers, teamCount, rosterSettings, scoring), realWaiver),
+    [allPlayers, teamCount, rosterSettings, scoring, realWaiver],
+  );
   // Ages only come with rostered players, so they're copied over before the market is lined up with our values.
   const agedPlayers = useMemo(() => {
     if (!dynasty) return allPlayers;
@@ -792,6 +831,7 @@ const TradeCheck = ({
                             {p.outlook.notes.slice(0, 3).map((note) => <li key={note}>{note}</li>)}
                           </ul>
                         )}
+                        {demandNote(p.id, demand) && <small className="trade-demand">{demandNote(p.id, demand)}</small>}
                       </>
                     )}
                   </li>
@@ -981,6 +1021,15 @@ const StartSit = ({ userId }) => {
     return withProjections(free, projectionsById, scoring, shownWeek)
       .map((player) => ({ ...player, posRank: posRanks.get(player.id) || null }));
   }, [projections, rosterPlayers, tradePartners, projectionsById, scoring, shownWeek, posRanks]);
+  // Everyone on a team in this league (when we can see the league's rosters), and how many teams across
+  // all imported leagues roster and start each player.
+  const leagueRosteredIds = useMemo(() => {
+    if (!tradePartners.length) return null;
+    const ids = new Set(rosterPlayers.map((p) => p.id));
+    tradePartners.forEach((team) => team.players.forEach((p) => ids.add(p.id)));
+    return ids;
+  }, [rosterPlayers, tradePartners]);
+  const demand = useMemo(() => playerDemand(sleeperTeams), [sleeperTeams]);
   const leaguePpr = activeSleeper
     ? Number(activeSleeper.scoringSettings?.rec ?? PPR_BY_SCORING[activeSleeper.scoring] ?? 1)
     : PPR_BY_SCORING[scoring] ?? 1;
@@ -1248,6 +1297,9 @@ const StartSit = ({ userId }) => {
               ppr={leaguePpr}
               note={waiverNote}
               onOpen={setInsightId}
+              rosteredIds={leagueRosteredIds}
+              demand={demand}
+              league={activeSleeper}
             />
           )}
 
@@ -1343,6 +1395,8 @@ const StartSit = ({ userId }) => {
             onOpen={setInsightId}
             projectionsAt={projections.fetchedAt}
             rostersAt={activeSleeper ? sleeperImport.fetchedAt : null}
+            rosteredIds={leagueRosteredIds}
+            demand={demand}
           />
 
           {insightPlayer && (
