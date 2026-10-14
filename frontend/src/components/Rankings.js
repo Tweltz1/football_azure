@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import { defenseMatchup, isUnavailable, trendFor, withProjections } from '../data/startSitUtils';
@@ -68,40 +69,53 @@ const Change = ({ change }) => {
   );
 };
 
-/** Player ids on the viewer's Hood League rosters and saved Sleeper teams, with the team name. */
-const useMyPlayers = (userId) => {
-  const [mine, setMine] = useState(() => new Map());
-
+/** The Hood League leagues where the viewer has a drafted team. */
+const useHoodLeagues = (userId) => {
+  const [leagues, setLeagues] = useState([]);
   useEffect(() => {
     let cancelled = false;
-    const found = new Map();
-    const add = (id, teamName) => {
-      if (id && !found.has(id)) found.set(id, teamName);
-    };
-
-    const hoodLeague = axios.get(`${API_BASE_URL}/GetLeagues`).then((response) => {
-      for (const league of response.data || []) {
-        const team = (league.teams || []).find((t) => t && t.ownerId === userId);
-        for (const spot of team?.roster || []) add(spot?.player?.id, team.name);
-      }
-    });
-    const sleeperName = readSetting('hl-startsit-sleeper-user', '');
-    const sleeper = sleeperName
-      ? axios.get(`${API_BASE_URL}/startsit/sleeper?username=${encodeURIComponent(sleeperName)}`).then((response) => {
-        for (const team of response.data?.teams || []) {
-          for (const player of team.players || []) add(player.id, team.teamName);
-        }
+    axios.get(`${API_BASE_URL}/GetLeagues`)
+      .then((response) => {
+        if (cancelled) return;
+        // Only leagues that have drafted: before that, everyone would look like a free agent.
+        setLeagues((response.data || []).filter((league) => (league.teams || [])
+          .some((t) => t && t.ownerId === userId && (t.roster || []).length > 0)));
       })
-      : Promise.resolve();
-
-    Promise.allSettled([hoodLeague, sleeper]).then(() => {
-      if (!cancelled) setMine(found);
-    });
+      .catch(() => { /* Rankings still works without them. */ });
     return () => { cancelled = true; };
   }, [userId]);
-
-  return mine;
+  return leagues;
 };
+
+const rosterIds = (players) => (players || []).map((p) => p?.id).filter(Boolean);
+
+/**
+ * Every league the viewer can rank for: imported Sleeper leagues and Hood League leagues. Each has
+ * the viewer's own player ids and every rostered id in the league (everyone else is a free agent).
+ */
+const leagueChoices = (sleeperTeams, hoodLeagues, userId) => [
+  ...sleeperTeams.map((t) => ({
+    value: `league:${t.leagueId}`,
+    name: t.leagueName,
+    teamName: t.teamName,
+    mine: rosterIds(t.players),
+    rostered: [...rosterIds(t.players), ...(t.opponents || []).flatMap((o) => rosterIds(o.players))],
+    fetchedAt: t.fetchedAt,
+  })),
+  ...hoodLeagues.map((league) => {
+    const teams = (league.teams || []).filter(Boolean);
+    const myTeam = teams.find((t) => t.ownerId === userId);
+    const idsOf = (team) => (team.roster || []).map((spot) => spot?.player?.id).filter(Boolean);
+    return {
+      value: `hood:${league.id}`,
+      name: league.name,
+      teamName: myTeam?.name || 'Your team',
+      mine: myTeam ? idsOf(myTeam) : [],
+      rostered: teams.flatMap(idsOf),
+      fetchedAt: null,
+    };
+  }),
+];
 
 const WeeklyTable = ({ rows, tab, scoring, defense, mine, waivers, onOpen }) => (
   <div className="rank-table-wrap">
@@ -228,20 +242,41 @@ const Rankings = ({ userId }) => {
     choice, setChoice, scoring, profile, options: scoringOptions,
   } = useLeagueScoring(sleeperTeams);
   const projections = useMemo(() => applyLeagueScoring(rawProjections, profile), [rawProjections, profile]);
-  // Free agents get an asterisk: in the league picked under Scoring, or the viewer's only Sleeper league.
-  const waivers = useMemo(() => {
-    const team = profile
-      ? sleeperTeams.find((t) => `league:${t.leagueId}` === profile.value)
-      : (sleeperTeams.length === 1 ? sleeperTeams[0] : null);
-    if (!team) return null;
-    const rostered = new Set(team.players.map((p) => p.id));
-    (team.opponents || []).forEach((o) => o.players.forEach((p) => rostered.add(p.id)));
-    return { leagueName: team.leagueName, rostered, fetchedAt: team.fetchedAt };
-  }, [profile, sleeperTeams]);
+  const standardOptions = scoringOptions.filter((o) => !o.value.startsWith('league:'));
+  const hoodLeagues = useHoodLeagues(userId);
+  const leagues = useMemo(() => leagueChoices(sleeperTeams, hoodLeagues, userId), [sleeperTeams, hoodLeagues, userId]);
+  // The league being ranked for. A Sleeper league also sets the scoring (shared with Start/Sit); a Hood
+  // League league keeps the scoring menu. Until the viewer picks, their first league is used.
+  const [leaguePick, setLeaguePick] = useState(() => readSetting('hl-rankings-league', null));
+  useEffect(() => writeSetting('hl-rankings-league', leaguePick), [leaguePick]);
+  const league = useMemo(() => {
+    if (profile) return leagues.find((l) => l.value === profile.value) || null;
+    if (leaguePick === '') return null;
+    return leagues.find((l) => l.value === leaguePick)
+      || (leaguePick == null || leaguePick.startsWith('league:') ? leagues[0] : null)
+      || null;
+  }, [leagues, profile, leaguePick]);
+  // Picking a Sleeper league by default should also bring its scoring.
+  useEffect(() => {
+    if (league?.value.startsWith('league:') && profile?.value !== league.value) setChoice(league.value);
+  }, [league, profile, setChoice]);
+  const pickLeague = (value) => {
+    setLeaguePick(value);
+    if (value.startsWith('league:')) setChoice(value);
+    else if (profile) setChoice(profile.base);
+  };
+  const waivers = useMemo(() => (league
+    ? { leagueName: league.name, rostered: new Set(league.rostered), fetchedAt: league.fetchedAt }
+    : null), [league]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [insightId, setInsightId] = useState(null);
-  const mine = useMyPlayers(userId);
+  // "Yours" means your team in the league picked, or any of your teams when none is.
+  const mine = useMemo(() => {
+    const map = new Map();
+    for (const l of league ? [league] : leagues) l.mine.forEach((id) => { if (!map.has(id)) map.set(id, `${l.teamName} (${l.name})`); });
+    return map;
+  }, [league, leagues]);
 
   useEffect(() => writeSetting('hl-rankings-view', view), [view]);
   useEffect(() => writeSetting('hl-rankings-position', tab), [tab]);
@@ -325,18 +360,37 @@ const Rankings = ({ userId }) => {
               </select>
             </label>
           )}
-          {view === 'week' && (
+          <label>
+            League
+            <select value={league ? league.value : ''} onChange={(e) => pickLeague(e.target.value)} disabled={leagues.length === 0}>
+              {leagues.map((l) => (
+                <option key={l.value} value={l.value}>{l.name} ({l.teamName})</option>
+              ))}
+              <option value="">{leagues.length ? 'No league' : 'None yet'}</option>
+            </select>
+          </label>
+          {view === 'week' && !profile && (
             <label>
               Scoring
               <select value={choice} onChange={(e) => setChoice(e.target.value)}>
-                {scoringOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                {standardOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </label>
           )}
         </div>
-        {view === 'week' && profile?.custom && (
+        {leagues.length === 0 && (
+          <p className="startsit-help">
+            <Link to="/start-sit">Connect your Sleeper team on Start/Sit</Link> to rank with your league's scoring and see who's available on waivers.
+          </p>
+        )}
+        {league && !profile?.custom && (
           <p className="startsit-help league-scoring-note">
-            Scored with {profile.leagueName}'s rules: {profile.details.join(', ')}.
+            Ranked for {league.name}{profile ? ` with its scoring (${standardOptions.find((o) => o.value === profile.base)?.label || profile.base})` : ''}. * marks players nobody in the league has.
+          </p>
+        )}
+        {league && profile?.custom && (
+          <p className="startsit-help league-scoring-note">
+            Ranked with {profile.leagueName}'s rules: {profile.details.join(', ')}. * marks players nobody in the league has.
           </p>
         )}
       </section>
