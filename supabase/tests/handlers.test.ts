@@ -448,7 +448,7 @@ test('start/sit: weekly projections from Sleeper, cached, with ids that match th
         player: { first_name: 'Bijan', last_name: 'Robinson', position: 'RB', injury_status: 'Questionable' } },
       { player_id: 'BUF', team: 'BUF', opponent: 'KC', stats: { pts_std: 7, pts_ppr: 7, pts_half_ppr: 7 },
         player: { first_name: 'Buffalo', last_name: 'Bills', position: 'DEF' } },
-      { player_id: '1', team: 'NYJ', stats: { pts_ppr: 0, pts_std: 0 }, player: { first_name: 'No', last_name: 'Points', position: 'WR' } },
+      { player_id: '1', team: 'NYJ', opponent: 'MIA', stats: { pts_ppr: 0, pts_std: 0 }, player: { first_name: 'No', last_name: 'Points', position: 'WR' } },
       { player_id: '2', team: 'NYJ', stats: { pts_ppr: 9 }, player: { first_name: 'Some', last_name: 'Lineman', position: 'OL' } },
     ];
   });
@@ -528,6 +528,8 @@ test('start/sit: recent games, season average, injured teammates, and past match
     // Player 12 got hurt after week 2 and has no projection now.
     const rows: unknown[] = [row('10', 'LAR', 'SEA', week * 2), row('11', 'LAR', 'SEA', 20, 'WR', 'Out')];
     if (week <= 2) rows.push(row('12', 'LAR', 'SEA', 9, 'RB', 'IR'));
+    // Player 14's team (NYJ) is on bye this week, so Sleeper has no projection for them.
+    rows.push(row('14', 'NYJ', 'MIA', 11));
     rows.push({ player_id: '13', team: 'LAR', stats: {}, player: { first_name: 'Bench', last_name: 'Guy', position: 'WR' } });
     // Targets and carries, for usage shares: player 10 sees 6 targets a game, everyone else 2.
     for (const r of rows as any[]) {
@@ -559,6 +561,10 @@ test('start/sit: recent games, season average, injured teammates, and past match
   assert.equal(p12.injury, 'IR', 'long-term injured players come from their last game');
   assert.equal(p12.points.ppr, 0);
   assert.equal(players.has('sleeper-13'), false, 'rows without a game played are ignored');
+  const p14 = players.get('sleeper-14') as any;
+  assert.equal(p14.onBye, true, 'players on bye stay in the list with their season');
+  assert.equal(p14.seasonAvg.ppr, 11);
+  assert.equal(p10.onBye, undefined);
 
   const matchup = await world.call('bob', 'GET', 'startsit/matchup/sleeper-10', undefined, 'opponent=sf');
   assert.equal(matchup.status, 200, String(matchup.body));

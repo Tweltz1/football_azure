@@ -66,7 +66,7 @@ export const withProjections = (players, projectionsById, scoring, week) => play
     team: projection?.team || player.team,
     opponent: projection?.opponent || null,
     injury: projection?.injury || null,
-    onBye: onBye && !projection,
+    onBye: !!projection?.onBye || (onBye && !projection),
     points: projection ? Number(projection.points?.[scoring] ?? 0) : null,
     recent: projection?.recent || [],
     seasonAvg: projection?.seasonAvg || null,
@@ -406,6 +406,12 @@ const seasonLineup = (players, rosterSettings, scoring) => buildLineup(
   players.map((p) => ({ ...p, points: tradeValue(p, scoring), onBye: false, injury: null })),
   rosterSettings,
 );
+/** Starters (by id) of a team's best lineup when every player is valued on rest-of-season points per game. */
+export const seasonStarterIds = (players, rosterSettings, scoring) => new Set(
+  seasonLineup(players, rosterSettings, scoring).starters.filter((s) => s.player).map((s) => s.player.id),
+);
+/** Whether a roster can fill every lineup slot (ignoring this week's injuries and byes). */
+export const fillsLineup = (players, rosterSettings, scoring) => seasonLineup(players, rosterSettings, scoring).starters.every((s) => s.player);
 const slotById = (lineup) => new Map(lineup.starters.filter((s) => s.player).map((s) => [s.player.id, s.slot.label]));
 
 // A weekly lineup change this size (pts) or more counts as helping or hurting the team.

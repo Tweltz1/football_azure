@@ -69,3 +69,46 @@ test('an easy schedule ahead lifts value and says so', () => {
   assert.ok(easy.value > plain.value);
   assert.ok(easy.notes.some((n) => /Easy schedule ahead: SOFT/.test(n)));
 });
+
+test('a hurt star missing from the preseason list leans on the trade-market rank, and a game cut short is set aside', () => {
+  const star = {
+    id: 'ajb2', name: 'Market WR', position: 'WR', team: 'PHI', injury: 'Out', gamesPlayed: 1,
+    seasonAvg: pts(5.7), recent: games([1], 5.7), points: pts(0), upcoming: [...upcoming([8], 0), ...upcoming([9, 10, 11], 15)],
+  };
+  const noRank = outlookFor([star], 'ajb2');
+  const o = buildOutlooks([...field, star], {
+    scoring: 'ppr', week: 7, seasonRanks: new Map(), marketRanks: new Map([['ajb2', 8]]),
+  }).get('ajb2');
+  assert.ok(o.value > noRank.value + 3, `market ${o.value} vs none ${noRank.value}`);
+  assert.ok(o.notes.some((n) => /Set aside 1 game/.test(n)));
+  assert.ok(o.notes.some((n) => /trade-market ranking \(WR8/.test(n)));
+});
+
+test('a back loses some work when a teammate who has not played yet this season comes back', () => {
+  const lead = {
+    id: 'rbw', name: 'Lead RB', position: 'RB', team: 'NYG', gamesPlayed: 6,
+    seasonAvg: pts(15), recent: games([1, 2, 3, 4, 5, 6], 15), points: pts(13), upcoming: upcoming([8, 9, 10, 11], 13),
+  };
+  const returning = {
+    id: 'rbd', name: 'Returning RB', position: 'RB', team: 'NYG', gamesPlayed: 0,
+    seasonAvg: null, recent: [], points: pts(9), upcoming: upcoming([8, 9, 10, 11], 9),
+  };
+  const o = outlookFor([lead, returning], 'rbw');
+  assert.ok(o.roleChange < 0, `role change ${o.roleChange}`);
+  assert.ok(o.notes.some((n) => /Returning RB \(RB\) is back healthy/.test(n)));
+  const hurtStill = outlookFor([lead, { ...returning, points: pts(0), upcoming: upcoming([8, 9, 10, 11], 0) }], 'rbw');
+  assert.equal(hurtStill.roleChange || 0, 0);
+});
+
+test('teammate role notes need at least 3 games to go on', () => {
+  const wr = {
+    id: 'w1', name: 'One Game WR', position: 'WR', team: 'GB', gamesPlayed: 1,
+    seasonAvg: pts(12), recent: games([1], 12), points: pts(12), upcoming: upcoming([8, 9, 10, 11], 12),
+  };
+  const mate = {
+    id: 'w2', name: 'Mate WR', position: 'WR', team: 'GB', gamesPlayed: 5,
+    seasonAvg: pts(12), recent: games([2, 3, 4, 5, 6], 12), points: pts(12), upcoming: upcoming([8, 9, 10, 11], 12),
+  };
+  const o = outlookFor([wr, mate], 'w1');
+  assert.ok(!o.notes.some((n) => /Mate WR/.test(n)));
+});

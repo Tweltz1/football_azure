@@ -41,6 +41,8 @@ export interface ProjectedPlayer {
    * are left out.
    */
   upcoming: GameLine[];
+  /** Set when the player's team is on bye this week (they have no projection). */
+  onBye?: boolean;
   /** Share of the team's targets and carries this player had, this season and over the last 3 games. */
   usage: Usage | null;
   /** How much their score swings game to game this season (standard deviation), or null under 2 games. */
@@ -454,13 +456,23 @@ export async function getWeekProjections(fetchJson: FetchJson, now: Date, reques
   }
 
   // Players hurt for the long haul can drop out of the projections entirely; their latest game still says so.
+  // So do players on bye: their team has no projections this week, but their season still counts.
+  const teamsPlaying = new Set<string>();
+  for (const row of rows) {
+    const r = (row ?? {}) as Record<string, unknown>;
+    if (text(r.opponent)) teamsPlaying.add(text(r.team));
+  }
   for (const [id, played] of games) {
     const latest = played[played.length - 1];
-    if (byId.has(id) || !latest.injury) continue;
-    byId.set(id, withHistory({
-      id, name: latest.name, position: latest.position, team: latest.team, opponent: null,
-      injury: latest.injury, points: { ppr: 0, half: 0, std: 0 }, stats: {},
-    }));
+    const onBye = seasonType === 'regular' && teamsPlaying.size > 0 && !teamsPlaying.has(latest.team);
+    if (byId.has(id) || (!latest.injury && !onBye)) continue;
+    byId.set(id, {
+      ...withHistory({
+        id, name: latest.name, position: latest.position, team: latest.team, opponent: null,
+        injury: latest.injury, points: { ppr: 0, half: 0, std: 0 }, stats: {},
+      }),
+      ...(onBye ? { onBye: true } : {}),
+    });
   }
 
   const value: WeekProjections = {

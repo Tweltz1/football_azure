@@ -43,6 +43,10 @@ export const buildPriors = (players, scoring) => {
   };
 };
 
+const rankSource = (preseason, market) => (preseason && market
+  ? 'the preseason and trade-market rankings'
+  : preseason ? 'the preseason ranking' : 'the trade-market ranking');
+
 /** Games the player is expected to miss from this week on, and how we know. */
 const expectedMissed = (player, remaining, scoring) => {
   const status = statusOf(player);
@@ -67,6 +71,16 @@ const expectedMissed = (player, remaining, scoring) => {
   return { missed: Math.min(missed, remaining), backWeek, longTerm, status };
 };
 
+/**
+ * What a teammate scores when playing: their season average, or for someone who hasn't played yet
+ * this season (hurt since the start), what Sleeper projects for them now that they're back.
+ */
+const mateLevel = (mate, scoring) => {
+  if (mate.seasonAvg && (mate.gamesPlayed || 0) > 0) return pointsOf(mate.seasonAvg, scoring);
+  const ahead = [pointsOf(mate.points, scoring), ...(mate.upcoming || []).map((g) => pointsOf(g.points, scoring))].filter((v) => v > 0);
+  return mean(ahead) ?? 0;
+};
+
 const OVERLAP_PASS_CATCHERS = ['WR', 'TE'];
 const sharesWork = (position, mate) => position === mate
   || (OVERLAP_PASS_CATCHERS.includes(position) && OVERLAP_PASS_CATCHERS.includes(mate));
@@ -82,9 +96,12 @@ const roleChanges = (player, ctx, healthy, remaining) => {
   const myGames = (player.recent || []).map((g) => ({ week: g.week, value: pointsOf(g.points, ctx.scoring) }));
   if (!myGames.length) return [];
 
+  // A few games aren't enough to tell who shares the work.
+  if (myGames.length < 3) return [];
+
   return (ctx.byTeam.get(player.team) || [])
     .filter((mate) => mate.id !== player.id && sharesWork(position, normalizePosition(mate.position)))
-    .filter((mate) => mate.seasonAvg && pointsOf(mate.seasonAvg, ctx.scoring) >= 5)
+    .filter((mate) => mateLevel(mate, ctx.scoring) >= 5)
     .map((mate) => {
       const mateWeeks = new Set((mate.recent || []).map((g) => g.week));
       const without = myGames.filter((g) => !mateWeeks.has(g.week));
@@ -96,7 +113,7 @@ const roleChanges = (player, ctx, healthy, remaining) => {
       const shift = futureShare - missedShare;
       if (Math.abs(shift) < 0.2) return null;
 
-      const mateAvg = pointsOf(mate.seasonAvg, ctx.scoring);
+      const mateAvg = mateLevel(mate, ctx.scoring);
       const share = normalizePosition(mate.position) === position ? ROLE_SHARE[position] : CROSS_SHARE;
       const measured = without.length && withMate.length ? mean(without.map((g) => g.value)) - mean(withMate.map((g) => g.value)) : null;
       // A measured split is noisy over a few games, so it's blended with the usual share.
@@ -160,15 +177,31 @@ const workloadNote = (player) => {
 export const playerOutlook = (player, ctx) => {
   const position = normalizePosition(player.position);
   const remaining = Math.max(1, LAST_FANTASY_WEEK - (ctx.week || 1) + 1);
-  const gp = player.gamesPlayed || 0;
-  const season = player.seasonAvg ? pointsOf(player.seasonAvg, ctx.scoring) : null;
-  const recent = (player.recent || []).slice(-3).map((g) => pointsOf(g.points, ctx.scoring));
-  const lastThree = mean(recent);
-  const own = gp > 0 && season != null ? (gp >= 3 && lastThree != null ? 0.65 * season + 0.35 * lastThree : season) : null;
-
-  const rank = ctx.seasonRanks?.get(player.id) || null;
+  const preseasonRank = ctx.seasonRanks?.get(player.id) || null;
+  const marketRank = ctx.marketRanks?.get(player.id) || null;
+  // Preseason ranking and today's trade-market ranking at the position, averaged when we have both.
+  const rank = preseasonRank && marketRank ? Math.round((preseasonRank + marketRank) / 2) : preseasonRank || marketRank;
   const prior = rank && ctx.priors ? ctx.priors(position, rank) : null;
-  const ownWeight = gp / (gp + 3);
+
+  let gp = player.gamesPlayed || 0;
+  let season = player.seasonAvg ? pointsOf(player.seasonAvg, ctx.scoring) : null;
+  let recentGames = (player.recent || []).map((g) => pointsOf(g.points, ctx.scoring));
+  // With only a game or two, one the player likely left hurt (far below their usual level) says little
+  // about them, so it's set aside.
+  let shortGames = 0;
+  if (prior != null && gp > 0 && gp <= 3 && statusOf(player)) {
+    const kept = recentGames.filter((v) => v >= 0.4 * prior);
+    shortGames = recentGames.length - kept.length;
+    if (shortGames > 0 && recentGames.length === gp) {
+      gp = kept.length;
+      season = kept.length ? mean(kept) : null;
+      recentGames = kept;
+    }
+  }
+  const lastThree = mean(recentGames.slice(-3));
+  const own = gp > 0 && season != null ? (gp >= 3 && lastThree != null ? 0.65 * season + 0.35 * lastThree : season) : null;
+  // Own production takes over from the ranking as games pile up: 1 game is 20%, 4 games half, 12 games 75%.
+  const ownWeight = gp / (gp + 4);
   const thisWeek = pointsOf(player.points, ctx.scoring);
   const sleeperWeeks = (player.upcoming || []).map((g) => pointsOf(g.points, ctx.scoring)).filter((v) => v > 0);
   if (thisWeek > 0) sleeperWeeks.unshift(thisWeek);
@@ -198,10 +231,11 @@ export const playerOutlook = (player, ctx) => {
   } else if (availability.status === 'questionable') {
     notes.push('Questionable this week, but expected to play most of the way.');
   }
+  if (shortGames > 0) notes.push(`Set aside ${plural(shortGames, 'game')} far below ${player.name}'s usual level (likely cut short by the injury).`);
   if (prior != null && gp < 4) {
     notes.push(gp === 0
-      ? `No games this season yet, so the value leans on the preseason ranking (${position}${rank}, worth about ${round1(prior)} a game).`
-      : `Only ${plural(gp, 'game')} this season, so the value leans partly on the preseason ranking (${position}${rank}, about ${round1(prior)} a game).`);
+      ? `No games this season yet, so the value leans on ${rankSource(preseasonRank, marketRank)} (${position}${rank}, worth about ${round1(prior)} a game).`
+      : `Only ${plural(gp, 'full game')} this season, so the value leans mostly on ${rankSource(preseasonRank, marketRank)} (${position}${rank}, about ${round1(prior)} a game).`);
   }
   roles.forEach((r) => notes.push(r.note));
   const workload = workloadNote(player);
@@ -228,13 +262,13 @@ export const playerOutlook = (player, ctx) => {
 };
 
 /** Outlooks for every player, by id. players are /startsit players (points still per scoring format). */
-export const buildOutlooks = (players, { scoring, week, defense, seasonRanks }) => {
+export const buildOutlooks = (players, { scoring, week, defense, seasonRanks, marketRanks = null }) => {
   const byTeam = new Map();
   (players || []).forEach((p) => {
     if (!p.team) return;
     if (!byTeam.has(p.team)) byTeam.set(p.team, []);
     byTeam.get(p.team).push(p);
   });
-  const ctx = { scoring, week, defense, byTeam, seasonRanks, priors: buildPriors(players, scoring) };
+  const ctx = { scoring, week, defense, byTeam, seasonRanks, marketRanks, priors: buildPriors(players, scoring) };
   return new Map((players || []).map((p) => [p.id, playerOutlook(p, ctx)]));
 };
