@@ -6,6 +6,7 @@ import { applyOps, diffObjects } from '../functions/_shared/diff.ts';
 import { HANDWRITING_LIMITS, learnFromBoard, sanitizeHandwriting, splitBoardDigits } from '../functions/_shared/handwriting.ts';
 import { getInitialPlayerPool } from '../functions/_shared/playerData.ts';
 import { buildDefenseTable, clearStartSitCache } from '../functions/_shared/startSit.ts';
+import { clearMarketCache } from '../functions/_shared/market.ts';
 import { clearSleeperCache } from '../functions/_shared/sleeperImport.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../functions/_shared/models.ts';
 import type { HistoryStore, LeagueStore, ProfileStore, StoredLeague } from '../functions/_shared/ports.ts';
@@ -528,6 +529,11 @@ test('start/sit: recent games, season average, injured teammates, and past match
     const rows: unknown[] = [row('10', 'LAR', 'SEA', week * 2), row('11', 'LAR', 'SEA', 20, 'WR', 'Out')];
     if (week <= 2) rows.push(row('12', 'LAR', 'SEA', 9, 'RB', 'IR'));
     rows.push({ player_id: '13', team: 'LAR', stats: {}, player: { first_name: 'Bench', last_name: 'Guy', position: 'WR' } });
+    // Targets and carries, for usage shares: player 10 sees 6 targets a game, everyone else 2.
+    for (const r of rows as any[]) {
+      if (!r.stats.gp) continue;
+      r.stats = { ...r.stats, rec_tgt: r.player_id === '10' ? 6 : 2, rush_att: r.player_id === '12' ? 10 : 0 };
+    }
     return rows;
   });
 
@@ -540,9 +546,13 @@ test('start/sit: recent games, season average, injured teammates, and past match
   assert.equal(p10.seasonAvg.ppr, 6);
   // Box scores (zero stats dropped) let the page score players with any league's settings.
   assert.deepEqual(p10.stats, { rec: 2, recYd: 75, twoPt: 1 });
-  assert.deepEqual(p10.recent[0].stats, { rec: 2, recYd: 10, twoPt: 1 });
-  assert.deepEqual(p10.seasonStats, { rec: 2, recYd: 30, twoPt: 1 });
+  assert.deepEqual(p10.recent[0].stats, { tgt: 6, rec: 2, recYd: 10, twoPt: 1 });
+  assert.deepEqual(p10.seasonStats, { tgt: 6, rec: 2, recYd: 30, twoPt: 1 });
   assert.equal(p10.gamesPlayed, 4);
+  // Weeks 1-2 the team threw 10 targets (6 + 2 + 2), weeks 4-5 just 8 once player 12 was hurt.
+  assert.deepEqual(p10.usage, { targetShare: 0.667, carryShare: 0, recentTargetShare: 0.692, recentCarryShare: 0, recentGames: 3 });
+  assert.equal(p10.spread.ppr, 3.7, 'standard deviation of 2, 4, 8 and 10');
+  assert.equal((players.get('sleeper-12') as any).usage.carryShare, 1);
   assert.equal((players.get('sleeper-11') as any).injury, 'Out', 'injured players stay in the list');
   assert.equal((players.get('sleeper-11') as any).seasonAvg.ppr, 20);
   const p12 = players.get('sleeper-12') as any;
@@ -560,6 +570,39 @@ test('start/sit: recent games, season average, injured teammates, and past match
   assert.equal((res.body as any).defense.SEA.WR.games, 4, 'SEA faced the LAR receivers in weeks 1, 2, 4 and 5');
   assert.equal((await world.call('bob', 'GET', 'startsit/matchup/sleeper-10', undefined, 'opponent=x')).status, 400);
   assert.equal((await world.call('bob', 'GET', 'startsit/matchup/../x', undefined, 'opponent=SF')).status, 404);
+});
+
+test('start/sit: trade market values from FantasyCalc for the league setup, cached, with picks by round', async () => {
+  clearMarketCache();
+  const world = memoryWorld();
+  world.respondWith((url) => {
+    if (!url.startsWith('https://api.fantasycalc.com/values/current')) throw new Error(`unexpected ${url}`);
+    return [
+      { player: { name: 'Star Back', sleeperId: '4984', position: 'RB' }, value: 9800.4, overallRank: 1, positionRank: 1, trend30Day: 120 },
+      { player: { name: 'No Sleeper Id', position: 'WR' }, value: 5000 },
+      { player: { name: '2027 1st', position: 'PICK' }, value: 4000 },
+      { player: { name: '2027 Pick 1.01', position: 'PICK' }, value: 6000 },
+      { player: { name: '2027 2nd', position: 'PICK' }, value: 1500 },
+    ];
+  });
+  const res = await world.call('bob', 'GET', 'startsit/market', undefined, 'dynasty=1&teams=10&qbs=2&ppr=0.5');
+  assert.equal(res.status, 200, String(res.body));
+  const body = res.body as any;
+  assert.match(world.fetched.at(-1)!, /isDynasty=true&numQbs=2&numTeams=10&ppr=0\.5$/);
+  assert.deepEqual(body.players['sleeper-4984'], { value: 9800, overallRank: 1, positionRank: 1, trend30Day: 120 });
+  assert.equal(Object.keys(body.players).length, 1, 'players without a Sleeper id are skipped');
+  assert.deepEqual(body.picks, { '2027-1': 5000, '2027-2': 1500 });
+  const before = world.fetched.length;
+  await world.call('bob', 'GET', 'startsit/market', undefined, 'dynasty=1&teams=10&qbs=2&ppr=0.5');
+  assert.equal(world.fetched.length, before, 'served from cache');
+
+  // Odd settings are clamped to what FantasyCalc offers.
+  await world.call('bob', 'GET', 'startsit/market', undefined, 'teams=40&qbs=3&ppr=0.4');
+  assert.match(world.fetched.at(-1)!, /isDynasty=false&numQbs=1&numTeams=16&ppr=0\.5$/);
+
+  clearMarketCache();
+  world.respondWith(() => { throw new Error('down'); });
+  assert.equal((await world.call('bob', 'GET', 'startsit/market')).status, 502);
 });
 
 test('start/sit: defense table sums each game per week and ranks the easiest matchups first', () => {

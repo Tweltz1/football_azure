@@ -1,7 +1,7 @@
 // Reasons behind Start/Sit calls: `node --test frontend/tests/startSitWhy.test.mjs`
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { explainBench, explainPair, explainStarter, explainTrade } from '../src/data/startSitWhy.js';
+import { explainBench, explainPair, explainStarter, explainTrade, spreadFor, winChance } from '../src/data/startSitWhy.js';
 import { analyzeTrade, buildLineup } from '../src/data/startSitUtils.js';
 
 const games = (...values) => values.map((v, i) => ({ week: i + 1, opponent: 'NYJ', points: { ppr: v, half: v, std: v } }));
@@ -145,4 +145,41 @@ test('no waiver section when nobody free beats the starter', () => {
   const lineup = buildLineup([player('Star', 'WR', 20)], { slots: [{ label: 'WR', positions: ['WR'] }] });
   const why = explainStarter(lineup, lineup.starters[0].slot.key, { ...ctx(), waiverPool: [player('Meh', 'WR', 10)] });
   assert.equal(why.waivers, null);
+});
+
+test('win chance grows with the projection gap and shrinks with volatile players', () => {
+  const steady = (name, pts) => player(name, 'WR', pts, { spread: avg(3), gamesPlayed: 10 });
+  const wild = (name, pts) => player(name, 'WR', pts, { spread: avg(12), gamesPlayed: 10 });
+  assert.equal(Math.round(winChance(steady('A', 12), steady('B', 12), 'ppr') * 100), 50);
+  assert.ok(winChance(steady('A', 15), steady('B', 10), 'ppr') > winChance(wild('A', 15), wild('B', 10), 'ppr'));
+  // Few games lean on the position's usual swing.
+  assert.equal(spreadFor(player('New', 'WR', 10, { gamesPlayed: 0 }), 'ppr'), 7.5);
+  assert.ok(spreadFor(player('Vet', 'WR', 10, { spread: avg(3), gamesPlayed: 12 }), 'ppr') < 4.5);
+  const why = explainPair(steady('Ace', 18), steady('Bo', 11), ctx());
+  assert.ok(why.confidence.chance >= 85, String(why.confidence.chance));
+  assert.match(why.confidence.text, /Ace outscores Bo about \d+% of the time/);
+  assert.match(why.basis, /Sleeper's projections/);
+});
+
+test('usage share and how similar players did against each defense show up as evidence', () => {
+  const usage = (recent, season) => ({ targetShare: season, recentTargetShare: recent, carryShare: 0, recentCarryShare: 0, recentGames: 3 });
+  const lead = (id, week, value) => ({ id, name: id, team: 'X', week, value, points: avg(value), box: {} });
+  const field = [
+    { id: 'l1', seasonAvg: avg(10), gamesPlayed: 5 }, { id: 'l2', seasonAvg: avg(10), gamesPlayed: 5 },
+    { id: 'l3', seasonAvg: avg(20), gamesPlayed: 5 }, { id: 'l4', seasonAvg: avg(20), gamesPlayed: 5 },
+  ];
+  const soft = { ...defenseRow(10), recentGames: [lead('l1', 5, 14), lead('l2', 4, 12)] };
+  const hard = { ...defenseRow(12), recentGames: [lead('l3', 5, 14), lead('l4', 4, 16)] };
+  const d = { ...defense, SOFT: { WR: soft }, HARD: { WR: hard } };
+  const a = player('Ace', 'WR', 13, { opponent: 'SOFT', usage: usage(0.3, 0.22) });
+  const b = player('Bo', 'WR', 12, { opponent: 'HARD', usage: usage(0.2, 0.21) });
+  const why = explainPair(a, b, { defense: d, allPlayers: field, scoring: 'ppr' });
+  const lift = why.factors.find((f) => f.key === 'lift');
+  assert.equal(lift.start, '+30% vs usual');
+  assert.equal(lift.sit, '−25% vs usual');
+  assert.equal(lift.edge, 'start');
+  const share = why.factors.find((f) => f.key === 'usage');
+  assert.equal(share.start, '30% of targets');
+  assert.equal(share.edge, 'start');
+  assert.match(why.basis, /team target and carry shares/);
 });

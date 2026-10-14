@@ -1,6 +1,7 @@
 import {
-  analyzeTrade, balanceTrade, buildLineup, defenseMatchup, findTrades, lineupChanges, teamNeeds,
+  analyzeTrade, balanceTrade, buildLineup, defenseMatchup, findTrades, lineupChanges, ownTradeScore, replacementLevels, teamNeeds, tradeValue,
 } from './startSitUtils';
+import { buildMarket, marketSettingsFor } from './market';
 
 const player = (id, position, avg, extra = {}) => ({
   id, name: id, position, points: avg, seasonAvg: { ppr: avg }, gamesPlayed: 5, ...extra,
@@ -182,4 +183,47 @@ test('defenseMatchup lists other players at the position in recent games against
   };
   const result = defenseMatchup({ id: 'me', position: 'WR', opponent: 'KC' }, defense, 'half');
   expect(result.notable.map((g) => [g.id, g.week, g.value])).toEqual([['b', 3, 24], ['a', 1, 20]]);
+});
+
+describe('trade market blend and roster-spot adjustment', () => {
+  // Market values that rank players the same way our projections do, except thWR2 (loved by the market)
+  // and myWR3 (the market doesn't care for them).
+  const marketFor = (all) => {
+    const players = {};
+    all.forEach((p) => { players[p.id] = { value: Math.round(tradeValue(p, 'ppr') * 300) }; });
+    players.thWR2.value = 9000;
+    players.myWR3.value = 500;
+    return { settings: { dynasty: false, teams: 10, qbs: 1, ppr: 1 }, fetchedAt: 'now', players, picks: { '2027-1': 4000 } };
+  };
+  const withMarket = (args) => {
+    const levels = replacementLevels(args.allPlayers, args.teamCount, args.rosterSettings, args.scoring);
+    return { ...args, levels, market: buildMarket(marketFor(args.allPlayers), args.allPlayers, (p) => ownTradeScore(p, levels, 'ppr', false).score) };
+  };
+
+  test('values sit on the market scale and blend in our projections', () => {
+    const result = analyzeTrade(withMarket(trade(['myWR3'], ['thWR2'])));
+    const [got] = result.get;
+    expect(got.marketValue).toBe(9000);
+    expect(got.display).toBeGreaterThan(0);
+    expect(got.tag.key).toBe('sell');
+    expect(result.give[0].tag.key).toBe('buy');
+    expect(result.getDisplay).toBe(got.display);
+    expect(result.market.weight).toBe(0.4);
+  });
+
+  test('extra players who would sit count for half on the side getting more bodies', () => {
+    const plain = analyzeTrade(trade(['myWR1'], ['thWR1', 'thWR2']));
+    expect(plain.adjustment.get.players).toEqual(['thWR2']);
+    const benchedScore = plain.get.find((p) => p.id === 'thWR2').score;
+    const fullTotal = plain.get.reduce((t, p) => t + p.score, 0);
+    expect(plain.getTotal).toBeCloseTo(fullTotal - benchedScore / 2, 1);
+    expect(analyzeTrade(trade(['myWR3'], ['thRB3'])).adjustment).toBeNull();
+  });
+
+  test('market settings follow the league: superflex, team count and points per catch', () => {
+    expect(marketSettingsFor({ dynasty: true, teamCount: 10, rosterSettings: SUPERFLEX, ppr: 0.5 }))
+      .toEqual({ dynasty: true, teams: 10, qbs: 2, ppr: 0.5 });
+    expect(marketSettingsFor({ dynasty: false, teamCount: 20, rosterSettings: STANDARD, ppr: 0 }))
+      .toEqual({ dynasty: false, teams: 16, qbs: 1, ppr: 0 });
+  });
 });

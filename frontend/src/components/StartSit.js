@@ -3,10 +3,11 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
   STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
-  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds,
+  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds, ownTradeScore, replacementLevels,
 } from '../data/startSitUtils';
 import { POSITION_TABS, positionRanks, rankLabel, seasonRankings } from '../data/rankings';
 import { buildOutlooks } from '../data/outlook';
+import { buildMarket, describeMarketSettings, marketSettingsFor, useMarketValues } from '../data/market';
 import { initialPlayerList } from '../data/playerData';
 import {
   LeagueScoringContext, applyLeagueScoring, applyLeagueScoringToMatchup, useLeagueScoring,
@@ -259,11 +260,12 @@ const signed = (n) => `${n > 0 ? '+' : ''}${n.toFixed(1)}`;
 
 const TradePicks = ({
   title, players, ids, onToggle, scoring, dynasty, picks = [], pickIds = [], onTogglePick, teamName, firstPickSeason,
+  playerValue = null, pickMarketValue = null,
 }) => (
   <div className="trade-side">
     <h4>{title}</h4>
     <ul className="trade-list">
-      {[...players].sort((a, b) => tradeValue(b, scoring) - tradeValue(a, scoring)).map((p) => (
+      {[...players].sort((a, b) => (playerValue ? playerValue(b) - playerValue(a) : tradeValue(b, scoring) - tradeValue(a, scoring))).map((p) => (
         <li key={p.id} className={ids.includes(p.id) ? 'picked' : ''}>
           <label>
             <input type="checkbox" checked={ids.includes(p.id)} onChange={() => onToggle(p.id)} />
@@ -271,7 +273,9 @@ const TradePicks = ({
               {p.name} <small>{p.position} · {p.team || 'FA'}{dynasty && p.age ? ` · age ${Math.floor(p.age)}` : ''}</small> <StatusTag player={p} />
             </span>
           </label>
-          <span className="startsit-points" title="Expected points per game, rest of season">{tradeValue(p, scoring).toFixed(1)}</span>
+          {playerValue
+            ? <span className="startsit-points" title="Trade value: market and our projections blended">{playerValue(p).toLocaleString()}</span>
+            : <span className="startsit-points" title="Expected points per game, rest of season">{tradeValue(p, scoring).toFixed(1)}</span>}
         </li>
       ))}
     </ul>
@@ -285,7 +289,7 @@ const TradePicks = ({
                 <input type="checkbox" checked={pickIds.includes(pick.id)} onChange={() => onTogglePick(pick.id)} />
                 <span>{pickLabel(pick, teamName)}</span>
               </label>
-              <span className="startsit-points" title="Trade value">{pickValue(pick, firstPickSeason).toFixed(1)}</span>
+              <span className="startsit-points" title="Trade value">{pickMarketValue ? pickMarketValue(pick).toLocaleString() : pickValue(pick, firstPickSeason).toFixed(1)}</span>
             </li>
           ))}
         </ul>
@@ -301,11 +305,11 @@ const TradeMeter = ({ live, complete }) => {
   return (
     <div className="trade-meter" aria-label="Trade balance">
       <div className="trade-meter-labels">
-        <span>You give <strong>{live.giveTotal.toFixed(1)}</strong></span>
+        <span>You give <strong>{live.giveDisplay != null ? live.giveDisplay.toLocaleString() : live.giveTotal.toFixed(1)}</strong></span>
         <span className={`trade-meter-state ${complete ? (fair ? 'fair' : live.share > 0 ? 'win' : 'lose') : ''}`}>
           {!complete ? 'Add the other side' : fair ? 'Even' : live.share > 0 ? 'Leans your way' : 'Leans their way'}
         </span>
-        <span>You get <strong>{live.getTotal.toFixed(1)}</strong></span>
+        <span>You get <strong>{live.getDisplay != null ? live.getDisplay.toLocaleString() : live.getTotal.toFixed(1)}</strong></span>
       </div>
       <div className="trade-meter-track">
         <div className="trade-meter-fair" />
@@ -367,10 +371,12 @@ const seasonRanks = () => {
   return seasonRanksCache;
 };
 
+const PPR_BY_SCORING = { ppr: 1, half: 0.5, std: 0 };
+
 /** Pick a team in the same league and players on each side; rates the trade by rest-of-season value. */
 const TradeCheck = ({
   myRoster: myRosterRaw, partners, rosterSettings, scoring, allPlayers: allPlayersRaw, projectionsById, week, onOpen,
-  defense = null, dynasty = false, myPicks = [], myTeamName = '', projectionsAt = null, rostersAt = null,
+  defense = null, dynasty = false, myPicks = [], myTeamName = '', projectionsAt = null, rostersAt = null, ppr = 1,
 }) => {
   // Every player's rest-of-season outlook (injuries, teammates, schedule, Sleeper's weeks ahead),
   // which is what trade values are built on.
@@ -381,6 +387,29 @@ const TradeCheck = ({
   const withOutlook = useMemo(() => (list) => list.map((p) => ({ ...p, outlook: outlooks.get(p.id) || null })), [outlooks]);
   const myRoster = useMemo(() => withOutlook(myRosterRaw), [withOutlook, myRosterRaw]);
   const allPlayers = useMemo(() => withOutlook(allPlayersRaw), [withOutlook, allPlayersRaw]);
+  // Market values from real trades in leagues set up like this one, blended with our projections.
+  const teamCount = partners.length + 1;
+  const marketSettings = useMemo(
+    () => (partners.length ? marketSettingsFor({ dynasty, teamCount, rosterSettings, ppr }) : null),
+    [partners.length, dynasty, teamCount, rosterSettings, ppr],
+  );
+  const { data: marketData, error: marketError } = useMarketValues(marketSettings);
+  const levels = useMemo(() => replacementLevels(allPlayers, teamCount, rosterSettings, scoring), [allPlayers, teamCount, rosterSettings, scoring]);
+  // Ages only come with rostered players, so they're copied over before the market is lined up with our values.
+  const agedPlayers = useMemo(() => {
+    if (!dynasty) return allPlayers;
+    const ages = new Map([...myRosterRaw, ...partners.flatMap((t) => t.players || [])].filter((p) => p.age).map((p) => [p.id, p.age]));
+    return allPlayers.map((p) => (ages.has(p.id) ? { ...p, age: ages.get(p.id) } : p));
+  }, [dynasty, allPlayers, myRosterRaw, partners]);
+  const market = useMemo(
+    () => buildMarket(marketData, agedPlayers, (p) => ownTradeScore(p, levels, scoring, dynasty).score),
+    [marketData, agedPlayers, levels, scoring, dynasty],
+  );
+  const playerValue = market ? (p) => {
+    const own = ownTradeScore(p, levels, scoring, dynasty).score;
+    const mv = market.players[p.id]?.value;
+    return market.toMarket(mv == null ? own : market.weight * market.toScore(mv) + (1 - market.weight) * own);
+  } : null;
   const [partnerKey, setPartnerKey] = useState('');
   const [giveIds, setGiveIds] = useState([]);
   const [getIds, setGetIds] = useState([]);
@@ -411,7 +440,7 @@ const TradeCheck = ({
     setSearching(true);
     // Let the button show "Searching" before the work blocks the page for a moment.
     window.setTimeout(() => {
-      setIdeas(findTrades({ myRoster, partners: partnerRosters, rosterSettings, scoring, allPlayers, dynasty }));
+      setIdeas(findTrades({ myRoster, partners: partnerRosters, rosterSettings, scoring, allPlayers, dynasty, market }));
       setSearching(false);
     }, 30);
   };
@@ -425,6 +454,11 @@ const TradeCheck = ({
   };
   const allPicks = [...myPicks, ...partners.flatMap((p) => p.picks || [])];
   const firstPickSeason = allPicks.length ? Math.min(...allPicks.map((pick) => pick.season)) : null;
+  const pickMarketValue = market ? (pick) => {
+    const own = pickValue(pick, firstPickSeason);
+    const mv = market.picks[`${pick.season}-${pick.round}`];
+    return market.toMarket(mv == null ? own : 0.5 * market.toScore(mv) + 0.5 * own);
+  } : null;
 
   const theirRoster = useMemo(
     () => partnerRosters.find((p) => p.key === partner?.key)?.roster || [],
@@ -439,8 +473,8 @@ const TradeCheck = ({
   const anything = giveIds.length + getIds.length + givePickIds.length + getPickIds.length > 0;
   const bothSides = (give.length || givePicks.length) && (get.length || getPicks.length);
   const tradeArgs = {
-    give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount: partners.length + 1,
-    dynasty, givePicks, getPicks, firstPickSeason,
+    give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount,
+    dynasty, givePicks, getPicks, firstPickSeason, levels, market,
   };
   // Re-rated on every tick, so the meter moves as players are added or removed.
   const live = anything ? analyzeTrade(tradeArgs) : null;
@@ -461,7 +495,7 @@ const TradeCheck = ({
   const whyIdea = (idea) => whyTrade(analyzeTrade({
     give: idea.give, get: idea.get, myRoster,
     theirRoster: partnerRosters.find((p) => p.key === idea.partnerKey)?.roster || [],
-    rosterSettings, scoring, allPlayers, teamCount: partners.length + 1, dynasty,
+    rosterSettings, scoring, allPlayers, teamCount, dynasty, levels, market,
   }), idea.partnerName);
 
   return (
@@ -537,16 +571,21 @@ const TradeCheck = ({
               and draft picks count. A 1st is valued like a solid starter, and picks further out are worth a bit less.
             </p>
           )}
+          <p className="startsit-help trade-market-note">
+            {market
+              ? <>Values blend the trade market ({describeMarketSettings(market.settings)} leagues on FantasyCalc, from real trades) with our rest-of-season projections for your scoring{dynasty ? ' and player ages' : ''}, {Math.round(market.weight * 100)}/{Math.round((1 - market.weight) * 100)}.</>
+              : marketError ? 'Trade market values could not be loaded, so values come from our projections only.' : 'Loading trade market values...'}
+          </p>
           <div className="trade-grid">
             <TradePicks
               title="You give" players={myRoster} ids={giveIds} onToggle={toggle(setGiveIds)} scoring={scoring}
               dynasty={dynasty} picks={myPicks} pickIds={givePickIds} onTogglePick={toggle(setGivePickIds)}
-              teamName={myTeamName} firstPickSeason={firstPickSeason}
+              teamName={myTeamName} firstPickSeason={firstPickSeason} playerValue={playerValue} pickMarketValue={pickMarketValue}
             />
             <TradePicks
               title={`You get from ${partner?.name || 'them'}`} players={theirRoster} ids={getIds} onToggle={toggle(setGetIds)} scoring={scoring}
               dynasty={dynasty} picks={partner?.picks || []} pickIds={getPickIds} onTogglePick={toggle(setGetPickIds)}
-              teamName={partner?.name} firstPickSeason={firstPickSeason}
+              teamName={partner?.name} firstPickSeason={firstPickSeason} playerValue={playerValue} pickMarketValue={pickMarketValue}
             />
           </div>
           {live && <TradeMeter live={live} complete={!!result} />}
@@ -584,11 +623,29 @@ const TradeCheck = ({
                 </div>
               )}
               <div className="startsit-insight-stats">
-                <div><span>Value you give</span><strong>{result.giveTotal.toFixed(1)}</strong></div>
-                <div><span>Value you get</span><strong>{result.getTotal.toFixed(1)}</strong></div>
+                <div><span>Value you give</span><strong>{result.giveDisplay != null ? result.giveDisplay.toLocaleString() : result.giveTotal.toFixed(1)}</strong></div>
+                <div><span>Value you get</span><strong>{result.getDisplay != null ? result.getDisplay.toLocaleString() : result.getTotal.toFixed(1)}</strong></div>
                 <div><span>Your lineup</span><strong>{signed(result.myChange)}</strong></div>
                 <div><span>Their lineup</span><strong>{signed(result.theirChange)}</strong></div>
               </div>
+              {result.giveDisplay != null && (
+                <p className="trade-favors">
+                  {Math.abs(result.getDisplay - result.giveDisplay) < 1 ? 'Dead even on value'
+                    : result.getDisplay > result.giveDisplay ? `Favors you by ${(result.getDisplay - result.giveDisplay).toLocaleString()}`
+                      : `Favors ${partner?.name || 'them'} by ${(result.giveDisplay - result.getDisplay).toLocaleString()}`}
+                </p>
+              )}
+              {result.adjustment && (
+                <p className="startsit-help">
+                  {['get', 'give'].filter((side) => result.adjustment[side]).map((side) => {
+                    const adj = result.adjustment[side];
+                    const amount = adj.display != null ? Math.abs(adj.display).toLocaleString() : Math.abs(adj.score).toFixed(1);
+                    return side === 'get'
+                      ? `Roster-spot adjustment: −${amount} on your side, since ${adj.players.join(' and ')} wouldn't crack your lineup and you'd have to cut someone to fit them.`
+                      : `Roster-spot adjustment: −${amount} on their side, since ${adj.players.join(' and ')} wouldn't crack their lineup.`;
+                  }).join(' ')}
+                </p>
+              )}
               <p className="startsit-help">
                 Points per game are a rest-of-season outlook: what each player has scored (or their preseason ranking if they've barely
                 played), Sleeper's projections for the weeks ahead, games they're likely to miss, teammates coming back or going out, and
@@ -605,15 +662,19 @@ const TradeCheck = ({
                     {p.round ? (
                       <>
                         <span>{pickLabel(p, p.side === 'give' ? myTeamName : partner?.name)}</span>
-                        <span className="startsit-points">draft pick, value {p.score.toFixed(1)}</span>
+                        <span className="startsit-points">
+                          draft pick, value {p.display != null ? `${p.display.toLocaleString()}${p.marketValue != null ? ` (market ${p.marketValue.toLocaleString()})` : ''}` : p.score.toFixed(1)}
+                        </span>
                       </>
                     ) : (
                       <>
                         <button type="button" className="startsit-name" onClick={() => onOpen(p.id)}>{p.name}</button>
                         <small>{p.position}{dynasty && p.age ? `, age ${Math.floor(p.age)}` : ''}{p.role ? `, ${p.role}` : ''}</small>
+                        {p.tag && <span className={`startsit-tag ${p.tag.key === 'buy' ? 'good' : 'caution'}`} title={p.tag.detail}>{p.tag.label}</span>}
                         <span className="startsit-points">
+                          {p.display != null && <>value {p.display.toLocaleString()}{p.marketValue != null ? ` (market ${p.marketValue.toLocaleString()})` : ' (no market value, projections only)'}, </>}
                           {p.value.toFixed(1)} pts/game, {p.surplus.toFixed(1)} above waiver
-                          {dynasty && p.ageFactor !== 1 ? `, age x${p.ageFactor}` : ''}, value {p.score.toFixed(1)}
+                          {dynasty && p.ageFactor !== 1 ? `, age x${p.ageFactor}` : ''}{p.display == null ? `, value ${p.score.toFixed(1)}` : ''}
                         </span>
                         {p.outlook?.notes?.length > 0 && (
                           <ul className="trade-outlook">
@@ -830,8 +891,8 @@ const StartSit = ({ userId }) => {
     <div className="page-shell startsit-page">
       <section className="page-hero">
         <p className="page-kicker">In-season help</p>
-        <h1>Start / Sit</h1>
-        <p>Weekly projections for your drafted roster, the best lineup to set, and quick head-to-head calls.</p>
+        <h1>Start/Sit &amp; Trade Analyzer</h1>
+        <p>The best lineup to set each week with the odds behind every call, and trade values that blend the real trade market with projections for your league's scoring.</p>
         <div className="startsit-controls">
           <label>
             Week
@@ -1137,6 +1198,7 @@ const StartSit = ({ userId }) => {
           <TradeCheck
             key={activeSource}
             dynasty={!!activeSleeper?.dynasty}
+            ppr={activeSleeper ? Number(activeSleeper.scoringSettings?.rec ?? PPR_BY_SCORING[activeSleeper.scoring] ?? 1) : PPR_BY_SCORING[scoring] ?? 1}
             myPicks={activeSleeper?.picks || []}
             myTeamName={activeSleeper?.teamName || ''}
             myRoster={roster}

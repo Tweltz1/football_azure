@@ -41,6 +41,20 @@ export interface ProjectedPlayer {
    * are left out.
    */
   upcoming: GameLine[];
+  /** Share of the team's targets and carries this player had, this season and over the last 3 games. */
+  usage: Usage | null;
+  /** How much their score swings game to game this season (standard deviation), or null under 2 games. */
+  spread: Points | null;
+}
+
+export interface Usage {
+  /** Fractions of the team's total (0.25 = a quarter), or null when the team had none. */
+  targetShare: number | null;
+  carryShare: number | null;
+  recentTargetShare: number | null;
+  recentCarryShare: number | null;
+  /** Games in the recent window. */
+  recentGames: number;
 }
 
 /** Box-score numbers from one game (or per-game averages). */
@@ -244,7 +258,7 @@ const sleeperIdOf = (id: string) => id.replace(/^sleeper-/, '');
 const playedGame = (stats: Record<string, unknown>) =>
   stats.gp != null ? num(stats.gp) > 0 : Object.keys(stats).some((key) => key.startsWith('pts_'));
 
-function toPlayer(row: Record<string, unknown>): Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'seasonStats' | 'gamesPlayed' | 'upcoming'> | null {
+function toPlayer(row: Record<string, unknown>): Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'seasonStats' | 'gamesPlayed' | 'upcoming' | 'usage' | 'spread'> | null {
   const info = (row.player ?? {}) as Record<string, unknown>;
   const stats = (row.stats ?? {}) as Record<string, unknown>;
   const rawPosition = text(info.position) || (Array.isArray(info.fantasy_positions) ? text(info.fantasy_positions[0]) : '');
@@ -332,6 +346,39 @@ async function getFutureWeek(fetchJson: FetchJson, season: number, seasonType: s
   return value;
 }
 
+const share = (mine: number, team: number) => (team > 0 ? Math.round((mine / team) * 1000) / 1000 : null);
+
+/** Target and carry shares over every game played, and over the last 3. */
+function usageOf(played: StatLine[], teamWeek: Map<string, { tgt: number; rushAtt: number }>): Usage | null {
+  const skill = played.filter((line) => ['RB', 'WR', 'TE', 'QB'].includes(line.position));
+  if (skill.length === 0) return null;
+  const sums = (lines: StatLine[]) => lines.reduce((acc, line) => {
+    const team = teamWeek.get(`${line.team}|${line.week}`) ?? { tgt: 0, rushAtt: 0 };
+    return { tgt: acc.tgt + line.box.tgt, rushAtt: acc.rushAtt + line.box.rushAtt, teamTgt: acc.teamTgt + team.tgt, teamRush: acc.teamRush + team.rushAtt };
+  }, { tgt: 0, rushAtt: 0, teamTgt: 0, teamRush: 0 });
+  const all = sums(skill);
+  const recentLines = skill.slice(-3);
+  const recent = sums(recentLines);
+  return {
+    targetShare: share(all.tgt, all.teamTgt),
+    carryShare: share(all.rushAtt, all.teamRush),
+    recentTargetShare: share(recent.tgt, recent.teamTgt),
+    recentCarryShare: share(recent.rushAtt, recent.teamRush),
+    recentGames: recentLines.length,
+  };
+}
+
+/** Standard deviation of fantasy points per game, in each format. */
+function spreadOf(played: StatLine[]): Points | null {
+  if (played.length < 2) return null;
+  const sd = (key: keyof Points) => {
+    const values = played.map((line) => line.points[key]);
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    return round1(Math.sqrt(values.reduce((total, v) => total + (v - mean) ** 2, 0) / (values.length - 1)));
+  };
+  return { ppr: sd('ppr'), half: sd('half'), std: sd('std') };
+}
+
 /** Projections for one week (the current week when week is not given). Cached for 30 minutes. */
 export async function getWeekProjections(fetchJson: FetchJson, now: Date, requestedWeek?: number | null): Promise<WeekProjections> {
   const nowMs = now.getTime();
@@ -364,7 +411,19 @@ export async function getWeekProjections(fetchJson: FetchJson, now: Date, reques
       games.get(id)!.push(line);
     }
   }
-  const withHistory = (player: Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'seasonStats' | 'gamesPlayed' | 'upcoming'>): ProjectedPlayer => {
+  // Each team's targets and carries in each week, for usage shares.
+  const teamWeek = new Map<string, { tgt: number; rushAtt: number }>();
+  for (const weekLines of pastWeeks) {
+    for (const line of weekLines.values()) {
+      if (!line.team) continue;
+      const key = `${line.team}|${line.week}`;
+      const total = teamWeek.get(key) ?? { tgt: 0, rushAtt: 0 };
+      total.tgt += line.box.tgt;
+      total.rushAtt += line.box.rushAtt;
+      teamWeek.set(key, total);
+    }
+  }
+  const withHistory = (player: Omit<ProjectedPlayer, 'recent' | 'seasonAvg' | 'seasonStats' | 'gamesPlayed' | 'upcoming' | 'usage' | 'spread'>): ProjectedPlayer => {
     const played = games.get(player.id) ?? [];
     return {
       ...player,
@@ -372,6 +431,8 @@ export async function getWeekProjections(fetchJson: FetchJson, now: Date, reques
       seasonAvg: averagePoints(played),
       seasonStats: averageBox(played.map((line) => line.box)),
       gamesPlayed: played.length,
+      usage: usageOf(played, teamWeek),
+      spread: spreadOf(played),
       upcoming: future.flatMap((f) => {
         const line = f.lines.get(player.id);
         if (line) return [line];

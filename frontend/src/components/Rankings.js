@@ -380,7 +380,7 @@ const Rankings = ({ userId }) => {
         </div>
         {leagues.length === 0 && (
           <p className="startsit-help">
-            <Link to="/start-sit">Connect your Sleeper team on Start/Sit</Link> to rank with your league's scoring and see who's available on waivers.
+            <Link to="/start-sit">Connect your Sleeper team on Start/Sit &amp; Trades</Link> to rank with your league's scoring and see who's available on waivers.
           </p>
         )}
         {league && !profile?.custom && (
