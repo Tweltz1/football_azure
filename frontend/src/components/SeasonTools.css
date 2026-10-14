@@ -484,6 +484,24 @@
   font-size: 0.85rem;
 }
 
+.trade-breakdown li {
+  flex-wrap: wrap;
+}
+
+.trade-outlook {
+  flex-basis: 100%;
+  margin: 2px 0 6px;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.trade-outlook li {
+  display: list-item;
+  padding: 1px 0;
+}
+
 @media (max-width: 760px) {
   .trade-grid {
     grid-template-columns: 1fr;

@@ -242,6 +242,29 @@
   font-weight: 900;
 }
 
+.why-details {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--surface-3);
+}
+
+.why-detail + .why-detail {
+  margin-top: 8px;
+}
+
+.why-detail small {
+  color: var(--muted);
+}
+
+.why-detail ul {
+  margin: 2px 0 0;
+  padding-left: 16px;
+  color: var(--text-2);
+  font-size: 0.8rem;
+}
+
 .why-waivers {
   margin: 12px 0 0;
   padding: 10px 12px;

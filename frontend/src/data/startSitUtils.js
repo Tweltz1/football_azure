@@ -318,11 +318,13 @@ export const lineupChanges = (lineup, currentStarterIds, roster, startersBySlot 
 const INJURY_DISCOUNT = { out: 0.85, doubtful: 0.9, questionable: 0.97, ir: 0.35, pup: 0.4, sus: 0.8 };
 
 /**
- * A player's expected points per game for the rest of the season: mostly their season average,
- * nudged by this week's projection, discounted for injuries.
+ * A player's expected points per game for the rest of the season. Uses the player's outlook when the
+ * page has worked one out (see outlook.js: injuries, teammates, schedule, Sleeper's weeks ahead);
+ * otherwise mostly their season average, nudged by this week's projection, discounted for injuries.
  */
 export const tradeValue = (player, scoring) => {
   if (!player) return 0;
+  if (player.outlook) return player.outlook.value;
   const projection = Number(player.points ?? 0);
   const average = player.seasonAvg ? Number(player.seasonAvg[scoring] ?? 0) : 0;
   let value;

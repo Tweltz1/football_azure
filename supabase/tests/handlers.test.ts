@@ -470,12 +470,36 @@ test('start/sit: weekly projections from Sleeper, cached, with ids that match th
   await world.call('cara', 'GET', 'startsit');
   assert.equal(world.fetched.length, before, 'second request is served from cache');
 
+  // The next few weeks come along too, for rest-of-season trade values.
+  assert.deepEqual(body.upcomingWeeks, [7, 8, 9, 10]);
+  assert.deepEqual(body.players[0].upcoming.map((g: any) => [g.week, g.opponent, g.points.ppr]), [[7, 'KC', 24.3], [8, 'KC', 24.3], [9, 'KC', 24.3], [10, 'KC', 24.3]]);
+
+  const fetchedBefore = world.fetched.length;
   await world.call('cara', 'GET', 'startsit', undefined, 'week=7');
-  assert.match(world.fetched.at(-1)!, /\/2026\/7\?season_type=regular/);
+  assert.ok(world.fetched.slice(fetchedBefore).some((u) => /\/2026\/7\?season_type=regular/.test(u)));
 
   clearStartSitCache();
   world.respondWith(() => { throw new Error('down'); });
   assert.equal((await world.call('bob', 'GET', 'startsit')).status, 502);
+});
+
+test('start/sit: upcoming weeks mark games a player is not expected to play, and skip byes', async () => {
+  clearStartSitCache();
+  const world = memoryWorld();
+  const qb = { player_id: '4984', team: 'BUF', opponent: 'KC', stats: { pts_ppr: 20, pts_half_ppr: 20, pts_std: 20 }, player: { first_name: 'Josh', last_name: 'Allen', position: 'QB' } };
+  const wr = { player_id: '7', team: 'BUF', opponent: 'KC', stats: { pts_ppr: 12, pts_half_ppr: 10, pts_std: 8 }, player: { first_name: 'Hurt', last_name: 'Receiver', position: 'WR', injury_status: 'Out' } };
+  const other = { player_id: '9', team: 'NYJ', opponent: 'MIA', stats: { pts_ppr: 10, pts_half_ppr: 9, pts_std: 8 }, player: { first_name: 'Jet', last_name: 'Back', position: 'RB' } };
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week: 6, display_week: 6, season_type: 'regular' };
+    if (url.includes('/stats/')) return [];
+    if (url.includes('/2026/6?')) return [qb, wr, other];
+    if (url.includes('/2026/7?')) return [qb, other];          // the WR is still out
+    if (url.includes('/2026/8?')) return [other];              // Buffalo's bye
+    return [qb, wr, other];                                    // back from week 9
+  });
+  const body = (await world.call('bob', 'GET', 'startsit')).body as any;
+  const hurt = body.players.find((p: any) => p.id === 'sleeper-7');
+  assert.deepEqual(hurt.upcoming.map((g: any) => [g.week, g.points.ppr]), [[7, 0], [9, 12], [10, 12]]);
 });
 
 test('start/sit: recent games, season average, injured teammates, and past matchups', async () => {

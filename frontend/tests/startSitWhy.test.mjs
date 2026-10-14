@@ -112,7 +112,7 @@ test('an injured player in the trade gets a heads-up, and value tracks the injur
   const result = trade([mine[0]], [theirs[0]], mine, theirs);
   const why = explainTrade(result, { allPlayers, scoring: 'ppr', partnerName: 'Blitz' });
   assert.match(why.watch, /HurtWR is listed Questionable/);
-  assert.match(why.watch, /gets better for you/);
+  assert.match(why.watch, /quicker return makes this trade better for you/);
   assert.equal(why.factors.find((f) => f.key === 'health').edge, 'sit');
 });
 
