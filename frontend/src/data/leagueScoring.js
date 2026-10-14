@@ -113,7 +113,7 @@ export const applyLeagueScoring = (projections, profile) => {
       defense[team][position] = {
         ...entry,
         points: withLeaguePoints(entry.points, entry.box, position, profile),
-        top: (entry.top || []).map((game) => ({ ...game, points: withLeaguePoints(game.points, game.box, position, profile) })),
+        recentGames: (entry.recentGames || []).map((game) => ({ ...game, points: withLeaguePoints(game.points, game.box, position, profile) })),
       };
     });
   });

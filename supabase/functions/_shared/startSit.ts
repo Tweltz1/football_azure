@@ -68,8 +68,8 @@ export interface DefenseVsPosition {
   /** 1 = gave up the most fantasy points to this position (easiest matchup), 32 = the fewest. */
   rank: number;
   teams: number;
-  /** The biggest single games this defense gave up to the position this season, best first. */
-  top: NotableGame[];
+  /** The lead player at the position in each of this defense's recent games (their best scorer that week), newest first. */
+  recentGames: NotableGame[];
 }
 
 export interface NotableGame {
@@ -467,8 +467,18 @@ export async function getMatchupHistory(
 }
 
 const DEFENSE_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
-// Big games against each defense to show as examples.
-const NOTABLE_GAMES = 3;
+// Recent games against each defense to show as examples.
+const NOTABLE_GAMES = 5;
+
+/** The best scorer in each week's game, newest week first. */
+function leadPerWeek(games: NotableGame[]): NotableGame[] {
+  const byWeek = new Map<number, NotableGame>();
+  for (const game of games) {
+    const best = byWeek.get(game.week);
+    if (!best || game.points.ppr > best.points.ppr) byWeek.set(game.week, game);
+  }
+  return [...byWeek.values()].sort((a, b) => b.week - a.week);
+}
 
 /**
  * Per-game totals each defense allowed to each position: every player's game is credited to the
@@ -507,7 +517,7 @@ export function buildDefenseTable(pastWeeks: Map<string, StatLine>[]): Record<st
       box,
       rank: 0,
       teams: 0,
-      top: entry.games.sort((a, b) => b.points.ppr - a.points.ppr).slice(0, NOTABLE_GAMES),
+      recentGames: leadPerWeek(entry.games).slice(0, NOTABLE_GAMES),
     };
   }
 

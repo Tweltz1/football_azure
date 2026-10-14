@@ -173,13 +173,13 @@ describe('teamNeeds', () => {
   });
 });
 
-test('defenseMatchup lists the biggest games against the defense, scored for the chosen format', () => {
-  const row = (ppr, half, top = []) => ({ games: 3, points: { ppr, half, std: half }, box: { rec: 5, tgt: 7, recYd: 60, recTd: 0.3 }, rank: 1, teams: 2, top });
+test('defenseMatchup lists other players at the position in recent games against the defense, scored for the chosen format', () => {
+  const row = (ppr, half, recentGames = []) => ({ games: 3, points: { ppr, half, std: half }, box: { rec: 5, tgt: 7, recYd: 60, recTd: 0.3 }, rank: 1, teams: 2, recentGames });
   const game = (id, week, ppr, half) => ({ id, name: id, team: 'T', week, points: { ppr, half, std: half }, box: {} });
   const defense = {
-    KC: { WR: row(40, 35, [game('me', 1, 30, 25), game('a', 2, 28, 20), game('b', 3, 26, 24)]) },
+    KC: { WR: row(40, 35, [game('b', 3, 26, 24), game('me', 2, 30, 25), game('a', 1, 28, 20)]) },
     DAL: { WR: row(30, 26) },
   };
   const result = defenseMatchup({ id: 'me', position: 'WR', opponent: 'KC' }, defense, 'half');
-  expect(result.notable.map((g) => [g.id, g.value])).toEqual([['b', 24], ['a', 20]]);
+  expect(result.notable.map((g) => [g.id, g.week, g.value])).toEqual([['b', 3, 24], ['a', 1, 20]]);
 });

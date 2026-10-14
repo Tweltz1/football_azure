@@ -585,8 +585,8 @@ test('start/sit: defense table sums each game per week and ranks the easiest mat
   assert.equal(table.KC.WR.teams, 2);
   assert.equal(table.KC.RB.box.rushYd, 60);
   assert.equal(table.KC.K, undefined, 'kickers are not tracked');
-  assert.deepEqual(table.KC.WR.top.map((g) => [g.id, g.week, g.points.ppr]), [['a', 1, 20], ['b', 1, 10], ['a', 2, 6]], 'biggest single games first');
-  assert.equal(table.KC.WR.top[0].box.recYd, 90);
+  assert.deepEqual(table.KC.WR.recentGames.map((g) => [g.id, g.week, g.points.ppr]), [['a', 2, 6], ['a', 1, 20]], 'the lead WR of each game, newest first');
+  assert.equal(table.KC.WR.recentGames[1].box.recYd, 90);
 });
 
 test('start/sit: import a Sleeper team with its lineup slots, scoring and current starters', async () => {

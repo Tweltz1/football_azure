@@ -173,7 +173,7 @@ export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, upda
             </table>
             {vsDefense.notable.length > 0 && (
               <>
-                <p className="startsit-help">Biggest {vsDefense.position} games against {vsDefense.opponent} this season:</p>
+                <p className="startsit-help">How other teams' top {vsDefense.position} did against {vsDefense.opponent}, most recent first:</p>
                 <ul className="startsit-compare">
                   {vsDefense.notable.map((game) => (
                     <li key={`${game.id}-${game.week}`}>
@@ -181,7 +181,7 @@ export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, upda
                         {game.name} <small>{game.team} · week {game.week}</small>
                         {boxLine(player.position, game.box) && <><br /><small>{boxLine(player.position, game.box)}</small></>}
                       </div>
-                      <div className="startsit-bar"><span style={{ width: `${Math.max(4, (game.value / Math.max(vsDefense.notable[0].value, 1)) * 100)}%` }} /></div>
+                      <div className="startsit-bar"><span style={{ width: `${Math.max(4, (game.value / Math.max(...vsDefense.notable.map((g) => g.value), 1)) * 100)}%` }} /></div>
                       <span className="startsit-points">{game.value.toFixed(1)}</span>
                     </li>
                   ))}
