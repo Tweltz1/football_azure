@@ -401,8 +401,8 @@ const WaiverMoves = ({
     [marketData, allPlayers, levels, scoring, dynasty],
   );
   const { drops, holds, moves } = useMemo(
-    () => suggestWaiverMoves({ roster, pool, rosterSettings, scoring, levels, market, dynasty }),
-    [roster, pool, rosterSettings, scoring, levels, market, dynasty],
+    () => suggestWaiverMoves({ roster, pool, rosterSettings, scoring, levels, market, dynasty, allPlayers }),
+    [roster, pool, rosterSettings, scoring, levels, market, dynasty, allPlayers],
   );
   const value = (info) => (info.display != null ? info.display.toLocaleString() : info.score.toFixed(1));
   const name = (p, open = true) => (open
