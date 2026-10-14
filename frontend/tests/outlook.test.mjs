@@ -141,3 +141,14 @@ test('a star coming back takes nearly all the work; close preseason ranks mean a
   assert.ok(closeCall.notes.some((n) => /real split, Fill-in RB leading/.test(n)), closeCall.notes.join(' | '));
   assert.ok(Math.abs(starBack.roleChange) > Math.abs(unranked.roleChange));
 });
+
+test("a hurt player's preseason ranking outweighs a market rank that already priced in the injury", () => {
+  const star = {
+    id: 'hurt9', name: 'Hurt WR', position: 'WR', team: 'NE', injury: 'IR', gamesPlayed: 1,
+    seasonAvg: pts(4), recent: games([1], 4), points: pts(0), upcoming: [...upcoming([8], 0), ...upcoming([9, 10, 11], 15)],
+  };
+  const o = buildOutlooks([...field, star], {
+    scoring: 'ppr', week: 7, seasonRanks: new Map([['hurt9', 9]]), marketRanks: new Map([['hurt9', 27]]),
+  }).get('hurt9');
+  assert.ok(o.notes.some((n) => /preseason and trade-market rankings \(WR15/.test(n)), o.notes.join(' | '));
+});

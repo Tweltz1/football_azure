@@ -6,9 +6,10 @@ import {
   vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds, ownTradeScore, replacementLevels,
 } from '../data/startSitUtils';
 import { POSITION_TABS, positionRanks, rankLabel, seasonRankings } from '../data/rankings';
+import { PRESEASON_POSITION_RANKS } from '../data/preseasonRanks';
 import { buildOutlooks } from '../data/outlook';
 import {
-  buildMarket, describeMarketSettings, marketRanksFrom, marketSettingsFor, useMarketValues,
+  buildMarket, describeMarketSettings, marketRanksFrom, marketSettingsFor, seasonMarketSettings, useMarketValues,
 } from '../data/market';
 import { suggestWaiverMoves } from '../data/waiverMoves';
 import { initialPlayerList } from '../data/playerData';
@@ -362,7 +363,8 @@ const TeamNeeds = ({ needs, partnerKey, onPick }) => (
   </div>
 );
 
-// Preseason position ranks (WR15...), which outlooks lean on for players who have barely played.
+// Preseason position ranks (WR15...), which outlooks lean on for players who have barely played:
+// the frozen offseason ranks first, then the current pool for anyone who wasn't in it.
 let seasonRanksCache = null;
 const seasonRanks = () => {
   if (!seasonRanksCache) {
@@ -370,6 +372,7 @@ const seasonRanks = () => {
     POSITION_TABS.filter((t) => t.positions.length === 1).forEach((t) => {
       seasonRankings(initialPlayerList, t.value).forEach((p) => seasonRanksCache.set(p.id, p.positionRank));
     });
+    Object.entries(PRESEASON_POSITION_RANKS).forEach(([id, rank]) => seasonRanksCache.set(id, rank));
   }
   return seasonRanksCache;
 };
@@ -382,7 +385,8 @@ const WaiverMoves = ({
 }) => {
   const settings = useMemo(() => marketSettingsFor({ dynasty, teamCount, rosterSettings, ppr }), [dynasty, teamCount, rosterSettings, ppr]);
   const { data: marketData } = useMarketValues(settings);
-  const marketRanks = useMemo(() => marketRanksFrom(marketData), [marketData]);
+  const { data: seasonMarketData } = useMarketValues(seasonMarketSettings(settings));
+  const marketRanks = useMemo(() => marketRanksFrom(dynasty ? seasonMarketData : marketData), [dynasty, seasonMarketData, marketData]);
   const outlooks = useMemo(
     () => buildOutlooks(allPlayersRaw, { scoring, week, defense, seasonRanks: seasonRanks(), marketRanks }),
     [allPlayersRaw, scoring, week, defense, marketRanks],
@@ -492,7 +496,8 @@ const TradeCheck = ({
     [partners.length, dynasty, teamCount, rosterSettings, ppr],
   );
   const { data: marketData, error: marketError } = useMarketValues(marketSettings);
-  const marketRanks = useMemo(() => marketRanksFrom(marketData), [marketData]);
+  const { data: seasonMarketData } = useMarketValues(seasonMarketSettings(marketSettings));
+  const marketRanks = useMemo(() => marketRanksFrom(dynasty ? seasonMarketData : marketData), [dynasty, seasonMarketData, marketData]);
   const outlooks = useMemo(
     () => buildOutlooks(allPlayersRaw, { scoring, week, defense, seasonRanks: seasonRanks(), marketRanks }),
     [allPlayersRaw, scoring, week, defense, marketRanks],

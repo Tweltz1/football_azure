@@ -232,7 +232,12 @@ export const playerOutlook = (player, ctx) => {
   const preseasonRank = ctx.seasonRanks?.get(player.id) || null;
   const marketRank = ctx.marketRanks?.get(player.id) || null;
   // Preseason ranking and today's trade-market ranking at the position, averaged when we have both.
-  const rank = preseasonRank && marketRank ? Math.round((preseasonRank + marketRank) / 2) : preseasonRank || marketRank;
+  // The market already marks a hurt player down for the games they'll miss, which are counted
+  // separately here, so for them the preseason ranking carries two thirds of the weight.
+  const preseasonWeight = statusOf(player) ? 2 / 3 : 1 / 2;
+  const rank = preseasonRank && marketRank
+    ? Math.round(preseasonWeight * preseasonRank + (1 - preseasonWeight) * marketRank)
+    : preseasonRank || marketRank;
   const prior = rank && ctx.priors ? ctx.priors(position, rank) : null;
 
   let gp = player.gamesPlayed || 0;
