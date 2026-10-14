@@ -110,7 +110,11 @@ export const applyLeagueScoring = (projections, profile) => {
   Object.entries(projections.defense || {}).forEach(([team, byPosition]) => {
     defense[team] = {};
     Object.entries(byPosition).forEach(([position, entry]) => {
-      defense[team][position] = { ...entry, points: withLeaguePoints(entry.points, entry.box, position, profile) };
+      defense[team][position] = {
+        ...entry,
+        points: withLeaguePoints(entry.points, entry.box, position, profile),
+        recentGames: (entry.recentGames || []).map((game) => ({ ...game, points: withLeaguePoints(game.points, game.box, position, profile) })),
+      };
     });
   });
   return { ...projections, players, defense };

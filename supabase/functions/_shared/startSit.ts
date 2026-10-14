@@ -68,6 +68,17 @@ export interface DefenseVsPosition {
   /** 1 = gave up the most fantasy points to this position (easiest matchup), 32 = the fewest. */
   rank: number;
   teams: number;
+  /** The lead player at the position in each of this defense's recent games (their best scorer that week), newest first. */
+  recentGames: NotableGame[];
+}
+
+export interface NotableGame {
+  id: string;
+  name: string;
+  team: string;
+  week: number;
+  points: Points;
+  box: BoxScore;
 }
 
 export interface MatchupGame {
@@ -456,23 +467,36 @@ export async function getMatchupHistory(
 }
 
 const DEFENSE_POSITIONS = ['QB', 'RB', 'WR', 'TE'];
+// Recent games against each defense to show as examples.
+const NOTABLE_GAMES = 5;
+
+/** The best scorer in each week's game, newest week first. */
+function leadPerWeek(games: NotableGame[]): NotableGame[] {
+  const byWeek = new Map<number, NotableGame>();
+  for (const game of games) {
+    const best = byWeek.get(game.week);
+    if (!best || game.points.ppr > best.points.ppr) byWeek.set(game.week, game);
+  }
+  return [...byWeek.values()].sort((a, b) => b.week - a.week);
+}
 
 /**
  * Per-game totals each defense allowed to each position: every player's game is credited to the
  * team they played against, then summed per week (so three WRs in one game count as one game).
  */
 export function buildDefenseTable(pastWeeks: Map<string, StatLine>[]): Record<string, Record<string, DefenseVsPosition>> {
-  type Totals = { weeks: Set<number>; points: Points; box: BoxScore };
+  type Totals = { weeks: Set<number>; points: Points; box: BoxScore; games: NotableGame[] };
   const totals = new Map<string, Totals>();
   for (const weekLines of pastWeeks) {
-    for (const line of weekLines.values()) {
+    for (const [id, line] of weekLines) {
       if (!line.opponent || !DEFENSE_POSITIONS.includes(line.position)) continue;
       const key = `${line.opponent}|${line.position}`;
       let entry = totals.get(key);
       if (!entry) {
-        entry = { weeks: new Set(), points: { ppr: 0, half: 0, std: 0 }, box: boxFrom({}) };
+        entry = { weeks: new Set(), points: { ppr: 0, half: 0, std: 0 }, box: boxFrom({}), games: [] };
         totals.set(key, entry);
       }
+      entry.games.push({ id, name: line.name, team: line.team, week: line.week, points: line.points, box: line.box });
       entry.weeks.add(line.week);
       for (const k of ['ppr', 'half', 'std'] as const) entry.points[k] += line.points[k];
       for (const [k] of BOX_KEYS) entry.box[k] += line.box[k];
@@ -493,6 +517,7 @@ export function buildDefenseTable(pastWeeks: Map<string, StatLine>[]): Record<st
       box,
       rank: 0,
       teams: 0,
+      recentGames: leadPerWeek(entry.games).slice(0, NOTABLE_GAMES),
     };
   }
 
