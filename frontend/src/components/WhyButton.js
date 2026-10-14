@@ -128,11 +128,15 @@ const WhyButton = ({ explain, label = 'Why?', updatedLabel = null }) => {
             tabIndex={-1}
           >
             <div className="why-top">
-              <span className={`why-call ${why.call.key}`}>{why.call.label}</span>
+              <span className={`why-call ${why.call.key}`}>
+                {why.call.label}
+                {why.confidence && <span className="why-chance"> · {why.confidence.chance}%</span>}
+              </span>
               <button type="button" className="why-close" aria-label="Close" onClick={close}>×</button>
             </div>
             <h4 className="why-headline">{why.headline}</h4>
             <p className="why-summary">{why.summary}</p>
+            {why.confidence && <p className="why-confidence">{why.confidence.text}</p>}
             {why.factors.length > 0 && why.names[1] && <Factors names={why.names} factors={why.factors} />}
             {why.watch && <p className="why-watch"><span aria-hidden="true">!</span>{why.watch}</p>}
             {why.details?.length > 0 && (
@@ -166,7 +170,10 @@ const WhyButton = ({ explain, label = 'Why?', updatedLabel = null }) => {
                 {why.waivers.note && <p className="why-waivers-note">{why.waivers.note}</p>}
               </div>
             )}
-            <p className="why-foot">Based on Sleeper projections, this season's games and the injury report{updatedLabel ? `, ${updatedLabel}` : ''}.</p>
+            <p className="why-foot">
+              {why.basis ? why.basis.replace(/\.$/, '') : "Based on Sleeper projections, this season's games and the injury report"}
+              {updatedLabel ? `, ${updatedLabel}` : ''}.
+            </p>
           </div>
         </>,
         document.body,

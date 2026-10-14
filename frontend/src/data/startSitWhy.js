@@ -2,7 +2,9 @@
 // Everything comes from the same data the lineup uses (Sleeper projections, this season's games,
 // what each defense has allowed, injury reports), so the reasons change as that data does.
 
-import { benchReason, defenseMatchup, isUnavailable, teammatesOut, trendFor, vacatedPoints } from './startSitUtils.js';
+import {
+  benchReason, defenseMatchup, describeMarketSettings, isUnavailable, teammatesOut, trendFor, vacatedPoints,
+} from './startSitUtils.js';
 import { rankLabel } from './rankings.js';
 
 const round1 = (value) => Math.round(value * 10) / 10;
@@ -14,6 +16,80 @@ const CALLS = {
   lean: { key: 'lean', label: 'Lean' },
   tossup: { key: 'tossup', label: 'Coin flip' },
   forced: { key: 'clear', label: 'Easy call' },
+};
+
+// ---- Confidence: how often one player outscores the other -------------------------------
+
+// Typical game-to-game swing (standard deviation of fantasy points) by position, used when a
+// player has few games of their own.
+const DEFAULT_SPREAD = { QB: 7.5, RB: 7.5, WR: 7.5, TE: 6, K: 4, DST: 5.5 };
+const SPREAD_PRIOR_GAMES = 3;
+
+/** How much a player's score swings week to week: their own season blended with the position norm. */
+export const spreadFor = (player, scoring) => {
+  const fallback = DEFAULT_SPREAD[player?.position] ?? 7;
+  const own = player?.spread ? Number(player.spread[scoring] ?? player.spread.ppr) : null;
+  const n = Math.max(0, (player?.gamesPlayed || 0) - 1);
+  if (own == null || !Number.isFinite(own) || !n) return fallback;
+  return Math.sqrt((n * own * own + SPREAD_PRIOR_GAMES * fallback * fallback) / (n + SPREAD_PRIOR_GAMES));
+};
+
+// Standard normal CDF (Abramowitz and Stegun 26.2.17, accurate to about 1e-7).
+const normalCdf = (z) => {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989423 * Math.exp((-z * z) / 2);
+  const tail = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return z > 0 ? 1 - tail : tail;
+};
+
+/**
+ * Chance `a` scores more than `b` this week: each score is treated as their projection plus a swing
+ * the size of their usual week-to-week spread.
+ */
+export const winChance = (a, b, scoring) => {
+  const sa = spreadFor(a, scoring);
+  const sb = spreadFor(b, scoring);
+  return normalCdf(((a.points || 0) - (b.points || 0)) / Math.sqrt(sa * sa + sb * sb));
+};
+
+// ---- Usage and matchup evidence -----------------------------------------------------------
+
+const pct = (x) => `${Math.round(x * 100)}%`;
+
+/** The player's share of team targets (WR/TE) or carries (RB), season and last 3 games. */
+export const usageFor = (player) => {
+  const u = player?.usage;
+  const key = player?.position === 'RB' ? 'carry' : ['WR', 'TE'].includes(player?.position) ? 'target' : null;
+  if (!u || !key) return null;
+  const season = u[`${key}Share`];
+  const recent = u[`recent${key === 'carry' ? 'Carry' : 'Target'}Share`];
+  if (season == null || recent == null) return null;
+  return { kind: key === 'carry' ? 'carries' : 'targets', season, recent, change: recent - season, games: u.recentGames };
+};
+
+const seasonAverages = new WeakMap();
+const averageOf = (ctx, id) => {
+  if (!ctx.allPlayers) return null;
+  let byId = seasonAverages.get(ctx.allPlayers);
+  if (!byId) {
+    byId = new Map(ctx.allPlayers.map((p) => [p.id, p]));
+    seasonAverages.set(ctx.allPlayers, byId);
+  }
+  const p = byId.get(id);
+  return p?.seasonAvg && (p.gamesPlayed || 0) >= 2 ? Number(p.seasonAvg[ctx.scoring] ?? 0) : null;
+};
+
+/**
+ * How the lead player at this position has done against this defense compared with their own season
+ * average: 0.18 means 18% better than usual. Needs at least 2 such games.
+ */
+export const defenseLift = (matchup, ctx) => {
+  const games = (matchup?.notable || [])
+    .map((g) => ({ ...g, average: averageOf(ctx, g.id) }))
+    .filter((g) => g.average >= 3);
+  if (games.length < 2) return null;
+  const lift = games.reduce((sum, g) => sum + g.value / g.average, 0) / games.length - 1;
+  return { lift: Math.round(lift * 100) / 100, games: games.length, examples: games.slice(0, 2) };
 };
 
 /** Floor and ceiling from the last few games (needs at least 2). */
@@ -44,6 +120,8 @@ export const profile = (player, ctx) => {
     vacated: vacatedPoints(mates),
     matesOut: mates.filter((m) => m.overlaps && String(m.injury).toLowerCase() !== 'questionable'),
     out: !!benchReason(player),
+    usage: usageFor(player),
+    lift: matchup ? defenseLift(matchup, ctx) : null,
   };
 };
 
@@ -94,6 +172,28 @@ const compareFactors = (a, b) => {
       edge: a.matchup && b.matchup ? edgeBy(a.matchup.verdictRank, b.matchup.verdictRank, 5, false) : 'even',
     });
   }
+  if (a.lift || b.lift) {
+    const liftText = (p) => (p.lift ? `${p.lift.lift >= 0 ? '+' : '−'}${pct(Math.abs(p.lift.lift))} vs usual` : '–');
+    factors.push({
+      key: 'lift',
+      label: 'Similar players vs this defense',
+      start: liftText(a),
+      sit: liftText(b),
+      detail: [a, b].map((p) => (p.lift ? `top ${p.player.position} in last ${p.lift.games} games vs ${p.player.opponent}` : null)),
+      edge: edgeBy(a.lift?.lift ?? 0, b.lift?.lift ?? 0, 0.1),
+    });
+  }
+  if (a.usage || b.usage) {
+    const usageText = (p) => (p.usage ? `${pct(p.usage.recent)} of ${p.usage.kind}` : '–');
+    factors.push({
+      key: 'usage',
+      label: 'Share of team work (last 3)',
+      start: usageText(a),
+      sit: usageText(b),
+      detail: [a, b].map((p) => (p.usage ? `season ${pct(p.usage.season)}` : null)),
+      edge: edgeBy(a.usage?.change ?? 0, b.usage?.change ?? 0, 0.05),
+    });
+  }
   if (a.range || b.range) {
     factors.push({
       key: 'floor',
@@ -138,6 +238,20 @@ const PHRASES = {
   floor: () => 'has the safer floor',
   opportunity: (w) => `has extra work with ${joinWords(w.matesOut.slice(0, 2).map((m) => m.name))} out`,
   health: (w, l) => `is healthier (${l.player.name} is ${healthNote(l.player).toLowerCase()})`,
+  lift: (w) => `faces a defense where the top ${w.player.position} has scored ${pct(Math.abs(w.lift.lift))} ${w.lift.lift >= 0 ? 'above' : 'below'} their usual (last ${w.lift.games} games)`,
+  usage: (w) => (w.usage.change > 0
+    ? `is getting more of the work (${pct(w.usage.recent)} of team ${w.usage.kind} lately, up from ${pct(w.usage.season)})`
+    : `has the steadier role (${pct(w.usage.recent)} of team ${w.usage.kind})`),
+};
+
+/** What a call rests on, in one line. */
+const basisOf = (a, b) => {
+  const games = [a, b].map((p) => `${p.player.gamesPlayed || 0} game${p.player.gamesPlayed === 1 ? '' : 's'} for ${firstName(p.player)}`);
+  const parts = ["Sleeper's projections", `this season's results (${joinWords(games)})`];
+  if (a.lift || b.lift) parts.push('recent games against each defense');
+  if (a.usage || b.usage) parts.push('team target and carry shares');
+  parts.push('the injury report');
+  return `Based on ${joinWords(parts)}.`;
 };
 
 /**
@@ -172,9 +286,14 @@ export const explainPair = (start, sit, ctx, { headline } = {}) => {
   const forStart = factors.filter((f) => f.key !== 'projection' && f.edge === 'start');
   const forSit = factors.filter((f) => f.key !== 'projection' && f.edge === 'sit');
 
+  const chance = winChance(start, sit, ctx.scoring);
   let call = CALLS.lean;
-  if (gap < 1.5) call = CALLS.tossup;
-  else if (gap >= 3 && share >= 0.15 && forSit.length <= 1) call = CALLS.clear;
+  if (chance < 0.57 || gap < 1) call = CALLS.tossup;
+  else if (chance >= 0.7 && share >= 0.1 && forSit.length <= 1) call = CALLS.clear;
+  const confidence = {
+    chance: Math.round(chance * 100),
+    text: `${start.name} outscores ${sit.name} about ${Math.round(chance * 100)}% of the time, from their projections and how much each one's scoring swings week to week (±${pts(spreadFor(start, ctx.scoring))} and ±${pts(spreadFor(sit, ctx.scoring))} pts).`,
+  };
 
   const pros = forStart.map((f) => PHRASES[f.key]?.(a, b)).filter(Boolean).slice(0, 2);
   const cons = forSit.map((f) => PHRASES[f.key]?.(b, a)).filter(Boolean).slice(0, 2);
@@ -208,7 +327,7 @@ export const explainPair = (start, sit, ctx, { headline } = {}) => {
   else if (questionable === sit) watch = `${sit.name} is questionable, which also makes ${firstName(sit)} riskier to start.`;
   else if (call === CALLS.tossup) watch = 'Check injury news and weather before kickoff; small changes can flip a call this close.';
 
-  return { call, headline: title, names, factors, summary, watch };
+  return { call, headline: title, names, factors, summary, watch, confidence, basis: basisOf(a, b) };
 };
 
 /** Why a single player is on the field when nobody on the bench can take the slot. */
@@ -338,12 +457,39 @@ export const explainTrade = (result, ctx) => {
   const factors = [];
 
   const valueEdge = result.share > 0.15 ? 'start' : result.share < -0.15 ? 'sit' : 'even';
+  const hasMarket = result.getDisplay != null;
+  const shown = (side) => (hasMarket ? result[`${side}Display`].toLocaleString() : pts(result[`${side}Total`]));
   factors.push({
-    key: 'value', label: 'Trade value',
-    start: pts(result.getTotal), sit: pts(result.giveTotal),
+    key: 'value', label: hasMarket ? 'Trade value (blended)' : 'Trade value',
+    start: shown('get'), sit: shown('give'),
     detail: [getPicks.length ? `incl. ${getPicks.length} pick${getPicks.length > 1 ? 's' : ''}` : null, givePicks.length ? `incl. ${givePicks.length} pick${givePicks.length > 1 ? 's' : ''}` : null],
     edge: valueEdge,
   });
+
+  // The two halves of the blend: what the trade market pays, and what our projections say.
+  let marketLean = null;
+  let projectionLean = null;
+  if (hasMarket) {
+    const marketSum = (list) => list.reduce((total, p) => total + (p.marketValue || 0), 0);
+    const getMarket = marketSum(result.get);
+    const giveMarket = marketSum(result.give);
+    marketLean = getMarket > giveMarket * 1.1 ? 'start' : giveMarket > getMarket * 1.1 ? 'sit' : 'even';
+    factors.push({
+      key: 'market', label: 'Trade market',
+      start: getMarket.toLocaleString(), sit: giveMarket.toLocaleString(),
+      detail: ['FantasyCalc', 'FantasyCalc'],
+      edge: marketLean,
+    });
+    const getOwn = sumOf(result.get, (p) => p.ownScore);
+    const giveOwn = sumOf(result.give, (p) => p.ownScore);
+    projectionLean = getOwn > giveOwn * 1.1 ? 'start' : giveOwn > getOwn * 1.1 ? 'sit' : 'even';
+    factors.push({
+      key: 'projection', label: 'Our projections',
+      start: pts(getOwn), sit: pts(giveOwn),
+      detail: ['your scoring, rest of season', null],
+      edge: projectionLean,
+    });
+  }
 
   const getPpg = sumOf(getPlayers, (p) => p.value);
   const givePpg = sumOf(givePlayers, (p) => p.value);
@@ -437,11 +583,19 @@ export const explainTrade = (result, ctx) => {
   }
 
   // The summary: value first, then what it does to your lineup, then whether they'd take it.
-  const valueGap = pts(Math.abs(result.getTotal - result.giveTotal));
+  const valueGap = hasMarket ? Math.abs(result.getDisplay - result.giveDisplay).toLocaleString() : pts(Math.abs(result.getTotal - result.giveTotal));
   const sentences = [];
-  if (valueEdge === 'even') sentences.push(`The value is close: ${pts(result.getTotal)} coming in for ${pts(result.giveTotal)} going out.`);
-  else if (valueEdge === 'start') sentences.push(`You get ${valueGap} more in trade value than you give (${pts(result.getTotal)} vs ${pts(result.giveTotal)}).`);
-  else sentences.push(`You give up ${valueGap} more in trade value than you get (${pts(result.giveTotal)} vs ${pts(result.getTotal)}).`);
+  if (valueEdge === 'even') sentences.push(`The value is close: ${shown('get')} coming in for ${shown('give')} going out.`);
+  else if (valueEdge === 'start') sentences.push(`You get ${valueGap} more in trade value than you give (${shown('get')} vs ${shown('give')}).`);
+  else sentences.push(`You give up ${valueGap} more in trade value than you get (${shown('give')} vs ${shown('get')}).`);
+  if (marketLean && projectionLean && marketLean !== projectionLean && marketLean !== 'even' && projectionLean !== 'even') {
+    sentences.push(projectionLean === 'start'
+      ? 'The trade market prefers your side, but our projections for your scoring like what you get: a buy-low.'
+      : 'Our projections prefer what you give, but the trade market pays more for it: you may be selling high.');
+  }
+  const adj = result.adjustment;
+  if (adj?.get) sentences.push(`${namesOf(adj.get.players.map((name) => ({ name })))} wouldn't crack your lineup, so ${adj.get.players.length > 1 ? 'they count' : 'that counts'} for half to cover the roster spot.`);
+  if (adj?.give) sentences.push(`${namesOf(adj.give.players.map((name) => ({ name })))} wouldn't crack ${them}'s lineup, so ${adj.give.players.length > 1 ? 'they count' : 'that counts'} for half on their side.`);
 
   const starting = getPlayers.filter((p) => p.role && p.role.startsWith('would start'));
   const lostStarters = givePlayers.filter((p) => p.role && p.role !== 'your bench');
@@ -465,8 +619,15 @@ export const explainTrade = (result, ctx) => {
 
   // What moved each player's rest-of-season value: injuries, teammates, schedule (see outlook.js).
   const details = [...getPlayers.map((p) => ({ p, side: 'Get' })), ...givePlayers.map((p) => ({ p, side: 'Give' }))]
-    .filter(({ p }) => p.outlook?.notes?.length)
-    .map(({ p, side }) => ({ name: p.name, side, notes: p.outlook.notes.slice(0, 2) }));
+    .map(({ p, side }) => ({
+      name: p.name,
+      side,
+      notes: [
+        ...(p.tag ? [`${p.tag.label}: ${p.tag.detail.replace('this player', p.name)}`] : []),
+        ...(p.outlook?.notes || []).slice(0, 2),
+      ],
+    }))
+    .filter((d) => d.notes.length);
 
   let watch = null;
   const hurt = [...getHurt, ...giveHurt].filter((p) => !p.onBye);
@@ -487,5 +648,8 @@ export const explainTrade = (result, ctx) => {
     summary: sentences.join(' '),
     watch,
     details,
+    basis: hasMarket
+      ? `Based on trade market values from FantasyCalc (${describeMarketSettings(result.market.settings)} leagues), our rest-of-season projections for your scoring, both teams' lineups and the injury report.`
+      : null,
   };
 };

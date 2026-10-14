@@ -783,3 +783,21 @@
   border: none;
   box-shadow: none;
 }
+
+.startsit-tag.good {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.trade-favors {
+  margin: 10px 0 4px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  font-weight: 600;
+  text-align: center;
+}
+
+.trade-market-note {
+  margin-top: 4px;
+}

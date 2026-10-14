@@ -19,6 +19,7 @@ import { learnFromBoard, sanitizeHandwriting } from './handwriting.ts';
 import { draftNumberOf, historySummary, isCompleted, snapshotDraft } from './history.ts';
 import { type FetchJson, getMatchupHistory, getWeekProjections } from './startSit.ts';
 import { getSleeperTeams, isValidSleeperUsername, SleeperUserNotFound } from './sleeperImport.ts';
+import { getMarketValues, marketSettingsFrom } from './market.ts';
 
 export interface Ctx {
   leagues: LeagueStore;
@@ -1051,6 +1052,16 @@ async function startSitMatchup(ctx: Ctx, playerId: string, query: URLSearchParam
   }
 }
 
+async function startSitMarket(ctx: Ctx, query: URLSearchParams): Promise<Res> {
+  const settings = marketSettingsFrom(query);
+  try {
+    return ok(await getMarketValues(ctx.fetchJson, ctx.now(), settings));
+  } catch (error) {
+    ctx.log.warn('Loading FantasyCalc market values failed.', error);
+    return { status: 502, body: 'Trade market values are not available right now.' };
+  }
+}
+
 // ---- Manual draft ----------------------------------------------------------------
 
 async function manualSelectPlayer(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
@@ -1476,6 +1487,7 @@ export async function handle(ctx: Ctx, method: string, path: string, query: URLS
   if (parts.length === 2 && method === 'GET' && parts[0] === 'history') return getHistoryEntry(ctx, parts[1]);
   if (parts.length === 2 && method === 'GET' && parts[0] === 'invite') return getInvite(ctx, parts[1]);
   if (parts.length === 2 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'sleeper') return startSitSleeper(ctx, query);
+  if (parts.length === 2 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'market') return startSitMarket(ctx, query);
   if (parts.length === 3 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'matchup') return startSitMatchup(ctx, parts[2], query);
 
   if (parts.length === 2 && parts[0] === 'user-profile' && method === 'POST') return updateProfile(ctx, parts[1], data);

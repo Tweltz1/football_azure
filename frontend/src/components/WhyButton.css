@@ -403,3 +403,15 @@
   color: var(--danger);
   background: var(--danger-soft);
 }
+
+.why-chance {
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.why-confidence {
+  margin: -6px 0 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}

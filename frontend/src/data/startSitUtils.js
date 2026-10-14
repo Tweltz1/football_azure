@@ -71,6 +71,10 @@ export const withProjections = (players, projectionsById, scoring, week) => play
     recent: projection?.recent || [],
     seasonAvg: projection?.seasonAvg || null,
     gamesPlayed: projection?.gamesPlayed || 0,
+    seasonStats: projection?.seasonStats || null,
+    upcoming: projection?.upcoming || [],
+    usage: projection?.usage || null,
+    spread: projection?.spread || null,
     age: player.age ?? null,
   };
 });
@@ -442,25 +446,72 @@ const fitVerdict = (valueVerdict, myChange, getBenched) => {
  * rosters before the trade. Returns per-player values and roles on your team, totals, each side's weekly
  * lineup change, the value-only verdict, and a verdict that also weighs how your own lineup changes.
  */
+/**
+ * Our own trade value for a player, from projections alone: mostly what they score above a waiver
+ * starter, plus a little raw scoring so depth isn't worth zero (and adjusted for age in dynasty).
+ */
+export const ownTradeScore = (p, levels, scoring, dynasty) => {
+  const value = tradeValue(p, scoring);
+  const surplus = Math.max(0, value - (levels[p.position] ?? 0));
+  const ageFactor = dynasty ? ageMultiplier(p.position, p.age) : 1;
+  return { value, surplus, ageFactor, score: (surplus + 0.2 * value) * ageFactor };
+};
+
+/** "12-team, superflex, half PPR, dynasty" for a set of market settings. */
+export const describeMarketSettings = (s) => [
+  `${s.teams}-team`, s.qbs === 2 ? 'superflex' : '1QB', s.ppr === 1 ? 'PPR' : s.ppr === 0.5 ? 'half PPR' : 'standard', s.dynasty ? 'dynasty' : 'redraft',
+].join(', ');
+
+// A player is a buy-low or sell-high when the market and our projections differ by this much.
+const TAG_RATIO = 1.35;
+const TAG_MIN_GAP = 1.5;
+
+/** Buy-low / sell-high when the market and our projections disagree a lot (both on our value scale). */
+export const marketTag = (own, market) => {
+  if (market == null) return null;
+  if (market >= own * TAG_RATIO && market - own >= TAG_MIN_GAP) return { key: 'sell', label: 'Sell high', detail: 'The trade market values this player more than our projections do.' };
+  if (own >= market * TAG_RATIO && own - market >= TAG_MIN_GAP) return { key: 'buy', label: 'Buy low', detail: 'Our projections value this player more than the trade market does.' };
+  return null;
+};
+
+// Extra players who wouldn't start for the team getting them count at this share of their value:
+// the roster spot they take has to come from somewhere.
+const BENCH_EXTRA_SHARE = 0.5;
+
 export const analyzeTrade = ({
   give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount,
-  dynasty = false, givePicks = [], getPicks = [], firstPickSeason = null, levels: knownLevels = null,
+  dynasty = false, givePicks = [], getPicks = [], firstPickSeason = null, levels: knownLevels = null, market = null,
 }) => {
   const levels = knownLevels || replacementLevels(allPlayers, teamCount, rosterSettings, scoring);
+  const round1 = (n) => Math.round(n * 10) / 10;
   const rate = (p) => {
-    const value = tradeValue(p, scoring);
-    const surplus = Math.max(0, value - (levels[p.position] ?? 0));
-    // Mostly what they score above a waiver starter, plus a little raw scoring so depth isn't worth zero.
-    const ageFactor = dynasty ? ageMultiplier(p.position, p.age) : 1;
-    const score = (surplus + 0.2 * value) * ageFactor;
-    return { ...p, value, surplus: Math.round(surplus * 10) / 10, ageFactor, score: Math.round(score * 10) / 10 };
+    const own = ownTradeScore(p, levels, scoring, dynasty);
+    const marketValue = market?.players?.[p.id]?.value ?? null;
+    const marketScore = marketValue == null ? null : market.toScore(marketValue);
+    const score = marketScore == null ? own.score : market.weight * marketScore + (1 - market.weight) * own.score;
+    return {
+      ...p,
+      value: own.value,
+      surplus: round1(own.surplus),
+      ageFactor: own.ageFactor,
+      ownScore: round1(own.score),
+      marketValue,
+      marketScore: marketScore == null ? null : round1(marketScore),
+      tag: marketTag(own.score, marketScore),
+      score: round1(score),
+      display: market ? market.toMarket(score) : null,
+    };
   };
-  const ratePick = (pick) => ({ ...pick, score: pickValue(pick, firstPickSeason) });
+  const ratePick = (pick) => {
+    const own = pickValue(pick, firstPickSeason);
+    const marketValue = market?.picks?.[`${pick.season}-${pick.round}`] ?? null;
+    const marketScore = marketValue == null ? null : market.toScore(marketValue);
+    const score = marketScore == null ? own : 0.5 * marketScore + 0.5 * own;
+    return { ...pick, ownScore: own, marketValue, score: round1(score), display: market ? market.toMarket(score) : null };
+  };
   const giveRated = [...give.map(rate), ...givePicks.map(ratePick)];
   const getRated = [...get.map(rate), ...getPicks.map(ratePick)];
-  const sum = (list) => Math.round(list.reduce((total, p) => total + p.score, 0) * 10) / 10;
-  const giveTotal = sum(giveRated);
-  const getTotal = sum(getRated);
+  const sum = (list, key = 'score') => round1(list.reduce((total, p) => total + (p[key] || 0), 0));
 
   const giveIds = new Set(give.map((p) => p.id));
   const getIds = new Set(get.map((p) => p.id));
@@ -488,6 +539,30 @@ export const analyzeTrade = ({
   const getPlayers = getRated.filter((p) => !p.round);
   const getBenched = getPlayers.length > 0 && getPlayers.every((p) => !startingAfter.has(p.id));
 
+  // 2-for-1 (or 3-for-1...) adjustment: the side getting more players has to cut someone, so extra
+  // players who wouldn't crack that team's lineup count for less. The side getting the best player wins.
+  const givePlayers = giveRated.filter((p) => !p.round);
+  const theirStartingAfter = slotById(seasonLineup(theirAfter, rosterSettings, scoring));
+  const extras = (list, others, starting) => {
+    const extra = list.length - others.length;
+    if (extra <= 0) return [];
+    return list.filter((p) => !starting.has(p.id)).sort((a, b) => a.score - b.score).slice(0, extra);
+  };
+  const discount = (list) => ({
+    players: list.map((p) => p.name),
+    score: -round1(list.reduce((total, p) => total + p.score * BENCH_EXTRA_SHARE, 0)),
+    display: market ? -Math.round(list.reduce((total, p) => total + (p.display || 0) * BENCH_EXTRA_SHARE, 0)) : null,
+  });
+  const getExtras = extras(getPlayers, givePlayers, startingAfter);
+  const giveExtras = extras(givePlayers, getPlayers, theirStartingAfter);
+  const adjustment = getExtras.length || giveExtras.length
+    ? { get: getExtras.length ? discount(getExtras) : null, give: giveExtras.length ? discount(giveExtras) : null }
+    : null;
+  const giveTotal = round1(sum(giveRated) + (adjustment?.give?.score || 0));
+  const getTotal = round1(sum(getRated) + (adjustment?.get?.score || 0));
+  const giveDisplay = market ? sum(giveRated, 'display') + (adjustment?.give?.display || 0) : null;
+  const getDisplay = market ? sum(getRated, 'display') + (adjustment?.get?.display || 0) : null;
+
   const gap = getTotal - giveTotal;
   // A floor keeps small trades (a point or two either way) from reading as lopsided.
   const scale = Math.max(giveTotal, getTotal, 10);
@@ -506,6 +581,8 @@ export const analyzeTrade = ({
 
   return {
     give: giveRated, get: getRated, giveTotal, getTotal, myChange, theirChange, levels, share,
+    adjustment, giveDisplay: giveDisplay == null ? null : Math.round(giveDisplay), getDisplay: getDisplay == null ? null : Math.round(getDisplay),
+    market: market ? { settings: market.settings, fetchedAt: market.fetchedAt, weight: market.weight } : null,
     valueVerdict: verdict, verdict: fitVerdict(verdict, myChange, getBenched),
   };
 };
@@ -522,7 +599,7 @@ const FINDER_PLAYERS_PER_TEAM = 10;
  * partners: [{ key, name, roster }] with projections attached. Returns the best few, best first.
  */
 export const findTrades = ({
-  myRoster, partners, rosterSettings, scoring, allPlayers, dynasty = false, limit = 6,
+  myRoster, partners, rosterSettings, scoring, allPlayers, dynasty = false, limit = 6, market = null,
 }) => {
   const teamCount = partners.length + 1;
   const levels = replacementLevels(allPlayers, teamCount, rosterSettings, scoring);
@@ -546,7 +623,7 @@ export const findTrades = ({
     ];
     packages.forEach(([give, get]) => {
       const result = analyzeTrade({
-        give, get, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount, dynasty, levels,
+        give, get, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount, dynasty, levels, market,
       });
       const share = (result.getTotal - result.giveTotal) / Math.max(result.giveTotal, result.getTotal, 10);
       // Worth suggesting: your lineup gets clearly better, theirs doesn't get clearly worse,

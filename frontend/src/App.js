@@ -51,7 +51,7 @@ function App() {
             <NavLink to="/" end>Home</NavLink>
             <NavLink to="/leagues">Leagues</NavLink>
             <NavLink to="/create-league">Create</NavLink>
-            <NavLink to="/start-sit">Start/Sit</NavLink>
+            <NavLink to="/start-sit">Start/Sit &amp; Trades</NavLink>
             <NavLink to="/rankings">Rankings</NavLink>
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>
