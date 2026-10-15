@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { createDraftConnection } from '../realtime';
 import { useAuth } from '../AuthContext';
 import { API_BASE_URL } from '../api';
+import { isOfflineLeague } from '../offline/storage';
 import { BoardGrid, pickLabel, reviewLabel } from '../whiteboard/BoardViews';
 import { isWhiteboardLeague } from '../whiteboard/biddingStyle';
 import './DraftTvView.css';
@@ -98,6 +99,8 @@ const DraftTvView = () => {
         <div>
           <p>Hood League Live Draft</p>
           <h1>{league.name}</h1>
+          {/* Offline it opens in the same tab as the draft room, so give a way back. */}
+          {isOfflineLeague(leagueId) && <Link to={`/draft/${leagueId}`} className="tv-back-link">Back to draft room</Link>}
         </div>
         <div className="tv-status-strip">
           <span className={`tv-status-bug status-${status || 'waiting'}`}>{isBoardReview ? 'BOARDS UP' : String(league.status || 'waiting').toUpperCase()}</span>
