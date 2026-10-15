@@ -16,11 +16,12 @@ export const canSaveOffline = (league) => {
  * hasn't started runs as a manual draft here: bids happen on paper or whiteboards and the commissioner
  * enters each winner and price.
  */
-export const saveLeagueToDevice = async (leagueId, user) => {
+export const saveLeagueToDevice = async (leagueId, user, { nearby = false } = {}) => {
   const { data } = await axios.post(`${API_BASE_URL}/leagues/${leagueId}/offline-copy`, {});
   const league = { ...data.league };
   const status = String(league.status || '').toLowerCase();
-  if (status === 'created' || status === 'lobby') {
+  // A nearby-phones draft (iPhone app) keeps normal bidding: players bid from their own phones.
+  if (!nearby && (status === 'created' || status === 'lobby')) {
     league.draftMode = 'manual';
     league.biddingMode = 'standard';
   }
@@ -30,6 +31,7 @@ export const saveLeagueToDevice = async (leagueId, user) => {
     baseVersion: data.version,
     savedAt: new Date().toISOString(),
     userId: user.userId,
+    ...(nearby ? { nearbyHost: true } : {}),
   });
   rememberOfflineUser(user);
   // Make sure everything the offline draft needs is on the device before the internet goes.

@@ -12,6 +12,13 @@ const loadEngine = () => {
   return enginePromise;
 };
 
+// Nearby-phone drafts (offline/nearbyDraft.js) hook in here: a player's calls go to the commissioner's
+// phone, and the commissioner's phone passes its live updates on to the players.
+let remoteRunner = null;
+let broadcastTap = null;
+export const setRemoteRunner = (fn) => { remoteRunner = fn; };
+export const setBroadcastTap = (fn) => { broadcastTap = fn; };
+
 const needsInternet = () => {
   throw new Error('That needs an internet connection.');
 };
@@ -61,6 +68,7 @@ const ctxFor = (userId) => ({
     async send(leagueId, event, payload, toUserId) {
       // After the caller gets its response, like a live update from the server would.
       window.setTimeout(() => deliverLocal(leagueId, event, payload, toUserId), 0);
+      if (broadcastTap) broadcastTap(leagueId, event, payload, toUserId);
     },
   },
   log: console,
@@ -74,6 +82,12 @@ const ctxFor = (userId) => ({
 
 /** Runs one API call (`path` like `leagues/abc/manual-award`) on this device. Returns { status, body }. */
 export const runLocal = async (method, path, query, body, userId) => {
+  const leagueId = /^leagues\/([^/]+)/.exec(path || '')?.[1];
+  const entry = leagueId ? readOfflineLeague(decodeURIComponent(leagueId)) : null;
+  if (entry?.remote) {
+    if (!remoteRunner) return { status: 503, body: "Not connected to the commissioner's phone." };
+    return remoteRunner(entry.league.id, method, path, query, body);
+  }
   const { handle } = await loadEngine();
   return handle(ctxFor(userId), method, path, query, body);
 };
