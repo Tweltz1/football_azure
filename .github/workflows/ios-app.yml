@@ -18,6 +18,8 @@ on:
   push:
     paths:
       - 'ios-app/**'
+      - 'frontend/src/offline/**'
+      - 'frontend/src/native/**'
       - '.github/workflows/ios-app.yml'
   workflow_dispatch:
     inputs:
