@@ -51,6 +51,13 @@ jobs:
       - name: Build the website
         working-directory: frontend
         run: |
+          if [ -z "$REACT_APP_SUPABASE_ANON_KEY" ]; then
+            # Same public key the live site ships with; read it from hood-league.com.
+            JS=$(curl -fsSL https://hood-league.com/ | grep -oE '/static/js/main\.[a-z0-9]+\.js' | head -1)
+            KEY=$(curl -fsSL "https://hood-league.com$JS" | grep -oE 'eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sb_publishable_[A-Za-z0-9_-]+' | head -1)
+            echo "REACT_APP_SUPABASE_ANON_KEY=$KEY" >> "$GITHUB_ENV"
+            export REACT_APP_SUPABASE_ANON_KEY="$KEY"
+          fi
           npm ci --no-audit --no-fund
           CI=false npm run build
 
@@ -66,8 +73,31 @@ jobs:
         run: |
           xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+            -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build | tail -n 40
           exit ${PIPESTATUS[0]}
+
+      - name: Screenshots on a simulated iPhone
+        if: ${{ !inputs.upload }}
+        run: |
+          APP="$RUNNER_TEMP/dd/Build/Products/Debug-iphonesimulator/App.app"
+          DEV=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for r in sorted(d, reverse=True) if 'iOS' in r for x in d[r] if x['name'].startswith('iPhone 1') and 'Pro' in x['name'] and 'Max' not in x['name']))")
+          xcrun simctl boot "$DEV"
+          xcrun simctl bootstatus "$DEV" -b
+          xcrun simctl status_bar "$DEV" override --time 9:41 --batteryLevel 100 --cellularBars 4 || true
+          xcrun simctl install "$DEV" "$APP"
+          mkdir -p shots
+          xcrun simctl launch "$DEV" com.hoodleague.draft
+          sleep 20
+          xcrun simctl io "$DEV" screenshot shots/1-app-open.png
+          xcrun simctl terminate "$DEV" com.hoodleague.draft
+          sleep 3
+          xcrun simctl io "$DEV" screenshot shots/2-home-screen.png
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.upload }}
+        with:
+          name: iphone-screenshots
+          path: shots/
 
       - name: Sign and upload to TestFlight
         if: ${{ inputs.upload }}
