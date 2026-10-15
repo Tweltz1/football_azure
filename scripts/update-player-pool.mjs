@@ -31,12 +31,18 @@ const OUTPUTS = {
   server: path.join('supabase', 'functions', '_shared', 'playerData.ts'),
   javascript: path.join('frontend', 'src', 'data', 'playerData.js'),
   insights: path.join('frontend', 'src', 'data', 'playerInsights.js'),
+  // Daily rank snapshots, so movement compares against about a week ago even when the pool updates daily.
+  rankHistory: path.join('scripts', 'data', 'rank-history.json'),
 };
+const MOVEMENT_WINDOW_DAYS = 7;
+const RANK_HISTORY_DAYS = 10;
 
 const source = normalizeDataSource(process.env.PLAYER_POOL_SOURCE || 'sleeper');
 const limit = parsePositiveInteger(process.env.PLAYER_POOL_LIMIT || process.env.FANTASYPROS_LIMIT, DEFAULT_LIMIT);
 const fetchedAt = new Date().toISOString();
-const previousPool = await readPreviousPlayerRanks(OUTPUTS.javascript);
+const lastPool = await readPreviousPlayerRanks(OUTPUTS.javascript);
+const rankHistory = await readRankHistory(OUTPUTS.rankHistory, lastPool);
+const previousPool = movementBaseline(rankHistory, fetchedAt) || lastPool;
 
 const { players: rawPlayers, meta } = source === 'fantasypros'
   ? await buildFantasyProsPlayerPool(limit, fetchedAt)
@@ -56,6 +62,7 @@ const insights = await buildPlayerInsights(players, meta, previousPool);
 await writeGeneratedFile(OUTPUTS.server, renderServerData(players, meta));
 await writeGeneratedFile(OUTPUTS.javascript, renderJavaScript(players, meta));
 await writeGeneratedFile(OUTPUTS.insights, renderInsightsJavaScript(insights));
+await writeGeneratedFile(OUTPUTS.rankHistory, `${JSON.stringify(addRankSnapshot(rankHistory, players, fetchedAt), null, 1)}\n`);
 
 console.log(`Updated ${OUTPUTS.server}, ${OUTPUTS.javascript}, and ${OUTPUTS.insights} with ${players.length} ${meta.source} players.`);
 console.log(`${meta.source} last updated: ${meta.lastUpdated || 'not provided'}`);
@@ -776,6 +783,45 @@ async function readPreviousPlayerRanks(filePath) {
   } catch {
     return { generatedAt: null, players: new Map() };
   }
+}
+
+const dayOf = (iso) => String(iso || '').slice(0, 10);
+
+/** Daily snapshots [{ date, ranks: { id: rank } }], oldest first. Starts from the current pool when missing. */
+async function readRankHistory(filePath, currentPool) {
+  try {
+    const history = JSON.parse(await readFile(filePath, 'utf8'));
+    if (Array.isArray(history)) return history.filter((entry) => entry?.date && entry?.ranks);
+  } catch {
+    // No history yet.
+  }
+  if (!currentPool.generatedAt || currentPool.players.size === 0) return [];
+  return [{
+    date: dayOf(currentPool.generatedAt),
+    ranks: Object.fromEntries([...currentPool.players].map(([id, player]) => [id, player.rank])),
+  }];
+}
+
+/** The latest snapshot at least a week old, else the oldest one there is (but never today's). */
+function movementBaseline(history, nowIso) {
+  const today = dayOf(nowIso);
+  const cutoff = dayOf(new Date(Date.parse(nowIso) - MOVEMENT_WINDOW_DAYS * 86400000).toISOString());
+  const earlier = history.filter((entry) => entry.date < today);
+  if (earlier.length === 0) return null;
+  const weekOld = earlier.filter((entry) => entry.date <= cutoff);
+  const pick = weekOld.length ? weekOld[weekOld.length - 1] : earlier[0];
+  return {
+    generatedAt: `${pick.date}T00:00:00.000Z`,
+    players: new Map(Object.entries(pick.ranks).map(([id, rank]) => [id, { name: null, rank }])),
+  };
+}
+
+function addRankSnapshot(history, players, nowIso) {
+  const date = dayOf(nowIso);
+  const ranks = Object.fromEntries(players.map((player) => [player.id, player.rank]));
+  return [...history.filter((entry) => entry.date !== date), { date, ranks }]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-RANK_HISTORY_DAYS);
 }
 
 function matchJsStringField(line, field) {

@@ -30,7 +30,7 @@ on:
         default: "350"
         type: string
   schedule:
-    - cron: "0 11 * * 2"
+    - cron: "0 11 * * *"
 
 # The live site (Cloudflare Pages) builds from this branch. Scheduled runs always use the
 # default branch's copy of this file, so it must name the live branch explicitly.
