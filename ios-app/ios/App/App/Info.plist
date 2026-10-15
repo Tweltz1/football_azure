@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Hood League connects to nearby phones so everyone can bid in the draft without internet.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_hl-draft._tcp</string>
+		<string>_hl-draft._udp</string>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
   <key>CAPACITOR_DEBUG</key>
