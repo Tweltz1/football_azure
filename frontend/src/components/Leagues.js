@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { createDraftConnection } from '../realtime';
 import { API_BASE_URL } from '../api';
+import { isOfflineLeague } from '../offline/storage';
 import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '../data/strategyUtils';
 import { isDraftLive, leagueStatusKey, leagueStatusLabel } from '../data/leagueLabels';
 import BiddingStyleField from '../whiteboard/BiddingStyleField';
@@ -415,7 +416,7 @@ const LeagueCard = ({ league, userId, onRename, onAnalyze, onCopyInvite, onSetti
       </Link>
 
       <div className="league-card-more">
-        <Link to={`/draft/${league.id}/tv`} target="_blank" rel="noreferrer">
+        <Link to={`/draft/${league.id}/tv`} {...(isOfflineLeague(league.id) ? {} : { target: '_blank', rel: 'noreferrer' })}>
           <button type="button" className="join-button">TV Board</button>
         </Link>
         <button type="button" className="join-button" onClick={() => onAnalyze(league)}>Analyze</button>
