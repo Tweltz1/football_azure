@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from './supabaseClient';
+import { offlineUser } from './offline/storage';
 
 const AuthContext = createContext();
 
@@ -17,6 +18,14 @@ const toAppUser = (supabaseUser) => {
     identityProvider: supabaseUser.app_metadata?.provider || null,
     email: supabaseUser.email || null,
   };
+};
+
+// With no internet the sign-in can't refresh. If a draft is saved on this device, open the site as the
+// commissioner who saved it so the draft can go on; the server checks the real sign-in on upload.
+const offlineFallback = (error) => {
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  const saved = offline || error ? offlineUser() : null;
+  return saved ? { ...saved, identityProvider: null, email: null, offline: true } : null;
 };
 
 export const signIn = (provider) => supabase.auth.signInWithOAuth({
@@ -39,26 +48,47 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let isMounted = true;
 
+    // With no internet, a sign-in that needs refreshing keeps retrying for about 30 seconds. When a draft is
+    // saved on this device, don't make the commissioner wait for that.
+    const saved = offlineUser();
+    let settled = false;
+    const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    const offlineTimer = saved ? window.setTimeout(() => {
+      if (settled || !isMounted) return;
+      setUser({ ...saved, identityProvider: null, email: null, offline: true });
+      setLoading(false);
+    }, isOffline ? 0 : 4000) : null;
+
     supabase.auth.getSession()
-      .then(({ data }) => {
-        if (isMounted) setUser(toAppUser(data?.session?.user));
+      .then(({ data, error }) => {
+        if (!isMounted) return;
+        const signedIn = toAppUser(data?.session?.user);
+        setUser((current) => signedIn || (current?.offline ? current : offlineFallback(error)));
       })
       .catch((error) => {
         console.error('Error fetching auth status:', error);
-        if (isMounted) setUser(null);
+        if (isMounted) setUser((current) => (current?.offline ? current : offlineFallback(error)));
       })
       .finally(() => {
+        settled = true;
+        window.clearTimeout(offlineTimer);
         if (isMounted) setLoading(false);
       });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       const nextUser = toAppUser(session?.user);
+      // A refresh that failed for lack of internet isn't a sign-out; keep the offline commissioner.
+      if (!nextUser && event !== 'SIGNED_OUT') {
+        setUser((current) => (current?.offline ? current : nextUser));
+        return;
+      }
       // Token refreshes fire this too; keep the same object so pages don't reload their data.
       setUser((current) => (current?.userId === nextUser?.userId ? current : nextUser));
     });
 
     return () => {
       isMounted = false;
+      window.clearTimeout(offlineTimer);
       listener?.subscription?.unsubscribe();
     };
   }, []);

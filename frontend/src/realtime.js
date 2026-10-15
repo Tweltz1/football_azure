@@ -10,6 +10,7 @@
 import { supabase } from './supabaseClient';
 // api.js imports this module too; the cycle is safe because fetchLeagueState is only called later.
 import { fetchLeagueState } from './api';
+import { isOfflineLeague, LEAGUE_KEY_PREFIX } from './offline/storage';
 
 const leagueCache = new Map(); // leagueId -> league (with _version)
 const channels = new Map(); // leagueId -> { channel, connections: Set, subscribedOnce, readyPromise }
@@ -38,6 +39,11 @@ export const rememberLeagues = (data) => {
  */
 export const acceptLeagues = (data) => {
   rememberLeagues(data).forEach((league) => emit(league.id, 'draftStateUpdate', league));
+};
+
+/** Drops what we know about a league, so the next copy of it is taken whatever its version. */
+export const forgetLeague = (leagueId) => {
+  leagueCache.delete(leagueId);
 };
 
 // Keys whose change means a bidding round started, ended or went to a tie-breaker.
@@ -109,10 +115,39 @@ const handleDiff = (message) => {
   refetchLeague(leagueId);
 };
 
+/** Updates from a league drafted on this device (see offline/localApi.js), handled like the server's. */
+export const deliverLocal = (leagueId, event, payload, toUserId) => {
+  if (event === 'draftStateDiff') {
+    handleDiff(payload);
+    return;
+  }
+  const entry = channels.get(leagueId);
+  if (!entry) return;
+  entry.connections.forEach((connection) => {
+    if (toUserId && connection.userId && toUserId !== connection.userId) return;
+    connection.emit(event, payload);
+  });
+};
+
+// Another tab on this device (a TV board, say) changed a saved league: catch up.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (!event.key || !event.key.startsWith(LEAGUE_KEY_PREFIX)) return;
+    const leagueId = event.key.slice(LEAGUE_KEY_PREFIX.length);
+    if (channels.has(leagueId)) refetchLeague(leagueId);
+  });
+}
+
 const ensureChannel = (leagueId) => {
   if (channels.has(leagueId)) return channels.get(leagueId);
 
   const entry = { connections: new Set(), subscribedOnce: false, channel: null, readyPromise: null };
+  if (isOfflineLeague(leagueId)) {
+    // Drafted on this device: updates come from deliverLocal, nothing to subscribe to.
+    entry.readyPromise = Promise.resolve();
+    channels.set(leagueId, entry);
+    return entry;
+  }
   const channel = supabase.channel(`league:${leagueId}`, { config: { broadcast: { self: false } } });
 
   channel.on('broadcast', { event: '*' }, ({ event, payload }) => {
@@ -150,7 +185,7 @@ const releaseChannel = (leagueId, connection) => {
   if (!entry) return;
   entry.connections.delete(connection);
   if (entry.connections.size === 0) {
-    supabase.removeChannel(entry.channel);
+    if (entry.channel) supabase.removeChannel(entry.channel);
     channels.delete(leagueId);
   }
 };

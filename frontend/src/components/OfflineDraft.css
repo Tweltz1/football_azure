@@ -1,0 +1,52 @@
+.offline-draft-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.offline-draft-panel.is-saved {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.offline-draft-panel > div:first-child {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.offline-draft-panel p {
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.offline-draft-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.offline-draft-panel .offline-draft-note,
+.offline-draft-panel .offline-draft-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.offline-draft-panel .offline-draft-error {
+  color: var(--danger);
+}
+
+@media (max-width: 520px) {
+  .offline-draft-actions,
+  .offline-draft-actions button {
+    width: 100%;
+  }
+}
