@@ -6,6 +6,7 @@ import { useAuth } from '../AuthContext';
 import { API_BASE_URL } from '../api';
 import { subscribeProfileUpdates } from '../profileSync';
 import DraftScreen from './DraftScreen';
+import OfflineDraftPanel from './OfflineDraftPanel';
 import WhiteboardPad from '../whiteboard/WhiteboardPad';
 import { isAutoReadLeague, isWhiteboardLeague } from '../whiteboard/biddingStyle';
 import { isDraftLive } from '../data/leagueLabels';
@@ -99,6 +100,7 @@ const DraftRoomEnhanced = ({ userId }) => {
   return (
     <div className="draft-room-enhanced">
       <AdminNoticeToast notice={adminNotice} onClose={() => setAdminNotice(null)} />
+      <OfflineDraftPanel league={league} user={user} />
       <DraftScreen
         key={profileRefreshKey}
         userId={userId}
