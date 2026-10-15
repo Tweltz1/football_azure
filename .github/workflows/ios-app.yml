@@ -32,6 +32,8 @@ concurrency:
 
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: macos-15
     timeout-minutes: 45
     env:
@@ -92,11 +94,13 @@ jobs:
           xcrun simctl terminate "$DEV" com.hoodleague.draft
           sleep 3
           xcrun simctl io "$DEV" screenshot shots/2-home-screen.png
-          # Small copies in the log, for viewers that can't download artifacts.
-          for f in shots/*.png; do
-            sips -s format jpeg -s formatOptions 70 -Z 900 "$f" --out "${f%.png}.jpg" >/dev/null
-            echo "=== BEGIN $(basename "${f%.png}.jpg")"; base64 -b 76 -i "${f%.png}.jpg"; echo "=== END"
-          done
+          # Also save them on the ios-screenshots branch, for viewers that can't download artifacts.
+          cd shots
+          git init -q -b ios-screenshots
+          git -c user.name=github-actions -c user.email=actions@github.com commit -q --allow-empty -m "Screenshots from ${GITHUB_SHA::7}"
+          git add -A
+          git -c user.name=github-actions -c user.email=actions@github.com commit -q -m "Screenshots from ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ios-screenshots
 
       - uses: actions/upload-artifact@v4
         if: ${{ !inputs.upload }}
