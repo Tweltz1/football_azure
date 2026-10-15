@@ -1,0 +1,16 @@
+{
+  "name": "hood-league-ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hood League iPhone app: wraps the website (frontend/build) with Capacitor.",
+  "scripts": {
+    "sync": "cap sync ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

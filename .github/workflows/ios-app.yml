@@ -1,0 +1,112 @@
+# Builds the Hood League iPhone app (ios-app/, a Capacitor wrapper around
+# frontend/) on a GitHub macOS machine, so no Mac is needed.
+#
+# - Every push that touches ios-app/ checks that it still builds for the
+#   iPhone simulator (no Apple account needed). Website-only pushes skip it:
+#   the repo is private and GitHub counts macOS minutes 10x.
+# - Run it by hand ("Run workflow") with "Upload to TestFlight" ticked to sign
+#   it and send it to App Store Connect. That needs these repo secrets:
+#     APPLE_TEAM_ID                  10-character Team ID (Apple Developer > Membership)
+#     APP_STORE_CONNECT_KEY_ID       App Store Connect API key ID (Admin role)
+#     APP_STORE_CONNECT_ISSUER_ID    Issuer ID shown above the keys list
+#     APP_STORE_CONNECT_KEY          full text of the downloaded .p8 key file
+#   and, for the website inside the app, the same values Cloudflare uses:
+#     REACT_APP_SUPABASE_URL, REACT_APP_SUPABASE_ANON_KEY
+name: iPhone app
+
+on:
+  push:
+    paths:
+      - 'ios-app/**'
+      - '.github/workflows/ios-app.yml'
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: 'Upload to TestFlight'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ios-app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      REACT_APP_SUPABASE_URL: ${{ secrets.REACT_APP_SUPABASE_URL || 'https://nkwedlskhnojseeroezm.supabase.co' }}
+      REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.REACT_APP_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build the website
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          CI=false npm run build
+
+      - name: Copy the website into the iPhone project
+        working-directory: ios-app
+        run: |
+          npm ci --no-audit --no-fund
+          npx cap sync ios
+
+      - name: Build for the iPhone simulator
+        if: ${{ !inputs.upload }}
+        working-directory: ios-app/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+          exit ${PIPESTATUS[0]}
+
+      - name: Sign and upload to TestFlight
+        if: ${{ inputs.upload }}
+        working-directory: ios-app/ios/App
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY }}
+        run: |
+          for v in APPLE_TEAM_ID KEY_ID ISSUER_ID KEY_P8 REACT_APP_SUPABASE_ANON_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Missing secret for $v"; exit 1; fi
+          done
+          KEY_PATH="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
+          printf '%s' "$KEY_P8" > "$KEY_PATH"
+          AUTH=(-allowProvisioningUpdates
+                -authenticationKeyPath "$KEY_PATH"
+                -authenticationKeyID "$KEY_ID"
+                -authenticationKeyIssuerID "$ISSUER_ID")
+
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            "${AUTH[@]}" archive | tail -n 40
+          test ${PIPESTATUS[0]} -eq 0
+
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+          </dict></plist>
+          EOF
+
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}"
+          rm -f "$KEY_PATH"
