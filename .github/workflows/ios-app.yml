@@ -84,18 +84,39 @@ jobs:
         if: ${{ !inputs.upload }}
         run: |
           APP="$RUNNER_TEMP/dd/Build/Products/Debug-iphonesimulator/App.app"
-          DEV=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for r in sorted(d, reverse=True) if 'iOS' in r for x in d[r] if x['name'].startswith('iPhone 1') and 'Pro' in x['name'] and 'Max' not in x['name']))")
-          xcrun simctl boot "$DEV"
-          xcrun simctl bootstatus "$DEV" -b
-          xcrun simctl status_bar "$DEV" override --time 9:41 --batteryLevel 100 --cellularBars 4 || true
-          xcrun simctl install "$DEV" "$APP"
           mkdir -p shots
-          xcrun simctl launch "$DEV" com.hoodleague.draft
-          sleep 20
-          xcrun simctl io "$DEV" screenshot shots/1-app-open.png
-          xcrun simctl terminate "$DEV" com.hoodleague.draft
-          sleep 3
-          xcrun simctl io "$DEV" screenshot shots/2-home-screen.png
+          xcrun simctl list runtimes > shots/runtimes.txt
+          # Newest iPhone Pro on the newest iOS, and the smallest iPhone on the oldest iOS this Mac has.
+          PICK='import json,sys
+          d = json.load(sys.stdin)["devices"]
+          ios = sorted((r for r in d if "iOS" in r), key=lambda r: [int(x) for x in r.split("iOS-")[1].split("-")])
+          mode = sys.argv[1]
+          if mode == "new":
+              r = ios[-1]; devs = [x for x in d[r] if "Pro" in x["name"] and "Max" not in x["name"]]
+          else:
+              r = ios[0]; devs = sorted(d[r], key=lambda x: (("SE" not in x["name"]), ("mini" not in x["name"]), x["name"]))
+          x = devs[0]; print(x["udid"], r.split("iOS-")[1].replace("-", "."), x["name"].replace(" ", "_"))'
+          run_on() {
+            read -r DEV OS NAME < <(xcrun simctl list devices available -j | python3 -c "$PICK" "$1")
+            TAG="$1-iOS$OS-$NAME"
+            echo "Running on $TAG"
+            xcrun simctl boot "$DEV"
+            xcrun simctl bootstatus "$DEV" -b
+            xcrun simctl status_bar "$DEV" override --time 9:41 --batteryLevel 100 --cellularBars 4 || true
+            xcrun simctl install "$DEV" "$APP"
+            START=$(date "+%Y-%m-%d %H:%M:%S")
+            xcrun simctl launch "$DEV" com.hoodleague.draft
+            sleep 20
+            xcrun simctl io "$DEV" screenshot "shots/$TAG-app-open.png"
+            # The app's console (web page errors show up here) for bug hunting.
+            xcrun simctl spawn "$DEV" log show --start "$START" --style compact --predicate 'process == "App"' > "shots/$TAG-app-log.txt" 2>&1 || true
+            xcrun simctl terminate "$DEV" com.hoodleague.draft
+            sleep 3
+            xcrun simctl io "$DEV" screenshot "shots/$TAG-home-screen.png"
+            xcrun simctl shutdown "$DEV"
+          }
+          run_on new
+          run_on old
           # Also save them on the ios-screenshots branch, for viewers that can't download artifacts.
           cd shots
           git init -q -b ios-screenshots
