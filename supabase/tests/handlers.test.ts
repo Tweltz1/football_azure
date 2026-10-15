@@ -1214,3 +1214,62 @@ test('a bid that lands after the clock ran out is refused and never joins the re
   assert.equal(league.draftLog.at(-1)!.winningTeamId, cara.id);
   assert.equal(league.draftLog.at(-1)!.winningBid, 9);
 });
+
+test('offline draft: copy to a device, draft there with the same rules, upload the result', async () => {
+  const server = memoryWorld();
+  const leagueId = await setupAuctionLeague(server);
+  assert.equal((await server.call('bob', 'POST', `leagues/${leagueId}/offline-copy`)).status, 401, 'commissioner only');
+
+  const copied = await server.call('admin', 'POST', `leagues/${leagueId}/offline-copy`);
+  assert.equal(copied.status, 200);
+  const { league, version } = copied.body as any;
+  assert.equal(league.password, null, 'the password never leaves the server');
+
+  // The device runs the same handlers on its own storage; an auction league is drafted manually there.
+  const device = memoryWorld();
+  device.leagueRows.set(leagueId, { league: { ...clone(league), draftMode: 'manual' }, version });
+  await device.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  const team = device.league(leagueId).teams.find((t) => t.ownerId === 'bob')!;
+  const awarded = await device.call('admin', 'POST', `leagues/${leagueId}/manual-award`, { teamId: team.id, playerId: 'sleeper-4984', amount: 40 });
+  assert.equal(awarded.status, 200);
+  const tooMuch = await device.call('admin', 'POST', `leagues/${leagueId}/manual-award`, { teamId: team.id, playerId: 'sleeper-6794', amount: 999 });
+  assert.equal(tooMuch.status, 400, 'budget rules still apply offline');
+  await device.call('admin', 'POST', `leagues/${leagueId}/complete`);
+  const result = device.league(leagueId);
+  assert.equal(result.status, 'completed');
+
+  assert.equal((await server.call('bob', 'POST', `leagues/${leagueId}/offline-restore`, { league: result, baseVersion: version })).status, 401);
+  const wrongLeague = await server.call('admin', 'POST', `leagues/${leagueId}/offline-restore`, { league: { ...result, id: 'other' }, baseVersion: version });
+  assert.equal(wrongLeague.status, 400);
+
+  const restored = await server.call('admin', 'POST', `leagues/${leagueId}/offline-restore`, { league: result, baseVersion: version });
+  assert.equal(restored.status, 200);
+  const saved = server.league(leagueId);
+  assert.equal(saved.password, 'pw', 'the server keeps its password');
+  assert.equal(saved.teams.find((t) => t.ownerId === 'bob')!.budget, 160);
+  assert.equal(saved.draftLog.length, 1);
+  assert.equal(server.historyRows.size, 1, 'a finished offline draft lands in History');
+  assert.ok(server.sent.some((m) => m.event === 'draftStateDiff' && m.leagueId === leagueId), 'open pages hear about it');
+  assert.equal((await server.call('admin', 'POST', `leagues/${leagueId}/offline-copy`)).status, 400, 'a finished draft cannot be copied');
+});
+
+test('offline draft: an upload that would overwrite online changes needs the commissioner to confirm', async () => {
+  const server = memoryWorld();
+  const leagueId = await setupAuctionLeague(server);
+  const { league, version } = (await server.call('admin', 'POST', `leagues/${leagueId}/offline-copy`)).body as any;
+  assert.equal((await server.call('bob', 'POST', `leagues/${leagueId}/teams`, { newTeamName: 'Changed Online' })).status, 200);
+  const changed = server.leagueRows.get(leagueId)!.version;
+  assert.notEqual(changed, version);
+
+  const blocked = await server.call('admin', 'POST', `leagues/${leagueId}/offline-restore`, { league, baseVersion: version });
+  assert.equal(blocked.status, 409);
+  const forced = await server.call('admin', 'POST', `leagues/${leagueId}/offline-restore`, { league, baseVersion: version, force: true });
+  assert.equal(forced.status, 200);
+});
+
+test('offline draft: nothing can be copied while a live auction has bids in play', async () => {
+  const server = memoryWorld();
+  const leagueId = await setupAuctionLeague(server);
+  await server.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  assert.equal((await server.call('admin', 'POST', `leagues/${leagueId}/offline-copy`)).status, 400);
+});

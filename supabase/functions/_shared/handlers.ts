@@ -1016,6 +1016,60 @@ async function startNewSeason(ctx: Ctx, leagueId: string): Promise<Res> {
   return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
+// ---- Offline drafts ---------------------------------------------------------------
+// The commissioner can save a league to their device, run a manual draft there with no internet, and
+// upload the result afterwards. The device runs this same file (bundled), so its rules match ours.
+
+const OFFLINE_READY = new Set(['created', 'lobby', MANUAL]);
+
+/** The whole league for the commissioner's device, before the draft or during a manual one. */
+async function offlineCopy(ctx: Ctx, leagueId: string): Promise<Res> {
+  const stored = await readLeague(ctx, leagueId);
+  if (isRes(stored)) return stored;
+  const league = stored.league;
+  if (league.adminId !== ctx.userId) return unauthorized();
+  const status = str(league.status).toLowerCase();
+  if (!OFFLINE_READY.has(status) || (status === MANUAL && !isManual(league.draftMode))) {
+    return bad('A league can be saved for an offline draft before its draft starts, or during a manual draft.');
+  }
+  applyByesToLeague(league);
+  // No bids can be live in these states, and the password never leaves the server.
+  return ok({ league: forClient(clone(league), undefined, null), version: stored.version });
+}
+
+/**
+ * Puts a draft run on the commissioner's device back on the server. It must start from the version the
+ * device copied, so nothing done online in the meantime is lost, unless the commissioner chooses to replace it.
+ */
+async function offlineRestore(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const uploaded = data.league as League | undefined;
+  if (!uploaded || typeof uploaded !== 'object' || uploaded.id !== leagueId) return bad('That draft is for a different league.');
+  if (!Array.isArray(uploaded.teams) || !Array.isArray(uploaded.initialPlayerPool)) return bad('That draft is missing its teams or players.');
+
+  const stored = await readLeague(ctx, leagueId);
+  if (isRes(stored)) return stored;
+  if (stored.league.adminId !== ctx.userId) return unauthorized();
+  if (data.force !== true && int(data.baseVersion) !== stored.version) {
+    return conflict('This league changed online after it was saved to this device.');
+  }
+
+  const before = clone(stored.league);
+  const next = ensureDefaults(clone(uploaded));
+  // These stay as the server has them: who runs the league, who is in it, and its password.
+  next.id = before.id;
+  next.adminId = before.adminId;
+  next.members = before.members;
+  next.password = before.password;
+  next.activeBids = {};
+  next.auctionTimer = null;
+
+  const version = await ctx.leagues.replace(next, stored.version);
+  if (version == null) return conflict('The league was busy. Please try again.');
+  if (!isCompleted(before) && isCompleted(next)) await archiveDraft(ctx, next);
+  await broadcastLeagueChange(ctx, before, stored.version, next, version);
+  return ok(clientLeague(ctx, clone(next), version));
+}
+
 // ---- Start/Sit -------------------------------------------------------------------
 
 async function startSit(ctx: Ctx, query: URLSearchParams): Promise<Res> {
@@ -1453,6 +1507,8 @@ const LEAGUE_POSTS: Record<string, LeagueAction> = {
   chat: sendChat,
   'budget-review': (ctx, id) => budgetReview(ctx, id),
   favorites: updateFavorites,
+  'offline-copy': (ctx, id) => offlineCopy(ctx, id),
+  'offline-restore': offlineRestore,
 };
 
 /**
