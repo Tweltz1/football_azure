@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from './supabaseClient';
 import { offlineUser } from './offline/storage';
+import * as nativeSignIn from './native/authSession';
 
 const AuthContext = createContext();
 
@@ -28,13 +29,34 @@ const offlineFallback = (error) => {
   return saved ? { ...saved, identityProvider: null, email: null, offline: true } : null;
 };
 
-export const signIn = (provider) => supabase.auth.signInWithOAuth({
-  provider,
-  options: {
-    redirectTo: window.location.origin + window.location.pathname + window.location.search,
-    queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined,
-  },
-});
+export const signIn = async (provider) => {
+  const queryParams = provider === 'google' ? { prompt: 'select_account' } : undefined;
+  if (!nativeSignIn.isAvailable()) {
+    return supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin + window.location.pathname + window.location.search, queryParams },
+    });
+  }
+  // iPhone app: sign in through Apple's sign-in sheet, then hand the result to Supabase here.
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: nativeSignIn.APP_REDIRECT, skipBrowserRedirect: true, queryParams },
+    });
+    if (error) throw error;
+    const back = await nativeSignIn.openSignIn(data.url);
+    if (!back) return null;
+    const result = nativeSignIn.readCallback(back);
+    if (result.accessToken && result.refreshToken) {
+      return await supabase.auth.setSession({ access_token: result.accessToken, refresh_token: result.refreshToken });
+    }
+    if (result.code) return await supabase.auth.exchangeCodeForSession(result.code);
+    throw new Error(result.error || 'Sign-in didn\'t finish.');
+  } catch (error) {
+    window.alert(`Couldn't sign in: ${error?.message || error}`);
+    return null;
+  }
+};
 
 export const signOut = async () => {
   await supabase.auth.signOut();
