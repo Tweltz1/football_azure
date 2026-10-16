@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { SUPABASE_URL, supabase } from './supabaseClient';
 import { acceptLeagues } from './realtime';
-import { isOfflineLeague, offlineLeagueIds, saveProfileCopy, savedProfileFor } from './offline/storage';
+import { isOfflineLeague, offlineLeagueIds, saveProfileCopy, savedProfileEntry } from './offline/storage';
+import { inApp } from './native/authSession';
 import { localLeagueList, offlineUserIdFor, runLocal } from './offline/localApi';
 import { loadRead, readKey, saveRead } from './offline/readCache';
 
@@ -109,6 +110,11 @@ if (!axios.__hoodLeagueInterceptors) {
         if (isApiRequest(config.url)) {
             config = routeOffline(config);
             if (config.offlineLocal) return config;
+            // Profile changes say where they came from, so the profile page can show "last saved from".
+            if (inApp() && String(config.method).toLowerCase() === 'post' && config.data && typeof config.data === 'object'
+                && /^(user-profile\/[^/]+|leagues\/[^/]+\/favorites)$/.test(apiPath(config).path)) {
+                config = { ...config, data: { ...config.data, savedFrom: 'app' } };
+            }
             const { data } = await sessionFor(config);
             const token = data?.session?.access_token;
             config.headers = config.headers || {};
@@ -127,9 +133,9 @@ if (!axios.__hoodLeagueInterceptors) {
                 if (!response.config.offlineLocal && !response.config.fromSavedCopy) {
                     const { path, query } = apiPath(response.config);
                     saveRead(readKey(response.config.method, path, query), response.data);
-                    if (path === 'user-profile') {
+                    if (path === 'user-profile' || /^user-profile\/[^/]+$/.test(path)) {
                         const body = requestBody(response.config);
-                        saveProfileCopy({ userId: response.data?.userId || body.userId, userDetails: body.displayName }, response.data);
+                        saveProfileCopy({ userId: response.data?.userId || body.userId, userDetails: response.data?.displayName || body.displayName }, response.data);
                     }
                 }
             }
@@ -140,8 +146,8 @@ if (!axios.__hoodLeagueInterceptors) {
             if (!error.response && error.config && isApiRequest(error.config.url) && !error.config.offlineLocal) {
                 const { path, query } = apiPath(error.config);
                 // A profile comes from this account's own saved copy, so it's never someone else's.
-                const ownProfile = path === 'user-profile' ? savedProfileFor(requestBody(error.config).userId) : null;
-                const saved = ownProfile ? { data: ownProfile, savedAt: 0 } : loadRead(readKey(error.config.method, path, query));
+                const ownProfile = path === 'user-profile' ? savedProfileEntry(requestBody(error.config).userId) : null;
+                const saved = ownProfile ? { data: ownProfile.profile, savedAt: ownProfile.savedAt } : loadRead(readKey(error.config.method, path, query));
                 if (saved) {
                     return {
                         data: saved.data,

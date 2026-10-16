@@ -105,7 +105,8 @@ export const saveProfileCopy = (user, profile) => {
   }
 };
 
-export const savedProfileFor = (userId) => (userId ? read(PROFILES_KEY, {})[userId]?.profile || null : null);
+export const savedProfileEntry = (userId) => (userId ? read(PROFILES_KEY, {})[userId] || null : null);
+export const savedProfileFor = (userId) => savedProfileEntry(userId)?.profile || null;
 
 /** Accounts with a saved profile on this phone, newest first: [{ user, savedAt }]. */
 export const savedProfiles = () => {

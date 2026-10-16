@@ -164,8 +164,14 @@ function normalizeProfile(profile: UserProfile): UserProfile {
   profile.budgetPlan = profile.budgetPlan ?? {};
   profile.budgetRosterSettings = profile.budgetRosterSettings ?? {};
   profile.handwriting = sanitizeHandwriting(profile.handwriting);
+  profile.lastSaved = profile.lastSaved?.at ? { at: profile.lastSaved.at, via: profile.lastSaved.via === 'app' ? 'app' : 'website' } : null;
   return profile;
 }
+
+/** Records a change the person made to their profile, and from where (the app sends savedFrom: 'app'). */
+const markSaved = (ctx: Ctx, profile: UserProfile, data: Body) => {
+  profile.lastSaved = { at: ctx.now().toISOString(), via: data.savedFrom === 'app' ? 'app' : 'website' };
+};
 
 const newProfile = (userId: string, displayName: string): UserProfile => ({
   id: userId,
@@ -199,6 +205,7 @@ const profileResponse = (profile: UserProfile) => {
     budgetPlan: p.budgetPlan,
     budgetRosterSettings: p.budgetRosterSettings,
     handwriting: p.handwriting,
+    lastSaved: p.lastSaved ?? null,
   };
 };
 
@@ -1426,6 +1433,7 @@ async function updateFavorites(ctx: Ctx, leagueId: string, data: Body): Promise<
 
   const profile = (await findProfile(ctx, userId)) ?? newProfile(userId, ctx.displayName || userId);
   profile.favoritePlayerIds = favoriteIds;
+  markSaved(ctx, profile, data);
   await ctx.profiles.upsert(normalizeProfile(profile));
 
   let leagueTeamSynced = false;
@@ -1525,6 +1533,7 @@ async function updateProfile(ctx: Ctx, pathUserId: string, data: Body): Promise<
     profile.budgetRosterSettings = settings;
   }
 
+  markSaved(ctx, profile, data);
   await ctx.profiles.upsert(normalizeProfile(profile));
 
   if (Array.isArray(data.favoritePlayerIds)) {

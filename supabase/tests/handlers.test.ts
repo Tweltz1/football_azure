@@ -304,6 +304,11 @@ test('profiles: create, update own only, favorites sync to league teams', async 
   assert.deepEqual((updated.body as any).favoritePlayerIds, ['a', 'b']);
   assert.deepEqual((updated.body as any).playerTiers, { b: 2 });
   assert.deepEqual((updated.body as any).budgetPlan, { QB: 200 });
+  assert.equal((updated.body as any).lastSaved.via, 'website');
+  assert.equal((profile.body as any).lastSaved, null);
+  const fromApp = await world.call('bob', 'POST', 'user-profile/bob', { playerNotes: { a: 'stud' }, savedFrom: 'app' });
+  assert.equal((fromApp.body as any).lastSaved.via, 'app');
+  assert.ok((fromApp.body as any).lastSaved.at);
   assert.deepEqual(world.league(leagueId).teams.find((t) => t.ownerId === 'bob')!.favoritePlayerIds, ['a', 'b']);
 
   const fav = await world.call('bob', 'POST', `leagues/${leagueId}/favorites`, { playerIds: ['z'] });

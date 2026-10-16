@@ -157,6 +157,8 @@ export interface UserProfile {
   budgetRosterSettings: Record<string, number>;
   /** Labelled digits from the user's awarded whiteboard bids (see handwriting.ts). Written by the server only. */
   handwriting?: Record<string, number[][][]>;
+  /** When and where the profile was last changed: 'app' (iPhone app) or 'website'. */
+  lastSaved?: { at: string; via: 'app' | 'website' } | null;
 }
 
 export const defaultRosterSettings = (): RosterSettings => ({
