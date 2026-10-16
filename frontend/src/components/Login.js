@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { signIn } from '../AuthContext';
 import '../App.css';
 import ClimbBackdrop from './ClimbBackdrop';
+import CrewIntro, { introSeen } from './CrewIntro';
 import useOnline from '../offline/useOnline';
 import OfflineDraftStart from '../help/OfflineDraftStart';
 import { nearbySupported } from '../offline/nearbyDraft';
@@ -10,6 +11,7 @@ import { chooseSavedUser, clearSignedOut, guestUser, offlineUser, savedProfiles 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
   const online = useOnline();
+  const [showIntro, setShowIntro] = useState(() => !introSeen());
   // After Logout, whoever's drafts are saved on this phone can get back to them, even with no internet.
   const savedUser = offlineUser() || guestUser();
   const continueAsSaved = () => {
@@ -25,6 +27,7 @@ const Login = () => {
   return (
     <main className="login-page">
       <ClimbBackdrop />
+      {showIntro && <CrewIntro onDone={() => setShowIntro(false)} />}
       <section className="login-hero">
         <div>
           <p className="page-kicker">Auction draft night</p>
@@ -52,6 +55,7 @@ const Login = () => {
             <button type="button" onClick={() => signIn('github')}>Login with GitHub</button>
             <button type="button" className="edit-roster-button" onClick={() => signIn('google')}>Login with Google</button>
           </div>
+          <button type="button" className="crew-intro-replay" onClick={() => setShowIntro(true)}>Meet the crew</button>
           {savedUser && (
             <div className="login-offline">
               <p>Drafts saved on this phone belong to {savedUser.userDetails || 'you'}.</p>
