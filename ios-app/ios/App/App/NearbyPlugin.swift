@@ -124,6 +124,17 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
         let name = call.getString("name") ?? "Player"
         let room = call.getString("room") ?? ""
         DispatchQueue.main.async {
+            // Already connected to this room (the page reloads after joining): keep the connection
+            // and tell the page who is connected, instead of dropping it and searching again.
+            if !self.scanning, self.advertiser == nil, self.browser != nil, self.roomCode == room,
+               let peer = self.myPeer, peer.displayName == String(name.prefix(60)), !self.connectedPeers.isEmpty {
+                call.resolve(["peerId": self.key(peer), "reused": true])
+                for p in self.connectedPeers {
+                    self.notifyListeners("peerState", data: ["peerId": self.key(p), "name": p.displayName, "state": "connected"])
+                }
+                self.status("Still connected to room \(room).")
+                return
+            }
             self.start(name: name, room: room)
             guard let peer = self.myPeer else { return call.reject("Could not start") }
             let br = MCNearbyServiceBrowser(peer: peer, serviceType: NearbyPlugin.serviceType)

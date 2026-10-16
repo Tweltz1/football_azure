@@ -20,7 +20,9 @@ const NearbyJoin = ({ user }) => {
   useEffect(() => watchNearby((s) => setRadio(s.log || [])), []);
   // Like AirDrop: list drafts hosted on nearby phones until one is picked.
   const scanning = !lobby && !busy;
-  useEffect(() => (scanning ? scanForDrafts(user, setHosts) : undefined), [scanning, user]);
+  const scanName = user?.userDetails || name || 'Player';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => (scanning ? scanForDrafts({ userDetails: scanName }, setHosts) : undefined), [scanning]);
   if (!nearbySupported()) return null;
 
   const find = async (event, room = code) => {

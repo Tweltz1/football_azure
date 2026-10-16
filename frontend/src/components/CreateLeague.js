@@ -97,7 +97,7 @@ const CreateLeague = ({ userId }) => {
         </div>
       </section>
 
-      <OfflineNotice action="A league you make now is saved on this phone, and you upload it once you have internet." />
+      <OfflineNotice joinOnly action="A league you make now is saved on this phone, and you upload it once you have internet." />
 
       <section className="card">
         <form onSubmit={handleCreateLeague}>

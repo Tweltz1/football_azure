@@ -331,10 +331,11 @@ const scanChanged = () => onScanChange?.([...scanHosts.values()].filter((h) => /
 /**
  * Player: list drafts hosted on nearby phones, like AirDrop. Calls onChange with the list whenever it changes;
  * tap one to join with findDraftByCode(host.room). Returns a function that stops looking.
- * Not while this phone is hosting (scanning would stop the room).
+ * Not while players are connected to a room this phone hosts (scanning stops the room; the draft page
+ * starts hosting again when it opens).
  */
 export const scanForDrafts = (user, onChange) => {
-  if (!transport?.scan || role?.kind === 'host') return () => {};
+  if (!transport?.scan || (role?.kind === 'host' && (peerUsers.size || guests.size))) return () => {};
   scanHosts = new Map();
   onScanChange = onChange;
   role = null;
@@ -402,11 +403,23 @@ const onPeerState = ({ peerId, state }) => {
   if (state === 'connected') {
     hostPeers.add(peerId);
     if (role.guest) send({ t: 'guest-hello', userId: role.userId, name: role.guest.name }, [peerId]);
-    else send({ t: 'hello', userId: role.userId, leagueId: role.leagueId }, [peerId]);
+    else {
+      send({ t: 'hello', userId: role.userId, leagueId: role.leagueId }, [peerId]);
+      refreshFromHost(role.leagueId);
+    }
     notify();
   } else if (state === 'disconnected' && hostPeers.delete(peerId)) {
     notify();
   }
+};
+
+// Player: once connected (or reconnected), show the commissioner's latest copy of the draft.
+const refreshFromHost = (leagueId) => {
+  setTimeout(async () => {
+    if (role?.kind !== 'player' || role.leagueId !== leagueId) return;
+    const res = await runLocal('GET', `leagues/${leagueId}/state`, new URLSearchParams(), undefined, role.userId).catch(() => null);
+    if (res?.status === 200 && res.body) deliverLocal(leagueId, 'draftStateUpdate', res.body);
+  }, 0);
 };
 
 /** Connects the module to a transport (the native plugin by default; tests pass a stand-in). */

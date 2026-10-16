@@ -77,6 +77,11 @@ const NearbyDraftPanel = ({ league, user }) => {
   useEffect(() => {
     if (ticket) joinNearby(leagueId);
   }, [ticket, leagueId]);
+  // The commissioner's phone hosts whenever its draft page is open, with no extra tap.
+  const hostCopy = leagueId ? !!readOfflineLeague(leagueId)?.nearbyHost : false;
+  useEffect(() => {
+    if (hostCopy && nearby.role !== 'host') startHosting(leagueId, user || {}).catch(() => {});
+  }, [hostCopy, nearby.role, leagueId, user]);
 
   if (!nearbySupported() || !league || !user?.userId) return null;
 
