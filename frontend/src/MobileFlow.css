@@ -512,3 +512,9 @@
     scroll-margin-top: 10px;
   }
 }
+
+/* Keep the top bar below the phone's clock and notch when the page fills the whole screen
+   (the iPhone app and the home-screen app). Zero in a normal browser tab. */
+.top-nav {
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+}
