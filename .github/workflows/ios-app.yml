@@ -59,7 +59,7 @@ jobs:
             # Same public key the live site ships with; read it from hood-league.com.
             JS=$(curl -fsSL https://hood-league.com/ | grep -oE '/static/js/main\.[a-z0-9]+\.js' | head -1)
             KEY=$(curl -fsSL "https://hood-league.com$JS" | grep -oE 'eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sb_publishable_[A-Za-z0-9_-]+' | head -1)
-            echo "REACT_APP_SUPABASE_ANON_KEY=$KEY" >> "$GITHUB_ENV"
+            if [ -z "$KEY" ]; then echo "::error::Couldn't read the site key from hood-league.com"; exit 1; fi
             export REACT_APP_SUPABASE_ANON_KEY="$KEY"
           fi
           npm ci --no-audit --no-fund
@@ -140,7 +140,7 @@ jobs:
           ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY }}
         run: |
-          for v in APPLE_TEAM_ID KEY_ID ISSUER_ID KEY_P8 REACT_APP_SUPABASE_ANON_KEY; do
+          for v in APPLE_TEAM_ID KEY_ID ISSUER_ID KEY_P8; do
             if [ -z "${!v}" ]; then echo "::error::Missing secret for $v"; exit 1; fi
           done
           KEY_PATH="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
