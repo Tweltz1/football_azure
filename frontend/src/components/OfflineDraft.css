@@ -96,3 +96,8 @@
 
 .nearby-cohost { display: grid; gap: 0.35rem; margin-top: 0.75rem; font-size: 0.9rem; }
 .nearby-cohost select { max-width: 100%; }
+
+.nearby-paused { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: rgba(5, 6, 10, 0.82); }
+.nearby-paused-card { display: grid; gap: 0.6rem; max-width: 420px; width: 100%; padding: 20px; border-radius: 16px; background: var(--surface, #15171e); border: 1px solid var(--border, #2a2d38); text-align: center; }
+.nearby-paused-card strong { font-size: 1.3rem; }
+.nearby-paused-card p { margin: 0; }

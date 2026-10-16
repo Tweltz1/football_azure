@@ -25,6 +25,7 @@
 //   host -> co-host { t: 'mirror', leagueId, league, meta }   the co-host's copy, to take over from
 //   back -> acting  { t: 'reclaim', leagueId, userId }        the commissioner's phone is back
 //   acting -> back  { t: 'handback', leagueId, league, version }
+//   host -> players { t: 'pause', leagueId, waitingFor: [team names] }  paused until those phones are back
 //
 // Co-host: when the league has one (league.cohostId), the commissioner's phone keeps a copy of the draft on
 // the co-host's phone (as the co-host may see it, so never anyone else's sealed bid). If the commissioner's
@@ -39,7 +40,7 @@ import { deliverLocal, forgetLeague } from '../realtime';
 import { isAvailable, Nearby } from '../native/nearby';
 import { setBroadcastTap, setRemoteRunner, runLocal } from './localApi';
 import {
-  offlineLeagueIds, offlineUser, readOfflineLeague, rememberName, rememberOfflineUser, removeOfflineLeague, writeOfflineLeague,
+  nameFor, offlineLeagueIds, offlineUser, readOfflineLeague, rememberName, rememberOfflineUser, removeOfflineLeague, writeOfflineLeague,
 } from './storage';
 
 const CONNECT_WAIT_MS = 15000;
@@ -73,6 +74,8 @@ const status = () => ({
   connected: role?.kind === 'host' ? true : hostPeers.size > 0,
   acting: role?.kind === 'host' && !!readOfflineLeague(role.leagueId)?.actingHost,
   checking: !!role?.checking || !!role?.reclaim,
+  // Team names whose phones dropped mid-draft; the draft is paused until they're back.
+  waitingFor: role?.kind === 'host' ? waitingNames() : (role?.kind === 'player' ? pauseNotice : []),
   log: radioLog,
 });
 
@@ -163,6 +166,8 @@ const welcome = async (peerId, guest, choice) => {
   }
   guests.delete(peerId);
   peerUsers.set(peerId, guest.userId);
+  seenUsers.add(guest.userId);
+  checkDropped();
   notify();
   const state = await runLocal('GET', `leagues/${leagueId}/state`, new URLSearchParams(), undefined, guest.userId);
   send({ t: 'welcome', leagueId, league: state.body }, [peerId]);
@@ -174,8 +179,10 @@ const onHostMessage = ({ peerId, data }) => {
   if (msg.t === 'hello' && msg.leagueId === role.leagueId && typeof msg.userId === 'string') {
     peerUsers.set(peerId, msg.userId);
     hostHadPlayers = true;
+    seenUsers.add(msg.userId);
     notify();
     mirrorToCohost();
+    checkDropped();
   } else if (msg.t === 'reclaim' && msg.leagueId === role.leagueId) {
     handBack(peerId, msg).catch(() => {});
   } else if (msg.t === 'guest-hello' && typeof msg.userId === 'string') {
@@ -227,6 +234,11 @@ export const startHosting = async (leagueId, user, { checkFirst = true } = {}) =
     }
   }
   hostHadPlayers = false;
+  // Still waiting for a phone that dropped before the app closed: keep waiting for it.
+  waitingFor = Array.isArray(entry?.waitingFor) ? [...entry.waitingFor] : [];
+  seenUsers = new Set(waitingFor);
+  autoPaused = waitingFor.length > 0;
+  lastNotice = '[]';
   role = { kind: 'host', leagueId, userId: user?.userId };
   peerUsers.clear();
   guests.clear();
@@ -258,6 +270,9 @@ const onPlayerMessage = ({ data }) => {
   } else if (msg.t === 'mirror' && msg.leagueId === role?.leagueId && !role.reclaim && msg.league) {
     const entry = readOfflineLeague(msg.leagueId);
     if (entry?.remote) writeOfflineLeague(msg.leagueId, { ...entry, mirror: { league: msg.league, meta: msg.meta || {} } });
+  } else if (msg.t === 'pause' && msg.leagueId === role?.leagueId) {
+    pauseNotice = Array.isArray(msg.waitingFor) ? msg.waitingFor.map(String) : [];
+    notify();
   } else if (msg.t === 'handback' && role?.reclaim && msg.leagueId === role.leagueId && msg.league) {
     role.reclaim.onHandback(msg);
   }
@@ -435,7 +450,10 @@ export const nearbySupported = () => !!transport;
 
 const onPeerState = ({ peerId, state }) => {
   if (role?.kind === 'host') {
-    if (state === 'disconnected' && peerUsers.delete(peerId)) notify();
+    if (state === 'disconnected' && peerUsers.delete(peerId)) {
+      notify();
+      checkDropped();
+    }
     return;
   }
   if (role?.kind !== 'player') return;
@@ -451,6 +469,87 @@ const onPeerState = ({ peerId, state }) => {
   } else if (state === 'disconnected' && hostPeers.delete(peerId)) {
     notify();
   }
+};
+
+// ---- Auto-pause: a phone dropped mid-draft ------------------------------------------------------
+
+let seenUsers = new Set(); // host: players who connected while this phone hosted
+let waitingFor = []; // host: players whose phones dropped mid-draft
+let autoPaused = false; // host: the draft is paused because of them (not by the commissioner)
+let pauseNotice = []; // player: the host's list of who everyone is waiting for
+const TIMED = new Set(['drafting', 'tiebreaker', 'intermission']);
+
+function waitingNames() {
+  const league = role?.leagueId ? readOfflineLeague(role.leagueId)?.league : null;
+  return waitingFor.map((userId) => (league?.teams || []).find((t) => t?.ownerId === userId)?.name || nameFor(userId) || 'A player');
+}
+
+const setPaused = async (leagueId, paused) => {
+  const entry = readOfflineLeague(leagueId);
+  const timer = entry?.league?.auctionTimer;
+  if (!timer || !!timer.isPaused === paused) return false;
+  const res = await runLocal('POST', `leagues/${leagueId}/pause`, new URLSearchParams(), {}, entry.userId).catch(() => null);
+  return res?.status === 200;
+};
+
+// Kept with the draft so an app restart still knows the pause was for a dropped phone.
+const rememberWaiting = (leagueId) => {
+  const entry = readOfflineLeague(leagueId);
+  const now = JSON.stringify(entry?.waitingFor || []);
+  if (entry && now !== JSON.stringify(waitingFor)) writeOfflineLeague(leagueId, { ...entry, waitingFor: [...waitingFor] });
+};
+
+let lastNotice = '[]';
+const sendPauseNotice = () => {
+  const names = waitingNames();
+  const text = JSON.stringify(names);
+  const to = [...peerUsers.keys()];
+  if (text === lastNotice || !to.length) return;
+  lastNotice = text;
+  send({ t: 'pause', leagueId: role.leagueId, waitingFor: names }, to);
+};
+
+// Host: pause while a player's phone is gone, and carry on once everyone's back.
+let checking = false;
+const checkDropped = async () => {
+  if (role?.kind !== 'host' || checking) return;
+  checking = true;
+  try {
+    const leagueId = role.leagueId;
+    const league = readOfflineLeague(leagueId)?.league;
+    if (!league) return;
+    const connected = new Set(peerUsers.values());
+    const owners = new Set((league.teams || []).filter(Boolean).map((t) => t.ownerId));
+    const missing = [...seenUsers].filter((userId) => owners.has(userId) && !connected.has(userId));
+    const timed = TIMED.has(String(league.status || '').toLowerCase());
+    if (missing.length && timed && !league.auctionTimer?.isPaused && (await setPaused(leagueId, true))) autoPaused = true;
+    if (!missing.length && autoPaused) {
+      autoPaused = false;
+      await setPaused(leagueId, false);
+    }
+    waitingFor = autoPaused ? missing : [];
+    rememberWaiting(leagueId);
+    if (role?.kind === 'host') {
+      sendPauseNotice();
+      notify();
+    }
+  } finally {
+    checking = false;
+  }
+};
+
+/** Commissioner: a phone is acting up, so stop waiting for it and carry on (it rejoins whenever it's back). */
+export const keepDraftingWithout = async () => {
+  if (role?.kind !== 'host') return;
+  waitingFor.forEach((userId) => seenUsers.delete(userId));
+  waitingFor = [];
+  rememberWaiting(role.leagueId);
+  if (autoPaused) {
+    autoPaused = false;
+    await setPaused(role.leagueId, false);
+  }
+  sendPauseNotice();
+  notify();
 };
 
 // ---- Co-host takeover --------------------------------------------------------------------------
@@ -600,6 +699,7 @@ let hostLostAt = null;
 let playersLostAt = null;
 const watchHost = () => {
   if (!transport) return;
+  if (role?.kind === 'host') checkDropped();
   if (role?.kind === 'player' && role.leagueId && !role.reclaim && !role.guest) {
     const entry = readOfflineLeague(role.leagueId);
     // Only the current co-host takes over (a copy from before the commissioner picked someone else doesn't count).
@@ -667,6 +767,11 @@ export const resetNearby = () => {
   hostLostAt = null;
   playersLostAt = null;
   hostHadPlayers = false;
+  seenUsers = new Set();
+  waitingFor = [];
+  autoPaused = false;
+  pauseNotice = [];
+  lastNotice = '[]';
 };
 
 /** For tests: run the co-host checks now. */

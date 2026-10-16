@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import { readOfflineLeague, saveLeagueToDevice } from '../offline/offlineSync';
 import {
-  bidForTeam, isNearbyTicket, joinNearby, leaveNearbyDraft, nearbySupported, roomFor, saveNearbyTicket, startHosting, watchNearby,
+  bidForTeam, isNearbyTicket, joinNearby, keepDraftingWithout, leaveNearbyDraft, nearbySupported, roomFor, saveNearbyTicket, startHosting, watchNearby,
 } from '../offline/nearbyDraft';
 import './OfflineDraft.css';
 
@@ -67,6 +67,19 @@ const AbsentTeamBid = ({ league, connectedUserIds }) => {
   );
 };
 
+/** Everyone sees this while the draft waits for a phone that dropped (or, on a player's phone, for the host). */
+const PausedCover = ({ title, text, children }) => (
+  <div className="nearby-paused" role="alertdialog" aria-live="assertive" aria-label={title}>
+    <div className="nearby-paused-card">
+      <strong>{title}</strong>
+      <p>{text}</p>
+      {children}
+    </div>
+  </div>
+);
+
+const namesText = (names) => (names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+
 /** Commissioner's phone: pick a co-host whose phone takes over if this one drops. */
 const CohostPicker = ({ league }) => {
   const [note, setNote] = useState(null);
@@ -102,6 +115,9 @@ const NearbyDraftPanel = ({ league, user }) => {
   const ticket = leagueId ? isNearbyTicket(leagueId) : false;
 
   useEffect(() => watchNearby(setNearby), []);
+  // Only show "lost the commissioner's phone" after this phone was connected to it once.
+  const [hadHost, setHadHost] = useState(false);
+  useEffect(() => { if (nearby.connected && nearby.role === 'player') setHadHost(true); }, [nearby.connected, nearby.role]);
   useEffect(() => {
     if (ticket) joinNearby(leagueId);
   }, [ticket, leagueId]);
@@ -152,6 +168,16 @@ const NearbyDraftPanel = ({ league, user }) => {
               <button type="button" className="create-button" onClick={() => startHosting(league.id, user)}>Start hosting</button>
             </div>
           )}
+          {nearby.role === 'host' && nearby.waitingFor?.length > 0 && (
+            <PausedCover
+              title="Draft paused"
+              text={`Waiting for ${namesText(nearby.waitingFor)} to reconnect. It carries on by itself once they're back.`}
+            >
+              <button type="button" className="edit-roster-button" onClick={() => keepDraftingWithout()}>
+                Keep drafting without them
+              </button>
+            </PausedCover>
+          )}
           {nearby.role === 'host' && <AbsentTeamBid league={league} connectedUserIds={nearby.connectedUserIds} />}
           {!saved.actingHost && league.adminId === user.userId && <CohostPicker league={league} />}
         </section>
@@ -196,6 +222,19 @@ const NearbyDraftPanel = ({ league, user }) => {
               ? 'Connected to the commissioner\'s phone. Bid as usual.'
               : 'Looking for the commissioner\'s phone. Stay close to it and keep this screen open.'}
           </p>
+          {nearby.waitingFor?.length > 0 && nearby.connected && (
+            <PausedCover title="Draft paused" text={`Waiting for ${namesText(nearby.waitingFor)} to reconnect. The commissioner can carry on without them.`} />
+          )}
+          {!nearby.connected && hadHost && (
+            <PausedCover
+              title="Draft paused"
+              text={league.cohostId === user.userId
+                ? 'Lost the commissioner\'s phone. If it isn\'t back in 20 seconds, this phone takes over the draft.'
+                : 'Lost the commissioner\'s phone. Stay close and keep this screen open; it reconnects by itself.'}
+            >
+              <button type="button" className="link-button" onClick={() => setHadHost(false)}>Hide for now</button>
+            </PausedCover>
+          )}
           {league.cohostId === user.userId && (
             <p>You're the co-host. If the commissioner's phone drops for 20 seconds, this phone takes over the draft until it comes back.</p>
           )}

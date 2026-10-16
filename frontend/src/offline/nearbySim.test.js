@@ -123,9 +123,17 @@ test('a full nearby draft: blind bids, ties, late bids, a dropped phone, a resta
   expect(l.teams.find((t) => t.ownerId === 'u4').roster.map((p) => p.player.id)).toEqual([p2]);
   expect(l.draftLog).toHaveLength(2);
 
-  // ---- A player's phone drops out (dead battery): the host notices and the draft carries on.
+  // ---- A player's phone drops out (dead battery): the host notices and pauses for everyone until it's back;
+  // the commissioner decides to carry on without it.
   air.powerOff('P-u4');
   expect(hostStatus.players).toBe(2);
+  await sleep(50);
+  expect(storages.admin.readOfflineLeague(id).league.auctionTimer.isPaused).toBe(true);
+  const u4Name = storages.admin.readOfflineLeague(id).league.teams.find((t) => t.ownerId === 'u4').name;
+  expect(hostStatus.waitingFor).toEqual([u4Name]);
+  await phones.admin.nearby.keepDraftingWithout();
+  expect(storages.admin.readOfflineLeague(id).league.auctionTimer.isPaused).toBe(false);
+  expect(hostStatus.waitingFor).toEqual([]);
 
   // ---- The commissioner's app closes and reopens: the draft is still on the phone and hosting resumes.
   const before = storages.admin.readOfflineLeague(id).league.draftLog.length;
