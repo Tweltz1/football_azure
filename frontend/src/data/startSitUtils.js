@@ -210,7 +210,10 @@ export const defenseMatchup = (player, defense, scoring) => {
     opponent: player.opponent,
     position: player.position,
     games: row.games,
-    rankLabel: `${ordinal(row.rank)} most points allowed to ${player.position}s of ${row.teams}`,
+    // Rank 1 gives up the most points, so a high rank reads better as "fewest" (29th of 32 = 4th fewest).
+    rankLabel: row.rank <= row.teams / 2
+      ? `${ordinal(row.rank)} most points allowed to ${player.position}s, of ${row.teams} teams`
+      : `${ordinal(row.teams - row.rank + 1)} fewest points allowed to ${player.position}s, of ${row.teams} teams`,
     // Other teams' lead player at this position in each recent game against this defense, newest first.
     notable: (row.recentGames || [])
       .filter((game) => game.id !== player.id)

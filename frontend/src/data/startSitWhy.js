@@ -168,7 +168,7 @@ const compareFactors = (a, b) => {
       label: 'Matchup',
       start: matchupText(a),
       sit: matchupText(b),
-      detail: [a, b].map((p) => (p.matchup ? p.matchup.rankLabel.replace(' most points allowed to', ' most allowed to') : null)),
+      detail: [a, b].map((p) => (p.matchup ? p.matchup.rankLabel.replace(' points allowed to', ' allowed to') : null)),
       edge: a.matchup && b.matchup ? edgeBy(a.matchup.verdictRank, b.matchup.verdictRank, 5, false) : 'even',
     });
   }
