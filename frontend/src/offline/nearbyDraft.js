@@ -9,8 +9,16 @@
 // The auction stays blind: a bid's reply (which shows that bidder's own bid) goes back to the bidder
 // only, and the live updates sent to everyone never carry bids.
 //
+// Players who never set up (or are guests with no account, or rejoin from another phone) type the
+// commissioner's 4-digit room code instead: the host answers with the league's teams ('lobby'), the player
+// picks a new team or an existing team that isn't connected ('pick'), and gets a ticket back ('welcome').
+//
 // Messages (JSON):
 //   player -> host  { t: 'hello', userId, leagueId }
+//   player -> host  { t: 'guest-hello', userId, name }
+//   host -> player  { t: 'lobby', leagueId, leagueName, status, mine, teams: [{ id, name, open }], canAdd }
+//   player -> host  { t: 'pick', choice: 'new' | 'mine' | teamId }
+//   host -> player  { t: 'welcome', leagueId, league } or { t: 'welcome', error }
 //   player -> host  { t: 'req', id, leagueId, method, path, query, body }
 //   host -> player  { t: 'res', id, status, body, headers }
 //   host -> players { t: 'bc', leagueId, event, payload, toUserId }
@@ -20,7 +28,9 @@ import { API_BASE_URL } from '../api';
 import { deliverLocal, forgetLeague } from '../realtime';
 import { isAvailable, Nearby } from '../native/nearby';
 import { setBroadcastTap, setRemoteRunner, runLocal } from './localApi';
-import { offlineLeagueIds, offlineUser, readOfflineLeague, rememberOfflineUser, removeOfflineLeague, writeOfflineLeague } from './storage';
+import {
+  offlineLeagueIds, offlineUser, readOfflineLeague, rememberName, rememberOfflineUser, removeOfflineLeague, writeOfflineLeague,
+} from './storage';
 
 const CONNECT_WAIT_MS = 15000;
 const REPLY_WAIT_MS = 20000;
@@ -39,8 +49,16 @@ const status = () => ({
   role: role?.kind || null,
   leagueId: role?.leagueId || null,
   players: role?.kind === 'host' ? peerUsers.size : 0,
+  connectedUserIds: role?.kind === 'host' ? [...new Set(peerUsers.values())] : [],
   connected: role?.kind === 'host' ? true : hostPeers.size > 0,
 });
+
+/** The 4-digit code players type to find this league's draft nearby (the same on every phone). */
+export const roomFor = (leagueId) => {
+  let hash = 0;
+  for (const ch of String(leagueId || '')) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return String(1000 + (hash % 9000));
+};
 const notify = () => watchers.forEach((fn) => fn(status()));
 
 /** Calls fn with { role, leagueId, players, connected } whenever it changes. Returns an unsubscribe. */
@@ -78,15 +96,85 @@ const answer = async (peerId, msg) => {
   send({ t: 'res', id: msg.id, status: result.status, body: result.body, headers: result.headers }, [peerId]);
 };
 
+const guests = new Map(); // host: peerId -> { userId, name } still picking a team
+
+const hostLeague = () => readOfflineLeague(role.leagueId)?.league || null;
+const hostUserId = () => readOfflineLeague(role.leagueId)?.userId || role.userId;
+
+const lobbyFor = (userId) => {
+  const league = hostLeague();
+  if (!league) return null;
+  const connected = new Set([...peerUsers.values(), league.adminId]);
+  const teams = (league.teams || []).filter(Boolean);
+  const mine = teams.find((team) => team.ownerId === userId);
+  return {
+    t: 'lobby',
+    leagueId: league.id,
+    leagueName: league.name,
+    status: league.status,
+    mine: mine ? { id: mine.id, name: mine.name } : null,
+    teams: teams.map((team) => ({ id: team.id, name: team.name, open: !mine && !connected.has(team.ownerId) })),
+    canAdd: !mine && String(league.status || '').toLowerCase() !== 'completed' && league.draftMode !== 'manual',
+  };
+};
+
+const welcome = async (peerId, guest, choice) => {
+  const leagueId = role.leagueId;
+  let error = null;
+  if (choice === 'new') {
+    const joined = await runLocal('POST', 'JoinLeague', new URLSearchParams(), { leagueId }, guest.userId);
+    if (joined.status !== 200 && joined.status !== 409) error = joined.body || 'Could not add your team.';
+  } else if (choice !== 'mine') {
+    // Rejoining as a team whose phone dropped out: the commissioner's phone hands that team to this phone.
+    const lobby = lobbyFor(guest.userId);
+    if (!lobby?.teams.some((team) => team.id === choice && team.open)) {
+      error = 'That team is connected on another phone right now.';
+    } else {
+      const moved = await runLocal('POST', `leagues/${leagueId}/reassign-team`, new URLSearchParams(), { teamId: choice, userId: guest.userId }, hostUserId());
+      if (moved.status !== 200) error = moved.body || 'Could not move that team to this phone.';
+    }
+  }
+  if (error) {
+    send({ t: 'welcome', error: String(error) }, [peerId]);
+    return;
+  }
+  guests.delete(peerId);
+  peerUsers.set(peerId, guest.userId);
+  notify();
+  const state = await runLocal('GET', `leagues/${leagueId}/state`, new URLSearchParams(), undefined, guest.userId);
+  send({ t: 'welcome', leagueId, league: state.body }, [peerId]);
+};
+
 const onHostMessage = ({ peerId, data }) => {
   let msg;
   try { msg = JSON.parse(data); } catch (error) { return; }
   if (msg.t === 'hello' && msg.leagueId === role.leagueId && typeof msg.userId === 'string') {
     peerUsers.set(peerId, msg.userId);
     notify();
+  } else if (msg.t === 'guest-hello' && typeof msg.userId === 'string') {
+    const guest = { userId: msg.userId, name: String(msg.name || 'Player').slice(0, 40) };
+    rememberName(guest.userId, guest.name);
+    guests.set(peerId, guest);
+    const lobby = lobbyFor(guest.userId);
+    if (lobby) send(lobby, [peerId]);
+  } else if (msg.t === 'pick' && guests.has(peerId)) {
+    welcome(peerId, guests.get(peerId), String(msg.choice || '')).catch((error) => {
+      send({ t: 'welcome', error: error?.message || 'Something went wrong on the commissioner\'s phone.' }, [peerId]);
+    });
   } else if (msg.t === 'req') {
     answer(peerId, msg);
   }
+};
+
+/**
+ * Commissioner: bid for a team whose phone died or dropped out (the player tells the commissioner their bid).
+ * Works in the auction and in a tie-breaker.
+ */
+export const bidForTeam = async (leagueId, ownerId, amount) => {
+  const league = readOfflineLeague(leagueId)?.league;
+  const action = String(league?.status || '').toLowerCase() === 'tiebreaker' ? 'tiebreaker-bid' : 'bid';
+  const result = await runLocal('POST', `leagues/${leagueId}/${action}`, new URLSearchParams(), { amount: Number(amount) }, ownerId);
+  if (result.status !== 200) throw new Error(typeof result.body === 'string' && result.body ? result.body : 'That bid did not go through.');
 };
 
 const hostTap = (leagueId, event, payload, toUserId) => {
@@ -100,7 +188,8 @@ export const startHosting = async (leagueId, user) => {
   if (!transport || role?.kind === 'host') return;
   role = { kind: 'host', leagueId, userId: user?.userId };
   peerUsers.clear();
-  await transport.host({ name: user?.userDetails || 'Commissioner', room: leagueId });
+  guests.clear();
+  await transport.host({ name: user?.userDetails || 'Commissioner', room: roomFor(leagueId) });
   notify();
 };
 
@@ -109,7 +198,12 @@ export const startHosting = async (leagueId, user) => {
 const onPlayerMessage = ({ data }) => {
   let msg;
   try { msg = JSON.parse(data); } catch (error) { return; }
-  if (msg.t === 'res' && pending.has(msg.id)) {
+  if (msg.t === 'lobby' && role?.guest) {
+    role.guest.lobby = msg;
+    role.guest.onLobby?.(msg);
+  } else if (msg.t === 'welcome' && role?.guest?.onWelcome) {
+    role.guest.onWelcome(msg);
+  } else if (msg.t === 'res' && pending.has(msg.id)) {
     const { resolve, timer } = pending.get(msg.id);
     clearTimeout(timer);
     pending.delete(msg.id);
@@ -125,7 +219,7 @@ const ensureJoined = (leagueId) => {
   if (role?.kind === 'player' && role.leagueId === leagueId) return joining;
   role = { kind: 'player', leagueId, userId: entry?.userId };
   hostPeers = new Set();
-  joining = transport.join({ name: entry?.userName || 'Player', room: leagueId }).catch((error) => {
+  joining = transport.join({ name: entry?.userName || 'Player', room: roomFor(leagueId) }).catch((error) => {
     role = null; // try again on the next call
     throw error;
   });
@@ -182,6 +276,64 @@ export const saveNearbyTicket = async (leagueId, user) => {
   rememberOfflineUser(user);
 };
 
+const GUEST_WAIT_MS = 20000;
+
+/**
+ * Player with no setup: find the draft with this room code. Resolves with the lobby
+ * ({ leagueName, status, mine, teams, canAdd }) once the commissioner's phone answers.
+ */
+export const findDraftByCode = async (code, user) => {
+  if (!transport) throw new Error('Nearby drafts work in the Hood League iPhone app.');
+  const room = String(code || '').replace(/\D/g, '');
+  if (room.length !== 4) throw new Error('Enter the 4-digit code from the commissioner\'s phone.');
+  await transport.stop().catch(() => {});
+  return lookForRoom(room, user);
+};
+
+const lookForRoom = (room, user) => new Promise((resolve, reject) => {
+  hostPeers = new Set();
+  const timer = setTimeout(() => {
+    reject(new Error('No draft found with that code. Check the code, stay close to the commissioner\'s phone, and make sure Wi-Fi and Bluetooth are on.'));
+  }, GUEST_WAIT_MS);
+  role = {
+    kind: 'player',
+    leagueId: null,
+    userId: user.userId,
+    guest: { name: user.userDetails || 'Player', onLobby: (lobby) => { clearTimeout(timer); resolve(lobby); } },
+  };
+  joining = transport.join({ name: user.userDetails || 'Player', room }).catch((error) => {
+    clearTimeout(timer);
+    role = null;
+    reject(error);
+  });
+  notify();
+});
+
+/** Player: after findDraftByCode, take a team ('new', 'mine', or an open team's id). Resolves with the league ID. */
+export const pickDraftTeam = (choice, user) => new Promise((resolve, reject) => {
+  if (!role?.guest?.lobby) { reject(new Error('Find the draft first.')); return; }
+  const timer = setTimeout(() => reject(new Error('The commissioner\'s phone didn\'t answer. Try again.')), REPLY_WAIT_MS);
+  role.guest.onWelcome = (msg) => {
+    clearTimeout(timer);
+    role.guest.onWelcome = null;
+    if (msg.error || !msg.leagueId) { reject(new Error(msg.error || 'Could not join the draft.')); return; }
+    writeOfflineLeague(msg.leagueId, {
+      league: msg.league,
+      version: msg.league?._version || 0,
+      savedAt: new Date().toISOString(),
+      userId: user.userId,
+      userName: user.userDetails || 'Player',
+      remote: true,
+    });
+    rememberOfflineUser(user);
+    role = { kind: 'player', leagueId: msg.leagueId, userId: user.userId };
+    joining = Promise.resolve();
+    notify();
+    resolve(msg.leagueId);
+  };
+  send({ t: 'pick', choice }, [...hostPeers]);
+});
+
 export const leaveNearbyDraft = (leagueId) => {
   if (role?.leagueId === leagueId) {
     transport?.stop().catch(() => {});
@@ -211,7 +363,8 @@ const onPeerState = ({ peerId, state }) => {
   if (role?.kind !== 'player') return;
   if (state === 'connected') {
     hostPeers.add(peerId);
-    send({ t: 'hello', userId: role.userId, leagueId: role.leagueId }, [peerId]);
+    if (role.guest) send({ t: 'guest-hello', userId: role.userId, name: role.guest.name }, [peerId]);
+    else send({ t: 'hello', userId: role.userId, leagueId: role.leagueId }, [peerId]);
     notify();
   } else if (state === 'disconnected' && hostPeers.delete(peerId)) {
     notify();
@@ -235,6 +388,7 @@ export const connectTransport = (next) => {
 export const resetNearby = () => {
   role = null;
   peerUsers.clear();
+  guests.clear();
   hostPeers = new Set();
   pending.clear();
   joining = null;

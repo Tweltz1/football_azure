@@ -3,6 +3,7 @@ import {
   canSaveOffline, discardDeviceCopy, OnlineChanged, readOfflineLeague, saveLeagueToDevice, uploadLeagueFromDevice,
 } from '../offline/offlineSync';
 import useOnline from '../offline/useOnline';
+import { signIn } from '../AuthContext';
 import './OfflineDraft.css';
 
 
@@ -19,15 +20,45 @@ const savedAtText = (iso) => {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 };
 
+// Thrown to skip the page reload after a new league's upload, so its invite link can be shown.
+class Uploaded extends Error {}
+
 /** Commissioner-only: run this league's draft on this device with no internet, then upload it. */
 const OfflineDraftPanel = ({ league, user }) => {
   const online = useOnline();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
-  if (!league || !user?.userId || league.adminId !== user.userId) return null;
+  const [uploaded, setUploaded] = useState(null);
+  if (!league || !user?.userId) return null;
 
   const saved = readOfflineLeague(league.id);
-  if (!saved && !canSaveOffline(league)) return null;
+  // The phone that made or saved the draft stays its commissioner here, even after signing in to upload it.
+  const deviceCommissioner = saved && !saved.remote && saved.userId === league.adminId;
+  if (league.adminId !== user.userId && !deviceCommissioner && !uploaded) return null;
+  if (!saved && !canSaveOffline(league) && !uploaded) return null;
+
+  if (uploaded) {
+    const link = `https://hood-league.com/leagues?join=${uploaded.id}`;
+    const copy = async () => {
+      try { await navigator.clipboard.writeText(link); setMessage('Link copied.'); } catch (error) { window.prompt('Copy this link:', link); }
+    };
+    return (
+      <section className="offline-draft-panel">
+        <div>
+          <strong>Uploaded as {uploaded.name}</strong>
+          <p>
+            Send everyone this link. When they open it and sign in, they pick which team is theirs.
+          </p>
+          <p className="offline-draft-link">{link}</p>
+        </div>
+        <div className="offline-draft-actions">
+          <button type="button" className="create-button" onClick={copy}>Copy link</button>
+          <button type="button" className="edit-roster-button" onClick={() => window.location.assign('/leagues')}>My leagues</button>
+        </div>
+        {message && <p className="offline-draft-note">{message}</p>}
+      </section>
+    );
+  }
 
   const run = async (work) => {
     setBusy(true);
@@ -37,6 +68,7 @@ const OfflineDraftPanel = ({ league, user }) => {
       // Reload so the page switches cleanly between this device's copy and the live site.
       window.location.reload();
     } catch (error) {
+      if (error instanceof Uploaded) return;
       setMessage(errorText(error));
       setBusy(false);
     }
@@ -45,6 +77,12 @@ const OfflineDraftPanel = ({ league, user }) => {
   const save = () => run(() => saveLeagueToDevice(league.id, user));
 
   const upload = () => run(async () => {
+    if (saved?.createdOffline) {
+      const result = await uploadLeagueFromDevice(league.id);
+      setUploaded(result);
+      setBusy(false);
+      throw new Uploaded();
+    }
     try {
       await uploadLeagueFromDevice(league.id);
     } catch (error) {
@@ -92,9 +130,16 @@ const OfflineDraftPanel = ({ league, user }) => {
         </p>
       </div>
       <div className="offline-draft-actions">
-        <button type="button" className="create-button" onClick={upload} disabled={busy || !online}>
-          {busy ? 'Uploading...' : 'Upload results'}
-        </button>
+        {user.guest ? (
+          <>
+            <button type="button" className="create-button" onClick={() => signIn('google')} disabled={!online}>Sign in with Google to upload</button>
+            <button type="button" className="edit-roster-button" onClick={() => signIn('github')} disabled={!online}>Sign in with GitHub</button>
+          </>
+        ) : (
+          <button type="button" className="create-button" onClick={upload} disabled={busy || !online}>
+            {busy ? 'Uploading...' : 'Upload results'}
+          </button>
+        )}
         <button type="button" className="edit-roster-button" onClick={discard} disabled={busy}>
           Delete device copy
         </button>

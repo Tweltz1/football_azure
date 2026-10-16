@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import BiddingStyleField from '../whiteboard/BiddingStyleField';
 import { STANDARD, WHITEBOARD_AUTO, WHITEBOARD_MANUAL } from '../whiteboard/biddingStyle';
 import { formatDuration } from '../data/leagueLabels';
+import { useAuth } from '../AuthContext';
+import { createLeagueOnDevice } from '../offline/offlineSync';
 import OfflineNotice from '../help/OfflineNotice';
 import { KickerWithTip } from '../help/InfoTip';
 import { DraftModeHelp, RosterHelp, TimerHelp } from '../help/draftHelp';
@@ -18,6 +20,7 @@ const CreateLeague = ({ userId }) => {
   const [draftMode, setDraftMode] = useState('auction');
   const [biddingMode, setBiddingMode] = useState(STANDARD);
   const navigate = useNavigate();
+  const { user } = useAuth() || {};
   const [rosterSettings, setRosterSettings] = useState({
     qb: 1, rb: 2, wr: 3, te: 1, k: 1, def: 1, flex: 1, superFlex: 1, bench: 6
   });
@@ -37,6 +40,23 @@ const CreateLeague = ({ userId }) => {
 
   const handleCreateLeague = async (e) => {
     e.preventDefault();
+
+    // No internet (or no account): make the league on this device; it's uploaded after the draft.
+    if (navigator.onLine === false || user?.guest) {
+      try {
+        const leagueId = await createLeagueOnDevice({
+          name: leagueName,
+          draftMode,
+          biddingMode: draftMode === 'manual' ? STANDARD : biddingMode,
+          rosterSettings,
+          draftTimers,
+        }, user);
+        navigate(`/draft/${leagueId}`);
+      } catch (error) {
+        alert(`Failed to create league: ${error.message}`);
+      }
+      return;
+    }
 
     try {
       const uniqueCheck = await axios.get(`${API_BASE_URL}/CheckLeagueName?leagueName=${leagueName}`);
@@ -77,7 +97,7 @@ const CreateLeague = ({ userId }) => {
         </div>
       </section>
 
-      <OfflineNotice action="Creating a league needs internet." />
+      <OfflineNotice action="A league you make now is saved on this phone, and you upload it once you have internet." />
 
       <section className="card">
         <form onSubmit={handleCreateLeague}>

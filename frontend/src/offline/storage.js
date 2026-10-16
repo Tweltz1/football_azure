@@ -78,3 +78,42 @@ export const lastSignedInUser = () => read(LAST_USER_KEY, null);
 export const forgetLastUser = () => {
   try { window.localStorage.removeItem(LAST_USER_KEY); } catch (error) { /* nothing to do */ }
 };
+
+// Someone with no account on this phone (a guest draft with no internet). They get a made-up ID that stays
+// on this phone; their team can be claimed online later from the league's invite link.
+const GUEST_KEY = 'hl-offline:guest';
+
+const randomId = () => (window.crypto?.randomUUID
+  ? window.crypto.randomUUID()
+  : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
+
+export const guestUser = () => read(GUEST_KEY, null);
+
+export const becomeGuest = (name) => {
+  const existing = guestUser();
+  const user = {
+    userId: existing?.userId || `guest-${randomId()}`,
+    userDetails: String(name || '').trim() || existing?.userDetails || 'Player',
+    guest: true,
+  };
+  write(GUEST_KEY, user);
+  return user;
+};
+
+export const forgetGuest = () => {
+  try { window.localStorage.removeItem(GUEST_KEY); } catch (error) { /* nothing to do */ }
+};
+
+// Display names for people in drafts run on this phone (players in a nearby draft have no profile here).
+const NAMES_KEY = 'hl-offline:names';
+
+export const rememberName = (userId, name) => {
+  if (!userId || !String(name || '').trim()) return;
+  try {
+    write(NAMES_KEY, { ...read(NAMES_KEY, {}), [userId]: String(name).trim().slice(0, 40) });
+  } catch (error) {
+    // Best effort.
+  }
+};
+
+export const nameFor = (userId) => read(NAMES_KEY, {})[userId] || null;

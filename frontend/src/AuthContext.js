@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from './supabaseClient';
-import { forgetLastUser, lastSignedInUser, offlineUser, rememberLastUser } from './offline/storage';
+import { forgetGuest, forgetLastUser, guestUser, lastSignedInUser, offlineUser, rememberLastUser } from './offline/storage';
 import * as nativeSignIn from './native/authSession';
 import { clearReads } from './offline/readCache';
 import { prefetchPages } from './offline/prefetch';
@@ -27,7 +27,7 @@ const toAppUser = (supabaseUser) => {
 // commissioner who saved it so the draft can go on; the server checks the real sign-in on upload.
 const offlineFallback = (error) => {
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-  const saved = (offline || error ? offlineUser() : null) || (offline ? lastSignedInUser() : null);
+  const saved = (offline || error ? offlineUser() : null) || (offline ? lastSignedInUser() : null) || guestUser();
   return saved ? { ...saved, identityProvider: null, email: null, offline: true } : null;
 };
 
@@ -63,6 +63,7 @@ export const signIn = async (provider) => {
 export const signOut = async () => {
   clearReads();
   forgetLastUser();
+  forgetGuest();
   await supabase.auth.signOut();
   window.location.assign('/');
 };
@@ -77,7 +78,7 @@ export const AuthProvider = ({ children }) => {
     // With no internet, a sign-in that needs refreshing keeps retrying for about 30 seconds. When a draft is
     // saved on this device, don't make the commissioner wait for that.
     const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
-    const saved = offlineUser() || (isOffline ? lastSignedInUser() : null);
+    const saved = offlineUser() || (isOffline ? lastSignedInUser() : null) || guestUser();
     let settled = false;
     const offlineTimer = saved ? window.setTimeout(() => {
       if (settled || !isMounted) return;
@@ -122,7 +123,7 @@ export const AuthProvider = ({ children }) => {
   // In the iPhone app (and the home-screen app), save every main page in the background while there's
   // internet, so they all open later without it.
   useEffect(() => {
-    if (user && !user.offline) rememberLastUser(user);
+    if (user && !user.offline && !user.guest) rememberLastUser(user);
   }, [user]);
 
   useEffect(() => {

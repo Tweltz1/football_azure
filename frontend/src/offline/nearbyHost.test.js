@@ -3,7 +3,7 @@ import axios from 'axios';
 import { handle } from './engine.generated';
 import { API_BASE_URL } from '../api';
 import { writeOfflineLeague } from './storage';
-import { connectTransport, startHosting, watchNearby } from './nearbyDraft';
+import { connectTransport, roomFor, startHosting, watchNearby } from './nearbyDraft';
 import { fakeTransport, tick } from './nearbyFake.testutil';
 
 jest.mock('../supabaseClient', () => ({
@@ -64,7 +64,7 @@ test('players bid through the commissioner\'s phone and only see their own bid',
   const states = [];
   watchNearby((s) => states.push(s));
   await startHosting(league.id, { userId: 'admin', userDetails: 'Tyler' });
-  expect(air.hosted).toEqual({ name: 'Tyler', room: league.id });
+  expect(air.hosted).toEqual({ name: 'Tyler', room: roomFor(league.id) });
 
   // A player's phone connects and says who it is.
   air.emit('peerState', { peerId: 'P2', name: 'Sam', state: 'connected' });

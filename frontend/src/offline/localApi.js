@@ -2,7 +2,7 @@
 // server runs (bundled into engine.generated.js). api.js sends a request here instead of the network when
 // its league is saved offline, so the draft room works unchanged with no internet.
 
-import { offlineLeagueIds, readOfflineLeague, writeOfflineLeague } from './storage';
+import { nameFor, offlineLeagueIds, readOfflineLeague, writeOfflineLeague } from './storage';
 import { deliverLocal } from '../realtime';
 
 // Loaded on first use so everyone else's pages don't download it.
@@ -32,7 +32,13 @@ const leagues = {
     const entry = readOfflineLeague(id);
     return entry ? { status: entry.league.status, auctionTimer: entry.league.auctionTimer, version: entry.version } : null;
   },
-  create: needsInternet,
+  // A league made on this phone with no internet (guest drafts); it goes online when it's uploaded.
+  async create(league) {
+    writeOfflineLeague(league.id, {
+      league, version: 1, baseVersion: null, savedAt: new Date().toISOString(), userId: league.adminId, createdOffline: true,
+    });
+    return 1;
+  },
   async replace(league, expectedVersion) {
     const entry = readOfflineLeague(league.id);
     if (!entry || entry.version !== expectedVersion) return null;
@@ -53,14 +59,33 @@ const leagues = {
 };
 
 // Profiles and history live on the server; the finished draft reaches History when it is uploaded.
-const profiles = { async find() { return null; }, async upsert() {} };
+// Players in a nearby draft have no profile here; their name is what they typed when they joined.
+const profiles = {
+  async find(userId) {
+    const displayName = nameFor(userId);
+    return displayName ? { id: userId, userId, displayName } : null;
+  },
+  async upsert() {},
+};
+
+// The player list the site ships with, for leagues made on this phone. Loaded on first use.
+let poolPromise = null;
+const loadPool = () => {
+  if (!poolPromise) {
+    poolPromise = import('../data/playerData').then(({ initialPlayerList }) => initialPlayerList.map((player) => ({
+      id: player.id, rank: player.rank, name: player.name, team: player.team, position: player.position,
+      bye: player.bye, isDrafted: false, price: 0,
+    })));
+  }
+  return poolPromise;
+};
 const history = { async save() {}, async get() { return null; }, async listForMember() { return []; } };
 
 const newId = () => (window.crypto?.randomUUID
   ? window.crypto.randomUUID()
   : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
 
-const ctxFor = (userId) => ({
+const ctxFor = (userId, pool = []) => ({
   leagues,
   profiles,
   history,
@@ -74,7 +99,7 @@ const ctxFor = (userId) => ({
   log: console,
   now: () => new Date(),
   newId,
-  playerPool: () => [],
+  playerPool: () => pool.map((player) => ({ ...player })),
   fetchJson: () => Promise.reject(new Error('No internet on an offline draft.')),
   userId,
   displayName: null,
@@ -89,7 +114,8 @@ export const runLocal = async (method, path, query, body, userId) => {
     return remoteRunner(entry.league.id, method, path, query, body);
   }
   const { handle } = await loadEngine();
-  return handle(ctxFor(userId), method, path, query, body);
+  const pool = /^createleague$/i.test(path || '') ? await loadPool() : [];
+  return handle(ctxFor(userId, pool), method, path, query, body);
 };
 
 /** The user a league's device copy was saved by; offline calls act as them. */

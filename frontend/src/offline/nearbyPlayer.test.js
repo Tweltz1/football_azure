@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import { createDraftConnection } from '../realtime';
 import { isOfflineLeague, offlineUser, writeOfflineLeague } from './storage';
-import { connectTransport, leaveNearbyDraft } from './nearbyDraft';
+import { connectTransport, leaveNearbyDraft, roomFor } from './nearbyDraft';
 import { fakeTransport, tick } from './nearbyFake.testutil';
 
 jest.mock('../supabaseClient', () => ({
@@ -39,7 +39,7 @@ test('calls go to the commissioner\'s phone, replies and live updates come back'
   connectTransport(air);
 
   const response = await axios.post(`${API_BASE_URL}/leagues/L1/bid`, { amount: 9 });
-  expect(air.joined).toEqual({ name: 'Sam', room: 'L1' });
+  expect(air.joined).toEqual({ name: 'Sam', room: roomFor('L1') });
   expect(air.sent[0].msg).toEqual({ t: 'hello', userId: 'u2', leagueId: 'L1' });
   const req = air.sent.find((s) => s.msg.t === 'req').msg;
   expect(req).toMatchObject({ method: 'POST', path: 'leagues/L1/bid', body: { amount: 9 } });

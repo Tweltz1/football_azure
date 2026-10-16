@@ -3,7 +3,9 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import { forgetLeague } from '../realtime';
-import { readOfflineLeague, rememberOfflineUser, removeOfflineLeague, writeOfflineLeague } from './storage';
+import { readOfflineLeague, rememberName, rememberOfflineUser, removeOfflineLeague, writeOfflineLeague } from './storage';
+import { runLocal } from './localApi';
+import { nearbySupported, startHosting } from './nearbyDraft';
 
 /** Statuses a league can be saved to a device in (the server checks too). */
 export const canSaveOffline = (league) => {
@@ -68,10 +70,39 @@ export const saveLeagueToDevice = async (leagueId, user, { nearby = false } = {}
 
 export class OnlineChanged extends Error {}
 
+/**
+ * Makes a brand-new league on this device with no internet (anyone, even with no account). In the iPhone
+ * app this phone hosts it for nearby phones; elsewhere it's a one-device manual draft. Returns its ID.
+ */
+export const createLeagueOnDevice = async (settings, user) => {
+  rememberName(user.userId, user.userDetails);
+  const created = await runLocal('POST', 'CreateLeague', new URLSearchParams(), settings, user.userId);
+  if (created.status !== 200) throw new Error(typeof created.body === 'string' ? created.body : 'Could not make the league.');
+  const leagueId = created.body.id;
+  const entry = readOfflineLeague(leagueId);
+  const nearby = nearbySupported();
+  const league = { ...entry.league };
+  if (!nearby) {
+    league.draftMode = 'manual';
+    league.biddingMode = 'standard';
+  }
+  writeOfflineLeague(leagueId, { ...entry, league, ...(nearby ? { nearbyHost: true } : {}) });
+  rememberOfflineUser(user);
+  if (nearby) await startHosting(leagueId, user).catch(() => {});
+  return leagueId;
+};
+
 /** Uploads this device's copy. Throws OnlineChanged when the league changed online since it was saved. */
 export const uploadLeagueFromDevice = async (leagueId, { force = false } = {}) => {
   const entry = readOfflineLeague(leagueId);
   if (!entry) throw new Error('This league is not saved on this device.');
+  if (entry.createdOffline) {
+    // Made on this phone: it doesn't exist online yet. Whoever uploads becomes its commissioner.
+    const { data } = await axios.post(`${API_BASE_URL}/offline-create`, { league: entry.league });
+    forgetLeague(leagueId);
+    removeOfflineLeague(leagueId);
+    return data;
+  }
   // The device's version numbers ran ahead of the server's; start fresh from what the server sends back.
   forgetLeague(leagueId);
   try {
@@ -85,6 +116,7 @@ export const uploadLeagueFromDevice = async (leagueId, { force = false } = {}) =
     throw error;
   }
   removeOfflineLeague(leagueId);
+  return null;
 };
 
 export const discardDeviceCopy = (leagueId) => {

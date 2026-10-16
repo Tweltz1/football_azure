@@ -68,7 +68,8 @@ const leagueListAdapter = async (config) => {
         local.forEach((league) => { if (!merged.some((l) => l.id === league.id)) merged.push(league); });
         return { ...response, data: merged };
     } catch (error) {
-        if (error?.response) throw error;
+        // A guest (no account) gets a 401 from the site; they only have this phone's leagues anyway.
+        if (error?.response && error.response.status !== 401) throw error;
         return toResponse(config, 200, local);
     }
 };

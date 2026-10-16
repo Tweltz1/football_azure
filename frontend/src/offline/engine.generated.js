@@ -1619,7 +1619,8 @@ async function getInvite(ctx, leagueId) {
     draftMode: league.draftMode,
     memberCount: league.members.length,
     commissionerTeamName: (_a = commissionerTeam == null ? void 0 : commissionerTeam.name) != null ? _a : null,
-    isMember: league.members.includes(ctx.userId)
+    isMember: league.members.includes(ctx.userId),
+    openTeams: openTeamsOf(league)
   });
 }
 async function getLeagueState(ctx, leagueId) {
@@ -2782,6 +2783,126 @@ async function updateProfile(ctx, pathUserId, data) {
   }
   return ok(profileResponse(profile));
 }
+function moveOwnerKeys(league, from, to) {
+  var _a, _b;
+  if (!from || from === to)
+    return;
+  const swapKey = (record) => {
+    if (record && from in record) {
+      record[to] = record[from];
+      delete record[from];
+    }
+  };
+  swapKey(league.activeBids);
+  for (const pick of (_a = league.draftLog) != null ? _a : [])
+    swapKey(pick == null ? void 0 : pick.allBids);
+  if (league.tieBreaker)
+    league.tieBreaker.tiedTeamIds = league.tieBreaker.tiedTeamIds.map((id) => id === from ? to : id);
+  league.readyMembers = ((_b = league.readyMembers) != null ? _b : []).map((id) => id === from ? to : id);
+}
+var openTeamsOf = (league) => league.teams.filter((team) => team && team.ownerId !== league.adminId && !league.members.includes(team.ownerId)).map((team) => ({ id: team.id, name: team.name }));
+async function reassignTeam(ctx, leagueId, data) {
+  const teamId = str(data.teamId);
+  const targetUserId = str(data.userId).trim();
+  if (!teamId || !targetUserId)
+    return bad("Team ID and user ID are required.");
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (league.adminId !== ctx.userId)
+      return unauthorized();
+    const team = league.teams.find((t) => (t == null ? void 0 : t.id) === teamId);
+    if (!team)
+      return notFound("Team not found.");
+    const previous = team.ownerId;
+    if (previous === targetUserId)
+      return null;
+    if (previous === league.adminId)
+      return bad("The commissioner's team can't be given away.");
+    if (league.teams.some((t) => (t == null ? void 0 : t.ownerId) === targetUserId))
+      return conflict("That player already has a team in this league.");
+    team.ownerId = targetUserId;
+    moveOwnerKeys(league, previous, targetUserId);
+    const stillOwnsOne = league.teams.some((t) => (t == null ? void 0 : t.ownerId) === previous);
+    league.members = league.members.filter((id) => id !== previous || stillOwnsOne);
+    if (!league.members.includes(targetUserId))
+      league.members.push(targetUserId);
+    return null;
+  });
+  return done(result, (u) => leagueBody(ctx, u));
+}
+async function claimTeam(ctx, leagueId, data) {
+  const userId = ctx.userId;
+  const teamId = str(data.teamId);
+  if (!teamId)
+    return bad("Pick a team.");
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (league.teams.some((t) => (t == null ? void 0 : t.ownerId) === userId))
+      return conflict("You already have a team in this league.");
+    const team = league.teams.find((t) => (t == null ? void 0 : t.id) === teamId);
+    if (!team)
+      return notFound("Team not found.");
+    if (team.ownerId === league.adminId || league.members.includes(team.ownerId))
+      return conflict("Someone already has that team.");
+    const from = team.ownerId;
+    team.ownerId = userId;
+    moveOwnerKeys(league, from, userId);
+    if (!league.members.includes(userId))
+      league.members.push(userId);
+    return null;
+  });
+  if (isRes(result) || result === "conflict")
+    return done(result);
+  if (isCompleted(result.league)) {
+    try {
+      const entry = await ctx.history.get(historyIdFor(result.league));
+      if (entry) {
+        const team = entry.teams.find((t) => t.id === teamId);
+        if (team)
+          team.ownerId = userId;
+        if (!entry.members.includes(userId))
+          entry.members.push(userId);
+        await ctx.history.save(entry);
+      }
+    } catch (error) {
+      ctx.log.warn(`Updating draft history after a team claim failed for league ${leagueId}.`, error);
+    }
+  }
+  return ok({ id: result.league.id, name: result.league.name });
+}
+async function offlineCreate(ctx, data) {
+  const uploaded = data.league;
+  if (!uploaded || typeof uploaded !== "object" || blank(uploaded.id) || blank(uploaded.name))
+    return bad("That draft is missing its league.");
+  if (!Array.isArray(uploaded.teams) || !Array.isArray(uploaded.initialPlayerPool))
+    return bad("That draft is missing its teams or players.");
+  const existing = await ctx.leagues.get(uploaded.id);
+  if (existing) {
+    if (existing.league.adminId === ctx.userId)
+      return ok({ id: existing.league.id, name: existing.league.name });
+    return conflict("That draft was already uploaded by someone else.");
+  }
+  const league = ensureDefaults(clone(uploaded));
+  const phoneAdmin = league.adminId;
+  for (const team of league.teams)
+    if ((team == null ? void 0 : team.ownerId) === phoneAdmin)
+      team.ownerId = ctx.userId;
+  moveOwnerKeys(league, phoneAdmin, ctx.userId);
+  league.adminId = ctx.userId;
+  league.members = [ctx.userId];
+  league.password = null;
+  league.activeBids = {};
+  league.auctionTimer = null;
+  league.readyMembers = [];
+  league.onlineUserIds = [];
+  league.awayUserIds = [];
+  let name = str(league.name).trim();
+  for (let n = 2; await ctx.leagues.findByName(name); n += 1)
+    name = `${str(league.name).trim()} (${n})`;
+  league.name = name;
+  await ctx.leagues.create(league);
+  if (isCompleted(league))
+    await archiveDraft(ctx, league);
+  return ok({ id: league.id, name: league.name, openTeams: openTeamsOf(league) });
+}
 var LEAGUE_POSTS = {
   connect: (ctx, id) => setPresence(ctx, id, "active", false),
   disconnect: (ctx, id) => setPresence(ctx, id, "offline", false),
@@ -2817,7 +2938,9 @@ var LEAGUE_POSTS = {
   "budget-review": (ctx, id) => budgetReview(ctx, id),
   favorites: updateFavorites,
   "offline-copy": (ctx, id) => offlineCopy(ctx, id),
-  "offline-restore": offlineRestore
+  "offline-restore": offlineRestore,
+  "reassign-team": reassignTeam,
+  "claim-team": claimTeam
 };
 async function handle(ctx, method, path, query, body) {
   const data = body && typeof body === "object" && !Array.isArray(body) ? body : {};
@@ -2841,6 +2964,8 @@ async function handle(ctx, method, path, query, body) {
       return createLeague(ctx, data);
     if (method === "POST" && name === "joinleague")
       return joinLeague(ctx, data);
+    if (method === "POST" && name === "offline-create")
+      return offlineCreate(ctx, data);
     if (method === "POST" && name === "user-profile")
       return getOrCreateProfile(ctx, data);
     if (method === "GET" && name === "history")

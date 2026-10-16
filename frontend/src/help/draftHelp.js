@@ -53,6 +53,7 @@ export const NoInternetHelp = () => (
       <li>The commissioner opens the league and taps <em>Save for offline draft</em> (best done with internet).</li>
       <li>Bids happen on paper or whiteboards, and the commissioner enters each winner and price.</li>
     </ul>
+    <p><strong>No setup at all?</strong> In the app, the commissioner can make a new league with no internet (Create, or "Host a draft on this phone" on the sign-in page). It shows a 4-digit room code; everyone else taps "Join a nearby draft" and types it. A player whose phone died can rejoin as their team the same way, and the commissioner can bid for a team that isn't connected.</p>
     <p>Either way, open the league again when you're back online to upload the results.</p>
   </>
 );

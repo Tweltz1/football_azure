@@ -44,7 +44,7 @@ const Leagues = ({ userId }) => {
       setLeagues(response.data);
     } catch (error) {
       console.error('Error fetching leagues:', error);
-      if (navigator.onLine !== false) alert('Failed to fetch leagues.');
+      if (navigator.onLine !== false && error.response?.status !== 401) alert('Failed to fetch leagues.');
     } finally {
       setLoading(false);
     }
@@ -167,6 +167,18 @@ const Leagues = ({ userId }) => {
       fetchLeagues();
     } catch (error) {
       alert(`Failed to join league: ${error.response?.data || error.message}`);
+    }
+  };
+
+  const handleClaimTeam = async (team) => {
+    if (!window.confirm(`Claim ${team.name} as your team?`)) return;
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${joinInviteId}/claim-team`, { teamId: team.id });
+      alert(`${team.name} is yours.`);
+      closeJoinModal();
+      fetchLeagues();
+    } catch (error) {
+      alert(`Couldn't claim that team: ${error.response?.data || error.message}`);
     }
   };
 
@@ -356,7 +368,19 @@ const Leagues = ({ userId }) => {
                 {invitePreviewError && String(invitePreviewError)}
                 {!invitePreviewError && !invitePreview && 'Checking your invite...'}
                 {invitePreview && invitePreview.isMember && `You're already in ${invitePreview.name}.`}
-                {invitePreview && !invitePreview.isMember && invitePreview.status === 'completed' && (
+                {invitePreview && !invitePreview.isMember && (invitePreview.openTeams || []).length > 0 && (
+                  <>
+                    <p><strong>{invitePreview.name}</strong> was drafted on a phone. Which team is yours?</p>
+                    <div className="button-group claim-team-list">
+                      {invitePreview.openTeams.map((team) => (
+                        <button key={team.id} type="button" className="edit-roster-button" onClick={() => handleClaimTeam(team)}>
+                          {team.name}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {invitePreview && !invitePreview.isMember && !(invitePreview.openTeams || []).length && invitePreview.status === 'completed' && (
                   `${invitePreview.name} has already finished its draft. Ask the commissioner to start a new season first.`
                 )}
                 {invitePreview && !invitePreview.isMember && invitePreview.status !== 'completed' && (

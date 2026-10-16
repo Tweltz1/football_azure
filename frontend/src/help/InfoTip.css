@@ -109,3 +109,35 @@ button.info-tip-close {
 .offline-notice li {
   margin-bottom: 4px;
 }
+
+.nearby-join {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.nearby-join label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.nearby-join p {
+  margin: 0;
+}
+
+.nearby-join .nearby-join-error {
+  color: var(--danger);
+}
+
+.login-offline {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline-strong);
+}
+
+.login-offline > p {
+  margin: 0 0 10px;
+  color: var(--text-2);
+  font-size: 0.92rem;
+}
