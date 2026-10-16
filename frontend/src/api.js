@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { SUPABASE_URL, supabase } from './supabaseClient';
 import { acceptLeagues } from './realtime';
-import { isOfflineLeague, offlineLeagueIds } from './offline/storage';
+import { isOfflineLeague, offlineLeagueIds, saveProfileCopy, savedProfileFor } from './offline/storage';
 import { localLeagueList, offlineUserIdFor, runLocal } from './offline/localApi';
 import { loadRead, readKey, saveRead } from './offline/readCache';
 
@@ -97,6 +97,12 @@ const sessionFor = (config) => {
     return Promise.race([session, timeout]);
 };
 
+const requestBody = (config) => {
+    if (!config?.data) return {};
+    if (typeof config.data === 'object') return config.data;
+    try { return JSON.parse(config.data) || {}; } catch (error) { return {}; }
+};
+
 if (!axios.__hoodLeagueInterceptors) {
     // Sign every API call with the Supabase session; the server reads the user from this token.
     axios.interceptors.request.use(async (config) => {
@@ -121,6 +127,10 @@ if (!axios.__hoodLeagueInterceptors) {
                 if (!response.config.offlineLocal && !response.config.fromSavedCopy) {
                     const { path, query } = apiPath(response.config);
                     saveRead(readKey(response.config.method, path, query), response.data);
+                    if (path === 'user-profile') {
+                        const body = requestBody(response.config);
+                        saveProfileCopy({ userId: response.data?.userId || body.userId, userDetails: body.displayName }, response.data);
+                    }
                 }
             }
             return response;
@@ -129,7 +139,9 @@ if (!axios.__hoodLeagueInterceptors) {
             // No internet (no response at all): open the page with the last copy this phone saw.
             if (!error.response && error.config && isApiRequest(error.config.url) && !error.config.offlineLocal) {
                 const { path, query } = apiPath(error.config);
-                const saved = loadRead(readKey(error.config.method, path, query));
+                // A profile comes from this account's own saved copy, so it's never someone else's.
+                const ownProfile = path === 'user-profile' ? savedProfileFor(requestBody(error.config).userId) : null;
+                const saved = ownProfile ? { data: ownProfile, savedAt: 0 } : loadRead(readKey(error.config.method, path, query));
                 if (saved) {
                     return {
                         data: saved.data,

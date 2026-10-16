@@ -84,6 +84,65 @@ export const rememberLastUser = (user) => {
 
 export const lastSignedInUser = () => read(LAST_USER_KEY, null);
 
+// The last good profile (favorites, notes, tiers, budget plan) of each account signed in on this phone.
+// Kept through Logout so someone can load their profile again with no internet; one copy per account.
+const PROFILES_KEY = 'hl-offline:profiles';
+const MAX_PROFILES = 6;
+
+export const saveProfileCopy = (user, profile) => {
+  if (!user?.userId || !profile || typeof profile !== 'object' || user.guest) return;
+  try {
+    const all = { ...read(PROFILES_KEY, {}) };
+    all[user.userId] = {
+      user: { userId: user.userId, userDetails: user.userDetails || profile.displayName || 'Player' },
+      profile,
+      savedAt: Date.now(),
+    };
+    const keep = Object.keys(all).sort((a, b) => (all[b].savedAt || 0) - (all[a].savedAt || 0)).slice(0, MAX_PROFILES);
+    write(PROFILES_KEY, Object.fromEntries(keep.map((id) => [id, all[id]])));
+  } catch (error) {
+    // Best effort.
+  }
+};
+
+export const savedProfileFor = (userId) => (userId ? read(PROFILES_KEY, {})[userId]?.profile || null : null);
+
+/** Accounts with a saved profile on this phone, newest first: [{ user, savedAt }]. */
+export const savedProfiles = () => {
+  const all = read(PROFILES_KEY, {});
+  return Object.values(all)
+    .filter((entry) => entry?.user?.userId)
+    .sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))
+    .map(({ user, savedAt }) => ({ user, savedAt }));
+};
+
+export const forgetSavedProfile = (userId) => {
+  try {
+    const all = { ...read(PROFILES_KEY, {}) };
+    delete all[userId];
+    write(PROFILES_KEY, all);
+    if (read(CHOSEN_KEY, null)?.userId === userId) window.localStorage.removeItem(CHOSEN_KEY);
+  } catch (error) { /* nothing to do */ }
+};
+
+// Picked on the sign-in page with no internet ("Load my saved profile"): the app opens as this account
+// until someone signs in for real or logs out.
+const CHOSEN_KEY = 'hl-offline:chosen-user';
+
+export const chooseSavedUser = (userId) => {
+  const entry = read(PROFILES_KEY, {})[userId];
+  if (!entry?.user) return null;
+  write(CHOSEN_KEY, entry.user);
+  clearSignedOut();
+  return entry.user;
+};
+
+export const chosenUser = () => read(CHOSEN_KEY, null);
+
+export const forgetChosenUser = () => {
+  try { window.localStorage.removeItem(CHOSEN_KEY); } catch (error) { /* nothing to do */ }
+};
+
 export const forgetLastUser = () => {
   try { window.localStorage.removeItem(LAST_USER_KEY); } catch (error) { /* nothing to do */ }
 };

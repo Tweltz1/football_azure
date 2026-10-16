@@ -492,7 +492,10 @@ const LeagueCard = ({ league, userId, onRename, onAnalyze, onCopyInvite, onSetti
           <h3>{league.name}</h3>
           <p>{draftModeLabel(league)} &middot; {memberCount}/12 teams{isAdmin && <> &middot; You run it</>}</p>
         </div>
-        <span className={`league-status league-status-${statusKey || 'none'}`}>{leagueStatusLabel(league)}</span>
+        <div className="league-card-tags">
+          <span className={`league-status league-status-${statusKey || 'none'}`}>{leagueStatusLabel(league)}</span>
+          {isOfflineLeague(league.id) && <span className="league-status league-status-offline">Offline draft</span>}
+        </div>
       </header>
 
       <div className="league-card-team">

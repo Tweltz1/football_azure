@@ -155,3 +155,6 @@ button.info-tip-close {
 .nearby-hosts { display: grid; gap: 0.5rem; }
 .nearby-hosts button { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 0.75rem; text-align: left; }
 .nearby-hosts button span { color: var(--muted); font-weight: 400; }
+
+.login-offline > button + button { margin-top: 8px; }
+.login-offline > button small { color: var(--muted); font-weight: 400; }
