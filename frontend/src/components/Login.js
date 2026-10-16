@@ -50,7 +50,7 @@ const Login = () => {
 
         <div className="login-panel">
           <p className="section-kicker">Sign in</p>
-          <h2>Enter the room</h2>
+          <h2>Enter the Fantasy Cave</h2>
           {hasInvite && (
             <p className="league-invite-note">You've been invited to a league. Sign in and you'll be asked to join it.</p>
           )}
