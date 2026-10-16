@@ -353,7 +353,7 @@ const PlayerUpdatesPanel = ({ trends, rankMovements, lookbackHours }) => (
         eyebrow="Pool movement"
         items={rankMovements.risers}
         tone="up"
-        emptyText="Rank movement appears after the next pool refresh."
+        emptyText="No big rank moves this past week."
         getMetric={(item) => formatMovementMetric(item)}
       />
       <PlayerUpdateColumn
@@ -361,7 +361,7 @@ const PlayerUpdatesPanel = ({ trends, rankMovements, lookbackHours }) => (
         eyebrow="Pool movement"
         items={rankMovements.fallers}
         tone="down"
-        emptyText="Rank movement appears after the next pool refresh."
+        emptyText="No big rank moves this past week."
         getMetric={(item) => formatMovementMetric(item)}
       />
     </div>
@@ -465,8 +465,8 @@ const formatCompactCount = (value) => {
   return String(count);
 };
 
-// The player pool is rebuilt weekly, so a pool more than about a week old has missed an update.
-const POOL_STALE_HOURS = 8 * 24;
+// The player pool is rebuilt every morning, so a pool more than two days old has missed updates.
+const POOL_STALE_HOURS = 2 * 24;
 const PLAYER_PAGE_SIZE = 50;
 
 const getTrendLookbackHours = () => toNumber(playerInsightsMeta.trendsLookbackHours, 24) || 24;

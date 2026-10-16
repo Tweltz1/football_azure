@@ -4,6 +4,7 @@ import axios from 'axios';
 import { createDraftConnection } from '../realtime';
 import { API_BASE_URL } from '../api';
 import { isOfflineLeague } from '../offline/storage';
+import { discardDeviceCopy } from '../offline/offlineSync';
 import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '../data/strategyUtils';
 import { isDraftLive, leagueStatusKey, leagueStatusLabel } from '../data/leagueLabels';
 import BiddingStyleField from '../whiteboard/BiddingStyleField';
@@ -92,11 +93,26 @@ const Leagues = ({ userId }) => {
 
   const handleDelete = async (leagueId) => {
     if (window.confirm('Are you sure you want to delete this league?')) {
+      // A league saved for an offline draft is removed from this device first, so deleting it works
+      // with no internet; the online copy is then deleted too when there's a connection.
+      const savedOnDevice = isOfflineLeague(leagueId);
+      const offlineNote = 'Removed from this device. The online league is still there; delete it again when you have internet.';
+      if (savedOnDevice) discardDeviceCopy(leagueId);
+      if (savedOnDevice && navigator.onLine === false) {
+        alert(offlineNote);
+        fetchLeagues();
+        return;
+      }
       try {
         await axios.delete(`${API_BASE_URL}/leagues/${leagueId}`, { data: { adminId: userId } });
         alert('League deleted successfully!');
         fetchLeagues();
       } catch (error) {
+        if (savedOnDevice && !error.response) {
+          alert(offlineNote);
+          fetchLeagues();
+          return;
+        }
         alert(`Failed to delete league: ${error.response?.data || error.message}`);
       }
     }

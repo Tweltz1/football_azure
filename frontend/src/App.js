@@ -6,6 +6,7 @@ import DraftRoomEnhanced from './components/DraftRoomEnhanced';
 import DraftTvView from './components/DraftTvView';
 import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
+import ClimbBackdrop from './components/ClimbBackdrop';
 import Profile from './components/Profile';
 import StartSit from './components/StartSit';
 import Rankings from './components/Rankings';
@@ -22,6 +23,7 @@ function App() {
   if (loading) {
     return (
       <div className="loading-screen">
+        <ClimbBackdrop />
         <div className="loading-panel">
           <span className="loading-mark" />
           <p>Loading draft command...</p>

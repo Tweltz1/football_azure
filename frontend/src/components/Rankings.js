@@ -486,8 +486,8 @@ const Rankings = ({ userId }) => {
       <p className="startsit-footnote">
         This week ranks players by their Sleeper projection for the week, refreshed every {REFRESH_MINUTES} minutes, and this page updates itself while it's open. Matchup compares this week's
         opponent with what other defenses have allowed to that position (Easy is the top third, Tough the bottom third).
-        Season rankings are Sleeper's overall rankings, updated every Tuesday morning; Move is how many spots a player went up or
-        down at their position since the week before. Tap a player for recent games and past games against this opponent.
+        Season rankings are Sleeper's overall rankings, updated every morning; Move is how many spots a player went up or
+        down at their position over the past week. Tap a player for recent games and past games against this opponent.
       </p>
     </div>
     </LeagueScoringContext.Provider>
