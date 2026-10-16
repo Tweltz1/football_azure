@@ -4,7 +4,7 @@
   "private": true,
   "description": "Hood League iPhone app: wraps the website (frontend/build) with Capacitor.",
   "scripts": {
-    "sync": "cap sync ios"
+    "sync": "cap sync ios && node add-local-plugins.js"
   },
   "dependencies": {
     "@capacitor/core": "8.5.3",

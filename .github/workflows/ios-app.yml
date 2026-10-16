@@ -75,7 +75,7 @@ jobs:
         working-directory: ios-app
         run: |
           npm ci --no-audit --no-fund
-          npx cap sync ios
+          npm run sync
 
       - name: Build for the iPhone simulator
         if: ${{ !inputs.upload }}
