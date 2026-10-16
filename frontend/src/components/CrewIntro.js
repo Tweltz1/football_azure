@@ -4,7 +4,7 @@ import './CrewIntro.css';
 
 const SEEN_KEY = 'hood-league-intro-seen';
 const TITLE_MS = 1600;
-const GUY_MS = 1800;
+const GUY_MS = 3200;
 const LINEUP_MS = 3600;
 
 // Plays once per device; the login page also has a button to watch it again.
@@ -24,7 +24,7 @@ const markSeen = () => {
   }
 };
 
-// Opening scene: a title card, then each guy steps out with his name, then the whole crew lines up.
+// Opening scene: a title card, then each guy steps out doing his bit and saying his line, then the whole crew lines up.
 // Steps: -1 title, 0..CREW.length-1 one guy each, CREW.length the lineup.
 const CrewIntro = ({ onDone }) => {
   const [step, setStep] = useState(-1);
@@ -68,11 +68,11 @@ const CrewIntro = ({ onDone }) => {
         <div className="crew-intro-stage" key={step}>
           <p className="crew-intro-count">{step + 1} of {CREW.length}</p>
           <div className="crew-intro-spot">
-            <img className="crew-intro-guy" src={guy.art} alt="" />
+            <img className="crew-intro-guy" src={guy.bit} alt="" />
           </div>
           <div className="crew-intro-card">
             <h2>{guy.name}</h2>
-            {guy.line && <p>{guy.line}</p>}
+            {guy.says && <p className="crew-intro-says">{guy.says}</p>}
           </div>
         </div>
       )}

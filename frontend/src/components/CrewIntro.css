@@ -65,8 +65,8 @@
 .crew-intro-spot {
   display: grid;
   place-items: end center;
-  width: min(300px, 70vw);
-  height: min(46vh, 380px);
+  width: min(380px, 90vw);
+  height: min(44vh, 390px);
   background: radial-gradient(ellipse 50% 14% at 50% 94%, rgba(180, 162, 255, 0.45), transparent 70%);
 }
 
@@ -86,10 +86,32 @@
   letter-spacing: -0.03em;
 }
 
-.crew-intro-card p {
-  margin: 4px 0 0;
-  color: var(--text-2);
-  font-size: 1.05rem;
+.crew-intro-says {
+  position: relative;
+  max-width: min(420px, 86vw);
+  margin: 12px auto 0;
+  padding: 10px 18px;
+  color: #16122b;
+  font-size: 1.15rem;
+  font-weight: 800;
+  background: #fff;
+  border: 3px solid #16122b;
+  border-radius: 20px;
+  animation: crew-pop 450ms 500ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+/* Tail pointing up at the guy. */
+.crew-intro-says::before {
+  content: "";
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-top: 3px solid #16122b;
+  border-left: 3px solid #16122b;
+  transform: translateX(-50%) rotate(45deg);
 }
 
 .crew-intro-lineup {
