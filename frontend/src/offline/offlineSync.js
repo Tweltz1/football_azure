@@ -11,13 +11,40 @@ export const canSaveOffline = (league) => {
   return status === 'created' || status === 'lobby' || (status === 'manual' && league?.draftMode === 'manual');
 };
 
+export const NO_SAVED_COPY = "This phone doesn't have a copy of this league yet. Open the app once with internet, then try again.";
+
+/**
+ * The league as the server has it. With no internet, the last copy of the league page this phone saw is
+ * used instead (the app saves one in the background), so a commissioner who forgot to set up ahead of time
+ * can still run the draft. Before the draft starts that copy holds everything the server's would.
+ */
+const fetchCopy = async (leagueId, user) => {
+  try {
+    const { data } = await axios.post(`${API_BASE_URL}/leagues/${leagueId}/offline-copy`, {});
+    return data;
+  } catch (error) {
+    if (error?.response) throw error;
+  }
+  let saved;
+  try {
+    ({ data: saved } = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/state`));
+  } catch (error) {
+    throw new Error(NO_SAVED_COPY);
+  }
+  if (!saved || saved.id !== leagueId || !Array.isArray(saved.initialPlayerPool)) throw new Error(NO_SAVED_COPY);
+  if (saved.adminId !== user?.userId) throw new Error('Only the commissioner can run this draft from their phone.');
+  if (!canSaveOffline(saved)) throw new Error('This draft already started online, so it has to finish online.');
+  const { _version: version = 0, ...league } = saved;
+  return { league, version };
+};
+
 /**
  * Copies the league to this device. Nobody can bid from their own phone without internet, so a draft that
  * hasn't started runs as a manual draft here: bids happen on paper or whiteboards and the commissioner
  * enters each winner and price.
  */
 export const saveLeagueToDevice = async (leagueId, user, { nearby = false } = {}) => {
-  const { data } = await axios.post(`${API_BASE_URL}/leagues/${leagueId}/offline-copy`, {});
+  const data = await fetchCopy(leagueId, user);
   const league = { ...data.league };
   const status = String(league.status || '').toLowerCase();
   // A nearby-phones draft (iPhone app) keeps normal bidding: players bid from their own phones.

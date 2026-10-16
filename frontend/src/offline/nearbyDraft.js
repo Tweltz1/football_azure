@@ -163,7 +163,14 @@ const relayToHost = async (leagueId, method, path, query, body) => {
  * and send its calls to the commissioner's phone. Removed with leaveNearbyDraft, or after a day.
  */
 export const saveNearbyTicket = async (leagueId, user) => {
-  const { data } = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/state`);
+  // With no internet this is the last copy of the league this phone saw (api.js), which is all a ticket needs.
+  let data;
+  try {
+    ({ data } = await axios.get(`${API_BASE_URL}/leagues/${leagueId}/state`));
+  } catch (error) {
+    if (error?.response) throw error;
+    throw new Error("This phone doesn't have a copy of this league yet. Open the app once with internet, then try again.");
+  }
   writeOfflineLeague(leagueId, {
     league: data,
     version: data?._version || 0,

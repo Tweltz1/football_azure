@@ -9,6 +9,7 @@ import './OfflineDraft.css';
 const errorText = (error) => {
   const body = error?.response?.data;
   if (typeof body === 'string' && body) return body;
+  if (!error?.response && !error?.isAxiosError && error?.message) return error.message;
   if (!error?.response) return 'Could not reach the site. Check the internet connection and try again.';
   return error?.message || 'Something went wrong.';
 };
@@ -71,11 +72,11 @@ const OfflineDraftPanel = ({ league, user }) => {
           </p>
         </div>
         <div className="offline-draft-actions">
-          <button type="button" className="edit-roster-button" onClick={save} disabled={busy || !online}>
+          <button type="button" className="edit-roster-button" onClick={save} disabled={busy}>
             {busy ? 'Saving...' : 'Save for offline draft'}
           </button>
         </div>
-        {!online && <p className="offline-draft-note">Connect to the internet to save this league to the device.</p>}
+        {!online && <p className="offline-draft-note">No internet right now, so this uses the last copy of the league this device saw.</p>}
         {message && <p className="offline-draft-error" role="alert">{message}</p>}
       </section>
     );

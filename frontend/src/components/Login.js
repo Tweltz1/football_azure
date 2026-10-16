@@ -2,9 +2,11 @@ import React from 'react';
 import { signIn } from '../AuthContext';
 import '../App.css';
 import ClimbBackdrop from './ClimbBackdrop';
+import useOnline from '../offline/useOnline';
 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
+  const online = useOnline();
   return (
     <main className="login-page">
       <ClimbBackdrop />
@@ -25,6 +27,12 @@ const Login = () => {
           <h2>Enter the room</h2>
           {hasInvite && (
             <p className="league-invite-note">You've been invited to a league. Sign in and you'll be asked to join it.</p>
+          )}
+          {!online && (
+            <p className="league-invite-note">
+              No internet right now. Signing in needs it once on each phone. After that, the app opens and runs
+              offline drafts without internet.
+            </p>
           )}
           <div className="login-actions">
             <button type="button" onClick={() => signIn('github')}>Login with GitHub</button>

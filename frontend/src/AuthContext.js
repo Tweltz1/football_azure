@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from './supabaseClient';
-import { offlineUser } from './offline/storage';
+import { forgetLastUser, lastSignedInUser, offlineUser, rememberLastUser } from './offline/storage';
 import * as nativeSignIn from './native/authSession';
 import { clearReads } from './offline/readCache';
 import { prefetchPages } from './offline/prefetch';
@@ -27,7 +27,7 @@ const toAppUser = (supabaseUser) => {
 // commissioner who saved it so the draft can go on; the server checks the real sign-in on upload.
 const offlineFallback = (error) => {
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-  const saved = offline || error ? offlineUser() : null;
+  const saved = (offline || error ? offlineUser() : null) || (offline ? lastSignedInUser() : null);
   return saved ? { ...saved, identityProvider: null, email: null, offline: true } : null;
 };
 
@@ -62,6 +62,7 @@ export const signIn = async (provider) => {
 
 export const signOut = async () => {
   clearReads();
+  forgetLastUser();
   await supabase.auth.signOut();
   window.location.assign('/');
 };
@@ -75,9 +76,9 @@ export const AuthProvider = ({ children }) => {
 
     // With no internet, a sign-in that needs refreshing keeps retrying for about 30 seconds. When a draft is
     // saved on this device, don't make the commissioner wait for that.
-    const saved = offlineUser();
-    let settled = false;
     const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    const saved = offlineUser() || (isOffline ? lastSignedInUser() : null);
+    let settled = false;
     const offlineTimer = saved ? window.setTimeout(() => {
       if (settled || !isMounted) return;
       setUser({ ...saved, identityProvider: null, email: null, offline: true });
@@ -120,6 +121,10 @@ export const AuthProvider = ({ children }) => {
 
   // In the iPhone app (and the home-screen app), save every main page in the background while there's
   // internet, so they all open later without it.
+  useEffect(() => {
+    if (user && !user.offline) rememberLastUser(user);
+  }, [user]);
+
   useEffect(() => {
     const standalone = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
     if (!user || !(nativeSignIn.inApp() || standalone)) return undefined;

@@ -43,13 +43,14 @@ export const NoInternetHelp = () => (
     <p><strong>Nearby-phones draft</strong> (iPhones only)</p>
     <ul>
       <li>Every team needs an iPhone with the Hood League app.</li>
-      <li>Before the draft, while you still have internet: the commissioner opens the league and taps <em>Save for nearby draft</em>. Everyone else opens the league and taps <em>Get ready for nearby draft</em>.</li>
+      <li>The commissioner opens the league and taps <em>Save for nearby draft</em>. Everyone else opens the league and taps <em>Get ready for nearby draft</em>.</li>
+      <li>Best done before the draft with internet. Missed it? It still works with no internet if each phone opened the app with internet since joining the league.</li>
       <li>At the draft: turn on Wi-Fi and Bluetooth in Control Center (you don't need to join a network) and stay in the same room. Tap Allow if the phone asks to find devices nearby.</li>
       <li>The commissioner's phone runs the draft. Bids stay secret, just like online.</li>
     </ul>
     <p><strong>One-device draft</strong> (any phone or computer)</p>
     <ul>
-      <li>While online, the commissioner opens the league and taps <em>Save for offline draft</em>.</li>
+      <li>The commissioner opens the league and taps <em>Save for offline draft</em> (best done with internet).</li>
       <li>Bids happen on paper or whiteboards, and the commissioner enters each winner and price.</li>
     </ul>
     <p>Either way, open the league again when you're back online to upload the results.</p>

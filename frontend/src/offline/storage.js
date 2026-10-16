@@ -59,3 +59,22 @@ export const rememberOfflineUser = (user) => {
 
 /** Who saved the drafts on this device; lets the site open with no internet once sign-in can't refresh. */
 export const offlineUser = () => (offlineLeagueIds().length ? read(USER_KEY, null) : null);
+
+// The last account signed in on this device, so the app opens as them with no internet even before any
+// draft was saved here (offline setup in the draft room then works from the saved page copies).
+const LAST_USER_KEY = 'hl-offline:last-user';
+
+export const rememberLastUser = (user) => {
+  if (!user?.userId) return;
+  try {
+    write(LAST_USER_KEY, { userId: user.userId, userDetails: user.userDetails || 'Player' });
+  } catch (error) {
+    // Best effort.
+  }
+};
+
+export const lastSignedInUser = () => read(LAST_USER_KEY, null);
+
+export const forgetLastUser = () => {
+  try { window.localStorage.removeItem(LAST_USER_KEY); } catch (error) { /* nothing to do */ }
+};

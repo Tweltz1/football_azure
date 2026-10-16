@@ -231,7 +231,7 @@ const Leagues = ({ userId }) => {
         </div>
       </section>
 
-      <OfflineNotice action="Creating or joining a league needs internet. Leagues saved to this phone still open below." />
+      <OfflineNotice action="Creating or joining a league needs internet. Your leagues still open below." />
 
       <div className="league-toolbar">
         <div>

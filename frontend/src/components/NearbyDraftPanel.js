@@ -10,6 +10,7 @@ const NOT_STARTED = new Set(['created', 'lobby']);
 const errorText = (error) => {
   const body = error?.response?.data;
   if (typeof body === 'string' && body) return body;
+  if (!error?.response && !error?.isAxiosError && error?.message) return error.message;
   if (!error?.response) return 'Could not reach the site. Check the internet connection and try again.';
   return error?.message || 'Something went wrong.';
 };
@@ -32,7 +33,6 @@ const NearbyDraftPanel = ({ league, user }) => {
   const isCommissioner = league.adminId === user.userId;
   const saved = readOfflineLeague(league.id);
   const notStarted = NOT_STARTED.has(String(league.status || '').toLowerCase());
-  const online = typeof navigator === 'undefined' || navigator.onLine !== false;
 
   const run = async (work) => {
     setBusy(true);
@@ -73,15 +73,16 @@ const NearbyDraftPanel = ({ league, user }) => {
         <div>
           <strong>No wifi? Draft with nearby phones</strong>
           <p>
-            Save the league to this phone while you have internet. During the draft this phone runs it, and everyone
-            nearby bids from their own phone in the app, with no internet. Bids stay blind. Upload the results afterwards.
+            This phone runs the draft, and everyone nearby bids from their own phone in the app, with no internet.
+            Bids stay blind. Best saved while you have internet, but it works without it if this phone opened the app
+            with internet recently. Upload the results afterwards.
           </p>
         </div>
         <div className="offline-draft-actions">
           <button
             type="button"
             className="edit-roster-button"
-            disabled={busy || !online}
+            disabled={busy}
             onClick={() => run(async () => {
               await saveLeagueToDevice(league.id, user, { nearby: true });
               await startHosting(league.id, user);
@@ -128,13 +129,13 @@ const NearbyDraftPanel = ({ league, user }) => {
     <section className="offline-draft-panel">
       <div>
         <strong>Drafting with no wifi?</strong>
-        <p>If the commissioner is running this draft from their phone, get ready while you still have internet.</p>
+        <p>If the commissioner is running this draft from their phone, tap below. It works with no internet too, as long as this phone opened the app with internet recently.</p>
       </div>
       <div className="offline-draft-actions">
         <button
           type="button"
           className="edit-roster-button"
-          disabled={busy || !online}
+          disabled={busy}
           onClick={() => run(() => saveNearbyTicket(league.id, user))}
         >
           {busy ? 'Getting ready...' : 'Get ready for nearby draft'}
