@@ -201,3 +201,22 @@
   border: 0;
   box-shadow: none;
 }
+
+/* Speaker button: top left, above the intro, on the signed-out screen. */
+.sound-toggle {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  left: 16px;
+  z-index: 101;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: rgba(10, 11, 14, 0.55);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 999px;
+  box-shadow: none;
+}

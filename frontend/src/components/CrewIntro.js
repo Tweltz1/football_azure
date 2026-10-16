@@ -1,29 +1,48 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { CREW } from '../data/crew';
+import { buildUp, guySound, playSong, soundLocked, taDa } from '../sound/crewSound';
 import './CrewIntro.css';
 
 const TITLE_MS = 1600;
 const GUY_MS = 3200;
 const LINEUP_MS = 3600;
+const WAIT_FOR_TAP_MS = 5000;
 
 // Plays every time the signed-out screen opens (after sign out or a refresh); Skip or tap through it.
 // Opening scene: a title card, then each guy steps out doing his bit and saying his line, then the whole crew lines up.
 // Steps: -1 title, 0..CREW.length-1 one guy each, CREW.length the lineup.
 const CrewIntro = ({ onDone }) => {
   const [step, setStep] = useState(-1);
+  // Browsers only allow sound after a tap, so the title waits a moment for one ("Tap for sound").
+  const [waitingForTap, setWaitingForTap] = useState(soundLocked);
 
   const finish = useCallback(() => onDone(), [onDone]);
 
   const next = useCallback(() => {
-    if (step >= CREW.length) finish();
+    if (step < 0 && waitingForTap) setWaitingForTap(false);
+    else if (step >= CREW.length) finish();
     else setStep(step + 1);
-  }, [step, finish]);
+  }, [step, finish, waitingForTap]);
 
   useEffect(() => {
-    const wait = step < 0 ? TITLE_MS : step < CREW.length ? GUY_MS : LINEUP_MS;
+    const wait = step < 0 ? (waitingForTap ? WAIT_FOR_TAP_MS : TITLE_MS) : step < CREW.length ? GUY_MS : LINEUP_MS;
     const timer = setTimeout(next, wait);
     return () => clearTimeout(timer);
-  }, [step, next]);
+  }, [step, next, waitingForTap]);
+
+  // Drum-roll build-up on the title, the theme plus each guy's own sound, then a ta-da on the lineup.
+  useEffect(() => {
+    if (step < 0) {
+      playSong(null);
+      if (!waitingForTap) buildUp(TITLE_MS);
+    } else if (step < CREW.length) {
+      playSong('intro');
+      guySound(step);
+    } else {
+      playSong(null);
+      taDa();
+    }
+  }, [step, waitingForTap]);
 
   const guy = step >= 0 && step < CREW.length ? CREW[step] : null;
 
@@ -41,6 +60,7 @@ const CrewIntro = ({ onDone }) => {
         <div className="crew-intro-title" key="title">
           <p>Hood League presents</p>
           <h1>The Crew</h1>
+          {waitingForTap && <p className="crew-intro-hint">Tap for sound</p>}
         </div>
       )}
 

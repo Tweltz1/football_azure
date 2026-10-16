@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { signIn } from '../AuthContext';
 import '../App.css';
 import ClimbBackdrop from './ClimbBackdrop';
 import CrewIntro from './CrewIntro';
+import SoundToggle from './SoundToggle';
+import { playSong } from '../sound/crewSound';
 import useOnline from '../offline/useOnline';
 import OfflineDraftStart from '../help/OfflineDraftStart';
 import { nearbySupported } from '../offline/nearbyDraft';
@@ -12,6 +14,11 @@ const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
   const online = useOnline();
   const [showIntro, setShowIntro] = useState(true);
+  // Soft background music once the intro is done; it stops when this page closes.
+  useEffect(() => {
+    if (!showIntro) playSong('login');
+  }, [showIntro]);
+  useEffect(() => () => playSong(null), []);
   // After Logout, whoever's drafts are saved on this phone can get back to them, even with no internet.
   const savedUser = offlineUser() || guestUser();
   const continueAsSaved = () => {
@@ -27,6 +34,7 @@ const Login = () => {
   return (
     <main className="login-page">
       <ClimbBackdrop />
+      <SoundToggle />
       {showIntro && <CrewIntro onDone={() => setShowIntro(false)} />}
       <section className="login-hero">
         <div>
