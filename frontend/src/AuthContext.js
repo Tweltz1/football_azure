@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from './supabaseClient';
-import { forgetLastUser, guestUser, isSignedOut, lastSignedInUser, markSignedOut, offlineUser, rememberLastUser } from './offline/storage';
+import { chosenUser, forgetChosenUser, forgetLastUser, guestUser, isSignedOut, lastSignedInUser, markSignedOut, offlineUser, rememberLastUser } from './offline/storage';
 import * as nativeSignIn from './native/authSession';
 import { clearReads } from './offline/readCache';
 import { prefetchPages } from './offline/prefetch';
@@ -28,7 +28,7 @@ const toAppUser = (supabaseUser) => {
 const offlineFallback = (error) => {
   if (isSignedOut()) return null;
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-  const saved = (offline || error ? offlineUser() : null) || (offline ? lastSignedInUser() : null) || guestUser();
+  const saved = chosenUser() || (offline || error ? offlineUser() : null) || (offline ? lastSignedInUser() : null) || guestUser();
   return saved ? { ...saved, identityProvider: null, email: null, offline: true } : null;
 };
 
@@ -64,6 +64,7 @@ export const signIn = async (provider) => {
 export const signOut = async () => {
   clearReads();
   forgetLastUser();
+  forgetChosenUser();
   // Works with no internet: stop opening as the saved offline or guest user. Their drafts stay on the
   // phone, and the sign-in page offers "Continue as" to get back to them.
   markSignedOut();
@@ -88,7 +89,7 @@ export const AuthProvider = ({ children }) => {
     // With no internet, a sign-in that needs refreshing keeps retrying for about 30 seconds. When a draft is
     // saved on this device, don't make the commissioner wait for that.
     const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
-    const saved = isSignedOut() ? null : (offlineUser() || (isOffline ? lastSignedInUser() : null) || guestUser());
+    const saved = isSignedOut() ? null : (chosenUser() || offlineUser() || (isOffline ? lastSignedInUser() : null) || guestUser());
     let settled = false;
     const offlineTimer = saved ? window.setTimeout(() => {
       if (settled || !isMounted) return;
@@ -133,7 +134,10 @@ export const AuthProvider = ({ children }) => {
   // In the iPhone app (and the home-screen app), save every main page in the background while there's
   // internet, so they all open later without it.
   useEffect(() => {
-    if (user && !user.offline && !user.guest) rememberLastUser(user);
+    if (user && !user.offline && !user.guest) {
+      rememberLastUser(user);
+      forgetChosenUser();
+    }
   }, [user]);
 
   useEffect(() => {

@@ -181,6 +181,20 @@
   font-size: 0.84rem;
 }
 
+.league-card-tags {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.league-status.league-status-offline {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
 .league-status {
   flex: none;
   display: inline-flex;

@@ -5,7 +5,7 @@ import ClimbBackdrop from './ClimbBackdrop';
 import useOnline from '../offline/useOnline';
 import OfflineDraftStart from '../help/OfflineDraftStart';
 import { nearbySupported } from '../offline/nearbyDraft';
-import { clearSignedOut, guestUser, offlineUser } from '../offline/storage';
+import { chooseSavedUser, clearSignedOut, guestUser, offlineUser, savedProfiles } from '../offline/storage';
 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
@@ -15,6 +15,12 @@ const Login = () => {
   const continueAsSaved = () => {
     clearSignedOut();
     window.location.assign('/leagues');
+  };
+  // With no internet, anyone who signed in on this phone before can open their last saved profile
+  // (favorites, notes, tiers, budget plan) and their drafts saved here.
+  const profiles = online ? [] : savedProfiles().filter(({ user }) => user.userId !== savedUser?.userId);
+  const loadProfile = (userId) => {
+    if (chooseSavedUser(userId)) window.location.assign('/leagues');
   };
   return (
     <main className="login-page">
@@ -52,6 +58,17 @@ const Login = () => {
               <button type="button" className="edit-roster-button" onClick={continueAsSaved}>
                 Continue as {savedUser.userDetails || 'saved player'}
               </button>
+            </div>
+          )}
+          {profiles.length > 0 && (
+            <div className="login-offline">
+              <p>Signed in on this phone before? Load your saved profile to see your favorites and notes.</p>
+              {profiles.map(({ user, savedAt }) => (
+                <button key={user.userId} type="button" className="edit-roster-button" onClick={() => loadProfile(user.userId)}>
+                  Load {user.userDetails || 'saved'}'s profile
+                  {savedAt ? <small> (saved {new Date(savedAt).toLocaleDateString()})</small> : null}
+                </button>
+              ))}
             </div>
           )}
           {nearbySupported() && (
