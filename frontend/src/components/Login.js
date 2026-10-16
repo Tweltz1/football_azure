@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { signIn } from '../AuthContext';
 import '../App.css';
 import ClimbBackdrop from './ClimbBackdrop';
-import CrewIntro, { introSeen } from './CrewIntro';
+import CrewIntro from './CrewIntro';
 import useOnline from '../offline/useOnline';
 import OfflineDraftStart from '../help/OfflineDraftStart';
 import { nearbySupported } from '../offline/nearbyDraft';
@@ -11,7 +11,7 @@ import { chooseSavedUser, clearSignedOut, guestUser, offlineUser, savedProfiles 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
   const online = useOnline();
-  const [showIntro, setShowIntro] = useState(() => !introSeen());
+  const [showIntro, setShowIntro] = useState(true);
   // After Logout, whoever's drafts are saved on this phone can get back to them, even with no internet.
   const savedUser = offlineUser() || guestUser();
   const continueAsSaved = () => {
