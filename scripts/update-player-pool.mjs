@@ -785,7 +785,7 @@ async function readPreviousPlayerRanks(filePath) {
   }
 }
 
-const dayOf = (iso) => String(iso || '').slice(0, 10);
+function dayOf(iso) { return String(iso || '').slice(0, 10); }
 
 /** Daily snapshots [{ date, ranks: { id: rank } }], oldest first. Starts from the current pool when missing. */
 async function readRankHistory(filePath, currentPool) {
