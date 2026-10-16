@@ -262,7 +262,7 @@ export const explainPair = (start, sit, ctx, { headline } = {}) => {
   const a = profile(start, ctx);
   const b = profile(sit, ctx);
   for (const p of [a, b]) {
-    if (p.matchup) p.matchup.verdictRank = Number((p.matchup.rankLabel.match(/^(\d+)/) || [])[1]) || null;
+    if (p.matchup) p.matchup.verdictRank = p.matchup.rank || null;
   }
   const factors = compareFactors(a, b);
   const title = headline || `Start ${start.name} over ${sit.name}`;
