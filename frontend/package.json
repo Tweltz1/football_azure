@@ -12,7 +12,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "prebuild": "node scripts/build-offline-engine.mjs",
+    "prebuild": "node scripts/build-offline-engine.mjs && node scripts/build-player-json.mjs",
     "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
+import { usePlayerDataVersion } from '../data/livePlayerData';
 import {
     buildPlayerBoard,
     filterPlayerBoard,
@@ -85,7 +86,8 @@ const Profile = () => {
         getProfile();
     }, [user, syncProfileFields]);
 
-    const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode]);
+    const playersVersion = usePlayerDataVersion();
+    const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode, playersVersion]); // eslint-disable-line react-hooks/exhaustive-deps -- recompute when a newer player list arrives
     const filteredPlayerPool = useMemo(() => filterPlayerBoard(playerBoard, {
         searchTerm,
         positionFilter,

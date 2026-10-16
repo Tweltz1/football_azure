@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../api';
 import { defenseMatchup, isUnavailable, trendFor, withProjections } from '../data/startSitUtils';
 import { POSITION_TABS, rankLabel, seasonRankings, weeklyRankings } from '../data/rankings';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
+import { usePlayerDataVersion } from '../data/livePlayerData';
 import {
   LeagueScoringContext, applyLeagueScoring, useLeagueScoring, useSavedSleeperTeams,
 } from '../data/leagueScoring';
@@ -305,14 +306,15 @@ const Rankings = ({ userId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTick]);
 
-  const season = useMemo(() => seasonRankings(initialPlayerList, tab), [tab]);
+  const playersVersion = usePlayerDataVersion();
+  const season = useMemo(() => seasonRankings(initialPlayerList, tab), [tab, playersVersion]); // eslint-disable-line react-hooks/exhaustive-deps -- recompute when a newer player list arrives
   const seasonRankById = useMemo(() => {
     const byId = new Map();
     for (const tabOption of POSITION_TABS.filter((t) => t.positions.length === 1)) {
       for (const player of seasonRankings(initialPlayerList, tabOption.value)) byId.set(player.id, player.positionRank);
     }
     return byId;
-  }, []);
+  }, [playersVersion]); // eslint-disable-line react-hooks/exhaustive-deps -- recompute when a newer player list arrives
 
   const weekly = useMemo(() => {
     const { rows, hidden } = weeklyRankings(projections?.players || [], tab, scoring);
