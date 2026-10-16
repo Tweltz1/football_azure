@@ -38,19 +38,21 @@ const setup = () => {
   if (ctx) return ctx;
   const Ctor = AudioCtor();
   if (!Ctor) return null;
+  // iPhone: play like a music app, so the ring/silent switch doesn't mute it (the speaker button still does).
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* older Safari */ }
   try { ctx = new Ctor(); } catch (e) { return null; }
   master = ctx.createGain();
   master.gain.value = soundOff() ? 0 : 0.6;
   const comp = ctx.createDynamicsCompressor();
   master.connect(comp).connect(ctx.destination);
   musicBus = ctx.createGain();
-  musicBus.gain.value = 0.55;
+  musicBus.gain.value = 0.9;
   musicBus.connect(master);
   sfxBus = ctx.createGain();
   sfxBus.gain.value = 0.9;
   sfxBus.connect(master);
   const wake = () => unlock();
-  ['pointerdown', 'touchstart', 'keydown'].forEach((type) => window.addEventListener(type, wake, { capture: true, passive: true }));
+  ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'].forEach((type) => window.addEventListener(type, wake, { capture: true, passive: true }));
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) ctx.suspend().catch(() => {});
     else if (song && unlockedAt > -Infinity) ctx.resume().catch(() => {});
@@ -63,6 +65,11 @@ function unlock() {
   if (ctx.state !== 'running') {
     unlockedAt = performance.now();
     ctx.resume().catch(() => {});
+    // Older iPhones also need a sound started inside the tap itself.
+    const blip = ctx.createBufferSource();
+    blip.buffer = ctx.createBuffer(1, 1, 22050);
+    blip.connect(ctx.destination);
+    blip.start(0);
   } else if (unlockedAt === -Infinity) {
     unlockedAt = performance.now();
   }
@@ -165,12 +172,12 @@ const SONGS = {
     play(t, bar, i, eighth) {
       const [root, ...rest] = bar.chord;
       if (i === 0) {
-        tone(musicBus, t, hz(root), eighth * 8, { type: 'sine', gain: 0.12, attack: 0.3 });
-        rest.forEach((n) => tone(musicBus, t, hz(n), eighth * 8, { type: 'sine', gain: 0.03, attack: 0.8 }));
+        tone(musicBus, t, hz(root), eighth * 8, { type: 'sine', gain: 0.18, attack: 0.3 });
+        rest.forEach((n) => tone(musicBus, t, hz(n), eighth * 8, { type: 'triangle', gain: 0.06, attack: 0.8 }));
       }
       const arp = [rest[0], rest[1], rest[2], rest[1] + 12, rest[2], rest[1], rest[0] + 12, rest[2]];
-      tone(musicBus, t, hz(arp[i] + 12), eighth * 1.6, { type: 'triangle', gain: i % 2 ? 0.025 : 0.04 });
-      if (i === 4) tone(musicBus, t, hz(root + 12), eighth * 3, { type: 'sine', gain: 0.03, attack: 0.05 });
+      tone(musicBus, t, hz(arp[i] + 12), eighth * 1.6, { type: 'triangle', gain: i % 2 ? 0.07 : 0.1 });
+      if (i === 4) tone(musicBus, t, hz(root + 12), eighth * 3, { type: 'triangle', gain: 0.07, attack: 0.05 });
     },
   },
 };
