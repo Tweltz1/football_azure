@@ -2,37 +2,17 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { CREW } from '../data/crew';
 import './CrewIntro.css';
 
-const SEEN_KEY = 'hood-league-intro-seen';
 const TITLE_MS = 1600;
 const GUY_MS = 3200;
 const LINEUP_MS = 3600;
 
-// Plays once per device; the login page also has a button to watch it again.
-export const introSeen = () => {
-  try {
-    return window.localStorage.getItem(SEEN_KEY) === '1';
-  } catch (error) {
-    return true; // No storage: don't replay on every visit.
-  }
-};
-
-const markSeen = () => {
-  try {
-    window.localStorage.setItem(SEEN_KEY, '1');
-  } catch (error) {
-    // Nothing to remember it in; it just plays again next time.
-  }
-};
-
+// Plays every time the signed-out screen opens (after sign out or a refresh); Skip or tap through it.
 // Opening scene: a title card, then each guy steps out doing his bit and saying his line, then the whole crew lines up.
 // Steps: -1 title, 0..CREW.length-1 one guy each, CREW.length the lineup.
 const CrewIntro = ({ onDone }) => {
   const [step, setStep] = useState(-1);
 
-  const finish = useCallback(() => {
-    markSeen();
-    onDone();
-  }, [onDone]);
+  const finish = useCallback(() => onDone(), [onDone]);
 
   const next = useCallback(() => {
     if (step >= CREW.length) finish();
