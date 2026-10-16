@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from './supabaseClient';
 import { offlineUser } from './offline/storage';
 import * as nativeSignIn from './native/authSession';
+import { clearReads } from './offline/readCache';
 
 const AuthContext = createContext();
 
@@ -59,6 +60,7 @@ export const signIn = async (provider) => {
 };
 
 export const signOut = async () => {
+  clearReads();
   await supabase.auth.signOut();
   window.location.assign('/');
 };

@@ -3,6 +3,7 @@ import { SUPABASE_URL, supabase } from './supabaseClient';
 import { acceptLeagues } from './realtime';
 import { isOfflineLeague, offlineLeagueIds } from './offline/storage';
 import { localLeagueList, offlineUserIdFor, runLocal } from './offline/localApi';
+import { loadRead, readKey, saveRead } from './offline/readCache';
 
 export const API_BASE_URL = process.env.REACT_APP_API_URL
     || (SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/api` : 'http://localhost:54321/functions/v1/api');
@@ -86,6 +87,8 @@ const routeOffline = (config) => {
 // With no internet a sign-in refresh retries for about 30 seconds. When drafts are saved on this device,
 // stop waiting after a few seconds so the league list can fall back to them.
 const sessionFor = (config) => {
+    // With no internet, don't wait on a sign-in refresh: the request fails fast and a saved copy is used.
+    if (navigator.onLine === false) return { data: null };
     if (!offlineLeagueIds().length) return supabase.auth.getSession();
     if (navigator.onLine === false && config.adapter === leagueListAdapter) return { data: null };
     const session = supabase.auth.getSession();
@@ -114,10 +117,29 @@ if (!axios.__hoodLeagueInterceptors) {
             // Seeds the live-update cache so draft updates can be applied as small diffs.
             if (isApiRequest(response.config?.url)) {
                 acceptLeagues(response.data);
+                if (!response.config.offlineLocal && !response.config.fromSavedCopy) {
+                    const { path, query } = apiPath(response.config);
+                    saveRead(readKey(response.config.method, path, query), response.data);
+                }
             }
             return response;
         },
         (error) => {
+            // No internet (no response at all): open the page with the last copy this phone saw.
+            if (!error.response && error.config && isApiRequest(error.config.url) && !error.config.offlineLocal) {
+                const { path, query } = apiPath(error.config);
+                const saved = loadRead(readKey(error.config.method, path, query));
+                if (saved) {
+                    return {
+                        data: saved.data,
+                        status: 200,
+                        statusText: 'OK (saved copy)',
+                        headers: { 'x-hl-saved-at': String(saved.savedAt) },
+                        config: { ...error.config, fromSavedCopy: true },
+                        request: null,
+                    };
+                }
+            }
             const url = error.config?.url || '';
             const isRegularBidPost = String(error.config?.method || '').toLowerCase() === 'post'
                 && /\/leagues\/[^/]+\/bid$/.test(url);
