@@ -3,7 +3,7 @@
 // what each defense has allowed, injury reports), so the reasons change as that data does.
 
 import {
-  benchReason, defenseMatchup, describeMarketSettings, isUnavailable, teammatesOut, trendFor, vacatedPoints,
+  benchReason, defenseMatchup, describeMarketSettings, isUnavailable, tagForSide, teammatesOut, trendFor, vacatedPoints,
 } from './startSitUtils.js';
 import { rankLabel } from './rankings.js';
 
@@ -590,8 +590,8 @@ export const explainTrade = (result, ctx) => {
   else sentences.push(`You give up ${valueGap} more in trade value than you get (${shown('give')} vs ${shown('get')}).`);
   if (marketLean && projectionLean && marketLean !== projectionLean && marketLean !== 'even' && projectionLean !== 'even') {
     sentences.push(projectionLean === 'start'
-      ? 'The trade market prefers your side, but our projections for your scoring like what you get: a buy-low.'
-      : 'Our projections prefer what you give, but the trade market pays more for it: you may be selling high.');
+      ? 'The trade market rates what you give higher, but our projections for your scoring like what you get: a buy-low.'
+      : 'The trade market rates what you get higher, but our projections for your scoring like what you give: you may be buying high.');
   }
   const adj = result.adjustment;
   if (adj?.get) sentences.push(`${namesOf(adj.get.players.map((name) => ({ name })))} wouldn't crack your lineup, so ${adj.get.players.length > 1 ? 'they count' : 'that counts'} for half to cover the roster spot.`);
@@ -623,7 +623,7 @@ export const explainTrade = (result, ctx) => {
       name: p.name,
       side,
       notes: [
-        ...(p.tag ? [`${p.tag.label}: ${p.tag.detail.replace('this player', p.name)}`] : []),
+        ...(p.tag ? [`${tagForSide(p.tag, side.toLowerCase()).label}: ${p.tag.detail.replace('this player', p.name)}`] : []),
         ...(p.outlook?.notes || []).slice(0, 2),
       ],
     }))

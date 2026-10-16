@@ -114,7 +114,9 @@ export const benchReason = (player) => {
 
 /** Head-to-head verdict for the compare tool. */
 export const compareVerdict = (players) => {
-  const ranked = [...players].filter((p) => p.points != null).sort(sortByPoints);
+  // Players who can't play this week (out, on bye) only win when nobody else can play either.
+  const scored = [...players].filter((p) => p.points != null).sort(sortByPoints);
+  const ranked = [...scored.filter((p) => !benchReason(p)), ...scored.filter((p) => benchReason(p))];
   if (ranked.length < 2) return null;
   const [first, second] = ranked;
   const margin = Math.round((first.points - second.points) * 10) / 10;
@@ -482,6 +484,13 @@ export const marketTag = (own, market) => {
   if (market >= own * TAG_RATIO && market - own >= TAG_MIN_GAP) return { key: 'sell', label: 'Sell high', detail: 'The trade market values this player more than our projections do.' };
   if (own >= market * TAG_RATIO && own - market >= TAG_MIN_GAP) return { key: 'buy', label: 'Buy low', detail: 'Our projections value this player more than the trade market does.' };
   return null;
+};
+
+/** The tag as it reads from your side of a trade: a sell-high player you'd be getting is a buy-high. */
+export const tagForSide = (tag, side) => {
+  if (!tag) return null;
+  if (side === 'give') return tag.key === 'sell' ? tag : { ...tag, label: 'Selling low' };
+  return tag.key === 'buy' ? tag : { ...tag, label: 'Buying high' };
 };
 
 // Extra players who wouldn't start for the team getting them count at this share of their value:

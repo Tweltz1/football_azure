@@ -183,3 +183,17 @@ test('usage share and how similar players did against each defense show up as ev
   assert.equal(share.edge, 'start');
   assert.match(why.basis, /team target and carry shares/);
 });
+
+test('wording: stingy defenses read as "fewest", and a player who cannot play never wins head to head', async () => {
+  const { compareVerdict, defenseMatchup, tagForSide } = await import('../src/data/startSitUtils.js');
+  const label = (rank) => defenseMatchup({ opponent: 'T', position: 'QB' }, { T: { QB: { ...defenseRow(rank), rank } } }, 'ppr').rankLabel;
+  assert.equal(label(29), '4th fewest points allowed to QBs, of 32 teams');
+  assert.equal(label(3), '3rd most points allowed to QBs, of 32 teams');
+  const out = player('Star', 'WR', 20, { injury: 'Out' });
+  const ok = player('Backup', 'WR', 8);
+  assert.equal(compareVerdict([out, ok]).winner.name, 'Backup');
+  const sell = { key: 'sell', label: 'Sell high' };
+  assert.equal(tagForSide(sell, 'give').label, 'Sell high');
+  assert.equal(tagForSide(sell, 'get').label, 'Buying high');
+  assert.equal(tagForSide({ key: 'buy', label: 'Buy low' }, 'give').label, 'Selling low');
+});

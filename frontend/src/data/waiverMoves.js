@@ -54,7 +54,7 @@ const handcuffOf = (p, { allPlayers, levels, scoring, rosterIds }) => {
   const usageWord = position === 'RB' ? 'carries' : 'targets';
   return {
     starter, own, bonus,
-    note: `handcuff to ${own ? 'your ' : ''}${starter.name} (${Math.round(share * 100)}% of ${usageWord}), about ${round1(fillIn)} a game if he misses time`,
+    note: `handcuff to ${own ? 'your ' : ''}${starter.name} (${Math.round(share * 100)}% of ${usageWord}), about ${round1(fillIn)} a game if the starter misses time`,
   };
 };
 
