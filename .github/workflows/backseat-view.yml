@@ -35,6 +35,20 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+      - name: Register separate Apple bundle IDs
+        if: contains(github.event.head_commit.message, '[backseat-register]')
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+        run: |
+          if [ -z "$APP_STORE_CONNECT_ISSUER_ID" ] || [ -z "$APP_STORE_CONNECT_KEY_ID" ] || [ -z "$APP_STORE_CONNECT_KEY" ]; then
+            echo "::error::Missing existing App Store Connect GitHub Actions secrets"
+            exit 1
+          fi
+          python3 -m venv "$RUNNER_TEMP/backseat-apple-api"
+          "$RUNNER_TEMP/backseat-apple-api/bin/pip" -q install 'PyJWT[crypto]'
+          "$RUNNER_TEMP/backseat-apple-api/bin/python" tools/register_apple_ids.py
       - name: Install XcodeGen
         run: |
           if ! command -v xcodegen >/dev/null; then brew install xcodegen; fi
