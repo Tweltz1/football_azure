@@ -1,0 +1,226 @@
+import Foundation
+import Capacitor
+import MultipeerConnectivity
+
+/// Lets iPhones in the same room talk with no internet (Bluetooth and
+/// peer-to-peer Wi-Fi), for the offline draft.
+///
+/// The commissioner's phone calls `host`, everyone else calls `join` and
+/// connects to the host automatically. Messages are JSON strings. The host
+/// decides who receives what, so sealed bids can go to the host only.
+///
+/// Events: `peerFound` {peerId, name}, `peerLost` {peerId},
+/// `peerState` {peerId, name, state: connecting|connected|disconnected},
+/// `message` {peerId, name, data}.
+@objc(NearbyPlugin)
+public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "NearbyPlugin"
+    public let jsName = "Nearby"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "host", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "join", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "send", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "peers", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise)
+    ]
+
+    // Bonjour service name; must match NSBonjourServices in Info.plist.
+    private static let serviceType = "hl-draft"
+
+    private var myPeer: MCPeerID?
+    // An MCSession holds at most 8 phones, so the host opens another one for every 7 players.
+    private var sessions: [MCSession] = []
+    private var sessionOfPeer: [MCPeerID: MCSession] = [:]
+    private static let playersPerSession = kMCSessionMaximumNumberOfPeers - 1
+    private var session: MCSession? { return sessions.first }
+    private var advertiser: MCNearbyServiceAdvertiser?
+    private var browser: MCNearbyServiceBrowser?
+    private var roomCode = ""
+    private var peersById: [String: MCPeerID] = [:]
+    private var idsByPeer: [MCPeerID: String] = [:]
+
+    private func start(name: String, room: String) {
+        stopAll()
+        let peer = MCPeerID(displayName: String(name.prefix(60)))
+        myPeer = peer
+        roomCode = room
+        sessions = [newSession(peer)]
+    }
+
+    private func newSession(_ peer: MCPeerID) -> MCSession {
+        let s = MCSession(peer: peer, securityIdentity: nil, encryptionPreference: .required)
+        s.delegate = self
+        return s
+    }
+
+    /// Host: a session with room for one more player (counting players still connecting).
+    private func sessionWithRoom() -> MCSession? {
+        guard let peer = myPeer else { return nil }
+        for s in sessions where sessionOfPeer.values.filter({ $0 === s }).count < NearbyPlugin.playersPerSession {
+            return s
+        }
+        let s = newSession(peer)
+        sessions.append(s)
+        return s
+    }
+
+    private var connectedPeers: [MCPeerID] {
+        return sessions.flatMap { $0.connectedPeers }
+    }
+
+    /// Commissioner: advertise a draft room. Options: name, room (code players must match).
+    @objc func host(_ call: CAPPluginCall) {
+        let name = call.getString("name") ?? "Commissioner"
+        let room = call.getString("room") ?? ""
+        DispatchQueue.main.async {
+            self.start(name: name, room: room)
+            guard let peer = self.myPeer else { return call.reject("Could not start") }
+            let ad = MCNearbyServiceAdvertiser(peer: peer, discoveryInfo: ["room": room], serviceType: NearbyPlugin.serviceType)
+            ad.delegate = self
+            ad.startAdvertisingPeer()
+            self.advertiser = ad
+            call.resolve(["peerId": self.key(peer)])
+        }
+    }
+
+    /// Player: look for the room with this code and connect to its host.
+    @objc func join(_ call: CAPPluginCall) {
+        let name = call.getString("name") ?? "Player"
+        let room = call.getString("room") ?? ""
+        DispatchQueue.main.async {
+            self.start(name: name, room: room)
+            guard let peer = self.myPeer else { return call.reject("Could not start") }
+            let br = MCNearbyServiceBrowser(peer: peer, serviceType: NearbyPlugin.serviceType)
+            br.delegate = self
+            br.startBrowsingForPeers()
+            self.browser = br
+            call.resolve(["peerId": self.key(peer)])
+        }
+    }
+
+    /// Send a JSON string. Options: data, to (array of peerIds; omitted = everyone connected).
+    @objc func send(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            guard !self.sessions.isEmpty, let text = call.getString("data"), let payload = text.data(using: .utf8) else {
+                return call.reject("Not connected")
+            }
+            let wanted = call.getArray("to", String.self).map { Set($0.compactMap { self.peersById[$0] }) }
+            var sent = 0
+            do {
+                for s in self.sessions {
+                    let targets = s.connectedPeers.filter { wanted?.contains($0) ?? true }
+                    if targets.isEmpty { continue }
+                    try s.send(payload, toPeers: targets, with: .reliable)
+                    sent += targets.count
+                }
+            } catch {
+                return call.reject(error.localizedDescription)
+            }
+            if sent == 0 { return call.reject("Nobody to send to") }
+            call.resolve(["sent": sent])
+        }
+    }
+
+    @objc func peers(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let list = self.connectedPeers.map { ["peerId": self.key($0), "name": $0.displayName] }
+            call.resolve(["peers": list])
+        }
+    }
+
+    @objc func stop(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            self.stopAll()
+            call.resolve()
+        }
+    }
+
+    private func stopAll() {
+        advertiser?.stopAdvertisingPeer()
+        browser?.stopBrowsingForPeers()
+        sessions.forEach { $0.disconnect() }
+        advertiser = nil
+        browser = nil
+        sessions = []
+        sessionOfPeer = [:]
+        peersById = [:]
+        idsByPeer = [:]
+    }
+
+    /// Stable id for a peer during this session (display names can repeat).
+    private func key(_ peer: MCPeerID) -> String {
+        if let id = idsByPeer[peer] { return id }
+        let id = UUID().uuidString
+        idsByPeer[peer] = id
+        peersById[id] = peer
+        return id
+    }
+}
+
+extension NearbyPlugin: MCNearbyServiceAdvertiserDelegate {
+    public func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID,
+                           withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
+        // Only let in players who know this room's code.
+        let theirRoom = context.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        DispatchQueue.main.async {
+            guard theirRoom == self.roomCode, let s = self.sessionWithRoom() else {
+                return invitationHandler(false, nil)
+            }
+            self.sessionOfPeer[peerID] = s
+            invitationHandler(true, s)
+        }
+    }
+
+    public func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
+        notifyListeners("error", data: ["message": error.localizedDescription])
+    }
+}
+
+extension NearbyPlugin: MCNearbyServiceBrowserDelegate {
+    public func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String: String]?) {
+        DispatchQueue.main.async {
+            guard info?["room"] == self.roomCode, let s = self.session else { return }
+            let id = self.key(peerID)
+            self.notifyListeners("peerFound", data: ["peerId": id, "name": peerID.displayName])
+            browser.invitePeer(peerID, to: s, withContext: self.roomCode.data(using: .utf8), timeout: 20)
+        }
+    }
+
+    public func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
+        DispatchQueue.main.async {
+            self.notifyListeners("peerLost", data: ["peerId": self.key(peerID)])
+        }
+    }
+
+    public func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
+        notifyListeners("error", data: ["message": error.localizedDescription])
+    }
+}
+
+extension NearbyPlugin: MCSessionDelegate {
+    public func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
+        let label: String
+        switch state {
+        case .connected: label = "connected"
+        case .connecting: label = "connecting"
+        default: label = "disconnected"
+        }
+        DispatchQueue.main.async {
+            if state == .notConnected { self.sessionOfPeer[peerID] = nil }
+            let id = self.key(peerID)
+            self.notifyListeners("peerState", data: ["peerId": id, "name": peerID.displayName, "state": label])
+        }
+    }
+
+    public func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
+        guard let text = String(data: data, encoding: .utf8) else { return }
+        DispatchQueue.main.async {
+            let id = self.key(peerID)
+            self.notifyListeners("message", data: ["peerId": id, "name": peerID.displayName, "data": text])
+        }
+    }
+
+    public func session(_ session: MCSession, didReceive stream: InputStream, withName streamName: String, fromPeer peerID: MCPeerID) {}
+    public func session(_ session: MCSession, didStartReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, with progress: Progress) {}
+    public func session(_ session: MCSession, didFinishReceivingResourceWithName resourceName: String, fromPeer peerID: MCPeerID, at localURL: URL?, withError error: Error?) {}
+}

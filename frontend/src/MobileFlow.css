@@ -228,6 +228,17 @@
     display: inline;
   }
 
+  .nav-links a:has(.nav-two-line) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-short.nav-two-line {
+    white-space: normal;
+    line-height: 1.15;
+  }
+
   /* Leagues */
   .league-card-list {
     grid-template-columns: 1fr;
@@ -511,4 +522,23 @@
   #startsit-trades {
     scroll-margin-top: 10px;
   }
+}
+
+/* Keep the top bar below the phone's clock and notch when the page fills the whole screen
+   (the iPhone app and the home-screen app). Zero in a normal browser tab. */
+.top-nav {
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+}
+
+/* A solid strip behind the phone's clock so scrolled pages don't run underneath it. */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: #0a0b0e;
+  z-index: 1000;
+  pointer-events: none;
 }

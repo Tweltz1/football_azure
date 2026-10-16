@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../api';
 import { subscribeProfileUpdates } from '../profileSync';
 import DraftScreen from './DraftScreen';
 import OfflineDraftPanel from './OfflineDraftPanel';
+import NearbyDraftPanel from './NearbyDraftPanel';
 import WhiteboardPad from '../whiteboard/WhiteboardPad';
 import { isAutoReadLeague, isWhiteboardLeague } from '../whiteboard/biddingStyle';
 import { isDraftLive } from '../data/leagueLabels';
@@ -101,6 +102,7 @@ const DraftRoomEnhanced = ({ userId }) => {
     <div className="draft-room-enhanced">
       <AdminNoticeToast notice={adminNotice} onClose={() => setAdminNotice(null)} />
       <OfflineDraftPanel league={league} user={user} />
+      <NearbyDraftPanel league={league} user={user} />
       <DraftScreen
         key={profileRefreshKey}
         userId={userId}

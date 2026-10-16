@@ -1,5 +1,7 @@
 import React from 'react';
 import { BIDDING_STYLES, normalizeBiddingMode } from './biddingStyle';
+import { KickerWithTip } from '../help/InfoTip';
+import { BiddingStyleHelp } from '../help/draftHelp';
 
 /** "Bidding style" picker for Create League and the league settings modal. */
 const BiddingStyleField = ({ value, onChange }) => {
@@ -7,7 +9,7 @@ const BiddingStyleField = ({ value, onChange }) => {
   const blurb = BIDDING_STYLES.find((style) => style.value === current)?.blurb;
   return (
     <>
-      <p className="section-kicker">Bidding style</p>
+      <KickerWithTip title="Bidding style"><BiddingStyleHelp /></KickerWithTip>
       <div className="button-group bidding-style-group" role="group" aria-label="Bidding style">
         {BIDDING_STYLES.map((style) => (
           <button

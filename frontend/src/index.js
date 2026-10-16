@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom';
 import App from './App';
 import { AuthProvider } from './AuthContext';
 import ErrorBoundary from './ErrorBoundary';
+// iPhone app: nearby-phones drafts (does nothing on the website).
+import './offline/nearbyDraft';
 
 ReactDOM.render(
   <React.StrictMode>

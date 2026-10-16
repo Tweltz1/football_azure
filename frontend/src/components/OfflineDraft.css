@@ -50,3 +50,46 @@
     width: 100%;
   }
 }
+
+.offline-draft-panel .offline-draft-link {
+  margin-top: 8px;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.nearby-room-code {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 4px 12px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.absent-team-bid {
+  flex-basis: 100%;
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline-strong);
+}
+
+.absent-team-bid-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.absent-team-bid-row select {
+  flex: 1 1 160px;
+}
+
+.absent-team-bid-row input {
+  flex: 0 1 90px;
+  min-width: 70px;
+}

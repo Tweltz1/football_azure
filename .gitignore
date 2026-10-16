@@ -21,3 +21,4 @@ yarn-error.log*
 # Supabase CLI
 supabase/.temp
 supabase/.branches
+/ios-app/node_modules

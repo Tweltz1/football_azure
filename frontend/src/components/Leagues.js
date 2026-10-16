@@ -9,6 +9,9 @@ import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '
 import { isDraftLive, leagueStatusKey, leagueStatusLabel } from '../data/leagueLabels';
 import BiddingStyleField from '../whiteboard/BiddingStyleField';
 import { biddingStyleLabel, isWhiteboardLeague, normalizeBiddingMode } from '../whiteboard/biddingStyle';
+import OfflineNotice from '../help/OfflineNotice';
+import InfoTip, { KickerWithTip } from '../help/InfoTip';
+import { DraftModeHelp, NoInternetHelp, RosterHelp, TimerHelp } from '../help/draftHelp';
 import '../whiteboard/whiteboard.css';
 import '../App.css';
 import './LeagueTools.css';
@@ -41,7 +44,7 @@ const Leagues = ({ userId }) => {
       setLeagues(response.data);
     } catch (error) {
       console.error('Error fetching leagues:', error);
-      alert('Failed to fetch leagues.');
+      if (navigator.onLine !== false && error.response?.status !== 401) alert('Failed to fetch leagues.');
     } finally {
       setLoading(false);
     }
@@ -167,6 +170,18 @@ const Leagues = ({ userId }) => {
     }
   };
 
+  const handleClaimTeam = async (team) => {
+    if (!window.confirm(`Claim ${team.name} as your team?`)) return;
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${joinInviteId}/claim-team`, { teamId: team.id });
+      alert(`${team.name} is yours.`);
+      closeJoinModal();
+      fetchLeagues();
+    } catch (error) {
+      alert(`Couldn't claim that team: ${error.response?.data || error.message}`);
+    }
+  };
+
   const handleNewSeason = async (league) => {
     const message = `Start a new season for ${league.name}? This draft is saved in Draft History, then every team's roster is cleared and budgets reset to $200 so you can draft again.`;
     if (!window.confirm(message)) return;
@@ -228,9 +243,17 @@ const Leagues = ({ userId }) => {
         </div>
       </section>
 
+      <OfflineNotice action="Creating or joining a league needs internet. Your leagues still open below." />
+
       <div className="league-toolbar">
         <div>
-          <p className="section-kicker">Draft rooms</p>
+          <div className="kicker-with-tip">
+            <p className="section-kicker">Draft rooms</p>
+            <InfoTip label="drafting without internet">
+              <p>Tap a league to open its draft room. No wifi where you draft? Set it up ahead of time:</p>
+              <NoInternetHelp />
+            </InfoTip>
+          </div>
           <h2>Your Leagues</h2>
         </div>
         <div className="button-group">
@@ -288,7 +311,7 @@ const Leagues = ({ userId }) => {
         <div className="modal-overlay">
           <div className="modal-content">
             <h3>League settings: {currentLeague.name}</h3>
-            <p className="section-kicker">Draft mode</p>
+            <KickerWithTip title="Draft mode"><DraftModeHelp /></KickerWithTip>
             <div className="button-group" role="group" aria-label="Draft mode">
               <button
                 type="button"
@@ -307,7 +330,7 @@ const Leagues = ({ userId }) => {
             </div>
             {draftMode === 'auction' && <BiddingStyleField value={biddingMode} onChange={setBiddingMode} />}
             <div className="divider" />
-            <p className="section-kicker">Roster spots</p>
+            <KickerWithTip title="Roster spots"><RosterHelp /></KickerWithTip>
             <div className="settings-grid">
               <label>QB<input type="number" value={rosterSettings.qb || 0} onChange={(e) => setRosterSettings({...rosterSettings, qb: parseInt(e.target.value)})}/></label>
               <label>RB<input type="number" value={rosterSettings.rb || 0} onChange={(e) => setRosterSettings({...rosterSettings, rb: parseInt(e.target.value)})}/></label>
@@ -321,7 +344,7 @@ const Leagues = ({ userId }) => {
             </div>
 
             <div className="divider" />
-            <p className="section-kicker">Timers (seconds)</p>
+            <KickerWithTip title="Timers (seconds)"><TimerHelp /></KickerWithTip>
             <div className="settings-grid">
               <label>Bid Timer<input type="number" value={draftTimers.bidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, bidTimer: parseInt(e.target.value)})}/></label>
               <label>Intermission<input type="number" value={draftTimers.intermissionTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, intermissionTimer: parseInt(e.target.value)})}/></label>
@@ -345,7 +368,19 @@ const Leagues = ({ userId }) => {
                 {invitePreviewError && String(invitePreviewError)}
                 {!invitePreviewError && !invitePreview && 'Checking your invite...'}
                 {invitePreview && invitePreview.isMember && `You're already in ${invitePreview.name}.`}
-                {invitePreview && !invitePreview.isMember && invitePreview.status === 'completed' && (
+                {invitePreview && !invitePreview.isMember && (invitePreview.openTeams || []).length > 0 && (
+                  <>
+                    <p><strong>{invitePreview.name}</strong> was drafted on a phone. Which team is yours?</p>
+                    <div className="button-group claim-team-list">
+                      {invitePreview.openTeams.map((team) => (
+                        <button key={team.id} type="button" className="edit-roster-button" onClick={() => handleClaimTeam(team)}>
+                          {team.name}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {invitePreview && !invitePreview.isMember && !(invitePreview.openTeams || []).length && invitePreview.status === 'completed' && (
                   `${invitePreview.name} has already finished its draft. Ask the commissioner to start a new season first.`
                 )}
                 {invitePreview && !invitePreview.isMember && invitePreview.status !== 'completed' && (
