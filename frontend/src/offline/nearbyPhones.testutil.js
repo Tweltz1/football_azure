@@ -68,7 +68,7 @@ export const makeAir = () => {
     p.up = false;
     phones.forEach((other, id) => { if (id !== peerId) emit(id, 'peerState', { peerId, state: 'disconnected' }); });
   };
-  return { transportFor, powerOff };
+  return { transportFor, powerOff, phones };
 };
 
 // One copy of the app on one phone.

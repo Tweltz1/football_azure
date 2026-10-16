@@ -93,3 +93,6 @@
   flex: 0 1 90px;
   min-width: 70px;
 }
+
+.nearby-cohost { display: grid; gap: 0.35rem; margin-top: 0.75rem; font-size: 0.9rem; }
+.nearby-cohost select { max-width: 100%; }

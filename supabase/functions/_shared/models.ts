@@ -116,7 +116,17 @@ export interface League {
   awayUserIds: string[];
   /** Counts drafts run in this league; a new season starts the next one. Missing on older leagues (= 1). */
   draftNumber?: number;
+  /**
+   * A member the commissioner picked to help run the draft: they can use the draft tools (start, pause,
+   * award, ties, undo, upload an offline draft) and take over a nearby draft if the commissioner's phone
+   * drops. Only the commissioner changes settings, removes teams or deletes the league.
+   */
+  cohostId?: string | null;
 }
+
+/** The commissioner, or the co-host they picked. */
+export const isCommish = (league: Pick<League, 'adminId' | 'cohostId'>, userId: string | null | undefined) =>
+  !!userId && (league.adminId === userId || (!!league.cohostId && league.cohostId === userId));
 
 /** A finished draft, saved so it can still be viewed after the league starts a new season. */
 export interface DraftHistoryEntry {

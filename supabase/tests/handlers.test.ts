@@ -973,6 +973,30 @@ test('whiteboard: a tie gets one rebid round on boards, then the commissioner pi
   assert.equal(world.league(leagueId).draftLog.at(-1)!.winningBid, 21);
 });
 
+test('co-host: the commissioner picks one, who can run the draft tools but not change settings', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world, ['admin', 'bob', 'cara']);
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/settings`, { cohostId: 'bob' })).status, 401);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { cohostId: 'zed' })).status, 400, 'must be a member');
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { cohostId: 'admin' })).status, 400);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { cohostId: 'bob' })).status, 200);
+  assert.equal(world.league(leagueId).cohostId, 'bob');
+  assert.equal(((await world.call('cara', 'GET', `leagues/${leagueId}/state`)).body as any).cohostId, 'bob');
+
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/startDraft`, {})).status, 401);
+  await world.call('cara', 'POST', `leagues/${leagueId}/ready`, { isReady: true });
+  await world.call('bob', 'POST', `leagues/${leagueId}/ready`, { isReady: true });
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/startDraft`, {})).status, 200, 'the co-host can start the draft');
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/pause`, {})).status, 200);
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/settings`, { draftTimers: { bidTimer: 5 } })).status, 401, 'settings stay with the commissioner');
+  const caraTeam = world.league(leagueId).teams.find((t) => t.ownerId === 'cara')!;
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/kick`, { teamIdToKick: caraTeam.id })).status, 401);
+  assert.equal((await world.call('bob', 'DELETE', `leagues/${leagueId}`)).status, 401);
+
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { cohostId: '' })).status, 200);
+  assert.equal(world.league(leagueId).cohostId, null);
+});
+
 test('a player can leave a league before the draft starts', async () => {
   const world = memoryWorld();
   const leagueId = await setupAuctionLeague(world, ['admin', 'bob', 'cara']);

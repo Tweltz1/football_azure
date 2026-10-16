@@ -43,6 +43,7 @@ const Leagues = ({ userId }) => {
   const [draftTimers, setDraftTimers] = useState({});
   const [draftMode, setDraftMode] = useState('auction');
   const [biddingMode, setBiddingMode] = useState('standard');
+  const [cohostId, setCohostId] = useState('');
 
   const fetchLeagues = useCallback(async () => {
     try {
@@ -172,7 +173,8 @@ const Leagues = ({ userId }) => {
         draftMode,
         ...(draftMode === 'manual' ? {} : { biddingMode }),
         rosterSettings,
-        draftTimers
+        draftTimers,
+        cohostId,
       });
       alert('Roster settings updated successfully!');
       setShowRosterModal(false);
@@ -252,6 +254,7 @@ const Leagues = ({ userId }) => {
     setDraftTimers(league.draftTimers || {});
     setDraftMode(league.draftMode || 'auction');
     setBiddingMode(normalizeBiddingMode(league.biddingMode));
+    setCohostId(league.cohostId || '');
   };
 
   const openRename = (league, teamName) => {
@@ -361,6 +364,16 @@ const Leagues = ({ userId }) => {
               </button>
             </div>
             {draftMode === 'auction' && <BiddingStyleField value={biddingMode} onChange={setBiddingMode} />}
+            <div className="divider" />
+            <KickerWithTip title="Co-host">
+              <p>A co-host can run the draft tools with you (start, pause, award, ties, undo). In a nearby-phones draft, their phone takes over if yours drops, and hands the draft back when you return. Only you change settings, remove teams or delete the league.</p>
+            </KickerWithTip>
+            <select value={cohostId} onChange={(e) => setCohostId(e.target.value)} aria-label="Co-host">
+              <option value="">No co-host</option>
+              {(currentLeague.teams || []).filter((team) => team && team.ownerId && team.ownerId !== currentLeague.adminId).map((team) => (
+                <option key={team.id} value={team.ownerId}>{team.name}</option>
+              ))}
+            </select>
             <div className="divider" />
             <KickerWithTip title="Roster spots"><RosterHelp /></KickerWithTip>
             <div className="settings-grid">

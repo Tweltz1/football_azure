@@ -6,7 +6,7 @@
 import type { Broadcaster, HistoryStore, LeagueStore, Logger, ProfileStore, StoredLeague } from './ports.ts';
 import type { Bid, League, Player, RosterSettings, Team, UserProfile } from './models.ts';
 import {
-  clone, ensureDefaults, forClient, isManual, isWhiteboard, MANUAL, normalizeBiddingMode, normalizeDraftMode,
+  clone, ensureDefaults, forClient, isCommish, isManual, isWhiteboard, MANUAL, normalizeBiddingMode, normalizeDraftMode,
   normalizeDraftTimers, normalizeRosterSettings, WHITEBOARD_AUTO,
 } from './models.ts';
 import {
@@ -478,6 +478,13 @@ async function updateSettings(ctx: Ctx, leagueId: string, data: Body): Promise<R
     }
     if (data.rosterSettings) league.rosterSettings = normalizeRosterSettings(data.rosterSettings);
     if (data.draftTimers) league.draftTimers = normalizeDraftTimers(data.draftTimers);
+    if ('cohostId' in data) {
+      const cohostId = str(data.cohostId);
+      if (cohostId && (cohostId === league.adminId || !league.members.includes(cohostId))) {
+        return bad('Pick a co-host from the other teams in the league.');
+      }
+      league.cohostId = cohostId || null;
+    }
     return null;
   });
   return done(result, (u: Updated) => leagueBody(ctx, u));
@@ -502,6 +509,7 @@ async function kickMember(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
     }
     league.teams = league.teams.filter((t) => t !== team);
     league.members = league.members.filter((id) => id !== team.ownerId);
+    if (league.cohostId === team.ownerId) league.cohostId = null;
     league.readyMembers = league.readyMembers.filter((id) => id !== team.ownerId);
     ctx.log.info(`Team ${team.name} was kicked from league ${league.name}.`);
     return null;
@@ -519,6 +527,7 @@ async function leaveLeague(ctx: Ctx, leagueId: string): Promise<Res> {
     league.teams = league.teams.filter((t) => t.ownerId !== ctx.userId);
     league.members = league.members.filter((id) => id !== ctx.userId);
     league.readyMembers = (league.readyMembers ?? []).filter((id) => id !== ctx.userId);
+    if (league.cohostId === ctx.userId) league.cohostId = null;
     return null;
   });
   return done(result, 'You left the league.');
@@ -533,7 +542,7 @@ const newTimer = (ctx: Ctx, seconds: number) => ({ endTime: secondsFromNow(ctx.n
 
 async function startDraft(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
 
     clearActiveBids(league);
     league.tieBreaker = null;
@@ -793,7 +802,7 @@ async function nextRound(ctx: Ctx, leagueId: string): Promise<Res> {
 
 async function skipIntermission(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (str(league.status).toLowerCase() !== 'intermission') return bad('Can only skip during intermission.');
     startNextPlayer(league, ctx.now());
     return null;
@@ -803,7 +812,7 @@ async function skipIntermission(ctx: Ctx, leagueId: string): Promise<Res> {
 
 async function pauseDraft(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const timer = league.auctionTimer;
     if (!timer) return bad('There is no active draft timer to pause.');
 
@@ -824,7 +833,7 @@ async function nominatePlayer(ctx: Ctx, leagueId: string, data: Body): Promise<R
   const playerId = str(data.playerId);
   if (!playerId) return bad('Admin ID and player ID are required.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (!league.auctionTimer || !league.auctionTimer.isPaused) return bad('Draft must be paused to nominate a player.');
     const player = league.initialPlayerPool.find((p) => p.id === playerId);
     if (!player || player.isDrafted) return bad('Player is not available to be nominated.');
@@ -841,7 +850,7 @@ async function nominatePlayer(ctx: Ctx, leagueId: string, data: Body): Promise<R
 
 async function skipPlayer(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     startNextPlayer(league, ctx.now(), league.currentPlayerId);
     return null;
   });
@@ -852,7 +861,7 @@ async function resolveTie(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
   const winningTeamId = str(data.winningTeamId);
   if (!winningTeamId) return bad('Admin ID and winning team ID are required.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const tie = league.tieBreaker;
     if (str(league.status).toLowerCase() !== 'tiebreaker' || tie?.round !== 2) {
       return bad('Can only resolve a final tie after the rebid round also tied.');
@@ -895,7 +904,7 @@ async function awardBoard(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
   let learn = null as { userId: string; board: number[][] } | null;
   const result = await updateLeague(ctx, leagueId, (league) => {
     learn = null;
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const review = league.boardReview;
     if (str(league.status).toLowerCase() !== BOARD_REVIEW || !review) return bad('There are no boards waiting to be awarded.');
 
@@ -936,7 +945,7 @@ async function boardRebid(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
   if (userIds.length < 2) return bad('Choose at least two tied teams.');
   if (amount < 1) return bad('The tie amount must be at least $1.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const review = league.boardReview;
     if (str(league.status).toLowerCase() !== BOARD_REVIEW || !review) return bad('There are no boards waiting to be awarded.');
     if (review.tie) return bad('This was already the rebid round. Pick the winner.');
@@ -972,7 +981,7 @@ async function learnHandwriting(ctx: Ctx, { userId, board }: { userId: string; b
 
 async function undoLastPick(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const status = str(league.status).toLowerCase();
     if (status !== 'intermission' && status !== MANUAL) return bad('Can only undo a pick during intermission or manual draft mode.');
 
@@ -1011,7 +1020,7 @@ async function undoLastPick(ctx: Ctx, leagueId: string): Promise<Res> {
 
 async function completeDraft(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     league.status = 'completed';
     league.currentPlayerId = null;
     clearActiveBids(league);
@@ -1116,7 +1125,7 @@ async function offlineRestore(ctx: Ctx, leagueId: string, data: Body): Promise<R
 
   const stored = await readLeague(ctx, leagueId);
   if (isRes(stored)) return stored;
-  if (stored.league.adminId !== ctx.userId) return unauthorized();
+  if (!isCommish(stored.league, ctx.userId)) return unauthorized();
   if (data.force !== true && int(data.baseVersion) !== stored.version) {
     return conflict('This league changed online after it was saved to this device.');
   }
@@ -1190,7 +1199,7 @@ async function manualSelectPlayer(ctx: Ctx, leagueId: string, data: Body): Promi
   const playerId = str(data.playerId);
   if (!playerId) return bad('Player ID is required.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (!isManual(league.draftMode) || str(league.status).toLowerCase() !== MANUAL) {
       return bad('Manual player selection is only available during a manual draft.');
     }
@@ -1215,7 +1224,7 @@ async function manualAward(ctx: Ctx, leagueId: string, data: Body): Promise<Res>
   if (amount < 1) return bad('Manual draft prices must be at least $1.');
 
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (!isManual(league.draftMode) || str(league.status).toLowerCase() !== MANUAL) {
       return bad('Manual awards are only available after starting a manual draft.');
     }
@@ -1242,7 +1251,7 @@ async function manualAward(ctx: Ctx, leagueId: string, data: Body): Promise<Res>
 
 async function addManualTeam(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (!isManual(league.draftMode)) return bad('Manual teams can only be added to manual drafts.');
     if (str(league.status).toLowerCase() === 'completed') return bad('Cannot add a team after the draft is completed.');
 
@@ -1268,7 +1277,7 @@ async function assignManualTeamOwner(ctx: Ctx, leagueId: string, data: Body): Pr
 
   const profile = await findProfile(ctx, targetUserId);
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (!isManual(league.draftMode)) return bad('Manual team assignment is only available for manual drafts.');
     if (!league.members.includes(targetUserId)) return bad('That user has not joined this league yet.');
 
@@ -1296,7 +1305,7 @@ async function adjustBudget(ctx: Ctx, leagueId: string, data: Body): Promise<Res
   let oldBudget = 0;
   let teamName = '';
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const team = league.teams.find((t) => t?.id === teamId);
     if (!team) return notFound('Team not found.');
     oldBudget = team.budget;
@@ -1322,7 +1331,7 @@ async function assignBeerDuty(ctx: Ctx, leagueId: string, data: Body): Promise<R
   const teamId = str(data.teamId);
   if (!teamId) return bad('Admin ID and team ID are required.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const team = league.teams.find((t) => t?.id === teamId);
     if (!team) return notFound('Team not found.');
     league.beerBitchTeamId = team.id;
@@ -1379,7 +1388,7 @@ async function budgetReview(ctx: Ctx, leagueId: string): Promise<Res> {
   const stored = await readLeague(ctx, leagueId);
   if (isRes(stored)) return stored;
   const league = stored.league;
-  if (league.adminId !== ctx.userId) return unauthorized();
+  if (!isCommish(league, ctx.userId)) return unauthorized();
 
   const adminTeam = league.teams.find((t) => t?.ownerId === ctx.userId);
   await ctx.broadcaster.send(leagueId, 'budgetReviewNotice', {
@@ -1553,6 +1562,7 @@ function moveOwnerKeys(league: League, from: string, to: string) {
   for (const pick of league.draftLog ?? []) swapKey(pick?.allBids as Record<string, unknown> | undefined);
   if (league.tieBreaker) league.tieBreaker.tiedTeamIds = league.tieBreaker.tiedTeamIds.map((id) => (id === from ? to : id));
   league.readyMembers = (league.readyMembers ?? []).map((id) => (id === from ? to : id));
+  if (league.cohostId === from) league.cohostId = to;
 }
 
 /** Teams nobody in the league owns yet (made on a phone with no internet, or manual teams). */
@@ -1569,7 +1579,7 @@ async function reassignTeam(ctx: Ctx, leagueId: string, data: Body): Promise<Res
   const targetUserId = str(data.userId).trim();
   if (!teamId || !targetUserId) return bad('Team ID and user ID are required.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const team = league.teams.find((t) => t?.id === teamId);
     if (!team) return notFound('Team not found.');
     const previous = team.ownerId;
