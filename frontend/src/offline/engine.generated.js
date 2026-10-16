@@ -1447,7 +1447,7 @@ function clientLeague(ctx, league, version) {
   return forClient(league, version, (_a = ctx.userId) != null ? _a : null);
 }
 function normalizeProfile(profile) {
-  var _a, _b, _c, _d, _e;
+  var _a, _b, _c, _d, _e, _f;
   profile.userId = blank(profile.userId) ? profile.id : profile.userId;
   profile.id = blank(profile.id) ? profile.userId : profile.id;
   profile.displayName = blank(profile.displayName) ? profile.userId : profile.displayName;
@@ -1458,8 +1458,12 @@ function normalizeProfile(profile) {
   profile.budgetPlan = (_d = profile.budgetPlan) != null ? _d : {};
   profile.budgetRosterSettings = (_e = profile.budgetRosterSettings) != null ? _e : {};
   profile.handwriting = sanitizeHandwriting(profile.handwriting);
+  profile.lastSaved = ((_f = profile.lastSaved) == null ? void 0 : _f.at) ? { at: profile.lastSaved.at, via: profile.lastSaved.via === "app" ? "app" : "website" } : null;
   return profile;
 }
+var markSaved = (ctx, profile, data) => {
+  profile.lastSaved = { at: ctx.now().toISOString(), via: data.savedFrom === "app" ? "app" : "website" };
+};
 var newProfile = (userId, displayName) => ({
   id: userId,
   userId,
@@ -1479,6 +1483,7 @@ async function findProfile(ctx, userId) {
   return profile ? normalizeProfile(profile) : null;
 }
 var profileResponse = (profile) => {
+  var _a;
   const p = normalizeProfile(profile);
   return {
     id: p.id,
@@ -1490,7 +1495,8 @@ var profileResponse = (profile) => {
     playerTiers: p.playerTiers,
     budgetPlan: p.budgetPlan,
     budgetRosterSettings: p.budgetRosterSettings,
-    handwriting: p.handwriting
+    handwriting: p.handwriting,
+    lastSaved: (_a = p.lastSaved) != null ? _a : null
   };
 };
 async function getLeagues(ctx) {
@@ -2739,6 +2745,7 @@ async function updateFavorites(ctx, leagueId, data) {
   }
   const profile = (_a = await findProfile(ctx, userId)) != null ? _a : newProfile(userId, ctx.displayName || userId);
   profile.favoritePlayerIds = favoriteIds;
+  markSaved(ctx, profile, data);
   await ctx.profiles.upsert(normalizeProfile(profile));
   let leagueTeamSynced = false;
   if (hasTeam) {
@@ -2845,6 +2852,7 @@ async function updateProfile(ctx, pathUserId, data) {
     }
     profile.budgetRosterSettings = settings;
   }
+  markSaved(ctx, profile, data);
   await ctx.profiles.upsert(normalizeProfile(profile));
   if (Array.isArray(data.favoritePlayerIds)) {
     const favoriteIds = profile.favoritePlayerIds;

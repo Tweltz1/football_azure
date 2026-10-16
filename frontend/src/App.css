@@ -2043,3 +2043,13 @@ hr {
 .scoreboard-strip .updated-at.stale {
   color: var(--warning);
 }
+
+.profile-sync-line {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.profile-sync-line.is-offline {
+  color: #fbbf24;
+}
