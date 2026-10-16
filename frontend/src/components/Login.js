@@ -5,10 +5,17 @@ import ClimbBackdrop from './ClimbBackdrop';
 import useOnline from '../offline/useOnline';
 import OfflineDraftStart from '../help/OfflineDraftStart';
 import { nearbySupported } from '../offline/nearbyDraft';
+import { clearSignedOut, guestUser, offlineUser } from '../offline/storage';
 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
   const online = useOnline();
+  // After Logout, whoever's drafts are saved on this phone can get back to them, even with no internet.
+  const savedUser = offlineUser() || guestUser();
+  const continueAsSaved = () => {
+    clearSignedOut();
+    window.location.assign('/leagues');
+  };
   return (
     <main className="login-page">
       <ClimbBackdrop />
@@ -39,6 +46,14 @@ const Login = () => {
             <button type="button" onClick={() => signIn('github')}>Login with GitHub</button>
             <button type="button" className="edit-roster-button" onClick={() => signIn('google')}>Login with Google</button>
           </div>
+          {savedUser && (
+            <div className="login-offline">
+              <p>Drafts saved on this phone belong to {savedUser.userDetails || 'you'}.</p>
+              <button type="button" className="edit-roster-button" onClick={continueAsSaved}>
+                Continue as {savedUser.userDetails || 'saved player'}
+              </button>
+            </div>
+          )}
           {nearbySupported() && (
             <div className="login-offline">
               <p className="section-kicker">No internet or no account?</p>

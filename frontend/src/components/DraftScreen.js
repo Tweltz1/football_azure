@@ -1291,6 +1291,15 @@ const TieBreakerView = ({ league, user, leagueId, draftProfile }) => {
     const tiedTeamIds = league.tieBreaker?.tiedTeamIds || [];
     const userIsTied = tiedTeamIds.includes(user.userId);
     const isSecondRoundTie = league.tieBreaker?.round === 2;
+    const isBoardRebid = Boolean(league.tieBreaker?.boards);
+
+    const handleLockInBoard = async (amount, board) => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount, board }, { suppressBidLimitAlert: true });
+        } catch (error) {
+            throw new Error(error.response?.data || error.message);
+        }
+    };
     const isCurrentUserAdmin = league.adminId === user.userId;
 
     useEffect(() => {
@@ -1350,7 +1359,23 @@ const TieBreakerView = ({ league, user, leagueId, draftProfile }) => {
                 <strong className={`auction-clock-value${timer >= 3600 ? ' is-hours' : timer >= 60 ? ' is-minutes' : ''}`}>{formatClock(timer)}{timer < 60 ? 's' : ''}</strong>
             </p>
 
-            {userIsTied ? (
+            {userIsTied && isBoardRebid ? (
+                <div>
+                    <h4>You are in the tie-breaker!</h4>
+                    <p>Write a new board. It must beat ${league.tieBreaker.tieAmount}. If you don't, you count at ${league.tieBreaker.tieAmount + 1}.</p>
+                    <WhiteboardPad
+                        autoRead={isAutoReadLeague(league)}
+                        activeBid={league.activeBids?.[user.userId] || null}
+                        disabled={Boolean(league.auctionTimer?.isPaused)}
+                        disabledReason="The draft is paused."
+                        onLockIn={handleLockInBoard}
+                        onWithdraw={() => {}}
+                        showLocked={false}
+                        userId={user.userId}
+                        maxAmount={maxBidFor(league, (league.teams || []).find(t => t.ownerId === user.userId))}
+                    />
+                </div>
+            ) : userIsTied ? (
                 <div>
                     <h4>You are in the tie-breaker!</h4>
                     <p>You must bid at least ${league.tieBreaker.tieAmount + 1}.</p>

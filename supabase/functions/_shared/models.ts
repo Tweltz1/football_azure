@@ -34,6 +34,8 @@ export interface BoardReview {
   playerId: string | null;
   bids: Record<string, Bid>;
   topRead: { userIds: string[]; amount: number } | null;
+  /** Set when these boards are the rebid round of a tie: the commissioner now picks the winner. */
+  tie?: { tiedTeamIds: string[]; tieAmount: number } | null;
 }
 
 export interface AuctionTimer {
@@ -67,6 +69,8 @@ export interface TieBreakerInfo {
   tiedTeamIds: string[];
   tieAmount: number;
   round: number;
+  /** Whiteboard styles: the rebid is written on boards and the commissioner reads the result. */
+  boards?: boolean;
 }
 
 export interface RosterSettings {

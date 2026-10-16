@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { createDraftConnection } from '../realtime';
 import { API_BASE_URL } from '../api';
-import { isOfflineLeague } from '../offline/storage';
+import { isOfflineLeague, readOfflineLeague } from '../offline/storage';
+import { isNearbyTicket, leaveNearbyDraft } from '../offline/nearbyDraft';
 import { discardDeviceCopy } from '../offline/offlineSync';
 import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '../data/strategyUtils';
 import { isDraftLive, leagueStatusKey, leagueStatusLabel } from '../data/leagueLabels';
@@ -105,6 +106,13 @@ const Leagues = ({ userId }) => {
       // with no internet; the online copy is then deleted too when there's a connection.
       const savedOnDevice = isOfflineLeague(leagueId);
       const offlineNote = 'Removed from this device. The online league is still there; delete it again when you have internet.';
+      // Made on this phone and never uploaded: there's no online copy, so it's simply gone.
+      if (savedOnDevice && readOfflineLeague(leagueId)?.createdOffline) {
+        discardDeviceCopy(leagueId);
+        alert('League deleted from this phone.');
+        fetchLeagues();
+        return;
+      }
       if (savedOnDevice) discardDeviceCopy(leagueId);
       if (savedOnDevice && navigator.onLine === false) {
         alert(offlineNote);
@@ -123,6 +131,23 @@ const Leagues = ({ userId }) => {
         }
         alert(`Failed to delete league: ${error.response?.data || error.message}`);
       }
+    }
+  };
+
+  const handleLeave = async (league) => {
+    // A nearby draft joined from this phone: just forget it here (the commissioner's phone keeps the team).
+    if (isNearbyTicket(league.id)) {
+      if (!window.confirm(`Leave ${league.name} on this phone? You can join again with the room code.`)) return;
+      leaveNearbyDraft(league.id);
+      fetchLeagues();
+      return;
+    }
+    if (!window.confirm(`Leave ${league.name}? Your team will be removed.`)) return;
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${league.id}/leave`, {});
+      fetchLeagues();
+    } catch (error) {
+      alert(error.response?.data || (navigator.onLine === false ? 'Leaving a league needs internet.' : error.message));
     }
   };
 
@@ -283,6 +308,7 @@ const Leagues = ({ userId }) => {
               onSettings={openSettings}
               onNewSeason={handleNewSeason}
               onDelete={handleDelete}
+              onLeave={handleLeave}
             />
           ))}
         </div>
@@ -436,7 +462,7 @@ const draftModeLabel = (league) => {
   return isWhiteboardLeague(league) ? `Auction, ${biddingStyleLabel(league.biddingMode).toLowerCase()}` : 'Auction';
 };
 
-const LeagueCard = ({ league, userId, onRename, onAnalyze, onCopyInvite, onSettings, onNewSeason, onDelete }) => {
+const LeagueCard = ({ league, userId, onRename, onAnalyze, onCopyInvite, onSettings, onNewSeason, onDelete, onLeave }) => {
   const isAdmin = league.adminId === userId;
   const health = buildCommissionerHealth(league, userId);
   const statusKey = leagueStatusKey(league);
@@ -483,6 +509,12 @@ const LeagueCard = ({ league, userId, onRename, onAnalyze, onCopyInvite, onSetti
           </Link>
         )}
       </div>
+
+      {!isAdmin && (isNearbyTicket(league.id) || ['', 'created', 'lobby'].includes(String(league.status || '').toLowerCase())) && (
+        <div className="league-card-more">
+          <button type="button" className="delete-button" onClick={() => onLeave(league)}>Leave League</button>
+        </div>
+      )}
 
       {isAdmin && (
         <details className="league-card-admin">

@@ -509,6 +509,21 @@ async function kickMember(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
   return done(result, 'Member kicked successfully.');
 }
 
+/** A player leaves a league before its draft starts (the commissioner deletes the league instead). */
+async function leaveLeague(ctx: Ctx, leagueId: string): Promise<Res> {
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (!ctx.userId || !league.members.includes(ctx.userId)) return notFound('You are not in this league.');
+    if (league.adminId === ctx.userId) return bad('The commissioner can delete the league instead of leaving it.');
+    const status = str(league.status).toLowerCase();
+    if (status && status !== 'created' && status !== 'lobby') return bad('The draft has started, so your team has to stay. Ask the commissioner.');
+    league.teams = league.teams.filter((t) => t.ownerId !== ctx.userId);
+    league.members = league.members.filter((id) => id !== ctx.userId);
+    league.readyMembers = (league.readyMembers ?? []).filter((id) => id !== ctx.userId);
+    return null;
+  });
+  return done(result, 'You left the league.');
+}
+
 // ---- Auction draft --------------------------------------------------------------
 
 /** Whiteboard styles: the clock has ended, every board is revealed, and the commissioner awards the player. */
@@ -553,7 +568,15 @@ function validateBid(league: League, userId: string, amount: number): Res | null
  * manual style). Max bid is not checked here because the read may be wrong; the commissioner's award checks it.
  */
 function lockInBoard(ctx: Ctx, league: League, userId: string, amount: number, board: number[][] | null): Res | null {
-  if (str(league.status).toLowerCase() !== 'drafting') return bad('Boards can only be locked in while a player is up for bid.');
+  const status = str(league.status).toLowerCase();
+  if (status === 'tiebreaker') {
+    // Whiteboard rebid round: only the tied teams write again, and only while the clock runs.
+    const tie = league.tieBreaker;
+    if (!tie?.boards || tie.round >= 2 || !tie.tiedTeamIds.includes(userId)) return bad('Only the tied teams write a new board.');
+    if (!timerRunning(ctx, league.auctionTimer)) return bad("Time's up for this player.");
+  } else if (status !== 'drafting') {
+    return bad('Boards can only be locked in while a player is up for bid.');
+  }
   if (!league.teams.some((t) => t.ownerId === userId)) return notFound('Team not found.');
   if (!board) return bad('Draw your bid on the board before locking it in.');
   const read = league.biddingMode === WHITEBOARD_AUTO ? Math.min(9999, Math.max(0, amount)) : 0;
@@ -649,9 +672,22 @@ function moveCappedTieToAdminResolution(ctx: Ctx, league: League): Res | null {
   return null;
 }
 
-/** Whiteboard styles: the clock ended, so reveal every board and wait for the commissioner. No tie-breaker round. */
+/**
+ * Whiteboard styles: the clock ended, so reveal every board and wait for the commissioner. A tie can go to
+ * one rebid round (board-rebid); after it, a tied team that wrote no new board counts at the tie + $1 when it
+ * can afford that (as in the standard style), and the commissioner picks the winner.
+ */
 function openBoardReview(ctx: Ctx, league: League) {
+  const rebid = league.tieBreaker?.boards ? league.tieBreaker : null;
   const bids = league.activeBids;
+  if (rebid) {
+    const autoBid = rebid.tieAmount + 1;
+    for (const userId of new Set(rebid.tiedTeamIds)) {
+      if (bids[userId]) continue;
+      const team = league.teams.find((t) => t?.ownerId === userId);
+      if (team && getMaxBid(league, team) >= autoBid) bids[userId] = { amount: autoBid, timestamp: ctx.now().toISOString() };
+    }
+  }
   let topRead: { userIds: string[]; amount: number } | null = null;
   if (league.biddingMode === WHITEBOARD_AUTO) {
     const reads = Object.entries(bids).filter(([, bid]) => (bid?.amount ?? 0) > 0);
@@ -663,7 +699,12 @@ function openBoardReview(ctx: Ctx, league: League) {
   league.activeBids = {};
   league.tieBreaker = null;
   league.status = BOARD_REVIEW;
-  league.boardReview = { playerId: league.currentPlayerId, bids, topRead };
+  league.boardReview = {
+    playerId: league.currentPlayerId,
+    bids,
+    topRead,
+    tie: rebid ? { tiedTeamIds: [...rebid.tiedTeamIds], tieAmount: rebid.tieAmount } : null,
+  };
   // Paused at zero: no countdown, and the commissioner's paused-only tools (nominate, members) stay usable.
   pauseForAdminTieResolution(ctx, league);
 }
@@ -687,7 +728,7 @@ async function endBidding(ctx: Ctx, leagueId: string): Promise<Res> {
     const player = league.initialPlayerPool.find((p) => p.id === league.currentPlayerId);
     if (!player) return bad('Current player was not found.');
 
-    if (status === 'drafting' && isWhiteboard(league.biddingMode)) {
+    if (isWhiteboard(league.biddingMode) && (status === 'drafting' || league.tieBreaker?.boards)) {
       openBoardReview(ctx, league);
       return null;
     }
@@ -883,6 +924,32 @@ async function awardBoard(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
   const response = done(result, (u: Updated) => leagueBody(ctx, u));
   if (response.status === 200 && learn) await learnHandwriting(ctx, learn, amount);
   return response;
+}
+
+/**
+ * Whiteboard styles: the boards tied, so the tied teams write again and must beat the tie. One rebid round;
+ * if that ties too, the commissioner picks the winner from the next review.
+ */
+async function boardRebid(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const amount = int(data.amount);
+  const userIds = Array.isArray(data.userIds) ? [...new Set((data.userIds as unknown[]).map(str).filter(Boolean))] : [];
+  if (userIds.length < 2) return bad('Choose at least two tied teams.');
+  if (amount < 1) return bad('The tie amount must be at least $1.');
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (league.adminId !== ctx.userId) return unauthorized();
+    const review = league.boardReview;
+    if (str(league.status).toLowerCase() !== BOARD_REVIEW || !review) return bad('There are no boards waiting to be awarded.');
+    if (review.tie) return bad('This was already the rebid round. Pick the winner.');
+    if (!userIds.every((id) => review.bids[id])) return bad('Only teams that locked in a board can be in the tie.');
+    league.status = 'tiebreaker';
+    league.tieBreaker = { tiedTeamIds: userIds, tieAmount: amount, round: 1, boards: true };
+    league.activeBids = {};
+    league.boardReview = null;
+    league.auctionTimer = newTimer(ctx, league.draftTimers.rebidTimer);
+    ctx.log.info(`Admin started a whiteboard rebid round at $${amount} in league ${league.name}.`);
+    return null;
+  });
+  return done(result, (u: Updated) => leagueBody(ctx, u));
 }
 
 /**
@@ -1604,6 +1671,7 @@ const LEAGUE_POSTS: Record<string, LeagueAction> = {
   teams: editTeamName,
   settings: updateSettings,
   kick: kickMember,
+  leave: (ctx, id) => leaveLeague(ctx, id),
   startDraft: (ctx, id) => startDraft(ctx, id),
   bid: (ctx, id, data) => placeBid(ctx, id, data),
   'submit-final-bid': (ctx, id, data) => placeBid(ctx, id, data),
@@ -1617,6 +1685,7 @@ const LEAGUE_POSTS: Record<string, LeagueAction> = {
   skip: (ctx, id) => skipPlayer(ctx, id),
   'resolve-tie': resolveTie,
   'board-award': awardBoard,
+  'board-rebid': boardRebid,
   'undo-pick': (ctx, id) => undoLastPick(ctx, id),
   complete: (ctx, id) => completeDraft(ctx, id),
   'new-season': (ctx, id) => startNewSeason(ctx, id),

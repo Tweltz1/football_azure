@@ -1805,6 +1805,23 @@ async function kickMember(ctx, leagueId, data) {
   });
   return done(result, "Member kicked successfully.");
 }
+async function leaveLeague(ctx, leagueId) {
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    var _a;
+    if (!ctx.userId || !league.members.includes(ctx.userId))
+      return notFound("You are not in this league.");
+    if (league.adminId === ctx.userId)
+      return bad("The commissioner can delete the league instead of leaving it.");
+    const status = str(league.status).toLowerCase();
+    if (status && status !== "created" && status !== "lobby")
+      return bad("The draft has started, so your team has to stay. Ask the commissioner.");
+    league.teams = league.teams.filter((t) => t.ownerId !== ctx.userId);
+    league.members = league.members.filter((id) => id !== ctx.userId);
+    league.readyMembers = ((_a = league.readyMembers) != null ? _a : []).filter((id) => id !== ctx.userId);
+    return null;
+  });
+  return done(result, "You left the league.");
+}
 var BOARD_REVIEW = "boardreview";
 var newTimer = (ctx, seconds) => ({ endTime: secondsFromNow(ctx.now(), seconds), isPaused: false, timeRemainingOnPause: 0 });
 async function startDraft(ctx, leagueId) {
@@ -1838,8 +1855,16 @@ function validateBid(league, userId, amount) {
   return null;
 }
 function lockInBoard(ctx, league, userId, amount, board) {
-  if (str(league.status).toLowerCase() !== "drafting")
+  const status = str(league.status).toLowerCase();
+  if (status === "tiebreaker") {
+    const tie = league.tieBreaker;
+    if (!(tie == null ? void 0 : tie.boards) || tie.round >= 2 || !tie.tiedTeamIds.includes(userId))
+      return bad("Only the tied teams write a new board.");
+    if (!timerRunning(ctx, league.auctionTimer))
+      return bad("Time's up for this player.");
+  } else if (status !== "drafting") {
     return bad("Boards can only be locked in while a player is up for bid.");
+  }
   if (!league.teams.some((t) => t.ownerId === userId))
     return notFound("Team not found.");
   if (!board)
@@ -1944,12 +1969,24 @@ function moveCappedTieToAdminResolution(ctx, league) {
   return null;
 }
 function openBoardReview(ctx, league) {
+  var _a;
+  const rebid = ((_a = league.tieBreaker) == null ? void 0 : _a.boards) ? league.tieBreaker : null;
   const bids = league.activeBids;
+  if (rebid) {
+    const autoBid = rebid.tieAmount + 1;
+    for (const userId of new Set(rebid.tiedTeamIds)) {
+      if (bids[userId])
+        continue;
+      const team = league.teams.find((t) => (t == null ? void 0 : t.ownerId) === userId);
+      if (team && getMaxBid(league, team) >= autoBid)
+        bids[userId] = { amount: autoBid, timestamp: ctx.now().toISOString() };
+    }
+  }
   let topRead = null;
   if (league.biddingMode === WHITEBOARD_AUTO) {
     const reads = Object.entries(bids).filter(([, bid]) => {
-      var _a;
-      return ((_a = bid == null ? void 0 : bid.amount) != null ? _a : 0) > 0;
+      var _a2;
+      return ((_a2 = bid == null ? void 0 : bid.amount) != null ? _a2 : 0) > 0;
     });
     if (reads.length > 0) {
       const high = Math.max(...reads.map(([, bid]) => bid.amount));
@@ -1959,7 +1996,12 @@ function openBoardReview(ctx, league) {
   league.activeBids = {};
   league.tieBreaker = null;
   league.status = BOARD_REVIEW;
-  league.boardReview = { playerId: league.currentPlayerId, bids, topRead };
+  league.boardReview = {
+    playerId: league.currentPlayerId,
+    bids,
+    topRead,
+    tie: rebid ? { tiedTeamIds: [...rebid.tiedTeamIds], tieAmount: rebid.tieAmount } : null
+  };
   pauseForAdminTieResolution(ctx, league);
 }
 var timerRunning = (ctx, timer) => !!timer && (timer.isPaused || new Date(timer.endTime).getTime() > ctx.now().getTime());
@@ -1973,7 +2015,7 @@ async function endBidding(ctx, leagueId) {
   if (timerRunning(ctx, light.auctionTimer))
     return ok("Auction timer is still active.");
   const result = await updateLeague(ctx, leagueId, (league) => {
-    var _a, _b;
+    var _a, _b, _c;
     const status = str(league.status).toLowerCase();
     if (status !== "drafting" && status !== "tiebreaker" || !league.auctionTimer)
       return ok("No active auction to close.");
@@ -1982,7 +2024,7 @@ async function endBidding(ctx, leagueId) {
     const player = league.initialPlayerPool.find((p) => p.id === league.currentPlayerId);
     if (!player)
       return bad("Current player was not found.");
-    if (status === "drafting" && isWhiteboard(league.biddingMode)) {
+    if (isWhiteboard(league.biddingMode) && (status === "drafting" || ((_a = league.tieBreaker) == null ? void 0 : _a.boards))) {
       openBoardReview(ctx, league);
       return null;
     }
@@ -2002,7 +2044,7 @@ async function endBidding(ctx, leagueId) {
           return bad("Winning team was not found.");
         awardPlayerToTeam(league, player, team, winningBid.amount, ctx.now());
       } else {
-        const previousRound = status === "tiebreaker" ? (_b = (_a = league.tieBreaker) == null ? void 0 : _a.round) != null ? _b : 1 : 0;
+        const previousRound = status === "tiebreaker" ? (_c = (_b = league.tieBreaker) == null ? void 0 : _b.round) != null ? _c : 1 : 0;
         league.status = "tiebreaker";
         league.tieBreaker = { tiedTeamIds: winners.map(([id]) => id), tieAmount: high, round: previousRound >= 1 ? 2 : 1 };
         clearActiveBids(league);
@@ -2189,6 +2231,33 @@ async function awardBoard(ctx, leagueId, data) {
   if (response.status === 200 && learn)
     await learnHandwriting(ctx, learn, amount);
   return response;
+}
+async function boardRebid(ctx, leagueId, data) {
+  const amount = int(data.amount);
+  const userIds = Array.isArray(data.userIds) ? [...new Set(data.userIds.map(str).filter(Boolean))] : [];
+  if (userIds.length < 2)
+    return bad("Choose at least two tied teams.");
+  if (amount < 1)
+    return bad("The tie amount must be at least $1.");
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (league.adminId !== ctx.userId)
+      return unauthorized();
+    const review = league.boardReview;
+    if (str(league.status).toLowerCase() !== BOARD_REVIEW || !review)
+      return bad("There are no boards waiting to be awarded.");
+    if (review.tie)
+      return bad("This was already the rebid round. Pick the winner.");
+    if (!userIds.every((id) => review.bids[id]))
+      return bad("Only teams that locked in a board can be in the tie.");
+    league.status = "tiebreaker";
+    league.tieBreaker = { tiedTeamIds: userIds, tieAmount: amount, round: 1, boards: true };
+    league.activeBids = {};
+    league.boardReview = null;
+    league.auctionTimer = newTimer(ctx, league.draftTimers.rebidTimer);
+    ctx.log.info(`Admin started a whiteboard rebid round at $${amount} in league ${league.name}.`);
+    return null;
+  });
+  return done(result, (u) => leagueBody(ctx, u));
 }
 async function learnHandwriting(ctx, { userId, board }, amount) {
   try {
@@ -2911,6 +2980,7 @@ var LEAGUE_POSTS = {
   teams: editTeamName,
   settings: updateSettings,
   kick: kickMember,
+  leave: (ctx, id) => leaveLeague(ctx, id),
   startDraft: (ctx, id) => startDraft(ctx, id),
   bid: (ctx, id, data) => placeBid(ctx, id, data),
   "submit-final-bid": (ctx, id, data) => placeBid(ctx, id, data),
@@ -2924,6 +2994,7 @@ var LEAGUE_POSTS = {
   skip: (ctx, id) => skipPlayer(ctx, id),
   "resolve-tie": resolveTie,
   "board-award": awardBoard,
+  "board-rebid": boardRebid,
   "undo-pick": (ctx, id) => undoLastPick(ctx, id),
   complete: (ctx, id) => completeDraft(ctx, id),
   "new-season": (ctx, id) => startNewSeason(ctx, id),

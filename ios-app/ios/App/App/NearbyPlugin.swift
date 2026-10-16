@@ -42,6 +42,10 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
     // Scanning: list every nearby hosted draft (like AirDrop) without connecting to any.
     private var scanning = false
     private var peersById: [String: MCPeerID] = [:]
+    // Player: while not connected to the host, look again every few seconds. iOS reports a phone only once
+    // when it is first found, so after a dropped connection nothing would ever reconnect on its own.
+    private var retryTimer: Timer?
+    private var connecting = Set<MCPeerID>()
     private var idsByPeer: [MCPeerID: String] = [:]
 
     override public func load() {
@@ -141,6 +145,9 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
             br.delegate = self
             br.startBrowsingForPeers()
             self.browser = br
+            // Players' screens stay awake during the draft too; a locked phone drops off.
+            UIApplication.shared.isIdleTimerDisabled = true
+            self.startRetrying()
             self.status("Looking for room \(room)...")
             call.resolve(["peerId": self.key(peer)])
         }
@@ -199,7 +206,20 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    private func startRetrying() {
+        retryTimer?.invalidate()
+        retryTimer = Timer.scheduledTimer(withTimeInterval: 6, repeats: true) { [weak self] _ in
+            guard let self = self, let br = self.browser, !self.scanning, self.advertiser == nil else { return }
+            if self.connectedPeers.isEmpty && self.connecting.isEmpty {
+                br.stopBrowsingForPeers()
+                br.startBrowsingForPeers()
+            }
+        }
+    }
+
     private func stopAll() {
+        retryTimer?.invalidate()
+        retryTimer = nil
         advertiser?.stopAdvertisingPeer()
         browser?.stopBrowsingForPeers()
         sessions.forEach { $0.disconnect() }
@@ -208,6 +228,7 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
         UIApplication.shared.isIdleTimerDisabled = false
         sessions = []
         sessionOfPeer = [:]
+        connecting = []
         peersById = [:]
         idsByPeer = [:]
     }
@@ -256,6 +277,7 @@ extension NearbyPlugin: MCNearbyServiceBrowserDelegate {
                 self.status("Found \(peerID.displayName), but it's hosting room \(info?["room"] ?? "?"), not \(self.roomCode).")
                 return
             }
+            if self.connecting.contains(peerID) || self.connectedPeers.contains(peerID) { return }
             self.status("Found \(peerID.displayName)'s phone. Connecting...")
             let id = self.key(peerID)
             self.notifyListeners("peerFound", data: ["peerId": id, "name": peerID.displayName])
@@ -283,7 +305,14 @@ extension NearbyPlugin: MCSessionDelegate {
         default: label = "disconnected"
         }
         DispatchQueue.main.async {
-            if state == .notConnected { self.sessionOfPeer[peerID] = nil }
+            if state == .connecting { self.connecting.insert(peerID) } else { self.connecting.remove(peerID) }
+            if state == .notConnected {
+                self.sessionOfPeer[peerID] = nil
+                if let br = self.browser, !self.scanning, self.advertiser == nil, self.connectedPeers.isEmpty {
+                    br.stopBrowsingForPeers()
+                    br.startBrowsingForPeers()
+                }
+            }
             self.status("\(peerID.displayName): \(label).")
             let id = self.key(peerID)
             self.notifyListeners("peerState", data: ["peerId": id, "name": peerID.displayName, "state": label])
