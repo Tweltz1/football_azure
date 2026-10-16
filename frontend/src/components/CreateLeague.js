@@ -42,7 +42,7 @@ const CreateLeague = ({ userId }) => {
     e.preventDefault();
 
     // No internet (or no account): make the league on this device; it's uploaded after the draft.
-    if (navigator.onLine === false || user?.guest) {
+    if (navigator.onLine === false || user?.guest || new URLSearchParams(window.location.search).has('offline')) {
       try {
         const leagueId = await createLeagueOnDevice({
           name: leagueName,

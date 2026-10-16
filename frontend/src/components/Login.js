@@ -1,22 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { signIn } from '../AuthContext';
 import '../App.css';
 import ClimbBackdrop from './ClimbBackdrop';
 import useOnline from '../offline/useOnline';
-import NearbyJoin from '../help/NearbyJoin';
+import OfflineDraftStart from '../help/OfflineDraftStart';
 import { nearbySupported } from '../offline/nearbyDraft';
-import { becomeGuest } from '../offline/storage';
 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
   const online = useOnline();
-  const [offlineStep, setOfflineStep] = useState(null); // 'join' | 'host'
-  const [hostName, setHostName] = useState('');
-  const hostOnPhone = (event) => {
-    event.preventDefault();
-    becomeGuest(hostName);
-    window.location.assign('/create-league');
-  };
   return (
     <main className="login-page">
       <ClimbBackdrop />
@@ -50,21 +42,7 @@ const Login = () => {
           {nearbySupported() && (
             <div className="login-offline">
               <p className="section-kicker">No internet or no account?</p>
-              <p>Draft with nearby iPhones. No sign-in needed; claim your team online afterwards.</p>
-              <div className="login-actions">
-                <button type="button" className="edit-roster-button" onClick={() => setOfflineStep('join')}>Join a nearby draft</button>
-                <button type="button" className="edit-roster-button" onClick={() => setOfflineStep('host')}>Host a draft on this phone</button>
-              </div>
-              {offlineStep === 'join' && <NearbyJoin user={null} />}
-              {offlineStep === 'host' && (
-                <form className="nearby-join" onSubmit={hostOnPhone}>
-                  <label>
-                    Your name
-                    <input type="text" value={hostName} onChange={(e) => setHostName(e.target.value)} maxLength={40} required />
-                  </label>
-                  <button type="submit" className="create-button">Set up the league</button>
-                </form>
-              )}
+              <OfflineDraftStart user={null} />
             </div>
           )}
         </div>

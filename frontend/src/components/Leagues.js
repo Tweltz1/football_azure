@@ -10,6 +10,9 @@ import { isDraftLive, leagueStatusKey, leagueStatusLabel } from '../data/leagueL
 import BiddingStyleField from '../whiteboard/BiddingStyleField';
 import { biddingStyleLabel, isWhiteboardLeague, normalizeBiddingMode } from '../whiteboard/biddingStyle';
 import OfflineNotice from '../help/OfflineNotice';
+import OfflineDraftStart from '../help/OfflineDraftStart';
+import useOnline from '../offline/useOnline';
+import { useAuth } from '../AuthContext';
 import InfoTip, { KickerWithTip } from '../help/InfoTip';
 import { DraftModeHelp, NoInternetHelp, RosterHelp, TimerHelp } from '../help/draftHelp';
 import '../whiteboard/whiteboard.css';
@@ -18,6 +21,8 @@ import './LeagueTools.css';
 
 
 const Leagues = ({ userId }) => {
+  const online = useOnline();
+  const { user } = useAuth() || {};
   const [leagues, setLeagues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -244,6 +249,7 @@ const Leagues = ({ userId }) => {
       </section>
 
       <OfflineNotice action="Creating or joining a league needs internet. Your leagues still open below." />
+      {online && <OfflineDraftStart user={user?.guest ? null : user} />}
 
       <div className="league-toolbar">
         <div>
