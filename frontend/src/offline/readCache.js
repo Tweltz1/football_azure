@@ -3,7 +3,7 @@
 // Saving changes still needs the internet, or a league saved to the device (offlineSync.js).
 
 const PREFIX = 'hl-read:';
-const MAX_CHARS = 400000; // skip anything huge; localStorage holds about 5 MB
+const MAX_CHARS = 1500000; // skip anything huge; localStorage holds about 5 MB
 
 const READ_POSTS = new Set(['user-profile']);
 
@@ -15,12 +15,38 @@ export const readKey = (method, path, query) => {
   return `${PREFIX}${verb} ${path}${search ? `?${search}` : ''}`;
 };
 
+const savedKeysOldestFirst = () => Object.keys(localStorage)
+  .filter((key) => key.startsWith(PREFIX))
+  .map((key) => {
+    try { return { key, savedAt: JSON.parse(localStorage.getItem(key)).savedAt || 0 }; } catch (error) { return { key, savedAt: 0 }; }
+  })
+  .sort((a, b) => a.savedAt - b.savedAt)
+  .map(({ key }) => key);
+
 export const saveRead = (key, data) => {
   if (!key || data === undefined) return;
+  let text;
   try {
-    const text = JSON.stringify({ savedAt: Date.now(), data });
-    if (text.length <= MAX_CHARS) localStorage.setItem(key, text);
-  } catch (error) { /* storage full or unavailable */ }
+    text = JSON.stringify({ savedAt: Date.now(), data });
+  } catch (error) {
+    return;
+  }
+  if (text.length > MAX_CHARS) return;
+  try {
+    localStorage.setItem(key, text);
+  } catch (error) {
+    // Full: make room by dropping the oldest saved pages (never drafts or settings), then try once more.
+    try {
+      const old = savedKeysOldestFirst().filter((k) => k !== key);
+      let freed = 0;
+      while (old.length && freed < text.length * 2) {
+        const k = old.shift();
+        freed += (localStorage.getItem(k) || '').length;
+        localStorage.removeItem(k);
+      }
+      localStorage.setItem(key, text);
+    } catch (again) { /* still no room */ }
+  }
 };
 
 /** The saved copy for a key: { savedAt, data }, or null. */

@@ -518,3 +518,16 @@
 .top-nav {
   padding-top: calc(10px + env(safe-area-inset-top, 0px));
 }
+
+/* A solid strip behind the phone's clock so scrolled pages don't run underneath it. */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: #0a0b0e;
+  z-index: 1000;
+  pointer-events: none;
+}

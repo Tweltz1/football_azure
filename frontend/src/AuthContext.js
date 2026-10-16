@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient';
 import { offlineUser } from './offline/storage';
 import * as nativeSignIn from './native/authSession';
 import { clearReads } from './offline/readCache';
+import { prefetchPages } from './offline/prefetch';
 
 const AuthContext = createContext();
 
@@ -116,6 +117,17 @@ export const AuthProvider = ({ children }) => {
       listener?.subscription?.unsubscribe();
     };
   }, []);
+
+  // In the iPhone app (and the home-screen app), save every main page in the background while there's
+  // internet, so they all open later without it.
+  useEffect(() => {
+    const standalone = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    if (!user || !(nativeSignIn.inApp() || standalone)) return undefined;
+    prefetchPages(user);
+    const onOnline = () => prefetchPages(user);
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [user]);
 
   const value = {
     user,
