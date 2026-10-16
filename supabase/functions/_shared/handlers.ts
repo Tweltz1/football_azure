@@ -16,7 +16,7 @@ import {
 } from './draftLogic.ts';
 import { diffObjects } from './diff.ts';
 import { learnFromBoard, sanitizeHandwriting } from './handwriting.ts';
-import { draftNumberOf, historySummary, isCompleted, snapshotDraft } from './history.ts';
+import { draftNumberOf, historyIdFor, historySummary, isCompleted, snapshotDraft } from './history.ts';
 import { type FetchJson, getMatchupHistory, getWeekProjections } from './startSit.ts';
 import { getSleeperTeams, isValidSleeperUsername, SleeperUserNotFound } from './sleeperImport.ts';
 import { getMarketValues, marketSettingsFrom } from './market.ts';
@@ -327,6 +327,7 @@ async function getInvite(ctx: Ctx, leagueId: string): Promise<Res> {
     memberCount: league.members.length,
     commissionerTeamName: commissionerTeam?.name ?? null,
     isMember: league.members.includes(ctx.userId!),
+    openTeams: openTeamsOf(league),
   });
 }
 
@@ -1469,6 +1470,128 @@ async function updateProfile(ctx: Ctx, pathUserId: string, data: Body): Promise<
   return ok(profileResponse(profile));
 }
 
+
+// ---- Teams moving between people (guest drafts, rejoining) ------------------------
+
+/** Every place a league keys something by the team owner's user ID, moved from one person to another. */
+function moveOwnerKeys(league: League, from: string, to: string) {
+  if (!from || from === to) return;
+  const swapKey = (record: Record<string, unknown> | undefined) => {
+    if (record && from in record) {
+      record[to] = record[from];
+      delete record[from];
+    }
+  };
+  swapKey(league.activeBids as Record<string, unknown>);
+  for (const pick of league.draftLog ?? []) swapKey(pick?.allBids as Record<string, unknown> | undefined);
+  if (league.tieBreaker) league.tieBreaker.tiedTeamIds = league.tieBreaker.tiedTeamIds.map((id) => (id === from ? to : id));
+  league.readyMembers = (league.readyMembers ?? []).map((id) => (id === from ? to : id));
+}
+
+/** Teams nobody in the league owns yet (made on a phone with no internet, or manual teams). */
+const openTeamsOf = (league: League) => league.teams
+  .filter((team) => team && team.ownerId !== league.adminId && !league.members.includes(team.ownerId))
+  .map((team) => ({ id: team.id, name: team.name }));
+
+/**
+ * Commissioner: give a team to someone else, e.g. a player who rejoins a nearby draft from another phone.
+ * Their sealed bid (if any) and past picks go with the team.
+ */
+async function reassignTeam(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const teamId = str(data.teamId);
+  const targetUserId = str(data.userId).trim();
+  if (!teamId || !targetUserId) return bad('Team ID and user ID are required.');
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (league.adminId !== ctx.userId) return unauthorized();
+    const team = league.teams.find((t) => t?.id === teamId);
+    if (!team) return notFound('Team not found.');
+    const previous = team.ownerId;
+    if (previous === targetUserId) return null;
+    if (previous === league.adminId) return bad("The commissioner's team can't be given away.");
+    if (league.teams.some((t) => t?.ownerId === targetUserId)) return conflict('That player already has a team in this league.');
+    team.ownerId = targetUserId;
+    moveOwnerKeys(league, previous, targetUserId);
+    const stillOwnsOne = league.teams.some((t) => t?.ownerId === previous);
+    league.members = league.members.filter((id) => id !== previous || stillOwnsOne);
+    if (!league.members.includes(targetUserId)) league.members.push(targetUserId);
+    return null;
+  });
+  return done(result, (u: Updated) => leagueBody(ctx, u));
+}
+
+/** A player takes a team nobody owns yet (from the invite link of a league drafted with no internet). */
+async function claimTeam(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const userId = ctx.userId!;
+  const teamId = str(data.teamId);
+  if (!teamId) return bad('Pick a team.');
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (league.teams.some((t) => t?.ownerId === userId)) return conflict('You already have a team in this league.');
+    const team = league.teams.find((t) => t?.id === teamId);
+    if (!team) return notFound('Team not found.');
+    if (team.ownerId === league.adminId || league.members.includes(team.ownerId)) return conflict('Someone already has that team.');
+    const from = team.ownerId;
+    team.ownerId = userId;
+    moveOwnerKeys(league, from, userId);
+    if (!league.members.includes(userId)) league.members.push(userId);
+    return null;
+  });
+  if (isRes(result) || result === 'conflict') return done(result);
+  // A finished draft is already in history; show it to the new owner too.
+  if (isCompleted(result.league)) {
+    try {
+      const entry = await ctx.history.get(historyIdFor(result.league));
+      if (entry) {
+        const team = entry.teams.find((t) => t.id === teamId);
+        if (team) team.ownerId = userId;
+        if (!entry.members.includes(userId)) entry.members.push(userId);
+        await ctx.history.save(entry);
+      }
+    } catch (error) {
+      ctx.log.warn(`Updating draft history after a team claim failed for league ${leagueId}.`, error);
+    }
+  }
+  return ok({ id: result.league.id, name: result.league.name });
+}
+
+/**
+ * Puts a league that was made and drafted on a phone with no internet onto the server. The person
+ * uploading becomes its commissioner (taking the team the phone's commissioner had); everyone else's
+ * team stays open until they claim it from the invite link.
+ */
+async function offlineCreate(ctx: Ctx, data: Body): Promise<Res> {
+  const uploaded = data.league as League | undefined;
+  if (!uploaded || typeof uploaded !== 'object' || blank(uploaded.id) || blank(uploaded.name)) return bad('That draft is missing its league.');
+  if (!Array.isArray(uploaded.teams) || !Array.isArray(uploaded.initialPlayerPool)) return bad('That draft is missing its teams or players.');
+
+  const existing = await ctx.leagues.get(uploaded.id);
+  if (existing) {
+    // Already uploaded (a retry after a dropped connection).
+    if (existing.league.adminId === ctx.userId) return ok({ id: existing.league.id, name: existing.league.name });
+    return conflict('That draft was already uploaded by someone else.');
+  }
+
+  const league = ensureDefaults(clone(uploaded));
+  const phoneAdmin = league.adminId;
+  for (const team of league.teams) if (team?.ownerId === phoneAdmin) team.ownerId = ctx.userId!;
+  moveOwnerKeys(league, phoneAdmin, ctx.userId!);
+  league.adminId = ctx.userId!;
+  league.members = [ctx.userId!];
+  league.password = null;
+  league.activeBids = {};
+  league.auctionTimer = null;
+  league.readyMembers = [];
+  league.onlineUserIds = [];
+  league.awayUserIds = [];
+
+  let name = str(league.name).trim();
+  for (let n = 2; await ctx.leagues.findByName(name); n += 1) name = `${str(league.name).trim()} (${n})`;
+  league.name = name;
+
+  await ctx.leagues.create(league);
+  if (isCompleted(league)) await archiveDraft(ctx, league);
+  return ok({ id: league.id, name: league.name, openTeams: openTeamsOf(league) });
+}
+
 // ---- Router -----------------------------------------------------------------------
 
 type LeagueAction = (ctx: Ctx, leagueId: string, data: Body) => Promise<Res>;
@@ -1509,6 +1632,8 @@ const LEAGUE_POSTS: Record<string, LeagueAction> = {
   favorites: updateFavorites,
   'offline-copy': (ctx, id) => offlineCopy(ctx, id),
   'offline-restore': offlineRestore,
+  'reassign-team': reassignTeam,
+  'claim-team': claimTeam,
 };
 
 /**
@@ -1535,6 +1660,7 @@ export async function handle(ctx: Ctx, method: string, path: string, query: URLS
     if (method === 'GET' && name === 'checkleaguename') return checkLeagueName(ctx, query);
     if (method === 'POST' && name === 'createleague') return createLeague(ctx, data);
     if (method === 'POST' && name === 'joinleague') return joinLeague(ctx, data);
+    if (method === 'POST' && name === 'offline-create') return offlineCreate(ctx, data);
     if (method === 'POST' && name === 'user-profile') return getOrCreateProfile(ctx, data);
     if (method === 'GET' && name === 'history') return listHistory(ctx);
     if (method === 'GET' && name === 'startsit') return startSit(ctx, query);

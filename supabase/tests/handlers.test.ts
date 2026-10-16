@@ -1273,3 +1273,69 @@ test('offline draft: nothing can be copied while a live auction has bids in play
   await server.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
   assert.equal((await server.call('admin', 'POST', `leagues/${leagueId}/offline-copy`)).status, 400);
 });
+
+test('a league made on a phone with no internet uploads, and players claim their teams', async () => {
+  const phone = memoryWorld();
+  // On the phone: a guest commissioner makes the league and two guests join over nearby.
+  const created = await phone.call('guest-host', 'POST', 'CreateLeague', { name: 'Garage', draftMode: 'auction' });
+  const leagueId = (created.body as any).id;
+  await phone.call('guest-bob', 'POST', 'JoinLeague', { leagueId });
+  await phone.call('guest-cara', 'POST', 'JoinLeague', { leagueId });
+  const onPhone = clone(phone.league(leagueId));
+  onPhone.id = 'phone-made-league'; // a random UUID on a real phone
+  onPhone.status = 'completed';
+  onPhone.draftLog = [{ player: { id: 'p', name: 'P' }, winningTeamId: onPhone.teams[1].id, winningBid: 9, allBids: { 'guest-bob': { amount: 9 }, 'guest-host': { amount: 4 } } } as any];
+
+  const server = memoryWorld();
+  await server.call('x', 'POST', 'CreateLeague', { name: 'Garage' }); // name taken online
+  assert.equal((await server.call(null, 'POST', 'offline-create', { league: onPhone })).status, 401);
+  const up = await server.call('tyler', 'POST', 'offline-create', { league: onPhone });
+  assert.equal(up.status, 200, String(up.body));
+  assert.equal((up.body as any).name, 'Garage (2)');
+  assert.equal((up.body as any).openTeams.length, 2);
+  const online = server.league(onPhone.id);
+  assert.equal(online.adminId, 'tyler');
+  assert.deepEqual(online.members, ['tyler']);
+  assert.equal(online.teams[0].ownerId, 'tyler');
+  assert.deepEqual(Object.keys(online.draftLog[0].allBids).sort(), ['guest-bob', 'tyler']);
+  assert.ok(server.historyRows.size === 1);
+  // A retry by the same person is fine; someone else can't take it over.
+  assert.equal((await server.call('tyler', 'POST', 'offline-create', { league: onPhone })).status, 200);
+  assert.equal((await server.call('mallory', 'POST', 'offline-create', { league: onPhone })).status, 409);
+
+  const invite = await server.call('bob', 'GET', `invite/${onPhone.id}`);
+  assert.equal((invite.body as any).openTeams.length, 2);
+  const bobTeam = onPhone.teams[1].id;
+  assert.equal((await server.call('bob', 'POST', `leagues/${onPhone.id}/claim-team`, { teamId: bobTeam })).status, 200);
+  assert.equal((await server.call('cara', 'POST', `leagues/${onPhone.id}/claim-team`, { teamId: bobTeam })).status, 409);
+  assert.equal((await server.call('bob', 'POST', `leagues/${onPhone.id}/claim-team`, { teamId: onPhone.teams[2].id })).status, 409);
+  assert.equal((await server.call('cara', 'POST', `leagues/${onPhone.id}/claim-team`, { teamId: online.teams[0].id })).status, 409);
+  const after = server.league(onPhone.id);
+  assert.ok(after.members.includes('bob'));
+  assert.deepEqual(Object.keys(after.draftLog[0].allBids).sort(), ['bob', 'tyler']);
+  const history = [...server.historyRows.values()][0];
+  assert.ok(history.members.includes('bob'));
+  assert.equal(history.teams.find((t) => t.id === bobTeam)!.ownerId, 'bob');
+  assert.equal(((await server.call('bob', 'GET', 'history')).body as any[]).length, 1);
+});
+
+test('commissioner can hand a team to a player rejoining from another phone, sealed bid included', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world);
+  await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 7 });
+  const bobTeam = world.league(leagueId).teams.find((t) => t.ownerId === 'bob')!.id;
+  const adminTeam = world.league(leagueId).teams.find((t) => t.ownerId === 'admin')!.id;
+
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/reassign-team`, { teamId: bobTeam, userId: 'bob2' })).status, 401);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/reassign-team`, { teamId: adminTeam, userId: 'bob2' })).status, 400);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/reassign-team`, { teamId: bobTeam, userId: 'cara' })).status, 409);
+  const moved = await world.call('admin', 'POST', `leagues/${leagueId}/reassign-team`, { teamId: bobTeam, userId: 'bob2' });
+  assert.equal(moved.status, 200, String(moved.body));
+  const league = world.league(leagueId);
+  assert.equal(league.teams.find((t) => t.id === bobTeam)!.ownerId, 'bob2');
+  assert.ok(league.members.includes('bob2') && !league.members.includes('bob'));
+  assert.deepEqual(Object.keys(league.activeBids), ['bob2']);
+  // The new phone can keep bidding for the team.
+  assert.equal((await world.call('bob2', 'POST', `leagues/${leagueId}/bid`, { amount: 8 })).status, 200);
+});
