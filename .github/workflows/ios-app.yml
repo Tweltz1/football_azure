@@ -54,13 +54,19 @@ jobs:
 
       - name: Build the website
         working-directory: frontend
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || 'nkwedlskhnojseeroezm' }}
         run: |
-          if [ -z "$REACT_APP_SUPABASE_ANON_KEY" ]; then
-            # Same public key the live site ships with; read it from hood-league.com.
-            JS=$(curl -fsSL https://hood-league.com/ | grep -oE '/static/js/main\.[a-z0-9]+\.js' | head -1)
-            KEY=$(curl -fsSL "https://hood-league.com$JS" | grep -oE 'eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sb_publishable_[A-Za-z0-9_-]+' | head -1)
-            if [ -z "$KEY" ]; then echo "::error::Couldn't read the site key from hood-league.com"; exit 1; fi
+          if [ -z "$REACT_APP_SUPABASE_ANON_KEY" ] && [ -n "$SUPABASE_ACCESS_TOKEN" ]; then
+            # Same public key the live site ships with, asked from Supabase with the deploy token.
+            KEY=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/api-keys" \
+              | python3 -c 'import json,sys; print(next((k["api_key"] for k in json.load(sys.stdin) if k.get("name") == "anon"), ""))') || KEY=""
             export REACT_APP_SUPABASE_ANON_KEY="$KEY"
+          fi
+          if [ -z "$REACT_APP_SUPABASE_ANON_KEY" ]; then
+            echo "::error::No site key: add REACT_APP_SUPABASE_ANON_KEY (or SUPABASE_ACCESS_TOKEN) to the repo secrets"; exit 1
           fi
           npm ci --no-audit --no-fund
           CI=false npm run build
