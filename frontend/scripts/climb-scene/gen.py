@@ -8,8 +8,8 @@ CREW = [
  dict(skin=SK[1], hat="cap", hatc="#1f2a44", hood="#a9abb2", top="hoodie", topc="#a9abb2", bot="#9a9ca3", beard=True),
  dict(skin=SK[2], hat="cap", hatc="#c9b98a", top="tee", topc="#6d6a70", bot="#26304f"),
  dict(skin=SK[0], hat="back", hatc="#e7b94a", top="hoodie", topc="#1c1e26", bot="#a3a5ab", text="SCIENCE"),
- dict(skin=SK[3], hat="cap", hatc="#24242a", top="dress", topc="#d1237a", bot=None, shades=True, stache=True),
- dict(skin=SK[2], hat=None, hair="#2b1d16", top="zip", topc="#1e2b57", bot="#b4b6bb"),
+ dict(skin=SK[3], hat="cap", hatc="#203731", top="packers", topc="#203731", bot="#3a3f4a", shades=True, stache=True),
+ dict(skin=SK[2], hat=None, hair="#2b1d16", top="dress", topc="#d1237a", bot=None),
  dict(skin=SK[1], hat="cap", hatc="#24242a", top="hoodie", topc="#d33b3b", bot="#1b1b22", beard=True, text="CUSTER"),
  dict(skin=SK[0], hat="cap", hatc="#b07a4c", top="tee", topc="#7a7c62", bot="#1b1b22"),
  dict(skin=SK[2], hat="cap", hatc="#2a3a30", top="jersey", topc="#1f5a3b", bot="#d8c39a", shorts=True),
@@ -58,6 +58,10 @@ def body(g, x, y, s):
         if t == "jersey":
             o.append(f'<path d="M-14 -142 L0 -130 L14 -142" fill="#f3c33b" stroke-width="3"/>')
             o.append(f'<text x="0" y="-86" font-family="Arial Black,Arial" font-weight="900" font-size="40" fill="#ffffff" stroke="{INK}" stroke-width="2" text-anchor="middle">17</text>')
+        if t == "packers":
+            o.append(f'<path d="M-14 -142 L0 -130 L14 -142" fill="#ffb612" stroke-width="3"/>')
+            o.append(f'<path d="M-38 -76 H38 M-38 -70 H38" stroke="#ffb612" stroke-width="4"/>')
+            o.append(f'<text x="0" y="-86" font-family="Arial Black,Arial" font-weight="900" font-size="40" fill="#ffb612" stroke="{INK}" stroke-width="2" text-anchor="middle">12</text>')
         if t == "packzip":
             o.append(f'<rect x="-38" y="-142" width="76" height="30" rx="14" fill="{g["sleeve"]}" stroke-width="0"/>')
             o.append(f'<rect x="-38" y="-142" width="76" height="80" rx="20" fill="none"/>')
