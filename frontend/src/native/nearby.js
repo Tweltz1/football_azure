@@ -10,9 +10,10 @@
 // Keep the auction blind: players send bids to the host only, and the host
 // sends everyone just the winning bid after the timer ends.
 
-const cap = typeof window !== 'undefined' ? window.Capacitor : undefined;
+// The app's native code puts each plugin on window.Capacitor.Plugins (the site doesn't bundle
+// @capacitor/core, so there is no Capacitor.registerPlugin to call).
+const plugins = () => (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.Plugins) || {};
 
-export const isAvailable = () =>
-  !!(cap && cap.isNativePlatform && cap.isNativePlatform() && cap.isPluginAvailable && cap.isPluginAvailable('Nearby'));
+export const isAvailable = () => !!plugins().Nearby;
 
-export const Nearby = cap && cap.registerPlugin ? cap.registerPlugin('Nearby') : null;
+export const Nearby = plugins().Nearby || null;

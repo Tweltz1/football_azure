@@ -31,7 +31,7 @@ const offlineFallback = (error) => {
 
 export const signIn = async (provider) => {
   const queryParams = provider === 'google' ? { prompt: 'select_account' } : undefined;
-  if (!nativeSignIn.isAvailable()) {
+  if (!nativeSignIn.inApp()) {
     return supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: window.location.origin + window.location.pathname + window.location.search, queryParams },

@@ -3,19 +3,23 @@
 // opens in Apple's sign-in sheet, which returns to the app at APP_REDIRECT. That address must be listed
 // in Supabase under Authentication > URL Configuration > Redirect URLs.
 
-const cap = typeof window !== 'undefined' ? window.Capacitor : undefined;
-
 export const APP_SCHEME = 'com.hoodleague.draft';
 export const APP_REDIRECT = `${APP_SCHEME}://auth`;
 
-export const isAvailable = () =>
-  !!(cap && cap.isNativePlatform && cap.isNativePlatform() && cap.isPluginAvailable && cap.isPluginAvailable('AuthSession'));
+// The site doesn't bundle @capacitor/core; the app's native code puts each plugin on window.Capacitor.Plugins.
+const plugin = () => (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AuthSession) || null;
 
-const AuthSession = cap && cap.registerPlugin ? cap.registerPlugin('AuthSession') : null;
+/** True inside the iPhone app (its pages load from capacitor://localhost). */
+export const inApp = () => typeof window !== 'undefined' && window.location.protocol === 'capacitor:';
 
 /** Opens the sign-in page and resolves with the address it came back to, or null if cancelled. */
 export const openSignIn = async (url) => {
   try {
+    const AuthSession = plugin();
+    if (!AuthSession) {
+      const found = Object.keys((window.Capacitor && window.Capacitor.Plugins) || {}).join(', ') || 'none';
+      throw new Error(`This version of the app can't open sign-in (plugins: ${found}).`);
+    }
     const result = await AuthSession.start({ url, scheme: APP_SCHEME });
     return result.url;
   } catch (error) {
