@@ -156,11 +156,13 @@ jobs:
                 -authenticationKeyID "$KEY_ID"
                 -authenticationKeyIssuerID "$ISSUER_ID")
 
+          # Archive unsigned (signing it here would need a registered iPhone for a development
+          # profile); the export below signs it for the App Store with Apple's cloud signing.
           xcodebuild -project App.xcodeproj -scheme App -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGNING_ALLOWED=NO \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
-            "${AUTH[@]}" archive | tail -n 40
+            archive | tail -n 40
           test ${PIPESTATUS[0]} -eq 0
 
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
