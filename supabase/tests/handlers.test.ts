@@ -929,6 +929,90 @@ test('whiteboard: ties at the top are flagged for the commissioner, never sent t
   assert.deepEqual(league.boardReview!.topRead, { userIds: ['bob', 'cara'], amount: 20 });
 });
 
+test('whiteboard: a tie gets one rebid round on boards, then the commissioner picks', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupWhiteboardLeague(world);
+  await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 20, board: board(1) });
+  await world.call('cara', 'POST', `leagues/${leagueId}/bid`, { amount: 20, board: board(2) });
+  await world.call('dan', 'POST', `leagues/${leagueId}/bid`, { amount: 5, board: board(3) });
+  world.advance(21);
+  await world.call('bob', 'POST', `leagues/${leagueId}/endBidding`);
+
+  const rebid = (userId: string, body: unknown) => world.call(userId, 'POST', `leagues/${leagueId}/board-rebid`, body);
+  assert.equal((await rebid('bob', { userIds: ['bob', 'cara'], amount: 20 })).status, 401, 'only the commissioner');
+  assert.equal((await rebid('admin', { userIds: ['bob'], amount: 20 })).status, 400, 'a tie needs two teams');
+  assert.equal((await rebid('admin', { userIds: ['bob', 'admin'], amount: 20 })).status, 400, 'admin locked in no board');
+  const started = await rebid('admin', { userIds: ['bob', 'cara'], amount: 20 });
+  assert.equal(started.status, 200, String(started.body));
+  let league = world.league(leagueId);
+  assert.equal(league.status, 'tiebreaker');
+  assert.deepEqual(league.tieBreaker, { tiedTeamIds: ['bob', 'cara'], tieAmount: 20, round: 1, boards: true });
+  assert.equal(league.boardReview, null);
+
+  // Only the tied teams write again, and the boards stay sealed.
+  assert.equal((await world.call('dan', 'POST', `leagues/${leagueId}/bid`, { amount: 30, board: board(4) })).status, 400);
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/bid`, { amount: 21, board: board(5) })).status, 200);
+  const caraView = (await world.call('cara', 'GET', `leagues/${leagueId}/state`)).body as any;
+  assert.deepEqual(Object.keys(caraView.activeBids), [], 'cara cannot see bob\'s rebid board');
+
+  // Cara writes nothing, so she counts at $21 and it ties again: the commissioner picks.
+  world.advance(16);
+  await world.call('dan', 'POST', `leagues/${leagueId}/endBidding`);
+  league = world.league(leagueId);
+  assert.equal(league.status, 'boardreview');
+  assert.deepEqual(league.boardReview!.tie, { tiedTeamIds: ['bob', 'cara'], tieAmount: 20 });
+  assert.equal(league.boardReview!.bids.cara.amount, 21);
+  assert.equal(league.boardReview!.bids.cara.board, undefined);
+  assert.deepEqual(league.boardReview!.topRead, { userIds: ['bob', 'cara'], amount: 21 });
+  assert.equal((await rebid('admin', { userIds: ['bob', 'cara'], amount: 21 })).status, 400, 'only one rebid round');
+
+  const caraTeam = league.teams.find((t) => t.ownerId === 'cara')!;
+  const award = await world.call('admin', 'POST', `leagues/${leagueId}/board-award`, { winningTeamId: caraTeam.id, amount: 21 });
+  assert.equal(award.status, 200, String(award.body));
+  assert.equal(world.league(leagueId).tieBreaker, null);
+  assert.equal(world.league(leagueId).draftLog.at(-1)!.winningBid, 21);
+});
+
+test('co-host: the commissioner picks one, who can run the draft tools but not change settings', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world, ['admin', 'bob', 'cara']);
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/settings`, { cohostId: 'bob' })).status, 401);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { cohostId: 'zed' })).status, 400, 'must be a member');
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { cohostId: 'admin' })).status, 400);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { cohostId: 'bob' })).status, 200);
+  assert.equal(world.league(leagueId).cohostId, 'bob');
+  assert.equal(((await world.call('cara', 'GET', `leagues/${leagueId}/state`)).body as any).cohostId, 'bob');
+
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/startDraft`, {})).status, 401);
+  await world.call('cara', 'POST', `leagues/${leagueId}/ready`, { isReady: true });
+  await world.call('bob', 'POST', `leagues/${leagueId}/ready`, { isReady: true });
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/startDraft`, {})).status, 200, 'the co-host can start the draft');
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/pause`, {})).status, 200);
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/settings`, { draftTimers: { bidTimer: 5 } })).status, 401, 'settings stay with the commissioner');
+  const caraTeam = world.league(leagueId).teams.find((t) => t.ownerId === 'cara')!;
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/kick`, { teamIdToKick: caraTeam.id })).status, 401);
+  assert.equal((await world.call('bob', 'DELETE', `leagues/${leagueId}`)).status, 401);
+
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/settings`, { cohostId: '' })).status, 200);
+  assert.equal(world.league(leagueId).cohostId, null);
+});
+
+test('a player can leave a league before the draft starts', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world, ['admin', 'bob', 'cara']);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/leave`)).status, 400, 'the commissioner deletes instead');
+  assert.equal((await world.call('zed', 'POST', `leagues/${leagueId}/leave`)).status, 404);
+  await world.call('bob', 'POST', `leagues/${leagueId}/ready`, { isReady: true });
+  const left = await world.call('bob', 'POST', `leagues/${leagueId}/leave`);
+  assert.equal(left.status, 200, String(left.body));
+  const league = world.league(leagueId);
+  assert.ok(!league.members.includes('bob'));
+  assert.ok(!league.teams.some((t) => t.ownerId === 'bob'));
+  assert.ok(!league.readyMembers.includes('bob'));
+  await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`, {});
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/leave`)).status, 400, 'teams stay once the draft starts');
+});
+
 test('whiteboard: only the commissioner awards, within the max bid, and the pick keeps its boards', async () => {
   const world = memoryWorld();
   const leagueId = await setupWhiteboardLeague(world, 'whiteboard-manual');

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from './supabaseClient';
-import { forgetGuest, forgetLastUser, guestUser, lastSignedInUser, offlineUser, rememberLastUser } from './offline/storage';
+import { forgetLastUser, guestUser, isSignedOut, lastSignedInUser, markSignedOut, offlineUser, rememberLastUser } from './offline/storage';
 import * as nativeSignIn from './native/authSession';
 import { clearReads } from './offline/readCache';
 import { prefetchPages } from './offline/prefetch';
@@ -26,6 +26,7 @@ const toAppUser = (supabaseUser) => {
 // With no internet the sign-in can't refresh. If a draft is saved on this device, open the site as the
 // commissioner who saved it so the draft can go on; the server checks the real sign-in on upload.
 const offlineFallback = (error) => {
+  if (isSignedOut()) return null;
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
   const saved = (offline || error ? offlineUser() : null) || (offline ? lastSignedInUser() : null) || guestUser();
   return saved ? { ...saved, identityProvider: null, email: null, offline: true } : null;
@@ -63,8 +64,17 @@ export const signIn = async (provider) => {
 export const signOut = async () => {
   clearReads();
   forgetLastUser();
-  forgetGuest();
-  await supabase.auth.signOut();
+  // Works with no internet: stop opening as the saved offline or guest user. Their drafts stay on the
+  // phone, and the sign-in page offers "Continue as" to get back to them.
+  markSignedOut();
+  try {
+    await Promise.race([
+      supabase.auth.signOut({ scope: 'local' }),
+      new Promise((resolve) => { window.setTimeout(resolve, 2000); }),
+    ]);
+  } catch (error) {
+    // Signed out on this device anyway.
+  }
   window.location.assign('/');
 };
 
@@ -78,7 +88,7 @@ export const AuthProvider = ({ children }) => {
     // With no internet, a sign-in that needs refreshing keeps retrying for about 30 seconds. When a draft is
     // saved on this device, don't make the commissioner wait for that.
     const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
-    const saved = offlineUser() || (isOffline ? lastSignedInUser() : null) || guestUser();
+    const saved = isSignedOut() ? null : (offlineUser() || (isOffline ? lastSignedInUser() : null) || guestUser());
     let settled = false;
     const offlineTimer = saved ? window.setTimeout(() => {
       if (settled || !isMounted) return;

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { API_BASE_URL } from '../api';
 import { readOfflineLeague, saveLeagueToDevice } from '../offline/offlineSync';
 import {
-  bidForTeam, isNearbyTicket, joinNearby, leaveNearbyDraft, nearbySupported, roomFor, saveNearbyTicket, startHosting, watchNearby,
+  bidForTeam, isNearbyTicket, joinNearby, keepDraftingWithout, leaveNearbyDraft, nearbySupported, roomFor, saveNearbyTicket, startHosting, watchNearby,
 } from '../offline/nearbyDraft';
 import './OfflineDraft.css';
 
@@ -65,6 +67,45 @@ const AbsentTeamBid = ({ league, connectedUserIds }) => {
   );
 };
 
+/** Everyone sees this while the draft waits for a phone that dropped (or, on a player's phone, for the host). */
+const PausedCover = ({ title, text, children }) => (
+  <div className="nearby-paused" role="alertdialog" aria-live="assertive" aria-label={title}>
+    <div className="nearby-paused-card">
+      <strong>{title}</strong>
+      <p>{text}</p>
+      {children}
+    </div>
+  </div>
+);
+
+const namesText = (names) => (names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
+
+/** Commissioner's phone: pick a co-host whose phone takes over if this one drops. */
+const CohostPicker = ({ league }) => {
+  const [note, setNote] = useState(null);
+  const teams = (league.teams || []).filter((team) => team?.ownerId && team.ownerId !== league.adminId);
+  if (!teams.length) return null;
+  const choose = async (cohostId) => {
+    setNote(null);
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${league.id}/settings`, { cohostId });
+      setNote(cohostId ? 'Saved. Their phone keeps a copy of the draft and takes over if yours drops.' : 'No co-host.');
+    } catch (error) {
+      setNote(errorText(error));
+    }
+  };
+  return (
+    <label className="nearby-cohost">
+      Co-host (takes over if your phone drops)
+      <select value={league.cohostId || ''} onChange={(event) => choose(event.target.value)}>
+        <option value="">No co-host</option>
+        {teams.map((team) => <option key={team.id} value={team.ownerId}>{team.name}</option>)}
+      </select>
+      {note && <span className="offline-draft-note">{note}</span>}
+    </label>
+  );
+};
+
 /** iPhone app only: run the draft on the commissioner's phone and let everyone bid from theirs, no internet. */
 const NearbyDraftPanel = ({ league, user }) => {
   const [busy, setBusy] = useState(false);
@@ -74,14 +115,23 @@ const NearbyDraftPanel = ({ league, user }) => {
   const ticket = leagueId ? isNearbyTicket(leagueId) : false;
 
   useEffect(() => watchNearby(setNearby), []);
+  // Only show "lost the commissioner's phone" after this phone was connected to it once.
+  const [hadHost, setHadHost] = useState(false);
+  useEffect(() => { if (nearby.connected && nearby.role === 'player') setHadHost(true); }, [nearby.connected, nearby.role]);
   useEffect(() => {
     if (ticket) joinNearby(leagueId);
   }, [ticket, leagueId]);
+  // The commissioner's phone hosts whenever its draft page is open, with no extra tap.
+  const hostCopy = leagueId ? !!readOfflineLeague(leagueId)?.nearbyHost : false;
+  useEffect(() => {
+    if (hostCopy && nearby.role !== 'host') startHosting(leagueId, user || {}).catch(() => {});
+  }, [hostCopy, nearby.role, leagueId, user]);
 
   if (!nearbySupported() || !league || !user?.userId) return null;
 
   const saved = readOfflineLeague(league.id);
-  const isCommissioner = league.adminId === user.userId || (saved?.nearbyHost && saved.userId === league.adminId);
+  // This phone hosts the room: the commissioner's phone, or the co-host's while it fills in.
+  const isCommissioner = league.adminId === user.userId || !!saved?.nearbyHost;
   const notStarted = NOT_STARTED.has(String(league.status || '').toLowerCase());
 
   const run = async (work) => {
@@ -103,20 +153,33 @@ const NearbyDraftPanel = ({ league, user }) => {
           <div>
             <strong>Nearby-phones draft</strong>
             <p>
+              {saved.actingHost && 'The commissioner\'s phone dropped, so this phone is running the draft. It hands the draft back when their phone returns. '}
               {nearby.role === 'host'
                 ? `${nearby.players} ${nearby.players === 1 ? 'player' : 'players'} connected to this phone. `
-                : 'Starting... '}
+                : nearby.checking ? 'Checking whether the co-host\'s phone is running the draft... ' : 'Starting... '}
               Keep the app open on this screen during the draft so nearby phones stay connected.
               {' '}Players who didn't set up, or whose phone died, join with this code:
             </p>
             <span className="nearby-room-code" aria-label="Room code">{roomFor(league.id)}</span>
+            {nearby.log?.length > 0 && <p className="nearby-radio-log">{nearby.log[nearby.log.length - 1]}</p>}
           </div>
           {nearby.role !== 'host' && (
             <div className="offline-draft-actions">
               <button type="button" className="create-button" onClick={() => startHosting(league.id, user)}>Start hosting</button>
             </div>
           )}
+          {nearby.role === 'host' && nearby.waitingFor?.length > 0 && (
+            <PausedCover
+              title="Draft paused"
+              text={`Waiting for ${namesText(nearby.waitingFor)} to reconnect. It carries on by itself once they're back.`}
+            >
+              <button type="button" className="edit-roster-button" onClick={() => keepDraftingWithout()}>
+                Keep drafting without them
+              </button>
+            </PausedCover>
+          )}
           {nearby.role === 'host' && <AbsentTeamBid league={league} connectedUserIds={nearby.connectedUserIds} />}
+          {!saved.actingHost && league.adminId === user.userId && <CohostPicker league={league} />}
         </section>
       );
     }
@@ -159,6 +222,22 @@ const NearbyDraftPanel = ({ league, user }) => {
               ? 'Connected to the commissioner\'s phone. Bid as usual.'
               : 'Looking for the commissioner\'s phone. Stay close to it and keep this screen open.'}
           </p>
+          {nearby.waitingFor?.length > 0 && nearby.connected && (
+            <PausedCover title="Draft paused" text={`Waiting for ${namesText(nearby.waitingFor)} to reconnect. The commissioner can carry on without them.`} />
+          )}
+          {!nearby.connected && hadHost && (
+            <PausedCover
+              title="Draft paused"
+              text={league.cohostId === user.userId
+                ? 'Lost the commissioner\'s phone. If it isn\'t back in 20 seconds, this phone takes over the draft.'
+                : 'Lost the commissioner\'s phone. Stay close and keep this screen open; it reconnects by itself.'}
+            >
+              <button type="button" className="link-button" onClick={() => setHadHost(false)}>Hide for now</button>
+            </PausedCover>
+          )}
+          {league.cohostId === user.userId && (
+            <p>You're the co-host. If the commissioner's phone drops for 20 seconds, this phone takes over the draft until it comes back.</p>
+          )}
         </div>
         <div className="offline-draft-actions">
           <button

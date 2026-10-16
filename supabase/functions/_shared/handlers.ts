@@ -6,7 +6,7 @@
 import type { Broadcaster, HistoryStore, LeagueStore, Logger, ProfileStore, StoredLeague } from './ports.ts';
 import type { Bid, League, Player, RosterSettings, Team, UserProfile } from './models.ts';
 import {
-  clone, ensureDefaults, forClient, isManual, isWhiteboard, MANUAL, normalizeBiddingMode, normalizeDraftMode,
+  clone, ensureDefaults, forClient, isCommish, isManual, isWhiteboard, MANUAL, normalizeBiddingMode, normalizeDraftMode,
   normalizeDraftTimers, normalizeRosterSettings, WHITEBOARD_AUTO,
 } from './models.ts';
 import {
@@ -478,6 +478,13 @@ async function updateSettings(ctx: Ctx, leagueId: string, data: Body): Promise<R
     }
     if (data.rosterSettings) league.rosterSettings = normalizeRosterSettings(data.rosterSettings);
     if (data.draftTimers) league.draftTimers = normalizeDraftTimers(data.draftTimers);
+    if ('cohostId' in data) {
+      const cohostId = str(data.cohostId);
+      if (cohostId && (cohostId === league.adminId || !league.members.includes(cohostId))) {
+        return bad('Pick a co-host from the other teams in the league.');
+      }
+      league.cohostId = cohostId || null;
+    }
     return null;
   });
   return done(result, (u: Updated) => leagueBody(ctx, u));
@@ -502,11 +509,28 @@ async function kickMember(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
     }
     league.teams = league.teams.filter((t) => t !== team);
     league.members = league.members.filter((id) => id !== team.ownerId);
+    if (league.cohostId === team.ownerId) league.cohostId = null;
     league.readyMembers = league.readyMembers.filter((id) => id !== team.ownerId);
     ctx.log.info(`Team ${team.name} was kicked from league ${league.name}.`);
     return null;
   });
   return done(result, 'Member kicked successfully.');
+}
+
+/** A player leaves a league before its draft starts (the commissioner deletes the league instead). */
+async function leaveLeague(ctx: Ctx, leagueId: string): Promise<Res> {
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (!ctx.userId || !league.members.includes(ctx.userId)) return notFound('You are not in this league.');
+    if (league.adminId === ctx.userId) return bad('The commissioner can delete the league instead of leaving it.');
+    const status = str(league.status).toLowerCase();
+    if (status && status !== 'created' && status !== 'lobby') return bad('The draft has started, so your team has to stay. Ask the commissioner.');
+    league.teams = league.teams.filter((t) => t.ownerId !== ctx.userId);
+    league.members = league.members.filter((id) => id !== ctx.userId);
+    league.readyMembers = (league.readyMembers ?? []).filter((id) => id !== ctx.userId);
+    if (league.cohostId === ctx.userId) league.cohostId = null;
+    return null;
+  });
+  return done(result, 'You left the league.');
 }
 
 // ---- Auction draft --------------------------------------------------------------
@@ -518,7 +542,7 @@ const newTimer = (ctx: Ctx, seconds: number) => ({ endTime: secondsFromNow(ctx.n
 
 async function startDraft(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
 
     clearActiveBids(league);
     league.tieBreaker = null;
@@ -553,7 +577,15 @@ function validateBid(league: League, userId: string, amount: number): Res | null
  * manual style). Max bid is not checked here because the read may be wrong; the commissioner's award checks it.
  */
 function lockInBoard(ctx: Ctx, league: League, userId: string, amount: number, board: number[][] | null): Res | null {
-  if (str(league.status).toLowerCase() !== 'drafting') return bad('Boards can only be locked in while a player is up for bid.');
+  const status = str(league.status).toLowerCase();
+  if (status === 'tiebreaker') {
+    // Whiteboard rebid round: only the tied teams write again, and only while the clock runs.
+    const tie = league.tieBreaker;
+    if (!tie?.boards || tie.round >= 2 || !tie.tiedTeamIds.includes(userId)) return bad('Only the tied teams write a new board.');
+    if (!timerRunning(ctx, league.auctionTimer)) return bad("Time's up for this player.");
+  } else if (status !== 'drafting') {
+    return bad('Boards can only be locked in while a player is up for bid.');
+  }
   if (!league.teams.some((t) => t.ownerId === userId)) return notFound('Team not found.');
   if (!board) return bad('Draw your bid on the board before locking it in.');
   const read = league.biddingMode === WHITEBOARD_AUTO ? Math.min(9999, Math.max(0, amount)) : 0;
@@ -649,9 +681,22 @@ function moveCappedTieToAdminResolution(ctx: Ctx, league: League): Res | null {
   return null;
 }
 
-/** Whiteboard styles: the clock ended, so reveal every board and wait for the commissioner. No tie-breaker round. */
+/**
+ * Whiteboard styles: the clock ended, so reveal every board and wait for the commissioner. A tie can go to
+ * one rebid round (board-rebid); after it, a tied team that wrote no new board counts at the tie + $1 when it
+ * can afford that (as in the standard style), and the commissioner picks the winner.
+ */
 function openBoardReview(ctx: Ctx, league: League) {
+  const rebid = league.tieBreaker?.boards ? league.tieBreaker : null;
   const bids = league.activeBids;
+  if (rebid) {
+    const autoBid = rebid.tieAmount + 1;
+    for (const userId of new Set(rebid.tiedTeamIds)) {
+      if (bids[userId]) continue;
+      const team = league.teams.find((t) => t?.ownerId === userId);
+      if (team && getMaxBid(league, team) >= autoBid) bids[userId] = { amount: autoBid, timestamp: ctx.now().toISOString() };
+    }
+  }
   let topRead: { userIds: string[]; amount: number } | null = null;
   if (league.biddingMode === WHITEBOARD_AUTO) {
     const reads = Object.entries(bids).filter(([, bid]) => (bid?.amount ?? 0) > 0);
@@ -663,7 +708,12 @@ function openBoardReview(ctx: Ctx, league: League) {
   league.activeBids = {};
   league.tieBreaker = null;
   league.status = BOARD_REVIEW;
-  league.boardReview = { playerId: league.currentPlayerId, bids, topRead };
+  league.boardReview = {
+    playerId: league.currentPlayerId,
+    bids,
+    topRead,
+    tie: rebid ? { tiedTeamIds: [...rebid.tiedTeamIds], tieAmount: rebid.tieAmount } : null,
+  };
   // Paused at zero: no countdown, and the commissioner's paused-only tools (nominate, members) stay usable.
   pauseForAdminTieResolution(ctx, league);
 }
@@ -687,7 +737,7 @@ async function endBidding(ctx: Ctx, leagueId: string): Promise<Res> {
     const player = league.initialPlayerPool.find((p) => p.id === league.currentPlayerId);
     if (!player) return bad('Current player was not found.');
 
-    if (status === 'drafting' && isWhiteboard(league.biddingMode)) {
+    if (isWhiteboard(league.biddingMode) && (status === 'drafting' || league.tieBreaker?.boards)) {
       openBoardReview(ctx, league);
       return null;
     }
@@ -752,7 +802,7 @@ async function nextRound(ctx: Ctx, leagueId: string): Promise<Res> {
 
 async function skipIntermission(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (str(league.status).toLowerCase() !== 'intermission') return bad('Can only skip during intermission.');
     startNextPlayer(league, ctx.now());
     return null;
@@ -762,7 +812,7 @@ async function skipIntermission(ctx: Ctx, leagueId: string): Promise<Res> {
 
 async function pauseDraft(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const timer = league.auctionTimer;
     if (!timer) return bad('There is no active draft timer to pause.');
 
@@ -783,7 +833,7 @@ async function nominatePlayer(ctx: Ctx, leagueId: string, data: Body): Promise<R
   const playerId = str(data.playerId);
   if (!playerId) return bad('Admin ID and player ID are required.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (!league.auctionTimer || !league.auctionTimer.isPaused) return bad('Draft must be paused to nominate a player.');
     const player = league.initialPlayerPool.find((p) => p.id === playerId);
     if (!player || player.isDrafted) return bad('Player is not available to be nominated.');
@@ -800,7 +850,7 @@ async function nominatePlayer(ctx: Ctx, leagueId: string, data: Body): Promise<R
 
 async function skipPlayer(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     startNextPlayer(league, ctx.now(), league.currentPlayerId);
     return null;
   });
@@ -811,7 +861,7 @@ async function resolveTie(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
   const winningTeamId = str(data.winningTeamId);
   if (!winningTeamId) return bad('Admin ID and winning team ID are required.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const tie = league.tieBreaker;
     if (str(league.status).toLowerCase() !== 'tiebreaker' || tie?.round !== 2) {
       return bad('Can only resolve a final tie after the rebid round also tied.');
@@ -854,7 +904,7 @@ async function awardBoard(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
   let learn = null as { userId: string; board: number[][] } | null;
   const result = await updateLeague(ctx, leagueId, (league) => {
     learn = null;
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const review = league.boardReview;
     if (str(league.status).toLowerCase() !== BOARD_REVIEW || !review) return bad('There are no boards waiting to be awarded.');
 
@@ -886,6 +936,32 @@ async function awardBoard(ctx: Ctx, leagueId: string, data: Body): Promise<Res> 
 }
 
 /**
+ * Whiteboard styles: the boards tied, so the tied teams write again and must beat the tie. One rebid round;
+ * if that ties too, the commissioner picks the winner from the next review.
+ */
+async function boardRebid(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const amount = int(data.amount);
+  const userIds = Array.isArray(data.userIds) ? [...new Set((data.userIds as unknown[]).map(str).filter(Boolean))] : [];
+  if (userIds.length < 2) return bad('Choose at least two tied teams.');
+  if (amount < 1) return bad('The tie amount must be at least $1.');
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (!isCommish(league, ctx.userId)) return unauthorized();
+    const review = league.boardReview;
+    if (str(league.status).toLowerCase() !== BOARD_REVIEW || !review) return bad('There are no boards waiting to be awarded.');
+    if (review.tie) return bad('This was already the rebid round. Pick the winner.');
+    if (!userIds.every((id) => review.bids[id])) return bad('Only teams that locked in a board can be in the tie.');
+    league.status = 'tiebreaker';
+    league.tieBreaker = { tiedTeamIds: userIds, tieAmount: amount, round: 1, boards: true };
+    league.activeBids = {};
+    league.boardReview = null;
+    league.auctionTimer = newTimer(ctx, league.draftTimers.rebidTimer);
+    ctx.log.info(`Admin started a whiteboard rebid round at $${amount} in league ${league.name}.`);
+    return null;
+  });
+  return done(result, (u: Updated) => leagueBody(ctx, u));
+}
+
+/**
  * Auto-read leagues: the awarded board is now public and its amount confirmed by the commissioner, so
  * it becomes labelled handwriting for the winner (only boards revealed in the review ever get here).
  * Best effort: a failure is logged and never undoes the award.
@@ -905,7 +981,7 @@ async function learnHandwriting(ctx: Ctx, { userId, board }: { userId: string; b
 
 async function undoLastPick(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const status = str(league.status).toLowerCase();
     if (status !== 'intermission' && status !== MANUAL) return bad('Can only undo a pick during intermission or manual draft mode.');
 
@@ -944,7 +1020,7 @@ async function undoLastPick(ctx: Ctx, leagueId: string): Promise<Res> {
 
 async function completeDraft(ctx: Ctx, leagueId: string): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     league.status = 'completed';
     league.currentPlayerId = null;
     clearActiveBids(league);
@@ -1049,7 +1125,7 @@ async function offlineRestore(ctx: Ctx, leagueId: string, data: Body): Promise<R
 
   const stored = await readLeague(ctx, leagueId);
   if (isRes(stored)) return stored;
-  if (stored.league.adminId !== ctx.userId) return unauthorized();
+  if (!isCommish(stored.league, ctx.userId)) return unauthorized();
   if (data.force !== true && int(data.baseVersion) !== stored.version) {
     return conflict('This league changed online after it was saved to this device.');
   }
@@ -1123,7 +1199,7 @@ async function manualSelectPlayer(ctx: Ctx, leagueId: string, data: Body): Promi
   const playerId = str(data.playerId);
   if (!playerId) return bad('Player ID is required.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (!isManual(league.draftMode) || str(league.status).toLowerCase() !== MANUAL) {
       return bad('Manual player selection is only available during a manual draft.');
     }
@@ -1148,7 +1224,7 @@ async function manualAward(ctx: Ctx, leagueId: string, data: Body): Promise<Res>
   if (amount < 1) return bad('Manual draft prices must be at least $1.');
 
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (!isManual(league.draftMode) || str(league.status).toLowerCase() !== MANUAL) {
       return bad('Manual awards are only available after starting a manual draft.');
     }
@@ -1175,7 +1251,7 @@ async function manualAward(ctx: Ctx, leagueId: string, data: Body): Promise<Res>
 
 async function addManualTeam(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (!isManual(league.draftMode)) return bad('Manual teams can only be added to manual drafts.');
     if (str(league.status).toLowerCase() === 'completed') return bad('Cannot add a team after the draft is completed.');
 
@@ -1201,7 +1277,7 @@ async function assignManualTeamOwner(ctx: Ctx, leagueId: string, data: Body): Pr
 
   const profile = await findProfile(ctx, targetUserId);
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     if (!isManual(league.draftMode)) return bad('Manual team assignment is only available for manual drafts.');
     if (!league.members.includes(targetUserId)) return bad('That user has not joined this league yet.');
 
@@ -1229,7 +1305,7 @@ async function adjustBudget(ctx: Ctx, leagueId: string, data: Body): Promise<Res
   let oldBudget = 0;
   let teamName = '';
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const team = league.teams.find((t) => t?.id === teamId);
     if (!team) return notFound('Team not found.');
     oldBudget = team.budget;
@@ -1255,7 +1331,7 @@ async function assignBeerDuty(ctx: Ctx, leagueId: string, data: Body): Promise<R
   const teamId = str(data.teamId);
   if (!teamId) return bad('Admin ID and team ID are required.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const team = league.teams.find((t) => t?.id === teamId);
     if (!team) return notFound('Team not found.');
     league.beerBitchTeamId = team.id;
@@ -1312,7 +1388,7 @@ async function budgetReview(ctx: Ctx, leagueId: string): Promise<Res> {
   const stored = await readLeague(ctx, leagueId);
   if (isRes(stored)) return stored;
   const league = stored.league;
-  if (league.adminId !== ctx.userId) return unauthorized();
+  if (!isCommish(league, ctx.userId)) return unauthorized();
 
   const adminTeam = league.teams.find((t) => t?.ownerId === ctx.userId);
   await ctx.broadcaster.send(leagueId, 'budgetReviewNotice', {
@@ -1486,6 +1562,7 @@ function moveOwnerKeys(league: League, from: string, to: string) {
   for (const pick of league.draftLog ?? []) swapKey(pick?.allBids as Record<string, unknown> | undefined);
   if (league.tieBreaker) league.tieBreaker.tiedTeamIds = league.tieBreaker.tiedTeamIds.map((id) => (id === from ? to : id));
   league.readyMembers = (league.readyMembers ?? []).map((id) => (id === from ? to : id));
+  if (league.cohostId === from) league.cohostId = to;
 }
 
 /** Teams nobody in the league owns yet (made on a phone with no internet, or manual teams). */
@@ -1502,7 +1579,7 @@ async function reassignTeam(ctx: Ctx, leagueId: string, data: Body): Promise<Res
   const targetUserId = str(data.userId).trim();
   if (!teamId || !targetUserId) return bad('Team ID and user ID are required.');
   const result = await updateLeague(ctx, leagueId, (league) => {
-    if (league.adminId !== ctx.userId) return unauthorized();
+    if (!isCommish(league, ctx.userId)) return unauthorized();
     const team = league.teams.find((t) => t?.id === teamId);
     if (!team) return notFound('Team not found.');
     const previous = team.ownerId;
@@ -1604,6 +1681,7 @@ const LEAGUE_POSTS: Record<string, LeagueAction> = {
   teams: editTeamName,
   settings: updateSettings,
   kick: kickMember,
+  leave: (ctx, id) => leaveLeague(ctx, id),
   startDraft: (ctx, id) => startDraft(ctx, id),
   bid: (ctx, id, data) => placeBid(ctx, id, data),
   'submit-final-bid': (ctx, id, data) => placeBid(ctx, id, data),
@@ -1617,6 +1695,7 @@ const LEAGUE_POSTS: Record<string, LeagueAction> = {
   skip: (ctx, id) => skipPlayer(ctx, id),
   'resolve-tie': resolveTie,
   'board-award': awardBoard,
+  'board-rebid': boardRebid,
   'undo-pick': (ctx, id) => undoLastPick(ctx, id),
   complete: (ctx, id) => completeDraft(ctx, id),
   'new-season': (ctx, id) => startNewSeason(ctx, id),

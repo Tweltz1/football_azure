@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { findDraftByCode, nearbySupported, pickDraftTeam } from '../offline/nearbyDraft';
+import React, { useEffect, useState } from 'react';
+import { findDraftByCode, nearbySupported, pickDraftTeam, scanForDrafts, watchNearby } from '../offline/nearbyDraft';
 import { becomeGuest } from '../offline/storage';
 import './InfoTip.css';
 
@@ -15,16 +15,28 @@ const NearbyJoin = ({ user }) => {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const [me, setMe] = useState(user);
+  const [radio, setRadio] = useState([]);
+  const [hosts, setHosts] = useState([]);
+  useEffect(() => watchNearby((s) => setRadio(s.log || [])), []);
+  // Like AirDrop: list drafts hosted on nearby phones until one is picked.
+  const scanning = !lobby && !busy;
+  const scanName = user?.userDetails || name || 'Player';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => (scanning ? scanForDrafts({ userDetails: scanName }, setHosts) : undefined), [scanning]);
   if (!nearbySupported()) return null;
 
-  const find = async (event) => {
-    event.preventDefault();
+  const find = async (event, room = code) => {
+    event?.preventDefault();
+    if (!user && !name.trim()) {
+      setMessage('Type your name first.');
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
       const who = user || becomeGuest(name);
       setMe(who);
-      setLobby(await findDraftByCode(code, who));
+      setLobby(await findDraftByCode(room, who));
     } catch (error) {
       setMessage(error?.message || 'Could not find that draft.');
     }
@@ -79,6 +91,16 @@ const NearbyJoin = ({ user }) => {
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} required />
         </label>
       )}
+      <div className="nearby-hosts">
+        <strong>Drafts nearby</strong>
+        {hosts.map((host) => (
+          <button key={host.peerId} type="button" className="edit-roster-button" disabled={busy} onClick={() => find(null, host.room)}>
+            {host.league || 'Draft'} <span>hosted by {host.name}</span>
+          </button>
+        ))}
+        {!hosts.length && <p className="nearby-join-radio">{busy ? 'Connecting...' : 'Looking for phones hosting a draft...'}</p>}
+      </div>
+      <p className="nearby-join-radio">Or type the room code:</p>
       <label>
         Room code from the commissioner's phone
         <input
@@ -93,6 +115,7 @@ const NearbyJoin = ({ user }) => {
         />
       </label>
       <button type="submit" className="create-button" disabled={busy}>{busy ? 'Looking nearby...' : 'Find the draft'}</button>
+      {busy && radio.length > 0 && <p className="nearby-join-radio">{radio[radio.length - 1]}</p>}
       {message && <p className="nearby-join-error" role="alert">{message}</p>}
     </form>
   );

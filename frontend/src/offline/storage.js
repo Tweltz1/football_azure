@@ -50,12 +50,20 @@ export const removeOfflineLeague = (leagueId) => {
 
 export const rememberOfflineUser = (user) => {
   if (!user?.userId) return;
+  clearSignedOut();
   try {
     write(USER_KEY, { userId: user.userId, userDetails: user.userDetails || 'Commissioner' });
   } catch (error) {
     // Best effort.
   }
 };
+
+// Set by Logout so the app stops opening as the saved offline user; cleared when someone signs in,
+// continues as the saved user, or starts as a guest. Drafts saved on the phone are kept.
+const SIGNED_OUT_KEY = 'hl-offline:signed-out';
+export const markSignedOut = () => { try { write(SIGNED_OUT_KEY, true); } catch (error) { /* best effort */ } };
+export const clearSignedOut = () => { try { window.localStorage.removeItem(SIGNED_OUT_KEY); } catch (error) { /* nothing to do */ } };
+export const isSignedOut = () => read(SIGNED_OUT_KEY, false) === true;
 
 /** Who saved the drafts on this device; lets the site open with no internet once sign-in can't refresh. */
 export const offlineUser = () => (offlineLeagueIds().length ? read(USER_KEY, null) : null);
@@ -66,6 +74,7 @@ const LAST_USER_KEY = 'hl-offline:last-user';
 
 export const rememberLastUser = (user) => {
   if (!user?.userId) return;
+  clearSignedOut();
   try {
     write(LAST_USER_KEY, { userId: user.userId, userDetails: user.userDetails || 'Player' });
   } catch (error) {
@@ -97,6 +106,7 @@ export const becomeGuest = (name) => {
     guest: true,
   };
   write(GUEST_KEY, user);
+  clearSignedOut();
   return user;
 };
 

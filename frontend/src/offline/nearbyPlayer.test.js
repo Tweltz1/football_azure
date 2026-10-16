@@ -31,7 +31,7 @@ test('calls go to the commissioner\'s phone, replies and live updates come back'
     if (msg.t === 'req') {
       setTimeout(() => air.emit('message', {
         peerId: 'H',
-        data: JSON.stringify({ t: 'res', id: msg.id, status: 200, body: { ...league, _version: 6, activeBids: { u2: { amount: msg.body.amount } } } }),
+        data: JSON.stringify({ t: 'res', id: msg.id, status: 200, body: { ...league, _version: 6, activeBids: { u2: { amount: msg.body?.amount } } } }),
       }), 0);
     }
     return out;

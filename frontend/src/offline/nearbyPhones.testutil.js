@@ -35,8 +35,8 @@ export const makeAir = () => {
     };
     return {
       addListener(event, fn) { (me.listeners[event] = me.listeners[event] || []).push(fn); },
-      async host({ room }) {
-        Object.assign(me, { room, role: 'host' });
+      async host({ room, league }) {
+        Object.assign(me, { room, league, role: 'host' });
         // Players already looking for this room connect as soon as the host appears.
         phones.forEach((p, id) => {
           if (p.role !== 'player' || p.room !== room || !p.up) return;
@@ -54,6 +54,12 @@ export const makeAir = () => {
         targets.forEach((id) => setTimeout(() => emit(id, 'message', { peerId, data }), 1));
         return { sent: targets.length };
       },
+      async scan() {
+        Object.assign(me, { room: null, role: 'scan' });
+        phones.forEach((p, id) => {
+          if (p.role === 'host' && p.up) setTimeout(() => emit(peerId, 'hostFound', { peerId: id, name: id, room: p.room, league: p.league }), 1);
+        });
+      },
       async stop() { me.role = null; },
     };
   };
@@ -62,7 +68,7 @@ export const makeAir = () => {
     p.up = false;
     phones.forEach((other, id) => { if (id !== peerId) emit(id, 'peerState', { peerId, state: 'disconnected' }); });
   };
-  return { transportFor, powerOff };
+  return { transportFor, powerOff, phones };
 };
 
 // One copy of the app on one phone.

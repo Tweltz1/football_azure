@@ -1,13 +1,13 @@
 import React from 'react';
 import useOnline from '../offline/useOnline';
 import { NoInternetHelp } from './draftHelp';
-import NearbyJoin from './NearbyJoin';
+import OfflineDraftStart from './OfflineDraftStart';
 import { useAuth } from '../AuthContext';
 import { nearbySupported } from '../offline/nearbyDraft';
 import './InfoTip.css';
 
 /** Card shown when the device has no internet, with the steps for drafting offline. */
-const OfflineNotice = ({ action }) => {
+const OfflineNotice = ({ action, joinOnly = false }) => {
   const online = useOnline();
   const { user } = useAuth() || {};
   if (online) return null;
@@ -17,10 +17,7 @@ const OfflineNotice = ({ action }) => {
       <p>{action} Try an offline draft instead:</p>
       <NoInternetHelp />
       {nearbySupported() && (
-        <>
-          <p><strong>Join a nearby draft with the commissioner's room code</strong></p>
-          <NearbyJoin user={user?.guest ? null : user} />
-        </>
+        <OfflineDraftStart user={user?.guest ? null : user} joinOnly={joinOnly} />
       )}
     </section>
   );

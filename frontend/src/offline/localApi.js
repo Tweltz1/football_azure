@@ -110,8 +110,17 @@ export const runLocal = async (method, path, query, body, userId) => {
   const leagueId = /^leagues\/([^/]+)/.exec(path || '')?.[1];
   const entry = leagueId ? readOfflineLeague(decodeURIComponent(leagueId)) : null;
   if (entry?.remote) {
-    if (!remoteRunner) return { status: 503, body: "Not connected to the commissioner's phone." };
-    return remoteRunner(entry.league.id, method, path, query, body);
+    const isState = String(method).toUpperCase() === 'GET' && /^leagues\/[^/]+\/state$/.test(path || '');
+    const res = remoteRunner
+      ? await remoteRunner(entry.league.id, method, path, query, body)
+      : { status: 503, body: "Not connected to the commissioner's phone." };
+    if (isState && res.status === 200 && res.body) {
+      writeOfflineLeague(entry.league.id, { ...readOfflineLeague(entry.league.id), league: res.body, savedAt: new Date().toISOString() });
+    }
+    // Still looking for the commissioner's phone: open the draft from the copy saved when joining;
+    // it refreshes as soon as the phones connect.
+    if (isState && res.status >= 500 && entry.league) return { status: 200, body: entry.league };
+    return res;
   }
   const { handle } = await loadEngine();
   const pool = /^createleague$/i.test(path || '') ? await loadPool() : [];

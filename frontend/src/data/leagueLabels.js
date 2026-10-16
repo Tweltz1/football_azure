@@ -38,3 +38,7 @@ export const formatClock = (seconds) => {
   const secs = String(total % 60).padStart(2, '0');
   return hours ? `${hours}:${String(minutes).padStart(2, '0')}:${secs}` : `${minutes}:${secs}`;
 };
+
+/** The commissioner, or the co-host they picked (co-hosts can run the draft tools). */
+export const isCommish = (league, userId) => Boolean(userId)
+  && (league?.adminId === userId || (Boolean(league?.cohostId) && league.cohostId === userId));

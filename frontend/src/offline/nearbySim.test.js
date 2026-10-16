@@ -123,9 +123,17 @@ test('a full nearby draft: blind bids, ties, late bids, a dropped phone, a resta
   expect(l.teams.find((t) => t.ownerId === 'u4').roster.map((p) => p.player.id)).toEqual([p2]);
   expect(l.draftLog).toHaveLength(2);
 
-  // ---- A player's phone drops out (dead battery): the host notices and the draft carries on.
+  // ---- A player's phone drops out (dead battery): the host notices and pauses for everyone until it's back;
+  // the commissioner decides to carry on without it.
   air.powerOff('P-u4');
   expect(hostStatus.players).toBe(2);
+  await sleep(50);
+  expect(storages.admin.readOfflineLeague(id).league.auctionTimer.isPaused).toBe(true);
+  const u4Name = storages.admin.readOfflineLeague(id).league.teams.find((t) => t.ownerId === 'u4').name;
+  expect(hostStatus.waitingFor).toEqual([u4Name]);
+  await phones.admin.nearby.keepDraftingWithout();
+  expect(storages.admin.readOfflineLeague(id).league.auctionTimer.isPaused).toBe(false);
+  expect(hostStatus.waitingFor).toEqual([]);
 
   // ---- The commissioner's app closes and reopens: the draft is still on the phone and hosting resumes.
   const before = storages.admin.readOfflineLeague(id).league.draftLog.length;
@@ -152,9 +160,13 @@ test('a full nearby draft: blind bids, ties, late bids, a dropped phone, a resta
     views[u].updates.forEach((update) => expect(othersBids(update, u)).toEqual([]));
   }
 
-  // Players' phones only hold their ticket; the commissioner's phone holds the draft to upload.
+  // Players' phones only hold their ticket (the last view they were shown, for opening the draft while
+  // reconnecting); the commissioner's phone holds the draft to upload.
   const saved = storages.admin.readOfflineLeague(id);
   expect(saved.baseVersion).toBe(version);
   expect(saved.league.draftLog.map((p) => p.winningBid)).toEqual([15, 24, 5]);
-  expect(storages.u2.readOfflineLeague(id).league.draftLog || []).toHaveLength(0);
+  const ticket = storages.u2.readOfflineLeague(id);
+  expect(ticket).toMatchObject({ remote: true });
+  expect(ticket.baseVersion).toBeUndefined();
+  expect(othersBids(ticket.league, 'u2')).toEqual([]);
 });

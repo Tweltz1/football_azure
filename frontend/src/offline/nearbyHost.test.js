@@ -64,7 +64,7 @@ test('players bid through the commissioner\'s phone and only see their own bid',
   const states = [];
   watchNearby((s) => states.push(s));
   await startHosting(league.id, { userId: 'admin', userDetails: 'Tyler' });
-  expect(air.hosted).toEqual({ name: 'Tyler', room: roomFor(league.id) });
+  expect(air.hosted).toEqual({ name: 'Tyler', room: roomFor(league.id), league: league.name });
 
   // A player's phone connects and says who it is.
   air.emit('peerState', { peerId: 'P2', name: 'Sam', state: 'connected' });

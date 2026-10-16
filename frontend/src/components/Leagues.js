@@ -3,13 +3,17 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { createDraftConnection } from '../realtime';
 import { API_BASE_URL } from '../api';
-import { isOfflineLeague } from '../offline/storage';
+import { isOfflineLeague, readOfflineLeague } from '../offline/storage';
+import { isNearbyTicket, leaveNearbyDraft } from '../offline/nearbyDraft';
 import { discardDeviceCopy } from '../offline/offlineSync';
 import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '../data/strategyUtils';
 import { isDraftLive, leagueStatusKey, leagueStatusLabel } from '../data/leagueLabels';
 import BiddingStyleField from '../whiteboard/BiddingStyleField';
 import { biddingStyleLabel, isWhiteboardLeague, normalizeBiddingMode } from '../whiteboard/biddingStyle';
 import OfflineNotice from '../help/OfflineNotice';
+import OfflineDraftStart from '../help/OfflineDraftStart';
+import useOnline from '../offline/useOnline';
+import { useAuth } from '../AuthContext';
 import InfoTip, { KickerWithTip } from '../help/InfoTip';
 import { DraftModeHelp, NoInternetHelp, RosterHelp, TimerHelp } from '../help/draftHelp';
 import '../whiteboard/whiteboard.css';
@@ -18,6 +22,8 @@ import './LeagueTools.css';
 
 
 const Leagues = ({ userId }) => {
+  const online = useOnline();
+  const { user } = useAuth() || {};
   const [leagues, setLeagues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -37,6 +43,7 @@ const Leagues = ({ userId }) => {
   const [draftTimers, setDraftTimers] = useState({});
   const [draftMode, setDraftMode] = useState('auction');
   const [biddingMode, setBiddingMode] = useState('standard');
+  const [cohostId, setCohostId] = useState('');
 
   const fetchLeagues = useCallback(async () => {
     try {
@@ -100,6 +107,13 @@ const Leagues = ({ userId }) => {
       // with no internet; the online copy is then deleted too when there's a connection.
       const savedOnDevice = isOfflineLeague(leagueId);
       const offlineNote = 'Removed from this device. The online league is still there; delete it again when you have internet.';
+      // Made on this phone and never uploaded: there's no online copy, so it's simply gone.
+      if (savedOnDevice && readOfflineLeague(leagueId)?.createdOffline) {
+        discardDeviceCopy(leagueId);
+        alert('League deleted from this phone.');
+        fetchLeagues();
+        return;
+      }
       if (savedOnDevice) discardDeviceCopy(leagueId);
       if (savedOnDevice && navigator.onLine === false) {
         alert(offlineNote);
@@ -118,6 +132,23 @@ const Leagues = ({ userId }) => {
         }
         alert(`Failed to delete league: ${error.response?.data || error.message}`);
       }
+    }
+  };
+
+  const handleLeave = async (league) => {
+    // A nearby draft joined from this phone: just forget it here (the commissioner's phone keeps the team).
+    if (isNearbyTicket(league.id)) {
+      if (!window.confirm(`Leave ${league.name} on this phone? You can join again with the room code.`)) return;
+      leaveNearbyDraft(league.id);
+      fetchLeagues();
+      return;
+    }
+    if (!window.confirm(`Leave ${league.name}? Your team will be removed.`)) return;
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${league.id}/leave`, {});
+      fetchLeagues();
+    } catch (error) {
+      alert(error.response?.data || (navigator.onLine === false ? 'Leaving a league needs internet.' : error.message));
     }
   };
 
@@ -142,7 +173,8 @@ const Leagues = ({ userId }) => {
         draftMode,
         ...(draftMode === 'manual' ? {} : { biddingMode }),
         rosterSettings,
-        draftTimers
+        draftTimers,
+        cohostId,
       });
       alert('Roster settings updated successfully!');
       setShowRosterModal(false);
@@ -222,6 +254,7 @@ const Leagues = ({ userId }) => {
     setDraftTimers(league.draftTimers || {});
     setDraftMode(league.draftMode || 'auction');
     setBiddingMode(normalizeBiddingMode(league.biddingMode));
+    setCohostId(league.cohostId || '');
   };
 
   const openRename = (league, teamName) => {
@@ -244,6 +277,7 @@ const Leagues = ({ userId }) => {
       </section>
 
       <OfflineNotice action="Creating or joining a league needs internet. Your leagues still open below." />
+      {online && <OfflineDraftStart user={user?.guest ? null : user} />}
 
       <div className="league-toolbar">
         <div>
@@ -277,6 +311,7 @@ const Leagues = ({ userId }) => {
               onSettings={openSettings}
               onNewSeason={handleNewSeason}
               onDelete={handleDelete}
+              onLeave={handleLeave}
             />
           ))}
         </div>
@@ -329,6 +364,16 @@ const Leagues = ({ userId }) => {
               </button>
             </div>
             {draftMode === 'auction' && <BiddingStyleField value={biddingMode} onChange={setBiddingMode} />}
+            <div className="divider" />
+            <KickerWithTip title="Co-host">
+              <p>A co-host can run the draft tools with you (start, pause, award, ties, undo). In a nearby-phones draft, their phone takes over if yours drops, and hands the draft back when you return. Only you change settings, remove teams or delete the league.</p>
+            </KickerWithTip>
+            <select value={cohostId} onChange={(e) => setCohostId(e.target.value)} aria-label="Co-host">
+              <option value="">No co-host</option>
+              {(currentLeague.teams || []).filter((team) => team && team.ownerId && team.ownerId !== currentLeague.adminId).map((team) => (
+                <option key={team.id} value={team.ownerId}>{team.name}</option>
+              ))}
+            </select>
             <div className="divider" />
             <KickerWithTip title="Roster spots"><RosterHelp /></KickerWithTip>
             <div className="settings-grid">
@@ -430,7 +475,7 @@ const draftModeLabel = (league) => {
   return isWhiteboardLeague(league) ? `Auction, ${biddingStyleLabel(league.biddingMode).toLowerCase()}` : 'Auction';
 };
 
-const LeagueCard = ({ league, userId, onRename, onAnalyze, onCopyInvite, onSettings, onNewSeason, onDelete }) => {
+const LeagueCard = ({ league, userId, onRename, onAnalyze, onCopyInvite, onSettings, onNewSeason, onDelete, onLeave }) => {
   const isAdmin = league.adminId === userId;
   const health = buildCommissionerHealth(league, userId);
   const statusKey = leagueStatusKey(league);
@@ -477,6 +522,12 @@ const LeagueCard = ({ league, userId, onRename, onAnalyze, onCopyInvite, onSetti
           </Link>
         )}
       </div>
+
+      {!isAdmin && (isNearbyTicket(league.id) || ['', 'created', 'lobby'].includes(String(league.status || '').toLowerCase())) && (
+        <div className="league-card-more">
+          <button type="button" className="delete-button" onClick={() => onLeave(league)}>Leave League</button>
+        </div>
+      )}
 
       {isAdmin && (
         <details className="league-card-admin">
