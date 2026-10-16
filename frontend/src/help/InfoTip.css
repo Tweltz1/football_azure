@@ -141,3 +141,9 @@ button.info-tip-close {
   color: var(--text-2);
   font-size: 0.92rem;
 }
+
+.nearby-join .nearby-join-radio,
+.nearby-radio-log {
+  color: var(--muted);
+  font-size: 0.85rem;
+}

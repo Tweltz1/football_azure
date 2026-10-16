@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { findDraftByCode, nearbySupported, pickDraftTeam } from '../offline/nearbyDraft';
+import React, { useEffect, useState } from 'react';
+import { findDraftByCode, nearbySupported, pickDraftTeam, watchNearby } from '../offline/nearbyDraft';
 import { becomeGuest } from '../offline/storage';
 import './InfoTip.css';
 
@@ -15,6 +15,8 @@ const NearbyJoin = ({ user }) => {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
   const [me, setMe] = useState(user);
+  const [radio, setRadio] = useState([]);
+  useEffect(() => watchNearby((s) => setRadio(s.log || [])), []);
   if (!nearbySupported()) return null;
 
   const find = async (event) => {
@@ -93,6 +95,7 @@ const NearbyJoin = ({ user }) => {
         />
       </label>
       <button type="submit" className="create-button" disabled={busy}>{busy ? 'Looking nearby...' : 'Find the draft'}</button>
+      {busy && radio.length > 0 && <p className="nearby-join-radio">{radio[radio.length - 1]}</p>}
       {message && <p className="nearby-join-error" role="alert">{message}</p>}
     </form>
   );

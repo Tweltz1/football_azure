@@ -44,6 +44,12 @@ let hostPeers = new Set(); // player: connected peers (the host)
 const pending = new Map(); // player: request id -> { resolve, timer }
 const watchers = new Set();
 let nextId = 1;
+let radioLog = []; // the last few things the radio reported, shown while connecting
+
+const logRadio = (text) => {
+  radioLog = [...radioLog, String(text)].slice(-6);
+  notify();
+};
 
 const status = () => ({
   role: role?.kind || null,
@@ -51,6 +57,7 @@ const status = () => ({
   players: role?.kind === 'host' ? peerUsers.size : 0,
   connectedUserIds: role?.kind === 'host' ? [...new Set(peerUsers.values())] : [],
   connected: role?.kind === 'host' ? true : hostPeers.size > 0,
+  log: radioLog,
 });
 
 /** The 4-digit code players type to find this league's draft nearby (the same on every phone). */
@@ -292,8 +299,10 @@ export const findDraftByCode = async (code, user) => {
 
 const lookForRoom = (room, user) => new Promise((resolve, reject) => {
   hostPeers = new Set();
+  radioLog = [];
   const timer = setTimeout(() => {
-    reject(new Error('No draft found with that code. Check the code, stay close to the commissioner\'s phone, and make sure Wi-Fi and Bluetooth are on.'));
+    const last = radioLog[radioLog.length - 1];
+    reject(new Error(`No draft found with that code. Keep both phones unlocked with the app open, close together, with Wi-Fi and Bluetooth on.${last ? ` Last thing the phone saw: ${last}` : ''}`));
   }, GUEST_WAIT_MS);
   role = {
     kind: 'player',
@@ -376,6 +385,8 @@ export const connectTransport = (next) => {
   transport = next;
   if (!next) return;
   next.addListener('peerState', onPeerState);
+  next.addListener('status', (event) => logRadio(event?.text || ''));
+  next.addListener('error', (event) => logRadio(`Problem: ${event?.message || 'unknown'}`));
   next.addListener('message', (event) => {
     if (role?.kind === 'host') onHostMessage(event);
     else if (role?.kind === 'player') onPlayerMessage(event);

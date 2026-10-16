@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import Capacitor
 import MultipeerConnectivity
 
@@ -11,7 +12,8 @@ import MultipeerConnectivity
 ///
 /// Events: `peerFound` {peerId, name}, `peerLost` {peerId},
 /// `peerState` {peerId, name, state: connecting|connected|disconnected},
-/// `message` {peerId, name, data}.
+/// `message` {peerId, name, data}, `status` {text} (what the radio is doing, shown while connecting),
+/// `error` {message}.
 @objc(NearbyPlugin)
 public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "NearbyPlugin"
@@ -38,6 +40,32 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
     private var roomCode = ""
     private var peersById: [String: MCPeerID] = [:]
     private var idsByPeer: [MCPeerID: String] = [:]
+
+    override public func load() {
+        // iOS stops advertising and browsing while the app is in the background or the screen is locked.
+        // Start them again as soon as the app is back on screen.
+        NotificationCenter.default.addObserver(self, selector: #selector(appBecameActive),
+                                               name: UIApplication.didBecomeActiveNotification, object: nil)
+    }
+
+    @objc private func appBecameActive() {
+        DispatchQueue.main.async {
+            if let ad = self.advertiser {
+                ad.stopAdvertisingPeer()
+                ad.startAdvertisingPeer()
+                self.status("Hosting again after the app came back on screen.")
+            }
+            if let br = self.browser {
+                br.stopBrowsingForPeers()
+                br.startBrowsingForPeers()
+                self.status("Looking again after the app came back on screen.")
+            }
+        }
+    }
+
+    private func status(_ text: String) {
+        notifyListeners("status", data: ["text": text])
+    }
 
     private func start(name: String, room: String) {
         stopAll()
@@ -79,6 +107,9 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
             ad.delegate = self
             ad.startAdvertisingPeer()
             self.advertiser = ad
+            // The commissioner's phone must stay awake: a locked screen stops the radio.
+            UIApplication.shared.isIdleTimerDisabled = true
+            self.status("Hosting room \(room).")
             call.resolve(["peerId": self.key(peer)])
         }
     }
@@ -94,6 +125,7 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
             br.delegate = self
             br.startBrowsingForPeers()
             self.browser = br
+            self.status("Looking for room \(room)...")
             call.resolve(["peerId": self.key(peer)])
         }
     }
@@ -141,6 +173,7 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
         sessions.forEach { $0.disconnect() }
         advertiser = nil
         browser = nil
+        UIApplication.shared.isIdleTimerDisabled = false
         sessions = []
         sessionOfPeer = [:]
         peersById = [:]
@@ -164,22 +197,28 @@ extension NearbyPlugin: MCNearbyServiceAdvertiserDelegate {
         let theirRoom = context.flatMap { String(data: $0, encoding: .utf8) } ?? ""
         DispatchQueue.main.async {
             guard theirRoom == self.roomCode, let s = self.sessionWithRoom() else {
+                self.status("Turned away \(peerID.displayName): room \(theirRoom) isn't this room (\(self.roomCode)).")
                 return invitationHandler(false, nil)
             }
+            self.status("\(peerID.displayName) is joining...")
             self.sessionOfPeer[peerID] = s
             invitationHandler(true, s)
         }
     }
 
     public func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
-        notifyListeners("error", data: ["message": error.localizedDescription])
+        notifyListeners("error", data: ["message": "Couldn't start hosting: \(error.localizedDescription). Check Settings > Privacy & Security > Local Network > Hood League is on."])
     }
 }
 
 extension NearbyPlugin: MCNearbyServiceBrowserDelegate {
     public func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String: String]?) {
         DispatchQueue.main.async {
-            guard info?["room"] == self.roomCode, let s = self.session else { return }
+            guard info?["room"] == self.roomCode, let s = self.session else {
+                self.status("Found \(peerID.displayName), but it's hosting room \(info?["room"] ?? "?"), not \(self.roomCode).")
+                return
+            }
+            self.status("Found \(peerID.displayName)'s phone. Connecting...")
             let id = self.key(peerID)
             self.notifyListeners("peerFound", data: ["peerId": id, "name": peerID.displayName])
             browser.invitePeer(peerID, to: s, withContext: self.roomCode.data(using: .utf8), timeout: 20)
@@ -193,7 +232,7 @@ extension NearbyPlugin: MCNearbyServiceBrowserDelegate {
     }
 
     public func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
-        notifyListeners("error", data: ["message": error.localizedDescription])
+        notifyListeners("error", data: ["message": "Couldn't look for nearby phones: \(error.localizedDescription). Check Settings > Privacy & Security > Local Network > Hood League is on."])
     }
 }
 
@@ -207,6 +246,7 @@ extension NearbyPlugin: MCSessionDelegate {
         }
         DispatchQueue.main.async {
             if state == .notConnected { self.sessionOfPeer[peerID] = nil }
+            self.status("\(peerID.displayName): \(label).")
             let id = self.key(peerID)
             self.notifyListeners("peerState", data: ["peerId": id, "name": peerID.displayName, "state": label])
         }

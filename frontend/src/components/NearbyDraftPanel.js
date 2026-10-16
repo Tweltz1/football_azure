@@ -110,6 +110,7 @@ const NearbyDraftPanel = ({ league, user }) => {
               {' '}Players who didn't set up, or whose phone died, join with this code:
             </p>
             <span className="nearby-room-code" aria-label="Room code">{roomFor(league.id)}</span>
+            {nearby.log?.length > 0 && <p className="nearby-radio-log">{nearby.log[nearby.log.length - 1]}</p>}
           </div>
           {nearby.role !== 'host' && (
             <div className="offline-draft-actions">
