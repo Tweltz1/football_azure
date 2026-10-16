@@ -46,8 +46,25 @@ CSS = """
 @keyframes ahh{0%,57%{opacity:0}59%,74%{opacity:1}76%,100%{opacity:0}}
 .roll{transform-box:fill-box;transform-origin:center;animation:roll 6s linear infinite}
 @keyframes roll{0%{transform:translate(0,0) rotate(0);opacity:0}5%{opacity:1}90%{opacity:1}100%{transform:translate(460px,700px) rotate(1080deg);opacity:0}}
-@media (prefers-reduced-motion: reduce){*{animation:none!important}.ahh{opacity:0}}
+.oip{opacity:0;transform-box:fill-box;transform-origin:center bottom;animation:oip 9s ease-out infinite}
+@keyframes oip{0%,84%{opacity:0;transform:scale(.4)}86%{opacity:1;transform:scale(1.12)}88%,97%{opacity:1;transform:scale(1)}99%,100%{opacity:0;transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}.ahh,.oip{opacity:0}}
 """
+
+def bubble(tx, ty, x, y, text, style=""):
+    """'OIP!' style speech bubble with its top-left corner at (x, y) and its tail pointing at (tx, ty)."""
+    w, h = 26 + 22*len(text), 58
+    cx = min(max(tx, x + 26), x + w - 26)  # where the tail leaves the bubble
+    edge = y + h if ty > y + h else y      # tail leaves the bottom, or the top
+    if y <= ty <= y + h:                   # tail leaves a side
+        sx = x if tx < x else x + w
+        tail = f"M{sx} {ty-12} L{tx} {ty} L{sx} {ty+12}"
+    else:
+        tail = f"M{cx-12} {edge} L{tx} {ty} L{cx+12} {edge}"
+    return (f'<g class="oip" style="{style}"><path d="{tail}" fill="#fff" stroke="{INK}" stroke-width="5" stroke-linejoin="round"/>'
+            f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="22" fill="#fff" stroke="{INK}" stroke-width="5"/>'
+            f'<path d="{tail}" fill="#fff" stroke="none"/>'
+            f'<text x="{x + w/2}" y="{y + 40}" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="30" fill="{INK}" text-anchor="middle">{text}</text></g>')
 
 def scene():
     o = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" preserveAspectRatio="xMidYMax slice">',
@@ -82,16 +99,21 @@ def scene():
         o.append(f'<g class="roll" style="animation-delay:{d}s">{football(x+10, y-14, 0.42)}</g>')
     # climbers roped on the left face (pink-dress guy dangles at the bottom)
     climb_order = [9, 7, 5, 3, 2, 1, 0]
-    pts = [on_left(0.16 + k*0.1) for k in range(len(climb_order))]
-    end = on_left(0.16 + len(climb_order)*0.1)
+    pts = [on_left(0.14 + k*0.088) for k in range(len(climb_order))]
+    end = on_left(0.14 + len(climb_order)*0.088)
     rope = "M" + " L".join(f"{x+4:.0f} {y-44:.0f}" for x,y in pts) + f" L{end[0]+4:.0f} {end[1]-44:.0f}"
     o.append(f'<path d="{rope}" fill="none" stroke="{INK}" stroke-width="9" stroke-linejoin="round"/><path d="{rope}" fill="none" stroke="#f3c33b" stroke-width="4" stroke-linejoin="round"/>')
     for k,(x,y) in enumerate(pts):
         o.append(f'<g class="bob" style="animation-delay:{k*0.23:.2f}s">{guy(CREW[climb_order[k]], round(x), round(y)+6, 0.46, -12)}</g>')
+    # Upper climbers shout to the left (open sky); never over a teammate's face.
+    for k, dur, delay in [(0, 7, 1.0), (2, 11, 4.5), (4, 9, 7.0)]:
+        x, y = pts[k]
+        o.append(bubble(round(x) - 28, round(y) - 96, round(x) - 140, round(y) - 176, "OIP!", f"animation-duration:{dur}s;animation-delay:{delay}s"))
     # dangling pink-dress guy, swinging from the end of the rope
     ex, ey = end[0]+4, end[1]-44
     hang = guy(CREW[4], ex, ey+120, 0.46, 0, arms="up")
     o.append(f'<g class="swing" style="transform-origin:{ex:.0f}px {ey:.0f}px"><path d="M{ex:.0f} {ey:.0f} L{ex:.0f} {ey+30:.0f}" stroke="#f3c33b" stroke-width="5"/>{hang}</g>')
+    o.append(bubble(round(ex) + 30, round(ey) + 70, round(ex) + 66, round(ey) + 40, "OIP!", "animation-duration:10s;animation-delay:5.5s"))
     # fallers on the right face: slip, yell, tumble off
     for k,(gi,t,d) in enumerate([(8,0.18,0),(6,0.3,4.5)]):
         x,y = on_right(t)
