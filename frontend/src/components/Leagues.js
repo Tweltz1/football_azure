@@ -9,6 +9,9 @@ import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '
 import { isDraftLive, leagueStatusKey, leagueStatusLabel } from '../data/leagueLabels';
 import BiddingStyleField from '../whiteboard/BiddingStyleField';
 import { biddingStyleLabel, isWhiteboardLeague, normalizeBiddingMode } from '../whiteboard/biddingStyle';
+import OfflineNotice from '../help/OfflineNotice';
+import InfoTip, { KickerWithTip } from '../help/InfoTip';
+import { DraftModeHelp, NoInternetHelp, RosterHelp, TimerHelp } from '../help/draftHelp';
 import '../whiteboard/whiteboard.css';
 import '../App.css';
 import './LeagueTools.css';
@@ -41,7 +44,7 @@ const Leagues = ({ userId }) => {
       setLeagues(response.data);
     } catch (error) {
       console.error('Error fetching leagues:', error);
-      alert('Failed to fetch leagues.');
+      if (navigator.onLine !== false) alert('Failed to fetch leagues.');
     } finally {
       setLoading(false);
     }
@@ -228,9 +231,17 @@ const Leagues = ({ userId }) => {
         </div>
       </section>
 
+      <OfflineNotice action="Creating or joining a league needs internet. Leagues saved to this phone still open below." />
+
       <div className="league-toolbar">
         <div>
-          <p className="section-kicker">Draft rooms</p>
+          <div className="kicker-with-tip">
+            <p className="section-kicker">Draft rooms</p>
+            <InfoTip label="drafting without internet">
+              <p>Tap a league to open its draft room. No wifi where you draft? Set it up ahead of time:</p>
+              <NoInternetHelp />
+            </InfoTip>
+          </div>
           <h2>Your Leagues</h2>
         </div>
         <div className="button-group">
@@ -288,7 +299,7 @@ const Leagues = ({ userId }) => {
         <div className="modal-overlay">
           <div className="modal-content">
             <h3>League settings: {currentLeague.name}</h3>
-            <p className="section-kicker">Draft mode</p>
+            <KickerWithTip title="Draft mode"><DraftModeHelp /></KickerWithTip>
             <div className="button-group" role="group" aria-label="Draft mode">
               <button
                 type="button"
@@ -307,7 +318,7 @@ const Leagues = ({ userId }) => {
             </div>
             {draftMode === 'auction' && <BiddingStyleField value={biddingMode} onChange={setBiddingMode} />}
             <div className="divider" />
-            <p className="section-kicker">Roster spots</p>
+            <KickerWithTip title="Roster spots"><RosterHelp /></KickerWithTip>
             <div className="settings-grid">
               <label>QB<input type="number" value={rosterSettings.qb || 0} onChange={(e) => setRosterSettings({...rosterSettings, qb: parseInt(e.target.value)})}/></label>
               <label>RB<input type="number" value={rosterSettings.rb || 0} onChange={(e) => setRosterSettings({...rosterSettings, rb: parseInt(e.target.value)})}/></label>
@@ -321,7 +332,7 @@ const Leagues = ({ userId }) => {
             </div>
 
             <div className="divider" />
-            <p className="section-kicker">Timers (seconds)</p>
+            <KickerWithTip title="Timers (seconds)"><TimerHelp /></KickerWithTip>
             <div className="settings-grid">
               <label>Bid Timer<input type="number" value={draftTimers.bidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, bidTimer: parseInt(e.target.value)})}/></label>
               <label>Intermission<input type="number" value={draftTimers.intermissionTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, intermissionTimer: parseInt(e.target.value)})}/></label>

@@ -5,6 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import BiddingStyleField from '../whiteboard/BiddingStyleField';
 import { STANDARD, WHITEBOARD_AUTO, WHITEBOARD_MANUAL } from '../whiteboard/biddingStyle';
 import { formatDuration } from '../data/leagueLabels';
+import OfflineNotice from '../help/OfflineNotice';
+import { KickerWithTip } from '../help/InfoTip';
+import { DraftModeHelp, RosterHelp, TimerHelp } from '../help/draftHelp';
 import '../whiteboard/whiteboard.css';
 import '../App.css';
 
@@ -74,6 +77,8 @@ const CreateLeague = ({ userId }) => {
         </div>
       </section>
 
+      <OfflineNotice action="Creating a league needs internet." />
+
       <section className="card">
         <form onSubmit={handleCreateLeague}>
           <p className="section-kicker">League identity</p>
@@ -90,7 +95,7 @@ const CreateLeague = ({ userId }) => {
 
           <div className="divider" />
 
-          <p className="section-kicker">Draft mode</p>
+          <KickerWithTip title="Draft mode"><DraftModeHelp /></KickerWithTip>
           <div className="button-group" role="group" aria-label="Draft mode">
             <button
               type="button"
@@ -112,7 +117,7 @@ const CreateLeague = ({ userId }) => {
 
           <div className="divider" />
 
-          <p className="section-kicker">Roster settings</p>
+          <KickerWithTip title="Roster settings"><RosterHelp /></KickerWithTip>
           <div className="settings-grid">
             <label>QB<input type="number" name="qb" value={rosterSettings.qb} onChange={handleRosterChange} /></label>
             <label>RB<input type="number" name="rb" value={rosterSettings.rb} onChange={handleRosterChange} /></label>
@@ -127,7 +132,7 @@ const CreateLeague = ({ userId }) => {
 
           <div className="divider" />
 
-          <p className="section-kicker">Draft timers (seconds)</p>
+          <KickerWithTip title="Draft timers (seconds)"><TimerHelp /></KickerWithTip>
           <div className="settings-grid">
             <label>Bid Timer<input type="number" name="bidTimer" value={draftTimers.bidTimer} onChange={handleTimerChange} /></label>
             <label>Intermission<input type="number" name="intermissionTimer" value={draftTimers.intermissionTimer} onChange={handleTimerChange} /></label>
