@@ -30,3 +30,7 @@ The app accepts direct `http(s)://camera/...jpg` endpoints and polls them at fiv
 
 ## Security / limitations
 This is a development-only prototype. HTTP support is enabled to test local cameras; a commercial version needs transport security, protected credentials, hardware testing, privacy disclosures, and App Store review. Secure any camera mounting so it isn't a projectile, and do not interact with a phone while driving.
+
+## Initial beta submission
+
+The first TestFlight upload is initiated after creation of the separate App Store Connect record. It is a static CarPlay widget proof-of-concept, not an in-motion video baby monitor.
