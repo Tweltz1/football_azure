@@ -98,7 +98,7 @@ def scene():
         x,y = on_right(t)
         o.append(f'<g class="roll" style="animation-delay:{d}s">{football(x+10, y-14, 0.42)}</g>')
     # climbers roped on the left face (pink-dress guy dangles at the bottom)
-    climb_order = [9, 7, 5, 3, 2, 1, 0]
+    climb_order = [9, 7, 4, 3, 2, 1, 0]
     pts = [on_left(0.14 + k*0.088) for k in range(len(climb_order))]
     end = on_left(0.14 + len(climb_order)*0.088)
     rope = "M" + " L".join(f"{x+4:.0f} {y-44:.0f}" for x,y in pts) + f" L{end[0]+4:.0f} {end[1]-44:.0f}"
@@ -111,7 +111,7 @@ def scene():
         o.append(bubble(round(x) - 28, round(y) - 96, round(x) - 140, round(y) - 176, "OIP!", f"animation-duration:{dur}s;animation-delay:{delay}s"))
     # dangling pink-dress guy, swinging from the end of the rope
     ex, ey = end[0]+4, end[1]-44
-    hang = guy(CREW[4], ex, ey+120, 0.46, 0, arms="up")
+    hang = guy(CREW[5], ex, ey+120, 0.46, 0, arms="up")
     o.append(f'<g class="swing" style="transform-origin:{ex:.0f}px {ey:.0f}px"><path d="M{ex:.0f} {ey:.0f} L{ex:.0f} {ey+30:.0f}" stroke="#f3c33b" stroke-width="5"/>{hang}</g>')
     o.append(bubble(round(ex) + 30, round(ey) + 70, round(ex) + 66, round(ey) + 40, "OIP!", "animation-duration:10s;animation-delay:5.5s"))
     # fallers on the right face: slip, yell, tumble off
