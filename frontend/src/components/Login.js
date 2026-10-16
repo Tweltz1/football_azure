@@ -1,11 +1,13 @@
 import React from 'react';
 import { signIn } from '../AuthContext';
 import '../App.css';
+import ClimbBackdrop from './ClimbBackdrop';
 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
   return (
     <main className="login-page">
+      <ClimbBackdrop />
       <section className="login-hero">
         <div>
           <p className="page-kicker">Auction draft night</p>
