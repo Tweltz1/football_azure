@@ -151,3 +151,7 @@ button.info-tip-close {
 .offline-draft-start { margin-top: 0.75rem; }
 .offline-draft-choices { display: grid; gap: 0.6rem; margin-top: 0.75rem; }
 .offline-draft-choices > p { margin: 0; color: var(--muted); }
+
+.nearby-hosts { display: grid; gap: 0.5rem; }
+.nearby-hosts button { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 0.75rem; text-align: left; }
+.nearby-hosts button span { color: var(--muted); font-weight: 400; }

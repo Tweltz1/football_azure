@@ -196,7 +196,11 @@ export const startHosting = async (leagueId, user) => {
   role = { kind: 'host', leagueId, userId: user?.userId };
   peerUsers.clear();
   guests.clear();
-  await transport.host({ name: user?.userDetails || 'Commissioner', room: roomFor(leagueId) });
+  await transport.host({
+    name: user?.userDetails || 'Commissioner',
+    room: roomFor(leagueId),
+    league: readOfflineLeague(leagueId)?.league?.name || '',
+  });
   notify();
 };
 
@@ -290,6 +294,7 @@ const GUEST_WAIT_MS = 20000;
  * ({ leagueName, status, mine, teams, canAdd }) once the commissioner's phone answers.
  */
 export const findDraftByCode = async (code, user) => {
+  onScanChange = null;
   if (!transport) throw new Error('Nearby drafts work in the Hood League iPhone app.');
   const room = String(code || '').replace(/\D/g, '');
   if (room.length !== 4) throw new Error('Enter the 4-digit code from the commissioner\'s phone.');
@@ -317,6 +322,30 @@ const lookForRoom = (room, user) => new Promise((resolve, reject) => {
   });
   notify();
 });
+
+// Nearby hosted drafts seen while scanning, by peerId: { peerId, name, room, league }.
+let scanHosts = new Map();
+let onScanChange = null;
+const scanChanged = () => onScanChange?.([...scanHosts.values()].filter((h) => /^\d{4}$/.test(h.room)));
+
+/**
+ * Player: list drafts hosted on nearby phones, like AirDrop. Calls onChange with the list whenever it changes;
+ * tap one to join with findDraftByCode(host.room). Returns a function that stops looking.
+ * Not while this phone is hosting (scanning would stop the room).
+ */
+export const scanForDrafts = (user, onChange) => {
+  if (!transport?.scan || role?.kind === 'host') return () => {};
+  scanHosts = new Map();
+  onScanChange = onChange;
+  role = null;
+  transport.scan({ name: user?.userDetails || 'Player' }).catch((error) => logRadio(`Problem: ${error?.message || 'unknown'}`));
+  scanChanged();
+  return () => {
+    if (onScanChange !== onChange) return;
+    onScanChange = null;
+    if (!role) transport.stop().catch(() => {});
+  };
+};
 
 /** Player: after findDraftByCode, take a team ('new', 'mine', or an open team's id). Resolves with the league ID. */
 export const pickDraftTeam = (choice, user) => new Promise((resolve, reject) => {
@@ -385,6 +414,8 @@ export const connectTransport = (next) => {
   transport = next;
   if (!next) return;
   next.addListener('peerState', onPeerState);
+  next.addListener('hostFound', (event) => { if (event?.peerId) { scanHosts.set(event.peerId, event); scanChanged(); } });
+  next.addListener('hostLost', (event) => { if (scanHosts.delete(event?.peerId)) scanChanged(); });
   next.addListener('status', (event) => logRadio(event?.text || ''));
   next.addListener('error', (event) => logRadio(`Problem: ${event?.message || 'unknown'}`));
   next.addListener('message', (event) => {

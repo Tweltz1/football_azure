@@ -13,7 +13,7 @@ import MultipeerConnectivity
 /// Events: `peerFound` {peerId, name}, `peerLost` {peerId},
 /// `peerState` {peerId, name, state: connecting|connected|disconnected},
 /// `message` {peerId, name, data}, `status` {text} (what the radio is doing, shown while connecting),
-/// `error` {message}.
+/// `error` {message}, `hostFound` {peerId, name, room, league} and `hostLost` {peerId} (while scanning).
 @objc(NearbyPlugin)
 public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "NearbyPlugin"
@@ -21,6 +21,7 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "host", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "join", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "scan", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "send", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "peers", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise)
@@ -38,6 +39,8 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
     private var advertiser: MCNearbyServiceAdvertiser?
     private var browser: MCNearbyServiceBrowser?
     private var roomCode = ""
+    // Scanning: list every nearby hosted draft (like AirDrop) without connecting to any.
+    private var scanning = false
     private var peersById: [String: MCPeerID] = [:]
     private var idsByPeer: [MCPeerID: String] = [:]
 
@@ -72,6 +75,7 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
         let peer = MCPeerID(displayName: String(name.prefix(60)))
         myPeer = peer
         roomCode = room
+        scanning = false
         sessions = [newSession(peer)]
     }
 
@@ -96,14 +100,15 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
         return sessions.flatMap { $0.connectedPeers }
     }
 
-    /// Commissioner: advertise a draft room. Options: name, room (code players must match).
+    /// Commissioner: advertise a draft room. Options: name, room (code players must match), league (shown to nearby phones).
     @objc func host(_ call: CAPPluginCall) {
         let name = call.getString("name") ?? "Commissioner"
         let room = call.getString("room") ?? ""
+        let league = String((call.getString("league") ?? "").prefix(60))
         DispatchQueue.main.async {
             self.start(name: name, room: room)
             guard let peer = self.myPeer else { return call.reject("Could not start") }
-            let ad = MCNearbyServiceAdvertiser(peer: peer, discoveryInfo: ["room": room], serviceType: NearbyPlugin.serviceType)
+            let ad = MCNearbyServiceAdvertiser(peer: peer, discoveryInfo: ["room": room, "league": league], serviceType: NearbyPlugin.serviceType)
             ad.delegate = self
             ad.startAdvertisingPeer()
             self.advertiser = ad
@@ -126,6 +131,22 @@ public class NearbyPlugin: CAPPlugin, CAPBridgedPlugin {
             br.startBrowsingForPeers()
             self.browser = br
             self.status("Looking for room \(room)...")
+            call.resolve(["peerId": self.key(peer)])
+        }
+    }
+
+    /// Player: list nearby hosted drafts (hostFound/hostLost events) without joining one.
+    @objc func scan(_ call: CAPPluginCall) {
+        let name = call.getString("name") ?? "Player"
+        DispatchQueue.main.async {
+            self.start(name: name, room: "")
+            self.scanning = true
+            guard let peer = self.myPeer else { return call.reject("Could not start") }
+            let br = MCNearbyServiceBrowser(peer: peer, serviceType: NearbyPlugin.serviceType)
+            br.delegate = self
+            br.startBrowsingForPeers()
+            self.browser = br
+            self.status("Looking for nearby drafts...")
             call.resolve(["peerId": self.key(peer)])
         }
     }
@@ -214,6 +235,12 @@ extension NearbyPlugin: MCNearbyServiceAdvertiserDelegate {
 extension NearbyPlugin: MCNearbyServiceBrowserDelegate {
     public func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String: String]?) {
         DispatchQueue.main.async {
+            if self.scanning {
+                self.status("Found \(peerID.displayName)'s draft.")
+                self.notifyListeners("hostFound", data: ["peerId": self.key(peerID), "name": peerID.displayName,
+                                                         "room": info?["room"] ?? "", "league": info?["league"] ?? ""])
+                return
+            }
             guard info?["room"] == self.roomCode, let s = self.session else {
                 self.status("Found \(peerID.displayName), but it's hosting room \(info?["room"] ?? "?"), not \(self.roomCode).")
                 return
@@ -227,7 +254,7 @@ extension NearbyPlugin: MCNearbyServiceBrowserDelegate {
 
     public func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
         DispatchQueue.main.async {
-            self.notifyListeners("peerLost", data: ["peerId": self.key(peerID)])
+            self.notifyListeners(self.scanning ? "hostLost" : "peerLost", data: ["peerId": self.key(peerID)])
         }
     }
 
