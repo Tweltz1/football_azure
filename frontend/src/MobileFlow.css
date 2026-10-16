@@ -228,6 +228,17 @@
     display: inline;
   }
 
+  .nav-links a:has(.nav-two-line) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-short.nav-two-line {
+    white-space: normal;
+    line-height: 1.15;
+  }
+
   /* Leagues */
   .league-card-list {
     grid-template-columns: 1fr;
