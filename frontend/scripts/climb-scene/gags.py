@@ -110,8 +110,8 @@ def chrome(g):
 
 def connor(g):
     car = (f'<g stroke="{INK}" stroke-width="4" stroke-linejoin="round">'
-           f'<path d="M-146 -24 L-146 -52 L-118 -56 L-96 -84 L-46 -84 L-28 -58 L-2 -56 L-2 -24 Z" fill="#5ec4c0"/>'
-           f'<path d="M-146 -52 L-150 -70 L-132 -56 Z" fill="#5ec4c0"/>'
+           f'<path d="M-146 -24 L-146 -52 L-118 -56 L-96 -84 L-46 -84 L-28 -58 L-2 -56 L-2 -24 Z" fill="#d42a2a"/>'
+           f'<path d="M-146 -52 L-150 -70 L-132 -56 Z" fill="#d42a2a"/>'
            f'<path d="M-92 -78 L-74 -78 L-74 -58 L-108 -58 Z M-68 -78 L-50 -78 L-36 -58 L-68 -58 Z" fill="#cfeff3"/>'
            f'<path d="M-146 -40 H-2" stroke="#e8e8e8" stroke-width="5"/>'
            f'<circle cx="-118" cy="-22" r="13" fill="#2a2a33"/><circle cx="-34" cy="-22" r="13" fill="#2a2a33"/>'
