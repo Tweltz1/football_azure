@@ -28,6 +28,8 @@ export function createRaceEngine({ seed, roster, meCid, hostCid = null, net, onE
   }));
   const me = racers.find((r) => r.cid === meCid) || null;
   const myLog = [];
+  // Everything you did, kept for the leaderboard check at the end (myLog empties as it is sent).
+  const myInputs = [];
   let sentUpTo = 0;
   let firstFinishSeen = null;
 
@@ -70,6 +72,8 @@ export function createRaceEngine({ seed, roster, meCid, hostCid = null, net, onE
     tick: 0,
     over: false,
 
+    myInputs,
+
     jump() { if (me) me.pending.push(['j']); },
     useItem() { if (me && me.runner.item) me.pending.push(['u']); },
 
@@ -104,7 +108,7 @@ export function createRaceEngine({ seed, roster, meCid, hostCid = null, net, onE
         if (r === me) {
           const actions = r.pending;
           r.pending = [];
-          actions.forEach((action) => myLog.push([r.runner.tick, ...action]));
+          actions.forEach((action) => { myLog.push([r.runner.tick, ...action]); myInputs.push([r.runner.tick, ...action]); });
           const event = stepRunner(r.runner, course, actions);
           if (event && !event.self) dispatch(r, event);
           else if (event?.self) onEvent?.({ name: r.name, crew: r.crew, kind: event.kind, mine: true });

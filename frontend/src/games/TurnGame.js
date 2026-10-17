@@ -118,7 +118,7 @@ const NameTurn = ({ turn, disabled, result, onAnswer }) => {
 
 /**
  * Penalty Kicks, Price Is Right and Name That Player: one turn at a time from `runner` (see gameRunners.js).
- * `onEnd(score, detail)` runs after the last turn.
+ * `onEnd(score, board)` runs after the last turn (`board`: the leaderboard standing, for ranked practice).
  */
 const TurnGame = ({ game, runner, onEnd }) => {
   const [turn, setTurn] = useState(null);
@@ -133,7 +133,7 @@ const TurnGame = ({ game, runner, onEnd }) => {
   const show = (body) => {
     if (body.finished) {
       setOver(true);
-      onEnd(body.score ?? 0);
+      onEnd(body.score ?? 0, body.board);
       return;
     }
     setTurn(body.turn);
@@ -166,7 +166,7 @@ const TurnGame = ({ game, runner, onEnd }) => {
       if (body.result.points > 0) taDa(); else guySound(game === 'penalty' ? CHROME : 0);
       if (body.finished) {
         setOver(true);
-        onEnd(body.score ?? 0);
+        onEnd(body.score ?? 0, body.board);
       }
     } catch (e) {
       setError(errorText(e));

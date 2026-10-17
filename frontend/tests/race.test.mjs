@@ -1,15 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  botActions, makeCourse, MAX_TICKS, nextRandom, startRunner, stepRunner,
+  behindPar, botActions, itemFor, ITEMS, makeCourse, mapFor, MAPS, MAX_TICKS, nextRandom, replayRun, startRunner, stepRunner,
 } from '../src/games/race/raceSim.js';
 import { createRaceEngine } from '../src/games/race/raceEngine.js';
 
 const rng = (seed) => { const s = { r: seed }; return () => nextRandom(s); };
 
 test('crew bots finish every course, and a run replays exactly from its inputs', () => {
-  for (let seed = 1; seed <= 25; seed += 1) {
+  const maps = new Set();
+  for (let seed = 1; seed <= 60; seed += 1) {
     const course = makeCourse(seed);
+    maps.add(course.map);
     const runner = startRunner(0, seed % 10);
     const rand = rng(seed);
     const log = [];
@@ -28,6 +30,7 @@ test('crew bots finish every course, and a run replays exactly from its inputs',
     }
     assert.equal(again.finishTick, runner.finishTick);
     assert.equal(again.x, runner.x);
+    assert.equal(replayRun(seed, 0, seed % 10, log).finishTick, runner.finishTick);
   }
 });
 
@@ -116,4 +119,23 @@ test("the host's phone runs the fill-in bots and the other phones replay them ex
     if (own.finishTick == null) assert.equal(seen.x, own.x);
   }
   assert.ok(engines.a.racers.some((r) => r.bot && r.runner.x > 2000), 'bots ran');
+});
+
+test('all three maps come up, and boxes lean a little toward speed-ups for a runner far behind', () => {
+  const seen = new Set(Array.from({ length: 60 }, (_, i) => mapFor(i).key));
+  assert.equal(seen.size, MAPS.length);
+  const count = (behind) => {
+    const n = {};
+    for (let box = 0; box < 4000; box += 1) { const k = itemFor(99, box % 10, box, behind); n[k] = (n[k] || 0) + 1; }
+    return n;
+  };
+  const even = count(0);
+  const back = count(1);
+  ITEMS.forEach((item) => assert.ok(even[item.key] > 250, `${item.key} shows up`));
+  const boosts = (n) => ['dew', 'bionic', 'car', 'shield'].reduce((a, k) => a + n[k], 0);
+  assert.ok(boosts(back) > boosts(even) * 1.4 && boosts(back) < 4000 * 0.65, `${boosts(even)} -> ${boosts(back)}`);
+  const r = startRunner(0, 0);
+  assert.equal(behindPar(r), 0);
+  r.tick = 900;
+  assert.ok(behindPar(r) === 1);
 });

@@ -513,3 +513,45 @@
   flex: 1 1 100%;
   color: var(--text-2);
 }
+
+.race-map-name {
+  display: block;
+  margin-bottom: 6px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: rgba(10, 11, 14, 0.7);
+}
+
+.race-ranked {
+  margin: 0 0 8px;
+  color: var(--text-2);
+}
+
+.race-ranked strong {
+  color: var(--warning);
+}
+
+/* Scrolled to the top of the screen when a race starts, clear of the phone's clock and notch. */
+.race-game,
+.game-player {
+  scroll-margin-top: calc(8px + env(safe-area-inset-top, 0px));
+}
+
+/* Room for the iPhone's home bar under the buttons. */
+.race-controls {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Phones keep a tapped button "hovered", which would swap in the plain button colors. */
+.race-controls .race-jump:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent);
+}
+
+.race-controls .race-item.has-item:hover:not(:disabled) {
+  background: var(--warning);
+  border-color: var(--warning);
+}

@@ -3,7 +3,8 @@ import { CREW } from '../../data/crew';
 import { guySound, taDa } from '../../sound/crewSound';
 import { useFixedLoop } from '../gameRunners';
 import { createRaceEngine } from './raceEngine';
-import { EFFECT, ITEM_BY_KEY, isStopped, progressOf, standings, TICKS_PER_SECOND } from './raceSim';
+import { DEPTH_X, DEPTH_Y, block, drawBackdrop, texture, THEMES } from './raceArt';
+import { EFFECT, groundAt, ITEM_BY_KEY, isStopped, MAP_BY_KEY, progressOf, standings, TICKS_PER_SECOND } from './raceSim';
 
 const VIEW_UNITS = 320; // world units from the bottom of the screen to the top
 const MIN_VIEW_WIDTH = 700; // world units across, at least
@@ -36,73 +37,69 @@ function drawCar(ctx, x, y, s) {
   ctx.restore();
 }
 
-/** Draws one frame: course, runners (you on top), effects. */
+/** Draws one frame: scenery, course, runners (you on top), effects. */
 function draw(ctx, engine, width, height, images) {
   // Phones are narrow: zoom out so you can see what's coming.
   const scale = Math.min(height / VIEW_UNITS, width / MIN_VIEW_WIDTH);
   const groundY = height * GROUND_AT;
   const me = engine.me || engine.racers[0];
   const camera = me.runner.x - (width / scale) * 0.28;
+  // Runners and things on the track sit halfway into its depth.
+  const mid = { x: (DEPTH_X / 2) * scale, y: (DEPTH_Y / 2) * scale };
   const sx = (x) => (x - camera) * scale;
   const sy = (y) => groundY - y * scale;
   const { course } = engine;
+  const theme = THEMES[course.map] || THEMES.woods;
+  const dx = DEPTH_X * scale;
+  const dy = DEPTH_Y * scale;
 
-  const sky = ctx.createLinearGradient(0, 0, 0, height);
-  sky.addColorStop(0, '#1b2140');
-  sky.addColorStop(1, '#4b5d93');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, width, height);
+  drawBackdrop(ctx, theme, width, height, groundY - dy, camera, scale, engine.tick);
 
-  // Far mountains, sliding slowly.
-  ctx.fillStyle = '#2c3a6b';
-  for (let i = -1; i < 8; i += 1) {
-    const base = ((i * 420 - camera * 0.25) % 3360 + 3360) % 3360 - 420;
-    ctx.beginPath();
-    ctx.moveTo(base * scale, groundY);
-    ctx.lineTo((base + 210) * scale, groundY - 190 * scale);
-    ctx.lineTo((base + 420) * scale, groundY);
-    ctx.fill();
-  }
-
-  // Ground, with the gaps cut out.
-  const left = camera - 50;
-  const right = camera + width / scale + 50;
-  ctx.fillStyle = '#3c8a46';
-  let x = left;
+  // Ground in solid stretches between the gaps: grass (or sand, or snow) on top, dirt in front.
+  const left = camera - 60;
+  const right = camera + width / scale + 60;
   const gaps = course.gaps.filter((g) => g.end > left && g.start < right);
+  const stretches = [];
+  let x = left;
   for (const gap of gaps) {
-    if (gap.start > x) ctx.fillRect(sx(x), groundY, (gap.start - x) * scale, height - groundY);
+    if (gap.start > x) stretches.push([x, gap.start]);
     x = gap.end;
   }
-  if (x < right) ctx.fillRect(sx(x), groundY, (right - x) * scale, height - groundY);
-  ctx.fillStyle = '#2a6233';
-  ctx.fillRect(0, groundY, width, 4 * scale);
-  ctx.fillStyle = '#0c0d12';
-  gaps.forEach((gap) => ctx.fillRect(sx(gap.start), groundY, (gap.end - gap.start) * scale, height - groundY));
-
-  // Rocks.
-  course.walls.filter((w) => w.end > left && w.start < right).forEach((w) => {
-    ctx.fillStyle = '#7b6a58';
-    ctx.fillRect(sx(w.start), sy(w.h), (w.end - w.start) * scale, w.h * scale);
-    ctx.fillStyle = '#a08c74';
-    ctx.fillRect(sx(w.start), sy(w.h), (w.end - w.start) * scale, 6 * scale);
+  if (x < right) stretches.push([x, right]);
+  ctx.fillStyle = theme.pit;
+  ctx.fillRect(0, groundY - dy, width, height - groundY + dy);
+  stretches.forEach(([a, b]) => {
+    block(ctx, sx(a), groundY, (b - a) * scale, height, dx, dy, theme.front, theme.top, theme.frontDark);
+    texture(ctx, theme, a, b, sx, groundY + 6 * scale, height, scale);
+    ctx.fillStyle = theme.topEdge;
+    ctx.fillRect(sx(a), groundY, (b - a) * scale, 5 * scale);
   });
 
-  // Spikes.
-  ctx.fillStyle = '#c9ced8';
+  // Rocks: front, top and side, nearest last.
+  course.walls.filter((w) => w.end > left && w.start < right).forEach((w) => {
+    block(ctx, sx(w.start), sy(w.h), (w.end - w.start) * scale, groundY, dx, dy, theme.rockFront, theme.rockTop, theme.rockSide);
+    texture(ctx, { ...theme, stone: theme.rockTop, frontDark: theme.rockSide }, w.start, w.end, sx, sy(w.h) + 6 * scale, groundY, scale);
+  });
+
+  // Spikes, standing in the middle of the track's depth.
   ctx.strokeStyle = '#16122b';
   ctx.lineWidth = 1.5;
   course.spikes.filter((s) => s.end > left && s.start < right).forEach((s) => {
     const n = Math.max(2, Math.round((s.end - s.start) / 14));
     const w = (s.end - s.start) / n;
     for (let i = 0; i < n; i += 1) {
+      const x0 = sx(s.start + i * w) + mid.x;
+      const x1 = sx(s.start + (i + 1) * w) + mid.x;
+      const base = sy(s.y) - mid.y;
+      const tip = sy(s.y + 20) - mid.y;
+      ctx.fillStyle = theme.spike;
       ctx.beginPath();
-      ctx.moveTo(sx(s.start + i * w), sy(s.y));
-      ctx.lineTo(sx(s.start + i * w + w / 2), sy(s.y + 18));
-      ctx.lineTo(sx(s.start + (i + 1) * w), sy(s.y));
-      ctx.closePath();
+      ctx.moveTo(x0, base); ctx.lineTo((x0 + x1) / 2, tip); ctx.lineTo(x1, base); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.beginPath();
+      ctx.moveTo((x0 + x1) / 2, tip); ctx.lineTo(x1, base); ctx.lineTo((x0 + x1) / 2, base); ctx.closePath();
       ctx.fill();
-      ctx.stroke();
     }
   });
 
@@ -110,50 +107,68 @@ function draw(ctx, engine, width, height, images) {
   ctx.fillStyle = 'rgba(150, 120, 40, 0.85)';
   me.runner.traps.forEach((t) => {
     ctx.beginPath();
-    ctx.ellipse(sx(t), sy(1), 26 * scale, 6 * scale, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx(t) + mid.x, sy(0) - mid.y, 26 * scale, 7 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  // Item boxes you haven't opened.
+  // Item boxes you haven't opened: spinning-ish cubes.
   course.boxes.forEach((box, index) => {
     if (box.x < left || box.x > right || me.runner.boxesTaken.includes(index)) return;
     const bob = Math.abs(((engine.tick + index * 7) % 40) - 20) / 20;
-    const bx = sx(box.x) - 15 * scale;
-    const by = sy(box.y + 30 + bob * 6);
-    ctx.fillStyle = '#f5c518';
+    const size = 28 * scale;
+    const bx = sx(box.x) + mid.x - size / 2;
+    const by = sy(box.y + 30 + bob * 6) - mid.y;
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(sx(box.x) + mid.x, sy(groundAt(course, box.x) ?? 0) - mid.y, 16 * scale, 5 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    block(ctx, bx, by, size, by + size, size * 0.3, size * 0.3, '#f5c518', '#ffe27a', '#c99a0a');
     ctx.strokeStyle = '#16122b';
-    ctx.lineWidth = 2;
-    ctx.fillRect(bx, by, 30 * scale, 30 * scale);
-    ctx.strokeRect(bx, by, 30 * scale, 30 * scale);
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(bx, by, size, size);
     ctx.fillStyle = '#16122b';
     ctx.font = `bold ${Math.round(20 * scale)}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('?', bx + 15 * scale, by + 22 * scale);
+    ctx.fillText('?', bx + size / 2, by + size * 0.75);
   });
 
-  // Finish line.
+  // Finish line: a checkered arch across the track.
   const fx = sx(course.length);
-  if (fx > -40 && fx < width + 40) {
+  if (fx > -60 && fx < width + 60) {
     for (let i = 0; i < 12; i += 1) {
       ctx.fillStyle = i % 2 ? '#fff' : '#111';
       ctx.fillRect(fx, sy(220) + i * 18 * scale, 9 * scale, 18 * scale);
       ctx.fillStyle = i % 2 ? '#111' : '#fff';
       ctx.fillRect(fx + 9 * scale, sy(220) + i * 18 * scale, 9 * scale, 18 * scale);
     }
+    ctx.fillStyle = '#d7263d';
+    ctx.fillRect(fx + dx, sy(220) - dy, 18 * scale, 216 * scale);
+    ctx.fillRect(fx, sy(230) - dy, dx + 18 * scale, 14 * scale);
   }
 
   // Runners: others first, then you on top.
   const order = engine.racers.filter((r) => r !== me).concat([me]);
   order.forEach((r) => {
     const run = r.runner;
-    const px = sx(run.x);
+    const px = sx(run.x) + mid.x;
     if (px < -80 || px > width + 80) return;
     const tick = run.tick;
-    const footY = sy(run.y);
+    const footY = sy(run.y) - mid.y;
+    // A shadow on whatever is under them, smaller the higher they are.
+    const floor = groundAt(course, run.x);
+    if (floor != null && run.y >= floor - 1) {
+      const lift = Math.min(1, (run.y - floor) / 120);
+      ctx.fillStyle = `rgba(0,0,0,${0.28 * (1 - lift * 0.6)})`;
+      ctx.beginPath();
+      ctx.ellipse(px, sy(floor) - mid.y, 22 * scale * (1 - lift * 0.5), 6 * scale * (1 - lift * 0.5), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.save();
     ctx.globalAlpha = r === me ? 1 : 0.8;
     if (tick < run.carUntil) drawCar(ctx, px, footY, scale * 0.9);
-    ctx.translate(px, footY - (SPRITE_H * scale) / 2);
+    // A little bounce in their step.
+    const bounce = run.grounded && !isStopped(run) ? (Math.abs((tick % 10) - 5) / 5) * 3 * scale : 0;
+    ctx.translate(px, footY - (SPRITE_H * scale) / 2 - bounce);
     if (isStopped(run) && tick < run.stunUntil) ctx.rotate(Math.PI / 2.4);
     else if (!run.grounded) ctx.rotate(-0.15);
     const img = images[r.crew];
@@ -204,7 +219,7 @@ const KIND_SOUND = { horseshoe: 0, bionic: 1, eye: 2, potion: 3, seven: 4, shiel
 
 /**
  * The race screen. Tap (or space) to jump, the item button (or E) to use what you're holding.
- * `onDone(order)` gets everyone in finishing order. `hooksRef.current` is given { receiveInputs, receiveAttack }
+ * `onDone(order, engine)` gets everyone in finishing order (and the engine, for your recorded inputs). `hooksRef.current` is given { receiveInputs, receiveAttack }
  * so the room can pass the other phones' messages in.
  */
 const RaceGame = ({ seed, roster, meCid, hostCid, net, hooksRef, onDone }) => {
@@ -215,6 +230,12 @@ const RaceGame = ({ seed, roster, meCid, hostCid, net, hooksRef, onDone }) => {
   const wrapRef = useRef(null);
   const images = useMemo(loadCrewImages, []);
   const doneRef = useRef(false);
+  const topRef = useRef(null);
+
+  // On a phone, bring the whole race (bar, track and buttons) into view.
+  useEffect(() => {
+    topRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+  }, []);
 
   const engine = useMemo(() => createRaceEngine({
     seed,
@@ -228,7 +249,7 @@ const RaceGame = ({ seed, roster, meCid, hostCid, net, hooksRef, onDone }) => {
       const id = Math.random();
       const text = event.missed ? `${event.mine ? 'You' : event.name}: ${item.name}, but nobody to hit!`
         : `${event.mine ? 'You' : event.name}: "${item.line}" ${item.name}${event.target ? ` on ${event.target}` : ''}`;
-      setCallouts((list) => [...list.slice(-2), { id, text, crew: item.crew }]);
+      setCallouts((list) => [...list.slice(-1), { id, text, crew: item.crew }]);
       setTimeout(() => setCallouts((list) => list.filter((c) => c.id !== id)), 2600);
       guySound(KIND_SOUND[event.kind] ?? 0);
     },
@@ -263,7 +284,7 @@ const RaceGame = ({ seed, roster, meCid, hostCid, net, hooksRef, onDone }) => {
     if (engine.over && !doneRef.current) {
       doneRef.current = true;
       setPhase('over');
-      onDone(standings(engine.racers.map((r) => r.runner)).map((run) => engine.racers.find((r) => r.runner === run)));
+      onDone(standings(engine.racers.map((r) => r.runner)).map((run) => engine.racers.find((r) => r.runner === run)), engine);
       return false;
     }
     return true;
@@ -278,7 +299,9 @@ const RaceGame = ({ seed, roster, meCid, hostCid, net, hooksRef, onDone }) => {
       if (canvas && wrap) {
         const dpr = window.devicePixelRatio || 1;
         const width = wrap.clientWidth;
-        const height = Math.max(260, Math.min(440, Math.round(width * 0.62)));
+        // Short enough that the bar, the track and the Jump button all fit on a phone screen at once.
+        const room = window.innerHeight - 270;
+        const height = Math.max(190, Math.min(440, Math.round(width * 0.62), room));
         if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
           canvas.width = Math.round(width * dpr);
           canvas.height = Math.round(height * dpr);
@@ -300,7 +323,7 @@ const RaceGame = ({ seed, roster, meCid, hostCid, net, hooksRef, onDone }) => {
   const seconds = Math.floor(engine.tick / TICKS_PER_SECOND);
 
   return (
-    <div className="race-game">
+    <div className="race-game" ref={topRef}>
       <div className="race-progress" aria-label="Race progress">
         <span className="race-progress-track" />
         <span className="race-flag" aria-hidden="true">🏁</span>
@@ -311,14 +334,14 @@ const RaceGame = ({ seed, roster, meCid, hostCid, net, hooksRef, onDone }) => {
             alt={r.name}
             title={r.name}
             className={`race-face${r === me ? ' is-me' : ''}`}
-            style={{ left: `${progressOf(r.runner) * 94}%` }}
+            style={{ left: `${progressOf(r.runner, engine.course.length) * 94}%` }}
           />
         ))}
       </div>
       <div className="race-hud">
         <span>{me ? <><strong>{ordinal(placing)}</strong> of {engine.racers.length}</> : 'Watching'}</span>
         <span><strong>{seconds}</strong>s</span>
-        <span>{me?.runner.finishTick != null ? 'Finished!' : `${Math.round(progressOf(me?.runner || engine.racers[0].runner) * 100)}%`}</span>
+        <span>{me?.runner.finishTick != null ? 'Finished!' : `${Math.round(progressOf(me?.runner || engine.racers[0].runner, engine.course.length) * 100)}%`}</span>
       </div>
       <div
         className="race-stage"
@@ -333,7 +356,12 @@ const RaceGame = ({ seed, roster, meCid, hostCid, net, hooksRef, onDone }) => {
             <p key={c.id}><img src={CREW[c.crew].art} alt="" />{c.text}</p>
           ))}
         </div>
-        {phase === 'countdown' && <div className="game-overlay"><span className="game-countdown">{count || 'Go!'}</span></div>}
+        {phase === 'countdown' && (
+          <div className="game-overlay">
+            <span className="race-map-name">{MAP_BY_KEY[engine.course.map]?.name}</span>
+            <span className="game-countdown">{count || 'Go!'}</span>
+          </div>
+        )}
         {me && me.runner.finishTick != null && phase === 'racing' && (
           <div className="race-finished">You finished {ordinal(placing)}! Waiting for the others...</div>
         )}

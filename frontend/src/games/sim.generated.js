@@ -2722,6 +2722,24 @@ function gradeTurn(game, seed, index, answer, seconds, history = []) {
   }
   throw new Error(`${game} is not a turn game`);
 }
+function applyTurn(game, attempt, index, answer, seconds, now) {
+  var _a, _b, _c, _d;
+  if (index !== attempt.turn || !attempt.servedAt)
+    return null;
+  const graded = gradeTurn(game, (_a = attempt.seed) != null ? _a : 0, index, answer, seconds, (_b = attempt.history) != null ? _b : []);
+  attempt.points = [...(_c = attempt.points) != null ? _c : [], graded.points];
+  if (game === "penalty")
+    attempt.history = [...(_d = attempt.history) != null ? _d : [], Math.trunc(Number(answer == null ? void 0 : answer.zone)) || 0];
+  attempt.turn = index + 1;
+  attempt.servedAt = null;
+  const total = attempt.points.reduce((sum, p) => sum + p, 0);
+  attempt.score = total;
+  if (attempt.turn >= turnCount(game)) {
+    attempt.finishedAt = now;
+    attempt.detail = game === "penalty" ? `${total} of ${turnCount(game)}` : `${attempt.points.filter((p) => p > 0).length} of ${turnCount(game)} scored`;
+  }
+  return graded;
+}
 export {
   CLIMB,
   CROSSBAR_BAND,
@@ -2736,6 +2754,7 @@ export {
   TURN_GRACE_SECONDS,
   aimAt,
   aimPeriod,
+  applyTurn,
   climbScore,
   climbSpeed,
   climbStart,
