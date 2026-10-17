@@ -779,19 +779,21 @@ export const AskBar = ({
                   ))}
                 </ul>
               )}
-              {answer.ideasTitle && <p className="startsit-help">{answer.ideasTitle}</p>}
-              {answer.ideas?.length > 0 && (
-                <ul className="startsit-bench ask-items">
-                  {answer.ideas.map((item) => (
-                    <li key={item.name}>
-                      <div>
-                        <small className="ask-item-label">{item.label}</small> <strong>{item.name}</strong>
-                        <br /><small>{item.detail}</small>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {(answer.sections || []).map((section) => (
+                <div key={section.title}>
+                  <p className="startsit-help">{section.title}</p>
+                  <ul className="startsit-bench ask-items">
+                    {section.items.map((item) => (
+                      <li key={`${item.label}-${item.name}`}>
+                        <div>
+                          {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
+                          {item.detail && <><br /><small>{item.detail}</small></>}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
               {answer.why && <div className="why-pop ask-why"><WhyCard why={answer.why} updatedLabel={updatedLabel} /></div>}
               {answer.note && <p className="startsit-help">{answer.note}</p>}
               {answer.examples && <Examples list={answer.examples} />}

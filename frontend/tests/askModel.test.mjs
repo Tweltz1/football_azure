@@ -128,8 +128,9 @@ test('"why should I trade X" and "who should I trade away" give reasons, not jus
   assert.match(one.text, /^Chris Olave is worth shopping\./);
   assert.match(one.text, /bench player/);
   assert.match(one.text, /good time to sell/);
-  assert.match(one.ideas[0].detail, /\+5\.1 pts a week\. Two-for-one/);
-  assert.match(one.ideas[0].detail, /may say yes/);
+  const ideas = one.sections.find((sec) => sec.title.startsWith('Trades using')).items;
+  assert.match(ideas[0].detail, /\+5\.1 pts a week\. Two-for-one/);
+  assert.match(ideas[0].detail, /may say yes/);
   assert.deepEqual(one.items.map((i) => i.name), ['Questionable this week.']);
 
   assert.match(answerQuestion('should i trade bijan', ctx).text, /^Only trade Bijan Robinson for a clear upgrade\./);
@@ -163,4 +164,27 @@ test('"why should I trade X" and "who should I trade away" give reasons, not jus
 test('questions it cannot place get examples, not a guess', () => {
   const answer = answerQuestion('what is the weather', ctxFor([]));
   assert.ok(answer.examples.length > 0);
+});
+
+test('upcoming games: how each defense plays the position and who scored on them', () => {
+  const row = (rank, games, pts, recent = []) => ({ games, rank, teams: 32, points: { ppr: pts, half: pts, std: pts }, box: {}, recentGames: recent });
+  const defense = {
+    DAL: { RB: row(30, 6, 14, [{ id: 'x', name: 'Saquon Barkley', team: 'PHI', week: 5, points: { ppr: 8.4 } }]) },
+    NYG: { RB: row(2, 6, 29) },
+    SEA: { RB: row(16, 2, 21) },
+    KC: { RB: row(16, 6, 21) },
+  };
+  const mixon = { ...everyone.find((p) => p.id === 'mixon'), upcoming: [
+    { week: 8, opponent: 'DAL', points: {} }, { week: 9, opponent: null, points: {} }, { week: 10, opponent: 'NYG', points: {} }, { week: 11, opponent: 'SEA', points: {} },
+  ] };
+  const ctx = ctxFor(['mixon'], { defense });
+  ctx.scored = () => mixon;
+  ctx.allPlayers = everyone.map((p) => (p.id === 'mixon' ? mixon : p));
+  const answer = answerQuestion("what's mixon's upcoming schedule", ctx);
+  assert.equal(answer.text, "Joe Mixon's next 3 games: 1 easy, 0 average, 1 tough, 1 too early to tell.");
+  const items = answer.sections[0].items;
+  assert.deepEqual(items.map((i) => i.name), ['vs DAL: tough', 'vs NYG: easy', 'vs SEA: too early to tell']);
+  assert.match(items[0].detail, /DAL has the 3rd fewest points allowed to RBs.*Top RBs against them lately: Saquon Barkley 8\.4\./);
+  // The same list rides along with value and matchup answers.
+  assert.ok(answerQuestion('what is mixon worth', ctx).sections.length === 1);
 });

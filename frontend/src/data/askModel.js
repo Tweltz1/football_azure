@@ -12,6 +12,7 @@ export const EXAMPLE_QUESTIONS = [
   'Who should I pick up?',
   'What is Puka worth rest of season?',
   'Is Mixon a good matchup this week?',
+  "How does Bijan's schedule look?",
 ];
 
 const SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v']);
@@ -136,6 +137,7 @@ export function questionType(text, found) {
   if (found.length >= 2) return 'compare';
   if (found.length === 0) return /start|sit|lineup|bench|play/.test(t) ? 'lineup' : 'unknown';
   if (/hurt|injur|\bback\b|return|status|healthy|\bout\b|questionable|doubtful|\bir\b/.test(t)) return 'injury';
+  if (/schedule|upcoming|next (few |\d )?(games|weeks)|coming up/.test(t)) return 'schedule';
   if (/matchup|against|defen[cs]e|\bvs\b|opponent|playing/.test(t)) return 'matchup';
   if (/\brank/.test(t)) return 'rank';
   if (/worth|value|rest of|\bros\b|outlook|keep|hold|sell|buy|dynasty/.test(t)) return 'value';
@@ -266,11 +268,25 @@ function answerMatchup(found, ctx) {
   const call = matchup.early ? 'too early to tell' : { good: 'a good matchup', average: 'an average matchup', tough: 'a tough matchup' }[matchup.verdict];
   const pointsRow = matchup.rows[0];
   return {
-    text: `${p.name} vs ${p.opponent}: ${call}. ${p.opponent} has given up the ${matchup.rankLabel} (${pointsRow.value.toFixed(1)} a game; average is ${pointsRow.league.toFixed(1)}).`
+    text: `${p.name} vs ${p.opponent}: ${call}. ${p.opponent} has the ${matchup.rankLabel} (${pointsRow.value.toFixed(1)} a game; average is ${pointsRow.league.toFixed(1)}).`
       + (matchup.early ? ` After only ${matchup.games} game${matchup.games === 1 ? '' : 's'}, that says little yet.` : '')
       + ` ${firstName(p)} is projected for ${pts(p.points)}.`,
     items: matchup.notable.slice(0, 4).map((g) => ({ label: `Wk ${g.week}`, name: g.name, detail: g.team, value: g.value })),
     itemsTitle: matchup.notable.length ? `Top ${p.position} against ${p.opponent} in recent games:` : null,
+    sections: [scheduleSection(p, ctx)].filter(Boolean),
+    note: ambiguityNote(found),
+  };
+}
+
+function answerSchedule(found, ctx) {
+  const p = ctx.scored(found[0].player);
+  const section = scheduleSection(p, ctx, 6);
+  if (!section) return { text: `There are no upcoming games listed for ${p.name} yet.` };
+  const games = section.items.map((i) => i.name.split(': ')[1]);
+  const count = (word) => games.filter((g) => g === word).length;
+  return {
+    text: `${p.name}'s next ${games.length} games: ${count('easy')} easy, ${count('average')} average, ${count('tough')} tough${count('too early to tell') ? `, ${count('too early to tell')} too early to tell` : ''}.`,
+    sections: [section],
     note: ambiguityNote(found),
   };
 }
@@ -296,8 +312,9 @@ function answerValue(found, ctx) {
   return {
     text: `${p.name} is worth about ${outlook.perGame.toFixed(1)} pts a game when playing, ${outlook.value.toFixed(1)} a game across the ${Math.round(outlook.remaining)} games left once missed time is counted.`
       + (value?.label ? ` Trade value: ${value.label}.` : '') + tag,
-    items: outlook.notes.slice(0, 5).map((note) => ({ name: note })),
-    itemsTitle: outlook.notes.length ? 'What goes into it:' : null,
+    items: reasonNotes(outlook).slice(0, 5).map((note) => ({ name: note })),
+    itemsTitle: reasonNotes(outlook).length ? 'What goes into it:' : null,
+    sections: [scheduleSection(p, ctx)].filter(Boolean),
     note: ambiguityNote(found),
   };
 }
@@ -383,6 +400,32 @@ const startsForYou = (p, ctx) => (ctx.isSeasonStarter ? ctx.isSeasonStarter(p) :
 
 const pct = (x) => `${Math.round(x * 100)}%`;
 
+const SCHEDULE_WORD = { good: 'easy', average: 'average', tough: 'tough' };
+
+/**
+ * The player's next few games: how each defense has done against the position, and the other teams'
+ * top player at it in recent games against that defense. Byes and games they're not expected to play are skipped.
+ */
+export const scheduleSection = (p, ctx, games = 4) => {
+  const upcoming = (p.upcoming || []).filter((g) => g.opponent).slice(0, games);
+  const items = upcoming.map((g) => {
+    const matchup = defenseMatchup({ ...p, opponent: g.opponent }, ctx.defense, ctx.scoring);
+    if (!matchup) return { label: `Wk ${g.week}`, name: `vs ${g.opponent}` };
+    const allowed = matchup.rows[0];
+    const recent = matchup.notable.slice(0, 3).map((n) => `${n.name} ${n.value.toFixed(1)}`).join(', ');
+    return {
+      label: `Wk ${g.week}`,
+      name: `vs ${g.opponent}: ${matchup.early ? 'too early to tell' : SCHEDULE_WORD[matchup.verdict]}`,
+      detail: `${g.opponent} has the ${matchup.rankLabel} (${allowed.value.toFixed(1)} a game, average ${allowed.league.toFixed(1)}).${recent ? ` Top ${p.position}s against them lately: ${recent}.` : ''}`,
+    };
+  });
+  if (!items.length) return null;
+  const outlook = ctx.outlookOf?.(p);
+  const label = outlook?.schedule?.label;
+  const summary = label && label !== 'average' ? ` Overall ${label === 'easy' ? 'an easy' : 'a tough'} stretch.` : '';
+  return { title: `${firstName(p)}'s next games:${summary}`, items };
+};
+
 /** Share of the team's carries or targets, this season and lately, as a sentence. */
 const usageLine = (p) => {
   const u = usageFor(p);
@@ -425,8 +468,10 @@ function answerSellOne(player, found, ctx) {
     text: `${verdict} ${reasons.join(' ')}`,
     itemsTitle: notes.length ? `What's behind ${firstName(p)}'s value:` : null,
     items: notes.map((note) => ({ name: note })),
-    ideasTitle: ideas.length ? `Trades using ${firstName(p)} that help your lineup and are close in value:` : null,
-    ideas: ideaItems(ideas),
+    sections: [
+      scheduleSection(p, ctx),
+      ideas.length ? { title: `Trades using ${firstName(p)} that help your lineup and are close in value:`, items: ideaItems(ideas) } : null,
+    ].filter(Boolean),
     note: ideas.length
       ? 'Ask "should I trade X for Y?" about any of these for the full breakdown.'
       : `I didn't find a trade using ${firstName(p)} that helps your lineup and is close enough in value for the other team to take.`,
@@ -527,6 +572,7 @@ export function answerQuestion(text, ctx) {
     case 'lineup': return answerLineup(text, ctx);
     case 'injury': return answerInjury(found, ctx);
     case 'matchup': return answerMatchup(found, ctx);
+    case 'schedule': return answerSchedule(found, ctx);
     case 'rank': return answerRank(found, ctx);
     case 'value': return answerValue(found, ctx);
     case 'player': return answerPlayer(found, ctx);
