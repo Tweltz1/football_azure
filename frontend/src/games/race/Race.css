@@ -1,0 +1,495 @@
+/* Crew Fun Run */
+
+.race-page {
+  max-width: 900px;
+}
+
+.race-page .section-kicker a {
+  color: inherit;
+}
+
+.game-card.is-race {
+  grid-column: 1 / -1;
+  text-decoration: none;
+  border-color: var(--accent-ring);
+  background: linear-gradient(120deg, var(--accent-soft), var(--surface-2) 60%);
+}
+
+.race-crew-picks {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.race-crew-picks button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.race-crew-picks button.is-picked {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.race-crew-picks img {
+  width: 100%;
+  height: 52px;
+  object-fit: contain;
+}
+
+.race-pick-label {
+  margin: 14px 0 6px;
+  font-weight: 700;
+}
+
+.race-items {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+}
+
+.race-items summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.race-items ul {
+  list-style: none;
+  margin: 10px 0 6px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.race-items li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  color: var(--text-2);
+}
+
+.race-items li strong {
+  color: var(--text);
+}
+
+.race-items img {
+  width: 28px;
+  height: 36px;
+  object-fit: contain;
+  flex: none;
+}
+
+.race-menu-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.race-option {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline-strong);
+}
+
+.race-option label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+}
+
+.race-option select {
+  min-height: 38px;
+}
+
+.race-option form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.race-option input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.race-option form button {
+  flex: none;
+}
+
+.race-room {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.race-room-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.race-room-head p {
+  margin: 0;
+}
+
+.race-code {
+  margin: 2px 0;
+}
+
+.race-code strong {
+  letter-spacing: 0.2em;
+  color: var(--warning);
+}
+
+.race-people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.race-people li {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.race-people li.is-waiting {
+  opacity: 0.55;
+}
+
+.race-people img {
+  grid-row: 1 / 3;
+  width: 34px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.race-people span {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.race-people small {
+  color: var(--text-2);
+}
+
+/* The race */
+
+.race-game {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.race-progress {
+  position: relative;
+  height: 40px;
+  margin: 0 4px;
+}
+
+.race-progress-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 26px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-3);
+}
+
+.race-flag {
+  position: absolute;
+  right: -4px;
+  top: 10px;
+  font-size: 1.1rem;
+}
+
+.race-face {
+  position: absolute;
+  top: 0;
+  width: 26px;
+  height: 34px;
+  object-fit: contain;
+  transition: left 0.2s linear;
+  opacity: 0.75;
+}
+
+.race-face.is-me {
+  opacity: 1;
+  z-index: 2;
+  filter: drop-shadow(0 0 4px #ffd23f);
+}
+
+.race-hud {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.race-hud strong {
+  color: var(--text);
+}
+
+.race-stage {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--hairline-strong);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.race-canvas {
+  display: block;
+  width: 100%;
+}
+
+.race-callouts {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.race-callouts p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 3px 10px 3px 4px;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(10, 11, 14, 0.72);
+}
+
+.race-callouts img {
+  width: 18px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.race-finished,
+.race-ouch {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: rgba(10, 11, 14, 0.8);
+  pointer-events: none;
+}
+
+.race-finished {
+  color: var(--success);
+}
+
+.race-ouch {
+  color: var(--warning);
+}
+
+.race-controls {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 8px;
+}
+
+.race-controls button {
+  min-height: 64px;
+  border-radius: 14px;
+  font-weight: 800;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.race-jump {
+  font-size: 1.2rem;
+  color: #fff;
+  background: var(--accent-strong);
+  border: 1px solid var(--accent);
+}
+
+.race-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  text-align: left;
+  color: var(--text-2);
+  background: var(--surface-3);
+  border: 1px dashed var(--hairline-strong);
+}
+
+.race-item.has-item {
+  color: #1a1206;
+  background: var(--warning);
+  border: 1px solid var(--warning);
+}
+
+.race-item img {
+  width: 34px;
+  height: 46px;
+  object-fit: contain;
+  flex: none;
+}
+
+.race-item span {
+  display: flex;
+  flex-direction: column;
+}
+
+.race-item small {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.race-results {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+}
+
+.race-results h3 {
+  margin: 0 0 8px;
+}
+
+.race-results ol {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.race-results li > * {
+  vertical-align: middle;
+}
+
+.race-results li img {
+  width: 22px;
+  height: 28px;
+  object-fit: contain;
+  margin-right: 6px;
+}
+
+.race-result-name {
+  font-weight: 700;
+  margin-right: 8px;
+}
+
+.race-results li.is-me .race-result-name {
+  color: var(--warning);
+}
+
+.race-award {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.race-award input {
+  width: 70px;
+  min-height: 40px;
+}
+
+.lobby-race {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(120deg, var(--accent-soft), var(--surface-2) 70%);
+  border: 1px solid var(--accent-ring);
+}
+
+.lobby-race img {
+  width: 36px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.lobby-race > span {
+  flex: 1 1 200px;
+  color: var(--text-2);
+  font-size: 0.9rem;
+}
+
+.lobby-race strong {
+  display: block;
+  color: var(--text);
+}
+
+@media (max-width: 600px) {
+  .race-crew-picks {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .race-controls button {
+    min-height: 72px;
+  }
+
+  .race-item small {
+    display: none;
+  }
+
+  .race-callouts p {
+    font-size: 0.7rem;
+  }
+}

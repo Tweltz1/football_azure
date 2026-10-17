@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import SoundToggle from '../components/SoundToggle';
 import { CREW } from '../data/crew';
 import { GAME_KINDS, GAMES } from './sim.generated';
@@ -42,6 +42,13 @@ const GamesPage = () => {
         />
       ) : (
         <div className="games-grid">
+          <Link to="/games/race" className="game-card is-race">
+            <img src={CREW[6].art} alt="" />
+            <span className="game-card-text">
+              <strong>Crew Fun Run (live race)</strong>
+              <span>Up to 10 phones race the crew course at once, with power-ups like Logan's Mountain Dew and Evan's Bionic Legs. Practice against bots any time.</span>
+            </span>
+          </Link>
           {GAME_KINDS.map((kind) => (
             <button type="button" key={kind} className="game-card" onClick={() => pick(kind)}>
               <img src={CREW[GAME_ART[kind]].art} alt="" />
