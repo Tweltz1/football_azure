@@ -16,10 +16,9 @@ name: iPhone app
 
 on:
   push:
+    # Native code only; website changes reach the app through TestFlight uploads, which build it anyway.
     paths:
       - 'ios-app/**'
-      - 'frontend/src/offline/**'
-      - 'frontend/src/native/**'
       - '.github/workflows/ios-app.yml'
   workflow_dispatch:
     inputs:
