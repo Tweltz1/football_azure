@@ -15,6 +15,12 @@ import './Race.css';
 
 const myCid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 const shortName = (name) => String(name || 'Player').split(/[\s@]/)[0].slice(0, 14) || 'Player';
+/** Fill-in racers for a room: average crew bots (practice bots range from easy to hard). */
+const AVERAGE_BOT = [0.55, 0.65];
+const crewBots = (count, skill = AVERAGE_BOT) => Array.from({ length: count }, (_, i) => {
+  const crew = Math.floor(Math.random() * CREW.length);
+  return { cid: `bot-${i + 1}`, name: `${CREW[crew].name} bot`, crew, bot: true, skill: skill[0] + Math.random() * (skill[1] - skill[0]) };
+});
 
 const CrewPicker = ({ value, onChange }) => (
   <div className="race-crew-picks">
@@ -93,14 +99,16 @@ const RaceRoom = ({ code, leagueId, user, crew, setCrew }) => {
   const [race, setRace] = useState(null);
   const [results, setResults] = useState(null);
   const [trouble, setTrouble] = useState('');
+  const [ready, setReady] = useState(false);
+  const [fillBots, setFillBots] = useState(true);
   const hooksRef = useRef(null);
   const netRef = useRef(null);
   const name = shortName(user.userDetails);
 
   useEffect(() => {
-    const net = joinRaceRoom(code, { cid, userId: user.userId, name, crew, racing: false }, {
+    const net = joinRaceRoom(code, { cid, userId: user.userId, name, crew, ready: false }, {
       onPeople: setPeople,
-      onStart: (payload) => { setResults(null); setRace(payload); },
+      onStart: (payload) => { setResults(null); setReady(false); setRace(payload); },
       onInputs: (payload) => hooksRef.current?.receiveInputs(payload),
       onAttack: (payload) => hooksRef.current?.receiveAttack(payload),
       onTrouble: () => setTrouble("Can't reach the race room. Check your connection."),
@@ -110,14 +118,20 @@ const RaceRoom = ({ code, leagueId, user, crew, setCrew }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, cid]);
 
-  useEffect(() => { netRef.current?.setMe({ crew }); }, [crew]);
+  useEffect(() => { netRef.current?.setMe({ crew, ready }); }, [crew, ready]);
 
   const isHost = people[0]?.cid === cid;
+  const racers = people.slice(0, MAX_RACERS);
+  // The host's Start counts as their ready.
+  const notReady = racers.filter((p) => p.cid !== cid && !p.ready);
+  const bots = fillBots ? MAX_RACERS - racers.length : 0;
   const start = () => {
-    const roster = people.slice(0, MAX_RACERS).map((p) => ({ cid: p.cid, userId: p.userId, name: p.name, crew: p.crew }));
-    const payload = { id: myCid(), seed: randomSeed(), roster };
+    const roster = [...racers.map((p) => ({ cid: p.cid, userId: p.userId, name: p.name, crew: p.crew })), ...crewBots(bots)];
+    // The host's phone runs the bots and sends their moves along with its own.
+    const payload = { id: myCid(), seed: randomSeed(), roster, hostCid: cid };
     netRef.current.send('start', payload);
     setResults(null);
+    setReady(false);
     setRace(payload);
   };
 
@@ -128,6 +142,7 @@ const RaceRoom = ({ code, leagueId, user, crew, setCrew }) => {
         seed={race.seed}
         roster={race.roster}
         meCid={cid}
+        hostCid={race.hostCid}
         net={netRef.current}
         hooksRef={hooksRef}
         onDone={(order) => { setResults(order); setRace(null); }}
@@ -152,20 +167,38 @@ const RaceRoom = ({ code, leagueId, user, crew, setCrew }) => {
           <li key={p.cid} className={index >= MAX_RACERS ? 'is-waiting' : ''}>
             <img src={CREW[p.crew]?.art} alt="" />
             <span>{p.cid === cid ? `${p.name} (you)` : p.name}</span>
-            <small>{index === 0 ? 'Host' : index >= MAX_RACERS ? 'Next race' : CREW[p.crew]?.name}</small>
+            <small className={p.ready ? 'is-ready' : ''}>
+              {index >= MAX_RACERS ? 'Next race' : `${CREW[p.crew]?.name}${index === 0 ? ' · Host' : p.ready ? ' · Ready ✓' : ' · Not ready'}`}
+            </small>
           </li>
         ))}
       </ul>
       <p className="race-pick-label">Pick your runner (doubles are fine)</p>
       <CrewPicker value={crew} onChange={setCrew} />
       <ItemList />
-      <div className="game-player-actions">
-        {isHost ? (
-          <button type="button" className="game-go" onClick={start} disabled={people.length === 0}>
-            Start the race ({Math.min(people.length, MAX_RACERS)} {people.length === 1 ? 'runner' : 'runners'})
+      {isHost ? (
+        <div className="race-start">
+          {racers.length < MAX_RACERS && (
+            <label className="race-fill">
+              <input type="checkbox" checked={fillBots} onChange={(e) => setFillBots(e.target.checked)} />
+              Fill the other {MAX_RACERS - racers.length} {MAX_RACERS - racers.length === 1 ? 'spot' : 'spots'} with crew bots (average speed)
+            </label>
+          )}
+          <button type="button" className="game-go" onClick={start} disabled={racers.length === 0 || notReady.length > 0}>
+            Start the race ({racers.length + bots} {racers.length + bots === 1 ? 'runner' : 'runners'})
           </button>
-        ) : <span className="game-hint">Waiting for {people[0]?.name || 'the host'} to start.</span>}
-      </div>
+          {notReady.length > 0 && (
+            <span className="game-hint">Waiting on {notReady.map((p) => p.name).join(', ')} to ready up.</span>
+          )}
+        </div>
+      ) : (
+        <div className="race-start">
+          <button type="button" className={ready ? 'game-secondary' : 'game-go'} onClick={() => setReady((r) => !r)}>
+            {ready ? 'Not ready yet' : "I'm ready"}
+          </button>
+          <span className="game-hint">{ready ? `Ready. Waiting for ${people[0]?.name || 'the host'} to start.` : 'Pick your runner, then ready up.'}</span>
+        </div>
+      )}
     </div>
   );
 };

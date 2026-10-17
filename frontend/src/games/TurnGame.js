@@ -5,7 +5,7 @@ import { penaltyColumn, penaltyHigh, swing } from './sim.generated';
 import { errorText, useCountdown } from './gameRunners';
 
 const CHROME = 5;
-const ZONES = [0, 1, 2, 3, 4, 5];
+const ZONES = [0, 1, 2, 3];
 
 /** The penalty kick screen: pick a corner, then stop the power meter. */
 const PenaltyTurn = ({ disabled, result, onAnswer }) => {
@@ -26,9 +26,9 @@ const PenaltyTurn = ({ disabled, result, onAnswer }) => {
   }, [zone, result]);
 
   const keeper = result?.keeper;
-  const keeperLeft = keeper ? [18, 50, 82][keeper.column] : 50;
-  const shotZone = zone ?? 4;
-  const ballLeft = result ? [17, 50, 83][penaltyColumn(shotZone)] + (result.outcome === 'wide' ? (penaltyColumn(shotZone) === 0 ? -14 : 14) : 0) : 50;
+  const keeperLeft = keeper ? [24, 76][keeper.column] : 50;
+  const shotZone = zone ?? 2;
+  const ballLeft = result ? [25, 75][penaltyColumn(shotZone)] + (result.outcome === 'wide' ? (penaltyColumn(shotZone) === 0 ? -14 : 14) : 0) : 50;
   const ballTop = result ? (result.outcome === 'over the bar' ? -8 : penaltyHigh(shotZone) ? 25 : 70) : 118;
 
   return (
@@ -41,14 +41,14 @@ const PenaltyTurn = ({ disabled, result, onAnswer }) => {
             className={`pk-zone${zone === z ? ' is-picked' : ''}`}
             disabled={disabled || zone != null}
             onClick={() => setZone(z)}
-            aria-label={`${penaltyHigh(z) ? 'Top' : 'Bottom'} ${['left', 'middle', 'right'][penaltyColumn(z)]}`}
+            aria-label={`${penaltyHigh(z) ? 'Top' : 'Bottom'} ${['left', 'right'][penaltyColumn(z)]}`}
           />
         ))}
         <img
           className={`pk-keeper${keeper ? ' has-dived' : ''}${keeper?.high ? ' is-high' : ''}`}
           src={CREW[CHROME].art}
           alt=""
-          style={{ left: `${keeperLeft}%`, transform: `translateX(-50%) rotate(${keeper ? [-50, 0, 50][keeper.column] : 0}deg)` }}
+          style={{ left: `${keeperLeft}%`, transform: `translateX(-50%) rotate(${keeper ? [-50, 50][keeper.column] : 0}deg)` }}
         />
         <span className={`pk-ball${result ? ' is-shot' : ''}`} style={{ left: `${ballLeft}%`, top: `${ballTop}%` }} />
       </div>
@@ -98,6 +98,7 @@ const NameTurn = ({ turn, disabled, result, onAnswer }) => {
     <div className="trivia-turn">
       <p className="trivia-meta">Mystery {turn.position} · {turn.games} games in {turn.season}</p>
       <p className="trivia-clue">{turn.clue}</p>
+      {result && <p className="trivia-meta">{result.answer} played for {turn.team} that year.</p>}
       <div className="trivia-choices">
         {turn.choices.map((name, index) => (
           <button
@@ -176,7 +177,7 @@ const TurnGame = ({ game, runner, onEnd }) => {
 
   // When the clock runs out, send whatever is there (it scores nothing).
   useEffect(() => {
-    if (turn && !result && !busy && left <= 0) answer(game === 'penalty' ? { zone: 4, power: 0 } : game === 'price' ? -1 : -1);
+    if (turn && !result && !busy && left <= 0) answer(game === 'penalty' ? { zone: 2, power: 0 } : game === 'price' ? -1 : -1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [left]);
 

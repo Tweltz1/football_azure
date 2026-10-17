@@ -11,9 +11,12 @@
 //   or reading the keeper ahead of time doesn't work.
 // Everything here uses plain arithmetic (no Math.sin and friends) so every JS engine gets the same result.
 
-import { TRIVIA_ROWS, TRIVIA_SEASON, type TriviaRow } from './triviaData.ts';
+import { TRIVIA_ROWS, type TriviaRow } from './triviaData.ts';
 
 export const TICKS_PER_SECOND = 30;
+
+const TRIVIA_FIRST = Math.min(...TRIVIA_ROWS.map((row) => row[3]));
+const TRIVIA_LAST = Math.max(...TRIVIA_ROWS.map((row) => row[3]));
 
 export type GameKind = 'climb' | 'fieldgoal' | 'penalty' | 'price' | 'nameplayer';
 
@@ -41,19 +44,19 @@ export const GAMES: Record<GameKind, GameInfo> = {
   },
   penalty: {
     title: 'Pink Dress Penalty Kicks',
-    blurb: 'Ten penalty kicks at Chrome in the pink dress. Pick a corner, time your power, and hope he guesses wrong.',
+    blurb: 'Ten penalty kicks at Chrome in the pink dress. Pick left or right, high or low, time your power, and hope he dives the wrong way.',
     style: 'turns',
     unit: 'goals',
   },
   price: {
     title: 'Price Is Right: Fantasy Edition',
-    blurb: `Guess each player's ${TRIVIA_SEASON} PPR fantasy points. Closest without going over scores the most. 20 seconds a guess.`,
+    blurb: `Guess a player's PPR fantasy points for one season (${TRIVIA_FIRST}-${TRIVIA_LAST}). Closest without going over scores the most. 20 seconds a guess.`,
     style: 'turns',
     unit: 'pts',
   },
   nameplayer: {
     title: 'Name That Player',
-    blurb: `A mystery ${TRIVIA_SEASON} stat line and four names. Pick the right one fast; quicker answers score more.`,
+    blurb: `A mystery season's stat line (${TRIVIA_FIRST}-${TRIVIA_LAST}) and four names. Pick the right one fast; quicker answers score more.`,
     style: 'turns',
     unit: 'pts',
   },
@@ -200,7 +203,10 @@ export const FIELD_GOAL = {
   maxKicks: 20,
 };
 
-export type KickResult = 'good' | 'short' | 'wide left' | 'wide right';
+/** 'doink in' / 'doink out' bounced off an upright or the crossbar; 'shank' came off a kick hit too hard. */
+export type KickResult = 'good' | 'doink in' | 'doink out' | 'short' | 'wide left' | 'wide right' | 'shank';
+
+export const kickMade = (result: KickResult) => result === 'good' || result === 'doink in';
 
 export interface FieldGoalKick {
   distance: number;
@@ -210,6 +216,8 @@ export interface FieldGoalKick {
   result: KickResult;
   /** Where it crossed, -1 to 1 across the screen, for drawing. */
   drift: number;
+  /** What a doink hit. */
+  post?: 'left' | 'right' | 'bar';
 }
 
 export interface FieldGoalState {
@@ -236,6 +244,32 @@ export const powerNeeded = (distance: number) => distance / 70;
 /** How far off the middle (in aim units) still goes through. */
 export const fieldGoalTolerance = (distance: number) => 0.5 * (25 / distance);
 export const windEffect = (wind: number, distance: number) => wind * 0.5 * (distance / 40);
+/** The good power runs from powerNeeded to this much above it; past that the kick is shanked. */
+export const powerWindow = (kick: number) => Math.max(0.12, 0.28 - kick * 0.014);
+export const powerLimit = (distance: number, kick: number) => Math.min(1, powerNeeded(distance) + powerWindow(kick));
+/** How close to an upright (in aim units) the ball clips it. */
+export const DOINK_BAND = 0.04;
+/** A kick this little under the power needed clips the crossbar. */
+export const CROSSBAR_BAND = 0.025;
+
+function gradeKick(aim: number, power: number, wind: number, distance: number, kick: number): Pick<FieldGoalKick, 'result' | 'drift' | 'post'> {
+  const need = powerNeeded(distance);
+  const tol = fieldGoalTolerance(distance);
+  const drift = aim + windEffect(wind, distance);
+  if (power > powerLimit(distance, kick)) return { result: 'shank', drift: clamp(drift + 0.7, -1.5, 1.5) };
+  const off = Math.abs(drift);
+  if (power < need) {
+    if (power >= need - CROSSBAR_BAND && off < tol - DOINK_BAND) {
+      return { result: power >= need - CROSSBAR_BAND / 2 ? 'doink in' : 'doink out', drift, post: 'bar' };
+    }
+    return { result: 'short', drift: clamp(drift, -1.5, 1.5) };
+  }
+  if (off >= tol - DOINK_BAND && off <= tol + DOINK_BAND) {
+    return { result: off <= tol ? 'doink in' : 'doink out', drift, post: drift < 0 ? 'left' : 'right' };
+  }
+  if (off < tol) return { result: 'good', drift };
+  return { result: drift < 0 ? 'wide left' : 'wide right', drift: clamp(drift, -1.5, 1.5) };
+}
 
 function newKick(s: FieldGoalState) {
   s.distance = fieldGoalDistance(s.kick);
@@ -260,18 +294,12 @@ export function fieldGoalStep(s: FieldGoalState, tap = false): FieldGoalState {
     s.phaseStart = s.tick + 1;
   } else if (s.phase === 'power' && (tap || since >= FIELD_GOAL.idleTicks)) {
     const power = powerAt(since, s.kick);
-    // Crushing it (top of the meter) hooks it a bit.
-    const hook = power > 0.96 ? 0.12 : 0;
-    const drift = s.aim + windEffect(s.wind, s.distance) + hook;
-    const result: KickResult = power < powerNeeded(s.distance)
-      ? 'short'
-      : Math.abs(drift) <= fieldGoalTolerance(s.distance) ? 'good' : drift < 0 ? 'wide left' : 'wide right';
-    s.kicks.push({ distance: s.distance, wind: s.wind, aim: s.aim, power, result, drift: clamp(drift, -1.5, 1.5) });
+    s.kicks.push({ distance: s.distance, wind: s.wind, aim: s.aim, power, ...gradeKick(s.aim, power, s.wind, s.distance, s.kick) });
     s.phase = 'flight';
     s.phaseStart = s.tick + 1;
   } else if (s.phase === 'flight' && since >= FIELD_GOAL.flightTicks) {
     const last = s.kicks[s.kicks.length - 1];
-    if (last.result !== 'good' || s.kicks.length >= FIELD_GOAL.maxKicks) {
+    if (!kickMade(last.result) || s.kicks.length >= FIELD_GOAL.maxKicks) {
       s.phase = 'over';
     } else {
       s.kick += 1;
@@ -284,7 +312,7 @@ export function fieldGoalStep(s: FieldGoalState, tap = false): FieldGoalState {
 
 /** Longest make, in yards (0 with none). */
 export const fieldGoalScore = (s: FieldGoalState) =>
-  s.kicks.filter((k) => k.result === 'good').reduce((best, k) => Math.max(best, k.distance), 0);
+  s.kicks.filter((k) => kickMade(k.result)).reduce((best, k) => Math.max(best, k.distance), 0);
 
 // ---- Replays (the server's check of a skill run) -------------------------------------------------------
 
@@ -330,7 +358,7 @@ export function replaySkillGame(game: GameKind, seed: number, inputs: Input[]): 
   if (game === 'fieldgoal') {
     const s = fieldGoalStart(seed);
     while (s.phase !== 'over') fieldGoalStep(s, inputAt(s.tick) != null);
-    const made = s.kicks.filter((k) => k.result === 'good').length;
+    const made = s.kicks.filter((k) => kickMade(k.result)).length;
     return { score: fieldGoalScore(s), ticks: s.tick, detail: `${made} made` };
   }
   throw new Error(`${game} is not a skill game`);
@@ -353,7 +381,7 @@ const formatNumber = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+
 
 /** A row's stat line in words, e.g. "1,456 rush yds, 14 rush TD, 61 rec, 431 rec yds". */
 export function statLine(row: TriviaRow): string {
-  const [, pos, , , , passYds, passTd, ints, rushYds, rushTd, rec, recYds, recTd] = row;
+  const [, pos, , , , , passYds, passTd, ints, rushYds, rushTd, rec, recYds, recTd] = row;
   const parts: string[] = [];
   if (pos === 'QB') parts.push(`${formatNumber(passYds)} pass yds`, `${passTd} pass TD`, `${ints} INT`);
   if (pos === 'QB' || pos === 'RB' || rushYds >= 100) parts.push(`${formatNumber(rushYds)} rush yds`, `${rushTd} rush TD`);
@@ -362,8 +390,14 @@ export function statLine(row: TriviaRow): string {
 }
 
 /** The rows a game draws from: enough games played that the numbers mean something. */
-const priceRows = () => TRIVIA_ROWS.map((row, index) => ({ row, index })).filter(({ row }) => row[3] >= 8 && row[4] >= 60);
-const nameRows = () => TRIVIA_ROWS.map((row, index) => ({ row, index })).filter(({ row }) => row[3] >= 6 && row[4] >= 40);
+// Row fields used here: 0 name, 1 position, 2 team, 3 season, 4 games, 5 PPR points.
+const ALL_ROWS = TRIVIA_ROWS.map((row, index) => ({ row, index }));
+const PRICE_ROWS = ALL_ROWS.filter(({ row }) => row[4] >= 8 && row[5] >= 60);
+const NAME_ROWS = ALL_ROWS.filter(({ row }) => row[4] >= 6 && row[5] >= 40);
+const priceRows = () => PRICE_ROWS;
+const nameRows = () => NAME_ROWS;
+/** How many different questions each trivia game can ask. */
+export const TRIVIA_COUNTS = { price: PRICE_ROWS.length, nameplayer: NAME_ROWS.length };
 
 /** `count` different picks from a list, in a seeded order. */
 function pickSome<T>(list: T[], count: number, random: () => number): T[] {
@@ -374,8 +408,8 @@ function pickSome<T>(list: T[], count: number, random: () => number): T[] {
 }
 
 export interface PenaltyTurn { kind: 'penalty'; index: number; of: number; seconds: number }
-export interface PriceTurn { kind: 'price'; index: number; of: number; seconds: number; name: string; position: string; team: string; games: number; season: string }
-export interface NameTurn { kind: 'nameplayer'; index: number; of: number; seconds: number; position: string; games: number; season: string; clue: string; choices: string[] }
+export interface PriceTurn { kind: 'price'; index: number; of: number; seconds: number; name: string; position: string; team: string; games: number; season: number }
+export interface NameTurn { kind: 'nameplayer'; index: number; of: number; seconds: number; position: string; team: string; games: number; season: number; clue: string; choices: string[] }
 export type Turn = PenaltyTurn | PriceTurn | NameTurn;
 
 /** What the player is shown for turn `index` (never the answer). */
@@ -385,15 +419,18 @@ export function turnFor(game: GameKind, seed: number, index: number): Turn {
   if (game === 'penalty') return { kind: 'penalty', index, of, seconds };
   if (game === 'price') {
     const { row } = pickSome(priceRows(), of, randomFrom(seed, 1))[index];
-    return { kind: 'price', index, of, seconds, name: row[0], position: row[1], team: row[2], games: row[3], season: TRIVIA_SEASON };
+    return { kind: 'price', index, of, seconds, name: row[0], position: row[1], team: row[2], games: row[4], season: row[3] };
   }
   if (game === 'nameplayer') {
-    const { row, index: rowIndex } = pickSome(nameRows(), of, randomFrom(seed, 1))[index];
+    const { row } = pickSome(nameRows(), of, randomFrom(seed, 1))[index];
     const random = randomFrom(seed, 100 + index);
-    const others = pickSome(nameRows().filter((r) => r.row[1] === row[1] && r.index !== rowIndex), 3, random).map((r) => r.row[0]);
-    const choices = others.slice();
+    // Wrong answers: other players at the same position from around the same years.
+    const names = [...new Set(nameRows()
+      .filter((r) => r.row[1] === row[1] && r.row[0] !== row[0] && Math.abs(r.row[3] - row[3]) <= 4)
+      .map((r) => r.row[0]))];
+    const choices = pickSome(names, 3, random);
     choices.splice(Math.floor(random() * 4), 0, row[0]);
-    return { kind: 'nameplayer', index, of, seconds, position: row[1], games: row[3], season: TRIVIA_SEASON, clue: statLine(row), choices };
+    return { kind: 'nameplayer', index, of, seconds, position: row[1], team: row[2], games: row[4], season: row[3], clue: statLine(row), choices };
   }
   throw new Error(`${game} is not a turn game`);
 }
@@ -412,9 +449,9 @@ export interface TurnResult {
   answer?: number | string;
 }
 
-/** Penalty Kicks targets: 0-2 top row left to right, 3-5 bottom row. */
-export const penaltyColumn = (zone: number) => zone % 3;
-export const penaltyHigh = (zone: number) => zone < 3;
+/** Penalty Kicks targets: 0 top left, 1 top right, 2 bottom left, 3 bottom right. */
+export const penaltyColumn = (zone: number) => zone % 2;
+export const penaltyHigh = (zone: number) => zone < 2;
 
 /**
  * Grades one turn. `answer` is the player's input: Penalty Kicks {zone, power}, Price Is Right a number,
@@ -426,28 +463,27 @@ export function gradeTurn(game: GameKind, seed: number, index: number, answer: u
   const late = seconds > limit + TURN_GRACE_SECONDS;
   if (game === 'penalty') {
     const { zone, power } = (answer ?? {}) as { zone?: unknown; power?: unknown };
-    const z = Number.isInteger(zone) && (zone as number) >= 0 && (zone as number) < 6 ? (zone as number) : 4;
+    const z = Number.isInteger(zone) && (zone as number) >= 0 && (zone as number) < 4 ? (zone as number) : 2;
     const p = typeof power === 'number' && Number.isFinite(power) ? clamp(power, 0, 1) : 0;
     const random = randomFrom(seed, 200 + index);
     const lastColumns = history.slice(-2).map(penaltyColumn);
-    // He guesses at random, but leans toward a side you've gone twice in a row.
-    let column = Math.floor(random() * 3);
+    // He dives left or right at random, but leans toward a side you've gone twice in a row.
+    let column = Math.floor(random() * 2);
     if (lastColumns.length === 2 && lastColumns[0] === lastColumns[1] && random() < 0.5) column = lastColumns[0];
     const high = random() < 0.4;
     const keeper = { column, high };
     let outcome: PenaltyOutcome;
     if (late) outcome = 'saved';
     else if (penaltyHigh(z) && p > 0.92) outcome = 'over the bar';
-    else if (penaltyColumn(z) !== 1 && p > 0.97) outcome = 'wide';
+    else if (p > 0.97) outcome = 'wide';
     else if (column === penaltyColumn(z) && (p < 0.35 || high === penaltyHigh(z))) outcome = 'saved';
-    else if (penaltyColumn(z) === 1 && p < 0.35) outcome = 'saved';
     else outcome = 'goal';
     const message = late ? 'Too slow, the ref blew the whistle.' : outcome === 'goal' ? 'GOAL!' : outcome === 'saved' ? 'Saved by the dress!' : `Missed, ${outcome}.`;
     return { points: outcome === 'goal' ? 1 : 0, message, late, keeper, outcome };
   }
   if (game === 'price') {
     const { row } = pickSome(priceRows(), turnCount(game), randomFrom(seed, 1))[index];
-    const actual = row[4];
+    const actual = row[5];
     const guess = typeof answer === 'number' && Number.isFinite(answer) ? answer : -1;
     let points = 0;
     if (!late && guess >= 0 && guess <= actual) {

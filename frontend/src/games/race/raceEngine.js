@@ -8,9 +8,11 @@ import {
  * runners, replayed from the inputs they send, drawn a moment behind so those inputs have arrived.
  *
  * roster: [{ cid, name, crew, userId?, bot?, skill? }] in slot order. net: { send(event, payload) } or null.
+ * In a live room the host's phone (hostCid) runs the bots and sends their inputs with its own; the
+ * other phones replay them like any other runner.
  * onEvent({ name, crew, kind, mine }) is told about every item used, for the on-screen callouts.
  */
-export function createRaceEngine({ seed, roster, meCid, net, onEvent }) {
+export function createRaceEngine({ seed, roster, meCid, hostCid = null, net, onEvent }) {
   const course = makeCourse(seed);
   const delayTicks = net ? Math.ceil((viewDelayMs(roster.length) / 1000) * TICKS_PER_SECOND) : 0;
   const batchTicks = Math.ceil((batchMs(roster.length) / 1000) * TICKS_PER_SECOND);
@@ -21,6 +23,7 @@ export function createRaceEngine({ seed, roster, meCid, net, onEvent }) {
     pending: [],
     inputs: new Map(),
     upto: -1,
+    log: [],
     rand: p.bot ? ((state) => () => nextRandom(state))({ r: mixSeed(seed, 500 + slot) }) : null,
   }));
   const me = racers.find((r) => r.cid === meCid) || null;
@@ -28,7 +31,9 @@ export function createRaceEngine({ seed, roster, meCid, net, onEvent }) {
   let sentUpTo = 0;
   let firstFinishSeen = null;
 
-  const isLocal = (r) => r === me || r.bot;
+  const runsBots = !net || meCid === hostCid;
+  const isLocal = (r) => r === me || (r.bot && runsBots);
+  const localBots = racers.filter((r) => r.bot && runsBots);
 
   /** Someone used an item that affects others: work out who, and hand it to the runners on this phone. */
   const dispatch = (attacker, event) => {
@@ -49,9 +54,14 @@ export function createRaceEngine({ seed, roster, meCid, net, onEvent }) {
       if (payload.target && payload.target !== r.cid) return;
       r.pending.push(payload.kind === 'spit' ? ['t', payload.arg - 60] : ['h', payload.kind, payload.arg]);
     });
-    if (attacker === me && net) net.send('atk', payload);
+    if (net) net.send('atk', payload);
     onEvent?.({ name: attacker.name, crew: attacker.crew, kind: event.kind, mine: attacker === me, target: target ? target.name : null });
   };
+
+  // The bots this phone runs, in the same message as our own inputs (no extra Realtime messages).
+  const botBatch = (last) => (localBots.length
+    ? localBots.map((r) => ({ cid: r.cid, upto: r.runner.tick + last, ev: r.log.splice(0) }))
+    : undefined);
 
   const engine = {
     course,
@@ -63,8 +73,9 @@ export function createRaceEngine({ seed, roster, meCid, net, onEvent }) {
     jump() { if (me) me.pending.push(['j']); },
     useItem() { if (me && me.runner.item) me.pending.push(['u']); },
 
-    /** Another phone's inputs: [[tick, ...action]] up to `upto`. */
-    receiveInputs({ cid, upto, ev }) {
+    /** Another phone's inputs: [[tick, ...action]] up to `upto`, plus the host's bots' in `bots`. */
+    receiveInputs({ cid, upto, ev, bots }) {
+      (bots || []).forEach((b) => engine.receiveInputs(b));
       const r = racers.find((x) => x.cid === cid);
       if (!r || isLocal(r)) return;
       (ev || []).forEach(([tick, ...action]) => {
@@ -77,10 +88,11 @@ export function createRaceEngine({ seed, roster, meCid, net, onEvent }) {
     /** Another phone used an item. */
     receiveAttack(payload) {
       const attacker = racers.find((x) => x.cid === payload.from);
-      if (!attacker || attacker === me) return;
-      if (me && (!payload.target || payload.target === me.cid)) {
-        me.pending.push(payload.kind === 'spit' ? ['t', payload.arg - 60] : ['h', payload.kind, payload.arg]);
-      }
+      if (!attacker || isLocal(attacker)) return;
+      racers.forEach((r) => {
+        if (r === attacker || !isLocal(r) || (payload.target && payload.target !== r.cid)) return;
+        r.pending.push(payload.kind === 'spit' ? ['t', payload.arg - 60] : ['h', payload.kind, payload.arg]);
+      });
       onEvent?.({ name: attacker.name, crew: attacker.crew, kind: payload.kind, mine: false, target: racers.find((x) => x.cid === payload.target)?.name || null });
     },
 
@@ -96,9 +108,10 @@ export function createRaceEngine({ seed, roster, meCid, net, onEvent }) {
           const event = stepRunner(r.runner, course, actions);
           if (event && !event.self) dispatch(r, event);
           else if (event?.self) onEvent?.({ name: r.name, crew: r.crew, kind: event.kind, mine: true });
-        } else if (r.bot) {
+        } else if (isLocal(r)) {
           const actions = [...botActions(r.runner, course, r.skill ?? 0.6, r.rand), ...r.pending];
           r.pending = [];
+          if (net) actions.forEach((action) => r.log.push([r.runner.tick, ...action]));
           const event = stepRunner(r.runner, course, actions);
           if (event && !event.self) dispatch(r, event);
           else if (event?.self) onEvent?.({ name: r.name, crew: r.crew, kind: event.kind, mine: false });
@@ -111,7 +124,7 @@ export function createRaceEngine({ seed, roster, meCid, net, onEvent }) {
       });
 
       if (net && me && (tick - sentUpTo >= batchTicks || (me.runner.finishTick != null && sentUpTo < me.runner.tick))) {
-        net.send('inp', { cid: me.cid, upto: me.runner.tick - 1, ev: myLog.splice(0) });
+        net.send('inp', { cid: me.cid, upto: me.runner.tick - 1, ev: myLog.splice(0), bots: botBatch(-1) });
         sentUpTo = tick;
       }
 
@@ -120,7 +133,7 @@ export function createRaceEngine({ seed, roster, meCid, net, onEvent }) {
       if (everyoneDone || (firstFinishSeen != null && engine.tick > firstFinishSeen + FINISH_GRACE_TICKS) || engine.tick > MAX_TICKS) {
         engine.over = true;
         // Last inputs, so the others see exactly how we finished.
-        if (net && me) net.send('inp', { cid: me.cid, upto: me.runner.tick, ev: myLog.splice(0) });
+        if (net && me) net.send('inp', { cid: me.cid, upto: me.runner.tick, ev: myLog.splice(0), bots: botBatch(0) });
       }
     },
   };

@@ -77,3 +77,43 @@ test('two phones see the same race, hits included, with messages arriving late',
     }
   }
 });
+
+test("the host's phone runs the fill-in bots and the other phones replay them exactly", () => {
+  const roster = [
+    { cid: 'a', name: 'Ann', crew: 8 }, { cid: 'b', name: 'Bo', crew: 3 },
+    { cid: 'bot-1', name: 'Pat bot', crew: 3, bot: true, skill: 0.6 }, { cid: 'bot-2', name: 'Evan bot', crew: 1, bot: true, skill: 0.55 },
+  ];
+  const queue = [];
+  let now = 0;
+  const engines = {};
+  const netFor = (cid) => ({ send: (event, payload) => queue.push({ at: now + 3 + (queue.length % 4), from: cid, event, payload }) });
+  for (const p of roster.filter((r) => !r.bot)) engines[p.cid] = createRaceEngine({ seed: 777, roster, meCid: p.cid, hostCid: 'a', net: netFor(p.cid) });
+  const brains = { a: rng(1), b: rng(2) };
+  while (!Object.values(engines).every((e) => e.over) && now < MAX_TICKS + 2000) {
+    for (const msg of queue.filter((m) => m.at <= now)) {
+      queue.splice(queue.indexOf(msg), 1);
+      for (const [cid, e] of Object.entries(engines)) {
+        if (cid === msg.from) continue;
+        if (msg.event === 'inp') e.receiveInputs(msg.payload);
+        if (msg.event === 'atk') e.receiveAttack(msg.payload);
+      }
+    }
+    for (const [cid, e] of Object.entries(engines)) {
+      if (e.over) continue;
+      botActions(e.me.runner, e.course, 0.7, brains[cid]).forEach((a) => (a[0] === 'j' ? e.jump() : null));
+      if (e.me.runner.item) e.useItem();
+      e.step();
+    }
+    now += 1;
+  }
+  for (const msg of queue) if (msg.event === 'inp') engines.b.receiveInputs(msg.payload);
+  for (const cid of ['bot-1', 'bot-2']) {
+    const own = engines.a.racers.find((r) => r.cid === cid).runner;
+    const r = engines.b.racers.find((x) => x.cid === cid);
+    const seen = r.runner;
+    while (seen.finishTick == null && seen.tick <= r.upto && seen.tick < own.tick) stepRunner(seen, engines.b.course, r.inputs.get(seen.tick) || []);
+    assert.equal(seen.finishTick, own.finishTick, `${cid} on the other phone`);
+    if (own.finishTick == null) assert.equal(seen.x, own.x);
+  }
+  assert.ok(engines.a.racers.some((r) => r.bot && r.runner.x > 2000), 'bots ran');
+});

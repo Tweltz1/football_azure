@@ -207,7 +207,7 @@ const KIND_SOUND = { horseshoe: 0, bionic: 1, eye: 2, potion: 3, seven: 4, shiel
  * `onDone(order)` gets everyone in finishing order. `hooksRef.current` is given { receiveInputs, receiveAttack }
  * so the room can pass the other phones' messages in.
  */
-const RaceGame = ({ seed, roster, meCid, net, hooksRef, onDone }) => {
+const RaceGame = ({ seed, roster, meCid, hostCid, net, hooksRef, onDone }) => {
   const [callouts, setCallouts] = useState([]);
   const [phase, setPhase] = useState('countdown');
   const [count, setCount] = useState(3);
@@ -220,6 +220,7 @@ const RaceGame = ({ seed, roster, meCid, net, hooksRef, onDone }) => {
     seed,
     roster,
     meCid,
+    hostCid,
     net,
     onEvent: (event) => {
       const item = ITEM_BY_KEY[event.kind];
@@ -231,7 +232,7 @@ const RaceGame = ({ seed, roster, meCid, net, hooksRef, onDone }) => {
       setTimeout(() => setCallouts((list) => list.filter((c) => c.id !== id)), 2600);
       guySound(KIND_SOUND[event.kind] ?? 0);
     },
-  }), [seed, roster, meCid, net]);
+  }), [seed, roster, meCid, hostCid, net]);
 
   useEffect(() => {
     if (hooksRef) hooksRef.current = { receiveInputs: engine.receiveInputs, receiveAttack: engine.receiveAttack };
