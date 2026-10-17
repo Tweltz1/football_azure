@@ -32,7 +32,7 @@ var __objRest = (source, exclude) => {
   return target;
 };
 
-// supabase/functions/_shared/models.ts
+// ../supabase/functions/_shared/models.ts
 var AUCTION = "auction";
 var MANUAL = "manual";
 var STANDARD = "standard";
@@ -150,13 +150,24 @@ function forClient(league, version, viewerId = null) {
   const ownBid = viewerId ? league.activeBids[viewerId] : void 0;
   const activeBids = ownBid ? { [viewerId]: ownBid } : {};
   const copy = __spreadProps(__spreadValues({}, rest), { password: null, draftPlayers: null, activeBids });
+  if (league.miniGames) {
+    copy.miniGames = league.miniGames.map((challenge) => {
+      var _a2;
+      return __spreadProps(__spreadValues({}, challenge), {
+        attempts: Object.fromEntries(Object.entries((_a2 = challenge.attempts) != null ? _a2 : {}).map((_b) => {
+          var [id, _c] = _b, _d = _c, { seed: _seed } = _d, attempt = __objRest(_d, ["seed"]);
+          return [id, attempt];
+        }))
+      });
+    });
+  }
   if (version !== void 0)
     copy._version = version;
   return copy;
 }
 var clone = (value) => JSON.parse(JSON.stringify(value));
 
-// supabase/functions/_shared/draftLogic.ts
+// ../supabase/functions/_shared/draftLogic.ts
 var BYE_BY_TEAM = {
   ARI: 14,
   ATL: 11,
@@ -400,7 +411,7 @@ function getUniqueTeamName(existingTeams, preferredName, displayName) {
   return `${candidateBase}_${index}`;
 }
 
-// supabase/functions/_shared/diff.ts
+// ../supabase/functions/_shared/diff.ts
 var same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function diffObjects(prev, next) {
   const ops = [];
@@ -454,7 +465,7 @@ function diffObjects(prev, next) {
   return ops;
 }
 
-// supabase/functions/_shared/handwriting.ts
+// ../supabase/functions/_shared/handwriting.ts
 var HANDWRITING_LIMITS = { perDigit: 6, strokes: 8, points: 60 };
 var boxOf = (strokes) => {
   const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
@@ -550,7 +561,7 @@ function learnFromBoard(current, board, amount) {
   return next;
 }
 
-// supabase/functions/_shared/history.ts
+// ../supabase/functions/_shared/history.ts
 function seasonFor(date) {
   return date.getUTCMonth() >= 2 ? date.getUTCFullYear() : date.getUTCFullYear() - 1;
 }
@@ -620,7 +631,7 @@ function historySummary(entry, userId) {
   };
 }
 
-// supabase/functions/_shared/startSit.ts
+// ../supabase/functions/_shared/startSit.ts
 var SLEEPER_STATE_URL = "https://api.sleeper.app/v1/state/nfl";
 var SLEEPER_PROJECTIONS_URL = "https://api.sleeper.com/projections/nfl";
 var SLEEPER_STATS_URL = "https://api.sleeper.com/stats/nfl";
@@ -1131,7 +1142,7 @@ async function getProjectionAccuracy(fetchJson, now, snapshots) {
   return value;
 }
 
-// supabase/functions/_shared/sleeperImport.ts
+// ../supabase/functions/_shared/sleeperImport.ts
 var SLEEPER_API = "https://api.sleeper.app/v1";
 var CACHE_MS2 = 10 * 60 * 1e3;
 var MAX_LEAGUES = 12;
@@ -1359,7 +1370,7 @@ async function getSleeperTeams(fetchJson, now, username, pool) {
   return value;
 }
 
-// supabase/functions/_shared/sleeperLeague.ts
+// ../supabase/functions/_shared/sleeperLeague.ts
 var SLEEPER_API2 = "https://api.sleeper.app/v1";
 var CACHE_MS3 = 10 * 60 * 1e3;
 var DEFAULT_PLAYOFF_START = 15;
@@ -1454,7 +1465,7 @@ async function getLeagueSeason(fetchJson, now, leagueId) {
   return value;
 }
 
-// supabase/functions/_shared/market.ts
+// ../supabase/functions/_shared/market.ts
 var FANTASYCALC_URL = "https://api.fantasycalc.com/values/current";
 var MARKET_CACHE_MS = 6 * 60 * 60 * 1e3;
 var cache3 = /* @__PURE__ */ new Map();
@@ -1533,7 +1544,551 @@ async function getMarketValues(fetchJson, now, settings) {
   return value;
 }
 
-// supabase/functions/_shared/handlers.ts
+// ../supabase/functions/_shared/triviaData.ts
+var TRIVIA_SEASON = "2024";
+var TRIVIA_ROWS = [
+  ["Tre Tucker", "WR", "LV", 17, 129.3, 0, 0, 0, 44, 1, 47, 539, 3],
+  ["Chris Rodriguez", "RB", "WAS", 6, 31.5, 0, 0, 0, 173, 2, 1, 12, 0],
+  ["Payne Durham", "TE", "TB", 5, 34.5, 0, 0, 0, 0, 0, 11, 115, 2],
+  ["Rashee Rice", "WR", "KC", 3, 64.9, 0, 0, 0, 1, 0, 24, 288, 2],
+  ["Michael Wilson", "WR", "ARI", 16, 124.5, 0, 0, 0, 7, 0, 47, 548, 4],
+  ["Dalton Kincaid", "TE", "BUF", 16, 113.9, 0, 0, 0, 0, 0, 50, 519, 2],
+  ["Sam LaPorta", "TE", "DET", 17, 191.7, 0, 0, 0, 0, 0, 66, 777, 8],
+  ["Brycen Tremayne", "WR", "WAS", 1, 0.8, 0, 0, 0, 0, 0, 1, -2, 0],
+  ["Emari Demercado", "RB", "ARI", 13, 54.7, 0, 0, 0, 223, 1, 16, 104, 0],
+  ["Blake Whiteheart", "TE", "CLE", 7, 17.1, 0, 0, 0, 0, 0, 6, 51, 1],
+  ["Tyson Bagent", "QB", "CHI", 4, -0.3, 11, 0, 0, -7, 0, 0, 0, 0],
+  ["E.J. Jenkins", "TE", "PHI", 2, 7.7, 0, 0, 0, 0, 0, 1, 7, 1],
+  ["Nikko Remigio", "WR", "KC", 1, 6.8, 0, 0, 0, 0, 0, 2, 48, 0],
+  ["Tyrell Shavers", "WR", "BUF", 1, 13.9, 0, 0, 0, 0, 0, 1, 69, 1],
+  ["Emanuel Wilson", "RB", "GB", 18, 99.9, 0, 0, 0, 508, 4, 12, 71, 1],
+  ["Joe Milton", "QB", "NE", 1, 19.2, 241, 1, 0, 16, 1, 0, 0, 0],
+  ["Michael Penix", "QB", "ATL", 5, 44.1, 775, 3, 3, 11, 1, 0, 0, 0],
+  ["Caleb Williams", "QB", "CHI", 17, 254.5, 3541, 20, 6, 489, 0, 0, 0, 0],
+  ["Bo Nix", "QB", "DEN", 18, 331.3, 3919, 30, 12, 473, 4, 1, 2, 1],
+  ["Drake Maye", "QB", "NE", 13, 177.1, 2276, 15, 10, 421, 2, 0, 0, 0],
+  ["Jayden Daniels", "QB", "WAS", 20, 428.2, 4390, 30, 10, 1026, 7, 0, 0, 0],
+  ["Isaiah Davis", "RB", "NYJ", 9, 45.9, 0, 0, 0, 174, 1, 9, 75, 1],
+  ["Ray Davis", "RB", "BUF", 19, 125.7, 0, 0, 0, 478, 4, 17, 189, 3],
+  ["Braelon Allen", "RB", "NYJ", 17, 85.2, 0, 0, 0, 334, 2, 19, 148, 1],
+  ["Audric Estime", "RB", "DEN", 13, 48.7, 0, 0, 0, 310, 2, 5, 27, 0],
+  ["MarShawn Lloyd", "RB", "GB", 1, 2.8, 0, 0, 0, 15, 0, 1, 3, 0],
+  ["Bucky Irving", "RB", "TB", 18, 260.7, 0, 0, 0, 1199, 8, 49, 398, 1],
+  ["Blake Corum", "RB", "LA", 14, 33.5, 0, 0, 0, 207, 0, 7, 58, 0],
+  ["Erick All", "TE", "CIN", 8, 35.8, 0, 0, 0, 0, 0, 20, 158, 0],
+  ["Jared Wiley", "TE", "KC", 1, 1.7, 0, 0, 0, 0, 0, 1, 7, 0],
+  ["Theo Johnson", "TE", "NYG", 10, 68.1, 0, 0, 0, 0, 0, 29, 331, 1],
+  ["AJ Barner", "TE", "SEA", 14, 78.5, 0, 0, 0, 0, 0, 30, 245, 4],
+  ["Brock Bowers", "TE", "LV", 17, 262.7, 0, 0, 0, 13, 0, 112, 1194, 5],
+  ["Malik Washington", "WR", "MIA", 12, 56.8, 0, 0, 0, 25, 1, 26, 223, 0],
+  ["Malachi Corley", "WR", "NYJ", 5, 7.2, 0, 0, 0, 26, 0, 3, 16, 0],
+  ["Rome Odunze", "WR", "CHI", 17, 144.9, 0, 0, 0, 15, 0, 54, 734, 3],
+  ["Xavier Worthy", "WR", "KC", 19, 253.7, 0, 0, 0, 112, 3, 78, 925, 9],
+  ["Adonai Mitchell", "WR", "IND", 17, 53.8, 24, 0, 0, 6, 0, 23, 312, 0],
+  ["Troy Franklin", "WR", "DEN", 17, 80.5, 0, 0, 0, 8, 0, 30, 317, 3],
+  ["Marvin Harrison", "WR", "ARI", 17, 196.5, 0, 0, 0, 0, 0, 62, 885, 8],
+  ["Brian Thomas", "WR", "JAX", 17, 284, 0, 0, 0, 48, 0, 87, 1282, 10],
+  ["Malik Nabers", "WR", "NYG", 15, 273.6, 0, 0, 0, 2, 0, 109, 1204, 7],
+  ["Ladd McConkey", "WR", "LAC", 17, 275.6, 0, 0, 0, 0, 0, 91, 1346, 8],
+  ["Keon Coleman", "WR", "BUF", 16, 118.7, 0, 0, 0, 9, 0, 32, 578, 4],
+  ["Jaylen Wright", "RB", "MIA", 13, 26.7, 0, 0, 0, 249, 0, 3, 8, 0],
+  ["Jalen Coker", "WR", "CAR", 11, 92.6, 19, 0, 0, 0, 0, 32, 478, 2],
+  ["Kimani Vidal", "RB", "LAC", 9, 32.7, 0, 0, 0, 155, 0, 5, 62, 1],
+  ["Tyrone Tracy", "RB", "NYG", 17, 182.3, 0, 0, 0, 839, 5, 38, 284, 1],
+  ["Kirk Cousins", "QB", "ATL", 14, 176.3, 3508, 18, 16, 0, 0, 0, 0, 0],
+  ["Tip Reiman", "TE", "ARI", 5, 9.7, 0, 0, 0, 0, 0, 6, 37, 0],
+  ["Sione Vaki", "RB", "DET", 4, 8.1, 0, 0, 0, 14, 0, 3, 37, 0],
+  ["Ryan Flournoy", "WR", "DAL", 7, 18.2, 0, 0, 0, 0, 0, 10, 102, 0],
+  ["Devaughn Vele", "WR", "DEN", 14, 106.5, 0, 0, 0, 0, 0, 41, 475, 3],
+  ["Mason Tipton", "WR", "NO", 9, 23.9, 0, 0, 0, 0, 0, 14, 99, 0],
+  ["George Holani", "RB", "SEA", 2, 1.9, 0, 0, 0, 10, 0, 1, -1, 0],
+  ["David Martin-Robinson", "TE", "TEN", 2, 1.6, 0, 0, 0, 0, 0, 1, 6, 0],
+  ["Geno Smith", "QB", "SEA", 17, 266, 4320, 21, 15, 272, 2, 0, 0, 0],
+  ["Travis Kelce", "TE", "KC", 19, 231.9, 0, 0, 0, 1, 0, 110, 998, 4],
+  ["Keenan Allen", "WR", "CHI", 15, 184.4, 0, 0, 1, 0, 0, 70, 744, 7],
+  ["Joe Flacco", "QB", "IND", 7, 99, 1761, 12, 7, 26, 0, 0, 0, 0],
+  ["Davante Adams", "WR", "LV", 14, 241.3, 0, 0, 0, 0, 0, 85, 1063, 8],
+  ["Brandin Cooks", "WR", "DAL", 10, 69.6, 0, 0, 0, -3, 0, 26, 259, 3],
+  ["Mike Evans", "WR", "TB", 15, 262.6, 0, 0, 0, 0, 0, 81, 1096, 12],
+  ["Jameis Winston", "QB", "CLE", 11, 131.1, 2121, 13, 12, 83, 1, 0, 0, 0],
+  ["Marcus Mariota", "QB", "WAS", 5, 45.9, 364, 4, 0, 93, 1, 0, 0, 0],
+  ["Stefon Diggs", "WR", "HOU", 8, 121.9, 13, 0, 0, 8, 1, 47, 496, 3],
+  ["Jared Goff", "QB", "DET", 18, 333.7, 4942, 38, 15, 63, 0, 1, 7, 1],
+  ["Derrick Henry", "RB", "BAL", 19, 381.4, 0, 0, 0, 2191, 19, 19, 193, 2],
+  ["Austin Hooper", "TE", "NE", 17, 108.6, 0, 0, 0, 0, 0, 45, 476, 3],
+  ["Hunter Henry", "TE", "NE", 16, 145.4, 0, 0, 0, 0, 0, 66, 674, 2],
+  ["Jacoby Brissett", "QB", "NE", 7, 45.2, 826, 2, 1, 62, 0, 0, 0, 0],
+  ["Nick Vannett", "TE", "TEN", 12, 48.5, 0, 0, 0, 0, 0, 17, 135, 3],
+  ["Dak Prescott", "QB", "DAL", 8, 116.5, 1978, 11, 8, 54, 1, 0, 0, 0],
+  ["Deshaun Watson", "QB", "CLE", 7, 76.7, 1148, 5, 3, 148, 1, 0, 0, 0],
+  ["Christian McCaffrey", "RB", "SF", 4, 47.8, 0, 0, 0, 202, 0, 15, 146, 0],
+  ["Alvin Kamara", "RB", "NO", 14, 265.3, 0, 0, 0, 950, 6, 68, 543, 2],
+  ["Chris Godwin", "WR", "TB", 7, 137.8, 0, 0, 0, 2, 0, 50, 576, 5],
+  ["Cooper Kupp", "WR", "LA", 14, 190, 0, 0, 0, 10, 0, 73, 800, 6],
+  ["Patrick Mahomes", "QB", "KC", 19, 348.4, 4607, 31, 13, 389, 4, 1, 2, 0],
+  ["Mo Alie-Cox", "TE", "IND", 12, 32.7, 0, 0, 0, 0, 0, 12, 147, 1],
+  ["Evan Engram", "TE", "JAX", 9, 89.5, 0, 0, 0, 0, 0, 47, 365, 1],
+  ["Samaje Perine", "RB", "KC", 20, 84.9, 0, 0, 0, 100, 1, 29, 339, 1],
+  ["Aaron Jones", "RB", "MIN", 18, 250.6, 0, 0, 0, 1186, 5, 54, 420, 2],
+  ["Matthew Stafford", "QB", "LA", 18, 250.3, 4295, 24, 8, 45, 0, 0, 0, 0],
+  ["George Kittle", "TE", "SF", 15, 236.6, 0, 0, 0, 0, 0, 78, 1106, 8],
+  ["Johnny Mundt", "TE", "MIN", 14, 50, 0, 0, 0, 0, 0, 21, 170, 2],
+  ["Pharaoh Brown", "TE", "SEA", 8, 12.5, 0, 0, 0, 0, 0, 8, 65, 0],
+  ["Saquon Barkley", "RB", "PHI", 20, 455.7, 0, 0, 0, 2504, 18, 46, 353, 2],
+  ["Baker Mayfield", "QB", "TB", 18, 381.5, 4685, 43, 16, 401, 3, 0, 0, 0],
+  ["Sam Darnold", "QB", "MIN", 18, 319.7, 4564, 36, 13, 231, 1, 0, 0, 0],
+  ["Calvin Ridley", "WR", "TEN", 17, 199.2, 0, 0, 0, 55, 1, 64, 1017, 4],
+  ["DJ Moore", "WR", "CHI", 17, 238.1, 0, 0, 0, 75, 0, 98, 966, 6],
+  ["Josh Allen", "QB", "BUF", 19, 438.3, 4367, 32, 6, 636, 14, 0, 0, 0],
+  ["Mike Gesicki", "TE", "CIN", 16, 141.5, 0, 0, 0, 0, 0, 65, 665, 2],
+  ["Ian Thomas", "TE", "CAR", 3, 3.7, 0, 0, 0, 0, 0, 3, 7, 0],
+  ["Dalton Schultz", "TE", "HOU", 19, 132.8, 0, 0, 0, 0, 0, 59, 618, 2],
+  ["Mark Andrews", "TE", "BAL", 19, 203.4, 0, 0, 0, 13, 0, 62, 761, 11],
+  ["Dallas Goedert", "TE", "PHI", 14, 149.4, 0, 0, 0, 13, 0, 59, 711, 3],
+  ["Courtland Sutton", "WR", "DEN", 17, 252.8, 30, 1, 0, 0, 0, 86, 1156, 8],
+  ["T.J. Hockenson", "TE", "MIN", 11, 103.9, 0, 0, 0, 0, 0, 46, 519, 1],
+  ["DK Metcalf", "WR", "SEA", 15, 191.2, 0, 0, 0, 0, 0, 66, 992, 5],
+  ["Kyler Murray", "QB", "ARI", 17, 297.2, 3851, 21, 11, 572, 5, 0, 0, 0],
+  ["Josh Jacobs", "RB", "GB", 18, 314.2, 0, 0, 0, 1410, 16, 39, 382, 1],
+  ["Daniel Jones", "QB", "NYG", 10, 135.3, 2070, 8, 7, 265, 2, 0, 0, 0],
+  ["Deebo Samuel", "WR", "SF", 14, 155.6, 0, 0, 0, 136, 1, 51, 670, 3],
+  ["David Montgomery", "RB", "DET", 15, 225.3, 23, 1, 0, 803, 12, 36, 341, 0],
+  ["Terry McLaurin", "WR", "WAS", 20, 322.5, 0, 0, 0, 2, 0, 96, 1323, 16],
+  ["Jakobi Meyers", "WR", "LV", 15, 218, 0, 0, 0, 23, 0, 87, 1027, 4],
+  ["Tony Pollard", "RB", "TEN", 16, 200.7, 0, 0, 0, 1079, 5, 41, 238, 0],
+  ["Justice Hill", "RB", "BAL", 17, 147.3, 0, 0, 0, 290, 1, 48, 403, 4],
+  ["Travis Homer", "RB", "CHI", 4, 6.4, 0, 0, 0, 23, 0, 3, 11, 0],
+  ["Ty Johnson", "RB", "BUF", 20, 114.5, 0, 0, 0, 307, 1, 22, 318, 4],
+  ["Jarrett Stidham", "QB", "DEN", 2, 0.5, 0, 0, 0, 5, 0, 0, 0, 0],
+  ["Alex Bachman", "WR", "LV", 1, 6.1, 0, 0, 0, 0, 0, 3, 31, 0],
+  ["Tua Tagovailoa", "QB", "MIA", 11, 181.6, 2867, 19, 7, 49, 0, 0, 0, 0],
+  ["Joe Burrow", "QB", "CIN", 17, 372.8, 4918, 43, 9, 201, 2, 0, 0, 0],
+  ["Jerry Jeudy", "WR", "CLE", 17, 240.9, 0, 0, 0, 0, 0, 90, 1229, 4],
+  ["CeeDee Lamb", "WR", "DAL", 15, 263.4, 0, 0, 0, 70, 0, 101, 1194, 6],
+  ["D'Andre Swift", "RB", "CHI", 17, 214.5, 0, 0, 0, 959, 6, 42, 386, 0],
+  ["Justin Jefferson", "WR", "MIN", 18, 328.3, 22, 0, 0, 3, 0, 108, 1591, 10],
+  ["Justin Herbert", "QB", "LAC", 18, 291.1, 4112, 24, 7, 306, 2, 0, 0, 0],
+  ["Tee Higgins", "WR", "CIN", 12, 222.1, 0, 0, 0, 0, 0, 73, 911, 10],
+  ["Brandon Aiyuk", "WR", "SF", 7, 62.4, 0, 0, 0, 0, 0, 25, 374, 0],
+  ["Jordan Love", "QB", "GB", 16, 237.3, 3601, 25, 14, 93, 1, 0, 0, 0],
+  ["J.K. Dobbins", "RB", "LAC", 14, 194.4, 0, 0, 0, 931, 9, 32, 153, 0],
+  ["Jonathan Taylor", "RB", "IND", 14, 246.7, 0, 0, 0, 1431, 11, 18, 136, 1],
+  ["Cole Kmet", "TE", "CHI", 14, 120.4, 0, 0, 0, 0, 0, 47, 474, 4],
+  ["Colby Parkinson", "TE", "LA", 17, 77.6, 0, 0, 0, 0, 0, 34, 316, 2],
+  ["Jalen Hurts", "QB", "PHI", 19, 411.6, 3629, 23, 6, 824, 19, 0, 0, 0],
+  ["Juwan Johnson", "TE", "NO", 15, 122.8, 0, 0, 0, 0, 0, 50, 548, 3],
+  ["Rico Dowdle", "RB", "DAL", 16, 197.8, 0, 0, 0, 1079, 2, 39, 249, 3],
+  ["Cody White", "WR", "SEA", 1, 6.4, 0, 0, 0, 0, 0, 2, 44, 0],
+  ["Jauan Jennings", "WR", "SF", 15, 210.5, 0, 0, 0, 0, 0, 77, 975, 6],
+  ["Charlie Woerner", "TE", "ATL", 8, 11.6, 0, 0, 0, 0, 0, 7, 46, 0],
+  ["Darnell Mooney", "WR", "ATL", 16, 193.2, 0, 0, 0, 0, 0, 64, 992, 5],
+  ["Trevor Lawrence", "QB", "JAX", 10, 145.7, 2045, 11, 7, 119, 3, 0, 0, 0],
+  ["DeVonta Smith", "WR", "PHI", 17, 240.4, 0, 0, 0, 1, 0, 84, 1023, 9],
+  ["Jaylen Waddle", "WR", "MIA", 15, 149.6, 0, 0, 0, 12, 0, 58, 744, 2],
+  ["Mac Jones", "QB", "JAX", 10, 96.1, 1672, 8, 8, 92, 1, 0, 0, 0],
+  ["Najee Harris", "RB", "PIT", 18, 213.4, 0, 0, 0, 1060, 6, 39, 324, 0],
+  ["Quintin Morris", "TE", "BUF", 5, 14.6, 0, 0, 0, 0, 0, 5, 36, 1],
+  ["Amon-Ra St. Brown", "WR", "DET", 18, 337.9, 7, 1, 0, 6, 0, 123, 1400, 12],
+  ["Kyle Pitts", "TE", "ATL", 17, 131.2, 0, 0, 0, 0, 0, 47, 602, 4],
+  ["Ja'Marr Chase", "WR", "CIN", 17, 403, 0, 0, 0, 32, 0, 127, 1708, 17],
+  ["Brevin Jordan", "TE", "HOU", 2, 2.7, 0, 0, 0, 0, 0, 2, 7, 0],
+  ["Nico Collins", "WR", "HOU", 14, 248.9, 0, 0, 0, 0, 0, 80, 1209, 8],
+  ["Rashod Bateman", "WR", "BAL", 18, 201.6, 0, 0, 0, 0, 0, 51, 846, 11],
+  ["Davis Mills", "QB", "HOU", 4, 9.6, 212, 0, 0, 11, 0, 0, 0, 0],
+  ["Javonte Williams", "RB", "DEN", 18, 164.2, 0, 0, 0, 542, 4, 54, 360, 0],
+  ["Justin Fields", "QB", "PIT", 11, 119.1, 1106, 5, 1, 289, 5, 0, 0, 0],
+  ["Chuba Hubbard", "RB", "CAR", 15, 241.6, 0, 0, 0, 1195, 10, 43, 171, 1],
+  ["Pat Freiermuth", "TE", "PIT", 18, 172.8, 0, 0, 0, 0, 0, 68, 668, 7],
+  ["Kylen Granson", "TE", "IND", 14, 32.2, 0, 0, 0, 0, 0, 14, 182, 0],
+  ["Rhamondre Stevenson", "RB", "NE", 15, 175.9, 0, 0, 0, 801, 7, 33, 168, 1],
+  ["Simi Fehoko", "WR", "LAC", 5, 16.6, 0, 0, 0, 0, 0, 6, 106, 0],
+  ["Luke Farrell", "TE", "JAX", 10, 18.7, 0, 0, 0, 0, 0, 12, 67, 0],
+  ["Jake Ferguson", "TE", "DAL", 14, 104.4, 0, 0, 0, 0, 0, 59, 494, 0],
+  ["Cade Otton", "TE", "TB", 15, 145.8, 0, 0, 0, -4, 0, 61, 632, 4],
+  ["Drake London", "WR", "ATL", 17, 280.8, 0, 0, 0, -3, 0, 100, 1271, 9],
+  ["Jahan Dotson", "WR", "PHI", 16, 56.2, 0, 0, 0, 13, 0, 22, 269, 1],
+  ["Romeo Doubs", "WR", "GB", 14, 135.4, 0, 0, 0, 0, 0, 48, 614, 4],
+  ["Wan'Dale Robinson", "WR", "NYG", 17, 182.7, 0, 0, 0, 18, 0, 93, 699, 3],
+  ["Dameon Pierce", "RB", "HOU", 11, 46, 0, 0, 0, 318, 2, 2, 2, 0],
+  ["Trey McBride", "TE", "ARI", 16, 243.8, 0, 0, 0, 2, 1, 111, 1146, 2],
+  ["Isaiah Likely", "TE", "BAL", 17, 149.3, 0, 0, 0, 0, 0, 49, 603, 7],
+  ["Tyler Allgeier", "RB", "ATL", 17, 106.2, 0, 0, 0, 644, 3, 13, 88, 0],
+  ["Khalil Shakir", "WR", "BUF", 18, 217.9, 0, 0, 0, 4, 0, 94, 995, 4],
+  ["Rachaad White", "RB", "TB", 16, 203.1, 0, 0, 0, 614, 3, 53, 407, 6],
+  ["George Pickens", "WR", "PIT", 15, 184.1, 0, 0, 0, -6, 0, 64, 987, 4],
+  ["James Cook", "RB", "BUF", 19, 324.3, 0, 0, 0, 1281, 19, 38, 322, 2],
+  ["Chris Olave", "WR", "NO", 8, 76.7, 0, 0, 0, 7, 0, 32, 400, 1],
+  ["Garrett Wilson", "WR", "NYJ", 17, 251.9, 0, 0, 0, 5, 0, 101, 1104, 7],
+  ["Jameson Williams", "WR", "DET", 16, 225.2, 0, 0, 1, 122, 2, 59, 1020, 7],
+  ["Kyren Williams", "RB", "LA", 18, 299.8, 0, 0, 0, 1481, 14, 38, 197, 3],
+  ["Kenneth Walker", "RB", "SEA", 11, 181.2, 0, 0, 0, 573, 7, 46, 299, 1],
+  ["Brian Robinson", "RB", "WAS", 17, 190.9, 0, 0, 0, 928, 10, 24, 181, 0],
+  ["Breece Hall", "RB", "NYJ", 16, 240.9, 0, 0, 0, 876, 5, 57, 483, 3],
+  ["Malik Willis", "QB", "GB", 6, 51.8, 550, 3, 0, 138, 1, 0, 0, 0],
+  ["Christian Watson", "WR", "GB", 14, 105.3, 0, 0, 0, 23, 0, 29, 620, 2],
+  ["Greg Dulcich", "TE", "DEN", 3, 7.8, 0, 0, 0, 0, 0, 5, 28, 0],
+  ["Jalen Nailor", "WR", "MIN", 16, 111.3, 0, 0, 0, -4, 0, 31, 447, 6],
+  ["Brock Purdy", "QB", "SF", 15, 266.9, 3864, 20, 12, 323, 5, 0, 0, 0],
+  ["Tyler Goodson", "RB", "IND", 9, 44.4, 0, 0, 0, 153, 1, 11, 61, 1],
+  ["Jaylen Warren", "RB", "PIT", 16, 130.6, 0, 0, 0, 517, 1, 42, 329, 0],
+  ["Tay Martin", "WR", "TEN", 1, 11.9, 0, 0, 0, 0, 0, 1, 49, 1],
+  ["Rashid Shaheed", "WR", "NO", 6, 81.8, 0, 0, 0, 29, 0, 20, 349, 3],
+  ["KaVontae Turpin", "WR", "DAL", 15, 104.2, 0, 0, 0, 92, 0, 31, 420, 2],
+  ["Jahmyr Gibbs", "RB", "DET", 18, 390.4, 0, 0, 0, 1517, 18, 58, 567, 3],
+  ["Chase Brown", "RB", "CIN", 16, 255, 0, 0, 0, 990, 7, 54, 360, 4],
+  ["Bryce Young", "QB", "CAR", 14, 195, 2403, 15, 9, 249, 6, 0, 0, 0],
+  ["Anthony Richardson", "QB", "IND", 11, 163.4, 1814, 8, 12, 499, 6, 1, -1, 0],
+  ["Darnell Washington", "TE", "PIT", 14, 46.9, 0, 0, 0, 0, 0, 20, 209, 1],
+  ["Brenton Strange", "TE", "JAX", 14, 91.1, 0, 0, 0, 0, 0, 40, 411, 2],
+  ["Michael Mayer", "TE", "LV", 11, 36.6, 0, 0, 0, 0, 0, 21, 156, 0],
+  ["Tucker Kraft", "TE", "GB", 18, 171.9, 0, 0, 0, 16, 0, 55, 733, 7],
+  ["Dontayvion Wicks", "WR", "GB", 18, 116.4, 0, 0, 0, 0, 0, 41, 454, 5],
+  ["Parker Washington", "WR", "JAX", 13, 97, 0, 0, 0, 0, 0, 32, 390, 3],
+  ["Jaxon Smith-Njigba", "WR", "SEA", 17, 253, 35, 0, 0, 26, 0, 100, 1130, 6],
+  ["Puka Nacua", "WR", "LA", 13, 232.4, 0, 0, 0, 53, 1, 90, 1131, 3],
+  ["Marvin Mims", "WR", "DEN", 17, 132.8, 0, 0, 0, 43, 0, 41, 515, 6],
+  ["Josh Downs", "WR", "IND", 14, 182.2, 0, 0, 0, -1, 0, 72, 803, 5],
+  ["DeMario Douglas", "WR", "NE", 16, 147.7, 0, 0, 0, 16, 0, 66, 621, 3],
+  ["Kayshon Boutte", "WR", "NE", 15, 121.9, 0, 0, 0, 0, 0, 43, 589, 3],
+  ["Sean Tucker", "RB", "TB", 11, 68.7, 0, 0, 0, 308, 2, 9, 109, 1],
+  ["Tyjae Spears", "RB", "TEN", 12, 113.6, 0, 0, 0, 312, 4, 30, 224, 1],
+  ["Bijan Robinson", "RB", "ATL", 17, 341.7, 0, 0, 0, 1456, 14, 61, 431, 1],
+  ["Keaton Mitchell", "RB", "BAL", 2, 6.8, 0, 0, 0, 30, 0, 1, 28, 0],
+  ["Aaron Rodgers", "QB", "NYJ", 17, 256.6, 3897, 28, 11, 107, 0, 0, 0, 0],
+  ["Quentin Johnston", "WR", "LAC", 16, 174.7, 0, 0, 0, 6, 0, 55, 711, 8],
+  ["Jordan Addison", "WR", "MIN", 16, 218.4, 0, 0, 0, 20, 1, 66, 904, 9],
+  ["Kendre Miller", "RB", "NO", 6, 29.1, 0, 0, 0, 148, 1, 5, 33, 0],
+  ["C.J. Stroud", "QB", "HOU", 19, 251.9, 4254, 21, 13, 317, 0, 0, 0, 0],
+  ["Zay Flowers", "WR", "BAL", 17, 209.5, 0, 0, 0, 56, 0, 74, 1059, 4]
+];
+
+// ../supabase/functions/_shared/miniGames.ts
+var TICKS_PER_SECOND = 30;
+var GAMES = {
+  climb: {
+    title: "The Climb Dash",
+    blurb: `Climb the mountain while the crew tumbles down at you. Dodge Chrome, Connor's '57 and the rest. Grab "OIP!" for a bonus.`,
+    style: "skill",
+    unit: "pts"
+  },
+  fieldgoal: {
+    title: "Field Goal Gauntlet",
+    blurb: "Michael holds. Tap to aim, tap for power, mind the wind. It starts at 20 yards and backs up 5 every make. One miss ends it.",
+    style: "skill",
+    unit: "yds"
+  },
+  penalty: {
+    title: "Pink Dress Penalty Kicks",
+    blurb: "Ten penalty kicks at Chrome in the pink dress. Pick a corner, time your power, and hope he guesses wrong.",
+    style: "turns",
+    unit: "goals"
+  },
+  price: {
+    title: "Price Is Right: Fantasy Edition",
+    blurb: `Guess each player's ${TRIVIA_SEASON} PPR fantasy points. Closest without going over scores the most. 20 seconds a guess.`,
+    style: "turns",
+    unit: "pts"
+  },
+  nameplayer: {
+    title: "Name That Player",
+    blurb: `A mystery ${TRIVIA_SEASON} stat line and four names. Pick the right one fast; quicker answers score more.`,
+    style: "turns",
+    unit: "pts"
+  }
+};
+var GAME_KINDS = Object.keys(GAMES);
+var isGameKind = (value) => typeof value === "string" && value in GAMES;
+function nextRandom(state) {
+  let t = state.r = state.r + 1831565813 | 0;
+  t = Math.imul(t ^ t >>> 15, t | 1);
+  t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+}
+function mixSeed(seed, salt) {
+  let h = seed ^ Math.imul(salt + 1, 2654435761) | 0;
+  h = Math.imul(h ^ h >>> 16, 2246822507);
+  h = Math.imul(h ^ h >>> 13, 3266489909);
+  return h ^ h >>> 16 | 0;
+}
+var randomFrom = (seed, salt) => {
+  const state = { r: mixSeed(seed, salt) };
+  return () => nextRandom(state);
+};
+function swing(ticks, period) {
+  const phase = ticks % period / period;
+  return phase < 0.5 ? -1 + 4 * phase : 3 - 4 * phase;
+}
+var clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
+var CLIMB = {
+  lanes: 3,
+  /** The climber's box, in a 0-100 tall screen. */
+  playerTop: 80,
+  playerBottom: 92,
+  objectSize: 10,
+  oipBonus: 25,
+  maxTicks: TICKS_PER_SECOND * 600
+};
+var climbSpeed = (tick) => Math.min(2.4, 0.85 + tick * 28e-5);
+function climbStart(seed) {
+  return { r: seed | 0, tick: 0, lane: 1, height: 0, oips: 0, alive: true, hitBy: null, objects: [], nextRow: 20, nextId: 1 };
+}
+function spawnClimbRow(s) {
+  const blockTwo = nextRandom(s) < Math.min(0.7, 0.15 + s.tick / 4e3);
+  const open = Math.floor(nextRandom(s) * CLIMB.lanes);
+  let blocked = [0, 1, 2].filter((lane) => lane !== open);
+  if (!blockTwo)
+    blocked = [blocked[Math.floor(nextRandom(s) * 2)]];
+  for (const lane of blocked) {
+    const roll = nextRandom(s);
+    const kind = roll < 0.12 ? "car" : roll < 0.3 ? "chrome" : "guy";
+    const art = kind === "car" ? 6 : kind === "chrome" ? 5 : Math.floor(nextRandom(s) * 10);
+    s.objects.push({ id: s.nextId++, kind, lane, y: -CLIMB.objectSize, art });
+  }
+  if (nextRandom(s) < 0.22) {
+    const free = [0, 1, 2].filter((lane) => !blocked.includes(lane));
+    s.objects.push({ id: s.nextId++, kind: "oip", lane: free[Math.floor(nextRandom(s) * free.length)], y: -CLIMB.objectSize, art: 8 });
+  }
+  const v = climbSpeed(s.tick);
+  const gap = CLIMB.objectSize + (CLIMB.playerBottom - CLIMB.playerTop) + 4;
+  s.nextRow = s.tick + Math.max(Math.ceil(gap / v), Math.floor(30 - s.tick / 200));
+}
+function climbStep(s, lane) {
+  if (!s.alive)
+    return s;
+  if (lane != null)
+    s.lane = clamp(Math.trunc(lane), 0, CLIMB.lanes - 1);
+  if (s.tick >= s.nextRow)
+    spawnClimbRow(s);
+  const v = climbSpeed(s.tick);
+  const kept = [];
+  for (const o of s.objects) {
+    o.y += v;
+    const touching = o.lane === s.lane && o.y + CLIMB.objectSize > CLIMB.playerTop && o.y < CLIMB.playerBottom;
+    if (touching && o.kind === "oip") {
+      s.oips += 1;
+      continue;
+    }
+    if (touching && s.alive) {
+      s.alive = false;
+      s.hitBy = o.kind;
+    }
+    if (o.y < 110)
+      kept.push(o);
+  }
+  s.objects = kept;
+  s.height += v * 0.1;
+  s.tick += 1;
+  if (s.tick >= CLIMB.maxTicks)
+    s.alive = false;
+  return s;
+}
+var climbScore = (s) => Math.floor(s.height) + s.oips * CLIMB.oipBonus;
+var FIELD_GOAL = {
+  firstDistance: 20,
+  step: 5,
+  flightTicks: 50,
+  /** A meter left alone this long kicks by itself. */
+  idleTicks: TICKS_PER_SECOND * 15,
+  maxKicks: 20
+};
+var fieldGoalDistance = (kick) => FIELD_GOAL.firstDistance + FIELD_GOAL.step * kick;
+var aimPeriod = (kick) => Math.max(24, 60 - kick * 4);
+var powerPeriod = (kick) => Math.max(30, 56 - kick * 2);
+var powerAt = (ticks, kick) => (swing(ticks, powerPeriod(kick)) + 1) / 2;
+var aimAt = (ticks, kick) => swing(ticks, aimPeriod(kick));
+var powerNeeded = (distance) => distance / 70;
+var fieldGoalTolerance = (distance) => 0.5 * (25 / distance);
+var windEffect = (wind, distance) => wind * 0.5 * (distance / 40);
+function newKick(s) {
+  s.distance = fieldGoalDistance(s.kick);
+  s.wind = Math.round((nextRandom(s) * 2 - 1) * Math.min(1, 0.25 + s.kick * 0.08) * 100) / 100;
+  s.phase = "aim";
+  s.phaseStart = s.tick;
+}
+function fieldGoalStart(seed) {
+  const s = { r: seed | 0, tick: 0, phase: "aim", phaseStart: 0, kick: 0, distance: 0, wind: 0, aim: 0, kicks: [] };
+  newKick(s);
+  return s;
+}
+function fieldGoalStep(s, tap = false) {
+  if (s.phase === "over")
+    return s;
+  const since = s.tick - s.phaseStart;
+  if (s.phase === "aim" && (tap || since >= FIELD_GOAL.idleTicks)) {
+    s.aim = aimAt(since, s.kick);
+    s.phase = "power";
+    s.phaseStart = s.tick + 1;
+  } else if (s.phase === "power" && (tap || since >= FIELD_GOAL.idleTicks)) {
+    const power = powerAt(since, s.kick);
+    const hook = power > 0.96 ? 0.12 : 0;
+    const drift = s.aim + windEffect(s.wind, s.distance) + hook;
+    const result = power < powerNeeded(s.distance) ? "short" : Math.abs(drift) <= fieldGoalTolerance(s.distance) ? "good" : drift < 0 ? "wide left" : "wide right";
+    s.kicks.push({ distance: s.distance, wind: s.wind, aim: s.aim, power, result, drift: clamp(drift, -1.5, 1.5) });
+    s.phase = "flight";
+    s.phaseStart = s.tick + 1;
+  } else if (s.phase === "flight" && since >= FIELD_GOAL.flightTicks) {
+    const last = s.kicks[s.kicks.length - 1];
+    if (last.result !== "good" || s.kicks.length >= FIELD_GOAL.maxKicks) {
+      s.phase = "over";
+    } else {
+      s.kick += 1;
+      newKick(s);
+    }
+  }
+  s.tick += 1;
+  return s;
+}
+var fieldGoalScore = (s) => s.kicks.filter((k) => k.result === "good").reduce((best, k) => Math.max(best, k.distance), 0);
+var MAX_INPUTS = 5e3;
+function validInputs(value) {
+  if (!Array.isArray(value) || value.length > MAX_INPUTS)
+    return null;
+  const inputs = [];
+  let last = -1;
+  for (const item of value) {
+    if (!Array.isArray(item) || item.length !== 2)
+      return null;
+    const [tick, input] = item;
+    if (!Number.isInteger(tick) || !Number.isInteger(input) || tick < last || tick < 0)
+      return null;
+    inputs.push([tick, input]);
+    last = tick;
+  }
+  return inputs;
+}
+function replaySkillGame(game, seed, inputs) {
+  let i = 0;
+  const inputAt = (tick) => {
+    let value = null;
+    while (i < inputs.length && inputs[i][0] <= tick) {
+      if (inputs[i][0] === tick)
+        value = inputs[i][1];
+      i += 1;
+    }
+    return value;
+  };
+  if (game === "climb") {
+    const s = climbStart(seed);
+    while (s.alive)
+      climbStep(s, inputAt(s.tick));
+    const score = climbScore(s);
+    return { score, ticks: s.tick, detail: `${Math.floor(s.height)} ft, ${s.oips} OIP${s.oips === 1 ? "" : "s"}` };
+  }
+  if (game === "fieldgoal") {
+    const s = fieldGoalStart(seed);
+    while (s.phase !== "over")
+      fieldGoalStep(s, inputAt(s.tick) != null);
+    const made = s.kicks.filter((k) => k.result === "good").length;
+    return { score: fieldGoalScore(s), ticks: s.tick, detail: `${made} made` };
+  }
+  throw new Error(`${game} is not a skill game`);
+}
+var TURNS = {
+  penalty: { count: 10, seconds: 30 },
+  price: { count: 8, seconds: 20 },
+  nameplayer: { count: 10, seconds: 12 }
+};
+var TURN_GRACE_SECONDS = 3;
+var turnCount = (game) => game in TURNS ? TURNS[game].count : 0;
+var turnSeconds = (game) => game in TURNS ? TURNS[game].seconds : 0;
+var formatNumber = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+function statLine(row) {
+  const [, pos, , , , passYds, passTd, ints, rushYds, rushTd, rec, recYds, recTd] = row;
+  const parts = [];
+  if (pos === "QB")
+    parts.push(`${formatNumber(passYds)} pass yds`, `${passTd} pass TD`, `${ints} INT`);
+  if (pos === "QB" || pos === "RB" || rushYds >= 100)
+    parts.push(`${formatNumber(rushYds)} rush yds`, `${rushTd} rush TD`);
+  if (pos !== "QB")
+    parts.push(`${rec} rec`, `${formatNumber(recYds)} rec yds`, `${recTd} rec TD`);
+  return parts.join(", ");
+}
+var priceRows = () => TRIVIA_ROWS.map((row, index) => ({ row, index })).filter(({ row }) => row[3] >= 8 && row[4] >= 60);
+var nameRows = () => TRIVIA_ROWS.map((row, index) => ({ row, index })).filter(({ row }) => row[3] >= 6 && row[4] >= 40);
+function pickSome(list, count, random) {
+  const copy = list.slice();
+  const out = [];
+  while (out.length < count && copy.length)
+    out.push(copy.splice(Math.floor(random() * copy.length), 1)[0]);
+  return out;
+}
+function turnFor(game, seed, index) {
+  const of = turnCount(game);
+  const seconds = turnSeconds(game);
+  if (game === "penalty")
+    return { kind: "penalty", index, of, seconds };
+  if (game === "price") {
+    const { row } = pickSome(priceRows(), of, randomFrom(seed, 1))[index];
+    return { kind: "price", index, of, seconds, name: row[0], position: row[1], team: row[2], games: row[3], season: TRIVIA_SEASON };
+  }
+  if (game === "nameplayer") {
+    const { row, index: rowIndex } = pickSome(nameRows(), of, randomFrom(seed, 1))[index];
+    const random = randomFrom(seed, 100 + index);
+    const others = pickSome(nameRows().filter((r) => r.row[1] === row[1] && r.index !== rowIndex), 3, random).map((r) => r.row[0]);
+    const choices = others.slice();
+    choices.splice(Math.floor(random() * 4), 0, row[0]);
+    return { kind: "nameplayer", index, of, seconds, position: row[1], games: row[3], season: TRIVIA_SEASON, clue: statLine(row), choices };
+  }
+  throw new Error(`${game} is not a turn game`);
+}
+var penaltyColumn = (zone) => zone % 3;
+var penaltyHigh = (zone) => zone < 3;
+function gradeTurn(game, seed, index, answer, seconds, history = []) {
+  const limit = turnSeconds(game);
+  const late = seconds > limit + TURN_GRACE_SECONDS;
+  if (game === "penalty") {
+    const { zone, power } = answer != null ? answer : {};
+    const z = Number.isInteger(zone) && zone >= 0 && zone < 6 ? zone : 4;
+    const p = typeof power === "number" && Number.isFinite(power) ? clamp(power, 0, 1) : 0;
+    const random = randomFrom(seed, 200 + index);
+    const lastColumns = history.slice(-2).map(penaltyColumn);
+    let column = Math.floor(random() * 3);
+    if (lastColumns.length === 2 && lastColumns[0] === lastColumns[1] && random() < 0.5)
+      column = lastColumns[0];
+    const high = random() < 0.4;
+    const keeper = { column, high };
+    let outcome;
+    if (late)
+      outcome = "saved";
+    else if (penaltyHigh(z) && p > 0.92)
+      outcome = "over the bar";
+    else if (penaltyColumn(z) !== 1 && p > 0.97)
+      outcome = "wide";
+    else if (column === penaltyColumn(z) && (p < 0.35 || high === penaltyHigh(z)))
+      outcome = "saved";
+    else if (penaltyColumn(z) === 1 && p < 0.35)
+      outcome = "saved";
+    else
+      outcome = "goal";
+    const message = late ? "Too slow, the ref blew the whistle." : outcome === "goal" ? "GOAL!" : outcome === "saved" ? "Saved by the dress!" : `Missed, ${outcome}.`;
+    return { points: outcome === "goal" ? 1 : 0, message, late, keeper, outcome };
+  }
+  if (game === "price") {
+    const { row } = pickSome(priceRows(), turnCount(game), randomFrom(seed, 1))[index];
+    const actual = row[4];
+    const guess = typeof answer === "number" && Number.isFinite(answer) ? answer : -1;
+    let points = 0;
+    if (!late && guess >= 0 && guess <= actual) {
+      points = Math.round(100 * Math.max(0, 1 - (actual - guess) / actual * 2));
+      if (actual - guess <= 2)
+        points += 25;
+    }
+    const message = late ? `Too slow. Actual: ${actual} pts.` : guess > actual ? `Over! Actual: ${actual} pts.` : `Actual: ${actual} pts. +${points}`;
+    return { points, message, late, answer: actual };
+  }
+  if (game === "nameplayer") {
+    const turn = turnFor(game, seed, index);
+    const { row } = pickSome(nameRows(), turnCount(game), randomFrom(seed, 1))[index];
+    const right = turn.choices.indexOf(row[0]);
+    const correct = !late && answer === right;
+    const points = correct ? 100 + Math.round(50 * clamp(1 - seconds / limit, 0, 1)) : 0;
+    const message = late ? `Too slow. It was ${row[0]}.` : correct ? `Yes, ${row[0]}! +${points}` : `Nope, it was ${row[0]}.`;
+    return { points, message, late, answer: row[0] };
+  }
+  throw new Error(`${game} is not a turn game`);
+}
+
+// ../supabase/functions/_shared/handlers.ts
 var ok = (body) => ({ status: 200, body });
 var bad = (message) => ({ status: 400, body: message });
 var unauthorized = () => ({ status: 401 });
@@ -2560,6 +3115,7 @@ async function startNewSeason(ctx, leagueId) {
     league.beerBitchTeamId = null;
     league.tieBreaker = null;
     league.boardReview = null;
+    league.miniGames = [];
     for (const team of league.teams) {
       if (!team)
         continue;
@@ -3003,7 +3559,7 @@ var BUDGET_ROSTER_KEYS = {
   dst: "def",
   bench: "bench"
 };
-var clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+var clamp2 = (value, min, max) => Math.max(min, Math.min(max, value));
 async function updateProfile(ctx, pathUserId, data) {
   if (pathUserId !== ctx.userId)
     return forbidden();
@@ -3050,7 +3606,7 @@ async function updateProfile(ctx, pathUserId, data) {
     for (const [key, value] of entries(data.budgetPlan)) {
       if (blank(key))
         continue;
-      plan[key.trim().toUpperCase()] = clamp(int(value), 0, 200);
+      plan[key.trim().toUpperCase()] = clamp2(int(value), 0, 200);
     }
     profile.budgetPlan = plan;
   }
@@ -3059,7 +3615,7 @@ async function updateProfile(ctx, pathUserId, data) {
     for (const [key, value] of entries(data.budgetRosterSettings)) {
       const canonical = BUDGET_ROSTER_KEYS[key.trim().toLowerCase()];
       if (canonical)
-        settings[canonical] = clamp(int(value), 0, 30);
+        settings[canonical] = clamp2(int(value), 0, 30);
     }
     profile.budgetRosterSettings = settings;
   }
@@ -3205,6 +3761,211 @@ async function offlineCreate(ctx, data) {
     await archiveDraft(ctx, league);
   return ok({ id: league.id, name: league.name, openTeams: openTeamsOf(league) });
 }
+var MAX_MINI_GAMES = 12;
+var MAX_PRIZE = 100;
+var inLobby = (league) => ["", "created", "lobby"].includes(str(league.status).toLowerCase());
+var findChallenge = (league, id) => {
+  var _a, _b;
+  return (_b = ((_a = league.miniGames) != null ? _a : []).find((c) => c.id === id)) != null ? _b : null;
+};
+var newSeed = () => Math.floor(Math.random() * 2 ** 31);
+async function createMiniGame(ctx, leagueId, data) {
+  const game = str(data.game);
+  const prize = int(data.prize);
+  if (!isGameKind(game))
+    return bad("Pick one of the games.");
+  if (prize < 1 || prize > MAX_PRIZE)
+    return bad(`The prize has to be between $1 and $${MAX_PRIZE}.`);
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    var _a;
+    if (!isCommish(league, ctx.userId))
+      return unauthorized();
+    if (!inLobby(league))
+      return bad("Lobby games can only be set up before the draft starts.");
+    league.miniGames = (_a = league.miniGames) != null ? _a : [];
+    if (league.miniGames.length >= MAX_MINI_GAMES)
+      return bad("That is plenty of games. Remove one first.");
+    league.miniGames.push({ id: ctx.newId(), game, prize, createdAt: ctx.now().toISOString(), attempts: {}, awardedTo: null });
+    return null;
+  });
+  return done(result, (u) => leagueBody(ctx, u));
+}
+async function removeMiniGame(ctx, leagueId, data) {
+  const id = str(data.challengeId);
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    var _a;
+    if (!isCommish(league, ctx.userId))
+      return unauthorized();
+    if (!findChallenge(league, id))
+      return notFound("That game is gone.");
+    league.miniGames = ((_a = league.miniGames) != null ? _a : []).filter((c) => c.id !== id);
+    return null;
+  });
+  return done(result, (u) => leagueBody(ctx, u));
+}
+async function resetMiniGame(ctx, leagueId, data) {
+  const id = str(data.challengeId);
+  const userId = str(data.userId);
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (!isCommish(league, ctx.userId))
+      return unauthorized();
+    const challenge = findChallenge(league, id);
+    if (!challenge)
+      return notFound("That game is gone.");
+    if (challenge.awardedTo)
+      return bad("The prize for this game was already awarded.");
+    delete challenge.attempts[userId];
+    return null;
+  });
+  return done(result, (u) => leagueBody(ctx, u));
+}
+var secondsSince = (ctx, iso) => (ctx.now().getTime() - Date.parse(str(iso))) / 1e3;
+function playBody(game, attempt, ctx) {
+  var _a, _b, _c;
+  const base = { game, finished: !!attempt.finishedAt, score: attempt.score, points: (_a = attempt.points) != null ? _a : [] };
+  if (attempt.finishedAt)
+    return base;
+  if (GAMES[game].style === "skill")
+    return __spreadProps(__spreadValues({}, base), { seed: attempt.seed });
+  const turn = turnFor(game, (_b = attempt.seed) != null ? _b : 0, (_c = attempt.turn) != null ? _c : 0);
+  return __spreadProps(__spreadValues({}, base), { turn, elapsed: Math.max(0, secondsSince(ctx, attempt.servedAt)) });
+}
+async function startMiniGame(ctx, leagueId, data) {
+  const id = str(data.challengeId);
+  let body = null;
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (!league.members.includes(ctx.userId))
+      return forbidden();
+    const challenge = findChallenge(league, id);
+    if (!challenge || !isGameKind(challenge.game))
+      return notFound("That game is gone.");
+    const game = challenge.game;
+    const existing = challenge.attempts[ctx.userId];
+    if (existing) {
+      if (existing.finishedAt || GAMES[game].style === "turns") {
+        if (!existing.finishedAt && !existing.servedAt)
+          existing.servedAt = ctx.now().toISOString();
+        body = playBody(game, existing, ctx);
+        return null;
+      }
+      return bad("You already used your try. The commissioner can give you another.");
+    }
+    if (challenge.awardedTo)
+      return bad("This game is over; the prize was awarded.");
+    if (!inLobby(league))
+      return bad("The draft has started, so lobby games are closed.");
+    const now = ctx.now().toISOString();
+    const attempt = { startedAt: now, finishedAt: null, score: null, detail: null, seed: newSeed() };
+    if (GAMES[game].style === "turns")
+      Object.assign(attempt, { turn: 0, servedAt: now, points: [], history: [] });
+    challenge.attempts[ctx.userId] = attempt;
+    body = playBody(game, attempt, ctx);
+    return null;
+  });
+  return done(result, () => body);
+}
+async function playMiniGameTurn(ctx, leagueId, data) {
+  const id = str(data.challengeId);
+  const index = int(data.index);
+  let body = null;
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    var _a, _b, _c, _d, _e;
+    const challenge = findChallenge(league, id);
+    if (!challenge || !isGameKind(challenge.game))
+      return notFound("That game is gone.");
+    const game = challenge.game;
+    const attempt = challenge.attempts[ctx.userId];
+    if (!attempt)
+      return bad("Start the game first.");
+    if (GAMES[game].style !== "turns")
+      return bad("That game is not played in turns.");
+    if (attempt.finishedAt)
+      return bad("You already finished this game.");
+    if (index !== attempt.turn || !attempt.servedAt)
+      return conflict("That turn was already played.");
+    const seconds = secondsSince(ctx, attempt.servedAt);
+    const graded = gradeTurn(game, (_a = attempt.seed) != null ? _a : 0, index, data.answer, seconds, (_b = attempt.history) != null ? _b : []);
+    attempt.points = [...(_c = attempt.points) != null ? _c : [], graded.points];
+    if (game === "penalty")
+      attempt.history = [...(_d = attempt.history) != null ? _d : [], int((_e = data.answer) == null ? void 0 : _e.zone)];
+    attempt.turn = index + 1;
+    attempt.servedAt = null;
+    const total = attempt.points.reduce((sum, p) => sum + p, 0);
+    attempt.score = total;
+    if (attempt.turn >= turnCount(game)) {
+      attempt.finishedAt = ctx.now().toISOString();
+      attempt.detail = game === "penalty" ? `${total} of ${turnCount(game)}` : `${attempt.points.filter((p) => p > 0).length} of ${turnCount(game)} scored`;
+    }
+    body = { result: graded, game, finished: !!attempt.finishedAt, score: attempt.score, points: attempt.points };
+    return null;
+  });
+  return done(result, () => body);
+}
+async function finishMiniGame(ctx, leagueId, data) {
+  const id = str(data.challengeId);
+  const inputs = validInputs(data.inputs);
+  if (!inputs)
+    return bad("That run could not be read.");
+  let body = null;
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    var _a;
+    const challenge = findChallenge(league, id);
+    if (!challenge || !isGameKind(challenge.game))
+      return notFound("That game is gone.");
+    const attempt = challenge.attempts[ctx.userId];
+    if (!attempt)
+      return bad("Start the game first.");
+    if (GAMES[challenge.game].style !== "skill")
+      return bad("That game is played in turns.");
+    if (attempt.finishedAt)
+      return bad("You already finished this game.");
+    const replay = replaySkillGame(challenge.game, (_a = attempt.seed) != null ? _a : 0, inputs);
+    const minimumSeconds = replay.ticks / TICKS_PER_SECOND * 0.9 - 3;
+    if (secondsSince(ctx, attempt.startedAt) < minimumSeconds)
+      return bad("That run finished faster than the clock allows.");
+    attempt.finishedAt = ctx.now().toISOString();
+    attempt.score = replay.score;
+    attempt.detail = replay.detail;
+    body = { game: challenge.game, finished: true, score: replay.score, detail: replay.detail };
+    return null;
+  });
+  return done(result, () => body);
+}
+async function awardMiniGame(ctx, leagueId, data) {
+  const id = str(data.challengeId);
+  const userId = str(data.userId);
+  let notice = null;
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    var _a;
+    if (!isCommish(league, ctx.userId))
+      return unauthorized();
+    if (isCompleted(league))
+      return bad("The draft is over.");
+    const challenge = findChallenge(league, id);
+    if (!challenge)
+      return notFound("That game is gone.");
+    if (challenge.awardedTo)
+      return bad("The prize for this game was already awarded.");
+    if (((_a = challenge.attempts[userId]) == null ? void 0 : _a.score) == null)
+      return bad("Only someone who played can win the prize.");
+    const team = league.teams.find((t) => (t == null ? void 0 : t.ownerId) === userId);
+    if (!team)
+      return bad("That member has no team yet.");
+    const oldBudget = team.budget;
+    team.budget += challenge.prize;
+    challenge.awardedTo = userId;
+    notice = { leagueId, adminId: ctx.userId, teamId: team.id, teamName: team.name, oldBudget, newBudget: team.budget, sentAt: ctx.now().toISOString() };
+    return null;
+  });
+  if (!isRes(result) && result !== "conflict" && notice) {
+    try {
+      await ctx.broadcaster.send(leagueId, "budgetAdjustmentNotice", notice);
+    } catch (error) {
+      ctx.log.warn(`Budget adjustment notice failed for league ${leagueId}.`, error);
+    }
+  }
+  return done(result, (u) => leagueBody(ctx, u));
+}
 var LEAGUE_POSTS = {
   connect: (ctx, id) => setPresence(ctx, id, "active", false),
   disconnect: (ctx, id) => setPresence(ctx, id, "offline", false),
@@ -3244,7 +4005,14 @@ var LEAGUE_POSTS = {
   "offline-copy": (ctx, id) => offlineCopy(ctx, id),
   "offline-restore": offlineRestore,
   "reassign-team": reassignTeam,
-  "claim-team": claimTeam
+  "claim-team": claimTeam,
+  "minigame/create": createMiniGame,
+  "minigame/remove": removeMiniGame,
+  "minigame/reset": resetMiniGame,
+  "minigame/start": startMiniGame,
+  "minigame/turn": playMiniGameTurn,
+  "minigame/finish": finishMiniGame,
+  "minigame/award": awardMiniGame
 };
 async function handle(ctx, method, path, query, body) {
   const data = body && typeof body === "object" && !Array.isArray(body) ? body : {};

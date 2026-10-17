@@ -1550,3 +1550,151 @@ test('commissioner can hand a team to a player rejoining from another phone, sea
   // The new phone can keep bidding for the team.
   assert.equal((await world.call('bob2', 'POST', `leagues/${leagueId}/bid`, { amount: 8 })).status, 200);
 });
+
+// ---- Lobby mini-games ----------------------------------------------------------------------------------
+
+import {
+  CLIMB, climbStart, climbStep, fieldGoalStart, fieldGoalStep, aimAt, powerAt, powerNeeded, windEffect, gradeTurn,
+  replaySkillGame, TICKS_PER_SECOND, turnFor, type Input,
+} from '../functions/_shared/miniGames.ts';
+
+/** A climber that moves to the lane with the most room above it: shows every run can be survived. */
+function climbBot(seed: number, ticks: number) {
+  const s = climbStart(seed);
+  const inputs: Input[] = [];
+  while (s.alive && s.tick < ticks) {
+    const roomIn = (lane: number) => Math.min(1000, ...s.objects
+      .filter((o) => o.kind !== 'oip' && o.lane === lane && o.y < CLIMB.playerBottom)
+      .map((o) => CLIMB.playerTop - (o.y + CLIMB.objectSize)));
+    const best = [s.lane, 0, 1, 2].reduce((a, b) => (roomIn(b) > roomIn(a) ? b : a));
+    if (best !== s.lane) inputs.push([s.tick, best]);
+    climbStep(s, best !== s.lane ? best : null);
+  }
+  return { s, inputs };
+}
+
+test('mini-games: the Climb Dash replays the same and is always survivable', () => {
+  for (const seed of [1, 42, 777, 123456]) {
+    const { s, inputs } = climbBot(seed, TICKS_PER_SECOND * 240);
+    assert.equal(s.alive, true, `seed ${seed} hit ${s.hitBy} at tick ${s.tick}`);
+    // Replaying the inputs gives the same climber (cut off where the bot stopped).
+    const again = climbStart(seed);
+    let i = 0;
+    while (again.tick < s.tick) {
+      const lane = inputs[i]?.[0] === again.tick ? inputs[i++][1] : null;
+      climbStep(again, lane);
+    }
+    assert.equal(again.height, s.height);
+  }
+  // Standing still gets you knocked off quickly.
+  assert.ok(replaySkillGame('climb', 5, []).ticks < TICKS_PER_SECOND * 30);
+});
+
+test('mini-games: Field Goal Gauntlet rewards good timing and ends on a miss', () => {
+  // Wait for the meters to sit where they should: aim cancels the wind, power just enough.
+  const s = fieldGoalStart(9);
+  const inputs: Input[] = [];
+  while (s.phase !== 'over' && s.kick < 6) {
+    const since = s.tick - s.phaseStart;
+    let tap = false;
+    if (s.phase === 'aim') tap = Math.abs(aimAt(since, s.kick) + windEffect(s.wind, s.distance)) < 0.05;
+    if (s.phase === 'power') tap = powerAt(since, s.kick) >= powerNeeded(s.distance) + 0.02 && powerAt(since, s.kick) < 0.95;
+    if (tap) inputs.push([s.tick, 1]);
+    fieldGoalStep(s, tap);
+  }
+  assert.ok(s.kicks.length >= 6 && s.kicks.slice(0, 6).every((k) => k.result === 'good'), JSON.stringify(s.kicks));
+  // No taps at all: the meters kick by themselves and it ends.
+  const lazy = replaySkillGame('fieldgoal', 9, []);
+  assert.ok(lazy.ticks > 0);
+});
+
+test('mini-games: turn games never show the answer and grade it the same every time', () => {
+  for (let i = 0; i < 8; i += 1) {
+    const turn = turnFor('price', 99, i) as any;
+    assert.ok(turn.name && !('answer' in turn));
+    const graded = gradeTurn('price', 99, i, 0, 5);
+    assert.equal(graded.points, 0);
+    assert.ok(Number(graded.answer) > 0);
+    assert.equal(gradeTurn('price', 99, i, graded.answer, 5).points, 125);
+    assert.equal(gradeTurn('price', 99, i, Number(graded.answer) + 1, 5).points, 0, 'over is zero');
+  }
+  for (let i = 0; i < 10; i += 1) {
+    const turn = turnFor('nameplayer', 3, i) as any;
+    assert.equal(new Set(turn.choices).size, 4);
+    const right = turn.choices.indexOf(gradeTurn('nameplayer', 3, i, -1, 1).answer);
+    assert.ok(right >= 0);
+    assert.equal(gradeTurn('nameplayer', 3, i, right, 0).points, 150);
+    assert.equal(gradeTurn('nameplayer', 3, i, right, 30).points, 0, 'too slow');
+  }
+  const goals = Array.from({ length: 200 }, (_, i) => gradeTurn('penalty', i, 0, { zone: 3, power: 0.7 }, 2).points).reduce((a, b) => a + b, 0);
+  assert.ok(goals > 100 && goals < 190, `goals ${goals}`);
+});
+
+test('mini-games: lobby round from setup to prize, seeds stay secret', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world);
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/minigame/create`, { game: 'climb', prize: 5 })).status, 401);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/create`, { game: 'chess', prize: 5 })).status, 400);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/create`, { game: 'climb', prize: 5 })).status, 200);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/create`, { game: 'price', prize: 3 })).status, 200);
+  const [climb, price] = world.league(leagueId).miniGames!;
+
+  // Climb: the run is replayed from its inputs; one sent too soon is refused.
+  const started = await world.call('bob', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id });
+  const seed = (started.body as any).seed;
+  assert.equal(typeof seed, 'number');
+  const { inputs, s } = climbBot(seed, 900);
+  const early = await world.call('bob', 'POST', `leagues/${leagueId}/minigame/finish`, { challengeId: climb.id, inputs });
+  assert.equal(early.status, 400);
+  world.advance(40);
+  const finished = await world.call('bob', 'POST', `leagues/${leagueId}/minigame/finish`, { challengeId: climb.id, inputs });
+  assert.equal(finished.status, 200, String(finished.body));
+  assert.equal((finished.body as any).score, replaySkillGame('climb', seed, inputs).score);
+  assert.ok((finished.body as any).score >= Math.floor(s.height));
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id })).body.finished, true);
+
+  // Cara starts and leaves: her try is used until the commissioner gives it back.
+  await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id });
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id })).status, 400);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/reset`, { challengeId: climb.id, userId: 'cara' })).status, 200);
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id })).status, 200);
+
+  // Price Is Right: dealt and timed by the server; a slow answer scores nothing.
+  const first = await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: price.id });
+  assert.equal((first.body as any).turn.index, 0);
+  assert.equal((first.body as any).seed, undefined);
+  let answer = 0;
+  for (let i = 0; i < 8; i += 1) {
+    if (i > 0) {
+      world.advance(30); // reading the last result doesn't count against the next turn
+      const dealt = await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: price.id });
+      assert.equal((dealt.body as any).turn.index, i);
+    }
+    world.advance(i === 7 ? 60 : 4);
+    const turn = await world.call('cara', 'POST', `leagues/${leagueId}/minigame/turn`, { challengeId: price.id, index: i, answer });
+    assert.equal(turn.status, 200, String(turn.body));
+    assert.equal((turn.body as any).result.late, i === 7);
+    if (i < 7) assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/minigame/turn`, { challengeId: price.id, index: i + 1, answer })).status, 409);
+    answer = 1;
+  }
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/minigame/turn`, { challengeId: price.id, index: 8, answer: 1 })).status, 400);
+  assert.ok(world.league(leagueId).miniGames![1].attempts.cara.finishedAt);
+
+  // Seeds never reach a browser.
+  const state = await world.call('bob', 'GET', `leagues/${leagueId}/state`);
+  assert.ok(!JSON.stringify(state.body).includes('"seed"'));
+  assert.ok(!world.sent.some((m) => JSON.stringify(m.payload).includes('"seed"')));
+
+  // The prize goes to the winner's budget, once.
+  const bobTeam = world.league(leagueId).teams.find((t) => t.ownerId === 'bob')!;
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/award`, { challengeId: climb.id, userId: 'admin' })).status, 400);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/award`, { challengeId: climb.id, userId: 'bob' })).status, 200);
+  assert.equal(world.league(leagueId).teams.find((t) => t.id === bobTeam.id)!.budget, bobTeam.budget + 5);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/award`, { challengeId: climb.id, userId: 'bob' })).status, 400);
+
+  // Once the draft starts, no new tries.
+  await world.call('admin', 'POST', `leagues/${leagueId}/minigame/create`, { game: 'penalty', prize: 2 });
+  const penalty = world.league(leagueId).miniGames![2];
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`)).status, 200);
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: penalty.id })).status, 400);
+});
