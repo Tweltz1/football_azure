@@ -3,7 +3,7 @@
 // what each defense has allowed, injury reports), so the reasons change as that data does.
 
 import {
-  benchReason, defenseMatchup, describeMarketSettings, isUnavailable, teammatesOut, trendFor, vacatedPoints,
+  benchReason, defenseMatchup, describeMarketSettings, isUnavailable, tagForSide, teammatesOut, trendFor, vacatedPoints,
 } from './startSitUtils.js';
 import { rankLabel } from './rankings.js';
 
@@ -20,18 +20,19 @@ const CALLS = {
 
 // ---- Confidence: how often one player outscores the other -------------------------------
 
-// Typical game-to-game swing (standard deviation of fantasy points) by position, used when a
-// player has few games of their own.
-const DEFAULT_SPREAD = { QB: 7.5, RB: 7.5, WR: 7.5, TE: 6, K: 4, DST: 5.5 };
-const SPREAD_PRIOR_GAMES = 3;
+// How far a player's score lands from their projection, fitted on 2019-2024 weekly NFL results
+// (scripts/model/README.md): the miss grows with the projection, so variance = base + perPoint x projection.
+// A player's own week-to-week swing so far added nothing once the projection was known, so it isn't used.
+const SPREAD_FIT = { QB: [66.5, 1.73], RB: [15.7, 5.72], WR: [0, 7.63], TE: [0.9, 6.68] };
+const DEFAULT_SPREAD = { K: 4, DST: 5.5 };
+// Even a big projection gap rarely wins more than this often (the misses have long tails).
+const MAX_CHANCE = 0.85;
 
-/** How much a player's score swings week to week: their own season blended with the position norm. */
-export const spreadFor = (player, scoring) => {
-  const fallback = DEFAULT_SPREAD[player?.position] ?? 7;
-  const own = player?.spread ? Number(player.spread[scoring] ?? player.spread.ppr) : null;
-  const n = Math.max(0, (player?.gamesPlayed || 0) - 1);
-  if (own == null || !Number.isFinite(own) || !n) return fallback;
-  return Math.sqrt((n * own * own + SPREAD_PRIOR_GAMES * fallback * fallback) / (n + SPREAD_PRIOR_GAMES));
+/** How many points either way a player's score typically lands from their projection this week. */
+export const spreadFor = (player) => {
+  const fit = SPREAD_FIT[player?.position];
+  if (!fit) return DEFAULT_SPREAD[player?.position] ?? 7;
+  return Math.sqrt(Math.max(fit[0] + fit[1] * Math.max(player?.points || 0, 1), 13));
 };
 
 // Standard normal CDF (Abramowitz and Stegun 26.2.17, accurate to about 1e-7).
@@ -46,10 +47,11 @@ const normalCdf = (z) => {
  * Chance `a` scores more than `b` this week: each score is treated as their projection plus a swing
  * the size of their usual week-to-week spread.
  */
-export const winChance = (a, b, scoring) => {
-  const sa = spreadFor(a, scoring);
-  const sb = spreadFor(b, scoring);
-  return normalCdf(((a.points || 0) - (b.points || 0)) / Math.sqrt(sa * sa + sb * sb));
+export const winChance = (a, b) => {
+  const sa = spreadFor(a);
+  const sb = spreadFor(b);
+  const chance = normalCdf(((a.points || 0) - (b.points || 0)) / Math.sqrt(sa * sa + sb * sb));
+  return Math.min(MAX_CHANCE, Math.max(1 - MAX_CHANCE, chance));
 };
 
 // ---- Usage and matchup evidence -----------------------------------------------------------
@@ -136,6 +138,7 @@ const edgeBy = (a, b, minGap, higherIsBetter = true) => {
 const matchupText = (p) => {
   if (!p.player.opponent) return 'No game';
   if (!p.matchup) return `vs ${p.player.opponent}`;
+  if (p.matchup.early) return `vs ${p.player.opponent} (too early to tell)`;
   const label = { good: 'Easy', average: 'Average', tough: 'Tough' }[p.matchup.verdict];
   return `${label} vs ${p.player.opponent}`;
 };
@@ -158,7 +161,8 @@ const compareFactors = (a, b) => {
       start: a.trend.lastThree == null ? '–' : pts(a.trend.lastThree),
       sit: b.trend.lastThree == null ? '–' : pts(b.trend.lastThree),
       detail: [a, b].map((p) => ({ up: 'Heating up', down: 'Cooling off' })[p.trend.direction] || null),
-      edge: edgeBy(a.trend.lastThree, b.trend.lastThree, 1.5),
+      // Hot and cold streaks barely carry over (scripts/model), so only a big gap counts.
+      edge: edgeBy(a.trend.lastThree, b.trend.lastThree, 3),
     });
   }
   if (a.matchup || b.matchup) {
@@ -168,8 +172,9 @@ const compareFactors = (a, b) => {
       label: 'Matchup',
       start: matchupText(a),
       sit: matchupText(b),
-      detail: [a, b].map((p) => (p.matchup ? p.matchup.rankLabel.replace(' most points allowed to', ' most allowed to') : null)),
-      edge: a.matchup && b.matchup ? edgeBy(a.matchup.verdictRank, b.matchup.verdictRank, 5, false) : 'even',
+      detail: [a, b].map((p) => (p.matchup ? p.matchup.rankLabel.replace(' points allowed to', ' allowed to') : null)),
+      edge: a.matchup && b.matchup && !a.matchup.early && !b.matchup.early
+        ? edgeBy(a.matchup.verdictRank, b.matchup.verdictRank, 5, false) : 'even',
     });
   }
   if (a.lift || b.lift) {
@@ -244,6 +249,8 @@ const PHRASES = {
     : `has the steadier role (${pct(w.usage.recent)} of team ${w.usage.kind})`),
 };
 
+const REASON_ORDER = ['health', 'opportunity', 'usage', 'matchup', 'lift', 'form', 'floor'];
+
 /** What a call rests on, in one line. */
 const basisOf = (a, b) => {
   const games = [a, b].map((p) => `${p.player.gamesPlayed || 0} game${p.player.gamesPlayed === 1 ? '' : 's'} for ${firstName(p.player)}`);
@@ -262,7 +269,7 @@ export const explainPair = (start, sit, ctx, { headline } = {}) => {
   const a = profile(start, ctx);
   const b = profile(sit, ctx);
   for (const p of [a, b]) {
-    if (p.matchup) p.matchup.verdictRank = Number((p.matchup.rankLabel.match(/^(\d+)/) || [])[1]) || null;
+    if (p.matchup) p.matchup.verdictRank = p.matchup.rank || null;
   }
   const factors = compareFactors(a, b);
   const title = headline || `Start ${start.name} over ${sit.name}`;
@@ -283,16 +290,20 @@ export const explainPair = (start, sit, ctx, { headline } = {}) => {
 
   const gap = round1((a.points || 0) - (b.points || 0));
   const share = gap / Math.max(b.points || 0, 1);
-  const forStart = factors.filter((f) => f.key !== 'projection' && f.edge === 'start');
-  const forSit = factors.filter((f) => f.key !== 'projection' && f.edge === 'sit');
+  // Reasons lead with what has predicted scoring best in past seasons: workload and injuries first,
+  // recent points and floor last.
+  const byStrength = (x, y) => REASON_ORDER.indexOf(x.key) - REASON_ORDER.indexOf(y.key);
+  const forStart = factors.filter((f) => f.key !== 'projection' && f.edge === 'start').sort(byStrength);
+  const forSit = factors.filter((f) => f.key !== 'projection' && f.edge === 'sit').sort(byStrength);
 
-  const chance = winChance(start, sit, ctx.scoring);
+  const chance = winChance(start, sit);
   let call = CALLS.lean;
   if (chance < 0.57 || gap < 1) call = CALLS.tossup;
-  else if (chance >= 0.7 && share >= 0.1 && forSit.length <= 1) call = CALLS.clear;
+  // The chances are calibrated on past seasons (scripts/model), so 2 in 3 already makes a clear call.
+  else if (chance >= 0.66 && share >= 0.1 && forSit.length <= 1) call = CALLS.clear;
   const confidence = {
     chance: Math.round(chance * 100),
-    text: `${start.name} outscores ${sit.name} about ${Math.round(chance * 100)}% of the time, from their projections and how much each one's scoring swings week to week (±${pts(spreadFor(start, ctx.scoring))} and ±${pts(spreadFor(sit, ctx.scoring))} pts).`,
+    text: `${start.name} outscores ${sit.name} about ${Math.round(chance * 100)}% of the time, based on their projections and how far real scores landed from projections like these in past seasons (about ±${pts(spreadFor(start))} and ±${pts(spreadFor(sit))} pts).`,
   };
 
   const pros = forStart.map((f) => PHRASES[f.key]?.(a, b)).filter(Boolean).slice(0, 2);
@@ -334,7 +345,7 @@ export const explainPair = (start, sit, ctx, { headline } = {}) => {
 export const explainAlone = (player, slotLabel, ctx) => {
   const p = profile(player, ctx);
   const bits = [];
-  if (p.matchup) bits.push(`${p.matchup.verdict === 'good' ? 'a good' : p.matchup.verdict === 'tough' ? 'a tough' : 'an average'} matchup against ${player.opponent}`);
+  if (p.matchup && !p.matchup.early) bits.push(`${p.matchup.verdict === 'good' ? 'a good' : p.matchup.verdict === 'tough' ? 'a tough' : 'an average'} matchup against ${player.opponent}`);
   if (p.trend.direction === 'up') bits.push(`${pts(p.trend.lastThree)} a game over the last 3`);
   return {
     call: CALLS.forced,
@@ -369,7 +380,7 @@ export const waiverOptions = (player, positions, ctx) => {
       const matchup = defenseMatchup(p, ctx.defense, ctx.scoring);
       const trend = trendFor(p, ctx.scoring);
       const bits = [p.posRank ? rankLabel(p.position, p.posRank) : null];
-      if (matchup) bits.push(`${{ good: 'easy', average: 'average', tough: 'tough' }[matchup.verdict]} matchup vs ${p.opponent}`);
+      if (matchup && !matchup.early) bits.push(`${{ good: 'easy', average: 'average', tough: 'tough' }[matchup.verdict]} matchup vs ${p.opponent}`);
       else if (p.opponent) bits.push(`vs ${p.opponent}`);
       if (trend.direction === 'up') bits.push('heating up');
       if (p.injury) bits.push(p.injury);
@@ -590,8 +601,8 @@ export const explainTrade = (result, ctx) => {
   else sentences.push(`You give up ${valueGap} more in trade value than you get (${shown('give')} vs ${shown('get')}).`);
   if (marketLean && projectionLean && marketLean !== projectionLean && marketLean !== 'even' && projectionLean !== 'even') {
     sentences.push(projectionLean === 'start'
-      ? 'The trade market prefers your side, but our projections for your scoring like what you get: a buy-low.'
-      : 'Our projections prefer what you give, but the trade market pays more for it: you may be selling high.');
+      ? 'The trade market rates what you give higher, but our projections for your scoring like what you get: a buy-low.'
+      : 'The trade market rates what you get higher, but our projections for your scoring like what you give: you may be buying high.');
   }
   const adj = result.adjustment;
   if (adj?.get) sentences.push(`${namesOf(adj.get.players.map((name) => ({ name })))} wouldn't crack your lineup, so ${adj.get.players.length > 1 ? 'they count' : 'that counts'} for half to cover the roster spot.`);
@@ -623,7 +634,7 @@ export const explainTrade = (result, ctx) => {
       name: p.name,
       side,
       notes: [
-        ...(p.tag ? [`${p.tag.label}: ${p.tag.detail.replace('this player', p.name)}`] : []),
+        ...(p.tag ? [`${tagForSide(p.tag, side.toLowerCase()).label}: ${p.tag.detail.replace('this player', p.name)}`] : []),
         ...(p.outlook?.notes || []).slice(0, 2),
       ],
     }))

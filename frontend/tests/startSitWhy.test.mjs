@@ -147,16 +147,18 @@ test('no waiver section when nobody free beats the starter', () => {
   assert.equal(why.waivers, null);
 });
 
-test('win chance grows with the projection gap and shrinks with volatile players', () => {
-  const steady = (name, pts) => player(name, 'WR', pts, { spread: avg(3), gamesPlayed: 10 });
-  const wild = (name, pts) => player(name, 'WR', pts, { spread: avg(12), gamesPlayed: 10 });
-  assert.equal(Math.round(winChance(steady('A', 12), steady('B', 12), 'ppr') * 100), 50);
-  assert.ok(winChance(steady('A', 15), steady('B', 10), 'ppr') > winChance(wild('A', 15), wild('B', 10), 'ppr'));
-  // Few games lean on the position's usual swing.
-  assert.equal(spreadFor(player('New', 'WR', 10, { gamesPlayed: 0 }), 'ppr'), 7.5);
-  assert.ok(spreadFor(player('Vet', 'WR', 10, { spread: avg(3), gamesPlayed: 12 }), 'ppr') < 4.5);
-  const why = explainPair(steady('Ace', 18), steady('Bo', 11), ctx());
-  assert.ok(why.confidence.chance >= 85, String(why.confidence.chance));
+test('win chance grows with the projection gap, and bigger projections swing more (fitted on past seasons)', () => {
+  const wr = (name, pts) => player(name, 'WR', pts, { gamesPlayed: 10 });
+  assert.equal(Math.round(winChance(wr('A', 12), wr('B', 12), 'ppr') * 100), 50);
+  assert.ok(winChance(wr('A', 15), wr('B', 10), 'ppr') > winChance(wr('A', 13), wr('B', 10), 'ppr'));
+  // A 20-point WR's score lands further from the projection than an 8-point one's.
+  assert.ok(spreadFor(wr('Star', 20)) > spreadFor(wr('Depth', 8)) + 3);
+  // A player's own swing so far doesn't predict next week's, so it no longer changes the spread.
+  assert.equal(spreadFor(player('Vet', 'WR', 10, { spread: avg(3), gamesPlayed: 12 })), spreadFor(wr('Other', 10)));
+  // Even a huge gap is capped: long-shot games happen.
+  assert.equal(winChance(wr('A', 30), wr('B', 2), 'ppr'), 0.85);
+  const why = explainPair(wr('Ace', 18), wr('Bo', 11), ctx());
+  assert.ok(why.confidence.chance >= 65 && why.confidence.chance <= 72, String(why.confidence.chance));
   assert.match(why.confidence.text, /Ace outscores Bo about \d+% of the time/);
   assert.match(why.basis, /Sleeper's projections/);
 });
@@ -182,4 +184,18 @@ test('usage share and how similar players did against each defense show up as ev
   assert.equal(share.start, '30% of targets');
   assert.equal(share.edge, 'start');
   assert.match(why.basis, /team target and carry shares/);
+});
+
+test('wording: stingy defenses read as "fewest", and a player who cannot play never wins head to head', async () => {
+  const { compareVerdict, defenseMatchup, tagForSide } = await import('../src/data/startSitUtils.js');
+  const label = (rank) => defenseMatchup({ opponent: 'T', position: 'QB' }, { T: { QB: { ...defenseRow(rank), rank } } }, 'ppr').rankLabel;
+  assert.equal(label(29), '4th fewest points allowed to QBs, of 32 teams');
+  assert.equal(label(3), '3rd most points allowed to QBs, of 32 teams');
+  const out = player('Star', 'WR', 20, { injury: 'Out' });
+  const ok = player('Backup', 'WR', 8);
+  assert.equal(compareVerdict([out, ok]).winner.name, 'Backup');
+  const sell = { key: 'sell', label: 'Sell high' };
+  assert.equal(tagForSide(sell, 'give').label, 'Sell high');
+  assert.equal(tagForSide(sell, 'get').label, 'Buying high');
+  assert.equal(tagForSide({ key: 'buy', label: 'Buy low' }, 'give').label, 'Selling low');
 });

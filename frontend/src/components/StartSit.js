@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
   STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
-  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds, ownTradeScore, replacementLevels,
+  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds, ownTradeScore, replacementLevels, tagForSide,
 } from '../data/startSitUtils';
 import { POSITION_TABS, positionRanks, rankLabel, seasonRankings } from '../data/rankings';
 import { PRESEASON_POSITION_RANKS } from '../data/preseasonRanks';
@@ -132,7 +132,7 @@ export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, upda
           <div><span>Projected</span><strong>{formatPoints(player.points)}</strong></div>
           <div><span>Last 3 avg</span><strong>{trend.lastThree == null ? '-' : trend.lastThree.toFixed(1)}</strong></div>
           <div><span>Season avg</span><strong>{trend.season == null ? '-' : trend.season.toFixed(1)}</strong></div>
-          <div><span>vs {player.opponent || 'opp'}</span><strong>{matchupAvg == null ? '-' : matchupAvg.toFixed(1)}</strong></div>
+          <div><span>{player.opponent ? `Past vs ${player.opponent}` : 'vs opp'}</span><strong>{matchupAvg == null ? '-' : matchupAvg.toFixed(1)}</strong></div>
         </div>
 
         <section>
@@ -155,11 +155,12 @@ export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, upda
             <h4>
               {vsDefense.opponent} defense vs {vsDefense.position}s{' '}
               <span className={`startsit-trend ${vsDefense.verdict === 'good' ? 'up' : vsDefense.verdict === 'tough' ? 'down' : 'flat'}`}>
-                {vsDefense.verdict === 'good' ? 'Good matchup' : vsDefense.verdict === 'tough' ? 'Tough matchup' : 'Average matchup'}
+                {vsDefense.early ? 'Too early to tell' : vsDefense.verdict === 'good' ? 'Good matchup' : vsDefense.verdict === 'tough' ? 'Tough matchup' : 'Average matchup'}
               </span>
             </h4>
             <p className="startsit-help">
-              {vsDefense.rankLabel}. Per game over {vsDefense.games} game{vsDefense.games === 1 ? '' : 's'} this season:
+              {vsDefense.rankLabel}. Per game over {vsDefense.games} game{vsDefense.games === 1 ? '' : 's'} this season
+              (green is easier than average for {vsDefense.position}s, red is harder):
             </p>
             <table className="startsit-defense">
               <thead>
@@ -739,7 +740,12 @@ const TradeCheck = ({
             />
           </div>
           {live && <TradeMeter live={live} complete={!!result} />}
-          {!result && <p className="startsit-help">Tick at least one player{dynasty ? ' or pick' : ''} on each side. Numbers are expected points per game for the rest of the season.</p>}
+          {!result && (
+            <p className="startsit-help">
+              Tick at least one player{dynasty ? ' or pick' : ''} on each side.
+              {playerValue ? ' Numbers are trade values (market and our projections blended), not points.' : ' Numbers are expected points per game for the rest of the season.'}
+            </p>
+          )}
           {result && (
             <div className={`trade-result ${result.verdict.tone}`}>
               <strong className="trade-verdict">
@@ -820,7 +826,11 @@ const TradeCheck = ({
                       <>
                         <button type="button" className="startsit-name" onClick={() => onOpen(p.id)}>{p.name}</button>
                         <small>{p.position}{dynasty && p.age ? `, age ${Math.floor(p.age)}` : ''}{p.role ? `, ${p.role}` : ''}</small>
-                        {p.tag && <span className={`startsit-tag ${p.tag.key === 'buy' ? 'good' : 'caution'}`} title={p.tag.detail}>{p.tag.label}</span>}
+                        {p.tag && (() => {
+                          const tag = tagForSide(p.tag, p.side);
+                          const good = (p.side === 'get') === (p.tag.key === 'buy');
+                          return <span className={`startsit-tag ${good ? 'good' : 'caution'}`} title={p.tag.detail}>{tag.label}</span>;
+                        })()}
                         <span className="startsit-points">
                           {p.display != null && <>value {p.display.toLocaleString()}{p.marketValue != null ? ` (market ${p.marketValue.toLocaleString()})` : ' (no market value, projections only)'}, </>}
                           {p.value.toFixed(1)} pts/game, {p.surplus.toFixed(1)} above waiver
@@ -1044,6 +1054,18 @@ const StartSit = ({ userId }) => {
   };
   const whyUpdated = projections?.fetchedAt ? `updated ${timeAgo(new Date(projections.fetchedAt).getTime())}` : null;
   const maxComparePoints = Math.max(1, ...comparePlayers.map((p) => p.points || 0));
+  // The head-to-head line uses the same call (clear, lean, coin flip) as its "?" card.
+  const compareWhy = verdict ? explainPair(verdict.winner, verdict.runnerUp, whyCtx) : null;
+  const compareCall = compareWhy?.call.label === 'Coin flip' ? 'tossup' : compareWhy?.call.label === 'Lean' ? 'lean' : 'clear';
+  let compareText = '';
+  if (verdict) {
+    const { winner, runnerUp, margin } = verdict;
+    if (benchReason(winner)) compareText = `Neither ${winner.name} nor ${runnerUp.name} is expected to play this week.`;
+    else if (benchReason(runnerUp)) compareText = `Start ${winner.name}. ${runnerUp.name} is ${runnerUp.onBye ? 'on bye' : `listed ${benchReason(runnerUp)}`} this week.`;
+    else if (compareCall === 'tossup') compareText = `Coin flip: ${winner.name} is only ${margin.toFixed(1)} pts ahead of ${runnerUp.name}. Tap ? for the tiebreaker.`;
+    else if (compareCall === 'lean') compareText = `Lean ${winner.name}: projected ${margin.toFixed(1)} pts more than ${runnerUp.name}, but it's not a lock.`;
+    else compareText = `Start ${winner.name}. Projected ${margin.toFixed(1)} pts more than ${runnerUp.name}.`;
+  }
   const insightPlayer = insightId
     ? [...roster, ...comparePlayers].find((p) => p.id === insightId)
       || withProjections([projectionsById.get(insightId)].filter(Boolean), projectionsById, scoring, shownWeek)[0]
@@ -1370,11 +1392,8 @@ const StartSit = ({ userId }) => {
             )}
 
             {verdict && (
-              <div className={`startsit-verdict ${verdict.close ? 'close' : ''}`}>
-                {verdict.close
-                  ? `Toss-up: ${verdict.winner.name} is only ${verdict.margin.toFixed(1)} pts ahead of ${verdict.runnerUp.name}. Go with your gut or the better matchup.`
-                  : `Start ${verdict.winner.name}. Projected ${verdict.margin.toFixed(1)} pts more than ${verdict.runnerUp.name}.`}
-                {isUnavailable(verdict.winner.injury) && ` Heads up: ${verdict.winner.name} is listed ${verdict.winner.injury}.`}
+              <div className={`startsit-verdict ${compareCall === 'tossup' ? 'close' : ''}`}>
+                {compareText}
                 <WhyButton
                   label={`Why ${verdict.winner.name}?`}
                   explain={() => explainPair(verdict.winner, verdict.runnerUp, whyCtx)}

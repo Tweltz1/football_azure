@@ -161,7 +161,7 @@ const WeeklyTable = ({ rows, tab, scoring, defense, mine, waivers, onOpen }) => 
                 {player.opponent ? <span className="startsit-matchup">vs {player.opponent}</span> : <span className="startsit-matchup">–</span>}
                 {matchup && (
                   <span className={`rank-matchup ${matchup.verdict}`} title={`${player.opponent}: ${matchup.rankLabel}`}>
-                    {MATCHUP_LABEL[matchup.verdict]}
+                    {matchup.early ? 'Early' : MATCHUP_LABEL[matchup.verdict]}
                   </span>
                 )}
               </td>
