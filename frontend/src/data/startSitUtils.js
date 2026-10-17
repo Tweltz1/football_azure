@@ -207,7 +207,10 @@ export const defenseMatchup = (player, defense, scoring) => {
   const pointsOf = (r) => Number(r.points?.[scoring] ?? 0);
 
   const third = Math.ceil(row.teams / 3);
-  const verdict = row.rank <= third ? 'good' : row.rank > row.teams - third ? 'tough' : 'average';
+  // Two games of defense numbers said nothing about the next game in past seasons (scripts/model),
+  // so before the third game every matchup reads as average.
+  const early = row.games < 3;
+  const verdict = early ? 'average' : row.rank <= third ? 'good' : row.rank > row.teams - third ? 'tough' : 'average';
   return {
     opponent: player.opponent,
     position: player.position,
@@ -222,6 +225,7 @@ export const defenseMatchup = (player, defense, scoring) => {
       .filter((game) => game.id !== player.id)
       .map((game) => ({ ...game, value: pointsOf(game) })),
     verdict,
+    early,
     rows: [
       { label: 'Fantasy pts', value: pointsOf(row), league: leagueAvg(pointsOf), higherIsEasier: true },
       ...stats.map(([label, pick]) => ({

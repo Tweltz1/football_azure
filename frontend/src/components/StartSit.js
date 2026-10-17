@@ -155,7 +155,7 @@ export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, upda
             <h4>
               {vsDefense.opponent} defense vs {vsDefense.position}s{' '}
               <span className={`startsit-trend ${vsDefense.verdict === 'good' ? 'up' : vsDefense.verdict === 'tough' ? 'down' : 'flat'}`}>
-                {vsDefense.verdict === 'good' ? 'Good matchup' : vsDefense.verdict === 'tough' ? 'Tough matchup' : 'Average matchup'}
+                {vsDefense.early ? 'Too early to tell' : vsDefense.verdict === 'good' ? 'Good matchup' : vsDefense.verdict === 'tough' ? 'Tough matchup' : 'Average matchup'}
               </span>
             </h4>
             <p className="startsit-help">
