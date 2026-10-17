@@ -8,6 +8,7 @@ import { getInitialPlayerPool } from '../functions/_shared/playerData.ts';
 import { buildDefenseTable, clearStartSitCache } from '../functions/_shared/startSit.ts';
 import { clearMarketCache } from '../functions/_shared/market.ts';
 import { clearSleeperCache } from '../functions/_shared/sleeperImport.ts';
+import { clearLeagueSeasonCache } from '../functions/_shared/sleeperLeague.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../functions/_shared/models.ts';
 import type { HistoryStore, LeagueStore, ProfileStore, ProjectionSnapshot, ProjectionSnapshotStore, StoredLeague } from '../functions/_shared/ports.ts';
 
@@ -716,6 +717,55 @@ test('start/sit: defense table sums each game per week and ranks the easiest mat
   assert.equal(table.KC.K, undefined, 'kickers are not tracked');
   assert.deepEqual(table.KC.WR.recentGames.map((g) => [g.id, g.week, g.points.ppr]), [['a', 2, 6], ['a', 1, 20]], 'the lead WR of each game, newest first');
   assert.equal(table.KC.WR.recentGames[1].box.recYd, 90);
+});
+
+test('start/sit: load a Sleeper league season with its schedule for playoff odds', async () => {
+  clearStartSitCache();
+  clearLeagueSeasonCache();
+  const world = memoryWorld();
+  const fetched: string[] = [];
+  world.respondWith((url) => {
+    fetched.push(url);
+    if (url.includes('/state/nfl')) return { season: '2026', week: 3, season_type: 'regular' };
+    if (url.endsWith('/league/404')) return null;
+    if (url.endsWith('/league/L1')) {
+      return { league_id: 'L1', name: 'Hood Sleeper', season: '2026', settings: { playoff_week_start: 4, playoff_teams: 2, league_average_match: 1, last_scored_leg: 2 } };
+    }
+    if (url.endsWith('/league/L1/rosters')) {
+      return [
+        { roster_id: 1, owner_id: 'u1', players: ['4984'], metadata: { team_name: 'Tyler Squad' } },
+        { roster_id: 2, owner_id: 'u2', players: ['9509', 'BUF'] },
+        { roster_id: 3, owner_id: 'u3', players: [] },
+      ];
+    }
+    if (url.endsWith('/league/L1/users')) throw new Error('users down');
+    const week = url.match(/matchups\/(\d+)$/)?.[1];
+    if (week === '1') return [{ roster_id: 1, matchup_id: 1, points: 110.5 }, { roster_id: 2, matchup_id: 1, points: 98 }, { roster_id: 3, matchup_id: null, points: 80 }];
+    if (week === '2') return [{ roster_id: 3, matchup_id: 1, points: 100 }, { roster_id: 1, matchup_id: 1, points: 90 }, { roster_id: 2, matchup_id: null, points: 0 }];
+    if (week === '3') return [{ roster_id: 2, matchup_id: 1, points: 12 }, { roster_id: 3, matchup_id: 1, points: 0 }, { roster_id: 1, points: 0 }];
+    throw new Error(`unexpected ${url}`);
+  });
+
+  assert.equal((await world.call('bob', 'GET', 'startsit/league', undefined, 'leagueId=a b')).status, 400);
+  assert.equal((await world.call('bob', 'GET', 'startsit/league', undefined, 'leagueId=404')).status, 404);
+  const res = await world.call('bob', 'GET', 'startsit/league', undefined, 'leagueId=L1');
+  assert.equal(res.status, 200, String(res.body));
+  const body = res.body as any;
+  assert.equal(body.leagueName, 'Hood Sleeper');
+  assert.equal(body.playoffWeekStart, 4);
+  assert.equal(body.playoffTeams, 2);
+  assert.equal(body.medianGame, true);
+  assert.equal(body.lastScoredWeek, 2);
+  assert.deepEqual(body.teams.map((t: any) => [t.rosterId, t.name, t.players]), [
+    [1, 'Tyler Squad', ['sleeper-4984']], [2, 'Team 2', ['sleeper-9509', 'sleeper-BUF']], [3, 'Team 3', []],
+  ], 'team names fall back when the member list fails');
+  assert.deepEqual(body.weeks.map((w: any) => w.week), [1, 2, 3], 'regular season only');
+  assert.deepEqual(body.weeks[0].games, [{ a: 3, b: null, aPoints: 80, bPoints: 0 }, { a: 1, b: 2, aPoints: 110.5, bPoints: 98 }]);
+  assert.deepEqual(body.weeks[2].games, [{ a: 1, b: null, aPoints: 0, bPoints: 0 }, { a: 2, b: 3, aPoints: 12, bPoints: 0 }]);
+
+  const count = fetched.length;
+  await world.call('bob', 'GET', 'startsit/league', undefined, 'leagueId=L1');
+  assert.equal(fetched.length, count, 'cached');
 });
 
 test('start/sit: import a Sleeper team with its lineup slots, scoring and current starters', async () => {

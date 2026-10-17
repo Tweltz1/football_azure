@@ -292,3 +292,36 @@
     width: 100%;
   }
 }
+
+/* Teams view: power rankings with playoff, title and last-place odds. */
+.team-rank-mine {
+  margin: 4px 0 12px;
+  line-height: 1.5;
+}
+
+.team-rank-sub {
+  color: var(--muted);
+}
+
+.team-rank-table td:nth-child(2) {
+  overflow-wrap: anywhere;
+}
+
+.team-rank-detail td {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.team-rank-table th.num,
+.team-rank-table td.num {
+  width: 1%;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .team-rank-table th,
+  .team-rank-table td {
+    padding: 8px 4px;
+  }
+}

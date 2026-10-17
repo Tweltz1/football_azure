@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
@@ -24,7 +24,9 @@ import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
 import WhyButton, { WhyCard } from './WhyButton';
 import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
 import { summarizeAccuracy } from '../data/accuracy';
-import { EXAMPLE_QUESTIONS, answerQuestion } from '../data/askModel';
+import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion } from '../data/askModel';
+import { leagueOutlookFrom } from '../data/leagueOdds';
+import { loadLeagueSeason, playerByes } from '../data/leagueSeason';
 import '../App.css';
 import './SeasonTools.css';
 
@@ -464,7 +466,7 @@ const TeamNeeds = ({ needs, partnerKey, onPick }) => (
 // Preseason position ranks (WR15...), which outlooks lean on for players who have barely played:
 // the frozen offseason ranks first, then the current pool for anyone who wasn't in it.
 let seasonRanksCache = null;
-const seasonRanks = () => {
+export const seasonRanks = () => {
   if (!seasonRanksCache) {
     seasonRanksCache = new Map();
     POSITION_TABS.filter((t) => t.positions.length === 1).forEach((t) => {
@@ -616,10 +618,12 @@ const WaiverMoves = ({
  */
 export const AskBar = ({
   projections, projectionsById, roster, lineup, whyCtx, scoring, week, partners, rosterSettings, dynasty, ppr,
-  rosteredIds, waiverPool, waiverNote, posRanks, updatedLabel,
+  rosteredIds, waiverPool, waiverNote, posRanks, updatedLabel, leagueId = null,
 }) => {
   const [question, setQuestion] = useState('');
   const [log, setLog] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const leagueCache = useRef({ season: null, projections: null, outlook: null });
   const teamCount = partners.length + 1;
   const marketSettings = useMemo(
     () => (partners.length ? marketSettingsFor({ dynasty, teamCount, rosterSettings, ppr }) : null),
@@ -707,16 +711,38 @@ export const AskBar = ({
     };
   };
 
-  const ask = (text) => {
+  // Team questions need the league's schedule and standings, loaded the first time one is asked.
+  const leagueFor = async (q) => {
+    if (!isLeagueQuestion(q, partners.map((p) => p.name))) return null;
+    if (!leagueId) return { status: 'none' };
+    try {
+      const season = await loadLeagueSeason(leagueId);
+      const cached = leagueCache.current;
+      if (cached.season !== season || cached.projections !== projections) {
+        const outlook = leagueOutlookFrom(season, {
+          projections, scoring, rosterSettings, myIds: new Set(roster.map((p) => p.id)), seasonRanks: seasonRanks(), byes: playerByes(),
+        });
+        leagueCache.current = { season, projections, outlook };
+      }
+      return { status: 'ok', outlook: leagueCache.current.outlook };
+    } catch (error) {
+      return { status: 'error', error: String(error.response?.data || 'Sleeper is not answering right now.') };
+    }
+  };
+
+  const ask = async (text) => {
     const q = String(text || '').trim();
-    if (!q) return;
+    if (!q || busy) return;
     let answer;
     try {
-      answer = answerQuestion(q, buildCtx());
+      setBusy(true);
+      const league = await leagueFor(q);
+      answer = answerQuestion(q, { ...buildCtx(), league });
     } catch (error) {
       console.error('Ask bar failed:', error);
       answer = { text: 'Something went wrong working that out. Try asking another way.', examples: EXAMPLE_QUESTIONS };
     }
+    setBusy(false);
     setLog((entries) => [{ id: Date.now(), q, answer }, ...entries].slice(0, 5));
     setQuestion('');
     if (answer.scrollTo) window.setTimeout(() => document.getElementById(answer.scrollTo)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
@@ -743,12 +769,12 @@ export const AskBar = ({
         <input
           type="search"
           enterKeyHint="send"
-          placeholder="Ask about a player, trade or pickup"
+          placeholder="Ask about a player, trade or your league"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           aria-label="Ask a question"
         />
-        <button type="submit" className="create-button" disabled={!question.trim()}>Ask</button>
+        <button type="submit" className="create-button" disabled={!question.trim() || busy}>{busy ? '...' : 'Ask'}</button>
       </form>
       {log.length === 0 && (
         <>
@@ -772,7 +798,8 @@ export const AskBar = ({
                         {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
                         {item.detail && <><br /><small>{item.detail}</small></>}
                       </div>
-                      {item.value != null && (
+                      {item.valueText != null && <span className="startsit-points">{item.valueText}</span>}
+                      {item.valueText == null && item.value != null && (
                         <span className="startsit-points">{Number(item.value).toFixed(1)}{item.valueLabel && <small> {item.valueLabel}</small>}</span>
                       )}
                     </li>
@@ -993,10 +1020,10 @@ const TradeCheck = ({
           </div>
 
           {needs && (
-            <details className="trade-needs">
-              <summary>League needs: who is strong and weak at each position</summary>
+            <div className="trade-needs">
+              <h3 className="trade-needs-title">League needs: who is strong and weak at each position</h3>
               <TeamNeeds needs={needs} partnerKey={partner?.key} onPick={choosePartner} />
-            </details>
+            </div>
           )}
 
           <label className="trade-partner">
@@ -1438,6 +1465,7 @@ const StartSit = ({ userId }) => {
             waiverNote={waiverNote}
             posRanks={posRanks}
             updatedLabel={whyUpdated}
+            leagueId={activeSleeper?.leagueId || null}
           />
           <section className="card startsit-panel">
             <div className="player-board-heading">

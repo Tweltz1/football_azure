@@ -542,3 +542,14 @@ body::before {
   z-index: 1000;
   pointer-events: none;
 }
+
+/* iPhones zoom in when a text box under 16px is tapped, and stay zoomed, which pushes the
+   right edge of the page off screen. 16px boxes keep the page at its normal size. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea,
+  .filter-field input {
+    font-size: 16px;
+  }
+}
