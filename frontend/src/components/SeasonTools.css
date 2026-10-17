@@ -701,10 +701,11 @@
   margin-bottom: 16px;
 }
 
-.trade-needs summary {
-  cursor: pointer;
-  font-weight: 700;
+.trade-needs-title {
+  margin: 0;
   padding: 6px 0;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .trade-needs-wrap {

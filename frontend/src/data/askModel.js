@@ -4,6 +4,7 @@
 import { benchReason, compareVerdict, defenseMatchup, isUnavailable, teammatesOut, trendFor } from './startSitUtils.js';
 import { explainAlone, explainBench, explainPair, explainStarter, usageFor } from './startSitWhy.js';
 import { rankLabel } from './rankings.js';
+import { percent, recordText, trajectoryText } from './leagueOdds.js';
 
 export const EXAMPLE_QUESTIONS = [
   'Who should I start at flex?',
@@ -13,6 +14,7 @@ export const EXAMPLE_QUESTIONS = [
   'What is Puka worth rest of season?',
   'Is Mixon a good matchup this week?',
   "How does Bijan's schedule look?",
+  'What are my playoff odds?',
 ];
 
 const SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v']);
@@ -561,13 +563,94 @@ function answerDrop(found, ctx) {
   };
 }
 
+const LEAGUE_WORDS = /power rank|rank(ing)? (the|all|every) teams|team rank|best team|worst team|strongest team|weakest team|top team|playoff|postseason|championship|\btitle\b|win (it all|the league|the chip)|\bchip\b|toilet|last place|finish last|standings|trajector|my team doing|how (is|are) (my team|we|our team)/;
+const ODDS_WORDS = /\bodds\b|\bchances?\b/;
+const NOT_LEAGUE = /\btrade|\bstart\b|\bsit\b|\bdrop\b|pick ?up|waiver|\bbench\b/;
+
+/** The league teams named in a question ("my team", "we" or a team's name). */
+const teamsNamed = (text, teams) => {
+  const t = ` ${tidy(text)} `;
+  return teams.filter((team) => {
+    const name = tidy(team.name);
+    return name.length >= 3 && t.includes(` ${name} `);
+  });
+};
+
+/** A question about the league's teams (rankings, odds) rather than a player. teamNames are the league's teams, when known. */
+export const isLeagueQuestion = (text, teamNames = []) => {
+  const t = tidy(text);
+  if (NOT_LEAGUE.test(t)) return false;
+  if (LEAGUE_WORDS.test(t)) return true;
+  if (ODDS_WORDS.test(t) && /\b(my|our|we|team|teams|league)\b/.test(t)) return true;
+  return /doing|outlook|look(ing)?\b|headed|ranked/.test(t) && teamsNamed(text, teamNames.map((name) => ({ name }))).length > 0;
+};
+
+const teamLabel = (team) => `${team.name}${team.mine ? ' (you)' : ''}`;
+
+export function answerLeague(text, ctx) {
+  const league = ctx.league;
+  if (!league || league.status === 'none') {
+    return { text: 'Team rankings and odds need a Sleeper league, since they use its schedule and standings. Pick your Sleeper league at the top of this page.' };
+  }
+  if (league.status === 'error') return { text: `I couldn't load your league's standings: ${league.error}` };
+  const outlook = league.outlook;
+  const t = tidy(text);
+  const named = teamsNamed(text, outlook.teams);
+  const mine = outlook.teams.find((team) => team.mine) || null;
+  const asksAboutMe = /\b(my|me|we|us|our|i)\b/.test(t);
+  const subject = named[0] || (asksAboutMe ? mine : null);
+  const oddsItem = (team, chance, rank) => ({
+    label: `#${rank}`, name: teamLabel(team), detail: team.record.games ? `${recordText(team.record)} · ${Math.round(team.record.pointsFor)} pts` : null, valueText: percent(chance),
+  });
+  const sortedBy = (key) => [...outlook.teams].sort((a, b) => b[key] - a[key] || a.powerRank - b.powerRank);
+  const note = 'From playing out the rest of the season thousands of times with each team\'s projected lineup. See every team on the Rankings page under Teams.';
+
+  if (/toilet|last place|finish last|worst team|weakest team/.test(t)) {
+    const list = sortedBy('last');
+    const lead = subject
+      ? `${teamLabel(subject)}: ${percent(subject.last)} chance of finishing last.`
+      : `Toilet bowl watch: ${teamLabel(list[0])} is the most likely to finish last (${percent(list[0].last)}).`;
+    return { text: lead, itemsTitle: 'Chance of finishing last in the regular season:', items: list.map((team, i) => oddsItem(team, team.last, i + 1)), note };
+  }
+  if (/championship|\btitle\b|win (it all|the league|the chip)|\bchip\b/.test(t)) {
+    const list = sortedBy('title');
+    const lead = subject
+      ? `${teamLabel(subject)}: ${percent(subject.title)} to win the title.`
+      : `${teamLabel(list[0])} is the title favorite at ${percent(list[0].title)}.`;
+    return { text: lead, itemsTitle: 'Chance to win the championship:', items: list.map((team, i) => oddsItem(team, team.title, i + 1)), note };
+  }
+  if (subject && !/power|best team|strongest|rank/.test(t)) {
+    return { text: trajectoryText(subject, outlook), note };
+  }
+  if (/playoff|postseason|odds|chances?|trajector|standings/.test(t) && !/power|best team|strongest/.test(t)) {
+    const list = sortedBy('playoffs');
+    const lead = mine ? trajectoryText(mine, outlook) : `Playoff odds for ${outlook.leagueName} (top ${outlook.playoffTeams} make it):`;
+    return { text: lead, itemsTitle: `Chance to make the playoffs (top ${outlook.playoffTeams}):`, items: list.map((team, i) => oddsItem(team, team.playoffs, i + 1)), note };
+  }
+  const top = outlook.powerOrder[0];
+  return {
+    text: `${teamLabel(top)} has the best team right now, projecting ${Math.round(top.strength)} points a week the rest of the way.${mine && mine !== top ? ` You're #${mine.powerRank}.` : ''}`,
+    itemsTitle: 'Power rankings, by what each best lineup should score a week from here:',
+    items: outlook.powerOrder.map((team) => ({
+      label: `#${team.powerRank}`,
+      name: teamLabel(team),
+      detail: [team.record.games ? recordText(team.record) : null, `playoffs ${percent(team.playoffs)}`, `title ${percent(team.title)}`].filter(Boolean).join(' · '),
+      value: team.strength,
+      valueLabel: 'a week',
+    })),
+    note: 'Ask "what are my playoff odds?", "who wins the title?" or "toilet bowl odds" for more.',
+  };
+}
+
 /**
  * Answers a question. Returns { text, why?, items?, itemsTitle?, note?, examples? }: `why` is a "?"-card
  * object, `items` a short list. ctx carries the page's model: { allPlayers, roster, lineup, whyCtx, scoring,
  * week, defense, myIds, leagueIds, scored(p), outlookOf(p), valueOf(p), seasonRankOf(p), trades, waivers,
- * waiverNote }, where trades and waivers are null without a league.
+ * waiverNote, league }, where trades and waivers are null without a league and league is
+ * { status, outlook?, error? } for team questions.
  */
 export function answerQuestion(text, ctx) {
+  if (isLeagueQuestion(text, (ctx.league?.outlook?.teams || []).map((t) => t.name))) return answerLeague(text, ctx);
   const found = findPlayers(text, ctx.allPlayers, { myIds: ctx.myIds, leagueIds: ctx.leagueIds });
   const type = questionType(text, found);
   switch (type) {
