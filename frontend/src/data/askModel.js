@@ -2,7 +2,7 @@
 // and answers with the same model the page uses (projections, the "?" cards, trade and waiver values).
 // No AI service: questions it can't place get example questions back instead of a guess.
 import { benchReason, compareVerdict, defenseMatchup, isUnavailable, teammatesOut, trendFor } from './startSitUtils.js';
-import { explainAlone, explainBench, explainPair, explainStarter } from './startSitWhy.js';
+import { explainAlone, explainBench, explainPair, explainStarter, usageFor } from './startSitWhy.js';
 import { rankLabel } from './rankings.js';
 
 export const EXAMPLE_QUESTIONS = [
@@ -381,6 +381,19 @@ const ideaItems = (ideas) => ideas.map((idea) => {
 /** A starter over the rest of the season (not just this week, when injuries and byes move people around). */
 const startsForYou = (p, ctx) => (ctx.isSeasonStarter ? ctx.isSeasonStarter(p) : ctx.lineup.starters.some((s) => s.player?.id === p.id));
 
+const pct = (x) => `${Math.round(x * 100)}%`;
+
+/** Share of the team's carries or targets, this season and lately, as a sentence. */
+const usageLine = (p) => {
+  const u = usageFor(p);
+  if (!u) return null;
+  const trend = u.change >= 0.04 ? ', and rising' : u.change <= -0.04 ? ', and falling' : '';
+  return `Gets ${pct(u.season)} of ${p.team}'s ${u.kind} this season, ${pct(u.recent)} over the last ${u.games || 3} games${trend}.`;
+};
+
+/** Outlook notes that explain the value (teammates returning or out, workload, injuries, schedule), not Sleeper's own number. */
+const reasonNotes = (outlook) => (outlook?.notes || []).filter((note) => !note.startsWith('Sleeper projects'));
+
 /** "Why should I trade X?": what X does for your lineup, how the market sees X, and the trades that use X. */
 function answerSellOne(player, found, ctx) {
   if (!ctx.roster.some((p) => p.id === player.id)) {
@@ -397,16 +410,23 @@ function answerSellOne(player, found, ctx) {
   if (outlook) reasons.push(`We value ${firstName(p)} at about ${outlook.value.toFixed(1)} pts a game for the rest of the season.`);
   if (tag?.key === 'sell') reasons.push('The trade market values them more than our projections do, which makes this a good time to sell.');
   if (tag?.key === 'buy') reasons.push('Our projections like them more than the trade market does, so a trade now would be selling low.');
-  const verdict = tag?.key === 'buy'
+  const losingWork = (outlook?.roleChange ?? 0) <= -1;
+  if (losingWork) reasons.push(`A teammate's return should cut into ${firstName(p)}'s work, about ${Math.abs(outlook.roleChange).toFixed(1)} fewer pts a game.`);
+  const usage = usageLine(p);
+  if (usage) reasons.push(usage);
+  const verdict = tag?.key === 'buy' && !losingWork
     ? `I'd keep ${p.name}.`
-    : tag?.key === 'sell' || !starter
+    : tag?.key === 'sell' || !starter || losingWork
       ? `${p.name} is worth shopping.`
       : `Only trade ${p.name} for a clear upgrade.`;
   const ideas = ctx.trades.find({ give: [p], get: [], position: null }).slice(0, 3);
+  const notes = reasonNotes(outlook).slice(0, 4);
   return {
     text: `${verdict} ${reasons.join(' ')}`,
-    itemsTitle: ideas.length ? `Trades using ${firstName(p)} that help your lineup and are close in value:` : null,
-    items: ideaItems(ideas),
+    itemsTitle: notes.length ? `What's behind ${firstName(p)}'s value:` : null,
+    items: notes.map((note) => ({ name: note })),
+    ideasTitle: ideas.length ? `Trades using ${firstName(p)} that help your lineup and are close in value:` : null,
+    ideas: ideaItems(ideas),
     note: ideas.length
       ? 'Ask "should I trade X for Y?" about any of these for the full breakdown.'
       : `I didn't find a trade using ${firstName(p)} that helps your lineup and is close enough in value for the other team to take.`,
@@ -418,11 +438,17 @@ function answerSellList(ctx) {
   const rows = ctx.roster
     .filter((p) => ['QB', 'RB', 'WR', 'TE'].includes(p.position))
     .map((p) => ({ p, starter: startsForYou(p, ctx), tag: ctx.valueOf(p)?.tag || null, value: ctx.outlookOf(p)?.value ?? 0 }));
-  const sellHigh = rows.filter((r) => r.tag?.key === 'sell').sort((a, b) => b.value - a.value);
-  const bench = rows.filter((r) => !r.starter && r.tag?.key !== 'sell' && r.tag?.key !== 'buy' && r.value >= 5).sort((a, b) => b.value - a.value);
+  rows.forEach((r) => {
+    const outlook = ctx.outlookOf(r.p);
+    r.losing = (outlook?.roleChange ?? 0) <= -1 ? reasonNotes(outlook).find((note) => / is (back|returning|expected)/.test(note)) || 'A teammate coming back should take some of their work.' : null;
+  });
+  const losing = rows.filter((r) => r.losing && r.tag?.key !== 'buy').sort((a, b) => b.value - a.value);
+  const sellHigh = rows.filter((r) => r.tag?.key === 'sell' && !r.losing).sort((a, b) => b.value - a.value);
+  const bench = rows.filter((r) => !r.starter && !r.losing && r.tag?.key !== 'sell' && r.tag?.key !== 'buy' && r.value >= 5).sort((a, b) => b.value - a.value);
   const picks = [
+    ...losing.map((r) => ({ ...r, why: `Losing work: ${r.losing}` })),
     ...sellHigh.map((r) => ({ ...r, why: 'Sell high: the trade market values them more than our projections do.' })),
-    ...bench.map((r) => ({ ...r, why: "Doesn't start for you, so the value is sitting on your bench." })),
+    ...bench.map((r) => ({ ...r, why: `Doesn't start for you, so the value is sitting on your bench.${usageLine(r.p) ? ` ${usageLine(r.p)}` : ''}` })),
   ].slice(0, 4);
   if (!picks.length) {
     return { text: "Nobody stands out to trade away: your starters are worth keeping and your bench has little trade value. Ask \"find me a trade for a WR\" (or any position) to look for upgrades." };
