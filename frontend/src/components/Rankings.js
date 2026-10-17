@@ -10,6 +10,7 @@ import {
   LeagueScoringContext, applyLeagueScoring, useLeagueScoring, useSavedSleeperTeams,
 } from '../data/leagueScoring';
 import { PlayerInsight } from './StartSit';
+import TeamRankings from './TeamRankings';
 import UpdatedAt from './UpdatedAt';
 import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
 import '../App.css';
@@ -21,6 +22,7 @@ const PAGE = 40;
 const VIEWS = [
   { value: 'week', label: 'This week' },
   { value: 'season', label: 'Season' },
+  { value: 'teams', label: 'Teams' },
 ];
 const MATCHUP_LABEL = { good: 'Easy', average: 'Avg', tough: 'Tough' };
 
@@ -97,6 +99,8 @@ const rosterIds = (players) => (players || []).map((p) => p?.id).filter(Boolean)
 const leagueChoices = (sleeperTeams, hoodLeagues, userId) => [
   ...sleeperTeams.map((t) => ({
     value: `league:${t.leagueId}`,
+    leagueId: t.leagueId,
+    slots: t.slots,
     name: t.leagueName,
     teamName: t.teamName,
     mine: rosterIds(t.players),
@@ -280,6 +284,10 @@ const Rankings = ({ userId }) => {
   }, [league, leagues]);
 
   useEffect(() => writeSetting('hl-rankings-view', view), [view]);
+  // Team odds play out the season from this week, so they always use this week's projections.
+  useEffect(() => { if (view === 'teams') setWeek(null); }, [view]);
+  const teamSettings = useMemo(() => (league?.slots ? { slots: league.slots } : null), [league]);
+  const myIds = useMemo(() => new Set(league?.mine || []), [league]);
   useEffect(() => writeSetting('hl-rankings-position', tab), [tab]);
   useEffect(() => setShowAll(false), [view, tab, week, onlyMine]);
 
@@ -398,6 +406,30 @@ const Rankings = ({ userId }) => {
       </section>
 
       <section className="card startsit-panel">
+        {view === 'teams' && (
+          <>
+            <div className="player-board-heading">
+              <div>
+                <p className="section-kicker">{league?.leagueId ? league.name : 'League'}</p>
+                <h2>Team rankings</h2>
+              </div>
+            </div>
+            {!league?.leagueId && (
+              <p className="startsit-empty">
+                Team rankings need a Sleeper league, since they use its schedule and standings. {leagues.some((l) => l.leagueId)
+                  ? 'Pick one in the League menu above.'
+                  : <Link to="/start-sit">Connect your Sleeper team on Start/Sit &amp; Trades</Link>}
+              </p>
+            )}
+            {league?.leagueId && loading && <div className="loading-panel">Loading projections...</div>}
+            {league?.leagueId && error && !loading && <p className="startsit-empty">{String(error)}</p>}
+            {league?.leagueId && projections && !loading && (
+              <TeamRankings leagueId={league.leagueId} projections={projections} scoring={scoring} rosterSettings={teamSettings} myIds={myIds} />
+            )}
+          </>
+        )}
+
+        {view !== 'teams' && (
         <div className="rank-toolbar">
           <Segmented options={POSITION_TABS} value={tab} onChange={setTab} label="Position" />
           <div className="rank-filters">
@@ -414,6 +446,7 @@ const Rankings = ({ userId }) => {
             </label>
           </div>
         </div>
+        )}
 
         {view === 'week' && (
           <>
@@ -466,7 +499,7 @@ const Rankings = ({ userId }) => {
           </>
         )}
 
-        {!showAll && !query && !onlyMine && allRows.length > rows.length && (
+        {view !== 'teams' && !showAll && !query && !onlyMine && allRows.length > rows.length && (
           <button type="button" className="edit-roster-button rank-more" onClick={() => setShowAll(true)}>
             Show all {allRows.length}
           </button>

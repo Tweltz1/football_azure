@@ -32,7 +32,7 @@ var __objRest = (source, exclude) => {
   return target;
 };
 
-// ../supabase/functions/_shared/models.ts
+// supabase/functions/_shared/models.ts
 var AUCTION = "auction";
 var MANUAL = "manual";
 var STANDARD = "standard";
@@ -156,7 +156,7 @@ function forClient(league, version, viewerId = null) {
 }
 var clone = (value) => JSON.parse(JSON.stringify(value));
 
-// ../supabase/functions/_shared/draftLogic.ts
+// supabase/functions/_shared/draftLogic.ts
 var BYE_BY_TEAM = {
   ARI: 14,
   ATL: 11,
@@ -400,7 +400,7 @@ function getUniqueTeamName(existingTeams, preferredName, displayName) {
   return `${candidateBase}_${index}`;
 }
 
-// ../supabase/functions/_shared/diff.ts
+// supabase/functions/_shared/diff.ts
 var same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function diffObjects(prev, next) {
   const ops = [];
@@ -454,7 +454,7 @@ function diffObjects(prev, next) {
   return ops;
 }
 
-// ../supabase/functions/_shared/handwriting.ts
+// supabase/functions/_shared/handwriting.ts
 var HANDWRITING_LIMITS = { perDigit: 6, strokes: 8, points: 60 };
 var boxOf = (strokes) => {
   const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
@@ -550,7 +550,7 @@ function learnFromBoard(current, board, amount) {
   return next;
 }
 
-// ../supabase/functions/_shared/history.ts
+// supabase/functions/_shared/history.ts
 function seasonFor(date) {
   return date.getUTCMonth() >= 2 ? date.getUTCFullYear() : date.getUTCFullYear() - 1;
 }
@@ -620,7 +620,7 @@ function historySummary(entry, userId) {
   };
 }
 
-// ../supabase/functions/_shared/startSit.ts
+// supabase/functions/_shared/startSit.ts
 var SLEEPER_STATE_URL = "https://api.sleeper.app/v1/state/nfl";
 var SLEEPER_PROJECTIONS_URL = "https://api.sleeper.com/projections/nfl";
 var SLEEPER_STATS_URL = "https://api.sleeper.com/stats/nfl";
@@ -692,6 +692,9 @@ function boxFrom(stats) {
   box.twoPt = num(stats.pass_2pt) + num(stats.rush_2pt) + num(stats.rec_2pt);
   return box;
 }
+function snapsFrom(stats) {
+  return { off: num(stats.off_snp), team: num(stats.tm_off_snp) };
+}
 var compactBox = (box) => {
   const out = {};
   for (const [key] of BOX_KEYS)
@@ -751,7 +754,7 @@ function toPlayer(row) {
   };
 }
 async function getWeekStats(fetchJson, season, week, nowMs) {
-  var _a, _b;
+  var _a, _b, _c;
   const key = `${season}-${week}`;
   const cached = weekStatsCache.get(key);
   if (cached && nowMs - cached.at < PAST_CACHE_MS)
@@ -772,6 +775,7 @@ async function getWeekStats(fetchJson, season, week, nowMs) {
       opponent: parsed.opponent,
       points: parsed.points,
       box: boxFrom((_b = record.stats) != null ? _b : {}),
+      snaps: snapsFrom((_c = record.stats) != null ? _c : {}),
       injury: parsed.injury,
       name: parsed.name,
       position: parsed.position,
@@ -829,7 +833,16 @@ function usageOf(played, teamWeek) {
   const all = sums(skill);
   const recentLines = skill.slice(-3);
   const recent = sums(recentLines);
+  const snapShareOf = (lines) => {
+    const counted = lines.filter((line) => {
+      var _a;
+      return ((_a = line.snaps) == null ? void 0 : _a.team) > 0;
+    });
+    return share(counted.reduce((n, l) => n + l.snaps.off, 0), counted.reduce((n, l) => n + l.snaps.team, 0));
+  };
   return {
+    snapShare: snapShareOf(skill),
+    recentSnapShare: snapShareOf(recentLines),
     targetShare: share(all.tgt, all.teamTgt),
     carryShare: share(all.rushAtt, all.teamRush),
     recentTargetShare: share(recent.tgt, recent.teamTgt),
@@ -1118,7 +1131,7 @@ async function getProjectionAccuracy(fetchJson, now, snapshots) {
   return value;
 }
 
-// ../supabase/functions/_shared/sleeperImport.ts
+// supabase/functions/_shared/sleeperImport.ts
 var SLEEPER_API = "https://api.sleeper.app/v1";
 var CACHE_MS2 = 10 * 60 * 1e3;
 var MAX_LEAGUES = 12;
@@ -1346,22 +1359,117 @@ async function getSleeperTeams(fetchJson, now, username, pool) {
   return value;
 }
 
-// ../supabase/functions/_shared/market.ts
+// supabase/functions/_shared/sleeperLeague.ts
+var SLEEPER_API2 = "https://api.sleeper.app/v1";
+var CACHE_MS3 = 10 * 60 * 1e3;
+var DEFAULT_PLAYOFF_START = 15;
+var DEFAULT_PLAYOFF_TEAMS = 6;
+var SleeperLeagueNotFound = class extends Error {
+};
+var cache2 = /* @__PURE__ */ new Map();
+var isValidLeagueId = (id) => /^[A-Za-z0-9]{1,32}$/.test(id);
+var text3 = (value) => typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "";
+var num2 = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+async function getLeagueSeason(fetchJson, now, leagueId) {
+  var _a, _b;
+  const nowMs = now.getTime();
+  const cached = cache2.get(leagueId);
+  if (cached && nowMs - cached.at < CACHE_MS3)
+    return cached.value;
+  const league = await fetchJson(`${SLEEPER_API2}/league/${leagueId}`);
+  if (!league || !text3(league.league_id))
+    throw new SleeperLeagueNotFound(leagueId);
+  const settings = (_a = league.settings) != null ? _a : {};
+  const playoffWeekStart = Math.max(2, Math.min(19, Math.trunc(num2(settings.playoff_week_start)) || DEFAULT_PLAYOFF_START));
+  const playoffTeams = Math.max(2, Math.min(16, Math.trunc(num2(settings.playoff_teams)) || DEFAULT_PLAYOFF_TEAMS));
+  const regularWeeks = playoffWeekStart - 1;
+  const [rosters, users, state] = await Promise.all([
+    fetchJson(`${SLEEPER_API2}/league/${leagueId}/rosters`),
+    fetchJson(`${SLEEPER_API2}/league/${leagueId}/users`).catch(() => []),
+    currentState(fetchJson, nowMs)
+  ]);
+  const ownerNames = /* @__PURE__ */ new Map();
+  for (const u of Array.isArray(users) ? users : []) {
+    const member = u != null ? u : {};
+    const meta = (_b = member.metadata) != null ? _b : {};
+    ownerNames.set(text3(member.user_id), text3(meta.team_name) || text3(member.display_name));
+  }
+  const teams = (Array.isArray(rosters) ? rosters : []).filter((r) => r && typeof r === "object").map((r, index) => {
+    var _a2;
+    const roster = r;
+    const meta = (_a2 = roster.metadata) != null ? _a2 : {};
+    const rosterId = Math.trunc(num2(roster.roster_id)) || index + 1;
+    return {
+      rosterId,
+      name: text3(meta.team_name) || ownerNames.get(text3(roster.owner_id)) || `Team ${rosterId}`,
+      players: (Array.isArray(roster.players) ? roster.players : []).map(text3).filter(Boolean).map((id) => `sleeper-${id}`)
+    };
+  });
+  const weekNumbers = Array.from({ length: regularWeeks }, (_, i) => i + 1);
+  const weekly = await Promise.all(weekNumbers.map((week) => fetchJson(`${SLEEPER_API2}/league/${leagueId}/matchups/${week}`).catch(() => [])));
+  const weeks = weekNumbers.map((week, i) => {
+    var _a2;
+    const byMatchup = /* @__PURE__ */ new Map();
+    const games = [];
+    for (const m of Array.isArray(weekly[i]) ? weekly[i] : []) {
+      const row = m != null ? m : {};
+      const rosterId = Math.trunc(num2(row.roster_id));
+      if (!rosterId)
+        continue;
+      const points = Math.round(num2((_a2 = row.custom_points) != null ? _a2 : row.points) * 100) / 100;
+      const matchupId = Math.trunc(num2(row.matchup_id));
+      if (!matchupId) {
+        games.push({ a: rosterId, b: null, aPoints: points, bPoints: 0 });
+        continue;
+      }
+      if (!byMatchup.has(matchupId))
+        byMatchup.set(matchupId, []);
+      byMatchup.get(matchupId).push({ rosterId, points });
+    }
+    for (const [, sides] of [...byMatchup.entries()].sort((x, y) => x[0] - y[0])) {
+      const [a, b] = sides;
+      games.push({ a: a.rosterId, b: b ? b.rosterId : null, aPoints: a.points, bPoints: b ? b.points : 0 });
+    }
+    return { week, games };
+  });
+  const lastScoredLeg = Math.trunc(num2(settings.last_scored_leg));
+  const beforeThisWeek = state.seasonType === "regular" ? state.week - 1 : state.seasonType === "post" ? regularWeeks : 0;
+  const lastScoredWeek = Math.max(0, Math.min(regularWeeks, lastScoredLeg > 0 ? lastScoredLeg : beforeThisWeek));
+  const value = {
+    leagueId,
+    leagueName: text3(league.name) || "Sleeper league",
+    season: Math.trunc(num2(league.season)) || state.season,
+    fetchedAt: now.toISOString(),
+    playoffWeekStart,
+    playoffTeams: Math.min(playoffTeams, teams.length),
+    medianGame: num2(settings.league_average_match) === 1,
+    lastScoredWeek,
+    teams,
+    weeks
+  };
+  cache2.set(leagueId, { at: nowMs, value });
+  return value;
+}
+
+// supabase/functions/_shared/market.ts
 var FANTASYCALC_URL = "https://api.fantasycalc.com/values/current";
 var MARKET_CACHE_MS = 6 * 60 * 60 * 1e3;
-var cache2 = /* @__PURE__ */ new Map();
-var num2 = (value) => {
+var cache3 = /* @__PURE__ */ new Map();
+var num3 = (value) => {
   const parsed = typeof value === "number" ? value : parseFloat(String(value != null ? value : ""));
   return Number.isFinite(parsed) ? parsed : null;
 };
 function marketSettingsFrom(query) {
   var _a, _b;
-  const teams = Math.trunc((_a = num2(query.get("teams"))) != null ? _a : 12);
-  const ppr = (_b = num2(query.get("ppr"))) != null ? _b : 1;
+  const teams = Math.trunc((_a = num3(query.get("teams"))) != null ? _a : 12);
+  const ppr = (_b = num3(query.get("ppr"))) != null ? _b : 1;
   return {
     dynasty: query.get("dynasty") === "1" || query.get("dynasty") === "true",
     teams: Math.min(16, Math.max(8, teams)),
-    qbs: num2(query.get("qbs")) === 2 ? 2 : 1,
+    qbs: num3(query.get("qbs")) === 2 ? 2 : 1,
     ppr: ppr >= 0.75 ? 1 : ppr >= 0.25 ? 0.5 : 0
   };
 }
@@ -1377,7 +1485,7 @@ async function getMarketValues(fetchJson, now, settings) {
   var _a, _b, _c, _d, _e;
   const nowMs = now.getTime();
   const key = `${settings.dynasty}-${settings.teams}-${settings.qbs}-${settings.ppr}`;
-  const cached = cache2.get(key);
+  const cached = cache3.get(key);
   if (cached && nowMs - cached.at < MARKET_CACHE_MS)
     return cached.value;
   const url = `${FANTASYCALC_URL}?isDynasty=${settings.dynasty}&numQbs=${settings.qbs}&numTeams=${settings.teams}&ppr=${settings.ppr}`;
@@ -1391,7 +1499,7 @@ async function getMarketValues(fetchJson, now, settings) {
       continue;
     const record = row;
     const info = (_a = record.player) != null ? _a : {};
-    const value2 = num2(record.value);
+    const value2 = num3(record.value);
     if (value2 == null)
       continue;
     const position = String((_b = info.position) != null ? _b : "").toUpperCase();
@@ -1410,9 +1518,9 @@ async function getMarketValues(fetchJson, now, settings) {
       continue;
     players[`sleeper-${sleeperId}`] = {
       value: Math.round(value2),
-      overallRank: num2(record.overallRank),
-      positionRank: num2(record.positionRank),
-      trend30Day: num2(record.trend30Day)
+      overallRank: num3(record.overallRank),
+      positionRank: num3(record.positionRank),
+      trend30Day: num3(record.trend30Day)
     };
   }
   const picks = {};
@@ -1421,11 +1529,11 @@ async function getMarketValues(fetchJson, now, settings) {
   if (Object.keys(players).length === 0)
     throw new Error("FantasyCalc returned no players.");
   const value = { settings, fetchedAt: now.toISOString(), source: "FantasyCalc", players, picks };
-  cache2.set(key, { at: nowMs, value });
+  cache3.set(key, { at: nowMs, value });
   return value;
 }
 
-// ../supabase/functions/_shared/handlers.ts
+// supabase/functions/_shared/handlers.ts
 var ok = (body) => ({ status: 200, body });
 var bad = (message) => ({ status: 400, body: message });
 var unauthorized = () => ({ status: 401 });
@@ -2553,6 +2661,19 @@ async function startSitSleeper(ctx, query) {
     return { status: 502, body: "Sleeper is not answering right now. Please try again in a few minutes." };
   }
 }
+async function startSitLeague(ctx, query) {
+  const leagueId = str(query.get("leagueId")).trim();
+  if (!isValidLeagueId(leagueId))
+    return bad("Please pick a Sleeper league.");
+  try {
+    return ok(await getLeagueSeason(ctx.fetchJson, ctx.now(), leagueId));
+  } catch (error) {
+    if (error instanceof SleeperLeagueNotFound)
+      return notFound("That Sleeper league was not found.");
+    ctx.log.warn(`Loading Sleeper league ${leagueId} failed.`, error);
+    return { status: 502, body: "Sleeper is not answering right now. Please try again in a few minutes." };
+  }
+}
 async function startSitMatchup(ctx, playerId, query) {
   const opponent = str(query.get("opponent")).trim();
   if (!/^[A-Za-z]{2,4}$/.test(opponent))
@@ -3162,6 +3283,8 @@ async function handle(ctx, method, path, query, body) {
     return getInvite(ctx, parts[1]);
   if (parts.length === 2 && method === "GET" && parts[0] === "startsit" && parts[1] === "sleeper")
     return startSitSleeper(ctx, query);
+  if (parts.length === 2 && method === "GET" && parts[0] === "startsit" && parts[1] === "league")
+    return startSitLeague(ctx, query);
   if (parts.length === 2 && method === "GET" && parts[0] === "startsit" && parts[1] === "market")
     return startSitMarket(ctx, query);
   if (parts.length === 2 && method === "GET" && parts[0] === "startsit" && parts[1] === "accuracy")

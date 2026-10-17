@@ -50,7 +50,21 @@ test('reads the kind of question and the position', () => {
   assert.equal(type('who should i start at flex'), 'lineup');
   assert.equal(type("who's on bye"), 'bye');
   assert.equal(type('how accurate are your picks'), 'accuracy');
-  assert.equal(type('hello there'), 'unknown');
+  assert.equal(type('hello there'), 'smalltalk');
+  assert.equal(type('what is the meaning of life'), 'unknown');
+  // Questions about the team, lists and comparisons beyond this week.
+  assert.equal(type('Top 10 WRs this week'), 'rankings');
+  assert.equal(type("Who's hurt on my team?"), 'teaminjuries');
+  assert.equal(type('who are good buy low targets'), 'buylow');
+  assert.equal(type('What does my team need?'), 'needs');
+  assert.equal(type('who does mixon play this week'), 'matchup');
+  assert.equal(type('bijan or chase rest of season'), 'comparevalue');
+  assert.equal(type('who has more upside, nabers or olave'), 'compareceiling');
+  assert.equal(type('olave stats'), 'stats');
+  assert.equal(type('is olave available'), 'availability');
+  assert.equal(type('Olave for Chase, is that fair?'), 'trade');
+  assert.equal(type('thanks'), 'smalltalk');
+  assert.equal(askedPosition('who should be my wr2'), 'WR');
   assert.equal(askedPosition('who should i start at flex'), 'FLEX');
   assert.equal(askedPosition('best running back pickup'), 'RB');
 });
@@ -89,7 +103,7 @@ test('answers with the model: head to head, lineup spot, a player not on your te
   assert.match(other.text, /Not on your team/);
   assert.ok(other.why);
 
-  assert.match(answerQuestion('who is on bye', ctx).text, /On bye in week 7/);
+  assert.match(answerQuestion('who is on bye', ctx).text, /On bye this week \(week 7\): Bye Guy\./);
   assert.match(answerQuestion('is mixon hurt?', ctx).text, /Questionable/);
   assert.match(answerQuestion('what is bijan worth', ctx).text, /14\.2 pts a game/);
   assert.match(answerQuestion('where does olave rank', ctx).text, /WR9 in the season rankings/);
@@ -114,7 +128,77 @@ test('trades and pickups go to the league model, and need a league', () => {
   assert.match(answerQuestion('should i drop nabers', ctx).text, /Keep Malik Nabers/);
 });
 
+test('"why should I trade X" and "who should I trade away" give reasons, not just a list', () => {
+  const sellTag = { key: 'sell', label: 'Sell high' };
+  const ctx = ctxFor(['bijan', 'nabers', 'olave', 'chase', 'mixon'], {
+    trades: {
+      rate: () => ({ text: 'x' }),
+      find: ({ give }) => (give.length ? [{ partnerName: 'Team Log', give: [give[0], everyone[0]], get: [everyone[5]], myChange: 5.1, theirChange: 0.4 }] : []),
+    },
+    valueOf: (p) => ({ label: null, tag: p.id === 'olave' ? sellTag : null }),
+    isSeasonStarter: (p) => ['bijan', 'nabers', 'chase', 'mixon'].includes(p.id),
+  });
+  const one = answerQuestion('Why should I trade Chris Olave?', ctx);
+  assert.match(one.text, /^Chris Olave is worth shopping\./);
+  assert.match(one.text, /bench player/);
+  assert.match(one.text, /good time to sell/);
+  const ideas = one.sections.find((sec) => sec.title.startsWith('Trades using')).items;
+  assert.match(ideas[0].detail, /\+5\.1 pts a week\. Two-for-one/);
+  assert.match(ideas[0].detail, /may say yes/);
+  assert.deepEqual(one.items.map((i) => i.name), ['Questionable this week.']);
+
+  assert.match(answerQuestion('should i trade bijan', ctx).text, /^Only trade Bijan Robinson for a clear upgrade\./);
+  assert.match(answerQuestion('why should I trade AJ Brown', ctx).text, /isn't on your team/);
+
+  // A teammate coming back and their share of the work are part of the reasons.
+  const returning = ctxFor(['bijan', 'nabers', 'olave', 'chase', 'mixon'], {
+    trades: { rate: () => ({}), find: () => [] },
+    valueOf: () => ({ label: null, tag: null }),
+    isSeasonStarter: () => true,
+    outlookOf: (p) => (p.id === 'mixon'
+      ? { perGame: 11, value: 10, remaining: 11, missed: 0, roleChange: -3.2, notes: ['Pierce (RB) is back after missing 3 games of Joe Mixon\'s last 5: about 3.2 fewer pts a game with less work to go around.', 'Sleeper projects 9 a game.'] }
+      : { perGame: 14, value: 14, remaining: 11, missed: 0, roleChange: 0, notes: [] }),
+  });
+  const mixon = { ...everyone.find((p) => p.id === 'mixon'), usage: { carryShare: 0.6, recentCarryShare: 0.45, targetShare: 0.1, recentTargetShare: 0.1, snapShare: 0.7, recentSnapShare: 0.58, recentGames: 3 } };
+  returning.roster = returning.roster.map((p) => (p.id === 'mixon' ? mixon : p));
+  returning.scored = (p) => returning.roster.find((r) => r.id === p.id) || p;
+  const why = answerQuestion('why should I trade mixon', returning);
+  assert.match(why.text, /^Joe Mixon is worth shopping\./);
+  assert.match(why.text, /teammate's return should cut into Joe's work, about 3\.2 fewer/);
+  assert.match(why.text, /Plays 70% of HOU's offensive snaps \(58% over the last 3 games\)\. Gets 60% of HOU's carries this season, 45% over the last 3 games, and falling/);
+  assert.equal(why.items.length, 1, "Sleeper's own number isn't listed as a reason");
+  assert.match(answerQuestion('who should i trade away', returning).items[0].detail, /^Losing work: Pierce \(RB\) is back/);
+
+  const list = answerQuestion('Who should I trade away?', ctx);
+  assert.equal(list.text, 'Players worth shopping:');
+  assert.equal(list.items[0].name, 'Chris Olave');
+  assert.match(list.items[0].detail, /Sell high/);
+});
+
 test('questions it cannot place get examples, not a guess', () => {
   const answer = answerQuestion('what is the weather', ctxFor([]));
   assert.ok(answer.examples.length > 0);
+});
+
+test('upcoming games: how each defense plays the position and who scored on them', () => {
+  const row = (rank, games, pts, recent = []) => ({ games, rank, teams: 32, points: { ppr: pts, half: pts, std: pts }, box: {}, recentGames: recent });
+  const defense = {
+    DAL: { RB: row(30, 6, 14, [{ id: 'x', name: 'Saquon Barkley', team: 'PHI', week: 5, points: { ppr: 8.4 } }]) },
+    NYG: { RB: row(2, 6, 29) },
+    SEA: { RB: row(16, 2, 21) },
+    KC: { RB: row(16, 6, 21) },
+  };
+  const mixon = { ...everyone.find((p) => p.id === 'mixon'), upcoming: [
+    { week: 8, opponent: 'DAL', points: {} }, { week: 9, opponent: null, points: {} }, { week: 10, opponent: 'NYG', points: {} }, { week: 11, opponent: 'SEA', points: {} },
+  ] };
+  const ctx = ctxFor(['mixon'], { defense });
+  ctx.scored = () => mixon;
+  ctx.allPlayers = everyone.map((p) => (p.id === 'mixon' ? mixon : p));
+  const answer = answerQuestion("what's mixon's upcoming schedule", ctx);
+  assert.equal(answer.text, "Joe Mixon's next 3 games: 1 easy, 0 average, 1 tough, 1 too early to tell.");
+  const items = answer.sections[0].items;
+  assert.deepEqual(items.map((i) => i.name), ['vs DAL: tough', 'vs NYG: easy', 'vs SEA: too early to tell']);
+  assert.match(items[0].detail, /DAL has the 3rd fewest points allowed to RBs.*Top RBs against them lately: Saquon Barkley 8\.4\./);
+  // The same list rides along with value and matchup answers.
+  assert.ok(answerQuestion('what is mixon worth', ctx).sections.length === 1);
 });

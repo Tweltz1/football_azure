@@ -1,9 +1,9 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
   STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
-  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds, ownTradeScore, replacementLevels, tagForSide, marketTag,
+  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds, ownTradeScore, replacementLevels, tagForSide, marketTag, seasonStarterIds,
 } from '../data/startSitUtils';
 import { POSITION_TABS, positionRanks, rankLabel, seasonRankings } from '../data/rankings';
 import { PRESEASON_POSITION_RANKS } from '../data/preseasonRanks';
@@ -24,7 +24,9 @@ import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
 import WhyButton, { WhyCard } from './WhyButton';
 import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
 import { summarizeAccuracy } from '../data/accuracy';
-import { EXAMPLE_QUESTIONS, answerQuestion } from '../data/askModel';
+import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion } from '../data/askModel';
+import { leagueOutlookFrom } from '../data/leagueOdds';
+import { loadLeagueSeason, playerByes } from '../data/leagueSeason';
 import '../App.css';
 import './SeasonTools.css';
 
@@ -464,7 +466,7 @@ const TeamNeeds = ({ needs, partnerKey, onPick }) => (
 // Preseason position ranks (WR15...), which outlooks lean on for players who have barely played:
 // the frozen offseason ranks first, then the current pool for anyone who wasn't in it.
 let seasonRanksCache = null;
-const seasonRanks = () => {
+export const seasonRanks = () => {
   if (!seasonRanksCache) {
     seasonRanksCache = new Map();
     POSITION_TABS.filter((t) => t.positions.length === 1).forEach((t) => {
@@ -616,10 +618,12 @@ const WaiverMoves = ({
  */
 export const AskBar = ({
   projections, projectionsById, roster, lineup, whyCtx, scoring, week, partners, rosterSettings, dynasty, ppr,
-  rosteredIds, waiverPool, waiverNote, posRanks, updatedLabel,
+  rosteredIds, waiverPool, waiverNote, posRanks, updatedLabel, leagueId = null,
 }) => {
   const [question, setQuestion] = useState('');
   const [log, setLog] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const leagueCache = useRef({ season: null, projections: null, outlook: null });
   const teamCount = partners.length + 1;
   const marketSettings = useMemo(
     () => (partners.length ? marketSettingsFor({ dynasty, teamCount, rosterSettings, ppr }) : null),
@@ -648,35 +652,102 @@ export const AskBar = ({
     const names = (list) => list.map((p) => p.name).join(' and ');
     const rosterById = new Map(roster.map((p) => [p.id, p]));
     const posTab = new Map();
+    const seasonStarters = seasonStarterIds(myRoster, rosterSettings, scoring);
 
+    // The trade as asked: your players, the one team that has all of theirs, and the shared arguments.
+    const setUp = (give, get) => {
+      const mine = myRoster.filter((p) => give.some((g) => g.id === p.id));
+      if (mine.length < give.length) return { error: `${names(give.filter((g) => !rosterById.has(g.id)))} isn't on your team.` };
+      const partner = partnerRosters.find((t) => get.every((g) => t.roster.some((p) => p.id === g.id)));
+      if (!partner) return { error: `${names(get)} ${get.length > 1 ? "aren't all on one team" : "isn't on a team"} in this league, so there's no trade to rate.` };
+      const theirs = partner.roster.filter((p) => get.some((g) => g.id === p.id));
+      const args = {
+        give: mine, get: theirs, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount,
+        dynasty, givePicks: [], getPicks: [], firstPickSeason: null, levels, market,
+      };
+      return { partner, args };
+    };
     const trades = partners.length ? {
       rate(give, get) {
-        const mine = myRoster.filter((p) => give.some((g) => g.id === p.id));
-        if (mine.length < give.length) return { error: `${names(give.filter((g) => !rosterById.has(g.id)))} isn't on your team.` };
-        const partner = partnerRosters.find((t) => get.every((g) => t.roster.some((p) => p.id === g.id)));
-        if (!partner) return { error: `${names(get)} ${get.length > 1 ? "aren't all on one team" : "isn't on a team"} in this league, so there's no trade to rate.` };
-        const theirs = partner.roster.filter((p) => get.some((g) => g.id === p.id));
-        const result = analyzeTrade({
-          give: mine, get: theirs, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount,
-          dynasty, givePicks: [], getPicks: [], firstPickSeason: null, levels, market,
-        });
+        const { error, partner, args } = setUp(give, get);
+        if (error) return { error };
+        const result = analyzeTrade(args);
         const why = explainTrade(result, { allPlayers, scoring, dynasty, partnerName: partner.name });
-        return { text: `${why.call.label}: ${why.headline}.`, why, note: 'Open the Trade check below to add picks or try other players.' };
+        return { text: `${why.call.label}: ${why.headline}.`, why, partnerName: partner.name, note: 'Open the Trade check below to add picks or try other players.' };
       },
-      find({ give, get, position }) {
+      // What to add to (or take out of) a lopsided trade to make it fair.
+      balance(give, get) {
+        const { error, partner, args } = setUp(give, get);
+        if (error) return { error };
+        const result = analyzeTrade(args);
+        return {
+          partnerName: partner.name,
+          share: result.share,
+          verdict: result.valueVerdict,
+          options: balanceTrade({ ...args, levels: result.levels, limit: 4 }),
+        };
+      },
+      // Packages about even in value for the players asked about, even when they don't clearly help your
+      // lineup: what it would take to get someone, or what someone could bring back.
+      offers({ give, get, partner = null }) {
+        const skill = (roster) => roster.filter((p) => ['QB', 'RB', 'WR', 'TE'].includes(p.position));
+        const results = [];
+        const tryTrade = (team, mine, theirs) => {
+          const result = analyzeTrade({
+            give: mine, get: theirs, myRoster, theirRoster: team.roster, rosterSettings, scoring, allPlayers, teamCount, dynasty, levels, market,
+          });
+          if (Math.abs(result.share) <= 0.15) {
+            results.push({ partnerName: team.name, give: mine, get: theirs, myChange: result.myChange, theirChange: result.theirChange });
+          }
+        };
+        const myGive = myRoster.filter((p) => give.some((g) => g.id === p.id));
+        if (get.length) {
+          const team = partnerRosters.find((t) => get.every((g) => t.roster.some((p) => p.id === g.id)));
+          if (!team) return [];
+          const theirs = team.roster.filter((p) => get.some((g) => g.id === p.id));
+          const extra = skill(myRoster).filter((p) => !myGive.some((g) => g.id === p.id));
+          if (myGive.length) tryTrade(team, myGive, theirs);
+          extra.forEach((p) => tryTrade(team, [...myGive, p], theirs));
+          if (!results.length && !myGive.length) {
+            const top = [...extra].sort((a, b) => (outlooks.get(b.id)?.value ?? 0) - (outlooks.get(a.id)?.value ?? 0)).slice(0, 8);
+            top.forEach((a, i) => top.slice(i + 1).forEach((b) => tryTrade(team, [a, b], theirs)));
+          }
+        } else if (myGive.length) {
+          const teams = partner ? partnerRosters.filter((t) => t.name === partner) : partnerRosters;
+          teams.forEach((team) => skill(team.roster).forEach((p) => tryTrade(team, myGive, [p])));
+        }
+        return results.sort((a, b) => b.myChange - a.myChange).slice(0, 4);
+      },
+      // Trade ideas, narrowed to the players, position, team ("with TEAM") or shape ("2 for 1") asked about.
+      find({ give, get, position, partner = null, shape = null }) {
         const wanted = position === 'FLEX' ? ['RB', 'WR', 'TE'] : position ? [position] : null;
-        return findTrades({ myRoster, partners: partnerRosters, rosterSettings, scoring, allPlayers, dynasty, market, limit: 40 })
+        const partnersAsked = partner ? partnerRosters.filter((t) => t.name === partner) : partnerRosters;
+        return findTrades({ myRoster, partners: partnersAsked, rosterSettings, scoring, allPlayers, dynasty, market, limit: 40 })
           .filter((idea) => give.every((g) => idea.give.some((p) => p.id === g.id))
             && get.every((g) => idea.get.some((p) => p.id === g.id))
-            && (!wanted || idea.get.some((p) => wanted.includes(p.position))))
+            && (!wanted || idea.get.some((p) => wanted.includes(p.position)))
+            && (shape !== 'twoForOne' || idea.give.length > idea.get.length))
           .slice(0, 4);
       },
     } : null;
+
+    let needsCache = null;
+    const owners = new Map(partners.flatMap((t) => (t.players || []).map((p) => [p.id, t.name])));
 
     return {
       allPlayers: scoredAll,
       roster,
       lineup,
+      partnerNames: partners.map((p) => p.name),
+      ownerOf: (p) => (rosterById.has(p.id) ? 'you' : owners.get(p.id) || null),
+      byeOf: (p) => playerByes().get(p.id) ?? null,
+      freeAgents: () => withOutlook(waiverPool),
+      needs: partners.length
+        ? () => {
+          if (!needsCache) needsCache = teamNeeds({ teams: [{ key: 'mine', name: 'Your team', roster: myRoster, mine: true }, ...partnerRosters], rosterSettings, scoring });
+          return needsCache;
+        }
+        : null,
       whyCtx,
       scoring,
       week,
@@ -686,13 +757,14 @@ export const AskBar = ({
       waiverNote,
       scored: (p) => rosterById.get(p.id) || p,
       outlookOf: (p) => outlooks.get(p.id) || null,
+      isSeasonStarter: (p) => seasonStarters.has(p.id),
       valueOf: (p) => {
         const rated = withOutlook([p])[0];
         const own = ownTradeScore(rated, levels, scoring, dynasty).score;
         const mv = market?.players[p.id]?.value;
         if (!market || mv == null) return { label: null, tag: null };
         const blended = market.toMarket(market.weight * market.toScore(mv) + (1 - market.weight) * own);
-        return { label: `${blended.toLocaleString()} (market and our projections blended)`, tag: marketTag(own, market.toScore(mv))?.label || null };
+        return { label: `${blended.toLocaleString()} (market and our projections blended)`, tag: marketTag(own, market.toScore(mv)) };
       },
       seasonRankOf: (p) => {
         if (!posTab.has(p.position)) posTab.set(p.position, new Map(seasonRankings(initialPlayerList, p.position).map((r) => [r.id, r.positionRank])));
@@ -705,16 +777,39 @@ export const AskBar = ({
     };
   };
 
-  const ask = (text) => {
+  // Team questions need the league's schedule and standings, loaded the first time one is asked.
+  const leagueFor = async (q, previous) => {
+    if (!isLeagueQuestion(q, partners.map((p) => p.name)) && previous?.type !== 'league') return null;
+    if (!leagueId) return { status: 'none' };
+    try {
+      const season = await loadLeagueSeason(leagueId);
+      const cached = leagueCache.current;
+      if (cached.season !== season || cached.projections !== projections) {
+        const outlook = leagueOutlookFrom(season, {
+          projections, scoring, rosterSettings, myIds: new Set(roster.map((p) => p.id)), seasonRanks: seasonRanks(), byes: playerByes(),
+        });
+        leagueCache.current = { season, projections, outlook };
+      }
+      return { status: 'ok', outlook: leagueCache.current.outlook };
+    } catch (error) {
+      return { status: 'error', error: String(error.response?.data || 'Sleeper is not answering right now.') };
+    }
+  };
+
+  const ask = async (text) => {
     const q = String(text || '').trim();
-    if (!q) return;
+    if (!q || busy) return;
     let answer;
     try {
-      answer = answerQuestion(q, buildCtx());
+      setBusy(true);
+      const previous = log[0]?.answer?.context || null;
+      const league = await leagueFor(q, previous);
+      answer = answerQuestion(q, { ...buildCtx(), league, previous });
     } catch (error) {
       console.error('Ask bar failed:', error);
       answer = { text: 'Something went wrong working that out. Try asking another way.', examples: EXAMPLE_QUESTIONS };
     }
+    setBusy(false);
     setLog((entries) => [{ id: Date.now(), q, answer }, ...entries].slice(0, 5));
     setQuestion('');
     if (answer.scrollTo) window.setTimeout(() => document.getElementById(answer.scrollTo)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
@@ -741,12 +836,12 @@ export const AskBar = ({
         <input
           type="search"
           enterKeyHint="send"
-          placeholder="Ask about a player, trade or pickup"
+          placeholder="Ask about a player, trade or your league"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           aria-label="Ask a question"
         />
-        <button type="submit" className="create-button" disabled={!question.trim()}>Ask</button>
+        <button type="submit" className="create-button" disabled={!question.trim() || busy}>{busy ? '...' : 'Ask'}</button>
       </form>
       {log.length === 0 && (
         <>
@@ -770,13 +865,29 @@ export const AskBar = ({
                         {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
                         {item.detail && <><br /><small>{item.detail}</small></>}
                       </div>
-                      {item.value != null && (
+                      {item.valueText != null && <span className="startsit-points">{item.valueText}</span>}
+                      {item.valueText == null && item.value != null && (
                         <span className="startsit-points">{Number(item.value).toFixed(1)}{item.valueLabel && <small> {item.valueLabel}</small>}</span>
                       )}
                     </li>
                   ))}
                 </ul>
               )}
+              {(answer.sections || []).map((section) => (
+                <div key={section.title}>
+                  <p className="startsit-help">{section.title}</p>
+                  <ul className="startsit-bench ask-items">
+                    {section.items.map((item) => (
+                      <li key={`${item.label}-${item.name}`}>
+                        <div>
+                          {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
+                          {item.detail && <><br /><small>{item.detail}</small></>}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
               {answer.why && <div className="why-pop ask-why"><WhyCard why={answer.why} updatedLabel={updatedLabel} /></div>}
               {answer.note && <p className="startsit-help">{answer.note}</p>}
               {answer.examples && <Examples list={answer.examples} />}
@@ -976,10 +1087,10 @@ const TradeCheck = ({
           </div>
 
           {needs && (
-            <details className="trade-needs">
-              <summary>League needs: who is strong and weak at each position</summary>
+            <div className="trade-needs">
+              <h3 className="trade-needs-title">League needs: who is strong and weak at each position</h3>
               <TeamNeeds needs={needs} partnerKey={partner?.key} onPick={choosePartner} />
-            </details>
+            </div>
           )}
 
           <label className="trade-partner">
@@ -1421,6 +1532,7 @@ const StartSit = ({ userId }) => {
             waiverNote={waiverNote}
             posRanks={posRanks}
             updatedLabel={whyUpdated}
+            leagueId={activeSleeper?.leagueId || null}
           />
           <section className="card startsit-panel">
             <div className="player-board-heading">

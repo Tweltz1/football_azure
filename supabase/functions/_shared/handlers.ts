@@ -19,6 +19,7 @@ import { learnFromBoard, sanitizeHandwriting } from './handwriting.ts';
 import { draftNumberOf, historyIdFor, historySummary, isCompleted, snapshotDraft } from './history.ts';
 import { type FetchJson, getMatchupHistory, getProjectionAccuracy, getWeekProjections, snapshotOf } from './startSit.ts';
 import { getSleeperTeams, isValidSleeperUsername, SleeperUserNotFound } from './sleeperImport.ts';
+import { getLeagueSeason, isValidLeagueId, SleeperLeagueNotFound } from './sleeperLeague.ts';
 import { getMarketValues, marketSettingsFrom } from './market.ts';
 
 export interface Ctx {
@@ -1205,6 +1206,18 @@ async function startSitSleeper(ctx: Ctx, query: URLSearchParams): Promise<Res> {
   }
 }
 
+async function startSitLeague(ctx: Ctx, query: URLSearchParams): Promise<Res> {
+  const leagueId = str(query.get('leagueId')).trim();
+  if (!isValidLeagueId(leagueId)) return bad('Please pick a Sleeper league.');
+  try {
+    return ok(await getLeagueSeason(ctx.fetchJson, ctx.now(), leagueId));
+  } catch (error) {
+    if (error instanceof SleeperLeagueNotFound) return notFound('That Sleeper league was not found.');
+    ctx.log.warn(`Loading Sleeper league ${leagueId} failed.`, error);
+    return { status: 502, body: 'Sleeper is not answering right now. Please try again in a few minutes.' };
+  }
+}
+
 async function startSitMatchup(ctx: Ctx, playerId: string, query: URLSearchParams): Promise<Res> {
   const opponent = str(query.get('opponent')).trim();
   if (!/^[A-Za-z]{2,4}$/.test(opponent)) return bad('Please provide the opponent team, like KC.');
@@ -1793,6 +1806,7 @@ export async function handle(ctx: Ctx, method: string, path: string, query: URLS
   if (parts.length === 2 && method === 'GET' && parts[0] === 'history') return getHistoryEntry(ctx, parts[1]);
   if (parts.length === 2 && method === 'GET' && parts[0] === 'invite') return getInvite(ctx, parts[1]);
   if (parts.length === 2 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'sleeper') return startSitSleeper(ctx, query);
+  if (parts.length === 2 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'league') return startSitLeague(ctx, query);
   if (parts.length === 2 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'market') return startSitMarket(ctx, query);
   if (parts.length === 2 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'accuracy') return startSitAccuracy(ctx);
   if (parts.length === 3 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'matchup') return startSitMatchup(ctx, parts[2], query);
