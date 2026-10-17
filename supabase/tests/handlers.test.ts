@@ -10,7 +10,9 @@ import { clearMarketCache } from '../functions/_shared/market.ts';
 import { clearSleeperCache } from '../functions/_shared/sleeperImport.ts';
 import { clearLeagueSeasonCache } from '../functions/_shared/sleeperLeague.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../functions/_shared/models.ts';
-import type { HistoryStore, LeagueStore, ProfileStore, ProjectionSnapshot, ProjectionSnapshotStore, StoredLeague } from '../functions/_shared/ports.ts';
+import type {
+  GameStore, HistoryStore, LeagueStore, ProfileStore, ProjectionSnapshot, ProjectionSnapshotStore, ScoreRow, StoredLeague,
+} from '../functions/_shared/ports.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
@@ -63,11 +65,28 @@ function memoryWorld({ latencyMs = 0 } = {}) {
     },
   };
 
+  const sessionRows = new Map<string, Record<string, unknown>>();
+  const scoreRows = new Map<string, ScoreRow>();
+  const scoreKey = (game: string, board: string, userId: string) => `${game}|${board}|${userId}`;
+  const onBoard = (game: string, board: string) => [...scoreRows.values()].filter((r) => r.game === game && r.board === board);
+  const games: GameStore = {
+    async getSession(userId, kind) { const r = sessionRows.get(`${userId}|${kind}`); return r ? clone(r) : null; },
+    async setSession(userId, kind, data) { if (data) sessionRows.set(`${userId}|${kind}`, clone(data)); else sessionRows.delete(`${userId}|${kind}`); },
+    async getScore(game, board, userId) { const r = scoreRows.get(scoreKey(game, board, userId)); return r ? clone(r) : null; },
+    async putScore(row) { scoreRows.set(scoreKey(row.game, row.board, row.userId), clone(row)); },
+    async deleteScore(game, board, userId) { scoreRows.delete(scoreKey(game, board, userId)); },
+    async topScores(game, board, limit, lowFirst) {
+      return onBoard(game, board).sort((a, b) => (lowFirst ? a.score - b.score : b.score - a.score) || a.at.localeCompare(b.at)).slice(0, limit).map(clone);
+    },
+    async countBetter(game, board, score, lowFirst) { return onBoard(game, board).filter((r) => (lowFirst ? r.score < score : r.score > score)).length; },
+  };
+
   const ctxFor = (userId: string | null): Ctx => ({
     leagues,
     profiles,
     history,
     snapshots,
+    games,
     broadcaster: { async send(leagueId, event, payload, toUserId) { sent.push({ leagueId, event, payload: clone(payload), toUserId }); } },
     log: { info() {}, warn() {}, error() {} },
     now: () => new Date(clock),
@@ -1704,4 +1723,75 @@ test('mini-games: lobby round from setup to prize, seeds stay secret', async () 
   const penalty = world.league(leagueId).miniGames![2];
   assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`)).status, 200);
   assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: penalty.id })).status, 400);
+});
+
+import { botActions, makeCourse, MAX_TICKS as RACE_MAX_TICKS, nextRandom, startRunner, stepRunner } from '../functions/_shared/raceSim.js';
+
+test('leaderboards: ranked practice keeps each player\'s best and ranks it', async () => {
+  const world = memoryWorld();
+  assert.equal((await world.call('ann', 'POST', 'games/practice/start', { game: 'nope' })).status, 400);
+  const started = (await world.call('ann', 'POST', 'games/practice/start', { game: 'climb' })).body as any;
+  assert.ok(started.ranked && Number.isInteger(started.seed));
+  // Too quick: the run can't have been played yet.
+  const lazy = replaySkillGame('climb', started.seed, []);
+  if (lazy.ticks > TICKS_PER_SECOND * 5) assert.equal((await world.call('ann', 'POST', 'games/practice/finish', { game: 'climb', inputs: [] })).status, 400);
+  world.advance(lazy.ticks / TICKS_PER_SECOND + 1);
+  const done = (await world.call('ann', 'POST', 'games/practice/finish', { game: 'climb', inputs: [] })).body as any;
+  assert.equal(done.score, lazy.score);
+  assert.deepEqual([done.board.rank, done.board.newBest], [1, true]);
+  assert.equal((await world.call('ann', 'POST', 'games/practice/finish', { game: 'climb', inputs: [] })).status, 400, 'saved once');
+
+  // A turn game, dealt and timed by the server.
+  await world.call('bob', 'POST', 'games/practice/start', { game: 'price' });
+  let last: any = null;
+  for (let i = 0; i < 8; i += 1) {
+    if (i > 0) await world.call('bob', 'POST', 'games/practice/next', { game: 'price' });
+    last = (await world.call('bob', 'POST', 'games/practice/turn', { game: 'price', index: i, answer: -1 })).body;
+  }
+  assert.ok(last.finished && last.score === 0 && last.board === null, 'a zero stays off the board');
+
+  const board = (await world.call('ann', 'GET', 'games/leaderboard', undefined, 'game=climb&board=all')).body as any;
+  assert.equal(board.rows.length, 1);
+  assert.ok(board.rows[0].me && board.rows[0].name === 'ann-name' && board.mine.rank === 1);
+  assert.equal((await world.call('ann', 'GET', 'games/leaderboard', undefined, 'game=race&board=time-moon')).status, 400);
+});
+
+test('leaderboards: Fun Run times are replayed, and a live room\'s win goes to the fastest', async () => {
+  const world = memoryWorld();
+  const runFor = (seed: number, slot: number, skill: number) => {
+    const course = makeCourse(seed);
+    const r = startRunner(slot, slot);
+    const state = { r: seed + slot };
+    const rand = () => nextRandom(state);
+    const log: unknown[][] = [];
+    while (r.finishTick == null && r.tick < RACE_MAX_TICKS) {
+      const actions = botActions(r, course, skill, rand).filter((a: unknown[]) => a[0] === 'j');
+      actions.forEach((a: unknown[]) => log.push([r.tick, ...a]));
+      stepRunner(r, course, actions);
+    }
+    return { log, finishTick: r.finishTick as number, map: course.map as string };
+  };
+  const seed = 4242;
+  const ann = runFor(seed, 0, 0.9);
+  const bob = runFor(seed, 1, 0.4);
+  const finish = (user: string, run: typeof ann, slot: number) => world.call(user, 'POST', 'games/race/finish', {
+    seed, slot, crew: slot, inputs: run.log, raceId: 'race-1', live: true,
+  });
+  assert.equal((await finish('ann', ann, 0)).status, 400, 'start first');
+  await world.call('ann', 'POST', 'games/race/start', { seed });
+  await world.call('bob', 'POST', 'games/race/start', { seed });
+  assert.equal((await finish('ann', ann, 0)).status, 400, 'faster than the clock');
+  world.advance(Math.max(ann.finishTick, bob.finishTick) / TICKS_PER_SECOND);
+  const first = (await finish('bob', bob, 1)).body as any;
+  assert.equal(first.finishTick, bob.finishTick);
+  assert.equal(first.won, false, 'no win with only one report');
+  const second = (await finish('ann', ann, 0)).body as any;
+  const annWins = ann.finishTick < bob.finishTick;
+  assert.equal(second.won, annWins);
+  const wins = (await world.call('ann', 'GET', 'games/leaderboard', undefined, 'game=race&board=wins')).body as any;
+  assert.equal(wins.rows.length, 1);
+  assert.equal(wins.rows[0].name, annWins ? 'ann-name' : 'bob-name');
+  const times = (await world.call('ann', 'GET', 'games/leaderboard', undefined, `game=race&board=time-${ann.map}`)).body as any;
+  assert.deepEqual(times.rows.map((r: any) => r.score), [ann.finishTick, bob.finishTick].sort((a, b) => a - b));
+  assert.equal((await world.call('ann', 'POST', 'games/race/finish', { seed, slot: 0, crew: 0, inputs: [[5, 'x']] })).status, 400);
 });

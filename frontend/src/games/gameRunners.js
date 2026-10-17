@@ -3,8 +3,9 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import { GAMES, gradeTurn, TICKS_PER_SECOND, turnFor } from './sim.generated';
 
-// How a game talks to whoever keeps score. Practice games score themselves in the browser with a random
-// seed. An official lobby try asks the server, which deals the seed or each turn and checks the result.
+// How a game talks to whoever keeps score. An official lobby try asks the server, which deals the seed or
+// each turn and checks the result. Practice does the same when signed in and online, so it counts for the
+// leaderboards (`ranked`); otherwise (no internet, the offline app) it scores itself in the browser.
 //
 // A runner has:
 //   start()                    -> { seed } for a skill game, { turn } for a turn game (or { finished, score })
@@ -13,7 +14,30 @@ import { GAMES, gradeTurn, TICKS_PER_SECOND, turnFor } from './sim.generated';
 
 export const randomSeed = () => Math.floor(Math.random() * 2 ** 31);
 
+/** Practice: ranked through the server when it answers, else scored here (see localRunner). */
 export function practiceRunner(game) {
+  const local = localRunner(game);
+  const post = async (action, body) => (await axios.post(`${API_BASE_URL}/games/practice/${action}`, { game, ...body })).data;
+  let ranked = false;
+  return {
+    official: false,
+    get ranked() { return ranked; },
+    async start() {
+      try {
+        const body = await post('start');
+        ranked = true;
+        return body;
+      } catch (e) {
+        return local.start();
+      }
+    },
+    next: () => (ranked ? post('next') : local.next()),
+    turn: (index, answer, seconds) => (ranked ? post('turn', { index, answer }) : local.turn(index, answer, seconds)),
+    finish: (inputs) => (ranked ? post('finish', { inputs }) : local.finish()),
+  };
+}
+
+function localRunner(game) {
   const seed = randomSeed();
   const points = [];
   const zones = [];

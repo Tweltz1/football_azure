@@ -12,6 +12,7 @@
 // Everything here uses plain arithmetic (no Math.sin and friends) so every JS engine gets the same result.
 
 import { TRIVIA_ROWS, type TriviaRow } from './triviaData.ts';
+import type { MiniGameAttempt } from './models.ts';
 
 export const TICKS_PER_SECOND = 30;
 
@@ -505,4 +506,26 @@ export function gradeTurn(game: GameKind, seed: number, index: number, answer: u
     return { points, message, late, answer: row[0] };
   }
   throw new Error(`${game} is not a turn game`);
+}
+
+/**
+ * Plays turn `index` of a turn game on an attempt (an official lobby try or a ranked practice game) that
+ * has a turn on the clock, `seconds` after it was dealt. Returns the grade, or null when that turn was
+ * already played. The next turn's clock starts when the player asks for it (servedAt), not while they read
+ * this result.
+ */
+export function applyTurn(game: GameKind, attempt: MiniGameAttempt, index: number, answer: unknown, seconds: number, now: string): TurnResult | null {
+  if (index !== attempt.turn || !attempt.servedAt) return null;
+  const graded = gradeTurn(game, attempt.seed ?? 0, index, answer, seconds, attempt.history ?? []);
+  attempt.points = [...(attempt.points ?? []), graded.points];
+  if (game === 'penalty') attempt.history = [...(attempt.history ?? []), Math.trunc(Number((answer as { zone?: unknown } | null)?.zone)) || 0];
+  attempt.turn = index + 1;
+  attempt.servedAt = null;
+  const total = attempt.points.reduce((sum, p) => sum + p, 0);
+  attempt.score = total;
+  if (attempt.turn >= turnCount(game)) {
+    attempt.finishedAt = now;
+    attempt.detail = game === 'penalty' ? `${total} of ${turnCount(game)}` : `${attempt.points.filter((p) => p > 0).length} of ${turnCount(game)} scored`;
+  }
+  return graded;
 }

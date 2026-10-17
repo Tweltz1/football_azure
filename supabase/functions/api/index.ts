@@ -5,7 +5,9 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4';
 import { handle, type Ctx } from '../_shared/handlers.ts';
 import { getInitialPlayerPool } from '../_shared/playerData.ts';
-import { createBroadcaster, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore } from './supabaseAdapters.ts';
+import {
+  createBroadcaster, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
+} from './supabaseAdapters.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -17,6 +19,7 @@ const leagues = createLeagueStore(db);
 const profiles = createProfileStore(db);
 const history = createHistoryStore(db);
 const snapshots = createSnapshotStore(db);
+const games = createGameStore(db);
 
 async function fetchJson(url: string): Promise<unknown> {
   const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) });
@@ -84,6 +87,7 @@ Deno.serve(async (req) => {
       profiles,
       history,
       snapshots,
+      games,
       broadcaster,
       log,
       now: () => new Date(),

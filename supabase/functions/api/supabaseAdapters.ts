@@ -3,7 +3,8 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.49.4';
 import type {
-  Broadcaster, HistoryStore, LeagueStore, LightLeagueState, ProfileStore, ProjectionSnapshot, ProjectionSnapshotStore, StoredLeague,
+  Broadcaster, GameStore, HistoryStore, LeagueStore, LightLeagueState, ProfileStore, ProjectionSnapshot, ProjectionSnapshotStore,
+  ScoreRow, StoredLeague,
 } from '../_shared/ports.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../_shared/models.ts';
 
@@ -115,6 +116,54 @@ export function createHistoryStore(db: SupabaseClient): HistoryStore {
         .order('completed_at', { ascending: false });
       if (error) throw error;
       return (data ?? []).map((row) => row.data as DraftHistoryEntry);
+    },
+  };
+}
+
+interface ScoreDbRow { game: string; board: string; user_id: string; name: string; score: number; detail: string | null; at: string }
+const rowToScore = (r: ScoreDbRow): ScoreRow => ({
+  game: r.game, board: r.board, userId: r.user_id, name: r.name, score: Number(r.score), detail: r.detail, at: r.at,
+});
+
+export function createGameStore(db: SupabaseClient): GameStore {
+  return {
+    async getSession(userId, kind) {
+      const { data, error } = await db.from('game_sessions').select('data').eq('user_id', userId).eq('kind', kind).maybeSingle();
+      if (error) throw error;
+      return data ? (data.data as Record<string, unknown>) : null;
+    },
+    async setSession(userId, kind, value) {
+      const { error } = value
+        ? await db.from('game_sessions').upsert({ user_id: userId, kind, data: value, updated_at: new Date().toISOString() })
+        : await db.from('game_sessions').delete().eq('user_id', userId).eq('kind', kind);
+      if (error) throw error;
+    },
+    async getScore(game, board, userId) {
+      const { data, error } = await db.from('game_scores').select('*').eq('game', game).eq('board', board).eq('user_id', userId).maybeSingle();
+      if (error) throw error;
+      return data ? rowToScore(data as ScoreDbRow) : null;
+    },
+    async putScore(row) {
+      const { error } = await db.from('game_scores').upsert({
+        game: row.game, board: row.board, user_id: row.userId, name: row.name, score: row.score, detail: row.detail, at: row.at,
+      });
+      if (error) throw error;
+    },
+    async deleteScore(game, board, userId) {
+      const { error } = await db.from('game_scores').delete().eq('game', game).eq('board', board).eq('user_id', userId);
+      if (error) throw error;
+    },
+    async topScores(game, board, limit, lowFirst) {
+      const { data, error } = await db.from('game_scores').select('*').eq('game', game).eq('board', board)
+        .order('score', { ascending: lowFirst }).order('at', { ascending: true }).limit(limit);
+      if (error) throw error;
+      return (data ?? []).map((r) => rowToScore(r as ScoreDbRow));
+    },
+    async countBetter(game, board, score, lowFirst) {
+      const query = db.from('game_scores').select('user_id', { count: 'exact', head: true }).eq('game', game).eq('board', board);
+      const { count, error } = await (lowFirst ? query.lt('score', score) : query.gt('score', score));
+      if (error) throw error;
+      return count ?? 0;
     },
   };
 }

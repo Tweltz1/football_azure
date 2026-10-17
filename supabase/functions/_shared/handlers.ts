@@ -3,7 +3,8 @@
 // with one deliberate change: the acting user always comes from the sign-in token,
 // never from a userId/adminId the browser puts in the request body.
 
-import type { Broadcaster, HistoryStore, LeagueStore, Logger, ProfileStore, ProjectionSnapshotStore, StoredLeague } from './ports.ts';
+import type { Broadcaster, GameStore, HistoryStore, LeagueStore, Logger, ProfileStore, ProjectionSnapshotStore, StoredLeague } from './ports.ts';
+import { gamesRoute, recordLobbyScore } from './leaderboards.ts';
 import type { Bid, League, MiniGameAttempt, Player, RosterSettings, Team, UserProfile } from './models.ts';
 import {
   clone, ensureDefaults, forClient, isCommish, isManual, isWhiteboard, MANUAL, normalizeBiddingMode, normalizeDraftMode,
@@ -22,7 +23,7 @@ import { getSleeperTeams, isValidSleeperUsername, SleeperUserNotFound } from './
 import { getLeagueSeason, isValidLeagueId, SleeperLeagueNotFound } from './sleeperLeague.ts';
 import { getMarketValues, marketSettingsFrom } from './market.ts';
 import {
-  GAMES, gradeTurn, isGameKind, replaySkillGame, TICKS_PER_SECOND, turnCount, turnFor, validInputs, type GameKind,
+  applyTurn, GAMES, isGameKind, replaySkillGame, TICKS_PER_SECOND, turnFor, validInputs, type GameKind,
 } from './miniGames.ts';
 
 export interface Ctx {
@@ -31,6 +32,8 @@ export interface Ctx {
   history: HistoryStore;
   /** Saved weekly projections for the accuracy card; missing on the offline device copy. */
   snapshots?: ProjectionSnapshotStore;
+  /** Leaderboards and ranked practice games; missing on the offline device copy. */
+  games?: GameStore;
   broadcaster: Broadcaster;
   log: Logger;
   now: () => Date;
@@ -1826,10 +1829,13 @@ async function startMiniGame(ctx: Ctx, leagueId: string, data: Body): Promise<Re
   return done(result, () => body);
 }
 
+type Finished = { game: GameKind; score: number; detail: string | null } | null;
+
 async function playMiniGameTurn(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
   const id = str(data.challengeId);
   const index = int(data.index);
   let body: unknown = null;
+  let finished: Finished = null;
   const result = await updateLeague(ctx, leagueId, (league) => {
     const challenge = findChallenge(league, id);
     if (!challenge || !isGameKind(challenge.game)) return notFound('That game is gone.');
@@ -1838,23 +1844,15 @@ async function playMiniGameTurn(ctx: Ctx, leagueId: string, data: Body): Promise
     if (!attempt) return bad('Start the game first.');
     if (GAMES[game].style !== 'turns') return bad('That game is not played in turns.');
     if (attempt.finishedAt) return bad('You already finished this game.');
-    if (index !== attempt.turn || !attempt.servedAt) return conflict('That turn was already played.');
-    const seconds = secondsSince(ctx, attempt.servedAt);
-    const graded = gradeTurn(game, attempt.seed ?? 0, index, data.answer, seconds, attempt.history ?? []);
-    attempt.points = [...(attempt.points ?? []), graded.points];
-    if (game === 'penalty') attempt.history = [...(attempt.history ?? []), int((data.answer as Body | null)?.zone)];
-    attempt.turn = index + 1;
-    // The next turn's clock starts when the player asks for it (minigame/start), not while they read this result.
-    attempt.servedAt = null;
-    const total = attempt.points.reduce((sum, p) => sum + p, 0);
-    attempt.score = total;
-    if (attempt.turn >= turnCount(game)) {
-      attempt.finishedAt = ctx.now().toISOString();
-      attempt.detail = game === 'penalty' ? `${total} of ${turnCount(game)}` : `${attempt.points.filter((p) => p > 0).length} of ${turnCount(game)} scored`;
-    }
+    const graded = applyTurn(game, attempt, index, data.answer, secondsSince(ctx, attempt.servedAt), ctx.now().toISOString());
+    if (!graded) return conflict('That turn was already played.');
     body = { result: graded, game, finished: !!attempt.finishedAt, score: attempt.score, points: attempt.points };
+    if (attempt.finishedAt) finished = { game, score: attempt.score ?? 0, detail: attempt.detail };
     return null;
   });
+  // (Set inside the update callback, which TypeScript can't see.)
+  const ended = finished as Finished;
+  if (ended && !isRes(result) && result !== 'conflict') await recordLobbyScore(ctx, ended.game, ended.score, ended.detail);
   return done(result, () => body);
 }
 
@@ -1863,6 +1861,7 @@ async function finishMiniGame(ctx: Ctx, leagueId: string, data: Body): Promise<R
   const inputs = validInputs(data.inputs);
   if (!inputs) return bad('That run could not be read.');
   let body: unknown = null;
+  let finished: Finished = null;
   const result = await updateLeague(ctx, leagueId, (league) => {
     const challenge = findChallenge(league, id);
     if (!challenge || !isGameKind(challenge.game)) return notFound('That game is gone.');
@@ -1878,8 +1877,12 @@ async function finishMiniGame(ctx: Ctx, leagueId: string, data: Body): Promise<R
     attempt.score = replay.score;
     attempt.detail = replay.detail;
     body = { game: challenge.game, finished: true, score: replay.score, detail: replay.detail };
+    finished = { game: challenge.game, score: replay.score, detail: replay.detail };
     return null;
   });
+  // (Set inside the update callback, which TypeScript can't see.)
+  const ended = finished as Finished;
+  if (ended && !isRes(result) && result !== 'conflict') await recordLobbyScore(ctx, ended.game, ended.score, ended.detail);
   return done(result, () => body);
 }
 
@@ -2004,6 +2007,11 @@ export async function handle(ctx: Ctx, method: string, path: string, query: URLS
   if (parts.length === 3 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'matchup') return startSitMatchup(ctx, parts[2], query);
 
   if (parts.length === 2 && parts[0] === 'user-profile' && method === 'POST') return updateProfile(ctx, parts[1], data);
+
+  if (parts[0] === 'games') {
+    const routed = gamesRoute(ctx, method, parts, query, data);
+    if (routed) return routed;
+  }
 
   if (parts[0] === 'leagues' && parts.length >= 2) {
     const leagueId = parts[1];

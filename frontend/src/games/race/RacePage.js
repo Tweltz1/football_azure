@@ -7,9 +7,10 @@ import { CREW } from '../../data/crew';
 import { isCommish } from '../../data/leagueLabels';
 import SoundToggle from '../../components/SoundToggle';
 import { errorText, randomSeed, readClimber, saveClimber } from '../gameRunners';
+import Leaderboards from '../Leaderboards';
 import RaceGame from './RaceGame';
 import { cleanRoomCode, joinRaceRoom, MAX_RACERS, newRoomCode } from './raceNet';
-import { ITEMS, progressOf, TICKS_PER_SECOND } from './raceSim';
+import { ITEMS, mapFor, progressOf, TICKS_PER_SECOND } from './raceSim';
 import '../Games.css';
 import './Race.css';
 
@@ -41,12 +42,39 @@ const ItemList = () => (
         <li key={item.key}><img src={CREW[item.crew].art} alt="" /><span><strong>{item.name}</strong> {item.does}</span></li>
       ))}
     </ul>
-    <p className="game-hint">Boxes give your own character's power-up more often, so pick the one you like.</p>
+    <p className="game-hint">Boxes are random. If you fall way behind, the speed-ups come up a bit more often.</p>
   </details>
 );
 
+/** Starts the race clock on the server, so the finished run can count for the leaderboards. */
+const startRanked = (seed) => axios.post(`${API_BASE_URL}/games/race/start`, { seed }).then(() => true).catch(() => false);
+
+/** Sends your run to be checked and saved. Resolves to the leaderboard result, or { error }. */
+const finishRanked = (seed, roster, meCid, engine, live, raceId) => {
+  const slot = roster.findIndex((p) => p.cid === meCid);
+  if (slot < 0) return Promise.resolve(null);
+  return axios.post(`${API_BASE_URL}/games/race/finish`, {
+    seed, slot, crew: roster[slot].crew, inputs: engine.myInputs, live, raceId,
+  }).then((res) => res.data).catch((e) => ({ error: errorText(e) }));
+};
+
+/** What your run did on the leaderboards. */
+const RankedLine = ({ ranked, seed }) => {
+  if (!ranked) return null;
+  if (ranked.error) return <p className="game-hint">Not saved to the leaderboard: {ranked.error}</p>;
+  const map = mapFor(seed).name;
+  return (
+    <p className="race-ranked">
+      {ranked.time
+        ? <>{ranked.time.newBest ? `New best on ${map}! ` : `Your best on ${map} is still ${(ranked.time.best / TICKS_PER_SECOND).toFixed(1)}s. `}You're <strong>#{ranked.time.rank}</strong>.</>
+        : 'No finish, no time this race.'}
+      {ranked.won && <> <strong>You won the race!</strong> That's {ranked.wins} {ranked.wins === 1 ? 'win' : 'wins'}.</>}
+    </p>
+  );
+};
+
 /** Finishing order, plus a prize button for the commissioner when the race came from a league lobby. */
-const Results = ({ order, meCid, leagueId, userId }) => {
+const Results = ({ order, seed, ranked, meCid, leagueId, userId }) => {
   const [league, setLeague] = useState(null);
   const [prize, setPrize] = useState('5');
   const [message, setMessage] = useState('');
@@ -69,13 +97,14 @@ const Results = ({ order, meCid, leagueId, userId }) => {
   };
   return (
     <div className="race-results">
-      <h3>Results</h3>
+      <h3>Results · {mapFor(seed).name}</h3>
+      <RankedLine ranked={ranked} seed={seed} />
       <ol>
         {order.map((r) => (
           <li key={r.cid} className={r.cid === meCid ? 'is-me' : ''}>
             <img src={CREW[r.crew].art} alt="" />
             <span className="race-result-name">{r.cid === meCid ? 'You' : r.name}</span>
-            <span>{r.runner.finishTick != null ? `${(r.runner.finishTick / TICKS_PER_SECOND).toFixed(1)}s` : `${Math.round(progressOf(r.runner) * 100)}% (didn't finish)`}</span>
+            <span>{r.runner.finishTick != null ? `${(r.runner.finishTick / TICKS_PER_SECOND).toFixed(1)}s` : `${Math.round(progressOf(r.runner, mapFor(seed).length) * 100)}% (didn't finish)`}</span>
           </li>
         ))}
       </ol>
@@ -119,6 +148,16 @@ const RaceRoom = ({ code, leagueId, user, crew, setCrew }) => {
   }, [code, cid]);
 
   useEffect(() => { netRef.current?.setMe({ crew, ready }); }, [crew, ready]);
+  useEffect(() => { if (race) startRanked(race.seed); }, [race]);
+
+  const raceDone = (order, engine) => {
+    const done = race;
+    setResults({ id: done.id, order, seed: done.seed, ranked: null });
+    setRace(null);
+    const live = done.roster.filter((p) => !p.bot).length >= 2;
+    finishRanked(done.seed, done.roster, cid, engine, live, done.id)
+      .then((ranked) => setResults((now) => (now && now.id === done.id ? { ...now, ranked } : now)));
+  };
 
   const isHost = people[0]?.cid === cid;
   const racers = people.slice(0, MAX_RACERS);
@@ -145,14 +184,14 @@ const RaceRoom = ({ code, leagueId, user, crew, setCrew }) => {
         hostCid={race.hostCid}
         net={netRef.current}
         hooksRef={hooksRef}
-        onDone={(order) => { setResults(order); setRace(null); }}
+        onDone={raceDone}
       />
     );
   }
 
   return (
     <div className="race-room">
-      {results && <Results order={results} meCid={cid} leagueId={leagueId} userId={user.userId} />}
+      {results && <Results order={results.order} seed={results.seed} ranked={results.ranked} meCid={cid} leagueId={leagueId} userId={user.userId} />}
       <div className="race-room-head">
         <div>
           <p className="section-kicker">{leagueId ? 'League race room' : 'Race room'}</p>
@@ -217,10 +256,17 @@ const Practice = ({ user, crew, bots, onExit }) => {
     return { seed, roster };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round]);
+  useEffect(() => { startRanked(race.seed); }, [race]);
+  const raceDone = (order, engine) => {
+    const id = round;
+    setResults({ id, order, ranked: null });
+    finishRanked(race.seed, race.roster, 'me', engine, false, null)
+      .then((ranked) => setResults((now) => (now && now.id === id ? { ...now, ranked } : now)));
+  };
   if (results) {
     return (
       <div className="race-room">
-        <Results order={results} meCid="me" />
+        <Results order={results.order} seed={race.seed} ranked={results.ranked} meCid="me" />
         <div className="game-player-actions">
           <button type="button" className="game-go" onClick={() => { setResults(null); setRound((n) => n + 1); }}>Race again</button>
           <button type="button" className="game-secondary" onClick={onExit}>Done</button>
@@ -230,7 +276,7 @@ const Practice = ({ user, crew, bots, onExit }) => {
   }
   return (
     <>
-      <RaceGame key={round} seed={race.seed} roster={race.roster} meCid="me" net={null} onDone={setResults} />
+      <RaceGame key={round} seed={race.seed} roster={race.roster} meCid="me" net={null} onDone={raceDone} />
       <div className="game-player-actions"><button type="button" className="game-secondary" onClick={onExit}>Quit</button></div>
     </>
   );
@@ -280,6 +326,7 @@ const RacePage = () => {
             </form>
           </div>
         </div>
+        <Leaderboards initial="race-time" />
       </div>
     );
   }
