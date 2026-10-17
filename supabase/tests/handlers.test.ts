@@ -610,6 +610,8 @@ test('start/sit: recent games, season average, injured teammates, and past match
     for (const r of rows as any[]) {
       if (!r.stats.gp) continue;
       r.stats = { ...r.stats, rec_tgt: r.player_id === '10' ? 6 : 2, rush_att: r.player_id === '12' ? 10 : 0 };
+      // Snap counts: player 10 plays 40 of the team's 50 offensive snaps; week 4 has none listed.
+      if (r.player_id === '10' && week !== 4) Object.assign(r.stats, { off_snp: 40, tm_off_snp: 50 });
     }
     return rows;
   });
@@ -627,7 +629,10 @@ test('start/sit: recent games, season average, injured teammates, and past match
   assert.deepEqual(p10.seasonStats, { tgt: 6, rec: 2, recYd: 30, twoPt: 1 });
   assert.equal(p10.gamesPlayed, 4);
   // Weeks 1-2 the team threw 10 targets (6 + 2 + 2), weeks 4-5 just 8 once player 12 was hurt.
-  assert.deepEqual(p10.usage, { targetShare: 0.667, carryShare: 0, recentTargetShare: 0.692, recentCarryShare: 0, recentGames: 3 });
+  assert.deepEqual(p10.usage, {
+    targetShare: 0.667, carryShare: 0, recentTargetShare: 0.692, recentCarryShare: 0, snapShare: 0.8, recentSnapShare: 0.8, recentGames: 3,
+  });
+  assert.equal((players.get('sleeper-14') as any).usage.snapShare, null, 'no snap counts listed: no snap share');
   assert.equal(p10.spread.ppr, 3.7, 'standard deviation of 2, 4, 8 and 10');
   assert.equal((players.get('sleeper-12') as any).usage.carryShare, 1);
   assert.equal((players.get('sleeper-11') as any).injury, 'Out', 'injured players stay in the list');

@@ -145,13 +145,13 @@ test('"why should I trade X" and "who should I trade away" give reasons, not jus
       ? { perGame: 11, value: 10, remaining: 11, missed: 0, roleChange: -3.2, notes: ['Pierce (RB) is back after missing 3 games of Joe Mixon\'s last 5: about 3.2 fewer pts a game with less work to go around.', 'Sleeper projects 9 a game.'] }
       : { perGame: 14, value: 14, remaining: 11, missed: 0, roleChange: 0, notes: [] }),
   });
-  const mixon = { ...everyone.find((p) => p.id === 'mixon'), usage: { carryShare: 0.6, recentCarryShare: 0.45, targetShare: 0.1, recentTargetShare: 0.1, recentGames: 3 } };
+  const mixon = { ...everyone.find((p) => p.id === 'mixon'), usage: { carryShare: 0.6, recentCarryShare: 0.45, targetShare: 0.1, recentTargetShare: 0.1, snapShare: 0.7, recentSnapShare: 0.58, recentGames: 3 } };
   returning.roster = returning.roster.map((p) => (p.id === 'mixon' ? mixon : p));
   returning.scored = (p) => returning.roster.find((r) => r.id === p.id) || p;
   const why = answerQuestion('why should I trade mixon', returning);
   assert.match(why.text, /^Joe Mixon is worth shopping\./);
   assert.match(why.text, /teammate's return should cut into Joe's work, about 3\.2 fewer/);
-  assert.match(why.text, /Gets 60% of HOU's carries this season, 45% over the last 3 games, and falling/);
+  assert.match(why.text, /Plays 70% of HOU's offensive snaps \(58% over the last 3 games\)\. Gets 60% of HOU's carries this season, 45% over the last 3 games, and falling/);
   assert.equal(why.items.length, 1, "Sleeper's own number isn't listed as a reason");
   assert.match(answerQuestion('who should i trade away', returning).items[0].detail, /^Losing work: Pierce \(RB\) is back/);
 

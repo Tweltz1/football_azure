@@ -429,9 +429,18 @@ export const scheduleSection = (p, ctx, games = 4) => {
 /** Share of the team's carries or targets, this season and lately, as a sentence. */
 const usageLine = (p) => {
   const u = usageFor(p);
-  if (!u) return null;
-  const trend = u.change >= 0.04 ? ', and rising' : u.change <= -0.04 ? ', and falling' : '';
-  return `Gets ${pct(u.season)} of ${p.team}'s ${u.kind} this season, ${pct(u.recent)} over the last ${u.games || 3} games${trend}.`;
+  const snaps = p?.usage?.snapShare;
+  const recentSnaps = p?.usage?.recentSnapShare;
+  const parts = [];
+  if (snaps != null) {
+    const lately = recentSnaps != null && Math.abs(recentSnaps - snaps) >= 0.05 ? ` (${pct(recentSnaps)} over the last ${p.usage.recentGames || 3} games)` : '';
+    parts.push(`Plays ${pct(snaps)} of ${p.team}'s offensive snaps${lately}.`);
+  }
+  if (u) {
+    const trend = u.change >= 0.04 ? ', and rising' : u.change <= -0.04 ? ', and falling' : '';
+    parts.push(`Gets ${pct(u.season)} of ${p.team}'s ${u.kind} this season, ${pct(u.recent)} over the last ${u.games || 3} games${trend}.`);
+  }
+  return parts.length ? parts.join(' ') : null;
 };
 
 /** Outlook notes that explain the value (teammates returning or out, workload, injuries, schedule), not Sleeper's own number. */
