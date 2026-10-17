@@ -1,0 +1,883 @@
+/* Draft games: the Games tab, the lobby card, and the five games. */
+
+.games-page {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.games-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.games-header h2 {
+  margin: 2px 0 6px;
+}
+
+.games-header .sound-toggle {
+  position: static;
+  flex: none;
+}
+
+.games-sub {
+  margin: 0;
+  color: var(--text-2);
+  max-width: 560px;
+}
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.game-card {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  text-align: left;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 14px;
+  cursor: pointer;
+}
+
+.game-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent-ring);
+}
+
+.game-card img {
+  width: 64px;
+  height: 84px;
+  object-fit: contain;
+  flex: none;
+}
+
+.game-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.game-card-text > span {
+  color: var(--text-2);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.game-card-text .game-card-best {
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* Shared bits */
+
+.game-player {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.game-player-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.game-player-head h3 {
+  margin: 0;
+}
+
+.game-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-2);
+  background: var(--surface-3);
+}
+
+.game-badge.is-official {
+  color: #1a1206;
+  background: var(--warning);
+}
+
+.game-player-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.game-go,
+.game-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.game-go {
+  color: #fff;
+  background: var(--accent-strong);
+  border: 1px solid var(--accent);
+}
+
+.game-go:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.game-secondary {
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--hairline-strong);
+}
+
+.game-secondary.is-danger {
+  color: var(--danger);
+}
+
+.game-hint {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.88rem;
+}
+
+.game-error {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.game-final {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+}
+
+.game-final p {
+  margin: 0;
+}
+
+.game-best {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.game-hud {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  font-size: 0.9rem;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.game-hud strong {
+  color: var(--text);
+}
+
+.game-hud .is-hurry strong {
+  color: var(--danger);
+}
+
+.game-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+  background: rgba(10, 11, 14, 0.62);
+  z-index: 5;
+}
+
+.game-overlay.is-setup {
+  background: rgba(10, 11, 14, 0.82);
+}
+
+.game-overlay p {
+  margin: 0;
+}
+
+.game-countdown {
+  font-size: 4rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 4px 0 #16122b;
+}
+
+.game-over-line {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.game-over-score {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--warning);
+}
+
+/* The Climb Dash */
+
+.climb-game {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.climb-stage {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  height: min(68vh, 620px);
+  min-height: 380px;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 16px;
+  background: linear-gradient(#22305e, #3b4f86 60%, #5a6b8f);
+  border: 1px solid var(--hairline-strong);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.climb-bg {
+  position: absolute;
+  left: -20%;
+  bottom: -40px;
+  width: 140%;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.climb-lanes {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  pointer-events: none;
+}
+
+.climb-lanes span {
+  border-right: 2px dashed rgba(255, 255, 255, 0.12);
+}
+
+.climb-lanes span:last-child {
+  grid-column: 2;
+}
+
+.climb-object,
+.climb-player {
+  position: absolute;
+  width: 33.333%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.climb-object img,
+.climb-player img {
+  height: 130%;
+  max-width: 90%;
+  object-fit: contain;
+}
+
+.climb-object.is-guy img,
+.climb-object.is-chrome img {
+  transform: rotate(180deg);
+}
+
+.climb-car {
+  width: 88%;
+  height: auto;
+}
+
+.climb-oip {
+  padding: 4px 10px;
+  border-radius: 14px;
+  background: #ffd23f;
+  color: #16122b;
+  font-weight: 900;
+  border: 3px solid #16122b;
+  transform: rotate(-8deg);
+}
+
+.climb-player.is-falling img {
+  transform: rotate(160deg);
+  transition: transform 0.4s;
+}
+
+.climber-picks {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  max-width: 340px;
+}
+
+.climber-picks button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 2px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.climber-picks button.is-picked {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.climber-picks img {
+  width: 100%;
+  height: 46px;
+  object-fit: contain;
+}
+
+.climb-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.climb-buttons button {
+  min-height: 52px;
+  font-size: 1.4rem;
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--hairline-strong);
+  touch-action: manipulation;
+}
+
+/* Field Goal Gauntlet */
+
+.fg-game {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fg-stage {
+  position: relative;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--hairline-strong);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.fg-field {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.fg-holder {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 18%;
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+
+.fg-result {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: rgba(10, 11, 14, 0.8);
+}
+
+.fg-result.is-good {
+  color: var(--success);
+}
+
+.fg-result.is-miss {
+  color: var(--danger);
+}
+
+.fg-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+  touch-action: manipulation;
+}
+
+.fg-meter {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.55;
+}
+
+.fg-meter.is-live {
+  opacity: 1;
+}
+
+.fg-meter-label {
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.fg-meter-track {
+  position: relative;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--surface-3);
+  border: 1px solid var(--hairline-strong);
+  overflow: hidden;
+}
+
+.fg-meter-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--success-soft);
+  border-left: 2px solid var(--success);
+  border-right: 2px solid var(--success);
+}
+
+.fg-meter-needle {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 4px;
+  margin-left: -2px;
+  background: #fff;
+  box-shadow: 0 0 6px #fff;
+}
+
+.fg-meter-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(90deg, var(--accent-strong), var(--warning));
+}
+
+.fg-meter-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(74, 222, 128, 0.5);
+  border-left: 3px solid #4ade80;
+  border-right: 3px solid #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+  z-index: 2;
+}
+
+.fg-meter-shank {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  background: repeating-linear-gradient(135deg, rgba(255, 80, 80, 0.55) 0 6px, rgba(255, 80, 80, 0.25) 6px 12px);
+  z-index: 2;
+}
+
+.fg-result.is-doink {
+  color: var(--warning);
+}
+
+.fg-tap {
+  min-height: 52px;
+}
+
+/* Penalty Kicks */
+
+.pk-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pk-goal {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 2.2 / 1;
+  margin: 18px auto 46px;
+  border: 6px solid #f2f2f2;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 16px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 2px, transparent 2px 16px),
+    #24402b;
+}
+
+.pk-zone {
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  background: transparent;
+  cursor: pointer;
+}
+
+.pk-zone:hover:not(:disabled) {
+  background: rgba(139, 108, 255, 0.18);
+}
+
+.pk-zone.is-picked {
+  background: rgba(139, 108, 255, 0.35);
+}
+
+.pk-keeper {
+  position: absolute;
+  bottom: -4px;
+  height: 92%;
+  pointer-events: none;
+  transition: left 0.35s ease-out, transform 0.35s ease-out, bottom 0.35s;
+}
+
+.pk-keeper.has-dived.is-high {
+  bottom: 22%;
+}
+
+.pk-ball {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fff, #ccc 60%, #888);
+  border: 2px solid #16122b;
+  z-index: 3;
+  pointer-events: none;
+  transition: left 0.4s ease-out, top 0.4s ease-out;
+}
+
+.pk-power {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.pk-sweet {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 35%;
+  width: 57%;
+  background: var(--success-soft);
+  z-index: 2;
+}
+
+/* Trivia */
+
+.turn-clock {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.turn-clock span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.1s linear;
+}
+
+.trivia-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline-strong);
+}
+
+.trivia-turn p {
+  margin: 0;
+}
+
+.trivia-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.trivia-meta {
+  color: var(--text-2);
+}
+
+.trivia-ask {
+  font-weight: 600;
+}
+
+.trivia-clue {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.trivia-guess {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trivia-guess input {
+  flex: 1 1 120px;
+  min-height: 42px;
+  font-size: 1.1rem;
+  padding: 0 12px;
+  border-radius: 10px;
+}
+
+.trivia-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.trivia-choices button {
+  min-height: 52px;
+  padding: 8px;
+  border-radius: 10px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--hairline-strong);
+  cursor: pointer;
+}
+
+.trivia-choices button.is-picked {
+  border-color: var(--danger);
+}
+
+.trivia-choices button.is-right {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+
+.turn-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--danger-soft);
+}
+
+.turn-result.is-good {
+  background: var(--success-soft);
+}
+
+.turn-result p {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* Lobby card */
+
+.lobby-games-card .kicker-with-tip h3 {
+  margin: 0;
+}
+
+.lobby-game {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+}
+
+.lobby-game-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lobby-game-top img {
+  width: 40px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.lobby-game-top div {
+  display: flex;
+  flex-direction: column;
+}
+
+.lobby-game-prize {
+  color: var(--warning);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.lobby-game-blurb {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.88rem;
+}
+
+.lobby-game-scores {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lobby-game-scores li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.lobby-game-scores li > span:first-child {
+  font-weight: 600;
+}
+
+.lobby-game-scores small {
+  color: var(--muted);
+}
+
+.lobby-game-scores li.is-winner > span:first-child::after {
+  content: ' 🏆';
+}
+
+.lobby-game-admin {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.lobby-game-admin button {
+  padding: 3px 9px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--hairline-strong);
+  cursor: pointer;
+}
+
+.lobby-game-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lobby-game-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lobby-game-setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.lobby-game-setup label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.lobby-game-setup select {
+  min-height: 42px;
+  max-width: 100%;
+}
+
+.lobby-prize-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+}
+
+.lobby-prize-input input {
+  width: 70px;
+  min-height: 42px;
+}
+
+.lobby-game-setup .game-error {
+  flex-basis: 100%;
+}
+
+@media (max-width: 520px) {
+  .games-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .game-hud {
+    font-size: 0.82rem;
+    padding: 8px;
+  }
+
+  .climb-stage {
+    height: 60vh;
+    min-height: 340px;
+  }
+
+  .pk-goal {
+    margin-bottom: 40px;
+  }
+}

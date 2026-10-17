@@ -122,6 +122,33 @@ export interface League {
    * drops. Only the commissioner changes settings, removes teams or deletes the league.
    */
   cohostId?: string | null;
+  /** Lobby mini-games the commissioner set up for extra draft dollars (see miniGames.ts). */
+  miniGames?: MiniGameChallenge[];
+}
+
+/** One member's official try at a lobby mini-game. */
+export interface MiniGameAttempt {
+  startedAt: string;
+  finishedAt: string | null;
+  score: number | null;
+  /** Short summary of the run, e.g. "312 ft, 2 OIPs". */
+  detail: string | null;
+  /** The run's seed. Never sent to browsers (forClient drops it): turn games are dealt from it. */
+  seed?: number;
+  /** Turn games: the turn being played, when it was dealt, and the points and inputs so far. */
+  turn?: number;
+  servedAt?: string | null;
+  points?: number[];
+  history?: number[];
+}
+
+export interface MiniGameChallenge {
+  id: string;
+  game: string;
+  prize: number;
+  createdAt: string;
+  attempts: Record<string, MiniGameAttempt>;
+  awardedTo: string | null;
 }
 
 /** The commissioner, or the co-host they picked. */
@@ -272,6 +299,12 @@ export function forClient(league: League, version?: number, viewerId: string | n
   const ownBid = viewerId ? league.activeBids[viewerId] : undefined;
   const activeBids = ownBid ? { [viewerId as string]: ownBid } : {};
   const copy: Record<string, unknown> = { ...rest, password: null, draftPlayers: null, activeBids };
+  if (league.miniGames) {
+    copy.miniGames = league.miniGames.map((challenge) => ({
+      ...challenge,
+      attempts: Object.fromEntries(Object.entries(challenge.attempts ?? {}).map(([id, { seed: _seed, ...attempt }]) => [id, attempt])),
+    }));
+  }
   if (version !== undefined) copy._version = version;
   return copy;
 }

@@ -853,7 +853,7 @@ export const AskBar = ({
         {log.map(({ id, q, answer }) => (
           <li key={id}>
             <p className="ask-question">{q}</p>
-            <div className="ask-answer">
+            <div className="ask-answer" data-kind={answer.context?.type || undefined}>
               <p>{answer.text}</p>
               {answer.itemsTitle && <p className="startsit-help">{answer.itemsTitle}</p>}
               {answer.items?.length > 0 && (
