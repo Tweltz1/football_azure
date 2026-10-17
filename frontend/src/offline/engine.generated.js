@@ -32,1518 +32,6 @@ var __objRest = (source, exclude) => {
   return target;
 };
 
-// ../supabase/functions/_shared/models.ts
-var AUCTION = "auction";
-var MANUAL = "manual";
-var STANDARD = "standard";
-var WHITEBOARD_MANUAL = "whiteboard-manual";
-var WHITEBOARD_AUTO = "whiteboard-auto";
-var isCommish = (league, userId) => !!userId && (league.adminId === userId || !!league.cohostId && league.cohostId === userId);
-var defaultRosterSettings = () => ({
-  qb: 1,
-  wr: 3,
-  rb: 2,
-  te: 1,
-  k: 1,
-  def: 1,
-  flex: 1,
-  superFlex: 1,
-  bench: 6
-});
-var defaultDraftTimers = () => ({
-  bidTimer: 20,
-  intermissionTimer: 30,
-  rebidTimer: 15
-});
-var toInt = (value, fallback) => {
-  const parsed = typeof value === "number" ? value : parseInt(String(value != null ? value : ""), 10);
-  return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
-};
-var normalizeRosterSettings = (value) => {
-  const defaults = defaultRosterSettings();
-  if (!value || typeof value !== "object")
-    return defaults;
-  const input = value;
-  const read = (key, ...aliases) => {
-    for (const name of [key, ...aliases]) {
-      if (input[name] !== void 0 && input[name] !== null)
-        return toInt(input[name], defaults[key]);
-    }
-    return defaults[key];
-  };
-  return {
-    qb: read("qb", "QB"),
-    wr: read("wr", "WR"),
-    rb: read("rb", "RB"),
-    te: read("te", "TE"),
-    k: read("k", "K"),
-    def: read("def", "DEF"),
-    flex: read("flex", "FLEX"),
-    superFlex: read("superFlex", "SuperFlex", "superflex"),
-    bench: read("bench", "Bench")
-  };
-};
-var normalizeDraftTimers = (value) => {
-  const defaults = defaultDraftTimers();
-  if (!value || typeof value !== "object")
-    return defaults;
-  const input = value;
-  return {
-    bidTimer: input.bidTimer == null ? defaults.bidTimer : toInt(input.bidTimer, defaults.bidTimer),
-    intermissionTimer: input.intermissionTimer == null ? defaults.intermissionTimer : toInt(input.intermissionTimer, defaults.intermissionTimer),
-    rebidTimer: input.rebidTimer == null ? defaults.rebidTimer : toInt(input.rebidTimer, defaults.rebidTimer)
-  };
-};
-var normalizeDraftMode = (value) => String(value != null ? value : "").toLowerCase() === MANUAL ? MANUAL : AUCTION;
-var isManual = (value) => normalizeDraftMode(value) === MANUAL;
-function normalizeBiddingMode(value) {
-  switch (String(value != null ? value : "").trim().toLowerCase()) {
-    case WHITEBOARD_AUTO:
-      return WHITEBOARD_AUTO;
-    case WHITEBOARD_MANUAL:
-    case "whiteboard":
-      return WHITEBOARD_MANUAL;
-    default:
-      return STANDARD;
-  }
-}
-var isWhiteboard = (value) => normalizeBiddingMode(value) !== STANDARD;
-function ensureDefaults(league) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
-  league.members = (_a = league.members) != null ? _a : [];
-  league.teams = (_b = league.teams) != null ? _b : [];
-  league.readyMembers = (_c = league.readyMembers) != null ? _c : [];
-  league.rosterSettings = normalizeRosterSettings(league.rosterSettings);
-  league.draftTimers = normalizeDraftTimers(league.draftTimers);
-  league.initialPlayerPool = (_d = league.initialPlayerPool) != null ? _d : [];
-  league.activeBids = (_e = league.activeBids) != null ? _e : {};
-  league.draftLog = (_f = league.draftLog) != null ? _f : [];
-  league.onlineUserIds = (_g = league.onlineUserIds) != null ? _g : [];
-  league.awayUserIds = (_h = league.awayUserIds) != null ? _h : [];
-  league.draftMode = normalizeDraftMode(league.draftMode);
-  league.biddingMode = normalizeBiddingMode(league.biddingMode);
-  league.boardReview = (_i = league.boardReview) != null ? _i : null;
-  league.currentPlayerId = (_j = league.currentPlayerId) != null ? _j : null;
-  league.auctionTimer = (_k = league.auctionTimer) != null ? _k : null;
-  league.tieBreaker = (_l = league.tieBreaker) != null ? _l : null;
-  league.beerBitchTeamId = (_m = league.beerBitchTeamId) != null ? _m : null;
-  league.status = (_n = league.status) != null ? _n : null;
-  if (league.tieBreaker) {
-    league.tieBreaker.tiedTeamIds = (_o = league.tieBreaker.tiedTeamIds) != null ? _o : [];
-  }
-  for (const team of league.teams) {
-    if (!team)
-      continue;
-    team.roster = (_p = team.roster) != null ? _p : [];
-    team.favoritePlayerIds = (_q = team.favoritePlayerIds) != null ? _q : [];
-  }
-  for (const pick of league.draftLog) {
-    if (!pick)
-      continue;
-    pick.allBids = (_r = pick.allBids) != null ? _r : {};
-  }
-  return league;
-}
-function forClient(league, version, viewerId = null) {
-  ensureDefaults(league);
-  const _a = league, { password: _password } = _a, rest = __objRest(_a, ["password"]);
-  const ownBid = viewerId ? league.activeBids[viewerId] : void 0;
-  const activeBids = ownBid ? { [viewerId]: ownBid } : {};
-  const copy = __spreadProps(__spreadValues({}, rest), { password: null, draftPlayers: null, activeBids });
-  if (league.miniGames) {
-    copy.miniGames = league.miniGames.map((challenge) => {
-      var _a2;
-      return __spreadProps(__spreadValues({}, challenge), {
-        attempts: Object.fromEntries(Object.entries((_a2 = challenge.attempts) != null ? _a2 : {}).map((_b) => {
-          var [id, _c] = _b, _d = _c, { seed: _seed } = _d, attempt = __objRest(_d, ["seed"]);
-          return [id, attempt];
-        }))
-      });
-    });
-  }
-  if (version !== void 0)
-    copy._version = version;
-  return copy;
-}
-var clone = (value) => JSON.parse(JSON.stringify(value));
-
-// ../supabase/functions/_shared/draftLogic.ts
-var BYE_BY_TEAM = {
-  ARI: 14,
-  ATL: 11,
-  BAL: 13,
-  BUF: 7,
-  CAR: 5,
-  CHI: 10,
-  CIN: 6,
-  CLE: 11,
-  DAL: 14,
-  DEN: 10,
-  DET: 6,
-  GB: 11,
-  HOU: 8,
-  IND: 13,
-  JAX: 7,
-  KC: 5,
-  LAC: 7,
-  LAR: 11,
-  LV: 13,
-  MIA: 6,
-  MIN: 6,
-  NE: 11,
-  NO: 8,
-  NYG: 8,
-  NYJ: 13,
-  PHI: 10,
-  PIT: 9,
-  SEA: 11,
-  SF: 8,
-  TB: 10,
-  TEN: 9,
-  WAS: 7
-};
-var TEAM_ALIASES = { WSH: "WAS", JAC: "JAX" };
-function normalizeTeam(team) {
-  var _a;
-  if (!team || !team.trim())
-    return "";
-  const normalized = team.trim().toUpperCase();
-  return (_a = TEAM_ALIASES[normalized]) != null ? _a : normalized;
-}
-var isKnownTeam = (team) => Object.prototype.hasOwnProperty.call(BYE_BY_TEAM, normalizeTeam(team));
-function applyByeToPlayer(player) {
-  if (!player || player.bye > 0)
-    return;
-  const normalized = normalizeTeam(player.team);
-  const bye = BYE_BY_TEAM[normalized];
-  if (bye !== void 0) {
-    player.team = normalized;
-    player.bye = bye;
-  }
-}
-function applyByesToPlayers(players) {
-  for (const player of players != null ? players : [])
-    applyByeToPlayer(player);
-}
-function applyByesToLeague(league) {
-  var _a, _b, _c;
-  applyByesToPlayers(league.initialPlayerPool);
-  for (const team of (_a = league.teams) != null ? _a : []) {
-    for (const spot of (_b = team.roster) != null ? _b : [])
-      applyByeToPlayer(spot.player);
-  }
-  for (const pick of (_c = league.draftLog) != null ? _c : [])
-    applyByeToPlayer(pick.player);
-}
-function getRosterSpotTotal(settings) {
-  return Math.max(0, settings.qb) + Math.max(0, settings.rb) + Math.max(0, settings.wr) + Math.max(0, settings.te) + Math.max(0, settings.k) + Math.max(0, settings.def) + Math.max(0, settings.flex) + Math.max(0, settings.superFlex) + Math.max(0, settings.bench);
-}
-function getOpenRosterSpots(league, team) {
-  var _a, _b;
-  return Math.max(0, getRosterSpotTotal(league.rosterSettings) - ((_b = (_a = team.roster) == null ? void 0 : _a.length) != null ? _b : 0));
-}
-function getMaxBid(league, team) {
-  const open = getOpenRosterSpots(league, team);
-  if (open <= 0)
-    return 0;
-  return Math.max(0, team.budget - (open - 1));
-}
-var maxBidMessage = (amount, maxBid) => `Your bid of $${amount} exceeds your max bid of $${maxBid}. You must keep at least $1 for each remaining roster spot.`;
-var secondsFromNow = (now, seconds) => new Date(now.getTime() + seconds * 1e3).toISOString();
-function clearActiveBids(league) {
-  league.activeBids = {};
-  league.boardReview = null;
-}
-var BOARD_LIMITS = { strokes: 30, points: 2e3, bytes: 6e3 };
-function parseBoard(value) {
-  if (value == null)
-    return { board: null };
-  const invalid = { error: "The drawing could not be read. Clear the board and try again." };
-  if (!Array.isArray(value))
-    return invalid;
-  if (value.length === 0)
-    return { board: null };
-  if (value.length > BOARD_LIMITS.strokes) {
-    return { error: `That drawing has too many strokes (${BOARD_LIMITS.strokes} max). Clear the board and try again.` };
-  }
-  const board = [];
-  let points = 0;
-  for (const stroke of value) {
-    if (!Array.isArray(stroke) || stroke.length < 2 || stroke.length % 2 !== 0)
-      return invalid;
-    points += stroke.length / 2;
-    if (points > BOARD_LIMITS.points)
-      return { error: "That drawing is too detailed. Clear the board and try again." };
-    const out = [];
-    for (const n of stroke) {
-      if (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 100)
-        return invalid;
-      out.push(Math.round(n));
-    }
-    board.push(out);
-  }
-  if (JSON.stringify(board).length > BOARD_LIMITS.bytes)
-    return { error: "That drawing is too large. Clear the board and try again." };
-  return { board };
-}
-function stripOldBoards(league) {
-  var _a, _b;
-  for (const pick of (_a = league.draftLog) != null ? _a : []) {
-    for (const bid of Object.values((_b = pick == null ? void 0 : pick.allBids) != null ? _b : {})) {
-      if (bid && "board" in bid)
-        delete bid.board;
-    }
-  }
-}
-function getMaxForPosition(settings, position) {
-  switch (position.toUpperCase()) {
-    case "QB":
-      return settings.qb;
-    case "RB":
-      return settings.rb;
-    case "WR":
-      return settings.wr;
-    case "TE":
-      return settings.te;
-    case "K":
-      return settings.k;
-    case "DEF":
-    case "DST":
-      return settings.def;
-    case "FLEX":
-      return settings.flex;
-    case "SUPERFLEX":
-      return settings.superFlex;
-    case "BENCH":
-      return settings.bench;
-    default:
-      return 0;
-  }
-}
-function getBestAvailableRosterSpot(settings, roster, player) {
-  var _a;
-  const natural = ((_a = player == null ? void 0 : player.position) != null ? _a : "").toUpperCase();
-  const count = (position) => roster.filter((spot) => spot.position === position).length;
-  if (count(natural) < getMaxForPosition(settings, natural))
-    return natural;
-  if (["RB", "WR", "TE"].includes(natural) && count("FLEX") < getMaxForPosition(settings, "FLEX"))
-    return "FLEX";
-  if (["QB", "RB", "WR", "TE"].includes(natural) && count("SUPERFLEX") < getMaxForPosition(settings, "SUPERFLEX"))
-    return "SUPERFLEX";
-  return "BENCH";
-}
-function awardPlayerToTeam(league, player, winningTeam, amount, now, nextStatus = "intermission", startIntermissionTimer = true) {
-  var _a, _b;
-  ensureDefaults(league);
-  winningTeam.roster = (_a = winningTeam.roster) != null ? _a : [];
-  player.isDrafted = true;
-  player.price = amount;
-  winningTeam.budget -= amount;
-  const rosterPosition = getBestAvailableRosterSpot(league.rosterSettings, winningTeam.roster, player);
-  winningTeam.roster.push({ player: __spreadValues({}, player), position: rosterPosition });
-  stripOldBoards(league);
-  league.draftLog.push({
-    winningTeamId: winningTeam.id,
-    winningBid: amount,
-    player: __spreadValues({}, player),
-    allBids: __spreadValues({}, (_b = league.activeBids) != null ? _b : {})
-  });
-  league.status = nextStatus || "intermission";
-  clearActiveBids(league);
-  league.currentPlayerId = null;
-  league.tieBreaker = null;
-  league.auctionTimer = startIntermissionTimer ? { endTime: secondsFromNow(now, league.draftTimers.intermissionTimer), isPaused: false, timeRemainingOnPause: 0 } : null;
-}
-function getNextRandomPlayerId(league, excludePlayerId = null, random = Math.random) {
-  var _a;
-  const undrafted = ((_a = league.initialPlayerPool) != null ? _a : []).filter((p) => !p.isDrafted && isKnownTeam(p.team) && p.id !== excludePlayerId);
-  if (undrafted.length === 0)
-    return null;
-  return undrafted[Math.floor(random() * undrafted.length)].id;
-}
-function startNextPlayer(league, now, excludePlayerId = null) {
-  clearActiveBids(league);
-  league.tieBreaker = null;
-  league.currentPlayerId = getNextRandomPlayerId(league, excludePlayerId);
-  if (league.currentPlayerId == null) {
-    league.status = "completed";
-    league.auctionTimer = null;
-  } else {
-    league.status = "drafting";
-    league.auctionTimer = { endTime: secondsFromNow(now, league.draftTimers.bidTimer), isPaused: false, timeRemainingOnPause: 0 };
-  }
-}
-function getPreferredTeamName(profile, fallbackUserId) {
-  var _a, _b;
-  if ((_a = profile == null ? void 0 : profile.defaultTeamName) == null ? void 0 : _a.trim())
-    return profile.defaultTeamName.trim();
-  const displayName = ((_b = profile == null ? void 0 : profile.displayName) == null ? void 0 : _b.trim()) ? profile.displayName.trim() : fallbackUserId;
-  return displayName && displayName.trim() ? `${displayName}'s Team` : "New Team";
-}
-function slugify(value) {
-  if (!value || !value.trim())
-    return "";
-  let out = "";
-  for (const ch of value.trim()) {
-    if (/[\p{L}\p{N}]/u.test(ch)) {
-      out += ch;
-    } else if (out.length > 0 && !out.endsWith("_")) {
-      out += "_";
-    }
-  }
-  return out.replace(/^_+|_+$/g, "");
-}
-function getUniqueTeamName(existingTeams, preferredName, displayName) {
-  const existing = new Set(
-    (existingTeams != null ? existingTeams : []).map((t) => t == null ? void 0 : t.name).filter((n) => !!n && !!n.trim()).map((n) => n.trim().toLowerCase())
-  );
-  const has = (name) => existing.has(name.toLowerCase());
-  const baseName = preferredName && preferredName.trim() ? preferredName.trim() : "New Team";
-  if (!has(baseName))
-    return baseName;
-  const ownerPart = slugify(displayName);
-  const candidateBase = ownerPart ? `${baseName}_${ownerPart}` : baseName;
-  if (!has(candidateBase))
-    return candidateBase;
-  let index = 2;
-  while (has(`${candidateBase}_${index}`))
-    index += 1;
-  return `${candidateBase}_${index}`;
-}
-
-// ../supabase/functions/_shared/diff.ts
-var same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-function diffObjects(prev, next) {
-  const ops = [];
-  const keys = /* @__PURE__ */ new Set([...Object.keys(prev), ...Object.keys(next)]);
-  for (const k of keys) {
-    const a = prev[k];
-    const b = next[k];
-    if (!(k in next)) {
-      ops.push({ k, del: true });
-      continue;
-    }
-    if (same(a, b))
-      continue;
-    if (Array.isArray(a) && Array.isArray(b)) {
-      if (b.length > a.length && same(a, b.slice(0, a.length))) {
-        ops.push({ k, append: b.slice(a.length) });
-        continue;
-      }
-      if (b.length > a.length && a.length > 0) {
-        const items = {};
-        let changed = 0;
-        for (let i = 0; i < a.length; i += 1) {
-          if (!same(a[i], b[i])) {
-            items[i] = b[i];
-            changed += 1;
-          }
-        }
-        if (changed * 2 <= b.length) {
-          ops.push({ k, items });
-          ops.push({ k, append: b.slice(a.length) });
-          continue;
-        }
-      }
-      if (b.length === a.length) {
-        const items = {};
-        let changed = 0;
-        for (let i = 0; i < b.length; i += 1) {
-          if (!same(a[i], b[i])) {
-            items[i] = b[i];
-            changed += 1;
-          }
-        }
-        if (changed * 2 <= b.length) {
-          ops.push({ k, items });
-          continue;
-        }
-      }
-    }
-    ops.push({ k, set: b });
-  }
-  return ops;
-}
-
-// ../supabase/functions/_shared/handwriting.ts
-var HANDWRITING_LIMITS = { perDigit: 6, strokes: 8, points: 60 };
-var boxOf = (strokes) => {
-  const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
-  for (const stroke of strokes) {
-    for (let i = 0; i + 1 < stroke.length; i += 2) {
-      box.minX = Math.min(box.minX, stroke[i]);
-      box.maxX = Math.max(box.maxX, stroke[i]);
-      box.minY = Math.min(box.minY, stroke[i + 1]);
-      box.maxY = Math.max(box.maxY, stroke[i + 1]);
-    }
-  }
-  return box;
-};
-function splitBoardDigits(board) {
-  const items = board.filter((stroke) => Array.isArray(stroke) && stroke.length >= 2).map((stroke) => __spreadValues({ stroke }, boxOf([stroke]))).sort((a, b) => a.minX - b.minX);
-  const groups = [];
-  let right = -Infinity;
-  for (const item of items) {
-    if (groups.length === 0 || item.minX > right) {
-      groups.push([item.stroke]);
-      right = item.maxX;
-    } else {
-      groups[groups.length - 1].push(item.stroke);
-      right = Math.max(right, item.maxX);
-    }
-  }
-  return groups;
-}
-var thin = (stroke, limit) => {
-  const count = stroke.length / 2;
-  if (count <= limit)
-    return stroke;
-  const out = [];
-  for (let k = 0; k < limit; k += 1) {
-    const i = Math.round(k * (count - 1) / (limit - 1));
-    out.push(stroke[i * 2], stroke[i * 2 + 1]);
-  }
-  return out;
-};
-function toExample(strokes) {
-  const usable = strokes.filter((stroke) => stroke.length >= 2).slice(0, HANDWRITING_LIMITS.strokes);
-  if (usable.length === 0)
-    return null;
-  const { minX, minY, maxX, maxY } = boxOf(usable);
-  const size = Math.max(maxX - minX, maxY - minY);
-  if (!(size > 0))
-    return null;
-  const totalPoints = usable.reduce((sum, stroke) => sum + stroke.length / 2, 0);
-  const share2 = Math.max(2, Math.floor(HANDWRITING_LIMITS.points / usable.length));
-  return usable.map((stroke) => {
-    const scaled = [];
-    for (let i = 0; i + 1 < stroke.length; i += 2) {
-      const x = Math.round((stroke[i] - minX) / size * 100);
-      const y = Math.round((stroke[i + 1] - minY) / size * 100);
-      const n = scaled.length;
-      if (n >= 2 && scaled[n - 2] === x && scaled[n - 1] === y)
-        continue;
-      scaled.push(x, y);
-    }
-    return totalPoints > HANDWRITING_LIMITS.points ? thin(scaled, share2) : scaled;
-  });
-}
-var isExample = (value) => Array.isArray(value) && value.length > 0 && value.length <= HANDWRITING_LIMITS.strokes && value.reduce((sum, stroke) => sum + (Array.isArray(stroke) ? stroke.length / 2 : Infinity), 0) <= HANDWRITING_LIMITS.points && value.every((stroke) => Array.isArray(stroke) && stroke.length >= 2 && stroke.length % 2 === 0 && stroke.every((n) => Number.isInteger(n) && n >= 0 && n <= 100));
-function sanitizeHandwriting(value) {
-  const out = {};
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    return out;
-  for (const [digit, examples] of Object.entries(value)) {
-    if (!/^[0-9]$/.test(digit) || !Array.isArray(examples))
-      continue;
-    const kept = examples.filter(isExample).slice(-HANDWRITING_LIMITS.perDigit);
-    if (kept.length)
-      out[digit] = kept;
-  }
-  return out;
-}
-function learnFromBoard(current, board, amount) {
-  if (!Array.isArray(board) || !Number.isInteger(amount) || amount < 1)
-    return null;
-  const digits = String(amount);
-  const groups = splitBoardDigits(board);
-  if (groups.length !== digits.length)
-    return null;
-  const examples = groups.map(toExample);
-  if (examples.some((example) => !example || !isExample(example)))
-    return null;
-  const next = sanitizeHandwriting(current);
-  examples.forEach((example, i) => {
-    var _a;
-    const digit = digits[i];
-    next[digit] = [...(_a = next[digit]) != null ? _a : [], example].slice(-HANDWRITING_LIMITS.perDigit);
-  });
-  return next;
-}
-
-// ../supabase/functions/_shared/history.ts
-function seasonFor(date) {
-  return date.getUTCMonth() >= 2 ? date.getUTCFullYear() : date.getUTCFullYear() - 1;
-}
-var draftNumberOf = (league) => Number.isFinite(league.draftNumber) && league.draftNumber > 0 ? league.draftNumber : 1;
-var historyIdFor = (league) => `${league.id}-draft-${draftNumberOf(league)}`;
-function snapshotDraft(league, now) {
-  var _a, _b, _c;
-  return {
-    id: historyIdFor(league),
-    leagueId: league.id,
-    leagueName: league.name,
-    draftNumber: draftNumberOf(league),
-    season: seasonFor(now),
-    completedAt: now.toISOString(),
-    draftMode: league.draftMode,
-    adminId: league.adminId,
-    members: [...(_a = league.members) != null ? _a : []],
-    rosterSettings: clone(league.rosterSettings),
-    teams: ((_b = league.teams) != null ? _b : []).filter(Boolean).map((team) => {
-      var _a2;
-      return {
-        id: team.id,
-        ownerId: team.ownerId,
-        name: team.name,
-        budget: team.budget,
-        roster: clone((_a2 = team.roster) != null ? _a2 : [])
-      };
-    }),
-    draftLog: ((_c = league.draftLog) != null ? _c : []).filter((pick) => pick == null ? void 0 : pick.player).map((pick) => {
-      var _a2;
-      return {
-        player: clone(pick.player),
-        winningTeamId: pick.winningTeamId,
-        winningBid: pick.winningBid,
-        // Whiteboard drawings stay with the live league only; history keeps the amounts.
-        allBids: Object.fromEntries(Object.entries(clone((_a2 = pick.allBids) != null ? _a2 : {})).map((_b2) => {
-          var [id, _c2] = _b2, _d = _c2, { board: _board } = _d, bid = __objRest(_d, ["board"]);
-          return [id, bid];
-        }))
-      };
-    })
-  };
-}
-var isCompleted = (league) => {
-  var _a;
-  return String((_a = league == null ? void 0 : league.status) != null ? _a : "").toLowerCase() === "completed";
-};
-function historySummary(entry, userId) {
-  var _a;
-  const myTeam = entry.teams.find((team) => team.ownerId === userId);
-  const topPick = entry.draftLog.reduce(
-    (best, pick) => !best || pick.winningBid > best.winningBid ? pick : best,
-    null
-  );
-  return {
-    id: entry.id,
-    leagueId: entry.leagueId,
-    leagueName: entry.leagueName,
-    draftNumber: entry.draftNumber,
-    season: entry.season,
-    completedAt: entry.completedAt,
-    draftMode: entry.draftMode,
-    teamCount: entry.teams.length,
-    pickCount: entry.draftLog.length,
-    myTeamName: (_a = myTeam == null ? void 0 : myTeam.name) != null ? _a : null,
-    topPick: topPick ? { name: topPick.player.name, position: topPick.player.position, price: topPick.winningBid } : null
-  };
-}
-
-// ../supabase/functions/_shared/startSit.ts
-var SLEEPER_STATE_URL = "https://api.sleeper.app/v1/state/nfl";
-var SLEEPER_PROJECTIONS_URL = "https://api.sleeper.com/projections/nfl";
-var SLEEPER_STATS_URL = "https://api.sleeper.com/stats/nfl";
-var POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
-var CACHE_MS = 30 * 60 * 1e3;
-var PAST_CACHE_MS = 12 * 60 * 60 * 1e3;
-var RECENT_GAMES = 4;
-var UPCOMING_WEEKS = 4;
-var LAST_REGULAR_WEEK = 18;
-var MATCHUP_SEASONS = 4;
-var stateCache = { entry: null };
-var projectionCache = /* @__PURE__ */ new Map();
-var weekStatsCache = /* @__PURE__ */ new Map();
-var playerSeasonCache = /* @__PURE__ */ new Map();
-var futureCache = /* @__PURE__ */ new Map();
-var accuracyCache = { entry: null };
-var num = (value) => {
-  const parsed = typeof value === "number" ? value : parseFloat(String(value != null ? value : ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-var round1 = (value) => Math.round(value * 10) / 10;
-var text = (value) => typeof value === "string" ? value.trim() : "";
-var DAY_MS = 24 * 60 * 60 * 1e3;
-function weekByTuesday(seasonStartDate, nowMs) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(seasonStartDate);
-  if (!match)
-    return 0;
-  const opener = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  if (!Number.isFinite(opener))
-    return 0;
-  const daysBackToTuesday = (new Date(opener).getUTCDay() - 2 + 7) % 7;
-  const weekOneStart = opener - daysBackToTuesday * DAY_MS + 10 * 60 * 60 * 1e3;
-  if (nowMs < weekOneStart)
-    return 0;
-  return Math.min(18, Math.floor((nowMs - weekOneStart) / (7 * DAY_MS)) + 1);
-}
-async function currentState(fetchJson, nowMs) {
-  var _a;
-  const cached = stateCache.entry;
-  if (cached && nowMs - cached.at < CACHE_MS)
-    return cached.value;
-  const raw = await fetchJson(SLEEPER_STATE_URL);
-  const seasonType = text(raw == null ? void 0 : raw.season_type) || "regular";
-  const sleeperWeek = Math.max(1, Math.trunc(num((_a = raw == null ? void 0 : raw.display_week) != null ? _a : raw == null ? void 0 : raw.week)));
-  const week = seasonType === "regular" ? Math.max(sleeperWeek, weekByTuesday(text(raw == null ? void 0 : raw.season_start_date), nowMs)) : sleeperWeek;
-  const value = { season: Math.trunc(num(raw == null ? void 0 : raw.season)) || new Date(nowMs).getUTCFullYear(), week, seasonType };
-  stateCache.entry = { at: nowMs, value };
-  return value;
-}
-var positionsQuery = () => POSITIONS.map((p) => `position[]=${p}`).join("&");
-var BOX_KEYS = [
-  ["passYd", "pass_yd"],
-  ["passTd", "pass_td"],
-  ["int", "pass_int"],
-  ["rushAtt", "rush_att"],
-  ["rushYd", "rush_yd"],
-  ["rushTd", "rush_td"],
-  ["tgt", "rec_tgt"],
-  ["rec", "rec"],
-  ["recYd", "rec_yd"],
-  ["recTd", "rec_td"],
-  ["fumLost", "fum_lost"],
-  ["twoPt", ""]
-];
-function boxFrom(stats) {
-  const box = {};
-  for (const [key, sleeperKey] of BOX_KEYS)
-    box[key] = sleeperKey ? num(stats[sleeperKey]) : 0;
-  box.twoPt = num(stats.pass_2pt) + num(stats.rush_2pt) + num(stats.rec_2pt);
-  return box;
-}
-function snapsFrom(stats) {
-  return { off: num(stats.off_snp), team: num(stats.tm_off_snp) };
-}
-var compactBox = (box) => {
-  const out = {};
-  for (const [key] of BOX_KEYS)
-    if (box[key])
-      out[key] = round1(box[key]);
-  return out;
-};
-var averageBox = (boxes) => {
-  if (boxes.length === 0)
-    return null;
-  const total = boxFrom({});
-  for (const box of boxes)
-    for (const [key] of BOX_KEYS)
-      total[key] += box[key];
-  for (const [key] of BOX_KEYS)
-    total[key] /= boxes.length;
-  return compactBox(total);
-};
-function pointsFrom(stats) {
-  const std = num(stats.pts_std);
-  const half = stats.pts_half_ppr != null ? num(stats.pts_half_ppr) : std + num(stats.rec) * 0.5;
-  const ppr = stats.pts_ppr != null ? num(stats.pts_ppr) : std + num(stats.rec);
-  return { ppr: round1(ppr), half: round1(half), std: round1(std) };
-}
-var averagePoints = (lines) => {
-  if (lines.length === 0)
-    return null;
-  const sum = (key) => round1(lines.reduce((total, line) => total + line.points[key], 0) / lines.length);
-  return { ppr: sum("ppr"), half: sum("half"), std: sum("std") };
-};
-var sleeperIdOf = (id) => id.replace(/^sleeper-/, "");
-var playedGame = (stats) => stats.gp != null ? num(stats.gp) > 0 : Object.keys(stats).some((key) => key.startsWith("pts_"));
-function toPlayer(row) {
-  var _a, _b;
-  const info = (_a = row.player) != null ? _a : {};
-  const stats = (_b = row.stats) != null ? _b : {};
-  const rawPosition = text(info.position) || (Array.isArray(info.fantasy_positions) ? text(info.fantasy_positions[0]) : "");
-  const position = rawPosition === "DEF" ? "DST" : rawPosition;
-  if (!position || !POSITIONS.includes(rawPosition))
-    return null;
-  const playerId = text(row.player_id);
-  if (!playerId)
-    return null;
-  const team = text(row.team) || text(info.team);
-  const name = position === "DST" ? `${text(info.first_name)} ${text(info.last_name)}`.trim() || `${team} Defense` : `${text(info.first_name)} ${text(info.last_name)}`.trim();
-  if (!name)
-    return null;
-  return {
-    id: `sleeper-${playerId}`,
-    name,
-    position,
-    team,
-    opponent: text(row.opponent) || null,
-    injury: text(info.injury_status) || null,
-    points: pointsFrom(stats),
-    stats: compactBox(boxFrom(stats))
-  };
-}
-async function getWeekStats(fetchJson, season, week, nowMs) {
-  var _a, _b, _c;
-  const key = `${season}-${week}`;
-  const cached = weekStatsCache.get(key);
-  if (cached && nowMs - cached.at < PAST_CACHE_MS)
-    return cached.value;
-  const rows = await fetchJson(`${SLEEPER_STATS_URL}/${season}/${week}?season_type=regular&${positionsQuery()}`);
-  if (!Array.isArray(rows))
-    throw new Error("Sleeper stats response was not a list.");
-  const lines = /* @__PURE__ */ new Map();
-  for (const row of rows) {
-    if (!row || typeof row !== "object")
-      continue;
-    const record = row;
-    const parsed = toPlayer(record);
-    if (!parsed || !playedGame((_a = record.stats) != null ? _a : {}))
-      continue;
-    lines.set(parsed.id, {
-      week,
-      opponent: parsed.opponent,
-      points: parsed.points,
-      box: boxFrom((_b = record.stats) != null ? _b : {}),
-      snaps: snapsFrom((_c = record.stats) != null ? _c : {}),
-      injury: parsed.injury,
-      name: parsed.name,
-      position: parsed.position,
-      team: parsed.team
-    });
-  }
-  weekStatsCache.set(key, { at: nowMs, value: lines });
-  return lines;
-}
-async function getPastWeeks(fetchJson, season, week, currentWeek, nowMs) {
-  const lastFinished = Math.min(week, currentWeek) - 1;
-  const weeks = Array.from({ length: Math.max(0, lastFinished) }, (_, i) => i + 1);
-  const results = await Promise.allSettled(weeks.map((w) => getWeekStats(fetchJson, season, w, nowMs)));
-  return results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
-}
-async function getFutureWeek(fetchJson, season, seasonType, week, nowMs) {
-  const key = `${season}-${seasonType}-${week}`;
-  const cached = futureCache.get(key);
-  if (cached && nowMs - cached.at < CACHE_MS)
-    return cached.value;
-  const rows = await fetchJson(`${SLEEPER_PROJECTIONS_URL}/${season}/${week}?season_type=${seasonType}&${positionsQuery()}&order_by=pts_ppr`);
-  if (!Array.isArray(rows))
-    throw new Error("Sleeper projections response was not a list.");
-  const teams = /* @__PURE__ */ new Set();
-  const lines = /* @__PURE__ */ new Map();
-  for (const row of rows) {
-    if (!row || typeof row !== "object")
-      continue;
-    const player = toPlayer(row);
-    if (!player)
-      continue;
-    if (player.team && player.opponent)
-      teams.add(player.team);
-    if (!player.opponent)
-      continue;
-    const existing = lines.get(player.id);
-    if (!existing || existing.points.ppr < player.points.ppr) {
-      lines.set(player.id, { week, opponent: player.opponent, points: player.points, stats: player.stats });
-    }
-  }
-  const value = { teams, lines };
-  futureCache.set(key, { at: nowMs, value });
-  return value;
-}
-var share = (mine, team) => team > 0 ? Math.round(mine / team * 1e3) / 1e3 : null;
-function usageOf(played, teamWeek) {
-  const skill = played.filter((line) => ["RB", "WR", "TE", "QB"].includes(line.position));
-  if (skill.length === 0)
-    return null;
-  const sums = (lines) => lines.reduce((acc, line) => {
-    var _a;
-    const team = (_a = teamWeek.get(`${line.team}|${line.week}`)) != null ? _a : { tgt: 0, rushAtt: 0 };
-    return { tgt: acc.tgt + line.box.tgt, rushAtt: acc.rushAtt + line.box.rushAtt, teamTgt: acc.teamTgt + team.tgt, teamRush: acc.teamRush + team.rushAtt };
-  }, { tgt: 0, rushAtt: 0, teamTgt: 0, teamRush: 0 });
-  const all = sums(skill);
-  const recentLines = skill.slice(-3);
-  const recent = sums(recentLines);
-  const snapShareOf = (lines) => {
-    const counted = lines.filter((line) => {
-      var _a;
-      return ((_a = line.snaps) == null ? void 0 : _a.team) > 0;
-    });
-    return share(counted.reduce((n, l) => n + l.snaps.off, 0), counted.reduce((n, l) => n + l.snaps.team, 0));
-  };
-  return {
-    snapShare: snapShareOf(skill),
-    recentSnapShare: snapShareOf(recentLines),
-    targetShare: share(all.tgt, all.teamTgt),
-    carryShare: share(all.rushAtt, all.teamRush),
-    recentTargetShare: share(recent.tgt, recent.teamTgt),
-    recentCarryShare: share(recent.rushAtt, recent.teamRush),
-    recentGames: recentLines.length
-  };
-}
-function spreadOf(played) {
-  if (played.length < 2)
-    return null;
-  const sd = (key) => {
-    const values = played.map((line) => line.points[key]);
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    return round1(Math.sqrt(values.reduce((total, v) => total + (v - mean) ** 2, 0) / (values.length - 1)));
-  };
-  return { ppr: sd("ppr"), half: sd("half"), std: sd("std") };
-}
-async function getWeekProjections(fetchJson, now, requestedWeek) {
-  var _a;
-  const nowMs = now.getTime();
-  const state = await currentState(fetchJson, nowMs);
-  const week = requestedWeek && requestedWeek >= 1 && requestedWeek <= 18 ? Math.trunc(requestedWeek) : state.week;
-  const seasonType = state.seasonType === "post" ? "post" : "regular";
-  const key = `${state.season}-${seasonType}-${week}`;
-  const cached = projectionCache.get(key);
-  if (cached && nowMs - cached.at < CACHE_MS)
-    return cached.value;
-  const url = `${SLEEPER_PROJECTIONS_URL}/${state.season}/${week}?season_type=${seasonType}&${positionsQuery()}&order_by=pts_ppr`;
-  const futureWeeks = seasonType === "regular" ? Array.from({ length: UPCOMING_WEEKS }, (_, i) => week + 1 + i).filter((w) => w <= LAST_REGULAR_WEEK) : [];
-  const [rows, pastWeeks, futureResults] = await Promise.all([
-    fetchJson(url),
-    seasonType === "regular" ? getPastWeeks(fetchJson, state.season, week, state.week, nowMs) : Promise.resolve([]),
-    // A future week Sleeper can't serve is simply left out.
-    Promise.allSettled(futureWeeks.map((w) => getFutureWeek(fetchJson, state.season, seasonType, w, nowMs)))
-  ]);
-  const future = futureResults.flatMap((result, i) => result.status === "fulfilled" ? [__spreadValues({ week: futureWeeks[i] }, result.value)] : []);
-  if (!Array.isArray(rows))
-    throw new Error("Sleeper projections response was not a list.");
-  const games = /* @__PURE__ */ new Map();
-  for (const weekLines of pastWeeks) {
-    for (const [id, line] of weekLines) {
-      if (!games.has(id))
-        games.set(id, []);
-      games.get(id).push(line);
-    }
-  }
-  const teamWeek = /* @__PURE__ */ new Map();
-  for (const weekLines of pastWeeks) {
-    for (const line of weekLines.values()) {
-      if (!line.team)
-        continue;
-      const key2 = `${line.team}|${line.week}`;
-      const total = (_a = teamWeek.get(key2)) != null ? _a : { tgt: 0, rushAtt: 0 };
-      total.tgt += line.box.tgt;
-      total.rushAtt += line.box.rushAtt;
-      teamWeek.set(key2, total);
-    }
-  }
-  const withHistory = (player) => {
-    var _a2;
-    const played = (_a2 = games.get(player.id)) != null ? _a2 : [];
-    return __spreadProps(__spreadValues({}, player), {
-      recent: played.slice(-RECENT_GAMES).map(({ week: w, opponent, points, box }) => ({ week: w, opponent, points, stats: compactBox(box) })),
-      seasonAvg: averagePoints(played),
-      seasonStats: averageBox(played.map((line) => line.box)),
-      gamesPlayed: played.length,
-      usage: usageOf(played, teamWeek),
-      spread: spreadOf(played),
-      upcoming: future.flatMap((f) => {
-        const line = f.lines.get(player.id);
-        if (line)
-          return [line];
-        return f.teams.has(player.team) ? [{ week: f.week, opponent: null, points: { ppr: 0, half: 0, std: 0 } }] : [];
-      })
-    });
-  };
-  const byId = /* @__PURE__ */ new Map();
-  for (const row of rows) {
-    if (!row || typeof row !== "object")
-      continue;
-    const player = toPlayer(row);
-    if (!player)
-      continue;
-    if (player.points.ppr <= 0 && player.points.std <= 0 && !player.injury)
-      continue;
-    const existing = byId.get(player.id);
-    if (!existing || existing.points.ppr < player.points.ppr)
-      byId.set(player.id, withHistory(player));
-  }
-  const teamsPlaying = /* @__PURE__ */ new Set();
-  for (const row of rows) {
-    const r = row != null ? row : {};
-    if (text(r.opponent))
-      teamsPlaying.add(text(r.team));
-  }
-  for (const [id, played] of games) {
-    const latest = played[played.length - 1];
-    const onBye = seasonType === "regular" && teamsPlaying.size > 0 && !teamsPlaying.has(latest.team);
-    if (byId.has(id) || !latest.injury && !onBye)
-      continue;
-    byId.set(id, __spreadValues(__spreadValues({}, withHistory({
-      id,
-      name: latest.name,
-      position: latest.position,
-      team: latest.team,
-      opponent: null,
-      injury: latest.injury,
-      points: { ppr: 0, half: 0, std: 0 },
-      stats: {}
-    })), onBye ? { onBye: true } : {}));
-  }
-  const value = {
-    defense: buildDefenseTable(pastWeeks),
-    season: state.season,
-    week,
-    currentWeek: state.week,
-    upcomingWeeks: future.map((f) => f.week),
-    seasonType,
-    fetchedAt: now.toISOString(),
-    players: [...byId.values()].sort((a, b) => b.points.ppr - a.points.ppr)
-  };
-  projectionCache.set(key, { at: nowMs, value });
-  return value;
-}
-async function getPlayerSeason(fetchJson, playerId, season, nowMs) {
-  var _a;
-  const key = `${playerId}-${season}`;
-  const cached = playerSeasonCache.get(key);
-  if (cached && nowMs - cached.at < PAST_CACHE_MS)
-    return cached.value;
-  const raw = await fetchJson(
-    `${SLEEPER_STATS_URL}/player/${encodeURIComponent(sleeperIdOf(playerId))}?season_type=regular&season=${season}&grouping=week`
-  );
-  const rows = Array.isArray(raw) ? raw : raw && typeof raw === "object" ? Object.values(raw) : [];
-  const games = [];
-  for (const row of rows) {
-    if (!row || typeof row !== "object")
-      continue;
-    const record = row;
-    const stats = (_a = record.stats) != null ? _a : {};
-    const week = Math.trunc(num(record.week));
-    if (!week || !playedGame(stats))
-      continue;
-    games.push({
-      season,
-      week,
-      team: text(record.team) || null,
-      points: pointsFrom(stats),
-      box: boxFrom(stats),
-      opponent: text(record.opponent) || null
-    });
-  }
-  playerSeasonCache.set(key, { at: nowMs, value: games });
-  return games;
-}
-async function getMatchupHistory(fetchJson, now, playerId, opponent) {
-  const nowMs = now.getTime();
-  const state = await currentState(fetchJson, nowMs);
-  const seasons = Array.from({ length: MATCHUP_SEASONS }, (_, i) => state.season - i);
-  const results = await Promise.allSettled(seasons.map((season) => getPlayerSeason(fetchJson, playerId, season, nowMs)));
-  if (results.every((result) => result.status === "rejected"))
-    throw new Error("Sleeper player stats were unavailable.");
-  const target = opponent.toUpperCase();
-  const games = results.flatMap((result) => result.status === "fulfilled" ? result.value : []).filter((game) => {
-    var _a;
-    return ((_a = game.opponent) != null ? _a : "").toUpperCase() === target;
-  }).map(({ season, week, team, points, box }) => ({ season, week, team, points, box })).sort((a, b) => b.season - a.season || b.week - a.week);
-  return { playerId, opponent: target, games, average: averagePoints(games) };
-}
-var DEFENSE_POSITIONS = ["QB", "RB", "WR", "TE"];
-var NOTABLE_GAMES = 5;
-function leadPerWeek(games) {
-  const byWeek = /* @__PURE__ */ new Map();
-  for (const game of games) {
-    const best = byWeek.get(game.week);
-    if (!best || game.points.ppr > best.points.ppr)
-      byWeek.set(game.week, game);
-  }
-  return [...byWeek.values()].sort((a, b) => b.week - a.week);
-}
-function buildDefenseTable(pastWeeks) {
-  var _a;
-  const totals = /* @__PURE__ */ new Map();
-  for (const weekLines of pastWeeks) {
-    for (const [id, line] of weekLines) {
-      if (!line.opponent || !DEFENSE_POSITIONS.includes(line.position))
-        continue;
-      const key = `${line.opponent}|${line.position}`;
-      let entry = totals.get(key);
-      if (!entry) {
-        entry = { weeks: /* @__PURE__ */ new Set(), points: { ppr: 0, half: 0, std: 0 }, box: boxFrom({}), games: [] };
-        totals.set(key, entry);
-      }
-      entry.games.push({ id, name: line.name, team: line.team, week: line.week, points: line.points, box: line.box });
-      entry.weeks.add(line.week);
-      for (const k of ["ppr", "half", "std"])
-        entry.points[k] += line.points[k];
-      for (const [k] of BOX_KEYS)
-        entry.box[k] += line.box[k];
-    }
-  }
-  const table = {};
-  for (const [key, entry] of totals) {
-    const [team, position] = key.split("|");
-    const games = entry.weeks.size;
-    const per = (value) => round1(value / games);
-    const box = {};
-    for (const [k] of BOX_KEYS)
-      box[k] = per(entry.box[k]);
-    table[team] = (_a = table[team]) != null ? _a : {};
-    table[team][position] = {
-      games,
-      points: { ppr: per(entry.points.ppr), half: per(entry.points.half), std: per(entry.points.std) },
-      box,
-      rank: 0,
-      teams: 0,
-      recentGames: leadPerWeek(entry.games).slice(0, NOTABLE_GAMES)
-    };
-  }
-  for (const position of DEFENSE_POSITIONS) {
-    const rows = Object.values(table).map((byPosition) => byPosition[position]).filter(Boolean);
-    rows.sort((a, b) => b.points.ppr - a.points.ppr);
-    rows.forEach((row, index) => {
-      row.rank = index + 1;
-      row.teams = rows.length;
-    });
-  }
-  return table;
-}
-var ACCURACY_MIN_PROJECTION = 1;
-function snapshotOf(projections) {
-  const saved = {};
-  for (const p of projections.players) {
-    if (p.onBye || p.points.ppr < ACCURACY_MIN_PROJECTION)
-      continue;
-    saved[p.id] = [p.position, p.points.ppr, p.points.half, p.points.std, p.name];
-  }
-  return saved;
-}
-async function sleeperSnapshot(fetchJson, season, week) {
-  const rows = await fetchJson(`${SLEEPER_PROJECTIONS_URL}/${season}/${week}?season_type=regular&${positionsQuery()}&order_by=pts_ppr`);
-  if (!Array.isArray(rows))
-    throw new Error("Sleeper projections response was not a list.");
-  const saved = {};
-  for (const row of rows) {
-    if (!row || typeof row !== "object")
-      continue;
-    const p = toPlayer(row);
-    if (!p || p.points.ppr < ACCURACY_MIN_PROJECTION)
-      continue;
-    if (!saved[p.id] || saved[p.id][1] < p.points.ppr)
-      saved[p.id] = [p.position, p.points.ppr, p.points.half, p.points.std, p.name];
-  }
-  return saved;
-}
-async function getProjectionAccuracy(fetchJson, now, snapshots) {
-  const nowMs = now.getTime();
-  const cached = accuracyCache.entry;
-  if (cached && nowMs - cached.at < CACHE_MS)
-    return cached.value;
-  const state = await currentState(fetchJson, nowMs);
-  const lastFinished = state.seasonType === "regular" ? Math.min(state.week - 1, LAST_REGULAR_WEEK) : LAST_REGULAR_WEEK;
-  const weekNumbers = Array.from({ length: Math.max(0, lastFinished) }, (_, i) => i + 1);
-  const results = await Promise.allSettled(weekNumbers.map(async (week) => {
-    const saved = snapshots ? await snapshots.get(state.season, week).catch(() => null) : null;
-    const hasSaved = saved != null && Object.keys(saved).length > 0;
-    const [projected, actual] = await Promise.all([
-      hasSaved ? saved : sleeperSnapshot(fetchJson, state.season, week),
-      getWeekStats(fetchJson, state.season, week, nowMs)
-    ]);
-    const rows = [];
-    for (const [id, [position, ppr, half, std, name]] of Object.entries(projected)) {
-      const line = actual.get(id);
-      if (!line)
-        continue;
-      rows.push([id, name, position, round1(ppr), round1(half), round1(std), round1(line.points.ppr), round1(line.points.half), round1(line.points.std)]);
-    }
-    return { week, source: hasSaved ? "saved" : "sleeper", rows };
-  }));
-  const value = {
-    season: state.season,
-    fetchedAt: now.toISOString(),
-    weeks: results.flatMap((r) => r.status === "fulfilled" && r.value.rows.length > 0 ? [r.value] : [])
-  };
-  accuracyCache.entry = { at: nowMs, value };
-  return value;
-}
-
-// ../supabase/functions/_shared/sleeperImport.ts
-var SLEEPER_API = "https://api.sleeper.app/v1";
-var CACHE_MS2 = 10 * 60 * 1e3;
-var MAX_LEAGUES = 12;
-var SleeperUserNotFound = class extends Error {
-};
-var SLOT_POSITIONS = {
-  QB: ["QB"],
-  RB: ["RB"],
-  WR: ["WR"],
-  TE: ["TE"],
-  K: ["K"],
-  DEF: ["DST"],
-  FLEX: ["RB", "WR", "TE"],
-  WRRB_FLEX: ["RB", "WR"],
-  REC_FLEX: ["WR", "TE"],
-  SUPER_FLEX: ["QB", "RB", "WR", "TE"]
-};
-var NON_STARTER_SLOTS = /* @__PURE__ */ new Set(["BN", "IR", "TAXI"]);
-var SLOT_LABELS = {
-  DEF: "DST",
-  WRRB_FLEX: "W/R",
-  REC_FLEX: "W/T",
-  SUPER_FLEX: "SUPERFLEX"
-};
-var cache = /* @__PURE__ */ new Map();
-var SLEEPER_PLAYERS_URL = `${SLEEPER_API}/players/nfl`;
-var AGES_CACHE_MS = 24 * 60 * 60 * 1e3;
-var PICK_SEASONS = 3;
-var ages = { at: 0, value: null };
-async function getAges(fetchJson, now) {
-  if (ages.value && now.getTime() - ages.at < AGES_CACHE_MS)
-    return ages.value;
-  const raw = await fetchJson(SLEEPER_PLAYERS_URL);
-  const map = /* @__PURE__ */ new Map();
-  for (const [sleeperId, info] of Object.entries(raw != null ? raw : {})) {
-    if (!info)
-      continue;
-    const birth = Date.parse(text2(info.birth_date));
-    const age = Number.isFinite(birth) ? (now.getTime() - birth) / (365.25 * 24 * 60 * 60 * 1e3) : Number(info.age);
-    if (Number.isFinite(age) && age > 15)
-      map.set(`sleeper-${sleeperId}`, Math.round(age * 10) / 10);
-  }
-  ages.at = now.getTime();
-  ages.value = map;
-  return map;
-}
-function buildPicks(rosterIds, tradedPicks, firstSeason, rounds, teamName) {
-  var _a;
-  const owner = /* @__PURE__ */ new Map();
-  for (const traded of Array.isArray(tradedPicks) ? tradedPicks : []) {
-    const t = traded;
-    owner.set(`${text2(t == null ? void 0 : t.season)}-${text2(t == null ? void 0 : t.round)}-${text2(t == null ? void 0 : t.roster_id)}`, text2(t == null ? void 0 : t.owner_id));
-  }
-  const byOwner = new Map(rosterIds.map((id) => [id, []]));
-  for (let season = firstSeason; season < firstSeason + PICK_SEASONS; season += 1) {
-    for (let round = 1; round <= rounds; round += 1) {
-      for (const original of rosterIds) {
-        const key = `${season}-${round}-${original}`;
-        const current = owner.get(key) || original;
-        (_a = byOwner.get(current)) == null ? void 0 : _a.push({ id: key, season, round, originalTeam: teamName(original) });
-      }
-    }
-  }
-  return byOwner;
-}
-var text2 = (value) => typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "";
-var SCORING_KEYS = [
-  "pass_yd",
-  "pass_td",
-  "pass_int",
-  "pass_2pt",
-  "rush_yd",
-  "rush_td",
-  "rush_att",
-  "rush_2pt",
-  "rec",
-  "rec_yd",
-  "rec_td",
-  "rec_2pt",
-  "fum_lost",
-  "bonus_rec_te",
-  "bonus_rec_rb",
-  "bonus_rec_wr"
-];
-var scoringSettingsOf = (settings) => {
-  const raw = settings != null ? settings : {};
-  const out = {};
-  for (const key of SCORING_KEYS) {
-    const value = Number(raw[key]);
-    if (raw[key] != null && Number.isFinite(value))
-      out[key] = value;
-  }
-  return out;
-};
-var scoringFor = (settings) => {
-  var _a;
-  const rec = Number((_a = settings == null ? void 0 : settings.rec) != null ? _a : 1);
-  if (rec >= 0.75)
-    return "ppr";
-  if (rec >= 0.25)
-    return "half";
-  return "std";
-};
-var isValidSleeperUsername = (value) => /^[A-Za-z0-9_.-]{2,40}$/.test(value);
-async function getSleeperTeams(fetchJson, now, username, pool) {
-  var _a, _b, _c;
-  const key = username.toLowerCase();
-  const nowMs = now.getTime();
-  const cached = cache.get(key);
-  if (cached && nowMs - cached.at < CACHE_MS2)
-    return cached.value;
-  const user = await fetchJson(`${SLEEPER_API}/user/${encodeURIComponent(username)}`);
-  const userId = text2(user == null ? void 0 : user.user_id);
-  if (!userId)
-    throw new SleeperUserNotFound(username);
-  const { season } = await currentState(fetchJson, nowMs);
-  const leagues = await fetchJson(`${SLEEPER_API}/user/${userId}/leagues/nfl/${season}`);
-  const poolById = new Map(pool.map((p) => [p.id, p]));
-  const teams = [];
-  for (const league of (Array.isArray(leagues) ? leagues : []).slice(0, MAX_LEAGUES)) {
-    if (!league || typeof league !== "object")
-      continue;
-    const l = league;
-    const leagueId = text2(l.league_id);
-    if (!leagueId)
-      continue;
-    let rosters;
-    try {
-      rosters = await fetchJson(`${SLEEPER_API}/league/${leagueId}/rosters`);
-    } catch (e) {
-      continue;
-    }
-    const rosterList = (Array.isArray(rosters) ? rosters : []).filter((r) => r && typeof r === "object");
-    const mine = rosterList.find((roster) => text2(roster.owner_id) === userId || Array.isArray(roster.co_owners) && roster.co_owners.map(text2).includes(userId));
-    if (!mine)
-      continue;
-    const ownerNames = /* @__PURE__ */ new Map();
-    try {
-      const users = await fetchJson(`${SLEEPER_API}/league/${leagueId}/users`);
-      for (const u of Array.isArray(users) ? users : []) {
-        const member = u;
-        const memberMeta = (_a = member == null ? void 0 : member.metadata) != null ? _a : {};
-        ownerNames.set(text2(member == null ? void 0 : member.user_id), text2(memberMeta.team_name) || text2(member == null ? void 0 : member.display_name));
-      }
-    } catch (e) {
-    }
-    const settings = (_b = l.settings) != null ? _b : {};
-    const dynasty = Number(settings.type) === 2;
-    let ageById = null;
-    let tradedPicks = [];
-    if (dynasty) {
-      try {
-        ageById = await getAges(fetchJson, now);
-      } catch (e) {
-        ageById = null;
-      }
-      try {
-        tradedPicks = await fetchJson(`${SLEEPER_API}/league/${leagueId}/traded_picks`);
-      } catch (e) {
-        tradedPicks = [];
-      }
-    }
-    const toPlayers = (roster) => (Array.isArray(roster.players) ? roster.players : []).map(text2).filter(Boolean).map((sleeperId) => {
-      var _a2;
-      const id = `sleeper-${sleeperId}`;
-      const known = poolById.get(id);
-      const isDefense = /^[A-Z]{2,3}$/.test(sleeperId);
-      const age = (_a2 = ageById == null ? void 0 : ageById.get(id)) != null ? _a2 : null;
-      return known ? { id, name: known.name, position: known.position, team: known.team, bye: known.bye, age } : { id, name: isDefense ? `${sleeperId} Defense` : `Player ${sleeperId}`, position: isDefense ? "DST" : "", team: isDefense ? sleeperId : "", bye: 0, age };
-    });
-    const rosterName = (roster, fallback) => {
-      var _a2;
-      const rosterMeta = (_a2 = roster.metadata) != null ? _a2 : {};
-      return text2(rosterMeta.team_name) || ownerNames.get(text2(roster.owner_id)) || fallback;
-    };
-    const myName = rosterName(mine, text2(user == null ? void 0 : user.display_name) || username);
-    const status = text2(l.status);
-    const firstPickSeason = status === "pre_draft" || status === "drafting" ? season : season + 1;
-    const rounds = Math.max(1, Math.min(7, Math.trunc(Number(settings.draft_rounds)) || 4));
-    const rosterIds = rosterList.map((roster) => text2(roster.roster_id)).filter(Boolean);
-    const nameByRosterId = new Map(rosterList.map((roster, index) => [text2(roster.roster_id), rosterName(roster, `Team ${text2(roster.roster_id) || index + 1}`)]));
-    const picksByRoster = dynasty ? buildPicks(rosterIds, tradedPicks, firstPickSeason, rounds, (id) => {
-      var _a2;
-      return (_a2 = nameByRosterId.get(id)) != null ? _a2 : `Team ${id}`;
-    }) : /* @__PURE__ */ new Map();
-    const players = toPlayers(mine);
-    const opponents = rosterList.filter((roster) => roster !== mine).map((roster, index) => {
-      var _a2;
-      return {
-        teamName: rosterName(roster, `Team ${text2(roster.roster_id) || index + 1}`),
-        players: toPlayers(roster),
-        picks: (_a2 = picksByRoster.get(text2(roster.roster_id))) != null ? _a2 : [],
-        starters: (Array.isArray(roster.starters) ? roster.starters.map(text2) : []).filter((id) => id && id !== "0").map((id) => `sleeper-${id}`)
-      };
-    }).filter((team) => team.players.length > 0 || team.picks.length > 0);
-    const starterSlots = (Array.isArray(l.roster_positions) ? l.roster_positions : []).map(text2).filter((slot) => slot && !NON_STARTER_SLOTS.has(slot));
-    const currentStarters = Array.isArray(mine.starters) ? mine.starters.map(text2) : [];
-    const slots = [];
-    const startersBySlot = [];
-    starterSlots.forEach((slot, index) => {
-      var _a2;
-      if (!SLOT_POSITIONS[slot])
-        return;
-      slots.push({ label: (_a2 = SLOT_LABELS[slot]) != null ? _a2 : slot, positions: SLOT_POSITIONS[slot] });
-      const id = currentStarters[index];
-      startersBySlot.push(id && id !== "0" ? `sleeper-${id}` : null);
-    });
-    teams.push({
-      leagueId,
-      leagueName: text2(l.name) || "Sleeper league",
-      teamName: myName,
-      dynasty,
-      picks: (_c = picksByRoster.get(text2(mine.roster_id))) != null ? _c : [],
-      scoring: scoringFor(l.scoring_settings),
-      scoringSettings: scoringSettingsOf(l.scoring_settings),
-      slots,
-      players,
-      opponents,
-      starters: currentStarters.filter((id) => id && id !== "0").map((id) => `sleeper-${id}`),
-      startersBySlot
-    });
-  }
-  const value = { username, displayName: text2(user == null ? void 0 : user.display_name) || username, season, fetchedAt: now.toISOString(), teams };
-  cache.set(key, { at: nowMs, value });
-  return value;
-}
-
-// ../supabase/functions/_shared/sleeperLeague.ts
-var SLEEPER_API2 = "https://api.sleeper.app/v1";
-var CACHE_MS3 = 10 * 60 * 1e3;
-var DEFAULT_PLAYOFF_START = 15;
-var DEFAULT_PLAYOFF_TEAMS = 6;
-var SleeperLeagueNotFound = class extends Error {
-};
-var cache2 = /* @__PURE__ */ new Map();
-var isValidLeagueId = (id) => /^[A-Za-z0-9]{1,32}$/.test(id);
-var text3 = (value) => typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "";
-var num2 = (value) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-};
-async function getLeagueSeason(fetchJson, now, leagueId) {
-  var _a, _b;
-  const nowMs = now.getTime();
-  const cached = cache2.get(leagueId);
-  if (cached && nowMs - cached.at < CACHE_MS3)
-    return cached.value;
-  const league = await fetchJson(`${SLEEPER_API2}/league/${leagueId}`);
-  if (!league || !text3(league.league_id))
-    throw new SleeperLeagueNotFound(leagueId);
-  const settings = (_a = league.settings) != null ? _a : {};
-  const playoffWeekStart = Math.max(2, Math.min(19, Math.trunc(num2(settings.playoff_week_start)) || DEFAULT_PLAYOFF_START));
-  const playoffTeams = Math.max(2, Math.min(16, Math.trunc(num2(settings.playoff_teams)) || DEFAULT_PLAYOFF_TEAMS));
-  const regularWeeks = playoffWeekStart - 1;
-  const [rosters, users, state] = await Promise.all([
-    fetchJson(`${SLEEPER_API2}/league/${leagueId}/rosters`),
-    fetchJson(`${SLEEPER_API2}/league/${leagueId}/users`).catch(() => []),
-    currentState(fetchJson, nowMs)
-  ]);
-  const ownerNames = /* @__PURE__ */ new Map();
-  for (const u of Array.isArray(users) ? users : []) {
-    const member = u != null ? u : {};
-    const meta = (_b = member.metadata) != null ? _b : {};
-    ownerNames.set(text3(member.user_id), text3(meta.team_name) || text3(member.display_name));
-  }
-  const teams = (Array.isArray(rosters) ? rosters : []).filter((r) => r && typeof r === "object").map((r, index) => {
-    var _a2;
-    const roster = r;
-    const meta = (_a2 = roster.metadata) != null ? _a2 : {};
-    const rosterId = Math.trunc(num2(roster.roster_id)) || index + 1;
-    return {
-      rosterId,
-      name: text3(meta.team_name) || ownerNames.get(text3(roster.owner_id)) || `Team ${rosterId}`,
-      players: (Array.isArray(roster.players) ? roster.players : []).map(text3).filter(Boolean).map((id) => `sleeper-${id}`)
-    };
-  });
-  const weekNumbers = Array.from({ length: regularWeeks }, (_, i) => i + 1);
-  const weekly = await Promise.all(weekNumbers.map((week) => fetchJson(`${SLEEPER_API2}/league/${leagueId}/matchups/${week}`).catch(() => [])));
-  const weeks = weekNumbers.map((week, i) => {
-    var _a2;
-    const byMatchup = /* @__PURE__ */ new Map();
-    const games = [];
-    for (const m of Array.isArray(weekly[i]) ? weekly[i] : []) {
-      const row = m != null ? m : {};
-      const rosterId = Math.trunc(num2(row.roster_id));
-      if (!rosterId)
-        continue;
-      const points = Math.round(num2((_a2 = row.custom_points) != null ? _a2 : row.points) * 100) / 100;
-      const matchupId = Math.trunc(num2(row.matchup_id));
-      if (!matchupId) {
-        games.push({ a: rosterId, b: null, aPoints: points, bPoints: 0 });
-        continue;
-      }
-      if (!byMatchup.has(matchupId))
-        byMatchup.set(matchupId, []);
-      byMatchup.get(matchupId).push({ rosterId, points });
-    }
-    for (const [, sides] of [...byMatchup.entries()].sort((x, y) => x[0] - y[0])) {
-      const [a, b] = sides;
-      games.push({ a: a.rosterId, b: b ? b.rosterId : null, aPoints: a.points, bPoints: b ? b.points : 0 });
-    }
-    return { week, games };
-  });
-  const lastScoredLeg = Math.trunc(num2(settings.last_scored_leg));
-  const beforeThisWeek = state.seasonType === "regular" ? state.week - 1 : state.seasonType === "post" ? regularWeeks : 0;
-  const lastScoredWeek = Math.max(0, Math.min(regularWeeks, lastScoredLeg > 0 ? lastScoredLeg : beforeThisWeek));
-  const value = {
-    leagueId,
-    leagueName: text3(league.name) || "Sleeper league",
-    season: Math.trunc(num2(league.season)) || state.season,
-    fetchedAt: now.toISOString(),
-    playoffWeekStart,
-    playoffTeams: Math.min(playoffTeams, teams.length),
-    medianGame: num2(settings.league_average_match) === 1,
-    lastScoredWeek,
-    teams,
-    weeks
-  };
-  cache2.set(leagueId, { at: nowMs, value });
-  return value;
-}
-
-// ../supabase/functions/_shared/market.ts
-var FANTASYCALC_URL = "https://api.fantasycalc.com/values/current";
-var MARKET_CACHE_MS = 6 * 60 * 60 * 1e3;
-var cache3 = /* @__PURE__ */ new Map();
-var num3 = (value) => {
-  const parsed = typeof value === "number" ? value : parseFloat(String(value != null ? value : ""));
-  return Number.isFinite(parsed) ? parsed : null;
-};
-function marketSettingsFrom(query) {
-  var _a, _b;
-  const teams = Math.trunc((_a = num3(query.get("teams"))) != null ? _a : 12);
-  const ppr = (_b = num3(query.get("ppr"))) != null ? _b : 1;
-  return {
-    dynasty: query.get("dynasty") === "1" || query.get("dynasty") === "true",
-    teams: Math.min(16, Math.max(8, teams)),
-    qbs: num3(query.get("qbs")) === 2 ? 2 : 1,
-    ppr: ppr >= 0.75 ? 1 : ppr >= 0.25 ? 0.5 : 0
-  };
-}
-var ROUND_WORDS = { "1st": 1, "2nd": 2, "3rd": 3, "4th": 4, "5th": 5 };
-function pickKey(name) {
-  const round = /^(\d{4})\s+(?:(1st|2nd|3rd|4th|5th)|round\s*(\d)|pick\s*(\d)\.\d+)/i.exec(name.trim());
-  if (!round)
-    return null;
-  const number = round[2] ? ROUND_WORDS[round[2].toLowerCase()] : Number(round[3] || round[4]);
-  return number ? `${round[1]}-${number}` : null;
-}
-async function getMarketValues(fetchJson, now, settings) {
-  var _a, _b, _c, _d, _e;
-  const nowMs = now.getTime();
-  const key = `${settings.dynasty}-${settings.teams}-${settings.qbs}-${settings.ppr}`;
-  const cached = cache3.get(key);
-  if (cached && nowMs - cached.at < MARKET_CACHE_MS)
-    return cached.value;
-  const url = `${FANTASYCALC_URL}?isDynasty=${settings.dynasty}&numQbs=${settings.qbs}&numTeams=${settings.teams}&ppr=${settings.ppr}`;
-  const rows = await fetchJson(url);
-  if (!Array.isArray(rows))
-    throw new Error("FantasyCalc values response was not a list.");
-  const players = {};
-  const pickTotals = /* @__PURE__ */ new Map();
-  for (const row of rows) {
-    if (!row || typeof row !== "object")
-      continue;
-    const record = row;
-    const info = (_a = record.player) != null ? _a : {};
-    const value2 = num3(record.value);
-    if (value2 == null)
-      continue;
-    const position = String((_b = info.position) != null ? _b : "").toUpperCase();
-    if (position === "PICK") {
-      const pick = pickKey(String((_c = info.name) != null ? _c : ""));
-      if (!pick)
-        continue;
-      const total = (_d = pickTotals.get(pick)) != null ? _d : { sum: 0, count: 0 };
-      total.sum += value2;
-      total.count += 1;
-      pickTotals.set(pick, total);
-      continue;
-    }
-    const sleeperId = String((_e = info.sleeperId) != null ? _e : "").trim();
-    if (!sleeperId)
-      continue;
-    players[`sleeper-${sleeperId}`] = {
-      value: Math.round(value2),
-      overallRank: num3(record.overallRank),
-      positionRank: num3(record.positionRank),
-      trend30Day: num3(record.trend30Day)
-    };
-  }
-  const picks = {};
-  for (const [pick, total] of pickTotals)
-    picks[pick] = Math.round(total.sum / total.count);
-  if (Object.keys(players).length === 0)
-    throw new Error("FantasyCalc returned no players.");
-  const value = { settings, fetchedAt: now.toISOString(), source: "FantasyCalc", players, picks };
-  cache3.set(key, { at: nowMs, value });
-  return value;
-}
-
 // ../supabase/functions/_shared/triviaData.ts
 var TRIVIA_ROWS = [
   ["Jeff Garcia", "QB", "SF", 2001, 16, 296.9, 3538, 32, 12, 254, 5, 0, 0, 0],
@@ -4249,10 +2737,2151 @@ function gradeTurn(game, seed, index, answer, seconds, history = []) {
   }
   throw new Error(`${game} is not a turn game`);
 }
+function applyTurn(game, attempt, index, answer, seconds, now) {
+  var _a, _b, _c, _d;
+  if (index !== attempt.turn || !attempt.servedAt)
+    return null;
+  const graded = gradeTurn(game, (_a = attempt.seed) != null ? _a : 0, index, answer, seconds, (_b = attempt.history) != null ? _b : []);
+  attempt.points = [...(_c = attempt.points) != null ? _c : [], graded.points];
+  if (game === "penalty")
+    attempt.history = [...(_d = attempt.history) != null ? _d : [], Math.trunc(Number(answer == null ? void 0 : answer.zone)) || 0];
+  attempt.turn = index + 1;
+  attempt.servedAt = null;
+  const total = attempt.points.reduce((sum, p) => sum + p, 0);
+  attempt.score = total;
+  if (attempt.turn >= turnCount(game)) {
+    attempt.finishedAt = now;
+    attempt.detail = game === "penalty" ? `${total} of ${turnCount(game)}` : `${attempt.points.filter((p) => p > 0).length} of ${turnCount(game)} scored`;
+  }
+  return graded;
+}
 
-// ../supabase/functions/_shared/handlers.ts
+// ../supabase/functions/_shared/raceSim.js
+var TICKS_PER_SECOND2 = 30;
+var COURSE_LENGTH = 11e3;
+var RUN_SPEED = 8;
+var GRAVITY = 1.6;
+var JUMP = 20;
+var SUPER_JUMP = 27;
+var RUNNER_HALF_WIDTH = 16;
+var RUNNER_HEIGHT = 60;
+var FINISH_GRACE_TICKS = TICKS_PER_SECOND2 * 30;
+var MAX_TICKS = TICKS_PER_SECOND2 * 240;
+function nextRandom2(state) {
+  let t = state.r = state.r + 1831565813 | 0;
+  t = Math.imul(t ^ t >>> 15, t | 1);
+  t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
+}
+function mixSeed2(seed, salt) {
+  let h = seed ^ Math.imul(salt + 1, 2654435761) | 0;
+  h = Math.imul(h ^ h >>> 16, 2246822507);
+  h = Math.imul(h ^ h >>> 13, 3266489909);
+  return h ^ h >>> 16 | 0;
+}
+var ITEMS = [
+  { key: "horseshoe", crew: 0, name: "Colts Horseshoe", line: "Go Colts!", does: "Knocks down everyone just ahead of you." },
+  { key: "bionic", crew: 1, name: "Evan's Bionic Legs", line: "010101", does: "Super jumps and a little extra speed for 5 seconds." },
+  { key: "eye", crew: 2, name: "Bleeding Eye", line: "My eye is bleeding!", does: "Splatters the screen of everyone ahead of you." },
+  { key: "potion", crew: 3, name: "Pat's Science Potion", line: "Science rules!", does: "Freezes the runner right in front of you." },
+  { key: "seven", crew: 4, name: "Michael's $7 Bid", line: "I guess I'll take him for $7!", does: "Drags the leader back to where you are." },
+  { key: "shield", crew: 5, name: "Chrome's Money Shield", line: "Money is no issue.", does: "Blocks the next trap or hit (8 seconds)." },
+  { key: "car", crew: 6, name: "Connor's '57", line: "Wanna take a ride in my '57?", does: "Drive fast through anything for 2.5 seconds." },
+  { key: "spit", crew: 7, name: "Ben's Ptooey", line: "Ptooey!", does: "Leaves a slippery puddle behind you." },
+  { key: "oip", crew: 8, name: "OIP Shout", line: "OIP!", does: "Stuns everyone close to you, in front or behind." },
+  { key: "dew", crew: 9, name: "Logan's Mountain Dew", line: "I'm from Denver, bro.", does: "A big burst of speed for 3 seconds." }
+];
+var ITEM_BY_KEY = Object.fromEntries(ITEMS.map((item) => [item.key, item]));
+var BOOSTS = ["dew", "bionic", "car", "shield"];
+var PAR_SPEED = RUN_SPEED * 0.82;
+var behindPar = (r) => Math.max(0, Math.min(1, (r.tick * PAR_SPEED - r.x) / 1500));
+function itemFor(seed, slot, boxIndex, behind = 0) {
+  const state = { r: mixSeed2(mixSeed2(seed, 1e3 + slot), boxIndex) };
+  const weights = ITEMS.map((item) => {
+    if (BOOSTS.includes(item.key))
+      return 1 + behind;
+    if (item.key === "spit")
+      return 1 - behind * 0.6;
+    return 1;
+  });
+  let roll = nextRandom2(state) * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < ITEMS.length; i += 1) {
+    roll -= weights[i];
+    if (roll < 0)
+      return ITEMS[i].key;
+  }
+  return ITEMS[ITEMS.length - 1].key;
+}
+var EFFECT = {
+  dew: 90,
+  bionic: 150,
+  car: 75,
+  shield: 240,
+  stun: 36,
+  fall: 15,
+  freeze: 60,
+  oip: 45,
+  horseshoe: 30,
+  slip: 30,
+  blind: 90
+};
+var OIP_RANGE = 450;
+var HORSESHOE_RANGE = 900;
+var MAPS = [
+  {
+    key: "woods",
+    name: "Crew Woods",
+    length: COURSE_LENGTH,
+    gap: 0.3,
+    spike: 0.28,
+    wall: 0.28,
+    stairs: 0,
+    gapWidth: [70, 60],
+    wallHeight: [45, 55]
+  },
+  {
+    key: "canyon",
+    name: "Red Rocks Canyon",
+    length: 12e3,
+    gap: 0.4,
+    spike: 0.12,
+    wall: 0.3,
+    stairs: 0.08,
+    gapWidth: [90, 70],
+    wallHeight: [50, 50]
+  },
+  {
+    key: "summit",
+    name: "The Summit",
+    length: 10500,
+    gap: 0.22,
+    spike: 0.26,
+    wall: 0.14,
+    stairs: 0.26,
+    gapWidth: [70, 50],
+    wallHeight: [45, 45]
+  }
+];
+var MAP_BY_KEY = Object.fromEntries(MAPS.map((map) => [map.key, map]));
+var mapFor = (seed) => MAPS[(mixSeed2(seed, 3) >>> 0) % MAPS.length];
+function makeCourse(seed) {
+  const map = mapFor(seed);
+  const state = { r: mixSeed2(seed, 7) };
+  const rand = () => nextRandom2(state);
+  const gaps = [];
+  const spikes = [];
+  const walls = [];
+  const boxes = [];
+  let x = 700;
+  let nextBox = 500;
+  while (x < map.length - 500) {
+    const roll = rand();
+    if (x >= nextBox) {
+      boxes.push({ x: x - 120, y: 30 });
+      nextBox = x + 800 + Math.floor(rand() * 500);
+    }
+    if (roll < map.gap) {
+      const w = map.gapWidth[0] + Math.floor(rand() * map.gapWidth[1]);
+      gaps.push({ start: x, end: x + w });
+      x += w;
+    } else if (roll < map.gap + map.spike) {
+      const w = 36 + Math.floor(rand() * 44);
+      spikes.push({ start: x, end: x + w, y: 0 });
+      x += w;
+    } else if (roll < map.gap + map.spike + map.wall) {
+      const w = 70 + Math.floor(rand() * 140);
+      const h = map.wallHeight[0] + Math.floor(rand() * map.wallHeight[1]);
+      walls.push({ start: x, end: x + w, h });
+      if (w >= 170 && rand() < 0.5)
+        spikes.push({ start: x + Math.floor(w / 2) - 18, end: x + Math.floor(w / 2) + 18, y: h });
+      x += w;
+    } else if (roll < map.gap + map.spike + map.wall + map.stairs) {
+      const steps = 2 + Math.floor(rand() * 2);
+      for (let i = 0; i < steps; i += 1) {
+        const w = 90 + Math.floor(rand() * 50);
+        walls.push({ start: x, end: x + w, h: 40 * (i + 1) });
+        x += w;
+      }
+    } else {
+      spikes.push({ start: x, end: x + 36, y: 0 });
+      spikes.push({ start: x + 230, end: x + 266, y: 0 });
+      x += 266;
+    }
+    x += 220 + Math.floor(rand() * 220);
+  }
+  return { seed, map: map.key, length: map.length, gaps, spikes, walls, boxes };
+}
+var inGap = (course, x) => course.gaps.some((g) => x > g.start + 6 && x < g.end - 6);
+var wallAt = (course, x) => course.walls.find((w) => x >= w.start && x <= w.end) || null;
+function groundAt(course, x) {
+  const wall = wallAt(course, x);
+  if (wall)
+    return wall.h;
+  return inGap(course, x) ? null : 0;
+}
+function startRunner(slot, crew) {
+  return {
+    slot,
+    crew,
+    tick: 0,
+    x: 60,
+    y: 0,
+    vy: 0,
+    grounded: true,
+    stunUntil: 0,
+    freezeUntil: 0,
+    dewUntil: 0,
+    bionicUntil: 0,
+    carUntil: 0,
+    shieldUntil: 0,
+    blindUntil: 0,
+    item: null,
+    boxesTaken: [],
+    lastSpike: -1,
+    lastTrap: -1,
+    traps: [],
+    finishTick: null,
+    hitBy: null,
+    falls: 0
+  };
+}
+var isStopped = (r) => r.tick < r.stunUntil || r.tick < r.freezeUntil;
+var isSafe = (r) => r.tick < r.carUntil;
+function speedOf(r) {
+  if (isStopped(r))
+    return 0;
+  if (r.tick < r.carUntil)
+    return RUN_SPEED * 1.9;
+  if (r.tick < r.dewUntil)
+    return RUN_SPEED * 1.55;
+  if (r.tick < r.bionicUntil)
+    return RUN_SPEED * 1.2;
+  return RUN_SPEED;
+}
+function takeHit(r) {
+  if (isSafe(r))
+    return false;
+  if (r.tick < r.shieldUntil) {
+    r.shieldUntil = 0;
+    return false;
+  }
+  return true;
+}
+function applyHit(r, course, kind, arg) {
+  if (r.finishTick != null)
+    return false;
+  if (kind === "oip" && Math.abs(r.x - arg) > OIP_RANGE)
+    return false;
+  if (kind === "horseshoe" && !(r.x > arg && r.x < arg + HORSESHOE_RANGE))
+    return false;
+  if (kind === "seven" && !(r.x > arg))
+    return false;
+  if (kind === "eye") {
+    if (!(r.x > arg))
+      return false;
+    r.blindUntil = r.tick + EFFECT.blind;
+    return true;
+  }
+  if (!takeHit(r))
+    return false;
+  if (kind === "oip")
+    r.stunUntil = r.tick + EFFECT.oip;
+  else if (kind === "horseshoe")
+    r.stunUntil = r.tick + EFFECT.horseshoe;
+  else if (kind === "potion")
+    r.freezeUntil = r.tick + EFFECT.freeze;
+  else if (kind === "seven") {
+    let x = arg;
+    while (groundAt(course, x) == null && x > 0)
+      x -= 10;
+    r.x = x;
+    r.y = groundAt(course, x) || 0;
+    r.vy = 0;
+    r.grounded = true;
+    r.stunUntil = r.tick + 20;
+  }
+  r.hitBy = kind;
+  return true;
+}
+function fireItem(r) {
+  const item = r.item;
+  if (!item || r.finishTick != null)
+    return null;
+  r.item = null;
+  if (item === "dew")
+    r.dewUntil = r.tick + EFFECT.dew;
+  else if (item === "bionic")
+    r.bionicUntil = r.tick + EFFECT.bionic;
+  else if (item === "car")
+    r.carUntil = r.tick + EFFECT.car;
+  else if (item === "shield")
+    r.shieldUntil = r.tick + EFFECT.shield;
+  else
+    return { kind: item, arg: Math.round(r.x) };
+  return { kind: item, self: true };
+}
+function stepRunner(r, course, actions = []) {
+  let event = null;
+  if (r.finishTick != null || r.tick >= MAX_TICKS) {
+    r.tick += 1;
+    return null;
+  }
+  for (const action of actions) {
+    if (action[0] === "j" && r.grounded && !isStopped(r)) {
+      r.vy = r.tick < r.bionicUntil ? SUPER_JUMP : JUMP;
+      r.grounded = false;
+    } else if (action[0] === "u") {
+      event = fireItem(r);
+    } else if (action[0] === "h") {
+      applyHit(r, course, action[1], action[2]);
+    } else if (action[0] === "t") {
+      r.traps.push(action[1]);
+    }
+  }
+  const fromX = r.x;
+  let toX = r.x + speedOf(r);
+  for (const wall of course.walls) {
+    const face = wall.start - RUNNER_HALF_WIDTH;
+    if (fromX <= face && toX > face && r.y < wall.h - 0.5) {
+      if (isSafe(r))
+        continue;
+      toX = face;
+    }
+  }
+  if (isSafe(r)) {
+    const wall = wallAt(course, toX);
+    if (wall && r.y < wall.h) {
+      r.y = wall.h;
+      r.vy = 0;
+      r.grounded = true;
+    }
+  }
+  r.x = toX;
+  const ground = groundAt(course, r.x);
+  if (!r.grounded || ground == null || r.y > ground) {
+    const fromY = r.y;
+    r.vy -= GRAVITY;
+    r.y += r.vy;
+    r.grounded = false;
+    if (ground != null && r.y <= ground && fromY >= ground - 0.5) {
+      r.y = ground;
+      r.vy = 0;
+      r.grounded = true;
+    }
+  } else if (ground != null && r.y < ground) {
+    r.y = ground;
+  }
+  if (r.grounded && ground != null && r.y > ground)
+    r.grounded = false;
+  if (r.y < -220) {
+    const gap = course.gaps.find((g) => r.x >= g.start - 30 && r.x <= g.end + 30) || { start: r.x };
+    r.x = gap.start - 30;
+    r.y = 0;
+    r.vy = 0;
+    r.grounded = true;
+    r.stunUntil = r.tick + EFFECT.fall;
+    r.falls += 1;
+    r.hitBy = "gap";
+  }
+  course.spikes.forEach((spike, index) => {
+    if (index === r.lastSpike)
+      return;
+    if (r.x + RUNNER_HALF_WIDTH * 0.6 > spike.start && r.x - RUNNER_HALF_WIDTH * 0.6 < spike.end && r.y >= spike.y - 1 && r.y < spike.y + 14) {
+      r.lastSpike = index;
+      if (takeHit(r)) {
+        r.stunUntil = r.tick + EFFECT.stun;
+        r.hitBy = "spike";
+      }
+    }
+  });
+  r.traps.forEach((trapX, index) => {
+    if (index <= r.lastTrap)
+      return;
+    if (Math.abs(r.x - trapX) < 26 && r.y < 12 && r.grounded) {
+      r.lastTrap = index;
+      if (takeHit(r)) {
+        r.stunUntil = r.tick + EFFECT.slip;
+        r.hitBy = "spit";
+      }
+    }
+  });
+  if (!r.item) {
+    course.boxes.forEach((box, index) => {
+      if (r.boxesTaken.includes(index))
+        return;
+      if (Math.abs(r.x - box.x) < 32 && r.y < box.y + 40 && r.y + RUNNER_HEIGHT > box.y) {
+        r.boxesTaken.push(index);
+        r.item = itemFor(course.seed, r.slot, index, behindPar(r));
+      }
+    });
+  }
+  r.tick += 1;
+  if (r.x >= course.length && r.finishTick == null)
+    r.finishTick = r.tick;
+  return event;
+}
+function replayRun(seed, slot, crew, inputs) {
+  const course = makeCourse(seed);
+  const runner = startRunner(slot, crew);
+  const byTick = /* @__PURE__ */ new Map();
+  for (const [tick, ...action] of inputs) {
+    if (!byTick.has(tick))
+      byTick.set(tick, []);
+    byTick.get(tick).push(action);
+  }
+  while (runner.finishTick == null && runner.tick < MAX_TICKS)
+    stepRunner(runner, course, byTick.get(runner.tick) || []);
+  return { map: course.map, finishTick: runner.finishTick, ticks: runner.tick };
+}
+
+// ../supabase/functions/_shared/leaderboards.ts
 var ok = (body) => ({ status: 200, body });
 var bad = (message) => ({ status: 400, body: message });
+var unavailable = () => ({ status: 503, body: "Leaderboards are not available here." });
+var BOARD_SIZE = 20;
+var RACE_RUNS = "racerun";
+var RACE_WINNER = "racewin";
+var DID_NOT_FINISH = MAX_TICKS + 1;
+var MAX_RACE_INPUTS = 8e3;
+var secondsSince = (ctx, iso) => (ctx.now().getTime() - Date.parse(String(iso))) / 1e3;
+var newSeed = () => Math.floor(Math.random() * 2 ** 31);
+async function boardName(ctx) {
+  const profile = await ctx.profiles.find(ctx.userId);
+  const name = (profile == null ? void 0 : profile.displayName) || ctx.displayName || "Player";
+  return name.split("@")[0].trim().slice(0, 24) || "Player";
+}
+async function record(ctx, games, game, board, score, detail, lowFirst) {
+  if (!lowFirst && score <= 0)
+    return null;
+  const best = await games.getScore(game, board, ctx.userId);
+  const better = !best || (lowFirst ? score < best.score : score > best.score);
+  if (better) {
+    await games.putScore({ game, board, userId: ctx.userId, name: await boardName(ctx), score, detail, at: ctx.now().toISOString() });
+  }
+  const mine = better ? score : best.score;
+  return { newBest: better, best: mine, rank: await games.countBetter(game, board, mine, lowFirst) + 1 };
+}
+async function recordLobbyScore(ctx, game, score, detail) {
+  if (!ctx.games || !ctx.userId)
+    return;
+  try {
+    await record(ctx, ctx.games, game, "all", score, detail, false);
+  } catch (error) {
+    ctx.log.warn(`Leaderboard save failed for ${game}.`, error);
+  }
+}
+var practiceKind = (game) => `practice:${game}`;
+function practiceBody(game, attempt, ctx) {
+  var _a, _b, _c;
+  const base = { game, ranked: true, finished: !!attempt.finishedAt, score: attempt.score, points: (_a = attempt.points) != null ? _a : [] };
+  if (GAMES[game].style === "skill")
+    return __spreadProps(__spreadValues({}, base), { seed: attempt.seed });
+  if (attempt.finishedAt)
+    return base;
+  return __spreadProps(__spreadValues({}, base), { turn: turnFor(game, (_b = attempt.seed) != null ? _b : 0, (_c = attempt.turn) != null ? _c : 0), elapsed: Math.max(0, secondsSince(ctx, attempt.servedAt)) });
+}
+async function startPractice(ctx, games, data) {
+  var _a;
+  const game = String((_a = data.game) != null ? _a : "");
+  if (!isGameKind(game))
+    return bad("Pick one of the games.");
+  const now = ctx.now().toISOString();
+  const attempt = { startedAt: now, finishedAt: null, score: null, detail: null, seed: newSeed() };
+  if (GAMES[game].style === "turns")
+    Object.assign(attempt, { turn: 0, servedAt: now, points: [], history: [] });
+  await games.setSession(ctx.userId, practiceKind(game), attempt);
+  return ok(practiceBody(game, attempt, ctx));
+}
+async function nextPracticeTurn(ctx, games, data) {
+  var _a;
+  const game = String((_a = data.game) != null ? _a : "");
+  if (!isGameKind(game) || GAMES[game].style !== "turns")
+    return bad("That game is not played in turns.");
+  const attempt = await games.getSession(ctx.userId, practiceKind(game));
+  if (!attempt)
+    return bad("Start the game first.");
+  if (!attempt.finishedAt && !attempt.servedAt) {
+    attempt.servedAt = ctx.now().toISOString();
+    await games.setSession(ctx.userId, practiceKind(game), attempt);
+  }
+  return ok(practiceBody(game, attempt, ctx));
+}
+async function playPracticeTurn(ctx, games, data) {
+  var _a, _b;
+  const game = String((_a = data.game) != null ? _a : "");
+  if (!isGameKind(game) || GAMES[game].style !== "turns")
+    return bad("That game is not played in turns.");
+  const attempt = await games.getSession(ctx.userId, practiceKind(game));
+  if (!attempt)
+    return bad("Start the game first.");
+  if (attempt.finishedAt)
+    return bad("That game is over. Start a new one.");
+  const graded = applyTurn(game, attempt, Math.trunc(Number(data.index)), data.answer, secondsSince(ctx, attempt.servedAt), ctx.now().toISOString());
+  if (!graded)
+    return { status: 409, body: "That turn was already played." };
+  await games.setSession(ctx.userId, practiceKind(game), attempt);
+  const board = attempt.finishedAt ? await record(ctx, games, game, "all", (_b = attempt.score) != null ? _b : 0, attempt.detail, false) : null;
+  return ok({ result: graded, game, finished: !!attempt.finishedAt, score: attempt.score, points: attempt.points, board });
+}
+async function finishPractice(ctx, games, data) {
+  var _a, _b;
+  const game = String((_a = data.game) != null ? _a : "");
+  if (!isGameKind(game) || GAMES[game].style !== "skill")
+    return bad("That game is played in turns.");
+  const inputs = validInputs(data.inputs);
+  if (!inputs)
+    return bad("That run could not be read.");
+  const attempt = await games.getSession(ctx.userId, practiceKind(game));
+  if (!attempt)
+    return bad("Start the game first.");
+  if (attempt.finishedAt)
+    return bad("That run was already saved.");
+  const replay = replaySkillGame(game, (_b = attempt.seed) != null ? _b : 0, inputs);
+  if (secondsSince(ctx, attempt.startedAt) < replay.ticks / TICKS_PER_SECOND * 0.9 - 3)
+    return bad("That run finished faster than the clock allows.");
+  attempt.finishedAt = ctx.now().toISOString();
+  attempt.score = replay.score;
+  attempt.detail = replay.detail;
+  await games.setSession(ctx.userId, practiceKind(game), attempt);
+  const board = await record(ctx, games, game, "all", replay.score, replay.detail, false);
+  return ok({ game, finished: true, score: replay.score, detail: replay.detail, board });
+}
+function validRaceInputs(value) {
+  if (!Array.isArray(value) || value.length > MAX_RACE_INPUTS)
+    return null;
+  let last = -1;
+  for (const input of value) {
+    if (!Array.isArray(input) || !Number.isInteger(input[0]) || input[0] < 0 || input[0] > MAX_TICKS || input[0] < last)
+      return null;
+    last = input[0];
+    const [, kind, a, b] = input;
+    if (kind === "j" || kind === "u") {
+      if (input.length !== 2)
+        return null;
+    } else if (kind === "h") {
+      if (input.length !== 4 || !ITEM_BY_KEY[a] || typeof b !== "number" || !Number.isFinite(b))
+        return null;
+    } else if (kind === "t") {
+      if (input.length !== 3 || typeof a !== "number" || !Number.isFinite(a))
+        return null;
+    } else
+      return null;
+  }
+  return value;
+}
+async function startRace(ctx, games, data) {
+  const seed = Math.trunc(Number(data.seed));
+  if (!Number.isFinite(seed))
+    return bad("That race could not be read.");
+  await games.setSession(ctx.userId, "race", { seed, startedAt: ctx.now().toISOString() });
+  return ok({ ranked: true });
+}
+async function finishRace(ctx, games, data) {
+  var _a, _b, _c;
+  const session = await games.getSession(ctx.userId, "race");
+  const seed = Math.trunc(Number(data.seed));
+  if (!session || session.seed !== seed)
+    return bad("Start the race first.");
+  const slot = Math.trunc(Number(data.slot));
+  const crew = Math.trunc(Number(data.crew));
+  if (!(slot >= 0 && slot < 10 && crew >= 0 && crew < 10))
+    return bad("That race could not be read.");
+  const inputs = validRaceInputs(data.inputs);
+  if (!inputs)
+    return bad("That race could not be read.");
+  const run = replayRun(seed, slot, crew, inputs);
+  const ticks = (_a = run.finishTick) != null ? _a : DID_NOT_FINISH;
+  if (run.finishTick != null && secondsSince(ctx, session.startedAt) < run.finishTick / TICKS_PER_SECOND * 0.9 - 3) {
+    return bad("That race finished faster than the clock allows.");
+  }
+  await games.setSession(ctx.userId, "race", null);
+  const seconds = run.finishTick != null ? `${(run.finishTick / TICKS_PER_SECOND).toFixed(1)}s` : null;
+  const time = run.finishTick != null ? await record(ctx, games, "race", `time-${run.map}`, run.finishTick, seconds, true) : null;
+  const raceId = String((_b = data.raceId) != null ? _b : "").slice(0, 60);
+  let won = false;
+  if (raceId && data.live === true) {
+    const name = await boardName(ctx);
+    await games.putScore({ game: RACE_RUNS, board: raceId, userId: ctx.userId, name, score: ticks, detail: null, at: ctx.now().toISOString() });
+    const runs = await games.topScores(RACE_RUNS, raceId, 2, true);
+    const leader = runs[0];
+    if (runs.length >= 2 && leader.score < DID_NOT_FINISH) {
+      const credited = await games.getScore(RACE_WINNER, raceId, "winner");
+      if ((credited == null ? void 0 : credited.detail) !== leader.userId) {
+        if (credited == null ? void 0 : credited.detail)
+          await addWin(ctx, games, credited.detail, credited.name, -1);
+        await addWin(ctx, games, leader.userId, leader.name, 1);
+        await games.putScore({ game: RACE_WINNER, board: raceId, userId: "winner", name: leader.name, score: leader.score, detail: leader.userId, at: ctx.now().toISOString() });
+      }
+      won = leader.userId === ctx.userId;
+    }
+  }
+  const wins = await games.getScore("race", "wins", ctx.userId);
+  return ok({ map: run.map, finishTick: run.finishTick, time, won, wins: (_c = wins == null ? void 0 : wins.score) != null ? _c : 0 });
+}
+async function addWin(ctx, games, userId, name, change) {
+  var _a, _b;
+  const row = await games.getScore("race", "wins", userId);
+  const score = Math.max(0, ((_a = row == null ? void 0 : row.score) != null ? _a : 0) + change);
+  await games.putScore({ game: "race", board: "wins", userId, name: (_b = row == null ? void 0 : row.name) != null ? _b : name, score, detail: null, at: ctx.now().toISOString() });
+}
+function boardOrder(game, board) {
+  if (isGameKind(game))
+    return board === "all" ? false : null;
+  if (game === "race" && board === "wins")
+    return false;
+  if (game === "race" && board.startsWith("time-") && MAP_BY_KEY[board.slice(5)])
+    return true;
+  return null;
+}
+async function getBoard(ctx, games, query) {
+  var _a, _b;
+  const game = (_a = query.get("game")) != null ? _a : "";
+  const board = (_b = query.get("board")) != null ? _b : "all";
+  const lowFirst = boardOrder(game, board);
+  if (lowFirst == null)
+    return bad("There is no such leaderboard.");
+  const rows = await games.topScores(game, board, BOARD_SIZE, lowFirst);
+  const mine = await games.getScore(game, board, ctx.userId);
+  const rank = mine ? await games.countBetter(game, board, mine.score, lowFirst) + 1 : null;
+  return ok({
+    game,
+    board,
+    rows: rows.map((r) => ({ name: r.name, score: r.score, detail: r.detail, at: r.at, me: r.userId === ctx.userId })),
+    mine: mine ? { score: mine.score, detail: mine.detail, rank } : null
+  });
+}
+function gamesRoute(ctx, method, parts, query, data) {
+  const games = ctx.games;
+  const action = parts.slice(1).join("/");
+  const routes = method === "GET" ? { leaderboard: (g) => getBoard(ctx, g, query) } : {
+    "practice/start": (g) => startPractice(ctx, g, data),
+    "practice/next": (g) => nextPracticeTurn(ctx, g, data),
+    "practice/turn": (g) => playPracticeTurn(ctx, g, data),
+    "practice/finish": (g) => finishPractice(ctx, g, data),
+    "race/start": (g) => startRace(ctx, g, data),
+    "race/finish": (g) => finishRace(ctx, g, data)
+  };
+  const route = routes[action];
+  if (!route)
+    return null;
+  return games ? route(games) : Promise.resolve(unavailable());
+}
+
+// ../supabase/functions/_shared/models.ts
+var AUCTION = "auction";
+var MANUAL = "manual";
+var STANDARD = "standard";
+var WHITEBOARD_MANUAL = "whiteboard-manual";
+var WHITEBOARD_AUTO = "whiteboard-auto";
+var isCommish = (league, userId) => !!userId && (league.adminId === userId || !!league.cohostId && league.cohostId === userId);
+var defaultRosterSettings = () => ({
+  qb: 1,
+  wr: 3,
+  rb: 2,
+  te: 1,
+  k: 1,
+  def: 1,
+  flex: 1,
+  superFlex: 1,
+  bench: 6
+});
+var defaultDraftTimers = () => ({
+  bidTimer: 20,
+  intermissionTimer: 30,
+  rebidTimer: 15
+});
+var toInt = (value, fallback) => {
+  const parsed = typeof value === "number" ? value : parseInt(String(value != null ? value : ""), 10);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+};
+var normalizeRosterSettings = (value) => {
+  const defaults = defaultRosterSettings();
+  if (!value || typeof value !== "object")
+    return defaults;
+  const input = value;
+  const read = (key, ...aliases) => {
+    for (const name of [key, ...aliases]) {
+      if (input[name] !== void 0 && input[name] !== null)
+        return toInt(input[name], defaults[key]);
+    }
+    return defaults[key];
+  };
+  return {
+    qb: read("qb", "QB"),
+    wr: read("wr", "WR"),
+    rb: read("rb", "RB"),
+    te: read("te", "TE"),
+    k: read("k", "K"),
+    def: read("def", "DEF"),
+    flex: read("flex", "FLEX"),
+    superFlex: read("superFlex", "SuperFlex", "superflex"),
+    bench: read("bench", "Bench")
+  };
+};
+var normalizeDraftTimers = (value) => {
+  const defaults = defaultDraftTimers();
+  if (!value || typeof value !== "object")
+    return defaults;
+  const input = value;
+  return {
+    bidTimer: input.bidTimer == null ? defaults.bidTimer : toInt(input.bidTimer, defaults.bidTimer),
+    intermissionTimer: input.intermissionTimer == null ? defaults.intermissionTimer : toInt(input.intermissionTimer, defaults.intermissionTimer),
+    rebidTimer: input.rebidTimer == null ? defaults.rebidTimer : toInt(input.rebidTimer, defaults.rebidTimer)
+  };
+};
+var normalizeDraftMode = (value) => String(value != null ? value : "").toLowerCase() === MANUAL ? MANUAL : AUCTION;
+var isManual = (value) => normalizeDraftMode(value) === MANUAL;
+function normalizeBiddingMode(value) {
+  switch (String(value != null ? value : "").trim().toLowerCase()) {
+    case WHITEBOARD_AUTO:
+      return WHITEBOARD_AUTO;
+    case WHITEBOARD_MANUAL:
+    case "whiteboard":
+      return WHITEBOARD_MANUAL;
+    default:
+      return STANDARD;
+  }
+}
+var isWhiteboard = (value) => normalizeBiddingMode(value) !== STANDARD;
+function ensureDefaults(league) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+  league.members = (_a = league.members) != null ? _a : [];
+  league.teams = (_b = league.teams) != null ? _b : [];
+  league.readyMembers = (_c = league.readyMembers) != null ? _c : [];
+  league.rosterSettings = normalizeRosterSettings(league.rosterSettings);
+  league.draftTimers = normalizeDraftTimers(league.draftTimers);
+  league.initialPlayerPool = (_d = league.initialPlayerPool) != null ? _d : [];
+  league.activeBids = (_e = league.activeBids) != null ? _e : {};
+  league.draftLog = (_f = league.draftLog) != null ? _f : [];
+  league.onlineUserIds = (_g = league.onlineUserIds) != null ? _g : [];
+  league.awayUserIds = (_h = league.awayUserIds) != null ? _h : [];
+  league.draftMode = normalizeDraftMode(league.draftMode);
+  league.biddingMode = normalizeBiddingMode(league.biddingMode);
+  league.boardReview = (_i = league.boardReview) != null ? _i : null;
+  league.currentPlayerId = (_j = league.currentPlayerId) != null ? _j : null;
+  league.auctionTimer = (_k = league.auctionTimer) != null ? _k : null;
+  league.tieBreaker = (_l = league.tieBreaker) != null ? _l : null;
+  league.beerBitchTeamId = (_m = league.beerBitchTeamId) != null ? _m : null;
+  league.status = (_n = league.status) != null ? _n : null;
+  if (league.tieBreaker) {
+    league.tieBreaker.tiedTeamIds = (_o = league.tieBreaker.tiedTeamIds) != null ? _o : [];
+  }
+  for (const team of league.teams) {
+    if (!team)
+      continue;
+    team.roster = (_p = team.roster) != null ? _p : [];
+    team.favoritePlayerIds = (_q = team.favoritePlayerIds) != null ? _q : [];
+  }
+  for (const pick of league.draftLog) {
+    if (!pick)
+      continue;
+    pick.allBids = (_r = pick.allBids) != null ? _r : {};
+  }
+  return league;
+}
+function forClient(league, version, viewerId = null) {
+  ensureDefaults(league);
+  const _a = league, { password: _password } = _a, rest = __objRest(_a, ["password"]);
+  const ownBid = viewerId ? league.activeBids[viewerId] : void 0;
+  const activeBids = ownBid ? { [viewerId]: ownBid } : {};
+  const copy = __spreadProps(__spreadValues({}, rest), { password: null, draftPlayers: null, activeBids });
+  if (league.miniGames) {
+    copy.miniGames = league.miniGames.map((challenge) => {
+      var _a2;
+      return __spreadProps(__spreadValues({}, challenge), {
+        attempts: Object.fromEntries(Object.entries((_a2 = challenge.attempts) != null ? _a2 : {}).map((_b) => {
+          var [id, _c] = _b, _d = _c, { seed: _seed } = _d, attempt = __objRest(_d, ["seed"]);
+          return [id, attempt];
+        }))
+      });
+    });
+  }
+  if (version !== void 0)
+    copy._version = version;
+  return copy;
+}
+var clone = (value) => JSON.parse(JSON.stringify(value));
+
+// ../supabase/functions/_shared/draftLogic.ts
+var BYE_BY_TEAM = {
+  ARI: 14,
+  ATL: 11,
+  BAL: 13,
+  BUF: 7,
+  CAR: 5,
+  CHI: 10,
+  CIN: 6,
+  CLE: 11,
+  DAL: 14,
+  DEN: 10,
+  DET: 6,
+  GB: 11,
+  HOU: 8,
+  IND: 13,
+  JAX: 7,
+  KC: 5,
+  LAC: 7,
+  LAR: 11,
+  LV: 13,
+  MIA: 6,
+  MIN: 6,
+  NE: 11,
+  NO: 8,
+  NYG: 8,
+  NYJ: 13,
+  PHI: 10,
+  PIT: 9,
+  SEA: 11,
+  SF: 8,
+  TB: 10,
+  TEN: 9,
+  WAS: 7
+};
+var TEAM_ALIASES = { WSH: "WAS", JAC: "JAX" };
+function normalizeTeam(team) {
+  var _a;
+  if (!team || !team.trim())
+    return "";
+  const normalized = team.trim().toUpperCase();
+  return (_a = TEAM_ALIASES[normalized]) != null ? _a : normalized;
+}
+var isKnownTeam = (team) => Object.prototype.hasOwnProperty.call(BYE_BY_TEAM, normalizeTeam(team));
+function applyByeToPlayer(player) {
+  if (!player || player.bye > 0)
+    return;
+  const normalized = normalizeTeam(player.team);
+  const bye = BYE_BY_TEAM[normalized];
+  if (bye !== void 0) {
+    player.team = normalized;
+    player.bye = bye;
+  }
+}
+function applyByesToPlayers(players) {
+  for (const player of players != null ? players : [])
+    applyByeToPlayer(player);
+}
+function applyByesToLeague(league) {
+  var _a, _b, _c;
+  applyByesToPlayers(league.initialPlayerPool);
+  for (const team of (_a = league.teams) != null ? _a : []) {
+    for (const spot of (_b = team.roster) != null ? _b : [])
+      applyByeToPlayer(spot.player);
+  }
+  for (const pick of (_c = league.draftLog) != null ? _c : [])
+    applyByeToPlayer(pick.player);
+}
+function getRosterSpotTotal(settings) {
+  return Math.max(0, settings.qb) + Math.max(0, settings.rb) + Math.max(0, settings.wr) + Math.max(0, settings.te) + Math.max(0, settings.k) + Math.max(0, settings.def) + Math.max(0, settings.flex) + Math.max(0, settings.superFlex) + Math.max(0, settings.bench);
+}
+function getOpenRosterSpots(league, team) {
+  var _a, _b;
+  return Math.max(0, getRosterSpotTotal(league.rosterSettings) - ((_b = (_a = team.roster) == null ? void 0 : _a.length) != null ? _b : 0));
+}
+function getMaxBid(league, team) {
+  const open = getOpenRosterSpots(league, team);
+  if (open <= 0)
+    return 0;
+  return Math.max(0, team.budget - (open - 1));
+}
+var maxBidMessage = (amount, maxBid) => `Your bid of $${amount} exceeds your max bid of $${maxBid}. You must keep at least $1 for each remaining roster spot.`;
+var secondsFromNow = (now, seconds) => new Date(now.getTime() + seconds * 1e3).toISOString();
+function clearActiveBids(league) {
+  league.activeBids = {};
+  league.boardReview = null;
+}
+var BOARD_LIMITS = { strokes: 30, points: 2e3, bytes: 6e3 };
+function parseBoard(value) {
+  if (value == null)
+    return { board: null };
+  const invalid = { error: "The drawing could not be read. Clear the board and try again." };
+  if (!Array.isArray(value))
+    return invalid;
+  if (value.length === 0)
+    return { board: null };
+  if (value.length > BOARD_LIMITS.strokes) {
+    return { error: `That drawing has too many strokes (${BOARD_LIMITS.strokes} max). Clear the board and try again.` };
+  }
+  const board = [];
+  let points = 0;
+  for (const stroke of value) {
+    if (!Array.isArray(stroke) || stroke.length < 2 || stroke.length % 2 !== 0)
+      return invalid;
+    points += stroke.length / 2;
+    if (points > BOARD_LIMITS.points)
+      return { error: "That drawing is too detailed. Clear the board and try again." };
+    const out = [];
+    for (const n of stroke) {
+      if (typeof n !== "number" || !Number.isFinite(n) || n < 0 || n > 100)
+        return invalid;
+      out.push(Math.round(n));
+    }
+    board.push(out);
+  }
+  if (JSON.stringify(board).length > BOARD_LIMITS.bytes)
+    return { error: "That drawing is too large. Clear the board and try again." };
+  return { board };
+}
+function stripOldBoards(league) {
+  var _a, _b;
+  for (const pick of (_a = league.draftLog) != null ? _a : []) {
+    for (const bid of Object.values((_b = pick == null ? void 0 : pick.allBids) != null ? _b : {})) {
+      if (bid && "board" in bid)
+        delete bid.board;
+    }
+  }
+}
+function getMaxForPosition(settings, position) {
+  switch (position.toUpperCase()) {
+    case "QB":
+      return settings.qb;
+    case "RB":
+      return settings.rb;
+    case "WR":
+      return settings.wr;
+    case "TE":
+      return settings.te;
+    case "K":
+      return settings.k;
+    case "DEF":
+    case "DST":
+      return settings.def;
+    case "FLEX":
+      return settings.flex;
+    case "SUPERFLEX":
+      return settings.superFlex;
+    case "BENCH":
+      return settings.bench;
+    default:
+      return 0;
+  }
+}
+function getBestAvailableRosterSpot(settings, roster, player) {
+  var _a;
+  const natural = ((_a = player == null ? void 0 : player.position) != null ? _a : "").toUpperCase();
+  const count = (position) => roster.filter((spot) => spot.position === position).length;
+  if (count(natural) < getMaxForPosition(settings, natural))
+    return natural;
+  if (["RB", "WR", "TE"].includes(natural) && count("FLEX") < getMaxForPosition(settings, "FLEX"))
+    return "FLEX";
+  if (["QB", "RB", "WR", "TE"].includes(natural) && count("SUPERFLEX") < getMaxForPosition(settings, "SUPERFLEX"))
+    return "SUPERFLEX";
+  return "BENCH";
+}
+function awardPlayerToTeam(league, player, winningTeam, amount, now, nextStatus = "intermission", startIntermissionTimer = true) {
+  var _a, _b;
+  ensureDefaults(league);
+  winningTeam.roster = (_a = winningTeam.roster) != null ? _a : [];
+  player.isDrafted = true;
+  player.price = amount;
+  winningTeam.budget -= amount;
+  const rosterPosition = getBestAvailableRosterSpot(league.rosterSettings, winningTeam.roster, player);
+  winningTeam.roster.push({ player: __spreadValues({}, player), position: rosterPosition });
+  stripOldBoards(league);
+  league.draftLog.push({
+    winningTeamId: winningTeam.id,
+    winningBid: amount,
+    player: __spreadValues({}, player),
+    allBids: __spreadValues({}, (_b = league.activeBids) != null ? _b : {})
+  });
+  league.status = nextStatus || "intermission";
+  clearActiveBids(league);
+  league.currentPlayerId = null;
+  league.tieBreaker = null;
+  league.auctionTimer = startIntermissionTimer ? { endTime: secondsFromNow(now, league.draftTimers.intermissionTimer), isPaused: false, timeRemainingOnPause: 0 } : null;
+}
+function getNextRandomPlayerId(league, excludePlayerId = null, random = Math.random) {
+  var _a;
+  const undrafted = ((_a = league.initialPlayerPool) != null ? _a : []).filter((p) => !p.isDrafted && isKnownTeam(p.team) && p.id !== excludePlayerId);
+  if (undrafted.length === 0)
+    return null;
+  return undrafted[Math.floor(random() * undrafted.length)].id;
+}
+function startNextPlayer(league, now, excludePlayerId = null) {
+  clearActiveBids(league);
+  league.tieBreaker = null;
+  league.currentPlayerId = getNextRandomPlayerId(league, excludePlayerId);
+  if (league.currentPlayerId == null) {
+    league.status = "completed";
+    league.auctionTimer = null;
+  } else {
+    league.status = "drafting";
+    league.auctionTimer = { endTime: secondsFromNow(now, league.draftTimers.bidTimer), isPaused: false, timeRemainingOnPause: 0 };
+  }
+}
+function getPreferredTeamName(profile, fallbackUserId) {
+  var _a, _b;
+  if ((_a = profile == null ? void 0 : profile.defaultTeamName) == null ? void 0 : _a.trim())
+    return profile.defaultTeamName.trim();
+  const displayName = ((_b = profile == null ? void 0 : profile.displayName) == null ? void 0 : _b.trim()) ? profile.displayName.trim() : fallbackUserId;
+  return displayName && displayName.trim() ? `${displayName}'s Team` : "New Team";
+}
+function slugify(value) {
+  if (!value || !value.trim())
+    return "";
+  let out = "";
+  for (const ch of value.trim()) {
+    if (/[\p{L}\p{N}]/u.test(ch)) {
+      out += ch;
+    } else if (out.length > 0 && !out.endsWith("_")) {
+      out += "_";
+    }
+  }
+  return out.replace(/^_+|_+$/g, "");
+}
+function getUniqueTeamName(existingTeams, preferredName, displayName) {
+  const existing = new Set(
+    (existingTeams != null ? existingTeams : []).map((t) => t == null ? void 0 : t.name).filter((n) => !!n && !!n.trim()).map((n) => n.trim().toLowerCase())
+  );
+  const has = (name) => existing.has(name.toLowerCase());
+  const baseName = preferredName && preferredName.trim() ? preferredName.trim() : "New Team";
+  if (!has(baseName))
+    return baseName;
+  const ownerPart = slugify(displayName);
+  const candidateBase = ownerPart ? `${baseName}_${ownerPart}` : baseName;
+  if (!has(candidateBase))
+    return candidateBase;
+  let index = 2;
+  while (has(`${candidateBase}_${index}`))
+    index += 1;
+  return `${candidateBase}_${index}`;
+}
+
+// ../supabase/functions/_shared/diff.ts
+var same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function diffObjects(prev, next) {
+  const ops = [];
+  const keys = /* @__PURE__ */ new Set([...Object.keys(prev), ...Object.keys(next)]);
+  for (const k of keys) {
+    const a = prev[k];
+    const b = next[k];
+    if (!(k in next)) {
+      ops.push({ k, del: true });
+      continue;
+    }
+    if (same(a, b))
+      continue;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (b.length > a.length && same(a, b.slice(0, a.length))) {
+        ops.push({ k, append: b.slice(a.length) });
+        continue;
+      }
+      if (b.length > a.length && a.length > 0) {
+        const items = {};
+        let changed = 0;
+        for (let i = 0; i < a.length; i += 1) {
+          if (!same(a[i], b[i])) {
+            items[i] = b[i];
+            changed += 1;
+          }
+        }
+        if (changed * 2 <= b.length) {
+          ops.push({ k, items });
+          ops.push({ k, append: b.slice(a.length) });
+          continue;
+        }
+      }
+      if (b.length === a.length) {
+        const items = {};
+        let changed = 0;
+        for (let i = 0; i < b.length; i += 1) {
+          if (!same(a[i], b[i])) {
+            items[i] = b[i];
+            changed += 1;
+          }
+        }
+        if (changed * 2 <= b.length) {
+          ops.push({ k, items });
+          continue;
+        }
+      }
+    }
+    ops.push({ k, set: b });
+  }
+  return ops;
+}
+
+// ../supabase/functions/_shared/handwriting.ts
+var HANDWRITING_LIMITS = { perDigit: 6, strokes: 8, points: 60 };
+var boxOf = (strokes) => {
+  const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+  for (const stroke of strokes) {
+    for (let i = 0; i + 1 < stroke.length; i += 2) {
+      box.minX = Math.min(box.minX, stroke[i]);
+      box.maxX = Math.max(box.maxX, stroke[i]);
+      box.minY = Math.min(box.minY, stroke[i + 1]);
+      box.maxY = Math.max(box.maxY, stroke[i + 1]);
+    }
+  }
+  return box;
+};
+function splitBoardDigits(board) {
+  const items = board.filter((stroke) => Array.isArray(stroke) && stroke.length >= 2).map((stroke) => __spreadValues({ stroke }, boxOf([stroke]))).sort((a, b) => a.minX - b.minX);
+  const groups = [];
+  let right = -Infinity;
+  for (const item of items) {
+    if (groups.length === 0 || item.minX > right) {
+      groups.push([item.stroke]);
+      right = item.maxX;
+    } else {
+      groups[groups.length - 1].push(item.stroke);
+      right = Math.max(right, item.maxX);
+    }
+  }
+  return groups;
+}
+var thin = (stroke, limit) => {
+  const count = stroke.length / 2;
+  if (count <= limit)
+    return stroke;
+  const out = [];
+  for (let k = 0; k < limit; k += 1) {
+    const i = Math.round(k * (count - 1) / (limit - 1));
+    out.push(stroke[i * 2], stroke[i * 2 + 1]);
+  }
+  return out;
+};
+function toExample(strokes) {
+  const usable = strokes.filter((stroke) => stroke.length >= 2).slice(0, HANDWRITING_LIMITS.strokes);
+  if (usable.length === 0)
+    return null;
+  const { minX, minY, maxX, maxY } = boxOf(usable);
+  const size = Math.max(maxX - minX, maxY - minY);
+  if (!(size > 0))
+    return null;
+  const totalPoints = usable.reduce((sum, stroke) => sum + stroke.length / 2, 0);
+  const share2 = Math.max(2, Math.floor(HANDWRITING_LIMITS.points / usable.length));
+  return usable.map((stroke) => {
+    const scaled = [];
+    for (let i = 0; i + 1 < stroke.length; i += 2) {
+      const x = Math.round((stroke[i] - minX) / size * 100);
+      const y = Math.round((stroke[i + 1] - minY) / size * 100);
+      const n = scaled.length;
+      if (n >= 2 && scaled[n - 2] === x && scaled[n - 1] === y)
+        continue;
+      scaled.push(x, y);
+    }
+    return totalPoints > HANDWRITING_LIMITS.points ? thin(scaled, share2) : scaled;
+  });
+}
+var isExample = (value) => Array.isArray(value) && value.length > 0 && value.length <= HANDWRITING_LIMITS.strokes && value.reduce((sum, stroke) => sum + (Array.isArray(stroke) ? stroke.length / 2 : Infinity), 0) <= HANDWRITING_LIMITS.points && value.every((stroke) => Array.isArray(stroke) && stroke.length >= 2 && stroke.length % 2 === 0 && stroke.every((n) => Number.isInteger(n) && n >= 0 && n <= 100));
+function sanitizeHandwriting(value) {
+  const out = {};
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return out;
+  for (const [digit, examples] of Object.entries(value)) {
+    if (!/^[0-9]$/.test(digit) || !Array.isArray(examples))
+      continue;
+    const kept = examples.filter(isExample).slice(-HANDWRITING_LIMITS.perDigit);
+    if (kept.length)
+      out[digit] = kept;
+  }
+  return out;
+}
+function learnFromBoard(current, board, amount) {
+  if (!Array.isArray(board) || !Number.isInteger(amount) || amount < 1)
+    return null;
+  const digits = String(amount);
+  const groups = splitBoardDigits(board);
+  if (groups.length !== digits.length)
+    return null;
+  const examples = groups.map(toExample);
+  if (examples.some((example) => !example || !isExample(example)))
+    return null;
+  const next = sanitizeHandwriting(current);
+  examples.forEach((example, i) => {
+    var _a;
+    const digit = digits[i];
+    next[digit] = [...(_a = next[digit]) != null ? _a : [], example].slice(-HANDWRITING_LIMITS.perDigit);
+  });
+  return next;
+}
+
+// ../supabase/functions/_shared/history.ts
+function seasonFor(date) {
+  return date.getUTCMonth() >= 2 ? date.getUTCFullYear() : date.getUTCFullYear() - 1;
+}
+var draftNumberOf = (league) => Number.isFinite(league.draftNumber) && league.draftNumber > 0 ? league.draftNumber : 1;
+var historyIdFor = (league) => `${league.id}-draft-${draftNumberOf(league)}`;
+function snapshotDraft(league, now) {
+  var _a, _b, _c;
+  return {
+    id: historyIdFor(league),
+    leagueId: league.id,
+    leagueName: league.name,
+    draftNumber: draftNumberOf(league),
+    season: seasonFor(now),
+    completedAt: now.toISOString(),
+    draftMode: league.draftMode,
+    adminId: league.adminId,
+    members: [...(_a = league.members) != null ? _a : []],
+    rosterSettings: clone(league.rosterSettings),
+    teams: ((_b = league.teams) != null ? _b : []).filter(Boolean).map((team) => {
+      var _a2;
+      return {
+        id: team.id,
+        ownerId: team.ownerId,
+        name: team.name,
+        budget: team.budget,
+        roster: clone((_a2 = team.roster) != null ? _a2 : [])
+      };
+    }),
+    draftLog: ((_c = league.draftLog) != null ? _c : []).filter((pick) => pick == null ? void 0 : pick.player).map((pick) => {
+      var _a2;
+      return {
+        player: clone(pick.player),
+        winningTeamId: pick.winningTeamId,
+        winningBid: pick.winningBid,
+        // Whiteboard drawings stay with the live league only; history keeps the amounts.
+        allBids: Object.fromEntries(Object.entries(clone((_a2 = pick.allBids) != null ? _a2 : {})).map((_b2) => {
+          var [id, _c2] = _b2, _d = _c2, { board: _board } = _d, bid = __objRest(_d, ["board"]);
+          return [id, bid];
+        }))
+      };
+    })
+  };
+}
+var isCompleted = (league) => {
+  var _a;
+  return String((_a = league == null ? void 0 : league.status) != null ? _a : "").toLowerCase() === "completed";
+};
+function historySummary(entry, userId) {
+  var _a;
+  const myTeam = entry.teams.find((team) => team.ownerId === userId);
+  const topPick = entry.draftLog.reduce(
+    (best, pick) => !best || pick.winningBid > best.winningBid ? pick : best,
+    null
+  );
+  return {
+    id: entry.id,
+    leagueId: entry.leagueId,
+    leagueName: entry.leagueName,
+    draftNumber: entry.draftNumber,
+    season: entry.season,
+    completedAt: entry.completedAt,
+    draftMode: entry.draftMode,
+    teamCount: entry.teams.length,
+    pickCount: entry.draftLog.length,
+    myTeamName: (_a = myTeam == null ? void 0 : myTeam.name) != null ? _a : null,
+    topPick: topPick ? { name: topPick.player.name, position: topPick.player.position, price: topPick.winningBid } : null
+  };
+}
+
+// ../supabase/functions/_shared/startSit.ts
+var SLEEPER_STATE_URL = "https://api.sleeper.app/v1/state/nfl";
+var SLEEPER_PROJECTIONS_URL = "https://api.sleeper.com/projections/nfl";
+var SLEEPER_STATS_URL = "https://api.sleeper.com/stats/nfl";
+var POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"];
+var CACHE_MS = 30 * 60 * 1e3;
+var PAST_CACHE_MS = 12 * 60 * 60 * 1e3;
+var RECENT_GAMES = 4;
+var UPCOMING_WEEKS = 4;
+var LAST_REGULAR_WEEK = 18;
+var MATCHUP_SEASONS = 4;
+var stateCache = { entry: null };
+var projectionCache = /* @__PURE__ */ new Map();
+var weekStatsCache = /* @__PURE__ */ new Map();
+var playerSeasonCache = /* @__PURE__ */ new Map();
+var futureCache = /* @__PURE__ */ new Map();
+var accuracyCache = { entry: null };
+var num = (value) => {
+  const parsed = typeof value === "number" ? value : parseFloat(String(value != null ? value : ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+var round1 = (value) => Math.round(value * 10) / 10;
+var text = (value) => typeof value === "string" ? value.trim() : "";
+var DAY_MS = 24 * 60 * 60 * 1e3;
+function weekByTuesday(seasonStartDate, nowMs) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(seasonStartDate);
+  if (!match)
+    return 0;
+  const opener = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  if (!Number.isFinite(opener))
+    return 0;
+  const daysBackToTuesday = (new Date(opener).getUTCDay() - 2 + 7) % 7;
+  const weekOneStart = opener - daysBackToTuesday * DAY_MS + 10 * 60 * 60 * 1e3;
+  if (nowMs < weekOneStart)
+    return 0;
+  return Math.min(18, Math.floor((nowMs - weekOneStart) / (7 * DAY_MS)) + 1);
+}
+async function currentState(fetchJson, nowMs) {
+  var _a;
+  const cached = stateCache.entry;
+  if (cached && nowMs - cached.at < CACHE_MS)
+    return cached.value;
+  const raw = await fetchJson(SLEEPER_STATE_URL);
+  const seasonType = text(raw == null ? void 0 : raw.season_type) || "regular";
+  const sleeperWeek = Math.max(1, Math.trunc(num((_a = raw == null ? void 0 : raw.display_week) != null ? _a : raw == null ? void 0 : raw.week)));
+  const week = seasonType === "regular" ? Math.max(sleeperWeek, weekByTuesday(text(raw == null ? void 0 : raw.season_start_date), nowMs)) : sleeperWeek;
+  const value = { season: Math.trunc(num(raw == null ? void 0 : raw.season)) || new Date(nowMs).getUTCFullYear(), week, seasonType };
+  stateCache.entry = { at: nowMs, value };
+  return value;
+}
+var positionsQuery = () => POSITIONS.map((p) => `position[]=${p}`).join("&");
+var BOX_KEYS = [
+  ["passYd", "pass_yd"],
+  ["passTd", "pass_td"],
+  ["int", "pass_int"],
+  ["rushAtt", "rush_att"],
+  ["rushYd", "rush_yd"],
+  ["rushTd", "rush_td"],
+  ["tgt", "rec_tgt"],
+  ["rec", "rec"],
+  ["recYd", "rec_yd"],
+  ["recTd", "rec_td"],
+  ["fumLost", "fum_lost"],
+  ["twoPt", ""]
+];
+function boxFrom(stats) {
+  const box = {};
+  for (const [key, sleeperKey] of BOX_KEYS)
+    box[key] = sleeperKey ? num(stats[sleeperKey]) : 0;
+  box.twoPt = num(stats.pass_2pt) + num(stats.rush_2pt) + num(stats.rec_2pt);
+  return box;
+}
+function snapsFrom(stats) {
+  return { off: num(stats.off_snp), team: num(stats.tm_off_snp) };
+}
+var compactBox = (box) => {
+  const out = {};
+  for (const [key] of BOX_KEYS)
+    if (box[key])
+      out[key] = round1(box[key]);
+  return out;
+};
+var averageBox = (boxes) => {
+  if (boxes.length === 0)
+    return null;
+  const total = boxFrom({});
+  for (const box of boxes)
+    for (const [key] of BOX_KEYS)
+      total[key] += box[key];
+  for (const [key] of BOX_KEYS)
+    total[key] /= boxes.length;
+  return compactBox(total);
+};
+function pointsFrom(stats) {
+  const std = num(stats.pts_std);
+  const half = stats.pts_half_ppr != null ? num(stats.pts_half_ppr) : std + num(stats.rec) * 0.5;
+  const ppr = stats.pts_ppr != null ? num(stats.pts_ppr) : std + num(stats.rec);
+  return { ppr: round1(ppr), half: round1(half), std: round1(std) };
+}
+var averagePoints = (lines) => {
+  if (lines.length === 0)
+    return null;
+  const sum = (key) => round1(lines.reduce((total, line) => total + line.points[key], 0) / lines.length);
+  return { ppr: sum("ppr"), half: sum("half"), std: sum("std") };
+};
+var sleeperIdOf = (id) => id.replace(/^sleeper-/, "");
+var playedGame = (stats) => stats.gp != null ? num(stats.gp) > 0 : Object.keys(stats).some((key) => key.startsWith("pts_"));
+function toPlayer(row) {
+  var _a, _b;
+  const info = (_a = row.player) != null ? _a : {};
+  const stats = (_b = row.stats) != null ? _b : {};
+  const rawPosition = text(info.position) || (Array.isArray(info.fantasy_positions) ? text(info.fantasy_positions[0]) : "");
+  const position = rawPosition === "DEF" ? "DST" : rawPosition;
+  if (!position || !POSITIONS.includes(rawPosition))
+    return null;
+  const playerId = text(row.player_id);
+  if (!playerId)
+    return null;
+  const team = text(row.team) || text(info.team);
+  const name = position === "DST" ? `${text(info.first_name)} ${text(info.last_name)}`.trim() || `${team} Defense` : `${text(info.first_name)} ${text(info.last_name)}`.trim();
+  if (!name)
+    return null;
+  return {
+    id: `sleeper-${playerId}`,
+    name,
+    position,
+    team,
+    opponent: text(row.opponent) || null,
+    injury: text(info.injury_status) || null,
+    points: pointsFrom(stats),
+    stats: compactBox(boxFrom(stats))
+  };
+}
+async function getWeekStats(fetchJson, season, week, nowMs) {
+  var _a, _b, _c;
+  const key = `${season}-${week}`;
+  const cached = weekStatsCache.get(key);
+  if (cached && nowMs - cached.at < PAST_CACHE_MS)
+    return cached.value;
+  const rows = await fetchJson(`${SLEEPER_STATS_URL}/${season}/${week}?season_type=regular&${positionsQuery()}`);
+  if (!Array.isArray(rows))
+    throw new Error("Sleeper stats response was not a list.");
+  const lines = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    if (!row || typeof row !== "object")
+      continue;
+    const record2 = row;
+    const parsed = toPlayer(record2);
+    if (!parsed || !playedGame((_a = record2.stats) != null ? _a : {}))
+      continue;
+    lines.set(parsed.id, {
+      week,
+      opponent: parsed.opponent,
+      points: parsed.points,
+      box: boxFrom((_b = record2.stats) != null ? _b : {}),
+      snaps: snapsFrom((_c = record2.stats) != null ? _c : {}),
+      injury: parsed.injury,
+      name: parsed.name,
+      position: parsed.position,
+      team: parsed.team
+    });
+  }
+  weekStatsCache.set(key, { at: nowMs, value: lines });
+  return lines;
+}
+async function getPastWeeks(fetchJson, season, week, currentWeek, nowMs) {
+  const lastFinished = Math.min(week, currentWeek) - 1;
+  const weeks = Array.from({ length: Math.max(0, lastFinished) }, (_, i) => i + 1);
+  const results = await Promise.allSettled(weeks.map((w) => getWeekStats(fetchJson, season, w, nowMs)));
+  return results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+}
+async function getFutureWeek(fetchJson, season, seasonType, week, nowMs) {
+  const key = `${season}-${seasonType}-${week}`;
+  const cached = futureCache.get(key);
+  if (cached && nowMs - cached.at < CACHE_MS)
+    return cached.value;
+  const rows = await fetchJson(`${SLEEPER_PROJECTIONS_URL}/${season}/${week}?season_type=${seasonType}&${positionsQuery()}&order_by=pts_ppr`);
+  if (!Array.isArray(rows))
+    throw new Error("Sleeper projections response was not a list.");
+  const teams = /* @__PURE__ */ new Set();
+  const lines = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    if (!row || typeof row !== "object")
+      continue;
+    const player = toPlayer(row);
+    if (!player)
+      continue;
+    if (player.team && player.opponent)
+      teams.add(player.team);
+    if (!player.opponent)
+      continue;
+    const existing = lines.get(player.id);
+    if (!existing || existing.points.ppr < player.points.ppr) {
+      lines.set(player.id, { week, opponent: player.opponent, points: player.points, stats: player.stats });
+    }
+  }
+  const value = { teams, lines };
+  futureCache.set(key, { at: nowMs, value });
+  return value;
+}
+var share = (mine, team) => team > 0 ? Math.round(mine / team * 1e3) / 1e3 : null;
+function usageOf(played, teamWeek) {
+  const skill = played.filter((line) => ["RB", "WR", "TE", "QB"].includes(line.position));
+  if (skill.length === 0)
+    return null;
+  const sums = (lines) => lines.reduce((acc, line) => {
+    var _a;
+    const team = (_a = teamWeek.get(`${line.team}|${line.week}`)) != null ? _a : { tgt: 0, rushAtt: 0 };
+    return { tgt: acc.tgt + line.box.tgt, rushAtt: acc.rushAtt + line.box.rushAtt, teamTgt: acc.teamTgt + team.tgt, teamRush: acc.teamRush + team.rushAtt };
+  }, { tgt: 0, rushAtt: 0, teamTgt: 0, teamRush: 0 });
+  const all = sums(skill);
+  const recentLines = skill.slice(-3);
+  const recent = sums(recentLines);
+  const snapShareOf = (lines) => {
+    const counted = lines.filter((line) => {
+      var _a;
+      return ((_a = line.snaps) == null ? void 0 : _a.team) > 0;
+    });
+    return share(counted.reduce((n, l) => n + l.snaps.off, 0), counted.reduce((n, l) => n + l.snaps.team, 0));
+  };
+  return {
+    snapShare: snapShareOf(skill),
+    recentSnapShare: snapShareOf(recentLines),
+    targetShare: share(all.tgt, all.teamTgt),
+    carryShare: share(all.rushAtt, all.teamRush),
+    recentTargetShare: share(recent.tgt, recent.teamTgt),
+    recentCarryShare: share(recent.rushAtt, recent.teamRush),
+    recentGames: recentLines.length
+  };
+}
+function spreadOf(played) {
+  if (played.length < 2)
+    return null;
+  const sd = (key) => {
+    const values = played.map((line) => line.points[key]);
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    return round1(Math.sqrt(values.reduce((total, v) => total + (v - mean) ** 2, 0) / (values.length - 1)));
+  };
+  return { ppr: sd("ppr"), half: sd("half"), std: sd("std") };
+}
+async function getWeekProjections(fetchJson, now, requestedWeek) {
+  var _a;
+  const nowMs = now.getTime();
+  const state = await currentState(fetchJson, nowMs);
+  const week = requestedWeek && requestedWeek >= 1 && requestedWeek <= 18 ? Math.trunc(requestedWeek) : state.week;
+  const seasonType = state.seasonType === "post" ? "post" : "regular";
+  const key = `${state.season}-${seasonType}-${week}`;
+  const cached = projectionCache.get(key);
+  if (cached && nowMs - cached.at < CACHE_MS)
+    return cached.value;
+  const url = `${SLEEPER_PROJECTIONS_URL}/${state.season}/${week}?season_type=${seasonType}&${positionsQuery()}&order_by=pts_ppr`;
+  const futureWeeks = seasonType === "regular" ? Array.from({ length: UPCOMING_WEEKS }, (_, i) => week + 1 + i).filter((w) => w <= LAST_REGULAR_WEEK) : [];
+  const [rows, pastWeeks, futureResults] = await Promise.all([
+    fetchJson(url),
+    seasonType === "regular" ? getPastWeeks(fetchJson, state.season, week, state.week, nowMs) : Promise.resolve([]),
+    // A future week Sleeper can't serve is simply left out.
+    Promise.allSettled(futureWeeks.map((w) => getFutureWeek(fetchJson, state.season, seasonType, w, nowMs)))
+  ]);
+  const future = futureResults.flatMap((result, i) => result.status === "fulfilled" ? [__spreadValues({ week: futureWeeks[i] }, result.value)] : []);
+  if (!Array.isArray(rows))
+    throw new Error("Sleeper projections response was not a list.");
+  const games = /* @__PURE__ */ new Map();
+  for (const weekLines of pastWeeks) {
+    for (const [id, line] of weekLines) {
+      if (!games.has(id))
+        games.set(id, []);
+      games.get(id).push(line);
+    }
+  }
+  const teamWeek = /* @__PURE__ */ new Map();
+  for (const weekLines of pastWeeks) {
+    for (const line of weekLines.values()) {
+      if (!line.team)
+        continue;
+      const key2 = `${line.team}|${line.week}`;
+      const total = (_a = teamWeek.get(key2)) != null ? _a : { tgt: 0, rushAtt: 0 };
+      total.tgt += line.box.tgt;
+      total.rushAtt += line.box.rushAtt;
+      teamWeek.set(key2, total);
+    }
+  }
+  const withHistory = (player) => {
+    var _a2;
+    const played = (_a2 = games.get(player.id)) != null ? _a2 : [];
+    return __spreadProps(__spreadValues({}, player), {
+      recent: played.slice(-RECENT_GAMES).map(({ week: w, opponent, points, box }) => ({ week: w, opponent, points, stats: compactBox(box) })),
+      seasonAvg: averagePoints(played),
+      seasonStats: averageBox(played.map((line) => line.box)),
+      gamesPlayed: played.length,
+      usage: usageOf(played, teamWeek),
+      spread: spreadOf(played),
+      upcoming: future.flatMap((f) => {
+        const line = f.lines.get(player.id);
+        if (line)
+          return [line];
+        return f.teams.has(player.team) ? [{ week: f.week, opponent: null, points: { ppr: 0, half: 0, std: 0 } }] : [];
+      })
+    });
+  };
+  const byId = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    if (!row || typeof row !== "object")
+      continue;
+    const player = toPlayer(row);
+    if (!player)
+      continue;
+    if (player.points.ppr <= 0 && player.points.std <= 0 && !player.injury)
+      continue;
+    const existing = byId.get(player.id);
+    if (!existing || existing.points.ppr < player.points.ppr)
+      byId.set(player.id, withHistory(player));
+  }
+  const teamsPlaying = /* @__PURE__ */ new Set();
+  for (const row of rows) {
+    const r = row != null ? row : {};
+    if (text(r.opponent))
+      teamsPlaying.add(text(r.team));
+  }
+  for (const [id, played] of games) {
+    const latest = played[played.length - 1];
+    const onBye = seasonType === "regular" && teamsPlaying.size > 0 && !teamsPlaying.has(latest.team);
+    if (byId.has(id) || !latest.injury && !onBye)
+      continue;
+    byId.set(id, __spreadValues(__spreadValues({}, withHistory({
+      id,
+      name: latest.name,
+      position: latest.position,
+      team: latest.team,
+      opponent: null,
+      injury: latest.injury,
+      points: { ppr: 0, half: 0, std: 0 },
+      stats: {}
+    })), onBye ? { onBye: true } : {}));
+  }
+  const value = {
+    defense: buildDefenseTable(pastWeeks),
+    season: state.season,
+    week,
+    currentWeek: state.week,
+    upcomingWeeks: future.map((f) => f.week),
+    seasonType,
+    fetchedAt: now.toISOString(),
+    players: [...byId.values()].sort((a, b) => b.points.ppr - a.points.ppr)
+  };
+  projectionCache.set(key, { at: nowMs, value });
+  return value;
+}
+async function getPlayerSeason(fetchJson, playerId, season, nowMs) {
+  var _a;
+  const key = `${playerId}-${season}`;
+  const cached = playerSeasonCache.get(key);
+  if (cached && nowMs - cached.at < PAST_CACHE_MS)
+    return cached.value;
+  const raw = await fetchJson(
+    `${SLEEPER_STATS_URL}/player/${encodeURIComponent(sleeperIdOf(playerId))}?season_type=regular&season=${season}&grouping=week`
+  );
+  const rows = Array.isArray(raw) ? raw : raw && typeof raw === "object" ? Object.values(raw) : [];
+  const games = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object")
+      continue;
+    const record2 = row;
+    const stats = (_a = record2.stats) != null ? _a : {};
+    const week = Math.trunc(num(record2.week));
+    if (!week || !playedGame(stats))
+      continue;
+    games.push({
+      season,
+      week,
+      team: text(record2.team) || null,
+      points: pointsFrom(stats),
+      box: boxFrom(stats),
+      opponent: text(record2.opponent) || null
+    });
+  }
+  playerSeasonCache.set(key, { at: nowMs, value: games });
+  return games;
+}
+async function getMatchupHistory(fetchJson, now, playerId, opponent) {
+  const nowMs = now.getTime();
+  const state = await currentState(fetchJson, nowMs);
+  const seasons = Array.from({ length: MATCHUP_SEASONS }, (_, i) => state.season - i);
+  const results = await Promise.allSettled(seasons.map((season) => getPlayerSeason(fetchJson, playerId, season, nowMs)));
+  if (results.every((result) => result.status === "rejected"))
+    throw new Error("Sleeper player stats were unavailable.");
+  const target = opponent.toUpperCase();
+  const games = results.flatMap((result) => result.status === "fulfilled" ? result.value : []).filter((game) => {
+    var _a;
+    return ((_a = game.opponent) != null ? _a : "").toUpperCase() === target;
+  }).map(({ season, week, team, points, box }) => ({ season, week, team, points, box })).sort((a, b) => b.season - a.season || b.week - a.week);
+  return { playerId, opponent: target, games, average: averagePoints(games) };
+}
+var DEFENSE_POSITIONS = ["QB", "RB", "WR", "TE"];
+var NOTABLE_GAMES = 5;
+function leadPerWeek(games) {
+  const byWeek = /* @__PURE__ */ new Map();
+  for (const game of games) {
+    const best = byWeek.get(game.week);
+    if (!best || game.points.ppr > best.points.ppr)
+      byWeek.set(game.week, game);
+  }
+  return [...byWeek.values()].sort((a, b) => b.week - a.week);
+}
+function buildDefenseTable(pastWeeks) {
+  var _a;
+  const totals = /* @__PURE__ */ new Map();
+  for (const weekLines of pastWeeks) {
+    for (const [id, line] of weekLines) {
+      if (!line.opponent || !DEFENSE_POSITIONS.includes(line.position))
+        continue;
+      const key = `${line.opponent}|${line.position}`;
+      let entry = totals.get(key);
+      if (!entry) {
+        entry = { weeks: /* @__PURE__ */ new Set(), points: { ppr: 0, half: 0, std: 0 }, box: boxFrom({}), games: [] };
+        totals.set(key, entry);
+      }
+      entry.games.push({ id, name: line.name, team: line.team, week: line.week, points: line.points, box: line.box });
+      entry.weeks.add(line.week);
+      for (const k of ["ppr", "half", "std"])
+        entry.points[k] += line.points[k];
+      for (const [k] of BOX_KEYS)
+        entry.box[k] += line.box[k];
+    }
+  }
+  const table = {};
+  for (const [key, entry] of totals) {
+    const [team, position] = key.split("|");
+    const games = entry.weeks.size;
+    const per = (value) => round1(value / games);
+    const box = {};
+    for (const [k] of BOX_KEYS)
+      box[k] = per(entry.box[k]);
+    table[team] = (_a = table[team]) != null ? _a : {};
+    table[team][position] = {
+      games,
+      points: { ppr: per(entry.points.ppr), half: per(entry.points.half), std: per(entry.points.std) },
+      box,
+      rank: 0,
+      teams: 0,
+      recentGames: leadPerWeek(entry.games).slice(0, NOTABLE_GAMES)
+    };
+  }
+  for (const position of DEFENSE_POSITIONS) {
+    const rows = Object.values(table).map((byPosition) => byPosition[position]).filter(Boolean);
+    rows.sort((a, b) => b.points.ppr - a.points.ppr);
+    rows.forEach((row, index) => {
+      row.rank = index + 1;
+      row.teams = rows.length;
+    });
+  }
+  return table;
+}
+var ACCURACY_MIN_PROJECTION = 1;
+function snapshotOf(projections) {
+  const saved = {};
+  for (const p of projections.players) {
+    if (p.onBye || p.points.ppr < ACCURACY_MIN_PROJECTION)
+      continue;
+    saved[p.id] = [p.position, p.points.ppr, p.points.half, p.points.std, p.name];
+  }
+  return saved;
+}
+async function sleeperSnapshot(fetchJson, season, week) {
+  const rows = await fetchJson(`${SLEEPER_PROJECTIONS_URL}/${season}/${week}?season_type=regular&${positionsQuery()}&order_by=pts_ppr`);
+  if (!Array.isArray(rows))
+    throw new Error("Sleeper projections response was not a list.");
+  const saved = {};
+  for (const row of rows) {
+    if (!row || typeof row !== "object")
+      continue;
+    const p = toPlayer(row);
+    if (!p || p.points.ppr < ACCURACY_MIN_PROJECTION)
+      continue;
+    if (!saved[p.id] || saved[p.id][1] < p.points.ppr)
+      saved[p.id] = [p.position, p.points.ppr, p.points.half, p.points.std, p.name];
+  }
+  return saved;
+}
+async function getProjectionAccuracy(fetchJson, now, snapshots) {
+  const nowMs = now.getTime();
+  const cached = accuracyCache.entry;
+  if (cached && nowMs - cached.at < CACHE_MS)
+    return cached.value;
+  const state = await currentState(fetchJson, nowMs);
+  const lastFinished = state.seasonType === "regular" ? Math.min(state.week - 1, LAST_REGULAR_WEEK) : LAST_REGULAR_WEEK;
+  const weekNumbers = Array.from({ length: Math.max(0, lastFinished) }, (_, i) => i + 1);
+  const results = await Promise.allSettled(weekNumbers.map(async (week) => {
+    const saved = snapshots ? await snapshots.get(state.season, week).catch(() => null) : null;
+    const hasSaved = saved != null && Object.keys(saved).length > 0;
+    const [projected, actual] = await Promise.all([
+      hasSaved ? saved : sleeperSnapshot(fetchJson, state.season, week),
+      getWeekStats(fetchJson, state.season, week, nowMs)
+    ]);
+    const rows = [];
+    for (const [id, [position, ppr, half, std, name]] of Object.entries(projected)) {
+      const line = actual.get(id);
+      if (!line)
+        continue;
+      rows.push([id, name, position, round1(ppr), round1(half), round1(std), round1(line.points.ppr), round1(line.points.half), round1(line.points.std)]);
+    }
+    return { week, source: hasSaved ? "saved" : "sleeper", rows };
+  }));
+  const value = {
+    season: state.season,
+    fetchedAt: now.toISOString(),
+    weeks: results.flatMap((r) => r.status === "fulfilled" && r.value.rows.length > 0 ? [r.value] : [])
+  };
+  accuracyCache.entry = { at: nowMs, value };
+  return value;
+}
+
+// ../supabase/functions/_shared/sleeperImport.ts
+var SLEEPER_API = "https://api.sleeper.app/v1";
+var CACHE_MS2 = 10 * 60 * 1e3;
+var MAX_LEAGUES = 12;
+var SleeperUserNotFound = class extends Error {
+};
+var SLOT_POSITIONS = {
+  QB: ["QB"],
+  RB: ["RB"],
+  WR: ["WR"],
+  TE: ["TE"],
+  K: ["K"],
+  DEF: ["DST"],
+  FLEX: ["RB", "WR", "TE"],
+  WRRB_FLEX: ["RB", "WR"],
+  REC_FLEX: ["WR", "TE"],
+  SUPER_FLEX: ["QB", "RB", "WR", "TE"]
+};
+var NON_STARTER_SLOTS = /* @__PURE__ */ new Set(["BN", "IR", "TAXI"]);
+var SLOT_LABELS = {
+  DEF: "DST",
+  WRRB_FLEX: "W/R",
+  REC_FLEX: "W/T",
+  SUPER_FLEX: "SUPERFLEX"
+};
+var cache = /* @__PURE__ */ new Map();
+var SLEEPER_PLAYERS_URL = `${SLEEPER_API}/players/nfl`;
+var AGES_CACHE_MS = 24 * 60 * 60 * 1e3;
+var PICK_SEASONS = 3;
+var ages = { at: 0, value: null };
+async function getAges(fetchJson, now) {
+  if (ages.value && now.getTime() - ages.at < AGES_CACHE_MS)
+    return ages.value;
+  const raw = await fetchJson(SLEEPER_PLAYERS_URL);
+  const map = /* @__PURE__ */ new Map();
+  for (const [sleeperId, info] of Object.entries(raw != null ? raw : {})) {
+    if (!info)
+      continue;
+    const birth = Date.parse(text2(info.birth_date));
+    const age = Number.isFinite(birth) ? (now.getTime() - birth) / (365.25 * 24 * 60 * 60 * 1e3) : Number(info.age);
+    if (Number.isFinite(age) && age > 15)
+      map.set(`sleeper-${sleeperId}`, Math.round(age * 10) / 10);
+  }
+  ages.at = now.getTime();
+  ages.value = map;
+  return map;
+}
+function buildPicks(rosterIds, tradedPicks, firstSeason, rounds, teamName) {
+  var _a;
+  const owner = /* @__PURE__ */ new Map();
+  for (const traded of Array.isArray(tradedPicks) ? tradedPicks : []) {
+    const t = traded;
+    owner.set(`${text2(t == null ? void 0 : t.season)}-${text2(t == null ? void 0 : t.round)}-${text2(t == null ? void 0 : t.roster_id)}`, text2(t == null ? void 0 : t.owner_id));
+  }
+  const byOwner = new Map(rosterIds.map((id) => [id, []]));
+  for (let season = firstSeason; season < firstSeason + PICK_SEASONS; season += 1) {
+    for (let round = 1; round <= rounds; round += 1) {
+      for (const original of rosterIds) {
+        const key = `${season}-${round}-${original}`;
+        const current = owner.get(key) || original;
+        (_a = byOwner.get(current)) == null ? void 0 : _a.push({ id: key, season, round, originalTeam: teamName(original) });
+      }
+    }
+  }
+  return byOwner;
+}
+var text2 = (value) => typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "";
+var SCORING_KEYS = [
+  "pass_yd",
+  "pass_td",
+  "pass_int",
+  "pass_2pt",
+  "rush_yd",
+  "rush_td",
+  "rush_att",
+  "rush_2pt",
+  "rec",
+  "rec_yd",
+  "rec_td",
+  "rec_2pt",
+  "fum_lost",
+  "bonus_rec_te",
+  "bonus_rec_rb",
+  "bonus_rec_wr"
+];
+var scoringSettingsOf = (settings) => {
+  const raw = settings != null ? settings : {};
+  const out = {};
+  for (const key of SCORING_KEYS) {
+    const value = Number(raw[key]);
+    if (raw[key] != null && Number.isFinite(value))
+      out[key] = value;
+  }
+  return out;
+};
+var scoringFor = (settings) => {
+  var _a;
+  const rec = Number((_a = settings == null ? void 0 : settings.rec) != null ? _a : 1);
+  if (rec >= 0.75)
+    return "ppr";
+  if (rec >= 0.25)
+    return "half";
+  return "std";
+};
+var isValidSleeperUsername = (value) => /^[A-Za-z0-9_.-]{2,40}$/.test(value);
+async function getSleeperTeams(fetchJson, now, username, pool) {
+  var _a, _b, _c;
+  const key = username.toLowerCase();
+  const nowMs = now.getTime();
+  const cached = cache.get(key);
+  if (cached && nowMs - cached.at < CACHE_MS2)
+    return cached.value;
+  const user = await fetchJson(`${SLEEPER_API}/user/${encodeURIComponent(username)}`);
+  const userId = text2(user == null ? void 0 : user.user_id);
+  if (!userId)
+    throw new SleeperUserNotFound(username);
+  const { season } = await currentState(fetchJson, nowMs);
+  const leagues = await fetchJson(`${SLEEPER_API}/user/${userId}/leagues/nfl/${season}`);
+  const poolById = new Map(pool.map((p) => [p.id, p]));
+  const teams = [];
+  for (const league of (Array.isArray(leagues) ? leagues : []).slice(0, MAX_LEAGUES)) {
+    if (!league || typeof league !== "object")
+      continue;
+    const l = league;
+    const leagueId = text2(l.league_id);
+    if (!leagueId)
+      continue;
+    let rosters;
+    try {
+      rosters = await fetchJson(`${SLEEPER_API}/league/${leagueId}/rosters`);
+    } catch (e) {
+      continue;
+    }
+    const rosterList = (Array.isArray(rosters) ? rosters : []).filter((r) => r && typeof r === "object");
+    const mine = rosterList.find((roster) => text2(roster.owner_id) === userId || Array.isArray(roster.co_owners) && roster.co_owners.map(text2).includes(userId));
+    if (!mine)
+      continue;
+    const ownerNames = /* @__PURE__ */ new Map();
+    try {
+      const users = await fetchJson(`${SLEEPER_API}/league/${leagueId}/users`);
+      for (const u of Array.isArray(users) ? users : []) {
+        const member = u;
+        const memberMeta = (_a = member == null ? void 0 : member.metadata) != null ? _a : {};
+        ownerNames.set(text2(member == null ? void 0 : member.user_id), text2(memberMeta.team_name) || text2(member == null ? void 0 : member.display_name));
+      }
+    } catch (e) {
+    }
+    const settings = (_b = l.settings) != null ? _b : {};
+    const dynasty = Number(settings.type) === 2;
+    let ageById = null;
+    let tradedPicks = [];
+    if (dynasty) {
+      try {
+        ageById = await getAges(fetchJson, now);
+      } catch (e) {
+        ageById = null;
+      }
+      try {
+        tradedPicks = await fetchJson(`${SLEEPER_API}/league/${leagueId}/traded_picks`);
+      } catch (e) {
+        tradedPicks = [];
+      }
+    }
+    const toPlayers = (roster) => (Array.isArray(roster.players) ? roster.players : []).map(text2).filter(Boolean).map((sleeperId) => {
+      var _a2;
+      const id = `sleeper-${sleeperId}`;
+      const known = poolById.get(id);
+      const isDefense = /^[A-Z]{2,3}$/.test(sleeperId);
+      const age = (_a2 = ageById == null ? void 0 : ageById.get(id)) != null ? _a2 : null;
+      return known ? { id, name: known.name, position: known.position, team: known.team, bye: known.bye, age } : { id, name: isDefense ? `${sleeperId} Defense` : `Player ${sleeperId}`, position: isDefense ? "DST" : "", team: isDefense ? sleeperId : "", bye: 0, age };
+    });
+    const rosterName = (roster, fallback) => {
+      var _a2;
+      const rosterMeta = (_a2 = roster.metadata) != null ? _a2 : {};
+      return text2(rosterMeta.team_name) || ownerNames.get(text2(roster.owner_id)) || fallback;
+    };
+    const myName = rosterName(mine, text2(user == null ? void 0 : user.display_name) || username);
+    const status = text2(l.status);
+    const firstPickSeason = status === "pre_draft" || status === "drafting" ? season : season + 1;
+    const rounds = Math.max(1, Math.min(7, Math.trunc(Number(settings.draft_rounds)) || 4));
+    const rosterIds = rosterList.map((roster) => text2(roster.roster_id)).filter(Boolean);
+    const nameByRosterId = new Map(rosterList.map((roster, index) => [text2(roster.roster_id), rosterName(roster, `Team ${text2(roster.roster_id) || index + 1}`)]));
+    const picksByRoster = dynasty ? buildPicks(rosterIds, tradedPicks, firstPickSeason, rounds, (id) => {
+      var _a2;
+      return (_a2 = nameByRosterId.get(id)) != null ? _a2 : `Team ${id}`;
+    }) : /* @__PURE__ */ new Map();
+    const players = toPlayers(mine);
+    const opponents = rosterList.filter((roster) => roster !== mine).map((roster, index) => {
+      var _a2;
+      return {
+        teamName: rosterName(roster, `Team ${text2(roster.roster_id) || index + 1}`),
+        players: toPlayers(roster),
+        picks: (_a2 = picksByRoster.get(text2(roster.roster_id))) != null ? _a2 : [],
+        starters: (Array.isArray(roster.starters) ? roster.starters.map(text2) : []).filter((id) => id && id !== "0").map((id) => `sleeper-${id}`)
+      };
+    }).filter((team) => team.players.length > 0 || team.picks.length > 0);
+    const starterSlots = (Array.isArray(l.roster_positions) ? l.roster_positions : []).map(text2).filter((slot) => slot && !NON_STARTER_SLOTS.has(slot));
+    const currentStarters = Array.isArray(mine.starters) ? mine.starters.map(text2) : [];
+    const slots = [];
+    const startersBySlot = [];
+    starterSlots.forEach((slot, index) => {
+      var _a2;
+      if (!SLOT_POSITIONS[slot])
+        return;
+      slots.push({ label: (_a2 = SLOT_LABELS[slot]) != null ? _a2 : slot, positions: SLOT_POSITIONS[slot] });
+      const id = currentStarters[index];
+      startersBySlot.push(id && id !== "0" ? `sleeper-${id}` : null);
+    });
+    teams.push({
+      leagueId,
+      leagueName: text2(l.name) || "Sleeper league",
+      teamName: myName,
+      dynasty,
+      picks: (_c = picksByRoster.get(text2(mine.roster_id))) != null ? _c : [],
+      scoring: scoringFor(l.scoring_settings),
+      scoringSettings: scoringSettingsOf(l.scoring_settings),
+      slots,
+      players,
+      opponents,
+      starters: currentStarters.filter((id) => id && id !== "0").map((id) => `sleeper-${id}`),
+      startersBySlot
+    });
+  }
+  const value = { username, displayName: text2(user == null ? void 0 : user.display_name) || username, season, fetchedAt: now.toISOString(), teams };
+  cache.set(key, { at: nowMs, value });
+  return value;
+}
+
+// ../supabase/functions/_shared/sleeperLeague.ts
+var SLEEPER_API2 = "https://api.sleeper.app/v1";
+var CACHE_MS3 = 10 * 60 * 1e3;
+var DEFAULT_PLAYOFF_START = 15;
+var DEFAULT_PLAYOFF_TEAMS = 6;
+var SleeperLeagueNotFound = class extends Error {
+};
+var cache2 = /* @__PURE__ */ new Map();
+var isValidLeagueId = (id) => /^[A-Za-z0-9]{1,32}$/.test(id);
+var text3 = (value) => typeof value === "string" ? value.trim() : typeof value === "number" ? String(value) : "";
+var num2 = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+async function getLeagueSeason(fetchJson, now, leagueId) {
+  var _a, _b;
+  const nowMs = now.getTime();
+  const cached = cache2.get(leagueId);
+  if (cached && nowMs - cached.at < CACHE_MS3)
+    return cached.value;
+  const league = await fetchJson(`${SLEEPER_API2}/league/${leagueId}`);
+  if (!league || !text3(league.league_id))
+    throw new SleeperLeagueNotFound(leagueId);
+  const settings = (_a = league.settings) != null ? _a : {};
+  const playoffWeekStart = Math.max(2, Math.min(19, Math.trunc(num2(settings.playoff_week_start)) || DEFAULT_PLAYOFF_START));
+  const playoffTeams = Math.max(2, Math.min(16, Math.trunc(num2(settings.playoff_teams)) || DEFAULT_PLAYOFF_TEAMS));
+  const regularWeeks = playoffWeekStart - 1;
+  const [rosters, users, state] = await Promise.all([
+    fetchJson(`${SLEEPER_API2}/league/${leagueId}/rosters`),
+    fetchJson(`${SLEEPER_API2}/league/${leagueId}/users`).catch(() => []),
+    currentState(fetchJson, nowMs)
+  ]);
+  const ownerNames = /* @__PURE__ */ new Map();
+  for (const u of Array.isArray(users) ? users : []) {
+    const member = u != null ? u : {};
+    const meta = (_b = member.metadata) != null ? _b : {};
+    ownerNames.set(text3(member.user_id), text3(meta.team_name) || text3(member.display_name));
+  }
+  const teams = (Array.isArray(rosters) ? rosters : []).filter((r) => r && typeof r === "object").map((r, index) => {
+    var _a2;
+    const roster = r;
+    const meta = (_a2 = roster.metadata) != null ? _a2 : {};
+    const rosterId = Math.trunc(num2(roster.roster_id)) || index + 1;
+    return {
+      rosterId,
+      name: text3(meta.team_name) || ownerNames.get(text3(roster.owner_id)) || `Team ${rosterId}`,
+      players: (Array.isArray(roster.players) ? roster.players : []).map(text3).filter(Boolean).map((id) => `sleeper-${id}`)
+    };
+  });
+  const weekNumbers = Array.from({ length: regularWeeks }, (_, i) => i + 1);
+  const weekly = await Promise.all(weekNumbers.map((week) => fetchJson(`${SLEEPER_API2}/league/${leagueId}/matchups/${week}`).catch(() => [])));
+  const weeks = weekNumbers.map((week, i) => {
+    var _a2;
+    const byMatchup = /* @__PURE__ */ new Map();
+    const games = [];
+    for (const m of Array.isArray(weekly[i]) ? weekly[i] : []) {
+      const row = m != null ? m : {};
+      const rosterId = Math.trunc(num2(row.roster_id));
+      if (!rosterId)
+        continue;
+      const points = Math.round(num2((_a2 = row.custom_points) != null ? _a2 : row.points) * 100) / 100;
+      const matchupId = Math.trunc(num2(row.matchup_id));
+      if (!matchupId) {
+        games.push({ a: rosterId, b: null, aPoints: points, bPoints: 0 });
+        continue;
+      }
+      if (!byMatchup.has(matchupId))
+        byMatchup.set(matchupId, []);
+      byMatchup.get(matchupId).push({ rosterId, points });
+    }
+    for (const [, sides] of [...byMatchup.entries()].sort((x, y) => x[0] - y[0])) {
+      const [a, b] = sides;
+      games.push({ a: a.rosterId, b: b ? b.rosterId : null, aPoints: a.points, bPoints: b ? b.points : 0 });
+    }
+    return { week, games };
+  });
+  const lastScoredLeg = Math.trunc(num2(settings.last_scored_leg));
+  const beforeThisWeek = state.seasonType === "regular" ? state.week - 1 : state.seasonType === "post" ? regularWeeks : 0;
+  const lastScoredWeek = Math.max(0, Math.min(regularWeeks, lastScoredLeg > 0 ? lastScoredLeg : beforeThisWeek));
+  const value = {
+    leagueId,
+    leagueName: text3(league.name) || "Sleeper league",
+    season: Math.trunc(num2(league.season)) || state.season,
+    fetchedAt: now.toISOString(),
+    playoffWeekStart,
+    playoffTeams: Math.min(playoffTeams, teams.length),
+    medianGame: num2(settings.league_average_match) === 1,
+    lastScoredWeek,
+    teams,
+    weeks
+  };
+  cache2.set(leagueId, { at: nowMs, value });
+  return value;
+}
+
+// ../supabase/functions/_shared/market.ts
+var FANTASYCALC_URL = "https://api.fantasycalc.com/values/current";
+var MARKET_CACHE_MS = 6 * 60 * 60 * 1e3;
+var cache3 = /* @__PURE__ */ new Map();
+var num3 = (value) => {
+  const parsed = typeof value === "number" ? value : parseFloat(String(value != null ? value : ""));
+  return Number.isFinite(parsed) ? parsed : null;
+};
+function marketSettingsFrom(query) {
+  var _a, _b;
+  const teams = Math.trunc((_a = num3(query.get("teams"))) != null ? _a : 12);
+  const ppr = (_b = num3(query.get("ppr"))) != null ? _b : 1;
+  return {
+    dynasty: query.get("dynasty") === "1" || query.get("dynasty") === "true",
+    teams: Math.min(16, Math.max(8, teams)),
+    qbs: num3(query.get("qbs")) === 2 ? 2 : 1,
+    ppr: ppr >= 0.75 ? 1 : ppr >= 0.25 ? 0.5 : 0
+  };
+}
+var ROUND_WORDS = { "1st": 1, "2nd": 2, "3rd": 3, "4th": 4, "5th": 5 };
+function pickKey(name) {
+  const round = /^(\d{4})\s+(?:(1st|2nd|3rd|4th|5th)|round\s*(\d)|pick\s*(\d)\.\d+)/i.exec(name.trim());
+  if (!round)
+    return null;
+  const number = round[2] ? ROUND_WORDS[round[2].toLowerCase()] : Number(round[3] || round[4]);
+  return number ? `${round[1]}-${number}` : null;
+}
+async function getMarketValues(fetchJson, now, settings) {
+  var _a, _b, _c, _d, _e;
+  const nowMs = now.getTime();
+  const key = `${settings.dynasty}-${settings.teams}-${settings.qbs}-${settings.ppr}`;
+  const cached = cache3.get(key);
+  if (cached && nowMs - cached.at < MARKET_CACHE_MS)
+    return cached.value;
+  const url = `${FANTASYCALC_URL}?isDynasty=${settings.dynasty}&numQbs=${settings.qbs}&numTeams=${settings.teams}&ppr=${settings.ppr}`;
+  const rows = await fetchJson(url);
+  if (!Array.isArray(rows))
+    throw new Error("FantasyCalc values response was not a list.");
+  const players = {};
+  const pickTotals = /* @__PURE__ */ new Map();
+  for (const row of rows) {
+    if (!row || typeof row !== "object")
+      continue;
+    const record2 = row;
+    const info = (_a = record2.player) != null ? _a : {};
+    const value2 = num3(record2.value);
+    if (value2 == null)
+      continue;
+    const position = String((_b = info.position) != null ? _b : "").toUpperCase();
+    if (position === "PICK") {
+      const pick = pickKey(String((_c = info.name) != null ? _c : ""));
+      if (!pick)
+        continue;
+      const total = (_d = pickTotals.get(pick)) != null ? _d : { sum: 0, count: 0 };
+      total.sum += value2;
+      total.count += 1;
+      pickTotals.set(pick, total);
+      continue;
+    }
+    const sleeperId = String((_e = info.sleeperId) != null ? _e : "").trim();
+    if (!sleeperId)
+      continue;
+    players[`sleeper-${sleeperId}`] = {
+      value: Math.round(value2),
+      overallRank: num3(record2.overallRank),
+      positionRank: num3(record2.positionRank),
+      trend30Day: num3(record2.trend30Day)
+    };
+  }
+  const picks = {};
+  for (const [pick, total] of pickTotals)
+    picks[pick] = Math.round(total.sum / total.count);
+  if (Object.keys(players).length === 0)
+    throw new Error("FantasyCalc returned no players.");
+  const value = { settings, fetchedAt: now.toISOString(), source: "FantasyCalc", players, picks };
+  cache3.set(key, { at: nowMs, value });
+  return value;
+}
+
+// ../supabase/functions/_shared/handlers.ts
+var ok2 = (body) => ({ status: 200, body });
+var bad2 = (message) => ({ status: 400, body: message });
 var unauthorized = () => ({ status: 401 });
 var forbidden = () => ({ status: 403 });
 var notFound = (message) => ({ status: 404, body: message });
@@ -4385,14 +5014,14 @@ var profileResponse = (profile) => {
 };
 async function getLeagues(ctx) {
   const leagues = await ctx.leagues.listForMember(ctx.userId);
-  return ok(leagues.map(({ league, version }) => clientLeague(ctx, ensureDefaults(league), version)));
+  return ok2(leagues.map(({ league, version }) => clientLeague(ctx, ensureDefaults(league), version)));
 }
 async function checkLeagueName(ctx, query) {
   const leagueName = query.get("leagueName");
   if (!leagueName)
-    return bad("Please provide a league name.");
+    return bad2("Please provide a league name.");
   const existing = await ctx.leagues.findByName(leagueName);
-  return ok({ isUnique: existing == null });
+  return ok2({ isUnique: existing == null });
 }
 function buildPlayerPool(ctx, rosterSettings) {
   const pool = ctx.playerPool();
@@ -4419,7 +5048,7 @@ async function createLeague(ctx, data) {
   const adminId = ctx.userId;
   const name = str(data.name);
   if (!name)
-    return bad("Please provide a league name and admin ID.");
+    return bad2("Please provide a league name and admin ID.");
   const profile = await findProfile(ctx, adminId);
   const rosterSettings = normalizeRosterSettings(data.rosterSettings);
   const draftTimers = normalizeDraftTimers(data.draftTimers);
@@ -4456,14 +5085,14 @@ async function createLeague(ctx, data) {
     awayUserIds: []
   });
   await ctx.leagues.create(league);
-  return ok({ id: league.id, name: league.name });
+  return ok2({ id: league.id, name: league.name });
 }
 async function joinLeague(ctx, data) {
   const userId = ctx.userId;
   const leagueId = str(data.leagueId).trim();
   const leagueName = str(data.leagueName);
   if (!leagueId && !leagueName)
-    return bad("User ID and league name or invite ID are required.");
+    return bad2("User ID and league name or invite ID are required.");
   const found = leagueId ? await ctx.leagues.get(leagueId) : await ctx.leagues.findByName(leagueName);
   if (!found)
     return notFound("League not found.");
@@ -4476,7 +5105,7 @@ async function joinLeague(ctx, data) {
     if (league.members.includes(userId))
       return conflict("You are already a member of this league.");
     if (isCompleted(league))
-      return bad("This draft is already finished. Ask the commissioner to start a new season first.");
+      return bad2("This draft is already finished. Ask the commissioner to start a new season first.");
     league.members.push(userId);
     if (isManual(league.draftMode))
       return null;
@@ -4494,7 +5123,7 @@ async function joinLeague(ctx, data) {
     return result;
   if (result === "conflict")
     return conflict("The league was busy. Please try again.");
-  return ok({ id: result.league.id, name: result.league.name });
+  return ok2({ id: result.league.id, name: result.league.name });
 }
 async function getInvite(ctx, leagueId) {
   var _a;
@@ -4503,7 +5132,7 @@ async function getInvite(ctx, leagueId) {
     return notFound("This invite link is not valid anymore. Ask the commissioner for a new one.");
   const league = ensureDefaults(stored.league);
   const commissionerTeam = league.teams.find((team) => (team == null ? void 0 : team.ownerId) === league.adminId);
-  return ok({
+  return ok2({
     id: league.id,
     name: league.name,
     status: league.status,
@@ -4518,7 +5147,7 @@ async function getLeagueState(ctx, leagueId) {
   const stored = await readLeague(ctx, leagueId);
   if (isRes(stored))
     return stored;
-  return ok(clientLeague(ctx, stored.league, stored.version));
+  return ok2(clientLeague(ctx, stored.league, stored.version));
 }
 async function deleteLeague(ctx, leagueId) {
   const stored = await readLeague(ctx, leagueId);
@@ -4527,7 +5156,7 @@ async function deleteLeague(ctx, leagueId) {
   if (stored.league.adminId !== ctx.userId)
     return unauthorized();
   await ctx.leagues.delete(leagueId);
-  return ok();
+  return ok2();
 }
 async function resultsCsv(ctx, leagueId) {
   const stored = await readLeague(ctx, leagueId);
@@ -4593,7 +5222,7 @@ var done = (result, body) => {
     return conflict("The league was busy. Please try again.");
   if (isRes(result))
     return result;
-  return ok(typeof body === "function" ? body(result) : body);
+  return ok2(typeof body === "function" ? body(result) : body);
 };
 var leagueBody = (ctx, u) => clientLeague(ctx, clone(u.league), u.version);
 async function setPresence(ctx, leagueId, status, requireMember) {
@@ -4610,7 +5239,7 @@ async function setPresence(ctx, leagueId, status, requireMember) {
 async function presence(ctx, leagueId, data) {
   const status = normalizePresence(data.status);
   if (!status)
-    return bad("User ID and a valid status are required.");
+    return bad2("User ID and a valid status are required.");
   return setPresence(ctx, leagueId, status, true);
 }
 async function setReady(ctx, leagueId, data) {
@@ -4626,7 +5255,7 @@ async function setReady(ctx, leagueId, data) {
 async function editTeamName(ctx, leagueId, data) {
   const newTeamName = str(data.newTeamName);
   if (!newTeamName)
-    return bad("User ID and a new team name are required.");
+    return bad2("User ID and a new team name are required.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     const team = league.teams.find((t) => t.ownerId === ctx.userId);
     if (!team)
@@ -4645,7 +5274,7 @@ async function updateSettings(ctx, leagueId, data) {
       if (nextMode !== league.draftMode) {
         const status = str(league.status).toLowerCase();
         if (status !== "created" && status !== "lobby")
-          return bad("Draft mode can only be changed before the draft starts.");
+          return bad2("Draft mode can only be changed before the draft starts.");
         league.draftMode = nextMode;
       }
     }
@@ -4654,7 +5283,7 @@ async function updateSettings(ctx, leagueId, data) {
       if (nextStyle !== league.biddingMode) {
         const status = str(league.status).toLowerCase();
         if (status === "drafting" || status === "tiebreaker" || status === BOARD_REVIEW) {
-          return bad("Bidding style can only be changed between players.");
+          return bad2("Bidding style can only be changed between players.");
         }
         league.biddingMode = nextStyle;
       }
@@ -4666,7 +5295,7 @@ async function updateSettings(ctx, leagueId, data) {
     if ("cohostId" in data) {
       const cohostId = str(data.cohostId);
       if (cohostId && (cohostId === league.adminId || !league.members.includes(cohostId))) {
-        return bad("Pick a co-host from the other teams in the league.");
+        return bad2("Pick a co-host from the other teams in the league.");
       }
       league.cohostId = cohostId || null;
     }
@@ -4681,7 +5310,7 @@ async function kickMember(ctx, leagueId, data) {
       return unauthorized();
     const adminTeam = league.teams.find((t) => t.ownerId === league.adminId);
     if (adminTeam && teamIdToKick === adminTeam.id)
-      return bad("Admin cannot kick themselves.");
+      return bad2("Admin cannot kick themselves.");
     const team = league.teams.find((t) => t.id === teamIdToKick);
     if (!team)
       return notFound("Team not found.");
@@ -4711,10 +5340,10 @@ async function leaveLeague(ctx, leagueId) {
     if (!ctx.userId || !league.members.includes(ctx.userId))
       return notFound("You are not in this league.");
     if (league.adminId === ctx.userId)
-      return bad("The commissioner can delete the league instead of leaving it.");
+      return bad2("The commissioner can delete the league instead of leaving it.");
     const status = str(league.status).toLowerCase();
     if (status && status !== "created" && status !== "lobby")
-      return bad("The draft has started, so your team has to stay. Ask the commissioner.");
+      return bad2("The draft has started, so your team has to stay. Ask the commissioner.");
     league.teams = league.teams.filter((t) => t.ownerId !== ctx.userId);
     league.members = league.members.filter((id) => id !== ctx.userId);
     league.readyMembers = ((_a = league.readyMembers) != null ? _a : []).filter((id) => id !== ctx.userId);
@@ -4740,7 +5369,7 @@ async function startDraft(ctx, leagueId) {
     }
     const others = league.members.filter((id) => id !== league.adminId);
     if (others.length > 0 && !others.every((id) => league.readyMembers.includes(id))) {
-      return bad("Not all other members are ready.");
+      return bad2("Not all other members are ready.");
     }
     startNextPlayer(league, ctx.now());
     return null;
@@ -4753,7 +5382,7 @@ function validateBid(league, userId, amount) {
     return notFound("Team not found.");
   const maxBid = getMaxBid(league, team);
   if (amount > maxBid)
-    return bad(maxBidMessage(amount, maxBid));
+    return bad2(maxBidMessage(amount, maxBid));
   return null;
 }
 function lockInBoard(ctx, league, userId, amount, board) {
@@ -4761,16 +5390,16 @@ function lockInBoard(ctx, league, userId, amount, board) {
   if (status === "tiebreaker") {
     const tie = league.tieBreaker;
     if (!(tie == null ? void 0 : tie.boards) || tie.round >= 2 || !tie.tiedTeamIds.includes(userId))
-      return bad("Only the tied teams write a new board.");
+      return bad2("Only the tied teams write a new board.");
     if (!timerRunning(ctx, league.auctionTimer))
-      return bad("Time's up for this player.");
+      return bad2("Time's up for this player.");
   } else if (status !== "drafting") {
-    return bad("Boards can only be locked in while a player is up for bid.");
+    return bad2("Boards can only be locked in while a player is up for bid.");
   }
   if (!league.teams.some((t) => t.ownerId === userId))
     return notFound("Team not found.");
   if (!board)
-    return bad("Draw your bid on the board before locking it in.");
+    return bad2("Draw your bid on the board before locking it in.");
   const read = league.biddingMode === WHITEBOARD_AUTO ? Math.min(9999, Math.max(0, amount)) : 0;
   league.activeBids[userId] = { amount: read, timestamp: ctx.now().toISOString(), board };
   return null;
@@ -4779,19 +5408,19 @@ async function placeBid(ctx, leagueId, data, okBody) {
   const amount = int(data.amount);
   const parsed = parseBoard(data.board);
   if ("error" in parsed)
-    return bad(parsed.error);
+    return bad2(parsed.error);
   if (amount <= 0 && !parsed.board)
-    return bad("Bid must be at least $1.");
+    return bad2("Bid must be at least $1.");
   const userId = ctx.userId;
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (isWhiteboard(league.biddingMode))
       return lockInBoard(ctx, league, userId, amount, parsed.board);
     if (amount <= 0)
-      return bad("Bid must be at least $1.");
+      return bad2("Bid must be at least $1.");
     if (str(league.status).toLowerCase() !== "drafting")
-      return bad("Bidding is closed for this player.");
+      return bad2("Bidding is closed for this player.");
     if (!timerRunning(ctx, league.auctionTimer))
-      return bad("Time's up for this player.");
+      return bad2("Time's up for this player.");
     const error = validateBid(league, userId, amount);
     if (error)
       return error;
@@ -4816,15 +5445,15 @@ async function tieBreakerBid(ctx, leagueId, data) {
   const userId = ctx.userId;
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (str(league.status).toLowerCase() !== "tiebreaker")
-      return bad("Not in a tie-breaker round.");
+      return bad2("Not in a tie-breaker round.");
     if (!league.tieBreaker || !league.tieBreaker.tiedTeamIds.includes(userId))
       return unauthorized();
     if (league.tieBreaker.round >= 2)
-      return bad("This tie is locked for admin resolution.");
+      return bad2("This tie is locked for admin resolution.");
     if (amount <= league.tieBreaker.tieAmount)
-      return bad(`Bid must be greater than the tie amount of $${league.tieBreaker.tieAmount}.`);
+      return bad2(`Bid must be greater than the tie amount of $${league.tieBreaker.tieAmount}.`);
     if (!timerRunning(ctx, league.auctionTimer))
-      return bad("Time's up for this player.");
+      return bad2("Time's up for this player.");
     const error = validateBid(league, userId, amount);
     if (error)
       return error;
@@ -4839,7 +5468,7 @@ function pauseForAdminTieResolution(ctx, league) {
 function addDefaultTieBreakerBids(ctx, league) {
   const tie = league.tieBreaker;
   if (!tie || tie.tiedTeamIds.length === 0)
-    return bad("Tie-breaker state is missing tied teams.");
+    return bad2("Tie-breaker state is missing tied teams.");
   if (tie.round >= 2)
     return null;
   const requiredBid = tie.tieAmount + 1;
@@ -4860,10 +5489,10 @@ function addDefaultTieBreakerBids(ctx, league) {
 function moveCappedTieToAdminResolution(ctx, league) {
   const tie = league.tieBreaker;
   if (!tie || tie.tiedTeamIds.length === 0)
-    return bad("Tie-breaker state is missing tied teams.");
+    return bad2("Tie-breaker state is missing tied teams.");
   const tiedTeams = [...new Set(tie.tiedTeamIds)].map((userId) => league.teams.find((t) => t.ownerId === userId)).filter((t) => !!t);
   if (tiedTeams.length === 0)
-    return bad("No tied teams were found.");
+    return bad2("No tied teams were found.");
   league.status = "tiebreaker";
   tie.round = 2;
   clearActiveBids(league);
@@ -4913,19 +5542,19 @@ async function endBidding(ctx, leagueId) {
     return leagueNotFound(leagueId);
   const lightStatus = str(light.status).toLowerCase();
   if (lightStatus !== "drafting" && lightStatus !== "tiebreaker" || !light.auctionTimer)
-    return ok("No active auction to close.");
+    return ok2("No active auction to close.");
   if (timerRunning(ctx, light.auctionTimer))
-    return ok("Auction timer is still active.");
+    return ok2("Auction timer is still active.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     var _a, _b, _c;
     const status = str(league.status).toLowerCase();
     if (status !== "drafting" && status !== "tiebreaker" || !league.auctionTimer)
-      return ok("No active auction to close.");
+      return ok2("No active auction to close.");
     if (timerRunning(ctx, league.auctionTimer))
-      return ok("Auction timer is still active.");
+      return ok2("Auction timer is still active.");
     const player = league.initialPlayerPool.find((p) => p.id === league.currentPlayerId);
     if (!player)
-      return bad("Current player was not found.");
+      return bad2("Current player was not found.");
     if (isWhiteboard(league.biddingMode) && (status === "drafting" || ((_a = league.tieBreaker) == null ? void 0 : _a.boards))) {
       openBoardReview(ctx, league);
       return null;
@@ -4943,7 +5572,7 @@ async function endBidding(ctx, leagueId) {
         const [winnerId, winningBid] = winners[0];
         const team = league.teams.find((t) => t.ownerId === winnerId);
         if (!team)
-          return bad("Winning team was not found.");
+          return bad2("Winning team was not found.");
         awardPlayerToTeam(league, player, team, winningBid.amount, ctx.now());
       } else {
         const previousRound = status === "tiebreaker" ? (_c = (_b = league.tieBreaker) == null ? void 0 : _b.round) != null ? _c : 1 : 0;
@@ -4969,7 +5598,7 @@ async function endBidding(ctx, leagueId) {
     return null;
   }, 0);
   if (result === "conflict")
-    return ok("Auction already closed.");
+    return ok2("Auction already closed.");
   return done(result, "Auction closed.");
 }
 async function nextRound(ctx, leagueId) {
@@ -4977,19 +5606,19 @@ async function nextRound(ctx, leagueId) {
   if (!light)
     return leagueNotFound(leagueId);
   if (str(light.status).toLowerCase() !== "intermission" || !light.auctionTimer)
-    return ok("No intermission to advance.");
+    return ok2("No intermission to advance.");
   if (timerRunning(ctx, light.auctionTimer))
-    return ok("Intermission timer is still active.");
+    return ok2("Intermission timer is still active.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (str(league.status).toLowerCase() !== "intermission" || !league.auctionTimer)
-      return ok("No intermission to advance.");
+      return ok2("No intermission to advance.");
     if (timerRunning(ctx, league.auctionTimer))
-      return ok("Intermission timer is still active.");
+      return ok2("Intermission timer is still active.");
     startNextPlayer(league, ctx.now());
     return null;
   }, 0);
   if (result === "conflict")
-    return ok("Next round already handled.");
+    return ok2("Next round already handled.");
   return done(result, "Next round started.");
 }
 async function skipIntermission(ctx, leagueId) {
@@ -4997,7 +5626,7 @@ async function skipIntermission(ctx, leagueId) {
     if (!isCommish(league, ctx.userId))
       return unauthorized();
     if (str(league.status).toLowerCase() !== "intermission")
-      return bad("Can only skip during intermission.");
+      return bad2("Can only skip during intermission.");
     startNextPlayer(league, ctx.now());
     return null;
   });
@@ -5009,7 +5638,7 @@ async function pauseDraft(ctx, leagueId) {
       return unauthorized();
     const timer = league.auctionTimer;
     if (!timer)
-      return bad("There is no active draft timer to pause.");
+      return bad2("There is no active draft timer to pause.");
     timer.isPaused = !timer.isPaused;
     if (timer.isPaused) {
       const remaining = (new Date(timer.endTime).getTime() - ctx.now().getTime()) / 1e3;
@@ -5025,15 +5654,15 @@ async function pauseDraft(ctx, leagueId) {
 async function nominatePlayer(ctx, leagueId, data) {
   const playerId = str(data.playerId);
   if (!playerId)
-    return bad("Admin ID and player ID are required.");
+    return bad2("Admin ID and player ID are required.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (!isCommish(league, ctx.userId))
       return unauthorized();
     if (!league.auctionTimer || !league.auctionTimer.isPaused)
-      return bad("Draft must be paused to nominate a player.");
+      return bad2("Draft must be paused to nominate a player.");
     const player = league.initialPlayerPool.find((p) => p.id === playerId);
     if (!player || player.isDrafted)
-      return bad("Player is not available to be nominated.");
+      return bad2("Player is not available to be nominated.");
     league.status = "drafting";
     league.currentPlayerId = player.id;
     clearActiveBids(league);
@@ -5055,14 +5684,14 @@ async function skipPlayer(ctx, leagueId) {
 async function resolveTie(ctx, leagueId, data) {
   const winningTeamId = str(data.winningTeamId);
   if (!winningTeamId)
-    return bad("Admin ID and winning team ID are required.");
+    return bad2("Admin ID and winning team ID are required.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     var _a;
     if (!isCommish(league, ctx.userId))
       return unauthorized();
     const tie = league.tieBreaker;
     if (str(league.status).toLowerCase() !== "tiebreaker" || (tie == null ? void 0 : tie.round) !== 2) {
-      return bad("Can only resolve a final tie after the rebid round also tied.");
+      return bad2("Can only resolve a final tie after the rebid round also tied.");
     }
     const winningTeam = league.teams.find((t) => t.id === winningTeamId);
     const player = league.initialPlayerPool.find((p) => p.id === league.currentPlayerId);
@@ -5072,9 +5701,9 @@ async function resolveTie(ctx, leagueId, data) {
       return notFound("Current player not found.");
     const tiedIds = (_a = tie.tiedTeamIds) != null ? _a : [];
     if (!tiedIds.includes(winningTeam.ownerId) && !tiedIds.includes(winningTeam.id))
-      return bad("Winner must be one of the tied teams.");
+      return bad2("Winner must be one of the tied teams.");
     if (tie.tieAmount <= 0)
-      return bad("Final tie amount is invalid.");
+      return bad2("Final tie amount is invalid.");
     const stamp = ctx.now().toISOString();
     for (const tiedId of [...new Set(tiedIds)]) {
       const tiedTeam = league.teams.find((t) => t.ownerId === tiedId || t.id === tiedId);
@@ -5095,9 +5724,9 @@ async function awardBoard(ctx, leagueId, data) {
   const winningTeamId = str(data.winningTeamId);
   const amount = int(data.amount);
   if (!winningTeamId)
-    return bad("Choose the winning team.");
+    return bad2("Choose the winning team.");
   if (amount < 1)
-    return bad("Bid must be at least $1.");
+    return bad2("Bid must be at least $1.");
   let learn = null;
   const result = await updateLeague(ctx, leagueId, (league) => {
     learn = null;
@@ -5105,7 +5734,7 @@ async function awardBoard(ctx, leagueId, data) {
       return unauthorized();
     const review = league.boardReview;
     if (str(league.status).toLowerCase() !== BOARD_REVIEW || !review)
-      return bad("There are no boards waiting to be awarded.");
+      return bad2("There are no boards waiting to be awarded.");
     const team = league.teams.find((t) => (t == null ? void 0 : t.id) === winningTeamId);
     if (!team)
       return notFound("Winning team not found.");
@@ -5114,12 +5743,12 @@ async function awardBoard(ctx, leagueId, data) {
       return notFound("Current player not found.");
     const winnerBid = review.bids[team.ownerId];
     if (!winnerBid)
-      return bad("The winner must be a team that locked in a board.");
+      return bad2("The winner must be a team that locked in a board.");
     if (getOpenRosterSpots(league, team) <= 0)
-      return bad(`${team.name} already has a full roster.`);
+      return bad2(`${team.name} already has a full roster.`);
     const maxBid = getMaxBid(league, team);
     if (amount > maxBid) {
-      return bad(`${team.name} can spend up to $${Math.max(0, maxBid)} and still keep $1 for each remaining roster spot.`);
+      return bad2(`${team.name} can spend up to $${Math.max(0, maxBid)} and still keep $1 for each remaining roster spot.`);
     }
     league.activeBids = __spreadProps(__spreadValues({}, review.bids), { [team.ownerId]: __spreadProps(__spreadValues({}, winnerBid), { amount }) });
     ctx.log.info(`Admin awarded ${player.name} to ${team.name} for $${amount} from the whiteboards.`);
@@ -5138,19 +5767,19 @@ async function boardRebid(ctx, leagueId, data) {
   const amount = int(data.amount);
   const userIds = Array.isArray(data.userIds) ? [...new Set(data.userIds.map(str).filter(Boolean))] : [];
   if (userIds.length < 2)
-    return bad("Choose at least two tied teams.");
+    return bad2("Choose at least two tied teams.");
   if (amount < 1)
-    return bad("The tie amount must be at least $1.");
+    return bad2("The tie amount must be at least $1.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (!isCommish(league, ctx.userId))
       return unauthorized();
     const review = league.boardReview;
     if (str(league.status).toLowerCase() !== BOARD_REVIEW || !review)
-      return bad("There are no boards waiting to be awarded.");
+      return bad2("There are no boards waiting to be awarded.");
     if (review.tie)
-      return bad("This was already the rebid round. Pick the winner.");
+      return bad2("This was already the rebid round. Pick the winner.");
     if (!userIds.every((id) => review.bids[id]))
-      return bad("Only teams that locked in a board can be in the tie.");
+      return bad2("Only teams that locked in a board can be in the tie.");
     league.status = "tiebreaker";
     league.tieBreaker = { tiedTeamIds: userIds, tieAmount: amount, round: 1, boards: true };
     league.activeBids = {};
@@ -5182,13 +5811,13 @@ async function undoLastPick(ctx, leagueId) {
       return unauthorized();
     const status = str(league.status).toLowerCase();
     if (status !== "intermission" && status !== MANUAL)
-      return bad("Can only undo a pick during intermission or manual draft mode.");
+      return bad2("Can only undo a pick during intermission or manual draft mode.");
     const lastPick = league.draftLog[league.draftLog.length - 1];
     if (!lastPick)
-      return bad("There are no picks to undo.");
+      return bad2("There are no picks to undo.");
     const playerId = (_a = lastPick.player) == null ? void 0 : _a.id;
     if (blank(playerId))
-      return bad("The last pick is missing player data and cannot be undone safely.");
+      return bad2("The last pick is missing player data and cannot be undone safely.");
     const team = league.teams.find((t) => (t == null ? void 0 : t.id) === lastPick.winningTeamId);
     if (!team)
       return notFound("Winning team not found.");
@@ -5250,13 +5879,13 @@ async function listHistory(ctx) {
     }
   }
   entries.sort((a, b) => b.completedAt.localeCompare(a.completedAt));
-  return ok(entries.map((entry) => historySummary(entry, userId)));
+  return ok2(entries.map((entry) => historySummary(entry, userId)));
 }
 async function getHistoryEntry(ctx, historyId) {
   const entry = await ctx.history.get(historyId);
   if (!entry || !entry.members.includes(ctx.userId))
     return notFound("That draft was not found.");
-  return ok(entry);
+  return ok2(entry);
 }
 async function startNewSeason(ctx, leagueId) {
   const finished = { league: null };
@@ -5264,7 +5893,7 @@ async function startNewSeason(ctx, leagueId) {
     if (league.adminId !== ctx.userId)
       return unauthorized();
     if (!isCompleted(league))
-      return bad("Finish the current draft before starting a new season.");
+      return bad2("Finish the current draft before starting a new season.");
     finished.league = clone(league);
     league.draftNumber = draftNumberOf(league) + 1;
     league.status = "created";
@@ -5300,17 +5929,17 @@ async function offlineCopy(ctx, leagueId) {
     return unauthorized();
   const status = str(league.status).toLowerCase();
   if (!OFFLINE_READY.has(status) || status === MANUAL && !isManual(league.draftMode)) {
-    return bad("A league can be saved for an offline draft before its draft starts, or during a manual draft.");
+    return bad2("A league can be saved for an offline draft before its draft starts, or during a manual draft.");
   }
   applyByesToLeague(league);
-  return ok({ league: forClient(clone(league), void 0, null), version: stored.version });
+  return ok2({ league: forClient(clone(league), void 0, null), version: stored.version });
 }
 async function offlineRestore(ctx, leagueId, data) {
   const uploaded = data.league;
   if (!uploaded || typeof uploaded !== "object" || uploaded.id !== leagueId)
-    return bad("That draft is for a different league.");
+    return bad2("That draft is for a different league.");
   if (!Array.isArray(uploaded.teams) || !Array.isArray(uploaded.initialPlayerPool))
-    return bad("That draft is missing its teams or players.");
+    return bad2("That draft is missing its teams or players.");
   const stored = await readLeague(ctx, leagueId);
   if (isRes(stored))
     return stored;
@@ -5333,7 +5962,7 @@ async function offlineRestore(ctx, leagueId, data) {
   if (!isCompleted(before) && isCompleted(next))
     await archiveDraft(ctx, next);
   await broadcastLeagueChange(ctx, before, stored.version, next, version);
-  return ok(clientLeague(ctx, clone(next), version));
+  return ok2(clientLeague(ctx, clone(next), version));
 }
 var lastSnapshotAt = /* @__PURE__ */ new Map();
 var SNAPSHOT_EVERY_MS = 30 * 60 * 1e3;
@@ -5360,7 +5989,7 @@ async function startSit(ctx, query) {
   try {
     const projections = await getWeekProjections(ctx.fetchJson, ctx.now(), week || null);
     await saveSnapshot(ctx, projections);
-    return ok(projections);
+    return ok2(projections);
   } catch (error) {
     ctx.log.warn("Loading Sleeper projections failed.", error);
     return { status: 502, body: "Weekly projections are not available right now. Please try again in a few minutes." };
@@ -5369,9 +5998,9 @@ async function startSit(ctx, query) {
 async function startSitSleeper(ctx, query) {
   const username = str(query.get("username")).trim();
   if (!isValidSleeperUsername(username))
-    return bad("Please enter your Sleeper username.");
+    return bad2("Please enter your Sleeper username.");
   try {
-    return ok(await getSleeperTeams(ctx.fetchJson, ctx.now(), username, ctx.playerPool()));
+    return ok2(await getSleeperTeams(ctx.fetchJson, ctx.now(), username, ctx.playerPool()));
   } catch (error) {
     if (error instanceof SleeperUserNotFound)
       return notFound(`No Sleeper account is named '${username}'.`);
@@ -5382,9 +6011,9 @@ async function startSitSleeper(ctx, query) {
 async function startSitLeague(ctx, query) {
   const leagueId = str(query.get("leagueId")).trim();
   if (!isValidLeagueId(leagueId))
-    return bad("Please pick a Sleeper league.");
+    return bad2("Please pick a Sleeper league.");
   try {
-    return ok(await getLeagueSeason(ctx.fetchJson, ctx.now(), leagueId));
+    return ok2(await getLeagueSeason(ctx.fetchJson, ctx.now(), leagueId));
   } catch (error) {
     if (error instanceof SleeperLeagueNotFound)
       return notFound("That Sleeper league was not found.");
@@ -5395,11 +6024,11 @@ async function startSitLeague(ctx, query) {
 async function startSitMatchup(ctx, playerId, query) {
   const opponent = str(query.get("opponent")).trim();
   if (!/^[A-Za-z]{2,4}$/.test(opponent))
-    return bad("Please provide the opponent team, like KC.");
+    return bad2("Please provide the opponent team, like KC.");
   if (!/^sleeper-[A-Za-z0-9]+$/.test(playerId))
-    return bad("Unknown player.");
+    return bad2("Unknown player.");
   try {
-    return ok(await getMatchupHistory(ctx.fetchJson, ctx.now(), playerId, opponent));
+    return ok2(await getMatchupHistory(ctx.fetchJson, ctx.now(), playerId, opponent));
   } catch (error) {
     ctx.log.warn(`Loading matchup history failed for ${playerId}.`, error);
     return { status: 502, body: "Past matchups are not available right now. Please try again in a few minutes." };
@@ -5408,7 +6037,7 @@ async function startSitMatchup(ctx, playerId, query) {
 async function startSitAccuracy(ctx) {
   var _a;
   try {
-    return ok(await getProjectionAccuracy(ctx.fetchJson, ctx.now(), (_a = ctx.snapshots) != null ? _a : null));
+    return ok2(await getProjectionAccuracy(ctx.fetchJson, ctx.now(), (_a = ctx.snapshots) != null ? _a : null));
   } catch (error) {
     ctx.log.warn("Loading projection accuracy failed.", error);
     return { status: 502, body: "Accuracy numbers are not available right now." };
@@ -5417,7 +6046,7 @@ async function startSitAccuracy(ctx) {
 async function startSitMarket(ctx, query) {
   const settings = marketSettingsFrom(query);
   try {
-    return ok(await getMarketValues(ctx.fetchJson, ctx.now(), settings));
+    return ok2(await getMarketValues(ctx.fetchJson, ctx.now(), settings));
   } catch (error) {
     ctx.log.warn("Loading FantasyCalc market values failed.", error);
     return { status: 502, body: "Trade market values are not available right now." };
@@ -5426,16 +6055,16 @@ async function startSitMarket(ctx, query) {
 async function manualSelectPlayer(ctx, leagueId, data) {
   const playerId = str(data.playerId);
   if (!playerId)
-    return bad("Player ID is required.");
+    return bad2("Player ID is required.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (!isCommish(league, ctx.userId))
       return unauthorized();
     if (!isManual(league.draftMode) || str(league.status).toLowerCase() !== MANUAL) {
-      return bad("Manual player selection is only available during a manual draft.");
+      return bad2("Manual player selection is only available during a manual draft.");
     }
     const player = league.initialPlayerPool.find((p) => (p == null ? void 0 : p.id) === playerId);
     if (!player || player.isDrafted)
-      return bad("Player is not available.");
+      return bad2("Player is not available.");
     league.currentPlayerId = player.id;
     clearActiveBids(league);
     league.tieBreaker = null;
@@ -5449,16 +6078,16 @@ async function manualAward(ctx, leagueId, data) {
   const teamId = str(data.teamId);
   const amount = int(data.amount);
   if (!playerId)
-    return bad("Player ID is required.");
+    return bad2("Player ID is required.");
   if (!teamId)
-    return bad("Team ID is required.");
+    return bad2("Team ID is required.");
   if (amount < 1)
-    return bad("Manual draft prices must be at least $1.");
+    return bad2("Manual draft prices must be at least $1.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (!isCommish(league, ctx.userId))
       return unauthorized();
     if (!isManual(league.draftMode) || str(league.status).toLowerCase() !== MANUAL) {
-      return bad("Manual awards are only available after starting a manual draft.");
+      return bad2("Manual awards are only available after starting a manual draft.");
     }
     const team = league.teams.find((t) => (t == null ? void 0 : t.id) === teamId);
     if (!team)
@@ -5467,14 +6096,14 @@ async function manualAward(ctx, leagueId, data) {
     if (!player)
       return notFound("Player not found in this league's draft pool.");
     if (player.isDrafted)
-      return bad(`${player.name} has already been drafted.`);
+      return bad2(`${player.name} has already been drafted.`);
     const rosterTotal = getRosterSpotTotal(league.rosterSettings);
     if (rosterTotal > 0 && team.roster.length >= rosterTotal)
-      return bad(`${team.name} already has a full roster.`);
+      return bad2(`${team.name} already has a full roster.`);
     const remaining = rosterTotal > 0 ? rosterTotal - team.roster.length : 1;
     const maxBid = team.budget - Math.max(0, remaining - 1);
     if (amount > maxBid) {
-      return bad(`${team.name} can spend up to $${Math.max(0, maxBid)} and still keep $1 for each remaining roster spot.`);
+      return bad2(`${team.name} can spend up to $${Math.max(0, maxBid)} and still keep $1 for each remaining roster spot.`);
     }
     awardPlayerToTeam(league, player, team, amount, ctx.now(), MANUAL, false);
     return null;
@@ -5486,9 +6115,9 @@ async function addManualTeam(ctx, leagueId, data) {
     if (!isCommish(league, ctx.userId))
       return unauthorized();
     if (!isManual(league.draftMode))
-      return bad("Manual teams can only be added to manual drafts.");
+      return bad2("Manual teams can only be added to manual drafts.");
     if (str(league.status).toLowerCase() === "completed")
-      return bad("Cannot add a team after the draft is completed.");
+      return bad2("Cannot add a team after the draft is completed.");
     const baseName = blank(data.teamName) ? `Team ${league.teams.length + 1}` : str(data.teamName).trim();
     const budget = int(data.budget) > 0 ? int(data.budget) : 200;
     league.teams.push({
@@ -5507,16 +6136,16 @@ async function assignManualTeamOwner(ctx, leagueId, data) {
   const teamId = str(data.teamId);
   const targetUserId = str(data.userId);
   if (!teamId || !targetUserId)
-    return bad("Admin ID, team ID, and user ID are required.");
+    return bad2("Admin ID, team ID, and user ID are required.");
   const profile = await findProfile(ctx, targetUserId);
   const result = await updateLeague(ctx, leagueId, (league) => {
     var _a;
     if (!isCommish(league, ctx.userId))
       return unauthorized();
     if (!isManual(league.draftMode))
-      return bad("Manual team assignment is only available for manual drafts.");
+      return bad2("Manual team assignment is only available for manual drafts.");
     if (!league.members.includes(targetUserId))
-      return bad("That user has not joined this league yet.");
+      return bad2("That user has not joined this league yet.");
     const target = league.teams.find((t) => (t == null ? void 0 : t.id) === teamId);
     if (!target)
       return notFound("Team not found.");
@@ -5534,9 +6163,9 @@ async function adjustBudget(ctx, leagueId, data) {
   const teamId = str(data.teamId);
   const newBudget = int(data.newBudget);
   if (!teamId)
-    return bad("Admin ID and team ID are required.");
+    return bad2("Admin ID and team ID are required.");
   if (newBudget < 0)
-    return bad("Budget cannot be negative.");
+    return bad2("Budget cannot be negative.");
   let oldBudget = 0;
   let teamName = "";
   const result = await updateLeague(ctx, leagueId, (league) => {
@@ -5567,12 +6196,12 @@ async function adjustBudget(ctx, leagueId, data) {
       ctx.log.warn(`Budget adjustment notice failed for league ${leagueId}.`, error);
     }
   }
-  return ok("Budget adjusted successfully.");
+  return ok2("Budget adjusted successfully.");
 }
 async function assignBeerDuty(ctx, leagueId, data) {
   const teamId = str(data.teamId);
   if (!teamId)
-    return bad("Admin ID and team ID are required.");
+    return bad2("Admin ID and team ID are required.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (!isCommish(league, ctx.userId))
       return unauthorized();
@@ -5587,13 +6216,13 @@ async function assignBeerDuty(ctx, leagueId, data) {
 async function requestBeer(ctx, leagueId, data) {
   const requestingTeamId = str(data.requestingTeamId);
   if (!requestingTeamId)
-    return bad("Requesting team ID is required.");
+    return bad2("Requesting team ID is required.");
   const stored = await readLeague(ctx, leagueId);
   if (isRes(stored))
     return stored;
   const league = stored.league;
   if (!league.beerBitchTeamId)
-    return bad("No team is currently on beer duty.");
+    return bad2("No team is currently on beer duty.");
   const requestingTeam = league.teams.find((t) => (t == null ? void 0 : t.id) === requestingTeamId);
   if (!requestingTeam)
     return notFound("Requesting team not found.");
@@ -5601,15 +6230,15 @@ async function requestBeer(ctx, leagueId, data) {
   if (!dutyTeam || blank(dutyTeam.ownerId))
     return notFound("Beer duty team not found.");
   await ctx.broadcaster.send(leagueId, "beerRequestReceived", requestingTeam.name, dutyTeam.ownerId);
-  return ok("Beer request sent.");
+  return ok2("Beer request sent.");
 }
 async function sendChat(ctx, leagueId, data) {
   var _a;
   const message = str(data.message).trim();
   if (!message)
-    return bad("User ID and message are required.");
+    return bad2("User ID and message are required.");
   if (message.length > 240)
-    return bad("Messages must be 240 characters or fewer.");
+    return bad2("Messages must be 240 characters or fewer.");
   const stored = await readLeague(ctx, leagueId);
   if (isRes(stored))
     return stored;
@@ -5628,7 +6257,7 @@ async function sendChat(ctx, leagueId, data) {
     sentAt: ctx.now().toISOString()
   };
   await ctx.broadcaster.send(leagueId, "draftChatMessage", chatMessage);
-  return ok(chatMessage);
+  return ok2(chatMessage);
 }
 async function budgetReview(ctx, leagueId) {
   var _a;
@@ -5645,7 +6274,7 @@ async function budgetReview(ctx, leagueId) {
     adminTeamName: (_a = adminTeam == null ? void 0 : adminTeam.name) != null ? _a : "Commissioner",
     sentAt: ctx.now().toISOString()
   });
-  return ok("Budget review notice sent.");
+  return ok2("Budget review notice sent.");
 }
 var cleanIds = (ids) => {
   const seen = /* @__PURE__ */ new Set();
@@ -5662,7 +6291,7 @@ var cleanIds = (ids) => {
 async function updateFavorites(ctx, leagueId, data) {
   var _a;
   if (!Array.isArray(data.playerIds))
-    return bad("User ID and a list of player IDs are required.");
+    return bad2("User ID and a list of player IDs are required.");
   const userId = ctx.userId;
   const favoriteIds = cleanIds(data.playerIds);
   const stored = await readLeague(ctx, leagueId);
@@ -5686,7 +6315,7 @@ async function updateFavorites(ctx, leagueId, data) {
     });
     leagueTeamSynced = !isRes(result) && result !== "conflict";
   }
-  return ok({ message: "Favorite players updated successfully.", favoritePlayerIds: favoriteIds, leagueTeamSynced });
+  return ok2({ message: "Favorite players updated successfully.", favoritePlayerIds: favoriteIds, leagueTeamSynced });
 }
 function displayNameFrom(value, fallback) {
   if (typeof value === "string" && value.trim())
@@ -5707,7 +6336,7 @@ async function getOrCreateProfile(ctx, data) {
     profile = newProfile(userId, displayNameFrom(data.displayName, ctx.displayName || userId));
     await ctx.profiles.upsert(profile);
   }
-  return ok(profileResponse(profile));
+  return ok2(profileResponse(profile));
 }
 var BUDGET_ROSTER_KEYS = {
   qb: "qb",
@@ -5727,18 +6356,18 @@ async function updateProfile(ctx, pathUserId, data) {
     return forbidden();
   const fields = ["displayName", "defaultTeamName", "favoritePlayerIds", "playerNotes", "playerTiers", "budgetPlan", "budgetRosterSettings"];
   if (!fields.some((field) => data[field] != null))
-    return bad("At least one profile field is required.");
+    return bad2("At least one profile field is required.");
   const profile = await findProfile(ctx, pathUserId);
   if (!profile)
     return notFound(`User profile for '${pathUserId}' not found.`);
   if (data.displayName != null) {
     if (blank(data.displayName))
-      return bad("Display name cannot be empty.");
+      return bad2("Display name cannot be empty.");
     profile.displayName = str(data.displayName).trim();
   }
   if (data.defaultTeamName != null) {
     if (blank(data.defaultTeamName))
-      return bad("Default team name cannot be empty.");
+      return bad2("Default team name cannot be empty.");
     profile.defaultTeamName = str(data.defaultTeamName).trim();
   }
   if (Array.isArray(data.favoritePlayerIds))
@@ -5799,16 +6428,16 @@ async function updateProfile(ctx, pathUserId, data) {
       }
     }
   }
-  return ok(profileResponse(profile));
+  return ok2(profileResponse(profile));
 }
 function moveOwnerKeys(league, from, to) {
   var _a, _b;
   if (!from || from === to)
     return;
-  const swapKey = (record) => {
-    if (record && from in record) {
-      record[to] = record[from];
-      delete record[from];
+  const swapKey = (record2) => {
+    if (record2 && from in record2) {
+      record2[to] = record2[from];
+      delete record2[from];
     }
   };
   swapKey(league.activeBids);
@@ -5825,7 +6454,7 @@ async function reassignTeam(ctx, leagueId, data) {
   const teamId = str(data.teamId);
   const targetUserId = str(data.userId).trim();
   if (!teamId || !targetUserId)
-    return bad("Team ID and user ID are required.");
+    return bad2("Team ID and user ID are required.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (!isCommish(league, ctx.userId))
       return unauthorized();
@@ -5836,7 +6465,7 @@ async function reassignTeam(ctx, leagueId, data) {
     if (previous === targetUserId)
       return null;
     if (previous === league.adminId)
-      return bad("The commissioner's team can't be given away.");
+      return bad2("The commissioner's team can't be given away.");
     if (league.teams.some((t) => (t == null ? void 0 : t.ownerId) === targetUserId))
       return conflict("That player already has a team in this league.");
     team.ownerId = targetUserId;
@@ -5853,7 +6482,7 @@ async function claimTeam(ctx, leagueId, data) {
   const userId = ctx.userId;
   const teamId = str(data.teamId);
   if (!teamId)
-    return bad("Pick a team.");
+    return bad2("Pick a team.");
   const result = await updateLeague(ctx, leagueId, (league) => {
     if (league.teams.some((t) => (t == null ? void 0 : t.ownerId) === userId))
       return conflict("You already have a team in this league.");
@@ -5886,18 +6515,18 @@ async function claimTeam(ctx, leagueId, data) {
       ctx.log.warn(`Updating draft history after a team claim failed for league ${leagueId}.`, error);
     }
   }
-  return ok({ id: result.league.id, name: result.league.name });
+  return ok2({ id: result.league.id, name: result.league.name });
 }
 async function offlineCreate(ctx, data) {
   const uploaded = data.league;
   if (!uploaded || typeof uploaded !== "object" || blank(uploaded.id) || blank(uploaded.name))
-    return bad("That draft is missing its league.");
+    return bad2("That draft is missing its league.");
   if (!Array.isArray(uploaded.teams) || !Array.isArray(uploaded.initialPlayerPool))
-    return bad("That draft is missing its teams or players.");
+    return bad2("That draft is missing its teams or players.");
   const existing = await ctx.leagues.get(uploaded.id);
   if (existing) {
     if (existing.league.adminId === ctx.userId)
-      return ok({ id: existing.league.id, name: existing.league.name });
+      return ok2({ id: existing.league.id, name: existing.league.name });
     return conflict("That draft was already uploaded by someone else.");
   }
   const league = ensureDefaults(clone(uploaded));
@@ -5921,7 +6550,7 @@ async function offlineCreate(ctx, data) {
   await ctx.leagues.create(league);
   if (isCompleted(league))
     await archiveDraft(ctx, league);
-  return ok({ id: league.id, name: league.name, openTeams: openTeamsOf(league) });
+  return ok2({ id: league.id, name: league.name, openTeams: openTeamsOf(league) });
 }
 var MAX_MINI_GAMES = 12;
 var MAX_PRIZE = 100;
@@ -5930,23 +6559,23 @@ var findChallenge = (league, id) => {
   var _a, _b;
   return (_b = ((_a = league.miniGames) != null ? _a : []).find((c) => c.id === id)) != null ? _b : null;
 };
-var newSeed = () => Math.floor(Math.random() * 2 ** 31);
+var newSeed2 = () => Math.floor(Math.random() * 2 ** 31);
 async function createMiniGame(ctx, leagueId, data) {
   const game = str(data.game);
   const prize = int(data.prize);
   if (!isGameKind(game))
-    return bad("Pick one of the games.");
+    return bad2("Pick one of the games.");
   if (prize < 1 || prize > MAX_PRIZE)
-    return bad(`The prize has to be between $1 and $${MAX_PRIZE}.`);
+    return bad2(`The prize has to be between $1 and $${MAX_PRIZE}.`);
   const result = await updateLeague(ctx, leagueId, (league) => {
     var _a;
     if (!isCommish(league, ctx.userId))
       return unauthorized();
     if (!inLobby(league))
-      return bad("Lobby games can only be set up before the draft starts.");
+      return bad2("Lobby games can only be set up before the draft starts.");
     league.miniGames = (_a = league.miniGames) != null ? _a : [];
     if (league.miniGames.length >= MAX_MINI_GAMES)
-      return bad("That is plenty of games. Remove one first.");
+      return bad2("That is plenty of games. Remove one first.");
     league.miniGames.push({ id: ctx.newId(), game, prize, createdAt: ctx.now().toISOString(), attempts: {}, awardedTo: null });
     return null;
   });
@@ -5975,13 +6604,13 @@ async function resetMiniGame(ctx, leagueId, data) {
     if (!challenge)
       return notFound("That game is gone.");
     if (challenge.awardedTo)
-      return bad("The prize for this game was already awarded.");
+      return bad2("The prize for this game was already awarded.");
     delete challenge.attempts[userId];
     return null;
   });
   return done(result, (u) => leagueBody(ctx, u));
 }
-var secondsSince = (ctx, iso) => (ctx.now().getTime() - Date.parse(str(iso))) / 1e3;
+var secondsSince2 = (ctx, iso) => (ctx.now().getTime() - Date.parse(str(iso))) / 1e3;
 function playBody(game, attempt, ctx) {
   var _a, _b, _c;
   const base = { game, finished: !!attempt.finishedAt, score: attempt.score, points: (_a = attempt.points) != null ? _a : [] };
@@ -5990,7 +6619,7 @@ function playBody(game, attempt, ctx) {
   if (GAMES[game].style === "skill")
     return __spreadProps(__spreadValues({}, base), { seed: attempt.seed });
   const turn = turnFor(game, (_b = attempt.seed) != null ? _b : 0, (_c = attempt.turn) != null ? _c : 0);
-  return __spreadProps(__spreadValues({}, base), { turn, elapsed: Math.max(0, secondsSince(ctx, attempt.servedAt)) });
+  return __spreadProps(__spreadValues({}, base), { turn, elapsed: Math.max(0, secondsSince2(ctx, attempt.servedAt)) });
 }
 async function startMiniGame(ctx, leagueId, data) {
   const id = str(data.challengeId);
@@ -6010,14 +6639,14 @@ async function startMiniGame(ctx, leagueId, data) {
         body = playBody(game, existing, ctx);
         return null;
       }
-      return bad("You already used your try. The commissioner can give you another.");
+      return bad2("You already used your try. The commissioner can give you another.");
     }
     if (challenge.awardedTo)
-      return bad("This game is over; the prize was awarded.");
+      return bad2("This game is over; the prize was awarded.");
     if (!inLobby(league))
-      return bad("The draft has started, so lobby games are closed.");
+      return bad2("The draft has started, so lobby games are closed.");
     const now = ctx.now().toISOString();
-    const attempt = { startedAt: now, finishedAt: null, score: null, detail: null, seed: newSeed() };
+    const attempt = { startedAt: now, finishedAt: null, score: null, detail: null, seed: newSeed2() };
     if (GAMES[game].style === "turns")
       Object.assign(attempt, { turn: 0, servedAt: now, points: [], history: [] });
     challenge.attempts[ctx.userId] = attempt;
@@ -6030,45 +6659,40 @@ async function playMiniGameTurn(ctx, leagueId, data) {
   const id = str(data.challengeId);
   const index = int(data.index);
   let body = null;
+  let finished = null;
   const result = await updateLeague(ctx, leagueId, (league) => {
-    var _a, _b, _c, _d, _e;
+    var _a;
     const challenge = findChallenge(league, id);
     if (!challenge || !isGameKind(challenge.game))
       return notFound("That game is gone.");
     const game = challenge.game;
     const attempt = challenge.attempts[ctx.userId];
     if (!attempt)
-      return bad("Start the game first.");
+      return bad2("Start the game first.");
     if (GAMES[game].style !== "turns")
-      return bad("That game is not played in turns.");
+      return bad2("That game is not played in turns.");
     if (attempt.finishedAt)
-      return bad("You already finished this game.");
-    if (index !== attempt.turn || !attempt.servedAt)
+      return bad2("You already finished this game.");
+    const graded = applyTurn(game, attempt, index, data.answer, secondsSince2(ctx, attempt.servedAt), ctx.now().toISOString());
+    if (!graded)
       return conflict("That turn was already played.");
-    const seconds = secondsSince(ctx, attempt.servedAt);
-    const graded = gradeTurn(game, (_a = attempt.seed) != null ? _a : 0, index, data.answer, seconds, (_b = attempt.history) != null ? _b : []);
-    attempt.points = [...(_c = attempt.points) != null ? _c : [], graded.points];
-    if (game === "penalty")
-      attempt.history = [...(_d = attempt.history) != null ? _d : [], int((_e = data.answer) == null ? void 0 : _e.zone)];
-    attempt.turn = index + 1;
-    attempt.servedAt = null;
-    const total = attempt.points.reduce((sum, p) => sum + p, 0);
-    attempt.score = total;
-    if (attempt.turn >= turnCount(game)) {
-      attempt.finishedAt = ctx.now().toISOString();
-      attempt.detail = game === "penalty" ? `${total} of ${turnCount(game)}` : `${attempt.points.filter((p) => p > 0).length} of ${turnCount(game)} scored`;
-    }
     body = { result: graded, game, finished: !!attempt.finishedAt, score: attempt.score, points: attempt.points };
+    if (attempt.finishedAt)
+      finished = { game, score: (_a = attempt.score) != null ? _a : 0, detail: attempt.detail };
     return null;
   });
+  const ended = finished;
+  if (ended && !isRes(result) && result !== "conflict")
+    await recordLobbyScore(ctx, ended.game, ended.score, ended.detail);
   return done(result, () => body);
 }
 async function finishMiniGame(ctx, leagueId, data) {
   const id = str(data.challengeId);
   const inputs = validInputs(data.inputs);
   if (!inputs)
-    return bad("That run could not be read.");
+    return bad2("That run could not be read.");
   let body = null;
+  let finished = null;
   const result = await updateLeague(ctx, leagueId, (league) => {
     var _a;
     const challenge = findChallenge(league, id);
@@ -6076,21 +6700,25 @@ async function finishMiniGame(ctx, leagueId, data) {
       return notFound("That game is gone.");
     const attempt = challenge.attempts[ctx.userId];
     if (!attempt)
-      return bad("Start the game first.");
+      return bad2("Start the game first.");
     if (GAMES[challenge.game].style !== "skill")
-      return bad("That game is played in turns.");
+      return bad2("That game is played in turns.");
     if (attempt.finishedAt)
-      return bad("You already finished this game.");
+      return bad2("You already finished this game.");
     const replay = replaySkillGame(challenge.game, (_a = attempt.seed) != null ? _a : 0, inputs);
     const minimumSeconds = replay.ticks / TICKS_PER_SECOND * 0.9 - 3;
-    if (secondsSince(ctx, attempt.startedAt) < minimumSeconds)
-      return bad("That run finished faster than the clock allows.");
+    if (secondsSince2(ctx, attempt.startedAt) < minimumSeconds)
+      return bad2("That run finished faster than the clock allows.");
     attempt.finishedAt = ctx.now().toISOString();
     attempt.score = replay.score;
     attempt.detail = replay.detail;
     body = { game: challenge.game, finished: true, score: replay.score, detail: replay.detail };
+    finished = { game: challenge.game, score: replay.score, detail: replay.detail };
     return null;
   });
+  const ended = finished;
+  if (ended && !isRes(result) && result !== "conflict")
+    await recordLobbyScore(ctx, ended.game, ended.score, ended.detail);
   return done(result, () => body);
 }
 async function awardMiniGame(ctx, leagueId, data) {
@@ -6102,17 +6730,17 @@ async function awardMiniGame(ctx, leagueId, data) {
     if (!isCommish(league, ctx.userId))
       return unauthorized();
     if (isCompleted(league))
-      return bad("The draft is over.");
+      return bad2("The draft is over.");
     const challenge = findChallenge(league, id);
     if (!challenge)
       return notFound("That game is gone.");
     if (challenge.awardedTo)
-      return bad("The prize for this game was already awarded.");
+      return bad2("The prize for this game was already awarded.");
     if (((_a = challenge.attempts[userId]) == null ? void 0 : _a.score) == null)
-      return bad("Only someone who played can win the prize.");
+      return bad2("Only someone who played can win the prize.");
     const team = league.teams.find((t) => (t == null ? void 0 : t.ownerId) === userId);
     if (!team)
-      return bad("That member has no team yet.");
+      return bad2("That member has no team yet.");
     const oldBudget = team.budget;
     team.budget += challenge.prize;
     challenge.awardedTo = userId;
@@ -6182,7 +6810,7 @@ async function handle(ctx, method, path, query, body) {
   method = method.toUpperCase();
   if (method === "GET" && parts.length === 1 && parts[0].toLowerCase() === "health") {
     await ctx.leagues.getLight("keep-alive");
-    return ok({ status: "ok" });
+    return ok2({ status: "ok" });
   }
   if (method === "GET" && parts.length === 3 && parts[0] === "leagues" && parts[2] === "results.csv")
     return resultsCsv(ctx, parts[1]);
@@ -6223,6 +6851,11 @@ async function handle(ctx, method, path, query, body) {
     return startSitMatchup(ctx, parts[2], query);
   if (parts.length === 2 && parts[0] === "user-profile" && method === "POST")
     return updateProfile(ctx, parts[1], data);
+  if (parts[0] === "games") {
+    const routed = gamesRoute(ctx, method, parts, query, data);
+    if (routed)
+      return routed;
+  }
   if (parts[0] === "leagues" && parts.length >= 2) {
     const leagueId = parts[1];
     const action = parts.slice(2).join("/");

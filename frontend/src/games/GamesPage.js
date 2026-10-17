@@ -4,13 +4,14 @@ import SoundToggle from '../components/SoundToggle';
 import { CREW } from '../data/crew';
 import { GAME_KINDS, GAMES } from './sim.generated';
 import GamePlayer from './GamePlayer';
+import Leaderboards from './Leaderboards';
 import { practiceRunner, readBests } from './gameRunners';
 import './Games.css';
 
 // Which crew member shows on each game's card.
 export const GAME_ART = { climb: 8, fieldgoal: 4, penalty: 5, price: 7, nameplayer: 1 };
 
-/** The Games tab: practice any lobby game as often as you like. Bests are kept on this device. */
+/** The Games tab: practice any lobby game as often as you like, and the leaderboards. */
 const GamesPage = () => {
   const [params, setParams] = useSearchParams();
   const game = GAME_KINDS.includes(params.get('game')) ? params.get('game') : null;
@@ -61,6 +62,7 @@ const GamesPage = () => {
           ))}
         </div>
       )}
+      {!game && <Leaderboards />}
     </div>
   );
 };
