@@ -11,6 +11,7 @@ import Profile from './components/Profile';
 import StartSit from './components/StartSit';
 import Rankings from './components/Rankings';
 import GamesPage from './games/GamesPage';
+import RacePage from './games/race/RacePage';
 import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory';
 import { useAuth, signOut } from './AuthContext';
 import './App.css';
@@ -79,6 +80,7 @@ function App() {
             <Route path="/start-sit" element={<StartSit userId={userId} />} />
             <Route path="/rankings" element={<Rankings userId={userId} />} />
             <Route path="/games" element={<GamesPage />} />
+            <Route path="/games/race" element={<RacePage />} />
             <Route path="/history" element={<DraftHistoryList userId={userId} />} />
             <Route path="/history/:historyId" element={<DraftHistoryDetail userId={userId} />} />
           </Routes>

@@ -9,6 +9,7 @@ import GamePlayer from './GamePlayer';
 import { GAME_ART } from './GamesPage';
 import { errorText, officialRunner } from './gameRunners';
 import './Games.css';
+import './race/Race.css';
 
 const teamNameFor = (league, userId) =>
   (league.teams || []).find((t) => t && t.ownerId === userId)?.name || 'Member';
@@ -141,7 +142,6 @@ const LobbyGames = ({ league, leagueId, user, isAdmin }) => {
   const inLobby = status === '' || status === 'created' || status === 'lobby';
   const runner = useMemo(() => (playing ? officialRunner(leagueId, playing.id) : null), [leagueId, playing]);
 
-  if (!isAdmin && challenges.length === 0) return null;
 
   return (
     <div className="card lobby-games-card" style={{ marginTop: '20px' }}>
@@ -153,11 +153,16 @@ const LobbyGames = ({ league, leagueId, user, isAdmin }) => {
           the prize, and it's added to that team's budget. Practice any time on the Games tab.
         </InfoTip>
       </div>
+      <div className="lobby-race">
+        <img src={CREW[6].art} alt="" />
+        <span><strong>Crew Fun Run</strong> A live race for everyone in the league, from any phone. The commissioner can award the winner from the results.</span>
+        <Link className="game-go" to={`/games/race?room=L-${leagueId}&league=${leagueId}`}>Open the race room</Link>
+      </div>
       {playing ? (
         <GamePlayer game={playing.game} runner={runner} onDone={() => setPlaying(null)} />
       ) : (
         <>
-          {challenges.length === 0 && <p className="game-hint">No games yet. Add one for the league to play before the draft.</p>}
+          {challenges.length === 0 && isAdmin && <p className="game-hint">No score games yet. Add one for the league to play before the draft.</p>}
           {challenges.map((challenge) => (
             <ChallengeCard
               key={challenge.id}
