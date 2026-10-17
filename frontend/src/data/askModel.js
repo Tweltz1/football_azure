@@ -357,7 +357,12 @@ function answerTrade(text, found, ctx) {
   if (give.length && get.length) {
     const rated = ctx.trades.rate(give, get);
     if (rated.error) return { text: rated.error, note: ambiguityNote(found) };
-    return { text: rated.text, why: rated.why, note: [rated.note, ambiguityNote(found)].filter(Boolean).join(' ') || null };
+    return {
+      text: rated.text,
+      why: rated.why,
+      note: [rated.note, ambiguityNote(found)].filter(Boolean).join(' ') || null,
+      context: { trade: { give, get, partnerName: rated.partnerName }, players: [...give, ...get] },
+    };
   }
   const position = askedPosition(text);
   if (give.length && !get.length && !position) return answerSellOne(give[0], found, ctx);
@@ -374,6 +379,43 @@ function answerTrade(text, found, ctx) {
     text: `Trades ${target} that help your lineup and are close in value:`.replace('  ', ' '),
     items: ideaItems(ideas),
     note: 'Ask "should I trade X for Y?" about any of these for the full breakdown.',
+  };
+}
+
+const tradeLabel = (trade) => `trading ${trade.give.map((p) => p.name).join(' and ')} for ${trade.get.map((p) => p.name).join(' and ')}`;
+const pointsChange = (n) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}`;
+
+/** A follow-up on the last trade ("who else should I add to that trade?"): what evens it out. */
+function answerBalance(trade, ctx) {
+  const balanced = ctx.trades.balance(trade.give, trade.get);
+  if (balanced.error) return { text: balanced.error };
+  const partner = balanced.partnerName;
+  const label = tradeLabel(trade);
+  if (Math.abs(balanced.share) <= 0.15) {
+    return { text: `${label[0].toUpperCase()}${label.slice(1)} is already about even in value, so nobody needs to add anything. Ask "should I trade X for Y?" with more players to try a bigger deal.` };
+  }
+  const youGiveMore = balanced.share < 0;
+  const lead = youGiveMore
+    ? `${label[0].toUpperCase()}${label.slice(1)}, you give more value than you get, so ask ${partner} to add something.`
+    : `${label[0].toUpperCase()}${label.slice(1)}, you get more value than you give, so ${partner} will likely want you to add something.`;
+  if (!balanced.options.length) {
+    return {
+      text: `${lead} No single ${youGiveMore ? `player on ${partner}` : 'player of yours'} evens it out, though.`,
+      note: 'Try a different player in the trade, or set it up in the Trade check below to add draft picks.',
+    };
+  }
+  const nameOf = (item) => item.name || item.label || 'a pick';
+  return {
+    text: lead,
+    itemsTitle: 'Any one of these makes it about even:',
+    items: balanced.options.map((option) => ({
+      label: option.action === 'add' ? (option.side === 'get' ? partner : 'You') : 'Drop',
+      name: option.action === 'add' ? `Add ${nameOf(option.item)}` : `Leave ${nameOf(option.item)} out`,
+      detail: [option.item.position, option.item.team].filter(Boolean).join(' · ')
+        + `${option.item.position ? '. ' : ''}Your lineup ${pointsChange(option.myChange)} pts a week after.`,
+    })),
+    note: 'Ask "should I trade X for Y and Z?" to see the full breakdown of any of these.',
+    context: { trade, players: [...trade.give, ...trade.get] },
   };
 }
 
@@ -649,9 +691,39 @@ export function answerLeague(text, ctx) {
  * waiverNote, league }, where trades and waivers are null without a league and league is
  * { status, outlook?, error? } for team questions.
  */
+// Follow-ups that point back at the last answer: "that trade", "who else should I add", "him".
+const BACK_TO_TRADE = /\b(that|this|the|same|my) (trade|deal|offer)\b|\bsweeten|\bbalance|\bfair\b|\beven (it|out)\b|throw in|\b(add|give|offer|ask for)\b.*\b(else|more|trade|deal|it|they|them)\b|\belse\b.*\b(add|give|offer|throw)\b/;
+const PRONOUNS = new Set(['he', 'him', 'his', 'hes', 'they', 'them', 'their', 'it']);
+
 export function answerQuestion(text, ctx) {
+  const answer = answerFresh(text, ctx);
+  // Keep track of what the conversation is about, so the next question can say "him" or "that trade".
+  if (!answer.context && ctx.previous) answer.context = ctx.previous;
+  return answer;
+}
+
+function answerFresh(text, ctx) {
   if (isLeagueQuestion(text, (ctx.league?.outlook?.teams || []).map((t) => t.name))) return answerLeague(text, ctx);
-  const found = findPlayers(text, ctx.allPlayers, { myIds: ctx.myIds, leagueIds: ctx.leagueIds });
+  let found = findPlayers(text, ctx.allPlayers, { myIds: ctx.myIds, leagueIds: ctx.leagueIds });
+  const previous = ctx.previous || null;
+  const t = tidy(text);
+  if (!found.length && previous?.trade && ctx.trades && BACK_TO_TRADE.test(t)) return answerBalance(previous.trade, ctx);
+  // "Is he worth it?", "should I trade him?": the players from the last question.
+  if (previous?.players?.length) {
+    const words = questionTokens(text);
+    const at = words.findIndex((w) => PRONOUNS.has(w));
+    const single = previous.players.length === 1 && !found.some((f) => f.player.id === previous.players[0].id);
+    if (at >= 0 && !found.length) found = previous.players.slice(0, 2).map((player) => ({ player, alternatives: [], at }));
+    else if (at >= 0 && single && /^(he|him|his|hes)$/.test(words[at])) {
+      found = [...found, { player: previous.players[0], alternatives: [], at }].sort((a, b) => a.at - b.at);
+    }
+  }
+  const answer = answerByType(text, found, ctx);
+  if (!answer.context && found.length) answer.context = { players: found.map((f) => f.player) };
+  return answer;
+}
+
+function answerByType(text, found, ctx) {
   const type = questionType(text, found);
   switch (type) {
     case 'help': return helpAnswer();

@@ -127,3 +127,18 @@ test('team questions without a Sleeper league say what they need', async () => {
   renderBar(null);
   expect(await ask('what are my playoff chances')).toMatch(/need a Sleeper league/);
 });
+
+test('follow-ups point back at the last trade or player', async () => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  renderBar();
+  expect(await ask('Should I trade Olave for Bijan?')).toMatch(/Team 0/);
+  const shown = await ask('Who else should I add to that trade?');
+  expect(shown).toMatch(/Trading Chris Olave for Bijan Robinson/);
+  expect(shown).toMatch(/you get more value than you give|already about even|you give more value/);
+  expect(await ask('is it fair now?')).toMatch(/Trading Chris Olave for Bijan Robinson/);
+  expect(await ask('What is Bijan worth rest of season')).toMatch(/Bijan Robinson is worth/);
+  expect(await ask('Should I trade for him?')).toMatch(/for Bijan Robinson|couldn't find a trade for Bijan Robinson/);
+  expect(await ask('who should I pick up?')).toMatch(/pickups|No free agent/);
+  const failures = console.error.mock.calls.filter(([msg]) => String(msg).includes('Ask bar failed'));
+  expect(failures).toEqual([]);
+});

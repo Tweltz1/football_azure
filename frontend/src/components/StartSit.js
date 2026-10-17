@@ -654,19 +654,38 @@ export const AskBar = ({
     const posTab = new Map();
     const seasonStarters = seasonStarterIds(myRoster, rosterSettings, scoring);
 
+    // The trade as asked: your players, the one team that has all of theirs, and the shared arguments.
+    const setUp = (give, get) => {
+      const mine = myRoster.filter((p) => give.some((g) => g.id === p.id));
+      if (mine.length < give.length) return { error: `${names(give.filter((g) => !rosterById.has(g.id)))} isn't on your team.` };
+      const partner = partnerRosters.find((t) => get.every((g) => t.roster.some((p) => p.id === g.id)));
+      if (!partner) return { error: `${names(get)} ${get.length > 1 ? "aren't all on one team" : "isn't on a team"} in this league, so there's no trade to rate.` };
+      const theirs = partner.roster.filter((p) => get.some((g) => g.id === p.id));
+      const args = {
+        give: mine, get: theirs, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount,
+        dynasty, givePicks: [], getPicks: [], firstPickSeason: null, levels, market,
+      };
+      return { partner, args };
+    };
     const trades = partners.length ? {
       rate(give, get) {
-        const mine = myRoster.filter((p) => give.some((g) => g.id === p.id));
-        if (mine.length < give.length) return { error: `${names(give.filter((g) => !rosterById.has(g.id)))} isn't on your team.` };
-        const partner = partnerRosters.find((t) => get.every((g) => t.roster.some((p) => p.id === g.id)));
-        if (!partner) return { error: `${names(get)} ${get.length > 1 ? "aren't all on one team" : "isn't on a team"} in this league, so there's no trade to rate.` };
-        const theirs = partner.roster.filter((p) => get.some((g) => g.id === p.id));
-        const result = analyzeTrade({
-          give: mine, get: theirs, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount,
-          dynasty, givePicks: [], getPicks: [], firstPickSeason: null, levels, market,
-        });
+        const { error, partner, args } = setUp(give, get);
+        if (error) return { error };
+        const result = analyzeTrade(args);
         const why = explainTrade(result, { allPlayers, scoring, dynasty, partnerName: partner.name });
-        return { text: `${why.call.label}: ${why.headline}.`, why, note: 'Open the Trade check below to add picks or try other players.' };
+        return { text: `${why.call.label}: ${why.headline}.`, why, partnerName: partner.name, note: 'Open the Trade check below to add picks or try other players.' };
+      },
+      // What to add to (or take out of) a lopsided trade to make it fair.
+      balance(give, get) {
+        const { error, partner, args } = setUp(give, get);
+        if (error) return { error };
+        const result = analyzeTrade(args);
+        return {
+          partnerName: partner.name,
+          share: result.share,
+          verdict: result.valueVerdict,
+          options: balanceTrade({ ...args, levels: result.levels, limit: 4 }),
+        };
       },
       find({ give, get, position }) {
         const wanted = position === 'FLEX' ? ['RB', 'WR', 'TE'] : position ? [position] : null;
@@ -737,7 +756,7 @@ export const AskBar = ({
     try {
       setBusy(true);
       const league = await leagueFor(q);
-      answer = answerQuestion(q, { ...buildCtx(), league });
+      answer = answerQuestion(q, { ...buildCtx(), league, previous: log[0]?.answer?.context || null });
     } catch (error) {
       console.error('Ask bar failed:', error);
       answer = { text: 'Something went wrong working that out. Try asking another way.', examples: EXAMPLE_QUESTIONS };
