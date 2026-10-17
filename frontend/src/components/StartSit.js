@@ -1179,9 +1179,12 @@ const TradeCheck = ({
                   {['get', 'give'].filter((side) => result.adjustment[side]).map((side) => {
                     const adj = result.adjustment[side];
                     const amount = adj.display != null ? Math.abs(adj.display).toLocaleString() : Math.abs(adj.score).toFixed(1);
-                    return side === 'get'
-                      ? `Roster-spot adjustment: −${amount} on your side, since ${adj.players.join(' and ')} wouldn't crack your lineup and you'd have to cut someone to fit them.`
-                      : `Roster-spot adjustment: −${amount} on their side, since ${adj.players.join(' and ')} wouldn't crack their lineup.`;
+                    const whose = side === 'get' ? 'your' : 'their';
+                    const why = [
+                      adj.benched.length ? `${adj.benched.join(' and ')} wouldn't crack ${whose} lineup` : null,
+                      adj.starting.length ? `${adj.starting.join(' and ')} would only push out a starter ${side === 'get' ? 'you' : 'they'} already have` : null,
+                    ].filter(Boolean).join(', and ');
+                    return `Roster-spot adjustment: −${amount} on ${whose} side. It's a ${give.length}-for-${get.length}, and ${why}, so the extra player counts for less (a single better player beats two lesser ones).`;
                   }).join(' ')}
                 </p>
               )}

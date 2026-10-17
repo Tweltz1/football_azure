@@ -605,8 +605,13 @@ export const explainTrade = (result, ctx) => {
       : 'The trade market rates what you get higher, but our projections for your scoring like what you give: you may be buying high.');
   }
   const adj = result.adjustment;
-  if (adj?.get) sentences.push(`${namesOf(adj.get.players.map((name) => ({ name })))} wouldn't crack your lineup, so ${adj.get.players.length > 1 ? 'they count' : 'that counts'} for half to cover the roster spot.`);
-  if (adj?.give) sentences.push(`${namesOf(adj.give.players.map((name) => ({ name })))} wouldn't crack ${them}'s lineup, so ${adj.give.players.length > 1 ? 'they count' : 'that counts'} for half on their side.`);
+  const extraNote = (list, whose, side) => {
+    const names = (names) => namesOf(names.map((name) => ({ name })));
+    if (list.benched?.length) sentences.push(`${names(list.benched)} wouldn't crack ${whose} lineup, so ${list.benched.length > 1 ? 'they count' : 'that counts'} for half ${side}.`);
+    if (list.starting?.length) sentences.push(`${names(list.starting)} would start but only push out a starter ${whose === 'your' ? 'you' : 'they'} already have, so ${list.starting.length > 1 ? 'they count' : 'that counts'} for three quarters ${side}: one better player beats two lesser ones.`);
+  };
+  if (adj?.get) extraNote(adj.get, 'your', 'to cover the roster spot');
+  if (adj?.give) extraNote(adj.give, `${them}'s`, 'on their side');
 
   const starting = getPlayers.filter((p) => p.role && p.role.startsWith('would start'));
   const lostStarters = givePlayers.filter((p) => p.role && p.role !== 'your bench');
