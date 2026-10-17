@@ -28,6 +28,59 @@ const Factors = ({ names, factors }) => (
   </div>
 );
 
+/** The body of a "why" card: the call, the summary, the factor table and any extras. Also shown inline by the chat bar. */
+export const WhyCard = ({ why, updatedLabel = null, onClose = null }) => (
+  <>
+    <div className="why-top">
+      <span className={`why-call ${why.call.key}`}>
+        {why.call.label}
+        {why.confidence && <span className="why-chance"> · {why.confidence.chance}%</span>}
+      </span>
+      {onClose && <button type="button" className="why-close" aria-label="Close" onClick={onClose}>×</button>}
+    </div>
+    <h4 className="why-headline">{why.headline}</h4>
+    <p className="why-summary">{why.summary}</p>
+    {why.confidence && <p className="why-confidence">{why.confidence.text}</p>}
+    {why.factors.length > 0 && why.names[1] && <Factors names={why.names} factors={why.factors} />}
+    {why.watch && <p className="why-watch"><span aria-hidden="true">!</span>{why.watch}</p>}
+    {why.details?.length > 0 && (
+      <div className="why-details">
+        <p className="why-waivers-title">Behind the values</p>
+        {why.details.map((d) => (
+          <div key={`${d.side}-${d.name}`} className="why-detail">
+            <strong>{d.name}</strong> <small>{d.side === 'Get' ? 'you get' : 'you give'}</small>
+            <ul>{d.notes.map((note) => <li key={note}>{note}</li>)}</ul>
+          </div>
+        ))}
+      </div>
+    )}
+    {why.waivers && (
+      <div className="why-waivers">
+        <p className="why-waivers-title">Possible waiver pickups</p>
+        <ul>
+          {why.waivers.players.map((p) => (
+            <li key={p.id}>
+              <span className="why-waiver-name">
+                {p.name} <small>{p.position} · {p.team}</small>
+                {p.detail && <small className="why-waiver-detail">{p.detail}</small>}
+              </span>
+              <span className="why-waiver-pts">
+                {p.points.toFixed(1)}
+                <small>+{p.gain.toFixed(1)}</small>
+              </span>
+            </li>
+          ))}
+        </ul>
+        {why.waivers.note && <p className="why-waivers-note">{why.waivers.note}</p>}
+      </div>
+    )}
+    <p className="why-foot">
+      {why.basis ? why.basis.replace(/\.$/, '') : "Based on Sleeper projections, this season's games and the injury report"}
+      {updatedLabel ? `, ${updatedLabel}` : ''}.
+    </p>
+  </>
+);
+
 /**
  * A small "?" next to a Start/Sit call. Tapping it opens a card explaining the call;
  * `explain` is only run then, so the page doesn't do the work for every row up front.
@@ -127,53 +180,7 @@ const WhyButton = ({ explain, label = 'Why?', updatedLabel = null }) => {
             aria-label={why.headline}
             tabIndex={-1}
           >
-            <div className="why-top">
-              <span className={`why-call ${why.call.key}`}>
-                {why.call.label}
-                {why.confidence && <span className="why-chance"> · {why.confidence.chance}%</span>}
-              </span>
-              <button type="button" className="why-close" aria-label="Close" onClick={close}>×</button>
-            </div>
-            <h4 className="why-headline">{why.headline}</h4>
-            <p className="why-summary">{why.summary}</p>
-            {why.confidence && <p className="why-confidence">{why.confidence.text}</p>}
-            {why.factors.length > 0 && why.names[1] && <Factors names={why.names} factors={why.factors} />}
-            {why.watch && <p className="why-watch"><span aria-hidden="true">!</span>{why.watch}</p>}
-            {why.details?.length > 0 && (
-              <div className="why-details">
-                <p className="why-waivers-title">Behind the values</p>
-                {why.details.map((d) => (
-                  <div key={`${d.side}-${d.name}`} className="why-detail">
-                    <strong>{d.name}</strong> <small>{d.side === 'Get' ? 'you get' : 'you give'}</small>
-                    <ul>{d.notes.map((note) => <li key={note}>{note}</li>)}</ul>
-                  </div>
-                ))}
-              </div>
-            )}
-            {why.waivers && (
-              <div className="why-waivers">
-                <p className="why-waivers-title">Possible waiver pickups</p>
-                <ul>
-                  {why.waivers.players.map((p) => (
-                    <li key={p.id}>
-                      <span className="why-waiver-name">
-                        {p.name} <small>{p.position} · {p.team}</small>
-                        {p.detail && <small className="why-waiver-detail">{p.detail}</small>}
-                      </span>
-                      <span className="why-waiver-pts">
-                        {p.points.toFixed(1)}
-                        <small>+{p.gain.toFixed(1)}</small>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {why.waivers.note && <p className="why-waivers-note">{why.waivers.note}</p>}
-              </div>
-            )}
-            <p className="why-foot">
-              {why.basis ? why.basis.replace(/\.$/, '') : "Based on Sleeper projections, this season's games and the injury report"}
-              {updatedLabel ? `, ${updatedLabel}` : ''}.
-            </p>
+            <WhyCard why={why} updatedLabel={updatedLabel} onClose={close} />
           </div>
         </>,
         document.body,

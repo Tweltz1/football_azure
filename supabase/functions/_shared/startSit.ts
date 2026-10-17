@@ -2,6 +2,8 @@
 // Player ids match the draft pool ("sleeper-<id>", or "sleeper-<TEAM>" for defenses),
 // so the page can line projections up with the rosters people drafted.
 
+import type { ProjectionSnapshot, ProjectionSnapshotStore } from './ports.ts';
+
 export type FetchJson = (url: string) => Promise<unknown>;
 
 export interface Points {
@@ -147,6 +149,7 @@ const projectionCache = new Map<string, CacheEntry<WeekProjections>>();
 const weekStatsCache = new Map<string, CacheEntry<Map<string, StatLine>>>();
 const playerSeasonCache = new Map<string, CacheEntry<SeasonGame[]>>();
 const futureCache = new Map<string, CacheEntry<{ teams: Set<string>; lines: Map<string, GameLine> }>>();
+const accuracyCache: { entry: CacheEntry<ProjectionAccuracy> | null } = { entry: null };
 
 interface SeasonGame extends MatchupGame {
   opponent: string | null;
@@ -167,6 +170,7 @@ export function clearStartSitCache() {
   projectionCache.clear();
   weekStatsCache.clear();
   playerSeasonCache.clear();
+  accuracyCache.entry = null;
 }
 
 const num = (value: unknown): number => {
@@ -605,4 +609,91 @@ export function buildDefenseTable(pastWeeks: Map<string, StatLine>[]): Record<st
     });
   }
   return table;
+}
+
+// ---- Accuracy: last week's projections against what really happened ---------------------------
+
+/** One player's week: [id, name, position, projected ppr, half, std, actual ppr, half, std]. */
+export type AccuracyRow = [string, string, string, number, number, number, number, number, number];
+
+export interface AccuracyWeek {
+  week: number;
+  /** 'saved': projections this site saved while the week was live. 'sleeper': Sleeper's own copy, fetched afterwards. */
+  source: 'saved' | 'sleeper';
+  rows: AccuracyRow[];
+}
+
+export interface ProjectionAccuracy {
+  season: number;
+  fetchedAt: string;
+  weeks: AccuracyWeek[];
+}
+
+/** Players worth checking: anyone projected for at least this many PPR points. */
+const ACCURACY_MIN_PROJECTION = 1;
+
+/** This week's projections in the compact form that gets saved, players with a real projection only. */
+export function snapshotOf(projections: WeekProjections): Record<string, ProjectionSnapshot> {
+  const saved: Record<string, ProjectionSnapshot> = {};
+  for (const p of projections.players) {
+    if (p.onBye || p.points.ppr < ACCURACY_MIN_PROJECTION) continue;
+    saved[p.id] = [p.position, p.points.ppr, p.points.half, p.points.std, p.name];
+  }
+  return saved;
+}
+
+/** Sleeper's projections for a finished week, in the saved form. */
+async function sleeperSnapshot(fetchJson: FetchJson, season: number, week: number): Promise<Record<string, ProjectionSnapshot>> {
+  const rows = await fetchJson(`${SLEEPER_PROJECTIONS_URL}/${season}/${week}?season_type=regular&${positionsQuery()}&order_by=pts_ppr`);
+  if (!Array.isArray(rows)) throw new Error('Sleeper projections response was not a list.');
+  const saved: Record<string, ProjectionSnapshot> = {};
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') continue;
+    const p = toPlayer(row as Record<string, unknown>);
+    if (!p || p.points.ppr < ACCURACY_MIN_PROJECTION) continue;
+    if (!saved[p.id] || saved[p.id][1] < p.points.ppr) saved[p.id] = [p.position, p.points.ppr, p.points.half, p.points.std, p.name];
+  }
+  return saved;
+}
+
+/**
+ * Every finished regular-season week this season: each projected player's projection next to what they
+ * scored. Players who didn't play are left out (a late scratch says nothing about the projection).
+ * Weeks this site saved use that copy; earlier weeks fall back to Sleeper's own past projections.
+ */
+export async function getProjectionAccuracy(
+  fetchJson: FetchJson,
+  now: Date,
+  snapshots: ProjectionSnapshotStore | null,
+): Promise<ProjectionAccuracy> {
+  const nowMs = now.getTime();
+  const cached = accuracyCache.entry;
+  if (cached && nowMs - cached.at < CACHE_MS) return cached.value;
+
+  const state = await currentState(fetchJson, nowMs);
+  const lastFinished = state.seasonType === 'regular' ? Math.min(state.week - 1, LAST_REGULAR_WEEK) : LAST_REGULAR_WEEK;
+  const weekNumbers = Array.from({ length: Math.max(0, lastFinished) }, (_, i) => i + 1);
+  const results = await Promise.allSettled(weekNumbers.map(async (week): Promise<AccuracyWeek> => {
+    const saved = snapshots ? await snapshots.get(state.season, week).catch(() => null) : null;
+    const hasSaved = saved != null && Object.keys(saved).length > 0;
+    const [projected, actual] = await Promise.all([
+      hasSaved ? saved : sleeperSnapshot(fetchJson, state.season, week),
+      getWeekStats(fetchJson, state.season, week, nowMs),
+    ]);
+    const rows: AccuracyRow[] = [];
+    for (const [id, [position, ppr, half, std, name]] of Object.entries(projected)) {
+      const line = actual.get(id);
+      if (!line) continue;
+      rows.push([id, name, position, round1(ppr), round1(half), round1(std), round1(line.points.ppr), round1(line.points.half), round1(line.points.std)]);
+    }
+    return { week, source: hasSaved ? 'saved' : 'sleeper', rows };
+  }));
+
+  const value: ProjectionAccuracy = {
+    season: state.season,
+    fetchedAt: now.toISOString(),
+    weeks: results.flatMap((r) => (r.status === 'fulfilled' && r.value.rows.length > 0 ? [r.value] : [])),
+  };
+  accuracyCache.entry = { at: nowMs, value };
+  return value;
 }

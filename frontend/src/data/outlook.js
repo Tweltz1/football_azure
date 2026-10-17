@@ -194,14 +194,16 @@ const scheduleAhead = (player, ctx) => {
   const rows = Object.values(ctx.defense).map((byPos) => byPos[position]).filter((r) => r && r.games >= 2);
   const average = mean(rows.map((r) => pointsOf(r.points, ctx.scoring)));
   if (!average) return null;
-  const factors = opponents.map((team) => {
+  const raw = opponents.map((team) => {
     const row = ctx.defense[team]?.[position];
-    return row && row.games >= 2 ? pointsOf(row.points, ctx.scoring) / average : 1;
+    return row && row.games ? { factor: pointsOf(row.points, ctx.scoring) / average, games: row.games } : null;
   });
-  const factor = mean(factors);
+  const factor = mean(raw.map((r) => (r && r.games >= 2 ? r.factor : 1)));
   const label = factor >= 1.08 ? 'easy' : factor <= 0.92 ? 'tough' : 'average';
-  // Half the gap, and capped: matchups move weekly scores less than they seem to.
-  const multiplier = Math.min(1.12, Math.max(0.88, 1 + 0.5 * (factor - 1)));
+  // Half the gap, capped, and a defense's numbers count more as it plays (3 games a third, 6 half):
+  // the fit that best matched past seasons (scripts/model).
+  const firm = mean(raw.map((r) => (r ? 1 + (r.factor - 1) * (r.games / (r.games + 6)) : 1)));
+  const multiplier = Math.min(1.12, Math.max(0.88, 1 + 0.5 * (firm - 1)));
   return { opponents, factor: round1(factor * 100) / 100, label, multiplier };
 };
 
@@ -256,7 +258,9 @@ export const playerOutlook = (player, ctx) => {
     }
   }
   const lastThree = mean(recentGames.slice(-3));
-  const own = gp > 0 && season != null ? (gp >= 3 && lastThree != null ? 0.65 * season + 0.35 * lastThree : season) : null;
+  // Season average 80%, last 3 games 20%: hot and cold streaks carry over less than they seem to
+  // (fitted on 2019-2024 results, scripts/model).
+  const own = gp > 0 && season != null ? (gp >= 3 && lastThree != null ? 0.8 * season + 0.2 * lastThree : season) : null;
   // Own production takes over from the ranking as games pile up: 1 game is 20%, 4 games half, 12 games 75%.
   const ownWeight = gp / (gp + 4);
   const thisWeek = pointsOf(player.points, ctx.scoring);

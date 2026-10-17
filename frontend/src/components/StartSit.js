@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
   STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
-  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds, ownTradeScore, replacementLevels,
+  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds, ownTradeScore, replacementLevels, tagForSide, marketTag,
 } from '../data/startSitUtils';
 import { POSITION_TABS, positionRanks, rankLabel, seasonRankings } from '../data/rankings';
 import { PRESEASON_POSITION_RANKS } from '../data/preseasonRanks';
@@ -21,8 +21,10 @@ import {
 } from '../data/leagueScoring';
 import UpdatedAt, { timeAgo } from './UpdatedAt';
 import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
-import WhyButton from './WhyButton';
+import WhyButton, { WhyCard } from './WhyButton';
 import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
+import { summarizeAccuracy } from '../data/accuracy';
+import { EXAMPLE_QUESTIONS, answerQuestion } from '../data/askModel';
 import '../App.css';
 import './SeasonTools.css';
 
@@ -89,6 +91,98 @@ const PlayerName = ({ player, scoring, onOpen, children = null }) => (
 );
 
 /** Pop-up with one player's recent games, past games against this week's opponent, and injured teammates. */
+const SCORING_NAMES = { ppr: 'PPR', half: 'half-PPR', std: 'standard' };
+const pctText = (x) => `${Math.round(x * 100)}%`;
+const weekRange = (weeks) => (weeks.length === 1 ? `week ${weeks[0]}` : `weeks ${weeks[0]}-${weeks[weeks.length - 1]}`);
+
+const sourceNote = ({ weeks, savedWeeks }) => {
+  if (savedWeeks.length === 0) return 'These use the projections Sleeper keeps for past weeks. From now on the site also saves its own copy before kickoff.';
+  if (savedWeeks.length === weeks.length) return 'Every week uses the projections this site saved before kickoff.';
+  return `From week ${savedWeeks[0]} on, these use the projections this site saved before kickoff; earlier weeks use the copy Sleeper keeps.`;
+};
+
+/** Past weeks' projections and close calls checked against what really happened. Loads when opened. */
+const AccuracyCard = ({ scoring }) => {
+  const [data, setData] = useState(null);
+  const [status, setStatus] = useState('');
+  const load = () => {
+    setStatus('Checking past weeks...');
+    axios.get(`${API_BASE_URL}/startsit/accuracy`)
+      .then((response) => { setData(response.data); setStatus(''); })
+      .catch((error) => setStatus(String(error.response?.data || 'Could not load past weeks. Please try again.')));
+  };
+  const summary = useMemo(() => (data ? summarizeAccuracy(data, scoring) : null), [data, scoring]);
+
+  return (
+    <section id="startsit-accuracy" className="card startsit-panel">
+      <div className="player-board-heading">
+        <div>
+          <p className="section-kicker">Report card</p>
+          <h2>How accurate are we?</h2>
+        </div>
+        {!data && <button type="button" className="edit-roster-button" onClick={load} disabled={status === 'Checking past weeks...'}>Check past weeks</button>}
+      </div>
+      {!data && !status && <p className="startsit-help">See how this season's projections and start/sit calls held up once the games were played.</p>}
+      {status && <p className="startsit-empty">{status}</p>}
+      {summary && summary.weeks.length === 0 && <p className="startsit-empty">No finished weeks to check yet this season.</p>}
+      {summary && summary.weeks.length > 0 && (
+        <>
+          <p className="startsit-help">
+            {data.season} {weekRange(summary.weeks)}: {summary.players.toLocaleString()} player games, scored as {SCORING_NAMES[scoring] || 'PPR'}.
+          </p>
+          {summary.calls && (
+            <p className="startsit-verdict">
+              In close start/sit calls, the player we'd start outscored the other {pctText(summary.calls.right)} of the time
+              {summary.clearCalls ? `, and ${pctText(summary.clearCalls.right)} on clear calls` : ''}.
+            </p>
+          )}
+          <h4>Average miss per player</h4>
+          <table className="startsit-defense">
+            <thead><tr><th>Pos</th><th>Off by</th><th>Players</th></tr></thead>
+            <tbody>
+              {summary.positions.map((m) => (
+                <tr key={m.position}><td>{m.position}</td><td>±{m.averageMiss.toFixed(1)} pts</td><td>{m.count}</td></tr>
+              ))}
+            </tbody>
+          </table>
+          {summary.buckets.length > 0 && (
+            <>
+              <h4>When we gave a win chance</h4>
+              <table className="startsit-defense">
+                <thead><tr><th>We said</th><th>It happened</th><th>Calls</th></tr></thead>
+                <tbody>
+                  {summary.buckets.map((b) => (
+                    <tr key={b.label}><td>{pctText(b.said)}</td><td>{pctText(b.won)}</td><td>{b.count.toLocaleString()}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="startsit-help">If the two columns are close, the win chances in the ? cards can be trusted.</p>
+            </>
+          )}
+          {summary.bigMisses.length > 0 && (
+            <>
+              <h4>Biggest surprises</h4>
+              <ul className="startsit-bench">
+                {summary.bigMisses.map((m) => (
+                  <li key={`${m.id}-${m.week}`}>
+                    <div><strong>{m.name}</strong> <small>{m.position} · week {m.week}</small></div>
+                    <span className="startsit-points">{m.actual.toFixed(1)} <small>vs {m.projected.toFixed(1)}</small></span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="startsit-help">
+            A close call is two players at the same position both projected for 5+ points and within 6 of each other; a clear call is one we gave 66% or more.
+            Players who didn't play are left out.{' '}
+            {sourceNote(summary)}
+          </p>
+        </>
+      )}
+    </section>
+  );
+};
+
 export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, updatedAt, onClose }) => {
   const [rawMatchup, setMatchup] = useState(null);
   const [matchupError, setMatchupError] = useState('');
@@ -132,7 +226,7 @@ export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, upda
           <div><span>Projected</span><strong>{formatPoints(player.points)}</strong></div>
           <div><span>Last 3 avg</span><strong>{trend.lastThree == null ? '-' : trend.lastThree.toFixed(1)}</strong></div>
           <div><span>Season avg</span><strong>{trend.season == null ? '-' : trend.season.toFixed(1)}</strong></div>
-          <div><span>vs {player.opponent || 'opp'}</span><strong>{matchupAvg == null ? '-' : matchupAvg.toFixed(1)}</strong></div>
+          <div><span>{player.opponent ? `Past vs ${player.opponent}` : 'vs opp'}</span><strong>{matchupAvg == null ? '-' : matchupAvg.toFixed(1)}</strong></div>
         </div>
 
         <section>
@@ -155,11 +249,12 @@ export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, upda
             <h4>
               {vsDefense.opponent} defense vs {vsDefense.position}s{' '}
               <span className={`startsit-trend ${vsDefense.verdict === 'good' ? 'up' : vsDefense.verdict === 'tough' ? 'down' : 'flat'}`}>
-                {vsDefense.verdict === 'good' ? 'Good matchup' : vsDefense.verdict === 'tough' ? 'Tough matchup' : 'Average matchup'}
+                {vsDefense.early ? 'Too early to tell' : vsDefense.verdict === 'good' ? 'Good matchup' : vsDefense.verdict === 'tough' ? 'Tough matchup' : 'Average matchup'}
               </span>
             </h4>
             <p className="startsit-help">
-              {vsDefense.rankLabel}. Per game over {vsDefense.games} game{vsDefense.games === 1 ? '' : 's'} this season:
+              {vsDefense.rankLabel}. Per game over {vsDefense.games} game{vsDefense.games === 1 ? '' : 's'} this season
+              (green is easier than average for {vsDefense.position}s, red is harder):
             </p>
             <table className="startsit-defense">
               <thead>
@@ -515,6 +610,184 @@ const WaiverMoves = ({
 };
 
 
+/**
+ * The chat bar: type a question about a player, your lineup, a trade or the waiver wire, and get the
+ * model's answer with the same reasons as the "?" cards. Everything runs in the browser; nothing is sent anywhere.
+ */
+export const AskBar = ({
+  projections, projectionsById, roster, lineup, whyCtx, scoring, week, partners, rosterSettings, dynasty, ppr,
+  rosteredIds, waiverPool, waiverNote, posRanks, updatedLabel,
+}) => {
+  const [question, setQuestion] = useState('');
+  const [log, setLog] = useState([]);
+  const teamCount = partners.length + 1;
+  const marketSettings = useMemo(
+    () => (partners.length ? marketSettingsFor({ dynasty, teamCount, rosterSettings, ppr }) : null),
+    [partners.length, dynasty, teamCount, rosterSettings, ppr],
+  );
+  const { data: marketData } = useMarketValues(marketSettings);
+  const { data: seasonMarketData } = useMarketValues(seasonMarketSettings(marketSettings));
+  // Every player scored for this league, with this week's rank, for finding names in questions.
+  const scoredAll = useMemo(
+    () => withProjections(projections.players, projectionsById, scoring, week).map((p) => ({ ...p, posRank: posRanks.get(p.id) || null })),
+    [projections, projectionsById, scoring, week, posRanks],
+  );
+
+  // The trade and waiver model is only built when a question comes in, so the page doesn't pay for it up front.
+  const buildCtx = () => {
+    const marketRanks = marketRanksFrom(dynasty ? seasonMarketData : marketData);
+    const outlooks = buildOutlooks(projections.players, { scoring, week, defense: projections.defense, seasonRanks: seasonRanks(), marketRanks });
+    const withOutlook = (list) => list.map((p) => ({ ...p, outlook: outlooks.get(p.id) || null }));
+    const allPlayers = withOutlook(projections.players);
+    const myRoster = withOutlook(roster);
+    const levels = blendLevels(replacementLevels(allPlayers, teamCount, rosterSettings, scoring), realWaiverLevels(allPlayers, rosteredIds, scoring));
+    const ages = new Map([...roster, ...partners.flatMap((t) => t.players || [])].filter((p) => p.age).map((p) => [p.id, p.age]));
+    const agedPlayers = dynasty ? allPlayers.map((p) => (ages.has(p.id) ? { ...p, age: ages.get(p.id) } : p)) : allPlayers;
+    const market = buildMarket(marketData, agedPlayers, (p) => ownTradeScore(p, levels, scoring, dynasty).score);
+    const partnerRosters = partners.map((p) => ({ key: p.key, name: p.name, roster: withOutlook(withProjections(p.players, projectionsById, scoring, week)) }));
+    const names = (list) => list.map((p) => p.name).join(' and ');
+    const rosterById = new Map(roster.map((p) => [p.id, p]));
+    const posTab = new Map();
+
+    const trades = partners.length ? {
+      rate(give, get) {
+        const mine = myRoster.filter((p) => give.some((g) => g.id === p.id));
+        if (mine.length < give.length) return { error: `${names(give.filter((g) => !rosterById.has(g.id)))} isn't on your team.` };
+        const partner = partnerRosters.find((t) => get.every((g) => t.roster.some((p) => p.id === g.id)));
+        if (!partner) return { error: `${names(get)} ${get.length > 1 ? "aren't all on one team" : "isn't on a team"} in this league, so there's no trade to rate.` };
+        const theirs = partner.roster.filter((p) => get.some((g) => g.id === p.id));
+        const result = analyzeTrade({
+          give: mine, get: theirs, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount,
+          dynasty, givePicks: [], getPicks: [], firstPickSeason: null, levels, market,
+        });
+        const why = explainTrade(result, { allPlayers, scoring, dynasty, partnerName: partner.name });
+        return { text: `${why.call.label}: ${why.headline}.`, why, note: 'Open the Trade check below to add picks or try other players.' };
+      },
+      find({ give, get, position }) {
+        const wanted = position === 'FLEX' ? ['RB', 'WR', 'TE'] : position ? [position] : null;
+        return findTrades({ myRoster, partners: partnerRosters, rosterSettings, scoring, allPlayers, dynasty, market, limit: 40 })
+          .filter((idea) => give.every((g) => idea.give.some((p) => p.id === g.id))
+            && get.every((g) => idea.get.some((p) => p.id === g.id))
+            && (!wanted || idea.get.some((p) => wanted.includes(p.position))))
+          .slice(0, 4);
+      },
+    } : null;
+
+    return {
+      allPlayers: scoredAll,
+      roster,
+      lineup,
+      whyCtx,
+      scoring,
+      week,
+      defense: projections.defense,
+      myIds: new Set(roster.map((p) => p.id)),
+      leagueIds: rosteredIds,
+      waiverNote,
+      scored: (p) => rosterById.get(p.id) || p,
+      outlookOf: (p) => outlooks.get(p.id) || null,
+      valueOf: (p) => {
+        const rated = withOutlook([p])[0];
+        const own = ownTradeScore(rated, levels, scoring, dynasty).score;
+        const mv = market?.players[p.id]?.value;
+        if (!market || mv == null) return { label: null, tag: null };
+        const blended = market.toMarket(market.weight * market.toScore(mv) + (1 - market.weight) * own);
+        return { label: `${blended.toLocaleString()} (market and our projections blended)`, tag: marketTag(own, market.toScore(mv))?.label || null };
+      },
+      seasonRankOf: (p) => {
+        if (!posTab.has(p.position)) posTab.set(p.position, new Map(seasonRankings(initialPlayerList, p.position).map((r) => [r.id, r.positionRank])));
+        return posTab.get(p.position).get(p.id) || null;
+      },
+      trades,
+      waivers: partners.length
+        ? () => suggestWaiverMoves({ roster: myRoster, pool: withOutlook(waiverPool), rosterSettings, scoring, levels, market, dynasty, allPlayers })
+        : null,
+    };
+  };
+
+  const ask = (text) => {
+    const q = String(text || '').trim();
+    if (!q) return;
+    let answer;
+    try {
+      answer = answerQuestion(q, buildCtx());
+    } catch (error) {
+      console.error('Ask bar failed:', error);
+      answer = { text: 'Something went wrong working that out. Try asking another way.', examples: EXAMPLE_QUESTIONS };
+    }
+    setLog((entries) => [{ id: Date.now(), q, answer }, ...entries].slice(0, 5));
+    setQuestion('');
+    if (answer.scrollTo) window.setTimeout(() => document.getElementById(answer.scrollTo)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+
+  const Examples = ({ list }) => (
+    <div className="startsit-chips">
+      {list.map((example) => (
+        <button key={example} type="button" className="startsit-chip" onClick={() => ask(example)}>{example}</button>
+      ))}
+    </div>
+  );
+
+  return (
+    <section id="startsit-ask" className="card startsit-panel ask-panel">
+      <div className="player-board-heading">
+        <div>
+          <p className="section-kicker">Ask</p>
+          <h2>Ask the model</h2>
+        </div>
+        {log.length > 0 && <button type="button" className="cancel-button" onClick={() => setLog([])}>Clear</button>}
+      </div>
+      <form className="ask-form" onSubmit={(e) => { e.preventDefault(); ask(question); }}>
+        <input
+          type="search"
+          enterKeyHint="send"
+          placeholder="Ask about a player, trade or pickup"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          aria-label="Ask a question"
+        />
+        <button type="submit" className="create-button" disabled={!question.trim()}>Ask</button>
+      </form>
+      {log.length === 0 && (
+        <>
+          <p className="startsit-help">Uses your team, this week's projections and the same reasons as the ? cards. Try:</p>
+          <Examples list={EXAMPLE_QUESTIONS} />
+        </>
+      )}
+      <ul className="ask-log">
+        {log.map(({ id, q, answer }) => (
+          <li key={id}>
+            <p className="ask-question">{q}</p>
+            <div className="ask-answer">
+              <p>{answer.text}</p>
+              {answer.itemsTitle && <p className="startsit-help">{answer.itemsTitle}</p>}
+              {answer.items?.length > 0 && (
+                <ul className="startsit-bench ask-items">
+                  {answer.items.map((item, index) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <li key={index}>
+                      <div>
+                        {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
+                        {item.detail && <><br /><small>{item.detail}</small></>}
+                      </div>
+                      {item.value != null && (
+                        <span className="startsit-points">{Number(item.value).toFixed(1)}{item.valueLabel && <small> {item.valueLabel}</small>}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {answer.why && <div className="why-pop ask-why"><WhyCard why={answer.why} updatedLabel={updatedLabel} /></div>}
+              {answer.note && <p className="startsit-help">{answer.note}</p>}
+              {answer.examples && <Examples list={answer.examples} />}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+};
+
 /** Pick a team in the same league and players on each side; rates the trade by rest-of-season value. */
 const TradeCheck = ({
   myRoster: myRosterRaw, partners, rosterSettings, scoring, allPlayers: allPlayersRaw, projectionsById, week, onOpen,
@@ -739,7 +1012,12 @@ const TradeCheck = ({
             />
           </div>
           {live && <TradeMeter live={live} complete={!!result} />}
-          {!result && <p className="startsit-help">Tick at least one player{dynasty ? ' or pick' : ''} on each side. Numbers are expected points per game for the rest of the season.</p>}
+          {!result && (
+            <p className="startsit-help">
+              Tick at least one player{dynasty ? ' or pick' : ''} on each side.
+              {playerValue ? ' Numbers are trade values (market and our projections blended), not points.' : ' Numbers are expected points per game for the rest of the season.'}
+            </p>
+          )}
           {result && (
             <div className={`trade-result ${result.verdict.tone}`}>
               <strong className="trade-verdict">
@@ -820,7 +1098,11 @@ const TradeCheck = ({
                       <>
                         <button type="button" className="startsit-name" onClick={() => onOpen(p.id)}>{p.name}</button>
                         <small>{p.position}{dynasty && p.age ? `, age ${Math.floor(p.age)}` : ''}{p.role ? `, ${p.role}` : ''}</small>
-                        {p.tag && <span className={`startsit-tag ${p.tag.key === 'buy' ? 'good' : 'caution'}`} title={p.tag.detail}>{p.tag.label}</span>}
+                        {p.tag && (() => {
+                          const tag = tagForSide(p.tag, p.side);
+                          const good = (p.side === 'get') === (p.tag.key === 'buy');
+                          return <span className={`startsit-tag ${good ? 'good' : 'caution'}`} title={p.tag.detail}>{tag.label}</span>;
+                        })()}
                         <span className="startsit-points">
                           {p.display != null && <>value {p.display.toLocaleString()}{p.marketValue != null ? ` (market ${p.marketValue.toLocaleString()})` : ' (no market value, projections only)'}, </>}
                           {p.value.toFixed(1)} pts/game, {p.surplus.toFixed(1)} above waiver
@@ -1044,6 +1326,18 @@ const StartSit = ({ userId }) => {
   };
   const whyUpdated = projections?.fetchedAt ? `updated ${timeAgo(new Date(projections.fetchedAt).getTime())}` : null;
   const maxComparePoints = Math.max(1, ...comparePlayers.map((p) => p.points || 0));
+  // The head-to-head line uses the same call (clear, lean, coin flip) as its "?" card.
+  const compareWhy = verdict ? explainPair(verdict.winner, verdict.runnerUp, whyCtx) : null;
+  const compareCall = compareWhy?.call.label === 'Coin flip' ? 'tossup' : compareWhy?.call.label === 'Lean' ? 'lean' : 'clear';
+  let compareText = '';
+  if (verdict) {
+    const { winner, runnerUp, margin } = verdict;
+    if (benchReason(winner)) compareText = `Neither ${winner.name} nor ${runnerUp.name} is expected to play this week.`;
+    else if (benchReason(runnerUp)) compareText = `Start ${winner.name}. ${runnerUp.name} is ${runnerUp.onBye ? 'on bye' : `listed ${benchReason(runnerUp)}`} this week.`;
+    else if (compareCall === 'tossup') compareText = `Coin flip: ${winner.name} is only ${margin.toFixed(1)} pts ahead of ${runnerUp.name}. Tap ? for the tiebreaker.`;
+    else if (compareCall === 'lean') compareText = `Lean ${winner.name}: projected ${margin.toFixed(1)} pts more than ${runnerUp.name}, but it's not a lock.`;
+    else compareText = `Start ${winner.name}. Projected ${margin.toFixed(1)} pts more than ${runnerUp.name}.`;
+  }
   const insightPlayer = insightId
     ? [...roster, ...comparePlayers].find((p) => p.id === insightId)
       || withProjections([projectionsById.get(insightId)].filter(Boolean), projectionsById, scoring, shownWeek)[0]
@@ -1104,11 +1398,30 @@ const StartSit = ({ userId }) => {
       {projections && !loadingProjections && (
         <>
           <nav className="section-jumps" aria-label="Jump to a section">
+            <a href="#startsit-ask">Ask</a>
             <a href="#startsit-lineup">Lineup</a>
             {tradePartners.length > 0 && <a href="#startsit-waivers">Waivers</a>}
             <a href="#startsit-compare">Who to start</a>
             <a href="#startsit-trades">Trades</a>
           </nav>
+          <AskBar
+            projections={projections}
+            projectionsById={projectionsById}
+            roster={roster}
+            lineup={lineup}
+            whyCtx={whyCtx}
+            scoring={scoring}
+            week={shownWeek}
+            partners={tradePartners}
+            rosterSettings={rosterSettings}
+            dynasty={!!activeSleeper?.dynasty}
+            ppr={leaguePpr}
+            rosteredIds={leagueRosteredIds}
+            waiverPool={waiverPool}
+            waiverNote={waiverNote}
+            posRanks={posRanks}
+            updatedLabel={whyUpdated}
+          />
           <section className="card startsit-panel">
             <div className="player-board-heading">
               <div>
@@ -1370,11 +1683,8 @@ const StartSit = ({ userId }) => {
             )}
 
             {verdict && (
-              <div className={`startsit-verdict ${verdict.close ? 'close' : ''}`}>
-                {verdict.close
-                  ? `Toss-up: ${verdict.winner.name} is only ${verdict.margin.toFixed(1)} pts ahead of ${verdict.runnerUp.name}. Go with your gut or the better matchup.`
-                  : `Start ${verdict.winner.name}. Projected ${verdict.margin.toFixed(1)} pts more than ${verdict.runnerUp.name}.`}
-                {isUnavailable(verdict.winner.injury) && ` Heads up: ${verdict.winner.name} is listed ${verdict.winner.injury}.`}
+              <div className={`startsit-verdict ${compareCall === 'tossup' ? 'close' : ''}`}>
+                {compareText}
                 <WhyButton
                   label={`Why ${verdict.winner.name}?`}
                   explain={() => explainPair(verdict.winner, verdict.runnerUp, whyCtx)}
@@ -1404,6 +1714,8 @@ const StartSit = ({ userId }) => {
             rosteredIds={leagueRosteredIds}
             demand={demand}
           />
+
+          <AccuracyCard scoring={scoring} />
 
           {insightPlayer && (
             <PlayerInsight

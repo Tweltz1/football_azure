@@ -636,6 +636,7 @@ var projectionCache = /* @__PURE__ */ new Map();
 var weekStatsCache = /* @__PURE__ */ new Map();
 var playerSeasonCache = /* @__PURE__ */ new Map();
 var futureCache = /* @__PURE__ */ new Map();
+var accuracyCache = { entry: null };
 var num = (value) => {
   const parsed = typeof value === "number" ? value : parseFloat(String(value != null ? value : ""));
   return Number.isFinite(parsed) ? parsed : 0;
@@ -1057,6 +1058,64 @@ function buildDefenseTable(pastWeeks) {
     });
   }
   return table;
+}
+var ACCURACY_MIN_PROJECTION = 1;
+function snapshotOf(projections) {
+  const saved = {};
+  for (const p of projections.players) {
+    if (p.onBye || p.points.ppr < ACCURACY_MIN_PROJECTION)
+      continue;
+    saved[p.id] = [p.position, p.points.ppr, p.points.half, p.points.std, p.name];
+  }
+  return saved;
+}
+async function sleeperSnapshot(fetchJson, season, week) {
+  const rows = await fetchJson(`${SLEEPER_PROJECTIONS_URL}/${season}/${week}?season_type=regular&${positionsQuery()}&order_by=pts_ppr`);
+  if (!Array.isArray(rows))
+    throw new Error("Sleeper projections response was not a list.");
+  const saved = {};
+  for (const row of rows) {
+    if (!row || typeof row !== "object")
+      continue;
+    const p = toPlayer(row);
+    if (!p || p.points.ppr < ACCURACY_MIN_PROJECTION)
+      continue;
+    if (!saved[p.id] || saved[p.id][1] < p.points.ppr)
+      saved[p.id] = [p.position, p.points.ppr, p.points.half, p.points.std, p.name];
+  }
+  return saved;
+}
+async function getProjectionAccuracy(fetchJson, now, snapshots) {
+  const nowMs = now.getTime();
+  const cached = accuracyCache.entry;
+  if (cached && nowMs - cached.at < CACHE_MS)
+    return cached.value;
+  const state = await currentState(fetchJson, nowMs);
+  const lastFinished = state.seasonType === "regular" ? Math.min(state.week - 1, LAST_REGULAR_WEEK) : LAST_REGULAR_WEEK;
+  const weekNumbers = Array.from({ length: Math.max(0, lastFinished) }, (_, i) => i + 1);
+  const results = await Promise.allSettled(weekNumbers.map(async (week) => {
+    const saved = snapshots ? await snapshots.get(state.season, week).catch(() => null) : null;
+    const hasSaved = saved != null && Object.keys(saved).length > 0;
+    const [projected, actual] = await Promise.all([
+      hasSaved ? saved : sleeperSnapshot(fetchJson, state.season, week),
+      getWeekStats(fetchJson, state.season, week, nowMs)
+    ]);
+    const rows = [];
+    for (const [id, [position, ppr, half, std, name]] of Object.entries(projected)) {
+      const line = actual.get(id);
+      if (!line)
+        continue;
+      rows.push([id, name, position, round1(ppr), round1(half), round1(std), round1(line.points.ppr), round1(line.points.half), round1(line.points.std)]);
+    }
+    return { week, source: hasSaved ? "saved" : "sleeper", rows };
+  }));
+  const value = {
+    season: state.season,
+    fetchedAt: now.toISOString(),
+    weeks: results.flatMap((r) => r.status === "fulfilled" && r.value.rows.length > 0 ? [r.value] : [])
+  };
+  accuracyCache.entry = { at: nowMs, value };
+  return value;
 }
 
 // ../supabase/functions/_shared/sleeperImport.ts
@@ -2450,10 +2509,32 @@ async function offlineRestore(ctx, leagueId, data) {
   await broadcastLeagueChange(ctx, before, stored.version, next, version);
   return ok(clientLeague(ctx, clone(next), version));
 }
+var lastSnapshotAt = /* @__PURE__ */ new Map();
+var SNAPSHOT_EVERY_MS = 30 * 60 * 1e3;
+async function saveSnapshot(ctx, projections) {
+  var _a;
+  if (!ctx.snapshots || projections.seasonType !== "regular" || projections.week !== projections.currentWeek)
+    return;
+  const key = `${projections.season}-${projections.week}`;
+  const nowMs = ctx.now().getTime();
+  if (nowMs - ((_a = lastSnapshotAt.get(key)) != null ? _a : 0) < SNAPSHOT_EVERY_MS)
+    return;
+  lastSnapshotAt.set(key, nowMs);
+  try {
+    await ctx.snapshots.merge(projections.season, projections.week, snapshotOf(projections));
+  } catch (error) {
+    ctx.log.warn("Saving the weekly projections failed.", error);
+  }
+}
+function clearSnapshotTimes() {
+  lastSnapshotAt.clear();
+}
 async function startSit(ctx, query) {
   const week = int(query.get("week"));
   try {
-    return ok(await getWeekProjections(ctx.fetchJson, ctx.now(), week || null));
+    const projections = await getWeekProjections(ctx.fetchJson, ctx.now(), week || null);
+    await saveSnapshot(ctx, projections);
+    return ok(projections);
   } catch (error) {
     ctx.log.warn("Loading Sleeper projections failed.", error);
     return { status: 502, body: "Weekly projections are not available right now. Please try again in a few minutes." };
@@ -2483,6 +2564,15 @@ async function startSitMatchup(ctx, playerId, query) {
   } catch (error) {
     ctx.log.warn(`Loading matchup history failed for ${playerId}.`, error);
     return { status: 502, body: "Past matchups are not available right now. Please try again in a few minutes." };
+  }
+}
+async function startSitAccuracy(ctx) {
+  var _a;
+  try {
+    return ok(await getProjectionAccuracy(ctx.fetchJson, ctx.now(), (_a = ctx.snapshots) != null ? _a : null));
+  } catch (error) {
+    ctx.log.warn("Loading projection accuracy failed.", error);
+    return { status: 502, body: "Accuracy numbers are not available right now." };
   }
 }
 async function startSitMarket(ctx, query) {
@@ -3074,6 +3164,8 @@ async function handle(ctx, method, path, query, body) {
     return startSitSleeper(ctx, query);
   if (parts.length === 2 && method === "GET" && parts[0] === "startsit" && parts[1] === "market")
     return startSitMarket(ctx, query);
+  if (parts.length === 2 && method === "GET" && parts[0] === "startsit" && parts[1] === "accuracy")
+    return startSitAccuracy(ctx);
   if (parts.length === 3 && method === "GET" && parts[0] === "startsit" && parts[1] === "matchup")
     return startSitMatchup(ctx, parts[2], query);
   if (parts.length === 2 && parts[0] === "user-profile" && method === "POST")
@@ -3091,5 +3183,6 @@ async function handle(ctx, method, path, query, body) {
   return notFound("Not found.");
 }
 export {
+  clearSnapshotTimes,
   handle
 };

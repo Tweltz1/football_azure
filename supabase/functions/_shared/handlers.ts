@@ -3,7 +3,7 @@
 // with one deliberate change: the acting user always comes from the sign-in token,
 // never from a userId/adminId the browser puts in the request body.
 
-import type { Broadcaster, HistoryStore, LeagueStore, Logger, ProfileStore, StoredLeague } from './ports.ts';
+import type { Broadcaster, HistoryStore, LeagueStore, Logger, ProfileStore, ProjectionSnapshotStore, StoredLeague } from './ports.ts';
 import type { Bid, League, Player, RosterSettings, Team, UserProfile } from './models.ts';
 import {
   clone, ensureDefaults, forClient, isCommish, isManual, isWhiteboard, MANUAL, normalizeBiddingMode, normalizeDraftMode,
@@ -17,7 +17,7 @@ import {
 import { diffObjects } from './diff.ts';
 import { learnFromBoard, sanitizeHandwriting } from './handwriting.ts';
 import { draftNumberOf, historyIdFor, historySummary, isCompleted, snapshotDraft } from './history.ts';
-import { type FetchJson, getMatchupHistory, getWeekProjections } from './startSit.ts';
+import { type FetchJson, getMatchupHistory, getProjectionAccuracy, getWeekProjections, snapshotOf } from './startSit.ts';
 import { getSleeperTeams, isValidSleeperUsername, SleeperUserNotFound } from './sleeperImport.ts';
 import { getMarketValues, marketSettingsFrom } from './market.ts';
 
@@ -25,6 +25,8 @@ export interface Ctx {
   leagues: LeagueStore;
   profiles: ProfileStore;
   history: HistoryStore;
+  /** Saved weekly projections for the accuracy card; missing on the offline device copy. */
+  snapshots?: ProjectionSnapshotStore;
   broadcaster: Broadcaster;
   log: Logger;
   now: () => Date;
@@ -1156,10 +1158,35 @@ async function offlineRestore(ctx: Ctx, leagueId: string, data: Body): Promise<R
 
 // ---- Start/Sit -------------------------------------------------------------------
 
+// When each live week's projections were last saved, so a busy page saves at most every half hour.
+const lastSnapshotAt = new Map<string, number>();
+const SNAPSHOT_EVERY_MS = 30 * 60 * 1000;
+
+/** Saves the live week's projections, so the last pre-game numbers can be checked after the games. */
+async function saveSnapshot(ctx: Ctx, projections: Awaited<ReturnType<typeof getWeekProjections>>) {
+  if (!ctx.snapshots || projections.seasonType !== 'regular' || projections.week !== projections.currentWeek) return;
+  const key = `${projections.season}-${projections.week}`;
+  const nowMs = ctx.now().getTime();
+  if (nowMs - (lastSnapshotAt.get(key) ?? 0) < SNAPSHOT_EVERY_MS) return;
+  lastSnapshotAt.set(key, nowMs);
+  try {
+    await ctx.snapshots.merge(projections.season, projections.week, snapshotOf(projections));
+  } catch (error) {
+    ctx.log.warn('Saving the weekly projections failed.', error);
+  }
+}
+
+/** For tests: forget when projections were last saved. */
+export function clearSnapshotTimes() {
+  lastSnapshotAt.clear();
+}
+
 async function startSit(ctx: Ctx, query: URLSearchParams): Promise<Res> {
   const week = int(query.get('week'));
   try {
-    return ok(await getWeekProjections(ctx.fetchJson, ctx.now(), week || null));
+    const projections = await getWeekProjections(ctx.fetchJson, ctx.now(), week || null);
+    await saveSnapshot(ctx, projections);
+    return ok(projections);
   } catch (error) {
     ctx.log.warn('Loading Sleeper projections failed.', error);
     return { status: 502, body: 'Weekly projections are not available right now. Please try again in a few minutes.' };
@@ -1187,6 +1214,15 @@ async function startSitMatchup(ctx: Ctx, playerId: string, query: URLSearchParam
   } catch (error) {
     ctx.log.warn(`Loading matchup history failed for ${playerId}.`, error);
     return { status: 502, body: 'Past matchups are not available right now. Please try again in a few minutes.' };
+  }
+}
+
+async function startSitAccuracy(ctx: Ctx): Promise<Res> {
+  try {
+    return ok(await getProjectionAccuracy(ctx.fetchJson, ctx.now(), ctx.snapshots ?? null));
+  } catch (error) {
+    ctx.log.warn('Loading projection accuracy failed.', error);
+    return { status: 502, body: 'Accuracy numbers are not available right now.' };
   }
 }
 
@@ -1758,6 +1794,7 @@ export async function handle(ctx: Ctx, method: string, path: string, query: URLS
   if (parts.length === 2 && method === 'GET' && parts[0] === 'invite') return getInvite(ctx, parts[1]);
   if (parts.length === 2 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'sleeper') return startSitSleeper(ctx, query);
   if (parts.length === 2 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'market') return startSitMarket(ctx, query);
+  if (parts.length === 2 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'accuracy') return startSitAccuracy(ctx);
   if (parts.length === 3 && method === 'GET' && parts[0] === 'startsit' && parts[1] === 'matchup') return startSitMatchup(ctx, parts[2], query);
 
   if (parts.length === 2 && parts[0] === 'user-profile' && method === 'POST') return updateProfile(ctx, parts[1], data);
