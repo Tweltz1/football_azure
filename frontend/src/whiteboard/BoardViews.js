@@ -91,6 +91,54 @@ export const pickLabel = (league, pick) => (userId, bid) => {
   return bid.amount > 0 ? `Read $${bid.amount}` : 'Unreadable';
 };
 
+/** Manual style: the commissioner reads a tie on the boards, so they pick the tied teams and the amount. */
+const ManualRebid = ({ leagueId, candidates }) => {
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState([]);
+  const [amount, setAmount] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  if (candidates.length < 2) return null;
+  if (!open) {
+    return <button type="button" className="link-button" onClick={() => setOpen(true)}>Boards tied? Start a rebid round</button>;
+  }
+  const toggle = (ownerId) => setPicked((now) => (now.includes(ownerId) ? now.filter((id) => id !== ownerId) : [...now, ownerId]));
+  const start = async () => {
+    const value = parseInt(amount, 10) || 0;
+    if (picked.length < 2) { setError('Choose the tied teams.'); return; }
+    if (value < 1) { setError('Enter the tied amount.'); return; }
+    setBusy(true);
+    setError('');
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/board-rebid`, { userIds: picked, amount: value });
+    } catch (err) {
+      setError(String(err.response?.data || err.message));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="wb-award-manual-rebid">
+      <p className="wb-award-lead">Which teams tied, and at how much?</p>
+      <div className="wb-award-teams">
+        {candidates.map((team) => (
+          <button key={team.id} type="button" className={`wb-chip${picked.includes(team.ownerId) ? ' is-active' : ''}`} onClick={() => toggle(team.ownerId)}>
+            <span>{team.name}</span>
+          </button>
+        ))}
+      </div>
+      <label className="wb-award-amount">
+        <span>Tied at</span>
+        <span className="wb-award-input">
+          <i aria-hidden="true">$</i>
+          <input type="number" inputMode="numeric" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Tied amount" />
+        </span>
+      </label>
+      <button type="button" className="wb-award-go wb-award-rebid" onClick={start} disabled={busy}>Start rebid round</button>
+      {error && <p className="wb-error" role="alert">{error}</p>}
+    </div>
+  );
+};
+
 /**
  * Commissioner-only panel during the board review. Manual: choose the winner and type the amount.
  * Auto-read: prefilled with the top read (ties flagged), editable, then Confirm & award.
@@ -141,6 +189,19 @@ export const BoardAwardPanel = ({ league, leagueId, selectedId, onSelect }) => {
     setError('');
     try {
       await axios.post(`${API_BASE_URL}/leagues/${leagueId}/skip`, {});
+    } catch (err) {
+      setError(String(err.response?.data || err.message));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // First tie: the tied teams write again and must beat it. After that rebid round, the commissioner picks.
+  const handleRebid = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/board-rebid`, { userIds: topRead.userIds, amount: topRead.amount });
     } catch (err) {
       setError(String(err.response?.data || err.message));
     } finally {
@@ -201,15 +262,23 @@ export const BoardAwardPanel = ({ league, leagueId, selectedId, onSelect }) => {
       <div className="wb-award-head">
         <p className="wb-award-kicker">Commissioner award</p>
         <p className="wb-award-lead">
-          {autoRead
-            ? (isTie ? 'Top reads are tied. Pick the winner.' : 'Check the top read, then confirm.')
-            : 'Read the boards, pick the winner and enter the amount.'}
+          {review.tie
+            ? `This was the rebid round (it had to beat $${review.tie.tieAmount}). ${isTie ? 'It tied again, so pick the winner.' : 'Check the boards, then confirm.'}`
+            : autoRead
+              ? (isTie ? 'Top reads are tied. Start a rebid round, or pick the winner.' : 'Check the top read, then confirm.')
+              : 'Read the boards, pick the winner and enter the amount. If two boards tie, use the rebid round below.'}
         </p>
       </div>
 
       {isTie && (
         <p className="wb-award-tie" role="status">Tie at ${topRead.amount}: {tiedNames}</p>
       )}
+      {isTie && !review.tie && (
+        <button type="button" className="wb-award-go wb-award-rebid" onClick={handleRebid} disabled={busy}>
+          Rebid round: {tiedNames} must beat ${topRead.amount}
+        </button>
+      )}
+      {!autoRead && !review.tie && <ManualRebid league={league} leagueId={leagueId} candidates={candidates} />}
 
       <div className="wb-award-teams" role="radiogroup" aria-label="Winning team">
         {candidates.map((team) => {

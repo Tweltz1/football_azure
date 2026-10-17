@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
+import { usePlayerDataVersion } from '../data/livePlayerData';
 import {
     buildPlayerBoard,
     filterPlayerBoard,
@@ -38,6 +39,7 @@ const Profile = () => {
     const [displayName, setDisplayName] = useState('');
     const [defaultTeamName, setDefaultTeamName] = useState('');
     const [profileMessage, setProfileMessage] = useState('');
+    const [syncInfo, setSyncInfo] = useState(null);
     const [noteDrafts, setNoteDrafts] = useState({});
     const [tierAssignments, setTierAssignments] = useState({});
     const [budgetPlan, setBudgetPlan] = useState(DEFAULT_BUDGET_PLAN);
@@ -72,6 +74,8 @@ const Profile = () => {
                 });
                 setUserProfile(response.data);
                 syncProfileFields(response.data);
+                const savedAt = Number(response.headers?.['x-hl-saved-at']) || 0;
+                setSyncInfo(response.config?.fromSavedCopy ? { offline: true, savedAt } : { offline: false, savedAt: Date.now() });
             } catch (error) {
                 console.error('Error fetching user profile:', error);
                 alert('Could not fetch your profile.');
@@ -82,7 +86,8 @@ const Profile = () => {
         getProfile();
     }, [user, syncProfileFields]);
 
-    const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode]);
+    const playersVersion = usePlayerDataVersion();
+    const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode, playersVersion]); // eslint-disable-line react-hooks/exhaustive-deps -- recompute when a newer player list arrives
     const filteredPlayerPool = useMemo(() => filterPlayerBoard(playerBoard, {
         searchTerm,
         positionFilter,
@@ -108,6 +113,7 @@ const Profile = () => {
             const response = await axios.post(`${API_BASE_URL}/user-profile/${user.userId}`, patch);
             setUserProfile(response.data);
             syncProfileFields(response.data, syncNotes, syncStrategy);
+            setSyncInfo({ offline: false, savedAt: Date.now() });
             notifyProfileUpdated();
             setProfileMessage(successMessage);
             setTimeout(() => setProfileMessage(''), 2500);
@@ -249,6 +255,7 @@ const Profile = () => {
                     <span>{scoringLabel}</span>
                     <span>Updated {formatDate(playerPoolMeta.fetchedAt)}</span>
                 </div>
+                <ProfileSyncLine lastSaved={userProfile.lastSaved} syncInfo={syncInfo} />
             </section>
 
             <section className="card profile-settings-panel">
@@ -547,6 +554,25 @@ const formatDate = (value) => {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'recently';
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+const formatWhen = (value) => {
+    const date = new Date(value);
+    if (!value || Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+};
+
+// Where this profile came from: the account (just synced) or the copy saved on this phone, and where it
+// was last changed.
+const ProfileSyncLine = ({ lastSaved, syncInfo }) => {
+    if (!syncInfo && !lastSaved) return null;
+    const sync = syncInfo?.offline
+        ? `No internet: showing the copy saved on this phone${syncInfo.savedAt ? ` ${formatWhen(syncInfo.savedAt)}` : ''}. Changes need internet.`
+        : syncInfo ? `Synced with your account ${formatWhen(syncInfo.savedAt)}.` : '';
+    const changed = lastSaved?.at
+        ? `Last changed from the ${lastSaved.via === 'app' ? 'iPhone app' : 'website'} ${formatWhen(lastSaved.at)}.`
+        : '';
+    return <p className={`profile-sync-line${syncInfo?.offline ? ' is-offline' : ''}`}>{[sync, changed].filter(Boolean).join(' ')}</p>;
 };
 
 export default Profile;

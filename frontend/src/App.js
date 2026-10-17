@@ -6,6 +6,7 @@ import DraftRoomEnhanced from './components/DraftRoomEnhanced';
 import DraftTvView from './components/DraftTvView';
 import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
+import ClimbBackdrop from './components/ClimbBackdrop';
 import Profile from './components/Profile';
 import StartSit from './components/StartSit';
 import Rankings from './components/Rankings';
@@ -22,6 +23,7 @@ function App() {
   if (loading) {
     return (
       <div className="loading-screen">
+        <ClimbBackdrop />
         <div className="loading-panel">
           <span className="loading-mark" />
           <p>Loading draft command...</p>
@@ -52,7 +54,7 @@ function App() {
             <NavLink to="/" end>Home</NavLink>
             <NavLink to="/leagues">Leagues</NavLink>
             <NavLink to="/create-league">Create</NavLink>
-            <NavLink to="/start-sit"><span className="nav-long">Start/Sit &amp; Trades</span><span className="nav-short">Start/Sit</span></NavLink>
+            <NavLink to="/start-sit"><span className="nav-long">Start/Sit &amp; Trades</span><span className="nav-short nav-two-line">Start/Sit &amp; Trade</span></NavLink>
             <NavLink to="/rankings">Rankings</NavLink>
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>

@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom';
 import App from './App';
 import { AuthProvider } from './AuthContext';
 import ErrorBoundary from './ErrorBoundary';
+// iPhone app: nearby-phones drafts (does nothing on the website).
+import './offline/nearbyDraft';
+// iPhone app: download the latest player list each day (does nothing on the website).
+import './data/livePlayerData';
 
 ReactDOM.render(
   <React.StrictMode>

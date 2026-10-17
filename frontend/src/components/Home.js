@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
 import { playerInsightsMeta, playerRankMovements, sleeperTrending } from '../data/playerInsights';
+import { usePlayerDataVersion } from '../data/livePlayerData';
 import {
   buildPlayerBoard,
   filterPlayerBoard,
@@ -60,7 +61,8 @@ const Home = () => {
     return subscribeProfileUpdates(fetchProfile, { includeFocus: true });
   }, [fetchProfile]);
 
-  const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode]);
+  const playersVersion = usePlayerDataVersion();
+  const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode, playersVersion]); // eslint-disable-line react-hooks/exhaustive-deps -- recompute when a newer player list arrives
   const rankMovementItems = useMemo(() => ({
     risers: hydrateMovementItems(playerRankMovements.risers, playerBoard),
     fallers: hydrateMovementItems(playerRankMovements.fallers, playerBoard),

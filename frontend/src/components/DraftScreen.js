@@ -12,6 +12,7 @@ import { formatClock, leagueStatusLabel } from '../data/leagueLabels';
 import { ShowMoreButton, useShowMore } from './ShowMore';
 import '../App.css';
 import './ManualConsole.css';
+import { isCommish } from '../data/leagueLabels';
 
 const TIMER_POLL_MS = 1000;
 const AVAILABLE_PAGE_SIZE = 40;
@@ -221,7 +222,7 @@ const DraftScreen = ({
 };
 
 const LobbyView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }) => {
-    const isCurrentUserAdmin = league.adminId === user.userId;
+    const isCurrentUserAdmin = isCommish(league, user.userId);
     const isManualDraft = league.draftMode === 'manual';
     const nonAdminMembers = (league.members || []).filter(id => id !== league.adminId);
     const readyMembers = league.readyMembers || [];
@@ -308,7 +309,7 @@ const DraftingView = ({ league, user, leagueId, draftProfile, chatMessages = [],
                 <AuctionView league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
             )}
 
-            {league.adminId === user.userId && (
+            {isCommish(league, user.userId) && (
                 <div className="card commissioner-controls-card" style={{marginTop: '20px'}}>
                     <h3>Commissioner Controls</h3>
                     <AdminControls league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
@@ -764,7 +765,7 @@ const ManualDraftView = ({ league, user, leagueId, draftProfile, chatMessages = 
     const [positionFilter, setPositionFilter] = useState('ALL');
     const [amount, setAmount] = useState(1);
     const [isSaving, setIsSaving] = useState(false);
-    const isAdmin = league.adminId === user.userId;
+    const isAdmin = isCommish(league, user.userId);
     const teams = league.teams || [];
     const query = searchTerm.trim().toLowerCase();
     const availablePlayers = useMemo(() => (league.initialPlayerPool || [])
@@ -1252,7 +1253,7 @@ const BoardReviewView = ({ league, user, leagueId, draftProfile }) => {
     const [selectedId, setSelectedId] = useState(null);
     const review = league.boardReview;
     const currentPlayer = (league.initialPlayerPool || []).find(p => p.id === league.currentPlayerId);
-    const isCurrentUserAdmin = league.adminId === user.userId;
+    const isCurrentUserAdmin = isCommish(league, user.userId);
     const boardCount = Object.keys(review?.bids || {}).length;
 
     if (!review) return <div className="card">Collecting the boards...</div>;
@@ -1291,7 +1292,16 @@ const TieBreakerView = ({ league, user, leagueId, draftProfile }) => {
     const tiedTeamIds = league.tieBreaker?.tiedTeamIds || [];
     const userIsTied = tiedTeamIds.includes(user.userId);
     const isSecondRoundTie = league.tieBreaker?.round === 2;
-    const isCurrentUserAdmin = league.adminId === user.userId;
+    const isBoardRebid = Boolean(league.tieBreaker?.boards);
+
+    const handleLockInBoard = async (amount, board) => {
+        try {
+            await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount, board }, { suppressBidLimitAlert: true });
+        } catch (error) {
+            throw new Error(error.response?.data || error.message);
+        }
+    };
+    const isCurrentUserAdmin = isCommish(league, user.userId);
 
     useEffect(() => {
         if (league.tieBreaker) {
@@ -1350,7 +1360,23 @@ const TieBreakerView = ({ league, user, leagueId, draftProfile }) => {
                 <strong className={`auction-clock-value${timer >= 3600 ? ' is-hours' : timer >= 60 ? ' is-minutes' : ''}`}>{formatClock(timer)}{timer < 60 ? 's' : ''}</strong>
             </p>
 
-            {userIsTied ? (
+            {userIsTied && isBoardRebid ? (
+                <div>
+                    <h4>You are in the tie-breaker!</h4>
+                    <p>Write a new board. It must beat ${league.tieBreaker.tieAmount}. If you don't, you count at ${league.tieBreaker.tieAmount + 1}.</p>
+                    <WhiteboardPad
+                        autoRead={isAutoReadLeague(league)}
+                        activeBid={league.activeBids?.[user.userId] || null}
+                        disabled={Boolean(league.auctionTimer?.isPaused)}
+                        disabledReason="The draft is paused."
+                        onLockIn={handleLockInBoard}
+                        onWithdraw={() => {}}
+                        showLocked={false}
+                        userId={user.userId}
+                        maxAmount={maxBidFor(league, (league.teams || []).find(t => t.ownerId === user.userId))}
+                    />
+                </div>
+            ) : userIsTied ? (
                 <div>
                     <h4>You are in the tie-breaker!</h4>
                     <p>You must bid at least ${league.tieBreaker.tieAmount + 1}.</p>

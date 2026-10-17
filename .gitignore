@@ -4,6 +4,7 @@ frontend/node_modules
 # build output
 /frontend/build
 /frontend/dist
+/frontend/public/player-data.json
 
 # misc
 .DS_Store
@@ -21,3 +22,4 @@ yarn-error.log*
 # Supabase CLI
 supabase/.temp
 supabase/.branches
+/ios-app/node_modules
