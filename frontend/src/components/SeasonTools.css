@@ -959,3 +959,61 @@ details[open] > .history-team-summary::after {
   display: block;
   font-weight: 500 !important;
 }
+
+/* Ask the model: the chat bar on Start/Sit. */
+.ask-form {
+  display: flex;
+  gap: 8px;
+}
+
+.ask-form input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ask-form button {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.ask-log {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.ask-question {
+  justify-self: end;
+  margin: 0 0 6px auto;
+  max-width: 85%;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.ask-answer > p:first-child {
+  margin: 0 0 6px;
+}
+
+.ask-item-label {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* The "?" card, shown inline instead of as a popover. */
+.why-pop.ask-why {
+  position: static;
+  width: auto;
+  max-height: none;
+  margin-top: 8px;
+  box-shadow: none;
+  animation: none;
+}
+
+.why-pop.ask-why::before {
+  display: none;
+}

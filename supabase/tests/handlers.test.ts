@@ -1,7 +1,7 @@
 // Runs the API handlers against in-memory storage: `node --test supabase/tests/`
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { handle, type Ctx } from '../functions/_shared/handlers.ts';
+import { clearSnapshotTimes, handle, type Ctx } from '../functions/_shared/handlers.ts';
 import { applyOps, diffObjects } from '../functions/_shared/diff.ts';
 import { HANDWRITING_LIMITS, learnFromBoard, sanitizeHandwriting, splitBoardDigits } from '../functions/_shared/handwriting.ts';
 import { getInitialPlayerPool } from '../functions/_shared/playerData.ts';
@@ -9,7 +9,7 @@ import { buildDefenseTable, clearStartSitCache } from '../functions/_shared/star
 import { clearMarketCache } from '../functions/_shared/market.ts';
 import { clearSleeperCache } from '../functions/_shared/sleeperImport.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../functions/_shared/models.ts';
-import type { HistoryStore, LeagueStore, ProfileStore, StoredLeague } from '../functions/_shared/ports.ts';
+import type { HistoryStore, LeagueStore, ProfileStore, ProjectionSnapshot, ProjectionSnapshotStore, StoredLeague } from '../functions/_shared/ports.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
@@ -17,6 +17,7 @@ function memoryWorld({ latencyMs = 0 } = {}) {
   const leagueRows = new Map<string, StoredLeague>();
   const profileRows = new Map<string, UserProfile>();
   const historyRows = new Map<string, DraftHistoryEntry>();
+  const snapshotRows = new Map<string, Record<string, ProjectionSnapshot>>();
   const fetched: string[] = [];
   let fetchResponses: (url: string) => unknown = () => { throw new Error('offline'); };
   const sent: { leagueId: string; event: string; payload: any; toUserId?: string }[] = [];
@@ -54,10 +55,18 @@ function memoryWorld({ latencyMs = 0 } = {}) {
     async listForMember(userId) { return [...historyRows.values()].filter((e) => e.members.includes(userId)).map(clone); },
   };
 
+  const snapshots: ProjectionSnapshotStore = {
+    async get(season, week) { const r = snapshotRows.get(`${season}-${week}`); return r ? clone(r) : null; },
+    async merge(season, week, players) {
+      snapshotRows.set(`${season}-${week}`, { ...(snapshotRows.get(`${season}-${week}`) ?? {}), ...clone(players) });
+    },
+  };
+
   const ctxFor = (userId: string | null): Ctx => ({
     leagues,
     profiles,
     history,
+    snapshots,
     broadcaster: { async send(leagueId, event, payload, toUserId) { sent.push({ leagueId, event, payload: clone(payload), toUserId }); } },
     log: { info() {}, warn() {}, error() {} },
     now: () => new Date(clock),
@@ -72,7 +81,7 @@ function memoryWorld({ latencyMs = 0 } = {}) {
     handle(ctxFor(userId), method, path, new URLSearchParams(query), body);
 
   return {
-    call, sent, leagueRows, historyRows, fetched,
+    call, sent, leagueRows, historyRows, snapshotRows, fetched,
     respondWith: (fn: (url: string) => unknown) => { fetchResponses = fn; },
     advance: (seconds: number) => { clock += seconds * 1000; },
     league: (id: string) => leagueRows.get(id)!.league as League,
@@ -487,6 +496,64 @@ test('start/sit: weekly projections from Sleeper, cached, with ids that match th
   clearStartSitCache();
   world.respondWith(() => { throw new Error('down'); });
   assert.equal((await world.call('bob', 'GET', 'startsit')).status, 502);
+});
+
+test('start/sit: saves the live week\'s projections and scores past weeks against real results', async () => {
+  clearStartSitCache();
+  clearSnapshotTimes();
+  const world = memoryWorld();
+  const proj = (id: string, ppr: number, position = 'WR') => ({
+    player_id: id, team: 'BUF', opponent: 'KC', stats: { pts_ppr: ppr, pts_half_ppr: ppr - 1, pts_std: ppr - 2 },
+    player: { first_name: 'P', last_name: id, position },
+  });
+  const stat = (id: string, ppr: number) => ({
+    player_id: id, team: 'BUF', opponent: 'KC', stats: { pts_ppr: ppr, pts_half_ppr: ppr - 1, pts_std: ppr - 2, gp: 1 },
+    player: { first_name: 'P', last_name: id, position: 'WR' },
+  });
+  let week = 2;
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week, display_week: week, season_type: 'regular' };
+    if (url.includes('/stats/nfl/2026/1?')) return [stat('1', 20), stat('2', 3)];
+    if (url.includes('/stats/nfl/2026/2?')) return [stat('1', 9), stat('3', 30)];  // player 2 didn't play
+    if (url.includes('/projections/nfl/2026/1?')) return [proj('1', 15), proj('2', 8)];
+    if (url.includes('/projections/nfl/2026/2?')) return [proj('1', 14), proj('2', 10), proj('3', 0.5)];
+    return [];
+  });
+
+  // Loading the live week saves it; a past week doesn't.
+  await world.call('bob', 'GET', 'startsit');
+  await world.call('bob', 'GET', 'startsit', undefined, 'week=1');
+  assert.deepEqual([...world.snapshotRows.keys()], ['2026-2']);
+  assert.deepEqual(world.snapshotRows.get('2026-2'), { 'sleeper-1': ['WR', 14, 13, 12, 'P 1'], 'sleeper-2': ['WR', 10, 9, 8, 'P 2'] });
+
+  // A late update overwrites that player and keeps the rest, at most every half hour.
+  clearStartSitCache();
+  world.respondWith((url) => {
+    if (url.includes('/state/nfl')) return { season: '2026', week, display_week: week, season_type: 'regular' };
+    if (url.includes('/stats/nfl/2026/1?')) return [stat('1', 20), stat('2', 3)];
+    if (url.includes('/stats/nfl/2026/2?')) return [stat('1', 9), stat('3', 30)];
+    if (url.includes('/projections/nfl/2026/1?')) return [proj('1', 15), proj('2', 8)];
+    if (url.includes('/projections/nfl/2026/2?')) return [proj('1', 16)];
+    return [];
+  });
+  await world.call('bob', 'GET', 'startsit');
+  assert.equal(world.snapshotRows.get('2026-2')!['sleeper-1'][1], 14, 'too soon to save again');
+  world.advance(31 * 60);
+  await world.call('bob', 'GET', 'startsit');
+  assert.equal(world.snapshotRows.get('2026-2')!['sleeper-1'][1], 16);
+  assert.equal(world.snapshotRows.get('2026-2')!['sleeper-2'][1], 10, 'kept');
+
+  // After the week rolls over, week 2 is scored from the saved copy and week 1 from Sleeper's own.
+  week = 3;
+  clearStartSitCache();
+  const res = await world.call('bob', 'GET', 'startsit/accuracy');
+  assert.equal(res.status, 200, String(res.body));
+  const body = res.body as any;
+  assert.equal(body.season, 2026);
+  assert.deepEqual(body.weeks.map((w: any) => [w.week, w.source]), [[1, 'sleeper'], [2, 'saved']]);
+  assert.deepEqual(body.weeks[0].rows, [['sleeper-1', 'P 1', 'WR', 15, 14, 13, 20, 19, 18], ['sleeper-2', 'P 2', 'WR', 8, 7, 6, 3, 2, 1]]);
+  assert.deepEqual(body.weeks[1].rows, [['sleeper-1', 'P 1', 'WR', 16, 15, 14, 9, 8, 7]], 'no-shows and unprojected players are left out');
+  assert.equal((await world.call(null, 'GET', 'startsit/accuracy')).status, 401);
 });
 
 test('start/sit: upcoming weeks mark games a player is not expected to play, and skip byes', async () => {

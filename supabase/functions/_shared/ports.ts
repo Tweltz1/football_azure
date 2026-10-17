@@ -49,3 +49,13 @@ export interface Logger {
   warn(message: string, ...args: unknown[]): void;
   error(message: string, ...args: unknown[]): void;
 }
+
+/** One player's projection as saved before kickoff: position, then PPR, half-PPR and standard points, then name. */
+export type ProjectionSnapshot = [position: string, ppr: number, half: number, std: number, name: string];
+
+export interface ProjectionSnapshotStore {
+  /** The saved projections for a week, keyed by player id, or null when none were saved. */
+  get(season: number, week: number): Promise<Record<string, ProjectionSnapshot> | null>;
+  /** Adds or overwrites these players in the week's saved projections, keeping everyone else. */
+  merge(season: number, week: number, players: Record<string, ProjectionSnapshot>): Promise<void>;
+}
