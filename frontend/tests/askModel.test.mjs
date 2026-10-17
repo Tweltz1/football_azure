@@ -114,6 +114,32 @@ test('trades and pickups go to the league model, and need a league', () => {
   assert.match(answerQuestion('should i drop nabers', ctx).text, /Keep Malik Nabers/);
 });
 
+test('"why should I trade X" and "who should I trade away" give reasons, not just a list', () => {
+  const sellTag = { key: 'sell', label: 'Sell high' };
+  const ctx = ctxFor(['bijan', 'nabers', 'olave', 'chase', 'mixon'], {
+    trades: {
+      rate: () => ({ text: 'x' }),
+      find: ({ give }) => (give.length ? [{ partnerName: 'Team Log', give: [give[0], everyone[0]], get: [everyone[5]], myChange: 5.1, theirChange: 0.4 }] : []),
+    },
+    valueOf: (p) => ({ label: null, tag: p.id === 'olave' ? sellTag : null }),
+    isSeasonStarter: (p) => ['bijan', 'nabers', 'chase', 'mixon'].includes(p.id),
+  });
+  const one = answerQuestion('Why should I trade Chris Olave?', ctx);
+  assert.match(one.text, /^Chris Olave is worth shopping\./);
+  assert.match(one.text, /bench player/);
+  assert.match(one.text, /good time to sell/);
+  assert.match(one.items[0].detail, /\+5\.1 pts a week\. Two-for-one/);
+  assert.match(one.items[0].detail, /may say yes/);
+
+  assert.match(answerQuestion('should i trade bijan', ctx).text, /^Only trade Bijan Robinson for a clear upgrade\./);
+  assert.match(answerQuestion('why should I trade AJ Brown', ctx).text, /isn't on your team/);
+
+  const list = answerQuestion('Who should I trade away?', ctx);
+  assert.equal(list.text, 'Players worth shopping:');
+  assert.equal(list.items[0].name, 'Chris Olave');
+  assert.match(list.items[0].detail, /Sell high/);
+});
+
 test('questions it cannot place get examples, not a guess', () => {
   const answer = answerQuestion('what is the weather', ctxFor([]));
   assert.ok(answer.examples.length > 0);

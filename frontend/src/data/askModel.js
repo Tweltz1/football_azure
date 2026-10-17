@@ -292,7 +292,7 @@ function answerValue(found, ctx) {
   const value = ctx.valueOf(p);
   const outlook = ctx.outlookOf(p);
   if (!outlook) return { text: `I don't have enough on ${p.name} to put a value on yet.` };
-  const tag = value?.tag ? ` The market and our projections disagree: ${value.tag.toLowerCase()}.` : '';
+  const tag = value?.tag ? ` The market and our projections disagree: ${value.tag.label.toLowerCase()}.` : '';
   return {
     text: `${p.name} is worth about ${outlook.perGame.toFixed(1)} pts a game when playing, ${outlook.value.toFixed(1)} a game across the ${Math.round(outlook.remaining)} games left once missed time is counted.`
       + (value?.label ? ` Trade value: ${value.label}.` : '') + tag,
@@ -341,6 +341,8 @@ function answerTrade(text, found, ctx) {
     return { text: rated.text, why: rated.why, note: [rated.note, ambiguityNote(found)].filter(Boolean).join(' ') || null };
   }
   const position = askedPosition(text);
+  if (give.length && !get.length && !position) return answerSellOne(give[0], found, ctx);
+  if (!found.length && !position && /\baway\b|\bsell\b|\bshop|who (should|to|do) i trade$|who should i trade\b(?! for)/.test(tidy(text))) return answerSellList(ctx);
   const ideas = ctx.trades.find({ give, get, position });
   const target = get.length ? `for ${get.map((p) => p.name).join(' and ')}` : give.length ? `using ${give.map((p) => p.name).join(' and ')}` : position ? `for a ${position}` : '';
   if (!ideas.length) {
@@ -351,12 +353,90 @@ function answerTrade(text, found, ctx) {
   }
   return {
     text: `Trades ${target} that help your lineup and are close in value:`.replace('  ', ' '),
-    items: ideas.map((idea) => ({
-      label: idea.partnerName,
-      name: `Give ${idea.give.map((p) => p.name).join(' + ')}, get ${idea.get.map((p) => p.name).join(' + ')}`,
-      detail: `Your lineup ${idea.myChange >= 0 ? '+' : ''}${idea.myChange.toFixed(1)} pts a week`,
-    })),
+    items: ideaItems(ideas),
     note: 'Ask "should I trade X for Y?" about any of these for the full breakdown.',
+  };
+}
+
+const positionsOf = (list) => [...new Set(list.map((p) => p.position))].join('/');
+
+/** One trade idea as a list row, with the reason it helps: which spot gets better and what it costs. */
+const ideaItems = (ideas) => ideas.map((idea) => {
+  const gain = `${idea.myChange >= 0 ? '+' : ''}${idea.myChange.toFixed(1)}`;
+  const why = idea.give.length > idea.get.length
+    ? `two-for-one: you turn depth into a better ${positionsOf(idea.get)}`
+    : idea.get.length > idea.give.length
+      ? `you add depth at ${positionsOf(idea.get)}`
+      : positionsOf(idea.give) === positionsOf(idea.get)
+        ? `an upgrade at ${positionsOf(idea.get)}`
+        : `${positionsOf(idea.get)} is worth more to your lineup than ${positionsOf(idea.give)}`;
+  const theirs = idea.theirChange >= 0 ? `, and ${idea.partnerName} gets better too, so they may say yes` : '';
+  return {
+    label: idea.partnerName,
+    name: `Give ${idea.give.map((p) => p.name).join(' + ')}, get ${idea.get.map((p) => p.name).join(' + ')}`,
+    detail: `Your lineup ${gain} pts a week. ${why[0].toUpperCase()}${why.slice(1)}${theirs}.`,
+  };
+});
+
+/** A starter over the rest of the season (not just this week, when injuries and byes move people around). */
+const startsForYou = (p, ctx) => (ctx.isSeasonStarter ? ctx.isSeasonStarter(p) : ctx.lineup.starters.some((s) => s.player?.id === p.id));
+
+/** "Why should I trade X?": what X does for your lineup, how the market sees X, and the trades that use X. */
+function answerSellOne(player, found, ctx) {
+  if (!ctx.roster.some((p) => p.id === player.id)) {
+    return { text: `${player.name} isn't on your team. Ask "should I trade X for ${player.name}?" to rate a deal for them.`, note: ambiguityNote(found) };
+  }
+  const p = ctx.scored(player);
+  const starter = startsForYou(p, ctx);
+  const tag = ctx.valueOf(p)?.tag || null;
+  const outlook = ctx.outlookOf(p);
+  const reasons = [];
+  reasons.push(starter
+    ? `${p.name} is one of your starters, so trading ${firstName(p)} only helps if you get a better starter back or fix a weaker spot.`
+    : `${p.name} is mostly a bench player for you, so the value sitting there isn't helping your lineup much.`);
+  if (outlook) reasons.push(`We value ${firstName(p)} at about ${outlook.value.toFixed(1)} pts a game for the rest of the season.`);
+  if (tag?.key === 'sell') reasons.push('The trade market values them more than our projections do, which makes this a good time to sell.');
+  if (tag?.key === 'buy') reasons.push('Our projections like them more than the trade market does, so a trade now would be selling low.');
+  const verdict = tag?.key === 'buy'
+    ? `I'd keep ${p.name}.`
+    : tag?.key === 'sell' || !starter
+      ? `${p.name} is worth shopping.`
+      : `Only trade ${p.name} for a clear upgrade.`;
+  const ideas = ctx.trades.find({ give: [p], get: [], position: null }).slice(0, 3);
+  return {
+    text: `${verdict} ${reasons.join(' ')}`,
+    itemsTitle: ideas.length ? `Trades using ${firstName(p)} that help your lineup and are close in value:` : null,
+    items: ideaItems(ideas),
+    note: ideas.length
+      ? 'Ask "should I trade X for Y?" about any of these for the full breakdown.'
+      : `I didn't find a trade using ${firstName(p)} that helps your lineup and is close enough in value for the other team to take.`,
+  };
+}
+
+/** "Who should I trade away?": players the market rates above our numbers, then valuable players who don't start for you. */
+function answerSellList(ctx) {
+  const rows = ctx.roster
+    .filter((p) => ['QB', 'RB', 'WR', 'TE'].includes(p.position))
+    .map((p) => ({ p, starter: startsForYou(p, ctx), tag: ctx.valueOf(p)?.tag || null, value: ctx.outlookOf(p)?.value ?? 0 }));
+  const sellHigh = rows.filter((r) => r.tag?.key === 'sell').sort((a, b) => b.value - a.value);
+  const bench = rows.filter((r) => !r.starter && r.tag?.key !== 'sell' && r.tag?.key !== 'buy' && r.value >= 5).sort((a, b) => b.value - a.value);
+  const picks = [
+    ...sellHigh.map((r) => ({ ...r, why: 'Sell high: the trade market values them more than our projections do.' })),
+    ...bench.map((r) => ({ ...r, why: "Doesn't start for you, so the value is sitting on your bench." })),
+  ].slice(0, 4);
+  if (!picks.length) {
+    return { text: "Nobody stands out to trade away: your starters are worth keeping and your bench has little trade value. Ask \"find me a trade for a WR\" (or any position) to look for upgrades." };
+  }
+  return {
+    text: 'Players worth shopping:',
+    items: picks.map((r) => ({
+      label: r.p.position,
+      name: r.p.name,
+      detail: r.why,
+      value: r.value,
+      valueLabel: 'pts/game',
+    })),
+    note: 'Ask "why should I trade X?" about any of them for the reasons and trades that use them.',
   };
 }
 
@@ -397,7 +477,7 @@ function answerDrop(found, ctx) {
   if (!drops.length) return { text: 'Everyone on your roster is either starting or worth holding.' };
   return {
     text: 'If you need a roster spot, drop in this order:',
-    items: drops.slice(0, 4).map((d) => ({ label: d.player.position, name: d.player.name, value: d.info.perGame, valueLabel: 'pts/game' })),
+    items: drops.slice(0, 4).map((d) => ({ label: d.player.position, name: d.player.name, detail: d.reason || null, value: d.info.perGame, valueLabel: 'pts/game' })),
   };
 }
 

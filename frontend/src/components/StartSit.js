@@ -3,7 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import {
   STANDARD_LINEUP, benchReason, buildLineup, compareVerdict, isUnavailable, teammatesOut, trendFor,
-  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds, ownTradeScore, replacementLevels, tagForSide, marketTag,
+  vacatedPoints, withProjections, defenseMatchup, boxLine, lineupChanges, analyzeTrade, tradeValue, pickLabel, pickValue, findTrades, balanceTrade, teamNeeds, ownTradeScore, replacementLevels, tagForSide, marketTag, seasonStarterIds,
 } from '../data/startSitUtils';
 import { POSITION_TABS, positionRanks, rankLabel, seasonRankings } from '../data/rankings';
 import { PRESEASON_POSITION_RANKS } from '../data/preseasonRanks';
@@ -648,6 +648,7 @@ export const AskBar = ({
     const names = (list) => list.map((p) => p.name).join(' and ');
     const rosterById = new Map(roster.map((p) => [p.id, p]));
     const posTab = new Map();
+    const seasonStarters = seasonStarterIds(myRoster, rosterSettings, scoring);
 
     const trades = partners.length ? {
       rate(give, get) {
@@ -686,13 +687,14 @@ export const AskBar = ({
       waiverNote,
       scored: (p) => rosterById.get(p.id) || p,
       outlookOf: (p) => outlooks.get(p.id) || null,
+      isSeasonStarter: (p) => seasonStarters.has(p.id),
       valueOf: (p) => {
         const rated = withOutlook([p])[0];
         const own = ownTradeScore(rated, levels, scoring, dynasty).score;
         const mv = market?.players[p.id]?.value;
         if (!market || mv == null) return { label: null, tag: null };
         const blended = market.toMarket(market.weight * market.toScore(mv) + (1 - market.weight) * own);
-        return { label: `${blended.toLocaleString()} (market and our projections blended)`, tag: marketTag(own, market.toScore(mv))?.label || null };
+        return { label: `${blended.toLocaleString()} (market and our projections blended)`, tag: marketTag(own, market.toScore(mv)) };
       },
       seasonRankOf: (p) => {
         if (!posTab.has(p.position)) posTab.set(p.position, new Map(seasonRankings(initialPlayerList, p.position).map((r) => [r.id, r.positionRank])));

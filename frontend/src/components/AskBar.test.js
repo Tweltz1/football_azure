@@ -85,6 +85,8 @@ test('answers lineup, head-to-head, trade, pickup and drop questions without err
   expect(ask('who should I pick up?')).toMatch(/pickups|No free agent/);
   expect(ask('who should I drop')).toMatch(/drop in this order|worth holding/);
   expect(ask('what is Bijan worth rest of season')).toMatch(/pts a game/);
+  expect(ask('why should I trade Olave?')).toMatch(/Chris Olave/);
+  expect(ask('who should I trade away?')).toMatch(/worth shopping|Nobody stands out/);
   const failures = console.error.mock.calls.filter(([msg]) => String(msg).includes('Ask bar failed'));
   expect(failures).toEqual([]);
   expect(container.querySelectorAll('.ask-log > li').length).toBe(5);
