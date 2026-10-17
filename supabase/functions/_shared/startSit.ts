@@ -57,6 +57,9 @@ export interface Usage {
   carryShare: number | null;
   recentTargetShare: number | null;
   recentCarryShare: number | null;
+  /** Share of the team's offensive snaps played, or null when Sleeper has no snap counts for those games. */
+  snapShare: number | null;
+  recentSnapShare: number | null;
   /** Games in the recent window. */
   recentGames: number;
 }
@@ -157,6 +160,8 @@ interface SeasonGame extends MatchupGame {
 
 interface StatLine extends GameLine {
   box: BoxScore;
+  /** Offensive snaps played and the team's offensive snaps that game (0 when Sleeper doesn't list them). */
+  snaps: { off: number; team: number };
   injury: string | null;
   name: string;
   position: string;
@@ -227,6 +232,10 @@ function boxFrom(stats: Record<string, unknown>): BoxScore {
   for (const [key, sleeperKey] of BOX_KEYS) box[key] = sleeperKey ? num(stats[sleeperKey]) : 0;
   box.twoPt = num(stats.pass_2pt) + num(stats.rush_2pt) + num(stats.rec_2pt);
   return box;
+}
+
+function snapsFrom(stats: Record<string, unknown>) {
+  return { off: num(stats.off_snp), team: num(stats.tm_off_snp) };
 }
 
 /** A box score without its zero stats, to keep the response small. */
@@ -310,6 +319,7 @@ async function getWeekStats(fetchJson: FetchJson, season: number, week: number, 
       opponent: parsed.opponent,
       points: parsed.points,
       box: boxFrom((record.stats ?? {}) as Record<string, unknown>),
+      snaps: snapsFrom((record.stats ?? {}) as Record<string, unknown>),
       injury: parsed.injury,
       name: parsed.name,
       position: parsed.position,
@@ -367,7 +377,14 @@ function usageOf(played: StatLine[], teamWeek: Map<string, { tgt: number; rushAt
   const all = sums(skill);
   const recentLines = skill.slice(-3);
   const recent = sums(recentLines);
+  // Only games with snap counts, so a week Sleeper left them out of doesn't drag the share down.
+  const snapShareOf = (lines: StatLine[]) => {
+    const counted = lines.filter((line) => line.snaps?.team > 0);
+    return share(counted.reduce((n, l) => n + l.snaps.off, 0), counted.reduce((n, l) => n + l.snaps.team, 0));
+  };
   return {
+    snapShare: snapShareOf(skill),
+    recentSnapShare: snapShareOf(recentLines),
     targetShare: share(all.tgt, all.teamTgt),
     carryShare: share(all.rushAtt, all.teamRush),
     recentTargetShare: share(recent.tgt, recent.teamTgt),

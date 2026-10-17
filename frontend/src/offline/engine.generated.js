@@ -692,6 +692,9 @@ function boxFrom(stats) {
   box.twoPt = num(stats.pass_2pt) + num(stats.rush_2pt) + num(stats.rec_2pt);
   return box;
 }
+function snapsFrom(stats) {
+  return { off: num(stats.off_snp), team: num(stats.tm_off_snp) };
+}
 var compactBox = (box) => {
   const out = {};
   for (const [key] of BOX_KEYS)
@@ -751,7 +754,7 @@ function toPlayer(row) {
   };
 }
 async function getWeekStats(fetchJson, season, week, nowMs) {
-  var _a, _b;
+  var _a, _b, _c;
   const key = `${season}-${week}`;
   const cached = weekStatsCache.get(key);
   if (cached && nowMs - cached.at < PAST_CACHE_MS)
@@ -772,6 +775,7 @@ async function getWeekStats(fetchJson, season, week, nowMs) {
       opponent: parsed.opponent,
       points: parsed.points,
       box: boxFrom((_b = record.stats) != null ? _b : {}),
+      snaps: snapsFrom((_c = record.stats) != null ? _c : {}),
       injury: parsed.injury,
       name: parsed.name,
       position: parsed.position,
@@ -829,7 +833,16 @@ function usageOf(played, teamWeek) {
   const all = sums(skill);
   const recentLines = skill.slice(-3);
   const recent = sums(recentLines);
+  const snapShareOf = (lines) => {
+    const counted = lines.filter((line) => {
+      var _a;
+      return ((_a = line.snaps) == null ? void 0 : _a.team) > 0;
+    });
+    return share(counted.reduce((n, l) => n + l.snaps.off, 0), counted.reduce((n, l) => n + l.snaps.team, 0));
+  };
   return {
+    snapShare: snapShareOf(skill),
+    recentSnapShare: snapShareOf(recentLines),
     targetShare: share(all.tgt, all.teamTgt),
     carryShare: share(all.rushAtt, all.teamRush),
     recentTargetShare: share(recent.tgt, recent.teamTgt),
