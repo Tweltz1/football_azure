@@ -32,7 +32,7 @@ var __objRest = (source, exclude) => {
   return target;
 };
 
-// supabase/functions/_shared/models.ts
+// ../supabase/functions/_shared/models.ts
 var AUCTION = "auction";
 var MANUAL = "manual";
 var STANDARD = "standard";
@@ -156,7 +156,7 @@ function forClient(league, version, viewerId = null) {
 }
 var clone = (value) => JSON.parse(JSON.stringify(value));
 
-// supabase/functions/_shared/draftLogic.ts
+// ../supabase/functions/_shared/draftLogic.ts
 var BYE_BY_TEAM = {
   ARI: 14,
   ATL: 11,
@@ -400,7 +400,7 @@ function getUniqueTeamName(existingTeams, preferredName, displayName) {
   return `${candidateBase}_${index}`;
 }
 
-// supabase/functions/_shared/diff.ts
+// ../supabase/functions/_shared/diff.ts
 var same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 function diffObjects(prev, next) {
   const ops = [];
@@ -454,7 +454,7 @@ function diffObjects(prev, next) {
   return ops;
 }
 
-// supabase/functions/_shared/handwriting.ts
+// ../supabase/functions/_shared/handwriting.ts
 var HANDWRITING_LIMITS = { perDigit: 6, strokes: 8, points: 60 };
 var boxOf = (strokes) => {
   const box = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
@@ -550,7 +550,7 @@ function learnFromBoard(current, board, amount) {
   return next;
 }
 
-// supabase/functions/_shared/history.ts
+// ../supabase/functions/_shared/history.ts
 function seasonFor(date) {
   return date.getUTCMonth() >= 2 ? date.getUTCFullYear() : date.getUTCFullYear() - 1;
 }
@@ -620,7 +620,7 @@ function historySummary(entry, userId) {
   };
 }
 
-// supabase/functions/_shared/startSit.ts
+// ../supabase/functions/_shared/startSit.ts
 var SLEEPER_STATE_URL = "https://api.sleeper.app/v1/state/nfl";
 var SLEEPER_PROJECTIONS_URL = "https://api.sleeper.com/projections/nfl";
 var SLEEPER_STATS_URL = "https://api.sleeper.com/stats/nfl";
@@ -1131,7 +1131,7 @@ async function getProjectionAccuracy(fetchJson, now, snapshots) {
   return value;
 }
 
-// supabase/functions/_shared/sleeperImport.ts
+// ../supabase/functions/_shared/sleeperImport.ts
 var SLEEPER_API = "https://api.sleeper.app/v1";
 var CACHE_MS2 = 10 * 60 * 1e3;
 var MAX_LEAGUES = 12;
@@ -1359,7 +1359,7 @@ async function getSleeperTeams(fetchJson, now, username, pool) {
   return value;
 }
 
-// supabase/functions/_shared/sleeperLeague.ts
+// ../supabase/functions/_shared/sleeperLeague.ts
 var SLEEPER_API2 = "https://api.sleeper.app/v1";
 var CACHE_MS3 = 10 * 60 * 1e3;
 var DEFAULT_PLAYOFF_START = 15;
@@ -1454,7 +1454,7 @@ async function getLeagueSeason(fetchJson, now, leagueId) {
   return value;
 }
 
-// supabase/functions/_shared/market.ts
+// ../supabase/functions/_shared/market.ts
 var FANTASYCALC_URL = "https://api.fantasycalc.com/values/current";
 var MARKET_CACHE_MS = 6 * 60 * 60 * 1e3;
 var cache3 = /* @__PURE__ */ new Map();
@@ -1533,7 +1533,7 @@ async function getMarketValues(fetchJson, now, settings) {
   return value;
 }
 
-// supabase/functions/_shared/handlers.ts
+// ../supabase/functions/_shared/handlers.ts
 var ok = (body) => ({ status: 200, body });
 var bad = (message) => ({ status: 400, body: message });
 var unauthorized = () => ({ status: 401 });
