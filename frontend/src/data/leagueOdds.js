@@ -341,7 +341,8 @@ export const trajectoryText = (team, outlook) => {
   if (outlook.remainingWeeks > 0) {
     const finalWins = Math.round(team.wins);
     const games = team.record.wins + team.record.losses + team.record.ties + outlook.remainingWeeks * (outlook.medianGame ? 2 : 1);
-    parts.push(`${percent(team.playoffs)} to make the playoffs (top ${outlook.playoffTeams}), finishing about ${finalWins}-${Math.max(0, games - finalWins)}.`);
+    const chance = percent(team.playoffs);
+    parts.push(`${chance[0].toUpperCase()}${chance.slice(1)} to make the playoffs (top ${outlook.playoffTeams}), finishing about ${finalWins}-${Math.max(0, games - finalWins)}.`);
     if (team.playoffsIfWin != null && team.playoffsIfLoss != null && Math.abs(team.playoffsIfWin - team.playoffsIfLoss) >= 0.03) {
       parts.push(`Win in week ${outlook.nextWeek} and that goes to ${percent(team.playoffsIfWin)}; lose and it's ${percent(team.playoffsIfLoss)}.`);
     }

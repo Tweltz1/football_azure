@@ -654,34 +654,100 @@ export const AskBar = ({
     const posTab = new Map();
     const seasonStarters = seasonStarterIds(myRoster, rosterSettings, scoring);
 
+    // The trade as asked: your players, the one team that has all of theirs, and the shared arguments.
+    const setUp = (give, get) => {
+      const mine = myRoster.filter((p) => give.some((g) => g.id === p.id));
+      if (mine.length < give.length) return { error: `${names(give.filter((g) => !rosterById.has(g.id)))} isn't on your team.` };
+      const partner = partnerRosters.find((t) => get.every((g) => t.roster.some((p) => p.id === g.id)));
+      if (!partner) return { error: `${names(get)} ${get.length > 1 ? "aren't all on one team" : "isn't on a team"} in this league, so there's no trade to rate.` };
+      const theirs = partner.roster.filter((p) => get.some((g) => g.id === p.id));
+      const args = {
+        give: mine, get: theirs, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount,
+        dynasty, givePicks: [], getPicks: [], firstPickSeason: null, levels, market,
+      };
+      return { partner, args };
+    };
     const trades = partners.length ? {
       rate(give, get) {
-        const mine = myRoster.filter((p) => give.some((g) => g.id === p.id));
-        if (mine.length < give.length) return { error: `${names(give.filter((g) => !rosterById.has(g.id)))} isn't on your team.` };
-        const partner = partnerRosters.find((t) => get.every((g) => t.roster.some((p) => p.id === g.id)));
-        if (!partner) return { error: `${names(get)} ${get.length > 1 ? "aren't all on one team" : "isn't on a team"} in this league, so there's no trade to rate.` };
-        const theirs = partner.roster.filter((p) => get.some((g) => g.id === p.id));
-        const result = analyzeTrade({
-          give: mine, get: theirs, myRoster, theirRoster: partner.roster, rosterSettings, scoring, allPlayers, teamCount,
-          dynasty, givePicks: [], getPicks: [], firstPickSeason: null, levels, market,
-        });
+        const { error, partner, args } = setUp(give, get);
+        if (error) return { error };
+        const result = analyzeTrade(args);
         const why = explainTrade(result, { allPlayers, scoring, dynasty, partnerName: partner.name });
-        return { text: `${why.call.label}: ${why.headline}.`, why, note: 'Open the Trade check below to add picks or try other players.' };
+        return { text: `${why.call.label}: ${why.headline}.`, why, partnerName: partner.name, note: 'Open the Trade check below to add picks or try other players.' };
       },
-      find({ give, get, position }) {
+      // What to add to (or take out of) a lopsided trade to make it fair.
+      balance(give, get) {
+        const { error, partner, args } = setUp(give, get);
+        if (error) return { error };
+        const result = analyzeTrade(args);
+        return {
+          partnerName: partner.name,
+          share: result.share,
+          verdict: result.valueVerdict,
+          options: balanceTrade({ ...args, levels: result.levels, limit: 4 }),
+        };
+      },
+      // Packages about even in value for the players asked about, even when they don't clearly help your
+      // lineup: what it would take to get someone, or what someone could bring back.
+      offers({ give, get, partner = null }) {
+        const skill = (roster) => roster.filter((p) => ['QB', 'RB', 'WR', 'TE'].includes(p.position));
+        const results = [];
+        const tryTrade = (team, mine, theirs) => {
+          const result = analyzeTrade({
+            give: mine, get: theirs, myRoster, theirRoster: team.roster, rosterSettings, scoring, allPlayers, teamCount, dynasty, levels, market,
+          });
+          if (Math.abs(result.share) <= 0.15) {
+            results.push({ partnerName: team.name, give: mine, get: theirs, myChange: result.myChange, theirChange: result.theirChange });
+          }
+        };
+        const myGive = myRoster.filter((p) => give.some((g) => g.id === p.id));
+        if (get.length) {
+          const team = partnerRosters.find((t) => get.every((g) => t.roster.some((p) => p.id === g.id)));
+          if (!team) return [];
+          const theirs = team.roster.filter((p) => get.some((g) => g.id === p.id));
+          const extra = skill(myRoster).filter((p) => !myGive.some((g) => g.id === p.id));
+          if (myGive.length) tryTrade(team, myGive, theirs);
+          extra.forEach((p) => tryTrade(team, [...myGive, p], theirs));
+          if (!results.length && !myGive.length) {
+            const top = [...extra].sort((a, b) => (outlooks.get(b.id)?.value ?? 0) - (outlooks.get(a.id)?.value ?? 0)).slice(0, 8);
+            top.forEach((a, i) => top.slice(i + 1).forEach((b) => tryTrade(team, [a, b], theirs)));
+          }
+        } else if (myGive.length) {
+          const teams = partner ? partnerRosters.filter((t) => t.name === partner) : partnerRosters;
+          teams.forEach((team) => skill(team.roster).forEach((p) => tryTrade(team, myGive, [p])));
+        }
+        return results.sort((a, b) => b.myChange - a.myChange).slice(0, 4);
+      },
+      // Trade ideas, narrowed to the players, position, team ("with TEAM") or shape ("2 for 1") asked about.
+      find({ give, get, position, partner = null, shape = null }) {
         const wanted = position === 'FLEX' ? ['RB', 'WR', 'TE'] : position ? [position] : null;
-        return findTrades({ myRoster, partners: partnerRosters, rosterSettings, scoring, allPlayers, dynasty, market, limit: 40 })
+        const partnersAsked = partner ? partnerRosters.filter((t) => t.name === partner) : partnerRosters;
+        return findTrades({ myRoster, partners: partnersAsked, rosterSettings, scoring, allPlayers, dynasty, market, limit: 40 })
           .filter((idea) => give.every((g) => idea.give.some((p) => p.id === g.id))
             && get.every((g) => idea.get.some((p) => p.id === g.id))
-            && (!wanted || idea.get.some((p) => wanted.includes(p.position))))
+            && (!wanted || idea.get.some((p) => wanted.includes(p.position)))
+            && (shape !== 'twoForOne' || idea.give.length > idea.get.length))
           .slice(0, 4);
       },
     } : null;
+
+    let needsCache = null;
+    const owners = new Map(partners.flatMap((t) => (t.players || []).map((p) => [p.id, t.name])));
 
     return {
       allPlayers: scoredAll,
       roster,
       lineup,
+      partnerNames: partners.map((p) => p.name),
+      ownerOf: (p) => (rosterById.has(p.id) ? 'you' : owners.get(p.id) || null),
+      byeOf: (p) => playerByes().get(p.id) ?? null,
+      freeAgents: () => withOutlook(waiverPool),
+      needs: partners.length
+        ? () => {
+          if (!needsCache) needsCache = teamNeeds({ teams: [{ key: 'mine', name: 'Your team', roster: myRoster, mine: true }, ...partnerRosters], rosterSettings, scoring });
+          return needsCache;
+        }
+        : null,
       whyCtx,
       scoring,
       week,
@@ -712,8 +778,8 @@ export const AskBar = ({
   };
 
   // Team questions need the league's schedule and standings, loaded the first time one is asked.
-  const leagueFor = async (q) => {
-    if (!isLeagueQuestion(q, partners.map((p) => p.name))) return null;
+  const leagueFor = async (q, previous) => {
+    if (!isLeagueQuestion(q, partners.map((p) => p.name)) && previous?.type !== 'league') return null;
     if (!leagueId) return { status: 'none' };
     try {
       const season = await loadLeagueSeason(leagueId);
@@ -736,8 +802,9 @@ export const AskBar = ({
     let answer;
     try {
       setBusy(true);
-      const league = await leagueFor(q);
-      answer = answerQuestion(q, { ...buildCtx(), league });
+      const previous = log[0]?.answer?.context || null;
+      const league = await leagueFor(q, previous);
+      answer = answerQuestion(q, { ...buildCtx(), league, previous });
     } catch (error) {
       console.error('Ask bar failed:', error);
       answer = { text: 'Something went wrong working that out. Try asking another way.', examples: EXAMPLE_QUESTIONS };

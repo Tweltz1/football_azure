@@ -5,6 +5,11 @@ import { benchReason, compareVerdict, defenseMatchup, isUnavailable, teammatesOu
 import { explainAlone, explainBench, explainPair, explainStarter, usageFor } from './startSitWhy.js';
 import { rankLabel } from './rankings.js';
 import { percent, recordText, trajectoryText } from './leagueOdds.js';
+import {
+  answerAvailability, answerBench, answerBestPlayers, answerByes, answerCompareLong, answerDefenses, answerHandcuff,
+  answerMarketList, answerMatchupList, answerNeeds, answerPlan, answerRankings, answerStats, answerTeamInjuries,
+  answerTrending, answerWeakestStarter, bestFreeAgents, freeAgentItems,
+} from './askTeam.js';
 
 export const EXAMPLE_QUESTIONS = [
   'Who should I start at flex?',
@@ -57,10 +62,11 @@ const sameWord = (word, name) => word === name || (word.length > 3 && word === `
 
 /**
  * The players named in a question, in the order they come up. Full names win, then last names, then
- * first names nobody else shares. When a name fits several players (Brown, Williams), the one on your
- * team wins, then one on a team in your league, then the one projected highest; `alternatives` says who else it could be.
+ * first names nobody else shares. When a name fits several players (Brown, Williams), one from the last
+ * question (`prefer`) wins, then the one on your team, then one on a team in your league, then the one
+ * projected highest; `alternatives` says who else it could be.
  */
-export function findPlayers(text, players, { myIds = new Set(), leagueIds = null } = {}) {
+export function findPlayers(text, players, { myIds = new Set(), leagueIds = null, prefer = null } = {}) {
   const words = questionTokens(text);
   const index = players.map((p) => {
     const tokens = nameTokens(p.name);
@@ -69,7 +75,7 @@ export function findPlayers(text, players, { myIds = new Set(), leagueIds = null
   const firstCounts = new Map();
   index.forEach(({ first }) => firstCounts.set(first, (firstCounts.get(first) || 0) + 1));
   const relevant = (p) => myIds.has(p.id) || leagueIds?.has(p.id) || (p.points || 0) >= 1 || (p.gamesPlayed || 0) > 0;
-  const preference = (p) => (myIds.has(p.id) ? 2000 : 0) + (leagueIds?.has(p.id) ? 1000 : 0) + (p.points || 0);
+  const preference = (p) => (prefer?.has(p.id) ? 3000 : 0) + (myIds.has(p.id) ? 2000 : 0) + (leagueIds?.has(p.id) ? 1000 : 0) + (p.points || 0);
   const best = (list) => [...list].sort((a, b) => preference(b.p) - preference(a.p));
 
   const found = [];
@@ -118,41 +124,108 @@ export const askedPosition = (text) => {
     if (words[i] === 'running' && words[i + 1]?.startsWith('back')) return 'RB';
     if (words[i] === 'tight' && words[i + 1]?.startsWith('end')) return 'TE';
     if (words[i] === 'wide' && words[i + 1]?.startsWith('receiver')) return 'WR';
-    const position = POSITION_WORDS[words[i]];
+    const position = POSITION_WORDS[words[i]] || POSITION_WORDS[(words[i].match(/^(qb|rb|wr|te)\d{1,2}$/) || [])[1]];
     if (position) return position;
   }
   return null;
 };
 
-const pts = (n) => `${Number(n || 0).toFixed(1)} pts`;
-const firstName = (p) => p.name.split(' ')[0];
+export const pts = (n) => `${Number(n || 0).toFixed(1)} pts`;
+export const firstName = (p) => p.name.split(' ')[0];
 
-/** What kind of question it is. `found` is findPlayers' result. */
+/** The question's words without the players' names, so a name like Jalen Hurts doesn't read as "hurt". */
+const withoutNames = (text, found) => {
+  const names = new Set(found.flatMap((f) => nameTokens(f.player.name)));
+  return questionTokens(text).filter((w) => !names.has(w) && !names.has(w.replace(/s$/, ''))).join(' ');
+};
+
+/** True when "for" sits between the first and last player named ("Warren for AJ Brown"). */
+const forBetween = (text, found) => {
+  if (found.length < 2) return false;
+  const words = questionTokens(text);
+  const first = found[0].at;
+  const last = found[found.length - 1].at;
+  return words.slice(first + 1, last).includes('for');
+};
+
+const HELP = /^(help|examples?|what can (you|i ask)|what (questions|kind of questions|else) can|what do you (do|know)|how does this work|how do i use|what should i ask)\b/;
+const SMALL_TALK = /^(hi|hey|hello|yo|sup|whats up|good (morning|afternoon|evening)|thanks|thank you|thx|ty|cool|ok|okay|nice|great|awesome|perfect|got it|lol)\b/;
+
+/**
+ * What kind of question it is. `found` is findPlayers' result. Questions about one player, two or more
+ * players, or none (your lineup, team, league or the waiver wire) each have their own kinds.
+ */
 export function questionType(text, found) {
-  const t = tidy(text);
-  if (!t || /^(help|examples?|what can (you|i)|how does this work)/.test(t)) return 'help';
-  if (/accura|track record|report card|hit rate|how (good|right|often) (are|is|have)/.test(t)) return 'accuracy';
+  const raw = tidy(text);
+  const t = withoutNames(text, found);
+  const n = found.length;
+  if (!raw || HELP.test(raw)) return 'help';
+  if (!n && SMALL_TALK.test(raw)) return 'smalltalk';
+  if (/accura|track record|report card|hit rate|how (good|right|often) (are|is|have) (you|we|the model|your|the projections)/.test(t)) return 'accuracy';
+  if (/handcuff|\bbackups?\b/.test(t)) return 'handcuff';
   if (/\bbye/.test(t)) return 'bye';
-  if (/\btrades?\b|\bgive\b|\bdeal\b|\boffer/.test(t)) return 'trade';
+  if (n && /trade value/.test(t)) return 'value';
+  if (!n && /buy ?low/.test(t)) return 'buylow';
+  if (!n && /sell ?high/.test(t)) return 'sellhigh';
+  if (/\btrades?\b|\btrading\b|\bdeal\b|\boffer|what would it take|\bget for\b|would you do|\baccept\b|would take|who wants|interested in/.test(t)) return 'trade';
+  if (forBetween(text, found) && !/\b(start|sit|play|flex)\b/.test(t)) return 'trade';
+  if (n === 1 && /available|on (the )?waivers|free agent|pick (\w+ )?up|\bpickup\b|\badd\b|\bgrab\b|\bclaim\b|^who (has|owns)\b|\bowned\b|rostered/.test(t)) return 'availability';
   if (/pick ?up|waiver|free agent|\badd\b|\bgrab\b|stream|\bclaim/.test(t)) return 'pickup';
   if (/\bdrop\b|\bcut\b|\brelease\b/.test(t)) return 'drop';
-  if (found.length >= 2) return 'compare';
-  if (found.length === 0) return /start|sit|lineup|bench|play/.test(t) ? 'lineup' : 'unknown';
-  if (/hurt|injur|\bback\b|return|status|healthy|\bout\b|questionable|doubtful|\bir\b/.test(t)) return 'injury';
+  if (!n) {
+    if (/\b(hurt|injur|injured|injuries)/.test(t)) return 'teaminjuries';
+    if (/defen[cs]es?|\bdefend|\bdst\b/.test(t) && /give up|giving up|allow|against|\b(to|for) (qb|rb|wr|te)|\bvs\b|versus|defend|worst|best|easiest|toughest|hardest|stingiest|tough|easy|good|bad/.test(t)
+      && ['QB', 'RB', 'WR', 'TE'].includes(askedPosition(t.replace(/\bdefen[cs]es?\b|\bdst\b/g, '')))) return 'defenses';
+    if (/matchups\b|(easy|easiest|tough|toughest|hard|hardest|good|best|bad|worst) matchup/.test(t)) return 'matchuplist';
+    if (/\btop\b|\bbest\b|\brank|\b(qb|rb|wr|te)1\b/.test(t) && askedPosition(t) && !/\bshould\b|\bmy (qb|rb|wr|te)\d/.test(t)) return 'rankings';
+    if (/sleeper|best (\w+ )?available|available players/.test(t)) return 'rankings';
+    if (/\bneeds?\b|weakest position|strongest position|weak spot|weakness|\bweak\b|strengths?\b|thin at|\bdeep\b|\bdepth\b|missing|holes?\b/.test(t)) return 'needs';
+    if (/\bbench\b/.test(t) && !/\b(should|who|start|sit)\b/.test(t)) return 'bench';
+    if (/underperform|overperform|\bcold\b|\bhot\b|slump|struggl|trending|breakout|on fire|disappoint/.test(t)) return 'trending';
+    if (/weakest (starter|link|player)|worst starter|weak link/.test(t)) return 'weakest';
+    if (/(best|most valuable|top) player|\bmvp\b|my best (guy|asset)/.test(t)) return 'best';
+    if (/start|sit|lineup|bench|\bplay\b|optimi|set my|should be my|who(s| is) my (flex|qb|rb|wr|te|kicker|defense)|score this week|points will (i|we)|my projection/.test(t)) return 'lineup';
+    if (/better|improve|win (my|the) league|win it all|get better|help my team|what should i do|advice|\btips?\b|upgrade|stinks|sucks|\bbad\b|struggling/.test(t)) return 'plan';
+    return 'unknown';
+  }
+  if (n >= 2) {
+    if (/rest of|\bros\b|long term|dynasty|rather have|\bkeep\b|season long|for the season|better player|overall/.test(t)) return 'comparevalue';
+    if (/schedule/.test(t)) return 'compareschedule';
+    if (/targets|carries|touches|workload|usage|snaps?\b|volume|opportunit/.test(t)) return 'compareusage';
+    if (/upside|ceiling|boom|explosive/.test(t)) return 'compareceiling';
+    if (/\bsafe|floor|consistent|reliable/.test(t)) return 'comparefloor';
+    return 'compare';
+  }
+  if (/^who (does|do|is|are|will)\b.*\b(play|playing|facing|face)\b/.test(t)) return 'matchup';
+  if (/hurt|injur|\bback\b|return|status|healthy|\bout\b|questionable|doubtful|\bir\b|going to play|gonna play|will (he |they )?play|\bplay(ing)? (this week|sunday|monday|thursday|tonight|today)|suit up|\bactive\b/.test(t)) return 'injury';
+  if (/replace|instead of|in (his|their) place|fill in for|who (plays|starts) (if|when)/.test(t)) return 'replace';
   if (/schedule|upcoming|next (few |\d )?(games|weeks)|coming up/.test(t)) return 'schedule';
-  if (/matchup|against|defen[cs]e|\bvs\b|opponent|playing/.test(t)) return 'matchup';
-  if (/\brank/.test(t)) return 'rank';
-  if (/worth|value|rest of|\bros\b|outlook|keep|hold|sell|buy|dynasty/.test(t)) return 'value';
+  if (/who (does|do|is|are) (\w+ )?(play|playing|facing|face)\b|opponent|matchup|against|defen[cs]e|\bvs\b|facing/.test(t)) return 'matchup';
+  if (/\brank|\b(qb|rb|wr|te)\d+\b|\btier\b/.test(t)) return 'rank';
+  if (/worth (starting|a start|playing|putting in)/.test(t)) return 'player';
+  if (/worth|value|rest of|\bros\b|outlook|\bkeep\b|\bhold\b|\bsell\b|\bbuy\b|dynasty|long term/.test(t)) return 'value';
+  if (/stat|project|how many|targets|snaps?\b|carries|touches|average|\bavg\b|last \d|last (few|three|two)|trending|been playing|\bdoing\b|tell me about|how good|lately|recent|usage|share|points|scor|\bnumbers\b|look(ing)? like|\bppg\b|what happened|\bbust\b|\bgood\b|breakout/.test(t)) return 'stats';
   return 'player';
 }
 
-const helpAnswer = (lead) => ({
+const HELP_EXAMPLES = [
+  ...EXAMPLE_QUESTIONS,
+  'Top 10 WRs this week',
+  "Who's hurt on my team?",
+  'What does my team need?',
+  'Who are good buy-low targets?',
+  'Is Tank Bigsby available?',
+  'Who has the easiest matchups this week?',
+  'How can I make my team better?',
+];
+
+const helpAnswer = (lead, examples = EXAMPLE_QUESTIONS) => ({
   text: lead || 'Ask me about your lineup, a player, a trade or the waiver wire. For example:',
-  examples: EXAMPLE_QUESTIONS,
+  examples,
 });
 
 /** "Name (WR12 · BUF vs KC)" style line for one player. */
-const playerLine = (p) => [
+export const playerLine = (p) => [
   p.posRank ? rankLabel(p.position, p.posRank) : p.position,
   p.team ? `${p.team}${p.opponent ? ` vs ${p.opponent}` : ''}` : null,
   p.onBye ? 'bye' : null,
@@ -166,7 +239,7 @@ const ambiguityNote = (found) => {
 };
 
 /** The lineup slot a position question is about: the first slot that takes it. */
-const slotFor = (lineup, position) => {
+const slotFor = (lineup, position, nth = 1) => {
   if (!position) return null;
   const fits = (s) => {
     const p = s.slot.positions;
@@ -174,14 +247,16 @@ const slotFor = (lineup, position) => {
     if (position === 'SUPERFLEX') return p.length > 1 && p.includes('QB');
     return p.length === 1 && p[0] === position;
   };
-  return lineup.starters.find(fits);
+  const slots = lineup.starters.filter(fits);
+  return slots[Math.min(nth, slots.length) - 1];
 };
 
 function answerLineup(text, ctx) {
   const { lineup } = ctx;
   if (!lineup.starters.length) return helpAnswer('Pick your team at the top of the page first, then ask again.');
   const position = askedPosition(text);
-  const entry = slotFor(lineup, position);
+  const nth = Number((tidy(text).match(/\b(?:qb|rb|wr|te)(\d)\b/) || [])[1]) || 1;
+  const entry = slotFor(lineup, position, nth);
   if (entry?.player) {
     const why = explainStarter(lineup, entry.slot.key, ctx.whyCtx);
     return { text: `Start ${entry.player.name} at ${entry.slot.label}.`, why };
@@ -194,6 +269,10 @@ function answerLineup(text, ctx) {
       detail: s.player ? playerLine(s.player) : 'Nobody on your roster can play here.',
       value: s.player ? s.player.points : null,
     })),
+    sections: lineup.bench.length ? [{
+      title: 'On your bench:',
+      items: lineup.bench.map((p) => ({ label: p.position, name: p.name, detail: benchReason(p) || playerLine(p), value: p.points })),
+    }] : [],
     note: 'Ask about any spot ("who should I start at flex?") for the reasons.',
   };
 }
@@ -244,7 +323,7 @@ function answerInjury(found, ctx) {
   if (p.onBye) lines.push(`${p.name} is on bye this week.`);
   else if (p.injury) lines.push(`${p.name} is listed ${p.injury}${isUnavailable(p.injury) ? ', so they stay out of your lineup this week' : ''}.`);
   else lines.push(`${p.name} has no injury listed and is projected for ${pts(p.points)} this week.`);
-  if (outlook?.backWeek) lines.push(`Sleeper's projections have them back in week ${outlook.backWeek}.`);
+  if (outlook?.backWeek && isUnavailable(p.injury)) lines.push(`Sleeper's projections have them back in week ${outlook.backWeek}.`);
   if (outlook?.missed >= 0.5) lines.push(`Rest of season, the model counts about ${Math.round(outlook.missed)} missed game${Math.round(outlook.missed) === 1 ? '' : 's'} of ${Math.round(outlook.remaining)}.`);
   const mates = teammatesOut(p, ctx.allPlayers, ctx.scoring);
   return {
@@ -293,7 +372,7 @@ function answerSchedule(found, ctx) {
   };
 }
 
-function answerRank(found, ctx) {
+function answerRank(text, found, ctx) {
   const p = ctx.scored(found[0].player);
   const season = ctx.seasonRankOf?.(p) || null;
   const bits = [];
@@ -302,17 +381,52 @@ function answerRank(found, ctx) {
   if (season) bits.push(`${rankLabel(p.position, season)} in the season rankings`);
   const trend = trendFor(p, ctx.scoring);
   if (trend.direction !== 'flat') bits.push(`trending ${trend.direction} (${trend.lastThree} a game over the last 3, ${trend.season} for the season)`);
-  return { text: `${p.name} is ${bits.join(', ')}.`, note: ambiguityNote(found) };
+  // "Is Kyren an RB1?": tiers of 12 (RB1 is top 12, RB2 the next 12).
+  const tier = Number((tidy(text).match(/\b(?:qb|rb|wr|te)(\d)\b/) || [])[1]);
+  const rank = p.posRank || season;
+  const tierLine = tier && rank
+    ? ` ${Math.ceil(rank / 12) === tier ? 'So yes' : 'So no'}: ${p.position}${tier} means ${p.position}${(tier - 1) * 12 + 1}-${tier * 12}, and ${firstName(p)} is ${p.position}${Math.ceil(rank / 12)} range.`
+    : '';
+  return { text: `${p.name} is ${bits.join(', ')}.${tierLine}`, note: ambiguityNote(found) };
 }
 
-function answerValue(found, ctx) {
+/** A straight answer to "should I keep / buy low / sell high on X?", from the outlook, recent games and the market. */
+const valueVerdict = (text, p, outlook, tag, ctx) => {
+  const t = tidy(text);
+  const trend = trendFor(p, ctx.scoring);
+  const recent = Number(trend.lastThree);
+  const mine = ctx.roster.some((r) => r.id === p.id);
+  if (/buy ?low|\bbuy\b/.test(t)) {
+    if (mine) return `${p.name} is already yours.`;
+    if (tag?.key === 'buy' || (trend.direction === 'down' && outlook.value > recent + 1)) {
+      return `Yes, a buy-low: ${firstName(p)} has scored ${recent} a game over the last 3, below the ${outlook.value.toFixed(1)} we expect from here.`;
+    }
+    return `Not really a buy-low: ${firstName(p)}'s recent games (${recent} a game over the last 3) aren't below what we expect from here (${outlook.value.toFixed(1)}).`;
+  }
+  if (/sell ?high|\bsell\b/.test(t)) {
+    if (tag?.key === 'sell' || (trend.direction === 'up' && recent > outlook.value + 2)) {
+      return `Yes, sell high: ${firstName(p)} has scored ${recent} a game over the last 3, more than the ${outlook.value.toFixed(1)} we expect from here.`;
+    }
+    return `I wouldn't sell just for a hot streak: ${firstName(p)}'s recent ${recent} a game is close to the ${outlook.value.toFixed(1)} we expect from here.`;
+  }
+  if (/\b(keep|hold|holding|drop)\b/.test(t) && mine) {
+    if (startsForYou(p, ctx)) return `Keep ${p.name}: ${firstName(p)} is one of your starters.`;
+    return outlook.value >= 8
+      ? `Hold ${p.name}: worth more than most waiver players, even from your bench.`
+      : `${p.name} is fine to move if you need the roster spot.`;
+  }
+  return null;
+};
+
+function answerValue(text, found, ctx) {
   const p = ctx.scored(found[0].player);
   const value = ctx.valueOf(p);
   const outlook = ctx.outlookOf(p);
   if (!outlook) return { text: `I don't have enough on ${p.name} to put a value on yet.` };
   const tag = value?.tag ? ` The market and our projections disagree: ${value.tag.label.toLowerCase()}.` : '';
+  const verdict = valueVerdict(text, p, outlook, value?.tag, ctx);
   return {
-    text: `${p.name} is worth about ${outlook.perGame.toFixed(1)} pts a game when playing, ${outlook.value.toFixed(1)} a game across the ${Math.round(outlook.remaining)} games left once missed time is counted.`
+    text: `${verdict ? `${verdict} ` : ''}${p.name} is worth about ${outlook.perGame.toFixed(1)} pts a game when playing, ${outlook.value.toFixed(1)} a game across the ${Math.round(outlook.remaining)} games left once missed time is counted.`
       + (value?.label ? ` Trade value: ${value.label}.` : '') + tag,
     items: reasonNotes(outlook).slice(0, 5).map((note) => ({ name: note })),
     itemsTitle: reasonNotes(outlook).length ? 'What goes into it:' : null,
@@ -321,17 +435,22 @@ function answerValue(found, ctx) {
   };
 }
 
-function answerBye(text, found, ctx) {
-  const week = ctx.week;
-  if (found.length) {
-    const p = ctx.scored(found[0].player);
-    return { text: p.onBye ? `${p.name} is on bye in week ${week}.` : `${p.name} plays this week${p.opponent ? ` (vs ${p.opponent})` : ''}.` };
+/** Rates one trade, keeping it as the conversation's trade so "is it fair?" or "what if I add X?" can follow. */
+export function rateTrade(give, get, ctx, found = []) {
+  const mine = new Set(ctx.roster.map((p) => p.id));
+  if (get.length && get.every((p) => mine.has(p.id))) {
+    return { text: `${get.map((p) => p.name).join(' and ')} ${get.length > 1 ? 'are' : 'is'} already on your team. Ask "start X or Y?" to compare them.` };
   }
-  const mine = ctx.roster.filter((p) => p.onBye);
-  if (!mine.length) return { text: `Nobody on your team is on bye in week ${week}.` };
+  if (give.length && give.every((p) => !mine.has(p.id))) {
+    return { text: `${give.map((p) => p.name).join(' and ')} ${give.length > 1 ? "aren't" : "isn't"} on your team. To get ${give.length > 1 ? 'them' : firstName(give[0])}, ask "what would it take to get ${give[0].name}?"` };
+  }
+  const rated = ctx.trades.rate(give, get);
+  if (rated.error) return { text: rated.error, note: ambiguityNote(found) };
   return {
-    text: `On bye in week ${week}:`,
-    items: mine.map((p) => ({ label: p.position, name: p.name, detail: p.team })),
+    text: rated.text,
+    why: rated.why,
+    note: [rated.note, ambiguityNote(found)].filter(Boolean).join(' ') || null,
+    context: { type: 'trade', trade: { give, get, partnerName: rated.partnerName }, players: [...give, ...get], team: rated.partnerName },
   };
 }
 
@@ -351,36 +470,96 @@ function answerTrade(text, found, ctx) {
   let give = [];
   let get = [];
   found.forEach((f) => (sideOf(f) === 'give' ? give : get).push(f.player));
-  // People sometimes name the sides the other way round ("trade for X, give Y").
+  // People sometimes name the sides the other way round ("trade for X, give Y", "I was offered X for Y").
   if (give.length && get.length && give.every((p) => !mine.has(p.id)) && get.every((p) => mine.has(p.id))) [give, get] = [get, give];
-
-  if (give.length && get.length) {
-    const rated = ctx.trades.rate(give, get);
-    if (rated.error) return { text: rated.error, note: ambiguityNote(found) };
-    return { text: rated.text, why: rated.why, note: [rated.note, ambiguityNote(found)].filter(Boolean).join(' ') || null };
+  if (!give.length && get.some((p) => mine.has(p.id))) {
+    give = get.filter((p) => mine.has(p.id));
+    get = get.filter((p) => !mine.has(p.id));
   }
-  const position = askedPosition(text);
-  if (give.length && !get.length && !position) return answerSellOne(give[0], found, ctx);
-  if (!found.length && !position && /\baway\b|\bsell\b|\bshop|who (should|to|do) i trade$|who should i trade\b(?! for)/.test(tidy(text))) return answerSellList(ctx);
-  const ideas = ctx.trades.find({ give, get, position });
-  const target = get.length ? `for ${get.map((p) => p.name).join(' and ')}` : give.length ? `using ${give.map((p) => p.name).join(' and ')}` : position ? `for a ${position}` : '';
+  if (give.length && get.length) return rateTrade(give, get, ctx, found);
+  if (!give.length && get.length >= 2 && forBetween(text, found)) {
+    // "Is Bijan for Chase fair?" about two other teams: compare what each is worth.
+    const compared = answerCompareLong(found, 'value', ctx);
+    return { ...compared, text: `Neither is on your team, so here's what each is worth from here. ${compared.text}` };
+  }
+
+  const t = tidy(text);
+  const position = askedPosition(text) || (/\b(that|it|one)\b/.test(t) && !found.length ? ctx.previous?.position || null : null);
+  const partner = teamsNamed(text, (ctx.partnerNames || []).map((name) => ({ name })))[0]?.name || null;
+  const shape = /\b(2|two) for (1|one)\b/.test(t) ? 'twoForOne' : null;
+  if (give.length && !get.length && !position && !partner) return answerSellOne(give[0], found, ctx);
+  if (!found.length && !position && !partner && /\baway\b|\bsell\b|\bshop|who (should|to|do) i trade$|who should i trade\b(?! for| with)/.test(t)) return answerSellList(ctx);
+  const ideas = ctx.trades.find({ give, get, position, partner, shape });
+  const target = [
+    get.length ? `for ${get.map((p) => p.name).join(' and ')}` : give.length ? `using ${give.map((p) => p.name).join(' and ')}` : position ? `for a ${position}` : '',
+    partner ? `with ${partner}` : '',
+  ].filter(Boolean).join(' ');
+  const kind = shape ? 'Two-for-one trades' : 'Trades';
+  const offers = !ideas.length && (give.length || get.length) && ctx.trades.offers ? ctx.trades.offers({ give, get, partner }) : [];
+  if (offers.length) {
+    return {
+      text: `No trade ${target} clearly helps your lineup, but these are about even in value, so the other team could say yes:`.replace(/ {2,}/g, ' '),
+      items: ideaItems(offers),
+      note: 'Ask "should I trade X for Y?" about any of these for the full breakdown.',
+      context: { type: 'trade', players: [...give, ...get], team: offers[0].partnerName },
+    };
+  }
   if (!ideas.length) {
     return {
-      text: `I couldn't find a trade ${target} that helps your lineup and is close enough in value for them to take.`.replace('  ', ' '),
+      text: `I couldn't find a ${shape ? 'two-for-one ' : ''}trade ${target} that helps your lineup and is close enough in value for them to take.`.replace(/ {2,}/g, ' '),
       note: 'Set one up yourself in the Trade check below to see how it rates.',
+      context: { type: 'trade', players: [...give, ...get], team: partner },
     };
   }
   return {
-    text: `Trades ${target} that help your lineup and are close in value:`.replace('  ', ' '),
+    text: `${kind} ${target} that help your lineup and are close in value:`.replace(/ {2,}/g, ' '),
     items: ideaItems(ideas),
     note: 'Ask "should I trade X for Y?" about any of these for the full breakdown.',
+    context: { type: 'trade', players: [...give, ...get], team: partner || (ideas.every((i) => i.partnerName === ideas[0].partnerName) ? ideas[0].partnerName : null) },
+  };
+}
+
+const tradeLabel = (trade) => `trading ${trade.give.map((p) => p.name).join(' and ')} for ${trade.get.map((p) => p.name).join(' and ')}`;
+const pointsChange = (n) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}`;
+
+/** A follow-up on the last trade ("who else should I add to that trade?"): what evens it out. */
+function answerBalance(trade, ctx) {
+  const balanced = ctx.trades.balance(trade.give, trade.get);
+  if (balanced.error) return { text: balanced.error };
+  const partner = balanced.partnerName;
+  const label = tradeLabel(trade);
+  if (Math.abs(balanced.share) <= 0.15) {
+    return { text: `${label[0].toUpperCase()}${label.slice(1)} is already about even in value, so nobody needs to add anything. Ask "should I trade X for Y?" with more players to try a bigger deal.` };
+  }
+  const youGiveMore = balanced.share < 0;
+  const lead = youGiveMore
+    ? `${label[0].toUpperCase()}${label.slice(1)}, you give more value than you get, so ask ${partner} to add something.`
+    : `${label[0].toUpperCase()}${label.slice(1)}, you get more value than you give, so ${partner} will likely want you to add something.`;
+  if (!balanced.options.length) {
+    return {
+      text: `${lead} No single ${youGiveMore ? `player on ${partner}` : 'player of yours'} evens it out, though.`,
+      note: 'Try a different player in the trade, or set it up in the Trade check below to add draft picks.',
+    };
+  }
+  const nameOf = (item) => item.name || item.label || 'a pick';
+  return {
+    text: lead,
+    itemsTitle: 'Any one of these makes it about even:',
+    items: balanced.options.map((option) => ({
+      label: option.action === 'add' ? (option.side === 'get' ? partner : 'You') : 'Drop',
+      name: option.action === 'add' ? `Add ${nameOf(option.item)}` : `Leave ${nameOf(option.item)} out`,
+      detail: [option.item.position, option.item.team].filter(Boolean).join(' · ')
+        + `${option.item.position ? '. ' : ''}Your lineup ${pointsChange(option.myChange)} pts a week after.`,
+    })),
+    note: 'Ask "should I trade X for Y and Z?" to see the full breakdown of any of these.',
+    context: { trade, players: [...trade.give, ...trade.get] },
   };
 }
 
 const positionsOf = (list) => [...new Set(list.map((p) => p.position))].join('/');
 
 /** One trade idea as a list row, with the reason it helps: which spot gets better and what it costs. */
-const ideaItems = (ideas) => ideas.map((idea) => {
+export const ideaItems = (ideas) => ideas.map((idea) => {
   const gain = `${idea.myChange >= 0 ? '+' : ''}${idea.myChange.toFixed(1)}`;
   const why = idea.give.length > idea.get.length
     ? `two-for-one: you turn depth into a better ${positionsOf(idea.get)}`
@@ -429,7 +608,7 @@ export const scheduleSection = (p, ctx, games = 4) => {
 };
 
 /** Share of the team's carries or targets, this season and lately, as a sentence. */
-const usageLine = (p) => {
+export const usageLine = (p) => {
   const u = usageFor(p);
   const snaps = p?.usage?.snapShare;
   const recentSnaps = p?.usage?.recentSnapShare;
@@ -528,7 +707,12 @@ function answerPickup(text, ctx) {
   const { moves } = ctx.waivers();
   const list = moves.filter((m) => !position || m.add.player.position === position || (position === 'FLEX' && ['RB', 'WR', 'TE'].includes(m.add.player.position)));
   if (!list.length) {
-    return { text: `No free agent${position ? ` at ${position}` : ''} is clearly worth more than anyone on your bench right now.` };
+    const best = bestFreeAgents(ctx, position);
+    return {
+      text: `No free agent${position ? ` at ${position}` : ''} is clearly worth more than anyone on your bench right now.${best.length ? ' The best ones out there:' : ''}`,
+      items: best.length ? freeAgentItems(best) : null,
+      context: { type: 'pickup', question: text, players: best.slice(0, 1).map((r) => r.p), position },
+    };
   }
   return {
     text: `Best pickups${position ? ` at ${position}` : ''}, judged on rest-of-season value:`,
@@ -540,6 +724,7 @@ function answerPickup(text, ctx) {
       valueLabel: 'gain',
     })),
     note: ctx.waiverNote || null,
+    context: { type: 'pickup', players: [list[0].add.player], position },
   };
 }
 
@@ -548,6 +733,7 @@ function answerDrop(found, ctx) {
   const { drops, holds } = ctx.waivers();
   if (found.length) {
     const p = found[0].player;
+    if (!ctx.roster.some((r) => r.id === p.id)) return answerAvailability(found, ctx);
     const hold = holds.find((h) => h.player.id === p.id);
     if (hold) return { text: `Hold ${p.name}. ${hold.reason}` };
     const rank = drops.findIndex((d) => d.player.id === p.id);
@@ -563,7 +749,31 @@ function answerDrop(found, ctx) {
   };
 }
 
-const LEAGUE_WORDS = /power rank|rank(ing)? (the|all|every) teams|team rank|best team|worst team|strongest team|weakest team|top team|playoff|postseason|championship|\btitle\b|win (it all|the league|the chip)|\bchip\b|toilet|last place|finish last|standings|trajector|my team doing|how (is|are) (my team|we|our team)/;
+/** "Who would replace him?": the best bench player who can fill that starter's spot. */
+function answerReplace(found, ctx) {
+  const p = ctx.scored(found[0].player);
+  const entry = ctx.lineup.starters.find((s) => s.player?.id === p.id);
+  if (!entry) {
+    return ctx.roster.some((r) => r.id === p.id)
+      ? { text: `${p.name} isn't in your starting lineup this week, so nobody needs to replace them.` }
+      : { text: `${p.name} isn't on your team.` };
+  }
+  const options = ctx.lineup.bench
+    .filter((b) => entry.slot.positions.includes(b.position) && !benchReason(b))
+    .sort((a, b) => (b.points || 0) - (a.points || 0));
+  if (!options.length) {
+    return { text: `Nobody on your bench can play ${entry.slot.label}. Ask "best ${p.position} on waivers" for a pickup.`, context: { position: p.position } };
+  }
+  const next = options[0];
+  return {
+    text: `${next.name} would step in at ${entry.slot.label}: ${pts(next.points)} projected, vs ${pts(p.points)} for ${firstName(p)}.`,
+    items: options.slice(0, 3).map((b) => ({ label: b.position, name: b.name, detail: playerLine(b), value: b.points })),
+    itemsTitle: 'Your bench options for that spot:',
+    context: { players: [next, p] },
+  };
+}
+
+const LEAGUE_WORDS = /power rank|rank(ing)? (the|all|every) teams|team rank|best team|worst team|strongest team|weakest team|top team|playoff|postseason|championship|\btitle\b|win (it all|the league|the chip)|\bchip\b|toilet|last place|finish last|standings|trajector|my team doing|how (is|are) (my team|we|our team)|win my (matchup|game)|will (i|we) win|who (am i|are we) (playing|facing|up against)|who (do|will) (i|we) (play|face)|my opponent|my (fantasy )?matchup this week/;
 const ODDS_WORDS = /\bodds\b|\bchances?\b/;
 const NOT_LEAGUE = /\btrade|\bstart\b|\bsit\b|\bdrop\b|pick ?up|waiver|\bbench\b/;
 
@@ -587,6 +797,20 @@ export const isLeagueQuestion = (text, teamNames = []) => {
 
 const teamLabel = (team) => `${team.name}${team.mine ? ' (you)' : ''}`;
 
+/** This week's head-to-head: who you play and how often you win it in the simulations. */
+function answerWeekMatchup(mine, outlook, note) {
+  const game = mine.opponents.find((o) => o.week === outlook.nextWeek) || mine.opponents[0];
+  const opponent = game ? outlook.byId.get(game.rosterId) : null;
+  if (!opponent) return { text: 'You have no game left on the schedule this regular season.', note };
+  const chance = mine.winNext;
+  const favored = chance == null ? '' : chance >= 0.55 ? ' You are the favorite' : chance <= 0.45 ? ' They are the favorite' : ' It is close to a coin flip';
+  return {
+    text: `Week ${game.week}: you play ${opponent.name} (${recordText(opponent.record)}).${favored}${chance == null ? '' : `, winning ${percent(chance)} of the simulations`}.`
+      + ` Your best lineup projects about ${Math.round(mine.strength)} a week from here, theirs ${Math.round(opponent.strength)}.`,
+    note,
+  };
+}
+
 export function answerLeague(text, ctx) {
   const league = ctx.league;
   if (!league || league.status === 'none') {
@@ -605,7 +829,19 @@ export function answerLeague(text, ctx) {
   const sortedBy = (key) => [...outlook.teams].sort((a, b) => b[key] - a[key] || a.powerRank - b.powerRank);
   const note = 'From playing out the rest of the season thousands of times with each team\'s projected lineup. See every team on the Rankings page under Teams.';
 
-  if (/toilet|last place|finish last|worst team|weakest team/.test(t)) {
+  if (/win my (matchup|game)|will (i|we) win|who (am i|are we) (playing|facing|up against)|who (do|will) (i|we) (play|face)|my opponent|my (fantasy )?matchup/.test(t) && mine) {
+    return answerWeekMatchup(mine, outlook, note);
+  }
+  if (/standings/.test(t) && !subject) {
+    return {
+      text: `Standings in ${outlook.leagueName}:`,
+      items: outlook.standings.map((team) => ({
+        label: `#${team.standing}`, name: teamLabel(team), detail: `${recordText(team.record)} · ${Math.round(team.record.pointsFor)} pts`, valueText: `playoffs ${percent(team.playoffs)}`,
+      })),
+      note: 'Ask "what are my playoff odds?" or "how is TEAM doing?" for more.',
+    };
+  }
+  if (/toilet|last place|finish last|worst|weakest team|bottom/.test(t)) {
     const list = sortedBy('last');
     const lead = subject
       ? `${teamLabel(subject)}: ${percent(subject.last)} chance of finishing last.`
@@ -642,32 +878,203 @@ export function answerLeague(text, ctx) {
   };
 }
 
+// Follow-ups that point back at the last answer: "that trade", "who else should I add", "him", "why?".
+const BACK_TO_TRADE = /\b(that|this|the|same|my) (trade|deal|offer)\b|\bsweeten|\bbalance|\bfair\b|\beven (it|out)\b|throw in|\b(add|give|offer|ask for)\b.*\b(else|more|trade|deal|it|they|them)\b|\belse\b.*\b(add|give|offer|throw)\b/;
+const PRONOUNS = new Set(['he', 'him', 'his', 'hes', 'they', 'them', 'their', 'it']);
+const ASK_WHY = /^(why|how come|explain|whats the reason|reasons?|how so|what makes you say)\b/;
+const ASK_SURE = /^(are you sure|you sure|really|for real|seriously|how sure|how confident|confident|is that right)\b/;
+const WHAT_ABOUT = /^(what|how) about\b|^and\b|^also\b|\binstead\b|^what if\b|^now\b/;
+
+/** Just the parts of an answer worth showing again for "why?". */
+const snapshot = (answer) => ({ text: answer.text, why: answer.why || null, items: answer.items || null, itemsTitle: answer.itemsTitle || null, sections: answer.sections || null });
+
+/** The league's team names: from the standings when loaded, otherwise the trade partners. */
+const leagueTeamNames = (ctx) => (ctx.league?.outlook?.teams || []).map((t) => t.name).concat(ctx.partnerNames || []);
+
+/** A question with its position swapped ("top 10 WRs" + RB → "top 10 rb"). */
+const withPosition = (text, position) => {
+  const words = tidy(text).split(' ');
+  const kept = words.filter((w, i) => !(POSITION_WORDS[w] || /^(qb|rb|wr|te)\d{1,2}$/.test(w)
+    || (w === 'running' && words[i + 1]?.startsWith('back')) || (words[i - 1] === 'running' && w.startsWith('back'))
+    || (w === 'tight' && words[i + 1]?.startsWith('end')) || (words[i - 1] === 'tight' && w.startsWith('end'))
+    || (w === 'wide' && words[i + 1]?.startsWith('receiver')) || (words[i - 1] === 'wide' && w.startsWith('receiver'))));
+  return `${kept.join(' ')} ${position.toLowerCase()}`;
+};
+
 /**
- * Answers a question. Returns { text, why?, items?, itemsTitle?, note?, examples? }: `why` is a "?"-card
- * object, `items` a short list. ctx carries the page's model: { allPlayers, roster, lineup, whyCtx, scoring,
- * week, defense, myIds, leagueIds, scored(p), outlookOf(p), valueOf(p), seasonRankOf(p), trades, waivers,
- * waiverNote, league }, where trades and waivers are null without a league and league is
+ * Answers a question. Returns { text, why?, items?, itemsTitle?, sections?, note?, examples?, context? }:
+ * `why` is a "?"-card object, `items` a short list, and `context` what the conversation is about now
+ * (players, a trade, a team, the question and answer), which comes back as ctx.previous with the next
+ * question so "him", "that trade", "why?" and "what about RBs?" work. ctx carries the page's model:
+ * { allPlayers, roster, lineup, whyCtx, scoring, week, defense, myIds, leagueIds, scored(p), outlookOf(p),
+ * valueOf(p), seasonRankOf(p), ownerOf(p), byeOf(p), partnerNames, freeAgents(), needs(), trades, waivers,
+ * waiverNote, league, previous }, where trades, waivers and needs are null without a league and league is
  * { status, outlook?, error? } for team questions.
  */
 export function answerQuestion(text, ctx) {
-  if (isLeagueQuestion(text, (ctx.league?.outlook?.teams || []).map((t) => t.name))) return answerLeague(text, ctx);
-  const found = findPlayers(text, ctx.allPlayers, { myIds: ctx.myIds, leagueIds: ctx.leagueIds });
+  const answer = answerFresh(text, ctx);
+  if (answer.context === false) {
+    // Small talk and help leave the conversation where it was.
+    answer.context = ctx.previous || null;
+    return answer;
+  }
+  answer.context = { ...(answer.context || {}), question: answer.context?.question || text, answer: snapshot(answer) };
+  return answer;
+}
+
+function answerFresh(text, ctx) {
+  const previous = ctx.previous || null;
+  const t = tidy(text);
+  if (previous) {
+    const followUp = answerFollowUp(text, ctx, previous);
+    if (followUp) return followUp;
+  }
+  if (isLeagueQuestion(text, leagueTeamNames(ctx))) return { ...answerLeague(text, ctx), context: { type: 'league' } };
+  let found = findPlayers(text, ctx.allPlayers, { myIds: ctx.myIds, leagueIds: ctx.leagueIds, prefer: new Set((previous?.players || []).map((p) => p.id)) });
+  found = matchPositions(found);
+  if (!found.length && previous?.trade && ctx.trades && BACK_TO_TRADE.test(t)) return answerBalance(previous.trade, ctx);
+  if (!found.length && previous?.team && /\bneeds?\b/.test(t) && /\b(they|them|their|that team|the other team|he|his)\b/.test(t)) return answerNeeds(text, ctx, previous.team);
+  // "Is he worth it?", "should I trade him?": the players from the last question.
+  if (previous?.players?.length) {
+    const words = questionTokens(text);
+    const at = words.findIndex((w) => PRONOUNS.has(w));
+    const single = previous.players.length === 1 && !found.some((f) => f.player.id === previous.players[0].id);
+    if (at >= 0 && !found.length) found = previous.players.slice(0, 2).map((player) => ({ player, alternatives: [], at }));
+    else if (at >= 0 && single && /^(he|him|his|hes)$/.test(words[at])) {
+      found = [...found, { player: previous.players[0], alternatives: [], at }].sort((a, b) => a.at - b.at);
+    }
+  }
   const type = questionType(text, found);
+  const answer = answerByType(type, text, found, ctx);
+  if (answer.context === false) return answer;
+  return { ...answer, context: { type, players: found.map((f) => f.player), ...(answer.context || {}) } };
+}
+
+/**
+ * When a name fits players at different positions, pick the one at the same position as the other
+ * players asked about, so the two could share a lineup spot ("Burrow or Williams" means the QB Williams).
+ */
+const lineupGroup = (p) => (['RB', 'WR', 'TE'].includes(p.position) ? 'FLEX' : p.position);
+const matchPositions = (found) => {
+  if (found.length < 2) return found;
+  return found.map((f) => {
+    const others = found.filter((o) => o !== f).map((o) => lineupGroup(o.player));
+    if (others.includes(lineupGroup(f.player))) return f;
+    const better = f.alternatives.find((a) => others.includes(lineupGroup(a)));
+    return better ? { ...f, player: better, alternatives: [f.player, ...f.alternatives.filter((a) => a !== better)] } : f;
+  });
+};
+
+/** "Why?", "are you sure?", "what about Higgins?", "what about RBs?", "what if I add X?" after an answer. */
+function answerFollowUp(text, ctx, previous) {
+  const t = tidy(text);
+  const last = previous.answer || null;
+  if (ASK_WHY.test(t) && t.split(' ').length <= 4 && last) {
+    if (last.why) return { text: "Here's the reasoning:", why: last.why, context: previous };
+    if (last.items || last.sections) return { text: 'It comes from these numbers:', items: last.items, itemsTitle: last.itemsTitle, sections: last.sections, context: previous };
+    return { text: `${last.text} That's the model's read from projections, recent workload, matchups and injuries.`, context: previous };
+  }
+  if (ASK_SURE.test(t) && last) {
+    const confidence = last.why?.confidence;
+    if (confidence) {
+      const lead = confidence.chance >= 66 ? 'Fairly sure.' : confidence.chance >= 57 ? 'It leans that way, but not by a lot.' : "No, it's close to a coin flip.";
+      return { text: `${lead} ${confidence.text}`, why: last.why, context: previous };
+    }
+    return { text: "It's the model's best read from projections, recent workload, matchups and injuries. Close calls can go either way, so ask \"why?\" for the reasons.", context: previous };
+  }
+  if (!WHAT_ABOUT.test(t)) return null;
+
+  const found = matchPositions(findPlayers(text, ctx.allPlayers, { myIds: ctx.myIds, leagueIds: ctx.leagueIds }));
+  const mine = new Set(ctx.roster.map((p) => p.id));
+  // Changing the last trade: "what if I add Higgins?", "what about for Puka instead?"
+  if (previous.trade && found.length && ctx.trades) {
+    const instead = /\binstead\b|\brather\b/.test(t);
+    let { give, get } = previous.trade;
+    const yours = found.filter((f) => mine.has(f.player.id)).map((f) => f.player);
+    const theirs = found.filter((f) => !mine.has(f.player.id)).map((f) => f.player);
+    if (yours.length) give = instead ? yours : [...give, ...yours.filter((p) => !give.some((g) => g.id === p.id))];
+    if (theirs.length) get = instead || (/\bfor\b/.test(t) && !/\b(add|plus|and)\b/.test(t)) ? theirs : [...get, ...theirs.filter((p) => !get.some((g) => g.id === p.id))];
+    return rateTrade(give, get, ctx, found);
+  }
+  const position = askedPosition(text);
+  if (previous.type === 'league') {
+    if (!ctx.league) return null;
+    return { ...answerLeague(`${previous.question} ${text}`, ctx), context: { type: 'league', question: `${previous.question} ${text}` } };
+  }
+  if (found.length && previous.type) {
+    // The same question about someone else; comparisons keep the earlier players in.
+    const comparing = /^compare/.test(previous.type);
+    const players = comparing
+      ? [...(previous.players || []).filter((p) => !found.some((f) => f.player.id === p.id)).map((player) => ({ player, alternatives: [], at: -1 })), ...found]
+      : found;
+    const type = previous.type === 'pickup' ? 'availability' : ['lineup', 'rankings', 'teaminjuries', 'matchuplist', 'bench', 'trending', 'best', 'weakest', 'plan', 'needs', 'buylow', 'sellhigh', 'defenses', 'league', 'help', 'smalltalk', 'unknown', 'accuracy'].includes(previous.type)
+      ? questionType(text.replace(WHAT_ABOUT, ''), found) : previous.type;
+    const answer = answerByType(type === 'unknown' ? 'player' : type, previous.question || text, players, ctx);
+    if (answer.context === false) return answer;
+    return { ...answer, context: { type, players: players.map((f) => f.player), ...(answer.context || {}), question: previous.question } };
+  }
+  if (!found.length && !position && previous.players?.length && !/\b(he|him|his|they|them|their)\b/.test(t)) {
+    const again = previous.players.slice(0, 3).map((player) => ({ player, alternatives: [], at: 0 }));
+    const type = questionType(text.replace(WHAT_ABOUT, ''), again);
+    if (['player', 'unknown', 'compare'].includes(type)) return null;
+    const answer = answerByType(type, text, again, ctx);
+    return { ...answer, context: { type, players: again.map((f) => f.player), ...(answer.context || {}) } };
+  }
+  if (position && previous.question && !found.length) {
+    const question = withPosition(previous.question, position);
+    const answer = answerFresh(question, { ...ctx, previous: null });
+    return { ...answer, context: { ...(answer.context || {}), question } };
+  }
+  return null;
+}
+
+function answerByType(type, text, found, ctx) {
+  const single = (fn) => (found.length ? fn() : helpAnswer("I didn't find a player or a question I know in that. Try one of these:"));
+  const t = tidy(text);
+  const teamName = () => teamsNamed(text, (ctx.partnerNames || []).map((name) => ({ name })))[0]?.name || null;
   switch (type) {
-    case 'help': return helpAnswer();
-    case 'accuracy': return { text: 'Tap "Check past weeks" in the "How accurate are we?" card at the bottom of this page to see how our projections and calls did this season.', scrollTo: 'startsit-accuracy' };
-    case 'bye': return answerBye(text, found, ctx);
+    case 'help': return { ...helpAnswer('Ask me anything about your team: a player, your lineup, a trade, the waiver wire or your league. For example:', HELP_EXAMPLES), context: false };
+    case 'smalltalk': return /^(thanks|thank you|thx|ty)\b/.test(t)
+      ? { text: 'Anytime. Good luck this week!', context: false }
+      : { ...helpAnswer('Hey! Ask me anything about your team. For example:'), context: false };
+    case 'accuracy': return { text: 'Tap "Check past weeks" in the "How accurate are we?" card at the bottom of this page to see how our projections and calls did this season.', scrollTo: 'startsit-accuracy', context: false };
+    case 'bye': return answerByes(text, found, ctx);
     case 'trade': return answerTrade(text, found, ctx);
+    case 'availability': return single(() => answerAvailability(found, ctx));
+    case 'handcuff': {
+      if (found.length) return answerHandcuff(found, ctx);
+      const rb = ctx.lineup.starters.map((s) => s.player).find((p) => p?.position === 'RB');
+      return rb ? answerHandcuff([{ player: rb, alternatives: [] }], ctx) : { text: 'Name a player, like "who is the handcuff for Kyren Williams?"' };
+    }
     case 'pickup': return answerPickup(text, ctx);
     case 'drop': return answerDrop(found, ctx);
-    case 'compare': return answerCompare(found, ctx);
+    case 'buylow': return answerMarketList(text, ctx, 'buy');
+    case 'sellhigh': return answerMarketList(text, ctx, 'sell');
+    case 'teaminjuries': return answerTeamInjuries(ctx);
+    case 'defenses': return answerDefenses(text, ctx);
+    case 'matchuplist': return answerMatchupList(text, ctx);
+    case 'rankings': return answerRankings(text, ctx);
+    case 'needs': return answerNeeds(text, ctx, teamName());
+    case 'bench': return answerBench(ctx);
+    case 'trending': return answerTrending(text, ctx);
+    case 'weakest': return answerWeakestStarter(ctx);
+    case 'best': return answerBestPlayers(ctx);
+    case 'plan': return answerPlan(ctx);
+    case 'compare': return found.length >= 2 ? answerCompare(found, ctx) : single(() => answerPlayer(found, ctx));
+    case 'comparevalue': return answerCompareLong(found, 'value', ctx);
+    case 'compareschedule': return answerCompareLong(found, 'schedule', ctx);
+    case 'compareusage': return answerCompareLong(found, 'usage', ctx);
+    case 'compareceiling': return answerCompareLong(found, 'ceiling', ctx);
+    case 'comparefloor': return answerCompareLong(found, 'floor', ctx);
     case 'lineup': return answerLineup(text, ctx);
-    case 'injury': return answerInjury(found, ctx);
-    case 'matchup': return answerMatchup(found, ctx);
-    case 'schedule': return answerSchedule(found, ctx);
-    case 'rank': return answerRank(found, ctx);
-    case 'value': return answerValue(found, ctx);
-    case 'player': return answerPlayer(found, ctx);
+    case 'injury': return single(() => answerInjury(found, ctx));
+    case 'replace': return single(() => answerReplace(found, ctx));
+    case 'matchup': return single(() => answerMatchup(found, ctx));
+    case 'schedule': return single(() => answerSchedule(found, ctx));
+    case 'rank': return single(() => answerRank(text, found, ctx));
+    case 'value': return single(() => answerValue(text, found, ctx));
+    case 'stats': return single(() => answerStats(found, ctx));
+    case 'player': return single(() => answerPlayer(found, ctx));
     default: return helpAnswer("I didn't find a player or a question I know in that. Try one of these:");
   }
 }

@@ -50,7 +50,21 @@ test('reads the kind of question and the position', () => {
   assert.equal(type('who should i start at flex'), 'lineup');
   assert.equal(type("who's on bye"), 'bye');
   assert.equal(type('how accurate are your picks'), 'accuracy');
-  assert.equal(type('hello there'), 'unknown');
+  assert.equal(type('hello there'), 'smalltalk');
+  assert.equal(type('what is the meaning of life'), 'unknown');
+  // Questions about the team, lists and comparisons beyond this week.
+  assert.equal(type('Top 10 WRs this week'), 'rankings');
+  assert.equal(type("Who's hurt on my team?"), 'teaminjuries');
+  assert.equal(type('who are good buy low targets'), 'buylow');
+  assert.equal(type('What does my team need?'), 'needs');
+  assert.equal(type('who does mixon play this week'), 'matchup');
+  assert.equal(type('bijan or chase rest of season'), 'comparevalue');
+  assert.equal(type('who has more upside, nabers or olave'), 'compareceiling');
+  assert.equal(type('olave stats'), 'stats');
+  assert.equal(type('is olave available'), 'availability');
+  assert.equal(type('Olave for Chase, is that fair?'), 'trade');
+  assert.equal(type('thanks'), 'smalltalk');
+  assert.equal(askedPosition('who should be my wr2'), 'WR');
   assert.equal(askedPosition('who should i start at flex'), 'FLEX');
   assert.equal(askedPosition('best running back pickup'), 'RB');
 });
@@ -89,7 +103,7 @@ test('answers with the model: head to head, lineup spot, a player not on your te
   assert.match(other.text, /Not on your team/);
   assert.ok(other.why);
 
-  assert.match(answerQuestion('who is on bye', ctx).text, /On bye in week 7/);
+  assert.match(answerQuestion('who is on bye', ctx).text, /On bye this week \(week 7\): Bye Guy\./);
   assert.match(answerQuestion('is mixon hurt?', ctx).text, /Questionable/);
   assert.match(answerQuestion('what is bijan worth', ctx).text, /14\.2 pts a game/);
   assert.match(answerQuestion('where does olave rank', ctx).text, /WR9 in the season rankings/);
