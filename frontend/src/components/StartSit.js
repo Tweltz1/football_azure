@@ -23,6 +23,7 @@ import UpdatedAt, { timeAgo } from './UpdatedAt';
 import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
 import WhyButton from './WhyButton';
 import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
+import { summarizeAccuracy } from '../data/accuracy';
 import '../App.css';
 import './SeasonTools.css';
 
@@ -89,6 +90,98 @@ const PlayerName = ({ player, scoring, onOpen, children = null }) => (
 );
 
 /** Pop-up with one player's recent games, past games against this week's opponent, and injured teammates. */
+const SCORING_NAMES = { ppr: 'PPR', half: 'half-PPR', std: 'standard' };
+const pctText = (x) => `${Math.round(x * 100)}%`;
+const weekRange = (weeks) => (weeks.length === 1 ? `week ${weeks[0]}` : `weeks ${weeks[0]}-${weeks[weeks.length - 1]}`);
+
+const sourceNote = ({ weeks, savedWeeks }) => {
+  if (savedWeeks.length === 0) return 'These use the projections Sleeper keeps for past weeks. From now on the site also saves its own copy before kickoff.';
+  if (savedWeeks.length === weeks.length) return 'Every week uses the projections this site saved before kickoff.';
+  return `From week ${savedWeeks[0]} on, these use the projections this site saved before kickoff; earlier weeks use the copy Sleeper keeps.`;
+};
+
+/** Past weeks' projections and close calls checked against what really happened. Loads when opened. */
+const AccuracyCard = ({ scoring }) => {
+  const [data, setData] = useState(null);
+  const [status, setStatus] = useState('');
+  const load = () => {
+    setStatus('Checking past weeks...');
+    axios.get(`${API_BASE_URL}/startsit/accuracy`)
+      .then((response) => { setData(response.data); setStatus(''); })
+      .catch((error) => setStatus(String(error.response?.data || 'Could not load past weeks. Please try again.')));
+  };
+  const summary = useMemo(() => (data ? summarizeAccuracy(data, scoring) : null), [data, scoring]);
+
+  return (
+    <section id="startsit-accuracy" className="card startsit-panel">
+      <div className="player-board-heading">
+        <div>
+          <p className="section-kicker">Report card</p>
+          <h2>How accurate are we?</h2>
+        </div>
+        {!data && <button type="button" className="edit-roster-button" onClick={load} disabled={status === 'Checking past weeks...'}>Check past weeks</button>}
+      </div>
+      {!data && !status && <p className="startsit-help">See how this season's projections and start/sit calls held up once the games were played.</p>}
+      {status && <p className="startsit-empty">{status}</p>}
+      {summary && summary.weeks.length === 0 && <p className="startsit-empty">No finished weeks to check yet this season.</p>}
+      {summary && summary.weeks.length > 0 && (
+        <>
+          <p className="startsit-help">
+            {data.season} {weekRange(summary.weeks)}: {summary.players.toLocaleString()} player games, scored as {SCORING_NAMES[scoring] || 'PPR'}.
+          </p>
+          {summary.calls && (
+            <p className="startsit-verdict">
+              In close start/sit calls, the player we'd start outscored the other {pctText(summary.calls.right)} of the time
+              {summary.clearCalls ? `, and ${pctText(summary.clearCalls.right)} on clear calls` : ''}.
+            </p>
+          )}
+          <h4>Average miss per player</h4>
+          <table className="startsit-defense">
+            <thead><tr><th>Pos</th><th>Off by</th><th>Players</th></tr></thead>
+            <tbody>
+              {summary.positions.map((m) => (
+                <tr key={m.position}><td>{m.position}</td><td>±{m.averageMiss.toFixed(1)} pts</td><td>{m.count}</td></tr>
+              ))}
+            </tbody>
+          </table>
+          {summary.buckets.length > 0 && (
+            <>
+              <h4>When we gave a win chance</h4>
+              <table className="startsit-defense">
+                <thead><tr><th>We said</th><th>It happened</th><th>Calls</th></tr></thead>
+                <tbody>
+                  {summary.buckets.map((b) => (
+                    <tr key={b.label}><td>{pctText(b.said)}</td><td>{pctText(b.won)}</td><td>{b.count.toLocaleString()}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="startsit-help">If the two columns are close, the win chances in the ? cards can be trusted.</p>
+            </>
+          )}
+          {summary.bigMisses.length > 0 && (
+            <>
+              <h4>Biggest surprises</h4>
+              <ul className="startsit-bench">
+                {summary.bigMisses.map((m) => (
+                  <li key={`${m.id}-${m.week}`}>
+                    <div><strong>{m.name}</strong> <small>{m.position} · week {m.week}</small></div>
+                    <span className="startsit-points">{m.actual.toFixed(1)} <small>vs {m.projected.toFixed(1)}</small></span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="startsit-help">
+            A close call is two players at the same position both projected for 5+ points and within 6 of each other; a clear call is one we gave 66% or more.
+            Players who didn't play are left out.{' '}
+            {sourceNote(summary)}
+          </p>
+        </>
+      )}
+    </section>
+  );
+};
+
 export const PlayerInsight = ({ player, allPlayers, defense, scoring, week, updatedAt, onClose }) => {
   const [rawMatchup, setMatchup] = useState(null);
   const [matchupError, setMatchupError] = useState('');
@@ -1423,6 +1516,8 @@ const StartSit = ({ userId }) => {
             rosteredIds={leagueRosteredIds}
             demand={demand}
           />
+
+          <AccuracyCard scoring={scoring} />
 
           {insightPlayer && (
             <PlayerInsight

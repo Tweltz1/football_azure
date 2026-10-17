@@ -2,7 +2,9 @@
 // Row Level Security is on with no policies, so only this function can read or write the tables.
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.49.4';
-import type { Broadcaster, HistoryStore, LeagueStore, LightLeagueState, ProfileStore, StoredLeague } from '../_shared/ports.ts';
+import type {
+  Broadcaster, HistoryStore, LeagueStore, LightLeagueState, ProfileStore, ProjectionSnapshot, ProjectionSnapshotStore, StoredLeague,
+} from '../_shared/ports.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../_shared/models.ts';
 
 const rowToStored = (row: { data: League; version: number }): StoredLeague => ({ league: row.data, version: Number(row.version) });
@@ -113,6 +115,27 @@ export function createHistoryStore(db: SupabaseClient): HistoryStore {
         .order('completed_at', { ascending: false });
       if (error) throw error;
       return (data ?? []).map((row) => row.data as DraftHistoryEntry);
+    },
+  };
+}
+
+export function createSnapshotStore(db: SupabaseClient): ProjectionSnapshotStore {
+  const read = async (season: number, week: number) => {
+    const { data, error } = await db.from('projection_snapshots').select('players').eq('season', season).eq('week', week).maybeSingle();
+    if (error) throw error;
+    return data ? (data.players as Record<string, ProjectionSnapshot>) : null;
+  };
+  return {
+    get: read,
+    async merge(season, week, players) {
+      const saved = (await read(season, week)) ?? {};
+      const { error } = await db.from('projection_snapshots').upsert({
+        season,
+        week,
+        players: { ...saved, ...players },
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
     },
   };
 }
