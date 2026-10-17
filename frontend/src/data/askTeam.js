@@ -443,12 +443,25 @@ export function answerAvailability(found, ctx) {
   };
 }
 
+const ownerStatus = (x, ctx) => {
+  const owner = ctx.ownerOf?.(x);
+  if (owner === 'you') return 'yours';
+  if (owner) return `on ${owner}`;
+  return ctx.leagueIds && !ctx.leagueIds.has(x.id) ? 'available' : 'rostered';
+};
+
 /** The backup behind a player on their NFL team, and whether you can get them. */
 export function answerHandcuff(found, ctx) {
   const p = ctx.scored(found[0].player);
   const mates = ctx.allPlayers.filter((x) => x.team === p.team && x.position === p.position && x.id !== p.id)
     .sort((a, b) => (b.points || 0) - (a.points || 0)).slice(0, 3);
   if (!mates.length) return { text: `I don't see a backup ${p.position} on ${p.team}.` };
+  if ((mates[0].points || 0) > (p.points || 0) + 1) {
+    return {
+      text: `${p.name} is the backup on ${p.team}: ${mates[0].name} (${ownerStatus(mates[0], ctx)}) projects more and leads the ${p.position}s.`,
+      context: { players: [mates[0]] },
+    };
+  }
   const status = (x) => {
     const owner = ctx.ownerOf?.(x);
     if (owner === 'you') return 'yours';
