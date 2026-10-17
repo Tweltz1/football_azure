@@ -2,7 +2,7 @@
 // and answers with the same model the page uses (projections, the "?" cards, trade and waiver values).
 // No AI service: questions it can't place get example questions back instead of a guess.
 import { benchReason, compareVerdict, defenseMatchup, isUnavailable, teammatesOut, trendFor } from './startSitUtils.js';
-import { explainAlone, explainBench, explainPair, explainStarter } from './startSitWhy.js';
+import { explainAlone, explainBench, explainPair, explainStarter, usageFor } from './startSitWhy.js';
 import { rankLabel } from './rankings.js';
 
 export const EXAMPLE_QUESTIONS = [
@@ -12,6 +12,7 @@ export const EXAMPLE_QUESTIONS = [
   'Who should I pick up?',
   'What is Puka worth rest of season?',
   'Is Mixon a good matchup this week?',
+  "How does Bijan's schedule look?",
 ];
 
 const SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'v']);
@@ -136,6 +137,7 @@ export function questionType(text, found) {
   if (found.length >= 2) return 'compare';
   if (found.length === 0) return /start|sit|lineup|bench|play/.test(t) ? 'lineup' : 'unknown';
   if (/hurt|injur|\bback\b|return|status|healthy|\bout\b|questionable|doubtful|\bir\b/.test(t)) return 'injury';
+  if (/schedule|upcoming|next (few |\d )?(games|weeks)|coming up/.test(t)) return 'schedule';
   if (/matchup|against|defen[cs]e|\bvs\b|opponent|playing/.test(t)) return 'matchup';
   if (/\brank/.test(t)) return 'rank';
   if (/worth|value|rest of|\bros\b|outlook|keep|hold|sell|buy|dynasty/.test(t)) return 'value';
@@ -266,11 +268,25 @@ function answerMatchup(found, ctx) {
   const call = matchup.early ? 'too early to tell' : { good: 'a good matchup', average: 'an average matchup', tough: 'a tough matchup' }[matchup.verdict];
   const pointsRow = matchup.rows[0];
   return {
-    text: `${p.name} vs ${p.opponent}: ${call}. ${p.opponent} has given up the ${matchup.rankLabel} (${pointsRow.value.toFixed(1)} a game; average is ${pointsRow.league.toFixed(1)}).`
+    text: `${p.name} vs ${p.opponent}: ${call}. ${p.opponent} has the ${matchup.rankLabel} (${pointsRow.value.toFixed(1)} a game; average is ${pointsRow.league.toFixed(1)}).`
       + (matchup.early ? ` After only ${matchup.games} game${matchup.games === 1 ? '' : 's'}, that says little yet.` : '')
       + ` ${firstName(p)} is projected for ${pts(p.points)}.`,
     items: matchup.notable.slice(0, 4).map((g) => ({ label: `Wk ${g.week}`, name: g.name, detail: g.team, value: g.value })),
     itemsTitle: matchup.notable.length ? `Top ${p.position} against ${p.opponent} in recent games:` : null,
+    sections: [scheduleSection(p, ctx)].filter(Boolean),
+    note: ambiguityNote(found),
+  };
+}
+
+function answerSchedule(found, ctx) {
+  const p = ctx.scored(found[0].player);
+  const section = scheduleSection(p, ctx, 6);
+  if (!section) return { text: `There are no upcoming games listed for ${p.name} yet.` };
+  const games = section.items.map((i) => i.name.split(': ')[1]);
+  const count = (word) => games.filter((g) => g === word).length;
+  return {
+    text: `${p.name}'s next ${games.length} games: ${count('easy')} easy, ${count('average')} average, ${count('tough')} tough${count('too early to tell') ? `, ${count('too early to tell')} too early to tell` : ''}.`,
+    sections: [section],
     note: ambiguityNote(found),
   };
 }
@@ -292,12 +308,13 @@ function answerValue(found, ctx) {
   const value = ctx.valueOf(p);
   const outlook = ctx.outlookOf(p);
   if (!outlook) return { text: `I don't have enough on ${p.name} to put a value on yet.` };
-  const tag = value?.tag ? ` The market and our projections disagree: ${value.tag.toLowerCase()}.` : '';
+  const tag = value?.tag ? ` The market and our projections disagree: ${value.tag.label.toLowerCase()}.` : '';
   return {
     text: `${p.name} is worth about ${outlook.perGame.toFixed(1)} pts a game when playing, ${outlook.value.toFixed(1)} a game across the ${Math.round(outlook.remaining)} games left once missed time is counted.`
       + (value?.label ? ` Trade value: ${value.label}.` : '') + tag,
-    items: outlook.notes.slice(0, 5).map((note) => ({ name: note })),
-    itemsTitle: outlook.notes.length ? 'What goes into it:' : null,
+    items: reasonNotes(outlook).slice(0, 5).map((note) => ({ name: note })),
+    itemsTitle: reasonNotes(outlook).length ? 'What goes into it:' : null,
+    sections: [scheduleSection(p, ctx)].filter(Boolean),
     note: ambiguityNote(found),
   };
 }
@@ -341,6 +358,8 @@ function answerTrade(text, found, ctx) {
     return { text: rated.text, why: rated.why, note: [rated.note, ambiguityNote(found)].filter(Boolean).join(' ') || null };
   }
   const position = askedPosition(text);
+  if (give.length && !get.length && !position) return answerSellOne(give[0], found, ctx);
+  if (!found.length && !position && /\baway\b|\bsell\b|\bshop|who (should|to|do) i trade$|who should i trade\b(?! for)/.test(tidy(text))) return answerSellList(ctx);
   const ideas = ctx.trades.find({ give, get, position });
   const target = get.length ? `for ${get.map((p) => p.name).join(' and ')}` : give.length ? `using ${give.map((p) => p.name).join(' and ')}` : position ? `for a ${position}` : '';
   if (!ideas.length) {
@@ -351,12 +370,144 @@ function answerTrade(text, found, ctx) {
   }
   return {
     text: `Trades ${target} that help your lineup and are close in value:`.replace('  ', ' '),
-    items: ideas.map((idea) => ({
-      label: idea.partnerName,
-      name: `Give ${idea.give.map((p) => p.name).join(' + ')}, get ${idea.get.map((p) => p.name).join(' + ')}`,
-      detail: `Your lineup ${idea.myChange >= 0 ? '+' : ''}${idea.myChange.toFixed(1)} pts a week`,
-    })),
+    items: ideaItems(ideas),
     note: 'Ask "should I trade X for Y?" about any of these for the full breakdown.',
+  };
+}
+
+const positionsOf = (list) => [...new Set(list.map((p) => p.position))].join('/');
+
+/** One trade idea as a list row, with the reason it helps: which spot gets better and what it costs. */
+const ideaItems = (ideas) => ideas.map((idea) => {
+  const gain = `${idea.myChange >= 0 ? '+' : ''}${idea.myChange.toFixed(1)}`;
+  const why = idea.give.length > idea.get.length
+    ? `two-for-one: you turn depth into a better ${positionsOf(idea.get)}`
+    : idea.get.length > idea.give.length
+      ? `you add depth at ${positionsOf(idea.get)}`
+      : positionsOf(idea.give) === positionsOf(idea.get)
+        ? `an upgrade at ${positionsOf(idea.get)}`
+        : `${positionsOf(idea.get)} is worth more to your lineup than ${positionsOf(idea.give)}`;
+  const theirs = idea.theirChange >= 0 ? `, and ${idea.partnerName} gets better too, so they may say yes` : '';
+  return {
+    label: idea.partnerName,
+    name: `Give ${idea.give.map((p) => p.name).join(' + ')}, get ${idea.get.map((p) => p.name).join(' + ')}`,
+    detail: `Your lineup ${gain} pts a week. ${why[0].toUpperCase()}${why.slice(1)}${theirs}.`,
+  };
+});
+
+/** A starter over the rest of the season (not just this week, when injuries and byes move people around). */
+const startsForYou = (p, ctx) => (ctx.isSeasonStarter ? ctx.isSeasonStarter(p) : ctx.lineup.starters.some((s) => s.player?.id === p.id));
+
+const pct = (x) => `${Math.round(x * 100)}%`;
+
+const SCHEDULE_WORD = { good: 'easy', average: 'average', tough: 'tough' };
+
+/**
+ * The player's next few games: how each defense has done against the position, and the other teams'
+ * top player at it in recent games against that defense. Byes and games they're not expected to play are skipped.
+ */
+export const scheduleSection = (p, ctx, games = 4) => {
+  const upcoming = (p.upcoming || []).filter((g) => g.opponent).slice(0, games);
+  const items = upcoming.map((g) => {
+    const matchup = defenseMatchup({ ...p, opponent: g.opponent }, ctx.defense, ctx.scoring);
+    if (!matchup) return { label: `Wk ${g.week}`, name: `vs ${g.opponent}` };
+    const allowed = matchup.rows[0];
+    const recent = matchup.notable.slice(0, 3).map((n) => `${n.name} ${n.value.toFixed(1)}`).join(', ');
+    return {
+      label: `Wk ${g.week}`,
+      name: `vs ${g.opponent}: ${matchup.early ? 'too early to tell' : SCHEDULE_WORD[matchup.verdict]}`,
+      detail: `${g.opponent} has the ${matchup.rankLabel} (${allowed.value.toFixed(1)} a game, average ${allowed.league.toFixed(1)}).${recent ? ` Top ${p.position}s against them lately: ${recent}.` : ''}`,
+    };
+  });
+  if (!items.length) return null;
+  const outlook = ctx.outlookOf?.(p);
+  const label = outlook?.schedule?.label;
+  const summary = label && label !== 'average' ? ` Overall ${label === 'easy' ? 'an easy' : 'a tough'} stretch.` : '';
+  return { title: `${firstName(p)}'s next games:${summary}`, items };
+};
+
+/** Share of the team's carries or targets, this season and lately, as a sentence. */
+const usageLine = (p) => {
+  const u = usageFor(p);
+  if (!u) return null;
+  const trend = u.change >= 0.04 ? ', and rising' : u.change <= -0.04 ? ', and falling' : '';
+  return `Gets ${pct(u.season)} of ${p.team}'s ${u.kind} this season, ${pct(u.recent)} over the last ${u.games || 3} games${trend}.`;
+};
+
+/** Outlook notes that explain the value (teammates returning or out, workload, injuries, schedule), not Sleeper's own number. */
+const reasonNotes = (outlook) => (outlook?.notes || []).filter((note) => !note.startsWith('Sleeper projects'));
+
+/** "Why should I trade X?": what X does for your lineup, how the market sees X, and the trades that use X. */
+function answerSellOne(player, found, ctx) {
+  if (!ctx.roster.some((p) => p.id === player.id)) {
+    return { text: `${player.name} isn't on your team. Ask "should I trade X for ${player.name}?" to rate a deal for them.`, note: ambiguityNote(found) };
+  }
+  const p = ctx.scored(player);
+  const starter = startsForYou(p, ctx);
+  const tag = ctx.valueOf(p)?.tag || null;
+  const outlook = ctx.outlookOf(p);
+  const reasons = [];
+  reasons.push(starter
+    ? `${p.name} is one of your starters, so trading ${firstName(p)} only helps if you get a better starter back or fix a weaker spot.`
+    : `${p.name} is mostly a bench player for you, so the value sitting there isn't helping your lineup much.`);
+  if (outlook) reasons.push(`We value ${firstName(p)} at about ${outlook.value.toFixed(1)} pts a game for the rest of the season.`);
+  if (tag?.key === 'sell') reasons.push('The trade market values them more than our projections do, which makes this a good time to sell.');
+  if (tag?.key === 'buy') reasons.push('Our projections like them more than the trade market does, so a trade now would be selling low.');
+  const losingWork = (outlook?.roleChange ?? 0) <= -1;
+  if (losingWork) reasons.push(`A teammate's return should cut into ${firstName(p)}'s work, about ${Math.abs(outlook.roleChange).toFixed(1)} fewer pts a game.`);
+  const usage = usageLine(p);
+  if (usage) reasons.push(usage);
+  const verdict = tag?.key === 'buy' && !losingWork
+    ? `I'd keep ${p.name}.`
+    : tag?.key === 'sell' || !starter || losingWork
+      ? `${p.name} is worth shopping.`
+      : `Only trade ${p.name} for a clear upgrade.`;
+  const ideas = ctx.trades.find({ give: [p], get: [], position: null }).slice(0, 3);
+  const notes = reasonNotes(outlook).slice(0, 4);
+  return {
+    text: `${verdict} ${reasons.join(' ')}`,
+    itemsTitle: notes.length ? `What's behind ${firstName(p)}'s value:` : null,
+    items: notes.map((note) => ({ name: note })),
+    sections: [
+      scheduleSection(p, ctx),
+      ideas.length ? { title: `Trades using ${firstName(p)} that help your lineup and are close in value:`, items: ideaItems(ideas) } : null,
+    ].filter(Boolean),
+    note: ideas.length
+      ? 'Ask "should I trade X for Y?" about any of these for the full breakdown.'
+      : `I didn't find a trade using ${firstName(p)} that helps your lineup and is close enough in value for the other team to take.`,
+  };
+}
+
+/** "Who should I trade away?": players the market rates above our numbers, then valuable players who don't start for you. */
+function answerSellList(ctx) {
+  const rows = ctx.roster
+    .filter((p) => ['QB', 'RB', 'WR', 'TE'].includes(p.position))
+    .map((p) => ({ p, starter: startsForYou(p, ctx), tag: ctx.valueOf(p)?.tag || null, value: ctx.outlookOf(p)?.value ?? 0 }));
+  rows.forEach((r) => {
+    const outlook = ctx.outlookOf(r.p);
+    r.losing = (outlook?.roleChange ?? 0) <= -1 ? reasonNotes(outlook).find((note) => / is (back|returning|expected)/.test(note)) || 'A teammate coming back should take some of their work.' : null;
+  });
+  const losing = rows.filter((r) => r.losing && r.tag?.key !== 'buy').sort((a, b) => b.value - a.value);
+  const sellHigh = rows.filter((r) => r.tag?.key === 'sell' && !r.losing).sort((a, b) => b.value - a.value);
+  const bench = rows.filter((r) => !r.starter && !r.losing && r.tag?.key !== 'sell' && r.tag?.key !== 'buy' && r.value >= 5).sort((a, b) => b.value - a.value);
+  const picks = [
+    ...losing.map((r) => ({ ...r, why: `Losing work: ${r.losing}` })),
+    ...sellHigh.map((r) => ({ ...r, why: 'Sell high: the trade market values them more than our projections do.' })),
+    ...bench.map((r) => ({ ...r, why: `Doesn't start for you, so the value is sitting on your bench.${usageLine(r.p) ? ` ${usageLine(r.p)}` : ''}` })),
+  ].slice(0, 4);
+  if (!picks.length) {
+    return { text: "Nobody stands out to trade away: your starters are worth keeping and your bench has little trade value. Ask \"find me a trade for a WR\" (or any position) to look for upgrades." };
+  }
+  return {
+    text: 'Players worth shopping:',
+    items: picks.map((r) => ({
+      label: r.p.position,
+      name: r.p.name,
+      detail: r.why,
+      value: r.value,
+      valueLabel: 'pts/game',
+    })),
+    note: 'Ask "why should I trade X?" about any of them for the reasons and trades that use them.',
   };
 }
 
@@ -397,7 +548,7 @@ function answerDrop(found, ctx) {
   if (!drops.length) return { text: 'Everyone on your roster is either starting or worth holding.' };
   return {
     text: 'If you need a roster spot, drop in this order:',
-    items: drops.slice(0, 4).map((d) => ({ label: d.player.position, name: d.player.name, value: d.info.perGame, valueLabel: 'pts/game' })),
+    items: drops.slice(0, 4).map((d) => ({ label: d.player.position, name: d.player.name, detail: d.reason || null, value: d.info.perGame, valueLabel: 'pts/game' })),
   };
 }
 
@@ -421,6 +572,7 @@ export function answerQuestion(text, ctx) {
     case 'lineup': return answerLineup(text, ctx);
     case 'injury': return answerInjury(found, ctx);
     case 'matchup': return answerMatchup(found, ctx);
+    case 'schedule': return answerSchedule(found, ctx);
     case 'rank': return answerRank(found, ctx);
     case 'value': return answerValue(found, ctx);
     case 'player': return answerPlayer(found, ctx);
