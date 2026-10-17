@@ -4,7 +4,7 @@
 // never from a userId/adminId the browser puts in the request body.
 
 import type { Broadcaster, HistoryStore, LeagueStore, Logger, ProfileStore, ProjectionSnapshotStore, StoredLeague } from './ports.ts';
-import type { Bid, League, Player, RosterSettings, Team, UserProfile } from './models.ts';
+import type { Bid, League, MiniGameAttempt, Player, RosterSettings, Team, UserProfile } from './models.ts';
 import {
   clone, ensureDefaults, forClient, isCommish, isManual, isWhiteboard, MANUAL, normalizeBiddingMode, normalizeDraftMode,
   normalizeDraftTimers, normalizeRosterSettings, WHITEBOARD_AUTO,
@@ -21,6 +21,9 @@ import { type FetchJson, getMatchupHistory, getProjectionAccuracy, getWeekProjec
 import { getSleeperTeams, isValidSleeperUsername, SleeperUserNotFound } from './sleeperImport.ts';
 import { getLeagueSeason, isValidLeagueId, SleeperLeagueNotFound } from './sleeperLeague.ts';
 import { getMarketValues, marketSettingsFrom } from './market.ts';
+import {
+  GAMES, gradeTurn, isGameKind, replaySkillGame, TICKS_PER_SECOND, turnCount, turnFor, validInputs, type GameKind,
+} from './miniGames.ts';
 
 export interface Ctx {
   leagues: LeagueStore;
@@ -1092,6 +1095,7 @@ async function startNewSeason(ctx: Ctx, leagueId: string): Promise<Res> {
     league.beerBitchTeamId = null;
     league.tieBreaker = null;
     league.boardReview = null;
+    league.miniGames = [];
     for (const team of league.teams) {
       if (!team) continue;
       team.budget = 200;
@@ -1727,6 +1731,187 @@ async function offlineCreate(ctx: Ctx, data: Body): Promise<Res> {
   return ok({ id: league.id, name: league.name, openTeams: openTeamsOf(league) });
 }
 
+// ---- Lobby mini-games -------------------------------------------------------------
+// The commissioner sets up a game and a prize; each member gets one official try from the lobby
+// (handy for someone who can't make the draft); the commissioner awards the prize to the winner,
+// which adds it to their team's budget. Scores are worked out here, never taken from the browser:
+// skill games are replayed from their inputs, turn games are dealt and timed here (see miniGames.ts).
+
+const MAX_MINI_GAMES = 12;
+const MAX_PRIZE = 100;
+const inLobby = (league: League) => ['', 'created', 'lobby'].includes(str(league.status).toLowerCase());
+const findChallenge = (league: League, id: string) => (league.miniGames ?? []).find((c) => c.id === id) ?? null;
+const newSeed = () => Math.floor(Math.random() * 2 ** 31);
+
+async function createMiniGame(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const game = str(data.game);
+  const prize = int(data.prize);
+  if (!isGameKind(game)) return bad('Pick one of the games.');
+  if (prize < 1 || prize > MAX_PRIZE) return bad(`The prize has to be between $1 and $${MAX_PRIZE}.`);
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (!isCommish(league, ctx.userId)) return unauthorized();
+    if (!inLobby(league)) return bad('Lobby games can only be set up before the draft starts.');
+    league.miniGames = league.miniGames ?? [];
+    if (league.miniGames.length >= MAX_MINI_GAMES) return bad('That is plenty of games. Remove one first.');
+    league.miniGames.push({ id: ctx.newId(), game, prize, createdAt: ctx.now().toISOString(), attempts: {}, awardedTo: null });
+    return null;
+  });
+  return done(result, (u: Updated) => leagueBody(ctx, u));
+}
+
+async function removeMiniGame(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const id = str(data.challengeId);
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (!isCommish(league, ctx.userId)) return unauthorized();
+    if (!findChallenge(league, id)) return notFound('That game is gone.');
+    league.miniGames = (league.miniGames ?? []).filter((c) => c.id !== id);
+    return null;
+  });
+  return done(result, (u: Updated) => leagueBody(ctx, u));
+}
+
+/** The commissioner gives someone another official try (a dropped connection, a phone call mid-run). */
+async function resetMiniGame(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const id = str(data.challengeId);
+  const userId = str(data.userId);
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (!isCommish(league, ctx.userId)) return unauthorized();
+    const challenge = findChallenge(league, id);
+    if (!challenge) return notFound('That game is gone.');
+    if (challenge.awardedTo) return bad('The prize for this game was already awarded.');
+    delete challenge.attempts[userId];
+    return null;
+  });
+  return done(result, (u: Updated) => leagueBody(ctx, u));
+}
+
+const secondsSince = (ctx: Ctx, iso: string | null | undefined) => (ctx.now().getTime() - Date.parse(str(iso))) / 1000;
+
+/** What the browser needs to play its official try: the seed for a skill game, the current turn for a turn game. */
+function playBody(game: GameKind, attempt: MiniGameAttempt, ctx: Ctx) {
+  const base = { game, finished: !!attempt.finishedAt, score: attempt.score, points: attempt.points ?? [] };
+  if (attempt.finishedAt) return base;
+  if (GAMES[game].style === 'skill') return { ...base, seed: attempt.seed };
+  const turn = turnFor(game, attempt.seed ?? 0, attempt.turn ?? 0);
+  return { ...base, turn, elapsed: Math.max(0, secondsSince(ctx, attempt.servedAt)) };
+}
+
+async function startMiniGame(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const id = str(data.challengeId);
+  let body: unknown = null;
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (!league.members.includes(ctx.userId!)) return forbidden();
+    const challenge = findChallenge(league, id);
+    if (!challenge || !isGameKind(challenge.game)) return notFound('That game is gone.');
+    const game = challenge.game;
+    const existing = challenge.attempts[ctx.userId!];
+    if (existing) {
+      // A turn game deals its next turn (or picks up the one on the clock); a skill run can't be restarted.
+      if (existing.finishedAt || GAMES[game].style === 'turns') {
+        if (!existing.finishedAt && !existing.servedAt) existing.servedAt = ctx.now().toISOString();
+        body = playBody(game, existing, ctx);
+        return null;
+      }
+      return bad('You already used your try. The commissioner can give you another.');
+    }
+    if (challenge.awardedTo) return bad('This game is over; the prize was awarded.');
+    if (!inLobby(league)) return bad('The draft has started, so lobby games are closed.');
+    const now = ctx.now().toISOString();
+    const attempt: MiniGameAttempt = { startedAt: now, finishedAt: null, score: null, detail: null, seed: newSeed() };
+    if (GAMES[game].style === 'turns') Object.assign(attempt, { turn: 0, servedAt: now, points: [], history: [] });
+    challenge.attempts[ctx.userId!] = attempt;
+    body = playBody(game, attempt, ctx);
+    return null;
+  });
+  return done(result, () => body);
+}
+
+async function playMiniGameTurn(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const id = str(data.challengeId);
+  const index = int(data.index);
+  let body: unknown = null;
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    const challenge = findChallenge(league, id);
+    if (!challenge || !isGameKind(challenge.game)) return notFound('That game is gone.');
+    const game = challenge.game;
+    const attempt = challenge.attempts[ctx.userId!];
+    if (!attempt) return bad('Start the game first.');
+    if (GAMES[game].style !== 'turns') return bad('That game is not played in turns.');
+    if (attempt.finishedAt) return bad('You already finished this game.');
+    if (index !== attempt.turn || !attempt.servedAt) return conflict('That turn was already played.');
+    const seconds = secondsSince(ctx, attempt.servedAt);
+    const graded = gradeTurn(game, attempt.seed ?? 0, index, data.answer, seconds, attempt.history ?? []);
+    attempt.points = [...(attempt.points ?? []), graded.points];
+    if (game === 'penalty') attempt.history = [...(attempt.history ?? []), int((data.answer as Body | null)?.zone)];
+    attempt.turn = index + 1;
+    // The next turn's clock starts when the player asks for it (minigame/start), not while they read this result.
+    attempt.servedAt = null;
+    const total = attempt.points.reduce((sum, p) => sum + p, 0);
+    attempt.score = total;
+    if (attempt.turn >= turnCount(game)) {
+      attempt.finishedAt = ctx.now().toISOString();
+      attempt.detail = game === 'penalty' ? `${total} of ${turnCount(game)}` : `${attempt.points.filter((p) => p > 0).length} of ${turnCount(game)} scored`;
+    }
+    body = { result: graded, game, finished: !!attempt.finishedAt, score: attempt.score, points: attempt.points };
+    return null;
+  });
+  return done(result, () => body);
+}
+
+async function finishMiniGame(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const id = str(data.challengeId);
+  const inputs = validInputs(data.inputs);
+  if (!inputs) return bad('That run could not be read.');
+  let body: unknown = null;
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    const challenge = findChallenge(league, id);
+    if (!challenge || !isGameKind(challenge.game)) return notFound('That game is gone.');
+    const attempt = challenge.attempts[ctx.userId!];
+    if (!attempt) return bad('Start the game first.');
+    if (GAMES[challenge.game].style !== 'skill') return bad('That game is played in turns.');
+    if (attempt.finishedAt) return bad('You already finished this game.');
+    const replay = replaySkillGame(challenge.game, attempt.seed ?? 0, inputs);
+    // A real run takes as long as its ticks; one sent sooner was made up, not played.
+    const minimumSeconds = (replay.ticks / TICKS_PER_SECOND) * 0.9 - 3;
+    if (secondsSince(ctx, attempt.startedAt) < minimumSeconds) return bad('That run finished faster than the clock allows.');
+    attempt.finishedAt = ctx.now().toISOString();
+    attempt.score = replay.score;
+    attempt.detail = replay.detail;
+    body = { game: challenge.game, finished: true, score: replay.score, detail: replay.detail };
+    return null;
+  });
+  return done(result, () => body);
+}
+
+async function awardMiniGame(ctx: Ctx, leagueId: string, data: Body): Promise<Res> {
+  const id = str(data.challengeId);
+  const userId = str(data.userId);
+  let notice: Record<string, unknown> | null = null;
+  const result = await updateLeague(ctx, leagueId, (league) => {
+    if (!isCommish(league, ctx.userId)) return unauthorized();
+    if (isCompleted(league)) return bad('The draft is over.');
+    const challenge = findChallenge(league, id);
+    if (!challenge) return notFound('That game is gone.');
+    if (challenge.awardedTo) return bad('The prize for this game was already awarded.');
+    if (challenge.attempts[userId]?.score == null) return bad('Only someone who played can win the prize.');
+    const team = league.teams.find((t) => t?.ownerId === userId);
+    if (!team) return bad('That member has no team yet.');
+    const oldBudget = team.budget;
+    team.budget += challenge.prize;
+    challenge.awardedTo = userId;
+    notice = { leagueId, adminId: ctx.userId, teamId: team.id, teamName: team.name, oldBudget, newBudget: team.budget, sentAt: ctx.now().toISOString() };
+    return null;
+  });
+  if (!isRes(result) && result !== 'conflict' && notice) {
+    try {
+      await ctx.broadcaster.send(leagueId, 'budgetAdjustmentNotice', notice);
+    } catch (error) {
+      ctx.log.warn(`Budget adjustment notice failed for league ${leagueId}.`, error);
+    }
+  }
+  return done(result, (u: Updated) => leagueBody(ctx, u));
+}
+
 // ---- Router -----------------------------------------------------------------------
 
 type LeagueAction = (ctx: Ctx, leagueId: string, data: Body) => Promise<Res>;
@@ -1771,6 +1956,13 @@ const LEAGUE_POSTS: Record<string, LeagueAction> = {
   'offline-restore': offlineRestore,
   'reassign-team': reassignTeam,
   'claim-team': claimTeam,
+  'minigame/create': createMiniGame,
+  'minigame/remove': removeMiniGame,
+  'minigame/reset': resetMiniGame,
+  'minigame/start': startMiniGame,
+  'minigame/turn': playMiniGameTurn,
+  'minigame/finish': finishMiniGame,
+  'minigame/award': awardMiniGame,
 };
 
 /**

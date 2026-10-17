@@ -10,6 +10,7 @@ import ClimbBackdrop from './components/ClimbBackdrop';
 import Profile from './components/Profile';
 import StartSit from './components/StartSit';
 import Rankings from './components/Rankings';
+import GamesPage from './games/GamesPage';
 import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory';
 import { useAuth, signOut } from './AuthContext';
 import './App.css';
@@ -56,6 +57,7 @@ function App() {
             <NavLink to="/create-league">Create</NavLink>
             <NavLink to="/start-sit"><span className="nav-long">Start/Sit &amp; Trades</span><span className="nav-short nav-two-line">Start/Sit &amp; Trade</span></NavLink>
             <NavLink to="/rankings">Rankings</NavLink>
+            <NavLink to="/games">Games</NavLink>
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>
           </div>
@@ -76,6 +78,7 @@ function App() {
             <Route path="/profile" element={<Profile userId={userId} />} />
             <Route path="/start-sit" element={<StartSit userId={userId} />} />
             <Route path="/rankings" element={<Rankings userId={userId} />} />
+            <Route path="/games" element={<GamesPage />} />
             <Route path="/history" element={<DraftHistoryList userId={userId} />} />
             <Route path="/history/:historyId" element={<DraftHistoryDetail userId={userId} />} />
           </Routes>
