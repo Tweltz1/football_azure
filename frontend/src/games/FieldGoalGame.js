@@ -2,11 +2,49 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CREW } from '../data/crew';
 import { guySound, taDa } from '../sound/crewSound';
 import {
-  aimAt, FIELD_GOAL, fieldGoalScore, fieldGoalStart, fieldGoalStep, fieldGoalTolerance, powerAt, powerNeeded,
+  aimAt, FIELD_GOAL, fieldGoalScore, fieldGoalStart, fieldGoalStep, fieldGoalTolerance, kickMade, powerAt, powerLimit,
+  powerNeeded,
 } from './sim.generated';
 import { useFixedLoop } from './gameRunners';
 
 const MICHAEL = 4;
+
+const resultText = (kick) => {
+  switch (kick.result) {
+    case 'good': return `It's good from ${kick.distance}!`;
+    case 'doink in': return kick.post === 'bar' ? 'Doink off the crossbar... and over! Good!' : 'DOINK! Off the post and in!';
+    case 'doink out': return kick.post === 'bar' ? 'Doink off the crossbar. No good!' : 'DOINK! Off the upright. No good!';
+    case 'short': return 'Short!';
+    case 'shank': return 'Way too much leg. Shanked it!';
+    default: return `No good, ${kick.result}!`;
+  }
+};
+
+/** Where the ball is, 0-1 through its flight: the aim takes it straight, the wind curves it. */
+function ballSpot(kick, since, postX) {
+  const F = FIELD_GOAL.flightTicks;
+  const t = Math.min(1, since / (F * 0.6));
+  const curve = kick.drift - kick.aim;
+  let x = postX(kick.aim * t + curve * t * t);
+  const rise = kick.result === 'short' ? 70 : kick.post === 'bar' ? 75 : kick.post ? 105 : 140;
+  let y = 170 - rise * t + (kick.result === 'short' ? 40 * t * t : 0);
+  let size = 1 - 0.45 * t;
+  if (kick.post && since > F * 0.6) {
+    // Off the iron: a bounce in (through) or back out.
+    const b = Math.min(1, (since - F * 0.6) / (F * 0.4));
+    const through = kick.result === 'doink in';
+    if (kick.post === 'bar') {
+      y += through ? -30 * b + 20 * b * b : -12 * b + 70 * b * b;
+      size += through ? -0.1 * b : 0.25 * b;
+    } else {
+      const toward = (kick.post === 'left' ? 1 : -1) * (through ? 1 : -1);
+      x += toward * 34 * b;
+      y += -14 * b + (through ? 30 : 60) * b * b;
+      size += through ? -0.1 * b : 0.2 * b;
+    }
+  }
+  return { x, y, size };
+}
 
 const windLabel = (wind) => {
   const mph = Math.round(Math.abs(wind) * 15);
@@ -51,11 +89,11 @@ const FieldGoalGame = ({ seed, onEnd }) => {
     const kicksBefore = s.kicks.length;
     fieldGoalStep(s, tapped);
     if (s.kicks.length > kicksBefore) {
-      if (s.kicks[s.kicks.length - 1].result === 'good') taDa(); else guySound(MICHAEL);
+      if (kickMade(s.kicks[s.kicks.length - 1].result)) taDa(); else guySound(MICHAEL);
     }
     if (s.phase === 'over') {
       setPhase('over');
-      const made = s.kicks.filter((k) => k.result === 'good').length;
+      const made = s.kicks.filter((k) => kickMade(k.result)).length;
       onEnd(inputsRef.current, fieldGoalScore(s), `${made} made`);
       return false;
     }
@@ -66,14 +104,15 @@ const FieldGoalGame = ({ seed, onEnd }) => {
   const since = s ? s.tick - s.phaseStart : 0;
   const kick = s ? s.kicks[s.kicks.length - 1] : null;
   const showFlight = s && (s.phase === 'flight' || s.phase === 'over') && kick;
-  const flight = showFlight ? Math.min(1, since / (FIELD_GOAL.flightTicks * 0.6)) : 0;
   const tol = s ? fieldGoalTolerance(s.distance) : 0.5;
   // Uprights sit at +-tol on a -1..1 field drawn 300 wide; the ball crosses at its drift.
   const postX = (v) => 150 + v * 120;
   const aimValue = s && s.phase === 'aim' ? aimAt(since, s.kick) : s ? s.aim : 0;
   const powerValue = s && s.phase === 'power' ? powerAt(since, s.kick) : kick && s.phase !== 'aim' ? kick.power : 0;
-  const ballX = showFlight ? 150 + (postX(kick.drift) - 150) * flight : 150;
-  const ballY = showFlight ? 170 - (kick.result === 'short' ? 70 : 140) * flight + (kick.result === 'short' ? 40 * flight * flight : 0) : 170;
+  const ball = showFlight ? ballSpot(kick, since, postX) : { x: 150, y: 170, size: 1 };
+  const doinked = showFlight && kick.post && since > FIELD_GOAL.flightTicks * 0.6;
+  const need = s ? powerNeeded(s.distance) : 0.3;
+  const limit = s ? powerLimit(s.distance, s.kick) : 0.6;
 
   return (
     <div className="fg-game">
@@ -100,19 +139,22 @@ const FieldGoalGame = ({ seed, onEnd }) => {
               <polygon points={`${-30 + 60 * Math.min(1, Math.abs(s.wind) + 0.2)},-6 ${-22 + 60 * Math.min(1, Math.abs(s.wind) + 0.2)},0 ${-30 + 60 * Math.min(1, Math.abs(s.wind) + 0.2)},6`} fill="#bfe3ff" />
             </g>
           )}
-          <ellipse cx={ballX} cy={ballY} rx={7 - 3 * flight} ry={4.5 - 2 * flight} fill="#8a4b20" stroke="#16122b" strokeWidth="1.5" />
+          {doinked && since < FIELD_GOAL.flightTicks * 0.85 && (
+            <text x={kick.post === 'bar' ? 150 : postX(kick.post === 'left' ? -tol : tol)} y={kick.post === 'bar' ? 86 : 50} textAnchor="middle" fontSize="16" fontWeight="900" fill="#ffd23f" stroke="#16122b" strokeWidth="3" paintOrder="stroke">DOINK!</text>
+          )}
+          <ellipse cx={ball.x} cy={ball.y} rx={7 * ball.size} ry={4.5 * ball.size} fill="#8a4b20" stroke="#16122b" strokeWidth="1.5" />
         </svg>
         <img className="fg-holder" src={CREW[MICHAEL].art} alt="" />
-        {showFlight && since > 14 && (
-          <div className={`fg-result is-${kick.result === 'good' ? 'good' : 'miss'}`}>
-            {kick.result === 'good' ? `It's good from ${kick.distance}!` : kick.result === 'short' ? 'Short!' : `No good, ${kick.result}!`}
+        {showFlight && since > (kick.post ? FIELD_GOAL.flightTicks * 0.75 : 14) && (
+          <div className={`fg-result is-${kick.post ? 'doink' : kickMade(kick.result) ? 'good' : 'miss'}`}>
+            {resultText(kick)}
           </div>
         )}
         {phase === 'ready' && (
           <div className="game-overlay is-setup" onPointerDown={(e) => e.stopPropagation()}>
             <p>Michael's holding. Don't make him look bad.</p>
             <button type="button" className="game-go" onClick={begin}>Line it up</button>
-            <p className="game-hint">Tap once to stop the aim (mind the wind), then again to stop the power.</p>
+            <p className="game-hint">Tap once to stop the aim (the wind will curve it), then stop the power in the green. Too much leg shanks it.</p>
           </div>
         )}
       </div>
@@ -127,8 +169,8 @@ const FieldGoalGame = ({ seed, onEnd }) => {
         <div className={`fg-meter is-power${s && s.phase === 'power' ? ' is-live' : ''}`}>
           <span className="fg-meter-label">Power</span>
           <div className="fg-meter-track">
-            <span className="fg-meter-need" style={{ left: `${(s ? powerNeeded(s.distance) : 0.3) * 100}%` }} />
-            <span className="fg-meter-hook" />
+            <span className="fg-meter-zone" style={{ left: `${need * 100}%`, width: `${(limit - need) * 100}%` }} />
+            {limit < 1 && <span className="fg-meter-shank" style={{ left: `${limit * 100}%` }} />}
             <span className="fg-meter-fill" style={{ width: `${powerValue * 100}%` }} />
           </div>
         </div>

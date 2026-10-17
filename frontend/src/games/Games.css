@@ -499,24 +499,28 @@
   background: linear-gradient(90deg, var(--accent-strong), var(--warning));
 }
 
-.fg-meter-need {
+.fg-meter-zone {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 3px;
-  margin-left: -1px;
-  background: var(--success);
+  background: rgba(74, 222, 128, 0.5);
+  border-left: 3px solid #4ade80;
+  border-right: 3px solid #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
   z-index: 2;
 }
 
-.fg-meter-hook {
+.fg-meter-shank {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 96%;
   right: 0;
-  background: var(--danger-soft);
+  background: repeating-linear-gradient(135deg, rgba(255, 80, 80, 0.55) 0 6px, rgba(255, 80, 80, 0.25) 6px 12px);
   z-index: 2;
+}
+
+.fg-result.is-doink {
+  color: var(--warning);
 }
 
 .fg-tap {
@@ -534,7 +538,7 @@
 .pk-goal {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
   width: 100%;
   max-width: 480px;

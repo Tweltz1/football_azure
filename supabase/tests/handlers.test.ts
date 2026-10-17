@@ -1554,7 +1554,7 @@ test('commissioner can hand a team to a player rejoining from another phone, sea
 // ---- Lobby mini-games ----------------------------------------------------------------------------------
 
 import {
-  CLIMB, climbStart, climbStep, fieldGoalStart, fieldGoalStep, aimAt, powerAt, powerNeeded, windEffect, gradeTurn,
+  CLIMB, climbStart, climbStep, fieldGoalStart, fieldGoalStep, aimAt, powerAt, powerNeeded, powerLimit, windEffect, gradeTurn,
   replaySkillGame, TICKS_PER_SECOND, turnFor, type Input,
 } from '../functions/_shared/miniGames.ts';
 
@@ -1598,7 +1598,7 @@ test('mini-games: Field Goal Gauntlet rewards good timing and ends on a miss', (
     const since = s.tick - s.phaseStart;
     let tap = false;
     if (s.phase === 'aim') tap = Math.abs(aimAt(since, s.kick) + windEffect(s.wind, s.distance)) < 0.05;
-    if (s.phase === 'power') tap = powerAt(since, s.kick) >= powerNeeded(s.distance) + 0.02 && powerAt(since, s.kick) < 0.95;
+    if (s.phase === 'power') tap = powerAt(since, s.kick) >= powerNeeded(s.distance) + 0.02 && powerAt(since, s.kick) < powerLimit(s.distance, s.kick) - 0.02;
     if (tap) inputs.push([s.tick, 1]);
     fieldGoalStep(s, tap);
   }
@@ -1606,6 +1606,13 @@ test('mini-games: Field Goal Gauntlet rewards good timing and ends on a miss', (
   // No taps at all: the meters kick by themselves and it ends.
   const lazy = replaySkillGame('fieldgoal', 9, []);
   assert.ok(lazy.ticks > 0);
+  // Crushing it past the green zone shanks it.
+  const big = fieldGoalStart(9);
+  while (big.phase === 'aim' || big.phase === 'power') {
+    const since = big.tick - big.phaseStart;
+    fieldGoalStep(big, big.phase === 'aim' ? Math.abs(aimAt(since, 0) + windEffect(big.wind, big.distance)) < 0.05 : powerAt(since, 0) > 0.98);
+  }
+  assert.equal(big.kicks[0].result, 'shank');
 });
 
 test('mini-games: turn games never show the answer and grade it the same every time', () => {
