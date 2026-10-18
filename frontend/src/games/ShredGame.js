@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CREW } from '../data/crew';
 import { blip, guySound, taDa } from '../sound/crewSound';
-import { SHRED, shredDetail, shredDistance, shredScore, shredStart, shredStep } from './sim.generated';
+import { SHRED, shredDetail, shredDistance, shredGround, shredScore, shredStart, shredStep } from './sim.generated';
 import { readClimber, saveClimber, useFixedLoop } from './gameRunners';
 import { drawBackdrop, THEMES } from './race/raceArt';
 
@@ -182,51 +182,187 @@ function drawHotDog(ctx, d, sx, sy, k, tick) {
   }
 }
 
+/** A fixed pseudo-random number 0-1 for an integer, so stones stay put as the camera moves. */
+const hash = (n) => {
+  let h = Math.imul(n ^ 0x5bd1e995, 0x27d4eb2d);
+  h ^= h >>> 15;
+  h = Math.imul(h, 0x165667b1);
+  return ((h ^ (h >>> 13)) >>> 0) / 4294967296;
+};
+
+/** The snow cap along a top edge, with little icicle scallops hanging under it. */
+function snowCap(ctx, x0, y0, x1, y1, k) {
+  const thick = 14 * k;
+  ctx.fillStyle = '#f7fbff';
+  ctx.beginPath();
+  ctx.moveTo(x0, y0 - 2);
+  ctx.lineTo(x1, y1 - 2);
+  ctx.lineTo(x1, y1 + thick);
+  const step = 16 * k;
+  const n = Math.max(1, Math.round((x1 - x0) / step));
+  for (let i = n; i >= 0; i -= 1) {
+    const t = i / n;
+    const x = x0 + (x1 - x0) * t;
+    const y = y0 + (y1 - y0) * t + thick;
+    ctx.lineTo(x, y + (i % 2 ? 6 * k : 0));
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#c3d8ee';
+  ctx.lineWidth = 1.5 * k;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0 - 2);
+  ctx.lineTo(x1, y1 - 2);
+  ctx.stroke();
+}
+
+function drawSlope(ctx, g, sx, sy, k, height, rock) {
+  const x0 = sx(g.x0);
+  const x1 = sx(g.x1);
+  ctx.fillStyle = rock;
+  ctx.beginPath();
+  ctx.moveTo(x0, sy(g.y0));
+  ctx.lineTo(x1, sy(g.y1));
+  ctx.lineTo(x1, height + 10);
+  ctx.lineTo(x0, height + 10);
+  ctx.fill();
+  // Stones in the rock face, fixed to the world.
+  ctx.save();
+  ctx.clip();
+  for (let n = Math.floor(g.x0 / 46); n * 46 < g.x1; n += 1) {
+    for (let row = 0; row < 4; row += 1) {
+      const wx = n * 46 + hash(n * 7 + row) * 30;
+      const top = g.y0 + ((g.y1 - g.y0) * (wx - g.x0)) / (g.x1 - g.x0);
+      const r = (6 + hash(n * 13 + row) * 7) * k;
+      ctx.fillStyle = hash(n * 3 + row) < 0.5 ? '#a27a52' : '#5e4129';
+      ctx.beginPath();
+      ctx.ellipse(sx(wx), sy(top + 30 + row * 42 + hash(n + row * 5) * 20), r * 1.3, r, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+  snowCap(ctx, x0, sy(g.y0), x1, sy(g.y1), k);
+}
+
+const WOOD = '#c98a4b';
+const WOOD_DARK = '#7c4f26';
+
+/** Cross-braced wooden legs from a deck down to `bottom` (pixels). */
+function trestle(ctx, xa, ya, xb, yb, bottom, k) {
+  ctx.strokeStyle = WOOD_DARK;
+  ctx.lineWidth = 4 * k;
+  ctx.beginPath();
+  ctx.moveTo(xa, ya);
+  ctx.lineTo(xa, bottom);
+  ctx.moveTo(xb, yb);
+  ctx.lineTo(xb, bottom);
+  ctx.stroke();
+  ctx.lineWidth = 2.5 * k;
+  ctx.strokeStyle = WOOD;
+  const step = 46 * k;
+  for (let y = Math.min(ya, yb); y < bottom; y += step) {
+    ctx.beginPath();
+    ctx.moveTo(xa, Math.max(ya, y));
+    ctx.lineTo(xb, Math.max(yb, y + step));
+    ctx.moveTo(xb, Math.max(yb, y));
+    ctx.lineTo(xa, Math.max(ya, y + step));
+    ctx.moveTo(xa, Math.max(ya, y + step));
+    ctx.lineTo(xb, Math.max(yb, y + step));
+    ctx.stroke();
+  }
+}
+
+function deck(ctx, x0, y0, x1, y1, k) {
+  ctx.fillStyle = WOOD;
+  ctx.strokeStyle = WOOD_DARK;
+  ctx.lineWidth = 2 * k;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.lineTo(x1, y1 + 10 * k);
+  ctx.lineTo(x0, y0 + 10 * k);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawRamp(ctx, g, sx, sy, k, height, rock) {
+  const x0 = sx(g.x0);
+  const x1 = sx(g.x1);
+  const base = sy(g.y0);
+  // The ground under the ramp keeps going flat.
+  drawSlope(ctx, { x0: g.x0, x1: g.x1, y0: g.y0, y1: g.y0 }, sx, sy, k, height, rock);
+  const n = 3;
+  for (let i = 0; i < n; i += 1) {
+    const xa = x0 + ((x1 - x0) * (i + 0.6)) / n;
+    const xb = x0 + ((x1 - x0) * (i + 1)) / n - 2 * k;
+    const ya = sy(g.y0 + ((g.y1 - g.y0) * (i + 0.6)) / n) + 8 * k;
+    const yb = sy(g.y0 + ((g.y1 - g.y0) * (i + 1)) / n) + 8 * k;
+    trestle(ctx, xa, ya, xb, yb, base, k);
+  }
+  deck(ctx, x0, sy(g.y0), x1, sy(g.y1), k);
+  // A flag at the lip.
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2 * k;
+  ctx.beginPath();
+  ctx.moveTo(x1 - 4 * k, sy(g.y1));
+  ctx.lineTo(x1 - 4 * k, sy(g.y1) - 34 * k);
+  ctx.stroke();
+  ctx.fillStyle = '#e8343c';
+  ctx.beginPath();
+  ctx.moveTo(x1 - 4 * k, sy(g.y1) - 34 * k);
+  ctx.lineTo(x1 + 14 * k, sy(g.y1) - 28 * k);
+  ctx.lineTo(x1 - 4 * k, sy(g.y1) - 22 * k);
+  ctx.fill();
+}
+
+function drawBridge(ctx, g, sx, sy, k, height) {
+  const x0 = sx(g.x0);
+  const x1 = sx(g.x1);
+  const y = sy(g.y0);
+  const towers = Math.max(1, Math.round((g.x1 - g.x0) / 130));
+  for (let i = 0; i < towers; i += 1) {
+    const mid = x0 + ((x1 - x0) * (i + 0.5)) / towers;
+    trestle(ctx, mid - 26 * k, y + 8 * k, mid + 26 * k, y + 8 * k, height + 10, k);
+  }
+  deck(ctx, x0, y, x1, y, k);
+  snowCap(ctx, x0, y - 2 * k, x1, y - 2 * k, k * 0.6);
+}
+
 function draw(canvas, s, rider, images, cam) {
   const ctx = canvas.getContext('2d');
   const { width, height } = canvas;
   const view = viewWidth(canvas);
   const k = width / view;
   // Keep the rider a third of the way across and a bit above the middle, easing up and down.
-  const targetY = s.y - (height / k) * 0.5;
-  cam.y = cam.y == null ? targetY : cam.y + (targetY - cam.y) * 0.12;
+  // Frame the rider and the ground coming up, so big drops and high jumps both stay in view.
+  const ahead = shredGround(s, s.x + 180) ?? shredGround(s, s.x + 320) ?? s.y;
+  const viewH = height / k;
+  let targetY = (s.y + ahead) / 2 - viewH * 0.5;
+  targetY = Math.max(targetY, ahead - viewH * 0.85);
+  targetY = Math.min(targetY, s.y - viewH * 0.2);
+  cam.y = cam.y == null ? targetY : cam.y + (targetY - cam.y) * 0.15;
   const left = s.x - view * 0.3;
   const sx = (x) => (x - left) * k;
   const sy = (y) => (y - cam.y) * k;
 
   drawBackdrop(ctx, SNOW, width, height, height * 0.62, s.x * 0.5, k, s.tick);
+  // The valley far below the slope.
+  const valley = ctx.createLinearGradient(0, height * 0.62, 0, height);
+  valley.addColorStop(0, '#9fbbd8');
+  valley.addColorStop(1, '#6f8fb3');
+  ctx.fillStyle = valley;
+  ctx.fillRect(0, height * 0.62, width, height * 0.38);
 
-  // Crevasses: dark all the way down.
-  ctx.fillStyle = '#18202f';
-  for (const p of s.pits) ctx.fillRect(sx(p.x0) - 1, sy(p.floor - 260), (p.x1 - p.x0) * k + 2, height);
-  // The mountain: snow on top, rock underneath.
-  const rock = ctx.createLinearGradient(0, height * 0.4, 0, height);
-  rock.addColorStop(0, '#6c7d9a');
-  rock.addColorStop(1, '#3b465e');
+  // The mountain: brown rock with a snow cap, plus wooden ramps and trestle bridges.
+  const rock = ctx.createLinearGradient(0, height * 0.3, 0, height);
+  rock.addColorStop(0, '#8c6440');
+  rock.addColorStop(1, '#4a3120');
   for (const g of s.segments) {
     if (g.x1 < left - 20 || g.x0 > left + view + 20) continue;
-    const x0 = sx(g.x0);
-    const x1 = sx(g.x1);
-    ctx.fillStyle = rock;
-    ctx.beginPath();
-    ctx.moveTo(x0, sy(g.y0) + 10 * k);
-    ctx.lineTo(x1, sy(g.y1) + 10 * k);
-    ctx.lineTo(x1, height + 10);
-    ctx.lineTo(x0, height + 10);
-    ctx.fill();
-    ctx.fillStyle = '#f6faff';
-    ctx.beginPath();
-    ctx.moveTo(x0, sy(g.y0) - 1);
-    ctx.lineTo(x1, sy(g.y1) - 1);
-    ctx.lineTo(x1, sy(g.y1) + 14 * k);
-    ctx.lineTo(x0, sy(g.y0) + 14 * k);
-    ctx.fill();
-    ctx.strokeStyle = '#bcd3ec';
-    ctx.lineWidth = 2 * k;
-    ctx.beginPath();
-    ctx.moveTo(x0, sy(g.y0) + 14 * k);
-    ctx.lineTo(x1, sy(g.y1) + 14 * k);
-    ctx.stroke();
+    if (g.kind === 'bridge') drawBridge(ctx, g, sx, sy, k, height);
+    else if (g.kind === 'ramp') drawRamp(ctx, g, sx, sy, k, height, rock);
+    else drawSlope(ctx, g, sx, sy, k, height, rock);
   }
 
   s.obstacles.forEach((o) => drawObstacle(ctx, o, sx, sy, k, s.tick));
@@ -242,7 +378,9 @@ function draw(canvas, s, rider, images, cam) {
   if (!s.grounded) tilt = Math.max(-0.6, Math.min(0.6, s.vy * 0.04));
   ctx.save();
   ctx.translate(px, py);
-  ctx.rotate(s.alive ? tilt : tilt + 1.2);
+  // A full spin on the double jump.
+  const spin = s.doubleAt >= 0 && s.tick - s.doubleAt < 16 ? ((s.tick - s.doubleAt) / 16) * Math.PI * 2 : 0;
+  ctx.rotate(s.alive ? tilt - spin : tilt + 1.2);
   ctx.fillStyle = '#ffd23f';
   ctx.strokeStyle = '#16122b';
   ctx.lineWidth = 2;
@@ -396,7 +534,7 @@ const ShredGame = ({ seed, onEnd }) => {
               ))}
             </div>
             <button type="button" className="game-go" onClick={begin}>Drop in</button>
-            <p className="game-hint">Tap anywhere (or space) to jump. Footballs are {SHRED.ballPoints} points.</p>
+            <p className="game-hint">Tap anywhere (or space) to jump, and tap again in the air to double jump. Footballs are {SHRED.ballPoints} points.</p>
           </div>
         )}
       </div>

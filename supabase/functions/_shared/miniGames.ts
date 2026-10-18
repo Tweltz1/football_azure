@@ -39,7 +39,7 @@ export const GAMES: Record<GameKind, GameInfo> = {
   },
   shred: {
     title: 'Shred the Summit',
-    blurb: 'Snowboard down the mountain. Tap to jump the rocks, trees and gaps, grab footballs, and watch the sky: past 200 points the hot dogs start falling and exploding. It gets faster as you score.',
+    blurb: 'Snowboard down the mountain. Tap to jump (tap again in the air to double jump) over the rocks, trees and gaps, grab footballs, and watch the sky: past 200 points the hot dogs start falling and exploding. It gets faster as you score.',
     style: 'skill',
     unit: 'pts',
   },
@@ -207,6 +207,8 @@ export const climbScore = (s: ClimbState) => Math.floor(s.height) + s.oips * CLI
 export const SHRED = {
   gravity: 0.8,
   jump: 12.5,
+  /** The second jump, from a tap in the air (once per jump). */
+  doubleJump: 10.5,
   maxFall: 18,
   /** The rider's box: half its width, and its height above the board. */
   halfWidth: 11,
@@ -236,7 +238,8 @@ export const shredSpeed = (score: number) => 6 + Math.min(4.5, score / 160);
 export type ShredObstacleKind = 'rock' | 'tree' | 'snowman' | 'snowball';
 export type ShredHit = ShredObstacleKind | 'hotdog' | 'gap' | 'cliff' | 'time';
 
-export interface ShredSegment { x0: number; x1: number; y0: number; y1: number }
+/** `kind` is only for drawing: a wooden kicker ramp or a trestle bridge over a gap. */
+export interface ShredSegment { x0: number; x1: number; y0: number; y1: number; kind?: 'ramp' | 'bridge' }
 export interface ShredPit { x0: number; x1: number; floor: number }
 export interface ShredObstacle { id: number; kind: ShredObstacleKind; x: number; y: number; w: number; h: number; roll: number }
 export interface ShredBall { id: number; x: number; y: number }
@@ -255,6 +258,10 @@ export interface ShredState {
   /** Tick of the last tap not yet used, or -100. */
   wantJump: number;
   jumps: number;
+  /** Tick of the double jump on this trip through the air, or -100 when it's still available. */
+  doubleAt: number;
+  /** True once the rider has jumped on this trip through the air (riding off an edge isn't a jump). */
+  jumped: boolean;
   balls: number;
   alive: boolean;
   hitBy: ShredHit | null;
@@ -272,7 +279,7 @@ export interface ShredState {
 
 export function shredStart(seed: number): ShredState {
   const s: ShredState = {
-    r: seed | 0, tick: 0, x: 0, y: 0, vx: shredSpeed(0), vy: 0, grounded: true, lastGround: 0, wantJump: -100, jumps: 0,
+    r: seed | 0, tick: 0, x: 0, y: 0, vx: shredSpeed(0), vy: 0, grounded: true, lastGround: 0, wantJump: -100, jumps: 0, doubleAt: -100, jumped: false,
     balls: 0, alive: true, hitBy: null, segments: [], pits: [], obstacles: [], footballs: [], hotdogs: [],
     genX: -300, genY: 0, noObstacleUntil: 900, nextHotDog: 0, nextId: 1,
   };
@@ -296,8 +303,8 @@ const shredSlope = (s: ShredState, x: number) => {
   return 0;
 };
 
-function addSegment(s: ShredState, length: number, drop: number) {
-  s.segments.push({ x0: s.genX, x1: s.genX + length, y0: s.genY, y1: s.genY + drop });
+function addSegment(s: ShredState, length: number, drop: number, kind?: 'ramp' | 'bridge') {
+  s.segments.push(kind ? { x0: s.genX, x1: s.genX + length, y0: s.genY, y1: s.genY + drop, kind } : { x0: s.genX, x1: s.genX + length, y0: s.genY, y1: s.genY + drop });
   s.genX += length;
   s.genY += drop;
 }
@@ -328,7 +335,7 @@ function placeObstacles(s: ShredState, x0: number, x1: number, reach: number, ha
       // A football over some of them, for the brave.
       if (nextRandom(s) < 0.3) s.footballs.push({ id: s.nextId++, x, y: g - size[1] - 46 });
       // Always room to land and jump again.
-      s.noObstacleUntil = x + reach * 1.3;
+      s.noObstacleUntil = x + reach * 1.6;
       x = s.noObstacleUntil + nextRandom(s) * reach * (1.6 - hard);
     } else {
       x += reach * 0.6;
@@ -352,48 +359,74 @@ function shredBuild(s: ShredState) {
       continue;
     }
     const roll = nextRandom(s);
-    if (roll < 0.34) {
+    if (roll < 0.24) {
       const length = rand(s, 420, 820);
       addSegment(s, length, length * rand(s, 0.12, 0.34 + 0.1 * hard));
       placeObstacles(s, start, s.genX, reach, hard);
-      if (nextRandom(s) < 0.5) addBallLine(s, start + rand(s, 40, length - 200), 4, nextRandom(s) < 0.4);
-    } else if (roll < 0.48) {
+      if (nextRandom(s) < 0.5) addBallLine(s, start + rand(s, 40, length - 240), 4, nextRandom(s) < 0.4);
+    } else if (roll < 0.34) {
       const length = rand(s, 280, 480);
       addSegment(s, length, length * rand(s, 0, 0.05));
       placeObstacles(s, start, s.genX, reach, hard);
       if (nextRandom(s) < 0.5) addBallLine(s, start + 40, 5, false);
-    } else if (roll < 0.58) {
-      const length = rand(s, 200, 300);
-      addSegment(s, length, -length * rand(s, 0.06, 0.14));
-      addBallLine(s, start + 30, 4, false);
-    } else if (roll < 0.73) {
-      // A kicker ramp, then the ground drops away.
+    } else if (roll < 0.48) {
+      // A big hill: a long climb, a flat top, then a steep drop.
+      const up = rand(s, 220, 360);
+      addSegment(s, up, -up * rand(s, 0.18, 0.32));
+      addBallLine(s, s.genX - up + 40, 4, false);
+      addSegment(s, 80, 0);
+      const down = rand(s, 320, 520);
+      const downStart = s.genX;
+      addSegment(s, down, down * rand(s, 0.4, 0.65));
+      placeObstacles(s, downStart + 100, s.genX, reach, hard);
+    } else if (roll < 0.62) {
+      // A wooden kicker ramp, then a big drop onto a downhill landing.
       addSegment(s, runUp(s, 60), 0);
-      addSegment(s, 110, -66);
+      addSegment(s, 140, -rand(s, 80, 110), 'ramp');
       const lipX = s.genX;
       const lipY = s.genY;
-      s.genY += rand(s, 70, 150);
-      addSegment(s, 360, 60);
-      for (let i = 1; i <= 4; i += 1) s.footballs.push({ id: s.nextId++, x: lipX + i * speed * 4, y: lipY - 40 - i * 6 });
+      s.genY += rand(s, 150, 260);
+      addSegment(s, 420, 170);
+      for (let i = 1; i <= 5; i += 1) s.footballs.push({ id: s.nextId++, x: lipX + i * speed * 4, y: lipY - 46 - i * 9 + i * i * 1.6 });
       s.noObstacleUntil = s.genX;
-    } else if (roll < 0.88) {
-      // A gap to jump, landing a little lower.
+    } else if (roll < 0.78) {
+      // A gap to jump, landing lower. The widest ones (farther down) need the double jump.
       const lead = runUp(s, 120);
       addSegment(s, lead, lead * 0.25);
       const edgeY = s.genY;
-      const width = reach * (0.28 + nextRandom(s) * (0.12 + 0.25 * hard));
-      const drop = rand(s, 20, 90);
+      const width = reach * (0.3 + nextRandom(s) * (0.2 + 0.4 * hard));
+      const drop = rand(s, 20, 120);
       s.pits.push({ x0: s.genX, x1: s.genX + width, floor: edgeY + drop + 220 });
       for (let i = 1; i <= 3; i += 1) s.footballs.push({ id: s.nextId++, x: s.genX + (width * i) / 4, y: edgeY - 70 });
       s.genX += width;
       s.genY += drop;
       addSegment(s, 300, 50);
       s.noObstacleUntil = s.genX;
+    } else if (roll < 0.9) {
+      // A wooden trestle bridge between two gaps.
+      const lead = runUp(s, 120);
+      addSegment(s, lead, lead * 0.25);
+      const edgeY = s.genY;
+      const first = reach * rand(s, 0.25, 0.42);
+      const deckY = edgeY + rand(s, -20, 40);
+      s.pits.push({ x0: s.genX, x1: s.genX + first, floor: Math.max(edgeY, deckY) + 260 });
+      s.genX += first;
+      s.genY = deckY;
+      const deck = rand(s, 220, 380);
+      addSegment(s, deck, 0, 'bridge');
+      addBallLine(s, s.genX - deck + 50, 4, nextRandom(s) < 0.5);
+      const second = reach * (0.25 + nextRandom(s) * (0.17 + 0.25 * hard));
+      const drop = rand(s, 30, 110);
+      s.pits.push({ x0: s.genX, x1: s.genX + second, floor: deckY + drop + 260 });
+      s.genX += second;
+      s.genY += drop;
+      addSegment(s, 300, 50);
+      s.noObstacleUntil = s.genX;
     } else {
       // A cliff: the ground just steps down.
       addSegment(s, runUp(s, 160), 10);
-      s.genY += rand(s, 80, 180);
-      addSegment(s, 320, 50);
+      s.genY += rand(s, 120, 260);
+      addSegment(s, 360, 90);
       s.noObstacleUntil = s.genX;
     }
   }
@@ -448,6 +481,20 @@ export function shredStep(s: ShredState, tap = false): ShredState {
     s.grounded = false;
     s.lastGround = -100;
     s.wantJump = -100;
+    s.doubleAt = -100;
+    s.jumped = true;
+    s.jumps += 1;
+  } else if (tap && !s.grounded && !s.jumped) {
+    // Rode off a ramp or cliff without jumping: the jump still works in the air.
+    s.vy = Math.min(s.vy, 0) - SHRED.jump;
+    s.jumped = true;
+    s.wantJump = -100;
+    s.jumps += 1;
+  } else if (tap && !s.grounded && s.doubleAt < 0) {
+    // A second tap in the air: one more boost before landing.
+    s.vy = Math.min(s.vy, 0) - SHRED.doubleJump;
+    s.doubleAt = s.tick;
+    s.wantJump = -100;
     s.jumps += 1;
   }
 
@@ -478,6 +525,8 @@ export function shredStep(s: ShredState, tap = false): ShredState {
         s.y = g;
         s.vy = 0;
         s.grounded = true;
+        s.doubleAt = -100;
+        s.jumped = false;
         s.lastGround = s.tick;
       } else {
         shredCrash(s, 'cliff');
