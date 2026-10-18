@@ -185,7 +185,7 @@ const compareFactors = (a, b) => {
       start: liftText(a),
       sit: liftText(b),
       detail: [a, b].map((p) => (p.lift ? `top ${p.player.position} in last ${p.lift.games} games vs ${p.player.opponent}` : null)),
-      edge: edgeBy(a.lift?.lift ?? 0, b.lift?.lift ?? 0, 0.1),
+      edge: edgeBy(a.lift?.lift, b.lift?.lift, 0.1),
     });
   }
   if (a.usage || b.usage) {
@@ -196,7 +196,7 @@ const compareFactors = (a, b) => {
       start: usageText(a),
       sit: usageText(b),
       detail: [a, b].map((p) => (p.usage ? `season ${pct(p.usage.season)}` : null)),
-      edge: edgeBy(a.usage?.change ?? 0, b.usage?.change ?? 0, 0.05),
+      edge: edgeBy(a.usage?.change, b.usage?.change, 0.05),
     });
   }
   if (a.range || b.range) {
