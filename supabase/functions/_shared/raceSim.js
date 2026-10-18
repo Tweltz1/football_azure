@@ -16,6 +16,8 @@ export const JUMP = 20;
 export const SUPER_JUMP = 27;
 export const RUNNER_HALF_WIDTH = 16;
 export const RUNNER_HEIGHT = 60;
+/** How far back from a gap's edge you climb out after falling in (obstacles are at least 220 apart). */
+export const RESPAWN_BACK = 150;
 /** How long after the first finisher the race waits for everyone else. */
 export const FINISH_GRACE_TICKS = TICKS_PER_SECOND * 30;
 /** A runner who never finishes stops being simulated here. */
@@ -331,10 +333,11 @@ export function stepRunner(r, course, actions = []) {
   }
   if (r.grounded && ground != null && r.y > ground) r.grounded = false;
 
-  // Fell in a gap: climb out at the near edge.
+  // Fell in a gap: climb out back from the near edge, with a run-up to try the jump again.
   if (r.y < -220) {
-    const gap = course.gaps.find((g) => r.x >= g.start - 30 && r.x <= g.end + 30) || { start: r.x };
-    r.x = gap.start - 30;
+    // You keep drifting forward while falling, so the gap may be a little behind you by now.
+    const gap = course.gaps.filter((g) => r.x >= g.start - 30 && r.x <= g.end + 300).pop();
+    r.x = gap ? gap.start - RESPAWN_BACK : r.x - 30;
     r.y = 0;
     r.vy = 0;
     r.grounded = true;

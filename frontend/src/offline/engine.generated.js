@@ -3230,6 +3230,7 @@ var JUMP = 20;
 var SUPER_JUMP = 27;
 var RUNNER_HALF_WIDTH = 16;
 var RUNNER_HEIGHT = 60;
+var RESPAWN_BACK = 150;
 var FINISH_GRACE_TICKS = TICKS_PER_SECOND2 * 30;
 var MAX_TICKS = TICKS_PER_SECOND2 * 240;
 function nextRandom2(state) {
@@ -3539,8 +3540,8 @@ function stepRunner(r, course, actions = []) {
   if (r.grounded && ground != null && r.y > ground)
     r.grounded = false;
   if (r.y < -220) {
-    const gap = course.gaps.find((g) => r.x >= g.start - 30 && r.x <= g.end + 30) || { start: r.x };
-    r.x = gap.start - 30;
+    const gap = course.gaps.filter((g) => r.x >= g.start - 30 && r.x <= g.end + 300).pop();
+    r.x = gap ? gap.start - RESPAWN_BACK : r.x - 30;
     r.y = 0;
     r.vy = 0;
     r.grounded = true;
