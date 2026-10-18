@@ -64,6 +64,9 @@ const Login = () => {
             <button type="button" className="edit-roster-button" onClick={() => signIn('google')}>Login with Google</button>
           </div>
           <button type="button" className="crew-intro-replay" onClick={() => setShowIntro(true)}>Meet the crew</button>
+          <p className="login-legal">
+            <a href="/privacy.html">Privacy Policy</a> · <a href="/terms.html">Terms of Service</a>
+          </p>
           {savedUser && (
             <div className="login-offline">
               <p>Drafts saved on this phone belong to {savedUser.userDetails || 'you'}.</p>
