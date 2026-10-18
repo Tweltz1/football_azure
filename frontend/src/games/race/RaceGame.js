@@ -203,17 +203,47 @@ function draw(ctx, engine, width, height, images) {
     ctx.fillText(r === me ? 'You' : r.name, px, footY - (SPRITE_H + 8) * scale);
   });
 
-  // Bush's bleeding eye: a splatter over your screen.
+  // Bush's bleeding eye: a splatter over most of your screen, with drips, that fades as it wears off.
   if (engine.me && me.runner.tick < me.runner.blindUntil) {
     const left2 = (me.runner.blindUntil - me.runner.tick) / EFFECT.blind;
-    ctx.fillStyle = `rgba(170, 0, 20, ${0.75 * Math.min(1, left2 * 1.5)})`;
-    [[0.55, 0.35, 0.22], [0.75, 0.55, 0.16], [0.4, 0.6, 0.12], [0.85, 0.25, 0.1]].forEach(([cx, cy, r]) => {
+    const fade = Math.min(1, left2 * 1.5);
+    const age = EFFECT.blind - (me.runner.blindUntil - me.runner.tick);
+    const size = Math.min(width, height);
+    ctx.fillStyle = `rgba(120, 0, 10, ${0.25 * fade})`;
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = `rgba(170, 0, 20, ${0.85 * fade})`;
+    SPLAT.forEach(([cx, cy, r, drip]) => {
+      const x = width * cx;
+      const y = height * cy;
       ctx.beginPath();
-      ctx.arc(width * cx, height * cy, Math.min(width, height) * r * 1.4, 0, Math.PI * 2);
+      ctx.arc(x, y, size * r, 0, Math.PI * 2);
       ctx.fill();
+      // Small droplets around each blob.
+      for (let i = 0; i < 5; i += 1) {
+        const a = (cx * 31 + i * 1.3) % (Math.PI * 2);
+        const d = size * r * (1.2 + ((cy * 17 + i) % 1) * 0.5);
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, size * r * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Drips run down the screen.
+      if (drip) {
+        const len = Math.min(height, size * drip * Math.min(1, age / 30));
+        ctx.fillRect(x - size * 0.012, y, size * 0.024, len);
+        ctx.beginPath();
+        ctx.arc(x, y + len, size * 0.02, 0, Math.PI * 2);
+        ctx.fill();
+      }
     });
   }
 }
+
+// Where the blood lands: [x, y, radius, drip length], as shares of the screen.
+const SPLAT = [
+  [0.5, 0.4, 0.3, 0.5], [0.22, 0.3, 0.2, 0.6], [0.78, 0.32, 0.22, 0.4], [0.35, 0.72, 0.17, 0],
+  [0.68, 0.7, 0.19, 0], [0.08, 0.62, 0.12, 0.3], [0.93, 0.6, 0.13, 0.3], [0.5, 0.08, 0.12, 0],
+  [0.15, 0.08, 0.1, 0.4], [0.88, 0.1, 0.1, 0],
+];
 
 const KIND_SOUND = { horseshoe: 0, bionic: 1, eye: 2, potion: 3, seven: 4, shield: 5, car: 6, spit: 7, oip: 8, dew: 9 };
 
