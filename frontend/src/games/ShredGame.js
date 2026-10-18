@@ -693,7 +693,7 @@ const ShredGame = ({ seed, onEnd }) => {
         className="shred-stage"
         onPointerDown={jump}
         role="application"
-        aria-label="Shred the Summit. Tap to jump."
+        aria-label="Shred the Summit. Tap the screen to jump, hold to jump higher."
       >
         <canvas ref={canvasRef} className="shred-canvas" />
         {phase === 'playing' && score >= SHRED.hotDogsFrom - 20 && score < SHRED.hotDogsFrom + 15 && (
@@ -724,11 +724,10 @@ const ShredGame = ({ seed, onEnd }) => {
               ))}
             </div>
             <button type="button" className="game-go" onClick={begin}>Drop in</button>
-            <p className="game-hint">Hold Jump to jump higher, tap for a small hop, and tap again in the air to double jump (with a flip). Footballs are {SHRED.ballPoints} points, and landing on top of a rock, stump, tree or snowman is {SHRED.stompPoints}. Gift sleds hold a football, until later, when some toss out a hot dog on a fuse. Jump it before it pops!</p>
+            <p className="game-hint">Tap the screen (or space) to jump. Hold it down to jump higher, tap quickly for a small hop, and tap again in the air to double jump (with a flip). Footballs are {SHRED.ballPoints} points, and landing on top of a rock, stump, tree or snowman is {SHRED.stompPoints}. Gift sleds hold a football, until later, when some toss out a hot dog on a fuse. Jump it before it pops!</p>
           </div>
         )}
       </div>
-      <button type="button" className="shred-jump" onPointerDown={jump} aria-label="Jump">Jump</button>
     </div>
   );
 };
