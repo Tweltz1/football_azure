@@ -67,6 +67,11 @@ function drawObstacle(ctx, o, sx, sy, k, tick) {
   const y = sy(o.y);
   const w = o.w * k;
   const h = o.h * k;
+  // A soft shadow on the snow.
+  ctx.fillStyle = 'rgba(60, 90, 130, 0.22)';
+  ctx.beginPath();
+  ctx.ellipse(x + 6 * k, y + 1 * k, w * 0.62, 5 * k, 0, 0, Math.PI * 2);
+  ctx.fill();
   if (o.kind === 'rock') {
     ctx.fillStyle = '#7d8696';
     ctx.beginPath();
@@ -146,6 +151,15 @@ function drawObstacle(ctx, o, sx, sy, k, tick) {
     ctx.lineTo(x + w * 0.4, y - 2 * k);
     ctx.quadraticCurveTo(x + w * 0.58, y - 2 * k, x + w * 0.56, y - 12 * k);
     ctx.stroke();
+    if (o.roll < 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      for (let i = 0; i < 3; i += 1) {
+        const a = ((tick * 5 + i * 11 + o.id * 7) % 18) / 18;
+        ctx.beginPath();
+        ctx.arc(x - w * 0.55 - a * 20 * k, y - 3 * k - a * 10 * k, (3 - a * 2) * k, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
     ctx.fillStyle = '#d63a2f';
     ctx.fillRect(x - w * 0.5, y - 14 * k, w, 9 * k);
     ctx.fillStyle = '#a82820';
@@ -292,13 +306,47 @@ function snowCap(ctx, x0, y0, x1, y1, k) {
   ctx.stroke();
 }
 
+/** How deep the snow track looks: its back edge sits above the riding line, its front edge below. */
+const DEPTH = 30;
+
 function drawSlope(ctx, g, sx, sy, k, height, rock) {
   const x0 = sx(g.x0);
   const x1 = sx(g.x1);
+  const back = DEPTH * 0.6 * k;
+  const front = DEPTH * 0.4 * k;
+  // The snow track's top, seen from a little above, so the slope has some depth.
+  const top = ctx.createLinearGradient(0, sy(g.y0) - back, 0, sy(g.y0) + front);
+  top.addColorStop(0, '#dbe9f8');
+  top.addColorStop(1, '#ffffff');
+  ctx.fillStyle = top;
+  ctx.beginPath();
+  ctx.moveTo(x0, sy(g.y0) - back);
+  ctx.lineTo(x1, sy(g.y1) - back);
+  ctx.lineTo(x1, sy(g.y1) + front);
+  ctx.lineTo(x0, sy(g.y0) + front);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#b7cde6';
+  ctx.lineWidth = 2 * k;
+  ctx.beginPath();
+  ctx.moveTo(x0, sy(g.y0) - back);
+  ctx.lineTo(x1, sy(g.y1) - back);
+  ctx.stroke();
+  // Board tracks carved down the middle.
+  ctx.strokeStyle = 'rgba(160, 188, 220, 0.5)';
+  ctx.lineWidth = 1.5 * k;
+  ctx.beginPath();
+  ctx.moveTo(x0, sy(g.y0) + 2 * k);
+  ctx.lineTo(x1, sy(g.y1) + 2 * k);
+  ctx.moveTo(x0, sy(g.y0) - 7 * k);
+  ctx.lineTo(x1, sy(g.y1) - 7 * k);
+  ctx.stroke();
+  // The rock face under the front edge.
+  const f = (y) => sy(y) + front;
   ctx.fillStyle = rock;
   ctx.beginPath();
-  ctx.moveTo(x0, sy(g.y0));
-  ctx.lineTo(x1, sy(g.y1));
+  ctx.moveTo(x0, f(g.y0));
+  ctx.lineTo(x1, f(g.y1));
   ctx.lineTo(x1, height + 10);
   ctx.lineTo(x0, height + 10);
   ctx.fill();
@@ -312,12 +360,12 @@ function drawSlope(ctx, g, sx, sy, k, height, rock) {
       const r = (6 + hash(n * 13 + row) * 7) * k;
       ctx.fillStyle = hash(n * 3 + row) < 0.5 ? '#a27a52' : '#5e4129';
       ctx.beginPath();
-      ctx.ellipse(sx(wx), sy(top + 30 + row * 42 + hash(n + row * 5) * 20), r * 1.3, r, 0, 0, Math.PI * 2);
+      ctx.ellipse(sx(wx), f(top + 30 + row * 42 + hash(n + row * 5) * 20), r * 1.3, r, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }
   ctx.restore();
-  snowCap(ctx, x0, sy(g.y0), x1, sy(g.y1), k);
+  snowCap(ctx, x0, f(g.y0), x1, f(g.y1), k);
 }
 
 const WOOD = '#c98a4b';
@@ -454,11 +502,32 @@ function draw(canvas, s, rider, images, cam, popups) {
   let tilt = 0;
   for (const g of s.segments) if (s.x >= g.x0 && s.x < g.x1) tilt = Math.atan2(g.y1 - g.y0, g.x1 - g.x0);
   if (!s.grounded) tilt = Math.max(-0.6, Math.min(0.6, s.vy * 0.04));
+  // The rider's shadow on the snow below.
+  const below = shredGround(s, s.x);
+  if (below != null && s.alive) {
+    const up = Math.min(1, Math.max(0, (below - s.y) / 300));
+    ctx.fillStyle = `rgba(60, 90, 130, ${0.3 * (1 - up)})`;
+    ctx.beginPath();
+    ctx.ellipse(px, sy(below) + 1 * k, 24 * k * (1 - up * 0.5), 5 * k, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // A full flip on the double jump, turning around the rider's middle.
+  const spinTicks = 24;
+  const spinning = s.alive && s.doubleAt >= 0 && s.tick - s.doubleAt < spinTicks;
+  const spin = spinning ? ((s.tick - s.doubleAt) / spinTicks) * Math.PI * 2 : 0;
+  const mid = 34 * k;
   ctx.save();
-  ctx.translate(px, py);
-  // A full spin on the double jump.
-  const spin = s.doubleAt >= 0 && s.tick - s.doubleAt < 16 ? ((s.tick - s.doubleAt) / 16) * Math.PI * 2 : 0;
+  ctx.translate(px, py - (spinning ? mid : 0));
   ctx.rotate(s.alive ? tilt - spin : tilt + 1.2);
+  if (spinning) ctx.translate(0, mid);
+  if (spinning) {
+    // Swoosh lines behind the flip.
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 3 * k;
+    ctx.beginPath();
+    ctx.arc(0, -mid, mid * 1.15, 0.4, 1.9);
+    ctx.stroke();
+  }
   ctx.fillStyle = '#ffd23f';
   ctx.strokeStyle = '#16122b';
   ctx.lineWidth = 2;
@@ -506,6 +575,8 @@ const ShredGame = ({ seed, onEnd }) => {
   const stateRef = useRef(null);
   const inputsRef = useRef([]);
   const tapRef = useRef(false);
+  const heldRef = useRef(false);
+  const recHeldRef = useRef(false);
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const camRef = useRef({ y: null });
@@ -519,6 +590,8 @@ const ShredGame = ({ seed, onEnd }) => {
     stateRef.current = shredStart(seed);
     inputsRef.current = [];
     tapRef.current = false;
+    heldRef.current = false;
+    recHeldRef.current = false;
     camRef.current = { y: null };
     popupsRef.current = [];
     setCountdown(3);
@@ -533,16 +606,29 @@ const ShredGame = ({ seed, onEnd }) => {
   }, [phase, countdown]);
 
   const jump = useCallback(() => {
-    if (phase === 'playing') tapRef.current = true;
+    if (phase === 'playing') { tapRef.current = true; heldRef.current = true; }
   }, [phase]);
+  const letGo = useCallback(() => { heldRef.current = false; }, []);
 
   useEffect(() => {
+    const isJump = (event) => event.key === ' ' || event.key === 'ArrowUp' || event.key === 'w';
     const onKey = (event) => {
-      if (event.key === ' ' || event.key === 'ArrowUp' || event.key === 'w') { event.preventDefault(); jump(); }
+      if (!isJump(event)) return;
+      event.preventDefault();
+      if (!event.repeat) jump();
     };
+    const onKeyUp = (event) => { if (isJump(event)) letGo(); };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [jump]);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('pointerup', letGo);
+    window.addEventListener('pointercancel', letGo);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('pointerup', letGo);
+      window.removeEventListener('pointercancel', letGo);
+    };
+  }, [jump, letGo]);
 
   // Size the canvas to its box (sharp on phones), and keep it that way when the screen turns.
   useEffect(() => {
@@ -564,9 +650,17 @@ const ShredGame = ({ seed, onEnd }) => {
     const s = stateRef.current;
     const tap = tapRef.current;
     tapRef.current = false;
-    if (tap) inputsRef.current.push([s.tick, 1]);
+    // Recorded as [tick, 1] for a press and [tick, 0] for letting go (a tap shorter than a tick still
+    // counts as a press, then a let-go on the next tick).
+    if (tap) {
+      inputsRef.current.push([s.tick, 1]);
+      recHeldRef.current = true;
+    } else if (recHeldRef.current && !heldRef.current) {
+      inputsRef.current.push([s.tick, 0]);
+      recHeldRef.current = false;
+    }
     const { balls, stomps } = s;
-    shredStep(s, tap);
+    shredStep(s, tap, recHeldRef.current);
     const popAt = (text) => popupsRef.current.push({ text, x: s.x, y: s.y - 70, tick: s.tick });
     if (s.balls > balls) { blip(); popAt(`+${SHRED.ballPoints * (s.balls - balls)}`); }
     if (s.stomps > stomps) popAt(`+${SHRED.stompPoints}`);
@@ -630,7 +724,7 @@ const ShredGame = ({ seed, onEnd }) => {
               ))}
             </div>
             <button type="button" className="game-go" onClick={begin}>Drop in</button>
-            <p className="game-hint">Tap anywhere (or space) to jump, and tap again in the air to double jump. Footballs are {SHRED.ballPoints} points, and landing on top of a rock, stump, tree or snowman is {SHRED.stompPoints}. Gift sleds hold a football, until later, when some toss out a hot dog on a fuse. Jump it before it pops!</p>
+            <p className="game-hint">Hold Jump to jump higher, tap for a small hop, and tap again in the air to double jump (with a flip). Footballs are {SHRED.ballPoints} points, and landing on top of a rock, stump, tree or snowman is {SHRED.stompPoints}. Gift sleds hold a football, until later, when some toss out a hot dog on a fuse. Jump it before it pops!</p>
           </div>
         )}
       </div>

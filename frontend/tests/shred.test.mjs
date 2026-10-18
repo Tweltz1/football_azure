@@ -146,3 +146,32 @@ test('Shred the Summit: a gift sled gives a football, or later a hot dog on a fu
   }
   assert.ok(dogs > 2 && dogs < 18, `${dogs} of 20 gifts were hot dogs`);
 });
+
+test('Shred the Summit: holding Jump goes higher than a quick tap, and replay keeps the difference', () => {
+  const run = (holdTicks) => {
+    const s = shredStart(5);
+    for (let i = 0; i < 40; i += 1) shredStep(s, false, false);
+    const start = s.y;
+    let top = s.y;
+    for (let i = 0; i < 40; i += 1) {
+      shredStep(s, i === 0, i < holdTicks);
+      top = Math.min(top, s.y);
+    }
+    return start - top;
+  };
+  const hop = run(3);
+  const full = run(40);
+  assert.ok(hop < full * 0.7, `a tap (${hop.toFixed(0)}) is a smaller jump than a hold (${full.toFixed(0)})`);
+  // The same press and release, replayed from the recorded inputs, gives the same run.
+  const inputs = [[40, 1], [43, 0], [200, 1], [230, 0]];
+  const s = shredStart(5);
+  let held = false;
+  let i = 0;
+  while (s.alive) {
+    let v = null;
+    while (i < inputs.length && inputs[i][0] === s.tick) v = inputs[i++][1];
+    if (v != null) held = v === 1;
+    shredStep(s, v === 1, held);
+  }
+  assert.equal(replaySkillGame('shred', 5, inputs).ticks, s.tick);
+});
