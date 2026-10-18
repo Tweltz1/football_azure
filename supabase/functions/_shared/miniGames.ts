@@ -39,7 +39,7 @@ export const GAMES: Record<GameKind, GameInfo> = {
   },
   shred: {
     title: 'Shred the Summit',
-    blurb: 'Snowboard down the mountain. Tap to jump (tap again in the air to double jump) over the rocks, trees and gaps, grab footballs, and watch the sky: past 200 points the hot dogs start falling and exploding. It gets faster as you score.',
+    blurb: 'Snowboard down the mountain. Tap to jump (tap again in the air to double jump). Footballs are 10 points and landing on top of a rock, stump or tree is 5. Ride through gift sleds for footballs, but later some hold hot dogs on a fuse, and past 100 points hot dogs fall from the sky. It gets faster the farther you go.',
     style: 'skill',
     unit: 'pts',
   },
@@ -214,12 +214,22 @@ export const SHRED = {
   halfWidth: 11,
   height: 40,
   ballRadius: 12,
-  ballPoints: 5,
-  /** Distance per point. */
+  ballPoints: 10,
+  /** Landing on top of a rock, stump, tree, snowman or snowball bounces you up for these. */
+  stompPoints: 5,
+  stompBounce: 9,
+  /** World units per meter (distance only sets speed and difficulty; it scores nothing). */
   pointEvery: 25,
-  /** Hot dogs start falling at this score. */
-  hotDogsFrom: 200,
+  /** Hot dogs start falling from the sky at this score. */
+  hotDogsFrom: 100,
   hotDogFall: 40,
+  /** Gift sleds can hold a hot dog once you have this many footballs. */
+  giftHotDogsFrom: 8,
+  /** Ticks a thrown hot dog sits before it blows. */
+  fuse: 45,
+  /** Gift launchers (a box that keeps firing footballs and hot dogs) show up from this score. */
+  launchersFrom: 200,
+  itemGravity: 0.3,
   blastRadius: 38,
   blastHeight: 50,
   blastTicks: 8,
@@ -232,18 +242,33 @@ export const SHRED = {
 /** Ticks in the air for a jump that lands where it took off. */
 const SHRED_AIR = (2 * SHRED.jump) / SHRED.gravity;
 
-/** The rider's cruising speed: it picks up as the score climbs. */
-export const shredSpeed = (score: number) => 6 + Math.min(4.5, score / 160);
+/** The rider's cruising speed: it picks up the farther down the mountain you get (in meters). */
+export const shredSpeed = (meters: number) => 6 + Math.min(4.5, meters / 160);
 
-export type ShredObstacleKind = 'rock' | 'tree' | 'snowman' | 'snowball';
+export type ShredObstacleKind = 'rock' | 'stump' | 'tree' | 'snowman' | 'snowball' | 'sled' | 'launcher';
+/** Sleds and launchers are safe to ride through; everything else crashes you unless you land on top. */
+const SHRED_SAFE: ShredObstacleKind[] = ['sled', 'launcher'];
 export type ShredHit = ShredObstacleKind | 'hotdog' | 'gap' | 'cliff' | 'time';
 
 /** `kind` is only for drawing: a wooden kicker ramp or a trestle bridge over a gap. */
 export interface ShredSegment { x0: number; x1: number; y0: number; y1: number; kind?: 'ramp' | 'bridge' }
 export interface ShredPit { x0: number; x1: number; floor: number }
-export interface ShredObstacle { id: number; kind: ShredObstacleKind; x: number; y: number; w: number; h: number; roll: number }
-export interface ShredBall { id: number; x: number; y: number }
-export interface ShredHotDog { id: number; x: number; y: number; ground: number; boom: number }
+export interface ShredObstacle {
+  id: number; kind: ShredObstacleKind; x: number; y: number; w: number; h: number; roll: number;
+  /** Landed on already (no more points or crashes from it). */
+  stomped?: boolean;
+  /** A sled still holding its gift. */
+  gift?: boolean;
+  /** A launcher's next shot (tick). */
+  shot?: number;
+}
+/** A football; `vx`/`vy` while it flies out of a launcher. */
+export interface ShredBall { id: number; x: number; y: number; vx?: number; vy?: number }
+/**
+ * A hot dog: dropped from the sky (`sky`, blows as it lands on `ground`) or thrown from a gift (flies with
+ * vx/vy, lands, then blows after `fuse` ticks). `boom` counts up from 1 while it explodes.
+ */
+export interface ShredHotDog { id: number; x: number; y: number; vx: number; vy: number; ground: number; landed: boolean; sky: boolean; fuse: number; boom: number }
 
 export interface ShredState {
   r: number;
@@ -263,6 +288,7 @@ export interface ShredState {
   /** True once the rider has jumped on this trip through the air (riding off an edge isn't a jump). */
   jumped: boolean;
   balls: number;
+  stomps: number;
   alive: boolean;
   hitBy: ShredHit | null;
   segments: ShredSegment[];
@@ -280,7 +306,7 @@ export interface ShredState {
 export function shredStart(seed: number): ShredState {
   const s: ShredState = {
     r: seed | 0, tick: 0, x: 0, y: 0, vx: shredSpeed(0), vy: 0, grounded: true, lastGround: 0, wantJump: -100, jumps: 0, doubleAt: -100, jumped: false,
-    balls: 0, alive: true, hitBy: null, segments: [], pits: [], obstacles: [], footballs: [], hotdogs: [],
+    balls: 0, stomps: 0, alive: true, hitBy: null, segments: [], pits: [], obstacles: [], footballs: [], hotdogs: [],
     genX: -300, genY: 0, noObstacleUntil: 900, nextHotDog: 0, nextId: 1,
   };
   shredBuild(s);
@@ -288,7 +314,7 @@ export function shredStart(seed: number): ShredState {
 }
 
 export const shredDistance = (s: ShredState) => Math.max(0, Math.floor(s.x / SHRED.pointEvery));
-export const shredScore = (s: ShredState) => shredDistance(s) + s.balls * SHRED.ballPoints;
+export const shredScore = (s: ShredState) => s.balls * SHRED.ballPoints + s.stomps * SHRED.stompPoints;
 
 /** The ground's height at x, or null over a gap. */
 export function shredGround(s: ShredState, x: number): number | null {
@@ -319,19 +345,35 @@ function addBallLine(s: ShredState, x0: number, count: number, high: boolean) {
   }
 }
 
+const SHRED_SIZES: Record<ShredObstacleKind, [number, number]> = {
+  rock: [30, 20], stump: [34, 16], tree: [26, 48], snowman: [26, 40], snowball: [34, 34], sled: [50, 36], launcher: [50, 40],
+};
+
+/** A gift launcher on a flat stretch, once the score is high enough. */
+function maybeLauncher(s: ShredState, x0: number, x1: number) {
+  if (shredScore(s) < SHRED.launchersFrom || x1 - x0 < 260 || nextRandom(s) > 0.3) return;
+  const x = x0 + (x1 - x0) * 0.6;
+  const g = shredGround(s, x);
+  if (g == null) return;
+  s.obstacles.push({ id: s.nextId++, kind: 'launcher', x, y: g, w: SHRED_SIZES.launcher[0], h: SHRED_SIZES.launcher[1], roll: 0, shot: 0 });
+}
+
 /** Rocks, trees and the rest down a stretch of ground, always far enough apart to land and jump again. */
 function placeObstacles(s: ShredState, x0: number, x1: number, reach: number, hard: number) {
   let x = Math.max(x0 + 60, s.noObstacleUntil);
   while (x < x1 - 40) {
     if (nextRandom(s) < 0.5 + 0.3 * hard) {
       const roll = nextRandom(s);
-      const kind: ShredObstacleKind = roll < 0.35 ? 'rock' : roll < 0.65 ? 'tree' : roll < 0.85 || hard < 0.15 ? 'snowman' : 'snowball';
+      const kind: ShredObstacleKind = roll < 0.2 ? 'rock' : roll < 0.35 ? 'stump' : roll < 0.53 ? 'tree' : roll < 0.68 ? 'snowman'
+        : roll < 0.8 ? (hard < 0.15 ? 'stump' : 'snowball') : 'sled';
       // Snowballs roll at you, so they need extra room in front.
       if (kind === 'snowball') x += 140;
       const g = shredGround(s, x);
       if (x >= x1 - 40 || g == null) break;
-      const size = kind === 'rock' ? [30, 20] : kind === 'tree' ? [26, 48] : kind === 'snowman' ? [26, 40] : [34, 34];
-      s.obstacles.push({ id: s.nextId++, kind, x, y: g, w: size[0], h: size[1], roll: kind === 'snowball' ? 1.6 : 0 });
+      const size = SHRED_SIZES[kind];
+      const o: ShredObstacle = { id: s.nextId++, kind, x, y: g, w: size[0], h: size[1], roll: kind === 'snowball' ? 1.6 : 0 };
+      if (kind === 'sled') o.gift = true;
+      s.obstacles.push(o);
       // A football over some of them, for the brave.
       if (nextRandom(s) < 0.3) s.footballs.push({ id: s.nextId++, x, y: g - size[1] - 46 });
       // Always room to land and jump again.
@@ -350,7 +392,7 @@ const runUp = (s: ShredState, least: number) => Math.max(least, s.noObstacleUnti
 function shredBuild(s: ShredState) {
   while (s.genX < s.x + 1800) {
     const hard = Math.min(1, s.genX / 40000);
-    const speed = shredSpeed(shredScore(s) + (s.genX - s.x) / SHRED.pointEvery);
+    const speed = shredSpeed(shredDistance(s) + (s.genX - s.x) / SHRED.pointEvery);
     // How far a jump carries at cruising speed.
     const reach = SHRED_AIR * speed;
     const start = s.genX;
@@ -368,6 +410,7 @@ function shredBuild(s: ShredState) {
       const length = rand(s, 280, 480);
       addSegment(s, length, length * rand(s, 0, 0.05));
       placeObstacles(s, start, s.genX, reach, hard);
+      maybeLauncher(s, start, s.genX);
       if (nextRandom(s) < 0.5) addBallLine(s, start + 40, 5, false);
     } else if (roll < 0.48) {
       // A big hill: a long climb, a flat top, then a steep drop.
@@ -437,30 +480,80 @@ function shredBuild(s: ShredState) {
   s.footballs = s.footballs.filter((b) => b.x > behind);
 }
 
+function throwHotDog(s: ShredState, x: number, y: number, vx: number, vy: number) {
+  s.hotdogs.push({ id: s.nextId++, x, y, vx, vy, ground: 0, landed: false, sky: false, fuse: SHRED.fuse, boom: 0 });
+}
+
 function shredHotDogs(s: ShredState, score: number) {
   if (score >= SHRED.hotDogsFrom && s.tick >= s.nextHotDog) {
     // Aim for about where the rider will be when it lands, give or take.
     const x = s.x + s.vx * SHRED.hotDogFall + rand(s, -60, 160);
     const g = shredGround(s, x);
     if (g != null) {
-      s.hotdogs.push({ id: s.nextId++, x, y: g - 440, ground: g, boom: 0 });
-      s.nextHotDog = s.tick + Math.floor(Math.max(50, 125 - (score - SHRED.hotDogsFrom) / 8) + nextRandom(s) * 30);
+      // Starts slow and speeds up, landing SHRED.hotDogFall ticks later.
+      const vy = (440 - (SHRED.itemGravity * SHRED.hotDogFall * (SHRED.hotDogFall + 1)) / 2) / SHRED.hotDogFall;
+      s.hotdogs.push({ id: s.nextId++, x, y: g - 440, vx: 0, vy, ground: g, landed: false, sky: true, fuse: 0, boom: 0 });
+      // More of them the higher the score.
+      s.nextHotDog = s.tick + Math.floor(Math.max(35, 120 - (score - SHRED.hotDogsFrom) / 4) + nextRandom(s) * 30);
     }
   }
   const kept: ShredHotDog[] = [];
   for (const d of s.hotdogs) {
-    if (d.boom === 0) {
-      d.y += 440 / SHRED.hotDogFall;
-      if (d.y >= d.ground) {
-        d.y = d.ground;
-        d.boom = 1;
+    if (!d.landed) {
+      d.vy += SHRED.itemGravity;
+      d.x += d.vx;
+      d.y += d.vy;
+      const g = d.sky ? d.ground : shredGround(s, d.x);
+      if (g != null && d.y >= g) {
+        d.y = g;
+        d.ground = g;
+        d.landed = true;
+        if (d.fuse === 0) d.boom = 1;
+      } else if (d.y > s.y + 900) {
+        continue;
       }
+    } else if (d.fuse > 0) {
+      d.fuse -= 1;
+      if (d.fuse === 0) d.boom = 1;
     } else {
       d.boom += 1;
     }
     if (d.boom <= SHRED.blastTicks + 6) kept.push(d);
   }
   s.hotdogs = kept;
+}
+
+/** Gift launchers fire a football or a hot dog back toward the rider every couple of seconds. */
+function shredLaunchers(s: ShredState) {
+  for (const o of s.obstacles) {
+    if (o.kind !== 'launcher' || o.x - s.x > 650 || o.x < s.x - 40 || s.tick < (o.shot ?? 0)) continue;
+    const vx = -rand(s, 0.5, 2.5);
+    const vy = -rand(s, 8, 12);
+    if (nextRandom(s) < 0.55) s.footballs.push({ id: s.nextId++, x: o.x, y: o.y - o.h, vx, vy });
+    else throwHotDog(s, o.x, o.y - o.h, vx, vy);
+    o.shot = s.tick + 55 + Math.floor(nextRandom(s) * 25);
+  }
+  // Footballs in flight come down and settle on the snow.
+  for (const b of s.footballs) {
+    if (b.vy == null) continue;
+    b.vy += SHRED.itemGravity;
+    b.x += b.vx ?? 0;
+    b.y += b.vy;
+    const g = shredGround(s, b.x);
+    if (g != null && b.y >= g - 14) {
+      b.y = g - 14;
+      delete b.vx;
+      delete b.vy;
+    }
+  }
+  s.footballs = s.footballs.filter((b) => b.y < s.y + 900);
+}
+
+/** Opens a sled's gift: a football, or (once you have a few) sometimes a hot dog thrown ahead on a fuse. */
+function openGift(s: ShredState, o: ShredObstacle) {
+  o.gift = false;
+  if (s.balls < SHRED.giftHotDogsFrom || nextRandom(s) < 0.6) s.balls += 1;
+  else throwHotDog(s, o.x, o.y - o.h, s.vx * 1.5, -9);
 }
 
 function shredCrash(s: ShredState, hit: ShredHit) {
@@ -473,7 +566,7 @@ export function shredStep(s: ShredState, tap = false): ShredState {
   if (!s.alive) return s;
   if (tap) s.wantJump = s.tick;
   const score = shredScore(s);
-  const base = shredSpeed(score);
+  const base = shredSpeed(shredDistance(s));
   const slope = shredSlope(s, s.x);
   const canJump = s.grounded || (s.tick - s.lastGround <= SHRED.coyote && s.vy >= 0);
   if (s.tick - s.wantJump <= SHRED.jumpBuffer && canJump) {
@@ -546,7 +639,23 @@ export function shredStep(s: ShredState, tap = false): ShredState {
       if (g == null) o.y += 12; else o.y = g;
     }
     // A little forgiving at the edges.
-    if (right > o.x - o.w / 2 + 4 && left < o.x + o.w / 2 - 4 && s.y > o.y - o.h + 5 && top < o.y) shredCrash(s, o.kind);
+    const touching = right > o.x - o.w / 2 + 4 && left < o.x + o.w / 2 - 4 && s.y > o.y - o.h + 5 && top < o.y;
+    if (!touching || o.stomped) continue;
+    if (SHRED_SAFE.includes(o.kind)) {
+      if (o.gift) openGift(s, o);
+      continue;
+    }
+    if (!s.grounded && s.vy >= 0 && s.y - s.vy <= o.y - o.h + 8) {
+      // Landed on top: bounce off for points, with the jump and double jump back.
+      o.stomped = true;
+      s.y = o.y - o.h;
+      s.vy = -SHRED.stompBounce;
+      s.jumped = false;
+      s.doubleAt = -100;
+      s.stomps += 1;
+      continue;
+    }
+    shredCrash(s, o.kind);
   }
   const r = SHRED.ballRadius;
   s.footballs = s.footballs.filter((b) => {
@@ -555,10 +664,14 @@ export function shredStep(s: ShredState, tap = false): ShredState {
     return !got;
   });
   shredHotDogs(s, score);
+  shredLaunchers(s);
   for (const d of s.hotdogs) {
-    if (d.boom === 0) {
+    if (d.boom === 0 && d.landed) {
+      // Sitting on its fuse: riding into it sets it off right away.
+      if (right > d.x - 16 && left < d.x + 16 && s.y > d.y - 12) d.fuse = 0;
+    } else if (d.boom === 0 && d.sky) {
       if (right > d.x - 16 && left < d.x + 16 && s.y > d.y - 10 && top < d.y + 4) shredCrash(s, 'hotdog');
-    } else if (d.boom <= SHRED.blastTicks) {
+    } else if (d.boom > 0 && d.boom <= SHRED.blastTicks) {
       if (right > d.x - SHRED.blastRadius && left < d.x + SHRED.blastRadius && s.y > d.ground - SHRED.blastHeight) shredCrash(s, 'hotdog');
     }
   }
@@ -569,7 +682,7 @@ export function shredStep(s: ShredState, tap = false): ShredState {
   return s;
 }
 
-export const shredDetail = (s: ShredState) => `${shredDistance(s)} m, ${s.balls} football${s.balls === 1 ? '' : 's'}`;
+export const shredDetail = (s: ShredState) => `${s.balls} football${s.balls === 1 ? '' : 's'}, ${s.stomps} landing${s.stomps === 1 ? '' : 's'} on top, ${shredDistance(s)} m`;
 
 // ---- Field Goal Gauntlet ------------------------------------------------------------------------------
 

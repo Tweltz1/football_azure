@@ -104,3 +104,45 @@ test('Shred the Summit: riding off an edge keeps the jump and the double jump fo
   assert.ok(s.doubleAt >= 0, 'then the double jump');
   assert.equal(s.jumps, 2);
 });
+
+test('Shred the Summit: points come from footballs (10) and landing on top of things (5), not distance', () => {
+  const s = shredStart(11);
+  for (let i = 0; i < 30; i += 1) shredStep(s, false);
+  assert.ok(s.x > 0);
+  const before = shredScore(s);
+  assert.equal(before, s.balls * 10 + s.stomps * 5);
+  // Drop the rider onto a rock just ahead: a bounce and 5 points, not a crash.
+  const g = s.y;
+  s.obstacles = [{ id: 999, kind: 'rock', x: s.x + s.vx, y: g, w: 30, h: 20, roll: 0 }];
+  s.footballs = [];
+  Object.assign(s, { grounded: false, jumped: true, vy: 4, y: g - 18 });
+  shredStep(s, false);
+  assert.ok(s.alive, 'landing on top is safe');
+  assert.equal(s.stomps, 1);
+  assert.ok(s.vy < 0, 'bounced up');
+  assert.equal(shredScore(s), before + 5);
+});
+
+test('Shred the Summit: a gift sled gives a football, or later a hot dog on a fuse', () => {
+  const s = shredStart(12);
+  for (let i = 0; i < 30; i += 1) shredStep(s, false);
+  s.footballs = [];
+  s.obstacles = [{ id: 998, kind: 'sled', x: s.x + s.vx, y: s.y, w: 50, h: 36, roll: 0, gift: true }];
+  shredStep(s, false);
+  assert.equal(s.balls, 1, 'early gifts are footballs');
+  assert.equal(s.obstacles[0].gift, false);
+  // With plenty of footballs, some gifts are hot dogs thrown ahead.
+  let dogs = 0;
+  for (let seed = 1; seed <= 20; seed += 1) {
+    const t = shredStart(seed);
+    for (let i = 0; i < 30; i += 1) shredStep(t, false);
+    t.balls = 20;
+    t.footballs = [];
+    t.hotdogs = [];
+    t.obstacles = [{ id: 997, kind: 'sled', x: t.x + t.vx, y: t.y, w: 50, h: 36, roll: 0, gift: true }];
+    shredStep(t, false);
+    assert.ok(t.alive, 'opening a gift is safe');
+    if (t.hotdogs.some((d) => !d.sky && d.fuse > 0)) dogs += 1;
+  }
+  assert.ok(dogs > 2 && dogs < 18, `${dogs} of 20 gifts were hot dogs`);
+});
