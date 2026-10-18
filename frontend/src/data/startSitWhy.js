@@ -185,7 +185,7 @@ const compareFactors = (a, b) => {
       start: liftText(a),
       sit: liftText(b),
       detail: [a, b].map((p) => (p.lift ? `top ${p.player.position} in last ${p.lift.games} games vs ${p.player.opponent}` : null)),
-      edge: edgeBy(a.lift?.lift ?? 0, b.lift?.lift ?? 0, 0.1),
+      edge: edgeBy(a.lift?.lift, b.lift?.lift, 0.1),
     });
   }
   if (a.usage || b.usage) {
@@ -196,7 +196,7 @@ const compareFactors = (a, b) => {
       start: usageText(a),
       sit: usageText(b),
       detail: [a, b].map((p) => (p.usage ? `season ${pct(p.usage.season)}` : null)),
-      edge: edgeBy(a.usage?.change ?? 0, b.usage?.change ?? 0, 0.05),
+      edge: edgeBy(a.usage?.change, b.usage?.change, 0.05),
     });
   }
   if (a.range || b.range) {
@@ -605,8 +605,13 @@ export const explainTrade = (result, ctx) => {
       : 'The trade market rates what you get higher, but our projections for your scoring like what you give: you may be buying high.');
   }
   const adj = result.adjustment;
-  if (adj?.get) sentences.push(`${namesOf(adj.get.players.map((name) => ({ name })))} wouldn't crack your lineup, so ${adj.get.players.length > 1 ? 'they count' : 'that counts'} for half to cover the roster spot.`);
-  if (adj?.give) sentences.push(`${namesOf(adj.give.players.map((name) => ({ name })))} wouldn't crack ${them}'s lineup, so ${adj.give.players.length > 1 ? 'they count' : 'that counts'} for half on their side.`);
+  const extraNote = (list, whose, side) => {
+    const names = (names) => namesOf(names.map((name) => ({ name })));
+    if (list.benched?.length) sentences.push(`${names(list.benched)} wouldn't crack ${whose} lineup, so ${list.benched.length > 1 ? 'they count' : 'that counts'} for half ${side}.`);
+    if (list.starting?.length) sentences.push(`${names(list.starting)} would start but only push out a starter ${whose === 'your' ? 'you' : 'they'} already have, so ${list.starting.length > 1 ? 'they count' : 'that counts'} for three quarters ${side}: one better player beats two lesser ones.`);
+  };
+  if (adj?.get) extraNote(adj.get, 'your', 'to cover the roster spot');
+  if (adj?.give) extraNote(adj.give, `${them}'s`, 'on their side');
 
   const starting = getPlayers.filter((p) => p.role && p.role.startsWith('would start'));
   const lostStarters = givePlayers.filter((p) => p.role && p.role !== 'your bench');

@@ -207,7 +207,7 @@ const FALLBACK = /I didn't find a player or a question|Something went wrong/;
 
 test('every question in the corpus gets a real answer', async () => {
   const errors = [];
-  jest.spyOn(console, 'error').mockImplementation((...args) => errors.push(args.map(String).join(' ')));
+  jest.spyOn(console, 'error').mockImplementation((...args) => errors.push(args.map((a) => (a?.stack ? a.stack : String(a))).join(' ')));
   const conversations = [...ASK_CORPUS, ...generated];
   const report = [];
   const gaps = [];

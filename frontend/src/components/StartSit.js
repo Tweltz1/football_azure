@@ -17,7 +17,7 @@ import {
 import { suggestWaiverMoves } from '../data/waiverMoves';
 import { initialPlayerList } from '../data/playerData';
 import {
-  LeagueScoringContext, applyLeagueScoring, applyLeagueScoringToMatchup, useLeagueScoring,
+  HIDDEN_SLEEPER_SETTING, LeagueScoringContext, applyLeagueScoring, applyLeagueScoringToMatchup, useLeagueScoring,
 } from '../data/leagueScoring';
 import UpdatedAt, { timeAgo } from './UpdatedAt';
 import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
@@ -1179,9 +1179,12 @@ const TradeCheck = ({
                   {['get', 'give'].filter((side) => result.adjustment[side]).map((side) => {
                     const adj = result.adjustment[side];
                     const amount = adj.display != null ? Math.abs(adj.display).toLocaleString() : Math.abs(adj.score).toFixed(1);
-                    return side === 'get'
-                      ? `Roster-spot adjustment: −${amount} on your side, since ${adj.players.join(' and ')} wouldn't crack your lineup and you'd have to cut someone to fit them.`
-                      : `Roster-spot adjustment: −${amount} on their side, since ${adj.players.join(' and ')} wouldn't crack their lineup.`;
+                    const whose = side === 'get' ? 'your' : 'their';
+                    const why = [
+                      adj.benched.length ? `${adj.benched.join(' and ')} wouldn't crack ${whose} lineup` : null,
+                      adj.starting.length ? `${adj.starting.join(' and ')} would only push out a starter ${side === 'get' ? 'you' : 'they'} already have` : null,
+                    ].filter(Boolean).join(', and ');
+                    return `Roster-spot adjustment: −${amount} on ${whose} side. It's a ${give.length}-for-${get.length}, and ${why}, so the extra player counts for less (a single better player beats two lesser ones).`;
                   }).join(' ')}
                 </p>
               )}
@@ -1254,7 +1257,9 @@ const StartSit = ({ userId }) => {
   const [sleeperName, setSleeperName] = useState(() => readSetting('hl-startsit-sleeper-user', ''));
   const [sleeperImport, setSleeperImport] = useState(null);
   const [sleeperStatus, setSleeperStatus] = useState('');
-  const sleeperTeams = useMemo(() => sleeperImport?.teams || [], [sleeperImport]);
+  const [hiddenLeagues, setHiddenLeagues] = useState(() => readSetting(HIDDEN_SLEEPER_SETTING, []));
+  const allSleeperTeams = useMemo(() => sleeperImport?.teams || [], [sleeperImport]);
+  const sleeperTeams = useMemo(() => allSleeperTeams.filter((t) => !hiddenLeagues.includes(t.leagueId)), [allSleeperTeams, hiddenLeagues]);
   // Points follow the scoring of the league being looked at (or the standard format picked).
   const {
     choice, setChoice, scoring, profile, options: scoringOptions, leagueValue,
@@ -1299,6 +1304,10 @@ const StartSit = ({ userId }) => {
 
   useEffect(() => writeSetting('hl-startsit-source', source), [source]);
   useEffect(() => writeSetting('hl-startsit-custom', customIds), [customIds]);
+  useEffect(() => writeSetting(HIDDEN_SLEEPER_SETTING, hiddenLeagues), [hiddenLeagues]);
+  const toggleLeague = (leagueId) => setHiddenLeagues((list) => (list.includes(leagueId)
+    ? list.filter((id) => id !== leagueId)
+    : [...list, leagueId]));
 
   const importSleeper = async (username, { selectFirst }) => {
     const name = String(username || '').trim();
@@ -1314,9 +1323,10 @@ const StartSit = ({ userId }) => {
         return;
       }
       setSleeperStatus('');
-      if (selectFirst) {
-        setSource(`${SLEEPER_PREFIX}${data.teams[0].leagueId}`);
-        setChoice(leagueValue(data.teams[0].leagueId));
+      const first = data.teams.find((t) => !hiddenLeagues.includes(t.leagueId));
+      if (selectFirst && first) {
+        setSource(`${SLEEPER_PREFIX}${first.leagueId}`);
+        setChoice(leagueValue(first.leagueId));
       }
     } catch (error) {
       setSleeperStatus(String(error.response?.data || 'Could not reach Sleeper. Please try again.'));
@@ -1538,7 +1548,7 @@ const StartSit = ({ userId }) => {
             <div className="player-board-heading">
               <div>
                 <p className="section-kicker">Sleeper</p>
-                <h2>{sleeperTeams.length ? `Connected as ${sleeperImport.displayName}` : 'Import your Sleeper team'}</h2>
+                <h2>{allSleeperTeams.length ? `Connected as ${sleeperImport.displayName}` : 'Import your Sleeper team'}</h2>
               </div>
               {sleeperTeams.length > 0 && <div className="board-count">{sleeperTeams.length} team{sleeperTeams.length === 1 ? '' : 's'}</div>}
             </div>
@@ -1554,10 +1564,26 @@ const StartSit = ({ userId }) => {
                 autoCorrect="off"
                 onChange={(e) => setSleeperName(e.target.value)}
               />
-              <button type="submit" className="create-button">{sleeperTeams.length ? 'Refresh' : 'Import'}</button>
+              <button type="submit" className="create-button">{allSleeperTeams.length ? 'Refresh' : 'Import'}</button>
             </form>
-            {sleeperTeams.length > 0 && !sleeperStatus && (
+            {allSleeperTeams.length > 0 && !sleeperStatus && (
               <UpdatedAt at={sleeperImport.fetchedAt} label="Rosters loaded from Sleeper" staleAfterHours={24} />
+            )}
+            {allSleeperTeams.length > 1 && (
+              <div className="sleeper-league-list">
+                <p className="startsit-help">Hide old or archived leagues from the league lists here and on Rankings (this device only).</p>
+                {allSleeperTeams.map((t) => {
+                  const hidden = hiddenLeagues.includes(t.leagueId);
+                  return (
+                    <div key={t.leagueId} className={`sleeper-league-row${hidden ? ' is-hidden' : ''}`}>
+                      <span>{t.leagueName}</span>
+                      <button type="button" className="edit-roster-button" onClick={() => toggleLeague(t.leagueId)}>
+                        {hidden ? 'Show' : 'Hide'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
             <p className="startsit-help">
               {sleeperStatus || 'Uses your Sleeper roster, lineup slots and scoring. Only your username is needed, no password.'}
