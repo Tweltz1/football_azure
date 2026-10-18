@@ -143,20 +143,20 @@ function drawObstacle(ctx, o, sx, sy, k, tick) {
     ctx.ellipse(x - w * 0.08, y - h - 2 * k, w * 0.26, 3 * k, 0, 0, Math.PI * 2);
     ctx.fill();
   } else if (o.kind === 'sled' || o.kind === 'launcher') {
-    // A red sled, with a gift box riding in it (the launcher's box shakes before it fires).
+    // A red sled sliding toward the rider (nose to the left), with a gift box riding in it.
     ctx.strokeStyle = '#4b3a2a';
     ctx.lineWidth = 2.5 * k;
     ctx.beginPath();
-    ctx.moveTo(x - w * 0.55, y - 2 * k);
-    ctx.lineTo(x + w * 0.4, y - 2 * k);
-    ctx.quadraticCurveTo(x + w * 0.58, y - 2 * k, x + w * 0.56, y - 12 * k);
+    ctx.moveTo(x + w * 0.55, y - 2 * k);
+    ctx.lineTo(x - w * 0.4, y - 2 * k);
+    ctx.quadraticCurveTo(x - w * 0.58, y - 2 * k, x - w * 0.56, y - 12 * k);
     ctx.stroke();
-    if (o.roll < 0) {
+    if (o.roll > 0) {
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
       for (let i = 0; i < 3; i += 1) {
         const a = ((tick * 5 + i * 11 + o.id * 7) % 18) / 18;
         ctx.beginPath();
-        ctx.arc(x - w * 0.55 - a * 20 * k, y - 3 * k - a * 10 * k, (3 - a * 2) * k, 0, Math.PI * 2);
+        ctx.arc(x + w * 0.55 + a * 20 * k, y - 3 * k - a * 10 * k, (3 - a * 2) * k, 0, Math.PI * 2);
         ctx.fill();
       }
     }
@@ -724,7 +724,7 @@ const ShredGame = ({ seed, onEnd }) => {
               ))}
             </div>
             <button type="button" className="game-go" onClick={begin}>Drop in</button>
-            <p className="game-hint">Tap the screen (or space) to jump. Hold it down to jump higher, tap quickly for a small hop, and tap again in the air to double jump (with a flip). Footballs are {SHRED.ballPoints} points, and landing on top of a rock, stump, tree or snowman is {SHRED.stompPoints}. Gift sleds hold a football, until later, when some toss out a hot dog on a fuse. Jump it before it pops!</p>
+            <p className="game-hint">Tap the screen (or space) to jump. Hold it down to jump higher, tap quickly for a small hop, and tap again in the air to double jump (with a flip). Footballs are {SHRED.ballPoints} points, and landing on top of a rock, stump, tree or snowman is {SHRED.stompPoints}. Sleds come down at you: ride through a gift for a football (later some toss out a hot dog on a fuse, so jump it before it pops), or land on a sled for 5.</p>
           </div>
         )}
       </div>

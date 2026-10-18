@@ -227,7 +227,7 @@ export const SHRED = {
   giftHotDogsFrom: 8,
   /** Letting go of Jump while rising faster than this slows the rise to it (a short hop). */
   jumpCut: 5.5,
-  /** How fast gift sleds slide downhill (the rider catches up). */
+  /** How fast sleds slide back toward the rider. */
   sledSlide: 2.5,
   /** Ticks a thrown hot dog sits before it blows. */
   fuse: 45,
@@ -261,6 +261,8 @@ export interface ShredObstacle {
   id: number; kind: ShredObstacleKind; x: number; y: number; w: number; h: number; roll: number;
   /** Landed on already (no more points or crashes from it). */
   stomped?: boolean;
+  /** Rolled or slid over an edge. */
+  fell?: boolean;
   /** A sled still holding its gift. */
   gift?: boolean;
   /** A launcher's next shot (tick). */
@@ -311,7 +313,7 @@ export function shredStart(seed: number): ShredState {
   const s: ShredState = {
     r: seed | 0, tick: 0, x: 0, y: 0, vx: shredSpeed(0), vy: 0, grounded: true, lastGround: 0, wantJump: -100, jumps: 0, doubleAt: -100, jumped: false,
     balls: 0, stomps: 0, alive: true, hitBy: null, segments: [], pits: [], obstacles: [], footballs: [], hotdogs: [],
-    genX: -300, genY: 0, noObstacleUntil: 900, nextHotDog: 0, nextId: 1,
+    genX: -300, genY: 0, noObstacleUntil: 500, nextHotDog: 0, nextId: 1,
   };
   shredBuild(s);
   return s;
@@ -359,32 +361,37 @@ function maybeLauncher(s: ShredState, x0: number, x1: number) {
   const x = x0 + (x1 - x0) * 0.6;
   const g = shredGround(s, x);
   if (g == null) return;
-  s.obstacles.push({ id: s.nextId++, kind: 'launcher', x, y: g, w: SHRED_SIZES.launcher[0], h: SHRED_SIZES.launcher[1], roll: -SHRED.sledSlide * 0.6, shot: 0 });
+  s.obstacles.push({ id: s.nextId++, kind: 'launcher', x, y: g, w: SHRED_SIZES.launcher[0], h: SHRED_SIZES.launcher[1], roll: SHRED.sledSlide * 0.6, shot: 0 });
 }
 
 /** Rocks, trees and the rest down a stretch of ground, always far enough apart to land and jump again. */
 function placeObstacles(s: ShredState, x0: number, x1: number, reach: number, hard: number) {
   let x = Math.max(x0 + 60, s.noObstacleUntil);
   while (x < x1 - 40) {
-    if (nextRandom(s) < 0.5 + 0.3 * hard) {
+    if (nextRandom(s) < 0.7 + 0.25 * hard) {
       const roll = nextRandom(s);
-      const kind: ShredObstacleKind = roll < 0.2 ? 'rock' : roll < 0.35 ? 'stump' : roll < 0.53 ? 'tree' : roll < 0.68 ? 'snowman'
-        : roll < 0.8 ? (hard < 0.15 ? 'stump' : 'snowball') : 'sled';
+      const kind: ShredObstacleKind = roll < 0.12 ? 'rock' : roll < 0.32 ? 'stump' : roll < 0.54 ? 'tree' : roll < 0.62 ? 'snowman'
+        : roll < 0.72 ? (hard < 0.15 ? 'stump' : 'snowball') : 'sled';
       // Snowballs roll at you, so they need extra room in front.
       if (kind === 'snowball') x += 140;
       const g = shredGround(s, x);
       if (x >= x1 - 40 || g == null) break;
       const size = SHRED_SIZES[kind];
       const o: ShredObstacle = { id: s.nextId++, kind, x, y: g, w: size[0], h: size[1], roll: kind === 'snowball' ? 1.6 : 0 };
-      // Gift sleds slide on down the hill ahead of you.
-      if (kind === 'sled') { o.gift = true; o.roll = -SHRED.sledSlide; }
+      // Some sleds carry a gift, some are empty.
+      if (kind === 'sled') { o.gift = nextRandom(s) < 0.6; o.roll = SHRED.sledSlide; }
       s.obstacles.push(o);
       // A football over some of them, for the brave.
       if (nextRandom(s) < 0.3) s.footballs.push({ id: s.nextId++, x, y: g - size[1] - 46 });
       // Always room to land and jump again.
       s.noObstacleUntil = x + reach * 1.6;
-      x = s.noObstacleUntil + nextRandom(s) * reach * (1.6 - hard);
+      x = s.noObstacleUntil + nextRandom(s) * reach * (0.9 - 0.5 * hard);
     } else {
+      // A sled is safe to ride through, so one can go in the open stretch.
+      const g = shredGround(s, x);
+      if (g != null && nextRandom(s) < 0.5) {
+        s.obstacles.push({ id: s.nextId++, kind: 'sled', x, y: g, w: SHRED_SIZES.sled[0], h: SHRED_SIZES.sled[1], roll: SHRED.sledSlide, gift: nextRandom(s) < 0.6 });
+      }
       x += reach * 0.6;
     }
   }
@@ -647,20 +654,18 @@ export function shredStep(s: ShredState, tap = false, held = true): ShredState {
     if (o.roll > 0 && o.x - s.x < 700) {
       o.x -= o.roll;
       const g = shredGround(s, o.x);
-      if (g == null) o.y += 12; else o.y = g;
-    } else if (o.roll < 0 && o.x - s.x < 700) {
-      // A sled stops at the edge of a gap rather than going over.
-      const g = shredGround(s, o.x - o.roll);
-      if (g != null) { o.x -= o.roll; o.y = g; }
+      // Once it goes over an edge it keeps falling.
+      if (g == null || o.fell) { o.y += 12; o.fell = true; } else o.y = g;
     }
     // A little forgiving at the edges.
     const touching = right > o.x - o.w / 2 + 4 && left < o.x + o.w / 2 - 4 && s.y > o.y - o.h + 5 && top < o.y;
     if (!touching || o.stomped) continue;
+    const fromAbove = !s.grounded && s.vy >= 0 && s.y - s.vy <= o.y - o.h + 8;
     if (SHRED_SAFE.includes(o.kind)) {
       if (o.gift) openGift(s, o);
-      continue;
+      if (!fromAbove) continue;
     }
-    if (!s.grounded && s.vy >= 0 && s.y - s.vy <= o.y - o.h + 8) {
+    if (fromAbove) {
       // Landed on top: bounce off for points, with the jump and double jump back.
       o.stomped = true;
       s.y = o.y - o.h;
