@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  behindPar, botActions, itemFor, ITEMS, makeCourse, mapFor, MAPS, MAX_TICKS, nextRandom, replayRun, startRunner, stepRunner,
+  behindPar, botActions, EFFECT, groundAt, itemFor, ITEMS, makeCourse, mapFor, MAPS, MAX_TICKS, nextRandom, replayRun, RESPAWN_BACK,
+  startRunner, stepRunner,
 } from '../src/games/race/raceSim.js';
 import { createRaceEngine } from '../src/games/race/raceEngine.js';
 
@@ -138,4 +139,26 @@ test('all three maps come up, and boxes lean a little toward speed-ups for a run
   assert.equal(behindPar(r), 0);
   r.tick = 900;
   assert.ok(behindPar(r) === 1);
+});
+
+test('after falling in a gap you climb out with a run-up, on clear ground, and can clear it', () => {
+  for (let seed = 1; seed <= 30; seed += 1) {
+    const course = makeCourse(seed);
+    const gap = course.gaps[0];
+    if (!gap) continue;
+    const r = startRunner(0, 0);
+    r.x = gap.start + 10;
+    r.y = 0;
+    let t = 0;
+    while (r.falls === 0 && t < 200) { stepRunner(r, course); t += 1; }
+    assert.equal(r.x, gap.start - RESPAWN_BACK);
+    for (let x = r.x; x < gap.start; x += 4) assert.equal(groundAt(course, x), 0, `clear run-up at ${x} (seed ${seed})`);
+    // Once the stun wears off there's time to react: jumping half a second later still clears it.
+    while (r.tick < r.stunUntil + 15) stepRunner(r, course);
+    stepRunner(r, course, [['j']]);
+    for (let i = 0; i < 60; i += 1) stepRunner(r, course);
+    assert.equal(r.falls, 1, `cleared the gap on the retry (seed ${seed})`);
+    assert.ok(r.x > gap.end);
+    assert.ok(EFFECT.fall > 0);
+  }
 });
