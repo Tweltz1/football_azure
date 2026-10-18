@@ -2384,7 +2384,7 @@ var GAMES = {
   },
   shred: {
     title: "Shred the Summit",
-    blurb: "Snowboard down the mountain. Tap to jump the rocks, trees and gaps, grab footballs, and watch the sky: past 200 points the hot dogs start falling and exploding. It gets faster as you score.",
+    blurb: "Snowboard down the mountain. Tap to jump (tap again in the air to double jump) over the rocks, trees and gaps, grab footballs, and watch the sky: past 200 points the hot dogs start falling and exploding. It gets faster as you score.",
     style: "skill",
     unit: "pts"
   },
@@ -2503,6 +2503,8 @@ var climbScore = (s) => Math.floor(s.height) + s.oips * CLIMB.oipBonus;
 var SHRED = {
   gravity: 0.8,
   jump: 12.5,
+  /** The second jump, from a tap in the air (once per jump). */
+  doubleJump: 10.5,
   maxFall: 18,
   /** The rider's box: half its width, and its height above the board. */
   halfWidth: 11,
@@ -2536,6 +2538,7 @@ function shredStart(seed) {
     lastGround: 0,
     wantJump: -100,
     jumps: 0,
+    doubleAt: -100,
     balls: 0,
     alive: true,
     hitBy: null,
@@ -2711,6 +2714,12 @@ function shredStep(s, tap = false) {
     s.grounded = false;
     s.lastGround = -100;
     s.wantJump = -100;
+    s.doubleAt = -100;
+    s.jumps += 1;
+  } else if (tap && !s.grounded && s.doubleAt < 0) {
+    s.vy = Math.min(s.vy, 0) - SHRED.doubleJump;
+    s.doubleAt = s.tick;
+    s.wantJump = -100;
     s.jumps += 1;
   }
   if (s.grounded) {
@@ -2738,6 +2747,7 @@ function shredStep(s, tap = false) {
         s.y = g;
         s.vy = 0;
         s.grounded = true;
+        s.doubleAt = -100;
         s.lastGround = s.tick;
       } else {
         shredCrash(s, "cliff");

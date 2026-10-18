@@ -242,7 +242,9 @@ function draw(canvas, s, rider, images, cam) {
   if (!s.grounded) tilt = Math.max(-0.6, Math.min(0.6, s.vy * 0.04));
   ctx.save();
   ctx.translate(px, py);
-  ctx.rotate(s.alive ? tilt : tilt + 1.2);
+  // A full spin on the double jump.
+  const spin = s.doubleAt >= 0 && s.tick - s.doubleAt < 16 ? ((s.tick - s.doubleAt) / 16) * Math.PI * 2 : 0;
+  ctx.rotate(s.alive ? tilt - spin : tilt + 1.2);
   ctx.fillStyle = '#ffd23f';
   ctx.strokeStyle = '#16122b';
   ctx.lineWidth = 2;
@@ -396,7 +398,7 @@ const ShredGame = ({ seed, onEnd }) => {
               ))}
             </div>
             <button type="button" className="game-go" onClick={begin}>Drop in</button>
-            <p className="game-hint">Tap anywhere (or space) to jump. Footballs are {SHRED.ballPoints} points.</p>
+            <p className="game-hint">Tap anywhere (or space) to jump, and tap again in the air to double jump. Footballs are {SHRED.ballPoints} points.</p>
           </div>
         )}
       </div>

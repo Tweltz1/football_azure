@@ -54,3 +54,22 @@ test('Shred the Summit: gaps are always narrower than a jump, and obstacles leav
     for (let i = 1; i < xs.length; i += 1) assert.ok(xs[i] - xs[i - 1] >= air * shredSpeed(0) * 1.29, `seed ${seed}: obstacles ${Math.round(xs[i] - xs[i - 1])} apart`);
   }
 });
+
+test('Shred the Summit: a second tap in the air double jumps once, higher than one jump', () => {
+  const peak = (taps) => {
+    const s = shredStart(5);
+    for (let i = 0; i < 40; i += 1) shredStep(s, false);
+    let top = s.y;
+    for (let i = 0; i < 60; i += 1) {
+      shredStep(s, taps.includes(i));
+      top = Math.min(top, s.y);
+    }
+    return { top, doubles: s.jumps };
+  };
+  const one = peak([0]);
+  const two = peak([0, 10]);
+  const three = peak([0, 10, 14]);
+  assert.ok(two.top < one.top - 30, 'the double jump goes higher');
+  assert.equal(two.doubles, 2);
+  assert.equal(three.doubles, 2, 'only one double jump per trip through the air');
+});
