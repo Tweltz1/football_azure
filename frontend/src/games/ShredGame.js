@@ -278,11 +278,14 @@ const ShredGame = ({ seed, onEnd }) => {
   const inputsRef = useRef([]);
   const tapRef = useRef(false);
   const canvasRef = useRef(null);
+  const wrapRef = useRef(null);
   const camRef = useRef({ y: null });
   const images = useMemo(() => CREW.map((guy) => loadImage(guy.art)), []);
   const [, setSize] = useState(0);
 
   const begin = () => {
+    // On a phone, bring the score bar, slope and Jump button into view together.
+    wrapRef.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
     stateRef.current = shredStart(seed);
     inputsRef.current = [];
     tapRef.current = false;
@@ -352,7 +355,7 @@ const ShredGame = ({ seed, onEnd }) => {
 
   const score = s ? shredScore(s) : 0;
   return (
-    <div className="shred-game">
+    <div className="shred-game" ref={wrapRef}>
       <div className="game-hud">
         <span><strong>{s ? shredDistance(s) : 0}</strong> m</span>
         <span><strong>{s ? s.balls : 0}</strong> 🏈</span>
