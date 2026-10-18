@@ -293,6 +293,14 @@ export function guySound(index) {
   tone(sfxBus, ctx.currentTime + 0.02, 300, 0.2, { type: 'sine', gain: 0.12, to: 900 });
 }
 
+/** A short coin-style ping (grabbing a football). */
+export function blip() {
+  if (!ready()) return;
+  const t = ctx.currentTime + 0.01;
+  tone(sfxBus, t, 988, 0.06, { type: 'square', gain: 0.05, filter: 4000 });
+  tone(sfxBus, t + 0.06, 1319, 0.1, { type: 'square', gain: 0.05, filter: 4000 });
+}
+
 /** Ta-da for the whole crew lineup. */
 export function taDa() {
   if (!ready()) return;
