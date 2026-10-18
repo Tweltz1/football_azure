@@ -9,7 +9,7 @@ import { practiceRunner, readBests } from './gameRunners';
 import './Games.css';
 
 // Which crew member shows on each game's card.
-export const GAME_ART = { climb: 8, fieldgoal: 4, penalty: 5, price: 7, nameplayer: 1 };
+export const GAME_ART = { climb: 8, shred: 9, fieldgoal: 4, penalty: 5, price: 7, nameplayer: 1 };
 
 /** The Games tab: practice any lobby game as often as you like, and the leaderboards. */
 const GamesPage = () => {

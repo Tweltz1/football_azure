@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { GAMES } from './sim.generated';
 import ClimbGame from './ClimbGame';
 import FieldGoalGame from './FieldGoalGame';
+import ShredGame from './ShredGame';
 import TurnGame from './TurnGame';
 import { errorText, saveBest } from './gameRunners';
 
@@ -63,6 +64,7 @@ const GamePlayer = ({ game, runner, onDone, onAgain }) => {
         {runner.official ? <span className="game-badge is-official">Official try</span> : <span className="game-badge">Practice</span>}
       </div>
       {info.style === 'skill' && seed != null && game === 'climb' && <ClimbGame seed={seed} onEnd={finishSkill} />}
+      {info.style === 'skill' && seed != null && game === 'shred' && <ShredGame seed={seed} onEnd={finishSkill} />}
       {info.style === 'skill' && seed != null && game === 'fieldgoal' && <FieldGoalGame seed={seed} onEnd={finishSkill} />}
       {info.style === 'turns' && <TurnGame game={game} runner={runner} onEnd={finishTurns} />}
       {saving && <p className="game-hint">Saving your score...</p>}

@@ -7,7 +7,7 @@ import { MAPS } from './race/raceSim';
 import { errorText } from './gameRunners';
 
 // Which crew member shows on each board's tab.
-const ART = { climb: 8, fieldgoal: 4, penalty: 5, price: 7, nameplayer: 1, race: 6 };
+const ART = { climb: 8, shred: 9, fieldgoal: 4, penalty: 5, price: 7, nameplayer: 1, race: 6 };
 
 const BOARDS = [
   { key: 'race-wins', game: 'race', board: 'wins', label: 'Fun Run wins' },
