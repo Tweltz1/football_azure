@@ -225,6 +225,10 @@ export const SHRED = {
   hotDogFall: 40,
   /** Gift sleds can hold a hot dog once you have this many footballs. */
   giftHotDogsFrom: 8,
+  /** Letting go of Jump while rising faster than this slows the rise to it (a short hop). */
+  jumpCut: 5.5,
+  /** How fast gift sleds slide downhill (the rider catches up). */
+  sledSlide: 2.5,
   /** Ticks a thrown hot dog sits before it blows. */
   fuse: 45,
   /** Gift launchers (a box that keeps firing footballs and hot dogs) show up from this score. */
@@ -355,7 +359,7 @@ function maybeLauncher(s: ShredState, x0: number, x1: number) {
   const x = x0 + (x1 - x0) * 0.6;
   const g = shredGround(s, x);
   if (g == null) return;
-  s.obstacles.push({ id: s.nextId++, kind: 'launcher', x, y: g, w: SHRED_SIZES.launcher[0], h: SHRED_SIZES.launcher[1], roll: 0, shot: 0 });
+  s.obstacles.push({ id: s.nextId++, kind: 'launcher', x, y: g, w: SHRED_SIZES.launcher[0], h: SHRED_SIZES.launcher[1], roll: -SHRED.sledSlide * 0.6, shot: 0 });
 }
 
 /** Rocks, trees and the rest down a stretch of ground, always far enough apart to land and jump again. */
@@ -372,7 +376,8 @@ function placeObstacles(s: ShredState, x0: number, x1: number, reach: number, ha
       if (x >= x1 - 40 || g == null) break;
       const size = SHRED_SIZES[kind];
       const o: ShredObstacle = { id: s.nextId++, kind, x, y: g, w: size[0], h: size[1], roll: kind === 'snowball' ? 1.6 : 0 };
-      if (kind === 'sled') o.gift = true;
+      // Gift sleds slide on down the hill ahead of you.
+      if (kind === 'sled') { o.gift = true; o.roll = -SHRED.sledSlide; }
       s.obstacles.push(o);
       // A football over some of them, for the brave.
       if (nextRandom(s) < 0.3) s.footballs.push({ id: s.nextId++, x, y: g - size[1] - 46 });
@@ -562,7 +567,11 @@ function shredCrash(s: ShredState, hit: ShredHit) {
 }
 
 /** One tick. `tap` (a jump) when given. Changes and returns the state. */
-export function shredStep(s: ShredState, tap = false): ShredState {
+/**
+ * One tick. `tap` is a new press of Jump; `held` is whether Jump is still down. Letting go early while
+ * rising cuts the jump short, so a quick tap is a small hop and a hold goes full height.
+ */
+export function shredStep(s: ShredState, tap = false, held = true): ShredState {
   if (!s.alive) return s;
   if (tap) s.wantJump = s.tick;
   const score = shredScore(s);
@@ -590,6 +599,8 @@ export function shredStep(s: ShredState, tap = false): ShredState {
     s.wantJump = -100;
     s.jumps += 1;
   }
+
+  if (!held && !s.grounded && s.vy < -SHRED.jumpCut) s.vy = -SHRED.jumpCut;
 
   if (s.grounded) {
     // Downhill speeds you up, uphill slows you down, and you drift back toward cruising speed.
@@ -633,10 +644,14 @@ export function shredStep(s: ShredState, tap = false): ShredState {
   const right = s.x + SHRED.halfWidth;
   const top = s.y - SHRED.height;
   for (const o of s.obstacles) {
-    if (o.roll && o.x - s.x < 700) {
+    if (o.roll > 0 && o.x - s.x < 700) {
       o.x -= o.roll;
       const g = shredGround(s, o.x);
       if (g == null) o.y += 12; else o.y = g;
+    } else if (o.roll < 0 && o.x - s.x < 700) {
+      // A sled stops at the edge of a gap rather than going over.
+      const g = shredGround(s, o.x - o.roll);
+      if (g != null) { o.x -= o.roll; o.y = g; }
     }
     // A little forgiving at the edges.
     const touching = right > o.x - o.w / 2 + 4 && left < o.x + o.w / 2 - 4 && s.y > o.y - o.h + 5 && top < o.y;
@@ -849,7 +864,13 @@ export function replaySkillGame(game: GameKind, seed: number, inputs: Input[]): 
   }
   if (game === 'shred') {
     const s = shredStart(seed);
-    while (s.alive) shredStep(s, inputAt(s.tick) != null);
+    // 1 = Jump pressed, 0 = let go (runs with no 0s hold every jump to full height).
+    let held = true;
+    while (s.alive) {
+      const v = inputAt(s.tick);
+      if (v != null) held = v === 1;
+      shredStep(s, v === 1, held);
+    }
     return { score: shredScore(s), ticks: s.tick, detail: shredDetail(s) };
   }
   if (game === 'fieldgoal') {
