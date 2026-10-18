@@ -1,7 +1,9 @@
 // Bundles the draft API (supabase/functions/_shared/handlers.ts) into a plain JS module the browser can
 // run, so a league saved to a device can be drafted with no internet. It runs before every build; run
 // `npm run offline-engine` to refresh the committed copy after changing supabase/functions/_shared/
-// (tests/offlineEngine.test.mjs fails while it is stale).
+// (tests/offlineEngine.test.mjs fails while it is stale). It also bundles the lobby mini-games
+// (supabase/functions/_shared/miniGames.ts) and the Crew Fun Run rules (raceSim.js) on their own for the
+// Games page.
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -9,11 +11,19 @@ import fs from 'node:fs';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const entry = path.resolve(here, '../../supabase/functions/_shared/handlers.ts');
 export const OUT_FILE = path.resolve(here, '../src/offline/engine.generated.js');
+const gamesEntry = path.resolve(here, '../../supabase/functions/_shared/miniGames.ts');
+export const GAMES_OUT_FILE = path.resolve(here, '../src/games/sim.generated.js');
+const raceEntry = path.resolve(here, '../../supabase/functions/_shared/raceSim.js');
+export const RACE_OUT_FILE = path.resolve(here, '../src/games/race/raceSim.generated.js');
 
-export async function bundleEngine() {
+export const bundleEngine = () => bundle(entry);
+export const bundleGames = () => bundle(gamesEntry);
+export const bundleRace = () => bundle(raceEntry);
+
+async function bundle(file) {
   const { build } = await import('esbuild');
   const result = await build({
-    entryPoints: [entry],
+    entryPoints: [file],
     bundle: true,
     format: 'esm',
     platform: 'neutral',
@@ -29,6 +39,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     fs.writeFileSync(OUT_FILE, await bundleEngine());
     console.log(`Wrote ${path.relative(process.cwd(), OUT_FILE)}`);
+    fs.writeFileSync(GAMES_OUT_FILE, await bundleGames());
+    console.log(`Wrote ${path.relative(process.cwd(), GAMES_OUT_FILE)}`);
+    fs.writeFileSync(RACE_OUT_FILE, await bundleRace());
+    console.log(`Wrote ${path.relative(process.cwd(), RACE_OUT_FILE)}`);
   } catch (error) {
     // Never block a deploy over this: the committed copy still works.
     console.warn(`Kept the committed offline draft engine (${error.message}).`);

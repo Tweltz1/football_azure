@@ -2053,3 +2053,13 @@ hr {
 .profile-sync-line.is-offline {
   color: #fbbf24;
 }
+
+.login-legal {
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.login-legal a {
+  color: inherit;
+}

@@ -10,7 +10,9 @@ import { clearMarketCache } from '../functions/_shared/market.ts';
 import { clearSleeperCache } from '../functions/_shared/sleeperImport.ts';
 import { clearLeagueSeasonCache } from '../functions/_shared/sleeperLeague.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../functions/_shared/models.ts';
-import type { HistoryStore, LeagueStore, ProfileStore, ProjectionSnapshot, ProjectionSnapshotStore, StoredLeague } from '../functions/_shared/ports.ts';
+import type {
+  GameStore, HistoryStore, LeagueStore, ProfileStore, ProjectionSnapshot, ProjectionSnapshotStore, ScoreRow, StoredLeague,
+} from '../functions/_shared/ports.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
@@ -63,11 +65,28 @@ function memoryWorld({ latencyMs = 0 } = {}) {
     },
   };
 
+  const sessionRows = new Map<string, Record<string, unknown>>();
+  const scoreRows = new Map<string, ScoreRow>();
+  const scoreKey = (game: string, board: string, userId: string) => `${game}|${board}|${userId}`;
+  const onBoard = (game: string, board: string) => [...scoreRows.values()].filter((r) => r.game === game && r.board === board);
+  const games: GameStore = {
+    async getSession(userId, kind) { const r = sessionRows.get(`${userId}|${kind}`); return r ? clone(r) : null; },
+    async setSession(userId, kind, data) { if (data) sessionRows.set(`${userId}|${kind}`, clone(data)); else sessionRows.delete(`${userId}|${kind}`); },
+    async getScore(game, board, userId) { const r = scoreRows.get(scoreKey(game, board, userId)); return r ? clone(r) : null; },
+    async putScore(row) { scoreRows.set(scoreKey(row.game, row.board, row.userId), clone(row)); },
+    async deleteScore(game, board, userId) { scoreRows.delete(scoreKey(game, board, userId)); },
+    async topScores(game, board, limit, lowFirst) {
+      return onBoard(game, board).sort((a, b) => (lowFirst ? a.score - b.score : b.score - a.score) || a.at.localeCompare(b.at)).slice(0, limit).map(clone);
+    },
+    async countBetter(game, board, score, lowFirst) { return onBoard(game, board).filter((r) => (lowFirst ? r.score < score : r.score > score)).length; },
+  };
+
   const ctxFor = (userId: string | null): Ctx => ({
     leagues,
     profiles,
     history,
     snapshots,
+    games,
     broadcaster: { async send(leagueId, event, payload, toUserId) { sent.push({ leagueId, event, payload: clone(payload), toUserId }); } },
     log: { info() {}, warn() {}, error() {} },
     now: () => new Date(clock),
@@ -1549,4 +1568,230 @@ test('commissioner can hand a team to a player rejoining from another phone, sea
   assert.deepEqual(Object.keys(league.activeBids), ['bob2']);
   // The new phone can keep bidding for the team.
   assert.equal((await world.call('bob2', 'POST', `leagues/${leagueId}/bid`, { amount: 8 })).status, 200);
+});
+
+// ---- Lobby mini-games ----------------------------------------------------------------------------------
+
+import {
+  CLIMB, climbStart, climbStep, fieldGoalStart, fieldGoalStep, aimAt, powerAt, powerNeeded, powerLimit, windEffect, gradeTurn,
+  replaySkillGame, TICKS_PER_SECOND, turnFor, type Input,
+} from '../functions/_shared/miniGames.ts';
+
+/** A climber that moves to the lane with the most room above it: shows every run can be survived. */
+function climbBot(seed: number, ticks: number) {
+  const s = climbStart(seed);
+  const inputs: Input[] = [];
+  while (s.alive && s.tick < ticks) {
+    const roomIn = (lane: number) => Math.min(1000, ...s.objects
+      .filter((o) => o.kind !== 'oip' && o.lane === lane && o.y < CLIMB.playerBottom)
+      .map((o) => CLIMB.playerTop - (o.y + CLIMB.objectSize)));
+    const best = [s.lane, 0, 1, 2].reduce((a, b) => (roomIn(b) > roomIn(a) ? b : a));
+    if (best !== s.lane) inputs.push([s.tick, best]);
+    climbStep(s, best !== s.lane ? best : null);
+  }
+  return { s, inputs };
+}
+
+test('mini-games: the Climb Dash replays the same and is always survivable', () => {
+  for (const seed of [1, 42, 777, 123456]) {
+    const { s, inputs } = climbBot(seed, TICKS_PER_SECOND * 240);
+    assert.equal(s.alive, true, `seed ${seed} hit ${s.hitBy} at tick ${s.tick}`);
+    // Replaying the inputs gives the same climber (cut off where the bot stopped).
+    const again = climbStart(seed);
+    let i = 0;
+    while (again.tick < s.tick) {
+      const lane = inputs[i]?.[0] === again.tick ? inputs[i++][1] : null;
+      climbStep(again, lane);
+    }
+    assert.equal(again.height, s.height);
+  }
+  // Standing still gets you knocked off quickly.
+  assert.ok(replaySkillGame('climb', 5, []).ticks < TICKS_PER_SECOND * 30);
+});
+
+test('mini-games: Field Goal Gauntlet rewards good timing and ends on a miss', () => {
+  // Wait for the meters to sit where they should: aim cancels the wind, power just enough.
+  const s = fieldGoalStart(9);
+  const inputs: Input[] = [];
+  while (s.phase !== 'over' && s.kick < 6) {
+    const since = s.tick - s.phaseStart;
+    let tap = false;
+    if (s.phase === 'aim') tap = Math.abs(aimAt(since, s.kick) + windEffect(s.wind, s.distance)) < 0.05;
+    if (s.phase === 'power') tap = powerAt(since, s.kick) >= powerNeeded(s.distance) + 0.02 && powerAt(since, s.kick) < powerLimit(s.distance, s.kick) - 0.02;
+    if (tap) inputs.push([s.tick, 1]);
+    fieldGoalStep(s, tap);
+  }
+  assert.ok(s.kicks.length >= 6 && s.kicks.slice(0, 6).every((k) => k.result === 'good'), JSON.stringify(s.kicks));
+  // No taps at all: the meters kick by themselves and it ends.
+  const lazy = replaySkillGame('fieldgoal', 9, []);
+  assert.ok(lazy.ticks > 0);
+  // Crushing it past the green zone shanks it.
+  const big = fieldGoalStart(9);
+  while (big.phase === 'aim' || big.phase === 'power') {
+    const since = big.tick - big.phaseStart;
+    fieldGoalStep(big, big.phase === 'aim' ? Math.abs(aimAt(since, 0) + windEffect(big.wind, big.distance)) < 0.05 : powerAt(since, 0) > 0.98);
+  }
+  assert.equal(big.kicks[0].result, 'shank');
+});
+
+test('mini-games: turn games never show the answer and grade it the same every time', () => {
+  for (let i = 0; i < 8; i += 1) {
+    const turn = turnFor('price', 99, i) as any;
+    assert.ok(turn.name && !('answer' in turn));
+    const graded = gradeTurn('price', 99, i, 0, 5);
+    assert.equal(graded.points, 0);
+    assert.ok(Number(graded.answer) > 0);
+    assert.equal(gradeTurn('price', 99, i, graded.answer, 5).points, 125);
+    assert.equal(gradeTurn('price', 99, i, Number(graded.answer) + 1, 5).points, 0, 'over is zero');
+  }
+  for (let i = 0; i < 10; i += 1) {
+    const turn = turnFor('nameplayer', 3, i) as any;
+    assert.equal(new Set(turn.choices).size, 4);
+    const right = turn.choices.indexOf(gradeTurn('nameplayer', 3, i, -1, 1).answer);
+    assert.ok(right >= 0);
+    assert.equal(gradeTurn('nameplayer', 3, i, right, 0).points, 150);
+    assert.equal(gradeTurn('nameplayer', 3, i, right, 30).points, 0, 'too slow');
+  }
+  const goals = Array.from({ length: 200 }, (_, i) => gradeTurn('penalty', i, 0, { zone: 3, power: 0.7 }, 2).points).reduce((a, b) => a + b, 0);
+  assert.ok(goals > 100 && goals < 190, `goals ${goals}`);
+});
+
+test('mini-games: lobby round from setup to prize, seeds stay secret', async () => {
+  const world = memoryWorld();
+  const leagueId = await setupAuctionLeague(world);
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/minigame/create`, { game: 'climb', prize: 5 })).status, 401);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/create`, { game: 'chess', prize: 5 })).status, 400);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/create`, { game: 'climb', prize: 5 })).status, 200);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/create`, { game: 'price', prize: 3 })).status, 200);
+  const [climb, price] = world.league(leagueId).miniGames!;
+
+  // Climb: the run is replayed from its inputs; one sent too soon is refused.
+  const started = await world.call('bob', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id });
+  const seed = (started.body as any).seed;
+  assert.equal(typeof seed, 'number');
+  const { inputs, s } = climbBot(seed, 900);
+  const early = await world.call('bob', 'POST', `leagues/${leagueId}/minigame/finish`, { challengeId: climb.id, inputs });
+  assert.equal(early.status, 400);
+  world.advance(40);
+  const finished = await world.call('bob', 'POST', `leagues/${leagueId}/minigame/finish`, { challengeId: climb.id, inputs });
+  assert.equal(finished.status, 200, String(finished.body));
+  assert.equal((finished.body as any).score, replaySkillGame('climb', seed, inputs).score);
+  assert.ok((finished.body as any).score >= Math.floor(s.height));
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id })).body.finished, true);
+
+  // Cara starts and leaves: her try is used until the commissioner gives it back.
+  await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id });
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id })).status, 400);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/reset`, { challengeId: climb.id, userId: 'cara' })).status, 200);
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id })).status, 200);
+
+  // Price Is Right: dealt and timed by the server; a slow answer scores nothing.
+  const first = await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: price.id });
+  assert.equal((first.body as any).turn.index, 0);
+  assert.equal((first.body as any).seed, undefined);
+  let answer = 0;
+  for (let i = 0; i < 8; i += 1) {
+    if (i > 0) {
+      world.advance(30); // reading the last result doesn't count against the next turn
+      const dealt = await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: price.id });
+      assert.equal((dealt.body as any).turn.index, i);
+    }
+    world.advance(i === 7 ? 60 : 4);
+    const turn = await world.call('cara', 'POST', `leagues/${leagueId}/minigame/turn`, { challengeId: price.id, index: i, answer });
+    assert.equal(turn.status, 200, String(turn.body));
+    assert.equal((turn.body as any).result.late, i === 7);
+    if (i < 7) assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/minigame/turn`, { challengeId: price.id, index: i + 1, answer })).status, 409);
+    answer = 1;
+  }
+  assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/minigame/turn`, { challengeId: price.id, index: 8, answer: 1 })).status, 400);
+  assert.ok(world.league(leagueId).miniGames![1].attempts.cara.finishedAt);
+
+  // Seeds never reach a browser.
+  const state = await world.call('bob', 'GET', `leagues/${leagueId}/state`);
+  assert.ok(!JSON.stringify(state.body).includes('"seed"'));
+  assert.ok(!world.sent.some((m) => JSON.stringify(m.payload).includes('"seed"')));
+
+  // The prize goes to the winner's budget, once.
+  const bobTeam = world.league(leagueId).teams.find((t) => t.ownerId === 'bob')!;
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/award`, { challengeId: climb.id, userId: 'admin' })).status, 400);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/award`, { challengeId: climb.id, userId: 'bob' })).status, 200);
+  assert.equal(world.league(leagueId).teams.find((t) => t.id === bobTeam.id)!.budget, bobTeam.budget + 5);
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/award`, { challengeId: climb.id, userId: 'bob' })).status, 400);
+
+  // Once the draft starts, no new tries.
+  await world.call('admin', 'POST', `leagues/${leagueId}/minigame/create`, { game: 'penalty', prize: 2 });
+  const penalty = world.league(leagueId).miniGames![2];
+  assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/startDraft`)).status, 200);
+  assert.equal((await world.call('bob', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: penalty.id })).status, 400);
+});
+
+import { botActions, makeCourse, MAX_TICKS as RACE_MAX_TICKS, nextRandom, startRunner, stepRunner } from '../functions/_shared/raceSim.js';
+
+test('leaderboards: ranked practice keeps each player\'s best and ranks it', async () => {
+  const world = memoryWorld();
+  assert.equal((await world.call('ann', 'POST', 'games/practice/start', { game: 'nope' })).status, 400);
+  const started = (await world.call('ann', 'POST', 'games/practice/start', { game: 'climb' })).body as any;
+  assert.ok(started.ranked && Number.isInteger(started.seed));
+  // Too quick: the run can't have been played yet.
+  const lazy = replaySkillGame('climb', started.seed, []);
+  if (lazy.ticks > TICKS_PER_SECOND * 5) assert.equal((await world.call('ann', 'POST', 'games/practice/finish', { game: 'climb', inputs: [] })).status, 400);
+  world.advance(lazy.ticks / TICKS_PER_SECOND + 1);
+  const done = (await world.call('ann', 'POST', 'games/practice/finish', { game: 'climb', inputs: [] })).body as any;
+  assert.equal(done.score, lazy.score);
+  assert.deepEqual([done.board.rank, done.board.newBest], [1, true]);
+  assert.equal((await world.call('ann', 'POST', 'games/practice/finish', { game: 'climb', inputs: [] })).status, 400, 'saved once');
+
+  // A turn game, dealt and timed by the server.
+  await world.call('bob', 'POST', 'games/practice/start', { game: 'price' });
+  let last: any = null;
+  for (let i = 0; i < 8; i += 1) {
+    if (i > 0) await world.call('bob', 'POST', 'games/practice/next', { game: 'price' });
+    last = (await world.call('bob', 'POST', 'games/practice/turn', { game: 'price', index: i, answer: -1 })).body;
+  }
+  assert.ok(last.finished && last.score === 0 && last.board === null, 'a zero stays off the board');
+
+  const board = (await world.call('ann', 'GET', 'games/leaderboard', undefined, 'game=climb&board=all')).body as any;
+  assert.equal(board.rows.length, 1);
+  assert.ok(board.rows[0].me && board.rows[0].name === 'ann-name' && board.mine.rank === 1);
+  assert.equal((await world.call('ann', 'GET', 'games/leaderboard', undefined, 'game=race&board=time-moon')).status, 400);
+});
+
+test('leaderboards: Fun Run times are replayed, and a live room\'s win goes to the fastest', async () => {
+  const world = memoryWorld();
+  const runFor = (seed: number, slot: number, skill: number) => {
+    const course = makeCourse(seed);
+    const r = startRunner(slot, slot);
+    const state = { r: seed + slot };
+    const rand = () => nextRandom(state);
+    const log: unknown[][] = [];
+    while (r.finishTick == null && r.tick < RACE_MAX_TICKS) {
+      const actions = botActions(r, course, skill, rand).filter((a: unknown[]) => a[0] === 'j');
+      actions.forEach((a: unknown[]) => log.push([r.tick, ...a]));
+      stepRunner(r, course, actions);
+    }
+    return { log, finishTick: r.finishTick as number, map: course.map as string };
+  };
+  const seed = 4242;
+  const ann = runFor(seed, 0, 0.9);
+  const bob = runFor(seed, 1, 0.4);
+  const finish = (user: string, run: typeof ann, slot: number) => world.call(user, 'POST', 'games/race/finish', {
+    seed, slot, crew: slot, inputs: run.log, raceId: 'race-1', live: true,
+  });
+  assert.equal((await finish('ann', ann, 0)).status, 400, 'start first');
+  await world.call('ann', 'POST', 'games/race/start', { seed });
+  await world.call('bob', 'POST', 'games/race/start', { seed });
+  assert.equal((await finish('ann', ann, 0)).status, 400, 'faster than the clock');
+  world.advance(Math.max(ann.finishTick, bob.finishTick) / TICKS_PER_SECOND);
+  const first = (await finish('bob', bob, 1)).body as any;
+  assert.equal(first.finishTick, bob.finishTick);
+  assert.equal(first.won, false, 'no win with only one report');
+  const second = (await finish('ann', ann, 0)).body as any;
+  const annWins = ann.finishTick < bob.finishTick;
+  assert.equal(second.won, annWins);
+  const wins = (await world.call('ann', 'GET', 'games/leaderboard', undefined, 'game=race&board=wins')).body as any;
+  assert.equal(wins.rows.length, 1);
+  assert.equal(wins.rows[0].name, annWins ? 'ann-name' : 'bob-name');
+  const times = (await world.call('ann', 'GET', 'games/leaderboard', undefined, `game=race&board=time-${ann.map}`)).body as any;
+  assert.deepEqual(times.rows.map((r: any) => r.score), [ann.finishTick, bob.finishTick].sort((a, b) => a - b));
+  assert.equal((await world.call('ann', 'POST', 'games/race/finish', { seed, slot: 0, crew: 0, inputs: [[5, 'x']] })).status, 400);
 });

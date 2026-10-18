@@ -59,3 +59,28 @@ export interface ProjectionSnapshotStore {
   /** Adds or overwrites these players in the week's saved projections, keeping everyone else. */
   merge(season: number, week: number, players: Record<string, ProjectionSnapshot>): Promise<void>;
 }
+
+/** One line on a leaderboard: a player's best on one board of one game. */
+export interface ScoreRow {
+  game: string;
+  board: string;
+  userId: string;
+  name: string;
+  score: number;
+  detail: string | null;
+  at: string;
+}
+
+/** Leaderboards and the practice game (or race) each player has going, for the Games page. */
+export interface GameStore {
+  /** The player's game in progress of this kind ('practice:climb', 'race', ...), or null. */
+  getSession(userId: string, kind: string): Promise<Record<string, unknown> | null>;
+  setSession(userId: string, kind: string, data: Record<string, unknown> | null): Promise<void>;
+  getScore(game: string, board: string, userId: string): Promise<ScoreRow | null>;
+  putScore(row: ScoreRow): Promise<void>;
+  deleteScore(game: string, board: string, userId: string): Promise<void>;
+  /** Best first: highest score, or lowest when `lowFirst`. */
+  topScores(game: string, board: string, limit: number, lowFirst: boolean): Promise<ScoreRow[]>;
+  /** How many players have a better score than this on the board. */
+  countBetter(game: string, board: string, score: number, lowFirst: boolean): Promise<number>;
+}

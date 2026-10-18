@@ -13,6 +13,7 @@ import { ShowMoreButton, useShowMore } from './ShowMore';
 import '../App.css';
 import './ManualConsole.css';
 import { isCommish } from '../data/leagueLabels';
+import LobbyGames from '../games/LobbyGames';
 
 const TIMER_POLL_MS = 1000;
 const AVAILABLE_PAGE_SIZE = 40;
@@ -270,6 +271,7 @@ const LobbyView = ({ league, user, leagueId, draftProfile, onFavoriteIdsChange }
                     <TeamListViewer league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} />
                 </div>
             )}
+            <LobbyGames league={league} leagueId={leagueId} user={user} isAdmin={isCurrentUserAdmin} />
             <PlayerListViewer league={league} user={user} leagueId={leagueId} draftProfile={draftProfile} onFavoriteIdsChange={onFavoriteIdsChange} />
         </>
     );
