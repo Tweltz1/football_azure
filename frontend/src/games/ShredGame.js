@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CREW } from '../data/crew';
 import { blip, guySound, taDa } from '../sound/crewSound';
-import { SHRED, shredDetail, shredDistance, shredGround, shredScore, shredStart, shredStep } from './sim.generated';
+import { SHRED, shredDetail, shredGround, shredScore, shredStart, shredStep } from './sim.generated';
 import { readClimber, saveClimber, useFixedLoop } from './gameRunners';
 import { drawBackdrop, THEMES } from './race/raceArt';
 
@@ -21,6 +21,7 @@ const viewWidth = (canvas) => (canvas.width / Math.min(2, window.devicePixelRati
 const hitLine = (s) => {
   switch (s.hitBy) {
     case 'rock': return 'Caught an edge on a rock!';
+    case 'stump': return 'Tripped on a stump!';
     case 'tree': return 'Hugged a tree!';
     case 'snowman': return 'Wiped out the snowman (and yourself)!';
     case 'snowball': return 'Flattened by a giant snowball!';
@@ -118,6 +119,60 @@ function drawObstacle(ctx, o, sx, sy, k, tick) {
     ctx.lineTo(x + w * 0.5, y - h * 0.86);
     ctx.lineTo(x + w * 0.1, y - h * 0.83);
     ctx.fill();
+  } else if (o.kind === 'stump') {
+    ctx.fillStyle = '#7a5230';
+    ctx.fillRect(x - w * 0.4, y - h, w * 0.8, h + 2);
+    ctx.fillStyle = '#5a3a1f';
+    ctx.fillRect(x - w * 0.4, y - h * 0.5, w * 0.8, 2 * k);
+    ctx.fillStyle = '#d9b07a';
+    ctx.beginPath();
+    ctx.ellipse(x, y - h, w * 0.4, 5 * k, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#a9773f';
+    ctx.lineWidth = 1.2 * k;
+    ctx.beginPath();
+    ctx.ellipse(x, y - h, w * 0.2, 2.5 * k, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = '#f7fbff';
+    ctx.beginPath();
+    ctx.ellipse(x - w * 0.08, y - h - 2 * k, w * 0.26, 3 * k, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (o.kind === 'sled' || o.kind === 'launcher') {
+    // A red sled, with a gift box riding in it (the launcher's box shakes before it fires).
+    ctx.strokeStyle = '#4b3a2a';
+    ctx.lineWidth = 2.5 * k;
+    ctx.beginPath();
+    ctx.moveTo(x - w * 0.55, y - 2 * k);
+    ctx.lineTo(x + w * 0.4, y - 2 * k);
+    ctx.quadraticCurveTo(x + w * 0.58, y - 2 * k, x + w * 0.56, y - 12 * k);
+    ctx.stroke();
+    ctx.fillStyle = '#d63a2f';
+    ctx.fillRect(x - w * 0.5, y - 14 * k, w, 9 * k);
+    ctx.fillStyle = '#a82820';
+    ctx.fillRect(x - w * 0.5, y - 7 * k, w, 2 * k);
+    if (o.gift || o.kind === 'launcher') {
+      const big = o.kind === 'launcher';
+      const bw = w * (big ? 0.62 : 0.5);
+      const bh = h - 14 * k - (big ? 0 : 4 * k);
+      const shake = big && o.shot - tick < 12 ? Math.sin(tick * 2) * 2 * k : 0;
+      const bx = x - bw / 2 + shake;
+      const by = y - 14 * k - bh;
+      ctx.fillStyle = big ? '#7b4fe0' : '#2f9e5b';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillStyle = '#ffd23f';
+      ctx.fillRect(bx + bw * 0.42, by, bw * 0.16, bh);
+      ctx.fillRect(bx, by + bh * 0.4, bw, bh * 0.16);
+      ctx.beginPath();
+      ctx.ellipse(bx + bw * 0.38, by - 3 * k, 6 * k, 4 * k, -0.5, 0, Math.PI * 2);
+      ctx.ellipse(bx + bw * 0.62, by - 3 * k, 6 * k, 4 * k, 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      if (big) {
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.round(12 * k)}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('?', bx + bw / 2, by + bh * 0.36);
+      }
+    }
   } else {
     const r = w / 2;
     ctx.fillStyle = '#f7fbff';
@@ -134,39 +189,60 @@ function drawObstacle(ctx, o, sx, sy, k, tick) {
   }
 }
 
+function hotDogShape(ctx, x, y, k, angle, tick) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.fillStyle = '#e8b064';
+  ctx.beginPath();
+  ctx.ellipse(0, 3 * k, 17 * k, 7 * k, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#c4452c';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 19 * k, 5 * k, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ffd23f';
+  ctx.lineWidth = 2 * k;
+  ctx.beginPath();
+  ctx.moveTo(-12 * k, -1 * k);
+  for (let i = -8; i <= 12; i += 5) ctx.lineTo(i * k, (i % 2 ? -3 : 1) * k);
+  ctx.stroke();
+  // A lit fuse.
+  ctx.fillStyle = tick % 4 < 2 ? '#ffef5a' : '#ff8a1f';
+  ctx.beginPath();
+  ctx.arc(18 * k, -6 * k, 3.5 * k, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawHotDog(ctx, d, sx, sy, k, tick) {
   const x = sx(d.x);
-  if (d.boom === 0) {
+  if (d.boom === 0 && d.sky) {
     // Where it's going to land.
     const left = (d.ground - d.y) / 440;
     ctx.fillStyle = `rgba(220, 30, 30, ${0.25 + 0.35 * (1 - left)})`;
     ctx.beginPath();
     ctx.ellipse(x, sy(d.ground), SHRED.blastRadius * k * (1.1 - left * 0.5), 6 * k, 0, 0, Math.PI * 2);
     ctx.fill();
-    const y = sy(d.y);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(tick * 0.25);
-    ctx.fillStyle = '#e8b064';
+    hotDogShape(ctx, x, sy(d.y), k, tick * 0.25, tick);
+  } else if (d.boom === 0 && !d.landed) {
+    hotDogShape(ctx, x, sy(d.y) - 6 * k, k, tick * 0.3, tick);
+  } else if (d.boom === 0) {
+    // Sitting on the snow, fuse burning down: blinks faster as it gets close.
+    const urgent = d.fuse < SHRED.fuse / 3;
+    const on = urgent ? tick % 4 < 2 : tick % 10 < 5;
+    ctx.fillStyle = `rgba(220, 30, 30, ${on ? 0.45 : 0.2})`;
     ctx.beginPath();
-    ctx.ellipse(0, 3 * k, 17 * k, 7 * k, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, sy(d.y), SHRED.blastRadius * k, 6 * k, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#c4452c';
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 19 * k, 5 * k, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#ffd23f';
-    ctx.lineWidth = 2 * k;
-    ctx.beginPath();
-    ctx.moveTo(-12 * k, -1 * k);
-    for (let i = -8; i <= 12; i += 5) ctx.lineTo(i * k, (i % 2 ? -3 : 1) * k);
-    ctx.stroke();
-    // A lit fuse.
-    ctx.fillStyle = tick % 4 < 2 ? '#ffef5a' : '#ff8a1f';
-    ctx.beginPath();
-    ctx.arc(18 * k, -6 * k, 3.5 * k, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    hotDogShape(ctx, x, sy(d.y) - 7 * k, k, 0, tick);
+    ctx.fillStyle = on ? '#ff3d1f' : '#fff';
+    ctx.font = `bold ${Math.round(13 * k)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3 * k;
+    ctx.strokeStyle = '#16122b';
+    ctx.strokeText(String(Math.ceil(d.fuse / 30) || '!'), x, sy(d.y) - 22 * k);
+    ctx.fillText(String(Math.ceil(d.fuse / 30) || '!'), x, sy(d.y) - 22 * k);
   } else {
     const t = d.boom / (SHRED.blastTicks + 6);
     const y = sy(d.ground) - 10 * k;
@@ -329,7 +405,7 @@ function drawBridge(ctx, g, sx, sy, k, height) {
   snowCap(ctx, x0, y - 2 * k, x1, y - 2 * k, k * 0.6);
 }
 
-function draw(canvas, s, rider, images, cam) {
+function draw(canvas, s, rider, images, cam, popups) {
   const ctx = canvas.getContext('2d');
   const { width, height } = canvas;
   const view = viewWidth(canvas);
@@ -367,7 +443,9 @@ function draw(canvas, s, rider, images, cam) {
 
   s.obstacles.forEach((o) => drawObstacle(ctx, o, sx, sy, k, s.tick));
   const bob = (s.tick % 30) / 30;
-  s.footballs.forEach((b) => drawFootball(ctx, sx(b.x), sy(b.y) + (bob < 0.5 ? bob : 1 - bob) * 6 * k, SHRED.ballRadius * k, -0.5));
+  s.footballs.forEach((b) => (b.vy == null
+    ? drawFootball(ctx, sx(b.x), sy(b.y) + (bob < 0.5 ? bob : 1 - bob) * 6 * k, SHRED.ballRadius * k, -0.5)
+    : drawFootball(ctx, sx(b.x), sy(b.y), SHRED.ballRadius * k, s.tick * 0.3)));
   s.hotdogs.forEach((d) => drawHotDog(ctx, d, sx, sy, k, s.tick));
 
   // The rider on a board, tipped to the slope (or nose-up in the air).
@@ -392,6 +470,19 @@ function draw(canvas, s, rider, images, cam) {
   const size = 62 * k;
   if (img && img.complete && img.naturalWidth) ctx.drawImage(img, -size / 2, -size - 4 * k, size, size);
   ctx.restore();
+  // "+10" and "+5" floating up where points were won.
+  ctx.textAlign = 'center';
+  ctx.font = `900 ${Math.round(20 * k)}px system-ui, sans-serif`;
+  ctx.lineWidth = 4 * k;
+  ctx.strokeStyle = '#16122b';
+  popups.forEach((p) => {
+    const age = s.tick - p.tick;
+    ctx.globalAlpha = Math.max(0, 1 - age / 30);
+    ctx.fillStyle = p.text === '+5' ? '#7ef0a0' : '#ffd23f';
+    ctx.strokeText(p.text, sx(p.x), sy(p.y) - age * 1.4 * k);
+    ctx.fillText(p.text, sx(p.x), sy(p.y) - age * 1.4 * k);
+  });
+  ctx.globalAlpha = 1;
   // Snow spray while riding.
   if (s.grounded && s.alive) {
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
@@ -418,6 +509,7 @@ const ShredGame = ({ seed, onEnd }) => {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const camRef = useRef({ y: null });
+  const popupsRef = useRef([]);
   const images = useMemo(() => CREW.map((guy) => loadImage(guy.art)), []);
   const [, setSize] = useState(0);
 
@@ -428,6 +520,7 @@ const ShredGame = ({ seed, onEnd }) => {
     inputsRef.current = [];
     tapRef.current = false;
     camRef.current = { y: null };
+    popupsRef.current = [];
     setCountdown(3);
     setPhase('countdown');
   };
@@ -472,9 +565,12 @@ const ShredGame = ({ seed, onEnd }) => {
     const tap = tapRef.current;
     tapRef.current = false;
     if (tap) inputsRef.current.push([s.tick, 1]);
-    const balls = s.balls;
+    const { balls, stomps } = s;
     shredStep(s, tap);
-    if (s.balls > balls) blip();
+    const popAt = (text) => popupsRef.current.push({ text, x: s.x, y: s.y - 70, tick: s.tick });
+    if (s.balls > balls) { blip(); popAt(`+${SHRED.ballPoints * (s.balls - balls)}`); }
+    if (s.stomps > stomps) popAt(`+${SHRED.stompPoints}`);
+    popupsRef.current = popupsRef.current.filter((p) => s.tick - p.tick < 30);
     if (!s.alive) {
       if (s.hitBy === 'time') taDa(); else guySound(rider);
       setPhase('over');
@@ -488,15 +584,15 @@ const ShredGame = ({ seed, onEnd }) => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !canvas.width) return;
-    draw(canvas, s || shredStart(seed), rider, images, camRef.current);
+    draw(canvas, s || shredStart(seed), rider, images, camRef.current, popupsRef.current);
   });
 
   const score = s ? shredScore(s) : 0;
   return (
     <div className="shred-game" ref={wrapRef}>
       <div className="game-hud">
-        <span><strong>{s ? shredDistance(s) : 0}</strong> m</span>
         <span><strong>{s ? s.balls : 0}</strong> 🏈</span>
+        <span><strong>{s ? s.stomps : 0}</strong> landings</span>
         <span>Score <strong>{score}</strong></span>
       </div>
       <div
@@ -534,7 +630,7 @@ const ShredGame = ({ seed, onEnd }) => {
               ))}
             </div>
             <button type="button" className="game-go" onClick={begin}>Drop in</button>
-            <p className="game-hint">Tap anywhere (or space) to jump, and tap again in the air to double jump. Footballs are {SHRED.ballPoints} points.</p>
+            <p className="game-hint">Tap anywhere (or space) to jump, and tap again in the air to double jump. Footballs are {SHRED.ballPoints} points, and landing on top of a rock, stump, tree or snowman is {SHRED.stompPoints}. Gift sleds hold a football, until later, when some toss out a hot dog on a fuse. Jump it before it pops!</p>
           </div>
         )}
       </div>
