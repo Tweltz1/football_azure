@@ -366,14 +366,15 @@
   flex-direction: column;
   gap: 10px;
   scroll-margin-top: calc(8px + env(safe-area-inset-top));
+  margin-bottom: 26px;
 }
 
 .shred-stage {
   position: relative;
   width: 100%;
   max-width: 720px;
-  height: min(58vh, 460px);
-  min-height: 330px;
+  height: min(66vh, 540px);
+  min-height: 340px;
   margin: 0 auto;
   border-radius: 14px;
   overflow: hidden;
@@ -402,20 +403,6 @@
   font-weight: 700;
   font-size: 0.85rem;
   pointer-events: none;
-}
-
-.shred-jump {
-  width: 100%;
-  max-width: 720px;
-  min-height: 56px;
-  margin: 0 auto;
-  border-radius: 12px;
-  border: 1px solid var(--hairline-strong);
-  background: var(--accent);
-  color: #fff;
-  font-size: 1.2rem;
-  font-weight: 800;
-  touch-action: manipulation;
 }
 
 .climb-buttons {
@@ -935,8 +922,8 @@
   }
 
   .shred-stage {
-    height: min(52vh, 420px);
-    min-height: 320px;
+    height: min(64vh, 520px);
+    min-height: 330px;
   }
 
   .pk-goal {
