@@ -2539,6 +2539,7 @@ function shredStart(seed) {
     wantJump: -100,
     jumps: 0,
     doubleAt: -100,
+    jumped: false,
     balls: 0,
     alive: true,
     hitBy: null,
@@ -2571,8 +2572,8 @@ var shredSlope = (s, x) => {
       return (g.y1 - g.y0) / (g.x1 - g.x0);
   return 0;
 };
-function addSegment(s, length, drop) {
-  s.segments.push({ x0: s.genX, x1: s.genX + length, y0: s.genY, y1: s.genY + drop });
+function addSegment(s, length, drop, kind) {
+  s.segments.push(kind ? { x0: s.genX, x1: s.genX + length, y0: s.genY, y1: s.genY + drop, kind } : { x0: s.genX, x1: s.genX + length, y0: s.genY, y1: s.genY + drop });
   s.genX += length;
   s.genY += drop;
 }
@@ -2600,7 +2601,7 @@ function placeObstacles(s, x0, x1, reach, hard) {
       s.obstacles.push({ id: s.nextId++, kind, x, y: g, w: size[0], h: size[1], roll: kind === "snowball" ? 1.6 : 0 });
       if (nextRandom(s) < 0.3)
         s.footballs.push({ id: s.nextId++, x, y: g - size[1] - 46 });
-      s.noObstacleUntil = x + reach * 1.3;
+      s.noObstacleUntil = x + reach * 1.6;
       x = s.noObstacleUntil + nextRandom(s) * reach * (1.6 - hard);
     } else {
       x += reach * 0.6;
@@ -2619,38 +2620,43 @@ function shredBuild(s) {
       continue;
     }
     const roll = nextRandom(s);
-    if (roll < 0.34) {
+    if (roll < 0.24) {
       const length = rand(s, 420, 820);
       addSegment(s, length, length * rand(s, 0.12, 0.34 + 0.1 * hard));
       placeObstacles(s, start, s.genX, reach, hard);
       if (nextRandom(s) < 0.5)
-        addBallLine(s, start + rand(s, 40, length - 200), 4, nextRandom(s) < 0.4);
-    } else if (roll < 0.48) {
+        addBallLine(s, start + rand(s, 40, length - 240), 4, nextRandom(s) < 0.4);
+    } else if (roll < 0.34) {
       const length = rand(s, 280, 480);
       addSegment(s, length, length * rand(s, 0, 0.05));
       placeObstacles(s, start, s.genX, reach, hard);
       if (nextRandom(s) < 0.5)
         addBallLine(s, start + 40, 5, false);
-    } else if (roll < 0.58) {
-      const length = rand(s, 200, 300);
-      addSegment(s, length, -length * rand(s, 0.06, 0.14));
-      addBallLine(s, start + 30, 4, false);
-    } else if (roll < 0.73) {
+    } else if (roll < 0.48) {
+      const up = rand(s, 220, 360);
+      addSegment(s, up, -up * rand(s, 0.18, 0.32));
+      addBallLine(s, s.genX - up + 40, 4, false);
+      addSegment(s, 80, 0);
+      const down = rand(s, 320, 520);
+      const downStart = s.genX;
+      addSegment(s, down, down * rand(s, 0.4, 0.65));
+      placeObstacles(s, downStart + 100, s.genX, reach, hard);
+    } else if (roll < 0.62) {
       addSegment(s, runUp(s, 60), 0);
-      addSegment(s, 110, -66);
+      addSegment(s, 140, -rand(s, 80, 110), "ramp");
       const lipX = s.genX;
       const lipY = s.genY;
-      s.genY += rand(s, 70, 150);
-      addSegment(s, 360, 60);
-      for (let i = 1; i <= 4; i += 1)
-        s.footballs.push({ id: s.nextId++, x: lipX + i * speed * 4, y: lipY - 40 - i * 6 });
+      s.genY += rand(s, 150, 260);
+      addSegment(s, 420, 170);
+      for (let i = 1; i <= 5; i += 1)
+        s.footballs.push({ id: s.nextId++, x: lipX + i * speed * 4, y: lipY - 46 - i * 9 + i * i * 1.6 });
       s.noObstacleUntil = s.genX;
-    } else if (roll < 0.88) {
+    } else if (roll < 0.78) {
       const lead = runUp(s, 120);
       addSegment(s, lead, lead * 0.25);
       const edgeY = s.genY;
-      const width = reach * (0.28 + nextRandom(s) * (0.12 + 0.25 * hard));
-      const drop = rand(s, 20, 90);
+      const width = reach * (0.3 + nextRandom(s) * (0.2 + 0.4 * hard));
+      const drop = rand(s, 20, 120);
       s.pits.push({ x0: s.genX, x1: s.genX + width, floor: edgeY + drop + 220 });
       for (let i = 1; i <= 3; i += 1)
         s.footballs.push({ id: s.nextId++, x: s.genX + width * i / 4, y: edgeY - 70 });
@@ -2658,10 +2664,29 @@ function shredBuild(s) {
       s.genY += drop;
       addSegment(s, 300, 50);
       s.noObstacleUntil = s.genX;
+    } else if (roll < 0.9) {
+      const lead = runUp(s, 120);
+      addSegment(s, lead, lead * 0.25);
+      const edgeY = s.genY;
+      const first = reach * rand(s, 0.25, 0.42);
+      const deckY = edgeY + rand(s, -20, 40);
+      s.pits.push({ x0: s.genX, x1: s.genX + first, floor: Math.max(edgeY, deckY) + 260 });
+      s.genX += first;
+      s.genY = deckY;
+      const deck = rand(s, 220, 380);
+      addSegment(s, deck, 0, "bridge");
+      addBallLine(s, s.genX - deck + 50, 4, nextRandom(s) < 0.5);
+      const second = reach * (0.25 + nextRandom(s) * (0.17 + 0.25 * hard));
+      const drop = rand(s, 30, 110);
+      s.pits.push({ x0: s.genX, x1: s.genX + second, floor: deckY + drop + 260 });
+      s.genX += second;
+      s.genY += drop;
+      addSegment(s, 300, 50);
+      s.noObstacleUntil = s.genX;
     } else {
       addSegment(s, runUp(s, 160), 10);
-      s.genY += rand(s, 80, 180);
-      addSegment(s, 320, 50);
+      s.genY += rand(s, 120, 260);
+      addSegment(s, 360, 90);
       s.noObstacleUntil = s.genX;
     }
   }
@@ -2715,6 +2740,12 @@ function shredStep(s, tap = false) {
     s.lastGround = -100;
     s.wantJump = -100;
     s.doubleAt = -100;
+    s.jumped = true;
+    s.jumps += 1;
+  } else if (tap && !s.grounded && !s.jumped) {
+    s.vy = Math.min(s.vy, 0) - SHRED.jump;
+    s.jumped = true;
+    s.wantJump = -100;
     s.jumps += 1;
   } else if (tap && !s.grounded && s.doubleAt < 0) {
     s.vy = Math.min(s.vy, 0) - SHRED.doubleJump;
@@ -2748,6 +2779,7 @@ function shredStep(s, tap = false) {
         s.vy = 0;
         s.grounded = true;
         s.doubleAt = -100;
+        s.jumped = false;
         s.lastGround = s.tick;
       } else {
         shredCrash(s, "cliff");
