@@ -14,7 +14,23 @@ function shouldJump(s) {
   if (survives(s, 45)) return false;
   const t = structuredClone(s);
   shredStep(t, true);
-  return t.alive && survives(t, 30);
+  if (!t.alive) return false;
+  if (survives(t, 30)) return true;
+  // Would a double jump later in this jump save it?
+  for (let wait = 4; wait <= 24; wait += 4) {
+    const u = structuredClone(t);
+    for (let i = 0; i < wait && u.alive; i += 1) shredStep(u, false);
+    shredStep(u, true);
+    if (u.alive && survives(u, 30)) return true;
+  }
+  return false;
+}
+// In the air: double jump now if riding on would crash and the boost saves it.
+function shouldDouble(s) {
+  if (s.doubleAt >= 0 || survives(s, 40)) return false;
+  const t = structuredClone(s);
+  shredStep(t, true);
+  return t.alive && survives(t, 70);
 }
 
 test('Shred the Summit: a simple jumping bot gets well down the mountain, and runs replay exactly', () => {
@@ -24,7 +40,7 @@ test('Shred the Summit: a simple jumping bot gets well down the mountain, and ru
     const inputs = [];
     // The bot plays until it crashes (replays always run to the crash).
     while (s.alive) {
-      const tap = s.grounded && shouldJump(s);
+      const tap = s.grounded ? shouldJump(s) : shouldDouble(s);
       if (tap) inputs.push([s.tick, 1]);
       shredStep(s, tap);
     }
@@ -32,7 +48,7 @@ test('Shred the Summit: a simple jumping bot gets well down the mountain, and ru
     const replay = replaySkillGame('shred', seed * 7919, inputs);
     assert.equal(replay.score, shredScore(s), `seed ${seed} replays to the same score`);
   }
-  assert.ok(far >= 8, `only ${far} of 12 runs reached the hot dogs`);
+  assert.ok(far >= 10, `only ${far} of 12 runs reached the hot dogs`);
 });
 
 test('Shred the Summit: gaps are always narrower than a jump, and obstacles leave room to land', () => {
@@ -48,7 +64,8 @@ test('Shred the Summit: gaps are always narrower than a jump, and obstacles leav
       s.x += 60;
       shredStep(Object.assign(s, { alive: true, grounded: false, y: -1e6, vy: 0, hotdogs: [] }), false);
     }
-    const widest = air * shredSpeed(1e9) * 0.66;
+    // The widest gaps need the double jump.
+    const widest = air * shredSpeed(1e9) * 0.9;
     for (const p of pits.values()) assert.ok(p.x1 - p.x0 < widest, `seed ${seed}: gap ${Math.round(p.x1 - p.x0)} too wide`);
     const xs = [...rocks.values()].sort((a, b) => a - b);
     for (let i = 1; i < xs.length; i += 1) assert.ok(xs[i] - xs[i - 1] >= air * shredSpeed(0) * 1.29, `seed ${seed}: obstacles ${Math.round(xs[i] - xs[i - 1])} apart`);
@@ -72,4 +89,18 @@ test('Shred the Summit: a second tap in the air double jumps once, higher than o
   assert.ok(two.top < one.top - 30, 'the double jump goes higher');
   assert.equal(two.doubles, 2);
   assert.equal(three.doubles, 2, 'only one double jump per trip through the air');
+});
+
+test('Shred the Summit: riding off an edge keeps the jump and the double jump for the air', () => {
+  const s = shredStart(9);
+  for (let i = 0; i < 20; i += 1) shredStep(s, false);
+  // As if the ground just dropped away under the board.
+  Object.assign(s, { grounded: false, lastGround: -100, vy: 3, y: s.y - 200 });
+  shredStep(s, true);
+  assert.ok(s.vy < -SHRED.jump + 1, 'a full jump in the air');
+  assert.equal(s.doubleAt, -100, 'the double jump is still there');
+  for (let i = 0; i < 6; i += 1) shredStep(s, false);
+  shredStep(s, true);
+  assert.ok(s.doubleAt >= 0, 'then the double jump');
+  assert.equal(s.jumps, 2);
 });
