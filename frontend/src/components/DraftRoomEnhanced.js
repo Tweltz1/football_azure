@@ -1,14 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import { HubConnectionBuilder } from '@microsoft/signalr';
+import { createDraftConnection } from '../realtime';
 import { useAuth } from '../AuthContext';
-import { getSignalRInfo } from '../api';
+import { API_BASE_URL } from '../api';
 import { subscribeProfileUpdates } from '../profileSync';
 import DraftScreen from './DraftScreen';
+import OfflineDraftPanel from './OfflineDraftPanel';
+import NearbyDraftPanel from './NearbyDraftPanel';
+import WhiteboardPad from '../whiteboard/WhiteboardPad';
+import { isAutoReadLeague, isWhiteboardLeague } from '../whiteboard/biddingStyle';
+import { isDraftLive } from '../data/leagueLabels';
 import './DraftRoomEnhanced.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 const COLLAPSIBLE_CARD_TITLES = [
   'Draft Controls & Overview',
   'League Teams',
@@ -16,7 +20,8 @@ const COLLAPSIBLE_CARD_TITLES = [
   'Player Lists',
   'Current Player Up for Bid:',
   'Intermission!',
-  'Tie Breaker!'
+  'Tie Breaker!',
+  'Boards Up!'
 ];
 
 const DraftRoomEnhanced = ({ userId }) => {
@@ -96,6 +101,8 @@ const DraftRoomEnhanced = ({ userId }) => {
   return (
     <div className="draft-room-enhanced">
       <AdminNoticeToast notice={adminNotice} onClose={() => setAdminNotice(null)} />
+      <OfflineDraftPanel league={league} user={user} />
+      <NearbyDraftPanel league={league} user={user} />
       <DraftScreen
         key={profileRefreshKey}
         userId={userId}
@@ -143,6 +150,7 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
   const rosterTotal = useMemo(() => getRosterTotal(league?.rosterSettings), [league]);
   const normalizedStatus = String(league?.status || '').toLowerCase();
   const isManualDraft = league?.draftMode === 'manual';
+  const isWhiteboard = !isManualDraft && isWhiteboardLeague(league);
   const isTieBreaker = normalizedStatus === 'tiebreaker';
   const isFinalTie = isTieBreaker && (league?.tieBreaker?.round || 0) >= 2;
   const tiedUserIds = league?.tieBreaker?.tiedTeamIds || [];
@@ -242,6 +250,22 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
     }
   };
 
+  const handleLockInBoard = async (amount, board) => {
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${leagueId}/bid`, { userId: user.userId, amount, board }, { suppressBidLimitAlert: true });
+    } catch (error) {
+      throw new Error(error.response?.data || error.message);
+    }
+  };
+
+  const boardPadReason = !currentTeam
+    ? 'You need a team in this league to bid.'
+    : normalizedStatus === 'boardreview'
+      ? 'Boards are up. The commissioner is awarding this player.'
+      : league?.auctionTimer?.isPaused && normalizedStatus === 'drafting'
+        ? 'The draft is paused.'
+        : 'Boards open when the next player is up.';
+
   return (
     <aside className="draft-command-panel" aria-label="Draft room command panel">
       <CollapsiblePanel title="Teams Live" storageKey="draft-panel-teams" defaultOpen>
@@ -280,6 +304,19 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
 
       {isManualDraft ? (
         <ManualCompanionPanel leagueId={leagueId} league={league} user={user} currentTeam={currentTeam} rosterTotal={rosterTotal} />
+      ) : !isDraftLive(league) ? null : isWhiteboard ? (
+        <CollapsiblePanel title="Quick Bid" storageKey="draft-panel-quick-bid" defaultOpen>
+          <WhiteboardPad
+            compact
+            autoRead={isAutoReadLeague(league)}
+            activeBid={user?.userId ? league?.activeBids?.[user.userId] || null : null}
+            disabled={!currentTeam || normalizedStatus !== 'drafting' || Boolean(league?.auctionTimer?.isPaused)}
+            disabledReason={boardPadReason}
+            onLockIn={handleLockInBoard}
+            userId={user?.userId || null}
+            maxAmount={quickBidMax}
+          />
+        </CollapsiblePanel>
       ) : (
         <CollapsiblePanel title="Quick Bid" storageKey="draft-panel-quick-bid" defaultOpen>
           <div className="quick-bid-row">
@@ -298,7 +335,7 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
             </button>
           </div>
           {currentTeam && <p className="draft-muted">Max bid: ${quickBidMax} | Minimum: ${quickBidMin}</p>}
-          {typeof activeBid === 'number' && <p className="draft-muted">Your active bid: ${activeBid}</p>}
+          {typeof activeBid === 'number' && <p key={activeBid} className="draft-muted quick-bid-active bid-flash">Your active bid: <strong>${activeBid}</strong></p>}
           {isCappedBelowMinimum && <p className="draft-muted">You are capped below the minimum bid for this player.</p>}
           {isTieBreaker && !userCanBidInPhase && <p className="draft-muted">Only tied teams can bid in this round.</p>}
           {isFinalTie && <p className="draft-muted">Final tie is locked for admin resolution.</p>}
@@ -485,13 +522,8 @@ const useSharedDraftConnection = ({
 
     const setupConnection = async () => {
       try {
-        const info = await getSignalRInfo(userId);
         if (!isMounted) return;
-
-        connection = new HubConnectionBuilder()
-          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-          .withAutomaticReconnect()
-          .build();
+        connection = createDraftConnection({ leagueIds: [leagueId], userId });
 
         connection.on('draftStateUpdate', (updatedLeague) => {
           if (updatedLeague?.id === leagueId) {
@@ -527,7 +559,7 @@ const useSharedDraftConnection = ({
         await connection.start();
         await axios.post(`${API_BASE_URL}/leagues/${leagueId}/connect`, { userId });
       } catch (error) {
-        console.error('Shared draft SignalR connection failed:', error);
+        console.error('Shared draft live connection failed:', error);
       }
     };
 

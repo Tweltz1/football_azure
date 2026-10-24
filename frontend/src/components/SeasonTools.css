@@ -1,0 +1,1020 @@
+/* Layout for the Start/Sit and Draft History pages. Colors come from the theme tokens in App.css. */
+
+.startsit-controls {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.startsit-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.startsit-controls select {
+  min-width: 150px;
+  max-width: 100%;
+}
+
+.startsit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.startsit-panel {
+  margin-bottom: 18px;
+}
+
+.startsit-grid .startsit-panel {
+  margin-bottom: 0;
+}
+
+.startsit-help,
+.startsit-footnote {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.startsit-footnote {
+  margin: 4px 0 24px;
+}
+
+.startsit-search {
+  width: 100%;
+  max-width: 420px;
+}
+
+.startsit-results {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.startsit-results small,
+.startsit-table small,
+.startsit-bench small,
+.startsit-compare small,
+.history-player small {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.startsit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.startsit-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.startsit-slot {
+  display: inline-block;
+  min-width: 44px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.startsit-tag {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.startsit-tag.warn {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.startsit-tag.caution {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.startsit-matchup {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.startsit-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.startsit-bench,
+.startsit-compare,
+.history-roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.startsit-bench li,
+.startsit-compare li,
+.history-roster li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.startsit-bench li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.startsit-points {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+  text-align: right;
+}
+
+.startsit-compare-name {
+  flex: 0 0 40%;
+  min-width: 0;
+}
+
+.startsit-bar {
+  flex: 1;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.startsit-bar span {
+  display: block;
+  height: 100%;
+  background: var(--teal);
+}
+
+.startsit-compare li.winner .startsit-bar span {
+  background: var(--gold);
+}
+
+.startsit-remove {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.startsit-verdict {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border-left: 4px solid var(--gold);
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+
+.startsit-verdict.close {
+  border-left-color: var(--teal);
+  background: var(--success-soft);
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.history-card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.history-card:hover {
+  transform: translateY(-2px);
+}
+
+.history-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.history-team.mine {
+  outline: 2px solid var(--accent);
+}
+
+.history-player {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .startsit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .startsit-compare-name {
+    flex-basis: 50%;
+  }
+
+  .startsit-table th:nth-child(3),
+  .startsit-table td:nth-child(3) {
+    display: none;
+  }
+}
+
+.startsit-name {
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.startsit-trend {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--muted);
+  background: var(--border);
+}
+
+.startsit-trend.up {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.startsit-trend.down {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.startsit-insight {
+  max-width: 640px;
+  width: 100%;
+}
+
+.startsit-insight h4 {
+  margin: 18px 0 6px;
+}
+
+.startsit-insight-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.startsit-insight-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.startsit-insight-stats span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.startsit-insight-stats strong {
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+  .startsit-insight-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.startsit-defense {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.startsit-defense th,
+.startsit-defense td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+
+.startsit-defense th:first-child,
+.startsit-defense td:first-child {
+  text-align: left;
+}
+
+.startsit-defense th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.startsit-defense td.easier {
+  color: var(--teal);
+  font-weight: 800;
+}
+
+.startsit-defense td.harder {
+  color: var(--red);
+  font-weight: 800;
+}
+
+.startsit-sleeper-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.startsit-sleeper-form input {
+  flex: 1 1 200px;
+  max-width: 320px;
+}
+
+.startsit-changes {
+  margin: 0 0 12px;
+}
+
+.startsit-changes ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-weight: 600;
+}
+
+.trade-partner {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.trade-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.trade-side h4 {
+  margin: 0 0 6px;
+}
+
+.trade-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.trade-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trade-list li.picked {
+  background: var(--accent-soft);
+}
+
+.trade-list label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.trade-list input {
+  width: auto;
+  margin: 0;
+}
+
+.trade-result {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 8px;
+  border-left: 5px solid var(--teal);
+  background: var(--success-soft);
+}
+
+.trade-result.win {
+  border-left-color: var(--gold);
+  background: var(--accent-soft);
+}
+
+.trade-result.lose {
+  border-left-color: var(--red);
+  background: var(--danger-soft);
+}
+
+.trade-verdict {
+  font-size: 1.3rem;
+}
+
+.trade-breakdown {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.trade-breakdown li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.trade-breakdown .startsit-points {
+  margin-left: auto;
+  font-size: 0.85rem;
+}
+
+.trade-breakdown li {
+  flex-wrap: wrap;
+}
+
+.trade-outlook {
+  flex-basis: 100%;
+  margin: 2px 0 6px;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.trade-outlook li {
+  display: list-item;
+  padding: 1px 0;
+}
+
+@media (max-width: 760px) {
+  .trade-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trade-picks-title {
+  margin-top: 12px !important;
+}
+
+.trade-pick-list {
+  max-height: 200px;
+}
+
+.startsit-sleeper-form + .updated-at {
+  display: block;
+  margin-top: 8px;
+}
+
+/* Phones make every button full width (App.css); these sit inline with text. */
+.startsit-name,
+.startsit-chip,
+.startsit-remove {
+  width: auto;
+}
+
+@media (max-width: 640px) {
+  /* Let the lineup table wrap to the screen instead of scrolling sideways. */
+  .leagues-table.startsit-table {
+    display: table;
+    white-space: normal;
+  }
+
+  .leagues-table.startsit-table th,
+  .leagues-table.startsit-table td {
+    padding: 10px 8px;
+  }
+
+  .leagues-table.startsit-table td:last-child {
+    white-space: nowrap;
+    text-align: right;
+  }
+}
+
+.trade-finder {
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.trade-finder-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trade-finder-head .startsit-help {
+  margin: 4px 0 0;
+}
+
+.trade-finder-head button {
+  width: auto;
+}
+
+.trade-ideas {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.trade-ideas li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.trade-idea-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.trade-idea-main small {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.trade-ideas button {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.trade-meter {
+  margin: 14px 0 6px;
+}
+
+.trade-meter-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.trade-meter-labels strong {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.trade-meter-state {
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.trade-meter-state.fair { color: var(--success); }
+.trade-meter-state.win { color: var(--accent-text); }
+.trade-meter-state.lose { color: var(--danger); }
+
+.trade-meter-track {
+  position: relative;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--danger-soft), var(--border) 40%, var(--border) 60%, var(--accent-soft));
+}
+
+.trade-meter-fair {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 37.5%;
+  width: 25%;
+  border-radius: 999px;
+  background: var(--success-soft);
+}
+
+.trade-meter-needle {
+  position: absolute;
+  top: -4px;
+  width: 4px;
+  height: 18px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: left 300ms ease;
+}
+
+.trade-meter-lineup {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.trade-balance {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.trade-balance ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.trade-balance li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.trade-balance small {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.trade-balance button {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.trade-needs {
+  margin-bottom: 16px;
+}
+
+.trade-needs-title {
+  margin: 0;
+  padding: 6px 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.trade-needs-wrap {
+  overflow-x: auto;
+}
+
+.trade-needs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.88rem;
+}
+
+.trade-needs-table th,
+.trade-needs-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.trade-needs-table th:first-child,
+.trade-needs-table td:first-child {
+  text-align: left;
+}
+
+.trade-needs-table th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.trade-needs-table td.need-strong {
+  color: var(--success);
+  background: var(--success-soft);
+  font-weight: 800;
+}
+
+.trade-needs-table td.need-weak {
+  color: var(--danger);
+  background: var(--danger-soft);
+  font-weight: 800;
+}
+
+.trade-needs-table tr.mine td:first-child,
+.trade-needs-table tr.partner td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+@media (max-width: 640px) {
+  .trade-breakdown li {
+    flex-wrap: wrap;
+  }
+
+  .trade-breakdown .startsit-points {
+    flex-basis: 100%;
+    text-align: left;
+    margin-left: 0;
+  }
+
+  .trade-needs-table th,
+  .trade-needs-table td {
+    padding: 6px 5px;
+  }
+}
+
+.startsit-nowrap {
+  white-space: nowrap;
+}
+
+/* Player names are text links, not buttons: drop the global button height and inset shadow. */
+.startsit-name,
+.startsit-name:hover:not(:disabled) {
+  min-height: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.startsit-tag.good {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.trade-favors {
+  margin: 10px 0 4px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  font-weight: 600;
+  text-align: center;
+}
+
+.trade-market-note {
+  margin-top: 4px;
+}
+
+.waiver-title {
+  margin: 16px 0 6px;
+}
+
+.waiver-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.waiver-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.waiver-move {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.waiver-move small {
+  color: var(--muted);
+}
+
+.waiver-list .startsit-points {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+
+.waiver-list .startsit-points small {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.waiver-depth {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.waiver-depth li {
+  display: grid;
+  grid-template-columns: 3.5em 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.waiver-depth small,
+.trade-demand {
+  color: var(--muted);
+}
+
+.trade-demand {
+  display: block;
+  margin-top: 4px;
+}
+
+@media (max-width: 560px) {
+  .waiver-depth li {
+    grid-template-columns: 3em 1fr;
+  }
+
+  .waiver-depth small {
+    grid-column: 2;
+  }
+}
+
+/* Draft history detail: tap a team (or the pick list) to fold it open. */
+.history-teams {
+  align-items: start;
+}
+
+.history-team-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.history-team-summary::-webkit-details-marker {
+  display: none;
+}
+
+.history-team-summary > span:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.history-team-summary strong {
+  font-size: 1.02rem;
+  overflow-wrap: anywhere;
+}
+
+.history-team-summary .section-kicker {
+  margin: 0;
+}
+
+.history-team-summary::after {
+  content: "Show";
+  flex: none;
+  order: 3;
+  color: var(--accent-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+details[open] > .history-team-summary {
+  margin-bottom: 10px;
+}
+
+details[open] > .history-team-summary::after {
+  content: "Hide";
+}
+
+.history-team-summary .board-count {
+  margin-left: auto;
+}
+
+.history-pick-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-pick-list li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-pick-number {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-pick-team {
+  display: block;
+  font-weight: 500 !important;
+}
+
+/* Ask the model: the chat bar on Start/Sit. */
+.ask-form {
+  display: flex;
+  gap: 8px;
+}
+
+.ask-form input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ask-form button {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.ask-log {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.ask-question {
+  justify-self: end;
+  margin: 0 0 6px auto;
+  max-width: 85%;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.ask-answer > p:first-child {
+  margin: 0 0 6px;
+}
+
+.ask-item-label {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* The "?" card, shown inline instead of as a popover. */
+.why-pop.ask-why {
+  position: static;
+  width: auto;
+  max-height: none;
+  margin-top: 8px;
+  box-shadow: none;
+  animation: none;
+}
+
+.why-pop.ask-why::before {
+  display: none;
+}
