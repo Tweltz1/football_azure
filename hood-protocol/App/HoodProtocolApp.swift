@@ -2,7 +2,7 @@ import SwiftUI
 import RogueEngine
 
 @main
-struct SecretProtocolApp: App {
+struct HoodProtocolApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()

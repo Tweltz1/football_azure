@@ -27,7 +27,7 @@ struct GameView: View {
                     .padding()
             }
         }
-        .navigationTitle("Secret Protocol")
+        .navigationTitle("Hood Protocol")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
         .toolbar {

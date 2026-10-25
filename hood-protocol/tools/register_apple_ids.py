@@ -1,4 +1,4 @@
-"""Register the Secret Protocol App ID using existing GitHub Actions secrets.
+"""Register the Hood Protocol App ID using existing GitHub Actions secrets.
 Never prints the API token or P8 key. Safe to re-run when IDs already exist.
 """
 import json
@@ -43,7 +43,7 @@ def request(url, payload=None):
         raise RuntimeError("Apple returned HTTP " + str(error.code) + ": " + details) from None
 
 for identifier, name in (
-    ("com.tweltz1.secretprotocol", "Secret Protocol"),
+    ("com.tweltz1.hoodprotocol", "Hood Protocol"),
 ):
     query = urllib.parse.urlencode({"filter[identifier]": identifier})
     response = request(BASE + "?" + query)

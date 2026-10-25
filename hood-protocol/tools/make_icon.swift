@@ -15,7 +15,7 @@ let attrs: [NSAttributedString.Key: Any] = [
   .foregroundColor: NSColor(calibratedRed: 0.04, green: 0.06, blue: 0.12, alpha: 1),
   .paragraphStyle: style
 ]
-("SP" as NSString).draw(in: NSRect(x: 160, y: 350, width: 704, height: 340), withAttributes: attrs)
+("HP" as NSString).draw(in: NSRect(x: 160, y: 350, width: 704, height: 340), withAttributes: attrs)
 image.unlockFocus()
 guard let tiff = image.tiffRepresentation,
       let bitmap = NSBitmapImageRep(data: tiff),
