@@ -9,27 +9,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Scoreboard (odds, weather)
+      - name: Next week odds
         run: |
-          curl -sSI "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard" | grep -i "access-control\|cache-control" || true
-          curl -sS "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard" > sb.json
-          jq '{week: .week, season: .season, n: (.events|length)}' sb.json
-          jq '.events[0] | {name, date, weather, comp: (.competitions[0] | {odds, venue: .venue.indoor, teams: [.competitors[] | {homeAway, abbr: .team.abbreviation}]})}' sb.json
-          jq '[.events[] | {name, w: .weather.displayValue, t: .weather.temperature, o: .competitions[0].odds[0].details, ou: .competitions[0].odds[0].overUnder, indoor: .competitions[0].venue.indoor}]' sb.json | head -80
-      - name: News
-        run: |
-          curl -sS "https://site.api.espn.com/apis/site/v2/sports/football/nfl/news?limit=50" > news.json
-          jq '{n: (.articles|length)}' news.json
-          jq '.articles[0] | {headline, description, published, type, links: .links.web.href, categories: [.categories[]? | {type, description, athleteId, athlete: .athlete.description}]}' news.json
-          jq '[.articles[] | {h: .headline, a: [.categories[]? | select(.type=="athlete") | .description]}]' news.json | head -120
+          curl -sS --compressed "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=8&seasontype=2&dates=2026" > sb.json
+          jq '{week: .week.number, n: (.events|length)}' sb.json
+          jq '.events[0].competitions[0].odds' sb.json | head -60
+          jq '[.events[] | {name, date, w: .weather, o: .competitions[0].odds[0].details, ou: .competitions[0].odds[0].overUnder, indoor: .competitions[0].venue.indoor}]' sb.json | head -60
       - name: Fantasy player news
         run: |
-          curl -sS "https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?limit=20" > fn.json || true
-          head -c 3000 fn.json; echo
+          curl -sS --compressed "https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?limit=5" > fn.json || true
           jq 'keys' fn.json || true
-      - name: Sleeper league trade deadline
+          jq '.feed[0:3]' fn.json | head -80 || true
+      - name: Sleeper trending (find a league)
         run: |
-          curl -sS "https://api.sleeper.app/v1/state/nfl"; echo
-          LID=$(curl -sS "https://api.sleeper.app/v1/user/sleeperbot" | jq -r .user_id)
-          echo "user $LID"
-          curl -sS "https://api.sleeper.app/v1/user/$LID/leagues/nfl/2026" | jq '.[0:2] | map({name, settings: (.settings | {trade_deadline, playoff_week_start, leg})})' || true
+          curl -sS "https://api.sleeper.app/v1/players/nfl/trending/add?limit=2"; echo
