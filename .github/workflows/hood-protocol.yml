@@ -57,6 +57,25 @@ jobs:
       - name: Test rules engine and bots
         working-directory: hood-protocol/Engine
         run: swift test
+      - name: Get the online play key
+        env:
+          ANON_KEY: ${{ secrets.REACT_APP_SUPABASE_ANON_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || 'nkwedlskhnojseeroezm' }}
+        run: |
+          KEY="$ANON_KEY"
+          if [ -z "$KEY" ] && [ -n "$SUPABASE_ACCESS_TOKEN" ]; then
+            # Same public key the Hood League site ships with, asked from Supabase with the deploy token.
+            KEY=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/api-keys" \
+              | python3 -c 'import json,sys; print(next((k["api_key"] for k in json.load(sys.stdin) if k.get("name") == "anon"), ""))') || KEY=""
+          fi
+          if [ -z "$KEY" ]; then
+            echo "::warning::No Supabase key found, so online play is turned off in this build"
+          else
+            echo "::add-mask::$KEY"
+            echo "SUPABASE_ANON_KEY=$KEY" >> "$GITHUB_ENV"
+          fi
       - name: Install XcodeGen
         run: |
           if ! command -v xcodegen >/dev/null; then brew install xcodegen; fi
@@ -71,6 +90,7 @@ jobs:
           xcodebuild -project HoodProtocol.xcodeproj -scheme HoodProtocol -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/hood-dd" CODE_SIGNING_ALLOWED=NO \
+            SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             build | tail -n 65
       - name: Check upload credentials
         if: env.UPLOAD == 'true'
@@ -107,6 +127,7 @@ jobs:
             -archivePath "$RUNNER_TEMP/HoodProtocol.xcarchive" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGNING_ALLOWED=NO \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             archive | tail -n 65
           cat > "$RUNNER_TEMP/HoodExport.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>

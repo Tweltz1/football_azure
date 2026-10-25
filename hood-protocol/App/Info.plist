@@ -12,6 +12,13 @@
 <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
 <key>ITSAppUsesNonExemptEncryption</key><false/>
 <key>LSRequiresIPhoneOS</key><true/>
+<key>NSLocalNetworkUsageDescription</key><string>Hood Protocol finds friends' phones nearby so you can play together without internet.</string>
+<key>NSBonjourServices</key><array>
+<string>_hood-protocol._tcp</string>
+<string>_hood-protocol._udp</string>
+</array>
+<key>SupabaseURL</key><string>$(SUPABASE_URL)</string>
+<key>SupabaseAnonKey</key><string>$(SUPABASE_ANON_KEY)</string>
 <key>UILaunchScreen</key><dict/>
 <key>UISupportedInterfaceOrientations</key><array>
 <string>UIInterfaceOrientationPortrait</string>

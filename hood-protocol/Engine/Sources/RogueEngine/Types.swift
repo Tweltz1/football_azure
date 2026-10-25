@@ -54,12 +54,12 @@ public struct Player: Codable, Sendable, Equatable, Identifiable {
 }
 
 /// Private information a single player has learned during the game.
-public enum Intel: Equatable, Sendable {
+public enum Intel: Codable, Equatable, Sendable {
     case scan(target: Int, team: Team)
     case sweep([ProtocolCard])
 }
 
-public enum Phase: Equatable, Sendable {
+public enum Phase: Codable, Equatable, Sendable {
     case nominate
     case vote
     case commanderDiscard
@@ -69,7 +69,7 @@ public enum Phase: Equatable, Sendable {
     case gameOver(Team, WinReason)
 }
 
-public enum Action: Equatable, Sendable {
+public enum Action: Codable, Equatable, Sendable {
     case nominate(Int)
     case vote(Bool)
     /// Commander discards one of the three drawn protocols.
@@ -84,7 +84,7 @@ public enum Action: Equatable, Sendable {
 }
 
 /// Public record of what happened. Private results live in `GameState.intel`.
-public enum Event: Equatable, Sendable {
+public enum Event: Codable, Equatable, Sendable {
     case roundStarted(commander: Int, emergency: Bool)
     case nominated(commander: Int, nominee: Int)
     case voteResult(votes: [Int: Bool], passed: Bool)

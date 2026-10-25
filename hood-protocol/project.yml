@@ -9,6 +9,8 @@ settings:
     CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
+    SUPABASE_URL: "https:/$()/nkwedlskhnojseeroezm.supabase.co"
+    SUPABASE_ANON_KEY: ""
 packages:
   RogueEngine:
     path: Engine
