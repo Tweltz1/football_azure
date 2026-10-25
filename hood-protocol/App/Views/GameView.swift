@@ -16,6 +16,7 @@ struct GameView: View {
                         VStack(spacing: 14) {
                             BasementScene(seats: guests(view), night: night(view), showClock: true)
                                 .clipShape(RoundedRectangle(cornerRadius: 18))
+                            HoldToReveal(view: view)
                             BoardView(view: view)
                             ActionPanel(view: view) { table.perform($0) }
                             LogView(view: view)
@@ -90,6 +91,34 @@ struct RoleRevealView: View {
             }
             Spacer()
         }
+    }
+}
+
+/// Shows your role only while your thumb is on it, so a quick peek doesn't give you away.
+struct HoldToReveal: View {
+    let view: PlayerView
+    @GestureState private var holding = false
+
+    var body: some View {
+        Group {
+            if holding {
+                RoleCard(view: view)
+            } else {
+                Label("Hold to see who you are", systemImage: "eye.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Theme.panel2, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.accent.opacity(0.6), lineWidth: 1))
+            }
+        }
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .updating($holding) { _, state, _ in state = true }
+        )
+        .sensoryFeedback(.impact, trigger: holding)
+        .animation(.easeOut(duration: 0.15), value: holding)
     }
 }
 
