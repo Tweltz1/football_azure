@@ -16,7 +16,7 @@ struct HomeView: View {
                     Image(systemName: "cpu")
                         .font(.system(size: 64, weight: .bold))
                         .foregroundStyle(Theme.rogue)
-                    Text("Rogue Protocol")
+                    Text("Secret Protocol")
                         .font(.largeTitle.bold())
                     Text("A saboteur is aboard. So is a rogue AI.")
                         .foregroundStyle(.secondary)
