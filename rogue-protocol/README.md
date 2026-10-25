@@ -15,7 +15,7 @@ The rules, names, art and text are original to this project. Do not copy cards, 
 ## Bundle identifier
 - App: `com.tweltz1.rogueprotocol`
 
-Create a separate App Store Connect record titled `Rogue Protocol` with this bundle ID. Do not use the Hood League FF or Backseat View records.
+Create a separate App Store Connect record with this bundle ID. "Rogue Protocol" alone is taken on the App Store, so the store name needs a subtitle or a different name; the bundle ID stays the same either way. Do not use the Hood League FF or Backseat View records.
 
 ## CI and uploading
 The workflow **Rogue Protocol iPhone** reuses the repository-level `APPLE_TEAM_ID`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID` and `APP_STORE_CONNECT_KEY` secrets. They stay in GitHub Actions Secrets and are never pasted into chat or committed.
