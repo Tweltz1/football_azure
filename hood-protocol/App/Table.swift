@@ -11,6 +11,8 @@ class Table: ObservableObject {
     @Published var status = ""
     @Published var ended: String?
     @Published var hasSeenRole = false
+    /// Set once this phone has counted the finished game toward its stats.
+    var resultRecorded = false
 
     var isHost: Bool { false }
 

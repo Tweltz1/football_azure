@@ -26,6 +26,10 @@ struct RootView: View {
             }
         }
         .tint(Theme.accent)
+        .onOpenURL { url in
+            // Links from sign-up confirmation and password emails.
+            Task { try? await Account.shared.handle(url) }
+        }
     }
 }
 

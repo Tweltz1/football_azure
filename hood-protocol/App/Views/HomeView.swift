@@ -5,12 +5,14 @@ struct HomeView: View {
     let onTable: (Table) -> Void
 
     @AppStorage("name") private var name = ""
-    @AppStorage("look") private var look = Look.random().code
+    @AppStorage("look") private var look = Unlocks.sanitize(.random(), stats: Stats()).code
     @AppStorage("fallbackName") private var fallbackName = Crew.names.randomElement() ?? "Guest"
     @AppStorage("soloSeats") private var soloSeats = 7
     @State private var joiningNearby = false
     @State private var joiningOnline = false
     @State private var editingLook = false
+    @State private var showingAccount = false
+    @ObservedObject private var account = Account.shared
 
     private var displayName: String {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
@@ -90,9 +92,23 @@ struct HomeView: View {
             }
             .presentationDetents([.medium])
         }
-        .sheet(isPresented: $editingLook) {
+        .sheet(isPresented: $editingLook, onDismiss: syncProfile) {
             LookEditorView(code: $look)
         }
+        .sheet(isPresented: $showingAccount, onDismiss: syncProfile) {
+            AccountView(name: displayName, look: look)
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showingAccount = true } label: {
+                    Image(systemName: account.isSignedIn ? "person.crop.circle.fill.badge.checkmark" : "person.crop.circle")
+                }
+            }
+        }
+    }
+
+    private func syncProfile() {
+        Task { await account.syncProfile(name: displayName, look: look) }
     }
 
     private var profile: some View {
@@ -104,12 +120,30 @@ struct HomeView: View {
                     TextField("Your name (optional)", text: $name)
                         .textFieldStyle(.roundedBorder)
                         .textInputAutocapitalization(.words)
+                        .onSubmit(syncProfile)
                     Button { editingLook = true } label: {
                         Label("Edit appearance", systemImage: "tshirt.fill").frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
                 }
             }
+            Button { showingAccount = true } label: {
+                HStack {
+                    Image(systemName: "trophy.fill").foregroundStyle(Theme.warning)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(account.stats.games) games · \(account.stats.wins) wins").font(.subheadline.bold())
+                        if let next = Unlocks.next(for: account.stats) {
+                            Text("Next unlock: \(next.name) (\(next.requirement.text.lowercased()))")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    Text(account.isSignedIn ? "Account" : "Sign in").font(.footnote.bold()).foregroundStyle(Theme.accentText)
+                }
+                .padding(10)
+                .background(Theme.panel2, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
         }
         .padding()
         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))

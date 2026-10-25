@@ -5,6 +5,9 @@ struct LookEditorView: View {
     @Binding var code: String
     @Environment(\.dismiss) private var dismiss
     @State private var look = Look()
+    @ObservedObject private var account = Account.shared
+
+    private var stats: Stats { account.stats }
 
     var body: some View {
         NavigationStack {
@@ -12,24 +15,28 @@ struct LookEditorView: View {
                 CharacterPreview(look: look)
                     .frame(height: 260)
                 Form {
-                    Section("Skin") { swatches(Look.skins, selection: $look.skin) }
+                    Section("Skin") { swatches(Look.skins, selection: $look.skin, part: nil) }
                     Section("Hair") {
-                        options(Look.hairStyles, selection: $look.hair)
-                        swatches(Look.hairColors, selection: $look.hairColor)
+                        options(Look.hairStyles, selection: $look.hair, part: .hair)
+                        swatches(Look.hairColors, selection: $look.hairColor, part: .hairColor)
                     }
                     Section("Hat") {
-                        options(Look.hats, selection: $look.hat)
-                        if look.hat != 0 { swatches(Look.clothes, selection: $look.hatColor) }
+                        options(Look.hats, selection: $look.hat, part: .hat)
+                        if look.hat != 0 { swatches(Look.clothes, selection: $look.hatColor, part: .clothesColor) }
                     }
                     Section("Top") {
-                        options(Look.tops, selection: $look.top)
-                        swatches(Look.clothes, selection: $look.topColor)
+                        options(Look.tops, selection: $look.top, part: .top)
+                        swatches(Look.clothes, selection: $look.topColor, part: .clothesColor)
                     }
-                    Section("Pants") { swatches(Look.pantsColors, selection: $look.pants) }
-                    Section("Shoes") { swatches(Look.shoeColors, selection: $look.shoes) }
-                    Section("Extras") {
-                        Toggle("Glasses", isOn: $look.glasses)
-                        Toggle("Gold chain", isOn: $look.chain)
+                    Section("Pants") { swatches(Look.pantsColors, selection: $look.pants, part: nil) }
+                    Section("Shoes") { swatches(Look.shoeColors, selection: $look.shoes, part: nil) }
+                    Section {
+                        extra("Glasses", isOn: $look.glasses, part: .glasses)
+                        extra("Gold chain", isOn: $look.chain, part: .chain)
+                    } header: {
+                        Text("Extras")
+                    } footer: {
+                        Text("Locked items unlock as you play more games. You've played \(stats.games) and won \(stats.wins).")
                     }
                 }
                 .scrollContentBackground(.hidden)
@@ -39,7 +46,7 @@ struct LookEditorView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { look = .random() } label: { Label("Shuffle", systemImage: "shuffle") }
+                    Button { look = Unlocks.sanitize(.random(), stats: stats) } label: { Label("Shuffle", systemImage: "shuffle") }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
@@ -53,18 +60,49 @@ struct LookEditorView: View {
         .onAppear { look = Look(code: code) }
     }
 
-    private func swatches(_ colors: [UInt32], selection: Binding<Int>) -> some View {
+    private func locked(_ part: Unlocks.Part?, _ index: Int) -> Unlocks.Requirement? {
+        guard let part, let requirement = Unlocks.requirement(part, index), !requirement.isMet(by: stats) else { return nil }
+        return requirement
+    }
+
+    private func extra(_ title: String, isOn: Binding<Bool>, part: Unlocks.Part) -> some View {
+        let requirement = locked(part, 1)
+        return Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                if let requirement {
+                    Label(requirement.text, systemImage: "lock.fill").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .disabled(requirement != nil)
+    }
+
+    private func swatches(_ colors: [UInt32], selection: Binding<Int>, part: Unlocks.Part?) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
                 ForEach(colors.indices, id: \.self) { index in
+                    let requirement = locked(part, index)
                     Button { selection.wrappedValue = index } label: {
-                        Circle()
-                            .fill(Color(hex: colors[index]))
-                            .frame(width: 34, height: 34)
-                            .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 1))
-                            .overlay(Circle().stroke(Theme.accent, lineWidth: selection.wrappedValue == index ? 3 : 0).padding(-4))
+                        VStack(spacing: 3) {
+                            Circle()
+                                .fill(Color(hex: colors[index]))
+                                .frame(width: 34, height: 34)
+                                .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 1))
+                                .overlay(Circle().stroke(Theme.accent, lineWidth: selection.wrappedValue == index ? 3 : 0).padding(-4))
+                                .overlay {
+                                    if requirement != nil {
+                                        Image(systemName: "lock.fill").font(.caption).foregroundStyle(.white)
+                                            .padding(5).background(.black.opacity(0.55), in: Circle())
+                                    }
+                                }
+                            if let requirement {
+                                Text(requirement.text).font(.system(size: 9)).foregroundStyle(.secondary).fixedSize()
+                            }
+                        }
                     }
                     .buttonStyle(.plain)
+                    .disabled(requirement != nil)
                 }
             }
             .padding(.vertical, 6)
@@ -72,19 +110,30 @@ struct LookEditorView: View {
         }
     }
 
-    private func options(_ names: [String], selection: Binding<Int>) -> some View {
+    private func options(_ names: [String], selection: Binding<Int>, part: Unlocks.Part) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(names.indices, id: \.self) { index in
+                    let requirement = locked(part, index)
                     Button { selection.wrappedValue = index } label: {
-                        Text(names[index])
+                        VStack(spacing: 1) {
+                            Label {
+                                Text(names[index])
+                            } icon: {
+                                if requirement != nil { Image(systemName: "lock.fill") }
+                            }
                             .font(.subheadline.bold())
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(selection.wrappedValue == index ? Theme.accent : Theme.panel2, in: Capsule())
-                            .foregroundStyle(.white)
+                            if let requirement {
+                                Text(requirement.text).font(.system(size: 9))
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(selection.wrappedValue == index ? Theme.accent : Theme.panel2, in: Capsule())
+                        .foregroundStyle(requirement == nil ? Color.white : Color.secondary)
                     }
                     .buttonStyle(.plain)
+                    .disabled(requirement != nil)
                 }
             }
         }

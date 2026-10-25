@@ -6,6 +6,7 @@ struct GameView: View {
     let onQuit: () -> Void
 
     @State private var showingRole = false
+    @State private var unlocked: [String] = []
 
     var body: some View {
         ZStack {
@@ -17,6 +18,14 @@ struct GameView: View {
                             Basement3DView(guests: guests(view), night: night(view), showClock: true)
                                 .clipShape(RoundedRectangle(cornerRadius: 18))
                             RoleRevealButton(view: view)
+                            if !unlocked.isEmpty {
+                                Label("Unlocked: \(unlocked.joined(separator: ", "))", systemImage: "gift.fill")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(12)
+                                    .background(Theme.warning.opacity(0.2), in: RoundedRectangle(cornerRadius: 14))
+                                    .foregroundStyle(Theme.warning)
+                            }
                             BoardView(view: view)
                             ActionPanel(view: view) { table.perform($0) }
                             LogView(view: view)
@@ -39,11 +48,21 @@ struct GameView: View {
                     .disabled(!table.hasSeenRole)
             }
         }
+        .onChange(of: table.view?.isOver == true, initial: true) { _, over in
+            if over { recordResult() }
+        }
         .sheet(isPresented: $showingRole) {
             if let view = table.view {
                 RoleCard(view: view).padding().presentationDetents([.medium])
             }
         }
+    }
+
+    /// Counts the finished night toward this phone's wins and unlocks, once.
+    private func recordResult() {
+        guard !table.resultRecorded, let view = table.view, case let .gameOver(winner, _) = view.phase else { return }
+        table.resultRecorded = true
+        unlocked = Account.shared.recordGame(role: view.myRole, won: view.myRole.team == winner)
     }
 
     /// The night moves on with every house rule passed and every bit of drama.

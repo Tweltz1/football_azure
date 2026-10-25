@@ -17,6 +17,14 @@ The rules, names, art and text are original to this project. Do not copy cards, 
 - `project.yml`: XcodeGen spec. The `.xcodeproj` is generated, not committed.
 - `tools/`: icon generator and Apple bundle ID registration.
 
+## Accounts, stats and unlocks
+- Players can sign in with email and password, register, or continue with Google. This uses Supabase Auth on the Hood League project (`App/Account/Account.swift`, plain HTTPS, tokens in the Keychain).
+- Wins are counted on the phone and, when signed in, in `hood_protocol_profiles` (migration `supabase/migrations/20261025230000_hood_protocol_profiles.sql`, applied by the Supabase API workflow when it reaches the live branch). The leaderboard reads the same table.
+- Looks unlock with games played and wins (`App/Account/Unlocks.swift`).
+- Supabase needs `com.tweltz1.hoodprotocol://auth` under Authentication > URL Configuration > Redirect URLs, or Google sign-in and email links can't come back to the app.
+- App Store rule 4.8: an app with Google sign-in must also offer Sign in with Apple. Add it before submitting for review.
+- "Delete account" removes the Hood Protocol profile and stats. The sign-in itself is shared with Hood League.
+
 ## Bundle identifier
 - App: `com.tweltz1.hoodprotocol`
 
