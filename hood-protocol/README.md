@@ -15,7 +15,7 @@ The rules, names, art and text are original to this project. Do not copy cards, 
 - `App/`: SwiftUI app. `Table.swift` (host and guest tables), `Net/` (nearby and online transports, wire format, encryption), `Views/` (home, lobby, game, appearance editor), `Three/` (the SceneKit basement and the blocky 3D characters, built in code with no model files).
 - `App/Look.swift`: a player's appearance, sent to the table as a short code (`SeatInfo.look`).
 - `project.yml`: XcodeGen spec. The `.xcodeproj` is generated, not committed.
-- `tools/`: icon generator and Apple bundle ID registration.
+- `tools/`: `basement_icon.py` (the app icon: the Hood League crew from the Hood League icon, in the basement; render its SVG to `AppIcon.png`) and Apple bundle ID registration.
 
 ## Accounts, stats and unlocks
 - Players can sign in with email and password, register, or continue with Google. This uses Supabase Auth on the Hood League project (`App/Account/Account.swift`, plain HTTPS, tokens in the Keychain).
@@ -42,7 +42,7 @@ The workflow **Hood Protocol iPhone** reuses the repository-level `APPLE_TEAM_ID
 ```sh
 cd hood-protocol
 swift test --package-path Engine
-swift tools/make_icon.swift
+
 xcodegen generate
 open HoodProtocol.xcodeproj
 ```

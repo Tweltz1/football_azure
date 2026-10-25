@@ -15,6 +15,24 @@ struct LookEditorView: View {
                 CharacterPreview(look: look)
                     .frame(height: 260)
                 Form {
+                    Section {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                ForEach(0..<Crew.count, id: \.self) { index in
+                                    Button { look = Look.crew(index) } label: {
+                                        VStack(spacing: 3) {
+                                            LookPortrait(look: Look.crew(index), size: 52)
+                                            Text(Crew.names[index]).font(.caption2)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    } header: {
+                        Text("Start from the Hood crew")
+                    }
                     Section("Skin") { swatches(Look.skins, selection: $look.skin, part: nil) }
                     Section("Hair") {
                         options(Look.hairStyles, selection: $look.hair, part: .hair)
@@ -28,7 +46,14 @@ struct LookEditorView: View {
                         options(Look.tops, selection: $look.top, part: .top)
                         swatches(Look.clothes, selection: $look.topColor, part: .clothesColor)
                     }
-                    Section("Pants") { swatches(Look.pantsColors, selection: $look.pants, part: nil) }
+                    Section("Face") {
+                        options(Look.facialHair, selection: $look.facial, part: nil)
+                        Toggle("Shades", isOn: $look.shades)
+                    }
+                    Section("Pants") {
+                        swatches(Look.pantsColors, selection: $look.pants, part: nil)
+                        Toggle("Shorts", isOn: $look.shorts)
+                    }
                     Section("Shoes") { swatches(Look.shoeColors, selection: $look.shoes, part: nil) }
                     Section {
                         extra("Glasses", isOn: $look.glasses, part: .glasses)
@@ -110,7 +135,7 @@ struct LookEditorView: View {
         }
     }
 
-    private func options(_ names: [String], selection: Binding<Int>, part: Unlocks.Part) -> some View {
+    private func options(_ names: [String], selection: Binding<Int>, part: Unlocks.Part?) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(names.indices, id: \.self) { index in

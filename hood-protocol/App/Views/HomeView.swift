@@ -5,7 +5,7 @@ struct HomeView: View {
     let onTable: (Table) -> Void
 
     @AppStorage("name") private var name = ""
-    @AppStorage("look") private var look = Unlocks.sanitize(.random(), stats: Stats()).code
+    @AppStorage("look") private var look = Look.starter().code
     @AppStorage("fallbackName") private var fallbackName = Crew.names.randomElement() ?? "Guest"
     @AppStorage("soloSeats") private var soloSeats = 7
     @State private var joiningNearby = false

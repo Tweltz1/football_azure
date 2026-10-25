@@ -26,15 +26,14 @@ enum Unlocks {
         var requirement: Requirement
     }
 
+    /// Everything the Hood crew wears is free from the start; these are earned.
     static let items: [Item] = [
-        Item(part: .hat, index: 2, name: "Backwards cap", requirement: Requirement(games: 2)),
-        Item(part: .top, index: 1, name: "Hoodie", requirement: Requirement(games: 3)),
+        Item(part: .hat, index: 3, name: "Beanie", requirement: Requirement(games: 2)),
         Item(part: .hair, index: 3, name: "Afro", requirement: Requirement(games: 4)),
         Item(part: .glasses, index: 1, name: "Glasses", requirement: Requirement(wins: 1)),
         Item(part: .hair, index: 5, name: "Bun", requirement: Requirement(games: 6)),
-        Item(part: .hat, index: 3, name: "Beanie", requirement: Requirement(games: 8)),
+        Item(part: .hair, index: 2, name: "Curly hair", requirement: Requirement(games: 8)),
         Item(part: .chain, index: 1, name: "Gold chain", requirement: Requirement(wins: 3)),
-        Item(part: .top, index: 2, name: "Jersey", requirement: Requirement(wins: 5)),
         Item(part: .clothesColor, index: 8, name: "Pink fit", requirement: Requirement(games: 12)),
         Item(part: .clothesColor, index: 9, name: "Army green fit", requirement: Requirement(games: 15)),
         Item(part: .hairColor, index: 5, name: "Silver hair", requirement: Requirement(games: 20)),

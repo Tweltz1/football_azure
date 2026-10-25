@@ -79,9 +79,8 @@ jobs:
       - name: Install XcodeGen
         run: |
           if ! command -v xcodegen >/dev/null; then brew install xcodegen; fi
-      - name: Make app icon and Xcode project
+      - name: Make Xcode project
         run: |
-          swift tools/make_icon.swift
           xcodegen generate
       - name: Build for iPhone simulator
         if: env.UPLOAD != 'true'
