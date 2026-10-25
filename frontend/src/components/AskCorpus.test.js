@@ -8,6 +8,7 @@ import { act } from 'react-dom/test-utils';
 import axios from 'axios';
 import { AskBar } from './StartSit';
 import { ASK_CORPUS } from './askCorpus';
+import { KINDS as PHRASEBOOK_KINDS, PHRASEBOOK } from './askPhrasebook';
 import { buildLineup, withProjections } from '../data/startSitUtils';
 import { positionRanks } from '../data/rankings';
 import { initialPlayerList } from '../data/playerData';
@@ -223,4 +224,96 @@ test('every question in the corpus gets a real answer', async () => {
   if (process.env.ASK_REPORT) fs.writeFileSync(process.env.ASK_REPORT, `${report.length} questions\n\nGAPS (${gaps.length}):\n${gaps.join('\n')}\n\n${report.join('\n')}`);
   expect(errors.filter((e) => e.includes('Ask bar failed'))).toEqual([]);
   expect(gaps).toEqual([]);
+});
+
+// ---- The phrasebook: thousands of wordings of the same questions -----------------------------------
+// Every phrasing in askPhrasebook.js, filled with several players and teams, plain and typed sloppily.
+// Each must get a real answer of a fitting kind. CI asks a fixed sample; ASK_ALL=1 asks all of them.
+let pseed = 7;
+const prand = () => {
+  pseed = (pseed * 16807) % 2147483647;
+  return pseed / 2147483647;
+};
+const ppick = (list) => list[Math.floor(prand() * list.length)];
+const typo = (word) => {
+  if (word.length < 5 || /\d/.test(word)) return word;
+  const i = 1 + Math.floor(prand() * (word.length - 3));
+  return prand() < 0.5 ? word.slice(0, i) + word[i + 1] + word[i] + word.slice(i + 2) : word.slice(0, i) + word.slice(i + 1);
+};
+const SWAPS = [
+  [/\byou\b/g, 'u'], [/\bare\b/g, 'r'], [/\bthis week\b/g, 'this wk'], [/\brest of season\b/g, 'ros'], [/\bshould\b/g, 'shud'],
+  [/\bwhat is\b/g, 'whats'], [/\bwho is\b/g, 'whos'], [/\bgoing to\b/g, 'gonna'], [/\bwith\b/g, 'w/'],
+];
+const sloppy = (text) => {
+  let t = text.toLowerCase();
+  SWAPS.forEach(([from, to]) => { if (prand() < 0.5) t = t.replace(from, to); });
+  if (prand() < 0.5) t = t.split(' ').map((w) => (prand() < 0.15 ? typo(w) : w)).join(' ');
+  if (prand() < 0.2) t = `${ppick(['yo ', 'bro ', 'ok so ', 'quick q '])}${t}`;
+  if (prand() < 0.2) t = `${t}${ppick([' lol', ' ??', ' pls', ' rn'])}`;
+  return t;
+};
+const nameStyle = (p) => {
+  const parts = p.name.replace(/ (Jr\.|Sr\.|II|III|IV)$/, '').split(' ');
+  const r = prand();
+  if (r < 0.5) return parts[parts.length - 1];
+  if (r < 0.6) return parts[0];
+  return r < 0.8 ? p.name : p.name.toLowerCase();
+};
+const phrasebookQuestions = () => {
+  const skill = (list) => list.filter((p) => ['QB', 'RB', 'WR', 'TE'].includes(p.position));
+  const mine = skill(rosters.get(MY_TEAM));
+  const others = skill(TEAM_NAMES.filter((n) => n !== MY_TEAM).flatMap((n) => rosters.get(n).slice(0, 8)));
+  const rostered = new Set([...rosters.values()].flat().map((p) => p.id));
+  const waivers = skill(players.filter((p) => !rostered.has(p.id))).slice(0, 25);
+  const fill = (template) => {
+    const a = ppick(mine);
+    const b = ppick(mine.filter((p) => p.id !== a.id && (p.position === a.position || prand() < 0.3)));
+    return template
+      .replace('{A}', nameStyle(a)).replace('{B}', nameStyle(b || mine[0]))
+      .replace('{O}', nameStyle(ppick(others))).replace('{W}', nameStyle(ppick(waivers)))
+      .replace('{POS}', ppick(['qb', 'rb', 'wr', 'te', 'running back', 'receiver', 'tight end', 'quarterback', 'qbs', 'rbs', 'wrs']))
+      .replace('{P}', ppick(['qb', 'rb', 'wr', 'te']))
+      .replace('{TEAM}', ppick(TEAM_NAMES.filter((n) => n !== MY_TEAM)));
+  };
+  const list = [];
+  Object.entries(PHRASEBOOK).forEach(([intent, phrasings]) => {
+    phrasings.forEach((phrasing) => {
+      const fills = /\{[A-Z]+\}/.test(phrasing) ? 4 : 1;
+      for (let i = 0; i < fills; i += 1) {
+        const q = fill(phrasing);
+        list.push({ intent, q });
+        list.push({ intent, q: sloppy(fill(phrasing)) });
+      }
+    });
+  });
+  return list;
+};
+
+test('thousands of wordings get a real answer of the right kind', async () => {
+  const errors = [];
+  jest.spyOn(console, 'error').mockImplementation((...args) => errors.push(args.map((a) => (a?.stack ? a.stack : String(a))).join(' ')));
+  const all = phrasebookQuestions();
+  const questions = process.env.ASK_ALL ? all : all.filter((_, i) => i % 8 === 0);
+  const gaps = [];
+  const wrong = [];
+  const report = [];
+  renderBar();
+  for (const { intent, q } of questions) {
+    // A fresh conversation for each, so one question's answer doesn't steer the next.
+    renderBar();
+    // eslint-disable-next-line no-await-in-loop
+    const { lead, all: text } = await ask(q);
+    const kind = container.querySelector('.ask-log > li .ask-answer')?.getAttribute('data-kind') || '';
+    report.push(`### [${intent} → ${kind}] ${q}\n${text.slice(0, 500)}\n`);
+    if (FALLBACK.test(text)) gaps.push(`[${intent}] ${q} -> ${lead.slice(0, 100)}`);
+    else if (intent === 'multi' && container.querySelectorAll('.ask-log > li .ask-answer').length < 2) wrong.push(`[multi → one answer] ${q} -> ${lead.slice(0, 120)}`);
+    else if (PHRASEBOOK_KINDS[intent] && !PHRASEBOOK_KINDS[intent].includes(kind)) wrong.push(`[${intent} → ${kind || 'none'}] ${q} -> ${lead.slice(0, 120)}`);
+  }
+  if (process.env.ASK_REPORT) {
+    fs.writeFileSync(process.env.ASK_REPORT.replace(/(\.\w+)?$/, '-phrasebook$1'),
+      `${questions.length} questions\n\nGAPS (${gaps.length}):\n${gaps.join('\n')}\n\nWRONG KIND (${wrong.length}):\n${wrong.join('\n')}\n\n${report.join('\n')}`);
+  }
+  expect(errors.filter((e) => e.includes('Ask bar failed'))).toEqual([]);
+  expect(gaps).toEqual([]);
+  expect(wrong).toEqual([]);
 });

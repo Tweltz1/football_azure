@@ -24,7 +24,7 @@ import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
 import WhyButton, { WhyCard } from './WhyButton';
 import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
 import { summarizeAccuracy } from '../data/accuracy';
-import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion } from '../data/askModel';
+import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion, splitQuestion } from '../data/askModel';
 import { leagueOutlookFrom } from '../data/leagueOdds';
 import { loadLeagueSeason, playerByes } from '../data/leagueSeason';
 import '../App.css';
@@ -736,6 +736,7 @@ export const AskBar = ({
 
     return {
       allPlayers: scoredAll,
+      rules: { rosterSettings, ppr, dynasty, teamCount },
       roster,
       lineup,
       partnerNames: partners.map((p) => p.name),
@@ -800,17 +801,27 @@ export const AskBar = ({
     const q = String(text || '').trim();
     if (!q || busy) return;
     let answer;
+    const more = [];
     try {
       setBusy(true);
-      const previous = log[0]?.answer?.context || null;
-      const league = await leagueFor(q, previous);
-      answer = answerQuestion(q, { ...buildCtx(), league, previous });
+      // A message with several questions gets an answer to each, each one following on from the last.
+      const parts = splitQuestion(q);
+      const ctx = buildCtx();
+      let previous = log[0]?.context || null;
+      for (const part of parts.length ? parts : [q]) {
+        const league = await leagueFor(part, previous);
+        const partAnswer = answerQuestion(part, { ...ctx, league, previous });
+        if (partAnswer.miss) axios.post(`${API_BASE_URL}/ask/miss`, { question: part }).catch(() => {});
+        if (answer) more.push({ q: part, answer: partAnswer }); else answer = partAnswer;
+        previous = partAnswer.context || previous;
+      }
     } catch (error) {
       console.error('Ask bar failed:', error);
       answer = { text: 'Something went wrong working that out. Try asking another way.', examples: EXAMPLE_QUESTIONS };
     }
     setBusy(false);
-    setLog((entries) => [{ id: Date.now(), q, answer }, ...entries].slice(0, 5));
+    const context = (more[more.length - 1]?.answer || answer).context || null;
+    setLog((entries) => [{ id: Date.now(), q, answer, more, context }, ...entries].slice(0, 5));
     setQuestion('');
     if (answer.scrollTo) window.setTimeout(() => document.getElementById(answer.scrollTo)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   };
@@ -820,6 +831,48 @@ export const AskBar = ({
       {list.map((example) => (
         <button key={example} type="button" className="startsit-chip" onClick={() => ask(example)}>{example}</button>
       ))}
+    </div>
+  );
+
+  const Answer = ({ answer }) => (
+    <div className="ask-answer" data-kind={answer.context?.type || undefined}>
+      <p>{answer.text}</p>
+      {answer.itemsTitle && <p className="startsit-help">{answer.itemsTitle}</p>}
+      {answer.items?.length > 0 && (
+        <ul className="startsit-bench ask-items">
+          {answer.items.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <li key={index}>
+              <div>
+                {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
+                {item.detail && <><br /><small>{item.detail}</small></>}
+              </div>
+              {item.valueText != null && <span className="startsit-points">{item.valueText}</span>}
+              {item.valueText == null && item.value != null && (
+                <span className="startsit-points">{Number(item.value).toFixed(1)}{item.valueLabel && <small> {item.valueLabel}</small>}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {(answer.sections || []).map((section) => (
+        <div key={section.title}>
+          <p className="startsit-help">{section.title}</p>
+          <ul className="startsit-bench ask-items">
+            {section.items.map((item) => (
+              <li key={`${item.label}-${item.name}`}>
+                <div>
+                  {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
+                  {item.detail && <><br /><small>{item.detail}</small></>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {answer.why && <div className="why-pop ask-why"><WhyCard why={answer.why} updatedLabel={updatedLabel} /></div>}
+      {answer.note && <p className="startsit-help">{answer.note}</p>}
+      {answer.examples && <Examples list={answer.examples} />}
     </div>
   );
 
@@ -850,48 +903,16 @@ export const AskBar = ({
         </>
       )}
       <ul className="ask-log">
-        {log.map(({ id, q, answer }) => (
+        {log.map(({ id, q, answer, more = [] }) => (
           <li key={id}>
             <p className="ask-question">{q}</p>
-            <div className="ask-answer" data-kind={answer.context?.type || undefined}>
-              <p>{answer.text}</p>
-              {answer.itemsTitle && <p className="startsit-help">{answer.itemsTitle}</p>}
-              {answer.items?.length > 0 && (
-                <ul className="startsit-bench ask-items">
-                  {answer.items.map((item, index) => (
-                    // eslint-disable-next-line react/no-array-index-key
-                    <li key={index}>
-                      <div>
-                        {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
-                        {item.detail && <><br /><small>{item.detail}</small></>}
-                      </div>
-                      {item.valueText != null && <span className="startsit-points">{item.valueText}</span>}
-                      {item.valueText == null && item.value != null && (
-                        <span className="startsit-points">{Number(item.value).toFixed(1)}{item.valueLabel && <small> {item.valueLabel}</small>}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {(answer.sections || []).map((section) => (
-                <div key={section.title}>
-                  <p className="startsit-help">{section.title}</p>
-                  <ul className="startsit-bench ask-items">
-                    {section.items.map((item) => (
-                      <li key={`${item.label}-${item.name}`}>
-                        <div>
-                          {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
-                          {item.detail && <><br /><small>{item.detail}</small></>}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-              {answer.why && <div className="why-pop ask-why"><WhyCard why={answer.why} updatedLabel={updatedLabel} /></div>}
-              {answer.note && <p className="startsit-help">{answer.note}</p>}
-              {answer.examples && <Examples list={answer.examples} />}
-            </div>
+            <Answer answer={answer} />
+            {more.map((part) => (
+              <div key={part.q} className="ask-part">
+                <p className="ask-question">{part.q}</p>
+                <Answer answer={part.answer} />
+              </div>
+            ))}
           </li>
         ))}
       </ul>

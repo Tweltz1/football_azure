@@ -1,7 +1,7 @@
 // Chat bar answers about whole teams and lists of players rather than one player: rankings, defenses,
 // what a team needs, its bench, injuries, byes, who's hot or cold, buy-low and sell-high lists, a plan to
 // get better, and a player's full stat line, rest-of-season comparisons, availability and handcuffs.
-import { defenseMatchup, isUnavailable, trendFor } from './startSitUtils.js';
+import { buildSlots, defenseMatchup, isUnavailable, trendFor } from './startSitUtils.js';
 import { rankLabel } from './rankings.js';
 import {
   askedPosition, firstName, ideaItems, playerLine, pts, scheduleSection, tidy, usageLine,
@@ -486,3 +486,101 @@ export const bestFreeAgents = (ctx, position, count = 4) => (ctx.freeAgents ? ct
 export const freeAgentItems = (rows) => rows.map(({ p, v }) => ({ label: p.position, name: p.name, detail: playerLine(p), value: v, valueLabel: 'a game ROS' }));
 
 export { round1 };
+
+/**
+ * "Why did he get benched?", "is he losing his job?": there are no news headlines here, so this reads
+ * what the numbers say: injury status, recent games against the season, workload and teammates.
+ */
+export function answerNews(found, ctx) {
+  const p = ctx.scored(found[0].player);
+  const trend = trendFor(p, ctx.scoring);
+  const outlook = ctx.outlookOf(p);
+  const bits = [`I don't get news headlines, but here's what the numbers say about ${p.name}.`];
+  if (p.injury) bits.push(`Listed ${p.injury} right now.`);
+  const last = trend.recent[trend.recent.length - 1];
+  if (last && trend.season != null) {
+    const gap = last.value - trend.season;
+    bits.push(`${firstName(p)} scored ${round1(last.value)} last game against a ${trend.season} average${Math.abs(gap) >= 4 ? (gap < 0 ? ', a down week' : ', a big week') : ''}, and ${trend.lastThree} a game over the last 3.`);
+  }
+  const usage = usageLine(p);
+  if (usage) bits.push(usage);
+  const u = p.usage;
+  const shareNow = Math.max(u?.recentCarryShare ?? 0, u?.recentTargetShare ?? 0);
+  const shareSeason = Math.max(u?.carryShare ?? 0, u?.targetShare ?? 0);
+  const snapDrop = u?.snapShare != null && u?.recentSnapShare != null ? u.snapShare - u.recentSnapShare : 0;
+  if (u && (snapDrop >= 0.08 || shareSeason - shareNow >= 0.05)) bits.push('The role has shrunk lately, so this looks like more than one bad game.');
+  else if (u && (snapDrop <= -0.08 || shareNow - shareSeason >= 0.05)) bits.push('The role is growing lately.');
+  else if (u) bits.push('The role looks steady, so a quiet game looks more like noise than a lost job.');
+  const notes = (outlook?.notes || []).filter((note) => !note.startsWith('Sleeper projects'));
+  return {
+    text: bits.join(' '),
+    items: notes.slice(0, 3).map((note) => ({ name: note })),
+    note: 'For coach quotes and depth chart news, check Sleeper\'s player page.',
+  };
+}
+
+const scoringName = (ppr) => (ppr >= 0.75 ? 'full PPR (1 point a catch)' : ppr >= 0.25 ? 'half PPR (0.5 a catch)' : 'standard (no points for catches)');
+
+/** League settings: playoff spots and start, scoring, lineup slots, team count and weeks left. */
+export function answerRules(text, ctx) {
+  const t = tidy(text);
+  const rules = ctx.rules || {};
+  const outlook = ctx.league?.outlook || null;
+  const slots = buildSlots(rules.rosterSettings);
+  const counts = slots.reduce((map, slot) => map.set(slot.label, (map.get(slot.label) || 0) + 1), new Map());
+  const lineupText = `${slots.length} starters: ${[...counts].map(([label, n]) => `${n} ${label}`).join(', ')}`;
+  const superflex = counts.has('SUPERFLEX') || (counts.get('QB') || 0) >= 2;
+  const playoffs = outlook
+    ? `The top ${outlook.playoffTeams} of ${outlook.teams.length} teams make the playoffs, starting week ${outlook.playoffWeekStart}.`
+    : null;
+  const weeksLeft = outlook ? Math.max(0, outlook.playoffWeekStart - (ctx.week || 1)) : null;
+  const weekText = `It's week ${ctx.week}${weeksLeft != null ? `, with ${plural(weeksLeft, 'regular-season week')} left before the playoffs` : ''}.`;
+  const noLeague = 'Pick your Sleeper league at the top of this page to see its playoff setup.';
+  let lead;
+  if (/trade deadline/.test(t)) lead = "Sleeper doesn't share the trade deadline with us. You'll find it in your league's settings in Sleeper.";
+  else if (/playoff/.test(t)) lead = playoffs || noLeague;
+  else if (/how many teams/.test(t)) lead = outlook ? `${outlook.teams.length} teams in ${outlook.leagueName}.${playoffs ? ` ${playoffs}` : ''}` : `${rules.teamCount || 'This many'} teams.`;
+  else if (/week/.test(t)) lead = weekText;
+  else if (/superflex/.test(t)) lead = superflex ? `Yes, it's superflex: ${lineupText}.` : `No, it's a 1 QB league: ${lineupText}.`;
+  else if (/ppr|half|standard|scoring|catch|reception/.test(t)) lead = `Scoring is ${scoringName(rules.ppr ?? 1)}${rules.dynasty ? ', in a dynasty league' : ''}.`;
+  else if (/dynasty|redraft|keeper/.test(t)) lead = rules.dynasty ? 'It\'s a dynasty league, so age and draft picks count in trades.' : 'It\'s a redraft league: everything is about this season.';
+  else if (/flex|starters|lineup|roster|slots|spots|qbs?|rbs?|wrs?|tes?/.test(t)) lead = `${lineupText}.`;
+  else lead = [playoffs, `Scoring is ${scoringName(rules.ppr ?? 1)}.`, `${lineupText}.`].filter(Boolean).join(' ');
+  return { text: lead, note: 'These come from the league picked at the top of this page.' };
+}
+
+const JOKES = [
+  'Why did the running back go to the bank? To get his quarterback.',
+  "My kicker and my ex have one thing in common: they both miss when it matters.",
+  'Why are fantasy managers great at parties? They always know who to start a conversation with.',
+];
+
+/** About the chat itself, and feedback on it. `miss` marks answers worth saving for review. */
+export function answerAbout(text) {
+  const t = tidy(text);
+  if (/joke/.test(t)) return { text: JOKES[t.length % JOKES.length] };
+  if (/how are you|how is it going|whats good/.test(t)) return { text: 'Doing great, crunching projections. What can I help your team with?' };
+  if (/suck|stink|wrong|dumb|bad|trash|useless|stupid/.test(t)) {
+    return {
+      text: "Sorry about that. I'm a set of rules, not a person, so I miss things. I've saved this so it can be fixed. Try asking another way, or one of these:",
+      miss: true,
+      examples: ['Who should I start this week?', 'Who should I pick up?', 'What does my team need?'],
+    };
+  }
+  if (/good|great|nice|love|rock|awesome|best/.test(t)) return { text: 'Thanks! Good luck this week.' };
+  if (/trust|smart|better than|accura/.test(t)) {
+    return { text: 'I use the same numbers as the rest of this page, which were checked against real games from 2019 to 2026. See how the projections did this season in "How accurate are we?" at the bottom of this page.', scrollTo: 'startsit-accuracy' };
+  }
+  return {
+    text: "I'm the Hood League model: a free set of rules, not ChatGPT. I answer from Sleeper's projections and stats, our own rest-of-season outlook (tuned on real games from 2019 to 2026), FantasyCalc trade values and your league's rosters.",
+  };
+}
+
+/** "Should I tank?", "is my season over?": a plain call from the team's playoff odds, before the details. */
+export const opinionLead = (team) => {
+  if (!team) return null;
+  if (team.playoffs >= 0.75) return 'No need to panic: you look like a playoff team. This is the time to buy for a title run.';
+  if (team.playoffs >= 0.4) return "You're right in the mix. One good trade for your weakest spot could decide it.";
+  if (team.playoffs >= 0.1) return "It's an uphill climb, but not over. Don't tank: swing a trade for upside and see where you are in two weeks.";
+  return "It's a long shot this year. In a keeper or dynasty league, selling older players for picks and young players makes sense; in redraft, play spoiler.";
+};

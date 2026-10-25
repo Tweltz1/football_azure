@@ -80,6 +80,17 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Chat bar questions it couldn't answer, saved so new rules can be written for them. No account
+  // details are kept, only the question.
+  if (path === 'ask/miss' && req.method === 'POST') {
+    const question = String((body as Record<string, unknown> | null)?.question ?? '').trim().slice(0, 300);
+    if (question) {
+      const { error } = await db.from('ask_misses').insert({ question });
+      if (error) log.warn('Could not save a missed chat question.', error);
+    }
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   try {
     const user = await getSignedInUser(req);
     const ctx: Ctx = {
