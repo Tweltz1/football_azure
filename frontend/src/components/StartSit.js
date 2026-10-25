@@ -24,7 +24,7 @@ import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
 import WhyButton, { WhyCard } from './WhyButton';
 import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
 import { summarizeAccuracy } from '../data/accuracy';
-import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion, splitQuestion } from '../data/askModel';
+import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion, needsGameDay, splitQuestion } from '../data/askModel';
 import { leagueOutlookFrom } from '../data/leagueOdds';
 import { loadLeagueSeason, playerByes } from '../data/leagueSeason';
 import '../App.css';
@@ -624,6 +624,7 @@ export const AskBar = ({
   const [log, setLog] = useState([]);
   const [busy, setBusy] = useState(false);
   const leagueCache = useRef({ season: null, projections: null, outlook: null });
+  const gameDayCache = useRef({});
   const teamCount = partners.length + 1;
   const marketSettings = useMemo(
     () => (partners.length ? marketSettingsFor({ dynasty, teamCount, rosterSettings, ppr }) : null),
@@ -797,6 +798,22 @@ export const AskBar = ({
     }
   };
 
+  // Vegas lines, forecasts, headlines and the trade deadline, loaded the first time a question needs them.
+  const gameDayFor = async (q) => {
+    if (!needsGameDay(q)) return null;
+    const key = `${week}-${leagueId || ''}`;
+    const cached = gameDayCache.current;
+    if (cached.key === key && Date.now() - cached.at < 30 * 60 * 1000) return cached.data;
+    try {
+      const params = new URLSearchParams({ week: String(week), ...(leagueId ? { leagueId } : {}) });
+      const { data } = await axios.get(`${API_BASE_URL}/ask/gameday?${params}`, { timeout: 8000 });
+      gameDayCache.current = { key, at: Date.now(), data };
+      return data;
+    } catch {
+      return null;
+    }
+  };
+
   const ask = async (text) => {
     const q = String(text || '').trim();
     if (!q || busy) return;
@@ -809,8 +826,8 @@ export const AskBar = ({
       const ctx = buildCtx();
       let previous = log[0]?.context || null;
       for (const part of parts.length ? parts : [q]) {
-        const league = await leagueFor(part, previous);
-        const partAnswer = answerQuestion(part, { ...ctx, league, previous });
+        const [league, gameDay] = await Promise.all([leagueFor(part, previous), gameDayFor(part)]);
+        const partAnswer = answerQuestion(part, { ...ctx, league, gameDay, previous });
         if (partAnswer.miss) axios.post(`${API_BASE_URL}/ask/miss`, { question: part }).catch(() => {});
         if (answer) more.push({ q: part, answer: partAnswer }); else answer = partAnswer;
         previous = partAnswer.context || previous;

@@ -139,7 +139,23 @@ export const PHRASEBOOK = {
     'how many teams make the playoffs', 'when do playoffs start', 'what week do the playoffs start', 'is this ppr', 'what is our scoring',
     'how is scoring set up', 'how many points per reception', 'what are the lineup spots', 'how many flex spots do we have',
     'is this a superflex league', 'how many teams are in the league', 'how many starters do we have', 'how many weeks are left',
-    'what week is it', 'when is the regular season over',
+    'what week is it', 'when is the regular season over', 'when is the trade deadline', 'whats our trade deadline',
+    'is the trade deadline passed',
+  ],
+  weather: [
+    'whats the weather for {A}', 'is it raining in the {A} game', 'will weather affect {A}', 'any snow this week',
+    'which games have bad weather', 'whats the forecast for {A} this week', 'is {A} playing in a dome', 'is {A} indoors',
+    'will wind be a problem for {A}', 'any of my guys in bad weather', 'is there rain in any games this week', 'weather report',
+    'should i worry about weather for {A}', 'cold weather games this week',
+  ],
+  vegas: [
+    'what is the vegas line for {A}', 'what is the spread for the {A} game', 'is {A} team favored', 'what is the over under for {A}',
+    'which games have the highest totals', 'what are the vegas odds this week', 'is {A} an underdog', 'what is {A} implied total',
+    'which games will be a shootout', 'highest scoring games this week', 'betting lines this week', 'whats the point total for {A} game',
+  ],
+  headlines: [
+    'any news', 'whats the latest news', 'news on my players', 'any headlines about my team', 'latest headlines',
+    'whats the latest on my guys', 'any {A} news', 'news on {A}', 'headlines for {A}',
   ],
   about: [
     'who are you', 'are you ai', 'are you a bot', 'how do you work', 'where do your numbers come from', 'how do you make projections',
@@ -157,7 +173,7 @@ export const KINDS = {
   lineup: ['lineup', 'bye', 'replace', 'rankings'],
   startOne: ['player', 'compare', 'lineup', 'injury', 'replace', 'stats'],
   startTwo: ['compare', 'comparefloor', 'compareceiling', 'comparevalue', 'player'],
-  injury: ['injury', 'teaminjuries', 'replace'],
+  injury: ['injury', 'teaminjuries', 'replace', 'news'],
   replace: ['replace', 'lineup', 'compare', 'injury'],
   bye: ['bye', 'lineup', 'replace'],
   needs: ['needs', 'plan', 'weakest', 'bench'],
@@ -182,6 +198,9 @@ export const KINDS = {
   news: ['news', 'injury'],
   opinion: ['league', 'plan', 'replace', 'trade', 'value', 'injury'],
   rules: ['rules'],
+  weather: ['weather'],
+  vegas: ['vegas'],
+  headlines: ['news'],
   about: null,
   multi: null,
 };

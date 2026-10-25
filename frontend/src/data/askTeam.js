@@ -491,11 +491,34 @@ export { round1 };
  * "Why did he get benched?", "is he losing his job?": there are no news headlines here, so this reads
  * what the numbers say: injury status, recent games against the season, workload and teammates.
  */
+// Names as ESPN writes them ("Kyle Pitts Sr", "Marvin Harrison Jr") and as Sleeper does, made comparable.
+const plainName = (name) => tidy(name).replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '').replace(/\s+/g, ' ').trim();
+const headlinesAbout = (p, news) => {
+  const name = plainName(p.name);
+  return (news || []).filter((h) => h.players.some((n) => plainName(n) === name) || plainName(h.headline).includes(name));
+};
+const newsItem = (h) => ({ name: h.headline, detail: h.description && h.description !== h.headline ? h.description : undefined });
+const NO_FEED = "I couldn't load the latest headlines right now.";
+
+/** Recent ESPN headlines about a player, then what the numbers say about their role. No player: headlines about your team. */
 export function answerNews(found, ctx) {
+  const news = ctx.gameDay?.news || null;
+  if (!found.length) {
+    if (!news) return { text: `${NO_FEED} Try again in a bit.` };
+    const mine = ctx.roster.flatMap((p) => headlinesAbout(p, news).map((h) => ({ ...newsItem(h), label: p.name })));
+    const seen = new Set();
+    const items = mine.filter((item) => !seen.has(item.name) && seen.add(item.name)).slice(0, 6);
+    return items.length
+      ? { text: `Latest ESPN headlines about your players:`, items, note: 'Ask about one player for more, like "any news on Kittle?"' }
+      : { text: 'No recent ESPN headlines about your players. The latest around the league:', items: news.slice(0, 5).map(newsItem) };
+  }
   const p = ctx.scored(found[0].player);
   const trend = trendFor(p, ctx.scoring);
   const outlook = ctx.outlookOf(p);
-  const bits = [`I don't get news headlines, but here's what the numbers say about ${p.name}.`];
+  const about = news ? headlinesAbout(p, news).slice(0, 3) : [];
+  const bits = [about.length
+    ? `Latest on ${p.name}: "${about[0].headline}".`
+    : news ? `No recent ESPN headlines about ${p.name}. Here's what the numbers say.` : `${NO_FEED} Here's what the numbers say about ${p.name}.`];
   if (p.injury) bits.push(`Listed ${p.injury} right now.`);
   const last = trend.recent[trend.recent.length - 1];
   if (last && trend.season != null) {
@@ -514,9 +537,89 @@ export function answerNews(found, ctx) {
   const notes = (outlook?.notes || []).filter((note) => !note.startsWith('Sleeper projects'));
   return {
     text: bits.join(' '),
-    items: notes.slice(0, 3).map((note) => ({ name: note })),
-    note: 'For coach quotes and depth chart news, check Sleeper\'s player page.',
+    itemsTitle: about.length ? 'Headlines (ESPN)' : undefined,
+    items: about.length ? about.map(newsItem) : notes.slice(0, 3).map((note) => ({ name: note })),
+    note: 'For practice reports and coach quotes, check Sleeper\'s player page.',
   };
+}
+
+const gameOf = (p, games) => (games || []).find((g) => g.home === p.team || g.away === p.team) || null;
+const versus = (p, g) => (g.home === p.team ? `vs ${g.away}` : `at ${g.home}`);
+const BAD_WEATHER = /rain|snow|storm|shower|flurr|sleet|wind|thunder/i;
+const weatherText = (g) => {
+  if (g.indoor) return 'indoors, so weather won\'t matter';
+  if (g.temperature == null && !g.conditions) return 'no forecast yet (ESPN posts it a few days before the game)';
+  return [g.temperature != null ? `${g.temperature}°F` : null, g.conditions ? g.conditions.toLowerCase() : null].filter(Boolean).join(', ');
+};
+const weatherEffect = (g) => {
+  if (g.indoor) return null;
+  if (/snow|storm|thunder/i.test(g.conditions || '') || (g.temperature != null && g.temperature <= 25)) return 'Rough conditions usually cut passing and kicking; runners hold up best.';
+  if (BAD_WEATHER.test(g.conditions || '')) return 'Rain usually trims passing and kicking a little. Not enough to bench a good starter.';
+  return null;
+};
+
+/** The forecast for a player's game, or the games this week with bad weather and which of your starters play in them. */
+export function answerWeather(found, ctx) {
+  const games = ctx.gameDay?.games;
+  if (!games?.length) return { text: "I couldn't load this week's forecasts right now. Try again in a bit." };
+  if (found.length) {
+    const lines = found.slice(0, 3).map(({ player }) => {
+      const g = gameOf(player, games);
+      if (!g) return { name: player.name, detail: 'No game this week (bye).' };
+      return { name: `${player.name} (${versus(player, g)})`, detail: [weatherText(g), weatherEffect(g)].filter(Boolean).join('. ') };
+    });
+    if (lines.length === 1) return { text: `${lines[0].name}: ${lines[0].detail}.` };
+    return { text: 'Forecasts for their games:', items: lines };
+  }
+  const starters = ctx.lineup.starters.map((s) => s.player).filter(Boolean);
+  const rough = games.filter((g) => !g.indoor && (BAD_WEATHER.test(g.conditions || '') || (g.temperature != null && g.temperature <= 32)));
+  const items = rough.map((g) => {
+    const mine = starters.filter((p) => p.team === g.home || p.team === g.away).map((p) => p.name);
+    return { name: `${g.away} at ${g.home}`, detail: `${weatherText(g)}${mine.length ? `. Your starters: ${mine.join(', ')}` : ''}` };
+  });
+  if (!items.length) return { text: 'No games with bad weather in the forecast this week, so far.', note: 'ESPN posts forecasts a few days before each game.' };
+  const hit = items.filter((i) => i.detail.includes('Your starters')).length;
+  return {
+    text: `${items.length} game${items.length > 1 ? 's have' : ' has'} bad weather in the forecast${hit ? `, and ${hit} of them involve your starters` : ', none with your starters'}.`,
+    items,
+    note: 'Rain usually trims passing and kicking a little; snow and strong wind more.',
+  };
+}
+
+/** A team's expected points from the Vegas line: half the total, plus or minus half the spread. */
+const impliedPoints = (g, abbr) => {
+  if (g.overUnder == null) return null;
+  const edge = g.spread ? (g.favorite === abbr ? g.spread / 2 : -g.spread / 2) : 0;
+  return Math.round((g.overUnder / 2 + edge) * 10) / 10;
+};
+const lineText = (g) => (g.favorite ? `${g.favorite} favored by ${g.spread}` : g.spread === 0 ? 'a pick\'em' : 'no line yet');
+
+/** The Vegas line for a player's game, or this week's highest-scoring games by the line and your starters in them. */
+export function answerVegas(found, ctx) {
+  const games = ctx.gameDay?.games;
+  if (!games?.length) return { text: "I couldn't load this week's Vegas lines right now. Try again in a bit." };
+  if (found.length) {
+    const lines = found.slice(0, 3).map(({ player }) => {
+      const g = gameOf(player, games);
+      if (!g) return { name: player.name, detail: 'No game this week (bye).' };
+      const team = impliedPoints(g, player.team);
+      return {
+        name: `${player.name} (${versus(player, g)})`,
+        detail: `${lineText(g)}${g.overUnder != null ? `, total ${g.overUnder}` : ''}${team != null ? `. ${player.team} expected to score about ${team}` : ''}`,
+      };
+    });
+    const note = 'Teams expected to score more give their players more chances. Our projections already lean on this.';
+    if (lines.length === 1) return { text: `${lines[0].name}: ${lines[0].detail}.`, note };
+    return { text: 'Vegas lines for their games:', items: lines, note };
+  }
+  const priced = games.filter((g) => g.overUnder != null).sort((a, b) => b.overUnder - a.overUnder);
+  if (!priced.length) return { text: 'Vegas hasn\'t posted lines for this week yet.' };
+  const starters = ctx.lineup.starters.map((s) => s.player).filter(Boolean);
+  const items = priced.slice(0, 6).map((g) => {
+    const mine = starters.filter((p) => p.team === g.home || p.team === g.away).map((p) => p.name);
+    return { name: `${g.away} at ${g.home}`, detail: `Total ${g.overUnder}, ${lineText(g)}${mine.length ? `. Your starters: ${mine.join(', ')}` : ''}`, valueText: String(g.overUnder) };
+  });
+  return { text: `Highest Vegas totals this week (more points expected means more fantasy points to go around):`, items };
 }
 
 const scoringName = (ppr) => (ppr >= 0.75 ? 'full PPR (1 point a catch)' : ppr >= 0.25 ? 'half PPR (0.5 a catch)' : 'standard (no points for catches)');
@@ -537,7 +640,14 @@ export function answerRules(text, ctx) {
   const weekText = `It's week ${ctx.week}${weeksLeft != null ? `, with ${plural(weeksLeft, 'regular-season week')} left before the playoffs` : ''}.`;
   const noLeague = 'Pick your Sleeper league at the top of this page to see its playoff setup.';
   let lead;
-  if (/trade deadline/.test(t)) lead = "Sleeper doesn't share the trade deadline with us. You'll find it in your league's settings in Sleeper.";
+  const deadline = ctx.gameDay?.tradeDeadline;
+  if (/trade deadline/.test(t)) {
+    if (deadline === null) lead = 'This league has no trade deadline.';
+    else if (deadline) {
+      const left = deadline - (ctx.week || 1);
+      lead = `The trade deadline is week ${deadline}. ${left > 0 ? `That's ${plural(left, 'week')} from now.` : left === 0 ? "That's this week." : 'It has passed.'}`;
+    } else lead = "I couldn't load the trade deadline right now. It's in your league's settings in Sleeper.";
+  }
   else if (/playoff/.test(t)) lead = playoffs || noLeague;
   else if (/how many teams/.test(t)) lead = outlook ? `${outlook.teams.length} teams in ${outlook.leagueName}.${playoffs ? ` ${playoffs}` : ''}` : `${rules.teamCount || 'This many'} teams.`;
   else if (/week/.test(t)) lead = weekText;

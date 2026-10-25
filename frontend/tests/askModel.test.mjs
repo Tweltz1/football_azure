@@ -176,8 +176,16 @@ test('"why should I trade X" and "who should I trade away" give reasons, not jus
 });
 
 test('questions it cannot place get examples, not a guess', () => {
-  const answer = answerQuestion('what is the weather', ctxFor([]));
+  const answer = answerQuestion('what color is the sky', ctxFor([]));
   assert.ok(answer.examples.length > 0);
+});
+
+test('weather and Vegas questions use the game-day feed, and say so when it is missing', () => {
+  assert.match(answerQuestion('what is the weather', ctxFor([])).text, /couldn't load this week's forecasts/);
+  const gameDay = { games: [{ home: 'BUF', away: 'BAL', indoor: false, temperature: 30, conditions: 'Snow', favorite: 'BUF', spread: 3, overUnder: 52.5 }], news: [] };
+  const ctx = { ...ctxFor([]), gameDay };
+  assert.match(answerQuestion('any games with bad weather', ctx).items[0].detail, /30°F, snow/);
+  assert.match(answerQuestion('which games have the highest totals', ctx).items[0].detail, /Total 52.5, BUF favored by 3/);
 });
 
 test('upcoming games: how each defense plays the position and who scored on them', () => {

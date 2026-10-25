@@ -159,9 +159,21 @@ const generated = NAMES.flatMap((a, i) => TEMPLATES.map((template) => ({ tag: 't
 let container;
 beforeAll(() => {
   const season = leagueSeason();
-  axios.defaults.adapter = (config) => (String(config.url).includes('startsit/league?leagueId=L1')
-    ? Promise.resolve({ data: season, status: 200, statusText: 'OK', headers: {}, config })
-    : Promise.reject(Object.assign(new Error('Network Error'), { config })));
+  // This week's lines and forecasts for every game, and a few headlines about real players.
+  const games = [...opponentOf].filter(([home, away]) => home < away).map(([home, away], i) => ({
+    home, away, kickoff: '2026-11-01T18:00Z', indoor: i % 3 === 2, temperature: 30 + i * 4, conditions: ['Rain', 'Sunny', 'Cloudy', 'Snow'][i % 4],
+    favorite: home, spread: (i % 4) + 1.5, overUnder: 40 + i,
+  }));
+  const news = players.filter((_, i) => i % 9 === 0).slice(0, 40).map((p) => ({
+    headline: `${p.name} has a big role this week`, description: 'Coach says more work.', published: '2026-10-25T12:00:00Z', url: null, players: [p.name],
+  }));
+  const ok = (data, config) => Promise.resolve({ data, status: 200, statusText: 'OK', headers: {}, config });
+  axios.defaults.adapter = (config) => {
+    const url = String(config.url);
+    if (url.includes('startsit/league?leagueId=L1')) return ok(season, config);
+    if (url.includes('ask/gameday')) return ok({ week: 7, games, news, tradeDeadline: 11 }, config);
+    return Promise.reject(Object.assign(new Error('Network Error'), { config }));
+  };
   container = document.createElement('div');
   document.body.appendChild(container);
 });
