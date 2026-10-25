@@ -15,6 +15,8 @@ class Table: ObservableObject {
     var resultRecorded = false
 
     var isHost: Bool { false }
+    /// This phone's player id in the lobby.
+    var myPlayerId: String? { nil }
 
     func perform(_ action: Action) {}
     func leave() {}
@@ -47,6 +49,7 @@ final class HostTable: Table {
     private var botTask: Task<Void, Never>?
 
     override var isHost: Bool { true }
+    override var myPlayerId: String? { me.id }
 
     init(name: String, look: String, mode: TableMode, seats: Int = 7, boardMode: BoardMode = .random) {
         self.mode = mode
@@ -269,6 +272,8 @@ final class GuestTable: Table {
     private let myKey = Curve25519.KeyAgreement.PrivateKey()
     private var sealer: Sealer?
     private var helloTimer: Timer?
+
+    override var myPlayerId: String? { hello.playerId }
 
     /// Online players use their player id on the shared channel.
     static func online(name: String, look: String, room: String) -> GuestTable {

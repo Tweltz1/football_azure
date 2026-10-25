@@ -20,9 +20,9 @@ struct HomeView: View {
     }
 
     /// You and a few of the Hood crew hanging out.
-    private var homeGuests: [Guest3D] {
-        [Guest3D(id: 0, look: Look(code: look), name: displayName)] +
-            (0..<5).map { Guest3D(id: $0 + 1, look: Look.crew($0), name: Crew.names[$0]) }
+    private var homeGuests: [HangoutGuest] {
+        [HangoutGuest(id: 0, look: Look(code: look), name: displayName)] +
+            (0..<5).map { HangoutGuest(id: $0 + 1, look: Look.crew($0), name: Crew.names[$0]) }
     }
 
     var body: some View {
@@ -30,8 +30,7 @@ struct HomeView: View {
             Theme.background.ignoresSafeArea()
             ScrollView {
                 VStack(spacing: 20) {
-                    Basement3DView(guests: homeGuests)
-                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                    HangoutView(guests: homeGuests, me: 0)
                     VStack(spacing: 6) {
                         Text("Hood Protocol").font(.largeTitle.weight(.black))
                         Text(Words.tagline).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)

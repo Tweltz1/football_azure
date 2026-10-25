@@ -12,8 +12,10 @@ struct LookEditorView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                CharacterPreview(look: look)
-                    .frame(height: 260)
+                CartoonCharacterView(look: look)
+                    .frame(height: 240)
+                    .frame(maxWidth: .infinity)
+                    .background(Color(hex: 0xE2BD8F))
                 Form {
                     Section {
                         ScrollView(.horizontal, showsIndicators: false) {

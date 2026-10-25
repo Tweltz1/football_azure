@@ -15,8 +15,7 @@ struct GameView: View {
                 if table.hasSeenRole {
                     ScrollView {
                         VStack(spacing: 14) {
-                            Basement3DView(guests: guests(view), night: night(view), showClock: true)
-                                .clipShape(RoundedRectangle(cornerRadius: 18))
+                            HangoutView(guests: guests(view), night: night(view), me: view.mySeat)
                             RoleRevealButton(view: view)
                             if !unlocked.isEmpty {
                                 Label("Unlocked: \(unlocked.joined(separator: ", "))", systemImage: "gift.fill")
@@ -72,12 +71,12 @@ struct GameView: View {
         return min(0.95, progress / 10)
     }
 
-    private func guests(_ view: PlayerView) -> [Guest3D] {
+    private func guests(_ view: PlayerView) -> [HangoutGuest] {
         view.seats.map { seat in
             var badge: String?
             if seat.id == view.commander { badge = Words.leader }
             if seat.id == view.nominee { badge = Words.wingman }
-            return Guest3D(
+            return HangoutGuest(
                 id: seat.id,
                 look: Look(code: seat.info.look),
                 name: seat.id == view.mySeat ? "You" : seat.info.name,

@@ -14,8 +14,7 @@ struct LobbyView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     if let lobby = table.lobby {
-                        Basement3DView(guests: guests(lobby))
-                            .clipShape(RoundedRectangle(cornerRadius: 20))
+                        HangoutView(guests: guests(lobby), me: lobby.players.firstIndex { $0.id == table.myPlayerId })
                         header(lobby)
                         players(lobby)
                         if let host { hostControls(host, lobby) }
@@ -35,8 +34,8 @@ struct LobbyView: View {
         }
     }
 
-    private func guests(_ lobby: LobbyState) -> [Guest3D] {
-        lobby.players.enumerated().map { Guest3D(id: $0.offset, look: Look(code: $0.element.look), name: $0.element.name) }
+    private func guests(_ lobby: LobbyState) -> [HangoutGuest] {
+        lobby.players.enumerated().map { HangoutGuest(id: $0.offset, look: Look(code: $0.element.look), name: $0.element.name) }
     }
 
     @ViewBuilder private func header(_ lobby: LobbyState) -> some View {

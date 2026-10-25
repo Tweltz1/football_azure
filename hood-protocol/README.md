@@ -12,7 +12,7 @@ The rules, names, art and text are original to this project. Do not copy cards, 
 
 ## Layout
 - `Engine/`: Swift package `RogueEngine` with every game rule (`GameState`) and the bot players (`Bot`). No UI code, fully unit tested.
-- `App/`: SwiftUI app. `Table.swift` (host and guest tables), `Net/` (nearby and online transports, wire format, encryption), `Views/` (home, lobby, game, appearance editor), `Three/` (the SceneKit basement and the blocky 3D characters, built in code with no model files).
+- `App/`: SwiftUI app. `Table.swift` (host and guest tables), `Net/` (nearby and online transports, wire format, encryption), `Views/` (home, lobby, game, appearance editor), `Hangout/` (the cartoon basement drawn in the Hood League art style: tap to move your character to the video games, beer pong, the bong or the couch; everyone else hangs out on their own).
 - `App/Look.swift`: a player's appearance, sent to the table as a short code (`SeatInfo.look`).
 - `project.yml`: XcodeGen spec. The `.xcodeproj` is generated, not committed.
 - `tools/`: `basement_icon.py` (the app icon: the Hood League crew from the Hood League icon, in the basement; render its SVG to `AppIcon.png`) and Apple bundle ID registration.
