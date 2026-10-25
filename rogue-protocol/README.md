@@ -22,7 +22,7 @@ The workflow **Rogue Protocol iPhone** reuses the repository-level `APPLE_TEAM_I
 
 - Every push or pull request that touches `rogue-protocol/` runs `swift test` on the engine (including 1,200 bot-only games) and builds for the iPhone Simulator, with no signing.
 - `[rogue-register]` in a commit message registers the bundle ID with Apple.
-- `[rogue-upload]` in a commit message (on `main` or `claude/rogue-protocol-game`, touching `rogue-protocol/`) archives and uploads a TestFlight build. The manual `workflow_dispatch` input `upload` does the same.
+- `[rogue-upload]` in a commit message (on `claude/project-thread-6lgsrr`, `main` or `claude/rogue-protocol-game`, touching `rogue-protocol/`) archives and uploads a TestFlight build. The manual `workflow_dispatch` input `upload` does the same.
 
 ## Running locally
 ```sh

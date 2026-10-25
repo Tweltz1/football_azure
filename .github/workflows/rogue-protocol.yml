@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - claude/rogue-protocol-game
+      - claude/project-thread-6lgsrr
     paths:
       - "rogue-protocol/**"
       - ".github/workflows/rogue-protocol.yml"
