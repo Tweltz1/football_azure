@@ -1,0 +1,4 @@
+*.xcodeproj/
+App/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+Engine/.build/
+Engine/.swiftpm/
