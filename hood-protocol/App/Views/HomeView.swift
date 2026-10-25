@@ -5,14 +5,22 @@ struct HomeView: View {
     let onTable: (Table) -> Void
 
     @AppStorage("name") private var name = ""
-    @AppStorage("avatar") private var avatar = Int.random(in: 0..<10)
+    @AppStorage("look") private var look = Look.random().code
+    @AppStorage("fallbackName") private var fallbackName = Crew.names.randomElement() ?? "Guest"
     @AppStorage("soloSeats") private var soloSeats = 7
     @State private var joiningNearby = false
     @State private var joiningOnline = false
+    @State private var editingLook = false
 
     private var displayName: String {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty ? Crew.names[avatar % Crew.count] : String(trimmed.prefix(20))
+        return trimmed.isEmpty ? fallbackName : String(trimmed.prefix(20))
+    }
+
+    /// You and a few of the Hood crew hanging out.
+    private var homeGuests: [Guest3D] {
+        [Guest3D(id: 0, look: Look(code: look), name: displayName)] +
+            (0..<5).map { Guest3D(id: $0 + 1, look: Look.crew($0), name: Crew.names[$0]) }
     }
 
     var body: some View {
@@ -20,7 +28,7 @@ struct HomeView: View {
             Theme.background.ignoresSafeArea()
             ScrollView {
                 VStack(spacing: 20) {
-                    BasementScene(seats: (0..<Crew.count).map { BasementScene.Guest(id: $0, avatar: $0) })
+                    Basement3DView(guests: homeGuests)
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                     VStack(spacing: 6) {
                         Text("Hood Protocol").font(.largeTitle.weight(.black))
@@ -35,7 +43,7 @@ struct HomeView: View {
                             Stepper("Seats: \(soloSeats)", value: $soloSeats, in: GameState.minPlayers...GameState.maxPlayers)
                         }
                         bigButton("Play vs bots", symbol: "person.3.fill") {
-                            onTable(HostTable(name: displayName, avatar: avatar, mode: .solo, seats: soloSeats))
+                            onTable(HostTable(name: displayName, look: look, mode: .solo, seats: soloSeats))
                         }
                     }
                     .padding()
@@ -44,10 +52,10 @@ struct HomeView: View {
                     VStack(spacing: 10) {
                         section("Host the basement")
                         bigButton("Host nearby (no internet)", symbol: "antenna.radiowaves.left.and.right") {
-                            onTable(HostTable(name: displayName, avatar: avatar, mode: .nearby))
+                            onTable(HostTable(name: displayName, look: look, mode: .nearby))
                         }
                         bigButton("Host online", symbol: "globe") {
-                            onTable(HostTable(name: displayName, avatar: avatar, mode: .online))
+                            onTable(HostTable(name: displayName, look: look, mode: .online))
                         }
                         .disabled(!OnlineTransport.isAvailable)
                     }
@@ -70,7 +78,7 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $joiningNearby) {
-            NearbyJoinView(name: displayName, avatar: avatar) { table in
+            NearbyJoinView(name: displayName, look: look) { table in
                 joiningNearby = false
                 onTable(table)
             }
@@ -78,34 +86,30 @@ struct HomeView: View {
         .sheet(isPresented: $joiningOnline) {
             OnlineJoinView { room in
                 joiningOnline = false
-                onTable(GuestTable.online(name: displayName, avatar: avatar, room: room))
+                onTable(GuestTable.online(name: displayName, look: look, room: room))
             }
             .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $editingLook) {
+            LookEditorView(code: $look)
         }
     }
 
     private var profile: some View {
         VStack(spacing: 12) {
             section("You")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(0..<Crew.count, id: \.self) { index in
-                        Button { avatar = index } label: {
-                            VStack(spacing: 2) {
-                                Avatar(index: index, size: 48)
-                                Text(Crew.names[index]).font(.caption2)
-                            }
-                            .padding(6)
-                            .background(index == avatar ? Theme.accent.opacity(0.25) : Color.clear, in: RoundedRectangle(cornerRadius: 12))
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(index == avatar ? Theme.accent : .clear, lineWidth: 2))
-                        }
-                        .buttonStyle(.plain)
+            HStack(spacing: 14) {
+                LookPortrait(code: look, size: 64)
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("Your name (optional)", text: $name)
+                        .textFieldStyle(.roundedBorder)
+                        .textInputAutocapitalization(.words)
+                    Button { editingLook = true } label: {
+                        Label("Edit appearance", systemImage: "tshirt.fill").frame(maxWidth: .infinity)
                     }
+                    .buttonStyle(.bordered)
                 }
             }
-            TextField("Your name (optional)", text: $name)
-                .textFieldStyle(.roundedBorder)
-                .textInputAutocapitalization(.words)
         }
         .padding()
         .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
@@ -132,13 +136,13 @@ struct HomeView: View {
 /// Lists basements hosted on phones nearby.
 struct NearbyJoinView: View {
     let name: String
-    let avatar: Int
+    let look: String
     let onJoin: (Table) -> Void
     @StateObject private var player: NearbyPlayer
 
-    init(name: String, avatar: Int, onJoin: @escaping (Table) -> Void) {
+    init(name: String, look: String, onJoin: @escaping (Table) -> Void) {
         self.name = name
-        self.avatar = avatar
+        self.look = look
         self.onJoin = onJoin
         _player = StateObject(wrappedValue: NearbyPlayer(name: name))
     }
@@ -155,7 +159,7 @@ struct NearbyJoinView: View {
                 }
                 ForEach(player.tables) { table in
                     Button {
-                        let guest = GuestTable(name: name, avatar: avatar, playerId: UUID().uuidString, transport: player)
+                        let guest = GuestTable(name: name, look: look, playerId: UUID().uuidString, transport: player)
                         player.join(table)
                         onJoin(guest)
                     } label: {

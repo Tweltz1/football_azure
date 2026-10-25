@@ -14,7 +14,7 @@ struct LobbyView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     if let lobby = table.lobby {
-                        BasementScene(seats: guests(lobby))
+                        Basement3DView(guests: guests(lobby))
                             .clipShape(RoundedRectangle(cornerRadius: 20))
                         header(lobby)
                         players(lobby)
@@ -35,8 +35,8 @@ struct LobbyView: View {
         }
     }
 
-    private func guests(_ lobby: LobbyState) -> [BasementScene.Guest] {
-        lobby.players.enumerated().map { BasementScene.Guest(id: $0.offset, avatar: $0.element.avatar, name: $0.element.name) }
+    private func guests(_ lobby: LobbyState) -> [Guest3D] {
+        lobby.players.enumerated().map { Guest3D(id: $0.offset, look: Look(code: $0.element.look), name: $0.element.name) }
     }
 
     @ViewBuilder private func header(_ lobby: LobbyState) -> some View {
@@ -61,7 +61,7 @@ struct LobbyView: View {
             Text("IN THE BASEMENT (\(lobby.players.count))").font(.caption.bold()).foregroundStyle(Theme.accentText)
             ForEach(lobby.players) { player in
                 HStack {
-                    Avatar(index: player.avatar, size: 30)
+                    LookPortrait(code: player.look, size: 30)
                     Text(player.name).bold()
                     Spacer()
                     if player.id == lobby.players.first?.id {

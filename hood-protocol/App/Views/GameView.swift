@@ -14,9 +14,9 @@ struct GameView: View {
                 if table.hasSeenRole {
                     ScrollView {
                         VStack(spacing: 14) {
-                            BasementScene(seats: guests(view), night: night(view), showClock: true)
+                            Basement3DView(guests: guests(view), night: night(view), showClock: true)
                                 .clipShape(RoundedRectangle(cornerRadius: 18))
-                            HoldToReveal(view: view)
+                            RoleRevealButton(view: view)
                             BoardView(view: view)
                             ActionPanel(view: view) { table.perform($0) }
                             LogView(view: view)
@@ -53,14 +53,14 @@ struct GameView: View {
         return min(0.95, progress / 10)
     }
 
-    private func guests(_ view: PlayerView) -> [BasementScene.Guest] {
+    private func guests(_ view: PlayerView) -> [Guest3D] {
         view.seats.map { seat in
             var badge: String?
             if seat.id == view.commander { badge = Words.leader }
             if seat.id == view.nominee { badge = Words.wingman }
-            return BasementScene.Guest(
+            return Guest3D(
                 id: seat.id,
-                avatar: seat.info.avatar,
+                look: Look(code: seat.info.look),
                 name: seat.id == view.mySeat ? "You" : seat.info.name,
                 badge: badge,
                 dimmed: !seat.isAlive,
@@ -80,7 +80,7 @@ struct RoleRevealView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            Avatar(index: view.seats[view.mySeat].info.avatar, size: 110)
+            LookPortrait(code: view.seats[view.mySeat].info.look, size: 110)
             if revealed {
                 RoleCard(view: view)
                 Button("I'm ready", action: onReady).buttonStyle(.borderedProminent)
@@ -94,17 +94,22 @@ struct RoleRevealView: View {
     }
 }
 
-/// Shows your role only while your thumb is on it, so a quick peek doesn't give you away.
-struct HoldToReveal: View {
+/// Tap to see your role, tap again to hide it. It hides by itself after a few seconds,
+/// so a quick peek doesn't give you away.
+struct RoleRevealButton: View {
     let view: PlayerView
-    @GestureState private var holding = false
+    @State private var showing = false
+    @State private var hideTask: Task<Void, Never>?
 
     var body: some View {
-        Group {
-            if holding {
-                RoleCard(view: view)
+        Button(action: toggle) {
+            if showing {
+                VStack(spacing: 6) {
+                    RoleCard(view: view)
+                    Text("Tap to hide").font(.caption).foregroundStyle(.secondary)
+                }
             } else {
-                Label("Hold to see who you are", systemImage: "eye.fill")
+                Label("See who you are", systemImage: "eye.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -112,13 +117,20 @@ struct HoldToReveal: View {
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.accent.opacity(0.6), lineWidth: 1))
             }
         }
-        .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .updating($holding) { _, state, _ in state = true }
-        )
-        .sensoryFeedback(.impact, trigger: holding)
-        .animation(.easeOut(duration: 0.15), value: holding)
+        .buttonStyle(.plain)
+        .sensoryFeedback(.impact, trigger: showing)
+        .onDisappear { hideTask?.cancel() }
+    }
+
+    private func toggle() {
+        withAnimation(.easeOut(duration: 0.2)) { showing.toggle() }
+        hideTask?.cancel()
+        guard showing else { return }
+        hideTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.2)) { showing = false }
+        }
     }
 }
 
@@ -135,7 +147,7 @@ struct RoleCard: View {
                 Text("Your people").font(.headline)
                 ForEach(allies) { seat in
                     HStack {
-                        Avatar(index: seat.info.avatar, size: 26)
+                        LookPortrait(code: seat.info.look, size: 26)
                         Text("\(seat.info.name): \(seat.role?.title ?? "")").foregroundStyle(seat.role?.color ?? .primary)
                     }
                 }
@@ -280,7 +292,7 @@ struct ActionPanel: View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 8)], spacing: 8) {
             ForEach(view.seats) { seat in
                 VStack(spacing: 2) {
-                    Avatar(index: seat.info.avatar, size: 34)
+                    LookPortrait(code: seat.info.look, size: 34)
                     Text(name(seat.id)).font(.caption.bold())
                     Text(seat.role?.title ?? "").font(.caption2).foregroundStyle(seat.role?.color ?? .secondary)
                 }
@@ -298,7 +310,7 @@ struct ActionPanel: View {
             ForEach(seats, id: \.self) { seat in
                 Button { action(seat) } label: {
                     VStack(spacing: 2) {
-                        Avatar(index: view.seats[seat].info.avatar, size: 30)
+                        LookPortrait(code: view.seats[seat].info.look, size: 30)
                         Text(name(seat)).font(.caption.bold()).lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)

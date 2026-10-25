@@ -72,27 +72,8 @@ extension Color {
     }
 }
 
-/// The Hood League crew, used for avatars and bot names.
+/// The Hood League crew, used for bot names.
 enum Crew {
     static let names = ["John", "Evan", "Bush", "Pat", "Michael", "Chrome", "Connor", "Ben", "Weltz", "Logan"]
     static var count: Int { names.count }
-
-    static func imageName(_ avatar: Int) -> String {
-        String(format: "crew%02d", (avatar % count + count) % count + 1)
-    }
-}
-
-struct Avatar: View {
-    let index: Int
-    var size: CGFloat = 44
-    var dimmed = false
-
-    var body: some View {
-        Image(Crew.imageName(index))
-            .resizable()
-            .scaledToFit()
-            .frame(width: size, height: size * 1.3)
-            .grayscale(dimmed ? 1 : 0)
-            .opacity(dimmed ? 0.45 : 1)
-    }
 }

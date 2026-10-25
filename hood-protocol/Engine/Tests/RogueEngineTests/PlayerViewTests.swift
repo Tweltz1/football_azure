@@ -3,7 +3,7 @@ import XCTest
 
 final class PlayerViewTests: XCTestCase {
     private func seats(_ count: Int) -> [SeatInfo] {
-        (0..<count).map { SeatInfo(name: "P\($0)", avatar: $0, isBot: false) }
+        (0..<count).map { SeatInfo(name: "P\($0)", look: "\($0)", isBot: false) }
     }
 
     func testCrewSeesOnlyOwnRole() {

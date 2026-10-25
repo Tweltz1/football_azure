@@ -46,9 +46,9 @@ final class HostTable: Table {
 
     override var isHost: Bool { true }
 
-    init(name: String, avatar: Int, mode: TableMode, seats: Int = 7, boardMode: BoardMode = .random) {
+    init(name: String, look: String, mode: TableMode, seats: Int = 7, boardMode: BoardMode = .random) {
         self.mode = mode
-        me = LobbyPlayer(id: UUID().uuidString, name: name, avatar: avatar)
+        me = LobbyPlayer(id: UUID().uuidString, name: name, look: look)
         let room = RoomCode.make()
         switch mode {
         case .solo: transport = nil
@@ -91,12 +91,12 @@ final class HostTable: Table {
         guard var lobby, !lobby.started else { return }
         let humans = lobby.players
         let total = min(max(lobby.seatCount, GameState.minPlayers, humans.count), GameState.maxPlayers)
-        let taken = Set(humans.map(\.avatar))
-        var freeAvatars = (0..<Crew.count).filter { !taken.contains($0) }.shuffled()
-        seatInfo = humans.map { SeatInfo(name: $0.name, avatar: $0.avatar, isBot: false) }
+        let taken = Set(humans.map(\.name))
+        var freeCrew = (0..<Crew.count).filter { !taken.contains(Crew.names[$0]) }.shuffled()
+        seatInfo = humans.map { SeatInfo(name: $0.name, look: $0.look, isBot: false) }
         while seatInfo.count < total {
-            let avatar = freeAvatars.isEmpty ? Int.random(in: 0..<Crew.count) : freeAvatars.removeFirst()
-            seatInfo.append(SeatInfo(name: Crew.names[avatar], avatar: avatar, isBot: true))
+            let crew = freeCrew.isEmpty ? Int.random(in: 0..<Crew.count) : freeCrew.removeFirst()
+            seatInfo.append(SeatInfo(name: Crew.names[crew], look: Look.crew(crew).code, isBot: true))
         }
         seatOf = Dictionary(uniqueKeysWithValues: humans.enumerated().map { ($0.element.id, $0.offset) })
         game = GameState(names: seatInfo.map(\.name), boardMode: lobby.boardMode, seed: UInt64.random(in: .min ... .max))
@@ -202,7 +202,7 @@ final class HostTable: Table {
         } else {
             sealer = nil
         }
-        let player = LobbyPlayer(id: hello.playerId, name: String(hello.name.prefix(20)), avatar: hello.avatar)
+        let player = LobbyPlayer(id: hello.playerId, name: String(hello.name.prefix(20)), look: String(hello.look.prefix(60)))
 
         if let index = guests.firstIndex(where: { $0.player.id == hello.playerId }) {
             // Same phone coming back (reconnect or relaunch): keep its seat.
@@ -269,14 +269,14 @@ final class GuestTable: Table {
     private var helloTimer: Timer?
 
     /// Online players use their player id on the shared channel.
-    static func online(name: String, avatar: Int, room: String) -> GuestTable {
+    static func online(name: String, look: String, room: String) -> GuestTable {
         let playerId = UUID().uuidString
-        return GuestTable(name: name, avatar: avatar, playerId: playerId, transport: OnlineTransport(me: playerId, room: room))
+        return GuestTable(name: name, look: look, playerId: playerId, transport: OnlineTransport(me: playerId, room: room))
     }
 
-    init(name: String, avatar: Int, playerId: String, transport: Transport) {
+    init(name: String, look: String, playerId: String, transport: Transport) {
         self.transport = transport
-        hello = Hello(playerId: playerId, name: name, avatar: avatar,
+        hello = Hello(playerId: playerId, name: name, look: look,
                       publicKey: transport.needsSealing ? myKey.publicKey.rawRepresentation : nil)
         super.init()
         status = "Connecting…"

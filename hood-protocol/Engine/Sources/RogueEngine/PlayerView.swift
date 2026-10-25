@@ -3,12 +3,13 @@ import Foundation
 /// Who sits in a seat, as the host shows it to everyone.
 public struct SeatInfo: Codable, Equatable, Sendable {
     public var name: String
-    public var avatar: Int
+    /// The player's appearance, as the app's look code. The engine never reads it.
+    public var look: String
     public var isBot: Bool
 
-    public init(name: String, avatar: Int, isBot: Bool) {
+    public init(name: String, look: String, isBot: Bool) {
         self.name = name
-        self.avatar = avatar
+        self.look = look
         self.isBot = isBot
     }
 }
@@ -68,7 +69,7 @@ extension GameState {
         let seats = players.map { player in
             PlayerView.Seat(
                 id: player.id,
-                info: info.indices.contains(player.id) ? info[player.id] : SeatInfo(name: player.name, avatar: 0, isBot: false),
+                info: info.indices.contains(player.id) ? info[player.id] : SeatInfo(name: player.name, look: "", isBot: false),
                 isAlive: player.isAlive,
                 role: isOver ? player.role : known[player.id]
             )

@@ -6,7 +6,8 @@ import RogueEngine
 struct Hello: Codable {
     var playerId: String
     var name: String
-    var avatar: Int
+    /// Look code (see `Look`).
+    var look: String
     /// Curve25519 public key, sent only on transports that need sealing (online).
     var publicKey: Data?
 }
@@ -14,7 +15,7 @@ struct Hello: Codable {
 struct LobbyPlayer: Codable, Equatable, Identifiable {
     var id: String
     var name: String
-    var avatar: Int
+    var look: String
 }
 
 /// The host's public table state, sent to every phone.
