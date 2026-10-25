@@ -15,7 +15,7 @@ The rules, names, art and text are original to this project. Do not copy cards, 
 ## Bundle identifier
 - App: `com.tweltz1.hoodprotocol`
 
-Create a separate App Store Connect record with this bundle ID. Use "Hood Protocol" as the store name. Do not use the Hood League FF or Backseat View records.
+The App Store Connect record "Hood Protocol" exists (created 2026-10-25) and uses this bundle ID. Do not use the Hood League FF or Backseat View records.
 
 ## CI and uploading
 The workflow **Hood Protocol iPhone** reuses the repository-level `APPLE_TEAM_ID`, `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID` and `APP_STORE_CONNECT_KEY` secrets. They stay in GitHub Actions Secrets and are never pasted into chat or committed.
