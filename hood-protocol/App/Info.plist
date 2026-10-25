@@ -23,7 +23,10 @@
 </array>
 <key>SupabaseURL</key><string>$(SUPABASE_URL)</string>
 <key>SupabaseAnonKey</key><string>$(SUPABASE_ANON_KEY)</string>
-<key>UILaunchScreen</key><dict/>
+<key>UILaunchScreen</key><dict>
+<key>UIImageName</key><string>LaunchLogo</string>
+<key>UIColorName</key><string>LaunchBackground</string>
+</dict>
 <key>UISupportedInterfaceOrientations</key><array>
 <string>UIInterfaceOrientationPortrait</string>
 <string>UIInterfaceOrientationPortraitUpsideDown</string>
