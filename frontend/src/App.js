@@ -60,10 +60,10 @@ function App() {
         <main className="app-main">
           <Routes>
             <Route path="/" element={<Home userId={userId} />} />
-            <Route path="/leagues" element={<Leagues userId={userId} />} />
+            <Route path="/leagues" element={<Leagues userId={userId} userDetails={user.userDetails} />} />
             <Route path="/draft/:leagueId/tv" element={<DraftTvView />} />
             <Route path="/draft/:leagueId" element={<DraftRoomEnhanced userId={userId} />} />
-            <Route path="/create-league" element={<CreateLeague userId={userId} />} />
+            <Route path="/create-league" element={<CreateLeague userId={userId} userDetails={user.userDetails} />} />
             <Route path="/profile" element={<Profile userId={userId} />} />
           </Routes>
         </main>

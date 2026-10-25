@@ -270,7 +270,7 @@ const DraftRoomCommandPanel = ({ leagueId, user, league, chatMessages, setChatMe
             return (
               <div className="team-presence-row" key={`unassigned-${memberId}`}>
                 <span className={`presence-light ${presenceStatus}`} aria-label={presenceLabel} />
-                <span className="team-presence-name">{formatMemberLabel(memberId)}</span>
+                <span className="team-presence-name">{formatMemberLabel(league, memberId)}</span>
                 <span className={`team-presence-meta ${presenceStatus}`}>{presenceLabel} | Unassigned</span>
               </div>
             );
@@ -668,8 +668,12 @@ const formatChatTime = (value) => {
   return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 };
 
-const formatMemberLabel = (memberId = '') => {
+const formatMemberLabel = (league, memberId = '') => {
   if (!memberId) return 'Unknown member';
+  const profile = league?.memberProfiles?.[memberId];
+  if (profile?.email) return profile.email;
+  if (profile?.displayName) return profile.displayName;
+
   const value = String(memberId);
   const emailName = value.includes('@') ? value.split('@')[0] : value;
   return emailName.replace(/[._-]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());

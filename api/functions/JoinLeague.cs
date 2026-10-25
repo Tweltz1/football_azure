@@ -53,6 +53,7 @@ public static class JoinLeague
             }
 
             leagueToJoin.Members.Add(data.UserId);
+            LeagueMemberProfileHelper.Upsert(leagueToJoin, data.UserId, userProfile, data.DisplayName);
 
             if (DraftModeHelper.IsManual(leagueToJoin.DraftMode))
             {
@@ -116,5 +117,6 @@ public static class JoinLeague
         public string LeagueName { get; set; }
         public string LeagueId { get; set; }
         public string Password { get; set; }
+        public string DisplayName { get; set; }
     }
 }
