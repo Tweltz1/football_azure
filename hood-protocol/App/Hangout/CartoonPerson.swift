@@ -51,8 +51,12 @@ enum CartoonPerson {
         case let .walk(phase):
             legSwing = sin(phase)
             lift = CGFloat(abs(sin(phase))) * 6
-        case .sit, .game, .bong:
+        case .game:
+            // Low on a beanbag
             lift = -34
+        case .sit, .bong:
+            // Up on the couch cushions, legs hanging down to the floor
+            lift = 30
         case let .cheer(clock):
             lift = CGFloat(abs(sin(clock * 6))) * 12
         case let .kegStand(seconds):
@@ -76,9 +80,10 @@ enum CartoonPerson {
             if seated {
                 // Knees toward us: short legs from the seat down to the floor
                 leg.translateBy(x: 0, y: lift)
-                let shin = Path(roundedRect: CGRect(x: lx - 15, y: -46, width: 30, height: 40), cornerRadius: 13)
+                let knee: CGFloat = lift > 0 ? -92 : -52
+                let shin = Path(roundedRect: CGRect(x: lx - 14, y: knee + 6, width: 28, height: -knee - 12), cornerRadius: 12)
                 outlined(leg, shin, look.top == 4 || look.shorts ? skin : pants)
-                outlined(leg, Path(ellipseIn: CGRect(x: lx - 16, y: -52, width: 32, height: 18)), look.top == 4 ? shirt : (look.shorts ? pants : pants))
+                outlined(leg, Path(ellipseIn: CGRect(x: lx - 16, y: knee, width: 32, height: 18)), look.top == 4 ? shirt : pants)
             } else {
                 let angle = Angle.radians((index == 0 ? 1 : -1) * legSwing * 0.35)
                 leg.translateBy(x: lx, y: -74)
@@ -194,8 +199,8 @@ enum CartoonPerson {
                 left = CGPoint(x: -26, y: -84)
                 right = CGPoint(x: 26, y: -84)
             } else if seconds < 6.3 {
-                left = CGPoint(x: -24, y: -250)
-                right = CGPoint(x: 24, y: -250)
+                left = CGPoint(x: -22, y: -205)
+                right = CGPoint(x: 22, y: -205)
                 if over == 1 { face = .sip }
             } else {
                 left = CGPoint(x: -58, y: -214 - 12 * sin(time * 12))
@@ -215,12 +220,12 @@ enum CartoonPerson {
             case ..<0.72: raise = 1 - smooth((k - 0.63) / 0.09)
             default: raise = 0
             }
-            let drop = CGFloat(1 - raise) * 60
+            let drop = CGFloat(1 - raise) * 30
             let lighting = k >= 0.14 && k < 0.55
             let clearing = k >= 0.55 && k < 0.63
             if k < 0.06 {
-                left = CGPoint(x: -14, y: -54)
-                right = CGPoint(x: 18, y: -54)
+                left = CGPoint(x: -14, y: -76)
+                right = CGPoint(x: 18, y: -76)
             } else if inHand {
                 right = CGPoint(x: 16, y: -122 + drop)
                 left = lighting ? CGPoint(x: -56, y: -120) : CGPoint(x: -22, y: -56 + drop)
@@ -290,7 +295,12 @@ enum CartoonPerson {
         ctx.stroke(path, with: .color(ink), style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
     }
 
-    private static func arm(_ ctx: GraphicsContext, from shoulder: CGPoint, to hand: CGPoint, side: CGFloat, sleeve: Color, skin: Color) {
+    private static func arm(_ ctx: GraphicsContext, from shoulder: CGPoint, to reach: CGPoint, side: CGFloat, sleeve: Color, skin: Color) {
+        // Arms only stretch so far
+        let dx = reach.x - shoulder.x, dy = reach.y - shoulder.y
+        let length = hypot(dx, dy)
+        let maxLength: CGFloat = 82
+        let hand = length > maxLength ? CGPoint(x: shoulder.x + dx / length * maxLength, y: shoulder.y + dy / length * maxLength) : reach
         var path = Path()
         path.move(to: shoulder)
         path.addQuadCurve(to: hand, control: CGPoint(x: (shoulder.x + hand.x) / 2 + side * 14, y: (shoulder.y + hand.y) / 2))

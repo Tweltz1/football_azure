@@ -8,7 +8,7 @@ enum RoomArt {
 
     // MARK: Back of the room
 
-    static func drawBack(_ ctx: GraphicsContext, night: Double, time t: Double) {
+    static func drawBack(_ ctx: GraphicsContext, night: Double, time t: Double, gamers: Int = 0) {
         let dark = night < 0.85 ? min(1, night / 0.4) : max(0, 1 - (night - 0.85) / 0.15)
 
         // Wood-paneled wall
@@ -34,7 +34,7 @@ enum RoomArt {
         outlined(ctx, Path(ellipseIn: CGRect(x: 230, y: 505, width: 560, height: 130)), Color(hex: 0xA996FF))
         ctx.fill(Path(ellipseIn: CGRect(x: 300, y: 530, width: 420, height: 80)), with: .color(Color(hex: 0xB9A9FF)))
 
-        tv(ctx, time: t)
+        tv(ctx, time: t, players: gamers)
         couch(ctx)
 
         // A touch of evening blue that never makes the room dark
@@ -170,77 +170,186 @@ enum RoomArt {
         outlined(ctx, Path(ellipseIn: CGRect(x: rect.maxX - 26, y: rect.midY, width: 12, height: 12)), Color(hex: 0xF5C542), width: 3)
     }
 
-    private static func tv(_ ctx: GraphicsContext, time t: Double) {
+    private static func tv(_ ctx: GraphicsContext, time t: Double, players: Int) {
         // Stand and console
         outlined(ctx, Path(roundedRect: CGRect(x: 40, y: 360, width: 260, height: 90), cornerRadius: 8), Color(hex: 0x3A3A44))
         outlined(ctx, Path(roundedRect: CGRect(x: 70, y: 384, width: 70, height: 20), cornerRadius: 5), Color(hex: 0xF2F2F2), width: 3)
         ctx.fill(Path(ellipseIn: CGRect(x: 126, y: 390, width: 7, height: 7)), with: .color(Color(hex: 0x3DDC97)))
-        // TV
-        let screen = CGRect(x: 48, y: 196, width: 244, height: 150)
-        outlined(ctx, Path(roundedRect: screen.insetBy(dx: -10, dy: -10), cornerRadius: 10), Color(hex: 0x15151A))
-        outlined(ctx, Path(CGRect(x: 160, y: 346, width: 20, height: 16)), Color(hex: 0x15151A), width: 3)
+        // Big TV
+        let screen = CGRect(x: 34, y: 178, width: 282, height: 168)
+        outlined(ctx, Path(roundedRect: screen.insetBy(dx: -9, dy: -9), cornerRadius: 10), Color(hex: 0x15151A))
+        outlined(ctx, Path(CGRect(x: 165, y: 346, width: 20, height: 16)), Color(hex: 0x15151A), width: 3)
         var game = ctx
         game.clip(to: Path(screen))
-        spaceShooter(game, in: screen, time: t)
+        splitScreen(game, in: screen, players: players, time: t)
         // Screen glow onto the wall
         ctx.fill(Path(ellipseIn: screen.insetBy(dx: -50, dy: -40)), with: .color(Color(hex: 0x6FD3FF).opacity(0.08 + 0.04 * sin(t * 7))))
     }
 
-    /// A made-up sci-fi shooter on the TV: ring world in the sky, aliens, a rifle and a HUD.
-    private static func spaceShooter(_ ctx: GraphicsContext, in r: CGRect, time t: Double) {
-        ctx.fill(Path(r), with: .linearGradient(Gradient(colors: [Color(hex: 0x2B5C8A), Color(hex: 0x7FC8D8)]),
+    /// Split screen like a couch shooter: one view, two stacked, or four quarters for 3 or 4 players.
+    private static func splitScreen(_ ctx: GraphicsContext, in r: CGRect, players: Int, time t: Double) {
+        let views: [CGRect]
+        switch players {
+        case ...1: views = [r]
+        case 2: views = [CGRect(x: r.minX, y: r.minY, width: r.width, height: r.height / 2),
+                         CGRect(x: r.minX, y: r.midY, width: r.width, height: r.height / 2)]
+        default:
+            let w = r.width / 2, h = r.height / 2
+            views = [CGRect(x: r.minX, y: r.minY, width: w, height: h), CGRect(x: r.midX, y: r.minY, width: w, height: h),
+                     CGRect(x: r.minX, y: r.midY, width: w, height: h), CGRect(x: r.midX, y: r.midY, width: w, height: h)]
+        }
+        let armor: [UInt32] = [0x4E7A3A, 0x2F80ED, 0xE0302E, 0xF5B84A]
+        for (i, view) in views.enumerated() {
+            var pane = ctx
+            pane.clip(to: Path(view))
+            if players >= 1 && i >= max(players, 1) {
+                // Empty quarter waiting for a 4th player
+                pane.fill(Path(view), with: .color(Color(hex: 0x0B0E14)))
+                pane.draw(Text("PRESS START").font(.system(size: 11, weight: .black, design: .monospaced))
+                            .foregroundColor(.white.opacity(0.4 + 0.4 * sin(t * 4))), at: CGPoint(x: view.midX, y: view.midY))
+            } else {
+                shooterView(pane, in: view, time: t + Double(i) * 7.3, seed: Double(i), armor: Color(hex: armor[i % armor.count]),
+                            compact: views.count > 1)
+            }
+        }
+        if views.count > 1 {
+            var lines = Path()
+            if views.count == 2 {
+                lines.move(to: CGPoint(x: r.minX, y: r.midY)); lines.addLine(to: CGPoint(x: r.maxX, y: r.midY))
+            } else {
+                lines.move(to: CGPoint(x: r.minX, y: r.midY)); lines.addLine(to: CGPoint(x: r.maxX, y: r.midY))
+                lines.move(to: CGPoint(x: r.midX, y: r.minY)); lines.addLine(to: CGPoint(x: r.midX, y: r.maxY))
+            }
+            ctx.stroke(lines, with: .color(.black), lineWidth: 3)
+        }
+    }
+
+    /// One player's view in a made-up sci-fi shooter: a ring world arching over the sky,
+    /// alien towers, armored soldiers with gold visors, a rifle with an ammo counter, a shield bar
+    /// and a motion tracker.
+    private static func shooterView(_ ctx: GraphicsContext, in r: CGRect, time t: Double, seed: Double, armor: Color, compact: Bool) {
+        let w = r.width, h = r.height
+        let u = min(w / 282, h / 168) // 1 at full screen
+        let sway = CGFloat(sin(t * 0.6 + seed)) * w * 0.06
+        let bob = CGFloat(sin(t * 3.1)) * h * 0.01
+        // Sky and the ring
+        ctx.fill(Path(r), with: .linearGradient(Gradient(colors: [Color(hex: 0x3D78B8), Color(hex: 0xA9DCEB)]),
                                                 startPoint: CGPoint(x: 0, y: r.minY), endPoint: CGPoint(x: 0, y: r.maxY)))
-        // Ring world arching across the sky
         var ring = Path()
-        ring.addArc(center: CGPoint(x: r.midX + 30, y: r.maxY + 60), radius: 190, startAngle: .degrees(200), endAngle: .degrees(320), clockwise: false)
-        ctx.stroke(ring, with: .color(Color(hex: 0xC8D8E8).opacity(0.85)), lineWidth: 7)
-        ctx.stroke(ring, with: .color(Color(hex: 0x8AA0B8)), lineWidth: 2)
-        // Hills
-        let sway = 6 * sin(t * 0.7)
-        var hills = Path()
-        hills.move(to: CGPoint(x: r.minX, y: r.maxY - 40))
-        hills.addQuadCurve(to: CGPoint(x: r.midX, y: r.maxY - 46), control: CGPoint(x: r.minX + 60 + sway, y: r.maxY - 80))
-        hills.addQuadCurve(to: CGPoint(x: r.maxX, y: r.maxY - 36), control: CGPoint(x: r.maxX - 50 + sway, y: r.maxY - 76))
-        hills.addLine(to: CGPoint(x: r.maxX, y: r.maxY)); hills.addLine(to: CGPoint(x: r.minX, y: r.maxY)); hills.closeSubpath()
-        ctx.fill(hills, with: .color(Color(hex: 0x4E8A4A)))
-        // Aliens strafing
-        for i in 0..<3 {
-            let x = r.minX + 40 + Double(i) * 75 + 22 * sin(t * 1.6 + Double(i) * 2)
-            let y = r.maxY - 58 - Double(i % 2) * 14
-            let alien = CGRect(x: x - 9, y: y - 14, width: 18, height: 22)
-            ctx.fill(Path(roundedRect: alien, cornerRadius: 8), with: .color(Color(hex: i == 1 ? 0xB04AE0 : 0xE08A2A)))
-            ctx.fill(Path(ellipseIn: CGRect(x: x - 6, y: y - 10, width: 12, height: 6)), with: .color(Color(hex: 0x9CFFFA)))
+        ring.addArc(center: CGPoint(x: r.midX + sway * 0.3 + w * 0.15, y: r.maxY + h * 0.5), radius: w * 0.85,
+                    startAngle: .degrees(205), endAngle: .degrees(300), clockwise: false)
+        ctx.stroke(ring, with: .color(Color(hex: 0xDCE6EE).opacity(0.9)), lineWidth: max(2, 8 * u))
+        ctx.stroke(ring, with: .color(Color(hex: 0x6E8AA8).opacity(0.8)), lineWidth: max(1, 2.5 * u))
+        // Far cliffs and a slanted alien tower
+        var cliffs = Path()
+        cliffs.move(to: CGPoint(x: r.minX - 20, y: r.minY + h * 0.62))
+        for k in 0...6 {
+            let x = r.minX - 20 + CGFloat(k) * (w + 40) / 6 + sway * 0.5
+            cliffs.addLine(to: CGPoint(x: x, y: r.minY + h * (k % 2 == 0 ? 0.5 : 0.58)))
         }
-        // Shots and muzzle flash
-        let cycle = t.truncatingRemainder(dividingBy: 0.7)
-        let gunTip = CGPoint(x: r.maxX - 62, y: r.maxY - 46)
-        if cycle < 0.18 {
-            var shot = Path()
-            shot.move(to: gunTip)
-            shot.addLine(to: CGPoint(x: r.midX, y: r.midY + 8))
-            ctx.stroke(shot, with: .color(Color(hex: 0x9CFFFA)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
-            ctx.fill(Path(ellipseIn: CGRect(x: gunTip.x - 10, y: gunTip.y - 10, width: 20, height: 20)), with: .color(Color(hex: 0xFFE38A)))
+        cliffs.addLine(to: CGPoint(x: r.maxX + 20, y: r.maxY)); cliffs.addLine(to: CGPoint(x: r.minX - 20, y: r.maxY)); cliffs.closeSubpath()
+        ctx.fill(cliffs, with: .color(Color(hex: 0x6B8F9C)))
+        let towerX = r.minX + w * 0.68 + sway * 0.6
+        var tower = Path()
+        tower.move(to: CGPoint(x: towerX - w * 0.05, y: r.minY + h * 0.6))
+        tower.addLine(to: CGPoint(x: towerX - w * 0.015, y: r.minY + h * 0.2))
+        tower.addLine(to: CGPoint(x: towerX + w * 0.02, y: r.minY + h * 0.24))
+        tower.addLine(to: CGPoint(x: towerX + w * 0.05, y: r.minY + h * 0.6))
+        tower.closeSubpath()
+        ctx.fill(tower, with: .color(Color(hex: 0x8E95A6)))
+        ctx.fill(Path(CGRect(x: towerX - w * 0.012, y: r.minY + h * 0.3, width: w * 0.024, height: h * 0.04)),
+                 with: .color(Color(hex: 0x7FF3FF).opacity(0.6 + 0.4 * sin(t * 3))))
+        // Grassy ground and a rock
+        var ground = Path()
+        ground.move(to: CGPoint(x: r.minX, y: r.minY + h * 0.66 + bob))
+        ground.addQuadCurve(to: CGPoint(x: r.maxX, y: r.minY + h * 0.64 + bob), control: CGPoint(x: r.midX + sway, y: r.minY + h * 0.58))
+        ground.addLine(to: CGPoint(x: r.maxX, y: r.maxY)); ground.addLine(to: CGPoint(x: r.minX, y: r.maxY)); ground.closeSubpath()
+        ctx.fill(ground, with: .color(Color(hex: 0x5E9A4A)))
+        ctx.fill(Path(ellipseIn: CGRect(x: r.minX + w * 0.12 + sway, y: r.minY + h * 0.66, width: w * 0.16, height: h * 0.1)),
+                 with: .color(Color(hex: 0x7C7F86)))
+        // Two enemy soldiers strafing
+        let hit = (t.truncatingRemainder(dividingBy: 6)) > 4.6
+        for i in 0..<2 {
+            let phase = t * 0.9 + Double(i) * 2.4 + seed
+            let x = r.minX + w * (0.35 + 0.28 * Double(i)) + CGFloat(sin(phase)) * w * 0.1 + sway
+            let y = r.minY + h * (0.66 - 0.05 * Double(i)) + bob
+            let s = h * (i == 0 ? 0.2 : 0.15)
+            let enemy = i == 0 ? Color(hex: 0xC0392B) : Color(hex: 0x8E44AD)
+            if i == 0 && hit {
+                // Shields popping
+                ctx.stroke(Path(ellipseIn: CGRect(x: x - s * 0.45, y: y - s * 1.05, width: s * 0.9, height: s * 1.1)),
+                           with: .color(Color(hex: 0xFFE98A).opacity(0.9)), lineWidth: max(1, 1.5 * u))
+            }
+            ctx.fill(Path(roundedRect: CGRect(x: x - s * 0.18, y: y - s * 0.62, width: s * 0.36, height: s * 0.5), cornerRadius: s * 0.08), with: .color(enemy))
+            ctx.fill(Path(roundedRect: CGRect(x: x - s * 0.14, y: y - s * 0.16, width: s * 0.11, height: s * 0.18), cornerRadius: 1), with: .color(enemy.opacity(0.8)))
+            ctx.fill(Path(roundedRect: CGRect(x: x + s * 0.03, y: y - s * 0.16, width: s * 0.11, height: s * 0.18), cornerRadius: 1), with: .color(enemy.opacity(0.8)))
+            ctx.fill(Path(ellipseIn: CGRect(x: x - s * 0.15, y: y - s * 0.92, width: s * 0.3, height: s * 0.32)), with: .color(enemy))
+            ctx.fill(Path(roundedRect: CGRect(x: x - s * 0.1, y: y - s * 0.83, width: s * 0.2, height: s * 0.1), cornerRadius: s * 0.04),
+                     with: .color(Color(hex: 0xF2B632)))
+            // Their plasma shots
+            if (phase * 2).truncatingRemainder(dividingBy: 3) < 0.25 {
+                ctx.fill(Path(ellipseIn: CGRect(x: x - s * 0.06 + s * 0.4, y: y - s * 0.5, width: s * 0.12, height: s * 0.12)),
+                         with: .color(Color(hex: 0x6CFFB0)))
+            }
         }
-        // Rifle in the bottom right
+        // Rifle with the ammo counter, kicking back when it fires
+        let firing = t.truncatingRemainder(dividingBy: 0.5) < 0.12
+        let kick: CGFloat = firing ? 3 * u : 0
+        let gx = r.maxX - w * 0.3, gy = r.maxY - h * 0.26 + kick + bob
         var gun = Path()
-        gun.move(to: CGPoint(x: r.maxX - 66, y: r.maxY - 52))
-        gun.addLine(to: CGPoint(x: r.maxX - 20, y: r.maxY - 34))
-        gun.addLine(to: CGPoint(x: r.maxX + 4, y: r.maxY - 22))
+        gun.move(to: CGPoint(x: gx, y: gy))
+        gun.addLine(to: CGPoint(x: gx + w * 0.2, y: gy + h * 0.04))
+        gun.addLine(to: CGPoint(x: r.maxX + 4, y: gy + h * 0.12))
         gun.addLine(to: CGPoint(x: r.maxX + 4, y: r.maxY + 4))
-        gun.addLine(to: CGPoint(x: r.maxX - 44, y: r.maxY + 4))
-        gun.addLine(to: CGPoint(x: r.maxX - 72, y: r.maxY - 40))
+        gun.addLine(to: CGPoint(x: gx + w * 0.04, y: r.maxY + 4))
+        gun.addLine(to: CGPoint(x: gx - w * 0.03, y: gy + h * 0.08))
         gun.closeSubpath()
-        ctx.fill(gun, with: .color(Color(hex: 0x3E4A3A)))
-        ctx.stroke(gun, with: .color(Color(hex: 0x1A2018)), lineWidth: 2)
-        // HUD: crosshair, shield bar, ammo, radar
-        ctx.stroke(Path(ellipseIn: CGRect(x: r.midX - 9, y: r.midY - 1, width: 18, height: 18)), with: .color(Color(hex: 0x9CFFFA)), lineWidth: 2)
-        ctx.stroke(Path(roundedRect: CGRect(x: r.midX - 50, y: r.minY + 8, width: 100, height: 9), cornerRadius: 3), with: .color(Color(hex: 0x9CFFFA)), lineWidth: 1.5)
-        let shield = 0.55 + 0.4 * sin(t * 0.5)
-        ctx.fill(Path(roundedRect: CGRect(x: r.midX - 48, y: r.minY + 10, width: 96 * shield, height: 5), cornerRadius: 2), with: .color(Color(hex: 0x4AB8FF)))
-        ctx.draw(Text("\(32 - Int(t / 0.7) % 32)").font(.system(size: 13, weight: .black, design: .monospaced)).foregroundColor(Color(hex: 0x9CFFFA)),
-                 at: CGPoint(x: r.maxX - 20, y: r.minY + 14))
-        ctx.stroke(Path(ellipseIn: CGRect(x: r.minX + 8, y: r.maxY - 38, width: 30, height: 30)), with: .color(Color(hex: 0x9CFFFA).opacity(0.8)), lineWidth: 1.5)
-        ctx.fill(Path(ellipseIn: CGRect(x: r.minX + 20, y: r.maxY - 26, width: 5, height: 5)), with: .color(Color(hex: 0xFF5A5A)))
+        ctx.fill(gun, with: .color(Color(hex: 0x3F4A3C)))
+        ctx.stroke(gun, with: .color(Color(hex: 0x1A2018)), lineWidth: max(1, 1.5 * u))
+        let counter = CGRect(x: gx + w * 0.07, y: gy + h * 0.035, width: w * 0.07, height: h * 0.06)
+        ctx.fill(Path(roundedRect: counter, cornerRadius: 1), with: .color(Color(hex: 0x101410)))
+        let ammo = 32 - Int((t / 0.5).truncatingRemainder(dividingBy: 32))
+        ctx.draw(Text(String(format: "%02d", ammo)).font(.system(size: max(5, 9 * u), weight: .bold, design: .monospaced))
+                    .foregroundColor(Color(hex: 0x8FE3FF)), at: CGPoint(x: counter.midX, y: counter.midY))
+        if firing {
+            let tip = CGPoint(x: gx - w * 0.02, y: gy + h * 0.02)
+            ctx.fill(Path(ellipseIn: CGRect(x: tip.x - 7 * u, y: tip.y - 7 * u, width: 14 * u, height: 14 * u)), with: .color(Color(hex: 0xFFE38A)))
+            var tracer = Path()
+            tracer.move(to: tip)
+            tracer.addLine(to: CGPoint(x: r.midX + w * 0.02, y: r.midY + h * 0.04))
+            ctx.stroke(tracer, with: .color(Color(hex: 0xFFE38A).opacity(0.8)), style: StrokeStyle(lineWidth: max(1, 1.6 * u), lineCap: .round))
+        }
+        // Arm in the player's armor color
+        ctx.fill(Path(roundedRect: CGRect(x: gx + w * 0.1, y: gy + h * 0.1, width: w * 0.12, height: h * 0.2), cornerRadius: 4 * u), with: .color(armor))
+        // HUD: crosshair, shield bar, grenades, motion tracker
+        let hud = Color(hex: 0x8FE3FF)
+        let c = CGPoint(x: r.midX, y: r.midY + h * 0.04)
+        ctx.stroke(Path(ellipseIn: CGRect(x: c.x - 7 * u, y: c.y - 7 * u, width: 14 * u, height: 14 * u)), with: .color(hud), lineWidth: max(1, 1.4 * u))
+        ctx.fill(Path(ellipseIn: CGRect(x: c.x - 1.2 * u, y: c.y - 1.2 * u, width: 2.4 * u, height: 2.4 * u)), with: .color(hud))
+        let bar = CGRect(x: r.midX - w * 0.2, y: r.minY + h * 0.05, width: w * 0.4, height: max(3, h * 0.045))
+        ctx.stroke(Path(roundedRect: bar, cornerRadius: 2), with: .color(hud), lineWidth: max(0.8, 1.2 * u))
+        let shield = hit ? 0.35 + 0.65 * ((t.truncatingRemainder(dividingBy: 6)) - 4.6) / 1.4 : 1
+        ctx.fill(Path(roundedRect: CGRect(x: bar.minX + 1.5, y: bar.minY + 1.5, width: (bar.width - 3) * shield, height: bar.height - 3), cornerRadius: 1),
+                 with: .color(shield < 0.5 ? Color(hex: 0xFF5A5A) : Color(hex: 0x4AB8FF)))
+        for g in 0..<2 {
+            ctx.fill(Path(ellipseIn: CGRect(x: r.minX + w * 0.04 + CGFloat(g) * w * 0.035, y: r.minY + h * 0.05, width: w * 0.025, height: w * 0.025)),
+                     with: .color(Color(hex: 0x6E8B3D)))
+        }
+        let radar = CGRect(x: r.minX + w * 0.03, y: r.maxY - h * 0.3, width: h * 0.26, height: h * 0.26)
+        ctx.fill(Path(ellipseIn: radar), with: .color(Color.black.opacity(0.3)))
+        ctx.stroke(Path(ellipseIn: radar), with: .color(hud.opacity(0.8)), lineWidth: max(0.8, 1.2 * u))
+        for i in 0..<2 {
+            let a = t * 0.8 + Double(i) * 2 + seed
+            ctx.fill(Path(ellipseIn: CGRect(x: radar.midX + CGFloat(cos(a)) * radar.width * 0.28 - 2 * u,
+                                            y: radar.minY + radar.height * 0.3 + CGFloat(sin(a)) * radar.height * 0.12 - 2 * u,
+                                            width: 4 * u, height: 4 * u)), with: .color(Color(hex: 0xFF4A4A)))
+        }
+        if !compact || w > 130 {
+            if (t.truncatingRemainder(dividingBy: 9)) < 1.2 {
+                ctx.draw(Text("DOUBLE KILL").font(.system(size: 12 * u, weight: .black)).foregroundColor(Color(hex: 0xFFD25A)),
+                         at: CGPoint(x: r.midX, y: r.minY + h * 0.25))
+            }
+        }
     }
 
     private static func couch(_ ctx: GraphicsContext) {
@@ -262,6 +371,8 @@ enum RoomArt {
             (478, { keg($0) }),
             (555, { beanbag($0, center: CGPoint(x: 150, y: 562), color: Color(hex: 0xFF6B6B)) }),
             (585, { beanbag($0, center: CGPoint(x: 262, y: 592), color: Color(hex: 0x2F80ED)) }),
+            (605, { beanbag($0, center: CGPoint(x: 78, y: 612), color: Color(hex: 0x3DDC97)) }),
+            (623, { beanbag($0, center: CGPoint(x: 190, y: 632), color: Color(hex: 0xF5B84A)) }),
             (540, { coffeeTable($0, bong: model.bongOnTable(at: t), time: t) }),
             (545, { pongTable($0, cups: model.pongCups) }),
             (626, { flipTable($0, model: model, time: t) }),

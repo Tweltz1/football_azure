@@ -65,6 +65,8 @@ final class HangoutModel: ObservableObject {
         Spot(uses: [.flip], point: CGPoint(x: 682, y: 622)),
         Spot(uses: [.keg], point: CGPoint(x: 330, y: 476)),
         Spot(uses: [.keg], point: CGPoint(x: 282, y: 490)),
+        Spot(uses: [.games], point: CGPoint(x: 78, y: 610)),
+        Spot(uses: [.games], point: CGPoint(x: 190, y: 630)),
     ]
     /// Left end, right end.
     static let pongSpots = [5, 6]
@@ -79,7 +81,7 @@ final class HangoutModel: ObservableObject {
     static func hotspot(_ activity: Activity) -> CGRect {
         switch activity {
         case .keg: return CGRect(x: 296, y: 400, width: 70, height: 90)
-        case .games: return CGRect(x: 20, y: 180, width: 276, height: 450)
+        case .games: return CGRect(x: 20, y: 170, width: 276, height: 470)
         case .couch: return CGRect(x: 350, y: 330, width: 360, height: 165)
         case .bong: return CGRect(x: 462, y: 495, width: 150, height: 52)
         case .flip: return CGRect(x: 420, y: 556, width: 240, height: 84)
@@ -499,8 +501,13 @@ final class HangoutModel: ObservableObject {
         after(0.8 * Self.ripLength) { [weak self] in
             guard let self, self.bongUser == pick, let seat = self.people[pick]?.to else { return }
             let scale = Self.scale(at: seat.y)
-            self.puffs.append(Puff(origin: CGPoint(x: seat.x + 4 * scale, y: seat.y - 122 * scale), start: Self.now, size: 1.7))
+            self.puffs.append(Puff(origin: CGPoint(x: seat.x + 4 * scale, y: seat.y - 188 * scale), start: Self.now, size: 1.7))
         }
+    }
+
+    /// How many people are sitting down to play on the TV.
+    func gamers(at t: Double) -> Int {
+        people.values.filter { $0.activity == .games && $0.spot != nil && !$0.isWalking(at: t) && !$0.guest.dimmed }.count
     }
 
     /// Whether the bong is sitting on the coffee table right now.

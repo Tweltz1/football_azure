@@ -19,7 +19,7 @@ struct HangoutView: View {
                     let scale = size.width / HangoutModel.size.width
                     var ctx = context
                     ctx.scaleBy(x: scale, y: scale)
-                    RoomArt.drawBack(ctx, night: night, time: t)
+                    RoomArt.drawBack(ctx, night: night, time: t, gamers: model.gamers(at: t))
                     drawScene(ctx, time: t)
                 }
             }
@@ -128,17 +128,17 @@ struct HangoutView: View {
         }
         if over > 0 {
             // Flip up onto the keg: hands stay on the keg while the body swings over the top.
-            let hands = CGPoint(x: point.x, y: point.y - 250 * scale)
+            let hands = CGPoint(x: point.x, y: point.y - 205 * scale)
             let top = HangoutModel.kegTop
-            let pivot = CGPoint(x: hands.x + (top.x - hands.x) * over, y: hands.y + (top.y - 4 - hands.y) * over)
+            let pivot = CGPoint(x: hands.x + (top.x - hands.x) * over, y: hands.y + (top.y - 20 - hands.y) * over)
             var flipped = ctx
             flipped.translateBy(x: pivot.x, y: pivot.y)
             flipped.rotate(by: .radians(.pi * over))
-            CartoonPerson.draw(flipped, look: person.guest.look, at: CGPoint(x: 0, y: 250 * scale), scale: scale,
+            CartoonPerson.draw(flipped, look: person.guest.look, at: CGPoint(x: 0, y: 205 * scale), scale: scale,
                                pose: pose, time: t, seed: person.seed)
             guard over == 1 else { return }
             // The tap hose runs up into their mouth, and everyone counts
-            let mouth = CGPoint(x: pivot.x, y: pivot.y - 92 * scale)
+            let mouth = CGPoint(x: pivot.x, y: pivot.y - 47 * scale)
             var hose = Path()
             hose.move(to: CGPoint(x: top.x + 4, y: top.y - 10))
             hose.addQuadCurve(to: mouth, control: CGPoint(x: top.x + 34, y: (top.y + mouth.y) / 2))
@@ -156,6 +156,7 @@ struct HangoutView: View {
         let raised: CGFloat
         switch pose {
         case .holdLegs, .cheer: raised = 40
+        case .sit, .bong: raised = 30
         default: raised = 0
         }
         if person.guest.id == model.me {
