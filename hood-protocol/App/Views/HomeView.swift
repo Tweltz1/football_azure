@@ -16,7 +16,8 @@ struct HomeView: View {
 
     private var displayName: String {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty ? fallbackName : String(trimmed.prefix(20))
+        if !trimmed.isEmpty { return String(trimmed.prefix(20)) }
+        return account.suggestedName.map { String($0.prefix(20)) } ?? fallbackName
     }
 
     /// You and a few of the Hood crew hanging out.
@@ -95,7 +96,7 @@ struct HomeView: View {
             LookEditorView(code: $look)
         }
         .sheet(isPresented: $showingAccount, onDismiss: syncProfile) {
-            AccountView(name: displayName, look: look)
+            AccountView(look: look)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -116,7 +117,7 @@ struct HomeView: View {
             HStack(spacing: 14) {
                 LookPortrait(code: look, size: 64)
                 VStack(alignment: .leading, spacing: 8) {
-                    TextField("Your name (optional)", text: $name)
+                    TextField(account.suggestedName ?? "Your name (optional)", text: $name)
                         .textFieldStyle(.roundedBorder)
                         .textInputAutocapitalization(.words)
                         .onSubmit(syncProfile)

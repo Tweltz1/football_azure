@@ -65,6 +65,8 @@ final class Account: NSObject, ObservableObject {
         var expiresAt: Date
         var userId: String
         var email: String?
+        /// The name on the Google account, when signed in with Google.
+        var fullName: String?
     }
 
     @Published private(set) var session: Session?
@@ -72,6 +74,15 @@ final class Account: NSObject, ObservableObject {
     @Published private(set) var localStats: Stats
 
     var isSignedIn: Bool { session != nil }
+
+    /// A first name to go by when the player hasn't typed one: from Google, or the start of their email.
+    var suggestedName: String? {
+        guard let session else { return nil }
+        if let first = session.fullName?.split(separator: " ").first, !first.isEmpty { return String(first) }
+        guard let local = session.email?.split(separator: "@").first,
+              let first = local.split(whereSeparator: { ".-_+".contains($0) || $0.isNumber }).first, first.count > 1 else { return nil }
+        return first.prefix(1).uppercased() + first.dropFirst().lowercased()
+    }
 
     /// What unlocks are based on: the best of this phone and the account.
     var stats: Stats { profile.map { localStats.merged(with: $0.stats) } ?? localStats }
@@ -233,8 +244,10 @@ final class Account: NSObject, ObservableObject {
             user = try await authGet("user", token: access)
         }
         guard let id = user?["id"] as? String else { throw AccountError.server("Couldn't read your account.") }
+        let meta = user?["user_metadata"] as? [String: Any]
         let made = Session(accessToken: access, refreshToken: refresh, expiresAt: Date().addingTimeInterval(expiresIn - 60),
-                           userId: id, email: user?["email"] as? String)
+                           userId: id, email: user?["email"] as? String,
+                           fullName: (meta?["full_name"] as? String) ?? (meta?["name"] as? String))
         session = made
         Keychain.save(made, key: "session")
         await refreshProfile()

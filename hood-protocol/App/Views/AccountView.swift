@@ -2,8 +2,9 @@ import SwiftUI
 
 /// Sign in or register, then see your wins, what you've unlocked, and the leaderboard.
 struct AccountView: View {
-    let name: String
     let look: String
+    @AppStorage("name") private var typedName = ""
+    @AppStorage("fallbackName") private var fallbackName = "Guest"
     @ObservedObject private var account = Account.shared
     @Environment(\.dismiss) private var dismiss
 
@@ -13,7 +14,7 @@ struct AccountView: View {
                 if account.isSignedIn {
                     signedIn
                 } else {
-                    SignInForm(name: name, look: look)
+                    SignInForm(fallback: name, look: look)
                 }
                 statsSection
                 unlocksSection
@@ -34,15 +35,25 @@ struct AccountView: View {
         }
     }
 
+    /// What you go by: the name you typed, else your Google first name, else a crew name.
+    private var name: String {
+        let trimmed = typedName.trimmingCharacters(in: .whitespaces)
+        if !trimmed.isEmpty { return String(trimmed.prefix(20)) }
+        return account.suggestedName.map { String($0.prefix(20)) } ?? fallbackName
+    }
+
     private var signedIn: some View {
         Section {
             HStack(spacing: 12) {
                 LookPortrait(code: look, size: 52)
                 VStack(alignment: .leading) {
-                    Text(account.profile?.displayName ?? name).font(.headline)
+                    Text(name).font(.headline)
                     Text(account.session?.email ?? "Signed in").font(.footnote).foregroundStyle(.secondary)
                 }
             }
+            TextField(account.suggestedName ?? "Your name", text: $typedName)
+                .textInputAutocapitalization(.words)
+                .onSubmit { Task { await account.syncProfile(name: name, look: look) } }
         } footer: {
             Text("Your wins are saved to your account, so they follow you to a new phone.")
         }
@@ -90,8 +101,16 @@ struct AccountView: View {
 }
 
 private struct SignInForm: View {
-    let name: String
+    /// The name before signing in; once signed in, a typed name or the Google name wins over a crew name.
+    let fallback: String
     let look: String
+    @AppStorage("name") private var typedName = ""
+
+    private var name: String {
+        let trimmed = typedName.trimmingCharacters(in: .whitespaces)
+        if !trimmed.isEmpty { return String(trimmed.prefix(20)) }
+        return Account.shared.suggestedName.map { String($0.prefix(20)) } ?? fallback
+    }
     @State private var registering = false
     @State private var email = ""
     @State private var password = ""
