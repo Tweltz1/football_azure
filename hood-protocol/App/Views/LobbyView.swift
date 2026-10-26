@@ -84,7 +84,6 @@ struct LobbyView: View {
         VStack(spacing: 12) {
             Stepper("Seats: \(lobby.seatCount)", value: Binding(get: { lobby.seatCount }, set: { host.setSeats($0) }),
                     in: max(GameState.minPlayers, lobby.players.count)...GameState.maxPlayers)
-            Toggle("Random power board", isOn: Binding(get: { lobby.boardMode == .random }, set: { host.setBoardMode($0 ? .random : .classic) }))
             Button {
                 host.start()
             } label: {

@@ -12,12 +12,14 @@ struct HangoutGuest: Equatable {
 
 /// Things to do in the basement.
 enum Activity: CaseIterable {
-    case games, pong, bong, couch
+    case games, pong, flip, keg, bong, couch
 
     var title: String {
         switch self {
         case .games: return "Video games"
         case .pong: return "Beer pong"
+        case .flip: return "Flip cup"
+        case .keg: return "Keg stand"
         case .bong: return "Bong rip"
         case .couch: return "Couch"
         }
@@ -27,6 +29,8 @@ enum Activity: CaseIterable {
         switch self {
         case .games: return "gamecontroller.fill"
         case .pong: return "circle.grid.cross.fill"
+        case .flip: return "cup.and.saucer.fill"
+        case .keg: return "drop.fill"
         case .bong: return "smoke.fill"
         case .couch: return "sofa.fill"
         }
@@ -35,7 +39,8 @@ enum Activity: CaseIterable {
 
 /// Where everyone is and what they're doing. Positions are worked out from the time,
 /// so the view can draw any frame without changing state. Your own character goes where you tap;
-/// everyone else picks things to do on their own.
+/// everyone else picks things to do on their own. Beer pong, flip cup, keg stands and the bong
+/// are played out for real: turns, cups pulled, races won, the bong passed.
 final class HangoutModel: ObservableObject {
     /// The room is drawn in a 1000 x 640 space.
     static let size = CGSize(width: 1000, height: 640)
@@ -43,29 +48,42 @@ final class HangoutModel: ObservableObject {
     static let door = CGPoint(x: 945, y: 440)
 
     struct Spot {
-        var activity: Activity
+        /// What the spot is for, first one first.
+        var uses: [Activity]
         var point: CGPoint
     }
 
     static let spots: [Spot] = [
-        Spot(activity: .games, point: CGPoint(x: 150, y: 560)),
-        Spot(activity: .games, point: CGPoint(x: 262, y: 590)),
-        Spot(activity: .couch, point: CGPoint(x: 445, y: 482)),
-        Spot(activity: .couch, point: CGPoint(x: 530, y: 482)),
-        Spot(activity: .couch, point: CGPoint(x: 615, y: 482)),
-        Spot(activity: .bong, point: CGPoint(x: 410, y: 612)),
-        Spot(activity: .bong, point: CGPoint(x: 670, y: 612)),
-        Spot(activity: .pong, point: CGPoint(x: 712, y: 590)),
-        Spot(activity: .pong, point: CGPoint(x: 955, y: 590)),
+        Spot(uses: [.games], point: CGPoint(x: 150, y: 560)),
+        Spot(uses: [.games], point: CGPoint(x: 262, y: 590)),
+        Spot(uses: [.bong, .couch], point: CGPoint(x: 440, y: 482)),
+        Spot(uses: [.couch], point: CGPoint(x: 530, y: 482)),
+        Spot(uses: [.bong, .couch], point: CGPoint(x: 620, y: 482)),
+        Spot(uses: [.pong], point: CGPoint(x: 735, y: 590)),
+        Spot(uses: [.pong], point: CGPoint(x: 958, y: 590)),
+        Spot(uses: [.flip], point: CGPoint(x: 398, y: 622)),
+        Spot(uses: [.flip], point: CGPoint(x: 682, y: 622)),
+        Spot(uses: [.keg], point: CGPoint(x: 330, y: 476)),
+        Spot(uses: [.keg], point: CGPoint(x: 282, y: 490)),
     ]
+    /// Left end, right end.
+    static let pongSpots = [5, 6]
+    static let flipSpots = [7, 8]
+    /// On the keg, holding their legs.
+    static let kegSpots = [9, 10]
+    static let kegTop = CGPoint(x: 330, y: 432)
 
-    /// Tap areas for each activity, in room space.
+    /// Tap areas for each activity, in room space, checked in this order.
+    static let hotspotOrder: [Activity] = [.keg, .bong, .flip, .pong, .games, .couch]
+
     static func hotspot(_ activity: Activity) -> CGRect {
         switch activity {
-        case .games: return CGRect(x: 20, y: 180, width: 320, height: 450)
-        case .couch: return CGRect(x: 350, y: 330, width: 360, height: 160)
-        case .bong: return CGRect(x: 390, y: 495, width: 300, height: 140)
-        case .pong: return CGRect(x: 700, y: 450, width: 300, height: 180)
+        case .keg: return CGRect(x: 296, y: 400, width: 70, height: 90)
+        case .games: return CGRect(x: 20, y: 180, width: 276, height: 450)
+        case .couch: return CGRect(x: 350, y: 330, width: 360, height: 165)
+        case .bong: return CGRect(x: 462, y: 495, width: 150, height: 52)
+        case .flip: return CGRect(x: 420, y: 556, width: 240, height: 84)
+        case .pong: return CGRect(x: 700, y: 440, width: 300, height: 200)
         }
     }
 
@@ -76,8 +94,10 @@ final class HangoutModel: ObservableObject {
         var start: Double
         var duration: Double
         var spot: Int?
+        var activity: Activity?
         var nextDecision: Double
         var actionStart: Double = -100
+        var drinkStart: Double = -100
         let seed = Double.random(in: 0...10)
 
         func position(at t: Double) -> CGPoint {
@@ -89,28 +109,89 @@ final class HangoutModel: ObservableObject {
         func isWalking(at t: Double) -> Bool { t >= start && t < start + duration }
     }
 
+    /// A ping pong ball: an arc to the cups, then either in or off the table.
     struct Ball {
+        static let flight = 0.8
+        static let roll = 0.6
         var from: CGPoint
         var to: CGPoint
+        var start: Double
+        var hit: Bool
+        var bounce: CGPoint
+
+        func position(at t: Double) -> CGPoint? {
+            let k = (t - start) / Self.flight
+            guard k >= 0 else { return nil }
+            if k <= 1 {
+                return CGPoint(x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k - 110 * sin(.pi * k))
+            }
+            guard !hit else { return nil }
+            let j = (t - start - Self.flight) / Self.roll
+            guard j <= 1 else { return nil }
+            return CGPoint(x: to.x + (bounce.x - to.x) * j, y: to.y + (bounce.y - to.y) * j - 50 * sin(.pi * j))
+        }
+    }
+
+    struct Splash {
+        var point: CGPoint
         var start: Double
     }
 
     struct Puff {
         var origin: CGPoint
         var start: Double
+        var size: Double = 1
     }
+
+    enum FlipStage { case ready, drinking, flipping, landed }
+
+    struct FlipLane {
+        var stage: FlipStage = .ready
+        var start = 0.0
+        var success = false
+    }
+
+    static let drinkLength = 1.6
+    static let flipDrink = 1.6
+    static let flipTry = 0.9
+    static let kegLength = 7.5
+    static let ripLength = 9.0
 
     private(set) var people: [Int: Person] = [:]
     private(set) var balls: [Ball] = []
+    private(set) var splashes: [Splash] = []
     private(set) var puffs: [Puff] = []
     var me: Int?
+
+    /// Cups still standing at each end of the pong table, left end first.
+    private(set) var pongCups = [[Bool]](repeating: [Bool](repeating: true, count: 6), count: 2)
+    private(set) var pongWinner: Int?
+    private var pongTurn = 0
+    private var pongNext = 0.0
+
+    private(set) var flipLanes = [FlipLane(), FlipLane()]
+    private(set) var flipWinner: Int?
+    private var flipRacing = false
+    private var flipNext = 0.0
+
+    private(set) var kegStart = -100.0
+    private var kegNext = 0.0
+
+    private(set) var bongUser: Int?
+    private(set) var bongStart = -100.0
+    private var bongNext = 0.0
+    private var lastBongUser: Int?
+    private var wantsRip: Int?
+
+    private var lastCompany = 0.0
+    private var later: [(Double, () -> Void)] = []
 
     static var now: Double { Date().timeIntervalSinceReferenceDate }
 
     private var timer: Timer?
 
     init() {
-        timer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in self?.tick() }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in self?.tick() }
     }
 
     deinit { timer?.invalidate() }
@@ -121,6 +202,7 @@ final class HangoutModel: ObservableObject {
         self.me = me
         let now = Self.now
         let ids = Set(guests.map(\.id))
+        for id in people.keys where !ids.contains(id) { leave(id) }
         people = people.filter { ids.contains($0.key) }
         for (index, guest) in guests.enumerated() {
             if var person = people[guest.id] {
@@ -128,8 +210,8 @@ final class HangoutModel: ObservableObject {
                 person.guest = guest
                 people[guest.id] = person
                 if guest.dimmed && !wasDimmed {
+                    leave(guest.id)
                     walk(guest.id, to: Self.door, now: now)
-                    people[guest.id]?.spot = nil
                 }
             } else {
                 let start = Self.startPoint(index)
@@ -140,9 +222,9 @@ final class HangoutModel: ObservableObject {
     }
 
     private static func startPoint(_ index: Int) -> CGPoint {
-        let points: [CGPoint] = [CGPoint(x: 520, y: 560), CGPoint(x: 360, y: 540), CGPoint(x: 680, y: 545), CGPoint(x: 440, y: 600),
-                                 CGPoint(x: 600, y: 610), CGPoint(x: 300, y: 500), CGPoint(x: 760, y: 520), CGPoint(x: 220, y: 610),
-                                 CGPoint(x: 840, y: 600), CGPoint(x: 120, y: 480)]
+        let points: [CGPoint] = [CGPoint(x: 520, y: 575), CGPoint(x: 360, y: 545), CGPoint(x: 680, y: 545), CGPoint(x: 470, y: 600),
+                                 CGPoint(x: 600, y: 600), CGPoint(x: 300, y: 520), CGPoint(x: 760, y: 520), CGPoint(x: 220, y: 615),
+                                 CGPoint(x: 840, y: 610), CGPoint(x: 120, y: 500)]
         return points[index % points.count]
     }
 
@@ -151,24 +233,48 @@ final class HangoutModel: ObservableObject {
     /// You tapped the room: go do that activity, or walk to that spot on the floor.
     func tap(_ point: CGPoint) {
         guard let me, people[me]?.guest.dimmed == false else { return }
-        for activity in Activity.allCases where Self.hotspot(activity).contains(point) {
+        for activity in Self.hotspotOrder where Self.hotspot(activity).contains(point) {
             go(me, to: activity)
             return
         }
-        let floor = CGPoint(x: min(max(point.x, 40), 960), y: min(max(point.y, 495), 625))
         if point.y >= Self.floorTop - 40 {
-            people[me]?.spot = nil
-            walk(me, to: floor, now: Self.now)
+            leave(me)
+            walk(me, to: CGPoint(x: min(max(point.x, 40), 960), y: min(max(point.y, 495), 625)), now: Self.now)
         }
     }
 
     func go(_ id: Int, to activity: Activity) {
-        let taken = Set(people.values.compactMap { $0.key(excluding: id) })
-        guard let index = Self.spots.indices.first(where: { Self.spots[$0].activity == activity && !taken.contains($0) })
-                ?? Self.spots.indices.first(where: { Self.spots[$0].activity == activity && people[id]?.spot == $0 }) else { return }
+        guard let person = people[id], !person.guest.dimmed else { return }
+        if person.activity == activity, person.spot != nil {
+            // Already there: tapping again means do it now.
+            if id == me { goAgain(id, activity) }
+            return
+        }
+        let taken = Set(people.filter { $0.key != id }.compactMap { $0.value.spot })
+        let free = Self.spots.indices.filter { Self.spots[$0].uses.contains(activity) && !taken.contains($0) }
+        guard let index = free.first(where: { Self.spots[$0].uses.first == activity }) ?? free.first else { return }
+        leave(id)
         people[id]?.spot = index
+        people[id]?.activity = activity
         walk(id, to: Self.spots[index].point, now: Self.now)
-        people[id]?.actionStart = Self.now + 1
+        if activity == .bong && id == me { wantsRip = id }
+    }
+
+    private func goAgain(_ id: Int, _ activity: Activity) {
+        switch activity {
+        case .bong: wantsRip = id
+        case .keg: if people[id]?.spot == Self.kegSpots[0] { kegNext = 0 }
+        default: break
+        }
+    }
+
+    /// Stops whatever this person was doing.
+    private func leave(_ id: Int) {
+        if bongUser == id { bongUser = nil; bongNext = Self.now + 1 }
+        if wantsRip == id { wantsRip = nil }
+        if people[id]?.spot == Self.kegSpots[0] { kegStart = -100 }
+        people[id]?.spot = nil
+        people[id]?.activity = nil
     }
 
     private func walk(_ id: Int, to target: CGPoint, now: Double) {
@@ -179,57 +285,276 @@ final class HangoutModel: ObservableObject {
         person.to = target
         person.start = now
         person.duration = Double(distance / 150)
-        person.nextDecision = now + person.duration + Double.random(in: 3...8)
+        person.nextDecision = now + person.duration + Double.random(in: 4...9)
         people[id] = person
     }
 
-    // MARK: Everyone else
+    private func after(_ delay: Double, _ action: @escaping () -> Void) {
+        later.append((Self.now + delay, action))
+    }
 
-    /// Called about once a second: bots and other players pick something to do, and people at
-    /// the beer pong table or the bong take their turns.
+    /// Whoever has arrived at a spot.
+    private func occupant(_ spot: Int, _ now: Double) -> Int? {
+        people.first { $0.value.spot == spot && !$0.value.guest.dimmed && !$0.value.isWalking(at: now) }?.key
+    }
+
+    // MARK: The clock
+
     func tick() {
         let now = Self.now
-        balls.removeAll { now - $0.start > 1.6 }
-        puffs.removeAll { now - $0.start > 3 }
-        for (id, person) in people {
-            guard !person.guest.dimmed else { continue }
-            let walking = person.isWalking(at: now)
-            if let spot = person.spot, !walking {
-                switch Self.spots[spot].activity {
-                case .pong where now - person.actionStart > 2.2 && Double.random(in: 0...1) < 0.5:
-                    shoot(id, spot: spot, now: now)
-                case .bong where now - person.actionStart > 5 && Double.random(in: 0...1) < 0.3:
-                    people[id]?.actionStart = now
-                    let origin = person.to
-                    let scale = Self.scale(at: origin.y)
-                    puffs.append(Puff(origin: CGPoint(x: origin.x + 8 * scale, y: origin.y - 160 * scale + 34 * scale), start: now + 1.1))
-                default:
-                    break
+        let due = later.filter { $0.0 <= now }
+        later.removeAll { $0.0 <= now }
+        due.forEach { $0.1() }
+        balls.removeAll { now - $0.start > 2 }
+        splashes.removeAll { now - $0.start > 0.6 }
+        puffs.removeAll { now - $0.start > 4 }
+        tickPong(now)
+        tickFlip(now)
+        tickKeg(now)
+        tickBong(now)
+        bringCompany(now)
+        decide(now)
+    }
+
+    // MARK: Beer pong
+
+    private func tickPong(_ now: Double) {
+        guard occupant(Self.pongSpots[0], now) != nil, occupant(Self.pongSpots[1], now) != nil,
+              pongWinner == nil, now >= pongNext else { return }
+        shoot(side: pongTurn, now: now)
+    }
+
+    private func shoot(side: Int, now: Double) {
+        let target = 1 - side
+        let open = pongCups[target].indices.filter { pongCups[target][$0] }
+        guard let cup = open.randomElement(), let shooter = occupant(Self.pongSpots[side], now) else { return }
+        people[shooter]?.actionStart = now
+        let from = Self.spots[Self.pongSpots[side]].point
+        let scale = Self.scale(at: from.y)
+        let dir: CGFloat = side == 0 ? 1 : -1
+        let hand = CGPoint(x: from.x + dir * 50 * scale, y: from.y - 210 * scale)
+        let cupPoint = RoomArt.pongCup(side: target, index: cup)
+        let hit = Double.random(in: 0...1) < 0.42
+        let to = hit ? CGPoint(x: cupPoint.x, y: cupPoint.y - 15)
+                     : CGPoint(x: cupPoint.x + CGFloat.random(in: -18...18), y: cupPoint.y - 20)
+        let bounce = CGPoint(x: to.x + dir * CGFloat.random(in: 70...120), y: 640)
+        balls.append(Ball(from: hand, to: to, start: now + 0.3, hit: hit, bounce: bounce))
+        pongTurn = target
+        pongNext = now + (hit ? 4 : 2.4)
+        guard hit else { return }
+        after(0.3 + Ball.flight) { [weak self] in self?.splashes.append(Splash(point: to, start: Self.now)) }
+        after(1.7) { [weak self] in self?.pullCup(side: target, index: cup) }
+    }
+
+    /// The cup that got hit comes off the table and the defender drinks it.
+    private func pullCup(side: Int, index: Int) {
+        let now = Self.now
+        pongCups[side][index] = false
+        if let defender = occupant(Self.pongSpots[side], now) { people[defender]?.drinkStart = now }
+        if !pongCups[side].contains(true) {
+            pongWinner = 1 - side
+            after(5) { [weak self] in self?.rerack() }
+        }
+    }
+
+    private func rerack() {
+        pongCups = [[Bool]](repeating: [Bool](repeating: true, count: 6), count: 2)
+        pongWinner = nil
+        pongNext = Self.now + 1.5
+    }
+
+    // MARK: Flip cup
+
+    private func tickFlip(_ now: Double) {
+        let players = Self.flipSpots.map { occupant($0, now) }
+        if !flipRacing {
+            guard players.contains(where: { $0 != nil }), now >= flipNext else { return }
+            flipRacing = true
+            flipWinner = nil
+            for lane in 0..<2 {
+                flipLanes[lane] = FlipLane(stage: players[lane] == nil ? .ready : .drinking, start: now)
+            }
+            return
+        }
+        for lane in 0..<2 {
+            var current = flipLanes[lane]
+            if players[lane] == nil && current.stage != .landed { current.stage = .ready }
+            switch current.stage {
+            case .drinking where now - current.start >= Self.flipDrink:
+                current = FlipLane(stage: .flipping, start: now, success: Double.random(in: 0...1) < 0.3)
+            case .flipping where now - current.start >= Self.flipTry:
+                if current.success {
+                    current.stage = .landed
+                    current.start = now
+                    if flipWinner == nil && players[1 - lane] != nil { flipWinner = lane }
+                } else {
+                    current.start = now
+                    current.success = Double.random(in: 0...1) < 0.35
                 }
+            default:
+                break
             }
-            guard id != me, now > person.nextDecision, !walking else { continue }
-            if person.spot != nil && Double.random(in: 0...1) < 0.5 {
-                people[id]?.nextDecision = now + Double.random(in: 4...9)
-                continue
-            }
-            if Double.random(in: 0...1) < 0.65, let activity = Activity.allCases.randomElement() {
-                go(id, to: activity)
-                if people[id]?.spot == person.spot { people[id]?.nextDecision = now + 3 }
-            } else {
-                people[id]?.spot = nil
-                walk(id, to: CGPoint(x: CGFloat.random(in: 60...940), y: CGFloat.random(in: 500...620)), now: now)
+            flipLanes[lane] = current
+        }
+        let stillGoing = flipLanes.contains { $0.stage == .drinking || $0.stage == .flipping }
+        if flipWinner != nil || !stillGoing {
+            flipRacing = false
+            flipNext = now + 3.2
+            after(3) { [weak self] in
+                guard let self, !self.flipRacing else { return }
+                self.flipLanes = [FlipLane(), FlipLane()]
+                self.flipWinner = nil
             }
         }
     }
 
-    private func shoot(_ id: Int, spot: Int, now: Double) {
-        people[id]?.actionStart = now
-        let from = Self.spots[spot].point
-        let scale = Self.scale(at: from.y)
-        let hand = CGPoint(x: from.x + 60 * scale, y: from.y - 200 * scale)
-        let towardRight = from.x < 800
-        let to = CGPoint(x: towardRight ? CGFloat.random(in: 905...945) : CGFloat.random(in: 745...785), y: 462)
-        balls.append(Ball(from: hand, to: to, start: now + 0.3))
+    /// The cup on the table for one side of flip cup: nil while it's in someone's hand.
+    func flipCup(lane: Int, at t: Double) -> (angle: Double, lift: CGFloat, full: Bool)? {
+        let state = flipLanes[lane]
+        let elapsed = t - state.start
+        switch state.stage {
+        case .ready:
+            return (0, 0, true)
+        case .drinking:
+            return elapsed < Self.flipDrink ? nil : (0, 0, false)
+        case .landed:
+            return (180, 0, false)
+        case .flipping:
+            let k = elapsed / Self.flipTry
+            guard k > 0.35 else { return (0, 0, false) }
+            if state.success {
+                let e = min(1, (k - 0.35) / 0.4)
+                return (180 * e, 46 * CGFloat(sin(.pi * e)), false)
+            }
+            let e = min(1, (k - 0.35) / 0.45)
+            return (130 * sin(.pi * e), 34 * CGFloat(sin(.pi * e)), false)
+        }
+    }
+
+    // MARK: Keg stands
+
+    private func tickKeg(_ now: Double) {
+        guard now - kegStart >= Self.kegLength else { return }
+        // Whoever's waiting steps up to the keg.
+        if occupant(Self.kegSpots[0], now) == nil, let waiting = occupant(Self.kegSpots[1], now) {
+            people[waiting]?.spot = Self.kegSpots[0]
+            walk(waiting, to: Self.spots[Self.kegSpots[0]].point, now: now)
+            return
+        }
+        guard let doer = occupant(Self.kegSpots[0], now), now >= kegNext else { return }
+        kegStart = now
+        let holder = occupant(Self.kegSpots[1], now)
+        after(Self.kegLength) { [weak self] in self?.kegDone(doer: doer, holder: holder) }
+    }
+
+    /// The friend who held your legs goes next.
+    private func kegDone(doer: Int, holder: Int?) {
+        let now = Self.now
+        kegNext = now + 2.5
+        guard let holder, people[doer]?.spot == Self.kegSpots[0], people[holder]?.spot == Self.kegSpots[1] else { return }
+        people[doer]?.spot = Self.kegSpots[1]
+        people[holder]?.spot = Self.kegSpots[0]
+        walk(doer, to: Self.spots[Self.kegSpots[1]].point, now: now)
+        walk(holder, to: Self.spots[Self.kegSpots[0]].point, now: now)
+    }
+
+    /// How far over the person on the keg is: 0 standing, 1 upside down.
+    static func kegFlip(_ seconds: Double) -> Double {
+        switch seconds {
+        case 0.6..<1.4: return smooth((seconds - 0.6) / 0.8)
+        case 1.4..<5.6: return 1
+        case 5.6..<6.3: return 1 - smooth((seconds - 5.6) / 0.7)
+        default: return 0
+        }
+    }
+
+    static func smooth(_ x: Double) -> Double { x * x * (3 - 2 * x) }
+
+    // MARK: The bong
+
+    private func tickBong(_ now: Double) {
+        if let user = bongUser {
+            if now - bongStart >= Self.ripLength || people[user]?.activity != .bong {
+                bongUser = nil
+                lastBongUser = user
+                bongNext = now + 2.5
+            }
+            return
+        }
+        let seated = Self.spots.indices.filter { Self.spots[$0].uses.first == .bong }
+            .compactMap { occupant($0, now) }
+            .filter { people[$0]?.activity == .bong }
+        guard !seated.isEmpty else { return }
+        let pick: Int
+        if let wanting = wantsRip, seated.contains(wanting) {
+            pick = wanting
+            wantsRip = nil
+        } else {
+            guard now >= bongNext else { return }
+            pick = seated.first { $0 != lastBongUser } ?? seated[0]
+        }
+        bongUser = pick
+        bongStart = now
+        // The big exhale after holding it in
+        after(0.8 * Self.ripLength) { [weak self] in
+            guard let self, self.bongUser == pick, let seat = self.people[pick]?.to else { return }
+            let scale = Self.scale(at: seat.y)
+            self.puffs.append(Puff(origin: CGPoint(x: seat.x + 4 * scale, y: seat.y - 122 * scale), start: Self.now, size: 1.7))
+        }
+    }
+
+    /// Whether the bong is sitting on the coffee table right now.
+    func bongOnTable(at t: Double) -> Bool {
+        guard bongUser != nil else { return true }
+        let k = (t - bongStart) / Self.ripLength
+        return k < 0.06 || k > 0.72
+    }
+
+    // MARK: Everyone else
+
+    /// Someone to play with when you walk up to the pong table, flip cup or the keg alone.
+    private func bringCompany(_ now: Double) {
+        guard let me, now - lastCompany > 4, let mine = people[me], let spot = mine.spot, !mine.isWalking(at: now) else { return }
+        let group: [Int]
+        switch mine.activity {
+        case .pong?: group = Self.pongSpots
+        case .flip?: group = Self.flipSpots
+        case .keg?: group = Self.kegSpots
+        default: return
+        }
+        guard group.contains(spot), !people.contains(where: { $0.key != me && $0.value.spot.map(group.contains) == true }) else { return }
+        let free = people.filter { $0.key != me && !$0.value.guest.dimmed && !busy($0.key, now) }.map(\.key)
+        guard let friend = free.randomElement(), let activity = mine.activity else { return }
+        lastCompany = now
+        go(friend, to: activity)
+    }
+
+    /// In the middle of a game or a turn, so they stay put.
+    private func busy(_ id: Int, _ now: Double) -> Bool {
+        guard let spot = people[id]?.spot else { return false }
+        if bongUser == id { return true }
+        if Self.kegSpots.contains(spot) && now - kegStart < Self.kegLength { return true }
+        if Self.flipSpots.contains(spot) && flipRacing { return true }
+        if Self.pongSpots.contains(spot) && pongWinner == nil && pongCups.allSatisfy({ $0.contains(true) })
+            && Self.pongSpots.allSatisfy({ occupant($0, now) != nil }) { return true }
+        return false
+    }
+
+    private func decide(_ now: Double) {
+        for (id, person) in people where id != me && !person.guest.dimmed {
+            guard now > person.nextDecision, !person.isWalking(at: now), !busy(id, now) else { continue }
+            people[id]?.nextDecision = now + 3
+            if person.spot != nil && Double.random(in: 0...1) < 0.5 {
+                people[id]?.nextDecision = now + Double.random(in: 5...10)
+                continue
+            }
+            if Double.random(in: 0...1) < 0.75, let activity = Activity.allCases.randomElement() {
+                go(id, to: activity)
+            } else {
+                leave(id)
+                walk(id, to: CGPoint(x: CGFloat.random(in: 60...940), y: CGFloat.random(in: 505...620)), now: now)
+            }
+        }
     }
 
     /// People get bigger as they come toward the front of the room.
@@ -239,16 +564,39 @@ final class HangoutModel: ObservableObject {
 
     func pose(for person: Person, at t: Double) -> CartoonPerson.Pose {
         if person.isWalking(at: t) { return .walk((t - person.start) * 9) }
-        if let spot = person.spot {
-            switch Self.spots[spot].activity {
-            case .games: return .game
-            case .couch: return .sit
-            case .pong:
-                let k = (t - person.actionStart) / 0.8
-                return k >= 0 && k <= 1 ? .pongThrow(k) : .stand
+        let id = person.guest.id
+        if t - person.drinkStart >= 0, t - person.drinkStart < Self.drinkLength {
+            return .drink((t - person.drinkStart) / Self.drinkLength)
+        }
+        if let spot = person.spot, let activity = person.activity {
+            switch activity {
+            case .games:
+                return .game
+            case .couch:
+                return .sit
             case .bong:
-                let k = (t - person.actionStart) / 2.4
-                return k >= 0 && k <= 1 ? .bong(k) : .sit
+                let k = (t - bongStart) / Self.ripLength
+                return bongUser == id && k >= 0 && k <= 1 ? .bong(k) : .sit
+            case .pong:
+                let side = Self.pongSpots.firstIndex(of: spot) ?? 0
+                if pongWinner == side { return .cheer(t + person.seed) }
+                let k = (t - person.actionStart) / 0.8
+                return k >= 0 && k <= 1 ? .pongThrow(k, side == 0 ? 1 : -1) : .stand
+            case .flip:
+                let lane = Self.flipSpots.firstIndex(of: spot) ?? 0
+                let state = flipLanes[lane]
+                let elapsed = t - state.start
+                switch state.stage {
+                case .drinking where elapsed < Self.flipDrink: return .drink(elapsed / Self.flipDrink)
+                case .flipping where elapsed < Self.flipTry: return .flick(elapsed / Self.flipTry, lane == 0 ? 1 : -1)
+                case .landed where flipWinner == lane && elapsed < 2.8: return .cheer(t + person.seed)
+                default: return .stand
+                }
+            case .keg:
+                let seconds = t - kegStart
+                guard seconds >= 0, seconds < Self.kegLength else { return .stand }
+                if spot == Self.kegSpots[0] { return .kegStand(seconds) }
+                return seconds > 0.6 && seconds < 6.3 ? .holdLegs : .stand
             }
         }
         if person.guest.highlighted {
@@ -257,8 +605,4 @@ final class HangoutModel: ObservableObject {
         }
         return .stand
     }
-}
-
-private extension HangoutModel.Person {
-    func key(excluding id: Int) -> Int? { guest.id == id ? nil : spot }
 }

@@ -99,13 +99,12 @@ final class GameStateTests: XCTestCase {
         throw XCTSkip("seed never reached the setup")
     }
 
-    func testRandomBoardKeepsAirlocksLate() {
-        for seed in 0..<50 {
-            let game = GameState(names: names(8), boardMode: .random, seed: UInt64(seed))
-            XCTAssertEqual(game.powers.count, 5)
-            XCTAssertEqual(game.powers[3], .airlock)
-            XCTAssertEqual(game.powers[4], .airlock)
-            XCTAssertTrue(game.powers[0..<3].contains { $0 != nil })
+    func testHouseBoardAtEveryTableSize() {
+        for count in 5...10 {
+            for mode in [BoardMode.classic, .random] {
+                let game = GameState(names: names(count), boardMode: mode, seed: 7)
+                XCTAssertEqual(game.powers, [nil, nil, .scan, .sensorSweep, .airlock])
+            }
         }
     }
 

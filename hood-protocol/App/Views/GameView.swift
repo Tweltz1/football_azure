@@ -6,6 +6,7 @@ struct GameView: View {
     let onQuit: () -> Void
 
     @State private var showingRole = false
+    @State private var showingRules = false
     @State private var unlocked: [String] = []
 
     var body: some View {
@@ -42,7 +43,9 @@ struct GameView: View {
         .navigationBarBackButtonHidden()
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { Button("Leave", action: onQuit) }
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { showingRules = true } label: { Image(systemName: "book.fill") }
+                    .accessibilityLabel("How to play")
                 Button { showingRole = true } label: { Image(systemName: "person.text.rectangle") }
                     .disabled(!table.hasSeenRole)
             }
@@ -53,6 +56,11 @@ struct GameView: View {
         .sheet(isPresented: $showingRole) {
             if let view = table.view {
                 RoleCard(view: view).padding().presentationDetents([.medium])
+            }
+        }
+        .sheet(isPresented: $showingRules) {
+            NavigationStack {
+                RulesView().toolbar { Button("Done") { showingRules = false } }
             }
         }
     }
@@ -93,21 +101,80 @@ struct GameView: View {
 struct RoleRevealView: View {
     let view: PlayerView
     let onReady: () -> Void
-    @State private var revealed = false
+    @State private var stage = 0
 
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            LookPortrait(code: view.seats[view.mySeat].info.look, size: 110)
-            if revealed {
-                RoleCard(view: view)
-                Button("I'm ready", action: onReady).buttonStyle(.borderedProminent)
-            } else {
+            switch stage {
+            case 0:
+                LookPortrait(code: view.seats[view.mySeat].info.look, size: 110)
                 Text("Your secret role is waiting.").font(.title3)
                 Text("Make sure nobody's looking at your screen.").font(.footnote).foregroundStyle(.secondary)
-                Button("Reveal my role") { withAnimation { revealed = true } }.buttonStyle(.borderedProminent)
+                Button("Reveal my role") { withAnimation { stage = 1 } }.buttonStyle(.borderedProminent)
+            case 1:
+                LookPortrait(code: view.seats[view.mySeat].info.look, size: 110)
+                RoleCard(view: view, showAllies: false)
+                Button("Lights out") { withAnimation(.easeInOut(duration: 0.6)) { stage = 2 } }.buttonStyle(.borderedProminent)
+            default:
+                LightsOutView(view: view)
+                Button("Lights on", action: onReady).buttonStyle(.borderedProminent)
             }
             Spacer()
+        }
+    }
+}
+
+/// Heads down at the start of the night. Narcs open their eyes and see each other, and the Snitch
+/// puts a thumb up so the Narcs know who it is. Everyone gets the same screen length, so nobody's
+/// phone gives them away.
+struct LightsOutView: View {
+    let view: PlayerView
+
+    var body: some View {
+        let narcs = view.seats.filter { $0.role != nil && $0.role != .crew }
+        let sees = view.myRole != .crew && narcs.contains { $0.id != view.mySeat }
+        VStack(spacing: 18) {
+            Image(systemName: "moon.stars.fill").font(.system(size: 44)).foregroundStyle(Theme.warning)
+            Text("Lights out").font(.largeTitle.weight(.black))
+            Text(message(sees: sees)).multilineTextAlignment(.center).foregroundStyle(.secondary)
+            if sees {
+                VStack(spacing: 10) {
+                    ForEach(narcs) { seat in
+                        HStack(spacing: 10) {
+                            LookPortrait(code: seat.info.look, size: 34)
+                            Text(seat.id == view.mySeat ? "You" : seat.info.name).font(.headline)
+                            Spacer()
+                            if seat.role == .rogueAI {
+                                Label("Snitch", systemImage: "hand.thumbsup.fill").foregroundStyle(Theme.rogue).font(.subheadline.weight(.bold))
+                            } else {
+                                Text("Narc").foregroundStyle(Theme.breach).font(.subheadline.weight(.bold))
+                            }
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+            } else if view.myRole == .rogueAI {
+                Image(systemName: "hand.thumbsup.fill").font(.system(size: 60)).foregroundStyle(Theme.rogue)
+            } else {
+                Image(systemName: "eye.slash.fill").font(.system(size: 50)).foregroundStyle(.secondary)
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity)
+        .background(Color(hex: 0x07060F), in: RoundedRectangle(cornerRadius: 24))
+    }
+
+    private func message(sees: Bool) -> String {
+        switch view.myRole {
+        case .crew:
+            return "Heads down, eyes closed. The Narcs are looking around the room right now. Wait for the lights."
+        case .saboteur:
+            return "Open your eyes. These are the Narcs. The one with a thumb up is the Snitch."
+        case .rogueAI:
+            return sees ? "Thumb up. At a small table you get to look too: these are your Narcs."
+                        : "Put your thumb up and keep your eyes closed. The Narcs see you, but you don't know who they are."
         }
     }
 }
@@ -154,9 +221,10 @@ struct RoleRevealButton: View {
 
 struct RoleCard: View {
     let view: PlayerView
+    var showAllies = true
 
     var body: some View {
-        let allies = view.seats.filter { $0.id != view.mySeat && $0.role != nil && $0.role != .crew }
+        let allies = showAllies ? view.seats.filter { $0.id != view.mySeat && $0.role != nil && $0.role != .crew } : []
         VStack(spacing: 12) {
             Text(view.myRole.title).font(.largeTitle.weight(.black)).foregroundStyle(view.myRole.color)
             Text(view.myRole.goal).multilineTextAlignment(.center).foregroundStyle(.secondary)

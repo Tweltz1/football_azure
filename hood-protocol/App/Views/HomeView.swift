@@ -229,29 +229,3 @@ struct OnlineJoinView: View {
         .padding(24)
     }
 }
-
-struct RulesView: View {
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                rule("The Crew", "Most players are Crew. Pass 5 Chill house rules, or kick the Snitch out of the basement, to win.")
-                rule("The Narcs", "A few players are Narcs, and one of them is the Snitch. Narcs know each other. They win with 6 Busted rules, or by getting the Snitch made Wingman once 3 Busted rules have passed.")
-                rule("Each round", "The Host picks a Wingman and everyone votes. If the vote passes, the Host draws 3 house rules and tosses 1, then the Wingman passes 1 of the other 2.")
-                rule("Drama", "Every failed vote adds drama. At 3, the parents come downstairs and the top rule passes on its own.")
-                rule("Powers", "Some Busted rules give the Host a power: a bong rip (see who someone really is), check the group chat (peek at the next 3 rules), grab the remote (pick the next Host), or kick someone out.")
-                rule("Veto", "After 5 Busted rules, the Wingman can ask to toss the whole hand if the Host agrees. That adds drama.")
-                rule("Bots", "Short on friends? Empty seats are filled by bots from the Hood crew.")
-            }
-            .padding()
-        }
-        .background(Theme.background)
-        .navigationTitle("How to play")
-    }
-
-    private func rule(_ title: String, _ body: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.headline)
-            Text(body).foregroundStyle(.secondary)
-        }
-    }
-}

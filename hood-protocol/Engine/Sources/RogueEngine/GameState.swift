@@ -64,23 +64,15 @@ public struct GameState: Sendable {
         [5: 3, 6: 4, 7: 4, 8: 5, 9: 5, 10: 6][players] ?? 3
     }
 
-    public static func classicBoard(for players: Int) -> [Power?] {
-        switch players {
-        case ...6: return [nil, nil, .sensorSweep, .airlock, .airlock]
-        case 7...8: return [nil, .scan, .emergencyCommand, .airlock, .airlock]
-        default: return [.scan, .scan, .emergencyCommand, .airlock, .airlock]
-        }
-    }
+    /// The house power order at every table size: 3rd Busted a bong rip, 4th a peek at the
+    /// next 3 rules, 5th kicks someone out. The 6th wins it for the Narcs.
+    public static let houseBoard: [Power?] = [nil, nil, .scan, .sensorSweep, .airlock]
 
+    public static func classicBoard(for players: Int) -> [Power?] { houseBoard }
+
+    /// Older lobbies may still ask for the random board; everyone plays the house order now.
     static func board(for players: Int, mode: BoardMode, rng: inout SeededRNG) -> [Power?] {
-        var board = classicBoard(for: players)
-        guard mode == .random else { return board }
-        var early = Array(board[0..<3])
-        let swapIndex = Int.random(in: 0..<3, using: &rng)
-        early[swapIndex] = [Power.scan, .sensorSweep, .emergencyCommand].randomElement(using: &rng)
-        early.shuffle(using: &rng)
-        board.replaceSubrange(0..<3, with: early)
-        return board
+        houseBoard
     }
 
     // MARK: - Queries

@@ -44,7 +44,7 @@ extension Power {
 
     var hint: String {
         switch self {
-        case .scan: return "Take a rip and see who someone really is."
+        case .scan: return "Pick someone to take a rip. Only you see if they're Crew or a Narc."
         case .sensorSweep: return "See the next 3 house rules."
         case .emergencyCommand: return "Pick who hosts next."
         case .airlock: return "Send someone home. If it's the Snitch, the Crew wins."

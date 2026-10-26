@@ -35,7 +35,6 @@ enum RoomArt {
         ctx.fill(Path(ellipseIn: CGRect(x: 300, y: 530, width: 420, height: 80)), with: .color(Color(hex: 0xB9A9FF)))
 
         tv(ctx, time: t)
-        lamp(ctx)
         couch(ctx)
 
         // A touch of evening blue that never makes the room dark
@@ -244,18 +243,6 @@ enum RoomArt {
         ctx.fill(Path(ellipseIn: CGRect(x: r.minX + 20, y: r.maxY - 26, width: 5, height: 5)), with: .color(Color(hex: 0xFF5A5A)))
     }
 
-    private static func lamp(_ ctx: GraphicsContext) {
-        ctx.fill(Path(ellipseIn: CGRect(x: 230, y: 230, width: 150, height: 150)), with: .color(Color(hex: 0xFFE3A0).opacity(0.35)))
-        var pole = Path()
-        pole.move(to: CGPoint(x: 330, y: 300)); pole.addLine(to: CGPoint(x: 330, y: 470))
-        ctx.stroke(pole, with: .color(ink), style: StrokeStyle(lineWidth: 7, lineCap: .round))
-        outlined(ctx, Path(ellipseIn: CGRect(x: 306, y: 462, width: 48, height: 14)), Color(hex: 0x3A3A44), width: 3)
-        var shade = Path()
-        shade.move(to: CGPoint(x: 300, y: 260)); shade.addLine(to: CGPoint(x: 360, y: 260))
-        shade.addLine(to: CGPoint(x: 378, y: 306)); shade.addLine(to: CGPoint(x: 282, y: 306)); shade.closeSubpath()
-        outlined(ctx, shade, Color(hex: 0xFFE7AE))
-    }
-
     private static func couch(_ ctx: GraphicsContext) {
         let purple = Color(hex: 0x7B5CC8)
         outlined(ctx, Path(roundedRect: CGRect(x: 380, y: 330, width: 300, height: 110), cornerRadius: 36), purple)
@@ -270,12 +257,14 @@ enum RoomArt {
     // MARK: Furniture people can walk in front of or behind
 
     /// Each piece with the floor line people are sorted against.
-    static func furniture(time t: Double) -> [(CGFloat, (GraphicsContext) -> Void)] {
+    static func furniture(_ model: HangoutModel, time t: Double) -> [(CGFloat, (GraphicsContext) -> Void)] {
         [
+            (478, { keg($0) }),
             (555, { beanbag($0, center: CGPoint(x: 150, y: 562), color: Color(hex: 0xFF6B6B)) }),
             (585, { beanbag($0, center: CGPoint(x: 262, y: 592), color: Color(hex: 0x2F80ED)) }),
-            (590, { coffeeTable($0) }),
-            (545, { pongTable($0) }),
+            (540, { coffeeTable($0, bong: model.bongOnTable(at: t), time: t) }),
+            (545, { pongTable($0, cups: model.pongCups) }),
+            (626, { flipTable($0, model: model, time: t) }),
         ]
     }
 
@@ -284,36 +273,141 @@ enum RoomArt {
         ctx.fill(Path(ellipseIn: CGRect(x: center.x - 30, y: center.y - 36, width: 40, height: 14)), with: .color(.white.opacity(0.25)))
     }
 
-    private static func coffeeTable(_ ctx: GraphicsContext) {
-        for x in [462.0, 610] {
-            outlined(ctx, Path(roundedRect: CGRect(x: x, y: 548, width: 12, height: 42), cornerRadius: 3), Color(hex: 0x6B4A30), width: 3)
+    /// A keg on ice in a blue tub, with the tap and hose on top.
+    private static func keg(_ ctx: GraphicsContext) {
+        let top = HangoutModel.kegTop
+        let steel = Color(hex: 0xC9CED6)
+        outlined(ctx, Path(roundedRect: CGRect(x: top.x - 26, y: top.y, width: 52, height: 46), cornerRadius: 6), steel, width: 4)
+        for y in [top.y + 12, top.y + 30] {
+            outlined(ctx, Path(roundedRect: CGRect(x: top.x - 28, y: y, width: 56, height: 6), cornerRadius: 3), Color(hex: 0xA8AEB8), width: 2.5)
         }
-        outlined(ctx, Path(roundedRect: CGRect(x: 445, y: 532, width: 190, height: 22), cornerRadius: 6), Color(hex: 0x9A6B44))
-        // Pizza box
-        outlined(ctx, Path(roundedRect: CGRect(x: 548, y: 520, width: 70, height: 14), cornerRadius: 3), Color(hex: 0xE2C08E), width: 3)
-        // The glass piece
-        outlined(ctx, Path(roundedRect: CGRect(x: 487, y: 474, width: 16, height: 52), cornerRadius: 6), Color(hex: 0x3DDC97).opacity(0.8), width: 3)
-        outlined(ctx, Path(ellipseIn: CGRect(x: 478, y: 508, width: 34, height: 26)), Color(hex: 0x3DDC97).opacity(0.8), width: 3)
-        outlined(ctx, Path(roundedRect: CGRect(x: 506, y: 512, width: 14, height: 6), cornerRadius: 2), Color(hex: 0x9AA0A8), width: 2)
-        // Red cups
-        for x in [456.0, 528] { cup(ctx, at: CGPoint(x: x, y: 532), size: 1) }
+        // Handles cut into the top rim
+        outlined(ctx, Path(roundedRect: CGRect(x: top.x - 26, y: top.y - 6, width: 52, height: 10), cornerRadius: 4), steel, width: 3)
+        ctx.fill(Path(roundedRect: CGRect(x: top.x - 18, y: top.y - 3, width: 10, height: 4), cornerRadius: 2), with: .color(ink))
+        ctx.fill(Path(roundedRect: CGRect(x: top.x + 8, y: top.y - 3, width: 10, height: 4), cornerRadius: 2), with: .color(ink))
+        // Tap and coiled hose
+        outlined(ctx, Path(roundedRect: CGRect(x: top.x - 6, y: top.y - 14, width: 12, height: 10), cornerRadius: 2), Color(hex: 0x2A2A33), width: 2.5)
+        var hose = Path()
+        hose.move(to: CGPoint(x: top.x + 6, y: top.y - 9))
+        hose.addQuadCurve(to: CGPoint(x: top.x + 30, y: top.y + 14), control: CGPoint(x: top.x + 34, y: top.y - 12))
+        ctx.stroke(hose, with: .color(ink), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+        ctx.stroke(hose, with: .color(Color(hex: 0xE8E2D2)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+        // Tub of ice around the bottom
+        outlined(ctx, Path(roundedRect: CGRect(x: top.x - 34, y: top.y + 24, width: 68, height: 24), cornerRadius: 6), Color(hex: 0x2F80ED), width: 4)
+        for x in [-24.0, -10, 6, 20] {
+            outlined(ctx, Path(roundedRect: CGRect(x: top.x + x, y: top.y + 18, width: 10, height: 9), cornerRadius: 2), Color(hex: 0xE6F6FF), width: 2)
+        }
     }
 
-    private static func pongTable(_ ctx: GraphicsContext) {
-        for x in [752.0, 914] {
+    private static func coffeeTable(_ ctx: GraphicsContext, bong: Bool, time t: Double) {
+        for x in [480.0, 584] {
+            outlined(ctx, Path(roundedRect: CGRect(x: x, y: 524, width: 10, height: 18), cornerRadius: 3), Color(hex: 0x6B4A30), width: 3)
+        }
+        outlined(ctx, Path(roundedRect: CGRect(x: 468, y: 512, width: 138, height: 16), cornerRadius: 6), Color(hex: 0x9A6B44))
+        // Lighter and a pizza box
+        outlined(ctx, Path(roundedRect: CGRect(x: 476, y: 504, width: 7, height: 10), cornerRadius: 2), Color(hex: 0xE0302E), width: 2)
+        outlined(ctx, Path(roundedRect: CGRect(x: 552, y: 502, width: 46, height: 11), cornerRadius: 3), Color(hex: 0xE2C08E), width: 3)
+        if bong {
+            RoomArt.bong(ctx, base: CGPoint(x: 522, y: 513), scale: 0.56, smoke: (0, 0), bubbling: false, ember: false, time: t)
+        }
+    }
+
+    /// A glass bong: water in the base, a tube that fills with smoke, a bowl on a downstem.
+    /// `smoke` is the part of the tube that's full, as (bottom, top) fractions.
+    static func bong(_ ctx: GraphicsContext, base: CGPoint, scale: CGFloat, smoke: (Double, Double),
+                     bubbling: Bool, ember: Bool, time t: Double) {
+        var g = ctx
+        g.translateBy(x: base.x, y: base.y)
+        g.scaleBy(x: scale, y: scale)
+        let glass = Color(hex: 0xBFEFFF).opacity(0.55)
+        let tube = CGRect(x: -11, y: -108, width: 22, height: 70)
+        // Downstem and bowl, behind the glass
+        var stem = Path()
+        stem.move(to: CGPoint(x: -8, y: -26)); stem.addLine(to: CGPoint(x: -30, y: -50))
+        g.stroke(stem, with: .color(ink), style: StrokeStyle(lineWidth: 9, lineCap: .round))
+        g.stroke(stem, with: .color(Color(hex: 0xBFEFFF)), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+        outlined(g, Path(roundedRect: CGRect(x: -40, y: -60, width: 20, height: 12), cornerRadius: 4), Color(hex: 0x3DDC97), width: 3)
+        g.fill(Path(ellipseIn: CGRect(x: -37, y: -62, width: 14, height: 6)), with: .color(ember ? Color(hex: 0xFF7A2A) : Color(hex: 0x6E8B3D)))
+        if ember {
+            g.fill(Path(ellipseIn: CGRect(x: -44, y: -70, width: 28, height: 18)), with: .color(Color(hex: 0xFF9A3A).opacity(0.35 + 0.2 * sin(t * 20))))
+        }
+        // Tube and mouthpiece
+        g.fill(Path(roundedRect: tube, cornerRadius: 6), with: .color(glass))
+        let (low, high) = smoke
+        if high > low {
+            let rect = CGRect(x: tube.minX + 2, y: tube.maxY - tube.height * high, width: tube.width - 4, height: tube.height * (high - low))
+            g.fill(Path(roundedRect: rect, cornerRadius: 4), with: .color(Color(white: 0.93).opacity(0.9)))
+        }
+        g.stroke(Path(roundedRect: tube, cornerRadius: 6), with: .color(ink), lineWidth: 3)
+        outlined(g, Path(roundedRect: CGRect(x: -15, y: -112, width: 30, height: 7), cornerRadius: 3), Color(hex: 0x3DDC97), width: 3)
+        // Base with water
+        let flask = CGRect(x: -28, y: -46, width: 56, height: 46)
+        g.fill(Path(ellipseIn: flask), with: .color(glass))
+        var water = g
+        water.clip(to: Path(ellipseIn: flask))
+        water.fill(Path(CGRect(x: flask.minX, y: flask.midY, width: flask.width, height: flask.height)), with: .color(Color(hex: 0x6FC8FF).opacity(0.7)))
+        if high > 0.05 && low == 0 {
+            water.fill(Path(CGRect(x: flask.minX, y: flask.minY, width: flask.width, height: flask.height / 2)), with: .color(Color(white: 0.93).opacity(0.6 * high)))
+        }
+        if bubbling {
+            for i in 0..<5 {
+                let k = (t * 2.4 + Double(i) * 0.2).truncatingRemainder(dividingBy: 1)
+                let x = -10 + Double(i % 3) * 8 + 3 * sin(t * 9 + Double(i))
+                let y = flask.maxY - 6 - k * flask.height / 2
+                water.stroke(Path(ellipseIn: CGRect(x: x - 3, y: y - 3, width: 6, height: 6)), with: .color(.white), lineWidth: 2)
+            }
+        }
+        g.stroke(Path(ellipseIn: flask), with: .color(ink), lineWidth: 3)
+        g.fill(Path(ellipseIn: CGRect(x: -18, y: -40, width: 10, height: 14)), with: .color(.white.opacity(0.5)))
+    }
+
+    /// Where a pong cup sits: side 0 is the left end, index 0...5 in a 3-2-1 pyramid.
+    static func pongCup(side: Int, index: Int) -> CGPoint {
+        let (row, place) = index < 3 ? (0, index) : index < 5 ? (1, index - 3) : (2, 0)
+        let start: CGFloat = side == 0 ? 772 : 918
+        let step: CGFloat = side == 0 ? 1 : -1
+        return CGPoint(x: start + step * (CGFloat(place) * 16 + CGFloat(row) * 8), y: 457 - CGFloat(row) * 6)
+    }
+
+    private static func pongTable(_ ctx: GraphicsContext, cups: [[Bool]]) {
+        for x in [774.0, 906] {
             outlined(ctx, Path(roundedRect: CGRect(x: x, y: 468, width: 10, height: 76), cornerRadius: 3), Color(hex: 0x44444C), width: 3)
         }
-        outlined(ctx, Path(roundedRect: CGRect(x: 735, y: 456, width: 210, height: 16), cornerRadius: 5), Color(hex: 0x2F80ED))
+        outlined(ctx, Path(roundedRect: CGRect(x: 758, y: 456, width: 174, height: 16), cornerRadius: 5), Color(hex: 0x2F80ED))
         var line = Path()
-        line.move(to: CGPoint(x: 840, y: 458)); line.addLine(to: CGPoint(x: 840, y: 470))
+        line.move(to: CGPoint(x: 845, y: 458)); line.addLine(to: CGPoint(x: 845, y: 470))
         ctx.stroke(line, with: .color(.white), lineWidth: 3)
-        // A pyramid of cups at each end
-        for (start, step) in [(748.0, 1.0), (932, -1.0)] {
-            for (row, count) in [3, 2, 1].enumerated() {
-                for i in 0..<count {
-                    let x = start + step * (Double(i) * 16 + Double(row) * 8)
-                    cup(ctx, at: CGPoint(x: x, y: 456 - Double(row) * 6), size: 0.8)
-                }
+        // Back cups first so the front ones overlap them
+        for side in 0..<2 {
+            for index in [5, 3, 4, 0, 1, 2] where cups[side][index] {
+                cup(ctx, at: pongCup(side: side, index: index), size: 0.8)
+            }
+        }
+    }
+
+    /// The flip cup table, a pitcher in the middle and each side's cup at the edge.
+    private static func flipTable(_ ctx: GraphicsContext, model: HangoutModel, time t: Double) {
+        for x in [444.0, 626] {
+            outlined(ctx, Path(roundedRect: CGRect(x: x, y: 590, width: 10, height: 36), cornerRadius: 3), Color(hex: 0x44444C), width: 3)
+        }
+        outlined(ctx, Path(roundedRect: CGRect(x: 430, y: 578, width: 220, height: 14), cornerRadius: 5), Color(hex: 0xF4F1EA))
+        // Pitcher of beer
+        outlined(ctx, Path(roundedRect: CGRect(x: 528, y: 540, width: 26, height: 38), cornerRadius: 4), Color(hex: 0xF5B84A).opacity(0.9), width: 3)
+        ctx.fill(Path(roundedRect: CGRect(x: 530, y: 542, width: 22, height: 7), cornerRadius: 2), with: .color(.white))
+        var handle = Path()
+        handle.addArc(center: CGPoint(x: 556, y: 558), radius: 9, startAngle: .degrees(-80), endAngle: .degrees(80), clockwise: false)
+        ctx.stroke(handle, with: .color(ink), lineWidth: 4)
+        for lane in 0..<2 {
+            guard let state = model.flipCup(lane: lane, at: t) else { continue }
+            let x: CGFloat = lane == 0 ? 448 : 632
+            let dir: Double = lane == 0 ? 1 : -1
+            var g = ctx
+            // Spins around its middle while it's in the air
+            g.translateBy(x: x, y: 578 - 11 - state.lift)
+            g.rotate(by: .degrees(state.angle * dir))
+            cup(g, at: CGPoint(x: 0, y: 11), size: 1)
+            if state.full {
+                g.fill(Path(CGRect(x: -6, y: -9, width: 12, height: 4)), with: .color(Color(hex: 0xF5B84A)))
             }
         }
     }

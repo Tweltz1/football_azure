@@ -9,10 +9,18 @@ enum CartoonPerson {
         case walk(Double)
         case sit
         case game
-        case pongThrow(Double)   // 0...1 through the throw
-        case bong(Double)        // 0...1 through the rip
+        case pongThrow(Double, CGFloat)   // 0...1 through the throw, facing right (1) or left (-1)
+        case bong(Double)                 // 0...1 through the rip
         case wave(Double)
+        case drink(Double)                // 0...1 through a cup
+        case flick(Double, CGFloat)       // 0...1 through one flip cup try
+        case cheer(Double)
+        case kegStand(Double)             // seconds into the stand
+        case holdLegs
     }
+
+    /// The face someone is making.
+    enum Face { case smile, sip, puffed, cough }
 
     static let ink = Color(hex: 0x16122B)
 
@@ -33,7 +41,9 @@ enum CartoonPerson {
         let sleeve = look.top == 3 || look.top == 4 ? skin : shirt
 
         // Shadow on the floor
-        ctx.fill(Path(ellipseIn: CGRect(x: -56, y: -10, width: 112, height: 22)), with: .color(.black.opacity(0.18)))
+        if case .kegStand = pose {} else {
+            ctx.fill(Path(ellipseIn: CGRect(x: -56, y: -10, width: 112, height: 22)), with: .color(.black.opacity(0.18)))
+        }
 
         var lift: CGFloat = 0
         var legSwing: Double = 0
@@ -43,11 +53,20 @@ enum CartoonPerson {
             lift = CGFloat(abs(sin(phase))) * 6
         case .sit, .game, .bong:
             lift = -34
+        case let .cheer(clock):
+            lift = CGFloat(abs(sin(clock * 6))) * 12
+        case let .kegStand(seconds):
+            // Legs kicking while upside down
+            if HangoutModel.kegFlip(seconds) == 1 { legSwing = 0.35 * sin(time * 7) }
         default:
             break
         }
         var body = ctx
         body.translateBy(x: 0, y: -lift)
+        // Coughing after a rip
+        if case let .bong(k) = pose, k > 0.8, k < 0.96 {
+            body.translateBy(x: 3 * CGFloat(sin(time * 45)), y: 2 * CGFloat(sin(time * 31)))
+        }
         let seated: Bool
         switch pose { case .sit, .game, .bong: seated = true; default: seated = false }
 
@@ -125,9 +144,11 @@ enum CartoonPerson {
         }
 
         // Arms
-        let left: CGPoint
-        let right: CGPoint
+        var left = CGPoint(x: -44, y: -70)
+        var right = CGPoint(x: 44, y: -70)
         var holding: (() -> Void)?
+        var front: (() -> Void)?
+        var face = Face.smile
         switch pose {
         case let .walk(phase):
             left = CGPoint(x: -44 - 6 * sin(phase), y: -72)
@@ -139,35 +160,127 @@ enum CartoonPerson {
                 outlined(body, Path(roundedRect: CGRect(x: -30, y: -108, width: 60, height: 20), cornerRadius: 9), Color(hex: 0x2A2A33))
                 body.fill(Path(ellipseIn: CGRect(x: 12, y: -103, width: 7, height: 7)), with: .color(Color(hex: 0x3DDC97)))
             }
-        case let .pongThrow(k):
-            left = CGPoint(x: -44, y: -70)
-            let raise = sin(min(1, k) * .pi)
-            right = CGPoint(x: 46 + 20 * raise, y: -74 - 130 * raise)
+        case let .pongThrow(k, facing):
+            // Wind up low, then flick the ball out in an arc
+            let windUp = k < 0.3 ? sin(k / 0.3 * .pi / 2) : 1
+            let release = k < 0.3 ? 0 : sin(min(1, (k - 0.3) / 0.4) * .pi / 2)
+            let back = k > 0.75 ? (k - 0.75) / 0.25 : 0
+            let hand = CGPoint(x: 40 + 10 * windUp + 26 * release - 30 * back,
+                               y: -90 - 60 * windUp - 40 * release + 100 * back)
+            if facing > 0 { right = hand } else { left = CGPoint(x: -hand.x, y: hand.y) }
+            if k < 0.32 {
+                let ball = facing > 0 ? right : left
+                holding = { outlined(body, Path(ellipseIn: CGRect(x: ball.x - 7, y: ball.y - 16, width: 14, height: 14)), .white, width: 2.5) }
+            }
+        case let .drink(k):
+            let raise = k < 0.22 ? smooth(k / 0.22) : k > 0.8 ? smooth((1 - k) / 0.2) : 1
+            right = CGPoint(x: 44 - 28 * raise, y: -70 - 92 * raise)
+            if raise > 0.6 { face = .sip }
+            let hand = right
+            front = { redCup(body, at: CGPoint(x: hand.x - 2, y: hand.y + 10), tilt: -70 * raise, empty: false) }
+        case let .flick(k, facing):
+            // Reach under the lip of the cup hanging off the table edge, then flick it up
+            let reach = smooth(min(1, k / 0.3))
+            let flick = k < 0.3 ? 0 : k < 0.42 ? (k - 0.3) / 0.12 : max(0, 1 - (k - 0.42) / 0.4)
+            let hand = CGPoint(x: 44 + 22 * reach + 4 * flick, y: -70 + 18 * reach - 40 * flick)
+            if facing > 0 { right = hand } else { left = CGPoint(x: -hand.x, y: hand.y) }
+            if facing > 0 { left = CGPoint(x: -30, y: -84) } else { right = CGPoint(x: 30, y: -84) }
+        case let .cheer(clock):
+            left = CGPoint(x: -58, y: -214 - 12 * sin(clock * 12))
+            right = CGPoint(x: 58, y: -214 - 12 * sin(clock * 12 + 1.5))
+        case let .kegStand(seconds):
+            let over = HangoutModel.kegFlip(seconds)
+            if seconds < 0.6 {
+                left = CGPoint(x: -26, y: -84)
+                right = CGPoint(x: 26, y: -84)
+            } else if seconds < 6.3 {
+                left = CGPoint(x: -24, y: -250)
+                right = CGPoint(x: 24, y: -250)
+                if over == 1 { face = .sip }
+            } else {
+                left = CGPoint(x: -58, y: -214 - 12 * sin(time * 12))
+                right = CGPoint(x: 58, y: -214 - 12 * sin(time * 12 + 1.5))
+            }
+        case .holdLegs:
+            left = CGPoint(x: 34, y: -292)
+            right = CGPoint(x: 72, y: -282)
         case let .bong(k):
-            left = CGPoint(x: -44, y: -70)
-            let up = k < 0.8 ? min(1, k / 0.2) : max(0, (1 - k) / 0.2)
-            right = CGPoint(x: 44 - 30 * up, y: -74 - 86 * up)
-            if up > 0.5 {
-                holding = {
-                    // A glass piece held up to the mouth
-                    outlined(body, Path(roundedRect: CGRect(x: right.x - 6, y: right.y - 50, width: 16, height: 62), cornerRadius: 6),
-                             Color(hex: 0x3DDC97).opacity(0.75), width: 3)
-                    outlined(body, Path(ellipseIn: CGRect(x: right.x - 12, y: right.y + 4, width: 28, height: 22)), Color(hex: 0x3DDC97).opacity(0.75), width: 3)
+            // Pick it up, light the bowl while pulling, clear it, put it down, hold it in, cough it out
+            let inHand = k >= 0.06 && k <= 0.72
+            let raise: Double
+            switch k {
+            case ..<0.06: raise = 0
+            case ..<0.14: raise = smooth((k - 0.06) / 0.08)
+            case ..<0.63: raise = 1
+            case ..<0.72: raise = 1 - smooth((k - 0.63) / 0.09)
+            default: raise = 0
+            }
+            let drop = CGFloat(1 - raise) * 60
+            let lighting = k >= 0.14 && k < 0.55
+            let clearing = k >= 0.55 && k < 0.63
+            if k < 0.06 {
+                left = CGPoint(x: -14, y: -54)
+                right = CGPoint(x: 18, y: -54)
+            } else if inHand {
+                right = CGPoint(x: 16, y: -122 + drop)
+                left = lighting ? CGPoint(x: -56, y: -120) : CGPoint(x: -22, y: -56 + drop)
+            }
+            switch k {
+            case 0.14..<0.63: face = .sip
+            case 0.63..<0.8: face = .puffed
+            case 0.8...: face = .cough
+            default: break
+            }
+            if inHand {
+                let fill = lighting ? (k - 0.14) / 0.41 : clearing ? 1.0 : 0
+                let cleared = clearing ? (k - 0.55) / 0.08 : 0
+                let lighter = left
+                front = {
+                    RoomArt.bong(body, base: CGPoint(x: 4, y: -50 + drop), scale: 1, smoke: (cleared, fill),
+                                 bubbling: lighting || clearing, ember: lighting || clearing, time: time)
+                    if lighting {
+                        // Lighter tipped into the bowl
+                        var hand = body
+                        hand.translateBy(x: lighter.x, y: lighter.y)
+                        hand.rotate(by: .degrees(35))
+                        outlined(hand, Path(roundedRect: CGRect(x: -6, y: -4, width: 12, height: 22), cornerRadius: 3), Color(hex: 0xE0302E), width: 2.5)
+                        let flicker = CGFloat(sin(time * 30)) * 2
+                        var flame = Path()
+                        flame.move(to: CGPoint(x: 0, y: -4))
+                        flame.addQuadCurve(to: CGPoint(x: 0, y: -22 - flicker), control: CGPoint(x: 9, y: -10))
+                        flame.addQuadCurve(to: CGPoint(x: 0, y: -4), control: CGPoint(x: -9, y: -10))
+                        hand.fill(flame, with: .color(Color(hex: 0xFFB33A)))
+                        hand.fill(Path(ellipseIn: CGRect(x: -2.5, y: -13, width: 5, height: 8)), with: .color(Color(hex: 0xFFF1A8)))
+                    }
                 }
             }
         case let .wave(k):
-            left = CGPoint(x: -44, y: -70)
             right = CGPoint(x: 66 + 10 * sin(k * 12), y: -196)
         default:
-            left = CGPoint(x: -44, y: -70)
-            right = CGPoint(x: 44, y: -70)
+            break
         }
         arm(body, from: CGPoint(x: -36, y: -128), to: left, side: -1, sleeve: sleeve, skin: skin)
         arm(body, from: CGPoint(x: 36, y: -128), to: right, side: 1, sleeve: sleeve, skin: skin)
         holding?()
 
-        head(body, look: look, skin: skin, shirt: shirt, blink: (time + seed).truncatingRemainder(dividingBy: 4.3) < 0.13,
-             puffing: { if case let .bong(k) = pose { return k > 0.45 && k < 0.8 } else { return false } }())
+        head(body, look: look, skin: skin, shirt: shirt, blink: (time + seed).truncatingRemainder(dividingBy: 4.3) < 0.13, face: face)
+        front?()
+    }
+
+    private static func smooth(_ x: Double) -> Double { HangoutModel.smooth(max(0, min(1, x))) }
+
+    /// A red party cup held in a hand, bottom at the point.
+    static func redCup(_ ctx: GraphicsContext, at bottom: CGPoint, tilt: Double, empty: Bool) {
+        var cup = ctx
+        cup.translateBy(x: bottom.x, y: bottom.y)
+        cup.rotate(by: .degrees(tilt))
+        var path = Path()
+        path.move(to: CGPoint(x: -13, y: -36)); path.addLine(to: CGPoint(x: 13, y: -36))
+        path.addLine(to: CGPoint(x: 10, y: 0)); path.addLine(to: CGPoint(x: -10, y: 0)); path.closeSubpath()
+        outlined(cup, path, Color(hex: 0xE0302E), width: 3)
+        var rim = Path()
+        rim.move(to: CGPoint(x: -13, y: -34)); rim.addLine(to: CGPoint(x: 13, y: -34))
+        cup.stroke(rim, with: .color(.white), lineWidth: 4)
     }
 
     // MARK: Parts
@@ -186,7 +299,7 @@ enum CartoonPerson {
         outlined(ctx, Path(ellipseIn: CGRect(x: hand.x - 10, y: hand.y - 6, width: 20, height: 20)), skin)
     }
 
-    private static func head(_ ctx: GraphicsContext, look: Look, skin: Color, shirt: Color, blink: Bool, puffing: Bool) {
+    private static func head(_ ctx: GraphicsContext, look: Look, skin: Color, shirt: Color, blink: Bool, face: Face) {
         let hair = Color(hex: Look.hairColors[look.hairColor])
         let hatColor = Color(hex: Look.clothes[look.hatColor])
 
@@ -264,6 +377,12 @@ enum CartoonPerson {
         if look.shades {
             outlined(ctx, Path(roundedRect: CGRect(x: -30, y: -194, width: 24, height: 16), cornerRadius: 6), Color(hex: 0x111111))
             outlined(ctx, Path(roundedRect: CGRect(x: 6, y: -194, width: 24, height: 16), cornerRadius: 6), Color(hex: 0x111111))
+        } else if face == .cough {
+            // Eyes squeezed shut
+            var squint = Path()
+            squint.move(to: CGPoint(x: -22, y: -190)); squint.addLine(to: CGPoint(x: -10, y: -184)); squint.addLine(to: CGPoint(x: -22, y: -178))
+            squint.move(to: CGPoint(x: 22, y: -190)); squint.addLine(to: CGPoint(x: 10, y: -184)); squint.addLine(to: CGPoint(x: 22, y: -178))
+            ctx.stroke(squint, with: .color(ink), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
         } else if blink {
             var lids = Path()
             lids.move(to: CGPoint(x: -21, y: -184)); lids.addLine(to: CGPoint(x: -9, y: -184))
@@ -279,9 +398,11 @@ enum CartoonPerson {
             ctx.stroke(Path(ellipseIn: CGRect(x: -27, y: -196, width: 24, height: 24)), with: .color(ink), lineWidth: 3)
             ctx.stroke(Path(ellipseIn: CGRect(x: 3, y: -196, width: 24, height: 24)), with: .color(ink), lineWidth: 3)
         }
-        // Cheeks
-        ctx.fill(Path(ellipseIn: CGRect(x: -33, y: -175, width: 14, height: 14)), with: .color(Color(hex: 0xFF7F8F).opacity(0.45)))
-        ctx.fill(Path(ellipseIn: CGRect(x: 19, y: -175, width: 14, height: 14)), with: .color(Color(hex: 0xFF7F8F).opacity(0.45)))
+        // Cheeks, blown out while holding a hit in
+        let cheek: CGFloat = face == .puffed ? 24 : 14
+        let cheekColor = Color(hex: 0xFF7F8F).opacity(face == .puffed ? 0.6 : 0.45)
+        ctx.fill(Path(ellipseIn: CGRect(x: -26 - cheek / 2, y: -168 - cheek / 2, width: cheek, height: cheek)), with: .color(cheekColor))
+        ctx.fill(Path(ellipseIn: CGRect(x: 26 - cheek / 2, y: -168 - cheek / 2, width: cheek, height: cheek)), with: .color(cheekColor))
         if look.facial == 2 {
             var stache = Path()
             stache.move(to: CGPoint(x: -16, y: -166))
@@ -291,10 +412,17 @@ enum CartoonPerson {
             stache.addQuadCurve(to: CGPoint(x: -16, y: -166), control: CGPoint(x: -8, y: -160))
             outlined(ctx, stache, Color(hex: 0x3A2418), width: 2)
         }
-        // Mouth: big smile, or an "o" while taking a rip
-        if puffing {
+        // Mouth
+        switch face {
+        case .sip:
             outlined(ctx, Path(ellipseIn: CGRect(x: -7, y: -162, width: 14, height: 12)), Color(hex: 0x5A2030), width: 3)
-        } else {
+        case .puffed:
+            var lips = Path()
+            lips.move(to: CGPoint(x: -6, y: -156)); lips.addLine(to: CGPoint(x: 6, y: -156))
+            ctx.stroke(lips, with: .color(ink), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+        case .cough:
+            outlined(ctx, Path(ellipseIn: CGRect(x: -11, y: -166, width: 22, height: 20)), Color(hex: 0x5A2030), width: 4)
+        case .smile:
             var smile = Path()
             smile.move(to: CGPoint(x: -15, y: -160))
             smile.addQuadCurve(to: CGPoint(x: 15, y: -160), control: CGPoint(x: 0, y: -144))
