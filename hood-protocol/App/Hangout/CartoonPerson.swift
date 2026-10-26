@@ -35,10 +35,11 @@ enum CartoonPerson {
         }
 
         let skin = Color(hex: Look.skins[look.skin])
-        let shirt = Color(hex: Look.clothes[look.topColor])
+        // The toga and the referee shirt are always white
+        let shirt = look.top == 7 || look.top == 9 ? Color(hex: 0xF4F1EA) : Color(hex: Look.clothes[look.topColor])
         let pants = Color(hex: Look.pantsColors[look.pants])
         let shoe = Color(hex: Look.shoeColors[look.shoes])
-        let sleeve = look.top == 3 || look.top == 4 ? skin : shirt
+        let sleeve = look.top == 3 || look.top == 4 || look.top == 7 ? skin : look.top == 6 ? Color(hex: 0x15151A) : shirt
 
         // Shadow on the floor
         if case .kegStand = pose {} else {
@@ -137,6 +138,51 @@ enum CartoonPerson {
                 straps.move(to: CGPoint(x: 38, y: -128)); straps.addQuadCurve(to: CGPoint(x: 22, y: -142), control: CGPoint(x: 24, y: -126))
                 body.fill(straps, with: .color(skin))
                 body.stroke(straps, with: .color(ink), lineWidth: 4)
+            case 5:
+                // Hawaiian flowers
+                for (fx, fy) in [(-22.0, -124.0), (14, -116), (-8, -96), (24, -86), (-26, -80), (4, -132)] {
+                    for petal in 0..<5 {
+                        let a = Double(petal) / 5 * 2 * .pi
+                        body.fill(Path(ellipseIn: CGRect(x: fx + 5 * cos(a) - 3.5, y: fy + 5 * sin(a) - 3.5, width: 7, height: 7)),
+                                  with: .color(Color(hex: petal % 2 == 0 ? 0xFFF1A8 : 0xFFFFFF)))
+                    }
+                    body.fill(Path(ellipseIn: CGRect(x: fx - 2.5, y: fy - 2.5, width: 5, height: 5)), with: .color(Color(hex: 0xFF6B6B)))
+                }
+            case 6:
+                // Tux: white shirt front, lapels, bow tie
+                var front = Path()
+                front.move(to: CGPoint(x: -14, y: -142)); front.addLine(to: CGPoint(x: 14, y: -142)); front.addLine(to: CGPoint(x: 0, y: -84)); front.closeSubpath()
+                outlined(body, front, .white, width: 3)
+                for y in [-114.0, -100] { body.fill(Path(ellipseIn: CGRect(x: -2.5, y: y, width: 5, height: 5)), with: .color(ink)) }
+                var bow = Path()
+                bow.move(to: CGPoint(x: 0, y: -134)); bow.addLine(to: CGPoint(x: -13, y: -141)); bow.addLine(to: CGPoint(x: -13, y: -127)); bow.closeSubpath()
+                bow.move(to: CGPoint(x: 0, y: -134)); bow.addLine(to: CGPoint(x: 13, y: -141)); bow.addLine(to: CGPoint(x: 13, y: -127)); bow.closeSubpath()
+                outlined(body, bow, Color(hex: 0xD33B3B), width: 2.5)
+            case 7:
+                // Toga: bare shoulder and a draped sash
+                body.fill(Path(ellipseIn: CGRect(x: 14, y: -146, width: 30, height: 22)), with: .color(skin))
+                var sash = Path()
+                sash.move(to: CGPoint(x: -38, y: -136)); sash.addLine(to: CGPoint(x: 14, y: -142))
+                sash.addLine(to: CGPoint(x: 38, y: -70)); sash.addLine(to: CGPoint(x: 10, y: -64)); sash.closeSubpath()
+                outlined(body, sash, Color(hex: 0xE6E0D2), width: 3)
+                var leaves = Path()
+                for k in 0..<4 { leaves.addEllipse(in: CGRect(x: -30 + Double(k) * 9, y: -128 + Double(k) * 9, width: 9, height: 5)) }
+                body.fill(leaves, with: .color(Color(hex: 0xC9A227)))
+            case 8:
+                // Letterman jacket: a big chenille letter and striped cuffs
+                outlined(body, Path(roundedRect: CGRect(x: -32, y: -124, width: 24, height: 28), cornerRadius: 4), .white, width: 3)
+                body.draw(Text("H").font(.system(size: 22, weight: .black)).foregroundColor(shirt), at: CGPoint(x: -20, y: -110))
+                for y in [-70.0, -64] {
+                    var band = Path()
+                    band.move(to: CGPoint(x: -36, y: y)); band.addLine(to: CGPoint(x: 36, y: y))
+                    body.stroke(band, with: .color(.white), lineWidth: 3)
+                }
+            case 9:
+                // Referee stripes and a whistle
+                for x in stride(from: -30.0, through: 30, by: 15) {
+                    body.fill(Path(CGRect(x: x - 3.5, y: -140, width: 7, height: 76)), with: .color(Color(hex: 0x15151A)))
+                }
+                outlined(body, Path(roundedRect: CGRect(x: 10, y: -112, width: 14, height: 8), cornerRadius: 3), Color(hex: 0xC0C4CC), width: 2)
             default:
                 break
             }
@@ -207,8 +253,9 @@ enum CartoonPerson {
                 right = CGPoint(x: 58, y: -214 - 12 * sin(time * 12 + 1.5))
             }
         case .holdLegs:
-            left = CGPoint(x: 34, y: -292)
-            right = CGPoint(x: 72, y: -282)
+            // Reaching over to hold the legs of whoever's on the keg, just to their left
+            left = CGPoint(x: -76, y: -196)
+            right = CGPoint(x: -30, y: -206)
         case let .bong(k):
             // Pick it up, light the bowl while pulling, clear it, put it down, hold it in, cough it out
             let inHand = k >= 0.06 && k <= 0.72
@@ -268,7 +315,7 @@ enum CartoonPerson {
         arm(body, from: CGPoint(x: 36, y: -128), to: right, side: 1, sleeve: sleeve, skin: skin)
         holding?()
 
-        head(body, look: look, skin: skin, shirt: shirt, blink: (time + seed).truncatingRemainder(dividingBy: 4.3) < 0.13, face: face)
+        head(body, look: look, skin: skin, shirt: shirt, blink: (time + seed).truncatingRemainder(dividingBy: 4.3) < 0.13, face: face, time: time)
         front?()
     }
 
@@ -309,17 +356,141 @@ enum CartoonPerson {
         outlined(ctx, Path(ellipseIn: CGRect(x: hand.x - 10, y: hand.y - 6, width: 20, height: 20)), skin)
     }
 
-    private static func head(_ ctx: GraphicsContext, look: Look, skin: Color, shirt: Color, blink: Bool, face: Face) {
+    static func hairShows(_ look: Look) -> Bool { [0, 4, 6, 12].contains(look.hat) }
+
+    /// Cap, backwards cap or beanie.
+    private static func classicHat(_ ctx: GraphicsContext, _ hat: Int, _ hatColor: Color) {
+        var dome = Path()
+        dome.move(to: CGPoint(x: -45, y: -196))
+        dome.addQuadCurve(to: CGPoint(x: 0, y: hat == 3 ? -252 : -240), control: CGPoint(x: -46, y: hat == 3 ? -252 : -240))
+        dome.addQuadCurve(to: CGPoint(x: 45, y: -196), control: CGPoint(x: 46, y: hat == 3 ? -252 : -240))
+        dome.closeSubpath()
+        outlined(ctx, dome, hatColor)
+        if hat == 3 {
+            outlined(ctx, Path(roundedRect: CGRect(x: -48, y: -206, width: 96, height: 18), cornerRadius: 8), hatColor.opacity(0.85))
+            outlined(ctx, Path(ellipseIn: CGRect(x: -9, y: -266, width: 18, height: 18)), hatColor)
+        } else {
+            outlined(ctx, Path(ellipseIn: CGRect(x: -5, y: -245, width: 10, height: 10)), hatColor)
+            if hat == 1 {
+                var brim = Path()
+                brim.move(to: CGPoint(x: -50, y: -196))
+                brim.addQuadCurve(to: CGPoint(x: 50, y: -196), control: CGPoint(x: 0, y: -212))
+                brim.addQuadCurve(to: CGPoint(x: 40, y: -184), control: CGPoint(x: 52, y: -186))
+                brim.addQuadCurve(to: CGPoint(x: -40, y: -184), control: CGPoint(x: 0, y: -194))
+                brim.addQuadCurve(to: CGPoint(x: -50, y: -196), control: CGPoint(x: -52, y: -186))
+                outlined(ctx, brim, hatColor)
+            } else {
+                outlined(ctx, Path(roundedRect: CGRect(x: -14, y: -204, width: 28, height: 10), cornerRadius: 4), Color(hex: 0xE9E3D0), width: 3)
+            }
+        }
+    }
+
+    /// The hats you earn.
+    private static func fancyHat(_ ctx: GraphicsContext, _ hat: Int, _ color: Color, time: Double) {
+        func poly(_ points: [(Double, Double)]) -> Path {
+            var path = Path()
+            path.move(to: CGPoint(x: points[0].0, y: points[0].1))
+            for p in points.dropFirst() { path.addLine(to: CGPoint(x: p.0, y: p.1)) }
+            path.closeSubpath()
+            return path
+        }
+        switch hat {
+        case 4: // Party hat
+            outlined(ctx, poly([(-26, -218), (26, -218), (4, -300)]), color)
+            for (x, y) in [(-8.0, -236.0), (10, -248), (2, -270), (-14, -226), (14, -228)] {
+                ctx.fill(Path(ellipseIn: CGRect(x: x - 3, y: y - 3, width: 6, height: 6)), with: .color(.white))
+            }
+            outlined(ctx, Path(ellipseIn: CGRect(x: -5, y: -310, width: 18, height: 18)), .white, width: 3)
+        case 5: // Cowboy hat
+            outlined(ctx, Path(ellipseIn: CGRect(x: -82, y: -214, width: 164, height: 28)), color)
+            var crown = Path()
+            crown.move(to: CGPoint(x: -38, y: -204))
+            crown.addLine(to: CGPoint(x: -34, y: -252))
+            crown.addQuadCurve(to: CGPoint(x: 0, y: -248), control: CGPoint(x: -18, y: -266))
+            crown.addQuadCurve(to: CGPoint(x: 34, y: -252), control: CGPoint(x: 18, y: -266))
+            crown.addLine(to: CGPoint(x: 38, y: -204))
+            crown.closeSubpath()
+            outlined(ctx, crown, color)
+            ctx.fill(Path(CGRect(x: -37, y: -218, width: 74, height: 9)), with: .color(ink.opacity(0.75)))
+        case 6: // Crown
+            outlined(ctx, poly([(-38, -212), (-40, -250), (-20, -230), (0, -260), (20, -230), (40, -250), (38, -212)]), Color(hex: 0xF5C542))
+            for (x, c) in [(-22.0, 0x2F80ED), (0, 0xE0302E), (22, 0x3DDC97)] as [(Double, UInt32)] {
+                outlined(ctx, Path(ellipseIn: CGRect(x: x - 5, y: -228, width: 10, height: 10)), Color(hex: c), width: 2)
+            }
+        case 7: // Traffic cone
+            let cone = poly([(-40, -206), (40, -206), (7, -318), (-7, -318)])
+            outlined(ctx, cone, Color(hex: 0xFF7A1A))
+            var stripes = ctx
+            stripes.clip(to: cone)
+            for y in [-292.0, -252] { stripes.fill(Path(CGRect(x: -50, y: y, width: 100, height: 16)), with: .color(.white)) }
+            ctx.stroke(cone, with: .color(ink), lineWidth: 5)
+            outlined(ctx, Path(roundedRect: CGRect(x: -58, y: -212, width: 116, height: 14), cornerRadius: 4), Color(hex: 0xFF7A1A))
+        case 8: // Viking helmet
+            for side in [-1.0, 1.0] {
+                var horn = Path()
+                horn.move(to: CGPoint(x: 38 * side, y: -214))
+                horn.addQuadCurve(to: CGPoint(x: 70 * side, y: -270), control: CGPoint(x: 80 * side, y: -226))
+                horn.addQuadCurve(to: CGPoint(x: 44 * side, y: -228), control: CGPoint(x: 60 * side, y: -236))
+                horn.closeSubpath()
+                outlined(ctx, horn, Color(hex: 0xF4EBD0), width: 4)
+            }
+            var dome = Path()
+            dome.move(to: CGPoint(x: -46, y: -204))
+            dome.addQuadCurve(to: CGPoint(x: 46, y: -204), control: CGPoint(x: 0, y: -280))
+            dome.closeSubpath()
+            outlined(ctx, dome, Color(hex: 0xB8BEC8))
+            outlined(ctx, Path(roundedRect: CGRect(x: -48, y: -214, width: 96, height: 14), cornerRadius: 4), Color(hex: 0xB07A4C), width: 4)
+            for x in [-30.0, -10, 10, 30] { ctx.fill(Path(ellipseIn: CGRect(x: x - 2.5, y: -210, width: 5, height: 5)), with: .color(Color(hex: 0xF5C542))) }
+        case 9: // Propeller cap
+            classicHat(ctx, 1, color)
+            ctx.fill(Path(CGRect(x: -2.5, y: -262, width: 5, height: 20)), with: .color(ink))
+            let spin = CGFloat(abs(cos(time * 14))) * 36 + 4
+            outlined(ctx, Path(ellipseIn: CGRect(x: -spin, y: -268, width: spin, height: 9)), Color(hex: 0xE0302E), width: 2.5)
+            outlined(ctx, Path(ellipseIn: CGRect(x: 0, y: -268, width: spin, height: 9)), Color(hex: 0x2F80ED), width: 2.5)
+        case 10: // Chef hat
+            for (x, y, r) in [(-24.0, -246.0, 19.0), (24, -246, 19), (0, -262, 24)] {
+                outlined(ctx, Path(ellipseIn: CGRect(x: x - r, y: y - r, width: 2 * r, height: 2 * r)), .white, width: 4)
+            }
+            outlined(ctx, Path(roundedRect: CGRect(x: -40, y: -232, width: 80, height: 28), cornerRadius: 6), .white, width: 4)
+        case 11: // Tinfoil hat
+            let foil = poly([(-46, -204), (-38, -230), (-28, -244), (-20, -262), (-8, -270), (0, -296), (8, -272), (20, -262), (30, -242), (38, -228), (46, -204)])
+            outlined(ctx, foil, Color(hex: 0xD3D8DF), width: 4)
+            var shine = Path()
+            shine.move(to: CGPoint(x: -18, y: -222)); shine.addLine(to: CGPoint(x: -4, y: -262))
+            shine.move(to: CGPoint(x: 14, y: -218)); shine.addLine(to: CGPoint(x: 22, y: -244))
+            ctx.stroke(shine, with: .color(.white), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+        case 12: // Angel halo
+            let y = -284 + 3 * sin(time * 2)
+            let ring = Path(ellipseIn: CGRect(x: -34, y: y, width: 68, height: 16))
+            ctx.stroke(ring, with: .color(ink), lineWidth: 10)
+            ctx.stroke(ring, with: .color(Color(hex: 0xFFE38A)), lineWidth: 5)
+        case 13: // Beer helmet: hard hat, a can on each side, straws down to the mouth
+            for side in [-1.0, 1.0] {
+                var straw = Path()
+                straw.move(to: CGPoint(x: 56 * side, y: -238))
+                straw.addQuadCurve(to: CGPoint(x: 8 * side, y: -158), control: CGPoint(x: 70 * side, y: -160))
+                ctx.stroke(straw, with: .color(ink), style: StrokeStyle(lineWidth: 7, lineCap: .round))
+                ctx.stroke(straw, with: .color(.white), style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+                outlined(ctx, Path(roundedRect: CGRect(x: 56 * side - 11, y: -244, width: 22, height: 36), cornerRadius: 5), Color(hex: 0xD33B3B), width: 3.5)
+                ctx.fill(Path(CGRect(x: 56 * side - 11, y: -232, width: 22, height: 8)), with: .color(.white))
+            }
+            classicHat(ctx, 1, color)
+        default:
+            break
+        }
+    }
+
+    private static func head(_ ctx: GraphicsContext, look: Look, skin: Color, shirt: Color, blink: Bool, face: Face, time: Double) {
         let hair = Color(hex: Look.hairColors[look.hairColor])
         let hatColor = Color(hex: Look.clothes[look.hatColor])
 
         if look.top == 1 {
             outlined(ctx, Path(ellipseIn: CGRect(x: -52, y: -238, width: 104, height: 104)), shirt)
         }
-        if look.hat == 0 || look.hair == 4 {
+        if Self.hairShows(look) || look.hair == 4 {
             switch look.hair {
             case 4: outlined(ctx, Path(roundedRect: CGRect(x: -54, y: -232, width: 108, height: 116), cornerRadius: 44), hair)
-            case 3 where look.hat == 0: outlined(ctx, Path(ellipseIn: CGRect(x: -66, y: -262, width: 132, height: 124)), hair)
+            case 3 where Self.hairShows(look): outlined(ctx, Path(ellipseIn: CGRect(x: -66, y: -262, width: 132, height: 124)), hair)
             default: break
             }
         }
@@ -337,50 +508,34 @@ enum CartoonPerson {
             ctx.fill(beard, with: .color(Color(hex: 0x8A5A3C).opacity(0.55)))
         }
 
-        // Hair or hat
-        if look.hat == 0 {
-            switch look.hair {
-            case 0, 1, 4, 5:
-                var top = Path()
-                top.move(to: CGPoint(x: -44, y: -186))
-                top.addQuadCurve(to: CGPoint(x: 0, y: look.hair == 0 ? -232 : -236), control: CGPoint(x: -48, y: -236))
-                top.addQuadCurve(to: CGPoint(x: 44, y: -190), control: CGPoint(x: 46, y: -234))
-                top.addQuadCurve(to: CGPoint(x: 6, y: -206), control: CGPoint(x: 30, y: -206))
-                top.addQuadCurve(to: CGPoint(x: -44, y: -186), control: CGPoint(x: -20, y: -214))
-                top.closeSubpath()
-                outlined(ctx, top, hair)
-                if look.hair == 5 { outlined(ctx, Path(ellipseIn: CGRect(x: -16, y: -262, width: 32, height: 32)), hair) }
-            case 2:
-                for x in stride(from: -36.0, through: 36.0, by: 18) {
-                    outlined(ctx, Path(ellipseIn: CGRect(x: x - 14, y: -240 + abs(x) * 0.35, width: 28, height: 28)), hair, width: 4)
-                }
-            default:
-                break
+        // Hair, then the hat. Party hats, crowns and halos sit on top of the hair.
+        if Self.hairShows(look) {
+        switch look.hair {
+        case 0, 1, 4, 5:
+            var top = Path()
+            top.move(to: CGPoint(x: -44, y: -186))
+            top.addQuadCurve(to: CGPoint(x: 0, y: look.hair == 0 ? -232 : -236), control: CGPoint(x: -48, y: -236))
+            top.addQuadCurve(to: CGPoint(x: 44, y: -190), control: CGPoint(x: 46, y: -234))
+            top.addQuadCurve(to: CGPoint(x: 6, y: -206), control: CGPoint(x: 30, y: -206))
+            top.addQuadCurve(to: CGPoint(x: -44, y: -186), control: CGPoint(x: -20, y: -214))
+            top.closeSubpath()
+            outlined(ctx, top, hair)
+            if look.hair == 5 { outlined(ctx, Path(ellipseIn: CGRect(x: -16, y: -262, width: 32, height: 32)), hair) }
+        case 2:
+            for x in stride(from: -36.0, through: 36.0, by: 18) {
+                outlined(ctx, Path(ellipseIn: CGRect(x: x - 14, y: -240 + abs(x) * 0.35, width: 28, height: 28)), hair, width: 4)
             }
-        } else {
-            var dome = Path()
-            dome.move(to: CGPoint(x: -45, y: -196))
-            dome.addQuadCurve(to: CGPoint(x: 0, y: look.hat == 3 ? -252 : -240), control: CGPoint(x: -46, y: look.hat == 3 ? -252 : -240))
-            dome.addQuadCurve(to: CGPoint(x: 45, y: -196), control: CGPoint(x: 46, y: look.hat == 3 ? -252 : -240))
-            dome.closeSubpath()
-            outlined(ctx, dome, hatColor)
-            if look.hat == 3 {
-                outlined(ctx, Path(roundedRect: CGRect(x: -48, y: -206, width: 96, height: 18), cornerRadius: 8), hatColor.opacity(0.85))
-                outlined(ctx, Path(ellipseIn: CGRect(x: -9, y: -266, width: 18, height: 18)), hatColor)
-            } else {
-                outlined(ctx, Path(ellipseIn: CGRect(x: -5, y: -245, width: 10, height: 10)), hatColor)
-                if look.hat == 1 {
-                    var brim = Path()
-                    brim.move(to: CGPoint(x: -50, y: -196))
-                    brim.addQuadCurve(to: CGPoint(x: 50, y: -196), control: CGPoint(x: 0, y: -212))
-                    brim.addQuadCurve(to: CGPoint(x: 40, y: -184), control: CGPoint(x: 52, y: -186))
-                    brim.addQuadCurve(to: CGPoint(x: -40, y: -184), control: CGPoint(x: 0, y: -194))
-                    brim.addQuadCurve(to: CGPoint(x: -50, y: -196), control: CGPoint(x: -52, y: -186))
-                    outlined(ctx, brim, hatColor)
-                } else {
-                    outlined(ctx, Path(roundedRect: CGRect(x: -14, y: -204, width: 28, height: 10), cornerRadius: 4), Color(hex: 0xE9E3D0), width: 3)
-                }
-            }
+        default:
+            break
+        }
+        }
+        if look.extra == 4 && Self.hairShows(look) {
+            outlined(ctx, Path(roundedRect: CGRect(x: -45, y: -216, width: 90, height: 13), cornerRadius: 5), shirt, width: 3.5)
+        }
+        switch look.hat {
+        case 0: break
+        case 1, 2, 3: classicHat(ctx, look.hat, hatColor)
+        default: fancyHat(ctx, look.hat, hatColor, time: time)
         }
 
         // Eyes
@@ -438,6 +593,25 @@ enum CartoonPerson {
             smile.addQuadCurve(to: CGPoint(x: 15, y: -160), control: CGPoint(x: 0, y: -144))
             smile.closeSubpath()
             outlined(ctx, smile, .white, width: 4)
+            if look.extra == 1 {
+                // Gold grill
+                ctx.fill(Path(roundedRect: CGRect(x: -11, y: -159, width: 22, height: 5), cornerRadius: 2), with: .color(Color(hex: 0xF5C542)))
+            }
+        }
+        switch look.extra {
+        case 2: // Clown nose
+            outlined(ctx, Path(ellipseIn: CGRect(x: -9, y: -182, width: 18, height: 18)), Color(hex: 0xE0302E), width: 3)
+            ctx.fill(Path(ellipseIn: CGRect(x: -4, y: -178, width: 5, height: 5)), with: .color(.white.opacity(0.7)))
+        case 3: // Eye black
+            ctx.fill(Path(roundedRect: CGRect(x: -26, y: -176, width: 16, height: 5), cornerRadius: 2), with: .color(ink))
+            ctx.fill(Path(roundedRect: CGRect(x: 10, y: -176, width: 16, height: 5), cornerRadius: 2), with: .color(ink))
+        case 5: // Diamond earring
+            var gem = Path()
+            gem.move(to: CGPoint(x: -44, y: -174)); gem.addLine(to: CGPoint(x: -38, y: -167))
+            gem.addLine(to: CGPoint(x: -44, y: -158)); gem.addLine(to: CGPoint(x: -50, y: -167)); gem.closeSubpath()
+            outlined(ctx, gem, Color(hex: 0xBDF4FF), width: 2)
+        default:
+            break
         }
     }
 }

@@ -63,8 +63,8 @@ final class HangoutModel: ObservableObject {
         Spot(uses: [.pong], point: CGPoint(x: 958, y: 590)),
         Spot(uses: [.flip], point: CGPoint(x: 398, y: 622)),
         Spot(uses: [.flip], point: CGPoint(x: 682, y: 622)),
-        Spot(uses: [.keg], point: CGPoint(x: 330, y: 476)),
-        Spot(uses: [.keg], point: CGPoint(x: 282, y: 490)),
+        Spot(uses: [.keg], point: CGPoint(x: 845, y: 604)),
+        Spot(uses: [.keg], point: CGPoint(x: 902, y: 618)),
         Spot(uses: [.games], point: CGPoint(x: 78, y: 610)),
         Spot(uses: [.games], point: CGPoint(x: 190, y: 630)),
     ]
@@ -73,14 +73,16 @@ final class HangoutModel: ObservableObject {
     static let flipSpots = [7, 8]
     /// On the keg, holding their legs.
     static let kegSpots = [9, 10]
-    static let kegTop = CGPoint(x: 330, y: 432)
+    /// The keg sits on the floor in front of the pong table.
+    static let kegBase = CGPoint(x: 845, y: 612)
+    static let kegTop = CGPoint(x: 845, y: 552)
 
     /// Tap areas for each activity, in room space, checked in this order.
     static let hotspotOrder: [Activity] = [.keg, .bong, .flip, .pong, .games, .couch]
 
     static func hotspot(_ activity: Activity) -> CGRect {
         switch activity {
-        case .keg: return CGRect(x: 296, y: 400, width: 70, height: 90)
+        case .keg: return CGRect(x: 800, y: 540, width: 90, height: 100)
         case .games: return CGRect(x: 20, y: 170, width: 276, height: 470)
         case .couch: return CGRect(x: 350, y: 330, width: 360, height: 165)
         case .bong: return CGRect(x: 462, y: 495, width: 150, height: 52)
@@ -164,6 +166,8 @@ final class HangoutModel: ObservableObject {
     private(set) var splashes: [Splash] = []
     private(set) var puffs: [Puff] = []
     var me: Int?
+    /// Called when you take a rip, do a keg stand or win something in the basement.
+    var onFeat: ((BasementFeat) -> Void)?
 
     /// Cups still standing at each end of the pong table, left end first.
     private(set) var pongCups = [[Bool]](repeating: [Bool](repeating: true, count: 6), count: 2)
@@ -186,6 +190,7 @@ final class HangoutModel: ObservableObject {
     private var wantsRip: Int?
 
     private var lastCompany = 0.0
+    private var matchEnd = 0.0
     private var later: [(Double, () -> Void)] = []
 
     static var now: Double { Date().timeIntervalSinceReferenceDate }
@@ -314,6 +319,7 @@ final class HangoutModel: ObservableObject {
         tickFlip(now)
         tickKeg(now)
         tickBong(now)
+        tickGames(now)
         bringCompany(now)
         decide(now)
     }
@@ -355,6 +361,7 @@ final class HangoutModel: ObservableObject {
         if let defender = occupant(Self.pongSpots[side], now) { people[defender]?.drinkStart = now }
         if !pongCups[side].contains(true) {
             pongWinner = 1 - side
+            if let winner = occupant(Self.pongSpots[1 - side], now), winner == me { onFeat?(.pongWin) }
             after(5) { [weak self] in self?.rerack() }
         }
     }
@@ -388,7 +395,10 @@ final class HangoutModel: ObservableObject {
                 if current.success {
                     current.stage = .landed
                     current.start = now
-                    if flipWinner == nil && players[1 - lane] != nil { flipWinner = lane }
+                    if flipWinner == nil && players[1 - lane] != nil {
+                        flipWinner = lane
+                        if players[lane] == me { onFeat?(.flipWin) }
+                    }
                 } else {
                     current.start = now
                     current.success = Double.random(in: 0...1) < 0.35
@@ -452,6 +462,7 @@ final class HangoutModel: ObservableObject {
     /// The friend who held your legs goes next.
     private func kegDone(doer: Int, holder: Int?) {
         let now = Self.now
+        if doer == me, people[doer]?.spot == Self.kegSpots[0] { onFeat?(.kegStand) }
         kegNext = now + 2.5
         guard let holder, people[doer]?.spot == Self.kegSpots[0], people[holder]?.spot == Self.kegSpots[1] else { return }
         people[doer]?.spot = Self.kegSpots[1]
@@ -477,6 +488,7 @@ final class HangoutModel: ObservableObject {
     private func tickBong(_ now: Double) {
         if let user = bongUser {
             if now - bongStart >= Self.ripLength || people[user]?.activity != .bong {
+                if user == me && now - bongStart >= Self.ripLength { onFeat?(.bongRip) }
                 bongUser = nil
                 lastBongUser = user
                 bongNext = now + 2.5
@@ -504,6 +516,23 @@ final class HangoutModel: ObservableObject {
             self.puffs.append(Puff(origin: CGPoint(x: seat.x + 4 * scale, y: seat.y - 188 * scale), start: Self.now, size: 1.7))
         }
     }
+
+    /// A video game match ends every so often while people are playing; someone on the couch wins it.
+    private func tickGames(_ now: Double) {
+        let playing = people.filter { $0.value.activity == .games && $0.value.spot != nil && !$0.value.isWalking(at: now) }.map(\.key)
+        guard !playing.isEmpty else { matchEnd = now + 30; return }
+        guard now >= matchEnd else { return }
+        matchEnd = now + Double.random(in: 25...40)
+        // Playing alone means playing the computer
+        let winner = playing.count == 1 ? (Bool.random() ? playing[0] : nil) : playing.randomElement()
+        if let winner {
+            gameWinner = (winner, now)
+            if winner == me { onFeat?(.gameWin) }
+        }
+    }
+
+    /// Who won the last video game match, and when, for a little celebration.
+    private(set) var gameWinner: (id: Int, time: Double)?
 
     /// How many people are sitting down to play on the TV.
     func gamers(at t: Double) -> Int {
@@ -578,6 +607,7 @@ final class HangoutModel: ObservableObject {
         if let spot = person.spot, let activity = person.activity {
             switch activity {
             case .games:
+                if let won = gameWinner, won.id == id, t - won.time < 2.5 { return .cheer(t + person.seed) }
                 return .game
             case .couch:
                 return .sit

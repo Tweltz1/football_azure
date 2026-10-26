@@ -10,6 +10,7 @@ struct HangoutView: View {
     var showButtons = true
 
     @StateObject private var model = HangoutModel()
+    @State private var toast: String?
 
     var body: some View {
         VStack(spacing: 8) {
@@ -24,6 +25,17 @@ struct HangoutView: View {
                 }
             }
             .aspectRatio(HangoutModel.size.width / HangoutModel.size.height, contentMode: .fit)
+            .overlay(alignment: .top) {
+                if let toast {
+                    Text(toast)
+                        .font(.system(size: 13, weight: .heavy))
+                        .padding(.horizontal, 12).padding(.vertical, 6)
+                        .background(Theme.accent, in: Capsule())
+                        .foregroundStyle(.white)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
             .clipShape(RoundedRectangle(cornerRadius: 18))
             .contentShape(Rectangle())
             .gesture(SpatialTapGesture().onEnded { value in tapped(value.location) })
@@ -49,11 +61,27 @@ struct HangoutView: View {
                 }
             }
         }
-        .onAppear { model.update(guests: guests, me: me) }
+        .onAppear {
+            model.update(guests: guests, me: me)
+            model.onFeat = { feat in
+                Task { @MainActor in
+                    let unlocked = Account.shared.record(feat)
+                    show(unlocked.isEmpty ? feat.cheer : "Unlocked: \(unlocked.joined(separator: ", "))!")
+                }
+            }
+        }
         .onChange(of: guests) { _, new in model.update(guests: new, me: me) }
     }
 
     @State private var width: CGFloat = 1
+
+    private func show(_ text: String) {
+        withAnimation(.spring(duration: 0.3)) { toast = text }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if toast == text { withAnimation { toast = nil } }
+        }
+    }
 
     private func tapped(_ location: CGPoint) {
         let scale = width / HangoutModel.size.width
@@ -66,9 +94,10 @@ struct HangoutView: View {
         enum Item { case person(HangoutModel.Person), furniture(CGFloat, (GraphicsContext) -> Void) }
         var items: [(CGFloat, Item)] = []
         for person in model.people.values {
-            // Whoever's on the keg is drawn over it, hands on the rim
-            let onKeg = person.spot == HangoutModel.kegSpots[0] && !person.isWalking(at: t)
-            items.append((onKeg ? 479 : person.position(at: t).y + 0.5, .person(person)))
+            // Whoever's flipped up on the keg is drawn over it, hands on the rim
+            var flipped = false
+            if case let .kegStand(seconds) = model.pose(for: person, at: t) { flipped = HangoutModel.kegFlip(seconds) > 0 }
+            items.append((flipped ? HangoutModel.kegBase.y + 1 : person.position(at: t).y + 0.5, .person(person)))
         }
         for (y, draw) in RoomArt.furniture(model, time: t) {
             items.append((y, .furniture(y, draw)))
@@ -196,4 +225,16 @@ struct HangoutView: View {
 private struct WidthKey: PreferenceKey {
     static var defaultValue: CGFloat = 1
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+private extension BasementFeat {
+    var cheer: String {
+        switch self {
+        case .bongRip: return "+1 bong rip"
+        case .kegStand: return "+1 keg stand"
+        case .pongWin: return "You won beer pong!"
+        case .gameWin: return "You won the match!"
+        case .flipWin: return "You won flip cup!"
+        }
+    }
 }

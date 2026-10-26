@@ -11,11 +11,46 @@ struct Stats: Codable, Equatable {
     var crewWins = 0
     var narcWins = 0
     var snitchWins = 0
+    // Basement counts, kept on this phone
+    var bongRips = 0
+    var kegStands = 0
+    var pongWins = 0
+    var gameWins = 0
+    var flipWins = 0
+
+    init(games: Int = 0, wins: Int = 0, crewWins: Int = 0, narcWins: Int = 0, snitchWins: Int = 0) {
+        self.games = games
+        self.wins = wins
+        self.crewWins = crewWins
+        self.narcWins = narcWins
+        self.snitchWins = snitchWins
+    }
+
+    /// Older saves don't have every count yet.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func value(_ key: CodingKeys) -> Int { (try? c.decodeIfPresent(Int.self, forKey: key)) ?? 0 }
+        games = value(.games); wins = value(.wins)
+        crewWins = value(.crewWins); narcWins = value(.narcWins); snitchWins = value(.snitchWins)
+        bongRips = value(.bongRips); kegStands = value(.kegStands); pongWins = value(.pongWins)
+        gameWins = value(.gameWins); flipWins = value(.flipWins)
+    }
 
     func merged(with other: Stats) -> Stats {
-        Stats(games: max(games, other.games), wins: max(wins, other.wins), crewWins: max(crewWins, other.crewWins),
-              narcWins: max(narcWins, other.narcWins), snitchWins: max(snitchWins, other.snitchWins))
+        var both = Stats(games: max(games, other.games), wins: max(wins, other.wins), crewWins: max(crewWins, other.crewWins),
+                         narcWins: max(narcWins, other.narcWins), snitchWins: max(snitchWins, other.snitchWins))
+        both.bongRips = max(bongRips, other.bongRips)
+        both.kegStands = max(kegStands, other.kegStands)
+        both.pongWins = max(pongWins, other.pongWins)
+        both.gameWins = max(gameWins, other.gameWins)
+        both.flipWins = max(flipWins, other.flipWins)
+        return both
     }
+}
+
+/// Things you do in the basement that count toward unlocks.
+enum BasementFeat {
+    case bongRip, kegStand, pongWin, gameWin, flipWin
 }
 
 /// A row of `hood_protocol_profiles`.
@@ -202,6 +237,21 @@ final class Account: NSObject, ObservableObject {
                 }
             }
         }
+        return Unlocks.newlyUnlocked(before: before, after: stats)
+    }
+
+    /// Counts a bong rip, keg stand or win in the basement. Returns the names of anything it unlocked.
+    @discardableResult
+    func record(_ feat: BasementFeat) -> [String] {
+        let before = stats
+        switch feat {
+        case .bongRip: localStats.bongRips += 1
+        case .kegStand: localStats.kegStands += 1
+        case .pongWin: localStats.pongWins += 1
+        case .gameWin: localStats.gameWins += 1
+        case .flipWin: localStats.flipWins += 1
+        }
+        saveLocal()
         return Unlocks.newlyUnlocked(before: before, after: stats)
     }
 

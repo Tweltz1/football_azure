@@ -87,6 +87,11 @@ struct AccountView: View {
                 stat("As Crew", stats.crewWins)
                 stat("As a Narc", stats.narcWins)
                 stat("As the Snitch", stats.snitchWins)
+                stat("Bong rips", stats.bongRips)
+                stat("Keg stands", stats.kegStands)
+                stat("Pong wins", stats.pongWins)
+                stat("Flip cup wins", stats.flipWins)
+                stat("Video game wins", stats.gameWins)
             }
             .padding(.vertical, 6)
         }

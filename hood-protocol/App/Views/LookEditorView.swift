@@ -50,6 +50,7 @@ struct LookEditorView: View {
                     }
                     Section("Face") {
                         options(Look.facialHair, selection: $look.facial, part: nil)
+                        options(Look.extras, selection: $look.extra, part: .extra)
                         Toggle("Shades", isOn: $look.shades)
                     }
                     Section("Pants") {
@@ -63,7 +64,7 @@ struct LookEditorView: View {
                     } header: {
                         Text("Extras")
                     } footer: {
-                        Text("Locked items unlock as you play more games. You've played \(stats.games) and won \(stats.wins).")
+                        Text("Locked items unlock as you play more games, and from bong rips, keg stands, and pong, flip cup and video game wins in the basement. You've played \(stats.games) and won \(stats.wins).")
                     }
                 }
                 .scrollContentBackground(.hidden)

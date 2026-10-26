@@ -368,7 +368,7 @@ enum RoomArt {
     /// Each piece with the floor line people are sorted against.
     static func furniture(_ model: HangoutModel, time t: Double) -> [(CGFloat, (GraphicsContext) -> Void)] {
         [
-            (478, { keg($0) }),
+            (HangoutModel.kegBase.y, { keg($0) }),
             (555, { beanbag($0, center: CGPoint(x: 150, y: 562), color: Color(hex: 0xFF6B6B)) }),
             (585, { beanbag($0, center: CGPoint(x: 262, y: 592), color: Color(hex: 0x2F80ED)) }),
             (605, { beanbag($0, center: CGPoint(x: 78, y: 612), color: Color(hex: 0x3DDC97)) }),
@@ -385,8 +385,12 @@ enum RoomArt {
     }
 
     /// A keg on ice in a blue tub, with the tap and hose on top.
-    private static func keg(_ ctx: GraphicsContext) {
-        let top = HangoutModel.kegTop
+    private static func keg(_ context: GraphicsContext) {
+        // Drawn a bit bigger since it's at the front of the room
+        var ctx = context
+        ctx.translateBy(x: HangoutModel.kegBase.x, y: HangoutModel.kegBase.y)
+        ctx.scaleBy(x: 1.3, y: 1.3)
+        let top = CGPoint(x: 0, y: -46)
         let steel = Color(hex: 0xC9CED6)
         outlined(ctx, Path(roundedRect: CGRect(x: top.x - 26, y: top.y, width: 52, height: 46), cornerRadius: 6), steel, width: 4)
         for y in [top.y + 12, top.y + 30] {
