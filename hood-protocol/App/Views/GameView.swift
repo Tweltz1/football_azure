@@ -7,6 +7,8 @@ struct GameView: View {
 
     @State private var showingRole = false
     @State private var showingRules = false
+    @State private var ripsSeen = 0
+    @State private var ripResult: RipResult?
     @State private var unlocked: [String] = []
 
     var body: some View {
@@ -58,10 +60,30 @@ struct GameView: View {
                 RoleCard(view: view).padding().presentationDetents([.medium])
             }
         }
+        .onChange(of: table.view.map(rips) ?? []) { _, found in
+            // A bong rip you just took: show the Host what they learned, once.
+            defer { ripsSeen = found.count }
+            guard found.count > ripsSeen, let last = found.last else { return }
+            ripResult = last
+        }
+        .sheet(item: $ripResult) { result in
+            if let view = table.view {
+                RipResultView(view: view, result: result) { ripResult = nil }
+                    .presentationDetents([.medium])
+                    .interactiveDismissDisabled()
+            }
+        }
         .sheet(isPresented: $showingRules) {
             NavigationStack {
                 RulesView().toolbar { Button("Done") { showingRules = false } }
             }
+        }
+    }
+
+    private func rips(_ view: PlayerView) -> [RipResult] {
+        view.intel.enumerated().compactMap { index, item in
+            if case let .scan(target, team) = item { return RipResult(id: index, target: target, team: team) }
+            return nil
         }
     }
 
@@ -93,6 +115,39 @@ struct GameView: View {
                 highlighted: view.pendingActors.contains(seat.id)
             )
         }
+    }
+}
+
+// MARK: - Bong rip
+
+struct RipResult: Identifiable, Equatable {
+    var id: Int
+    var target: Int
+    var team: Team
+}
+
+/// What the Host learns from a bong rip. Only their phone shows it.
+struct RipResultView: View {
+    let view: PlayerView
+    let result: RipResult
+    let onDone: () -> Void
+
+    var body: some View {
+        let seat = view.seats[result.target]
+        let narc = result.team != .crew
+        VStack(spacing: 16) {
+            Image(systemName: "smoke.fill").font(.system(size: 34)).foregroundStyle(.secondary)
+            Text("\(seat.info.name) took the rip").font(.title3.weight(.bold))
+            LookPortrait(code: seat.info.look, size: 90)
+            Text(narc ? "They're a Narc" : "They're Crew")
+                .font(.largeTitle.weight(.black))
+                .foregroundStyle(narc ? Theme.breach : Theme.secure)
+            Text("Only you can see this. Tell everyone the truth, or lie.")
+                .font(.footnote).multilineTextAlignment(.center).foregroundStyle(.secondary)
+            Button("Got it", action: onDone).buttonStyle(.borderedProminent)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -228,6 +283,22 @@ struct RoleCard: View {
         VStack(spacing: 12) {
             Text(view.myRole.title).font(.largeTitle.weight(.black)).foregroundStyle(view.myRole.color)
             Text(view.myRole.goal).multilineTextAlignment(.center).foregroundStyle(.secondary)
+            let found = view.intel.compactMap { item -> (Int, Team)? in
+                if case let .scan(target, team) = item { return (target, team) }
+                return nil
+            }
+            if !found.isEmpty {
+                Divider()
+                Text("Your bong rips").font(.headline)
+                ForEach(found.indices, id: \.self) { index in
+                    let (target, team) = found[index]
+                    HStack {
+                        LookPortrait(code: view.seats[target].info.look, size: 26)
+                        Text("\(view.seats[target].info.name): \(team == .crew ? "Crew" : "Narc")")
+                            .foregroundStyle(team == .crew ? Theme.secure : Theme.breach)
+                    }
+                }
+            }
             if !allies.isEmpty {
                 Divider()
                 Text("Your people").font(.headline)
