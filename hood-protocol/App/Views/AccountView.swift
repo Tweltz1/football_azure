@@ -5,6 +5,8 @@ struct AccountView: View {
     let look: String
     @AppStorage("name") private var typedName = ""
     @AppStorage("fallbackName") private var fallbackName = "Guest"
+    @State private var askingName = false
+    @State private var draftName = ""
     @ObservedObject private var account = Account.shared
     @Environment(\.dismiss) private var dismiss
 
@@ -31,6 +33,21 @@ struct AccountView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() }.bold() }
+            }
+            .onChange(of: account.session?.userId) { _, id in
+                // Just signed in: offer the Google first name, and let them change it.
+                guard id != nil else { return }
+                draftName = name
+                askingName = true
+            }
+            .alert("What should we call you?", isPresented: $askingName) {
+                TextField("Your name", text: $draftName).textInputAutocapitalization(.words)
+                Button("Save") {
+                    typedName = String(draftName.trimmingCharacters(in: .whitespaces).prefix(20))
+                    Task { await account.syncProfile(name: name, look: look) }
+                }
+            } message: {
+                Text("This is the name everyone sees at the table.")
             }
         }
     }
