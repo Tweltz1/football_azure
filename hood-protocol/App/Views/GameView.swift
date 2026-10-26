@@ -142,7 +142,7 @@ struct RipResultView: View {
             Text(narc ? "They're a Narc" : "They're Crew")
                 .font(.largeTitle.weight(.black))
                 .foregroundStyle(narc ? Theme.breach : Theme.secure)
-            Text("Only you can see this. Tell everyone the truth, or lie.")
+            Text("Only you can see this, and only this once. Tell everyone the truth, or lie.")
                 .font(.footnote).multilineTextAlignment(.center).foregroundStyle(.secondary)
             Button("Got it", action: onDone).buttonStyle(.borderedProminent)
         }
@@ -283,22 +283,6 @@ struct RoleCard: View {
         VStack(spacing: 12) {
             Text(view.myRole.title).font(.largeTitle.weight(.black)).foregroundStyle(view.myRole.color)
             Text(view.myRole.goal).multilineTextAlignment(.center).foregroundStyle(.secondary)
-            let found = view.intel.compactMap { item -> (Int, Team)? in
-                if case let .scan(target, team) = item { return (target, team) }
-                return nil
-            }
-            if !found.isEmpty {
-                Divider()
-                Text("Your bong rips").font(.headline)
-                ForEach(found.indices, id: \.self) { index in
-                    let (target, team) = found[index]
-                    HStack {
-                        LookPortrait(code: view.seats[target].info.look, size: 26)
-                        Text("\(view.seats[target].info.name): \(team == .crew ? "Crew" : "Narc")")
-                            .foregroundStyle(team == .crew ? Theme.secure : Theme.breach)
-                    }
-                }
-            }
             if !allies.isEmpty {
                 Divider()
                 Text("Your people").font(.headline)
