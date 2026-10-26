@@ -127,6 +127,14 @@ struct HomeView: View {
                     .buttonStyle(.bordered)
                 }
             }
+            NavigationLink { RewardsView(code: $look) } label: {
+                Label("Rewards: \(Unlocks.items.filter { $0.requirement.isMet(by: account.stats) }.count) of \(Unlocks.items.count) unlocked",
+                      systemImage: "gift.fill")
+                    .font(.subheadline.bold())
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(Theme.warning)
             Button { showingAccount = true } label: {
                 HStack {
                     Image(systemName: "trophy.fill").foregroundStyle(Theme.warning)

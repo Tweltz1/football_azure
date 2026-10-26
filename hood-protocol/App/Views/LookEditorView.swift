@@ -54,10 +54,10 @@ struct LookEditorView: View {
                         Toggle("Shades", isOn: $look.shades)
                     }
                     Section("Pants") {
-                        swatches(Look.pantsColors, selection: $look.pants, part: nil)
+                        swatches(Look.pantsColors, selection: $look.pants, part: .pantsColor)
                         Toggle("Shorts", isOn: $look.shorts)
                     }
-                    Section("Shoes") { swatches(Look.shoeColors, selection: $look.shoes, part: nil) }
+                    Section("Shoes") { swatches(Look.shoeColors, selection: $look.shoes, part: .shoeColor) }
                     Section {
                         extra("Glasses", isOn: $look.glasses, part: .glasses)
                         extra("Gold chain", isOn: $look.chain, part: .chain)

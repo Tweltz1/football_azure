@@ -36,10 +36,15 @@ enum CartoonPerson {
 
         let skin = Color(hex: Look.skins[look.skin])
         // The toga and the referee shirt are always white
-        let shirt = look.top == 7 || look.top == 9 ? Color(hex: 0xF4F1EA) : Color(hex: Look.clothes[look.topColor])
+        let shirt: Color
+        switch look.top {
+        case 7, 9, 14: shirt = Color(hex: 0xF4F1EA)   // toga, referee, lab coat
+        case 16: shirt = Color(hex: 0x1E1E24)         // leather
+        default: shirt = Color(hex: Look.clothes[look.topColor])
+        }
         let pants = Color(hex: Look.pantsColors[look.pants])
         let shoe = Color(hex: Look.shoeColors[look.shoes])
-        let sleeve = look.top == 3 || look.top == 4 || look.top == 7 ? skin : look.top == 6 ? Color(hex: 0x15151A) : shirt
+        let sleeve = [3, 4, 7, 12].contains(look.top) ? skin : look.top == 6 ? Color(hex: 0x15151A) : look.top == 13 ? Color(hex: 0xF4F1EA) : shirt
 
         // Shadow on the floor
         if case .kegStand = pose {} else {
@@ -74,6 +79,17 @@ enum CartoonPerson {
         }
         let seated: Bool
         switch pose { case .sit, .game, .bong: seated = true; default: seated = false }
+
+        // A superhero cape hangs behind everything
+        if look.top == 15 {
+            var cape = Path()
+            cape.move(to: CGPoint(x: -36, y: -140))
+            cape.addLine(to: CGPoint(x: 36, y: -140))
+            cape.addQuadCurve(to: CGPoint(x: 54, y: -30), control: CGPoint(x: 58 + 4 * sin(time * 3), y: -90))
+            cape.addQuadCurve(to: CGPoint(x: -54, y: -30), control: CGPoint(x: 0, y: -18))
+            cape.addQuadCurve(to: CGPoint(x: -36, y: -140), control: CGPoint(x: -58 - 4 * sin(time * 3), y: -90))
+            outlined(body, cape, Color(hex: 0xD33B3B))
+        }
 
         // Legs
         for (index, lx) in [CGFloat(-18), CGFloat(18)].enumerated() {
@@ -183,6 +199,73 @@ enum CartoonPerson {
                     body.fill(Path(CGRect(x: x - 3.5, y: -140, width: 7, height: 76)), with: .color(Color(hex: 0x15151A)))
                 }
                 outlined(body, Path(roundedRect: CGRect(x: 10, y: -112, width: 14, height: 8), cornerRadius: 3), Color(hex: 0xC0C4CC), width: 2)
+            case 10:
+                // Flannel plaid
+                var plaid = Path()
+                for x in stride(from: -28.0, through: 28, by: 14) { plaid.addRect(CGRect(x: x - 2.5, y: -140, width: 5, height: 76)) }
+                for y in stride(from: -132.0, through: -70, by: 14) { plaid.addRect(CGRect(x: -36, y: y - 2.5, width: 72, height: 5)) }
+                body.fill(plaid, with: .color(ink.opacity(0.28)))
+                var collar = Path()
+                collar.move(to: CGPoint(x: -16, y: -142)); collar.addLine(to: CGPoint(x: 0, y: -126)); collar.addLine(to: CGPoint(x: 16, y: -142))
+                body.stroke(collar, with: .color(ink), lineWidth: 3)
+            case 11:
+                // Puffer quilting
+                for y in stride(from: -126.0, through: -74, by: 13) {
+                    var seam = Path()
+                    seam.move(to: CGPoint(x: -36, y: y)); seam.addQuadCurve(to: CGPoint(x: 36, y: y), control: CGPoint(x: 0, y: y + 5))
+                    body.stroke(seam, with: .color(ink.opacity(0.45)), lineWidth: 2.5)
+                }
+                body.fill(Path(CGRect(x: -2, y: -142, width: 4, height: 80)), with: .color(ink.opacity(0.5)))
+            case 12:
+                // Basketball jersey: tank straps and a number
+                var straps = Path()
+                straps.move(to: CGPoint(x: -38, y: -128)); straps.addQuadCurve(to: CGPoint(x: -22, y: -142), control: CGPoint(x: -24, y: -126))
+                straps.move(to: CGPoint(x: 38, y: -128)); straps.addQuadCurve(to: CGPoint(x: 22, y: -142), control: CGPoint(x: 24, y: -126))
+                body.fill(straps, with: .color(skin))
+                body.stroke(straps, with: .color(ink), lineWidth: 4)
+                body.draw(Text("00").font(.system(size: 32, weight: .black)).foregroundColor(.white), at: CGPoint(x: 0, y: -100))
+            case 13:
+                // Overalls: a bib and straps in the outfit color over a white tee
+                body.fill(Path(roundedRect: CGRect(x: -36, y: -140, width: 72, height: 76), cornerRadius: 18), with: .color(Color(hex: 0xF4F1EA)))
+                outlined(body, Path(roundedRect: CGRect(x: -24, y: -116, width: 48, height: 54), cornerRadius: 6), shirt, width: 3.5)
+                for x in [-20.0, 20] {
+                    var strap = Path()
+                    strap.move(to: CGPoint(x: x, y: -116)); strap.addLine(to: CGPoint(x: x * 1.4, y: -142))
+                    body.stroke(strap, with: .color(shirt), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    body.fill(Path(ellipseIn: CGRect(x: x - 4, y: -116, width: 8, height: 8)), with: .color(Color(hex: 0xF5C542)))
+                }
+            case 14:
+                // Lab coat
+                var lapels = Path()
+                lapels.move(to: CGPoint(x: -16, y: -142)); lapels.addLine(to: CGPoint(x: -2, y: -96)); lapels.addLine(to: CGPoint(x: -2, y: -64))
+                lapels.move(to: CGPoint(x: 16, y: -142)); lapels.addLine(to: CGPoint(x: 2, y: -96)); lapels.addLine(to: CGPoint(x: 2, y: -64))
+                body.stroke(lapels, with: .color(ink.opacity(0.6)), lineWidth: 3)
+                outlined(body, Path(roundedRect: CGRect(x: 12, y: -122, width: 16, height: 12), cornerRadius: 2), .white, width: 2)
+                body.fill(Path(CGRect(x: 16, y: -128, width: 3, height: 10)), with: .color(Color(hex: 0x2F80ED)))
+            case 15:
+                // Hero emblem
+                outlined(body, Path(ellipseIn: CGRect(x: -16, y: -126, width: 32, height: 28)), Color(hex: 0xF5C542), width: 3)
+                body.draw(Text("H").font(.system(size: 18, weight: .black)).foregroundColor(Color(hex: 0xD33B3B)), at: CGPoint(x: 0, y: -112))
+            case 16:
+                // Leather jacket: zipper and collar
+                var zip = Path()
+                zip.move(to: CGPoint(x: -6, y: -140)); zip.addLine(to: CGPoint(x: 10, y: -64))
+                body.stroke(zip, with: .color(Color(hex: 0xC0C4CC)), lineWidth: 3)
+                var collar = Path()
+                collar.move(to: CGPoint(x: -34, y: -138)); collar.addLine(to: CGPoint(x: -14, y: -144)); collar.addLine(to: CGPoint(x: -22, y: -118)); collar.closeSubpath()
+                collar.move(to: CGPoint(x: 34, y: -138)); collar.addLine(to: CGPoint(x: 14, y: -144)); collar.addLine(to: CGPoint(x: 22, y: -118)); collar.closeSubpath()
+                outlined(body, collar, Color(hex: 0x2C2C34), width: 3)
+            case 17:
+                // Bathrobe: white trim and a tied belt
+                var trim = Path()
+                trim.move(to: CGPoint(x: -16, y: -142)); trim.addLine(to: CGPoint(x: 8, y: -84))
+                trim.move(to: CGPoint(x: 16, y: -142)); trim.addLine(to: CGPoint(x: -4, y: -100))
+                body.stroke(trim, with: .color(.white), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                outlined(body, Path(roundedRect: CGRect(x: -38, y: -92, width: 76, height: 9), cornerRadius: 4), shirt, width: 2.5)
+                var knot = Path()
+                knot.move(to: CGPoint(x: 14, y: -86)); knot.addLine(to: CGPoint(x: 8, y: -66))
+                knot.move(to: CGPoint(x: 18, y: -86)); knot.addLine(to: CGPoint(x: 24, y: -68))
+                body.stroke(knot, with: .color(ink), style: StrokeStyle(lineWidth: 5, lineCap: .round))
             default:
                 break
             }
@@ -356,7 +439,7 @@ enum CartoonPerson {
         outlined(ctx, Path(ellipseIn: CGRect(x: hand.x - 10, y: hand.y - 6, width: 20, height: 20)), skin)
     }
 
-    static func hairShows(_ look: Look) -> Bool { [0, 4, 6, 12].contains(look.hat) }
+    static func hairShows(_ look: Look) -> Bool { [0, 4, 6, 12, 19, 20].contains(look.hat) }
 
     /// Cap, backwards cap or beanie.
     private static func classicHat(_ ctx: GraphicsContext, _ hat: Int, _ hatColor: Color) {
@@ -475,6 +558,102 @@ enum CartoonPerson {
                 ctx.fill(Path(CGRect(x: 56 * side - 11, y: -232, width: 22, height: 8)), with: .color(.white))
             }
             classicHat(ctx, 1, color)
+        case 14: // Top hat
+            outlined(ctx, Path(ellipseIn: CGRect(x: -58, y: -214, width: 116, height: 20)), color)
+            outlined(ctx, Path(roundedRect: CGRect(x: -34, y: -300, width: 68, height: 94), cornerRadius: 6), color)
+            ctx.fill(Path(CGRect(x: -32, y: -230, width: 64, height: 12)), with: .color(Color(hex: 0xD33B3B)))
+        case 15: // Wizard hat with stars
+            var cone = Path()
+            cone.move(to: CGPoint(x: -36, y: -212))
+            cone.addQuadCurve(to: CGPoint(x: 26, y: -330), control: CGPoint(x: -8, y: -280))
+            cone.addQuadCurve(to: CGPoint(x: 36, y: -212), control: CGPoint(x: 18, y: -270))
+            cone.closeSubpath()
+            outlined(ctx, cone, color)
+            outlined(ctx, Path(ellipseIn: CGRect(x: -62, y: -222, width: 124, height: 22)), color)
+            for (x, y) in [(-6.0, -250.0), (10, -278), (-2, -232)] {
+                ctx.draw(Text("★").font(.system(size: 14)).foregroundColor(Color(hex: 0xFFE38A)), at: CGPoint(x: x, y: y))
+            }
+        case 16: // Pirate hat
+            var tricorn = Path()
+            tricorn.move(to: CGPoint(x: -66, y: -214))
+            tricorn.addQuadCurve(to: CGPoint(x: 0, y: -270), control: CGPoint(x: -40, y: -272))
+            tricorn.addQuadCurve(to: CGPoint(x: 66, y: -214), control: CGPoint(x: 40, y: -272))
+            tricorn.addQuadCurve(to: CGPoint(x: -66, y: -214), control: CGPoint(x: 0, y: -196))
+            outlined(ctx, tricorn, Color(hex: 0x1E1E24))
+            outlined(ctx, Path(ellipseIn: CGRect(x: -9, y: -250, width: 18, height: 16)), .white, width: 2.5)
+            ctx.fill(Path(ellipseIn: CGRect(x: -5, y: -246, width: 4, height: 4)), with: .color(ink))
+            ctx.fill(Path(ellipseIn: CGRect(x: 1, y: -246, width: 4, height: 4)), with: .color(ink))
+        case 17: // Bucket hat
+            var bucket = Path()
+            bucket.move(to: CGPoint(x: -38, y: -210)); bucket.addLine(to: CGPoint(x: -30, y: -252))
+            bucket.addQuadCurve(to: CGPoint(x: 30, y: -252), control: CGPoint(x: 0, y: -266))
+            bucket.addLine(to: CGPoint(x: 38, y: -210)); bucket.closeSubpath()
+            outlined(ctx, bucket, color)
+            var brim = Path()
+            brim.move(to: CGPoint(x: -38, y: -214)); brim.addLine(to: CGPoint(x: 38, y: -214))
+            brim.addLine(to: CGPoint(x: 56, y: -194)); brim.addQuadCurve(to: CGPoint(x: -56, y: -194), control: CGPoint(x: 0, y: -186))
+            brim.closeSubpath()
+            outlined(ctx, brim, color)
+        case 18: // Beret
+            var beret = ctx
+            beret.rotate(by: .degrees(-8))
+            outlined(beret, Path(ellipseIn: CGRect(x: -52, y: -252, width: 100, height: 40)), color)
+            beret.fill(Path(CGRect(x: -2, y: -262, width: 4, height: 12)), with: .color(ink))
+        case 19: // Bunny ears
+            for side in [-1.0, 1.0] {
+                var ear = ctx
+                ear.translateBy(x: 22 * side, y: -226)
+                ear.rotate(by: .degrees(12 * side))
+                outlined(ear, Path(ellipseIn: CGRect(x: -12, y: -74, width: 24, height: 76)), .white)
+                ear.fill(Path(ellipseIn: CGRect(x: -6, y: -64, width: 12, height: 56)), with: .color(Color(hex: 0xFFB6C8)))
+            }
+        case 20: // Devil horns
+            for side in [-1.0, 1.0] {
+                var horn = Path()
+                horn.move(to: CGPoint(x: 16 * side, y: -226))
+                horn.addQuadCurve(to: CGPoint(x: 34 * side, y: -262), control: CGPoint(x: 16 * side, y: -250))
+                horn.addQuadCurve(to: CGPoint(x: 34 * side, y: -222), control: CGPoint(x: 40 * side, y: -240))
+                horn.closeSubpath()
+                outlined(ctx, horn, Color(hex: 0xD33B3B), width: 3.5)
+            }
+        case 21: // Graduation cap with a tassel
+            classicHat(ctx, 3, Color(hex: 0x1E1E24))
+            var board = Path()
+            board.move(to: CGPoint(x: -62, y: -244)); board.addLine(to: CGPoint(x: 0, y: -266))
+            board.addLine(to: CGPoint(x: 62, y: -244)); board.addLine(to: CGPoint(x: 0, y: -224)); board.closeSubpath()
+            outlined(ctx, board, Color(hex: 0x1E1E24))
+            var tassel = Path()
+            tassel.move(to: CGPoint(x: 0, y: -246)); tassel.addLine(to: CGPoint(x: 40, y: -238)); tassel.addLine(to: CGPoint(x: 44, y: -206))
+            ctx.stroke(tassel, with: .color(Color(hex: 0xF5C542)), style: StrokeStyle(lineWidth: 4, lineCap: .round))
+        case 22: // Durag with the tail
+            var tail = Path()
+            tail.move(to: CGPoint(x: 30, y: -210))
+            tail.addQuadCurve(to: CGPoint(x: 52, y: -140), control: CGPoint(x: 64 + 4 * sin(time * 2), y: -180))
+            tail.addLine(to: CGPoint(x: 40, y: -140))
+            tail.addQuadCurve(to: CGPoint(x: 22, y: -206), control: CGPoint(x: 46, y: -180))
+            outlined(ctx, tail, color, width: 4)
+            var dome = Path()
+            dome.move(to: CGPoint(x: -46, y: -196))
+            dome.addQuadCurve(to: CGPoint(x: 46, y: -196), control: CGPoint(x: 0, y: -262))
+            dome.addQuadCurve(to: CGPoint(x: -46, y: -196), control: CGPoint(x: 0, y: -210))
+            outlined(ctx, dome, color)
+            ctx.fill(Path(CGRect(x: -2, y: -240, width: 4, height: 34)), with: .color(ink.opacity(0.3)))
+        case 23: // Bandana tied on the head
+            var wrap = Path()
+            wrap.move(to: CGPoint(x: -46, y: -200))
+            wrap.addQuadCurve(to: CGPoint(x: 46, y: -200), control: CGPoint(x: 0, y: -266))
+            wrap.addQuadCurve(to: CGPoint(x: -46, y: -200), control: CGPoint(x: 0, y: -214))
+            outlined(ctx, wrap, color)
+            for (x, y) in [(-20.0, -226.0), (8, -236), (24, -218), (-4, -214)] {
+                ctx.fill(Path(ellipseIn: CGRect(x: x - 3, y: y - 3, width: 6, height: 6)), with: .color(.white.opacity(0.8)))
+            }
+            outlined(ctx, Path(ellipseIn: CGRect(x: 40, y: -214, width: 16, height: 14)), color, width: 3)
+            for angle in [20.0, 60] {
+                var flap = ctx
+                flap.translateBy(x: 50, y: -206)
+                flap.rotate(by: .degrees(angle))
+                outlined(flap, Path(roundedRect: CGRect(x: 0, y: -5, width: 22, height: 10), cornerRadius: 4), color, width: 3)
+            }
         default:
             break
         }
@@ -487,10 +666,20 @@ enum CartoonPerson {
         if look.top == 1 {
             outlined(ctx, Path(ellipseIn: CGRect(x: -52, y: -238, width: 104, height: 104)), shirt)
         }
-        if Self.hairShows(look) || look.hair == 4 {
+        if Self.hairShows(look) || look.hair == 4 || [8, 10, 11].contains(look.hair) {
             switch look.hair {
             case 4: outlined(ctx, Path(roundedRect: CGRect(x: -54, y: -232, width: 108, height: 116), cornerRadius: 44), hair)
             case 3 where Self.hairShows(look): outlined(ctx, Path(ellipseIn: CGRect(x: -66, y: -262, width: 132, height: 124)), hair)
+            case 8: // Mullet: business up top, party in the back
+                outlined(ctx, Path(roundedRect: CGRect(x: -42, y: -206, width: 84, height: 66), cornerRadius: 18), hair)
+            case 10: // Pigtails
+                for side in [-1.0, 1.0] {
+                    outlined(ctx, Path(ellipseIn: CGRect(x: 58 * side - 17, y: -214, width: 34, height: 40)), hair)
+                }
+            case 11: // Dreads hanging down
+                for x in stride(from: -48.0, through: 48, by: 12) {
+                    outlined(ctx, Path(roundedRect: CGRect(x: x - 6, y: -222, width: 12, height: 82 - abs(x) * 0.3), cornerRadius: 6), hair, width: 3)
+                }
             default: break
             }
         }
@@ -511,7 +700,7 @@ enum CartoonPerson {
         // Hair, then the hat. Party hats, crowns and halos sit on top of the hair.
         if Self.hairShows(look) {
         switch look.hair {
-        case 0, 1, 4, 5:
+        case 0, 1, 4, 5, 8, 10, 11:
             var top = Path()
             top.move(to: CGPoint(x: -44, y: -186))
             top.addQuadCurve(to: CGPoint(x: 0, y: look.hair == 0 ? -232 : -236), control: CGPoint(x: -48, y: -236))
@@ -525,6 +714,26 @@ enum CartoonPerson {
             for x in stride(from: -36.0, through: 36.0, by: 18) {
                 outlined(ctx, Path(ellipseIn: CGRect(x: x - 14, y: -240 + abs(x) * 0.35, width: 28, height: 28)), hair, width: 4)
             }
+        case 7: // Mohawk
+            var hawk = Path()
+            hawk.move(to: CGPoint(x: -10, y: -222))
+            for (i, y) in [-262.0, -246, -276, -252, -270].enumerated() {
+                hawk.addLine(to: CGPoint(x: -10 + Double(i) * 5, y: y))
+            }
+            hawk.addLine(to: CGPoint(x: 12, y: -222))
+            hawk.closeSubpath()
+            outlined(ctx, hawk, hair, width: 4)
+        case 9: // Spiky
+            var spikes = Path()
+            spikes.move(to: CGPoint(x: -46, y: -192))
+            for (i, x) in stride(from: -40.0, through: 40, by: 16).enumerated() {
+                spikes.addLine(to: CGPoint(x: x, y: -252 + (i % 2 == 0 ? 0 : 14) + abs(x) * 0.3))
+                spikes.addLine(to: CGPoint(x: x + 8, y: -222))
+            }
+            spikes.addLine(to: CGPoint(x: 46, y: -192))
+            spikes.addQuadCurve(to: CGPoint(x: -46, y: -192), control: CGPoint(x: 0, y: -222))
+            spikes.closeSubpath()
+            outlined(ctx, spikes, hair, width: 4)
         default:
             break
         }
@@ -610,6 +819,40 @@ enum CartoonPerson {
             gem.move(to: CGPoint(x: -44, y: -174)); gem.addLine(to: CGPoint(x: -38, y: -167))
             gem.addLine(to: CGPoint(x: -44, y: -158)); gem.addLine(to: CGPoint(x: -50, y: -167)); gem.closeSubpath()
             outlined(ctx, gem, Color(hex: 0xBDF4FF), width: 2)
+        case 6: // Monocle
+            ctx.stroke(Path(ellipseIn: CGRect(x: 2, y: -198, width: 26, height: 26)), with: .color(Color(hex: 0xF5C542)), lineWidth: 3.5)
+            var chain = Path()
+            chain.move(to: CGPoint(x: 27, y: -180)); chain.addQuadCurve(to: CGPoint(x: 34, y: -142), control: CGPoint(x: 40, y: -164))
+            ctx.stroke(chain, with: .color(Color(hex: 0xF5C542)), lineWidth: 1.5)
+        case 7: // Eye patch
+            var strap = Path()
+            strap.move(to: CGPoint(x: -44, y: -206)); strap.addLine(to: CGPoint(x: 44, y: -176))
+            ctx.stroke(strap, with: .color(ink), lineWidth: 3)
+            outlined(ctx, Path(ellipseIn: CGRect(x: -27, y: -196, width: 22, height: 20)), Color(hex: 0x1E1E24), width: 2.5)
+        case 8: // Star tattoo
+            ctx.draw(Text("★").font(.system(size: 12)).foregroundColor(Color(hex: 0x2B2B3A)), at: CGPoint(x: 22, y: -170))
+        case 9: // Freckles
+            for (x, y) in [(-30.0, -172.0), (-24, -166), (-34, -165), (24, -172), (30, -166), (20, -165), (-6, -176), (6, -176)] {
+                ctx.fill(Path(ellipseIn: CGRect(x: x - 1.6, y: y - 1.6, width: 3.2, height: 3.2)), with: .color(Color(hex: 0x9A5A3A).opacity(0.8)))
+            }
+        case 10: // Fangs
+            if face == .smile {
+                for x in [-9.0, 9] {
+                    var fang = Path()
+                    fang.move(to: CGPoint(x: x - 3, y: -160)); fang.addLine(to: CGPoint(x: x + 3, y: -160)); fang.addLine(to: CGPoint(x: x, y: -152)); fang.closeSubpath()
+                    outlined(ctx, fang, .white, width: 1.5)
+                }
+            }
+        case 11: // Nose ring
+            ctx.stroke(Path(ellipseIn: CGRect(x: 1, y: -170, width: 7, height: 7)), with: .color(Color(hex: 0xF5C542)), lineWidth: 2)
+        case 12: // Bubblegum, blowing a bubble now and then
+            let k = (time * 0.5).truncatingRemainder(dividingBy: 1)
+            if face == .smile && k < 0.6 {
+                let r = 4 + 12 * sin(k / 0.6 * .pi)
+                outlined(ctx, Path(ellipseIn: CGRect(x: -r, y: -156 - r, width: 2 * r, height: 2 * r)), Color(hex: 0xFF8BD0), width: 2)
+            }
+        case 13: // Heart tattoo
+            ctx.draw(Text("♥").font(.system(size: 12)).foregroundColor(Color(hex: 0xD33B3B)), at: CGPoint(x: -24, y: -166))
         default:
             break
         }

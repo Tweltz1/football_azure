@@ -25,23 +25,35 @@ struct Look: Equatable {
     // MARK: Choices
 
     static let skins: [UInt32] = [0xF6D7C3, 0xEBB998, 0xD39A6E, 0xB0774B, 0x8A5634, 0x5E3A22, 0xF1C7A5, 0xEABF9B, 0xF4CFB0, 0xE8B892]
-    static let hairStyles = ["Buzz", "Short", "Curly", "Afro", "Long", "Bun", "Bald"]
+    static let hairStyles = ["Buzz", "Short", "Curly", "Afro", "Long", "Bun", "Bald", "Mohawk", "Mullet", "Spiky", "Pigtails", "Dreads"]
     static let hairColors: [UInt32] = [0x1C1410, 0x4A2E1D, 0x8B5A2B, 0xD8B26A, 0xB8432F, 0x9A9A9A, 0x7B5CFF, 0x2B1D16,
                                        // Earned: neon green, ice blue
-                                       0x39E75F, 0x8FE3FF]
+                                       0x39E75F, 0x8FE3FF,
+                                       // Hot pink, electric blue, orange, platinum, teal
+                                       0xFF5FA2, 0x2F6BFF, 0xFF8A2A, 0xF3EBD2, 0x1FB5A8]
     static let hats = ["None", "Cap", "Backwards cap", "Beanie", "Party hat", "Cowboy hat", "Crown", "Traffic cone",
-                       "Viking helmet", "Propeller cap", "Chef hat", "Tinfoil hat", "Angel halo", "Beer helmet"]
-    static let tops = ["Tee", "Hoodie", "Jersey", "Tank", "Dress", "Hawaiian shirt", "Tuxedo", "Toga", "Letterman jacket", "Referee shirt"]
-    static let extras = ["None", "Gold grill", "Clown nose", "Eye black", "Sweatband", "Diamond earring"]
+                       "Viking helmet", "Propeller cap", "Chef hat", "Tinfoil hat", "Angel halo", "Beer helmet",
+                       "Top hat", "Wizard hat", "Pirate hat", "Bucket hat", "Beret", "Bunny ears", "Devil horns",
+                       "Graduation cap", "Durag", "Bandana"]
+    static let tops = ["Tee", "Hoodie", "Jersey", "Tank", "Dress", "Hawaiian shirt", "Tuxedo", "Toga", "Letterman jacket", "Referee shirt",
+                       "Flannel", "Puffer jacket", "Basketball jersey", "Overalls", "Lab coat", "Superhero cape", "Leather jacket", "Bathrobe"]
+    static let extras = ["None", "Gold grill", "Clown nose", "Eye black", "Sweatband", "Diamond earring",
+                         "Monocle", "Eye patch", "Star tattoo", "Freckles", "Fangs", "Nose ring", "Bubblegum", "Heart tattoo"]
     static let facialHair = ["None", "Beard", "Mustache"]
     static let clothes: [UInt32] = [0x8B6CFF, 0x3DDC97, 0xFF6B6B, 0xF5B84A, 0x2F80ED, 0x111318, 0xF2F2F2, 0x6B4E3D, 0xFF8BD0, 0x3A5A40,
                                     // The Hood League crew's colors
                                     0x2340C8, 0xA9ABB2, 0x6D6A70, 0x1C1E26, 0x203731, 0xD1237A, 0xD33B3B, 0x7A7C62, 0x1F5A3B,
                                     0x8F9298, 0x8E1D2C, 0x1F2A44, 0xC9B98A, 0xE7B94A, 0x24242A, 0xB07A4C, 0x2A3A30,
                                     // Earned: gold
-                                    0xD4AF37]
-    static let pantsColors: [UInt32] = [0x2B3A55, 0x1A1A1A, 0x6E6A60, 0xC2B280, 0x5A6B7A, 0x7A2E2E, 0x1B1B22, 0x9A9CA3, 0x26304F, 0xA3A5AB, 0x3A3F4A, 0xD8C39A, 0xB4B6BB]
-    static let shoeColors: [UInt32] = [0xF2F2F2, 0x111111, 0xFF6B6B, 0x2F80ED, 0xF5B84A]
+                                    0xD4AF37,
+                                    // Neon orange, lavender, baby blue, maroon, lime, chrome
+                                    0xFF6A13, 0xB9A7F5, 0x9ED3FF, 0x6B1F2E, 0x9BE15D, 0xC9CED6]
+    static let pantsColors: [UInt32] = [0x2B3A55, 0x1A1A1A, 0x6E6A60, 0xC2B280, 0x5A6B7A, 0x7A2E2E, 0x1B1B22, 0x9A9CA3, 0x26304F, 0xA3A5AB, 0x3A3F4A, 0xD8C39A, 0xB4B6BB,
+                                        // Earned: pink, camo green, white, gold
+                                        0xFF5FA2, 0x4E6B3A, 0xF2F2F2, 0xD4AF37]
+    static let shoeColors: [UInt32] = [0xF2F2F2, 0x111111, 0xFF6B6B, 0x2F80ED, 0xF5B84A,
+                                       // Earned: gold, neon, pink, purple
+                                       0xD4AF37, 0x39E75F, 0xFF5FA2, 0x8E44AD]
 
     // MARK: Code
 
@@ -80,14 +92,14 @@ struct Look: Equatable {
     static func random<G: RandomNumberGenerator>(using rng: inout G) -> Look {
         var look = Look()
         look.skin = Int.random(in: 0..<skins.count, using: &rng)
-        look.hair = Int.random(in: 0..<hairStyles.count, using: &rng)
+        look.hair = Int.random(in: 0..<7, using: &rng)
         look.hairColor = Int.random(in: 0..<5, using: &rng)
         look.hat = Bool.random(using: &rng) ? 0 : Int.random(in: 1..<4, using: &rng)
-        look.hatColor = Int.random(in: 0..<(clothes.count - 1), using: &rng)
+        look.hatColor = Int.random(in: 0..<27, using: &rng)
         look.top = Int.random(in: 0..<5, using: &rng)
-        look.topColor = Int.random(in: 0..<(clothes.count - 1), using: &rng)
-        look.pants = Int.random(in: 0..<pantsColors.count, using: &rng)
-        look.shoes = Int.random(in: 0..<shoeColors.count, using: &rng)
+        look.topColor = Int.random(in: 0..<27, using: &rng)
+        look.pants = Int.random(in: 0..<13, using: &rng)
+        look.shoes = Int.random(in: 0..<5, using: &rng)
         look.glasses = Int.random(in: 0..<4, using: &rng) == 0
         look.chain = Int.random(in: 0..<3, using: &rng) == 0
         look.facial = Int.random(in: 0..<5, using: &rng) == 0 ? Int.random(in: 1...2, using: &rng) : 0
