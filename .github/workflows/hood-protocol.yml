@@ -25,6 +25,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  add-redirect:
+    # One-time: lets Google sign-in come back to the app instead of the Hood League site.
+    # Adds only the app's own redirect and keeps every URL already on the list.
+    if: contains(github.event.head_commit.message, '[hood-redirect]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Add the app redirect to Supabase sign-in
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || 'nkwedlskhnojseeroezm' }}
+          REDIRECT: com.tweltz1.hoodprotocol://auth
+        run: |
+          API="https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth"
+          CURRENT=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "$API" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin).get("uri_allow_list") or "")')
+          echo "Current redirect URLs: $CURRENT"
+          if printf '%s' "$CURRENT" | tr ',' '\n' | grep -qxF "$REDIRECT"; then
+            echo "Already on the list"; exit 0
+          fi
+          NEW=$(python3 -c 'import sys; c,r=sys.argv[1],sys.argv[2]; print(",".join([u for u in c.split(",") if u.strip()]+[r]))' "$CURRENT" "$REDIRECT")
+          BODY=$(python3 -c 'import json,sys; print(json.dumps({"uri_allow_list": sys.argv[1]}))' "$NEW")
+          curl -fsS -X PATCH -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "$BODY" "$API" > /dev/null
+          AFTER=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "$API" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin).get("uri_allow_list") or "")')
+          echo "Redirect URLs now: $AFTER"
+
   build:
     runs-on: macos-15
     timeout-minutes: 45
