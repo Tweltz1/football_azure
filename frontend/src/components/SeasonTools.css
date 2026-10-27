@@ -1018,3 +1018,26 @@ details[open] > .history-team-summary::after {
 .why-pop.ask-why::before {
   display: none;
 }
+
+.sleeper-league-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.sleeper-league-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sleeper-league-row span {
+  overflow-wrap: anywhere;
+}
+
+.sleeper-league-row.is-hidden span {
+  opacity: 0.5;
+  text-decoration: line-through;
+}

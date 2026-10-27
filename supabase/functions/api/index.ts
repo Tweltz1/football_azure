@@ -8,6 +8,7 @@ import { getInitialPlayerPool } from '../_shared/playerData.ts';
 import {
   createBroadcaster, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
 } from './supabaseAdapters.ts';
+import { gameDay } from './gameDay.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -78,6 +79,26 @@ Deno.serve(async (req) => {
         return new Response('Invalid JSON payload.', { status: 400, headers: corsHeaders });
       }
     }
+  }
+
+  // Chat bar questions it couldn't answer, saved so new rules can be written for them. No account
+  // details are kept, only the question.
+  if (path === 'ask/miss' && req.method === 'POST') {
+    const question = String((body as Record<string, unknown> | null)?.question ?? '').trim().slice(0, 300);
+    if (question) {
+      const { error } = await db.from('ask_misses').insert({ question });
+      if (error) log.warn('Could not save a missed chat question.', error);
+    }
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  // Vegas lines, weather, headlines and the trade deadline for the chat bar. Public data only.
+  if (path === 'ask/gameday' && req.method === 'GET') {
+    const week = Math.trunc(Number(url.searchParams.get('week')));
+    const leagueId = url.searchParams.get('leagueId') ?? '';
+    if (!(week >= 1 && week <= 18)) return new Response('Pick a week from 1 to 18.', { status: 400, headers: corsHeaders });
+    const data = await gameDay(fetchJson, week, /^[A-Za-z0-9]{1,32}$/.test(leagueId) ? leagueId : null);
+    return new Response(JSON.stringify(data), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
   try {

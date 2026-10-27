@@ -161,3 +161,19 @@ test("Sleeper's trimmed numbers for a player just back from injury don't drag hi
   const o = buildOutlooks([...field, star], { scoring: 'ppr', week: 7, seasonRanks: new Map([['ret', 5]]) }).get('ret');
   assert.ok(o.perGame > 0.75 * o.healthy, `perGame ${o.perGame} healthy ${o.healthy}`);
 });
+
+test("a returning teammate only trims the games-played part of a value that leans on the preseason rank", () => {
+  // A star WR with 3 games, 2 of them without the team's TE: the TE's return trims those games, not the preseason rank.
+  const te = {
+    id: 'te1', name: 'Back TE', position: 'TE', team: 'LAR', injury: 'Out', gamesPlayed: 4,
+    seasonAvg: pts(10), recent: games([3, 5, 6, 7], 10), points: pts(0), upcoming: upcoming([8, 9, 10, 11], 9),
+  };
+  const star = {
+    id: 'puka', name: 'Star WR', position: 'WR', team: 'LAR', gamesPlayed: 3,
+    seasonAvg: pts(24), recent: [...games([1, 2], 26), ...games([3], 20)], points: pts(20), upcoming: upcoming([8, 9, 10, 11], 20),
+  };
+  const ranked = outlookFor([te, star], 'puka', { ranks: { puka: 3 } });
+  const unranked = outlookFor([te, star], 'puka');
+  assert.ok(ranked.roleChange < 0, `ranked ${ranked.roleChange}`);
+  assert.ok(Math.abs(ranked.roleChange) < Math.abs(unranked.roleChange) * 0.6, `ranked ${ranked.roleChange} vs unranked ${unranked.roleChange}`);
+});

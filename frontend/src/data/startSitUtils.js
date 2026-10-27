@@ -497,9 +497,12 @@ export const tagForSide = (tag, side) => {
   return tag.key === 'buy' ? tag : { ...tag, label: 'Buying high' };
 };
 
-// Extra players who wouldn't start for the team getting them count at this share of their value:
-// the roster spot they take has to come from somewhere.
+// In a 2-for-1 (or 3-for-1...), the extra players count at a share of their value on the side getting
+// more bodies: the roster spot they take has to come from somewhere, and one who starts pushes out a
+// starter that team already has, so a single better player is worth more than the sum of two lesser
+// ones (the trade market prices it the same way).
 const BENCH_EXTRA_SHARE = 0.5;
+const STARTER_EXTRA_SHARE = 0.75;
 
 export const analyzeTrade = ({
   give, get, myRoster, theirRoster, rosterSettings, scoring, allPlayers, teamCount,
@@ -562,19 +565,24 @@ export const analyzeTrade = ({
   const getPlayers = getRated.filter((p) => !p.round);
   const getBenched = getPlayers.length > 0 && getPlayers.every((p) => !startingAfter.has(p.id));
 
-  // 2-for-1 (or 3-for-1...) adjustment: the side getting more players has to cut someone, so extra
-  // players who wouldn't crack that team's lineup count for less. The side getting the best player wins.
+  // 2-for-1 (or 3-for-1...) adjustment: the side getting more players has to cut someone, so its
+  // extra players (the least valuable ones, benched first) count for less. The side getting the best player wins.
   const givePlayers = giveRated.filter((p) => !p.round);
   const theirStartingAfter = slotById(seasonLineup(theirAfter, rosterSettings, scoring));
   const extras = (list, others, starting) => {
     const extra = list.length - others.length;
     if (extra <= 0) return [];
-    return list.filter((p) => !starting.has(p.id)).sort((a, b) => a.score - b.score).slice(0, extra);
+    return [...list]
+      .sort((a, b) => (starting.has(a.id) - starting.has(b.id)) || (a.score - b.score))
+      .slice(0, extra)
+      .map((p) => ({ ...p, starts: starting.has(p.id), share: starting.has(p.id) ? STARTER_EXTRA_SHARE : BENCH_EXTRA_SHARE }));
   };
   const discount = (list) => ({
     players: list.map((p) => p.name),
-    score: -round1(list.reduce((total, p) => total + p.score * BENCH_EXTRA_SHARE, 0)),
-    display: market ? -Math.round(list.reduce((total, p) => total + (p.display || 0) * BENCH_EXTRA_SHARE, 0)) : null,
+    benched: list.filter((p) => !p.starts).map((p) => p.name),
+    starting: list.filter((p) => p.starts).map((p) => p.name),
+    score: -round1(list.reduce((total, p) => total + p.score * (1 - p.share), 0)),
+    display: market ? -Math.round(list.reduce((total, p) => total + (p.display || 0) * (1 - p.share), 0)) : null,
   });
   const getExtras = extras(getPlayers, givePlayers, startingAfter);
   const giveExtras = extras(givePlayers, getPlayers, theirStartingAfter);
