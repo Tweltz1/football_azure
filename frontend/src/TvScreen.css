@@ -17,3 +17,20 @@ html.tv-keys .lch-card:focus {
   -webkit-transform: scale(1.06);
   transform: scale(1.06);
 }
+
+/* TV browsers (html.tv-ua is set in public/index.html from the user agent).
+   Keep the front door centred top to bottom, and make the games landing
+   a little bigger for viewers across the room. */
+html.tv-ua main.front-door {
+  display: -webkit-box;
+  display: flex;
+  -webkit-box-align: center;
+  align-items: center;
+  -webkit-box-pack: start;
+  justify-content: flex-start;
+  min-height: 100vh;
+}
+
+html.tv-ua #lc-root .lch {
+  zoom: 1.15;
+}

@@ -3,7 +3,7 @@
 // clicks a focused button or link on Enter).
 //
 // The highlight only shows after an arrow key is pressed, so mouse and
-// touch users never see it. Styles live in TvNavigation.css.
+// touch users never see it. Styles live in TvScreen.css.
 
 const DIRECTIONS = {
   ArrowUp: 'up', Up: 'up', 38: 'up',

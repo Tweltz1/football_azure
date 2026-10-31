@@ -19,6 +19,25 @@
       // Old smart-TV browsers (Chrome 63 on Samsung Tizen 5) have no globalThis,
       // and Supabase reads it as soon as it loads. Set it before any bundle runs.
       if (typeof globalThis === 'undefined') { window.globalThis = window; }
+
+      // TV browsers: mark the page so TvScreen.css can scale things up.
+      (function () {
+        var root = document.documentElement;
+        if (/SMART-TV|SmartTV|Tizen|Web0S|webOS|NetCast|BRAVIA|HbbTV|CrKey|AFT[A-Z]/i.test(navigator.userAgent)) {
+          root.className += ' tv-ua';
+        }
+        // Old browsers can't do CSS min(), which the party TV screen uses to
+        // fit a 16:9 stage inside the window. Work out the same size here;
+        // the built CSS falls back to var(--tv-u) (see scripts/css-tv-fallbacks.mjs).
+        var hasMin = window.CSS && CSS.supports && CSS.supports('width', 'min(1px, 2px)');
+        if (hasMin) return;
+        function fit() {
+          var unit = Math.min(window.innerWidth / 100, (window.innerHeight * 16) / 9 / 100);
+          root.style.setProperty('--tv-u', unit + 'px');
+        }
+        fit();
+        window.addEventListener('resize', fit);
+      })();
     </script>
   </head>
   <body>

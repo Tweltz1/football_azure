@@ -1,8 +1,8 @@
 // Must stay first: fills in features old smart-TV browsers are missing.
 import './polyfills';
-// TV remote: arrow keys move a highlight between buttons.
+// TV remote: arrow keys move a highlight between buttons; TV-only layout tweaks.
 import './tvNavigation';
-import './TvNavigation.css';
+import './TvScreen.css';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './App';

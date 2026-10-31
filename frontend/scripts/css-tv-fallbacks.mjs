@@ -91,7 +91,10 @@ export function addFallbacks(css) {
       if (!usesMath) return;
       const rule = decl.parent;
       const supports = postcss.atRule({ name: 'supports', params: 'not (width: min(1px, 2px))' });
-      supports.append(postcss.rule({ selector: rule.selector }).append({ prop: decl.prop, value: fallbackValue(decl.value) }));
+      // The 16:9 fit unit min(1vw, 1.7778vh) is computed in px by public/index.html.
+      const isFitUnit = decl.value.replace(/\s+/g, '') === 'min(1vw,1.7778vh)';
+      const value = isFitUnit ? 'var(--tv-u, 1vw)' : fallbackValue(decl.value);
+      supports.append(postcss.rule({ selector: rule.selector }).append({ prop: decl.prop, value }));
       rule.after(supports);
       return;
     }
