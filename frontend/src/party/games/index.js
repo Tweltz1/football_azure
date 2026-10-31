@@ -30,6 +30,7 @@ const ENGINES = {
       if (msg.type === 'soul') candle.soul(g, cid, now);
     },
     over: (g) => g.phase === 'won' || g.phase === 'lost',
+    sceneKey: (g) => `${g.phase === 'night' ? 'intro' : g.phase}${g.night}`,
     has: (g, cid) => g.players.some((p) => p.cid === cid),
     phone: candle.phoneView,
     result: (g, cid) => ({ score: g.score, awards: candle.awards(g).filter((a) => a.cid === cid).map((a) => a.title), stats: g.stats[cid] }),
@@ -47,6 +48,7 @@ const ENGINES = {
       if (msg.type === 'answer') quiz.answer(g, cid, Number(msg.choice), now);
     },
     over: quiz.isOver,
+    sceneKey: (g) => (['round', 'scores', 'final'].includes(g.phase) ? `${g.phase}${g.index}` : `play${quiz.roundOf(g.index)}`),
     has: (g, cid) => g.players.some((p) => p.cid === cid),
     phone: quiz.phoneView,
     result(g, cid) {
@@ -74,6 +76,7 @@ const ENGINES = {
       if (msg.type === 'vote') mash.vote(g, cid, String(msg.pick || ''), now);
     },
     over: mash.isOver,
+    sceneKey: (g) => (['vote', 'reveal', 'skip'].includes(g.phase) ? `match${g.round}` : `${g.phase}${g.round}`),
     has: (g, cid) => g.players.some((p) => p.cid === cid),
     phone: mash.phoneView,
     result(g, cid) {

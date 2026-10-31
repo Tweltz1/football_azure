@@ -158,7 +158,7 @@ export default function CandleStage({ game, players, now, onLobby, onAgain }) {
   return (
     <>
       <svg className="lc-scene" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet">
-        <Backdrop />
+        <Backdrop night={game.night} />
         <House candles={game.candles} maxCandles={game.maxCandles} flash={effects.current.some((f) => f.type === 'candle')} />
         {[...game.monsters].sort((a, b) => laneY(a.lane) - laneY(b.lane)).map((m) => <Monster key={m.id} m={m} now={now} soulState={m.boss ? soulState : null} />)}
         {players.map((p, i) => ({ p, i, s: spot(i) })).sort((a, b) => a.s.y - b.s.y).map(({ p, i, s }) => {

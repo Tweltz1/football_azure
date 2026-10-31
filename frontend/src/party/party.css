@@ -606,3 +606,17 @@
 #lc-root .lm-answers.is-lots .lm-answer { flex: 0 0 22%; max-width: 22%; min-height: 3em; margin: 0 0.4em 0.6em; }
 #lc-root .lm-answers.is-lots .lm-answer-text { font-size: 1.05em; }
 #lc-root .lm-answers.is-lots .lm-author, #lc-root .lm-answers.is-lots .lm-votes { margin-top: 0.3em; font-size: 0.85em; }
+#lc-root .lc-drift { animation: lc-drift 14s ease-in-out infinite alternate; }
+
+/* Scene change: a band of night sweeps across with a swarm of bats */
+#lc-root .lc-wipe { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 20; overflow: hidden; pointer-events: none; }
+#lc-root .lc-wipe-band {
+  position: absolute; top: -10%; bottom: -10%; left: 0; width: 70%;
+  background: linear-gradient(90deg, rgba(18, 12, 36, 0) 0%, #120c24 22%, #2a1840 50%, #120c24 78%, rgba(18, 12, 36, 0) 100%);
+  transform: translateX(-110%) skewX(-12deg);
+  animation: lc-wipe 1.2s cubic-bezier(0.6, 0, 0.4, 1) forwards;
+}
+#lc-root .lc-wipe-bat { position: absolute; left: -10%; animation: lc-wipe-bat 1.2s cubic-bezier(0.5, 0, 0.5, 1) forwards; }
+@keyframes lc-wipe { from { transform: translateX(-110%) skewX(-12deg); } to { transform: translateX(260%) skewX(-12deg); } }
+@keyframes lc-wipe-bat { 0% { left: -10%; transform: rotate(-10deg); } 50% { left: 50%; transform: translateY(-0.5em) rotate(8deg); } 100% { left: 110%; transform: rotate(-6deg); } }
+@media (prefers-reduced-motion: reduce) { #lc-root .lc-wipe { display: none; } }

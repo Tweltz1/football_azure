@@ -69,42 +69,65 @@ export const House = ({ candles, maxCandles, flash }) => {
   );
 };
 
-export const Backdrop = () => (
-  <g>
-    <defs>
-      <linearGradient id="lc-sky" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#120c24" />
-        <stop offset="0.55" stopColor="#3a1f55" />
-        <stop offset="1" stopColor="#5a2d4f" />
-      </linearGradient>
-      <radialGradient id="lc-moonglow">
-        <stop offset="0" stopColor="#fff6d0" stopOpacity="0.55" />
-        <stop offset="1" stopColor="#fff6d0" stopOpacity="0" />
-      </radialGradient>
-    </defs>
-    <rect width="1920" height="1080" fill="url(#lc-sky)" />
-    <circle cx="330" cy="170" r="230" fill="url(#lc-moonglow)" />
-    <circle cx="330" cy="170" r="95" fill="#fff1c1" stroke="#16122b" strokeWidth="6" />
-    <circle cx="300" cy="150" r="16" fill="#efdca0" /><circle cx="360" cy="200" r="11" fill="#efdca0" /><circle cx="350" cy="130" r="8" fill="#efdca0" />
-    {[[620, 90], [800, 160], [980, 70], [1180, 140], [1320, 60], [90, 300], [540, 260], [1080, 250]].map(([x, y], i) => (
-      <circle key={i} cx={x} cy={y} r={i % 2 ? 3 : 4} fill="#fff" className="lc-star" style={{ animationDelay: `${i * 0.37}s` }} />
-    ))}
-    <path d="M0 420 Q200 360 420 400 Q700 340 1000 390 Q1250 350 1500 400 L1920 380 L1920 1080 L0 1080 Z" fill="#1d3a2a" stroke="#16122b" strokeWidth="6" />
-    <path d="M0 470 Q500 430 1000 470 Q1500 440 1920 460 L1920 1080 L0 1080 Z" fill="#26492f" />
-    {LANE_Y.map((y) => (
-      <path key={y} d={`M${PATH_LEFT - 90} ${y} L${PATH_RIGHT + 90} ${y}`} stroke="#3e5e3a" strokeWidth="64" strokeLinecap="round" opacity="0.8" />
-    ))}
-    {/* graveyard */}
-    {[[40, 520, 0.9], [70, 700, 1], [40, 880, 0.85], [110, 620, 0.7], [110, 800, 0.75]].map(([x, y, s], i) => (
-      <g key={i} transform={`translate(${x} ${y}) scale(${s})`}>
-        <path d="M-34 0 L-34 -70 Q-34 -104 0 -104 Q34 -104 34 -70 L34 0 Z" fill="#8d8aa0" stroke="#16122b" strokeWidth="6" />
-        <text y="-52" fontSize="22" fontWeight="900" textAnchor="middle" fill="#5d5a70" fontFamily="Arial Black, Arial">RIP</text>
-      </g>
-    ))}
-    {/* dead tree */}
-    <path d="M520 420 L530 330 L490 280 M530 330 L560 260 L600 240 M545 300 L590 300" stroke="#16122b" strokeWidth="14" fill="none" strokeLinecap="round" />
-  </g>
-);
+// Each night has its own setting: the front yard, a foggy graveyard, then a blood-moon midnight.
+const SKIES = [
+  ['#120c24', '#3a1f55', '#5a2d4f', '#1d3a2a', '#26492f', '#3e5e3a', '#fff1c1', '#efdca0'],
+  ['#0f1420', '#2b3448', '#4a5468', '#22302c', '#2c3b35', '#47534a', '#e8ecf2', '#c9d0dc'],
+  ['#14040c', '#4a0f24', '#7a1d2c', '#1f1a24', '#2a2230', '#40343f', '#ff8a6a', '#e0603f'],
+];
+
+export const Backdrop = ({ night = 1 }) => {
+  const [top, mid, low, hill, ground, path, moon, crater] = SKIES[Math.min(SKIES.length, Math.max(1, night)) - 1];
+  const graves = night === 2
+    ? [[40, 520, 0.9], [70, 700, 1], [40, 880, 0.85], [110, 620, 0.7], [110, 800, 0.75], [250, 430, 0.6], [330, 450, 0.55], [700, 420, 0.5], [860, 440, 0.55], [980, 425, 0.5]]
+    : [[40, 520, 0.9], [70, 700, 1], [40, 880, 0.85], [110, 620, 0.7], [110, 800, 0.75]];
+  return (
+    <g>
+      <defs>
+        <linearGradient id={`lc-sky${night}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={top} />
+          <stop offset="0.55" stopColor={mid} />
+          <stop offset="1" stopColor={low} />
+        </linearGradient>
+        <radialGradient id={`lc-moonglow${night}`}>
+          <stop offset="0" stopColor={moon} stopOpacity="0.55" />
+          <stop offset="1" stopColor={moon} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="1920" height="1080" fill={`url(#lc-sky${night})`} />
+      <circle cx="330" cy="170" r={night === 3 ? 300 : 230} fill={`url(#lc-moonglow${night})`} />
+      <circle cx="330" cy="170" r={night === 3 ? 125 : 95} fill={moon} stroke="#16122b" strokeWidth="6" />
+      <circle cx="300" cy="150" r="16" fill={crater} /><circle cx="360" cy="200" r="11" fill={crater} /><circle cx="350" cy="130" r="8" fill={crater} />
+      {night === 2 && <path d="M120 150 Q330 120 560 160 Q330 190 120 150 Z M180 215 Q380 190 600 225 Q380 250 180 215 Z" fill="#dfe3ee" opacity="0.35" />}
+      {night === 3 && [[560, 120], [640, 90], [720, 140], [1060, 110], [1140, 80]].map(([x, y], i) => (
+        <path key={i} className="lc-float" style={{ animationDelay: `${i * 0.3}s` }} transform={`translate(${x} ${y})`} d="M0 0 q-14 -14 -30 -4 q12 2 14 12 q4 -8 16 -8 q12 0 16 8 q2 -10 14 -12 q-16 -10 -30 4 z" fill="#16122b" />
+      ))}
+      {[[620, 90], [800, 160], [980, 70], [1180, 140], [1320, 60], [90, 300], [540, 260], [1080, 250]].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={i % 2 ? 3 : 4} fill="#fff" className="lc-star" style={{ animationDelay: `${i * 0.37}s`, opacity: night === 2 ? 0.4 : 1 }} />
+      ))}
+      <path d="M0 420 Q200 360 420 400 Q700 340 1000 390 Q1250 350 1500 400 L1920 380 L1920 1080 L0 1080 Z" fill={hill} stroke="#16122b" strokeWidth="6" />
+      <path d="M0 470 Q500 430 1000 470 Q1500 440 1920 460 L1920 1080 L0 1080 Z" fill={ground} />
+      {LANE_Y.map((y) => (
+        <path key={y} d={`M${PATH_LEFT - 90} ${y} L${PATH_RIGHT + 90} ${y}`} stroke={path} strokeWidth="64" strokeLinecap="round" opacity="0.8" />
+      ))}
+      {graves.map(([x, y, sc], i) => (
+        <g key={i} transform={`translate(${x} ${y}) scale(${sc})`}>
+          <path d="M-34 0 L-34 -70 Q-34 -104 0 -104 Q34 -104 34 -70 L34 0 Z" fill="#8d8aa0" stroke="#16122b" strokeWidth="6" />
+          <text y="-52" fontSize="22" fontWeight="900" textAnchor="middle" fill="#5d5a70" fontFamily="Arial Black, Arial">RIP</text>
+        </g>
+      ))}
+      <path d="M520 420 L530 330 L490 280 M530 330 L560 260 L600 240 M545 300 L590 300" stroke="#16122b" strokeWidth="14" fill="none" strokeLinecap="round" />
+      {night === 2 && (
+        <g opacity="0.5">
+          {[[300, 520], [900, 660], [500, 820], [1100, 900]].map(([x, y], i) => (
+            <ellipse key={i} className="lc-drift" style={{ animationDelay: `${-i * 3}s` }} cx={x} cy={y} rx="420" ry="46" fill="#dfe3ee" opacity="0.35" />
+          ))}
+        </g>
+      )}
+      {night === 3 && <rect width="1920" height="1080" fill="#ff2040" opacity="0.06" />}
+    </g>
+  );
+};
 
 export const ScenePerson = React.memo(({ look, pose, k, x, y, delay, scale = 0.46 }) => {
   const markup = useMemo(() => personMarkup(parseLook(look), { kind: pose, k }), [look, pose, k]);

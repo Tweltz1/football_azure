@@ -59,6 +59,7 @@ export default function PartyHost() {
   const lastSent = useRef(new Map());
   const waves = useRef(new Map()); // cid -> until, for a wave in the lobby
   const howToAt = useRef(0);
+  const scene = useRef({ key: null, at: -1e9, n: 0 });
   const started = Boolean(code);
   const def = gameFor(gameId);
 
@@ -295,6 +296,17 @@ export default function PartyHost() {
   const now = performance.now();
   const game = mode === 'game' ? gameRef.current : null;
   const { Stage, HowTo } = def;
+  // A bat-swarm wipe whenever the scene changes (lobby, intro, a new night or round, scores, the end).
+  const sceneKey = game ? `${def.id}:${def.sceneKey ? def.sceneKey(game) : game.phase}` : mode;
+  if (scene.current.key !== sceneKey) {
+    if (scene.current.key) {
+      scene.current.at = now;
+      scene.current.n += 1;
+      sfx.whoosh();
+    }
+    scene.current.key = sceneKey;
+  }
+  const wiping = now - scene.current.at < 1300;
 
   return (
     <div className="lc-tv">
@@ -306,6 +318,14 @@ export default function PartyHost() {
           </svg>
         )}
         {game && <Stage key={round} game={game} players={players} now={now} onLobby={backToLobby} onAgain={beginGame} />}
+        {wiping && (
+          <div className="lc-wipe" key={scene.current.n} aria-hidden="true">
+            <div className="lc-wipe-band" />
+            {Array.from({ length: 14 }, (_, i) => (
+              <span key={i} className="lc-wipe-bat" style={{ top: `${6 + ((i * 37) % 88)}%`, animationDelay: `${(i % 5) * 0.06}s`, fontSize: `${2.4 + (i % 3)}em` }}>🦇</span>
+            ))}
+          </div>
+        )}
         <div className="lc-corner">
           <span>Join at <b>{joinUrl().replace(/^https?:\/\//, '')}</b></span>
           <span className="lc-corner-code">{code}</span>
