@@ -270,11 +270,10 @@ export default function PartyPlay() {
         <div className="lcp-lobby">
           <div className="lcp-preview"><Person look={look} pose="wave" /></div>
           <p className="lcp-note">You're in! Your character is on the TV. Dress up while everyone joins.</p>
-          {screen.vip && (
-            <button type="button" className="lc-btn lc-btn-big lcp-start" onClick={() => send('start')}>
-              👑 Everybody's in, start! ({screen.count})
-            </button>
-          )}
+          <button type="button" className={`lc-btn lc-btn-big lcp-start${screen.ready ? ' is-ready' : ''}`} onClick={() => send('ready', { ready: !screen.ready })}>
+            {screen.ready ? `✓ Ready! (${screen.readyCount}/${screen.count})` : `I'm ready (${screen.readyCount}/${screen.count})`}
+          </button>
+          {screen.vip && <button type="button" className="lcp-link" onClick={() => send('start')}>👑 Start now without waiting</button>}
           <div className="lcp-tabs">
             <button type="button" className={tab === 'look' ? 'is-on' : ''} onClick={() => setTab('look')}>Costume & look</button>
             <button type="button" className={tab === 'name' ? 'is-on' : ''} onClick={() => setTab('name')}>Name & account</button>
@@ -287,6 +286,20 @@ export default function PartyPlay() {
               {accountBox}
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  if (screen.screen === 'howto') {
+    return (
+      <div className="lcp">
+        {header}
+        <div className="lcp-wait">
+          <Person look={look} pose="wave" />
+          <p className="lcp-big">👀 Look at the TV</p>
+          <p>Here's how to play. You'll throw charms from this phone in a minute.</p>
+          {screen.vip && <button type="button" className="lc-btn" onClick={() => send('skip')}>⏭ Skip the intro</button>}
         </div>
       </div>
     );
