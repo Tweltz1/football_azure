@@ -64,8 +64,14 @@ export const GAME_META = [
     emoji: '🎭',
     tag: 'Versus',
     minutes: '10–15 min',
-    blurb: 'One of you is a secret vampire. Give clues, then vote them out.',
-    soon: true,
+    blurb: 'Everyone gets a secret word except the vampires. Give clues, sniff out the fakers, and vote them out.',
+    minPlayers: 3,
+    how: [
+      'Your phone shows a secret word. Vampires only see the category!',
+      'Everyone writes a one-word clue. Humans prove they know it; vampires bluff.',
+      'Talk it out and vote. Catch a vampire and the humans score. More players means more vampires!',
+    ],
+    phoneHint: 'Keep your phone hidden. Your secret word (or your fangs) show up here.',
   },
 ];
 

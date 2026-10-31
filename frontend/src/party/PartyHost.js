@@ -16,6 +16,7 @@ const LobbyScene = ({ id, now }) => {
   if (id === 'quiz') return <QuizBackdrop lights={Math.floor(now / 700)} />;
   if (id === 'mash') return <QuizBackdrop lights={Math.floor(now / 700)} curtain={['#1f4a2e', '#2f6b3f', '#163a24']} />;
   if (id === 'hallway') return <HallBackdrop floor={1} />;
+  if (id === 'mask') return <QuizBackdrop lights={Math.floor(now / 700)} curtain={['#3a1f5c', '#5b2d8e', '#2a1645']} />;
   return <><Backdrop /><House candles={5} maxCandles={5} /></>;
 };
 
@@ -419,7 +420,7 @@ export default function PartyHost() {
               ) : players.length ? (
                 <>
                   <span>{players.filter((p) => p.ready).length} of {players.length} ready. It starts when everyone taps Ready, or</span>
-                  <button type="button" className="lc-btn" onClick={startGame}>Start {def.title}</button>
+                  <button type="button" className="lc-btn" onClick={startGame}>▶ Start {def.title.length > 18 ? 'game' : def.title}</button>
                 </>
               ) : <span>Waiting for players… scan the code or go to the address above.</span>}
             </div>

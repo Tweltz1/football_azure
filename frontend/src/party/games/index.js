@@ -5,6 +5,7 @@ import * as candle from '../lastCandle';
 import * as quiz from './quiz';
 import * as mash from './mash';
 import * as hallway from './hallway';
+import * as mask from './mask';
 import CandleStage from './CandleStage';
 import CandlePhone from './CandlePhone';
 import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
@@ -17,6 +18,9 @@ import MashHowTo, { HOWTO_MS as MASH_HOWTO_MS } from './MashHowTo';
 import HallwayStage from './HallwayStage';
 import HallwayPhone from './HallwayPhone';
 import HallwayHowTo, { HOWTO_MS as HALLWAY_HOWTO_MS } from './HallwayHowTo';
+import MaskStage from './MaskStage';
+import MaskPhone from './MaskPhone';
+import MaskHowTo, { HOWTO_MS as MASK_HOWTO_MS } from './MaskHowTo';
 import { GAME_META, isPlayable, metaFor } from './meta';
 
 // The TV remembers which quiz questions it has shown, so the next game picks fresh ones first.
@@ -150,6 +154,38 @@ const ENGINES = {
     Phone: HallwayPhone,
     HowTo: HallwayHowTo,
     howToMs: HALLWAY_HOWTO_MS,
+  },
+  mask: {
+    create: mask.createMask,
+    tick: mask.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'clue') mask.clue(g, cid, String(msg.text || ''), now);
+      if (msg.type === 'ready') mask.ready(g, cid, now);
+      if (msg.type === 'vote') mask.vote(g, cid, String(msg.target || ''), now);
+      if (msg.type === 'bite') mask.bite(g, cid, String(msg.guess || ''), now);
+    },
+    over: mask.isOver,
+    sceneKey: (g) => (['show', 'talk', 'vote', 'unmask', 'bite'].includes(g.phase) ? `board${g.round}` : `${g.phase}${g.round}`),
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g) => {
+      const step = ['role', 'clue', 'show', 'talk', 'vote', 'unmask', 'bite', 'result', 'scores'].indexOf(g.phase);
+      return Math.min(1, (g.round + Math.max(0, step) / 8) / mask.ROUNDS + (['vote', 'unmask', 'bite'].includes(g.phase) ? 0.15 : 0));
+    },
+    phone: mask.phoneView,
+    result(g, cid) {
+      const me = mask.ranking(g).find((r) => r.cid === cid);
+      return {
+        rank: me?.rank || g.players.length,
+        score: me?.score || 0,
+        awards: mask.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+      };
+    },
+    addPlayer: mask.addPlayer,
+    seen: mask.seen,
+    Stage: MaskStage,
+    Phone: MaskPhone,
+    HowTo: MaskHowTo,
+    howToMs: MASK_HOWTO_MS,
   },
 };
 
