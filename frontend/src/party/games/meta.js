@@ -50,8 +50,13 @@ export const GAME_META = [
     emoji: '🚪',
     tag: 'Co-op',
     minutes: '6–10 min',
-    blurb: 'Pick the safe door together. Only the guides know the clues.',
-    soon: true,
+    blurb: 'Climb a haunted house together. Only the guides know which door is safe.',
+    how: [
+      'Each floor has a row of doors. Only one is safe.',
+      'Two guides get clues on their phones. Neither can solve it alone, so read them out loud!',
+      'Everyone votes for a door. A wrong door lets a monster out and costs a lantern.',
+    ],
+    phoneHint: 'You might be a guide! Watch this phone for clues.',
   },
   {
     id: 'mask',

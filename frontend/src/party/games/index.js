@@ -4,6 +4,7 @@
 import * as candle from '../lastCandle';
 import * as quiz from './quiz';
 import * as mash from './mash';
+import * as hallway from './hallway';
 import CandleStage from './CandleStage';
 import CandlePhone from './CandlePhone';
 import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
@@ -13,6 +14,9 @@ import QuizHowTo, { HOWTO_MS as QUIZ_HOWTO_MS } from './QuizHowTo';
 import MashStage from './MashStage';
 import MashPhone from './MashPhone';
 import MashHowTo, { HOWTO_MS as MASH_HOWTO_MS } from './MashHowTo';
+import HallwayStage from './HallwayStage';
+import HallwayPhone from './HallwayPhone';
+import HallwayHowTo, { HOWTO_MS as HALLWAY_HOWTO_MS } from './HallwayHowTo';
 import { GAME_META, isPlayable, metaFor } from './meta';
 
 const query = () => new URLSearchParams(window.location.search);
@@ -94,6 +98,28 @@ const ENGINES = {
     Phone: MashPhone,
     HowTo: MashHowTo,
     howToMs: MASH_HOWTO_MS,
+  },
+  hallway: {
+    create: hallway.createHallway,
+    tick: hallway.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'vote') hallway.vote(g, cid, Number(msg.door), now);
+    },
+    over: hallway.isOver,
+    sceneKey: (g) => (g.phase === 'won' || g.phase === 'lost' ? g.phase : `floor${g.floor}`),
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    phone: hallway.phoneView,
+    result: (g, cid) => ({
+      score: g.score,
+      right: g.stats[cid]?.right || 0,
+      awards: hallway.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+    }),
+    addPlayer: hallway.addPlayer,
+    seen: hallway.seen,
+    Stage: HallwayStage,
+    Phone: HallwayPhone,
+    HowTo: HallwayHowTo,
+    howToMs: HALLWAY_HOWTO_MS,
   },
 };
 
