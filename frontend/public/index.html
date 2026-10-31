@@ -15,6 +15,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700&display=swap" rel="stylesheet" />
     <title>Hood League Fantasy Football</title>
+    <script>
+      // Old smart-TV browsers (Chrome 63 on Samsung Tizen 5) have no globalThis,
+      // and Supabase reads it as soon as it loads. Set it before any bundle runs.
+      if (typeof globalThis === 'undefined') { window.globalThis = window; }
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
@@ -37,7 +42,13 @@
           title.appendChild(document.createTextNode("Hood League couldn't start in this browser"));
           var info = document.createElement('div');
           info.setAttribute('style', 'white-space:pre-wrap;word-break:break-word;opacity:0.85');
-          info.appendChild(document.createTextNode('Browser: ' + navigator.userAgent + '\n\n' + (errors.length ? 'Error: ' + errors.join('\n') : 'No error reported.')));
+          var build = '';
+          var scripts = document.getElementsByTagName('script');
+          for (var i = 0; i < scripts.length; i += 1) {
+            var match = /main\.([0-9a-f]+)\.chunk\.js/.exec(scripts[i].src || '');
+            if (match) build = match[1];
+          }
+          info.appendChild(document.createTextNode('Browser: ' + navigator.userAgent + '\nBuild: ' + (build || 'unknown') + '\n\n' + (errors.length ? 'Error: ' + errors.join('\n') : 'No error reported.')));
           box.appendChild(title);
           box.appendChild(info);
           root.appendChild(box);
