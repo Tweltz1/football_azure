@@ -19,7 +19,18 @@ export const CHARMS = [
   { id: 'herb', name: 'Herb', icon: '🌿', color: '#6fdc8c' },
   { id: 'star', name: 'Star', icon: '⭐', color: '#ffd84a' },
 ];
-export const CHARM = Object.fromEntries(CHARMS.map((c) => [c.id, c]));
+// Junk nobody needs. It turns up in hands now and then, so tapping everything gets you spooked.
+// Swipe it into the trash to get a fresh charm.
+export const JUNK = [
+  { id: 'sock', name: 'Stinky sock', icon: '🧦', color: '#b8b0a0', junk: true },
+  { id: 'peel', name: 'Banana peel', icon: '🍌', color: '#e8d27a', junk: true },
+  { id: 'duck', name: 'Rubber duck', icon: '🦆', color: '#c9c27a', junk: true },
+  { id: 'shoe', name: 'Old shoe', icon: '👞', color: '#a68a6d', junk: true },
+];
+export const CHARM = Object.fromEntries([...CHARMS, ...JUNK].map((c) => [c.id, c]));
+export const isJunk = (id) => JUNK.some((j) => j.id === id);
+export const JUNK_RATE = [0.14, 0.18, 0.2];
+export const TRASH_MS = 500;
 
 export const NIGHTS = [
   { n: 1, title: 'Trick or Treat', blurb: 'Monsters are coming up the paths. Shout out what they need and throw the right charms!', length: 100000, charms: 5, fog: 0 },
@@ -82,7 +93,7 @@ export function createGame(players, seed = Date.now(), now = 0) {
     s.hands[p.cid] = [];
     s.refillAt[p.cid] = [0, 0, 0];
     s.lastSeen[p.cid] = now;
-    s.stats[p.cid] = { landed: 0, banished: 0, fizzles: 0, seer: 0, souls: 0 };
+    s.stats[p.cid] = { landed: 0, banished: 0, fizzles: 0, seer: 0, souls: 0, trashed: 0 };
   });
   dealAll(s);
   return s;
@@ -100,6 +111,7 @@ const emit = (s, type, data) => {
 const needed = (s) => s.monsters.flatMap((m) => m.need);
 
 const drawCharm = (s, hand) => {
+  if (s.phase !== 'intro' && !hand.some(isJunk) && nextRand(s) < JUNK_RATE[s.night - 1]) return pick(s, JUNK.map((j) => j.id));
   const want = needed(s).filter((c) => !hand.includes(c));
   if (want.length && nextRand(s) < 0.6) return pick(s, want);
   const options = pool(s).filter((c) => !hand.includes(c));
@@ -319,6 +331,21 @@ export function play(s, cid, slot, now) {
   return 'hit';
 }
 
+/** A phone dragged the card in `slot` into the trash. Junk comes back fast; a good charm the usual way. */
+export function trash(s, cid, slot, now) {
+  s.lastSeen[cid] = now;
+  if (s.phase !== 'night') return null;
+  const hand = s.hands[cid];
+  if (!hand || hand[slot] == null) return null;
+  const card = hand[slot];
+  hand[slot] = null;
+  const junk = isJunk(card);
+  s.refillAt[cid][slot] = now + (junk ? TRASH_MS : REFILL_MS);
+  if (junk) s.stats[cid].trashed += 1;
+  emit(s, 'trash', { by: cid, charm: card, junk });
+  return junk ? 'junk' : 'charm';
+}
+
 /** A phone tapped SOUL (only while the Pumpkin King is out). */
 export function soul(s, cid, now) {
   s.lastSeen[cid] = now;
@@ -355,7 +382,7 @@ export function addPlayer(s, cid, name, now) {
   s.refillAt[cid] = [0, 0, 0];
   for (let k = 0; k < HAND; k += 1) s.hands[cid].push(drawCharm(s, s.hands[cid]));
   s.lastSeen[cid] = now;
-  s.stats[cid] = { landed: 0, banished: 0, fizzles: 0, seer: 0, souls: 0 };
+  s.stats[cid] = { landed: 0, banished: 0, fizzles: 0, seer: 0, souls: 0, trashed: 0 };
 }
 
 /** What one phone needs to show. Small and JSON-friendly. */
@@ -390,6 +417,7 @@ export function awards(s) {
   add('banished', 'Monster Masher', (v) => `Landed the final charm on ${v} monster${v === 1 ? '' : 's'}`);
   add('landed', 'Charm Slinger', (v) => `${v} charms thrown on target`);
   add('seer', 'Fog Whisperer', (v) => `Called out ${v} foggy monster${v === 1 ? '' : 's'}`);
+  add('trashed', 'Junk Collector', (v) => `Tossed ${v} piece${v === 1 ? '' : 's'} of junk`);
   add('fizzles', 'Butterfingers', (v) => `Threw ${v} charm${v === 1 ? '' : 's'} at nothing`);
   return list;
 }

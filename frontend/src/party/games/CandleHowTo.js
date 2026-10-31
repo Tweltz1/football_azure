@@ -3,6 +3,7 @@ import { monsterMarkup } from '../monsters';
 import { randomLook, lookCode } from '../look';
 import { CHARM } from '../lastCandle';
 import { isMuted, sfx } from '../sound';
+import { charmArt } from '../charmArt';
 import { Backdrop, CharmBadge, House, laneY, monsterX, PlayerTag, ScenePerson } from '../scene';
 
 // The how-to-play intro on the TV: a scripted little show using the room's own characters, with
@@ -107,7 +108,7 @@ const DemoPhone = ({ owner, hand, tapAt, t, spookedAt, secret, soul, show }) => 
         return (
           <g key={c} transform={`translate(24 ${buttonY(i) - 60})`} opacity={spooked ? 0.45 : 1}>
             <rect width="232" height="120" rx="22" fill={used ? '#3a2a50' : charm.color} stroke="#16122b" strokeWidth="5" strokeDasharray={used ? '12 10' : undefined} />
-            {!used && <text x="70" y="62" fontSize="54" textAnchor="middle" dominantBaseline="central">{charm.icon}</text>}
+            {!used && <g transform="translate(70 62) scale(0.9)" dangerouslySetInnerHTML={{ __html: charmArt(c) }} />}
             {!used && <text x="160" y="62" fontSize="26" fontWeight="800" textAnchor="middle" dominantBaseline="central" fill="#16122b">{charm.name}</text>}
           </g>
         );

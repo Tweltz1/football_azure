@@ -3,7 +3,7 @@ import qrcode from 'qrcode-generator';
 import Person from './Person';
 import { parseLook, randomLook, lookCode } from './look';
 import { MAX_PLAYERS, newRoomCode, openHost } from './net';
-import { isMuted, setMuted, sfx, unlockSound } from './sound';
+import { isMuted, setMuted, sfx, startMusic, stopMusic, unlockSound } from './sound';
 import { Backdrop, House } from './scene';
 import { GAME_META, gameFor, isPlayable } from './games';
 import './party.css';
@@ -68,6 +68,18 @@ export default function PartyHost() {
   defRef.current = def;
 
   useEffect(() => { if (code) saveRoom(code, players, gameId); }, [code, players, gameId]);
+
+  // Background music: starts with "Open a room", or on the first click if the room was reopened.
+  useEffect(() => {
+    const first = () => { if (code) startMusic(); };
+    window.addEventListener('pointerdown', first);
+    window.addEventListener('keydown', first);
+    return () => {
+      window.removeEventListener('pointerdown', first);
+      window.removeEventListener('keydown', first);
+    };
+  }, [code]);
+  useEffect(() => () => stopMusic(), []);
 
   // Fonts for the titles
   useEffect(() => {
@@ -265,6 +277,7 @@ export default function PartyHost() {
 
   const openRoom = () => {
     unlockSound();
+    startMusic();
     setPlayers([]);
     setCode(newRoomCode());
   };

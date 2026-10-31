@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, tick, play, soul, phoneView, awards, maxCandlesFor, HAND } from '../src/party/lastCandle.js';
+import { createGame, tick, play, soul, trash, isJunk, phoneView, awards, maxCandlesFor, HAND } from '../src/party/lastCandle.js';
 import { lookCode, parseLook, crewLook, DEFAULT_LOOK, randomLook, stepLook } from '../src/party/look.js';
 import { personSvg } from '../src/party/cartoon.js';
 
@@ -22,6 +22,8 @@ function run(n, skill, seed, { soulTogether = true } = {}) {
     for (const p of g.players) {
       if (rand() > skill * 0.12) continue;
       const hand = g.hands[p.cid];
+      const junk = hand.findIndex((c) => c && isJunk(c));
+      if (junk >= 0 && rand() < 0.5) { trash(g, p.cid, junk, now); continue; }
       const slot = hand.findIndex((c) => c && visible.has(c));
       if (slot >= 0) play(g, p.cid, slot, now);
     }
@@ -90,4 +92,33 @@ test('the Pumpkin King needs everyone on SOUL', () => {
   const g = run(4, 1, 3, { soulTogether: false });
   assert.equal(g.phase, 'lost');
   assert.ok(awards(run(6, 1, 2)).length > 0);
+});
+
+test('junk turns up, spooks you if thrown, and goes in the trash for a fresh card', () => {
+  const g = createGame(players(3), 5, 0);
+  let now = 0;
+  let seen = 0;
+  while (now < 120000 && g.phase !== 'lost') {
+    now += 100;
+    tick(g, now);
+    if (g.phase !== 'night') continue;
+    for (const p of g.players) {
+      const hand = g.hands[p.cid];
+      assert.ok(hand.filter((c) => c && isJunk(c)).length <= 1, 'at most one junk card in a hand');
+      const j = hand.findIndex((c) => c && isJunk(c));
+      if (j < 0) { const k = hand.findIndex((c) => c); if (k >= 0) trash(g, p.cid, k, now); continue; }
+      seen += 1;
+      if (seen === 1) {
+        assert.equal(play(g, p.cid, j, now), 'fizzle');
+        assert.ok(phoneView(g, p.cid, now).spooked);
+      } else {
+        assert.equal(trash(g, p.cid, j, now), 'junk');
+        assert.equal(hand[j], null);
+        tick(g, now + 600);
+        assert.ok(hand[j] != null, 'refilled quickly');
+      }
+    }
+    if (seen > 3) break;
+  }
+  assert.ok(seen > 3, 'junk shows up');
 });

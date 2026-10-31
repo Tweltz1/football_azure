@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import Person from '../Person';
 import { monsterMarkup } from '../monsters';
-import { awards, CHARM, NIGHTS, SOUL_WINDOW_MS, SPOOK_MS } from '../lastCandle';
+import { awards, CHARM, CHARMS, NIGHTS, SOUL_WINDOW_MS, SPOOK_MS } from '../lastCandle';
 import { sfx } from '../sound';
+import { charmArt } from '../charmArt';
 import {
   Backdrop, CharmBadge, House, laneY, monsterScale, monsterX, PlayerTag, ScenePerson, spot, THROW_MS,
 } from '../scene';
@@ -77,6 +78,15 @@ const Effects = ({ effects, now, players, monsters }) => effects.map((fx) => {
     const p = spot(fx.slot);
     return <text key={fx.id} x={p.x} y={p.y - 130 - k * 20} fontSize="34" fontWeight="900" textAnchor="middle" fill="#ff6b6b" stroke="#16122b" strokeWidth="5" paintOrder="stroke" opacity={1 - k * 0.6}>SPOOKED!</text>;
   }
+  if (fx.type === 'trash') {
+    const p = spot(fx.slot);
+    return (
+      <g key={fx.id} opacity={1 - k * 0.7}>
+        <text x={p.x + 40} y={p.y - 120} fontSize="40" textAnchor="middle">🗑️</text>
+        <text x={p.x + 40 - 40 * (1 - k)} y={p.y - 170 + 50 * k} fontSize="30" textAnchor="middle">{CHARM[fx.charm]?.icon}</text>
+      </g>
+    );
+  }
   if (fx.type === 'candle') {
     return (
       <g key={fx.id} opacity={1 - k}>
@@ -127,6 +137,10 @@ export default function CandleStage({ game, players, now, onLobby, onAgain }) {
           effects.current.push({ id, type: 'candle', at: t, ms: 900 });
           players.forEach((p) => poses.current.set(p.cid, { pose: 'scared', until: t + 900 }));
           sfx.candle();
+          break;
+        case 'trash':
+          effects.current.push({ id, type: 'trash', at: t, ms: 1100, slot: slots.get(e.by) ?? 0, charm: e.charm });
+          sfx.whoosh();
           break;
         case 'spawn': sfx.spawn(); break;
         case 'boss': sfx.boss(); break;
@@ -187,7 +201,12 @@ export default function CandleStage({ game, players, now, onLobby, onAgain }) {
           <div className="lc-card-kicker">Night {game.night} of 3</div>
           <h2 className="lc-title">{night.title}</h2>
           <p>{night.blurb}</p>
-          <div className="lc-intro-charms">{Object.values(CHARM).slice(0, night.charms).map((c) => <span key={c.id} style={{ background: c.color }}>{c.icon}<small>{c.name}</small></span>)}</div>
+          <div className="lc-intro-charms">{CHARMS.slice(0, night.charms).map((c) => <span key={c.id} style={{ background: c.color }}><svg className="lc-intro-icon" viewBox="-50 -50 100 100" aria-hidden="true" dangerouslySetInnerHTML={{ __html: charmArt(c.id) }} /><small>{c.name}</small></span>)}</div>
+          <p className="lc-intro-tip">{[
+            'Watch out for junk like 🧦 and 🍌. Drag it into the 🗑️ on your phone, never throw it! Fog rolls in on night 2.',
+            'Foggy monsters hide what they need. One phone can see it, so call it out!',
+            'When the Pumpkin King arrives, throw his charms, then everyone taps SOUL together!',
+          ][game.night - 1]}</p>
           <div className="lc-countdown">{Math.max(1, Math.ceil((9000 - (now - game.phaseAt)) / 1000))}</div>
         </div>
       )}

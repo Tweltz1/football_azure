@@ -652,3 +652,15 @@
 #lc-root .lcp-door-num { position: absolute; top: 6px; left: 8px; display: grid; place-items: center; width: 28px; height: 28px; font-size: 16px; color: var(--lc-ink); text-shadow: none; background: var(--lc-cream); border: 3px solid var(--lc-ink); border-radius: 50%; }
 #lc-root .lcp-door-icon { font-size: 40px; text-shadow: none; }
 #lc-root .lcp-door-mine { font-size: 13px; color: var(--lc-gold); }
+
+/* Last Candle: junk and the trash */
+#lc-root .lcp-charm { touch-action: none; user-select: none; -webkit-user-select: none; }
+#lc-root .lcp-charm.is-junk { background-image: repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.08) 0 10px, transparent 10px 20px); }
+#lc-root .lcp-charm.is-dragging { position: relative; z-index: 5; transition: none; box-shadow: 0 14px 24px rgba(0, 0, 0, 0.5); }
+#lc-root .lcp-trash { padding: 14px; text-align: center; font-size: 18px; font-weight: 700; color: #c9b8ee; border: 3px dashed rgba(255, 246, 227, 0.35); border-radius: 18px; transition: background 0.15s, transform 0.15s; }
+#lc-root .lcp-trash.is-ready { color: var(--lc-cream); border-color: var(--lc-cream); }
+#lc-root .lcp-trash.is-over { color: var(--lc-ink); background: #3ddc97; border-style: solid; transform: scale(1.05); }
+#lc-root .lc-intro-tip { font-size: 1.1em !important; color: var(--lc-gold); }
+#lc-root svg.lcp-charm-icon { width: 64px; height: 64px; overflow: visible; }
+#lc-root svg.lcp-mini-icon { width: 30px; height: 30px; display: block; margin: 0 auto; }
+#lc-root svg.lc-intro-icon { width: 1.4em; height: 1.4em; display: block; margin: 0 auto; }

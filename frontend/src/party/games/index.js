@@ -32,6 +32,7 @@ const ENGINES = {
     act(g, cid, msg, now) {
       if (msg.type === 'play') candle.play(g, cid, Number(msg.slot), now);
       if (msg.type === 'soul') candle.soul(g, cid, now);
+      if (msg.type === 'trash') candle.trash(g, cid, Number(msg.slot), now);
     },
     over: (g) => g.phase === 'won' || g.phase === 'lost',
     sceneKey: (g) => `${g.phase === 'night' ? 'intro' : g.phase}${g.night}`,

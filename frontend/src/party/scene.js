@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { personMarkup } from './cartoon';
 import { parseLook } from './look';
 import { CHARM } from './lastCandle';
+import { charmArt } from './charmArt';
 
 // Pieces of the TV scene shared by the game and the how-to-play intro. The scene is 1920 x 1080.
 
@@ -25,7 +26,9 @@ export const CharmBadge = ({ id, x, y, r = 26, faded }) => {
   return (
     <g transform={`translate(${x} ${y})`} opacity={faded ? 0.35 : 1}>
       <circle r={r} fill={charm ? charm.color : '#888'} stroke="#16122b" strokeWidth="5" />
-      <text y="2" fontSize={r * 1.15} textAnchor="middle" dominantBaseline="central">{charm ? charm.icon : '?'}</text>
+      {charmArt(id)
+        ? <g transform={`scale(${(r * 0.8) / 40})`} dangerouslySetInnerHTML={{ __html: charmArt(id) }} />
+        : <text y="2" fontSize={r * 1.15} textAnchor="middle" dominantBaseline="central">{charm ? charm.icon : '?'}</text>}
     </g>
   );
 };
