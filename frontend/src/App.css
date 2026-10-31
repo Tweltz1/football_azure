@@ -2063,3 +2063,76 @@ hr {
 .login-legal a {
   color: inherit;
 }
+
+/* Front door: football or games, before signing in */
+.front-door {
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+
+.front-door-panel {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  text-align: center;
+}
+
+.front-door-panel h1 {
+  margin: 4px 0 6px;
+  font-size: clamp(40px, 9vw, 72px);
+}
+
+.front-door-panel > p:not(.page-kicker) {
+  color: var(--text-2);
+  font-size: 18px;
+}
+
+.front-door-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.front-door-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 20px;
+  color: var(--text);
+  text-decoration: none;
+  background: rgba(17, 19, 24, 0.86);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 20px;
+  cursor: pointer;
+  font: inherit;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.front-door-card:hover,
+.front-door-card:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--accent-ring);
+}
+
+.front-door-card.is-games:hover,
+.front-door-card.is-games:focus-visible {
+  border-color: #ff8a2a;
+}
+
+.front-door-icon {
+  font-size: 56px;
+  line-height: 1;
+}
+
+.front-door-card strong {
+  font-size: 24px;
+}
+
+.front-door-card small {
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.4;
+}
