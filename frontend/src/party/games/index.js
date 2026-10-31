@@ -1,0 +1,72 @@
+// Every game the TV can host. Each one is a pure engine (state on the TV, ticked every frame), a TV
+// stage, a phone screen and an animated how-to-play intro. Lobby details live in meta.js.
+
+import * as candle from '../lastCandle';
+import * as quiz from './quiz';
+import CandleStage from './CandleStage';
+import CandlePhone from './CandlePhone';
+import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
+import QuizStage from './QuizStage';
+import QuizPhone from './QuizPhone';
+import QuizHowTo, { HOWTO_MS as QUIZ_HOWTO_MS } from './QuizHowTo';
+import { GAME_META, isPlayable, metaFor } from './meta';
+
+const query = () => new URLSearchParams(window.location.search);
+
+const ENGINES = {
+  candle: {
+    create(players, seed, now) {
+      const g = candle.createGame(players, seed, now);
+      candle.skipToNight(g, Number(query().get('night')), now);
+      return g;
+    },
+    tick: candle.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'play') candle.play(g, cid, Number(msg.slot), now);
+      if (msg.type === 'soul') candle.soul(g, cid, now);
+    },
+    over: (g) => g.phase === 'won' || g.phase === 'lost',
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    phone: candle.phoneView,
+    result: (g, cid) => ({ score: g.score, awards: candle.awards(g).filter((a) => a.cid === cid).map((a) => a.title), stats: g.stats[cid] }),
+    addPlayer: candle.addPlayer,
+    seen: candle.seen,
+    Stage: CandleStage,
+    Phone: CandlePhone,
+    HowTo: CandleHowTo,
+    howToMs: CANDLE_HOWTO_MS,
+  },
+  quiz: {
+    create: (players, seed, now) => quiz.createQuiz(players, seed, now, Number(query().get('questions')) || quiz.QUESTION_COUNT),
+    tick: quiz.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'answer') quiz.answer(g, cid, Number(msg.choice), now);
+    },
+    over: quiz.isOver,
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    phone: quiz.phoneView,
+    result(g, cid) {
+      const me = quiz.ranking(g).find((r) => r.cid === cid);
+      return {
+        rank: me?.rank || g.players.length,
+        score: me?.score || 0,
+        right: g.stats[cid]?.right || 0,
+        total: g.questions.length,
+        awards: quiz.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+      };
+    },
+    addPlayer: quiz.addPlayer,
+    seen: quiz.seen,
+    Stage: QuizStage,
+    Phone: QuizPhone,
+    HowTo: QuizHowTo,
+    howToMs: QUIZ_HOWTO_MS,
+  },
+};
+
+export const gameFor = (id) => {
+  const meta = metaFor(isPlayable(id) ? id : 'candle');
+  return { ...meta, ...ENGINES[meta.id] };
+};
+
+export { GAME_META, isPlayable };

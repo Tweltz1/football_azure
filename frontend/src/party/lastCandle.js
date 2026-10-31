@@ -22,8 +22,8 @@ export const CHARMS = [
 export const CHARM = Object.fromEntries(CHARMS.map((c) => [c.id, c]));
 
 export const NIGHTS = [
-  { n: 1, title: 'Trick or Treat', blurb: 'Monsters are coming up the paths. Shout out what they need and throw the right charms!', length: 60000, charms: 5, fog: 0 },
-  { n: 2, title: 'Fog Night', blurb: 'Foggy monsters hide what they need. One of you sees it on your phone. Call it out!', length: 70000, charms: 6, fog: 0.4 },
+  { n: 1, title: 'Trick or Treat', blurb: 'Monsters are coming up the paths. Shout out what they need and throw the right charms!', length: 100000, charms: 5, fog: 0 },
+  { n: 2, title: 'Fog Night', blurb: 'Foggy monsters hide what they need. One of you sees it on your phone. Call it out!', length: 110000, charms: 6, fog: 0.4 },
   { n: 3, title: 'Midnight', blurb: 'The Pumpkin King is coming. When he shows up, everyone hit SOUL at the same time!', length: 0, charms: 8, fog: 0.25 },
 ];
 

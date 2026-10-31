@@ -18,7 +18,7 @@ const FrontDoor = ({ onFootball }) => (
         <a className="front-door-card is-games" href="/games-night">
           <span className="front-door-icon">🎃</span>
           <strong>Games</strong>
-          <small>Last Candle, a Halloween party game for a TV and up to 12 phones. Sign in or play as a guest.</small>
+          <small>Halloween party games for a TV and up to 12 phones. Sign in or play as a guest.</small>
         </a>
       </div>
     </section>

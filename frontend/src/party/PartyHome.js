@@ -24,8 +24,8 @@ export default function PartyHome() {
     <div className="lcp lch">
       <a className="lch-back" href="/">← Hood League</a>
       <p className="lch-kicker">Hood League Games</p>
-      <h1 className="lc-title">Last Candle</h1>
-      <p className="lch-sub">A cooperative Halloween party game. One TV, up to 12 phones. Keep the candles lit until dawn.</p>
+      <h1 className="lc-title">Games Night</h1>
+      <p className="lch-sub">Halloween party games for one TV and up to 12 phones. Team up in Last Candle, or race your friends in Fright Quiz.</p>
       <div className="lch-crew">{looks.map((l, i) => <Person key={i} look={l} pose={i === 2 ? 'wave' : 'stand'} className={`lc-bob lc-d${i % 4}`} />)}</div>
       <div className="lch-actions">
         <a className="lch-card" href="/party">

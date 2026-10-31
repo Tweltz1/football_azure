@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { monsterMarkup } from './monsters';
-import { randomLook, lookCode } from './look';
-import { CHARM } from './lastCandle';
-import { isMuted, sfx } from './sound';
-import { Backdrop, CharmBadge, House, laneY, monsterX, PlayerTag, ScenePerson } from './scene';
+import { monsterMarkup } from '../monsters';
+import { randomLook, lookCode } from '../look';
+import { CHARM } from '../lastCandle';
+import { isMuted, sfx } from '../sound';
+import { Backdrop, CharmBadge, House, laneY, monsterX, PlayerTag, ScenePerson } from '../scene';
 
 // The how-to-play intro on the TV: a scripted little show using the room's own characters, with
 // captions and (when sound is on) a narrator. The host can skip it. Times are in ms from the start.
