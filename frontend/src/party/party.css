@@ -674,3 +674,60 @@
 .lq-level.is-l1 { background: #ffe066; color: #16122b; }
 .lq-level.is-l2 { background: #ff8a2a; color: #16122b; }
 .lq-level.is-l3 { background: #ff3d5a; color: #fff; }
+
+/* Who's Behind the Mask? (lk-*). TV parts avoid flex gap and grid for old TV browsers. */
+#lc-root .lk-main { top: 15%; }
+#lc-root .lk-clues { display: flex; flex-wrap: wrap; justify-content: center; margin: -0.4em; }
+#lc-root .lk-clue { position: relative; display: flex; flex-direction: column; align-items: center; width: 10.5em; margin: 0.4em; padding: 0.6em 0.5em 0.7em; text-align: center; color: var(--lc-ink); background: var(--lc-cream); border: 0.22em solid var(--lc-ink); border-top: 0.6em solid var(--c, #9b7bff); border-radius: 0.9em; box-shadow: 0 0.3em 0 var(--lc-ink); animation: lk-pop 0.45s cubic-bezier(.3,1.6,.5,1) both; }
+#lc-root .lk-clue .lc-person { width: 3em; height: 3em; }
+#lc-root .lk-clue-name { font-size: 0.8em; font-weight: 700; opacity: 0.75; }
+#lc-root .lk-clue-text { font-size: 1.35em; line-height: 1.15; word-break: break-word; }
+#lc-root .lk-clue.is-vamp { background: #ffd5dc; border-color: #b0002a; box-shadow: 0 0 0 0.25em #ff3d5a, 0 0.3em 0 var(--lc-ink); }
+#lc-root .lk-clue.is-vamp::after { content: '🧛'; position: absolute; top: -0.9em; right: -0.5em; font-size: 1.8em; }
+#lc-root .lk-clue.is-human { opacity: 0.75; }
+#lc-root .lk-clue.is-human::after { content: '😇'; position: absolute; top: -0.9em; right: -0.5em; font-size: 1.6em; }
+@keyframes lk-pop { from { opacity: 0; transform: scale(0.5) rotate(-6deg); } to { opacity: 1; transform: none; } }
+#lc-root .lk-unmask { position: absolute; left: 50%; top: 48%; width: 36%; padding: 1.2em 1em; text-align: center; color: var(--lc-cream); background: rgba(22, 18, 43, 0.92); border: 0.3em solid #8b5cf6; border-radius: 1.4em; transform: translate(-50%, -50%); animation: lk-pop 0.4s ease-out both; }
+#lc-root .lk-unmask .lc-person { width: 6em; height: 6em; margin: 0 auto; }
+#lc-root .lk-unmask p { margin: 0.3em 0; font-size: 1.5em; font-weight: 700; }
+#lc-root .lk-unmask .lc-title { margin: 0.2em 0 0; font-size: 3em; animation: lk-pop 0.5s cubic-bezier(.3,1.6,.5,1) both; }
+#lc-root .lk-unmask .lc-title.is-vamp { color: #ff3d5a; }
+#lc-root .lk-unmask .lc-title.is-human { color: #3ddc97; }
+#lc-root .lk-bite { margin-top: 0.8em; text-align: center; }
+#lc-root .lk-bite p { font-size: 1.3em; font-weight: 700; }
+#lc-root .lk-bite-options { display: flex; flex-wrap: wrap; justify-content: center; margin: 0.3em -0.25em; }
+#lc-root .lk-bite-options span { margin: 0.25em; padding: 0.35em 0.8em; font-weight: 700; color: var(--lc-ink); background: var(--lc-cream); border: 0.18em solid var(--lc-ink); border-radius: 0.7em; }
+#lc-root .lk-bite-options span.is-right { background: #ff3d5a; color: #fff; }
+#lc-root .lk-bite-options span.is-wrong { background: #888; text-decoration: line-through; }
+#lc-root .lk-bite-said { display: block; margin-top: 0.4em; font-size: 1.6em; color: var(--lc-gold); }
+#lc-root .lk-reveal { display: flex; flex-wrap: wrap; justify-content: center; margin: 0.4em 0; }
+#lc-root .lk-vamp { display: flex; flex-direction: column; align-items: center; margin: 0 0.8em; font-weight: 700; }
+#lc-root .lk-vamp .lc-person { width: 4.5em; height: 4.5em; }
+#lc-root .lk-vamp small { color: #3ddc97; }
+#lc-root .lk-vamp:not(.is-caught) small { color: #ff3d5a; }
+#lc-root .lk-gains { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 0.5em; }
+#lc-root .lk-gains span { margin: 0.2em 0.5em; }
+#lc-root .lk-gains b { color: var(--lc-gold); }
+#lc-root .lk-demo-left { right: auto; left: 5%; }
+
+/* Phone */
+#lc-root .lk-role { display: flex; flex-direction: column; align-items: center; width: 100%; margin: 0 0 12px; padding: 14px 12px; font: inherit; text-align: center; color: var(--lc-ink); background: var(--lc-cream); border: 4px solid var(--lc-ink); border-radius: 18px; box-shadow: 0 5px 0 var(--lc-ink); cursor: pointer; }
+#lc-root .lk-role b { font-size: 1.7em; line-height: 1.15; }
+#lc-root .lk-role small { margin-top: 4px; font-size: 0.85em; opacity: 0.8; }
+#lc-root .lk-role-kicker { font-weight: 700; font-size: 0.9em; }
+#lc-root .lk-role.is-vamp { color: #fff; background: #7a0f24; }
+#lc-root .lk-role.is-vamp b { color: #ffd5dc; }
+#lc-root .lk-role.is-hidden { background: #3a1f5c; color: #e7dbff; }
+#lc-root .lk-role.is-watch { cursor: default; font-weight: 700; }
+#lc-root .lk-role-peek { font-size: 1.3em; font-weight: 700; }
+#lc-root .lq-demo-phone .lk-role { margin: 0; padding: 0.6em; border-width: 3px; box-shadow: none; cursor: default; }
+#lc-root .lq-demo-phone .lk-role b { font-size: 1.3em; }
+#lc-root .lk-warn { color: #ff6b81; font-weight: 700; }
+#lc-root .lk-phone-clues { display: flex; flex-wrap: wrap; margin: 4px -4px 12px; }
+#lc-root .lk-phone-clues span { margin: 4px; padding: 6px 10px; color: var(--lc-ink); background: var(--lc-cream); border-radius: 10px; }
+#lc-root .lk-phone-clues b { margin-right: 4px; opacity: 0.7; }
+#lc-root .lk-targets { display: flex; flex-wrap: wrap; margin: 0 -5px; }
+#lc-root .lk-target { flex: 1 1 calc(50% - 10px); display: flex; flex-direction: column; align-items: center; margin: 5px; padding: 12px 8px; font: inherit; color: var(--lc-ink); background: var(--lc-cream); border: 4px solid var(--lc-ink); border-radius: 14px; box-shadow: 0 4px 0 var(--lc-ink); cursor: pointer; }
+#lc-root .lk-target b { font-size: 1.15em; }
+#lc-root .lk-target.is-on { background: #ff8a2a; outline: 4px solid var(--lc-gold); }
+#lc-root .lk-target.is-word { background: #ffd5dc; }

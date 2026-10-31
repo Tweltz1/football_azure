@@ -3,5 +3,6 @@ import CandlePhone from './CandlePhone';
 import QuizPhone from './QuizPhone';
 import MashPhone from './MashPhone';
 import HallwayPhone from './HallwayPhone';
+import MaskPhone from './MaskPhone';
 
-export const PHONES = { candle: CandlePhone, quiz: QuizPhone, mash: MashPhone, hallway: HallwayPhone };
+export const PHONES = { candle: CandlePhone, quiz: QuizPhone, mash: MashPhone, hallway: HallwayPhone, mask: MaskPhone };
