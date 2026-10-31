@@ -1,0 +1,3 @@
+*.xcodeproj/
+Engine/.build/
+Engine/.swiftpm/
