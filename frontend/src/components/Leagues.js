@@ -1,15 +1,29 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { HubConnectionBuilder } from '@microsoft/signalr';
-import { getSignalRInfo } from '../api';
+import { createDraftConnection } from '../realtime';
+import { API_BASE_URL } from '../api';
+import { isOfflineLeague, readOfflineLeague } from '../offline/storage';
+import { isNearbyTicket, leaveNearbyDraft } from '../offline/nearbyDraft';
+import { discardDeviceCopy } from '../offline/offlineSync';
 import { buildByeWeekAnalyzer, buildCommissionerHealth, buildDraftRecap } from '../data/strategyUtils';
+import { isDraftLive, leagueStatusKey, leagueStatusLabel } from '../data/leagueLabels';
+import BiddingStyleField from '../whiteboard/BiddingStyleField';
+import { biddingStyleLabel, isWhiteboardLeague, normalizeBiddingMode } from '../whiteboard/biddingStyle';
+import OfflineNotice from '../help/OfflineNotice';
+import OfflineDraftStart from '../help/OfflineDraftStart';
+import useOnline from '../offline/useOnline';
+import { useAuth } from '../AuthContext';
+import InfoTip, { KickerWithTip } from '../help/InfoTip';
+import { DraftModeHelp, NoInternetHelp, RosterHelp, TimerHelp } from '../help/draftHelp';
+import '../whiteboard/whiteboard.css';
 import '../App.css';
 import './LeagueTools.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 const Leagues = ({ userId }) => {
+  const online = useOnline();
+  const { user } = useAuth() || {};
   const [leagues, setLeagues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -23,9 +37,13 @@ const Leagues = ({ userId }) => {
   const [joinPassword, setJoinPassword] = useState('');
   const [joinInviteId, setJoinInviteId] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
+  const [invitePreview, setInvitePreview] = useState(null);
+  const [invitePreviewError, setInvitePreviewError] = useState('');
   const [rosterSettings, setRosterSettings] = useState({});
   const [draftTimers, setDraftTimers] = useState({});
   const [draftMode, setDraftMode] = useState('auction');
+  const [biddingMode, setBiddingMode] = useState('standard');
+  const [cohostId, setCohostId] = useState('');
 
   const fetchLeagues = useCallback(async () => {
     try {
@@ -33,7 +51,7 @@ const Leagues = ({ userId }) => {
       setLeagues(response.data);
     } catch (error) {
       console.error('Error fetching leagues:', error);
-      alert('Failed to fetch leagues.');
+      if (navigator.onLine !== false && error.response?.status !== 401) alert('Failed to fetch leagues.');
     } finally {
       setLoading(false);
     }
@@ -49,48 +67,88 @@ const Leagues = ({ userId }) => {
     if (inviteId) {
       setJoinInviteId(inviteId);
       setShowJoinModal(true);
+      axios.get(`${API_BASE_URL}/invite/${encodeURIComponent(inviteId)}`)
+        .then((response) => setInvitePreview(response.data))
+        .catch((error) => setInvitePreviewError(error.response?.data || 'This invite link could not be checked.'));
     }
   }, []);
 
+  const closeJoinModal = () => {
+    setShowJoinModal(false);
+    setJoinInviteId('');
+    setInvitePreview(null);
+    setInvitePreviewError('');
+    window.history.replaceState({}, '', '/leagues');
+  };
+
+  const leagueIdsKey = useMemo(() => leagues.map((league) => league.id).sort().join(','), [leagues]);
+
   useEffect(() => {
-    let connection;
-    const setupSignalR = async () => {
-      try {
-        const info = await getSignalRInfo();
-        connection = new HubConnectionBuilder()
-          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-          .withAutomaticReconnect()
-          .build();
+    if (!leagueIdsKey) return undefined;
 
-        connection.on('draftStateUpdate', (updatedLeague) => {
-          setLeagues(currentLeagues =>
-            currentLeagues.map(l => l.id === updatedLeague.id ? updatedLeague : l)
-          );
-        });
+    const connection = createDraftConnection({ leagueIds: leagueIdsKey.split(','), userId });
+    connection.on('draftStateUpdate', (updatedLeague) => {
+      setLeagues(currentLeagues =>
+        currentLeagues.map(l => l.id === updatedLeague.id ? updatedLeague : l)
+      );
+    });
+    connection.start().catch((e) => {
+      console.error('Live connection failed on Leagues page: ', e);
+    });
 
-        await connection.start();
-      } catch (e) {
-        console.error('SignalR Connection Failed on Leagues page: ', e);
-      }
-    };
-
-    setupSignalR();
-    return () => {
-      if (connection) connection.stop();
-    };
-  }, []);
+    return () => connection.stop();
+  }, [leagueIdsKey, userId]);
 
   const commissionerLeagues = useMemo(() => leagues.filter((league) => league.adminId === userId), [leagues, userId]);
 
   const handleDelete = async (leagueId) => {
     if (window.confirm('Are you sure you want to delete this league?')) {
+      // A league saved for an offline draft is removed from this device first, so deleting it works
+      // with no internet; the online copy is then deleted too when there's a connection.
+      const savedOnDevice = isOfflineLeague(leagueId);
+      const offlineNote = 'Removed from this device. The online league is still there; delete it again when you have internet.';
+      // Made on this phone and never uploaded: there's no online copy, so it's simply gone.
+      if (savedOnDevice && readOfflineLeague(leagueId)?.createdOffline) {
+        discardDeviceCopy(leagueId);
+        alert('League deleted from this phone.');
+        fetchLeagues();
+        return;
+      }
+      if (savedOnDevice) discardDeviceCopy(leagueId);
+      if (savedOnDevice && navigator.onLine === false) {
+        alert(offlineNote);
+        fetchLeagues();
+        return;
+      }
       try {
         await axios.delete(`${API_BASE_URL}/leagues/${leagueId}`, { data: { adminId: userId } });
         alert('League deleted successfully!');
         fetchLeagues();
       } catch (error) {
+        if (savedOnDevice && !error.response) {
+          alert(offlineNote);
+          fetchLeagues();
+          return;
+        }
         alert(`Failed to delete league: ${error.response?.data || error.message}`);
       }
+    }
+  };
+
+  const handleLeave = async (league) => {
+    // A nearby draft joined from this phone: just forget it here (the commissioner's phone keeps the team).
+    if (isNearbyTicket(league.id)) {
+      if (!window.confirm(`Leave ${league.name} on this phone? You can join again with the room code.`)) return;
+      leaveNearbyDraft(league.id);
+      fetchLeagues();
+      return;
+    }
+    if (!window.confirm(`Leave ${league.name}? Your team will be removed.`)) return;
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${league.id}/leave`, {});
+      fetchLeagues();
+    } catch (error) {
+      alert(error.response?.data || (navigator.onLine === false ? 'Leaving a league needs internet.' : error.message));
     }
   };
 
@@ -113,8 +171,10 @@ const Leagues = ({ userId }) => {
       await axios.post(`${API_BASE_URL}/leagues/${currentLeague.id}/settings`, {
         adminId: userId,
         draftMode,
+        ...(draftMode === 'manual' ? {} : { biddingMode }),
         rosterSettings,
-        draftTimers
+        draftTimers,
+        cohostId,
       });
       alert('Roster settings updated successfully!');
       setShowRosterModal(false);
@@ -133,14 +193,36 @@ const Leagues = ({ userId }) => {
         password: joinInviteId ? undefined : joinPassword
       });
       alert(`Successfully joined league '${response.data.name}'!`);
-      setShowJoinModal(false);
-      setJoinInviteId('');
+      closeJoinModal();
       setJoinLeagueName('');
       setJoinPassword('');
-      window.history.replaceState({}, '', '/leagues');
       fetchLeagues();
     } catch (error) {
       alert(`Failed to join league: ${error.response?.data || error.message}`);
+    }
+  };
+
+  const handleClaimTeam = async (team) => {
+    if (!window.confirm(`Claim ${team.name} as your team?`)) return;
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${joinInviteId}/claim-team`, { teamId: team.id });
+      alert(`${team.name} is yours.`);
+      closeJoinModal();
+      fetchLeagues();
+    } catch (error) {
+      alert(`Couldn't claim that team: ${error.response?.data || error.message}`);
+    }
+  };
+
+  const handleNewSeason = async (league) => {
+    const message = `Start a new season for ${league.name}? This draft is saved in Draft History, then every team's roster is cleared and budgets reset to $200 so you can draft again.`;
+    if (!window.confirm(message)) return;
+    try {
+      await axios.post(`${API_BASE_URL}/leagues/${league.id}/new-season`, {});
+      alert(`${league.name} is ready for a new draft. Last season's draft is in Draft History.`);
+      fetchLeagues();
+    } catch (error) {
+      alert(`Failed to start a new season: ${error.response?.data || error.message}`);
     }
   };
 
@@ -165,40 +247,48 @@ const Leagues = ({ userId }) => {
     return <div className="loading-panel">Loading leagues...</div>;
   }
 
+  const openSettings = (league) => {
+    setShowRosterModal(true);
+    setCurrentLeague(league);
+    setRosterSettings(league.rosterSettings || {});
+    setDraftTimers(league.draftTimers || {});
+    setDraftMode(league.draftMode || 'auction');
+    setBiddingMode(normalizeBiddingMode(league.biddingMode));
+    setCohostId(league.cohostId || '');
+  };
+
+  const openRename = (league, teamName) => {
+    setShowEditModal(true);
+    setCurrentLeague(league);
+    setNewTeamName(teamName);
+  };
+
   return (
     <div className="page-shell league-page">
       <section className="page-hero">
         <p className="page-kicker">League control</p>
         <h1>My Leagues</h1>
-        <p>Jump into a live draft room, share invites, and inspect commissioner health before the auction starts.</p>
+        <p>Tap a league to open its draft room. Commissioners will find invites and settings under Commissioner tools.</p>
         <div className="scoreboard-strip">
-          <span>{leagues.length} active league{leagues.length === 1 ? '' : 's'}</span>
-          <span>{commissionerLeagues.length} commissioner table{commissionerLeagues.length === 1 ? '' : 's'}</span>
-          {inviteMessage && <span>{inviteMessage}</span>}
+          <span>{leagues.length} league{leagues.length === 1 ? '' : 's'}</span>
+          {commissionerLeagues.length > 0 && <span>{commissionerLeagues.length} you run</span>}
+          {inviteMessage && <span className="invite-message">{inviteMessage}</span>}
         </div>
       </section>
 
-      {commissionerLeagues.length > 0 && (
-        <section className="card commissioner-dashboard">
-          <div className="player-board-heading">
-            <div>
-              <p className="section-kicker">Commissioner dashboard</p>
-              <h2>League Health</h2>
-            </div>
-            <div className="board-count">{commissionerLeagues.length} managed</div>
-          </div>
-          <div className="commissioner-grid">
-            {commissionerLeagues.map((league) => (
-              <CommissionerCard key={league.id} league={league} userId={userId} onCopyInvite={handleCopyInvite} onAnalyze={openAnalyzer} />
-            ))}
-          </div>
-        </section>
-      )}
+      <OfflineNotice action="Creating or joining a league needs internet. Your leagues still open below." />
+      {online && <OfflineDraftStart user={user?.guest ? null : user} />}
 
       <div className="league-toolbar">
         <div>
-          <p className="section-kicker">Draft rooms</p>
-          <h2>Your Active Leagues</h2>
+          <div className="kicker-with-tip">
+            <p className="section-kicker">Draft rooms</p>
+            <InfoTip label="drafting without internet">
+              <p>Tap a league to open its draft room. No wifi where you draft? Set it up ahead of time:</p>
+              <NoInternetHelp />
+            </InfoTip>
+          </div>
+          <h2>Your Leagues</h2>
         </div>
         <div className="button-group">
           <Link to="/create-league">
@@ -209,65 +299,22 @@ const Leagues = ({ userId }) => {
       </div>
 
       {leagues.length > 0 ? (
-        <table className="leagues-table">
-          <thead>
-            <tr>
-              <th>League</th>
-              <th>Role</th>
-              <th>Teams</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leagues.map(league => {
-              const teamName = (league.teams || []).find(t => t.ownerId === userId)?.name || 'N/A';
-              return (
-                <tr key={league.id}>
-                  <td>
-                    <strong>{league.name}</strong>
-                    <br />
-                    <span>Your Team: {teamName} </span>
-                    <span>Mode: {league.draftMode === 'manual' ? 'Manual' : 'Auction'} </span>
-                    <button className="edit-profile-link" onClick={() => {
-                      setShowEditModal(true);
-                      setCurrentLeague(league);
-                      setNewTeamName(teamName === 'N/A' ? '' : teamName);
-                    }}>Edit Team</button>
-                  </td>
-                  <td>{league.adminId === userId ? 'Commissioner' : 'Member'}</td>
-                  <td>{league.members.length}/12</td>
-                  <td className="actions-cell-flex">
-                    <Link to={`/draft/${league.id}`}>
-                      <button className="view-details-button">Enter Draft Room</button>
-                    </Link>
-                    <Link to={`/draft/${league.id}/tv`} target="_blank" rel="noreferrer">
-                      <button className="edit-roster-button">TV Board</button>
-                    </Link>
-                    <button type="button" className="edit-roster-button" onClick={() => openAnalyzer(league)}>Analyze</button>
-                    {league.adminId === userId && (
-                      <>
-                        <button type="button" onClick={() => handleCopyInvite(league)} className="join-button">Copy Invite</button>
-                        <button
-                          onClick={() => {
-                            setShowRosterModal(true);
-                            setCurrentLeague(league);
-                            setRosterSettings(league.rosterSettings || {});
-                            setDraftTimers(league.draftTimers || {});
-                            setDraftMode(league.draftMode || 'auction');
-                          }}
-                          className="edit-roster-button"
-                        >
-                          Edit Roster
-                        </button>
-                        <button onClick={() => handleDelete(league.id)} className="delete-button">Delete</button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="league-card-list">
+          {leagues.map((league) => (
+            <LeagueCard
+              key={league.id}
+              league={league}
+              userId={userId}
+              onRename={openRename}
+              onAnalyze={openAnalyzer}
+              onCopyInvite={handleCopyInvite}
+              onSettings={openSettings}
+              onNewSeason={handleNewSeason}
+              onDelete={handleDelete}
+              onLeave={handleLeave}
+            />
+          ))}
+        </div>
       ) : (
         <div className="empty-state">
           <h3>No leagues yet</h3>
@@ -298,8 +345,8 @@ const Leagues = ({ userId }) => {
       {showRosterModal && currentLeague && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>Edit Roster Settings for {currentLeague.name}</h3>
-            <p className="section-kicker">Draft mode</p>
+            <h3>League settings: {currentLeague.name}</h3>
+            <KickerWithTip title="Draft mode"><DraftModeHelp /></KickerWithTip>
             <div className="button-group" role="group" aria-label="Draft mode">
               <button
                 type="button"
@@ -316,8 +363,19 @@ const Leagues = ({ userId }) => {
                 Manual Draft
               </button>
             </div>
+            {draftMode === 'auction' && <BiddingStyleField value={biddingMode} onChange={setBiddingMode} />}
             <div className="divider" />
-
+            <KickerWithTip title="Co-host">
+              <p>A co-host can run the draft tools with you (start, pause, award, ties, undo). In a nearby-phones draft, their phone takes over if yours drops, and hands the draft back when you return. Only you change settings, remove teams or delete the league.</p>
+            </KickerWithTip>
+            <select value={cohostId} onChange={(e) => setCohostId(e.target.value)} aria-label="Co-host">
+              <option value="">No co-host</option>
+              {(currentLeague.teams || []).filter((team) => team && team.ownerId && team.ownerId !== currentLeague.adminId).map((team) => (
+                <option key={team.id} value={team.ownerId}>{team.name}</option>
+              ))}
+            </select>
+            <div className="divider" />
+            <KickerWithTip title="Roster spots"><RosterHelp /></KickerWithTip>
             <div className="settings-grid">
               <label>QB<input type="number" value={rosterSettings.qb || 0} onChange={(e) => setRosterSettings({...rosterSettings, qb: parseInt(e.target.value)})}/></label>
               <label>RB<input type="number" value={rosterSettings.rb || 0} onChange={(e) => setRosterSettings({...rosterSettings, rb: parseInt(e.target.value)})}/></label>
@@ -331,6 +389,7 @@ const Leagues = ({ userId }) => {
             </div>
 
             <div className="divider" />
+            <KickerWithTip title="Timers (seconds)"><TimerHelp /></KickerWithTip>
             <div className="settings-grid">
               <label>Bid Timer<input type="number" value={draftTimers.bidTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, bidTimer: parseInt(e.target.value)})}/></label>
               <label>Intermission<input type="number" value={draftTimers.intermissionTimer || 0} onChange={(e) => setDraftTimers({...draftTimers, intermissionTimer: parseInt(e.target.value)})}/></label>
@@ -348,9 +407,35 @@ const Leagues = ({ userId }) => {
       {showJoinModal && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>{joinInviteId ? 'Join League Invite' : 'Join a League'}</h3>
+            <h3>{joinInviteId ? `Join ${invitePreview?.name || 'League'}` : 'Join a League'}</h3>
             {joinInviteId ? (
-              <div className="league-invite-note">This invite link will add you to the league automatically.</div>
+              <div className="league-invite-note">
+                {invitePreviewError && String(invitePreviewError)}
+                {!invitePreviewError && !invitePreview && 'Checking your invite...'}
+                {invitePreview && invitePreview.isMember && `You're already in ${invitePreview.name}.`}
+                {invitePreview && !invitePreview.isMember && (invitePreview.openTeams || []).length > 0 && (
+                  <>
+                    <p><strong>{invitePreview.name}</strong> was drafted on a phone. Which team is yours?</p>
+                    <div className="button-group claim-team-list">
+                      {invitePreview.openTeams.map((team) => (
+                        <button key={team.id} type="button" className="edit-roster-button" onClick={() => handleClaimTeam(team)}>
+                          {team.name}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {invitePreview && !invitePreview.isMember && !(invitePreview.openTeams || []).length && invitePreview.status === 'completed' && (
+                  `${invitePreview.name} has already finished its draft. Ask the commissioner to start a new season first.`
+                )}
+                {invitePreview && !invitePreview.isMember && invitePreview.status !== 'completed' && (
+                  <>
+                    You've been invited to <strong>{invitePreview.name}</strong>
+                    {invitePreview.commissionerTeamName ? ` by ${invitePreview.commissionerTeamName}` : ''}.
+                    {' '}{invitePreview.memberCount} member{invitePreview.memberCount === 1 ? '' : 's'} so far. No password needed.
+                  </>
+                )}
+              </div>
             ) : (
               <>
                 <label>
@@ -364,12 +449,19 @@ const Leagues = ({ userId }) => {
               </>
             )}
             <div className="form-actions">
-              <button onClick={handleJoinLeague}>Join League</button>
-              <button onClick={() => {
-                setShowJoinModal(false);
-                setJoinInviteId('');
-                window.history.replaceState({}, '', '/leagues');
-              }} className="cancel-button">Cancel</button>
+              {invitePreview?.isMember ? (
+                <Link to={`/draft/${invitePreview.id}`} onClick={closeJoinModal}>
+                  <button type="button">Open Draft Room</button>
+                </Link>
+              ) : (
+                <button
+                  onClick={handleJoinLeague}
+                  disabled={!!joinInviteId && (!!invitePreviewError || !invitePreview || invitePreview.status === 'completed')}
+                >
+                  Join League
+                </button>
+              )}
+              <button onClick={closeJoinModal} className="cancel-button">Cancel</button>
             </div>
           </div>
         </div>
@@ -378,20 +470,83 @@ const Leagues = ({ userId }) => {
   );
 };
 
-const CommissionerCard = ({ league, userId, onCopyInvite, onAnalyze }) => {
+const draftModeLabel = (league) => {
+  if (league.draftMode === 'manual') return 'Manual draft';
+  return isWhiteboardLeague(league) ? `Auction, ${biddingStyleLabel(league.biddingMode).toLowerCase()}` : 'Auction';
+};
+
+const LeagueCard = ({ league, userId, onRename, onAnalyze, onCopyInvite, onSettings, onNewSeason, onDelete, onLeave }) => {
+  const isAdmin = league.adminId === userId;
   const health = buildCommissionerHealth(league, userId);
+  const statusKey = leagueStatusKey(league);
+  const teamName = (league.teams || []).find((t) => t.ownerId === userId)?.name || '';
+  const finished = statusKey === 'completed';
+  const live = isDraftLive(league);
+  const memberCount = (league.members || []).length;
+  const enterLabel = live ? 'Join Live Draft' : finished ? 'See Draft Results' : 'Enter Draft Room';
+
   return (
-    <div className="commissioner-card">
-      <h3>{league.name}</h3>
-      <div className="health-row"><span>Status</span><strong>{health.status}</strong></div>
-      <div className="health-row"><span>Ready</span><strong>{health.readyCount}/{health.memberCount}</strong></div>
-      <div className="health-row"><span>Timer</span><strong>{health.timerLabel}</strong></div>
-      {health.needsAttention && <span className="health-warning">Waiting on ready checks</span>}
-      <div className="form-actions">
-        <button type="button" className="join-button" onClick={() => onCopyInvite(league)}>Copy Invite</button>
-        <button type="button" className="edit-roster-button" onClick={() => onAnalyze(league)}>Analyze</button>
+    <article className={`league-card${live ? ' is-live' : ''}`}>
+      <header className="league-card-head">
+        <div className="league-card-title">
+          <h3>{league.name}</h3>
+          <p>{draftModeLabel(league)} &middot; {memberCount}/12 teams{isAdmin && <> &middot; You run it</>}</p>
+        </div>
+        <div className="league-card-tags">
+          <span className={`league-status league-status-${statusKey || 'none'}`}>{leagueStatusLabel(league)}</span>
+          {isOfflineLeague(league.id) && <span className="league-status league-status-offline">Offline draft</span>}
+        </div>
+      </header>
+
+      <div className="league-card-team">
+        <span>Your team</span>
+        <strong>{teamName || 'No name yet'}</strong>
+        <button type="button" className="link-button" onClick={() => onRename(league, teamName)}>
+          {teamName ? 'Rename' : 'Name it'}
+        </button>
       </div>
-    </div>
+
+      {health.needsAttention && (
+        <span className="health-warning">{health.readyCount} of {health.memberCount} teams ready</span>
+      )}
+
+      <Link to={`/draft/${league.id}`} className="league-card-enter">
+        <button type="button" className="view-details-button">{enterLabel}</button>
+      </Link>
+
+      <div className="league-card-more">
+        <Link to={`/draft/${league.id}/tv`} {...(isOfflineLeague(league.id) ? {} : { target: '_blank', rel: 'noreferrer' })}>
+          <button type="button" className="join-button">TV Board</button>
+        </Link>
+        <button type="button" className="join-button" onClick={() => onAnalyze(league)}>Analyze</button>
+        {finished && (
+          <Link to="/history">
+            <button type="button" className="join-button">Past Drafts</button>
+          </Link>
+        )}
+      </div>
+
+      {!isAdmin && (isNearbyTicket(league.id) || ['', 'created', 'lobby'].includes(String(league.status || '').toLowerCase())) && (
+        <div className="league-card-more">
+          <button type="button" className="delete-button" onClick={() => onLeave(league)}>Leave League</button>
+        </div>
+      )}
+
+      {isAdmin && (
+        <details className="league-card-admin">
+          <summary>Commissioner tools</summary>
+          <p className="league-card-admin-note">Timers: {health.timerLabel}</p>
+          <div className="league-card-more">
+            <button type="button" className="edit-roster-button" onClick={() => onCopyInvite(league)}>Copy Invite Link</button>
+            <button type="button" className="edit-roster-button" onClick={() => onSettings(league)}>League Settings</button>
+            {finished && (
+              <button type="button" className="create-button" onClick={() => onNewSeason(league)}>Start New Season</button>
+            )}
+            <button type="button" className="delete-button" onClick={() => onDelete(league.id)}>Delete League</button>
+          </div>
+        </details>
+      )}
+    </article>
   );
 };
 
