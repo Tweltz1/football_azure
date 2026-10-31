@@ -1,3 +1,5 @@
+// Must stay first: fills in features old smart-TV browsers are missing.
+import './polyfills';
 import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './App';
