@@ -731,3 +731,13 @@
 #lc-root .lk-target b { font-size: 1.15em; }
 #lc-root .lk-target.is-on { background: #ff8a2a; outline: 4px solid var(--lc-gold); }
 #lc-root .lk-target.is-word { background: #ffd5dc; }
+#lc-root .lk-clue .lc-person svg, #lc-root .lk-unmask .lc-person svg, #lc-root .lk-vamp .lc-person svg { overflow: hidden; }
+#lc-root .lk-clue .lc-person, #lc-root .lk-vamp .lc-person { flex: 0 0 auto; }
+/* Keep the clue board compact so it clears the lineup, even with 12 players. */
+#lc-root .lk-main { top: 12%; left: 6%; right: 6%; }
+#lc-root .lk-clue { width: 8.4em; margin: 0.3em; padding: 0.35em 0.4em 0.45em; border-top-width: 0.45em; }
+#lc-root .lk-clue .lc-person { width: 2.2em; height: 2.2em; }
+#lc-root .lk-clue-text { font-size: 1.12em; }
+#lc-root .lk-main .lq-callout { margin-top: 0.6em; font-size: 1.2em; }
+#lc-root .lk-bite p { margin: 0.4em 0 0.2em; font-size: 1.1em; }
+#lc-root .lk-bite-options span { font-size: 0.9em; }

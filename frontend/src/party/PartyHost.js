@@ -420,7 +420,7 @@ export default function PartyHost() {
               ) : players.length ? (
                 <>
                   <span>{players.filter((p) => p.ready).length} of {players.length} ready. It starts when everyone taps Ready, or</span>
-                  <button type="button" className="lc-btn" onClick={startGame}>Start {def.title}</button>
+                  <button type="button" className="lc-btn" onClick={startGame}>▶ Start {def.title.length > 18 ? 'game' : def.title}</button>
                 </>
               ) : <span>Waiting for players… scan the code or go to the address above.</span>}
             </div>

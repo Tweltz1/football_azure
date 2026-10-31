@@ -158,7 +158,7 @@ export default function MaskStage({ game, players, now, onLobby, onAgain }) {
           </div>
           {game.phase === 'talk' && (
             <>
-              <div className="lq-callout">🗣️ Who&apos;s faking it? Talk it out! Tap “Ready to vote” on your phone when you know.</div>
+              <div className="lq-callout">🗣️ Who&apos;s faking it? Talk it out, then tap Ready on your phone.</div>
               <Timer left={Math.max(0, TALK_MS - elapsed)} total={TALK_MS} />
             </>
           )}
