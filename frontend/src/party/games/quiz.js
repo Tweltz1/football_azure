@@ -51,11 +51,11 @@ export const roundOf = (index) => Math.min(ROUNDS.length - 1, Math.floor(index /
 export const multiplier = (index) => (roundOf(index) === ROUNDS.length - 1 ? 2 : 1);
 
 /** A new quiz. players: [{ cid, name }]. */
-export function createQuiz(players, seed = Date.now(), now = 0, count = QUESTION_COUNT) {
+export function createQuiz(players, seed = Date.now(), now = 0, count = QUESTION_COUNT, seen = []) {
   const rand = mulberry(seed);
   const s = {
     players: players.map((p) => ({ cid: p.cid, name: p.name })),
-    questions: pickQuestions(rand, count),
+    questions: pickQuestions(rand, count, seen),
     index: 0,
     phase: 'round',
     phaseAt: now,

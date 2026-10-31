@@ -10,7 +10,8 @@ import {
 const DOOR_W = 230;
 const DOOR_H = 400;
 const DOOR_BASE = 830;
-export const doorX = (i, n) => 960 + (i - (n - 1) / 2) * Math.min(330, 1500 / n);
+export const doorX = (i, n) => 960 + (i - (n - 1) / 2) * Math.min(330, 1560 / n);
+export const doorScale = (n) => Math.min(1, 1560 / n / 290);
 const colorOf = (id) => COLORS.find((c) => c.id === id)?.hex || '#888';
 const iconOf = (id) => SYMBOLS.find((x) => x.id === id)?.icon || '?';
 const ease = (v) => { const x = Math.max(0, Math.min(1, v)); return x * x * (3 - 2 * x); };
@@ -22,11 +23,26 @@ const Window = ({ kind, glow }) => {
   return <rect x="-40" y="-350" width="80" height="80" rx="6" fill={fill} stroke="#16122b" strokeWidth="6" />;
 };
 
+const Handle = ({ kind }) => {
+  const hx = DOOR_W / 2 - 34;
+  if (kind === 'ring') {
+    return (
+      <g>
+        <circle cx={hx} cy="-196" r="9" fill="#f5c542" stroke="#16122b" strokeWidth="4" />
+        <circle cx={hx} cy="-170" r="20" fill="none" stroke="#16122b" strokeWidth="11" />
+        <circle cx={hx} cy="-170" r="20" fill="none" stroke="#f5c542" strokeWidth="5" />
+      </g>
+    );
+  }
+  if (kind === 'lever') return <rect x={hx - 9} y="-215" width="18" height="90" rx="9" fill="#f5c542" stroke="#16122b" strokeWidth="4" />;
+  return <circle cx={hx} cy="-170" r="15" fill="#f5c542" stroke="#16122b" strokeWidth="4" />;
+};
+
 /** One door. open: 0 closed .. 1 wide open. inside: 'safe' | 'monster' | null. */
-export const Door = ({ door, index, x, open = 0, inside, monster, highlight, dim }) => {
+export const Door = ({ door, index, x, open = 0, inside, monster, highlight, dim, scale = 1 }) => {
   const markup = useMemo(() => (monster ? monsterMarkup(monster) : ''), [monster]);
   return (
-    <g transform={`translate(${x} ${DOOR_BASE})`} opacity={dim ? 0.45 : 1}>
+    <g transform={`translate(${x} ${DOOR_BASE}) scale(${scale})`} opacity={dim ? 0.45 : 1}>
       {highlight && <rect x={-DOOR_W / 2 - 22} y={-DOOR_H - 22} width={DOOR_W + 44} height={DOOR_H + 22} rx="18" fill="none" stroke="#ffe066" strokeWidth="10" className="lc-glow" />}
       <rect x={-DOOR_W / 2 - 14} y={-DOOR_H - 14} width={DOOR_W + 28} height={DOOR_H + 14} rx="10" fill="#3b2a1e" stroke="#16122b" strokeWidth="6" />
       {/* the doorway behind the door */}
@@ -43,7 +59,7 @@ export const Door = ({ door, index, x, open = 0, inside, monster, highlight, dim
         <rect x={-DOOR_W / 2 + 22} y={-DOOR_H + 140} width={DOOR_W - 44} height={DOOR_H - 170} rx="6" fill="none" stroke="#16122b" strokeWidth="4" opacity="0.35" />
         <Window kind={door.window} glow={false} />
         <text y="-150" fontSize="86" textAnchor="middle" dominantBaseline="central">{iconOf(door.symbol)}</text>
-        <circle cx={DOOR_W / 2 - 30} cy="-170" r="10" fill="#f5c542" stroke="#16122b" strokeWidth="4" />
+        <Handle kind={door.handle} />
       </g>
       {inside === 'monster' && open > 0.3 && (
         <g transform={`translate(30 -10) scale(${0.8 + 0.8 * ease((open - 0.3) / 0.5)})`} dangerouslySetInnerHTML={{ __html: markup }} />
@@ -131,7 +147,8 @@ export default function HallwayStage({ game, players, now, onLobby, onAgain }) {
     if (game.phase === 'vote' && game.votes[cid]) return 'wave';
     return 'stand';
   };
-  const left = game.phase === 'vote' ? Math.max(0, VOTE_MS - elapsed) : 0;
+  const voteMs = game.voteMs || VOTE_MS;
+  const left = game.phase === 'vote' ? Math.max(0, voteMs - elapsed) : 0;
 
   return (
     <>
@@ -143,6 +160,7 @@ export default function HallwayStage({ game, players, now, onLobby, onAgain }) {
             door={d}
             index={i}
             x={doorX(i, n)}
+            scale={doorScale(n)}
             open={chosen && chosen.door === i ? openK : 0}
             inside={chosen && chosen.door === i ? (chosen.safe ? 'safe' : 'monster') : null}
             monster={room.monster}
@@ -172,7 +190,7 @@ export default function HallwayStage({ game, players, now, onLobby, onAgain }) {
       {game.phase === 'vote' && (
         <>
           <div className="lh-banner">🔦 Guides: <b>{guideNames.join(' & ')}</b>. Read your clues out loud!</div>
-          <div className="lh-timer"><span style={{ width: `${(left / VOTE_MS) * 100}%` }} /><b>{Math.ceil(left / 1000)}</b></div>
+          <div className="lh-timer"><span style={{ width: `${(left / voteMs) * 100}%` }} /><b>{Math.ceil(left / 1000)}</b></div>
         </>
       )}
 

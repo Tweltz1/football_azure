@@ -29,12 +29,22 @@ export const WINDOWS = [
   { id: 'arch', name: 'a pointy window' },
   { id: 'square', name: 'a square window' },
 ];
-const ATTRS = { color: COLORS, symbol: SYMBOLS, window: WINDOWS };
+export const HANDLES = [
+  { id: 'knob', name: 'a round knob' },
+  { id: 'ring', name: 'a ring knocker' },
+  { id: 'lever', name: 'a long handle' },
+];
+const ATTRS = { color: COLORS, symbol: SYMBOLS, window: WINDOWS, handle: HANDLES };
 const byId = (list, id) => list.find((x) => x.id === id);
 const MONSTERS = ['ghost', 'bat', 'skeleton', 'zombie', 'spider', 'witch'];
 
-/** How hard each floor is: number of doors and clues. */
-export const floorPlan = (floor) => (floor <= 3 ? { doors: 3, clues: 2 } : floor <= 6 ? { doors: 4, clues: 3 } : { doors: 5, clues: 3 });
+/** How hard each floor is: doors, clues, seconds to vote, and how tricky the clues get (0 to 3). */
+export const floorPlan = (floor) => {
+  if (floor <= 2) return { doors: 3, clues: 2, voteMs: 45000, tier: 0 };
+  if (floor <= 4) return { doors: 4, clues: 3, voteMs: 40000, tier: 1 };
+  if (floor <= 6) return { doors: 5, clues: 3, voteMs: 35000, tier: 2 };
+  return { doors: 6, clues: 4, voteMs: floor >= 8 ? 25000 : 30000, tier: 3 };
+};
 
 const mulberry = (seed) => {
   let r = seed | 0;
@@ -67,50 +77,126 @@ const setPhase = (s, phase, now) => {
   s.closeAt = null;
 };
 
-/** A clue is { attr, value, yes }: "the safe door has/doesn't have <value>". */
+// Clues. kind 'is': { attr, value, yes }. 'or': { a, b } (each { attr, value }). 'end': { yes }.
+// 'next': { attr, value } (a neighbour has it). 'side': { attr, value, dir } (left/right of the one door with it).
+// say picks one of a few phrasings so higher floors read less like a checklist.
+const has = (attr, value) => (attr === 'color' ? `is ${byId(COLORS, value).name}` : `has ${byId(ATTRS[attr], value).name}`);
+const hasNot = (attr, value) => (attr === 'color' ? `is NOT ${byId(COLORS, value).name}` : `does NOT have ${byId(ATTRS[attr], value).name}`);
+const thing = (attr, value) => (attr === 'color' ? `the ${byId(COLORS, value).name} door` : `the door with ${byId(ATTRS[attr], value).name}`);
+
 export const clueText = (c) => {
-  const v = byId(ATTRS[c.attr], c.value);
-  if (c.attr === 'color') return c.yes ? `The safe door is ${v.name}.` : `The safe door is NOT ${v.name}.`;
-  return c.yes ? `The safe door has ${v.name}.` : `The safe door does NOT have ${v.name}.`;
+  const say = c.say || 0;
+  switch (c.kind || 'is') {
+    case 'or': return `Either the safe door ${has(c.a.attr, c.a.value)}, or it ${has(c.b.attr, c.b.value)}.`;
+    case 'end': return c.yes ? 'The safe door is at one end of the hallway.' : 'The safe door is NOT at either end of the hallway.';
+    case 'next': return `The safe door is right next to a door that ${has(c.attr, c.value)}.`;
+    case 'side': return `The safe door is somewhere to the ${c.dir.toUpperCase()} of ${thing(c.attr, c.value)}.`;
+    default: {
+      const v = byId(ATTRS[c.attr], c.value);
+      if (c.yes) {
+        if (say === 1) return c.attr === 'color' ? `Look for a ${v.name} door.` : `Look for a door with ${v.name}.`;
+        return `The safe door ${has(c.attr, c.value)}.`;
+      }
+      if (say === 1) return c.attr === 'color' ? `Stay away from ${v.name} doors.` : `Stay away from any door with ${v.name}.`;
+      return `The safe door ${hasNot(c.attr, c.value)}.`;
+    }
+  }
 };
-const fits = (door, c) => (door[c.attr] === c.value) === c.yes;
-const matching = (doors, clues) => doors.filter((d) => clues.every((c) => fits(d, c)));
+
+/** Whether door i of `doors` fits clue c. */
+export const fits = (doors, i, c) => {
+  const d = doors[i];
+  switch (c.kind || 'is') {
+    case 'or': return d[c.a.attr] === c.a.value || d[c.b.attr] === c.b.value;
+    case 'end': return (i === 0 || i === doors.length - 1) === c.yes;
+    case 'next': return [i - 1, i + 1].some((j) => doors[j] && doors[j][c.attr] === c.value);
+    case 'side': {
+      const k = doors.findIndex((x) => x[c.attr] === c.value);
+      return c.dir === 'left' ? i < k : i > k;
+    }
+    default: return (d[c.attr] === c.value) === c.yes;
+  }
+};
+export const matching = (doors, clues) => doors.map((_, i) => i).filter((i) => clues.every((c) => fits(doors, i, c)));
+
+// Every true statement about the safe door at this tier.
+function truths(rand, doors, safe, tier) {
+  const s = doors[safe];
+  const pool = [];
+  Object.keys(ATTRS).forEach((attr) => {
+    pool.push({ kind: 'is', attr, value: s[attr], yes: true });
+    ATTRS[attr].forEach((v) => { if (v.id !== s[attr] && doors.some((d) => d[attr] === v.id)) pool.push({ kind: 'is', attr, value: v.id, yes: false }); });
+  });
+  if (tier >= 1) {
+    pool.push({ kind: 'end', yes: safe === 0 || safe === doors.length - 1 });
+    Object.keys(ATTRS).forEach((attr) => {
+      Object.keys(ATTRS).filter((b) => b !== attr).forEach((battr) => {
+        doors.forEach((d) => {
+          if (d[battr] !== s[battr]) {
+            const pair = [{ attr, value: s[attr] }, { attr: battr, value: d[battr] }];
+            pool.push({ kind: 'or', ...(rand() < 0.5 ? { a: pair[0], b: pair[1] } : { a: pair[1], b: pair[0] }) });
+          }
+        });
+      });
+    });
+  }
+  if (tier >= 2) {
+    [safe - 1, safe + 1].forEach((j) => {
+      if (!doors[j]) return;
+      Object.keys(ATTRS).forEach((attr) => pool.push({ kind: 'next', attr, value: doors[j][attr] }));
+    });
+    doors.forEach((d, j) => {
+      if (j === safe) return;
+      Object.keys(ATTRS).forEach((attr) => {
+        if (doors.filter((x) => x[attr] === d[attr]).length === 1) pool.push({ kind: 'side', attr, value: d[attr], dir: safe < j ? 'left' : 'right' });
+      });
+    });
+  }
+  return pool.filter((c) => fits(doors, safe, c));
+}
 
 /** Builds a floor: doors that all look different, a safe one, and clues split between guides. */
 export function makeFloor(rand, floor, guideCount) {
   const plan = floorPlan(floor);
-  for (let attempt = 0; attempt < 400; attempt += 1) {
+  const tricky = plan.tier >= 3 ? 2 : plan.tier >= 1 ? 1 : 0;
+  // Rarely a layout is too hard to build; loosen the rules a notch at a time before giving up.
+  const tries = [[tricky, plan.clues], [Math.max(0, tricky - 1), plan.clues], [Math.max(0, tricky - 1), plan.clues - 1]];
+  for (let t = 0; t < tries.length; t += 1) {
+    const room = buildFloor(rand, plan, guideCount, tries[t][0], tries[t][1]);
+    if (room) return room;
+  }
+  // Fallback: plain clues that always work.
+  const doors = COLORS.slice(0, Math.min(plan.doors, COLORS.length)).map((c, i) => ({ color: c.id, symbol: SYMBOLS[i].id, window: WINDOWS[i % 3].id, handle: HANDLES[i % 3].id }));
+  const safe = Math.floor(rand() * doors.length);
+  const clues = [{ kind: 'is', attr: 'color', value: doors[safe].color, yes: true }];
+  return { doors, safe, clues, hands: [clues], monster: 'ghost' };
+}
+
+function buildFloor(rand, plan, guideCount, tricky, clueCount) {
+  for (let attempt = 0; attempt < 1500; attempt += 1) {
     const doors = [];
     const seen = new Set();
     while (doors.length < plan.doors) {
-      const d = { color: pickOne(rand, COLORS).id, symbol: pickOne(rand, SYMBOLS).id, window: pickOne(rand, WINDOWS).id };
-      const key = `${d.color}-${d.symbol}-${d.window}`;
+      const d = { color: pickOne(rand, COLORS).id, symbol: pickOne(rand, SYMBOLS).id, window: pickOne(rand, WINDOWS).id, handle: pickOne(rand, HANDLES).id };
+      const key = `${d.color}-${d.symbol}-${d.window}-${d.handle}`;
       if (!seen.has(key)) { seen.add(key); doors.push(d); }
     }
     const safe = Math.floor(rand() * doors.length);
-    const s = doors[safe];
-    // Every true clue about the safe door that rules out at least one other door.
-    const pool = [];
-    Object.keys(ATTRS).forEach((attr) => {
-      pool.push({ attr, value: s[attr], yes: true });
-      ATTRS[attr].forEach((v) => { if (v.id !== s[attr] && doors.some((d) => d[attr] === v.id)) pool.push({ attr, value: v.id, yes: false }); });
-    });
-    const useful = pool.filter((c) => doors.some((d) => !fits(d, c)));
-    const clues = shuffle(rand, useful).slice(0, plan.clues);
-    if (clues.length < plan.clues) continue;
-    if (matching(doors, clues).length !== 1) continue;
+    const useful = truths(rand, doors, safe, plan.tier).filter((c) => doors.some((_, i) => !fits(doors, i, c)));
+    const clues = shuffle(rand, useful).slice(0, clueCount);
+    if (clues.length < clueCount) continue;
+    if (clues.filter((c) => c.kind !== 'is').length < tricky) continue;
+    const m = matching(doors, clues);
+    if (m.length !== 1 || m[0] !== safe) continue;
     // No clue can be left out, so everyone's clues matter.
     if (clues.some((c) => matching(doors, clues.filter((x) => x !== c)).length === 1)) continue;
     const hands = Array.from({ length: Math.max(1, guideCount) }, () => []);
     clues.forEach((c, i) => hands[i % hands.length].push(c));
     if (hands.length > 1 && hands.some((h) => matching(doors, h).length === 1)) continue;
+    clues.forEach((c) => { if (c.kind === 'is' && plan.tier >= 1) c.say = rand() < 0.5 ? 1 : 0; });
     return { doors, safe, clues, hands, monster: pickOne(rand, MONSTERS) };
   }
-  // Fallback: plain clues that always work.
-  const doors = COLORS.slice(0, plan.doors).map((c, i) => ({ color: c.id, symbol: SYMBOLS[i].id, window: WINDOWS[i % 3].id }));
-  const safe = Math.floor(rand() * doors.length);
-  const clues = [{ attr: 'color', value: doors[safe].color, yes: true }];
-  return { doors, safe, clues, hands: [clues], monster: 'ghost' };
+  return null;
 }
 
 export const activePlayers = (s, now) => s.players.filter((p) => now - (s.lastSeen[p.cid] ?? -1e9) <= ACTIVE_MS);
@@ -124,11 +210,18 @@ const startFloor = (s, now) => {
   s.guides = order.slice(0, count).map((p) => p.cid);
   s.guideTurn += count;
   s.room = makeFloor(s.rand, s.floor, s.guides.length);
+  s.voteMs = floorPlan(s.floor).voteMs;
   s.votes = {};
   s.chosen = null;
   setPhase(s, 'floor', now);
   emit(s, 'floor', { floor: s.floor });
 };
+
+/** Jumps straight to a floor (for trying out higher floors with ?floor=7 on the TV page). */
+export function skipToFloor(s, floor, now) {
+  s.floor = Math.max(1, Math.min(FLOORS, floor | 0));
+  startFloor(s, now);
+}
 
 /** A new climb. players: [{ cid, name }]. */
 export function createHallway(players, seed = Date.now(), now = 0) {
@@ -141,6 +234,7 @@ export function createHallway(players, seed = Date.now(), now = 0) {
     guideTurn: 0,
     guides: [],
     room: null,
+    voteMs: VOTE_MS,
     votes: {},
     chosen: null,
     phase: 'floor',
@@ -186,7 +280,7 @@ const open = (s, now) => {
     if (safe) s.stats[cid].guidedSafe += 1;
   });
   if (safe) {
-    const fast = Math.max(0, VOTE_MS - (now - s.phaseAt));
+    const fast = Math.max(0, s.voteMs - (now - s.phaseAt));
     s.score += 100 * s.floor + Math.round(fast / 300);
   } else {
     s.lanterns -= 1;
@@ -204,7 +298,7 @@ export function tick(s, now) {
       if (elapsed >= FLOOR_MS) { setPhase(s, 'vote', now); emit(s, 'vote'); }
       break;
     case 'vote':
-      if (elapsed >= VOTE_MS || (s.closeAt != null && now >= s.closeAt)) open(s, now);
+      if (elapsed >= s.voteMs || (s.closeAt != null && now >= s.closeAt)) open(s, now);
       break;
     case 'reveal':
       if (elapsed >= REVEAL_MS) {
@@ -267,7 +361,7 @@ export function phoneView(s, cid, now) {
     vote: s.votes[cid] ? s.votes[cid].door : null,
   };
   if (guide >= 0 && s.phase !== 'floor') view.clues = s.room.hands[guide].map(clueText);
-  if (s.phase === 'vote') view.left = Math.max(0, VOTE_MS - (now - s.phaseAt));
+  if (s.phase === 'vote') { view.left = Math.max(0, s.voteMs - (now - s.phaseAt)); view.total = s.voteMs; }
   if (s.phase === 'reveal' && s.chosen) view.chosen = { door: s.chosen.door, safe: s.chosen.safe, safeDoor: s.room.safe };
   return view;
 }

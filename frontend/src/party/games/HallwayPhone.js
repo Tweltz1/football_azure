@@ -1,10 +1,11 @@
 import React from 'react';
 import Person from '../Person';
-import { COLORS, SYMBOLS, WINDOWS } from './hallway';
+import { COLORS, HANDLES, SYMBOLS, WINDOWS } from './hallway';
 
 const color = (id) => COLORS.find((c) => c.id === id);
 const icon = (id) => SYMBOLS.find((x) => x.id === id)?.icon;
 const windowName = (id) => WINDOWS.find((w) => w.id === id)?.name.replace(/^an? /, '');
+const handleName = (id) => HANDLES.find((h) => h.id === id)?.name.replace(/^an? /, '');
 
 /** Haunted Hallway on a phone: guides see clues, everyone votes for a door. */
 export default function HallwayPhone({ screen, send, look, header }) {
@@ -52,7 +53,7 @@ export default function HallwayPhone({ screen, send, look, header }) {
             <button type="button" key={i} className={`lcp-door${game.vote === i ? ' is-on' : ''}`} style={{ background: color(d.color)?.hex }} onClick={() => send('act', { type: 'vote', door: i })}>
               <span className="lcp-door-num">{i + 1}</span>
               <span className="lcp-door-icon">{icon(d.symbol)}</span>
-              <small>{color(d.color)?.name} · {windowName(d.window)}</small>
+              <small>{color(d.color)?.name} · {windowName(d.window)}{d.handle ? ` · ${handleName(d.handle)}` : ''}</small>
               {game.vote === i && <span className="lcp-door-mine">✓ your pick</span>}
             </button>
           ))}
