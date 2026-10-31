@@ -668,3 +668,9 @@
 /* Lobby backdrop fades to the picked game's scene. */
 .lc-fade-in { animation: lc-fade-in 0.7s ease-out both; }
 @keyframes lc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Quiz difficulty pill: warms from green to red as the questions get harder. */
+.lq-level.is-l0 { background: #3ddc97; color: #16122b; }
+.lq-level.is-l1 { background: #ffe066; color: #16122b; }
+.lq-level.is-l2 { background: #ff8a2a; color: #16122b; }
+.lq-level.is-l3 { background: #ff3d5a; color: #fff; }

@@ -17,6 +17,18 @@ import MashHowTo, { HOWTO_MS as MASH_HOWTO_MS } from './MashHowTo';
 import HallwayStage from './HallwayStage';
 import HallwayPhone from './HallwayPhone';
 import HallwayHowTo, { HOWTO_MS as HALLWAY_HOWTO_MS } from './HallwayHowTo';
+
+// The TV remembers which quiz questions it has shown, so the next game picks fresh ones first.
+const SEEN_KEY = 'lq-seen';
+const loadSeenQuestions = () => {
+  try { return JSON.parse(window.localStorage.getItem(SEEN_KEY) || '[]'); } catch (error) { return []; }
+};
+const saveSeenQuestions = (texts) => {
+  try {
+    const all = loadSeenQuestions().filter((t) => !texts.includes(t)).concat(texts);
+    window.localStorage.setItem(SEEN_KEY, JSON.stringify(all.slice(-400)));
+  } catch (error) { /* private mode */ }
+};
 import { GAME_META, isPlayable, metaFor } from './meta';
 
 const query = () => new URLSearchParams(window.location.search);
@@ -47,7 +59,11 @@ const ENGINES = {
     howToMs: CANDLE_HOWTO_MS,
   },
   quiz: {
-    create: (players, seed, now) => quiz.createQuiz(players, seed, now, Number(query().get('questions')) || quiz.QUESTION_COUNT),
+    create(players, seed, now) {
+      const g = quiz.createQuiz(players, seed, now, Number(query().get('questions')) || quiz.QUESTION_COUNT, loadSeenQuestions());
+      saveSeenQuestions(g.questions.map((q) => q.text));
+      return g;
+    },
     tick: quiz.tick,
     act(g, cid, msg, now) {
       if (msg.type === 'answer') quiz.answer(g, cid, Number(msg.choice), now);

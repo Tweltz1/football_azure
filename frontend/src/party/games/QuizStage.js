@@ -6,6 +6,7 @@ import {
   ANSWER_MS, awards, multiplier, READ_MS, ranking, ROUND_MS, ROUND_SIZE, ROUNDS, roundOf,
 } from './quiz';
 import { ANSWER_STYLE } from './quizLook';
+import { LEVEL_NAMES } from '../quizQuestions';
 import { Leaderboard, Podium } from './Results';
 
 /** A haunted game-show stage: curtains, a moon, footlights made of jack-o'-lanterns. */
@@ -154,6 +155,7 @@ export default function QuizStage({ game, players, now, onLobby, onAgain }) {
         <div className="lq-hud">
           <span className="lq-pill">Question {game.index + 1} of {game.questions.length}</span>
           <span className="lq-pill">{ROUNDS[roundOf(game.index)].title} · {qInRound}/{ROUND_SIZE}</span>
+          {game.questions[game.index]?.level != null && <span className={`lq-pill lq-level is-l${game.questions[game.index].level}`}>{LEVEL_NAMES[game.questions[game.index].level]}</span>}
           {mult > 1 && <span className="lq-pill is-double">x2 points!</span>}
           {game.phase === 'answer' && <span className="lq-pill">{answeredCount} of {players.length} answered</span>}
         </div>

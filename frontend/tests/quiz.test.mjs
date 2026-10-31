@@ -4,12 +4,13 @@ import {
   createQuiz, tick, answer, phoneView, ranking, awards, isOver, addPlayer,
   QUESTION_COUNT, ANSWER_MS, BASE, SPEED, FASTEST, ROUND_MS, READ_MS,
 } from '../src/party/games/quiz.js';
-import { QUESTIONS, pickQuestions } from '../src/party/quizQuestions.js';
+import { QUESTIONS, LEVELS, pickQuestions } from '../src/party/quizQuestions.js';
 
 const players = (n) => Array.from({ length: n }, (_, i) => ({ cid: `p${i}`, name: `P${i}` }));
 
 test('every question has four different answers and picks shuffle them', () => {
-  assert.ok(QUESTIONS.length >= 45);
+  assert.ok(QUESTIONS.length >= 200);
+  assert.equal(new Set(QUESTIONS.map((q) => q[0])).size, QUESTIONS.length);
   QUESTIONS.forEach((q) => {
     assert.equal(q.length, 5, q[0]);
     assert.equal(new Set(q.slice(1)).size, 4, q[0]);
@@ -105,4 +106,17 @@ test('round 3 counts double and late joiners start at zero', () => {
   assert.ok(answer(s, 'late', s.questions[s.index].correct, now));
   while (s.phase !== 'reveal') { now += 100; tick(s, now); }
   assert.equal(s.last.gains.late.gain, (BASE + SPEED + FASTEST) * 2);
+});
+
+test('questions climb in difficulty and skip ones this TV has shown', () => {
+  let seed = 11;
+  const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const first = pickQuestions(rand, 15);
+  const levels = first.map((q) => q.level);
+  assert.deepEqual(levels, [...levels].sort((a, b) => a - b));
+  assert.equal(levels[0], 0);
+  assert.equal(levels[14], LEVELS.length - 1);
+  const second = pickQuestions(rand, 15, first.map((q) => q.text));
+  const firstTexts = new Set(first.map((q) => q.text));
+  assert.equal(second.filter((q) => firstTexts.has(q.text)).length, 0);
 });
