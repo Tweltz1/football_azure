@@ -3,12 +3,16 @@
 
 import * as candle from '../lastCandle';
 import * as quiz from './quiz';
+import * as mash from './mash';
 import CandleStage from './CandleStage';
 import CandlePhone from './CandlePhone';
 import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
 import QuizStage from './QuizStage';
 import QuizPhone from './QuizPhone';
 import QuizHowTo, { HOWTO_MS as QUIZ_HOWTO_MS } from './QuizHowTo';
+import MashStage from './MashStage';
+import MashPhone from './MashPhone';
+import MashHowTo, { HOWTO_MS as MASH_HOWTO_MS } from './MashHowTo';
 import { GAME_META, isPlayable, metaFor } from './meta';
 
 const query = () => new URLSearchParams(window.location.search);
@@ -61,6 +65,32 @@ const ENGINES = {
     Phone: QuizPhone,
     HowTo: QuizHowTo,
     howToMs: QUIZ_HOWTO_MS,
+  },
+  mash: {
+    create: mash.createMash,
+    tick: mash.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'write') mash.write(g, cid, String(msg.text || ''), now);
+      if (msg.type === 'vote') mash.vote(g, cid, String(msg.pick || ''), now);
+    },
+    over: mash.isOver,
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    phone: mash.phoneView,
+    result(g, cid) {
+      const me = mash.ranking(g).find((r) => r.cid === cid);
+      return {
+        rank: me?.rank || g.players.length,
+        score: me?.score || 0,
+        votes: g.stats[cid]?.votes || 0,
+        awards: mash.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+      };
+    },
+    addPlayer: mash.addPlayer,
+    seen: mash.seen,
+    Stage: MashStage,
+    Phone: MashPhone,
+    HowTo: MashHowTo,
+    howToMs: MASH_HOWTO_MS,
   },
 };
 

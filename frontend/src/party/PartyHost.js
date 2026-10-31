@@ -135,6 +135,7 @@ export default function PartyHost() {
 
   // From the lobby (everyone ready, or the host starts): the game's how-to-play intro first, which can be skipped.
   const startGame = useCallback(() => {
+    if (playersRef.current.length < (defRef.current.minPlayers || 1)) return;
     const q = new URLSearchParams(window.location.search);
     if (q.has('night') || q.has('nohowto')) beginGame();
     else showHowTo();
@@ -364,7 +365,9 @@ export default function PartyHost() {
               })}
             </div>
             <div className="lc-lobby-foot">
-              {players.length ? (
+              {players.length && players.length < (def.minPlayers || 1) ? (
+                <span>{def.title} needs at least {def.minPlayers} players. {def.minPlayers - players.length} more to go!</span>
+              ) : players.length ? (
                 <>
                   <span>{players.filter((p) => p.ready).length} of {players.length} ready. It starts when everyone taps Ready, or</span>
                   <button type="button" className="lc-btn" onClick={startGame}>Start {def.title}</button>

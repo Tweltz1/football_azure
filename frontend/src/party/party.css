@@ -556,3 +556,53 @@
 #lc-root .lq-award-chips b { color: var(--lc-gold); }
 #lc-root .lq-award-chips small { opacity: 0.75; }
 #lc-root .lq-rest span { margin: 0.2em 0.6em; }
+
+/* Monster Mash-up: TV */
+#lc-root .lm-timer { position: relative; height: 1.8em; margin-top: 0.8em; overflow: hidden; background: rgba(255, 255, 255, 0.1); border: 3px solid var(--lc-ink); border-radius: 999px; }
+#lc-root .lm-timer span { position: absolute; top: 0; bottom: 0; left: 0; background: linear-gradient(90deg, #3ddc97, #ffe066); transition: width 0.2s linear; }
+#lc-root .lm-timer b { position: relative; display: block; text-align: center; line-height: 1.6em; color: var(--lc-ink); }
+#lc-root .lm-write { top: 40%; }
+#lc-root .lm-main { top: 11%; }
+#lc-root .lm-prompt { padding-right: 1.4em; justify-content: center; text-align: center; }
+#lc-root .lm-answers { display: flex; align-items: stretch; justify-content: center; }
+#lc-root .lm-answers.is-many { flex-wrap: wrap; justify-content: center; }
+#lc-root .lm-answer {
+  position: relative; display: flex; flex-direction: column; justify-content: center; flex: 1; max-width: 46%; min-height: 6em; padding: 0.8em 1.1em;
+  background: var(--c); color: var(--lc-ink); border: 5px solid var(--lc-ink); border-radius: 1.1em; box-shadow: 0 7px 0 var(--lc-ink);
+  animation: lq-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; transition: opacity 0.3s, transform 0.3s, filter 0.3s;
+}
+#lc-root .lm-answers.is-many .lm-answer { flex: 0 0 30%; max-width: 30%; min-height: 3.6em; margin: 0 0.6em 0.8em; padding: 0.5em 0.8em; }
+#lc-root .lm-answer-text { font-size: 2.1em; font-weight: 700; line-height: 1.2; text-align: center; }
+#lc-root .lm-answers.is-many .lm-answer-text { font-size: 1.25em; }
+#lc-root .lm-answer.is-win { transform: scale(1.05); box-shadow: 0 7px 0 var(--lc-ink), 0 0 0 6px var(--lc-gold), 0 0 50px rgba(255, 224, 102, 0.6); }
+#lc-root .lm-answer.is-lose { opacity: 0.55; filter: grayscale(0.5); transform: scale(0.96); }
+#lc-root .lm-vs { align-self: center; margin: 0 0.6em; font: 400 3.2em var(--lc-spooky); color: var(--lc-gold); text-shadow: 0 4px 0 var(--lc-ink); }
+#lc-root .lm-votes { display: flex; align-items: center; justify-content: center; margin-top: 0.5em; font-size: 1.1em; }
+#lc-root .lm-votes b { margin-right: 0.8em; }
+#lc-root .lm-author { display: flex; align-items: center; justify-content: center; margin-top: 0.5em; padding: 0.25em 0.8em; align-self: center; font-weight: 800; color: var(--lc-cream); background: var(--lc-panel); border: 3px solid var(--lc-ink); border-radius: 999px; animation: lq-pop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+#lc-root .lm-author .lc-person { width: 2em; height: 2em; margin-right: 0.4em; }
+#lc-root .lm-author .lc-person svg { overflow: hidden; }
+#lc-root .lm-author b { margin-left: 0.5em; color: var(--lc-gold); }
+#lc-root .lm-mashup { align-self: center; padding: 0.3em 1.2em; font: 400 2.4em var(--lc-spooky); color: var(--lc-ink); background: var(--lc-gold); border: 5px solid var(--lc-ink); border-radius: 0.6em; transform: rotate(-3deg); animation: lq-pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+#lc-root .lm-demo-prompt { padding: 0.6em; font-weight: 700; text-align: center; color: var(--lc-ink); background: var(--lc-cream); border-radius: 0.7em; }
+#lc-root .lm-demo-input { min-height: 3.6em; padding: 0.6em; font-weight: 600; color: var(--lc-ink); background: #fff; border: 3px solid var(--lc-ink); border-radius: 0.7em; }
+#lc-root .lm-caret { display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -0.15em; background: var(--lc-ink); animation: lc-twinkle 0.5s steps(2) infinite; }
+#lc-root .lm-demo-send { text-align: center; background: var(--lc-orange); }
+#lc-root .lm-demo-send.is-sent { background: #3ddc97; }
+
+/* Monster Mash-up: phone */
+#lc-root .lcp-mash-write { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+#lc-root .lcp-mash-step { font-weight: 700; color: #c9b8ee; text-align: center; }
+#lc-root .lcp-mash-prompt { margin: 0; padding: 14px; font-size: 22px; font-weight: 700; line-height: 1.25; text-align: center; color: var(--lc-ink); background: var(--lc-cream); border: 4px solid var(--lc-ink); border-radius: 16px; }
+#lc-root .lcp-mash-prompt.small { font-size: 18px; }
+#lc-root .lcp-mash-write textarea { width: 100%; box-sizing: border-box; padding: 12px; font: 600 20px var(--lc-font); color: var(--lc-ink); background: #fff; border: 4px solid var(--lc-ink); border-radius: 14px; resize: none; }
+#lc-root .lcp-mash-write small { text-align: right; color: #c9b8ee; }
+#lc-root .lcp-mash-options { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+#lc-root .lcp-mash-option { flex: 1; min-height: 80px; padding: 14px; font: 700 21px var(--lc-font); color: var(--lc-ink); background: var(--lc-orange); border: 4px solid var(--lc-ink); border-radius: 18px; box-shadow: 0 5px 0 var(--lc-ink); cursor: pointer; }
+#lc-root .lcp-mash-option:nth-child(2n) { background: #9b7bff; }
+#lc-root .lcp-mash-option:nth-child(3n) { background: #3ddc97; }
+#lc-root .lcp-mash-option:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--lc-ink); }
+#lc-root .lm-main.lq-demo { top: 17%; }
+#lc-root .lm-answers.is-lots .lm-answer { flex: 0 0 22%; max-width: 22%; min-height: 3em; margin: 0 0.4em 0.6em; }
+#lc-root .lm-answers.is-lots .lm-answer-text { font-size: 1.05em; }
+#lc-root .lm-answers.is-lots .lm-author, #lc-root .lm-answers.is-lots .lm-votes { margin-top: 0.3em; font-size: 0.85em; }

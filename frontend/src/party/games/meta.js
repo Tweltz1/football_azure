@@ -35,8 +35,14 @@ export const GAME_META = [
     emoji: '🧟',
     tag: 'Versus',
     minutes: '8–10 min',
-    blurb: 'Write the funniest answers about a monster, then vote for the best.',
-    soon: true,
+    blurb: 'Write the funniest answers to spooky prompts, then vote for the best.',
+    minPlayers: 3,
+    how: [
+      'Your phone gives you a spooky prompt. Write something funny.',
+      'Answers go head to head on the TV. Nobody knows who wrote what.',
+      'Everyone else votes. Every vote is points, and winning them all is a Monster Mash-up!',
+    ],
+    phoneHint: "You'll write answers and vote on this phone.",
   },
   {
     id: 'hallway',

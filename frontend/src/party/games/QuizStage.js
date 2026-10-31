@@ -5,10 +5,11 @@ import { PlayerTag, ScenePerson } from '../scene';
 import {
   ANSWER_MS, awards, multiplier, READ_MS, ranking, ROUND_MS, ROUND_SIZE, ROUNDS, roundOf,
 } from './quiz';
-import { ANSWER_STYLE, ordinal } from './quizLook';
+import { ANSWER_STYLE } from './quizLook';
+import { Leaderboard, Podium } from './Results';
 
 /** A haunted game-show stage: curtains, a moon, footlights made of jack-o'-lanterns. */
-export const QuizBackdrop = ({ lights = 0 }) => (
+export const QuizBackdrop = ({ lights = 0, curtain = ['#5d1630', '#8e1d2c', '#4a0f24'] }) => (
   <g>
     <defs>
       <linearGradient id="lq-sky" x1="0" y1="0" x2="0" y2="1">
@@ -21,9 +22,9 @@ export const QuizBackdrop = ({ lights = 0 }) => (
         <stop offset="1" stopColor="#ffe9b0" stopOpacity="0" />
       </radialGradient>
       <linearGradient id="lq-curtain" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0" stopColor="#5d1630" />
-        <stop offset="0.5" stopColor="#8e1d2c" />
-        <stop offset="1" stopColor="#5d1630" />
+        <stop offset="0" stopColor={curtain[0]} />
+        <stop offset="0.5" stopColor={curtain[1]} />
+        <stop offset="1" stopColor={curtain[0]} />
       </linearGradient>
     </defs>
     <rect width="1920" height="1080" fill="url(#lq-sky)" />
@@ -40,7 +41,7 @@ export const QuizBackdrop = ({ lights = 0 }) => (
     {[0, 1].map((side) => (
       <g key={side} transform={side ? 'translate(1920 0) scale(-1 1)' : undefined}>
         <path d="M0 0 L170 0 Q120 300 150 560 Q170 760 120 900 L0 900 Z" fill="url(#lq-curtain)" stroke="#16122b" strokeWidth="6" />
-        <path d="M40 0 Q20 400 50 900 M95 0 Q80 420 95 900" stroke="#4a0f24" strokeWidth="6" fill="none" />
+        <path d="M40 0 Q20 400 50 900 M95 0 Q80 420 95 900" stroke={curtain[2]} strokeWidth="6" fill="none" />
         {/* cobweb */}
         <g stroke="#cfc6e6" strokeWidth="2" fill="none" opacity="0.5" transform="translate(170 0)">
           <path d="M0 0 L120 120 M0 0 L60 140 M0 0 L140 50" />
@@ -48,7 +49,7 @@ export const QuizBackdrop = ({ lights = 0 }) => (
         </g>
       </g>
     ))}
-    <path d="M0 0 H1920 V70 Q1440 120 960 70 Q480 120 0 70 Z" fill="#8e1d2c" stroke="#16122b" strokeWidth="6" />
+    <path d="M0 0 H1920 V70 Q1440 120 960 70 Q480 120 0 70 Z" fill={curtain[1]} stroke="#16122b" strokeWidth="6" />
     {/* jack-o'-lantern footlights */}
     {[110, 300, 1620, 1810].map((x, i) => (
       <g key={x} transform={`translate(${x} 1040) scale(0.85)`}>
@@ -78,31 +79,6 @@ const Heads = ({ cids, players }) => (
     {cids.length > 8 && <b>+{cids.length - 8}</b>}
   </span>
 );
-
-const Leaderboard = ({ game, players, final }) => {
-  const ranks = ranking(game);
-  const prev = game.prevRanks || {};
-  const gains = game.last?.gains || {};
-  const top = ranks[0]?.score || 1;
-  return (
-    <div className={`lq-board${ranks.length > 6 ? ' is-two' : ''}`}>
-      {ranks.map((r) => {
-        const p = players.find((x) => x.cid === r.cid);
-        const move = (prev[r.cid] || r.rank) - r.rank;
-        return (
-          <div key={r.cid} className={`lq-row${r.rank === 1 ? ' is-top' : ''}`}>
-            <span className="lq-rank">{ordinal(r.rank)}</span>
-            {p && <Person look={p.look} view="head" />}
-            <span className="lq-name">{r.name}</span>
-            <span className="lq-bar"><i style={{ width: `${Math.max(3, (r.score / Math.max(1, top)) * 100)}%` }} /></span>
-            <span className="lq-score">{r.score.toLocaleString()}</span>
-            {!final && <span className={`lq-move${move > 0 ? ' up' : move < 0 ? ' down' : ''}`}>{move > 0 ? `▲${move}` : move < 0 ? `▼${-move}` : gains[r.cid]?.gain ? `+${gains[r.cid].gain}` : ''}</span>}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
 
 /** Fright Quiz on the TV. */
 export default function QuizStage({ game, players, now, onLobby, onAgain }) {
@@ -235,47 +211,13 @@ export default function QuizStage({ game, players, now, onLobby, onAgain }) {
         <div className="lc-card lq-scores">
           <div className="lc-card-kicker">After {game.index + 1} of {game.questions.length} questions</div>
           <h2 className="lc-title">Scoreboard</h2>
-          <Leaderboard game={game} players={players} />
+          <Leaderboard ranks={ranks} prev={game.prevRanks} gains={game.last?.gains} players={players} />
           {roundOf(game.index + 1) === ROUNDS.length - 1 && <p className="lq-next">Next: <b>Double Trouble</b>. Every point counts twice!</p>}
         </div>
       )}
 
       {game.phase === 'final' && (
-        <div className="lq-final">
-          <h2 className="lc-title">{ranks[0]?.score ? `${ranks[0].name} wins!` : 'Spooky… nobody scored!'}</h2>
-          <div className="lq-podium">
-            {[1, 0, 2].map((place) => {
-              const r = ranks[place];
-              const p = r && players.find((x) => x.cid === r.cid);
-              if (!p) return <div key={place} className="lq-step is-empty" />;
-              return (
-                <div key={place} className={`lq-step lq-step-${r.rank}`}>
-                  <Person look={p.look} pose={r.rank === 1 ? 'cheer' : 'wave'} className={`lc-bob lc-d${place}`} />
-                  <div className="lq-block">
-                    <b>{ordinal(r.rank)}</b>
-                    <span>{r.name}</span>
-                    <small>{r.score.toLocaleString()}</small>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {ranks.length > 3 && (
-            <div className="lq-rest">
-              {ranks.slice(3).map((r) => <span key={r.cid}>{ordinal(r.rank)} {r.name} · {r.score.toLocaleString()}</span>)}
-            </div>
-          )}
-          <div className="lq-award-chips">
-            {awards(game).filter((a) => a.title !== 'Fright Quiz Champ').map((a) => {
-              const p = players.find((x) => x.cid === a.cid);
-              return p ? <span key={a.title}>🏆 <b>{a.title}</b> {p.name} <small>({a.blurb})</small></span> : null;
-            })}
-          </div>
-          <div className="lc-end-actions">
-            <button type="button" className="lc-btn" onClick={onLobby}>Back to the lobby</button>
-            <button type="button" className="lc-btn lc-btn-ghost" onClick={onAgain}>Play again</button>
-          </div>
-        </div>
+        <Podium ranks={ranks} players={players} awards={awards(game).filter((a) => a.title !== 'Fright Quiz Champ')} onLobby={onLobby} onAgain={onAgain} />
       )}
     </>
   );
