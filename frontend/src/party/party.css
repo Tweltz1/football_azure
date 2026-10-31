@@ -664,3 +664,7 @@
 #lc-root svg.lcp-charm-icon { width: 64px; height: 64px; overflow: visible; }
 #lc-root svg.lcp-mini-icon { width: 30px; height: 30px; display: block; margin: 0 auto; }
 #lc-root svg.lc-intro-icon { width: 1.4em; height: 1.4em; display: block; margin: 0 auto; }
+
+/* Lobby backdrop fades to the picked game's scene. */
+.lc-fade-in { animation: lc-fade-in 0.7s ease-out both; }
+@keyframes lc-fade-in { from { opacity: 0; } to { opacity: 1; } }
