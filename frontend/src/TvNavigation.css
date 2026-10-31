@@ -1,0 +1,19 @@
+/* TV remote highlight (see tvNavigation.js). Only shown after an arrow key
+   press, so it never appears for mouse or touch users. Plain :focus because
+   old TV browsers don't support :focus-visible. */
+html.tv-keys a:focus,
+html.tv-keys button:focus,
+html.tv-keys input:focus,
+html.tv-keys select:focus,
+html.tv-keys textarea:focus,
+html.tv-keys [tabindex]:focus {
+  outline: 4px solid #ffd23f !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 0 10px rgba(255, 210, 63, 0.3) !important;
+}
+
+html.tv-keys .front-door-card:focus,
+html.tv-keys .lch-card:focus {
+  -webkit-transform: scale(1.06);
+  transform: scale(1.06);
+}
