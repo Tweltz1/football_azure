@@ -46,7 +46,7 @@ export function openHost(code, onMessage, onStatus) {
   }
   const channel = supabase.channel(`lc:${code}:tv`, { config: { broadcast: { self: false } } });
   let live = true;
-  ['hello', 'look', 'play', 'soul', 'start', 'ready', 'skip', 'again', 'bye'].forEach((event) => {
+  ['hello', 'look', 'act', 'pick', 'start', 'ready', 'skip', 'again', 'bye'].forEach((event) => {
     channel.on('broadcast', { event }, ({ payload }) => live && payload?.cid && onMessage(event, payload));
   });
   channel.subscribe((status) => live && onStatus?.(status));

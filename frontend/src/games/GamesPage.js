@@ -46,8 +46,8 @@ const GamesPage = () => {
           <a href="/games-night" className="game-card is-race">
             <span className="game-card-emoji" aria-hidden="true">🎃</span>
             <span className="game-card-text">
-              <strong>Last Candle (party game)</strong>
-              <span>A cooperative Halloween game. Put it on the TV, up to 12 friends join on their phones and dress up their characters.</span>
+              <strong>Halloween Games Night (party games)</strong>
+              <span>Put it on the TV and up to 12 friends join on their phones and dress up. Play Last Candle together or race each other in Fright Quiz.</span>
             </span>
           </a>
           <Link to="/games/race" className="game-card is-race">

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Person from './Person';
-import { CHARM } from './lastCandle';
+import { GAME_META, metaFor } from './games/meta';
+import { PHONES } from './games/phones';
 import {
   COSTUMES, crewLook, HIDDEN, CREW_NAMES, EDITOR_ROWS, hex, isLookCode, lookCode, parseLook, randomLook, stepLook,
 } from './look';
@@ -77,11 +78,10 @@ export default function PartyPlay() {
   const [tab, setTab] = useState('look');
   const phoneRef = useRef(null);
   const lastHeard = useRef(0);
-  const wasSpooked = useRef(false);
 
   useEffect(() => { writeStore({ code, name, look, cid, joined }); }, [code, name, look, cid, joined]);
   useEffect(() => {
-    document.title = 'Last Candle';
+    document.title = 'Hood Games Night';
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = 'https://fonts.googleapis.com/css2?family=Creepster&family=Fredoka:wght@500;700&display=swap';
@@ -154,11 +154,6 @@ export default function PartyPlay() {
     navigator.wakeLock.request('screen').then((l) => { lock = l; }).catch(() => {});
     return () => { lock?.release().catch(() => {}); };
   }, [inGame]);
-  const spooked = Boolean(screen?.game?.spooked);
-  useEffect(() => {
-    if (spooked && !wasSpooked.current && navigator.vibrate) navigator.vibrate([120, 60, 120]);
-    wasSpooked.current = spooked;
-  }, [spooked]);
 
   const send = useCallback((event, payload) => phoneRef.current?.send(event, payload), []);
 
@@ -212,7 +207,7 @@ export default function PartyPlay() {
   if (!joined) {
     return (
       <div className="lcp">
-        <h1 className="lc-title lcp-title">Last Candle</h1>
+        <h1 className="lc-title lcp-title">Games Night</h1>
         <form className="lcp-join" onSubmit={join}>
           <label>Room code
             <input value={code} onChange={(e) => setCode(cleanCode(e.target.value))} placeholder="ABCD" autoCapitalize="characters" autoComplete="off" inputMode="text" maxLength={4} className="lcp-code" />
@@ -270,6 +265,22 @@ export default function PartyPlay() {
         <div className="lcp-lobby">
           <div className="lcp-preview"><Person look={look} pose="wave" /></div>
           <p className="lcp-note">You're in! Your character is on the TV. Dress up while everyone joins.</p>
+          {screen.vip ? (
+            <div className="lcp-pick">
+              <span>👑 You pick the game</span>
+              <div className="lcp-pick-list">
+                {GAME_META.map((g) => (
+                  <button type="button" key={g.id} className={g.id === screen.gameId ? 'is-on' : ''} disabled={g.soon} onClick={() => send('pick', { game: g.id })}>
+                    <span>{g.emoji}</span>
+                    <b>{g.title}</b>
+                    <small>{g.soon ? 'Soon' : g.tag}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="lcp-nowgame">Up next: <b>{metaFor(screen.gameId).emoji} {metaFor(screen.gameId).title}</b></p>
+          )}
           <button type="button" className={`lc-btn lc-btn-big lcp-start${screen.ready ? ' is-ready' : ''}`} onClick={() => send('ready', { ready: !screen.ready })}>
             {screen.ready ? `✓ Ready! (${screen.readyCount}/${screen.count})` : `I'm ready (${screen.readyCount}/${screen.count})`}
           </button>
@@ -298,7 +309,7 @@ export default function PartyPlay() {
         <div className="lcp-wait">
           <Person look={look} pose="wave" />
           <p className="lcp-big">👀 Look at the TV</p>
-          <p>Here's how to play. You'll throw charms from this phone in a minute.</p>
+          <p>Here's how to play {metaFor(screen.gameId).title}. {metaFor(screen.gameId).phoneHint}</p>
           {screen.vip && <button type="button" className="lc-btn" onClick={() => send('skip')}>⏭ Skip the intro</button>}
         </div>
       </div>
@@ -306,79 +317,11 @@ export default function PartyPlay() {
   }
 
   // In a game
-  const game = screen.game;
-  const result = screen.result;
-  if (!game) {
+  const Phone = PHONES[screen.gameId];
+  if (!screen.game || !Phone) {
     return (
       <div className="lcp">{header}<div className="lcp-wait"><Person look={look} pose="wave" /><p>A game is on. You'll jump in in a second…</p></div></div>
     );
   }
-  if (result) {
-    return (
-      <div className="lcp">
-        {header}
-        <div className={`lcp-end ${game.phase}`}>
-          <Person look={look} pose={game.phase === 'won' ? 'cheer' : 'scared'} />
-          <h2 className="lc-title">{game.phase === 'won' ? 'You won!' : 'Lights out…'}</h2>
-          <p>Team score {result.score}</p>
-          {result.awards.map((a) => <div key={a} className="lcp-award">🏆 {a}</div>)}
-          {result.stats && <p className="lcp-fine">You landed {result.stats.landed} charms and finished off {result.stats.banished} monster{result.stats.banished === 1 ? '' : 's'}.</p>}
-          {screen.vip ? <button type="button" className="lc-btn lc-btn-big" onClick={() => send('again')}>Back to the lobby</button> : <p className="lcp-fine">Waiting for 👑 to start another round.</p>}
-        </div>
-      </div>
-    );
-  }
-  if (game.phase !== 'night') {
-    return (
-      <div className="lcp">
-        {header}
-        <div className="lcp-wait">
-          <Person look={look} pose="stand" />
-          <p className="lcp-big">👀 Look at the TV</p>
-          <p>{game.phase === 'intro' ? `Night ${game.night} is about to start.` : 'Dawn! Catch your breath.'}</p>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className={`lcp lcp-game${spooked ? ' is-spooked' : ''}`}>
-      <div className="lcp-gamehead">
-        <span>Night {game.night}</span>
-        <span>{'🕯️'.repeat(game.candles)}<span className="lcp-out">{'🕯️'.repeat(Math.max(0, game.maxCandles - game.candles))}</span></span>
-        <span>{game.score} pts</span>
-      </div>
-      {game.secrets.map((s) => (
-        <div key={s.tag} className="lcp-secret">
-          <b>🌫️ Only you can see monster {s.tag}!</b>
-          <div className="lcp-secret-need">{s.need.map((c, i) => <span key={i} style={{ background: CHARM[c].color }}>{CHARM[c].icon}<small>{CHARM[c].name}</small></span>)}</div>
-          <small>Shout it out to the crew!</small>
-        </div>
-      ))}
-      {game.soul && (
-        <button type="button" className={`lcp-soul${game.soul.pressed ? ' is-on' : ''}`} onClick={() => send('soul')}>
-          ✨ SOUL ✨
-          <small>{game.soul.pressed ? `Waiting for the others… ${game.soul.count}/${game.soul.total}` : 'Everyone tap together! Count down 3, 2, 1…'}</small>
-        </button>
-      )}
-      <div className="lcp-hand">
-        {game.hand.map((c, slot) => {
-          const charm = c && CHARM[c];
-          return (
-            <button
-              type="button"
-              key={slot}
-              className={`lcp-charm${charm ? '' : ' is-empty'}`}
-              style={charm ? { background: charm.color } : undefined}
-              disabled={!charm || spooked}
-              onClick={() => send('play', { slot })}
-            >
-              {charm ? <><span className="lcp-charm-icon">{charm.icon}</span><span className="lcp-charm-name">{charm.name}</span></> : <span className="lcp-charm-name">…</span>}
-            </button>
-          );
-        })}
-      </div>
-      {spooked && <div className="lcp-spooked">👻 SPOOKED! Nobody needed that.</div>}
-      <p className="lcp-fine">Tap a charm to throw it at the monster closest to the house that needs it.</p>
-    </div>
-  );
+  return <Phone screen={screen} send={send} look={look} header={header} />;
 }
