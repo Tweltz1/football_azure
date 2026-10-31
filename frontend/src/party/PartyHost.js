@@ -5,8 +5,19 @@ import { parseLook, randomLook, lookCode } from './look';
 import { MAX_PLAYERS, newRoomCode, openHost } from './net';
 import { isMuted, setMuted, sfx, startMusic, stopMusic, unlockSound } from './sound';
 import { Backdrop, House } from './scene';
+import { QuizBackdrop } from './games/QuizStage';
+import { HallBackdrop } from './games/HallwayStage';
+
 import { GAME_META, gameFor, isPlayable } from './games';
 import './party.css';
+
+// The lobby shows the picked game's world behind the picker.
+const LobbyScene = ({ id, now }) => {
+  if (id === 'quiz') return <QuizBackdrop lights={Math.floor(now / 700)} />;
+  if (id === 'mash') return <QuizBackdrop lights={Math.floor(now / 700)} curtain={['#1f4a2e', '#2f6b3f', '#163a24']} />;
+  if (id === 'hallway') return <HallBackdrop floor={1} />;
+  return <><Backdrop /><House candles={5} maxCandles={5} /></>;
+};
 
 const SAVE_KEY = 'lc-host-room';
 const loadRoom = () => {
@@ -326,8 +337,7 @@ export default function PartyHost() {
       <div className="lc-stage">
         {!game && (
           <svg className="lc-scene" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet">
-            <Backdrop />
-            <House candles={5} maxCandles={5} />
+            <g key={gameId} className="lc-fade-in"><LobbyScene id={gameId} now={now} /></g>
           </svg>
         )}
         {game && <Stage key={round} game={game} players={players} now={now} onLobby={backToLobby} onAgain={beginGame} />}
