@@ -17,6 +17,7 @@ import MashHowTo, { HOWTO_MS as MASH_HOWTO_MS } from './MashHowTo';
 import HallwayStage from './HallwayStage';
 import HallwayPhone from './HallwayPhone';
 import HallwayHowTo, { HOWTO_MS as HALLWAY_HOWTO_MS } from './HallwayHowTo';
+import { GAME_META, isPlayable, metaFor } from './meta';
 
 // The TV remembers which quiz questions it has shown, so the next game picks fresh ones first.
 const SEEN_KEY = 'lq-seen';
@@ -29,7 +30,6 @@ const saveSeenQuestions = (texts) => {
     window.localStorage.setItem(SEEN_KEY, JSON.stringify(all.slice(-400)));
   } catch (error) { /* private mode */ }
 };
-import { GAME_META, isPlayable, metaFor } from './meta';
 
 const query = () => new URLSearchParams(window.location.search);
 
@@ -53,6 +53,11 @@ const ENGINES = {
     result: (g, cid) => ({ score: g.score, awards: candle.awards(g).filter((a) => a.cid === cid).map((a) => a.title), stats: g.stats[cid] }),
     addPlayer: candle.addPlayer,
     seen: candle.seen,
+    intensity(g, now) {
+      const len = candle.NIGHTS[g.night - 1]?.length || 120000;
+      const into = g.phase === 'night' ? Math.min(1, (now - g.phaseAt) / len) : 0;
+      return Math.min(1, ((g.night - 1) + into) / 2.6 + (g.monsters?.some((m) => m.boss) ? 0.2 : 0));
+    },
     Stage: CandleStage,
     Phone: CandlePhone,
     HowTo: CandleHowTo,
@@ -71,6 +76,7 @@ const ENGINES = {
     over: quiz.isOver,
     sceneKey: (g) => (['round', 'scores', 'final'].includes(g.phase) ? `${g.phase}${g.index}` : `play${quiz.roundOf(g.index)}`),
     has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g) => g.index / Math.max(1, g.questions.length - 1),
     phone: quiz.phoneView,
     result(g, cid) {
       const me = quiz.ranking(g).find((r) => r.cid === cid);
@@ -99,6 +105,7 @@ const ENGINES = {
     over: mash.isOver,
     sceneKey: (g) => (['vote', 'reveal', 'skip'].includes(g.phase) ? `match${g.round}` : `${g.phase}${g.round}`),
     has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g) => Math.min(1, (g.round + (g.matchups?.length ? g.current / g.matchups.length : 0)) / (mash.ROUNDS.length - 0.5)),
     phone: mash.phoneView,
     result(g, cid) {
       const me = mash.ranking(g).find((r) => r.cid === cid);
@@ -117,7 +124,12 @@ const ENGINES = {
     howToMs: MASH_HOWTO_MS,
   },
   hallway: {
-    create: hallway.createHallway,
+    create(players, seed, now) {
+      const g = hallway.createHallway(players, seed, now);
+      const floor = Number(query().get('floor'));
+      if (floor > 1) hallway.skipToFloor(g, floor, now);
+      return g;
+    },
     tick: hallway.tick,
     act(g, cid, msg, now) {
       if (msg.type === 'vote') hallway.vote(g, cid, Number(msg.door), now);
@@ -125,6 +137,7 @@ const ENGINES = {
     over: hallway.isOver,
     sceneKey: (g) => (g.phase === 'won' || g.phase === 'lost' ? g.phase : `floor${g.floor}`),
     has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g) => Math.min(1, (g.floor - 1) / (hallway.FLOORS - 1) + (g.lanterns <= 1 ? 0.25 : 0)),
     phone: hallway.phoneView,
     result: (g, cid) => ({
       score: g.score,

@@ -2,12 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createHallway, tick, vote, phoneView, makeFloor, isOver, tally, addPlayer, awards, clueText,
-  FLOORS, LANTERNS, floorPlan,
+  FLOORS, LANTERNS, floorPlan, matching,
 } from '../src/party/games/hallway.js';
 
 const players = (n) => Array.from({ length: n }, (_, i) => ({ cid: `p${i}`, name: `P${i}` }));
-const fits = (door, c) => (door[c.attr] === c.value) === c.yes;
-const matching = (doors, clues) => doors.filter((d) => clues.every((c) => fits(d, c)));
 
 test('every floor has exactly one door that fits all the clues, and each guide needs the other', () => {
   let seed = 3;
@@ -19,9 +17,10 @@ test('every floor has exactly one door that fits all the clues, and each guide n
       assert.equal(room.doors.length, floorPlan(floor).doors);
       const fit = matching(room.doors, room.clues);
       assert.equal(fit.length, 1);
-      assert.equal(fit[0], room.doors[room.safe]);
+      assert.equal(fit[0], room.safe);
       if (guides === 2) room.hands.forEach((h) => assert.ok(matching(room.doors, h).length > 1, 'one guide alone is not enough'));
-      room.clues.forEach((c) => assert.ok(clueText(c).startsWith('The safe door')));
+      room.clues.forEach((c) => assert.ok(/safe door|Look for|Stay away/.test(clueText(c)), clueText(c)));
+      if (floorPlan(floor).tier >= 2) assert.ok(room.clues.some((c) => c.kind !== 'is'), 'higher floors use trickier clues');
     }
   }
 });
@@ -48,7 +47,7 @@ function run(n, seed, talk) {
     s.players.forEach((p) => {
       if (s.votes[p.cid]) return;
       const d = options[Math.floor(rand() * options.length)];
-      vote(s, p.cid, s.room.doors.indexOf(d), now);
+      vote(s, p.cid, d, now);
     });
   }
   return { s, ms: now };

@@ -3,7 +3,7 @@ import qrcode from 'qrcode-generator';
 import Person from './Person';
 import { parseLook, randomLook, lookCode } from './look';
 import { MAX_PLAYERS, newRoomCode, openHost } from './net';
-import { isMuted, setMuted, sfx, startMusic, stopMusic, unlockSound } from './sound';
+import { isMuted, setMuted, setMusicIntensity, sfx, startMusic, stopMusic, unlockSound } from './sound';
 import { Backdrop, House } from './scene';
 import { QuizBackdrop } from './games/QuizStage';
 import { HallBackdrop } from './games/HallwayStage';
@@ -258,7 +258,13 @@ export default function PartyHost() {
       const now = performance.now();
       const game = gameRef.current;
       if (modeRef.current === 'howto' && now - howToAt.current > defRef.current.howToMs) beginGameRef.current();
-      if (game && modeRef.current === 'game') {
+      const playing = game && modeRef.current === 'game';
+      let tension = 0;
+      if (playing && defRef.current.intensity && !defRef.current.over(game)) {
+        try { tension = defRef.current.intensity(game, now); } catch (error) { tension = 0; }
+      }
+      setMusicIntensity(tension);
+      if (playing) {
         defRef.current.tick(game, now);
         if (now - lastPush > 150) {
           lastPush = now;
