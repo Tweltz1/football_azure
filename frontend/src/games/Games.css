@@ -1035,3 +1035,10 @@
   font-variant-numeric: tabular-nums;
   color: var(--text-2);
 }
+
+.game-card-emoji {
+  width: 64px;
+  flex: none;
+  font-size: 48px;
+  text-align: center;
+}

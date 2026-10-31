@@ -14,6 +14,7 @@ import GamesPage from './games/GamesPage';
 import RacePage from './games/race/RacePage';
 import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory';
 import { useAuth, signOut } from './AuthContext';
+import PartyRoutes, { isPartyPath } from './party/PartyRoutes';
 import './App.css';
 import './DraftMobile.css';
 import './MobileDensity.css';
@@ -21,6 +22,11 @@ import './MobileFlow.css';
 
 function App() {
   const { user, loading } = useAuth();
+
+  // Party games open without signing in (sign-in there is optional, for saving a character).
+  if (isPartyPath(window.location.pathname)) {
+    return <PartyRoutes />;
+  }
 
   if (loading) {
     return (

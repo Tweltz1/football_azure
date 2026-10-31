@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { signIn } from '../AuthContext';
 import '../App.css';
 import ClimbBackdrop from './ClimbBackdrop';
+import FrontDoor from './FrontDoor';
 import CrewIntro from './CrewIntro';
 import SoundToggle from './SoundToggle';
 import { playSong } from '../sound/crewSound';
@@ -13,11 +14,13 @@ import { chooseSavedUser, clearSignedOut, guestUser, offlineUser, savedProfiles 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
   const online = useOnline();
+  // Before anything else: football or games. An invite link goes straight to football.
+  const [football, setFootball] = useState(() => hasInvite || window.location.pathname !== '/');
   const [showIntro, setShowIntro] = useState(true);
   // Soft background music once the intro is done; it stops when this page closes.
   useEffect(() => {
-    if (!showIntro) playSong('login');
-  }, [showIntro]);
+    if (football && !showIntro) playSong('login');
+  }, [football, showIntro]);
   useEffect(() => () => playSong(null), []);
   // After Logout, whoever's drafts are saved on this phone can get back to them, even with no internet.
   const savedUser = offlineUser() || guestUser();
@@ -31,6 +34,7 @@ const Login = () => {
   const loadProfile = (userId) => {
     if (chooseSavedUser(userId)) window.location.assign('/leagues');
   };
+  if (!football) return <FrontDoor onFootball={() => setFootball(true)} />;
   return (
     <main className="login-page">
       <ClimbBackdrop />
