@@ -2,6 +2,32 @@
 // built-ins. Load this before anything else in src/index.js.
 import 'react-app-polyfill/stable';
 
+// Create React App's Babel setup picks core-js polyfills from the core-js 3.0
+// list, so anything core-js added later is silently left out. Fill in the
+// ones this app's code and Supabase use by hand.
+
+// globalThis (Chrome 71). Supabase reads it when its module loads.
+if (typeof window !== 'undefined' && typeof window.globalThis === 'undefined') {
+  window.globalThis = window;
+}
+
+// Promise.allSettled (Chrome 76).
+if (typeof Promise.allSettled !== 'function') {
+  Promise.allSettled = function allSettled(items) {
+    return Promise.all(Array.from(items, (item) => Promise.resolve(item).then(
+      (value) => ({ status: 'fulfilled', value }),
+      (reason) => ({ status: 'rejected', reason }),
+    )));
+  };
+}
+
+// Object.hasOwn (Chrome 93).
+if (typeof Object.hasOwn !== 'function') {
+  Object.hasOwn = function hasOwn(object, key) {
+    return Object.prototype.hasOwnProperty.call(Object(object), key);
+  };
+}
+
 // AbortController arrived in Chrome 66. Supabase and the router create one;
 // this stand-in lets that code run. It can't cancel a fetch already sent.
 if (typeof window !== 'undefined' && typeof window.AbortController === 'undefined') {
