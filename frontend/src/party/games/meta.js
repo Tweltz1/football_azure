@@ -67,8 +67,8 @@ export const GAME_META = [
     blurb: 'Everyone gets a secret word except the vampires. Give clues, sniff out the fakers, and vote them out.',
     minPlayers: 3,
     how: [
-      'Your phone shows a secret word. Vampires only see the category!',
-      'Everyone writes a one-word clue. Humans prove they know it; vampires bluff.',
+      'Humans get a secret word. Vampires only get a shortlist of 4 words it might be!',
+      'Everyone writes a one-word clue. Humans hint without giving it away; vampires fake one that fits.',
       'Talk it out and vote. Catch a vampire and the humans score. More players means more vampires!',
     ],
     phoneHint: 'Keep your phone hidden. Your secret word (or your fangs) show up here.',

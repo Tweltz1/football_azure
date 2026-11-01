@@ -12,7 +12,7 @@ export const HOWTO_MS = 36000;
 
 const SCENES = [
   { at: 0, step: '', title: 'How to play', say: "Welcome to Who's Behind the Mask! One of you is secretly a vampire." },
-  { at: 5000, step: '1', title: 'Everyone gets a secret word. The vampire only gets the category!', say: 'Everyone gets a secret word on their phone. Except the vampire, who only gets the category.' },
+  { at: 5000, step: '1', title: 'Humans get the secret word. The vampire only gets a shortlist of 4 maybes!', say: 'Humans get the secret word on their phone. The vampire only gets a shortlist of four words it might be.' },
   { at: 12500, step: '2', title: 'Write a one-word clue. Vampires have to bluff!', say: 'Everyone writes a one-word clue. Humans, prove you know the word. Vampires, bluff!' },
   { at: 19500, step: '3', title: 'Talk it out, then vote for who you think is the vampire.', say: 'Talk it out, then vote for who you think is the vampire.' },
   { at: 25500, step: '4', title: 'Catch the vampire and the humans score. If it escapes, or guesses the word, the vampire scores!', say: 'Catch the vampire, and the humans score. If the vampire escapes, or guesses the secret word, the vampire scores!' },
@@ -20,7 +20,6 @@ const SCENES = [
 ];
 
 const WORD = 'Graveyard';
-const CATEGORY = 'Spooky places';
 const CLUES = ['Tombstones', 'Zombies', 'Dark', 'Shovel'];
 const VAMP = 2;
 const SPOTS = [{ x: 560, y: 975 }, { x: 800, y: 975 }, { x: 1120, y: 975 }, { x: 1360, y: 975 }];
@@ -83,11 +82,11 @@ export default function MaskHowTo({ players, now, startedAt, onSkip }) {
         <>
           <div className="lq-demo-phone lk-demo-left" style={{ transform: `translateY(${(1 - phoneIn) * 120}%)` }}>
             <div className="lq-demo-owner">{cast[0].name}&apos;s phone</div>
-            <div className="lk-role"><span className="lk-role-kicker">😇 Human · {CATEGORY}</span><b>{WORD}</b></div>
+            <div className="lk-role"><span className="lk-role-kicker">😇 Human · your secret word is</span><b>{WORD}</b></div>
           </div>
           <div className="lq-demo-phone" style={{ transform: `translateY(${(1 - phoneIn) * 120}%)` }}>
             <div className="lq-demo-owner">{cast[VAMP].name}&apos;s phone</div>
-            <div className="lk-role is-vamp"><span className="lk-role-kicker">🧛 VAMPIRE</span><b>Category: {CATEGORY}</b></div>
+            <div className="lk-role is-vamp"><span className="lk-role-kicker">🧛 VAMPIRE · It&apos;s one of these:</span><span className="lk-hints">{['Crypt', WORD, 'Castle', 'Corn maze'].map((w) => <i key={w}>{w}</i>)}</span></div>
           </div>
         </>
       )}

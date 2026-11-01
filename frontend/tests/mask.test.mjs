@@ -35,6 +35,9 @@ test('humans see the word, vampires only see the category and each other', () =>
   assert.equal(vv.word, undefined);
   assert.equal(vv.category, s.category);
   assert.deepEqual(vv.team, [s.players.find((p) => p.cid === v2).name]);
+  assert.equal(vv.hints.length, 4);
+  assert.ok(vv.hints.includes(s.word));
+  assert.equal(hv.hints, undefined);
 });
 
 test('a human cannot give away the word', () => {
