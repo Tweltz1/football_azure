@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import qrcode from 'qrcode-generator';
 import Person from './Person';
 import { parseLook, randomLook, lookCode } from './look';
-import { MAX_PLAYERS, newRoomCode, openHost } from './net';
+import { MAX_PLAYERS, newRoomCode, openHost, postToPhone } from './net';
 import { isMuted, setMuted, setMusicIntensity, sfx, startMusic, stopMusic, unlockSound } from './sound';
 import { Backdrop, House } from './scene';
 import { QuizBackdrop } from './games/QuizStage';
@@ -34,6 +34,17 @@ const saveRoom = (code, players, gameId) => {
   } catch (error) { /* not saved */ }
 };
 
+// Phones say hello every 5 seconds. A phone we haven't heard from in a while shows as away, and in the
+// lobby it is dropped, so a closed tab or a dead phone can't hold up "everyone ready" or keep the crown.
+const AWAY_MS = 12000;
+const STALE_MS = 30000;
+const isAway = (p, now) => now - (p.lastSeen || 0) > AWAY_MS;
+const vipOf = (list, now) => (list.find((p) => !isAway(p, now)) || list[0])?.cid;
+const allReady = (list, now) => {
+  const here = list.filter((p) => !isAway(p, now));
+  return here.length > 0 && here.every((p) => p.ready);
+};
+
 const joinUrl = () => `${window.location.origin}/play`;
 
 const Qr = ({ text }) => {
@@ -54,8 +65,10 @@ const startingGame = () => {
 };
 
 export default function PartyHost() {
-  const [code, setCode] = useState(() => loadRoom()?.code || null);
-  const [players, setPlayers] = useState(() => (loadRoom()?.players || []).map((p) => ({ ...p, joinedAt: 0, lastSeen: 0 })));
+  // A refresh shows the splash again: open a new room (new code), or reopen the last one.
+  const [savedRoom, setSavedRoom] = useState(loadRoom);
+  const [code, setCode] = useState(null);
+  const [players, setPlayers] = useState([]);
   const [mode, setMode] = useState('lobby');
   const [gameId, setGameId] = useState(startingGame);
   const [round, setRound] = useState(0); // remounts the game's stage for every new game
@@ -111,7 +124,7 @@ export default function PartyHost() {
     const d = defRef.current;
     const now = performance.now();
     const base = {
-      screen: modeRef.current, code, vip: list[0]?.cid === cid, count: list.length, max: MAX_PLAYERS, name: me.name,
+      screen: modeRef.current, code, vip: vipOf(list, now) === cid, count: list.length, max: MAX_PLAYERS, name: me.name,
       ready: Boolean(me.ready), readyCount: list.filter((p) => p.ready).length, gameId: d.id,
     };
     if (modeRef.current !== 'game' || !game) return base;
@@ -140,11 +153,14 @@ export default function PartyHost() {
   };
 
   const beginGame = useCallback(() => {
-    const list = playersRef.current.map((p) => ({ ...p, ready: false }));
+    const now = performance.now();
+    // Phones that went quiet don't get a seat in the game. They rejoin if they come back.
+    const all = playersRef.current;
+    const here = all.filter((p) => !isAway(p, now));
+    const list = (here.length ? here : all).map((p) => ({ ...p, ready: false }));
     if (!list.length) return;
     playersRef.current = list;
     setPlayers(list);
-    const now = performance.now();
     gameRef.current = defRef.current.create(list.map((p) => ({ cid: p.cid, name: p.name })), Math.floor(Math.random() * 1e9), now);
     setRound((r) => r + 1);
     setModeNow('game');
@@ -206,7 +222,7 @@ export default function PartyHost() {
         sfx.join();
         if (game && !d.over(game)) d.addPlayer(game, msg.cid, name, now);
       } else {
-        const next = list.map((p) => (p.cid === msg.cid ? { ...p, name: name || p.name, look: look || p.look, lastSeen: now } : p));
+        const next = list.map((p) => (p.cid === msg.cid ? { ...p, name: name || p.name, look: look || p.look, lastSeen: now, left: false } : p));
         playersRef.current = next;
         setPlayers(next);
         if (event === 'look' && look !== known.look) waves.current.set(msg.cid, now + 1500);
@@ -217,7 +233,8 @@ export default function PartyHost() {
       return;
     }
     if (!known) return;
-    const vip = list[0]?.cid === msg.cid;
+    if (event !== 'bye') known.lastSeen = now;
+    const vip = vipOf(list, now) === msg.cid;
     if (game) d.seen(game, msg.cid, now);
     if (event === 'start' && vip && modeRef.current === 'lobby') startGame();
     if (event === 'pick' && vip) pickGame(String(msg.game || ''));
@@ -225,14 +242,18 @@ export default function PartyHost() {
       const next = list.map((p) => (p.cid === msg.cid ? { ...p, ready: Boolean(msg.ready) } : p));
       playersRef.current = next;
       setPlayers(next);
-      if (next.every((p) => p.ready)) startGame();
+      if (allReady(next, now)) startGame();
     }
     if (event === 'skip' && vip && modeRef.current === 'howto') beginGame();
     if (event === 'again' && vip && game && d.over(game)) backToLobby();
-    if (event === 'bye' && modeRef.current === 'lobby') {
-      const next = list.filter((p) => p.cid !== msg.cid);
+    if (event === 'bye') {
+      // In the lobby they're gone right away. Mid-game they show as away and drop off back in the lobby.
+      const next = modeRef.current === 'lobby'
+        ? list.filter((p) => p.cid !== msg.cid)
+        : list.map((p) => (p.cid === msg.cid ? { ...p, lastSeen: -1e9, left: true } : p));
       playersRef.current = next;
       setPlayers(next);
+      lastSent.current.delete(msg.cid);
     }
     if (event === 'act' && game && modeRef.current === 'game' && !d.over(game)) d.act(game, msg.cid, msg, now);
     pushAll();
@@ -250,6 +271,25 @@ export default function PartyHost() {
 
   const beginGameRef = useRef(beginGame);
   beginGameRef.current = beginGame;
+  const startGameRef = useRef(startGame);
+  startGameRef.current = startGame;
+
+  // Lobby clean-up: drop phones that have gone quiet (closed tab, dead battery, walked off).
+  useEffect(() => {
+    if (!code) return undefined;
+    const timer = window.setInterval(() => {
+      if (modeRef.current !== 'lobby') return;
+      const now = performance.now();
+      const list = playersRef.current;
+      const next = list.filter((p) => now - (p.lastSeen || 0) <= STALE_MS);
+      if (next.length === list.length) return;
+      list.filter((p) => !next.includes(p)).forEach((p) => lastSent.current.delete(p.cid));
+      playersRef.current = next;
+      setPlayers(next);
+      if (allReady(next, now)) startGameRef.current();
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [code]);
 
   // The loop: step the game, redraw, keep phones up to date.
   useEffect(() => {
@@ -293,11 +333,47 @@ export default function PartyHost() {
     return () => window.removeEventListener('keydown', onKey);
   }, [backToLobby, beginGame, startGame]);
 
+  // Tell phones still pointed at an old room that it's closed, so they go back to the join screen.
+  const closeRoomFor = (oldCode, list) => {
+    (list || []).forEach((p) => postToPhone(oldCode, p.cid, { screen: 'closed', code: oldCode }));
+  };
+
+  const freshRoom = () => {
+    let next = newRoomCode();
+    while (next === code || next === savedRoom?.code) next = newRoomCode();
+    gameRef.current = null;
+    lastSent.current = new Map();
+    waves.current = new Map();
+    playersRef.current = [];
+    setPlayers([]);
+    setModeNow('lobby');
+    setSavedRoom(null);
+    setCode(next);
+  };
+
   const openRoom = () => {
     unlockSound();
     startMusic();
-    setPlayers([]);
-    setCode(newRoomCode());
+    if (savedRoom) closeRoomFor(savedRoom.code, savedRoom.players);
+    freshRoom();
+  };
+
+  const reopenRoom = () => {
+    unlockSound();
+    startMusic();
+    const now = performance.now();
+    // Give the old phones a few seconds to say hello again before they count as gone.
+    const list = (savedRoom.players || []).map((p) => ({ ...p, joinedAt: 0, lastSeen: now, ready: false }));
+    playersRef.current = list;
+    setPlayers(list);
+    setSavedRoom(null);
+    setCode(savedRoom.code);
+  };
+
+  // From the lobby: a new code, and everyone on the old one is sent back to the join screen.
+  const newRoom = () => {
+    closeRoomFor(code, playersRef.current);
+    freshRoom();
   };
 
   const kick = (cid) => {
@@ -315,7 +391,12 @@ export default function PartyHost() {
         <div className="lc-splash-card">
           <h1 className="lc-title">Hood Games Night</h1>
           <p className="lc-sub">Halloween party games for 1 to 12 players.<br />Put this page on the TV. Everyone plays on their phone.</p>
-          <button type="button" className="lc-btn lc-btn-big" onClick={openRoom}>Open a room</button>
+          <button type="button" className="lc-btn lc-btn-big" onClick={openRoom}>Open a new room</button>
+          {savedRoom && (
+            <button type="button" className="lc-btn lc-splash-reopen" onClick={reopenRoom}>
+              Reopen room {savedRoom.code}{savedRoom.players?.length ? ` (${savedRoom.players.length} player${savedRoom.players.length === 1 ? '' : 's'})` : ''}
+            </button>
+          )}
           <div className="lc-splash-crew">
             {splashLooks.map((look, i) => <Person key={i} look={look} pose="wave" className={`lc-bob lc-d${i}`} />)}
           </div>
@@ -338,6 +419,7 @@ export default function PartyHost() {
     scene.current.key = sceneKey;
   }
   const wiping = now - scene.current.at < 1300;
+  const vipCid = vipOf(players, now);
 
   return (
     <div className="lc-tv">
@@ -360,6 +442,7 @@ export default function PartyHost() {
           <span>Join at <b>{joinUrl().replace(/^https?:\/\//, '')}</b></span>
           <span className="lc-corner-code">{code}</span>
           <button type="button" className="lc-mute" onClick={toggleMute} aria-label={mute ? 'Sound on' : 'Mute'}>{mute ? '🔇' : '🔊'}</button>
+          {mode === 'lobby' && <button type="button" className="lc-mute lc-newroom" onClick={newRoom}>New code</button>}
           {!connected && <span className="lc-warn">Connecting…</span>}
         </div>
 
@@ -404,11 +487,12 @@ export default function PartyHost() {
                 const p = players[i];
                 if (!p) return <div key={`empty${i}`} className="lc-slot is-empty"><span>?</span></div>;
                 const waving = (waves.current.get(p.cid) || 0) > now;
+                const away = isAway(p, now);
                 return (
-                  <div key={p.cid} className="lc-slot">
+                  <div key={p.cid} className={`lc-slot${away ? ' is-away' : ''}`}>
                     <Person look={p.look} pose={waving ? 'wave' : 'stand'} className={`lc-bob lc-d${i % 4}`} />
-                    {p.ready && <div className="lc-ready">READY</div>}
-                    <div className="lc-slot-name">{i === 0 ? '👑 ' : ''}{p.name}</div>
+                    {away ? <div className="lc-ready lc-away">AWAY</div> : p.ready && <div className="lc-ready">READY</div>}
+                    <div className="lc-slot-name">{p.cid === vipCid ? '👑 ' : ''}{p.name}</div>
                     <button type="button" className="lc-kick" onClick={() => kick(p.cid)} aria-label={`Remove ${p.name}`}>×</button>
                   </div>
                 );
@@ -419,7 +503,7 @@ export default function PartyHost() {
                 <span>{def.title} needs at least {def.minPlayers} players. {def.minPlayers - players.length} more to go!</span>
               ) : players.length ? (
                 <>
-                  <span>{players.filter((p) => p.ready).length} of {players.length} ready. It starts when everyone taps Ready, or</span>
+                  <span>{players.filter((p) => p.ready && !isAway(p, now)).length} of {players.filter((p) => !isAway(p, now)).length || players.length} ready. It starts when everyone taps Ready, or</span>
                   <button type="button" className="lc-btn" onClick={startGame}>▶ Start {def.title.length > 18 ? 'game' : def.title}</button>
                 </>
               ) : <span>Waiting for players… scan the code or go to the address above.</span>}

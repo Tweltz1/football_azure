@@ -156,6 +156,7 @@
   background: var(--lc-panel);
   border: 3px solid var(--lc-ink);
   border-radius: 999px;
+  z-index: 10; /* above the lobby, so the mute and New code buttons can be clicked */
 }
 #lc-root .lc-corner-code { padding: 0.1em 0.5em; font: 400 1.5em var(--lc-spooky); letter-spacing: 0.12em; color: var(--lc-ink); background: var(--lc-gold); border-radius: 999px; }
 #lc-root .lc-mute { font-size: 1.1em; background: none; border: 0; cursor: pointer; }
@@ -741,3 +742,10 @@
 #lc-root .lk-main .lq-callout { margin-top: 0.6em; font-size: 1.2em; }
 #lc-root .lk-bite p { margin: 0.4em 0 0.2em; font-size: 1.1em; }
 #lc-root .lk-bite-options span { font-size: 0.9em; }
+
+/* Room reset + away players */
+#lc-root .lc-splash-reopen { display: block; margin: 0.8em auto 0; font-size: 0.9em; opacity: 0.85; }
+#lc-root .lc-newroom { font-size: 0.75em; padding: 0.2em 0.6em; border: 2px solid currentColor; border-radius: 999px; color: inherit; }
+#lc-root .lc-slot.is-away .lc-person { opacity: 0.35; }
+#lc-root .lc-ready.lc-away { background: #9aa0a6; }
+#lc-root .lcp-note-closed { margin: 0 0 1em; padding: 0.6em 0.9em; border-radius: 12px; background: rgba(255, 255, 255, 0.12); text-align: center; }

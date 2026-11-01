@@ -37,6 +37,9 @@ const sender = (topic) => {
 };
 const post = (topic, event, payload) => (localMode() ? localPost(topic, event, payload) : sender(topic).send({ type: 'broadcast', event, payload }).catch(() => 'error'));
 
+/** Post one screen to a phone without opening the room (used to tell an old room's phones it closed). */
+export const postToPhone = (code, cid, payload) => post(`lc:${code}:p:${cid}`, 'state', payload);
+
 /** The TV's side. onMessage(event, payload). Returns { sendTo(cid, payload), close() }. */
 export function openHost(code, onMessage, onStatus) {
   if (localMode()) {
