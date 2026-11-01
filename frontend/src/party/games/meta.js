@@ -67,7 +67,7 @@ export const GAME_META = [
     blurb: 'Everyone gets a secret word except the vampires. Give clues, sniff out the fakers, and vote them out.',
     minPlayers: 3,
     how: [
-      'Humans get a secret word. Vampires only get a shortlist of 4 words it might be!',
+      'Humans get a secret word. Vampires only see 3 similar words, never the real one!',
       'Everyone writes a one-word clue. Humans hint without giving it away; vampires fake one that fits.',
       'Talk it out and vote. Catch a vampire and the humans score. More players means more vampires!',
     ],

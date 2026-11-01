@@ -1,17 +1,21 @@
-// Who's Behind the Mask? secret words. Each category has eight words: humans get one of them, and
-// vampires who get caught try to pick it out of all eight.
+// Who's Behind the Mask? secret words. Each category has two groups of four similar words.
+// Humans get one word; vampires see the other three from its group (close, but never the real one),
+// and a caught vampire tries to pick the real word out of a lineup that leaves those three out.
 
 export const CATEGORIES = [
-  { name: 'Monsters', words: ['Werewolf', 'Mummy', 'Zombie', 'Ghost', 'Frankenstein', 'Skeleton', 'Witch', 'Goblin'] },
-  { name: 'Spooky places', words: ['Graveyard', 'Haunted house', 'Pumpkin patch', 'Corn maze', 'Castle', 'Crypt', 'Dark forest', 'Abandoned hospital'] },
-  { name: 'Halloween candy', words: ['Candy corn', 'Snickers', 'Kit Kat', 'Reese\'s', 'Skittles', 'Twix', 'Starburst', 'Tootsie Roll'] },
-  { name: 'Costumes', words: ['Pirate', 'Princess', 'Superhero', 'Cowboy', 'Ninja', 'Astronaut', 'Clown', 'Dinosaur'] },
-  { name: 'Creepy critters', words: ['Spider', 'Bat', 'Black cat', 'Rat', 'Owl', 'Crow', 'Snake', 'Cockroach'] },
-  { name: 'Halloween movies', words: ['Hocus Pocus', 'Ghostbusters', 'Beetlejuice', 'Coraline', 'Casper', 'Halloweentown', 'Scream', 'Coco'] },
-  { name: 'Party stuff', words: ['Bobbing for apples', 'Costume contest', 'Hayride', 'Pumpkin carving', 'Trick-or-treating', 'Bonfire', 'Scary movie night', 'Fog machine'] },
-  { name: 'Witchy things', words: ['Cauldron', 'Broomstick', 'Spell book', 'Crystal ball', 'Magic wand', 'Potion', 'Pointy hat', 'Black cat'] },
-  { name: 'Fall foods', words: ['Pumpkin pie', 'Caramel apple', 'Apple cider', 'Chili', 'Popcorn ball', 'Pumpkin spice latte', 'Roasted pumpkin seeds', 'S\'mores'] },
-  { name: 'Things that go bump', words: ['Creaky door', 'Footsteps', 'Thunder', 'Howling wolf', 'Rattling chains', 'Evil laugh', 'Scream', 'Owl hoot'] },
-  { name: 'Decorations', words: ['Jack-o\'-lantern', 'Fake cobwebs', 'Tombstone', 'Scarecrow', 'Inflatable ghost', 'Skeleton', 'Orange lights', 'Hay bale'] },
-  { name: 'Scary jobs', words: ['Gravedigger', 'Mad scientist', 'Ghost hunter', 'Undertaker', 'Fortune teller', 'Night guard', 'Lighthouse keeper', 'Exorcist'] },
+  { name: 'Monsters', groups: [['Werewolf', 'Bigfoot', 'Wolfman', 'Yeti'], ['Ghost', 'Phantom', 'Poltergeist', 'Banshee']] },
+  { name: 'Undead', groups: [['Zombie', 'Mummy', 'Skeleton', 'Frankenstein'], ['Vampire bat', 'Dracula', 'Ghoul', 'Grim Reaper']] },
+  { name: 'Spooky places', groups: [['Graveyard', 'Crypt', 'Tomb', 'Mausoleum'], ['Haunted house', 'Castle', 'Abandoned mansion', 'Old barn']] },
+  { name: 'Fall outings', groups: [['Pumpkin patch', 'Corn maze', 'Apple orchard', 'Hayride'], ['Haunted trail', 'Fright fest', 'Ghost tour', 'Scary movie night']] },
+  { name: 'Halloween candy', groups: [['Snickers', 'Twix', 'Milky Way', '3 Musketeers'], ['Skittles', 'Starburst', 'Sour Patch Kids', 'Jolly Rancher']] },
+  { name: 'Costumes', groups: [['Pirate', 'Cowboy', 'Ninja', 'Knight'], ['Princess', 'Fairy', 'Mermaid', 'Witch']] },
+  { name: 'Creepy critters', groups: [['Spider', 'Scorpion', 'Cockroach', 'Centipede'], ['Bat', 'Owl', 'Crow', 'Raven']] },
+  { name: 'Halloween movies', groups: [['Hocus Pocus', 'Halloweentown', 'Twitches', 'The Witches'], ['Ghostbusters', 'Beetlejuice', 'Casper', 'Monster House']] },
+  { name: 'Witchy things', groups: [['Cauldron', 'Potion', 'Spell book', 'Crystal ball'], ['Broomstick', 'Magic wand', 'Pointy hat', 'Black cat']] },
+  { name: 'Fall foods', groups: [['Pumpkin pie', 'Apple pie', 'Pecan pie', 'Sweet potato pie'], ['Caramel apple', 'Candy apple', 'Popcorn ball', 'Kettle corn']] },
+  { name: 'Spooky sounds', groups: [['Creaky door', 'Footsteps', 'Knocking', 'Floorboards'], ['Howling wolf', 'Evil laugh', 'Scream', 'Owl hoot']] },
+  { name: 'Decorations', groups: [['Jack-o\'-lantern', 'Scarecrow', 'Hay bale', 'Corn stalks'], ['Fake cobwebs', 'Tombstone', 'Inflatable ghost', 'Plastic skeleton']] },
 ];
+
+/** Every word in a category. */
+export const wordsOf = (cat) => cat.groups.flat();

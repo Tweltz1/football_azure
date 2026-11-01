@@ -20,7 +20,7 @@ export const SCORES_MS = 8000;
 export const CLOSE_MS = 1500;
 export const ACTIVE_MS = 30000;
 export const CLUE_MAX = 24;
-export const HINTS = 4;
+export const HINTS = 3;
 
 export const CATCH_TEAM = 200;
 export const CATCH_VOTE = 100;
@@ -83,10 +83,16 @@ function startRound(s, now) {
   s.vampires.forEach((cid) => { s.stats[cid].vampire += 1; });
   const cat = s.categories[s.round % s.categories.length];
   s.category = cat.name;
-  s.word = cat.words[Math.floor(s.rand() * cat.words.length)];
-  s.options = shuffle(s.rand, cat.words);
-  // Vampires get a shortlist with the real word hidden among a few others, so they can bluff a close clue.
-  s.hints = shuffle(s.rand, [s.word, ...shuffle(s.rand, cat.words.filter((w) => w !== s.word)).slice(0, HINTS - 1)]);
+  const g = Math.floor(s.rand() * cat.groups.length);
+  const group = cat.groups[g];
+  s.word = group[Math.floor(s.rand() * group.length)];
+  // Vampires see the other words from the same group: close to the real one, but never it.
+  s.hints = shuffle(s.rand, group.filter((w) => w !== s.word));
+  // The last-bite lineup: the real word, the category's other group, and a few strays, but not the hints.
+  const other = cat.groups.filter((_, i) => i !== g).flat();
+  const strays = shuffle(s.rand, CATEGORIES.filter((c) => c !== cat).flatMap((c) => c.groups.flat()))
+    .filter((w) => w !== s.word && !group.includes(w) && !other.includes(w)).slice(0, 3);
+  s.options = shuffle(s.rand, [s.word, ...other, ...strays]);
   s.clues = {};
   s.rejected = {};
   s.order = [];
