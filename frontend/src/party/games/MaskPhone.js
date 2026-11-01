@@ -15,9 +15,9 @@ const RoleCard = ({ game }) => {
       ) : vamp ? (
         <>
           <span className="lk-role-kicker">🧛 You&apos;re a VAMPIRE · you don&apos;t know the word</span>
-          <span className="lk-role-sub">It&apos;s one of these:</span>
+          <span className="lk-role-sub">The secret word is similar to these, but it&apos;s none of them:</span>
           <span className="lk-hints">{(game.hints || []).map((w) => <i key={w}>{w}</i>)}</span>
-          <small>Give a clue that could fit, and listen for which one the humans mean.{game.team?.length ? ` Fellow vampire${game.team.length > 1 ? 's' : ''}: ${game.team.join(' & ')}.` : ''}</small>
+          <small>Give a clue that fits that vibe, and use the humans&apos; clues to figure out the real word.{game.team?.length ? ` Fellow vampire${game.team.length > 1 ? 's' : ''}: ${game.team.join(' & ')}.` : ''}</small>
         </>
       ) : (
         <>
@@ -74,7 +74,7 @@ export default function MaskPhone({ screen, send, look, header }) {
         <RoleCard game={game} />
         <form className="lcp-mash-write" onSubmit={submit}>
           <span className="lcp-mash-step">One-word clue · {Math.ceil(game.left / 1000)}s</span>
-          <input value={text} onChange={(e) => setText(e.target.value.slice(0, CLUE_MAX))} maxLength={CLUE_MAX} placeholder={game.role === 'vampire' ? 'Something that fits the list…' : 'A hint, not the word itself'} autoFocus />
+          <input value={text} onChange={(e) => setText(e.target.value.slice(0, CLUE_MAX))} maxLength={CLUE_MAX} placeholder={game.role === 'vampire' ? 'Something that fits the vibe…' : 'A hint, not the word itself'} autoFocus />
           {game.rejected && <small className="lk-warn">That gives away the word! Try a sneakier clue.</small>}
           <button type="submit" className="lc-btn lc-btn-big" disabled={!text.trim()}>Send clue</button>
         </form>

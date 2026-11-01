@@ -130,7 +130,7 @@ export default function MaskStage({ game, players, now, onLobby, onAgain }) {
         <div className="lc-card lq-round lk-card" key={`r${game.round}`}>
           <div className="lc-card-kicker">Who&apos;s Behind the Mask? · Round {game.round + 1}</div>
           <h2 className="lc-title">📱 Check your phone!</h2>
-          <p><b>Humans</b> see the secret word. <b>{vampWord(game.vampires.length).replace(/^./, (c) => c.toUpperCase())}</b> only see{game.vampires.length === 1 ? 's' : ''} a shortlist of {HINTS} possible words, and {game.vampires.length === 1 ? 'has' : 'have'} to fake it.</p>
+          <p><b>Humans</b> see the secret word. <b>{vampWord(game.vampires.length).replace(/^./, (c) => c.toUpperCase())}</b> only see{game.vampires.length === 1 ? 's' : ''} {HINTS} similar words (never the real one) and {game.vampires.length === 1 ? 'has' : 'have'} to fake it.</p>
           <div className="lc-countdown">{Math.max(1, Math.ceil((ROLE_MS - elapsed) / 1000))}</div>
         </div>
       )}
@@ -139,7 +139,7 @@ export default function MaskStage({ game, players, now, onLobby, onAgain }) {
         <div className="lc-card lm-write lk-card">
           <div className="lc-card-kicker">Category: {game.category}</div>
           <h2 className="lc-title">✍️ Write a one-word clue</h2>
-          <p>Humans: hint at the word without saying it. Too obvious and the vampires figure it out! Vampires: pick a clue that could fit.</p>
+          <p>Humans: hint at the word without saying it. Too obvious and the vampires figure it out! Vampires: bluff a clue that fits the vibe.</p>
           <Timer left={Math.max(0, CLUE_MS - elapsed)} total={CLUE_MS} />
         </div>
       )}

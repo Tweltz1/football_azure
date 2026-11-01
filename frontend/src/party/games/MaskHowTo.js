@@ -12,7 +12,7 @@ export const HOWTO_MS = 36000;
 
 const SCENES = [
   { at: 0, step: '', title: 'How to play', say: "Welcome to Who's Behind the Mask! One of you is secretly a vampire." },
-  { at: 5000, step: '1', title: 'Humans get the secret word. The vampire only gets a shortlist of 4 maybes!', say: 'Humans get the secret word on their phone. The vampire only gets a shortlist of four words it might be.' },
+  { at: 5000, step: '1', title: 'Humans get the secret word. The vampire only sees 3 similar words, never the real one!', say: 'Humans get the secret word on their phone. The vampire only sees three similar words. Close, but never the real one.' },
   { at: 12500, step: '2', title: 'Write a one-word clue. Vampires have to bluff!', say: 'Everyone writes a one-word clue. Humans, prove you know the word. Vampires, bluff!' },
   { at: 19500, step: '3', title: 'Talk it out, then vote for who you think is the vampire.', say: 'Talk it out, then vote for who you think is the vampire.' },
   { at: 25500, step: '4', title: 'Catch the vampire and the humans score. If it escapes, or guesses the word, the vampire scores!', say: 'Catch the vampire, and the humans score. If the vampire escapes, or guesses the secret word, the vampire scores!' },
@@ -86,7 +86,7 @@ export default function MaskHowTo({ players, now, startedAt, onSkip }) {
           </div>
           <div className="lq-demo-phone" style={{ transform: `translateY(${(1 - phoneIn) * 120}%)` }}>
             <div className="lq-demo-owner">{cast[VAMP].name}&apos;s phone</div>
-            <div className="lk-role is-vamp"><span className="lk-role-kicker">🧛 VAMPIRE · It&apos;s one of these:</span><span className="lk-hints">{['Crypt', WORD, 'Castle', 'Corn maze'].map((w) => <i key={w}>{w}</i>)}</span></div>
+            <div className="lk-role is-vamp"><span className="lk-role-kicker">🧛 VAMPIRE · the word is close to:</span><span className="lk-hints">{['Crypt', 'Tomb', 'Mausoleum'].map((w) => <i key={w}>{w}</i>)}</span></div>
           </div>
         </>
       )}

@@ -10,7 +10,9 @@ const players = (n) => Array.from({ length: n }, (_, i) => ({ cid: `p${i}`, name
 
 test('the word bank has eight different words in every category', () => {
   assert.ok(CATEGORIES.length >= ROUNDS * 3);
-  CATEGORIES.forEach((c) => assert.equal(new Set(c.words).size, 8, c.name));
+  const all = CATEGORIES.flatMap((c) => c.groups.flat());
+  assert.equal(new Set(all).size, all.length, 'no word is in two places');
+  CATEGORIES.forEach((c) => c.groups.forEach((g) => assert.equal(g.length, 4, c.name)));
 });
 
 test('more players means more vampires', () => {
@@ -35,8 +37,11 @@ test('humans see the word, vampires only see the category and each other', () =>
   assert.equal(vv.word, undefined);
   assert.equal(vv.category, s.category);
   assert.deepEqual(vv.team, [s.players.find((p) => p.cid === v2).name]);
-  assert.equal(vv.hints.length, 4);
-  assert.ok(vv.hints.includes(s.word));
+  assert.equal(vv.hints.length, 3);
+  assert.ok(!vv.hints.includes(s.word), 'vampires never see the real word');
+  assert.ok(s.options.includes(s.word));
+  assert.equal(s.options.length, 8);
+  vv.hints.forEach((w) => assert.ok(!s.options.includes(w), 'hints are left out of the last bite'));
   assert.equal(hv.hints, undefined);
 });
 
