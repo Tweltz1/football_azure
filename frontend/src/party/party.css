@@ -749,3 +749,6 @@
 #lc-root .lc-slot.is-away .lc-person { opacity: 0.35; }
 #lc-root .lc-ready.lc-away { background: #9aa0a6; }
 #lc-root .lcp-note-closed { margin: 0 0 1em; padding: 0.6em 0.9em; border-radius: 12px; background: rgba(255, 255, 255, 0.12); text-align: center; }
+#lc-root .lk-role-sub { margin-top: 4px; font-size: 0.85em; opacity: 0.85; }
+#lc-root .lk-hints { display: flex; flex-wrap: wrap; justify-content: center; margin: 4px 0; }
+#lc-root .lk-hints i { margin: 3px; padding: 4px 10px; font-style: normal; font-weight: 800; color: var(--lc-ink); background: #ffd5dc; border-radius: 10px; }

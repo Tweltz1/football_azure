@@ -20,6 +20,7 @@ export const SCORES_MS = 8000;
 export const CLOSE_MS = 1500;
 export const ACTIVE_MS = 30000;
 export const CLUE_MAX = 24;
+export const HINTS = 4;
 
 export const CATCH_TEAM = 200;
 export const CATCH_VOTE = 100;
@@ -84,6 +85,8 @@ function startRound(s, now) {
   s.category = cat.name;
   s.word = cat.words[Math.floor(s.rand() * cat.words.length)];
   s.options = shuffle(s.rand, cat.words);
+  // Vampires get a shortlist with the real word hidden among a few others, so they can bluff a close clue.
+  s.hints = shuffle(s.rand, [s.word, ...shuffle(s.rand, cat.words.filter((w) => w !== s.word)).slice(0, HINTS - 1)]);
   s.clues = {};
   s.rejected = {};
   s.order = [];
@@ -113,6 +116,7 @@ export function createMask(players, seed = Date.now(), now = 0) {
     category: '',
     word: '',
     options: [],
+    hints: [],
     clues: {},
     rejected: {},
     order: [],
@@ -355,7 +359,10 @@ export function phoneView(s, cid, now) {
     vampireCount: s.vampires.length,
   };
   if (playing && !vamp) view.word = s.word;
-  if (vamp) view.team = s.vampires.filter((v) => v !== cid).map((v) => nameOf(s, v));
+  if (vamp) {
+    view.team = s.vampires.filter((v) => v !== cid).map((v) => nameOf(s, v));
+    view.hints = s.hints;
+  }
   view.myClue = s.clues[cid] || null;
   if (s.rejected[cid]) view.rejected = true;
   if (s.phase === 'clue') view.left = Math.max(0, CLUE_MS - elapsed);
