@@ -18,6 +18,13 @@ const writeStore = (value) => {
   try { window.localStorage.setItem(STORE, JSON.stringify(value)); } catch (error) { /* private mode */ }
 };
 
+// Forget a ?code= from a scanned QR once that room is gone, so a refresh doesn't fill in the old code.
+const dropCodeParam = () => {
+  try {
+    if (new URLSearchParams(window.location.search).has('code')) window.history.replaceState(null, '', window.location.pathname);
+  } catch (error) { /* leave it */ }
+};
+
 const Editor = ({ look, onChange }) => {
   const [open, setOpen] = useState('costume');
   return (
@@ -76,7 +83,9 @@ export default function PartyPlay() {
   const [saved, setSaved] = useState(null);
   const [saveNote, setSaveNote] = useState('');
   const [tab, setTab] = useState('look');
+  const [note, setNote] = useState('');
   const phoneRef = useRef(null);
+  const screenRef = useRef(null);
   const lastHeard = useRef(0);
 
   useEffect(() => { writeStore({ code, name, look, cid, joined }); }, [code, name, look, cid, joined]);
@@ -115,8 +124,22 @@ export default function PartyPlay() {
     setScreen(null);
     setLost(false);
     lastHeard.current = Date.now();
+    screenRef.current = null;
     const phone = openPhone(code, cid, (payload) => {
+      if (payload?.code && payload.code !== code) return;
       lastHeard.current = Date.now();
+      if (payload?.screen === 'closed') {
+        // The TV opened a new room. Back to the join screen to type the new code.
+        screenRef.current = null;
+        setNote(`Room ${code} closed. Type the new code from the TV.`);
+        dropCodeParam();
+        setCode('');
+        setJoined(false);
+        setScreen(null);
+        setLost(false);
+        return;
+      }
+      screenRef.current = payload;
       setLost(false);
       setScreen(payload);
     });
@@ -124,6 +147,8 @@ export default function PartyPlay() {
     const hello = () => phone.send('hello', { name: nameRef.current, look: lookRef.current });
     const first = window.setTimeout(hello, 600);
     const timer = window.setInterval(() => {
+      // Once the host takes you out, stop knocking, or you'd be let straight back in.
+      if (screenRef.current?.screen === 'kicked') return;
       hello();
       if (Date.now() - lastHeard.current > 14000) setLost(true);
     }, 5000);
@@ -160,12 +185,22 @@ export default function PartyPlay() {
   const join = (e) => {
     e?.preventDefault();
     if (code.length !== 4 || !name.trim()) return;
+    setNote('');
     setJoined(true);
   };
   const leave = () => {
     send('bye');
     setJoined(false);
     setScreen(null);
+  };
+  // The room is gone (TV refreshed into a new code, or closed): clear the code so the new one can go in.
+  const changeRoom = () => {
+    send('bye');
+    setJoined(false);
+    setScreen(null);
+    setCode('');
+    setNote('');
+    dropCodeParam();
   };
 
   const googleSignIn = () => {
@@ -208,6 +243,7 @@ export default function PartyPlay() {
     return (
       <div className="lcp">
         <h1 className="lc-title lcp-title">Games Night</h1>
+        {note && <p className="lcp-note-closed">{note}</p>}
         <form className="lcp-join" onSubmit={join}>
           <label>Room code
             <input value={code} onChange={(e) => setCode(cleanCode(e.target.value))} placeholder="ABCD" autoCapitalize="characters" autoComplete="off" inputMode="text" maxLength={4} className="lcp-code" />
@@ -239,7 +275,7 @@ export default function PartyPlay() {
         <div className="lcp-wait">
           <Person look={look} pose={lost ? 'scared' : 'wave'} />
           <p>{lost ? `Can't reach room ${code}. Is the TV page still open? Double-check the code.` : `Joining room ${code}…`}</p>
-          {lost && <button type="button" className="lc-btn" onClick={leave}>Change room</button>}
+          {lost && <button type="button" className="lc-btn" onClick={changeRoom}>Enter a new code</button>}
         </div>
       </div>
     );
