@@ -7,6 +7,7 @@ import { handle, type Ctx } from '../_shared/handlers.ts';
 import { getInitialPlayerPool } from '../_shared/playerData.ts';
 import { dndRoute } from '../_shared/dnd.ts';
 import { createNarrator } from './narrator.ts';
+import { createTurn } from './turn.ts';
 import {
   createBroadcaster, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
 } from './supabaseAdapters.ts';
@@ -29,6 +30,7 @@ const dnd = {
     anthropic: Deno.env.get('ANTHROPIC_API_KEY'),
     model: Deno.env.get('DND_NARRATOR_MODEL'),
   }),
+  iceServers: createTurn(Deno.env.get('CLOUDFLARE_TURN_KEY_ID'), Deno.env.get('CLOUDFLARE_TURN_KEY_API_TOKEN')),
 };
 
 async function fetchJson(url: string): Promise<unknown> {

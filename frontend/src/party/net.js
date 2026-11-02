@@ -18,6 +18,8 @@ export const newCid = () => `c${Math.random().toString(36).slice(2, 10)}${Date.n
 // same browser talk over a BroadcastChannel instead.
 const localMode = () => typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'
   && (!SUPABASE_URL || new URLSearchParams(window.location.search).has('local'));
+/** 'local' when tabs talk over BroadcastChannel (no Supabase), otherwise 'online'. Shown when a phone can't connect. */
+export const netMode = () => (localMode() ? 'local' : 'online');
 const localBus = (topic, onMessage) => {
   const bus = new BroadcastChannel(`lc-local:${topic}`);
   if (onMessage) bus.onmessage = ({ data }) => onMessage(data.event, data.payload);
@@ -52,7 +54,7 @@ export function openHost(code, onMessage, onStatus, prefix = 'lc') {
   ['hello', 'look', 'act', 'pick', 'start', 'ready', 'skip', 'again', 'bye'].forEach((event) => {
     channel.on('broadcast', { event }, ({ payload }) => live && payload?.cid && onMessage(event, payload));
   });
-  channel.subscribe((status) => live && onStatus?.(status));
+  channel.subscribe((status, err) => live && onStatus?.(status, err));
   return {
     sendTo(cid, payload) {
       return post(`${prefix}:${code}:p:${cid}`, 'state', payload);
@@ -74,11 +76,34 @@ export function openPhone(code, cid, onState, onStatus, prefix = 'lc') {
   const channel = supabase.channel(`${prefix}:${code}:p:${cid}`, { config: { broadcast: { self: false } } });
   let live = true;
   channel.on('broadcast', { event: 'state' }, ({ payload }) => live && onState(payload));
-  channel.subscribe((status) => live && onStatus?.(status));
+  channel.subscribe((status, err) => live && onStatus?.(status, err));
   return {
     send(event, payload = {}) {
       return post(`${prefix}:${code}:tv`, event, { ...payload, cid });
     },
+    close() {
+      live = false;
+      supabase.removeChannel(channel);
+    },
+  };
+}
+
+/**
+ * Voice-chat signaling between any two devices in a room: each device listens on <prefix>:<CODE>:v:<cid>,
+ * and others post WebRTC offers, answers and ICE candidates to it. Returns { send(toCid, payload), close() }.
+ */
+export function openSignal(code, cid, onSignal, prefix = 'lc') {
+  const topic = (id) => `${prefix}:${code}:v:${id}`;
+  if (localMode()) {
+    const bus = localBus(topic(cid), (event, payload) => event === 'rtc' && onSignal(payload));
+    return { send: (to, payload) => localPost(topic(to), 'rtc', { ...payload, from: cid }), close: () => bus.close() };
+  }
+  const channel = supabase.channel(topic(cid), { config: { broadcast: { self: false } } });
+  let live = true;
+  channel.on('broadcast', { event: 'rtc' }, ({ payload }) => live && payload?.from && onSignal(payload));
+  channel.subscribe();
+  return {
+    send: (to, payload) => post(topic(to), 'rtc', { ...payload, from: cid }),
     close() {
       live = false;
       supabase.removeChannel(channel);

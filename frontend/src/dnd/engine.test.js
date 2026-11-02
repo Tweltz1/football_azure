@@ -1,5 +1,6 @@
 import {
-  act, createGame, current, dmAct, dmView, endTurn, interact, move, movesFor, pcFor, playerView, request, rollCheck, sessionRecord, startCombat, tick,
+  act, aiContext, createGame, current, dmAct, dmView, endTurn, hear, interact, move, movesFor, pcFor, playerView, request, rollCheck, sessionRecord,
+  startCombat, tick, watchView,
 } from './engine';
 import { newCharacter, CLASS_IDS, RACE_IDS } from './rules';
 import { makeRng } from './rng';
@@ -101,4 +102,18 @@ test('a long random session never breaks the rules engine', () => {
       expect(t.hp).toBeLessThanOrEqual(t.maxHp);
     });
   }
+});
+
+test('table talk is kept for the narrator, the recap and the watch screen', () => {
+  const eng = { aiContext, hear, sessionRecord, watchView };
+  const g = createGame({ seed: 77, players: [{ cid: 'a', sheet: newCharacter({ name: 'Pip', classId: 'rogue' }) }], now: 0 });
+  eng.hear(g, 'Pip', '  I sneak   toward the door  ', 10);
+  eng.hear(g, 'Pip', '', 11);
+  expect(g.transcript).toEqual([{ who: 'Pip', text: 'I sneak toward the door', at: 10 }]);
+  expect(eng.aiContext(g).talk).toEqual(['Pip: I sneak toward the door']);
+  expect(eng.sessionRecord(g, 60000).transcript).toEqual(['Pip: I sneak toward the door']);
+  const w = eng.watchView(g);
+  expect(w.map.w).toBe(g.map.w);
+  expect(w.tokens.find((t) => t.cid === 'a').classId).toBe('rogue');
+  expect(w.tokens.some((t) => t.side === 'foe' && g.tokens.find((x) => x.id === t.id).hidden)).toBe(false);
 });
