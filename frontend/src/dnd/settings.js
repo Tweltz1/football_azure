@@ -122,6 +122,7 @@ export const PROPS = {
   snowbank: { diff: true, tall: 0.3, label: 'Snow' },
   chest: { block: true, tall: 0.45, label: 'Chest', loot: true },
   exit: { tall: 0, label: 'Way onward', exit: true },
+  npc: { block: true, tall: 1.2, label: 'Villager', npc: true },
 };
 
 export const LOOT = [

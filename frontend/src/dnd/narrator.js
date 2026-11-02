@@ -34,7 +34,7 @@ const SHARED = {
     'But that sound again', 'Deeper in, a door creaks open', 'A trail of fresh tracks leads on', 'The way onward is clear', 'Something deeper in heard all of that',
     'A cold draft points the way', 'One of them dropped a crumpled note', 'Far off, a bell starts ringing',
   ],
-  shine: ['It glints in the torchlight.', 'Finders keepers.', 'Somebody hid this for a reason.', 'Not bad at all.', 'Worth the trip.', 'It feels warm to the touch.', 'There is a name scratched on it.'],
+  shine: ['It glints in the torchlight.', 'Finders keepers.', 'Somebody hid this for a reason.', 'Not bad at all.', 'Worth the trip.', 'It feels warm to the touch.'],
   danger: ['Someone get to them, fast!', 'Their breathing is shallow.', 'The enemies sense weakness.', 'This is bad.', 'Heal them, now!', 'Not like this!'],
   cheer: ['Bards will sing about that one.', 'That one had their name on it.', 'Even the monsters wince.', 'What a hit!', 'Textbook.', 'The whole table felt that.', 'Someone write that down.'],
   doorway: ['A cold draft comes from beyond.', 'Footprints lead that way. Fresh ones.', 'Whatever is ahead, there is no going back.', 'Light flickers on the other side.', 'Someone left it open. Recently.', 'The next part of the journey waits.'],
@@ -123,9 +123,9 @@ const CLASS_FLAVOR = {
 const TEMPLATES = {
   start: [
     '#weatherOpen##contact# finds you. On behalf of #patron#, they need you to #goal#. The trail leads to #settingName#. #startHook#',
-    '#contact# slams a coin purse on the table. "#patronCap# is desperate. Someone has to #goal#." #startHook#',
+    '#contact# slams a coin purse on the table. "#patronCap# can’t wait any longer. Someone has to #goal#." #startHook#',
     '#weatherOpen#a message arrives from #patron#: #goal#, and quickly. The first stop is #settingName#. #startHook#',
-    'Everyone in town is talking about it. #patronCap# is offering #reward# to anyone who can #goal#. #contact# is waiting for you. #startHook#',
+    'Everyone in town is talking about it. #patronCap# will give #reward# to anyone who can #goal#. #contact# is waiting for you. #startHook#',
   ],
   startHook: ['Nobody else would take the job.', 'The pay is good. The odds are not.', 'They whisper one name before leaving: #villainName#.', '"Don’t trust anyone," they add.', 'They look over their shoulder the whole time.', 'The reward: #reward#.'],
   scene: [

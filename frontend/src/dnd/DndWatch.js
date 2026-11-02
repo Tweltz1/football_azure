@@ -60,6 +60,7 @@ export default function DndWatch() {
     map,
     tokens: w.tokens.map((t) => ({ ...t, sheet: t.classId ? { classId: t.classId } : null })),
     combat: w.combat,
+    npcs: w.npcs || [],
     walking: [],
   } : null), [w, map]);
 

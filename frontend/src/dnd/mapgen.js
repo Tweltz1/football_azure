@@ -10,6 +10,7 @@ import { makeRng, tools } from './rng';
 import { settingFor, PROPS } from './settings';
 import { MONSTERS } from './rules';
 import { isOpen, reachable, tileAt } from './movement';
+import { NPC_ROLES } from './npcs';
 
 const T = (t = 'wall', e = 0, p = null) => ({ t, e, p });
 
@@ -396,7 +397,24 @@ export const generateMap = (settingId, seed, options = {}) => {
     spawns.push({ monster: id, x: spot.x, y: spot.y });
   });
 
-  return { ...m, start, exit: { x: exit.x, y: exit.y }, chests, spawns, name: s.name };
+  // Friendly folk: one or two, between the start and the middle of the map, never cutting off a path.
+  const roles = r.shuffle(NPC_ROLES[s.id] || ['Traveler']);
+  const npcs = [];
+  const npcSpots = r.shuffle(regionFrom(m, start[0]).filter((p) => p.cost >= 10 && p.cost <= 60 && !used.has(`${p.x},${p.y}`) && !tileAt(m, p.x, p.y).p && tileAt(m, p.x, p.y).t !== 'water'));
+  const want = r.int(1, 2);
+  for (let i = 0; i < npcSpots.length && npcs.length < want; i += 1) {
+    const spot = npcSpots[i];
+    const before = regionFrom(m, start[0]).length;
+    set(m, spot.x, spot.y, { p: 'npc' });
+    if (regionFrom(m, start[0]).length < before - 1) {
+      set(m, spot.x, spot.y, { p: null });
+    } else {
+      used.add(`${spot.x},${spot.y}`);
+      npcs.push({ x: spot.x, y: spot.y, role: roles[npcs.length % roles.length] });
+    }
+  }
+
+  return { ...m, start, exit: { x: exit.x, y: exit.y }, chests, spawns, npcs, name: s.name };
 };
 
 /** What a prop is called, for the narrator and the phones. */

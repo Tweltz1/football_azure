@@ -271,3 +271,37 @@
 #lc-root .dq-watch-join form { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.8em; }
 #lc-root .dq-watch-code { width: 7em; padding: 0.3em; font: 900 2em var(--dq-title); letter-spacing: 0.2em; text-align: center; text-transform: uppercase; border-radius: 0.4em; border: 3px solid #6b4a2a; }
 #lc-root .dq-watch-lost { position: absolute; top: 1em; right: 1.2em; padding: 0.4em 0.9em; color: #fff; background: #7a2433; border-radius: 999px; z-index: 8; }
+
+/* ---- TV or watch screen on a phone held upright: board across the full width, panels below it ---- */
+@media (orientation: portrait) {
+  #lc-root .dq-tv { --u: min(2.6vw, 1.4vh); }
+  #lc-root .dq-game .dq-board { left: 0; top: 14%; width: 100%; height: 45%; }
+  #lc-root .dq-game .dq-corner { left: 0.8em; right: 0.8em; top: 0.6em; justify-content: space-between; }
+  #lc-root .dq-game .dq-quest { top: 4.6em; left: 0.8em; max-width: calc(100% - 1.6em); font-size: 0.9em; }
+  #lc-root .dq-game .dq-turn { top: 15%; font-size: 1.1em; }
+  #lc-root .dq-game .dq-side { top: 59%; left: 0.8em; right: 0.8em; width: auto; flex-direction: row; align-items: flex-start; }
+  #lc-root .dq-game .dq-side > * { flex: 1 1 0; min-width: 0; }
+  #lc-root .dq-game .dq-rolls { top: auto; bottom: 30%; width: 45%; }
+  #lc-root .dq-game .dq-narration { width: calc(100% - 1.6em); bottom: 0.8em; padding: 0.6em 0.9em; }
+  #lc-root .dq-game .dq-voice-game { top: 13%; max-width: 90%; }
+  #lc-root .dq-complete { inset: 20% 6% auto; }
+}
+
+/* ---- Figures and scene life ---- */
+#lc-root .dq-idle { animation: dq-idle 2.2s ease-in-out infinite; transform-origin: 0 0; }
+@keyframes dq-idle { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.02, 0.975); } }
+#lc-root .dqp-tasks { list-style: none; margin: 8px 0 0; padding: 8px 10px; background: rgba(244, 230, 196, 0.08); border: 1px solid rgba(231, 185, 74, 0.35); border-radius: 10px; font-size: 14px; }
+#lc-root .dqp-tasks li { padding: 2px 0; }
+#lc-root .dqp-tasks li.is-done { opacity: 0.6; text-decoration: line-through; }
+#lc-root .dq-npc .dq-name { fill: #f4e6c4; }
+#lc-root .dq-npc-role { font: 600 12px var(--lc-font); fill: #e7b94a; paint-order: stroke; stroke: #16122b; stroke-width: 3px; }
+#lc-root .dq-weather circle { transform-box: fill-box; }
+#lc-root .dq-weather-rise circle { animation: dq-rise linear infinite; }
+#lc-root .dq-weather-drift circle { animation: dq-drift ease-in-out infinite alternate; }
+#lc-root .dq-weather-fall circle { animation: dq-fall linear infinite; }
+#lc-root .dq-weather-mist circle { animation: dq-mist ease-in-out infinite alternate; }
+@keyframes dq-rise { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(18px, -160px); opacity: 0; } }
+@keyframes dq-drift { 0% { transform: translate(0, 0); opacity: 0.2; } 50% { opacity: 1; } 100% { transform: translate(40px, -30px); opacity: 0.3; } }
+@keyframes dq-fall { 0% { transform: translate(0, -260px); opacity: 0; } 10% { opacity: 0.9; } 100% { transform: translate(-60px, 260px); opacity: 0; } }
+@keyframes dq-mist { 0% { transform: translate(-30px, 0) scale(1.6, 0.6); opacity: 0.2; } 100% { transform: translate(40px, 6px) scale(2.4, 0.7); opacity: 0.7; } }
+@media (prefers-reduced-motion: reduce) { #lc-root .dq-weather circle, #lc-root .dq-idle { animation: none; } }

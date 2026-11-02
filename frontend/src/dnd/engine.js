@@ -12,10 +12,16 @@ import {
   adjacent, isOpen, lineOfSight, nearestStops, pathTo, reachable, squaresBetween, tileAt,
 } from './movement';
 import { makeQuest } from './story';
+import { makeNpcs, npcLine, taskLabel, villainName } from './npcs';
 
 const LOG_MAX = 120;
 const FOE_TURN_MS = 1400;
 const MOVE_STEP_MS = 140;
+/** Bosses who can be the quest's villain in person; the others become the villain's pet or servant. */
+const PEOPLE_BOSSES = new Set(['banditCaptain', 'cultFanatic', 'hag', 'wight']);
+const cap = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+/** A hero standing at the way onward takes the party to the next scene after this long, if the DM hasn't already. */
+export const AUTO_EXIT_MS = 9000;
 
 const say = (g, text, kind = 'info', now = g.clock) => {
   g.log.push({ id: (g.logId += 1), at: now, text, kind });
@@ -195,6 +201,15 @@ export const enterScene = (g, index, now = g.clock, first = false, settingId = n
   });
   // Monsters lie in wait until someone spots them or they spot someone.
   g.tokens.forEach((t) => { if (t.side === 'foe') t.hidden = true; });
+  // The quest's villain is the last scene's boss.
+  if (lastScene) {
+    const boss = g.tokens.find((t) => t.side === 'foe' && t.boss);
+    if (boss && g.quest?.villain) {
+      const who = villainName(g.quest.villain);
+      boss.name = PEOPLE_BOSSES.has(boss.monster) ? cap(who) : `${cap(who)}’s ${MONSTERS[boss.monster].name}`;
+    }
+  }
+  g.npcs = makeNpcs(subSeed(g.map.seed, 'npcs'), g.map.npcs || [], { monsters: g.map.spawns.map((sp) => sp.monster), chests: g.map.chests.length, quest: g.quest });
   say(g, `Scene ${index + 1}: ${settingFor(setting).name}.`, 'scene', now);
   if (!first) cue(g, lastScene ? 'boss' : 'scene', settingFor(setting).name, now);
   // Monsters are spotted once someone moves, so the party gets a moment to look around first.
@@ -282,6 +297,7 @@ export const endCombat = (g, now = g.clock, reason = '') => {
   if (g.xpPool > 0) awardXp(g, g.xpPool, now, 'for the fight');
   g.xpPool = 0;
   say(g, reason || 'The fight is over.', 'combat', now);
+  if (g.atExit) g.exitAt = now;
 };
 
 const currentId = (g) => (g.combat ? g.combat.order[g.combat.turn] : null);
@@ -364,6 +380,7 @@ const damage = (g, target, amount, now, source = '') => {
       const xp = MONSTERS[target.monster].xp;
       g.xpPool += xp;
       say(g, `${target.name} is defeated! (+${xp} XP)`, 'combat', now);
+      checkTasks(g, now);
       if (g.combat) {
         const index = g.combat.order.indexOf(target.id);
         if (index >= 0) {
@@ -457,7 +474,7 @@ export const movesFor = (g, t) => {
     if (currentId(g) !== t.id) return { reach: new Map(), left: 0 };
     left = t.speed * (g.combat.dashed ? 2 : 1) - g.combat.moved;
   } else {
-    left = t.speed * 2; // exploring: no turns, move at a steady pace
+    left = t.speed; // exploring: no turns, but each move is one normal move
   }
   return { reach: reachable(g.map, t, Math.max(0, left), occupantFor(g, t)), left };
 };
@@ -476,7 +493,10 @@ export const move = (g, t, to, now = g.clock) => {
   const tile = tileAt(g.map, t.x, t.y);
   if (tile?.p === 'exit' && !g.combat) {
     say(g, `${t.name} reaches the way onward.`, 'scene', now);
-    if (!g.atExit) cue(g, 'exit', '', now);
+    if (!g.atExit) {
+      cue(g, 'exit', '', now);
+      g.exitAt = now;
+    }
     g.atExit = true;
   }
   revealFoes(g, now);
@@ -645,6 +665,60 @@ export const interact = (g, t, now = g.clock) => {
   say(g, `${t.name} opens the chest: ${gold} gold and ${item}.`, 'loot', now);
   showRoll(g, { who: t.name, label: item, total: gold, ok: true, loot: true }, now);
   cue(g, 'loot', `${t.name} finds ${item} and ${gold} gold`, now);
+  const owner = (g.npcs || []).find((n) => n.talked && !n.done && n.task.kind === 'fetch');
+  if (owner) {
+    t.sheet.inventory.push(cap(owner.task.item));
+    owner.found = t.name;
+    say(g, `${t.name} also finds ${owner.name}’s ${owner.task.item}!`, 'loot', now);
+    checkTasks(g, now);
+  }
+  return null;
+};
+
+
+/** The NPC standing next to this hero, if any. */
+const npcNear = (g, t) => (g.npcs || []).find((n) => adjacent(n, t));
+
+/** Side tasks: done once the monsters are gone or the keepsake is found. Pays out right away. */
+const checkTasks = (g, now) => {
+  (g.npcs || []).forEach((n) => {
+    if (!n.talked || n.done) return;
+    const { task } = n;
+    let done = false;
+    if (task.kind === 'slay') done = !foes(g).some((f) => f.monster === task.monster);
+    if (task.kind === 'fetch') done = Boolean(n.found);
+    if (!done) return;
+    n.done = true;
+    const pcs = party(g).filter((p) => !p.dead);
+    const gold = 10 * partyLevel(g) * Math.max(1, task.count || 2);
+    pcs.forEach((p) => { p.sheet.gold += Math.ceil(gold / Math.max(1, pcs.length)); });
+    awardXp(g, 50 * Math.max(1, pcs.length) * partyLevel(g), now, `for helping ${n.name}`);
+    if (task.kind === 'fetch') {
+      const holder = pcs.find((p) => p.sheet.inventory.includes(cap(task.item)));
+      if (holder) holder.sheet.inventory.splice(holder.sheet.inventory.indexOf(cap(task.item)), 1);
+    }
+    say(g, `Side task done: ${taskLabel(n)}. ${n.name} pays ${gold} gold.`, 'level', now);
+  });
+};
+
+/** Talk to the NPC next to you: a clue, a side task, or thanks. */
+export const talk = (g, t, now = g.clock) => {
+  if (!t || !conscious(t)) return 'You are down.';
+  const n = npcNear(g, t);
+  if (!n) return 'Nobody to talk to here.';
+  const first = !n.talked;
+  n.talked = true;
+  if (first && n.task.kind === 'fetch' && !g.map.chests.some((c) => tileAt(g.map, c.x, c.y).p === 'chest')) {
+    n.task = { kind: 'clue', line: 'Never mind. Looks like someone already emptied every chest around here. Good luck out there.' };
+  }
+  if (first && n.task.kind === 'slay') n.task.count = foes(g).filter((f) => f.monster === n.task.monster).length || n.task.count;
+  checkTasks(g, now);
+  const text = `${n.name} the ${n.role.toLowerCase()}: “${npcLine(n)}”`;
+  if (n.done) n.rewarded = true;
+  g.narrationId = (g.narrationId || 0) + 1;
+  g.narration = { text, by: 'npc', at: now, id: g.narrationId };
+  say(g, text, 'narrate', now);
+  if (first && n.task.kind === 'clue') awardXp(g, 10 * Math.max(1, party(g).length), now, `for listening to ${n.name}`);
   return null;
 };
 
@@ -902,7 +976,15 @@ const foeTurn = (g, f, now) => {
 export const tick = (g, now) => {
   g.clock = now;
   g.walking = g.walking.filter((w) => now - w.at < w.path.length * MOVE_STEP_MS + 200);
-  if (!g.combat) return;
+  if (!g.combat) {
+    // Nobody needs the DM to move on: standing at the way onward is enough.
+    if (g.atExit && !g.complete && now - (g.exitAt || 0) > AUTO_EXIT_MS) {
+      const lastScene = g.sceneIndex >= g.sceneSettings.length - 1;
+      if (!lastScene) dmAct(g, { type: 'nextScene' }, now);
+      else if (!foes(g).length) completeQuest(g, now);
+    }
+    return;
+  }
   const t = current(g);
   if (t && t.side === 'foe' && now >= g.nextFoeAt && !g.paused) {
     if (!alive(t) || t.hidden) nextTurn(g, now);
@@ -940,7 +1022,7 @@ export const packMap = (map) => ({
 
 const tokenView = (t) => ({
   id: t.id, side: t.side, name: t.name, x: t.x, y: t.y, hp: t.hp, maxHp: t.maxHp, ac: t.ac, cid: t.cid || null,
-  glyph: t.glyph || null, boss: Boolean(t.boss), dead: Boolean(t.dead), down: t.hp <= 0, look: t.look || null,
+  glyph: t.glyph || null, monster: t.monster || null, color: t.color || null, boss: Boolean(t.boss), dead: Boolean(t.dead), down: t.hp <= 0, look: t.look || null,
   cls: t.sheet ? t.sheet.classId : null,
 });
 
@@ -962,6 +1044,7 @@ export const aiContext = (g) => ({
   round: g.combat?.round || null,
   foes: foes(g).filter((f) => !f.hidden).map((f) => ({ name: f.name, hp: f.hp, maxHp: f.maxHp })),
   hiddenFoes: foes(g).filter((f) => f.hidden).length,
+  npcs: (g.npcs || []).map((n) => `${n.name} the ${n.role.toLowerCase()}${n.talked ? `: ${npcLine(n)}` : ''}${n.done ? ' (helped)' : ''}`),
   recent: g.log.slice(-18).map((l) => l.text),
   requests: g.requests.slice(-4).map((r) => `${r.who}: ${r.text}`),
   talk: (g.transcript || []).slice(-12).map((l) => `${l.who}: ${l.text}`),
@@ -977,6 +1060,7 @@ export const watchView = (g) => {
     tokens: g.tokens.filter((t) => alive(t) && !t.gone && !(t.side === 'foe' && t.hidden)).map((t) => ({
       ...tokenView(t), color: t.color || null, classId: t.sheet?.classId || null,
     })),
+    npcs: (g.npcs || []).map(({ id, x, y, name, role, look, talked, done }) => ({ id, x, y, name, role, look, talked, done })),
     combat: g.combat ? { order: g.combat.order, turn: g.combat.turn, round: g.combat.round } : null,
     turnName: turn ? turn.name : null,
     turnFoe: turn ? turn.side === 'foe' : false,
@@ -1007,6 +1091,10 @@ export const playerView = (g, cid) => {
     round: g.combat?.round || 0,
     used: g.combat ? { action: g.combat.action, bonus: g.combat.bonus, moved: g.combat.moved } : null,
     check: g.check && !g.check.done && (!g.check.cid || g.check.cid === cid) ? { skill: g.check.skill, rolled: g.check.results[cid] || null } : null,
+    atExit: Boolean(g.atExit),
+    npcNear: (() => { const n = npcNear(g, t); return n ? { name: n.name, role: n.role } : null; })(),
+    tasks: (g.npcs || []).filter((n) => n.talked && taskLabel(n)).map((n) => ({ text: taskLabel(n), done: n.done })),
+    lastScene: g.sceneIndex >= g.sceneSettings.length - 1,
     chestNear: g.map.chests.some((c) => adjacent(c, t) && tileAt(g.map, c.x, c.y).p === 'chest'),
     narration: g.narration?.text || null,
     quest: { title: g.quest.title, setting: settingFor(g.map.setting).name, scene: g.sceneIndex + 1, scenes: g.sceneSettings.length },

@@ -7,7 +7,7 @@ import { isMuted, setMuted, sfx, unlockSound } from '../party/sound';
 import Board from './Board';
 import { useVoice } from './voice';
 import {
-  act, addPlayer, aiContext, createGame, current, dmAct, dmView, drinkPotion, endTurn, interact, move, movesFor, newSeed, pcFor,
+  act, addPlayer, aiContext, createGame, current, dmAct, dmView, drinkPotion, endTurn, interact, move, movesFor, newSeed, pcFor, talk,
   hear, playerView, removePlayer, request, rollCheck, tick, watchView,
 } from './engine';
 import { CLASSES, describe, newCharacter, normalizeCharacter, RACES } from './rules';
@@ -287,6 +287,7 @@ export default function DndHost() {
         case 'action': error = act(game, t, { action: String(msg.action || ''), target: msg.target ? String(msg.target) : null }, now); break;
         case 'end': error = endTurn(game, t, now); break;
         case 'interact': error = interact(game, t, now); break;
+        case 'talk': error = talk(game, t, now); break;
         case 'potion': error = drinkPotion(game, t, now); break;
         case 'say': error = request(game, t, msg.text, now); break;
         case 'check': error = rollCheck(game, t, now); break;

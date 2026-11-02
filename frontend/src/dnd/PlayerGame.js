@@ -94,11 +94,21 @@ export default function PlayerGame({ view, send, header, toast }) {
           {chosen ? (
             <div className="dqp-hint is-target">Tap a glowing target for <b>{chosen.name}</b> · <button type="button" className="lcp-link" onClick={() => setChosen(null)}>cancel</button></div>
           ) : (
-            <div className="dqp-hint">{canAct && view.reach.length ? 'Tap a lit square to move there.' : view.mode === 'combat' ? 'Wait for your turn to move.' : 'Look at the TV.'}</div>
+            <div className="dqp-hint">{view.mode !== 'combat' && view.atExit && !view.complete
+              ? (view.lastScene ? 'Defeat every foe here to finish the quest.' : 'Someone reached the 🚪 way onward. Moving to the next scene…')
+              : canAct && view.reach.length
+                ? (view.mode === 'combat' ? 'Tap a lit square to move there.' : view.lastScene ? 'Find the boss. Tap a lit square to move.' : 'Find the 🚪 way onward. Tap a lit square to move.')
+                : view.mode === 'combat' ? 'Wait for your turn to move.' : 'Look at the TV.'}</div>
           )}
           <MiniMap packed={view.map} tokens={view.tokens} reach={chosen ? [] : view.reach} marks={marks} onTap={onTap} />
+          {view.tasks && view.tasks.length > 0 && (
+            <ul className="dqp-tasks">
+              {view.tasks.map((task) => <li key={task.text} className={task.done ? 'is-done' : ''}>{task.done ? '✅' : '📌'} {task.text}</li>)}
+            </ul>
+          )}
           <div className="dqp-quick">
             {view.mode === 'combat' && view.myTurn && <button type="button" className="lc-btn" onClick={() => send('act', { type: 'end' })}>✅ End turn</button>}
+            {view.npcNear && <button type="button" className="lc-btn" onClick={() => send('act', { type: 'talk' })}>💬 Talk to {view.npcNear.name}</button>}
             {view.chestNear && <button type="button" className="lc-btn lc-btn-ghost" onClick={() => send('act', { type: 'interact' })}>🧰 Open chest</button>}
             {sheet.inventory.includes('Potion of Healing') && <button type="button" className="lc-btn lc-btn-ghost" onClick={() => send('act', { type: 'potion' })}>🧪 Drink potion</button>}
           </div>
