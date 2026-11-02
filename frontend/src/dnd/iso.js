@@ -2,6 +2,7 @@
 // One square is a 2:1 diamond. Ground level raises a square by LEVEL px; walls stand WALL px tall.
 
 import { PROPS } from './settings';
+import { PROP_DRAW } from './props';
 
 export const TW = 88;
 export const TH = 44;
@@ -142,8 +143,10 @@ export const groundTile = (tile, x, y, pal, sid = '') => {
 };
 
 /** A wall square: a tall block standing on the same base as the ground. */
-export const wallTile = (tile, x, y, pal, sid = '') => {
+export const wallTile = (tile, x, y, pal, sid = '', low = false) => {
   const { sx, sy } = iso(x, y, tile.e);
+  // Walls on the near side of a room are cut down, so they never hide the people inside.
+  if (low) return box(sx, sy + BASE, 1, 16 + BASE, shade(pal.wallTop, -0.08), pal.wallLeft, pal.wallRight);
   let out = box(sx, sy + BASE, 1, WALL + BASE, pal.wallTop, pal.wallLeft, pal.wallRight);
   const y0 = sy + BASE;
   const hw = TW / 2;
@@ -217,5 +220,8 @@ const PROP_ART = {
   exit: (x, y) => `<ellipse cx="${x}" cy="${y}" rx="30" ry="15" fill="#7ad7ff" opacity="0.35" class="dq-glow"/><ellipse cx="${x}" cy="${y}" rx="18" ry="9" fill="#e3f6ff" opacity="0.7" class="dq-glow"/><path d="M${x} ${y - 48} l10 14 h-6 v14 h-8 v-14 h-6 z" fill="#ffe066" stroke="#16122b" stroke-width="2" class="dq-hop"/>`,
 };
 
-export const propArt = (p, x, y) => (PROP_ART[p] ? PROP_ART[p](x, y) : '');
+export const propArt = (p, x, y) => {
+  const draw = PROP_DRAW[p] || PROP_ART[p];
+  return draw ? draw(x, y) : '';
+};
 export const propHeight = (p) => (PROPS[p]?.tall || 0) * 50;

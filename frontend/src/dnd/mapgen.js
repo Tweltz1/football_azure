@@ -26,7 +26,8 @@ const set = (m, x, y, patch) => {
 const roomsMap = (m, r, s) => {
   const rooms = [];
   const tries = 80;
-  for (let i = 0; i < tries && rooms.length < (s.grand ? 6 : 7); i += 1) {
+  const want = Math.round((m.w * m.h) / (s.grand ? 62 : 52));
+  for (let i = 0; i < tries && rooms.length < want; i += 1) {
     const rw = r.int(s.grand ? 4 : 3, s.grand ? 7 : 6);
     const rh = r.int(3, s.grand ? 6 : 5);
     const rx = r.int(1, m.w - rw - 1);
@@ -266,7 +267,7 @@ const tavernMap = (m, r) => {
   const hearthX = r.int(x0 + 2, barX - 3);
   set(m, hearthX, 1, { p: 'hearth' });
   // Tables with stools around them.
-  for (let i = 0; i < 7; i += 1) {
+  for (let i = 0; i < 14; i += 1) {
     const tx = r.int(x0 + 1, barX - 2);
     const ty = r.int(2, m.h - 3);
     const area = [-1, 0, 1].flatMap((dy) => [-1, 0, 1].map((dx) => tileAt(m, tx + dx, ty + dy)));
@@ -280,6 +281,48 @@ const tavernMap = (m, r) => {
   set(m, x0 + 2, backY, { t: 'door', p: null });
   set(m, x0, m.h - 2, { p: 'crate' });
   return { x: 0, y: doorY };
+};
+
+// ---- Villages: a few homes and their clutter on the open maps ---------------------------------------------
+
+const VILLAGE_KITS = {
+  // Forest road: cottages by the road, a well, a market stall, fences and a lamp post.
+  village: { homes: ['cottage', 'cottage', 'cottage'], extras: ['well', 'stall', 'lamppost', 'haybale', 'cart', 'fence', 'fence', 'fence'] },
+  // Swamp: two fishing shacks with lanterns and nets.
+  hamlet: { homes: ['cottage', 'cottage'], extras: ['lamppost', 'fence', 'fence', 'haybale', 'campfire'] },
+  // Mountain pass: a travelers' camp.
+  camp: { homes: ['tent', 'tent', 'tent'], extras: ['campfire', 'cart', 'haybale', 'signpost'] },
+};
+
+/** Stamps a small settlement on clear ground near the middle of the map. Returns its center, or null. */
+const placeVillage = (m, r, kind) => {
+  const kit = VILLAGE_KITS[kind];
+  if (!kit) return null;
+  const clear = (x, y) => {
+    const t = tileAt(m, x, y);
+    return t && (t.t === 'floor' || t.t === 'diff') && t.t !== 'road';
+  };
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const cx = r.int(Math.floor(m.w * 0.3), Math.floor(m.w * 0.7));
+    const cy = r.int(2, m.h - 3);
+    const box = [];
+    for (let y = cy - 2; y <= cy + 2; y += 1) for (let x = cx - 3; x <= cx + 3; x += 1) box.push([x, y]);
+    const ok = box.filter(([x, y]) => clear(x, y)).length;
+    if (ok < box.length * 0.75) continue;
+    const e = tileAt(m, cx, cy).e || 0;
+    // Level ground, cleared of trees and rubble.
+    box.forEach(([x, y]) => { if (clear(x, y)) set(m, x, y, { t: 'floor', e, p: null }); });
+    // A path through the middle.
+    for (let x = cx - 3; x <= cx + 3; x += 1) if (clear(x, cy)) set(m, x, cy, { t: 'road' });
+    // Homes on the two sides of the path, then the extras on free squares.
+    const homeSpots = r.shuffle([[cx - 2, cy - 2], [cx + 1, cy - 2], [cx - 1, cy + 2], [cx + 2, cy + 2], [cx + 3, cy - 1]]);
+    kit.homes.forEach((p, i) => { const [x, y] = homeSpots[i]; if (clear(x, y)) set(m, x, y, { p }); });
+    const free = r.shuffle(box.filter(([x, y]) => y !== cy && clear(x, y) && !tileAt(m, x, y).p
+      && Math.abs(x - cx) + Math.abs(y - cy) > 1));
+    kit.extras.forEach((p, i) => { if (free[i]) set(m, free[i][0], free[i][1], { p }); });
+    return { x: cx, y: cy };
+  }
+  return null;
 };
 
 // ---- Putting it together --------------------------------------------------------------------------------
@@ -338,6 +381,7 @@ export const generateMap = (settingId, seed, options = {}) => {
   const r = tools(makeRng(seed));
   const m = { w: s.w, h: s.h, tiles: blank(s.w, s.h), setting: s.id, seed };
   const hint = GENERATORS[s.gen](m, r, s);
+  const village = s.village ? placeVillage(m, r, s.village) : null;
 
   // Find the main connected area.
   let open = openSquares(m);
@@ -400,10 +444,14 @@ export const generateMap = (settingId, seed, options = {}) => {
   // Friendly folk: one or two, between the start and the middle of the map, never cutting off a path.
   const roles = r.shuffle(NPC_ROLES[s.id] || ['Traveler']);
   const npcs = [];
-  const npcSpots = r.shuffle(regionFrom(m, start[0]).filter((p) => p.cost >= 10 && p.cost <= 60 && !used.has(`${p.x},${p.y}`) && !tileAt(m, p.x, p.y).p && tileAt(m, p.x, p.y).t !== 'water'));
-  const want = r.int(1, 2);
+  const npcSpots = r.shuffle(regionFrom(m, start[0]).filter((p) => p.cost >= 10 && p.cost <= (village ? 200 : 60) && !used.has(`${p.x},${p.y}`) && !tileAt(m, p.x, p.y).p && tileAt(m, p.x, p.y).t !== 'water'));
+  const want = r.int(1, 2) + (village ? 2 : 0);
+  // Villagers stand around their village first.
+  if (village) npcSpots.sort((a, b) => (Math.abs(a.x - village.x) + Math.abs(a.y - village.y)) - (Math.abs(b.x - village.x) + Math.abs(b.y - village.y)));
   for (let i = 0; i < npcSpots.length && npcs.length < want; i += 1) {
     const spot = npcSpots[i];
+    // Keep folk a few squares apart, so their names don't pile up.
+    if (npcs.some((n) => Math.max(Math.abs(n.x - spot.x), Math.abs(n.y - spot.y)) < 3)) continue;
     const before = regionFrom(m, start[0]).length;
     set(m, spot.x, spot.y, { p: 'npc' });
     if (regionFrom(m, start[0]).length < before - 1) {
@@ -414,7 +462,7 @@ export const generateMap = (settingId, seed, options = {}) => {
     }
   }
 
-  return { ...m, start, exit: { x: exit.x, y: exit.y }, chests, spawns, npcs, name: s.name };
+  return { ...m, start, exit: { x: exit.x, y: exit.y }, chests, spawns, npcs, village, name: s.name };
 };
 
 /** What a prop is called, for the narrator and the phones. */

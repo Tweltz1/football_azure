@@ -305,3 +305,10 @@
 @keyframes dq-fall { 0% { transform: translate(0, -260px); opacity: 0; } 10% { opacity: 0.9; } 100% { transform: translate(-60px, 260px); opacity: 0; } }
 @keyframes dq-mist { 0% { transform: translate(-30px, 0) scale(1.6, 0.6); opacity: 0.2; } 100% { transform: translate(40px, 6px) scale(2.4, 0.7); opacity: 0.7; } }
 @media (prefers-reduced-motion: reduce) { #lc-root .dq-weather circle, #lc-root .dq-idle { animation: none; } }
+#lc-root .dq-sway { transform-box: fill-box; transform-origin: top center; animation: dq-sway 3s ease-in-out infinite alternate; }
+@keyframes dq-sway { from { transform: skewX(-3deg); } to { transform: skewX(3deg); } }
+#lc-root .dq-spin { transform-box: fill-box; transform-origin: center; animation: dq-spin 6s linear infinite; }
+@keyframes dq-spin { to { stroke-dashoffset: -44; } }
+#lc-root .dq-smoke { animation: dq-smoke 3s ease-in-out infinite; }
+@keyframes dq-smoke { 0% { opacity: 0; transform: translateY(6px); } 40% { opacity: 0.7; } 100% { opacity: 0; transform: translateY(-14px); } }
+#lc-root .dq-ember { animation: dq-rise 2.4s linear infinite; transform-box: fill-box; }
