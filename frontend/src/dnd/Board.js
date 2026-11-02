@@ -5,6 +5,7 @@ import { settingFor } from './settings';
 import { BASE, groundTile, iso, propArt, TH, TW, WALL, wallTile } from './iso';
 import { drawPos } from './engine';
 import { tileAt } from './movement';
+import { monsterHeight, monsterMarkup } from './monsterArt';
 
 const CLASS_RING = {
   fighter: '#d33b3b', barbarian: '#ff8a2a', rogue: '#6d6a70', ranger: '#3a8f3f', wizard: '#2f6bff', cleric: '#f5e6a8', bard: '#ff5fa2', paladin: '#d4af37',
@@ -34,9 +35,9 @@ const useStatic = (map) => {
         const tile = map.tiles[y * map.w + x];
         if (tile.t === 'void') continue;
         if (tile.t === 'wall') {
-          things.push({ depth: x + y, key: `w${x},${y}`, html: wallTile(tile, x, y, pal) });
+          things.push({ depth: x + y, key: `w${x},${y}`, html: wallTile(tile, x, y, pal, map.setting) });
         } else {
-          ground += groundTile(tile, x, y, pal);
+          ground += groundTile(tile, x, y, pal, map.setting);
           if (tile.p) {
             const { sx, sy } = iso(x, y, tile.e);
             things.push({ depth: x + y + 0.1, key: `p${x},${y}`, html: propArt(tile.p, sx, sy) });
@@ -82,19 +83,74 @@ const Hero = React.memo(({ look, sx, sy, name, hp, maxHp, cls, down, dead, activ
   );
 });
 
-const Foe = ({ sx, sy, glyph, color, name, hp, maxHp, boss, active }) => {
-  const size = boss ? 58 : 38;
+const Foe = React.memo(({ sx, sy, monster, glyph, color, name, hp, maxHp, boss, active }) => {
+  const markup = useMemo(() => monsterMarkup(monster, color, glyph), [monster, color, glyph]);
+  const tall = monsterHeight(monster) * (boss ? 1.15 : 1);
   return (
     <g transform={`translate(${sx} ${sy})`} className="dq-foe">
       <ellipse cx="0" cy="0" rx={boss ? 36 : 24} ry={boss ? 18 : 12} fill="rgba(0,0,0,0.4)" />
-      <ellipse cx="0" cy="0" rx={boss ? 32 : 22} ry={boss ? 16 : 11} fill={color} stroke="#16122b" strokeWidth="3" />
+      <ellipse cx="0" cy="0" rx={boss ? 32 : 22} ry={boss ? 16 : 11} fill="none" stroke={boss ? '#ff5a4f' : '#b8432f'} strokeWidth="3" opacity="0.8" />
       {active && <ellipse cx="0" cy="0" rx={boss ? 42 : 32} ry={boss ? 21 : 16} fill="none" stroke="#ff5a4f" strokeWidth="4" className="dq-pulse" />}
-      <text x="0" y={-size * 0.35} fontSize={size} textAnchor="middle" className="lc-bob">{glyph}</text>
-      <HpBar hp={hp} maxHp={maxHp} x={0} y={-size - 14} w={boss ? 70 : 46} foe />
-      {boss && <text x="0" y={-size - 20} className="dq-name dq-boss" textAnchor="middle">{name}</text>}
+      <g transform={boss ? 'scale(1.15)' : undefined}>
+        {/* eslint-disable-next-line react/no-danger */}
+        <g className="dq-idle" dangerouslySetInnerHTML={{ __html: markup }} />
+      </g>
+      <HpBar hp={hp} maxHp={maxHp} x={0} y={-tall - 12} w={boss ? 70 : 46} foe />
+      {boss && <text x="0" y={-tall - 18} className="dq-name dq-boss" textAnchor="middle">{name}</text>}
     </g>
   );
+});
+
+const Npc = React.memo(({ look, sx, sy, name, role, talked }) => {
+  const markup = useMemo(() => personMarkup(parseLook(look), { kind: 'stand', k: 0 }), [look]);
+  return (
+    <g transform={`translate(${sx} ${sy})`} className="dq-npc">
+      <ellipse cx="0" cy="0" rx="24" ry="12" fill="rgba(0,0,0,0.3)" />
+      <ellipse cx="0" cy="0" rx="22" ry="11" fill="none" stroke="#e7b94a" strokeWidth="2" strokeDasharray="5 4" />
+      {/* eslint-disable-next-line react/no-danger */}
+      <g transform="scale(0.23)" dangerouslySetInnerHTML={{ __html: markup }} />
+      {!talked && <text x="0" y="-112" fontSize="22" textAnchor="middle" className="lc-bob">💬</text>}
+      <text x="0" y="-98" className="dq-name" textAnchor="middle">{name}</text>
+      <text x="0" y="-84" className="dq-npc-role" textAnchor="middle">{role}</text>
+    </g>
+  );
+});
+
+// Something always moving in the air: embers, fireflies, dust, snow. Placed from the map seed.
+const WEATHER = {
+  tavern: { n: 14, color: '#ffb35a', r: 2, kind: 'rise' },
+  forest: { n: 16, color: '#e8ff7a', r: 2.2, kind: 'drift' },
+  dungeon: { n: 18, color: 'rgba(230,220,200,0.6)', r: 1.6, kind: 'drift' },
+  cave: { n: 18, color: '#9fe6ff', r: 1.8, kind: 'drift' },
+  crypt: { n: 10, color: 'rgba(200,230,210,0.35)', r: 14, kind: 'mist' },
+  castle: { n: 12, color: 'rgba(255,220,150,0.6)', r: 1.6, kind: 'drift' },
+  swamp: { n: 18, color: '#d8ff6a', r: 2.2, kind: 'drift' },
+  mountain: { n: 40, color: '#ffffff', r: 2.4, kind: 'fall' },
 };
+
+const Weather = React.memo(({ setting, seed, box }) => {
+  const w = WEATHER[setting];
+  if (!w) return null;
+  let a = (seed >>> 0) || 1;
+  const rnd = () => {
+    a = (a * 1664525 + 1013904223) >>> 0;
+    return a / 4294967296;
+  };
+  const dots = Array.from({ length: w.n }, (_, i) => ({
+    i,
+    x: box.left + rnd() * box.width,
+    y: box.top + 60 + rnd() * (box.height - 60),
+    d: (w.kind === 'fall' ? 5 : 6) + rnd() * 6,
+    delay: -rnd() * 10,
+  }));
+  return (
+    <g className={`dq-weather dq-weather-${w.kind}`} pointerEvents="none">
+      {dots.map((p) => (
+        <circle key={p.i} cx={p.x} cy={p.y} r={w.r} fill={w.color} style={{ animationDuration: `${p.d}s`, animationDelay: `${p.delay}s` }} />
+      ))}
+    </g>
+  );
+});
 
 /**
  * The isometric board. reach: optional list of [x, y, feet] squares to light up (the current hero's moves).
@@ -115,14 +171,20 @@ export default function Board({ game, now, reach = null, showHidden = false }) {
       return { t, sx, sy, depth: pos.x + pos.y + 0.5, walking: pos.x !== t.x || pos.y !== t.y };
     });
 
+  const npcs = (game.npcs || []).map((n) => {
+    const { sx, sy } = iso(n.x, n.y, groundAt(map, n.x, n.y));
+    return { depth: n.x + n.y + 0.5, key: n.id, el: <Npc key={n.id} look={n.look} sx={sx} sy={sy} name={n.name} role={n.role} talked={n.talked} /> };
+  });
+
   const layers = [
+    ...npcs,
     ...things.map((th) => ({ depth: th.depth, key: th.key, el: <g key={th.key} dangerouslySetInnerHTML={{ __html: th.html }} /> })),
     ...tokens.map(({ t, sx, sy, depth, walking }) => ({
       depth,
       key: t.id,
       el: t.side === 'party'
         ? <Hero key={t.id} look={t.look} sx={sx} sy={sy} name={t.name} hp={t.hp} maxHp={t.maxHp} cls={t.sheet?.classId} down={t.hp <= 0 && !t.dead} dead={t.dead} active={t.id === turnId} walking={walking} now={now} />
-        : <Foe key={t.id} sx={sx} sy={sy} glyph={t.glyph} color={t.color} name={t.name} hp={t.hp} maxHp={t.maxHp} boss={t.boss} active={t.id === turnId} />,
+        : <Foe key={t.id} sx={sx} sy={sy} monster={t.monster} glyph={t.glyph} color={t.color} name={t.name} hp={t.hp} maxHp={t.maxHp} boss={t.boss} active={t.id === turnId} />,
     })),
   ].sort((a, b) => a.depth - b.depth);
 
@@ -155,6 +217,7 @@ export default function Board({ game, now, reach = null, showHidden = false }) {
         })}
         {layers.map((l) => l.el)}
       </g>
+      <Weather setting={map.setting} seed={map.seed} box={box} />
       {s.light === 'fog' && <rect x={box.left} y={box.top} width={box.width} height={box.height} className="dq-fog" />}
       {s.light === 'cold' && <rect x={box.left} y={box.top} width={box.width} height={box.height} className="dq-cold" />}
       {s.light === 'warm' && <rect x={box.left} y={box.top} width={box.width} height={box.height} className="dq-warm" />}

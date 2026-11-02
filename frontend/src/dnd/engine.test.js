@@ -1,6 +1,6 @@
 import {
   act, aiContext, createGame, current, dmAct, dmView, endTurn, hear, interact, move, movesFor, pcFor, playerView, request, rollCheck, sessionRecord,
-  AUTO_EXIT_MS, startCombat, tick, watchView,
+  AUTO_EXIT_MS, startCombat, talk, tick, watchView,
 } from './engine';
 import { newCharacter, CLASS_IDS, RACE_IDS } from './rules';
 import { makeRng } from './rng';
@@ -130,4 +130,36 @@ test('reaching the way onward moves the party to the next scene without a DM', (
   expect(g.sceneIndex).toBe(1);
   expect(g.atExit).toBe(false);
   expect(hero.hp).toBeGreaterThan(0);
+});
+
+test('scenes have NPCs to talk to, and side tasks pay out', () => {
+  let g = null;
+  for (let seed = 1; seed < 60; seed += 1) {
+    g = createGame({ seed, players: players(2) });
+    if (g.npcs.some((n) => n.task.kind === 'slay')) break;
+  }
+  expect(g.npcs.length).toBeGreaterThan(0);
+  const npc = g.npcs.find((n) => n.task.kind === 'slay');
+  const hero = pcFor(g, 'c0');
+  expect(talk(g, hero)).toBe('Nobody to talk to here.');
+  hero.x = npc.x + 1;
+  hero.y = npc.y;
+  expect(playerView(g, 'c0').npcNear.name).toBe(npc.name);
+  const gold = hero.sheet.gold;
+  expect(talk(g, hero)).toBe(null);
+  expect(g.narration.text).toContain(npc.name);
+  expect(playerView(g, 'c0').tasks[0].done).toBe(false);
+  g.tokens.filter((t) => t.monster === npc.task.monster).forEach((t) => { t.hp = 0; t.dead = true; });
+  g.tokens = g.tokens.filter((t) => t.monster !== npc.task.monster);
+  talk(g, hero);
+  expect(npc.done).toBe(true);
+  expect(hero.sheet.gold).toBeGreaterThan(gold);
+});
+
+test('the last scene’s boss carries the villain’s name', () => {
+  const g = createGame({ seed: 5, players: players(2) });
+  dmAct(g, { type: 'nextScene' });
+  dmAct(g, { type: 'nextScene' });
+  const bosses = g.tokens.filter((t) => t.side === 'foe' && t.boss);
+  expect(bosses.every((b) => b.name.toLowerCase().startsWith(g.quest.villain.split(',')[0].slice(0, 5).toLowerCase()))).toBe(true);
 });

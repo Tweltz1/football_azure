@@ -8,6 +8,7 @@ const PROP_ICON = {
   tree: '🌳', pine: '🌲', deadtree: '🥀', rock: '🪨', table: '▭', barrel: '🛢️', crate: '📦', chest: '🧰', exit: '🚪', pillar: '⬛',
   statue: '🗿', grave: '🪦', coffin: '⚰️', crystal: '💎', mushroom: '🍄', hut: '🛖', throne: '👑', hearth: '🔥', bar: '▬', web: '🕸️',
   banner: '🚩', armorstand: '🛡️', stalagmite: '▲', cairn: '⛰️', reeds: '🌾', bush: '🌿', bones: '🦴', torch: '🔥', candle: '🕯️',
+  npc: '🙋',
 };
 
 /** Unpacks the phone copy of a map. */

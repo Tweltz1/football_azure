@@ -101,8 +101,14 @@ export default function PlayerGame({ view, send, header, toast }) {
                 : view.mode === 'combat' ? 'Wait for your turn to move.' : 'Look at the TV.'}</div>
           )}
           <MiniMap packed={view.map} tokens={view.tokens} reach={chosen ? [] : view.reach} marks={marks} onTap={onTap} />
+          {view.tasks && view.tasks.length > 0 && (
+            <ul className="dqp-tasks">
+              {view.tasks.map((task) => <li key={task.text} className={task.done ? 'is-done' : ''}>{task.done ? '✅' : '📌'} {task.text}</li>)}
+            </ul>
+          )}
           <div className="dqp-quick">
             {view.mode === 'combat' && view.myTurn && <button type="button" className="lc-btn" onClick={() => send('act', { type: 'end' })}>✅ End turn</button>}
+            {view.npcNear && <button type="button" className="lc-btn" onClick={() => send('act', { type: 'talk' })}>💬 Talk to {view.npcNear.name}</button>}
             {view.chestNear && <button type="button" className="lc-btn lc-btn-ghost" onClick={() => send('act', { type: 'interact' })}>🧰 Open chest</button>}
             {sheet.inventory.includes('Potion of Healing') && <button type="button" className="lc-btn lc-btn-ghost" onClick={() => send('act', { type: 'potion' })}>🧪 Drink potion</button>}
           </div>

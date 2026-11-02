@@ -39,8 +39,74 @@ export const box = (cx, cy, f, h, top, left, right, stroke = 'rgba(0,0,0,0.25)')
   return poly([w, s, up(s), up(w)], left, sw) + poly([s, e, up(e), up(s)], right, sw) + poly([up(n), up(e), up(s), up(w)], top, sw);
 };
 
+/** A steady 0..1 number for a square, so decorations stay put between redraws. */
+const hash = (x, y, salt = 0) => {
+  let h = Math.imul(x + 374761393, 668265263) ^ Math.imul(y + salt * 7919, 2246822519);
+  h = Math.imul(h ^ (h >>> 13), 3266489917);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+};
+
+const tuft = (x, y, c) => `<path d="M${x - 4} ${y} l-2 -7 M${x} ${y} l0 -9 M${x + 4} ${y} l2 -7" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`;
+const pebble = (x, y, c, r = 3) => `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r * 0.6}" fill="${c}"/>`;
+const flower = (x, y, c) => `<circle cx="${x}" cy="${y}" r="2.6" fill="${c}"/><circle cx="${x}" cy="${y}" r="1" fill="#ffe066"/>`;
+const crack = (x, y) => `<path d="M${x - 12} ${y - 2} l6 3 l4 -4 l7 5 l5 -2" stroke="rgba(0,0,0,0.3)" stroke-width="1.5" fill="none"/>`;
+
+/** Small details on top of a floor square, picked per setting: grass, stones, cracks, snow... */
+const groundDeco = (tile, x, y, sx, sy, sid) => {
+  if (tile.p || tile.t === 'wall' || tile.t === 'door') return '';
+  if (tile.t === 'water') {
+    return sid === 'swamp' && hash(x, y, 3) < 0.25 ? `<ellipse cx="${sx + 6}" cy="${sy + 2}" rx="9" ry="4.5" fill="#4f7f36"/><path d="M${sx + 6} ${sy + 2} l8 -3" stroke="#2e3f2f" stroke-width="1.5"/>` : '';
+  }
+  const a = hash(x, y, 1);
+  const b = hash(x, y, 2);
+  const ox = (b - 0.5) * 30;
+  const oy = (a - 0.5) * 12;
+  let out = '';
+  switch (sid) {
+    case 'tavern':
+      // Floorboards on every square, the odd knot or spill.
+      out += `<path d="M${sx - 22} ${sy - 11} L${sx + 22} ${sy + 11} M${sx - 33} ${sy - 5} L${sx + 11} ${sy + 17} M${sx - 11} ${sy - 17} L${sx + 33} ${sy + 5}" stroke="rgba(0,0,0,0.13)" stroke-width="1.2"/>`;
+      if (a < 0.08) out += `<ellipse cx="${sx + ox}" cy="${sy + oy}" rx="9" ry="4" fill="rgba(220,170,60,0.35)"/>`;
+      else if (a < 0.16) out += `<path d="M${sx + ox - 6} ${sy + oy} l12 -2 M${sx + ox - 4} ${sy + oy + 3} l9 1" stroke="#d8b26a" stroke-width="1.5"/>`;
+      break;
+    case 'forest':
+      if (tile.t === 'road') { if (a < 0.3) out += pebble(sx + ox, sy + oy, 'rgba(90,70,40,0.45)') + pebble(sx + ox + 7, sy + oy + 3, 'rgba(90,70,40,0.35)', 2); break; }
+      if (a < 0.45) out += tuft(sx + ox, sy + oy, '#4a7a2e');
+      if (b < 0.18) out += flower(sx - ox * 0.6, sy - oy, ['#ff8bd0', '#fff', '#ffe066', '#b9a7f5'][Math.floor(a * 4)]);
+      else if (b > 0.88) out += `<ellipse cx="${sx - ox * 0.5}" cy="${sy + 4}" rx="5" ry="2.5" fill="#c97a2a" transform="rotate(${Math.round(a * 90)} ${sx - ox * 0.5} ${sy + 4})"/>`;
+      break;
+    case 'swamp':
+      if (a < 0.3) out += `<ellipse cx="${sx + ox}" cy="${sy + oy}" rx="12" ry="5" fill="rgba(30,45,30,0.45)"/>`;
+      else if (a < 0.6) out += tuft(sx + ox, sy + oy, '#7a8a3a');
+      break;
+    case 'dungeon':
+    case 'castle':
+      out += `<path d="M${sx} ${sy - 22} L${sx} ${sy + 22} M${sx - 44} ${sy} L${sx + 44} ${sy}" stroke="rgba(0,0,0,0.08)" stroke-width="1" transform="scale(1 1)"/>`;
+      if (sid === 'dungeon' && a < 0.18) out += crack(sx + ox * 0.5, sy + oy);
+      else if (sid === 'dungeon' && a < 0.26) out += pebble(sx + ox, sy + oy, 'rgba(0,0,0,0.25)') + pebble(sx + ox + 6, sy + oy - 3, 'rgba(0,0,0,0.2)', 2);
+      else if (sid === 'dungeon' && a < 0.3) out += `<ellipse cx="${sx + ox}" cy="${sy + oy}" rx="10" ry="4" fill="rgba(80,110,140,0.35)"/>`;
+      if (sid === 'castle' && tile.carpet) out += `<path d="M${sx - 30} ${sy} L${sx} ${sy - 15} L${sx + 30} ${sy} L${sx} ${sy + 15} Z" fill="none" stroke="rgba(231,185,74,0.45)" stroke-width="1.5"/>`;
+      break;
+    case 'cave':
+      if (a < 0.25) out += pebble(sx + ox, sy + oy, 'rgba(0,0,0,0.3)') + pebble(sx + ox - 7, sy + oy + 2, 'rgba(0,0,0,0.22)', 2);
+      else if (a < 0.37) out += `<circle cx="${sx + ox}" cy="${sy + oy}" r="2" fill="#7ad7ff" class="dq-glow"/><circle cx="${sx + ox + 6}" cy="${sy + oy + 2}" r="1.5" fill="#b9a7f5" class="dq-glow"/>`;
+      break;
+    case 'crypt':
+      if (a < 0.4) out += tuft(sx + ox, sy + oy, '#3a4a32');
+      else if (a < 0.48) out += crack(sx + ox * 0.5, sy + oy);
+      else if (a < 0.52) out += `<circle cx="${sx + ox}" cy="${sy + oy - 3}" r="4" fill="#e8e2cf"/><circle cx="${sx + ox - 1.5}" cy="${sy + oy - 3.5}" r="1" fill="#16122b"/><circle cx="${sx + ox + 1.5}" cy="${sy + oy - 3.5}" r="1" fill="#16122b"/>`;
+      break;
+    case 'mountain':
+      if (a < 0.3) out += `<ellipse cx="${sx + ox}" cy="${sy + oy}" rx="${10 + b * 8}" ry="${4 + b * 3}" fill="rgba(255,255,255,0.75)"/>`;
+      else if (a < 0.5) out += pebble(sx + ox, sy + oy, '#7f838a') + pebble(sx + ox + 6, sy + oy + 2, '#6c727a', 2);
+      break;
+    default:
+  }
+  return out;
+};
+
 /** The ground block for one square. */
-export const groundTile = (tile, x, y, pal) => {
+export const groundTile = (tile, x, y, pal, sid = '') => {
   const { sx, sy } = iso(x, y, tile.e);
   const depth = BASE + (tile.e || 0) * LEVEL;
   let top = pal.top;
@@ -68,6 +134,7 @@ export const groundTile = (tile, x, y, pal) => {
     // Rubble, roots or mud: a few dots so slow ground reads on the TV.
     out += `<circle cx="${sx - 12}" cy="${sy}" r="3" fill="rgba(0,0,0,0.25)"/><circle cx="${sx + 9}" cy="${sy - 5}" r="2.5" fill="rgba(0,0,0,0.25)"/><circle cx="${sx + 4}" cy="${sy + 7}" r="2" fill="rgba(0,0,0,0.2)"/>`;
   }
+  out += groundDeco(tile, x, y, sx, sy, sid);
   if (tile.t === 'door') {
     out += `<rect x="${sx - 10}" y="${sy - 26}" width="20" height="26" rx="9" fill="#6b4a2a" stroke="#2a1a10" stroke-width="2"/><circle cx="${sx + 5}" cy="${sy - 12}" r="2" fill="#e7b94a"/>`;
   }
@@ -75,9 +142,42 @@ export const groundTile = (tile, x, y, pal) => {
 };
 
 /** A wall square: a tall block standing on the same base as the ground. */
-export const wallTile = (tile, x, y, pal) => {
+export const wallTile = (tile, x, y, pal, sid = '') => {
   const { sx, sy } = iso(x, y, tile.e);
-  return box(sx, sy + BASE, 1, WALL + BASE, pal.wallTop, pal.wallLeft, pal.wallRight);
+  let out = box(sx, sy + BASE, 1, WALL + BASE, pal.wallTop, pal.wallLeft, pal.wallRight);
+  const y0 = sy + BASE;
+  const hw = TW / 2;
+  const hh = TH / 2;
+  const built = ['tavern', 'dungeon', 'castle', 'crypt'].includes(sid);
+  if (built) {
+    // Stone or timber courses on the two faces you can see.
+    const rows = sid === 'tavern' ? 3 : 5;
+    let lines = '';
+    for (let i = 1; i < rows; i += 1) {
+      const dy = ((WALL + BASE) * i) / rows;
+      lines += `M${sx - hw} ${y0 - dy} L${sx} ${y0 + hh - dy} L${sx + hw} ${y0 - dy} `;
+    }
+    out += `<path d="${lines}" stroke="rgba(0,0,0,0.18)" stroke-width="1.2" fill="none"/>`;
+    const a = hash(x, y, 9);
+    const mid = y0 - (WALL + BASE) * 0.55;
+    if ((sid === 'dungeon' || sid === 'castle') && a < 0.12) {
+      // A wall torch.
+      out += `<rect x="${sx + hw / 2 - 2}" y="${mid + hh / 2}" width="4" height="12" fill="#3a2a1a"/><path d="M${sx + hw / 2 - 6} ${mid + hh / 2} q6 -16 12 0 z" fill="#ff8a2a" class="dq-flame"/>`;
+    } else if (sid === 'tavern' && a < 0.18) {
+      // A lit window.
+      out += `<polygon points="${sx - hw / 2 - 7},${mid + hh / 2 - 12} ${sx - hw / 2 + 7},${mid + hh / 2 - 5} ${sx - hw / 2 + 7},${mid + hh / 2 + 11} ${sx - hw / 2 - 7},${mid + hh / 2 + 4}" fill="#ffd27a" stroke="#4a2e1a" stroke-width="2" class="dq-glow"/>`;
+    } else if (sid === 'castle' && a < 0.22) {
+      out += `<path d="M${sx - hw / 2 - 6} ${mid - 6} v26 l6 -4 l6 4 v-26 z" fill="#8e1d2c" stroke="#e7b94a" stroke-width="1.5"/>`;
+    } else if (sid === 'crypt' && a < 0.2) {
+      out += `<path d="M${sx - hw / 2} ${mid - 10} q-6 14 2 26" stroke="#3f6b2e" stroke-width="3" fill="none"/>`;
+    }
+  } else if (sid === 'mountain' || sid === 'forest' || sid === 'swamp') {
+    // Rock strata on cliffs.
+    out += `<path d="M${sx - hw} ${y0 - 22} l${hw * 0.5} ${hh * 0.4} l${hw * 0.5} -6 M${sx + 6} ${y0 - 40} l${hw * 0.5} -4 l${hw * 0.4} -6" stroke="rgba(0,0,0,0.2)" stroke-width="1.5" fill="none"/>`;
+  } else if (sid === 'cave' && hash(x, y, 4) < 0.15) {
+    out += `<polygon points="${sx - 6},${y0 - WALL - BASE + 4} ${sx},${y0 - WALL - BASE - 18} ${sx + 6},${y0 - WALL - BASE + 4}" fill="#7ad7ff" class="dq-glow"/>`;
+  }
+  return out;
 };
 
 // ---- Props ---------------------------------------------------------------------------------------------------
