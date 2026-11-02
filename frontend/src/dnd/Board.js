@@ -6,6 +6,7 @@ import { BASE, groundTile, iso, propArt, TH, TW, WALL, wallTile } from './iso';
 import { drawPos } from './engine';
 import { tileAt } from './movement';
 import { monsterHeight, monsterMarkup } from './monsterArt';
+import { PROP_DEFS } from './props';
 
 const CLASS_RING = {
   fighter: '#d33b3b', barbarian: '#ff8a2a', rogue: '#6d6a70', ranger: '#3a8f3f', wizard: '#2f6bff', cleric: '#f5e6a8', bard: '#ff5fa2', paladin: '#d4af37',
@@ -21,6 +22,22 @@ const bounds = (map) => {
 
 const groundAt = (map, x, y) => tileAt(map, Math.round(x), Math.round(y))?.e || 0;
 
+const touchesFloor = (map, x, y) => {
+  for (let dy = -1; dy <= 1; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      const t = tileAt(map, x + dx, y + dy);
+      if (t && t.t !== 'wall' && t.t !== 'void') return true;
+    }
+  }
+  return false;
+};
+
+/** A wall standing in front of floor (as the TV camera sees it): drawn low. */
+const hidesFloor = (map, x, y) => [[-1, 0], [0, -1], [-1, -1]].some(([dx, dy]) => {
+  const t = tileAt(map, x + dx, y + dy);
+  return t && t.t !== 'wall' && t.t !== 'void';
+});
+
 // Static layers: built once per map (and again when a chest is opened).
 const useStatic = (map) => {
   const propKey = map.tiles.map((t) => t.p || '').join('|');
@@ -35,7 +52,9 @@ const useStatic = (map) => {
         const tile = map.tiles[y * map.w + x];
         if (tile.t === 'void') continue;
         if (tile.t === 'wall') {
-          things.push({ depth: x + y, key: `w${x},${y}`, html: wallTile(tile, x, y, pal, map.setting) });
+          // Solid rock deep inside the walls is left dark, so rooms read as rooms instead of a big plateau.
+          if (!touchesFloor(map, x, y)) continue;
+          things.push({ depth: x + y, key: `w${x},${y}`, html: wallTile(tile, x, y, pal, map.setting, hidesFloor(map, x, y)) });
         } else {
           ground += groundTile(tile, x, y, pal, map.setting);
           if (tile.p) {
@@ -194,6 +213,8 @@ export default function Board({ game, now, reach = null, showHidden = false }) {
 
   return (
     <svg className="dq-board" viewBox={`${box.left} ${box.top} ${box.width} ${box.height}`} preserveAspectRatio="xMidYMid meet">
+      {/* eslint-disable-next-line react/no-danger */}
+      <defs dangerouslySetInnerHTML={{ __html: PROP_DEFS }} />
       <defs>
         <radialGradient id="dq-torch">
           <stop offset="0%" stopColor="#fff" stopOpacity="1" />
