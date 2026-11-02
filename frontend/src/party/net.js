@@ -18,6 +18,8 @@ export const newCid = () => `c${Math.random().toString(36).slice(2, 10)}${Date.n
 // same browser talk over a BroadcastChannel instead.
 const localMode = () => typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'
   && (!SUPABASE_URL || new URLSearchParams(window.location.search).has('local'));
+/** 'local' when tabs talk over BroadcastChannel (no Supabase), otherwise 'online'. Shown when a phone can't connect. */
+export const netMode = () => (localMode() ? 'local' : 'online');
 const localBus = (topic, onMessage) => {
   const bus = new BroadcastChannel(`lc-local:${topic}`);
   if (onMessage) bus.onmessage = ({ data }) => onMessage(data.event, data.payload);

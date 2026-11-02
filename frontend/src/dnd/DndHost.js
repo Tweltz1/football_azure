@@ -77,6 +77,8 @@ export default function DndHost() {
   const [players, setPlayers] = useState([]);
   const [mode, setMode] = useState('lobby');
   const [connected, setConnected] = useState(false);
+  const [netStatus, setNetStatus] = useState('');
+  const [netTry, setNetTry] = useState(0);
   const [, setFrame] = useState(0);
   const [mute, setMute] = useState(isMuted());
   const [splash] = useState(() => [0, 1, 2, 3].map((i) => ({ ...randomLook(), costume: 0, hat: [15, 8, 6, 23][i] })));
@@ -265,10 +267,16 @@ export default function DndHost() {
   onMessageRef.current = onMessage;
   useEffect(() => {
     if (!code) return undefined;
-    const host = openHost(code, (event, msg) => onMessageRef.current(event, msg), (status) => setConnected(status === 'SUBSCRIBED'), PREFIX);
+    let retry = 0;
+    const host = openHost(code, (event, msg) => onMessageRef.current(event, msg), (status) => {
+      setConnected(status === 'SUBSCRIBED');
+      setNetStatus(status);
+      // A dropped or refused channel never comes back by itself: open it again in a few seconds.
+      if (status !== 'SUBSCRIBED' && !retry) retry = window.setTimeout(() => setNetTry((n) => n + 1), 4000);
+    }, PREFIX);
     hostRef.current = host;
-    return () => { host.close(); hostRef.current = null; };
-  }, [code]);
+    return () => { window.clearTimeout(retry); host.close(); hostRef.current = null; };
+  }, [code, netTry]);
 
   // Save the table now and then, so a TV refresh can pick up where it left off.
   useEffect(() => {
@@ -414,6 +422,7 @@ export default function DndHost() {
               <div className="lc-join-url">{joinUrl().replace(/^https?:\/\//, '')}</div>
               <div className="lc-join-label">Table code</div>
               <div className="lc-join-code">{code}</div>
+              {!connected && <div className="lc-warn">Connecting…{netStatus ? ` (${netStatus.toLowerCase().replace(/_/g, ' ')})` : ''}</div>}
             </div>
           </div>
         </div>

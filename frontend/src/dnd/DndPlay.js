@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Person from '../party/Person';
 import { crewLook, isLookCode, lookCode, parseLook, randomLook } from '../party/look';
-import { cleanCode, newCid, openPhone } from '../party/net';
+import { cleanCode, netMode, newCid, openPhone } from '../party/net';
 import { currentUser, firstName, signInWithGoogle, signOutHere } from '../party/account';
 import { PREFIX } from './constants';
 import PlayerGame from './PlayerGame';
@@ -125,7 +125,10 @@ export default function DndPlay() {
   }, []);
 
   const helloRef = useRef(null);
-  helloRef.current = () => phoneRef.current?.send('hello', { name, role, look, sheet: role === 'player' ? fullSheet : null, userId: user?.id || null });
+  const sendResult = useRef('');
+  const [phoneStatus, setPhoneStatus] = useState('');
+  helloRef.current = () => phoneRef.current?.send('hello', { name, role, look, sheet: role === 'player' ? fullSheet : null, userId: user?.id || null })
+    .then((result) => { sendResult.current = String(result); });
 
   useEffect(() => {
     if (!joined || code.length !== 4) return undefined;
@@ -150,7 +153,7 @@ export default function DndPlay() {
       screenRef.current = payload;
       setLost(false);
       setScreen(payload);
-    }, undefined, PREFIX);
+    }, (status) => setPhoneStatus(status), PREFIX);
     phoneRef.current = phone;
     const first = window.setTimeout(() => helloRef.current(), 500);
     const timer = window.setInterval(() => {
@@ -324,6 +327,7 @@ export default function DndPlay() {
         <div className="lcp-wait">
           <Person look={look} pose={lost ? 'scared' : 'wave'} />
           <p>{lost ? `Can't reach table ${code}. Is the TV page still open?` : `Joining table ${code}…`}</p>
+          {lost && <p className="lcp-note">Mode: {netMode()} · connection: {(phoneStatus || 'none').toLowerCase()} · last message: {sendResult.current || 'not sent'}</p>}
           {lost && <button type="button" className="lc-btn" onClick={() => { setJoined(false); setCode(''); }}>Enter a new code</button>}
         </div>
       </div>
