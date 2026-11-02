@@ -4,6 +4,7 @@ import { crewLook, isLookCode, lookCode, parseLook, randomLook } from '../party/
 import { cleanCode, netMode, newCid, openPhone } from '../party/net';
 import { currentUser, firstName, signInWithGoogle, signOutHere } from '../party/account';
 import { PREFIX } from './constants';
+import { canTranscribe, useTranscriber, useVoice } from './voice';
 import PlayerGame from './PlayerGame';
 import DmConsole from './DmConsole';
 import {
@@ -94,6 +95,9 @@ export default function DndPlay() {
   const [building, setBuilding] = useState(false);
   const [toast, setToast] = useState(null);
   const [note, setNote] = useState('');
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const [transcribeOn, setTranscribeOn] = useState(Boolean(stored.transcribe));
   const phoneRef = useRef(null);
   const screenRef = useRef(null);
   const lastHeard = useRef(0);
@@ -102,7 +106,7 @@ export default function DndPlay() {
   const look = sheet?.look || stored.look || lookCode(dressFor(lookCode(randomLook()), 'fighter'));
   const fullSheet = sheet ? { ...sheet, id: sheetId, look } : null;
 
-  useEffect(() => { writeStore({ code, name, role, cid, joined, sheet: fullSheet, look }); });
+  useEffect(() => { writeStore({ code, name, role, cid, joined, sheet: fullSheet, look, transcribe: transcribeOn }); });
 
   useEffect(() => {
     document.title = 'Hood Quest';
@@ -127,7 +131,7 @@ export default function DndPlay() {
   const helloRef = useRef(null);
   const sendResult = useRef('');
   const [phoneStatus, setPhoneStatus] = useState('');
-  helloRef.current = () => phoneRef.current?.send('hello', { name, role, look, sheet: role === 'player' ? fullSheet : null, userId: user?.id || null })
+  helloRef.current = () => phoneRef.current?.send('hello', { name, role, look, sheet: role === 'player' ? fullSheet : null, userId: user?.id || null, voice: voiceOn, muted, transcribing: transcribeOn })
     .then((result) => { sendResult.current = String(result); });
 
   useEffect(() => {
@@ -168,6 +172,23 @@ export default function DndPlay() {
       phoneRef.current = null;
     };
   }, [joined, code, cid]);
+
+  // Voice chat and speech to text. The TV learns who is on from every hello, so a refresh can't lose it.
+  const live = joined && Boolean(screen) && !lost;
+  const voicePeers = (screen?.voice || []).map((v) => v.cid).filter((id) => id !== cid);
+  const voice = useVoice({ code, cid, prefix: PREFIX, peers: voicePeers, active: live && voiceOn, mic: true, muted });
+  const transcriber = useTranscriber({
+    enabled: live && transcribeOn,
+    onLine: (text) => phoneRef.current?.send('act', { type: 'speech', text }),
+  });
+  useEffect(() => {
+    if (!joined) return undefined;
+    const t = window.setTimeout(() => {
+      phoneRef.current?.send('act', { type: 'voice', on: voiceOn, muted });
+      phoneRef.current?.send('act', { type: 'transcribe', on: transcribeOn });
+    }, 100);
+    return () => window.clearTimeout(t);
+  }, [voiceOn, muted, transcribeOn, joined]);
 
   // Tell the TV about a new or changed hero right away.
   const sheetKey = JSON.stringify([fullSheet, role]);
@@ -370,5 +391,29 @@ export default function DndPlay() {
   } else {
     body = <PlayerGame view={screen.game} send={send} header={header} toast={toast} />;
   }
-  return <div className="dq">{body}</div>;
+  const others = (screen?.voice || []).filter((v) => v.cid !== cid && v.cid !== 'tv');
+  const voiceBar = live && (
+    <div className="dqv">
+      {(screen.transcribing || []).length > 0 && <div className="dqv-rec">🎙 Transcribing: {screen.transcribing.join(', ')}</div>}
+      <div className="dqv-row">
+        {voiceOn ? (
+          <>
+            <button type="button" className={`dqv-btn${muted ? ' is-off' : ' is-on'}`} onClick={() => setMuted(!muted)}>{muted ? '🔇 Muted' : '🎙 Talking'}</button>
+            <button type="button" className="dqv-btn" onClick={() => { setVoiceOn(false); setMuted(false); }}>Leave voice</button>
+          </>
+        ) : (
+          <button type="button" className="dqv-btn" onClick={() => setVoiceOn(true)}>🎧 Join voice{others.length ? ` (${others.length})` : ''}</button>
+        )}
+        {canTranscribe && (
+          <button type="button" className={`dqv-btn${transcribeOn ? ' is-on' : ''}`} onClick={() => setTranscribeOn(!transcribeOn)}>
+            {transcribeOn ? (transcriber.listening ? '📝 Transcribing' : '📝 Starting…') : '📝 Transcribe me'}
+          </button>
+        )}
+      </div>
+      {voiceOn && <div className="dqv-note">{voice.state === 'starting' ? 'Connecting voice…' : others.length ? `In voice: ${others.map((v) => `${v.name}${v.muted ? ' (muted)' : ''}`).join(', ')}` : 'Nobody else is on voice yet.'}</div>}
+      {voice.needsTap && <button type="button" className="dqv-btn is-on" onClick={voice.resume}>🔊 Tap to hear the others</button>}
+      {(voice.error || transcriber.error) && <div className="dqv-note is-error">{voice.error || transcriber.error}</div>}
+    </div>
+  );
+  return <div className="dq">{body}{voiceBar}</div>;
 }

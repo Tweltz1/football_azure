@@ -44,7 +44,7 @@
 #lc-root .dq-corner { position: absolute; top: 1em; right: 1.2em; display: flex; align-items: center; gap: 0.8em; padding: 0.4em 0.9em; background: rgba(13, 10, 20, 0.8); border: 2px solid rgba(231, 185, 74, 0.4); border-radius: 999px; z-index: 5; }
 #lc-root .dq-corner-code { font: 900 1.5em var(--dq-title); letter-spacing: 0.12em; color: var(--dq-gold); }
 
-#lc-root .dq-lobby { display: flex; flex-direction: column; gap: 1em; padding: 2em 3em; font-size: calc(var(--u) * 1.45); }
+#lc-root .dq-lobby { display: flex; flex-direction: column; gap: 0.8em; padding: 1.4em 3em; font-size: calc(var(--u) * 1.45); }
 #lc-root .dq-lobby-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 2em; }
 #lc-root .dq-lobby .dq-title { font-size: calc(var(--u) * 5); }
 #lc-root .dq-lobby .lc-join { font-size: calc(var(--u) * 1.2); }
@@ -245,3 +245,29 @@
 @media (prefers-reduced-motion: reduce) {
   #lc-root .dq-pulse, #lc-root .dq-flame, #lc-root .dq-glow, #lc-root .dq-hop, #lc-root .dq-wave, #lc-root .dq-roll { animation: none; }
 }
+
+/* ---- Remote play: voice chat, transcripts, watch page ---- */
+#lc-root .dqv { position: sticky; bottom: 0; z-index: 20; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(13, 10, 20, 0.94); border-top: 2px solid rgba(231, 185, 74, 0.35); }
+#lc-root .dqv-row { display: flex; flex-wrap: wrap; gap: 8px; }
+#lc-root .dqv-btn { flex: 1 1 auto; min-height: 44px; padding: 8px 12px; font-family: inherit; font-size: 15px; font-weight: 700; color: #f4e6c4; background: #2a2236; border: 2px solid rgba(231, 185, 74, 0.45); border-radius: 12px; }
+#lc-root .dqv-btn.is-on { color: #1a1222; background: #e7b94a; border-color: #e7b94a; }
+#lc-root .dqv-btn.is-off { color: #fff; background: #7a2433; border-color: #a33a4a; }
+#lc-root .dqv-note { font-size: 13px; color: #d9c79a; }
+#lc-root .dqv-note.is-error { color: #ffb4a8; }
+#lc-root .dqv-rec { align-self: flex-start; padding: 3px 10px; font-size: 12px; font-weight: 700; color: #fff; background: #a3283a; border-radius: 999px; }
+
+#lc-root .dq-voicebar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6em; }
+#lc-root .dq-voicebar:empty { display: none; }
+#lc-root .dq-rec { padding: 0.25em 0.8em; font-size: 0.85em; font-weight: 700; color: #fff; background: rgba(163, 40, 58, 0.9); border-radius: 999px; }
+#lc-root .dq-caption { max-width: 60%; padding: 0.4em 0.9em; font-size: 0.95em; color: #f4e6c4; background: rgba(13, 10, 20, 0.85); border-left: 4px solid #7ad7ff; border-radius: 0.5em; animation: dq-in 0.3s ease-out; }
+#lc-root .dq-voice-game { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); z-index: 7; max-width: 50%; }
+#lc-root .dq-quest .dq-voicebar { margin-top: 0.3em; font-size: 0.8em; }
+#lc-root .dq-voice-game .dq-caption { max-width: 100%; }
+#lc-root .dq-remote { max-width: 34em; margin: 0.2em 0 0; font-size: 0.7em; line-height: 1.3; color: #5a4a3a; }
+#lc-root .lc-join .dq-voicebar { font-size: 0.75em; }
+#lc-root .lc-join .dq-voicebar .lc-mute { color: #3a2a1a; }
+
+#lc-root .dq-watch-join { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1em; min-height: 100vh; padding: 1em; text-align: center; }
+#lc-root .dq-watch-join form { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.8em; }
+#lc-root .dq-watch-code { width: 7em; padding: 0.3em; font: 900 2em var(--dq-title); letter-spacing: 0.2em; text-align: center; text-transform: uppercase; border-radius: 0.4em; border: 3px solid #6b4a2a; }
+#lc-root .dq-watch-lost { position: absolute; top: 1em; right: 1.2em; padding: 0.4em 0.9em; color: #fff; background: #7a2433; border-radius: 999px; z-index: 8; }

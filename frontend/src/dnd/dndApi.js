@@ -46,3 +46,15 @@ export const saveSession = (id, session, characters) => call('POST', `campaigns/
 export const joinCampaign = (id) => call('POST', `campaigns/${encodeURIComponent(id)}/join`, {});
 /** kind: start | scene | combat | victory | loot | down | crit | exit | boss | action | check | complete | recap | free */
 export const narrate = (kind, context, direction = '') => call('POST', 'narrate', { kind, context, direction });
+
+const FALLBACK_ICE = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
+/** STUN and TURN servers for voice chat. Works signed out; falls back to public STUN. */
+export const getIceServers = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/dnd/ice`);
+    const data = res.ok ? await res.json() : null;
+    return Array.isArray(data?.iceServers) && data.iceServers.length ? data.iceServers : FALLBACK_ICE;
+  } catch (error) {
+    return FALLBACK_ICE;
+  }
+};

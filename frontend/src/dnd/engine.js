@@ -134,6 +134,7 @@ export const createGame = ({ seed = newSeed(), players = [], campaign = null, no
     cueId: 0,
     narration: null,
     requests: [],
+    transcript: [], // what people said out loud (speech to text on their phones)
     check: null,
     xpPool: 0,
     xpTotal: 0,
@@ -680,6 +681,15 @@ export const request = (g, t, text, now = g.clock) => {
   return null;
 };
 
+/** A phrase someone said out loud, from their phone's speech to text. Kept for the narrator and the recap. */
+export const hear = (g, who, text, now = g.clock) => {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+  if (!clean || !who) return;
+  if (!g.transcript) g.transcript = [];
+  g.transcript.push({ who: String(who).slice(0, 24), text: clean, at: now });
+  if (g.transcript.length > 600) g.transcript.shift();
+};
+
 /** The answer to a skill check the DM asked for. */
 export const rollCheck = (g, t, now = g.clock) => {
   const c = g.check;
@@ -954,9 +964,29 @@ export const aiContext = (g) => ({
   hiddenFoes: foes(g).filter((f) => f.hidden).length,
   recent: g.log.slice(-18).map((l) => l.text),
   requests: g.requests.slice(-4).map((r) => `${r.who}: ${r.text}`),
+  talk: (g.transcript || []).slice(-12).map((l) => `${l.who}: ${l.text}`),
   campaign: g.campaign ? { name: g.campaign.name, notes: g.campaign.notes || '', summaries: (g.campaign.summaries || []).slice(-3) } : null,
   complete: g.complete,
 });
+
+/** What a remote watcher's screen shows: the TV's board, without the TV. */
+export const watchView = (g) => {
+  const turn = current(g);
+  return {
+    map: packMap(g.map),
+    tokens: g.tokens.filter((t) => alive(t) && !t.gone && !(t.side === 'foe' && t.hidden)).map((t) => ({
+      ...tokenView(t), color: t.color || null, classId: t.sheet?.classId || null,
+    })),
+    combat: g.combat ? { order: g.combat.order, turn: g.combat.turn, round: g.combat.round } : null,
+    turnName: turn ? turn.name : null,
+    turnFoe: turn ? turn.side === 'foe' : false,
+    narration: g.narration?.text || null,
+    narrationId: g.narration?.id || null,
+    quest: { title: g.quest.title, setting: g.map.setting, scene: g.sceneIndex + 1, scenes: g.sceneSettings.length },
+    log: g.log.slice(-4).map((l) => l.text),
+    complete: g.complete,
+  };
+};
 
 /** What one player's phone shows. */
 export const playerView = (g, cid) => {
@@ -1019,6 +1049,7 @@ export const sessionRecord = (g, now = g.clock) => ({
   loot: g.loot,
   minutes: Math.round((now - g.started) / 60000),
   log: g.log.slice(-60).map((l) => l.text),
+  transcript: (g.transcript || []).slice(-400).map((l) => `${l.who}: ${l.text}`),
   party: party(g).map((t) => ({
     cid: t.cid,
     characterId: t.characterId,

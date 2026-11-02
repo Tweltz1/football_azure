@@ -87,3 +87,26 @@ export function openPhone(code, cid, onState, onStatus, prefix = 'lc') {
     },
   };
 }
+
+/**
+ * Voice-chat signaling between any two devices in a room: each device listens on <prefix>:<CODE>:v:<cid>,
+ * and others post WebRTC offers, answers and ICE candidates to it. Returns { send(toCid, payload), close() }.
+ */
+export function openSignal(code, cid, onSignal, prefix = 'lc') {
+  const topic = (id) => `${prefix}:${code}:v:${id}`;
+  if (localMode()) {
+    const bus = localBus(topic(cid), (event, payload) => event === 'rtc' && onSignal(payload));
+    return { send: (to, payload) => localPost(topic(to), 'rtc', { ...payload, from: cid }), close: () => bus.close() };
+  }
+  const channel = supabase.channel(topic(cid), { config: { broadcast: { self: false } } });
+  let live = true;
+  channel.on('broadcast', { event: 'rtc' }, ({ payload }) => live && payload?.from && onSignal(payload));
+  channel.subscribe();
+  return {
+    send: (to, payload) => post(topic(to), 'rtc', { ...payload, from: cid }),
+    close() {
+      live = false;
+      supabase.removeChannel(channel);
+    },
+  };
+}

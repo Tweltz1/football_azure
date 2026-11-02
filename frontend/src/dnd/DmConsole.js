@@ -15,13 +15,13 @@ const readAuto = () => {
 /** Writes the next bit of story with the AI, or the built-in narrator when the AI isn't available. */
 const useNarrator = (ai, user) => {
   const n = useRef(0);
-  return useCallback(async (kind, detail = '', direction = '') => {
+  return useCallback(async (kind, detail = '', direction = '', extra = null) => {
     n.current += 1;
     if (user) {
       try {
         // The server gives up on a busy AI after about 18 seconds; never leave the table waiting longer than that.
         const res = await Promise.race([
-          narrate(kind, { ...ai, cueDetail: detail }, direction),
+          narrate(kind, { ...ai, ...(extra || {}), cueDetail: detail }, direction),
           new Promise((resolve) => { setTimeout(() => resolve(null), 19000); }),
         ]);
         if (res?.narration) return { text: res.narration, ideas: res.ideas || [], by: 'ai' };
@@ -149,7 +149,7 @@ export default function DmConsole({ screen, send, header, user, onSignIn }) {
   const saveNow = async () => {
     if (!dm.campaign) { setNote('Pick or create a campaign first.'); return; }
     setNote('Writing a recap and saving…');
-    const recap = await writer('recap', '', 'Summarize this session in 3 to 5 sentences for the campaign log: what happened, who did what, what is still unresolved.');
+    const recap = await writer('recap', '', 'Summarize this session in 3 to 5 sentences for the campaign log: what happened, who did what, what is still unresolved.', { transcript: (dm.record?.transcript || []).slice(-150) });
     try {
       const record = dm.record;
       await saveSession(dm.campaign.id, { ...record, summary: recap.text }, record.party.filter((p) => p.characterId));

@@ -119,3 +119,23 @@ test('sheets and prompts are cleaned', () => {
   const huge = narrationPrompt('scene', { recent: Array.from({ length: 2000 }, () => 'x'.repeat(40)) }, '');
   assert.ok(huge.length < 12500);
 });
+
+test('voice chat relays: public, with STUN always and TURN when set up', async () => {
+  const ctx = { userId: null, displayName: '', now: () => new Date(), newId: () => 'x', log: { info() {}, warn() {}, error() {} } } as unknown as Ctx;
+  const plain = await dndRoute(ctx, {}, 'GET', ['dnd', 'ice'], null);
+  assert.equal(plain!.status, 200);
+  assert.match(JSON.stringify(plain!.body), /stun:/);
+  const turn = await dndRoute(ctx, { iceServers: async () => [{ urls: ['turn:turn.example:3478'], username: 'u', credential: 'p' }] }, 'GET', ['dnd', 'ice'], null);
+  assert.equal((turn!.body as any).iceServers.length, 2);
+  const broken = await dndRoute(ctx, { iceServers: async () => { throw new Error('down'); } }, 'GET', ['dnd', 'ice'], null);
+  assert.equal((broken!.body as any).iceServers.length, 1);
+});
+
+test('a session keeps its table talk', async () => {
+  const w = world();
+  const camp = (await w.call('dm', 'POST', 'dnd/campaigns', { name: 'Talky' }))!.body as any;
+  await w.call('dm', 'POST', `dnd/campaigns/${camp.id}/sessions`, { session: { quest: { title: 'Q' }, transcript: ['Pip: hello', 'Grog: SMASH'] }, characters: [] });
+  assert.deepEqual(w.sessions[0].data.transcript, ['Pip: hello', 'Grog: SMASH']);
+  const big = narrationPrompt('recap', { transcript: Array.from({ length: 3000 }, () => 'Pip: '.padEnd(200, 'x')) }, '');
+  assert.ok(big.length < 41000 && big.length > 12500);
+});

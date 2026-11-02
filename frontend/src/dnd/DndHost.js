@@ -5,9 +5,10 @@ import { lookCode, parseLook, randomLook } from '../party/look';
 import { newRoomCode, openHost, postToPhone } from '../party/net';
 import { isMuted, setMuted, sfx, unlockSound } from '../party/sound';
 import Board from './Board';
+import { useVoice } from './voice';
 import {
   act, addPlayer, aiContext, createGame, current, dmAct, dmView, drinkPotion, endTurn, interact, move, movesFor, newSeed, pcFor,
-  playerView, removePlayer, request, rollCheck, tick,
+  hear, playerView, removePlayer, request, rollCheck, tick, watchView,
 } from './engine';
 import { CLASSES, describe, newCharacter, normalizeCharacter, RACES } from './rules';
 import { SETTINGS, settingFor } from './settings';
@@ -22,6 +23,11 @@ const DM_GRACE_MS = 20000; // how long the TV waits for the DM's narration befor
 const SOLO_NARRATE_MS = 2500;
 
 const joinUrl = () => `${window.location.origin}/dnd/play`;
+const watchUrl = (code) => `${window.location.origin}/dnd/watch?code=${code}`;
+const TV_VOICE_KEY = 'dq-tv-voice';
+const readTvVoice = () => {
+  try { return window.localStorage.getItem(TV_VOICE_KEY) !== 'off'; } catch (error) { return true; }
+};
 
 const Qr = ({ text }) => {
   const svg = useMemo(() => {
@@ -45,7 +51,7 @@ const saveTable = (value) => {
 };
 
 const isAway = (p, now) => now - (p.lastSeen || 0) > AWAY_MS;
-const heroes = (list) => list.filter((p) => p.role !== 'dm');
+const heroes = (list) => list.filter((p) => p.role === 'player');
 const dms = (list, now) => list.filter((p) => p.role === 'dm' && !isAway(p, now));
 
 /** Types a narration out a few letters at a time. */
@@ -77,6 +83,11 @@ export default function DndHost() {
   const [players, setPlayers] = useState([]);
   const [mode, setMode] = useState('lobby');
   const [connected, setConnected] = useState(false);
+  const [tvVoice, setTvVoice] = useState(readTvVoice);
+  const tvVoiceRef = useRef(tvVoice);
+  tvVoiceRef.current = tvVoice;
+  const lobbyTalk = useRef([]); // speech before the adventure starts, added to its transcript
+  const caption = useRef(null); // the last thing someone said, shown on the TV for a few seconds
   const [netStatus, setNetStatus] = useState('');
   const [netTry, setNetTry] = useState(0);
   const [, setFrame] = useState(0);
@@ -118,9 +129,16 @@ export default function DndHost() {
       dmName: list.find((p) => p.role === 'dm')?.name || null,
       heroes: heroes(list).map((p) => ({ cid: p.cid, name: p.name, look: p.look, sheet: p.sheet ? { name: p.sheet.name, classId: p.sheet.classId, raceId: p.sheet.raceId, level: p.sheet.level } : null })),
       campaign: campaignRef.current ? { id: campaignRef.current.id, name: campaignRef.current.name } : null,
+      // Voice chat: who is in it (the TV joins as a listener), and who has speech-to-text on.
+      voice: [
+        ...list.filter((p) => p.voice).map((p) => ({ cid: p.cid, name: p.name, muted: Boolean(p.muted) })),
+        ...(tvVoiceRef.current && list.some((p) => p.voice) ? [{ cid: 'tv', name: 'TV speakers', muted: true }] : []),
+      ],
+      transcribing: list.filter((p) => p.transcribing).map((p) => p.name),
     };
     if (modeRef.current !== 'game' || !game) return base;
     if (me.role === 'dm') return { ...base, dm: dmView(game) };
+    if (me.role === 'watch') return { ...base, watch: watchView(game) };
     return { ...base, game: playerView(game, cid) };
   }, [code]);
 
@@ -153,6 +171,7 @@ export default function DndHost() {
       campaign: campaignRef.current,
       now,
     });
+    gameRef.current.transcript = lobbyTalk.current.splice(0);
     gameRef.current.tokens.forEach((t) => { if (t.side === 'party') t.look = list.find((p) => p.cid === t.cid)?.look || t.look; });
     narrated.current = { cue: 0, at: now, n: 0 };
     setModeNow('game');
@@ -167,7 +186,7 @@ export default function DndHost() {
     const game = gameRef.current;
     if (event === 'hello') {
       const name = String(msg.name || '').trim().slice(0, 16);
-      const role = msg.role === 'dm' ? 'dm' : 'player';
+      const role = ['dm', 'watch'].includes(msg.role) ? msg.role : 'player';
       const look = typeof msg.look === 'string' ? lookCode(parseLook(msg.look)) : null;
       const sheet = msg.sheet && typeof msg.sheet === 'object' ? normalizeCharacter(msg.sheet) : null;
       if (sheet && msg.sheet.id) sheet.id = String(msg.sheet.id).slice(0, 64);
@@ -176,7 +195,10 @@ export default function DndHost() {
           hostRef.current?.sendTo(msg.cid, { screen: 'full', code, max: MAX_HEROES });
           return;
         }
-        const player = { cid: msg.cid, name, role, look: look || lookCode(randomLook()), sheet, userId: msg.userId || null, lastSeen: now };
+        const player = {
+          cid: msg.cid, name, role, look: look || lookCode(randomLook()), sheet, userId: msg.userId || null, lastSeen: now,
+          voice: Boolean(msg.voice), muted: Boolean(msg.muted), transcribing: Boolean(msg.transcribing),
+        };
         const next = [...list, player];
         playersRef.current = next;
         setPlayers(next);
@@ -188,6 +210,7 @@ export default function DndHost() {
       } else {
         const next = list.map((p) => (p.cid === msg.cid ? {
           ...p, name: name || p.name, role, look: look || p.look, sheet: sheet || p.sheet, userId: msg.userId || p.userId, lastSeen: now,
+          voice: Boolean(msg.voice), muted: Boolean(msg.muted), transcribing: Boolean(msg.transcribing),
         } : p));
         playersRef.current = next;
         setPlayers(next);
@@ -215,6 +238,26 @@ export default function DndHost() {
       return;
     }
     if (event !== 'act') return;
+    if (msg.type === 'voice' || msg.type === 'transcribe') {
+      const next = list.map((p) => (p.cid !== msg.cid ? p : msg.type === 'voice'
+        ? { ...p, voice: Boolean(msg.on), muted: Boolean(msg.muted) }
+        : { ...p, transcribing: Boolean(msg.on) }));
+      playersRef.current = next;
+      setPlayers(next);
+      pushAll();
+      return;
+    }
+    if (msg.type === 'speech') {
+      const who = known.role === 'dm' ? `${known.name} (DM)` : (game && pcFor(game, msg.cid)?.name) || known.sheet?.name || known.name;
+      const text = String(msg.text || '').slice(0, 300);
+      if (game) hear(game, who, text, now);
+      else {
+        lobbyTalk.current.push({ who, text, at: now });
+        if (lobbyTalk.current.length > 100) lobbyTalk.current.shift();
+      }
+      caption.current = { who, text, at: now };
+      return;
+    }
     let error = null;
     if (known.role === 'dm') {
       if (msg.type === 'begin' && modeRef.current === 'lobby') beginAdventure();
@@ -277,6 +320,17 @@ export default function DndHost() {
     hostRef.current = host;
     return () => { window.clearTimeout(retry); host.close(); hostRef.current = null; };
   }, [code, netTry]);
+
+  // The TV listens in on voice chat, so the room hears remote players.
+  const inVoice = players.filter((p) => p.voice).map((p) => p.cid);
+  const tv = useVoice({ code, cid: 'tv', prefix: PREFIX, peers: inVoice, active: Boolean(code) && tvVoice && inVoice.length > 0, mic: false });
+  const toggleTvVoice = () => {
+    const next = !tvVoice;
+    setTvVoice(next);
+    tvVoiceRef.current = next;
+    try { window.localStorage.setItem(TV_VOICE_KEY, next ? 'on' : 'off'); } catch (error) { /* private mode */ }
+    pushAll(true);
+  };
 
   // Save the table now and then, so a TV refresh can pick up where it left off.
   useEffect(() => {
@@ -393,7 +447,25 @@ export default function DndHost() {
   const now = performance.now();
   const game = mode === 'game' ? gameRef.current : null;
   const dmList = players.filter((p) => p.role === 'dm');
-  const heroList = players.filter((p) => p.role !== 'dm');
+  const heroList = players.filter((p) => p.role === 'player');
+  const watchers = players.filter((p) => p.role === 'watch' && !isAway(p, now)).length;
+
+  const voicePeers = players.filter((p) => p.voice && !isAway(p, now)).map((p) => p.cid);
+  const talkers = players.filter((p) => p.transcribing).map((p) => p.name);
+  const recent = caption.current && now - caption.current.at < 7000 ? caption.current : null;
+  const voiceBar = (
+    <div className="dq-voicebar">
+      {voicePeers.length > 0 && (
+        <button type="button" className="lc-mute" onClick={toggleTvVoice} title="Play remote players' voices on the TV">
+          {tvVoice ? '🔊' : '🔇'} {voicePeers.length} on voice{tvVoice ? '' : ' (muted on TV)'}
+        </button>
+      )}
+      {tv.needsTap && <button type="button" className="lc-btn" onClick={tv.resume}>Tap to hear voices</button>}
+      {talkers.length > 0 && <span className="dq-rec">🎙 Transcribing: {talkers.join(', ')}</span>}
+      {watchers > 0 && <span className="dq-rec">👀 {watchers} watching remotely</span>}
+    </div>
+  );
+  const captionEl = recent && <div className="dq-caption"><b>{recent.who}:</b> {recent.text}</div>;
 
   const corner = (
     <div className="dq-corner">
@@ -422,6 +494,8 @@ export default function DndHost() {
               <div className="lc-join-url">{joinUrl().replace(/^https?:\/\//, '')}</div>
               <div className="lc-join-label">Table code</div>
               <div className="lc-join-code">{code}</div>
+              <p className="dq-remote">Playing remotely? Join voice on your phone and watch the board at <b>{watchUrl(code).replace(/^https?:\/\//, '')}</b></p>
+              {voiceBar}
               {!connected && <div className="lc-warn">Connecting…{netStatus ? ` (${netStatus.replace(/_/g, ' ')})` : ''}</div>}
             </div>
           </div>
@@ -470,8 +544,12 @@ export default function DndHost() {
           <span className="dq-quest-scene">{setting.emoji} {setting.name} · Scene {game.sceneIndex + 1} of {game.sceneSettings.length}</span>
           <b>{game.quest.title}</b>
           {game.campaign && <small>{game.campaign.name}</small>}
+          {voiceBar}
         </div>
         {corner}
+      </div>
+      <div className="dq-voice-game">
+        {captionEl}
       </div>
       <div className="dq-side">
         {game.combat ? (
