@@ -7,6 +7,7 @@ import type {
   ScoreRow, StoredLeague,
 } from '../_shared/ports.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../_shared/models.ts';
+import type { DndCampaignRow, DndCharacterRow, DndStore } from '../_shared/dnd.ts';
 
 const rowToStored = (row: { data: League; version: number }): StoredLeague => ({ league: row.data, version: Number(row.version) });
 
@@ -210,6 +211,75 @@ export function createBroadcaster(supabaseUrl: string, serviceRoleKey: string): 
       if (!response.ok) {
         throw new Error(`Realtime broadcast failed with ${response.status}: ${await response.text()}`);
       }
+    },
+  };
+}
+
+// ---- Hood Quest ----------------------------------------------------------------------------------
+
+type DndCharDb = { id: string; user_id: string; campaign_id: string | null; name: string; data: Record<string, unknown>; updated_at: string };
+type DndCampDb = { id: string; owner_id: string; name: string; members: string[]; data: Record<string, unknown>; created_at: string; updated_at: string };
+type DndSessDb = { id: string; campaign_id: string; played_at: string; data: Record<string, unknown> };
+
+const charRow = (r: DndCharDb): DndCharacterRow => ({ id: r.id, userId: r.user_id, campaignId: r.campaign_id, name: r.name, data: r.data ?? {}, updatedAt: r.updated_at });
+const campRow = (r: DndCampDb): DndCampaignRow => ({
+  id: r.id, ownerId: r.owner_id, name: r.name, members: r.members ?? [], data: r.data ?? {}, createdAt: r.created_at, updatedAt: r.updated_at,
+});
+
+export function createDndStore(db: SupabaseClient): DndStore {
+  return {
+    async listCharacters(userId) {
+      const { data, error } = await db.from('dnd_characters').select('*').eq('user_id', userId).limit(100);
+      if (error) throw error;
+      return (data ?? []).map((r) => charRow(r as DndCharDb));
+    },
+    async getCharacter(id) {
+      const { data, error } = await db.from('dnd_characters').select('*').eq('id', id).maybeSingle();
+      if (error) throw error;
+      return data ? charRow(data as DndCharDb) : null;
+    },
+    async putCharacter(row) {
+      const { error } = await db.from('dnd_characters').upsert({
+        id: row.id, user_id: row.userId, campaign_id: row.campaignId, name: row.name, data: row.data, updated_at: row.updatedAt,
+      });
+      if (error) throw error;
+    },
+    async deleteCharacter(id) {
+      const { error } = await db.from('dnd_characters').delete().eq('id', id);
+      if (error) throw error;
+    },
+    async charactersInCampaign(campaignId) {
+      const { data, error } = await db.from('dnd_characters').select('*').eq('campaign_id', campaignId).limit(100);
+      if (error) throw error;
+      return (data ?? []).map((r) => charRow(r as DndCharDb));
+    },
+    async listCampaigns(userId) {
+      const { data, error } = await db.from('dnd_campaigns').select('*').contains('members', [userId]).limit(100);
+      if (error) throw error;
+      return (data ?? []).map((r) => campRow(r as DndCampDb));
+    },
+    async getCampaign(id) {
+      const { data, error } = await db.from('dnd_campaigns').select('*').eq('id', id).maybeSingle();
+      if (error) throw error;
+      return data ? campRow(data as DndCampDb) : null;
+    },
+    async putCampaign(row) {
+      const { error } = await db.from('dnd_campaigns').upsert({
+        id: row.id, owner_id: row.ownerId, name: row.name, members: row.members, data: row.data, created_at: row.createdAt, updated_at: row.updatedAt,
+      });
+      if (error) throw error;
+    },
+    async listSessions(campaignId) {
+      const { data, error } = await db.from('dnd_sessions').select('*').eq('campaign_id', campaignId).order('played_at', { ascending: true }).limit(200);
+      if (error) throw error;
+      return (data ?? []).map((r) => {
+        const s = r as DndSessDb;
+        return { id: s.id, campaignId: s.campaign_id, playedAt: s.played_at, data: s.data ?? {} };
+      });
+    },
+    async addSession(row) {
+      const { error } = await db.from('dnd_sessions').insert({ id: row.id, campaign_id: row.campaignId, played_at: row.playedAt, data: row.data });
+      if (error) throw error;
     },
   };
 }

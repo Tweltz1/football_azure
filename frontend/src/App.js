@@ -15,6 +15,7 @@ import RacePage from './games/race/RacePage';
 import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory';
 import { useAuth, signOut } from './AuthContext';
 import PartyRoutes, { isPartyPath } from './party/PartyRoutes';
+import DndRoutes, { isDndPath } from './dnd/DndRoutes';
 import './App.css';
 import './DraftMobile.css';
 import './MobileDensity.css';
@@ -26,6 +27,10 @@ function App() {
   // Party games open without signing in (sign-in there is optional, for saving a character).
   if (isPartyPath(window.location.pathname)) {
     return <PartyRoutes />;
+  }
+  // Hood Quest (tabletop adventures) also opens without signing in.
+  if (isDndPath(window.location.pathname)) {
+    return <DndRoutes />;
   }
 
   if (loading) {
@@ -65,6 +70,7 @@ function App() {
             <NavLink to="/start-sit"><span className="nav-long">Start/Sit &amp; Trades</span><span className="nav-short nav-two-line">Start/Sit &amp; Trade</span></NavLink>
             <NavLink to="/rankings">Rankings</NavLink>
             <NavLink to="/games">Games</NavLink>
+            <a href="/dnd">DnD</a>
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>
           </div>

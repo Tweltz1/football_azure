@@ -5,8 +5,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.49.4';
 import { handle, type Ctx } from '../_shared/handlers.ts';
 import { getInitialPlayerPool } from '../_shared/playerData.ts';
+import { dndRoute } from '../_shared/dnd.ts';
+import { createNarrator } from './narrator.ts';
 import {
-  createBroadcaster, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
+  createBroadcaster, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
 } from './supabaseAdapters.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -20,6 +22,14 @@ const profiles = createProfileStore(db);
 const history = createHistoryStore(db);
 const snapshots = createSnapshotStore(db);
 const games = createGameStore(db);
+const dnd = {
+  store: createDndStore(db),
+  narrator: createNarrator({
+    gemini: Deno.env.get('GEMINI_API_KEY'),
+    anthropic: Deno.env.get('ANTHROPIC_API_KEY'),
+    model: Deno.env.get('DND_NARRATOR_MODEL'),
+  }),
+};
 
 async function fetchJson(url: string): Promise<unknown> {
   const response = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) });
@@ -98,7 +108,8 @@ Deno.serve(async (req) => {
       displayName: user?.displayName ?? null,
     };
 
-    const result = await handle(ctx, req.method, path, url.searchParams, body);
+    const parts = path.split('/').filter(Boolean).map((p) => decodeURIComponent(p));
+    const result = (await dndRoute(ctx, dnd, req.method, parts, body)) ?? await handle(ctx, req.method, path, url.searchParams, body);
     const headers: Record<string, string> = { ...corsHeaders, ...(result.headers ?? {}) };
 
     if (result.body === undefined || result.body === null) {
