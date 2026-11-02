@@ -268,9 +268,9 @@ export default function DndHost() {
   useEffect(() => {
     if (!code) return undefined;
     let retry = 0;
-    const host = openHost(code, (event, msg) => onMessageRef.current(event, msg), (status) => {
+    const host = openHost(code, (event, msg) => onMessageRef.current(event, msg), (status, err) => {
       setConnected(status === 'SUBSCRIBED');
-      setNetStatus(status);
+      setNetStatus(err ? `${status}: ${err.message || err}` : status);
       // A dropped or refused channel never comes back by itself: open it again in a few seconds.
       if (status !== 'SUBSCRIBED' && !retry) retry = window.setTimeout(() => setNetTry((n) => n + 1), 4000);
     }, PREFIX);
@@ -422,7 +422,7 @@ export default function DndHost() {
               <div className="lc-join-url">{joinUrl().replace(/^https?:\/\//, '')}</div>
               <div className="lc-join-label">Table code</div>
               <div className="lc-join-code">{code}</div>
-              {!connected && <div className="lc-warn">Connecting…{netStatus ? ` (${netStatus.toLowerCase().replace(/_/g, ' ')})` : ''}</div>}
+              {!connected && <div className="lc-warn">Connecting…{netStatus ? ` (${netStatus.replace(/_/g, ' ')})` : ''}</div>}
             </div>
           </div>
         </div>

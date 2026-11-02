@@ -54,7 +54,7 @@ export function openHost(code, onMessage, onStatus, prefix = 'lc') {
   ['hello', 'look', 'act', 'pick', 'start', 'ready', 'skip', 'again', 'bye'].forEach((event) => {
     channel.on('broadcast', { event }, ({ payload }) => live && payload?.cid && onMessage(event, payload));
   });
-  channel.subscribe((status) => live && onStatus?.(status));
+  channel.subscribe((status, err) => live && onStatus?.(status, err));
   return {
     sendTo(cid, payload) {
       return post(`${prefix}:${code}:p:${cid}`, 'state', payload);
@@ -76,7 +76,7 @@ export function openPhone(code, cid, onState, onStatus, prefix = 'lc') {
   const channel = supabase.channel(`${prefix}:${code}:p:${cid}`, { config: { broadcast: { self: false } } });
   let live = true;
   channel.on('broadcast', { event: 'state' }, ({ payload }) => live && onState(payload));
-  channel.subscribe((status) => live && onStatus?.(status));
+  channel.subscribe((status, err) => live && onStatus?.(status, err));
   return {
     send(event, payload = {}) {
       return post(`${prefix}:${code}:tv`, event, { ...payload, cid });

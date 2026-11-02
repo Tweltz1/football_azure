@@ -153,7 +153,7 @@ export default function DndPlay() {
       screenRef.current = payload;
       setLost(false);
       setScreen(payload);
-    }, (status) => setPhoneStatus(status), PREFIX);
+    }, (status, err) => setPhoneStatus(err ? `${status}: ${err.message || err}` : status), PREFIX);
     phoneRef.current = phone;
     const first = window.setTimeout(() => helloRef.current(), 500);
     const timer = window.setInterval(() => {
@@ -327,7 +327,7 @@ export default function DndPlay() {
         <div className="lcp-wait">
           <Person look={look} pose={lost ? 'scared' : 'wave'} />
           <p>{lost ? `Can't reach table ${code}. Is the TV page still open?` : `Joining table ${code}…`}</p>
-          {lost && <p className="lcp-note">Mode: {netMode()} · connection: {(phoneStatus || 'none').toLowerCase()} · last message: {sendResult.current || 'not sent'}</p>}
+          {lost && <p className="lcp-note">Mode: {netMode()} · connection: {phoneStatus || 'none'} · last message: {sendResult.current || 'not sent'}</p>}
           {lost && <button type="button" className="lc-btn" onClick={() => { setJoined(false); setCode(''); }}>Enter a new code</button>}
         </div>
       </div>
