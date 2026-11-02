@@ -38,16 +38,16 @@ const sender = (topic) => {
 const post = (topic, event, payload) => (localMode() ? localPost(topic, event, payload) : sender(topic).send({ type: 'broadcast', event, payload }).catch(() => 'error'));
 
 /** Post one screen to a phone without opening the room (used to tell an old room's phones it closed). */
-export const postToPhone = (code, cid, payload) => post(`lc:${code}:p:${cid}`, 'state', payload);
+export const postToPhone = (code, cid, payload, prefix = 'lc') => post(`${prefix}:${code}:p:${cid}`, 'state', payload);
 
 /** The TV's side. onMessage(event, payload). Returns { sendTo(cid, payload), close() }. */
-export function openHost(code, onMessage, onStatus) {
+export function openHost(code, onMessage, onStatus, prefix = 'lc') {
   if (localMode()) {
-    const bus = localBus(`lc:${code}:tv`, (event, payload) => payload?.cid && onMessage(event, payload));
+    const bus = localBus(`${prefix}:${code}:tv`, (event, payload) => payload?.cid && onMessage(event, payload));
     setTimeout(() => onStatus?.('SUBSCRIBED'), 0);
-    return { sendTo: (cid, payload) => localPost(`lc:${code}:p:${cid}`, 'state', payload), close: () => bus.close() };
+    return { sendTo: (cid, payload) => localPost(`${prefix}:${code}:p:${cid}`, 'state', payload), close: () => bus.close() };
   }
-  const channel = supabase.channel(`lc:${code}:tv`, { config: { broadcast: { self: false } } });
+  const channel = supabase.channel(`${prefix}:${code}:tv`, { config: { broadcast: { self: false } } });
   let live = true;
   ['hello', 'look', 'act', 'pick', 'start', 'ready', 'skip', 'again', 'bye'].forEach((event) => {
     channel.on('broadcast', { event }, ({ payload }) => live && payload?.cid && onMessage(event, payload));
@@ -55,7 +55,7 @@ export function openHost(code, onMessage, onStatus) {
   channel.subscribe((status) => live && onStatus?.(status));
   return {
     sendTo(cid, payload) {
-      return post(`lc:${code}:p:${cid}`, 'state', payload);
+      return post(`${prefix}:${code}:p:${cid}`, 'state', payload);
     },
     close() {
       live = false;
@@ -65,19 +65,19 @@ export function openHost(code, onMessage, onStatus) {
 }
 
 /** A phone's side. onState(payload) gets the screen from the TV. Returns { send(event, payload), close() }. */
-export function openPhone(code, cid, onState, onStatus) {
+export function openPhone(code, cid, onState, onStatus, prefix = 'lc') {
   if (localMode()) {
-    const bus = localBus(`lc:${code}:p:${cid}`, (event, payload) => event === 'state' && onState(payload));
+    const bus = localBus(`${prefix}:${code}:p:${cid}`, (event, payload) => event === 'state' && onState(payload));
     setTimeout(() => onStatus?.('SUBSCRIBED'), 0);
-    return { send: (event, payload = {}) => localPost(`lc:${code}:tv`, event, { ...payload, cid }), close: () => bus.close() };
+    return { send: (event, payload = {}) => localPost(`${prefix}:${code}:tv`, event, { ...payload, cid }), close: () => bus.close() };
   }
-  const channel = supabase.channel(`lc:${code}:p:${cid}`, { config: { broadcast: { self: false } } });
+  const channel = supabase.channel(`${prefix}:${code}:p:${cid}`, { config: { broadcast: { self: false } } });
   let live = true;
   channel.on('broadcast', { event: 'state' }, ({ payload }) => live && onState(payload));
   channel.subscribe((status) => live && onStatus?.(status));
   return {
     send(event, payload = {}) {
-      return post(`lc:${code}:tv`, event, { ...payload, cid });
+      return post(`${prefix}:${code}:tv`, event, { ...payload, cid });
     },
     close() {
       live = false;

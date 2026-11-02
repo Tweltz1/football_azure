@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: "22"
       - name: Run API tests
-        run: node --test supabase/tests/handlers.test.ts
+        run: node --test supabase/tests/handlers.test.ts supabase/tests/dnd.test.ts
 
   deploy:
     name: Deploy database and API

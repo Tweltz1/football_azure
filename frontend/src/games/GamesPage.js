@@ -50,6 +50,13 @@ const GamesPage = () => {
               <span>Put it on the TV and up to 12 friends join on their phones and dress up. Play Last Candle together or race each other in Fright Quiz.</span>
             </span>
           </a>
+          <a href="/dnd" className="game-card is-race">
+            <span className="game-card-emoji" aria-hidden="true">🐉</span>
+            <span className="game-card-text">
+              <strong>Hood Quest (dungeons and dragons)</strong>
+              <span>Host a tabletop adventure on the TV: 3D maps, an AI narrator with a human co-DM, and heroes that save to your Google account.</span>
+            </span>
+          </a>
           <Link to="/games/race" className="game-card is-race">
             <img src={CREW[6].art} alt="" />
             <span className="game-card-text">

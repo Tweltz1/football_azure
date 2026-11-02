@@ -1,7 +1,7 @@
 import React from 'react';
 import ClimbBackdrop from './ClimbBackdrop';
 
-/** First thing on the site before signing in: football (the draft site) or party games. */
+/** First thing on the site before signing in: football (the draft site), party games or tabletop adventures. */
 const FrontDoor = ({ onFootball }) => (
   <main className="login-page front-door">
     <ClimbBackdrop />
@@ -19,6 +19,11 @@ const FrontDoor = ({ onFootball }) => (
           <span className="front-door-icon">🎃</span>
           <strong>Games</strong>
           <small>Halloween party games for a TV and up to 12 phones. Sign in or play as a guest.</small>
+        </a>
+        <a className="front-door-card is-games is-dnd" href="/dnd">
+          <span className="front-door-icon">🐉</span>
+          <strong>Hood Quest</strong>
+          <small>Dungeons and dragons on the TV with an AI narrator. Heroes join on their phones.</small>
         </a>
       </div>
     </section>
