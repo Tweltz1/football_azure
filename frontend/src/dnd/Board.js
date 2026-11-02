@@ -195,7 +195,26 @@ export default function Board({ game, now, reach = null, showHidden = false }) {
     return { depth: n.x + n.y + 0.5, key: n.id, el: <Npc key={n.id} look={n.look} sx={sx} sy={sy} name={n.name} role={n.role} talked={n.talked} /> };
   });
 
+  // Traps the party has found: a warning plate on the ground (or the sprung trap's jaws).
+  const knownTraps = game.traps || (map.traps || []).filter((x) => x.found || x.sprung).map((x) => [x.x, x.y, x.sprung ? 1 : 0]);
+  const trapEls = knownTraps.map(([x, y, sprung]) => {
+    const { sx, sy } = iso(x, y, groundAt(map, x, y));
+    return {
+      depth: x + y + 0.05,
+      key: `trap${x},${y}`,
+      el: (
+        <g key={`trap${x},${y}`} transform={`translate(${sx} ${sy})`} opacity={sprung ? 0.65 : 1}>
+          <polygon points={`0,${-TH / 2 + 6} ${TW / 2 - 8},0 0,${TH / 2 - 6} ${-TW / 2 + 8},0`} fill={sprung ? '#3a2a20' : 'rgba(255,90,60,0.28)'} stroke="#ff6a3d" strokeWidth="2.5" strokeDasharray={sprung ? '0' : '6 4'} />
+          {sprung
+            ? <path d="M-14 2 L-9 -7 L-4 2 L1 -7 L6 2 L11 -7 L14 2" fill="none" stroke="#c9c3b8" strokeWidth="2.5" />
+            : <text x="0" y="6" fontSize="18" textAnchor="middle">⚠️</text>}
+        </g>
+      ),
+    };
+  });
+
   const layers = [
+    ...trapEls,
     ...npcs,
     ...things.map((th) => ({ depth: th.depth, key: th.key, el: <g key={th.key} dangerouslySetInnerHTML={{ __html: th.html }} /> })),
     ...tokens.map(({ t, sx, sy, depth, walking }) => ({

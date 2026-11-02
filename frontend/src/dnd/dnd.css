@@ -312,3 +312,19 @@
 #lc-root .dq-smoke { animation: dq-smoke 3s ease-in-out infinite; }
 @keyframes dq-smoke { 0% { opacity: 0; transform: translateY(6px); } 40% { opacity: 0.7; } 100% { opacity: 0; transform: translateY(-14px); } }
 #lc-root .dq-ember { animation: dq-rise 2.4s linear infinite; transform-box: fill-box; }
+
+/* NPC actions, the shop and the pack */
+#lc-root .dqp-chip { padding: 6px 10px; border-radius: 999px; background: rgba(120, 90, 200, 0.25); border: 1px solid rgba(170, 140, 255, 0.5); font-size: 14px; }
+#lc-root .dqp-npc { margin-top: 10px; padding: 10px; border-radius: 12px; background: rgba(244, 230, 196, 0.08); border: 1px solid rgba(231, 185, 74, 0.35); text-align: center; }
+#lc-root .dqp-npc > b { display: block; margin-bottom: 8px; }
+#lc-root .dqp-npc-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+#lc-root .dqp-npc small { display: block; margin-top: 6px; opacity: 0.75; font-size: 12px; }
+#lc-root .dqp-shop { margin-top: 10px; padding: 10px; border-radius: 12px; background: #1d1530; border: 1px solid rgba(231, 185, 74, 0.55); }
+#lc-root .dqp-shop-head { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+#lc-root .dqp-shop h4 { margin: 10px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; }
+#lc-root .dqp-shop ul, #lc-root .dqp-pack { list-style: none; margin: 0; padding: 0; }
+#lc-root .dqp-shop li, #lc-root .dqp-pack li { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+#lc-root .dqp-shop li > span, #lc-root .dqp-pack li > span { flex: 1; font-size: 14px; }
+#lc-root .dqp-shop li small, #lc-root .dqp-pack li small { display: block; opacity: 0.7; font-size: 12px; }
+#lc-root .dqp-shop .lc-btn, #lc-root .dqp-pack .lc-btn { padding: 6px 10px; font-size: 13px; min-width: 0; }
+#lc-root .dqm-trap { font-size: 13px; text-anchor: middle; }

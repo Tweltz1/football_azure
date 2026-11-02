@@ -24,7 +24,7 @@ const S = 20; // px per square in the phone map's own units
  * A top-down map for phones. reach: [[x, y, feet]], onTap(x, y, token).
  * marks: { [tokenId]: 'target' | 'me' | 'turn' }.
  */
-export default function MiniMap({ packed, tokens, reach = [], marks = {}, onTap, pick = null }) {
+export default function MiniMap({ packed, tokens, reach = [], marks = {}, onTap, pick = null, traps = [] }) {
   const ref = useRef(null);
   const map = useMemo(() => unpack(packed), [packed]);
   const pal = settingFor(packed.setting).palette;
@@ -66,6 +66,7 @@ export default function MiniMap({ packed, tokens, reach = [], marks = {}, onTap,
         const [x, y] = k.split(',').map(Number);
         return <rect key={`r${k}`} x={x * S + 1.5} y={y * S + 1.5} width={S - 3} height={S - 3} className="dqm-reach" />;
       })}
+      {traps.map(([x, y, sprung]) => <text key={`t${x},${y}`} x={x * S + S / 2} y={y * S + S / 2 + 5} className="dqm-trap" opacity={sprung ? 0.5 : 1}>⚠️</text>)}
       {pick && <rect x={pick.x * S + 1} y={pick.y * S + 1} width={S - 2} height={S - 2} className="dqm-pick" />}
       {tokens.filter((t) => !t.dead).map((t) => {
         const mark = marks[t.id];
