@@ -26,6 +26,7 @@ test('exploring moves up to your speed and starting a fight sets up turns', () =
   expect(left).toBe(hero.speed);
   const far = [...reach.values()].filter((n) => n.end).sort((a, b) => b.cost - a.cost)[0];
   expect(move(g, hero, far)).toBe(null);
+  g.tokens.forEach((t) => { t.hidden = false; });
   startCombat(g, 0);
   expect(g.mode).toBe('combat');
   expect(g.combat.order.length).toBeGreaterThan(2);

@@ -311,3 +311,4 @@
 @keyframes dq-spin { to { stroke-dashoffset: -44; } }
 #lc-root .dq-smoke { animation: dq-smoke 3s ease-in-out infinite; }
 @keyframes dq-smoke { 0% { opacity: 0; transform: translateY(6px); } 40% { opacity: 0.7; } 100% { opacity: 0; transform: translateY(-14px); } }
+#lc-root .dq-ember { animation: dq-rise 2.4s linear infinite; transform-box: fill-box; }

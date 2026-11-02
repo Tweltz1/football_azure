@@ -7,13 +7,13 @@ import { randomLook, lookCode } from '../party/look';
 
 export const NPC_ROLES = {
   tavern: ['Barkeep', 'Bard', 'Card sharp', 'Serving girl'],
-  forest: ['Merchant', 'Hunter', 'Woodcutter'],
+  forest: ['Merchant', 'Blacksmith', 'Farmer', 'Hunter', 'Woodcutter', 'Village elder'],
   dungeon: ['Prisoner', 'Lost cartographer'],
   cave: ['Lost miner', 'Dwarf prospector'],
   crypt: ['Gravedigger', 'Priest'],
   castle: ['Guard', 'Servant', 'Court jester'],
-  swamp: ['Hermit', 'Frog catcher'],
-  mountain: ['Pilgrim', 'Mountain guide', 'Goat herder'],
+  swamp: ['Hermit', 'Frog catcher', 'Fisherman', 'Herbalist'],
+  mountain: ['Pilgrim', 'Mountain guide', 'Goat herder', 'Camp cook'],
 };
 
 const FIRST = ['Bram', 'Elda', 'Tobin', 'Mira', 'Gareth', 'Isolde', 'Fenwick', 'Rook', 'Selene', 'Odo', 'Petra', 'Quill', 'Wren', 'Magnus', 'Tilda', 'Corwin', 'Hollis', 'Juniper', 'Pip', 'Agnes', 'Dunstan', 'Marigold'];

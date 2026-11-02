@@ -451,7 +451,182 @@ const exit = (x, y) => `${glow(x, y, 40, 'dq-g-ice')}<ellipse cx="${x}" cy="${y}
   + `<ellipse cx="${x}" cy="${y}" rx="15" ry="7.5" fill="#e3f6ff" opacity="0.7" class="dq-glow"/>`
   + `<path d="M${x} ${y - 50} l11 15 h-6 v14 h-10 v-14 h-6 z" fill="#ffe066" stroke="${INK}" stroke-width="2" class="dq-hop"/>`;
 
+const cottage = (x, y) => {
+  // Whitewashed timber-frame cottage with a thatched roof, a door, a lit window and a chimney.
+  const k = vary(x, y);
+  const walls = ['#efe4cc', '#e6d6b4', '#d9c7a0'][Math.floor(k * 3)];
+  const room = block(x, y, 0.82, 38, walls, walls, '#cbb894');
+  let out = shadow(x, y, 46, 20) + room.svg;
+  // Timber frame.
+  out += path(`${line(room.L(0, 0.5), room.L(1, 0.5))} ${line(room.R(0, 0.5), room.R(1, 0.5))} ${line(room.L(0.5, 0), room.L(0.5, 1))} ${line(room.R(0.5, 0), room.R(0.5, 1))} ${line(room.L(0, 0), room.L(0.5, 0.5))} ${line(room.R(0.5, 0.5), room.R(1, 1))}`, '#5a3418', 2.5);
+  // Door on the left face, window on the right.
+  const d = room.L(0.72, 0);
+  out += `<polygon points="${pts([[d[0] - 5, d[1] - 2], [d[0] + 5, d[1] + 3], [d[0] + 5, d[1] - 19], [d[0] - 5, d[1] - 24]])}" fill="#6b3f1f" stroke="${INK}" stroke-width="1.5"/><circle cx="${r1(d[0] + 2)}" cy="${r1(d[1] - 9)}" r="1.3" fill="#e7b94a"/>`;
+  const w = room.R(0.3, 0.55);
+  out += `<polygon points="${pts([[w[0] - 6, w[1] + 3], [w[0] + 6, w[1] - 3], [w[0] + 6, w[1] - 13], [w[0] - 6, w[1] - 7]])}" fill="#ffd27a" stroke="${INK}" stroke-width="1.5" class="dq-glow"/>`;
+  out += path(line([w[0], w[1] - 10 + 0], [w[0], w[1] + 0]), INK, 1);
+  // Roof: two slopes over the left and right faces.
+  const { n, e, s: so, w: wc } = room.corners;
+  const lift = (p, dy) => [p[0], p[1] - 38 - dy];
+  const ridgeA = [(n[0] + e[0]) / 2, (n[1] + e[1]) / 2];
+  const ridgeB = [(wc[0] + so[0]) / 2, (wc[1] + so[1]) / 2];
+  const over = (p, c, k2) => [p[0] + (p[0] - c[0]) * k2, p[1] + (p[1] - c[1]) * k2];
+  const RA = lift(ridgeA, 30);
+  const RB = lift(ridgeB, 30);
+  const roofCol = k > 0.5 ? '#c49a4a' : '#9b4a30';
+  out += poly([lift(over(wc, [x, y], 0.12), -4), lift(over(so, [x, y], 0.12), -4), RB], shade2(roofCol, -0.15));
+  out += poly([RB, lift(over(so, [x, y], 0.12), -4), lift(over(e, [x, y], 0.12), -4), RA], roofCol);
+  out += path(`${line(RB, RA)}`, INK, 2);
+  for (let i = 1; i < 4; i += 1) {
+    const t = i / 4;
+    const a = [RB[0] + (RA[0] - RB[0]) * t, RB[1] + (RA[1] - RB[1]) * t];
+    const so2 = lift(over(so, [x, y], 0.12), -4);
+    const e2 = lift(over(e, [x, y], 0.12), -4);
+    const b2 = [so2[0] + (e2[0] - so2[0]) * t, so2[1] + (e2[1] - so2[1]) * t];
+    out += path(line(a, b2), 'rgba(40,20,5,0.3)', 1);
+  }
+  // Chimney with smoke.
+  const c = [RA[0] - 8, RA[1] + 6];
+  out += `<rect x="${r1(c[0] - 4)}" y="${r1(c[1] - 16)}" width="8" height="16" fill="#8a3f2a" stroke="${INK}" stroke-width="1.2"/>`;
+  out += `<path d="M${r1(c[0])} ${r1(c[1] - 20)} q-4 -8 2 -14 q6 -6 1 -12" stroke="rgba(220,220,220,0.55)" stroke-width="4" fill="none" class="dq-smoke"/>`;
+  return out;
+};
+
+const well = (x, y) => {
+  let out = shadow(x, y, 20, 9);
+  out += `<path d="M${x - 16} ${y - 2} L${x - 16} ${y - 16} Q${x} ${y - 8} ${x + 16} ${y - 16} L${x + 16} ${y - 2} Q${x} ${y + 8} ${x - 16} ${y - 2} Z" fill="#8f949b" stroke="${INK}" stroke-width="1.5"/>`;
+  out += path(`M${x - 16} ${y - 9} Q${x} ${y} ${x + 16} ${y - 9} M${x - 8} ${y - 12} v8 M${x + 6} ${y - 12} v9`, 'rgba(0,0,0,0.3)', 1);
+  out += `<ellipse cx="${x}" cy="${y - 16}" rx="16" ry="7" fill="#a7acb3" stroke="${INK}" stroke-width="1.5"/><ellipse cx="${x}" cy="${y - 16}" rx="11" ry="4.5" fill="#1d2a3a"/>`;
+  out += `<rect x="${x - 15}" y="${y - 42}" width="3.5" height="26" fill="#5a3418" stroke="${INK}"/><rect x="${x + 11.5}" y="${y - 42}" width="3.5" height="26" fill="#5a3418" stroke="${INK}"/>`;
+  out += `<path d="M${x - 19} ${y - 40} L${x} ${y - 52} L${x + 19} ${y - 40} Z" fill="#9b4a30" stroke="${INK}" stroke-width="1.5"/>`;
+  out += path(`M${x - 12} ${y - 36} h24`, '#5a3418', 2.5) + path(`M${x} ${y - 36} v10`, '#c9b08a', 1.2);
+  out += `<rect x="${x - 3.5}" y="${y - 27}" width="7" height="6" fill="#7a5230" stroke="${INK}" stroke-width="1"/>`;
+  return out;
+};
+
+const fence = (x, y) => {
+  let out = '';
+  const a = [x - 24, y + 6];
+  const b = [x + 24, y - 6];
+  const post = (p) => `<rect x="${r1(p[0] - 2.5)}" y="${r1(p[1] - 20)}" width="5" height="20" fill="#7a5230" stroke="${INK}" stroke-width="1.1"/><path d="M${r1(p[0] - 2.5)} ${r1(p[1] - 20)} l2.5 -3 l2.5 3" fill="#7a5230" stroke="${INK}" stroke-width="1"/>`;
+  out += path(`M${a[0]} ${a[1] - 7} L${b[0]} ${b[1] - 7} M${a[0]} ${a[1] - 15} L${b[0]} ${b[1] - 15}`, INK, 5) + path(`M${a[0]} ${a[1] - 7} L${b[0]} ${b[1] - 7} M${a[0]} ${a[1] - 15} L${b[0]} ${b[1] - 15}`, '#a87543', 3);
+  out += post(a) + post([x, y]) + post(b);
+  return out;
+};
+
+const stall = (x, y) => {
+  const k = vary(x, y);
+  const table = block(x, y, 0.62, 14, '#b8854c', '#8a5c32', '#74492a', { fy: 0.45 });
+  let out = shadow(x, y, 32, 14) + table.svg;
+  // Goods on the counter.
+  const goods = k < 0.5 ? ['#d1372a', '#e7b94a', '#5f9a3a'] : ['#8e44ad', '#2f80ed', '#efe3c8'];
+  [0.2, 0.5, 0.8].forEach((u, i) => { const p = table.T(u, 0.5); out += `<circle cx="${r1(p[0])}" cy="${r1(p[1] - 3)}" r="4" fill="${goods[i]}" stroke="${INK}"/><circle cx="${r1(p[0] + 4)}" cy="${r1(p[1] - 1)}" r="3.5" fill="${goods[i]}" stroke="${INK}"/>`; });
+  // Poles and a striped awning.
+  const l = table.L(0, 1);
+  const rr = table.R(1, 1);
+  out += path(`M${r1(l[0])} ${r1(l[1])} v-34 M${r1(rr[0])} ${r1(rr[1])} v-34`, '#5a3418', 3);
+  const col = k < 0.5 ? '#c0392b' : '#2f80ed';
+  const A = [l[0] - 4, l[1] - 30];
+  const B = [rr[0] + 4, rr[1] - 30];
+  const C = [B[0] - 12, B[1] - 14];
+  const D = [A[0] - 12, A[1] - 14];
+  out += poly([D, C, B, A], '#fff');
+  for (let i = 0; i < 4; i += 1) {
+    const t0 = i / 4;
+    const t1 = (i + 0.5) / 4;
+    const p = (P, Q, t) => [P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t];
+    out += poly([p(D, C, t0), p(D, C, t1), p(A, B, t1), p(A, B, t0)], col, INK, 0.8);
+  }
+  out += path(`M${r1(A[0])} ${r1(A[1])} q4 5 8 0 q4 5 8 0 q4 5 8 0 q4 5 8 0 q4 5 8 0 q4 5 8 0`, col, 2.5);
+  return out;
+};
+
+const lamppost = (x, y) => {
+  let out = glow(x, y - 44, 44) + shadow(x, y, 8, 4);
+  out += `<rect x="${x - 2}" y="${y - 50}" width="4" height="50" fill="#2e2a33" stroke="${INK}" stroke-width="1"/><path d="M${x - 6} ${y} h12" stroke="#2e2a33" stroke-width="4"/>`;
+  out += `<path d="M${x - 7} ${y - 50} h14 l-3 -12 h-8 z" fill="#ffd27a" stroke="${INK}" stroke-width="1.5" class="dq-glow"/><path d="M${x - 8} ${y - 62} h16 l-8 -6 z" fill="#2e2a33" stroke="${INK}" stroke-width="1"/>`;
+  return out;
+};
+
+const haybale = (x, y) => {
+  const b = block(x, y, 0.5, 18, '#e8c45a', '#d4a83a', '#b8902e', { fy: 0.34 });
+  let out = shadow(x, y, 22, 10) + b.svg;
+  out += path(`${line(b.L(0.3, 0), b.L(0.3, 1))} ${line(b.L(0.7, 0), b.L(0.7, 1))}`, '#8a6a1f', 1.5);
+  out += path(`M${x - 18} ${y - 4} l3 -3 M${x - 8} ${y + 2} l2 -4 M${x + 10} ${y - 6} l3 -3`, '#a8862a', 1);
+  return out;
+};
+
+const cart = (x, y) => {
+  const bed = block(x, y - 10, 0.55, 12, '#a87543', '#8a5c32', '#74492a', { fy: 0.35 });
+  let out = shadow(x, y, 28, 12);
+  const wheel = (p) => `<ellipse cx="${r1(p[0])}" cy="${r1(p[1])}" rx="8" ry="9" fill="#5a3418" stroke="${INK}" stroke-width="1.5"/><ellipse cx="${r1(p[0])}" cy="${r1(p[1])}" rx="2.5" ry="3" fill="#2a1a10"/>` + path(`M${r1(p[0] - 7)} ${r1(p[1])} h14 M${r1(p[0])} ${r1(p[1] - 8)} v16`, '#3a2414', 1.5);
+  out += wheel([x + 12, y - 4]);
+  out += bed.svg + courses(bed, 2, 'rgba(40,20,5,0.4)');
+  // Load: sacks or a barrel.
+  const t = bed.T(0.5, 0.5);
+  out += vary(x, y) < 0.5
+    ? `<ellipse cx="${r1(t[0] - 6)}" cy="${r1(t[1] - 6)}" rx="9" ry="7" fill="#d8c39a" stroke="${INK}"/><ellipse cx="${r1(t[0] + 6)}" cy="${r1(t[1] - 4)}" rx="8" ry="6" fill="#cbb48a" stroke="${INK}"/>`
+    : `<rect x="${r1(t[0] - 8)}" y="${r1(t[1] - 16)}" width="16" height="16" rx="3" fill="url(#dq-g-wood)" stroke="${INK}"/>`;
+  out += wheel([x - 14, y + 3]);
+  out += path(`M${x - 24} ${y - 6} L${x - 40} ${y + 2}`, '#5a3418', 3);
+  return out;
+};
+
+const tent = (x, y) => {
+  const k = vary(x, y);
+  const col = ['#b8432f', '#3a6b8a', '#6b7a3a'][Math.floor(k * 3)];
+  let out = shadow(x, y, 32, 14);
+  const front = [x - 30, y + 2];
+  const right = [x + 30, y - 4];
+  const back = [x + 10, y - 16];
+  const apex = [x - 4, y - 46];
+  out += poly([front, [x, y + 14], apex], shade2(col, -0.2)) + poly([[x, y + 14], right, apex], col) + poly([right, back, apex], shade2(col, -0.3));
+  out += `<path d="M${x - 14} ${y + 8} L${x - 4} ${y - 30} L${x + 4} ${y + 10} Z" fill="#2a1a10" stroke="${INK}" stroke-width="1"/>`;
+  out += path(`M${apex[0]} ${apex[1]} v-10`, '#5a3418', 2.5) + `<path d="M${apex[0]} ${apex[1] - 10} l9 3 l-9 3 z" fill="#e7b94a" stroke="${INK}" stroke-width="0.8"/>`;
+  out += path(`M${front[0]} ${front[1]} l-8 6 M${right[0]} ${right[1]} l8 4`, '#c9b08a', 1);
+  return out;
+};
+
+const campfire = (x, y) => {
+  let out = glow(x, y - 4, 64);
+  for (let i = 0; i < 7; i += 1) {
+    const a = (i / 7) * Math.PI * 2;
+    out += `<ellipse cx="${r1(x + Math.cos(a) * 15)}" cy="${r1(y + Math.sin(a) * 7.5)}" rx="5" ry="3.5" fill="#8f949b" stroke="${INK}" stroke-width="1"/>`;
+  }
+  out += path(`M${x - 10} ${y + 2} L${x + 9} ${y - 5} M${x - 9} ${y - 5} L${x + 10} ${y + 2}`, '#5a3418', 4.5);
+  out += flame(x, y - 1, 0.9);
+  out += `<circle cx="${x + 5}" cy="${y - 30}" r="1.5" fill="#ffb347" class="dq-ember"/><circle cx="${x - 4}" cy="${y - 36}" r="1.2" fill="#ffb347" class="dq-ember"/>`;
+  return out;
+};
+
+const signpost = (x, y) => {
+  let out = shadow(x, y, 8, 4);
+  out += `<rect x="${x - 2.5}" y="${y - 48}" width="5" height="48" fill="#6b4524" stroke="${INK}" stroke-width="1.2"/>`;
+  out += `<path d="M${x - 2} ${y - 44} h22 l6 5 l-6 5 h-22 z" fill="#c9a26a" stroke="${INK}" stroke-width="1.3"/>`;
+  out += `<path d="M${x + 2} ${y - 30} h-22 l-6 5 l6 5 h22 z" fill="#b8925a" stroke="${INK}" stroke-width="1.3"/>`;
+  out += path(`M${x + 4} ${y - 39} h12 M${x - 20} ${y - 25} h14`, 'rgba(40,20,5,0.55)', 1.5);
+  return out;
+};
+
+const weaponrack = (x, y) => {
+  let out = shadow(x, y, 20, 8);
+  out += path(`M${x - 18} ${y + 2} L${x - 18} ${y - 30} M${x + 18} ${y - 8} L${x + 18} ${y - 40} M${x - 18} ${y - 22} L${x + 18} ${y - 32}`, '#5a3418', 4);
+  out += path(`M${x - 18} ${y + 2} L${x - 18} ${y - 30} M${x + 18} ${y - 8} L${x + 18} ${y - 40}`, INK, 0.8);
+  // Spear, sword, axe leaning on it.
+  out += path(`M${x - 10} ${y + 2} L${x - 8} ${y - 46}`, '#6b4524', 2.5) + `<path d="M${x - 11} ${y - 44} l3 -10 l3 10 z" fill="#c5cad1" stroke="${INK}" stroke-width="1"/>`;
+  out += path(`M${x + 1} ${y - 2} L${x + 2} ${y - 40}`, '#d6dae0', 3.5) + path(`M${x - 3} ${y - 8} h9`, '#7a5f1a', 3);
+  out += path(`M${x + 10} ${y - 6} L${x + 11} ${y - 42}`, '#6b4524', 2.5) + `<path d="M${x + 11} ${y - 42} q9 1 8 11 q-5 -4 -8 -3 z" fill="#c5cad1" stroke="${INK}" stroke-width="1"/>`;
+  return out;
+};
+
+const shade2 = (hex, k) => {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => Math.round(k >= 0 ? c + (255 - c) * k : c * (1 + k)));
+  return `#${ch.map((c) => Math.max(0, Math.min(255, c)).toString(16).padStart(2, '0')).join('')}`;
+};
+
 export const PROP_DRAW = {
+  cottage, well, fence, stall, lamppost, haybale, cart, tent, campfire, signpost, weaponrack,
   table, stool, barrel, crate, bar, hearth, tree, pine, deadtree, bush, rock, stump, pillar, bones, torch, candle, statue, crystal,
   mushroom, stalagmite, web, grave, coffin, banner, armorstand, throne, reeds, hut, cairn, snowbank, chest, exit,
 };
