@@ -16,6 +16,8 @@ import { makeQuest } from './story';
 const LOG_MAX = 120;
 const FOE_TURN_MS = 1400;
 const MOVE_STEP_MS = 140;
+/** A hero standing at the way onward takes the party to the next scene after this long, if the DM hasn't already. */
+export const AUTO_EXIT_MS = 9000;
 
 const say = (g, text, kind = 'info', now = g.clock) => {
   g.log.push({ id: (g.logId += 1), at: now, text, kind });
@@ -282,6 +284,7 @@ export const endCombat = (g, now = g.clock, reason = '') => {
   if (g.xpPool > 0) awardXp(g, g.xpPool, now, 'for the fight');
   g.xpPool = 0;
   say(g, reason || 'The fight is over.', 'combat', now);
+  if (g.atExit) g.exitAt = now;
 };
 
 const currentId = (g) => (g.combat ? g.combat.order[g.combat.turn] : null);
@@ -457,7 +460,7 @@ export const movesFor = (g, t) => {
     if (currentId(g) !== t.id) return { reach: new Map(), left: 0 };
     left = t.speed * (g.combat.dashed ? 2 : 1) - g.combat.moved;
   } else {
-    left = t.speed * 2; // exploring: no turns, move at a steady pace
+    left = t.speed; // exploring: no turns, but each move is one normal move
   }
   return { reach: reachable(g.map, t, Math.max(0, left), occupantFor(g, t)), left };
 };
@@ -476,7 +479,10 @@ export const move = (g, t, to, now = g.clock) => {
   const tile = tileAt(g.map, t.x, t.y);
   if (tile?.p === 'exit' && !g.combat) {
     say(g, `${t.name} reaches the way onward.`, 'scene', now);
-    if (!g.atExit) cue(g, 'exit', '', now);
+    if (!g.atExit) {
+      cue(g, 'exit', '', now);
+      g.exitAt = now;
+    }
     g.atExit = true;
   }
   revealFoes(g, now);
@@ -902,7 +908,15 @@ const foeTurn = (g, f, now) => {
 export const tick = (g, now) => {
   g.clock = now;
   g.walking = g.walking.filter((w) => now - w.at < w.path.length * MOVE_STEP_MS + 200);
-  if (!g.combat) return;
+  if (!g.combat) {
+    // Nobody needs the DM to move on: standing at the way onward is enough.
+    if (g.atExit && !g.complete && now - (g.exitAt || 0) > AUTO_EXIT_MS) {
+      const lastScene = g.sceneIndex >= g.sceneSettings.length - 1;
+      if (!lastScene) dmAct(g, { type: 'nextScene' }, now);
+      else if (!foes(g).length) completeQuest(g, now);
+    }
+    return;
+  }
   const t = current(g);
   if (t && t.side === 'foe' && now >= g.nextFoeAt && !g.paused) {
     if (!alive(t) || t.hidden) nextTurn(g, now);
@@ -1007,6 +1021,8 @@ export const playerView = (g, cid) => {
     round: g.combat?.round || 0,
     used: g.combat ? { action: g.combat.action, bonus: g.combat.bonus, moved: g.combat.moved } : null,
     check: g.check && !g.check.done && (!g.check.cid || g.check.cid === cid) ? { skill: g.check.skill, rolled: g.check.results[cid] || null } : null,
+    atExit: Boolean(g.atExit),
+    lastScene: g.sceneIndex >= g.sceneSettings.length - 1,
     chestNear: g.map.chests.some((c) => adjacent(c, t) && tileAt(g.map, c.x, c.y).p === 'chest'),
     narration: g.narration?.text || null,
     quest: { title: g.quest.title, setting: settingFor(g.map.setting).name, scene: g.sceneIndex + 1, scenes: g.sceneSettings.length },

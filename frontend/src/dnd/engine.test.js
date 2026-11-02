@@ -1,6 +1,6 @@
 import {
   act, aiContext, createGame, current, dmAct, dmView, endTurn, hear, interact, move, movesFor, pcFor, playerView, request, rollCheck, sessionRecord,
-  startCombat, tick, watchView,
+  AUTO_EXIT_MS, startCombat, tick, watchView,
 } from './engine';
 import { newCharacter, CLASS_IDS, RACE_IDS } from './rules';
 import { makeRng } from './rng';
@@ -19,11 +19,11 @@ test('a new game puts every hero on the map with a quest', () => {
   expect(dmView(g).ai.quest.title).toBe(g.quest.title);
 });
 
-test('exploring moves up to twice your speed and starting a fight sets up turns', () => {
+test('exploring moves up to your speed and starting a fight sets up turns', () => {
   const g = createGame({ seed: 9, players: players(2) });
   const hero = pcFor(g, 'c0');
   const { reach, left } = movesFor(g, hero);
-  expect(left).toBe(hero.speed * 2);
+  expect(left).toBe(hero.speed);
   const far = [...reach.values()].filter((n) => n.end).sort((a, b) => b.cost - a.cost)[0];
   expect(move(g, hero, far)).toBe(null);
   startCombat(g, 0);
@@ -116,4 +116,18 @@ test('table talk is kept for the narrator, the recap and the watch screen', () =
   expect(w.map.w).toBe(g.map.w);
   expect(w.tokens.find((t) => t.cid === 'a').classId).toBe('rogue');
   expect(w.tokens.some((t) => t.side === 'foe' && g.tokens.find((x) => x.id === t.id).hidden)).toBe(false);
+});
+
+test('reaching the way onward moves the party to the next scene without a DM', () => {
+  const g = createGame({ seed: 21, players: players(1) });
+  g.tokens = g.tokens.filter((t) => t.side === 'party');
+  const hero = pcFor(g, 'c0');
+  g.atExit = true;
+  g.exitAt = 0;
+  tick(g, AUTO_EXIT_MS / 2);
+  expect(g.sceneIndex).toBe(0);
+  tick(g, AUTO_EXIT_MS + 10);
+  expect(g.sceneIndex).toBe(1);
+  expect(g.atExit).toBe(false);
+  expect(hero.hp).toBeGreaterThan(0);
 });
