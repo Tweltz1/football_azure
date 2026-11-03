@@ -285,6 +285,24 @@
   #lc-root .dq-game .dq-narration { width: calc(100% - 1.6em); bottom: 0.8em; padding: 0.6em 0.9em; }
   #lc-root .dq-game .dq-voice-game { top: 13%; max-width: 90%; }
   #lc-root .dq-complete { inset: 20% 6% auto; }
+  /* The lobby: one column that scrolls, with the join card full width so the QR and code always fit. */
+  #lc-root .dq-lobby { gap: 12px; padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; font-size: 15px; }
+  #lc-root .dq-lobby-top { flex-direction: column; align-items: stretch; gap: 14px; }
+  #lc-root .dq-lobby .dq-title { font-size: 11vw; }
+  #lc-root .dq-lobby .dq-sub { font-size: 1em; }
+  #lc-root .dq-lobby .lc-join { align-self: stretch; gap: 12px; padding: 12px; font-size: 14px; border-width: 4px; box-sizing: border-box; max-width: 100%; }
+  #lc-root .dq-lobby .lc-join > div { min-width: 0; }
+  #lc-root .dq-lobby .lc-qr { flex: none; width: 32vw; height: 32vw; }
+  #lc-root .dq-lobby .lc-join-url, #lc-root .dq-lobby .dq-remote { overflow-wrap: anywhere; }
+  #lc-root .dq-lobby .lc-join-code { font-size: 12vw; }
+  #lc-root .dq-lobby .dq-remote { font-size: 0.8em; }
+  #lc-root .dq-dm-line { font-size: 0.95em; }
+  #lc-root .dq-lineup { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  #lc-root .dq-slot .lc-person { width: 12vw; }
+  #lc-root .dq-slot.is-empty { min-height: 22vw; font-size: 1.8em; }
+  #lc-root .dq-slot-name { font-size: 0.85em; }
+  #lc-root .dq-slot-class { font-size: 0.7em; }
+  #lc-root .dq-lobby-foot { flex-wrap: wrap; font-size: 1em; padding-bottom: 8px; }
 }
 
 /* ---- Figures and scene life ---- */
