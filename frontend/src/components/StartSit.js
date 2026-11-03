@@ -25,6 +25,7 @@ import WhyButton, { WhyCard } from './WhyButton';
 import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
 import { summarizeAccuracy } from '../data/accuracy';
 import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion } from '../data/askModel';
+import { askAi, askData } from '../data/askAi';
 import { leagueOutlookFrom } from '../data/leagueOdds';
 import { loadLeagueSeason, playerByes } from '../data/leagueSeason';
 import '../App.css';
@@ -612,9 +613,21 @@ const WaiverMoves = ({
 };
 
 
+// The model's own answer: shown as before, or folded under "The model's numbers" once the AI has answered.
+const ModelAnswer = ({ answer, showNumbers, children }) => (showNumbers ? (
+  <details className="ask-answer ask-model-numbers" data-kind={answer.context?.type || undefined}>
+    <summary className="startsit-help">The model's numbers</summary>
+    {children}
+  </details>
+) : (
+  <div className="ask-answer" data-kind={answer.context?.type || undefined}>{children}</div>
+));
+
 /**
  * The chat bar: type a question about a player, your lineup, a trade or the waiver wire, and get the
- * model's answer with the same reasons as the "?" cards. Everything runs in the browser; nothing is sent anywhere.
+ * model's answer with the same reasons as the "?" cards. The model's answer shows at once; then Gemini (through
+ * /api/startsit/ask) rewrites it as a conversational reply grounded in that answer and the team's data. If Gemini
+ * can't answer, the model's answer simply stays.
  */
 export const AskBar = ({
   projections, projectionsById, roster, lineup, whyCtx, scoring, week, partners, rosterSettings, dynasty, ppr,
@@ -800,6 +813,7 @@ export const AskBar = ({
     const q = String(text || '').trim();
     if (!q || busy) return;
     let answer;
+    let failed = false;
     try {
       setBusy(true);
       const previous = log[0]?.answer?.context || null;
@@ -807,12 +821,28 @@ export const AskBar = ({
       answer = answerQuestion(q, { ...buildCtx(), league, previous });
     } catch (error) {
       console.error('Ask bar failed:', error);
+      failed = true;
       answer = { text: 'Something went wrong working that out. Try asking another way.', examples: EXAMPLE_QUESTIONS };
     }
     setBusy(false);
-    setLog((entries) => [{ id: Date.now(), q, answer }, ...entries].slice(0, 5));
+    const id = Date.now();
+    setLog((entries) => [{ id, q, answer, ai: failed ? null : 'pending' }, ...entries].slice(0, 5));
     setQuestion('');
     if (answer.scrollTo) window.setTimeout(() => document.getElementById(answer.scrollTo)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    if (failed) return;
+
+    // Then ask Gemini, grounded in the model's answer and this team's data.
+    const history = log.slice(0, 3).reverse().map((e) => ({ q: e.q, a: (e.ai && e.ai.answer) || e.answer?.text || '' }));
+    let data;
+    try {
+      data = askData({
+        answer, roster, lineup, allPlayers: scoredAll, freeAgents: waiverPool, partnerNames: partners.map((p) => p.name), week, ppr, dynasty,
+      });
+    } catch (error) {
+      data = { week };
+    }
+    const ai = await askAi({ question: q, history, data });
+    setLog((entries) => entries.map((e) => (e.id === id ? { ...e, ai } : e)));
   };
 
   const Examples = ({ list }) => (
@@ -850,10 +880,17 @@ export const AskBar = ({
         </>
       )}
       <ul className="ask-log">
-        {log.map(({ id, q, answer }) => (
+        {log.map(({ id, q, answer, ai }) => (
           <li key={id}>
             <p className="ask-question">{q}</p>
-            <div className="ask-answer" data-kind={answer.context?.type || undefined}>
+            {ai && ai !== 'pending' && (
+              <div className="ask-answer ask-ai">
+                <p><small className="ask-item-label">AI</small> {ai.answer}</p>
+                {ai.ideas.length > 0 && <Examples list={ai.ideas} />}
+              </div>
+            )}
+            {ai === 'pending' && <p className="startsit-help ask-ai-pending">Getting the AI's take...</p>}
+            <ModelAnswer showNumbers={!!(ai && ai !== 'pending')} answer={answer}>
               <p>{answer.text}</p>
               {answer.itemsTitle && <p className="startsit-help">{answer.itemsTitle}</p>}
               {answer.items?.length > 0 && (
@@ -890,8 +927,8 @@ export const AskBar = ({
               ))}
               {answer.why && <div className="why-pop ask-why"><WhyCard why={answer.why} updatedLabel={updatedLabel} /></div>}
               {answer.note && <p className="startsit-help">{answer.note}</p>}
-              {answer.examples && <Examples list={answer.examples} />}
-            </div>
+              {answer.examples && !(ai && ai !== 'pending') && <Examples list={answer.examples} />}
+            </ModelAnswer>
           </li>
         ))}
       </ul>
