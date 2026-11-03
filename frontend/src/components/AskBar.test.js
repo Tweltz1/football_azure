@@ -142,3 +142,32 @@ test('follow-ups point back at the last trade or player', async () => {
   const failures = console.error.mock.calls.filter(([msg]) => String(msg).includes('Ask bar failed'));
   expect(failures).toEqual([]);
 });
+
+test('shows the AI reply grounded in the model answer, and keeps the model answer when the AI is down', async () => {
+  const sent = [];
+  axios.defaults.adapter = (config) => {
+    if (config.url.endsWith('/startsit/ask')) {
+      sent.push(JSON.parse(config.data));
+      return Promise.resolve({ data: { answer: 'Start Nabers, he projects more.', ideas: ['Who at flex?'] }, status: 200, statusText: 'OK', headers: {}, config });
+    }
+    return Promise.reject(Object.assign(new Error('Network Error'), { config }));
+  };
+  renderBar();
+  await ask('Start Nabers or Olave?');
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  const first = container.querySelector('.ask-log > li');
+  expect(first.querySelector('.ask-ai').textContent).toMatch(/Start Nabers, he projects more/);
+  expect(first.querySelector('details.ask-model-numbers .why-pop')).not.toBeNull();
+  expect(first.textContent).toMatch(/Who at flex\?/);
+  expect(sent[0].question).toBe('Start Nabers or Olave?');
+  expect(sent[0].data.modelAnswer.why.headline).toBeTruthy();
+  expect(sent[0].data.myLineup.length).toBeGreaterThan(5);
+
+  axios.defaults.adapter = (config) => Promise.reject(Object.assign(new Error('Network Error'), { config }));
+  await ask('who should I start at flex?');
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  const second = container.querySelector('.ask-log > li');
+  expect(second.querySelector('.ask-ai')).toBeNull();
+  expect(second.querySelector('.ask-ai-pending')).toBeNull();
+  expect(second.textContent).toMatch(/at FLEX/);
+});

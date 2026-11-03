@@ -1005,6 +1005,25 @@ details[open] > .history-team-summary::after {
   font-weight: 700;
 }
 
+/* Gemini's reply, above the model's own answer. */
+.ask-ai p {
+  line-height: 1.5;
+}
+
+.ask-ai-pending {
+  margin: 0 0 6px;
+  font-style: italic;
+}
+
+.ask-model-numbers {
+  margin-top: 6px;
+}
+
+.ask-model-numbers > summary {
+  cursor: pointer;
+  margin: 0 0 6px;
+}
+
 /* The "?" card, shown inline instead of as a popover. */
 .why-pop.ask-why {
   position: static;

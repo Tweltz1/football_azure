@@ -6,6 +6,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.49.4';
 import { handle, type Ctx } from '../_shared/handlers.ts';
 import { getInitialPlayerPool } from '../_shared/playerData.ts';
 import { dndRoute } from '../_shared/dnd.ts';
+import { askRoute } from '../_shared/footballAsk.ts';
 import { createNarrator } from './narrator.ts';
 import { createTurn } from './turn.ts';
 import {
@@ -111,7 +112,9 @@ Deno.serve(async (req) => {
     };
 
     const parts = path.split('/').filter(Boolean).map((p) => decodeURIComponent(p));
-    const result = (await dndRoute(ctx, dnd, req.method, parts, body)) ?? await handle(ctx, req.method, path, url.searchParams, body);
+    const result = (await dndRoute(ctx, dnd, req.method, parts, body))
+      ?? (await askRoute(ctx, dnd.narrator, req.method, parts, body))
+      ?? await handle(ctx, req.method, path, url.searchParams, body);
     const headers: Record<string, string> = { ...corsHeaders, ...(result.headers ?? {}) };
 
     if (result.body === undefined || result.body === null) {
