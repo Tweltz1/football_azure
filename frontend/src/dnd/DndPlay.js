@@ -134,9 +134,32 @@ export default function DndPlay() {
   helloRef.current = () => phoneRef.current?.send('hello', { name, role, look, sheet: role === 'player' ? fullSheet : null, userId: user?.id || null, voice: voiceOn, muted, transcribing: transcribeOn })
     .then((result) => { sendResult.current = String(result); });
 
+  // Back on this page after a while: reconnect at once instead of waiting for the old connection to time out.
+  const [netTry, setNetTry] = useState(0);
+  const lastCode = useRef('');
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onShow = () => {
+      if (document.hidden) { hiddenAt = Date.now(); return; }
+      if (hiddenAt && Date.now() - hiddenAt > 3000) {
+        lastHeard.current = Date.now();
+        setLost(false);
+        setNetTry((n) => n + 1);
+      }
+      hiddenAt = 0;
+    };
+    document.addEventListener('visibilitychange', onShow);
+    window.addEventListener('online', onShow);
+    return () => {
+      document.removeEventListener('visibilitychange', onShow);
+      window.removeEventListener('online', onShow);
+    };
+  }, []);
+
   useEffect(() => {
     if (!joined || code.length !== 4) return undefined;
-    setScreen(null);
+    if (lastCode.current !== code) setScreen(null); // a reconnect to the same table keeps the game on screen
+    lastCode.current = code;
     setLost(false);
     lastHeard.current = Date.now();
     screenRef.current = null;
@@ -171,7 +194,7 @@ export default function DndPlay() {
       phone.close();
       phoneRef.current = null;
     };
-  }, [joined, code, cid]);
+  }, [joined, code, cid, netTry]);
 
   // Voice chat and speech to text. The TV learns who is on from every hello, so a refresh can't lose it.
   const live = joined && Boolean(screen) && !lost;
@@ -349,7 +372,7 @@ export default function DndPlay() {
   );
 
   let body;
-  if (lost || !screen) {
+  if (!screen) {
     body = (
       <div className="lcp">
         {header}
@@ -423,5 +446,14 @@ export default function DndPlay() {
       {(voice.error || transcriber.error) && <div className="dqv-note is-error">{voice.error || transcriber.error}</div>}
     </div>
   );
-  return <div className="dq">{body}{voiceBar}</div>;
+  // The host screen went quiet (its tab is in the background, or it's reconnecting): keep the game
+  // on screen and wait for it, rather than throwing everyone out.
+  const waiting = lost && screen && screen.screen !== 'full' && screen.screen !== 'kicked' && (
+    <div className="dqp-waiting">
+      <b>⏸ Waiting for the host screen…</b>
+      <span>The game picks up as soon as the host page is open again.</span>
+      <button type="button" className="lcp-link" onClick={() => { setJoined(false); setCode(''); }}>Join a different table</button>
+    </div>
+  );
+  return <div className="dq">{waiting}{body}{voiceBar}</div>;
 }

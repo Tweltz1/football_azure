@@ -118,8 +118,17 @@ export default function PlayerGame({ view, send, header, toast }) {
       </div>
       {toast && <div className="dqp-toast">{toast}</div>}
       {unlockNote && (
-        <button type="button" className="dqp-toast dqp-unlocked" onClick={() => { setTab('gear'); setUnlockNote(null); }}>
-          🏅 Unlocked {unlockNote.slot === 'title' ? `the title “${unlockNote.name}”` : unlockNote.name}! Tap to wear it.
+        <button type="button" className="dqp-unlocked" key={unlockId} onClick={() => { setTab('gear'); setUnlockNote(null); }}>
+          {unlockNote.slot !== 'title' && (
+            // eslint-disable-next-line react/no-danger
+            <svg viewBox="-170 -380 340 400" dangerouslySetInnerHTML={{ __html: heroMarkup(sheet.look || me.look, { [unlockNote.slot]: unlockNote.id }) }} />
+          )}
+          <span>
+            <small>🏅 Unlocked!</small>
+            <b>{unlockNote.slot === 'title' ? `${sheet.name} ${unlockNote.name}` : unlockNote.name}</b>
+            <em>{howToUnlock(unlockNote)}</em>
+            <i>Tap to wear it</i>
+          </span>
         </button>
       )}
       <ActionCam fx={view.fx} meId={me.id} packed={view.map} tokens={view.tokens} npcs={view.npcs} />

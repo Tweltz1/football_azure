@@ -99,7 +99,8 @@
 #lc-root .dq-hero b, #lc-root .dq-hero small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #lc-root .dq-party, #lc-root .dq-initiative { font-size: 0.85em; }
 #lc-root .dq-hero small { font-size: 0.75em; color: #d9c79a; }
-#lc-root .dq-hero-head { flex: none; width: 3em; height: 3em; }
+#lc-root .dq-hero-head { flex: none; width: 3em; height: 3em; overflow: hidden; }
+#lc-root .dq-hero-head svg { overflow: hidden; }
 #lc-root .dq-hero-hp { font: 900 1.3em var(--dq-title); }
 #lc-root .dq-hpbar { height: 0.4em; margin-top: 0.2em; background: #16122b; border-radius: 1em; overflow: hidden; }
 #lc-root .dq-hpbar i { display: block; height: 100%; background: #39e75f; }
@@ -275,16 +276,26 @@
 /* ---- TV or watch screen on a phone held upright: board across the full width, panels below it ---- */
 @media (orientation: portrait) {
   #lc-root .dq-tv { --u: min(2.6vw, 1.4vh); }
-  #lc-root .dq-game .dq-board { left: 0; top: 14%; width: 100%; height: 45%; }
-  #lc-root .dq-game .dq-corner { left: 0.8em; right: 0.8em; top: 0.6em; justify-content: space-between; }
-  #lc-root .dq-game .dq-quest { top: 4.6em; left: 0.8em; max-width: calc(100% - 1.6em); font-size: 0.9em; }
-  #lc-root .dq-game .dq-turn { top: 15%; font-size: 1.1em; }
-  #lc-root .dq-game .dq-side { top: 59%; left: 0.8em; right: 0.8em; width: auto; flex-direction: row; align-items: flex-start; }
-  #lc-root .dq-game .dq-side > * { flex: 1 1 0; min-width: 0; }
-  #lc-root .dq-game .dq-rolls { top: auto; bottom: 30%; width: 45%; }
-  #lc-root .dq-game .dq-narration { width: calc(100% - 1.6em); bottom: 0.8em; padding: 0.6em 0.9em; }
-  #lc-root .dq-game .dq-voice-game { top: 13%; max-width: 90%; }
-  #lc-root .dq-complete { inset: 20% 6% auto; }
+  /* In play: one scrolling column (code, quest, whose turn, board, party, narration) instead of a TV's overlay. */
+  #lc-root .dq-game { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; overflow-y: auto; -webkit-overflow-scrolling: touch; font-size: 14px; }
+  #lc-root .dq-game > * { position: relative; inset: auto; transform: none; flex: none; }
+  #lc-root .dq-game .dq-hud-top { order: 0; display: flex; flex-direction: column-reverse; gap: 8px; height: auto; }
+  #lc-root .dq-game .dq-corner { position: static; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; padding: 6px 12px; border-radius: 14px; }
+  #lc-root .dq-game .dq-corner .lc-warn { flex-basis: 100%; text-align: center; }
+  #lc-root .dq-game .dq-corner > span:first-child { font-size: 0.85em; }
+  #lc-root .dq-game .dq-corner-code { font-size: 1.4em; }
+  #lc-root .dq-game .dq-quest { position: static; max-width: none; padding: 6px 12px; }
+  #lc-root .dq-game .dq-quest b { font-size: 1.15em; }
+  #lc-root .dq-game .dq-turn { order: 1; position: static; align-self: center; transform: none; font-size: 1.05em; }
+  #lc-root .dq-game .dq-voice-game { order: 1; position: static; transform: none; max-width: none; }
+  #lc-root .dq-game .dq-board { order: 2; position: static; width: 100%; height: 62vw; max-height: 48vh; }
+  #lc-root .dq-game .dq-rolls { order: 4; position: static; width: auto; }
+  #lc-root .dq-game .dq-roll { animation: none; }
+  #lc-root .dq-game .dq-side { order: 5; padding-bottom: 10px; position: static; width: auto; flex-direction: column; gap: 8px; }
+  #lc-root .dq-game .dq-narration { order: 3; position: static; width: auto; padding: 8px 12px; border-width: 3px; transform: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
+  #lc-root .dq-game .dq-narration-text { font-size: 1.05em; }
+  #lc-root .dq-game .dq-complete { position: fixed; inset: 20% 6% auto; z-index: 9; }
+  #lc-root .dq-game .dq-watch-lost { position: fixed; top: auto; bottom: 8px; right: 8px; }
   /* The lobby: one column that scrolls, with the join card full width so the QR and code always fit. */
   #lc-root .dq-lobby { gap: 12px; padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; font-size: 15px; }
   #lc-root .dq-lobby-top { flex-direction: column; align-items: stretch; gap: 14px; }
@@ -355,13 +366,6 @@
 @keyframes dq-aura-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.7; } }
 @keyframes dq-aura-rise { 0% { transform: translateY(20px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
 @keyframes dq-hover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
-#lc-root .dq-unlock { position: absolute; left: 50%; top: 10%; transform: translateX(-50%); display: flex; align-items: center; gap: 0.8em; padding: 0.6em 1.4em 0.6em 0.6em; background: rgba(13, 10, 20, 0.92); border: 3px solid var(--dq-gold, #e7b94a); border-radius: 1em; box-shadow: 0 0 40px rgba(231, 185, 74, 0.55); animation: dq-pop 0.5s ease-out; z-index: 6; }
-@keyframes dq-pop { from { transform: translateX(-50%) scale(0.6); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
-#lc-root .dq-unlock svg { width: 5.5em; height: 6.5em; }
-#lc-root .dq-unlock div { display: flex; flex-direction: column; }
-#lc-root .dq-unlock small { color: #ffe066; font-size: 0.8em; letter-spacing: 0.08em; text-transform: uppercase; }
-#lc-root .dq-unlock b { font-size: 1.5em; }
-#lc-root .dq-unlock span { font-size: 0.85em; color: #d9c79a; }
 #lc-root .dqp-gear-hero { display: flex; justify-content: center; }
 #lc-root .dqp-gear-hero svg { width: 180px; height: 210px; }
 #lc-root .dqp-gear-count { text-align: center; opacity: 0.8; margin: 0 0 8px; }
@@ -377,7 +381,14 @@
 #lc-root .dqp-gear-bar { width: 100%; height: 4px; margin-top: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.15); overflow: hidden; }
 #lc-root .dqp-gear-bar span { display: block; height: 100%; background: #e7b94a; }
 #lc-root .dqp-gear-title { font-size: 12px; padding: 8px 4px; }
-#lc-root .dqp-unlocked { display: block; width: 100%; border: 2px solid #e7b94a; background: rgba(231, 185, 74, 0.2); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+#lc-root .dqp-unlocked { position: fixed; left: 50%; bottom: 18px; z-index: 70; display: flex; align-items: center; gap: 10px; width: calc(100% - 24px); max-width: 420px; padding: 10px 14px 10px 8px; color: #f4e6c4; font: inherit; text-align: left; background: rgba(13, 10, 20, 0.95); border: 3px solid #e7b94a; border-radius: 16px; box-shadow: 0 0 36px rgba(231, 185, 74, 0.55); cursor: pointer; transform: translateX(-50%); animation: dqp-unlock-in 0.45s ease-out; }
+#lc-root .dqp-unlocked svg { flex: none; width: 74px; height: 88px; }
+#lc-root .dqp-unlocked span { display: flex; flex-direction: column; min-width: 0; }
+#lc-root .dqp-unlocked small { color: #ffe066; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+#lc-root .dqp-unlocked b { font-size: 20px; line-height: 1.15; }
+#lc-root .dqp-unlocked em { font-style: normal; font-size: 13px; color: #d9c79a; }
+#lc-root .dqp-unlocked i { margin-top: 3px; font-style: normal; font-size: 13px; font-weight: 700; color: #e7b94a; }
+@keyframes dqp-unlock-in { 0% { opacity: 0; transform: translate(-50%, 30px) scale(0.9); } 70% { opacity: 1; transform: translate(-50%, -4px) scale(1.03); } 100% { transform: translate(-50%, 0); } }
 
 /* Action cam on the board */
 #lc-root .dq-bubble-text { font: 600 12px 'Inter', sans-serif; fill: #16122b; }
@@ -392,8 +403,14 @@
 #lc-root .dq-fx-spell { fill: #b86bff; stroke: #fff; stroke-width: 2px; }
 
 /* Action cam on the phone */
-#lc-root .dqc { position: fixed; left: 8px; right: 8px; top: 8px; z-index: 60; max-width: 520px; margin: 0 auto; pointer-events: none; border-radius: 14px; overflow: hidden; border: 2px solid rgba(231, 185, 74, 0.6); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); animation: dqc-in 0.25s ease-out; }
+#lc-root .dqc { position: fixed; left: 8px; right: 8px; top: 8px; z-index: 60; max-width: 520px; margin: 0 auto; cursor: pointer; border-radius: 14px; overflow: hidden; border: 2px solid rgba(231, 185, 74, 0.6); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); animation: dqc-in 0.25s ease-out; }
 #lc-root .dqc-caption { margin: 0; padding: 7px 12px; background: rgba(13, 10, 20, 0.85); font-size: 14px; font-weight: 600; text-align: center; }
 @keyframes dqc-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
 #lc-root .dqc-stage { height: 240px; background: #0d0a14; }
-#lc-root .dqc-board { width: 100%; height: 100%; display: block; }
+#lc-root .dqc-board, #lc-root .dq-game .dqc-board { position: static; width: 100%; height: 100%; display: block; }
+
+/* ---- Phone: the host screen went quiet, so the game waits instead of ending ---- */
+#lc-root .dqp-waiting { position: sticky; top: 0; z-index: 65; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 14px; color: #16122b; text-align: center; background: #e7b94a; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4); }
+#lc-root .dqp-waiting b { font-size: 16px; }
+#lc-root .dqp-waiting span { font-size: 13px; }
+#lc-root .dqp-waiting .lcp-link { margin-top: 2px; color: #16122b; font-size: 12px; text-decoration: underline; }

@@ -37,15 +37,23 @@ export default function ActionCam({ fx, meId, packed, tokens, npcs }) {
   useEffect(() => {
     if (!fx || QUIET.has(fx.kind)) return undefined;
     const at = Date.now();
+    const until = at + (SHOW_MS[fx.kind] || 2600);
     setShown({ ...fx, at });
     setNow(at);
+    // One clock drives the picture and also ends it, so it can't get stuck on screen if a timer is
+    // held up (Safari pauses timers in a tab you've switched away from).
     let frame = 0;
     const loop = () => {
-      setNow(Date.now());
+      const t = Date.now();
+      if (t >= until || document.hidden) {
+        setShown(null);
+        return;
+      }
+      setNow(t);
       frame = window.requestAnimationFrame(loop);
     };
     frame = window.requestAnimationFrame(loop);
-    const timer = window.setTimeout(() => setShown(null), SHOW_MS[fx.kind] || 2600);
+    const timer = window.setTimeout(() => setShown(null), until - at + 100);
     return () => {
       window.clearTimeout(timer);
       window.cancelAnimationFrame(frame);
@@ -65,7 +73,7 @@ export default function ActionCam({ fx, meId, packed, tokens, npcs }) {
   const game = { map, tokens: list, npcs: npcs || [], combat: null, walking: [], fx: f };
   const focus = [f.actor, f.target].filter(Boolean).map((w) => ({ x: w.x, y: w.y }));
   return (
-    <div className="dqc" key={f.id}>
+    <div className="dqc" key={f.id} onClick={() => setShown(null)} role="presentation">
       <div className="dqc-stage">
         <Board game={game} now={now} focus={focus} className="dq-board dqc-board" />
       </div>
