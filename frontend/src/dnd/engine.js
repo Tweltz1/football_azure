@@ -13,6 +13,9 @@ import {
 } from './movement';
 import { makeQuest } from './story';
 import { makeNpcs, npcLine, taskLabel, villainName } from './npcs';
+import {
+  buyPrice, GUARDED_ROLES, hasItem, ITEMS, MERCHANT_ROLES, sellValue, SHOP_STOCK, UNDEAD,
+} from './items';
 
 const LOG_MAX = 120;
 const FOE_TURN_MS = 1400;
@@ -209,6 +212,8 @@ export const enterScene = (g, index, now = g.clock, first = false, settingId = n
       boss.name = PEOPLE_BOSSES.has(boss.monster) ? cap(who) : `${cap(who)}’s ${MONSTERS[boss.monster].name}`;
     }
   }
+  g.searched = {};
+  g.sneakTried = {};
   g.npcs = makeNpcs(subSeed(g.map.seed, 'npcs'), g.map.npcs || [], { monsters: g.map.spawns.map((sp) => sp.monster), chests: g.map.chests.length, quest: g.quest });
   say(g, `Scene ${index + 1}: ${settingFor(setting).name}.`, 'scene', now);
   if (!first) cue(g, lastScene ? 'boss' : 'scene', settingFor(setting).name, now);
@@ -282,10 +287,14 @@ export const startCombat = (g, now = g.clock, who = '') => {
     const value = r.int(1, 20) + dex;
     return { id: t.id, value, tie: r.rand() };
   }).sort((a, b) => b.value - a.value || b.tie - a.tie);
+  // Heroes who snuck up catch the enemy off guard: every foe loses its first turn.
+  const surprise = party(g).some((p) => conscious(p) && p.cond.sneaking);
+  if (surprise) fighters.forEach((f) => { if (f.side === 'foe') f.cond.surprised = true; });
   g.mode = 'combat';
   g.combat = { order: inits.map((i) => i.id), turn: 0, round: 1, moved: 0, action: false, bonus: false, dashed: false, sneakUsed: false, inits: Object.fromEntries(inits.map((i) => [i.id, i.value])) };
   say(g, `Combat! Initiative: ${inits.map((i) => `${tokenById(g, i.id).name} ${i.value}`).join(', ')}.`, 'combat', now);
-  cue(g, 'combat', who || 'Enemies', now);
+  if (surprise) say(g, 'Surprise! The enemies never saw you coming and lose their first turn.', 'combat', now);
+  cue(g, 'combat', `${who || 'Enemies'}${surprise ? ' (caught by surprise)' : ''}`, now);
   startTurn(g, now);
 };
 
@@ -466,15 +475,18 @@ const completeQuest = (g, now) => {
 
 const myTurn = (g, t) => !g.combat || currentId(g) === t.id;
 
+/** Speed with what you carry: Boots of springing add 5 ft. */
+const speedFor = (t) => t.speed + (hasItem(t.sheet, 'Boots of springing') ? 5 : 0);
+
 /** Where this token may move right now, as a reachable() map, plus the feet left. */
 export const movesFor = (g, t) => {
   if (!t || !conscious(t)) return { reach: new Map(), left: 0 };
   let left;
   if (g.combat) {
     if (currentId(g) !== t.id) return { reach: new Map(), left: 0 };
-    left = t.speed * (g.combat.dashed ? 2 : 1) - g.combat.moved;
+    left = speedFor(t) * (g.combat.dashed ? 2 : 1) - g.combat.moved;
   } else {
-    left = t.speed; // exploring: no turns, but each move is one normal move
+    left = speedFor(t); // exploring: no turns, but each move is one normal move
   }
   return { reach: reachable(g.map, t, Math.max(0, left), occupantFor(g, t)), left };
 };
@@ -490,6 +502,10 @@ export const move = (g, t, to, now = g.clock) => {
   t.y = to.y;
   g.walking = g.walking.filter((w) => w.id !== t.id);
   g.walking.push({ id: t.id, path, at: now });
+  path.forEach((step) => {
+    const trap = (g.map.traps || []).find((tr) => tr.x === step.x && tr.y === step.y && !tr.found && !tr.sprung);
+    if (trap && conscious(t)) springTrap(g, t, trap, now);
+  });
   const tile = tileAt(g.map, t.x, t.y);
   if (tile?.p === 'exit' && !g.combat) {
     say(g, `${t.name} reaches the way onward.`, 'scene', now);
@@ -597,6 +613,9 @@ export const act = (g, t, msg, now = g.clock) => {
     } else {
       let adv = target.cond.dodge ? -1 : 0;
       if (t.cond.mark) adv = Math.max(adv, 0);
+      // Striking from hiding, or at a foe who's tied up or caught by surprise, has advantage.
+      if (t.cond.sneaking || target.cond.surprised || target.cond.stunned) adv = 1;
+      delete t.cond.sneaking;
       // Ranged attacks with an enemy right next to you are at disadvantage.
       if ((a.range || 1) > 1 && foes(g).some((f) => !f.hidden && f.hp > 0 && adjacent(f, t))) adv = -1;
       let bonus = nums.toHit;
@@ -635,7 +654,7 @@ export const act = (g, t, msg, now = g.clock) => {
 };
 
 /** Opens a chest next to you. */
-export const interact = (g, t, now = g.clock) => {
+export const interact = (g, t, now = g.clock, { key = false } = {}) => {
   if (!t || !conscious(t)) return 'You are down.';
   if (g.combat && currentId(g) !== t.id) return 'Wait for your turn.';
   const chest = g.map.chests.find((c) => adjacent(c, t) && tileAt(g.map, c.x, c.y).p === 'chest');
@@ -647,7 +666,7 @@ export const interact = (g, t, now = g.clock) => {
   const r = tools(rng(g));
   const tile = tileAt(g.map, chest.x, chest.y);
   tile.p = null;
-  if (['dungeon', 'cave', 'castle'].includes(g.map.setting) && r.chance(0.12)) {
+  if (!key && ['dungeon', 'cave', 'castle'].includes(g.map.setting) && r.chance(0.12)) {
     const m = foeToken(g, 'mimic', chest, 1);
     m.hidden = false;
     g.tokens.push(m);
@@ -657,8 +676,9 @@ export const interact = (g, t, now = g.clock) => {
     else startCombat(g, now, 'A Mimic');
     return null;
   }
-  const gold = r.int(5, 25) * partyLevel(g);
+  const gold = r.int(5, 25) * partyLevel(g) * (key ? 2 : 1);
   const item = r.pick(LOOT);
+  if (key) say(g, `${t.name} turns the Strange key. The lock clicks open, and a hidden tray inside is full of coins.`, 'loot', now);
   t.sheet.gold += gold;
   t.sheet.inventory.push(item);
   g.loot.push({ who: t.name, item, gold });
@@ -706,6 +726,10 @@ export const talk = (g, t, now = g.clock) => {
   if (!t || !conscious(t)) return 'You are down.';
   const n = npcNear(g, t);
   if (!n) return 'Nobody to talk to here.';
+  if (n.angry) {
+    sayNpc(g, n, n.angryLine || 'Get away from me, thief!', now);
+    return null;
+  }
   const first = !n.talked;
   n.talked = true;
   if (first && n.task.kind === 'fetch' && !g.map.chests.some((c) => tileAt(g.map, c.x, c.y).p === 'chest')) {
@@ -713,12 +737,371 @@ export const talk = (g, t, now = g.clock) => {
   }
   if (first && n.task.kind === 'slay') n.task.count = foes(g).filter((f) => f.monster === n.task.monster).length || n.task.count;
   checkTasks(g, now);
-  const text = `${n.name} the ${n.role.toLowerCase()}: “${npcLine(n)}”`;
+  const line = npcLine(n);
   if (n.done) n.rewarded = true;
+  sayNpc(g, n, line, now);
+  if (first && n.task.kind === 'clue') awardXp(g, 10 * Math.max(1, party(g).length), now, `for listening to ${n.name}`);
+  return null;
+};
+
+// ---- Skills: social tricks, searching, sneaking, items and shops ------------------------------------------------
+
+/** Skills each class is trained in on top of its two main abilities. */
+const TRAINED = {
+  rogue: ['Sleight of Hand', 'Stealth', 'Investigation', 'Perception', 'Deception'],
+  bard: ['Persuasion', 'Deception', 'Performance', 'Sleight of Hand'],
+  ranger: ['Survival', 'Stealth', 'Perception', 'Nature'],
+  cleric: ['Religion', 'Insight', 'Medicine'],
+  wizard: ['Arcana', 'Investigation', 'History'],
+  paladin: ['Intimidation', 'Athletics', 'Persuasion'],
+  fighter: ['Athletics', 'Intimidation', 'Perception'],
+  barbarian: ['Athletics', 'Intimidation', 'Survival'],
+};
+
+/** The bonus a hero adds to a skill roll. */
+export const skillBonus = (t, skill) => {
+  const stat = SKILLS[skill] || 'wis';
+  const cls = CLASSES[t.sheet.classId] || CLASSES.fighter;
+  const trained = cls.primary.slice(0, 2).includes(stat) || (TRAINED[t.sheet.classId] || []).includes(skill) || (skill === 'Perception' && t.sheet.raceId === 'elf');
+  let bonus = mod(t.sheet.stats[stat]) + (trained ? proficiency(t.sheet.level) : 0);
+  if (hasItem(t.sheet, 'Lucky coin')) bonus += 1;
+  if (skill === 'Stealth' && hasItem(t.sheet, 'Elven cloak')) bonus += 5;
+  if ((skill === 'Investigation' || skill === 'Perception') && hasItem(t.sheet, 'Lantern')) bonus += 2;
+  return bonus;
+};
+
+/** Rolls a skill for a hero and shows it on the TV. Returns { ok, d20, total, nat1, nat20 }. */
+const skillCheck = (g, t, skill, dc, now, { adv = 0, label = skill } = {}) => {
+  const r = tools(rng(g));
+  let bonus = skillBonus(t, skill);
+  if (t.cond.inspired) {
+    bonus += r.int(1, 6);
+    delete t.cond.inspired;
+  }
+  let res = d20(bonus, adv, r.rand);
+  if (res.nat1 && t.sheet.raceId === 'halfling' && !t.luckyUsed) {
+    t.luckyUsed = true;
+    say(g, `${t.name} is Lucky and rerolls the 1.`, 'roll', now);
+    res = d20(bonus, adv, r.rand);
+  }
+  const ok = res.nat20 || (!res.nat1 && res.total >= dc);
+  say(g, `${t.name} rolls ${label}: ${res.total} (${res.d20}${bonus >= 0 ? '+' : ''}${bonus}) vs DC ${dc}. ${ok ? 'Success!' : 'Fail.'}`, 'roll', now);
+  showRoll(g, { who: t.name, label, d20: res.d20, total: res.total, ok }, now);
+  return { ok, d20: res.d20, total: res.total, nat1: res.nat1, nat20: res.nat20 };
+};
+
+/** Checks the action economy before a skill or item. Returns an error, or null. */
+const canSpend = (g, t, bonus = false) => {
+  if (!t || !conscious(t)) return 'You are down.';
+  if (!g.combat) return null;
+  if (currentId(g) !== t.id) return 'Wait for your turn.';
+  if (bonus ? g.combat.bonus : g.combat.action) return bonus ? 'Bonus action already used.' : 'Action already used.';
+  return null;
+};
+
+const spend = (g, bonus = false) => {
+  if (!g.combat) return;
+  if (bonus) g.combat.bonus = true;
+  else g.combat.action = true;
+};
+
+/** An NPC says something on the TV. */
+const sayNpc = (g, n, line, now) => {
+  const text = `${n.name} the ${n.role.toLowerCase()}: “${line}”`;
   g.narrationId = (g.narrationId || 0) + 1;
   g.narration = { text, by: 'npc', at: now, id: g.narrationId };
   say(g, text, 'narrate', now);
-  if (first && n.task.kind === 'clue') awardXp(g, 10 * Math.max(1, party(g).length), now, `for listening to ${n.name}`);
+};
+
+/** Someone steps on a hidden trap. A Dexterity save (DC 13) dodges it. */
+const springTrap = (g, t, trap, now) => {
+  // Sharp eyes (passive Perception 14 or more) spot it in time.
+  if (10 + skillBonus(t, 'Perception') >= 15) {
+    trap.found = true;
+    say(g, `${t.name} spots ${trap.kind} just in time and steps around it.`, 'roll', now);
+    return;
+  }
+  trap.sprung = true;
+  trap.found = true;
+  const r = rng(g);
+  const save = d20(mod(t.sheet.stats.dex) + (t.sheet.classId === 'rogue' ? proficiency(t.sheet.level) : 0), 0, r);
+  const ok = save.total >= 13;
+  const dmg = ok ? 0 : roll(partyLevel(g) >= 3 ? '2d6' : '1d6', r).total;
+  say(g, `${t.name} sets off ${trap.kind}! Dexterity save ${save.total} vs DC 13: ${ok ? 'dodged it!' : `${dmg} damage.`}`, 'combat', now);
+  showRoll(g, { who: t.name, label: 'Trap!', d20: save.d20, total: save.total, ok, dmg: dmg || undefined }, now);
+  cue(g, 'action', `${t.name} sets off ${trap.kind}${ok ? ' but dodges' : ` and takes ${dmg} damage`}`, now);
+  if (dmg) damage(g, t, dmg, now, trap.kind);
+};
+
+/** The shop this hero can use right now: a merchant next to them, or a market stall. */
+const shopNear = (g, t) => {
+  if (!t || g.combat) return null;
+  const n = npcNear(g, t);
+  if (n && MERCHANT_ROLES.has(n.role) && !n.angry && !n.scared) return { name: `${n.name} the ${n.role.toLowerCase()}`, friendly: Boolean(n.friendly), npc: n };
+  const stall = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]].some(([dx, dy]) => tileAt(g.map, t.x + dx, t.y + dy)?.p === 'stall');
+  if (stall) return { name: 'the market stall', friendly: false, npc: null };
+  return null;
+};
+
+const SOCIAL = {
+  persuade: { skill: 'Persuasion', dc: 12, label: 'Persuasion' },
+  intimidate: { skill: 'Intimidation', dc: 13, label: 'Intimidation' },
+  pickpocket: { skill: 'Sleight of Hand', dc: 13, label: 'Pickpocket' },
+};
+
+/** Persuade, Intimidate or Pickpocket the NPC next to you. */
+export const social = (g, t, kind, now = g.clock) => {
+  const how = SOCIAL[kind];
+  if (!how) return 'Unknown action.';
+  const n = t && npcNear(g, t);
+  if (!n) return 'Nobody here.';
+  const problem = canSpend(g, t);
+  if (problem) return problem;
+  if (n.angry) return `${n.name} won’t deal with you anymore.`;
+  n.tried = n.tried || {};
+  if (n.tried[kind]) return `You already tried that on ${n.name}.`;
+  n.tried[kind] = true;
+  spend(g);
+  const r = tools(rng(g));
+  const lvl = partyLevel(g);
+  const res = skillCheck(g, t, how.skill, how.dc, now, { adv: kind === 'pickpocket' && t.sheet.classId === 'rogue' ? 1 : 0, label: how.label });
+  if (kind === 'persuade') {
+    if (res.ok) {
+      n.friendly = true;
+      const counts = {};
+      foes(g).forEach((f) => { counts[f.name.replace(/ \d+$/, '')] = (counts[f.name.replace(/ \d+$/, '')] || 0) + 1; });
+      const ahead = Object.entries(counts).map(([name, c]) => (c > 1 ? `${c} ${name.toLowerCase()}s` : `a ${name.toLowerCase()}`));
+      const trap = (g.map.traps || []).filter((x) => !x.found && !x.sprung).sort((a, b) => squaresBetween(a, t) - squaresBetween(b, t))[0];
+      if (trap) trap.found = true;
+      const line = `${ahead.length ? `Listen close. Up ahead there’s ${ahead.join(', ')}.` : 'It’s quiet ahead, for now.'}${trap ? ` And watch your step: I saw ${trap.kind} out there.` : ''}${MERCHANT_ROLES.has(n.role) ? ' For you, friend, a discount.' : ''}`;
+      sayNpc(g, n, line, now);
+      awardXp(g, 15 * Math.max(1, party(g).length), now, `for winning over ${n.name}`);
+    } else {
+      sayNpc(g, n, 'Hmph. I don’t know you, and I’ve said all I’m going to say.', now);
+    }
+    cue(g, 'action', `${t.name} tries to persuade ${n.name} the ${n.role.toLowerCase()} and ${res.ok ? 'wins them over' : 'fails'}`, now);
+  } else if (kind === 'intimidate') {
+    if (res.ok) {
+      const gold = r.int(5, 15) * lvl;
+      t.sheet.gold += gold;
+      n.scared = true;
+      sayNpc(g, n, `All right, all right! Take it, ${gold} gold, just leave me be!`, now);
+    } else {
+      n.angry = true;
+      n.angryLine = 'You think you scare me? Get lost.';
+      sayNpc(g, n, 'Ha! Is that supposed to scare me? We’re done here.', now);
+    }
+    cue(g, 'action', `${t.name} tries to intimidate ${n.name} the ${n.role.toLowerCase()} and ${res.ok ? 'scares some gold out of them' : 'gets laughed at'}`, now);
+  } else {
+    if (res.ok) {
+      const gold = r.int(10, 30) * lvl;
+      t.sheet.gold += gold;
+      const item = r.chance(0.35) ? r.pick(LOOT) : null;
+      if (item) t.sheet.inventory.push(item);
+      say(g, `${t.name} lifts ${gold} gold${item ? ` and ${item}` : ''} from ${n.name} without a sound.`, 'loot', now);
+      showRoll(g, { who: t.name, label: item || 'Pickpocket', total: gold, ok: true, loot: true }, now);
+      cue(g, 'action', `${t.name} quietly picks ${n.name}’s pocket and gets away with ${gold} gold`, now);
+    } else {
+      n.angry = true;
+      n.angryLine = 'Thief! Keep your hands where I can see them!';
+      sayNpc(g, n, 'Hey! THIEF! Guards!', now);
+      const guards = res.nat1 || GUARDED_ROLES.has(n.role) || Boolean(g.map.village);
+      if (guards) {
+        const guard = foeToken(g, 'thug', freeSpotNear(g, n), 1);
+        guard.name = 'Town guard';
+        guard.hidden = false;
+        g.tokens.push(guard);
+        say(g, 'A Town guard comes running, sword drawn!', 'combat', now);
+        if (g.combat) g.combat.order.splice(g.combat.turn + 1, 0, guard.id);
+        else startCombat(g, now, 'A Town guard');
+      }
+      cue(g, 'action', `${t.name} tries to pick ${n.name}’s pocket and gets caught${guards ? '. A guard attacks' : ''}`, now);
+    }
+  }
+  return null;
+};
+
+/** Buys an item at the shop next to you. */
+export const buy = (g, t, item, now = g.clock) => {
+  if (!t || !conscious(t)) return 'You are down.';
+  if (g.combat) return 'Not in the middle of a fight!';
+  const shop = shopNear(g, t);
+  if (!shop) return 'No shop here.';
+  if (!SHOP_STOCK.includes(item)) return 'They don’t sell that.';
+  const price = buyPrice(item, shop.friendly);
+  if (t.sheet.gold < price) return `You need ${price} gold.`;
+  if (t.sheet.inventory.length >= 40) return 'Your pack is full.';
+  t.sheet.gold -= price;
+  t.sheet.inventory.push(item);
+  say(g, `${t.name} buys ${item} from ${shop.name} for ${price} gold.`, 'loot', now);
+  return null;
+};
+
+/** Sells an item from your pack at the shop next to you. */
+export const sell = (g, t, item, now = g.clock) => {
+  if (!t || !conscious(t)) return 'You are down.';
+  if (g.combat) return 'Not in the middle of a fight!';
+  const shop = shopNear(g, t);
+  if (!shop) return 'No shop here.';
+  const index = t.sheet.inventory.indexOf(item);
+  if (index < 0) return 'You don’t have that.';
+  if (!ITEMS[item]) return 'Nobody wants to buy that.';
+  const gold = sellValue(item);
+  t.sheet.inventory.splice(index, 1);
+  t.sheet.gold += gold;
+  say(g, `${t.name} sells ${item} to ${shop.name} for ${gold} gold.`, 'loot', now);
+  return null;
+};
+
+/** Searches around you for traps (20 ft) and hidden stashes (15 ft). Once per spot. */
+export const search = (g, t, now = g.clock) => {
+  const problem = canSpend(g, t);
+  if (problem) return problem;
+  const key = `${t.x},${t.y}`;
+  if (g.searched[key]) return 'You already searched here. Move somewhere else.';
+  g.searched[key] = true;
+  spend(g);
+  const skill = skillBonus(t, 'Investigation') >= skillBonus(t, 'Perception') ? 'Investigation' : 'Perception';
+  const res = skillCheck(g, t, skill, 12, now, { label: `Search (${skill})` });
+  if (!res.ok) {
+    say(g, `${t.name} searches but finds nothing.`, 'info', now);
+    return null;
+  }
+  const traps = (g.map.traps || []).filter((x) => !x.found && !x.sprung && squaresBetween(x, t) <= 4);
+  traps.forEach((x) => { x.found = true; });
+  const caches = (g.map.caches || []).filter((x) => !x.found && squaresBetween(x, t) <= 3);
+  const r = tools(rng(g));
+  caches.forEach((c) => {
+    c.found = true;
+    const gold = r.int(5, 20) * partyLevel(g);
+    const item = r.pick(LOOT);
+    t.sheet.gold += gold;
+    t.sheet.inventory.push(item);
+    g.loot.push({ who: t.name, item, gold });
+    say(g, `${t.name} finds a hidden stash ${c.what}: ${gold} gold and ${item}!`, 'loot', now);
+    showRoll(g, { who: t.name, label: item, total: gold, ok: true, loot: true }, now);
+  });
+  if (traps.length) say(g, `${t.name} spots ${traps.map((x) => x.kind).join(' and ')}. Marked on the map, so nobody steps on ${traps.length > 1 ? 'them' : 'it'}.`, 'roll', now);
+  if (!traps.length && !caches.length) say(g, `${t.name} searches carefully. Nothing hidden around here.`, 'info', now);
+  else cue(g, 'action', `${t.name} searches and finds ${[...caches.map(() => 'a hidden stash'), ...traps.map((x) => x.kind)].join(' and ')}`, now);
+  return null;
+};
+
+/** Sneaks (Stealth DC 12). Sneaking heroes surprise the enemy: foes lose their first turn and your first hit has advantage. */
+export const sneak = (g, t, now = g.clock) => {
+  if (!t || !conscious(t)) return 'You are down.';
+  if (g.combat) return 'Too late to sneak, they’ve seen you!';
+  if (t.cond.sneaking) return 'You’re already sneaking.';
+  const key = `${t.id}@${t.x},${t.y}`;
+  if (g.sneakTried[key]) return 'Move somewhere else before you try again.';
+  g.sneakTried[key] = true;
+  const res = skillCheck(g, t, 'Stealth', 12, now, { label: 'Sneak (Stealth)' });
+  if (res.ok) {
+    t.cond.sneaking = true;
+    say(g, `${t.name} slips into the shadows. Enemies who meet them will be caught by surprise.`, 'info', now);
+  } else {
+    say(g, `${t.name} tries to sneak, but kicks a loose stone. Not so quiet.`, 'info', now);
+  }
+  return null;
+};
+
+/** Uses an item from your pack. target: a token id for items you aim. */
+export const applyItem = (g, t, item, targetId = null, now = g.clock) => {
+  const def = ITEMS[item];
+  if (!t) return 'Nope.';
+  if (!def || !def.use) return 'You can’t use that.';
+  const index = t.sheet.inventory.indexOf(item);
+  if (index < 0) return 'You don’t have that.';
+  if (def.use === 'heal') return drinkPotion(g, t, now);
+  if (def.use === 'key') {
+    const err = interact(g, t, now, { key: true });
+    if (!err) t.sheet.inventory.splice(t.sheet.inventory.indexOf(item), 1);
+    return err;
+  }
+  const problem = canSpend(g, t, def.bonus);
+  if (problem) return problem;
+  let target = null;
+  if (def.target === 'foe') {
+    target = targetId ? tokenById(g, targetId) : null;
+    if (!target || target.side !== 'foe' || !alive(target) || target.hidden) return 'Pick an enemy.';
+    if (def.range <= 1 ? !adjacent(t, target) : squaresBetween(t, target) > def.range) return `Out of range (${def.range * 5} ft).`;
+    if (def.range > 1 && !lineOfSight(g.map, t, target)) return 'Can’t see them from here.';
+  }
+  const fightOnly = ['smoke', 'rope', 'caltrops', 'shield', 'climb'];
+  if (!g.combat && fightOnly.includes(def.use)) return 'Save that for a fight.';
+  if (def.use === 'caltrops' && !foes(g).some((f) => !f.hidden && adjacent(f, t))) return 'No enemy next to you.';
+  const r = rng(g);
+  // Throwing or zapping something at a foe who hasn't noticed you starts the fight with you going first.
+  if (target && !g.combat) {
+    startCombat(g, now, MONSTERS[target.monster].name);
+    const at = g.combat.order.indexOf(t.id);
+    if (at > 0) {
+      g.combat.order.splice(at, 1);
+      g.combat.order.unshift(t.id);
+      g.combat.turn = 0;
+      startTurn(g, now);
+    }
+  }
+  t.sheet.inventory.splice(t.sheet.inventory.indexOf(item), 1);
+  spend(g, def.bonus);
+  switch (def.use) {
+    case 'smoke': {
+      const allies = party(g).filter((p) => conscious(p) && squaresBetween(p, t) <= 2);
+      allies.forEach((p) => { p.cond.dodge = true; });
+      say(g, `${t.name} throws a Smoke bomb! ${allies.map((p) => p.name).join(', ')} vanish in the smoke and are hard to hit.`, 'combat', now);
+      break;
+    }
+    case 'rope': {
+      const res = skillCheck(g, t, 'Athletics', 12, now, { label: 'Rope (Athletics)' });
+      if (res.ok) {
+        target.cond.stunned = true;
+        say(g, `${t.name} ropes ${target.name}! It loses its next turn.`, 'combat', now);
+      } else say(g, `${target.name} slips out of ${t.name}’s rope.`, 'combat', now);
+      break;
+    }
+    case 'holy':
+    case 'sparks': {
+      const undead = UNDEAD.has(target.monster);
+      const dmg = roll(def.use === 'holy' && undead ? '4d6' : '2d6', r).total;
+      say(g, def.use === 'holy'
+        ? `${t.name} splashes Holy water on ${target.name}${undead ? '. It burns and hisses!' : '.'} ${dmg} damage.`
+        : `${t.name} zaps ${target.name} with the Wand of sparks for ${dmg}.`, 'combat', now);
+      showRoll(g, { who: t.name, label: item, total: dmg, ok: true, dmg }, now);
+      damage(g, target, dmg, now, item);
+      break;
+    }
+    case 'shield':
+      t.cond.shield = true;
+      say(g, `${t.name} reads the Scroll of Shield. A shimmering barrier: +5 AC for the rest of the fight.`, 'combat', now);
+      break;
+    case 'caltrops': {
+      const near = foes(g).filter((f) => !f.hidden && adjacent(f, t));
+      say(g, `${t.name} scatters caltrops!`, 'combat', now);
+      near.forEach((f) => {
+        const dmg = roll('1d4', r).total;
+        say(g, `${f.name} steps on them: ${dmg} damage.`, 'combat', now);
+        damage(g, f, dmg, now, 'caltrops');
+      });
+      break;
+    }
+    case 'ale': {
+      const healed = heal(g, t, roll('1d4', r).total, now);
+      t.cond.inspired = true;
+      say(g, `${t.name} downs a Dwarven ale: +${healed} HP and fired up (+1d6 on the next roll).`, 'heal', now);
+      break;
+    }
+    case 'map': {
+      const traps = (g.map.traps || []).filter((x) => !x.found && !x.sprung);
+      traps.forEach((x) => { x.found = true; });
+      say(g, traps.length ? `${t.name} reads the Map fragment: ${traps.length} trap${traps.length > 1 ? 's' : ''} marked on the map!` : `${t.name} reads the Map fragment. No traps left around here.`, 'info', now);
+      break;
+    }
+    case 'climb':
+      g.combat.moved -= 10;
+      say(g, `${t.name} drinks a Potion of Climbing and scrambles 10 ft farther this turn.`, 'combat', now);
+      break;
+    default: break;
+  }
   return null;
 };
 
@@ -929,6 +1312,13 @@ export const dmAct = (g, msg, now = g.clock) => {
 
 const foeTurn = (g, f, now) => {
   const m = MONSTERS[f.monster];
+  if (f.cond.surprised || f.cond.stunned) {
+    say(g, f.cond.stunned ? `${f.name} struggles against the rope and loses its turn.` : `${f.name} is caught by surprise and loses its turn.`, 'combat', now);
+    delete f.cond.surprised;
+    delete f.cond.stunned;
+    nextTurn(g, now);
+    return;
+  }
   const target = nearestPc(g, f);
   if (!target) {
     nextTurn(g, now);
@@ -952,10 +1342,11 @@ const foeTurn = (g, f, now) => {
     let adv = target.cond.dodge ? -1 : 0;
     if (target.hp <= 0) adv = 1;
     const atk = d20(m.toHit, adv, r);
-    const hit = atk.nat20 || (!atk.nat1 && atk.total >= target.ac);
+    const ac = target.ac + (target.cond.shield ? 5 : 0);
+    const hit = atk.nat20 || (!atk.nat1 && atk.total >= ac);
     if (hit) {
       const dmg = roll(atk.nat20 || (target.hp <= 0 && adjacent(f, target)) ? critDice(m.dice) : m.dice, r).total;
-      say(g, `${f.name} hits ${target.name} (${atk.total} vs AC ${target.ac}) for ${dmg}.`, 'combat', now);
+      say(g, `${f.name} hits ${target.name} (${atk.total} vs AC ${ac}) for ${dmg}.`, 'combat', now);
       showRoll(g, { who: f.name, label: 'Attack', d20: atk.d20, total: atk.total, ok: true, dmg, foe: true }, now);
       if (target.hp <= 0) {
         target.deathSaves.fail += 2;
@@ -965,7 +1356,7 @@ const foeTurn = (g, f, now) => {
         }
       } else damage(g, target, dmg, now, f.name);
     } else {
-      say(g, `${f.name} misses ${target.name} (${atk.total} vs AC ${target.ac}).`, 'combat', now);
+      say(g, `${f.name} misses ${target.name} (${atk.total} vs AC ${ac})${target.cond.shield && atk.total >= target.ac ? '. The Shield spell turns the blow!' : '.'}`, 'combat', now);
       showRoll(g, { who: f.name, label: 'Attack', d20: atk.d20, total: atk.total, ok: false, foe: true }, now);
     }
   }
@@ -1020,6 +1411,9 @@ export const packMap = (map) => ({
   seed: map.seed,
 });
 
+/** Traps the party knows about: [x, y, sprung]. */
+const trapsSeen = (g) => (g.map.traps || []).filter((x) => x.found || x.sprung).map((x) => [x.x, x.y, x.sprung ? 1 : 0]);
+
 const tokenView = (t) => ({
   id: t.id, side: t.side, name: t.name, x: t.x, y: t.y, hp: t.hp, maxHp: t.maxHp, ac: t.ac, cid: t.cid || null,
   glyph: t.glyph || null, monster: t.monster || null, color: t.color || null, boss: Boolean(t.boss), dead: Boolean(t.dead), down: t.hp <= 0, look: t.look || null,
@@ -1044,7 +1438,7 @@ export const aiContext = (g) => ({
   round: g.combat?.round || null,
   foes: foes(g).filter((f) => !f.hidden).map((f) => ({ name: f.name, hp: f.hp, maxHp: f.maxHp })),
   hiddenFoes: foes(g).filter((f) => f.hidden).length,
-  npcs: (g.npcs || []).map((n) => `${n.name} the ${n.role.toLowerCase()}${n.talked ? `: ${npcLine(n)}` : ''}${n.done ? ' (helped)' : ''}`),
+  npcs: (g.npcs || []).map((n) => `${n.name} the ${n.role.toLowerCase()}${n.talked ? `: ${npcLine(n)}` : ''}${n.done ? ' (helped)' : ''}${n.angry ? ' (angry at the party)' : ''}${n.friendly ? ' (friendly)' : ''}`),
   recent: g.log.slice(-18).map((l) => l.text),
   requests: g.requests.slice(-4).map((r) => `${r.who}: ${r.text}`),
   talk: (g.transcript || []).slice(-12).map((l) => `${l.who}: ${l.text}`),
@@ -1060,7 +1454,8 @@ export const watchView = (g) => {
     tokens: g.tokens.filter((t) => alive(t) && !t.gone && !(t.side === 'foe' && t.hidden)).map((t) => ({
       ...tokenView(t), color: t.color || null, classId: t.sheet?.classId || null,
     })),
-    npcs: (g.npcs || []).map(({ id, x, y, name, role, look, talked, done }) => ({ id, x, y, name, role, look, talked, done })),
+    npcs: (g.npcs || []).map(({ id, x, y, name, role, look, talked, done, angry }) => ({ id, x, y, name, role, look, talked, done, angry })),
+    traps: trapsSeen(g),
     combat: g.combat ? { order: g.combat.order, turn: g.combat.turn, round: g.combat.round } : null,
     turnName: turn ? turn.name : null,
     turnFoe: turn ? turn.side === 'foe' : false,
@@ -1080,7 +1475,7 @@ export const playerView = (g, cid) => {
   const myMove = movesFor(g, t);
   const reach = [...myMove.reach.values()].filter((n) => n.end && (n.x !== t.x || n.y !== t.y)).map((n) => [n.x, n.y, n.cost]);
   return {
-    me: { ...tokenView(t), sheet: t.sheet, uses: t.uses, cond: t.cond, speed: t.speed, deathSaves: t.deathSaves, characterId: t.characterId },
+    me: { ...tokenView(t), sheet: t.sheet, uses: t.uses, cond: t.cond, speed: speedFor(t), deathSaves: t.deathSaves, characterId: t.characterId },
     tokens: g.tokens.filter((x) => alive(x) && !(x.side === 'foe' && x.hidden)).map(tokenView),
     map: packMap(g.map),
     reach,
@@ -1092,7 +1487,17 @@ export const playerView = (g, cid) => {
     used: g.combat ? { action: g.combat.action, bonus: g.combat.bonus, moved: g.combat.moved } : null,
     check: g.check && !g.check.done && (!g.check.cid || g.check.cid === cid) ? { skill: g.check.skill, rolled: g.check.results[cid] || null } : null,
     atExit: Boolean(g.atExit),
-    npcNear: (() => { const n = npcNear(g, t); return n ? { name: n.name, role: n.role } : null; })(),
+    npcNear: (() => {
+      const n = npcNear(g, t);
+      return n ? { name: n.name, role: n.role, angry: Boolean(n.angry), scared: Boolean(n.scared), friendly: Boolean(n.friendly), tried: n.tried || {} } : null;
+    })(),
+    shop: (() => {
+      const shop = shopNear(g, t);
+      return shop ? { name: shop.name, friendly: shop.friendly, stock: SHOP_STOCK.map((item) => [item, buyPrice(item, shop.friendly)]) } : null;
+    })(),
+    searched: Boolean(g.searched && g.searched[`${t.x},${t.y}`]),
+    sneakTried: Boolean(g.sneakTried && g.sneakTried[`${t.id}@${t.x},${t.y}`]),
+    traps: trapsSeen(g),
     tasks: (g.npcs || []).filter((n) => n.talked && taskLabel(n)).map((n) => ({ text: taskLabel(n), done: n.done })),
     lastScene: g.sceneIndex >= g.sceneSettings.length - 1,
     chestNear: g.map.chests.some((c) => adjacent(c, t) && tileAt(g.map, c.x, c.y).p === 'chest'),

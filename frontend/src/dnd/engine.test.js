@@ -1,6 +1,6 @@
 import {
   act, aiContext, createGame, current, dmAct, dmView, endTurn, hear, interact, move, movesFor, pcFor, playerView, request, rollCheck, sessionRecord,
-  AUTO_EXIT_MS, startCombat, talk, tick, watchView,
+  AUTO_EXIT_MS, applyItem, buy, search, sell, sneak, social, startCombat, talk, tick, watchView,
 } from './engine';
 import { newCharacter, CLASS_IDS, RACE_IDS } from './rules';
 import { makeRng } from './rng';
@@ -91,6 +91,18 @@ test('a long random session never breaks the rules engine', () => {
         dmAct(g, { type: 'spawn', monster: 'goblin' }, now);
       } else if (choice < 0.92) {
         dmAct(g, { type: 'hp', target: t.id, amount: -3 }, now);
+      } else if (choice < 0.94) {
+        search(g, t, now);
+        sneak(g, t, now);
+      } else if (choice < 0.96) {
+        const foe = g.tokens.find((x) => x.side === 'foe' && !x.dead && !x.hidden);
+        applyItem(g, t, t.sheet.inventory[Math.floor(rand() * t.sheet.inventory.length)], foe?.id, now);
+      } else if (choice < 0.98) {
+        const npc = g.npcs[0];
+        if (npc) { t.x = npc.x + 1; t.y = npc.y; }
+        social(g, t, ['persuade', 'intimidate', 'pickpocket'][Math.floor(rand() * 3)], now);
+        buy(g, t, 'Smoke bomb', now);
+        sell(g, t, 'Torch', now);
       }
       // The views must always build.
       playerView(g, cid);

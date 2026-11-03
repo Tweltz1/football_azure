@@ -372,6 +372,29 @@ export const pickEncounter = (r, setting, partySize = 4, partyLevel = 1, boss = 
   return out;
 };
 
+/** What a trap is, per place. */
+const TRAP_KINDS = {
+  forest: ['a hunter’s snare', 'a bear trap', 'a hidden pit'],
+  swamp: ['a sinkhole of sucking mud', 'a poisoned spike', 'a snare'],
+  mountain: ['loose rocks', 'a hidden crevasse', 'a tripwire'],
+  dungeon: ['a pressure plate that fires darts', 'a pit trap', 'a swinging blade'],
+  cave: ['a crumbling ledge', 'a pit of spikes', 'a kobold tripwire'],
+  crypt: ['a poison needle', 'a collapsing grave', 'a scything blade'],
+  castle: ['a pressure plate that fires darts', 'a trapdoor', 'a crossbow on a tripwire'],
+};
+
+/** Where a stash is hidden, per place. */
+const CACHE_PLACES = {
+  tavern: ['under a loose floorboard', 'behind a cracked brick', 'in a forgotten coat'],
+  forest: ['in a hollow log', 'under a mossy stone', 'in a buried pouch'],
+  swamp: ['in a sunken boot', 'in a hollow stump', 'in an old oilskin bag'],
+  mountain: ['under a cairn stone', 'in a frozen pack', 'in a crack in the rock'],
+  dungeon: ['behind a loose stone', 'under a broken tile', 'in a rusted lockbox'],
+  cave: ['in a crack in the rock', 'under a pile of rubble', 'in a dead miner’s pack'],
+  crypt: ['inside a hollow urn', 'under a burial slab', 'behind a skull in the wall'],
+  castle: ['behind a tapestry', 'in a hidden drawer', 'under a loose flagstone'],
+};
+
 /**
  * generateMap(settingId, seed, { partySize, partyLevel, boss })
  * Always returns a map where the start, the exit, every monster and every chest are connected.
@@ -462,7 +485,26 @@ export const generateMap = (settingId, seed, options = {}) => {
     }
   }
 
-  return { ...m, start, exit: { x: exit.x, y: exit.y }, chests, spawns, npcs, village, name: s.name };
+  // Hidden things: traps on the way (Search finds them before someone steps on one) and loot stashes.
+  const hideSpots = r.shuffle(regionFrom(m, start[0]).filter((p) => p.cost >= 15 && !used.has(`${p.x},${p.y}`) && !tileAt(m, p.x, p.y).p && tileAt(m, p.x, p.y).t !== 'water'));
+  const takeSpot = (list) => {
+    const spot = hideSpots.find((p) => !used.has(`${p.x},${p.y}`) && !list.some((q) => Math.max(Math.abs(q.x - p.x), Math.abs(q.y - p.y)) < 3));
+    if (spot) used.add(`${spot.x},${spot.y}`);
+    return spot;
+  };
+  const traps = [];
+  const trapKinds = TRAP_KINDS[s.id] || TRAP_KINDS.dungeon;
+  for (let i = s.id === 'tavern' ? 0 : r.int(2, 3); i > 0; i -= 1) {
+    const spot = takeSpot(traps);
+    if (spot) traps.push({ x: spot.x, y: spot.y, kind: r.pick(trapKinds), found: false, sprung: false });
+  }
+  const caches = [];
+  for (let i = 0; i < 2; i += 1) {
+    const spot = takeSpot(caches);
+    if (spot) caches.push({ x: spot.x, y: spot.y, found: false, what: r.pick(CACHE_PLACES[s.id] || CACHE_PLACES.dungeon) });
+  }
+
+  return { ...m, start, exit: { x: exit.x, y: exit.y }, chests, spawns, npcs, village, traps, caches, name: s.name };
 };
 
 /** What a prop is called, for the narrator and the phones. */

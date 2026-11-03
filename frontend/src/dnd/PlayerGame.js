@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import MiniMap from './MiniMap';
 import { actionNumbers, actionsOf, CLASSES, describe, mod, RACES, signed, STAT_NAMES, STATS, XP_FOR_LEVEL } from './rules';
 import { squaresBetween } from './movement';
+import { ITEMS, sellValue } from './items';
 
 const kindHint = (a) => {
   if (a.kind === 'heal') return a.self ? 'Heal yourself' : `Heal an ally within ${(a.range || 1) * 5} ft`;
@@ -16,12 +17,14 @@ export default function PlayerGame({ view, send, header, toast }) {
   const [tab, setTab] = useState('map');
   const [chosen, setChosen] = useState(null); // an action waiting for a target
   const [text, setText] = useState('');
+  const [shopOpen, setShopOpen] = useState(false);
   const me = view.me;
   const sheet = me.sheet;
   const canAct = !view.mode || view.mode === 'explore' || view.myTurn;
   const used = view.used || {};
 
   useEffect(() => { if (!view.myTurn && view.mode === 'combat') setChosen(null); }, [view.myTurn, view.mode]);
+  useEffect(() => { if (!view.shop) setShopOpen(false); }, [view.shop]);
   useEffect(() => {
     if (view.myTurn && navigator.vibrate) navigator.vibrate([60, 40, 60]);
   }, [view.myTurn]);
@@ -29,6 +32,7 @@ export default function PlayerGame({ view, send, header, toast }) {
   const actions = actionsOf(sheet);
   const targetsFor = (a) => {
     if (!a) return [];
+    if (a.item) return view.tokens.filter((t) => t.side === 'foe' && !t.dead && squaresBetween(t, me) <= a.range);
     if (a.kind === 'heal' && !a.self) return view.tokens.filter((t) => t.side === 'party' && !t.dead);
     if (a.kind === 'self' && a.ally) return view.tokens.filter((t) => t.side === 'party' && t.id !== me.id && !t.dead);
     if (a.kind === 'heal' || a.kind === 'self') return [];
@@ -49,13 +53,38 @@ export default function PlayerGame({ view, send, header, toast }) {
     if (chosen) {
       const ok = targetsFor(chosen).find((t) => t.id === token?.id);
       if (ok) {
-        send('act', { type: 'action', action: chosen.id, target: ok.id });
+        if (chosen.item) send('act', { type: 'item', item: chosen.name, target: ok.id });
+        else send('act', { type: 'action', action: chosen.id, target: ok.id });
         setChosen(null);
       }
       return;
     }
     if (view.reach.some(([rx, ry]) => rx === x && ry === y)) send('act', { type: 'move', x, y });
   };
+
+  /** Uses an item from the pack. Aimed ones wait for a tap on a target. */
+  const pickItem = (item) => {
+    const def = ITEMS[item];
+    if (!def || !def.use) return;
+    if (def.target === 'foe') {
+      setChosen({ name: item, item: true, range: def.range || 1 });
+      setTab('map');
+      return;
+    }
+    send('act', { type: 'item', item });
+  };
+  const usable = (item) => {
+    const def = ITEMS[item];
+    if (!def || !def.use || me.down) return false;
+    if (view.mode !== 'combat') return !['smoke', 'rope', 'caltrops', 'shield', 'climb'].includes(def.use) && (def.use !== 'key' || view.chestNear);
+    if (!view.myTurn) return false;
+    if (def.use === 'key') return view.chestNear && !used.action;
+    return def.bonus ? !used.bonus : !used.action;
+  };
+  const npc = view.npcNear;
+  const tried = (npc && npc.tried) || {};
+  const busy = view.mode === 'combat' && (!view.myTurn || used.action);
+  const pack = [...new Set(sheet.inventory)].map((item) => ({ item, count: sheet.inventory.filter((x) => x === item).length, def: ITEMS[item] }));
 
   const marks = { [me.id]: 'me' };
   if (chosen) targetsFor(chosen).forEach((t) => { marks[t.id] = 'target'; });
@@ -100,7 +129,7 @@ export default function PlayerGame({ view, send, header, toast }) {
                 ? (view.mode === 'combat' ? 'Tap a lit square to move there.' : view.lastScene ? 'Find the boss. Tap a lit square to move.' : 'Find the 🚪 way onward. Tap a lit square to move.')
                 : view.mode === 'combat' ? 'Wait for your turn to move.' : 'Look at the TV.'}</div>
           )}
-          <MiniMap packed={view.map} tokens={view.tokens} reach={chosen ? [] : view.reach} marks={marks} onTap={onTap} />
+          <MiniMap packed={view.map} tokens={view.tokens} reach={chosen ? [] : view.reach} marks={marks} onTap={onTap} traps={view.traps || []} />
           {view.tasks && view.tasks.length > 0 && (
             <ul className="dqp-tasks">
               {view.tasks.map((task) => <li key={task.text} className={task.done ? 'is-done' : ''}>{task.done ? '✅' : '📌'} {task.text}</li>)}
@@ -108,10 +137,55 @@ export default function PlayerGame({ view, send, header, toast }) {
           )}
           <div className="dqp-quick">
             {view.mode === 'combat' && view.myTurn && <button type="button" className="lc-btn" onClick={() => send('act', { type: 'end' })}>✅ End turn</button>}
-            {view.npcNear && <button type="button" className="lc-btn" onClick={() => send('act', { type: 'talk' })}>💬 Talk to {view.npcNear.name}</button>}
             {view.chestNear && <button type="button" className="lc-btn lc-btn-ghost" onClick={() => send('act', { type: 'interact' })}>🧰 Open chest</button>}
+            {view.chestNear && sheet.inventory.includes('Strange key') && <button type="button" className="lc-btn lc-btn-ghost" disabled={!usable('Strange key')} onClick={() => pickItem('Strange key')}>🗝️ Use the key</button>}
             {sheet.inventory.includes('Potion of Healing') && <button type="button" className="lc-btn lc-btn-ghost" onClick={() => send('act', { type: 'potion' })}>🧪 Drink potion</button>}
+            <button type="button" className="lc-btn lc-btn-ghost" disabled={!canAct || busy || view.searched || me.down} onClick={() => send('act', { type: 'search' })}>🔍 {view.searched ? 'Searched here' : 'Search'}</button>
+            {view.mode !== 'combat' && (
+              me.cond && me.cond.sneaking
+                ? <span className="dqp-chip">🥷 Sneaking</span>
+                : <button type="button" className="lc-btn lc-btn-ghost" disabled={view.sneakTried || me.down} onClick={() => send('act', { type: 'sneak' })}>🥷 Sneak</button>
+            )}
+            {view.shop && !npc && <button type="button" className="lc-btn" onClick={() => setShopOpen(true)}>🛒 Shop at the stall</button>}
           </div>
+          {npc && (
+            <div className="dqp-npc">
+              <b>🙋 {npc.name} the {npc.role.toLowerCase()}{npc.angry ? ' 😠' : npc.scared ? ' 😨' : npc.friendly ? ' 🙂' : ''}</b>
+              <div className="dqp-npc-row">
+                <button type="button" className="lc-btn" onClick={() => send('act', { type: 'talk' })}>💬 Talk</button>
+                {view.shop && <button type="button" className="lc-btn" onClick={() => setShopOpen(true)}>🛒 Trade</button>}
+                <button type="button" className="lc-btn lc-btn-ghost" disabled={npc.angry || tried.persuade || busy} onClick={() => send('act', { type: 'social', kind: 'persuade' })}>🤝 Persuade</button>
+                <button type="button" className="lc-btn lc-btn-ghost" disabled={npc.angry || tried.intimidate || busy} onClick={() => send('act', { type: 'social', kind: 'intimidate' })}>😤 Intimidate</button>
+                <button type="button" className="lc-btn lc-btn-ghost" disabled={npc.angry || tried.pickpocket || busy} onClick={() => send('act', { type: 'social', kind: 'pickpocket' })}>🤏 Pickpocket</button>
+              </div>
+              <small>{npc.angry ? `${npc.name} won’t deal with you anymore.` : 'Persuade: tips and a discount. Intimidate: gold, but they won’t trade. Pickpocket: risky, they may call the guards.'}</small>
+            </div>
+          )}
+          {shopOpen && view.shop && (
+            <div className="dqp-shop">
+              <div className="dqp-shop-head"><b>🛒 {view.shop.name}{view.shop.friendly ? ' · friend’s discount' : ''}</b><span>🪙 {sheet.gold} gold</span>
+                <button type="button" className="lcp-link" onClick={() => setShopOpen(false)}>close</button></div>
+              <h4>Buy</h4>
+              <ul>
+                {view.shop.stock.map(([item, price]) => (
+                  <li key={item}>
+                    <span>{ITEMS[item]?.icon} {item}<small>{ITEMS[item]?.hint}</small></span>
+                    <button type="button" className="lc-btn" disabled={sheet.gold < price} onClick={() => send('act', { type: 'buy', item })}>{price} 🪙</button>
+                  </li>
+                ))}
+              </ul>
+              <h4>Sell</h4>
+              <ul>
+                {pack.filter((p) => p.def).map(({ item, count }) => (
+                  <li key={item}>
+                    <span>{ITEMS[item].icon} {item}{count > 1 ? ` ×${count}` : ''}</span>
+                    <button type="button" className="lc-btn lc-btn-ghost" onClick={() => send('act', { type: 'sell', item })}>+{sellValue(item)} 🪙</button>
+                  </li>
+                ))}
+                {!pack.some((p) => p.def) && <li><span>Nothing they want to buy.</span></li>}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
@@ -153,7 +227,15 @@ export default function PlayerGame({ view, send, header, toast }) {
             {STATS.map((s) => <div key={s}><small>{STAT_NAMES[s].slice(0, 3).toUpperCase()}</small><b>{sheet.stats[s]}</b><i>{signed(mod(sheet.stats[s]))}</i></div>)}
           </div>
           <h3>Inventory</h3>
-          <ul className="dqp-inv">{sheet.inventory.map((item, i) => <li key={`${item}${i}`}>{item}</li>)}</ul>
+          <ul className="dqp-inv dqp-pack">
+            {pack.map(({ item, count, def }) => (
+              <li key={item}>
+                <span>{def ? `${def.icon} ` : ''}{item}{count > 1 ? ` ×${count}` : ''}{def && <small>{def.hint}{def.use && def.bonus ? ' · bonus action' : ''}</small>}</span>
+                {def && def.use && <button type="button" className="lc-btn" disabled={!usable(item)} onClick={() => pickItem(item)}>Use</button>}
+                {view.shop && def && <button type="button" className="lc-btn lc-btn-ghost" onClick={() => send('act', { type: 'sell', item })}>Sell {sellValue(item)}</button>}
+              </li>
+            ))}
+          </ul>
           {Object.keys(me.cond || {}).length > 0 && <p>Effects: {Object.keys(me.cond).join(', ')}</p>}
         </div>
       )}
