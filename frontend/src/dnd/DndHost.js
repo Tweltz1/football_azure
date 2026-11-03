@@ -5,7 +5,6 @@ import { lookCode, parseLook, randomLook } from '../party/look';
 import { newRoomCode, openHost, postToPhone } from '../party/net';
 import { isMuted, setMuted, sfx, unlockSound } from '../party/sound';
 import Board from './Board';
-import { GEAR_BY_ID, heroMarkup, howToUnlock } from './gear';
 import { useVoice } from './voice';
 import {
   act, addPlayer, aiContext, buy, createGame, current, dmAct, dmView, drinkPotion, endTurn, interact, move, movesFor, newSeed, pcFor, search, sell, sneak, social, talk, applyItem, wear,
@@ -19,6 +18,7 @@ import '../party/party.css';
 import './dnd.css';
 
 const SAVE_KEY = 'dq-host-table';
+const LIVE_KEY = 'dq-host-live'; // in this tab only: the table it was running, to pick up again if the browser reloads it
 const AWAY_MS = 15000;
 const DM_GRACE_MS = 20000; // how long the TV waits for the DM's narration before using its own
 const SOLO_NARRATE_MS = 2500;
@@ -341,21 +341,18 @@ export default function DndHost() {
     pushAll(true);
   };
 
-  // Save the table now and then, so a TV refresh can pick up where it left off.
-  useEffect(() => {
-    if (!code) return undefined;
-    const timer = window.setInterval(() => {
-      saveTable({ code, players: playersRef.current.map(({ cid, name, role, look, sheet }) => ({ cid, name, role, look, sheet })), game: gameRef.current, campaign: campaignRef.current });
-    }, 5000);
-    return () => window.clearInterval(timer);
-  }, [code]);
+
 
   // The loop: monsters' turns, narration fallback, redraw, phones.
+  // A hidden tab gets no animation frames, so a slower timer keeps the game and the phones going
+  // while the host looks at another tab (browsers still run it about once a second).
   useEffect(() => {
     let raf = 0;
     let lastPush = 0;
-    const loop = () => {
+    let lastStep = 0;
+    const step = (draw) => {
       const now = performance.now();
+      lastStep = now;
       const game = gameRef.current;
       if (game && modeRef.current === 'game') {
         tick(game, now);
@@ -374,12 +371,55 @@ export default function DndHost() {
           pushAll();
         }
       }
-      setFrame((f) => (f + 1) % 1e6);
+      if (draw) setFrame((f) => (f + 1) % 1e6);
+    };
+    const loop = () => {
+      step(true);
       raf = window.requestAnimationFrame(loop);
     };
     raf = window.requestAnimationFrame(loop);
-    return () => window.cancelAnimationFrame(raf);
+    const backup = window.setInterval(() => { if (performance.now() - lastStep > 700) step(false); }, 1000);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearInterval(backup);
+    };
   }, [pushAll]);
+
+  // Coming back to this tab (or the phone waking up): reconnect at once and bring every phone up to
+  // date. Leaving it: save the table first, in case the browser closes the tab to save memory.
+  const saveNow = useCallback(() => {
+    if (!code) return;
+    saveTable({ code, players: playersRef.current.map(({ cid, name, role, look, sheet }) => ({ cid, name, role, look, sheet })), game: gameRef.current, campaign: campaignRef.current });
+    try { window.sessionStorage.setItem(LIVE_KEY, code); } catch (error) { /* private mode */ }
+  }, [code]);
+  useEffect(() => {
+    if (!code) return undefined;
+    let hiddenAt = 0;
+    const onShow = () => {
+      if (document.hidden) {
+        hiddenAt = Date.now();
+        saveNow();
+        return;
+      }
+      if (hiddenAt && Date.now() - hiddenAt > 3000) setNetTry((n) => n + 1);
+      hiddenAt = 0;
+      window.setTimeout(() => pushAll(true), 600);
+    };
+    const onHide = () => saveNow();
+    // Save the table now and then too, so a refresh can pick up where it left off.
+    const timer = window.setInterval(saveNow, 5000);
+    document.addEventListener('visibilitychange', onShow);
+    window.addEventListener('pageshow', onShow);
+    window.addEventListener('pagehide', onHide);
+    window.addEventListener('online', onShow);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onShow);
+      window.removeEventListener('pageshow', onShow);
+      window.removeEventListener('pagehide', onHide);
+      window.removeEventListener('online', onShow);
+    };
+  }, [code, pushAll, saveNow]);
 
   useEffect(() => { if (mode === 'lobby') pushAll(); }, [players, mode, pushAll]);
 
@@ -425,6 +465,17 @@ export default function DndHost() {
     setSaved(null);
     setCode(saved.code);
   };
+
+  // The browser reloaded this tab (Safari does this to tabs left in the background): carry on with
+  // the same table and code, so nobody's phone gets thrown out.
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (resumed.current || !saved) return;
+    resumed.current = true;
+    let live = null;
+    try { live = window.sessionStorage.getItem(LIVE_KEY); } catch (error) { /* private mode */ }
+    if (live === saved.code) reopenTable();
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kick = (cid) => {
     const next = playersRef.current.filter((p) => p.cid !== cid);
@@ -604,18 +655,6 @@ export default function DndHost() {
           {turn.side === 'foe' ? `${turn.name} is moving…` : `${turn.name}'s turn${turn.hp <= 0 ? ' (down!)' : ''}`}
         </div>
       )}
-      {game.unlock && now - game.unlock.at < 6000 && (() => {
-        const item = GEAR_BY_ID[game.unlock.gear];
-        return item ? (
-          <div className="dq-unlock" key={game.unlock.id}>
-            {item.slot !== 'title' && (
-              // eslint-disable-next-line react/no-danger
-              <svg viewBox="-170 -380 340 400" dangerouslySetInnerHTML={{ __html: heroMarkup(game.unlock.look, { [item.slot]: item.id }) }} />
-            )}
-            <div><small>🏅 Unlocked!</small><b>{item.slot === 'title' ? `${game.unlock.who} ${item.name}` : item.name}</b><span>{game.unlock.who} · {howToUnlock(item)}</span></div>
-          </div>
-        ) : null;
-      })()}
       <div className="dq-rolls">{game.rolls.slice(-4).map((r) => <RollPop key={r.id} r={r} now={now} />)}</div>
       {game.narration && now - narrationShownAt.current.at < 45000 && (
         <div className={`dq-narration is-${game.narration.by}`}>
