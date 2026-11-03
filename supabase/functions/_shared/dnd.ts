@@ -103,7 +103,33 @@ export function cleanSheet(raw: unknown) {
     inventory: Array.isArray(s.inventory) ? s.inventory.slice(0, 40).map((i) => str(i, 40)).filter(Boolean) : [],
     look: typeof s.look === 'string' && LOOK.test(s.look) ? s.look : null,
     notes: str(s.notes, 2000),
+    deeds: cleanDeeds(s.deeds),
+    wear: cleanWear(s.wear),
   };
+}
+
+/** A hero's tallies (monsters defeated, pockets picked…): whole numbers, plus the kinds of places visited. */
+function cleanDeeds(raw: unknown) {
+  const d = (raw && typeof raw === 'object' ? raw : {}) as Body;
+  const out: Record<string, number | string[]> = {};
+  Object.keys(d).slice(0, 40).forEach((k) => {
+    if (k === 'places' || !/^[a-zA-Z]{1,20}$/.test(k)) return;
+    const n = num(d[k], 0, 10000000, 0);
+    if (n > 0) out[k] = n;
+  });
+  out.places = Array.isArray(d.places) ? [...new Set(d.places.slice(0, 12).map((p) => str(p, 16)).filter(Boolean))] : [];
+  return out;
+}
+
+/** The unlocked gear a hero wears, by slot. The game only offers unlocked pieces. */
+function cleanWear(raw: unknown) {
+  const w = (raw && typeof raw === 'object' ? raw : {}) as Body;
+  const out: Record<string, string> = {};
+  ['head', 'cloak', 'aura', 'pet', 'title'].forEach((slot) => {
+    const id = str(w[slot], 32);
+    if (id && /^[a-z-]+$/.test(id)) out[slot] = id;
+  });
+  return out;
 }
 
 const characterOut = (row: DndCharacterRow, ownerName?: string) => ({
@@ -293,7 +319,7 @@ async function saveSessionRoute(ctx: Ctx, store: DndStore, id: string, body: Bod
     if (!row) continue;
     if (row.campaignId !== id && row.userId !== ctx.userId && !members.has(row.userId)) continue;
     const before = num(row.data.xp, 0, 100000, 0);
-    const merged = cleanSheet({ ...row.data, xp: q.xp, hp: q.hp, maxHp: q.maxHp, gold: q.gold, inventory: q.inventory ?? row.data.inventory });
+    const merged = cleanSheet({ ...row.data, xp: q.xp, hp: q.hp, maxHp: q.maxHp, gold: q.gold, inventory: q.inventory ?? row.data.inventory, deeds: q.deeds ?? row.data.deeds, wear: q.wear ?? row.data.wear });
     const history = Array.isArray(row.data.history) ? (row.data.history as unknown[]).slice(-49) : [];
     history.push({
       date: now, sessionId: record.id, campaign: c.name, quest: record.data.questTitle, xp: Math.max(0, merged.xp - before), level: merged.level,

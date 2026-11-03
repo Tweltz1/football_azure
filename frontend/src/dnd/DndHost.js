@@ -5,9 +5,10 @@ import { lookCode, parseLook, randomLook } from '../party/look';
 import { newRoomCode, openHost, postToPhone } from '../party/net';
 import { isMuted, setMuted, sfx, unlockSound } from '../party/sound';
 import Board from './Board';
+import { GEAR_BY_ID, heroMarkup, howToUnlock } from './gear';
 import { useVoice } from './voice';
 import {
-  act, addPlayer, aiContext, buy, createGame, current, dmAct, dmView, drinkPotion, endTurn, interact, move, movesFor, newSeed, pcFor, search, sell, sneak, social, talk, applyItem,
+  act, addPlayer, aiContext, buy, createGame, current, dmAct, dmView, drinkPotion, endTurn, interact, move, movesFor, newSeed, pcFor, search, sell, sneak, social, talk, applyItem, wear,
   hear, playerView, removePlayer, request, rollCheck, tick, watchView,
 } from './engine';
 import { CLASSES, describe, newCharacter, normalizeCharacter, RACES } from './rules';
@@ -295,6 +296,7 @@ export default function DndHost() {
         case 'item': error = applyItem(game, t, String(msg.item || ''), msg.target ? String(msg.target) : null, now); break;
         case 'buy': error = buy(game, t, String(msg.item || ''), now); break;
         case 'sell': error = sell(game, t, String(msg.item || ''), now); break;
+        case 'wear': error = wear(game, t, String(msg.slot || ''), msg.id ? String(msg.id) : null, now); break;
         case 'say': error = request(game, t, msg.text, now); break;
         case 'check': error = rollCheck(game, t, now); break;
         case 'characterId':
@@ -602,6 +604,18 @@ export default function DndHost() {
           {turn.side === 'foe' ? `${turn.name} is moving…` : `${turn.name}'s turn${turn.hp <= 0 ? ' (down!)' : ''}`}
         </div>
       )}
+      {game.unlock && now - game.unlock.at < 6000 && (() => {
+        const item = GEAR_BY_ID[game.unlock.gear];
+        return item ? (
+          <div className="dq-unlock" key={game.unlock.id}>
+            {item.slot !== 'title' && (
+              // eslint-disable-next-line react/no-danger
+              <svg viewBox="-170 -380 340 400" dangerouslySetInnerHTML={{ __html: heroMarkup(game.unlock.look, { [item.slot]: item.id }) }} />
+            )}
+            <div><small>🏅 Unlocked!</small><b>{item.slot === 'title' ? `${game.unlock.who} ${item.name}` : item.name}</b><span>{game.unlock.who} · {howToUnlock(item)}</span></div>
+          </div>
+        ) : null;
+      })()}
       <div className="dq-rolls">{game.rolls.slice(-4).map((r) => <RollPop key={r.id} r={r} now={now} />)}</div>
       {game.narration && now - narrationShownAt.current.at < 45000 && (
         <div className={`dq-narration is-${game.narration.by}`}>

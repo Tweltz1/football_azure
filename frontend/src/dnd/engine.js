@@ -16,6 +16,7 @@ import { makeNpcs, npcLine, taskLabel, villainName } from './npcs';
 import {
   buyPrice, GUARDED_ROLES, hasItem, ITEMS, MERCHANT_ROLES, sellValue, SHOP_STOCK, UNDEAD,
 } from './items';
+import { cleanDeeds, cleanWear, GEAR_BY_ID, titleOf, unlockedIds } from './gear';
 
 const LOG_MAX = 120;
 const FOE_TURN_MS = 1400;
@@ -39,6 +40,51 @@ const cue = (g, kind, detail = '', now = g.clock) => {
 const showRoll = (g, entry, now = g.clock) => {
   g.rolls.push({ id: (g.rollId += 1), at: now, ...entry });
   if (g.rolls.length > 8) g.rolls.shift();
+};
+
+// ---- Deeds and unlockable gear ----------------------------------------------------------------------------------
+
+/** Adds to a hero's tally and announces any gear it unlocks. */
+const deed = (g, t, key, n = 1, now = g.clock) => {
+  if (!t || t.side !== 'party' || !t.sheet || n <= 0) return;
+  const before = unlockedIds(t.sheet);
+  t.sheet.deeds = cleanDeeds(t.sheet.deeds);
+  if (key === 'places') {
+    if (t.sheet.deeds.places.includes(n)) return;
+    t.sheet.deeds.places.push(n);
+  } else {
+    t.sheet.deeds[key] = (t.sheet.deeds[key] || 0) + n;
+  }
+  announceUnlocks(g, t, before, now);
+};
+
+/** Tells the table about pieces this hero just unlocked. */
+const announceUnlocks = (g, t, before, now) => {
+  const fresh = unlockedIds(t.sheet).filter((id) => !before.includes(id));
+  fresh.forEach((id) => {
+    const item = GEAR_BY_ID[id];
+    g.unlockId = (g.unlockId || 0) + 1;
+    g.unlock = { id: g.unlockId, gear: id, who: t.name, cid: t.cid, look: t.look, at: now };
+    say(g, `🏅 ${t.name} unlocked ${item.slot === 'title' ? `the title “${item.name}”` : item.name}!`, 'level', now);
+  });
+};
+
+/** Gold a hero earns (it counts toward gold unlocks). */
+const earn = (g, t, gold, now = g.clock) => {
+  if (!t || gold <= 0) return;
+  t.sheet.gold += gold;
+  deed(g, t, 'gold', gold, now);
+};
+
+/** Puts on (or takes off) a piece of unlocked gear. */
+export const wear = (g, t, slot, id, now = g.clock) => {
+  if (!t || !t.sheet) return 'Nope.';
+  const want = { ...(t.sheet.wear || {}), [slot]: id || null };
+  const clean = cleanWear(want, t.sheet);
+  if (id && clean[slot] !== id) return 'Not unlocked yet.';
+  t.sheet.wear = clean;
+  if (id) say(g, `${t.name} puts on ${GEAR_BY_ID[id].slot === 'title' ? `the title “${GEAR_BY_ID[id].name}”` : GEAR_BY_ID[id].name}.`, 'info', now);
+  return null;
 };
 
 const rng = (g) => {
@@ -179,6 +225,7 @@ export const enterScene = (g, index, now = g.clock, first = false, settingId = n
   g.combat = null;
   g.check = null;
   g.visited.push(setting);
+  party(g).forEach((p) => { deed(g, p, 'scenes', 1, now); deed(g, p, 'places', setting, now); });
   g.tokens = g.tokens.filter((t) => t.side === 'party');
   const pcs = party(g);
   pcs.forEach((t, i) => {
@@ -293,7 +340,10 @@ export const startCombat = (g, now = g.clock, who = '') => {
   g.mode = 'combat';
   g.combat = { order: inits.map((i) => i.id), turn: 0, round: 1, moved: 0, action: false, bonus: false, dashed: false, sneakUsed: false, inits: Object.fromEntries(inits.map((i) => [i.id, i.value])) };
   say(g, `Combat! Initiative: ${inits.map((i) => `${tokenById(g, i.id).name} ${i.value}`).join(', ')}.`, 'combat', now);
-  if (surprise) say(g, 'Surprise! The enemies never saw you coming and lose their first turn.', 'combat', now);
+  if (surprise) {
+    say(g, 'Surprise! The enemies never saw you coming and lose their first turn.', 'combat', now);
+    party(g).forEach((p) => { if (p.cond.sneaking) deed(g, p, 'surprises', 1, now); });
+  }
   cue(g, 'combat', `${who || 'Enemies'}${surprise ? ' (caught by surprise)' : ''}`, now);
   startTurn(g, now);
 };
@@ -388,6 +438,12 @@ const damage = (g, target, amount, now, source = '') => {
       target.dead = true;
       const xp = MONSTERS[target.monster].xp;
       g.xpPool += xp;
+      const by = g.hitter ? tokenById(g, g.hitter) : null;
+      if (by) {
+        deed(g, by, 'kills', 1, now);
+        if (target.boss) deed(g, by, 'bosses', 1, now);
+        if (UNDEAD.has(target.monster)) deed(g, by, 'undead', 1, now);
+      }
       say(g, `${target.name} is defeated! (+${xp} XP)`, 'combat', now);
       checkTasks(g, now);
       if (g.combat) {
@@ -419,9 +475,11 @@ const damage = (g, target, amount, now, source = '') => {
         say(g, `${target.name} is killed outright by ${source || 'the blow'}.`, 'combat', now);
       } else {
         say(g, `${target.name} drops, unconscious!`, 'combat', now);
+        deed(g, target, 'downs', 1, now);
       }
       target.hp = 0;
       target.deathSaves = { ok: 0, fail: 0 };
+      g.someoneFell = true;
       cue(g, 'down', target.name, now);
       if (!party(g).some(conscious) && g.combat) {
         say(g, 'The whole party is down… the DM decides what happens next.', 'combat', now);
@@ -450,6 +508,7 @@ export const awardXp = (g, total, now = g.clock, why = '') => {
   g.xpTotal += each;
   pcs.forEach((t) => {
     const before = t.sheet.level;
+    const had = unlockedIds(t.sheet);
     t.sheet.xp += each;
     t.sheet.level = levelForXp(t.sheet.xp);
     if (t.sheet.level > before) {
@@ -459,6 +518,7 @@ export const awardXp = (g, total, now = g.clock, why = '') => {
       t.sheet.maxHp = newMax;
       say(g, `${t.name} reaches level ${t.sheet.level}!`, 'level', now);
       showRoll(g, { who: t.name, label: `Level ${t.sheet.level}!`, total: t.sheet.level, ok: true, level: true }, now);
+      announceUnlocks(g, t, had, now);
     }
   });
   say(g, `Each hero earns ${each} XP ${why}.`.trim(), 'level', now);
@@ -467,6 +527,11 @@ export const awardXp = (g, total, now = g.clock, why = '') => {
 const completeQuest = (g, now) => {
   if (g.complete) return;
   g.complete = true;
+  party(g).filter((p) => !p.dead).forEach((p) => {
+    deed(g, p, 'quests', 1, now);
+    deed(g, p, 'classQuests', 1, now);
+    if (!g.someoneFell) deed(g, p, 'flawless', 1, now);
+  });
   awardXp(g, 100 * Math.max(1, party(g).length) * partyLevel(g), now, 'for finishing the quest');
   say(g, `Quest complete: ${g.quest.title}. Reward: ${g.quest.reward}.`, 'level', now);
 };
@@ -550,6 +615,7 @@ export const act = (g, t, msg, now = g.clock) => {
     if (a.bonus ? g.combat.bonus : g.combat.action) return a.bonus ? 'Bonus action already used.' : 'Action already used.';
   }
   const nums = actionNumbers(t.sheet, a);
+  g.hitter = t.id;
   const r = rng(g);
   const tr = tools(r);
   let target = msg.target ? tokenById(g, msg.target) : null;
@@ -573,6 +639,7 @@ export const act = (g, t, msg, now = g.clock) => {
     if (!a.self && squaresBetween(t, target) > (a.range || 1)) return 'Too far.';
     const amount = a.perLevel ? a.perLevel * t.sheet.level : roll(a.dice, r).total + (a.addLevel ? t.sheet.level : 0) + Math.max(0, nums.dmgBonus);
     const healed = heal(g, target, amount, now);
+    if (target !== t) deed(g, t, 'heals', healed, now);
     say(g, `${t.name} uses ${a.name} on ${target === t ? 'themselves' : target.name}: +${healed} HP.`, 'heal', now);
     showRoll(g, { who: t.name, label: a.name, total: healed, ok: true, heal: true }, now);
   } else {
@@ -637,7 +704,10 @@ export const act = (g, t, msg, now = g.clock) => {
         }
         say(g, `${t.name} hits ${target.name} with ${a.name} (${atk.total} vs AC ${target.ac}) for ${dmg}${atk.nat20 ? '. Critical hit!' : '.'}`, 'combat', now);
         showRoll(g, { who: t.name, label: a.name, d20: atk.d20, total: atk.total, ok: true, dmg, crit: atk.nat20 }, now);
-        if (atk.nat20) cue(g, 'crit', `${t.name} vs ${target.name}`, now);
+        if (atk.nat20) {
+          cue(g, 'crit', `${t.name} vs ${target.name}`, now);
+          deed(g, t, 'crits', 1, now);
+        }
         damage(g, target, dmg, now, a.name);
       } else {
         say(g, `${t.name} misses ${target.name} with ${a.name} (${atk.total} vs AC ${target.ac}).`, 'combat', now);
@@ -672,6 +742,7 @@ export const interact = (g, t, now = g.clock, { key = false } = {}) => {
     g.tokens.push(m);
     say(g, `${t.name} opens the chest… and it bites back! A Mimic!`, 'combat', now);
     cue(g, 'mimic', '', now);
+    deed(g, t, 'mimics', 1, now);
     if (g.combat) g.combat.order.splice(g.combat.turn + 1, 0, m.id);
     else startCombat(g, now, 'A Mimic');
     return null;
@@ -679,7 +750,8 @@ export const interact = (g, t, now = g.clock, { key = false } = {}) => {
   const gold = r.int(5, 25) * partyLevel(g) * (key ? 2 : 1);
   const item = r.pick(LOOT);
   if (key) say(g, `${t.name} turns the Strange key. The lock clicks open, and a hidden tray inside is full of coins.`, 'loot', now);
-  t.sheet.gold += gold;
+  earn(g, t, gold, now);
+  deed(g, t, 'chests', 1, now);
   t.sheet.inventory.push(item);
   g.loot.push({ who: t.name, item, gold });
   say(g, `${t.name} opens the chest: ${gold} gold and ${item}.`, 'loot', now);
@@ -711,7 +783,10 @@ const checkTasks = (g, now) => {
     n.done = true;
     const pcs = party(g).filter((p) => !p.dead);
     const gold = 10 * partyLevel(g) * Math.max(1, task.count || 2);
-    pcs.forEach((p) => { p.sheet.gold += Math.ceil(gold / Math.max(1, pcs.length)); });
+    pcs.forEach((p) => {
+      earn(g, p, Math.ceil(gold / Math.max(1, pcs.length)), now);
+      deed(g, p, 'tasks', 1, now);
+    });
     awardXp(g, 50 * Math.max(1, pcs.length) * partyLevel(g), now, `for helping ${n.name}`);
     if (task.kind === 'fetch') {
       const holder = pcs.find((p) => p.sheet.inventory.includes(cap(task.item)));
@@ -818,11 +893,13 @@ const springTrap = (g, t, trap, now) => {
   // Sharp eyes (passive Perception 14 or more) spot it in time.
   if (10 + skillBonus(t, 'Perception') >= 15) {
     trap.found = true;
+    deed(g, t, 'traps', 1, now);
     say(g, `${t.name} spots ${trap.kind} just in time and steps around it.`, 'roll', now);
     return;
   }
   trap.sprung = true;
   trap.found = true;
+  g.hitter = null;
   const r = rng(g);
   const save = d20(mod(t.sheet.stats.dex) + (t.sheet.classId === 'rogue' ? proficiency(t.sheet.level) : 0), 0, r);
   const ok = save.total >= 13;
@@ -868,6 +945,7 @@ export const social = (g, t, kind, now = g.clock) => {
   if (kind === 'persuade') {
     if (res.ok) {
       n.friendly = true;
+      deed(g, t, 'persuades', 1, now);
       const counts = {};
       foes(g).forEach((f) => { counts[f.name.replace(/ \d+$/, '')] = (counts[f.name.replace(/ \d+$/, '')] || 0) + 1; });
       const ahead = Object.entries(counts).map(([name, c]) => (c > 1 ? `${c} ${name.toLowerCase()}s` : `a ${name.toLowerCase()}`));
@@ -883,7 +961,8 @@ export const social = (g, t, kind, now = g.clock) => {
   } else if (kind === 'intimidate') {
     if (res.ok) {
       const gold = r.int(5, 15) * lvl;
-      t.sheet.gold += gold;
+      earn(g, t, gold, now);
+      deed(g, t, 'intimidates', 1, now);
       n.scared = true;
       sayNpc(g, n, `All right, all right! Take it, ${gold} gold, just leave me be!`, now);
     } else {
@@ -895,7 +974,8 @@ export const social = (g, t, kind, now = g.clock) => {
   } else {
     if (res.ok) {
       const gold = r.int(10, 30) * lvl;
-      t.sheet.gold += gold;
+      earn(g, t, gold, now);
+      deed(g, t, 'pockets', 1, now);
       const item = r.chance(0.35) ? r.pick(LOOT) : null;
       if (item) t.sheet.inventory.push(item);
       say(g, `${t.name} lifts ${gold} gold${item ? ` and ${item}` : ''} from ${n.name} without a sound.`, 'loot', now);
@@ -933,6 +1013,7 @@ export const buy = (g, t, item, now = g.clock) => {
   if (t.sheet.inventory.length >= 40) return 'Your pack is full.';
   t.sheet.gold -= price;
   t.sheet.inventory.push(item);
+  deed(g, t, 'shopping', 1, now);
   say(g, `${t.name} buys ${item} from ${shop.name} for ${price} gold.`, 'loot', now);
   return null;
 };
@@ -948,7 +1029,7 @@ export const sell = (g, t, item, now = g.clock) => {
   if (!ITEMS[item]) return 'Nobody wants to buy that.';
   const gold = sellValue(item);
   t.sheet.inventory.splice(index, 1);
-  t.sheet.gold += gold;
+  earn(g, t, gold, now);
   say(g, `${t.name} sells ${item} to ${shop.name} for ${gold} gold.`, 'loot', now);
   return null;
 };
@@ -969,13 +1050,15 @@ export const search = (g, t, now = g.clock) => {
   }
   const traps = (g.map.traps || []).filter((x) => !x.found && !x.sprung && squaresBetween(x, t) <= 4);
   traps.forEach((x) => { x.found = true; });
+  deed(g, t, 'traps', traps.length, now);
   const caches = (g.map.caches || []).filter((x) => !x.found && squaresBetween(x, t) <= 3);
   const r = tools(rng(g));
   caches.forEach((c) => {
     c.found = true;
     const gold = r.int(5, 20) * partyLevel(g);
     const item = r.pick(LOOT);
-    t.sheet.gold += gold;
+    earn(g, t, gold, now);
+    deed(g, t, 'stashes', 1, now);
     t.sheet.inventory.push(item);
     g.loot.push({ who: t.name, item, gold });
     say(g, `${t.name} finds a hidden stash ${c.what}: ${gold} gold and ${item}!`, 'loot', now);
@@ -1044,6 +1127,8 @@ export const applyItem = (g, t, item, targetId = null, now = g.clock) => {
   }
   t.sheet.inventory.splice(t.sheet.inventory.indexOf(item), 1);
   spend(g, def.bonus);
+  g.hitter = t.id;
+  deed(g, t, 'items', 1, now);
   switch (def.use) {
     case 'smoke': {
       const allies = party(g).filter((p) => conscious(p) && squaresBetween(p, t) <= 2);
@@ -1122,6 +1207,8 @@ export const drinkPotion = (g, t, now = g.clock) => {
     g.combat.bonus = true;
   }
   t.sheet.inventory.splice(index, 1);
+  deed(g, t, 'potions', 1, now);
+  deed(g, t, 'items', 1, now);
   const healed = heal(g, t, roll('2d4+2', rng(g)).total, now);
   say(g, `${t.name} drinks a Potion of Healing: +${healed} HP.`, 'heal', now);
   return null;
@@ -1227,6 +1314,7 @@ export const dmAct = (g, msg, now = g.clock) => {
     case 'hp': {
       if (!t) return 'No target.';
       const amount = Math.trunc(Number(msg.amount) || 0);
+      g.hitter = null;
       if (amount < 0) damage(g, t, -amount, now, 'the DM');
       else heal(g, t, amount, now);
       say(g, `DM: ${t.name} ${amount < 0 ? 'takes' : 'regains'} ${Math.abs(amount)} HP.`, 'dm', now);
@@ -1312,6 +1400,7 @@ export const dmAct = (g, msg, now = g.clock) => {
 
 const foeTurn = (g, f, now) => {
   const m = MONSTERS[f.monster];
+  g.hitter = null;
   if (f.cond.surprised || f.cond.stunned) {
     say(g, f.cond.stunned ? `${f.name} struggles against the rope and loses its turn.` : `${f.name} is caught by surprise and loses its turn.`, 'combat', now);
     delete f.cond.surprised;
@@ -1418,6 +1507,8 @@ const tokenView = (t) => ({
   id: t.id, side: t.side, name: t.name, x: t.x, y: t.y, hp: t.hp, maxHp: t.maxHp, ac: t.ac, cid: t.cid || null,
   glyph: t.glyph || null, monster: t.monster || null, color: t.color || null, boss: Boolean(t.boss), dead: Boolean(t.dead), down: t.hp <= 0, look: t.look || null,
   cls: t.sheet ? t.sheet.classId : null,
+  wear: t.sheet ? t.sheet.wear || null : null,
+  title: t.sheet ? titleOf(t.sheet) : null,
 });
 
 const sceneCtx = (g) => ({
@@ -1500,6 +1591,7 @@ export const playerView = (g, cid) => {
     traps: trapsSeen(g),
     tasks: (g.npcs || []).filter((n) => n.talked && taskLabel(n)).map((n) => ({ text: taskLabel(n), done: n.done })),
     lastScene: g.sceneIndex >= g.sceneSettings.length - 1,
+    unlock: g.unlock && g.unlock.cid === cid ? { id: g.unlock.id, gear: g.unlock.gear } : null,
     chestNear: g.map.chests.some((c) => adjacent(c, t) && tileAt(g.map, c.x, c.y).p === 'chest'),
     narration: g.narration?.text || null,
     quest: { title: g.quest.title, setting: settingFor(g.map.setting).name, scene: g.sceneIndex + 1, scenes: g.sceneSettings.length },
@@ -1556,6 +1648,8 @@ export const sessionRecord = (g, now = g.clock) => ({
     dead: Boolean(t.dead),
     gold: t.sheet.gold,
     inventory: t.sheet.inventory,
+    deeds: t.sheet.deeds || {},
+    wear: t.sheet.wear || {},
   })),
 });
 

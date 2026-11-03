@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { personMarkup } from '../party/cartoon';
 import { parseLook } from '../party/look';
+import { GEAR_BY_ID, heroMarkup } from './gear';
 import { settingFor } from './settings';
 import { BASE, groundTile, iso, propArt, TH, TW, WALL, wallTile } from './iso';
 import { drawPos } from './engine';
@@ -80,9 +81,10 @@ const HpBar = ({ hp, maxHp, x, y, w = 46, foe }) => {
   );
 };
 
-const Hero = React.memo(({ look, sx, sy, name, hp, maxHp, cls, down, dead, active, walking, now }) => {
+const Hero = React.memo(({ look, sx, sy, name, hp, maxHp, cls, down, dead, active, walking, now, gear, title }) => {
   const frame = walking ? Math.floor(now / 90) : 0;
-  const markup = useMemo(() => personMarkup(parseLook(look), { kind: walking ? 'walk' : active ? 'wave' : 'stand', k: (frame * 0.9) % 6.28 }), [look, walking, active, frame]);
+  const gearKey = gear ? JSON.stringify(gear) : '';
+  const markup = useMemo(() => heroMarkup(look, gear || {}, { kind: walking ? 'walk' : active ? 'wave' : 'stand', k: (frame * 0.9) % 6.28 }, { plain: down }), [look, walking, active, frame, gearKey, down]); // eslint-disable-line react-hooks/exhaustive-deps
   const ring = CLASS_RING[cls] || '#ffe066';
   return (
     <g transform={`translate(${sx} ${sy})`}>
@@ -98,6 +100,7 @@ const Hero = React.memo(({ look, sx, sy, name, hp, maxHp, cls, down, dead, activ
       )}
       <HpBar hp={hp} maxHp={maxHp} x={0} y={down ? -30 : -92} />
       <text x="0" y={down ? -36 : -98} className="dq-name" textAnchor="middle">{name}</text>
+      {title && !down && <text x="0" y={-113} className="dq-name dq-title-tag" textAnchor="middle">{title}</text>}
     </g>
   );
 });
@@ -221,7 +224,7 @@ export default function Board({ game, now, reach = null, showHidden = false }) {
       depth,
       key: t.id,
       el: t.side === 'party'
-        ? <Hero key={t.id} look={t.look} sx={sx} sy={sy} name={t.name} hp={t.hp} maxHp={t.maxHp} cls={t.sheet?.classId} down={t.hp <= 0 && !t.dead} dead={t.dead} active={t.id === turnId} walking={walking} now={now} />
+        ? <Hero key={t.id} look={t.look} sx={sx} sy={sy} name={t.name} hp={t.hp} maxHp={t.maxHp} cls={t.sheet?.classId} down={t.hp <= 0 && !t.dead} dead={t.dead} active={t.id === turnId} walking={walking} now={now} gear={t.wear || t.sheet?.wear} title={t.title || (t.sheet?.wear?.title ? GEAR_BY_ID[t.sheet.wear.title]?.name : null)} />
         : <Foe key={t.id} sx={sx} sy={sy} monster={t.monster} glyph={t.glyph} color={t.color} name={t.name} hp={t.hp} maxHp={t.maxHp} boss={t.boss} active={t.id === turnId} />,
     })),
   ].sort((a, b) => a.depth - b.depth);

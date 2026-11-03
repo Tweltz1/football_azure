@@ -203,7 +203,7 @@ export default function DndPlay() {
   useEffect(() => {
     if (!user || !game?.me?.sheet) return undefined;
     const now = { ...game.me.sheet, id: sheetId || game.me.characterId || null, hp: game.me.hp, look, campaignId: game.campaignId || null };
-    const json = JSON.stringify([now.xp, now.level, now.hp, now.gold, now.inventory, now.campaignId]);
+    const json = JSON.stringify([now.xp, now.level, now.hp, now.gold, now.inventory, now.campaignId, now.deeds, now.wear]);
     if (json === savedJson.current) return undefined;
     const t = window.setTimeout(async () => {
       try {
@@ -218,6 +218,14 @@ export default function DndPlay() {
     }, savedJson.current ? 20000 : 3000);
     return () => window.clearTimeout(t);
   }, [user, game, sheetId, look]);
+
+  // Keep the phone's own copy of the hero up to date too (XP, loot, deeds and gear), so it carries over when signed out.
+  const progressJson = game?.me?.sheet ? JSON.stringify([game.me.sheet.xp, game.me.sheet.gold, game.me.sheet.inventory, game.me.sheet.deeds, game.me.sheet.wear]) : '';
+  useEffect(() => {
+    if (!progressJson || !game?.me?.sheet) return;
+    const { xp, level, gold, inventory, deeds, wear: worn } = game.me.sheet;
+    setSheet((prev) => (prev ? { ...prev, xp, level, gold, inventory, deeds, wear: worn } : prev));
+  }, [progressJson]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = useCallback((event, payload) => phoneRef.current?.send(event, payload), []);
 
