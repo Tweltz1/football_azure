@@ -174,13 +174,97 @@ const Weather = React.memo(({ setting, seed, box }) => {
   );
 });
 
+const FX_MS = 4500;
+
+/** Breaks a line into short rows for a speech bubble. */
+const wrap = (text, width = 26, rows = 3) => {
+  const out = [''];
+  String(text || '').split(/\s+/).forEach((word) => {
+    const last = out[out.length - 1];
+    if ((last + ' ' + word).trim().length > width && last) out.push(word);
+    else out[out.length - 1] = (last + ' ' + word).trim();
+  });
+  if (out.length > rows) {
+    out.length = rows;
+    out[rows - 1] = `${out[rows - 1].replace(/[.,!?]?$/, '')}…`;
+  }
+  return out;
+};
+
+const Bubble = ({ x, y, text, tone }) => {
+  const lines = wrap(text);
+  const w = Math.max(...lines.map((l) => l.length)) * 7.4 + 22;
+  const h = lines.length * 15 + 12;
+  return (
+    <g transform={`translate(${x} ${y})`} className="dq-bubble">
+      <rect x={-w / 2} y={-h - 10} width={w} height={h} rx="9" fill={tone === 'angry' ? '#ffe2dc' : '#fff8e6'} stroke="#16122b" strokeWidth="2.5" />
+      <path d="M-6 -11 L0 0 L7 -11" fill={tone === 'angry' ? '#ffe2dc' : '#fff8e6'} stroke="#16122b" strokeWidth="2.5" />
+      <rect x="-8" y="-13" width="16" height="4" fill={tone === 'angry' ? '#ffe2dc' : '#fff8e6'} />
+      {lines.map((l, i) => <text key={i} x="0" y={-h - 10 + 19 + i * 15} textAnchor="middle" className="dq-bubble-text">{l}</text>)}
+    </g>
+  );
+};
+
+/** Floating numbers, projectiles, bursts and speech bubbles for the latest action. */
+const FxLayer = ({ f, age, pos }) => {
+  const a = pos[f.from];
+  const b = pos[f.to] || a;
+  const out = [];
+  const rise = (p, text, cls, delay = 220) => {
+    if (!p || age < delay || age > delay + 1700) return;
+    const k = (age - delay) / 1700;
+    out.push(<text key={`n${text}`} x={p.sx} y={p.sy - 104 - k * 46} opacity={Math.min(1, 2.2 - k * 2.2)} textAnchor="middle" className={`dq-fx-num ${cls}`}>{text}</text>);
+  };
+  // Arrows, bolts and spells fly from one to the other.
+  if (a && b && f.from !== f.to && (f.kind === 'shoot' || f.kind === 'spell' || (f.kind === 'miss' && f.ranged) || (f.kind === 'item' && f.dmg)) && age < 360) {
+    const k = age / 360;
+    const x = a.sx + (b.sx - a.sx) * k;
+    const y = a.sy - 40 + (b.sy - a.sy) * k - Math.sin(Math.PI * k) * 30;
+    out.push(<circle key="shot" cx={x} cy={y} r={f.kind === 'spell' ? 9 : 5} className={f.kind === 'spell' ? 'dq-fx-spell' : 'dq-fx-arrow'} />);
+  }
+  if (b && f.dmg > 0 && age > 160 && age < 620) {
+    const k = (age - 160) / 460;
+    out.push(<circle key="burst" cx={b.sx} cy={b.sy - 34} r={14 + k * 34} fill="none" stroke={f.crit ? '#ffe066' : '#ff5a4f'} strokeWidth={8 * (1 - k)} opacity={1 - k} />);
+  }
+  if (f.kind === 'hit' || f.kind === 'shoot' || f.kind === 'spell' || f.kind === 'trap' || (f.kind === 'item' && f.dmg)) {
+    if (f.dmg > 0) rise(b, `${f.crit ? 'CRIT! ' : ''}−${f.dmg}`, f.crit ? 'is-crit' : 'is-dmg');
+    else if (f.kind === 'trap') rise(b, 'Dodged!', 'is-miss');
+  }
+  if (f.kind === 'miss') rise(b, 'Miss!', 'is-miss');
+  if (f.kind === 'heal') rise(b, `+${f.amount} HP`, 'is-heal');
+  if (f.kind === 'buff' || (f.kind === 'item' && !f.dmg)) rise(b, f.label, 'is-buff', 100);
+  if (f.kind === 'steal') rise(a, `+${f.gold} 🪙`, 'is-gold', 380);
+  if (f.kind === 'loot') rise(a, `+${f.gold} 🪙`, 'is-gold', 60);
+  if (f.kind === 'trade') rise(a, `${f.gold > 0 ? '+' : ''}${f.gold} 🪙`, 'is-gold', 60);
+  if (f.kind === 'search') rise(a, f.found ? '🔍 Found something!' : '🔍 Nothing…', f.found ? 'is-gold' : 'is-miss', 60);
+  if (f.kind === 'talk' && a) out.push(<Bubble key="say" x={a.sx} y={a.sy - 118} text={f.text} />);
+  if (f.kind === 'shout' && a) out.push(<Bubble key="say" x={a.sx} y={a.sy - 118} text={f.text} tone="angry" />);
+  if (f.kind === 'shout' && b && f.reply && age > 1200) out.push(<Bubble key="reply" x={b.sx} y={b.sy - 118} text={f.reply} />);
+  if (f.kind === 'caught' && b) {
+    out.push(<text key="alarm" x={b.sx} y={b.sy - 120} textAnchor="middle" className="dq-fx-num is-dmg">❗</text>);
+    if (age > 500) out.push(<Bubble key="say" x={b.sx} y={b.sy - 140} text={f.text} tone="angry" />);
+  }
+  return <g pointerEvents="none">{out}</g>;
+};
+
 /**
  * The isometric board. reach: optional list of [x, y, feet] squares to light up (the current hero's moves).
  */
-export default function Board({ game, now, reach = null, showHidden = false }) {
+export default function Board({ game, now, reach = null, showHidden = false, focus = null, className = 'dq-board' }) {
   const { map } = game;
   const s = settingFor(map.setting);
   const box = useMemo(() => bounds(map), [map]);
+  // A close-up on a few squares (the phone's action cam): frame them with a little room around.
+  let view = box;
+  if (focus && focus.length) {
+    const pts = focus.map((p) => iso(p.x, p.y, groundAt(map, p.x, p.y)));
+    const cx = (Math.min(...pts.map((p) => p.sx)) + Math.max(...pts.map((p) => p.sx))) / 2;
+    const cy = (Math.min(...pts.map((p) => p.sy)) + Math.max(...pts.map((p) => p.sy))) / 2;
+    const spread = Math.max(...pts.map((p) => p.sx)) - Math.min(...pts.map((p) => p.sx));
+    const width = Math.max(TW * 3.3, spread + TW * 2.2);
+    const height = width * 0.7;
+    view = { left: cx - width / 2, top: cy - height * 0.84, width, height };
+  }
   const { ground, things } = useStatic(map);
   const turnId = game.combat ? game.combat.order[game.combat.turn] : null;
 
@@ -193,9 +277,28 @@ export default function Board({ game, now, reach = null, showHidden = false }) {
       return { t, sx, sy, depth: pos.x + pos.y + 0.5, walking: pos.x !== t.x || pos.y !== t.y };
     });
 
+  // The action cam on the board: attackers lunge, the hit one shakes, numbers float up, people speak in bubbles.
+  const pos = {};
+  tokens.forEach(({ t, sx, sy }) => { pos[t.id] = { sx, sy }; });
+  (game.npcs || []).forEach((n) => { pos[n.id] = iso(n.x, n.y, groundAt(map, n.x, n.y)); });
+  const f = game.fx && now - game.fx.at < FX_MS ? game.fx : null;
+  const age = f ? now - f.at : 0;
+  const shift = (id) => {
+    if (!f) return { dx: 0, dy: 0 };
+    const a = pos[f.from];
+    const b = pos[f.to];
+    if (id === f.from && a && b && f.from !== f.to && (f.kind === 'hit' || f.kind === 'miss' || f.kind === 'steal' || f.kind === 'caught') && age < 480) {
+      const k = Math.sin((Math.PI * age) / 480) * (f.kind === 'steal' ? 0.25 : 0.42);
+      return { dx: (b.sx - a.sx) * k, dy: (b.sy - a.sy) * k };
+    }
+    if (id === f.to && f.dmg > 0 && age > 180 && age < 760) return { dx: Math.sin(age / 22) * 6, dy: 0 };
+    return { dx: 0, dy: 0 };
+  };
+
   const npcs = (game.npcs || []).map((n) => {
-    const { sx, sy } = iso(n.x, n.y, groundAt(map, n.x, n.y));
-    return { depth: n.x + n.y + 0.5, key: n.id, el: <Npc key={n.id} look={n.look} sx={sx} sy={sy} name={n.name} role={n.role} talked={n.talked} /> };
+    const { sx, sy } = pos[n.id];
+    const { dx, dy } = shift(n.id);
+    return { depth: n.x + n.y + 0.5, key: n.id, el: <Npc key={n.id} look={n.look} sx={sx + dx} sy={sy + dy} name={n.name} role={n.role} talked={n.talked} /> };
   });
 
   // Traps the party has found: a warning plate on the ground (or the sprung trap's jaws).
@@ -220,13 +323,18 @@ export default function Board({ game, now, reach = null, showHidden = false }) {
     ...trapEls,
     ...npcs,
     ...things.map((th) => ({ depth: th.depth, key: th.key, el: <g key={th.key} dangerouslySetInnerHTML={{ __html: th.html }} /> })),
-    ...tokens.map(({ t, sx, sy, depth, walking }) => ({
+    ...tokens.map(({ t, sx: x0, sy: y0, depth, walking }) => {
+      const { dx, dy } = shift(t.id);
+      const sx = x0 + dx;
+      const sy = y0 + dy;
+      return {
       depth,
       key: t.id,
       el: t.side === 'party'
         ? <Hero key={t.id} look={t.look} sx={sx} sy={sy} name={t.name} hp={t.hp} maxHp={t.maxHp} cls={t.sheet?.classId} down={t.hp <= 0 && !t.dead} dead={t.dead} active={t.id === turnId} walking={walking} now={now} gear={t.wear || t.sheet?.wear} title={t.title || (t.sheet?.wear?.title ? GEAR_BY_ID[t.sheet.wear.title]?.name : null)} />
         : <Foe key={t.id} sx={sx} sy={sy} monster={t.monster} glyph={t.glyph} color={t.color} name={t.name} hp={t.hp} maxHp={t.maxHp} boss={t.boss} active={t.id === turnId} />,
-    })),
+      };
+    }),
   ].sort((a, b) => a.depth - b.depth);
 
   // Light: dark places only show what's near the party's torches.
@@ -234,7 +342,7 @@ export default function Board({ game, now, reach = null, showHidden = false }) {
   const lights = tokens.filter(({ t }) => t.side === 'party' && !t.dead);
 
   return (
-    <svg className="dq-board" viewBox={`${box.left} ${box.top} ${box.width} ${box.height}`} preserveAspectRatio="xMidYMid meet">
+    <svg className={className} viewBox={`${view.left} ${view.top} ${view.width} ${view.height}`} preserveAspectRatio={focus ? 'xMidYMid slice' : 'xMidYMid meet'}>
       {/* eslint-disable-next-line react/no-danger */}
       <defs dangerouslySetInnerHTML={{ __html: PROP_DEFS }} />
       <defs>
@@ -260,6 +368,7 @@ export default function Board({ game, now, reach = null, showHidden = false }) {
         })}
         {layers.map((l) => l.el)}
       </g>
+      {f && <FxLayer f={f} age={age} pos={pos} />}
       <Weather setting={map.setting} seed={map.seed} box={box} />
       {s.light === 'fog' && <rect x={box.left} y={box.top} width={box.width} height={box.height} className="dq-fog" />}
       {s.light === 'cold' && <rect x={box.left} y={box.top} width={box.width} height={box.height} className="dq-cold" />}

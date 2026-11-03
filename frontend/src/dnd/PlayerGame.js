@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import ActionCam from './ActionCam';
 import MiniMap from './MiniMap';
 import { actionNumbers, actionsOf, CLASSES, describe, mod, RACES, signed, STAT_NAMES, STATS, XP_FOR_LEVEL } from './rules';
 import { squaresBetween } from './movement';
@@ -121,6 +122,7 @@ export default function PlayerGame({ view, send, header, toast }) {
           🏅 Unlocked {unlockNote.slot === 'title' ? `the title “${unlockNote.name}”` : unlockNote.name}! Tap to wear it.
         </button>
       )}
+      <ActionCam fx={view.fx} meId={me.id} packed={view.map} tokens={view.tokens} npcs={view.npcs} />
       {view.check && !view.check.rolled && (
         <div className="dqp-check">
           <b>🎲 The DM wants a {view.check.skill} check</b>

@@ -62,3 +62,22 @@ test('class gear only unlocks for its class', () => {
   expect(unlockedIds(fighter)).not.toContain('star-hat');
   expect(unlockedIds(fighter)).toContain('champion-helm');
 });
+
+test('actions leave an action-cam moment for the phones of the heroes in them', () => {
+  const g = createGame({ seed: 3, players: [{ cid: 'c0', sheet: sheetFor() }, { cid: 'c1', sheet: sheetFor('wizard') }] });
+  const t = pcFor(g, 'c0');
+  const foe = g.tokens.find((x) => x.side === 'foe');
+  foe.x = t.x + 1;
+  foe.y = t.y;
+  foe.hidden = false;
+  foe.hp = 100;
+  startCombat(g, 0);
+  g.combat.order = [t.id, foe.id];
+  g.combat.turn = 0;
+  act(g, t, { action: 'longsword', target: foe.id });
+  const cam = playerView(g, 'c0').fx;
+  expect(['hit', 'miss']).toContain(cam.kind);
+  expect(cam.actor.name).toBe(t.name);
+  expect(cam.target.monster).toBe(foe.monster);
+  expect(playerView(g, 'c1').fx).toBe(null);
+});
