@@ -1,3 +1,5 @@
+import { cleanDeeds, cleanWear } from './gear';
+
 // A light version of fifth edition rules: ability scores, classes, races, levels, dice and monsters.
 // Enough to run a table on a TV without a rulebook, while the AI narrator and the human co-DM fill the gaps.
 
@@ -204,7 +206,7 @@ export const normalizeCharacter = (sheet) => {
   STATS.forEach((s) => { if (Number.isFinite(sheet?.stats?.[s])) stats[s] = Math.min(20, Math.max(3, Math.floor(sheet.stats[s]))); });
   const maxHp = maxHpFor(base.classId, base.raceId, level, stats);
   const hp = Number.isFinite(sheet?.hp) ? Math.min(maxHp, Math.max(0, Math.floor(sheet.hp))) : maxHp;
-  return {
+  const out = {
     ...base,
     xp,
     level,
@@ -216,7 +218,10 @@ export const normalizeCharacter = (sheet) => {
     notes: String(sheet?.notes || '').slice(0, 2000),
     history: Array.isArray(sheet?.history) ? sheet.history.slice(-50) : [],
     campaignId: sheet?.campaignId || null,
+    deeds: cleanDeeds(sheet?.deeds),
   };
+  out.wear = cleanWear(sheet?.wear, out);
+  return out;
 };
 
 export const speedOf = (sheet) => (RACES[sheet.raceId] || RACES.human).speed;

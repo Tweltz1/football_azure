@@ -3,6 +3,9 @@ import MiniMap from './MiniMap';
 import { actionNumbers, actionsOf, CLASSES, describe, mod, RACES, signed, STAT_NAMES, STATS, XP_FOR_LEVEL } from './rules';
 import { squaresBetween } from './movement';
 import { ITEMS, sellValue } from './items';
+import {
+  deedValue, GEAR, GEAR_BY_ID, heroMarkup, howToUnlock, isUnlocked, pieceBox, pieceMarkup, SLOTS,
+} from './gear';
 
 const kindHint = (a) => {
   if (a.kind === 'heal') return a.self ? 'Heal yourself' : `Heal an ally within ${(a.range || 1) * 5} ft`;
@@ -25,6 +28,17 @@ export default function PlayerGame({ view, send, header, toast }) {
 
   useEffect(() => { if (!view.myTurn && view.mode === 'combat') setChosen(null); }, [view.myTurn, view.mode]);
   useEffect(() => { if (!view.shop) setShopOpen(false); }, [view.shop]);
+  const [unlockNote, setUnlockNote] = useState(null);
+  const unlockId = view.unlock ? view.unlock.id : 0;
+  useEffect(() => {
+    if (!unlockId || !view.unlock) return undefined;
+    const item = GEAR_BY_ID[view.unlock.gear];
+    if (!item) return undefined;
+    if (navigator.vibrate) navigator.vibrate([80, 60, 80, 60, 160]);
+    setUnlockNote(item);
+    const timer = window.setTimeout(() => setUnlockNote(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [unlockId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (view.myTurn && navigator.vibrate) navigator.vibrate([60, 40, 60]);
   }, [view.myTurn]);
@@ -86,6 +100,7 @@ export default function PlayerGame({ view, send, header, toast }) {
   const busy = view.mode === 'combat' && (!view.myTurn || used.action);
   const pack = [...new Set(sheet.inventory)].map((item) => ({ item, count: sheet.inventory.filter((x) => x === item).length, def: ITEMS[item] }));
 
+  const worn = sheet.wear || {};
   const marks = { [me.id]: 'me' };
   if (chosen) targetsFor(chosen).forEach((t) => { marks[t.id] = 'target'; });
 
@@ -101,6 +116,11 @@ export default function PlayerGame({ view, send, header, toast }) {
         <span>{view.mode === 'combat' ? (view.myTurn ? `🟢 Your turn · ${view.left} ft left` : `⏳ ${view.turnName}'s turn`) : `🧭 Exploring · ${me.speed} ft`}</span>
       </div>
       {toast && <div className="dqp-toast">{toast}</div>}
+      {unlockNote && (
+        <button type="button" className="dqp-toast dqp-unlocked" onClick={() => { setTab('gear'); setUnlockNote(null); }}>
+          🏅 Unlocked {unlockNote.slot === 'title' ? `the title “${unlockNote.name}”` : unlockNote.name}! Tap to wear it.
+        </button>
+      )}
       {view.check && !view.check.rolled && (
         <div className="dqp-check">
           <b>🎲 The DM wants a {view.check.skill} check</b>
@@ -111,9 +131,9 @@ export default function PlayerGame({ view, send, header, toast }) {
       {me.down && !me.dead && <div className="dqp-check">You're down! Death saves roll on your turn. Hope a friend has a healing spell…</div>}
 
       <div className="lcp-tabs dqp-tabs">
-        {['map', 'actions', 'hero', 'say'].map((t) => (
+        {['map', 'actions', 'hero', 'gear', 'say'].map((t) => (
           <button key={t} type="button" className={tab === t ? 'is-on' : ''} onClick={() => setTab(t)}>
-            {t === 'map' ? '🗺️ Map' : t === 'actions' ? '⚔️ Act' : t === 'hero' ? '📜 Hero' : '💬 Say'}
+            {t === 'map' ? '🗺️ Map' : t === 'actions' ? '⚔️ Act' : t === 'hero' ? '📜 Hero' : t === 'gear' ? '🏅 Gear' : '💬 Say'}
           </button>
         ))}
       </div>
@@ -237,6 +257,41 @@ export default function PlayerGame({ view, send, header, toast }) {
             ))}
           </ul>
           {Object.keys(me.cond || {}).length > 0 && <p>Effects: {Object.keys(me.cond).join(', ')}</p>}
+        </div>
+      )}
+
+      {tab === 'gear' && (
+        <div className="dqp-gear">
+          <div className="dqp-gear-hero">
+            {/* eslint-disable-next-line react/no-danger */}
+            <svg viewBox="-170 -380 340 400" dangerouslySetInnerHTML={{ __html: heroMarkup(me.look, worn) }} />
+          </div>
+          <p className="dqp-gear-count">{GEAR.filter((item) => isUnlocked(sheet, item)).length} of {GEAR.length} unlocked{worn.title ? ` · ${sheet.name} ${GEAR_BY_ID[worn.title]?.name}` : ''}</p>
+          {SLOTS.map((slot) => (
+            <div key={slot.id}>
+              <h3>{slot.icon} {slot.name}</h3>
+              <div className="dqp-gear-grid">
+                {GEAR.filter((item) => item.slot === slot.id && (!item.cls || item.cls === sheet.classId)).map((item) => {
+                  const open = isUnlocked(sheet, item);
+                  const on = worn[slot.id] === item.id;
+                  const have = Math.min(item.need, deedValue(sheet, item.deed));
+                  return (
+                    <button key={item.id} type="button" disabled={!open} className={`dqp-gear-item${on ? ' is-on' : ''}${open ? '' : ' is-locked'}${slot.id === 'title' ? ' dqp-gear-title' : ''}`}
+                      onClick={() => send('act', { type: 'wear', slot: slot.id, id: on ? null : item.id })}>
+                      {slot.id !== 'title' && (
+                        // eslint-disable-next-line react/no-danger
+                        <svg viewBox={pieceBox(item)} dangerouslySetInnerHTML={{ __html: pieceMarkup(item) }} />
+                      )}
+                      <b>{open ? '' : '🔒 '}{item.name}</b>
+                      {!open && <i>{howToUnlock(item)}</i>}
+                      {!open && <span className="dqp-gear-bar"><span style={{ width: `${(have / item.need) * 100}%` }} /></span>}
+                      {!open && item.deed !== 'level' && <i>{have}/{item.need}</i>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
