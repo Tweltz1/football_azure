@@ -27,21 +27,66 @@ const CLUE_LINES = [
   (q) => `${q.villainName} has eyes everywhere. I’d watch the shadows if I were you.`,
   (q) => `There’s a reward in it, I hear: ${q.reward}. Worth the danger? You tell me.`,
   (q) => `Folks say ${q.contact} knows more than they told you.`,
+  (q) => `Three nights ago I saw lanterns moving where no one lives. ${q.villainName}’s people, I’d bet.`,
+  (q) => `My cousin went looking for ${q.villainName}. We buried an empty coffin last spring.`,
+  (q) => `If it’s ${q.goal} you want, travel light and travel fast. They know you’re coming.`,
+  (q) => `Don’t camp near standing water. That’s all I’ll say about ${q.villainName}.`,
+  (q) => `The last crew that tried for ${q.reward} came back one short. Then two short.`,
+  (q) => `${q.villainName} pays in gold that goes cold in your hand. Ask me how I know.`,
+  (q) => `${cap(q.contact)} came by here yesterday, looking over their shoulder the whole time.`,
+  (q) => `I’d count my friends twice before the end of this. ${cap(q.twistHint)}.`,
+  () => 'The roads changed this year. Signposts point the wrong way, and nobody admits to turning them.',
+  () => 'Something big moved through here at night. The dogs wouldn’t stop shaking.',
+  () => 'Keep your torches lit past the bend. What lives in the dark there hates the light.',
+  () => 'If you hear singing and can’t see the singer, walk the other way. Quickly.',
 ];
 
 const SLAY_LINES = [
   (m, n) => `Those ${m} have been terrorizing me for days. Drive them off and I’ll pay you well. (${n} here)`,
   (m) => `Please, the ${m}! I can’t get past them. Clear them out and it’s worth your while.`,
   (m) => `If you can deal with the ${m} around here, I’ll make it worth your trouble.`,
+  (m) => `The ${m} took my best goat and my second-best goat. I want them gone. Every one.`,
+  (m) => `I’ve got coin saved for a rainy day. Those ${m} are a whole storm. Clear them out?`,
+  (m) => `Every night those ${m} come a little closer. Put an end to it and I’ll pay.`,
+  (m) => `You look like you can handle a blade. The ${m} out there? Handle them.`,
+  (m) => `My grandmother chased off the ${m} with a broom once. I am not my grandmother. Help?`,
 ];
 
 const FETCH_LINES = [
   (item) => `I dropped my ${item} somewhere around here. It’s probably in one of those chests. Bring it back?`,
   (item) => `Some thief stuffed my ${item} in a chest. Find it and I’ll reward you.`,
+  (item) => `My ${item} is all I’ve got left of home. Someone locked it in a chest out there.`,
+  (item) => `If you open a chest and find a ${item}, that’s mine. I’ll make it worth your while.`,
+  (item) => `Rotten luck: my ${item} got packed up with the loot. Check the chests for me?`,
+  (item) => `Bring me back my ${item} and I’ll tell everyone you’re heroes. And pay you. Mostly pay you.`,
 ];
 
-const THANKS = ['Bless you!', 'I owe you one.', 'You’re true heroes.', 'I won’t forget this.', 'Here, you’ve earned this.'];
-const AGAIN = ['Good luck out there.', 'Be careful.', 'Still here. Still grateful.', 'Go on, they’re waiting for you.', 'Mind the monsters.'];
+const THANKS = ['Bless you!', 'I owe you one.', 'You’re true heroes.', 'I won’t forget this.', 'Here, you’ve earned this.', 'I’ll tell my children about you. Well, the dog.',
+  'Gods, thank you. Drinks are on me if you’re ever back.', 'You did it! I didn’t think anyone could.', 'Take this, and take my thanks with it.',
+  'They’ll sing about this. Badly, but they’ll sing.', 'A debt’s a debt. Here’s what I promised.', 'Finally, a good night’s sleep!'];
+const AGAIN = ['Good luck out there.', 'Be careful.', 'Still here. Still grateful.', 'Go on, they’re waiting for you.', 'Mind the monsters.',
+  'Back again? Don’t you have a villain to stop?', 'Watch your step past the old trees.', 'Come back alive. That’s an order.',
+  'If you see my brother out there, tell him he owes me three silver.', 'I’ve said all I know. Go!', 'Don’t make me worry about you.',
+  'Keep your blades sharp and your boots dry.', 'May your dice roll high.', 'Is it me or is it getting darker?'];
+
+/** How each NPC talks. Their words get wrapped in their mood. */
+const MOODS = {
+  gruff: { open: ['Hmph.', 'Listen.', 'Look.', 'Right.', 'Ugh, fine.'], close: ['Now leave me be.', 'That’s all.', 'Don’t make me repeat it.', ''] },
+  cheerful: { open: ['Oh, hello there!', 'Well met, friends!', 'Ah, travelers!', 'Good day to you!', 'Oh, how exciting!'], close: ['Have a lovely day!', 'Safe travels!', 'Ooh, good luck!', ''] },
+  nervous: { open: ['Oh! You startled me.', 'Shh, not so loud.', 'Is anyone following you?', 'Okay. Okay okay okay.', 'Please, keep your voice down.'], close: ['I didn’t tell you this.', 'Please hurry.', 'Don’t say my name out there.', ''] },
+  grand: { open: ['Ahem!', 'Gather close, brave souls.', 'Hark!', 'At last, heroes worthy of the tale.', 'Behold, wanderers!'], close: ['Fate favors the bold!', 'Go forth!', 'So it is written.', ''] },
+  sly: { open: ['Psst. Over here.', 'You didn’t hear this from me.', 'Interesting company you keep.', 'For a friend, a whisper.', 'Well, well.'], close: ['Our secret, yes?', 'Remember who helped you.', 'Off you go.', ''] },
+};
+export const MOOD_IDS = Object.keys(MOODS);
+
+/** What NPCs say when you try to persuade or scare them. */
+export const PERSUADE_FAIL = ['Hmph. I don’t know you, and I’ve said all I’m going to say.', 'Nice try. Flattery doesn’t pay my rent.',
+  'I’ve heard sweeter words from a goblin.', 'No. And stop smiling at me like that.', 'You’ll have to do better than that, friend.'];
+export const INTIMIDATE_OK = (gold) => [`All right, all right! Take it, ${gold} gold, just leave me be!`, `Here! ${gold} gold! It’s all I have, I swear!`,
+  `Fine! ${gold} gold. You’re no better than the monsters.`, `Take the ${gold} gold and go. Please.`];
+export const INTIMIDATE_FAIL = ['Ha! Is that supposed to scare me? We’re done here.', 'I’ve been threatened by scarier things before breakfast.',
+  'Get out of my sight before I call someone bigger.', 'You? Scare me? Walk away while you can.'];
+export const CAUGHT = ['Hey! THIEF! Guards!', 'Get your hand out of my pocket! GUARDS!', 'Stop, thief! Somebody help!', 'I felt that! THIEF!'];
 
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const plural = (name) => (/s$/.test(name) ? name : name.replace(/y$/, 'ie').concat('s')).toLowerCase();
@@ -94,15 +139,22 @@ export const makeNpcs = (seed, spots, { monsters = [], chests = 0, quest = null 
       rewarded: false,
       thanks: r.pick(THANKS),
       again: r.pick(AGAIN),
+      mood: r.pick(MOOD_IDS),
+      said: 0,
     };
   });
 };
 
-/** What an NPC says when someone talks to them. */
-export const npcLine = (npc) => {
-  if (npc.rewarded) return npc.again;
-  if (npc.done) return npc.thanks;
-  return npc.task.line;
+/** What an NPC says when someone talks to them: the core line, in their own voice. rand varies repeat visits. */
+export const npcLine = (npc, rand = null) => {
+  let line = npc.task.line;
+  if (npc.rewarded) line = rand ? AGAIN[Math.floor(rand() * AGAIN.length)] : npc.again;
+  else if (npc.done) line = npc.thanks;
+  const mood = MOODS[npc.mood];
+  if (!mood || !rand) return line;
+  const open = rand() < 0.7 ? mood.open[Math.floor(rand() * mood.open.length)] : '';
+  const close = rand() < 0.5 ? mood.close[Math.floor(rand() * mood.close.length)] : '';
+  return [open, line, close].filter(Boolean).join(' ');
 };
 
 /** The phone's short summary of a task. */
