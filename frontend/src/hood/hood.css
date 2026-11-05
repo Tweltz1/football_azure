@@ -14,3 +14,5 @@
 #lc-root .hg-card.is-quest { background: #f4e6c4; }
 #lc-root .hg-card.is-arcade { background: #e3f1ff; }
 #lc-root .hg-card.is-league { background: #e6e1ff; }
+/* The iPhone app draws edge to edge, so keep the top clear of the clock and camera. */
+#lc-root .hg { padding-top: 16px; padding-top: calc(16px + env(safe-area-inset-top)); }
