@@ -4,6 +4,7 @@ import { randomLook } from '../party/look';
 import { currentUser, firstName, signInWithGoogle, signOutHere } from '../party/account';
 import { SETTINGS } from './settings';
 import { CLASSES } from './rules';
+import { homeHref, homeLabel } from '../native/gamesApp';
 import '../party/party.css';
 import './dnd.css';
 
@@ -25,7 +26,7 @@ export default function DndHome() {
 
   return (
     <div className="lcp lch dq dq-home">
-      <a className="lch-back" href="/">← Hood League</a>
+      <a className="lch-back" href={homeHref()}>← {homeLabel()}</a>
       <p className="lch-kicker">Hood League · Tabletop</p>
       <h1 className="dq-title">Hood Quest</h1>
       <p className="lch-sub">Dungeons and dragons for one TV and your phones. The TV shows a 3D map, an AI narrator tells the story, and one of you co-hosts as the Dungeon Master. Every quest, map and monster lineup is new each time.</p>

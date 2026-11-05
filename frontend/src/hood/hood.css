@@ -1,0 +1,16 @@
+/* Hood Games hub (/hood-games): reuses the Games Night landing (.lch-*) with four cards. */
+
+#lc-root .hg { background: radial-gradient(circle at 50% 0%, #4a2560, #120c24 70%) fixed; }
+#lc-root .hg .hg-title { font-size: 64px; font-size: clamp(56px, 14vw, 112px); line-height: 1; }
+#lc-root .hg-places {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  width: 100%;
+  max-width: 720px;
+}
+#lc-root .hg-card { text-align: center; }
+#lc-root .hg-card.is-party { background: #ffe9c9; }
+#lc-root .hg-card.is-quest { background: #f4e6c4; }
+#lc-root .hg-card.is-arcade { background: #e3f1ff; }
+#lc-root .hg-card.is-league { background: #e6e1ff; }

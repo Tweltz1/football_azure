@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
 import Home from './components/Home';
 import Leagues from './components/Leagues';
@@ -16,14 +16,29 @@ import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory'
 import { useAuth, signOut } from './AuthContext';
 import PartyRoutes, { isPartyPath } from './party/PartyRoutes';
 import DndRoutes, { isDndPath } from './dnd/DndRoutes';
+import { HOOD_GAMES_PATH, inGamesApp } from './native/gamesApp';
 import './App.css';
 import './DraftMobile.css';
 import './MobileDensity.css';
 import './MobileFlow.css';
 
+// Loaded only when the hub is opened, like the party and Hood Quest pages.
+const HoodGamesHub = lazy(() => import('./hood/HoodGamesHub'));
+const isHubPath = (path) => (path || '').replace(/\/$/, '') === HOOD_GAMES_PATH;
+
 function App() {
   const { user, loading } = useAuth();
 
+  // Hood Games hub (where the Hood Games app opens) needs no sign-in either.
+  if (isHubPath(window.location.pathname)) {
+    return (
+      <div id="lc-root">
+        <Suspense fallback={<div style={{ background: '#120c24', minHeight: '100vh' }} />}>
+          <HoodGamesHub />
+        </Suspense>
+      </div>
+    );
+  }
   // Party games open without signing in (sign-in there is optional, for saving a character).
   if (isPartyPath(window.location.pathname)) {
     return <PartyRoutes />;
@@ -71,6 +86,7 @@ function App() {
             <NavLink to="/rankings">Rankings</NavLink>
             <NavLink to="/games">Games</NavLink>
             <a href="/dnd">DnD</a>
+            {inGamesApp() && <a href={HOOD_GAMES_PATH}>Hood Games</a>}
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>
           </div>
