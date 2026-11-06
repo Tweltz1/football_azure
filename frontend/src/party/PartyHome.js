@@ -39,11 +39,6 @@ export default function PartyHome() {
           <b>Join on your phone</b>
           <small>Type the room code from the TV and dress up your character.</small>
         </a>
-        <a className="lch-card" href="/cards">
-          <span className="lch-icon">🃏</span>
-          <b>Card table</b>
-          <small>500 and Dirty Clubs, phones only. No TV needed.</small>
-        </a>
       </div>
       {checked && (
         <div className="lch-account">

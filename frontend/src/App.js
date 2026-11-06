@@ -60,8 +60,12 @@ function App() {
     );
   }
 
-  // The draft mini-games can be practiced without signing in (from the Hood Games hub, say).
-  if (!user && (window.location.pathname || '').replace(/\/$/, '') === '/games') {
+  // The draft mini-games can be practiced without signing in (from the Hood Games hub, say). In the
+  // Hood Games app they always get this slim page, signed in or not, so Back returns to the hub
+  // instead of the whole Hood League site.
+  const gamesPath = (window.location.pathname || '').replace(/\/$/, '');
+  const slimGames = gamesPath === '/games' || (gamesPath === '/games/race' && user && inGamesApp());
+  if (slimGames && (!user || inGamesApp())) {
     return (
       <Router>
         <div className="app-shell">
@@ -74,12 +78,15 @@ function App() {
               </span>
             </a>
             <div className="nav-links" aria-label="Primary navigation">
-              <a href={homeHref()}>← Back</a>
-              <button type="button" className="logout-link" onClick={() => signIn('google')}>Sign in</button>
+              <a href={homeHref()}>← Back to {homeLabel()}</a>
+              {!user && <button type="button" className="logout-link" onClick={() => signIn('google')}>Sign in</button>}
             </div>
           </nav>
           <main className="app-main">
-            <GamesPage guest />
+            <Routes>
+              <Route path="/games" element={<GamesPage guest={!user} />} />
+              {user && <Route path="/games/race" element={<RacePage />} />}
+            </Routes>
           </main>
         </div>
       </Router>

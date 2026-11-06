@@ -11,7 +11,7 @@ import {
 } from './cardsApi';
 import FivePhone, { TEAM_COLORS } from './FivePhone';
 import ClubsPhone from './ClubsPhone';
-import { homeHref, inGamesApp, siteOrigin } from '../native/gamesApp';
+import { homeHref, homeLabel, siteOrigin } from '../native/gamesApp';
 import { currentUser, firstName } from '../party/account';
 import '../party/party.css';
 import './cards.css';
@@ -599,7 +599,7 @@ export default function CardsApp() {
 
   return (
     <div className="lcp lt-page lt-home">
-      <a className="lcp-link lt-back" href={inGamesApp() ? homeHref() : '/games-night'}>{inGamesApp() ? '← Hood Games' : '← Games Night'}</a>
+      <a className="lcp-link lt-back" href={homeHref()}>← {homeLabel()}</a>
       <h1 className="lc-title lt-h1">Card Table</h1>
       <p className="lt-note">500 and Dirty Clubs, played on phones. No TV needed: one phone opens the table and everyone else joins with the code. Bots fill empty seats.</p>
       <label className="lt-name">Your name
