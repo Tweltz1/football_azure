@@ -217,3 +217,10 @@
   #lc-root .lt-thin b, #lc-root .lt-thin i { animation: none !important; }
   #lc-root .lt-thin i { display: none; }
 }
+
+/* Arranging your hand */
+#lc-root .lt-hand-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#lc-root .lt-hand-tools small { font-size: 12px; opacity: 0.75; }
+#lc-root .lt-hand.is-arrange .lt-card { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#lc-root .lt-hand.is-dragging .lt-card:not(.is-lift) { opacity: 0.85; }
+#lc-root .lt-card.is-lift { transform: translateY(-10px) scale(1.08); outline: 3px dashed var(--lc-gold); z-index: 3; }

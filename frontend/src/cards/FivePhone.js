@@ -206,14 +206,14 @@ export default function FivePhone({ game, act, look, endButtons }) {
     body = big ? <Status look={look} pose={game.phase === 'trick' && game.winner % 2 === us ? 'cheer' : 'stand'} big={big} line={trumpText} /> : null;
   }
 
-  let hand = <Hand cards={game.cards} />;
+  let hand = <Hand trump={game.trump} cards={game.cards} />;
   if (game.phase === 'kitty' && game.myTurn) hand = <Discard cards={game.cards} kitty={game.kitty || []} count={game.toDiscard} handsOne={game.handsOne} onDone={(cards, give) => act('discard', { cards, give })} />;
   if (game.phase === 'pass' && game.myTurn) hand = <PassPick cards={game.cards} got={game.passCard} onPass={(card) => act('pass', { card })} />;
   if (game.phase === 'play' && game.myTurn) {
     const play = (c) => { if (c === 'JK' && game.nameSuit) setJoker(true); else act('play', { card: c }); };
     hand = joker
       ? <NameSuit onPick={(s) => { act('play', { card: 'JK', named: s }); setJoker(false); }} onCancel={() => setJoker(false)} />
-      : <Hand cards={game.cards} legal={game.legal || []} onPlay={play} />;
+      : <Hand trump={game.trump} cards={game.cards} legal={game.legal || []} onPlay={play} />;
   }
 
   return (

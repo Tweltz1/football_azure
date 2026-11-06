@@ -140,8 +140,8 @@ export default function ClubsPhone({ game, act, look, endButtons }) {
   }
 
   const hand = game.phase === 'play' && game.myTurn
-    ? <Hand cards={game.cards} legal={game.legal || []} onPlay={(c) => act('play', { card: c })} />
-    : <Hand cards={game.cards} />;
+    ? <Hand trump={game.trump} cards={game.cards} legal={game.legal || []} onPlay={(c) => act('play', { card: c })} />
+    : <Hand trump={game.trump} cards={game.cards} />;
 
   return (
     <>
