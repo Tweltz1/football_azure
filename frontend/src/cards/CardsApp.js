@@ -15,7 +15,8 @@ import { homeHref, homeLabel, siteOrigin } from '../native/gamesApp';
 import { currentUser, firstName, signInWithGoogle } from '../party/account';
 import { supabase } from '../supabaseClient';
 import { backStyle, designClass, DESIGNS, designOf, isUnlocked, progressFor, TRACKS } from './designs';
-import { CardFace } from './CardPhone';
+import { CardFace, suits } from './CardPhone';
+import { bidLabel } from './five';
 import '../party/party.css';
 import './cards.css';
 
@@ -489,10 +490,61 @@ function SavedGames({ onResume, onBack }) {
   );
 }
 
-function Stats({ onBack }) {
+const pctOf = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '–');
+const per = (a, b) => (b ? (a / b).toFixed(1) : '–');
+const SUIT_ROWS = [['S', '♠ Spades'], ['C', '♣ Clubs'], ['D', '♦ Diamonds'], ['H', '♥ Hearts'], ['NT', 'No Trump'], ['MIS', 'Nola'], ['OPEN', 'Double Nola']];
+
+/** One player's full numbers, as a grid of tiles. */
+function PlayerStats({ p }) {
+  const f = p.five;
+  const c = p.clubs;
+  const tile = (label, value, sub) => <div className="lt-stat-tile" key={label}><b>{value}</b><span>{label}</span>{sub && <small>{sub}</small>}</div>;
+  return (
+    <div className="lt-stat-detail">
+      {f.games > 0 && (
+        <>
+          <p className="lt-stat-sub">500</p>
+          <div className="lt-stat-grid">
+            {tile('Wins', `${f.wins}–${f.games - f.wins}`, pctOf(f.wins, f.games))}
+            {tile('Bids made', `${f.made}/${f.bids}`, pctOf(f.made, f.bids))}
+            {tile('Bids set', f.set)}
+            {tile('Your tricks', f.tricks, `${per(f.tricks, f.hands)} a hand`)}
+            {tile('Team tricks won', f.teamTricks, pctOf(f.teamTricks, f.hands * 10))}
+            {tile('Team tricks lost', Math.max(0, f.hands * 10 - f.teamTricks), pctOf(Math.max(0, f.hands * 10 - f.teamTricks), f.hands * 10))}
+            {tile('Avg team score', Math.round(f.points / Math.max(1, f.games)))}
+            {tile('Best bid made', f.best ? suits(bidLabel(f.best)) : '–')}
+            {tile('All 10 tricks', f.slams)}
+            {tile('500 to 0 wins', f.shutouts)}
+          </div>
+          <div className="lt-stat-bids">
+            {SUIT_ROWS.filter(([k]) => f.suits[k][1]).map(([k, label]) => (
+              <span key={k}>{suits(label)} <b>{f.suits[k][0]}/{f.suits[k][1]}</b> <small>{pctOf(f.suits[k][0], f.suits[k][1])}</small></span>
+            ))}
+          </div>
+        </>
+      )}
+      {c.games > 0 && (
+        <>
+          <p className="lt-stat-sub">Dirty Clubs</p>
+          <div className="lt-stat-grid">
+            {tile('Wins', `${c.wins}–${c.games - c.wins}`, pctOf(c.wins, c.games))}
+            {tile('Bids made', `${c.made}/${c.bids}`, pctOf(c.made, c.bids))}
+            {tile('Tricks won', c.tricks, `${per(c.tricks, c.hands)} a hand`)}
+            {tile('Times set', c.set)}
+            {tile('Folds', c.folds)}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Stats({ onBack, me }) {
+  const [open, setOpen] = useState(null);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('players');
+  const myName = String(me?.name || '').trim().toLowerCase();
   useEffect(() => {
     let live = true;
     Promise.all([listGames('five'), listGames('clubs')])
@@ -504,6 +556,7 @@ function Stats({ onBack }) {
     <div className="lcp lt-page">
       <button type="button" className="lcp-link lt-back" onClick={onBack}>← Back</button>
       <h2 className="lc-title lt-h2">Card stats</h2>
+      <p className="lt-note">Tap a player to see everything: wins, tricks, and bids made in each suit.</p>
       {error && <p className="lt-note">{error}</p>}
       {!data && !error && <p className="lt-note">Loading…</p>}
       {data && (
@@ -517,13 +570,14 @@ function Stats({ onBack }) {
           {tab === 'players' && (
             <div className="lt-stats">
               {!data.players.length && <p className="lt-note">No finished games yet.</p>}
-              {data.players.map((p) => (
-                <div key={p.name} className="lt-statcard">
-                  <b>{p.name}</b>
-                  <span>{p.wins} wins in {p.games} games ({p.winPct}%)</span>
+              {[...data.players].sort((a, b) => (b.name.toLowerCase() === myName) - (a.name.toLowerCase() === myName)).map((p) => (
+                <button type="button" key={p.name} className={`lt-statcard is-tap${open === p.name ? ' is-open' : ''}`} onClick={() => setOpen(open === p.name ? null : p.name)}>
+                  <b>{p.name}{p.name.toLowerCase() === myName ? ' (you)' : ''} <i>{open === p.name ? '▲' : '▼'}</i></b>
+                  <span>{p.wins} win{p.wins === 1 ? '' : 's'} in {p.games} game{p.games === 1 ? '' : 's'} ({p.winPct}%)</span>
                   {p.five.games > 0 && <small>500: {p.five.wins}–{p.five.games - p.five.wins} · bids made {p.five.made}/{p.five.bids} ({p.madePct}%) · {p.five.tricks} tricks · {p.five.nola} Nola bids</small>}
                   {p.clubs.games > 0 && <small>Dirty Clubs: {p.clubs.wins}–{p.clubs.games - p.clubs.wins} · {p.clubs.tricks} tricks · set {p.clubs.set} · folded {p.clubs.folds}</small>}
-                </div>
+                  {open === p.name && <PlayerStats p={p} />}
+                </button>
               ))}
             </div>
           )}
@@ -602,7 +656,7 @@ function Designs({ user, me, onPick, onBack }) {
           <section key={t.id} className="lt-design-track">
             <p className="lt-design-head">
               <b>{t.emblem} {t.title}</b>
-              <small>{t.id === 'starter' ? t.blurb : `${list.filter((d) => isUnlocked(d, counts, signedIn)).length}/10${have != null ? ` · you have ${have}` : ''}`}</small>
+              <small>{t.id === 'starter' ? (signedIn ? 'Yours for signing in' : t.blurb) : `${list.filter((d) => isUnlocked(d, counts, signedIn)).length}/10${have != null ? ` · you have ${have}` : ''}`}</small>
             </p>
             <div className="lt-design-grid">
               {list.map((d) => {
@@ -681,7 +735,7 @@ export default function CardsApp() {
   if (page.page === 'host') return <HostTable me={player} gameId={page.gameId} resume={page.resume} look={look} onExit={home} />;
   if (page.page === 'join' && named) return <GuestTable me={player} code={page.code} look={look} onExit={home} />;
   if (page.page === 'saved') return <SavedGames onBack={home} onResume={(r) => setPage({ page: 'host', gameId: r.gameId, resume: r })} />;
-  if (page.page === 'stats') return <Stats onBack={home} />;
+  if (page.page === 'stats') return <Stats onBack={home} me={player} />;
   if (page.page === 'designs') return <Designs user={user} me={player} onPick={pickDesign} onBack={home} />;
 
   return (

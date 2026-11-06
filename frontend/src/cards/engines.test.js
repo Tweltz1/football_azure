@@ -298,3 +298,20 @@ test('a bot steps up with its best card when an opponent still plays after it', 
   // Partner's card can't be topped: lay off.
   expect(botCard({ hand: ['10H', '14H', '5S'], trick: { plays: [{ seat: 1, card: '7H' }, { seat: 2, card: '13H' }] }, trump: 'S', partner: 2, playersLeft: 1, unseen: ['11H', '12H', '4D'] })).toBe('10H');
 });
+
+test('player stats add up: bids by suit, tricks won and lost', () => {
+  const people = ['Tyler', 'Pat', 'Ben', 'Sam'].map((name, i) => ({ cid: `c${i}`, name }));
+  const fives = [1, 2, 3, 4].map((seed) => summarize('five', run('five', people, seed).g));
+  const clubs = [1, 2].map((seed) => summarize('clubs', run('clubs', people, seed).g));
+  if (process.env.DUMP_STATS) require('fs').writeFileSync(process.env.DUMP_STATS, JSON.stringify({ fives, clubs }));
+  const tyler = computeStats(fives, clubs).players.find((p) => p.name === 'Tyler');
+  const f = tyler.five;
+  const tries = Object.values(f.suits).reduce((n, [, t]) => n + t, 0);
+  const made = Object.values(f.suits).reduce((n, [m]) => n + m, 0);
+  expect(f.games).toBe(4);
+  expect(tries).toBe(f.bids);
+  expect(made).toBe(f.made);
+  expect(f.tricks).toBeLessThanOrEqual(f.hands * 10);
+  expect(tyler.clubs.games).toBe(2);
+  expect(tyler.clubs.hands).toBeGreaterThan(0);
+});
