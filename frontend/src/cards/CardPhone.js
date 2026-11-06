@@ -177,6 +177,11 @@ export const TableView = ({ seats, me, plays = [], winner = null, center = null 
         >
           <b>{i === me ? `${s.name} (you)` : s.name}{s.dealer ? <i className="lt-dealer">D</i> : null}</b>
           {s.line && <small>{s.line}</small>}
+          {s.won > 0 && (
+            <span className="lt-tricks" aria-label={`${s.won} trick${s.won === 1 ? '' : 's'} won`}>
+              {Array.from({ length: Math.min(s.won, 13) }, (_, k) => <i key={k} className={designClass(s.design || 'classic')} style={backStyle(s.design || 'classic')} />)}
+            </span>
+          )}
           {s.bubble && <span className={`lt-bubble${s.hot ? ' is-hot' : ''}`}>{suits(s.bubble)}</span>}
         </div>
       ))}

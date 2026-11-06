@@ -31,6 +31,8 @@ function ClubsTable({ game, act, look, endButtons }) {
     if (playing && i === game.bidder && game.high) bubble = `Bid ${game.high.bid}`;
     return {
       name: x.name,
+      won: ['play', 'trick', 'hand'].includes(game.phase) ? x.tricks : 0,
+      design: x.design || null,
       line,
       color: SEAT_COLORS[i % SEAT_COLORS.length],
       turn: game.turn === i && ['cut', 'bid', 'trump', 'play'].includes(game.phase),
