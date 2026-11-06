@@ -104,6 +104,15 @@ export const sortHand = (hand, trump) => [...hand].sort((a, b) => {
   return power(b, trump, sb) - power(a, trump, sa);
 });
 
+/** "Sort by suit": the Joker, then trump, then the other suits in alternating colors, each one high to low. */
+export const suitSort = (hand, trump) => [...hand].sort((a, b) => {
+  const sa = effSuit(a, trump);
+  const sb = effSuit(b, trump);
+  const k = (s) => (s === JOKER ? -2 : s === trump ? -1 : SUIT_ORDER[s]);
+  if (k(sa) !== k(sb)) return k(sa) - k(sb);
+  return power(b, trump, sb) - power(a, trump, sa);
+});
+
 /** A rough count of the tricks a hand should take with this trump (null for no trump). */
 export const estimateTricks = (hand, trump, { jokerNt = false } = {}) => {
   let est = 0;
