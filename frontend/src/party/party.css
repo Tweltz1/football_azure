@@ -386,6 +386,10 @@
 #lc-root .lch-card b { font-size: 22px; }
 #lc-root .lch-card small { font-size: 14px; opacity: 0.8; }
 #lc-root .lch-account { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 520px; font-size: 14px; color: #d8cdee; }
+/* Full width (capped) with wrapping text: iPhone web views otherwise size the long signed-in line to one
+   line, and the page grows wider than the screen. */
+#lc-root .lch-account { width: 100%; box-sizing: border-box; text-align: center; }
+#lc-root .lch-account > span { max-width: 100%; overflow-wrap: break-word; }
 
 /* How-to-play intro */
 #lc-root .lc-howto { position: absolute; inset: 0; background: #120c24; }
