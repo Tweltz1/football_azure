@@ -8,6 +8,7 @@ import { getInitialPlayerPool } from '../_shared/playerData.ts';
 import { dndRoute } from '../_shared/dnd.ts';
 import { askRoute } from '../_shared/footballAsk.ts';
 import { createNarrator } from './narrator.ts';
+import { weatherRoute } from './weather.ts';
 import { createTurn } from './turn.ts';
 import {
   createAskLogStore, createBroadcaster, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
@@ -115,6 +116,7 @@ Deno.serve(async (req) => {
     const parts = path.split('/').filter(Boolean).map((p) => decodeURIComponent(p));
     const result = (await dndRoute(ctx, dnd, req.method, parts, body))
       ?? (await askRoute(ctx, dnd.narrator, req.method, parts, body, askLog))
+      ?? (await weatherRoute(ctx, fetchJson, req.method, parts, url.searchParams))
       ?? await handle(ctx, req.method, path, url.searchParams, body);
     const headers: Record<string, string> = { ...corsHeaders, ...(result.headers ?? {}) };
 

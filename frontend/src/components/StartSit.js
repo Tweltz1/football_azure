@@ -26,6 +26,7 @@ import { explainBench, explainPair, explainStarter, explainTrade } from '../data
 import { summarizeAccuracy } from '../data/accuracy';
 import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion } from '../data/askModel';
 import { askAi, askData } from '../data/askAi';
+import { applyWeather, weatherEffectText } from '../data/weather';
 import { leagueOutlookFrom } from '../data/leagueOdds';
 import { loadLeagueSeason, playerByes } from '../data/leagueSeason';
 import '../App.css';
@@ -70,6 +71,15 @@ const StatusTag = ({ player }) => {
   return null;
 };
 
+/** A small tag when the game's weather moves the projection, like "Wind −1.4". */
+const WeatherTag = ({ player }) => {
+  const w = player.weather;
+  if (!w?.pct || !w.delta) return null;
+  const label = (w.reasons[0] || 'Weather').replace(/^\w/, (c) => c.toUpperCase());
+  const title = `${w.text}. ${weatherEffectText(w)}${w.hoursOut > 18 ? ' (forecast, firms up closer to kickoff)' : ''}`;
+  return <span className={`startsit-tag ${w.delta < 0 ? 'caution' : 'good'}`} title={title}>{label} {w.delta > 0 ? '+' : '−'}{Math.abs(w.delta).toFixed(1)}</span>;
+};
+
 const TREND_ICON = { up: '▲', down: '▼', flat: '▬' };
 
 const TrendBadge = ({ player, scoring }) => {
@@ -87,7 +97,7 @@ const PlayerName = ({ player, scoring, onOpen, children = null }) => (
     <button type="button" className="startsit-name" onClick={() => onOpen(player.id)}>{player.name}</button>
     {' '}<small title={player.posRank ? `${rankLabel(player.position, player.posRank)} by projection this week` : undefined}>
       {rankLabel(player.position, player.posRank)}
-    </small> <StatusTag player={player} />{' '}
+    </small> <StatusTag player={player} /> <WeatherTag player={player} />{' '}
     {/* Keeps the trend badge and any "?" together when the line wraps. */}
     <span className="startsit-nowrap"><TrendBadge player={player} scoring={scoring} />{children}</span>
   </>
@@ -1296,7 +1306,12 @@ const StartSit = ({ userId }) => {
   const {
     choice, setChoice, scoring, profile, options: scoringOptions, leagueValue,
   } = useLeagueScoring(sleeperTeams);
-  const projections = useMemo(() => applyLeagueScoring(rawProjections, profile), [rawProjections, profile]);
+  // Game weather (forecasts from 3 days before kickoff) nudges outdoor players' projections.
+  const [weather, setWeather] = useState(null);
+  const projections = useMemo(
+    () => applyWeather(applyLeagueScoring(rawProjections, profile), weather, scoring),
+    [rawProjections, profile, weather, scoring],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -1318,6 +1333,15 @@ const StartSit = ({ userId }) => {
 
   // Pick up new projections and injury news while the page stays open, without a loading screen.
   const refreshTick = useRefreshTick();
+  useEffect(() => {
+    const weatherWeek = rawProjections?.week || week;
+    if (!weatherWeek) return undefined;
+    let cancelled = false;
+    axios.get(`${API_BASE_URL}/weather?week=${weatherWeek}`)
+      .then((response) => { if (!cancelled && Array.isArray(response.data?.games)) setWeather(response.data); })
+      .catch(() => { if (!cancelled) setWeather(null); });
+    return () => { cancelled = true; };
+  }, [rawProjections?.week, week, refreshTick]);
   useEffect(() => {
     if (refreshTick === 0) return undefined;
     let cancelled = false;
