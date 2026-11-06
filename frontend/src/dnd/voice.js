@@ -167,7 +167,7 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
       const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
       if (mic && video) {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ audio, video: { facingMode: 'user', width: { ideal: 240 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } } });
+          stream = await navigator.mediaDevices.getUserMedia({ audio, video: { facingMode: 'user', width: { ideal: 360 }, height: { ideal: 360 }, frameRate: { ideal: 15, max: 20 } } });
         } catch (e) {
           setError('Camera blocked: voice only. Allow the camera in your settings to be seen.');
         }

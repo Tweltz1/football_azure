@@ -10,7 +10,7 @@ import { backStyle, designClass, designOf, faceStyle } from './designs';
 export const MediaContext = createContext({ videos: {}, self: null, me: null });
 
 /** A live camera feed. Its sound comes through voice chat, so the video itself stays muted. */
-const SeatVideo = ({ stream, mirror }) => {
+const SeatVideo = ({ stream, mirror, className = 'lt-seat-media' }) => {
   const ref = useRef(null);
   useEffect(() => {
     const v = ref.current;
@@ -19,7 +19,7 @@ const SeatVideo = ({ stream, mirror }) => {
     const p = v.play();
     if (p && p.catch) p.catch(() => {});
   }, [stream]);
-  return <video ref={ref} className={`lt-seat-media${mirror ? ' is-mirror' : ''}`} autoPlay playsInline muted />;
+  return <video ref={ref} className={`${className}${mirror ? ' is-mirror' : ''}`} autoPlay playsInline muted />;
 };
 
 /** The card design this phone's own cards use. A card can name another (a card someone else played). */
@@ -170,6 +170,9 @@ export const Hand = ({ cards, legal, onPlay, trump = null, fresh = [] }) => {
  */
 export const TableView = ({ seats, me, plays = [], winner = null, center = null }) => {
   const media = useContext(MediaContext);
+  const [zoom, setZoom] = useState(null); // the seat whose camera is shown big
+  const camOf = (s) => s && s.cid && (s.cid === media.me ? media.self : media.videos[s.cid]);
+  const big = zoom != null ? camOf(seats[zoom]) : null;
   const n = seats.length;
   const base = me >= 0 ? me : 0;
   const at = (seat, rx, ry) => {
@@ -204,8 +207,14 @@ export const TableView = ({ seats, me, plays = [], winner = null, center = null 
             <span className="lt-seat-text">
               {(() => {
                 // Camera if they have it on, else their picture, else just the name.
-                const cam = s.cid && (s.cid === media.me ? media.self : media.videos[s.cid]);
-                if (cam) return <SeatVideo stream={cam} mirror={s.cid === media.me} />;
+                const cam = camOf(s);
+                if (cam) {
+                  return (
+                    <button type="button" className="lt-seat-zoom" onClick={() => setZoom(i)} aria-label={`Make ${s.name}'s video bigger`}>
+                      <SeatVideo stream={cam} mirror={s.cid === media.me} />
+                    </button>
+                  );
+                }
                 return s.avatar ? <img className="lt-seat-media" src={s.avatar} alt="" /> : null;
               })()}
               <b>{i === me ? `${s.name} (you)` : s.name}{s.dealer ? <i className="lt-dealer">D</i> : null}</b>
@@ -216,6 +225,15 @@ export const TableView = ({ seats, me, plays = [], winner = null, center = null 
           </div>
         );
       })}
+      {big && (
+        <div className="lt-video-big">
+          <SeatVideo stream={big} mirror={seats[zoom].cid === media.me} className="lt-video-big-feed" />
+          <div className="lt-video-big-bar">
+            <b>{zoom === me ? `${seats[zoom].name} (you)` : seats[zoom].name}</b>
+            <button type="button" onClick={() => setZoom(null)}>Minimize</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
