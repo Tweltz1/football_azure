@@ -34,6 +34,7 @@ function ClubsTable({ game, act, look, endButtons }) {
       won: ['play', 'trick', 'hand'].includes(game.phase) ? x.tricks : 0,
       design: x.design || null,
       avatar: x.avatar || null,
+      cid: x.cid || null,
       line,
       color: SEAT_COLORS[i % SEAT_COLORS.length],
       turn: game.turn === i && ['cut', 'bid', 'trump', 'play'].includes(game.phase),

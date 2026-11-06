@@ -6,6 +6,22 @@ import { backStyle, designClass, designOf, faceStyle } from './designs';
 // Phone pieces shared by 500 and Dirty Clubs: a card, your hand, the table (with you at the bottom),
 // and a status line. There's no TV for these games: every phone shows the whole table.
 
+/** Camera streams for the table: { videos: { cid: MediaStream }, self: MediaStream | null, me: cid }. */
+export const MediaContext = createContext({ videos: {}, self: null, me: null });
+
+/** A live camera feed. Its sound comes through voice chat, so the video itself stays muted. */
+const SeatVideo = ({ stream, mirror }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    v.srcObject = stream;
+    const p = v.play();
+    if (p && p.catch) p.catch(() => {});
+  }, [stream]);
+  return <video ref={ref} className={`lt-seat-media${mirror ? ' is-mirror' : ''}`} autoPlay playsInline muted />;
+};
+
 /** The card design this phone's own cards use. A card can name another (a card someone else played). */
 export const DesignContext = createContext('classic');
 
@@ -153,6 +169,7 @@ export const Hand = ({ cards, legal, onPlay, trump = null, fresh = [] }) => {
  * plays: the trick so far [{ seat, card }]. winner: who's taking it. center: what to show in the middle.
  */
 export const TableView = ({ seats, me, plays = [], winner = null, center = null }) => {
+  const media = useContext(MediaContext);
   const n = seats.length;
   const base = me >= 0 ? me : 0;
   const at = (seat, rx, ry) => {
@@ -185,7 +202,13 @@ export const TableView = ({ seats, me, plays = [], winner = null, center = null 
             style={{ ...at(i, 38, 41), borderColor: s.color || undefined }}
           >
             <span className="lt-seat-text">
-              <b>{s.avatar && <img className="lt-avatar" src={s.avatar} alt="" />}{i === me ? `${s.name} (you)` : s.name}{s.dealer ? <i className="lt-dealer">D</i> : null}</b>
+              {(() => {
+                // Camera if they have it on, else their picture, else just the name.
+                const cam = s.cid && (s.cid === media.me ? media.self : media.videos[s.cid]);
+                if (cam) return <SeatVideo stream={cam} mirror={s.cid === media.me} />;
+                return s.avatar ? <img className="lt-seat-media" src={s.avatar} alt="" /> : null;
+              })()}
+              <b>{i === me ? `${s.name} (you)` : s.name}{s.dealer ? <i className="lt-dealer">D</i> : null}</b>
               {s.line && <small>{s.line}</small>}
               {s.bubble && <span className={`lt-bubble${s.hot ? ' is-hot' : ''}`}>{suits(s.bubble)}</span>}
             </span>

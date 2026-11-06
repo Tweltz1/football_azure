@@ -15,7 +15,7 @@ import { homeHref, homeLabel, siteOrigin } from '../native/gamesApp';
 import { currentUser, firstName, signInWithGoogle } from '../party/account';
 import { supabase } from '../supabaseClient';
 import { backStyle, designClass, DESIGNS, designOf, isUnlocked, progressFor, TRACKS } from './designs';
-import { CardFace, suits } from './CardPhone';
+import { CardFace, MediaContext, suits } from './CardPhone';
 import { bidLabel } from './five';
 import '../party/party.css';
 import './cards.css';
@@ -78,12 +78,15 @@ const cleanAvatar = (v) => (typeof v === 'string' && v.startsWith('data:image/jp
 
 // ---------- Voice ----------
 
-function VoiceBar({ code, me, players, send }) {
+function VoiceBar({ code, me, players, send, onMedia }) {
   const [on, setOn] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [cam, setCam] = useState(false);
   const peers = players.filter((p) => p.voice && p.cid !== me).map((p) => p.cid);
-  const voice = useVoice({ code, cid: me, prefix: PREFIX, peers, active: on, mic: true, muted });
-  useEffect(() => { send({ type: 'voice', on, muted }); }, [on, muted, send]);
+  const voice = useVoice({ code, cid: me, prefix: PREFIX, peers, active: on, mic: true, muted, video: cam, recvVideo: true });
+  useEffect(() => { send({ type: 'voice', on, muted, video: on && cam }); }, [on, muted, cam, send]);
+  // Hand the camera streams to the table, which shows each one in place of that player's name card.
+  useEffect(() => { onMedia({ videos: voice.videos, self: voice.local }); }, [voice.videos, voice.local, onMedia]);
   const inVoice = players.filter((p) => p.voice);
   return (
     <div className="lt-voice">
@@ -91,6 +94,7 @@ function VoiceBar({ code, me, players, send }) {
         {on ? '📞 Leave voice' : '🎙️ Join voice'}
       </button>
       {on && <button type="button" className="lt-voice-btn" onClick={() => setMuted(!muted)}>{muted ? '🔇 Unmute' : '🎤 Mute'}</button>}
+      {on && <button type="button" className={`lt-voice-btn${cam ? ' is-on' : ''}`} onClick={() => setCam(!cam)}>{cam ? '📷 Camera off' : '📹 Camera on'}</button>}
       <span className="lt-voice-who">
         {inVoice.length ? inVoice.map((p) => `${p.muted ? '🔇' : '🎙️'}${p.name}`).join('  ') : 'Nobody on voice yet'}
       </span>
@@ -144,6 +148,8 @@ function TableScreen({ screen, me, look, act, isHost, host, onLeave }) {
   const g = GAMES[screen.gameId];
   const Phone = PHONES[screen.gameId];
   const sendVoice = useCallback((v) => act('voice', v), [act]);
+  const [media, setMedia] = useState({ videos: {}, self: null });
+  const tableMedia = useMemo(() => ({ ...media, me }), [media, me]);
   const over = screen.game && screen.game.phase === 'final';
   const endButtons = isHost ? (
     <div className="lt-endbtns">
@@ -159,10 +165,12 @@ function TableScreen({ screen, me, look, act, isHost, host, onLeave }) {
         {isHost && screen.screen === 'game' && !over && <button type="button" className="lcp-link" onClick={host.pause}>Save &amp; stop</button>}
         <button type="button" className="lcp-link" onClick={onLeave}>Leave</button>
       </div>
-      <VoiceBar code={screen.code} me={me} players={screen.players} send={sendVoice} />
+      <VoiceBar code={screen.code} me={me} players={screen.players} send={sendVoice} onMedia={setMedia} />
       {screen.note && <p className="lt-note is-good">{screen.note}</p>}
       {screen.screen === 'lobby' && <Lobby screen={screen} me={me} act={act} isHost={isHost} host={host} />}
-      {screen.screen === 'game' && screen.game && <Phone game={screen.game} act={act} look={look} endButtons={endButtons} />}
+      {screen.screen === 'game' && screen.game && (
+        <MediaContext.Provider value={tableMedia}><Phone game={screen.game} act={act} look={look} endButtons={endButtons} /></MediaContext.Provider>
+      )}
       {screen.screen === 'game' && !screen.game && <p className="lt-note">Getting you a seat…</p>}
     </div>
   );
@@ -240,7 +248,7 @@ function HostTable({ me, gameId, resume, look, onExit }) {
     if (!g || !g.players.some((p) => p.cid === cid)) return { ...base, game: null };
     const view = def.view(g, cid, nowMs());
     const pics = new Map(players.current.filter((p) => p.avatar).map((p) => [p.cid, p.avatar]));
-    view.seats = view.seats.map((x, i) => ({ ...x, avatar: (!g.seats[i].bot && pics.get(g.seats[i].cid)) || null }));
+    view.seats = view.seats.map((x, i) => ({ ...x, cid: g.seats[i].bot ? null : g.seats[i].cid, avatar: (!g.seats[i].bot && pics.get(g.seats[i].cid)) || null }));
     return { ...base, game: view };
   }, [code, def, gameId, lobbySeats, me.name, note]);
 
@@ -310,6 +318,7 @@ function HostTable({ me, gameId, resume, look, onExit }) {
     if (msg.type === 'voice') {
       p.voice = !!msg.on;
       p.muted = !!msg.muted;
+      p.video = !!msg.video;
     } else if (msg.type === 'claim' && g) {
       const seat = Number(msg.seat);
       const s = g.seats[seat];

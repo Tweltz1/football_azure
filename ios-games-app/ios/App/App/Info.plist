@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Video chat with the other players at the card table, and taking a picture for your name.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a picture to show next to your name at the card table.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Voice chat with the other players at the card table and in Hood Quest.</string>
 	<key>NSLocalNetworkUsageDescription</key>
