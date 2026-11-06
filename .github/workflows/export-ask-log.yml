@@ -1,0 +1,37 @@
+name: Export chat log
+
+# Dumps the Start/Sit chat log (questions, the site's model answer, Gemini's reply) so the free rule-based
+# model can be taught the questions people really ask. Run it from the Actions tab; the rows are printed in
+# the log and attached as ask-log.json. No user ids are printed or exported.
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'How many days back'
+        default: '30'
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      DAYS: ${{ github.event.inputs.days || '30' }}
+    steps:
+      - name: Read ask_log
+        run: |
+          case "$DAYS" in ''|*[!0-9]*) echo "days must be a number"; exit 1;; esac
+          query="select created_at, week, question, model_kind, model_text, ai_answer, ideas, source from public.ask_log where created_at > now() - interval '${DAYS} days' order by created_at"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "$(jq -n --arg q "$query" '{query: $q}')" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" > ask-log.json
+          echo "Rows: $(jq length ask-log.json)"
+          echo "By source:"; jq -r 'group_by(.source) | .[] | "  \(.[0].source): \(length)"' ask-log.json
+          echo "By model answer kind:"; jq -r 'group_by(.model_kind) | sort_by(-length) | .[] | "  \(.[0].model_kind // "none"): \(length)"' ask-log.json
+          echo "----"
+          jq -r '.[] | "[\(.source)] wk\(.week // "?") \(.model_kind // "none") | Q: \(.question)\n  model: \(.model_text // "" | .[0:300])\n  ai: \(.ai_answer // "" | .[0:500])"' ask-log.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ask-log
+          path: ask-log.json
