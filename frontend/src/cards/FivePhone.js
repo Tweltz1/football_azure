@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SUIT_NAME, SUIT_SYMBOL, SUITS } from './cards';
-import { CardFace, cardName, Hand, Scores, Status, TableView } from './CardPhone';
+import { CardFace, cardName, CutDeck, Hand, Scores, Status, TableView } from './CardPhone';
 
 // 500 on a phone: the table, your hand, bidding, the kitty, and the scores.
 
@@ -109,7 +109,7 @@ export default function FivePhone({ game, act, look, endButtons }) {
       name: x.name,
       line,
       color: TEAM_COLORS[x.team],
-      turn: game.turn === i && ['bid', 'pass', 'kitty', 'play'].includes(game.phase),
+      turn: game.turn === i && ['cut', 'bid', 'pass', 'kitty', 'play'].includes(game.phase),
       dim: x.out,
       dealer: game.dealer === i,
       bubble,
@@ -118,6 +118,7 @@ export default function FivePhone({ game, act, look, endButtons }) {
   });
 
   let center = null;
+  if (game.phase === 'cut') center = `${seats[game.turn].name} cuts`;
   if (game.phase === 'deal') center = 'Dealing…';
   if (game.phase === 'nobid') center = 'Everyone passed. New deal!';
   if (game.phase === 'bid') center = game.high ? `High bid: ${bidName(game.high.bid)}` : 'Bidding…';
@@ -150,8 +151,11 @@ export default function FivePhone({ game, act, look, endButtons }) {
     );
   }
 
+  const cutter = seats[(game.dealer + 1) % seats.length].name;
   let body;
-  if (me < 0) {
+  if (game.phase === 'cut' || game.phase === 'deal') {
+    body = <CutDeck key={`cut${game.hand}`} size={game.deckSize} mine={game.phase === 'cut' ? game.myTurn : (game.dealer + 1) % seats.length === me} cutter={cutter} cutAt={game.phase === 'deal' ? game.cutAt : null} left={game.cutLeft} onCut={(at) => act('cut', { at })} />;
+  } else if (me < 0) {
     body = <Status look={look} big="👀 Watching" line={game.waiting ? "You'll take a bot's seat at the next deal." : 'All 4 seats are taken. Enjoy the show!'} />;
   } else if (game.phase === 'bid' && game.myTurn) {
     body = (
@@ -198,7 +202,6 @@ export default function FivePhone({ game, act, look, endButtons }) {
     if (game.phase === 'pass') big = `${seats[game.turn].name} got a card from ${seats[contract.seat].name} and is throwing one away…`;
     if (game.phase === 'play') big = seats[me].out ? 'Your partner is playing Nola. You sit this one out.' : `${seats[game.turn].name}'s turn`;
     if (game.phase === 'trick') big = `${seats[game.winner].name} takes it`;
-    if (game.phase === 'deal') big = 'Dealing…';
     if (game.phase === 'nobid') big = 'Everyone passed. Redeal!';
     body = big ? <Status look={look} pose={game.phase === 'trick' && game.winner % 2 === us ? 'cheer' : 'stand'} big={big} line={trumpText} /> : null;
   }

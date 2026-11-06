@@ -209,3 +209,13 @@ export function botCard({ hand, trick, trump, seat, partner = null, playersLeft,
   }
   return byLow[0];
 }
+
+// ---------- Cutting the deck ----------
+
+export const CUT_MS = 25000;
+/** Where a cut may go: at least 3 cards in each half. */
+export const clampCut = (at, size) => Math.max(3, Math.min(size - 3, Math.round(Number(at) || size / 2)));
+/** Cut the deck: the top `at` cards go to the bottom. */
+export const cutDeck = (deck, at) => deck.slice(at).concat(deck.slice(0, at));
+/** Somewhere near the middle, the way most people cut. */
+export const botCutAt = (s) => clampCut(s.deck.length / 2 + ((s.handNo * 7) % 11) - 5, s.deck.length);

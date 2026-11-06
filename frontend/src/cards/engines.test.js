@@ -38,6 +38,7 @@ test('bot-only games of both finish, and survive a save and resume', () => {
 
 test('Double Nola: both partners play and a trick by either one sets them', () => {
   const g = GAMES.five.create([], 7, 0);
+  require('./five').cut(g, g.turn, 20, 0);
   g.phase = 'bid';
   g.turn = 0;
   g.high = null;
@@ -109,4 +110,37 @@ test('500: 5-card kitty, the bidder hands one discard over, the partner throws o
     expect(bad).toEqual([]);
     expect(checked).toBeGreaterThan(0);
   }
+});
+
+test('the player left of the dealer cuts the deck before the deal', () => {
+  const five = require('./five');
+  const clubs = require('./clubs');
+  const players = [{ cid: 'a', name: 'Ann' }, { cid: 'b', name: 'Ben' }, { cid: 'c', name: 'Cal' }, { cid: 'd', name: 'Dee' }];
+  const g = GAMES.five.create(players, 11, 0);
+  expect(g.phase).toBe('cut');
+  expect(g.turn).toBe((g.dealer + 1) % 4);
+  const deck = [...g.deck];
+  const cutter = g.seats[g.turn].cid;
+  const other = g.seats[(g.turn + 1) % 4].cid;
+  GAMES.five.act(g, other, { type: 'cut', at: 10 }, 0);
+  expect(g.phase).toBe('cut');
+  expect(GAMES.five.view(g, cutter, 0).myTurn).toBe(true);
+  GAMES.five.act(g, cutter, { type: 'cut', at: 10 }, 0);
+  expect(g.phase).toBe('deal');
+  expect(g.cutAt).toBe(10);
+  const cutDeck = deck.slice(10).concat(deck.slice(0, 10));
+  expect(g.hands[0]).toEqual(cutDeck.slice(0, 10));
+  expect(g.kitty).toEqual(cutDeck.slice(40));
+  expect(g.hands.flat().length + g.kitty.length).toBe(45);
+
+  // Nobody cuts: the deck is cut for them when the clock runs out.
+  const c = GAMES.clubs.create(players, 5, 0);
+  expect(c.phase).toBe('cut');
+  clubs.tick(c, 1000);
+  expect(c.phase).toBe('cut');
+  clubs.tick(c, 30000);
+  expect(c.phase).toBe('deal');
+  expect(c.hands.every((h) => h.length === 5)).toBe(true);
+  expect(c.upcard).toBeTruthy();
+  expect(five.cut(c, 0, 5, 0)).toBe(false);
 });

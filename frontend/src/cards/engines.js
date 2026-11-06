@@ -17,6 +17,7 @@ export const GAMES = {
     act(g, cid, msg, now) {
       const seat = seatOf(g, cid);
       if (seat < 0) return;
+      if (msg.type === 'cut') five.cut(g, seat, Number(msg.at), now);
       if (msg.type === 'bid') five.bid(g, seat, String(msg.bid || ''), now);
       if (msg.type === 'pass') five.passCard(g, seat, msg.card ? String(msg.card) : null, now);
       if (msg.type === 'discard') five.discard(g, seat, Array.isArray(msg.cards) ? msg.cards.map(String) : [], msg.give ? String(msg.give) : null, now);
@@ -39,6 +40,7 @@ export const GAMES = {
     act(g, cid, msg, now) {
       const seat = seatOf(g, cid);
       if (seat < 0) return;
+      if (msg.type === 'cut') clubs.cut(g, seat, Number(msg.at), now);
       if (msg.type === 'bid') clubs.bid(g, seat, Number(msg.bid) || 0, now);
       if (msg.type === 'trump') clubs.nameTrump(g, seat, String(msg.suit || ''), now);
       if (msg.type === 'stay') clubs.stay(g, seat, !!msg.in, now);

@@ -7,6 +7,7 @@
 // Euchre bowers: the jack of trump is highest, then the other jack of the same color. Pure logic, no React.
 
 import {
+  botCutAt, clampCut, CUT_MS, cutDeck,
   ACTIVE_MS, autoSeat, botCard, BOT_MS, emit, estimateTricks, ledSuitOf, legalCards, makeDeck, makeSeats, mulberry,
   seatOf, seatWaiting, setPhase, shuffle, sortHand, SUITS, winningPlay,
 } from './cards.js';
@@ -17,8 +18,8 @@ export const HAND = 5;
 export const START = 15;
 export const SET = 5;
 export const MIN_BID = 2;
-export const DEAL_MS = 2600;
-export const DIRTY_MS = 3200;
+export const DEAL_MS = 3000;
+export const DIRTY_MS = 3600;
 export const STAY_MS = 25000;
 export const TRICK_MS = 1600;
 export const HAND_MS = 8000;
@@ -28,12 +29,13 @@ const freshStats = () => ({ tricks: 0, made: 0, set: 0, folds: 0, bids: 0 });
 function deal(s, now) {
   seatWaiting(s);
   const n = s.seats.length;
-  const deck = shuffle(mulberry((s.seed + s.handNo * 7919 + 1) | 0), makeDeck());
-  s.hands = s.seats.map((_, i) => deck.slice(i * HAND, i * HAND + HAND));
-  s.upcard = deck[n * HAND];
+  s.deck = shuffle(mulberry((s.seed + s.handNo * 7919 + 1) | 0), makeDeck());
+  s.hands = s.seats.map(() => []);
+  s.upcard = null;
+  s.cutAt = null;
   s.handNo += 1;
-  s.dirty = s.upcard.slice(-1) === 'C';
-  s.trump = s.dirty ? 'C' : null;
+  s.dirty = false;
+  s.trump = null;
   s.bids = [];
   s.high = null;
   s.bidder = null;
@@ -43,10 +45,27 @@ function deal(s, now) {
   s.lastTrick = null;
   s.trickNo = 0;
   s.result = null;
+  // The player to the dealer's left cuts, then the cards go out.
   s.turn = (s.dealer + 1) % n;
   s.turnAt = now;
+  setPhase(s, 'cut', now);
+  emit(s, 'shuffle', { dealer: s.dealer });
+}
+
+/** The cutter splits the deck: `at` cards from the top go to the bottom. Then the hand is dealt and a card turned up. */
+export function cut(s, seat, at, now) {
+  if (s.phase !== 'cut' || seat !== s.turn) return false;
+  const n = s.seats.length;
+  s.cutAt = clampCut(at, s.deck.length);
+  const deck = cutDeck(s.deck, s.cutAt);
+  s.hands = s.seats.map((_, i) => deck.slice(i * HAND, i * HAND + HAND));
+  s.upcard = deck[n * HAND];
+  s.deck = [];
+  s.dirty = s.upcard.slice(-1) === 'C';
+  s.trump = s.dirty ? 'C' : null;
   setPhase(s, 'deal', now);
-  emit(s, 'deal', { dealer: s.dealer, dirty: s.dirty });
+  emit(s, 'deal', { dealer: s.dealer, dirty: s.dirty, cutAt: s.cutAt });
+  return true;
 }
 
 /** A new game. players: [{ cid, name }]. Up to six sit down; bots fill the table up to four. */
@@ -229,6 +248,9 @@ function botPlay(s, seat, now) {
 export function tick(s, now) {
   const elapsed = now - s.phaseAt;
   switch (s.phase) {
+    case 'cut':
+      if ((autoSeat(s, s.turn, now) && elapsed >= BOT_MS * 1.5) || elapsed >= CUT_MS) cut(s, s.turn, botCutAt(s), now);
+      break;
     case 'deal':
       if (elapsed >= (s.dirty ? DIRTY_MS : DEAL_MS)) {
         if (s.dirty) {
@@ -311,7 +333,10 @@ export function phoneView(s, cid, now) {
     hand: s.handNo,
     dealer: s.dealer,
     turn: s.turn,
-    myTurn: seat >= 0 && s.turn === seat && ['bid', 'trump', 'play'].includes(s.phase),
+    myTurn: seat >= 0 && s.turn === seat && ['cut', 'bid', 'trump', 'play'].includes(s.phase),
+    deckSize: s.phase === 'cut' ? s.deck.length : 52,
+    cutAt: s.cutAt,
+    cutLeft: s.phase === 'cut' ? Math.max(0, Math.ceil((CUT_MS - (now - s.phaseAt)) / 1000)) : 0,
     seats: s.seats.map((x, i) => ({
       name: x.name, bot: x.bot, away: !x.bot && now - (s.lastSeen[x.cid] ?? -1e9) > ACTIVE_MS,
       cards: s.hands[i].length, tricks: s.tricks[i], score: s.scores[i], in: s.inHand[i],

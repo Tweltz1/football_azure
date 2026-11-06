@@ -1,6 +1,6 @@
 import React from 'react';
 import { SUIT_NAME, SUIT_SYMBOL, SUITS } from './cards';
-import { CardFace, Hand, Scores, Status, TableView } from './CardPhone';
+import { CardFace, CutDeck, Hand, Scores, Status, TableView } from './CardPhone';
 
 // Dirty Clubs on a phone: the table, your hand, bidding, trump, play or fold, and the scores.
 
@@ -32,7 +32,7 @@ export default function ClubsPhone({ game, act, look, endButtons }) {
       name: x.name,
       line,
       color: SEAT_COLORS[i % SEAT_COLORS.length],
-      turn: game.turn === i && ['bid', 'trump', 'play'].includes(game.phase),
+      turn: game.turn === i && ['cut', 'bid', 'trump', 'play'].includes(game.phase),
       dim: folded,
       dealer: game.dealer === i,
       bubble,
@@ -49,6 +49,7 @@ export default function ClubsPhone({ game, act, look, endButtons }) {
       </div>
     );
   }
+  if (game.phase === 'cut') center = `${seats[game.turn].name} cuts`;
   if (game.phase === 'stay') center = 'Play or fold?';
   if (game.phase === 'play' && !game.trick.length) center = `${seats[game.turn].name} leads`;
 
@@ -78,7 +79,14 @@ export default function ClubsPhone({ game, act, look, endButtons }) {
   const isDealer = me === game.dealer;
   let body = null;
   let interactive = null;
-  if (me < 0) {
+  if (game.phase === 'cut' || game.phase === 'deal') {
+    body = (
+      <>
+        <CutDeck key={`cut${game.hand}`} size={game.deckSize} mine={game.phase === 'cut' ? game.myTurn : (game.dealer + 1) % seats.length === me} cutter={seats[(game.dealer + 1) % seats.length].name} cutAt={game.phase === 'deal' ? game.cutAt : null} left={game.cutLeft} onCut={(at) => act('cut', { at })} />
+        {game.phase === 'deal' && game.dirty && <p className="lt-note is-good">♣ Dirty clubs! Everyone plays.</p>}
+      </>
+    );
+  } else if (me < 0) {
     body = <Status look={look} big="👀 Watching" line={game.waiting ? "You'll take a bot's seat at the next deal." : 'All 6 seats are taken. Enjoy the show!'} />;
   } else if (game.phase === 'bid' && game.myTurn) {
     body = <Status look={look} pose="wave" big="Your bid!" line={game.high ? `To beat: ${game.high.bid} by ${seats[game.high.seat].name}` : 'Nobody has bid yet.'} />;
@@ -123,7 +131,6 @@ export default function ClubsPhone({ game, act, look, endButtons }) {
     );
   } else {
     let big = '';
-    if (game.phase === 'deal') big = game.dirty ? '♣ Dirty clubs! Everyone plays.' : 'Dealing…';
     if (game.phase === 'bid') big = `${seats[game.turn].name} is bidding…`;
     if (game.phase === 'trump') big = `${seats[game.bidder].name} is picking trump…`;
     if (game.phase === 'stay') big = me === game.bidder ? 'Who will play against you?' : game.myIn ? "You're in!" : 'You folded';

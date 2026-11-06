@@ -148,3 +148,45 @@
 #lc-root .lt-suits button.is-red { color: #d62839; }
 #lc-root .lt-suits button small { font-size: 11px; color: var(--lc-ink); }
 #lc-root .lt-namesuit { display: flex; flex-direction: column; gap: 10px; text-align: center; }
+
+/* Cutting the deck */
+#lc-root .lt-cut { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px; background: rgba(255, 255, 255, 0.06); border-radius: 16px; }
+#lc-root .lt-cut .lc-btn { align-self: stretch; }
+#lc-root .lt-cut-range { width: 100%; accent-color: var(--lc-gold); }
+#lc-root .lt-spread { position: relative; width: 100%; height: 74px; margin-top: 16px; touch-action: none; cursor: pointer; }
+#lc-root .lt-spread i, #lc-root .lt-pile-stack i, #lc-root .lt-fly {
+  position: absolute; width: 34px; height: 50px; background: repeating-linear-gradient(45deg, #7b2fd6 0 4px, #5a1fa3 4px 8px); border: 2px solid #fff6e3; border-radius: 5px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+#lc-root .lt-spread i { top: 18px; transition: transform 0.15s ease; }
+#lc-root .lt-spread i.is-lift { transform: translateY(-16px); border-color: var(--lc-gold); }
+#lc-root .lt-cut-stage { position: relative; width: 220px; height: 90px; }
+#lc-root .lt-pile { position: absolute; left: 50%; top: 20px; width: 40px; height: 56px; margin-left: -20px; }
+#lc-root .lt-pile-stack i { width: 40px; height: 56px; }
+#lc-root .lt-pile b { position: absolute; left: 50%; top: 62px; transform: translateX(-50%); font-size: 12px; color: #fff6e3; }
+#lc-root .lt-pile.is-wait { animation: lt-wiggle 1.2s ease-in-out infinite; }
+#lc-root .lt-pile.is-top { animation: lt-cut-top 1.6s ease-in-out forwards; }
+#lc-root .lt-pile.is-bottom { animation: lt-cut-bottom 1.6s ease-in-out forwards; }
+#lc-root .lt-fly { left: 50%; top: 22px; margin-left: -17px; opacity: 0; animation: lt-fly 0.5s ease-out 1.7s 2 forwards; }
+#lc-root .lt-fly.is-0 { --fx: -110px; --fy: 0px; }
+#lc-root .lt-fly.is-1 { --fx: 0px; --fy: -60px; animation-delay: 1.82s; }
+#lc-root .lt-fly.is-2 { --fx: 110px; --fy: 0px; animation-delay: 1.94s; }
+#lc-root .lt-fly.is-3 { --fx: 0px; --fy: 60px; animation-delay: 2.06s; }
+@keyframes lt-wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+@keyframes lt-cut-top {
+  0% { transform: translate(0, -6px); z-index: 2; }
+  35% { transform: translate(-60px, -14px) rotate(-6deg); z-index: 2; }
+  60% { transform: translate(-60px, 0) rotate(-6deg); z-index: 0; }
+  100% { transform: translate(0, 2px); z-index: 0; }
+}
+@keyframes lt-cut-bottom {
+  0% { transform: translate(0, 0); z-index: 1; }
+  35% { transform: translate(60px, 0) rotate(6deg); z-index: 1; }
+  60% { transform: translate(60px, -6px) rotate(6deg); z-index: 3; }
+  100% { transform: translate(0, -4px); z-index: 3; }
+}
+@keyframes lt-fly { 0% { opacity: 1; transform: translate(0, 0); } 100% { opacity: 0; transform: translate(var(--fx), var(--fy)) rotate(20deg); } }
+@media (prefers-reduced-motion: reduce) {
+  #lc-root .lt-pile, #lc-root .lt-fly { animation: none !important; }
+}
+#lc-root .lt-cut.is-done .lt-pile b { animation: lt-fade 1.6s forwards; }
+@keyframes lt-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }

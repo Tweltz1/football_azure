@@ -119,3 +119,62 @@ export const Scores = ({ rows, title }) => (
     ))}
   </div>
 );
+
+const pile = (n) => Array.from({ length: Math.min(6, Math.max(2, Math.round(n / 7))) }, (_, i) => <i key={i} style={{ transform: `translate(${-i * 1.5}px, ${-i * 2}px)` }} />);
+
+/**
+ * Cutting the deck. The cutter drags along the spread deck (or the slider) to pick a spot, then cuts.
+ * Everyone else watches the deck, and once it's cut every phone plays the two halves swapping.
+ * size: cards in the deck. mine: it's your cut. cutter: their name. cutAt: where it was cut (after the cut).
+ */
+export const CutDeck = ({ size, mine, cutter, cutAt, left, onCut }) => {
+  const [at, setAt] = useState(Math.round(size / 2));
+  const [sent, setSent] = useState(false);
+  const min = 3;
+  const max = size - 3;
+  if (cutAt != null) {
+    const bottom = size - cutAt;
+    return (
+      <div className="lt-cut is-done">
+        <div className="lt-cut-stage">
+          <div className="lt-pile is-top"><span className="lt-pile-stack">{pile(cutAt)}</span><b>{cutAt}</b></div>
+          <div className="lt-pile is-bottom"><span className="lt-pile-stack">{pile(bottom)}</span><b>{bottom}</b></div>
+          {[0, 1, 2, 3].map((k) => <i key={k} className={`lt-fly is-${k}`} />)}
+        </div>
+        <p className="lt-status-line">{mine ? `You cut ${cutAt} cards. Dealing…` : `${cutter} cut ${cutAt} cards. Dealing…`}</p>
+      </div>
+    );
+  }
+  if (!mine) {
+    return (
+      <div className="lt-cut">
+        <div className="lt-cut-stage"><div className="lt-pile is-wait"><span className="lt-pile-stack">{pile(size)}</span></div></div>
+        <p className="lt-status-line">{cutter} is cutting the deck…</p>
+      </div>
+    );
+  }
+  const pickFrom = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    setAt(Math.max(min, Math.min(max, Math.round((x / r.width) * size))));
+  };
+  return (
+    <div className="lt-cut">
+      <div
+        className="lt-spread"
+        role="presentation"
+        onClick={pickFrom}
+        onTouchStart={pickFrom}
+        onTouchMove={pickFrom}
+        onMouseMove={(e) => { if (e.buttons) pickFrom(e); }}
+      >
+        {Array.from({ length: size }, (_, i) => (
+          <i key={i} className={i < at ? 'is-lift' : ''} style={{ left: `calc(${(i / (size - 1)) * 100}% - ${(i / (size - 1)) * 34}px)` }} />
+        ))}
+      </div>
+      <input type="range" className="lt-cut-range" min={min} max={max} value={at} aria-label="Where to cut" onChange={(e) => setAt(Number(e.target.value))} />
+      <p className="lt-status-line">Take <b>{at}</b> off the top and put them under the other <b>{size - at}</b>.{left ? ` (${left}s)` : ''}</p>
+      <button type="button" className="lc-btn lc-btn-big" disabled={sent} onClick={() => { setSent(true); onCut(at); }}>✂️ Cut here</button>
+    </div>
+  );
+};

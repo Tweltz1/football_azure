@@ -5,6 +5,7 @@
 // making a bid wins; a side that sinks to -500 loses. Empty chairs get bots. Pure logic, no React.
 
 import {
+  botCutAt, clampCut, CUT_MS, cutDeck,
   ACTIVE_MS, autoSeat, botCard, BOT_MS, effSuit, emit, estimateTricks, isJoker, JOKER, ledSuitOf, legalCards,
   makeDeck, mulberry, seatOf, seatWaiting, setPhase, shuffle, sortHand, SUIT_NAME, SUIT_SYMBOL, SUITS, winningPlay,
   makeSeats,
@@ -13,7 +14,7 @@ import {
 export const SEATS = 4;
 export const HAND = 10;
 export const TARGET = 500;
-export const DEAL_MS = 2200;
+export const DEAL_MS = 2800;
 export const NOBID_MS = 2600;
 export const TRICK_MS = 1700;
 export const HAND_MS = 9000;
@@ -62,9 +63,10 @@ const freshStats = () => ({ tricks: 0, made: 0, set: 0, bids: 0 });
 
 function deal(s, now) {
   seatWaiting(s);
-  const deck = shuffle(mulberry((s.seed + s.handNo * 7919 + 1) | 0), makeDeck({ low: 4, joker: true }));
-  s.hands = s.seats.map((_, i) => deck.slice(i * HAND, i * HAND + HAND));
-  s.kitty = deck.slice(SEATS * HAND);
+  s.deck = shuffle(mulberry((s.seed + s.handNo * 7919 + 1) | 0), makeDeck({ low: 4, joker: true }));
+  s.hands = s.seats.map(() => []);
+  s.kitty = [];
+  s.cutAt = null;
   s.handNo += 1;
   s.bids = [];
   s.passed = [false, false, false, false];
@@ -77,10 +79,24 @@ function deal(s, now) {
   s.lastTrick = null;
   s.trickNo = 0;
   s.result = null;
+  // The player to the dealer's left cuts, then the cards go out.
   s.turn = (s.dealer + 1) % SEATS;
   s.turnAt = now;
+  setPhase(s, 'cut', now);
+  emit(s, 'shuffle', { dealer: s.dealer });
+}
+
+/** The cutter splits the deck: `at` cards from the top go to the bottom. Then the hand is dealt. */
+export function cut(s, seat, at, now) {
+  if (s.phase !== 'cut' || seat !== s.turn) return false;
+  s.cutAt = clampCut(at, s.deck.length);
+  const deck = cutDeck(s.deck, s.cutAt);
+  s.hands = s.seats.map((_, i) => deck.slice(i * HAND, i * HAND + HAND));
+  s.kitty = deck.slice(SEATS * HAND);
+  s.deck = [];
   setPhase(s, 'deal', now);
-  emit(s, 'deal', { dealer: s.dealer });
+  emit(s, 'deal', { dealer: s.dealer, cutAt: s.cutAt });
+  return true;
 }
 
 /** A new game. players: [{ cid, name }]. The first four sit down; bots fill any empty chairs. */
@@ -344,6 +360,9 @@ function botPlay(s, seat, now) {
 export function tick(s, now) {
   const elapsed = now - s.phaseAt;
   switch (s.phase) {
+    case 'cut':
+      if ((autoSeat(s, s.turn, now) && elapsed >= BOT_MS * 1.5) || elapsed >= CUT_MS) cut(s, s.turn, botCutAt(s), now);
+      break;
     case 'deal':
       if (elapsed >= DEAL_MS) { setPhase(s, 'bid', now); setTurn(s, (s.dealer + 1) % SEATS, now); emit(s, 'bidding'); }
       break;
@@ -410,7 +429,10 @@ export function phoneView(s, cid, now) {
     hand: s.handNo,
     dealer: s.dealer,
     turn: s.turn,
-    myTurn: seat >= 0 && s.turn === seat && ['bid', 'pass', 'kitty', 'play'].includes(s.phase),
+    myTurn: seat >= 0 && s.turn === seat && ['cut', 'bid', 'pass', 'kitty', 'play'].includes(s.phase),
+    deckSize: s.phase === 'cut' ? s.deck.length : 45,
+    cutAt: s.cutAt,
+    cutLeft: s.phase === 'cut' ? Math.max(0, Math.ceil((CUT_MS - (now - s.phaseAt)) / 1000)) : 0,
     seats: s.seats.map((x, i) => ({
       name: x.name, bot: x.bot, away: !x.bot && now - (s.lastSeen[x.cid] ?? -1e9) > ACTIVE_MS, team: teamOf(i),
       cards: s.hands[i].length, tricks: s.tricks[i], out: s.out === i,
