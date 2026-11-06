@@ -292,8 +292,19 @@ function botBid(s, seat) {
     return null;
   };
   if (partnerBid) {
-    // Partner has spoken. Don't bid over them; if the other side has, back up partner's suit when we can help.
-    if (s.high && s.high.seat === partner) return 'PASS';
+    // Partner has spoken. Only take the bid from them with a clearly stronger hand: one that, with the
+    // usual help, reaches at least two tricks more than partner bid.
+    const takeOver = () => {
+      let best = null;
+      BID_SUITS.forEach((x) => {
+        const est = own(x) + HELP;
+        if (est < bidTricks(partnerBid.bid) + 2) return;
+        const b = cheapest(x, est);
+        if (b && (!best || est > best.est)) best = { bid: b, est };
+      });
+      return best && best.bid;
+    };
+    if (s.high && s.high.seat === partner) return takeOver() || 'PASS';
     const suit = partnerBid.bid.replace(/^\d+/, '');
     const support = own(suit) + bidTricks(partnerBid.bid) - HELP + 0.6;
     const raise = cheapest(suit, support);
@@ -516,4 +527,4 @@ export function awards(s) {
 }
 
 export const describeTrump = (trump) => (trump ? `${SUIT_SYMBOL[trump]} ${SUIT_NAME[trump]}` : 'No Trump');
-export { JOKER, seatOf };
+export { JOKER, seatOf, botBid as botBidFor };

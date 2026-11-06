@@ -269,6 +269,13 @@ export function botCard({
   const keep = (c) => boss(c) || isTrump(c, trump);
   const throwaway = () => byLow.find((c) => !keep(c)) || byLow[0];
   if (partnerWinning) {
+    // Take the lead from partner when it's worth more than the trick: our side has the bid, we hold the
+    // boss trump with trumps still out, and two more boss cards to cash once trump is pulled.
+    const bosses = hand.filter((c) => boss(c));
+    const bossTrump = bosses.some((c) => isTrump(c, trump));
+    if (leadTrump && trump && beats.length && bossTrump && bosses.length >= 3 && unseen.some((u) => isTrump(u, trump))) {
+      return beats.find((c) => boss(c)) || beats[0];
+    }
     const safe = playersLeft <= 0 || boss(best.card);
     if (safe) return throwaway();
     const sureBeat = beats.find((c) => boss(c) && !isTrump(c, trump));
