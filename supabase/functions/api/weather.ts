@@ -179,7 +179,8 @@ export async function weatherRoute(
     games = await schedule(fetchJson, week, now);
   } catch (error) {
     ctx.log.warn('Weather: scoreboard failed.', error);
-    return { status: 502, body: 'Weather is not available right now.' };
+    // The reason helps when checking the live route; it never holds anything private.
+    return { status: 502, body: `Weather is not available right now. (${String((error as Error)?.message || error).slice(0, 200)})` };
   }
   const out: GameWeather[] = await Promise.all(games.map(async (game) => {
     const hoursOut = round1((Date.parse(game.kickoff) - now) / HOUR);
