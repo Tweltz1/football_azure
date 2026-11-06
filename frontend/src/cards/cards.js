@@ -183,40 +183,101 @@ export const setPhase = (s, phase, now) => {
 // ---------- The bot's card play ----------
 
 const lowValue = (card, trump) => (isTrump(card, trump) ? 1000 : 0) + (isJoker(card) ? 2000 : power(card, trump, effSuit(card, trump)));
+const strength = (card, trump) => power(card, trump, effSuit(card, trump));
+
+/** Cards nobody has seen played yet: the deck, minus this hand, the cards gone and any the bot knows about. */
+export const unseenCards = (deck, hand, gone = [], known = []) => {
+  const out = new Set([...hand, ...gone, ...known]);
+  return deck.filter((c) => !out.has(c));
+};
+
+/** A "boss" card: nothing still out in its suit can beat it (the joker, then the bowers, count as trump). */
+export const isBoss = (card, trump, unseen) => {
+  const s = effSuit(card, trump);
+  const mine = strength(card, trump);
+  return !unseen.some((u) => effSuit(u, trump) === s && strength(u, trump) > mine);
+};
 
 /**
- * A sensible card for a bot. partnerOf: seat -> partner seat (or null). avoid: try not to win tricks
- * (misère). leadTrump: draw trumps first when leading (the bidding side with the top trumps).
+ * A sensible card for a bot. It only ever looks at its own hand, the cards on the table and the cards
+ * already played (unseen: everything else).
+ * mode 'normal': win tricks for yourself or your side. partner: your partner's seat (or null).
+ * mode 'avoid': Nola, so take no tricks: lead low, duck under, dump high cards when void.
+ * mode 'defend': against Nola, make the Nola player (bidders) take one: lead low, play under them when
+ * they're winning, and once they can't win this trick, throw your highest cards.
+ * leadTrump: the bidding side, so pull trumps with a boss trump. partnerBid: lead trump into a partner who bid.
  */
-export function botCard({ hand, trick, trump, seat, partner = null, playersLeft, avoid = false, leadTrump = false }) {
+export function botCard({
+  hand, trick, trump, partner = null, playersLeft, unseen = [], mode = 'normal', bidders = [], leadTrump = false, partnerBid = false,
+}) {
   const led = ledSuitOf(trick, trump);
   const legal = legalCards(hand, trump, led);
+  if (legal.length === 1) return legal[0];
   const byLow = [...legal].sort((a, b) => lowValue(a, trump) - lowValue(b, trump));
+  const byHigh = [...byLow].reverse();
+  const boss = (c) => isBoss(c, trump, unseen);
+  // Low cards for leading in a no-tricks hand: the ones with the most cards still out above them.
+  const under = (c) => unseen.filter((u) => effSuit(u, trump) === effSuit(c, trump) && strength(u, trump) > strength(c, trump)).length;
+  const lowest = (cards) => [...cards].filter((c) => !isJoker(c)).sort((a, b) => (strength(a, trump) - strength(b, trump)) || (under(b) - under(a)))[0] || cards[0];
+
   if (!trick.plays.length) {
-    if (avoid) return byLow[0];
-    const trumps = legal.filter((c) => isTrump(c, trump)).sort((a, b) => power(b, trump, trump) - power(a, trump, trump));
-    if (leadTrump && trumps.length && power(trumps[0], trump, trump) >= 890) return trumps[0];
-    const aces = legal.filter((c) => !isTrump(c, trump) && rankOf(c) === 14);
-    if (aces.length) return aces[0];
-    return byLow.find((c) => !isTrump(c, trump)) || byLow[0];
+    if (mode === 'avoid' || mode === 'defend') {
+      const plain = legal.filter((c) => !isTrump(c, trump));
+      return lowest(plain.length ? plain : legal);
+    }
+    const trumps = legal.filter((c) => isTrump(c, trump)).sort((a, b) => strength(b, trump) - strength(a, trump));
+    const trumpsOut = unseen.some((u) => isTrump(u, trump));
+    // Pull the other side's trumps with a boss trump so the outside winners stand up.
+    if (leadTrump && trump && trumps.length && trumpsOut && boss(trumps[0])) return trumps[0];
+    // Lead trump into a partner who won the bid.
+    if (partnerBid && trump && trumps.length && trumpsOut) return trumps[trumps.length - 1];
+    const sure = legal.filter((c) => !isTrump(c, trump) && boss(c)).sort((a, b) => strength(b, trump) - strength(a, trump));
+    if (sure.length) return sure[0];
+    const plain = byLow.filter((c) => !isTrump(c, trump));
+    return plain[0] || byLow[0];
   }
+
   const bestI = winningPlay(trick, trump);
   const best = trick.plays[bestI];
   const bestPower = power(best.card, trump, led);
-  const beats = legal.filter((c) => power(c, trump, led) > bestPower)
-    .sort((a, b) => power(a, trump, led) - power(b, trump, led));
-  if (avoid) {
-    const under = legal.filter((c) => power(c, trump, led) < bestPower)
-      .sort((a, b) => power(b, trump, led) - power(a, trump, led) || rankOf(b) - rankOf(a));
-    return under[0] || byLow[0];
+  const beats = legal.filter((c) => power(c, trump, led) > bestPower).sort((a, b) => power(a, trump, led) - power(b, trump, led));
+  const ducks = legal.filter((c) => power(c, trump, led) < bestPower)
+    .sort((a, b) => power(b, trump, led) - power(a, trump, led) || strength(b, trump) - strength(a, trump));
+  const following = led && legal.some((c) => effSuit(c, trump) === led);
+
+  if (mode === 'avoid') {
+    // Highest card that still loses; if you can't follow, that throws your most dangerous card.
+    if (ducks.length) return following ? ducks[0] : byHigh.find((c) => ducks.includes(c)) || ducks[0];
+    // Forced to win: win with the highest, so it's gone.
+    return byHigh[0];
   }
+
+  if (mode === 'defend') {
+    const bidderIn = trick.plays.filter((p) => bidders.includes(p.seat));
+    const bidderWinning = bidders.includes(best.seat);
+    const biddersToPlay = bidders.length - bidderIn.length > 0 && playersLeft > 0;
+    const dumpHigh = byHigh.find((c) => !isJoker(c)) || byHigh[0];
+    if (!biddersToPlay && !bidderWinning) return dumpHigh; // they can't take this one: dump your highest
+    if (!biddersToPlay && bidderWinning) return ducks[0] || byLow[0]; // leave it with them, throwing high
+    if (!following) return ducks.find((c) => !isJoker(c)) || dumpHigh; // void: get rid of high cards
+    return byLow[0]; // they still have to play: go low so they must take it or duck under
+  }
+
   const partnerWinning = partner != null && best.seat === partner;
-  if (partnerWinning && (playersLeft <= 1 || bestPower >= 113 || isTrump(best.card, trump))) return byLow[0];
-  if (beats.length) {
-    // Last to play, or a card nobody can top: win it as cheaply as possible.
-    return beats[0];
+  const keep = (c) => boss(c) || isTrump(c, trump);
+  const throwaway = () => byLow.find((c) => !keep(c)) || byLow[0];
+  if (partnerWinning) {
+    const safe = playersLeft <= 0 || boss(best.card);
+    if (safe) return throwaway();
+    const sureBeat = beats.find((c) => boss(c) && !isTrump(c, trump));
+    return sureBeat || throwaway();
   }
-  return byLow[0];
+  if (beats.length) {
+    if (playersLeft <= 0) return beats[0];
+    // Win it for sure if you can; otherwise take it as cheaply as you can.
+    return beats.find((c) => boss(c)) || beats[0];
+  }
+  return throwaway();
 }
 
 // ---------- Cutting the deck ----------

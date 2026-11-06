@@ -149,3 +149,63 @@ test('the player left of the dealer cuts the deck before the deal', () => {
   expect(c.upcard).toBeTruthy();
   expect(five.cut(c, 0, 5, 0)).toBe(false);
 });
+
+test('500: bidding goes around once, and only a Double Nola hands a card to the partner', () => {
+  const five = require('./five');
+  const players = [{ cid: 'a', name: 'Ann' }, { cid: 'b', name: 'Ben' }, { cid: 'c', name: 'Cal' }, { cid: 'd', name: 'Dee' }];
+  const start = (bids) => {
+    const g = GAMES.five.create(players, 3, 0);
+    five.cut(g, g.turn, 20, 0);
+    five.tick(g, 10000);
+    expect(g.phase).toBe('bid');
+    const first = (g.dealer + 1) % 4;
+    expect(g.turn).toBe(first);
+    bids.forEach((b, k) => expect(five.bid(g, (first + k) % 4, b, 0)).toBe(true));
+    return g;
+  };
+  // Four bids and it's over, even though someone was outbid.
+  const g = start(['6C', '6D', '7C', 'PASS']);
+  expect(g.phase).toBe('kitty');
+  expect(g.contract.bid).toBe('7C');
+  const seat = g.contract.seat;
+  const out = g.hands[seat].slice(0, 5);
+  expect(five.discard(g, seat, out, null, 0)).toBe(true);
+  expect(g.phase).toBe('play');
+  expect(g.hands.every((h) => h.length === 10)).toBe(true);
+  expect(g.discards).toEqual(out);
+
+  // Double Nola: one of the five goes to the partner, who throws one back.
+  const d = start(['OPEN', 'PASS', 'PASS', 'PASS']);
+  const ds = d.contract.seat;
+  const dOut = d.hands[ds].slice(0, 5);
+  expect(five.discard(d, ds, dOut, null, 0)).toBe(false);
+  expect(five.discard(d, ds, dOut, dOut[0], 0)).toBe(true);
+  expect(d.phase).toBe('pass');
+  expect(d.turn).toBe((ds + 2) % 4);
+});
+
+test('bots play Nola right: duck when bidding it, lead low and dump high when defending it', () => {
+  const { botCard } = require('./cards');
+  const unseen = ['5D', '6D', '9D', '13D', '12H', '4C'];
+  // Defending, leading: the lowest card, never the ace.
+  expect(botCard({ hand: ['14D', '4D', '10H'], trick: { plays: [] }, trump: null, playersLeft: 2, unseen, mode: 'defend', bidders: [1] })).toBe('4D');
+  // Defending: the Nola player already ducked under the 5D, so throw the highest diamond.
+  const ducked = { plays: [{ seat: 0, card: '5D' }, { seat: 1, card: '4D' }] };
+  expect(botCard({ hand: ['14D', '7D', '10H'], trick: ducked, trump: null, playersLeft: 0, unseen, mode: 'defend', bidders: [1] })).toBe('14D');
+  // Defending, void in the suit led: throw a high off-suit card.
+  expect(botCard({ hand: ['13S', '4S', '6H'], trick: ducked, trump: null, playersLeft: 0, unseen, mode: 'defend', bidders: [1] })).toBe('13S');
+  // Defending, the Nola player still to play: go low.
+  const led = { plays: [{ seat: 0, card: '9D' }] };
+  expect(botCard({ hand: ['14D', '7D', '10H'], trick: led, trump: null, playersLeft: 2, unseen, mode: 'defend', bidders: [2] })).toBe('7D');
+  // Bidding Nola: the highest card that still loses.
+  expect(botCard({ hand: ['14D', '8D', '6D', '4D'], trick: led, trump: null, playersLeft: 2, unseen, mode: 'avoid', bidders: [1] })).toBe('8D');
+});
+
+test('bots lay off when their partner is winning, and take a trick they can', () => {
+  const { botCard } = require('./cards');
+  const trick = { plays: [{ seat: 1, card: '7H' }, { seat: 2, card: '12H' }, { seat: 3, card: '9H' }] };
+  // Last to play, partner (seat 2) winning, void in hearts: throw a low card, don't trump.
+  expect(botCard({ hand: ['11C', '14C', '4S'], trick, trump: 'C', partner: 2, playersLeft: 0, unseen: [] })).toBe('4S');
+  // Same spot but the opponent is winning: trump it as cheaply as possible.
+  expect(botCard({ hand: ['11C', '14C', '4S'], trick, trump: 'C', partner: 1, playersLeft: 0, unseen: [] })).toBe('14C');
+});
