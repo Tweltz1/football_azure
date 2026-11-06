@@ -202,6 +202,43 @@ export const Scores = ({ rows, title }) => (
   </div>
 );
 
+/**
+ * The score sheet: the totals now, then every hand (newest first) and how its points were given.
+ * totals: Scores rows. hands: [{ key, title, note, lines: [{ name, color, change, bad, why, score }] }].
+ */
+export const ScoreSheet = ({ totals, hands, rule, onClose }) => (
+  <div className="lt-sheet" role="dialog" aria-label="Score sheet" onClick={onClose}>
+    <div className="lt-sheet-box" onClick={(e) => e.stopPropagation()}>
+      <div className="lt-sheet-top">
+        <b>📋 Score sheet</b>
+        <button type="button" className="lt-sheet-x" onClick={onClose} aria-label="Close">✕</button>
+      </div>
+      <Scores rows={totals} />
+      {rule && <p className="lt-sheet-empty">{rule}</p>}
+      {!hands.length && <p className="lt-sheet-empty">No hands scored yet. Points show up here after each hand.</p>}
+      {hands.map((h) => (
+        <div key={h.key} className="lt-sheet-hand">
+          <p className="lt-sheet-title">{suits(h.title)}</p>
+          {h.note && <p className="lt-sheet-note">{suits(h.note)}</p>}
+          {h.lines.map((l) => (
+            <div key={l.name} className="lt-sheet-line" style={{ borderColor: l.color }}>
+              <span>{l.name}</span>
+              {l.why && <small>{suits(l.why)}</small>}
+              <b className={l.bad ? 'is-down' : ''}>{l.change}</b>
+              <span className="lt-total">{l.score}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/** The header button that opens the score sheet. */
+export const SheetButton = ({ onClick }) => (
+  <button type="button" className="lt-sheet-btn" onClick={onClick}>📋 Scores</button>
+);
+
 const pile = (n) => Array.from({ length: Math.min(6, Math.max(2, Math.round(n / 7))) }, (_, i) => <i key={i} style={{ transform: `translate(${-i * 1.5}px, ${-i * 2}px)` }} />);
 
 /**

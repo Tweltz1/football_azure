@@ -215,7 +215,7 @@ function score(s, now) {
   });
   changes.forEach((c, i) => { s.scores[i] += c.change; });
   s.result = { changes, bidder: s.bidder, bid: s.high ? s.high.bid : null, dirty: s.dirty, trump: s.trump };
-  s.history.push({ hand: s.handNo, scores: [...s.scores] });
+  s.history.push({ hand: s.handNo, ...s.result, scores: [...s.scores] });
   const low = Math.min(...s.scores);
   s.winners = low <= 0 ? s.seats.map((_, i) => i).filter((i) => s.scores[i] === low) : [];
   setPhase(s, 'hand', now);
@@ -395,6 +395,11 @@ export function phoneView(s, cid, now) {
     if (s.phase === 'stay') view.left = Math.max(0, STAY_MS - (now - s.phaseAt));
   }
   if (s.result) view.result = s.result;
+  view.history = s.history.map((h) => ({
+    hand: h.hand, bidder: h.bidder != null && s.seats[h.bidder] ? s.seats[h.bidder].name : null, bid: h.bid ?? null,
+    dirty: !!h.dirty, trump: h.trump || null, changes: h.changes || [], scores: h.scores,
+  }));
+  view.names = s.seats.map((x) => x.name);
   if (s.phase === 'final') {
     const me = ranking(s).find((r) => r.cid === cid);
     view.final = { winners: s.winners.map((i) => s.seats[i].name), rank: me ? me.rank : null };

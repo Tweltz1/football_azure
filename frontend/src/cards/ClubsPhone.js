@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SUIT_NAME, SUIT_SYMBOL, SUITS } from './cards';
-import { CardFace, CutDeck, Hand, Scores, Status, suits, TableView } from './CardPhone';
+import { CardFace, CutDeck, Hand, Scores, ScoreSheet, SheetButton, Status, suits, TableView } from './CardPhone';
 
 // Dirty Clubs on a phone: the table, your hand, bidding, trump, play or fold, and the scores.
 
@@ -8,6 +8,7 @@ export const SEAT_COLORS = ['#4f7bff', '#ff5f6d', '#3ddc97', '#b98cff', '#ffae4a
 
 /** Dirty Clubs on a phone. game: the phone view from clubs.js. act(type, data) sends a move. */
 export default function ClubsPhone({ game, act, look, endButtons }) {
+  const [sheet, setSheet] = useState(false);
   const me = game.seat;
   const seats = game.seats;
   const bidOf = (i) => {
@@ -58,16 +59,41 @@ export default function ClubsPhone({ game, act, look, endButtons }) {
       <span>Hand {game.hand}</span>
       <span>{game.trump ? suits(`Trump ${SUIT_SYMBOL[game.trump]}${game.dirty ? ' · dirty!' : ''}`) : 'No trump yet'}</span>
       <span>{me >= 0 ? `You: ${game.score}` : 'Watching'}</span>
+      <SheetButton onClick={() => setSheet(true)} />
     </div>
   );
   const table = <TableView seats={tableSeats} me={me} plays={game.trick} winner={game.winner} center={center} />;
   const ranked = seats.map((x, i) => ({ ...x, i })).sort((a, b) => a.score - b.score);
+  const sheetView = sheet && (
+    <ScoreSheet
+      onClose={() => setSheet(false)}
+      rule="Lowest score wins. Each trick takes 1 off your score. Getting set (or the bidder missing the bid) adds 5."
+      totals={ranked.map((x) => ({ name: `${x.i === me ? 'You' : x.name}`, score: x.score, color: SEAT_COLORS[x.i % SEAT_COLORS.length] }))}
+      hands={[...(game.history || [])].reverse().map((h) => ({
+        key: h.hand,
+        title: h.bidder && h.bid ? `Hand ${h.hand}: ${h.bidder} bid ${h.bid}${h.trump ? ` in ${SUIT_SYMBOL[h.trump]}` : ''}` : `Hand ${h.hand}`,
+        note: h.dirty ? 'Dirty clubs: everyone had to play.' : null,
+        lines: seats.map((x, i) => {
+          const c = h.changes[i] || { change: 0, why: '' };
+          return {
+            name: i === me ? 'You' : x.name,
+            color: SEAT_COLORS[i % SEAT_COLORS.length],
+            why: c.why,
+            change: c.change ? (c.change > 0 ? `+${c.change}` : String(c.change)) : '–',
+            bad: c.change > 0,
+            score: h.scores ? h.scores[i] : '',
+          };
+        }),
+      }))}
+    />
+  );
 
   if (game.phase === 'final' && game.final) {
     const won = game.final.rank === 1;
     return (
       <>
         {head}
+        {sheetView}
         <Status look={look} pose={won ? 'cheer' : 'stand'} big={won ? 'You won! 🎉' : `${game.final.winners.join(' & ')} win${game.final.winners.length === 1 ? 's' : ''}!`} line={`After ${game.hand} hands. Lowest score wins.`} />
         <Scores rows={ranked.map((x, k) => ({ name: `${k === 0 ? '🏆 ' : ''}${x.name}`, score: x.score, color: SEAT_COLORS[x.i % SEAT_COLORS.length] }))} />
         {endButtons}
@@ -146,6 +172,7 @@ export default function ClubsPhone({ game, act, look, endButtons }) {
   return (
     <>
       {head}
+      {sheetView}
       {table}
       {body}
       {interactive}

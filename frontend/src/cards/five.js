@@ -265,7 +265,7 @@ function score(s, now) {
   s.scores[1 - team] += oppPoints;
   s.stats[seat][made ? 'made' : 'set'] += 1;
   s.result = { seat, bid: b, team, took, made, slam, points, oppPoints, oppTook: isMisere(b) ? null : oppTook };
-  s.history.push({ hand: s.handNo, ...s.result });
+  s.history.push({ hand: s.handNo, ...s.result, scores: [...s.scores] });
   if (made && s.scores[team] >= TARGET) s.winner = team;
   else if (s.scores[team] <= -TARGET) s.winner = 1 - team;
   else if (s.scores[1 - team] <= -TARGET) s.winner = team;
@@ -511,6 +511,10 @@ export function phoneView(s, cid, now) {
     if (s.phase === 'bid' && s.turn === seat) view.canBid = ALL_BIDS.concat(['MIS', 'OPEN']).filter((b) => canBid(s, b));
   }
   if (s.result) view.result = { ...s.result, label: bidLabel(s.result.bid), bidder: s.seats[s.result.seat].name };
+  view.history = s.history.map((h) => ({
+    hand: h.hand, bidder: s.seats[h.seat].name, team: h.team, label: bidLabel(h.bid), took: h.took, made: h.made,
+    slam: h.slam, points: h.points, oppPoints: h.oppPoints, oppTook: h.oppTook, scores: h.scores,
+  }));
   if (s.phase === 'final') view.final = { winner: s.winner, won: seat >= 0 && teamOf(seat) === s.winner };
   return view;
 }

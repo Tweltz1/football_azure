@@ -234,3 +234,18 @@ test('a bot only bids over its partner with a much stronger hand', () => {
   g.hands[me] = ['9H', '5H', '7D', '13S', '6S', '5S', '8D', '4D', '5C', '4C'];
   expect(five.botBidFor(g, me)).toBe('PASS');
 });
+
+test('the score sheet shows every hand and adds up to the score', () => {
+  ['five', 'clubs'].forEach((id) => {
+    const d = GAMES[id];
+    const { g } = run(id, [{ cid: 'a', name: 'Tyler' }], 7, 60000);
+    let now = 60000;
+    while (!d.over(g) && now < 3e7) { now += 250; d.tick(g, now); }
+    const v = d.view(g, 'a', now);
+    expect(v.history.length).toBeGreaterThan(0);
+    const last = v.history[v.history.length - 1];
+    const totals = id === 'five' ? v.scores : v.seats.map((x) => x.score);
+    expect(last.scores).toEqual(totals);
+    expect(v.history.every((h) => (id === 'five' ? !!h.bidder && !!h.label : h.changes.length === v.seats.length))).toBe(true);
+  });
+});
