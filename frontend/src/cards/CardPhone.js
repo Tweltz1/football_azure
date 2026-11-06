@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Person from '../party/Person';
-import { isJoker, isRed, rankLabel, suitOf, SUIT_SYMBOL } from './cards';
+import { isJoker, isRed, isThinCut, rankLabel, suitOf, SUIT_SYMBOL } from './cards';
 
 // Phone pieces shared by 500 and Dirty Clubs: a card, your hand, the table (with you at the bottom),
 // and a status line. There's no TV for these games: every phone shows the whole table.
@@ -130,18 +130,25 @@ const pile = (n) => Array.from({ length: Math.min(6, Math.max(2, Math.round(n / 
 export const CutDeck = ({ size, mine, cutter, cutAt, left, onCut }) => {
   const [at, setAt] = useState(Math.round(size / 2));
   const [sent, setSent] = useState(false);
-  const min = 3;
-  const max = size - 3;
+  const min = 1;
+  const max = size - 1;
   if (cutAt != null) {
     const bottom = size - cutAt;
+    const thin = isThinCut(cutAt, size);
     return (
-      <div className="lt-cut is-done">
+      <div className={`lt-cut is-done${thin ? ' is-thin' : ''}`}>
+        {thin && (
+          <div className="lt-thin" aria-live="polite">
+            <b>THIN TO WIN!</b>
+            {['✨', '🔥', '✨', '💸', '✨', '🔥'].map((x, k) => <i key={k} className={`is-${k}`}>{x}</i>)}
+          </div>
+        )}
         <div className="lt-cut-stage">
           <div className="lt-pile is-top"><span className="lt-pile-stack">{pile(cutAt)}</span><b>{cutAt}</b></div>
           <div className="lt-pile is-bottom"><span className="lt-pile-stack">{pile(bottom)}</span><b>{bottom}</b></div>
           {[0, 1, 2, 3].map((k) => <i key={k} className={`lt-fly is-${k}`} />)}
         </div>
-        <p className="lt-status-line">{mine ? `You cut ${cutAt} cards. Dealing…` : `${cutter} cut ${cutAt} cards. Dealing…`}</p>
+        <p className="lt-status-line">{`${mine ? 'You' : cutter} cut ${cutAt} card${cutAt === 1 ? '' : 's'}${thin ? '. Thin to win!' : '.'} Dealing…`}</p>
       </div>
     );
   }
@@ -173,7 +180,7 @@ export const CutDeck = ({ size, mine, cutter, cutAt, left, onCut }) => {
         ))}
       </div>
       <input type="range" className="lt-cut-range" min={min} max={max} value={at} aria-label="Where to cut" onChange={(e) => setAt(Number(e.target.value))} />
-      <p className="lt-status-line">Take <b>{at}</b> off the top and put them under the other <b>{size - at}</b>.{left ? ` (${left}s)` : ''}</p>
+      <p className="lt-status-line">{isThinCut(at, size) && <b className="lt-thin-hint">Thin to win! </b>}Take <b>{at}</b> off the top and put them under the other <b>{size - at}</b>.{left ? ` (${left}s)` : ''}</p>
       <button type="button" className="lc-btn lc-btn-big" disabled={sent} onClick={() => { setSent(true); onCut(at); }}>✂️ Cut here</button>
     </div>
   );

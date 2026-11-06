@@ -214,7 +214,13 @@ export function botCard({ hand, trick, trump, seat, partner = null, playersLeft,
 
 export const CUT_MS = 25000;
 /** Where a cut may go: at least 3 cards in each half. */
-export const clampCut = (at, size) => Math.max(3, Math.min(size - 3, Math.round(Number(at) || size / 2)));
+export const clampCut = (at, size) => {
+  const n = Number(at);
+  return Math.max(1, Math.min(size - 1, Math.round(Number.isFinite(n) ? n : size / 2)));
+};
+/** A cut of only a few cards off either end: thin to win. */
+export const THIN_CUT = 4;
+export const isThinCut = (at, size) => at != null && (at <= THIN_CUT || size - at <= THIN_CUT);
 /** Cut the deck: the top `at` cards go to the bottom. */
 export const cutDeck = (deck, at) => deck.slice(at).concat(deck.slice(0, at));
 /** Somewhere near the middle, the way most people cut. */

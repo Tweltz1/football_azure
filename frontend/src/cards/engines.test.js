@@ -132,6 +132,11 @@ test('the player left of the dealer cuts the deck before the deal', () => {
   expect(g.hands[0]).toEqual(cutDeck.slice(0, 10));
   expect(g.kitty).toEqual(cutDeck.slice(40));
   expect(g.hands.flat().length + g.kitty.length).toBe(45);
+  const { isThinCut, clampCut } = require('./cards');
+  expect(isThinCut(2, 45)).toBe(true);
+  expect(isThinCut(42, 45)).toBe(true);
+  expect(isThinCut(10, 45)).toBe(false);
+  expect(clampCut(0, 45)).toBe(1);
 
   // Nobody cuts: the deck is cut for them when the clock runs out.
   const c = GAMES.clubs.create(players, 5, 0);
