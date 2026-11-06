@@ -224,3 +224,8 @@
 #lc-root .lt-hand.is-arrange .lt-card { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #lc-root .lt-hand.is-dragging .lt-card:not(.is-lift) { opacity: 0.85; }
 #lc-root .lt-card.is-lift { transform: translateY(-10px) scale(1.08); outline: 3px dashed var(--lc-gold); z-index: 3; }
+
+/* Red suits in text: hearts and diamonds never read as spades and clubs */
+#lc-root .lt-red { color: #ff5a6b; }
+#lc-root .lt-bubble .lt-red, #lc-root .lt-score-row .lt-red { color: #d62839; }
+#lc-root .lc-btn .lt-red { color: #c0182b; }

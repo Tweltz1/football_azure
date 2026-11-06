@@ -1,6 +1,6 @@
 import React from 'react';
 import { SUIT_NAME, SUIT_SYMBOL, SUITS } from './cards';
-import { CardFace, CutDeck, Hand, Scores, Status, TableView } from './CardPhone';
+import { CardFace, CutDeck, Hand, Scores, Status, suits, TableView } from './CardPhone';
 
 // Dirty Clubs on a phone: the table, your hand, bidding, trump, play or fold, and the scores.
 
@@ -56,7 +56,7 @@ export default function ClubsPhone({ game, act, look, endButtons }) {
   const head = (
     <div className="lcp-gamehead lt-head">
       <span>Hand {game.hand}</span>
-      <span>{game.trump ? `Trump ${SUIT_SYMBOL[game.trump]}${game.dirty ? ' · dirty!' : ''}` : 'No trump yet'}</span>
+      <span>{game.trump ? suits(`Trump ${SUIT_SYMBOL[game.trump]}${game.dirty ? ' · dirty!' : ''}`) : 'No trump yet'}</span>
       <span>{me >= 0 ? `You: ${game.score}` : 'Watching'}</span>
     </div>
   );
