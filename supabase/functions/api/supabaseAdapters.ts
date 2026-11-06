@@ -8,6 +8,8 @@ import type {
 } from '../_shared/ports.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../_shared/models.ts';
 import type { DndCampaignRow, DndCharacterRow, DndStore } from '../_shared/dnd.ts';
+import type { AskLogStore } from '../_shared/footballAsk.ts';
+import type { CardGameRow, CardGameStore } from '../_shared/cards.ts';
 
 const rowToStored = (row: { data: League; version: number }): StoredLeague => ({ league: row.data, version: Number(row.version) });
 
@@ -280,6 +282,50 @@ export function createDndStore(db: SupabaseClient): DndStore {
     async addSession(row) {
       const { error } = await db.from('dnd_sessions').insert({ id: row.id, campaign_id: row.campaignId, played_at: row.playedAt, data: row.data });
       if (error) throw error;
+    },
+  };
+}
+
+/** Start/Sit chat turns (table ask_log). */
+export function createAskLogStore(db: SupabaseClient): AskLogStore {
+  return {
+    async save(row) {
+      const { error } = await db.from('ask_log').insert(row);
+      if (error) throw error;
+    },
+    async findReply(matchKey) {
+      const { data, error } = await db.from('ask_log').select('ai_answer, ideas')
+        .eq('match_key', matchKey).eq('source', 'gemini').not('ai_answer', 'is', null)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return data ? { ai_answer: data.ai_answer as string, ideas: Array.isArray(data.ideas) ? data.ideas as string[] : [] } : null;
+    },
+  };
+}
+
+type CardGameDb = { id: string; game: string; finished: boolean; summary: Record<string, unknown>; state: Record<string, unknown> | null; created_at: string; updated_at: string };
+const cardRow = (r: CardGameDb): CardGameRow => ({
+  id: r.id, game: r.game, finished: r.finished, summary: r.summary ?? {}, state: r.state ?? null, createdAt: r.created_at, updatedAt: r.updated_at,
+});
+
+export function createCardGameStore(db: SupabaseClient): CardGameStore {
+  return {
+    async get(id) {
+      const { data, error } = await db.from('card_games').select('*').eq('id', id).maybeSingle();
+      if (error) throw error;
+      return data ? cardRow(data as CardGameDb) : null;
+    },
+    async put(row) {
+      const { error } = await db.from('card_games').upsert({
+        id: row.id, game: row.game, finished: row.finished, summary: row.summary, state: row.state, created_at: row.createdAt, updated_at: row.updatedAt,
+      });
+      if (error) throw error;
+    },
+    async list(game, finished, limit) {
+      const { data, error } = await db.from('card_games').select('id, game, finished, summary, created_at, updated_at')
+        .eq('game', game).eq('finished', finished).order('updated_at', { ascending: false }).limit(limit);
+      if (error) throw error;
+      return (data ?? []).map((r) => cardRow({ ...(r as CardGameDb), state: null }));
     },
   };
 }

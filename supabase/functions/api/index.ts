@@ -7,10 +7,12 @@ import { handle, type Ctx } from '../_shared/handlers.ts';
 import { getInitialPlayerPool } from '../_shared/playerData.ts';
 import { dndRoute } from '../_shared/dnd.ts';
 import { askRoute } from '../_shared/footballAsk.ts';
+import { cardsRoute } from '../_shared/cards.ts';
 import { createNarrator } from './narrator.ts';
+import { weatherRoute } from './weather.ts';
 import { createTurn } from './turn.ts';
 import {
-  createBroadcaster, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
+  createAskLogStore, createBroadcaster, createCardGameStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
 } from './supabaseAdapters.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -24,6 +26,8 @@ const profiles = createProfileStore(db);
 const history = createHistoryStore(db);
 const snapshots = createSnapshotStore(db);
 const games = createGameStore(db);
+const askLog = createAskLogStore(db);
+const cardGames = createCardGameStore(db);
 const dnd = {
   store: createDndStore(db),
   narrator: createNarrator({
@@ -113,7 +117,9 @@ Deno.serve(async (req) => {
 
     const parts = path.split('/').filter(Boolean).map((p) => decodeURIComponent(p));
     const result = (await dndRoute(ctx, dnd, req.method, parts, body))
-      ?? (await askRoute(ctx, dnd.narrator, req.method, parts, body))
+      ?? (await cardsRoute(ctx, cardGames, req.method, parts, body, url.searchParams))
+      ?? (await askRoute(ctx, dnd.narrator, req.method, parts, body, askLog))
+      ?? (await weatherRoute(ctx, fetchJson, req.method, parts, url.searchParams))
       ?? await handle(ctx, req.method, path, url.searchParams, body);
     const headers: Record<string, string> = { ...corsHeaders, ...(result.headers ?? {}) };
 

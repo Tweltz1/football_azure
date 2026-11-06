@@ -4,12 +4,14 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../api';
 import { playerLine } from './askModel';
+import { weatherEffectText } from './weather';
 
 const SKILL = ['QB', 'RB', 'WR', 'TE'];
 const round1 = (n) => (n == null ? null : Math.round(Number(n) * 10) / 10);
 
 /** One player as a short line the AI can read: "Jaylen Warren, RB PIT, RB14 · PIT vs CLE, 12.3 pts". */
-const line = (p) => `${p.name} (${[playerLine(p), p.points != null ? `${round1(p.points)} pts` : null].filter(Boolean).join(' · ')})`;
+const weatherBit = (p) => (p.weather?.pct ? `weather ${p.weather.text}, ${weatherEffectText(p.weather)}` : null);
+const line = (p) => `${p.name} (${[playerLine(p), p.points != null ? `${round1(p.points)} pts` : null, weatherBit(p)].filter(Boolean).join(' · ')})`;
 
 /** The page's answer, flattened to what the AI needs: its text, lists and the "why" card's call. */
 export const answerSnapshot = (answer) => {
@@ -27,6 +29,7 @@ export const answerSnapshot = (answer) => {
       : `${f.label}: ${(answer.why.names || [])[0] || 'first'} ${f.start} vs ${(answer.why.names || [])[1] || 'second'} ${f.sit}${f.edge ? ` (edge ${f.edge})` : ''}`)),
   } : null;
   return {
+    kind: answer.context?.type,
     text: answer.text,
     itemsTitle: answer.itemsTitle,
     items: items(answer.items),
@@ -61,13 +64,18 @@ export const askData = ({ answer, roster, lineup, allPlayers, freeAgents, partne
   };
 };
 
-/** Asks Gemini. Returns { answer, ideas } or null when the AI can't answer right now. */
+/** Asks Gemini. Returns { answer, ideas, saved } or null when the AI can't answer right now. */
 export const askAi = async ({ question, history, data }) => {
   try {
     const res = await axios.post(`${API_BASE_URL}/startsit/ask`, { question, history, data }, { timeout: 25000 });
     const answer = res?.data?.answer;
     if (typeof answer !== 'string' || !answer.trim()) return null;
-    return { answer: answer.trim(), ideas: Array.isArray(res.data.ideas) ? res.data.ideas.filter((i) => typeof i === 'string') : [] };
+    return {
+      answer: answer.trim(),
+      ideas: Array.isArray(res.data.ideas) ? res.data.ideas.filter((i) => typeof i === 'string') : [],
+      // A reply Gemini gave earlier to this same question and model answer, used while Gemini is down.
+      saved: res.data.saved === true,
+    };
   } catch (error) {
     return null;
   }
