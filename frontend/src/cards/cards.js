@@ -268,6 +268,11 @@ export function botCard({
   const partnerWinning = partner != null && best.seat === partner;
   const keep = (c) => boss(c) || isTrump(c, trump);
   const throwaway = () => byLow.find((c) => !keep(c)) || byLow[0];
+  // Cards still out (as far as this bot can tell) that would top this card in this trick.
+  const toppers = (c) => unseen.filter((u) => power(u, trump, led) > power(c, trump, led)).length;
+  // With someone still to play after you, beat the trick with the card they're least likely to top,
+  // and the cheapest of those.
+  const safestBeat = () => [...beats].sort((a, b) => toppers(a) - toppers(b) || power(a, trump, led) - power(b, trump, led))[0];
   if (partnerWinning) {
     // Take the lead from partner when it's worth more than the trick: our side has the bid, we hold the
     // boss trump with trumps still out, and two more boss cards to cash once trump is pulled.
@@ -276,15 +281,16 @@ export function botCard({
     if (leadTrump && trump && beats.length && bossTrump && bosses.length >= 3 && unseen.some((u) => isTrump(u, trump))) {
       return beats.find((c) => boss(c)) || beats[0];
     }
-    const safe = playersLeft <= 0 || boss(best.card);
+    const safe = playersLeft <= 0 || toppers(best.card) === 0;
     if (safe) return throwaway();
-    const sureBeat = beats.find((c) => boss(c) && !isTrump(c, trump));
+    // An opponent still to play could top partner's card: step up with a sure winner in the suit led
+    // (never trumping partner's trick), otherwise lay off.
+    const sureBeat = beats.find((c) => toppers(c) === 0 && (!isTrump(c, trump) || led === trump));
     return sureBeat || throwaway();
   }
   if (beats.length) {
     if (playersLeft <= 0) return beats[0];
-    // Win it for sure if you can; otherwise take it as cheaply as you can.
-    return beats.find((c) => boss(c)) || beats[0];
+    return safestBeat();
   }
   return throwaway();
 }
