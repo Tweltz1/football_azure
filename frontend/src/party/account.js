@@ -1,5 +1,7 @@
 import { supabase } from '../supabaseClient';
 import { isLookCode } from './look';
+import { signIn } from '../AuthContext';
+import { inApp } from '../native/authSession';
 
 // Saved characters live on the Google account (Supabase auth user metadata), so no new table is needed.
 // If the player has no party character yet but does have a Hood Protocol look, that one is offered.
@@ -35,9 +37,18 @@ export const saveCharacter = async (look, name) => {
   if (error) throw error;
 };
 
-export const signInWithGoogle = (returnTo) => supabase.auth.signInWithOAuth({
-  provider: 'google',
-  options: { redirectTo: returnTo, queryParams: { prompt: 'select_account' } },
-});
+export const signInWithGoogle = async (returnTo) => {
+  // In the iPhone apps Google refuses its page inside the app, so sign in through Apple's sign-in sheet
+  // (same as the football sign-in) and reload to pick up the new account.
+  if (inApp()) {
+    const result = await signIn('google');
+    if (result) window.location.reload();
+    return result;
+  }
+  return supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: returnTo, queryParams: { prompt: 'select_account' } },
+  });
+};
 
 export const signOutHere = () => supabase.auth.signOut({ scope: 'local' }).catch(() => {});

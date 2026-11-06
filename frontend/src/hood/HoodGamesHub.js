@@ -25,7 +25,7 @@ const PLACES = [
     href: '/games',
     icon: '🕹️',
     name: 'Draft Games',
-    blurb: 'The mini-games from the draft lobby, with leaderboards. Sign in with your Hood League account.',
+    blurb: 'The mini-games from the draft lobby. Jump straight in, or sign in to get on the leaderboards.',
     tone: 'is-arcade',
   },
   {

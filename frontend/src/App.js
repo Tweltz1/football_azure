@@ -16,7 +16,7 @@ import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory'
 import { useAuth, signOut } from './AuthContext';
 import PartyRoutes, { isPartyPath } from './party/PartyRoutes';
 import DndRoutes, { isDndPath } from './dnd/DndRoutes';
-import { HOOD_GAMES_PATH, inGamesApp } from './native/gamesApp';
+import { HOOD_GAMES_PATH, homeHref, homeLabel, inGamesApp } from './native/gamesApp';
 import './App.css';
 import './DraftMobile.css';
 import './MobileDensity.css';
@@ -57,6 +57,32 @@ function App() {
           <p>Loading draft command...</p>
         </div>
       </div>
+    );
+  }
+
+  // The draft mini-games can be practiced without signing in (from the Hood Games hub, say).
+  if (!user && (window.location.pathname || '').replace(/\/$/, '') === '/games') {
+    return (
+      <Router>
+        <div className="app-shell">
+          <nav className="top-nav">
+            <a href={homeHref()} className="brand-lockup" aria-label={`${homeLabel()} home`}>
+              <span className="brand-mark">{inGamesApp() ? 'HG' : 'HL'}</span>
+              <span>
+                <strong>{homeLabel()}</strong>
+                <small>Draft Games</small>
+              </span>
+            </a>
+            <div className="nav-links" aria-label="Primary navigation">
+              <a href={homeHref()}>← Back</a>
+              <a href="/leagues">Sign in</a>
+            </div>
+          </nav>
+          <main className="app-main">
+            <GamesPage guest />
+          </main>
+        </div>
+      </Router>
     );
   }
 

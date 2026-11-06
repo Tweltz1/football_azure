@@ -15,8 +15,10 @@ import { GAMES, gradeTurn, TICKS_PER_SECOND, turnFor } from './sim.generated';
 export const randomSeed = () => Math.floor(Math.random() * 2 ** 31);
 
 /** Practice: ranked through the server when it answers, else scored here (see localRunner). */
-export function practiceRunner(game) {
+export function practiceRunner(game, { guest = false } = {}) {
   const local = localRunner(game);
+  // Guests (not signed in) can't be ranked, so they play on this device only.
+  if (guest) return local;
   const post = async (action, body) => (await axios.post(`${API_BASE_URL}/games/practice/${action}`, { game, ...body })).data;
   let ranked = false;
   return {

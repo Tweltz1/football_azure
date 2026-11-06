@@ -19,6 +19,7 @@ import { DraftModeHelp, NoInternetHelp, RosterHelp, TimerHelp } from '../help/dr
 import '../whiteboard/whiteboard.css';
 import '../App.css';
 import './LeagueTools.css';
+import { siteOrigin } from '../native/gamesApp';
 
 
 const Leagues = ({ userId }) => {
@@ -227,7 +228,7 @@ const Leagues = ({ userId }) => {
   };
 
   const handleCopyInvite = async (league) => {
-    const inviteUrl = `${window.location.origin}/leagues?join=${league.id}`;
+    const inviteUrl = `${siteOrigin()}/leagues?join=${league.id}`;
     try {
       await navigator.clipboard.writeText(inviteUrl);
       setInviteMessage(`Invite copied for ${league.name}`);

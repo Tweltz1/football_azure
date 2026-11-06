@@ -81,6 +81,7 @@
   --u: min(1vw, 1.7778vh);
   position: fixed;
   inset: 0;
+  top: env(safe-area-inset-top, 0px);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -275,6 +276,8 @@
   align-items: stretch;
   gap: 14px;
   padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+  /* The iPhone apps draw edge to edge: keep the top clear of the clock and camera (0 in a browser tab). */
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
   font-family: var(--lc-font);
   color: var(--lc-cream);
   background: radial-gradient(circle at 50% 0%, #3a1f55, #120c24 75%) fixed;
