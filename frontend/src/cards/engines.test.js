@@ -284,3 +284,17 @@ test('a saved game remembers who played it by account', () => {
   expect(sum.seats.find((x) => x.name === 'Tyler').uid).toBe('u1');
   expect(GAMES.five.view(g, 'a', 1000).seats.find((x) => x.name === 'Tyler').design).toBe('S-3');
 });
+
+test('a bot steps up with its best card when an opponent still plays after it', () => {
+  const { botCard } = require('./cards');
+  // Partner led the 7♥, the opponent played the 9♥, one opponent still to play. The A♥ is still out:
+  // play the K♥ (only the ace tops it), not the 10♥ that the J, Q, K or A would top.
+  const trick = { plays: [{ seat: 0, card: '7H' }, { seat: 1, card: '9H' }] };
+  const unseen = ['11H', '12H', '14H', '5C', '6D'];
+  expect(botCard({ hand: ['10H', '13H', '5S'], trick, trump: 'S', partner: 0, playersLeft: 1, unseen })).toBe('13H');
+  // Partner's 9♥ is winning but the last player could top it: take over with a sure winner.
+  const mine = { plays: [{ seat: 1, card: '7H' }, { seat: 2, card: '9H' }] };
+  expect(botCard({ hand: ['10H', '14H', '5S'], trick: mine, trump: 'S', partner: 2, playersLeft: 1, unseen: ['11H', '12H', '13H'] })).toBe('14H');
+  // Partner's card can't be topped: lay off.
+  expect(botCard({ hand: ['10H', '14H', '5S'], trick: { plays: [{ seat: 1, card: '7H' }, { seat: 2, card: '13H' }] }, trump: 'S', partner: 2, playersLeft: 1, unseen: ['11H', '12H', '4D'] })).toBe('10H');
+});
