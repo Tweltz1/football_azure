@@ -1,5 +1,5 @@
 import {
-  applyWeather, forecastText, forecastWeight, weatherEffect, weatherEffectText,
+  shortForecast, applyWeather, forecastText, forecastWeight, weatherEffect, weatherEffectText,
 } from './weather';
 import { withProjections } from './startSitUtils';
 import { explainPair } from './startSitWhy';
@@ -87,4 +87,15 @@ test('the ? card names the weather as a reason', () => {
   expect(row.start).toBe('Indoors, no effect');
   expect(row.edge).toBe('start');
   expect(why.basis).toMatch(/weather/);
+});
+
+test('every game gets a note, calm ones included', () => {
+  const calmWeather = { week: 10, games: [game(calm)] };
+  const out = applyWeather(projections, calmWeather, 'ppr');
+  expect(out.players[0].points.ppr).toBe(22);
+  expect(out.players[0].weather.pct).toBe(0);
+  expect(shortForecast(out.players[0].weather)).toBe('60°');
+  expect(shortForecast({ forecast: windy })).toBe('34° 21 mph');
+  expect(shortForecast({ forecast: storm })).toBe('30° 25 mph snow');
+  expect(weatherEffectText(out.players[0].weather)).toBe('No real effect');
 });

@@ -785,6 +785,13 @@
   box-shadow: none;
 }
 
+.startsit-tag.weather {
+  background: var(--surface-3);
+  color: var(--muted);
+  text-transform: none;
+  font-weight: 700;
+}
+
 .startsit-tag.good {
   background: var(--success-soft);
   color: var(--success);

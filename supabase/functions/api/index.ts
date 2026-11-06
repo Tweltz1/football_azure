@@ -9,7 +9,6 @@ import { dndRoute } from '../_shared/dnd.ts';
 import { askRoute } from '../_shared/footballAsk.ts';
 import { cardsRoute } from '../_shared/cards.ts';
 import { createNarrator } from './narrator.ts';
-import { weatherRoute } from './weather.ts';
 import { createTurn } from './turn.ts';
 import {
   createAskLogStore, createBroadcaster, createCardGameStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
@@ -44,16 +43,6 @@ async function fetchJson(url: string): Promise<unknown> {
   return await response.json();
 }
 const broadcaster = createBroadcaster(SUPABASE_URL, SERVICE_ROLE_KEY);
-
-// ESPN and Open-Meteo for game weather. Some public feeds turn away requests without a browser-like User-Agent.
-async function fetchWeatherJson(url: string): Promise<unknown> {
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0 (compatible; HoodLeague/1.0; +https://hood-league.com)' },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ok) throw new Error(`GET ${new URL(url).host} failed with ${response.status}`);
-  return await response.json();
-}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -129,7 +118,6 @@ Deno.serve(async (req) => {
     const result = (await dndRoute(ctx, dnd, req.method, parts, body))
       ?? (await cardsRoute(ctx, cardGames, req.method, parts, body, url.searchParams))
       ?? (await askRoute(ctx, dnd.narrator, req.method, parts, body, askLog))
-      ?? (await weatherRoute(ctx, fetchWeatherJson, req.method, parts, url.searchParams))
       ?? await handle(ctx, req.method, path, url.searchParams, body);
     const headers: Record<string, string> = { ...corsHeaders, ...(result.headers ?? {}) };
 

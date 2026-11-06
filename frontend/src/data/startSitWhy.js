@@ -222,14 +222,14 @@ const compareFactors = (a, b) => {
   }
   const aWx = a.player.weather;
   const bWx = b.player.weather;
-  if (aWx?.pct || bWx?.pct) {
+  if (aWx || bWx) {
     factors.push({
       key: 'weather',
       label: 'Weather',
       start: weatherEffectText(aWx) || '–',
       sit: weatherEffectText(bWx) || '–',
       detail: [aWx, bWx].map((w) => (w && !w.indoor ? w.text : null)),
-      edge: edgeBy(aWx?.pct ?? 0, bWx?.pct ?? 0, 0.03),
+      edge: aWx?.pct || bWx?.pct ? edgeBy(aWx?.pct ?? 0, bWx?.pct ?? 0, 0.03) : 'even',
     });
   }
   const aHurt = a.player.injury || a.player.onBye;
