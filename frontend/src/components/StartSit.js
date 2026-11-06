@@ -885,7 +885,7 @@ export const AskBar = ({
             <p className="ask-question">{q}</p>
             {ai && ai !== 'pending' && (
               <div className="ask-answer ask-ai">
-                <p><small className="ask-item-label">AI</small> {ai.answer}</p>
+                <p><small className="ask-item-label">{ai.saved ? 'AI (saved)' : 'AI'}</small> {ai.answer}</p>
                 {ai.ideas.length > 0 && <Examples list={ai.ideas} />}
               </div>
             )}

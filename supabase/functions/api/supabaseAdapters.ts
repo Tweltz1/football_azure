@@ -8,6 +8,7 @@ import type {
 } from '../_shared/ports.ts';
 import type { DraftHistoryEntry, League, UserProfile } from '../_shared/models.ts';
 import type { DndCampaignRow, DndCharacterRow, DndStore } from '../_shared/dnd.ts';
+import type { AskLogStore } from '../_shared/footballAsk.ts';
 
 const rowToStored = (row: { data: League; version: number }): StoredLeague => ({ league: row.data, version: Number(row.version) });
 
@@ -280,6 +281,23 @@ export function createDndStore(db: SupabaseClient): DndStore {
     async addSession(row) {
       const { error } = await db.from('dnd_sessions').insert({ id: row.id, campaign_id: row.campaignId, played_at: row.playedAt, data: row.data });
       if (error) throw error;
+    },
+  };
+}
+
+/** Start/Sit chat turns (table ask_log). */
+export function createAskLogStore(db: SupabaseClient): AskLogStore {
+  return {
+    async save(row) {
+      const { error } = await db.from('ask_log').insert(row);
+      if (error) throw error;
+    },
+    async findReply(matchKey) {
+      const { data, error } = await db.from('ask_log').select('ai_answer, ideas')
+        .eq('match_key', matchKey).eq('source', 'gemini').not('ai_answer', 'is', null)
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return data ? { ai_answer: data.ai_answer as string, ideas: Array.isArray(data.ideas) ? data.ideas as string[] : [] } : null;
     },
   };
 }

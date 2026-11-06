@@ -3,6 +3,9 @@
 // it into a conversational reply grounded in those numbers. If this route fails, the page keeps its own answer.
 // It reuses the Hood Quest narrator (Gemini Flash, then Flash Lite), which returns { narration, ideas } as JSON:
 // narration is the reply and ideas are follow-up questions shown as chips.
+// Every turn (question, our model's answer, Gemini's reply) is saved to the ask_log table. When Gemini is down,
+// an earlier reply to the same question with the same model answer is reused, and the export-ask-log workflow
+// dumps the table so the free rule-based model can be taught the questions people actually ask.
 
 import type { Ctx, Res } from './handlers.ts';
 import type { Narrator } from './dnd.ts';
@@ -21,6 +24,32 @@ Rules:
 Return JSON: "narration" is your reply. "ideas" is two or three short follow-up questions the user might ask next, each under 60 characters, written as the user would type them.`;
 
 type Body = Record<string, unknown>;
+
+/** One saved chat turn: the question, what our model said, and what Gemini said (null when it failed). */
+export interface AskLogRow {
+  user_id: string | null;
+  week: number | null;
+  question: string;
+  /** Lowercased, trimmed question plus our model's answer text: two turns with the same key got the same model answer. */
+  match_key: string;
+  model_kind: string | null;
+  model_text: string | null;
+  model_answer: unknown;
+  ai_answer: string | null;
+  ideas: string[];
+  /** gemini (fresh reply), saved (an earlier reply reused while Gemini was down) or failed (no reply). */
+  source: 'gemini' | 'saved' | 'failed';
+}
+
+/** Where chat turns are saved (Supabase table ask_log). Missing in tests that don't need it. */
+export interface AskLogStore {
+  save(row: AskLogRow): Promise<void>;
+  /** The newest Gemini reply saved for this key, or null. */
+  findReply(matchKey: string): Promise<{ ai_answer: string; ideas: string[] } | null>;
+}
+
+const normalize = (q: string) => q.toLowerCase().replace(/[^a-z0-9.' ]+/g, ' ').replace(/\s+/g, ' ').trim();
+export const askMatchKey = (question: string, modelText: string) => `${normalize(question)}|${modelText.trim()}`;
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
@@ -60,13 +89,56 @@ export const ASK_PER_HOUR = 60;
 const ANON_PER_HOUR = 200;
 export const clearAskLimits = () => recent.clear();
 
-export async function askRoute(ctx: Ctx, narrator: Narrator | null | undefined, method: string, parts: string[], data: unknown): Promise<Res | null> {
+export async function askRoute(
+  ctx: Ctx, narrator: Narrator | null | undefined, method: string, parts: string[], data: unknown, store?: AskLogStore | null,
+): Promise<Res | null> {
   if (parts[0] !== 'startsit' || parts[1] !== 'ask' || parts.length !== 2) return null;
   if (method !== 'POST') return { status: 405 };
-  if (!narrator) return { status: 503, body: 'AI answers are not set up yet.' };
   const body = (data && typeof data === 'object' ? data : {}) as Body;
   const question = str(body.question, 400);
   if (!question) return { status: 400, body: 'Ask a question.' };
+
+  const siteData = (body.data && typeof body.data === 'object' ? body.data : {}) as Body;
+  const modelAnswer = (siteData.modelAnswer && typeof siteData.modelAnswer === 'object' ? siteData.modelAnswer : null) as Body | null;
+  const modelText = str(modelAnswer?.text, 2000);
+  const week = Number.isFinite(Number(siteData.week)) && siteData.week !== null && siteData.week !== '' ? Number(siteData.week) : null;
+  const matchKey = askMatchKey(question, modelText);
+  const save = async (ai: string | null, ideas: string[], source: AskLogRow['source']) => {
+    if (!store) return;
+    try {
+      await store.save({
+        user_id: ctx.userId,
+        week,
+        question,
+        match_key: matchKey,
+        model_kind: str(modelAnswer?.kind, 60) || null,
+        model_text: modelText || null,
+        model_answer: modelAnswer,
+        ai_answer: ai,
+        ideas,
+        source,
+      });
+    } catch (error) {
+      ctx.log.warn('Saving the chat turn failed.', error);
+    }
+  };
+  // While Gemini is down, reuse a reply it gave earlier to the same question with the same model answer.
+  const fallback = async (status: number, message: string): Promise<Res> => {
+    if (store && modelText) {
+      try {
+        const old = await store.findReply(matchKey);
+        if (old?.ai_answer) {
+          await save(old.ai_answer, old.ideas || [], 'saved');
+          return { status: 200, body: { answer: old.ai_answer, ideas: old.ideas || [], saved: true } };
+        }
+      } catch (error) {
+        ctx.log.warn('Looking up a saved chat reply failed.', error);
+      }
+    }
+    await save(null, [], 'failed');
+    return { status, body: message };
+  };
+
 
   const key = ctx.userId || 'anon';
   const cap = ctx.userId ? ASK_PER_HOUR : ANON_PER_HOUR;
@@ -77,15 +149,18 @@ export async function askRoute(ctx: Ctx, narrator: Narrator | null | undefined, 
   times.push(now);
   recent.set(key, times);
 
+  if (!narrator) return fallback(503, 'AI answers are not set up yet.');
+
   try {
     const text = await narrator.complete({ system: ASK_SYSTEM, prompt: askPrompt(body) });
     const parsed = JSON.parse(text) as { narration?: unknown; ideas?: unknown };
     const answer = str(parsed.narration, 1500);
-    if (!answer) return { status: 502, body: 'The AI came back empty.' };
+    if (!answer) return fallback(502, 'The AI came back empty.');
     const ideas = Array.isArray(parsed.ideas) ? parsed.ideas.slice(0, 3).map((i) => str(i, 80)).filter(Boolean) : [];
+    await save(answer, ideas, 'gemini');
     return { status: 200, body: { answer, ideas } };
   } catch (error) {
     ctx.log.warn('Ask AI failed.', error);
-    return { status: 502, body: 'The AI is unavailable right now.' };
+    return fallback(502, 'The AI is unavailable right now.');
   }
 }
