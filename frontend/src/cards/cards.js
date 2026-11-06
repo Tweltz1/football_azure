@@ -227,8 +227,10 @@ export function botCard({
     }
     const trumps = legal.filter((c) => isTrump(c, trump)).sort((a, b) => strength(b, trump) - strength(a, trump));
     const trumpsOut = unseen.some((u) => isTrump(u, trump));
-    // Pull the other side's trumps with a boss trump so the outside winners stand up.
-    if (leadTrump && trump && trumps.length && trumpsOut && boss(trumps[0])) return trumps[0];
+    // Pull the other side's trumps with a boss trump so the outside winners stand up. With only a couple
+    // of trumps and nothing outside to protect, save them for trumping in instead.
+    const outsideWinners = legal.some((c) => !isTrump(c, trump) && boss(c));
+    if (leadTrump && trump && trumps.length && trumpsOut && boss(trumps[0]) && (trumps.length >= 3 || outsideWinners)) return trumps[0];
     // Lead trump into a partner who won the bid.
     if (partnerBid && trump && trumps.length && trumpsOut) return trumps[trumps.length - 1];
     const sure = legal.filter((c) => !isTrump(c, trump) && boss(c)).sort((a, b) => strength(b, trump) - strength(a, trump));
