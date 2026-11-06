@@ -28,6 +28,8 @@
   --u: min(1vw, 1.7778vh);
   position: fixed;
   inset: 0;
+  /* Below the clock and camera in the iPhone apps (0 in a browser tab). */
+  top: env(safe-area-inset-top, 0px);
   overflow: hidden;
   font-family: var(--lc-font);
   font-size: calc(var(--u) * 1.6);
@@ -403,7 +405,7 @@
 #lc-root .dq-fx-spell { fill: #b86bff; stroke: #fff; stroke-width: 2px; }
 
 /* Action cam on the phone */
-#lc-root .dqc { position: fixed; left: 8px; right: 8px; top: 8px; z-index: 60; max-width: 520px; margin: 0 auto; cursor: pointer; border-radius: 14px; overflow: hidden; border: 2px solid rgba(231, 185, 74, 0.6); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); animation: dqc-in 0.25s ease-out; }
+#lc-root .dqc { position: fixed; left: 8px; right: 8px; top: 8px; top: calc(8px + env(safe-area-inset-top, 0px)); z-index: 60; max-width: 520px; margin: 0 auto; cursor: pointer; border-radius: 14px; overflow: hidden; border: 2px solid rgba(231, 185, 74, 0.6); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); animation: dqc-in 0.25s ease-out; }
 #lc-root .dqc-caption { margin: 0; padding: 7px 12px; background: rgba(13, 10, 20, 0.85); font-size: 14px; font-weight: 600; text-align: center; }
 @keyframes dqc-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
 #lc-root .dqc-stage { height: 240px; background: #0d0a14; }

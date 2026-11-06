@@ -10,6 +10,7 @@ import { HallBackdrop } from './games/HallwayStage';
 
 import { GAME_META, gameFor, isPlayable } from './games';
 import './party.css';
+import { siteOrigin } from '../native/gamesApp';
 
 // The lobby shows the picked game's world behind the picker.
 const LobbyScene = ({ id, now }) => {
@@ -45,7 +46,7 @@ const allReady = (list, now) => {
   return here.length > 0 && here.every((p) => p.ready);
 };
 
-const joinUrl = () => `${window.location.origin}/play`;
+const joinUrl = () => `${siteOrigin()}/play`;
 
 const Qr = ({ text }) => {
   const svg = useMemo(() => {

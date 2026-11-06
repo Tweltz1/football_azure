@@ -20,6 +20,11 @@ const FrontDoor = ({ onFootball }) => (
           <strong>Games</strong>
           <small>Halloween party games for a TV and up to 12 phones. Sign in or play as a guest.</small>
         </a>
+        <a className="front-door-card is-games" href="/cards">
+          <span className="front-door-icon">🃏</span>
+          <strong>Card Table</strong>
+          <small>500 and Dirty Clubs on your phones, no TV needed. Bots fill empty seats.</small>
+        </a>
         <a className="front-door-card is-games is-dnd" href="/dnd">
           <span className="front-door-icon">🐉</span>
           <strong>Hood Quest</strong>

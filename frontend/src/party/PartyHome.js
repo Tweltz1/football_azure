@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Person from './Person';
 import { randomLook } from './look';
 import { currentUser, firstName, signInWithGoogle, signOutHere } from './account';
+import { homeHref, homeLabel } from '../native/gamesApp';
 import './party.css';
 
 /** Games night landing: host on a TV or join on a phone, signed in with Google or as a guest. */
@@ -22,7 +23,7 @@ export default function PartyHome() {
 
   return (
     <div className="lcp lch">
-      <a className="lch-back" href="/">← Hood League</a>
+      <a className="lch-back" href={homeHref()}>← {homeLabel()}</a>
       <p className="lch-kicker">Hood League Games</p>
       <h1 className="lc-title">Games Night</h1>
       <p className="lch-sub">Halloween party games for one TV and up to 12 phones. Team up in Last Candle, or race your friends in Fright Quiz.</p>
@@ -37,11 +38,6 @@ export default function PartyHome() {
           <span className="lch-icon">📱</span>
           <b>Join on your phone</b>
           <small>Type the room code from the TV and dress up your character.</small>
-        </a>
-        <a className="lch-card" href="/cards">
-          <span className="lch-icon">🃏</span>
-          <b>Card table</b>
-          <small>500 and Dirty Clubs, phones only. No TV needed.</small>
         </a>
       </div>
       {checked && (

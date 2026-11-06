@@ -16,6 +16,7 @@ import { localNarration } from './story';
 import { MAX_HEROES, PREFIX } from './constants';
 import '../party/party.css';
 import './dnd.css';
+import { siteOrigin } from '../native/gamesApp';
 
 const SAVE_KEY = 'dq-host-table';
 const LIVE_KEY = 'dq-host-live'; // in this tab only: the table it was running, to pick up again if the browser reloads it
@@ -23,8 +24,8 @@ const AWAY_MS = 15000;
 const DM_GRACE_MS = 20000; // how long the TV waits for the DM's narration before using its own
 const SOLO_NARRATE_MS = 2500;
 
-const joinUrl = () => `${window.location.origin}/dnd/play`;
-const watchUrl = (code) => `${window.location.origin}/dnd/watch?code=${code}`;
+const joinUrl = () => `${siteOrigin()}/dnd/play`;
+const watchUrl = (code) => `${siteOrigin()}/dnd/watch?code=${code}`;
 const TV_VOICE_KEY = 'dq-tv-voice';
 const readTvVoice = () => {
   try { return window.localStorage.getItem(TV_VOICE_KEY) !== 'off'; } catch (error) { return true; }

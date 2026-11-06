@@ -9,13 +9,15 @@ import { playSong } from '../sound/crewSound';
 import useOnline from '../offline/useOnline';
 import OfflineDraftStart from '../help/OfflineDraftStart';
 import { nearbySupported } from '../offline/nearbyDraft';
+import { HOOD_GAMES_PATH, inGamesApp } from '../native/gamesApp';
 import { chooseSavedUser, clearSignedOut, guestUser, offlineUser, savedProfiles } from '../offline/storage';
 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
   const online = useOnline();
-  // Before anything else: football or games. An invite link goes straight to football.
-  const [football, setFootball] = useState(() => hasInvite || window.location.pathname !== '/');
+  // Before anything else: football or games. An invite link goes straight to football, and so does the
+  // Hood Games app, whose games hub already asked.
+  const [football, setFootball] = useState(() => hasInvite || inGamesApp() || window.location.pathname !== '/');
   const [showIntro, setShowIntro] = useState(true);
   // Soft background music once the intro is done; it stops when this page closes.
   useEffect(() => {
@@ -69,6 +71,7 @@ const Login = () => {
           </div>
           <button type="button" className="crew-intro-replay" onClick={() => setShowIntro(true)}>Meet the crew</button>
           <p className="login-legal">
+            {inGamesApp() && <><a href={HOOD_GAMES_PATH}>← Back to Hood Games</a> · </>}
             <a href="/privacy.html">Privacy Policy</a> · <a href="/terms.html">Terms of Service</a>
           </p>
           {savedUser && (
