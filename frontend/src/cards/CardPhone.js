@@ -1,52 +1,123 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Person from '../party/Person';
-import { isJoker, isRed, isThinCut, rankLabel, suitOf, SUIT_SYMBOL } from './cards';
+import { isJoker, isRed, isThinCut, rankLabel, suitOf, suitSort, SUIT_SYMBOL } from './cards';
 
 // Phone pieces shared by 500 and Dirty Clubs: a card, your hand, the table (with you at the bottom),
 // and a status line. There's no TV for these games: every phone shows the whole table.
 
-export const CardFace = ({ card, small, on, off, onClick, tag }) => {
+export const CardFace = ({ card, small, on, off, onClick, tag, lift, ...rest }) => {
   const joker = isJoker(card);
   const suit = suitOf(card);
-  const cls = `lt-card${small ? ' is-small' : ''}${joker ? ' is-joker' : isRed(suit) ? ' is-red' : ''}${on ? ' is-on' : ''}${off ? ' is-off' : ''}`;
+  const cls = `lt-card${small ? ' is-small' : ''}${joker ? ' is-joker' : isRed(suit) ? ' is-red' : ''}${on ? ' is-on' : ''}${off ? ' is-off' : ''}${lift ? ' is-lift' : ''}`;
   const face = joker ? (
     <><span className="lt-card-rank">🃏</span><span className="lt-card-suit">JOKER</span></>
   ) : (
     <><span className="lt-card-rank">{rankLabel(card)}</span><span className="lt-card-suit">{SUIT_SYMBOL[suit]}{'︎'}</span></>
   );
-  if (!onClick) return <span className={cls}>{face}{tag && <i className="lt-card-tag">{tag}</i>}</span>;
-  return <button type="button" className={cls} disabled={off} onClick={onClick}>{face}{tag && <i className="lt-card-tag">{tag}</i>}</button>;
+  if (!onClick) return <span className={cls} {...rest}>{face}{tag && <i className="lt-card-tag">{tag}</i>}</span>;
+  return <button type="button" className={cls} disabled={off} onClick={onClick} {...rest}>{face}{tag && <i className="lt-card-tag">{tag}</i>}</button>;
 };
 
 export const cardName = (c) => (isJoker(c) ? 'the Joker' : `${rankLabel(c)}${SUIT_SYMBOL[suitOf(c)]}`);
 
+// Your own order for your hand. It lives outside the component so it survives the hand being redrawn
+// between phases; cards you no longer hold drop out, and new ones go on the end.
+let savedOrder = [];
+const arrange = (order, cards) => order.filter((c) => cards.includes(c)).concat(cards.filter((c) => !order.includes(c)));
+
 /**
- * Your hand. When it's your turn to play, tap a card to pick it up and tap it again (or the button) to play it.
- * legal: the cards you may play, or null when it isn't your turn.
+ * Your hand. Drag a card to move it, or tap Sort by suit. When it's your turn, tap a card to pick it up
+ * and tap it again (or the button) to play it. legal: the cards you may play, or null when it isn't your turn.
  */
-export const Hand = ({ cards, legal, onPlay, fresh = [] }) => {
+export const Hand = ({ cards, legal, onPlay, trump = null, fresh = [] }) => {
   const [picked, setPicked] = useState(null);
+  const [order, setOrderState] = useState(savedOrder);
+  const [dragging, setDragging] = useState(null);
+  const drag = useRef(null);
   const key = (cards || []).join(',');
   const legalKey = legal ? legal.join(',') : '';
   useEffect(() => { setPicked(null); }, [key, legalKey]);
+  const shown = arrange(order, cards || []);
+  const setOrder = (next) => { savedOrder = next; setOrderState(next); };
+
+  useEffect(() => {
+    if (!dragging) return undefined;
+    const move = (e) => {
+      const d = drag.current;
+      if (!d) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const over = el && el.closest ? el.closest('[data-card]') : null;
+      const target = over && over.getAttribute('data-card');
+      if (!target || target === d.card) return;
+      const to = d.cards.indexOf(target);
+      if (to < 0) return;
+      const list = d.cards.filter((c) => c !== d.card);
+      list.splice(to, 0, d.card);
+      d.cards = list;
+      setOrder(list);
+    };
+    const up = () => { drag.current = null; setDragging(null); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+  }, [dragging]);
+
   if (!cards || !cards.length) return null;
+  const down = (e, c) => {
+    if (e.button && e.button !== 0) return;
+    drag.current = { card: c, x: e.clientX, y: e.clientY, cards: shown, moved: false };
+    const start = drag.current;
+    const watch = (ev) => {
+      if (drag.current !== start) { window.removeEventListener('pointermove', watch); return; }
+      if (Math.abs(ev.clientX - start.x) + Math.abs(ev.clientY - start.y) > 10) {
+        start.moved = true;
+        window.removeEventListener('pointermove', watch);
+        setPicked(null);
+        setDragging(c);
+      }
+    };
+    const stop = () => {
+      window.removeEventListener('pointermove', watch);
+      window.removeEventListener('pointerup', stop);
+      if (start.moved) { start.justDragged = true; setTimeout(() => { start.justDragged = false; }, 0); }
+      if (drag.current === start && !start.moved) drag.current = null;
+      drag.last = start;
+    };
+    window.addEventListener('pointermove', watch);
+    window.addEventListener('pointerup', stop);
+  };
   const tap = (c) => {
-    if (!legal) return;
+    if (!legal || (drag.last && drag.last.justDragged)) return;
     if (picked === c) { onPlay(c); setPicked(null); } else setPicked(c);
   };
   return (
     <div className="lt-handbox">
-      <div className="lt-hand">
-        {cards.map((c) => (
-          <CardFace
-            key={c}
-            card={c}
-            on={picked === c}
-            off={legal ? !legal.includes(c) : false}
-            onClick={legal ? () => tap(c) : undefined}
-            tag={fresh.includes(c) ? 'new' : null}
-          />
-        ))}
+      <div className="lt-hand-tools">
+        <small>Drag cards to arrange them</small>
+        <button type="button" className="lt-mini-btn" onClick={() => setOrder(suitSort(shown, trump))}>Sort by suit</button>
+      </div>
+      <div className={`lt-hand is-arrange${dragging ? ' is-dragging' : ''}`}>
+        {shown.map((c) => {
+          const ok = legal ? legal.includes(c) : false;
+          return (
+            <CardFace
+              key={c}
+              card={c}
+              data-card={c}
+              on={picked === c}
+              lift={dragging === c}
+              off={legal ? !ok : false}
+              onClick={ok ? () => tap(c) : undefined}
+              onPointerDown={(e) => down(e, c)}
+              tag={fresh.includes(c) ? 'new' : null}
+            />
+          );
+        })}
       </div>
       {legal && (
         <button type="button" className="lc-btn lc-btn-big" disabled={!picked} onClick={() => { onPlay(picked); setPicked(null); }}>
