@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import Person from '../party/Person';
 import { randomLook } from '../party/look';
 import { CLASSES } from '../dnd/rules';
-import { inGamesApp } from '../native/gamesApp';
+import { HOOD_GAMES_PATH, inGamesApp, siteOrigin } from '../native/gamesApp';
+import { currentUser, firstName, signInWithGoogle, signOutHere } from '../party/account';
 import '../party/party.css';
 import './hood.css';
 
@@ -54,6 +55,13 @@ export default function HoodGamesHub() {
     { ...randomLook(), costume: 4 },
   ]);
 
+  const [user, setUser] = useState(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    currentUser().then((u) => { setUser(u); setChecked(true); });
+  }, []);
+
   useEffect(() => {
     document.title = 'Hood Games';
     const link = document.createElement('link');
@@ -69,6 +77,21 @@ export default function HoodGamesHub() {
       <p className="lch-kicker">Hood League presents</p>
       <h1 className="lc-title hg-title">Hood Games</h1>
       <p className="lch-sub">Party games, tabletop quests and the league, all in one place.</p>
+      {checked && (
+        <div className="lch-account">
+          {user ? (
+            <>
+              <span>Signed in as <b>{firstName(user) || user.email}</b>. Every game starts with your name (you can still change it) and saves your characters, heroes and scores.</span>
+              <button type="button" className="lcp-link" onClick={() => signOutHere().then(() => setUser(null))}>Sign out</button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="lcp-google" onClick={() => signInWithGoogle(`${siteOrigin()}${HOOD_GAMES_PATH}`)}>
+                <span className="lcp-g">G</span> Sign in with Google
+              </button>
+              <span>Sign in once here and it counts for every game: your name is filled in for you, and characters, heroes and scores save to your account. Or just play as a guest.</span>
+            </>
+          )}
       <div className="lch-crew">{looks.map((l, i) => <Person key={i} look={l} pose={i === 2 ? 'wave' : 'stand'} className={`lc-bob lc-d${i % 4}`} />)}</div>
       <div className="hg-places">
         {PLACES.map((p) => (
@@ -79,6 +102,8 @@ export default function HoodGamesHub() {
           </a>
         ))}
       </div>
+        </div>
+      )}
     </div>
   );
 }

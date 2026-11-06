@@ -11,7 +11,8 @@ import {
 } from './cardsApi';
 import FivePhone, { TEAM_COLORS } from './FivePhone';
 import ClubsPhone from './ClubsPhone';
-import { siteOrigin } from '../native/gamesApp';
+import { homeHref, inGamesApp, siteOrigin } from '../native/gamesApp';
+import { currentUser, firstName } from '../party/account';
 import '../party/party.css';
 import './cards.css';
 
@@ -570,6 +571,15 @@ export default function CardsApp() {
   const [code, setCode] = useState(cleanCode(params.get('code') || ''));
 
   useEffect(() => { writeJson(ME_KEY, me); }, [me]);
+  // Signed in with Google (on the Hood Games hub or any game): start with the account's first name.
+  // The box stays editable, and a name typed here wins next time.
+  useEffect(() => {
+    let live = true;
+    currentUser().then((u) => {
+      if (live && u) setMe((m) => (m.name ? m : { ...m, name: firstName(u) }));
+    });
+    return () => { live = false; };
+  }, []);
   useEffect(() => {
     document.title = 'Card Table · Hood Games';
     const link = document.createElement('link');
@@ -589,7 +599,7 @@ export default function CardsApp() {
 
   return (
     <div className="lcp lt-page lt-home">
-      <a className="lcp-link lt-back" href="/games-night">← Games Night</a>
+      <a className="lcp-link lt-back" href={inGamesApp() ? homeHref() : '/games-night'}>{inGamesApp() ? '← Hood Games' : '← Games Night'}</a>
       <h1 className="lc-title lt-h1">Card Table</h1>
       <p className="lt-note">500 and Dirty Clubs, played on phones. No TV needed: one phone opens the table and everyone else joins with the code. Bots fill empty seats.</p>
       <label className="lt-name">Your name
