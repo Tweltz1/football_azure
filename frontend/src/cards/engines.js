@@ -101,6 +101,7 @@ export function summarize(gameId, g) {
       winner: g.phase === 'final' ? g.winner : null,
       stats: g.stats,
       history: g.history.map((h) => ({ hand: h.hand, seat: h.seat, bid: h.bid, made: h.made, slam: !!h.slam, points: h.points, oppPoints: h.oppPoints })),
+      lows: [0, 1].map((t) => Math.min(0, ...g.history.map((h) => (h.scores ? h.scores[t] : 0)))),
     };
   }
   const order = g.seats.map((s, i) => ({ name: s.name, bot: !!s.bot, score: g.scores[i], uid: uidOf(g, s), i }));
@@ -126,7 +127,12 @@ export function computeStats(fiveGames, clubsGames) {
     const k = key(name);
     if (!players.has(k)) {
       players.set(k, {
-        name, five: { games: 0, wins: 0, bids: 0, made: 0, set: 0, tricks: 0, nola: 0 }, clubs: { games: 0, wins: 0, tricks: 0, set: 0, folds: 0 },
+        name,
+        five: {
+          games: 0, wins: 0, bids: 0, made: 0, set: 0, tricks: 0, teamTricks: 0, nola: 0, hands: 0, points: 0, slams: 0, shutouts: 0, comeback: 0, best: null,
+          suits: { S: [0, 0], C: [0, 0], D: [0, 0], H: [0, 0], NT: [0, 0], MIS: [0, 0], OPEN: [0, 0] },
+        },
+        clubs: { games: 0, wins: 0, tricks: 0, set: 0, folds: 0, hands: 0, bids: 0, made: 0 },
       });
     }
     return players.get(k);
@@ -148,9 +154,22 @@ export function computeStats(fiveGames, clubsGames) {
       p.five.made += st.made || 0;
       p.five.set += st.set || 0;
       p.five.tricks += st.tricks || 0;
+      p.five.hands += s.hands || 0;
+      p.five.teamTricks += (st.tricks || 0) + (((s.stats || [])[(i + 2) % 4] || {}).tricks || 0);
+      p.five.points += (s.scores || [])[seat.team] || 0;
+      if (seat.team === s.winner && ((s.scores || [])[1 - seat.team] ?? 1) <= 0) p.five.shutouts += 1;
+      const low = (s.lows || [])[seat.team];
+      if (seat.team === s.winner && typeof low === 'number' && low < 0) p.five.comeback = Math.max(p.five.comeback, -low);
     });
     (s.history || []).forEach((h) => {
-      if ((h.bid === 'MIS' || h.bid === 'OPEN') && s.seats[h.seat] && human(s.seats[h.seat])) player(s.seats[h.seat].name).five.nola += 1;
+      const seat = s.seats[h.seat];
+      if (!seat || !human(seat)) return;
+      const p = player(seat.name).five;
+      if (h.bid === 'MIS' || h.bid === 'OPEN') p.nola += 1;
+      const m = /^(\d+)?(S|C|D|H|NT|MIS|OPEN)$/.exec(String(h.bid));
+      if (m) { p.suits[m[2]][1] += 1; if (h.made) p.suits[m[2]][0] += 1; }
+      if (h.made && (!p.best || five.bidValue(h.bid) > five.bidValue(p.best))) p.best = h.bid;
+      if (h.slam) p.slams += 1;
     });
     const teams = [0, 1].map((t) => s.seats.filter((x) => x.team === t));
     const allHuman = teams.map((list) => list.every(human));
@@ -190,6 +209,9 @@ export function computeStats(fiveGames, clubsGames) {
       p.clubs.tricks += st.tricks || 0;
       p.clubs.set += st.set || 0;
       p.clubs.folds += st.folds || 0;
+      p.clubs.hands += s.hands || 0;
+      p.clubs.bids += st.bids || 0;
+      p.clubs.made += st.made || 0;
     });
   });
 

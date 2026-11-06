@@ -15,7 +15,8 @@ import { homeHref, homeLabel, siteOrigin } from '../native/gamesApp';
 import { currentUser, firstName, signInWithGoogle } from '../party/account';
 import { supabase } from '../supabaseClient';
 import { backStyle, designClass, DESIGNS, designOf, isUnlocked, progressFor, TRACKS } from './designs';
-import { CardFace } from './CardPhone';
+import { CardFace, suits } from './CardPhone';
+import { bidLabel } from './five';
 import '../party/party.css';
 import './cards.css';
 
@@ -49,6 +50,31 @@ const useWakeLock = (on) => {
     return () => { if (lock) lock.release().catch(() => {}); };
   }, [on]);
 };
+
+// ---------- Your picture ----------
+
+const AVATAR_KEY = `ct-avatar${TAB}`;
+const AVATAR_PX = 64;
+const readAvatar = () => {
+  try { const v = window.localStorage.getItem(AVATAR_KEY); return v && v.startsWith('data:image/') ? v : ''; } catch (error) { return ''; }
+};
+/** A photo, cropped to a square and shrunk to a small JPEG, so it's cheap to send to the table. */
+const shrinkPhoto = (file) => new Promise((resolve, reject) => {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const side = Math.min(img.width, img.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = AVATAR_PX;
+    canvas.height = AVATAR_PX;
+    canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, AVATAR_PX, AVATAR_PX);
+    URL.revokeObjectURL(url);
+    resolve(canvas.toDataURL('image/jpeg', 0.8));
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Not an image')); };
+  img.src = url;
+});
+const cleanAvatar = (v) => (typeof v === 'string' && v.startsWith('data:image/jpeg;base64,') && v.length <= 12000 ? v : '');
 
 // ---------- Voice ----------
 
@@ -149,7 +175,7 @@ function HostTable({ me, gameId, resume, look, onExit }) {
   const [code] = useState(() => resume?.code || newRoomCode());
   const [, setFrame] = useState(0);
   const [note, setNote] = useState(resume ? '' : '');
-  const players = useRef([{ cid: me.cid, name: me.name, uid: me.uid, design: me.design, lastSeen: Date.now(), voice: false, muted: false }]);
+  const players = useRef([{ cid: me.cid, name: me.name, uid: me.uid, design: me.design, avatar: cleanAvatar(me.avatar), lastSeen: Date.now(), voice: false, muted: false }]);
   const game = useRef(resume ? resume.state : null);
   const saveId = useRef(resume ? resume.id : newGameId());
   const mode = useRef('lobby');
@@ -211,7 +237,11 @@ function HostTable({ me, gameId, resume, look, onExit }) {
       };
     }
     const g = game.current;
-    return { ...base, game: g && g.players.some((p) => p.cid === cid) ? def.view(g, cid, nowMs()) : null };
+    if (!g || !g.players.some((p) => p.cid === cid)) return { ...base, game: null };
+    const view = def.view(g, cid, nowMs());
+    const pics = new Map(players.current.filter((p) => p.avatar).map((p) => [p.cid, p.avatar]));
+    view.seats = view.seats.map((x, i) => ({ ...x, avatar: (!g.seats[i].bot && pics.get(g.seats[i].cid)) || null }));
+    return { ...base, game: view };
   }, [code, def, gameId, lobbySeats, me.name, note]);
 
   const pushAll = useCallback((force = false) => {
@@ -255,6 +285,7 @@ function HostTable({ me, gameId, resume, look, onExit }) {
       }
       if (typeof msg.uid === 'string' && msg.uid.length <= 64) p.uid = msg.uid;
       if (typeof msg.design === 'string' && msg.design.length <= 24) p.design = msg.design;
+      if (msg.avatar !== undefined) p.avatar = cleanAvatar(msg.avatar);
       const g = game.current;
       if (g) {
         setLook(g, p.cid, p);
@@ -407,7 +438,7 @@ function GuestTable({ me, code, look, onExit }) {
       if (payload && payload.code === code) setScreen(payload);
     }, null, PREFIX);
     phoneRef.current = phone;
-    const hello = () => phone.send('hello', { name: me.name, uid: me.uid, design: me.design });
+    const hello = () => phone.send('hello', { name: me.name, uid: me.uid, design: me.design, avatar: me.avatar || '' });
     const first = window.setTimeout(hello, 500);
     const timer = window.setInterval(() => {
       hello();
@@ -419,7 +450,7 @@ function GuestTable({ me, code, look, onExit }) {
       phone.close();
       phoneRef.current = null;
     };
-  }, [code, me.cid, me.name, me.uid, me.design]);
+  }, [code, me.cid, me.name, me.uid, me.design, me.avatar]);
 
   const act = useCallback((type, data) => phoneRef.current?.send('act', { ...data, type }), []);
   const leave = () => {
@@ -489,10 +520,62 @@ function SavedGames({ onResume, onBack }) {
   );
 }
 
-function Stats({ onBack }) {
+const pctOf = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '–');
+const per = (a, b) => (b ? (a / b).toFixed(1) : '–');
+const SUIT_ROWS = [['S', '♠ Spades'], ['C', '♣ Clubs'], ['D', '♦ Diamonds'], ['H', '♥ Hearts'], ['NT', 'No Trump'], ['MIS', 'Nola'], ['OPEN', 'Double Nola']];
+
+/** One player's full numbers, as a grid of tiles. */
+function PlayerStats({ p }) {
+  const f = p.five;
+  const c = p.clubs;
+  const tile = (label, value, sub) => <div className="lt-stat-tile" key={label}><b>{value}</b><span>{label}</span>{sub && <small>{sub}</small>}</div>;
+  return (
+    <div className="lt-stat-detail">
+      {f.games > 0 && (
+        <>
+          <p className="lt-stat-sub">500</p>
+          <div className="lt-stat-grid">
+            {tile('Wins', `${f.wins}–${f.games - f.wins}`, pctOf(f.wins, f.games))}
+            {tile('Bids made', `${f.made}/${f.bids}`, pctOf(f.made, f.bids))}
+            {tile('Bids set', f.set)}
+            {tile('Your tricks', f.tricks, `${per(f.tricks, f.hands)} a hand`)}
+            {tile('Team tricks won', f.teamTricks, pctOf(f.teamTricks, f.hands * 10))}
+            {tile('Team tricks lost', Math.max(0, f.hands * 10 - f.teamTricks), pctOf(Math.max(0, f.hands * 10 - f.teamTricks), f.hands * 10))}
+            {tile('Avg team score', Math.round(f.points / Math.max(1, f.games)))}
+            {tile('Best bid made', f.best ? suits(bidLabel(f.best)) : '–')}
+            {tile('All 10 tricks', f.slams)}
+            {tile('500 to 0 wins', f.shutouts)}
+            {tile('Best comeback', f.comeback ? `-${f.comeback}` : '–', f.comeback ? 'won from' : null)}
+          </div>
+          <div className="lt-stat-bids">
+            {SUIT_ROWS.filter(([k]) => f.suits[k][1]).map(([k, label]) => (
+              <span key={k}>{suits(label)} <b>{f.suits[k][0]}/{f.suits[k][1]}</b> <small>{pctOf(f.suits[k][0], f.suits[k][1])}</small></span>
+            ))}
+          </div>
+        </>
+      )}
+      {c.games > 0 && (
+        <>
+          <p className="lt-stat-sub">Dirty Clubs</p>
+          <div className="lt-stat-grid">
+            {tile('Wins', `${c.wins}–${c.games - c.wins}`, pctOf(c.wins, c.games))}
+            {tile('Bids made', `${c.made}/${c.bids}`, pctOf(c.made, c.bids))}
+            {tile('Tricks won', c.tricks, `${per(c.tricks, c.hands)} a hand`)}
+            {tile('Times set', c.set)}
+            {tile('Folds', c.folds)}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Stats({ onBack, me }) {
+  const [open, setOpen] = useState(null);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('players');
+  const myName = String(me?.name || '').trim().toLowerCase();
   useEffect(() => {
     let live = true;
     Promise.all([listGames('five'), listGames('clubs')])
@@ -504,6 +587,7 @@ function Stats({ onBack }) {
     <div className="lcp lt-page">
       <button type="button" className="lcp-link lt-back" onClick={onBack}>← Back</button>
       <h2 className="lc-title lt-h2">Card stats</h2>
+      <p className="lt-note">Tap a player to see everything: wins, tricks, and bids made in each suit.</p>
       {error && <p className="lt-note">{error}</p>}
       {!data && !error && <p className="lt-note">Loading…</p>}
       {data && (
@@ -517,13 +601,14 @@ function Stats({ onBack }) {
           {tab === 'players' && (
             <div className="lt-stats">
               {!data.players.length && <p className="lt-note">No finished games yet.</p>}
-              {data.players.map((p) => (
-                <div key={p.name} className="lt-statcard">
-                  <b>{p.name}</b>
-                  <span>{p.wins} wins in {p.games} games ({p.winPct}%)</span>
+              {[...data.players].sort((a, b) => (b.name.toLowerCase() === myName) - (a.name.toLowerCase() === myName)).map((p) => (
+                <button type="button" key={p.name} className={`lt-statcard is-tap${open === p.name ? ' is-open' : ''}`} onClick={() => setOpen(open === p.name ? null : p.name)}>
+                  <b>{p.name}{p.name.toLowerCase() === myName ? ' (you)' : ''} <i>{open === p.name ? '▲' : '▼'}</i></b>
+                  <span>{p.wins} win{p.wins === 1 ? '' : 's'} in {p.games} game{p.games === 1 ? '' : 's'} ({p.winPct}%)</span>
                   {p.five.games > 0 && <small>500: {p.five.wins}–{p.five.games - p.five.wins} · bids made {p.five.made}/{p.five.bids} ({p.madePct}%) · {p.five.tricks} tricks · {p.five.nola} Nola bids</small>}
                   {p.clubs.games > 0 && <small>Dirty Clubs: {p.clubs.wins}–{p.clubs.games - p.clubs.wins} · {p.clubs.tricks} tricks · set {p.clubs.set} · folded {p.clubs.folds}</small>}
-                </div>
+                  {open === p.name && <PlayerStats p={p} />}
+                </button>
               ))}
             </div>
           )}
@@ -602,7 +687,7 @@ function Designs({ user, me, onPick, onBack }) {
           <section key={t.id} className="lt-design-track">
             <p className="lt-design-head">
               <b>{t.emblem} {t.title}</b>
-              <small>{t.id === 'starter' ? t.blurb : `${list.filter((d) => isUnlocked(d, counts, signedIn)).length}/10${have != null ? ` · you have ${have}` : ''}`}</small>
+              <small>{t.id === 'starter' ? (signedIn ? 'Yours for signing in' : t.blurb) : `${list.filter((d) => isUnlocked(d, counts, signedIn)).length}/10${have != null ? (t.best ? ` · best ${have ? `-${have}` : 'none yet'}` : ` · you have ${have}`) : ''}`}</small>
             </p>
             <div className="lt-design-grid">
               {list.map((d) => {
@@ -616,7 +701,7 @@ function Designs({ user, me, onPick, onBack }) {
               })}
             </div>
             {list.filter((d) => d.id === open).map((d) => (
-              <p key={d.id} className="lt-design-goal">🔒 {d.name}: {d.goal}{have != null && d.need ? ` (${Math.min(have, d.need)} of ${d.need})` : ''}</p>
+              <p key={d.id} className="lt-design-goal">🔒 {d.name}: {d.goal}{have != null && d.need && !t.best ? ` (${Math.min(have, d.need)} of ${d.need})` : ''}</p>
             ))}
           </section>
         );
@@ -635,6 +720,21 @@ export default function CardsApp() {
     return { cid: saved.cid || newCid(), name: saved.name || party.name || '', design: saved.design || 'classic' };
   });
   const [user, setUser] = useState(null);
+  const [avatar, setAvatar] = useState(readAvatar);
+  const [picNote, setPicNote] = useState('');
+  const pickPhoto = async (file) => {
+    if (!file) return;
+    try {
+      const pic = await shrinkPhoto(file);
+      setAvatar(pic);
+      setPicNote('');
+      try { window.localStorage.setItem(AVATAR_KEY, pic); } catch (error) { /* private mode */ }
+    } catch (error) { setPicNote("That file didn't open as a picture."); }
+  };
+  const dropPhoto = () => {
+    setAvatar('');
+    try { window.localStorage.removeItem(AVATAR_KEY); } catch (error) { /* ignore */ }
+  };
   const look = useMemo(() => {
     const party = readJson('lc-phone', {});
     return isLookCode(party.look) ? party.look : lookCode({ ...crewLook(me.cid.charCodeAt(2) || 0), costume: 0 });
@@ -672,7 +772,7 @@ export default function CardsApp() {
   const home = () => setPage({ page: 'home' });
   const named = me.name.trim().length > 0;
   // Designs past Classic need the account; signed out, everyone plays Classic.
-  const player = { ...me, uid: user ? user.id : null, design: user ? me.design : 'classic' };
+  const player = { ...me, avatar, uid: user ? user.id : null, design: user ? me.design : 'classic' };
   const pickDesign = (id) => {
     setMe((m) => ({ ...m, design: id }));
     if (user) supabase.auth.updateUser({ data: { card_design: id } }).catch(() => {});
@@ -681,7 +781,7 @@ export default function CardsApp() {
   if (page.page === 'host') return <HostTable me={player} gameId={page.gameId} resume={page.resume} look={look} onExit={home} />;
   if (page.page === 'join' && named) return <GuestTable me={player} code={page.code} look={look} onExit={home} />;
   if (page.page === 'saved') return <SavedGames onBack={home} onResume={(r) => setPage({ page: 'host', gameId: r.gameId, resume: r })} />;
-  if (page.page === 'stats') return <Stats onBack={home} />;
+  if (page.page === 'stats') return <Stats onBack={home} me={player} />;
   if (page.page === 'designs') return <Designs user={user} me={player} onPick={pickDesign} onBack={home} />;
 
   return (
@@ -689,9 +789,17 @@ export default function CardsApp() {
       <a className="lcp-link lt-back" href={homeHref()}>← {homeLabel()}</a>
       <h1 className="lc-title lt-h1">Card Table</h1>
       <p className="lt-note">500 and Dirty Clubs, played on phones. No TV needed: one phone opens the table and everyone else joins with the code. Bots fill empty seats.</p>
-      <label className="lt-name">Your name
-        <input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value.slice(0, 12) })} maxLength={12} placeholder="Name" autoComplete="nickname" />
-      </label>
+      <div className="lt-namerow">
+        <label className="lt-avatar-pick" title="Your picture">
+          {avatar ? <img src={avatar} alt="You" /> : <span>📷<small>Photo</small></span>}
+          <input type="file" accept="image/*" onChange={(e) => { pickPhoto(e.target.files && e.target.files[0]); e.target.value = ''; }} />
+        </label>
+        <label className="lt-name">Your name
+          <input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value.slice(0, 12) })} maxLength={12} placeholder="Name" autoComplete="nickname" />
+        </label>
+      </div>
+      {avatar && <button type="button" className="lcp-link lt-avatar-drop" onClick={dropPhoto}>Remove my picture</button>}
+      {picNote && <p className="lt-note">{picNote}</p>}
       <div className="lt-homebtns">
         {Object.values(GAMES).map((g) => (
           <button type="button" key={g.id} className="lt-gamebtn" disabled={!named} onClick={() => setPage({ page: 'host', gameId: g.id })}>
