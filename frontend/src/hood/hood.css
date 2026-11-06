@@ -12,5 +12,6 @@
 #lc-root .hg-card { text-align: center; }
 #lc-root .hg-card.is-party { background: #ffe9c9; }
 #lc-root .hg-card.is-quest { background: #f4e6c4; }
+#lc-root .hg-card.is-cards { background: #dff3e4; }
 #lc-root .hg-card.is-arcade { background: #e3f1ff; }
 #lc-root .hg-card.is-league { background: #e6e1ff; }

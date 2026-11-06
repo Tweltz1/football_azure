@@ -22,6 +22,13 @@ const PLACES = [
     tone: 'is-quest',
   },
   {
+    href: '/cards',
+    icon: '🃏',
+    name: 'Card Table',
+    blurb: '500 and Dirty Clubs on your phones, with voice chat, saved games and stats.',
+    tone: 'is-cards',
+  },
+  {
     href: '/games',
     icon: '🕹️',
     name: 'Draft Games',

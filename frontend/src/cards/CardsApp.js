@@ -11,6 +11,7 @@ import {
 } from './cardsApi';
 import FivePhone, { TEAM_COLORS } from './FivePhone';
 import ClubsPhone from './ClubsPhone';
+import { siteOrigin } from '../native/gamesApp';
 import '../party/party.css';
 import './cards.css';
 
@@ -32,7 +33,7 @@ const readJson = (k, fallback) => {
 const writeJson = (k, v) => {
   try { window.localStorage.setItem(k, JSON.stringify(v)); } catch (error) { /* private mode */ }
 };
-const joinUrl = () => `${window.location.origin}/cards`;
+const joinUrl = () => `${siteOrigin()}/cards`;
 const presentOf = (list, now) => list.filter((p) => now - p.lastSeen <= AWAY_MS);
 const nowMs = () => performance.now();
 
