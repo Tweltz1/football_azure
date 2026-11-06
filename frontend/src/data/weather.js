@@ -56,6 +56,14 @@ export const forecastText = (f) => {
   return bits.join(', ');
 };
 
+/** Tag-sized forecast, like "48° 9 mph" or "36° rain". */
+export const shortForecast = (w) => {
+  const f = w?.forecast;
+  if (!f) return '';
+  const wet = f.precipChance >= 40 && (f.snowCm >= 0.1 || f.rainMm >= 0.3) ? (f.snowCm >= 0.1 ? ' snow' : ' rain') : '';
+  return `${f.tempF}°${f.windMph >= 8 ? ` ${Math.round(f.windMph)} mph` : ''}${wet}`;
+};
+
 /**
  * The change to one position's projection from one game's weather.
  * Returns { pct, reasons, weight } where pct is a fraction (−0.08 = 8% fewer points).
@@ -110,6 +118,7 @@ export const applyWeather = (projections, weather, scoring) => {
       weather: {
         indoor: false,
         text: forecastText(game.forecast),
+        forecast: game.forecast,
         pct: fx.pct,
         reasons: fx.reasons,
         hoursOut: game.hoursOut,

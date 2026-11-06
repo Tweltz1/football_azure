@@ -10,7 +10,7 @@ const SKILL = ['QB', 'RB', 'WR', 'TE'];
 const round1 = (n) => (n == null ? null : Math.round(Number(n) * 10) / 10);
 
 /** One player as a short line the AI can read: "Jaylen Warren, RB PIT, RB14 · PIT vs CLE, 12.3 pts". */
-const weatherBit = (p) => (p.weather?.pct ? `weather ${p.weather.text}, ${weatherEffectText(p.weather)}` : null);
+const weatherBit = (p) => (p.weather ? (p.weather.indoor ? 'indoors' : `weather ${p.weather.text}, ${weatherEffectText(p.weather)}`) : null);
 const line = (p) => `${p.name} (${[playerLine(p), p.points != null ? `${round1(p.points)} pts` : null, weatherBit(p)].filter(Boolean).join(' · ')})`;
 
 /** The page's answer, flattened to what the AI needs: its text, lists and the "why" card's call. */

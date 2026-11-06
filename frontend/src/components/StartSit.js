@@ -26,7 +26,8 @@ import { explainBench, explainPair, explainStarter, explainTrade } from '../data
 import { summarizeAccuracy } from '../data/accuracy';
 import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion } from '../data/askModel';
 import { askAi, askData } from '../data/askAi';
-import { applyWeather, weatherEffectText } from '../data/weather';
+import { applyWeather, shortForecast, weatherEffectText } from '../data/weather';
+import { loadWeather } from '../data/weatherFeed';
 import { leagueOutlookFrom } from '../data/leagueOdds';
 import { loadLeagueSeason, playerByes } from '../data/leagueSeason';
 import '../App.css';
@@ -71,12 +72,17 @@ const StatusTag = ({ player }) => {
   return null;
 };
 
-/** A small tag when the game's weather moves the projection, like "Wind −1.4". */
+/** The game's weather next to the name: "Wind −1.4" when it moves the projection, else the forecast or "Dome". */
 const WeatherTag = ({ player }) => {
   const w = player.weather;
-  if (!w?.pct || !w.delta) return null;
+  if (!w) return null;
+  if (w.indoor) return <span className="startsit-tag weather" title="Indoors: weather doesn't matter">Dome</span>;
+  const later = w.hoursOut > 18 ? ' (forecast, firms up closer to kickoff)' : '';
+  if (!w.pct || !w.delta) {
+    return <span className="startsit-tag weather" title={`${w.text}. No real effect on the projection${later}.`}>{shortForecast(w)}</span>;
+  }
   const label = (w.reasons[0] || 'Weather').replace(/^\w/, (c) => c.toUpperCase());
-  const title = `${w.text}. ${weatherEffectText(w)}${w.hoursOut > 18 ? ' (forecast, firms up closer to kickoff)' : ''}`;
+  const title = `${w.text}. ${weatherEffectText(w)}${later}`;
   return <span className={`startsit-tag ${w.delta < 0 ? 'caution' : 'good'}`} title={title}>{label} {w.delta > 0 ? '+' : '−'}{Math.abs(w.delta).toFixed(1)}</span>;
 };
 
@@ -1337,8 +1343,9 @@ const StartSit = ({ userId }) => {
     const weatherWeek = rawProjections?.week || week;
     if (!weatherWeek) return undefined;
     let cancelled = false;
-    axios.get(`${API_BASE_URL}/weather?week=${weatherWeek}`)
-      .then((response) => { if (!cancelled && Array.isArray(response.data?.games)) setWeather(response.data); })
+    // Straight from ESPN and Open-Meteo: ESPN turns away our server.
+    loadWeather(weatherWeek)
+      .then((data) => { if (!cancelled) setWeather(data); })
       .catch(() => { if (!cancelled) setWeather(null); });
     return () => { cancelled = true; };
   }, [rawProjections?.week, week, refreshTick]);
