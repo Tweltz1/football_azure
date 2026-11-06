@@ -1,0 +1,17 @@
+name: Temporary weather check
+on:
+  push:
+    branches: [claude/project-thread-mnh3z6]
+    paths: ['.github/workflows/tmp-weather-check.yml']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      P: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - run: |
+          API="https://$P.supabase.co/functions/v1/api"
+          W=$(curl -s "$API/startsit" | jq '.week'); echo "startsit week: $W"
+          echo "--- /weather?week=$W"; curl -s -w '\nHTTP %{http_code}\n' "$API/weather?week=$W" | head -c 6000; echo
+          echo "--- ESPN"; curl -s "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=$W" | jq -c '[.events[] | {date, n: .competitions[0].competitors | map(.homeAway + ":" + .team.abbreviation) | join(" "), indoor: .competitions[0].venue.indoor, neutral: .competitions[0].neutralSite}] | .[0:20]'
+          echo "--- Open-Meteo BUF"; curl -s "https://api.open-meteo.com/v1/forecast?latitude=42.7738&longitude=-78.787&hourly=wind_speed_10m,temperature_2m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=GMT&forecast_days=4" | jq -c '{t: .hourly.time[0:3], w: .hourly.wind_speed_10m[60:66]}'
