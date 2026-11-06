@@ -80,24 +80,33 @@ export function claimSeat(g, seat, cid, name, now) {
 
 const human = (seat) => !seat.bot;
 
+/** Remember a player's account id and card design for this game (by phone), so the save can credit them. */
+export function setLook(g, cid, { uid, design } = {}) {
+  if (!g || !cid) return;
+  g.looks = g.looks || {};
+  const prev = g.looks[cid] || {};
+  g.looks[cid] = { uid: uid || prev.uid || null, design: design || prev.design || null };
+}
+const uidOf = (g, s) => (!s.bot && g.looks && g.looks[s.cid] ? g.looks[s.cid].uid || null : null);
+
 /** What gets stored with each save: enough to list it, resume it and count it in the stats. */
 export function summarize(gameId, g) {
   if (gameId === 'five') {
     return {
       game: 'five',
-      seats: g.seats.map((s, i) => ({ name: s.name, bot: !!s.bot, team: i % 2 })),
+      seats: g.seats.map((s, i) => ({ name: s.name, bot: !!s.bot, team: i % 2, uid: uidOf(g, s) })),
       teams: [[g.seats[0].name, g.seats[2].name], [g.seats[1].name, g.seats[3].name]],
       scores: [...g.scores],
       hands: g.handNo,
       winner: g.phase === 'final' ? g.winner : null,
       stats: g.stats,
-      history: g.history.map((h) => ({ hand: h.hand, seat: h.seat, bid: h.bid, made: h.made, points: h.points, oppPoints: h.oppPoints })),
+      history: g.history.map((h) => ({ hand: h.hand, seat: h.seat, bid: h.bid, made: h.made, slam: !!h.slam, points: h.points, oppPoints: h.oppPoints })),
     };
   }
-  const order = g.seats.map((s, i) => ({ name: s.name, bot: !!s.bot, score: g.scores[i], i }));
+  const order = g.seats.map((s, i) => ({ name: s.name, bot: !!s.bot, score: g.scores[i], uid: uidOf(g, s), i }));
   return {
     game: 'clubs',
-    seats: order.map(({ name, bot, score }) => ({ name, bot, score })),
+    seats: order.map(({ name, bot, score, uid }) => ({ name, bot, score, uid })),
     hands: g.handNo,
     winners: g.phase === 'final' ? g.winners.map((i) => g.seats[i].name) : [],
     stats: g.stats,

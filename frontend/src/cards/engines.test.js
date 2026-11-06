@@ -1,4 +1,5 @@
-import { claimSeat, computeStats, GAMES, summarize, wakeUp } from './engines';
+import { claimSeat, computeStats, GAMES, setLook, summarize, wakeUp } from './engines';
+import { DESIGNS, isUnlocked, progressFor } from './designs';
 import { bidValue, canBid } from './five';
 
 const run = (id, players, seed, stopAt = Infinity) => {
@@ -248,4 +249,38 @@ test('the score sheet shows every hand and adds up to the score', () => {
     expect(last.scores).toEqual(totals);
     expect(v.history.every((h) => (id === 'five' ? !!h.bidder && !!h.label : h.changes.length === v.seats.length))).toBe(true);
   });
+});
+
+test('card designs: 140 of them, Classic for all, Starter when signed in, the rest earned by playing', () => {
+  expect(DESIGNS.length).toBe(140);
+  expect(new Set(DESIGNS.map((d) => d.id)).size).toBe(140);
+  const counts = progressFor([
+    {
+      seats: [{ name: 'Tyler', uid: 'u1', team: 0 }, { name: 'Bo', bot: true, team: 1 }, { name: 'Pat', team: 0 }, { name: 'Mo', bot: true, team: 1 }],
+      scores: [520, -40],
+      winner: 0,
+      history: [
+        { seat: 0, bid: '8S', made: true, slam: true }, { seat: 0, bid: 'MIS', made: true }, { seat: 2, bid: 'OPEN', made: true },
+        { seat: 0, bid: '7H', made: false }, { seat: 2, bid: '6D', made: true },
+      ],
+    },
+    { seats: [{ name: 'tyler', team: 0 }, { name: 'X', team: 1 }, { name: 'Y', team: 0 }, { name: 'Z', team: 1 }], scores: [100, 500], winner: 1, history: [] },
+    { seats: [{ name: 'Tyler', uid: 'someone-else', team: 0 }], scores: [500, 0], winner: 0, history: [] },
+  ], [{ seats: [{ name: 'Tyler', uid: 'u1' }, { name: 'Q' }], winners: ['Tyler'] }], { uid: 'u1', name: 'Tyler' });
+  expect(counts).toMatchObject({ games: 3, fiveWins: 1, clubsWins: 1, S: 1, H: 0, D: 0, big: 1, slam: 1, nola: 1, dnola: 1, shutout: 1 });
+  const byId = (id) => DESIGNS.find((d) => d.id === id);
+  expect(isUnlocked(byId('classic'), null, false)).toBe(true);
+  expect(isUnlocked(byId('starter-5'), null, false)).toBe(false);
+  expect(isUnlocked(byId('starter-5'), null, true)).toBe(true);
+  expect(isUnlocked(byId('S-0'), counts, true)).toBe(true);
+  expect(isUnlocked(byId('S-1'), counts, true)).toBe(false);
+  expect(isUnlocked(byId('S-0'), counts, false)).toBe(false);
+});
+
+test('a saved game remembers who played it by account', () => {
+  const { g } = run('five', [{ cid: 'a', name: 'Tyler' }], 3, 1000);
+  setLook(g, 'a', { uid: 'u1', design: 'S-3' });
+  const sum = summarize('five', g);
+  expect(sum.seats.find((x) => x.name === 'Tyler').uid).toBe('u1');
+  expect(GAMES.five.view(g, 'a', 1000).seats.find((x) => x.name === 'Tyler').design).toBe('S-3');
 });

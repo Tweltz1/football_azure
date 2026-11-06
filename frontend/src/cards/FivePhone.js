@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SUIT_NAME, SUIT_SYMBOL, SUITS } from './cards';
-import { CardFace, cardName, CutDeck, Hand, Scores, ScoreSheet, SheetButton, Status, suits, TableView } from './CardPhone';
+import { CardFace, DesignContext, cardName, CutDeck, Hand, Scores, ScoreSheet, SheetButton, Status, suits, TableView } from './CardPhone';
 
 // 500 on a phone: the table, your hand, bidding, the kitty, and the scores.
 
@@ -88,7 +88,7 @@ const NameSuit = ({ onPick, onCancel }) => (
 );
 
 /** 500 on a phone. game: the phone view from five.js. act(type, data) sends a move. */
-export default function FivePhone({ game, act, look, endButtons }) {
+function FiveTable({ game, act, look, endButtons }) {
   const [joker, setJoker] = useState(false);
   const [sheet, setSheet] = useState(false);
   useEffect(() => { setJoker(false); }, [game.phase, game.trick.length]);
@@ -165,7 +165,7 @@ export default function FivePhone({ game, act, look, endButtons }) {
       })}
     />
   );
-  const table = <TableView seats={tableSeats} me={me} plays={game.trick} winner={game.winner} center={center} />;
+  const table = <TableView seats={tableSeats} me={me} plays={game.trick.map((x) => ({ ...x, design: seats[x.seat]?.design || null }))} winner={game.winner} center={center} />;
 
   if (game.phase === 'final' && game.final) {
     const won = game.final.won;
@@ -254,4 +254,11 @@ export default function FivePhone({ game, act, look, endButtons }) {
       {me >= 0 && hand}
     </>
   );
+}
+
+/** Your own cards use your card design; cards others play show theirs. */
+export default function FivePhone(props) {
+  const { game } = props;
+  const mine = (game.seats[game.seat] || {}).design || 'classic';
+  return <DesignContext.Provider value={mine}><FiveTable {...props} /></DesignContext.Provider>;
 }

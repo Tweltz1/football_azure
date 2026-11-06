@@ -480,6 +480,7 @@ export function phoneView(s, cid, now) {
     cutLeft: s.phase === 'cut' ? Math.max(0, Math.ceil((CUT_MS - (now - s.phaseAt)) / 1000)) : 0,
     seats: s.seats.map((x, i) => ({
       name: x.name, bot: x.bot, away: !x.bot && now - (s.lastSeen[x.cid] ?? -1e9) > ACTIVE_MS, team: teamOf(i),
+      design: (!x.bot && s.looks && s.looks[x.cid] && s.looks[x.cid].design) || null,
       cards: s.hands[i].length, tricks: s.tricks[i], out: s.out === i,
     })),
     teams: [teamName(s, 0), teamName(s, 1)],

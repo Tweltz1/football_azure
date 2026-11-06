@@ -1,11 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import Person from '../party/Person';
 import { isJoker, isRed, isThinCut, rankLabel, suitOf, suitSort, SUIT_SYMBOL } from './cards';
+import { backStyle, designOf, faceStyle } from './designs';
 
 // Phone pieces shared by 500 and Dirty Clubs: a card, your hand, the table (with you at the bottom),
 // and a status line. There's no TV for these games: every phone shows the whole table.
 
-export const CardFace = ({ card, small, on, off, onClick, tag, lift, ...rest }) => {
+/** The card design this phone's own cards use. A card can name another (a card someone else played). */
+export const DesignContext = createContext('classic');
+
+export const CardFace = ({ card, small, on, off, onClick, tag, lift, design: named, style, ...rest }) => {
+  const mine = useContext(DesignContext);
+  const design = named === undefined ? mine : named;
   const joker = isJoker(card);
   const suit = suitOf(card);
   const cls = `lt-card${small ? ' is-small' : ''}${joker ? ' is-joker' : isRed(suit) ? ' is-red' : ''}${on ? ' is-on' : ''}${off ? ' is-off' : ''}${lift ? ' is-lift' : ''}`;
@@ -14,8 +20,11 @@ export const CardFace = ({ card, small, on, off, onClick, tag, lift, ...rest }) 
   ) : (
     <><span className="lt-card-rank">{rankLabel(card)}</span><span className="lt-card-suit">{SUIT_SYMBOL[suit]}{'︎'}</span></>
   );
-  if (!onClick) return <span className={cls} {...rest}>{face}{tag && <i className="lt-card-tag">{tag}</i>}</span>;
-  return <button type="button" className={cls} disabled={off} onClick={onClick} {...rest}>{face}{tag && <i className="lt-card-tag">{tag}</i>}</button>;
+  const d = design && design !== 'classic' ? designOf(design) : null;
+  const look = d && !on ? { ...faceStyle(d.id), ...style } : style;
+  const mark = d && <i className="lt-card-mark" aria-hidden="true">{d.emblem}</i>;
+  if (!onClick) return <span className={cls} style={look} {...rest}>{face}{mark}{tag && <i className="lt-card-tag">{tag}</i>}</span>;
+  return <button type="button" className={cls} style={look} disabled={off} onClick={onClick} {...rest}>{face}{mark}{tag && <i className="lt-card-tag">{tag}</i>}</button>;
 };
 
 /** Text with the ♥ and ♦ in red (and every suit symbol drawn as text, not emoji). */
@@ -157,7 +166,7 @@ export const TableView = ({ seats, me, plays = [], winner = null, center = null 
       {center && <div className="lt-center">{suits(center)}</div>}
       {plays.map((p) => (
         <div key={p.card} className={`lt-played${winner === p.seat ? ' is-win' : ''}`} style={at(p.seat, 17, 19)}>
-          <CardFace card={p.card} small />
+          <CardFace card={p.card} small design={p.design || null} />
         </div>
       ))}
       {seats.map((s, i) => (
@@ -239,7 +248,7 @@ export const SheetButton = ({ onClick }) => (
   <button type="button" className="lt-sheet-btn" onClick={onClick}>📋 Scores</button>
 );
 
-const pile = (n) => Array.from({ length: Math.min(6, Math.max(2, Math.round(n / 7))) }, (_, i) => <i key={i} style={{ transform: `translate(${-i * 1.5}px, ${-i * 2}px)` }} />);
+const pile = (n, bs) => Array.from({ length: Math.min(6, Math.max(2, Math.round(n / 7))) }, (_, i) => <i key={i} style={{ ...bs, transform: `translate(${-i * 1.5}px, ${-i * 2}px)` }} />);
 
 /**
  * Cutting the deck. The cutter drags along the spread deck (or the slider) to pick a spot, then cuts.
@@ -247,6 +256,7 @@ const pile = (n) => Array.from({ length: Math.min(6, Math.max(2, Math.round(n / 
  * size: cards in the deck. mine: it's your cut. cutter: their name. cutAt: where it was cut (after the cut).
  */
 export const CutDeck = ({ size, mine, cutter, cutAt, left, onCut }) => {
+  const bs = backStyle(useContext(DesignContext)) || {};
   const [at, setAt] = useState(Math.round(size / 2));
   const [sent, setSent] = useState(false);
   const min = 1;
@@ -263,9 +273,9 @@ export const CutDeck = ({ size, mine, cutter, cutAt, left, onCut }) => {
           </div>
         )}
         <div className="lt-cut-stage">
-          <div className="lt-pile is-top"><span className="lt-pile-stack">{pile(cutAt)}</span><b>{cutAt}</b></div>
-          <div className="lt-pile is-bottom"><span className="lt-pile-stack">{pile(bottom)}</span><b>{bottom}</b></div>
-          {[0, 1, 2, 3].map((k) => <i key={k} className={`lt-fly is-${k}`} />)}
+          <div className="lt-pile is-top"><span className="lt-pile-stack">{pile(cutAt, bs)}</span><b>{cutAt}</b></div>
+          <div className="lt-pile is-bottom"><span className="lt-pile-stack">{pile(bottom, bs)}</span><b>{bottom}</b></div>
+          {[0, 1, 2, 3].map((k) => <i key={k} className={`lt-fly is-${k}`} style={bs} />)}
         </div>
         <p className="lt-status-line">{`${mine ? 'You' : cutter} cut ${cutAt} card${cutAt === 1 ? '' : 's'}${thin ? '. Thin to win!' : '.'} Dealing…`}</p>
       </div>
@@ -274,7 +284,7 @@ export const CutDeck = ({ size, mine, cutter, cutAt, left, onCut }) => {
   if (!mine) {
     return (
       <div className="lt-cut">
-        <div className="lt-cut-stage"><div className="lt-pile is-wait"><span className="lt-pile-stack">{pile(size)}</span></div></div>
+        <div className="lt-cut-stage"><div className="lt-pile is-wait"><span className="lt-pile-stack">{pile(size, bs)}</span></div></div>
         <p className="lt-status-line">{cutter} is cutting the deck…</p>
       </div>
     );
@@ -295,7 +305,7 @@ export const CutDeck = ({ size, mine, cutter, cutAt, left, onCut }) => {
         onMouseMove={(e) => { if (e.buttons) pickFrom(e); }}
       >
         {Array.from({ length: size }, (_, i) => (
-          <i key={i} className={i < at ? 'is-lift' : ''} style={{ left: `calc(${(i / (size - 1)) * 100}% - ${(i / (size - 1)) * 34}px)` }} />
+          <i key={i} className={i < at ? 'is-lift' : ''} style={{ ...bs, left: `calc(${(i / (size - 1)) * 100}% - ${(i / (size - 1)) * 34}px)` }} />
         ))}
       </div>
       <input type="range" className="lt-cut-range" min={min} max={max} value={at} aria-label="Where to cut" onChange={(e) => setAt(Number(e.target.value))} />

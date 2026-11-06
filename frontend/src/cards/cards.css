@@ -247,3 +247,27 @@
 #lc-root .lt-sheet-line b.is-down { color: #ff8a8a; }
 #lc-root .lt-sheet-line .lt-total { min-width: 34px; font-size: 17px; }
 #lc-root .lt-sheet .lt-red { color: #ff5a6b; }
+
+/* Card designs */
+#lc-root .lt-card-mark { position: absolute; top: 2px; left: 3px; font-size: 9px; font-style: normal; line-height: 1; opacity: 0.85; }
+#lc-root .lt-card.is-small .lt-card-mark { font-size: 6px; top: 1px; left: 2px; }
+#lc-root .lt-design-now { display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(255, 255, 255, 0.06); border-radius: 16px; }
+#lc-root .lt-design-now .lt-card { flex: 0 0 52px; min-height: 0; }
+#lc-root .lt-design-now > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#lc-root .lt-design-now small { font-size: 12px; color: #c9b8ee; }
+#lc-root .lt-design-signin { display: flex; flex-direction: column; gap: 8px; }
+#lc-root .lt-design-track { display: flex; flex-direction: column; gap: 6px; }
+#lc-root .lt-design-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 6px 0 0; }
+#lc-root .lt-design-head small { font-size: 12px; color: #c9b8ee; }
+#lc-root .lt-design-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+#lc-root .lt-design { position: relative; padding: 0; background: none; border: 0; cursor: pointer; }
+#lc-root .lt-design-back {
+  position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 5 / 7;
+  background: repeating-linear-gradient(45deg, #7b2fd6 0 4px, #5a1fa3 4px 8px); border: 3px solid #fff6e3; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+#lc-root .lt-design-back i { display: grid; place-items: center; width: 24px; height: 24px; font-size: 14px; font-style: normal; color: #1d1236; background: #fff6e3; border-radius: 50%; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+#lc-root .lt-design-back.is-big { flex: 0 0 52px; width: 52px; }
+#lc-root .lt-design.is-chosen .lt-design-back { outline: 3px solid var(--lc-gold); outline-offset: 2px; }
+#lc-root .lt-design.is-locked .lt-design-back { filter: grayscale(0.85) brightness(0.55); }
+#lc-root .lt-design-lock { position: absolute; inset: 0; display: grid; place-items: center; font-size: 18px; }
+#lc-root .lt-design-goal { margin: 0; padding: 6px 10px; font-size: 13px; background: rgba(255, 255, 255, 0.08); border-radius: 8px; }
