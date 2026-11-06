@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SUIT_NAME, SUIT_SYMBOL, SUITS } from './cards';
-import { CardFace, cardName, CutDeck, Hand, Scores, Status, suits, TableView } from './CardPhone';
+import { CardFace, cardName, CutDeck, Hand, Scores, ScoreSheet, SheetButton, Status, suits, TableView } from './CardPhone';
 
 // 500 on a phone: the table, your hand, bidding, the kitty, and the scores.
 
@@ -90,6 +90,7 @@ const NameSuit = ({ onPick, onCancel }) => (
 /** 500 on a phone. game: the phone view from five.js. act(type, data) sends a move. */
 export default function FivePhone({ game, act, look, endButtons }) {
   const [joker, setJoker] = useState(false);
+  const [sheet, setSheet] = useState(false);
   useEffect(() => { setJoker(false); }, [game.phase, game.trick.length]);
 
   const me = game.seat;
@@ -135,7 +136,34 @@ export default function FivePhone({ game, act, look, endButtons }) {
       <span>Hand {game.hand}</span>
       <span>{contract ? suits(`${seats[contract.seat].name}: ${bidName(contract.bid)}`) : 'Bidding'}</span>
       {[0, 1].map((t) => <span key={t} className="lt-teamscore" style={{ background: TEAM_COLORS[t] }}>{t === us ? 'Us' : us == null ? `T${t + 1}` : 'Them'} {game.scores[t]}</span>)}
+      <SheetButton onClick={() => setSheet(true)} />
     </div>
+  );
+  const sideName = (t) => (t === us ? `Us (${game.teams[t]})` : us == null ? game.teams[t] : `Them (${game.teams[t]})`);
+  const sheetView = sheet && (
+    <ScoreSheet
+      onClose={() => setSheet(false)}
+      rule="The bidding team wins or loses its bid's value. The other team gets 10 a trick (nothing on Nola). First to 500 on their own bid wins."
+      totals={[0, 1].map((t) => ({ name: sideName(t), score: game.scores[t], color: TEAM_COLORS[t] }))}
+      hands={[...(game.history || [])].reverse().map((h) => {
+        let how = h.made ? `made it${h.slam ? ' with all 10 (250)' : ''}` : 'got set';
+        if (h.oppTook != null) how += `, took ${h.took} of 10`;
+        else how += h.made ? ', no tricks' : `, took ${h.took}`;
+        return {
+          key: h.hand,
+          title: `Hand ${h.hand}: ${h.bidder} bid ${h.label}`,
+          note: `${h.bidder} ${how}.`,
+          lines: [0, 1].map((t) => {
+            const gain = t === h.team ? h.points : h.oppPoints;
+            let why = '';
+            if (t === h.team) why = h.made ? `made ${h.label}` : `set on ${h.label}`;
+            else if (h.oppTook != null) why = `${h.oppTook} trick${h.oppTook === 1 ? '' : 's'} × 10${gain < h.oppTook * 10 ? ' (capped at 490)' : ''}`;
+            else why = 'nothing on Nola';
+            return { name: sideName(t), color: TEAM_COLORS[t], change: gain >= 0 ? `+${gain}` : String(gain), bad: gain < 0, why, score: h.scores ? h.scores[t] : '' };
+          }),
+        };
+      })}
+    />
   );
   const table = <TableView seats={tableSeats} me={me} plays={game.trick} winner={game.winner} center={center} />;
 
@@ -144,6 +172,7 @@ export default function FivePhone({ game, act, look, endButtons }) {
     return (
       <>
         {head}
+        {sheetView}
         <Status look={look} pose={won ? 'cheer' : 'stand'} big={me < 0 ? `${game.teams[game.final.winner]} win!` : won ? 'You won! 🎉' : `${game.teams[game.final.winner]} win`} line={`${game.scores[0]} to ${game.scores[1]} after ${game.hand} hands`} />
         <Scores rows={[0, 1].map((t) => ({ name: `${t === game.final.winner ? '🏆 ' : ''}${game.teams[t]}`, score: game.scores[t], color: TEAM_COLORS[t] }))} />
         {endButtons}
@@ -219,6 +248,7 @@ export default function FivePhone({ game, act, look, endButtons }) {
   return (
     <>
       {head}
+      {sheetView}
       {table}
       {body}
       {me >= 0 && hand}

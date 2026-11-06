@@ -52,7 +52,7 @@
 #lc-root .lt-endbtns { display: flex; flex-direction: column; gap: 10px; }
 
 /* The table */
-#lc-root .lt-head { font-size: 14px; gap: 6px; }
+#lc-root .lt-head { font-size: 14px; gap: 6px; flex-wrap: wrap; }
 #lc-root .lt-teamscore { padding: 1px 8px; color: #fff; border-radius: 999px; }
 #lc-root .lt-table { position: relative; width: 100%; height: 0; padding-bottom: 78%; }
 #lc-root .lt-felt { position: absolute; left: 10%; right: 10%; top: 14%; bottom: 14%; background: radial-gradient(circle at 50% 45%, #2f8a55, #17512f); border: 6px solid #5b3a26; border-radius: 45%; box-shadow: 0 6px 0 rgba(0, 0, 0, 0.35); }
@@ -229,3 +229,21 @@
 #lc-root .lt-red { color: #ff5a6b; }
 #lc-root .lt-bubble .lt-red, #lc-root .lt-score-row .lt-red { color: #d62839; }
 #lc-root .lc-btn .lt-red { color: #c0182b; }
+
+/* Score sheet */
+#lc-root .lt-sheet-btn { padding: 2px 9px; font: inherit; font-size: 13px; font-weight: 700; color: #fff; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 999px; cursor: pointer; }
+#lc-root .lt-sheet { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: rgba(8, 4, 20, 0.6); }
+#lc-root .lt-sheet-box { width: 100%; max-width: 480px; max-height: 82vh; overflow-y: auto; padding: 14px 16px calc(18px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; background: #1d1236; color: #fff; border-radius: 18px 18px 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.5); }
+#lc-root .lt-sheet-top { display: flex; align-items: center; justify-content: space-between; font-size: 17px; }
+#lc-root .lt-sheet-x { width: 34px; height: 34px; font-size: 16px; color: #fff; background: rgba(255, 255, 255, 0.12); border: 0; border-radius: 50%; cursor: pointer; }
+#lc-root .lt-sheet-empty { margin: 0; font-size: 13px; color: #c9b8ee; }
+#lc-root .lt-sheet-hand { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+#lc-root .lt-sheet-title { margin: 0; font-weight: 700; }
+#lc-root .lt-sheet-note { margin: 0; font-size: 12px; color: #c9b8ee; }
+#lc-root .lt-sheet-line { display: flex; align-items: center; gap: 8px; padding: 4px 10px; font-size: 13px; background: rgba(255, 255, 255, 0.05); border-left: 5px solid; border-radius: 6px; }
+#lc-root .lt-sheet-line > span:first-child { flex: 1; font-weight: 700; }
+#lc-root .lt-sheet-line small { font-size: 11px; color: #c9b8ee; }
+#lc-root .lt-sheet-line b { min-width: 40px; text-align: right; color: #7dffb2; }
+#lc-root .lt-sheet-line b.is-down { color: #ff8a8a; }
+#lc-root .lt-sheet-line .lt-total { min-width: 34px; font-size: 17px; }
+#lc-root .lt-sheet .lt-red { color: #ff5a6b; }
