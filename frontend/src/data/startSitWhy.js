@@ -6,6 +6,7 @@ import {
   benchReason, defenseMatchup, describeMarketSettings, isUnavailable, tagForSide, teammatesOut, trendFor, vacatedPoints,
 } from './startSitUtils.js';
 import { rankLabel } from './rankings.js';
+import { weatherEffectText } from './weather.js';
 
 const round1 = (value) => Math.round(value * 10) / 10;
 const pts = (value) => `${round1(value).toFixed(1)}`;
@@ -219,6 +220,18 @@ const compareFactors = (a, b) => {
       edge: edgeBy(a.vacated, b.vacated, 3),
     });
   }
+  const aWx = a.player.weather;
+  const bWx = b.player.weather;
+  if (aWx?.pct || bWx?.pct) {
+    factors.push({
+      key: 'weather',
+      label: 'Weather',
+      start: weatherEffectText(aWx) || '–',
+      sit: weatherEffectText(bWx) || '–',
+      detail: [aWx, bWx].map((w) => (w && !w.indoor ? w.text : null)),
+      edge: edgeBy(aWx?.pct ?? 0, bWx?.pct ?? 0, 0.03),
+    });
+  }
   const aHurt = a.player.injury || a.player.onBye;
   const bHurt = b.player.injury || b.player.onBye;
   if (aHurt || bHurt) {
@@ -241,15 +254,19 @@ const PHRASES = {
   form: (w, l) => (w.trend.direction === 'up' ? 'is heating up' : `has been better lately (${pts(w.trend.lastThree)} vs ${pts(l.trend.lastThree)} over the last 3)`),
   matchup: (w) => `has the easier matchup against ${w.player.opponent}`,
   floor: () => 'has the safer floor',
+  weather: (w, l) => (l.player.weather?.pct < 0
+    ? `avoids the weather ${l.player.name} faces (${l.player.weather.text})`
+    : `has better weather (${w.player.weather?.indoor ? 'indoors' : w.player.weather?.text})`),
   opportunity: (w) => `has extra work with ${joinWords(w.matesOut.slice(0, 2).map((m) => m.name))} out`,
   health: (w, l) => `is healthier (${l.player.name} is ${healthNote(l.player).toLowerCase()})`,
   lift: (w) => `faces a defense where the top ${w.player.position} has scored ${pct(Math.abs(w.lift.lift))} ${w.lift.lift >= 0 ? 'above' : 'below'} their usual (last ${w.lift.games} games)`,
-  usage: (w) => (w.usage.change > 0
+  // The favored side can have no usage row when the other side's share is falling.
+  usage: (w) => (!w.usage ? null : w.usage.change > 0
     ? `is getting more of the work (${pct(w.usage.recent)} of team ${w.usage.kind} lately, up from ${pct(w.usage.season)})`
     : `has the steadier role (${pct(w.usage.recent)} of team ${w.usage.kind})`),
 };
 
-const REASON_ORDER = ['health', 'opportunity', 'usage', 'matchup', 'lift', 'form', 'floor'];
+const REASON_ORDER = ['health', 'opportunity', 'usage', 'weather', 'matchup', 'lift', 'form', 'floor'];
 
 /** What a call rests on, in one line. */
 const basisOf = (a, b) => {
@@ -257,6 +274,7 @@ const basisOf = (a, b) => {
   const parts = ["Sleeper's projections", `this season's results (${joinWords(games)})`];
   if (a.lift || b.lift) parts.push('recent games against each defense');
   if (a.usage || b.usage) parts.push('team target and carry shares');
+  if (a.player.weather?.pct || b.player.weather?.pct) parts.push('the game-day weather forecast');
   parts.push('the injury report');
   return `Based on ${joinWords(parts)}.`;
 };
@@ -337,6 +355,7 @@ export const explainPair = (start, sit, ctx, { headline } = {}) => {
   if (questionable === start) watch = `${start.name} is questionable. If ${firstName(start)} is ruled out before kickoff, start ${sit.name} instead.`;
   else if (questionable === sit) watch = `${sit.name} is questionable, which also makes ${firstName(sit)} riskier to start.`;
   else if (call === CALLS.tossup) watch = 'Check injury news and weather before kickoff; small changes can flip a call this close.';
+  else if ([start, sit].some((p) => p.weather?.pct && p.weather.hoursOut > 18)) watch = 'The weather forecast is still a few days out and will firm up closer to kickoff.';
 
   return { call, headline: title, names, factors, summary, watch, confidence, basis: basisOf(a, b) };
 };

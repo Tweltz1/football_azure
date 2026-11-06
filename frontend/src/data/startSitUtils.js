@@ -75,6 +75,7 @@ export const withProjections = (players, projectionsById, scoring, week) => play
     upcoming: projection?.upcoming || [],
     usage: projection?.usage || null,
     spread: projection?.spread || null,
+    weather: projection?.weather || null,
     age: player.age ?? null,
   };
 });
