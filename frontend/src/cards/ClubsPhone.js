@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { SUIT_NAME, SUIT_SYMBOL, SUITS } from './cards';
-import { CardFace, CutDeck, Hand, Scores, ScoreSheet, SheetButton, Status, suits, TableView } from './CardPhone';
+import { CardFace, DesignContext, CutDeck, Hand, Scores, ScoreSheet, SheetButton, Status, suits, TableView } from './CardPhone';
 
 // Dirty Clubs on a phone: the table, your hand, bidding, trump, play or fold, and the scores.
 
 export const SEAT_COLORS = ['#4f7bff', '#ff5f6d', '#3ddc97', '#b98cff', '#ffae4a', '#4fd6e8'];
 
 /** Dirty Clubs on a phone. game: the phone view from clubs.js. act(type, data) sends a move. */
-export default function ClubsPhone({ game, act, look, endButtons }) {
+function ClubsTable({ game, act, look, endButtons }) {
   const [sheet, setSheet] = useState(false);
   const me = game.seat;
   const seats = game.seats;
@@ -62,7 +62,7 @@ export default function ClubsPhone({ game, act, look, endButtons }) {
       <SheetButton onClick={() => setSheet(true)} />
     </div>
   );
-  const table = <TableView seats={tableSeats} me={me} plays={game.trick} winner={game.winner} center={center} />;
+  const table = <TableView seats={tableSeats} me={me} plays={game.trick.map((x) => ({ ...x, design: seats[x.seat]?.design || null }))} winner={game.winner} center={center} />;
   const ranked = seats.map((x, i) => ({ ...x, i })).sort((a, b) => a.score - b.score);
   const sheetView = sheet && (
     <ScoreSheet
@@ -179,4 +179,11 @@ export default function ClubsPhone({ game, act, look, endButtons }) {
       {me >= 0 && hand}
     </>
   );
+}
+
+/** Your own cards use your card design; cards others play show theirs. */
+export default function ClubsPhone(props) {
+  const { game } = props;
+  const mine = (game.seats[game.seat] || {}).design || 'classic';
+  return <DesignContext.Provider value={mine}><ClubsTable {...props} /></DesignContext.Provider>;
 }

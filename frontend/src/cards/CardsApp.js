@@ -4,7 +4,7 @@ import { crewLook, isLookCode, lookCode } from '../party/look';
 import { cleanCode, newCid, newRoomCode, openHost, openPhone } from '../party/net';
 import { useVoice } from '../dnd/voice';
 import {
-  claimSeat, computeStats, GAMES, newGameId, summarize, wakeUp,
+  claimSeat, computeStats, GAMES, newGameId, setLook, summarize, wakeUp,
 } from './engines';
 import {
   dropLocalSave, listGames, loadGame, localSaves, putLocalSave, saveGame,
@@ -12,7 +12,10 @@ import {
 import FivePhone, { TEAM_COLORS } from './FivePhone';
 import ClubsPhone from './ClubsPhone';
 import { homeHref, homeLabel, siteOrigin } from '../native/gamesApp';
-import { currentUser, firstName } from '../party/account';
+import { currentUser, firstName, signInWithGoogle } from '../party/account';
+import { supabase } from '../supabaseClient';
+import { backStyle, DESIGNS, designOf, isUnlocked, progressFor, TRACKS } from './designs';
+import { CardFace } from './CardPhone';
 import '../party/party.css';
 import './cards.css';
 
@@ -146,7 +149,7 @@ function HostTable({ me, gameId, resume, look, onExit }) {
   const [code] = useState(() => resume?.code || newRoomCode());
   const [, setFrame] = useState(0);
   const [note, setNote] = useState(resume ? '' : '');
-  const players = useRef([{ cid: me.cid, name: me.name, lastSeen: Date.now(), voice: false, muted: false }]);
+  const players = useRef([{ cid: me.cid, name: me.name, uid: me.uid, design: me.design, lastSeen: Date.now(), voice: false, muted: false }]);
   const game = useRef(resume ? resume.state : null);
   const saveId = useRef(resume ? resume.id : newGameId());
   const mode = useRef('lobby');
@@ -250,8 +253,11 @@ function HostTable({ me, gameId, resume, look, onExit }) {
         p.lastSeen = now;
         if (name) p.name = name;
       }
+      if (typeof msg.uid === 'string' && msg.uid.length <= 64) p.uid = msg.uid;
+      if (typeof msg.design === 'string' && msg.design.length <= 24) p.design = msg.design;
       const g = game.current;
       if (g) {
+        setLook(g, p.cid, p);
         autoSeat(p);
         if (mode.current === 'game' && !def.over(g) && !g.seats.some((s) => s.cid === p.cid)) def.addPlayer(g, p.cid, p.name, nowMs());
         def.seen(g, p.cid, nowMs());
@@ -342,6 +348,7 @@ function HostTable({ me, gameId, resume, look, onExit }) {
         saveId.current = newGameId();
         lastSaved.current = { event: -1, phase: '', at: 0 };
       }
+      players.current.forEach((p) => setLook(game.current, p.cid, p));
       setNote('');
       mode.current = 'game';
       writeJson(SESSION_KEY, { role: 'host', code, gameId, saveId: saveId.current });
@@ -400,7 +407,7 @@ function GuestTable({ me, code, look, onExit }) {
       if (payload && payload.code === code) setScreen(payload);
     }, null, PREFIX);
     phoneRef.current = phone;
-    const hello = () => phone.send('hello', { name: me.name });
+    const hello = () => phone.send('hello', { name: me.name, uid: me.uid, design: me.design });
     const first = window.setTimeout(hello, 500);
     const timer = window.setInterval(() => {
       hello();
@@ -412,7 +419,7 @@ function GuestTable({ me, code, look, onExit }) {
       phone.close();
       phoneRef.current = null;
     };
-  }, [code, me.cid, me.name]);
+  }, [code, me.cid, me.name, me.uid, me.design]);
 
   const act = useCallback((type, data) => phoneRef.current?.send('act', { ...data, type }), []);
   const leave = () => {
@@ -549,6 +556,75 @@ function Stats({ onBack }) {
   );
 }
 
+// ---------- Card designs ----------
+
+function Designs({ user, me, onPick, onBack }) {
+  const [counts, setCounts] = useState(null);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(null);
+  useEffect(() => {
+    if (!user) return undefined;
+    let live = true;
+    Promise.all([listGames('five'), listGames('clubs')])
+      .then(([f, c]) => { if (live) setCounts(progressFor(f.map((r) => r.summary), c.map((r) => r.summary), { uid: user.id, name: me.name })); })
+      .catch(() => { if (live) setError('Could not load your games, so only the Starter designs show as open.'); });
+    return () => { live = false; };
+  }, [user, me.name]);
+  const signedIn = !!user;
+  const unlocked = DESIGNS.filter((d) => isUnlocked(d, counts, signedIn)).length;
+  const chosen = designOf(me.design);
+  const pick = (d) => {
+    if (isUnlocked(d, counts, signedIn)) onPick(d.id);
+    else setOpen(open === d.id ? null : d.id);
+  };
+  return (
+    <div className="lcp lt-page">
+      <button type="button" className="lcp-link lt-back" onClick={onBack}>← Back</button>
+      <h2 className="lc-title lt-h2">Card designs</h2>
+      <div className="lt-design-now">
+        <span className="lt-design-back is-big" style={backStyle(chosen.id)}><i>{chosen.emblem}</i></span>
+        <CardFace card="14S" design={chosen.id} />
+        <CardFace card="13H" design={chosen.id} />
+        <div><b>{chosen.name}</b><small>{unlocked} of {DESIGNS.length} unlocked</small></div>
+      </div>
+      {!signedIn && (
+        <div className="lt-design-signin">
+          <p className="lt-note">Sign in to get 10 Starter designs and start unlocking the other {DESIGNS.length - 10} by playing: winning games, making bids in every suit, Nola, Double Nola, big bids, slams and 500 to 0 wins.</p>
+          <button type="button" className="lc-btn" onClick={() => signInWithGoogle(window.location.href)}>Sign in with Google</button>
+        </div>
+      )}
+      {error && <p className="lt-note">{error}</p>}
+      {signedIn && !counts && !error && <p className="lt-note">Checking your games…</p>}
+      {TRACKS.map((t) => {
+        const list = DESIGNS.filter((d) => d.track === t.id);
+        const have = counts ? counts[t.id] : null;
+        return (
+          <section key={t.id} className="lt-design-track">
+            <p className="lt-design-head">
+              <b>{t.emblem} {t.title}</b>
+              <small>{t.id === 'starter' ? t.blurb : `${list.filter((d) => isUnlocked(d, counts, signedIn)).length}/10${have != null ? ` · you have ${have}` : ''}`}</small>
+            </p>
+            <div className="lt-design-grid">
+              {list.map((d) => {
+                const on = isUnlocked(d, counts, signedIn);
+                return (
+                  <button type="button" key={d.id} className={`lt-design${on ? '' : ' is-locked'}${d.id === chosen.id ? ' is-chosen' : ''}`} onClick={() => pick(d)} aria-label={`${d.name}${on ? '' : `, locked: ${d.goal}`}`}>
+                    <span className="lt-design-back" style={backStyle(d.id) || undefined}><i>{d.emblem}</i></span>
+                    {!on && <span className="lt-design-lock">🔒</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {list.filter((d) => d.id === open).map((d) => (
+              <p key={d.id} className="lt-design-goal">🔒 {d.name}: {d.goal}{have != null && d.need ? ` (${Math.min(have, d.need)} of ${d.need})` : ''}</p>
+            ))}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 // ---------- Home ----------
 
 export default function CardsApp() {
@@ -556,8 +632,9 @@ export default function CardsApp() {
   const [me, setMe] = useState(() => {
     const saved = readJson(ME_KEY, {});
     const party = readJson('lc-phone', {});
-    return { cid: saved.cid || newCid(), name: saved.name || party.name || '' };
+    return { cid: saved.cid || newCid(), name: saved.name || party.name || '', design: saved.design || 'classic' };
   });
+  const [user, setUser] = useState(null);
   const look = useMemo(() => {
     const party = readJson('lc-phone', {});
     return isLookCode(party.look) ? party.look : lookCode({ ...crewLook(me.cid.charCodeAt(2) || 0), costume: 0 });
@@ -576,7 +653,10 @@ export default function CardsApp() {
   useEffect(() => {
     let live = true;
     currentUser().then((u) => {
-      if (live && u) setMe((m) => (m.name ? m : { ...m, name: firstName(u) }));
+      if (!live || !u) return;
+      setUser(u);
+      const saved = u.user_metadata?.card_design;
+      setMe((m) => ({ ...m, name: m.name || firstName(u), design: m.design !== 'classic' || !saved ? m.design : saved }));
     });
     return () => { live = false; };
   }, []);
@@ -591,11 +671,18 @@ export default function CardsApp() {
 
   const home = () => setPage({ page: 'home' });
   const named = me.name.trim().length > 0;
+  // Designs past Classic need the account; signed out, everyone plays Classic.
+  const player = { ...me, uid: user ? user.id : null, design: user ? me.design : 'classic' };
+  const pickDesign = (id) => {
+    setMe((m) => ({ ...m, design: id }));
+    if (user) supabase.auth.updateUser({ data: { card_design: id } }).catch(() => {});
+  };
 
-  if (page.page === 'host') return <HostTable me={me} gameId={page.gameId} resume={page.resume} look={look} onExit={home} />;
-  if (page.page === 'join' && named) return <GuestTable me={me} code={page.code} look={look} onExit={home} />;
+  if (page.page === 'host') return <HostTable me={player} gameId={page.gameId} resume={page.resume} look={look} onExit={home} />;
+  if (page.page === 'join' && named) return <GuestTable me={player} code={page.code} look={look} onExit={home} />;
   if (page.page === 'saved') return <SavedGames onBack={home} onResume={(r) => setPage({ page: 'host', gameId: r.gameId, resume: r })} />;
   if (page.page === 'stats') return <Stats onBack={home} />;
+  if (page.page === 'designs') return <Designs user={user} me={player} onPick={pickDesign} onBack={home} />;
 
   return (
     <div className="lcp lt-page lt-home">
@@ -623,6 +710,7 @@ export default function CardsApp() {
       <div className="lt-homebtns is-row">
         <button type="button" className="lc-btn lc-btn-ghost" onClick={() => setPage({ page: 'saved' })}>📂 Pick up a saved game</button>
         <button type="button" className="lc-btn lc-btn-ghost" onClick={() => setPage({ page: 'stats' })}>📊 Stats</button>
+        <button type="button" className="lc-btn lc-btn-ghost" onClick={() => setPage({ page: 'designs' })}>🎴 Card designs</button>
       </div>
     </div>
   );
