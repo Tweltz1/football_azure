@@ -277,3 +277,20 @@
 }
 @keyframes lt-foil { 0% { background-position: 100% 0; } 60%, 100% { background-position: 0% 0; } }
 @media (prefers-reduced-motion: reduce) { #lc-root .is-foil::after { animation: none; opacity: 0.4; } }
+
+/* Player stats */
+#lc-root button.lt-statcard { width: 100%; font: inherit; color: inherit; text-align: left; border: 0; cursor: pointer; }
+#lc-root .lt-statcard b i { float: right; font-size: 12px; font-style: normal; color: #c9b8ee; }
+#lc-root .lt-statcard.is-open { outline: 2px solid var(--lc-gold); }
+#lc-root .lt-stat-detail { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+#lc-root .lt-stat-sub { margin: 4px 0 0; font-weight: 700; }
+#lc-root .lt-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+#lc-root .lt-stat-tile { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; text-align: center; background: rgba(0, 0, 0, 0.22); border-radius: 10px; }
+#lc-root .lt-statcard .lt-stat-tile b { font-size: 18px; color: #fff; }
+#lc-root .lt-stat-tile span { font-size: 11px; color: #d8cdee; }
+#lc-root .lt-stat-tile small { font-size: 11px; color: var(--lc-gold); }
+#lc-root .lt-stat-bids { display: flex; flex-wrap: wrap; gap: 6px; }
+#lc-root .lt-stat-bids > span { padding: 4px 8px; font-size: 13px; background: rgba(0, 0, 0, 0.22); border-radius: 999px; }
+#lc-root .lt-stat-bids b { color: #fff; font-size: 13px; }
+#lc-root .lt-stat-bids small { color: var(--lc-gold); }
+#lc-root .lt-stat-detail .lt-red { color: #ff5a6b; }

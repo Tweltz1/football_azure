@@ -6,6 +6,8 @@ const COMMON = [1, 3, 5, 10, 15, 20, 30, 40, 50, 75];
 const WINS = [1, 2, 3, 5, 8, 10, 15, 20, 30, 50];
 const BIDS = [1, 2, 3, 5, 7, 10, 13, 16, 20, 25];
 const RARE = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15];
+// How far down your team was (500 points below zero) before you came back and won.
+const DEPTH = [10, 100, 150, 200, 250, 300, 350, 400, 450, 490];
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -24,6 +26,7 @@ export const TRACKS = [
   { id: 'dnola', title: 'Eclipse', a: '#7a1fd1', b: '#030007', c: '#ff8a3d', face: '#f7f0ff', emblem: '🌑', art: 'eclipse', need: RARE, goal: (n) => `Make ${plural(n, 'Double Nola')}` },
   { id: 'big', title: 'Rocket', a: '#ff6d00', b: '#2e0a00', c: '#ffe082', face: '#fff6ee', emblem: '🚀', art: 'rocket', need: RARE, goal: (n) => `Make ${plural(n, 'bid')} of 8 or more` },
   { id: 'slam', title: 'Thunder', a: '#00b8d9', b: '#001d24', c: '#fffb8f', face: '#effcff', emblem: '⚡', art: 'bolt', need: RARE, goal: (n) => `Take all 10 tricks ${n === 1 ? 'once' : `${n} times`}` },
+  { id: 'comeback', title: 'Phoenix', a: '#ff4d00', b: '#2b0500', c: '#ffd23f', face: '#fff5eb', emblem: '🔥', art: 'phoenix', need: DEPTH, best: true, goal: (n) => (n <= 10 ? 'Win 500 after your team was below 0' : `Win 500 after your team was down to -${n}`) },
   { id: 'shutout', title: 'Fortress', a: '#c4502f', b: '#260803', c: '#ffcf9e', face: '#fdf3ef', emblem: '🏰', art: 'castle', need: RARE, goal: (n) => `Win 500 with the other team at 0 or less ${n === 1 ? 'once' : `${n} times`}` },
 ];
 
@@ -46,6 +49,7 @@ const ART = {
   fan: '<rect x="-5" y="-8" width="10" height="15" rx="2" transform="rotate(-18)" opacity=".6"/><rect x="-5" y="-8" width="10" height="15" rx="2" transform="rotate(14)" opacity=".8"/><rect x="-5" y="-8.5" width="10" height="15" rx="2"/><path d="M0-5L2.6 0 0 5-2.6 0z" fill="BG"/>',
   rocket: '<path d="M0-10C4.5-6 4.5 2 3.2 5h-6.4C-4.5 2-4.5-6 0-10z"/><path d="M-3.2 1L-6.5 6l3.3-1zM3.2 1l3.3 5-3.3-1z"/><circle cy="-3" r="1.8" fill="BG"/><path d="M-2 5.5h4L0 10z" fill="FLAME"/>',
   bolt: '<path d="M2.5-10L-6 1.5h5L-3 10 6.5-2.5h-5L4-10z"/>',
+  phoenix: '<path d="M0-10C3-6 8-3 7 3 6 7 3 9.5 0 9.5-3 9.5-6 7-7 3-8-3-3-6 0-10z"/><path d="M0-2C2 0 3.5 2 3 4.5 2.6 6.5 1.4 7.5 0 7.5-1.4 7.5-2.6 6.5-3 4.5-3.5 2-2 0 0-2z" fill="#ff5a00"/><path d="M-7-1C-10-4-10-8-9-9-7-6-6-4-5-2zM7-1C10-4 10-8 9-9 7-6 6-4 5-2z"/>',
   castle: '<path d="M-9 9V-4h3v-3h2.5v3h2.5v-3h2v3h2.5v-3h2.5v3h3V9H2.5V4a2.5 2.5 0 0 0-5 0V9z"/>',
 };
 
@@ -162,7 +166,7 @@ const nameKey = (name) => String(name || '').trim().toLowerCase();
  * for games saved before accounts were recorded, when it has their name.
  */
 export function progressFor(fiveGames, clubsGames, { uid, name }) {
-  const c = { games: 0, fiveWins: 0, clubsWins: 0, S: 0, C: 0, D: 0, H: 0, NT: 0, nola: 0, dnola: 0, big: 0, slam: 0, shutout: 0 };
+  const c = { games: 0, fiveWins: 0, clubsWins: 0, S: 0, C: 0, D: 0, H: 0, NT: 0, nola: 0, dnola: 0, big: 0, slam: 0, shutout: 0, comeback: 0 };
   const mine = (seat) => seat && !seat.bot && (seat.uid ? !!uid && seat.uid === uid : !!name && nameKey(seat.name) === nameKey(name));
   fiveGames.forEach((s) => {
     if (!s || !Array.isArray(s.seats) || s.winner == null) return;
@@ -174,6 +178,9 @@ export function progressFor(fiveGames, clubsGames, { uid, name }) {
     if (team === s.winner) {
       c.fiveWins += 1;
       if (((s.scores || [])[1 - team] ?? 1) <= 0) c.shutout += 1;
+      // Comeback: the deepest your team was below zero in a game you won.
+      const low = (s.lows || [])[team];
+      if (typeof low === 'number' && low < 0) c.comeback = Math.max(c.comeback, -low);
     }
     (s.history || []).forEach((h) => {
       if (!h || !h.made) return;
