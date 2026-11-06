@@ -13,7 +13,7 @@ import Rankings from './components/Rankings';
 import GamesPage from './games/GamesPage';
 import RacePage from './games/race/RacePage';
 import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory';
-import { useAuth, signOut } from './AuthContext';
+import { useAuth, signIn, signOut } from './AuthContext';
 import PartyRoutes, { isPartyPath } from './party/PartyRoutes';
 import DndRoutes, { isDndPath } from './dnd/DndRoutes';
 import { HOOD_GAMES_PATH, homeHref, homeLabel, inGamesApp } from './native/gamesApp';
@@ -75,7 +75,7 @@ function App() {
             </a>
             <div className="nav-links" aria-label="Primary navigation">
               <a href={homeHref()}>← Back</a>
-              <a href="/leagues">Sign in</a>
+              <button type="button" className="logout-link" onClick={() => signIn('google')}>Sign in</button>
             </div>
           </nav>
           <main className="app-main">

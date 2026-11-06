@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import SoundToggle from '../components/SoundToggle';
+import { signIn } from '../AuthContext';
 import { CREW } from '../data/crew';
 import { GAME_KINDS, GAMES } from './sim.generated';
 import GamePlayer from './GamePlayer';
@@ -29,7 +30,7 @@ const GamesPage = ({ guest = false }) => {
         <div>
           <p className="section-kicker">Draft games</p>
           <h2>Games</h2>
-          <p className="games-sub">{guest && 'Playing as a guest: sign in to get on the leaderboards. '}Practice here as much as you want. In the draft lobby the commissioner can put up a game for extra draft dollars, and everyone gets one official try.</p>
+          <p className="games-sub">{guest && 'Playing as a guest: sign in with Google to get on the leaderboards. '}Practice here as much as you want. In the draft lobby the commissioner can put up a game for extra draft dollars, and everyone gets one official try.</p>
         </div>
         <SoundToggle />
       </div>
@@ -83,7 +84,15 @@ const GamesPage = ({ guest = false }) => {
           ))}
         </div>
       )}
-      {!game && <Leaderboards />}
+      {/* The leaderboards need an account (the server answers 401 to guests). */}
+      {!game && !guest && <Leaderboards />}
+      {!game && guest && (
+        <section className="leaderboards" aria-label="Leaderboards">
+          <div className="leaderboards-head"><h3>Leaderboards</h3></div>
+          <p className="games-sub">Sign in with Google to see the leaderboards and get your scores on them.</p>
+          <button type="button" onClick={() => signIn('google')}>Sign in with Google</button>
+        </section>
+      )}
     </div>
   );
 };
