@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { HubConnectionBuilder } from '@microsoft/signalr';
+import { createDraftConnection } from '../realtime';
 import { useAuth } from '../AuthContext';
-import { getSignalRInfo } from '../api';
+import { API_BASE_URL } from '../api';
+import { isOfflineLeague } from '../offline/storage';
+import { BoardGrid, pickLabel, reviewLabel } from '../whiteboard/BoardViews';
+import { isWhiteboardLeague } from '../whiteboard/biddingStyle';
 import './DraftTvView.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 const DraftTvView = () => {
   const { leagueId } = useParams();
@@ -43,13 +45,8 @@ const DraftTvView = () => {
 
     const setupConnection = async () => {
       try {
-        const info = await getSignalRInfo(user?.userId || 'tv-board');
         if (!isMounted) return;
-
-        connection = new HubConnectionBuilder()
-          .withUrl(info.data.url, { accessTokenFactory: () => info.data.accessToken })
-          .withAutomaticReconnect()
-          .build();
+        connection = createDraftConnection({ leagueIds: [leagueId], userId: user?.userId });
 
         connection.on('draftStateUpdate', (updatedLeague) => {
           if (updatedLeague?.id === leagueId) {
@@ -60,7 +57,7 @@ const DraftTvView = () => {
 
         await connection.start();
       } catch (error) {
-        console.error('TV draft board SignalR connection failed:', error);
+        console.error('TV draft board live connection failed:', error);
       }
     };
 
@@ -75,9 +72,7 @@ const DraftTvView = () => {
   const status = String(league?.status || '').toLowerCase();
   const currentPlayer = useMemo(() => findPlayer(league, league?.currentPlayerId), [league]);
   const lastPick = league?.draftLog?.length ? league.draftLog[league.draftLog.length - 1] : null;
-  const currentBids = useMemo(() => buildBidRows(league, league?.activeBids), [league]);
   const lastPickBids = useMemo(() => buildBidRows(league, lastPick?.allBids), [league, lastPick]);
-  const topBid = currentBids[0];
   const winningTeam = getTeamById(league, lastPick?.winningTeamId);
   const rosterTotal = getRosterTotal(league?.rosterSettings);
 
@@ -91,7 +86,12 @@ const DraftTvView = () => {
 
   const isAuction = status === 'drafting' || status === 'tiebreaker';
   const isManual = status === 'manual';
-  const isIntermissionLike = status === 'intermission' || status === 'completed' || !isAuction;
+  const isBoardReview = status === 'boardreview' && Boolean(league.boardReview);
+  const isIntermissionLike = !isBoardReview && (status === 'intermission' || status === 'completed' || !isAuction);
+  const isWhiteboard = !isManual && isWhiteboardLeague(league);
+  const lastPickHasBoards = Object.values(lastPick?.allBids || {}).some((bid) => bid?.board);
+  const showPickBoards = isIntermissionLike && !isManual && lastPick && (isWhiteboard || lastPickHasBoards);
+  const boardCount = Object.keys(league.boardReview?.bids || {}).length;
 
   return (
     <div className="draft-tv-view">
@@ -99,11 +99,16 @@ const DraftTvView = () => {
         <div>
           <p>Hood League Live Draft</p>
           <h1>{league.name}</h1>
+          {/* Offline it opens in the same tab as the draft room, so give a way back. */}
+          {isOfflineLeague(leagueId) && <Link to={`/draft/${leagueId}`} className="tv-back-link">Back to draft room</Link>}
         </div>
         <div className="tv-status-strip">
-          <span>{String(league.status || 'waiting').toUpperCase()}</span>
-          <strong className={isManual ? 'manual-current-player' : ''}>
-            {isManual ? (currentPlayer?.name || 'No player up') : formatTimer(timer)}
+          <span className={`tv-status-bug status-${status || 'waiting'}`}>{isBoardReview ? 'BOARDS UP' : String(league.status || 'waiting').toUpperCase()}</span>
+          <strong
+            className={isManual || isBoardReview ? 'manual-current-player' : `tv-clock${isAuction && timer > 0 && timer <= 5 ? ' is-urgent' : ''}`}
+            style={isAuction ? { '--timer-progress': Math.min(1, Math.max(0, timer / (Number(status === 'tiebreaker' ? league.draftTimers?.rebidTimer : league.draftTimers?.bidTimer) || 20))) } : undefined}
+          >
+            {isManual ? (currentPlayer?.name || 'No player up') : isBoardReview ? 'Commissioner deciding' : formatTimer(timer)}
           </strong>
         </div>
       </header>
@@ -116,7 +121,7 @@ const DraftTvView = () => {
               <>
                 <h2>{currentPlayer.name}</h2>
                 <div className="tv-player-meta">
-                  <span>{currentPlayer.position}</span>
+                  <span className={`pos-badge pos-${String(currentPlayer.position || '').toLowerCase()}`}>{currentPlayer.position}</span>
                   <span>{currentPlayer.team}</span>
                   <span>Bye {currentPlayer.bye || '-'}</span>
                   <span>Rank #{currentPlayer.rank || '-'}</span>
@@ -127,25 +132,48 @@ const DraftTvView = () => {
             )}
           </div>
 
-          <div className="tv-current-bid">
-            <p className="tv-kicker">Current Bid</p>
-            <strong>{topBid ? `$${topBid.amount}` : '$0'}</strong>
-            <span>{topBid ? topBid.teamName : 'No bids yet'}</span>
+          <div className="tv-current-bid tv-sealed-bids">
+            <p className="tv-kicker">{isWhiteboard ? 'Whiteboard Auction' : 'Blind Auction'}</p>
+            <strong>Sealed</strong>
+            <span>{isWhiteboard ? 'Boards flip when the clock hits 0' : 'Bids are revealed when the clock hits 0'}</span>
           </div>
 
-          <BidBoard title="All Current Bids" bids={currentBids} emptyText="No teams have bid yet." />
+          <div className="tv-bid-board">
+            <p className="tv-kicker">Last Pick</p>
+            {lastPick ? (
+              <div className="tv-last-pick">
+                <strong>{lastPick.player?.name || 'Unknown Player'}</strong>
+                <span>{winningTeam?.name || 'Unknown Team'} for ${lastPick.winningBid}</span>
+              </div>
+            ) : (
+              <div className="tv-empty-bids">No picks yet.</div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {isBoardReview && (
+        <section className="tv-board-reveal">
+          <header>
+            <div>
+              <p className="tv-kicker">Boards Up</p>
+              <h2>{currentPlayer?.name || 'Current player'}</h2>
+            </div>
+            <span>{boardCount} board{boardCount === 1 ? '' : 's'} · waiting for the commissioner</span>
+          </header>
+          <BoardGrid league={league} bids={league.boardReview.bids} label={reviewLabel(league)} revealKey={league.boardReview.playerId || ''} size="tv" />
         </section>
       )}
 
       {isIntermissionLike && (
-        <section className="tv-result-strip">
+        <section className={`tv-result-strip${showPickBoards ? ' has-boards' : ''}`}>
           <div>
             <p className="tv-kicker">{isManual && currentPlayer ? 'Up Now' : isManual ? 'Manual Tracker' : 'Last Result'}</p>
             {isManual && currentPlayer ? (
               <>
                 <h2>{currentPlayer.name}</h2>
                 <div className="tv-player-meta">
-                  <span>{currentPlayer.position}</span>
+                  <span className={`pos-badge pos-${String(currentPlayer.position || '').toLowerCase()}`}>{currentPlayer.position}</span>
                   <span>{currentPlayer.team}</span>
                   <span>Bye {currentPlayer.bye || '-'}</span>
                   <span>Rank #{currentPlayer.rank || '-'}</span>
@@ -166,9 +194,22 @@ const DraftTvView = () => {
                   : lastPick ? `Commissioner entered $${lastPick.winningBid}` : 'No picks entered yet.'}
               </div>
             </div>
-          ) : (
+          ) : showPickBoards ? null : (
             <BidBoard title="Last Player Bids" bids={lastPickBids} emptyText="No completed bids yet." compact />
           )}
+        </section>
+      )}
+
+      {showPickBoards && (
+        <section className="tv-board-reveal is-result">
+          <BoardGrid
+            league={league}
+            bids={lastPick.allBids || {}}
+            winnerId={winningTeam?.ownerId}
+            label={pickLabel(league, lastPick)}
+            revealKey={`${lastPick.player?.id}-${league.draftLog.length}`}
+            size="tv"
+          />
         </section>
       )}
 
@@ -183,7 +224,7 @@ const DraftTvView = () => {
               {(team.roster || []).length > 0 ? (team.roster || []).map((spot, index) => {
                 const player = spot.player || {};
                 return (
-                  <li key={`${team.id}-${player.id || index}`}>
+                  <li key={`${team.id}-${player.id || index}`} className={`pos-${String(player.position || spot.position || '').toLowerCase()}`}>
                     <strong>{player.name || 'Unknown Player'}</strong>
                     <span>{player.position || spot.position || '-'} / {player.team || '-'} / Bye {player.bye || '-'}</span>
                   </li>

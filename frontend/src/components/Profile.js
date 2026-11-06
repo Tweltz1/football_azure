@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../api';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
+import { usePlayerDataVersion } from '../data/livePlayerData';
 import {
     buildPlayerBoard,
     filterPlayerBoard,
@@ -24,11 +26,11 @@ import {
     TIER_DEFINITIONS,
 } from '../data/strategyUtils';
 import TierBoard from './TierBoard';
+import { ShowMoreButton, useShowMore } from './ShowMore';
 import { notifyProfileUpdated } from '../profileSync';
 import '../App.css';
 import '../PlayerBoard.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 const Profile = () => {
     const { user } = useAuth();
@@ -37,6 +39,7 @@ const Profile = () => {
     const [displayName, setDisplayName] = useState('');
     const [defaultTeamName, setDefaultTeamName] = useState('');
     const [profileMessage, setProfileMessage] = useState('');
+    const [syncInfo, setSyncInfo] = useState(null);
     const [noteDrafts, setNoteDrafts] = useState({});
     const [tierAssignments, setTierAssignments] = useState({});
     const [budgetPlan, setBudgetPlan] = useState(DEFAULT_BUDGET_PLAN);
@@ -71,6 +74,8 @@ const Profile = () => {
                 });
                 setUserProfile(response.data);
                 syncProfileFields(response.data);
+                const savedAt = Number(response.headers?.['x-hl-saved-at']) || 0;
+                setSyncInfo(response.config?.fromSavedCopy ? { offline: true, savedAt } : { offline: false, savedAt: Date.now() });
             } catch (error) {
                 console.error('Error fetching user profile:', error);
                 alert('Could not fetch your profile.');
@@ -81,13 +86,15 @@ const Profile = () => {
         getProfile();
     }, [user, syncProfileFields]);
 
-    const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode]);
+    const playersVersion = usePlayerDataVersion();
+    const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode, playersVersion]); // eslint-disable-line react-hooks/exhaustive-deps -- recompute when a newer player list arrives
     const filteredPlayerPool = useMemo(() => filterPlayerBoard(playerBoard, {
         searchTerm,
         positionFilter,
         sortBy,
     }), [playerBoard, searchTerm, positionFilter, sortBy]);
     const visiblePlayers = filteredPlayerPool.slice(0, playerLimit);
+    const playerPage = useShowMore(visiblePlayers, PLAYER_PAGE_SIZE, `${searchTerm}|${positionFilter}|${sortBy}|${playerLimit}|${scoringMode}`);
     const scoringLabel = getScoringLabel(scoringMode);
     const favoriteIds = userProfile?.favoritePlayerIds || [];
     const favoritePlayers = playerBoard.filter(player => favoriteIds.includes(player.id));
@@ -106,6 +113,7 @@ const Profile = () => {
             const response = await axios.post(`${API_BASE_URL}/user-profile/${user.userId}`, patch);
             setUserProfile(response.data);
             syncProfileFields(response.data, syncNotes, syncStrategy);
+            setSyncInfo({ offline: false, savedAt: Date.now() });
             notifyProfileUpdated();
             setProfileMessage(successMessage);
             setTimeout(() => setProfileMessage(''), 2500);
@@ -247,6 +255,7 @@ const Profile = () => {
                     <span>{scoringLabel}</span>
                     <span>Updated {formatDate(playerPoolMeta.fetchedAt)}</span>
                 </div>
+                <ProfileSyncLine lastSaved={userProfile.lastSaved} syncInfo={syncInfo} />
             </section>
 
             <section className="card profile-settings-panel">
@@ -324,7 +333,7 @@ const Profile = () => {
                                     <span>
                                         <span className="player-name">{player.name}</span>
                                         <span className="player-subline">
-                                            <span className="position-badge">{player.position}</span>
+                                            <span className={`position-badge pos-${String(player.position || '').toLowerCase()}`}>{player.position}</span>
                                             <span className="team-badge">{player.team}</span>
                                             <span className="note-badge">Bye {player.bye || '-'}</span>
                                             {tierAssignments[player.id] && <span className="note-badge">T{tierAssignments[player.id]}</span>}
@@ -425,7 +434,7 @@ const Profile = () => {
                     <div className="profile-board-actions">
                         <button type="button" className={boardView === 'list' ? 'edit-roster-button' : ''} onClick={() => setBoardView('list')}>List View</button>
                         <button type="button" className={boardView === 'tiers' ? 'edit-roster-button' : ''} onClick={() => setBoardView('tiers')}>Tier View</button>
-                        <div className="board-count">Showing {visiblePlayers.length} of {filteredPlayerPool.length}</div>
+                        <div className="board-count">Showing {boardView === 'list' ? playerPage.shown.length : visiblePlayers.length} of {filteredPlayerPool.length}</div>
                     </div>
                 </div>
 
@@ -474,8 +483,9 @@ const Profile = () => {
                         onTierChange={handleTierChange}
                     />
                 ) : (
+                    <>
                     <ul className="player-list player-board-list">
-                        {visiblePlayers.map(player => {
+                        {playerPage.shown.map(player => {
                             const isFavorite = favoriteIds.includes(player.id);
                             const hasNote = Boolean(userProfile.playerNotes?.[player.id]);
                             const availability = getPlayerAvailability(player);
@@ -486,7 +496,7 @@ const Profile = () => {
                                         <span>
                                             <span className="player-name">{player.name}</span>
                                             <span className="player-subline">
-                                                <span className="position-badge">{player.position}</span>
+                                                <span className={`position-badge pos-${String(player.position || '').toLowerCase()}`}>{player.position}</span>
                                                 <span className="team-badge">{player.team}</span>
                                                 <span className={`status-badge ${availability.tone}`} title={availability.text}>{availability.label}</span>
                                                 {hasNote && <span className="note-badge">Note</span>}
@@ -497,7 +507,7 @@ const Profile = () => {
                                     <div className="player-row-actions">
                                         <div className="player-data-strip">
                                             <span>Bye {player.bye || '-'}</span>
-                                            <span>{scoringLabel}</span>
+                                            <span className="data-scoring">{scoringLabel}</span>
                                         </div>
                                         <select
                                             className="tier-select"
@@ -529,17 +539,40 @@ const Profile = () => {
                             );
                         })}
                     </ul>
+                    <ShowMoreButton hidden={playerPage.hidden} step={PLAYER_PAGE_SIZE} onClick={playerPage.showMore} />
+                    </>
                 )}
             </section>
         </div>
     );
 };
 
+const PLAYER_PAGE_SIZE = 50;
+
 const formatDate = (value) => {
     if (!value) return 'recently';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'recently';
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+const formatWhen = (value) => {
+    const date = new Date(value);
+    if (!value || Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+};
+
+// Where this profile came from: the account (just synced) or the copy saved on this phone, and where it
+// was last changed.
+const ProfileSyncLine = ({ lastSaved, syncInfo }) => {
+    if (!syncInfo && !lastSaved) return null;
+    const sync = syncInfo?.offline
+        ? `No internet: showing the copy saved on this phone${syncInfo.savedAt ? ` ${formatWhen(syncInfo.savedAt)}` : ''}. Changes need internet.`
+        : syncInfo ? `Synced with your account ${formatWhen(syncInfo.savedAt)}.` : '';
+    const changed = lastSaved?.at
+        ? `Last changed from the ${lastSaved.via === 'app' ? 'iPhone app' : 'website'} ${formatWhen(lastSaved.at)}.`
+        : '';
+    return <p className={`profile-sync-line${syncInfo?.offline ? ' is-offline' : ''}`}>{[sync, changed].filter(Boolean).join(' ')}</p>;
 };
 
 export default Profile;

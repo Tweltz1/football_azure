@@ -1,0 +1,4 @@
+# The iPhone app downloads the latest player list from here (it runs from its own origin).
+/player-data.json
+  Access-Control-Allow-Origin: *
+  Cache-Control: no-cache

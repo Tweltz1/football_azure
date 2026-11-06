@@ -1,0 +1,14 @@
+{
+  "appId": "com.hoodleague.games",
+  "appName": "Hood Games",
+  "webDir": "../frontend/build",
+  "server": {
+    "appStartPath": "hood-games"
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0a0b0e",
+    "appendUserAgent": "HoodGames"
+  },
+  "backgroundColor": "#0a0b0e"
+}

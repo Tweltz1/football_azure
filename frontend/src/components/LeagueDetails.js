@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../api';
 import { useAuth } from '../AuthContext';
 import '../App.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 const LeagueDetails = () => {
     const { leagueId } = useParams();
@@ -92,8 +92,8 @@ const LeagueDetails = () => {
     const canStartDraft = isCurrentUserAdmin && allMembersReady;
 
     return (
-        <div style={{ padding: '20px' }}>
-            <h2>Drafting in {league.name}</h2>
+        <div className="draft-screen" style={{ padding: '20px' }}>
+            <h2 className="draft-screen-title">Drafting in {league.name}</h2>
             
             <div className="card">
                 <h3>Draft Controls & Overview</h3>
@@ -139,8 +139,8 @@ const LeagueDetails = () => {
                             <li key={player.id} className="player-list-item">
                                 <span>{player.name} ({player.position})</span>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <span style={{ color: 'gold', fontSize: '24px' }}>★</span>
-                                    <span onClick={() => handleToggleFavorite(player.id)} style={{ color: 'red', cursor: 'pointer', fontSize: '18px', fontWeight: 'bold' }}>X</span>
+                                    <span className="favorite-star">★</span>
+                                    <span onClick={() => handleToggleFavorite(player.id)} className="favorite-remove">X</span>
                                 </div>
                             </li>
                         ))
@@ -156,7 +156,7 @@ const LeagueDetails = () => {
                         availablePlayers.map(player => (
                             <li key={player.id} className="player-list-item">
                                 <span>{player.name} ({player.position})</span>
-                                <span onClick={() => handleToggleFavorite(player.id)} style={{ color: '#ccc', cursor: 'pointer', fontSize: '24px' }} title="Add to Favorites">☆</span>
+                                <span onClick={() => handleToggleFavorite(player.id)} className="favorite-add" title="Add to Favorites">☆</span>
                             </li>
                         ))
                     ) : (

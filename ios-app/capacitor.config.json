@@ -1,0 +1,10 @@
+{
+  "appId": "com.hoodleague.draft",
+  "appName": "Hood League",
+  "webDir": "../frontend/build",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0a0b0e"
+  },
+  "backgroundColor": "#0a0b0e"
+}
