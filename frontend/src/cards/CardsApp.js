@@ -51,6 +51,31 @@ const useWakeLock = (on) => {
   }, [on]);
 };
 
+// ---------- Your picture ----------
+
+const AVATAR_KEY = `ct-avatar${TAB}`;
+const AVATAR_PX = 64;
+const readAvatar = () => {
+  try { const v = window.localStorage.getItem(AVATAR_KEY); return v && v.startsWith('data:image/') ? v : ''; } catch (error) { return ''; }
+};
+/** A photo, cropped to a square and shrunk to a small JPEG, so it's cheap to send to the table. */
+const shrinkPhoto = (file) => new Promise((resolve, reject) => {
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const side = Math.min(img.width, img.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = AVATAR_PX;
+    canvas.height = AVATAR_PX;
+    canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, AVATAR_PX, AVATAR_PX);
+    URL.revokeObjectURL(url);
+    resolve(canvas.toDataURL('image/jpeg', 0.8));
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Not an image')); };
+  img.src = url;
+});
+const cleanAvatar = (v) => (typeof v === 'string' && v.startsWith('data:image/jpeg;base64,') && v.length <= 12000 ? v : '');
+
 // ---------- Voice ----------
 
 function VoiceBar({ code, me, players, send }) {
@@ -150,7 +175,7 @@ function HostTable({ me, gameId, resume, look, onExit }) {
   const [code] = useState(() => resume?.code || newRoomCode());
   const [, setFrame] = useState(0);
   const [note, setNote] = useState(resume ? '' : '');
-  const players = useRef([{ cid: me.cid, name: me.name, uid: me.uid, design: me.design, lastSeen: Date.now(), voice: false, muted: false }]);
+  const players = useRef([{ cid: me.cid, name: me.name, uid: me.uid, design: me.design, avatar: cleanAvatar(me.avatar), lastSeen: Date.now(), voice: false, muted: false }]);
   const game = useRef(resume ? resume.state : null);
   const saveId = useRef(resume ? resume.id : newGameId());
   const mode = useRef('lobby');
@@ -212,7 +237,11 @@ function HostTable({ me, gameId, resume, look, onExit }) {
       };
     }
     const g = game.current;
-    return { ...base, game: g && g.players.some((p) => p.cid === cid) ? def.view(g, cid, nowMs()) : null };
+    if (!g || !g.players.some((p) => p.cid === cid)) return { ...base, game: null };
+    const view = def.view(g, cid, nowMs());
+    const pics = new Map(players.current.filter((p) => p.avatar).map((p) => [p.cid, p.avatar]));
+    view.seats = view.seats.map((x, i) => ({ ...x, avatar: (!g.seats[i].bot && pics.get(g.seats[i].cid)) || null }));
+    return { ...base, game: view };
   }, [code, def, gameId, lobbySeats, me.name, note]);
 
   const pushAll = useCallback((force = false) => {
@@ -256,6 +285,7 @@ function HostTable({ me, gameId, resume, look, onExit }) {
       }
       if (typeof msg.uid === 'string' && msg.uid.length <= 64) p.uid = msg.uid;
       if (typeof msg.design === 'string' && msg.design.length <= 24) p.design = msg.design;
+      if (msg.avatar !== undefined) p.avatar = cleanAvatar(msg.avatar);
       const g = game.current;
       if (g) {
         setLook(g, p.cid, p);
@@ -408,7 +438,7 @@ function GuestTable({ me, code, look, onExit }) {
       if (payload && payload.code === code) setScreen(payload);
     }, null, PREFIX);
     phoneRef.current = phone;
-    const hello = () => phone.send('hello', { name: me.name, uid: me.uid, design: me.design });
+    const hello = () => phone.send('hello', { name: me.name, uid: me.uid, design: me.design, avatar: me.avatar || '' });
     const first = window.setTimeout(hello, 500);
     const timer = window.setInterval(() => {
       hello();
@@ -420,7 +450,7 @@ function GuestTable({ me, code, look, onExit }) {
       phone.close();
       phoneRef.current = null;
     };
-  }, [code, me.cid, me.name, me.uid, me.design]);
+  }, [code, me.cid, me.name, me.uid, me.design, me.avatar]);
 
   const act = useCallback((type, data) => phoneRef.current?.send('act', { ...data, type }), []);
   const leave = () => {
@@ -690,6 +720,21 @@ export default function CardsApp() {
     return { cid: saved.cid || newCid(), name: saved.name || party.name || '', design: saved.design || 'classic' };
   });
   const [user, setUser] = useState(null);
+  const [avatar, setAvatar] = useState(readAvatar);
+  const [picNote, setPicNote] = useState('');
+  const pickPhoto = async (file) => {
+    if (!file) return;
+    try {
+      const pic = await shrinkPhoto(file);
+      setAvatar(pic);
+      setPicNote('');
+      try { window.localStorage.setItem(AVATAR_KEY, pic); } catch (error) { /* private mode */ }
+    } catch (error) { setPicNote("That file didn't open as a picture."); }
+  };
+  const dropPhoto = () => {
+    setAvatar('');
+    try { window.localStorage.removeItem(AVATAR_KEY); } catch (error) { /* ignore */ }
+  };
   const look = useMemo(() => {
     const party = readJson('lc-phone', {});
     return isLookCode(party.look) ? party.look : lookCode({ ...crewLook(me.cid.charCodeAt(2) || 0), costume: 0 });
@@ -727,7 +772,7 @@ export default function CardsApp() {
   const home = () => setPage({ page: 'home' });
   const named = me.name.trim().length > 0;
   // Designs past Classic need the account; signed out, everyone plays Classic.
-  const player = { ...me, uid: user ? user.id : null, design: user ? me.design : 'classic' };
+  const player = { ...me, avatar, uid: user ? user.id : null, design: user ? me.design : 'classic' };
   const pickDesign = (id) => {
     setMe((m) => ({ ...m, design: id }));
     if (user) supabase.auth.updateUser({ data: { card_design: id } }).catch(() => {});
@@ -744,9 +789,17 @@ export default function CardsApp() {
       <a className="lcp-link lt-back" href={homeHref()}>← {homeLabel()}</a>
       <h1 className="lc-title lt-h1">Card Table</h1>
       <p className="lt-note">500 and Dirty Clubs, played on phones. No TV needed: one phone opens the table and everyone else joins with the code. Bots fill empty seats.</p>
-      <label className="lt-name">Your name
-        <input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value.slice(0, 12) })} maxLength={12} placeholder="Name" autoComplete="nickname" />
-      </label>
+      <div className="lt-namerow">
+        <label className="lt-avatar-pick" title="Your picture">
+          {avatar ? <img src={avatar} alt="You" /> : <span>📷<small>Photo</small></span>}
+          <input type="file" accept="image/*" onChange={(e) => { pickPhoto(e.target.files && e.target.files[0]); e.target.value = ''; }} />
+        </label>
+        <label className="lt-name">Your name
+          <input value={me.name} onChange={(e) => setMe({ ...me, name: e.target.value.slice(0, 12) })} maxLength={12} placeholder="Name" autoComplete="nickname" />
+        </label>
+      </div>
+      {avatar && <button type="button" className="lcp-link lt-avatar-drop" onClick={dropPhoto}>Remove my picture</button>}
+      {picNote && <p className="lt-note">{picNote}</p>}
       <div className="lt-homebtns">
         {Object.values(GAMES).map((g) => (
           <button type="button" key={g.id} className="lt-gamebtn" disabled={!named} onClick={() => setPage({ page: 'host', gameId: g.id })}>

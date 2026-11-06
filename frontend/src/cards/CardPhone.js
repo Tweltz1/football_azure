@@ -185,7 +185,7 @@ export const TableView = ({ seats, me, plays = [], winner = null, center = null 
             style={{ ...at(i, 38, 41), borderColor: s.color || undefined }}
           >
             <span className="lt-seat-text">
-              <b>{i === me ? `${s.name} (you)` : s.name}{s.dealer ? <i className="lt-dealer">D</i> : null}</b>
+              <b>{s.avatar && <img className="lt-avatar" src={s.avatar} alt="" />}{i === me ? `${s.name} (you)` : s.name}{s.dealer ? <i className="lt-dealer">D</i> : null}</b>
               {s.line && <small>{s.line}</small>}
               {s.bubble && <span className={`lt-bubble${s.hot ? ' is-hot' : ''}`}>{suits(s.bubble)}</span>}
             </span>
