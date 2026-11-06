@@ -1,0 +1,16 @@
+name: Temporary weather check
+on:
+  push:
+    branches: [claude/project-thread-mnh3z6]
+    paths: ['.github/workflows/tmp-weather-check.yml']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      P: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - run: |
+          sleep 60
+          API="https://$P.supabase.co/functions/v1/api"
+          curl -s -w '\nHTTP %{http_code}\n' "$API/weather?week=10" | jq -c '.games[]? | {home, away, indoor, hoursOut, f: .forecast}' 2>/dev/null || curl -s "$API/weather?week=10"
+          curl -s -w '\nHTTP %{http_code}\n' "$API/weather?week=10" | tail -c 400
