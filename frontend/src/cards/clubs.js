@@ -8,10 +8,11 @@
 
 import {
   botCutAt, clampCut, CUT_MS, cutDeck,
-  ACTIVE_MS, autoSeat, botCard, BOT_MS, emit, estimateTricks, ledSuitOf, legalCards, makeDeck, makeSeats, mulberry,
+  ACTIVE_MS, autoSeat, botCard, BOT_MS, effSuit, emit, isTrump, ledSuitOf, legalCards, makeDeck, makeSeats, mulberry, rankOf, unseenCards,
   seatOf, seatWaiting, setPhase, shuffle, sortHand, SUITS, winningPlay,
 } from './cards.js';
 
+const DECK = makeDeck();
 export const MIN_SEATS = 4;
 export const MAX_SEATS = 6;
 export const HAND = 5;
@@ -44,6 +45,7 @@ function deal(s, now) {
   s.trick = { plays: [] };
   s.lastTrick = null;
   s.trickNo = 0;
+  s.gone = [];
   s.result = null;
   // The player to the dealer's left cuts, then the cards go out.
   s.turn = (s.dealer + 1) % n;
@@ -184,6 +186,7 @@ export function play(s, seat, card, now) {
   if (!hand.includes(card)) return false;
   if (!legalCards(hand, s.trump, ledSuitOf(s.trick, s.trump)).includes(card)) return false;
   s.hands[seat] = hand.filter((c) => c !== card);
+  s.gone = (s.gone || []).concat([card]);
   s.trick.plays.push({ seat, card });
   emit(s, 'play', { seat, card });
   if (s.trick.plays.length >= players(s)) {
@@ -221,24 +224,57 @@ function score(s, now) {
 
 // ---------- Bots ----------
 
-const bestSuit = (hand) => SUITS.map((suit) => ({ suit, est: estimateTricks(hand, suit) }))
-  .sort((a, b) => b.est - a.est)[0];
+// The tricks a hand can count on with this trump, Dirty Clubs style: the bowers and the ace of trump are
+// near-sure, other trumps are worth more the more of them you hold, and an outside ace is a likely trick.
+// A void suit makes a low trump much better, since you can trump in.
+function clubsTricks(hand, trump) {
+  const trumps = hand.filter((c) => isTrump(c, trump));
+  const suits = new Set(hand.filter((c) => !isTrump(c, trump)).map((c) => effSuit(c, trump)));
+  let est = 0;
+  trumps.forEach((c) => {
+    const r = rankOf(c);
+    const right = r === 11 && c.endsWith(trump);
+    const left = r === 11 && !right;
+    if (right) est += 1;
+    else if (left) est += 0.85;
+    else if (r === 14) est += 0.75;
+    else if (r === 13) est += 0.55;
+    else est += trumps.length >= 3 ? 0.5 : 0.3;
+  });
+  hand.forEach((c) => { if (!isTrump(c, trump) && rankOf(c) === 14) est += 0.6; });
+  const voids = 3 - suits.size;
+  if (trumps.length && voids > 0) est += Math.min(trumps.length, voids) * 0.25;
+  return est;
+}
+const bestSuit = (hand) => SUITS.map((suit) => ({ suit, est: clubsTricks(hand, suit) })).sort((a, b) => b.est - a.est)[0];
 
 function botBid(s, seat) {
   const { est } = bestSuit(s.hands[seat]);
-  const n = Math.min(HAND, Math.floor(est + 0.25));
+  const n = Math.min(HAND, Math.floor(est + 0.6));
   const highV = s.high ? s.high.bid : 0;
   return n >= MIN_BID && n > highV ? n : 0;
 }
-const botStay = (s, seat) => estimateTricks(s.hands[seat], s.trump) >= 0.9;
+
+// Stay in when you can name the trick you expect to win; fold a lone low trump with no ace and no void.
+const botStay = (s, seat) => {
+  const hand = s.hands[seat];
+  const trumps = hand.filter((c) => isTrump(c, s.trump));
+  const aces = hand.filter((c) => !isTrump(c, s.trump) && rankOf(c) === 14).length;
+  const suits = new Set(hand.filter((c) => !isTrump(c, s.trump)).map((c) => effSuit(c, s.trump)));
+  if (trumps.some((c) => rankOf(c) === 11 || rankOf(c) >= 13)) return true;
+  if (trumps.length >= 2) return true;
+  if (trumps.length === 1 && (aces || suits.size < 3)) return true;
+  // No trump: only a pair of aces is worth the risk.
+  return trumps.length === 0 && aces >= 2;
+};
 
 function botPlay(s, seat, now) {
   const card = botCard({
     hand: s.hands[seat],
     trick: s.trick,
     trump: s.trump,
-    seat,
     playersLeft: players(s) - s.trick.plays.length - 1,
+    unseen: unseenCards(DECK, s.hands[seat], s.gone || [], s.upcard ? [s.upcard] : []),
     leadTrump: seat === s.bidder,
   });
   play(s, seat, card, now);

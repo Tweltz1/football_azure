@@ -1,17 +1,18 @@
 // 500: four players in two partnerships (across the table), a 45-card deck (4s up plus the joker), 10
-// cards each and 5 in the kitty. The bidder throws 5 away but hands one of them to their partner, who
-// then throws one of their own on the pile (the joker, say, in a Nola). Both end on 10 cards. Bid how many tricks your side will take and in what trump; the winner
-// picks up the kitty, throws 5 away and leads. Bids: 6♠ 40, ♣ 60, ♦ 80, ♥ 100, NT 120, +100 a trick; Nola 170, Double Nola 380. First side to 500 by
+// cards each and 5 in the kitty. Bidding goes around once, starting left of the dealer; the high bid wins.
+// The winner picks up the kitty, throws 5 away and leads. In a Double Nola the bidder hands one of those 5
+// to their partner, who throws one of their own on the pile (the joker, say). Everyone ends on 10 cards. Bids: 6♠ 40, ♣ 60, ♦ 80, ♥ 100, NT 120, +100 a trick; Nola 170, Double Nola 380. First side to 500 by
 // making a bid wins; a side that sinks to -500 loses. Empty chairs get bots. Pure logic, no React.
 
 import {
   botCutAt, clampCut, CUT_MS, cutDeck,
-  ACTIVE_MS, autoSeat, botCard, BOT_MS, effSuit, emit, estimateTricks, isJoker, JOKER, ledSuitOf, legalCards,
+  ACTIVE_MS, autoSeat, botCard, BOT_MS, effSuit, emit, estimateTricks, isJoker, JOKER, ledSuitOf, legalCards, unseenCards,
   makeDeck, mulberry, seatOf, seatWaiting, setPhase, shuffle, sortHand, SUIT_NAME, SUIT_SYMBOL, SUITS, winningPlay,
   makeSeats,
 } from './cards.js';
 
 export const SEATS = 4;
+const DECK = makeDeck({ low: 4, joker: true });
 export const HAND = 10;
 export const TARGET = 500;
 export const DEAL_MS = 2800;
@@ -78,6 +79,8 @@ function deal(s, now) {
   s.trick = { plays: [], named: null };
   s.lastTrick = null;
   s.trickNo = 0;
+  s.gone = [];
+  s.discards = [];
   s.result = null;
   // The player to the dealer's left cuts, then the cards go out.
   s.turn = (s.dealer + 1) % SEATS;
@@ -150,11 +153,10 @@ function endBidding(s, now) {
   setPhase(s, 'kitty', now);
 }
 
-/** A bid ('7H', '10NT', 'MIS', 'OPEN') or 'PASS' from the seat whose turn it is. Pass and you're out of the bidding. */
+/** A bid ('7H', '10NT', 'MIS', 'OPEN') or 'PASS' from the seat whose turn it is. Everyone bids once, the dealer last. */
 export function bid(s, seat, value, now) {
   if (s.phase !== 'bid' || seat !== s.turn || s.passed[seat]) return false;
   if (value === 'PASS') {
-    s.passed[seat] = true;
     s.bids.push({ seat, bid: 'PASS' });
     emit(s, 'pass', { seat });
   } else {
@@ -163,14 +165,12 @@ export function bid(s, seat, value, now) {
     s.bids.push({ seat, bid: value });
     emit(s, 'bid', { seat, bid: value });
   }
-  const left = [0, 1, 2, 3].filter((i) => !s.passed[i]);
-  if (!left.length || (left.length === 1 && s.high && s.high.seat === left[0])) {
+  s.passed[seat] = true; // one bid each: once you've bid, you're done
+  if (s.bids.length >= SEATS) {
     endBidding(s, now);
     return true;
   }
-  let n = (seat + 1) % SEATS;
-  while (s.passed[n]) n = (n + 1) % SEATS;
-  setTurn(s, n, now);
+  setTurn(s, (seat + 1) % SEATS, now);
   return true;
 }
 
@@ -194,15 +194,15 @@ function startPlay(s, now) {
 }
 
 /**
- * The bidder, holding 15 after the kitty, throws 5 away. give: one of those 5, handed to the partner, who
- * then throws one card away. In Nola the partner sits out, so nothing is handed over.
+ * The bidder, holding 15 after the kitty, throws 5 away. In a Double Nola, give: one of those 5, handed to
+ * the partner, who then throws one card away. Every other bid just throws the 5 away.
  */
 export function discard(s, seat, cards, give, now) {
   if (s.phase !== 'kitty' || seat !== s.contract.seat) return false;
   const hand = s.hands[seat];
   const pick = [...new Set(cards)];
   if (pick.length !== hand.length - HAND || pick.some((c) => !hand.includes(c))) return false;
-  const passing = s.out == null;
+  const passing = s.contract.bid === 'OPEN';
   if (passing && !pick.includes(give)) return false;
   s.hands[seat] = hand.filter((c) => !pick.includes(c));
   s.discards = pick.filter((c) => !passing || c !== give);
@@ -231,6 +231,7 @@ export function play(s, seat, card, named, now) {
     s.trick.named = SUITS.includes(named) ? named : SUITS[0];
   }
   s.hands[seat] = hand.filter((c) => c !== card);
+  s.gone = (s.gone || []).concat([card]);
   s.trick.plays.push({ seat, card });
   emit(s, 'play', { seat, card });
   const needed = s.out == null ? SEATS : SEATS - 1;
@@ -274,25 +275,43 @@ function score(s, now) {
 
 // ---------- Bots ----------
 
+// About how many tricks a partner and the kitty add to a bidder's own hand.
+const HELP = 3.6;
+
 function botBid(s, seat) {
   const hand = s.hands[seat];
   const high = s.high ? bidValue(s.high.bid) : 0;
+  const partner = partnerOf(seat);
+  const partnerBid = [...s.bids].reverse().find((x) => x.seat === partner && x.bid !== 'PASS' && !isMisere(x.bid));
+  const own = (suit) => estimateTricks(hand, suit === 'NT' ? null : suit, { jokerNt: true }) - (suit === 'NT' ? 0.7 : 0);
+  // The cheapest bid in this suit that beats the table, if our side can take that many.
+  const cheapest = (suit, tricks) => {
+    for (let k = 6; k <= Math.min(10, Math.floor(tricks)); k += 1) {
+      if (bidValue(`${k}${suit}`) > high) return `${k}${suit}`;
+    }
+    return null;
+  };
+  if (partnerBid) {
+    // Partner has spoken. Don't bid over them; if the other side has, back up partner's suit when we can help.
+    if (s.high && s.high.seat === partner) return 'PASS';
+    const suit = partnerBid.bid.replace(/^\d+/, '');
+    const support = own(suit) + bidTricks(partnerBid.bid) - HELP + 0.6;
+    const raise = cheapest(suit, support);
+    if (raise) return raise;
+    // Only switch suits with a hand far stronger than we'd normally need.
+    let best = null;
+    BID_SUITS.forEach((x) => {
+      const b = cheapest(x, own(x) + HELP - 1.5);
+      if (b && (!best || own(x) > best.est)) best = { bid: b, est: own(x) };
+    });
+    return best ? best.bid : 'PASS';
+  }
+  // Our own hand, plus what partner and the kitty usually add.
   let best = null;
   BID_SUITS.forEach((suit) => {
-    const trump = suit === 'NT' ? null : suit;
-    const est = estimateTricks(hand, trump, { jokerNt: true }) + 2.2 + 0.4 - (suit === 'NT' ? 0.7 : 0);
-    const n = Math.min(10, Math.floor(est));
-    if (n < 6) return;
-    // Don't push a partner's bid up unless we're clearly stronger.
-    if (s.high && s.high.seat === partnerOf(seat) && est - bidTricks(s.high.bid) < 1.5) return;
-    for (let k = 6; k <= n; k += 1) {
-      const v = `${k}${suit}`;
-      if (bidValue(v) > high) {
-        // The strongest suit wins; bid it as cheaply as the table allows.
-        if (!best || est > best.est) best = { bid: v, est };
-        break;
-      }
-    }
+    const est = own(suit) + HELP;
+    const b = cheapest(suit, est);
+    if (b && (!best || est > best.est)) best = { bid: b, est };
   });
   return best ? best.bid : 'PASS';
 }
@@ -333,19 +352,26 @@ function botPass(s, seat) {
 }
 
 function botPlay(s, seat, now) {
-  // Nola: the bidder ducks every trick. Double Nola: both partners do.
-  const misBidder = s.contract && isMisere(s.contract.bid) && (seat === s.contract.seat || (s.contract.bid === 'OPEN' && seat === partnerOf(s.contract.seat)));
-  const bidSide = s.contract && teamOf(seat) === teamOf(s.contract.seat);
+  const bid = s.contract ? s.contract.bid : null;
+  const bidder = s.contract ? s.contract.seat : null;
+  const bidders = bid === 'OPEN' ? [bidder, partnerOf(bidder)] : [bidder];
+  const bidSide = teamOf(seat) === teamOf(bidder);
+  let mode = 'normal';
+  if (isMisere(bid)) mode = bidders.includes(seat) ? 'avoid' : bidSide ? 'normal' : 'defend';
   const needed = s.out == null ? SEATS : SEATS - 1;
+  // What this bot can know: its own hand, what's been played, and its own discards if it took the kitty.
+  const known = seat === bidder ? s.discards : [];
   const card = botCard({
     hand: s.hands[seat],
     trick: s.trick,
     trump: s.trump,
-    seat,
-    partner: s.out == null && !misBidder ? partnerOf(seat) : null,
+    partner: s.out == null && mode === 'normal' ? partnerOf(seat) : null,
     playersLeft: needed - s.trick.plays.length - 1,
-    avoid: misBidder,
+    unseen: unseenCards(DECK, s.hands[seat], s.gone || [], known),
+    mode,
+    bidders,
     leadTrump: bidSide && !!s.trump,
+    partnerBid: bidSide && seat !== bidder && !!s.trump,
   });
   let named = null;
   if (isJoker(card) && !s.trick.plays.length && !s.trump) {
@@ -444,7 +470,7 @@ export function phoneView(s, cid, now) {
     contract: s.contract ? { seat: s.contract.seat, bid: s.contract.bid, label: bidLabel(s.contract.bid), need: bidTricks(s.contract.bid) } : null,
     high: s.high ? { seat: s.high.seat, bid: s.high.bid, value: bidValue(s.high.bid) } : null,
     bids: s.bids.map((x) => ({ seat: x.seat, bid: x.bid })),
-    passedSeats: s.passed,
+    passedSeats: [0, 1, 2, 3].map((i) => s.bids.some((x) => x.seat === i && x.bid === 'PASS')),
     trick: s.trick.plays,
     named: s.trick.named,
     winner: s.phase === 'trick' ? s.trick.winner : null,
@@ -452,11 +478,11 @@ export function phoneView(s, cid, now) {
   };
   if (seat >= 0) {
     view.cards = sortHand(s.hands[seat], s.trump);
-    view.passed = s.passed[seat];
+    view.passed = s.bids.some((x) => x.seat === seat && x.bid === 'PASS');
     if (s.phase === 'kitty' && seat === s.contract.seat) {
       view.kitty = s.kitty;
       view.toDiscard = s.hands[seat].length - HAND;
-      view.handsOne = s.out == null;
+      view.handsOne = s.contract.bid === 'OPEN';
     }
     if (s.phase === 'pass' && seat === s.turn) view.passCard = s.passCard;
     if (s.phase === 'play' && s.turn === seat) {
