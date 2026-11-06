@@ -18,6 +18,17 @@ export const CardFace = ({ card, small, on, off, onClick, tag, lift, ...rest }) 
   return <button type="button" className={cls} disabled={off} onClick={onClick} {...rest}>{face}{tag && <i className="lt-card-tag">{tag}</i>}</button>;
 };
 
+/** Text with the ♥ and ♦ in red (and every suit symbol drawn as text, not emoji). */
+export const suits = (text) => {
+  if (typeof text !== 'string' || !/[♠♣♥♦]/.test(text)) return text;
+  return text.split(/([♠♣♥♦]\uFE0E?)/).map((part, i) => {
+    if (!/^[♠♣♥♦]/.test(part)) return part;
+    const sym = `${part[0]}\uFE0E`;
+    // eslint-disable-next-line react/no-array-index-key
+    return /[♥♦]/.test(part) ? <span key={i} className="lt-red">{sym}</span> : <span key={i}>{sym}</span>;
+  });
+};
+
 export const cardName = (c) => (isJoker(c) ? 'the Joker' : `${rankLabel(c)}${SUIT_SYMBOL[suitOf(c)]}`);
 
 // Your own order for your hand. It lives outside the component so it survives the hand being redrawn
@@ -121,7 +132,7 @@ export const Hand = ({ cards, legal, onPlay, trump = null, fresh = [] }) => {
       </div>
       {legal && (
         <button type="button" className="lc-btn lc-btn-big" disabled={!picked} onClick={() => { onPlay(picked); setPicked(null); }}>
-          {picked ? `Play ${cardName(picked)}` : 'Tap a card, then tap it again'}
+          {picked ? suits(`Play ${cardName(picked)}`) : 'Tap a card, then tap it again'}
         </button>
       )}
     </div>
@@ -143,7 +154,7 @@ export const TableView = ({ seats, me, plays = [], winner = null, center = null 
   return (
     <div className="lt-table">
       <div className="lt-felt" />
-      {center && <div className="lt-center">{center}</div>}
+      {center && <div className="lt-center">{suits(center)}</div>}
       {plays.map((p) => (
         <div key={p.card} className={`lt-played${winner === p.seat ? ' is-win' : ''}`} style={at(p.seat, 17, 19)}>
           <CardFace card={p.card} small />
@@ -157,7 +168,7 @@ export const TableView = ({ seats, me, plays = [], winner = null, center = null 
         >
           <b>{i === me ? `${s.name} (you)` : s.name}{s.dealer ? <i className="lt-dealer">D</i> : null}</b>
           {s.line && <small>{s.line}</small>}
-          {s.bubble && <span className={`lt-bubble${s.hot ? ' is-hot' : ''}`}>{s.bubble}</span>}
+          {s.bubble && <span className={`lt-bubble${s.hot ? ' is-hot' : ''}`}>{suits(s.bubble)}</span>}
         </div>
       ))}
     </div>
@@ -169,8 +180,8 @@ export const Status = ({ look, pose = 'stand', big, line, children }) => (
   <div className="lt-status">
     <Person look={look} pose={pose} view="head" />
     <div>
-      <p className="lt-status-big">{big}</p>
-      {line && <p className="lt-status-line">{line}</p>}
+      <p className="lt-status-big">{suits(big)}</p>
+      {line && <p className="lt-status-line">{suits(line)}</p>}
       {children}
     </div>
   </div>

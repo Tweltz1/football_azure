@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SUIT_NAME, SUIT_SYMBOL, SUITS } from './cards';
-import { CardFace, cardName, CutDeck, Hand, Scores, Status, TableView } from './CardPhone';
+import { CardFace, cardName, CutDeck, Hand, Scores, Status, suits, TableView } from './CardPhone';
 
 // 500 on a phone: the table, your hand, bidding, the kitty, and the scores.
 
@@ -48,7 +48,7 @@ const Discard = ({ cards, kitty, count, handsOne, onDone }) => {
         <div className="lt-hand">
           {pick.map((c) => <CardFace key={c} card={c} on={give === c} onClick={() => setGive(c)} />)}
         </div>
-        <button type="button" className="lc-btn lc-btn-big" disabled={!give} onClick={() => onDone(pick, give)}>{give ? `Hand ${cardName(give)} to your partner` : 'Tap the card to hand over'}</button>
+        <button type="button" className="lc-btn lc-btn-big" disabled={!give} onClick={() => onDone(pick, give)}>{give ? suits(`Hand ${cardName(give)} to your partner`) : 'Tap the card to hand over'}</button>
         <button type="button" className="lcp-link" onClick={() => { setPick([]); setGive(null); }}>Start over</button>
       </div>
     );
@@ -72,7 +72,7 @@ const PassPick = ({ cards, got, onPass }) => {
       <div className="lt-hand">
         {cards.map((c) => <CardFace key={c} card={c} on={pick === c} onClick={() => setPick(pick === c ? null : c)} tag={c === got ? 'from partner' : null} />)}
       </div>
-      <button type="button" className="lc-btn lc-btn-big" disabled={!pick} onClick={() => onPass(pick)}>{pick ? `Throw ${cardName(pick)} away` : 'Tap a card to throw away'}</button>
+      <button type="button" className="lc-btn lc-btn-big" disabled={!pick} onClick={() => onPass(pick)}>{pick ? suits(`Throw ${cardName(pick)} away`) : 'Tap a card to throw away'}</button>
     </div>
   );
 };
@@ -133,7 +133,7 @@ export default function FivePhone({ game, act, look, endButtons }) {
   const head = (
     <div className="lcp-gamehead lt-head">
       <span>Hand {game.hand}</span>
-      <span>{contract ? `${seats[contract.seat].name}: ${bidName(contract.bid)}` : 'Bidding'}</span>
+      <span>{contract ? suits(`${seats[contract.seat].name}: ${bidName(contract.bid)}`) : 'Bidding'}</span>
       {[0, 1].map((t) => <span key={t} className="lt-teamscore" style={{ background: TEAM_COLORS[t] }}>{t === us ? 'Us' : us == null ? `T${t + 1}` : 'Them'} {game.scores[t]}</span>)}
     </div>
   );
