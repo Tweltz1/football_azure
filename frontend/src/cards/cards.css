@@ -317,3 +317,7 @@
 #lc-root .lt-avatar-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 #lc-root .lt-avatar-drop { align-self: flex-start; font-size: 13px; }
 #lc-root .lt-avatar { display: inline-block; width: 20px; height: 20px; margin-right: 4px; vertical-align: -5px; object-fit: cover; border: 1.5px solid #fff6e3; border-radius: 50%; }
+
+/* Camera or picture in each player's name card */
+#lc-root .lt-seat-media { display: block; width: 46px; height: 46px; margin: 0 auto 3px; object-fit: cover; background: #000; border: 2px solid #fff6e3; border-radius: 10px; }
+#lc-root .lt-seat-media.is-mirror { transform: scaleX(-1); }

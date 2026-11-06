@@ -22,11 +22,13 @@ export const isInitiator = (me, other) => String(me) < String(other);
  * microphone (false for the TV). Returns { state, error, needsTap, resume } where resume() retries audio
  * playback after a tap if the browser blocked it.
  */
-export function useVoice({ code, cid, prefix, peers, active, mic = true, muted = false }) {
+export function useVoice({ code, cid, prefix, peers, active, mic = true, muted = false, video = false, recvVideo = false }) {
   const [state, setState] = useState('off'); // off | starting | on | error
   const [error, setError] = useState('');
   const [needsTap, setNeedsTap] = useState(false);
   const [connected, setConnected] = useState([]);
+  const [videos, setVideos] = useState({}); // peer id -> MediaStream with their camera
+  const [local, setLocal] = useState(null); // this device's camera stream, when video is on
   const ref = useRef(null); // { stream, signal, ice, pcs: Map(peer -> { pc, audio, pending, timer }) }
   const peersRef = useRef(peers);
   peersRef.current = peers;
@@ -49,6 +51,7 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
       p.audio.remove();
     }
     live.pcs.delete(id);
+    setVideos((v) => { if (!v[id]) return v; const next = { ...v }; delete next[id]; return next; });
     markConnected();
   }, [markConnected]);
 
@@ -61,10 +64,18 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
     live.pcs.set(id, entry);
     if (live.stream) live.stream.getTracks().forEach((track) => pc.addTrack(track, live.stream));
     else pc.addTransceiver('audio', { direction: 'recvonly' });
+    // Watch other people's cameras even with yours off.
+    if (live.recvVideo && !(live.stream && live.stream.getVideoTracks().length)) pc.addTransceiver('video', { direction: 'recvonly' });
     pc.onicecandidate = ({ candidate }) => {
       if (candidate) live.signal.send(id, { kind: 'ice', candidate: candidate.toJSON ? candidate.toJSON() : candidate });
     };
     pc.ontrack = ({ streams, track }) => {
+      if (track.kind === 'video') {
+        const cam = streams[0] || new MediaStream([track]);
+        setVideos((v) => ({ ...v, [id]: cam }));
+        track.addEventListener('ended', () => setVideos((v) => { const next = { ...v }; delete next[id]; return next; }));
+        return;
+      }
       if (!entry.audio) {
         entry.audio = document.createElement('audio');
         entry.audio.autoplay = true;
@@ -153,9 +164,17 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
     setError('');
     (async () => {
       let stream = null;
-      if (mic) {
+      const audio = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+      if (mic && video) {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+          stream = await navigator.mediaDevices.getUserMedia({ audio, video: { facingMode: 'user', width: { ideal: 240 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } } });
+        } catch (e) {
+          setError('Camera blocked: voice only. Allow the camera in your settings to be seen.');
+        }
+      }
+      if (mic && !stream) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio });
         } catch (e) {
           setError('Microphone blocked: you can still listen. Allow the mic in your browser settings to talk.');
         }
@@ -166,7 +185,8 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
         return;
       }
       const signal = openSignal(code, cid, (msg) => onSignalRef.current(msg), prefix);
-      ref.current = { stream, signal, ice, pcs: new Map() };
+      ref.current = { stream, signal, ice, pcs: new Map(), recvVideo };
+      setLocal(stream && stream.getVideoTracks().length ? stream : null);
       setState('on');
       // Give the signal channel a moment to subscribe before calling anyone.
       window.setTimeout(() => {
@@ -187,8 +207,10 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
       ref.current = null;
       setState('off');
       setConnected([]);
+      setVideos({});
+      setLocal(null);
     };
-  }, [active, code, cid, prefix, mic, call, closePeer]);
+  }, [active, code, cid, prefix, mic, video, recvVideo, call, closePeer]);
 
   // Mute.
   useEffect(() => {
@@ -213,7 +235,7 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
     setNeedsTap(false);
   }, []);
 
-  return { state, error, needsTap, resume, connected };
+  return { state, error, needsTap, resume, connected, videos, local };
 }
 
 const Recognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;

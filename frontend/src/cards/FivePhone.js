@@ -111,6 +111,7 @@ function FiveTable({ game, act, look, endButtons }) {
       won: ['play', 'trick', 'hand'].includes(game.phase) ? x.tricks : 0,
       design: x.design || null,
       avatar: x.avatar || null,
+      cid: x.cid || null,
       line,
       color: TEAM_COLORS[x.team],
       turn: game.turn === i && ['cut', 'bid', 'pass', 'kitty', 'play'].includes(game.phase),
