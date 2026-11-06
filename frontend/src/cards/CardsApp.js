@@ -14,7 +14,7 @@ import ClubsPhone from './ClubsPhone';
 import { homeHref, homeLabel, siteOrigin } from '../native/gamesApp';
 import { currentUser, firstName, signInWithGoogle } from '../party/account';
 import { supabase } from '../supabaseClient';
-import { backStyle, DESIGNS, designOf, isUnlocked, progressFor, TRACKS } from './designs';
+import { backStyle, designClass, DESIGNS, designOf, isUnlocked, progressFor, TRACKS } from './designs';
 import { CardFace } from './CardPhone';
 import '../party/party.css';
 import './cards.css';
@@ -582,7 +582,7 @@ function Designs({ user, me, onPick, onBack }) {
       <button type="button" className="lcp-link lt-back" onClick={onBack}>← Back</button>
       <h2 className="lc-title lt-h2">Card designs</h2>
       <div className="lt-design-now">
-        <span className="lt-design-back is-big" style={backStyle(chosen.id)}><i>{chosen.emblem}</i></span>
+        <span className={`lt-design-back is-big${designClass(chosen.id)}`} style={backStyle(chosen.id)} />
         <CardFace card="14S" design={chosen.id} />
         <CardFace card="13H" design={chosen.id} />
         <div><b>{chosen.name}</b><small>{unlocked} of {DESIGNS.length} unlocked</small></div>
@@ -609,7 +609,7 @@ function Designs({ user, me, onPick, onBack }) {
                 const on = isUnlocked(d, counts, signedIn);
                 return (
                   <button type="button" key={d.id} className={`lt-design${on ? '' : ' is-locked'}${d.id === chosen.id ? ' is-chosen' : ''}`} onClick={() => pick(d)} aria-label={`${d.name}${on ? '' : `, locked: ${d.goal}`}`}>
-                    <span className="lt-design-back" style={backStyle(d.id) || undefined}><i>{d.emblem}</i></span>
+                    <span className={`lt-design-back${designClass(d.id)}`} style={backStyle(d.id) || undefined} />
                     {!on && <span className="lt-design-lock">🔒</span>}
                   </button>
                 );
