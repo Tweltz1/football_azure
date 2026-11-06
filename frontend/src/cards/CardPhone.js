@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import Person from '../party/Person';
 import { isJoker, isRed, isThinCut, rankLabel, suitOf, suitSort, SUIT_SYMBOL } from './cards';
-import { backStyle, designOf, faceStyle } from './designs';
+import { backStyle, designClass, designOf, faceStyle } from './designs';
 
 // Phone pieces shared by 500 and Dirty Clubs: a card, your hand, the table (with you at the bottom),
 // and a status line. There's no TV for these games: every phone shows the whole table.
@@ -22,9 +22,9 @@ export const CardFace = ({ card, small, on, off, onClick, tag, lift, design: nam
   );
   const d = design && design !== 'classic' ? designOf(design) : null;
   const look = d && !on ? { ...faceStyle(d.id), ...style } : style;
-  const mark = d && <i className="lt-card-mark" aria-hidden="true">{d.emblem}</i>;
-  if (!onClick) return <span className={cls} style={look} {...rest}>{face}{mark}{tag && <i className="lt-card-tag">{tag}</i>}</span>;
-  return <button type="button" className={cls} style={look} disabled={off} onClick={onClick} {...rest}>{face}{mark}{tag && <i className="lt-card-tag">{tag}</i>}</button>;
+  const css = d ? `${cls}${designClass(d.id)}` : cls;
+  if (!onClick) return <span className={css} style={look} {...rest}>{face}{tag && <i className="lt-card-tag">{tag}</i>}</span>;
+  return <button type="button" className={css} style={look} disabled={off} onClick={onClick} {...rest}>{face}{tag && <i className="lt-card-tag">{tag}</i>}</button>;
 };
 
 /** Text with the ♥ and ♦ in red (and every suit symbol drawn as text, not emoji). */
