@@ -295,13 +295,14 @@
 #lc-root .lt-stat-bids small { color: var(--lc-gold); }
 #lc-root .lt-stat-detail .lt-red { color: #ff5a6b; }
 
-/* Tricks won: a small face-down stack under each player's name, in their card design. */
-#lc-root .lt-tricks { display: flex; justify-content: center; margin-top: 3px; padding-left: 8px; }
+/* Tricks won: one card back per trick, side by side, in the player's card design. */
+#lc-root .lt-seat-text { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; }
+#lc-root .lt-seat.is-wide { flex-direction: row; gap: 8px; max-width: 70%; }
+#lc-root .lt-tricks { display: grid; grid-template-columns: repeat(5, 12px); gap: 3px; justify-content: center; margin-top: 4px; }
+#lc-root .lt-seat.is-wide .lt-tricks { margin-top: 0; }
 #lc-root .lt-tricks i {
-  position: relative; flex: none; width: 13px; height: 18px; margin-left: -6px;
-  background: repeating-linear-gradient(45deg, #7b2fd6 0 2px, #5a1fa3 2px 4px); border: 1.5px solid #fff6e3; border-radius: 3px;
+  position: relative; width: 12px; height: 17px;
+  background: repeating-linear-gradient(45deg, #8a3ffc 0 2px, #5a1fa3 2px 4px); border: 1.5px solid #fff6e3; border-radius: 2px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); animation: lt-trick-in 0.35s ease-out;
 }
-#lc-root .lt-tricks i:nth-child(odd) { transform: rotate(-4deg); }
-#lc-root .lt-tricks i:nth-child(even) { transform: rotate(3deg); }
-@keyframes lt-trick-in { from { opacity: 0; translate: 0 -10px; } to { opacity: 1; translate: 0 0; } }
+@keyframes lt-trick-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }

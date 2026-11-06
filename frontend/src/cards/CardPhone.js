@@ -169,22 +169,30 @@ export const TableView = ({ seats, me, plays = [], winner = null, center = null 
           <CardFace card={p.card} small design={p.design || null} />
         </div>
       ))}
-      {seats.map((s, i) => (
-        <div
-          key={i}
-          className={`lt-seat${s.turn ? ' is-turn' : ''}${s.dim ? ' is-dim' : ''}${i === me ? ' is-me' : ''}`}
-          style={{ ...at(i, 38, 41), borderColor: s.color || undefined }}
-        >
-          <b>{i === me ? `${s.name} (you)` : s.name}{s.dealer ? <i className="lt-dealer">D</i> : null}</b>
-          {s.line && <small>{s.line}</small>}
-          {s.won > 0 && (
-            <span className="lt-tricks" aria-label={`${s.won} trick${s.won === 1 ? '' : 's'} won`}>
-              {Array.from({ length: Math.min(s.won, 13) }, (_, k) => <i key={k} className={designClass(s.design || 'classic')} style={backStyle(s.design || 'classic')} />)}
+      {seats.map((s, i) => {
+        // Seats at the top and bottom have room to the side, so their tricks sit beside the name.
+        const rel = (i - base + n) % n;
+        const wide = Math.abs(Math.sin(Math.PI / 2 + (rel * 2 * Math.PI) / n)) > 0.7;
+        const tricks = s.won > 0 && (
+          <span className="lt-tricks" style={{ gridTemplateColumns: `repeat(${Math.min(s.won, 5)}, 12px)` }} aria-label={`${s.won} trick${s.won === 1 ? '' : 's'} won`}>
+            {Array.from({ length: Math.min(s.won, 13) }, (_, k) => <i key={k} className={designClass(s.design || 'classic')} style={backStyle(s.design || 'classic')} />)}
+          </span>
+        );
+        return (
+          <div
+            key={i}
+            className={`lt-seat${wide ? ' is-wide' : ''}${s.turn ? ' is-turn' : ''}${s.dim ? ' is-dim' : ''}${i === me ? ' is-me' : ''}`}
+            style={{ ...at(i, 38, 41), borderColor: s.color || undefined }}
+          >
+            <span className="lt-seat-text">
+              <b>{i === me ? `${s.name} (you)` : s.name}{s.dealer ? <i className="lt-dealer">D</i> : null}</b>
+              {s.line && <small>{s.line}</small>}
+              {s.bubble && <span className={`lt-bubble${s.hot ? ' is-hot' : ''}`}>{suits(s.bubble)}</span>}
             </span>
-          )}
-          {s.bubble && <span className={`lt-bubble${s.hot ? ' is-hot' : ''}`}>{suits(s.bubble)}</span>}
-        </div>
-      ))}
+            {tricks}
+          </div>
+        );
+      })}
     </div>
   );
 };
