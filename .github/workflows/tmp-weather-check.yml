@@ -6,11 +6,9 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    env:
-      P: ${{ secrets.SUPABASE_PROJECT_ID }}
     steps:
       - run: |
-          sleep 60
-          API="https://$P.supabase.co/functions/v1/api"
-          curl -s -w '\nHTTP %{http_code}\n' "$API/weather?week=10" | jq -c '.games[]? | {home, away, indoor, hoursOut, f: .forecast}' 2>/dev/null || curl -s "$API/weather?week=10"
-          curl -s -w '\nHTTP %{http_code}\n' "$API/weather?week=10" | tail -c 400
+          for u in "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=10" "https://api.open-meteo.com/v1/forecast?latitude=40&longitude=-75&hourly=wind_speed_10m&forecast_days=1"; do
+            echo "== $u"; curl -s -D - -o /dev/null -H 'Origin: https://hood-league.com' "$u" | grep -i -E "^HTTP|access-control|cache-control"
+          done
+          echo "== sleeper schedule"; curl -s "https://api.sleeper.app/schedule/nfl/regular/2026" | head -c 400
