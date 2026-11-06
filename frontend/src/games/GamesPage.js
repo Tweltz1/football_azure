@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import SoundToggle from '../components/SoundToggle';
+import { signIn } from '../AuthContext';
 import { CREW } from '../data/crew';
 import { GAME_KINDS, GAMES } from './sim.generated';
 import GamePlayer from './GamePlayer';
@@ -12,13 +13,13 @@ import './Games.css';
 export const GAME_ART = { climb: 8, shred: 9, fieldgoal: 4, penalty: 5, price: 7, nameplayer: 1 };
 
 /** The Games tab: practice any lobby game as often as you like, and the leaderboards. */
-const GamesPage = () => {
+const GamesPage = ({ guest = false }) => {
   const [params, setParams] = useSearchParams();
   const game = GAME_KINDS.includes(params.get('game')) ? params.get('game') : null;
   const [round, setRound] = useState(0);
   // A fresh runner (new random seed) for every round.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const runner = useMemo(() => (game ? practiceRunner(game) : null), [game, round]);
+  const runner = useMemo(() => (game ? practiceRunner(game, { guest }) : null), [game, round, guest]);
   const bests = readBests();
 
   const pick = (kind) => setParams(kind ? { game: kind } : {});
@@ -29,7 +30,7 @@ const GamesPage = () => {
         <div>
           <p className="section-kicker">Draft games</p>
           <h2>Games</h2>
-          <p className="games-sub">Practice here as much as you want. In the draft lobby the commissioner can put up a game for extra draft dollars, and everyone gets one official try.</p>
+          <p className="games-sub">{guest && 'Playing as a guest: sign in with Google to get on the leaderboards. '}Practice here as much as you want. In the draft lobby the commissioner can put up a game for extra draft dollars, and everyone gets one official try.</p>
         </div>
         <SoundToggle />
       </div>
@@ -43,6 +44,9 @@ const GamesPage = () => {
         />
       ) : (
         <div className="games-grid">
+          {/* Guests come from the Hood Games hub, which already links the party games and Hood Quest. */}
+          {!guest && (
+          <>
           <a href="/games-night" className="game-card is-race">
             <span className="game-card-emoji" aria-hidden="true">🎃</span>
             <span className="game-card-text">
@@ -57,6 +61,9 @@ const GamesPage = () => {
               <span>Host a tabletop adventure on the TV: 3D maps, an AI narrator with a human co-DM, and heroes that save to your Google account.</span>
             </span>
           </a>
+          </>
+          )}
+          {!guest && (
           <Link to="/games/race" className="game-card is-race">
             <img src={CREW[6].art} alt="" />
             <span className="game-card-text">
@@ -64,6 +71,7 @@ const GamesPage = () => {
               <span>Up to 10 phones race the crew course at once, with power-ups like Logan's Mountain Dew and Evan's Bionic Legs. Practice against bots any time.</span>
             </span>
           </Link>
+          )}
           {GAME_KINDS.map((kind) => (
             <button type="button" key={kind} className="game-card" onClick={() => pick(kind)}>
               <img src={CREW[GAME_ART[kind]].art} alt="" />
@@ -76,7 +84,15 @@ const GamesPage = () => {
           ))}
         </div>
       )}
-      {!game && <Leaderboards />}
+      {/* The leaderboards need an account (the server answers 401 to guests). */}
+      {!game && !guest && <Leaderboards />}
+      {!game && guest && (
+        <section className="leaderboards" aria-label="Leaderboards">
+          <div className="leaderboards-head"><h3>Leaderboards</h3></div>
+          <p className="games-sub">Sign in with Google to see the leaderboards and get your scores on them.</p>
+          <button type="button" onClick={() => signIn('google')}>Sign in with Google</button>
+        </section>
+      )}
     </div>
   );
 };
