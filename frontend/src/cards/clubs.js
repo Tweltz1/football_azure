@@ -250,7 +250,7 @@ const bestSuit = (hand) => SUITS.map((suit) => ({ suit, est: clubsTricks(hand, s
 
 function botBid(s, seat) {
   const { est } = bestSuit(s.hands[seat]);
-  const n = Math.min(HAND, Math.floor(est + 0.6));
+  const n = Math.min(HAND, Math.floor(est + 0.4));
   const highV = s.high ? s.high.bid : 0;
   return n >= MIN_BID && n > highV ? n : 0;
 }

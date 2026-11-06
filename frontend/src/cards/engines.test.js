@@ -209,3 +209,28 @@ test('bots lay off when their partner is winning, and take a trick they can', ()
   // Same spot but the opponent is winning: trump it as cheaply as possible.
   expect(botCard({ hand: ['11C', '14C', '4S'], trick, trump: 'C', partner: 1, playersLeft: 0, unseen: [] })).toBe('14C');
 });
+
+test('a bot with a strong hand takes the lead from its partner', () => {
+  const { botCard } = require('./cards');
+  const trick = { plays: [{ seat: 1, card: '7H' }, { seat: 2, card: '12H' }] };
+  // Bidding side, boss trump (the Joker) with trumps still out, plus two boss aces: win it to pull trump.
+  const unseen = ['11C', '9C', '13S', '13D', '14H'];
+  expect(botCard({ hand: ['JK', '14S', '14D', '6C'], trick, trump: 'C', partner: 2, playersLeft: 1, unseen, leadTrump: true })).toBe('JK');
+  // Without the boss cards, lay off.
+  expect(botCard({ hand: ['14S', '6C', '4D'], trick, trump: 'C', partner: 2, playersLeft: 1, unseen, leadTrump: true })).toBe('4D');
+});
+
+test('a bot only bids over its partner with a much stronger hand', () => {
+  const five = require('./five');
+  const g = GAMES.five.create([], 3, 0);
+  five.cut(g, g.turn, 20, 0);
+  five.tick(g, 10000);
+  const me = (g.turn + 2) % 4;
+  // Partner (first to bid) says 6 clubs; the opponent between passes.
+  five.bid(g, g.turn, '6C', 0);
+  five.bid(g, (g.turn), 'PASS', 0);
+  g.hands[me] = ['JK', '11H', '11D', '14H', '13H', '12H', '14S', '14D', '5C', '4C'];
+  expect(five.botBidFor(g, me)).toMatch(/H$/);
+  g.hands[me] = ['9H', '5H', '7D', '13S', '6S', '5S', '8D', '4D', '5C', '4C'];
+  expect(five.botBidFor(g, me)).toBe('PASS');
+});
