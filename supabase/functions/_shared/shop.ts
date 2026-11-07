@@ -1,4 +1,4 @@
-// Bay Status: repair shop progress updates. Shop staff sign in (Supabase auth) and move each car
+// Talk Shops: repair shop progress updates. Shop staff sign in (Supabase auth) and move each car
 // through stages; each change can text the customer. Customers never sign in: their text carries a
 // link with a long random token that opens their car's page, where they can approve or decline work.
 
@@ -226,7 +226,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         messages: [], approval: null,
       },
     };
-    const text = `Bay Status demo: Ridgeline Auto Repair found what's going on with your 2012 Chevrolet Malibu. Review and approve the estimate ($813.00): ${deps.linkBase}${job.token} Reply STOP to opt out.`;
+    const text = `Talk Shops demo: Ridgeline Auto Repair found what's going on with your 2012 Chevrolet Malibu. Review and approve the estimate ($813.00): ${deps.linkBase}${job.token} Reply STOP to opt out.`;
     const sent = await deps.sms.send(phone, text);
     job.data.messages.push({ dir: 'out', t: now, text, delivery: sent.delivery, ...(sent.note ? { note: sent.note } : {}) });
     await store.putJob(job);

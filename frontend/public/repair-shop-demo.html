@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>Bay Status Prototype</title>
+<title>Talk Shops Demo</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -208,7 +208,7 @@ table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-
   <div class="topbar-in">
     <div class="brand">
       <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-fg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5v4a1 1 0 0 1-1 1h-1.5M3 13v4a1 1 0 0 0 1 1h1.5M3 13h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/></svg></div>
-      <div><h1>Bay Status</h1><small id="shopName">Ridgeline Auto Repair</small></div>
+      <div><h1>Talk Shops</h1><small id="shopName">Ridgeline Auto Repair</small></div>
     </div>
     <nav class="tabs" aria-label="Views">
       <button class="tab" data-view="board">Shop board</button>
@@ -223,7 +223,7 @@ table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-
 <div id="layer"></div>
 
 <script>
-const SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",domain:"ridgeline.baystatus.app"};
+const SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",domain:"talkshops.app"};
 const STAGES=[
  {key:"checked_in",label:"Checked in",cust:"We have your car"},
  {key:"diagnosing",label:"Diagnosing",cust:"Inspecting your car"},
@@ -315,7 +315,7 @@ function render(){
     document.title=SHOP.name+" · Your "+vehicleStr(cj);
     app.innerHTML=customerView(cj);$("#layer").innerHTML="";return;
   }
-  document.title="Bay Status · "+SHOP.name;
+  document.title="Talk Shops · "+SHOP.name;
   if(!signedIn){chrome.hidden=true;app.innerHTML=loginView();$("#layer").innerHTML="";return}
   chrome.hidden=false;
   document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-current",b.dataset.view===ui.view?"page":"false"));
@@ -324,7 +324,7 @@ function render(){
 }
 function loginView(){
   return `<div class="login-wrap"><form class="login" id="loginForm">
-    <div class="brand"><div class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</div><div><h1>Bay Status</h1><small>For repair shops</small></div></div>
+    <div class="brand"><div class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</div><div><h1>Talk Shops</h1><small>For repair shops</small></div></div>
     <h2>Shop sign in</h2>
     <label class="field">Work email<input id="li-email" type="email" required autocomplete="username" value="dan@ridgelineauto.com"></label>
     <label class="field">Password<input id="li-pass" type="password" required autocomplete="current-password" value="demo1234"></label>
@@ -532,6 +532,6 @@ setInterval(()=>{if(ui.view==="board"&&!ui.openJob&&!ui.modal)render()},60000);
 render();
 </script>
 <script src="/shop/config.js"></script>
-<script src="/shop/tour.js?v=172"></script>
+<script src="/shop/tour.js?v=174"></script>
 </body>
 </html>
