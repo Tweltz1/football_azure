@@ -217,7 +217,7 @@ table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-
     <a class="signout" id="signOutLink" href="/shop/" style="text-decoration:none;color:inherit">Exit demo</a>
   </div>
 </header>
-<div class="demo-note"><span><b>Demo shop.</b> Sample cars and customers, saved only in this browser. No real texts are sent; each text shows in the car's message thread.</span><button class="linkbtn" id="resetBtn">Reset sample data</button></div>
+<div class="demo-note"><span><b>Demo shop.</b> Sample cars and customers, saved only in this browser. No real texts are sent; each text shows in the car's message thread.</span><span style="display:flex;gap:14px;flex-wrap:wrap"><a class="linkbtn" href="?tour=1" style="text-decoration:none">▶ Guided tour</a><button class="linkbtn" id="resetBtn">Reset sample data</button></span></div>
 </div>
 <main id="app"></main>
 <div id="layer"></div>
@@ -531,5 +531,7 @@ window.addEventListener("hashchange",render);
 setInterval(()=>{if(ui.view==="board"&&!ui.openJob&&!ui.modal)render()},60000);
 render();
 </script>
+<script src="/shop/config.js"></script>
+<script src="/shop/tour.js"></script>
 </body>
 </html>

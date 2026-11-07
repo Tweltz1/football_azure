@@ -33,6 +33,7 @@ const shop: ShopDeps = {
   store: createShopStore(db),
   sms: createTwilioSender(Deno.env.get('TWILIO_ACCOUNT_SID'), Deno.env.get('TWILIO_AUTH_TOKEN'), Deno.env.get('TWILIO_FROM')),
   linkBase: Deno.env.get('SHOP_LINK_BASE') || 'https://hood-league.com/shop/?c=',
+  demoDailyLimit: Number(Deno.env.get('DEMO_TEXT_DAILY_LIMIT')) || 10,
   newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),
 };
 const dnd = {

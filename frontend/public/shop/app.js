@@ -174,8 +174,8 @@
       <button class="linkbtn" id="authSwap" type="button" style="align-self:flex-start">${signup ? "Already have an account? Sign in" : "New shop? Create an account"}</button>
       <div class="demo-box">
         <b>Just looking?</b>
-        <span class="muted" style="font-size:13.5px">Watch a 3-minute narrated video of a shop using Bay Status, or click around a demo shop with sample cars.</span>
-        <div class="btn-row"><button class="btn primary" id="watchDemo" type="button">▶ Watch demo</button><a class="btn" href="${DEMO_PAGE}" style="text-decoration:none">Try demo shop</a></div>
+        <span class="muted" style="font-size:13.5px">Take a 3-minute guided tour with narration. Halfway through, you can get a real text and approve a repair from your own phone.</span>
+        <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}?tour=1" style="text-decoration:none">▶ Guided demo</a><a class="btn" href="${DEMO_PAGE}" style="text-decoration:none">Try demo shop</a><button class="linkbtn" id="watchDemo" type="button">Watch video</button></div>
       </div>
       <p class="muted" style="font-size:13px;margin:0">Customers never sign in. They get a text with a link to their car's page.</p>
       <a class="linkbtn" href="/" style="font-size:13px">Back to Hood League</a>
