@@ -8,6 +8,7 @@ import { getInitialPlayerPool } from '../_shared/playerData.ts';
 import { dndRoute } from '../_shared/dnd.ts';
 import { askRoute } from '../_shared/footballAsk.ts';
 import { cardsRoute } from '../_shared/cards.ts';
+import { createShopEmailSender } from '../_shared/shopEmail.ts';
 import { createTwilioSender, shopRoute, type ShopDeps } from '../_shared/shop.ts';
 import { createNarrator } from './narrator.ts';
 import { createTurn } from './turn.ts';
@@ -31,6 +32,7 @@ const cardGames = createCardGameStore(db);
 // Repair shop app (Test tab). Texts go through Twilio once its three secrets are set.
 const shop: ShopDeps = {
   store: createShopStore(db),
+  email: createShopEmailSender(Deno.env.get('RESEND_API_KEY'), Deno.env.get('TALKSHOPS_EMAIL_FROM')),
   sms: createTwilioSender(Deno.env.get('TWILIO_ACCOUNT_SID'), Deno.env.get('TWILIO_AUTH_TOKEN'), Deno.env.get('TWILIO_FROM')),
   linkBase: Deno.env.get('SHOP_LINK_BASE') || 'https://talkshops.app/?c=',
   demoDailyLimit: Number(Deno.env.get('DEMO_TEXT_DAILY_LIMIT')) || 10,

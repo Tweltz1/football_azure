@@ -24,11 +24,13 @@ export interface Shop {
 export interface EstimateLine { id: string; item: string; price: number; status: 'pending' | 'approved' | 'declined'; charge?: Charge }
 export interface Photo { id: string; src: string; cap: string; stage?: Stage; addedAt?: string; source?: 'customer' }
 export interface StageEvent { stage: Stage; t: string }
-export interface Message { dir: 'out' | 'in'; t: string; text: string; delivery?: 'sent' | 'not_sent' | 'failed'; note?: string }
+type Channel = 'sms' | 'email';
+type Preference = Channel | 'both';
+export interface Message { channel?: Channel; dir: 'out' | 'in'; t: string; text: string; delivery?: 'sent' | 'not_sent' | 'failed'; note?: string }
 
 export interface JobData {
   ro: string;
-  customer: { name: string; phone: string; consent: boolean };
+  customer: { name: string; phone: string; consent: boolean; email?: string; preference?: Preference };
   vehicle: { year: string; make: string; model: string };
   plate: string;
   concern: string;
@@ -77,6 +79,7 @@ export interface SmsSender { send(to: string, text: string): Promise<SmsResult> 
 export interface ShopDeps {
   store: ShopStore;
   sms: SmsSender;
+  email?: { send(to: string, subject: string, text: string): Promise<SmsResult> };
   /** Customer links are this plus the job's token, e.g. https://hood-league.com/shop/?c= */
   linkBase: string;
   newToken: () => string;
@@ -95,7 +98,7 @@ const LABEL: Record<Stage, string> = {
 
 const TEMPLATES: Record<Stage, string> = {
   invited: "Hi {first}, {shop} invites you to check in for your repair. Add your vehicle, describe the issue and upload photos for your technician: {link}",
-  checked_in: "Hi {first}, {shop} has your {vehicle}. We'll text you as work moves along. Track your repair and add photos for your technician: {link}",
+  checked_in: "Hi {first}, {shop} has your {vehicle}. We'll keep you updated as work moves along. Track your repair and add photos for your technician: {link}",
   diagnosing: "Hi {first}, a technician is inspecting your {vehicle} now. We'll send what we find soon.",
   approval: "Hi {first}, we found what's going on with your {vehicle}. Please review and approve the estimate ({total}): {link}",
   parts: "Hi {first}, parts for your {vehicle} are on order and expected {eta}. We'll let you know when they arrive.",
@@ -163,11 +166,19 @@ const customerOut = (j: Job, shop: Shop) => ({
   bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
 });
 
-async function text(deps: ShopDeps, job: Job, body: string, now: string): Promise<Message> {
-  const msg: Message = { dir: 'out', t: now, text: body };
-  if (!job.data.customer.consent) return { ...msg, delivery: 'not_sent', note: 'Customer has not agreed to texts.' };
-  const result = await deps.sms.send(job.data.customer.phone, body);
-  return { ...msg, delivery: result.delivery, ...(result.note ? { note: result.note } : {}) };
+async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string, now: string): Promise<Message[]> {
+  const c = job.data.customer, preference = c.preference ?? 'sms';
+  const channels: Channel[] = preference === 'both' ? ['sms', 'email'] : [preference];
+  return Promise.all(channels.map(async (channel): Promise<Message> => {
+    const link = deps.linkBase + job.token;
+    const text = channel === 'email' && !body.includes(link) ? body + '\n\nRepair details: ' + link : body;
+    let result: SmsResult;
+    if (!c.consent) result = { delivery: 'not_sent', note: 'Customer has not agreed to ' + (channel === 'sms' ? 'texts.' : 'email.') };
+    else if (channel === 'sms') result = await deps.sms.send(c.phone, text);
+    else if (deps.email && c.email) result = await deps.email.send(c.email, shop.name + ' · ' + job.data.ro + ' repair update', text);
+    else result = { delivery: 'not_sent', note: 'Automatic email is not configured.' };
+    return { dir: 'out', channel, t: now, text, ...result };
+  }));
 }
 
 async function submitIntake(store: ShopStore, job: Job, body: Body): Promise<Res | null> {
@@ -288,7 +299,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
 
   if (parts[1] === 'me') {
     const shop = await store.shopByOwner(ctx.userId);
-    if (method === 'GET') return ok({ shop });
+    if (method === 'GET') return ok({ shop, emailConfigured: !!deps.email });
     if (method === 'POST') {
       const name = str(body.name, 80);
       if (!name) return bad('Enter your shop name.');
@@ -326,10 +337,14 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const name = str(c.name, 80);
       const phone = normalizePhone(str(c.phone, 30));
       if (!name) return bad('Enter the customer name.');
-      if (!phone) return bad('Enter a valid mobile number.');
+      const preference = c.preference ?? 'sms';
+      if (preference !== 'sms' && preference !== 'email' && preference !== 'both') return bad('Choose text, email, or both.');
+      if (preference !== 'email' && !phone) return bad('Enter a valid mobile number.');
+      const email = str(c.email, 255);
+      if (preference !== 'sms' && (email.length > 254 || !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email))) return bad('Enter a valid email address.');
       const vehicle = { year: str(v.year, 4), make: str(v.make, 40), model: str(v.model, 40) };
       const inviting = body.invite === true;
-      if (inviting && c.consent !== true) return bad('Confirm the customer agreed to receive the check-in text.');
+      if (inviting && c.consent !== true) return bad('Confirm the customer agreed to receive check-in notifications.');
       if (!inviting && (!vehicle.make || !vehicle.model)) return bad('Enter the make and model.');
       const concern = str(body.concern, 1000);
       if (!inviting && !concern) return bad("Enter the customer's concern.");
@@ -342,7 +357,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         updatedAt: now,
         data: {
           ro: `RO-${await store.nextRo(shop.id)}`,
-          customer: { name, phone, consent: Boolean(c.consent) },
+          customer: { name, phone: phone ?? '', email: preference === 'sms' ? '' : email, preference, consent: c.consent === true },
           vehicle,
           plate: str(body.plate, 12).toUpperCase(),
           concern,
@@ -355,7 +370,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         },
       };
       if (inviting) await store.putJob(job);
-      job.data.messages.push(await text(deps, job, fillTemplate(job.stage, shop, job, deps.linkBase), now));
+      job.data.messages.push(...await notifyCustomer(deps, shop, job, fillTemplate(job.stage, shop, job, deps.linkBase), now));
       await store.putJob(job);
       return ok(jobOut(job, deps.linkBase));
     }
@@ -420,7 +435,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     job.stage = stage;
     d.events.push({ stage, t: now });
     const msg = str(body.text, 1000);
-    if (body.send && msg) d.messages.push(await text(deps, job, msg, now));
+    if (body.send && msg) d.messages.push(...await notifyCustomer(deps, shop, job, msg, now));
   } else if (action === 'eta') {
     d.eta = str(body.eta, 40);
   } else if (action === 'estimate') {
@@ -455,7 +470,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   } else if (action === 'message') {
     const msg = str(body.text, 1000);
     if (!msg) return bad('Type a message.');
-    d.messages.push(await text(deps, job, msg, now));
+    d.messages.push(...await notifyCustomer(deps, shop, job, msg, now));
   } else {
     return { status: 404 };
   }
