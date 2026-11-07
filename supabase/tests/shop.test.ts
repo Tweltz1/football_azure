@@ -158,3 +158,10 @@ test('guided demo texts a visitor a real customer link, with limits', async () =
   assert.equal((await visitor('POST', 'shop/demo/text', { phone: '555-010-0099', consent: true }))?.status, 429, 'daily cap of 10');
   assert.equal(texts.length, 10);
 });
+
+test('a refused text explains why, using Twilio\'s own message', async () => {
+  const twilio = (async () => new Response(JSON.stringify({ code: 21608, message: 'The number +15550000000 is unverified. Trial accounts cannot send messages to unverified numbers.' }), { status: 400 })) as unknown as typeof fetch;
+  const r = await createTwilioSender('AC1', 'secret', '+15550001111', twilio).send('+15550000000', 'hi');
+  assert.equal(r.delivery, 'failed');
+  assert.match(r.note!, /unverified.*Twilio error 21608/);
+});
