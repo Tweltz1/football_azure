@@ -7,6 +7,7 @@ import DraftTvView from './components/DraftTvView';
 import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
 import Profile from './components/Profile';
+import TestPage from './components/TestPage';
 import { useAuth } from './AuthContext';
 import './App.css';
 import './DraftMobile.css';
@@ -49,6 +50,7 @@ function App() {
             <Link to="/leagues">Leagues</Link>
             <Link to="/create-league">Create</Link>
             <Link to="/profile">Profile</Link>
+            <Link to="/test">Test</Link>
           </div>
 
           <div className="nav-user">
@@ -65,6 +67,7 @@ function App() {
             <Route path="/draft/:leagueId" element={<DraftRoomEnhanced userId={userId} />} />
             <Route path="/create-league" element={<CreateLeague userId={userId} />} />
             <Route path="/profile" element={<Profile userId={userId} />} />
+            <Route path="/test" element={<TestPage />} />
           </Routes>
         </main>
       </div>
