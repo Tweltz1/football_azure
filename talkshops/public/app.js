@@ -246,25 +246,32 @@
 
   function loginView() {
     const signup = ui.authMode === "signup";
-    const ico = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-    return `<div class="auth"><aside class="hero">
-      ${brand()}
-      <div class="hero-copy">
-        <h2>Keep every customer <em>informed.</em></h2>
-        <p>Notify customers at every stage of the repair. They track progress and approve estimates from one secure link, with no app to download and no account to create.</p>
-        <div class="hero-claims">
-          <div class="claim">${ico('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}<div><b>Customers come back</b><span>Clear, timely updates build the trust that turns a one-time repair into a regular customer.</span></div></div>
-          <div class="claim">${ico('<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>')}<div><b>Higher satisfaction</b><span>No more wondering about their car. Customers know where things stand at every stage.</span></div></div>
-          <div class="claim">${ico('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/><path d="M15 3l6 6M21 3l-6 6"/>')}<div><b>Fewer status calls</b><span>Customers check progress themselves, so your front desk spends less time on the phone.</span></div></div>
-          <div class="claim">${ico('<path d="M20 6 9 17l-5-5"/>')}<div><b>Faster approvals</b><span>Estimates reach customers instantly and can be signed from anywhere, so work starts sooner.</span></div></div>
+    return `<div class="front">
+      <header class="front-nav"><div class="front-inner">
+        <a class="front-wordmark" href="#top" aria-label="Talk Shops home"><span class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</span>Talk Shops</a>
+        <nav aria-label="Main navigation"><a href="#plans">Compare plans</a><a class="front-sign" href="#shop-login">Shop sign in</a></nav>
+      </div></header>
+      <section class="front-hero" id="top"><div class="front-inner">
+        <div class="front-intro"><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
+          <p>Send repair updates, share photos and collect signed estimates through one link. Your customer opens it on their phone.</p>
+          <div class="front-actions"><a class="front-cta" href="${DEMO_PAGE}">Try the demo shop <span aria-hidden="true">↗</span></a><a class="front-tour" href="${DEMO_PAGE}?tour=1">Take the guided tour →</a></div>
         </div>
-      </div>
-      <div class="hero-chat" aria-hidden="true">
-        <div class="o">Your estimate for the 2018 Honda Civic is ready for review: talkshops.app/s/…<small>Ridgeline Auto Repair</small></div>
-        <div class="i">Estimate approved and signed.</div>
-        <div class="o">Thank you. Your vehicle will be ready by 4:00 PM.</div>
-      </div>
-    </aside><div class="login-wrap"><div class="login">
+        <div class="front-preview" aria-label="Example customer repair page">
+          <div class="front-window"><span>Customer view</span><span>Sample repair</span></div>
+          <div class="front-order"><small>RIDGELINE AUTO REPAIR</small><h2>2018 Honda Civic</h2><span>Brake service · RO-1001</span></div>
+          <ol class="front-timeline"><li><b>Vehicle checked in</b><small>9:10 AM</small></li><li><b>Inspection photos shared</b><small>9:42 AM</small></li><li><b>Estimate approved</b><small>10:03 AM</small></li></ol>
+          <div class="front-estimate"><div><b>Front brake pads</b><small>Approved by customer</small></div><strong>$240.00</strong></div>
+        </div>
+      </div></section>
+      <section class="front-work"><div class="front-inner">
+        <div class="front-workflow"><h2>One repair, two views.</h2>
+          <p>Your team manages the job in the bay. The customer follows along from their private link.</p>
+          <dl><dt>Check in the vehicle</dt><dd>Invite customers by text or email to describe the issue and send photos before the visit.</dd>
+          <dt>Show the work</dt><dd>Share inspection photos by repair stage and let customers approve or decline individual estimate lines.</dd>
+          <dt>Prepare for pickup</dt><dd>Send the final total with an itemized bill or your shop’s own PDF.</dd></dl>
+          <button class="linkbtn" id="watchDemo" type="button">Watch the walkthrough video →</button>
+        </div>
+        <div class="login" id="shop-login" tabindex="-1">
       <h2>${signup ? "Create your shop account" : "Shop sign in"}</h2>
       ${sb ? "" : `<p class="form-err">Sign-in isn't available on this copy of the site.</p>`}
       <button class="btn google" id="google" type="button">${googleIcon} Continue with Google</button>
@@ -277,25 +284,25 @@
       ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
       ${ui.authMsg ? `<p class="form-ok" role="status">${esc(ui.authMsg)}</p>` : ""}
       <button class="linkbtn" id="authSwap" type="button" style="align-self:flex-start">${signup ? "Already have an account? Sign in" : "New shop? Create an account"}</button>
-      <div class="demo-box">
-        <b>See how it works</b>
-        <span class="muted" style="font-size:13.5px">Take a 3-minute narrated tour. Midway through, you can receive a real notification and approve a repair from your own phone.</span>
-        <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}?tour=1" style="text-decoration:none">▶ Guided demo</a><a class="btn" href="${DEMO_PAGE}" style="text-decoration:none">Try demo shop</a><button class="linkbtn" id="watchDemo" type="button">Watch video</button></div>
-      </div>
-      <p class="muted" style="font-size:13px;margin:0">Customers never need an account. Each one receives a secure link to their vehicle's status page.</p>
-    </div></div></div>
-    <section class="compare" aria-labelledby="cmpH">
-      <div class="compare-in">
-        <h2 id="cmpH">Customer updates for a fraction of the price</h2>
-        <p class="muted">Lowest monthly price that includes texting customers and online estimate approval.</p>
-        <div class="cmp">
-          <div class="cmp-row us"><div class="cmp-name"><b>Talk Shops</b><small>Starter plan</small></div><div class="cmp-bar"><i style="width:13%"></i></div><div class="cmp-price">$59<small>/mo</small></div><p>1,000 texts a month, unlimited email, online estimate approval</p></div>
-          <div class="cmp-row"><div class="cmp-name"><b>Shopmonkey</b><small>Basic plan</small></div><div class="cmp-bar"><i style="width:54%"></i></div><div class="cmp-price">$239<small>/mo</small></div><p>Full shop management. Texting and digital authorizations included.</p></div>
-          <div class="cmp-row"><div class="cmp-name"><b>Tekmetric</b><small>Scale plan</small></div><div class="cmp-bar"><i style="width:100%"></i></div><div class="cmp-price">$439<small>/mo</small></div><p>Full shop management. Two-way texting starts on this plan.</p></div>
+      <small class="muted">Customers use their repair link. Only shop staff need an account.</small>
+        </div></div></section>
+      <section class="front-plans" id="plans"><div class="front-inner">
+        <h2>Choose your shop’s plan.</h2><p>Both plans include unlimited email, photo updates, online estimate approvals and final bills.</p>
+        <div class="front-tiers">
+          <article><h3>Talk Shops Starter</h3><strong>$59<small> / month</small></strong><p><b>1,000 texts</b> per month</p><small>Annual billing: $590/year</small></article>
+          <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><small>Annual billing: $990/year</small></article>
         </div>
-        <p class="cmp-fine">Shopmonkey and Tekmetric are complete shop-management systems with many more features. Talk Shops focuses on customer communication and works alongside the system you already use. Prices are month-to-month list prices from each company's public pricing page (<a href="https://www.shopmonkey.io/pricing" target="_blank" rel="noopener">Shopmonkey</a>, <a href="https://tekmetric.com/pricing" target="_blank" rel="noopener">Tekmetric</a>), checked November 7, 2026, and may change.</p>
-      </div>
-    </section>`;
+        <h3 class="front-market-title">How it compares</h3>
+        <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
+          <tr><th scope="row">Talk Shops Starter</th><td>$59</td><td>Customer updates, approvals and 1,000 texts</td></tr>
+          <tr><th scope="row">Talk Shops Pro</th><td>$99</td><td>Customer updates, approvals and 3,000 texts</td></tr>
+          <tr><th scope="row"><a href="https://www.shopmonkey.io/pricing">Shopmonkey Basic</a></th><td>$239</td><td>Shop management, two-way texting and electronic signatures</td></tr>
+          <tr><th scope="row"><a href="https://www.tekmetric.com/pricing">Tekmetric Scale</a></th><td>$439</td><td>Shop management, two-way texting and technician board</td></tr>
+        </tbody></table>
+        <small class="front-source">Selected plans at month-to-month list prices, checked November 7, 2026. Competitor plans include additional shop-management features.</small>
+      </div></section>
+      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="/privacy.html">Privacy policy</a></div></footer>
+    </div>`;
   }
 
   function setupView(firstTime) {
