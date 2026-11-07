@@ -11,6 +11,7 @@ const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 function world() {
   const shops = new Map<string, Shop>();
   const jobs = new Map<string, Job>();
+  const billFiles = new Map<string, string>();
   const ro = new Map<string, number>();
   const texts: { to: string; body: string }[] = [];
   let clock = Date.parse('2026-11-07T15:00:00Z');
@@ -25,6 +26,12 @@ function world() {
     async getJob(id) { const j = jobs.get(id); return j ? clone(j) : null; },
     async jobByToken(t) { const j = [...jobs.values()].find((x) => x.token === t); return j ? clone(j) : null; },
     async putJob(j) { jobs.set(j.id, clone(j)); },
+    async saveBill(id, bill, pdf) {
+      const job = jobs.get(id)!;
+      job.bill = clone(bill);
+      if (pdf === null) billFiles.delete(id); else billFiles.set(id, pdf);
+    },
+    async getBillPdf(id) { return billFiles.get(id) ?? null; },
     async nextRo(shopId) { const v = ro.get(shopId) ?? 1001; ro.set(shopId, v + 1); return v; },
   };
   const deps: ShopDeps = {
@@ -164,4 +171,38 @@ test('a refused text explains why, using Twilio\'s own message', async () => {
   const r = await createTwilioSender('AC1', 'secret', '+15550001111', twilio).send('+15550000000', 'hi');
   assert.equal(r.delivery, 'failed');
   assert.match(r.note!, /unverified.*Twilio error 21608/);
+});
+
+test('shop rates, quoted hours, pickup bill publication and PDF replacement', async () => {
+  const { as } = world();
+  const owner = as('shop-owner'), customer = as(null), other = as('another-owner');
+  const rate = { name: 'Diagnostics', kind: 'labor', rate: 115.25 };
+  await owner('POST', 'shop/me', { name: 'North Auto', rates: [rate] });
+  await other('POST', 'shop/me', { name: 'Other shop' });
+  const me = (await owner('POST', 'shop/me', { name: 'North Auto' }))?.body as {shop: Shop};
+  assert.deepEqual(me.shop.rates, [rate]);
+  const job = (await owner('POST', 'shop/jobs', checkIn))?.body as {id: string; link: string};
+  const path = 'shop/jobs/' + job.id, link = 'shop/c/' + job.link.split('?c=')[1];
+  const estimate = await owner('POST', path + '/estimate', {charge: {...rate, qty:1.5}});
+  assert.equal((estimate?.body as Job['data']).estimate[0].price, 172.88);
+  const lines = [{...rate, qty:2}, {name:'Disposal', kind:'fee', qty:1, rate:9.50}];
+  const bill = {mode:'generated',lines};
+  assert.equal((await other('POST', path + '/bill', bill))?.status, 404);
+  assert.equal((await owner('POST', path + '/bill', bill))?.status, 200);
+  assert.equal(((await customer('GET', link))?.body as Job).bill, null);
+  const preview = (await owner('POST', path+'/preview', {stage:'ready'}))?.body as {text:string};
+  assert.match(preview.text, /240\.00/);
+  await owner('POST', path+'/stage', {stage:'ready'});
+  const published = ((await customer('GET', link))?.body as Job).bill;
+  assert.equal(published?.total, 240);
+  assert.equal(published?.shopName, 'North Auto');
+  assert.deepEqual(published?.lines, lines);
+  const pdf = Buffer.from('%PDF-1.7\nexample').toString('base64');
+  const upload = {mode:'upload',filename:'shop-invoice.pdf',pdf,total:199.50};
+  assert.equal((await owner('POST',path+'/bill',{...upload,pdf:'invalid'}))?.status,400);
+  assert.equal((await owner('POST',path+'/bill',upload))?.status,200);
+  assert.ok(!JSON.stringify((await owner('GET','shop/jobs'))?.body).includes(pdf));
+  assert.deepEqual((await customer('GET',link+'/bill-file'))?.body,{pdf});
+  await owner('POST',path+'/bill',bill);
+  assert.equal((await customer('GET',link+'/bill-file'))?.status,404);
 });

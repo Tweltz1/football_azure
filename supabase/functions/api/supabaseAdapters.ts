@@ -331,22 +331,22 @@ export function createCardGameStore(db: SupabaseClient): CardGameStore {
   };
 }
 
-interface ShopDb { id: string; owner_id: string; name: string; phone: string; hours: string; created_at: string }
-interface JobDb { id: string; shop_id: string; token: string; stage: string; data: JobData; created_at: string; updated_at: string }
+interface ShopDb { rates: Shop['rates']; id: string; owner_id: string; name: string; phone: string; hours: string; created_at: string }
+interface JobDb { bill: Job['bill']; id: string; shop_id: string; token: string; stage: string; data: JobData; created_at: string; updated_at: string }
 
-const shopRow = (r: ShopDb): Shop => ({ id: r.id, ownerId: r.owner_id, name: r.name, phone: r.phone, hours: r.hours, createdAt: r.created_at });
+const shopRow = (r: ShopDb): Shop => ({ id: r.id, ownerId: r.owner_id, rates: r.rates, name: r.name, phone: r.phone, hours: r.hours, createdAt: r.created_at });
 const jobRow = (r: JobDb): Job => ({
-  id: r.id, shopId: r.shop_id, token: r.token, stage: r.stage as Job['stage'], data: r.data, createdAt: r.created_at, updatedAt: r.updated_at,
+  id: r.id, shopId: r.shop_id, bill: r.bill, token: r.token, stage: r.stage as Job['stage'], data: r.data, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
 export function createShopStore(db: SupabaseClient): ShopStore {
   const oneShop = async (column: string, value: string) => {
-    const { data, error } = await db.from('repair_shops').select('id, owner_id, name, phone, hours, created_at').eq(column, value).maybeSingle();
+    const { data, error } = await db.from('repair_shops').select('id, owner_id, name, phone, hours, rates, created_at').eq(column, value).maybeSingle();
     if (error) throw error;
     return data ? shopRow(data as ShopDb) : null;
   };
   const oneJob = async (column: string, value: string) => {
-    const { data, error } = await db.from('repair_jobs').select('*').eq(column, value).maybeSingle();
+    const { data, error } = await db.from('repair_jobs').select('id,shop_id,token,stage,data,bill,created_at,updated_at').eq(column, value).maybeSingle();
     if (error) throw error;
     return data ? jobRow(data as JobDb) : null;
   };
@@ -355,12 +355,12 @@ export function createShopStore(db: SupabaseClient): ShopStore {
     shopById: (id) => oneShop('id', id),
     async putShop(shop) {
       const { error } = await db.from('repair_shops').upsert({
-        id: shop.id, owner_id: shop.ownerId, name: shop.name, phone: shop.phone, hours: shop.hours, created_at: shop.createdAt,
+        id: shop.id, owner_id: shop.ownerId, name: shop.name, phone: shop.phone, hours: shop.hours, rates: shop.rates ?? [], created_at: shop.createdAt,
       });
       if (error) throw error;
     },
     async listJobs(shopId, since) {
-      const { data, error } = await db.from('repair_jobs').select('*').eq('shop_id', shopId)
+      const { data, error } = await db.from('repair_jobs').select('id,shop_id,token,stage,data,bill,created_at,updated_at').eq('shop_id', shopId)
         .or(`stage.neq.picked_up,updated_at.gte.${since}`).order('created_at', { ascending: true }).limit(300);
       if (error) throw error;
       return (data ?? []).map((r) => jobRow(r as JobDb));
@@ -372,6 +372,15 @@ export function createShopStore(db: SupabaseClient): ShopStore {
         id: job.id, shop_id: job.shopId, token: job.token, stage: job.stage, data: job.data, created_at: job.createdAt, updated_at: job.updatedAt,
       });
       if (error) throw error;
+    },
+    async saveBill(jobId, bill, pdf) {
+      const { error } = await db.from('repair_jobs').update({ bill, bill_pdf: pdf }).eq('id', jobId).select('id').single();
+      if (error) throw error;
+    },
+    async getBillPdf(jobId) {
+      const { data, error } = await db.from('repair_jobs').select('bill_pdf').eq('id', jobId).single();
+      if (error) throw error;
+      return data?.bill_pdf ?? null;
     },
     async nextRo(shopId) {
       const { data, error } = await db.rpc('repair_next_ro', { p_shop: shopId });

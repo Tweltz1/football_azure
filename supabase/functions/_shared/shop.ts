@@ -4,6 +4,8 @@
 
 import type { Ctx, Res } from './handlers.ts';
 
+import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
+
 type Body = Record<string, unknown>;
 
 export const STAGES = ['checked_in', 'diagnosing', 'approval', 'parts', 'in_progress', 'qc', 'ready', 'picked_up'] as const;
@@ -12,13 +14,14 @@ export type Stage = typeof STAGES[number];
 export interface Shop {
   id: string;
   ownerId: string;
+  rates?: Rate[];
   name: string;
   phone: string;
   hours: string;
   createdAt: string;
 }
 
-export interface EstimateLine { id: string; item: string; price: number; status: 'pending' | 'approved' | 'declined' }
+export interface EstimateLine { id: string; item: string; price: number; status: 'pending' | 'approved' | 'declined'; charge?: Charge }
 export interface Photo { id: string; src: string; cap: string; stage?: Stage; addedAt?: string }
 export interface StageEvent { stage: Stage; t: string }
 export interface Message { dir: 'out' | 'in'; t: string; text: string; delivery?: 'sent' | 'not_sent' | 'failed'; note?: string }
@@ -43,6 +46,7 @@ export interface Job {
   token: string;
   stage: Stage;
   data: JobData;
+  bill?: Bill | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -55,6 +59,8 @@ export interface ShopStore {
   getJob(id: string): Promise<Job | null>;
   jobByToken(token: string): Promise<Job | null>;
   putJob(job: Job): Promise<void>;
+  saveBill?(jobId: string, bill: Bill, pdf: string | null): Promise<void>;
+  getBillPdf?(jobId: string): Promise<string | null>;
   /** Next repair order number for the shop, starting at 1001. */
   nextRo(shopId: string): Promise<number>;
 }
@@ -120,7 +126,7 @@ export function fillTemplate(stage: Stage, shop: Shop, job: Job, linkBase: strin
     shop: shop.name,
     vehicle: vehicleName(d) || 'car',
     link: linkBase + job.token,
-    total: money(total(d, stage === 'ready')),
+    total: money(stage === 'ready' && job.bill ? job.bill.total : total(d, stage === 'ready')),
     eta: d.eta || 'soon',
     hours: shop.hours || 'during business hours',
   };
@@ -129,7 +135,7 @@ export function fillTemplate(stage: Stage, shop: Shop, job: Job, linkBase: strin
 
 /** What the shop sees. */
 const jobOut = (j: Job, linkBase: string) => ({
-  id: j.id, stage: j.stage, link: linkBase + j.token, createdAt: j.createdAt, updatedAt: j.updatedAt, ...j.data,
+  id: j.id, stage: j.stage, link: linkBase + j.token, createdAt: j.createdAt, updatedAt: j.updatedAt, bill: j.bill ?? null, ...j.data,
 });
 
 /** What the customer sees: no phone number, no other customers, no internal notes. */
@@ -145,6 +151,7 @@ const customerOut = (j: Job, shop: Shop) => ({
   photos: j.data.photos,
   events: j.data.events,
   approval: j.data.approval,
+  bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
 });
 
 async function text(deps: ShopDeps, job: Job, body: string, now: string): Promise<Message> {
@@ -169,6 +176,11 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const shop = job ? await store.shopById(job.shopId) : null;
     if (!job || !shop) return { status: 404, body: 'This link is not valid.' };
 
+    if (method === 'GET' && parts.length === 4 && parts[3] === 'bill-file') {
+      if (!['ready', 'picked_up'].includes(job.stage) || job.bill?.mode !== 'upload') return { status: 404 };
+      const pdf = await store.getBillPdf?.(job.id);
+      return pdf ? ok({ pdf }) : { status: 404 };
+    }
     if (method === 'GET' && parts.length === 3) return ok(customerOut(job, shop));
 
     if (method === 'POST' && parts[3] === 'decision') {
@@ -247,9 +259,11 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (method === 'POST') {
       const name = str(body.name, 80);
       if (!name) return bad('Enter your shop name.');
+      const rates = body.rates ?? shop?.rates ?? [];
+      if (!Array.isArray(rates) || rates.length > 250 || !rates.every(validRate)) return bad('Check your rate list (up to 250 rates).');
       const next: Shop = {
         id: shop?.id ?? ctx.newId(),
-        ownerId: ctx.userId,
+        ownerId: ctx.userId, rates: rates.map(copyRate),
         name,
         phone: str(body.phone, 30),
         hours: str(body.hours, 60),
@@ -315,10 +329,37 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   const job = await store.getJob(id);
   if (!job || job.shopId !== shop.id) return { status: 404, body: 'Not found.' };
   const action = parts[3];
+  if (method === 'GET' && action === 'bill-file' && job.bill?.mode === 'upload') {
+    const pdf = await store.getBillPdf?.(id);
+    return pdf ? ok({ pdf }) : { status: 404 };
+  }
   if (method === 'GET' && !action) return ok(jobOut(job, deps.linkBase));
   if (method !== 'POST') return { status: 405 };
   const d = job.data;
 
+  if (action === 'bill') {
+    if (!store.saveBill) return { status: 503, body: 'Billing is unavailable.' };
+    const issuer = { shopName: shop.name, phone: shop.phone, issuedAt: now };
+    let bill: Bill;
+    let pdf: string | null = null;
+    if (body.mode === 'upload') {
+      if (!amount(body.total, 100_000_000)) return bad('Enter the total printed on the bill.');
+      if (typeof body.pdf !== 'string' || body.pdf.length > 4_194_304 || !/^JVBERi0[A-Za-z0-9+/]*={0,2}$/.test(body.pdf) || body.pdf.length % 4 !== 0)
+        return bad('Choose a PDF up to 3 MB.');
+      pdf = body.pdf;
+      bill = { ...issuer, mode: 'upload', total: body.total, filename: str(body.filename, 150) || 'Final-bill.pdf' };
+    } else {
+      if (body.mode !== 'generated' || !Array.isArray(body.lines) || !body.lines.length || body.lines.length > 150 || !body.lines.every(validCharge))
+        return bad('Enter a description, quantity and rate for every bill line (up to 150).');
+      const lines: Charge[] = body.lines.map((r: Charge) => ({ ...copyRate(r), qty: r.qty }));
+      const total = lines.reduce((sum, r) => sum + lineCents(r), 0) / 100;
+      if (total > 100_000_000) return bad('Bill total is too large.');
+      bill = { ...issuer, mode: 'generated', lines, total };
+    }
+    await store.saveBill(job.id, bill, pdf);
+    job.bill = bill;
+    return ok(jobOut(job, deps.linkBase));
+  }
   if (action === 'preview') {
     const stage = str(body.stage) as Stage;
     if (!STAGES.includes(stage)) return bad('Unknown stage.');
@@ -344,6 +385,10 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const before = d.estimate.length;
       d.estimate = d.estimate.filter((e) => !(e.id === body.remove && e.status === 'pending'));
       if (d.estimate.length === before) return bad('Only pending lines can be removed.');
+    } else if (body.charge !== undefined) {
+      const r = body.charge;
+      if (!validCharge(r)) return bad('Check the description, quantity and rate.');
+      d.estimate.push({ id: ctx.newId(), item: r.name.trim(), price: lineCents(r) / 100, status: 'pending', charge: { ...copyRate(r), qty: r.qty } });
     } else {
       const item = str(body.item, 120);
       const price = Number(body.price);
