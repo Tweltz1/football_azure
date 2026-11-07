@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 
-// The Test tab opens Talk Shops, the repair shop app at /shop/ (frontend/public/shop/), a stand-alone
+// The Test tab opens Talk Shops (talkshops.app, built from talkshops/ in this repo), a stand-alone
 // page that leaves the Hood League look entirely.
-const DEMO_URL = '/shop/';
+const DEMO_URL = 'https://talkshops.app/';
 
 const TestPage = () => {
   useEffect(() => {

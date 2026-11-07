@@ -16,7 +16,7 @@
     "start": "react-scripts start",
     "prebuild": "node scripts/build-offline-engine.mjs && node scripts/build-player-json.mjs",
     "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
-    "postbuild": "node scripts/css-tv-fallbacks.mjs && node scripts/shop-config.mjs",
+    "postbuild": "node scripts/css-tv-fallbacks.mjs",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "offline-engine": "node scripts/build-offline-engine.mjs"
