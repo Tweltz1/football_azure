@@ -231,7 +231,9 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     job.data.messages.push({ dir: 'out', t: now, text, delivery: sent.delivery, ...(sent.note ? { note: sent.note } : {}) });
     await store.putJob(job);
     if (sent.delivery !== 'sent') {
-      return { status: 502, body: 'The text could not be sent to that number. While the demo uses a trial texting account, it can only text numbers the owner has verified. You can keep going with the on-screen version.' };
+      ctx.log.warn('demo text not sent', { delivery: sent.delivery, note: sent.note });
+      const why = sent.delivery === 'not_sent' ? 'Texting is not set up on the server yet.' : (sent.note || 'The texting service turned it down.');
+      return { status: 502, body: `The demo text could not be sent. ${why} You can keep going with the on-screen version.` };
     }
     return ok({ token: job.token });
   }
@@ -381,7 +383,10 @@ export function createTwilioSender(sid?: string, token?: string, from?: string, 
         });
         if (res.ok) return { delivery: 'sent' };
         const detail = await res.text().catch(() => '');
-        return { delivery: 'failed', note: `Text failed (${res.status}). ${detail.slice(0, 120)}` };
+        // Twilio answers with JSON like {"code":21608,"message":"The number ... is unverified..."}; keep the readable part.
+        let reason = detail.slice(0, 200);
+        try { const j = JSON.parse(detail); if (j?.message) reason = `${j.message}${j.code ? ` (Twilio error ${j.code})` : ''}`; } catch { /* not JSON */ }
+        return { delivery: 'failed', note: `Text failed (${res.status}): ${reason.slice(0, 240)}` };
       } catch (error) {
         return { delivery: 'failed', note: `Text failed: ${(error as Error).message}` };
       }
