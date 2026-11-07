@@ -405,16 +405,6 @@ p {
   padding: 36px 0 72px;
 }
 
-.shop-sim {
-  margin: -24px 0 -60px;
-}
-
-@media (max-width: 720px) {
-  .shop-sim {
-    margin: -12px 0 -60px;
-  }
-}
-
 .page-shell,
 .draft-room {
   width: 100%;

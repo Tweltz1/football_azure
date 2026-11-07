@@ -122,7 +122,7 @@ function App() {
             {inGamesApp() && <a href={HOOD_GAMES_PATH}>Hood Games</a>}
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>
-            <NavLink to="/test">Test</NavLink>
+            <a href="/repair-shop-demo.html">Test</a>
           </div>
 
           <div className="nav-user">
