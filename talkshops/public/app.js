@@ -27,6 +27,13 @@
   const since = (t) => { const m = Math.max(0, Math.round((Date.now() - ts(t)) / 60000)); if (m < 60) return m + "m"; const h = Math.floor(m / 60); if (h < 48) return h + "h " + (m % 60) + "m"; return Math.floor(h / 24) + "d"; };
   const vehicleStr = (j) => [j.vehicle.year, j.vehicle.make, j.vehicle.model].filter(Boolean).join(" ");
   const estTotal = (j, approvedOnly) => j.estimate.filter((e) => !approvedOnly || e.status === "approved").reduce((a, e) => a + Number(e.price), 0);
+  const awaitingDecision = (j) => j.stage === "approval" && j.estimate.some((e) => e.status === "pending");
+  function estimateOutcome(j) {
+    if (!j.estimate.length || j.estimate.some((e) => e.status === "pending")) return "";
+    const approved = j.estimate.filter((e) => e.status === "approved").length;
+    if (approved === j.estimate.length) return "Estimate approved";
+    return approved ? "Estimate partially approved" : "Estimate declined";
+  }
   const fmtPhone = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ""); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : (p || ""); };
   const first = (name) => String(name || "").split(/\s+/)[0];
 
@@ -84,13 +91,15 @@
     if (!cust.data) return;
     const j = cust.data, idx = SI[j.stage];
     document.title = j.shop.name + " · Your " + j.vehicle;
+    const outcome = estimateOutcome(j);
     const evAt = (k) => { const e = [...j.events].reverse().find((x) => x.stage === k); return e ? e.t : null; };
     const tl = STAGES.filter((s) => s.key !== "picked_up").map((s) => {
-      const t = evAt(s.key);
+      const decided = s.key === "approval" && outcome && evAt(s.key);
+      const t = decided && j.approval ? j.approval.t : evAt(s.key);
       const cls = s.key === j.stage ? "current" : (t && SI[s.key] < idx ? "done" : "todo");
-      return `<li class="${cls}"><span>${s.label}</span><time>${t ? dayClock(t) : ""}</time></li>`;
+      return `<li class="${cls}"><span>${decided ? outcome : s.label}</span><time>${t ? dayClock(t) : ""}</time></li>`;
     }).join("");
-    const pending = j.stage === "approval" && j.estimate.some((e) => e.status === "pending");
+    const pending = awaitingDecision(j);
     let est = "";
     if (j.estimate.length) {
       const items = j.estimate.map((e) => {
@@ -112,7 +121,7 @@
     const extra = j.stage === "parts" && j.eta ? `<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta)}</b>.</p>`
       : j.stage === "ready" ? `<p style="margin:6px 0 0">Total due ${money(estTotal(j, true))}.${j.shop.hours ? " Open " + esc(j.shop.hours) + "." : ""}</p>` : "";
     app.innerHTML = `<div class="cust-page">
-      <div class="c-head"><small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${STAGES[idx].cust}</h2><div style="font-size:14px;margin-top:4px">${esc(j.vehicle)}</div>${extra}</div>
+      <div class="c-head"><small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${j.stage === "approval" && outcome ? outcome : STAGES[idx].cust}</h2><div style="font-size:14px;margin-top:4px">${esc(j.vehicle)}</div>${extra}</div>
       <div class="c-body">
         ${est}${photos}
         <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul></div>
@@ -200,24 +209,25 @@
     if (!jobs.length) {
       return `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car. The customer gets a text with a link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check in a car</button></div>`;
     }
-    const waiting = active.filter((j) => j.stage === "approval").length;
+    const waiting = active.filter(awaitingDecision).length;
     const ready = active.filter((j) => j.stage === "ready").length;
     const today = new Date().toDateString();
     const sent = jobs.reduce((a, j) => a + j.messages.filter((m) => m.dir === "out" && m.delivery === "sent" && new Date(m.t).toDateString() === today).length, 0);
     let h = `<div class="stats">
-      <div class="stat"><b>${active.length}</b><span>Cars in the shop</span></div>
+      ${active.length === 1 ? `<button type="button" class="stat" data-open="${esc(active[0].id)}" aria-label="Open ${esc(vehicleStr(active[0]))}"><b>1</b><span>Cars in the shop</span></button>` : `<div class="stat"><b>${active.length}</b><span>Cars in the shop</span></div>`}
       <div class="stat warn"><b>${waiting}</b><span>Waiting on customer</span></div>
       <div class="stat ok"><b>${ready}</b><span>Ready for pickup</span></div>
       <div class="stat"><b>${sent}</b><span>Texts sent today</span></div></div>
       <div class="board-wrap"><div class="board">`;
     STAGES.filter((s) => s.key !== "picked_up").forEach((s) => {
       const list = active.filter((j) => j.stage === s.key);
-      h += `<section class="col ${s.key === "approval" ? "is-approval" : ""} ${s.key === "ready" ? "is-ready" : ""}"><div class="col-h"><h3>${s.label}</h3><span>${list.length}</span></div>`;
+      h += `<section class="col ${s.key === "approval" ? "is-approval" : ""} ${s.key === "ready" ? "is-ready" : ""}"><div class="col-h"><h3>${s.key === "approval" ? "Estimate review" : s.label}</h3><span>${list.length}</span></div>`;
       if (!list.length) h += `<div class="empty-col">No cars</div>`;
       list.forEach((j) => {
         const ev = j.events[j.events.length - 1];
         let pill = "";
-        if (j.stage === "approval") pill = `<span class="pill warn">Sent ${since(ev.t)} ago</span>`;
+        if (j.stage === "approval" && estimateOutcome(j)) pill = `<span class="pill">${estimateOutcome(j)}</span>`;
+        else if (awaitingDecision(j)) pill = `<span class="pill warn">Sent ${since(ev.t)} ago</span>`;
         else if (j.stage === "parts") pill = `<span class="pill">ETA ${esc(j.eta || "not set")}</span>`;
         const last = j.messages[j.messages.length - 1];
         const reply = last && last.dir === "in";
@@ -260,7 +270,7 @@
 
   function sheetView(j) {
     const idx = SI[j.stage];
-    const steps = STAGES.map((s, i) => `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "current" : ""}" data-stage="${s.key}" ${i === idx ? 'aria-current="step"' : ""}>${s.label}</button>`).join("");
+    const steps = STAGES.map((s, i) => `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "current" : ""}" data-stage="${s.key}" ${i === idx ? 'aria-current="step"' : ""}>${s.key === "approval" && i === idx ? estimateOutcome(j) || s.label : s.label}</button>`).join("");
     const next = STAGES[idx + 1];
     const rows = j.estimate.map((e) => `<tr><td>${esc(e.item)}</td><td>${e.status === "pending" ? '<span class="pill warn">Pending</span>' : e.status === "approved" ? '<span class="pill ok">Approved</span>' : '<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status === "pending" && j.stage !== "approval" ? `<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>` : ""}</td></tr>`).join("");
     const log = [...j.events].reverse().map((e) => `<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
