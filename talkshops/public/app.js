@@ -172,6 +172,7 @@
         ${j.concern ? `<div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
         ${j.shop.phone ? `<div class="c-card call"><span>Questions? Call the shop</span><b>${esc(j.shop.phone)}</b></div>` : ""}
         <p class="cust-top">This page updates as your repair progresses.</p>
+        <p class="cust-top"><a href="/privacy.html">Privacy policy</a></p>
       </div></div>`;
   }
 
