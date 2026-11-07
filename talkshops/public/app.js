@@ -42,7 +42,7 @@
   const channelName = m => m.channel === "email" ? "Email" : "Text";
   function sendResult(j) {
     const count = j.customer.preference === "both" ? 2 : 1;
-    return j.messages.slice(-count).map(m => channelName(m) + (m.delivery === "sent" ? " submitted" : " — " + (m.note || "not sent"))).join(". ");
+    return j.messages.slice(-count).map(m => m.delivery === "sent" ? channelName(m) + " sent" : channelName(m) + " not sent" + (m.note ? ": " + String(m.note).replace(/[.\s]+$/, "") : "")).join(". ") + ".";
   }
   const first = (name) => String(name || "").split(/\s+/)[0];
 
@@ -166,7 +166,7 @@
         ${j.canUploadIntakePhotos ? `<section class="c-card"><h3>Photos for your technician</h3>
           <p>Show the damage, warning light or part you want checked.</p>
           <button type="button" id="customerPickPhoto" class="btn" ${j.photos.filter(p => p.source === "customer").length >= 6 ? "disabled" : ""}>Add photos</button>
-          <small>${j.photos.filter(p => p.source === "customer").length} of 6 photos added</small><p id="photoStatus" role="status" hidden></p></section>` : ""}
+          <small style="margin-left:10px">${j.photos.filter(p => p.source === "customer").length} of 6 photos added</small><p id="photoStatus" role="status" hidden></p></section>` : ""}
         ${billing.display(j.bill, j)}${est}
         <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         ${j.concern ? `<div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
@@ -244,7 +244,7 @@
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
       <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
       <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(s.hours || "")}" placeholder="Mon–Fri 7:30am–6pm"></label>
-      <label class="field">Shop email <span class="muted" style="font-weight:400">(optional; customers' email replies go here)</span><input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"></label>
+      <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
       ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Manage shop rates and import fees</button>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign out</button>` : ""}</div>
     </form></div>`;
@@ -265,7 +265,7 @@
       ${inShop.length === 1 ? `<button type="button" class="stat" data-open="${esc(inShop[0].id)}" aria-label="Open ${esc(vehicleStr(inShop[0]))}"><b>1</b><span>Cars in the shop</span></button>` : `<div class="stat"><b>${inShop.length}</b><span>Cars in the shop</span></div>`}
       <div class="stat warn"><b>${waiting}</b><span>Waiting on customer</span></div>
       <div class="stat ok"><b>${ready}</b><span>Ready for pickup</span></div>
-      <div class="stat"><b>${sent}</b><span>Notifications submitted today</span></div></div>
+      <div class="stat"><b>${sent}</b><span>Updates sent today</span></div></div>
       <div class="board-wrap"><div class="board">`;
     STAGES.filter((s) => s.key !== "picked_up").forEach((s) => {
       const list = active.filter((j) => j.stage === s.key);
@@ -319,7 +319,7 @@
     const unsent = m.dir === "out" && m.delivery && m.delivery !== "sent";
     const who = m.dir === "out" ? channelName(m) + " to customer" : esc(first(j.customer.name));
     const status = unsent ? `<span class="delivery">${m.delivery === "failed" ? "Failed" : "Not sent"}${m.note ? ": " + esc(m.note) : ""}</span>` : "";
-    const text = esc(m.text).replace(esc(j.link), `<a href="${esc(j.link)}" target="_blank" rel="noopener">${esc(j.link)}</a>`);
+    const text = esc(m.text).replace(esc(j.link), `<a href="${esc(j.link)}" target="_blank" rel="noopener" title="${esc(j.link)}">customer page link</a>`);
     const draft = unsent && m.channel === "email" && j.customer.email && j.customer.consent
       ? `<a class="btn" href="mailto:${esc(encodeURIComponent(j.customer.email))}?subject=${esc(encodeURIComponent(shop.name + " · " + j.ro))}&amp;body=${esc(encodeURIComponent(m.text))}">Open email draft</a>` : "";
     return `<div class="bubble ${m.dir}${unsent ? " unsent" : ""}">${text}<span class="meta">${who} · ${dayClock(m.t)}</span>${status}${draft}</div>`;
@@ -333,24 +333,28 @@
     const log = [...j.events].reverse().map((e) => `<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
     return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
       <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(j.customer.name)} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
-      <div class="sheet-body">
+      <div class="sheet-body" data-job="${esc(j.id)}">
         <section class="sec"><h3>Stage</h3><div class="stepper">${steps}</div>
           <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer's page</a></div>
           ${j.stage === "parts" ? `<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
         </section>
         ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
-        <section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div></section>
-        <section class="sec"><h3>Estimate</h3>
-          ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<p class="muted" style="margin:0">No line items yet.</p>`}
+        ${j.concern ? `<section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div></section>` : ""}
+        ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3>
+          ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some((e) => e.status !== "pending") ? `<div class="total"><span>Approved total</span><span>${money(estTotal(j, true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}` : `<p class="muted" style="margin:0">No line items yet.</p>`}
           ${j.approval ? `<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>` : ""}
-          <form class="add-line" id="addLine"><input id="li-item" placeholder="Line item, e.g. Cabin air filter" aria-label="Line item"><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button></form>
-          <button class="btn" type="button" data-billing="quote">Add labor, parts or fees</button>
-          ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? `<button class="btn primary" style="margin-top:10px" data-stage="approval">Send estimate for approval</button>` : ""}
+          <div class="est-add">
+            <div class="est-add-h">Quick add</div>
+            <form class="add-line" id="addLine"><input id="li-item" placeholder="Item, e.g. Cabin air filter" aria-label="Line item"><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button></form>
+            <div class="est-add-or"><span>or</span></div>
+            <button class="btn est-add-more" type="button" data-billing="quote">Add labor, parts or fees with hours and rates</button>
+          </div>
+          ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? `<button class="btn primary est-send" data-stage="approval">Send estimate for approval</button>` : ""}
         </section>
         <section class="sec"><h3>Final bill</h3>
           ${j.bill ? `<p>${j.bill.mode === "upload" ? "Shop PDF" : "Itemized bill"} · ${money(j.bill.total)}</p>` : ""}
           <div class="btn-row"><button class="btn" data-billing="generated">${j.bill?.mode === "generated" ? "Edit itemized bill" : "Create itemized bill"}</button><button class="btn" data-billing="upload">Upload shop PDF</button>${j.bill?.mode==="upload" ? '<button class="linkbtn" data-billing="download">Download current PDF</button>' : ""}</div>
-        </section>
+        </section>`}
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
           <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
         <section class="sec"><h3>Messages</h3><div class="thread">${j.messages.map((m) => bubble(m, j)).join("") || '<p class="muted">No messages yet.</p>'}</div>
@@ -379,7 +383,9 @@
     if (ui.modal === "video") h += videoModal();
     else if (ui.modal?.billing) h += billing.editor(ui.modal.billing, shop, job(ui.modal.job));
     else if (ui.modal) h += stageModal();
+    const prev = $(".sheet-body"), keep = prev && prev.dataset.job === ui.openJob ? prev.scrollTop : null;
     $("#layer").innerHTML = h;
+    if (keep !== null && $(".sheet-body")) { $(".sheet").classList.add("no-anim"); $(".sheet-body").scrollTop = keep; }
     if (ui.modal?.billing) billing.updateTotal($("#billingForm"));
   }
 
@@ -705,7 +711,7 @@
     if (pickerActive()) return;
     try {
       const latest = await api("GET", "shop/jobs");
-      if (!pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !document.activeElement?.matches("input,textarea")) { jobs = latest; render(); }
+      if (!pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !document.activeElement?.matches("input,textarea")) { if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
     } catch (e) { /* try again next time */ }
   }, 20000);
 })();

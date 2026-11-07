@@ -162,6 +162,16 @@ table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-
 /* check-in */
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:760px}
 .panel h2{font-size:26px;margin-bottom:4px}
+#setupForm.panel{display:flex;flex-direction:column;gap:14px}
+#setupForm.panel>.btn{align-self:flex-start}
+.field .hint{font-weight:400;font-size:12.5px;color:var(--muted)}
+.est-add{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;gap:10px}
+.est-add-h{font-size:13px;font-weight:600}
+.est-add .add-line{margin-top:0}
+.est-add-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.est-add-or::before,.est-add-or::after{content:"";flex:1;border-top:1px solid var(--line)}
+.est-add-more{width:100%;justify-content:center}
+.est-send{margin-top:12px;width:100%;justify-content:center}
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
 .form-grid .full{grid-column:1/-1}
 @media (max-width:560px){.form-grid{grid-template-columns:1fr}}
@@ -206,11 +216,12 @@ table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-
 .est-item .top{display:flex;justify-content:space-between;gap:10px;font-weight:600}
 .est-item .top span:last-child{font-variant-numeric:tabular-nums}
 .total{display:flex;justify-content:space-between;font-weight:700;font-size:16px;padding-top:8px;font-variant-numeric:tabular-nums}
+.total.sub{font-weight:400;font-size:14px;color:var(--muted);padding-top:2px}
 .call{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}
 .call b{font-family:var(--f-mono);user-select:all}
 
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:9px;font-weight:600;z-index:40;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
-@media (prefers-reduced-motion:no-preference){.sheet{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px)}}}
+@media (prefers-reduced-motion:no-preference){.sheet:not(.no-anim){animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px)}}}
 
 /* real app additions */
 a.btn{color:var(--fg);text-decoration:none;display:inline-flex;align-items:center}

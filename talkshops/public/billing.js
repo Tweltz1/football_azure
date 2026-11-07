@@ -9,7 +9,7 @@ window.createShopBilling = ({ esc, money }) => {
   function row(r = blank, catalog = false) {
     return `<div class="charge-row">
       <label class="field">Description<input name="name" required maxlength="120" value="${esc(r.name)}"></label>
-      <label class="field">Type<select name="kind">${kinds.map(k => `<option ${r.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></label>
+      <label class="field">Type<select name="kind">${kinds.map(k => `<option value="${k}" ${r.kind === k ? "selected" : ""}>${k[0].toUpperCase() + k.slice(1)}</option>`).join("")}</select></label>
       ${catalog ? "" : `<label class="field"><span class="qty-label">${qtyLabel(r.kind)}</span><input name="qty" type="number" required min=".01" max="${r.kind==="percent"?1000000:10000}" step=".01" value="${esc(r.qty)}"></label>`}
       <label class="field"><span class="rate-label">${rateLabel(r.kind)}</span><input name="rate" type="number" required min="0" max="1000000" step=".01" value="${esc(r.rate)}"></label>
       <button type="button" class="linkbtn" data-billing="delete-row">Remove line</button></div>`;
