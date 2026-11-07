@@ -276,3 +276,30 @@ test('email-only check-in and dual-channel repair messages record independent ou
   const noConsent=(await owner('POST','shop/jobs',{...checkIn,customer:{...contact,consent:false}}))?.body as Job['data'];
   assert.equal(noConsent.messages[0].delivery,'not_sent');
 });
+
+test('customer emails show the shop as sender, reply to the shop, and explain failures', async () => {
+  const { createShopEmailSender } = await import('../functions/_shared/shopEmail.ts');
+  let sent: Record<string, unknown> = {};
+  const ok = (async (_u: string, init: RequestInit) => { sent = JSON.parse(String(init.body)); return new Response('{}', { status: 200 }); }) as unknown as typeof fetch;
+  const mail = createShopEmailSender('re_key', 'Talk Shops <updates@talkshops.app>', ok)!;
+  assert.equal((await mail.send('a@b.co', 'Hi', 'Body', { fromName: 'Ridgeline "Auto"', replyTo: 'dan@ridgeline.com' })).delivery, 'sent');
+  assert.equal(sent.from, '"Ridgeline Auto via Talk Shops" <updates@talkshops.app>');
+  assert.equal(sent.reply_to, 'dan@ridgeline.com');
+  await mail.send('a@b.co', 'Hi', 'Body');
+  assert.equal(sent.from, 'Talk Shops <updates@talkshops.app>');
+  assert.equal('reply_to' in sent, false);
+  const bad = (async () => new Response(JSON.stringify({ name: 'validation_error', message: 'The talkshops.app domain is not verified.' }), { status: 403 })) as unknown as typeof fetch;
+  const r = await createShopEmailSender('re_key', 'updates@talkshops.app', bad)!.send('a@b.co', 'Hi', 'Body');
+  assert.equal(r.delivery, 'failed');
+  assert.match(r.note!, /403.*not verified/);
+  assert.equal(createShopEmailSender(undefined, 'x@y.z'), undefined);
+});
+
+test('shop email is saved, validated, and kept when another screen saves the shop', async () => {
+  const { as } = world();
+  const dan = as('user-dan');
+  assert.equal((await dan('POST', 'shop/me', { name: 'Ridgeline', email: 'not-an-email' }))?.status, 400);
+  await dan('POST', 'shop/me', { name: 'Ridgeline', email: 'dan@ridgeline.com' });
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '555', hours: '9-5', rates: [] });
+  assert.equal(((await dan('GET', 'shop/me'))?.body as { shop: { email: string } }).shop.email, 'dan@ridgeline.com');
+});

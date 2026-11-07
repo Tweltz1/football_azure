@@ -244,6 +244,7 @@
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
       <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
       <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(s.hours || "")}" placeholder="Mon–Fri 7:30am–6pm"></label>
+      <label class="field">Shop email <span class="muted" style="font-weight:400">(optional; customers' email replies go here)</span><input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"></label>
       ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Manage shop rates and import fees</button>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign out</button>` : ""}</div>
     </form></div>`;
@@ -518,7 +519,7 @@
       return;
     }
     if (f.id === "setupForm") {
-      const body = { name: $("#sh-name").value, phone: $("#sh-phone").value, hours: $("#sh-hours").value };
+      const body = { name: $("#sh-name").value, phone: $("#sh-phone").value, hours: $("#sh-hours").value, email: $("#sh-email").value };
       const r = await act(() => api("POST", "shop/me", body), "Saved");
       if (r) { shop = r.shop; ui.view = "board"; render(); }
       return;
