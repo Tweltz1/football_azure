@@ -137,3 +137,24 @@ test('phone numbers are normalized to E.164', () => {
   assert.equal(normalizePhone('+44 7700 900123'), '+447700900123');
   assert.equal(normalizePhone('12345'), null);
 });
+
+test('guided demo texts a visitor a real customer link, with limits', async () => {
+  const { as, texts } = world();
+  const visitor = as(null);
+  assert.equal((await visitor('POST', 'shop/demo/text', { phone: '555-013-6620' }))?.status, 400, 'needs consent');
+  const res = await visitor('POST', 'shop/demo/text', { phone: '555-013-6620', consent: true });
+  assert.equal(res?.status, 200);
+  const { token } = res?.body as { token: string };
+  assert.equal(texts.length, 1);
+  assert.ok(texts[0].body.includes(token));
+  const page = (await visitor('GET', `shop/c/${token}`))?.body as { stage: string; estimate: { id: string }[] };
+  assert.equal(page.stage, 'approval');
+  const done = await visitor('POST', `shop/c/${token}/decision`, { decisions: { recharge: 'approved', condenser: 'declined' }, signature: 'Test Person' });
+  assert.equal(done?.status, 200);
+
+  assert.equal((await visitor('POST', 'shop/demo/text', { phone: '555-013-6620', consent: true }))?.status, 200);
+  assert.equal((await visitor('POST', 'shop/demo/text', { phone: '555-013-6620', consent: true }))?.status, 429, 'two per number per day');
+  for (let i = 0; i < 8; i++) await visitor('POST', 'shop/demo/text', { phone: `555-010-00${10 + i}`, consent: true });
+  assert.equal((await visitor('POST', 'shop/demo/text', { phone: '555-010-0099', consent: true }))?.status, 429, 'daily cap of 10');
+  assert.equal(texts.length, 10);
+});

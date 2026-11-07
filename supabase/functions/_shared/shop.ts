@@ -68,7 +68,13 @@ export interface ShopDeps {
   /** Customer links are this plus the job's token, e.g. https://hood-league.com/shop/?c= */
   linkBase: string;
   newToken: () => string;
+  /** Most demo texts sent per day across all visitors (protects the Twilio balance). */
+  demoDailyLimit?: number;
 }
+
+export const DEMO_SHOP_ID = 'demo-shop';
+const DEMO_OWNER = '00000000-0000-4000-8000-00000000d3e0';
+const DEMO_PER_PHONE_PER_DAY = 2;
 
 const LABEL: Record<Stage, string> = {
   checked_in: 'Checked in', diagnosing: 'Diagnosing', approval: 'Approval needed', parts: 'Waiting on parts',
@@ -188,6 +194,46 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       return ok(customerOut(job, shop));
     }
     return { status: 405 };
+  }
+
+  // ---- Guided demo: text a visitor a real customer link (no sign-in, rate limited) ----
+  if (parts[1] === 'demo' && parts[2] === 'text' && method === 'POST') {
+    const phone = normalizePhone(str(body.phone, 30));
+    if (!phone) return bad('Enter a valid mobile number.');
+    if (!body.consent) return bad('Check the box to agree to one demo text.');
+    let shop = await store.shopById(DEMO_SHOP_ID);
+    if (!shop) {
+      shop = { id: DEMO_SHOP_ID, ownerId: DEMO_OWNER, name: 'Ridgeline Auto Repair', phone: '', hours: 'Mon–Fri 7:30am–6pm', createdAt: now };
+      await store.putShop(shop);
+    }
+    const dayAgo = new Date(ctx.now().getTime() - 86_400_000).toISOString();
+    const recent = (await store.listJobs(DEMO_SHOP_ID, dayAgo))
+      .filter((j) => j.createdAt >= dayAgo && j.data.messages.some((m) => m.dir === 'out' && m.delivery === 'sent'));
+    if (recent.length >= (deps.demoDailyLimit ?? 10)) return { status: 429, body: 'The demo has sent all of its texts for today. You can keep going with the on-screen version.' };
+    if (recent.filter((j) => j.data.customer.phone === phone).length >= DEMO_PER_PHONE_PER_DAY) return { status: 429, body: 'That number already got demo texts today. You can keep going with the on-screen version.' };
+    const job: Job = {
+      id: ctx.newId(), shopId: DEMO_SHOP_ID, token: deps.newToken(), stage: 'approval', createdAt: now, updatedAt: now,
+      data: {
+        ro: 'RO-DEMO',
+        customer: { name: 'Demo Visitor', phone, consent: true },
+        vehicle: { year: '2012', make: 'Chevrolet', model: 'Malibu' },
+        plate: '', concern: 'AC blowing warm air', eta: '',
+        estimate: [
+          { id: 'recharge', item: 'Recharge AC refrigerant', price: 189, status: 'pending' },
+          { id: 'condenser', item: 'Replace AC condenser', price: 624, status: 'pending' },
+        ],
+        photos: [], events: [{ stage: 'checked_in', t: now }, { stage: 'diagnosing', t: now }, { stage: 'approval', t: now }],
+        messages: [], approval: null,
+      },
+    };
+    const text = `Bay Status demo: Ridgeline Auto Repair found what's going on with your 2012 Chevrolet Malibu. Review and approve the estimate ($813.00): ${deps.linkBase}${job.token} Reply STOP to opt out.`;
+    const sent = await deps.sms.send(phone, text);
+    job.data.messages.push({ dir: 'out', t: now, text, delivery: sent.delivery, ...(sent.note ? { note: sent.note } : {}) });
+    await store.putJob(job);
+    if (sent.delivery !== 'sent') {
+      return { status: 502, body: 'The text could not be sent to that number. While the demo uses a trial texting account, it can only text numbers the owner has verified. You can keep going with the on-screen version.' };
+    }
+    return ok({ token: job.token });
   }
 
   // ---- Shop staff (signed in) ----
