@@ -8,7 +8,7 @@ import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Ra
 
 type Body = Record<string, unknown>;
 
-export const STAGES = ['checked_in', 'diagnosing', 'approval', 'parts', 'in_progress', 'qc', 'ready', 'picked_up'] as const;
+export const STAGES = ['invited', 'checked_in', 'diagnosing', 'approval', 'parts', 'in_progress', 'qc', 'ready', 'picked_up'] as const;
 export type Stage = typeof STAGES[number];
 
 export interface Shop {
@@ -22,7 +22,7 @@ export interface Shop {
 }
 
 export interface EstimateLine { id: string; item: string; price: number; status: 'pending' | 'approved' | 'declined'; charge?: Charge }
-export interface Photo { id: string; src: string; cap: string; stage?: Stage; addedAt?: string }
+export interface Photo { id: string; src: string; cap: string; stage?: Stage; addedAt?: string; source?: 'customer' }
 export interface StageEvent { stage: Stage; t: string }
 export interface Message { dir: 'out' | 'in'; t: string; text: string; delivery?: 'sent' | 'not_sent' | 'failed'; note?: string }
 
@@ -40,7 +40,11 @@ export interface JobData {
   approval: { by: string; t: string } | null;
 }
 
+export type Intake = Pick<JobData, 'vehicle' | 'plate' | 'concern'>;
+
 export interface Job {
+  intake?: Intake | null;
+  intakePhotos?: Photo[];
   id: string;
   shopId: string;
   token: string;
@@ -59,6 +63,8 @@ export interface ShopStore {
   getJob(id: string): Promise<Job | null>;
   jobByToken(token: string): Promise<Job | null>;
   putJob(job: Job): Promise<void>;
+  saveIntake?(jobId: string, intake: Intake): Promise<boolean>;
+  intakePhoto?(jobId: string, photo: Photo | null, remove: string | null): Promise<boolean>;
   saveBill?(jobId: string, bill: Bill, pdf: string | null): Promise<void>;
   getBillPdf?(jobId: string): Promise<string | null>;
   /** Next repair order number for the shop, starting at 1001. */
@@ -83,12 +89,13 @@ const DEMO_OWNER = '00000000-0000-4000-8000-00000000d3e0';
 const DEMO_PER_PHONE_PER_DAY = 2;
 
 const LABEL: Record<Stage, string> = {
-  checked_in: 'Checked in', diagnosing: 'Diagnosing', approval: 'Approval needed', parts: 'Waiting on parts',
+  invited: 'Customer invited', checked_in: 'Checked in', diagnosing: 'Diagnosing', approval: 'Approval needed', parts: 'Waiting on parts',
   in_progress: 'In progress', qc: 'Quality check', ready: 'Ready for pickup', picked_up: 'Picked up',
 };
 
 const TEMPLATES: Record<Stage, string> = {
-  checked_in: "Hi {first}, {shop} has your {vehicle}. We'll text you as work moves along. Track it here: {link}",
+  invited: "Hi {first}, {shop} invites you to check in for your repair. Add your vehicle, describe the issue and upload photos for your technician: {link}",
+  checked_in: "Hi {first}, {shop} has your {vehicle}. We'll text you as work moves along. Track your repair and add photos for your technician: {link}",
   diagnosing: "Hi {first}, a technician is inspecting your {vehicle} now. We'll send what we find soon.",
   approval: "Hi {first}, we found what's going on with your {vehicle}. Please review and approve the estimate ({total}): {link}",
   parts: "Hi {first}, parts for your {vehicle} are on order and expected {eta}. We'll let you know when they arrive.",
@@ -120,7 +127,7 @@ const total = (d: JobData, approvedOnly: boolean) =>
   d.estimate.filter((e) => !approvedOnly || e.status === 'approved').reduce((a, e) => a + e.price, 0);
 
 export function fillTemplate(stage: Stage, shop: Shop, job: Job, linkBase: string): string {
-  const d = job.data;
+  const d = { ...job.data, ...job.intake };
   const vals: Record<string, string> = {
     first: d.customer.name.split(/\s+/)[0] || 'there',
     shop: shop.name,
@@ -135,7 +142,7 @@ export function fillTemplate(stage: Stage, shop: Shop, job: Job, linkBase: strin
 
 /** What the shop sees. */
 const jobOut = (j: Job, linkBase: string) => ({
-  id: j.id, stage: j.stage, link: linkBase + j.token, createdAt: j.createdAt, updatedAt: j.updatedAt, bill: j.bill ?? null, ...j.data,
+  id: j.id, stage: j.stage, link: linkBase + j.token, createdAt: j.createdAt, updatedAt: j.updatedAt, bill: j.bill ?? null, ...j.data, ...j.intake, intakeReceived: !!j.intake, photos: [...(j.intakePhotos ?? []), ...j.data.photos],
 });
 
 /** What the customer sees: no phone number, no other customers, no internal notes. */
@@ -143,12 +150,14 @@ const customerOut = (j: Job, shop: Shop) => ({
   shop: { name: shop.name, phone: shop.phone, hours: shop.hours },
   ro: j.data.ro,
   stage: j.stage,
+  canUploadIntakePhotos: j.shopId !== DEMO_SHOP_ID && ['invited','checked_in'].includes(j.stage),
   firstName: j.data.customer.name.split(/\s+/)[0] || '',
-  vehicle: vehicleName(j.data),
-  concern: j.data.concern,
+  vehicle: vehicleName({ ...j.data, ...j.intake }),
+  intakeReceived: !!j.intake,
+  concern: j.intake?.concern ?? j.data.concern,
   eta: j.data.eta,
   estimate: j.data.estimate,
-  photos: j.data.photos,
+  photos: [...(j.intakePhotos ?? []), ...j.data.photos],
   events: j.data.events,
   approval: j.data.approval,
   bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
@@ -159,6 +168,18 @@ async function text(deps: ShopDeps, job: Job, body: string, now: string): Promis
   if (!job.data.customer.consent) return { ...msg, delivery: 'not_sent', note: 'Customer has not agreed to texts.' };
   const result = await deps.sms.send(job.data.customer.phone, body);
   return { ...msg, delivery: result.delivery, ...(result.note ? { note: result.note } : {}) };
+}
+
+async function submitIntake(store: ShopStore, job: Job, body: Body): Promise<Res | null> {
+  if (job.stage !== 'invited' || job.intake) return bad('Intake has already been completed.');
+  const v = (body.vehicle ?? {}) as Body;
+  const vehicle = { year: str(v.year, 4), make: str(v.make, 40), model: str(v.model, 40) };
+  const concern = str(body.concern, 1000);
+  if (!vehicle.make || !vehicle.model || !concern) return bad('Enter the make, model and reason for the visit.');
+  const intake = { vehicle, concern, plate: str(body.plate, 12).toUpperCase() };
+  if (!await store.saveIntake?.(job.id, intake)) return bad('Intake changed. Refresh to see the latest details.');
+  job.intake = intake;
+  return null;
 }
 
 export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, method: string, parts: string[], data: unknown): Promise<Res | null> {
@@ -183,6 +204,18 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     }
     if (method === 'GET' && parts.length === 3) return ok(customerOut(job, shop));
 
+    if (method === 'POST' && parts.length === 4 && parts[3] === 'intake') {
+      const error = await submitIntake(store, job, body);
+      return error ?? ok(customerOut(job, shop));
+    }
+    if (method === 'POST' && parts.length === 4 && parts[3] === 'intake-photo') {
+      if (!['invited','checked_in'].includes(job.stage) || job.shopId === DEMO_SHOP_ID) return bad('Photo intake is closed.');
+      const src = body.src;
+      if (typeof src !== 'string' || src.length > MAX_PHOTO || !/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+=*$/u.test(src)) return bad('Choose a valid JPEG photo.');
+      const photo: Photo = { id: ctx.newId(), src, cap: str(body.cap, 120) || 'Customer photo', source: 'customer', stage: job.stage, addedAt: now };
+      if (!await store.intakePhoto?.(job.id, photo, null)) return bad('Photo intake is closed or the six-photo limit was reached.');
+      return ok(customerOut((await store.getJob(job.id)) ?? job, shop));
+    }
     if (method === 'POST' && parts[3] === 'decision') {
       if (job.stage !== 'approval') return bad('This estimate is not waiting on a decision.');
       const decisions = (body.decisions && typeof body.decisions === 'object' ? body.decisions : {}) as Record<string, unknown>;
@@ -295,14 +328,16 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (!name) return bad('Enter the customer name.');
       if (!phone) return bad('Enter a valid mobile number.');
       const vehicle = { year: str(v.year, 4), make: str(v.make, 40), model: str(v.model, 40) };
-      if (!vehicle.make || !vehicle.model) return bad('Enter the make and model.');
+      const inviting = body.invite === true;
+      if (inviting && c.consent !== true) return bad('Confirm the customer agreed to receive the check-in text.');
+      if (!inviting && (!vehicle.make || !vehicle.model)) return bad('Enter the make and model.');
       const concern = str(body.concern, 1000);
-      if (!concern) return bad("Enter the customer's concern.");
+      if (!inviting && !concern) return bad("Enter the customer's concern.");
       const job: Job = {
         id: ctx.newId(),
         shopId: shop.id,
         token: deps.newToken(),
-        stage: 'checked_in',
+        stage: inviting ? 'invited' : 'checked_in',
         createdAt: now,
         updatedAt: now,
         data: {
@@ -314,12 +349,13 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
           eta: '',
           estimate: [],
           photos: [],
-          events: [{ stage: 'checked_in', t: now }],
+          events: [{ stage: inviting ? 'invited' : 'checked_in', t: now }],
           messages: [],
           approval: null,
         },
       };
-      job.data.messages.push(await text(deps, job, fillTemplate('checked_in', shop, job, deps.linkBase), now));
+      if (inviting) await store.putJob(job);
+      job.data.messages.push(await text(deps, job, fillTemplate(job.stage, shop, job, deps.linkBase), now));
       await store.putJob(job);
       return ok(jobOut(job, deps.linkBase));
     }
@@ -337,6 +373,13 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   if (method !== 'POST') return { status: 405 };
   const d = job.data;
 
+  if (action === 'intake') {
+    const error = await submitIntake(store, job, body);
+    return error ?? ok(jobOut(job, deps.linkBase));
+  }
+  if ((action === 'preview' || action === 'stage') &&
+      (body.stage === 'invited' || (job.stage === 'invited' && (body.stage !== 'checked_in' || !job.intake))))
+    return bad('Complete intake and mark the vehicle checked in before advancing.');
   if (action === 'bill') {
     if (!store.saveBill) return { status: 503, body: 'Billing is unavailable.' };
     const issuer = { shopName: shop.name, phone: shop.phone, issuedAt: now };
@@ -398,6 +441,10 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   } else if (action === 'remove-photo') {
     const id = str(body.id, 100);
     if (!id) return bad('Choose a photo to remove.');
+    if (job.intakePhotos?.some((p) => p.id === id)) {
+      if (!await store.intakePhoto?.(job.id, null, id)) return bad('Could not remove the customer photo.');
+      return ok(jobOut((await store.getJob(job.id)) ?? job, deps.linkBase));
+    }
     if (!d.photos.some((p) => p.id === id)) return ok(jobOut(job, deps.linkBase));
     d.photos = d.photos.filter((p) => p.id !== id);
   } else if (action === 'photo') {
