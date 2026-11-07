@@ -9,13 +9,13 @@ link to their car's page (`/?c=<token>`) and approve or decline repairs there wi
 - Backend: shared with Hood League in this repo. API routes live in `supabase/functions/_shared/shop.ts`
   (served by the `api` Edge Function at `/api/shop/...`); tables `repair_shops` and `repair_jobs`.
 
-## Cloudflare Pages project
+## Cloudflare project (Workers, static assets)
 
 - Repository: this repo, production branch `claude/project-thread-6lgsrr`
-- Root directory: `talkshops`
+- Root directory / path: `talkshops`
 - Build command: `node scripts/build.mjs`
-- Build output directory: `public`
-- Environment variable: `SUPABASE_ANON_KEY` (same value as Hood League's `REACT_APP_SUPABASE_ANON_KEY`)
+- Deploy command: `npx wrangler deploy` (uses `wrangler.jsonc`, serves `public/`)
+- Build variable: `SUPABASE_ANON_KEY` (same value as Hood League's `REACT_APP_SUPABASE_ANON_KEY`)
 - Custom domain: `talkshops.app`
 
 Supabase: add `https://talkshops.app/**` to Authentication → URL Configuration → Redirect URLs.
