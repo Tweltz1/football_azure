@@ -68,10 +68,17 @@ main{padding-block:18px 40px;padding-left:max(16px,env(safe-area-inset-left,0px)
 .stat.warn b{color:var(--warn)} .stat.ok b{color:var(--ok)}
 @media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+button.stat{text-align:left;color:var(--fg)}
+
 /* board */
 .board-wrap{overflow-x:auto;padding-bottom:6px}
 .board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:10px;min-width:min-content}
 .col{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:160px}
+@media (max-width:700px){
+  .board{grid-auto-flow:row;grid-template-columns:minmax(0,1fr);min-width:0}
+  .col{min-height:0}
+  .col:has(.empty-col){display:none}
+}
 .col-h{display:flex;justify-content:space-between;align-items:baseline;padding:2px 4px 4px}
 .col-h h3{font-size:15px;text-transform:uppercase;letter-spacing:.06em}
 .col-h span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -241,6 +248,6 @@ a.btn.primary{color:var(--accent-fg)}
 <div id="layer"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script src="/config.js?v=174"></script>
-<script src="/app.js?v=174"></script>
+<script src="/app.js?v=175"></script>
 </body>
 </html>
