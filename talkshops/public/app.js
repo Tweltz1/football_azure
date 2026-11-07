@@ -240,8 +240,24 @@
 
   function loginView() {
     const signup = ui.authMode === "signup";
-    return `<div class="login-wrap"><div class="login">
+    const ico = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+    return `<div class="auth"><aside class="hero">
       ${brand()}
+      <div class="hero-copy">
+        <h2>Keep every customer <em>in the loop.</em></h2>
+        <p>Text customers as their car moves through your shop. They follow along and approve repairs from one private link, with no app and no login.</p>
+        <ul class="hero-list">
+          <li>${ico('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>')}Automatic text and email updates at every stage</li>
+          <li>${ico('<path d="M20 6 9 17l-5-5"/>')}Estimates approved and signed from a phone</li>
+          <li>${ico('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>')}One board for every car in the shop</li>
+        </ul>
+      </div>
+      <div class="hero-chat" aria-hidden="true">
+        <div class="o">Hi Maria, we found what's going on with your Civic. Review the estimate here: talkshops.app/s/…<small>Ridgeline Auto Repair</small></div>
+        <div class="i">Approved the brakes, thanks!</div>
+        <div class="o">Great. It'll be ready by 4pm.</div>
+      </div>
+    </aside><div class="login-wrap"><div class="login">
       <h2>${signup ? "Create your shop account" : "Shop sign in"}</h2>
       ${sb ? "" : `<p class="form-err">Sign-in isn't available on this copy of the site.</p>`}
       <button class="btn google" id="google" type="button">${googleIcon} Continue with Google</button>
@@ -260,7 +276,7 @@
         <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}?tour=1" style="text-decoration:none">▶ Guided demo</a><a class="btn" href="${DEMO_PAGE}" style="text-decoration:none">Try demo shop</a><button class="linkbtn" id="watchDemo" type="button">Watch video</button></div>
       </div>
       <p class="muted" style="font-size:13px;margin:0">Customers never sign in. They get a private link to their car's page.</p>
-    </div></div>`;
+    </div></div></div>`;
   }
 
   function setupView(firstTime) {
