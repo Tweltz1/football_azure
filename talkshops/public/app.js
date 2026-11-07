@@ -248,18 +248,18 @@
     return `<div class="auth"><aside class="hero">
       ${brand()}
       <div class="hero-copy">
-        <h2>Keep every customer <em>in the loop.</em></h2>
-        <p>Text customers as their car moves through your shop. They follow along and approve repairs from one private link, with no app and no login.</p>
+        <h2>Keep every customer <em>informed.</em></h2>
+        <p>Notify customers at every stage of the repair. They track progress and approve estimates from one secure link, with no app to download and no account to create.</p>
         <ul class="hero-list">
-          <li>${ico('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>')}Automatic text and email updates at every stage</li>
-          <li>${ico('<path d="M20 6 9 17l-5-5"/>')}Estimates approved and signed from a phone</li>
-          <li>${ico('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>')}One board for every car in the shop</li>
+          <li>${ico('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>')}Automatic text and email notifications at every stage</li>
+          <li>${ico('<path d="M20 6 9 17l-5-5"/>')}Estimates reviewed and signed online</li>
+          <li>${ico('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>')}Every vehicle in your shop on one board</li>
         </ul>
       </div>
       <div class="hero-chat" aria-hidden="true">
-        <div class="o">Hi Maria, we found what's going on with your Civic. Review the estimate here: talkshops.app/s/…<small>Ridgeline Auto Repair</small></div>
-        <div class="i">Approved the brakes, thanks!</div>
-        <div class="o">Great. It'll be ready by 4pm.</div>
+        <div class="o">Your estimate for the 2018 Honda Civic is ready for review: talkshops.app/s/…<small>Ridgeline Auto Repair</small></div>
+        <div class="i">Estimate approved and signed.</div>
+        <div class="o">Thank you. Your vehicle will be ready by 4:00 PM.</div>
       </div>
     </aside><div class="login-wrap"><div class="login">
       <h2>${signup ? "Create your shop account" : "Shop sign in"}</h2>
@@ -275,11 +275,11 @@
       ${ui.authMsg ? `<p class="form-ok" role="status">${esc(ui.authMsg)}</p>` : ""}
       <button class="linkbtn" id="authSwap" type="button" style="align-self:flex-start">${signup ? "Already have an account? Sign in" : "New shop? Create an account"}</button>
       <div class="demo-box">
-        <b>Just looking?</b>
-        <span class="muted" style="font-size:13.5px">Take a 3-minute guided tour with narration. Halfway through, you can get a real text and approve a repair from your own phone.</span>
+        <b>See how it works</b>
+        <span class="muted" style="font-size:13.5px">Take a 3-minute narrated tour. Midway through, you can receive a real notification and approve a repair from your own phone.</span>
         <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}?tour=1" style="text-decoration:none">▶ Guided demo</a><a class="btn" href="${DEMO_PAGE}" style="text-decoration:none">Try demo shop</a><button class="linkbtn" id="watchDemo" type="button">Watch video</button></div>
       </div>
-      <p class="muted" style="font-size:13px;margin:0">Customers never sign in. They get a private link to their car's page.</p>
+      <p class="muted" style="font-size:13px;margin:0">Customers never need an account. Each one receives a secure link to their vehicle's status page.</p>
     </div></div></div>`;
   }
 
