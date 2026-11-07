@@ -1,0 +1,28 @@
+/* Saved-item suggestions (suggest.js) and the Archive view. Uses the color tokens from index.html. */
+.suggest-wrap{position:relative;display:flex;min-width:0}
+.suggest-wrap input{flex:1;min-width:0;padding-right:36px}
+.suggest-btn{position:absolute;right:3px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);width:30px;height:30px;border-radius:6px;font-size:13px}
+.suggest-btn:hover{background:var(--surface-2);color:var(--fg)}
+.suggest{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:50;background:var(--surface);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px rgba(10,15,22,.18);max-height:min(260px,45vh);overflow-y:auto;overscroll-behavior:contain;font-weight:400}
+.suggest-h{position:sticky;top:0;background:var(--surface-2);border-bottom:1px solid var(--line);padding:6px 10px;font-size:12px;color:var(--muted);font-weight:600}
+.suggest-o{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;font-size:14px;border-bottom:1px solid var(--line)}
+.suggest-o:last-child{border-bottom:0}
+.suggest-o span{min-width:0;overflow-wrap:anywhere}
+.suggest-o small{display:block;color:var(--muted);font-size:12px}
+.suggest-o b{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:600}
+.suggest-o:hover,.suggest-o[aria-selected="true"]{background:var(--accent-soft)}
+.add-line .save-chk{grid-column:1/-1;font-size:13px;color:var(--muted)}
+
+.archive{max-width:900px;display:flex;flex-direction:column;gap:12px}
+.archive-h h2{font-size:26px}
+.archive-h p{margin:2px 0 0}
+.archive-search input{font-size:16px}
+.archive-count{font-size:13px;margin:0 0 6px}
+.archive-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.archive-row{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:3px;box-shadow:var(--shadow);color:var(--fg)}
+.archive-row:hover{border-color:var(--accent)}
+.archive-row .a-main{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.archive-row .a-who,.archive-row .a-concern{font-size:13.5px;color:var(--muted);overflow-wrap:anywhere}
+.archive-row .a-concern{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.archive-row .a-meta{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:12.5px}
+.add-line .save-chk input{padding:0;width:auto}

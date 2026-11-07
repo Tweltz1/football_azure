@@ -71,8 +71,51 @@ export interface ShopStore {
   intakePhoto?(jobId: string, photo: Photo | null, remove: string | null): Promise<boolean>;
   saveBill?(jobId: string, bill: Bill, pdf: string | null): Promise<void>;
   getBillPdf?(jobId: string): Promise<string | null>;
+  /** Picked-up cars archived at or after `since`, newest first, whose search text contains every term. */
+  searchArchive?(shopId: string, since: string, terms: string[], limit: number): Promise<ArchiveRow[]>;
+  /** Deletes the shop's picked-up cars archived before `before`. */
+  purgeArchive?(shopId: string, before: string): Promise<void>;
   /** Next repair order number for the shop, starting at 1001. */
   nextRo(shopId: string): Promise<number>;
+}
+
+/** One archived (picked-up) car, without photos or messages. */
+export interface ArchiveRow {
+  id: string; ro: string; archivedAt: string; createdAt: string;
+  customer: JobData['customer']; vehicle: JobData['vehicle']; plate: string; concern: string; total: number | null;
+}
+
+/** When the car was picked up, or null while it is still in the shop. */
+export const archivedAt = (j: Pick<Job, 'stage' | 'updatedAt' | 'data'>): string | null =>
+  j.stage === 'picked_up' ? ([...j.data.events].reverse().find((e) => e.stage === 'picked_up')?.t ?? j.updatedAt) : null;
+
+/** The text archive search matches against (the database keeps the same thing in repair_jobs.search). */
+export const archiveSearchText = (j: Pick<Job, 'data' | 'intake'>) => {
+  const d = j.data, i = j.intake;
+  return [d.ro, d.customer.name, d.customer.phone.replace(/\D/g, ''), d.customer.email ?? '', d.vehicle.year, d.vehicle.make, d.vehicle.model,
+    i?.vehicle.year, i?.vehicle.make, i?.vehicle.model, d.plate, i?.plate, d.concern, i?.concern].map((x) => x ?? '').join(' ').toLowerCase();
+};
+
+/** Search box text to terms: lowercase words; phone-like words keep only their digits. */
+export function archiveTerms(q: string): string[] {
+  return q.toLowerCase().split(/\s+/).map((t) => (/\d/.test(t) && /^[\d()+\-.]+$/.test(t) ? t.replace(/\D/g, '') : t.replace(/[%_*\\,()]/g, '')))
+    .filter(Boolean).slice(0, 6);
+}
+
+export const ARCHIVE_DAYS = 365;
+const archiveCutoff = (now: Date) => new Date(now.getTime() - ARCHIVE_DAYS * 86_400_000).toISOString();
+
+/** Adds rates the shop hasn't saved yet (matched by name), up to 250. */
+async function rememberRates(store: ShopStore, shop: Shop, rates: Rate[]): Promise<void> {
+  const list = [...(shop.rates ?? [])];
+  const have = new Set(list.map((r) => r.name.trim().toLowerCase()));
+  let added = false;
+  for (const r of rates) {
+    const key = r.name.trim().toLowerCase();
+    if (!key || have.has(key) || list.length >= 250 || !validRate(r)) continue;
+    list.push(copyRate(r)); have.add(key); added = true;
+  }
+  if (added) await store.putShop({ ...shop, rates: list });
 }
 
 export interface SmsResult { delivery: 'sent' | 'not_sent' | 'failed'; note?: string }
@@ -301,7 +344,10 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
 
   if (parts[1] === 'me') {
     const shop = await store.shopByOwner(ctx.userId);
-    if (method === 'GET') return ok({ shop, emailConfigured: !!deps.email });
+    if (method === 'GET') {
+      if (shop) await store.purgeArchive?.(shop.id, archiveCutoff(ctx.now())).catch((e) => ctx.log.warn('archive purge failed', { error: String(e) }));
+      return ok({ shop, emailConfigured: !!deps.email });
+    }
     if (method === 'POST') {
       const name = str(body.name, 80);
       if (!name) return bad('Enter your shop name.');
@@ -323,9 +369,18 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return { status: 405 };
   }
 
-  if (parts[1] !== 'jobs') return { status: 404 };
+  if (parts[1] !== 'jobs' && parts[1] !== 'archive') return { status: 404 };
   const shop = await store.shopByOwner(ctx.userId);
   if (!shop) return { status: 409, body: 'Set up your shop first.' };
+
+  if (parts[1] === 'archive') {
+    if (method !== 'POST') return { status: 405 };
+    if (!store.searchArchive) return { status: 503, body: 'The archive is unavailable.' };
+    const cutoff = archiveCutoff(ctx.now());
+    await store.purgeArchive?.(shop.id, cutoff);
+    const rows = await store.searchArchive(shop.id, cutoff, archiveTerms(str(body.q, 120)), 100);
+    return ok({ rows, keepDays: ARCHIVE_DAYS });
+  }
 
   const id = parts[2];
   if (!id) {
@@ -417,6 +472,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const total = lines.reduce((sum, r) => sum + lineCents(r), 0) / 100;
       if (total > 100_000_000) return bad('Bill total is too large.');
       bill = { ...issuer, mode: 'generated', lines, total };
+      if (body.save === true) await rememberRates(store, shop, lines);
     }
     await store.saveBill(job.id, bill, pdf);
     job.bill = bill;
@@ -450,11 +506,13 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     } else if (body.charge !== undefined) {
       const r = body.charge;
       if (!validCharge(r)) return bad('Check the description, quantity and rate.');
+      if (body.save === true) await rememberRates(store, shop, [r]);
       d.estimate.push({ id: ctx.newId(), item: r.name.trim(), price: lineCents(r) / 100, status: 'pending', charge: { ...copyRate(r), qty: r.qty } });
     } else {
       const item = str(body.item, 120);
       const price = Number(body.price);
       if (!item || !Number.isFinite(price) || price < 0 || price > 1_000_000) return bad('Enter an item and a price.');
+      if (body.save === true) await rememberRates(store, shop, [{ name: item, kind: 'part', rate: Math.round(price * 100) / 100 }]);
       d.estimate.push({ id: ctx.newId(), item, price: Math.round(price * 100) / 100, status: 'pending' });
     }
   } else if (action === 'remove-photo') {

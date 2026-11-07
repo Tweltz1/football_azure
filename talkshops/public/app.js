@@ -177,6 +177,32 @@
 
   // ==================== Shop app (signed in) ====================
   const ui = { view: "board", openJob: null, modal: null, authMode: "signin", authMsg: "", authErr: "", busy: false };
+  const archive = { q: "", rows: null, keepDays: 365, loading: false, error: "", seq: 0 };
+  const suggest = window.createSuggest({
+    esc, money, items: () => (shop && shop.rates) || [],
+    onPick(input, r) {
+      if (input.dataset.suggest === "quick") {
+        const form = input.form, price = $("#li-price");
+        input.value = r.name;
+        if (r.kind === "percent") { form.dataset.pick = ""; price.value = ""; toast("Percent items need a base amount. Use Add labor, parts or fees."); price.focus(); return; }
+        form.dataset.pick = JSON.stringify(r);
+        price.value = r.rate.toFixed(2);
+        price.focus(); price.select();
+        return;
+      }
+      billing.pickSaved(input, r);
+    },
+  });
+  // Mirrors the server: new names (not already saved) join the shop's saved items, up to 250.
+  function rememberLocal(list) {
+    const rates = [...(shop.rates || [])], have = new Set(rates.map((r) => r.name.trim().toLowerCase()));
+    for (const r of list) {
+      const k = r.name.trim().toLowerCase();
+      if (!k || have.has(k) || rates.length >= 250) continue;
+      rates.push({ name: r.name.trim(), kind: r.kind, rate: r.rate }); have.add(k);
+    }
+    shop.rates = rates;
+  }
   let session = null, shop = null, emailConfigured = false, jobs = [], loaded = false, loadErr = "";
   const job = (id) => jobs.find((j) => j.id === id);
   const upsertJob = (j) => { const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
@@ -203,7 +229,8 @@
     $("#shopName").textContent = shop.name;
     document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.view === ui.view ? "page" : "false"));
     const err = loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "";
-    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : boardView());
+    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : ui.view === "archive" ? archiveView() : boardView());
+    if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
     renderLayer();
   }
 
@@ -245,7 +272,7 @@
       <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
       <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(s.hours || "")}" placeholder="Mon–Fri 7:30am–6pm"></label>
       <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
-      ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Manage shop rates and import fees</button>`}
+      ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Saved items: labor, parts and fees (import Excel or CSV)</button>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign out</button>` : ""}</div>
     </form></div>`;
   }
@@ -289,8 +316,49 @@
       });
       h += `</section>`;
     });
-    h += `</div></div><p class="muted" style="font-size:13px;margin-top:10px">${picked ? picked + " picked up in the last 2 days. " : ""}Tap a car to update its stage, build an estimate or message the customer.</p>`;
+    h += `</div></div><p class="muted" style="font-size:13px;margin-top:10px">${picked ? picked + " picked up in the last 2 days. " : ""}Tap a car to update its stage, build an estimate or message the customer. <button class="linkbtn" data-view="archive">Search picked-up cars</button></p>`;
     return h;
+  }
+
+  // ---------------- Archive: picked-up cars, kept one year ----------------
+  function archiveView() {
+    return `<section class="archive">
+      <div class="archive-h"><h2>Archive</h2><p class="muted">Picked-up cars stay here for one year, then they are deleted automatically.</p></div>
+      <label class="field archive-search">Search<input id="archiveQ" type="search" value="${esc(archive.q)}" placeholder="Customer, phone, email, vehicle, plate, RO number or concern" autocomplete="off"></label>
+      <div id="archiveRows" aria-live="polite"></div></section>`;
+  }
+  const deleteDate = (t) => new Date(ts(t) + archive.keepDays * 86400000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  function renderArchiveRows() {
+    const el = $("#archiveRows"); if (!el) return;
+    if (archive.error) { el.innerHTML = `<div class="notice">${esc(archive.error)} <button class="linkbtn" data-archive-retry>Try again</button></div>`; return; }
+    if (!archive.rows) { el.innerHTML = `<p class="muted">Loading…</p>`; return; }
+    if (!archive.rows.length) { el.innerHTML = `<div class="empty-board"><p class="muted" style="margin:0">${archive.q.trim() ? "No picked-up cars match that search." : "No picked-up cars yet. When you move a car to Picked up, it lands here."}</p></div>`; return; }
+    el.innerHTML = `<p class="muted archive-count">${archive.rows.length === 100 ? "Showing the 100 most recent matches" : archive.rows.length + " car" + (archive.rows.length === 1 ? "" : "s")}</p>
+      <ul class="archive-list">${archive.rows.map((r) => {
+        const veh = [r.vehicle?.year, r.vehicle?.make, r.vehicle?.model].filter(Boolean).join(" ") || "Vehicle not recorded";
+        return `<li><button class="archive-row" data-archive-open="${esc(r.id)}">
+          <span class="a-main"><b>${esc(veh)}</b>${r.plate ? `<span class="mono">${esc(r.plate)}</span>` : ""}</span>
+          <span class="a-who">${esc(r.customer?.name || "")}${r.customer?.phone ? " · " + esc(fmtPhone(r.customer.phone)) : ""}${r.customer?.email ? " · " + esc(r.customer.email) : ""}</span>
+          <span class="a-concern">${esc(r.concern || "")}</span>
+          <span class="a-meta"><span class="mono">${esc(r.ro)}</span><span>Picked up ${esc(new Date(ts(r.archivedAt)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}</span>${r.total ? `<span>${money(r.total)}</span>` : ""}<span class="muted">Deletes ${deleteDate(r.archivedAt)}</span></span>
+        </button></li>`;
+      }).join("")}</ul>`;
+  }
+  let archiveTimer;
+  async function searchArchive() {
+    const seq = ++archive.seq;
+    archive.loading = true;
+    try {
+      const r = await api("POST", "shop/archive", { q: archive.q });
+      if (seq !== archive.seq) return;
+      archive.rows = r.rows; archive.keepDays = r.keepDays || 365; archive.error = "";
+    } catch (e) { if (seq === archive.seq) archive.error = e.message; }
+    finally { if (seq === archive.seq) archive.loading = false; }
+    renderArchiveRows();
+  }
+  async function openArchived(id) {
+    try { upsertJob(await api("GET", "shop/jobs/" + encodeURIComponent(id))); ui.openJob = id; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); }
+    catch (e) { toast(e.message); }
   }
 
   function checkinView() {
@@ -345,7 +413,8 @@
           ${j.approval ? `<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>` : ""}
           <div class="est-add">
             <div class="est-add-h">Quick add</div>
-            <form class="add-line" id="addLine"><input id="li-item" placeholder="Item, e.g. Cabin air filter" aria-label="Line item"><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button></form>
+            <form class="add-line" id="addLine"><span class="suggest-wrap"><input id="li-item" data-suggest="quick" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="${(shop.rates || []).length ? "Type or pick a saved item" : "Item, e.g. Cabin air filter"}" aria-label="Line item"><button type="button" class="suggest-btn" data-suggest-open aria-label="Show saved items" ${(shop.rates || []).length ? "" : "hidden"}>▾</button></span><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button>
+              <label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label></form>
             <div class="est-add-or"><span>or</span></div>
             <button class="btn est-add-more" type="button" data-billing="quote">Add labor, parts or fees with hours and rates</button>
           </div>
@@ -379,13 +448,14 @@
 
   function renderLayer() {
     let h = "";
-    if (session && shop && ui.openJob && ui.view === "board") { const j = job(ui.openJob); if (j) h += sheetView(j); }
+    if (session && shop && ui.openJob && (ui.view === "board" || ui.view === "archive")) { const j = job(ui.openJob); if (j) h += sheetView(j); }
     if (ui.modal === "video") h += videoModal();
     else if (ui.modal?.billing) h += billing.editor(ui.modal.billing, shop, job(ui.modal.job));
     else if (ui.modal) h += stageModal();
     const prev = $(".sheet-body"), keep = prev && prev.dataset.job === ui.openJob ? prev.scrollTop : null;
     $("#layer").innerHTML = h;
     if (keep !== null && $(".sheet-body")) { $(".sheet").classList.add("no-anim"); $(".sheet-body").scrollTop = keep; }
+    suggest.refresh();
     if (ui.modal?.billing) billing.updateTotal($("#billingForm"));
   }
 
@@ -447,7 +517,10 @@
     if (t.id === "authSwap") { ui.authMode = ui.authMode === "signup" ? "signin" : "signup"; ui.authErr = ui.authMsg = ""; render(); return; }
     if (t.id === "signOut" || t.id === "signOut2") { if (sb) await sb.auth.signOut(); return; }
     if (t.id === "retry") { loadShop(); return; }
-    if (t.dataset.view) { ui.view = t.dataset.view; ui.openJob = null; render(); window.scrollTo(0, 0); return; }
+    if (t.dataset.archiveOpen) { openArchived(t.dataset.archiveOpen); return; }
+    if (t.hasAttribute("data-archive-retry")) { archive.error = ""; renderArchiveRows(); searchArchive(); return; }
+    if (t.hasAttribute("data-suggest-open")) return;
+    if (t.dataset.view) { ui.view = t.dataset.view; ui.openJob = null; if (ui.view === "archive") archive.rows = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); return; }
     if (t.hasAttribute("data-close")) { ui.openJob = null; renderLayer(); return; }
     if (t.hasAttribute("data-cancel")) { if (ui.busy) return; ui.modal = ui.modal?.pickup || null; renderLayer(); return; }
@@ -494,17 +567,20 @@
         } else if (m.billing === "quote") {
           const [charge] = billing.readRows(f);
           if (!charge) throw Error("Add an estimate line first.");
-          upsertJob(await api("POST", `shop/jobs/${m.job}/estimate`, { charge }));
+          const save = !!f.elements.saveItems?.checked;
+          upsertJob(await api("POST", `shop/jobs/${m.job}/estimate`, { charge, save }));
+          if (save) rememberLocal([charge]);
         } else {
           const body = await billing.billBody(f);
           upsertJob(await api("POST", `shop/jobs/${m.job}/bill`, body));
+          if (body.save) rememberLocal(body.lines);
         }
         if (m.pickup) {
           ui.modal = m.pickup;
           const preview = await api("POST", `shop/jobs/${m.job}/preview`, {stage:"ready"});
           ui.modal.text = preview.text;
         } else ui.modal = null;
-        render(); toast(m.billing === "rates" ? "Shop rates saved" : m.billing === "quote" ? "Added to estimate" : "Final bill saved");
+ render(); toast(m.billing === "rates" ? "Saved items updated" : m.billing === "quote" ? "Added to estimate" : "Final bill saved");
       } catch (err) { billing.error(f, err.message); }
       finally { ui.busy = false; submit.disabled = false; const stageSubmit = $("#sendForm button[type=submit]"); if (stageSubmit) stageSubmit.disabled = false; }
       return;
@@ -572,7 +648,13 @@
     if (f.id === "addLine") {
       const item = $("#li-item").value.trim(), price = parseFloat($("#li-price").value.replace(/[$,]/g, ""));
       if (!item || !(price >= 0)) { toast("Enter an item and a price"); return; }
-      if (await jobAction(ui.openJob, "estimate", { item, price })) $("#li-item")?.focus();
+      let pick = null; try { pick = f.dataset.pick ? JSON.parse(f.dataset.pick) : null; } catch { /* none */ }
+      const save = $("#li-save").checked;
+      const body = pick && pick.name === item ? { charge: { name: item, kind: pick.kind, rate: Math.round(price * 100) / 100, qty: 1 }, save } : { item, price, save };
+      if (await jobAction(ui.openJob, "estimate", body)) {
+        if (save) rememberLocal([{ name: item, kind: pick && pick.name === item ? pick.kind : "part", rate: Math.round(price * 100) / 100 }]);
+        render(); $("#li-item")?.focus();
+      }
       return;
     }
     if (f.id === "replyForm") {
@@ -683,6 +765,8 @@
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
   document.addEventListener("input", (e) => {
+    if (e.target.id === "archiveQ") { archive.q = e.target.value; clearTimeout(archiveTimer); archiveTimer = setTimeout(searchArchive, 250); return; }
+    if (e.target.id === "li-item") delete e.target.form.dataset.pick;
     if (e.target.id === "intakePhotoIn") return uploadIntakePhotos(e.target);
     if (custToken && e.target.form?.id === "intakeForm") cust.intakeDraft[e.target.name] = e.target.value;
     if (ui.modal?.billing) { billing.updateTotal($("#billingForm")); return; }

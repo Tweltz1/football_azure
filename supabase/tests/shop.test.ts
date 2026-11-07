@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Ctx } from '../functions/_shared/handlers.ts';
 import {
-  createTwilioSender, normalizePhone, shopRoute, type Job, type Shop, type ShopDeps, type ShopStore,
+  archivedAt, archiveSearchText, createTwilioSender, normalizePhone, shopRoute, type Job, type Shop, type ShopDeps, type ShopStore,
 } from '../functions/_shared/shop.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -46,6 +46,14 @@ function world() {
       if (pdf === null) billFiles.delete(id); else billFiles.set(id, pdf);
     },
     async getBillPdf(id) { return billFiles.get(id) ?? null; },
+    async searchArchive(shopId, since, terms, limit) {
+      return [...jobs.values()].filter((j) => j.shopId === shopId && j.stage === 'picked_up' && archivedAt(j)! >= since && terms.every((t) => archiveSearchText(j).includes(t)))
+        .sort((a, b) => archivedAt(b)!.localeCompare(archivedAt(a)!)).slice(0, limit)
+        .map((j) => ({ id: j.id, ro: j.data.ro, archivedAt: archivedAt(j)!, createdAt: j.createdAt, customer: j.data.customer, vehicle: j.data.vehicle, plate: j.data.plate, concern: j.data.concern, total: j.bill?.total ?? 0 }));
+    },
+    async purgeArchive(shopId, before) {
+      for (const [id, j] of jobs) if (j.shopId === shopId && j.stage === 'picked_up' && archivedAt(j)! < before) jobs.delete(id);
+    },
     async nextRo(shopId) { const v = ro.get(shopId) ?? 1001; ro.set(shopId, v + 1); return v; },
   };
   const deps: ShopDeps = {
@@ -59,7 +67,7 @@ function world() {
     const ctx = { userId, now: () => new Date(clock), newId: () => `id${++n}`, log: { info() {}, warn() {}, error() {} } } as unknown as Ctx;
     return shopRoute(ctx, deps, method, path.split('/'), body ?? null);
   };
-  return { as, texts, jobs, deps };
+  return { as, texts, jobs, shops, deps, tick: (ms: number) => { clock += ms; } };
 }
 
 const checkIn = {
@@ -302,4 +310,45 @@ test('shop email is saved, validated, and kept when another screen saves the sho
   await dan('POST', 'shop/me', { name: 'Ridgeline', email: 'dan@ridgeline.com' });
   await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '555', hours: '9-5', rates: [] });
   assert.equal(((await dan('GET', 'shop/me'))?.body as { shop: { email: string } }).shop.email, 'dan@ridgeline.com');
+});
+
+test('picked-up cars go to a searchable archive and are deleted after a year', async () => {
+  const { as, jobs, tick } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const a = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string; ro: string };
+  const b = (await dan('POST', 'shop/jobs', { ...checkIn, customer: { name: 'Sam Ortiz', phone: '555-777-1234', consent: false }, vehicle: { year: '2015', make: 'Ford', model: 'F-150' } }))?.body as { id: string };
+  await dan('POST', `shop/jobs/${a.id}/stage`, { stage: 'picked_up' });
+  const search = async (q: string) => ((await dan('POST', 'shop/archive', { q }))?.body as { rows: { id: string }[] }).rows.map((r) => r.id);
+  assert.deepEqual(await search(''), [a.id], 'only picked-up cars are archived');
+  assert.deepEqual(await search('maria civic'), [a.id]);
+  assert.deepEqual(await search('(555) 013-6620'), [a.id], 'phone search ignores punctuation');
+  assert.deepEqual(await search(a.ro.toLowerCase()), [a.id]);
+  assert.deepEqual(await search('7KDL'), [a.id]);
+  assert.deepEqual(await search('ford'), []);
+  assert.equal(((await as('user-other')('POST', 'shop/archive', { q: '' }))?.status), 409);
+
+  tick(200 * 86_400_000);
+  await dan('POST', `shop/jobs/${b.id}/stage`, { stage: 'picked_up' });
+  assert.deepEqual(await search(''), [b.id, a.id], 'newest pickup first');
+  tick(170 * 86_400_000);
+  assert.deepEqual(await search(''), [b.id], 'a year after pickup the car is deleted');
+  assert.ok(!jobs.has(a.id));
+  assert.ok(jobs.has(b.id));
+});
+
+test('estimate and bill lines can be saved to the shop list for next time', async () => {
+  const { as, shops } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline', rates: [{ name: 'Shop supplies', kind: 'fee', rate: 12.5 }] });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string };
+  const rates = () => [...shops.values()][0].rates!.map((r) => `${r.kind}:${r.name}:${r.rate}`);
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Wiper blades', price: 32 });
+  assert.deepEqual(rates(), ['fee:Shop supplies:12.5'], 'not saved unless asked');
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Cabin air filter', price: 28.5, save: true });
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { charge: { name: 'Brake labor', kind: 'labor', rate: 120, qty: 1.5 }, save: true });
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'shop supplies', price: 99, save: true });
+  assert.deepEqual(rates(), ['fee:Shop supplies:12.5', 'part:Cabin air filter:28.5', 'labor:Brake labor:120'], 'names already saved are not duplicated');
+  await dan('POST', `shop/jobs/${job.id}/bill`, { mode: 'generated', lines: [{ name: 'Disposal fee', kind: 'fee', rate: 5, qty: 1 }], save: true });
+  assert.equal(rates().at(-1), 'fee:Disposal fee:5');
 });

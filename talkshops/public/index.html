@@ -252,6 +252,7 @@ a.btn.primary{color:var(--accent-fg)}
 @media print{body:has(.final-bill) *{visibility:hidden}body:has(.final-bill) .final-bill,body:has(.final-bill) .final-bill *{visibility:visible}
 body:has(.final-bill) .cust-page{width:100%}body:has(.final-bill) .c-head,body:has(.final-bill) .c-body>:not(.final-bill),.final-bill button{display:none}.final-bill{border:0;color:black;background:white}.bill-item{break-inside:avoid}}
 </style>
+<link rel="stylesheet" href="/saved-archive.css?v=1">
 </head>
 <body>
 <div id="shopChrome" hidden>
@@ -264,6 +265,7 @@ body:has(.final-bill) .cust-page{width:100%}body:has(.final-bill) .c-head,body:h
     <nav class="tabs" aria-label="Views">
       <button class="tab" data-view="board">Shop board</button>
       <button class="tab" data-view="checkin">Check in</button>
+      <button class="tab" data-view="archive">Archive</button>
       <button class="tab" data-view="settings">Settings</button>
     </nav>
     <button class="signout" id="signOut">Sign out</button>
@@ -276,7 +278,9 @@ body:has(.final-bill) .cust-page{width:100%}body:has(.final-bill) .c-head,body:h
 <input type="file" id="photoIn" accept="image/jpeg,image/png" hidden>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script src="/config.js?v=174"></script>
-<script src="/billing.js?v=1"></script>
-<script src="/app.js?v=181"></script>
+<script src="/sheet-import.js?v=1"></script>
+<script src="/billing.js?v=2"></script>
+<script src="/suggest.js?v=1"></script>
+<script src="/app.js?v=182"></script>
 </body>
 </html>
