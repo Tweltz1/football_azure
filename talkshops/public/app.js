@@ -21,6 +21,8 @@
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const money = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const billing = window.createShopBilling({ esc, money });
+  const chargeDetail = e => e.charge ? `<small class="charge-detail">${esc(billing.calculation(e.charge))}</small>` : "";
   const ts = (t) => (typeof t === "number" ? t : Date.parse(t));
   const clock = (t) => new Date(ts(t)).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const dayClock = (t) => { const d = new Date(ts(t)); return d.toDateString() === new Date().toDateString() ? clock(t) : d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ", " + clock(t); };
@@ -122,7 +124,7 @@
         const choice = pending && e.status === "pending"
           ? `<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d === "approved"}">Approve</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d === "declined"}">Decline</button></div>`
           : (e.status !== "pending" ? `<span class="pill ${e.status === "approved" ? "ok" : "bad"}">${e.status === "approved" ? "Approved" : "Declined"}</span>` : "");
-        return `<div class="est-item"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${choice}</div>`;
+        return `<div class="est-item"><div class="top"><span>${esc(e.item)}${chargeDetail(e)}</span><span>${money(e.price)}</span></div>${choice}</div>`;
       }).join("");
       const allChosen = j.estimate.filter((e) => e.status === "pending").every((e) => cust.draft[e.id]);
       const tot = pending ? j.estimate.reduce((a, e) => a + ((cust.draft[e.id] ?? e.status) === "approved" ? Number(e.price) : 0), 0) : estTotal(j, true);
@@ -134,11 +136,11 @@
     }
     const earlierPhotos = photoFolder("earlier", "Earlier photos", j.photos.filter((p) => !Object.hasOwn(SI, p.stage)), openFolders);
     const extra = j.stage === "parts" && j.eta ? `<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta)}</b>.</p>`
-      : j.stage === "ready" ? `<p style="margin:6px 0 0">Total due ${money(estTotal(j, true))}.${j.shop.hours ? " Open " + esc(j.shop.hours) + "." : ""}</p>` : "";
+      : j.stage === "ready" ? `<p style="margin:6px 0 0">${j.bill ? "Total due " + money(j.bill.total) : "Approved estimate " + money(estTotal(j, true))}.${j.shop.hours ? " Open " + esc(j.shop.hours) + "." : ""}</p>` : "";
     app.innerHTML = `<div class="cust-page">
       <div class="c-head"><small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${j.stage === "approval" && outcome ? outcome : STAGES[idx].cust}</h2><div style="font-size:14px;margin-top:4px">${esc(j.vehicle)}</div>${extra}</div>
       <div class="c-body">
-        ${est}
+        ${billing.display(j.bill, j)}${est}
         <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         <div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>
         ${j.shop.phone ? `<div class="c-card call"><span>Questions? Call the shop</span><b>${esc(j.shop.phone)}</b></div>` : ""}
@@ -214,6 +216,7 @@
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
       <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
       <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(s.hours || "")}" placeholder="Mon–Fri 7:30am–6pm"></label>
+      ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Manage shop rates and import fees</button>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign out</button>` : ""}</div>
     </form></div>`;
   }
@@ -287,7 +290,7 @@
     const idx = SI[j.stage];
     const steps = STAGES.map((s, i) => `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "current" : ""}" data-stage="${s.key}" ${i === idx ? 'aria-current="step"' : ""}>${s.key === "approval" && i === idx ? estimateOutcome(j) || s.label : s.label}</button>`).join("");
     const next = STAGES[idx + 1];
-    const rows = j.estimate.map((e) => `<tr><td>${esc(e.item)}</td><td>${e.status === "pending" ? '<span class="pill warn">Pending</span>' : e.status === "approved" ? '<span class="pill ok">Approved</span>' : '<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status === "pending" && j.stage !== "approval" ? `<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>` : ""}</td></tr>`).join("");
+    const rows = j.estimate.map((e) => `<tr><td>${esc(e.item)}${chargeDetail(e)}</td><td>${e.status === "pending" ? '<span class="pill warn">Pending</span>' : e.status === "approved" ? '<span class="pill ok">Approved</span>' : '<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status === "pending" && j.stage !== "approval" ? `<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>` : ""}</td></tr>`).join("");
     const log = [...j.events].reverse().map((e) => `<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
     return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
       <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j))}</h2><div class="muted">${esc(j.customer.name)} · ${esc(fmtPhone(j.customer.phone))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
@@ -301,7 +304,12 @@
           ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<p class="muted" style="margin:0">No line items yet.</p>`}
           ${j.approval ? `<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>` : ""}
           <form class="add-line" id="addLine"><input id="li-item" placeholder="Line item, e.g. Cabin air filter" aria-label="Line item"><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button></form>
+          <button class="btn" type="button" data-billing="quote">Add labor, parts or fees</button>
           ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? `<button class="btn primary" style="margin-top:10px" data-stage="approval">Send estimate for approval</button>` : ""}
+        </section>
+        <section class="sec"><h3>Final bill</h3>
+          ${j.bill ? `<p>${j.bill.mode === "upload" ? "Shop PDF" : "Itemized bill"} · ${money(j.bill.total)}</p>` : ""}
+          <div class="btn-row"><button class="btn" data-billing="generated">${j.bill?.mode === "generated" ? "Edit itemized bill" : "Create itemized bill"}</button><button class="btn" data-billing="upload">Upload shop PDF</button>${j.bill?.mode==="upload" ? '<button class="linkbtn" data-billing="download">Download current PDF</button>' : ""}</div>
         </section>
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
           <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
@@ -317,6 +325,8 @@
       <h2 id="mTitle">Move to ${s.label}</h2>
       <p class="muted" style="margin:0">Text to ${esc(j.customer.name)} at ${esc(fmtPhone(j.customer.phone))}</p>
       ${m.stage === "parts" ? `<label class="field">Parts ETA<input id="m-eta" value="${esc(m.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
+      ${m.stage === "ready" ? `<div><strong>Final bill</strong><p>${j.bill ? money(j.bill.total) + " due at pickup" : "Optional. Customers can open their bill from the pickup link."}</p>
+        <div class="btn-row"><button class="btn" type="button" data-billing="generated">Create / edit bill</button><button class="btn" type="button" data-billing="upload">Upload shop PDF</button></div></div>` : ""}
       <label class="field">Message<textarea id="m-text" maxlength="1000">${esc(m.text)}</textarea></label>
       <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent ? "checked" : "disabled"}> Send this text ${j.customer.consent ? "" : "(customer has not agreed to texts)"}</label>
       <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Update stage</button><button class="btn" type="button" data-cancel>Cancel</button></div>
@@ -327,8 +337,10 @@
     let h = "";
     if (session && shop && ui.openJob && ui.view === "board") { const j = job(ui.openJob); if (j) h += sheetView(j); }
     if (ui.modal === "video") h += videoModal();
+    else if (ui.modal?.billing) h += billing.editor(ui.modal.billing, shop, job(ui.modal.job));
     else if (ui.modal) h += stageModal();
     $("#layer").innerHTML = h;
+    if (ui.modal?.billing) billing.updateTotal($("#billingForm"));
   }
 
   async function act(fn, okMsg) {
@@ -348,6 +360,24 @@
     if (e.target.id === "photoIn") return;
     const t = e.target.closest("button,[data-close],[data-open],[data-close-modal]");
     if (!t) return;
+    if (t.dataset?.billing) {
+      const action = t.dataset.billing;
+      if (action === "print") { window.print(); return; }
+      if (action === "download") {
+        const current = custToken ? cust.data : job(ui.openJob);
+        const path = custToken ? "shop/c/" + encodeURIComponent(custToken) : "shop/jobs/" + current.id;
+        try { const file = await api("GET", path + "/bill-file"); billing.fileDownload(file.pdf, current.bill.filename); }
+        catch (err) { toast(err.message); }
+        return;
+      }
+      if (["rates","generated","upload","quote"].includes(action)) {
+        ui.modal = { billing: action, job: ui.openJob, pickup: ui.modal?.stage === "ready" ? ui.modal : null };
+        renderLayer(); return;
+      }
+      const form = t.closest("#billingForm");
+      if (form) billing.editClick(t, form);
+      return;
+    }
     if (t.id === "pickPhoto") {
       const input = $("#photoIn");
       if (!ui.openJob || input.disabled) return;
@@ -369,7 +399,7 @@
     if (t.dataset.view) { ui.view = t.dataset.view; ui.openJob = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); return; }
     if (t.hasAttribute("data-close")) { ui.openJob = null; renderLayer(); return; }
-    if (t.hasAttribute("data-cancel")) { ui.modal = null; renderLayer(); return; }
+    if (t.hasAttribute("data-cancel")) { if (ui.busy) return; ui.modal = ui.modal?.pickup || null; renderLayer(); return; }
     if (t.dataset.stage) {
       const j = job(ui.openJob); if (!j || t.dataset.stage === j.stage) return;
       if (t.dataset.stage === "approval" && !j.estimate.some((x) => x.status === "pending")) { toast("Add at least one estimate line first"); $("#li-item")?.focus(); return; }
@@ -403,6 +433,31 @@
   document.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target;
+    if (f.id === "billingForm") {
+      if (ui.busy) return;
+      const m = ui.modal, submit = f.querySelector('[type="submit"]');
+      ui.busy = true; submit.disabled = true;
+      try {
+        if (m.billing === "rates") {
+          shop = (await api("POST", "shop/me", { name: shop.name, phone: shop.phone, hours: shop.hours, rates: billing.readRows(f,true) })).shop;
+        } else if (m.billing === "quote") {
+          const [charge] = billing.readRows(f);
+          if (!charge) throw Error("Add an estimate line first.");
+          upsertJob(await api("POST", `shop/jobs/${m.job}/estimate`, { charge }));
+        } else {
+          const body = await billing.billBody(f);
+          upsertJob(await api("POST", `shop/jobs/${m.job}/bill`, body));
+        }
+        if (m.pickup) {
+          ui.modal = m.pickup;
+          const preview = await api("POST", `shop/jobs/${m.job}/preview`, {stage:"ready"});
+          ui.modal.text = preview.text;
+        } else ui.modal = null;
+        render(); toast(m.billing === "rates" ? "Shop rates saved" : m.billing === "quote" ? "Added to estimate" : "Final bill saved");
+      } catch (err) { billing.error(f, err.message); }
+      finally { ui.busy = false; submit.disabled = false; const stageSubmit = $("#sendForm button[type=submit]"); if (stageSubmit) stageSubmit.disabled = false; }
+      return;
+    }
     if (f.id === "emailForm") {
       if (!sb) return;
       const email = $("#au-email").value.trim(), password = $("#au-pass").value;
@@ -514,14 +569,16 @@
     }
   }
   document.addEventListener("change", (e) => {
+    if (ui.modal?.billing) { billing.change(e, shop); return; }
     if (e.target.id === "eta") jobAction(ui.openJob, "eta", { eta: e.target.value.trim() }, "ETA saved");
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
   document.addEventListener("input", (e) => {
+    if (ui.modal?.billing) { billing.updateTotal($("#billingForm")); return; }
     if (e.target.id === "sig") cust.sig = e.target.value;
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { if (ui.modal) ui.modal = null; else ui.openJob = null; renderLayer(); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !ui.busy) { if (ui.modal) ui.modal = ui.modal?.pickup || null; else ui.openJob = null; renderLayer(); } });
 
   // ---------------- Start ----------------
   if (custToken) {
