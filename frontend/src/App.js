@@ -118,7 +118,6 @@ function App() {
             <NavLink to="/start-sit"><span className="nav-long">Start/Sit &amp; Trades</span><span className="nav-short nav-two-line">Start/Sit &amp; Trade</span></NavLink>
             <NavLink to="/rankings">Rankings</NavLink>
             <NavLink to="/games">Games</NavLink>
-            <a href="/dnd">DnD</a>
             {inGamesApp() && <a href={HOOD_GAMES_PATH}>Hood Games</a>}
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>
