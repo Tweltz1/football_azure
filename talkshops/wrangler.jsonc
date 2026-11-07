@@ -1,0 +1,7 @@
+// Cloudflare Workers settings for talkshops.app: a static site (public/), no server code.
+// Build: `node scripts/build.mjs` (writes public/config.js), then `npx wrangler deploy`.
+{
+  "name": "talkshops",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./public" }
+}
