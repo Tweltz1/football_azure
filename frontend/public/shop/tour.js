@@ -362,7 +362,7 @@
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">
         <h2 id="tsH">Guided demo</h2>
-        <p>A narrated walk-through of a repair shop using Bay Status, about 3 minutes. Turn your sound on. Halfway through you can get a real text and approve a repair from your own phone.</p>
+        <p>A narrated walk-through of a repair shop using Talk Shops, about 3 minutes. Turn your sound on. Halfway through you can get a real text and approve a repair from your own phone.</p>
         <div class="t-row"><button class="btn primary" id="tsGo" type="button">▶ Start the tour</button><button class="btn" id="tsNo" type="button">Explore on my own</button></div></div>`;
       document.body.appendChild(gate);
       q("#tsGo").focus();

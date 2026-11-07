@@ -3,7 +3,7 @@
   Access-Control-Allow-Origin: *
   Cache-Control: no-cache
 
-# Bay Status (/shop/) is plain HTML/JS outside the React build, so its files keep the
+# Talk Shops (/shop/) is plain HTML/JS outside the React build, so its files keep the
 # same names between deploys. Make browsers check for a new version every time.
 /shop/*
   Cache-Control: no-cache

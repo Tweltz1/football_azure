@@ -2,6 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <script>
+      // talkshops.app is the repair shop app (Talk Shops, /shop/), served from this same site.
+      if (/(^|\.)talkshops\.app$/.test(location.hostname)) location.replace('/shop/' + location.search + location.hash);
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no" />
     <meta name="theme-color" content="#0a0b0e" />
     <meta
