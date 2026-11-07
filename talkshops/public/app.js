@@ -353,12 +353,12 @@
     el.innerHTML = `<p class="muted archive-count">${archive.rows.length === 100 ? "Showing the 100 most recent matches" : archive.rows.length + " car" + (archive.rows.length === 1 ? "" : "s")}</p>
       <ul class="archive-list">${archive.rows.map((r) => {
         const veh = [r.vehicle?.year, r.vehicle?.make, r.vehicle?.model].filter(Boolean).join(" ") || "Vehicle not recorded";
-        return `<li><button class="archive-row" data-archive-open="${esc(r.id)}">
+        return `<li class="archive-item"><button class="archive-row" data-archive-open="${esc(r.id)}">
           <span class="a-main"><b>${esc(veh)}</b>${r.plate ? `<span class="mono">${esc(r.plate)}</span>` : ""}</span>
           <span class="a-who">${esc(r.customer?.name || "")}${r.customer?.phone ? " · " + esc(fmtPhone(r.customer.phone)) : ""}${r.customer?.email ? " · " + esc(r.customer.email) : ""}</span>
           <span class="a-concern">${esc(r.concern || "")}</span>
           <span class="a-meta"><span class="mono">${esc(r.ro)}</span><span>${r.closedReason ? `<span class="pill bad">Closed</span> ${esc(r.closedReason)},` : "Picked up"} ${esc(new Date(ts(r.archivedAt)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}</span>${r.total ? `<span>${money(r.total)}</span>` : ""}<span class="muted">Deletes ${deleteDate(r.archivedAt)}</span></span>
-        </button></li>`;
+        </button><button class="archive-del" data-delete-archived="${esc(r.id)}" aria-label="Delete ${esc(r.ro)} permanently">Delete</button></li>`;
       }).join("")}</ul>`;
   }
   let archiveTimer;
@@ -419,7 +419,7 @@
     return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
       <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(j.customer.name)} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
       <div class="sheet-body" data-job="${esc(j.id)}">
-        ${j.closed ? `<section class="sec closed-note"><p><b>Closed without repair</b> · ${esc(j.closed.reason)} · ${dayClock(j.closed.t)}</p><p class="muted">This car is in the Archive.</p><button class="btn" data-reopen>Reopen and put back on the board</button></section>` : ""}
+        ${j.closed ? `<section class="sec closed-note"><p><b>Closed without repair</b> · ${esc(j.closed.reason)} · ${dayClock(j.closed.t)}</p><p class="muted">This car is in the Archive.</p><div class="btn-row"><button class="btn" data-reopen>Reopen and put back on the board</button><button class="btn danger" data-delete-job>Delete permanently</button></div></section>` : ""}
         <section class="sec"><h3>Stage</h3><div class="stepper">${steps}</div>
           <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer's page</a>${j.stage !== "picked_up" && !j.closed ? `<button class="btn" data-close-job>Close without repair</button>` : ""}</div>
           ${j.stage === "parts" ? `<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
@@ -456,11 +456,11 @@
     const text = `Hi ${first(j.customer.name)}, we've closed out repair order ${j.ro} for your ${vehicleStr(j) || "vehicle"}. Thanks for considering ${shop.name}. Call us anytime if you change your mind.`;
     return `<div class="modal"><form class="modal-card" id="closeForm" role="dialog" aria-modal="true" aria-labelledby="cTitle">
       <h2 id="cTitle">Close without repair</h2>
-      <p class="muted" style="margin:0">The car leaves the board and moves to the Archive, where it's kept for one year. You can reopen it from there.</p>
+      <p class="muted" style="margin:0"><b>Archive</b> keeps the record for one year so you can look it up or reopen it. <b>Delete</b> removes it for good.</p>
       <label class="field">Reason<select id="c-reason">${["Customer declined the repair", "Customer didn't bring the car in", "Customer went elsewhere", "Duplicate or mistake", "Other"].map((r) => `<option>${esc(r)}</option>`).join("")}</select></label>
       <label class="chk"><input type="checkbox" id="c-send" ${j.customer.consent ? "" : "disabled"}> Let ${esc(first(j.customer.name))} know ${j.customer.consent ? "" : "(customer has not agreed to notifications)"}</label>
       <label class="field" id="c-text-wrap" hidden>Message<textarea id="c-text" maxlength="1000">${esc(text)}</textarea></label>
-      <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Close and archive</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+      <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Archive</button><button class="btn danger" type="button" data-delete-job>Delete permanently</button><button class="btn" type="button" data-cancel>Cancel</button></div>
     </form></div>`;
   }
 
@@ -580,11 +580,22 @@
       if (j && ui.view === "archive") searchArchive();
       return;
     }
-    if (t.hasAttribute("data-delete-job")) {
-      const j = job(ui.openJob);
-      if (!j || !window.confirm(`Permanently delete ${j.ro} (${vehicleStr(j) || "vehicle"}, ${j.customer.name})? This can't be undone.`)) return;
-      const r = await act(() => api("DELETE", "shop/jobs/" + encodeURIComponent(j.id)), "Repair deleted");
-      if (r) { jobs = jobs.filter((x) => x.id !== j.id); ui.openJob = null; render(); if (ui.view === "archive") searchArchive(); }
+    if (t.hasAttribute("data-delete-job") || t.dataset.deleteArchived) {
+      if (ui.busy) return;
+      const id = t.dataset.deleteArchived || ui.modal?.closeJob || ui.openJob;
+      const j = job(id), row = archive.rows?.find((x) => x.id === id);
+      const ro = j?.ro || row?.ro || "this repair";
+      const veh = j ? vehicleStr(j) : [row?.vehicle?.year, row?.vehicle?.make, row?.vehicle?.model].filter(Boolean).join(" ");
+      const who = j?.customer.name || row?.customer?.name || "";
+      if (!window.confirm(`Permanently delete ${ro}${veh || who ? ` (${[veh, who].filter(Boolean).join(", ")})` : ""}? Photos, messages and the customer's link are removed. This can't be undone.`)) return;
+      const r = await act(() => api("DELETE", "shop/jobs/" + encodeURIComponent(id)), "Repair deleted");
+      if (r) {
+        jobs = jobs.filter((x) => x.id !== id);
+        if (archive.rows) archive.rows = archive.rows.filter((x) => x.id !== id);
+        if (ui.openJob === id) ui.openJob = null;
+        if (ui.modal?.closeJob === id) ui.modal = null;
+        render();
+      }
       return;
     }
     if (t.dataset.del) { jobAction(ui.openJob, "estimate", { remove: t.dataset.del }); return; }
@@ -687,7 +698,7 @@
       if (ui.busy) return;
       const id = ui.modal.closeJob, send = $("#c-send").checked;
       const j = await jobAction(id, "close", { reason: $("#c-reason").value, send, text: send ? $("#c-text").value.trim() : "" });
-      if (j) { toast("Closed and moved to the Archive" + (send ? ". " + sendResult(j) : "")); ui.modal = null; ui.openJob = null; render(); if (ui.view === "archive") searchArchive(); }
+      if (j) { toast("Archived" + (send ? ". " + sendResult(j) : "")); ui.modal = null; ui.openJob = null; render(); if (ui.view === "archive") searchArchive(); }
       return;
     }
     if (f.id === "sendForm") {

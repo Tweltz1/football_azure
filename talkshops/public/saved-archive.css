@@ -31,3 +31,9 @@
 .danger-zone{border-top:1px solid var(--line);padding-top:14px}
 .danger-zone p{font-size:13px;margin:6px 0 0}
 .linkbtn.danger{color:var(--bad)}
+.archive-item{position:relative}
+.archive-item .archive-row{padding-right:84px}
+.archive-del{position:absolute;top:10px;right:10px;border:1px solid var(--line);background:var(--surface);color:var(--bad);border-radius:8px;padding:5px 10px;font-weight:600;font-size:13px}
+.archive-del:hover{background:var(--bad-bg);border-color:var(--bad)}
+.btn.danger{color:var(--bad)}
+.btn.danger:hover{background:var(--bad-bg);border-color:var(--bad)}
