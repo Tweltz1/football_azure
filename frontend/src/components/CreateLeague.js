@@ -5,7 +5,7 @@ import '../App.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
-const CreateLeague = ({ userId }) => {
+const CreateLeague = ({ userId, userDetails }) => {
   const [leagueName, setLeagueName] = useState('');
   const [password, setPassword] = useState('');
   const [draftMode, setDraftMode] = useState('auction');
@@ -41,6 +41,7 @@ const CreateLeague = ({ userId }) => {
       const response = await axios.post(`${API_BASE_URL}/CreateLeague`, {
         name: leagueName,
         adminId: userId,
+        displayName: userDetails,
         password,
         draftMode,
         rosterSettings,

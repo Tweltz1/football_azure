@@ -84,6 +84,7 @@ public static class CreateLeague
             InitialPlayerPool = filteredPlayerPool,
             DraftPlayers = filteredPlayerPool,
         };
+        LeagueMemberProfileHelper.Upsert(newLeague, data.AdminId, userProfile, data.DisplayName);
 
         await AppServices.LeaguesContainer.CreateItemAsync(newLeague, new PartitionKey(newLeague.Id));
 
@@ -95,6 +96,7 @@ public static class CreateLeague
         public string Name { get; set; }
         public string AdminId { get; set; }
         public string Password { get; set; }
+        public string DisplayName { get; set; }
         public string DraftMode { get; set; }
         public RosterSettings RosterSettings { get; set; }
         public DraftTimers DraftTimers { get; set; }

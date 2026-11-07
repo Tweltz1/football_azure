@@ -9,7 +9,7 @@ import './LeagueTools.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
-const Leagues = ({ userId }) => {
+const Leagues = ({ userId, userDetails }) => {
   const [leagues, setLeagues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -128,6 +128,7 @@ const Leagues = ({ userId }) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/JoinLeague`, {
         userId,
+        displayName: userDetails,
         leagueId: joinInviteId || undefined,
         leagueName: joinInviteId ? undefined : joinLeagueName,
         password: joinInviteId ? undefined : joinPassword

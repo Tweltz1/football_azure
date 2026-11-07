@@ -49,6 +49,7 @@ public static class UpdateUserProfile
             }
 
             var shouldSyncLeagueFavorites = data.FavoritePlayerIds != null;
+            var shouldSyncLeagueMemberProfile = data.DisplayName != null;
 
             if (data.DisplayName != null)
             {
@@ -108,6 +109,11 @@ public static class UpdateUserProfile
                 await SyncFavoritePlayersToLeagueTeamsAsync(userId, userProfile.FavoritePlayerIds, log);
             }
 
+            if (shouldSyncLeagueMemberProfile)
+            {
+                await SyncMemberProfileToLeaguesAsync(userId, userProfile, log);
+            }
+
             return new OkObjectResult(UserProfileStore.ToResponse(userProfile));
         }
         catch (Exception ex)
@@ -165,6 +171,60 @@ public static class UpdateUserProfile
                     catch (Exception ex)
                     {
                         log?.LogWarning(ex, "Profile favorites were saved, but league {LeagueId} could not be synced for user {UserId}.", leagueId, userId);
+                    }
+                }
+            }
+        }
+    }
+
+    private static async Task SyncMemberProfileToLeaguesAsync(string userId, UserProfile userProfile, ILogger log)
+    {
+        var query = new QueryDefinition("SELECT VALUE c.id FROM c WHERE ARRAY_CONTAINS(c.members, @userId)")
+            .WithParameter("@userId", userId);
+
+        using (var iterator = AppServices.LeaguesContainer.GetItemQueryIterator<string>(query))
+        {
+            while (iterator.HasMoreResults)
+            {
+                var page = await iterator.ReadNextAsync();
+                foreach (var leagueId in page.Where(id => !string.IsNullOrWhiteSpace(id)))
+                {
+                    try
+                    {
+                        var memberProfileChanged = false;
+                        var (updatedLeague, error) = await CosmosHelper.UpdateLeagueAsync(AppServices.LeaguesContainer, leagueId, league =>
+                        {
+                            league.EnsureDefaults();
+                            league.MemberProfiles.TryGetValue(userId, out var before);
+                            var beforeDisplayName = before?.DisplayName;
+                            var beforeEmail = before?.Email;
+
+                            LeagueMemberProfileHelper.Upsert(league, userId, userProfile);
+                            var after = league.MemberProfiles.TryGetValue(userId, out var updatedProfile)
+                                ? updatedProfile
+                                : null;
+
+                            memberProfileChanged =
+                                !string.Equals(beforeDisplayName, after?.DisplayName, StringComparison.OrdinalIgnoreCase)
+                                || !string.Equals(beforeEmail, after?.Email, StringComparison.OrdinalIgnoreCase);
+
+                            return null;
+                        }, log);
+
+                        if (error != null)
+                        {
+                            log?.LogWarning("Profile was saved, but league {LeagueId} returned an error while syncing member profile for user {UserId}.", leagueId, userId);
+                            continue;
+                        }
+
+                        if (memberProfileChanged)
+                        {
+                            await AppServices.BroadcastDraftStateAsync(leagueId, updatedLeague, log);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        log?.LogWarning(ex, "Profile was saved, but league {LeagueId} could not sync member profile for user {UserId}.", leagueId, userId);
                     }
                 }
             }

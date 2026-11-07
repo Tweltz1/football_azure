@@ -20,6 +20,9 @@ public class League
     [JsonProperty("members")]
     public List<string> Members { get; set; } = new List<string>();
 
+    [JsonProperty("memberProfiles")]
+    public Dictionary<string, LeagueMemberProfile> MemberProfiles { get; set; } = new Dictionary<string, LeagueMemberProfile>();
+
     [JsonProperty("teams")]
     public List<Team> Teams { get; set; } = new List<Team>();
 
@@ -71,6 +74,7 @@ public class League
     public void EnsureDefaults()
     {
         Members = Members ?? new List<string>();
+        MemberProfiles = MemberProfiles ?? new Dictionary<string, LeagueMemberProfile>();
         Teams = Teams ?? new List<Team>();
         ReadyMembers = ReadyMembers ?? new List<string>();
         RosterSettings = RosterSettings ?? new RosterSettings();
@@ -123,6 +127,7 @@ public class League
             AdminId = this.AdminId,
             Password = null,
             Members = this.Members,
+            MemberProfiles = this.MemberProfiles,
             Teams = this.Teams,
             Status = this.Status,
             DraftMode = this.DraftMode,
@@ -144,6 +149,18 @@ public class League
         NflByeWeeks.ApplyToLeague(broadcast);
         return broadcast;
     }
+}
+
+public class LeagueMemberProfile
+{
+    [JsonProperty("userId")]
+    public string UserId { get; set; }
+
+    [JsonProperty("displayName")]
+    public string DisplayName { get; set; }
+
+    [JsonProperty("email")]
+    public string Email { get; set; }
 }
 
 public class TieBreakerInfo
