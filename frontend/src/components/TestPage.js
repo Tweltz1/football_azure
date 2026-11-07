@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 
-// The Test tab opens a stand-alone page that simulates a repair shop's own app
-// (shop board, check-in, customer view), so it leaves the Hood League look entirely.
-const DEMO_URL = '/repair-shop-demo.html';
+// The Test tab opens Bay Status, the repair shop app at /shop/ (frontend/public/shop/), a stand-alone
+// page that leaves the Hood League look entirely.
+const DEMO_URL = '/shop/';
 
 const TestPage = () => {
   useEffect(() => {

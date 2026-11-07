@@ -164,6 +164,7 @@ table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-
 .login h2{font-size:28px;margin-top:6px}
 .demo-creds{font-size:13px;background:var(--accent-soft);border-radius:8px;padding:8px 10px}
 .signout{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-weight:600}
+@media (max-width:560px){.tabs{order:3;width:100%}.tab{flex:1;padding:6px 8px}}
 .cust-pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px}
 .cust-pick select{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px 8px;max-width:100%}
 .phone{width:min(390px,100%);background:var(--surface);border:1px solid var(--line);border-radius:28px;padding:10px;box-shadow:var(--shadow)}
@@ -213,10 +214,10 @@ table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-
       <button class="tab" data-view="board">Shop board</button>
       <button class="tab" data-view="checkin">Check in</button>
     </nav>
-    <button class="signout" id="signOut">Sign out</button>
+    <a class="signout" id="signOutLink" href="/shop/" style="text-decoration:none;color:inherit">Exit demo</a>
   </div>
 </header>
-<div class="demo-note"><span><b>Demo shop.</b> Sample customers. No real texts are sent; each text shows in the car's message thread.</span><button class="linkbtn" id="resetBtn">Reset sample data</button><a class="linkbtn" href="/" style="margin-left:auto">Exit demo</a></div>
+<div class="demo-note"><span><b>Demo shop.</b> Sample cars and customers, saved only in this browser. No real texts are sent; each text shows in the car's message thread.</span><button class="linkbtn" id="resetBtn">Reset sample data</button></div>
 </div>
 <main id="app"></main>
 <div id="layer"></div>
@@ -300,7 +301,7 @@ if(!state||!state.jobs)state=seed();
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
 let ui={view:"board",openJob:null,custJob:null,modal:null,draft:{}};
 const AUTH="baystatus-proto-auth";
-let signedIn=false;try{signedIn=localStorage.getItem(AUTH)==="1"}catch(e){}
+let signedIn=true;
 const setAuth=v=>{signedIn=v;try{v?localStorage.setItem(AUTH,"1"):localStorage.removeItem(AUTH)}catch(e){}};
 const job=id=>state.jobs.find(j=>j.id===id);
 
@@ -487,7 +488,7 @@ document.addEventListener("click",e=>{
   if(t.dataset.del){const j=job(ui.openJob);j.estimate=j.estimate.filter(x=>String(x.id)!==t.dataset.del);save();renderLayer();return}
   if(t.id==="viewAsCust"||t.dataset.golink){const j=job(t.dataset.golink||ui.openJob);ui.backTo=j.id;location.hash="s-"+j.token;window.scrollTo(0,0);return}
   if(t.id==="backToShop"){ui.view="board";ui.openJob=ui.backTo||null;history.pushState(null,"",location.pathname);render();return}
-  if(t.id==="signOut"){setAuth(false);ui.openJob=null;render();return}
+  if(t.id==="signOut"){location.href="/shop/";return}
   if(t.id==="ci-fill"){const v={name:"Sam Ortiz",phone:"(555) 019-4410",year:"2014",make:"Mazda",model:"CX-5",plate:"3CXF882",concern:"Squealing belt noise on cold start"};for(const k in v)$("#ci-"+k).value=v[k];return}
   if(t.dataset.decide){const j=job(ui.custJob);ui.draft[j.id+"-"+t.dataset.decide]=t.dataset.v;const sig=$("#sig")?.value;if(sig!=null)ui.draft[j.id+"-sig"]=sig;render();return}
   if(t.id==="submitApproval"){const j=job(ui.custJob);const sig=($("#sig").value||"").trim();
