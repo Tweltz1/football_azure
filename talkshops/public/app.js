@@ -232,9 +232,11 @@
     if (!shop) { chrome.hidden = true; app.innerHTML = setupView(true); renderLayer(); return; }
     chrome.hidden = false;
     $("#shopName").textContent = shop.name;
+    $("#bayTab").textContent = bayName();
     document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.view === ui.view ? "page" : "false"));
     const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "") + (ui.view === "plan" ? "" : planUi.banner(plan));
     app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : boardView());
+    if (ui.view === "board") filterBoard();
     if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
     renderLayer();
   }
@@ -314,6 +316,10 @@
       <div class="stat warn"><b>${waiting}</b><span>Waiting on customer</span></div>
       <div class="stat ok"><b>${ready}</b><span>Ready for pickup</span></div>
       <div class="stat"><b>${sent}</b><span>Updates sent today</span></div></div>
+      <div class="board-top"><h2>${esc(bayName())}</h2>
+        <div class="age-key" aria-label="Time in shop"><span class="age-ok">Under 1 day</span><span class="age-mid">1 to 3 days</span><span class="age-old">Over 3 days</span></div>
+        <label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q || "")}" autocomplete="off"></label></div>
+      <p class="board-none muted" id="boardNone" hidden></p>
       <div class="board-wrap"><div class="board">`;
     STAGES.filter((s) => s.key !== "picked_up").forEach((s) => {
       const list = active.filter((j) => j.stage === s.key);
@@ -329,16 +335,40 @@
         else if (j.stage === "parts") pill = `<span class="pill">ETA ${esc(j.eta || "not set")}</span>`;
         const last = j.messages[j.messages.length - 1];
         const reply = last && last.dir === "in";
-        h += `<button class="card" data-open="${j.id}">
+        const age = ageOf(j);
+        const hay = [vehicleStr(j), j.customer.name, j.customer.phone, j.customer.email, j.ro, j.concern, j.plate, j.vehicle?.plate, j.vehicle?.vin].filter(Boolean).join(" ").toLowerCase();
+        h += `<button class="card ${age.cls}" data-open="${j.id}" data-s="${esc(hay)}">
           <span class="veh">${esc(vehicleStr(j) || "Vehicle details pending")}</span>
           <span class="row"><span>${esc(j.customer.name)}</span><span class="mono">${esc(j.ro)}</span></span>
           <span class="row"><span>${esc(j.concern)}</span></span>
-          <span class="row"><span>${since(ev.t)} in stage</span>${reply ? `<span class="pill bad">New reply</span>` : ""}</span>${pill}</button>`;
+          <span class="row"><span>${since(ev.t)} in stage</span>${reply ? `<span class="pill bad">New reply</span>` : ""}</span>
+          <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span>${pill}</span></button>`;
       });
       h += `</section>`;
     });
     h += `</div></div><p class="muted" style="font-size:13px;margin-top:10px">${picked ? picked + " picked up in the last 2 days. " : ""}Tap a car to update its stage, build an estimate or message the customer. <button class="linkbtn" data-view="archive">Search picked-up cars</button></p>`;
     return h;
+  }
+
+  const bayName = () => (shop && shop.name ? shop.name + " Bay" : "Shop bay");
+  // Time in the shop since check-in: green under a day, amber 1 to 3 days, red after that.
+  function ageOf(j) {
+    const start = ts(j.createdAt || j.events[0]?.t), hrs = (Date.now() - start) / 3600000;
+    return { label: since(start), cls: hrs < 24 ? "age-ok" : hrs < 72 ? "age-mid" : "age-old" };
+  }
+  // Filters cards in place, so typing never re-renders the board or drops the keyboard.
+  function filterBoard() {
+    const q = (ui.q || "").trim().toLowerCase(), terms = q.split(/\s+/).filter(Boolean);
+    let shown = 0;
+    document.querySelectorAll(".board .col").forEach((col) => {
+      let n = 0;
+      col.querySelectorAll(".card[data-s]").forEach((c) => { const ok = terms.every((t) => c.dataset.s.includes(t)); c.hidden = !ok; if (ok) n++; });
+      col.classList.toggle("search-hide", !!terms.length && !n);
+      const count = col.querySelector(".col-h span"); if (count) count.textContent = n;
+      shown += n;
+    });
+    const none = $("#boardNone");
+    if (none) { none.hidden = !terms.length || shown > 0; none.textContent = `No cars in the shop match "${ui.q.trim()}". Picked-up cars are in the Archive.`; }
   }
 
   // ---------------- Archive: picked-up cars, kept one year ----------------
@@ -856,6 +886,7 @@
   });
   document.addEventListener("input", (e) => {
     if (e.target.id === "noteIn" && ui.openJob) { ui.noteDraft[ui.openJob] = e.target.value; return; }
+    if (e.target.id === "boardSearch") { ui.q = e.target.value; filterBoard(); return; }
     if (e.target.id === "archiveQ") { archive.q = e.target.value; clearTimeout(archiveTimer); archiveTimer = setTimeout(searchArchive, 250); return; }
     if (e.target.id === "li-item") delete e.target.form.dataset.pick;
     if (e.target.id === "intakePhotoIn") return uploadIntakePhotos(e.target);
