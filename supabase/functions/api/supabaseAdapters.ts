@@ -10,6 +10,7 @@ import type { DraftHistoryEntry, League, UserProfile } from '../_shared/models.t
 import type { DndCampaignRow, DndCharacterRow, DndStore } from '../_shared/dnd.ts';
 import type { AskLogStore } from '../_shared/footballAsk.ts';
 import type { CardGameRow, CardGameStore } from '../_shared/cards.ts';
+import type { Job, JobData, Shop, ShopStore } from '../_shared/shop.ts';
 
 const rowToStored = (row: { data: League; version: number }): StoredLeague => ({ league: row.data, version: Number(row.version) });
 
@@ -326,6 +327,56 @@ export function createCardGameStore(db: SupabaseClient): CardGameStore {
         .eq('game', game).eq('finished', finished).order('updated_at', { ascending: false }).limit(limit);
       if (error) throw error;
       return (data ?? []).map((r) => cardRow({ ...(r as CardGameDb), state: null }));
+    },
+  };
+}
+
+interface ShopDb { id: string; owner_id: string; name: string; phone: string; hours: string; created_at: string }
+interface JobDb { id: string; shop_id: string; token: string; stage: string; data: JobData; created_at: string; updated_at: string }
+
+const shopRow = (r: ShopDb): Shop => ({ id: r.id, ownerId: r.owner_id, name: r.name, phone: r.phone, hours: r.hours, createdAt: r.created_at });
+const jobRow = (r: JobDb): Job => ({
+  id: r.id, shopId: r.shop_id, token: r.token, stage: r.stage as Job['stage'], data: r.data, createdAt: r.created_at, updatedAt: r.updated_at,
+});
+
+export function createShopStore(db: SupabaseClient): ShopStore {
+  const oneShop = async (column: string, value: string) => {
+    const { data, error } = await db.from('repair_shops').select('id, owner_id, name, phone, hours, created_at').eq(column, value).maybeSingle();
+    if (error) throw error;
+    return data ? shopRow(data as ShopDb) : null;
+  };
+  const oneJob = async (column: string, value: string) => {
+    const { data, error } = await db.from('repair_jobs').select('*').eq(column, value).maybeSingle();
+    if (error) throw error;
+    return data ? jobRow(data as JobDb) : null;
+  };
+  return {
+    shopByOwner: (ownerId) => oneShop('owner_id', ownerId),
+    shopById: (id) => oneShop('id', id),
+    async putShop(shop) {
+      const { error } = await db.from('repair_shops').upsert({
+        id: shop.id, owner_id: shop.ownerId, name: shop.name, phone: shop.phone, hours: shop.hours, created_at: shop.createdAt,
+      });
+      if (error) throw error;
+    },
+    async listJobs(shopId, since) {
+      const { data, error } = await db.from('repair_jobs').select('*').eq('shop_id', shopId)
+        .or(`stage.neq.picked_up,updated_at.gte.${since}`).order('created_at', { ascending: true }).limit(300);
+      if (error) throw error;
+      return (data ?? []).map((r) => jobRow(r as JobDb));
+    },
+    getJob: (id) => oneJob('id', id),
+    jobByToken: (token) => oneJob('token', token),
+    async putJob(job) {
+      const { error } = await db.from('repair_jobs').upsert({
+        id: job.id, shop_id: job.shopId, token: job.token, stage: job.stage, data: job.data, created_at: job.createdAt, updated_at: job.updatedAt,
+      });
+      if (error) throw error;
+    },
+    async nextRo(shopId) {
+      const { data, error } = await db.rpc('repair_next_ro', { p_shop: shopId });
+      if (error) throw error;
+      return Number(data) || 1001;
     },
   };
 }

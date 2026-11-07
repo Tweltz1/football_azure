@@ -8,10 +8,11 @@ import { getInitialPlayerPool } from '../_shared/playerData.ts';
 import { dndRoute } from '../_shared/dnd.ts';
 import { askRoute } from '../_shared/footballAsk.ts';
 import { cardsRoute } from '../_shared/cards.ts';
+import { createTwilioSender, shopRoute, type ShopDeps } from '../_shared/shop.ts';
 import { createNarrator } from './narrator.ts';
 import { createTurn } from './turn.ts';
 import {
-  createAskLogStore, createBroadcaster, createCardGameStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
+  createAskLogStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
 } from './supabaseAdapters.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -27,6 +28,13 @@ const snapshots = createSnapshotStore(db);
 const games = createGameStore(db);
 const askLog = createAskLogStore(db);
 const cardGames = createCardGameStore(db);
+// Repair shop app (Test tab). Texts go through Twilio once its three secrets are set.
+const shop: ShopDeps = {
+  store: createShopStore(db),
+  sms: createTwilioSender(Deno.env.get('TWILIO_ACCOUNT_SID'), Deno.env.get('TWILIO_AUTH_TOKEN'), Deno.env.get('TWILIO_FROM')),
+  linkBase: Deno.env.get('SHOP_LINK_BASE') || 'https://hood-league.com/shop/?c=',
+  newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),
+};
 const dnd = {
   store: createDndStore(db),
   narrator: createNarrator({
@@ -115,7 +123,8 @@ Deno.serve(async (req) => {
     };
 
     const parts = path.split('/').filter(Boolean).map((p) => decodeURIComponent(p));
-    const result = (await dndRoute(ctx, dnd, req.method, parts, body))
+    const result = (await shopRoute(ctx, shop, req.method, parts, body))
+      ?? (await dndRoute(ctx, dnd, req.method, parts, body))
       ?? (await cardsRoute(ctx, cardGames, req.method, parts, body, url.searchParams))
       ?? (await askRoute(ctx, dnd.narrator, req.method, parts, body, askLog))
       ?? await handle(ctx, req.method, path, url.searchParams, body);
