@@ -252,11 +252,12 @@
       <div class="hero-copy">
         <h2>Keep every customer <em>informed.</em></h2>
         <p>Notify customers at every stage of the repair. They track progress and approve estimates from one secure link, with no app to download and no account to create.</p>
-        <ul class="hero-list">
-          <li>${ico('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>')}Automatic text and email notifications at every stage</li>
-          <li>${ico('<path d="M20 6 9 17l-5-5"/>')}Estimates reviewed and signed online</li>
-          <li>${ico('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/>')}Every vehicle in your shop on one board</li>
-        </ul>
+        <div class="hero-claims">
+          <div class="claim">${ico('<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>')}<div><b>Customers come back</b><span>Clear, timely updates build the trust that turns a one-time repair into a regular customer.</span></div></div>
+          <div class="claim">${ico('<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>')}<div><b>Higher satisfaction</b><span>No more wondering about their car. Customers know where things stand at every stage.</span></div></div>
+          <div class="claim">${ico('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/><path d="M15 3l6 6M21 3l-6 6"/>')}<div><b>Fewer status calls</b><span>Customers check progress themselves, so your front desk spends less time on the phone.</span></div></div>
+          <div class="claim">${ico('<path d="M20 6 9 17l-5-5"/>')}<div><b>Faster approvals</b><span>Estimates reach customers instantly and can be signed from anywhere, so work starts sooner.</span></div></div>
+        </div>
       </div>
       <div class="hero-chat" aria-hidden="true">
         <div class="o">Your estimate for the 2018 Honda Civic is ready for review: talkshops.app/s/…<small>Ridgeline Auto Repair</small></div>
@@ -282,7 +283,19 @@
         <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}?tour=1" style="text-decoration:none">▶ Guided demo</a><a class="btn" href="${DEMO_PAGE}" style="text-decoration:none">Try demo shop</a><button class="linkbtn" id="watchDemo" type="button">Watch video</button></div>
       </div>
       <p class="muted" style="font-size:13px;margin:0">Customers never need an account. Each one receives a secure link to their vehicle's status page.</p>
-    </div></div></div>`;
+    </div></div></div>
+    <section class="compare" aria-labelledby="cmpH">
+      <div class="compare-in">
+        <h2 id="cmpH">Customer updates for a fraction of the price</h2>
+        <p class="muted">Lowest monthly price that includes texting customers and online estimate approval.</p>
+        <div class="cmp">
+          <div class="cmp-row us"><div class="cmp-name"><b>Talk Shops</b><small>Starter plan</small></div><div class="cmp-bar"><i style="width:13%"></i></div><div class="cmp-price">$59<small>/mo</small></div><p>1,000 texts a month, unlimited email, online estimate approval</p></div>
+          <div class="cmp-row"><div class="cmp-name"><b>Shopmonkey</b><small>Basic plan</small></div><div class="cmp-bar"><i style="width:54%"></i></div><div class="cmp-price">$239<small>/mo</small></div><p>Full shop management. Texting and digital authorizations included.</p></div>
+          <div class="cmp-row"><div class="cmp-name"><b>Tekmetric</b><small>Scale plan</small></div><div class="cmp-bar"><i style="width:100%"></i></div><div class="cmp-price">$439<small>/mo</small></div><p>Full shop management. Two-way texting starts on this plan.</p></div>
+        </div>
+        <p class="cmp-fine">Shopmonkey and Tekmetric are complete shop-management systems with many more features. Talk Shops focuses on customer communication and works alongside the system you already use. Prices are month-to-month list prices from each company's public pricing page (<a href="https://www.shopmonkey.io/pricing" target="_blank" rel="noopener">Shopmonkey</a>, <a href="https://tekmetric.com/pricing" target="_blank" rel="noopener">Tekmetric</a>), checked November 7, 2026, and may change.</p>
+      </div>
+    </section>`;
   }
 
   function setupView(firstTime) {
