@@ -8,6 +8,7 @@ import CreateLeague from './components/CreateLeague';
 import Login from './components/Login';
 import ClimbBackdrop from './components/ClimbBackdrop';
 import Profile from './components/Profile';
+import TestPage from './components/TestPage';
 import StartSit from './components/StartSit';
 import Rankings from './components/Rankings';
 import GamesPage from './games/GamesPage';
@@ -122,6 +123,7 @@ function App() {
             {inGamesApp() && <a href={HOOD_GAMES_PATH}>Hood Games</a>}
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>
+            <NavLink to="/test">Test</NavLink>
           </div>
 
           <div className="nav-user">
@@ -138,6 +140,7 @@ function App() {
             <Route path="/draft/:leagueId" element={<DraftRoomEnhanced userId={userId} />} />
             <Route path="/create-league" element={<CreateLeague userId={userId} />} />
             <Route path="/profile" element={<Profile userId={userId} />} />
+            <Route path="/test" element={<TestPage />} />
             <Route path="/start-sit" element={<StartSit userId={userId} />} />
             <Route path="/rankings" element={<Rankings userId={userId} />} />
             <Route path="/games" element={<GamesPage />} />
