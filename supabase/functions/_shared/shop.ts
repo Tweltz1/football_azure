@@ -18,6 +18,8 @@ export interface Shop {
   name: string;
   phone: string;
   hours: string;
+  /** Where customers' email replies go (Reply-To). Optional. */
+  email?: string;
   createdAt: string;
 }
 
@@ -79,7 +81,7 @@ export interface SmsSender { send(to: string, text: string): Promise<SmsResult> 
 export interface ShopDeps {
   store: ShopStore;
   sms: SmsSender;
-  email?: { send(to: string, subject: string, text: string): Promise<SmsResult> };
+  email?: { send(to: string, subject: string, text: string, opts?: { fromName?: string; replyTo?: string }): Promise<SmsResult> };
   /** Customer links are this plus the job's token, e.g. https://hood-league.com/shop/?c= */
   linkBase: string;
   newToken: () => string;
@@ -175,7 +177,7 @@ async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string
     let result: SmsResult;
     if (!c.consent) result = { delivery: 'not_sent', note: 'Customer has not agreed to ' + (channel === 'sms' ? 'texts.' : 'email.') };
     else if (channel === 'sms') result = await deps.sms.send(c.phone, text);
-    else if (deps.email && c.email) result = await deps.email.send(c.email, shop.name + ' · ' + job.data.ro + ' repair update', text);
+    else if (deps.email && c.email) result = await deps.email.send(c.email, shop.name + ' · ' + job.data.ro + ' repair update', text, { fromName: shop.name, replyTo: shop.email || undefined });
     else result = { delivery: 'not_sent', note: 'Automatic email is not configured.' };
     return { dir: 'out', channel, t: now, text, ...result };
   }));
@@ -303,6 +305,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (method === 'POST') {
       const name = str(body.name, 80);
       if (!name) return bad('Enter your shop name.');
+      if (body.email !== undefined && str(body.email, 254) && !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(str(body.email, 254))) return bad('Enter a valid shop email, or leave it blank.');
       const rates = body.rates ?? shop?.rates ?? [];
       if (!Array.isArray(rates) || rates.length > 250 || !rates.every(validRate)) return bad('Check your rate list (up to 250 rates).');
       const next: Shop = {
@@ -311,6 +314,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         name,
         phone: str(body.phone, 30),
         hours: str(body.hours, 60),
+        email: body.email === undefined ? shop?.email ?? '' : str(body.email, 254),
         createdAt: shop?.createdAt ?? now,
       };
       await store.putShop(next);
