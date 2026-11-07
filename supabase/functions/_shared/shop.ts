@@ -4,6 +4,8 @@
 
 import type { Ctx, Res } from './handlers.ts';
 
+import { access, checkoutFields, DEFAULT_TRIAL, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
+  type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
 
 type Body = Record<string, unknown>;
@@ -21,6 +23,8 @@ export interface Shop {
   /** Where customers' email replies go (Reply-To). Optional. */
   email?: string;
   createdAt: string;
+  /** Trial and paid-plan state. Read only here: plan changes go through the store's plan methods. */
+  plan?: PlanState;
 }
 
 export interface EstimateLine { id: string; item: string; price: number; status: 'pending' | 'approved' | 'declined'; charge?: Charge }
@@ -84,6 +88,14 @@ export interface ShopStore {
   purgeArchive?(shopId: string, before: string): Promise<void>;
   /** Next repair order number for the shop, starting at 1001. */
   nextRo(shopId: string): Promise<number>;
+  /** Trial rules (talkshops_settings). */
+  trialSettings?(): Promise<TrialSettings>;
+  /** Puts a new shop on the free trial until `endsAt`. */
+  startTrial?(shopId: string, endsAt: string): Promise<void>;
+  /** Counts `n` texts in `period`; false (and nothing counted) when that would pass `limit`. */
+  useTexts?(shopId: string, n: number, period: string, limit: number | null): Promise<boolean>;
+  /** Saves plan columns that Stripe reported. */
+  setPlan?(shopId: string, patch: Partial<PlanState>): Promise<void>;
 }
 
 /** One archived (picked-up) car, without photos or messages. */
@@ -139,6 +151,11 @@ export interface ShopDeps {
   newToken: () => string;
   /** Most demo texts sent per day across all visitors (protects the Twilio balance). */
   demoDailyLimit?: number;
+  /** Stripe, once STRIPE_SECRET_KEY is set. */
+  stripe?: StripeApi | null;
+  stripeWebhookSecret?: string;
+  /** Where Stripe sends shops back to, e.g. https://talkshops.app */
+  siteUrl?: string;
 }
 
 export const DEMO_SHOP_ID = 'demo-shop';
@@ -222,7 +239,7 @@ const customerOut = (j: Job, shop: Shop) => ({
   bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
 });
 
-async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string, now: string): Promise<Message[]> {
+async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string, now: string, acc?: Access): Promise<Message[]> {
   const c = job.data.customer, preference = c.preference ?? 'sms';
   const channels: Channel[] = preference === 'both' ? ['sms', 'email'] : [preference];
   return Promise.all(channels.map(async (channel): Promise<Message> => {
@@ -230,7 +247,11 @@ async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string
     const text = channel === 'email' && !body.includes(link) ? body + '\n\nRepair details: ' + link : body;
     let result: SmsResult;
     if (!c.consent) result = { delivery: 'not_sent', note: 'Customer has not agreed to ' + (channel === 'sms' ? 'texts.' : 'email.') };
-    else if (channel === 'sms') result = await deps.sms.send(c.phone, text);
+    else if (channel === 'sms') {
+      const counted = !acc || !deps.store.useTexts || await deps.store.useTexts(shop.id, 1, acc.period, acc.textLimit);
+      result = counted ? await deps.sms.send(c.phone, text)
+        : { delivery: 'not_sent', note: acc!.canWork ? `The free trial includes ${acc!.textLimit} texts and they're used up. Choose a plan on the Plan tab to keep texting.` : lockedMessage(acc!) };
+    }
     else if (deps.email && c.email) result = await deps.email.send(c.email, shop.name + ' · ' + job.data.ro + ' repair update', text, { fromName: shop.name, replyTo: shop.email || undefined });
     else result = { delivery: 'not_sent', note: 'Automatic email is not configured.' };
     return { dir: 'out', channel, t: now, text, ...result };
@@ -357,7 +378,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const shop = await store.shopByOwner(ctx.userId);
     if (method === 'GET') {
       if (shop) await store.purgeArchive?.(shop.id, archiveCutoff(ctx.now())).catch((e) => ctx.log.warn('archive purge failed', { error: String(e) }));
-      return ok({ shop, emailConfigured: !!deps.email });
+      return ok({ shop: shop && publicShop(shop), emailConfigured: !!deps.email, plan: shop ? await planOut(deps, shop, ctx.now()) : null });
     }
     if (method === 'POST') {
       const name = str(body.name, 80);
@@ -375,14 +396,22 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         createdAt: shop?.createdAt ?? now,
       };
       await store.putShop(next);
-      return ok({ shop: next });
+      if (!shop && store.startTrial) {
+        const trial = await settings(deps);
+        await store.startTrial(next.id, new Date(ctx.now().getTime() + trial.trialDays * 86_400_000).toISOString());
+      }
+      const saved = (await store.shopById(next.id)) ?? next;
+      return ok({ shop: publicShop(saved), plan: await planOut(deps, saved, ctx.now()) });
     }
     return { status: 405 };
   }
 
-  if (parts[1] !== 'jobs' && parts[1] !== 'archive') return { status: 404 };
+  if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan') return { status: 404 };
   const shop = await store.shopByOwner(ctx.userId);
   if (!shop) return { status: 409, body: 'Set up your shop first.' };
+
+  if (parts[1] === 'plan') return planRoute(ctx, deps, shop, method, parts[2], body);
+  const acc = access(shop.plan, ctx.now(), await settings(deps));
 
   if (parts[1] === 'archive') {
     if (method !== 'POST') return { status: 405 };
@@ -402,6 +431,9 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       return ok(jobs.map((j) => jobOut(j, deps.linkBase)));
     }
     if (method === 'POST') {
+      if (!acc.canWork) return { status: 402, body: lockedMessage(acc) };
+      if (acc.carLimit !== null && (shop.plan?.carsCreated ?? 0) >= acc.carLimit)
+        return { status: 402, body: `The free trial includes ${acc.carLimit} cars. Choose a plan on the Plan tab to keep checking in cars.` };
       const c = (body.customer ?? {}) as Body;
       const v = (body.vehicle ?? {}) as Body;
       const name = str(c.name, 80);
@@ -440,7 +472,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         },
       };
       if (inviting) await store.putJob(job);
-      job.data.messages.push(...await notifyCustomer(deps, shop, job, fillTemplate(job.stage, shop, job, deps.linkBase), now));
+      job.data.messages.push(...await notifyCustomer(deps, shop, job, fillTemplate(job.stage, shop, job, deps.linkBase), now, acc));
       await store.putJob(job);
       return ok(jobOut(job, deps.linkBase));
     }
@@ -461,6 +493,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return ok({ deleted: job.id });
   }
   if (method !== 'POST') return { status: 405 };
+  if (!acc.canWork && action !== 'close' && action !== 'reopen') return { status: 402, body: lockedMessage(acc) };
   const d = job.data;
 
   if (action === 'intake') {
@@ -508,7 +541,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (!reason) return bad('Choose why the repair is closed.');
     d.closed = { t: now, reason };
     const msg = str(body.text, 1000);
-    if (body.send && msg) d.messages.push(...await notifyCustomer(deps, shop, job, msg, now));
+    if (body.send && msg) d.messages.push(...await notifyCustomer(deps, shop, job, msg, now, acc));
   } else if (action === 'reopen') {
     if (!d.closed) return bad('This repair is not closed.');
     d.closed = null;
@@ -522,7 +555,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     job.stage = stage;
     d.events.push({ stage, t: now });
     const msg = str(body.text, 1000);
-    if (body.send && msg) d.messages.push(...await notifyCustomer(deps, shop, job, msg, now));
+    if (body.send && msg) d.messages.push(...await notifyCustomer(deps, shop, job, msg, now, acc));
   } else if (action === 'eta') {
     d.eta = str(body.eta, 40);
   } else if (action === 'estimate') {
@@ -573,13 +606,91 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   } else if (action === 'message') {
     const msg = str(body.text, 1000);
     if (!msg) return bad('Type a message.');
-    d.messages.push(...await notifyCustomer(deps, shop, job, msg, now));
+    d.messages.push(...await notifyCustomer(deps, shop, job, msg, now, acc));
   } else {
     return { status: 404 };
   }
   job.updatedAt = now;
   await store.putJob(job);
   return ok(jobOut(job, deps.linkBase));
+}
+
+// ---------------- Plans: free trial, then Stripe ----------------
+
+async function settings(deps: ShopDeps): Promise<TrialSettings> {
+  return (await deps.store.trialSettings?.().catch(() => null)) ?? DEFAULT_TRIAL;
+}
+
+const publicShop = (shop: Shop) => { const { plan: _plan, ...rest } = shop; return rest; };
+
+/** What the shop's Plan tab shows. */
+async function planOut(deps: ShopDeps, shop: Shop, now: Date) {
+  const trial = await settings(deps);
+  const a = access(shop.plan, now, trial);
+  const p = shop.plan;
+  return {
+    state: a.state, canWork: a.canWork, trialEndsAt: a.trialEndsAt, daysLeft: a.daysLeft,
+    plan: p?.plan ?? null, interval: p?.interval ?? null, periodEnd: p?.periodEnd ?? null,
+    textsUsed: p && p.textsPeriod === a.period ? p.textsUsed : 0,
+    textLimit: a.textLimit ?? (p && p.plan !== 'trial' && p.plan ? PLANS[p.plan].texts : null),
+    carsCreated: p?.carsCreated ?? 0, carLimit: a.carLimit,
+    trial, plans: PLANS, payments: !!deps.stripe, hasBilling: !!p?.stripeCustomerId,
+  };
+}
+
+async function planRoute(ctx: Ctx, deps: ShopDeps, shop: Shop, method: string, action: string | undefined, body: Body): Promise<Res> {
+  if (method === 'GET' && !action) return ok(await planOut(deps, shop, ctx.now()));
+  if (method !== 'POST') return { status: 405 };
+  const stripe = deps.stripe;
+  if (!stripe) return { status: 503, body: "Online payments aren't switched on yet. Please try again soon." };
+  const site = (deps.siteUrl || 'https://talkshops.app').replace(/\/$/, '');
+  const p = shop.plan;
+  try {
+    if (action === 'checkout') {
+      const plan = body.plan as PlanKey, interval = body.interval === 'year' ? 'year' : 'month';
+      if (!PLANS[plan]) return bad('Choose a plan.');
+      if (p && p.plan !== 'trial' && p.stripeSubscriptionId && ['active', 'trialing', 'past_due'].includes(p.status))
+        return { status: 409, body: 'You already have a plan. Use Manage billing to change it.' };
+      const session = await stripe.call('checkout/sessions', checkoutFields({
+        shopId: shop.id, plan, interval, siteUrl: site, customerId: p?.stripeCustomerId, email: shop.email || null,
+        trialEndsAt: p?.plan === 'trial' ? p.trialEndsAt : null, now: ctx.now(),
+      }));
+      return ok({ url: session.url });
+    }
+    if (action === 'portal') {
+      if (!p?.stripeCustomerId) return bad('There is no billing account yet. Choose a plan first.');
+      const portal = await stripe.call('billing_portal/sessions', { customer: p.stripeCustomerId, return_url: site + '/?plan=portal' });
+      return ok({ url: portal.url });
+    }
+  } catch (e) {
+    ctx.log.error('stripe call failed', { error: String(e) });
+    return { status: 502, body: "Couldn't reach the payment service. Please try again." };
+  }
+  return { status: 404 };
+}
+
+/** POST /api/shop/stripe-webhook. `raw` is the exact request body, which the signature covers. */
+export async function stripeWebhook(deps: ShopDeps, raw: string, signature: string | null, now: Date, log: Ctx['log']): Promise<Res> {
+  if (!deps.stripe || !deps.stripeWebhookSecret) return { status: 503, body: 'Payments are not set up.' };
+  if (!await verifyStripeSignature(raw, signature, deps.stripeWebhookSecret, now)) return { status: 400, body: 'Bad signature.' };
+  let event: Record<string, any>;
+  try { event = JSON.parse(raw); } catch { return { status: 400, body: 'Bad JSON.' }; }
+  const obj = event?.data?.object ?? {};
+  let subId: string | null = null;
+  if (event.type === 'checkout.session.completed' && obj.mode === 'subscription') subId = typeof obj.subscription === 'string' ? obj.subscription : obj.subscription?.id ?? null;
+  else if (typeof event.type === 'string' && event.type.startsWith('customer.subscription.')) subId = obj.id ?? null;
+  if (!subId) return ok({ ignored: event.type ?? null });
+  // Read the subscription fresh from Stripe so late or out-of-order events can't undo a newer state.
+  const sub = await deps.stripe.call('subscriptions/' + encodeURIComponent(subId), null);
+  const { shopId, patch } = planFromSubscription(sub);
+  const shop = shopId ? await deps.store.shopById(shopId) : null;
+  if (!shop || !deps.store.setPlan) { log.warn('stripe event for unknown shop', { type: event.type, subId }); return ok({ ignored: 'shop' }); }
+  // A shop that already moved to a newer subscription ignores news about an old one.
+  const current = shop.plan?.stripeSubscriptionId;
+  if (current && current !== subId && ['active', 'trialing', 'past_due'].includes(shop.plan?.status ?? '') && !['active', 'trialing', 'past_due'].includes(patch.status ?? ''))
+    return ok({ ignored: 'old subscription' });
+  await deps.store.setPlan(shop.id, patch);
+  return ok({ updated: shop.id, status: patch.status });
 }
 
 /** Twilio sender. Without credentials, texts are saved on the job but marked as not sent. */

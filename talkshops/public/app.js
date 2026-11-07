@@ -23,6 +23,8 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const money = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const billing = window.createShopBilling({ esc, money });
+  let plan = null;
+  const planUi = window.createShopPlan({ esc, api: (...a) => api(...a), toast: (m) => toast(m) });
   const chargeDetail = e => e.charge ? `<small class="charge-detail">${esc(billing.calculation(e.charge))}</small>` : "";
   const ts = (t) => (typeof t === "number" ? t : Date.parse(t));
   const clock = (t) => new Date(ts(t)).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -213,7 +215,7 @@
   async function loadShop() {
     try {
       const me = await api("GET", "shop/me");
-      shop = me.shop; emailConfigured = !!me.emailConfigured;
+      shop = me.shop; emailConfigured = !!me.emailConfigured; plan = me.plan || null;
       jobs = shop ? await api("GET", "shop/jobs") : [];
       loadErr = "";
     } catch (e) { loadErr = e.message; }
@@ -231,8 +233,8 @@
     chrome.hidden = false;
     $("#shopName").textContent = shop.name;
     document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.view === ui.view ? "page" : "false"));
-    const err = loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "";
-    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : ui.view === "archive" ? archiveView() : boardView());
+    const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "") + (ui.view === "plan" ? "" : planUi.banner(plan));
+    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : boardView());
     if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
     renderLayer();
   }
@@ -560,6 +562,8 @@
     if (t.dataset.archiveOpen) { openArchived(t.dataset.archiveOpen); return; }
     if (t.hasAttribute("data-archive-retry")) { archive.error = ""; renderArchiveRows(); searchArchive(); return; }
     if (t.hasAttribute("data-suggest-open")) return;
+    if (await planUi.click(t, render)) return;
+    if (t.dataset.view === "plan") api("GET", "shop/plan").then((p) => { plan = p; if (ui.view === "plan") render(); }).catch(() => {});
     if (t.dataset.view) { ui.view = t.dataset.view; ui.openJob = null; if (ui.view === "archive") archive.rows = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); return; }
     if (t.hasAttribute("data-close")) { ui.openJob = null; renderLayer(); return; }
@@ -671,7 +675,7 @@
     if (f.id === "setupForm") {
       const body = { name: $("#sh-name").value, phone: $("#sh-phone").value, hours: $("#sh-hours").value, email: $("#sh-email").value };
       const r = await act(() => api("POST", "shop/me", body), "Saved");
-      if (r) { shop = r.shop; ui.view = "board"; render(); }
+      if (r) { shop = r.shop; if (r.plan) plan = r.plan; ui.view = "board"; render(); }
       return;
     }
     if (f.id === "intakeForm") {
@@ -869,6 +873,12 @@
     return;
   }
   if (!sb) { render(); return; }
+  // Back from Stripe: say so, and refresh the plan a few times while Stripe's confirmation arrives.
+  const planNote = planUi.returned();
+  if (planNote) {
+    setTimeout(() => toast(planNote), 600);
+    [3000, 8000, 20000].forEach((ms) => setTimeout(async () => { if (!shop) return; try { plan = await api("GET", "shop/plan"); render(); } catch (e) { /* later */ } }, ms));
+  }
   sb.auth.onAuthStateChange((_event, s) => {
     const was = session?.user?.id;
     session = s;

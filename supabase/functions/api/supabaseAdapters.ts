@@ -11,6 +11,7 @@ import type { DndCampaignRow, DndCharacterRow, DndStore } from '../_shared/dnd.t
 import type { AskLogStore } from '../_shared/footballAsk.ts';
 import type { CardGameRow, CardGameStore } from '../_shared/cards.ts';
 import { archivedAt, type ArchiveRow, type Job, type JobData, type Shop, type ShopStore } from '../_shared/shop.ts';
+import { DEFAULT_TRIAL, type PlanState } from '../_shared/shopPlans.ts';
 
 const rowToStored = (row: { data: League; version: number }): StoredLeague => ({ league: row.data, version: Number(row.version) });
 
@@ -331,17 +332,29 @@ export function createCardGameStore(db: SupabaseClient): CardGameStore {
   };
 }
 
-interface ShopDb { rates: Shop['rates']; id: string; owner_id: string; name: string; phone: string; hours: string; email?: string | null; created_at: string }
+interface ShopDb {
+  rates: Shop['rates']; id: string; owner_id: string; name: string; phone: string; hours: string; email?: string | null; created_at: string;
+  next_ro: number; plan: PlanState['plan']; plan_status: string | null; trial_ends_at: string | null; plan_interval: PlanState['interval'];
+  period_end: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null; texts_used: number | null; texts_period: string | null;
+}
+const SHOP_COLUMNS = 'id, owner_id, name, phone, hours, email, rates, created_at, next_ro, plan, plan_status, trial_ends_at, plan_interval, period_end, stripe_customer_id, stripe_subscription_id, texts_used, texts_period';
 interface JobDb { intake: Job['intake']; intake_photos: Job['intakePhotos']; bill: Job['bill']; id: string; shop_id: string; token: string; stage: string; data: JobData; created_at: string; updated_at: string }
 
-const shopRow = (r: ShopDb): Shop => ({ id: r.id, ownerId: r.owner_id, rates: r.rates, name: r.name, phone: r.phone, hours: r.hours, email: r.email ?? '', createdAt: r.created_at });
+const shopRow = (r: ShopDb): Shop => ({
+  id: r.id, ownerId: r.owner_id, rates: r.rates, name: r.name, phone: r.phone, hours: r.hours, email: r.email ?? '', createdAt: r.created_at,
+  plan: {
+    plan: r.plan ?? null, status: r.plan_status ?? '', trialEndsAt: r.trial_ends_at, interval: r.plan_interval, periodEnd: r.period_end,
+    stripeCustomerId: r.stripe_customer_id, stripeSubscriptionId: r.stripe_subscription_id,
+    textsUsed: r.texts_used ?? 0, textsPeriod: r.texts_period ?? '', carsCreated: Math.max(0, (r.next_ro ?? 1001) - 1001),
+  },
+});
 const jobRow = (r: JobDb): Job => ({
   id: r.id, shopId: r.shop_id, intake: r.intake, intakePhotos: r.intake_photos, bill: r.bill, token: r.token, stage: r.stage as Job['stage'], data: r.data, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
 export function createShopStore(db: SupabaseClient): ShopStore {
   const oneShop = async (column: string, value: string) => {
-    const { data, error } = await db.from('repair_shops').select('id, owner_id, name, phone, hours, email, rates, created_at').eq(column, value).maybeSingle();
+    const { data, error } = await db.from('repair_shops').select(SHOP_COLUMNS).eq(column, value).maybeSingle();
     if (error) throw error;
     return data ? shopRow(data as ShopDb) : null;
   };
@@ -412,6 +425,32 @@ export function createShopStore(db: SupabaseClient): ShopStore {
     },
     async purgeArchive(shopId, before) {
       const { error } = await db.from('repair_jobs').delete().eq('shop_id', shopId).lt('archived_at', before);
+      if (error) throw error;
+    },
+    async trialSettings() {
+      const { data, error } = await db.from('talkshops_settings').select('trial_days, trial_texts, trial_cars').eq('id', true).maybeSingle();
+      if (error) throw error;
+      if (!data) return DEFAULT_TRIAL;
+      return { trialDays: data.trial_days === 15 ? 15 : 30, trialTexts: Number(data.trial_texts) || 0, trialCars: Number(data.trial_cars) || 0 };
+    },
+    async startTrial(shopId, endsAt) {
+      const { error } = await db.from('repair_shops').update({ plan: 'trial', plan_status: 'trialing', trial_ends_at: endsAt }).eq('id', shopId);
+      if (error) throw error;
+    },
+    async useTexts(shopId, n, period, limit) {
+      const { data, error } = await db.rpc('repair_use_texts', { p_shop: shopId, p_n: n, p_period: period, p_limit: limit });
+      if (error) throw error;
+      return data === true;
+    },
+    async setPlan(shopId, patch) {
+      const row: Record<string, unknown> = {};
+      if (patch.plan !== undefined) row.plan = patch.plan;
+      if (patch.status !== undefined) row.plan_status = patch.status;
+      if (patch.interval !== undefined) row.plan_interval = patch.interval;
+      if (patch.periodEnd !== undefined) row.period_end = patch.periodEnd;
+      if (patch.stripeCustomerId !== undefined) row.stripe_customer_id = patch.stripeCustomerId;
+      if (patch.stripeSubscriptionId !== undefined) row.stripe_subscription_id = patch.stripeSubscriptionId;
+      const { error } = await db.from('repair_shops').update(row).eq('id', shopId);
       if (error) throw error;
     },
     async nextRo(shopId) {

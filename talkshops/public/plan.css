@@ -1,0 +1,18 @@
+/* Talk Shops plan: trial banner and the Plan tab (plan.js). */
+.plan-banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:var(--r,12px);padding:10px 14px;margin-bottom:14px;font-size:14px}
+.plan-banner.soon{background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 30%,transparent)}
+.plan-banner.ended{background:var(--bad-bg);border-color:color-mix(in srgb,var(--bad) 30%,transparent)}
+.btn.sm{padding:6px 12px;font-size:13.5px;min-height:0}
+.plan-page{max-width:860px;display:flex;flex-direction:column;gap:14px}
+.plan-page h2{margin:0}
+.plan-toggle{display:flex;gap:8px;flex-wrap:wrap}
+.plan-toggle [aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.plan-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.plan-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg,16px);padding:20px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.plan-card.featured{border-color:var(--accent);box-shadow:var(--shadow-md)}
+.plan-card h3{margin:0;font-size:18px}
+.plan-price b{font-size:32px;letter-spacing:-.02em}
+.plan-price span{color:var(--muted);margin-left:2px}
+.plan-card ul{margin:4px 0 8px;padding-left:18px;color:var(--fg);font-size:14px;display:flex;flex-direction:column;gap:4px}
+.plan-card .btn{margin-top:auto}
+.plan-fine{font-size:13px;margin:0}

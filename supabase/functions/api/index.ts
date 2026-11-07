@@ -9,7 +9,8 @@ import { dndRoute } from '../_shared/dnd.ts';
 import { askRoute } from '../_shared/footballAsk.ts';
 import { cardsRoute } from '../_shared/cards.ts';
 import { createShopEmailSender } from '../_shared/shopEmail.ts';
-import { createTwilioSender, shopRoute, type ShopDeps } from '../_shared/shop.ts';
+import { createTwilioSender, shopRoute, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
+import { createStripe } from '../_shared/shopPlans.ts';
 import { createNarrator } from './narrator.ts';
 import { createTurn } from './turn.ts';
 import {
@@ -36,6 +37,10 @@ const shop: ShopDeps = {
   sms: createTwilioSender(Deno.env.get('TWILIO_ACCOUNT_SID'), Deno.env.get('TWILIO_AUTH_TOKEN'), Deno.env.get('TWILIO_FROM')),
   linkBase: Deno.env.get('SHOP_LINK_BASE') || 'https://talkshops.app/?c=',
   demoDailyLimit: Number(Deno.env.get('DEMO_TEXT_DAILY_LIMIT')) || 10,
+  // Plans: payments switch on once STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are set.
+  stripe: createStripe(Deno.env.get('STRIPE_SECRET_KEY')),
+  stripeWebhookSecret: Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '',
+  siteUrl: Deno.env.get('TALKSHOPS_SITE_URL') || 'https://talkshops.app',
   newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),
 };
 const dnd = {
@@ -94,6 +99,17 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   // Requests arrive as /api/<route> (the function name, then the route the app asked for).
   const path = url.pathname.replace(/^\/(functions\/v1\/)?api\/?/, '');
+
+  // Stripe signs the exact bytes it sends, so this route reads the raw body itself.
+  if (req.method === 'POST' && path === 'shop/stripe-webhook') {
+    try {
+      const res = await stripeWebhook(shop, await req.text(), req.headers.get('Stripe-Signature'), new Date(), log);
+      return new Response(typeof res.body === 'string' ? res.body : JSON.stringify(res.body ?? null), { status: res.status, headers: { 'Content-Type': typeof res.body === 'string' ? 'text/plain' : 'application/json' } });
+    } catch (error) {
+      log.error('stripe webhook failed', error);
+      return new Response('Webhook error.', { status: 500 });
+    }
+  }
 
   let body: unknown = null;
   if (req.method === 'POST' || req.method === 'DELETE') {

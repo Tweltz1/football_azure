@@ -20,3 +20,15 @@ link to their car's page (`/?c=<token>`) and approve or decline repairs there wi
 
 Supabase: add `https://talkshops.app/**` to Authentication → URL Configuration → Redirect URLs.
 Customer text links use the `SHOP_LINK_BASE` function secret (`https://talkshops.app/?c=`).
+
+## Plans and payments (Stripe)
+
+New shops start a free trial; shops created before plans existed have no limits (`plan` is null).
+- Trial rules live in Supabase, Table Editor → `talkshops_settings`: `trial_days` (15 or 30), `trial_texts`, `trial_cars`.
+  Changes apply to shops that sign up afterwards.
+- Plans and prices: `supabase/functions/_shared/shopPlans.ts` (`PLANS`). Checkout builds the price on the fly, so no
+  Stripe products need to be created. Promo codes made in Stripe work on the payment page.
+- Function secrets: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, optional `TALKSHOPS_SITE_URL` (default https://talkshops.app).
+- Stripe webhook endpoint: `https://<project>.supabase.co/functions/v1/api/shop/stripe-webhook`, events
+  `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`.
+- Turn on the customer portal once in Stripe (Settings → Billing → Customer portal) so Manage billing works.
