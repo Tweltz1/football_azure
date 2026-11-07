@@ -1,0 +1,5 @@
+# Plain files with fixed names: make browsers check for a new version on every visit.
+/*
+  Cache-Control: no-cache
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
