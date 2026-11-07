@@ -26,6 +26,20 @@ function world() {
     async getJob(id) { const j = jobs.get(id); return j ? clone(j) : null; },
     async jobByToken(t) { const j = [...jobs.values()].find((x) => x.token === t); return j ? clone(j) : null; },
     async putJob(j) { jobs.set(j.id, clone(j)); },
+    async saveIntake(id, intake) {
+      const j = jobs.get(id)!;
+      if (j.intake || j.stage !== 'invited') return false;
+      j.intake = clone(intake); return true;
+    },
+    async intakePhoto(id, photo, remove) {
+      const j = jobs.get(id)!;
+      const photos = j.intakePhotos ??= [];
+      if (remove) { j.intakePhotos = photos.filter(p => p.id !== remove); return true; }
+      if (!photo || !['invited','checked_in'].includes(j.stage)) return false;
+      if (photos.some(p => p.src === photo.src)) return true;
+      if (photos.length >= 6) return false;
+      photos.push(clone(photo)); return true;
+    },
     async saveBill(id, bill, pdf) {
       const job = jobs.get(id)!;
       job.bill = clone(bill);
@@ -205,4 +219,33 @@ test('shop rates, quoted hours, pickup bill publication and PDF replacement', as
   assert.deepEqual((await customer('GET',link+'/bill-file'))?.body,{pdf});
   await owner('POST',path+'/bill',bill);
   assert.equal((await customer('GET',link+'/bill-file'))?.status,404);
+});
+
+test('customer invitation, input and photos stay with the repair through check-in', async () => {
+  const { as, texts } = world();
+  const staff = as('owner'), customer = as(null);
+  await staff('POST','shop/me',{name:'North Auto'});
+  const request = {invite:true, customer:checkIn.customer};
+  assert.equal((await staff('POST','shop/jobs',{...request,customer:{...checkIn.customer,consent:false}}))?.status,400);
+  const invited = (await staff('POST','shop/jobs',request))?.body as {id:string;stage:string;link:string};
+  assert.equal(invited.stage,'invited');
+  assert.ok(texts[0].body.includes(invited.link));
+  const path = 'shop/jobs/'+invited.id, link = 'shop/c/'+invited.link.split('?c=')[1];
+  assert.equal((await staff('POST',path+'/stage',{stage:'checked_in'}))?.status,400);
+  assert.equal((await customer('POST',link+'/intake',checkIn))?.status,200);
+  assert.equal((await customer('POST',link+'/intake',{...checkIn,concern:'Repeated'}))?.status,400);
+  const payload={src:'data:image/jpeg;base64,/9j/2Q==',cap:'Warning light'};
+  for (let i=0;i<2;i++) assert.equal((await customer('POST',link+'/intake-photo',payload))?.status,200);
+  const viewed = (await staff('GET',path))?.body as Job['data'];
+  assert.equal(viewed.vehicle.model,'Civic');
+  assert.equal(viewed.concern,checkIn.concern);
+  assert.equal(viewed.photos.length,1);
+  assert.equal(viewed.photos[0].source,'customer');
+  assert.equal((await staff('POST',path+'/stage',{stage:'checked_in'}))?.status,200);
+  assert.equal((await staff('POST',path+'/stage',{stage:'diagnosing'}))?.status,200);
+  assert.equal((await customer('POST',link+'/intake-photo',payload))?.status,400);
+  assert.equal((await staff('POST',path+'/remove-photo',{id:viewed.photos[0].id}))?.status,200);
+  const final=(await customer('GET',link))?.body as {photos:unknown[];vehicle:string};
+  assert.equal(final.photos.length,0);
+  assert.equal(final.vehicle,'2018 Honda Civic');
 });

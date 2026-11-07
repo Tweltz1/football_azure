@@ -7,6 +7,7 @@
   const DEMO_PAGE = "/demo.html";
   const DEMO_VIDEO = "/demo.mp4";
   const STAGES = [
+    { key: "invited", label: "Customer invited", cust: "Check in for your repair" },
     { key: "checked_in", label: "Checked in", cust: "We have your car" },
     { key: "diagnosing", label: "Diagnosing", cust: "Inspecting your car" },
     { key: "approval", label: "Approval needed", cust: "Waiting on your approval" },
@@ -78,17 +79,22 @@
 
   // ==================== Customer page (no sign-in) ====================
   const custToken = new URLSearchParams(location.search).get("c");
-  const cust = { data: null, draft: {}, sig: "", error: "" };
+  const cust = { intakeDraft: {}, intakeBusy: false, data: null, draft: {}, sig: "", error: "" };
 
   async function loadCustomer() {
-    try { cust.data = await api("GET", "shop/c/" + encodeURIComponent(custToken)); cust.error = ""; }
+    try {
+      const previous = cust.data;
+      const latest = await api("GET", "shop/c/" + encodeURIComponent(custToken));
+      if (cust.intakeBusy || cust.data !== previous || document.activeElement?.closest("#intakeForm")) return;
+      cust.data = latest; cust.error = "";
+    }
     catch (e) { cust.error = e.status === 404 ? "This link isn't valid anymore. Please call the shop." : e.message; }
     renderCustomer();
   }
 
   function photoFigure(p, staff = false) {
     return `<figure class="photo"><img class="img" loading="lazy" src="${esc(p.src)}" alt="${esc(p.cap)}">
-      <figcaption>${esc(p.cap)}${p.addedAt ? `<small>${dayClock(p.addedAt)}</small>` : ""}
+      <figcaption>${esc(p.cap)}${p.source === "customer" ? "<small>From customer</small>" : ""}${p.addedAt ? `<small>${dayClock(p.addedAt)}</small>` : ""}
       ${staff ? `<button type="button" class="linkbtn" data-remove-photo="${esc(p.id)}" aria-label="Remove ${esc(p.cap)}">Remove photo</button>` : ""}</figcaption></figure>`;
   }
 
@@ -97,6 +103,14 @@
     return `<details class="photo-folder" data-folder="${key}" ${openFolders.has(key) ? "open" : ""}>
       <summary>📁 ${label} · ${photos.length} photo${photos.length === 1 ? "" : "s"}</summary>
       <div class="folder-images">${photos.map((p) => photoFigure(p)).join("")}</div></details>`;
+  }
+
+  function intakeForm() {
+    const field = (name,label,max,required=false) => `<label class="field">${label}<input name="${name}" maxlength="${max}" ${required ? "required" : ""} value="${esc(cust.intakeDraft[name] || "")}"></label>`;
+    return `<form id="intakeForm" class="form-grid">
+      ${field("year","Vehicle year",4)}${field("make","Make",40,true)}${field("model","Model",40,true)}${field("plate","License plate (optional)",12)}
+      <label class="field full">What should the technician look at?<textarea name="concern" required maxlength="1000">${esc(cust.intakeDraft.concern || "")}</textarea></label>
+      <button class="btn primary" type="submit">Save check-in details</button></form>`;
   }
 
   function renderCustomer() {
@@ -108,8 +122,10 @@
     const openFolders = new Set(Array.from(document.querySelectorAll(".photo-folder[open]"), (el) => el.dataset.folder));
     document.title = j.shop.name + " · Your " + j.vehicle;
     const outcome = estimateOutcome(j);
+    const heading = j.stage === "invited" && j.intakeReceived ? "Check-in details received" :
+      j.stage === "approval" && outcome ? outcome : STAGES[idx].cust;
     const evAt = (k) => { const e = [...j.events].reverse().find((x) => x.stage === k); return e ? e.t : null; };
-    const tl = STAGES.filter((s) => s.key !== "picked_up" || evAt(s.key) || j.photos.some((p) => p.stage === s.key)).map((s) => {
+    const tl = STAGES.filter(s => s.key !== "invited" || evAt("invited")).filter((s) => s.key !== "picked_up" || evAt(s.key) || j.photos.some((p) => p.stage === s.key)).map((s) => {
       const decided = s.key === "approval" && outcome && evAt(s.key);
       const t = decided && j.approval ? j.approval.t : evAt(s.key);
       const cls = s.key === j.stage ? "current" : (t && SI[s.key] < idx ? "done" : "todo");
@@ -138,11 +154,16 @@
     const extra = j.stage === "parts" && j.eta ? `<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta)}</b>.</p>`
       : j.stage === "ready" ? `<p style="margin:6px 0 0">${j.bill ? "Total due " + money(j.bill.total) : "Approved estimate " + money(estTotal(j, true))}.${j.shop.hours ? " Open " + esc(j.shop.hours) + "." : ""}</p>` : "";
     app.innerHTML = `<div class="cust-page">
-      <div class="c-head"><small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${j.stage === "approval" && outcome ? outcome : STAGES[idx].cust}</h2><div style="font-size:14px;margin-top:4px">${esc(j.vehicle)}</div>${extra}</div>
+      <div class="c-head"><small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${heading}</h2><div style="font-size:14px;margin-top:4px">${esc(j.vehicle)}</div>${extra}</div>
       <div class="c-body">
+        ${j.stage === "invited" ? `<section class="c-card"><h3>Vehicle check-in</h3>${j.intakeReceived ? "<p>Your details have been sent to the shop.</p>" : intakeForm()}</section>` : ""}
+        ${j.canUploadIntakePhotos ? `<section class="c-card"><h3>Photos for your technician</h3>
+          <p>Show the damage, warning light or part you want checked.</p>
+          <button type="button" id="customerPickPhoto" class="btn" ${j.photos.filter(p => p.source === "customer").length >= 6 ? "disabled" : ""}>Add photos</button>
+          <small>${j.photos.filter(p => p.source === "customer").length} of 6 photos added</small><p id="photoStatus" role="status" hidden></p></section>` : ""}
         ${billing.display(j.bill, j)}${est}
         <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
-        <div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>
+        ${j.concern ? `<div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
         ${j.shop.phone ? `<div class="c-card call"><span>Questions? Call the shop</span><b>${esc(j.shop.phone)}</b></div>` : ""}
         <p class="cust-top">We'll text you when anything changes. This page updates on its own.</p>
       </div></div>`;
@@ -223,6 +244,7 @@
 
   function boardView() {
     const active = jobs.filter((j) => j.stage !== "picked_up");
+    const inShop = active.filter(j => j.stage !== "invited");
     const picked = jobs.length - active.length;
     if (!jobs.length) {
       return `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car. The customer gets a text with a link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check in a car</button></div>`;
@@ -232,25 +254,27 @@
     const today = new Date().toDateString();
     const sent = jobs.reduce((a, j) => a + j.messages.filter((m) => m.dir === "out" && m.delivery === "sent" && new Date(m.t).toDateString() === today).length, 0);
     let h = `<div class="stats">
-      ${active.length === 1 ? `<button type="button" class="stat" data-open="${esc(active[0].id)}" aria-label="Open ${esc(vehicleStr(active[0]))}"><b>1</b><span>Cars in the shop</span></button>` : `<div class="stat"><b>${active.length}</b><span>Cars in the shop</span></div>`}
+      ${inShop.length === 1 ? `<button type="button" class="stat" data-open="${esc(inShop[0].id)}" aria-label="Open ${esc(vehicleStr(inShop[0]))}"><b>1</b><span>Cars in the shop</span></button>` : `<div class="stat"><b>${inShop.length}</b><span>Cars in the shop</span></div>`}
       <div class="stat warn"><b>${waiting}</b><span>Waiting on customer</span></div>
       <div class="stat ok"><b>${ready}</b><span>Ready for pickup</span></div>
       <div class="stat"><b>${sent}</b><span>Texts sent today</span></div></div>
       <div class="board-wrap"><div class="board">`;
     STAGES.filter((s) => s.key !== "picked_up").forEach((s) => {
       const list = active.filter((j) => j.stage === s.key);
+      if (s.key === "invited" && !list.length) return;
       h += `<section class="col ${s.key === "approval" ? "is-approval" : ""} ${s.key === "ready" ? "is-ready" : ""}"><div class="col-h"><h3>${s.key === "approval" ? "Estimate review" : s.label}</h3><span>${list.length}</span></div>`;
       if (!list.length) h += `<div class="empty-col">No cars</div>`;
       list.forEach((j) => {
         const ev = j.events[j.events.length - 1];
         let pill = "";
-        if (j.stage === "approval" && estimateOutcome(j)) pill = `<span class="pill">${estimateOutcome(j)}</span>`;
+        if (j.stage === "invited") pill = `<span class="pill">${j.intakeReceived ? "Intake received" : "Awaiting vehicle details"}</span>`;
+        else if (j.stage === "approval" && estimateOutcome(j)) pill = `<span class="pill">${estimateOutcome(j)}</span>`;
         else if (awaitingDecision(j)) pill = `<span class="pill warn">Sent ${since(ev.t)} ago</span>`;
         else if (j.stage === "parts") pill = `<span class="pill">ETA ${esc(j.eta || "not set")}</span>`;
         const last = j.messages[j.messages.length - 1];
         const reply = last && last.dir === "in";
         h += `<button class="card" data-open="${j.id}">
-          <span class="veh">${esc(vehicleStr(j))}</span>
+          <span class="veh">${esc(vehicleStr(j) || "Vehicle details pending")}</span>
           <span class="row"><span>${esc(j.customer.name)}</span><span class="mono">${esc(j.ro)}</span></span>
           <span class="row"><span>${esc(j.concern)}</span></span>
           <span class="row"><span>${since(ev.t)} in stage</span>${reply ? `<span class="pill bad">New reply</span>` : ""}</span>${pill}</button>`;
@@ -263,15 +287,17 @@
 
   function checkinView() {
     return `<form class="panel" id="checkinForm" autocomplete="off">
-      <h2>Check in a vehicle</h2><p class="muted" style="margin:0">The customer gets a text with a tracking link as soon as you save.</p>
+      <h2>Customer check-in</h2>
+      <label class="field">Check-in method<select id="ci-method"><option value="staff">Enter vehicle details at the shop</option><option value="invite">Invite customer by text</option></select></label>
+      <p id="ci-help" class="muted">The customer gets a tracking link and can upload photos for the technician.</p>
       <div class="form-grid">
         <label class="field">Customer name<input id="ci-name" required maxlength="80"></label>
         <label class="field">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
-        <label class="field">Year<input id="ci-year" inputmode="numeric" maxlength="4"></label>
-        <label class="field">Make<input id="ci-make" required maxlength="40"></label>
-        <label class="field">Model<input id="ci-model" required maxlength="40"></label>
-        <label class="field">License plate<input id="ci-plate" maxlength="12"></label>
-        <label class="field full">What's the concern?<textarea id="ci-concern" required maxlength="1000"></textarea></label>
+        <label class="field" data-staff-intake>Year<input id="ci-year" inputmode="numeric" maxlength="4"></label>
+        <label class="field" data-staff-intake>Make<input id="ci-make" required maxlength="40"></label>
+        <label class="field" data-staff-intake>Model<input id="ci-model" required maxlength="40"></label>
+        <label class="field" data-staff-intake>License plate<input id="ci-plate" maxlength="12"></label>
+        <label class="field full" data-staff-intake>What's the concern?<textarea id="ci-concern" required maxlength="1000"></textarea></label>
         <label class="chk full"><input type="checkbox" id="ci-consent" checked> Customer agreed to receive repair updates by text. They can reply STOP at any time.</label>
       </div>
       <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Check in and text customer</button></div>
@@ -288,17 +314,18 @@
 
   function sheetView(j) {
     const idx = SI[j.stage];
-    const steps = STAGES.map((s, i) => `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "current" : ""}" data-stage="${s.key}" ${i === idx ? 'aria-current="step"' : ""}>${s.key === "approval" && i === idx ? estimateOutcome(j) || s.label : s.label}</button>`).join("");
+    const steps = STAGES.map((s, i) => s.key === "invited" || (j.stage === "invited" && (s.key !== "checked_in" || !j.intakeReceived)) ? "" : `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "current" : ""}" data-stage="${s.key}" ${i === idx ? 'aria-current="step"' : ""}>${s.key === "approval" && i === idx ? estimateOutcome(j) || s.label : s.label}</button>`).join("");
     const next = STAGES[idx + 1];
     const rows = j.estimate.map((e) => `<tr><td>${esc(e.item)}${chargeDetail(e)}</td><td>${e.status === "pending" ? '<span class="pill warn">Pending</span>' : e.status === "approved" ? '<span class="pill ok">Approved</span>' : '<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status === "pending" && j.stage !== "approval" ? `<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>` : ""}</td></tr>`).join("");
     const log = [...j.events].reverse().map((e) => `<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
     return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-      <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j))}</h2><div class="muted">${esc(j.customer.name)} · ${esc(fmtPhone(j.customer.phone))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(j.customer.name)} · ${esc(fmtPhone(j.customer.phone))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
       <div class="sheet-body">
         <section class="sec"><h3>Stage</h3><div class="stepper">${steps}</div>
-          <div class="btn-row" style="margin-top:10px">${next ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer's page</a></div>
+          <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer's page</a></div>
           ${j.stage === "parts" ? `<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
         </section>
+        ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
         <section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div></section>
         <section class="sec"><h3>Estimate</h3>
           ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<p class="muted" style="margin:0">No line items yet.</p>`}
@@ -376,6 +403,11 @@
       }
       const form = t.closest("#billingForm");
       if (form) billing.editClick(t, form);
+      return;
+    }
+    if (t.id === "customerPickPhoto") {
+      const input = $("#intakePhotoIn");
+      if (!cust.intakeBusy) { input.value = ""; input.click(); }
       return;
     }
     if (t.id === "pickPhoto") {
@@ -479,16 +511,35 @@
       if (r) { shop = r.shop; ui.view = "board"; render(); }
       return;
     }
+    if (f.id === "intakeForm") {
+      if (cust.intakeBusy) return;
+      const fields = Object.fromEntries(new FormData(f)), button = f.querySelector("button");
+      const body = {vehicle:{year:fields.year,make:fields.make,model:fields.model}, plate:fields.plate, concern:fields.concern};
+      cust.intakeBusy = true; button.disabled = true;
+      try {
+        if (custToken) {
+          cust.data = await api("POST", `shop/c/${encodeURIComponent(custToken)}/intake`, body);
+          cust.intakeDraft = {}; renderCustomer();
+        } else {
+          upsertJob(await api("POST", `shop/jobs/${ui.openJob}/intake`, body)); render();
+        }
+        toast("Check-in details saved");
+      } catch (err) { toast(err.message); }
+      finally { cust.intakeBusy = false; button.disabled = false; }
+      return;
+    }
     if (f.id === "checkinForm") {
+      if (ui.busy) return;
+      const invite = $("#ci-method").value === "invite";
       const g = (k) => $("#ci-" + k).value.trim();
       const j = await act(() => api("POST", "shop/jobs", {
-        customer: { name: g("name"), phone: g("phone"), consent: $("#ci-consent").checked },
-        vehicle: { year: g("year"), make: g("make"), model: g("model") }, plate: g("plate"), concern: g("concern"),
+        invite, customer: { name: g("name"), phone: g("phone"), consent: $("#ci-consent").checked },
+        ...(invite ? {} : { vehicle: { year: g("year"), make: g("make"), model: g("model") }, plate: g("plate"), concern: g("concern") }),
       }));
       if (j) {
         upsertJob(j); ui.view = "board"; ui.openJob = j.id; render();
         const m = j.messages[0];
-        toast(!m ? "Checked in" : m.delivery === "sent" ? "Checked in. Welcome text sent." : "Checked in. Text not sent: " + (m.note || "unknown error"));
+        toast(m?.delivery === "sent" ? (invite ? "Check-in invitation sent" : "Checked in. Welcome text sent.") : "Saved. Text not sent: " + (m?.note || "unknown error"));
       }
       return;
     }
@@ -543,6 +594,29 @@
     } finally { URL.revokeObjectURL(url); }
   }
 
+  async function uploadIntakePhotos(input) {
+    if (cust.intakeBusy || !input.files.length) return;
+    cust.intakeBusy = true;
+    const files = Array.from(input.files), status = $("#photoStatus");
+    const room = 6 - cust.data.photos.filter(p => p.source === "customer").length;
+    let count = 0, message = "";
+    try {
+      if (files.length > room) throw Error(`Choose up to ${room} more photos.`);
+      for (const file of files) {
+        status.hidden = false; status.textContent = `Sending photo ${count+1} of ${files.length}…`;
+        const src = await encodePhoto(file);
+        cust.data = await api("POST", `shop/c/${encodeURIComponent(custToken)}/intake-photo`, { src, cap: file.name.replace(/\.[^.]+$/, "") });
+        count++;
+      }
+      message = `${count} photo${count === 1 ? "" : "s"} sent to your technician.`;
+    } catch (err) { message = (count ? `${count} already sent. ` : "") + err.message; }
+    finally { input.value = ""; cust.intakeBusy = false; }
+    renderCustomer();
+    const feedback = $("#photoStatus");
+    if (feedback) { feedback.hidden = false; feedback.textContent = message; }
+    toast(message);
+  }
+
   document.addEventListener("cancel", (e) => {
     if (e.target.id === "photoIn" && !e.target.disabled) delete e.target.dataset.job;
   });
@@ -569,11 +643,22 @@
     }
   }
   document.addEventListener("change", (e) => {
+    if (e.target.id === "intakePhotoIn") return uploadIntakePhotos(e.target);
+    if (e.target.id === "ci-method") {
+      const invite = e.target.value === "invite", form = e.target.form;
+      form.querySelectorAll("[data-staff-intake]").forEach(el => { el.hidden = invite; el.querySelector("input,textarea").disabled = invite; });
+      form.querySelector('[type="submit"]').textContent = invite ? "Send check-in link" : "Check in and text customer";
+      $("#ci-consent").required = invite;
+      $("#ci-help").textContent = invite ? "Send a private link for vehicle details, the reason for the visit and photos." : "The customer gets a tracking link and can upload photos for the technician.";
+      return;
+    }
     if (ui.modal?.billing) { billing.change(e, shop); return; }
     if (e.target.id === "eta") jobAction(ui.openJob, "eta", { eta: e.target.value.trim() }, "ETA saved");
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
   document.addEventListener("input", (e) => {
+    if (e.target.id === "intakePhotoIn") return uploadIntakePhotos(e.target);
+    if (custToken && e.target.form?.id === "intakeForm") cust.intakeDraft[e.target.name] = e.target.value;
     if (ui.modal?.billing) { billing.updateTotal($("#billingForm")); return; }
     if (e.target.id === "sig") cust.sig = e.target.value;
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
@@ -583,7 +668,7 @@
   // ---------------- Start ----------------
   if (custToken) {
     loadCustomer();
-    setInterval(() => { if (!Object.keys(cust.draft).length && document.visibilityState === "visible") loadCustomer(); }, 30000);
+    setInterval(() => { if (!cust.intakeBusy && !document.activeElement?.closest("#intakeForm") && !Object.keys(cust.draft).length && document.visibilityState === "visible") loadCustomer(); }, 30000);
     return;
   }
   if (!sb) { render(); return; }
@@ -595,12 +680,12 @@
   });
   sb.auth.getSession().then(({ data }) => { if (!data.session) render(); });
   setInterval(async () => {
-    if (!session || !shop || ui.modal || document.visibilityState !== "visible") return;
+    if (!session || !shop || cust.intakeBusy || ui.view !== "board" || ui.modal || document.visibilityState !== "visible") return;
     const pickerActive = () => $("#photoIn:disabled");
     if (pickerActive()) return;
     try {
       const latest = await api("GET", "shop/jobs");
-      if (!pickerActive() && !ui.modal && !ui.busy && !document.activeElement?.matches("input,textarea")) { jobs = latest; render(); }
+      if (!pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !document.activeElement?.matches("input,textarea")) { jobs = latest; render(); }
     } catch (e) { /* try again next time */ }
   }, 20000);
 })();
