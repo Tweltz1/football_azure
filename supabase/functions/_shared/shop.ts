@@ -19,7 +19,7 @@ export interface Shop {
 }
 
 export interface EstimateLine { id: string; item: string; price: number; status: 'pending' | 'approved' | 'declined' }
-export interface Photo { id: string; src: string; cap: string }
+export interface Photo { id: string; src: string; cap: string; stage?: Stage; addedAt?: string }
 export interface StageEvent { stage: Stage; t: string }
 export interface Message { dir: 'out' | 'in'; t: string; text: string; delivery?: 'sent' | 'not_sent' | 'failed'; note?: string }
 
@@ -350,11 +350,16 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (!item || !Number.isFinite(price) || price < 0 || price > 1_000_000) return bad('Enter an item and a price.');
       d.estimate.push({ id: ctx.newId(), item, price: Math.round(price * 100) / 100, status: 'pending' });
     }
+  } else if (action === 'remove-photo') {
+    const id = str(body.id, 100);
+    if (!id) return bad('Choose a photo to remove.');
+    if (!d.photos.some((p) => p.id === id)) return ok(jobOut(job, deps.linkBase));
+    d.photos = d.photos.filter((p) => p.id !== id);
   } else if (action === 'photo') {
     const src = typeof body.src === 'string' ? body.src : '';
     if (!/^data:image\/(jpeg|png|webp);base64,/.test(src) || src.length > MAX_PHOTO) return bad('That photo could not be added.');
     if (d.photos.length >= MAX_PHOTOS) return bad(`Up to ${MAX_PHOTOS} photos per car.`);
-    d.photos.push({ id: ctx.newId(), src, cap: str(body.cap, 120) || 'Photo' });
+    d.photos.push({ id: ctx.newId(), src, cap: str(body.cap, 120) || 'Photo', stage: job.stage, addedAt: now });
   } else if (action === 'message') {
     const msg = str(body.text, 1000);
     if (!msg) return bad('Type a message.');
