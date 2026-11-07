@@ -289,7 +289,7 @@
           ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? `<button class="btn primary" style="margin-top:10px" data-stage="approval">Send estimate for approval</button>` : ""}
         </section>
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => `<figure class="photo" style="margin:0"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}
-          <label class="photo-add">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span><input type="file" id="photoIn" aria-label="Add photo" accept="image/*"></label><p id="photoStatus" role="status" hidden></p></div></section>
+          <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
         <section class="sec"><h3>Messages</h3><div class="thread">${j.messages.map((m) => bubble(m, j)).join("") || '<p class="muted">No messages yet.</p>'}</div>
           <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto"><input id="replyIn" maxlength="1000" placeholder="Text ${esc(first(j.customer.name))}…" aria-label="Message"><button class="btn primary" type="submit">Send</button></form></section>
         <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
@@ -330,9 +330,17 @@
 
   // ---------------- Events ----------------
   document.addEventListener("click", async (e) => {
-    if (e.target.id === "photoIn") { e.target.dataset.choosing = "true"; return; }
+    if (e.target.id === "photoIn") return;
     const t = e.target.closest("button,[data-close],[data-open],[data-close-modal]");
     if (!t) return;
+    if (t.id === "pickPhoto") {
+      const input = $("#photoIn");
+      if (!ui.openJob || input.disabled) return;
+      input.dataset.job = ui.openJob;
+      input.value = "";
+      input.click();
+      return;
+    }
     if (t.matches("[data-close-modal]") && (t === e.target || t.tagName === "BUTTON")) { ui.modal = null; renderLayer(); return; }
     if (t.id === "watchDemo") { ui.modal = "video"; renderLayer(); return; }
     if (t.id === "google") {
@@ -427,7 +435,12 @@
   });
 
   async function encodePhoto(file) {
-    const url = URL.createObjectURL(file);
+    // Read the picker-provided file while its temporary library URL is available.
+    let bytes;
+    try { bytes = await file.arrayBuffer(); }
+    catch { throw new Error("The selected photo could not be read. Open it in Photos, then try again."); }
+    if (!bytes.byteLength) throw new Error("The selected photo is empty. Choose it again after it loads in Photos.");
+    const url = URL.createObjectURL(new Blob([bytes], { type: file.type }));
     try {
       const img = new Image();
       img.src = url;
@@ -452,17 +465,13 @@
   }
 
   document.addEventListener("cancel", (e) => {
-    if (e.target.id === "photoIn") delete e.target.dataset.choosing;
+    if (e.target.id === "photoIn" && !e.target.disabled) delete e.target.dataset.job;
   });
-  document.addEventListener("change", async (e) => {
-    if (e.target.id === "eta") jobAction(ui.openJob, "eta", { eta: e.target.value.trim() }, "ETA saved");
-    if (e.target.id !== "photoIn") return;
-    const input = e.target, file = input.files[0], id = ui.openJob;
-    delete input.dataset.choosing;
+  async function uploadSelectedPhoto(input) {
+    const file = input.files[0], id = input.dataset.job;
     if (!file || !id || input.disabled) return;
     const status = $("#photoStatus");
-    status.hidden = false;
-    status.textContent = "Adding photo…";
+    if (status) { status.hidden = false; status.textContent = "Adding photo…"; }
     input.disabled = true;
     try {
       const src = await encodePhoto(file);
@@ -471,14 +480,23 @@
       if (ui.openJob === id) render();
       toast("Photo added to customer's page");
     } catch (error) {
-      status.textContent = error.message || "Photo upload failed. Please try again.";
-      toast(status.textContent);
+      const message = error.message || "Photo upload failed. Please try again.";
+      if (status) status.textContent = message;
+      toast(message);
     } finally {
       input.value = "";
       input.disabled = false;
+      delete input.dataset.job;
     }
+  }
+  document.addEventListener("change", (e) => {
+    if (e.target.id === "eta") jobAction(ui.openJob, "eta", { eta: e.target.value.trim() }, "ETA saved");
+    if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
-  document.addEventListener("input", (e) => { if (e.target.id === "sig") cust.sig = e.target.value; });
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "sig") cust.sig = e.target.value;
+    if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
+  });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { if (ui.modal) ui.modal = null; else ui.openJob = null; renderLayer(); } });
 
   // ---------------- Start ----------------
@@ -497,7 +515,7 @@
   sb.auth.getSession().then(({ data }) => { if (!data.session) render(); });
   setInterval(async () => {
     if (!session || !shop || ui.modal || document.visibilityState !== "visible") return;
-    const pickerActive = () => $("#photoIn[data-choosing], #photoIn:disabled");
+    const pickerActive = () => $("#photoIn:disabled");
     if (pickerActive()) return;
     try {
       const latest = await api("GET", "shop/jobs");
