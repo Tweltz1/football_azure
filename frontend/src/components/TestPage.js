@@ -1,20 +1,34 @@
-import React from 'react';
-import '../App.css';
+import React, { useEffect, useRef, useState } from 'react';
 
-// Sandbox page for trying out new features before they get a real home in the app.
-const TestPage = () => (
-  <div className="page-shell test-page">
-    <section className="page-hero">
-      <p className="page-kicker">Sandbox</p>
-      <h1>Test</h1>
-      <p>A scratch space for trying out new features. Nothing here affects leagues or drafts.</p>
-    </section>
+// Sandbox page: currently simulates a repair shop's own progress-update app
+// (shop board, check-in, customer view). Sample data only; no real texts are sent.
+const DEMO_URL = '/repair-shop-demo.html';
 
-    <section className="panel-card" style={{ marginTop: 24 }}>
-      <p className="section-kicker">Work in progress</p>
-      <p>Nothing is being tested right now.</p>
-    </section>
-  </div>
-);
+const TestPage = () => {
+  const frameRef = useRef(null);
+  const [height, setHeight] = useState('100vh');
+
+  // Fill the screen below the site nav.
+  useEffect(() => {
+    const fit = () => {
+      const top = frameRef.current ? frameRef.current.getBoundingClientRect().top + window.scrollY : 0;
+      setHeight(`calc(100vh - ${Math.round(top) + 12}px)`);
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, []);
+
+  return (
+    <div className="shop-sim">
+      <iframe
+        ref={frameRef}
+        title="Repair shop app"
+        src={DEMO_URL}
+        style={{ display: 'block', width: '100%', height, minHeight: 560, border: 0, borderRadius: 12 }}
+      />
+    </div>
+  );
+};
 
 export default TestPage;
