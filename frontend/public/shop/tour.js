@@ -106,7 +106,10 @@
     if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
   (function track() {
-    const el = spotSel && (typeof spotSel === "string" ? q(spotSel) : spotSel);
+    let el = spotSel && (typeof spotSel === "string" ? q(spotSel) : spotSel);
+    // While a pop-up is open, light up the pop-up rather than something it covers.
+    const modal = q(".modal-card");
+    if (el && modal && !modal.contains(el)) el = modal;
     if (el && el.isConnected) {
       const r = el.getBoundingClientRect(), pad = 6;
       Object.assign(spot.style, { left: r.left - pad + "px", top: r.top - pad + "px", width: r.width + pad * 2 + "px", height: r.height + pad * 2 + "px" });
@@ -125,7 +128,9 @@
     dot.style.left = r.left + r.width / 2 + "px"; dot.style.top = r.top + r.height / 2 + "px";
     document.body.appendChild(dot); setTimeout(() => dot.remove(), 600);
     await wait(300);
-    el.click();
+    // The page may have re-drawn itself meanwhile (it refreshes every minute); click the current copy.
+    const now = typeof sel === "string" ? q(sel) : el;
+    if (now && now.isConnected) now.click();
     await wait(250);
   }
   async function type(sel, text) {
@@ -335,8 +340,10 @@
     highlight(".sheet .stepper");
     for (const [stage, f] of [["in_progress", 0.22], ["qc", 0.32], ["ready", 0.62]]) {
       await cue(f);
+      highlight(`.sheet .step[data-stage="${stage}"]`);
       await tap(`.sheet .step[data-stage="${stage}"]`);
-      await wait(500);
+      highlight("#sendForm");
+      await wait(900);
       await tap("#sendForm .btn.primary");
       highlight(".sheet .stepper");
     }
