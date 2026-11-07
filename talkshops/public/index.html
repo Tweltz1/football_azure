@@ -128,11 +128,17 @@ table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-
 .field textarea{resize:vertical;min-height:70px}
 
 .photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.photo{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface-2);font-size:12.5px}
+.photo{margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface-2);font-size:12.5px}
 .photo .img{aspect-ratio:4/3;width:100%;display:block;object-fit:cover;max-width:100%}
 .photo figcaption{padding:5px 8px}
 .photo-add{position:relative;border:1.5px dashed var(--line);border-radius:8px;display:grid;place-items:center;aspect-ratio:4/3;color:var(--muted);font-weight:600;font-size:13px;text-align:center;padding:8px;cursor:pointer;max-width:100%}
 .photo-add:focus-visible{outline:2px solid var(--accent)}
+.photo figcaption small,.photo figcaption button{display:block;margin-top:4px}
+.photo-folder{min-width:0}
+.photo-folder summary{cursor:pointer;padding:7px 0;color:var(--accent);font-weight:600}
+.tl .photo-folder{grid-column:2/-1}
+.folder-images{display:grid;gap:8px}
+.folder-images .photo .img{height:auto;aspect-ratio:auto;object-fit:contain}
 .photo-add:hover{border-color:var(--accent);color:var(--accent)}
 
 .thread{display:flex;flex-direction:column;gap:8px}
@@ -250,6 +256,6 @@ a.btn.primary{color:var(--accent-fg)}
 <input type="file" id="photoIn" accept="image/jpeg,image/png" hidden>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script src="/config.js?v=174"></script>
-<script src="/app.js?v=177"></script>
+<script src="/app.js?v=178"></script>
 </body>
 </html>

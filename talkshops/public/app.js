@@ -84,20 +84,35 @@
     renderCustomer();
   }
 
+  function photoFigure(p, staff = false) {
+    return `<figure class="photo"><img class="img" loading="lazy" src="${esc(p.src)}" alt="${esc(p.cap)}">
+      <figcaption>${esc(p.cap)}${p.addedAt ? `<small>${dayClock(p.addedAt)}</small>` : ""}
+      ${staff ? `<button type="button" class="linkbtn" data-remove-photo="${esc(p.id)}" aria-label="Remove ${esc(p.cap)}">Remove photo</button>` : ""}</figcaption></figure>`;
+  }
+
+  function photoFolder(key, label, photos, openFolders) {
+    if (!photos.length) return "";
+    return `<details class="photo-folder" data-folder="${key}" ${openFolders.has(key) ? "open" : ""}>
+      <summary>📁 ${label} · ${photos.length} photo${photos.length === 1 ? "" : "s"}</summary>
+      <div class="folder-images">${photos.map((p) => photoFigure(p)).join("")}</div></details>`;
+  }
+
   function renderCustomer() {
     $("#shopChrome").hidden = true;
     const app = $("#app");
     if (cust.error && !cust.data) { app.innerHTML = `<div class="loading"><p>${esc(cust.error)}</p></div>`; return; }
     if (!cust.data) return;
     const j = cust.data, idx = SI[j.stage];
+    const openFolders = new Set(Array.from(document.querySelectorAll(".photo-folder[open]"), (el) => el.dataset.folder));
     document.title = j.shop.name + " · Your " + j.vehicle;
     const outcome = estimateOutcome(j);
     const evAt = (k) => { const e = [...j.events].reverse().find((x) => x.stage === k); return e ? e.t : null; };
-    const tl = STAGES.filter((s) => s.key !== "picked_up").map((s) => {
+    const tl = STAGES.filter((s) => s.key !== "picked_up" || evAt(s.key) || j.photos.some((p) => p.stage === s.key)).map((s) => {
       const decided = s.key === "approval" && outcome && evAt(s.key);
       const t = decided && j.approval ? j.approval.t : evAt(s.key);
       const cls = s.key === j.stage ? "current" : (t && SI[s.key] < idx ? "done" : "todo");
-      return `<li class="${cls}"><span>${decided ? outcome : s.label}</span><time>${t ? dayClock(t) : ""}</time></li>`;
+      const folder = photoFolder(s.key, "View photos", j.photos.filter((p) => p.stage === s.key), openFolders);
+      return `<li class="${cls}"><span>${decided ? outcome : s.label}</span><time>${t ? dayClock(t) : ""}</time>${folder}</li>`;
     }).join("");
     const pending = awaitingDecision(j);
     let est = "";
@@ -117,14 +132,14 @@
         <p class="muted" style="font-size:12.5px;margin:6px 0 0">${allChosen ? "Your signed decision goes straight to the shop." : "Choose approve or decline for each item."}</p>`
         : (j.approval ? `<p class="muted" style="font-size:12.5px;margin:8px 0 0">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>` : "")}</div>`;
     }
-    const photos = j.photos.length ? `<div class="c-card"><h3>Photos from your technician</h3><div class="photos">${j.photos.map((p) => `<figure class="photo" style="margin:0"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}</div></div>` : "";
+    const earlierPhotos = photoFolder("earlier", "Earlier photos", j.photos.filter((p) => !Object.hasOwn(SI, p.stage)), openFolders);
     const extra = j.stage === "parts" && j.eta ? `<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta)}</b>.</p>`
       : j.stage === "ready" ? `<p style="margin:6px 0 0">Total due ${money(estTotal(j, true))}.${j.shop.hours ? " Open " + esc(j.shop.hours) + "." : ""}</p>` : "";
     app.innerHTML = `<div class="cust-page">
       <div class="c-head"><small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${j.stage === "approval" && outcome ? outcome : STAGES[idx].cust}</h2><div style="font-size:14px;margin-top:4px">${esc(j.vehicle)}</div>${extra}</div>
       <div class="c-body">
-        ${est}${photos}
-        <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul></div>
+        ${est}
+        <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         <div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>
         ${j.shop.phone ? `<div class="c-card call"><span>Questions? Call the shop</span><b>${esc(j.shop.phone)}</b></div>` : ""}
         <p class="cust-top">We'll text you when anything changes. This page updates on its own.</p>
@@ -288,7 +303,7 @@
           <form class="add-line" id="addLine"><input id="li-item" placeholder="Line item, e.g. Cabin air filter" aria-label="Line item"><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button></form>
           ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? `<button class="btn primary" style="margin-top:10px" data-stage="approval">Send estimate for approval</button>` : ""}
         </section>
-        <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => `<figure class="photo" style="margin:0"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}
+        <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
           <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
         <section class="sec"><h3>Messages</h3><div class="thread">${j.messages.map((m) => bubble(m, j)).join("") || '<p class="muted">No messages yet.</p>'}</div>
           <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto"><input id="replyIn" maxlength="1000" placeholder="Text ${esc(first(j.customer.name))}…" aria-label="Message"><button class="btn primary" type="submit">Send</button></form></section>
@@ -362,6 +377,15 @@
       if (!p) return;
       ui.modal = { job: j.id, stage: t.dataset.stage, text: p.text, eta: j.eta };
       renderLayer(); $("#m-text")?.focus(); return;
+    }
+    if (t.dataset.removePhoto) {
+      const id = ui.openJob;
+      const photo = job(id)?.photos.find((p) => p.id === t.dataset.removePhoto);
+      if (!photo || !window.confirm(`Remove "${photo.cap}" from this repair and the customer's page?`)) return;
+      t.disabled = true;
+      await jobAction(id, "remove-photo", { id: photo.id }, "Photo removed");
+      t.disabled = false;
+      return;
     }
     if (t.dataset.del) { jobAction(ui.openJob, "estimate", { remove: t.dataset.del }); return; }
     // customer page
