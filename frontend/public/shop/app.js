@@ -61,8 +61,8 @@
   function videoModal() {
     return `<div class="modal video-modal" data-close-modal><div class="modal-card wide" role="dialog" aria-modal="true" aria-label="Bay Status demo video">
       <div style="display:flex;align-items:center;gap:10px"><h2 style="margin-right:auto">See Bay Status in action</h2><button class="x" data-close-modal aria-label="Close">×</button></div>
-      <video src="${DEMO_VIDEO}" controls autoplay muted playsinline></video>
-      <p class="muted" style="margin:0;font-size:13.5px">A shop checks in a car, sends an estimate, the customer approves it from their text link, and the car moves to ready for pickup.</p>
+      <video src="${DEMO_VIDEO}" controls autoplay playsinline preload="metadata"></video>
+      <p class="muted" style="margin:0;font-size:13.5px">A walkthrough with narration: checking in a car, sending an estimate, the customer approving it from their text link, and moving the car to ready for pickup. Turn your sound on.</p>
       <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}" style="text-decoration:none">Try the demo shop yourself</a></div>
     </div></div>`;
   }
@@ -174,7 +174,7 @@
       <button class="linkbtn" id="authSwap" type="button" style="align-self:flex-start">${signup ? "Already have an account? Sign in" : "New shop? Create an account"}</button>
       <div class="demo-box">
         <b>Just looking?</b>
-        <span class="muted" style="font-size:13.5px">Watch a one-minute video of a shop using Bay Status, or click around a demo shop with sample cars.</span>
+        <span class="muted" style="font-size:13.5px">Watch a 3-minute narrated video of a shop using Bay Status, or click around a demo shop with sample cars.</span>
         <div class="btn-row"><button class="btn primary" id="watchDemo" type="button">▶ Watch demo</button><a class="btn" href="${DEMO_PAGE}" style="text-decoration:none">Try demo shop</a></div>
       </div>
       <p class="muted" style="font-size:13px;margin:0">Customers never sign in. They get a text with a link to their car's page.</p>
