@@ -37,3 +37,15 @@
 .archive-del:hover{background:var(--bad-bg);border-color:var(--bad)}
 .btn.danger{color:var(--bad)}
 .btn.danger:hover{background:var(--bad-bg);border-color:var(--bad)}
+/* Technician notes and voice typing */
+.sec-sub{font-family:var(--f-body);text-transform:none;letter-spacing:0;font-weight:500;font-size:12px;color:var(--muted);margin-left:6px}
+.notes{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
+.notes li{border-left:3px solid var(--accent);background:var(--surface-2);border-radius:0 8px 8px 0;padding:8px 10px}
+.notes time{font-size:12px;color:var(--muted)}
+.notes p{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px}
+.notes .linkbtn{font-size:12.5px;margin-top:4px}
+.note-form{display:flex;flex-direction:column;gap:8px}
+.note-form textarea{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 11px;min-height:84px;resize:vertical;font-size:15px}
+.btn.mic{display:inline-flex;align-items:center;gap:6px}
+.btn.mic.listening,.btn.mic.listening:hover{background:var(--bad)!important;border-color:var(--bad)!important;color:#fff!important;opacity:1!important}
+@media (prefers-reduced-motion:no-preference){.btn.mic.listening svg{animation:micpulse 1s ease-in-out infinite}@keyframes micpulse{50%{opacity:.35}}}

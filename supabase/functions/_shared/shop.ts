@@ -44,7 +44,11 @@ export interface JobData {
   approval: { by: string; t: string } | null;
   /** Set when the shop closed the repair without finishing it (e.g. the customer declined). Archives the car. */
   closed?: { t: string; reason: string } | null;
+  /** Technician notes the customer sees on their page. */
+  notes?: Note[];
 }
+export interface Note { id: string; t: string; text: string }
+const MAX_NOTES = 60;
 
 export type Intake = Pick<JobData, 'vehicle' | 'plate' | 'concern'>;
 
@@ -213,6 +217,7 @@ const customerOut = (j: Job, shop: Shop) => ({
   photos: [...(j.intakePhotos ?? []), ...j.data.photos],
   events: j.data.events,
   approval: j.data.approval,
+  notes: j.data.notes ?? [],
   closed: !!j.data.closed,
   bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
 });
@@ -551,6 +556,20 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (!/^data:image\/(jpeg|png|webp);base64,/.test(src) || src.length > MAX_PHOTO) return bad('That photo could not be added.');
     if (d.photos.length >= MAX_PHOTOS) return bad(`Up to ${MAX_PHOTOS} photos per car.`);
     d.photos.push({ id: ctx.newId(), src, cap: str(body.cap, 120) || 'Photo', stage: job.stage, addedAt: now });
+  } else if (action === 'note') {
+    const text = str(body.text, 2000);
+    if (!text) return bad('Type or dictate a note.');
+    const notes = d.notes ??= [];
+    if (notes.length >= MAX_NOTES) return bad(`Up to ${MAX_NOTES} notes per car. Remove an old one first.`);
+    notes.push({ id: ctx.newId(), t: now, text });
+    if (body.send) {
+      const msg = `Update on your ${vehicleName({ ...d, ...job.intake }) || 'car'} from ${shop.name}: ${text.length > 300 ? text.slice(0, 297) + '…' : text} Details: ${deps.linkBase}${job.token}`;
+      d.messages.push(...await notifyCustomer(deps, shop, job, msg, now));
+    }
+  } else if (action === 'remove-note') {
+    const before = d.notes?.length ?? 0;
+    d.notes = (d.notes ?? []).filter((n) => n.id !== body.id);
+    if (d.notes.length === before) return bad('That note was already removed.');
   } else if (action === 'message') {
     const msg = str(body.text, 1000);
     if (!msg) return bad('Type a message.');

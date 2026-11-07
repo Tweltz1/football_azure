@@ -168,6 +168,7 @@
           <button type="button" id="customerPickPhoto" class="btn" ${j.photos.filter(p => p.source === "customer").length >= 6 ? "disabled" : ""}>Add photos</button>
           <small style="margin-left:10px">${j.photos.filter(p => p.source === "customer").length} of 6 photos added</small><p id="photoStatus" role="status" hidden></p></section>` : ""}
         ${billing.display(j.bill, j)}${est}
+        ${(j.notes || []).length ? `<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p></li>`).join("")}</ul></div>` : ""}
         <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         ${j.concern ? `<div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
         ${j.shop.phone ? `<div class="c-card call"><span>Questions? Call the shop</span><b>${esc(j.shop.phone)}</b></div>` : ""}
@@ -177,7 +178,8 @@
   }
 
   // ==================== Shop app (signed in) ====================
-  const ui = { view: "board", openJob: null, modal: null, authMode: "signin", authMsg: "", authErr: "", busy: false };
+  const ui = { noteDraft: {}, view: "board", openJob: null, modal: null, authMode: "signin", authMsg: "", authErr: "", busy: false };
+  const dictation = window.createDictation({ toast });
   const archive = { q: "", rows: null, keepDays: 365, loading: false, error: "", seq: 0 };
   const suggest = window.createSuggest({
     esc, money, items: () => (shop && shop.rates) || [],
@@ -444,8 +446,13 @@
         </section>`}
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
           <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
+        <section class="sec"><h3>Technician notes <span class="sec-sub">Customer sees these</span></h3>
+          ${(j.notes || []).length ? `<ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${esc(n.id)}">Remove</button></li>`).join("")}</ul>` : ""}
+          <form id="noteForm" class="note-form"><textarea id="noteIn" maxlength="2000" placeholder="What did you find? Tap Speak to talk instead of typing." aria-label="Technician note">${esc(ui.noteDraft[j.id] || "")}</textarea>
+            <div class="btn-row"><button type="button" class="btn mic" data-dictate="#noteIn" aria-pressed="false" aria-label="Voice typing"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="mic-label">Speak</span></button><button class="btn primary" type="submit">Post note</button></div>
+            <label class="chk"><input type="checkbox" id="noteSend" ${j.customer.consent ? "" : "disabled"}> Also notify ${esc(first(j.customer.name))} that there's an update${j.customer.consent ? "" : " (customer has not agreed to notifications)"}</label></form></section>
         <section class="sec"><h3>Messages</h3><div class="thread">${j.messages.map((m) => bubble(m, j)).join("") || '<p class="muted">No messages yet.</p>'}</div>
-          <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto"><input id="replyIn" maxlength="1000" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button class="btn primary" type="submit">Send</button></form></section>
+          <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto auto"><input id="replyIn" maxlength="1000" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button type="button" class="btn mic" data-dictate="#replyIn" aria-pressed="false" aria-label="Voice typing"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button class="btn primary" type="submit">Send</button></form></section>
         <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
         <section class="sec danger-zone"><button class="linkbtn danger" data-delete-job>Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></section>
       </div></aside>`;
@@ -598,6 +605,10 @@
       }
       return;
     }
+    if (t.dataset.removeNote) {
+      if (!window.confirm("Remove this note from the customer's page?")) return;
+      jobAction(ui.openJob, "remove-note", { id: t.dataset.removeNote }, "Note removed"); return;
+    }
     if (t.dataset.del) { jobAction(ui.openJob, "estimate", { remove: t.dataset.del }); return; }
     // customer page
     if (t.dataset.decide) { cust.draft[t.dataset.decide] = t.dataset.v; cust.sig = $("#sig")?.value ?? cust.sig; renderCustomer(); return; }
@@ -721,7 +732,17 @@
       }
       return;
     }
+    if (f.id === "noteForm") {
+      if (ui.busy) return;
+      dictation.stop();
+      const id = ui.openJob, text = $("#noteIn").value.trim(), send = $("#noteSend").checked;
+      if (!text) { toast("Type or speak a note first"); return; }
+      const j = await jobAction(id, "note", { text, send }, send ? null : "Note posted to the customer's page");
+      if (j) { delete ui.noteDraft[id]; render(); if (send) toast("Note posted. " + sendResult(j)); }
+      return;
+    }
     if (f.id === "replyForm") {
+      dictation.stop();
       const v = $("#replyIn").value.trim(); if (!v) return;
       const j = await jobAction(ui.openJob, "message", { text: v });
       if (j) { toast(sendResult(j)); $("#replyIn")?.focus(); }
@@ -830,6 +851,7 @@
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
   document.addEventListener("input", (e) => {
+    if (e.target.id === "noteIn" && ui.openJob) { ui.noteDraft[ui.openJob] = e.target.value; return; }
     if (e.target.id === "archiveQ") { archive.q = e.target.value; clearTimeout(archiveTimer); archiveTimer = setTimeout(searchArchive, 250); return; }
     if (e.target.id === "li-item") delete e.target.form.dataset.pick;
     if (e.target.id === "intakePhotoIn") return uploadIntakePhotos(e.target);
@@ -855,12 +877,12 @@
   });
   sb.auth.getSession().then(({ data }) => { if (!data.session) render(); });
   setInterval(async () => {
-    if (!session || !shop || cust.intakeBusy || ui.view !== "board" || ui.modal || document.visibilityState !== "visible") return;
+    if (!session || !shop || cust.intakeBusy || ui.view !== "board" || ui.modal || dictation.active() || document.visibilityState !== "visible") return;
     const pickerActive = () => $("#photoIn:disabled");
     if (pickerActive()) return;
     try {
       const latest = await api("GET", "shop/jobs");
-      if (!pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !document.activeElement?.matches("input,textarea")) { if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
+      if (!pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !dictation.active() && !document.activeElement?.matches("input,textarea")) { if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
     } catch (e) { /* try again next time */ }
   }, 20000);
 })();

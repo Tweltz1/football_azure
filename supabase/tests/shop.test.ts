@@ -378,3 +378,23 @@ test('a repair the customer turned down can be closed into the archive, reopened
   assert.ok(!jobs.has(job.id));
   assert.equal((await dan('GET', `shop/jobs/${job.id}`))?.status, 404);
 });
+
+test('technician notes show on the customer page and can text the customer', async () => {
+  const { as, texts } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string; link: string };
+  const sent = texts.length;
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/note`, { text: '  ' }))?.status, 400);
+  const a = (await dan('POST', `shop/jobs/${job.id}/note`, { text: 'Front pads are at 2mm.' }))?.body as { notes: { id: string }[] };
+  assert.equal(texts.length, sent, 'no text unless asked');
+  await dan('POST', `shop/jobs/${job.id}/note`, { text: 'Rotors are scored too.', send: true });
+  assert.equal(texts.length, sent + 1);
+  assert.match(texts.at(-1)!.body, /Rotors are scored too\. Details: https:/);
+  const token = job.link.split('?c=')[1];
+  let page = (await as(null)('GET', `shop/c/${token}`))?.body as { notes: { text: string }[] };
+  assert.deepEqual(page.notes.map((n) => n.text), ['Front pads are at 2mm.', 'Rotors are scored too.']);
+  await dan('POST', `shop/jobs/${job.id}/remove-note`, { id: a.notes[0].id });
+  page = (await as(null)('GET', `shop/c/${token}`))?.body as { notes: { text: string }[] };
+  assert.deepEqual(page.notes.map((n) => n.text), ['Rotors are scored too.']);
+});
