@@ -26,3 +26,8 @@
 .archive-row .a-concern{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .archive-row .a-meta{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:12.5px}
 .add-line .save-chk input{padding:0;width:auto}
+.closed-note{background:var(--bad-bg);border-radius:10px;padding:12px 14px}
+.closed-note p{margin:0 0 6px}
+.danger-zone{border-top:1px solid var(--line);padding-top:14px}
+.danger-zone p{font-size:13px;margin:6px 0 0}
+.linkbtn.danger{color:var(--bad)}

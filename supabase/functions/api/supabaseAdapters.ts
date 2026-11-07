@@ -361,7 +361,7 @@ export function createShopStore(db: SupabaseClient): ShopStore {
     },
     async listJobs(shopId, since) {
       const { data, error } = await db.from('repair_jobs').select('id,shop_id,token,stage,data,bill,intake,intake_photos,created_at,updated_at').eq('shop_id', shopId)
-        .or(`stage.neq.picked_up,updated_at.gte.${since}`).order('created_at', { ascending: true }).limit(300);
+        .or(`and(stage.neq.picked_up,archived_at.is.null),updated_at.gte.${since}`).order('created_at', { ascending: true }).limit(300);
       if (error) throw error;
       return (data ?? []).map((r) => jobRow(r as JobDb));
     },
@@ -393,21 +393,25 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       if (error) throw error;
       return data?.bill_pdf ?? null;
     },
+    async deleteJob(id) {
+      const { error } = await db.from('repair_jobs').delete().eq('id', id);
+      if (error) throw error;
+    },
     async searchArchive(shopId, since, terms, limit) {
       let q = db.from('repair_jobs')
-        .select('id, created_at, archived_at, intake, bill, ro:data->>ro, customer:data->customer, vehicle:data->vehicle, plate:data->>plate, concern:data->>concern, estimate:data->estimate')
-        .eq('shop_id', shopId).eq('stage', 'picked_up').gte('archived_at', since);
+        .select('id, created_at, archived_at, intake, bill, ro:data->>ro, closed:data->closed, customer:data->customer, vehicle:data->vehicle, plate:data->>plate, concern:data->>concern, estimate:data->estimate')
+        .eq('shop_id', shopId).not('archived_at', 'is', null).gte('archived_at', since);
       for (const t of terms) q = q.ilike('search', `%${t}%`);
       const { data, error } = await q.order('archived_at', { ascending: false }).limit(limit);
       if (error) throw error;
       return (data ?? []).map((r: Record<string, any>): ArchiveRow => ({
-        id: r.id, ro: r.ro ?? '', archivedAt: r.archived_at, createdAt: r.created_at, customer: r.customer,
+        id: r.id, ro: r.ro ?? '', closedReason: r.closed?.reason ?? null, archivedAt: r.archived_at, createdAt: r.created_at, customer: r.customer,
         vehicle: r.intake?.vehicle ?? r.vehicle, plate: r.intake?.plate ?? r.plate ?? '', concern: r.intake?.concern ?? r.concern ?? '',
         total: r.bill?.total ?? ((r.estimate ?? []) as { status: string; price: number }[]).filter((e) => e.status === 'approved').reduce((a, e) => a + Number(e.price), 0),
       }));
     },
     async purgeArchive(shopId, before) {
-      const { error } = await db.from('repair_jobs').delete().eq('shop_id', shopId).eq('stage', 'picked_up').lt('archived_at', before);
+      const { error } = await db.from('repair_jobs').delete().eq('shop_id', shopId).lt('archived_at', before);
       if (error) throw error;
     },
     async nextRo(shopId) {

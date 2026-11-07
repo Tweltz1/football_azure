@@ -42,6 +42,8 @@ export interface JobData {
   events: StageEvent[];
   messages: Message[];
   approval: { by: string; t: string } | null;
+  /** Set when the shop closed the repair without finishing it (e.g. the customer declined). Archives the car. */
+  closed?: { t: string; reason: string } | null;
 }
 
 export type Intake = Pick<JobData, 'vehicle' | 'plate' | 'concern'>;
@@ -67,6 +69,7 @@ export interface ShopStore {
   getJob(id: string): Promise<Job | null>;
   jobByToken(token: string): Promise<Job | null>;
   putJob(job: Job): Promise<void>;
+  deleteJob?(id: string): Promise<void>;
   saveIntake?(jobId: string, intake: Intake): Promise<boolean>;
   intakePhoto?(jobId: string, photo: Photo | null, remove: string | null): Promise<boolean>;
   saveBill?(jobId: string, bill: Bill, pdf: string | null): Promise<void>;
@@ -81,13 +84,15 @@ export interface ShopStore {
 
 /** One archived (picked-up) car, without photos or messages. */
 export interface ArchiveRow {
-  id: string; ro: string; archivedAt: string; createdAt: string;
+  id: string; ro: string; archivedAt: string; createdAt: string; closedReason?: string | null;
   customer: JobData['customer']; vehicle: JobData['vehicle']; plate: string; concern: string; total: number | null;
 }
 
-/** When the car was picked up, or null while it is still in the shop. */
+/** When the car left the active board (picked up, or closed without repair), or null while it is still active. */
 export const archivedAt = (j: Pick<Job, 'stage' | 'updatedAt' | 'data'>): string | null =>
-  j.stage === 'picked_up' ? ([...j.data.events].reverse().find((e) => e.stage === 'picked_up')?.t ?? j.updatedAt) : null;
+  j.data.closed ? j.data.closed.t
+    : j.stage === 'picked_up' ? ([...j.data.events].reverse().find((e) => e.stage === 'picked_up')?.t ?? j.updatedAt) : null;
+export const CLOSE_REASONS = ['Customer declined the repair', "Customer didn't bring the car in", 'Customer went elsewhere', 'Duplicate or mistake', 'Other'];
 
 /** The text archive search matches against (the database keeps the same thing in repair_jobs.search). */
 export const archiveSearchText = (j: Pick<Job, 'data' | 'intake'>) => {
@@ -208,6 +213,7 @@ const customerOut = (j: Job, shop: Shop) => ({
   photos: [...(j.intakePhotos ?? []), ...j.data.photos],
   events: j.data.events,
   approval: j.data.approval,
+  closed: !!j.data.closed,
   bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
 });
 
@@ -273,7 +279,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       return ok(customerOut((await store.getJob(job.id)) ?? job, shop));
     }
     if (method === 'POST' && parts[3] === 'decision') {
-      if (job.stage !== 'approval') return bad('This estimate is not waiting on a decision.');
+      if (job.stage !== 'approval' || job.data.closed) return bad('This estimate is not waiting on a decision.');
       const decisions = (body.decisions && typeof body.decisions === 'object' ? body.decisions : {}) as Record<string, unknown>;
       const signature = str(body.signature, 80);
       if (signature.length < 3) return bad('Type your full name to sign.');
@@ -444,6 +450,11 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return pdf ? ok({ pdf }) : { status: 404 };
   }
   if (method === 'GET' && !action) return ok(jobOut(job, deps.linkBase));
+  if (method === 'DELETE' && !action) {
+    if (!store.deleteJob) return { status: 503, body: 'Deleting is unavailable.' };
+    await store.deleteJob(job.id);
+    return ok({ deleted: job.id });
+  }
   if (method !== 'POST') return { status: 405 };
   const d = job.data;
 
@@ -486,9 +497,20 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return ok({ text: fillTemplate(stage, shop, draft, deps.linkBase) });
   }
 
-  if (action === 'stage') {
+  if (action === 'close') {
+    if (job.stage === 'picked_up') return bad('This car was already picked up.');
+    const reason = str(body.reason, 200);
+    if (!reason) return bad('Choose why the repair is closed.');
+    d.closed = { t: now, reason };
+    const msg = str(body.text, 1000);
+    if (body.send && msg) d.messages.push(...await notifyCustomer(deps, shop, job, msg, now));
+  } else if (action === 'reopen') {
+    if (!d.closed) return bad('This repair is not closed.');
+    d.closed = null;
+  } else if (action === 'stage') {
     const stage = str(body.stage) as Stage;
     if (!STAGES.includes(stage)) return bad('Unknown stage.');
+    d.closed = null;
     if (stage === job.stage) return bad(`Already ${LABEL[stage]}.`);
     if (stage === 'approval' && !d.estimate.some((e) => e.status === 'pending')) return bad('Add at least one estimate line first.');
     if (typeof body.eta === 'string') d.eta = str(body.eta, 40);

@@ -128,7 +128,7 @@
     const openFolders = new Set(Array.from(document.querySelectorAll(".photo-folder[open]"), (el) => el.dataset.folder));
     document.title = j.shop.name + " · Your " + j.vehicle;
     const outcome = estimateOutcome(j);
-    const heading = j.stage === "invited" && j.intakeReceived ? "Check-in details received" :
+    const heading = j.closed ? "This repair was closed" : j.stage === "invited" && j.intakeReceived ? "Check-in details received" :
       j.stage === "approval" && outcome ? outcome : STAGES[idx].cust;
     const evAt = (k) => { const e = [...j.events].reverse().find((x) => x.stage === k); return e ? e.t : null; };
     const tl = STAGES.filter(s => s.key !== "invited" || evAt("invited")).filter((s) => s.key !== "picked_up" || evAt(s.key) || j.photos.some((p) => p.stage === s.key)).map((s) => {
@@ -138,7 +138,7 @@
       const folder = photoFolder(s.key, "View photos", j.photos.filter((p) => p.stage === s.key), openFolders);
       return `<li class="${cls}"><span>${decided ? outcome : s.label}</span><time>${t ? dayClock(t) : ""}</time>${folder}</li>`;
     }).join("");
-    const pending = awaitingDecision(j);
+    const pending = awaitingDecision(j) && !j.closed;
     let est = "";
     if (j.estimate.length) {
       const items = j.estimate.map((e) => {
@@ -278,9 +278,9 @@
   }
 
   function boardView() {
-    const active = jobs.filter((j) => j.stage !== "picked_up");
+    const active = jobs.filter((j) => j.stage !== "picked_up" && !j.closed);
     const inShop = active.filter(j => j.stage !== "invited");
-    const picked = jobs.length - active.length;
+    const picked = jobs.filter((j) => j.stage === "picked_up" && !j.closed).length;
     if (!jobs.length) {
       return `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car. The customer gets a private link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check in a car</button></div>`;
     }
@@ -323,7 +323,7 @@
   // ---------------- Archive: picked-up cars, kept one year ----------------
   function archiveView() {
     return `<section class="archive">
-      <div class="archive-h"><h2>Archive</h2><p class="muted">Picked-up cars stay here for one year, then they are deleted automatically.</p></div>
+      <div class="archive-h"><h2>Archive</h2><p class="muted">Picked-up cars and repairs closed without work stay here for one year, then they are deleted automatically.</p></div>
       <label class="field archive-search">Search<input id="archiveQ" type="search" value="${esc(archive.q)}" placeholder="Customer, phone, email, vehicle, plate, RO number or concern" autocomplete="off"></label>
       <div id="archiveRows" aria-live="polite"></div></section>`;
   }
@@ -340,7 +340,7 @@
           <span class="a-main"><b>${esc(veh)}</b>${r.plate ? `<span class="mono">${esc(r.plate)}</span>` : ""}</span>
           <span class="a-who">${esc(r.customer?.name || "")}${r.customer?.phone ? " · " + esc(fmtPhone(r.customer.phone)) : ""}${r.customer?.email ? " · " + esc(r.customer.email) : ""}</span>
           <span class="a-concern">${esc(r.concern || "")}</span>
-          <span class="a-meta"><span class="mono">${esc(r.ro)}</span><span>Picked up ${esc(new Date(ts(r.archivedAt)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}</span>${r.total ? `<span>${money(r.total)}</span>` : ""}<span class="muted">Deletes ${deleteDate(r.archivedAt)}</span></span>
+          <span class="a-meta"><span class="mono">${esc(r.ro)}</span><span>${r.closedReason ? `<span class="pill bad">Closed</span> ${esc(r.closedReason)},` : "Picked up"} ${esc(new Date(ts(r.archivedAt)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}</span>${r.total ? `<span>${money(r.total)}</span>` : ""}<span class="muted">Deletes ${deleteDate(r.archivedAt)}</span></span>
         </button></li>`;
       }).join("")}</ul>`;
   }
@@ -402,8 +402,9 @@
     return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
       <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(j.customer.name)} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
       <div class="sheet-body" data-job="${esc(j.id)}">
+        ${j.closed ? `<section class="sec closed-note"><p><b>Closed without repair</b> · ${esc(j.closed.reason)} · ${dayClock(j.closed.t)}</p><p class="muted">This car is in the Archive.</p><button class="btn" data-reopen>Reopen and put back on the board</button></section>` : ""}
         <section class="sec"><h3>Stage</h3><div class="stepper">${steps}</div>
-          <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer's page</a></div>
+          <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer's page</a>${j.stage !== "picked_up" && !j.closed ? `<button class="btn" data-close-job>Close without repair</button>` : ""}</div>
           ${j.stage === "parts" ? `<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
         </section>
         ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
@@ -429,7 +430,21 @@
         <section class="sec"><h3>Messages</h3><div class="thread">${j.messages.map((m) => bubble(m, j)).join("") || '<p class="muted">No messages yet.</p>'}</div>
           <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto"><input id="replyIn" maxlength="1000" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button class="btn primary" type="submit">Send</button></form></section>
         <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
+        <section class="sec danger-zone"><button class="linkbtn danger" data-delete-job>Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></section>
       </div></aside>`;
+  }
+
+  function closeModal() {
+    const j = job(ui.modal.closeJob);
+    const text = `Hi ${first(j.customer.name)}, we've closed out repair order ${j.ro} for your ${vehicleStr(j) || "vehicle"}. Thanks for considering ${shop.name}. Call us anytime if you change your mind.`;
+    return `<div class="modal"><form class="modal-card" id="closeForm" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+      <h2 id="cTitle">Close without repair</h2>
+      <p class="muted" style="margin:0">The car leaves the board and moves to the Archive, where it's kept for one year. You can reopen it from there.</p>
+      <label class="field">Reason<select id="c-reason">${["Customer declined the repair", "Customer didn't bring the car in", "Customer went elsewhere", "Duplicate or mistake", "Other"].map((r) => `<option>${esc(r)}</option>`).join("")}</select></label>
+      <label class="chk"><input type="checkbox" id="c-send" ${j.customer.consent ? "" : "disabled"}> Let ${esc(first(j.customer.name))} know ${j.customer.consent ? "" : "(customer has not agreed to notifications)"}</label>
+      <label class="field" id="c-text-wrap" hidden>Message<textarea id="c-text" maxlength="1000">${esc(text)}</textarea></label>
+      <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Close and archive</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+    </form></div>`;
   }
 
   function stageModal() {
@@ -451,6 +466,7 @@
     if (session && shop && ui.openJob && (ui.view === "board" || ui.view === "archive")) { const j = job(ui.openJob); if (j) h += sheetView(j); }
     if (ui.modal === "video") h += videoModal();
     else if (ui.modal?.billing) h += billing.editor(ui.modal.billing, shop, job(ui.modal.job));
+    else if (ui.modal?.closeJob) h += closeModal();
     else if (ui.modal) h += stageModal();
     const prev = $(".sheet-body"), keep = prev && prev.dataset.job === ui.openJob ? prev.scrollTop : null;
     $("#layer").innerHTML = h;
@@ -539,6 +555,19 @@
       t.disabled = true;
       await jobAction(id, "remove-photo", { id: photo.id }, "Photo removed");
       t.disabled = false;
+      return;
+    }
+    if (t.hasAttribute("data-close-job")) { ui.modal = { closeJob: ui.openJob }; renderLayer(); $("#c-reason")?.focus(); return; }
+    if (t.hasAttribute("data-reopen")) {
+      const j = await jobAction(ui.openJob, "reopen", {}, "Reopened. It's back on the board.");
+      if (j && ui.view === "archive") searchArchive();
+      return;
+    }
+    if (t.hasAttribute("data-delete-job")) {
+      const j = job(ui.openJob);
+      if (!j || !window.confirm(`Permanently delete ${j.ro} (${vehicleStr(j) || "vehicle"}, ${j.customer.name})? This can't be undone.`)) return;
+      const r = await act(() => api("DELETE", "shop/jobs/" + encodeURIComponent(j.id)), "Repair deleted");
+      if (r) { jobs = jobs.filter((x) => x.id !== j.id); ui.openJob = null; render(); if (ui.view === "archive") searchArchive(); }
       return;
     }
     if (t.dataset.del) { jobAction(ui.openJob, "estimate", { remove: t.dataset.del }); return; }
@@ -635,6 +664,13 @@
         upsertJob(j); ui.view = "board"; ui.openJob = j.id; render();
         toast("Saved. " + sendResult(j));
       }
+      return;
+    }
+    if (f.id === "closeForm") {
+      if (ui.busy) return;
+      const id = ui.modal.closeJob, send = $("#c-send").checked;
+      const j = await jobAction(id, "close", { reason: $("#c-reason").value, send, text: send ? $("#c-text").value.trim() : "" });
+      if (j) { toast("Closed and moved to the Archive" + (send ? ". " + sendResult(j) : "")); ui.modal = null; ui.openJob = null; render(); if (ui.view === "archive") searchArchive(); }
       return;
     }
     if (f.id === "sendForm") {
@@ -744,6 +780,7 @@
   }
   document.addEventListener("change", (e) => {
     if (e.target.id === "intakePhotoIn") return uploadIntakePhotos(e.target);
+    if (e.target.id === "c-send") { $("#c-text-wrap").hidden = !e.target.checked; return; }
     if (e.target.id === "ci-channel") {
       const pref = e.target.value, email = pref !== "sms", sms = pref !== "email";
       $("#ci-email-label").hidden = !email; $("#ci-email").disabled = !email; $("#ci-email").required = email;

@@ -21,11 +21,12 @@ function world() {
     async shopById(id) { const s = shops.get(id); return s ? clone(s) : null; },
     async putShop(s) { shops.set(s.id, clone(s)); },
     async listJobs(shopId, since) {
-      return [...jobs.values()].filter((j) => j.shopId === shopId && (j.stage !== 'picked_up' || j.updatedAt >= since)).map(clone);
+      return [...jobs.values()].filter((j) => j.shopId === shopId && ((j.stage !== 'picked_up' && !j.data.closed) || j.updatedAt >= since)).map(clone);
     },
     async getJob(id) { const j = jobs.get(id); return j ? clone(j) : null; },
     async jobByToken(t) { const j = [...jobs.values()].find((x) => x.token === t); return j ? clone(j) : null; },
     async putJob(j) { jobs.set(j.id, clone(j)); },
+    async deleteJob(id) { jobs.delete(id); },
     async saveIntake(id, intake) {
       const j = jobs.get(id)!;
       if (j.intake || j.stage !== 'invited') return false;
@@ -47,12 +48,12 @@ function world() {
     },
     async getBillPdf(id) { return billFiles.get(id) ?? null; },
     async searchArchive(shopId, since, terms, limit) {
-      return [...jobs.values()].filter((j) => j.shopId === shopId && j.stage === 'picked_up' && archivedAt(j)! >= since && terms.every((t) => archiveSearchText(j).includes(t)))
+      return [...jobs.values()].filter((j) => j.shopId === shopId && archivedAt(j) && archivedAt(j)! >= since && terms.every((t) => archiveSearchText(j).includes(t)))
         .sort((a, b) => archivedAt(b)!.localeCompare(archivedAt(a)!)).slice(0, limit)
-        .map((j) => ({ id: j.id, ro: j.data.ro, archivedAt: archivedAt(j)!, createdAt: j.createdAt, customer: j.data.customer, vehicle: j.data.vehicle, plate: j.data.plate, concern: j.data.concern, total: j.bill?.total ?? 0 }));
+        .map((j) => ({ id: j.id, ro: j.data.ro, archivedAt: archivedAt(j)!, createdAt: j.createdAt, customer: j.data.customer, vehicle: j.data.vehicle, plate: j.data.plate, concern: j.data.concern, total: j.bill?.total ?? 0, closedReason: j.data.closed?.reason ?? null }));
     },
     async purgeArchive(shopId, before) {
-      for (const [id, j] of jobs) if (j.shopId === shopId && j.stage === 'picked_up' && archivedAt(j)! < before) jobs.delete(id);
+      for (const [id, j] of jobs) if (j.shopId === shopId && archivedAt(j) && archivedAt(j)! < before) jobs.delete(id);
     },
     async nextRo(shopId) { const v = ro.get(shopId) ?? 1001; ro.set(shopId, v + 1); return v; },
   };
@@ -351,4 +352,29 @@ test('estimate and bill lines can be saved to the shop list for next time', asyn
   assert.deepEqual(rates(), ['fee:Shop supplies:12.5', 'part:Cabin air filter:28.5', 'labor:Brake labor:120'], 'names already saved are not duplicated');
   await dan('POST', `shop/jobs/${job.id}/bill`, { mode: 'generated', lines: [{ name: 'Disposal fee', kind: 'fee', rate: 5, qty: 1 }], save: true });
   assert.equal(rates().at(-1), 'fee:Disposal fee:5');
+});
+
+test('a repair the customer turned down can be closed into the archive, reopened, or deleted', async () => {
+  const { as, jobs, tick } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string; link: string };
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/close`, {}))?.status, 400, 'needs a reason');
+  const closed = (await dan('POST', `shop/jobs/${job.id}/close`, { reason: 'Customer declined the repair' }))?.body as { closed: { reason: string } };
+  assert.equal(closed.closed.reason, 'Customer declined the repair');
+  const rows = ((await dan('POST', 'shop/archive', { q: 'maria' }))?.body as { rows: { id: string; closedReason: string }[] }).rows;
+  assert.deepEqual(rows.map((r) => [r.id, r.closedReason]), [[job.id, 'Customer declined the repair']]);
+  const page = (await as(null)('GET', `shop/c/${job.link.split('?c=')[1]}`))?.body as { closed: boolean };
+  assert.equal(page.closed, true);
+
+  await dan('POST', `shop/jobs/${job.id}/reopen`, {});
+  assert.equal(((await dan('POST', 'shop/archive', { q: '' }))?.body as { rows: unknown[] }).rows.length, 0, 'reopened cars leave the archive');
+
+  await dan('POST', `shop/jobs/${job.id}/close`, { reason: 'Other' });
+  tick(3 * 86_400_000);
+  assert.equal(((await dan('GET', 'shop/jobs'))?.body as unknown[]).length, 0, 'closed cars leave the board');
+  assert.equal((await as('user-other')('DELETE', `shop/jobs/${job.id}`))?.status, 409);
+  assert.equal((await dan('DELETE', `shop/jobs/${job.id}`))?.status, 200);
+  assert.ok(!jobs.has(job.id));
+  assert.equal((await dan('GET', `shop/jobs/${job.id}`))?.status, 404);
 });
