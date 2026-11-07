@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}.sample-art{margin:10px 0;max-width:260px}.sample-art img{display:block;width:100%;height:auto;border-radius:8px}.sample-art figcaption{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.4}
+</style>
 <title>Talk Shops Demo</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -385,6 +386,20 @@ function checkinView(){
    <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit">Check in and text customer</button><button class="btn" type="button" id="ci-fill">Fill sample customer</button></div>
   </form>`;
 }
+// Artwork belongs to the named sample repair and line item, including in saved demos.
+function sampleIllustration(j, item) {
+  let file, caption;
+  if (j.id === "RO-1046" && !item) {
+    file = "battery-warning"; caption = "Check-in illustration · Battery warning light on the dash";
+  } else if (j.id === "RO-1041" && item?.item === "Front brake pads and rotors") {
+    file = "brake-pad"; caption = "Estimate illustration · Front brake pad with 2 mm of friction material";
+  } else if (j.id === "RO-1042" && item?.item === "Ignition coils (6) and spark plugs") {
+    file = "ignition-coil"; caption = "Estimate illustration · Ignition coil and spark plug";
+  } else {
+    return "";
+  }
+  return `<figure class="sample-art"><img src="/demo-art/${file}.svg" width="352" height="204" alt=""><figcaption>${caption}</figcaption></figure>`;
+}
 function customerView(j){
   const idx=SI[j.stage];
   const evAt=k=>{const e=[...j.events].reverse().find(e=>e.stage===k);return e?e.t:null};
@@ -398,7 +413,7 @@ function customerView(j){
       const d=ui.draft[j.id+"-"+e.id];
       const choice=pending&&e.status==="pending"?`<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d==="approved"}">Approve</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d==="declined"}">Decline</button></div>`
         :(e.status!=="pending"?`<span class="pill ${e.status==="approved"?"ok":"bad"}">${e.status==="approved"?"Approved":"Declined"}</span>`:"");
-      return `<div class="est-item"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${choice}</div>`}).join("");
+      return `<div class="est-item"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${sampleIllustration(j,e)}${choice}</div>`}).join("");
     const allChosen=j.estimate.filter(e=>e.status==="pending").every(e=>ui.draft[j.id+"-"+e.id]);
     const tot=pending?j.estimate.reduce((a,e)=>a+((ui.draft[j.id+"-"+e.id]??e.status)==="approved"?Number(e.price):0),0):estTotal(j,true);
     est=`<div class="c-card"><h3>Estimate</h3>${items}<div class="total"><span>${pending?"Approved so far":"Approved total"}</span><span>${money(tot)}</span></div>
@@ -416,7 +431,7 @@ function customerView(j){
     <div class="c-body">
       ${est}${photos}
       <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul></div>
-      <div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>
+      <div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div>${sampleIllustration(j)}</div>
       <div class="c-card call"><span>Questions? Call the shop</span><b>${SHOP.phone}</b></div>
     </div></div>`;
 }
@@ -424,7 +439,7 @@ function sheetView(j){
   const idx=SI[j.stage];
   const steps=STAGES.map((s,i)=>`<button class="step ${i<idx?"done":""} ${i===idx?"current":""}" data-stage="${s.key}" ${i===idx?'aria-current="step"':""}>${s.label}</button>`).join("");
   const next=STAGES[idx+1];
-  const rows=j.estimate.map(e=>`<tr><td>${esc(e.item)}</td><td>${e.status==="pending"?'<span class="pill warn">Pending</span>':e.status==="approved"?'<span class="pill ok">Approved</span>':'<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status==="pending"&&j.stage!=="approval"?`<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>`:""}</td></tr>`).join("");
+  const rows=j.estimate.map(e=>`<tr><td>${esc(e.item)}${sampleIllustration(j,e)}</td><td>${e.status==="pending"?'<span class="pill warn">Pending</span>':e.status==="approved"?'<span class="pill ok">Approved</span>':'<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status==="pending"&&j.stage!=="approval"?`<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>`:""}</td></tr>`).join("");
   const msgs=j.messages.map(m=>`<div class="bubble ${m.dir}">${linkify(esc(m.text),j)}<span class="meta">${m.dir==="out"?"Text to customer":esc(j.customer.name.split(" ")[0])} · ${dayClock(m.t)}</span></div>`).join("");
   const log=[...j.events].reverse().map(e=>`<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
   return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
@@ -434,7 +449,7 @@ function sheetView(j){
       ${next?`<div class="btn-row" style="margin-top:10px"><button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button><button class="btn" id="viewAsCust">See customer's page</button></div>`:""}
       ${j.stage==="parts"?`<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
     </section>
-    <section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div></section>
+    <section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div>${sampleIllustration(j)}</section>
     <section class="sec"><h3>Estimate</h3>
       ${j.estimate.length?`<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`:`<p class="muted" style="margin:0">No line items yet.</p>`}
       ${j.approval?`<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:""}
