@@ -227,7 +227,15 @@
     if (custToken) return renderCustomer();
     const app = $("#app"), chrome = $("#shopChrome");
     document.title = "Talk Shops" + (shop ? " · " + shop.name : "");
-    if (!session) { chrome.hidden = true; app.innerHTML = loginView(); renderLayer(); return; }
+    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/";
+    if (!session) {
+      chrome.hidden = true;
+      if (onLoginPage) document.title = "Shop sign in · Talk Shops";
+      app.innerHTML = onLoginPage ? loginView() : homeView();
+      renderLayer();
+      return;
+    }
+    if (onLoginPage) history.replaceState(history.state, "", "/" + location.search + location.hash);
     if (!loaded) { chrome.hidden = true; app.innerHTML = `<div class="loading">Loading your shop…</div>`; return; }
     if (!shop) { chrome.hidden = true; app.innerHTML = setupView(true); renderLayer(); return; }
     chrome.hidden = false;
@@ -246,10 +254,30 @@
 
   function loginView() {
     const signup = ui.authMode === "signup";
+    return `<div class="login-wrap"><section class="login">
+      ${brand()}
+      <h2>${signup ? "Create your shop account" : "Shop sign in"}</h2>
+      ${sb ? "" : `<p class="form-err">Sign-in isn't available on this copy of the site.</p>`}
+      <button class="btn google" id="google" type="button">${googleIcon} Continue with Google</button>
+      <div class="or">or use email</div>
+      <form class="auth-alt" id="emailForm">
+        <label class="field">Work email<input id="au-email" type="email" required autocomplete="username"></label>
+        <label class="field">Password<input id="au-pass" type="password" required minlength="8" autocomplete="${signup ? "new-password" : "current-password"}"></label>
+        <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create account" : "Sign in"}</button>
+      </form>
+      ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
+      ${ui.authMsg ? `<p class="form-ok" role="status">${esc(ui.authMsg)}</p>` : ""}
+      <button class="linkbtn" id="authSwap" type="button" style="align-self:flex-start">${signup ? "Already have an account? Sign in" : "New shop? Create an account"}</button>
+      <small class="muted">Customers use their repair link. Only shop staff need an account.</small>
+      <a class="login-home" href="/">← Back to Talk Shops</a>
+    </section></div>`;
+  }
+
+  function homeView() {
     return `<div class="front">
       <header class="front-nav"><div class="front-inner">
         <a class="front-wordmark" href="#top" aria-label="Talk Shops home"><span class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</span>Talk Shops</a>
-        <nav aria-label="Main navigation"><a href="#plans">Compare plans</a><a class="front-sign" href="#shop-login">Shop sign in</a></nav>
+        <nav aria-label="Main navigation"><a href="#plans">Compare plans</a><a class="front-sign" href="/login">Shop sign in</a></nav>
       </div></header>
       <section class="front-hero" id="top"><div class="front-inner">
         <div class="front-intro"><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
@@ -266,26 +294,12 @@
       <section class="front-work"><div class="front-inner">
         <div class="front-workflow"><h2>One repair, two views.</h2>
           <p>Your team manages the job in the bay. The customer follows along from their private link.</p>
-          <dl><dt>Check in the vehicle</dt><dd>Invite customers by text or email to describe the issue and send photos before the visit.</dd>
-          <dt>Show the work</dt><dd>Share inspection photos by repair stage and let customers approve or decline individual estimate lines.</dd>
-          <dt>Prepare for pickup</dt><dd>Send the final total with an itemized bill or your shop’s own PDF.</dd></dl>
+          <dl><div><dt>Check in the vehicle</dt><dd>Invite customers by text or email to describe the issue and send photos before the visit.</dd></div>
+          <div><dt>Show the work</dt><dd>Share inspection photos by repair stage and let customers approve or decline individual estimate lines.</dd></div>
+          <div><dt>Prepare for pickup</dt><dd>Send the final total with an itemized bill or your shop’s own PDF.</dd></div></dl>
           <button class="linkbtn" id="watchDemo" type="button">Watch the walkthrough video →</button>
         </div>
-        <div class="login" id="shop-login" tabindex="-1">
-      <h2>${signup ? "Create your shop account" : "Shop sign in"}</h2>
-      ${sb ? "" : `<p class="form-err">Sign-in isn't available on this copy of the site.</p>`}
-      <button class="btn google" id="google" type="button">${googleIcon} Continue with Google</button>
-      <div class="or">or use email</div>
-      <form class="auth-alt" id="emailForm">
-        <label class="field">Work email<input id="au-email" type="email" required autocomplete="username"></label>
-        <label class="field">Password<input id="au-pass" type="password" required minlength="8" autocomplete="${signup ? "new-password" : "current-password"}"></label>
-        <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create account" : "Sign in"}</button>
-      </form>
-      ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
-      ${ui.authMsg ? `<p class="form-ok" role="status">${esc(ui.authMsg)}</p>` : ""}
-      <button class="linkbtn" id="authSwap" type="button" style="align-self:flex-start">${signup ? "Already have an account? Sign in" : "New shop? Create an account"}</button>
-      <small class="muted">Customers use their repair link. Only shop staff need an account.</small>
-        </div></div></section>
+      </div></section>
       <section class="front-plans" id="plans"><div class="front-inner">
         <h2>Choose your shop’s plan.</h2><p>Both plans include unlimited email, photo updates, online estimate approvals and final bills.</p>
         <div class="front-tiers">
