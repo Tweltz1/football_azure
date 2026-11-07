@@ -59,7 +59,7 @@ function world() {
     const ctx = { userId, now: () => new Date(clock), newId: () => `id${++n}`, log: { info() {}, warn() {}, error() {} } } as unknown as Ctx;
     return shopRoute(ctx, deps, method, path.split('/'), body ?? null);
   };
-  return { as, texts, jobs };
+  return { as, texts, jobs, deps };
 }
 
 const checkIn = {
@@ -248,4 +248,31 @@ test('customer invitation, input and photos stay with the repair through check-i
   const final=(await customer('GET',link))?.body as {photos:unknown[];vehicle:string};
   assert.equal(final.photos.length,0);
   assert.equal(final.vehicle,'2018 Honda Civic');
+});
+
+test('email-only check-in and dual-channel repair messages record independent outcomes', async () => {
+  const { as, texts, deps } = world();
+  const owner = as('owner'), emails: string[] = [];
+  deps.email = { async send(to, subject, body) {
+    assert.equal(to,'customer@example.test');
+    assert.match(subject,/North Auto/);
+    emails.push(body);
+    return { delivery:'sent' };
+  }};
+  await owner('POST','shop/me',{name:'North Auto'});
+  const contact = {name:'Customer',email:'customer@example.test',consent:true,preference:'email'};
+  const emailJob = (await owner('POST','shop/jobs',{invite:true,customer:contact}))?.body as Job['data'] & {id:string; link:string};
+  assert.equal(texts.length,0);
+  assert.equal(emailJob.messages[0].channel,'email');
+  assert.ok(emails[0].includes(emailJob.link));
+  assert.equal((await owner('POST','shop/jobs',{invite:true,customer:{...contact,email:'bad'}}))?.status,400);
+  const dual = (await owner('POST','shop/jobs',{...checkIn,customer:{...contact,preference:'both',phone:checkIn.customer.phone}}))?.body as Job['data'] & {id:string;link:string};
+  assert.equal(texts.length,1);
+  assert.equal(dual.messages.length,2);
+  deps.email = undefined;
+  const updated = (await owner('POST','shop/jobs/'+dual.id+'/stage',{stage:'diagnosing',send:true,text:'Inspection has started.'}))?.body as Job['data'];
+  assert.deepEqual(updated.messages.slice(-2).map(m=>[m.channel,m.delivery]),[['sms','sent'],['email','not_sent']]);
+  assert.ok(updated.messages.at(-1)?.text.includes(dual.link));
+  const noConsent=(await owner('POST','shop/jobs',{...checkIn,customer:{...contact,consent:false}}))?.body as Job['data'];
+  assert.equal(noConsent.messages[0].delivery,'not_sent');
 });

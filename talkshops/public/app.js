@@ -38,6 +38,12 @@
     return approved ? "Estimate partially approved" : "Estimate declined";
   }
   const fmtPhone = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ""); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : (p || ""); };
+  const contact = c => [c.preference !== "email" && fmtPhone(c.phone), c.preference !== "sms" && c.email].filter(Boolean).join(" and ");
+  const channelName = m => m.channel === "email" ? "Email" : "Text";
+  function sendResult(j) {
+    const count = j.customer.preference === "both" ? 2 : 1;
+    return j.messages.slice(-count).map(m => channelName(m) + (m.delivery === "sent" ? " submitted" : " — " + (m.note || "not sent"))).join(". ");
+  }
   const first = (name) => String(name || "").split(/\s+/)[0];
 
   const sb = window.supabase && CFG.supabaseUrl && CFG.supabaseAnonKey
@@ -165,19 +171,20 @@
         <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         ${j.concern ? `<div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
         ${j.shop.phone ? `<div class="c-card call"><span>Questions? Call the shop</span><b>${esc(j.shop.phone)}</b></div>` : ""}
-        <p class="cust-top">We'll text you when anything changes. This page updates on its own.</p>
+        <p class="cust-top">This page updates as your repair progresses.</p>
       </div></div>`;
   }
 
   // ==================== Shop app (signed in) ====================
   const ui = { view: "board", openJob: null, modal: null, authMode: "signin", authMsg: "", authErr: "", busy: false };
-  let session = null, shop = null, jobs = [], loaded = false, loadErr = "";
+  let session = null, shop = null, emailConfigured = false, jobs = [], loaded = false, loadErr = "";
   const job = (id) => jobs.find((j) => j.id === id);
   const upsertJob = (j) => { const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
 
   async function loadShop() {
     try {
-      shop = (await api("GET", "shop/me")).shop;
+      const me = await api("GET", "shop/me");
+      shop = me.shop; emailConfigured = !!me.emailConfigured;
       jobs = shop ? await api("GET", "shop/jobs") : [];
       loadErr = "";
     } catch (e) { loadErr = e.message; }
@@ -224,7 +231,7 @@
         <span class="muted" style="font-size:13.5px">Take a 3-minute guided tour with narration. Halfway through, you can get a real text and approve a repair from your own phone.</span>
         <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}?tour=1" style="text-decoration:none">▶ Guided demo</a><a class="btn" href="${DEMO_PAGE}" style="text-decoration:none">Try demo shop</a><button class="linkbtn" id="watchDemo" type="button">Watch video</button></div>
       </div>
-      <p class="muted" style="font-size:13px;margin:0">Customers never sign in. They get a text with a link to their car's page.</p>
+      <p class="muted" style="font-size:13px;margin:0">Customers never sign in. They get a private link to their car's page.</p>
     </div></div>`;
   }
 
@@ -233,7 +240,7 @@
     return `<div class="${firstTime ? "login-wrap" : ""}"><form class="${firstTime ? "login" : "panel"}" id="setupForm">
       ${firstTime ? brand() : ""}
       <h2>${firstTime ? "Set up your shop" : "Shop settings"}</h2>
-      <p class="muted" style="margin:0">Customers see this name and phone number in their texts and on their car's page.</p>
+      <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
       <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
       <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(s.hours || "")}" placeholder="Mon–Fri 7:30am–6pm"></label>
@@ -247,7 +254,7 @@
     const inShop = active.filter(j => j.stage !== "invited");
     const picked = jobs.length - active.length;
     if (!jobs.length) {
-      return `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car. The customer gets a text with a link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check in a car</button></div>`;
+      return `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car. The customer gets a private link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check in a car</button></div>`;
     }
     const waiting = active.filter(awaitingDecision).length;
     const ready = active.filter((j) => j.stage === "ready").length;
@@ -257,7 +264,7 @@
       ${inShop.length === 1 ? `<button type="button" class="stat" data-open="${esc(inShop[0].id)}" aria-label="Open ${esc(vehicleStr(inShop[0]))}"><b>1</b><span>Cars in the shop</span></button>` : `<div class="stat"><b>${inShop.length}</b><span>Cars in the shop</span></div>`}
       <div class="stat warn"><b>${waiting}</b><span>Waiting on customer</span></div>
       <div class="stat ok"><b>${ready}</b><span>Ready for pickup</span></div>
-      <div class="stat"><b>${sent}</b><span>Texts sent today</span></div></div>
+      <div class="stat"><b>${sent}</b><span>Notifications submitted today</span></div></div>
       <div class="board-wrap"><div class="board">`;
     STAGES.filter((s) => s.key !== "picked_up").forEach((s) => {
       const list = active.filter((j) => j.stage === s.key);
@@ -281,35 +288,40 @@
       });
       h += `</section>`;
     });
-    h += `</div></div><p class="muted" style="font-size:13px;margin-top:10px">${picked ? picked + " picked up in the last 2 days. " : ""}Tap a car to update its stage, build an estimate or text the customer.</p>`;
+    h += `</div></div><p class="muted" style="font-size:13px;margin-top:10px">${picked ? picked + " picked up in the last 2 days. " : ""}Tap a car to update its stage, build an estimate or message the customer.</p>`;
     return h;
   }
 
   function checkinView() {
     return `<form class="panel" id="checkinForm" autocomplete="off">
       <h2>Customer check-in</h2>
-      <label class="field">Check-in method<select id="ci-method"><option value="staff">Enter vehicle details at the shop</option><option value="invite">Invite customer by text</option></select></label>
+      <label class="field">Check-in method<select id="ci-method"><option value="staff">Enter vehicle details at the shop</option><option value="invite">Invite customer by link</option></select></label>
       <p id="ci-help" class="muted">The customer gets a tracking link and can upload photos for the technician.</p>
       <div class="form-grid">
         <label class="field">Customer name<input id="ci-name" required maxlength="80"></label>
-        <label class="field">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
+        <label class="field">Notify customer by<select id="ci-channel"><option value="sms">Text message</option><option value="email">Email</option><option value="both">Text and email</option></select></label>
+        <label class="field" hidden id="ci-email-label">Email address<input id="ci-email" type="email" maxlength="254" autocomplete="email" disabled></label>
+        <p id="ci-email-note" class="muted full" hidden>Automatic email needs a sender connection. After saving, open the email draft in this repair’s Messages.</p>
+        <label class="field" id="ci-phone-label">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
         <label class="field" data-staff-intake>Year<input id="ci-year" inputmode="numeric" maxlength="4"></label>
         <label class="field" data-staff-intake>Make<input id="ci-make" required maxlength="40"></label>
         <label class="field" data-staff-intake>Model<input id="ci-model" required maxlength="40"></label>
         <label class="field" data-staff-intake>License plate<input id="ci-plate" maxlength="12"></label>
         <label class="field full" data-staff-intake>What's the concern?<textarea id="ci-concern" required maxlength="1000"></textarea></label>
-        <label class="chk full"><input type="checkbox" id="ci-consent" checked> Customer agreed to receive repair updates by text. They can reply STOP at any time.</label>
+        <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
       </div>
-      <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Check in and text customer</button></div>
+      <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Check in and notify customer</button></div>
     </form>`;
   }
 
   function bubble(m, j) {
     const unsent = m.dir === "out" && m.delivery && m.delivery !== "sent";
-    const who = m.dir === "out" ? "Text to customer" : esc(first(j.customer.name));
+    const who = m.dir === "out" ? channelName(m) + " to customer" : esc(first(j.customer.name));
     const status = unsent ? `<span class="delivery">${m.delivery === "failed" ? "Failed" : "Not sent"}${m.note ? ": " + esc(m.note) : ""}</span>` : "";
     const text = esc(m.text).replace(esc(j.link), `<a href="${esc(j.link)}" target="_blank" rel="noopener">${esc(j.link)}</a>`);
-    return `<div class="bubble ${m.dir}${unsent ? " unsent" : ""}">${text}<span class="meta">${who} · ${dayClock(m.t)}</span>${status}</div>`;
+    const draft = unsent && m.channel === "email" && j.customer.email && j.customer.consent
+      ? `<a class="btn" href="mailto:${esc(encodeURIComponent(j.customer.email))}?subject=${esc(encodeURIComponent(shop.name + " · " + j.ro))}&amp;body=${esc(encodeURIComponent(m.text))}">Open email draft</a>` : "";
+    return `<div class="bubble ${m.dir}${unsent ? " unsent" : ""}">${text}<span class="meta">${who} · ${dayClock(m.t)}</span>${status}${draft}</div>`;
   }
 
   function sheetView(j) {
@@ -319,7 +331,7 @@
     const rows = j.estimate.map((e) => `<tr><td>${esc(e.item)}${chargeDetail(e)}</td><td>${e.status === "pending" ? '<span class="pill warn">Pending</span>' : e.status === "approved" ? '<span class="pill ok">Approved</span>' : '<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status === "pending" && j.stage !== "approval" ? `<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>` : ""}</td></tr>`).join("");
     const log = [...j.events].reverse().map((e) => `<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
     return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-      <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(j.customer.name)} · ${esc(fmtPhone(j.customer.phone))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(j.customer.name)} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
       <div class="sheet-body">
         <section class="sec"><h3>Stage</h3><div class="stepper">${steps}</div>
           <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer's page</a></div>
@@ -341,7 +353,7 @@
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
           <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
         <section class="sec"><h3>Messages</h3><div class="thread">${j.messages.map((m) => bubble(m, j)).join("") || '<p class="muted">No messages yet.</p>'}</div>
-          <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto"><input id="replyIn" maxlength="1000" placeholder="Text ${esc(first(j.customer.name))}…" aria-label="Message"><button class="btn primary" type="submit">Send</button></form></section>
+          <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto"><input id="replyIn" maxlength="1000" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button class="btn primary" type="submit">Send</button></form></section>
         <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
       </div></aside>`;
   }
@@ -350,12 +362,12 @@
     const m = ui.modal, j = job(m.job), s = STAGES[SI[m.stage]];
     return `<div class="modal"><form class="modal-card" id="sendForm" role="dialog" aria-modal="true" aria-labelledby="mTitle">
       <h2 id="mTitle">Move to ${s.label}</h2>
-      <p class="muted" style="margin:0">Text to ${esc(j.customer.name)} at ${esc(fmtPhone(j.customer.phone))}</p>
+      <p class="muted" style="margin:0">Notify ${esc(j.customer.name)} at ${esc(contact(j.customer))}</p>
       ${m.stage === "parts" ? `<label class="field">Parts ETA<input id="m-eta" value="${esc(m.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
       ${m.stage === "ready" ? `<div><strong>Final bill</strong><p>${j.bill ? money(j.bill.total) + " due at pickup" : "Optional. Customers can open their bill from the pickup link."}</p>
         <div class="btn-row"><button class="btn" type="button" data-billing="generated">Create / edit bill</button><button class="btn" type="button" data-billing="upload">Upload shop PDF</button></div></div>` : ""}
       <label class="field">Message<textarea id="m-text" maxlength="1000">${esc(m.text)}</textarea></label>
-      <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent ? "checked" : "disabled"}> Send this text ${j.customer.consent ? "" : "(customer has not agreed to texts)"}</label>
+      <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent ? "checked" : "disabled"}> Notify customer ${j.customer.consent ? "" : "(customer has not agreed to notifications)"}</label>
       <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Update stage</button><button class="btn" type="button" data-cancel>Cancel</button></div>
     </form></div>`;
   }
@@ -533,13 +545,12 @@
       const invite = $("#ci-method").value === "invite";
       const g = (k) => $("#ci-" + k).value.trim();
       const j = await act(() => api("POST", "shop/jobs", {
-        invite, customer: { name: g("name"), phone: g("phone"), consent: $("#ci-consent").checked },
+        invite, customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("channel"), consent: $("#ci-consent").checked },
         ...(invite ? {} : { vehicle: { year: g("year"), make: g("make"), model: g("model") }, plate: g("plate"), concern: g("concern") }),
       }));
       if (j) {
         upsertJob(j); ui.view = "board"; ui.openJob = j.id; render();
-        const m = j.messages[0];
-        toast(m?.delivery === "sent" ? (invite ? "Check-in invitation sent" : "Checked in. Welcome text sent.") : "Saved. Text not sent: " + (m?.note || "unknown error"));
+        toast("Saved. " + sendResult(j));
       }
       return;
     }
@@ -547,8 +558,8 @@
       const m = ui.modal, eta = $("#m-eta");
       const body = { stage: m.stage, text: $("#m-text").value.trim(), send: $("#m-send").checked };
       if (eta) body.eta = eta.value.trim();
-      const j = await jobAction(m.job, "stage", body, "Moved to " + STAGES[SI[m.stage]].label);
-      if (j) { ui.modal = null; if (j.stage === "picked_up") ui.openJob = null; render(); }
+      const j = await jobAction(m.job, "stage", body);
+      if (j) { toast("Moved to " + STAGES[SI[m.stage]].label + (body.send && body.text ? ". " + sendResult(j) : "")); ui.modal = null; if (j.stage === "picked_up") ui.openJob = null; render(); }
       return;
     }
     if (f.id === "addLine") {
@@ -560,7 +571,7 @@
     if (f.id === "replyForm") {
       const v = $("#replyIn").value.trim(); if (!v) return;
       const j = await jobAction(ui.openJob, "message", { text: v });
-      if (j) { const last = j.messages[j.messages.length - 1]; toast(last.delivery === "sent" ? "Text sent" : "Saved. Text not sent: " + (last.note || "")); $("#replyIn")?.focus(); }
+      if (j) { toast(sendResult(j)); $("#replyIn")?.focus(); }
     }
   });
 
@@ -644,10 +655,18 @@
   }
   document.addEventListener("change", (e) => {
     if (e.target.id === "intakePhotoIn") return uploadIntakePhotos(e.target);
+    if (e.target.id === "ci-channel") {
+      const pref = e.target.value, email = pref !== "sms", sms = pref !== "email";
+      $("#ci-email-label").hidden = !email; $("#ci-email").disabled = !email; $("#ci-email").required = email;
+      $("#ci-phone-label").hidden = !sms; $("#ci-phone").disabled = !sms; $("#ci-phone").required = sms;
+      $("#ci-email-note").hidden = !email || emailConfigured;
+      $("#ci-consent").checked = false;
+      return;
+    }
     if (e.target.id === "ci-method") {
       const invite = e.target.value === "invite", form = e.target.form;
       form.querySelectorAll("[data-staff-intake]").forEach(el => { el.hidden = invite; el.querySelector("input,textarea").disabled = invite; });
-      form.querySelector('[type="submit"]').textContent = invite ? "Send check-in link" : "Check in and text customer";
+      form.querySelector('[type="submit"]').textContent = invite ? "Send check-in link" : "Check in and notify customer";
       $("#ci-consent").required = invite;
       $("#ci-help").textContent = invite ? "Send a private link for vehicle details, the reason for the visit and photos." : "The customer gets a tracking link and can upload photos for the technician.";
       return;
