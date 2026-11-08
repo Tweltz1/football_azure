@@ -597,6 +597,42 @@
       }
       step(); { const c = say("wk-5"); await tap("#viewAsCust"); await wait(400); q(".wt-card")?.scrollIntoView({ block: "start" }); highlight(".wt-card"); await cue(0.5); highlight(".wt-table"); await c; }
     },
+    async walkaround() {
+      STEPS = 6; await begin("board");
+      const review = async (id, act) => { await tap(`[data-wa-open="${id}"]`); await wait(300); highlight(".wa-modal"); return act; };
+      step(); {
+        const c = say("wa-1"); await openSheet("RO-1046"); q("#waSec")?.scrollIntoView({ block: "center" }); highlight("#waSec");
+        await cue(0.6); highlight("[data-wa-request]"); await cue(0.75); await tap("[data-wa-request]"); await wait(300); highlight("#waSec");
+        await c;
+      }
+      step(); {
+        const c = say("wa-2"); await tap("#viewAsCust"); await wait(400); q(".wa-card")?.scrollIntoView({ block: "start" }); highlight(".wa-card");
+        await cue(0.3); highlight(".wa-grid"); await cue(0.55); highlight(".wa-next"); await cue(0.8); highlight(".wa-next .btn");
+        await c;
+      }
+      step(); {
+        const c = say("wa-3"); await tap("#backToShop"); await wait(300); await openSheet("RO-1043"); q("#waSec")?.scrollIntoView({ block: "center" }); highlight("#waSec");
+        await cue(0.3); highlight("[data-wa-ai]"); await tap("[data-wa-ai]"); await wait(2200); highlight("#waSec .wa-grid");
+        await c;
+      }
+      step(); {
+        const c = say("wa-4"); await cue(0.15); await review("wa-rear");
+        await cue(0.45); await tap('[data-wa-confirm="0"]'); highlight(".wa-marks");
+        await cue(0.7); highlight(".wa-big");
+        await c; await tap("[data-wa-save]"); await wait(300);
+      }
+      step(); {
+        const c = say("wa-5"); await review("wa-right");
+        await cue(0.4); highlight(".wa-marks"); await cue(0.5); await tap('[data-wa-del="0"]');
+        await cue(0.65); await tap("[data-wa-save]"); await wait(300); highlight("#waSec");
+        await c;
+      }
+      step(); {
+        const c = say("wa-6"); await tap("#viewAsCust"); await wait(400); q(".wa-card")?.scrollIntoView({ block: "start" }); highlight(".wa-card");
+        await cue(0.45); highlight(q(".wa-found") || ".wa-card");
+        await c;
+      }
+    },
     async customer() {
       STEPS = 5; await begin("board");
       step(); { const c = say("cu-1"); await cue(0.5); await openSheet("RO-1041"); highlight("#viewAsCust"); await cue(0.85); await tap("#viewAsCust"); highlight(".c-head"); await c; }

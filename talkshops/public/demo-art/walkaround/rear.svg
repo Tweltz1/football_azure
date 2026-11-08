@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfe7ef"/><stop offset="1" stop-color="#c9d3dd"/></linearGradient></defs>
+<rect width="400" height="300" fill="url(#s)"/><rect x="0" y="190" width="400" height="110" fill="#9aa0a6"/>
+<rect x="0" y="40" width="400" height="12" fill="#b9c3cc"/><path d="M0 245 H400" stroke="#f2f2f2" stroke-width="3" stroke-dasharray="26 18" opacity=".7"/>
+<ellipse cx="200" cy="236" rx="140" ry="12" fill="#000" opacity=".18"/>
+<path d="M78 210 L80 140 Q84 120 108 116 L130 84 Q138 76 156 76 L244 76 Q262 76 270 84 L292 116 Q316 120 320 140 L322 210 Z" fill="#5b6f86"/>
+<path d="M140 116 L158 88 L242 88 L260 116 Z" fill="#a9c3d8"/>
+<rect x="88" y="130" width="46" height="26" rx="6" fill="#c0392b"/><rect x="266" y="130" width="46" height="26" rx="6" fill="#c0392b"/>
+<rect x="166" y="150" width="68" height="18" rx="2" fill="#f5f5f5"/><text x="200" y="164" font-family="monospace" font-size="12" text-anchor="middle" fill="#333">9PLN227</text>
+<rect x="78" y="182" width="244" height="28" rx="6" fill="#3f4f61"/>
+<rect x="84" y="206" width="38" height="30" rx="6" fill="#22262c"/><rect x="278" y="206" width="38" height="30" rx="6" fill="#22262c"/><path d="M232 188 l46 6 M236 194 l38 5 M244 200 l26 3" stroke="#e3e7eb" stroke-width="2.5" stroke-linecap="round"/></svg>

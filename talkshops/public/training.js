@@ -6,6 +6,7 @@ window.TALKSHOPS_TRAINING = (() => {
     { id: "bay", title: "The Bay", mins: 2, desc: "Tabs and the More menu, filters, stage columns, time-in-shop colors and search." },
     { id: "checkin", title: "Checking in a car", mins: 2, desc: "Check-in methods, notifying by text, email or both, and customer consent." },
     { id: "walk", title: "Before and after walk-through", mins: 2, desc: "The 11-point check at check-in and after the repair, notes, and what the customer sees." },
+    { id: "walkaround", title: "Walk-around photos and AI damage marks", mins: 2, desc: "Asking for 8 photos, the customer's guide, finding damage with AI, and confirming marks." },
     { id: "stages", title: "Stages and notifications", mins: 1, desc: "Moving a car along, editing what the customer is told, and messaging." },
     { id: "estimates", title: "Estimates and saved items", mins: 2, desc: "Quick add, saved items, Required/Recommended/Optional, and sending for approval." },
     { id: "customer", title: "The customer's page", mins: 1, desc: "What customers see, priority labels, approving item by item, and signing." },

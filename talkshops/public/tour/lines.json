@@ -89,5 +89,11 @@
   "wk-2": "Tap start walk-through. There are eleven quick points, from body and glass to dashboard warning lights. Tap good, watch, or repair for each one you check. Here, the battery tested weak, so we'll mark it repair, and add a note the customer will read.",
   "wk-3": "Checked the rest and it's all fine? Tap mark the rest good. Add the mileage, and a short summary if you like. Leave notify checked, and the customer gets a link to the report. Then save.",
   "wk-4": "When the work is done, start the after walk-through. It begins as a copy of the check-in, so you only change what's different. The new battery is in, so battery is now good. Save it.",
-  "wk-5": "On the customer's page, the walk-through shows check-in and after, side by side, with anything that needs attention at the top. It's an easy way to show exactly what you checked, and what changed."
+  "wk-5": "On the customer's page, the walk-through shows check-in and after, side by side, with anything that needs attention at the top. It's an easy way to show exactly what you checked, and what changed.",
+  "wa-1": "In this lesson, we'll cover walk-around photos. They're a record of the car's condition, great for body work, or for showing a scratch was already there. Open a car, and find Walk-around photos. Tap ask for walk-around photos, and leave notify checked, so the customer gets the link.",
+  "wa-2": "On the customer's page, Talk Shops guides them through eight shots: the front, the back, both sides, and all four corners. A little map shows exactly where to stand. They tap take photo for each one, and they can retake any shot.",
+  "wa-3": "Back in the shop, here's a car where the customer already sent all eight photos. Tap find damage with AI. It looks for scratches, dents, cracks, chips, scuffs, rust, and broken parts, and marks every spot it finds.",
+  "wa-4": "The AI only suggests. Tap a photo to review it. Here, it found a scratch on the rear bumper. That's real, so tap confirm. You can also change the type of damage, edit the note, or tap the photo to add a mark yourself.",
+  "wa-5": "On the passenger side, it marked a scuff, but that's just a reflection. Tap remove, then save. Only the marks you confirm ever reach the customer.",
+  "wa-6": "Now the customer sees their photos, with every confirmed mark, and a list of the damage noted by the shop. You both have the same record, before any work begins."
 }

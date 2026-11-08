@@ -301,10 +301,11 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=1"></script>
-<script src="/training.js?v=3"></script>
+<script src="/training.js?v=4"></script>
 <script src="/howto.js?v=4"></script>
 <script src="/team.js?v=2"></script>
 <script src="/walkthrough.js?v=2"></script>
+<script src="/walkaround.js?v=1"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
@@ -345,6 +346,7 @@ const token=()=>Math.random().toString(36).slice(2,8)+Math.random().toString(36)
 const first=n=>String(n||"").split(" ")[0];
 const vehicleStr=j=>`${j.vehicle.year} ${j.vehicle.make} ${j.vehicle.model}`;
 const linkOf=j=>`${SHOP.domain}/s/${j.token}`;
+const WA_ANGLES=["front","front_right","right","rear_right","rear","rear_left","left","front_left"];
 const estTotal=(j,onlyApproved)=>j.estimate.filter(e=>!onlyApproved||e.status==="approved").reduce((a,e)=>a+Number(e.price),0);
 const contact=c=>c.channel==="email"?c.email:c.channel==="both"?c.phone+" · "+c.email:c.phone;
 const bayName=()=>SHOP.name+" Bay";
@@ -394,6 +396,9 @@ function seed(){
   james.messages.splice(3,0,{dir:"in",t:now-1350*M,text:"Approved the coils and plugs. Skip the throttle body for now."});
   const marcus=jobs.find(j=>j.ro==="RO-1040");marcus.approval={by:"Marcus Hill",t:now-1.75*D*M};
   const priya=jobs.find(j=>j.ro==="RO-1043");priya.approval={by:"Priya Nair",t:now-4.25*D*M};
+  // Priya sent all 8 walk-around photos at check-in (sample illustrations); the AI hasn't checked them yet.
+  priya.walkaroundRequest={t:now-4.5*D*M};
+  priya.walkaround=WA_ANGLES.map((a,i)=>({id:"wa-"+a,angle:a,src:"/demo-art/walkaround/"+a+".svg",t:now-4.45*D*M+i*40000,marks:[],aiAt:null}));
   // Archive: picked-up cars and one closed without repair
   const past=(ro,cust,veh,plate,concern,daysAgo,estimate,extra={})=>{
     const t=now-daysAgo*D*M;
@@ -707,7 +712,7 @@ function customerView(j){
    <div class="cust-page">
     <div class="c-head"><small>${esc(SHOP.name)} · <span class="mono">${j.ro}</span></small><h2>${j.closed?"This repair was closed":stage.cust}</h2><div style="font-size:14px;margin-top:4px">${esc(vehicleStr(j))}</div>${extra}</div>
     <div class="c-body">
-      ${est}${bill}${window.Walkthrough.customerCard(j)}${photos}${notes}
+      ${est}${bill}${window.Walkthrough.customerCard(j)}${window.Walkaround.customerCard(waCustomer(j))}${photos}${notes}
       <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul></div>
       <div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div>${sampleIllustration(j)}</div>
       <div class="c-card call"><span>Questions? Call the shop</span><b>${esc(SHOP.phone)}</b></div>
@@ -736,6 +741,7 @@ function sheetView(j){
     <section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div>${sampleIllustration(j)}</section>
     ${live?`<p class="howto-link"><button class="linkbtn" data-howto-job="${j.id}">Look up how to do a repair on this ${esc(vehicleStr(j))}</button></p>`:""}
     ${window.Walkthrough.sheetSection(j).replace('<section class="sec">','<section class="sec" id="walkSec">')}
+    ${j.closed?"":window.Walkaround.sheetSection(j).replace('<section class="sec">','<section class="sec" id="waSec">')}
     <section class="sec" id="estSec"><h3>Estimate</h3>
       ${j.estimate.length?`<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some(e=>e.status!=="pending")?`<div class="total"><span>Approved total</span><span>${money(estTotal(j,true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`:`<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}`:`<p class="muted" style="margin:0">No line items yet.</p>`}
       ${j.approval?`<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:""}
@@ -957,6 +963,35 @@ document.addEventListener("input",e=>{
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(ui.modal){ui.modal=null;renderLayer()}else closeJobSheet()}});
 window.addEventListener("hashchange",render);
+/* --- walk-around photos (demo: the "AI" suggestions are fixed samples for the sample photos) --- */
+const WA_SUGG={
+  rear:[{x:.56,y:.6,w:.16,h:.11,kind:"scratch",note:"Rear bumper, passenger side"}],
+  left:[{x:.26,y:.51,w:.13,h:.11,kind:"dent",note:"Driver rear door"}],
+  front_left:[{x:.82,y:.6,w:.1,h:.08,kind:"scuff",note:"Front bumper, driver corner"}],
+  right:[{x:.29,y:.51,w:.17,h:.09,kind:"scuff",note:"Passenger front door"}]};
+function waCustomer(j){return{shop:{name:SHOP.name},walkaround:{requested:!!j.walkaroundRequest,canUpload:!!j.walkaroundRequest&&!j.closed&&j.stage!=="picked_up",
+  photos:(j.walkaround||[]).map(p=>({...p,marks:p.marks.filter(m=>m.confirmed)}))}}}
+const waEncode=file=>new Promise((ok,bad)=>{const r=new FileReader();r.onerror=()=>bad(new Error("Couldn't read that photo"));r.onload=()=>{const img=new Image();img.onerror=()=>bad(new Error("Couldn't read that photo"));
+  img.onload=()=>{const sc=Math.min(1,1200/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*sc;c.height=img.height*sc;c.getContext("2d").drawImage(img,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.8))};img.src=r.result};r.readAsDataURL(file)});
+window.Walkaround.init({esc,toast,first,encode:waEncode,sendResult:()=>"Customer notified.",
+  api:async(m,path,body)=>{
+    const seg=path.split("/");
+    if(seg[1]==="c"){const j=state.jobs.find(x=>x.token===decodeURIComponent(seg[2]));if(!j||!j.walkaroundRequest)throw new Error("This page isn't asking for photos.");
+      await new Promise(r=>setTimeout(r,500));j.walkaround=(j.walkaround||[]).filter(p=>p.angle!==body.angle);
+      j.walkaround.push({id:"wa-"+body.angle+"-"+Date.now(),angle:body.angle,src:body.src,t:Date.now(),marks:[],aiAt:null});save();return waCustomer(j)}
+    const j=job(decodeURIComponent(seg[2])),action=seg[3];if(!j)throw new Error("Car not found");
+    if(action==="walkaround-request"){
+      if(body.on===false)j.walkaroundRequest=null;
+      else{j.walkaroundRequest={t:Date.now()};if(body.send&&j.customer.consent!==false)notify(j,`Hi ${first(j.customer.name)}, could you take a few photos of your ${vehicleStr(j)} for our records? Your page shows where to stand for each one: ${linkOf(j)}`)}}
+    if(action==="walkaround-ai"){await new Promise(r=>setTimeout(r,1600));
+      for(const p of j.walkaround||[])if(body.photoId?p.id===body.photoId:!p.aiAt){p.aiAt=Date.now();
+        const keep=p.marks.filter(x=>x.confirmed||x.source==="shop");
+        p.marks=[...keep,...(p.src.startsWith("/demo-art/")?(WA_SUGG[p.angle]||[]):[]).map(x=>({...x,source:"ai",confirmed:false}))]}}
+    if(action==="walkaround-marks"){const p=(j.walkaround||[]).find(x=>x.id===body.photoId);if(p)p.marks=body.marks}
+    if(action==="walkaround-remove")j.walkaround=(j.walkaround||[]).filter(x=>x.id!==body.photoId);
+    save();return j},
+  token:()=>job(ui.custJob)?.token,customer:()=>{const j=job(ui.custJob);return j?waCustomer(j):null},setCustomer:()=>{},renderCustomer:()=>render(),
+  job,openJob:()=>ui.openJob,onJob:()=>save(),render:()=>{if(location.hash.startsWith("#s-"))render();else renderLayer()}});
 setInterval(()=>{if(ui.view==="board"&&!ui.openJob&&!ui.modal&&document.activeElement?.id!=="boardSearch"&&!window.TOUR_ACTIVE)render()},60000);
 render();
 if(new URLSearchParams(location.search).has("smart")){
@@ -965,7 +1000,7 @@ if(new URLSearchParams(location.search).has("smart")){
 }
 </script>
 <script src="/config.js"></script>
-<script src="/tour.js?v=202"></script>
+<script src="/tour.js?v=203"></script>
 <script src="/shell.js?v=1"></script>
 </body>
 </html>
