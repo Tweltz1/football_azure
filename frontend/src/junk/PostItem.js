@@ -1,0 +1,223 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { SignInPrompt, useJunk } from './JunkApp';
+import { createItem, getItem, updateItem, uploadPhoto } from './junkApi';
+import { CATEGORIES, CONDITIONS, photoToJpeg } from './device';
+import { BackButton } from './ItemPage';
+import { IconCamera, IconClose, IconPin, IconSparkle } from './icons';
+
+const MAX_PHOTOS = 6;
+const EMPTY = { title: '', description: '', category: '', condition: 'good', tags: [], pickup: '' };
+
+export default function PostItem() {
+  const { id } = useParams();
+  const editing = Boolean(id);
+  const navigate = useNavigate();
+  const { me, authLoading, spot, refreshSpot, locating, spotError } = useJunk();
+  const [photos, setPhotos] = useState([]); // { key, path?, url?, preview, uploading, error }
+  const [form, setForm] = useState(EMPTY);
+  const [touched, setTouched] = useState({});
+  const [detecting, setDetecting] = useState(false);
+  const [detected, setDetected] = useState(false);
+  const [aiNote, setAiNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(!editing);
+  const fileRef = useRef(null);
+  const detectAsked = useRef(false);
+  const touchedRef = useRef(touched);
+  touchedRef.current = touched;
+
+  useEffect(() => {
+    if (!editing || !me) return;
+    getItem(id).then((item) => {
+      if (!item.mine) { navigate(`/junk/item/${id}`, { replace: true }); return; }
+      setForm({ title: item.title, description: item.description, category: item.category, condition: item.condition, tags: item.tags, pickup: item.pickup });
+      setPhotos(item.photos.map((url) => ({ key: url, url, preview: url, path: decodeURIComponent(url.split('/junk-photos/')[1] || '') })));
+      setDetected(item.aiDetected);
+      setLoaded(true);
+    }).catch((err) => { setError(err.message); setLoaded(true); });
+  }, [editing, id, me, navigate]);
+
+  if (!me) {
+    return (
+      <main className="jk-page">
+        <div className="jk-topbar"><BackButton /><h1>Post an item</h1></div>
+        {authLoading ? null : <SignInPrompt title="Give something away" text="Sign in to post free stuff for neighbors to pick up." />}
+      </main>
+    );
+  }
+
+  const set = (key, value) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setTouched((t) => ({ ...t, [key]: true }));
+  };
+
+  // Fill in whatever the person hasn't typed yet with what Gemini saw.
+  const applyDetection = (d) => {
+    if (!d) return;
+    const t = touchedRef.current;
+    setForm((f) => ({
+      ...f,
+      title: t.title && f.title ? f.title : d.title || f.title,
+      description: t.description && f.description ? f.description : d.description || f.description,
+      category: t.category && f.category ? f.category : d.category || f.category,
+      condition: t.condition ? f.condition : d.condition || f.condition,
+      tags: d.tags && d.tags.length ? d.tags : f.tags,
+    }));
+    setDetected(true);
+    setAiNote(d.title ? `Looks like: ${d.title}` : '');
+  };
+
+  const addFiles = async (fileList) => {
+    const files = [...fileList].slice(0, MAX_PHOTOS - photos.length);
+    if (!files.length) return;
+    setError('');
+    for (const file of files) {
+      const key = `${Date.now()}-${Math.random()}`;
+      let preview;
+      try {
+        preview = await photoToJpeg(file);
+      } catch (err) {
+        setError(err.message);
+        continue;
+      }
+      setPhotos((list) => [...list, { key, preview, uploading: true }]);
+      // Only the first photo of a new listing is sent for detection.
+      const detect = !editing && !detectAsked.current;
+      if (detect) { detectAsked.current = true; setDetecting(true); }
+      try {
+        const res = await uploadPhoto(preview, detect);
+        setPhotos((list) => list.map((p) => (p.key === key ? { ...p, path: res.path, url: res.url, uploading: false } : p)));
+        if (detect) applyDetection(res.detected);
+      } catch (err) {
+        setPhotos((list) => list.filter((p) => p.key !== key));
+        setError(err.message);
+        if (detect) detectAsked.current = false;
+      } finally {
+        if (detect) setDetecting(false);
+      }
+    }
+  };
+
+  const removePhoto = (key) => setPhotos((list) => list.filter((p) => p.key !== key));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (photos.some((p) => p.uploading)) { setError('Hang on, photos are still uploading.'); return; }
+    if (!form.title.trim()) { setError('Give it a name, like "Wood dresser".'); return; }
+    if (!editing && !spot) { setError('Turn on location so people nearby can find it.'); return; }
+    setSaving(true);
+    try {
+      const fields = {
+        ...form,
+        category: form.category || 'other',
+        photos: photos.map((p) => p.path).filter(Boolean),
+        aiDetected: detected,
+      };
+      const item = editing ? await updateItem(id, fields) : await createItem({ ...fields, lat: spot.lat, lng: spot.lng });
+      navigate(`/junk/item/${item.id}`, { replace: true });
+    } catch (err) {
+      setError(err.message);
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) return <main className="jk-page"><div className="jk-topbar"><BackButton /></div></main>;
+
+  return (
+    <main className="jk-page jk-post">
+      <div className="jk-topbar">
+        <BackButton to={editing ? `/junk/item/${id}` : '/junk'} />
+        <h1>{editing ? 'Edit listing' : 'Give something away'}</h1>
+      </div>
+
+      <form onSubmit={submit} className="jk-form">
+        <section>
+          <div className="jk-photo-row">
+            {photos.map((p, i) => (
+              <div key={p.key} className={`jk-thumb${p.uploading ? ' is-uploading' : ''}`}>
+                <img src={p.preview} alt={i === 0 ? "Cover" : `Extra shot ${i}`} />
+                {i === 0 && <span className="jk-thumb-cover">Cover</span>}
+                <button type="button" className="jk-thumb-x" onClick={() => removePhoto(p.key)} aria-label="Remove photo"><IconClose size={14} /></button>
+              </div>
+            ))}
+            {photos.length < MAX_PHOTOS && (
+              <button type="button" className={`jk-add-photo${photos.length ? '' : ' is-big'}`} onClick={() => fileRef.current?.click()}>
+                <IconCamera size={photos.length ? 24 : 34} />
+                <span>{photos.length ? 'Add' : 'Snap or pick a photo'}</span>
+                {!photos.length && <small>We'll figure out what it is for you</small>}
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
+          />
+          {detecting && <p className="jk-ai-status is-working"><IconSparkle size={16} /> Figuring out what this is…</p>}
+          {!detecting && aiNote && <p className="jk-ai-status"><IconSparkle size={16} /> {aiNote}. Edit anything below.</p>}
+        </section>
+
+        <label className="jk-field">
+          <span>What is it?</span>
+          <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Wood dresser" maxLength={80} />
+        </label>
+
+        <div className="jk-field">
+          <span>Category</span>
+          <div className="jk-choice-row">
+            {CATEGORIES.map(([key, label, icon]) => (
+              <button type="button" key={key} className={`jk-chip${form.category === key ? ' is-on' : ''}`} onClick={() => set('category', key)}>
+                <span aria-hidden="true">{icon}</span> {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="jk-field">
+          <span>Condition</span>
+          <div className="jk-choice-row">
+            {CONDITIONS.map(([key, label]) => (
+              <button type="button" key={key} className={`jk-chip${form.condition === key ? ' is-on' : ''}`} onClick={() => set('condition', key)}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        <label className="jk-field">
+          <span>Description <em>optional</em></span>
+          <textarea value={form.description} onChange={(e) => set('description', e.target.value)} rows={3} maxLength={1000}
+            placeholder="Size, what's wrong with it, anything worth knowing" />
+        </label>
+
+        <label className="jk-field">
+          <span>Pickup details <em>optional</em></span>
+          <textarea value={form.pickup} onChange={(e) => set('pickup', e.target.value)} rows={2} maxLength={300}
+            placeholder="On the curb, grab it anytime. Or: message me to set a time." />
+        </label>
+
+        {!editing && (
+          <div className="jk-location-note">
+            <IconPin size={18} />
+            <p>
+              {spot ? 'Listed at your current spot. Others only see how far away it is, never your address.'
+                : locating ? 'Finding your location…' : spotError || 'Location is needed so neighbors can find it.'}
+            </p>
+            {!spot && !locating && <button type="button" className="jk-link" onClick={refreshSpot}>Try again</button>}
+          </div>
+        )}
+
+        {error && <p className="jk-error" role="alert">{error}</p>}
+        <div className="jk-form-actions">
+          <button type="submit" className="jk-btn jk-btn-primary jk-full" disabled={saving || detecting}>
+            {saving ? 'Saving…' : editing ? 'Save changes' : 'Post it for free'}
+          </button>
+        </div>
+      </form>
+    </main>
+  );
+}

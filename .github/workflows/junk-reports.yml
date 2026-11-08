@@ -1,0 +1,61 @@
+name: Junk App reports
+
+# Apple requires acting on reported content within 24 hours. This runs every morning and lists Junk App
+# listings reported in the last day. It FAILS (so GitHub emails you) when there are any, so they get seen.
+# Listings with 3 reports are already hidden automatically.
+#
+# To take something down, run it from the Actions tab with:
+#   hide_item: a listing id from the report list (hides that listing), or
+#   ban_user:  an owner id from the report list (hides every listing that person posted).
+on:
+  schedule:
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+    inputs:
+      hide_item:
+        description: 'Listing id to hide'
+        default: ''
+      ban_user:
+        description: 'Owner id whose listings to hide'
+        default: ''
+
+jobs:
+  reports:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      HIDE_ITEM: ${{ github.event.inputs.hide_item }}
+      BAN_USER: ${{ github.event.inputs.ban_user }}
+    steps:
+      - name: Take down
+        if: ${{ github.event.inputs.hide_item != '' || github.event.inputs.ban_user != '' }}
+        run: |
+          uuid='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          if [ -n "$HIDE_ITEM" ]; then
+            [[ "$HIDE_ITEM" =~ $uuid ]] || { echo "hide_item must be a listing id"; exit 1; }
+            query="update public.junk_items set status = 'hidden' where id = '$HIDE_ITEM' returning id, title"
+          else
+            [[ "$BAN_USER" =~ $uuid ]] || { echo "ban_user must be an owner id"; exit 1; }
+            query="update public.junk_items set status = 'hidden' where owner_id = '$BAN_USER' returning id, title"
+          fi
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "$(jq -n --arg q "$query" '{query: $q}')" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" | jq -r '.[] | "Hidden: \(.title) (\(.id))"'
+
+      - name: Reports from the last day
+        if: ${{ github.event.inputs.hide_item == '' && github.event.inputs.ban_user == '' }}
+        run: |
+          query="select r.created_at, r.reason, i.id as item_id, i.title, i.status, i.reports, i.owner_id, i.owner_name, i.description from public.junk_reports r join public.junk_items i on i.id = r.item_id where r.created_at > now() - interval '1 day' order by r.created_at"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "$(jq -n --arg q "$query" '{query: $q}')" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" > reports.json
+          n=$(jq length reports.json)
+          echo "Reports in the last day: $n"
+          jq -r '.[] | "----\n\(.created_at)  \(.reason)\n  listing: \(.title) [\(.status), \(.reports) reports]  id \(.item_id)\n  posted by: \(.owner_name)  owner id \(.owner_id)\n  \(.description | .[0:300])"' reports.json
+          if [ "$n" -gt 0 ]; then
+            echo "::error::$n Junk App report(s) to review. Hide a listing or user by running this workflow with hide_item or ban_user."
+            exit 1
+          fi

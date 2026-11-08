@@ -16,6 +16,7 @@ import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory'
 import { useAuth, signIn, signOut } from './AuthContext';
 import PartyRoutes, { isPartyPath } from './party/PartyRoutes';
 import DndRoutes, { isDndPath } from './dnd/DndRoutes';
+import JunkRoutes, { isJunkPath } from './junk/JunkRoutes';
 import { HOOD_GAMES_PATH, homeHref, homeLabel, inGamesApp } from './native/gamesApp';
 import './App.css';
 import './DraftMobile.css';
@@ -29,6 +30,10 @@ const isHubPath = (path) => (path || '').replace(/\/$/, '') === HOOD_GAMES_PATH;
 function App() {
   const { user, loading } = useAuth();
 
+  // Junk App (the iPhone app in ios-junk-app/ opens here). It handles its own sign-in.
+  if (isJunkPath(window.location.pathname)) {
+    return <JunkRoutes />;
+  }
   // Hood Games hub (where the Hood Games app opens) needs no sign-in either.
   if (isHubPath(window.location.pathname)) {
     return (

@@ -1,0 +1,17 @@
+{
+  "name": "junk-app-ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Junk App iPhone app: the website (frontend/build) opened on /junk, wrapped with Capacitor.",
+  "scripts": {
+    "sync": "cap sync ios && node add-local-plugins.js"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.3",
+    "@capacitor/geolocation": "8.2.3",
+    "@capacitor/ios": "8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "appId": "com.hoodleague.junk",
+  "appName": "Junk App",
+  "webDir": "../frontend/build",
+  "server": {
+    "appStartPath": "junk"
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#f5f3ee",
+    "appendUserAgent": "JunkApp"
+  },
+  "backgroundColor": "#f5f3ee"
+}

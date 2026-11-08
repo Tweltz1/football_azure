@@ -8,6 +8,8 @@ import { getInitialPlayerPool } from '../_shared/playerData.ts';
 import { dndRoute } from '../_shared/dnd.ts';
 import { askRoute } from '../_shared/footballAsk.ts';
 import { cardsRoute } from '../_shared/cards.ts';
+import { geminiJunkDetector, junkRoute, type JunkDeps } from '../_shared/junk.ts';
+import { createJunkPhotos, createJunkStore } from './junkAdapters.ts';
 import { createShopEmailSender } from '../_shared/shopEmail.ts';
 import { createTwilioSender, shopRoute, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
 import { incomingSms } from '../_shared/shopSms.ts';
@@ -57,6 +59,16 @@ const shop: ShopDeps = {
     : null,
   damageFinder: GEMINI_KEY ? geminiDamageFinder(GEMINI_KEY, fetch) : null,
   newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),
+};
+// Junk App: free stuff nearby. Gemini names the item in the first photo of a listing.
+const junk: JunkDeps = {
+  store: createJunkStore(db),
+  photos: createJunkPhotos(db, SUPABASE_URL),
+  detector: GEMINI_KEY ? geminiJunkDetector(GEMINI_KEY, fetch) : null,
+  deleteAccount: async (userId) => {
+    const { error } = await db.auth.admin.deleteUser(userId);
+    if (error) throw error;
+  },
 };
 const dnd = {
   store: createDndStore(db),
@@ -175,6 +187,7 @@ Deno.serve(async (req) => {
     const result = (await shopRoute(ctx, shop, req.method, parts, body))
       ?? (await dndRoute(ctx, dnd, req.method, parts, body))
       ?? (await cardsRoute(ctx, cardGames, req.method, parts, body, url.searchParams))
+      ?? (await junkRoute(ctx, junk, req.method, parts, body, url.searchParams))
       ?? (await askRoute(ctx, dnd.narrator, req.method, parts, body, askLog))
       ?? await handle(ctx, req.method, path, url.searchParams, body);
     const headers: Record<string, string> = { ...corsHeaders, ...(result.headers ?? {}) };
