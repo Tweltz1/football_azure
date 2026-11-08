@@ -43,8 +43,30 @@ def request(url, payload=None):
         raise RuntimeError(f"Apple returned HTTP {error.code}: {details}") from None
 
 
-if request(BASE + "?" + urllib.parse.urlencode({"filter[identifier]": IDENTIFIER})).get("data"):
+found = request(BASE + "?" + urllib.parse.urlencode({"filter[identifier]": IDENTIFIER})).get("data")
+if found:
+    bundle_id = found[0]["id"]
     print(IDENTIFIER + ": already registered")
 else:
-    request(BASE, {"data": {"type": "bundleIds", "attributes": {"name": NAME, "platform": "IOS", "identifier": IDENTIFIER}}})
+    bundle_id = request(BASE, {"data": {"type": "bundleIds", "attributes": {"name": NAME, "platform": "IOS", "identifier": IDENTIFIER}}})["data"]["id"]
     print(IDENTIFIER + ": registered")
+
+# Sign in with Apple must be switched on for the App ID before a build that uses it can be signed.
+caps = request(f"{BASE}/{bundle_id}/bundleIdCapabilities").get("data", [])
+if any(c["attributes"].get("capabilityType") == "APPLE_ID_AUTH" for c in caps):
+    print("Sign in with Apple: already on")
+else:
+    request(
+        "https://api.appstoreconnect.apple.com/v1/bundleIdCapabilities",
+        {
+            "data": {
+                "type": "bundleIdCapabilities",
+                "attributes": {
+                    "capabilityType": "APPLE_ID_AUTH",
+                    "settings": [{"key": "APPLE_ID_AUTH_APP_CONSENT", "options": [{"key": "PRIMARY_APP_CONSENT"}]}],
+                },
+                "relationships": {"bundleId": {"data": {"type": "bundleIds", "id": bundle_id}}},
+            }
+        },
+    )
+    print("Sign in with Apple: turned on")

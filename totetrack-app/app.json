@@ -13,7 +13,8 @@
       "supportsTablet": true,
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.tweltz1.totetrack",
@@ -58,7 +59,9 @@
           "resizeMode": "contain",
           "backgroundColor": "#4F46E5"
         }
-      ]
+      ],
+      "expo-apple-authentication",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": false

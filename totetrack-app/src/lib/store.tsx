@@ -5,10 +5,18 @@ import { deletePhoto } from './photos';
 import { Item, Tote, ToteInput } from './types';
 
 const KEY = 'totetrack.totes.v1';
+const TOMB_KEY = 'totetrack.deleted.v1';
+
+/** A tote as stored in the cloud: either its data, or a deletion marker. */
+export type RemoteTote = { id: string; data: Tote | null; deleted: boolean; updatedAt: number };
 
 type Store = {
   ready: boolean;
   totes: Tote[];
+  /** Deleted tote ids and when they were deleted, so deletions sync to other phones. */
+  tombstones: Record<string, number>;
+  /** Applies cloud changes that are newer than what's on the phone. */
+  mergeRemote: (rows: RemoteTote[]) => void;
   getTote: (id: string) => Tote | undefined;
   createTote: (input: ToteInput, id?: string) => Tote;
   updateTote: (id: string, patch: Partial<ToteInput>) => void;
@@ -23,13 +31,15 @@ const Ctx = createContext<Store | null>(null);
 
 export function ToteProvider({ children }: { children: ReactNode }) {
   const [totes, setTotes] = useState<Tote[]>([]);
+  const [tombstones, setTombstones] = useState<Record<string, number>>({});
   const [ready, setReady] = useState(false);
   const loaded = useRef(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
-      .then((raw) => {
+    Promise.all([AsyncStorage.getItem(KEY), AsyncStorage.getItem(TOMB_KEY)])
+      .then(([raw, tomb]) => {
         if (raw) setTotes(JSON.parse(raw));
+        if (tomb) setTombstones(JSON.parse(tomb));
       })
       .catch(() => {})
       .finally(() => {
@@ -43,6 +53,11 @@ export function ToteProvider({ children }: { children: ReactNode }) {
     AsyncStorage.setItem(KEY, JSON.stringify(totes)).catch(() => {});
   }, [totes]);
 
+  useEffect(() => {
+    if (!loaded.current) return;
+    AsyncStorage.setItem(TOMB_KEY, JSON.stringify(tombstones)).catch(() => {});
+  }, [tombstones]);
+
   const mutate = useCallback((id: string, fn: (t: Tote) => Tote) => {
     setTotes((prev) => prev.map((t) => (t.id === id ? { ...fn(t), updatedAt: Date.now() } : t)));
   }, []);
@@ -51,11 +66,44 @@ export function ToteProvider({ children }: { children: ReactNode }) {
     () => ({
       ready,
       totes,
+      tombstones,
+      mergeRemote: (rows) => {
+        if (!rows.length) return;
+        const byId = new Map(rows.map((r) => [r.id, r]));
+        setTotes((prev) => {
+          const seen = new Set<string>();
+          const next: Tote[] = [];
+          for (const t of prev) {
+            seen.add(t.id);
+            const r = byId.get(t.id);
+            if (!r || r.updatedAt <= t.updatedAt) next.push(t);
+            else if (!r.deleted && r.data) next.push(r.data);
+          }
+          for (const r of rows) {
+            if (!seen.has(r.id) && !r.deleted && r.data) next.push(r.data);
+          }
+          return next;
+        });
+        setTombstones((prev) => {
+          const next = { ...prev };
+          for (const r of rows) {
+            if (r.deleted && (next[r.id] ?? 0) < r.updatedAt) next[r.id] = r.updatedAt;
+            else if (!r.deleted && next[r.id] !== undefined && next[r.id] < r.updatedAt) delete next[r.id];
+          }
+          return next;
+        });
+      },
       getTote: (id) => totes.find((t) => t.id === id),
       createTote: (input, id) => {
         const now = Date.now();
         const tote: Tote = { ...input, id: id ?? Crypto.randomUUID(), items: [], createdAt: now, updatedAt: now };
         setTotes((prev) => [tote, ...prev.filter((t) => t.id !== tote.id)]);
+        setTombstones((prev) => {
+          if (!(tote.id in prev)) return prev;
+          const next = { ...prev };
+          delete next[tote.id];
+          return next;
+        });
         return tote;
       },
       updateTote: (id, patch) => mutate(id, (t) => ({ ...t, ...patch })),
@@ -63,6 +111,7 @@ export function ToteProvider({ children }: { children: ReactNode }) {
         const t = totes.find((x) => x.id === id);
         deletePhoto(t?.photo);
         setTotes((prev) => prev.filter((x) => x.id !== id));
+        setTombstones((prev) => ({ ...prev, [id]: Date.now() }));
       },
       addItem: (toteId, name, qty = 1) => {
         const clean = name.trim();
@@ -91,7 +140,7 @@ export function ToteProvider({ children }: { children: ReactNode }) {
         });
       },
     }),
-    [ready, totes, mutate],
+    [ready, totes, tombstones, mutate],
   );
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;

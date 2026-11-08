@@ -1,6 +1,8 @@
 # Builds the ToteTrack iPhone app (totetrack-app/, Expo + React Native) on a GitHub macOS machine,
 # so no Mac is needed. Same Apple secrets as the Hood League and Hood Games apps:
 #   APPLE_TEAM_ID, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY
+# Cloud backup uses the Hood League Supabase project: SUPABASE_ACCESS_TOKEN (sets up the table and
+# sign-in settings, and fetches the public anon key) or REACT_APP_SUPABASE_ANON_KEY.
 #
 # - Every push that touches totetrack-app/ typechecks, builds for the iPhone simulator and saves
 #   screenshots to the totetrack-screenshots branch.
@@ -35,6 +37,7 @@ jobs:
       UPLOAD: ${{ (github.event_name == 'workflow_dispatch' && inputs.upload) || contains(github.event.head_commit.message, '[totetrack-upload]') }}
       BUILD_NUMBER: ${{ github.run_number }}
       CI: 1
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || 'nkwedlskhnojseeroezm' }}
     defaults:
       run:
         working-directory: totetrack-app
@@ -70,6 +73,25 @@ jobs:
           "$RUNNER_TEMP/apple-api/bin/pip" -q install 'PyJWT[crypto]'
           "$RUNNER_TEMP/apple-api/bin/python" tools/register_bundle_id.py
 
+      - name: Set up cloud backup in Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REACT_APP_SUPABASE_ANON_KEY: ${{ secrets.REACT_APP_SUPABASE_ANON_KEY }}
+        run: |
+          KEY="$REACT_APP_SUPABASE_ANON_KEY"
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ]; then
+            python3 tools/setup_supabase.py
+            if [ -z "$KEY" ]; then
+              KEY=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+                "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/api-keys" \
+                | python3 -c 'import json,sys; print(next((k["api_key"] for k in json.load(sys.stdin) if k.get("name") == "anon"), ""))') || KEY=""
+            fi
+          fi
+          if [ -z "$KEY" ]; then echo "::warning::No Supabase anon key; the app will build without cloud backup"; fi
+          # Baked into the JavaScript bundle by the Xcode build (it's the public key, like the website's).
+          echo "EXPO_PUBLIC_SUPABASE_URL=https://$SUPABASE_PROJECT_ID.supabase.co" >> "$GITHUB_ENV"
+          echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$KEY" >> "$GITHUB_ENV"
+
       - name: Generate the Xcode project
         run: npx expo prebuild --platform ios --clean
 
@@ -102,10 +124,6 @@ jobs:
           xcrun simctl launch "$DEV" com.tweltz1.totetrack
           sleep 15
           xcrun simctl io "$DEV" screenshot "shots/$NAME-1-home.png"
-          # What a phone shows after scanning a label that isn't linked to a tote yet.
-          xcrun simctl openurl "$DEV" "totetrack://tote/7f3a9c2e-1b4d-4e8a-9c3f-2d6b8e1a5f40"
-          sleep 6
-          xcrun simctl io "$DEV" screenshot "shots/$NAME-2-scanned-blank-label.png"
           xcrun simctl spawn "$DEV" log show --start "$START" --style compact --predicate 'process == "ToteTrack"' > "shots/app-log.txt" 2>&1 || true
           xcrun simctl shutdown "$DEV"
           cd shots

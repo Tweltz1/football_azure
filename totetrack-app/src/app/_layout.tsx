@@ -1,12 +1,16 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { AuthProvider } from '../lib/auth';
 import { ToteProvider } from '../lib/store';
+import { SyncProvider } from '../lib/sync';
 import { useTheme } from '../lib/theme';
 
 export default function RootLayout() {
   const t = useTheme();
   return (
+    <AuthProvider>
     <ToteProvider>
+    <SyncProvider>
       <StatusBar style="auto" />
       <Stack
         screenOptions={{
@@ -19,12 +23,16 @@ export default function RootLayout() {
           headerBackButtonDisplayMode: 'minimal',
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'My Totes', headerLargeTitleEnabled: true }} />
+        <Stack.Screen name="index" options={{ title: '' }} />
         <Stack.Screen name="tote/[id]" options={{ title: '' }} />
         <Stack.Screen name="tote/edit" options={{ presentation: 'modal', title: 'Tote' }} />
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', headerShown: false }} />
         <Stack.Screen name="print" options={{ presentation: 'modal', title: 'Print labels' }} />
+        <Stack.Screen name="account" options={{ presentation: 'modal', title: 'Account & backup' }} />
+        <Stack.Screen name="auth" options={{ headerShown: false }} />
       </Stack>
+    </SyncProvider>
     </ToteProvider>
+    </AuthProvider>
   );
 }
