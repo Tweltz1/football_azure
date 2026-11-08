@@ -53,7 +53,7 @@ const shop: ShopDeps = {
     schema:{type:'OBJECT',properties:{intent:{type:'STRING',enum:['status','hours','link','approval','review']}},required:['intent']},temperature:0,timeoutMs:8000,maxTokens:256
   }) : null,
   howTo: GEMINI_KEY
-    ? geminiNarrator(GEMINI_KEY, DEFAULT_GEMINI_MODEL, fetch, { schema: HOWTO_SCHEMA, timeoutMs: 40_000, maxTokens: 8192, temperature: 0.4 })
+    ? geminiNarrator(GEMINI_KEY, DEFAULT_GEMINI_MODEL, fetch, { schema: HOWTO_SCHEMA, primaryTimeoutMs: 25_000, timeoutMs: 40_000, maxTokens: 8192, temperature: 0.4 })
     : null,
   damageFinder: GEMINI_KEY ? geminiDamageFinder(GEMINI_KEY, fetch) : null,
   newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),

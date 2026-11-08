@@ -31,7 +31,9 @@ const GEMINI_SCHEMA = {
 };
 
 /** Overrides for callers that need a different reply shape or more time (the Talk Shops how-to assistant). */
-export interface GeminiOptions { schema?: unknown; timeoutMs?: number; maxTokens?: number; temperature?: number }
+export interface GeminiOptions { schema?: unknown; timeoutMs?: number; maxTokens?: number; temperature?: number;
+  /** Shorter wait for the main model when a backup follows, so a busy Google answers from the backup sooner. */
+  primaryTimeoutMs?: number }
 
 export function geminiNarrator(apiKey: string, model: string, fetchFn: typeof fetch = fetch, opts: GeminiOptions = {}): Narrator {
   const models = model === GEMINI_BACKUP_MODEL ? [model] : [model, GEMINI_BACKUP_MODEL];
@@ -46,7 +48,7 @@ export function geminiNarrator(apiKey: string, model: string, fetchFn: typeof fe
         generationConfig: { responseMimeType: 'application/json', responseSchema: opts.schema ?? GEMINI_SCHEMA, temperature: opts.temperature ?? 1, maxOutputTokens: opts.maxTokens ?? 4096 },
       }),
       // Two tries must fit inside the 20 seconds the TV waits before narrating on its own.
-      signal: AbortSignal.timeout(opts.timeoutMs ?? 9_000),
+      signal: AbortSignal.timeout((name !== models.at(-1) && opts.primaryTimeoutMs) || (opts.timeoutMs ?? 9_000)),
     });
     if (!res.ok) throw Object.assign(new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 300)}`), { status: res.status });
     const data = await res.json();
