@@ -598,7 +598,7 @@ function sheetView(j){
       ${j.stage==="parts"&&live?`<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
     </section>
     <section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div>${sampleIllustration(j)}</section>
-    <section class="sec" id="estSec"><h3>Estimate</h3><a class="repair-library-link" href="/repair-guide.html" target="_blank" rel="noopener">Browse repair diagrams</a>
+    <section class="sec" id="estSec"><h3>Estimate</h3>
       ${j.estimate.length?`<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some(e=>e.status!=="pending")?`<div class="total"><span>Approved total</span><span>${money(estTotal(j,true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`:`<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}`:`<p class="muted" style="margin:0">No line items yet.</p>`}
       ${j.approval?`<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:""}
       ${live?`<div class="est-add">
