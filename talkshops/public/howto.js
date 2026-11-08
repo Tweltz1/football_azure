@@ -58,11 +58,14 @@
     function partNumbers(t) {
       const list = t.res.partNumbers || [];
       if (!list.length) return "";
-      return `<div class="howto-block pn"><h4>Part numbers <span class="muted">· verify by VIN with your parts supplier</span></h4><ul class="howto-pn">${list.map((p) => {
-        const num = [p.brand, p.number].filter(Boolean).join(" ");
-        const q = p.number ? `${num} ${t.vehicle}` : `${t.vehicle} ${p.part} part number`;
-        return `<li><span class="pn-part">${esc(p.part)}</span>${p.number ? `<b class="pn-num">${esc(num)}</b>` : `<span class="muted">Number varies; check by VIN</span>`}<a href="${esc(search(q.trim()))}" target="_blank" rel="noopener">${p.number ? "Look up" : "Find it"}</a>${p.note ? `<small>${esc(p.note)}</small>` : ""}</li>`;
-      }).join("")}</ul></div>`;
+      const line = (kind, brand, number) => {
+        const num = [brand, number].filter(Boolean).join(" ");
+        return `<span class="pn-kind">${kind}</span><b class="pn-num">${esc(num)}</b><a href="${esc(search(`${num} ${t.vehicle}`.trim()))}" target="_blank" rel="noopener">Look up</a>`;
+      };
+      return `<div class="howto-block pn"><h4>Part numbers <span class="muted">· verify by VIN with your parts supplier</span></h4><ul class="howto-pn">${list.map((p) => `<li><span class="pn-part">${esc(p.part)}</span>
+        ${p.number ? line("OEM", p.brand, p.number) : p.altNumber ? "" : `<span class="pn-kind">OEM</span><span class="muted">Varies; check by VIN</span><a href="${esc(search(`${t.vehicle} ${p.part} OEM part number`.trim()))}" target="_blank" rel="noopener">Find it</a>`}
+        ${p.altNumber ? line("Aftermarket", p.altBrand, p.altNumber) : ""}
+        ${p.note ? `<small>${esc(p.note)}</small>` : ""}</li>`).join("")}</ul></div>`;
     }
 
     function turn(t, i) {
@@ -125,7 +128,7 @@
       const r = t.res, sec = (h, a) => a.length ? `\n${h}:\n` + a.map((x) => "- " + x).join("\n") : "";
       return `${t.q}${t.vehicle ? " (" + t.vehicle + ")" : ""}\n\n${r.answer}` + sec("Safety", r.safety) + sec("Typical specs (verify in service info)", r.specs)
         + sec("Tools", r.tools) + sec("Parts and fluids", r.parts)
-        + sec("Part numbers (AI suggestions, verify by VIN)", (r.partNumbers || []).map((p) => `${p.part}: ${[p.brand, p.number].filter(Boolean).join(" ") || "check by VIN"}${p.note ? " (" + p.note + ")" : ""}`)) + (r.steps.length ? "\nSteps:\n" + r.steps.map((x, i) => `${i + 1}. ${x}`).join("\n") : "")
+        + sec("Part numbers (AI suggestions, verify by VIN)", (r.partNumbers || []).map((p) => `${p.part}: OEM ${[p.brand, p.number].filter(Boolean).join(" ") || "check by VIN"}${p.altNumber ? ", aftermarket " + [p.altBrand, p.altNumber].filter(Boolean).join(" ") : ""}${p.note ? " (" + p.note + ")" : ""}`)) + (r.steps.length ? "\nSteps:\n" + r.steps.map((x, i) => `${i + 1}. ${x}`).join("\n") : "")
         + "\n\nAI guidance from Talk Shops. Confirm specs and procedures in the manufacturer's service information.";
     }
 
