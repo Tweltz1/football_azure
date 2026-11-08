@@ -149,7 +149,7 @@
         const choice = pending && e.status === "pending"
           ? `<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d === "approved"}">Approve</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d === "declined"}">Decline</button></div>`
           : (e.status !== "pending" ? `<span class="pill ${e.status === "approved" ? "ok" : "bad"}">${e.status === "approved" ? "Approved" : "Declined"}</span>` : "");
-        return `<div class="est-item"><div class="top"><span>${esc(e.item)}${chargeDetail(e)}</span><span>${money(e.price)}</span></div>${window.repairGuideFor(e.item)}${choice}</div>`;
+        return `<div class="est-item"><div class="top"><span>${esc(e.item)}${chargeDetail(e)}</span><span>${money(e.price)}</span></div>${window.repairPhotoFor(e.item, e.status === "declined" ? "Part" : "What's being worked on")}${window.repairGuideFor(e.item, { photo: false })}${choice}</div>`;
       }).join("");
       const allChosen = j.estimate.filter((e) => e.status === "pending").every((e) => cust.draft[e.id]);
       const tot = pending ? j.estimate.reduce((a, e) => a + ((cust.draft[e.id] ?? e.status) === "approved" ? Number(e.price) : 0), 0) : estTotal(j, true);
@@ -171,7 +171,7 @@
           <button type="button" id="customerPickPhoto" class="btn" ${j.photos.filter(p => p.source === "customer").length >= 6 ? "disabled" : ""}>Add photos</button>
           <small style="margin-left:10px">${j.photos.filter(p => p.source === "customer").length} of 6 photos added</small><p id="photoStatus" role="status" hidden></p></section>` : ""}
         ${billing.display(j.bill, j)}${est}
-        ${(j.notes || []).length ? `<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p></li>`).join("")}</ul></div>` : ""}
+        ${(j.notes || []).length ? `<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p>${window.repairPhotoFor(n.text, "Part mentioned")}</li>`).join("")}</ul></div>` : ""}
         <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         ${j.concern ? `<div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
         ${j.shop.phone ? `<div class="c-card call"><span>Questions? Call the shop</span><b>${esc(j.shop.phone)}</b></div>` : ""}

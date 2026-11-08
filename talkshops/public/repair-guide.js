@@ -273,14 +273,23 @@
     if (!id) return "";
     return `<figure class="repair-photo"><img src="/repair-photos/${id}.jpg" alt="${PHOTO[id]}" loading="lazy" width="800" height="500"><figcaption>Example photo, not your vehicle · <a href="https://www.pexels.com/photo/${id}/" target="_blank" rel="noopener">Pexels</a></figcaption></figure>`;
   }
-  for (const e of entries) { const drawn = e.illustration; e.illustration = () => photoHtml(e) + drawn(); }
-  window.repairGuideFor = item => {
+  for (const e of entries) { const drawn = e.illustration; e.drawn = drawn; e.illustration = () => photoHtml(e) + drawn(); }
+  function matchEntries(item) {
     const normalized=" "+normalize(item)+" ";
     const matches=entries.filter(e=>e.matches(item||"",normalized));
     // Prefer the specific component when its name contains a shorter matching alias.
     return matches.filter(e=>!e.aliases.some(a=>matches.some(other=>other!==e &&
-      other.aliases.some(b=>b!==a && normalized.includes(" "+b+" ") && (" "+b+" ").includes(" "+a+" "))))).map(e=>
-      `<details class="repair-details"><summary>Photo and diagram · ${e.title}</summary>${e.illustration()}<a href="/repair-guide.html#${e.id}" target="_blank" rel="noopener">View larger diagram</a></details>`).join("");
+      other.aliases.some(b=>b!==a && normalized.includes(" "+b+" ") && (" "+b+" ").includes(" "+a+" ")))));
+  }
+  // opts.photo === false leaves the photo out (when repairPhotoFor already shows it).
+  window.repairGuideFor = (item, opts = {}) => matchEntries(item).map(e=>
+      `<details class="repair-details"><summary>${opts.photo === false ? "How it works" : "Photo and diagram"} · ${e.title}</summary>${opts.photo === false ? e.drawn() : e.illustration()}<a href="/repair-guide.html#${e.id}" target="_blank" rel="noopener">View larger diagram</a></details>`).join("");
+  /** A visible example photo of the part an estimate line or note is about, for the customer's page. */
+  window.repairPhotoFor = (text, label = "What's being worked on") => {
+    const e = matchEntries(text).find(x => ENTRY_PHOTO[x.id] || GROUP_PHOTO[x.group]);
+    if (!e) return "";
+    const id = ENTRY_PHOTO[e.id] || GROUP_PHOTO[e.group];
+    return `<figure class="repair-thumb"><img src="/repair-photos/${id}.jpg" alt="${PHOTO[id]}" loading="lazy" width="800" height="500"><figcaption><b>${label}:</b> ${e.title}<span>Example photo, not your vehicle</span></figcaption></figure>`;
   };
   const list=document.getElementById("repair-library");
   if(!list) return;
