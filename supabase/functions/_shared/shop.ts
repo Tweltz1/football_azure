@@ -7,6 +7,7 @@ import type { Ctx, Res } from './handlers.ts';
 import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, HOWTO_PRO_MESSAGE, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { howToRoute } from './shopHowTo.ts';
+import { accountRoute, type AccountStore } from './shopAccount.ts';
 import type { Narrator } from './dnd.ts';
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
 
@@ -164,6 +165,10 @@ export interface ShopDeps {
   siteUrl?: string;
   /** Gemini, for the employee how-to assistant (shop/howto). Null until GEMINI_API_KEY is set. */
   howTo?: Narrator | null;
+  /** Forgot password and the reset phone (shopAccount.ts). */
+  account?: AccountStore | null;
+  /** Test hook: predictable reset codes. */
+  newCode?: () => string;
 }
 
 export const DEMO_SHOP_ID = 'demo-shop';
@@ -379,6 +384,10 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     }
     return ok({ token: job.token });
   }
+
+  // ---- Forgot password (signed out) and the reset phone (signed in) ----
+  const accountRes = await accountRoute(ctx, deps, method, parts, body, normalizePhone);
+  if (accountRes) return accountRes;
 
   // ---- Shop staff (signed in) ----
   if (!ctx.userId) return { status: 401, body: 'Sign in first.' };

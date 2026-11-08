@@ -12,6 +12,7 @@ import type { AskLogStore } from '../_shared/footballAsk.ts';
 import type { CardGameRow, CardGameStore } from '../_shared/cards.ts';
 import { archivedAt, type ArchiveRow, type Job, type JobData, type Shop, type ShopStore } from '../_shared/shop.ts';
 import { DEFAULT_TRIAL, type PlanState } from '../_shared/shopPlans.ts';
+import type { AccountStore, AuthCode, CodeChannel, CodePurpose } from '../_shared/shopAccount.ts';
 
 const rowToStored = (row: { data: League; version: number }): StoredLeague => ({ league: row.data, version: Number(row.version) });
 
@@ -457,6 +458,67 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       const { data, error } = await db.rpc('repair_next_ro', { p_shop: shopId });
       if (error) throw error;
       return Number(data) || 1001;
+    },
+  };
+}
+
+// Talk Shops forgot password (shopAccount.ts): codes, the reset phone, and the auth admin calls.
+interface AuthCodeDb { id: string; user_id: string; purpose: CodePurpose; channel: CodeChannel; target: string; code_hash: string; attempts: number; expires_at: string; used_at: string | null; created_at: string }
+const codeRow = (r: AuthCodeDb): AuthCode => ({
+  id: r.id, userId: r.user_id, purpose: r.purpose, channel: r.channel, target: r.target, codeHash: r.code_hash,
+  attempts: r.attempts, expiresAt: r.expires_at, usedAt: r.used_at, createdAt: r.created_at,
+});
+
+export function createAccountStore(db: SupabaseClient): AccountStore {
+  return {
+    async userByEmail(email) {
+      const { data, error } = await db.rpc('talkshops_user_by_email', { p_email: email });
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as { id: string; email: string } | undefined;
+      return row?.id ? { id: row.id, email: row.email } : null;
+    },
+    async setPassword(userId, password, confirmEmail) {
+      const { error } = await db.auth.admin.updateUserById(userId, confirmEmail ? { password, email_confirm: true } : { password });
+      if (error) throw error;
+    },
+    async recoveryPhone(userId) {
+      const { data, error } = await db.from('talkshops_recovery_phones').select('phone, verified_at').eq('user_id', userId).maybeSingle();
+      if (error) throw error;
+      return data ? { phone: data.phone as string, verifiedAt: (data.verified_at as string | null) ?? null } : null;
+    },
+    async setRecoveryPhone(userId, phone, verifiedAt) {
+      const { error } = phone
+        ? await db.from('talkshops_recovery_phones').upsert({ user_id: userId, phone, verified_at: verifiedAt, updated_at: new Date().toISOString() })
+        : await db.from('talkshops_recovery_phones').delete().eq('user_id', userId);
+      if (error) throw error;
+    },
+    async saveCode(c) {
+      const retire = await db.from('talkshops_auth_codes').update({ used_at: c.createdAt }).eq('user_id', c.userId).eq('purpose', c.purpose).is('used_at', null);
+      if (retire.error) throw retire.error;
+      const { error } = await db.from('talkshops_auth_codes').insert({
+        id: c.id, user_id: c.userId, purpose: c.purpose, channel: c.channel, target: c.target, code_hash: c.codeHash,
+        attempts: c.attempts, expires_at: c.expiresAt, used_at: c.usedAt, created_at: c.createdAt,
+      });
+      if (error) throw error;
+      // Old codes are no use to anyone after a day.
+      await db.from('talkshops_auth_codes').delete().eq('user_id', c.userId).lt('created_at', new Date(Date.parse(c.createdAt) - 86_400_000).toISOString());
+    },
+    async openCode(userId, purpose, now) {
+      const { data, error } = await db.from('talkshops_auth_codes').select('*').eq('user_id', userId).eq('purpose', purpose)
+        .is('used_at', null).gt('expires_at', now).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return data ? codeRow(data as AuthCodeDb) : null;
+    },
+    async countCodes(userId, since) {
+      const { count, error } = await db.from('talkshops_auth_codes').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    async updateCode(id, patch) {
+      const { error } = await db.from('talkshops_auth_codes').update({
+        ...(patch.attempts !== undefined ? { attempts: patch.attempts } : {}), ...(patch.usedAt ? { used_at: patch.usedAt } : {}),
+      }).eq('id', id);
+      if (error) throw error;
     },
   };
 }

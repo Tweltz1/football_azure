@@ -191,7 +191,9 @@
   }
 
   // ==================== Shop app (signed in) ====================
-  const ui = { noteDraft: {}, view: "board", openJob: null, modal: null, authMode: "signin", authMsg: "", authErr: "", busy: false };
+  const ui = { noteDraft: {}, view: "board", openJob: null, modal: null, authMode: "signin", authMsg: "", authErr: "", busy: false, reset: null };
+  // Shop settings: the phone that can get password reset codes.
+  const recovery = { data: null, loading: false, pending: "", err: "" };
   const dictation = window.createDictation({ toast });
   const archive = { q: "", rows: null, keepDays: 365, loading: false, error: "", seq: 0 };
   const suggest = window.createSuggest({
@@ -257,6 +259,7 @@
     const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "") + (ui.view === "plan" || ui.view === "training" ? "" : planUi.banner(plan));
     app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : boardView());
     if (ui.view === "board") filterBoard();
+    if (ui.view === "settings" && !recovery.data && !recovery.loading && !recovery.err) loadRecovery();
     if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
     renderLayer();
   }
@@ -264,7 +267,58 @@
   const googleIcon = `<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>`;
   const brand = () => `<div class="brand"><div class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</div><div><h1>Talk Shops</h1><small>For repair shops</small></div></div>`;
 
+  function forgotView() {
+    const r = ui.reset || { step: "ask", email: "" };
+    const ask = r.step === "ask";
+    return `<div class="login-wrap"><section class="login">
+      ${brand()}
+      <h2>Reset your password</h2>
+      ${ask ? `<p class="muted" style="margin:0">Enter the email you sign in with. We'll send a 6-digit code to that email, or by text to the phone you verified in Shop settings.</p>
+      <form class="auth-alt" id="forgotForm">
+        <label class="field">Work email<input id="fp-email" type="email" required autocomplete="username" value="${esc(r.email || "")}"></label>
+        <button class="btn primary" type="submit" name="channel" value="email" ${ui.busy ? "disabled" : ""}>Email me a code</button>
+        <button class="btn" type="submit" name="channel" value="sms" ${ui.busy ? "disabled" : ""}>Text me a code</button>
+      </form>` : `<p class="form-ok" role="status" style="margin:0">${esc(r.msg || "")}</p>
+      <form class="auth-alt" id="resetForm">
+        <label class="field">6-digit code<input id="fp-code" inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7" required autocomplete="one-time-code"></label>
+        <label class="field">New password<input id="fp-pass" type="password" required minlength="8" maxlength="72" autocomplete="new-password"><span class="hint">At least 8 characters.</span></label>
+        <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Set new password and sign in</button>
+      </form>
+      <button class="linkbtn" id="fpAgain" type="button" style="align-self:flex-start">Didn't get it? Send another code</button>`}
+      ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
+      <button class="linkbtn" id="fpBack" type="button" style="align-self:flex-start">← Back to sign in</button>
+    </section></div>`;
+  }
+
+  function recoveryPanel() {
+    const d = recovery.data;
+    let body;
+    if (!d) body = recovery.err ? `<p class="form-err" role="alert">${esc(recovery.err)}</p>` : `<p class="muted" style="margin:0">Loading…</p>`;
+    else if (recovery.pending) body = `<p class="muted" style="margin:0">We texted a code to ${esc(recovery.pending)}. Enter it to finish.</p>
+      <form id="recoveryCodeForm" class="auth-alt"><label class="field">6-digit code<input id="rc-code" inputmode="numeric" maxlength="7" required autocomplete="one-time-code"></label>
+      <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Verify phone</button><button class="btn" type="button" id="rcCancel">Cancel</button></div></form>`;
+    else if (d.verified) body = `<p style="margin:0">Reset codes can be texted to <b>${esc(d.phone)}</b>.</p>
+      <div class="btn-row"><button class="btn" type="button" id="rcChange">Use a different phone</button><button class="btn" type="button" id="rcRemove">Remove</button></div>`;
+    else body = `<p class="muted" style="margin:0">Add a mobile number so you can get a text if you forget your password. We'll text a code to confirm it's yours.</p>
+      <form id="recoveryPhoneForm" class="auth-alt"><label class="field">Mobile number<input id="rc-phone" inputmode="tel" maxlength="30" required autocomplete="tel" placeholder="(555) 014-2290"></label>
+      <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Text me a code</button></div></form>`;
+    return `<section class="panel" id="recoveryPanel" style="margin-top:18px;display:flex;flex-direction:column;gap:12px">
+      <h2 style="font-size:20px">Password reset phone</h2>
+      ${body}
+      ${d && recovery.err ? `<p class="form-err" role="alert">${esc(recovery.err)}</p>` : ""}
+      <p class="muted" style="margin:0;font-size:13.5px">You can always reset your password by email from the sign-in page.</p>
+    </section>`;
+  }
+  async function loadRecovery() {
+    recovery.loading = true;
+    try { recovery.data = await api("GET", "shop/recovery"); recovery.err = ""; }
+    catch (e) { recovery.err = e.message; }
+    recovery.loading = false;
+    if (ui.view === "settings") render();
+  }
+
   function loginView() {
+    if (ui.authMode === "forgot") return forgotView();
     const signup = ui.authMode === "signup";
     return `<div class="login-wrap"><section class="login">
       ${brand()}
@@ -277,6 +331,7 @@
         <label class="field">Password<input id="au-pass" type="password" required minlength="8" autocomplete="${signup ? "new-password" : "current-password"}"></label>
         <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create account" : "Sign in"}</button>
       </form>
+      ${signup ? "" : `<button class="linkbtn" id="forgotPw" type="button" style="align-self:flex-start">Forgot password?</button>`}
       ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
       ${ui.authMsg ? `<p class="form-ok" role="status">${esc(ui.authMsg)}</p>` : ""}
       <button class="linkbtn" id="authSwap" type="button" style="align-self:flex-start">${signup ? "Already have an account? Sign in" : "New shop? Create an account"}</button>
@@ -343,7 +398,7 @@
       <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
       ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Saved items: labor, parts and fees (import Excel or CSV)</button>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign out</button>` : ""}</div>
-    </form></div>`;
+    </form>${firstTime ? "" : recoveryPanel()}</div>`;
   }
 
   function boardView() {
@@ -634,6 +689,16 @@
       await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + "/", queryParams: { prompt: "select_account" } } });
       return;
     }
+    if (t.id === "forgotPw") { ui.authMode = "forgot"; ui.reset = { step: "ask", email: $("#au-email")?.value.trim() || "" }; ui.authErr = ui.authMsg = ""; render(); $("#fp-email")?.focus(); return; }
+    if (t.id === "fpBack") { ui.authMode = "signin"; ui.authErr = ui.authMsg = ""; const email = ui.reset?.email; ui.reset = null; render(); if (email && $("#au-email")) $("#au-email").value = email; return; }
+    if (t.id === "fpAgain") { ui.reset = { ...ui.reset, step: "ask" }; ui.authErr = ""; render(); return; }
+    if (t.id === "rcChange") { recovery.data = { ...recovery.data, verified: false }; recovery.err = ""; render(); $("#rc-phone")?.focus(); return; }
+    if (t.id === "rcCancel") { recovery.pending = ""; recovery.err = ""; recovery.data = null; render(); return; }
+    if (t.id === "rcRemove") {
+      if (ui.busy) return; ui.busy = true;
+      try { recovery.data = await api("DELETE", "shop/recovery"); recovery.err = ""; toast("Reset phone removed"); } catch (err) { recovery.err = err.message; }
+      ui.busy = false; render(); return;
+    }
     if (t.id === "authSwap") { ui.authMode = ui.authMode === "signup" ? "signin" : "signup"; ui.authErr = ui.authMsg = ""; render(); return; }
     if (t.id === "signOut" || t.id === "signOut2") { if (sb) await sb.auth.signOut(); return; }
     if (t.id === "retry") { loadShop(); return; }
@@ -737,6 +802,42 @@
  render(); toast(m.billing === "rates" ? "Saved items updated" : m.billing === "quote" ? "Added to estimate" : "Final bill saved");
       } catch (err) { billing.error(f, err.message); }
       finally { ui.busy = false; submit.disabled = false; const stageSubmit = $("#sendForm button[type=submit]"); if (stageSubmit) stageSubmit.disabled = false; }
+      return;
+    }
+    if (f.id === "forgotForm") {
+      if (ui.busy) return;
+      const email = $("#fp-email").value.trim(), channel = e.submitter?.value === "sms" ? "sms" : "email";
+      ui.busy = true; ui.authErr = ""; ui.reset = { step: "ask", email }; render();
+      try { const r = await api("POST", "shop/auth/forgot", { email, channel }); ui.reset = { step: "code", email, channel, msg: r.message }; }
+      catch (err) { ui.authErr = err.message; }
+      ui.busy = false; render(); $("#fp-code")?.focus();
+      return;
+    }
+    if (f.id === "resetForm") {
+      if (ui.busy || !sb) return;
+      const email = ui.reset.email, code = $("#fp-code").value.replace(/\s/g, ""), password = $("#fp-pass").value;
+      ui.busy = true; ui.authErr = ""; f.querySelector("[type=submit]").disabled = true;
+      try {
+        await api("POST", "shop/auth/reset", { email, code, password });
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        ui.authMode = "signin"; ui.reset = null;
+        if (error) ui.authMsg = "Your password was changed. Sign in with your new password.";
+        else toast("Password changed");
+      } catch (err) { ui.authErr = err.message; }
+      ui.busy = false; render();
+      if ($("#fp-code")) { $("#fp-code").value = code; $("#fp-pass").value = password; }
+      return;
+    }
+    if (f.id === "recoveryPhoneForm" || f.id === "recoveryCodeForm") {
+      if (ui.busy) return;
+      ui.busy = true; recovery.err = ""; f.querySelector("[type=submit]").disabled = true;
+      const typed = f.querySelector("input").value;
+      try {
+        if (f.id === "recoveryPhoneForm") { const r = await api("POST", "shop/recovery/phone", { phone: $("#rc-phone").value }); recovery.pending = r.phone; }
+        else { recovery.data = await api("POST", "shop/recovery/verify", { code: $("#rc-code").value }); recovery.pending = ""; toast("Phone verified"); }
+      } catch (err) { recovery.err = err.message; }
+      ui.busy = false; render();
+      if (recovery.err) { const again = $("#" + f.id + " input"); if (again) again.value = typed; } else $("#rc-code")?.focus();
       return;
     }
     if (f.id === "emailForm") {
@@ -968,7 +1069,7 @@
     const was = session?.user?.id;
     session = s;
     if (s && s.user.id !== was) { loaded = false; render(); loadShop(); }
-    else if (!s) { shop = null; jobs = []; loaded = false; ui.openJob = null; ui.modal = ui.modal === "video" ? "video" : null; render(); }
+    else if (!s) { Object.assign(recovery, { data: null, pending: "", err: "" }); shop = null; jobs = []; loaded = false; ui.openJob = null; ui.modal = ui.modal === "video" ? "video" : null; render(); }
   });
   sb.auth.getSession().then(({ data }) => { if (!data.session) render(); });
   setInterval(async () => {

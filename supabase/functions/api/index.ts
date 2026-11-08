@@ -15,7 +15,7 @@ import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator
 import { HOWTO_SCHEMA } from '../_shared/shopHowTo.ts';
 import { createTurn } from './turn.ts';
 import {
-  createAskLogStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
+  createAccountStore, createAskLogStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
 } from './supabaseAdapters.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -36,6 +36,7 @@ const cardGames = createCardGameStore(db);
 const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('Gemini_API_KEY') || undefined;
 const shop: ShopDeps = {
   store: createShopStore(db),
+  account: createAccountStore(db),
   email: createShopEmailSender(Deno.env.get('RESEND_API_KEY'), Deno.env.get('TALKSHOPS_EMAIL_FROM')),
   sms: createTwilioSender(Deno.env.get('TWILIO_ACCOUNT_SID'), Deno.env.get('TWILIO_AUTH_TOKEN'), Deno.env.get('TWILIO_FROM')),
   linkBase: Deno.env.get('SHOP_LINK_BASE') || 'https://talkshops.app/?c=',
