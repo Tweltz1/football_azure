@@ -571,6 +571,32 @@
       step(); { const c = say("es-5"); highlight(".est-send"); await cue(0.2); await tap(".est-send"); highlight("#sendForm"); await cue(0.6); await tap("#sendForm .btn.primary"); highlight(".sheet .stepper"); await c; }
       step(); { const c = say("es-6"); await openSheet("RO-1042"); highlight("#estSec"); await c; }
     },
+    async walk() {
+      STEPS = 5; await begin("board");
+      step(); { const c = say("wk-1"); await openSheet("RO-1046"); q("#walkSec")?.scrollIntoView({ block: "center" }); highlight("#walkSec"); await c; }
+      step(); {
+        const c = say("wk-2"); await tap('[data-walk="before"]'); await wait(300); highlight(".wt-list");
+        await cue(0.55); highlight('[data-walk-row="battery"]'); await tap('[data-walk-set="battery"][data-v="now"]');
+        await cue(0.75); await type('[data-walk-note="battery"]', "Battery tested weak at 9.8 volts");
+        await c;
+      }
+      step(); {
+        const c = say("wk-3"); highlight(".wt-bar"); await cue(0.12); await tap("[data-walk-allgood]"); highlight(".wt-list");
+        await cue(0.35); await type("#wt-miles", "84,120"); highlight(q("#wt-miles")?.closest("label"));
+        await cue(0.5); await type("#wt-summary", "Battery is weak and should be replaced. Everything else looks good."); highlight(q("#wt-summary")?.closest("label"));
+        await cue(0.7); highlight(q("#wt-send")?.closest("label"));
+        await cue(0.88); await tap("#walkForm .btn.primary"); await wait(300); highlight("#walkSec");
+        await c;
+      }
+      step(); {
+        const c = say("wk-4"); q("#walkSec")?.scrollIntoView({ block: "center" }); highlight('[data-walk="after"]');
+        await cue(0.15); await tap('[data-walk="after"]'); await wait(300); highlight(".wt-list");
+        await cue(0.55); highlight('[data-walk-row="battery"]'); await tap('[data-walk-set="battery"][data-v="good"]');
+        await cue(0.85); await tap("#walkForm .btn.primary"); await wait(300); highlight("#walkSec");
+        await c;
+      }
+      step(); { const c = say("wk-5"); await tap("#viewAsCust"); await wait(400); q(".wt-card")?.scrollIntoView({ block: "start" }); highlight(".wt-card"); await cue(0.5); highlight(".wt-table"); await c; }
+    },
     async customer() {
       STEPS = 5; await begin("board");
       step(); { const c = say("cu-1"); await cue(0.5); await openSheet("RO-1041"); highlight("#viewAsCust"); await cue(0.85); await tap("#viewAsCust"); highlight(".c-head"); await c; }

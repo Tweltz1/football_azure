@@ -301,9 +301,10 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=1"></script>
-<script src="/training.js?v=2"></script>
+<script src="/training.js?v=3"></script>
 <script src="/howto.js?v=4"></script>
 <script src="/team.js?v=2"></script>
+<script src="/walkthrough.js?v=1"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
@@ -706,7 +707,7 @@ function customerView(j){
    <div class="cust-page">
     <div class="c-head"><small>${esc(SHOP.name)} · <span class="mono">${j.ro}</span></small><h2>${j.closed?"This repair was closed":stage.cust}</h2><div style="font-size:14px;margin-top:4px">${esc(vehicleStr(j))}</div>${extra}</div>
     <div class="c-body">
-      ${est}${bill}${photos}${notes}
+      ${est}${bill}${window.Walkthrough.customerCard(j)}${photos}${notes}
       <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul></div>
       <div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div>${sampleIllustration(j)}</div>
       <div class="c-card call"><span>Questions? Call the shop</span><b>${esc(SHOP.phone)}</b></div>
@@ -734,6 +735,7 @@ function sheetView(j){
     </section>
     <section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div>${sampleIllustration(j)}</section>
     ${live?`<p class="howto-link"><button class="linkbtn" data-howto-job="${j.id}">Look up how to do a repair on this ${esc(vehicleStr(j))}</button></p>`:""}
+    ${window.Walkthrough.sheetSection(j).replace('<section class="sec">','<section class="sec" id="walkSec">')}
     <section class="sec" id="estSec"><h3>Estimate</h3>
       ${j.estimate.length?`<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some(e=>e.status!=="pending")?`<div class="total"><span>Approved total</span><span>${money(estTotal(j,true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`:`<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}`:`<p class="muted" style="margin:0">No line items yet.</p>`}
       ${j.approval?`<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:""}
@@ -793,7 +795,8 @@ function closeModal(){
 function renderLayer(){
   let h="";
   if(ui.openJob&&(ui.view==="board"||ui.view==="archive")){const j=job(ui.openJob);if(j)h+=sheetView(j)}
-  if(ui.modal?.closeJob)h+=closeModal();else if(ui.modal)h+=stageModal();
+  if(ui.modal?.walk){const j=job(ui.modal.job);h+=window.Walkthrough.editor(j,ui.modal.walk,{vehicle:vehicleStr(j)||j.ro,first:first(j.customer.name),consent:j.customer.consent!==false,busy:false})}
+  else if(ui.modal?.closeJob)h+=closeModal();else if(ui.modal)h+=stageModal();
   const prev=$(".sheet-body"),keep=prev&&prev.dataset.job===ui.openJob?prev.scrollTop:null;
   $("#layer").innerHTML=h;
   if(keep!==null&&$(".sheet-body")){$(".sheet").classList.add("no-anim");$(".sheet-body").scrollTop=keep}
@@ -827,6 +830,8 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("button,[data-close],[data-open]");if(!t)return;
   if(t.closest(".plan-page,.plan-banner")&&(t.dataset.planInterval||t.dataset.planBuy!==undefined||t.dataset.planPortal!==undefined)){planUi.click(t,render).then(()=>{t.disabled=false});return}
   if(howTo.click(t,render))return;
+  if(ui.modal?.walk&&window.Walkthrough.click(t,ui.modal.walk))return;
+  if(t.dataset.walk){const j=job(ui.openJob);if(j){ui.modal={walk:window.Walkthrough.draftFor(j,t.dataset.walk),job:j.id};renderLayer()}return}
   if(t.closest("[data-team-retry],[data-team-copy],[data-team-remove],[data-team-cancel],[data-team-resend]")){team.click(t,render);return}
   if(t.id==="rcChange"){Object.assign(recov(),{verified:false,pending:""});save();render();$("#rc-phone")?.focus();return}
   if(t.id==="rcCancel"){recov().pending="";save();render();return}
@@ -884,6 +889,12 @@ document.addEventListener("click",e=>{
 document.addEventListener("submit",e=>{
   e.preventDefault();const f=e.target;
   if(howTo.submit(f,render))return;
+  if(f.id==="walkForm"){const m=ui.modal,body=window.Walkthrough.body(m.walk),j=job(m.job);
+    if(!body.items.length){toast("Mark at least one item first");return}
+    const w={t:Date.now(),by:"Marcus Hill",mileage:body.mileage,summary:body.summary,items:body.items};
+    if(body.send){w.sentAt=Date.now();notify(j,`Hi ${first(j.customer.name)}, your ${body.kind==="before"?"check-in":"after-repair"} walk-through for your ${vehicleStr(j)} is ready: ${linkOf(j)}`)}
+    (j.walkthroughs||={})[body.kind]=w;
+    ui.modal=null;save();renderLayer();toast("Walk-through saved"+(body.send?". Customer notified.":" to the customer's page"));return}
   if(f.id==="teamInviteForm"){team.submit(f,render);return}
   if(f.id==="recoveryPhoneForm"){const ph=$("#rc-phone").value.trim();if(ph.replace(/\D/g,"").length<10){toast("Enter a 10-digit mobile number");return}Object.assign(recov(),{phone:ph,pending:ph});save();render();toast("Demo shop: no text is sent. Use code 123456.");$("#rc-code")?.focus();return}
   if(f.id==="recoveryCodeForm"){if($("#rc-code").value.replace(/\D/g,"")!=="123456"){toast("That code doesn't match. In the demo, use 123456.");return}Object.assign(recov(),{verified:true,pending:""});save();render();toast("Phone verified");return}
@@ -939,6 +950,7 @@ document.addEventListener("change",async e=>{
       j.photos.push({src:c.toDataURL("image/jpeg",.8),cap:file.name.replace(/\.[^.]+$/,"")});save();renderLayer();toast("Photo added to customer's page")};img.src=r.result};r.readAsDataURL(file);e.target.value=""}
 });
 document.addEventListener("input",e=>{
+  if(ui.modal?.walk&&window.Walkthrough.input(e.target,ui.modal.walk))return;
   if(e.target.id==="sig")ui.draft[ui.custJob+"-sig"]=e.target.value;
   if(e.target.id==="boardSearch"){ui.q=e.target.value;filterBoard()}
   if(e.target.id==="archiveQ"){ui.aq=e.target.value;renderArchiveRows()}
@@ -953,7 +965,7 @@ if(new URLSearchParams(location.search).has("smart")){
 }
 </script>
 <script src="/config.js"></script>
-<script src="/tour.js?v=201"></script>
+<script src="/tour.js?v=202"></script>
 <script src="/shell.js?v=1"></script>
 </body>
 </html>

@@ -84,5 +84,10 @@
   "si-2": "Forgot your password? Tap forgot password, and enter the email you sign in with. You can get a six-digit code by email, or by text, to a phone you've verified.",
   "si-3": "Let's have it texted. Enter the code, choose a new password with at least eight characters, and tap set new password. You're signed right back in.",
   "si-4": "To get reset codes by text, add a password reset phone. Open Settings, and scroll to Password reset phone. Enter your mobile number, and tap text me a code.",
-  "si-5": "Enter the code we text you, and your phone is verified. You can change it or remove it anytime. And you can always reset your password by email, right from the sign-in page."
+  "si-5": "Enter the code we text you, and your phone is verified. You can change it or remove it anytime. And you can always reset your password by email, right from the sign-in page.",
+  "wk-1": "In this lesson, we'll do a walk-through, a quick check of the whole car. Open a car, and find Walk-through. There's one at check-in, and one after the repair, and your customer sees both.",
+  "wk-2": "Tap start walk-through. There are eleven quick points, from body and glass to dashboard warning lights. Tap good, watch, or repair for each one you check. Here, the battery tested weak, so we'll mark it repair, and add a note the customer will read.",
+  "wk-3": "Checked the rest and it's all fine? Tap mark the rest good. Add the mileage, and a short summary if you like. Leave notify checked, and the customer gets a link to the report. Then save.",
+  "wk-4": "When the work is done, start the after walk-through. It begins as a copy of the check-in, so you only change what's different. The new battery is in, so battery is now good. Save it.",
+  "wk-5": "On the customer's page, the walk-through shows check-in and after, side by side, with anything that needs attention at the top. It's an easy way to show exactly what you checked, and what changed."
 }
