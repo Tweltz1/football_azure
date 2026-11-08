@@ -7,15 +7,15 @@
   const DEMO_PAGE = "/demo.html";
   const DEMO_VIDEO = "/demo.mp4";
   const STAGES = [
-    { key: "invited", label: "Customer invited", cust: "Check in for your repair" },
-    { key: "checked_in", label: "Checked In", cust: "We have your car" },
-    { key: "diagnosing", label: "Diagnosing", cust: "Inspecting your car" },
-    { key: "approval", label: "Approval Needed", cust: "Waiting on your approval" },
-    { key: "parts", label: "Waiting on Parts", cust: "Waiting on parts" },
-    { key: "in_progress", label: "In Progress", cust: "Repairs underway" },
-    { key: "qc", label: "Quality Check", cust: "Final check and road test" },
-    { key: "ready", label: "Ready for Pickup", cust: "Ready for pickup" },
-    { key: "picked_up", label: "Picked Up", cust: "Picked up" },
+    { key: "invited", label: "Customer invited", cust: "Check In for Your Repair" },
+    { key: "checked_in", label: "Checked In", cust: "We Have Your Car" },
+    { key: "diagnosing", label: "Diagnosing", cust: "Inspecting Your Car" },
+    { key: "approval", label: "Approval Needed", cust: "Waiting on Your Approval" },
+    { key: "parts", label: "Waiting on Parts", cust: "Waiting on Parts" },
+    { key: "in_progress", label: "In Progress", cust: "Repairs Underway" },
+    { key: "qc", label: "Quality Check", cust: "Final Check and Road Test" },
+    { key: "ready", label: "Ready for Pickup", cust: "Ready for Pickup" },
+    { key: "picked_up", label: "Picked Up", cust: "Picked Up" },
   ];
   const SI = Object.fromEntries(STAGES.map((s, i) => [s.key, i]));
 
@@ -37,8 +37,8 @@
   function estimateOutcome(j) {
     if (!j.estimate.length || j.estimate.some((e) => e.status === "pending")) return "";
     const approved = j.estimate.filter((e) => e.status === "approved").length;
-    if (approved === j.estimate.length) return "Estimate approved";
-    return approved ? "Estimate partially approved" : "Estimate declined";
+    if (approved === j.estimate.length) return "Estimate Approved";
+    return approved ? "Estimate Partially Approved" : "Estimate Declined";
   }
   const fmtPhone = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ""); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : (p || ""); };
   const contact = c => [c.preference !== "email" && fmtPhone(c.phone), c.preference !== "sms" && c.email].filter(Boolean).join(" and ");
@@ -140,7 +140,7 @@
     const openFolders = new Set(Array.from(document.querySelectorAll(".photo-folder[open]"), (el) => el.dataset.folder));
     document.title = j.shop.name + " · Your " + j.vehicle;
     const outcome = estimateOutcome(j);
-    const heading = j.closed ? "This repair was closed" : j.stage === "invited" && j.intakeReceived ? "Check-in details received" :
+    const heading = j.closed ? "This Repair Was Closed" : j.stage === "invited" && j.intakeReceived ? "Check-In Details Received" :
       j.stage === "approval" && outcome ? outcome : STAGES[idx].cust;
     const evAt = (k) => { const e = [...j.events].reverse().find((x) => x.stage === k); return e ? e.t : null; };
     const tl = STAGES.filter(s => s.key !== "invited" || evAt("invited")).filter((s) => s.key !== "picked_up" || evAt(s.key) || j.photos.some((p) => p.stage === s.key)).map((s) => {
