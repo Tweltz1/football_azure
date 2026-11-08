@@ -8,14 +8,14 @@
   const DEMO_VIDEO = "/demo.mp4";
   const STAGES = [
     { key: "invited", label: "Customer invited", cust: "Check in for your repair" },
-    { key: "checked_in", label: "Checked in", cust: "We have your car" },
+    { key: "checked_in", label: "Checked In", cust: "We have your car" },
     { key: "diagnosing", label: "Diagnosing", cust: "Inspecting your car" },
-    { key: "approval", label: "Approval needed", cust: "Waiting on your approval" },
-    { key: "parts", label: "Waiting on parts", cust: "Waiting on parts" },
-    { key: "in_progress", label: "In progress", cust: "Repairs underway" },
-    { key: "qc", label: "Quality check", cust: "Final check and road test" },
-    { key: "ready", label: "Ready for pickup", cust: "Ready for pickup" },
-    { key: "picked_up", label: "Picked up", cust: "Picked up" },
+    { key: "approval", label: "Approval Needed", cust: "Waiting on your approval" },
+    { key: "parts", label: "Waiting on Parts", cust: "Waiting on parts" },
+    { key: "in_progress", label: "In Progress", cust: "Repairs underway" },
+    { key: "qc", label: "Quality Check", cust: "Final check and road test" },
+    { key: "ready", label: "Ready for Pickup", cust: "Ready for pickup" },
+    { key: "picked_up", label: "Picked Up", cust: "Picked up" },
   ];
   const SI = Object.fromEntries(STAGES.map((s, i) => [s.key, i]));
 
@@ -31,7 +31,7 @@
   const clock = (t) => new Date(ts(t)).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const dayClock = (t) => { const d = new Date(ts(t)); return d.toDateString() === new Date().toDateString() ? clock(t) : d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ", " + clock(t); };
   const since = (t) => { const m = Math.max(0, Math.round((Date.now() - ts(t)) / 60000)); if (m < 60) return m + "m"; const h = Math.floor(m / 60); if (h < 48) return h + "h " + (m % 60) + "m"; return Math.floor(h / 24) + "d"; };
-  const vehicleStr = (j) => [j.vehicle.year, j.vehicle.make, j.vehicle.model].filter(Boolean).join(" ");
+  const vehicleStr = (j) => ShopDisplay.vehicle([j.vehicle?.year, j.vehicle?.make, j.vehicle?.model].filter(Boolean).join(" "));
   const estTotal = (j, approvedOnly) => j.estimate.filter((e) => !approvedOnly || e.status === "approved").reduce((a, e) => a + Number(e.price), 0);
   const awaitingDecision = (j) => j.stage === "approval" && j.estimate.some((e) => e.status === "pending");
   function estimateOutcome(j) {
@@ -91,7 +91,7 @@
       <div style="display:flex;align-items:center;gap:10px"><h2 style="margin-right:auto">See Talk Shops in action</h2><button class="x" data-close-modal aria-label="Close">×</button></div>
       <video src="${DEMO_VIDEO}" controls autoplay playsinline preload="metadata"></video>
       <p class="muted" style="margin:0;font-size:13.5px">A walkthrough with narration: checking in a car, sending an estimate, the customer approving it from their text link, and moving the car to ready for pickup. Turn your sound on.</p>
-      <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}" style="text-decoration:none">Try the demo shop yourself</a></div>
+      <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}" style="text-decoration:none">Explore Demo Shop yourself</a></div>
     </div></div>`;
   }
 
@@ -173,7 +173,7 @@
     const extra = j.stage === "parts" && j.eta ? `<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta)}</b>.</p>`
       : j.stage === "ready" ? `<p style="margin:6px 0 0">${j.bill ? "Total due " + money(j.bill.total) : "Approved estimate " + money(estTotal(j, true))}.${j.shop.hours ? " Open " + esc(j.shop.hours) + "." : ""}</p>` : "";
     app.innerHTML = `<div class="cust-page">
-      <div class="c-head"><small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${heading}</h2><div style="font-size:14px;margin-top:4px">${esc(j.vehicle)}</div>${extra}</div>
+      <div class="c-head"><small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${heading}</h2><div style="font-size:14px;margin-top:4px">${esc(ShopDisplay.vehicle(j.vehicle))}</div>${extra}</div>
       <div class="c-body">
         ${j.stage === "invited" ? `<section class="c-card"><h3>Vehicle check-in</h3>${j.intakeReceived ? "<p>Your details have been sent to the shop.</p>" : intakeForm()}</section>` : ""}
         ${j.canUploadIntakePhotos ? `<section class="c-card"><h3>Photos for your technician</h3>
@@ -188,13 +188,13 @@
         ${j.concern ? `<div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
         ${j.shop.phone ? `<div class="c-card call"><span>Questions? Call the shop</span><b>${esc(j.shop.phone)}</b></div>` : ""}
         <p class="cust-top">This page updates as your repair progresses.</p>
-        <p class="cust-top"><a href="/privacy.html">Privacy policy</a></p>
+        <p class="cust-top"><a href="/privacy.html">Privacy Policy</a></p>
       </div></div>`;
   }
 
   // ==================== Shop app (signed in) ====================
   const ui = { noteDraft: {}, view: "board", openJob: null, modal: null, authMode: "signin", authMsg: "", authErr: "", busy: false, reset: null };
-  // Shop settings: the phone that can get password reset codes.
+  // Shop Settings: the phone that can get password reset codes.
   const recovery = { data: null, loading: false, pending: "", err: "" };
   const dictation = window.createDictation({ toast });
   const archive = { q: "", rows: null, keepDays: 365, loading: false, error: "", seq: 0 };
@@ -271,7 +271,7 @@
     const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join");
     if (!session) {
       chrome.hidden = true;
-      if (onLoginPage) document.title = "Shop sign in · Talk Shops";
+      if (onLoginPage) document.title = "Shop Sign In · Talk Shops";
       app.innerHTML = onLoginPage ? loginView() : homeView();
       renderLayer();
       return;
@@ -300,7 +300,7 @@
   const brand = () => `<div class="brand"><div class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</div><div><h1>Talk Shops</h1><small>For repair shops</small></div></div>`;
 
   const supportEmail = "support@talkshops.app";
-  const signInHelp = `<p class="muted" style="margin:0">Need help signing in? <a class="login-home" href="mailto:${supportEmail}?subject=Talk%20Shops%20sign-in%20help">Contact us</a></p>`;
+  const signInHelp = `<p class="muted" style="margin:0">Need help signing in? <a class="login-home" href="mailto:${supportEmail}?subject=Talk%20Shops%20sign-in%20help">Contact Us</a></p>`;
 
   function forgotView() {
     const r = ui.reset || { step: "ask", email: "" };
@@ -308,7 +308,7 @@
     return `<div class="login-wrap"><section class="login">
       ${brand()}
       <h2>Reset your password</h2>
-      ${ask ? `<p class="muted" style="margin:0">Enter the email you sign in with. We'll send a 6-digit code to that email, or by text to the phone you verified in Shop settings.</p>
+      ${ask ? `<p class="muted" style="margin:0">Enter the email you sign in with. We'll send a 6-digit code to that email, or by text to the phone you verified in Shop Settings.</p>
       <form class="auth-alt" id="forgotForm">
         <label class="field">Work email<input id="fp-email" type="email" required autocomplete="username" value="${esc(r.email || "")}"></label>
         <button class="btn primary" type="submit" name="channel" value="email" ${ui.busy ? "disabled" : ""}>Email me a code</button>
@@ -359,7 +359,7 @@
     return `<div class="login-wrap"><section class="login">
       ${brand()}
       ${joinBanner()}
-      <h2>${signup ? (joinToken ? "Create your account" : "Create your shop account") : "Shop sign in"}</h2>
+      <h2>${signup ? (joinToken ? "Create your account" : "Create your shop account") : "Shop Sign In"}</h2>
       ${sb ? "" : `<p class="form-err">Sign-in isn't available on this copy of the site.</p>`}
       <button class="btn google" id="google" type="button">${googleIcon} Continue with Google</button>
       <div class="or">or use email</div>
@@ -382,12 +382,12 @@
     return `<div class="front">
       <header class="front-nav"><div class="front-inner">
         <a class="front-wordmark" href="#top" aria-label="Talk Shops home"><span class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</span>Talk Shops</a>
-        <nav aria-label="Main navigation"><a href="#plans">Compare plans</a><a class="front-sign" href="/?login">Shop sign in</a></nav>
+        <nav aria-label="Main navigation"><a href="#plans">Compare Plans</a><a class="front-sign" href="/?login">Shop Sign In</a></nav>
       </div></header>
       <section class="front-hero" id="top"><div class="front-inner">
         <div class="front-intro"><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
           <p>Send repair updates, share photos and collect signed estimates through one link. Your customer opens it on their phone.</p>
-          <div class="front-actions"><a class="front-cta" href="${DEMO_PAGE}">Try the demo shop <span aria-hidden="true">↗</span></a><a class="front-tour" href="${DEMO_PAGE}?tour=1">Take the guided tour →</a></div>
+          <div class="front-actions"><a class="front-cta" href="${DEMO_PAGE}">Explore Demo Shop <span aria-hidden="true">↗</span></a><a class="front-tour" href="${DEMO_PAGE}?tour=1">Take the Guided Tour →</a></div>
         </div>
         <div class="front-preview" aria-label="Example customer repair page">
           <div class="front-window"><span>Customer view</span><span>Sample repair</span></div>
@@ -397,21 +397,21 @@
         </div>
       </div></section>
       <section class="front-work"><div class="front-inner">
-        <div class="front-workflow"><h2>One repair, two views.</h2>
+        <div class="front-workflow"><h2>One Repair, Two Views</h2>
           <p>Your team manages the job in the bay. The customer follows along from their private link.</p>
-          <dl><div><dt>Check in the vehicle</dt><dd>Invite customers by text or email to describe the issue and send photos before the visit.</dd></div>
-          <div><dt>Show the work</dt><dd>Share inspection photos by repair stage and let customers approve or decline individual estimate lines.</dd></div>
-          <div><dt>Prepare for pickup</dt><dd>Send the final total with an itemized bill or your shop’s own PDF.</dd></div></dl>
+          <dl><div><dt>Check In the Vehicle</dt><dd>Invite customers by text or email to describe the issue and send photos before the visit.</dd></div>
+          <div><dt>Share Inspection Findings</dt><dd>Share inspection photos by repair stage and let customers approve or decline individual estimate lines.</dd></div>
+          <div><dt>Prepare for Pickup</dt><dd>Send the final total with an itemized bill or your shop’s own PDF.</dd></div></dl>
           <button class="linkbtn" id="watchDemo" type="button">Watch the walkthrough video →</button>
         </div>
       </div></section>
       <section class="front-plans" id="plans"><div class="front-inner">
-        <h2>Choose your shop’s plan.</h2><p>Both plans include unlimited email, photo updates, online estimate approvals and final bills.</p>
+        <h2>Choose Your Plan</h2><p>Both plans include unlimited email, photo updates, online estimate approvals and final bills.</p>
         <div class="front-tiers">
           <article><h3>Talk Shops Starter</h3><strong>$59<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $590/year</small></article>
           <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p><b>AI repair how-to assistant</b> for your techs</p><p>8 staff seats · up to 3 owners · Smart Replies</p><small>Annual billing: $990/year</small></article>
         </div>
-        <h3 class="front-market-title">How it compares</h3>
+        <h3 class="front-market-title">Plan Comparison</h3>
         <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
           <tr><th scope="row">Talk Shops Starter</th><td>$59</td><td>Customer updates, approvals and 1,000 texts</td></tr>
           <tr><th scope="row">Talk Shops Pro</th><td>$99</td><td>Customer updates, approvals, 3,000 texts and the AI repair how-to assistant</td></tr>
@@ -420,7 +420,7 @@
         </tbody></table>
         <small class="front-source">Selected plans at month-to-month list prices, checked November 7, 2026. Competitor plans include additional shop-management features.</small>
       </div></section>
-      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="mailto:${supportEmail}?subject=Talk%20Shops%20sales%20inquiry">Contact sales</a><a href="/privacy.html">Privacy policy</a></div></footer>
+      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="mailto:${supportEmail}?subject=Talk%20Shops%20sales%20inquiry">Contact Sales</a><a href="/privacy.html">Privacy Policy</a></div></footer>
     </div>`;
   }
 
@@ -429,7 +429,7 @@
     return `<div class="${firstTime ? "login-wrap" : ""}"><form class="${firstTime ? "login" : "panel"}" id="setupForm">
       ${firstTime ? brand() : ""}
       ${firstTime && join.err ? `<p class="form-err" role="alert">${esc(join.err)}</p><p class="muted" style="margin:0">Joining someone else's shop? Ask the owner to send a new invite to the email you signed in with. Or set up your own shop below.</p>` : ""}
-      <h2>${firstTime ? "Set up your shop" : "Shop settings"}</h2>
+      <h2>${firstTime ? "Set up your shop" : "Shop Settings"}</h2>
       <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
       <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
@@ -442,7 +442,7 @@
       <div class="btn-row"><label>Opens <input type="time" id="sr-open" value="${esc(s.smartSchedule?.open || "08:00")}"></label><label>Closes <input type="time" id="sr-close" value="${esc(s.smartSchedule?.close || "17:00")}"></label></div></details><a href="/demo.html?smart=1" target="_blank" rel="noopener">Try sample customer texts</a></fieldset>` : ""}
       <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
       ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Saved items: labor, parts and fees (import Excel or CSV)</button>`}
-      <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign out</button>` : ""}</div>
+      <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
     </form>${firstTime ? "" : team.panel(render) + recoveryPanel()}</div>`;
   }
 
@@ -460,7 +460,7 @@
     const s = shop || {};
     const row = (k, v) => v ? `<div class="ro-row"><span class="muted">${k}</span><b>${esc(v)}</b></div>` : "";
     return `<div><section class="panel" style="display:flex;flex-direction:column;gap:10px">
-      <h2>Shop settings</h2>
+      <h2>Shop Settings</h2>
       ${row("Shop name", s.name)}${row("Shop phone", s.phone)}${row("Hours", s.hours)}${row("Shop email", s.email)}
       <p class="muted" style="margin:0">You're signed in as a <b>technician</b>. A shop owner can change these details, prices, the plan and the team.</p>
     </section>${recoveryPanel()}</div>`;
@@ -482,8 +482,8 @@
     const ready = active.filter((j) => j.stage === "ready").length;
     const today = new Date().toDateString();
     const sent = jobs.reduce((a, j) => a + j.messages.filter((m) => m.dir === "out" && m.delivery === "sent" && new Date(m.t).toDateString() === today).length, 0);
-    const filters = [["all", "All cars", inShop.length], ["approval", "Awaiting approval", waiting], ["ready", "Ready for pickup", ready]];
-    let h = `<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${inShop.length} car${inShop.length === 1 ? "" : "s"} in the shop · ${sent} update${sent === 1 ? "" : "s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check in vehicle</button></div>
+    const filters = [["all", "All Cars", inShop.length], ["approval", "Awaiting Approval", waiting], ["ready", "Ready for Pickup", ready]];
+    let h = `<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${inShop.length} car${inShop.length === 1 ? "" : "s"} in the shop · ${sent} update${sent === 1 ? "" : "s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check In Vehicle</button></div>
       <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q || "")}" autocomplete="off"></label>
       <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key, label, count]) => `<button type="button" class="qf ${key === "approval" ? "warn" : key === "ready" ? "ok" : ""}" data-queue="${key}" aria-pressed="${key === (ui.queue || "all")}">${label}<b>${count}</b></button>`).join("")}</div></div>
       <div class="age-key" aria-label="Time in shop"><span class="age-ok">Under 1 day</span><span class="age-mid">1 to 3 days</span><span class="age-old">Over 3 days</span></div>
@@ -492,7 +492,7 @@
     STAGES.filter((s) => s.key !== "picked_up").forEach((s) => {
       const list = active.filter((j) => j.stage === s.key);
       if (s.key === "invited" && !list.length) return;
-      h += `<section class="col ${s.key === "approval" ? "is-approval" : ""} ${s.key === "ready" ? "is-ready" : ""}"><div class="col-h"><h3>${s.key === "approval" ? "Estimate review" : s.label}</h3><span>${list.length}</span></div>`;
+      h += `<section class="col ${s.key === "approval" ? "is-approval" : ""} ${s.key === "ready" ? "is-ready" : ""}"><div class="col-h"><h3>${s.key === "approval" ? "Estimate Review" : s.label}</h3><span>${list.length}</span></div>`;
       if (!list.length) h += `<div class="empty-col">No cars</div>`;
       list.forEach((j) => {
         const ev = j.events[j.events.length - 1];
@@ -508,9 +508,9 @@
         const qk = awaitingDecision(j) ? "approval" : j.stage === "ready" ? "ready" : "other";
         h += `<button class="card ${age.cls}" data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
           <span class="veh queue-vehicle">${esc(vehicleStr(j) || "Vehicle details pending")}<span class="chev" aria-hidden="true">›</span></span>
-          <span class="row"><span>${esc(j.customer.name)}</span><span class="mono">${esc(j.ro)}</span></span>
+          <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${esc(j.ro)}</span></span>
           ${j.concern ? `<span class="row concern"><span>${esc(j.concern)}</span></span>` : ""}
-          <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill stage-pill">${esc(s.key === "approval" ? "Estimate review" : s.label)}</span>${pill}${reply ? `<span class="pill bad">New reply</span>` : ""}<span class="in-stage">${since(ev.t)} in stage</span></span></button>`;
+          <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill stage-pill">${esc(s.key === "approval" ? "Estimate Review" : s.label)}</span>${pill}${reply ? `<span class="pill bad">New reply</span>` : ""}<span class="in-stage">${since(ev.t)} in stage</span></span></button>`;
       });
       h += `</section>`;
     });
@@ -556,10 +556,10 @@
     if (!archive.rows.length) { el.innerHTML = `<div class="empty-board"><p class="muted" style="margin:0">${archive.q.trim() ? "No picked-up cars match that search." : "No picked-up cars yet. When you move a car to Picked up, it lands here."}</p></div>`; return; }
     el.innerHTML = `<p class="muted archive-count">${archive.rows.length === 100 ? "Showing the 100 most recent matches" : archive.rows.length + " car" + (archive.rows.length === 1 ? "" : "s")}</p>
       <ul class="archive-list">${archive.rows.map((r) => {
-        const veh = [r.vehicle?.year, r.vehicle?.make, r.vehicle?.model].filter(Boolean).join(" ") || "Vehicle not recorded";
+        const veh = vehicleStr(r) || "Vehicle not recorded";
         return `<li class="archive-item"><button class="archive-row" data-archive-open="${esc(r.id)}">
           <span class="a-main"><b>${esc(veh)}</b>${r.plate ? `<span class="mono">${esc(r.plate)}</span>` : ""}</span>
-          <span class="a-who">${esc(r.customer?.name || "")}${r.customer?.phone ? " · " + esc(fmtPhone(r.customer.phone)) : ""}${r.customer?.email ? " · " + esc(r.customer.email) : ""}</span>
+          <span class="a-who">${esc(ShopDisplay.name(r.customer?.name))}${r.customer?.phone ? " · " + esc(fmtPhone(r.customer.phone)) : ""}${r.customer?.email ? " · " + esc(r.customer.email) : ""}</span>
           <span class="a-concern">${esc(r.concern || "")}</span>
           <span class="a-meta"><span class="mono">${esc(r.ro)}</span><span>${r.closedReason ? `<span class="pill bad">Closed</span> ${esc(r.closedReason)},` : "Picked up"} ${esc(new Date(ts(r.archivedAt)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}</span>${r.total ? `<span>${money(r.total)}</span>` : ""}<span class="muted">Deletes ${deleteDate(r.archivedAt)}</span></span>
         </button>${isOwner() ? `<button class="archive-del" data-delete-archived="${esc(r.id)}" aria-label="Delete ${esc(r.ro)} permanently">Delete</button>` : ""}</li>`;
@@ -584,7 +584,7 @@
 
   function checkinView() {
     return `<form class="panel" id="checkinForm" autocomplete="off">
-      <h2>Customer check-in</h2>
+      <h2>Customer Check-In</h2>
       <label class="field">Check-in method<select id="ci-method"><option value="staff">Enter vehicle details at the shop</option><option value="invite">Invite customer by link</option></select></label>
       <p id="ci-help" class="muted">The customer gets a tracking link and can upload photos for the technician.</p>
       <div class="form-grid">
@@ -600,15 +600,15 @@
         <label class="field full" data-staff-intake>What's the concern?<textarea id="ci-concern" required maxlength="1000"></textarea></label>
         <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
       </div>
-      <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Check in and notify customer</button></div>
+      <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Check In and Notify Customer</button></div>
     </form>`;
   }
 
   function bubble(m, j) {
     const unsent = m.dir === "out" && m.delivery && m.delivery !== "sent";
     const who = m.dir === "out" ? (m.autoReply ? "Auto-replied" : channelName(m) + " to customer" + (m.sender ? " · "+esc(m.sender) : "")) : esc(first(j.customer.name));
-    const status = unsent ? `<span class="delivery">${m.delivery === "failed" ? "Failed" : "Not sent"}${m.note ? ": " + esc(m.note) : ""}</span>` : "";
-    const text = esc(m.text).replace(esc(j.link), `<a href="${esc(j.link)}" target="_blank" rel="noopener" title="${esc(j.link)}">customer page link</a>`);
+    const status = unsent ? `<strong class="delivery-state">${m.delivery === "failed" ? "Delivery failed" : "Message not sent"}</strong>${m.note ? `<details class="delivery-detail"><summary>Delivery details</summary><p>${esc(m.note)}</p></details>` : ""}` : "";
+    const text = !j.link ? esc(m.text) : esc(m.text).replace(esc(j.link), `<a href="${esc(j.link)}" target="_blank" rel="noopener" title="${esc(j.link)}">Customer Page</a>`);
     const draft = unsent && m.channel === "email" && j.customer.email && j.customer.consent
       ? `<a class="btn" href="mailto:${esc(encodeURIComponent(j.customer.email))}?subject=${esc(encodeURIComponent(shop.name + " · " + j.ro))}&amp;body=${esc(encodeURIComponent(m.text))}">Open email draft</a>` : "";
     return `<div class="bubble ${m.dir}${unsent ? " unsent" : ""}">${text}<span class="meta">${who} · ${dayClock(m.t)}</span>${status}${draft}</div>`;
@@ -621,16 +621,16 @@
     const rows = j.estimate.map((e) => `<tr><td>${esc(e.item)}${chargeDetail(e)}<div class="pri-cell">${e.status === "pending" ? `<select class="pri-sel" data-pri="${esc(e.id)}" aria-label="Priority for ${esc(e.item)}">${priOptions(e.priority)}</select>` : priPill(e)}</div>${window.repairGuideFor(e.item)}</td><td>${e.status === "pending" ? '<span class="pill warn">Pending</span>' : e.status === "approved" ? '<span class="pill ok">Approved</span>' : '<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status === "pending" && j.stage !== "approval" ? `<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>` : ""}</td></tr>`).join("");
     const log = [...j.events].reverse().map((e) => `<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
     return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-      <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(j.customer.name)} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(ShopDisplay.name(j.customer.name))} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
       <div class="sheet-body" data-job="${esc(j.id)}">
         ${j.closed ? `<section class="sec closed-note"><p><b>Closed without repair</b> · ${esc(j.closed.reason)} · ${dayClock(j.closed.t)}</p><p class="muted">This car is in the Archive.</p>${isOwner() ? `<div class="btn-row"><button class="btn" data-reopen>Reopen and put back on the board</button><button class="btn danger" data-delete-job>Delete permanently</button></div>` : ""}</section>` : ""}
-        <section class="sec"><h3>Stage</h3><div class="stepper">${steps}</div>
-          <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) && (next.key !== "approval" || isOwner()) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer's page</a>${j.stage !== "picked_up" && !j.closed && isOwner() ? `<button class="btn" data-close-job>Close without repair</button>` : ""}</div>
+        <section class="sec"><details class="stage-picker" ${window.TOUR_ACTIVE ? "open" : ""}><summary><span>Repair Stage</span><strong>${STAGES[idx].key === "approval" ? estimateOutcome(j) || STAGES[idx].label : STAGES[idx].label}</strong></summary><div class="stepper">${steps}</div></details>
+          <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) && (next.key !== "approval" || isOwner()) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer Page</a>${j.stage !== "picked_up" && !j.closed && isOwner() ? `<button class="btn" data-close-job>Close Without Repair</button>` : ""}</div>
           ${j.stage === "parts" ? `<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
         </section>
         ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
         ${j.concern ? `<section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div></section>` : ""}
-        ${vehicleStr(j) && !j.closed && j.stage !== "picked_up" ? `<p class="howto-link"><button class="linkbtn" data-howto-job="${esc(j.id)}">Look up how to do a repair on this ${esc(vehicleStr(j))}</button></p>` : ""}
+        ${vehicleStr(j) && !j.closed && j.stage !== "picked_up" ? `<p class="howto-link"><button class="linkbtn" data-howto-job="${esc(j.id)}">Open Repair Guide</button></p>` : ""}
         ${j.stage === "invited" && !j.intakeReceived ? "" : window.Walkthrough.sheetSection(j)}
         ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3>
           ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some((e) => e.status !== "pending") ? `<div class="total"><span>Approved total</span><span>${money(estTotal(j, true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}` : `<p class="muted" style="margin:0">No line items yet.</p>`}
@@ -645,23 +645,23 @@
           </div>
           ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? (isOwner() ? `<button class="btn primary est-send" data-stage="approval">Send estimate for approval</button>` : `<p class="muted est-send-note">A shop owner reviews these lines and sends the estimate to ${esc(first(j.customer.name))}.</p>`) : ""}
         </section>
-        <section class="sec"><h3>Final bill</h3>
+        <section class="sec"><h3>Final Bill</h3>
           ${j.bill ? `<p>${j.bill.mode === "upload" ? "Shop PDF" : "Itemized bill"} · ${money(j.bill.total)}</p>` : isOwner() ? "" : `<p class="muted" style="margin:0">No final bill yet. A shop owner creates it.</p>`}
           <div class="btn-row">${isOwner() ? `<button class="btn" data-billing="generated">${j.bill?.mode === "generated" ? "Edit itemized bill" : "Create itemized bill"}</button><button class="btn" data-billing="upload">Upload shop PDF</button>` : ""}${j.bill?.mode==="upload" ? '<button class="linkbtn" data-billing="download">Download current PDF</button>' : ""}</div>
         </section>`}
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
           <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
         ${j.closed || j.stage === "picked_up" && !(j.walkaround || []).length ? "" : window.Walkaround.sheetSection(j)}
-        <section class="sec"><h3>Technician notes <span class="sec-sub">Customer sees these</span></h3>
+        <section class="sec"><h3>Technician Notes <span class="sec-sub">Shared with customer</span></h3>
           ${(j.notes || []).length ? `<ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${esc(n.id)}">Remove</button></li>`).join("")}</ul>` : ""}
-          <form id="noteForm" class="note-form"><textarea id="noteIn" maxlength="2000" placeholder="What did you find? Tap Speak to talk instead of typing." aria-label="Technician note">${esc(ui.noteDraft[j.id] || "")}</textarea>
-            <div class="btn-row"><button type="button" class="btn mic" data-dictate="#noteIn" aria-pressed="false" aria-label="Voice typing"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="mic-label">Speak</span></button><button class="btn primary" type="submit">Post note</button></div>
-            <label class="chk"><input type="checkbox" id="noteSend" ${j.customer.consent ? "" : "disabled"}> Also notify ${esc(first(j.customer.name))} that there's an update${j.customer.consent ? "" : " (customer has not agreed to notifications)"}</label></form></section>
+          <form id="noteForm" class="note-form"><textarea id="noteIn" maxlength="2000" placeholder="Describe your findings…" aria-label="Technician note">${esc(ui.noteDraft[j.id] || "")}</textarea>
+            <div class="btn-row"><button type="button" class="btn mic" data-dictate="#noteIn" aria-pressed="false" aria-label="Voice typing"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="mic-label">Speak</span></button><button class="btn primary" type="submit">Post Note</button></div>
+            <label class="chk"><input type="checkbox" id="noteSend" ${j.customer.consent ? "" : "disabled"}> Notify ${esc(ShopDisplay.name(first(j.customer.name)))} about this note${j.customer.consent ? "" : " (customer has not agreed to notifications)"}</label></form></section>
         <section class="sec"><h3>Messages</h3><div class="thread">${j.messages.map((m) => bubble(m, j)).join("") || '<p class="muted">No messages yet.</p>'}</div>
           ${plan?.smartReplies ? `<div class="btn-row"><button class="linkbtn" type="button" data-smart-pause>${j.smartPaused?"Resume auto-replies":"Pause auto-replies for this repair"}</button>${j.messages.at(-1)?.incomingSms && j.messages.at(-1)?.suggestion ? '<button class="btn sm" type="button" data-smart-draft>Use suggested reply</button>' : j.messages.at(-1)?.incomingSms ? '<button class="btn sm" type="button" data-smart-ai>Draft reply for review</button>' : ""}</div>` : ""}
           <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto auto"><input id="replyIn" maxlength="1000" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button type="button" class="btn mic" data-dictate="#replyIn" aria-pressed="false" aria-label="Voice typing"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button class="btn primary" type="submit">Send</button></form></section>
         <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
-        ${isOwner() ? `<section class="sec danger-zone"><button class="linkbtn danger" data-delete-job>Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></section>` : ""}
+        ${isOwner() ? `<section class="sec danger-zone"><details class="repair-management"><summary>Manage Repair</summary><button class="linkbtn danger" data-delete-job>Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></details></section>` : ""}
       </div></aside>`;
   }
 
@@ -669,7 +669,7 @@
     const j = job(ui.modal.closeJob);
     const text = `Hi ${first(j.customer.name)}, we've closed out repair order ${j.ro} for your ${vehicleStr(j) || "vehicle"}. Thanks for considering ${shop.name}. Call us anytime if you change your mind.`;
     return `<div class="modal"><form class="modal-card" id="closeForm" role="dialog" aria-modal="true" aria-labelledby="cTitle">
-      <h2 id="cTitle">Close without repair</h2>
+      <h2 id="cTitle">Close Without Repair</h2>
       <p class="muted" style="margin:0"><b>Archive</b> keeps the record for one year so you can look it up or reopen it. <b>Delete</b> removes it for good.</p>
       <label class="field">Reason<select id="c-reason">${["Customer declined the repair", "Customer didn't bring the car in", "Customer went elsewhere", "Duplicate or mistake", "Other"].map((r) => `<option>${esc(r)}</option>`).join("")}</select></label>
       <label class="chk"><input type="checkbox" id="c-send" ${j.customer.consent ? "" : "disabled"}> Let ${esc(first(j.customer.name))} know ${j.customer.consent ? "" : "(customer has not agreed to notifications)"}</label>
@@ -682,9 +682,9 @@
     const m = ui.modal, j = job(m.job), s = STAGES[SI[m.stage]];
     return `<div class="modal"><form class="modal-card" id="sendForm" role="dialog" aria-modal="true" aria-labelledby="mTitle">
       <h2 id="mTitle">Move to ${s.label}</h2>
-      <p class="muted" style="margin:0">Notify ${esc(j.customer.name)} at ${esc(contact(j.customer))}</p>
+      <p class="muted" style="margin:0">Notify ${esc(ShopDisplay.name(j.customer.name))} at ${esc(contact(j.customer))}</p>
       ${m.stage === "parts" ? `<label class="field">Parts ETA<input id="m-eta" value="${esc(m.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
-      ${m.stage === "ready" ? `<div><strong>Final bill</strong><p>${j.bill ? money(j.bill.total) + " due at pickup" : "Optional. Customers can open their bill from the pickup link."}</p>
+      ${m.stage === "ready" ? `<div><strong>Final Bill</strong><p>${j.bill ? money(j.bill.total) + " due at pickup" : "Optional. Customers can open their bill from the pickup link."}</p>
         ${isOwner() ? `<div class="btn-row"><button class="btn" type="button" data-billing="generated">Create / edit bill</button><button class="btn" type="button" data-billing="upload">Upload shop PDF</button></div>` : ""}</div>` : ""}
       <label class="field">Message<textarea id="m-text" maxlength="1000">${esc(m.text)}</textarea></label>
       <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent ? "checked" : "disabled"}> Notify customer ${j.customer.consent ? "" : "(customer has not agreed to notifications)"}</label>
@@ -701,7 +701,9 @@
     else if (ui.modal?.walk) { const j = job(ui.modal.job); h += window.Walkthrough.editor(j, ui.modal.walk, { vehicle: vehicleStr(j) || j.ro, first: first(j.customer.name), consent: j.customer.consent, busy: ui.busy }); }
     else if (ui.modal) h += stageModal();
     const prev = $(".sheet-body"), keep = prev && prev.dataset.job === ui.openJob ? prev.scrollTop : null;
+    const stageOpen = keep !== null && prev.querySelector(".stage-picker")?.open;
     $("#layer").innerHTML = h;
+    if (stageOpen && $(".stage-picker")) $(".stage-picker").open = true;
     if (keep !== null && $(".sheet-body")) { $(".sheet").classList.add("no-anim"); $(".sheet-body").scrollTop = keep; }
     suggest.refresh();
     if (!isOwner()) $('#billingForm [name="saveItems"]')?.closest("label")?.remove();

@@ -24,7 +24,7 @@
     now: { tech: "Repair", cust: "Needs attention" },
   };
   const RANK = { now: 0, soon: 1, good: 2 };
-  const KIND = { before: { title: "Check-in walk-through", short: "Check-in" }, after: { title: "After-repair walk-through", short: "After repair" } };
+  const KIND = { before: { title: "Check-in walk-through", short: "Check-in" }, after: { title: "After-repair walk-through", short: "After Repair" } };
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const when = (t) => new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
   const counts = (w) => {
@@ -43,10 +43,10 @@
       return `<div class="wt-slot${w ? " has" : ""}"><div class="wt-slot-h"><b>${KIND[kind].short}</b>${w ? `<time>${when(w.t)}</time>` : ""}</div>
         ${w ? `<div class="wt-tally">${tally(w, "tech")}</div><small class="muted">${w.sentAt ? "Customer notified" : "On the customer's page"}${w.mileage ? " · " + esc(w.mileage) + " mi" : ""}</small>
           <button type="button" class="btn sm" data-walk="${kind}">Edit</button>`
-        : `<p class="muted">${kind === "before" ? "Quick look when the car comes in." : "Same check once the work is done."}</p>
-          <button type="button" class="btn sm${kind === "before" || all.before ? " primary" : ""}" data-walk="${kind}">Start walk-through</button>`}</div>`;
+        : `<p class="muted">${kind === "before" ? "Record the arrival condition." : "Verify the completed work."}</p>
+          <button type="button" class="btn sm${kind === "before" || all.before ? " primary" : ""}" data-walk="${kind}">Start Check</button>`}</div>`;
     };
-    return `<section class="sec"><h3>Walk-through <span class="sec-sub">Customer sees these</span></h3><div class="wt-slots">${card("before")}${card("after")}</div></section>`;
+    return `<section class="sec"><h3>Vehicle Walk-Through <span class="sec-sub">Shared with customer</span></h3><div class="wt-slots">${card("before")}${card("after")}</div></section>`;
   }
 
   /** Draft for the editor: the saved report, or for "after" a copy of "before" to change what was fixed. */
