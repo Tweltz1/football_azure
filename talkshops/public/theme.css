@@ -456,5 +456,5 @@ main:has(>.auth){padding:0;max-width:none}
   .wt-table tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:10px 0;border-top:1px solid var(--line)}
   .wt-table tbody th,.wt-table td{border:0;padding:0;width:auto;white-space:normal}
   .wt-table tbody th{grid-column:1/-1}
-  .wt-table td::before{content:attr(data-l);display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+  .wt-table td[data-l]::before{content:attr(data-l);display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
 }

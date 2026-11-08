@@ -130,7 +130,7 @@
     const dot = (it) => it ? `<span class="wt-dot wt-${it.status}">${esc(STATUS[it.status].cust)}</span>` : `<span class="wt-dot wt-none">Not checked</span>`;
     const rows = keys.map((k) => {
       const notes = [both && get(before, k)?.note ? `<small><b>Check-in:</b> ${esc(get(before, k).note)}</small>` : "", get(latest, k)?.note ? `<small>${both ? "<b>After:</b> " : ""}${esc(get(latest, k).note)}</small>` : ""].join("");
-      return `<tr><th scope="row">${esc(LABEL[k])}${notes}</th>${both ? `<td data-l="Check-in">${dot(get(before, k))}</td>` : ""}<td data-l="${after ? "After" : "At check-in"}">${dot(get(latest, k))}</td></tr>`;
+      return `<tr><th scope="row">${esc(LABEL[k])}${notes}</th>${both ? `<td data-l="Check-in">${dot(get(before, k))}</td>` : ""}<td${both ? ' data-l="After"' : ""}>${dot(get(latest, k))}</td></tr>`;
     }).join("");
     const meta = (w, name) => w ? `<p class="wt-meta"><b>${name}</b> · ${when(w.t)}${w.by ? " · " + esc(w.by) : ""}${w.mileage ? " · " + esc(w.mileage) + " mi" : ""}</p>${w.summary ? `<p class="wt-sum">${esc(w.summary)}</p>` : ""}` : "";
     return `<div class="c-card wt-card"><h3>Vehicle walk-through</h3>
