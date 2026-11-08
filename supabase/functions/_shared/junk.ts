@@ -1,4 +1,4 @@
-// Junk App API (/api/junk/*): free stuff people are giving away, found by distance and search.
+// Curbsy (internally "Junk App") API (/api/junk/*): free stuff people are giving away, found by distance and search.
 // Anyone can browse; posting, messaging, reporting and blocking need a sign-in.
 //
 // Photos go to the public `junk-photos` Storage bucket under <user id>/<random>.jpg. When the first photo
@@ -244,7 +244,7 @@ export async function junkRoute(
   ctx: Ctx, deps: JunkDeps | null | undefined, method: string, parts: string[], data: unknown, params?: URLSearchParams,
 ): Promise<Res | null> {
   if (parts[0] !== 'junk') return null;
-  if (!deps) return { status: 503, body: 'Junk App is not set up here yet.' };
+  if (!deps) return { status: 503, body: 'Curbsy is not set up here yet.' };
   const { store, photos } = deps;
   const me = ctx.userId;
   const body = (data && typeof data === 'object' ? data : {}) as Body;

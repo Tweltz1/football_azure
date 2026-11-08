@@ -36,7 +36,7 @@ export async function locate() {
   const pos = await new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, (err) => {
       reject(new Error(err && err.code === 1
-        ? 'Location is off for Junk App. Turn it on in Settings to see free stuff near you.'
+        ? 'Location is off for Curbsy. Turn it on in Settings to see free stuff near you.'
         : 'Couldn\'t find your location. Try again.'));
     }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
   });

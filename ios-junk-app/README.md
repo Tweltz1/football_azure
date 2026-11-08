@@ -1,12 +1,12 @@
-# Junk App iPhone app
+# Curbsy iPhone app (internally "Junk App")
 
-A third Capacitor wrapper around the same website build (`frontend/build`) as the Hood League (`ios-app/`)
+The App Store name is **Curbsy**; code, paths and tables still say "junk". A third Capacitor wrapper around the same website build (`frontend/build`) as the Hood League (`ios-app/`)
 and Hood Games (`ios-games-app/`) apps. It opens on the Junk App pages (`/junk`, code in `frontend/src/junk/`):
 free stuff near you, search, posting with photos (Gemini names the item), messages, reporting and blocking.
 The `/junk` pages only open inside this app (and in `npm start`); the public website doesn't show them.
 GitHub builds it on a macOS machine (`.github/workflows/junk-app.yml`), so no Mac is needed.
 
-- `capacitor.config.json`: app name `Junk App`, bundle ID `com.hoodleague.junk`, start path `junk`, and
+- `capacitor.config.json`: app name `Curbsy`, bundle ID `com.hoodleague.junk`, start path `junk`, and
   `appendUserAgent: "JunkApp"`, which is how the pages know they're inside this app.
 - iPhone only, portrait only (no iPad screenshots needed in App Store Connect).
 - Native plugins: `@capacitor/geolocation` (location for nearby items) and the sign-in sheet

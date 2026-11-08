@@ -64,7 +64,7 @@ export default function Browse() {
         <div className="jk-brand-row">
           <div>
             <p className="jk-kicker">Free stuff near you</p>
-            <h1 className="jk-brand">Junk<span>App</span></h1>
+            <h1 className="jk-brand">Curb<span>sy</span></h1>
           </div>
           <button type="button" className="jk-chip jk-chip-place" onClick={() => setShowRadius((v) => !v)} aria-expanded={showRadius}>
             <IconPin size={16} /> {radiusMi} mi
@@ -112,7 +112,7 @@ export default function Browse() {
         <div className="jk-empty">
           <div className="jk-empty-art" aria-hidden="true"><IconPin size={34} /></div>
           <h2>{locating ? 'Finding you…' : 'Where are you?'}</h2>
-          <p className="jk-muted">{spotError || 'Junk App uses your location to show free stuff close by. Your exact spot is never shown to anyone.'}</p>
+          <p className="jk-muted">{spotError || 'Curbsy uses your location to show free stuff close by. Your exact spot is never shown to anyone.'}</p>
           {!locating && <button type="button" className="jk-btn jk-btn-primary" onClick={refreshSpot}>Use my location</button>}
         </div>
       )}

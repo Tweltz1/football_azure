@@ -1,4 +1,4 @@
-name: Junk App reports
+name: Curbsy reports
 
 # Apple requires acting on reported content within 24 hours. This runs every morning and lists Junk App
 # listings reported in the last day. It FAILS (so GitHub emails you) when there are any, so they get seen.

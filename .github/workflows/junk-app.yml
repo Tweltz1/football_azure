@@ -6,7 +6,7 @@
 #   (bundle ID com.hoodleague.junk) must exist in App Store Connect first. Secrets used:
 #     APPLE_TEAM_ID, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY,
 #     REACT_APP_SUPABASE_URL, REACT_APP_SUPABASE_ANON_KEY (or SUPABASE_ACCESS_TOKEN)
-name: Junk App iPhone app
+name: Curbsy iPhone app
 
 on:
   push:

@@ -1,6 +1,6 @@
 {
   "appId": "com.hoodleague.junk",
-  "appName": "Junk App",
+  "appName": "Curbsy",
   "webDir": "../frontend/build",
   "server": {
     "appStartPath": "junk"

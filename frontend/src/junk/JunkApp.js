@@ -27,8 +27,8 @@ function SignInSheet({ reason, onClose }) {
     <div className="jk-sheet-backdrop" role="presentation" onClick={onClose}>
       <div className="jk-sheet" role="dialog" aria-modal="true" aria-label="Sign in" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="jk-icon-btn jk-sheet-close" onClick={onClose} aria-label="Close"><IconClose /></button>
-        <div className="jk-sheet-mark" aria-hidden="true">JA</div>
-        <h2>Sign in to Junk App</h2>
+        <div className="jk-sheet-mark" aria-hidden="true">C</div>
+        <h2>Sign in to Curbsy</h2>
         <p className="jk-muted">{reason || 'Post your stuff, message neighbors, and keep track of what you\'re giving away.'}</p>
         <div className="jk-signin-buttons">
           <button type="button" className="jk-provider jk-provider-apple" onClick={() => signIn('apple')}>
@@ -54,7 +54,7 @@ function TabBar({ unread }) {
   if (/^\/junk\/(item|chat|post|edit)\b/.test(pathname)) return null;
   const tab = ({ isActive }) => `jk-tab${isActive ? ' is-active' : ''}`;
   return (
-    <nav className="jk-tabbar" aria-label="Junk App">
+    <nav className="jk-tabbar" aria-label="Curbsy">
       <NavLink to="/junk" end className={tab}><IconGrid /><span>Browse</span></NavLink>
       <NavLink to="/junk/post" className="jk-tab jk-tab-post" aria-label="Post an item"><span className="jk-tab-post-dot"><IconPlus size={26} /></span></NavLink>
       <NavLink to="/junk/inbox" className={tab}>
@@ -95,7 +95,7 @@ function Shell() {
   // and the strip behind the clock, so both match the Junk App (see body.jk-body in junk.css).
   useEffect(() => {
     document.body.classList.add('jk-body');
-    document.title = 'Junk App';
+    document.title = 'Curbsy';
     return () => document.body.classList.remove('jk-body');
   }, []);
 
