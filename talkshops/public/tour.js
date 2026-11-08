@@ -85,7 +85,7 @@
       };
       audio.onended = finish;
       audio.onerror = useFallback;
-      audio.src = "/tour/" + key + (key === "backshop" ? ".mp3?v=4" : ".mp3?v=3");
+      audio.src = "/tour/" + key + ".mp3?v=5";
       audio.muted = muted;
       const p = audio.play();
       if (p && p.catch) p.catch(useFallback);
