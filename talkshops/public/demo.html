@@ -311,14 +311,14 @@ a.btn.primary{color:var(--accent-fg)}
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
 const STAGES=[
- {key:"checked_in",label:"Checked In",cust:"We have your car"},
- {key:"diagnosing",label:"Diagnosing",cust:"Inspecting your car"},
- {key:"approval",label:"Approval Needed",cust:"Waiting on your approval"},
- {key:"parts",label:"Waiting on Parts",cust:"Waiting on parts"},
- {key:"in_progress",label:"In Progress",cust:"Repairs underway"},
- {key:"qc",label:"Quality Check",cust:"Final check and road test"},
- {key:"ready",label:"Ready for Pickup",cust:"Ready for pickup"},
- {key:"picked_up",label:"Picked Up",cust:"Picked up"}];
+ {key:"checked_in",label:"Checked In",cust:"We Have Your Car"},
+ {key:"diagnosing",label:"Diagnosing",cust:"Inspecting Your Car"},
+ {key:"approval",label:"Approval Needed",cust:"Waiting on Your Approval"},
+ {key:"parts",label:"Waiting on Parts",cust:"Waiting on Parts"},
+ {key:"in_progress",label:"In Progress",cust:"Repairs Underway"},
+ {key:"qc",label:"Quality Check",cust:"Final Check and Road Test"},
+ {key:"ready",label:"Ready for Pickup",cust:"Ready for Pickup"},
+ {key:"picked_up",label:"Picked Up",cust:"Picked Up"}];
 const SI=Object.fromEntries(STAGES.map((s,i)=>[s.key,i]));
 const TEMPLATES={
  checked_in:"Hi {first}, {shop} has your {vehicle}. We'll keep you posted as work moves along. Track it here: {link}",
@@ -577,7 +577,7 @@ function boardView(){
       let status=s.label, detail=since(ev.t)+" in stage";
       if(pending)status="Awaiting Approval";
       else if(j.stage==="approval"){
-        status=!j.estimate.length?"Estimate review":approved===j.estimate.length?"Estimate approved":approved?"Partially approved":"Estimate declined";
+        status=!j.estimate.length?"Estimate review":approved===j.estimate.length?"Estimate Approved":approved?"Partially approved":"Estimate Declined";
         if(j.approval)detail=(approved?money(estTotal(j,true))+" approved":"Decision received")+" · "+dayClock(j.approval.t);
       }else if(j.stage==="parts"&&j.eta)detail="Parts ETA · "+j.eta;
       const unread=j.messages.length&&j.messages[j.messages.length-1].dir==="in";
@@ -711,7 +711,7 @@ function customerView(j){
   const extra=j.stage==="parts"?`<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta||"soon")}</b>.</p>`:j.stage==="ready"?`<p style="margin:6px 0 0">Total due ${money(j.bill?j.bill.total:estTotal(j,true))}. Open ${esc(SHOP.hours)}.</p>`:"";
   return `<div class="cust-demo"><span><b>Demo:</b> this is the page ${esc(first(j.customer.name))} opens from the link. No login needed.</span><button class="linkbtn" id="backToShop" style="margin-left:auto">Back to shop</button></div>
    <div class="cust-page">
-    <div class="c-head"><small>${esc(SHOP.name)} · <span class="mono">${j.ro}</span></small><h2>${j.closed?"This repair was closed":stage.cust}</h2><div style="font-size:14px;margin-top:4px">${esc(vehicleStr(j))}</div>${extra}</div>
+    <div class="c-head"><small>${esc(SHOP.name)} · <span class="mono">${j.ro}</span></small><h2>${j.closed?"This Repair Was Closed":stage.cust}</h2><div style="font-size:14px;margin-top:4px">${esc(vehicleStr(j))}</div>${extra}</div>
     <div class="c-body">
       ${est}${bill}${window.Walkthrough.customerCard(j)}${window.Walkaround.customerCard(waCustomer(j))}${photos}${notes}
       <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul></div>
