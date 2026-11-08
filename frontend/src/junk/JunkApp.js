@@ -91,11 +91,12 @@ function Shell() {
 
   useEffect(() => { refreshSpot(); }, [refreshSpot]);
 
-  // The site's dark page background would show when iOS bounces past the top or bottom.
+  // The site's dark page background would show when iOS bounces past the top or bottom,
+  // and the strip behind the clock, so both match the Junk App (see body.jk-body in junk.css).
   useEffect(() => {
-    const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.body.style.background = dark ? '#11130f' : '#f5f3ee';
+    document.body.classList.add('jk-body');
     document.title = 'Junk App';
+    return () => document.body.classList.remove('jk-body');
   }, []);
 
   const setRadiusMi = (mi) => {

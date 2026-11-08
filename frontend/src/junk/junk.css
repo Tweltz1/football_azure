@@ -633,3 +633,10 @@
 @media (prefers-reduced-motion: reduce) {
   .jk-app *, .jk-app *::before, .jk-app *::after { animation: none !important; transition: none !important; }
 }
+
+/* The site paints a dark strip behind the phone's clock (MobileFlow.css body::before). Match the Junk App. */
+body.jk-body { background: #f5f3ee; }
+body.jk-body::before { background: #f5f3ee; }
+@media (prefers-color-scheme: dark) {
+  body.jk-body, body.jk-body::before { background: #11130f; }
+}
