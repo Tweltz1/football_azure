@@ -32,6 +32,8 @@ const games = createGameStore(db);
 const askLog = createAskLogStore(db);
 const cardGames = createCardGameStore(db);
 // Repair shop app (Test tab). Texts go through Twilio once its three secrets are set.
+// The Gemini key, under either spelling (the dashboard secret was saved as Gemini_API_KEY).
+const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('Gemini_API_KEY') || undefined;
 const shop: ShopDeps = {
   store: createShopStore(db),
   email: createShopEmailSender(Deno.env.get('RESEND_API_KEY'), Deno.env.get('TALKSHOPS_EMAIL_FROM')),
@@ -43,15 +45,15 @@ const shop: ShopDeps = {
   stripeWebhookSecret: Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '',
   siteUrl: Deno.env.get('TALKSHOPS_SITE_URL') || 'https://talkshops.app',
   // Employee how-to assistant: the same free Gemini key as the Start/Sit chat, with room for longer answers.
-  howTo: Deno.env.get('GEMINI_API_KEY')
-    ? geminiNarrator(Deno.env.get('GEMINI_API_KEY')!, DEFAULT_GEMINI_MODEL, fetch, { schema: HOWTO_SCHEMA, timeoutMs: 40_000, maxTokens: 8192, temperature: 0.4 })
+  howTo: GEMINI_KEY
+    ? geminiNarrator(GEMINI_KEY, DEFAULT_GEMINI_MODEL, fetch, { schema: HOWTO_SCHEMA, timeoutMs: 40_000, maxTokens: 8192, temperature: 0.4 })
     : null,
   newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),
 };
 const dnd = {
   store: createDndStore(db),
   narrator: createNarrator({
-    gemini: Deno.env.get('GEMINI_API_KEY'),
+    gemini: GEMINI_KEY,
     anthropic: Deno.env.get('ANTHROPIC_API_KEY'),
     model: Deno.env.get('DND_NARRATOR_MODEL'),
   }),
