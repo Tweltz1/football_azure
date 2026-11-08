@@ -1,2 +1,2 @@
-/login /index.html 200
-/login/ /index.html 200
+/login /?login 302
+/login/ /?login 302

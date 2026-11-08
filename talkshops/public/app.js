@@ -228,7 +228,8 @@
     if (custToken) return renderCustomer();
     const app = $("#app"), chrome = $("#shopChrome");
     document.title = "Talk Shops" + (shop ? " · " + shop.name : "");
-    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/";
+    // The sign-in page is /?login (a real file the host always serves); /login forwards there.
+    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login");
     if (!session) {
       chrome.hidden = true;
       if (onLoginPage) document.title = "Shop sign in · Talk Shops";
@@ -236,7 +237,7 @@
       renderLayer();
       return;
     }
-    if (onLoginPage) history.replaceState(history.state, "", "/" + location.search + location.hash);
+    if (onLoginPage) { const q = new URLSearchParams(location.search); q.delete("login"); history.replaceState(history.state, "", "/" + (q.toString() ? "?" + q : "") + location.hash); }
     if (!loaded) { chrome.hidden = true; app.innerHTML = `<div class="loading">Loading your shop…</div>`; return; }
     if (!shop) { chrome.hidden = true; app.innerHTML = setupView(true); renderLayer(); return; }
     chrome.hidden = false;
@@ -278,7 +279,7 @@
     return `<div class="front">
       <header class="front-nav"><div class="front-inner">
         <a class="front-wordmark" href="#top" aria-label="Talk Shops home"><span class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</span>Talk Shops</a>
-        <nav aria-label="Main navigation"><a href="#plans">Compare plans</a><a class="front-sign" href="/login">Shop sign in</a></nav>
+        <nav aria-label="Main navigation"><a href="#plans">Compare plans</a><a class="front-sign" href="/?login">Shop sign in</a></nav>
       </div></header>
       <section class="front-hero" id="top"><div class="front-inner">
         <div class="front-intro"><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
