@@ -21,14 +21,14 @@
 
   const css = `
   #tourBlock{position:fixed;inset:0;z-index:60;cursor:default}
-  #tourSpot{position:fixed;z-index:61;pointer-events:none;border-radius:12px;box-shadow:0 0 0 3px #f2a650,0 0 0 9999px rgba(8,12,18,.5);transition:all .35s ease;opacity:0}
+  #tourSpot{position:fixed;z-index:61;pointer-events:none;border-radius:12px;box-shadow:0 0 0 3px #f2a650,0 0 0 9999px rgba(8,12,18,.16);transition:opacity .15s ease;opacity:0}
   #tourSpot.on{opacity:1}
   .tour-tap{position:fixed;z-index:62;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(242,166,80,.55);border:2px solid #f2a650;pointer-events:none;animation:tourTap .55s ease-out forwards}
   @keyframes tourTap{from{transform:scale(.4);opacity:1}to{transform:scale(1.5);opacity:0}}
   #tourPanel{position:fixed;z-index:63;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(680px,calc(100% - 24px));background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.35);padding:14px 16px;font-family:var(--f-body);box-sizing:border-box}
   #tourPanel .t-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
   #tourPanel .t-step{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-right:auto}
-  #tourPanel .t-cap{font-size:15.5px;line-height:1.45;max-height:30vh;overflow:auto}
+  #tourPanel .t-cap{font-size:15.5px;line-height:1.45;overflow-wrap:anywhere}
   #tourPanel .t-btn{font:600 13px var(--f-body);border:1px solid var(--line);background:var(--surface-2);color:var(--fg);border-radius:8px;padding:6px 10px;cursor:pointer}
   #tourPanel .t-btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
   #tourPanel .t-btn:disabled{opacity:.55;cursor:default}
@@ -47,13 +47,27 @@
   #tourStart .t-row{display:flex;gap:8px;flex-wrap:wrap}
   #tourStart .btn{text-decoration:none}
   #tourPanel.top{bottom:auto;top:calc(10px + env(safe-area-inset-top,0px))}
-  @media (max-width:600px){#tourPanel .t-cap{font-size:14.5px;max-height:22vh}}
+  #tourPanel{max-height:80dvh;overflow-y:auto;overscroll-behavior:contain}
+  @media (max-width:760px){
+    #tourPanel{padding:10px 12px;bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+    #tourPanel .t-cap{font-size:15px;line-height:1.4}
+    #tourPanel .t-top{flex-wrap:wrap;gap:4px 6px}
+    #tourPanel .t-step{min-width:60px;flex:1}
+    #tourPanel .t-btn{padding:7px 9px;white-space:nowrap}
+    html:has(#tourPanel){scroll-padding-block:70px 90px}
+    body:has(#tourPanel) .sheet-body{scroll-padding-block:12px}
+  }
   `;
   const style = document.createElement("style");
   style.textContent = css;
   document.head.appendChild(style);
 
-  let LINES = {};
+  let LINES = {}, timings = {};
+  function captionsFor(key, words, estimate) {
+    const cues = timings[key];
+    if (cues?.length) return cues;
+    return words.flatMap((_, i) => i % 8 === 0 ? [[i * estimate / words.length, i]] : []);
+  }
   const audio = new Audio();
   audio.preload = "auto";
   let paused = false, ended = false, muted = false;
@@ -71,18 +85,29 @@
   let clip = null; // {key, done:Promise, t0, est}
   function say(key) {
     check();
-    setCaption(LINES[key] || "");
     const words = (LINES[key] || "").split(/\s+/).length;
     const est = Math.max(3, words / 2.4); // fallback seconds if audio can't play
     const c = { key, est, fallback: false, elapsed: 0 };
+    const tokens = (LINES[key] || "").split(/\s+/);
+    const cues = captionsFor(key, tokens, est);
+    let shown = -1;
+    const showAt = seconds => {
+      let i = 0;
+      while (i + 1 < cues.length && cues[i + 1][0] <= seconds) i++;
+      if (shown === i || ended) return;
+      shown = i;
+      setCaption(tokens.slice(cues[i][1], cues[i + 1]?.[1]).join(" "));
+    };
+    showAt(0);
     c.done = new Promise((resolve) => {
       let fallbackTimer = null;
-      const finish = () => { clearInterval(fallbackTimer); audio.onended = audio.onerror = null; resolve(); };
+      const finish = () => { clearInterval(fallbackTimer); audio.ontimeupdate = null; audio.onended = audio.onerror = null; resolve(); };
       const useFallback = () => {
         if (c.fallback) return;
         c.fallback = true;
-        fallbackTimer = setInterval(() => { if (!paused) c.elapsed += 0.1; if (c.elapsed >= est || ended) finish(); }, 100);
+        fallbackTimer = setInterval(() => { if (!paused) c.elapsed += 0.1; showAt(c.elapsed / est * (cues.at(-1)[0] + 2)); if (c.elapsed >= est || ended) finish(); }, 100);
       };
+      audio.ontimeupdate = () => showAt(audio.currentTime);
       audio.onended = finish;
       audio.onerror = useFallback;
       audio.src = "/tour/" + key + ".mp3?v=5";
@@ -108,10 +133,15 @@
   // ---------- spotlight, taps, typing ----------
   const spot = document.createElement("div"); spot.id = "tourSpot";
   const block = document.createElement("div"); block.id = "tourBlock";
+  function reveal(el, behavior = "smooth") {
+    if (!el?.scrollIntoView || el.closest(".tabs,.topbar")) return;
+    const mobile = window.matchMedia("(max-width:760px)").matches;
+    el.scrollIntoView({ block: mobile ? "center" : "nearest", inline: "nearest", behavior });
+  }
   function highlight(sel) {
     spotSel = sel;
     const el = sel && (typeof sel === "string" ? q(sel) : sel);
-    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    reveal(el);
   }
   (function track() {
     let el = spotSel && (typeof spotSel === "string" ? q(spotSel) : spotSel);
@@ -123,9 +153,14 @@
       Object.assign(spot.style, { left: r.left - pad + "px", top: r.top - pad + "px", width: r.width + pad * 2 + "px", height: r.height + pad * 2 + "px" });
       spot.classList.add("on");
       const P = document.getElementById("tourPanel");
-      const pr = P && !P.classList.contains("top") ? P.getBoundingClientRect() : null;
-      if (pr && r.bottom > pr.top - 8 && r.top > window.innerHeight * 0.45) P.classList.add("top");
-      else if (P && P.classList.contains("top") && r.top < 220) P.classList.remove("top");
+      if (P && !P.querySelector("input:focus")) {
+        const pr = P.getBoundingClientRect();
+        if (r.top < pr.bottom + 8 && r.bottom > pr.top - 8) {
+          const roomAbove = r.top;
+          const roomBelow = document.documentElement.clientHeight - r.bottom;
+          P.classList.toggle("top", roomAbove > roomBelow);
+        }
+      }
     } else spot.classList.remove("on");
     requestAnimationFrame(track);
   })();
@@ -133,7 +168,7 @@
     check();
     const el = typeof sel === "string" ? q(sel) : sel;
     if (!el) return;
-    el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    reveal(el);
     await wait(250);
     const r = el.getBoundingClientRect();
     const dot = document.createElement("div"); dot.className = "tour-tap";
@@ -148,7 +183,7 @@
   async function type(sel, text) {
     const el = q(sel); if (!el) return;
     el.focus({ preventScroll: true });
-    el.scrollIntoView({ block: "nearest" });
+    reveal(el, "instant");
     el.value = "";
     for (const ch of String(text)) { check(); el.value += ch; el.dispatchEvent(new Event("input", { bubbles: true })); await wait(45); }
   }
@@ -770,19 +805,19 @@
       STEPS = 5; await begin("board");
       const sample = async (topic, auto) => {
         const d = q("#smartDemo"); if (d && !d.open) { await tap("#smartDemo summary"); await wait(200); }
-        const sel = q("#sampleSms"); if (sel) { sel.value = topic; highlight("#smartDemo"); await wait(500); }
+        const sel = q("#sampleSms"); if (sel) { sel.value = topic; highlight(sel); await wait(500); }
         const box = q("#demoAuto"); if (box && box.checked !== auto) await tap(box);
         await tap("#simulateSms"); await wait(400);
       };
       step(); { const c = say("sm-1"); await openSheet("RO-1041"); q("#msgSec")?.scrollIntoView({ block: "center" }); highlight("#msgSec"); await c; }
       step(); {
-        const c = say("sm-2"); highlight("#smartDemo");
-        await cue(0.3); await sample("status", false); highlight("#msgSec .thread");
+        const c = say("sm-2"); const choices = q("#smartDemo"); if (choices) choices.open = true; highlight("#sampleSms");
+        await cue(0.3); await sample("status", false); highlight(q("#msgSec .thread .bubble:last-child") || "#msgSec .thread");
         await cue(0.72); highlight(q("#demoDraft") || "#msgSec .thread"); if (q("#demoDraft")) { await tap("#demoDraft"); highlight("#replyIn"); }
         await c;
       }
-      step(); { const c = say("sm-3"); await cue(0.1); await sample("hours", true); highlight("#msgSec .thread"); await c; }
-      step(); { const c = say("sm-4"); await cue(0.15); await sample("review", true); highlight("#msgSec .thread"); await c; }
+      step(); { const c = say("sm-3"); await cue(0.1); await sample("hours", true); highlight(q("#msgSec .thread .bubble:last-child") || "#msgSec .thread"); await c; }
+      step(); { const c = say("sm-4"); await cue(0.15); await sample("review", true); highlight(q("#msgSec .thread .bubble:last-child") || "#msgSec .thread"); await c; }
       step(); {
         const c = say("sm-5"); await tab("settings"); q("#smartSettings")?.scrollIntoView({ block: "center" }); highlight("#smartSettings");
         await cue(0.55); const d = q("#smartSchedule"); if (d && !d.open) await tap("#smartSchedule summary"); highlight("#smartSettings");
@@ -824,7 +859,10 @@
 
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
-    fetch("/tour/lines.json?v=3").then((r) => r.json()).then((l) => { LINES = l; }).catch(() => {}).finally(() => {
+    Promise.all([
+      fetch("/tour/lines.json?v=3").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
+      fetch("/tour/caption-cues.json?v=1").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+    ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">
         ${lesson ? `<p style="margin:0 0 4px;font-size:13px">Training · Lesson ${lessonIx + 1} of ${LESSONS.length} · about ${lesson.mins} min</p>` : ""}
