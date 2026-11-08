@@ -8,7 +8,7 @@ link to their car's page (`/?c=<token>`) and approve or decline repairs there wi
   - `demo.html`: demo shop with sample data; `demo.html?tour=1` runs the voice-guided tour (`tour.js`, `tour/`).
   - Training tab (`training.js`, `training.css`): narrated lessons that run in the demo shop at `demo.html?train=<id>`.
     Scripts are in `tour.js` (`TRAIN`); captions and clips are `tour/lines.json` and `tour/<key>.mp3`.
-    Voice: Piper `en_US-ryan-high`, length scale 1.1, 0.3s between sentences, MP3 48 kbps mono 22.05 kHz.
+    Voice: Chatterbox (Resemble AI, MIT) cloned from a Piper `en_US-ryan-high` clip (talkshops/voice-reference-ryan.mp3), exaggeration 0.75, cfg weight 0.35, chunks of about 220 characters, 0.3s between chunks; every clip is checked with Whisper speech-to-text and re-generated if words come out wrong. MP3 64 kbps mono 24 kHz, loudness normalized to -16 LUFS.
 - Backend: shared with Hood League in this repo. API routes live in `supabase/functions/_shared/shop.ts`
   (served by the `api` Edge Function at `/api/shop/...`); tables `repair_shops` and `repair_jobs`.
 
