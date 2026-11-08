@@ -41,6 +41,7 @@ window.createShopBilling = ({ esc, money }) => {
       ${mode === "generated" ? "<p>Review approved work, enter actual hours and add any final charges.</p>" : ""}
       <div class="charge-rows">${initial.map(r => row(r,catalog)).join("")}</div>
       ${quote ? "" : `<button type="button" class="btn" data-billing="add-row">Add line</button>`}
+      ${quote ? `<label class="field">Priority<select name="priority"><option value="required">Required</option><option value="recommended" selected>Recommended</option><option value="optional">Optional</option></select></label>` : ""}
       ${catalog ? "" : `<div class="total"><span>${quote ? "Line total" : "Final total"}</span><b data-bill-total></b></div>
       <label class="chk"><input type="checkbox" name="saveItems" checked> Save new ${quote ? "item" : "lines"} to my saved items for next time</label>`}`}
       <p role="alert" class="form-err" data-bill-error hidden></p>

@@ -47,6 +47,15 @@
     const count = j.customer.preference === "both" ? 2 : 1;
     return j.messages.slice(-count).map(m => m.delivery === "sent" ? channelName(m) + " sent" : channelName(m) + " not sent" + (m.note ? ": " + String(m.note).replace(/[.\s]+$/, "") : "")).join(". ") + ".";
   }
+  // Required / recommended / optional on each estimate line (older lines have none).
+  const PRI = {
+    required: { label: "Required", cls: "bad", cust: "Needed to fix your concern or for safety." },
+    recommended: { label: "Recommended", cls: "warn", cust: "Advised soon to prevent bigger problems." },
+    optional: { label: "Optional", cls: "", cust: "Can wait if you prefer." },
+  };
+  const PRI_ORDER = { required: 0, recommended: 1, optional: 2 };
+  const priOptions = (v) => Object.entries(PRI).map(([k, p]) => `<option value="${k}" ${k === (v || "recommended") ? "selected" : ""}>${p.label}</option>`).join("");
+  const priPill = (e) => e.priority && PRI[e.priority] ? `<span class="pill pri ${PRI[e.priority].cls}">${PRI[e.priority].label}</span>` : "";
   const first = (name) => String(name || "").split(/\s+/)[0];
 
   const sb = window.supabase && CFG.supabaseUrl && CFG.supabaseAnonKey
@@ -144,12 +153,13 @@
     const pending = awaitingDecision(j) && !j.closed;
     let est = "";
     if (j.estimate.length) {
-      const items = j.estimate.map((e) => {
+      const items = [...j.estimate].sort((a, b) => (PRI_ORDER[a.priority] ?? 1) - (PRI_ORDER[b.priority] ?? 1)).map((e) => {
         const d = cust.draft[e.id];
         const choice = pending && e.status === "pending"
           ? `<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d === "approved"}">Approve</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d === "declined"}">Decline</button></div>`
           : (e.status !== "pending" ? `<span class="pill ${e.status === "approved" ? "ok" : "bad"}">${e.status === "approved" ? "Approved" : "Declined"}</span>` : "");
-        return `<div class="est-item"><div class="top"><span>${esc(e.item)}${chargeDetail(e)}</span><span>${money(e.price)}</span></div>${window.repairPhotoFor(e.item, e.status === "declined" ? "Part" : "What's being worked on")}${window.repairGuideFor(e.item, { photo: false })}${choice}</div>`;
+        const pri = e.priority && PRI[e.priority] ? `<div class="pri-line">${priPill(e)}<span>${PRI[e.priority].cust}</span></div>` : "";
+        return `<div class="est-item pri-${esc(e.priority || "none")}"><div class="top"><span>${esc(e.item)}${chargeDetail(e)}</span><span>${money(e.price)}</span></div>${pri}${window.repairPhotoFor(e.item, e.status === "declined" ? "Part" : "What's being worked on")}${window.repairGuideFor(e.item, { photo: false })}${choice}</div>`;
       }).join("");
       const allChosen = j.estimate.filter((e) => e.status === "pending").every((e) => cust.draft[e.id]);
       const tot = pending ? j.estimate.reduce((a, e) => a + ((cust.draft[e.id] ?? e.status) === "approved" ? Number(e.price) : 0), 0) : estTotal(j, true);
@@ -484,7 +494,7 @@
     const idx = SI[j.stage];
     const steps = STAGES.map((s, i) => s.key === "invited" || (j.stage === "invited" && (s.key !== "checked_in" || !j.intakeReceived)) ? "" : `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "current" : ""}" data-stage="${s.key}" ${i === idx ? 'aria-current="step"' : ""}>${s.key === "approval" && i === idx ? estimateOutcome(j) || s.label : s.label}</button>`).join("");
     const next = STAGES[idx + 1];
-    const rows = j.estimate.map((e) => `<tr><td>${esc(e.item)}${chargeDetail(e)}${window.repairGuideFor(e.item)}</td><td>${e.status === "pending" ? '<span class="pill warn">Pending</span>' : e.status === "approved" ? '<span class="pill ok">Approved</span>' : '<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status === "pending" && j.stage !== "approval" ? `<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>` : ""}</td></tr>`).join("");
+    const rows = j.estimate.map((e) => `<tr><td>${esc(e.item)}${chargeDetail(e)}<div class="pri-cell">${e.status === "pending" ? `<select class="pri-sel" data-pri="${esc(e.id)}" aria-label="Priority for ${esc(e.item)}">${priOptions(e.priority)}</select>` : priPill(e)}</div>${window.repairGuideFor(e.item)}</td><td>${e.status === "pending" ? '<span class="pill warn">Pending</span>' : e.status === "approved" ? '<span class="pill ok">Approved</span>' : '<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status === "pending" && j.stage !== "approval" ? `<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>` : ""}</td></tr>`).join("");
     const log = [...j.events].reverse().map((e) => `<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
     return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
       <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(j.customer.name)} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
@@ -503,6 +513,7 @@
           <div class="est-add">
             <div class="est-add-h">Quick add</div>
             <form class="add-line" id="addLine"><span class="suggest-wrap"><input id="li-item" data-suggest="quick" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="${(shop.rates || []).length ? "Type or pick a saved item" : "Item, e.g. Cabin air filter"}" aria-label="Line item"><button type="button" class="suggest-btn" data-suggest-open aria-label="Show saved items" ${(shop.rates || []).length ? "" : "hidden"}>▾</button></span><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button>
+              <label class="pri-pick">Priority<select id="li-pri">${priOptions(ui.lastPri)}</select></label>
               <label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label></form>
             <div class="est-add-or"><span>or</span></div>
             <button class="btn est-add-more" type="button" data-billing="quote">Add labor, parts or fees with hours and rates</button>
@@ -710,7 +721,8 @@
           const [charge] = billing.readRows(f);
           if (!charge) throw Error("Add an estimate line first.");
           const save = !!f.elements.saveItems?.checked;
-          upsertJob(await api("POST", `shop/jobs/${m.job}/estimate`, { charge, save }));
+          const priority = ui.lastPri = f.elements.priority?.value || "recommended";
+          upsertJob(await api("POST", `shop/jobs/${m.job}/estimate`, { charge, save, priority }));
           if (save) rememberLocal([charge]);
         } else {
           const body = await billing.billBody(f);
@@ -799,7 +811,8 @@
       if (!item || !(price >= 0)) { toast("Enter an item and a price"); return; }
       let pick = null; try { pick = f.dataset.pick ? JSON.parse(f.dataset.pick) : null; } catch { /* none */ }
       const save = $("#li-save").checked;
-      const body = pick && pick.name === item ? { charge: { name: item, kind: pick.kind, rate: Math.round(price * 100) / 100, qty: 1 }, save } : { item, price, save };
+      const priority = ui.lastPri = $("#li-pri")?.value || "recommended";
+      const body = pick && pick.name === item ? { charge: { name: item, kind: pick.kind, rate: Math.round(price * 100) / 100, qty: 1 }, save, priority } : { item, price, save, priority };
       if (await jobAction(ui.openJob, "estimate", body)) {
         if (save) rememberLocal([{ name: item, kind: pick && pick.name === item ? pick.kind : "part", rate: Math.round(price * 100) / 100 }]);
         render(); $("#li-item")?.focus();
@@ -902,6 +915,7 @@
     }
   }
   document.addEventListener("change", (e) => {
+    if (e.target.dataset?.pri && ui.openJob) { jobAction(ui.openJob, "estimate", { setPriority: e.target.dataset.pri, priority: e.target.value }, "Priority updated"); return; }
     if (e.target.id === "intakePhotoIn") return uploadIntakePhotos(e.target);
     if (e.target.id === "c-send") { $("#c-text-wrap").hidden = !e.target.checked; return; }
     if (e.target.id === "ci-channel") {

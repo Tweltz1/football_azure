@@ -29,7 +29,11 @@ export interface Shop {
   plan?: PlanState;
 }
 
-export interface EstimateLine { id: string; item: string; price: number; status: 'pending' | 'approved' | 'declined'; charge?: Charge }
+/** How much the shop says a line matters: needed for the concern or safety, advised soon, or can wait. */
+export const PRIORITIES = ['required', 'recommended', 'optional'] as const;
+export type Priority = typeof PRIORITIES[number];
+const priorityOf = (v: unknown): Priority => (PRIORITIES as readonly unknown[]).includes(v) ? v as Priority : 'recommended';
+export interface EstimateLine { id: string; item: string; price: number; status: 'pending' | 'approved' | 'declined'; charge?: Charge; priority?: Priority }
 export interface Photo { id: string; src: string; cap: string; stage?: Stage; addedAt?: string; source?: 'customer' }
 export interface StageEvent { stage: Stage; t: string }
 type Channel = 'sms' | 'email';
@@ -325,7 +329,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         if (e.status === 'approved') yes++;
       }
       job.data.approval = { by: signature, t: now };
-      job.data.messages.push({ dir: 'in', t: now, text: `Approved ${yes} of ${pending.length} items on the estimate (signed: ${signature}).` });
+      const declinedRequired = pending.filter((e) => e.status === 'declined' && e.priority === 'required').map((e) => e.item);
+      job.data.messages.push({ dir: 'in', t: now, text: `Approved ${yes} of ${pending.length} items on the estimate (signed: ${signature}).${declinedRequired.length ? ` Declined required: ${declinedRequired.join(', ')}.` : ''}` });
       job.updatedAt = now;
       await store.putJob(job);
       return ok(customerOut(job, shop));
@@ -565,7 +570,12 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   } else if (action === 'eta') {
     d.eta = str(body.eta, 40);
   } else if (action === 'estimate') {
-    if (body.remove) {
+    if (body.setPriority) {
+      const line = d.estimate.find((e) => e.id === body.setPriority);
+      if (!line) return bad('That line is not on the estimate.');
+      if (line.status !== 'pending') return bad('Only lines waiting on a decision can change.');
+      line.priority = priorityOf(body.priority);
+    } else if (body.remove) {
       const before = d.estimate.length;
       d.estimate = d.estimate.filter((e) => !(e.id === body.remove && e.status === 'pending'));
       if (d.estimate.length === before) return bad('Only pending lines can be removed.');
@@ -573,13 +583,13 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const r = body.charge;
       if (!validCharge(r)) return bad('Check the description, quantity and rate.');
       if (body.save === true) await rememberRates(store, shop, [r]);
-      d.estimate.push({ id: ctx.newId(), item: r.name.trim(), price: lineCents(r) / 100, status: 'pending', charge: { ...copyRate(r), qty: r.qty } });
+      d.estimate.push({ id: ctx.newId(), item: r.name.trim(), price: lineCents(r) / 100, status: 'pending', charge: { ...copyRate(r), qty: r.qty }, priority: priorityOf(body.priority) });
     } else {
       const item = str(body.item, 120);
       const price = Number(body.price);
       if (!item || !Number.isFinite(price) || price < 0 || price > 1_000_000) return bad('Enter an item and a price.');
       if (body.save === true) await rememberRates(store, shop, [{ name: item, kind: 'part', rate: Math.round(price * 100) / 100 }]);
-      d.estimate.push({ id: ctx.newId(), item, price: Math.round(price * 100) / 100, status: 'pending' });
+      d.estimate.push({ id: ctx.newId(), item, price: Math.round(price * 100) / 100, status: 'pending', priority: priorityOf(body.priority) });
     }
   } else if (action === 'remove-photo') {
     const id = str(body.id, 100);

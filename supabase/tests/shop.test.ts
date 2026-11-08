@@ -410,3 +410,20 @@ test('how-to assistant needs a signed-in shop', async () => {
   assert.equal(res?.status, 200);
   assert.equal((res?.body as { answer: string }).answer, 'Drain and refill.');
 });
+
+test('estimate lines carry required, recommended or optional, and the shop can change pending ones', async () => {
+  const { as } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string; link: string };
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Front pads and rotors', price: 389, priority: 'required' });
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Cabin air filter', price: 45, priority: 'bogus' });
+  let est = ((await dan('GET', `shop/jobs/${job.id}`))?.body as { estimate: { id: string; priority: string }[] }).estimate;
+  assert.deepEqual(est.map((e) => e.priority), ['required', 'recommended']);
+  const set = await dan('POST', `shop/jobs/${job.id}/estimate`, { setPriority: est[1].id, priority: 'optional' });
+  assert.equal(set?.status, 200);
+  const token = job.link.split('?c=')[1];
+  const view = (await as(null)('GET', `shop/c/${token}`))?.body as { estimate: { priority: string }[] };
+  assert.deepEqual(view.estimate.map((e) => e.priority), ['required', 'optional']);
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/estimate`, { setPriority: 'nope', priority: 'optional' }))?.status, 400);
+});
