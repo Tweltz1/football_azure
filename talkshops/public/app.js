@@ -297,6 +297,9 @@
   const googleIcon = `<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>`;
   const brand = () => `<div class="brand"><div class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</div><div><h1>Talk Shops</h1><small>For repair shops</small></div></div>`;
 
+  const supportEmail = "support@talkshops.app";
+  const signInHelp = `<p class="muted" style="margin:0">Need help signing in? <a class="login-home" href="mailto:${supportEmail}?subject=Talk%20Shops%20sign-in%20help">Contact us</a></p>`;
+
   function forgotView() {
     const r = ui.reset || { step: "ask", email: "" };
     const ask = r.step === "ask";
@@ -316,6 +319,7 @@
       </form>
       <button class="linkbtn" id="fpAgain" type="button" style="align-self:flex-start">Didn't get it? Send another code</button>`}
       ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
+      ${signInHelp}
       <button class="linkbtn" id="fpBack" type="button" style="align-self:flex-start">← Back to sign in</button>
     </section></div>`;
   }
@@ -367,6 +371,7 @@
       ${ui.authMsg ? `<p class="form-ok" role="status">${esc(ui.authMsg)}</p>` : ""}
       <button class="linkbtn" id="authSwap" type="button" style="align-self:flex-start">${signup ? "Already have an account? Sign in" : "New shop? Create an account"}</button>
       <small class="muted">Customers use their repair link. Only shop staff need an account.</small>
+      ${signInHelp}
       <a class="login-home" href="/">← Back to Talk Shops</a>
     </section></div>`;
   }
@@ -413,7 +418,7 @@
         </tbody></table>
         <small class="front-source">Selected plans at month-to-month list prices, checked November 7, 2026. Competitor plans include additional shop-management features.</small>
       </div></section>
-      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="/privacy.html">Privacy policy</a></div></footer>
+      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="mailto:${supportEmail}?subject=Talk%20Shops%20sales%20inquiry">Contact sales</a><a href="/privacy.html">Privacy policy</a></div></footer>
     </div>`;
   }
 
