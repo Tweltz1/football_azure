@@ -244,8 +244,8 @@
     $("#shopName").textContent = shop.name;
     $("#bayTab").textContent = bayName();
     document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.view === ui.view ? "page" : "false"));
-    const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "") + (ui.view === "plan" ? "" : planUi.banner(plan));
-    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : boardView());
+    const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "") + (ui.view === "plan" || ui.view === "training" ? "" : planUi.banner(plan));
+    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : boardView());
     if (ui.view === "board") filterBoard();
     if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
     renderLayer();

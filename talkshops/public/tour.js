@@ -1,11 +1,18 @@
-// Voice-guided tour of the demo shop (/demo.html?tour=1).
+// Voice-guided tour and training lessons in the demo shop.
+//   /demo.html?tour=1         the guided tour of everything Talk Shops does
+//   /demo.html?train=<id>     one in-depth lesson (the list lives in training.js)
 // It drives the demo page by clicking its own buttons, highlights what it talks about,
-// and plays one narration clip per step (/tour/<step>.mp3, captions from lines.json).
-// Midway, the visitor can get ONE real text (POST /shop/demo/text) and approve or decline
-// the estimate on their own phone; the tour waits for that decision, then carries on.
+// and plays one narration clip per step (/tour/<key>.mp3, captions from /tour/lines.json).
+// Midway through the tour, the visitor can get ONE real text (POST /shop/demo/text) and approve or
+// decline the estimate on their own phone; the tour waits for that decision, then carries on.
 (function () {
   "use strict";
-  if (!/[?&]tour=1\b/.test(location.search)) return;
+  const params = new URLSearchParams(location.search);
+  const LESSONS = (window.TALKSHOPS_TRAINING && window.TALKSHOPS_TRAINING.lessons) || [];
+  const lessonIx = LESSONS.findIndex((l) => l.id === params.get("train"));
+  const lesson = LESSONS[lessonIx] || null;
+  if (params.get("tour") !== "1" && !lesson) return;
+  window.TOUR_ACTIVE = true;
   const CFG = window.BAY_CONFIG || {};
   const API = (CFG.apiUrl || "").replace(/\/$/, "");
   const q = (s) => document.querySelector(s);
@@ -39,6 +46,7 @@
   #tourStart p{margin:0 0 14px;color:var(--muted);line-height:1.45}
   #tourStart .t-row{display:flex;gap:8px;flex-wrap:wrap}
   #tourStart .btn{text-decoration:none}
+  #tourPanel.top{bottom:auto;top:calc(10px + env(safe-area-inset-top,0px))}
   @media (max-width:600px){#tourPanel .t-cap{font-size:14.5px;max-height:22vh}}
   `;
   const style = document.createElement("style");
@@ -50,7 +58,7 @@
   audio.preload = "auto";
   let paused = false, ended = false, muted = false;
   let spotSel = null, stepNo = 0;
-  const STEPS = 9;
+  let STEPS = 13;
   class Stop extends Error {}
   const check = () => { if (ended) throw new Stop(); };
 
@@ -114,6 +122,10 @@
       const r = el.getBoundingClientRect(), pad = 6;
       Object.assign(spot.style, { left: r.left - pad + "px", top: r.top - pad + "px", width: r.width + pad * 2 + "px", height: r.height + pad * 2 + "px" });
       spot.classList.add("on");
+      const P = document.getElementById("tourPanel");
+      const pr = P && !P.classList.contains("top") ? P.getBoundingClientRect() : null;
+      if (pr && r.bottom > pr.top - 8 && r.top > window.innerHeight * 0.45) P.classList.add("top");
+      else if (P && P.classList.contains("top") && r.top < 220) P.classList.remove("top");
     } else spot.classList.remove("on");
     requestAnimationFrame(track);
   })();
@@ -146,10 +158,10 @@
   panel.innerHTML = `<div class="t-top"><span class="t-step" id="tStep"></span>
     <button class="t-btn" id="tPause" type="button">Pause</button>
     <button class="t-btn" id="tMute" type="button">Mute</button>
-    <button class="t-btn" id="tEnd" type="button">End tour</button></div>
+    <button class="t-btn" id="tEnd" type="button">${lesson ? "End lesson" : "End tour"}</button></div>
     <div class="t-cap" id="tCap" aria-live="polite"></div><div id="tExtra"></div>`;
   function setCaption(t) { q("#tCap").textContent = t; }
-  function setStep(n) { stepNo = n; q("#tStep").textContent = `Guided tour · ${n} of ${STEPS}`; }
+  function setStep(n) { stepNo = n; q("#tStep").textContent = lesson ? `Lesson ${lessonIx + 1}: ${lesson.title} · ${n} of ${STEPS}` : `Guided tour · ${n} of ${STEPS}`; }
   function extra(html) { q("#tExtra").innerHTML = html || ""; }
   panel.addEventListener("click", (e) => {
     const id = e.target.id;
@@ -163,15 +175,26 @@
   });
 
   function endTour(early) {
-    ended = true; paused = false;
+    ended = true; paused = false; window.TOUR_ACTIVE = false;
     try { audio.pause(); } catch (e) { /* ignore */ }
     spotSel = null; block.remove(); stopPolling();
     history.replaceState(null, "", location.pathname + location.hash);
-    panel.querySelector(".t-top").innerHTML = `<span class="t-step">${early ? "Tour ended" : "Tour complete"}</span>`;
-    setCaption(early ? "You're in the demo shop now. Click around as much as you like; it's all sample data." : "Thanks for taking the tour!");
-    extra(`<div class="t-row" style="margin-top:10px"><a class="t-btn primary" href="/demo.html?tour=1" style="text-decoration:none">Replay tour</a>
-      <button class="t-btn" type="button" id="tClose">Explore the demo shop</button>
-      <a class="t-btn" href="/" style="text-decoration:none">Back to sign in</a></div>`);
+    const next = lesson && LESSONS[lessonIx + 1];
+    if (lesson) {
+      panel.querySelector(".t-top").innerHTML = `<span class="t-step">${early ? "Lesson ended" : "Lesson complete"} · ${escT(lesson.title)}</span>`;
+      setCaption(early ? "You're in the demo shop. Try it yourself; it's all sample data." : next ? "Nice work. Try it yourself in the demo shop, or go on to the next lesson." : "That's the last lesson. You're ready to run your shop on Talk Shops.");
+      extra(`<div class="t-row" style="margin-top:10px">${next ? `<a class="t-btn primary" href="/demo.html?train=${next.id}" style="text-decoration:none">Next: ${escT(next.title)}</a>` : ""}
+        <a class="t-btn" href="/demo.html?train=${lesson.id}" style="text-decoration:none">Replay</a>
+        <a class="t-btn" href="/demo.html?view=training" style="text-decoration:none">All lessons</a>
+        <button class="t-btn" type="button" id="tClose">Try it myself</button></div>`);
+    } else {
+      panel.querySelector(".t-top").innerHTML = `<span class="t-step">${early ? "Tour ended" : "Tour complete"}</span>`;
+      setCaption(early ? "You're in the demo shop now. Click around as much as you like; it's all sample data." : "Thanks for taking the tour!");
+      extra(`<div class="t-row" style="margin-top:10px"><a class="t-btn primary" href="/demo.html?tour=1" style="text-decoration:none">Replay tour</a>
+        <a class="t-btn" href="/demo.html?view=training" style="text-decoration:none">Training lessons</a>
+        <button class="t-btn" type="button" id="tClose">Explore the demo shop</button>
+        <a class="t-btn" href="/" style="text-decoration:none">Back to Talk Shops</a></div>`);
+    }
     q("#tClose").onclick = () => panel.remove();
   }
 
@@ -234,68 +257,126 @@
     save();
   }
 
-  // ---------- the tour ----------
+  // ---------- helpers for the scripts ----------
+  const sec = (re) => qa(".sheet .sec").find((s) => re.test(s.querySelector("h3")?.textContent || ""));
   const openSheet = async (ro) => {
+    if (q(".modal")) { await tap("[data-cancel]"); await wait(200); }
     if (q(".sheet")) { await tap(".sheet .x"); await wait(300); }
+    if (!q(`[data-open="${ro}"]`)) { await tab("board"); await wait(250); }
     await tap(`[data-open="${ro}"]`);
+    await wait(250);
   };
-  async function run() {
+  async function tab(view) {
+    if (q(".sheet")) { await tap(".sheet .x"); await wait(200); }
+    await tap(`.tab[data-view="${view}"]`);
+    await wait(250);
+  }
+  // Type into a saved-item box, then pick the first suggestion.
+  async function pickSaved(text) {
+    await type("#li-item", text);
+    await wait(500);
+    highlight("#suggestList");
+    await wait(700);
+    const opt = q("#suggestList .suggest-o");
+    if (opt) await tap(opt);
+    await wait(300);
+  }
+  async function search(sel, text) {
+    await type(sel, text);
+    await wait(300);
+  }
+  async function clearInput(sel) {
+    const el = q(sel); if (!el) return;
+    el.value = ""; el.dispatchEvent(new Event("input", { bubbles: true }));
+    await wait(200);
+  }
+  async function closeAll() {
+    if (q(".modal")) { await tap("[data-cancel]"); await wait(200); }
+    if (q(".sheet")) { await tap(".sheet .x"); await wait(200); }
+  }
+  // Reset the demo shop and go to a view without any narration.
+  async function begin(view) {
     document.body.append(block, spot, panel);
-    setStep(1);
     q("#resetBtn")?.click(); // start from the same sample cars every time
     await wait(200);
+    if (location.hash) { history.replaceState(null, "", location.pathname + location.search); render(); }
+    if (view) await tab(view);
+  }
+  const step = () => setStep(stepNo + 1);
+
+  // ---------- the guided tour ----------
+  async function runTour() {
+    STEPS = 13;
+    await begin("board");
+    setStep(1);
     highlight(".topbar .brand");
     await say("intro");
 
     setStep(2);
     const board = say("board");
-    highlight(".board-wrap");
-    await cue(0.42); highlight(".stats");
-    await cue(0.7); highlight(".col.is-approval");
+    highlight(".board-top h2");
+    await cue(0.2); highlight(".board-wrap");
+    await cue(0.38); highlight(".stats");
+    await cue(0.55); highlight(".age-key");
+    await cue(0.68); highlight(q(".card.age-old") || ".board-wrap");
+    await cue(0.82); highlight(".board-wrap");
     await board;
 
     setStep(3);
-    const ci = say("checkin");
-    await tap('.tab[data-view="checkin"]');
-    highlight("#checkinForm");
-    await cue(0.18);
-    await type("#ci-name", "Sam Ortiz"); await type("#ci-phone", "(555) 019-4410");
-    await type("#ci-year", "2014"); await type("#ci-make", "Mazda"); await type("#ci-model", "CX-5");
-    await type("#ci-plate", "3CXF882");
-    await cue(0.5); await type("#ci-concern", "Squealing belt on cold starts");
-    await cue(0.72); highlight(q("#ci-consent")?.closest("label"));
-    await cue(0.9); highlight('#checkinForm .btn.primary'); await tap('#checkinForm .btn.primary');
-    await ci;
+    const sr = say("search");
+    highlight(".board-search");
+    await cue(0.15); await search("#boardSearch", "whitaker");
+    highlight(".board-wrap");
+    await cue(0.55); await clearInput("#boardSearch");
+    await cue(0.62); highlight(".tabs");
+    await sr;
 
     setStep(4);
-    const ft = say("firsttext");
-    highlight(".sheet .thread");
-    await cue(0.55); highlight(".sheet .thread .bubble");
-    await cue(0.8); highlight(".sheet .thread");
-    await ft;
+    const ci = say("checkin");
+    await tab("checkin");
+    highlight("#checkinForm");
+    await cue(0.12);
+    await type("#ci-name", "Sam Ortiz");
+    await cue(0.2); highlight(q("#ci-channel")?.closest("label"));
+    const chSel = q("#ci-channel"); if (chSel) { chSel.value = "both"; chSel.dispatchEvent(new Event("change", { bubbles: true })); }
+    await cue(0.36); highlight("#checkinForm");
+    await type("#ci-phone", "(555) 019-4410"); await type("#ci-email", "sam.ortiz@example.com");
+    await type("#ci-year", "2014"); await type("#ci-make", "Mazda"); await type("#ci-model", "CX-5");
+    await type("#ci-plate", "3CXF882");
+    await cue(0.62); await type("#ci-concern", "Squealing belt on cold starts");
+    await cue(0.78); highlight(q("#ci-consent")?.closest("label")); await tap("#ci-consent");
+    await cue(0.92); highlight("#checkinForm .btn.primary"); await tap("#checkinForm .btn.primary");
+    await ci;
 
     setStep(5);
+    const ft = say("firsttext");
+    highlight(".sheet .thread");
+    await cue(0.5); highlight(".sheet .thread .bubble");
+    await cue(0.75); highlight(".sheet .thread .bubble .meta");
+    await ft;
+
+    setStep(6);
     const est = say("estimate");
     spotSel = null;
     await openSheet("RO-1044");
-    highlight(".sheet");
-    await cue(0.45); highlight("#addLine");
-    await type("#li-item", "Recharge AC refrigerant"); await type("#li-price", "189"); await tap("#addLine button");
-    await cue(0.8);
-    await type("#li-item", "Replace AC condenser"); await type("#li-price", "624"); await tap("#addLine button");
-    highlight(qa(".sheet .sec").find((s) => /Estimate/.test(s.textContent)));
+    highlight("#estSec");
+    await cue(0.38); highlight(".est-add");
+    await pickSaved("recharge"); highlight(".est-add"); await tap("#addLine button[type=submit]");
+    await cue(0.68);
+    await pickSaved("condenser"); highlight(".est-add"); await tap("#addLine button[type=submit]");
+    await cue(0.85); highlight(q("#li-save")?.closest("label"));
     await est;
 
-    setStep(6);
+    setStep(7);
     const sd = say("send");
-    await tap('.sheet .btn.primary[data-stage="approval"]');
+    highlight(".est-send"); await tap(".est-send");
     highlight("#sendForm");
     await cue(0.35); highlight("#m-text");
     await cue(0.85); await tap("#sendForm .btn.primary");
     highlight(".sheet .thread");
     await sd;
 
-    setStep(7);
+    setStep(8);
     highlight(null);
     say("tryit");
     const remote = await textingStep();
@@ -306,39 +387,40 @@
       applyRemote(remote);
       render();
       await wait(300);
-      if (!q(".sheet")) await tap('[data-open="RO-1044"]');
-      setStep(8);
+      if (!q(".sheet")) await openSheet("RO-1044");
+      setStep(9);
       const g = say("gotit");
       highlight(".sheet .thread");
-      await cue(0.4); highlight(qa(".sheet .sec").find((s) => /Estimate/.test(s.textContent)));
+      await cue(0.4); highlight("#estSec");
       await cue(0.75); highlight(qa(".sheet .thread .bubble.in").pop());
       await g;
     } else {
       try { audio.pause(); } catch (e) { /* ignore */ }
       const os = say("onscreen");
       await tap("#viewAsCust");
-      highlight(qa(".c-card")[0]);
-      await cue(0.35);
-      const est2 = qa(".c-card").find((c) => /Estimate|approve/i.test(c.textContent));
+      highlight(".c-head");
+      await cue(0.25);
+      const est2 = qa(".c-card").find((c) => /Estimate/i.test(c.textContent));
       if (est2) highlight(est2);
-      await cue(0.55); await tap(qa('[data-decide][data-v="approved"]')[0]);
-      await cue(0.62); await tap(qa('[data-decide][data-v="declined"]')[1]);
-      await cue(0.8); highlight("#sig"); await type("#sig", "Lena Brooks");
-      await cue(0.93); await tap("#submitApproval");
+      await cue(0.45); await tap(qa('[data-decide][data-v="approved"]')[0]);
+      await cue(0.52); await tap(qa('[data-decide][data-v="declined"]')[1]);
+      await cue(0.66); highlight("#sig"); await type("#sig", "Lena Brooks");
+      await cue(0.76); await tap("#submitApproval");
+      await cue(0.84); highlight("#privacyLink");
       await os;
-      setStep(8);
+      setStep(9);
       const bs = say("backshop");
       await tap("#backToShop");
       await wait(300);
-      highlight(qa(".sheet .sec").find((s) => /Estimate/.test(s.textContent)));
+      highlight("#estSec");
       await cue(0.45); highlight(".sheet .thread");
       await bs;
     }
 
-    setStep(9);
+    setStep(10);
     const al = say("along");
     highlight(".sheet .stepper");
-    for (const [stage, f] of [["in_progress", 0.22], ["qc", 0.32], ["ready", 0.62]]) {
+    for (const [stage, f] of [["in_progress", 0.2], ["qc", 0.3], ["ready", 0.62]]) {
       await cue(f);
       highlight(`.sheet .step[data-stage="${stage}"]`);
       await tap(`.sheet .step[data-stage="${stage}"]`);
@@ -350,28 +432,216 @@
     highlight(".sheet .thread");
     await al;
 
+    setStep(11);
+    const ar = say("archive");
+    await tab("archive");
+    highlight(".archive");
+    await cue(0.4); highlight(".archive-search"); await search("#archiveQ", "delgado");
+    await cue(0.75); highlight(".archive-list");
+    await ar;
+
+    setStep(12);
+    const st = say("settings");
+    await tab("settings");
+    highlight("#setupForm");
+    await cue(0.3); highlight(q("#sh-email")?.closest("label"));
+    await cue(0.5); highlight("#savedItems");
+    await cue(0.75); highlight("#importBox");
+    await st;
+
+    setStep(13);
+    const pl = say("plan");
+    await tab("plan");
+    highlight(".plan-page");
+    await cue(0.3); highlight(".plan-cards");
+    await cue(0.5); await tap('[data-plan-interval="year"]'); highlight(".plan-cards");
+    await cue(0.72); highlight(".plan-fine");
+    await pl;
+
     const wr = say("wrap");
-    if (q(".sheet")) await tap(".sheet .x");
-    highlight(".board-wrap");
+    highlight('.tab[data-view="training"]');
+    await cue(0.4); await tab("board"); highlight(".board-wrap");
     await wr;
     endTour(false);
   }
 
+  // ---------- training lessons ----------
+  const TRAIN = {
+    async bay() {
+      STEPS = 6; await begin("board");
+      step(); highlight(".tabs"); await say("bay-1");
+      step(); { const c = say("bay-2"); highlight(".stats"); await cue(0.55); highlight(".stat.warn"); await c; }
+      step(); { const c = say("bay-3"); highlight(".board-wrap"); await cue(0.55); highlight(".col.is-approval"); await cue(0.82); highlight(".col.is-ready"); await c; }
+      step(); {
+        const c = say("bay-4"); highlight(".board .card");
+        await cue(0.35); highlight(qa(".card").find((x) => x.querySelector(".pill.bad")) || ".board .card");
+        await cue(0.5); highlight(".age-key");
+        await cue(0.6); highlight(q(".card.age-ok") || ".age-key");
+        await cue(0.7); highlight(q(".card.age-mid") || ".age-key");
+        await cue(0.82); highlight(q(".card.age-old") || ".age-key");
+        await c;
+      }
+      step(); {
+        const c = say("bay-5"); highlight(".board-search");
+        await cue(0.35); await search("#boardSearch", "whitaker"); highlight(".board-wrap");
+        await cue(0.7); await clearInput("#boardSearch"); highlight(".board-wrap");
+        await cue(0.85); highlight('.tab[data-view="archive"]');
+        await c;
+      }
+      step(); { const c = say("bay-6"); highlight('[data-open="RO-1041"]'); await cue(0.4); await tap('[data-open="RO-1041"]'); highlight(".sheet"); await c; }
+    },
+    async checkin() {
+      STEPS = 6; await begin("board");
+      step(); { const c = say("ci-1"); await tab("checkin"); highlight(q("#ci-method")?.closest("label")); await c; }
+      step(); { const c = say("ci-2"); highlight(q("#ci-method")?.closest("label")); await cue(0.6); highlight("#ci-help"); await c; }
+      step(); {
+        const c = say("ci-3"); highlight(q("#ci-name")?.closest("label")); await type("#ci-name", "Sam Ortiz");
+        await cue(0.3); highlight(q("#ci-channel")?.closest("label"));
+        await cue(0.55); const s = q("#ci-channel"); if (s) { s.value = "both"; s.dispatchEvent(new Event("change", { bubbles: true })); }
+        highlight("#checkinForm .form-grid"); await type("#ci-phone", "(555) 019-4410"); await type("#ci-email", "sam.ortiz@example.com");
+        await c;
+      }
+      step(); {
+        const c = say("ci-4"); highlight("#checkinForm .form-grid");
+        await type("#ci-year", "2014"); await type("#ci-make", "Mazda"); await type("#ci-model", "CX-5"); await type("#ci-plate", "3CXF882");
+        await cue(0.55); highlight(q("#ci-concern")?.closest("label")); await type("#ci-concern", "Squealing belt on cold starts");
+        await c;
+      }
+      step(); {
+        const c = say("ci-5"); highlight(q("#ci-consent")?.closest("label")); await cue(0.45); await tap("#ci-consent");
+        await cue(0.8); highlight("#checkinForm .btn.primary"); await tap("#checkinForm .btn.primary");
+        await c;
+      }
+      step(); { const c = say("ci-6"); highlight(".sheet .thread"); await cue(0.6); await tap(".sheet .x"); highlight(".board .col"); await c; }
+    },
+    async stages() {
+      STEPS = 5; await begin("board");
+      step(); { const c = say("st-1"); await cue(0.3); await openSheet("RO-1046"); highlight(".sheet .stepper"); await c; }
+      step(); { const c = say("st-2"); highlight('.sheet .btn.primary[data-stage]'); await tap('.sheet .btn.primary[data-stage]'); highlight("#sendForm"); await cue(0.45); highlight("#m-text"); await c; }
+      step(); { const c = say("st-3"); highlight(q("#m-send")?.closest("label")); await cue(0.85); highlight("#sendForm .btn.primary"); await tap("#sendForm .btn.primary"); highlight(".sheet .stepper"); await c; }
+      step(); {
+        const c = say("st-4"); await openSheet("RO-1042"); highlight(q("#eta")?.closest("label") || ".sheet .stepper");
+        await cue(0.45); await openSheet("RO-1045"); highlight("#billSec");
+        await c;
+      }
+      step(); {
+        const c = say("st-5"); highlight("#replyForm");
+        await cue(0.3); await type("#replyIn", "Your car is washed and ready. See you before 6!"); await tap("#replyForm .btn.primary");
+        highlight(".sheet .thread");
+        await c;
+      }
+    },
+    async estimates() {
+      STEPS = 6; await begin("board");
+      step(); { const c = say("es-1"); await openSheet("RO-1044"); highlight("#estSec"); await cue(0.6); highlight(".est-add"); await c; }
+      step(); { const c = say("es-2"); highlight(".est-add"); await cue(0.2); await pickSaved("recharge"); highlight(".est-add"); await cue(0.85); await tap("#addLine button[type=submit]"); highlight("#estSec"); await c; }
+      step(); { const c = say("es-3"); q("#li-item")?.blur(); await wait(300); highlight(".suggest-btn"); await tap(".suggest-btn"); highlight("#suggestList"); await cue(0.6); await pickSaved("condenser"); await tap("#addLine button[type=submit]"); highlight("#estSec"); await c; }
+      step(); { const c = say("es-4"); highlight(q("#li-save")?.closest("label")); await cue(0.55); highlight("#laborBtn"); await c; }
+      step(); { const c = say("es-5"); highlight(".est-send"); await cue(0.2); await tap(".est-send"); highlight("#sendForm"); await cue(0.6); await tap("#sendForm .btn.primary"); highlight(".sheet .stepper"); await c; }
+      step(); { const c = say("es-6"); await openSheet("RO-1042"); highlight("#estSec"); await c; }
+    },
+    async customer() {
+      STEPS = 5; await begin("board");
+      step(); { const c = say("cu-1"); await cue(0.5); await openSheet("RO-1041"); highlight("#viewAsCust"); await cue(0.85); await tap("#viewAsCust"); highlight(".c-head"); await c; }
+      step(); {
+        const c = say("cu-2"); highlight(".c-head"); await cue(0.3);
+        highlight(qa(".c-card").find((x) => /Estimate/.test(x.textContent)));
+        await cue(0.6); await tap(qa('[data-decide][data-v="approved"]')[0]);
+        await cue(0.75); await tap(qa('[data-decide][data-v="declined"]')[1]);
+        await c;
+      }
+      step(); { const c = say("cu-3"); highlight("#sig"); await type("#sig", "Maria Delgado"); await cue(0.55); await tap("#submitApproval"); highlight(qa(".c-card")[0]); await c; }
+      step(); {
+        const c = say("cu-4"); highlight(qa(".c-card").find((x) => /Photos/.test(x.textContent)));
+        await cue(0.2); highlight(qa(".c-card").find((x) => /Notes/.test(x.textContent)));
+        await cue(0.4); highlight(qa(".c-card").find((x) => /Progress/.test(x.textContent)));
+        await cue(0.6); highlight(".c-card.call");
+        await cue(0.75); highlight("#privacyLink");
+        await c;
+      }
+      step(); { const c = say("cu-5"); highlight(".c-head"); await cue(0.7); await tap("#backToShop"); highlight("#estSec"); await c; }
+    },
+    async photos() {
+      STEPS = 4; await begin("board");
+      step(); { const c = say("ph-1"); await openSheet("RO-1041"); highlight("#photoSec"); await c; }
+      step(); { const c = say("ph-2"); highlight(".photo-add"); await c; }
+      step(); {
+        const c = say("ph-3"); highlight("#noteSec"); await cue(0.2);
+        await type("#noteIn", "Brake fluid tested at 4% moisture. Flush recommended with the brake job.");
+        await cue(0.55); highlight("#noteSec .btn.mic");
+        await c;
+      }
+      step(); { const c = say("ph-4"); highlight("#noteSec .btn.primary"); await tap("#noteSec .btn.primary"); highlight("#noteSec .notes"); await cue(0.55); highlight(q("#noteSend")?.closest("label")); await c; }
+    },
+    async pickup() {
+      STEPS = 4; await begin("board");
+      step(); { const c = say("pk-1"); await openSheet("RO-1045"); highlight("#billSec"); await cue(0.35); await tap("#makeBill"); highlight("#billSec"); await cue(0.7); highlight("#uploadBill"); await c; }
+      step(); {
+        const c = say("pk-2"); highlight('.sheet .step[data-stage="picked_up"]'); await tap('.sheet .btn.primary[data-stage="picked_up"]');
+        highlight("#sendForm"); await cue(0.5); await tap("#sendForm .btn.primary"); highlight(".board-wrap");
+        await cue(0.8); highlight('.tab[data-view="archive"]');
+        await c;
+      }
+      step(); {
+        const c = say("pk-3"); await openSheet("RO-1046"); highlight("#closeJobBtn"); await cue(0.2); await tap("#closeJobBtn");
+        highlight("#closeForm"); await cue(0.45); highlight(q("#c-reason")?.closest("label"));
+        await cue(0.65); await tap("#c-send"); highlight("#closeForm");
+        await cue(0.88); await tap("#closeForm .btn.primary"); highlight(".board-wrap");
+        await c;
+      }
+      step(); { const c = say("pk-4"); await openSheet("RO-1044"); highlight("#dangerSec"); await c; }
+    },
+    async archive() {
+      STEPS = 4; await begin("board");
+      step(); { const c = say("ar-1"); await tab("archive"); highlight(".archive"); await c; }
+      step(); { const c = say("ar-2"); highlight(".archive-search"); await cue(0.45); await search("#archiveQ", "delgado"); highlight("#archiveRows"); await c; }
+      step(); { const c = say("ar-3"); highlight(".archive-row .a-meta"); await c; }
+      step(); { const c = say("ar-4"); await tap(".archive-row"); highlight(".sheet"); await cue(0.55); highlight("#archivedNote"); await c; }
+    },
+    async settings() {
+      STEPS = 4; await begin("board");
+      step(); { const c = say("se-1"); await tab("settings"); highlight("#setupForm"); await c; }
+      step(); { const c = say("se-2"); highlight(q("#sh-email")?.closest("label")); await c; }
+      step(); {
+        const c = say("se-3"); highlight("#savedItems");
+        await cue(0.6); highlight("#rateForm"); await type("#r-name", "Wiper blades (pair)"); await type("#r-rate", "39");
+        await tap("#rateForm .btn"); highlight("#savedItems");
+        await c;
+      }
+      step(); { const c = say("se-4"); highlight("#importBox"); await cue(0.75); highlight("#rateTemplate"); await c; }
+    },
+    async plan() {
+      STEPS = 4; await begin("board");
+      step(); { const c = say("pl-1"); highlight(".plan-banner"); await c; }
+      step(); {
+        const c = say("pl-2"); await tab("plan"); highlight(".plan-cards");
+        await cue(0.25); highlight(qa(".plan-card")[0]); await cue(0.55); highlight(qa(".plan-card")[1]);
+        await cue(0.82); await tap('[data-plan-interval="year"]'); highlight(".plan-cards");
+        await c;
+      }
+      step(); { const c = say("pl-3"); highlight(".plan-fine"); await c; }
+      step(); { const c = say("pl-4"); highlight(".plan-page"); await c; }
+    },
+  };
+
   function start() {
-    fetch("/tour/lines.json").then((r) => r.json()).then((l) => { LINES = l; }).catch(() => {}).finally(() => {
+    const name = lesson ? lesson.title : "Guided demo";
+    fetch("/tour/lines.json?v=2").then((r) => r.json()).then((l) => { LINES = l; }).catch(() => {}).finally(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">
-        <h2 id="tsH">Guided demo</h2>
-        <p>A narrated walk-through of a repair shop using Talk Shops, about 3 minutes. Turn your sound on. Halfway through you can get a real text and approve a repair from your own phone.</p>
-        <div class="t-row"><button class="btn primary" id="tsGo" type="button">▶ Start the tour</button><button class="btn" id="tsNo" type="button">Explore on my own</button></div></div>`;
+        ${lesson ? `<p style="margin:0 0 4px;font-size:13px">Training · Lesson ${lessonIx + 1} of ${LESSONS.length} · about ${lesson.mins} min</p>` : ""}
+        <h2 id="tsH">${escT(name)}</h2>
+        <p>${lesson ? escT(lesson.desc) + " Turn your sound on. It runs in the demo shop with sample cars." : "A narrated walk-through of a repair shop using Talk Shops, about 5 minutes. Turn your sound on. Halfway through you can approve a repair from your own phone."}</p>
+        <div class="t-row"><button class="btn primary" id="tsGo" type="button">▶ ${lesson ? "Start the lesson" : "Start the tour"}</button><button class="btn" id="tsNo" type="button">${lesson ? "Not now" : "Explore on my own"}</button></div></div>`;
       document.body.appendChild(gate);
       q("#tsGo").focus();
-      q("#tsNo").onclick = () => { gate.remove(); history.replaceState(null, "", location.pathname); };
+      q("#tsNo").onclick = () => { gate.remove(); window.TOUR_ACTIVE = false; history.replaceState(null, "", location.pathname + (lesson ? "?view=training" : "")); if (lesson) { ui.view = "training"; render(); } };
       q("#tsGo").onclick = () => {
         gate.remove();
         // Unlock audio on this tap (mobile browsers only allow playback after a user gesture).
         audio.src = "/tour/intro.mp3"; audio.play().then(() => audio.pause()).catch(() => {});
-        run().catch((e) => { if (!(e instanceof Stop)) { console.error(e); endTour(true); } });
+        const go = lesson ? async () => { await TRAIN[lesson.id](); await wait(400); endTour(false); } : runTour;
+        go().catch((e) => { if (!(e instanceof Stop)) { console.error(e); endTour(true); } });
       };
     });
   }

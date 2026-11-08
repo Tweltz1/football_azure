@@ -6,6 +6,9 @@ link to their car's page (`/?c=<token>`) and approve or decline repairs there wi
 - `public/` is the whole site: plain HTML/JS, no framework.
   - `index.html` + `app.js`: shop sign-in, board, check-in, and the customer page.
   - `demo.html`: demo shop with sample data; `demo.html?tour=1` runs the voice-guided tour (`tour.js`, `tour/`).
+  - Training tab (`training.js`, `training.css`): narrated lessons that run in the demo shop at `demo.html?train=<id>`.
+    Scripts are in `tour.js` (`TRAIN`); captions and clips are `tour/lines.json` and `tour/<key>.mp3`.
+    Voice: Piper `en_US-ryan-high`, length scale 1.1, 0.3s between sentences, MP3 48 kbps mono 22.05 kHz.
 - Backend: shared with Hood League in this repo. API routes live in `supabase/functions/_shared/shop.ts`
   (served by the `api` Edge Function at `/api/shop/...`); tables `repair_shops` and `repair_jobs`.
 

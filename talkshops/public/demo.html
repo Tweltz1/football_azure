@@ -200,10 +200,42 @@ table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-
 
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:9px;font-weight:600;z-index:40;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px)}}}
+/* matches the real app (index.html) */
+button.stat{text-align:left;color:var(--fg)}
+@media (max-width:700px){.board{grid-auto-flow:row;grid-template-columns:minmax(0,1fr);min-width:0}.col{min-height:0}.col:has(.empty-col){display:none}}
+.photo{margin:0}
+.field .hint{font-weight:400;font-size:12.5px;color:var(--muted)}
+.est-add{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;gap:10px}
+.est-add-h{font-size:13px;font-weight:600}
+.est-add .add-line{margin-top:0}
+.est-add-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.est-add-or::before,.est-add-or::after{content:"";flex:1;border-top:1px solid var(--line)}
+.est-add-more{width:100%;justify-content:center}
+.est-send{margin-top:12px;width:100%;justify-content:center}
+.total.sub{font-weight:400;font-size:14px;color:var(--muted);padding-top:2px}
+a.btn{color:var(--fg);text-decoration:none;display:inline-flex;align-items:center}
+a.btn.primary{color:var(--accent-fg)}
+.notice{background:var(--warn-bg);color:var(--fg);border-radius:10px;padding:10px 14px;font-size:14px;margin-bottom:14px}
+.empty-board{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:24px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
+.cust-top{font-size:12.5px;color:var(--muted);text-align:center;padding:8px}
+#setupForm.panel{display:flex;flex-direction:column;gap:14px}
+/* demo-only: saved items list in Settings */
+.rates{width:100%;border-collapse:collapse;font-size:14px}
+.rates td,.rates th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+.rates th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.rates td.num,.rates th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rate-add{display:grid;grid-template-columns:minmax(0,1fr) 110px 100px auto;gap:6px;margin-top:10px}
+.rate-add input,.rate-add select{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 10px;font-size:15px;min-width:0}
+@media (max-width:560px){.rate-add{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.import-box{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
-<link rel="stylesheet" href="/theme.css?v=6">
-<script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
+<link rel="stylesheet" href="/saved-archive.css?v=4">
+<link rel="stylesheet" href="/theme.css?v=7">
 <link rel="stylesheet" href="/repair-guide.css?v=2">
+<link rel="stylesheet" href="/plan.css?v=1">
+<link rel="stylesheet" href="/training.css?v=1">
+<script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
 </head>
 <body>
 
@@ -214,21 +246,32 @@ table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-
       <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-fg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5v4a1 1 0 0 1-1 1h-1.5M3 13v4a1 1 0 0 0 1 1h1.5M3 13h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/></svg></div>
       <div><h1>Talk Shops</h1><small id="shopName">Ridgeline Auto Repair</small></div>
     </div>
-    <nav class="tabs" aria-label="Views">
-      <button class="tab" data-view="board">Ridgeline Auto Repair Bay</button>
-      <button class="tab" data-view="checkin">Check in</button>
+    <nav class="tabs has-icons" aria-label="Views">
+      <button class="tab" data-view="board"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="tab-l tab-full" id="bayTab">Ridgeline Auto Repair Bay</span><span class="tab-l tab-short">Bay</span></button>
+      <button class="tab" data-view="checkin"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span class="tab-l">Check in</span></button>
+      <button class="tab" data-view="archive"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/></svg><span class="tab-l">Archive</span></button>
+      <button class="tab" data-view="settings"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="tab-l">Settings</span></button>
+      <button class="tab" data-view="plan"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg><span class="tab-l">Plan</span></button>
+      <button class="tab" data-view="training"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg><span class="tab-l">Training</span></button>
     </nav>
     <a class="signout" id="signOutLink" href="/" style="text-decoration:none;color:inherit">Exit demo</a>
   </div>
 </header>
-<div class="demo-note"><span><b>Demo shop.</b> Sample cars and customers, saved only in this browser. No real texts are sent; each text shows in the car's message thread.</span><span style="display:flex;gap:14px;flex-wrap:wrap"><a class="linkbtn" href="?tour=1" style="text-decoration:none">▶ Guided tour</a><button class="linkbtn" id="resetBtn">Reset sample data</button></span></div>
+<div class="demo-note"><span><b>Demo shop.</b> Sample cars and customers, saved only in this browser. No real notifications are sent; each one shows in the car's message thread.</span><span style="display:flex;gap:14px;flex-wrap:wrap"><a class="linkbtn" href="?tour=1" style="text-decoration:none">▶ Guided tour</a><button class="linkbtn" id="resetBtn">Reset sample data</button></span></div>
 </div>
 <main id="app"></main>
 <div id="layer"></div>
+<input type="file" id="photoIn" accept="image/*" hidden>
 
+<script src="/sheet-import.js?v=1"></script>
+<script src="/billing.js?v=2"></script>
+<script src="/suggest.js?v=1"></script>
+<script src="/dictate.js?v=1"></script>
+<script src="/plan.js?v=1"></script>
+<script src="/training.js?v=1"></script>
 <script src="/repair-guide.js?v=2"></script>
 <script>
-const SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",domain:"talkshops.app"};
+let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
 const STAGES=[
  {key:"checked_in",label:"Checked in",cust:"We have your car"},
  {key:"diagnosing",label:"Diagnosing",cust:"Inspecting your car"},
@@ -240,28 +283,33 @@ const STAGES=[
  {key:"picked_up",label:"Picked up",cust:"Picked up"}];
 const SI=Object.fromEntries(STAGES.map((s,i)=>[s.key,i]));
 const TEMPLATES={
- checked_in:"Hi {first}, {shop} has your {vehicle}. We'll text you as work moves along. Track it here: {link}",
+ checked_in:"Hi {first}, {shop} has your {vehicle}. We'll keep you posted as work moves along. Track it here: {link}",
  diagnosing:"Hi {first}, a technician is inspecting your {vehicle} now. We'll send what we find soon.",
  approval:"Hi {first}, we found what's going on with your {vehicle}. Please review and approve the estimate ({total}): {link}",
  parts:"Hi {first}, parts for your {vehicle} are on order and expected {eta}. We'll let you know when they arrive.",
  in_progress:"Good news, {first}: repairs on your {vehicle} are underway.",
  qc:"Hi {first}, repairs are done. We're doing a final check and road test on your {vehicle}.",
  ready:"Your {vehicle} is ready for pickup! Total {total}. We're open {hours}. Details: {link}",
- picked_up:"Thanks for choosing {shop}, {first}! How did we do? Reply with any feedback. Reply STOP to opt out."};
+ picked_up:"Thanks for choosing {shop}, {first}! How did we do? Reply with any feedback."};
+const CHANNELS={sms:"Text message",email:"Email",both:"Text and email"};
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money=n=>"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 const clock=t=>new Date(t).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
 const dayClock=t=>{const d=new Date(t),n=new Date();return d.toDateString()===n.toDateString()?clock(t):d.toLocaleDateString("en-US",{month:"short",day:"numeric"})+", "+clock(t)};
-const since=t=>{const m=Math.max(0,Math.round((Date.now()-t)/60000));if(m<60)return m+"m";const h=Math.floor(m/60);return h+"h "+(m%60)+"m"};
+const longDate=t=>new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+const since=t=>{const m=Math.max(0,Math.round((Date.now()-t)/60000));if(m<60)return m+"m";const h=Math.floor(m/60);if(h<24)return h+"h "+(m%60)+"m";const d=Math.floor(h/24);return d+"d "+(h%24)+"h"};
 const token=()=>Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,8);
+const first=n=>String(n||"").split(" ")[0];
 const vehicleStr=j=>`${j.vehicle.year} ${j.vehicle.make} ${j.vehicle.model}`;
 const linkOf=j=>`${SHOP.domain}/s/${j.token}`;
 const estTotal=(j,onlyApproved)=>j.estimate.filter(e=>!onlyApproved||e.status==="approved").reduce((a,e)=>a+Number(e.price),0);
+const contact=c=>c.channel==="email"?c.email:c.channel==="both"?c.phone+" · "+c.email:c.phone;
+const bayName=()=>SHOP.name+" Bay";
 function fillTemplate(stage,j){
-  const total=stage==="ready"?estTotal(j,true):estTotal(j,false);
-  return TEMPLATES[stage].replace(/\{(\w+)\}/g,(_,k)=>({first:j.customer.name.split(" ")[0],shop:SHOP.name,vehicle:vehicleStr(j),link:linkOf(j),total:money(total),eta:j.eta||"soon",hours:SHOP.hours}[k]??""));
+  const total=stage==="ready"?(j.bill?j.bill.total:estTotal(j,true)):estTotal(j,false);
+  return TEMPLATES[stage].replace(/\{(\w+)\}/g,(_,k)=>({first:first(j.customer.name),shop:SHOP.name,vehicle:vehicleStr(j),link:linkOf(j),total:money(total),eta:j.eta||"soon",hours:SHOP.hours}[k]??""));
 }
 
 /* --- sample data --- */
@@ -269,46 +317,81 @@ function photoSVG(label,hue){
   const svg=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'><rect width='160' height='120' fill='hsl(${hue},18%,30%)'/><circle cx='80' cy='60' r='34' fill='none' stroke='hsl(${hue},14%,62%)' stroke-width='10'/><circle cx='80' cy='60' r='12' fill='hsl(${hue},14%,55%)'/><rect x='104' y='40' width='16' height='40' rx='3' fill='hsl(${hue+20},60%,55%)'/><text x='8' y='112' font-family='monospace' font-size='9' fill='white' opacity='.8'>${label}</text></svg>`;
   return "data:image/svg+xml,"+encodeURIComponent(svg);
 }
+const SAMPLE_RATES=[
+ {name:"AC refrigerant recharge",kind:"fee",rate:189},{name:"AC condenser (replace)",kind:"part",rate:624},
+ {name:"Brake fluid flush",kind:"fee",rate:119},{name:"Cabin air filter",kind:"part",rate:34},
+ {name:"Diagnostic fee",kind:"fee",rate:95},{name:"Engine air filter",kind:"part",rate:29},
+ {name:"Front brake pads and rotors",kind:"part",rate:389},{name:"Serpentine belt (replace)",kind:"part",rate:148},
+ {name:"Shop supplies",kind:"fee",rate:12.5},{name:"Synthetic oil change",kind:"fee",rate:69.95},
+ {name:"Technician labor",kind:"labor",rate:125},{name:"Tire rotation",kind:"fee",rate:20},{name:"Wheel alignment",kind:"fee",rate:129}];
 function seed(){
-  const now=Date.now(),M=60000;
-  const mk=(ro,name,phone,veh,plate,concern,stage,stageTimes,estimate,extra={})=>{
-    const j={id:ro,ro,customer:{name,phone,consent:true},vehicle:veh,plate,concern,stage,token:token(),estimate,photos:[],events:[],messages:[],...extra};
-    stageTimes.forEach(([k,ago])=>{const t=now-ago*M;j.events.push({stage:k,t});j.messages.push({dir:"out",t,text:fillTemplate(k,j)});});
+  const now=Date.now(),M=60000,D=1440;
+  const mk=(ro,cust,veh,plate,concern,stage,stageTimes,estimate,extra={})=>{
+    const j={id:ro,ro,customer:{consent:true,channel:"sms",...cust},vehicle:veh,plate,concern,stage,token:token(),estimate,photos:[],notes:[],events:[],messages:[],...extra};
+    stageTimes.forEach(([k,ago])=>{const t=now-ago*M;j.events.push({stage:k,t});j.messages.push({dir:"out",ch:j.customer.channel,t,text:fillTemplate(k,j)});});
     return j;};
   const jobs=[
-   mk("RO-1046","Ashley Kim","(555) 017-3381",{year:2019,make:"Jeep",model:"Cherokee"},"8MRT551","Battery warning light on dash","checked_in",[["checked_in",12]],[]),
-   mk("RO-1044","Lena Brooks","(555) 012-9047",{year:2012,make:"Chevrolet",model:"Malibu"},"6BXC118","AC blowing warm air","diagnosing",[["checked_in",95],["diagnosing",34]],[]),
-   mk("RO-1041","Maria Delgado","(555) 013-6620",{year:2018,make:"Honda",model:"Civic"},"7KDL294","Grinding noise when braking","approval",[["checked_in",210],["diagnosing",170],["approval",48]],
+   mk("RO-1046",{name:"Ashley Kim",phone:"(555) 017-3381"},{year:2019,make:"Jeep",model:"Cherokee"},"8MRT551","Battery warning light on dash","checked_in",[["checked_in",12]],[]),
+   mk("RO-1044",{name:"Lena Brooks",phone:"(555) 012-9047",email:"lena.brooks@example.com",channel:"both"},{year:2012,make:"Chevrolet",model:"Malibu"},"6BXC118","AC blowing warm air","diagnosing",[["checked_in",95],["diagnosing",34]],[]),
+   mk("RO-1041",{name:"Maria Delgado",phone:"(555) 013-6620"},{year:2018,make:"Honda",model:"Civic"},"7KDL294","Grinding noise when braking","approval",[["checked_in",210],["diagnosing",170],["approval",48]],
      [{id:1,item:"Front brake pads and rotors",price:389,status:"pending"},{id:2,item:"Brake fluid flush",price:119,status:"pending"}]),
-   mk("RO-1042","James Whitaker","(555) 016-4402",{year:2015,make:"Ford",model:"F-150"},"4TWE903","Check engine light, rough idle","parts",[["checked_in",1500],["diagnosing",1440],["approval",1380],["parts",1300]],
+   mk("RO-1042",{name:"James Whitaker",phone:"(555) 016-4402",email:"j.whitaker@example.com",channel:"email"},{year:2015,make:"Ford",model:"F-150"},"4TWE903","Check engine light, rough idle","parts",[["checked_in",1500],["diagnosing",1440],["approval",1380],["parts",1300]],
      [{id:1,item:"Ignition coils (6) and spark plugs",price:642,status:"approved"},{id:2,item:"Throttle body cleaning",price:95,status:"declined"}],{eta:"Tue, Nov 10"}),
-   mk("RO-1043","Priya Nair","(555) 011-7735",{year:2020,make:"Toyota",model:"RAV4"},"9PLN227","60,000-mile service","in_progress",[["checked_in",180],["in_progress",150]],
-     [{id:1,item:"60k service package",price:449,status:"approved"}]),
-   mk("RO-1040","Marcus Hill","(555) 015-2268",{year:2016,make:"Nissan",model:"Altima"},"7HJA640","Clunk over bumps, replace front struts","qc",[["checked_in",320],["diagnosing",300],["approval",280],["in_progress",250],["qc",22]],
-     [{id:1,item:"Front strut assemblies (pair)",price:712,status:"approved"},{id:2,item:"Alignment",price:129,status:"approved"}]),
-   mk("RO-1045","Tom Reyes","(555) 018-5519",{year:2017,make:"Subaru",model:"Outback"},"5SUB774","Oil change and tire rotation","ready",[["checked_in",140],["in_progress",110],["ready",19]],
+   mk("RO-1043",{name:"Priya Nair",phone:"(555) 011-7735"},{year:2020,make:"Toyota",model:"RAV4"},"9PLN227","60,000-mile service and timing cover oil leak","in_progress",[["checked_in",4.5*D],["diagnosing",4.4*D],["approval",4.3*D],["parts",4.1*D],["in_progress",150]],
+     [{id:1,item:"60k service package",price:449,status:"approved"},{id:2,item:"Timing cover gasket",price:780,status:"approved"}],{eta:"Fri, Nov 6"}),
+   mk("RO-1040",{name:"Marcus Hill",phone:"(555) 015-2268"},{year:2016,make:"Nissan",model:"Altima"},"7HJA640","Clunk over bumps, replace front struts","qc",[["checked_in",2*D],["diagnosing",1.9*D],["approval",1.8*D],["in_progress",250],["qc",22]],
+     [{id:1,item:"Front strut assemblies (pair)",price:712,status:"approved"},{id:2,item:"Wheel alignment",price:129,status:"approved"}]),
+   mk("RO-1045",{name:"Tom Reyes",phone:"(555) 018-5519"},{year:2017,make:"Subaru",model:"Outback"},"5SUB774","Oil change and tire rotation","ready",[["checked_in",140],["in_progress",110],["ready",19]],
      [{id:1,item:"Synthetic oil change",price:69.95,status:"approved"},{id:2,item:"Tire rotation",price:20,status:"approved"}])];
   const maria=jobs.find(j=>j.ro==="RO-1041");
   maria.photos=[{src:photoSVG("FRONT PADS 2MM",210),cap:"Front pads worn to 2 mm (replace at 3 mm)"},{src:photoSVG("ROTOR SCORING",20),cap:"Scoring on left front rotor"}];
+  maria.notes=[{id:1,t:now-60*M,text:"Front pads are down to 2 mm and the left rotor is scored. Recommend pads and rotors on the front axle, plus a fluid flush (fluid tested dark)."}];
   maria.messages.push({dir:"in",t:now-30*M,text:"Thanks! Is it safe to drive home if I wait on this?"});
-  maria.messages.push({dir:"out",t:now-26*M,text:"It's drivable short distance, but the pads are close to metal. We'd recommend doing it today. – Dan, service advisor"});
+  maria.messages.push({dir:"out",ch:"sms",t:now-26*M,text:"It's drivable short distance, but the pads are close to metal. We'd recommend doing it today. – Dan, service advisor"});
   const james=jobs.find(j=>j.ro==="RO-1042");
   james.approval={by:"James Whitaker",t:now-1350*M};
   james.messages.splice(3,0,{dir:"in",t:now-1350*M,text:"Approved the coils and plugs. Skip the throttle body for now."});
-  const marcus=jobs.find(j=>j.ro==="RO-1040");marcus.approval={by:"Marcus Hill",t:now-270*M};
+  const marcus=jobs.find(j=>j.ro==="RO-1040");marcus.approval={by:"Marcus Hill",t:now-1.75*D*M};
+  const priya=jobs.find(j=>j.ro==="RO-1043");priya.approval={by:"Priya Nair",t:now-4.25*D*M};
+  // Archive: picked-up cars and one closed without repair
+  const past=(ro,cust,veh,plate,concern,daysAgo,estimate,extra={})=>{
+    const t=now-daysAgo*D*M;
+    const j=mk(ro,cust,veh,plate,concern,"picked_up",[],estimate,extra);
+    j.events=[{stage:"checked_in",t:t-2*D*M},{stage:"in_progress",t:t-1.5*D*M},{stage:"ready",t:t-.2*D*M},{stage:"picked_up",t}];
+    j.messages=[{dir:"out",ch:j.customer.channel,t:t-2*D*M,text:fillTemplate("checked_in",j)},{dir:"out",ch:j.customer.channel,t:t-.2*D*M,text:fillTemplate("ready",j)}];
+    j.archivedAt=t;return j;};
+  jobs.push(
+   past("RO-1039",{name:"Greg Allen",phone:"(555) 014-8812"},{year:2010,make:"Toyota",model:"Tacoma"},"2GRA410","Timing belt and water pump at 120k",3,[{id:1,item:"Timing belt and water pump",price:845,status:"approved"}]),
+   past("RO-1036",{name:"Kevin Park",phone:"(555) 019-2201",email:"kpark@example.com",channel:"both"},{year:2016,make:"Honda",model:"Accord"},"6KPA338","Brakes squeal when stopping",12,[{id:1,item:"Rear brake pads",price:289,status:"approved"}]),
+   past("RO-1031",{name:"Maria Delgado",phone:"(555) 013-6620"},{year:2018,make:"Honda",model:"Civic"},"7KDL294","Oil change, cabin filter smells musty",34,[{id:1,item:"Synthetic oil change",price:69.95,status:"approved"},{id:2,item:"Cabin air filter",price:34,status:"approved"}]),
+   past("RO-1029",{name:"Tom Reyes",phone:"(555) 018-5519"},{year:2017,make:"Subaru",model:"Outback"},"5SUB774","Check engine light on",61,[{id:1,item:"Diagnostic fee",price:95,status:"approved"},{id:2,item:"Purge valve",price:119,status:"approved"}]));
+  const dana=mk("RO-1038",{name:"Dana Lopez",phone:"(555) 012-4477",email:"dana.l@example.com",channel:"email"},{year:2021,make:"Ford",model:"Escape"},"8DLE902","Transmission slipping on the highway","approval",[["checked_in",9*D],["diagnosing",8.9*D],["approval",8.6*D]],
+    [{id:1,item:"Transmission rebuild",price:3850,status:"declined"}]);
+  dana.closed={reason:"Customer went elsewhere",t:now-8*D*M};dana.archivedAt=dana.closed.t;jobs.push(dana);
   jobs.forEach(j=>j.messages.sort((a,b)=>a.t-b.t));
-  return {jobs,nextRO:1047,pickedToday:3};
+  return {jobs,nextRO:1047,rates:SAMPLE_RATES.map(r=>({...r})),shop:{...SHOP}};
 }
-const KEY="baystatus-proto-v1";
+const KEY="talkshops-demo-v2";
 let state;
 try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
-if(!state||!state.jobs)state=seed();
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
-let ui={view:"board",openJob:null,custJob:null,modal:null,draft:{}};
-const AUTH="baystatus-proto-auth";
-let signedIn=true;
-const setAuth=v=>{signedIn=v;try{v?localStorage.setItem(AUTH,"1"):localStorage.removeItem(AUTH)}catch(e){}};
+if(!state||!state.jobs||!state.rates)state=seed();
+if(state.shop)SHOP={...SHOP,...state.shop};
+const save=()=>{try{state.shop=SHOP;localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
+const startView=new URLSearchParams(location.search).get("view");
+let ui={view:["board","checkin","archive","settings","plan","training"].includes(startView)?startView:"board",openJob:null,custJob:null,modal:null,draft:{},q:"",aq:""};
 const job=id=>state.jobs.find(j=>j.id===id);
+const onBoard=j=>!j.archivedAt;
+
+/* --- plan (demo: a shop on its free trial; checkout is not available) --- */
+const plan={state:"trial",daysLeft:12,trialEndsAt:Date.now()+12*86400000,textLimit:150,carLimit:25,textsUsed:38,carsCreated:9,payments:true,hasBilling:false,
+  plans:{starter:{name:"Starter",month:59,year:590,blurb:"1,000 texts a month, unlimited email"},pro:{name:"Pro",month:99,year:990,blurb:"3,000 texts a month, unlimited email, busy shops"}}};
+const planUi=window.createShopPlan({esc,toast,api:async()=>{throw new Error("Demo shop: in your shop, this opens Stripe's secure checkout. Nothing is charged here.")}});
+const billing=window.createShopBilling({esc,money});
+const dictation=window.createDictation({toast});
+const suggest=window.createSuggest({esc,money,items:()=>state.rates||[],
+  onPick(input,r){const price=$("#li-price");input.value=r.name;
+    if(r.kind==="percent"){price.value="";toast("Percent items need a base amount.");price.focus();return}
+    price.value=Number(r.rate).toFixed(2);price.focus();price.select();}});
 
 /* --- views --- */
 function render(){
@@ -321,72 +404,126 @@ function render(){
     app.innerHTML=customerView(cj);$("#layer").innerHTML="";return;
   }
   document.title="Talk Shops · "+SHOP.name;
-  if(!signedIn){chrome.hidden=true;app.innerHTML=loginView();$("#layer").innerHTML="";return}
   chrome.hidden=false;
+  $("#shopName").textContent=SHOP.name;$("#bayTab").textContent=bayName();
   document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-current",b.dataset.view===ui.view?"page":"false"));
-  app.innerHTML=ui.view==="checkin"?checkinView():boardView();
+  const banner=ui.view==="plan"||ui.view==="training"?"":planUi.banner(plan);
+  app.innerHTML=banner+(ui.view==="checkin"?checkinView():ui.view==="archive"?archiveView():ui.view==="settings"?settingsView():ui.view==="plan"?planUi.view(plan):ui.view==="training"?window.TALKSHOPS_TRAINING.view(esc,{demo:true}):boardView());
+  if(ui.view==="board")filterBoard();
+  if(ui.view==="archive")renderArchiveRows();
   renderLayer();
 }
-function loginView(){
-  return `<div class="login-wrap"><form class="login" id="loginForm">
-    <div class="brand"><div class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</div><div><h1>Talk Shops</h1><small>For repair shops</small></div></div>
-    <h2>Shop sign in</h2>
-    <label class="field">Work email<input id="li-email" type="email" required autocomplete="username" value="dan@ridgelineauto.com"></label>
-    <label class="field">Password<input id="li-pass" type="password" required autocomplete="current-password" value="demo1234"></label>
-    <button class="btn primary" type="submit">Sign in</button>
-    <div class="demo-creds">Demo account is filled in. Any email and password works.</div>
-    <p class="muted" style="font-size:13px;margin:0">Customers never sign in. They get a text with a link to their car's page.</p>
-    <a class="linkbtn" href="/" style="font-size:13px">Exit demo</a>
-  </form></div>`;
-}
+function ageOf(j){const start=j.events[0].t,hrs=(Date.now()-start)/3600000;return{label:since(start),cls:hrs<24?"age-ok":hrs<72?"age-mid":"age-old"}}
 function boardView(){
-  const active=state.jobs.filter(j=>j.stage!=="picked_up");
-  const waiting=active.filter(j=>j.stage==="approval").length;
+  const active=state.jobs.filter(onBoard);
+  const waiting=active.filter(j=>j.stage==="approval"&&j.estimate.some(e=>e.status==="pending")).length;
   const ready=active.filter(j=>j.stage==="ready").length;
-  const sent=state.jobs.reduce((a,j)=>a+j.messages.filter(m=>m.dir==="out").length,0);
+  const today=new Date().toDateString();
+  const sent=state.jobs.reduce((a,j)=>a+j.messages.filter(m=>m.dir==="out"&&new Date(m.t).toDateString()===today).length,0);
   let h=`<div class="stats">
     <div class="stat"><b>${active.length}</b><span>Cars in the shop</span></div>
     <div class="stat warn"><b>${waiting}</b><span>Waiting on customer</span></div>
     <div class="stat ok"><b>${ready}</b><span>Ready for pickup</span></div>
     <div class="stat"><b>${sent}</b><span>Updates sent today</span></div></div>
+    <div class="board-top"><h2>${esc(bayName())}</h2>
+      <div class="age-key" aria-label="Time in shop"><span class="age-ok">Under 1 day</span><span class="age-mid">1 to 3 days</span><span class="age-old">Over 3 days</span></div>
+      <label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q)}" autocomplete="off"></label></div>
+    <p class="board-none muted" id="boardNone" hidden></p>
     <div class="board-wrap"><div class="board">`;
   STAGES.filter(s=>s.key!=="picked_up").forEach(s=>{
     const list=active.filter(j=>j.stage===s.key);
-    h+=`<section class="col ${s.key==="approval"?"is-approval":""} ${s.key==="ready"?"is-ready":""}"><div class="col-h"><h3>${s.label}</h3><span>${list.length}</span></div>`;
+    h+=`<section class="col ${s.key==="approval"?"is-approval":""} ${s.key==="ready"?"is-ready":""}"><div class="col-h"><h3>${s.key==="approval"?"Estimate review":s.label}</h3><span>${list.length}</span></div>`;
     if(!list.length)h+=`<div class="empty-col">No cars</div>`;
     list.forEach(j=>{
       const ev=j.events[j.events.length-1];
       let pill="";
-      if(j.stage==="approval")pill=`<span class="pill warn">Sent ${since(ev.t)} ago</span>`;
+      if(j.stage==="approval"&&j.estimate.some(e=>e.status==="pending"))pill=`<span class="pill warn">Sent ${since(ev.t)} ago</span>`;
+      else if(j.stage==="approval")pill=`<span class="pill">Customer answered</span>`;
       else if(j.stage==="parts")pill=`<span class="pill">ETA ${esc(j.eta||"not set")}</span>`;
-      else if(j.stage==="ready")pill=`<span class="pill ok">Customer notified</span>`;
       const unread=j.messages.length&&j.messages[j.messages.length-1].dir==="in";
-      h+=`<button class="card" data-open="${j.id}">
+      const age=ageOf(j);
+      const hay=[vehicleStr(j),j.customer.name,j.customer.phone,j.customer.email,j.ro,j.concern,j.plate].filter(Boolean).join(" ").toLowerCase();
+      h+=`<button class="card ${age.cls}" data-open="${j.id}" data-s="${esc(hay)}">
         <span class="veh">${esc(vehicleStr(j))}</span>
         <span class="row"><span>${esc(j.customer.name)}</span><span class="mono">${j.ro}</span></span>
         <span class="row"><span>${esc(j.concern)}</span></span>
-        <span class="row"><span>${since(ev.t)} in stage</span>${unread?`<span class="pill bad">New reply</span>`:""}</span>${pill}</button>`;
+        <span class="row"><span>${since(ev.t)} in stage</span>${unread?`<span class="pill bad">New reply</span>`:""}</span>
+        <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span>${pill}</span></button>`;
     });
     h+=`</section>`;
   });
-  h+=`</div></div><p class="muted" style="font-size:13px;margin-top:10px">${state.pickedToday} cars picked up earlier today. Tap a car to update its stage, build an estimate or read customer replies.</p>`;
+  const picked=state.jobs.filter(j=>j.archivedAt&&!j.closed&&Date.now()-j.archivedAt<2*86400000).length;
+  h+=`</div></div><p class="muted" style="font-size:13px;margin-top:10px">${picked?picked+" picked up in the last 2 days. ":""}Tap a car to update its stage, build an estimate or message the customer. <button class="linkbtn" data-view="archive">Search picked-up cars</button></p>`;
   return h;
+}
+function filterBoard(){
+  const terms=(ui.q||"").trim().toLowerCase().split(/\s+/).filter(Boolean);let shown=0;
+  document.querySelectorAll(".board .col").forEach(col=>{let n=0;
+    col.querySelectorAll(".card[data-s]").forEach(c=>{const ok=terms.every(t=>c.dataset.s.includes(t));c.hidden=!ok;if(ok)n++});
+    col.classList.toggle("search-hide",!!terms.length&&!n);const count=col.querySelector(".col-h span");if(count)count.textContent=n;shown+=n;});
+  const none=$("#boardNone");if(none){none.hidden=!terms.length||shown>0;none.textContent=`No cars in the shop match "${ui.q.trim()}". Picked-up cars are in the Archive.`}
+}
+function archiveView(){
+  return `<section class="archive">
+    <div class="archive-h"><h2>Archive</h2><p class="muted">Picked-up cars and repairs closed without work stay here for one year, then they are deleted automatically.</p></div>
+    <label class="field archive-search">Search<input id="archiveQ" type="search" value="${esc(ui.aq)}" placeholder="Customer, phone, email, vehicle, plate, RO number or concern" autocomplete="off"></label>
+    <div id="archiveRows" aria-live="polite"></div></section>`;
+}
+function renderArchiveRows(){
+  const el=$("#archiveRows");if(!el)return;
+  const terms=ui.aq.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const rows=state.jobs.filter(j=>j.archivedAt).filter(j=>{const hay=[vehicleStr(j),j.customer.name,j.customer.phone,j.customer.email,j.ro,j.concern,j.plate].join(" ").toLowerCase();return terms.every(t=>hay.includes(t))}).sort((a,b)=>b.archivedAt-a.archivedAt);
+  if(!rows.length){el.innerHTML=`<div class="empty-board"><p class="muted" style="margin:0">${terms.length?"No picked-up cars match that search.":"No picked-up cars yet. When you move a car to Picked up, it lands here."}</p></div>`;return}
+  el.innerHTML=`<p class="muted archive-count">${rows.length} car${rows.length===1?"":"s"}</p><ul class="archive-list">${rows.map(r=>`<li class="archive-item"><button class="archive-row" data-open="${r.id}">
+    <span class="a-main"><b>${esc(vehicleStr(r))}</b>${r.plate?`<span class="mono">${esc(r.plate)}</span>`:""}</span>
+    <span class="a-who">${esc(r.customer.name)}${r.customer.phone?" · "+esc(r.customer.phone):""}${r.customer.email?" · "+esc(r.customer.email):""}</span>
+    <span class="a-concern">${esc(r.concern)}</span>
+    <span class="a-meta"><span class="mono">${esc(r.ro)}</span><span>${r.closed?`<span class="pill bad">Closed</span> ${esc(r.closed.reason)},`:"Picked up"} ${longDate(r.archivedAt)}</span>${estTotal(r,true)?`<span>${money(r.bill?r.bill.total:estTotal(r,true))}</span>`:""}<span class="muted">Deletes ${longDate(r.archivedAt+365*86400000)}</span></span>
+  </button><button class="archive-del" data-delete-job="${r.id}" aria-label="Delete ${esc(r.ro)} permanently">Delete</button></li>`).join("")}</ul>`;
 }
 function checkinView(){
   return `<form class="panel" id="checkinForm" autocomplete="off">
-   <h2>Check in a vehicle</h2><p class="muted" style="margin:0">The customer gets a text with a tracking link as soon as you save.</p>
+   <h2>Customer check-in</h2>
+   <label class="field">Check-in method<select id="ci-method"><option value="staff">Enter vehicle details at the shop</option><option value="invite">Invite customer by link</option></select></label>
+   <p id="ci-help" class="muted">The customer gets a tracking link as soon as you save.</p>
    <div class="form-grid">
-    <label class="field">Customer name<input id="ci-name" required placeholder="e.g. Sam Ortiz"></label>
-    <label class="field">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
+    <label class="field">Customer name<input id="ci-name" required maxlength="80" placeholder="e.g. Sam Ortiz"></label>
+    <label class="field">Notify customer by<select id="ci-channel"><option value="sms">Text message</option><option value="email">Email</option><option value="both">Text and email</option></select></label>
+    <label class="field" id="ci-phone-label">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
+    <label class="field" id="ci-email-label" hidden>Email address<input id="ci-email" type="email" placeholder="name@example.com" disabled></label>
     <label class="field">Year<input id="ci-year" required inputmode="numeric" placeholder="2019"></label>
     <label class="field">Make<input id="ci-make" required placeholder="Toyota"></label>
     <label class="field">Model<input id="ci-model" required placeholder="Camry"></label>
     <label class="field">License plate<input id="ci-plate" placeholder="ABC1234"></label>
     <label class="field full">What's the concern?<textarea id="ci-concern" required placeholder="Customer's description of the problem"></textarea></label>
-    <label class="chk full"><input type="checkbox" id="ci-consent" checked> Customer agreed to receive repair updates by text. They can reply STOP at any time.</label>
+    <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
    </div>
-   <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit">Check in and text customer</button><button class="btn" type="button" id="ci-fill">Fill sample customer</button></div>
+   <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit">Check in and notify customer</button><button class="btn" type="button" id="ci-fill">Fill sample customer</button></div>
   </form>`;
+}
+function syncChannel(){
+  const ch=$("#ci-channel")?.value;if(!ch)return;
+  const phone=ch!=="email",email=ch!=="sms";
+  $("#ci-phone-label").hidden=!phone;$("#ci-phone").disabled=!phone;$("#ci-phone").required=phone;
+  $("#ci-email-label").hidden=!email;$("#ci-email").disabled=!email;$("#ci-email").required=email;
+}
+function settingsView(){
+  const rows=state.rates.map((r,i)=>`<tr><td>${esc(r.name)}</td><td>${esc({labor:"Labor",part:"Part",fee:"Fee",percent:"Percent"}[r.kind]||r.kind)}</td><td class="num">${r.kind==="percent"?r.rate+"%":money(r.rate)+(r.kind==="labor"?"/hr":"")}</td><td class="num"><button class="linkbtn" data-del-rate="${i}" aria-label="Remove ${esc(r.name)}">Remove</button></td></tr>`).join("");
+  return `<div class="settings-wrap"><form class="panel" id="setupForm">
+    <h2>Shop settings</h2>
+    <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
+    <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(SHOP.name)}"></label>
+    <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(SHOP.phone)}"></label>
+    <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(SHOP.hours)}"></label>
+    <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" value="${esc(SHOP.email)}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
+    <div class="btn-row"><button class="btn primary" type="submit">Save</button></div>
+  </form>
+  <section class="panel" id="savedItems"><h2>Saved items</h2>
+    <p class="muted" style="margin:0">Labor rates, parts and fees you use often. They show up as suggestions when you build an estimate or a bill.</p>
+    <div style="overflow-x:auto;margin-top:10px"><table class="rates"><thead><tr><th>Name</th><th>Type</th><th class="num">Rate</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    <form class="rate-add" id="rateForm"><input id="r-name" placeholder="New item, e.g. Wiper blades" aria-label="Item name" required><select id="r-kind" aria-label="Type"><option value="part">Part</option><option value="labor">Labor</option><option value="fee">Fee</option><option value="percent">Percent</option></select><input id="r-rate" inputmode="decimal" placeholder="Rate" aria-label="Rate" required><button class="btn" type="submit">Add</button></form>
+    <div class="import-box" id="importBox"><label class="btn" for="rateFile" style="cursor:pointer">Import Excel or CSV</label><input type="file" id="rateFile" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="linkbtn" type="button" id="rateTemplate">Download example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
+  </section></div>`;
 }
 // Artwork belongs to the named sample repair and line item, including in saved demos.
 function sampleIllustration(j, item) {
@@ -402,10 +539,11 @@ function sampleIllustration(j, item) {
   }
   return `<figure class="sample-art"><img src="/demo-art/${file}.svg" width="352" height="204" alt=""><figcaption>${caption}</figcaption></figure>`;
 }
+const guide=item=>window.repairGuideFor?window.repairGuideFor(item):"";
 function customerView(j){
   const idx=SI[j.stage];
   const evAt=k=>{const e=[...j.events].reverse().find(e=>e.stage===k);return e?e.t:null};
-  const path=STAGES.filter(s=>s.key!=="picked_up"&&(evAt(s.key)||SI[s.key]>idx||s.key===j.stage)).filter(s=>!(s.key==="approval"&&!j.estimate.length&&SI[j.stage]>SI.approval)&&!(s.key==="parts"&&SI[j.stage]<SI.parts&&!j.eta)||true);
+  const path=STAGES.filter(s=>s.key!=="picked_up"||evAt(s.key));
   const tl=path.map(s=>{const t=evAt(s.key);const cls=s.key===j.stage?"current":(t&&SI[s.key]<idx?"done":"todo");
     return `<li class="${cls}"><span>${s.label}</span><time>${t?dayClock(t):""}</time></li>`}).join("");
   const pending=j.stage==="approval"&&j.estimate.some(e=>e.status==="pending");
@@ -415,7 +553,7 @@ function customerView(j){
       const d=ui.draft[j.id+"-"+e.id];
       const choice=pending&&e.status==="pending"?`<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d==="approved"}">Approve</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d==="declined"}">Decline</button></div>`
         :(e.status!=="pending"?`<span class="pill ${e.status==="approved"?"ok":"bad"}">${e.status==="approved"?"Approved":"Declined"}</span>`:"");
-      return `<div class="est-item"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${sampleIllustration(j,e)}${window.repairGuideFor(e.item)}${choice}</div>`}).join("");
+      return `<div class="est-item"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${sampleIllustration(j,e)}${guide(e.item)}${choice}</div>`}).join("");
     const allChosen=j.estimate.filter(e=>e.status==="pending").every(e=>ui.draft[j.id+"-"+e.id]);
     const tot=pending?j.estimate.reduce((a,e)=>a+((ui.draft[j.id+"-"+e.id]??e.status)==="approved"?Number(e.price):0),0):estTotal(j,true);
     est=`<div class="c-card"><h3>Estimate</h3>${items}<div class="total"><span>${pending?"Approved so far":"Approved total"}</span><span>${money(tot)}</span></div>
@@ -424,91 +562,148 @@ function customerView(j){
       <p class="muted" style="font-size:12.5px;margin:6px 0 0">${allChosen?"Your signed decision goes straight to the shop.":"Choose approve or decline for each item."}</p>`
       :(j.approval?`<p class="muted" style="font-size:12.5px;margin:8px 0 0">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:"")}</div>`;
   }
-  const photos=j.photos.length?`<div class="c-card"><h3>Photos from your technician</h3><div class="photos">${j.photos.map(p=>`<figure class="photo" style="margin:0"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}</div></div>`:"";
+  const photos=j.photos.length?`<div class="c-card"><h3>Photos from your technician</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}</div></div>`:"";
+  const notes=(j.notes||[]).length?`<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...j.notes].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p></li>`).join("")}</ul></div>`:"";
+  const bill=j.bill?`<div class="c-card"><h3>Final bill</h3><div class="total"><span>Total due</span><span>${money(j.bill.total)}</span></div></div>`:"";
   const stage=STAGES[idx];
-  const extra=j.stage==="parts"?`<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta||"soon")}</b>.</p>`:j.stage==="ready"?`<p style="margin:6px 0 0">Total due ${money(estTotal(j,true))}. Open ${SHOP.hours}.</p>`:"";
-  return `<div class="cust-demo"><span><b>Demo:</b> this is the page ${esc(j.customer.name.split(" ")[0])} opens from the text link. No login needed.</span><button class="linkbtn" id="backToShop" style="margin-left:auto">Back to shop</button></div>
+  const extra=j.stage==="parts"?`<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta||"soon")}</b>.</p>`:j.stage==="ready"?`<p style="margin:6px 0 0">Total due ${money(j.bill?j.bill.total:estTotal(j,true))}. Open ${esc(SHOP.hours)}.</p>`:"";
+  return `<div class="cust-demo"><span><b>Demo:</b> this is the page ${esc(first(j.customer.name))} opens from the link. No login needed.</span><button class="linkbtn" id="backToShop" style="margin-left:auto">Back to shop</button></div>
    <div class="cust-page">
-    <div class="c-head"><small>${SHOP.name} · <span class="mono">${j.ro}</span></small><h2>${stage.cust}</h2><div style="font-size:14px;margin-top:4px">${esc(vehicleStr(j))}</div>${extra}</div>
+    <div class="c-head"><small>${esc(SHOP.name)} · <span class="mono">${j.ro}</span></small><h2>${j.closed?"This repair was closed":stage.cust}</h2><div style="font-size:14px;margin-top:4px">${esc(vehicleStr(j))}</div>${extra}</div>
     <div class="c-body">
-      ${est}${photos}
+      ${est}${bill}${photos}${notes}
       <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul></div>
       <div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div>${sampleIllustration(j)}</div>
-      <div class="c-card call"><span>Questions? Call the shop</span><b>${SHOP.phone}</b></div>
-    </div></div>`;
+      <div class="c-card call"><span>Questions? Call the shop</span><b>${esc(SHOP.phone)}</b></div>
+    </div>
+    <p class="cust-top">This page updates as your repair progresses.</p>
+    <p class="cust-top"><a href="/privacy.html" id="privacyLink" target="_blank" rel="noopener">Privacy policy</a></p></div>`;
 }
+const chName=m=>m.ch==="email"?"Email":m.ch==="both"?"Text and email":"Text";
+const mic=`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`;
 function sheetView(j){
   const idx=SI[j.stage];
   const steps=STAGES.map((s,i)=>`<button class="step ${i<idx?"done":""} ${i===idx?"current":""}" data-stage="${s.key}" ${i===idx?'aria-current="step"':""}>${s.label}</button>`).join("");
   const next=STAGES[idx+1];
-  const rows=j.estimate.map(e=>`<tr><td>${esc(e.item)}${sampleIllustration(j,e)}${window.repairGuideFor(e.item)}</td><td>${e.status==="pending"?'<span class="pill warn">Pending</span>':e.status==="approved"?'<span class="pill ok">Approved</span>':'<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status==="pending"&&j.stage!=="approval"?`<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>`:""}</td></tr>`).join("");
-  const msgs=j.messages.map(m=>`<div class="bubble ${m.dir}">${linkify(esc(m.text),j)}<span class="meta">${m.dir==="out"?"Text to customer":esc(j.customer.name.split(" ")[0])} · ${dayClock(m.t)}</span></div>`).join("");
+  const rows=j.estimate.map(e=>`<tr><td>${esc(e.item)}${sampleIllustration(j,e)}${guide(e.item)}</td><td>${e.status==="pending"?'<span class="pill warn">Pending</span>':e.status==="approved"?'<span class="pill ok">Approved</span>':'<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status==="pending"&&j.stage!=="approval"?`<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>`:""}</td></tr>`).join("");
+  const msgs=j.messages.map(m=>`<div class="bubble ${m.dir}">${linkify(esc(m.text),j)}<span class="meta">${m.dir==="out"?chName(m)+" to customer":esc(first(j.customer.name))} · ${dayClock(m.t)}</span></div>`).join("");
   const log=[...j.events].reverse().map(e=>`<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
+  const live=!j.archivedAt;
   return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-   <div class="sheet-h"><div><div class="mono muted">${j.ro} · ${esc(j.plate||"")}</div><h2 id="sheetTitle">${esc(vehicleStr(j))}</h2><div class="muted">${esc(j.customer.name)} · ${esc(j.customer.phone)}</div></div><button class="x" data-close aria-label="Close">×</button></div>
-   <div class="sheet-body">
+   <div class="sheet-h"><div><div class="mono muted">${j.ro} · ${esc(j.plate||"")}</div><h2 id="sheetTitle">${esc(vehicleStr(j))}</h2><div class="muted">${esc(j.customer.name)} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
+   <div class="sheet-body" data-job="${j.id}">
+    ${j.archivedAt?`<section class="sec closed-note" id="archivedNote"><p><b>${j.closed?"Closed without repair":"Picked up"}</b> · ${esc(j.closed?j.closed.reason:"")}${j.closed?" · ":""}${dayClock(j.archivedAt)}</p><p class="muted">This car is in the Archive until ${longDate(j.archivedAt+365*86400000)}.</p><div class="btn-row"><button class="btn" id="reopenBtn">Reopen and put back on the board</button><button class="btn danger" data-delete-job="${j.id}">Delete permanently</button></div></section>`:""}
     <section class="sec"><h3>Stage</h3><div class="stepper">${steps}</div>
-      ${next?`<div class="btn-row" style="margin-top:10px"><button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button><button class="btn" id="viewAsCust">See customer's page</button></div>`:""}
-      ${j.stage==="parts"?`<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
+      <div class="btn-row" style="margin-top:10px">${next&&live?`<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>`:""}<button class="btn" id="viewAsCust">See customer's page</button>${live?`<button class="btn" id="closeJobBtn">Close without repair</button>`:""}</div>
+      ${j.stage==="parts"&&live?`<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
     </section>
     <section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div>${sampleIllustration(j)}</section>
-    <section class="sec"><h3>Estimate</h3><a class="repair-library-link" href="/repair-guide.html" target="_blank" rel="noopener">Browse repair diagrams</a>
-      ${j.estimate.length?`<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`:`<p class="muted" style="margin:0">No line items yet.</p>`}
+    <section class="sec" id="estSec"><h3>Estimate</h3><a class="repair-library-link" href="/repair-guide.html" target="_blank" rel="noopener">Browse repair diagrams</a>
+      ${j.estimate.length?`<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some(e=>e.status!=="pending")?`<div class="total"><span>Approved total</span><span>${money(estTotal(j,true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`:`<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}`:`<p class="muted" style="margin:0">No line items yet.</p>`}
       ${j.approval?`<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:""}
-      <form class="add-line" id="addLine"><input id="li-item" placeholder="Line item, e.g. Cabin air filter" aria-label="Line item"><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button></form>
-      ${j.estimate.some(e=>e.status==="pending")&&j.stage!=="approval"?`<button class="btn primary" style="margin-top:10px" data-stage="approval">Send estimate for approval</button>`:""}
+      ${live?`<div class="est-add">
+        <div class="est-add-h">Quick add</div>
+        <form class="add-line" id="addLine"><span class="suggest-wrap"><input id="li-item" data-suggest="quick" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Type or pick a saved item" aria-label="Line item"><button type="button" class="suggest-btn" data-suggest-open aria-label="Show saved items">▾</button></span><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button>
+          <label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label></form>
+        <div class="est-add-or"><span>or</span></div>
+        <button class="btn est-add-more" type="button" id="laborBtn">Add labor, parts or fees with hours and rates</button>
+      </div>`:""}
+      ${j.estimate.some(e=>e.status==="pending")&&j.stage!=="approval"&&live?`<button class="btn primary est-send" data-stage="approval">Send estimate for approval</button>`:""}
     </section>
-    <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map(p=>`<figure class="photo" style="margin:0"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}
-      <label class="photo-add" for="photoIn">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></label><input type="file" id="photoIn" accept="image/*" hidden></div></section>
-    <section class="sec"><h3>Messages</h3><div class="thread">${msgs||'<p class="muted">No messages yet.</p>'}</div>
-      <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto"><input id="replyIn" placeholder="Text ${esc(j.customer.name.split(" ")[0])}…" aria-label="Message"><button class="btn primary" type="submit">Send</button></form></section>
+    <section class="sec" id="billSec"><h3>Final bill</h3>
+      ${j.bill?`<p>Itemized bill · ${money(j.bill.total)}</p>`:""}
+      <div class="btn-row"><button class="btn" id="makeBill">${j.bill?"Edit itemized bill":"Create itemized bill"}</button><button class="btn" id="uploadBill">Upload shop PDF</button></div>
+    </section>
+    <section class="sec" id="photoSec"><h3>Photos</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}
+      <label class="photo-add" for="photoIn">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></label></div></section>
+    <section class="sec" id="noteSec"><h3>Technician notes <span class="sec-sub">Customer sees these</span></h3>
+      ${(j.notes||[]).length?`<ul class="notes">${[...j.notes].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${n.id}">Remove</button></li>`).join("")}</ul>`:""}
+      <form id="noteForm" class="note-form"><textarea id="noteIn" maxlength="2000" placeholder="What did you find? Tap Speak to talk instead of typing." aria-label="Technician note"></textarea>
+        <div class="btn-row"><button type="button" class="btn mic" data-dictate="#noteIn" aria-pressed="false" aria-label="Voice typing">${mic}<span class="mic-label">Speak</span></button><button class="btn primary" type="submit">Post note</button></div>
+        <label class="chk"><input type="checkbox" id="noteSend"> Also notify ${esc(first(j.customer.name))} that there's an update</label></form></section>
+    <section class="sec" id="msgSec"><h3>Messages</h3><div class="thread">${msgs||'<p class="muted">No messages yet.</p>'}</div>
+      <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto auto"><input id="replyIn" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button type="button" class="btn mic" data-dictate="#replyIn" aria-pressed="false" aria-label="Voice typing">${mic}</button><button class="btn primary" type="submit">Send</button></form></section>
     <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
+    <section class="sec danger-zone" id="dangerSec"><button class="linkbtn danger" data-delete-job="${j.id}">Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></section>
    </div></aside>`;
 }
 function linkify(s,j){return s.replace(esc(linkOf(j)),`<button class="lnk" data-golink="${j.id}">${esc(linkOf(j))}</button>`)}
-function modalView(){
+function stageModal(){
   const m=ui.modal,j=job(m.job),s=STAGES[SI[m.stage]];
   return `<div class="modal"><form class="modal-card" id="sendForm" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <h2 id="mTitle">Move to ${s.label}</h2>
-    <p class="muted" style="margin:0">Text to ${esc(j.customer.name)} at ${esc(j.customer.phone)}</p>
+    <p class="muted" style="margin:0">Notify ${esc(j.customer.name)} by ${esc(CHANNELS[j.customer.channel].toLowerCase())} at ${esc(contact(j.customer))}</p>
     ${m.stage==="parts"?`<label class="field">Parts ETA<input id="m-eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
+    ${m.stage==="ready"?`<div><strong>Final bill</strong><p style="margin:4px 0 0">${j.bill?money(j.bill.total)+" due at pickup":"Optional. Customers can open their bill from the pickup link."}</p></div>`:""}
     <label class="field">Message<textarea id="m-text">${esc(m.text)}</textarea></label>
-    <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent?"checked":""} ${j.customer.consent?"":"disabled"}> Send this text ${j.customer.consent?"":"(customer has not agreed to texts)"}</label>
+    <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent?"checked":"disabled"}> Notify customer ${j.customer.consent?"":"(customer has not agreed to notifications)"}</label>
     <div class="btn-row"><button class="btn primary" type="submit">Update stage</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+  </form></div>`;
+}
+function closeModal(){
+  const j=job(ui.modal.closeJob);
+  const text=`Hi ${first(j.customer.name)}, we've closed out repair order ${j.ro} for your ${vehicleStr(j)}. Thanks for considering ${SHOP.name}. Call us anytime if you change your mind.`;
+  return `<div class="modal"><form class="modal-card" id="closeForm" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+    <h2 id="cTitle">Close without repair</h2>
+    <p class="muted" style="margin:0"><b>Archive</b> keeps the record for one year so you can look it up or reopen it. <b>Delete</b> removes it for good.</p>
+    <label class="field">Reason<select id="c-reason">${["Customer declined the repair","Customer didn't bring the car in","Customer went elsewhere","Duplicate or mistake","Other"].map(r=>`<option>${esc(r)}</option>`).join("")}</select></label>
+    <label class="chk"><input type="checkbox" id="c-send"> Let ${esc(first(j.customer.name))} know</label>
+    <label class="field" id="c-text-wrap" hidden>Message<textarea id="c-text">${esc(text)}</textarea></label>
+    <div class="btn-row"><button class="btn primary" type="submit">Archive</button><button class="btn danger" type="button" data-delete-job="${j.id}">Delete permanently</button><button class="btn" type="button" data-cancel>Cancel</button></div>
   </form></div>`;
 }
 function renderLayer(){
   let h="";
-  if(ui.openJob&&ui.view==="board"){const j=job(ui.openJob);if(j)h+=sheetView(j)}
-  if(ui.modal)h+=modalView();
+  if(ui.openJob&&(ui.view==="board"||ui.view==="archive")){const j=job(ui.openJob);if(j)h+=sheetView(j)}
+  if(ui.modal?.closeJob)h+=closeModal();else if(ui.modal)h+=stageModal();
+  const prev=$(".sheet-body"),keep=prev&&prev.dataset.job===ui.openJob?prev.scrollTop:null;
   $("#layer").innerHTML=h;
+  if(keep!==null&&$(".sheet-body")){$(".sheet").classList.add("no-anim");$(".sheet-body").scrollTop=keep}
+  suggest.refresh();
 }
 let toastT;
-function toast(msg){let t=$(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=msg;clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),2600)}
+function toast(msg){let t=$(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=msg;clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),3200)}
 
 /* --- actions --- */
+function notify(j,text,t=Date.now()){j.messages.push({dir:"out",ch:j.customer.channel,t,text});plan.textsUsed+=j.customer.channel==="email"?0:1}
 function setStage(j,stage,text,send){
   j.stage=stage;const t=Date.now();j.events.push({stage,t});
-  if(send)j.messages.push({dir:"out",t,text});
-  if(stage==="picked_up")state.pickedToday++;
+  if(send)notify(j,text,t);
+  if(stage==="picked_up")j.archivedAt=t;
   save();
 }
-function go(view){ui.view=view;if(view!=="board")ui.openJob=null;render();window.scrollTo(0,0)}
+function go(view){ui.view=view;if(view!=="board"&&view!=="archive")ui.openJob=null;ui.openJob=null;render();window.scrollTo(0,0)}
+function deleteJob(id){
+  const j=job(id);if(!j)return;
+  if(!window.TOUR_ACTIVE&&!confirm(`Delete ${j.ro} permanently? The car, photos, messages and the customer's link are removed. This can't be undone.`))return;
+  state.jobs=state.jobs.filter(x=>x.id!==id);ui.openJob=null;ui.modal=null;save();render();toast(j.ro+" deleted");
+}
 document.addEventListener("click",e=>{
   const t=e.target.closest("button,[data-close],[data-open]");if(!t)return;
+  if(t.closest(".plan-page,.plan-banner")&&(t.dataset.planInterval||t.dataset.planBuy!==undefined||t.dataset.planPortal!==undefined)){planUi.click(t,render).then(()=>{t.disabled=false});return}
   if(t.dataset.view){go(t.dataset.view);return}
-  if(t.id==="resetBtn"){state=seed();save();ui={...ui,openJob:null,modal:null,draft:{},custJob:"RO-1041"};render();toast("Sample data reset");return}
-  if(t.dataset.open){ui.openJob=t.dataset.open;renderLayer();setTimeout(()=>$(".x")?.focus(),0);return}
+  if(t.id==="resetBtn"){state=seed();SHOP={...state.shop};save();ui={...ui,openJob:null,modal:null,draft:{},q:"",aq:""};render();toast("Sample data reset");return}
+  if(t.dataset.open){ui.openJob=t.dataset.open;renderLayer();setTimeout(()=>$(".x")?.focus({preventScroll:true}),0);return}
   if(t.hasAttribute("data-close")){ui.openJob=null;renderLayer();return}
   if(t.hasAttribute("data-cancel")){ui.modal=null;renderLayer();return}
-  if(t.dataset.stage){const j=job(ui.openJob);if(!j||t.dataset.stage===j.stage)return;
+  if(t.dataset.deleteJob){deleteJob(t.dataset.deleteJob);return}
+  if(t.dataset.stage){const j=job(ui.openJob);if(!j||j.archivedAt||t.dataset.stage===j.stage)return;
     if(t.dataset.stage==="approval"&&!j.estimate.some(e=>e.status==="pending")){toast("Add at least one estimate line first");$("#li-item")?.focus();return}
-    ui.modal={job:j.id,stage:t.dataset.stage,text:fillTemplate(t.dataset.stage,j)};renderLayer();$("#m-text")?.focus();return}
+    ui.modal={job:j.id,stage:t.dataset.stage,text:fillTemplate(t.dataset.stage,j)};renderLayer();return}
   if(t.dataset.del){const j=job(ui.openJob);j.estimate=j.estimate.filter(x=>String(x.id)!==t.dataset.del);save();renderLayer();return}
-  if(t.id==="viewAsCust"||t.dataset.golink){const j=job(t.dataset.golink||ui.openJob);ui.backTo=j.id;location.hash="s-"+j.token;window.scrollTo(0,0);return}
-  if(t.id==="backToShop"){ui.view="board";ui.openJob=ui.backTo||null;history.pushState(null,"",location.pathname);render();return}
-  if(t.id==="signOut"){location.href="/";return}
-  if(t.id==="ci-fill"){const v={name:"Sam Ortiz",phone:"(555) 019-4410",year:"2014",make:"Mazda",model:"CX-5",plate:"3CXF882",concern:"Squealing belt noise on cold start"};for(const k in v)$("#ci-"+k).value=v[k];return}
+  if(t.dataset.delRate){state.rates.splice(Number(t.dataset.delRate),1);save();render();return}
+  if(t.dataset.removeNote){const j=job(ui.openJob);j.notes=j.notes.filter(n=>String(n.id)!==t.dataset.removeNote);save();renderLayer();return}
+  if(t.dataset.dictate)return;
+  if(t.id==="viewAsCust"||t.dataset.golink){const j=job(t.dataset.golink||ui.openJob);ui.backTo=j.id;ui.backView=ui.view;location.hash="s-"+j.token;window.scrollTo(0,0);return}
+  if(t.id==="backToShop"){ui.view=ui.backView||"board";ui.openJob=ui.backTo||null;history.pushState(null,"",location.pathname+location.search);render();return}
+  if(t.id==="closeJobBtn"){ui.modal={closeJob:ui.openJob};renderLayer();return}
+  if(t.id==="reopenBtn"){const j=job(ui.openJob);delete j.archivedAt;delete j.closed;if(j.stage==="picked_up"){j.stage="checked_in";j.events.push({stage:"checked_in",t:Date.now()})}save();ui.view="board";render();toast(j.ro+" is back on the board");return}
+  if(t.id==="makeBill"){const j=job(ui.openJob);const items=j.estimate.filter(e=>e.status==="approved");if(!items.length){toast("Approve at least one estimate line first, or add lines in the bill editor in your shop.");return}
+    j.bill={mode:"generated",total:Math.round(estTotal(j,true)*1.0725*100)/100};save();renderLayer();toast("Itemized bill created from the approved work, with tax");return}
+  if(t.id==="uploadBill"){toast("In your shop, choose the invoice PDF from your shop system. The customer opens it from their link.");return}
+  if(t.id==="laborBtn"){toast("In your shop, this opens the line editor: labor hours times your rate, part quantities, fees and percentages.");return}
+  if(t.id==="rateTemplate"){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["name,type,rate\nTechnician labor,labor,125.00\nShop supplies,fee,12.50\nOil filter,part,16.00\n"],{type:"text/csv"}));a.download="shop-rates.csv";document.body.appendChild(a);a.click();a.remove();return}
+  if(t.id==="ci-fill"){const v={name:"Sam Ortiz",phone:"(555) 019-4410",year:"2014",make:"Mazda",model:"CX-5",plate:"3CXF882",concern:"Squealing belt noise on cold start"};for(const k in v)$("#ci-"+k).value=v[k];$("#ci-consent").checked=true;return}
   if(t.dataset.decide){const j=job(ui.custJob);ui.draft[j.id+"-"+t.dataset.decide]=t.dataset.v;const sig=$("#sig")?.value;if(sig!=null)ui.draft[j.id+"-sig"]=sig;render();return}
   if(t.id==="submitApproval"){const j=job(ui.custJob);const sig=($("#sig").value||"").trim();
     if(sig.length<3){toast("Type your full name to sign");$("#sig").focus();return}
@@ -519,38 +714,58 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("submit",e=>{
   e.preventDefault();const f=e.target;
-  if(f.id==="loginForm"){setAuth(true);ui.view="board";render();toast("Signed in to "+SHOP.name);return}
   if(f.id==="checkinForm"){
-    const g=k=>$("#ci-"+k).value.trim();
-    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:g("name"),phone:g("phone"),consent:$("#ci-consent").checked},vehicle:{year:g("year"),make:g("make"),model:g("model")},plate:g("plate"),concern:g("concern"),stage:"checked_in",token:token(),estimate:[],photos:[],events:[],messages:[]};
-    state.nextRO++;const t=Date.now();j.events.push({stage:"checked_in",t});
-    if(j.customer.consent)j.messages.push({dir:"out",t,text:fillTemplate("checked_in",j)});
-    state.jobs.push(j);save();ui.openJob=j.id;go("board");toast(j.customer.consent?"Checked in. Welcome text sent.":"Checked in. No text sent.");return}
+    const g=k=>$("#ci-"+k).value.trim();const ch=g("channel");
+    if(!$("#ci-consent").checked){toast("Confirm the customer agreed to updates first");return}
+    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:g("name"),phone:ch!=="email"?g("phone"):"",email:ch!=="sms"?g("email"):"",channel:ch,consent:true},vehicle:{year:g("year"),make:g("make"),model:g("model")},plate:g("plate"),concern:g("concern"),stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[],messages:[]};
+    state.nextRO++;plan.carsCreated++;const t=Date.now();j.events.push({stage:"checked_in",t});
+    notify(j,fillTemplate("checked_in",j),t);
+    state.jobs.push(j);save();ui.view="board";ui.openJob=j.id;render();window.scrollTo(0,0);toast("Checked in. "+first(j.customer.name)+" was notified.");return}
   if(f.id==="sendForm"){
     const j=job(ui.modal.job);const eta=$("#m-eta");if(eta)j.eta=eta.value.trim();
-    setStage(j,ui.modal.stage,$("#m-text").value.trim(),$("#m-send").checked);
-    const lbl=STAGES[SI[ui.modal.stage]].label;ui.modal=null;
-    if(j.stage==="picked_up")ui.openJob=null;
-    render();toast(`Moved to ${lbl}${$("#m-send")?"":""}`);return}
+    const lbl=STAGES[SI[ui.modal.stage]].label,sent=$("#m-send").checked;
+    setStage(j,ui.modal.stage,$("#m-text").value.trim(),sent);
+    ui.modal=null;if(j.archivedAt)ui.openJob=null;
+    render();toast(`Moved to ${lbl}${sent?". Customer notified.":". No notification sent."}`);return}
+  if(f.id==="closeForm"){
+    const j=job(ui.modal.closeJob);const t=Date.now();j.closed={reason:$("#c-reason").value,t};j.archivedAt=t;
+    if($("#c-send").checked)notify(j,$("#c-text").value.trim(),t);
+    ui.modal=null;ui.openJob=null;save();render();toast(j.ro+" closed and moved to the Archive");return}
   if(f.id==="addLine"){const j=job(ui.openJob);const item=$("#li-item").value.trim();const price=parseFloat($("#li-price").value.replace(/[$,]/g,""));
     if(!item||!(price>=0)){toast("Enter an item and a price");return}
-    j.estimate.push({id:Date.now(),item,price,status:"pending"});save();renderLayer();$("#li-item").focus();return}
-  if(f.id==="replyForm"){const j=job(ui.openJob);const v=$("#replyIn").value.trim();if(!v)return;j.messages.push({dir:"out",t:Date.now(),text:v});save();renderLayer();$("#replyIn").focus();toast("Text sent");return}
+    j.estimate.push({id:Date.now(),item,price,status:"pending"});
+    if($("#li-save").checked&&!state.rates.some(r=>r.name.toLowerCase()===item.toLowerCase())){state.rates.push({name:item,kind:"part",rate:price});toast(`Saved "${item}" for next time`)}
+    save();renderLayer();$("#li-item").focus({preventScroll:true});return}
+  if(f.id==="replyForm"){const j=job(ui.openJob);const v=$("#replyIn").value.trim();if(!v)return;notify(j,v);save();renderLayer();toast("Message sent");return}
+  if(f.id==="noteForm"){const j=job(ui.openJob);const v=$("#noteIn").value.trim();if(!v)return;j.notes=j.notes||[];j.notes.push({id:Date.now(),t:Date.now(),text:v});
+    if($("#noteSend").checked)notify(j,`Hi ${first(j.customer.name)}, your technician added a note about your ${vehicleStr(j)}: ${linkOf(j)}`);
+    save();renderLayer();toast("Note posted to the customer's page");return}
+  if(f.id==="setupForm"){SHOP={...SHOP,name:$("#sh-name").value.trim()||SHOP.name,phone:$("#sh-phone").value.trim(),hours:$("#sh-hours").value.trim(),email:$("#sh-email").value.trim()};save();render();toast("Shop settings saved");return}
+  if(f.id==="rateForm"){const name=$("#r-name").value.trim(),rate=Number($("#r-rate").value.replace(/[$,%\s]/g,""));if(!name||!(rate>=0)){toast("Enter a name and a rate");return}
+    state.rates.push({name,kind:$("#r-kind").value,rate});state.rates.sort((a,b)=>a.name.localeCompare(b.name));save();render();toast(`Saved "${name}"`);return}
 });
-document.addEventListener("change",e=>{
-  
+document.addEventListener("change",async e=>{
+  if(e.target.id==="ci-channel")syncChannel();
+  if(e.target.id==="c-send")$("#c-text-wrap").hidden=!e.target.checked;
   if(e.target.id==="eta"){const j=job(ui.openJob);j.eta=e.target.value.trim();save();render()}
-  if(e.target.id==="photoIn"){const file=e.target.files[0];if(!file)return;const j=job(ui.openJob);const r=new FileReader();
+  if(e.target.id==="rateFile"){const file=e.target.files[0];if(!file)return;
+    try{const list=await billing.readRateFile(file);const by=new Map(state.rates.map(r=>[r.name.toLowerCase(),r]));list.forEach(r=>by.set(r.name.toLowerCase(),r));state.rates=[...by.values()].sort((a,b)=>a.name.localeCompare(b.name));save();render();toast(`Imported ${list.length} item${list.length===1?"":"s"}`)}
+    catch(x){toast(x.message)}}
+  if(e.target.id==="photoIn"){const file=e.target.files[0];if(!file)return;const j=job(ui.openJob);if(!j)return;const r=new FileReader();
     r.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");const s=Math.min(1,640/img.width);c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);
-      j.photos.push({src:c.toDataURL("image/jpeg",.8),cap:file.name.replace(/\.[^.]+$/,"")});save();renderLayer();toast("Photo added to customer's page")};img.src=r.result};r.readAsDataURL(file)}
+      j.photos.push({src:c.toDataURL("image/jpeg",.8),cap:file.name.replace(/\.[^.]+$/,"")});save();renderLayer();toast("Photo added to customer's page")};img.src=r.result};r.readAsDataURL(file);e.target.value=""}
 });
-document.addEventListener("input",e=>{if(e.target.id==="sig")ui.draft[ui.custJob+"-sig"]=e.target.value});
+document.addEventListener("input",e=>{
+  if(e.target.id==="sig")ui.draft[ui.custJob+"-sig"]=e.target.value;
+  if(e.target.id==="boardSearch"){ui.q=e.target.value;filterBoard()}
+  if(e.target.id==="archiveQ"){ui.aq=e.target.value;renderArchiveRows()}
+});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(ui.modal)ui.modal=null;else ui.openJob=null;renderLayer()}});
 window.addEventListener("hashchange",render);
-setInterval(()=>{if(ui.view==="board"&&!ui.openJob&&!ui.modal)render()},60000);
+setInterval(()=>{if(ui.view==="board"&&!ui.openJob&&!ui.modal&&document.activeElement?.id!=="boardSearch"&&!window.TOUR_ACTIVE)render()},60000);
 render();
 </script>
 <script src="/config.js"></script>
-<script src="/tour.js?v=174"></script>
+<script src="/tour.js?v=200"></script>
 </body>
 </html>
