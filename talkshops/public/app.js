@@ -5,7 +5,7 @@
   "use strict";
   const CFG = window.BAY_CONFIG || {};
   const DEMO_PAGE = "/demo.html";
-  const DEMO_VIDEO = "/demo.mp4";
+  const DEMO_VIDEO = "/demo.mp4?v=2";
   const STAGES = [
     { key: "invited", label: "Customer invited", cust: "Check In for Your Repair" },
     { key: "checked_in", label: "Checked In", cust: "We Have Your Car" },
@@ -89,7 +89,7 @@
   function videoModal() {
     return `<div class="modal video-modal" data-close-modal><div class="modal-card wide" role="dialog" aria-modal="true" aria-label="Talk Shops demo video">
       <div style="display:flex;align-items:center;gap:10px"><h2 style="margin-right:auto">See Talk Shops in action</h2><button class="x" data-close-modal aria-label="Close">×</button></div>
-      <video src="${DEMO_VIDEO}" controls autoplay playsinline preload="metadata"><track kind="captions" srclang="en" label="English" src="/walkthrough-en.vtt" default></video>
+      <video src="${DEMO_VIDEO}" controls autoplay playsinline preload="metadata"><track kind="captions" srclang="en" label="English" src="/walkthrough-en.vtt?v=2" default></video>
       <p class="muted" style="margin:0;font-size:13.5px">A walkthrough with narration: checking in a car, sending an estimate, the customer approving it from their text link, and moving the car to ready for pickup. Turn your sound on.</p>
       <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}" style="text-decoration:none">Explore Demo Shop</a><a class="btn" href="${DEMO_PAGE}?tour=1">Open Interactive Tour</a></div>
     </div></div>`;
