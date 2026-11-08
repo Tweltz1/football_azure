@@ -85,7 +85,7 @@
       };
       audio.onended = finish;
       audio.onerror = useFallback;
-      audio.src = "/tour/" + key + ".mp3?v=3";
+      audio.src = "/tour/" + key + (key === "backshop" ? ".mp3?v=4" : ".mp3?v=3");
       audio.muted = muted;
       const p = audio.play();
       if (p && p.catch) p.catch(useFallback);
@@ -434,11 +434,12 @@
       await cue(0.84); highlight("#privacyLink");
       await os;
       setStep(9);
-      const bs = say("backshop");
       await tap("#backToShop");
-      await wait(300);
-      highlight("#estSec");
-      await cue(0.45); highlight(".sheet .thread");
+      highlight("#estSec .est");
+      await wait(350);
+      const bs = say("backshop");
+      await cue(0.70);
+      highlight("#approvalSignature");
       await bs;
     }
 

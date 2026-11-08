@@ -744,7 +744,7 @@ function sheetView(j){
     ${j.closed?"":window.Walkaround.sheetSection(j).replace('<section class="sec">','<section class="sec" id="waSec">')}
     <section class="sec" id="estSec"><h3>Estimate</h3>
       ${j.estimate.length?`<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some(e=>e.status!=="pending")?`<div class="total"><span>Approved total</span><span>${money(estTotal(j,true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`:`<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}`:`<p class="muted" style="margin:0">No line items yet.</p>`}
-      ${j.approval?`<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:""}
+      ${j.approval?`<p id="approvalSignature" class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:""}
       ${live?`<div class="est-add">
         <div class="est-add-h">Quick add</div>
         <form class="add-line" id="addLine"><span class="suggest-wrap"><input id="li-item" data-suggest="quick" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Type or pick a saved item" aria-label="Line item"><button type="button" class="suggest-btn" data-suggest-open aria-label="Show saved items">▾</button></span><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button>
@@ -1000,7 +1000,7 @@ if(new URLSearchParams(location.search).has("smart")){
 }
 </script>
 <script src="/config.js"></script>
-<script src="/tour.js?v=204"></script>
+<script src="/tour.js?v=205"></script>
 <script src="/shell.js?v=1"></script>
 </body>
 </html>
