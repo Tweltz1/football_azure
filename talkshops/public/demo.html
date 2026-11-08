@@ -237,6 +237,26 @@ a.btn.primary{color:var(--accent-fg)}
 <link rel="stylesheet" href="/training.css?v=1">
 <link rel="stylesheet" href="/howto.css?v=4">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
+<style>
+.queue-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.queue-top h2{width:auto;flex:1}
+.queue-filters.stats{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 18px}
+.queue-filters .stat{display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:6px 10px;border-radius:12px;color:var(--muted);font-size:13px}
+.queue-filters .stat b{font-size:inherit;color:inherit}
+.queue-filters .stat::after,.queue-filters .stat::before{display:none}
+.queue-filters .stat[aria-pressed=true]{background:var(--fg);color:var(--surface)}
+.queue-vehicle{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.queue-vehicle span{font-size:20px;color:var(--muted);line-height:1}
+@media(max-width:700px){
+ .board-wrap .board{display:block;min-width:0}
+ .board .col{min-height:0;padding:0;border:0;background:transparent;box-shadow:none}
+ .board .col-h,.board .empty-col{display:none}
+ .board .card{width:100%;margin:0 0 9px;padding:14px 16px}
+ .board .card::before{display:none}
+ .queue-top h2{font-size:20px}
+ .board .card .veh{font-size:16px}
+}
+</style>
 </head>
 <body>
 
@@ -442,14 +462,10 @@ function boardView(){
   const ready=active.filter(j=>j.stage==="ready").length;
   const today=new Date().toDateString();
   const sent=state.jobs.reduce((a,j)=>a+j.messages.filter(m=>m.dir==="out"&&new Date(m.t).toDateString()===today).length,0);
-  let h=`<div class="stats">
-    <div class="stat"><b>${active.length}</b><span>Cars in the shop</span></div>
-    <div class="stat warn"><b>${waiting}</b><span>Waiting on customer</span></div>
-    <div class="stat ok"><b>${ready}</b><span>Ready for pickup</span></div>
-    <div class="stat"><b>${sent}</b><span>Updates sent today</span></div></div>
-    <div class="board-top"><h2>${esc(bayName())}</h2>
-      <div class="age-key" aria-label="Time in shop"><span class="age-ok">Under 1 day</span><span class="age-mid">1 to 3 days</span><span class="age-old">Over 3 days</span></div>
-      <label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q)}" autocomplete="off"></label></div>
+  const filters=[["all","All cars",active.length],["approval","Awaiting approval",waiting],["ready","Ready for pickup",ready]];
+  let h=`<div class="board-top queue-top"><h2>${esc(SHOP.name)}</h2><button class="btn primary" data-view="checkin">Check in vehicle</button></div>
+      <label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q)}" autocomplete="off"></label>
+    <div class="stats queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key,label,count])=>`<button class="stat ${key==="approval"?"warn":""}" data-queue="${key}" aria-pressed="${key===(ui.queue||"all")}">${label} <b>${count}</b></button>`).join("")}</div>
     <p class="board-none muted" id="boardNone" hidden></p>
     <div class="board-wrap"><div class="board">`;
   STAGES.filter(s=>s.key!=="picked_up").forEach(s=>{
@@ -458,32 +474,36 @@ function boardView(){
     if(!list.length)h+=`<div class="empty-col">No cars</div>`;
     list.forEach(j=>{
       const ev=j.events[j.events.length-1];
-      let pill="";
-      if(j.stage==="approval"&&j.estimate.some(e=>e.status==="pending"))pill=`<span class="pill warn">Sent ${since(ev.t)} ago</span>`;
-      else if(j.stage==="approval")pill=`<span class="pill">Customer answered</span>`;
-      else if(j.stage==="parts")pill=`<span class="pill">ETA ${esc(j.eta||"not set")}</span>`;
+      const pending=j.stage==="approval"&&j.estimate.some(e=>e.status==="pending");
+      const approved=j.estimate.filter(e=>e.status==="approved").length;
+      let status=s.label, detail=since(ev.t)+" in stage";
+      if(pending)status="Awaiting approval";
+      else if(j.stage==="approval"){
+        status=!j.estimate.length?"Estimate review":approved===j.estimate.length?"Estimate approved":approved?"Partially approved":"Estimate declined";
+        if(j.approval)detail=(approved?money(estTotal(j,true))+" approved":"Decision received")+" · "+dayClock(j.approval.t);
+      }else if(j.stage==="parts"&&j.eta)detail="Parts ETA · "+j.eta;
       const unread=j.messages.length&&j.messages[j.messages.length-1].dir==="in";
       const age=ageOf(j);
       const hay=[vehicleStr(j),j.customer.name,j.customer.phone,j.customer.email,j.ro,j.concern,j.plate].filter(Boolean).join(" ").toLowerCase();
-      h+=`<button class="card ${age.cls}" data-open="${j.id}" data-s="${esc(hay)}">
-        <span class="veh">${esc(vehicleStr(j))}</span>
+      h+=`<button class="card ${age.cls}" data-open="${j.id}" data-queue-key="${pending?"approval":j.stage==="ready"?"ready":"other"}" data-s="${esc(hay)}">
+        <span class="veh queue-vehicle">${esc(vehicleStr(j))}<span aria-hidden="true">›</span></span>
         <span class="row"><span>${esc(j.customer.name)}</span><span class="mono">${j.ro}</span></span>
         <span class="row"><span>${esc(j.concern)}</span></span>
-        <span class="row"><span>${since(ev.t)} in stage</span>${unread?`<span class="pill bad">New reply</span>`:""}</span>
-        <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span>${pill}</span></button>`;
+        <span class="row"><span>${esc(detail)}</span>${unread?`<span class="pill bad">New reply</span>`:""}</span>
+        <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill ${pending?"warn":""}">${esc(status)}</span></span></button>`;
     });
     h+=`</section>`;
   });
   const picked=state.jobs.filter(j=>j.archivedAt&&!j.closed&&Date.now()-j.archivedAt<2*86400000).length;
-  h+=`</div></div><p class="muted" style="font-size:13px;margin-top:10px">${picked?picked+" picked up in the last 2 days. ":""}Tap a car to update its stage, build an estimate or message the customer. <button class="linkbtn" data-view="archive">Search picked-up cars</button></p>`;
+  h+=`</div></div><p class="muted" style="font-size:13px;margin-top:10px">${sent} updates sent today · ${picked?picked+" picked up in the last 2 days. ":""}Tap a car to update its stage, build an estimate or message the customer. <button class="linkbtn" data-view="archive">Search picked-up cars</button></p>`;
   return h;
 }
 function filterBoard(){
   const terms=(ui.q||"").trim().toLowerCase().split(/\s+/).filter(Boolean);let shown=0;
   document.querySelectorAll(".board .col").forEach(col=>{let n=0;
-    col.querySelectorAll(".card[data-s]").forEach(c=>{const ok=terms.every(t=>c.dataset.s.includes(t));c.hidden=!ok;if(ok)n++});
-    col.classList.toggle("search-hide",!!terms.length&&!n);const count=col.querySelector(".col-h span");if(count)count.textContent=n;shown+=n;});
-  const none=$("#boardNone");if(none){none.hidden=!terms.length||shown>0;none.textContent=`No cars in the shop match "${ui.q.trim()}". Picked-up cars are in the Archive.`}
+    col.querySelectorAll(".card[data-s]").forEach(c=>{const ok=(!ui.queue||ui.queue==="all"||ui.queue===c.dataset.queueKey)&&terms.every(t=>c.dataset.s.includes(t));c.hidden=!ok;if(ok)n++});
+    col.classList.toggle("search-hide",(!!terms.length||(ui.queue&&ui.queue!=="all"))&&!n);const count=col.querySelector(".col-h span");if(count)count.textContent=n;shown+=n;});
+  const none=$("#boardNone");if(none){none.hidden=shown>0;none.textContent=terms.length?`No matching vehicles for "${ui.q.trim()}".`:ui.queue==="approval"?"No vehicles are awaiting approval.":ui.queue==="ready"?"No vehicles are ready for pickup.":"No vehicles in the shop."}
 }
 function archiveView(){
   return `<section class="archive">
@@ -699,6 +719,12 @@ function setStage(j,stage,text,send){
   save();
 }
 function go(view){ui.view=view;if(view!=="board"&&view!=="archive")ui.openJob=null;ui.openJob=null;render();window.scrollTo(0,0)}
+function closeJobSheet(){
+  const id=ui.openJob;
+  ui.openJob=null;
+  renderLayer();
+  if(id)document.querySelector('[data-open="'+CSS.escape(id)+'"]')?.focus({preventScroll:true});
+}
 function deleteJob(id){
   const j=job(id);if(!j)return;
   if(!window.TOUR_ACTIVE&&!confirm(`Delete ${j.ro} permanently? The car, photos, messages and the customer's link are removed. This can't be undone.`))return;
@@ -708,6 +734,11 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("button,[data-close],[data-open]");if(!t)return;
   if(t.closest(".plan-page,.plan-banner")&&(t.dataset.planInterval||t.dataset.planBuy!==undefined||t.dataset.planPortal!==undefined)){planUi.click(t,render).then(()=>{t.disabled=false});return}
   if(howTo.click(t,render))return;
+  if(t.dataset.queue){
+    ui.queue=t.dataset.queue;
+    document.querySelectorAll("[data-queue]").forEach(b=>b.setAttribute("aria-pressed",String(b===t)));
+    filterBoard();return;
+  }
   if(t.dataset.howtoJob){const j=job(t.dataset.howtoJob);if(j)howTo.openFor(j);ui.view="howto";ui.openJob=null;render();window.scrollTo(0,0);return}
   if(t.dataset.view){go(t.dataset.view);return}
   if(t.id==="demoDraft"){const input=$("#replyIn");input.value=job(ui.openJob).messages.at(-1).suggestion;input.focus();return}
@@ -719,9 +750,9 @@ document.addEventListener("click",e=>{
     if(auto&&suggestion)j.messages.push({dir:"out",ch:"sms",t:Date.now(),text:suggestion,autoReply:true});
     save();renderLayer();$("#smartDemo").open=true;$("#demoAuto").checked=auto;$("#sampleSms").value=topic;$("#msgSec").scrollIntoView();return;
   }
-  if(t.id==="resetBtn"){state=seed();SHOP={...state.shop};save();ui={...ui,openJob:null,modal:null,draft:{},q:"",aq:""};render();toast("Sample data reset");return}
+  if(t.id==="resetBtn"){state=seed();SHOP={...state.shop};save();ui={...ui,openJob:null,modal:null,draft:{},q:"",aq:"",queue:"all"};render();toast("Sample data reset");return}
   if(t.dataset.open){ui.openJob=t.dataset.open;renderLayer();setTimeout(()=>$(".x")?.focus({preventScroll:true}),0);return}
-  if(t.hasAttribute("data-close")){ui.openJob=null;renderLayer();return}
+  if(t.hasAttribute("data-close")){closeJobSheet();return}
   if(t.hasAttribute("data-cancel")){ui.modal=null;renderLayer();return}
   if(t.dataset.deleteJob){deleteJob(t.dataset.deleteJob);return}
   if(t.dataset.stage){const j=job(ui.openJob);if(!j||j.archivedAt||t.dataset.stage===j.stage)return;
@@ -800,7 +831,7 @@ document.addEventListener("input",e=>{
   if(e.target.id==="boardSearch"){ui.q=e.target.value;filterBoard()}
   if(e.target.id==="archiveQ"){ui.aq=e.target.value;renderArchiveRows()}
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(ui.modal)ui.modal=null;else ui.openJob=null;renderLayer()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(ui.modal){ui.modal=null;renderLayer()}else closeJobSheet()}});
 window.addEventListener("hashchange",render);
 setInterval(()=>{if(ui.view==="board"&&!ui.openJob&&!ui.modal&&document.activeElement?.id!=="boardSearch"&&!window.TOUR_ACTIVE)render()},60000);
 render();
