@@ -9,6 +9,7 @@ window.TALKSHOPS_TRAINING = (() => {
     { id: "estimates", title: "Estimates and saved items", mins: 2, desc: "Quick add, saved-item suggestions, and sending an estimate for approval." },
     { id: "customer", title: "The customer's page", mins: 1, desc: "What customers see, approving item by item, signing, and the privacy policy." },
     { id: "photos", title: "Photos, notes and voice typing", mins: 1, desc: "Show the problem, write or speak technician notes, and notify the customer." },
+    { id: "howto", title: "Repair how-to assistant", mins: 2, desc: "Ask how to do a job and get steps, tools, parts, typical specs and safety notes." },
     { id: "pickup", title: "Final bill, pickup and closing a job", mins: 1, desc: "Bills, picked up, close without repair, and deleting a repair." },
     { id: "archive", title: "The Archive", mins: 1, desc: "Searching past repairs, one-year retention, and reopening a car." },
     { id: "settings", title: "Shop settings and price lists", mins: 2, desc: "Shop details, the reply email, saved items, and importing Excel or CSV." },

@@ -573,6 +573,36 @@
       }
       step(); { const c = say("ph-4"); highlight("#noteSec .btn.primary"); await tap("#noteSec .btn.primary"); highlight("#noteSec .notes"); await cue(0.55); highlight(q("#noteSend")?.closest("label")); await c; }
     },
+    async howto() {
+      STEPS = 5; await begin("board");
+      step(); { const c = say("ht-1"); highlight('.tab[data-view="howto"]'); await c; }
+      step(); {
+        const c = say("ht-2"); await cue(0.2); await openSheet("RO-1046"); highlight(".howto-link");
+        await cue(0.55); await tap(".howto-link button"); highlight(".howto-veh");
+        await c;
+      }
+      step(); {
+        const c = say("ht-3"); highlight(q("#howtoCar")?.closest("label") || ".howto-veh");
+        await cue(0.2); highlight(q("#howtoEngine")?.closest("label"));
+        await cue(0.4); highlight(q("#howtoQ")?.closest("label"));
+        await cue(0.55); highlight(".howto-actions .mic");
+        await cue(0.7); highlight(".howto-form > .howto-quick");
+        await cue(0.88); const chip = qa(".howto-form .howto-chip").find((b) => /battery/i.test(b.textContent)); if (chip) await tap(chip);
+        highlight("#howtoThread");
+        await c;
+      }
+      step(); {
+        const c = say("ht-4"); await wait(300); highlight(".howto-answer");
+        await cue(0.12); highlight(".howto-block.warn");
+        await cue(0.2); highlight(".howto-block.specs");
+        await cue(0.3); highlight(".howto-cols");
+        await cue(0.4); highlight(".howto-steps");
+        await cue(0.55); highlight(".howto-foot .howto-quick");
+        await cue(0.82); highlight("[data-howto-copy]");
+        await c;
+      }
+      step(); { const c = say("ht-5"); highlight(".howto-safety"); await cue(0.8); highlight(".howto-fine"); await c; }
+    },
     async pickup() {
       STEPS = 4; await begin("board");
       step(); { const c = say("pk-1"); await openSheet("RO-1045"); highlight("#billSec"); await cue(0.35); await tap("#makeBill"); highlight("#billSec"); await cue(0.7); highlight("#uploadBill"); await c; }
