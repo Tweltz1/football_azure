@@ -266,11 +266,22 @@
     await tap(`[data-open="${ro}"]`);
     await wait(250);
   };
+  // On a phone, Settings, Plan and Training live under More, so open that sheet the way a person would.
+  const shown = (el) => !!el && el.getClientRects().length > 0;
   async function tab(view) {
     if (q(".sheet")) { await tap(".sheet .x"); await wait(200); }
-    await tap(`.tab[data-view="${view}"]`);
+    const b = q(`.tab[data-view="${view}"]`);
+    if (!shown(b) && shown(q(".tab-more"))) {
+      await tap(".tab-more"); await wait(300);
+      highlight(".more-sheet"); await wait(700);
+      await tap(`[data-more-view="${view}"]`);
+    } else await tap(b);
     await wait(250);
   }
+  // The tab bar, or on a phone, the More button that holds the rest.
+  const tabSel = (view) => shown(q(`.tab[data-view="${view}"]`)) ? `.tab[data-view="${view}"]` : ".tab-more";
+  // Show the sign-in page (not a tab) in the demo shop.
+  async function page(view) { await closeAll(); window.demoGo?.(view); await wait(300); }
   // Type into a saved-item box, then pick the first suggestion.
   async function pickSaved(text) {
     await type("#li-item", text);
@@ -315,20 +326,21 @@
     setStep(2);
     const board = say("board");
     highlight(".board-top h2");
-    await cue(0.2); highlight(".board-wrap");
-    await cue(0.38); highlight(".stats");
-    await cue(0.55); highlight(".age-key");
-    await cue(0.68); highlight(q(".card.age-old") || ".board-wrap");
-    await cue(0.82); highlight(".board-wrap");
+    await cue(0.17); highlight(".queue-sub");
+    await cue(0.33); highlight(".board-wrap");
+    await cue(0.6); highlight(q(".card.age-old") || ".board-wrap");
+    await cue(0.85); highlight(".board-wrap");
     await board;
 
     setStep(3);
     const sr = say("search");
     highlight(".board-search");
-    await cue(0.15); await search("#boardSearch", "whitaker");
+    await cue(0.1); await search("#boardSearch", "whitaker");
     highlight(".board-wrap");
-    await cue(0.55); await clearInput("#boardSearch");
-    await cue(0.62); highlight(".tabs");
+    await cue(0.36); await clearInput("#boardSearch");
+    await cue(0.42); highlight('[data-queue="approval"]'); await tap('[data-queue="approval"]'); await wait(300); highlight(".board-wrap");
+    await cue(0.6); await tap('[data-queue="all"]'); highlight(".queue-filters");
+    await cue(0.7); highlight(".tabs");
     await sr;
 
     setStep(4);
@@ -459,8 +471,8 @@
     await pl;
 
     const wr = say("wrap");
-    highlight('.tab[data-view="training"]');
-    await cue(0.4); await tab("board"); highlight(".board-wrap");
+    highlight(tabSel("training"));
+    await cue(0.45); await tab("board"); highlight(".board-wrap");
     await wr;
     endTour(false);
   }
@@ -469,16 +481,28 @@
   const TRAIN = {
     async bay() {
       STEPS = 6; await begin("board");
-      step(); highlight(".tabs"); await say("bay-1");
-      step(); { const c = say("bay-2"); highlight(".stats"); await cue(0.55); highlight(".stat.warn"); await c; }
-      step(); { const c = say("bay-3"); highlight(".board-wrap"); await cue(0.55); highlight(".col.is-approval"); await cue(0.82); highlight(".col.is-ready"); await c; }
+      step(); { const c = say("bay-1"); highlight(".tabs"); await cue(0.62); highlight(tabSel("settings")); await c; }
+      step(); {
+        const c = say("bay-2"); highlight(".board-top");
+        await cue(0.22); highlight(".queue-add");
+        await cue(0.36); highlight(".queue-filters");
+        await cue(0.55); await tap('[data-queue="approval"]'); highlight(".board-wrap");
+        await cue(0.85); await tap('[data-queue="all"]'); highlight(".queue-filters");
+        await c;
+      }
+      step(); {
+        const c = say("bay-3"); highlight(".board-wrap");
+        await cue(0.4); highlight(q(".col.is-approval .card") || ".col.is-approval");
+        await cue(0.6); highlight(q(".col.is-ready .card") || ".col.is-ready");
+        await cue(0.8); highlight(".board-wrap");
+        await c;
+      }
       step(); {
         const c = say("bay-4"); highlight(".board .card");
         await cue(0.35); highlight(qa(".card").find((x) => x.querySelector(".pill.bad")) || ".board .card");
-        await cue(0.5); highlight(".age-key");
-        await cue(0.6); highlight(q(".card.age-ok") || ".age-key");
-        await cue(0.7); highlight(q(".card.age-mid") || ".age-key");
-        await cue(0.82); highlight(q(".card.age-old") || ".age-key");
+        await cue(0.6); highlight(q(".card.age-ok") || ".board .card");
+        await cue(0.7); highlight(q(".card.age-mid") || ".board .card");
+        await cue(0.82); highlight(q(".card.age-old") || ".board .card");
         await c;
       }
       step(); {
@@ -648,6 +672,63 @@
         await c;
       }
       step(); { const c = say("se-4"); highlight("#importBox"); await cue(0.75); highlight("#rateTemplate"); await c; }
+    },
+    async team() {
+      STEPS = 5; await begin("board");
+      step(); { const c = say("tm-1"); await tab("settings"); highlight("#teamPanel"); await wait(600); highlight("#teamPanel"); await c; }
+      step(); { const c = say("tm-2"); highlight("#teamPanel > p"); await cue(0.55); highlight(".team-list"); await c; }
+      step(); { const c = say("tm-3"); highlight(q("#teamPanel p strong")?.closest("p") || "#teamPanel"); await c; }
+      step(); {
+        const c = say("tm-4"); highlight("#teamInviteForm");
+        await cue(0.12); await type("#tm-email", "sam@ridgelineauto.com"); await type("#tm-name", "Sam Lee");
+        await cue(0.3); await tap("#teamInviteForm .btn.primary"); await wait(700);
+        highlight(q(".team-row.pending") || ".team-list");
+        await cue(0.55); highlight(q(".team-link") || "#teamPanel");
+        await c;
+      }
+      step(); { const c = say("tm-5"); highlight(q("[data-team-role]")?.closest(".team-row") || ".team-list"); await cue(0.45); highlight(q(".team-row.pending") || ".team-list"); await cue(0.7); highlight(q("[data-team-remove]") || ".team-list"); await c; }
+    },
+    async smart() {
+      STEPS = 5; await begin("board");
+      const sample = async (topic, auto) => {
+        const d = q("#smartDemo"); if (d && !d.open) { await tap("#smartDemo summary"); await wait(200); }
+        const sel = q("#sampleSms"); if (sel) { sel.value = topic; highlight("#smartDemo"); await wait(500); }
+        const box = q("#demoAuto"); if (box && box.checked !== auto) await tap(box);
+        await tap("#simulateSms"); await wait(400);
+      };
+      step(); { const c = say("sm-1"); await openSheet("RO-1041"); q("#msgSec")?.scrollIntoView({ block: "center" }); highlight("#msgSec"); await c; }
+      step(); {
+        const c = say("sm-2"); highlight("#smartDemo");
+        await cue(0.3); await sample("status", false); highlight("#msgSec .thread");
+        await cue(0.72); highlight(q("#demoDraft") || "#msgSec .thread");
+        await c;
+      }
+      step(); { const c = say("sm-3"); await cue(0.1); await sample("hours", true); highlight("#msgSec .thread"); await c; }
+      step(); { const c = say("sm-4"); await cue(0.15); await sample("review", true); highlight("#msgSec .thread"); await c; }
+      step(); {
+        const c = say("sm-5"); await tab("settings"); q("#smartSettings")?.scrollIntoView({ block: "center" }); highlight("#smartSettings");
+        await cue(0.55); const d = q("#smartSchedule"); if (d && !d.open) await tap("#smartSchedule summary"); highlight("#smartSettings");
+        await c;
+      }
+    },
+    async signin() {
+      STEPS = 5; await begin("board");
+      step(); { const c = say("si-1"); await page("signin"); highlight("#signinCard"); await cue(0.6); highlight("#demoGoogle"); await cue(0.8); highlight("#demoSignin"); await c; }
+      step(); { const c = say("si-2"); highlight("#forgotPw"); await cue(0.2); await tap("#forgotPw"); highlight("#forgotForm"); await c; }
+      step(); {
+        const c = say("si-3"); await tap("#fpText"); await wait(300); highlight("#signinCard");
+        await cue(0.3); await type("#fp-code", "482913");
+        await cue(0.5); await type("#fp-pass", "brakes-2026");
+        await cue(0.78); await tap("#resetForm .btn.primary"); highlight(".board-wrap");
+        await c;
+      }
+      step(); {
+        const c = say("si-4"); await tab("settings"); q("#recoveryPanel")?.scrollIntoView({ block: "center" }); highlight("#recoveryPanel");
+        await cue(0.55); await type("#rc-phone", "(555) 014-7788");
+        await cue(0.8); await tap("#recoveryPhoneForm .btn.primary"); highlight("#recoveryPanel");
+        await c;
+      }
+      step(); { const c = say("si-5"); await cue(0.05); await type("#rc-code", "123456"); await tap("#recoveryCodeForm .btn.primary"); await wait(300); highlight("#recoveryPanel"); await c; }
     },
     async plan() {
       STEPS = 4; await begin("board");

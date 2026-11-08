@@ -3,17 +3,20 @@
 // Each lesson runs in the demo shop (/demo.html?train=<id>) with sample cars, driven by tour.js.
 window.TALKSHOPS_TRAINING = (() => {
   const lessons = [
-    { id: "bay", title: "The Bay board", mins: 2, desc: "Tabs, the four numbers up top, stage columns, time-in-shop colors and search." },
+    { id: "bay", title: "The Bay", mins: 2, desc: "Tabs and the More menu, filters, stage columns, time-in-shop colors and search." },
     { id: "checkin", title: "Checking in a car", mins: 2, desc: "Check-in methods, notifying by text, email or both, and customer consent." },
     { id: "stages", title: "Stages and notifications", mins: 1, desc: "Moving a car along, editing what the customer is told, and messaging." },
     { id: "estimates", title: "Estimates and saved items", mins: 2, desc: "Quick add, saved items, Required/Recommended/Optional, and sending for approval." },
     { id: "customer", title: "The customer's page", mins: 1, desc: "What customers see, priority labels, approving item by item, and signing." },
+    { id: "smart", title: "Smart Replies", mins: 2, desc: "Suggested and automatic answers to customer texts, what needs staff review, and the schedule." },
     { id: "photos", title: "Photos, notes and voice typing", mins: 1, desc: "Show the problem, write or speak technician notes, and notify the customer." },
     { id: "howto", title: "Repair how-to assistant", mins: 2, desc: "Ask how to do a job and get steps, tools, parts, typical specs and safety notes." },
     { id: "pickup", title: "Final bill, pickup and closing a job", mins: 1, desc: "Bills, picked up, close without repair, and deleting a repair." },
     { id: "archive", title: "The Archive", mins: 1, desc: "Searching past repairs, one-year retention, and reopening a car." },
     { id: "settings", title: "Shop settings and price lists", mins: 2, desc: "Shop details, the reply email, saved items, and importing Excel or CSV." },
-    { id: "plan", title: "Free trial and plans", mins: 1, desc: "Trial limits, Starter and Pro, paying through Stripe, and managing billing." },
+    { id: "team", title: "Your team: owners and technicians", mins: 2, desc: "What each role can do, staff seats, inviting people, and changing roles." },
+    { id: "signin", title: "Signing in and password reset", mins: 2, desc: "Signing in, resetting a forgotten password by email or text, and adding a reset phone." },
+    { id: "plan", title: "Free trial and plans", mins: 1, desc: "Trial limits, Starter and Pro, staff seats, paying through Stripe, and managing billing." },
   ];
   const cap = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>`;
   /** The Training tab. */
