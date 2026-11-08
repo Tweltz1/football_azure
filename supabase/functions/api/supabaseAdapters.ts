@@ -335,15 +335,16 @@ export function createCardGameStore(db: SupabaseClient): CardGameStore {
 }
 
 interface ShopDb {
+  smart_topics:string[]; smart_schedule:Shop['smartSchedule'];
   rates: Shop['rates']; id: string; owner_id: string; name: string; phone: string; hours: string; email?: string | null; created_at: string;
   next_ro: number; plan: PlanState['plan']; plan_status: string | null; trial_ends_at: string | null; plan_interval: PlanState['interval'];
   period_end: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null; texts_used: number | null; texts_period: string | null;
 }
-const SHOP_COLUMNS = 'id, owner_id, name, phone, hours, email, rates, created_at, next_ro, plan, plan_status, trial_ends_at, plan_interval, period_end, stripe_customer_id, stripe_subscription_id, texts_used, texts_period';
-interface JobDb { intake: Job['intake']; intake_photos: Job['intakePhotos']; bill: Job['bill']; id: string; shop_id: string; token: string; stage: string; data: JobData; created_at: string; updated_at: string }
+const SHOP_COLUMNS = 'smart_schedule,smart_topics,id, owner_id, name, phone, hours, email, rates, created_at, next_ro, plan, plan_status, trial_ends_at, plan_interval, period_end, stripe_customer_id, stripe_subscription_id, texts_used, texts_period';
+interface JobDb { smart_paused:boolean; sms_thread:JobData['messages']; intake: Job['intake']; intake_photos: Job['intakePhotos']; bill: Job['bill']; id: string; shop_id: string; token: string; stage: string; data: JobData; created_at: string; updated_at: string }
 
 const shopRow = (r: ShopDb): Shop => ({
-  id: r.id, ownerId: r.owner_id, rates: r.rates, name: r.name, phone: r.phone, hours: r.hours, email: r.email ?? '', createdAt: r.created_at,
+  smartSchedule:r.smart_schedule,smartTopics:r.smart_topics, id: r.id, ownerId: r.owner_id, rates: r.rates, name: r.name, phone: r.phone, hours: r.hours, email: r.email ?? '', createdAt: r.created_at,
   plan: {
     plan: r.plan ?? null, status: r.plan_status ?? '', trialEndsAt: r.trial_ends_at, interval: r.plan_interval, periodEnd: r.period_end,
     stripeCustomerId: r.stripe_customer_id, stripeSubscriptionId: r.stripe_subscription_id,
@@ -351,7 +352,7 @@ const shopRow = (r: ShopDb): Shop => ({
   },
 });
 const jobRow = (r: JobDb): Job => ({
-  id: r.id, shopId: r.shop_id, intake: r.intake, intakePhotos: r.intake_photos, bill: r.bill, token: r.token, stage: r.stage as Job['stage'], data: r.data, createdAt: r.created_at, updatedAt: r.updated_at,
+  smartPaused:r.smart_paused, smsThread:r.sms_thread, id: r.id, shopId: r.shop_id, intake: r.intake, intakePhotos: r.intake_photos, bill: r.bill, token: r.token, stage: r.stage as Job['stage'], data: r.data, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
 export function createShopStore(db: SupabaseClient): ShopStore {
@@ -361,21 +362,25 @@ export function createShopStore(db: SupabaseClient): ShopStore {
     return data ? shopRow(data as ShopDb) : null;
   };
   const oneJob = async (column: string, value: string) => {
-    const { data, error } = await db.from('repair_jobs').select('id,shop_id,token,stage,data,bill,intake,intake_photos,created_at,updated_at').eq(column, value).maybeSingle();
+    const { data, error } = await db.from('repair_jobs').select('smart_paused,sms_thread,id,shop_id,token,stage,data,bill,intake,intake_photos,created_at,updated_at').eq(column, value).maybeSingle();
     if (error) throw error;
     return data ? jobRow(data as JobDb) : null;
   };
   return {
     shopByOwner: (ownerId) => oneShop('owner_id', ownerId),
     shopById: (id) => oneShop('id', id),
+    async pauseSmart(id,paused) {
+      const {error}=await db.from('repair_jobs').update({smart_paused:paused}).eq('id',id);
+      if(error) throw error;
+    },
     async putShop(shop) {
       const { error } = await db.from('repair_shops').upsert({
-        id: shop.id, owner_id: shop.ownerId, name: shop.name, phone: shop.phone, hours: shop.hours, email: shop.email ?? '', rates: shop.rates ?? [], created_at: shop.createdAt,
+        ...(shop.smartSchedule!==undefined?{smart_schedule:shop.smartSchedule}:{}), ...(shop.smartTopics!==undefined?{smart_topics:shop.smartTopics}:{}), id: shop.id, owner_id: shop.ownerId, name: shop.name, phone: shop.phone, hours: shop.hours, email: shop.email ?? '', rates: shop.rates ?? [], created_at: shop.createdAt,
       });
       if (error) throw error;
     },
     async listJobs(shopId, since) {
-      const { data, error } = await db.from('repair_jobs').select('id,shop_id,token,stage,data,bill,intake,intake_photos,created_at,updated_at').eq('shop_id', shopId)
+      const { data, error } = await db.from('repair_jobs').select('smart_paused,sms_thread,id,shop_id,token,stage,data,bill,intake,intake_photos,created_at,updated_at').eq('shop_id', shopId)
         .or(`and(stage.neq.picked_up,archived_at.is.null),updated_at.gte.${since}`).order('created_at', { ascending: true }).limit(300);
       if (error) throw error;
       return (data ?? []).map((r) => jobRow(r as JobDb));
@@ -559,11 +564,17 @@ export function createStaffStore(db: SupabaseClient): StaffStore {
       const { error } = await db.from('repair_shop_members').delete().eq('shop_id', shopId).eq('user_id', userId);
       if (error) throw error;
     },
+    replacesInvite:true,
+    async acceptReserved(i,user,email,name) {
+      const {data,error}=await db.rpc('repair_accept_seat',{p_shop:i.shopId,p_id:i.id,p_user:user,p_email:email,p_name:name});
+      if(error) throw error;
+      return !!data;
+    },
     async saveInvite(i) {
-      const { error } = await db.from('repair_shop_invites').insert({
+      const { error } = await db.rpc('repair_reserve_invite',{p_inv:{
         id: i.id, shop_id: i.shopId, email: i.email, name: i.name, role: i.role, token_hash: i.tokenHash, invited_by: i.invitedBy,
         created_at: i.createdAt, expires_at: i.expiresAt, accepted_at: i.acceptedAt,
-      });
+      }});
       if (error) throw error;
     },
     async listInvites(shopId) {

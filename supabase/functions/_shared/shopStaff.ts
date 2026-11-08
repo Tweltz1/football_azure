@@ -19,6 +19,8 @@ export interface Invite {
 }
 
 export interface StaffStore {
+  acceptReserved?(i: Invite, user: string, email: string, name: string): Promise<boolean>;
+  replacesInvite?: boolean;
   memberOf(userId: string): Promise<Member | null>;
   listMembers(shopId: string): Promise<Member[]>;
   /** Adds the account to a shop. False when the account already belongs to one. */
@@ -65,14 +67,15 @@ const memberOut = (m: Member, primaryId: string, me: string) => ({
 });
 const inviteOut = (i: Invite, now: string) => ({ id: i.id, email: i.email, name: i.name, role: i.role, createdAt: i.createdAt, expiresAt: i.expiresAt, expired: i.expiresAt <= now });
 
-interface ShopLite { id: string; ownerId: string; name: string; email?: string }
+interface ShopLite { id: string; ownerId: string; name: string; email?: string; plan?: { plan: string | null } }
 
 async function team(store: StaffStore, shop: ShopLite, me: string, now: string) {
   const members = await store.listMembers(shop.id);
   if (!members.some((m) => m.userId === shop.ownerId))
     members.unshift({ userId: shop.ownerId, shopId: shop.id, role: 'owner', email: '', name: '', addedAt: '' });
   members.sort((a, b) => (a.userId === shop.ownerId ? -1 : b.userId === shop.ownerId ? 1 : a.role === b.role ? a.addedAt.localeCompare(b.addedAt) : a.role === 'owner' ? -1 : 1));
-  return { members: members.map((m) => memberOut(m, shop.ownerId, me)), invites: (await store.listInvites(shop.id)).map((i) => inviteOut(i, now)), roles: ROLE_LABEL };
+  const limits = shop.plan?.plan === 'starter' ? {staff:3,owners:2} : shop.plan?.plan ? {staff:8,owners:3} : {staff:MAX_STAFF,owners:MAX_STAFF};
+  return { limits, members: members.map((m) => memberOut(m, shop.ownerId, me)), invites: (await store.listInvites(shop.id)).map((i) => inviteOut(i, now)), roles: ROLE_LABEL };
 }
 
 async function sendInvite(deps: StaffDeps, shop: ShopLite, inv: Invite, token: string): Promise<SmsResult> {
@@ -115,6 +118,10 @@ export async function staffRoute(
     if (current?.shop.id === inv.shopId) { await store.claimInvite(inv.id, now); return ok({ joined: true, ...info }); }
     if (current) return { status: 409, body: `This account already belongs to ${current.shop.name}. Use a different email for ${shop.name}, or ask its owner to remove you first.` };
     if ((await store.listMembers(inv.shopId)).length >= MAX_STAFF) return { status: 409, body: `${shop.name} already has ${MAX_STAFF} staff accounts.` };
+    if (store.acceptReserved) {
+      if (!await store.acceptReserved(inv,ctx.userId,mine,ctx.displayName || '')) return {status:409,body:'This invitation can no longer be accepted.'};
+      return ok({joined:true,...info});
+    }
     if (!await store.claimInvite(inv.id, now)) return { status: 410, body: 'This invite was already used.' };
     const added = await store.addMember({ userId: ctx.userId, shopId: inv.shopId, role: inv.role, email: mine, name: inv.name || ctx.displayName || '', addedAt: now });
     if (!added) return { status: 409, body: 'This account already belongs to a shop.' };
@@ -138,9 +145,13 @@ export async function staffRoute(
     const members = await store.listMembers(shop.id);
     if (members.some((m) => m.email.toLowerCase() === email)) return bad(`${email} is already on your team.`);
     const invites = await store.listInvites(shop.id);
+    const panel=await team(store,shop,ctx.userId,now);
+    const reserved=invites.filter(i=>i.expiresAt>now && i.email!==email);
+    if (panel.members.length+reserved.length>=panel.limits.staff) return bad(`All ${panel.limits.staff} staff seats are occupied or reserved.`);
+    if (role==='owner' && [...panel.members,...reserved].filter(m=>m.role==='owner').length>=panel.limits.owners) return bad(`All ${panel.limits.owners} owner seats are occupied or reserved.`);
     if (members.length + invites.filter((i) => i.expiresAt > now && i.email !== email).length >= MAX_STAFF) return bad(`A shop can have up to ${MAX_STAFF} staff accounts.`);
     if (invites.filter((i) => i.createdAt > new Date(ctx.now().getTime() - 86_400_000).toISOString()).length >= 40) return { status: 429, body: 'Too many invites today. Try again tomorrow.' };
-    for (const old of invites.filter((i) => i.email === email)) await store.deleteInvite(shop.id, old.id);
+    if (!store.replacesInvite) for (const old of invites.filter((i) => i.email === email)) await store.deleteInvite(shop.id, old.id);
     const token = deps.newToken();
     const inv: Invite = {
       id: ctx.newId(), shopId: shop.id, email, name, role, tokenHash: await hashToken(token), invitedBy: ctx.userId,
@@ -166,6 +177,10 @@ export async function staffRoute(
     if (method === 'DELETE') await store.removeMember(shop.id, target);
     else {
       if (body.role !== 'owner' && body.role !== 'tech') return bad('Choose Owner or Technician.');
+      if (body.role==='owner' && m.role!=='owner') {
+        const panel=await team(store,shop,ctx.userId,now);
+        if ([...panel.members,...panel.invites.filter(i=>!i.expired)].filter(x=>x.role==='owner').length>=panel.limits.owners) return bad(`All ${panel.limits.owners} owner seats are occupied or reserved.`);
+      }
       await store.setRole(shop.id, target, body.role);
     }
     return ok(await team(store, shop, ctx.userId, now));

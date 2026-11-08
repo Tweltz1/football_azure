@@ -10,6 +10,7 @@ import { askRoute } from '../_shared/footballAsk.ts';
 import { cardsRoute } from '../_shared/cards.ts';
 import { createShopEmailSender } from '../_shared/shopEmail.ts';
 import { createTwilioSender, shopRoute, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
+import { incomingSms } from '../_shared/shopSms.ts';
 import { createStripe } from '../_shared/shopPlans.ts';
 import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator.ts';
 import { HOWTO_SCHEMA } from '../_shared/shopHowTo.ts';
@@ -47,6 +48,9 @@ const shop: ShopDeps = {
   stripeWebhookSecret: Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '',
   siteUrl: Deno.env.get('TALKSHOPS_SITE_URL') || 'https://talkshops.app',
   // Employee how-to assistant: the same free Gemini key as the Start/Sit chat, with room for longer answers.
+  smartClassifier: GEMINI_KEY ? geminiNarrator(GEMINI_KEY,DEFAULT_GEMINI_MODEL,fetch,{
+    schema:{type:'OBJECT',properties:{intent:{type:'STRING',enum:['status','hours','link','approval','review']}},required:['intent']},temperature:0,timeoutMs:8000,maxTokens:256
+  }) : null,
   howTo: GEMINI_KEY
     ? geminiNarrator(GEMINI_KEY, DEFAULT_GEMINI_MODEL, fetch, { schema: HOWTO_SCHEMA, timeoutMs: 40_000, maxTokens: 8192, temperature: 0.4 })
     : null,
@@ -111,6 +115,18 @@ Deno.serve(async (req) => {
   // Requests arrive as /api/<route> (the function name, then the route the app asked for).
   const path = url.pathname.replace(/^\/(functions\/v1\/)?api\/?/, '');
 
+  if (req.method === 'POST' && path === 'shop/incoming-sms') {
+    try {
+      return await incomingSms(req, {
+        token: Deno.env.get('TWILIO_AUTH_TOKEN') || '', account: Deno.env.get('TWILIO_ACCOUNT_SID') || '',
+        to: Deno.env.get('TWILIO_FROM') || '', url: SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/api/shop/incoming-sms',
+      }, async (sid, phone, text, topic) => {
+        const {data,error}=await db.rpc('repair_incoming_sms',{p_sid:sid,p_phone:phone,p_body:text,p_topic:topic,p_base:shop.linkBase});
+        if(error) throw error;
+        return data;
+      });
+    } catch { return new Response('SMS processing unavailable.',{status:503}); }
+  }
   // Stripe signs the exact bytes it sends, so this route reads the raw body itself.
   if (req.method === 'POST' && path === 'shop/stripe-webhook') {
     try {
@@ -171,6 +187,9 @@ Deno.serve(async (req) => {
     headers['Content-Type'] = 'application/json';
     return new Response(JSON.stringify(result.body), { status: result.status, headers });
   } catch (error) {
+    if (path.startsWith('shop/') && error && typeof error === 'object' && 'code' in error && error.code === 'P0001' && 'message' in error && /^All \d+ (?:owner|staff) seats are occupied or reserved\.$/.test(String(error.message))) {
+      return new Response(String(error.message),{status:409,headers:corsHeaders});
+    }
     log.error(`Unhandled error for ${req.method} ${path}`, error);
     return new Response('Something went wrong. Please try again.', { status: 500, headers: corsHeaders });
   }
