@@ -79,9 +79,10 @@ export function geminiDamageFinder(apiKey: string, fetchFn: typeof fetch = fetch
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: SYSTEM }] },
               contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/jpeg', data } }, { text: `Photo of the ${ANGLE_LABEL[angle]} of the car.` }] }],
-              generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.2, maxOutputTokens: 2048 },
+              generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0.2, maxOutputTokens: 8192 },
             }),
-            signal: AbortSignal.timeout(25_000),
+            // The main model sometimes hangs when Google is busy; give up on it sooner so the lighter one still answers in time.
+            signal: AbortSignal.timeout(model === models.at(-1) ? 25_000 : 15_000),
           });
           if (!res.ok) throw Object.assign(new Error(`Gemini ${res.status}`), { status: res.status });
           const out = await res.json();
