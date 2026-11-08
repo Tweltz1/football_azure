@@ -401,8 +401,8 @@
       <section class="front-plans" id="plans"><div class="front-inner">
         <h2>Choose your shop’s plan.</h2><p>Both plans include unlimited email, photo updates, online estimate approvals and final bills.</p>
         <div class="front-tiers">
-          <article><h3>Talk Shops Starter</h3><strong>$59<small> / month</small></strong><p><b>1,000 texts</b> per month</p><small>Annual billing: $590/year</small></article>
-          <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p><b>AI repair how-to assistant</b> for your techs</p><small>Annual billing: $990/year</small></article>
+          <article><h3>Talk Shops Starter</h3><strong>$59<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $590/year</small></article>
+          <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p><b>AI repair how-to assistant</b> for your techs</p><p>8 staff seats · up to 3 owners · Smart Replies</p><small>Annual billing: $990/year</small></article>
         </div>
         <h3 class="front-market-title">How it compares</h3>
         <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
@@ -427,6 +427,12 @@
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
       <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
       <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(s.hours || "")}" placeholder="Mon–Fri 7:30am–6pm"></label>
+      ${!firstTime && plan?.smartReplies ? `<fieldset><legend>Smart Replies</legend><p class="hint">Choose questions Talk Shops may answer automatically by text. Leave all unchecked for staff review.</p>${[["status","Repair status"],["hours","Posted shop hours"],["link","Resend estimate link"]].map(([key,label])=>`<label class="chk"><input type="checkbox" name="smartTopic" value="${key}" ${s.smartTopics?.includes(key)?"checked":""}>${label}</label>`).join("")}<details><summary>Schedule and signature</summary>
+      <label class="field">Sign replies as<input id="sr-sign" maxlength="60" value="${esc(s.smartSchedule?.signature || "")}" placeholder="Service team"></label>
+      <label class="chk"><input type="checkbox" id="sr-after" ${s.smartSchedule?.afterHours?"checked":""}>Auto-send only outside these shop hours</label>
+      <label class="field">Time zone<input id="sr-zone" value="${esc(s.smartSchedule?.zone || Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago")}"></label>
+      <div class="btn-row">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>`<label><input type="checkbox" name="sr-day" value="${i+1}" ${(s.smartSchedule?.days||[1,2,3,4,5]).includes(i+1)?"checked":""}>${d}</label>`).join("")}</div>
+      <div class="btn-row"><label>Opens <input type="time" id="sr-open" value="${esc(s.smartSchedule?.open || "08:00")}"></label><label>Closes <input type="time" id="sr-close" value="${esc(s.smartSchedule?.close || "17:00")}"></label></div></details><a href="/demo.html?smart=1" target="_blank" rel="noopener">Try sample customer texts</a></fieldset>` : ""}
       <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
       ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Saved items: labor, parts and fees (import Excel or CSV)</button>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign out</button>` : ""}</div>
@@ -594,7 +600,7 @@
 
   function bubble(m, j) {
     const unsent = m.dir === "out" && m.delivery && m.delivery !== "sent";
-    const who = m.dir === "out" ? channelName(m) + " to customer" : esc(first(j.customer.name));
+    const who = m.dir === "out" ? (m.autoReply ? "Auto-replied" : channelName(m) + " to customer" + (m.sender ? " · "+esc(m.sender) : "")) : esc(first(j.customer.name));
     const status = unsent ? `<span class="delivery">${m.delivery === "failed" ? "Failed" : "Not sent"}${m.note ? ": " + esc(m.note) : ""}</span>` : "";
     const text = esc(m.text).replace(esc(j.link), `<a href="${esc(j.link)}" target="_blank" rel="noopener" title="${esc(j.link)}">customer page link</a>`);
     const draft = unsent && m.channel === "email" && j.customer.email && j.customer.consent
@@ -644,6 +650,7 @@
             <div class="btn-row"><button type="button" class="btn mic" data-dictate="#noteIn" aria-pressed="false" aria-label="Voice typing"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="mic-label">Speak</span></button><button class="btn primary" type="submit">Post note</button></div>
             <label class="chk"><input type="checkbox" id="noteSend" ${j.customer.consent ? "" : "disabled"}> Also notify ${esc(first(j.customer.name))} that there's an update${j.customer.consent ? "" : " (customer has not agreed to notifications)"}</label></form></section>
         <section class="sec"><h3>Messages</h3><div class="thread">${j.messages.map((m) => bubble(m, j)).join("") || '<p class="muted">No messages yet.</p>'}</div>
+          ${plan?.smartReplies ? `<div class="btn-row"><button class="linkbtn" type="button" data-smart-pause>${j.smartPaused?"Resume auto-replies":"Pause auto-replies for this repair"}</button>${j.messages.at(-1)?.incomingSms && j.messages.at(-1)?.suggestion ? '<button class="btn sm" type="button" data-smart-draft>Use suggested reply</button>' : j.messages.at(-1)?.incomingSms ? '<button class="btn sm" type="button" data-smart-ai>Draft reply for review</button>' : ""}</div>` : ""}
           <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto auto"><input id="replyIn" maxlength="1000" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button type="button" class="btn mic" data-dictate="#replyIn" aria-pressed="false" aria-label="Voice typing"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button class="btn primary" type="submit">Send</button></form></section>
         <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
         ${isOwner() ? `<section class="sec danger-zone"><button class="linkbtn danger" data-delete-job>Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></section>` : ""}
@@ -709,6 +716,14 @@
     if (e.target.id === "photoIn") return;
     const t = e.target.closest("button,[data-close],[data-open],[data-close-modal]");
     if (!t) return;
+    if(t.hasAttribute("data-smart-ai")){
+      const id=ui.openJob, at=job(id)?.messages.at(-1)?.t, input=$("#replyIn"), before=input.value;t.disabled=true;
+      try {const result=await api("POST","shop/jobs/"+id+"/smart-draft",{at});
+        if(ui.openJob===id && input.isConnected && input.value===before){input.value=result.draft;input.focus();}
+      }catch(e){toast(e.message);}finally{t.disabled=false;}return;
+    }
+    if(t.hasAttribute("data-smart-draft")) {const input=$("#replyIn");input.value=job(ui.openJob)?.messages.at(-1)?.suggestion || "";input.focus();return;}
+    if(t.hasAttribute("data-smart-pause")) {const j=job(ui.openJob);if(j)await jobAction(j.id,"smart-pause",{paused:!j.smartPaused});return;}
     if (t.dataset?.billing) {
       const action = t.dataset.billing;
       if (action === "print") { window.print(); return; }
@@ -917,6 +932,8 @@
     }
     if (f.id === "setupForm") {
       const body = { name: $("#sh-name").value, phone: $("#sh-phone").value, hours: $("#sh-hours").value, email: $("#sh-email").value };
+      if($("#sr-zone")) body.smartSchedule={afterHours:$("#sr-after").checked,zone:$("#sr-zone").value,days:Array.from(f.querySelectorAll('[name="sr-day"]:checked'),e=>Number(e.value)),open:$("#sr-open").value,close:$("#sr-close").value,signature:$("#sr-sign").value};
+      if(f.querySelector('[name="smartTopic"]')) body.smartTopics=Array.from(f.querySelectorAll('[name="smartTopic"]:checked'),el=>el.value);
       const r = await act(() => api("POST", "shop/me", body), "Saved");
       if (r) { shop = r.shop; if (r.plan) plan = r.plan; if (r.role) { role = r.role; mainOwner = !!r.mainOwner; } ui.view = "board"; render(); }
       return;

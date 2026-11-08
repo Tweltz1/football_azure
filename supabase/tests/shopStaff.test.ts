@@ -193,3 +193,17 @@ test('re-inviting replaces the old link; cancelling an invite kills it; members 
   assert.equal((await w.as(null)('GET', 'shop/join/' + w.tokenOf('new@shop.com')))?.status, 404);
   assert.equal((await owner('POST', 'shop/staff/invite', { email: 'tech@shop.com' }))?.status, 400);
 });
+
+test('Starter counts the primary owner and pending invitations in staff and owner limits',async()=>{
+  const {w,owner}=await shopWithTech();
+  const s=[...w.shops.values()][0];
+  s.plan={plan:'starter',status:'active',trialEndsAt:null,textsUsed:0,carsCreated:0};
+  const invite=await owner('POST','shop/staff/invite',{email:'partner@test.invalid',role:'owner'});
+  assert.equal(invite?.status,200);
+  assert.deepEqual((invite?.body as {limits:unknown}).limits,{staff:3,owners:2});
+  assert.equal((await owner('POST','shop/staff/invite',{email:'another@test.invalid',role:'tech'}))?.status,400);
+  assert.equal((await owner('POST','shop/staff/members/tech1',{role:'owner'}))?.status,400);
+  const id=(invite?.body as {invites:{id:string}[]}).invites[0].id;
+  assert.equal((await owner('DELETE','shop/staff/invites/'+id))?.status,200);
+  assert.equal((await owner('POST','shop/staff/members/tech1',{role:'owner'}))?.status,200);
+});

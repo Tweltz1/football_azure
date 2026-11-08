@@ -392,7 +392,7 @@ const onBoard=j=>!j.archivedAt;
 
 /* --- plan (demo: a shop on its free trial; checkout is not available) --- */
 const plan={state:"trial",daysLeft:12,trialEndsAt:Date.now()+12*86400000,textLimit:150,carLimit:25,textsUsed:38,carsCreated:9,payments:true,hasBilling:false,
-  plans:{starter:{name:"Starter",month:59,year:590,blurb:"1,000 texts a month, unlimited email"},pro:{name:"Pro",month:99,year:990,blurb:"3,000 texts a month, unlimited email, AI repair how-to assistant",howTo:true}}};
+  plans:{starter:{name:"Starter",month:59,year:590,blurb:"3 staff seats (up to 2 owners), 1,000 texts a month, unlimited email"},pro:{name:"Pro",month:99,year:990,blurb:"8 staff seats (up to 3 owners), 3,000 texts a month, unlimited email, AI repair how-to assistant and Smart Replies",howTo:true}}};
 const planUi=window.createShopPlan({esc,toast,api:async()=>{throw new Error("Demo shop: in your shop, this opens Stripe's secure checkout. Nothing is charged here.")}});
 const billing=window.createShopBilling({esc,money});
 const dictation=window.createDictation({toast});
@@ -609,7 +609,7 @@ function sheetView(j){
   const steps=STAGES.map((s,i)=>`<button class="step ${i<idx?"done":""} ${i===idx?"current":""}" data-stage="${s.key}" ${i===idx?'aria-current="step"':""}>${s.label}</button>`).join("");
   const next=STAGES[idx+1];
   const rows=j.estimate.map(e=>`<tr><td>${esc(e.item)}<div class="pri-cell">${e.status==="pending"?`<select class="pri-sel" data-pri="${e.id}" aria-label="Priority for ${esc(e.item)}">${priOptions(e.priority)}</select>`:priPill(e)}</div>${sampleIllustration(j,e)}${guide(e.item)}</td><td>${e.status==="pending"?'<span class="pill warn">Pending</span>':e.status==="approved"?'<span class="pill ok">Approved</span>':'<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status==="pending"&&j.stage!=="approval"?`<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>`:""}</td></tr>`).join("");
-  const msgs=j.messages.map(m=>`<div class="bubble ${m.dir}">${linkify(esc(m.text),j)}<span class="meta">${m.dir==="out"?chName(m)+" to customer":esc(first(j.customer.name))} · ${dayClock(m.t)}</span></div>`).join("");
+  const msgs=j.messages.map(m=>`<div class="bubble ${m.dir}">${linkify(esc(m.text),j)}<span class="meta">${m.dir==="out"?(m.autoReply?"Auto-replied":chName(m)+" to customer"):esc(first(j.customer.name))} · ${dayClock(m.t)}</span></div>`).join("");
   const log=[...j.events].reverse().map(e=>`<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
   const live=!j.archivedAt;
   return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
@@ -646,7 +646,8 @@ function sheetView(j){
       <form id="noteForm" class="note-form"><textarea id="noteIn" maxlength="2000" placeholder="What did you find? Tap Speak to talk instead of typing." aria-label="Technician note"></textarea>
         <div class="btn-row"><button type="button" class="btn mic" data-dictate="#noteIn" aria-pressed="false" aria-label="Voice typing">${mic}<span class="mic-label">Speak</span></button><button class="btn primary" type="submit">Post note</button></div>
         <label class="chk"><input type="checkbox" id="noteSend"> Also notify ${esc(first(j.customer.name))} that there's an update</label></form></section>
-    <section class="sec" id="msgSec"><h3>Messages</h3><div class="thread">${msgs||'<p class="muted">No messages yet.</p>'}</div>
+    <section class="sec" id="msgSec"><h3>Messages</h3><details id="smartDemo"><summary>Try Smart Replies</summary><p class="muted">Choose a sample customer text. The conversation stays in this demo.</p><label class="field">Sample text<select id="sampleSms"><option value="status">How’s my car coming?</option><option value="hours">What are your hours?</option><option value="link">Can you resend the estimate?</option><option value="review">Is my car safe to drive?</option></select></label><label class="chk"><input id="demoAuto" type="checkbox">Auto-reply to routine questions</label><button type="button" id="simulateSms" class="btn">Try sample text</button></details><div class="thread">${msgs||'<p class="muted">No messages yet.</p>'}</div>
+      ${j.messages.at(-1)?.testSms ? (j.messages.at(-1).suggestion ? '<button class="linkbtn" id="demoDraft">Use suggested reply</button>' : '<small class="muted">Needs staff review</small>') : ""}
       <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto auto"><input id="replyIn" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button type="button" class="btn mic" data-dictate="#replyIn" aria-pressed="false" aria-label="Voice typing">${mic}</button><button class="btn primary" type="submit">Send</button></form></section>
     <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
     <section class="sec danger-zone" id="dangerSec"><button class="linkbtn danger" data-delete-job="${j.id}">Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></section>
@@ -709,6 +710,15 @@ document.addEventListener("click",e=>{
   if(howTo.click(t,render))return;
   if(t.dataset.howtoJob){const j=job(t.dataset.howtoJob);if(j)howTo.openFor(j);ui.view="howto";ui.openJob=null;render();window.scrollTo(0,0);return}
   if(t.dataset.view){go(t.dataset.view);return}
+  if(t.id==="demoDraft"){const input=$("#replyIn");input.value=job(ui.openJob).messages.at(-1).suggestion;input.focus();return}
+  if(t.id==="simulateSms"){
+    const j=job(ui.openJob),sel=$("#sampleSms"),auto=$("#demoAuto").checked,topic=sel.value;
+    const text=sel.selectedOptions[0].textContent;
+    const suggestion=topic==="hours"&&SHOP.hours ? SHOP.name+" · Our posted shop hours are "+SHOP.hours : topic==="status" ? SHOP.name+" · Current stage: "+STAGES[SI[j.stage]].label+"." : topic==="link"&&j.estimate.length ? SHOP.name+" · Review your estimate: "+linkOf(j) : "";
+    j.messages.push({dir:"in",ch:"sms",t:Date.now(),text,testSms:true,suggestion});
+    if(auto&&suggestion)j.messages.push({dir:"out",ch:"sms",t:Date.now(),text:suggestion,autoReply:true});
+    save();renderLayer();$("#smartDemo").open=true;$("#demoAuto").checked=auto;$("#sampleSms").value=topic;$("#msgSec").scrollIntoView();return;
+  }
   if(t.id==="resetBtn"){state=seed();SHOP={...state.shop};save();ui={...ui,openJob:null,modal:null,draft:{},q:"",aq:""};render();toast("Sample data reset");return}
   if(t.dataset.open){ui.openJob=t.dataset.open;renderLayer();setTimeout(()=>$(".x")?.focus({preventScroll:true}),0);return}
   if(t.hasAttribute("data-close")){ui.openJob=null;renderLayer();return}
@@ -794,6 +804,10 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(ui.modal)ui.moda
 window.addEventListener("hashchange",render);
 setInterval(()=>{if(ui.view==="board"&&!ui.openJob&&!ui.modal&&document.activeElement?.id!=="boardSearch"&&!window.TOUR_ACTIVE)render()},60000);
 render();
+if(new URLSearchParams(location.search).has("smart")){
+  const j=job("RO-1041")||state.jobs.find(onBoard);
+  if(j){ui.openJob=j.id;renderLayer();const panel=$("#smartDemo");if(panel){panel.open=true;panel.scrollIntoView();}}
+}
 </script>
 <script src="/config.js"></script>
 <script src="/tour.js?v=200"></script>

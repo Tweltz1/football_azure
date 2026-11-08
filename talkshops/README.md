@@ -43,3 +43,9 @@ tables `repair_shop_members` and `repair_shop_invites`). The account that create
 removed. Owners invite staff from Settings → Team; the email (Resend) links to `/?join=<token>`, and the person must sign in
 with the invited email. The API enforces the roles: technicians can't change settings or saved prices, use Plan checkout or
 billing, create final bills, close, reopen or delete repairs, send an estimate for approval, or manage the team.
+
+## Incoming SMS and Smart Replies
+
+For the Talk Shops Twilio number (or its effective Messaging Service inbound handler), select the incoming-message webhook, method POST, and use the exact public URL `https://<project>.supabase.co/functions/v1/api/shop/incoming-sms`. The handler verifies Twilio’s signature, recipient number and account against the existing sender secrets. Confirm any existing inbound integration before changing a shared number. A unique active repair and prior outbound SMS are required to attach an incoming text.
+
+Owners on Pro or an active trial can enable individual automatic topics in Settings, supply a signature and set an after-hours schedule. All topics start off. Staff can review drafts and pause automatic replies on one repair. Automatic texts count against the allowance. The public demo at `/demo.html?smart=1` uses sample messages locally.

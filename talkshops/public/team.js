@@ -38,6 +38,7 @@
         <h2 style="font-size:20px">Team</h2>
         <p class="muted" style="margin:0"><b>Owners</b> manage shop settings, saved prices, the plan and billing, final bills and the team, and send estimates for approval.
           <b>Technicians</b> work the cars: check-ins, stages, notes, photos, estimate lines, messages and How-to.</p>
+        ${d?.limits ? `<p><strong>${d.members.length+d.invites.filter(i=>!i.expired).length} of ${d.limits.staff} staff seats used</strong> · up to ${d.limits.owners} owners. Pending invites reserve seats.</p>` : ""}
         ${st.err ? `<p class="form-err" role="alert">${esc(st.err)} <button class="linkbtn" type="button" data-team-retry>Try again</button></p>` : ""}
         ${d ? `<ul class="team-list">${d.members.map(member).join("")}${d.invites.map(invite).join("")}</ul>` : st.err ? "" : `<p class="muted" style="margin:0">Loading…</p>`}
         ${link ? `<div class="notice team-link" role="status"><span>${link.emailed ? `Invite emailed to <b>${esc(link.email)}</b>.` : `We couldn't email ${esc(link.email)}${link.note ? ` (${esc(link.note.replace(/[.\s]+$/, ""))})` : ""}. Send them this link yourself.`}
