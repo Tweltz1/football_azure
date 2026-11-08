@@ -235,7 +235,7 @@ a.btn.primary{color:var(--accent-fg)}
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
 <link rel="stylesheet" href="/training.css?v=1">
-<link rel="stylesheet" href="/howto.css?v=2">
+<link rel="stylesheet" href="/howto.css?v=3">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
 </head>
 <body>
@@ -271,7 +271,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=1"></script>
 <script src="/training.js?v=1"></script>
-<script src="/howto.js?v=2"></script>
+<script src="/howto.js?v=3"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
@@ -403,6 +403,7 @@ const DEMO_HOWTO={
   specs:["Terminal nuts: typically about 5 N·m (45 in-lb)","Hold-down: typically 4 to 7 N·m","Battery type: match the group size, and AGM if stop/start equipped"],
   tools:["10 mm and 13 mm sockets with an extension","Terminal cleaning brush","Memory saver (optional)","Scan tool for battery registration, if required"],
   parts:["Replacement 12V battery (AGM if stop/start)","Terminal protector spray"],
+  partNumbers:[{part:"12V battery",brand:"",number:"",note:"Match the group size, cold cranking amps and AGM type on the old battery's label"},{part:"Terminal protector spray",brand:"CRC",number:"05046",note:""}],
   steps:["Turn the ignition off and remove the key fob from the car.","Remove the battery cover and any air intake duct that blocks access.","Disconnect the negative cable, then the positive cable.","Remove the hold-down clamp and lift the battery out with a strap.","Clean the tray and terminals and check for corrosion.","Set the new battery in place and install the hold-down.","Connect positive first, then negative, and tighten to spec.","Register the battery with a scan tool if the vehicle requires it, then confirm charging voltage of about 13.8 to 14.7 volts with the engine running."],
   ideas:["How do I test the charging system?","Does this model need battery registration?"]},
  generic:{answer:"This is a sample answer in the demo shop. In your shop, the assistant answers your exact question for the vehicle you choose, with steps, tools, parts, typical specs and safety notes.",

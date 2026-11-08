@@ -33,6 +33,19 @@ test('answers with steps, tools, parts, specs and safety for the vehicle', async
   assert.match(calls[0].system, /manufacturer|service info/i);
 });
 
+test('passes along part numbers, cleaned up, and an empty list when there are none', async () => {
+  clearHowToLimits();
+  const withParts = JSON.stringify({ ...JSON.parse(good), partNumbers: [
+    { part: 'Oil filter', brand: 'Honda', number: '15400-PLM-A02 <b>', note: '' },
+    { part: 'Drain plug washer', brand: '', number: '', note: 'Check size' }, { brand: 'x', number: '1' }] });
+  const b = (await ask(fake(withParts).narrator, { question: 'oil change', vehicle: { year: '2016', make: 'Honda', model: 'Civic' } })).body as Record<string, unknown>;
+  assert.deepEqual(b.partNumbers, [
+    { part: 'Oil filter', brand: 'Honda', number: '15400-PLM-A02 b', note: '' },
+    { part: 'Drain plug washer', brand: '', number: '', note: 'Check size' }]);
+  const none = (await ask(fake(good).narrator, { question: 'oil change' })).body as Record<string, unknown>;
+  assert.deepEqual(none.partNumbers, []);
+});
+
 test('rejects empty questions, other methods, and works without a vehicle', async () => {
   clearHowToLimits();
   assert.equal((await ask(fake(good).narrator, { question: ' ' })).status, 400);

@@ -42,3 +42,10 @@
 .howto-veh input,.howto-veh select,.howto-form textarea{width:100%;min-width:0;box-sizing:border-box}
 .howto-pro{border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));background:var(--accent-soft);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;max-width:640px}
 .howto-pro p{margin:0;color:var(--fg)}
+.howto-pn{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.howto-pn li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:2px 12px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line)}
+.howto-pn li:last-child{border-bottom:0}
+.howto-pn .pn-num{font-family:var(--f-mono);font-size:13.5px}
+.howto-pn small{grid-column:1/-1;color:var(--muted);font-size:12.5px}
+.howto-pn a{font-size:13px;font-weight:600;color:var(--accent)}
+@media (max-width:560px){.howto-pn li{grid-template-columns:minmax(0,1fr) auto}.howto-pn .pn-num,.howto-pn li>.muted{grid-column:1/-1}}

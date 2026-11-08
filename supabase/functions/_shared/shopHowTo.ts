@@ -16,6 +16,7 @@ What to do:
 - For a diagnostic or "what does this mean" question, put the explanation in "answer" and use "steps" for the checks to perform, in order.
 - Specs: give typical values only when you are reasonably confident, and label every one as typical, e.g. "Drain plug: typically 25-30 ft-lb (verify in service info)". If you do not know a spec for this vehicle, say to look it up rather than guessing. Never present a number as exact factory data.
 - Safety: list the real hazards for this job in "safety", for example lifting and jack stands, hot fluids and exhaust, brake and suspension parts under load (springs, struts), airbags and SRS (disconnect battery and wait), hybrid and EV high-voltage systems (only trained, certified techs with proper PPE and isolation procedures), fuel systems (relieve pressure, no sparks), AC refrigerant (EPA 609 certification and recovery equipment), and torque-to-yield fasteners that must be replaced.
+- Part numbers: in "partNumbers", list the main replacement parts for this job with an OEM or well-known aftermarket part number (for example "Motorcraft FL-820S" for an oil filter) only when you are reasonably confident it fits the vehicle given. Part numbers vary by engine, trim, build date and VIN, so never invent one and never guess digits; leave "number" empty when you are not sure, and use "note" for what decides the right part (engine size, build date, with or without towing package). Leave the list empty when no vehicle is given or no parts are replaced.
 - Keep it practical and tight: usually 5 to 15 steps, each one or two sentences.
 - Earlier turns of the conversation are given so follow-up questions make sense.
 
@@ -30,6 +31,7 @@ Return JSON:
 "tools": tools needed (empty if none apply).
 "parts": parts, fluids and supplies (empty if none apply).
 "specs": typical specs, each labeled as typical and to verify (empty if none apply).
+"partNumbers": up to 8 parts, each {"part": what it is, "brand": OEM or brand name or empty, "number": the part number or empty, "note": what to check, short or empty}.
 "safety": safety cautions for this job (at least one for any hands-on procedure).
 "ideas": two or three short follow-up questions a tech might ask next, each under 60 characters.`;
 
@@ -42,6 +44,10 @@ export const HOWTO_SCHEMA = {
     tools: { type: 'ARRAY', items: { type: 'STRING' } },
     parts: { type: 'ARRAY', items: { type: 'STRING' } },
     specs: { type: 'ARRAY', items: { type: 'STRING' } },
+    partNumbers: {
+      type: 'ARRAY',
+      items: { type: 'OBJECT', properties: { part: { type: 'STRING' }, brand: { type: 'STRING' }, number: { type: 'STRING' }, note: { type: 'STRING' } }, required: ['part'] },
+    },
     safety: { type: 'ARRAY', items: { type: 'STRING' } },
     ideas: { type: 'ARRAY', items: { type: 'STRING' } },
   },
@@ -51,6 +57,13 @@ export const HOWTO_SCHEMA = {
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const list = (v: unknown, n: number, max: number) =>
   (Array.isArray(v) ? v : []).map((x) => str(x, max)).filter(Boolean).slice(0, n);
+
+/** Part numbers the assistant is confident about. Shown with "verify by VIN" on the page. */
+export function partNumbers(v: unknown) {
+  return (Array.isArray(v) ? v : []).map((x) => (x && typeof x === 'object' ? x as Body : {}))
+    .map((x) => ({ part: str(x.part, 100), brand: str(x.brand, 40), number: str(x.number, 40).replace(/[^A-Za-z0-9 .\-\/]/g, ''), note: str(x.note, 160) }))
+    .filter((x) => x.part).slice(0, 8);
+}
 
 /** "2014 Honda Civic 1.8L" from whatever the page sent. */
 export function vehicleLabel(v: unknown) {
@@ -104,6 +117,7 @@ export async function howToRoute(ctx: Ctx, narrator: Narrator | null | undefined
         tools: list(parsed.tools, 25, 160),
         parts: list(parsed.parts, 25, 160),
         specs: list(parsed.specs, 20, 240),
+        partNumbers: partNumbers(parsed.partNumbers),
         safety: list(parsed.safety, 10, 400),
         ideas: list(parsed.ideas, 3, 80),
         vehicle: vehicleLabel(body.vehicle),

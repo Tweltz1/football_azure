@@ -53,6 +53,18 @@
 
     const items = (title, arr, cls = "") => arr && arr.length ? `<div class="howto-block ${cls}"><h4>${title}</h4><ul>${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "";
 
+    // Part numbers come from the AI: always shown with "verify by VIN" and a lookup link.
+    const search = (q) => "https://www.google.com/search?q=" + encodeURIComponent(q);
+    function partNumbers(t) {
+      const list = t.res.partNumbers || [];
+      if (!list.length) return "";
+      return `<div class="howto-block pn"><h4>Part numbers <span class="muted">· verify by VIN with your parts supplier</span></h4><ul class="howto-pn">${list.map((p) => {
+        const num = [p.brand, p.number].filter(Boolean).join(" ");
+        const q = p.number ? `${num} ${t.vehicle}` : `${t.vehicle} ${p.part} part number`;
+        return `<li><span class="pn-part">${esc(p.part)}</span>${p.number ? `<b class="pn-num">${esc(num)}</b>` : `<span class="muted">Number varies; check by VIN</span>`}<a href="${esc(search(q.trim()))}" target="_blank" rel="noopener">${p.number ? "Look up" : "Find it"}</a>${p.note ? `<small>${esc(p.note)}</small>` : ""}</li>`;
+      }).join("")}</ul></div>`;
+    }
+
     function turn(t, i) {
       const head = `<div class="howto-q"><b>${esc(t.q)}</b>${t.vehicle ? `<span class="pill">${esc(t.vehicle)}</span>` : ""}</div>`;
       if (t.loading) return `<article class="howto-card is-loading">${head}<p class="muted">Looking it up. Longer jobs can take up to half a minute…</p></article>`;
@@ -63,6 +75,7 @@
         ${items("Safety", r.safety, "warn")}
         ${r.specs.length ? `<div class="howto-block specs"><h4>Typical specs <span class="muted">· verify in service info</span></h4><ul>${r.specs.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
         <div class="howto-cols">${items("Tools", r.tools)}${items("Parts and fluids", r.parts)}</div>
+        ${partNumbers(t)}
         ${r.steps.length ? `<div class="howto-block"><h4>Steps</h4><ol class="howto-steps">${r.steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>` : ""}
         <div class="howto-foot">
           ${r.ideas.length ? `<div class="howto-quick">${r.ideas.map((q) => `<button type="button" class="howto-chip" data-howto-ask="${esc(q)}">${esc(q)}</button>`).join("")}</div>` : ""}
@@ -111,7 +124,8 @@
     function copyText(t) {
       const r = t.res, sec = (h, a) => a.length ? `\n${h}:\n` + a.map((x) => "- " + x).join("\n") : "";
       return `${t.q}${t.vehicle ? " (" + t.vehicle + ")" : ""}\n\n${r.answer}` + sec("Safety", r.safety) + sec("Typical specs (verify in service info)", r.specs)
-        + sec("Tools", r.tools) + sec("Parts and fluids", r.parts) + (r.steps.length ? "\nSteps:\n" + r.steps.map((x, i) => `${i + 1}. ${x}`).join("\n") : "")
+        + sec("Tools", r.tools) + sec("Parts and fluids", r.parts)
+        + sec("Part numbers (AI suggestions, verify by VIN)", (r.partNumbers || []).map((p) => `${p.part}: ${[p.brand, p.number].filter(Boolean).join(" ") || "check by VIN"}${p.note ? " (" + p.note + ")" : ""}`)) + (r.steps.length ? "\nSteps:\n" + r.steps.map((x, i) => `${i + 1}. ${x}`).join("\n") : "")
         + "\n\nAI guidance from Talk Shops. Confirm specs and procedures in the manufacturer's service information.";
     }
 
