@@ -43,3 +43,12 @@ main:has(>.front){padding:0;max-width:none}
 .front-source{display:block;margin-top:12px}.front-footer{padding:22px 0;font-size:.9rem}
 @media(max-width:740px){.front .front-inner{width:calc(100% - 32px)}.front-hero .front-inner{grid-template-columns:1fr;gap:26px}.front-preview{justify-self:start;max-width:none}.front-nav nav{gap:12px}.front-nav a{font-size:.82rem}.front-sign{padding:8px 10px}.front-market{font-size:.85rem}.front-market th,.front-market td{padding:10px 5px}.front-tiers{gap:8px}.front-tiers h3{font-size:17px}.front-tiers strong{font-size:29px}.front-actions{gap:16px}}
 @media(max-width:360px){.front-tiers{grid-template-columns:1fr}.front-nav .front-wordmark{font-size:1rem}.front-nav nav{gap:8px}}
+
+/* Hero background video (hero-video.js): real repair-shop clips under a dark overlay */
+.front-hero{position:relative;overflow:hidden;isolation:isolate}
+.front-hero>.front-inner{position:relative;z-index:2}
+.hero-video{position:absolute;inset:0;z-index:0;background:#101a32 url(/hero/poster.jpg) center/cover no-repeat}
+.hero-video video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.2s ease}
+.hero-video video.on{opacity:1}
+.hero-video::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(100deg,rgba(12,20,40,.92) 0%,rgba(12,20,40,.80) 45%,rgba(12,20,40,.55) 100%),radial-gradient(ellipse at 85% 55%,rgba(45,66,104,.35) 0%,transparent 55%)}
+@media(max-width:740px){.hero-video::after{background:linear-gradient(180deg,rgba(12,20,40,.82) 0%,rgba(12,20,40,.70) 55%,rgba(12,20,40,.86) 100%)}}
