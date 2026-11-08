@@ -180,6 +180,7 @@
           <p>Show the damage, warning light or part you want checked.</p>
           <button type="button" id="customerPickPhoto" class="btn" ${j.photos.filter(p => p.source === "customer").length >= 6 ? "disabled" : ""}>Add photos</button>
           <small style="margin-left:10px">${j.photos.filter(p => p.source === "customer").length} of 6 photos added</small><p id="photoStatus" role="status" hidden></p></section>` : ""}
+        ${window.Walkaround.customerCard(j)}
         ${billing.display(j.bill, j)}${est}
         ${window.Walkthrough.customerCard(j)}
         ${(j.notes || []).length ? `<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p>${window.repairPhotoFor(n.text, "Part mentioned")}</li>`).join("")}</ul></div>` : ""}
@@ -650,6 +651,7 @@
         </section>`}
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
           <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
+        ${j.closed || j.stage === "picked_up" && !(j.walkaround || []).length ? "" : window.Walkaround.sheetSection(j)}
         <section class="sec"><h3>Technician notes <span class="sec-sub">Customer sees these</span></h3>
           ${(j.notes || []).length ? `<ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${esc(n.id)}">Remove</button></li>`).join("")}</ul>` : ""}
           <form id="noteForm" class="note-form"><textarea id="noteIn" maxlength="2000" placeholder="What did you find? Tap Speak to talk instead of typing." aria-label="Technician note">${esc(ui.noteDraft[j.id] || "")}</textarea>
@@ -1148,6 +1150,12 @@
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !ui.busy) { if (ui.modal) ui.modal = ui.modal?.pickup || null; else ui.openJob = null; renderLayer(); } });
+
+  window.Walkaround.init({
+    api, encode: encodePhoto, toast, first, sendResult,
+    token: () => custToken, customer: () => cust.data, setCustomer: (d) => { cust.data = d; }, renderCustomer,
+    job, openJob: () => ui.openJob, onJob: (j) => upsertJob(j), render: () => { if (custToken) return; render(); },
+  });
 
   // ---------------- Start ----------------
   if (custToken) {

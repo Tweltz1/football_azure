@@ -13,6 +13,7 @@ import { createTwilioSender, shopRoute, stripeWebhook, type ShopDeps } from '../
 import { incomingSms } from '../_shared/shopSms.ts';
 import { createStripe } from '../_shared/shopPlans.ts';
 import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator.ts';
+import { geminiDamageFinder } from '../_shared/shopDamage.ts';
 import { HOWTO_SCHEMA } from '../_shared/shopHowTo.ts';
 import { createTurn } from './turn.ts';
 import {
@@ -54,6 +55,7 @@ const shop: ShopDeps = {
   howTo: GEMINI_KEY
     ? geminiNarrator(GEMINI_KEY, DEFAULT_GEMINI_MODEL, fetch, { schema: HOWTO_SCHEMA, timeoutMs: 40_000, maxTokens: 8192, temperature: 0.4 })
     : null,
+  damageFinder: GEMINI_KEY ? geminiDamageFinder(GEMINI_KEY, fetch) : null,
   newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),
 };
 const dnd = {

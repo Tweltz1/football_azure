@@ -43,6 +43,24 @@ function world() {
       if (photos.length >= 6) return false;
       photos.push(clone(photo)); return true;
     },
+    async walkaround(id, op) {
+      const j = jobs.get(id)!;
+      let list = j.walkaround ?? [];
+      if (op.photo) {
+        if (j.stage === 'picked_up') return false;
+        list = list.filter((p) => p.angle !== op.photo!.angle);
+        if (list.length >= 8) return false;
+        list.push(clone(op.photo));
+      } else if (op.remove) {
+        if (!list.some((p) => p.id === op.remove)) return false;
+        list = list.filter((p) => p.id !== op.remove);
+      } else if (op.marksFor) {
+        const p = list.find((x) => x.id === op.marksFor);
+        if (!p) return false;
+        p.marks = clone(op.marks ?? []); if (op.aiAt) p.aiAt = op.aiAt;
+      } else return false;
+      j.walkaround = list; return true;
+    },
     async saveBill(id, bill, pdf) {
       const job = jobs.get(id)!;
       job.bill = clone(bill);
@@ -426,6 +444,56 @@ test('before and after walk-throughs show on the customer page and can notify th
   const page = (await as(null)('GET', `shop/c/${token}`))?.body as { walkthroughs: { before: { summary: string }; after: { sentAt: string } } };
   assert.equal(page.walkthroughs.before.summary, 'Brakes need work.');
   assert.ok(page.walkthroughs.after.sentAt);
+});
+
+test('walk-around photos: shop asks, customer uploads by angle, AI suggests, shop confirms, customer sees only confirmed damage', async () => {
+  const { as, texts, deps } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string; link: string };
+  const token = job.link.split('?c=')[1];
+  const cust = as(null);
+  const jpeg = 'data:image/jpeg;base64,/9j/AAAA';
+  assert.equal((await cust('POST', `shop/c/${token}/walkaround`, { angle: 'front', src: jpeg }))?.status, 400, 'closed until the shop asks');
+  const sent = texts.length;
+  await dan('POST', `shop/jobs/${job.id}/walkaround-request`, { send: true });
+  assert.equal(texts.length, sent + 1);
+  assert.match(texts.at(-1)!.body, /Ridgeline asks for 8 quick photos of your 2018 Honda Civic/);
+  assert.equal((await cust('POST', `shop/c/${token}/walkaround`, { angle: 'roof', src: jpeg }))?.status, 400);
+  assert.equal((await cust('POST', `shop/c/${token}/walkaround`, { angle: 'front', src: 'data:image/png;base64,AAAA' }))?.status, 400);
+  await cust('POST', `shop/c/${token}/walkaround`, { angle: 'front', src: jpeg });
+  await cust('POST', `shop/c/${token}/walkaround`, { angle: 'rear_left', src: jpeg });
+  let page = (await cust('POST', `shop/c/${token}/walkaround`, { angle: 'front', src: jpeg + 'BBBB' }))?.body as { walkaround: { canUpload: boolean; photos: { angle: string; src: string; marks: unknown[] }[] } };
+  assert.deepEqual(page.walkaround.photos.map((p) => p.angle).sort(), ['front', 'rear_left'], 'a retake replaces that angle');
+  assert.ok(page.walkaround.canUpload);
+
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/walkaround-ai`, {}))?.status, 503, 'no AI key yet');
+  let calls = 0;
+  deps.damageFinder = { async find(_src, angle) { calls++; return angle === 'front' ? [{ x: 0.1, y: 0.5, w: 0.2, h: 0.1, kind: 'dent', note: 'Front bumper', source: 'ai', confirmed: false }] : []; } };
+  const shopView = (await dan('POST', `shop/jobs/${job.id}/walkaround-ai`, {}))?.body as { walkaround: { id: string; angle: string; aiAt?: string; marks: { id: string; kind: string; confirmed: boolean; source: string }[] }[] };
+  assert.equal(calls, 2);
+  const front = shopView.walkaround.find((p) => p.angle === 'front')!;
+  assert.equal(front.marks.length, 1);
+  assert.equal(front.marks[0].confirmed, false);
+  assert.ok(front.aiAt);
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/walkaround-ai`, {}))?.status, 400, 'nothing left to check');
+  page = (await cust('GET', `shop/c/${token}`))?.body as typeof page;
+  assert.equal(page.walkaround.photos.find((p) => p.angle === 'front')!.marks.length, 0, 'AI suggestions stay hidden');
+
+  await dan('POST', `shop/jobs/${job.id}/walkaround-marks`, { photoId: front.id, marks: [
+    { ...front.marks[0], kind: 'scratch', confirmed: true }, { x: 0.8, y: 0.8, w: 0.5, h: 0.5, kind: 'nope', confirmed: true }, { x: 'bad' },
+  ] });
+  page = (await cust('GET', `shop/c/${token}`))?.body as typeof page;
+  const shown = page.walkaround.photos.find((p) => p.angle === 'front')!.marks as { kind: string; w: number; source?: string }[];
+  assert.deepEqual(shown.map((m) => m.kind), ['scratch', 'other']);
+  assert.equal(shown[1].w, 0.2, 'boxes are clipped to the photo');
+  assert.equal(shown[0].source, undefined);
+
+  await dan('POST', `shop/jobs/${job.id}/walkaround-remove`, { photoId: front.id });
+  await dan('POST', `shop/jobs/${job.id}/walkaround-request`, { on: false });
+  page = (await cust('GET', `shop/c/${token}`))?.body as typeof page;
+  assert.equal(page.walkaround.photos.length, 1);
+  assert.equal(page.walkaround.canUpload, false);
 });
 
 test('how-to assistant needs a signed-in shop', async () => {

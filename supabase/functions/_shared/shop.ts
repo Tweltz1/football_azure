@@ -7,6 +7,7 @@ import type { Ctx, Res } from './handlers.ts';
 import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, HOWTO_PRO_MESSAGE, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { howToRoute } from './shopHowTo.ts';
+import { cleanMarks, isAngle, type DamageFinder, type WalkPhoto } from './shopDamage.ts';
 import { accountRoute, type AccountStore } from './shopAccount.ts';
 import { ownerOnly, staffRoute, type Seat, type StaffStore } from './shopStaff.ts';
 import type { Narrator } from './dnd.ts';
@@ -62,6 +63,8 @@ export interface JobData {
   notes?: Note[];
   /** The technician's quick walk-through at check-in (before) and when the work is done (after). The customer sees both. */
   walkthroughs?: { before?: Walkthrough; after?: Walkthrough };
+  /** Set when the shop asks the customer for walk-around photos (body work, check-in condition records). */
+  walkaroundRequest?: { t: string } | null;
 }
 export interface Note { id: string; t: string; text: string }
 /** Walk-through checklist points. The page shows the labels; keep the keys in step with talkshops/public/walkthrough.js. */
@@ -78,6 +81,8 @@ export interface Job {
   smartPaused?: boolean; smsThread?: Message[];
   intake?: Intake | null;
   intakePhotos?: Photo[];
+  /** Customer walk-around photos with damage marks (own column, see shopDamage.ts). */
+  walkaround?: WalkPhoto[];
   id: string;
   shopId: string;
   token: string;
@@ -100,6 +105,8 @@ export interface ShopStore {
   deleteJob?(id: string): Promise<void>;
   saveIntake?(jobId: string, intake: Intake): Promise<boolean>;
   intakePhoto?(jobId: string, photo: Photo | null, remove: string | null): Promise<boolean>;
+  /** Row-locked walk-around change: add/replace a photo by angle, remove one, or set one photo's marks. */
+  walkaround?(jobId: string, op: { photo?: WalkPhoto; remove?: string; marksFor?: string; marks?: WalkPhoto['marks']; aiAt?: string }): Promise<boolean>;
   saveBill?(jobId: string, bill: Bill, pdf: string | null): Promise<void>;
   getBillPdf?(jobId: string): Promise<string | null>;
   /** Picked-up cars archived at or after `since`, newest first, whose search text contains every term. */
@@ -179,6 +186,8 @@ export interface ShopDeps {
   /** Gemini, for the employee how-to assistant (shop/howto). Null until GEMINI_API_KEY is set. */
   smartClassifier?: Narrator | null;
   howTo?: Narrator | null;
+  /** Gemini vision that suggests damage marks on walk-around photos. */
+  damageFinder?: DamageFinder | null;
   /** Forgot password and the reset phone (shopAccount.ts). */
   account?: AccountStore | null;
   /** Test hook: predictable reset codes. */
@@ -245,8 +254,9 @@ export function fillTemplate(stage: Stage, shop: Shop, job: Job, linkBase: strin
 
 /** What the shop sees. */
 const jobOut = (j: Job, linkBase: string) => ({
-  id: j.id, stage: j.stage, link: linkBase + j.token, createdAt: j.createdAt, updatedAt: j.updatedAt, bill: j.bill ?? null, ...j.data, ...j.intake, smartPaused:!!j.smartPaused, messages:[...j.data.messages,...(j.smsThread??[])].sort((a,b)=>Date.parse(a.t)-Date.parse(b.t)), intakeReceived: !!j.intake, photos: [...(j.intakePhotos ?? []), ...j.data.photos],
+  id: j.id, stage: j.stage, link: linkBase + j.token, createdAt: j.createdAt, updatedAt: j.updatedAt, bill: j.bill ?? null, ...j.data, ...j.intake, smartPaused:!!j.smartPaused, messages:[...j.data.messages,...(j.smsThread??[])].sort((a,b)=>Date.parse(a.t)-Date.parse(b.t)), intakeReceived: !!j.intake, photos: [...(j.intakePhotos ?? []), ...j.data.photos], walkaround: j.walkaround ?? [],
 });
+const walkaroundOpen = (j: Job) => !!j.data.walkaroundRequest && j.stage !== 'picked_up' && !j.data.closed && j.shopId !== DEMO_SHOP_ID;
 
 /** What the customer sees: no phone number, no other customers, no internal notes. */
 const customerOut = (j: Job, shop: Shop) => ({
@@ -265,6 +275,11 @@ const customerOut = (j: Job, shop: Shop) => ({
   approval: j.data.approval,
   notes: j.data.notes ?? [],
   walkthroughs: j.data.walkthroughs ?? {},
+  // Only damage the shop confirmed; AI suggestions stay with the shop.
+  walkaround: {
+    requested: !!j.data.walkaroundRequest, canUpload: walkaroundOpen(j),
+    photos: (j.walkaround ?? []).map((p) => ({ id: p.id, angle: p.angle, src: p.src, marks: p.marks.filter((m) => m.confirmed).map(({ source: _s, confirmed: _c, ...m }) => m) })),
+  },
   closed: !!j.data.closed,
   bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
 });
@@ -332,6 +347,14 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (typeof src !== 'string' || src.length > MAX_PHOTO || !/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+=*$/u.test(src)) return bad('Choose a valid JPEG photo.');
       const photo: Photo = { id: ctx.newId(), src, cap: str(body.cap, 120) || 'Customer photo', source: 'customer', stage: job.stage, addedAt: now };
       if (!await store.intakePhoto?.(job.id, photo, null)) return bad('Photo intake is closed or the six-photo limit was reached.');
+      return ok(customerOut((await store.getJob(job.id)) ?? job, shop));
+    }
+    if (method === 'POST' && parts.length === 4 && parts[3] === 'walkaround') {
+      if (!walkaroundOpen(job) || !store.walkaround) return bad('Walk-around photos are closed for this repair.');
+      const src = body.src;
+      if (!isAngle(body.angle)) return bad('Choose which side of the car this is.');
+      if (typeof src !== 'string' || src.length > MAX_PHOTO || !/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+=*$/u.test(src)) return bad('Choose a valid JPEG photo.');
+      if (!await store.walkaround(job.id, { photo: { id: ctx.newId(), angle: body.angle, src, addedAt: now, marks: [] } })) return bad('Walk-around photos are closed for this repair.');
       return ok(customerOut((await store.getJob(job.id)) ?? job, shop));
     }
     if (method === 'POST' && parts[3] === 'decision') {
@@ -601,6 +624,49 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     await store.pauseSmart(id,body.paused); job.smartPaused=body.paused; return ok(jobOut(job,deps.linkBase));
   }
   const d = job.data;
+  if (action === 'walkaround-ai' || action === 'walkaround-marks' || action === 'walkaround-remove') {
+    if (!store.walkaround) return { status: 503, body: 'Walk-around photos are unavailable.' };
+    const photos = job.walkaround ?? [];
+    if (action === 'walkaround-remove') {
+      if (!await store.walkaround(job.id, { remove: str(body.photoId, 100) })) return bad('That photo was already removed.');
+    } else if (action === 'walkaround-marks') {
+      const photo = photos.find((p) => p.id === body.photoId);
+      if (!photo) return bad('That photo was removed.');
+      await store.walkaround(job.id, { marksFor: photo.id, marks: cleanMarks(body.marks, ctx.newId) });
+    } else {
+      if (!deps.damageFinder) return { status: 503, body: 'AI damage marking is not set up yet.' };
+      const todo = photos.filter((p) => body.photoId ? p.id === body.photoId : !p.aiAt);
+      if (!todo.length) return bad(photos.length ? 'Every photo has been checked.' : 'No walk-around photos yet.');
+      const results = await Promise.all(todo.map(async (p) => {
+        try {
+          const found = cleanMarks(await deps.damageFinder!.find(p.src, p.angle), ctx.newId, 8).map((m) => ({ ...m, source: 'ai' as const, confirmed: false }));
+          // Keep everything the shop already touched; replace only unconfirmed AI suggestions.
+          const kept = p.marks.filter((m) => m.source === 'shop' || m.confirmed);
+          await store.walkaround!(job.id, { marksFor: p.id, marks: [...kept, ...found].slice(0, 20), aiAt: now });
+          return true;
+        } catch (err) {
+          ctx.log.warn('walkaround ai', { error: String(err) });
+          return false;
+        }
+      }));
+      if (!results.some(Boolean)) return { status: 502, body: 'The AI could not check the photos right now. Try again in a minute.' };
+    }
+    return ok(jobOut((await store.getJob(job.id)) ?? job, deps.linkBase));
+  }
+  if (action === 'walkaround-request') {
+    if (body.on === false) d.walkaroundRequest = null;
+    else {
+      if (job.stage === 'picked_up' || d.closed) return bad('This repair is finished.');
+      d.walkaroundRequest = { t: now };
+      if (body.send) {
+        const msg = `${shop.name} asks for 8 quick photos of your ${vehicleName({ ...d, ...job.intake }) || 'car'} from all sides, so we have a record of its condition. It takes about 2 minutes: ${deps.linkBase}${job.token}`;
+        d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
+      }
+    }
+    job.updatedAt = now;
+    await store.putJob(job);
+    return ok(jobOut(job, deps.linkBase));
+  }
   if (action === 'intake') {
     const error = await submitIntake(store, job, body);
     return error ?? ok(jobOut(job, deps.linkBase));
