@@ -193,7 +193,7 @@
   }
 
   // ==================== Shop app (signed in) ====================
-  const ui = { noteDraft: {}, view: "board", openJob: null, modal: null, authMode: "signin", authMsg: "", authErr: "", busy: false, reset: null };
+  const ui = { noteDraft: {}, view: "board", openJob: null, modal: null, authMode: new URLSearchParams(location.search).get("login") === "signup" ? "signup" : "signin", authMsg: "", authErr: "", busy: false, reset: null };
   // Shop Settings: the phone that can get password reset codes.
   const recovery = { data: null, loading: false, pending: "", err: "" };
   const dictation = window.createDictation({ toast });
@@ -386,7 +386,7 @@
       </div></header>
       <section class="front-hero" id="top"><div class="front-inner">
         <div class="front-intro"><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
-          <p>Give customers a place to check repair progress before they call. Send a private link by text or email so they can see photos, approve work and open their final bill. No customer account required.</p>
+          <p>See which repairs are waiting on approval and which cars are ready for pickup, all from one board. Send a private link by text or email so they can see photos, approve work and open their final bill. No customer account required.</p>
           <div class="front-actions"><a class="front-cta" href="${DEMO_PAGE}">Explore Demo Shop <span aria-hidden="true">↗</span></a><a class="front-tour" href="${DEMO_PAGE}?tour=1">Take the Guided Tour →</a></div>
         </div>
         <div class="front-preview" aria-label="Example customer repair page">
@@ -411,8 +411,8 @@
       <section class="front-plans" id="plans"><div class="front-inner">
         <h2>Choose Your Plan</h2><p>Both plans include the Bay board, customer repair links, photo updates, signed estimate decisions, final bills and unlimited email.</p>
         <div class="front-tiers">
-          <article><h3>Talk Shops Starter</h3><strong>$59<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $590/year</small></article>
-          <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about repair status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>AI Repair Assistant</b> gives technicians a starting point for repair procedures and tool lists.</p><small>Annual billing: $990/year</small></article>
+          <article><h3>Talk Shops Starter</h3><strong>$59<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $590/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
+          <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about repair status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>AI Repair Assistant</b> gives technicians a starting point for repair procedures and tool lists.</p><small>Annual billing: $990/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
         </div>
         <h3 class="front-market-title">Plan Comparison</h3>
         <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
