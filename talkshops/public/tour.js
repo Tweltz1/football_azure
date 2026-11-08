@@ -85,7 +85,7 @@
       };
       audio.onended = finish;
       audio.onerror = useFallback;
-      audio.src = "/tour/" + key + ".mp3";
+      audio.src = "/tour/" + key + ".mp3?v=3";
       audio.muted = muted;
       const p = audio.play();
       if (p && p.catch) p.catch(useFallback);
@@ -174,6 +174,19 @@
     if (id === "tEnd") endTour(true);
   });
 
+  // Takeaways stay on screen after the narration so staff can consult them at the counter.
+  const takeaways = {
+    bay: "Use Awaiting approval to find estimates with an unanswered line. A signed estimate can stay in Estimate review until the shop moves the car.",
+    checkin: "For an after-hours drop-off, invite the customer by link. Open their repair when the intake arrives and move it to Checked in when the vehicle is at the shop.",
+    estimates: "Open the diagram on a matching estimate line to explain the part. For evidence from this particular car, attach a technician photo. A shop owner sends the finished estimate.",
+    customer: "Customers decide on each pending line and sign once. The approved total includes only the work they accepted. Use the same repair link to check progress later.",
+    photos: "In your shop, Add photo accepts a camera shot or a library image. Customers can open View photos at the corresponding stage under Progress. Staff can use Remove photo on the repair to take down a mistaken upload.",
+    smart: "Use suggested reply puts the draft in the message box. Edit it, then tap Send. For a conversation that needs a person, choose Pause auto-replies for this repair in Messages.",
+    pickup: "Before notifying the customer, review the approved work and final total. An owner can create an itemized bill or attach the shop’s PDF. Open the customer’s page to check what they will see.",
+    settings: "For a price-list import, start with the example CSV. Include name and rate, then set type to labor, part, fee or percent. A row without a type imports as a part.",
+    walkaround: "Review each photo yourself. Confirm accurate marks, remove false matches and tap the image to add damage the scan missed. Customers see the marks you confirm."
+  };
+
   function endTour(early) {
     ended = true; paused = false; window.TOUR_ACTIVE = false;
     try { audio.pause(); } catch (e) { /* ignore */ }
@@ -182,7 +195,7 @@
     const next = lesson && LESSONS[lessonIx + 1];
     if (lesson) {
       panel.querySelector(".t-top").innerHTML = `<span class="t-step">${early ? "Lesson ended" : "Lesson complete"} · ${escT(lesson.title)}</span>`;
-      setCaption(early ? "You're in the demo shop. Try it yourself; it's all sample data." : next ? "Nice work. Try it yourself in the demo shop, or go on to the next lesson." : "That's the last lesson. You're ready to run your shop on Talk Shops.");
+      setCaption(early ? "You're in the demo shop. Try it yourself; it's all sample data." : takeaways[lesson.id] || (next ? "Nice work. Try it yourself in the demo shop, or go on to the next lesson." : "That's the last lesson. You're ready to run your shop on Talk Shops."));
       extra(`<div class="t-row" style="margin-top:10px">${next ? `<a class="t-btn primary" href="/demo.html?train=${next.id}" style="text-decoration:none">Next: ${escT(next.title)}</a>` : ""}
         <a class="t-btn" href="/demo.html?train=${lesson.id}" style="text-decoration:none">Replay</a>
         <a class="t-btn" href="/demo.html?view=training" style="text-decoration:none">All lessons</a>
@@ -640,6 +653,8 @@
         const c = say("cu-2"); highlight(".c-head"); await cue(0.2);
         highlight(qa(".c-card").find((x) => /Estimate/.test(x.textContent)));
         await cue(0.35); highlight(".pri-line");
+        const diagram = q(".est-item .repair-details summary");
+        if (diagram) { await tap(diagram); highlight(diagram.parentElement); await wait(900); await tap(diagram); }
         await cue(0.55); highlight(qa(".c-card").find((x) => /Estimate/.test(x.textContent)));
         await cue(0.6); await tap(qa('[data-decide][data-v="approved"]')[0]);
         await cue(0.75); await tap(qa('[data-decide][data-v="declined"]')[1]);
@@ -666,7 +681,7 @@
         await cue(0.55); highlight("#noteSec .btn.mic");
         await c;
       }
-      step(); { const c = say("ph-4"); highlight("#noteSec .btn.primary"); await tap("#noteSec .btn.primary"); highlight("#noteSec .notes"); await cue(0.55); highlight(q("#noteSend")?.closest("label")); await c; }
+      step(); { const c = say("ph-4"); highlight(q("#noteSend")?.closest("label")); await tap("#noteSend"); await cue(0.60); highlight("#noteSec .btn.primary"); await tap("#noteSec .btn.primary"); highlight("#noteSec .notes"); await c; }
     },
     async howto() {
       STEPS = 5; await begin("board");
@@ -762,7 +777,7 @@
       step(); {
         const c = say("sm-2"); highlight("#smartDemo");
         await cue(0.3); await sample("status", false); highlight("#msgSec .thread");
-        await cue(0.72); highlight(q("#demoDraft") || "#msgSec .thread");
+        await cue(0.72); highlight(q("#demoDraft") || "#msgSec .thread"); if (q("#demoDraft")) { await tap("#demoDraft"); highlight("#replyIn"); }
         await c;
       }
       step(); { const c = say("sm-3"); await cue(0.1); await sample("hours", true); highlight("#msgSec .thread"); await c; }
@@ -808,7 +823,7 @@
 
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
-    fetch("/tour/lines.json?v=2").then((r) => r.json()).then((l) => { LINES = l; }).catch(() => {}).finally(() => {
+    fetch("/tour/lines.json?v=3").then((r) => r.json()).then((l) => { LINES = l; }).catch(() => {}).finally(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">
         ${lesson ? `<p style="margin:0 0 4px;font-size:13px">Training · Lesson ${lessonIx + 1} of ${LESSONS.length} · about ${lesson.mins} min</p>` : ""}
