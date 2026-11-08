@@ -4,7 +4,7 @@
 
 import type { Ctx, Res } from './handlers.ts';
 
-import { access, checkoutFields, DEFAULT_TRIAL, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
+import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, HOWTO_PRO_MESSAGE, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { howToRoute } from './shopHowTo.ts';
 import type { Narrator } from './dnd.ts';
@@ -419,7 +419,11 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   const shop = await store.shopByOwner(ctx.userId);
   if (!shop) return { status: 409, body: 'Set up your shop first.' };
 
-  if (parts[1] === 'howto') return parts.length === 2 ? howToRoute(ctx, deps.howTo, shop.id, method, body) : { status: 404 };
+  if (parts[1] === 'howto') {
+    if (parts.length !== 2) return { status: 404 };
+    if (!hasHowTo(shop.plan, access(shop.plan, ctx.now(), await settings(deps)))) return { status: 402, body: HOWTO_PRO_MESSAGE };
+    return howToRoute(ctx, deps.howTo, shop.id, method, body);
+  }
 
   if (parts[1] === 'plan') return planRoute(ctx, deps, shop, method, parts[2], body);
   const acc = access(shop.plan, ctx.now(), await settings(deps));
@@ -650,7 +654,7 @@ async function planOut(deps: ShopDeps, shop: Shop, now: Date) {
     textsUsed: p && p.textsPeriod === a.period ? p.textsUsed : 0,
     textLimit: a.textLimit ?? (p && p.plan !== 'trial' && p.plan ? PLANS[p.plan].texts : null),
     carsCreated: p?.carsCreated ?? 0, carLimit: a.carLimit,
-    trial, plans: PLANS, payments: !!deps.stripe, hasBilling: !!p?.stripeCustomerId,
+    trial, plans: PLANS, payments: !!deps.stripe, hasBilling: !!p?.stripeCustomerId, howTo: hasHowTo(p, a),
   };
 }
 

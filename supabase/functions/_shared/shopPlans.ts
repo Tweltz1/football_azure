@@ -6,9 +6,9 @@
 export type PlanKey = 'starter' | 'pro';
 export type Interval = 'month' | 'year';
 
-export const PLANS: Record<PlanKey, { name: string; month: number; year: number; texts: number; blurb: string }> = {
-  starter: { name: 'Starter', month: 59, year: 590, texts: 1000, blurb: '1,000 texts a month, unlimited email' },
-  pro: { name: 'Pro', month: 99, year: 990, texts: 3000, blurb: '3,000 texts a month, unlimited email, busy shops' },
+export const PLANS: Record<PlanKey, { name: string; month: number; year: number; texts: number; blurb: string; howTo: boolean }> = {
+  starter: { name: 'Starter', month: 59, year: 590, texts: 1000, blurb: '1,000 texts a month, unlimited email', howTo: false },
+  pro: { name: 'Pro', month: 99, year: 990, texts: 3000, blurb: '3,000 texts a month, unlimited email, AI repair how-to assistant', howTo: true },
 };
 
 /** Trial rules, kept in the talkshops_settings table so they can be changed without a deploy. */
@@ -59,6 +59,17 @@ export function access(p: PlanState | undefined | null, now: Date, trial: TrialS
   }
   return { ...base, state: p.plan === 'trial' ? 'trial_ended' : 'canceled', canWork: false, textLimit: 0, period: month, carLimit: 0 };
 }
+
+/**
+ * The AI repair how-to assistant is a Pro feature. Free-trial shops can try it, and shops from before
+ * plans existed keep it. Starter, ended trials and canceled plans don't have it.
+ */
+export function hasHowTo(p: PlanState | undefined | null, a: Access): boolean {
+  if (a.state === 'free' || a.state === 'trial') return true;
+  if (a.state === 'active' || a.state === 'past_due') return !!(p && p.plan && p.plan !== 'trial' && PLANS[p.plan]?.howTo);
+  return false;
+}
+export const HOWTO_PRO_MESSAGE = 'The How-to assistant is part of Talk Shops Pro. Switch to Pro on the Plan tab to use it.';
 
 export const lockedMessage = (a: Access) => a.state === 'canceled'
   ? 'Your Talk Shops plan has ended. Choose a plan on the Plan tab to keep sending updates.'

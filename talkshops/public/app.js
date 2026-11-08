@@ -25,7 +25,7 @@
   const billing = window.createShopBilling({ esc, money });
   let plan = null;
   const planUi = window.createShopPlan({ esc, api: (...a) => api(...a), toast: (m) => toast(m) });
-  const howTo = window.createShopHowTo({ esc, api: (...a) => api(...a), toast: (m) => toast(m), cars: () => (jobs || []).filter((j) => j.stage !== "picked_up" && !j.closed) });
+  const howTo = window.createShopHowTo({ esc, api: (...a) => api(...a), toast: (m) => toast(m), cars: () => (jobs || []).filter((j) => j.stage !== "picked_up" && !j.closed), locked: () => !!plan && plan.howTo === false });
   const chargeDetail = e => e.charge ? `<small class="charge-detail">${esc(billing.calculation(e.charge))}</small>` : "";
   const ts = (t) => (typeof t === "number" ? t : Date.parse(t));
   const clock = (t) => new Date(ts(t)).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -316,12 +316,12 @@
         <h2>Choose your shop’s plan.</h2><p>Both plans include unlimited email, photo updates, online estimate approvals and final bills.</p>
         <div class="front-tiers">
           <article><h3>Talk Shops Starter</h3><strong>$59<small> / month</small></strong><p><b>1,000 texts</b> per month</p><small>Annual billing: $590/year</small></article>
-          <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><small>Annual billing: $990/year</small></article>
+          <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p><b>AI repair how-to assistant</b> for your techs</p><small>Annual billing: $990/year</small></article>
         </div>
         <h3 class="front-market-title">How it compares</h3>
         <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
           <tr><th scope="row">Talk Shops Starter</th><td>$59</td><td>Customer updates, approvals and 1,000 texts</td></tr>
-          <tr><th scope="row">Talk Shops Pro</th><td>$99</td><td>Customer updates, approvals and 3,000 texts</td></tr>
+          <tr><th scope="row">Talk Shops Pro</th><td>$99</td><td>Customer updates, approvals, 3,000 texts and the AI repair how-to assistant</td></tr>
           <tr><th scope="row"><a href="https://www.shopmonkey.io/pricing">Shopmonkey Basic</a></th><td>$239</td><td>Shop management, two-way texting and electronic signatures</td></tr>
           <tr><th scope="row"><a href="https://www.tekmetric.com/pricing">Tekmetric Scale</a></th><td>$439</td><td>Shop management, two-way texting and technician board</td></tr>
         </tbody></table>

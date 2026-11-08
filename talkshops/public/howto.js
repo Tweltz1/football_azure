@@ -6,7 +6,7 @@
   const MIC = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`;
   const QUICK = ["Oil and filter change", "Front brake pads and rotors", "Replace serpentine belt", "Replace battery", "Replace spark plugs", "Cabin air filter", "What does code P0420 mean?"];
 
-  window.createShopHowTo = function ({ esc, api, toast, cars }) {
+  window.createShopHowTo = function ({ esc, api, toast, cars, locked = () => false }) {
     const st = { carId: "", vehicle: { year: "", make: "", model: "", engine: "" }, turns: [], busy: false };
     const label = (v) => [v.year, v.make, v.model, v.engine].filter(Boolean).join(" ");
 
@@ -14,7 +14,18 @@
       return `<div class="howto-safety" role="note"><b>Guidance, not factory data.</b> Answers are AI-generated for trained technicians. Always confirm torque specs, fluid types and capacities, and procedures in the manufacturer's service information, and follow your shop's safety practices. Hybrid and EV high-voltage, airbag (SRS) and AC refrigerant work need proper training and certification.</div>`;
     }
 
+    // Starter shops see what the assistant does and how to get it (it's a Pro feature).
+    function upsell() {
+      return `<section class="howto">
+        <div class="howto-head"><h2>Repair how-to</h2><p class="muted">Ask how to do a job and get steps, tools, parts, typical specs and safety notes.</p></div>
+        <div class="howto-pro"><b>The How-to assistant is part of Talk Shops Pro.</b>
+          <p>Your techs can ask how to do any job on the car in the bay, by typing or speaking, and get step-by-step guidance in seconds. Pro also includes 3,000 texts a month.</p>
+          <button class="btn primary" data-view="plan">See Pro on the Plan tab</button></div>
+      </section>`;
+    }
+
     function view() {
+      if (locked()) return upsell();
       const list = cars().filter((j) => j.vehicle && (j.vehicle.make || j.vehicle.model));
       const v = st.vehicle;
       return `<section class="howto">
@@ -75,6 +86,7 @@
     }
 
     async function ask(q, render) {
+      if (locked()) { render(); return; }
       q = String(q || "").trim();
       if (q.length < 3) { toast("Type what you need to do"); document.getElementById("howtoQ")?.focus(); return; }
       if (st.busy) return;

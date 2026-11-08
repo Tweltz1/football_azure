@@ -5,6 +5,8 @@ import type { Ctx } from '../functions/_shared/handlers.ts';
 import {
   archivedAt, archiveSearchText, createTwilioSender, normalizePhone, shopRoute, type Job, type Shop, type ShopDeps, type ShopStore,
 } from '../functions/_shared/shop.ts';
+import type { PlanState } from '../functions/_shared/shopPlans.ts';
+import { clearHowToLimits } from '../functions/_shared/shopHowTo.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
@@ -409,6 +411,31 @@ test('how-to assistant needs a signed-in shop', async () => {
   const res = await w.as('owner-h')('POST', 'shop/howto', { question: 'oil change again' });
   assert.equal(res?.status, 200);
   assert.equal((res?.body as { answer: string }).answer, 'Drain and refill.');
+});
+
+test('how-to assistant is a Pro feature (and open during the free trial)', async () => {
+  clearHowToLimits();
+  const w = world();
+  w.deps.howTo = { async complete() { return JSON.stringify({ answer: 'Drain and refill.', steps: [], tools: [], parts: [], specs: [], safety: [], ideas: [] }); } };
+  const pro = w.as('owner-pro');
+  await pro('POST', 'shop/me', { name: 'Plan Test Auto' });
+  const shop = [...w.shops.values()].find((x) => x.ownerId === 'owner-pro')!;
+  const ask = async (q: string) => { w.tick(2000); return (await pro('POST', 'shop/howto', { question: q }))?.status; };
+  const setPlan = (plan: PlanState['plan'], status: string, trialEndsAt: string | null = null) => {
+    shop.plan = { plan, status, trialEndsAt, textsUsed: 0, textsPeriod: 'trial', carsCreated: 0 };
+  };
+  setPlan('trial', 'trialing', '2026-11-20T00:00:00Z');
+  assert.equal(await ask('oil change one'), 200);
+  assert.equal(((await pro('GET', 'shop/plan'))?.body as { howTo: boolean }).howTo, true);
+  setPlan('starter', 'active');
+  const blocked = await pro('POST', 'shop/howto', { question: 'oil change two' });
+  assert.equal(blocked?.status, 402);
+  assert.match(String(blocked?.body), /Pro/);
+  assert.equal(((await pro('GET', 'shop/plan'))?.body as { howTo: boolean }).howTo, false);
+  setPlan('pro', 'active');
+  assert.equal(await ask('oil change three'), 200);
+  setPlan('trial', 'trialing', '2026-11-01T00:00:00Z'); // trial over
+  assert.equal(await ask('oil change four'), 402);
 });
 
 test('estimate lines carry required, recommended or optional, and the shop can change pending ones', async () => {

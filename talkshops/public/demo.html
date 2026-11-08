@@ -235,7 +235,7 @@ a.btn.primary{color:var(--accent-fg)}
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
 <link rel="stylesheet" href="/training.css?v=1">
-<link rel="stylesheet" href="/howto.css?v=1">
+<link rel="stylesheet" href="/howto.css?v=2">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
 </head>
 <body>
@@ -271,7 +271,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=1"></script>
 <script src="/training.js?v=1"></script>
-<script src="/howto.js?v=1"></script>
+<script src="/howto.js?v=2"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
@@ -392,7 +392,7 @@ const onBoard=j=>!j.archivedAt;
 
 /* --- plan (demo: a shop on its free trial; checkout is not available) --- */
 const plan={state:"trial",daysLeft:12,trialEndsAt:Date.now()+12*86400000,textLimit:150,carLimit:25,textsUsed:38,carsCreated:9,payments:true,hasBilling:false,
-  plans:{starter:{name:"Starter",month:59,year:590,blurb:"1,000 texts a month, unlimited email"},pro:{name:"Pro",month:99,year:990,blurb:"3,000 texts a month, unlimited email, busy shops"}}};
+  plans:{starter:{name:"Starter",month:59,year:590,blurb:"1,000 texts a month, unlimited email"},pro:{name:"Pro",month:99,year:990,blurb:"3,000 texts a month, unlimited email, AI repair how-to assistant",howTo:true}}};
 const planUi=window.createShopPlan({esc,toast,api:async()=>{throw new Error("Demo shop: in your shop, this opens Stripe's secure checkout. Nothing is charged here.")}});
 const billing=window.createShopBilling({esc,money});
 const dictation=window.createDictation({toast});
