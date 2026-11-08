@@ -480,14 +480,11 @@
     const ready = active.filter((j) => j.stage === "ready").length;
     const today = new Date().toDateString();
     const sent = jobs.reduce((a, j) => a + j.messages.filter((m) => m.dir === "out" && m.delivery === "sent" && new Date(m.t).toDateString() === today).length, 0);
-    let h = `<div class="stats">
-      ${inShop.length === 1 ? `<button type="button" class="stat" data-open="${esc(inShop[0].id)}" aria-label="Open ${esc(vehicleStr(inShop[0]))}"><b>1</b><span>Cars in the shop</span></button>` : `<div class="stat"><b>${inShop.length}</b><span>Cars in the shop</span></div>`}
-      <div class="stat warn"><b>${waiting}</b><span>Waiting on customer</span></div>
-      <div class="stat ok"><b>${ready}</b><span>Ready for pickup</span></div>
-      <div class="stat"><b>${sent}</b><span>Updates sent today</span></div></div>
-      <div class="board-top"><h2>${esc(bayName())}</h2>
-        <div class="age-key" aria-label="Time in shop"><span class="age-ok">Under 1 day</span><span class="age-mid">1 to 3 days</span><span class="age-old">Over 3 days</span></div>
-        <label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q || "")}" autocomplete="off"></label></div>
+    const filters = [["all", "All cars", inShop.length], ["approval", "Awaiting approval", waiting], ["ready", "Ready for pickup", ready]];
+    let h = `<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${inShop.length} car${inShop.length === 1 ? "" : "s"} in the shop · ${sent} update${sent === 1 ? "" : "s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check in vehicle</button></div>
+      <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q || "")}" autocomplete="off"></label>
+      <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key, label, count]) => `<button type="button" class="qf ${key === "approval" ? "warn" : key === "ready" ? "ok" : ""}" data-queue="${key}" aria-pressed="${key === (ui.queue || "all")}">${label}<b>${count}</b></button>`).join("")}</div></div>
+      <div class="age-key" aria-label="Time in shop"><span class="age-ok">Under 1 day</span><span class="age-mid">1 to 3 days</span><span class="age-old">Over 3 days</span></div>
       <p class="board-none muted" id="boardNone" hidden></p>
       <div class="board-wrap"><div class="board">`;
     STAGES.filter((s) => s.key !== "picked_up").forEach((s) => {
@@ -506,12 +503,12 @@
         const reply = last && last.dir === "in";
         const age = ageOf(j);
         const hay = [vehicleStr(j), j.customer.name, j.customer.phone, j.customer.email, j.ro, j.concern, j.plate, j.vehicle?.plate, j.vehicle?.vin].filter(Boolean).join(" ").toLowerCase();
-        h += `<button class="card ${age.cls}" data-open="${j.id}" data-s="${esc(hay)}">
-          <span class="veh">${esc(vehicleStr(j) || "Vehicle details pending")}</span>
+        const qk = awaitingDecision(j) ? "approval" : j.stage === "ready" ? "ready" : "other";
+        h += `<button class="card ${age.cls}" data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
+          <span class="veh queue-vehicle">${esc(vehicleStr(j) || "Vehicle details pending")}<span class="chev" aria-hidden="true">›</span></span>
           <span class="row"><span>${esc(j.customer.name)}</span><span class="mono">${esc(j.ro)}</span></span>
-          <span class="row"><span>${esc(j.concern)}</span></span>
-          <span class="row"><span>${since(ev.t)} in stage</span>${reply ? `<span class="pill bad">New reply</span>` : ""}</span>
-          <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span>${pill}</span></button>`;
+          ${j.concern ? `<span class="row concern"><span>${esc(j.concern)}</span></span>` : ""}
+          <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill stage-pill">${esc(s.key === "approval" ? "Estimate review" : s.label)}</span>${pill}${reply ? `<span class="pill bad">New reply</span>` : ""}<span class="in-stage">${since(ev.t)} in stage</span></span></button>`;
       });
       h += `</section>`;
     });
@@ -531,13 +528,15 @@
     let shown = 0;
     document.querySelectorAll(".board .col").forEach((col) => {
       let n = 0;
-      col.querySelectorAll(".card[data-s]").forEach((c) => { const ok = terms.every((t) => c.dataset.s.includes(t)); c.hidden = !ok; if (ok) n++; });
-      col.classList.toggle("search-hide", !!terms.length && !n);
+      const q2 = ui.queue && ui.queue !== "all" ? ui.queue : "";
+      col.querySelectorAll(".card[data-s]").forEach((c) => { const ok = (!q2 || c.dataset.queueKey === q2) && terms.every((t) => c.dataset.s.includes(t)); c.hidden = !ok; if (ok) n++; });
+      col.classList.toggle("search-hide", !!((terms.length || q2) && !n));
       const count = col.querySelector(".col-h span"); if (count) count.textContent = n;
       shown += n;
     });
     const none = $("#boardNone");
-    if (none) { none.hidden = !terms.length || shown > 0; none.textContent = `No cars in the shop match "${(ui.q || "").trim()}". Picked-up cars are in the Archive.`; }
+    const q2 = ui.queue && ui.queue !== "all" ? ui.queue : "";
+    if (none) { none.hidden = (!terms.length && !q2) || shown > 0; none.textContent = terms.length ? `No cars in the shop match "${(ui.q || "").trim()}". Picked-up cars are in the Archive.` : q2 === "approval" ? "No cars are awaiting approval." : "No cars are ready for pickup."; }
   }
 
   // ---------------- Archive: picked-up cars, kept one year ----------------
@@ -721,6 +720,7 @@
     if (e.target.id === "photoIn") return;
     const t = e.target.closest("button,[data-close],[data-open],[data-close-modal]");
     if (!t) return;
+    if (t.dataset.queue) { ui.queue = t.dataset.queue; document.querySelectorAll("[data-queue]").forEach((b) => b.setAttribute("aria-pressed", String(b === t))); filterBoard(); return; }
     if(t.hasAttribute("data-smart-ai")){
       const id=ui.openJob, at=job(id)?.messages.at(-1)?.t, input=$("#replyIn"), before=input.value;t.disabled=true;
       try {const result=await api("POST","shop/jobs/"+id+"/smart-draft",{at});
