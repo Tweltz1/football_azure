@@ -60,8 +60,16 @@ export interface JobData {
   closed?: { t: string; reason: string } | null;
   /** Technician notes the customer sees on their page. */
   notes?: Note[];
+  /** The technician's quick walk-through at check-in (before) and when the work is done (after). The customer sees both. */
+  walkthroughs?: { before?: Walkthrough; after?: Walkthrough };
 }
 export interface Note { id: string; t: string; text: string }
+/** Walk-through checklist points. The page shows the labels; keep the keys in step with talkshops/public/walkthrough.js. */
+export const WALK_ITEMS = ['exterior', 'lights', 'wipers', 'tires', 'brakes', 'oil', 'fluids', 'battery', 'belts', 'leaks', 'dash'] as const;
+export type WalkStatus = 'good' | 'soon' | 'now';
+export interface WalkItem { key: string; status: WalkStatus; note?: string }
+export interface Walkthrough { t: string; by: string; mileage?: string; items: WalkItem[]; summary?: string; sentAt?: string }
+const WALK_LABEL = { before: 'check-in', after: 'after-repair' } as const;
 const MAX_NOTES = 60;
 
 export type Intake = Pick<JobData, 'vehicle' | 'plate' | 'concern'>;
@@ -256,6 +264,7 @@ const customerOut = (j: Job, shop: Shop) => ({
   events: j.data.events,
   approval: j.data.approval,
   notes: j.data.notes ?? [],
+  walkthroughs: j.data.walkthroughs ?? {},
   closed: !!j.data.closed,
   bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
 });
@@ -700,6 +709,28 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const msg = `Update on your ${vehicleName({ ...d, ...job.intake }) || 'car'} from ${shop.name}: ${text.length > 300 ? text.slice(0, 297) + '…' : text} Details: ${deps.linkBase}${job.token}`;
       d.messages.push(...await notifyCustomer(deps, shop, job, msg, now));
     }
+  } else if (action === 'walkthrough') {
+    const kind = body.kind === 'before' || body.kind === 'after' ? body.kind : null;
+    if (!kind) return bad('Choose the check-in or after-repair walk-through.');
+    const given = Array.isArray(body.items) ? body.items as Body[] : [];
+    const items: WalkItem[] = WALK_ITEMS.flatMap((key) => {
+      const it = given.find((x) => x && x.key === key);
+      if (!it || !['good', 'soon', 'now'].includes(it.status as string)) return [];
+      const note = str(it.note, 300);
+      return [{ key, status: it.status as WalkStatus, ...(note ? { note } : {}) }];
+    });
+    if (!items.length) return bad('Mark at least one item before saving.');
+    const mileage = str(body.mileage, 12).replace(/[^\d,]/g, '');
+    const summary = str(body.summary, 1000);
+    const w: Walkthrough = { t: now, by: ctx.displayName || ctx.userEmail || 'Shop staff', items, ...(mileage ? { mileage } : {}), ...(summary ? { summary } : {}) };
+    if (body.send) {
+      const n = (s: WalkStatus) => items.filter((i) => i.status === s).length;
+      const parts = [`${n('good')} good`, n('soon') ? `${n('soon')} to keep an eye on` : '', n('now') ? `${n('now')} that need${n('now') === 1 ? 's' : ''} attention now` : ''].filter(Boolean);
+      const msg = `${shop.name} finished the ${WALK_LABEL[kind]} walk-through of your ${vehicleName({ ...d, ...job.intake }) || 'car'}: ${parts.join(', ')}. See the full report: ${deps.linkBase}${job.token}`;
+      d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
+      w.sentAt = now;
+    }
+    (d.walkthroughs ??= {})[kind] = w;
   } else if (action === 'remove-note') {
     const before = d.notes?.length ?? 0;
     d.notes = (d.notes ?? []).filter((n) => n.id !== body.id);

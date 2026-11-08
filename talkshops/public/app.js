@@ -181,6 +181,7 @@
           <button type="button" id="customerPickPhoto" class="btn" ${j.photos.filter(p => p.source === "customer").length >= 6 ? "disabled" : ""}>Add photos</button>
           <small style="margin-left:10px">${j.photos.filter(p => p.source === "customer").length} of 6 photos added</small><p id="photoStatus" role="status" hidden></p></section>` : ""}
         ${billing.display(j.bill, j)}${est}
+        ${window.Walkthrough.customerCard(j)}
         ${(j.notes || []).length ? `<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p>${window.repairPhotoFor(n.text, "Part mentioned")}</li>`).join("")}</ul></div>` : ""}
         <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         ${j.concern ? `<div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
@@ -629,6 +630,7 @@
         ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
         ${j.concern ? `<section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div></section>` : ""}
         ${vehicleStr(j) && !j.closed && j.stage !== "picked_up" ? `<p class="howto-link"><button class="linkbtn" data-howto-job="${esc(j.id)}">Look up how to do a repair on this ${esc(vehicleStr(j))}</button></p>` : ""}
+        ${j.stage === "invited" && !j.intakeReceived ? "" : window.Walkthrough.sheetSection(j)}
         ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3>
           ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some((e) => e.status !== "pending") ? `<div class="total"><span>Approved total</span><span>${money(estTotal(j, true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}` : `<p class="muted" style="margin:0">No line items yet.</p>`}
           ${j.approval ? `<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>` : ""}
@@ -694,6 +696,7 @@
     if (ui.modal === "video") h += videoModal();
     else if (ui.modal?.billing) h += billing.editor(ui.modal.billing, shop, job(ui.modal.job));
     else if (ui.modal?.closeJob) h += closeModal();
+    else if (ui.modal?.walk) { const j = job(ui.modal.job); h += window.Walkthrough.editor(j, ui.modal.walk, { vehicle: vehicleStr(j) || j.ro, first: first(j.customer.name), consent: j.customer.consent, busy: ui.busy }); }
     else if (ui.modal) h += stageModal();
     const prev = $(".sheet-body"), keep = prev && prev.dataset.job === ui.openJob ? prev.scrollTop : null;
     $("#layer").innerHTML = h;
@@ -721,6 +724,8 @@
     const t = e.target.closest("button,[data-close],[data-open],[data-close-modal]");
     if (!t) return;
     if (t.dataset.queue) { ui.queue = t.dataset.queue; document.querySelectorAll("[data-queue]").forEach((b) => b.setAttribute("aria-pressed", String(b === t))); filterBoard(); return; }
+    if (ui.modal?.walk && window.Walkthrough.click(t, ui.modal.walk)) return;
+    if (t.dataset.walk) { const j = job(ui.openJob); if (j) { ui.modal = { walk: window.Walkthrough.draftFor(j, t.dataset.walk), job: j.id }; renderLayer(); } return; }
     if(t.hasAttribute("data-smart-ai")){
       const id=ui.openJob, at=job(id)?.messages.at(-1)?.t, input=$("#replyIn"), before=input.value;t.disabled=true;
       try {const result=await api("POST","shop/jobs/"+id+"/smart-draft",{at});
@@ -1002,6 +1007,14 @@
       }
       return;
     }
+    if (f.id === "walkForm") {
+      if (ui.busy) return;
+      const m = ui.modal, body = window.Walkthrough.body(m.walk);
+      if (!body.items.length) { toast("Mark at least one item first"); return; }
+      const j = await jobAction(m.job, "walkthrough", body);
+      if (j) { ui.modal = null; render(); toast("Walk-through saved" + (body.send ? ". " + sendResult(j) : " to the customer's page")); }
+      return;
+    }
     if (f.id === "noteForm") {
       if (ui.busy) return;
       dictation.stop();
@@ -1124,6 +1137,7 @@
   });
   document.addEventListener("input", (e) => {
     if (e.target.id === "noteIn" && ui.openJob) { ui.noteDraft[ui.openJob] = e.target.value; return; }
+    if (ui.modal?.walk && window.Walkthrough.input(e.target, ui.modal.walk)) return;
     if (e.target.id === "boardSearch") { ui.q = e.target.value; filterBoard(); return; }
     if (e.target.id === "archiveQ") { archive.q = e.target.value; clearTimeout(archiveTimer); archiveTimer = setTimeout(searchArchive, 250); return; }
     if (e.target.id === "li-item") delete e.target.form.dataset.pick;

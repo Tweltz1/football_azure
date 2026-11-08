@@ -401,6 +401,33 @@ test('technician notes show on the customer page and can text the customer', asy
   assert.deepEqual(page.notes.map((n) => n.text), ['Rotors are scored too.']);
 });
 
+test('before and after walk-throughs show on the customer page and can notify the customer', async () => {
+  const { as, texts } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string; link: string };
+  const sent = texts.length;
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/walkthrough`, { kind: 'during', items: [{ key: 'tires', status: 'good' }] }))?.status, 400);
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/walkthrough`, { kind: 'before', items: [{ key: 'tires', status: 'meh' }] }))?.status, 400);
+  const items = [
+    { key: 'tires', status: 'good' }, { key: 'brakes', status: 'now', note: '  Front pads at 2mm  ' }, { key: 'wipers', status: 'soon' },
+    { key: 'oil', status: 'good' }, { key: 'made-up', status: 'good' },
+  ];
+  const a = (await dan('POST', `shop/jobs/${job.id}/walkthrough`, { kind: 'before', items, mileage: '84,120 mi', summary: 'Brakes need work.' }))?.body as { walkthroughs: { before: { items: { key: string; note?: string }[]; mileage: string; sentAt?: string } } };
+  assert.equal(texts.length, sent, 'no notice unless asked');
+  assert.deepEqual(a.walkthroughs.before.items.map((i) => i.key), ['wipers', 'tires', 'brakes', 'oil'], 'kept in checklist order, unknown points dropped');
+  assert.equal(a.walkthroughs.before.items.find((i) => i.key === 'brakes')!.note, 'Front pads at 2mm');
+  assert.equal(a.walkthroughs.before.mileage, '84,120');
+  assert.equal(a.walkthroughs.before.sentAt, undefined);
+  await dan('POST', `shop/jobs/${job.id}/walkthrough`, { kind: 'after', items: [{ key: 'brakes', status: 'good' }, { key: 'tires', status: 'good' }], send: true });
+  assert.equal(texts.length, sent + 1);
+  assert.match(texts.at(-1)!.body, /Ridgeline finished the after-repair walk-through of your 2018 Honda Civic: 2 good\. See the full report: https:/);
+  const token = job.link.split('?c=')[1];
+  const page = (await as(null)('GET', `shop/c/${token}`))?.body as { walkthroughs: { before: { summary: string }; after: { sentAt: string } } };
+  assert.equal(page.walkthroughs.before.summary, 'Brakes need work.');
+  assert.ok(page.walkthroughs.after.sentAt);
+});
+
 test('how-to assistant needs a signed-in shop', async () => {
   const w = world();
   assert.equal((await w.as(null)('POST', 'shop/howto', { question: 'oil change' }))?.status, 401);
