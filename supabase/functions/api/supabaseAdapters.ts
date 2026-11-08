@@ -13,6 +13,7 @@ import type { CardGameRow, CardGameStore } from '../_shared/cards.ts';
 import { archivedAt, type ArchiveRow, type Job, type JobData, type Shop, type ShopStore } from '../_shared/shop.ts';
 import { DEFAULT_TRIAL, type PlanState } from '../_shared/shopPlans.ts';
 import type { AccountStore, AuthCode, CodeChannel, CodePurpose } from '../_shared/shopAccount.ts';
+import type { Invite, Member, Role, StaffStore } from '../_shared/shopStaff.ts';
 
 const rowToStored = (row: { data: League; version: number }): StoredLeague => ({ league: row.data, version: Number(row.version) });
 
@@ -518,6 +519,70 @@ export function createAccountStore(db: SupabaseClient): AccountStore {
       const { error } = await db.from('talkshops_auth_codes').update({
         ...(patch.attempts !== undefined ? { attempts: patch.attempts } : {}), ...(patch.usedAt ? { used_at: patch.usedAt } : {}),
       }).eq('id', id);
+      if (error) throw error;
+    },
+  };
+}
+
+// Talk Shops staff roles and invites (shopStaff.ts).
+interface MemberDb { user_id: string; shop_id: string; role: Role; email: string; name: string; added_at: string }
+interface InviteDb { id: string; shop_id: string; email: string; name: string; role: Role; token_hash: string; invited_by: string | null; created_at: string; expires_at: string; accepted_at: string | null }
+const memberRow = (r: MemberDb): Member => ({ userId: r.user_id, shopId: r.shop_id, role: r.role, email: r.email, name: r.name, addedAt: r.added_at });
+const inviteRow = (r: InviteDb): Invite => ({
+  id: r.id, shopId: r.shop_id, email: r.email, name: r.name, role: r.role, tokenHash: r.token_hash, invitedBy: r.invited_by,
+  createdAt: r.created_at, expiresAt: r.expires_at, acceptedAt: r.accepted_at,
+});
+
+export function createStaffStore(db: SupabaseClient): StaffStore {
+  return {
+    async memberOf(userId) {
+      const { data, error } = await db.from('repair_shop_members').select('*').eq('user_id', userId).maybeSingle();
+      if (error) throw error;
+      return data ? memberRow(data as MemberDb) : null;
+    },
+    async listMembers(shopId) {
+      const { data, error } = await db.from('repair_shop_members').select('*').eq('shop_id', shopId).order('added_at');
+      if (error) throw error;
+      return (data as MemberDb[]).map(memberRow);
+    },
+    async addMember(m) {
+      const { error } = await db.from('repair_shop_members').insert({ user_id: m.userId, shop_id: m.shopId, role: m.role, email: m.email, name: m.name, added_at: m.addedAt });
+      if (error?.code === '23505') return false;
+      if (error) throw error;
+      return true;
+    },
+    async setRole(shopId, userId, role) {
+      const { error } = await db.from('repair_shop_members').update({ role }).eq('shop_id', shopId).eq('user_id', userId);
+      if (error) throw error;
+    },
+    async removeMember(shopId, userId) {
+      const { error } = await db.from('repair_shop_members').delete().eq('shop_id', shopId).eq('user_id', userId);
+      if (error) throw error;
+    },
+    async saveInvite(i) {
+      const { error } = await db.from('repair_shop_invites').insert({
+        id: i.id, shop_id: i.shopId, email: i.email, name: i.name, role: i.role, token_hash: i.tokenHash, invited_by: i.invitedBy,
+        created_at: i.createdAt, expires_at: i.expiresAt, accepted_at: i.acceptedAt,
+      });
+      if (error) throw error;
+    },
+    async listInvites(shopId) {
+      const { data, error } = await db.from('repair_shop_invites').select('*').eq('shop_id', shopId).is('accepted_at', null).order('created_at', { ascending: false }).limit(100);
+      if (error) throw error;
+      return (data as InviteDb[]).map(inviteRow);
+    },
+    async inviteByHash(hash) {
+      const { data, error } = await db.from('repair_shop_invites').select('*').eq('token_hash', hash).maybeSingle();
+      if (error) throw error;
+      return data ? inviteRow(data as InviteDb) : null;
+    },
+    async claimInvite(id, at) {
+      const { data, error } = await db.from('repair_shop_invites').update({ accepted_at: at }).eq('id', id).is('accepted_at', null).select('id').maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
+    async deleteInvite(shopId, id) {
+      const { error } = await db.from('repair_shop_invites').delete().eq('shop_id', shopId).eq('id', id);
       if (error) throw error;
     },
   };

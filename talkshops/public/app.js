@@ -221,14 +221,39 @@
     }
     shop.rates = rates;
   }
+  let role = null, mainOwner = false;
+  const isOwner = () => role === "owner";
+  const team = window.createShopTeam({ esc, api: (...a) => api(...a), toast: (m) => toast(m) });
+  // Staff invite link: /?join=<token>. Kept in this browser until it's used, so it survives signing up by email.
+  const JOIN_KEY = "talkshops-join";
+  const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) { /* private mode */ } } };
+  let joinToken = new URLSearchParams(location.search).get("join") || store.get(JOIN_KEY) || "";
+  if (!/^[A-Za-z0-9_-]{20,64}$/.test(joinToken)) joinToken = "";
+  store.set(JOIN_KEY, joinToken);
+  const join = { info: null, err: "" };
+  const authRedirect = () => location.origin + "/" + (joinToken ? "?join=" + encodeURIComponent(joinToken) : "");
   let session = null, shop = null, emailConfigured = false, jobs = [], loaded = false, loadErr = "";
   const job = (id) => jobs.find((j) => j.id === id);
   const upsertJob = (j) => { const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
 
+  async function acceptInvite() {
+    if (!joinToken) return;
+    try {
+      const r = await api("POST", "shop/join/" + encodeURIComponent(joinToken));
+      setTimeout(() => toast(`Welcome to ${r.shopName}. You're signed in as ${r.role === "owner" ? "an owner" : "a technician"}.`), 400);
+      join.err = "";
+    } catch (e) { join.err = e.message; }
+    joinToken = ""; store.set(JOIN_KEY, "");
+    const q = new URLSearchParams(location.search);
+    if (q.has("join")) { q.delete("join"); history.replaceState(history.state, "", "/" + (q.toString() ? "?" + q : "") + location.hash); }
+  }
+
   async function loadShop() {
     try {
+      await acceptInvite();
       const me = await api("GET", "shop/me");
       shop = me.shop; emailConfigured = !!me.emailConfigured; plan = me.plan || null;
+      role = me.role || null; mainOwner = !!me.mainOwner;
       jobs = shop ? await api("GET", "shop/jobs") : [];
       loadErr = "";
     } catch (e) { loadErr = e.message; }
@@ -241,7 +266,7 @@
     const app = $("#app"), chrome = $("#shopChrome");
     document.title = "Talk Shops" + (shop ? " · " + shop.name : "");
     // The sign-in page is /?login (a real file the host always serves); /login forwards there.
-    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login");
+    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join");
     if (!session) {
       chrome.hidden = true;
       if (onLoginPage) document.title = "Shop sign in · Talk Shops";
@@ -252,12 +277,17 @@
     if (onLoginPage) { const q = new URLSearchParams(location.search); q.delete("login"); history.replaceState(history.state, "", "/" + (q.toString() ? "?" + q : "") + location.hash); }
     if (!loaded) { chrome.hidden = true; app.innerHTML = `<div class="loading">Loading your shop…</div>`; return; }
     if (!shop) { chrome.hidden = true; app.innerHTML = setupView(true); renderLayer(); return; }
+    if (!isOwner() && ui.view === "plan") ui.view = "board";
     chrome.hidden = false;
     $("#shopName").textContent = shop.name;
     $("#bayTab").textContent = bayName();
     document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.view === ui.view ? "page" : "false"));
-    const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "") + (ui.view === "plan" || ui.view === "training" ? "" : planUi.banner(plan));
-    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : boardView());
+    const planTab = document.querySelector('.tab[data-view="plan"]'); if (planTab) planTab.hidden = !isOwner();
+    $("#shopName").textContent = shop.name + (isOwner() ? "" : " · Technician");
+    const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "")
+      + (join.err ? `<div class="notice">${esc(join.err)}</div>` : "")
+      + (ui.view === "plan" || ui.view === "training" ? "" : isOwner() ? planUi.banner(plan) : techBanner(plan));
+    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? (isOwner() ? setupView(false) : techSettingsView()) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : boardView());
     if (ui.view === "board") filterBoard();
     if (ui.view === "settings" && !recovery.data && !recovery.loading && !recovery.err) loadRecovery();
     if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
@@ -322,12 +352,13 @@
     const signup = ui.authMode === "signup";
     return `<div class="login-wrap"><section class="login">
       ${brand()}
-      <h2>${signup ? "Create your shop account" : "Shop sign in"}</h2>
+      ${joinBanner()}
+      <h2>${signup ? (joinToken ? "Create your account" : "Create your shop account") : "Shop sign in"}</h2>
       ${sb ? "" : `<p class="form-err">Sign-in isn't available on this copy of the site.</p>`}
       <button class="btn google" id="google" type="button">${googleIcon} Continue with Google</button>
       <div class="or">or use email</div>
       <form class="auth-alt" id="emailForm">
-        <label class="field">Work email<input id="au-email" type="email" required autocomplete="username"></label>
+        <label class="field">Work email<input id="au-email" type="email" required autocomplete="username" value="${esc(join.info?.email || "")}"></label>
         <label class="field">Password<input id="au-pass" type="password" required minlength="8" autocomplete="${signup ? "new-password" : "current-password"}"></label>
         <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create account" : "Sign in"}</button>
       </form>
@@ -390,6 +421,7 @@
     const s = shop || {};
     return `<div class="${firstTime ? "login-wrap" : ""}"><form class="${firstTime ? "login" : "panel"}" id="setupForm">
       ${firstTime ? brand() : ""}
+      ${firstTime && join.err ? `<p class="form-err" role="alert">${esc(join.err)}</p><p class="muted" style="margin:0">Joining someone else's shop? Ask the owner to send a new invite to the email you signed in with. Or set up your own shop below.</p>` : ""}
       <h2>${firstTime ? "Set up your shop" : "Shop settings"}</h2>
       <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
@@ -398,7 +430,32 @@
       <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
       ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Saved items: labor, parts and fees (import Excel or CSV)</button>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign out</button>` : ""}</div>
-    </form>${firstTime ? "" : recoveryPanel()}</div>`;
+    </form>${firstTime ? "" : team.panel(render) + recoveryPanel()}</div>`;
+  }
+
+  function joinBanner() {
+    if (!joinToken) return "";
+    if (join.err) return `<p class="form-err" role="alert">${esc(join.err)}</p>`;
+    if (!join.info) return `<p class="muted" style="margin:0">Checking your invite…</p>`;
+    const i = join.info;
+    return `<div class="join-note" role="status"><b>${esc(i.shopName)}</b> invited you to join as ${i.role === "owner" ? "an Owner" : "a Technician"}.
+      ${ui.authMode === "signup" ? "Create your account" : "Sign in or create an account"} with <b>${esc(i.email)}</b> and the shop opens for you.</div>`;
+  }
+
+  // Technicians see the shop's details but can't change them; the reset phone is their own.
+  function techSettingsView() {
+    const s = shop || {};
+    const row = (k, v) => v ? `<div class="ro-row"><span class="muted">${k}</span><b>${esc(v)}</b></div>` : "";
+    return `<div><section class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <h2>Shop settings</h2>
+      ${row("Shop name", s.name)}${row("Shop phone", s.phone)}${row("Hours", s.hours)}${row("Shop email", s.email)}
+      <p class="muted" style="margin:0">You're signed in as a <b>technician</b>. A shop owner can change these details, prices, the plan and the team.</p>
+    </section>${recoveryPanel()}</div>`;
+  }
+
+  function techBanner(p) {
+    if (!p || p.canWork) return "";
+    return `<div class="plan-banner ended"><span><b>Customer updates are paused.</b> The shop's plan needs attention. Ask a shop owner to open the Plan tab.</span></div>`;
   }
 
   function boardView() {
@@ -493,7 +550,7 @@
           <span class="a-who">${esc(r.customer?.name || "")}${r.customer?.phone ? " · " + esc(fmtPhone(r.customer.phone)) : ""}${r.customer?.email ? " · " + esc(r.customer.email) : ""}</span>
           <span class="a-concern">${esc(r.concern || "")}</span>
           <span class="a-meta"><span class="mono">${esc(r.ro)}</span><span>${r.closedReason ? `<span class="pill bad">Closed</span> ${esc(r.closedReason)},` : "Picked up"} ${esc(new Date(ts(r.archivedAt)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }))}</span>${r.total ? `<span>${money(r.total)}</span>` : ""}<span class="muted">Deletes ${deleteDate(r.archivedAt)}</span></span>
-        </button><button class="archive-del" data-delete-archived="${esc(r.id)}" aria-label="Delete ${esc(r.ro)} permanently">Delete</button></li>`;
+        </button>${isOwner() ? `<button class="archive-del" data-delete-archived="${esc(r.id)}" aria-label="Delete ${esc(r.ro)} permanently">Delete</button>` : ""}</li>`;
       }).join("")}</ul>`;
   }
   let archiveTimer;
@@ -547,16 +604,16 @@
 
   function sheetView(j) {
     const idx = SI[j.stage];
-    const steps = STAGES.map((s, i) => s.key === "invited" || (j.stage === "invited" && (s.key !== "checked_in" || !j.intakeReceived)) ? "" : `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "current" : ""}" data-stage="${s.key}" ${i === idx ? 'aria-current="step"' : ""}>${s.key === "approval" && i === idx ? estimateOutcome(j) || s.label : s.label}</button>`).join("");
+    const steps = STAGES.map((s, i) => s.key === "invited" || (j.stage === "invited" && (s.key !== "checked_in" || !j.intakeReceived)) ? "" : `<button class="step ${i < idx ? "done" : ""} ${i === idx ? "current" : ""}" data-stage="${s.key}" ${i === idx ? 'aria-current="step"' : ""} ${s.key === "approval" && !isOwner() && i !== idx ? 'disabled title="A shop owner sends the estimate for approval"' : ""}>${s.key === "approval" && i === idx ? estimateOutcome(j) || s.label : s.label}</button>`).join("");
     const next = STAGES[idx + 1];
     const rows = j.estimate.map((e) => `<tr><td>${esc(e.item)}${chargeDetail(e)}<div class="pri-cell">${e.status === "pending" ? `<select class="pri-sel" data-pri="${esc(e.id)}" aria-label="Priority for ${esc(e.item)}">${priOptions(e.priority)}</select>` : priPill(e)}</div>${window.repairGuideFor(e.item)}</td><td>${e.status === "pending" ? '<span class="pill warn">Pending</span>' : e.status === "approved" ? '<span class="pill ok">Approved</span>' : '<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status === "pending" && j.stage !== "approval" ? `<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>` : ""}</td></tr>`).join("");
     const log = [...j.events].reverse().map((e) => `<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
     return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
       <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(j.customer.name)} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
       <div class="sheet-body" data-job="${esc(j.id)}">
-        ${j.closed ? `<section class="sec closed-note"><p><b>Closed without repair</b> · ${esc(j.closed.reason)} · ${dayClock(j.closed.t)}</p><p class="muted">This car is in the Archive.</p><div class="btn-row"><button class="btn" data-reopen>Reopen and put back on the board</button><button class="btn danger" data-delete-job>Delete permanently</button></div></section>` : ""}
+        ${j.closed ? `<section class="sec closed-note"><p><b>Closed without repair</b> · ${esc(j.closed.reason)} · ${dayClock(j.closed.t)}</p><p class="muted">This car is in the Archive.</p>${isOwner() ? `<div class="btn-row"><button class="btn" data-reopen>Reopen and put back on the board</button><button class="btn danger" data-delete-job>Delete permanently</button></div>` : ""}</section>` : ""}
         <section class="sec"><h3>Stage</h3><div class="stepper">${steps}</div>
-          <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer's page</a>${j.stage !== "picked_up" && !j.closed ? `<button class="btn" data-close-job>Close without repair</button>` : ""}</div>
+          <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) && (next.key !== "approval" || isOwner()) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer's page</a>${j.stage !== "picked_up" && !j.closed && isOwner() ? `<button class="btn" data-close-job>Close without repair</button>` : ""}</div>
           ${j.stage === "parts" ? `<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
         </section>
         ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
@@ -569,15 +626,15 @@
             <div class="est-add-h">Quick add</div>
             <form class="add-line" id="addLine"><span class="suggest-wrap"><input id="li-item" data-suggest="quick" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="${(shop.rates || []).length ? "Type or pick a saved item" : "Item, e.g. Cabin air filter"}" aria-label="Line item"><button type="button" class="suggest-btn" data-suggest-open aria-label="Show saved items" ${(shop.rates || []).length ? "" : "hidden"}>▾</button></span><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button>
               <label class="pri-pick">Priority<select id="li-pri">${priOptions(ui.lastPri)}</select></label>
-              <label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label></form>
+              ${isOwner() ? `<label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label>` : ""}</form>
             <div class="est-add-or"><span>or</span></div>
             <button class="btn est-add-more" type="button" data-billing="quote">Add labor, parts or fees with hours and rates</button>
           </div>
-          ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? `<button class="btn primary est-send" data-stage="approval">Send estimate for approval</button>` : ""}
+          ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? (isOwner() ? `<button class="btn primary est-send" data-stage="approval">Send estimate for approval</button>` : `<p class="muted est-send-note">A shop owner reviews these lines and sends the estimate to ${esc(first(j.customer.name))}.</p>`) : ""}
         </section>
         <section class="sec"><h3>Final bill</h3>
-          ${j.bill ? `<p>${j.bill.mode === "upload" ? "Shop PDF" : "Itemized bill"} · ${money(j.bill.total)}</p>` : ""}
-          <div class="btn-row"><button class="btn" data-billing="generated">${j.bill?.mode === "generated" ? "Edit itemized bill" : "Create itemized bill"}</button><button class="btn" data-billing="upload">Upload shop PDF</button>${j.bill?.mode==="upload" ? '<button class="linkbtn" data-billing="download">Download current PDF</button>' : ""}</div>
+          ${j.bill ? `<p>${j.bill.mode === "upload" ? "Shop PDF" : "Itemized bill"} · ${money(j.bill.total)}</p>` : isOwner() ? "" : `<p class="muted" style="margin:0">No final bill yet. A shop owner creates it.</p>`}
+          <div class="btn-row">${isOwner() ? `<button class="btn" data-billing="generated">${j.bill?.mode === "generated" ? "Edit itemized bill" : "Create itemized bill"}</button><button class="btn" data-billing="upload">Upload shop PDF</button>` : ""}${j.bill?.mode==="upload" ? '<button class="linkbtn" data-billing="download">Download current PDF</button>' : ""}</div>
         </section>`}
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
           <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
@@ -589,7 +646,7 @@
         <section class="sec"><h3>Messages</h3><div class="thread">${j.messages.map((m) => bubble(m, j)).join("") || '<p class="muted">No messages yet.</p>'}</div>
           <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto auto"><input id="replyIn" maxlength="1000" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button type="button" class="btn mic" data-dictate="#replyIn" aria-pressed="false" aria-label="Voice typing"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button class="btn primary" type="submit">Send</button></form></section>
         <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
-        <section class="sec danger-zone"><button class="linkbtn danger" data-delete-job>Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></section>
+        ${isOwner() ? `<section class="sec danger-zone"><button class="linkbtn danger" data-delete-job>Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></section>` : ""}
       </div></aside>`;
   }
 
@@ -613,7 +670,7 @@
       <p class="muted" style="margin:0">Notify ${esc(j.customer.name)} at ${esc(contact(j.customer))}</p>
       ${m.stage === "parts" ? `<label class="field">Parts ETA<input id="m-eta" value="${esc(m.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
       ${m.stage === "ready" ? `<div><strong>Final bill</strong><p>${j.bill ? money(j.bill.total) + " due at pickup" : "Optional. Customers can open their bill from the pickup link."}</p>
-        <div class="btn-row"><button class="btn" type="button" data-billing="generated">Create / edit bill</button><button class="btn" type="button" data-billing="upload">Upload shop PDF</button></div></div>` : ""}
+        ${isOwner() ? `<div class="btn-row"><button class="btn" type="button" data-billing="generated">Create / edit bill</button><button class="btn" type="button" data-billing="upload">Upload shop PDF</button></div>` : ""}</div>` : ""}
       <label class="field">Message<textarea id="m-text" maxlength="1000">${esc(m.text)}</textarea></label>
       <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent ? "checked" : "disabled"}> Notify customer ${j.customer.consent ? "" : "(customer has not agreed to notifications)"}</label>
       <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Update stage</button><button class="btn" type="button" data-cancel>Cancel</button></div>
@@ -631,6 +688,7 @@
     $("#layer").innerHTML = h;
     if (keep !== null && $(".sheet-body")) { $(".sheet").classList.add("no-anim"); $(".sheet-body").scrollTop = keep; }
     suggest.refresh();
+    if (!isOwner()) $('#billingForm [name="saveItems"]')?.closest("label")?.remove();
     if (ui.modal?.billing) billing.updateTotal($("#billingForm"));
   }
 
@@ -686,7 +744,7 @@
     if (t.id === "watchDemo") { ui.modal = "video"; renderLayer(); return; }
     if (t.id === "google") {
       if (!sb) return;
-      await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: location.origin + "/", queryParams: { prompt: "select_account" } } });
+      await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo: authRedirect(), queryParams: { prompt: "select_account" } } });
       return;
     }
     if (t.id === "forgotPw") { ui.authMode = "forgot"; ui.reset = { step: "ask", email: $("#au-email")?.value.trim() || "" }; ui.authErr = ui.authMsg = ""; render(); $("#fp-email")?.focus(); return; }
@@ -705,6 +763,7 @@
     if (t.dataset.archiveOpen) { openArchived(t.dataset.archiveOpen); return; }
     if (t.hasAttribute("data-archive-retry")) { archive.error = ""; renderArchiveRows(); searchArchive(); return; }
     if (t.hasAttribute("data-suggest-open")) return;
+    if (await team.click(t, render)) return;
     if (await planUi.click(t, render)) return;
     if (howTo.click(t, render)) return;
     if (t.dataset.howtoJob) { const j = job(t.dataset.howtoJob); if (j) howTo.openFor(j); ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); return; }
@@ -775,6 +834,7 @@
     e.preventDefault();
     const f = e.target;
     if (howTo.submit(f, render)) return;
+    if (await team.submit(f, render)) return;
     if (f.id === "billingForm") {
       if (ui.busy) return;
       const m = ui.modal, submit = f.querySelector('[type="submit"]');
@@ -845,7 +905,7 @@
       const email = $("#au-email").value.trim(), password = $("#au-pass").value;
       ui.busy = true; ui.authErr = ui.authMsg = ""; render();
       if (ui.authMode === "signup") {
-        const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + "/" } });
+        const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: authRedirect() } });
         if (error) ui.authErr = error.message;
         else if (!data.session) ui.authMsg = "Check your email for a link to finish creating your account.";
       } else {
@@ -858,7 +918,7 @@
     if (f.id === "setupForm") {
       const body = { name: $("#sh-name").value, phone: $("#sh-phone").value, hours: $("#sh-hours").value, email: $("#sh-email").value };
       const r = await act(() => api("POST", "shop/me", body), "Saved");
-      if (r) { shop = r.shop; if (r.plan) plan = r.plan; ui.view = "board"; render(); }
+      if (r) { shop = r.shop; if (r.plan) plan = r.plan; if (r.role) { role = r.role; mainOwner = !!r.mainOwner; } ui.view = "board"; render(); }
       return;
     }
     if (f.id === "intakeForm") {
@@ -911,7 +971,7 @@
       const item = $("#li-item").value.trim(), price = parseFloat($("#li-price").value.replace(/[$,]/g, ""));
       if (!item || !(price >= 0)) { toast("Enter an item and a price"); return; }
       let pick = null; try { pick = f.dataset.pick ? JSON.parse(f.dataset.pick) : null; } catch { /* none */ }
-      const save = $("#li-save").checked;
+      const save = !!$("#li-save")?.checked;
       const priority = ui.lastPri = $("#li-pri")?.value || "recommended";
       const body = pick && pick.name === item ? { charge: { name: item, kind: pick.kind, rate: Math.round(price * 100) / 100, qty: 1 }, save, priority } : { item, price, save, priority };
       if (await jobAction(ui.openJob, "estimate", body)) {
@@ -1016,6 +1076,7 @@
     }
   }
   document.addEventListener("change", (e) => {
+    if (e.target.dataset?.teamRole) { team.change(e.target, render); return; }
     if (e.target.dataset?.pri && ui.openJob) { jobAction(ui.openJob, "estimate", { setPriority: e.target.dataset.pri, priority: e.target.value }, "Priority updated"); return; }
     if (e.target.id === "intakePhotoIn") return uploadIntakePhotos(e.target);
     if (e.target.id === "c-send") { $("#c-text-wrap").hidden = !e.target.checked; return; }
@@ -1059,6 +1120,13 @@
     return;
   }
   if (!sb) { render(); return; }
+  if (joinToken) {
+    if (new URLSearchParams(location.search).has("join")) ui.authMode = "signup";
+    api("GET", "shop/join/" + encodeURIComponent(joinToken))
+      .then((i) => { join.info = i; })
+      .catch((e) => { join.err = e.message; joinToken = ""; store.set(JOIN_KEY, ""); })
+      .finally(() => { if (!session) { render(); const em = $("#au-email"); if (em && join.info && !em.value) em.value = join.info.email; } });
+  }
   // Back from Stripe: say so, and refresh the plan a few times while Stripe's confirmation arrives.
   const planNote = planUi.returned();
   if (planNote) {
@@ -1069,7 +1137,7 @@
     const was = session?.user?.id;
     session = s;
     if (s && s.user.id !== was) { loaded = false; render(); loadShop(); }
-    else if (!s) { Object.assign(recovery, { data: null, pending: "", err: "" }); shop = null; jobs = []; loaded = false; ui.openJob = null; ui.modal = ui.modal === "video" ? "video" : null; render(); }
+    else if (!s) { Object.assign(recovery, { data: null, pending: "", err: "" }); team.reset(); role = null; mainOwner = false; join.err = ""; shop = null; jobs = []; loaded = false; ui.openJob = null; ui.modal = ui.modal === "video" ? "video" : null; render(); }
   });
   sb.auth.getSession().then(({ data }) => { if (!data.session) render(); });
   setInterval(async () => {

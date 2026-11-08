@@ -45,6 +45,8 @@ export interface Ctx {
   userId: string | null;
   /** Name from the sign-in provider, used when a profile is first created. */
   displayName: string | null;
+  /** Signed-in user's email (Talk Shops staff invites check it). */
+  userEmail?: string | null;
 }
 
 export interface Res {

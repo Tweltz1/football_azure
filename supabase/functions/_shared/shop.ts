@@ -8,6 +8,7 @@ import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, HOWTO_PRO_MESSAGE, loc
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { howToRoute } from './shopHowTo.ts';
 import { accountRoute, type AccountStore } from './shopAccount.ts';
+import { ownerOnly, staffRoute, type Seat, type StaffStore } from './shopStaff.ts';
 import type { Narrator } from './dnd.ts';
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
 
@@ -169,6 +170,8 @@ export interface ShopDeps {
   account?: AccountStore | null;
   /** Test hook: predictable reset codes. */
   newCode?: () => string;
+  /** Owners and technicians (shopStaff.ts). Without it, only the account that created the shop can sign in to it. */
+  staff?: StaffStore | null;
 }
 
 export const DEMO_SHOP_ID = 'demo-shop';
@@ -389,16 +392,32 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   const accountRes = await accountRoute(ctx, deps, method, parts, body, normalizePhone);
   if (accountRes) return accountRes;
 
+  // ---- Which shop the signed-in account works at, and as what ----
+  const whoAmI = async (): Promise<{ shop: Shop; seat: Seat } | null> => {
+    if (!ctx.userId) return null;
+    const owned = await store.shopByOwner(ctx.userId);
+    if (owned) return { shop: owned, seat: { role: 'owner', primary: true } };
+    const m = await deps.staff?.memberOf(ctx.userId);
+    const shop = m ? await store.shopById(m.shopId) : null;
+    return m && shop ? { shop, seat: { role: m.role, primary: false } } : null;
+  };
+
+  // ---- Staff invites and the Team panel ----
+  const staffRes = await staffRoute(ctx, deps, method, parts, body, whoAmI, (id) => store.shopById(id));
+  if (staffRes) return staffRes;
+
   // ---- Shop staff (signed in) ----
   if (!ctx.userId) return { status: 401, body: 'Sign in first.' };
 
   if (parts[1] === 'me') {
-    const shop = await store.shopByOwner(ctx.userId);
+    const mine = await whoAmI();
+    const shop = mine?.shop ?? null;
     if (method === 'GET') {
       if (shop) await store.purgeArchive?.(shop.id, archiveCutoff(ctx.now())).catch((e) => ctx.log.warn('archive purge failed', { error: String(e) }));
-      return ok({ shop: shop && publicShop(shop), emailConfigured: !!deps.email, plan: shop ? await planOut(deps, shop, ctx.now()) : null });
+      return ok({ shop: shop && publicShop(shop), role: mine?.seat.role ?? null, mainOwner: mine?.seat.primary ?? false, emailConfigured: !!deps.email, plan: shop ? await planOut(deps, shop, ctx.now()) : null });
     }
     if (method === 'POST') {
+      if (mine && mine.seat.role !== 'owner') return ownerOnly();
       const name = str(body.name, 80);
       if (!name) return bad('Enter your shop name.');
       if (body.email !== undefined && str(body.email, 254) && !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(str(body.email, 254))) return bad('Enter a valid shop email, or leave it blank.');
@@ -406,7 +425,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (!Array.isArray(rates) || rates.length > 250 || !rates.every(validRate)) return bad('Check your rate list (up to 250 rates).');
       const next: Shop = {
         id: shop?.id ?? ctx.newId(),
-        ownerId: ctx.userId, rates: rates.map(copyRate),
+        ownerId: shop?.ownerId ?? ctx.userId, rates: rates.map(copyRate),
         name,
         phone: str(body.phone, 30),
         hours: str(body.hours, 60),
@@ -414,19 +433,23 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         createdAt: shop?.createdAt ?? now,
       };
       await store.putShop(next);
+      if (!shop) await deps.staff?.addMember({ userId: ctx.userId, shopId: next.id, role: 'owner', email: (ctx.userEmail ?? '').toLowerCase(), name: ctx.displayName ?? '', addedAt: now })
+        .catch((e) => ctx.log.warn('owner member row not saved', { error: String(e) }));
       if (!shop && store.startTrial) {
         const trial = await settings(deps);
         await store.startTrial(next.id, new Date(ctx.now().getTime() + trial.trialDays * 86_400_000).toISOString());
       }
       const saved = (await store.shopById(next.id)) ?? next;
-      return ok({ shop: publicShop(saved), plan: await planOut(deps, saved, ctx.now()) });
+      return ok({ shop: publicShop(saved), role: 'owner', mainOwner: mine?.seat.primary ?? true, plan: await planOut(deps, saved, ctx.now()) });
     }
     return { status: 405 };
   }
 
   if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan' && parts[1] !== 'howto') return { status: 404 };
-  const shop = await store.shopByOwner(ctx.userId);
-  if (!shop) return { status: 409, body: 'Set up your shop first.' };
+  const mine = await whoAmI();
+  if (!mine) return { status: 409, body: 'Set up your shop first.' };
+  const { shop } = mine;
+  const owner = mine.seat.role === 'owner';
 
   if (parts[1] === 'howto') {
     if (parts.length !== 2) return { status: 404 };
@@ -434,6 +457,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return howToRoute(ctx, deps.howTo, shop.id, method, body);
   }
 
+  if (parts[1] === 'plan' && method !== 'GET' && !owner) return ownerOnly();
   if (parts[1] === 'plan') return planRoute(ctx, deps, shop, method, parts[2], body);
   const acc = access(shop.plan, ctx.now(), await settings(deps));
 
@@ -512,11 +536,16 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   }
   if (method === 'GET' && !action) return ok(jobOut(job, deps.linkBase));
   if (method === 'DELETE' && !action) {
+    if (!owner) return ownerOnly();
     if (!store.deleteJob) return { status: 503, body: 'Deleting is unavailable.' };
     await store.deleteJob(job.id);
     return ok({ deleted: job.id });
   }
   if (method !== 'POST') return { status: 405 };
+  // Technicians work the car; final bills, closing a repair and sending the estimate for approval are owner jobs.
+  if (!owner && (action === 'bill' || action === 'close' || action === 'reopen' || (action === 'stage' && body.stage === 'approval'))) return ownerOnly();
+  // Only owners add to the shop's saved price list.
+  if (!owner) delete body.save;
   if (!acc.canWork && action !== 'close' && action !== 'reopen') return { status: 402, body: lockedMessage(acc) };
   const d = job.data;
 

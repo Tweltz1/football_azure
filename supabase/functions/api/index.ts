@@ -15,7 +15,7 @@ import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator
 import { HOWTO_SCHEMA } from '../_shared/shopHowTo.ts';
 import { createTurn } from './turn.ts';
 import {
-  createAccountStore, createAskLogStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
+  createAccountStore, createAskLogStore, createStaffStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
 } from './supabaseAdapters.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -37,6 +37,7 @@ const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('Gemini_API_KE
 const shop: ShopDeps = {
   store: createShopStore(db),
   account: createAccountStore(db),
+  staff: createStaffStore(db),
   email: createShopEmailSender(Deno.env.get('RESEND_API_KEY'), Deno.env.get('TALKSHOPS_EMAIL_FROM')),
   sms: createTwilioSender(Deno.env.get('TWILIO_ACCOUNT_SID'), Deno.env.get('TWILIO_AUTH_TOKEN'), Deno.env.get('TWILIO_FROM')),
   linkBase: Deno.env.get('SHOP_LINK_BASE') || 'https://talkshops.app/?c=',
@@ -83,6 +84,7 @@ const log = {
 interface SignedInUser {
   id: string;
   displayName: string | null;
+  email: string | null;
 }
 
 async function getSignedInUser(req: Request): Promise<SignedInUser | null> {
@@ -98,6 +100,7 @@ async function getSignedInUser(req: Request): Promise<SignedInUser | null> {
   return {
     id: data.user.id,
     displayName: pick('user_name', 'preferred_username', 'full_name', 'name') ?? data.user.email ?? null,
+    email: data.user.email ?? null,
   };
 }
 
@@ -147,6 +150,7 @@ Deno.serve(async (req) => {
       fetchJson,
       userId: user?.id ?? null,
       displayName: user?.displayName ?? null,
+      userEmail: user?.email ?? null,
     };
 
     const parts = path.split('/').filter(Boolean).map((p) => decodeURIComponent(p));

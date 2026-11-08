@@ -1,0 +1,21 @@
+/* Team panel (Settings) and the invite note on the sign-in page. */
+.team-panel{margin-top:18px;display:flex;flex-direction:column;gap:12px}
+.team-list{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.team-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px 14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.team-who{display:flex;flex-direction:column;min-width:0}
+.team-who b,.team-who small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-who small{color:var(--muted);font-size:13px}
+.team-who .pill{align-self:flex-start;margin-top:2px}
+.team-role{display:flex;align-items:center;gap:6px;font-size:14px;white-space:nowrap}
+.team-role select{padding:5px 8px}
+.team-act{display:flex;gap:12px;justify-content:flex-end}
+.team-form{display:flex;flex-direction:column;gap:10px;padding-top:4px}
+.team-form h3{margin:0;font-size:16px}
+.team-link{display:flex;flex-direction:column;gap:8px}
+.team-copy{display:flex;gap:8px}
+.team-copy input{flex:1;min-width:0;font-family:var(--f-mono,ui-monospace,monospace);font-size:13px}
+.join-note{background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:10px 12px;font-size:14.5px;line-height:1.45}
+.ro-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.est-send-note{margin:10px 0 0;font-size:13.5px}
+.step:disabled{opacity:.55;cursor:not-allowed}
+@media (max-width:560px){.team-row{grid-template-columns:minmax(0,1fr) auto}.team-act{grid-column:1/-1;justify-content:flex-start}}

@@ -35,3 +35,11 @@ New shops start a free trial; shops created before plans existed have no limits 
 - Stripe webhook endpoint: `https://<project>.supabase.co/functions/v1/api/shop/stripe-webhook`, events
   `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`.
 - Turn on the customer portal once in Stripe (Settings → Billing → Customer portal) so Manage billing works.
+
+## Owners and technicians
+
+Each sign-in account belongs to one shop, as an **Owner** or a **Technician** (`supabase/functions/_shared/shopStaff.ts`,
+tables `repair_shop_members` and `repair_shop_invites`). The account that created the shop is its main owner and can't be
+removed. Owners invite staff from Settings → Team; the email (Resend) links to `/?join=<token>`, and the person must sign in
+with the invited email. The API enforces the roles: technicians can't change settings or saved prices, use Plan checkout or
+billing, create final bills, close, reopen or delete repairs, send an estimate for approval, or manage the team.
