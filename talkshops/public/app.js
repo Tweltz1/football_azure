@@ -386,7 +386,7 @@
       </div></header>
       <section class="front-hero" id="top"><div class="front-inner">
         <div class="front-intro"><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
-          <p>Send repair updates, share photos and collect signed estimates through one link. Your customer opens it on their phone.</p>
+          <p>Give customers a place to check repair progress before they call. Send a private link by text or email so they can see photos, approve work and open their final bill. No customer account required.</p>
           <div class="front-actions"><a class="front-cta" href="${DEMO_PAGE}">Explore Demo Shop <span aria-hidden="true">↗</span></a><a class="front-tour" href="${DEMO_PAGE}?tour=1">Take the Guided Tour →</a></div>
         </div>
         <div class="front-preview" aria-label="Example customer repair page">
@@ -397,28 +397,31 @@
         </div>
       </div></section>
       <section class="front-work"><div class="front-inner">
-        <div class="front-workflow"><h2>One Repair, Two Views</h2>
-          <p>Your team manages the job in the bay. The customer follows along from their private link.</p>
-          <dl><div><dt>Check In the Vehicle</dt><dd>Invite customers by text or email to describe the issue and send photos before the visit.</dd></div>
-          <div><dt>Share Inspection Findings</dt><dd>Share inspection photos by repair stage and let customers approve or decline individual estimate lines.</dd></div>
-          <div><dt>Prepare for Pickup</dt><dd>Send the final total with an itemized bill or your shop’s own PDF.</dd></div></dl>
+        <div class="front-workflow"><h2>From the Service Counter to the Customer’s Phone</h2>
+          <p>Your team works from one repair order. The customer follows that repair through the same private link from drop-off to pickup.</p>
+          <dl><div><dt>Get the Story Before Drop-Off</dt><dd>Invite customers to describe the concern and upload photos, so the technician can see what they’re coming in for.</dd></div>
+          <div><dt>See Which Cars Need Attention</dt><dd>Search the Bay by customer, vehicle or repair order. Filter for estimates awaiting a decision or cars ready for pickup.</dd></div>
+          <div><dt>Show What the Technician Found</dt><dd>Record the vehicle’s condition with walk-around photos and before-and-after checklists. Share findings with technician notes and repair diagrams.</dd></div>
+          <div><dt>Know What the Customer Approved</dt><dd>Customers approve or decline each estimate item and sign on their phone. The shop sees their choices, the approved total and when they signed.</dd></div>
+          <div><dt>Quote Using Your Shop’s Rates</dt><dd>Import labor, parts and fees from Excel or CSV. Reuse saved prices and enter hours or quantities when building an estimate.</dd></div>
+          <div><dt>Make Pickup Easier</dt><dd>Send the final total with an itemized bill or your own PDF. Look up the repair in the archive when the customer comes back.</dd></div></dl>
           <button class="linkbtn" id="watchDemo" type="button">Watch the walkthrough video →</button>
         </div>
       </div></section>
       <section class="front-plans" id="plans"><div class="front-inner">
-        <h2>Choose Your Plan</h2><p>Both plans include unlimited email, photo updates, online estimate approvals and final bills.</p>
+        <h2>Choose Your Plan</h2><p>Both plans include the Bay board, customer repair links, photo updates, signed estimate decisions, final bills and unlimited email.</p>
         <div class="front-tiers">
           <article><h3>Talk Shops Starter</h3><strong>$59<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $590/year</small></article>
-          <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p><b>AI repair how-to assistant</b> for your techs</p><p>8 staff seats · up to 3 owners · Smart Replies</p><small>Annual billing: $990/year</small></article>
+          <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about repair status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>AI Repair Assistant</b> gives technicians a starting point for repair procedures and tool lists.</p><small>Annual billing: $990/year</small></article>
         </div>
         <h3 class="front-market-title">Plan Comparison</h3>
         <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
           <tr><th scope="row">Talk Shops Starter</th><td>$59</td><td>Customer updates, approvals and 1,000 texts</td></tr>
-          <tr><th scope="row">Talk Shops Pro</th><td>$99</td><td>Customer updates, approvals, 3,000 texts and the AI repair how-to assistant</td></tr>
+          <tr><th scope="row">Talk Shops Pro</th><td>$99</td><td>Everything in Starter, plus Smart Replies, the AI repair assistant and higher staff and text limits</td></tr>
           <tr><th scope="row"><a href="https://www.shopmonkey.io/pricing">Shopmonkey Basic</a></th><td>$239</td><td>Shop management, two-way texting and electronic signatures</td></tr>
           <tr><th scope="row"><a href="https://www.tekmetric.com/pricing">Tekmetric Scale</a></th><td>$439</td><td>Shop management, two-way texting and technician board</td></tr>
         </tbody></table>
-        <small class="front-source">Selected plans at month-to-month list prices, checked November 7, 2026. Competitor plans include additional shop-management features.</small>
+        <small class="front-source">Selected plans at month-to-month list prices, checked November 8, 2026. Competitor plans include additional shop-management features.</small>
       </div></section>
       <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="mailto:${supportEmail}?subject=Talk%20Shops%20sales%20inquiry">Contact Sales</a><a href="/privacy.html">Privacy Policy</a></div></footer>
     </div>`;
