@@ -230,7 +230,7 @@ a.btn.primary{color:var(--accent-fg)}
 .import-box{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
-<link rel="stylesheet" href="/saved-archive.css?v=4">
+<link rel="stylesheet" href="/saved-archive.css?v=5">
 <link rel="stylesheet" href="/theme.css?v=7">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
@@ -294,6 +294,11 @@ const TEMPLATES={
  qc:"Hi {first}, repairs are done. We're doing a final check and road test on your {vehicle}.",
  ready:"Your {vehicle} is ready for pickup! Total {total}. We're open {hours}. Details: {link}",
  picked_up:"Thanks for choosing {shop}, {first}! How did we do? Reply with any feedback."};
+// Required / recommended / optional on each estimate line (same as the real app).
+const PRI={required:{label:"Required",cls:"bad",cust:"Needed to fix your concern or for safety."},recommended:{label:"Recommended",cls:"warn",cust:"Advised soon to prevent bigger problems."},optional:{label:"Optional",cls:"",cust:"Can wait if you prefer."}};
+const PRI_ORDER={required:0,recommended:1,optional:2};
+const priOptions=v=>Object.entries(PRI).map(([k,p])=>`<option value="${k}" ${k===(v||"recommended")?"selected":""}>${p.label}</option>`).join("");
+const priPill=e=>e.priority&&PRI[e.priority]?`<span class="pill pri ${PRI[e.priority].cls}">${PRI[e.priority].label}</span>`:"";
 const CHANNELS={sms:"Text message",email:"Email",both:"Text and email"};
 
 const $=s=>document.querySelector(s);
@@ -337,9 +342,9 @@ function seed(){
    mk("RO-1046",{name:"Ashley Kim",phone:"(555) 017-3381"},{year:2019,make:"Jeep",model:"Cherokee"},"8MRT551","Battery warning light on dash","checked_in",[["checked_in",12]],[]),
    mk("RO-1044",{name:"Lena Brooks",phone:"(555) 012-9047",email:"lena.brooks@example.com",channel:"both"},{year:2012,make:"Chevrolet",model:"Malibu"},"6BXC118","AC blowing warm air","diagnosing",[["checked_in",95],["diagnosing",34]],[]),
    mk("RO-1041",{name:"Maria Delgado",phone:"(555) 013-6620"},{year:2018,make:"Honda",model:"Civic"},"7KDL294","Grinding noise when braking","approval",[["checked_in",210],["diagnosing",170],["approval",48]],
-     [{id:1,item:"Front brake pads and rotors",price:389,status:"pending"},{id:2,item:"Brake fluid flush",price:119,status:"pending"}]),
+     [{id:1,item:"Front brake pads and rotors",price:389,status:"pending",priority:"required"},{id:2,item:"Brake fluid flush",price:119,status:"pending",priority:"recommended"}]),
    mk("RO-1042",{name:"James Whitaker",phone:"(555) 016-4402",email:"j.whitaker@example.com",channel:"email"},{year:2015,make:"Ford",model:"F-150"},"4TWE903","Check engine light, rough idle","parts",[["checked_in",1500],["diagnosing",1440],["approval",1380],["parts",1300]],
-     [{id:1,item:"Ignition coils (6) and spark plugs",price:642,status:"approved"},{id:2,item:"Throttle body cleaning",price:95,status:"declined"}],{eta:"Tue, Nov 10"}),
+     [{id:1,item:"Ignition coils (6) and spark plugs",price:642,status:"approved",priority:"required"},{id:2,item:"Throttle body cleaning",price:95,status:"declined",priority:"optional"}],{eta:"Tue, Nov 10"}),
    mk("RO-1043",{name:"Priya Nair",phone:"(555) 011-7735"},{year:2020,make:"Toyota",model:"RAV4"},"9PLN227","60,000-mile service and timing cover oil leak","in_progress",[["checked_in",4.5*D],["diagnosing",4.4*D],["approval",4.3*D],["parts",4.1*D],["in_progress",150]],
      [{id:1,item:"60k service package",price:449,status:"approved"},{id:2,item:"Timing cover gasket",price:780,status:"approved"}],{eta:"Fri, Nov 6"}),
    mk("RO-1040",{name:"Marcus Hill",phone:"(555) 015-2268"},{year:2016,make:"Nissan",model:"Altima"},"7HJA640","Clunk over bumps, replace front struts","qc",[["checked_in",2*D],["diagnosing",1.9*D],["approval",1.8*D],["in_progress",250],["qc",22]],
@@ -565,11 +570,12 @@ function customerView(j){
   const pending=j.stage==="approval"&&j.estimate.some(e=>e.status==="pending");
   let est="";
   if(j.estimate.length){
-    const items=j.estimate.map(e=>{
+    const items=[...j.estimate].sort((a,b)=>(PRI_ORDER[a.priority]??1)-(PRI_ORDER[b.priority]??1)).map(e=>{
       const d=ui.draft[j.id+"-"+e.id];
       const choice=pending&&e.status==="pending"?`<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d==="approved"}">Approve</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d==="declined"}">Decline</button></div>`
         :(e.status!=="pending"?`<span class="pill ${e.status==="approved"?"ok":"bad"}">${e.status==="approved"?"Approved":"Declined"}</span>`:"");
-      return `<div class="est-item"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${sampleIllustration(j,e)}${guide(e.item)}${choice}</div>`}).join("");
+      const pri=e.priority&&PRI[e.priority]?`<div class="pri-line">${priPill(e)}<span>${PRI[e.priority].cust}</span></div>`:"";
+      return `<div class="est-item pri-${esc(e.priority||"none")}"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${pri}${sampleIllustration(j,e)}${guide(e.item)}${choice}</div>`}).join("");
     const allChosen=j.estimate.filter(e=>e.status==="pending").every(e=>ui.draft[j.id+"-"+e.id]);
     const tot=pending?j.estimate.reduce((a,e)=>a+((ui.draft[j.id+"-"+e.id]??e.status)==="approved"?Number(e.price):0),0):estTotal(j,true);
     est=`<div class="c-card"><h3>Estimate</h3>${items}<div class="total"><span>${pending?"Approved so far":"Approved total"}</span><span>${money(tot)}</span></div>
@@ -601,7 +607,7 @@ function sheetView(j){
   const idx=SI[j.stage];
   const steps=STAGES.map((s,i)=>`<button class="step ${i<idx?"done":""} ${i===idx?"current":""}" data-stage="${s.key}" ${i===idx?'aria-current="step"':""}>${s.label}</button>`).join("");
   const next=STAGES[idx+1];
-  const rows=j.estimate.map(e=>`<tr><td>${esc(e.item)}${sampleIllustration(j,e)}${guide(e.item)}</td><td>${e.status==="pending"?'<span class="pill warn">Pending</span>':e.status==="approved"?'<span class="pill ok">Approved</span>':'<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status==="pending"&&j.stage!=="approval"?`<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>`:""}</td></tr>`).join("");
+  const rows=j.estimate.map(e=>`<tr><td>${esc(e.item)}<div class="pri-cell">${e.status==="pending"?`<select class="pri-sel" data-pri="${e.id}" aria-label="Priority for ${esc(e.item)}">${priOptions(e.priority)}</select>`:priPill(e)}</div>${sampleIllustration(j,e)}${guide(e.item)}</td><td>${e.status==="pending"?'<span class="pill warn">Pending</span>':e.status==="approved"?'<span class="pill ok">Approved</span>':'<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status==="pending"&&j.stage!=="approval"?`<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>`:""}</td></tr>`).join("");
   const msgs=j.messages.map(m=>`<div class="bubble ${m.dir}">${linkify(esc(m.text),j)}<span class="meta">${m.dir==="out"?chName(m)+" to customer":esc(first(j.customer.name))} · ${dayClock(m.t)}</span></div>`).join("");
   const log=[...j.events].reverse().map(e=>`<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
   const live=!j.archivedAt;
@@ -621,6 +627,7 @@ function sheetView(j){
       ${live?`<div class="est-add">
         <div class="est-add-h">Quick add</div>
         <form class="add-line" id="addLine"><span class="suggest-wrap"><input id="li-item" data-suggest="quick" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Type or pick a saved item" aria-label="Line item"><button type="button" class="suggest-btn" data-suggest-open aria-label="Show saved items">▾</button></span><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button>
+          <label class="pri-pick">Priority<select id="li-pri">${priOptions(ui.lastPri)}</select></label>
           <label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label></form>
         <div class="est-add-or"><span>or</span></div>
         <button class="btn est-add-more" type="button" id="laborBtn">Add labor, parts or fees with hours and rates</button>
@@ -753,7 +760,8 @@ document.addEventListener("submit",e=>{
     ui.modal=null;ui.openJob=null;save();render();toast(j.ro+" closed and moved to the Archive");return}
   if(f.id==="addLine"){const j=job(ui.openJob);const item=$("#li-item").value.trim();const price=parseFloat($("#li-price").value.replace(/[$,]/g,""));
     if(!item||!(price>=0)){toast("Enter an item and a price");return}
-    j.estimate.push({id:Date.now(),item,price,status:"pending"});
+    const priority=ui.lastPri=$("#li-pri")?.value||"recommended";
+    j.estimate.push({id:Date.now(),item,price,status:"pending",priority});
     if($("#li-save").checked&&!state.rates.some(r=>r.name.toLowerCase()===item.toLowerCase())){state.rates.push({name:item,kind:"part",rate:price});toast(`Saved "${item}" for next time`)}
     save();renderLayer();$("#li-item").focus({preventScroll:true});return}
   if(f.id==="replyForm"){const j=job(ui.openJob);const v=$("#replyIn").value.trim();if(!v)return;notify(j,v);save();renderLayer();toast("Message sent");return}
@@ -766,6 +774,7 @@ document.addEventListener("submit",e=>{
 });
 document.addEventListener("change",async e=>{
   if(e.target.id==="ci-channel")syncChannel();
+  if(e.target.dataset?.pri&&ui.openJob){const j=job(ui.openJob),x=j&&j.estimate.find(l=>String(l.id)===e.target.dataset.pri);if(x){x.priority=e.target.value;save();renderLayer();toast("Priority updated")}return}
   if(e.target.id==="c-send")$("#c-text-wrap").hidden=!e.target.checked;
   if(e.target.id==="eta"){const j=job(ui.openJob);j.eta=e.target.value.trim();save();render()}
   if(e.target.id==="rateFile"){const file=e.target.files[0];if(!file)return;

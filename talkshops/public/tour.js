@@ -532,10 +532,17 @@
       }
     },
     async estimates() {
-      STEPS = 6; await begin("board");
+      STEPS = 7; await begin("board");
       step(); { const c = say("es-1"); await openSheet("RO-1044"); highlight("#estSec"); await cue(0.6); highlight(".est-add"); await c; }
       step(); { const c = say("es-2"); highlight(".est-add"); await cue(0.2); await pickSaved("recharge"); highlight(".est-add"); await cue(0.85); await tap("#addLine button[type=submit]"); highlight("#estSec"); await c; }
       step(); { const c = say("es-3"); q("#li-item")?.blur(); await wait(300); highlight(".suggest-btn"); await tap(".suggest-btn"); highlight("#suggestList"); await cue(0.6); await pickSaved("condenser"); await tap("#addLine button[type=submit]"); highlight("#estSec"); await c; }
+      step(); {
+        const c = say("es-pri"); highlight(".pri-pick");
+        await cue(0.55); const sel = qa(".pri-sel").pop(); highlight(sel?.closest("td"));
+        if (sel) { sel.value = "optional"; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+        await wait(300); highlight("#estSec table");
+        await c;
+      }
       step(); { const c = say("es-4"); highlight(q("#li-save")?.closest("label")); await cue(0.55); highlight("#laborBtn"); await c; }
       step(); { const c = say("es-5"); highlight(".est-send"); await cue(0.2); await tap(".est-send"); highlight("#sendForm"); await cue(0.6); await tap("#sendForm .btn.primary"); highlight(".sheet .stepper"); await c; }
       step(); { const c = say("es-6"); await openSheet("RO-1042"); highlight("#estSec"); await c; }
@@ -544,8 +551,10 @@
       STEPS = 5; await begin("board");
       step(); { const c = say("cu-1"); await cue(0.5); await openSheet("RO-1041"); highlight("#viewAsCust"); await cue(0.85); await tap("#viewAsCust"); highlight(".c-head"); await c; }
       step(); {
-        const c = say("cu-2"); highlight(".c-head"); await cue(0.3);
+        const c = say("cu-2"); highlight(".c-head"); await cue(0.2);
         highlight(qa(".c-card").find((x) => /Estimate/.test(x.textContent)));
+        await cue(0.35); highlight(".pri-line");
+        await cue(0.55); highlight(qa(".c-card").find((x) => /Estimate/.test(x.textContent)));
         await cue(0.6); await tap(qa('[data-decide][data-v="approved"]')[0]);
         await cue(0.75); await tap(qa('[data-decide][data-v="declined"]')[1]);
         await c;
