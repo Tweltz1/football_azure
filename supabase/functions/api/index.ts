@@ -11,7 +11,8 @@ import { cardsRoute } from '../_shared/cards.ts';
 import { createShopEmailSender } from '../_shared/shopEmail.ts';
 import { createTwilioSender, shopRoute, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
 import { createStripe } from '../_shared/shopPlans.ts';
-import { createNarrator } from './narrator.ts';
+import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator.ts';
+import { HOWTO_SCHEMA } from '../_shared/shopHowTo.ts';
 import { createTurn } from './turn.ts';
 import {
   createAskLogStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
@@ -41,6 +42,10 @@ const shop: ShopDeps = {
   stripe: createStripe(Deno.env.get('STRIPE_SECRET_KEY')),
   stripeWebhookSecret: Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '',
   siteUrl: Deno.env.get('TALKSHOPS_SITE_URL') || 'https://talkshops.app',
+  // Employee how-to assistant: the same free Gemini key as the Start/Sit chat, with room for longer answers.
+  howTo: Deno.env.get('GEMINI_API_KEY')
+    ? geminiNarrator(Deno.env.get('GEMINI_API_KEY')!, DEFAULT_GEMINI_MODEL, fetch, { schema: HOWTO_SCHEMA, timeoutMs: 40_000, maxTokens: 8192, temperature: 0.4 })
+    : null,
   newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),
 };
 const dnd = {

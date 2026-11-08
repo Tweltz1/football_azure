@@ -6,6 +6,8 @@ import type { Ctx, Res } from './handlers.ts';
 
 import { access, checkoutFields, DEFAULT_TRIAL, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
+import { howToRoute } from './shopHowTo.ts';
+import type { Narrator } from './dnd.ts';
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
 
 type Body = Record<string, unknown>;
@@ -156,6 +158,8 @@ export interface ShopDeps {
   stripeWebhookSecret?: string;
   /** Where Stripe sends shops back to, e.g. https://talkshops.app */
   siteUrl?: string;
+  /** Gemini, for the employee how-to assistant (shop/howto). Null until GEMINI_API_KEY is set. */
+  howTo?: Narrator | null;
 }
 
 export const DEMO_SHOP_ID = 'demo-shop';
@@ -406,9 +410,11 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return { status: 405 };
   }
 
-  if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan') return { status: 404 };
+  if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan' && parts[1] !== 'howto') return { status: 404 };
   const shop = await store.shopByOwner(ctx.userId);
   if (!shop) return { status: 409, body: 'Set up your shop first.' };
+
+  if (parts[1] === 'howto') return parts.length === 2 ? howToRoute(ctx, deps.howTo, shop.id, method, body) : { status: 404 };
 
   if (parts[1] === 'plan') return planRoute(ctx, deps, shop, method, parts[2], body);
   const acc = access(shop.plan, ctx.now(), await settings(deps));

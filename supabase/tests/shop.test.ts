@@ -398,3 +398,15 @@ test('technician notes show on the customer page and can text the customer', asy
   page = (await as(null)('GET', `shop/c/${token}`))?.body as { notes: { text: string }[] };
   assert.deepEqual(page.notes.map((n) => n.text), ['Rotors are scored too.']);
 });
+
+test('how-to assistant needs a signed-in shop', async () => {
+  const w = world();
+  assert.equal((await w.as(null)('POST', 'shop/howto', { question: 'oil change' }))?.status, 401);
+  assert.equal((await w.as('owner-h')('POST', 'shop/howto', { question: 'oil change' }))?.status, 409);
+  await w.as('owner-h')('POST', 'shop/me', { name: 'Howto Auto' });
+  assert.equal((await w.as('owner-h')('POST', 'shop/howto', { question: 'oil change' }))?.status, 503);
+  w.deps.howTo = { async complete() { return JSON.stringify({ answer: 'Drain and refill.', steps: ['Drain'], tools: [], parts: [], specs: [], safety: ['Jack stands'], ideas: [] }); } };
+  const res = await w.as('owner-h')('POST', 'shop/howto', { question: 'oil change again' });
+  assert.equal(res?.status, 200);
+  assert.equal((res?.body as { answer: string }).answer, 'Drain and refill.');
+});

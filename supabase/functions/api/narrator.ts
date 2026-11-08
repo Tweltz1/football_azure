@@ -30,7 +30,10 @@ const GEMINI_SCHEMA = {
   required: ['narration', 'ideas'],
 };
 
-export function geminiNarrator(apiKey: string, model: string, fetchFn: typeof fetch = fetch): Narrator {
+/** Overrides for callers that need a different reply shape or more time (the Talk Shops how-to assistant). */
+export interface GeminiOptions { schema?: unknown; timeoutMs?: number; maxTokens?: number; temperature?: number }
+
+export function geminiNarrator(apiKey: string, model: string, fetchFn: typeof fetch = fetch, opts: GeminiOptions = {}): Narrator {
   const models = model === GEMINI_BACKUP_MODEL ? [model] : [model, GEMINI_BACKUP_MODEL];
   const once = async (name: string, system: string, prompt: string) => {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(name)}:generateContent`;
@@ -40,10 +43,10 @@ export function geminiNarrator(apiKey: string, model: string, fetchFn: typeof fe
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json', responseSchema: GEMINI_SCHEMA, temperature: 1, maxOutputTokens: 4096 },
+        generationConfig: { responseMimeType: 'application/json', responseSchema: opts.schema ?? GEMINI_SCHEMA, temperature: opts.temperature ?? 1, maxOutputTokens: opts.maxTokens ?? 4096 },
       }),
       // Two tries must fit inside the 20 seconds the TV waits before narrating on its own.
-      signal: AbortSignal.timeout(9_000),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? 9_000),
     });
     if (!res.ok) throw Object.assign(new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 300)}`), { status: res.status });
     const data = await res.json();

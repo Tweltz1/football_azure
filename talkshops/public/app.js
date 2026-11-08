@@ -25,6 +25,7 @@
   const billing = window.createShopBilling({ esc, money });
   let plan = null;
   const planUi = window.createShopPlan({ esc, api: (...a) => api(...a), toast: (m) => toast(m) });
+  const howTo = window.createShopHowTo({ esc, api: (...a) => api(...a), toast: (m) => toast(m), cars: () => (jobs || []).filter((j) => j.stage !== "picked_up" && !j.closed) });
   const chargeDetail = e => e.charge ? `<small class="charge-detail">${esc(billing.calculation(e.charge))}</small>` : "";
   const ts = (t) => (typeof t === "number" ? t : Date.parse(t));
   const clock = (t) => new Date(ts(t)).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -243,7 +244,7 @@
     $("#bayTab").textContent = bayName();
     document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.view === ui.view ? "page" : "false"));
     const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "") + (ui.view === "plan" ? "" : planUi.banner(plan));
-    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : boardView());
+    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? setupView(false) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : boardView());
     if (ui.view === "board") filterBoard();
     if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
     renderLayer();
@@ -402,7 +403,7 @@
       shown += n;
     });
     const none = $("#boardNone");
-    if (none) { none.hidden = !terms.length || shown > 0; none.textContent = `No cars in the shop match "${ui.q.trim()}". Picked-up cars are in the Archive.`; }
+    if (none) { none.hidden = !terms.length || shown > 0; none.textContent = `No cars in the shop match "${(ui.q || "").trim()}". Picked-up cars are in the Archive.`; }
   }
 
   // ---------------- Archive: picked-up cars, kept one year ----------------
@@ -494,6 +495,7 @@
         </section>
         ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
         ${j.concern ? `<section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div></section>` : ""}
+        ${vehicleStr(j) && !j.closed && j.stage !== "picked_up" ? `<p class="howto-link"><button class="linkbtn" data-howto-job="${esc(j.id)}">Look up how to do a repair on this ${esc(vehicleStr(j))}</button></p>` : ""}
         ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3><a class="repair-library-link" href="/repair-guide.html" target="_blank" rel="noopener">Browse repair diagrams</a>
           ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some((e) => e.status !== "pending") ? `<div class="total"><span>Approved total</span><span>${money(estTotal(j, true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}` : `<p class="muted" style="margin:0">No line items yet.</p>`}
           ${j.approval ? `<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>` : ""}
@@ -627,6 +629,8 @@
     if (t.hasAttribute("data-archive-retry")) { archive.error = ""; renderArchiveRows(); searchArchive(); return; }
     if (t.hasAttribute("data-suggest-open")) return;
     if (await planUi.click(t, render)) return;
+    if (howTo.click(t, render)) return;
+    if (t.dataset.howtoJob) { const j = job(t.dataset.howtoJob); if (j) howTo.openFor(j); ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.view === "plan") api("GET", "shop/plan").then((p) => { plan = p; if (ui.view === "plan") render(); }).catch(() => {});
     if (t.dataset.view) { ui.view = t.dataset.view; ui.openJob = null; if (ui.view === "archive") archive.rows = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); return; }
@@ -693,6 +697,7 @@
   document.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target;
+    if (howTo.submit(f, render)) return;
     if (f.id === "billingForm") {
       if (ui.busy) return;
       const m = ui.modal, submit = f.querySelector('[type="submit"]');
