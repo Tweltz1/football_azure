@@ -1,4 +1,5 @@
-// Original Talk Shops illustrations. Artwork dedicated to the public domain under CC0 1.0.
+// Original Talk Shops illustrations (artwork dedicated to the public domain under CC0 1.0), plus example
+// photos in /repair-photos from Pexels (free to use, pexels.com/license).
 (() => {
   "use strict";
   // Each panel uses its own local coordinates so it can also be read on a narrow screen.
@@ -243,13 +244,43 @@
       illustration:()=>`<figure class="repair-figure"><svg viewBox="0 0 320 120" role="img" aria-label="${left[1]} and ${right[1]}">${componentPanel(left,0)}${componentPanel(right,1)}<path d="M144 49h32" stroke="#78938a" stroke-width="2" stroke-dasharray="3 3"/></svg><figcaption>${explanation}</figcaption></figure>`
     });
   }
+  // Real photos (free to use under the Pexels license, pexels.com/license), so customers can see the part
+  // being worked on. Each repair uses its own photo when there is one, otherwise its system's photo.
+  const PHOTO = {
+    "3642618":"Brake caliper and rotor on a car on a lift", "8986137":"Underside of a car on a lift showing the suspension",
+    "32282233":"Car battery with jumper cables in the engine bay", "9381013":"Technician fitting an engine air filter",
+    "4116225":"Technician working in a car's engine bay", "3806249":"Technician changing a car's wheel",
+    "7854084":"Pouring coolant into a car's engine", "8985601":"Technician inspecting a car's underside driveline",
+    "13850014":"Car dashboard air vent", "8586715":"Windshield wipers on a car", "13065690":"Technician pouring fresh engine oil",
+    "4374843":"Car battery in the engine bay", "5121547":"Engine timing and accessory belt pulleys", "5233282":"Car exhaust tailpipe",
+    "8985616":"Exhaust pipes under a car", "3822938":"Car air conditioning compressor on a workbench",
+    "15785276":"Car headlight", "8986177":"Technician fastening a wheel's lug nuts"
+  };
+  const GROUP_PHOTO = {
+    "Brakes and wheel hubs":"3642618", "Steering and suspension":"8986137", "Electrical and starting":"32282233",
+    "Fuel, intake and emissions":"9381013", "Engine and lubrication":"4116225", "Wheels, fluids and exhaust":"3806249",
+    "Cooling system":"7854084", "Transmission and driveline":"8985601", "Heating and air conditioning":"13850014",
+    "Visibility, doors and body":"8586715"
+  };
+  const ENTRY_PHOTO = {
+    oil:"13065690", battery:"4374843", "battery-terminal":"4374843", "battery-cable":"4374843",
+    belt:"5121547", "timing-belt":"5121547", "timing-chain":"5121547", "muffler-replacement":"5233282",
+    "exhaust-flex-pipe":"8985616", "exhaust-hanger":"8985616", "exhaust-manifold-gasket":"8985616", "catalytic-converter":"8985616",
+    "ac-compressor":"3822938", "headlight-bulb":"15785276", "wheel-balance":"8986177", "wheel-stud":"8986177", "air-filter":"9381013"
+  };
+  function photoHtml(e) {
+    const id = ENTRY_PHOTO[e.id] || GROUP_PHOTO[e.group];
+    if (!id) return "";
+    return `<figure class="repair-photo"><img src="/repair-photos/${id}.jpg" alt="${PHOTO[id]}" loading="lazy" width="800" height="500"><figcaption>Example photo, not your vehicle · <a href="https://www.pexels.com/photo/${id}/" target="_blank" rel="noopener">Pexels</a></figcaption></figure>`;
+  }
+  for (const e of entries) { const drawn = e.illustration; e.illustration = () => photoHtml(e) + drawn(); }
   window.repairGuideFor = item => {
     const normalized=" "+normalize(item)+" ";
     const matches=entries.filter(e=>e.matches(item||"",normalized));
     // Prefer the specific component when its name contains a shorter matching alias.
     return matches.filter(e=>!e.aliases.some(a=>matches.some(other=>other!==e &&
       other.aliases.some(b=>b!==a && normalized.includes(" "+b+" ") && (" "+b+" ").includes(" "+a+" "))))).map(e=>
-      `<details class="repair-details"><summary>Illustrated guide · ${e.title}</summary>${e.illustration()}<a href="/repair-guide.html#${e.id}" target="_blank" rel="noopener">View larger diagram</a></details>`).join("");
+      `<details class="repair-details"><summary>Photo and diagram · ${e.title}</summary>${e.illustration()}<a href="/repair-guide.html#${e.id}" target="_blank" rel="noopener">View larger diagram</a></details>`).join("");
   };
   const list=document.getElementById("repair-library");
   if(!list) return;
