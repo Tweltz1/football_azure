@@ -16,6 +16,7 @@ on:
     paths:
       - 'totetrack-app/**'
       - '!totetrack-app/tools/detector/**'
+      - '!totetrack-app/tools/namer/**'
       - '.github/workflows/totetrack-app.yml'
   workflow_dispatch:
     inputs:
