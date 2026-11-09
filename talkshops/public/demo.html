@@ -248,6 +248,7 @@ a.btn.primary{color:var(--accent-fg)}
 <link rel="stylesheet" href="/team.css?v=1">
 <link rel="stylesheet" href="/help.css?v=1">
 <link rel="stylesheet" href="/howto.css?v=4">
+<link rel="stylesheet" href="/workday.css?v=1">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
 <style>
 .queue-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -312,7 +313,8 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/display.js?v=1"></script>
 <script src="/age-settings.js?v=1"></script>
 <script src="/board-tools.js?v=3"></script>
-<script src="/walkthrough.js?v=3"></script>
+<script src="/walkthrough.js?v=4"></script>
+<script src="/workday.js?v=1"></script>
 <script src="/walkaround.js?v=1"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script>
@@ -431,12 +433,60 @@ const KEY="talkshops-demo-v2";
 let state;
 try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!state||!state.jobs||!state.rates)state=seed();
+// Workday samples (techs, promised times, mileage, quick services, a reminder). Added once to saved demos too.
+function workdaySamples(st){
+  const now=Date.now(),H=3600000,D=86400000,g=ro=>st.jobs.find(j=>j.ro===ro)||{},tech=(id,name)=>({id,name});
+  Object.assign(g("RO-1041"),{tech:tech("u-marcus","Marcus Hill"),promised:now+1.5*H,mileageIn:"48210"});
+  Object.assign(g("RO-1046"),{tech:tech("u-jess","Jess Park"),promised:now+26*H,mileageIn:"61305"});
+  Object.assign(g("RO-1044"),{tech:tech("u-dana","Dana Ruiz"),promised:now+5*H,mileageIn:"112480"});
+  Object.assign(g("RO-1042"),{tech:tech("u-marcus","Marcus Hill"),mileageIn:"98720",followups:[{id:"fu1",kind:"declined",due:now+28*D,createdAt:now-D,by:"Dana Ruiz",text:"Hi James, it's Ridgeline Auto Repair. When your 2015 Ford F-150 was in, we recommended throttle body cleaning. Want us to take care of it? Call (555) 014-2290 or reply to set up a time."}]});
+  Object.assign(g("RO-1043"),{tech:tech("u-jess","Jess Park"),promised:now-3*H,mileageIn:"60122"});
+  Object.assign(g("RO-1040"),{tech:tech("u-marcus","Marcus Hill"),mileageIn:"87455"});
+  Object.assign(g("RO-1045"),{tech:tech("u-jess","Jess Park"),mileageIn:"74010",service:"Oil change + tire rotation"});
+  Object.assign(g("RO-1031"),{mileageIn:"46950",mileageOut:"46951"});
+  Object.assign(g("RO-1029"),{mileageIn:"70880"});
+  const r=n=>(st.rates||[]).find(x=>x.name===n);
+  const line=x=>x&&{name:x.name,kind:x.kind,rate:x.rate,qty:x.kind==="labor"&&x.hours?x.hours:1};
+  st.packages=st.packages||[
+    {id:"pk1",name:"Oil change + tire rotation",fastLane:true,lines:[line(r("Synthetic oil change")),line(r("Tire rotation"))].filter(Boolean)},
+    {id:"pk2",name:"Cabin and engine air filters",fastLane:true,lines:[line(r("Cabin air filter")),line(r("Engine air filter"))].filter(Boolean)},
+    {id:"pk3",name:"Brake inspection",fastLane:false,lines:[line(r("Diagnostic fee"))].filter(Boolean)}].filter(p=>p.lines.length);
+  st.wd1=1;
+}
+if(!state.wd1){workdaySamples(state);try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 if(state.shop)SHOP={...SHOP,...state.shop};
 const save=()=>{try{state.shop=SHOP;localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
 const startView=new URLSearchParams(location.search).get("view");
 let ui={view:["board","checkin","archive","howto","settings","plan","training","help","signin"].includes(startView)?startView:"board",openJob:null,custJob:null,modal:null,draft:{},q:"",aq:""};
 const job=id=>state.jobs.find(j=>j.id===id);
 const onBoard=j=>!j.archivedAt;
+/* --- workday tools (workday.js) against the demo's saved state --- */
+const demoVisit=j=>({id:j.id,ro:j.ro,createdAt:j.events[0]?.t,archivedAt:j.archivedAt||null,stage:j.stage,customer:{...j.customer,preference:j.customer.channel},vehicle:j.vehicle,plate:j.plate,concern:j.concern,
+  total:j.bill?j.bill.total:j.estimate.filter(e=>e.status==="approved").reduce((a,e)=>a+e.price,0),mileage:j.mileageOut||j.mileageIn||"",declined:j.estimate.filter(e=>e.status==="declined").map(e=>e.item)});
+const digits=s=>String(s||"").replace(/\D/g,"");
+window.Workday.init({
+  job,jobs:()=>state.jobs.map(j=>({...j,createdAt:j.events[0]?.t,stage:j.archivedAt&&!j.closed?"picked_up":j.stage})),
+  shop:()=>({...SHOP,rates:state.rates,packages:state.packages||[]}),
+  crew:()=>teamData().members.map(m=>({id:m.userId,name:m.name,role:m.role})),me:()=>"u-dana",isOwner:()=>true,
+  async act(id,action,body){
+    const j=job(id);if(!j)return null;
+    if(action==="details"){for(const k of ["tech","promised","mileageIn","mileageOut"])if(body[k]!==undefined){
+      let v=body[k];if(k.startsWith("mileage")){v=digits(v);if(v&&!/^\d{1,7}$/.test(v)){toast("Enter the mileage as a number");return null}}
+      if(k==="promised")v=v?Date.parse(v):"";if(v)j[k]=v;else delete j[k];}}
+    if(action==="followup"){j.followups=j.followups||[];
+      if(body.cancel){const f=j.followups.find(x=>x.id===body.cancel);if(f){f.canceledAt=Date.now();f.canceledBy="shop"}}
+      else{if(!body.due||Date.parse(body.due)<Date.now()){toast("Pick a date from tomorrow on");return null}if((body.text||"").length<10){toast("Write the reminder text");return null}
+        j.followups.push({id:"fu"+Date.now(),kind:body.kind,due:Date.parse(body.due+"T09:00:00"),text:body.text,createdAt:Date.now(),by:"Dana Ruiz"})}}
+    save();renderLayer();if(ui.view==="board")render();return j;},
+  async visits(body){
+    const rows=state.jobs.filter(j=>{
+      if(body.q!==undefined){const hay=[vehicleStr(j),j.customer.name,digits(j.customer.phone),j.customer.email,j.ro,j.plate,j.concern].join(" ").toLowerCase();return body.q.toLowerCase().split(/\s+/).filter(Boolean).every(t=>hay.includes(t.replace(/[()\-\s]/g,"")))}
+      return j.id!==body.exclude&&((body.phone&&digits(j.customer.phone)===digits(body.phone))||(body.plate&&j.plate===body.plate));
+    }).sort((a,b)=>(b.events[0]?.t||0)-(a.events[0]?.t||0));return rows.map(demoVisit);},
+  async saveShop(patch){if(patch.packages)state.packages=patch.packages.map((p,i)=>({id:p.id||"pk"+Date.now()+i,...p}));save();render();},
+  async stopReminders(){const j=job(ui.custJob);j.customer.remindersOff=Date.now();(j.followups||[]).forEach(f=>{if(!f.sentAt&&!f.canceledAt){f.canceledAt=Date.now();f.canceledBy="customer"}});save();render();},
+  toast:m=>toast(m),filter:()=>filterBoard(),
+});
 
 /* --- plan (demo: a shop on its free trial; checkout is not available) --- */
 const plan={state:"trial",daysLeft:12,trialEndsAt:Date.now()+12*86400000,textLimit:150,carLimit:25,textsUsed:38,carsCreated:9,payments:true,hasBilling:false,
@@ -612,6 +662,7 @@ function helpView(){
 }
 /* --- views --- */
 function render(){
+  window.Workday.watch(state.jobs);
   const app=$("#app"),chrome=$("#shopChrome");
   const h=location.hash.slice(1);
   const cj=h.startsWith("s-")?state.jobs.find(j=>j.token===h.slice(2)):null;
@@ -643,6 +694,7 @@ function boardView(){
   let h=`<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${active.length} car${active.length===1?"":"s"} in the shop · ${sent} update${sent===1?"":"s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check In Vehicle</button></div>
       <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q)}" autocomplete="off"></label>
     <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key,label,count])=>`<button type="button" class="qf ${key==="approval"?"warn":key==="ready"?"ok":""}" data-queue="${key}" aria-pressed="${key===(ui.queue||"all")}">${label}<b>${count}</b></button>`).join("")}</div></div>
+    ${window.Workday.boardBar(state.jobs.filter(onBoard))}
     ${window.BayAge.legend(SHOP)}
     <p class="board-none muted" id="boardNone" hidden></p>
     <div class="board-wrap"><div class="board">`;
@@ -663,12 +715,12 @@ function boardView(){
       const unread=j.messages.length&&j.messages[j.messages.length-1].dir==="in";
       const age=ageOf(j);
       const hay=[vehicleStr(j),j.customer.name,j.customer.phone,j.customer.email,j.ro,j.concern,j.plate].filter(Boolean).join(" ").toLowerCase();
-      h+=`<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} data-open="${j.id}" data-queue-key="${pending?"approval":j.stage==="ready"?"ready":"other"}" data-s="${esc(hay)}">
+      h+=`<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} ${window.Workday.cardAttrs(j)} data-open="${j.id}" data-queue-key="${pending?"approval":j.stage==="ready"?"ready":"other"}" data-s="${esc(hay)}">
         ${window.BayBoard.urgencyBadge(j)}<span class="veh queue-vehicle">${esc(vehicleStr(j))}<span aria-hidden="true">›</span></span>
         <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${j.ro}</span></span>
         <span class="row"><span>${esc(j.concern)}</span></span>
         <span class="row"><span>${esc(detail)}</span>${unread?`<span class="pill bad">New reply</span>`:""}</span>
-        <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill ${pending?"warn":""}">${esc(status)}</span></span></button>`;
+        ${window.Workday.cardBits(j)}<span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill ${pending?"warn":""}">${esc(status)}</span></span></button>`;
     });
     h+=`</section>`;
   });
@@ -679,7 +731,7 @@ function boardView(){
 function filterBoard(){
   const terms=(ui.q||"").trim().toLowerCase().split(/\s+/).filter(Boolean);let shown=0;
   document.querySelectorAll(".board .col").forEach(col=>{let n=0;
-    col.querySelectorAll(".card[data-s]").forEach(c=>{const ok=(!ui.queue||ui.queue==="all"||ui.queue===c.dataset.queueKey)&&terms.every(t=>c.dataset.s.includes(t));c.hidden=!ok;if(ok)n++});
+    col.querySelectorAll(".card[data-s]").forEach(c=>{const ok=(!ui.queue||ui.queue==="all"||ui.queue===c.dataset.queueKey)&&terms.every(t=>c.dataset.s.includes(t))&&!window.Workday.hidden(c);c.hidden=!ok;if(ok)n++});
     col.classList.toggle("search-hide",!!((terms.length||(ui.queue&&ui.queue!=="all"))&&!n));const count=col.querySelector(".col-h span");if(count)count.textContent=n;shown+=n;});
   const none=$("#boardNone");if(none){none.hidden=shown>0;none.textContent=terms.length?`No matching vehicles for "${ui.q.trim()}".`:ui.queue==="approval"?"No vehicles are awaiting approval.":ui.queue==="ready"?"No vehicles are ready for pickup.":"No vehicles in the shop."}
 }
@@ -704,6 +756,7 @@ function renderArchiveRows(){
 function checkinView(){
   return `<form class="panel" id="checkinForm" autocomplete="off">
    <h2>Customer Check-In</h2>
+   ${window.Workday.checkinLookup()}
    <label class="field">Check-in method<select id="ci-method"><option value="staff">Enter vehicle details at the shop</option><option value="invite">Invite customer by link</option></select></label>
    <p id="ci-help" class="muted">The customer gets a tracking link as soon as you save.</p>
    <div class="form-grid">
@@ -715,6 +768,7 @@ function checkinView(){
     <label class="field">Make<input id="ci-make" required placeholder="Toyota"></label>
     <label class="field">Model<input id="ci-model" required placeholder="Camry"></label>
     <label class="field">License plate<input id="ci-plate" placeholder="ABC1234"></label>
+    <div class="form-grid full wd-ci">${window.Workday.checkinFields()}</div>
     <label class="field full">What's the concern?<textarea id="ci-concern" required placeholder="Customer's description of the problem"></textarea></label>
     <div class="field full urgency-field"><span>Urgency <small class="muted">(for example, the customer needs the car back within the hour)</small></span>${window.BayBoard.urgencyPicker("","ciUrgency")}</div>
     <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
@@ -746,7 +800,7 @@ function settingsView(){
     <div style="overflow-x:auto;margin-top:10px"><table class="rates"><thead><tr><th>Name</th><th>Type</th><th class="num">Rate</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
     <form class="rate-add" id="rateForm"><input id="r-name" placeholder="New item, e.g. Wiper blades" aria-label="Item name" required><select id="r-kind" aria-label="Type"><option value="part">Part</option><option value="labor">Labor</option><option value="fee">Fee</option><option value="percent">Percent</option></select><input id="r-rate" inputmode="decimal" placeholder="Rate" aria-label="Rate" required><button class="btn" type="submit">Add</button></form>
     <div class="import-box" id="importBox"><button class="btn" type="button" id="openImport">Edit, import or download list</button><button class="linkbtn" type="button" id="sampleImport">Try a sample price list</button><button class="linkbtn" type="button" id="rateTemplate">Download example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
-  </section>${team.panel(render)}${recoveryPanel()}</div>`;
+  </section>${window.Workday.packagesPanel()}${team.panel(render)}${recoveryPanel()}</div>`;
 }
 // Artwork belongs to the named sample repair and line item, including in saved demos.
 function sampleIllustration(j, item) {
@@ -787,7 +841,8 @@ function customerView(j){
       :(j.approval?`<p class="muted" style="font-size:12.5px;margin:8px 0 0">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:"")}</div>`;
   }
   const photos=j.photos.length?`<div class="c-card"><h3>Photos from your technician</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}</div></div>`:"";
-  const notes=(j.notes||[]).length?`<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...j.notes].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p></li>`).join("")}</ul></div>`:"";
+  const shared=(j.notes||[]).filter(n=>!n.internal);
+  const notes=shared.length?`<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...shared].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p></li>`).join("")}</ul></div>`:"";
   const bill=j.bill?`<div class="c-card"><h3>Final Bill</h3><div class="total"><span>Total due</span><span>${money(j.bill.total)}</span></div></div>`:"";
   const stage=STAGES[idx];
   const extra=j.stage==="parts"?`<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta||"soon")}</b>.</p>`:j.stage==="ready"?`<p style="margin:6px 0 0">Total due ${money(j.bill?j.bill.total:estTotal(j,true))}. Open ${esc(SHOP.hours)}.</p>`:"";
@@ -798,6 +853,7 @@ function customerView(j){
       ${est}${bill}${window.Walkthrough.customerCard(j)}${window.Walkaround.customerCard(waCustomer(j))}${photos}${notes}
       <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul></div>
       <div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div>${sampleIllustration(j)}</div>
+      ${window.Workday.customerReminders({shop:{name:SHOP.name},reminders:{off:!!j.customer.remindersOff,waiting:(j.followups||[]).filter(f=>!f.sentAt&&!f.canceledAt).map(f=>({kind:f.kind,due:f.due}))}})}
       <div class="c-card call"><span>Questions? Call the shop</span><b>${esc(SHOP.phone)}</b></div>
     </div>
     <p class="cust-top">This page updates as your repair progresses.</p>
@@ -822,6 +878,7 @@ function sheetView(j){
       ${live?`<div class="field urgency-field"><span>Urgency</span>${window.BayBoard.urgencyPicker(j.urgency,"jobUrgency")}</div>`:""}
       ${j.stage==="parts"&&live?`<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
     </section>
+    ${window.Workday.sheetDetails({...j,createdAt:j.events[0]?.t,stage:j.archivedAt&&!j.closed?"picked_up":j.stage})}
     <section class="sec"><h3>Concern</h3><div class="concern-text">${esc(j.concern)}</div>${sampleIllustration(j)}${live?`<p class="howto-link"><button class="linkbtn" data-howto-job="${j.id}">Open Repair Guide →</button></p>`:""}</section>
     ${window.Walkthrough.sheetSection(j).replace('<section class="sec">','<section class="sec" id="walkSec">')}
     ${j.closed?"":window.Walkaround.sheetSection(j).replace('<section class="sec">','<section class="sec" id="waSec">')}
@@ -842,12 +899,15 @@ function sheetView(j){
       ${j.bill?`<p>Itemized bill · ${money(j.bill.total)}</p>`:""}
       <div class="btn-row"><button class="btn" id="makeBill">${j.bill?"Edit itemized bill":"Create itemized bill"}</button><button class="btn" id="uploadBill">Upload shop PDF</button></div>
     </section>
+    ${window.Workday.visitsSection(j)}
+    ${window.Workday.followupSection(j)}
     <section class="sec" id="photoSec"><h3>Photos</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}
       <label class="photo-add" for="photoIn">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></label></div></section>
-    <section class="sec" id="noteSec"><h3>Technician Notes <span class="sec-sub">Shared with customer</span></h3>
-      ${(j.notes||[]).length?`<ul class="notes">${[...j.notes].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${n.id}">Remove</button></li>`).join("")}</ul>`:""}
+    <section class="sec" id="noteSec"><h3>Technician Notes <span class="sec-sub">Shared with customer unless marked shop only</span></h3>
+      ${(j.notes||[]).length?`<ul class="notes">${[...j.notes].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${window.Workday.noteBadge(n)}${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${n.id}">Remove</button></li>`).join("")}</ul>`:""}
       <form id="noteForm" class="note-form"><textarea id="noteIn" maxlength="2000" placeholder="Describe your findings…" aria-label="Technician note"></textarea>
         <div class="btn-row"><button type="button" class="btn mic" data-dictate="#noteIn" aria-pressed="false" aria-label="Voice typing">${mic}<span class="mic-label">Speak</span></button><button class="btn primary" type="submit">Post Note</button></div>
+        ${window.Workday.noteToggle()}
         <label class="chk"><input type="checkbox" id="noteSend"> Notify ${esc(ShopDisplay.name(first(j.customer.name)))} about this note</label></form></section>
     <section class="sec" id="msgSec"><h3>Messages</h3><details id="smartDemo"><summary>Try Smart Replies</summary><p class="muted">Choose a sample customer text. The conversation stays in this demo.</p><label class="field">Sample text<select id="sampleSms"><option value="status">How’s my car coming?</option><option value="hours">What are your hours?</option><option value="link">Can you resend the estimate?</option><option value="review">Is my car safe to drive?</option></select></label><label class="chk"><input id="demoAuto" type="checkbox">Auto-reply to routine questions</label><button type="button" id="simulateSms" class="btn">Try sample text</button></details><div class="thread">${msgs||'<p class="muted">No messages yet.</p>'}</div>
       ${j.messages.at(-1)?.testSms ? (j.messages.at(-1).suggestion ? '<button class="linkbtn" id="demoDraft">Use suggested reply</button>' : '<small class="muted">Needs staff review</small>') : ""}
@@ -863,6 +923,7 @@ function stageModal(){
     <h2 id="mTitle">Move to ${s.label}</h2>
     <p class="muted" style="margin:0">Notify ${esc(ShopDisplay.name(j.customer.name))} by ${esc(CHANNELS[j.customer.channel].toLowerCase())} at ${esc(contact(j.customer))}</p>
     ${m.stage==="parts"?`<label class="field">Parts ETA<input id="m-eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
+    ${m.stage==="picked_up"?window.Workday.pickupField(j):""}
     ${m.stage==="ready"?`<div><strong>Final Bill</strong><p style="margin:4px 0 0">${j.bill?money(j.bill.total)+" due at pickup":"Optional. Customers can open their bill from the pickup link."}</p></div>`:""}
     <label class="field">Message<textarea id="m-text">${esc(m.text)}</textarea></label>
     <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent?"checked":"disabled"}> Notify customer ${j.customer.consent?"":"(customer has not agreed to notifications)"}</label>
@@ -951,7 +1012,7 @@ document.addEventListener("click",e=>{
     if(auto&&suggestion)j.messages.push({dir:"out",ch:"sms",t:Date.now(),text:suggestion,autoReply:true});
     save();renderLayer();$("#smartDemo").open=true;$("#demoAuto").checked=auto;$("#sampleSms").value=topic;$("#msgSec").scrollIntoView();return;
   }
-  if(t.id==="resetBtn"){state=seed();SHOP={...state.shop};save();ui={...ui,openJob:null,modal:null,draft:{},q:"",aq:"",queue:"all"};render();toast("Sample data reset");return}
+  if(t.id==="resetBtn"){state=seed();workdaySamples(state);SHOP={...state.shop};save();ui={...ui,openJob:null,modal:null,draft:{},q:"",aq:"",queue:"all"};render();toast("Sample data reset");return}
   if(t.dataset.open){ui.openJob=t.dataset.open;renderLayer();setTimeout(()=>$(".x")?.focus({preventScroll:true}),0);return}
   if(t.hasAttribute("data-close")){closeJobSheet();return}
   if(t.hasAttribute("data-cancel")){ui.modal=null;renderLayer();return}
@@ -1013,10 +1074,16 @@ document.addEventListener("submit",e=>{
     if(!$("#ci-consent").checked){toast("Confirm the customer agreed to updates first");return}
     const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:g("name"),phone:ch!=="email"?g("phone"):"",email:ch!=="sms"?g("email"):"",channel:ch,consent:true},vehicle:{year:g("year"),make:g("make"),model:g("model")},plate:g("plate"),concern:g("concern"),urgency:document.querySelector('input[name="ciUrgency"]:checked')?.value||"",stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[],messages:[]};
     state.nextRO++;plan.carsCreated++;const t=Date.now();j.events.push({stage:"checked_in",t});
+    const wd=window.Workday.checkinValues();if(wd.mileageIn)j.mileageIn=digits(wd.mileageIn);if(wd.promised)j.promised=Date.parse(wd.promised);if(wd.tech)j.tech=wd.tech;
+    const pk=wd.service&&(state.packages||[]).find(p=>p.id===wd.service);
+    if(pk){j.service=pk.name;if(!j.concern)j.concern=pk.name;const fast=pk.fastLane&&wd.fastLane;
+      j.estimate=pk.lines.map((l,i)=>({id:t+i,item:l.name,price:Math.round(l.rate*l.qty*100)/100,status:fast?"approved":"pending",priority:"required"}));
+      if(fast){j.approval={by:j.customer.name+" (at the counter)",t};j.stage="in_progress";j.events.push({stage:"in_progress",t})}}
     notify(j,fillTemplate("checked_in",j),t);
     state.jobs.push(j);save();ui.view="board";ui.openJob=j.id;render();window.scrollTo(0,0);toast("Checked in. "+first(j.customer.name)+" was notified.");return}
   if(f.id==="sendForm"){
     const j=job(ui.modal.job);const eta=$("#m-eta");if(eta)j.eta=eta.value.trim();
+    if(ui.modal.stage==="picked_up"){const mo=window.Workday.pickupValue().mileageOut;if(mo)j.mileageOut=digits(mo)}
     const lbl=STAGES[SI[ui.modal.stage]].label,sent=$("#m-send").checked;
     setStage(j,ui.modal.stage,$("#m-text").value.trim(),sent);
     ui.modal=null;if(j.archivedAt)ui.openJob=null;
@@ -1032,7 +1099,8 @@ document.addEventListener("submit",e=>{
     if($("#li-save").checked&&!state.rates.some(r=>r.name.toLowerCase()===item.toLowerCase())){state.rates.push({name:item,kind:"part",rate:price});toast(`Saved "${item}" for next time`)}
     save();renderLayer();$("#li-item").focus({preventScroll:true});return}
   if(f.id==="replyForm"){const j=job(ui.openJob);const v=$("#replyIn").value.trim();if(!v)return;notify(j,v);save();renderLayer();toast("Message sent");return}
-  if(f.id==="noteForm"){const j=job(ui.openJob);const v=$("#noteIn").value.trim();if(!v)return;j.notes=j.notes||[];j.notes.push({id:Date.now(),t:Date.now(),text:v});
+  if(f.id==="noteForm"){const j=job(ui.openJob);const v=$("#noteIn").value.trim();if(!v)return;j.notes=j.notes||[];const internal=!!$("#noteInternal")?.checked;j.notes.push({id:Date.now(),t:Date.now(),text:v,...(internal?{internal:true}:{})});
+    if(internal){save();renderLayer();toast("Shop-only note saved");return}
     if($("#noteSend").checked)notify(j,`Hi ${first(j.customer.name)}, your technician added a note about your ${vehicleStr(j)}: ${linkOf(j)}`);
     save();renderLayer();toast("Note posted to the customer's page");return}
   if(f.id==="setupForm"){const ageSettings=window.BayAge.read(f);if(!ageSettings)return;SHOP={...SHOP,ageSettings,name:$("#sh-name").value.trim()||SHOP.name,phone:$("#sh-phone").value.trim(),hours:$("#sh-hours").value.trim(),email:$("#sh-email").value.trim(),smartTopics:Array.from(f.querySelectorAll('[name="smartTopic"]:checked'),el=>el.value),

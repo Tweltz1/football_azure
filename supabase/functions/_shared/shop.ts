@@ -26,6 +26,8 @@ export interface Shop {
   ageSettings?: AgeSettings;
   smartSchedule?: { afterHours:boolean; zone:string; days:number[]; open:string; close:string; signature:string };
   smartTopics?: string[];
+  /** Quick services (oil change, tire rotation...): saved bundles of lines a counter can check in with one tap. */
+  packages?: ServicePackage[];
   id: string;
   ownerId: string;
   rates?: Rate[];
@@ -48,11 +50,14 @@ export interface Photo { id: string; src: string; cap: string; stage?: Stage; ad
 export interface StageEvent { stage: Stage; t: string }
 type Channel = 'sms' | 'email';
 type Preference = Channel | 'both';
+export interface ServicePackage { id: string; name: string; lines: Charge[]; fastLane: boolean }
+/** A text the shop scheduled for later: declined work to revisit, or the next service. */
+export interface Followup { id: string; kind: 'declined' | 'service'; due: string; text: string; createdAt: string; by: string; sentAt?: string; canceledAt?: string; canceledBy?: 'shop' | 'customer' }
 export interface Message { sender?:string; senderId?:string; suggestion?:string; incomingSms?:boolean; autoReply?:boolean; channel?: Channel; dir: 'out' | 'in'; t: string; text: string; delivery?: 'sent' | 'not_sent' | 'failed'; note?: string }
 
 export interface JobData {
   ro: string;
-  customer: { name: string; phone: string; consent: boolean; email?: string; preference?: Preference };
+  customer: { name: string; phone: string; consent: boolean; email?: string; preference?: Preference; /** When the customer stopped follow-up reminders. */ remindersOff?: string };
   vehicle: { year: string; make: string; model: string; vin?: string; engine?: string; trim?: string };
   plate: string;
   concern: string;
@@ -72,15 +77,27 @@ export interface JobData {
   walkthroughs?: { before?: Walkthrough; after?: Walkthrough };
   /** Set when the shop asks the customer for walk-around photos (body work, check-in condition records). */
   walkaroundRequest?: { t: string } | null;
+  /** Odometer at drop-off and at pickup (digits only). */
+  mileageIn?: string;
+  mileageOut?: string;
+  /** When the shop promised the car back (ISO time). Shop-only. */
+  promised?: string;
+  /** The technician working the car. Shop-only. */
+  tech?: { id: string; name: string } | null;
+  /** The quick service this car checked in for, if any. */
+  service?: string;
+  /** Texts to send later: declined work and service reminders. */
+  followups?: Followup[];
 }
 export const URGENCIES = ['low', 'medium', 'high'] as const;
 export type Urgency = typeof URGENCIES[number];
 const urgencyOf = (v: unknown): Urgency | undefined => URGENCIES.includes(v as Urgency) ? v as Urgency : undefined;
-export interface Note { id: string; t: string; text: string }
+/** `internal` notes stay in the shop; the customer never sees them. */
+export interface Note { id: string; t: string; text: string; internal?: boolean; by?: string }
 /** Walk-through checklist points. The page shows the labels; keep the keys in step with talkshops/public/walkthrough.js. */
 export const WALK_ITEMS = ['exterior', 'lights', 'wipers', 'tires', 'brakes', 'oil', 'fluids', 'battery', 'belts', 'leaks', 'dash'] as const;
 export type WalkStatus = 'good' | 'soon' | 'now';
-export interface WalkItem { key: string; status: WalkStatus; note?: string }
+export interface WalkItem { key: string; status: WalkStatus; note?: string; /** Tires only: tread depth in 32nds per wheel. */ tread?: Record<string, number> }
 export interface Walkthrough { t: string; by: string; mileage?: string; items: WalkItem[]; summary?: string; sentAt?: string }
 const WALK_LABEL = { before: 'check-in', after: 'after-repair' } as const;
 const MAX_NOTES = 60;
@@ -133,7 +150,33 @@ export interface ShopStore {
   useTexts?(shopId: string, n: number, period: string, limit: number | null): Promise<boolean>;
   /** Saves plan columns that Stripe reported. */
   setPlan?(shopId: string, patch: Partial<PlanState>): Promise<void>;
+  /** Past and current visits: every term in the search text, or (history) the same phone digits, plate or VIN. Newest first. */
+  visits?(shopId: string, q: VisitQuery, limit: number): Promise<VisitRow[]>;
+  /** Jobs with a follow-up due at or before `now` (follow_up_at). */
+  dueFollowups?(shopId: string, now: string, limit: number): Promise<Job[]>;
+  /** Claims one due follow-up so two open browsers never both send it: true only for the first caller. */
+  claimFollowup?(jobId: string, at: string): Promise<boolean>;
+  /** Jobs (any shop) whose customer phone is `phone` and that still have a follow-up waiting. For texted STOP. */
+  jobsWithFollowupsFor?(phone: string): Promise<Job[]>;
 }
+
+export interface VisitQuery { terms?: string[]; phone?: string; plate?: string; vin?: string }
+/** One visit for the returning-customer lookup and the car's history. */
+export interface VisitRow {
+  id: string; ro: string; createdAt: string; archivedAt: string | null; stage: string;
+  customer: JobData['customer']; vehicle: JobData['vehicle']; plate: string; concern: string; total: number;
+  mileage: string; declined: string[];
+}
+/** Earliest follow-up still waiting, or null. Stored as follow_up_at so due ones are cheap to find. */
+export const nextFollowup = (j: Pick<Job, 'data'>): string | null =>
+  (j.data.followups ?? []).filter((f) => !f.sentAt && !f.canceledAt).map((f) => f.due).sort()[0] ?? null;
+export const visitRow = (j: Job): VisitRow => ({
+  id: j.id, ro: j.data.ro, createdAt: j.createdAt, archivedAt: archivedAt(j), stage: j.stage,
+  customer: j.data.customer, vehicle: j.intake?.vehicle ?? j.data.vehicle, plate: j.intake?.plate ?? j.data.plate ?? '', concern: j.intake?.concern ?? j.data.concern ?? '',
+  total: j.bill?.total ?? j.data.estimate.filter((e) => e.status === 'approved').reduce((a, e) => a + e.price, 0),
+  mileage: j.data.mileageOut || j.data.mileageIn || j.data.walkthroughs?.after?.mileage || j.data.walkthroughs?.before?.mileage || '',
+  declined: j.data.estimate.filter((e) => e.status === 'declined').map((e) => e.item),
+});
 
 /** One archived (picked-up) car, without photos or messages. */
 export interface ArchiveRow {
@@ -290,8 +333,9 @@ const customerOut = (j: Job, shop: Shop) => ({
   photos: [...(j.intakePhotos ?? []), ...j.data.photos],
   events: j.data.events,
   approval: j.data.approval,
-  notes: j.data.notes ?? [],
+  notes: (j.data.notes ?? []).filter((n) => !n.internal).map(({ id, t, text }) => ({ id, t, text })),
   walkthroughs: j.data.walkthroughs ?? {},
+  reminders: { off: !!j.data.customer.remindersOff, waiting: (j.data.followups ?? []).filter((f) => !f.sentAt && !f.canceledAt).map((f) => ({ kind: f.kind, due: f.due })) },
   // Only damage the shop confirmed; AI suggestions stay with the shop.
   walkaround: {
     requested: !!j.data.walkaroundRequest, canUpload: walkaroundOpen(j),
@@ -318,6 +362,64 @@ async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string
     else result = { delivery: 'not_sent', note: 'Automatic email is not configured.' };
     return { dir: 'out', channel, t: now, text, ...result };
   }));
+}
+
+/** Odometer digits, '' when blank, or null when it isn't a mileage. */
+const mileageOf = (v: unknown): string | null => {
+  const raw = typeof v === 'number' ? String(v) : typeof v === 'string' ? v.trim() : '';
+  if (!raw) return '';
+  const digits = raw.replace(/[,\s]|mi(les)?$/gi, '');
+  return /^\d{1,7}$/.test(digits) ? String(Number(digits)) : null;
+};
+
+/** Mileage, promised time and technician from a check-in or details change. Absent fields are left out. */
+function parseDetails(body: Body): Partial<Pick<JobData, 'mileageIn' | 'mileageOut' | 'promised' | 'tech'>> | string {
+  const out: Partial<Pick<JobData, 'mileageIn' | 'mileageOut' | 'promised' | 'tech'>> = {};
+  for (const k of ['mileageIn', 'mileageOut'] as const) {
+    if (body[k] === undefined) continue;
+    const m = mileageOf(body[k]);
+    if (m === null) return 'Enter the mileage as a number, or leave it blank.';
+    if (m) out[k] = m;
+  }
+  if (body.promised !== undefined && body.promised !== null && body.promised !== '') {
+    const t = Date.parse(str(body.promised, 40));
+    if (!Number.isFinite(t)) return 'Pick a promised date and time, or leave it blank.';
+    out.promised = new Date(t).toISOString();
+  }
+  if (body.tech && typeof body.tech === 'object') {
+    const t = body.tech as Body;
+    const id = str(t.id, 100), name = str(t.name, 80);
+    if (id && name) out.tech = { id, name };
+  }
+  return out;
+}
+
+/** Cancels every waiting reminder for this repair and remembers that the customer said stop. */
+export function stopReminders(job: Job, now: string, by: 'customer' | 'shop') {
+  for (const f of job.data.followups ?? []) if (!f.sentAt && !f.canceledAt) { f.canceledAt = now; f.canceledBy = by; }
+  if (by === 'customer') job.data.customer.remindersOff = now;
+}
+
+/** Sends this shop's reminder texts that came due. Runs when staff open the Bay, so no scheduler is needed. */
+async function sendDueFollowups(deps: ShopDeps, shop: Shop, now: Date, acc: Access): Promise<number> {
+  const { store } = deps;
+  if (!store.dueFollowups || !store.claimFollowup) return 0;
+  const iso = now.toISOString();
+  let sent = 0;
+  for (const job of await store.dueFollowups(shop.id, iso, 10)) {
+    const at = nextFollowup(job);
+    if (!at || at > iso || !await store.claimFollowup(job.id, at)) continue;
+    for (const f of (job.data.followups ?? []).filter((x) => !x.sentAt && !x.canceledAt && x.due <= iso)) {
+      if (job.data.customer.remindersOff) { f.canceledAt = iso; f.canceledBy = 'customer'; continue; }
+      const text = `${f.text} Reply STOP to opt out.`;
+      const msgs = await notifyCustomer(deps, shop, job, text, iso, acc);
+      job.data.messages.push(...msgs.map((m) => ({ ...m, sender: 'Scheduled reminder' })));
+      f.sentAt = iso;
+      sent++;
+    }
+    await store.putJob(job);
+  }
+  return sent;
 }
 
 async function submitIntake(store: ShopStore, job: Job, body: Body): Promise<Res | null> {
@@ -375,6 +477,12 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (typeof src !== 'string' || src.length > MAX_PHOTO || !/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+=*$/u.test(src)) return bad('Choose a valid JPEG photo.');
       if (!await store.walkaround(job.id, { photo: { id: ctx.newId(), angle: body.angle, src, addedAt: now, marks: [] } })) return bad('Walk-around photos are closed for this repair.');
       return ok(customerOut((await store.getJob(job.id)) ?? job, shop));
+    }
+    if (method === 'POST' && parts.length === 4 && parts[3] === 'stop-reminders') {
+      stopReminders(job, now, 'customer');
+      job.updatedAt = now;
+      await store.putJob(job);
+      return ok(customerOut(job, shop));
     }
     if (method === 'POST' && parts[3] === 'decision') {
       if (job.stage !== 'approval' || job.data.closed) return bad('This estimate is not waiting on a decision.');
@@ -470,7 +578,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const shop = mine?.shop ?? null;
     if (method === 'GET') {
       if (shop) await store.purgeArchive?.(shop.id, archiveCutoff(ctx.now())).catch((e) => ctx.log.warn('archive purge failed', { error: String(e) }));
-      return ok({ shop: shop && publicShop(shop), role: mine?.seat.role ?? null, mainOwner: mine?.seat.primary ?? false, emailConfigured: !!deps.email, plan: shop ? await planOut(deps, shop, ctx.now()) : null });
+      return ok({ shop: shop && publicShop(shop), role: mine?.seat.role ?? null, mainOwner: mine?.seat.primary ?? false, emailConfigured: !!deps.email, plan: shop ? await planOut(deps, shop, ctx.now()) : null,
+        me: ctx.userId, crew: shop ? await crewOf(deps, shop, ctx) : [] });
     }
     if (method === 'POST') {
       if (mine && mine.seat.role !== 'owner') return ownerOnly();
@@ -500,8 +609,20 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
           smartSchedule={afterHours:s.afterHours===true,zone,days:s.days,open,close,signature:str(s.signature,60)};
         }
       }
+      let packages: ServicePackage[] | undefined;
+      if (body.packages !== undefined) {
+        const list = body.packages as Body[];
+        if (!Array.isArray(list) || list.length > 30) return bad('Save up to 30 quick services.');
+        packages = [];
+        for (const p of list) {
+          const name = str(p?.name, 60);
+          const lines = Array.isArray(p?.lines) ? p.lines as Charge[] : [];
+          if (!name || !lines.length || lines.length > 12 || !lines.every(validCharge)) return bad('Give each quick service a name and 1 to 12 items with prices.');
+          packages.push({ id: str(p.id, 40) || ctx.newId(), name, lines: lines.map((r) => ({ ...copyRate(r), qty: r.qty })), fastLane: p.fastLane === true });
+        }
+      }
       const next: Shop = {
-        ageSettings, smartTopics, smartSchedule,
+        ageSettings, smartTopics, smartSchedule, packages: packages ?? shop?.packages,
         id: shop?.id ?? ctx.newId(),
         ownerId: shop?.ownerId ?? ctx.userId, rates: rates.map(copyRate),
         name,
@@ -523,7 +644,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return { status: 405 };
   }
 
-  if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan' && parts[1] !== 'howto' && parts[1] !== 'price-import' && parts[1] !== 'vin' && parts[1] !== 'recalls' && parts[1] !== 'vehicle-options') return { status: 404 };
+  if (!['jobs', 'archive', 'plan', 'howto', 'price-import', 'vin', 'recalls', 'vehicle-options', 'visits'].includes(parts[1])) return { status: 404 };
   const mine = await whoAmI();
   if (!mine) return { status: 409, body: 'Set up your shop first.' };
   const { shop } = mine;
@@ -577,6 +698,22 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   if (parts[1] === 'plan') return planRoute(ctx, deps, shop, method, parts[2], body);
   const acc = access(shop.plan, ctx.now(), await settings(deps));
 
+  // Returning customers: search past and current visits, or one car's history by phone, plate or VIN.
+  if (parts[1] === 'visits') {
+    if (method !== 'POST') return { status: 405 };
+    if (!store.visits) return { status: 503, body: 'Visit history is unavailable.' };
+    const phone = normalizePhone(str(body.phone, 30))?.replace(/\D/g, '').slice(-10) ?? '';
+    const plate = str(body.plate, 12).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const vin = str(body.vin, 20).toUpperCase();
+    const q: VisitQuery = body.q !== undefined
+      ? { terms: archiveTerms(str(body.q, 120)) }
+      : { ...(phone ? { phone } : {}), ...(plate.length >= 2 ? { plate } : {}), ...(VIN_RE.test(vin) ? { vin } : {}) };
+    if (!(q.terms?.length || q.phone || q.plate || q.vin)) return ok({ rows: [] });
+    const exclude = str(body.exclude, 100);
+    const rows = (await store.visits(shop.id, q, 40)).filter((r) => r.id !== exclude);
+    return ok({ rows: rows.slice(0, 25) });
+  }
+
   if (parts[1] === 'archive') {
     if (method !== 'POST') return { status: 405 };
     if (!store.searchArchive) return { status: 503, body: 'The archive is unavailable.' };
@@ -591,6 +728,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (method === 'GET') {
       // Everything still in the shop, plus cars picked up in the last 2 days.
       const since = new Date(ctx.now().getTime() - 2 * 86_400_000).toISOString();
+      if (acc.canWork) await sendDueFollowups(deps, shop, ctx.now(), acc).catch((e) => ctx.log.warn('follow-ups failed', { error: String(e) }));
       const jobs = await store.listJobs(shop.id, since);
       return ok(jobs.map((j) => jobOut(j, deps.linkBase)));
     }
@@ -614,8 +752,13 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const inviting = body.invite === true;
       if (inviting && c.consent !== true) return bad('Confirm the customer agreed to receive check-in notifications.');
       if (!inviting && (!vehicle.make || !vehicle.model)) return bad('Enter the make and model.');
-      const concern = str(body.concern, 1000);
+      const pkg = !inviting && body.service ? (shop.packages ?? []).find((p) => p.id === body.service) : undefined;
+      if (body.service && !inviting && !pkg) return bad('That quick service is no longer saved. Pick another or leave it blank.');
+      const concern = str(body.concern, 1000) || (pkg ? pkg.name : '');
       if (!inviting && !concern) return bad("Enter the customer's concern.");
+      const details = parseDetails(body);
+      if (typeof details === 'string') return bad(details);
+      const fast = !!pkg && pkg.fastLane && body.fastLane !== false;
       const job: Job = {
         id: ctx.newId(),
         shopId: shop.id,
@@ -631,15 +774,19 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
           concern,
           eta: '',
           ...(urgencyOf(body.urgency) ? { urgency: urgencyOf(body.urgency) } : {}),
-          estimate: [],
+          ...details,
+          ...(pkg ? { service: pkg.name } : {}),
+          estimate: (pkg?.lines ?? []).map((r) => ({ id: ctx.newId(), item: r.name, price: lineCents(r) / 100, status: fast ? 'approved' as const : 'pending' as const, charge: { ...copyRate(r), qty: r.qty }, priority: 'required' as const })),
           photos: [],
           events: [{ stage: inviting ? 'invited' : 'checked_in', t: now }],
           messages: [],
-          approval: null,
+          approval: fast ? { by: `${name} (at the counter)`, t: now } : null,
         },
       };
+      // Quick-service fast lane: the customer okayed the price at the counter, so the car goes straight to work.
+      if (fast) { job.stage = 'in_progress'; job.data.events.push({ stage: 'in_progress', t: now }); }
       if (inviting) await store.putJob(job);
-      job.data.messages.push(...await notifyCustomer(deps, shop, job, fillTemplate(job.stage, shop, job, deps.linkBase), now, acc));
+      job.data.messages.push(...await notifyCustomer(deps, shop, job, fillTemplate(inviting ? 'invited' : 'checked_in', shop, job, deps.linkBase), now, acc));
       await store.putJob(job);
       return ok(jobOut(job, deps.linkBase));
     }
@@ -801,6 +948,11 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (stage === job.stage) return bad(`Already ${LABEL[stage]}.`);
     if (stage === 'approval' && !d.estimate.some((e) => e.status === 'pending')) return bad('Add at least one estimate line first.');
     if (typeof body.eta === 'string') d.eta = str(body.eta, 40);
+    if (body.mileageOut !== undefined) {
+      const m = mileageOf(body.mileageOut);
+      if (m === null) return bad('Enter the mileage as a number, or leave it blank.');
+      if (m) d.mileageOut = m;
+    }
     job.stage = stage;
     d.events.push({ stage, t: now });
     const msg = str(body.text, 1000);
@@ -852,8 +1004,9 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (!text) return bad('Type or dictate a note.');
     const notes = d.notes ??= [];
     if (notes.length >= MAX_NOTES) return bad(`Up to ${MAX_NOTES} notes per car. Remove an old one first.`);
-    notes.push({ id: ctx.newId(), t: now, text });
-    if (body.send) {
+    const internal = body.internal === true;
+    notes.push({ id: ctx.newId(), t: now, text, ...(internal ? { internal: true } : {}), by: ctx.displayName || ctx.userEmail || 'Shop staff' });
+    if (body.send && !internal) {
       const msg = `Update on your ${vehicleName({ ...d, ...job.intake }) || 'car'} from ${shop.name}: ${text.length > 300 ? text.slice(0, 297) + '…' : text} Details: ${deps.linkBase}${job.token}`;
       d.messages.push(...await notifyCustomer(deps, shop, job, msg, now));
     }
@@ -865,7 +1018,10 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const it = given.find((x) => x && x.key === key);
       if (!it || !['good', 'soon', 'now'].includes(it.status as string)) return [];
       const note = str(it.note, 300);
-      return [{ key, status: it.status as WalkStatus, ...(note ? { note } : {}) }];
+      const tread: Record<string, number> = {};
+      if (key === 'tires' && it.tread && typeof it.tread === 'object')
+        for (const w of ['lf', 'rf', 'lr', 'rr']) { const v = (it.tread as Body)[w]; if (Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 32) tread[w] = v as number; }
+      return [{ key, status: it.status as WalkStatus, ...(note ? { note } : {}), ...(Object.keys(tread).length ? { tread } : {}) }];
     });
     if (!items.length) return bad('Mark at least one item before saving.');
     const mileage = str(body.mileage, 12).replace(/[^\d,]/g, '');
@@ -883,6 +1039,33 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const before = d.notes?.length ?? 0;
     d.notes = (d.notes ?? []).filter((n) => n.id !== body.id);
     if (d.notes.length === before) return bad('That note was already removed.');
+  } else if (action === 'details') {
+    const details = parseDetails(body);
+    if (typeof details === 'string') return bad(details);
+    for (const k of ['mileageIn', 'mileageOut', 'promised', 'tech'] as const) {
+      if (body[k] === undefined) continue;
+      if (details[k]) (d as unknown as Record<string, unknown>)[k] = details[k]; else delete d[k];
+    }
+  } else if (action === 'followup') {
+    const list = d.followups ??= [];
+    if (body.cancel) {
+      const f = list.find((x) => x.id === body.cancel && !x.sentAt && !x.canceledAt);
+      if (!f) return bad('That reminder was already sent or canceled.');
+      f.canceledAt = now; f.canceledBy = 'shop';
+    } else {
+      if (d.customer.remindersOff) return bad(`${d.customer.name.split(/\s+/)[0] || 'The customer'} turned off reminder texts.`);
+      if (!d.customer.consent) return bad('The customer has not agreed to messages.');
+      const kind = body.kind === 'declined' || body.kind === 'service' ? body.kind : null;
+      if (!kind) return bad('Choose declined work or a service reminder.');
+      const due = str(body.due, 10);
+      const dueAt = /^\d{4}-\d{2}-\d{2}$/.test(due) ? Date.parse(due + 'T15:00:00Z') : NaN;
+      const today = Date.parse(now.slice(0, 10) + 'T00:00:00Z');
+      if (!Number.isFinite(dueAt) || dueAt < today + 86_400_000 || dueAt > today + 360 * 86_400_000) return bad('Pick a date from tomorrow up to about a year out.');
+      const text = str(body.text, 480);
+      if (text.length < 10) return bad('Write the reminder text.');
+      if (list.filter((x) => !x.sentAt && !x.canceledAt).length >= 5) return bad('Up to 5 waiting reminders per repair. Cancel one first.');
+      list.push({ id: ctx.newId(), kind, due: new Date(dueAt).toISOString(), text, createdAt: now, by: ctx.displayName || ctx.userEmail || 'Shop staff' });
+    }
   } else if (action === 'message') {
     const msg = str(body.text, 1000);
     if (!msg) return bad('Type a message.');
@@ -903,6 +1086,16 @@ async function settings(deps: ShopDeps): Promise<TrialSettings> {
 
 const canSmart = (s:Shop,now:Date) => s.plan?.plan==='pro' && ['active','past_due','trialing'].includes(s.plan.status) ||
   s.plan?.plan==='trial' && !!s.plan.trialEndsAt && Date.parse(s.plan.trialEndsAt)>now.getTime();
+/** Everyone who can be assigned a car: id and a short name. */
+async function crewOf(deps: ShopDeps, shop: Shop, ctx: Ctx & { displayName?: string | null; userEmail?: string | null }): Promise<{ id: string; name: string; role: string }[]> {
+  const members = await deps.staff?.listMembers(shop.id).catch(() => []) ?? [];
+  const label = (name: string, email: string) => name || email.split('@')[0] || 'Owner';
+  const list = members.map((m) => ({ id: m.userId, name: label(m.name, m.email), role: m.role }));
+  if (!list.some((m) => m.id === shop.ownerId))
+    list.unshift({ id: shop.ownerId, name: shop.ownerId === ctx.userId ? label(ctx.displayName ?? '', ctx.userEmail ?? '') : 'Owner', role: 'owner' });
+  return list;
+}
+
 const publicShop = (shop: Shop) => { const { plan: _plan, ...rest } = shop; return rest; };
 
 /** What the shop's Plan tab shows. */

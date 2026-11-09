@@ -8,7 +8,7 @@ export function smsTopic(text: string): string {
 }
 
 type SmsConfig = { token: string; account: string; to: string; url: string };
-export async function incomingSms(req: Request, cfg: SmsConfig, receive: (sid:string,phone:string,text:string,topic:string)=>Promise<string|null>): Promise<Response> {
+export async function incomingSms(req: Request, cfg: SmsConfig, receive: (sid:string,phone:string,text:string,topic:string)=>Promise<string|null>, optOut?: (phone:string)=>Promise<void>): Promise<Response> {
   if (!cfg.token || !cfg.to || !cfg.account) return new Response('SMS is not configured.', {status:503});
   const params = new URLSearchParams(await req.text());
   const signature = req.headers.get('X-Twilio-Signature') || '';
@@ -21,6 +21,10 @@ export async function incomingSms(req: Request, cfg: SmsConfig, receive: (sid:st
       params.get('AccountSid')!==cfg.account || params.get('To')!==cfg.to) return denied();
   const sid=params.get('MessageSid')||'', phone=params.get('From')||'', text=(params.get('Body')||'').trim().slice(0,1600);
   let reply:string|null=null;
+  // STOP and its synonyms: Twilio blocks further texts itself; this also cancels the shop's scheduled reminders.
+  if (optOut && /^\+[1-9]\d{7,14}$/.test(phone) && (params.get('OptOutType')==='STOP' || /^(stop(all)?|cancel|end|quit|unsubscribe|revoke|optout)$/i.test(text))) {
+    try { await optOut(phone); } catch { /* the carrier opt-out still applies */ }
+  }
   if (/^(?:SM|MM)[a-f\d]{32}$/i.test(sid) && /^\+[1-9]\d{7,14}$/.test(phone) && text && !params.get('OptOutType') && !/^(stop(all)?|cancel|end|quit|unsubscribe|revoke|optout|start|unstop|help|info|yes)$/i.test(text)) {
     reply=await receive(sid,phone,text,Number(params.get('NumMedia')||0)>0?'review':smsTopic(text));
   }

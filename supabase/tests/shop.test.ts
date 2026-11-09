@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Ctx } from '../functions/_shared/handlers.ts';
 import {
-  archivedAt, archiveSearchText, createTwilioSender, normalizePhone, shopRoute, type Job, type Shop, type ShopDeps, type ShopStore,
+  archivedAt, archiveSearchText, createTwilioSender, nextFollowup, normalizePhone, shopRoute, stopReminders, visitRow, type Job, type Shop, type ShopDeps, type ShopStore,
 } from '../functions/_shared/shop.ts';
 import type { PlanState } from '../functions/_shared/shopPlans.ts';
 import { clearHowToLimits } from '../functions/_shared/shopHowTo.ts';
@@ -14,6 +14,7 @@ function world() {
   const shops = new Map<string, Shop>();
   const jobs = new Map<string, Job>();
   const billFiles = new Map<string, string>();
+  const followAt = new Map<string, string | null>();
   const ro = new Map<string, number>();
   const texts: { to: string; body: string }[] = [];
   let clock = Date.parse('2026-11-07T15:00:00Z');
@@ -27,7 +28,7 @@ function world() {
     },
     async getJob(id) { const j = jobs.get(id); return j ? clone(j) : null; },
     async jobByToken(t) { const j = [...jobs.values()].find((x) => x.token === t); return j ? clone(j) : null; },
-    async putJob(j) { jobs.set(j.id, clone(j)); },
+    async putJob(j) { jobs.set(j.id, clone(j)); followAt.set(j.id, nextFollowup(j)); },
     async deleteJob(id) { jobs.delete(id); },
     async saveIntake(id, intake) {
       const j = jobs.get(id)!;
@@ -75,6 +76,16 @@ function world() {
     async purgeArchive(shopId, before) {
       for (const [id, j] of jobs) if (j.shopId === shopId && archivedAt(j) && archivedAt(j)! < before) jobs.delete(id);
     },
+    async visits(shopId, q, limit) {
+      return [...jobs.values()].filter((j) => j.shopId === shopId && (q.terms?.length ? q.terms.every((t) => archiveSearchText(j).includes(t))
+        : (q.phone && j.data.customer.phone.endsWith(q.phone)) || (q.plate && (j.intake?.plate ?? j.data.plate) === q.plate) || (q.vin && j.data.vehicle.vin === q.vin)))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit).map((j) => visitRow(clone(j)));
+    },
+    async dueFollowups(shopId, now, limit) {
+      return [...jobs.values()].filter((j) => j.shopId === shopId && followAt.get(j.id) && followAt.get(j.id)! <= now).slice(0, limit).map(clone);
+    },
+    async claimFollowup(id, at) { if (followAt.get(id) !== at) return false; followAt.set(id, null); return true; },
+    async jobsWithFollowupsFor(phone) { return [...jobs.values()].filter((j) => j.data.customer.phone === phone && followAt.get(j.id)).map(clone); },
     async nextRo(shopId) { const v = ro.get(shopId) ?? 1001; ro.set(shopId, v + 1); return v; },
   };
   const deps: ShopDeps = {
@@ -702,4 +713,95 @@ test('VIN decoding and recalls for signed-in staff, and check-in keeps the VIN a
   assert.equal(job.vehicle.engine, '2L 4 Cyl.');
   const page = await w.as(null)('GET', `shop/c/${job.link.split('?c=')[1]}`);
   assert.ok(!JSON.stringify(page?.body).includes('19XFC2F5XGE000000'), 'the customer page does not show the VIN');
+});
+
+test('workday: mileage, promised time, tech, internal notes and returning-customer visits', async () => {
+  const { as } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const first = (await dan('POST', 'shop/jobs', { ...checkIn, mileageIn: '48,210', promised: '2026-11-07T22:00:00Z', tech: { id: 'user-dan', name: 'Dan' } }))?.body as Record<string, any>;
+  assert.equal(first.mileageIn, '48210');
+  assert.equal(first.promised, '2026-11-07T22:00:00.000Z');
+  assert.deepEqual(first.tech, { id: 'user-dan', name: 'Dan' });
+  assert.equal((await dan('POST', 'shop/jobs', { ...checkIn, mileageIn: 'lots' }))?.status, 400);
+
+  // Change details, then clear the promised time.
+  let j = (await dan('POST', `shop/jobs/${first.id}/details`, { promised: '', mileageOut: '48,260' }))?.body as Record<string, any>;
+  assert.equal(j.promised, undefined);
+  assert.equal(j.mileageOut, '48260');
+  assert.equal(j.tech.name, 'Dan');
+
+  // Internal notes stay in the shop and never text the customer.
+  j = (await dan('POST', `shop/jobs/${first.id}/note`, { text: 'Customer is picky about grease on the seats', internal: true, send: true }))?.body as Record<string, any>;
+  assert.equal(j.notes[0].internal, true);
+  j = (await dan('POST', `shop/jobs/${first.id}/note`, { text: 'Pads are at 2 mm.' }))?.body as Record<string, any>;
+  const page = (await as(null)('GET', `shop/c/${j.link.split('?c=')[1]}`))?.body as Record<string, any>;
+  assert.equal(page.notes.length, 1);
+  assert.ok(!JSON.stringify(page).includes('picky'));
+
+  // Visit history by phone, plate or VIN, and lookup by typed text.
+  await dan('POST', `shop/jobs/${first.id}/stage`, { stage: 'picked_up' });
+  const second = (await dan('POST', 'shop/jobs', { ...checkIn, concern: 'Oil change' }))?.body as Record<string, any>;
+  const hist = (await dan('POST', 'shop/visits', { phone: '(555) 013-6620', plate: second.plate, exclude: second.id }))?.body as { rows: any[] };
+  assert.equal(hist.rows.length, 1);
+  assert.equal(hist.rows[0].ro, first.ro);
+  assert.equal(hist.rows[0].mileage, '48260');
+  const found = (await dan('POST', 'shop/visits', { q: 'delgado' }))?.body as { rows: any[] };
+  assert.equal(found.rows.length, 2);
+  assert.deepEqual(((await as('someone-else')('POST', 'shop/visits', { q: 'delgado' }))?.status), 409);
+});
+
+test('workday: quick service fast lane checks in with approved lines and goes straight to work', async () => {
+  const { as, texts } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Quick Lube' });
+  const saved = (await dan('POST', 'shop/me', { name: 'Quick Lube', packages: [{ name: 'Oil change + rotation', fastLane: true, lines: [{ name: 'Synthetic oil change', kind: 'fee', rate: 69.95, qty: 1 }, { name: 'Tire rotation', kind: 'fee', rate: 20, qty: 1 }] }] }))?.body as Record<string, any>;
+  const pkg = saved.shop.packages[0];
+  assert.equal(pkg.lines.length, 2);
+  const j = (await dan('POST', 'shop/jobs', { ...checkIn, concern: '', service: pkg.id }))?.body as Record<string, any>;
+  assert.equal(j.stage, 'in_progress');
+  assert.equal(j.concern, 'Oil change + rotation');
+  assert.equal(j.service, 'Oil change + rotation');
+  assert.deepEqual(j.estimate.map((e: any) => [e.status, e.price]), [['approved', 69.95], ['approved', 20]]);
+  assert.match(texts.at(-1)!.body, /has your 2018 Honda Civic/);
+  assert.equal((await dan('POST', 'shop/jobs', { ...checkIn, service: 'gone' }))?.status, 400);
+});
+
+test('workday: reminders send when due, once, with STOP, and the customer can stop them', async () => {
+  const { as, texts, tick, jobs } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '(555) 014-2290' });
+  const j = (await dan('POST', 'shop/jobs', checkIn))?.body as Record<string, any>;
+  assert.equal((await dan('POST', `shop/jobs/${j.id}/followup`, { kind: 'declined', due: '2026-11-07', text: 'Time to look at those brakes?' }))?.status, 400);
+  let out = (await dan('POST', `shop/jobs/${j.id}/followup`, { kind: 'declined', due: '2026-12-07', text: 'Hi Maria, want us to do the brake fluid flush you skipped?' }))?.body as Record<string, any>;
+  assert.equal(out.followups.length, 1);
+  await dan('POST', `shop/jobs/${j.id}/followup`, { kind: 'service', due: '2027-02-07', text: 'Hi Maria, your Civic is due for an oil change.' });
+  const token = j.link.split('?c=')[1];
+  const page = (await as(null)('GET', `shop/c/${token}`))?.body as Record<string, any>;
+  assert.equal(page.reminders.waiting.length, 2);
+
+  const before = texts.length;
+  await dan('GET', 'shop/jobs');
+  assert.equal(texts.length, before, 'nothing is due yet');
+  tick(31 * 86_400_000);
+  await dan('GET', 'shop/jobs');
+  await dan('GET', 'shop/jobs');
+  assert.equal(texts.length, before + 1, 'sent exactly once');
+  assert.match(texts.at(-1)!.body, /brake fluid flush.*Reply STOP to opt out\.$/);
+
+  // The customer stops the rest from their page.
+  const stopped = (await as(null)('POST', `shop/c/${token}/stop-reminders`))?.body as Record<string, any>;
+  assert.equal(stopped.reminders.off, true);
+  assert.equal(stopped.reminders.waiting.length, 0);
+  tick(120 * 86_400_000);
+  await dan('GET', 'shop/jobs');
+  assert.equal(texts.length, before + 1);
+  assert.equal((await dan('POST', `shop/jobs/${j.id}/followup`, { kind: 'service', due: '2027-08-01', text: 'Oil change due soon.' }))?.status, 400);
+
+  // A texted STOP (handled in the SMS webhook) uses the same helper.
+  const job = jobs.get(j.id)!;
+  job.data.customer.remindersOff = undefined;
+  job.data.followups!.push({ id: 'f9', kind: 'service', due: '2028-01-01T15:00:00.000Z', text: 'x', createdAt: '', by: '' });
+  stopReminders(job, '2027-01-01T00:00:00Z', 'customer');
+  assert.ok(job.data.followups!.every((f) => f.sentAt || f.canceledAt));
 });

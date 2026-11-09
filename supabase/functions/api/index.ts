@@ -11,7 +11,7 @@ import { cardsRoute } from '../_shared/cards.ts';
 import { geminiJunkDetector, junkRoute, type JunkDeps } from '../_shared/junk.ts';
 import { createJunkPhotos, createJunkStore } from './junkAdapters.ts';
 import { createShopEmailSender } from '../_shared/shopEmail.ts';
-import { createTwilioSender, shopRoute, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
+import { createTwilioSender, shopRoute, stopReminders, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
 import { incomingSms } from '../_shared/shopSms.ts';
 import { createStripe } from '../_shared/shopPlans.ts';
 import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator.ts';
@@ -146,6 +146,9 @@ Deno.serve(async (req) => {
         const {data,error}=await db.rpc('repair_incoming_sms',{p_sid:sid,p_phone:phone,p_body:text,p_topic:topic,p_base:shop.linkBase});
         if(error) throw error;
         return data;
+      }, async (phone) => {
+        const now = new Date().toISOString();
+        for (const job of await shop.store.jobsWithFollowupsFor?.(phone) ?? []) { stopReminders(job, now, 'customer'); job.updatedAt = now; await shop.store.putJob(job); }
       });
     } catch { return new Response('SMS processing unavailable.',{status:503}); }
   }

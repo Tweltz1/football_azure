@@ -240,6 +240,7 @@
         ${(j.notes || []).length ? `<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p>${window.repairPhotoFor(n.text, "Part mentioned")}</li>`).join("")}</ul></div>` : ""}
         <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         ${j.concern ? `<div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
+        ${window.Workday.customerReminders(j)}
         ${j.shop.phone ? `<div class="c-card call"><span>Questions? Call the shop</span><b>${esc(j.shop.phone)}</b></div>` : ""}
         <p class="cust-top">This page updates as your repair progresses.</p>
         <p class="cust-top"><a href="/privacy.html">Privacy Policy</a></p>
@@ -298,6 +299,17 @@
   const authRedirect = () => location.origin + (pathView() ? location.pathname : "/") + (joinToken ? "?join=" + encodeURIComponent(joinToken) : "");
   let session = null, shop = null, emailConfigured = false, jobs = [], loaded = false, loadErr = "";
   const job = (id) => jobs.find((j) => j.id === id);
+  window.Workday?.init({
+    job, jobs: () => jobs, shop: () => shop, crew: () => crew, me: () => myId, isOwner: () => role === "owner",
+    act: (id, action, body) => jobAction(id, action, body),
+    visits: async (body) => (await api("POST", "shop/visits", body)).rows || [],
+    saveShop: async (patch) => {
+      const r = await api("POST", "shop/me", { name: shop.name, phone: shop.phone, hours: shop.hours, email: shop.email || "", ...patch });
+      shop = r.shop; plan = r.plan || plan; render();
+    },
+    stopReminders: async () => { cust.data = await api("POST", "shop/c/" + encodeURIComponent(custToken) + "/stop-reminders"); renderCustomer(); },
+    toast: (m) => toast(m), filter: () => filterBoard(),
+  });
   const upsertJob = (j) => { const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
 
   async function acceptInvite() {
@@ -319,13 +331,15 @@
     if (q.has("join")) { q.delete("join"); history.replaceState(history.state, "", (pathView() ? location.pathname : "/") + (q.toString() ? "?" + q : "") + location.hash); }
   }
 
+  let crew = [], myId = null;
   async function loadShop() {
     try {
       await acceptInvite();
       const me = await api("GET", "shop/me");
       shop = me.shop; emailConfigured = !!me.emailConfigured; plan = me.plan || null;
-      role = me.role || null; mainOwner = !!me.mainOwner;
+      role = me.role || null; mainOwner = !!me.mainOwner; crew = me.crew || []; myId = me.me || null;
       jobs = shop ? await api("GET", "shop/jobs") : [];
+      window.Workday?.watch(jobs);
       loadErr = "";
     } catch (e) { loadErr = e.message; }
     loaded = true;
@@ -629,7 +643,7 @@
       ${firstTime ? "" : window.BayAge.fields(s)}
       ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Saved items: labor, parts and fees (import your price list)</button>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
-    </form>${firstTime ? "" : team.panel(render) + recoveryPanel()}</div>`;
+    </form>${firstTime ? "" : (isOwner() ? window.Workday.packagesPanel() : "") + team.panel(render) + recoveryPanel()}</div>`;
   }
 
   function joinBanner() {
@@ -673,6 +687,7 @@
     let h = `<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${inShop.length} car${inShop.length === 1 ? "" : "s"} in the shop · ${sent} update${sent === 1 ? "" : "s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check In Vehicle</button></div>
       <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q || "")}" autocomplete="off"></label>
       <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key, label, count]) => `<button type="button" class="qf ${key === "approval" ? "warn" : key === "ready" ? "ok" : ""}" data-queue="${key}" aria-pressed="${key === (ui.queue || "all")}">${label}<b>${count}</b></button>`).join("")}</div></div>
+      ${window.Workday.boardBar(jobs)}
       ${window.BayAge.legend(shop)}
       <p class="board-none muted" id="boardNone" hidden></p>
       <div class="board-wrap"><div class="board">`;
@@ -693,11 +708,11 @@
         const age = ageOf(j);
         const hay = [vehicleStr(j), j.customer.name, j.customer.phone, j.customer.email, j.ro, j.concern, j.plate, j.vehicle?.plate, j.vehicle?.vin].filter(Boolean).join(" ").toLowerCase();
         const qk = awaitingDecision(j) ? "approval" : j.stage === "ready" ? "ready" : "other";
-        h += `<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
+        h += `<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} ${window.Workday.cardAttrs(j)} data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
           ${window.BayBoard.urgencyBadge(j)}<span class="veh queue-vehicle">${esc(vehicleStr(j) || "Vehicle details pending")}<span class="chev" aria-hidden="true">›</span></span>
           <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${esc(j.ro)}</span></span>
           ${j.concern ? `<span class="row concern"><span>${esc(j.concern)}</span></span>` : ""}
-          <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill stage-pill">${esc(s.key === "approval" ? "Estimate Review" : s.label)}</span>${pill}${reply ? `<span class="pill bad">New reply</span>` : ""}<span class="in-stage">${since(ev.t)} in stage</span></span></button>`;
+          ${window.Workday.cardBits(j)}<span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill stage-pill">${esc(s.key === "approval" ? "Estimate Review" : s.label)}</span>${pill}${reply ? `<span class="pill bad">New reply</span>` : ""}<span class="in-stage">${since(ev.t)} in stage</span></span></button>`;
       });
       h += `</section>`;
     });
@@ -718,7 +733,7 @@
     document.querySelectorAll(".board .col").forEach((col) => {
       let n = 0;
       const q2 = ui.queue && ui.queue !== "all" ? ui.queue : "";
-      col.querySelectorAll(".card[data-s]").forEach((c) => { const ok = (!q2 || c.dataset.queueKey === q2) && terms.every((t) => c.dataset.s.includes(t)); c.hidden = !ok; if (ok) n++; });
+      col.querySelectorAll(".card[data-s]").forEach((c) => { const ok = (!q2 || c.dataset.queueKey === q2) && terms.every((t) => c.dataset.s.includes(t)) && !window.Workday.hidden(c); c.hidden = !ok; if (ok) n++; });
       col.classList.toggle("search-hide", !!((terms.length || q2) && !n));
       const count = col.querySelector(".col-h span"); if (count) count.textContent = n;
       shown += n;
@@ -772,6 +787,7 @@
   function checkinView() {
     return `<form class="panel" id="checkinForm" autocomplete="off">
       <h2>Customer Check-In</h2>
+      ${window.Workday.checkinLookup()}
       <label class="field">Check-in method<select id="ci-method"><option value="staff">Enter vehicle details at the shop</option><option value="invite">Invite customer by link</option></select></label>
       <p id="ci-help" class="muted">The customer gets a tracking link and can upload photos for the technician.</p>
       <div class="form-grid">
@@ -787,6 +803,7 @@
         <label class="field" data-staff-intake>Engine <small class="muted">(optional)</small><input id="ci-engine" maxlength="40" placeholder="e.g. 2.0L 4 Cyl."></label>
         <input type="hidden" id="ci-trim">
         <label class="field" data-staff-intake>License plate<input id="ci-plate" maxlength="12"></label>
+        <div class="form-grid full wd-ci" data-staff-intake>${window.Workday.checkinFields()}</div>
         <label class="field full" data-staff-intake>What's the concern?<textarea id="ci-concern" required maxlength="1000"></textarea></label>
         <div class="field full urgency-field"><span>Urgency <small class="muted">(for example, the customer needs the car back within the hour)</small></span>${window.BayBoard.urgencyPicker("", "ciUrgency")}</div>
         <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
@@ -820,11 +837,13 @@
           ${j.stage !== "picked_up" && !j.closed ? `<div class="field urgency-field"><span>Urgency</span>${window.BayBoard.urgencyPicker(j.urgency, "jobUrgency")}</div>` : ""}
           ${j.stage === "parts" ? `<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
         </section>
+        ${j.stage === "invited" && !j.intakeReceived ? "" : window.Workday.sheetDetails(j)}
         ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
         ${(() => {
           const guide = vehicleStr(j) && !j.closed && j.stage !== "picked_up" ? `<p class="howto-link"><button class="linkbtn" data-howto-job="${esc(j.id)}">Open Repair Guide →</button></p>` : "";
           return j.concern ? `<section class="sec"><h3>Concern</h3><div class="concern-text">${esc(j.concern)}</div>${guide}</section>` : guide ? `<section class="sec sec-guide">${guide}</section>` : "";
         })()}
+        ${window.Workday.visitsSection(j)}
         ${j.closed || j.stage === "picked_up" ? "" : recallSection(j)}
         ${j.stage === "invited" && !j.intakeReceived ? "" : window.Walkthrough.sheetSection(j)}
         ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3>
@@ -844,13 +863,15 @@
           ${j.bill ? `<p>${j.bill.mode === "upload" ? "Shop PDF" : "Itemized bill"} · ${money(j.bill.total)}</p>` : isOwner() ? "" : `<p class="muted" style="margin:0">No final bill yet. A shop owner creates it.</p>`}
           <div class="btn-row">${isOwner() ? `<button class="btn" data-billing="generated">${j.bill?.mode === "generated" ? "Edit itemized bill" : "Create itemized bill"}</button><button class="btn" data-billing="upload">Upload shop PDF</button>` : ""}${j.bill?.mode==="upload" ? '<button class="linkbtn" data-billing="download">Download current PDF</button>' : ""}</div>
         </section>`}
+        ${window.Workday.followupSection(j)}
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
           <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
         ${j.closed || j.stage === "picked_up" && !(j.walkaround || []).length ? "" : window.Walkaround.sheetSection(j)}
-        <section class="sec"><h3>Technician Notes <span class="sec-sub">Shared with customer</span></h3>
-          ${(j.notes || []).length ? `<ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${esc(n.id)}">Remove</button></li>`).join("")}</ul>` : ""}
+        <section class="sec"><h3>Technician Notes <span class="sec-sub">Shared with customer unless marked shop only</span></h3>
+          ${(j.notes || []).length ? `<ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}${n.by ? " · " + esc(n.by) : ""}</time><p>${window.Workday.noteBadge(n)}${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${esc(n.id)}">Remove</button></li>`).join("")}</ul>` : ""}
           <form id="noteForm" class="note-form"><textarea id="noteIn" maxlength="2000" placeholder="Describe your findings…" aria-label="Technician note">${esc(ui.noteDraft[j.id] || "")}</textarea>
             <div class="btn-row"><button type="button" class="btn mic" data-dictate="#noteIn" aria-pressed="false" aria-label="Voice typing"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="mic-label">Speak</span></button><button class="btn primary" type="submit">Post Note</button></div>
+            ${window.Workday.noteToggle()}
             <label class="chk"><input type="checkbox" id="noteSend" ${j.customer.consent ? "" : "disabled"}> Notify ${esc(ShopDisplay.name(first(j.customer.name)))} about this note${j.customer.consent ? "" : " (customer has not agreed to notifications)"}</label></form></section>
         <section class="sec"><h3>Messages</h3><div class="thread">${j.messages.map((m) => bubble(m, j)).join("") || '<p class="muted">No messages yet.</p>'}</div>
           ${plan?.smartReplies ? `<div class="btn-row"><button class="linkbtn" type="button" data-smart-pause>${j.smartPaused?"Resume auto-replies":"Pause auto-replies for this repair"}</button>${j.messages.at(-1)?.incomingSms && j.messages.at(-1)?.suggestion ? '<button class="btn sm" type="button" data-smart-draft>Use suggested reply</button>' : j.messages.at(-1)?.incomingSms ? '<button class="btn sm" type="button" data-smart-ai>Draft reply for review</button>' : ""}</div>` : ""}
@@ -901,6 +922,7 @@
       <h2 id="mTitle">Move to ${s.label}</h2>
       <p class="muted" style="margin:0">Notify ${esc(ShopDisplay.name(j.customer.name))} at ${esc(contact(j.customer))}</p>
       ${m.stage === "parts" ? `<label class="field">Parts ETA<input id="m-eta" value="${esc(m.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
+      ${m.stage === "picked_up" ? window.Workday.pickupField(j) : ""}
       ${m.stage === "ready" ? `<div><strong>Final Bill</strong><p>${j.bill ? money(j.bill.total) + " due at pickup" : "Optional. Customers can open their bill from the pickup link."}</p>
         ${isOwner() ? `<div class="btn-row"><button class="btn" type="button" data-billing="generated">Create / edit bill</button><button class="btn" type="button" data-billing="upload">Upload shop PDF</button></div>` : ""}</div>` : ""}
       <label class="field">Message<textarea id="m-text" maxlength="1000">${esc(m.text)}</textarea></label>
@@ -1270,7 +1292,7 @@
       const g = (k) => $("#ci-" + k).value.trim();
       const j = await act(() => api("POST", "shop/jobs", {
         invite, urgency: document.querySelector('input[name="ciUrgency"]:checked')?.value || "", customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("channel"), consent: $("#ci-consent").checked },
-        ...(invite ? {} : { vehicle: { year: g("year"), make: g("make"), model: g("model"), vin: g("vin").toUpperCase(), engine: g("engine"), trim: g("trim") }, plate: g("plate"), concern: g("concern") }),
+        ...(invite ? {} : { vehicle: { year: g("year"), make: g("make"), model: g("model"), vin: g("vin").toUpperCase(), engine: g("engine"), trim: g("trim") }, plate: g("plate"), concern: g("concern"), ...window.Workday.checkinValues() }),
       }));
       if (j) {
         upsertJob(j); ui.view = "board"; ui.openJob = j.id; render();
@@ -1289,6 +1311,7 @@
       const m = ui.modal, eta = $("#m-eta");
       const body = { stage: m.stage, text: $("#m-text").value.trim(), send: $("#m-send").checked };
       if (eta) body.eta = eta.value.trim();
+      if (m.stage === "picked_up") Object.assign(body, window.Workday.pickupValue());
       const j = await jobAction(m.job, "stage", body);
       if (j) { toast("Moved to " + STAGES[SI[m.stage]].label + (body.send && body.text ? ". " + sendResult(j) : "")); ui.modal = null; if (j.stage === "picked_up") ui.openJob = null; render(); }
       return;
@@ -1320,9 +1343,10 @@
     if (f.id === "noteForm") {
       if (ui.busy) return;
       dictation.stop();
-      const id = ui.openJob, text = $("#noteIn").value.trim(), send = $("#noteSend").checked;
+      const internal = !!$("#noteInternal")?.checked;
+      const id = ui.openJob, text = $("#noteIn").value.trim(), send = $("#noteSend").checked && !internal;
       if (!text) { toast("Type or speak a note first"); return; }
-      const j = await jobAction(id, "note", { text, send }, send ? null : "Note posted to the customer's page");
+      const j = await jobAction(id, "note", { text, send, internal }, send ? null : internal ? "Shop-only note saved" : "Note posted to the customer's page");
       if (j) { delete ui.noteDraft[id]; render(); if (send) toast("Note posted. " + sendResult(j)); }
       return;
     }
@@ -1515,7 +1539,7 @@
     if (pickerActive()) return;
     try {
       const latest = await api("GET", "shop/jobs");
-      if (!pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !dictation.active() && !document.activeElement?.matches("input,textarea")) { if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
+      if (!pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !dictation.active() && !document.activeElement?.matches("input,textarea")) { window.Workday?.watch(latest); if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
     } catch (e) { /* try again next time */ }
   }, 20000);
 })();

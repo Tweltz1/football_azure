@@ -55,7 +55,7 @@
     const items = {};
     const copied = !all[kind] && !!src;
     // A copied check-in note only carries over while the item still needs attention.
-    for (const i of src?.items || []) items[i.key] = { status: i.status, note: copied && i.status === "good" ? "" : i.note || "", ...(copied ? { copiedNote: i.note || "" } : {}) };
+    for (const i of src?.items || []) items[i.key] = { status: i.status, note: copied && i.status === "good" ? "" : i.note || "", ...(copied ? { copiedNote: i.note || "" } : {}), ...(i.tread && !copied ? { tread: { ...i.tread } } : {}) };
     return { kind, items, mileage: all[kind]?.mileage || "", summary: all[kind]?.summary || "", copied };
   }
 
@@ -64,7 +64,7 @@
       const cur = d.items[it.key] || {};
       const seg = ["good", "soon", "now"].map((s) => `<button type="button" class="wt-seg wt-${s}" data-walk-set="${it.key}" data-v="${s}" aria-pressed="${cur.status === s}">${STATUS[s].tech}</button>`).join("");
       return `<li class="wt-row" data-walk-row="${it.key}"><div class="wt-row-h"><div><b>${esc(it.label)}</b><small>${esc(it.hint)}</small></div><div class="wt-segs" role="group" aria-label="${esc(it.label)}">${seg}</div></div>
-        <input class="wt-note" data-walk-note="${it.key}" maxlength="300" placeholder="Note for the customer (optional)" value="${esc(cur.note || "")}" aria-label="Note for ${esc(it.label)}" ${cur.status && cur.status !== "good" || cur.note ? "" : "hidden"}></li>`;
+        ${it.key === "tires" ? treadInputs(cur.tread) : ""}<input class="wt-note" data-walk-note="${it.key}" maxlength="300" placeholder="Note for the customer (optional)" value="${esc(cur.note || "")}" aria-label="Note for ${esc(it.label)}" ${cur.status && cur.status !== "good" || cur.note ? "" : "hidden"}></li>`;
     }).join("");
     const done = Object.keys(d.items).length;
     return `<div class="modal"><form class="modal-card wt-modal" id="walkForm" role="dialog" aria-modal="true" aria-labelledby="wtTitle">
@@ -77,6 +77,18 @@
       <label class="chk"><input type="checkbox" id="wt-send" ${opt.consent ? "checked" : "disabled"}> Notify ${esc(opt.first)} that the report is ready${opt.consent ? "" : " (customer has not agreed to notifications)"}</label>
       <div class="btn-row"><button class="btn primary" type="submit" ${opt.busy ? "disabled" : ""}>Save walk-through</button><button class="btn" type="button" data-cancel>Cancel</button></div>
     </form></div>`;
+  }
+
+  // Tread depth in 32nds for each tire. 2/32 is the legal minimum in most states; 4/32 and under is worth a warning.
+  const TIRES = [["lf", "LF"], ["rf", "RF"], ["lr", "LR"], ["rr", "RR"]];
+  const treadClass = (v) => v <= 2 ? "wt-now" : v <= 4 ? "wt-soon" : "wt-good";
+  function treadInputs(t) {
+    return `<div class="wt-tread"><span>Tread depth <small>(32nds)</small></span>${TIRES.map(([k, l]) => `<label>${l}<input data-walk-tread="${k}" inputmode="numeric" maxlength="2" placeholder="–" value="${t && t[k] != null ? esc(t[k]) : ""}" aria-label="${l} tread depth in 32nds"></label>`).join("")}</div>`;
+  }
+  function treadText(t) {
+    if (!t) return "";
+    const parts = TIRES.filter(([k]) => t[k] != null).map(([k, l]) => `<span class="wt-dot ${treadClass(t[k])}">${l} ${esc(t[k])}/32</span>`);
+    return parts.length ? `<small class="wt-tread-out">Tread ${parts.join(" ")}</small>` : "";
   }
 
   /** Handles taps inside the editor. Returns true when it used the click. Changes the page in place so nothing re-renders. */
@@ -107,6 +119,11 @@
     if (n) n.textContent = `${Object.values(d.items).filter((i) => i.status).length} of ${ITEMS.length} checked`;
   }
   function input(t, d) {
+    if (t.dataset.walkTread) {
+      const v = t.value.replace(/\D/g, "").slice(0, 2), tr = ((d.items.tires ||= { note: "" }).tread ||= {});
+      if (v === "" || +v > 32) delete tr[t.dataset.walkTread]; else tr[t.dataset.walkTread] = +v;
+      return true;
+    }
     if (t.dataset.walkNote) { const k = t.dataset.walkNote; (d.items[k] ||= {}).note = t.value; return true; }
     if (t.id === "wt-miles") { d.mileage = t.value; return true; }
     if (t.id === "wt-summary") { d.summary = t.value; return true; }
@@ -115,7 +132,8 @@
   function body(d) {
     return {
       kind: d.kind, mileage: d.mileage.trim(), summary: d.summary.trim(), send: !!document.getElementById("wt-send")?.checked,
-      items: ITEMS.filter((i) => d.items[i.key]?.status).map((i) => ({ key: i.key, status: d.items[i.key].status, note: (d.items[i.key].note || "").trim() })),
+      items: ITEMS.filter((i) => d.items[i.key]?.status).map((i) => ({ key: i.key, status: d.items[i.key].status, note: (d.items[i.key].note || "").trim(),
+        ...(i.key === "tires" && d.items.tires.tread && Object.keys(d.items.tires.tread).length ? { tread: d.items.tires.tread } : {}) })),
     };
   }
 
@@ -130,7 +148,7 @@
     const dot = (it) => it ? `<span class="wt-dot wt-${it.status}">${esc(STATUS[it.status].cust)}</span>` : `<span class="wt-dot wt-none">Not checked</span>`;
     const rows = keys.map((k) => {
       const notes = [both && get(before, k)?.note ? `<small><b>Check-in:</b> ${esc(get(before, k).note)}</small>` : "", get(latest, k)?.note ? `<small>${both ? "<b>After:</b> " : ""}${esc(get(latest, k).note)}</small>` : ""].join("");
-      return `<tr><th scope="row">${esc(LABEL[k])}${notes}</th>${both ? `<td data-l="Check-in">${dot(get(before, k))}</td>` : ""}<td${both ? ' data-l="After"' : ""}>${dot(get(latest, k))}</td></tr>`;
+      return `<tr><th scope="row">${esc(LABEL[k])}${notes}${k === "tires" ? treadText(get(latest, k)?.tread) : ""}</th>${both ? `<td data-l="Check-in">${dot(get(before, k))}</td>` : ""}<td${both ? ' data-l="After"' : ""}>${dot(get(latest, k))}</td></tr>`;
     }).join("");
     const meta = (w, name) => w ? `<p class="wt-meta"><b>${name}</b> · ${when(w.t)}${w.by ? " · " + esc(w.by) : ""}${w.mileage ? " · " + esc(w.mileage) + " mi" : ""}</p>${w.summary ? `<p class="wt-sum">${esc(w.summary)}</p>` : ""}` : "";
     return `<div class="c-card wt-card"><h3>Vehicle walk-through</h3>
