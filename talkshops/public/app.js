@@ -59,15 +59,16 @@
   const first = (name) => String(name || "").split(/\s+/)[0];
 
   // Keep account requests on the site's domain for networks that block Supabase.
-  function accountFetch(input, options) {
+  // Safari can't upload a Request's body as a stream ("ReadableStream uploading is not supported"),
+  // so the body is read into memory and sent as plain bytes.
+  async function accountFetch(input, options) {
+    const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url, location.href);
+    if (url.origin !== new URL(CFG.supabaseUrl).origin || !url.pathname.startsWith("/auth/v1/")) return fetch(input, options);
     const request = new Request(input, options);
-    const url = new URL(request.url);
-    if (url.origin === new URL(CFG.supabaseUrl).origin && url.pathname.startsWith("/auth/v1/")) {
-      const local = new URL("/account-api/" + url.pathname.slice("/auth/v1/".length), location.origin);
-      local.search = url.search;
-      return fetch(new Request(local, request));
-    }
-    return fetch(request);
+    const local = new URL("/account-api/" + url.pathname.slice("/auth/v1/".length), location.origin);
+    local.search = url.search;
+    const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
+    return fetch(local, { method: request.method, headers: request.headers, body, signal: request.signal, credentials: "same-origin", cache: "no-store" });
   }
   const sb = window.supabase && CFG.supabaseUrl && CFG.supabaseAnonKey
     ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }, global: { fetch: accountFetch } })
