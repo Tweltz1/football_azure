@@ -37,7 +37,8 @@ window.createShopBilling = ({ esc, money, prices }) => {
   }
   function importNote(imp) {
     const n = imp.items.length, flagged = imp.items.filter(r => r.check).length;
-    return `<div class="form-ok import-note" data-import-ok role="status"><b>Found ${n} item${n === 1 ? "" : "s"}${imp.source ? " in " + esc(imp.source) : ""}.</b> Check each one, fix anything that's off and remove what you don't want. Nothing is saved until you press Save items.${flagged ? ` <span class="flag-count">${flagged} highlighted item${flagged === 1 ? " needs" : "s need"} a look.</span>` : ""}${imp.laborRate ? ` Your labor rate looks like ${money(imp.laborRate)}/hr.` : ""}</div>`;
+    const free = imp.free && prices.canRetryWithAi?.() ? `<span class="import-how">Read for free on this device.${imp.aiError ? " (The AI reader wasn't available: " + esc(imp.aiError) + ")" : ""} Missing items or odd names? <button type="button" class="linkbtn" data-billing="import-ai">Read it with AI instead</button></span>` : "";
+    return `<div class="form-ok import-note" data-import-ok role="status"><b>Found ${n} item${n === 1 ? "" : "s"}${imp.source ? " in " + esc(imp.source) : ""}.</b> Check each one, fix anything that's off and remove what you don't want. Nothing is saved until you press Save items.${flagged ? ` <span class="flag-count">${flagged} highlighted item${flagged === 1 ? " needs" : "s need"} a look.</span>` : ""}${imp.laborRate ? ` Your labor rate looks like ${money(imp.laborRate)}/hr.` : ""}${free}</div>`;
   }
   // Top of the Saved items editor: quick add, search, and import / download.
   function catalogTools(count, openIo) {
@@ -125,6 +126,7 @@ window.createShopBilling = ({ esc, money, prices }) => {
   function editor(mode, shop, j, imported) {
     const catalog = mode === "rates", quote = mode === "quote";
     const title = catalog ? "Saved items: labor, parts and fees" : quote ? "Add estimate line" : mode === "upload" ? "Upload final bill" : "Create itemized bill";
+    if (catalog) importBase = imported ? [...(shop.rates || [])] : null;
     const initial = catalog ? (imported ? withImported(shop.rates || [], imported.items) : (shop.rates || [])) : quote ? [blank] : (j?.bill?.lines || fromQuote(j));
     return `<div class="modal"><form id="billingForm" data-mode="${mode}" class="modal-card billing-editor" role="dialog" aria-modal="true" aria-label="${title}">
       <h2>${title}</h2>
@@ -150,25 +152,34 @@ window.createShopBilling = ({ esc, money, prices }) => {
     a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),60000);
   }
+  // The saved list before the latest import, so "Read with AI instead" swaps that import's items for the AI's.
+  let importBase = null;
+  async function runImport(f, read, retry) {
+    const status=f.querySelector("[data-import-status]"), save=f.querySelector('[type="submit"]');
+    const say=msg=>{ if(!status) return; status.hidden=!msg; status.textContent=msg ? msg+" This can take up to a minute for a PDF or photo." : ""; };
+    save.disabled=true; f.querySelector("[data-bill-error]").hidden=true;
+    f.querySelector(".rates-io")?.setAttribute("open","");
+    try {
+      const imp=await read(say);
+      const replace=f.querySelector("[data-import-replace]")?.checked;
+      if(!retry || !importBase) importBase=readRows(f,true).filter(r=>r.name);
+      const merged=replace ? imp.items : withImported(importBase,imp.items);
+      if(merged.length>250) throw Error("A shop can save up to 250 items. Remove some, then import again.");
+      f.querySelector(".charge-rows").innerHTML=merged.map(r=>row(r,true)).join("");
+      f.querySelector("[data-import-ok]")?.remove();
+      f.querySelector(".rates-io").insertAdjacentHTML("afterend",importNote(replace ? {...imp, source: (imp.source||"the file") + " (replaces your list when you save)"} : imp));
+      const s=f.querySelector("[data-rate-search]"); if(s) s.value=""; search(f);
+      f.querySelector(".needs-check")?.scrollIntoView({block:"center",behavior:"smooth"});
+    } catch(err) { error(f,err.message); }
+    say(""); save.disabled=false;
+  }
   function error(f,msg) { const el=f.querySelector("[data-bill-error]");el.hidden=false;el.textContent=msg; }
   async function change(e, shop) {
     const t=e.target, f=t.closest("#billingForm"); if (!f) return;
     if (t.matches("[data-rate-import]") && t.files.length) {
-      const status=f.querySelector("[data-import-status]"), save=f.querySelector('[type="submit"]');
-      const say=msg=>{status.hidden=!msg;status.textContent=msg ? msg+" This can take up to a minute for a PDF or photo." : "";};
-      t.disabled=true; save.disabled=true; f.querySelector("[data-bill-error]").hidden=true;
-      try {
-        const imp=await prices.readFiles(t.files, say);
-        const replace=f.querySelector("[data-import-replace]")?.checked;
-        const merged=replace ? imp.items : withImported(readRows(f,true).filter(r=>r.name),imp.items);
-        if(merged.length>250) throw Error("A shop can save up to 250 items. Remove some, then import again.");
-        f.querySelector(".charge-rows").innerHTML=merged.map(r=>row(r,true)).join("");
-        f.querySelector("[data-import-ok]")?.remove();
-        f.querySelector(".rates-io").insertAdjacentHTML("afterend",importNote(replace ? {...imp, source: (imp.source||"the file") + " (replaces your list when you save)"} : imp));
-        const s=f.querySelector("[data-rate-search]"); if(s) s.value=""; search(f);
-        f.querySelector(".needs-check")?.scrollIntoView({block:"center",behavior:"smooth"});
-      } catch(err) { error(f,err.message); }
-      say(""); t.disabled=false; save.disabled=false; t.value="";
+      t.disabled=true;
+      await runImport(f, say => prices.readFiles(t.files, say), false);
+      t.disabled=false; t.value="";
     } else if(t.name==="kind") {
       const el=t.closest(".charge-row"), qty=el.querySelector(".qty-label");
       if(qty) { qty.textContent=qtyLabel(t.value); el.querySelector('[name="qty"]').max=t.value==="percent"?"1000000":"10000"; }
@@ -200,6 +211,7 @@ window.createShopBilling = ({ esc, money, prices }) => {
     if(t.dataset.billing==="add-row") { f.querySelector(".charge-rows").insertAdjacentHTML("beforeend",row(blank,f.dataset.mode==="rates")); refreshCount(f); }
     if(t.dataset.billing==="delete-row") { t.closest(".charge-row").remove(); refreshCount(f); }
     if(t.dataset.billing==="qa-add") quickAdd(f);
+    if(t.dataset.billing==="import-ai") { t.disabled=true; runImport(f, say => prices.retryWithAi(say), true); }
     if(t.dataset.billing==="export-xlsx") download(xlsxBlob(exportRows(f)),"talkshops-saved-items.xlsx");
     if(t.dataset.billing==="export-csv") download(new Blob(["\uFEFF"+exportRows(f).map(r=>r.map(csvCell).join(",")).join("\r\n")+"\r\n"],{type:"text/csv"}),"talkshops-saved-items.csv");
     if(t.dataset.billing==="template") download(new Blob(["name,type,rate,hours\nTechnician labor,labor,110.00,\nFront brake pads,labor,110.00,1.5\nShop supplies,fee,12.50,\nOil filter,part,16.00,\n"],{type:"text/csv"}),"shop-rates.csv");

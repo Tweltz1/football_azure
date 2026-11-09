@@ -240,7 +240,7 @@ a.btn.primary{color:var(--accent-fg)}
 .import-box{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
-<link rel="stylesheet" href="/saved-archive.css?v=7">
+<link rel="stylesheet" href="/saved-archive.css?v=8">
 <link rel="stylesheet" href="/theme.css?v=17">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
@@ -299,8 +299,9 @@ a.btn.primary{color:var(--accent-fg)}
 <input type="file" id="photoIn" accept="image/*" hidden>
 
 <script src="/sheet-import.js?v=1"></script>
-<script src="/price-import.js?v=2"></script>
-<script src="/billing.js?v=5"></script>
+<script src="/price-rules.js?v=1"></script>
+<script src="/price-import.js?v=3"></script>
+<script src="/billing.js?v=6"></script>
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=1"></script>
@@ -440,8 +441,8 @@ const onBoard=j=>!j.archivedAt;
 const plan={state:"trial",daysLeft:12,trialEndsAt:Date.now()+12*86400000,textLimit:150,carLimit:25,textsUsed:38,carsCreated:9,payments:true,hasBilling:false,
   plans:{starter:{name:"Starter",month:89,year:890,blurb:"3 staff seats (up to 2 owners), 1,000 texts a month, unlimited email"},pro:{name:"Pro",month:149,year:1490,blurb:"8 staff seats (up to 3 owners), 3,000 texts a month, unlimited email, AI repair how-to assistant and Smart Replies",howTo:true}}};
 const planUi=window.createShopPlan({esc,toast,api:async()=>{throw new Error("Demo shop: in your shop, this opens Stripe's secure checkout. Nothing is charged here.")}});
-// The demo keeps everything in this browser, so only sheets with clear columns are read; the sample shows what the AI finds.
-const priceImport=window.createPriceImport({api:async()=>{throw Error("The demo keeps everything on this device, so PDFs, photos and free-form sheets aren't read here. Sign up to import yours, or press Try a sample price list to see how it works.")}});
+// The demo reads price lists for free in this browser (no AI); the sample shows what a photo of a price board gives.
+const priceImport=window.createPriceImport({api:async()=>{throw Error("The demo reads price lists for free on this device only. The AI reader, for sheets the free reader can't make out, comes with a Talk Shops account.")}});
 const billing=window.createShopBilling({esc,money,prices:priceImport});
 const SAMPLE_PRICES={source:"sample price board photo",laborRate:139,items:[
   {name:"Labor",kind:"labor",rate:139},

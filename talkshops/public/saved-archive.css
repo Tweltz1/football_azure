@@ -106,3 +106,5 @@
 .recalls .recall summary{cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .recalls .recall p{margin:8px 0 0;font-size:14px}
 .recalls .recall-note{font-size:13px}
+.import-note .import-how{display:block;margin-top:6px;color:var(--muted)}
+.import-note .import-how .linkbtn{font-weight:650}
