@@ -207,14 +207,7 @@
   }
 
   // ==================== Shop app (signed in) ====================
-  // Each tab has its own address (talkshops.app/settings, /bay, ...) so refresh, Back and links keep the tab.
-  // The host serves index.html for any path that isn't a file (wrangler.jsonc not_found_handling).
-  const VIEW_PATHS = { board: "/bay", checkin: "/check-in", archive: "/archive", howto: "/how-to", settings: "/settings", plan: "/plan", training: "/training", help: "/help" };
-  const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).map(([v, p]) => [p, v]));
-  Object.assign(PATH_VIEWS, { "/board": "board", "/checkin": "checkin", "/howto": "howto" });
-  const pathView = () => PATH_VIEWS[location.pathname.replace(/\/+$/, "").toLowerCase()] || "";
-  let navPush = false;
-  const ui = { noteDraft: {}, view: pathView() || "board", openJob: null, modal: null, authMode: new URLSearchParams(location.search).get("login") === "signup" ? "signup" : "signin", authMsg: "", authErr: "", busy: false, reset: null };
+  const ui = { noteDraft: {}, view: "board", openJob: null, modal: null, authMode: new URLSearchParams(location.search).get("login") === "signup" ? "signup" : "signin", authMsg: "", authErr: "", busy: false, reset: null };
   // Shop Settings: the phone that can get password reset codes.
   const recovery = { data: null, loading: false, pending: "", err: "" };
   const dictation = window.createDictation({ toast });
@@ -246,6 +239,14 @@
   }
   let role = null, mainOwner = false;
   const isOwner = () => role === "owner";
+  // Each tab has its own address (talkshops.app/settings, /bay, ...) so refresh, Back and links keep the tab.
+  // The host serves index.html for any path that isn't a file (wrangler.jsonc not_found_handling).
+  const VIEW_PATHS = { board: "/bay", checkin: "/check-in", archive: "/archive", howto: "/how-to", settings: "/settings", plan: "/plan", training: "/training", help: "/help" };
+  const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).map(([v, p]) => [p, v]));
+  Object.assign(PATH_VIEWS, { "/board": "board", "/checkin": "checkin", "/howto": "howto" });
+  const pathView = () => PATH_VIEWS[(location.pathname || "/").replace(/\/+$/, "").toLowerCase()] || "";
+  let navPush = false;
+  if (pathView()) ui.view = pathView();
   const team = window.createShopTeam({ esc, api: (...a) => api(...a), toast: (m) => toast(m) });
   // Staff invite link: /?join=<token>. Kept in this browser until it's used, so it survives signing up by email.
   const JOIN_KEY = "talkshops-join";
