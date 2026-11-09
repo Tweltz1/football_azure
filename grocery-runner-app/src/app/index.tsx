@@ -36,6 +36,18 @@ export default function ListScreen() {
         <Ionicons name="chevron-forward" size={20} color={t.textMuted} />
       </Pressable>
 
+      <View style={styles.actions}>
+        <Button title="Recipes" icon="restaurant" variant="secondary" onPress={() => router.push('/recipes')} style={{ flex: 1 }} />
+        <Button
+          title="Where to shop"
+          icon="pricetags"
+          variant="secondary"
+          disabled={!left}
+          onPress={() => router.push('/suggest')}
+          style={{ flex: 1 }}
+        />
+      </View>
+
       <View style={[styles.addRow, { backgroundColor: t.card }]}>
         <TextInput
           value={draft}
@@ -58,7 +70,7 @@ export default function ListScreen() {
         contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 8 }}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: t.textMuted }]}>
-            Add what you need. Shop Stride sorts it into the shortest walk through the store.
+            Add what you need, or pick a recipe. Shop Stride sorts it into the shortest walk through the store.
           </Text>
         }
         renderItem={({ item }) => {
@@ -115,6 +127,7 @@ export default function ListScreen() {
 const styles = StyleSheet.create({
   store: { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 16, marginBottom: 8, padding: 14, borderRadius: radius.lg },
   storeName: { fontSize: 17, fontWeight: '700' },
+  actions: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 8 },
   addRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, borderRadius: radius.md },
   input: { flex: 1, fontSize: 17, paddingVertical: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.md },

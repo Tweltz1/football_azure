@@ -8,10 +8,11 @@
 //   GET  ?action=status                          which lookups are switched on
 //   POST {action:"aisles", store, items:[...]}   shared shopper aisles for a list
 //   POST {action:"vote", store, item, device, aisle | department}
+//   POST {action:"kroger-stock", locationId, items:[...]}           stock + price per item at one Kroger store
 //
 // Deployed by .github/workflows/grocery-runner-app.yml.
 import { sharedAisles, voteAisle } from './aisles.ts';
-import { krogerProducts, krogerReady, krogerStores } from './kroger.ts';
+import { krogerProducts, krogerReady, krogerStock, krogerStores } from './kroger.ts';
 import { coverage, officialStoresNear } from './nearby.ts';
 import { walmartReady, walmartStores } from './walmart.ts';
 
@@ -33,6 +34,7 @@ Deno.serve(async (req) => {
       if (body.action === 'aisles') return json(await sharedAisles(body.store, body.items));
       if (body.action === 'vote') return json(await voteAisle(body));
       if (body.action === 'coverage') return json(await coverage(body.stores));
+      if (body.action === 'kroger-stock') return json(await krogerStock(body.locationId, body.items));
       return json({ error: 'Unknown action.' }, 400);
     }
 

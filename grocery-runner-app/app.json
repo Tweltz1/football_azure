@@ -28,6 +28,14 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Shop Stride reads recipe photos you choose to build your shopping list.",
+          "cameraPermission": "Shop Stride uses the camera to photograph recipes for your shopping list.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",

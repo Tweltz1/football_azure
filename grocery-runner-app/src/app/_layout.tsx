@@ -23,6 +23,10 @@ export default function RootLayout() {
         <Stack.Screen name="store" options={{ presentation: 'modal', title: 'Choose store' }} />
         <Stack.Screen name="map" options={{ presentation: 'modal', title: 'Stores near you' }} />
         <Stack.Screen name="item/[id]" options={{ presentation: 'modal', title: 'Where is it?' }} />
+        <Stack.Screen name="recipes" options={{ title: 'Recipes' }} />
+        <Stack.Screen name="recipe/[id]" options={{ title: 'Recipe' }} />
+        <Stack.Screen name="scan" options={{ presentation: 'modal', title: 'Add a recipe' }} />
+        <Stack.Screen name="suggest" options={{ title: 'Where to shop' }} />
       </Stack>
     </DataProvider>
   );
