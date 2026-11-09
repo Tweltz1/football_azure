@@ -88,10 +88,17 @@ export function buildGenericLayout(aisleCount: number): StoreLayout {
   };
 }
 
-/** Turns "14", "A14", "Aisle 14" into 14. Returns null for "Front", "Endcap" etc. */
+/**
+ * Turns "14", "A14", "Aisle 7" into 14 / 7. Letter-only aisles (Woodman's "U") count from A = 1.
+ * Returns null for "Front", "Endcap" and the like.
+ */
 export function parseAisleNumber(aisle: string): number | null {
   const m = aisle.match(/(\d+)/);
-  return m ? parseInt(m[1], 10) : null;
+  if (m) return parseInt(m[1], 10);
+  const letters = aisle.trim().toUpperCase().replace(/^AISLE\s*/, '');
+  if (/^[A-Z]$/.test(letters)) return letters.charCodeAt(0) - 64;
+  if (/^[A-Z]{2}$/.test(letters) && letters[0] === letters[1]) return 26 + letters.charCodeAt(0) - 64; // AA, BB...
+  return null;
 }
 
 /** The walkway cell a shopper stands on to pick an item, or null if it has no location. */

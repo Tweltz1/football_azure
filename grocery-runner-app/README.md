@@ -12,6 +12,9 @@ machine (`.github/workflows/grocery-runner-app.yml`), so no Mac is needed.
   - Walmart (store search by ZIP), Target, Hy-Vee, Costco, Aldi, Woodman's: aisles other shoppers entered at that
     store fill in automatically ("Aisle 7 · 3 shoppers"). Any aisle you type is remembered and shared.
   - Other stores: kept on the phone. Items sort by department and your aisles are remembered.
+- **Aisles from screenshots**: screenshot items in a store's own app (Walmart, Woodman's and others show
+  aisles), pick the screenshots in Shop Stride, and the phone reads "Aisle A38" / "Aisle U" and fills in
+  matching list items. Read on the phone only; saved as your aisle and shared with other shoppers.
 - **Store map**: supported stores near you or any ZIP/city, colored by how much aisle data each has
   (green: Kroger aisles, orange: shopper aisles, gray: not mapped yet). Tap one and "Shop here".
 - **Route**: A* walking paths on a store grid, stops ordered for the shortest total walk, with

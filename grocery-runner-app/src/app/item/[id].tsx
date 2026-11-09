@@ -59,6 +59,14 @@ export default function ItemScreen() {
         )}
       </Card>
 
+      <Button
+        title="Read it from a store-app screenshot"
+        icon="scan"
+        variant="secondary"
+        onPress={() => router.push({ pathname: '/aisle-scan', params: { itemId: item.id } })}
+        style={{ marginTop: 12 }}
+      />
+
       <SectionTitle>Or a department</SectionTitle>
       <View style={styles.chips}>
         {DEPARTMENT_ORDER.map((d) => (

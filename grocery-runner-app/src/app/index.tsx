@@ -48,6 +48,18 @@ export default function ListScreen() {
         />
       </View>
 
+      {store && store.chain !== 'kroger' && items.some((i) => !i.checked && i.location.kind !== 'aisle') && (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/aisle-scan')}
+          style={[styles.scanLink, { backgroundColor: t.primarySoft }]}
+        >
+          <Ionicons name="scan" size={18} color={t.primary} />
+          <Text style={{ color: t.primary, fontWeight: '600', flex: 1 }}>Get aisles from store-app screenshots</Text>
+          <Ionicons name="chevron-forward" size={18} color={t.primary} />
+        </Pressable>
+      )}
+
       <View style={[styles.addRow, { backgroundColor: t.card }]}>
         <TextInput
           value={draft}
@@ -128,6 +140,7 @@ const styles = StyleSheet.create({
   store: { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 16, marginBottom: 8, padding: 14, borderRadius: radius.lg },
   storeName: { fontSize: 17, fontWeight: '700' },
   actions: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 8 },
+  scanLink: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: radius.md },
   addRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, borderRadius: radius.md },
   input: { flex: 1, fontSize: 17, paddingVertical: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.md },

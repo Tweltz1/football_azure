@@ -46,6 +46,14 @@ shoppers (view `grocery_store_coverage`), or not mapped yet.
 A first version used OpenStreetMap's public Overpass servers from the Supabase function; they refused
 or timed out from Supabase, so that was dropped.
 
+### Aisles from store-app screenshots
+Walmart's and Woodman's own apps show aisles, but pulling them automatically would break their terms.
+Instead the shopper screenshots items in those apps and picks the screenshots in Shop Stride. Apple's
+text recognition (modules/recipe-reader) reads them on the phone; `src/lib/aisleText.ts` finds
+"Aisle A38" / "Section 3" / "Aisle U - Shelf A02", splits search-result screenshots into one product card
+per aisle, and matches each card to a list item by name. Saved aisles are ordinary shopper votes.
+Letter aisles (Woodman's "U") are placed on the map as A = 1, B = 2, ...
+
 ### Affiliate APIs: what they give us
 - **Walmart** (walmart.io affiliate API): used for its **Store Locator** (real store numbers near a ZIP), so
   votes are shared per actual store. Its product APIs have no aisle data, so they are not used.
