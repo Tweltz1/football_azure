@@ -81,7 +81,10 @@
       const token = data?.session?.access_token;
       if (token) headers.Authorization = "Bearer " + token;
     }
-    const res = await fetch(CFG.apiUrl.replace(/\/$/, "") + "/" + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const url = path.startsWith("shop/")
+      ? "/shop-api/" + path
+      : CFG.apiUrl.replace(/\/$/, "") + "/" + path;
+    const res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
     const text = await res.text();
     let data = text;
     try { data = text ? JSON.parse(text) : null; } catch (e) { /* plain text */ }
