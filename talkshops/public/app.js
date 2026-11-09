@@ -1,4 +1,4 @@
-// Talk Shops: progress updates from repair shops to their customers. A plain page, no build step.
+// Talk Shops: progress updates from auto service and repair shops to their customers. A plain page, no build step.
 // Shop staff sign in with Supabase; customers open /?c=<token> from their text and never sign in.
 // All data goes through the shared API (supabase/functions/_shared/shop.ts in this repo).
 (function () {
@@ -394,7 +394,7 @@
   }
 
   const googleIcon = `<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>`;
-  const brand = () => `<div class="brand"><div class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</div><div><h1>Talk Shops</h1><small>For repair shops</small></div></div>`;
+  const brand = () => `<div class="brand"><div class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</div><div><h1>Talk Shops</h1><small>For auto service shops</small></div></div>`;
 
   const supportEmail = "support@talkshops.app";
   const signInHelp = `<p class="muted" style="margin:0">Need help? <a class="login-home" href="/?help">Visit Help &amp; Support</a></p>`;
@@ -526,7 +526,7 @@
       ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
       ${ui.authMsg ? `<p class="form-ok" role="status">${esc(ui.authMsg)}</p>` : ""}
       ${joinToken ? `<button class="linkbtn" id="authSwap" type="button">${signup ? "Already have an account? Sign in" : "Create an account"}</button>` : `<a class="linkbtn" href="${signup ? "/?login" : "/?login=signup"}">${signup ? "Already have an account? Sign in" : "Create an account"}</a>`}
-      <small class="muted">Customers use their repair link. Only shop staff need an account.</small>
+      <small class="muted">Customers use their private link. Only shop staff need an account.</small>
       ${signInHelp}
       <a class="login-home" href="/">← Back to Talk Shops</a>
     </section></div>`;
@@ -540,10 +540,10 @@
       </div></header>
       <section class="front-hero" id="top"><div class="front-inner">
         <div class="front-intro"><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
-          <p>See which repairs are waiting on approval and which cars are ready for pickup, all from one board. Send a private link by text or email so they can see photos, approve work and open their final bill. No customer account required.</p>
+          <p>Built for every kind of auto shop: oil changes, brakes, tires, engine work, general repair and body work. See which cars are waiting on approval and which are ready for pickup, all from one board. Send customers a private link by text or email so they can see photos, approve work and open their final bill. No customer account required.</p>
           <div class="front-actions"><a class="front-cta" href="${DEMO_PAGE}">Explore Demo Shop <span aria-hidden="true">↗</span></a><a class="front-tour" href="${DEMO_PAGE}?tour=1">Take the Guided Tour →</a></div>
         </div>
-        <div class="front-preview" aria-label="Example customer repair page">
+        <div class="front-preview" aria-label="Example customer page">
           <div class="front-window"><span>Customer view</span><span>Sample repair</span></div>
           <div class="front-order"><small>RIDGELINE AUTO REPAIR</small><h2>2018 Honda Civic</h2><span>Brake service · RO-1001</span></div>
           <ol class="front-timeline"><li><b>Vehicle checked in</b><small>9:10 AM</small></li><li><b>Inspection photos shared</b><small>9:42 AM</small></li><li><b>Estimate approved</b><small>10:03 AM</small></li></ol>
@@ -552,21 +552,21 @@
       </div></section>
       <section class="front-work"><div class="front-inner">
         <div class="front-workflow"><h2>From the Service Counter to the Customer’s Phone</h2>
-          <p>Your team works from one repair order. The customer follows that repair through the same private link from drop-off to pickup.</p>
+          <p>Whether it’s a quick oil change or a major repair, your team works from one repair order. The customer follows the job through the same private link from drop-off to pickup.</p>
           <dl><div><dt>Get the Story Before Drop-Off</dt><dd>Invite customers to describe the concern and upload photos, so the technician can see what they’re coming in for.</dd></div>
           <div><dt>See Which Cars Need Attention</dt><dd>Search the Bay by customer, vehicle or repair order. Filter for estimates awaiting a decision or cars ready for pickup.</dd></div>
           <div><dt>Show What the Technician Found</dt><dd>Record the vehicle’s condition with walk-around photos and before-and-after checklists. Share findings with technician notes and repair diagrams.</dd></div>
           <div><dt>Know What the Customer Approved</dt><dd>Customers approve or decline each estimate item and sign on their phone. The shop sees their choices, the approved total and when they signed.</dd></div>
           <div><dt>Quote Using Your Shop’s Rates</dt><dd>Import labor, parts and fees from Excel or CSV. Reuse saved prices and enter hours or quantities when building an estimate.</dd></div>
-          <div><dt>Make Pickup Easier</dt><dd>Send the final total with an itemized bill or your own PDF. Look up the repair in the archive when the customer comes back.</dd></div></dl>
+          <div><dt>Make Pickup Easier</dt><dd>Send the final total with an itemized bill or your own PDF. Look up past visits in the archive when the customer comes back.</dd></div></dl>
           <button class="linkbtn" id="watchDemo" type="button">Watch the walkthrough video →</button>
         </div>
       </div></section>
       <section class="front-plans" id="plans"><div class="front-inner">
-        <h2>Choose Your Plan</h2><p>Both plans include the Bay board, customer repair links, photo updates, signed estimate decisions, final bills and unlimited email.</p>
+        <h2>Choose Your Plan</h2><p>Both plans include the Bay board, private customer links, photo updates, signed estimate decisions, final bills and unlimited email.</p>
         <div class="front-tiers">
           <article><h3>Talk Shops Starter</h3><strong>$89<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $890/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
-          <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about repair status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>AI Repair Assistant</b> gives technicians a starting point for repair procedures and tool lists.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
+          <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about job status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>AI Repair Assistant</b> gives technicians a starting point for service and repair procedures and tool lists.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
         </div>
         <h3 class="front-market-title">Plan Comparison</h3>
         <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
@@ -662,7 +662,7 @@
     const inShop = active.filter(j => j.stage !== "invited");
     const picked = jobs.filter((j) => j.stage === "picked_up" && !j.closed).length;
     if (!jobs.length) {
-      return `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car. The customer gets a private link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check in a car</button></div>`;
+      return `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car, whether it’s in for an oil change, brakes, tires or a bigger repair. The customer gets a private link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check in a car</button></div>`;
     }
     const waiting = active.filter(awaitingDecision).length;
     const ready = active.filter((j) => j.stage === "ready").length;

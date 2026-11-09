@@ -18,7 +18,7 @@ export const MAX_PRICE_TEXT = 60_000;
 export const MAX_FOUND = 250;
 const PER_HOUR = 30;
 
-export const PRICE_SYSTEM = `You read price lists from independent auto repair shops and turn them into a list of saved items for the shop's estimating app. Every shop formats prices its own way: service menus, labor rate sheets, fee schedules, parts lists, spreadsheets with odd columns, photos of a price board, or invoices.
+export const PRICE_SYSTEM = `You read price lists from independent auto shops of every kind (oil change and quick lube, brakes, tires, general repair, body work) and turn them into a list of saved items for the shop's estimating app. Every shop formats prices its own way: service menus, labor rate sheets, fee schedules, parts lists, spreadsheets with odd columns, photos of a price board, or invoices.
 
 Each item has:
 - "name": a short plain description a customer would understand, e.g. "Synthetic oil change (up to 5 qt)", "Front brake pads", "Diagnostic fee". Keep sizes and limits that change the price. Up to 100 characters.

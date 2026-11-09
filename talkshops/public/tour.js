@@ -874,7 +874,7 @@
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">
         ${lesson ? `<p style="margin:0 0 4px;font-size:13px">Training · Lesson ${lessonIx + 1} of ${LESSONS.length} · about ${lesson.mins} min</p>` : ""}
         <h2 id="tsH">${escT(name)}</h2>
-        <p>${lesson ? escT(lesson.desc) + " Turn your sound on. It runs in the demo shop with sample cars." : "A narrated walk-through of a repair shop using Talk Shops, about 5 minutes. Turn your sound on. Halfway through you can approve a repair from your own phone."}</p>
+        <p>${lesson ? escT(lesson.desc) + " Turn your sound on. It runs in the demo shop with sample cars." : "A narrated walk-through of an auto shop using Talk Shops, about 5 minutes. Turn your sound on. Halfway through you can approve work from your own phone."}</p>
         <div class="t-row"><button class="btn primary" id="tsGo" type="button">▶ ${lesson ? "Start the lesson" : "Start the tour"}</button><button class="btn" id="tsNo" type="button">${lesson ? "Not now" : "Explore on my own"}</button></div></div>`;
       document.body.appendChild(gate);
       q("#tsGo").focus();

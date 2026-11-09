@@ -1,4 +1,4 @@
-// Homepage hero: muted background clips of real repair shops, cross-fading in a loop.
+// Homepage hero: muted background clips of real auto shops, cross-fading in a loop.
 // Clips are free-to-use Pexels videos (pexels.com/license), trimmed to 6s at 720p:
 // 1 8987071, 2 32033211, 3 8987078, 4 8987028, 5 14514799 (pexels.com/video/<id>/).
 // Reduced motion or Data Saver: the still poster only.
