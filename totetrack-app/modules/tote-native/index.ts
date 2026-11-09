@@ -1,6 +1,13 @@
 import { requireOptionalNativeModule } from 'expo';
 
-export type PhotoAnalysis = { labels: { label: string; confidence: number }[]; text: string[] };
+export type TextLine = { text: string; confidence: number; x: number; y: number; w: number; h: number };
+export type PhotoAnalysis = {
+  /** confidence: best seen in any part of the photo; regions: how many parts it was seen in; whole: seen in the full photo. */
+  labels: { label: string; confidence: number; regions?: number; whole?: boolean }[];
+  /** Printed text lines with their position (0-1, top-left origin). */
+  lines?: TextLine[];
+  text: string[];
+};
 export type SpotlightTote = { id: string; title: string; description: string; keywords: string[] };
 export type ScheduledReminder = { id: string; title: string; body: string; at: number; toteId?: string };
 
