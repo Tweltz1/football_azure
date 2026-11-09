@@ -241,7 +241,7 @@ a.btn.primary{color:var(--accent-fg)}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
 <link rel="stylesheet" href="/saved-archive.css?v=5">
-<link rel="stylesheet" href="/theme.css?v=12">
+<link rel="stylesheet" href="/theme.css?v=13">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
 <link rel="stylesheet" href="/training.css?v=1">
@@ -305,6 +305,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/howto.js?v=4"></script>
 <script src="/team.js?v=2"></script>
 <script src="/display.js?v=1"></script>
+<script src="/board-tools.js?v=1"></script>
 <script src="/walkthrough.js?v=3"></script>
 <script src="/walkaround.js?v=1"></script>
 <script src="/repair-guide.js?v=4"></script>
@@ -568,7 +569,7 @@ function boardView(){
     <div class="board-wrap"><div class="board">`;
   STAGES.filter(s=>s.key!=="picked_up").forEach(s=>{
     const list=active.filter(j=>j.stage===s.key);
-    h+=`<section class="col ${s.key==="approval"?"is-approval":""} ${s.key==="ready"?"is-ready":""}"><div class="col-h"><h3>${s.key==="approval"?"Estimate review":s.label}</h3><span>${list.length}</span></div>`;
+    h+=`<section data-stage="${s.key}" class="col ${s.key==="approval"?"is-approval":""} ${s.key==="ready"?"is-ready":""}"><div class="col-h"><h3>${s.key==="approval"?"Estimate review":s.label}</h3><span>${list.length}</span></div>`;
     if(!list.length)h+=`<div class="empty-col">No cars</div>`;
     list.forEach(j=>{
       const ev=j.events[j.events.length-1];
@@ -583,7 +584,7 @@ function boardView(){
       const unread=j.messages.length&&j.messages[j.messages.length-1].dir==="in";
       const age=ageOf(j);
       const hay=[vehicleStr(j),j.customer.name,j.customer.phone,j.customer.email,j.ro,j.concern,j.plate].filter(Boolean).join(" ").toLowerCase();
-      h+=`<button class="card ${age.cls}" data-open="${j.id}" data-queue-key="${pending?"approval":j.stage==="ready"?"ready":"other"}" data-s="${esc(hay)}">
+      h+=`<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} data-open="${j.id}" data-queue-key="${pending?"approval":j.stage==="ready"?"ready":"other"}" data-s="${esc(hay)}">
         <span class="veh queue-vehicle">${esc(vehicleStr(j))}<span aria-hidden="true">›</span></span>
         <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${j.ro}</span></span>
         <span class="row"><span>${esc(j.concern)}</span></span>

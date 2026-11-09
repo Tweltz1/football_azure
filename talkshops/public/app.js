@@ -534,7 +534,7 @@
     STAGES.filter((s) => s.key !== "picked_up").forEach((s) => {
       const list = active.filter((j) => j.stage === s.key);
       if (s.key === "invited" && !list.length) return;
-      h += `<section class="col ${s.key === "approval" ? "is-approval" : ""} ${s.key === "ready" ? "is-ready" : ""}"><div class="col-h"><h3>${s.key === "approval" ? "Estimate Review" : s.label}</h3><span>${list.length}</span></div>`;
+      h += `<section data-stage="${s.key}" class="col ${s.key === "approval" ? "is-approval" : ""} ${s.key === "ready" ? "is-ready" : ""}"><div class="col-h"><h3>${s.key === "approval" ? "Estimate Review" : s.label}</h3><span>${list.length}</span></div>`;
       if (!list.length) h += `<div class="empty-col">No cars</div>`;
       list.forEach((j) => {
         const ev = j.events[j.events.length - 1];
@@ -548,7 +548,7 @@
         const age = ageOf(j);
         const hay = [vehicleStr(j), j.customer.name, j.customer.phone, j.customer.email, j.ro, j.concern, j.plate, j.vehicle?.plate, j.vehicle?.vin].filter(Boolean).join(" ").toLowerCase();
         const qk = awaitingDecision(j) ? "approval" : j.stage === "ready" ? "ready" : "other";
-        h += `<button class="card ${age.cls}" data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
+        h += `<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
           <span class="veh queue-vehicle">${esc(vehicleStr(j) || "Vehicle details pending")}<span class="chev" aria-hidden="true">›</span></span>
           <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${esc(j.ro)}</span></span>
           ${j.concern ? `<span class="row concern"><span>${esc(j.concern)}</span></span>` : ""}

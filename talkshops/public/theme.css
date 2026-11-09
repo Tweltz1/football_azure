@@ -581,3 +581,29 @@ main:has(>.auth){padding:0;max-width:none}
 }
 .repair-management summary {cursor:pointer;color:var(--muted);font-weight:600;padding:8px 0}
 .repair-management .danger {margin-top:8px}
+
+/* Stage drill-down and independent queue controls. */
+.stage-view-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin:0 0 12px}
+.stage-help{font-size:12px;margin:0;flex:1 1 260px}
+.stage-results{font-size:13px;margin:0;color:var(--muted)}
+.stage-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:0;background:transparent;color:inherit;padding:4px;text-align:left;border-radius:8px}
+.stage-heading:hover{background:var(--surface)}
+.stage-heading h3{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:4px}
+.stage-controls{display:flex;flex-wrap:wrap;gap:8px}
+.stage-controls label{display:grid;gap:3px;font-size:11px;font-weight:600;color:var(--muted);flex:1 1 110px;min-width:0}
+.stage-controls select{min-width:0;width:100%;border:1px solid var(--line-strong);border-radius:8px;padding:7px 5px;background:var(--surface);font-size:12px;color:var(--fg)}
+.stage-empty{font-size:13px;margin:8px 0}
+.stage-priority{align-self:flex-start}
+main:has(.queue-top) .board.stage-focused{display:block;min-width:0;width:100%}
+main:has(.queue-top) .board.stage-focused>.col:not([hidden]){display:grid;grid-template-columns:repeat(auto-fill,minmax(min(280px,100%),1fr));align-content:start;align-items:start}
+.board.stage-focused .col-h,.board.stage-focused .stage-controls,.board.stage-focused .empty-col{grid-column:1/-1}
+.board.stage-focused .col-h{max-width:500px}
+.board.stage-focused .stage-controls{max-width:600px}
+@media(max-width:700px){
+  .board .col:not([hidden]){display:flex;margin-bottom:16px}
+  main .board .col-h{display:flex;width:100%}
+  .board .col:has(.empty-col){display:none}
+  .board.stage-focused .col:has(.empty-col):not([hidden]){display:flex}
+  .board.stage-focused .empty-col{display:block}
+  .stage-controls{margin-bottom:8px}
+}
