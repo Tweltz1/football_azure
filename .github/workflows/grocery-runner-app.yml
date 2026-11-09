@@ -31,6 +31,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # One-time setup, run by a commit message containing [walmart-keygen]: makes the RSA key pair that
+  # walmart.io needs, stores the private key straight into Supabase secrets (it never appears anywhere
+  # else), and prints only the public key to paste into walmart.io.
+  walmart-key:
+    if: contains(github.event.head_commit.message, '[walmart-keygen]')
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || 'nkwedlskhnojseeroezm' }}
+    steps:
+      - name: Make the Walmart key pair
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then echo "::error::SUPABASE_ACCESS_TOKEN is not set"; exit 1; fi
+          umask 077
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$RUNNER_TEMP/walmart.pem" 2>/dev/null
+          npx -y supabase@latest secrets set --project-ref "$SUPABASE_PROJECT_ID" --yes \
+            WALMART_PRIVATE_KEY="$(cat "$RUNNER_TEMP/walmart.pem")" WALMART_KEY_VERSION=1 > /dev/null
+          PUB=$(openssl pkey -in "$RUNNER_TEMP/walmart.pem" -pubout)
+          rm -f "$RUNNER_TEMP/walmart.pem"
+          echo "Public key for walmart.io (the private key is saved in Supabase only):"
+          echo "$PUB"
+          { echo '### Walmart public key (paste into walmart.io)'; echo '```'; echo "$PUB"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
   backend:
     runs-on: ubuntu-latest
     env:
@@ -59,10 +82,16 @@ jobs:
           else
             echo "::notice::No Kroger keys yet; Kroger stores will use shared aisles and departments."
           fi
-          if [ -n "$WALMART_CONSUMER_ID" ] && [ -n "$WALMART_PRIVATE_KEY" ]; then
-            SET+=(WALMART_CONSUMER_ID="$WALMART_CONSUMER_ID" WALMART_KEY_VERSION="${WALMART_KEY_VERSION:-1}" WALMART_PRIVATE_KEY="$WALMART_PRIVATE_KEY")
-          else
-            echo "::notice::No Walmart affiliate keys; Walmart stores are picked by ZIP."
+          # The Walmart private key may already be in Supabase (from the walmart-key job); only the
+          # consumer ID then needs to come from GitHub.
+          if [ -n "$WALMART_CONSUMER_ID" ]; then
+            SET+=(WALMART_CONSUMER_ID="$WALMART_CONSUMER_ID" WALMART_KEY_VERSION="${WALMART_KEY_VERSION:-1}")
+          fi
+          if [ -n "$WALMART_PRIVATE_KEY" ]; then
+            SET+=(WALMART_PRIVATE_KEY="$WALMART_PRIVATE_KEY")
+          fi
+          if [ -z "$WALMART_CONSUMER_ID" ]; then
+            echo "::notice::No WALMART_CONSUMER_ID yet; Walmart stores come from Apple Maps only."
           fi
           if [ ${#SET[@]} -gt 0 ]; then
             npx -y supabase@latest secrets set --project-ref "$SUPABASE_PROJECT_ID" --yes "${SET[@]}"
