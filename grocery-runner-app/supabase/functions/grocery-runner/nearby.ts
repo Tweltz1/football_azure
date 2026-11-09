@@ -12,6 +12,12 @@ const OVERPASS = [
   'https://overpass.kumi.systems/api/interpreter',
 ];
 const RADIUS_M = 15000;
+// Names of supported chains, including Kroger's banners (chainOf() does the exact matching).
+const NAME_PATTERN = [
+  'walmart', 'target', 'hy-?vee', 'costco', 'aldi', 'woodman', 'kroger', 'fry', 'king soopers', 'ralphs', 'smith',
+  'fred meyer', 'harris teeter', 'dillons', 'qfc', 'mariano', 'pick .?n.? save', 'metro market', 'city market',
+  'food 4 less', 'foods co', 'baker', 'gerbes', 'jay c', 'pay less', 'ruler',
+].join('|');
 
 export type NearbyStore = {
   key: string;
@@ -31,7 +37,14 @@ export type NearbyStore = {
 const cache = new Map<string, { at: number; stores: NearbyStore[] }>();
 
 async function fromOsm(lat: number, lon: number): Promise<NearbyStore[]> {
-  const query = `[out:json][timeout:20];nwr["shop"~"^(supermarket|wholesale|department_store|grocery)$"](around:${RADIUS_M},${lat},${lon});out center tags 300;`;
+  // Filter by chain name on the Overpass server so the reply stays small (edge functions have tight CPU limits).
+  const shops = '["shop"~"^(supermarket|wholesale|department_store)$"]';
+  const around = `(around:${RADIUS_M},${lat},${lon})`;
+  const query =
+    `[out:json][timeout:20];(` +
+    `nwr${shops}["brand"~"${NAME_PATTERN}",i]${around};` +
+    `nwr${shops}["name"~"${NAME_PATTERN}",i]${around};` +
+    `);out tags center 200;`;
   let body: { elements?: unknown[] } | null = null;
   const errors: string[] = [];
   for (const server of OVERPASS) {
