@@ -18,6 +18,7 @@
   const KINDS = { scratch: "Scratch", dent: "Dent", crack: "Crack", chip: "Chip", scuff: "Scuff", rust: "Rust", broken: "Broken part", other: "Other damage" };
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const pct = (n) => (n * 100).toFixed(1) + "%";
+  const T = (s, ...a) => (window.tsT ? window.tsT(s, ...a) : s.replace(/\{(\d)\}/g, (_, i) => a[+i] ?? ""));
   let cfg = null, busy = false, review = null, lightbox = null;
 
   function guide(key) {
@@ -44,17 +45,17 @@
     const found = w.photos.flatMap((p) => p.marks.map((m) => ({ ...m, angle: p.angle, photo: p.id })));
     const tiles = ANGLES.map((a) => {
       const p = have[a.key];
-      return `<button type="button" class="wa-tile${p ? " done" : ""}" ${p ? `data-wa-view="${esc(p.id)}"` : w.canUpload ? `data-wa-shoot="${a.key}"` : "disabled"} aria-label="${esc(a.label)}${p ? ", photo taken" : ""}">
-        ${p ? `<span class="wa-ph"><img src="${p.src}" alt="">${boxes(p.marks)}</span><span class="wa-ok" aria-hidden="true">✓</span>` : guide(a.key)}<span class="wa-l">${esc(a.label)}</span></button>`;
+      return `<button type="button" class="wa-tile${p ? " done" : ""}" ${p ? `data-wa-view="${esc(p.id)}"` : w.canUpload ? `data-wa-shoot="${a.key}"` : "disabled"} aria-label="${esc(T(a.label))}${p ? ", ✓" : ""}">
+        ${p ? `<span class="wa-ph"><img src="${p.src}" alt="">${boxes(p.marks)}</span><span class="wa-ok" aria-hidden="true">✓</span>` : guide(a.key)}<span class="wa-l">${esc(T(a.label))}</span></button>`;
     }).join("");
     const intro = w.canUpload
-      ? (next ? `<p>${esc(j.shop.name)} asked for photos of your car from all sides, so you both have a record of its condition. Tap each spot, or use the button to go in order.</p>
-          <div class="wa-next">${guide(next.key)}<div><b>Next: ${esc(next.label)}</b><small>${esc(next.tip)}</small><button type="button" class="btn primary" data-wa-shoot="${next.key}" ${busy ? "disabled" : ""}>${busy ? "Sending…" : "Take photo"}</button></div></div>`
-        : `<p class="wa-thanks">All 8 photos sent. Thank you! Tap any photo to retake it.</p>`)
+      ? (next ? `<p>${T("{0} asked for photos of your car from all sides, so you both have a record of its condition. Tap each spot, or use the button to go in order.", esc(j.shop.name))}</p>
+          <div class="wa-next">${guide(next.key)}<div><b>${T("Next: {0}", esc(T(next.label)))}</b><small>${esc(T(next.tip))}</small><button type="button" class="btn primary" data-wa-shoot="${next.key}" ${busy ? "disabled" : ""}>${busy ? T("Sending…") : T("Take photo")}</button></div></div>`
+        : `<p class="wa-thanks">${T("All 8 photos sent. Thank you! Tap any photo to retake it.")}</p>`)
       : "";
-    const list = found.length ? `<h4 class="wa-h4">Damage noted by the shop</h4><ol class="wa-found">${found.map((m) =>
-      `<li><button type="button" class="linkbtn" data-wa-view="${esc(m.photo)}">${esc(KINDS[m.kind] || "Damage")}</button> · ${esc(m.note || BY[m.angle].label)}</li>`).join("")}</ol>` : "";
-    return `<section class="c-card wa-card"><h3>Walk-around photos <span class="wa-count">${w.photos.length} of 8</span></h3>
+    const list = found.length ? `<h4 class="wa-h4">${T("Damage noted by the shop")}</h4><ol class="wa-found">${found.map((m) =>
+      `<li><button type="button" class="linkbtn" data-wa-view="${esc(m.photo)}">${esc(T(KINDS[m.kind] || "Other damage"))}</button> · ${esc(m.note || T(BY[m.angle].label))}</li>`).join("")}</ol>` : "";
+    return `<section class="c-card wa-card"><h3>${T("Walk-around photos")} <span class="wa-count">${T("{0} of 8", w.photos.length)}</span></h3>
       <div class="wa-bar"><span style="width:${w.photos.length / 8 * 100}%"></span></div>
       ${intro}<div class="wa-grid">${tiles}</div>${list}<p id="waStatus" role="status" class="wa-status" hidden></p></section>`;
   }

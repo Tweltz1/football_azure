@@ -24,6 +24,7 @@
     now: { tech: "Repair", cust: "Needs attention" },
   };
   const RANK = { now: 0, soon: 1, good: 2 };
+  const T = (s, ...a) => (window.tsT ? window.tsT(s, ...a) : s.replace(/\{(\d)\}/g, (_, i) => a[+i] ?? ""));
   const KIND = { before: { title: "Check-in walk-through", short: "Check-in" }, after: { title: "After-repair walk-through", short: "After Repair" } };
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const when = (t) => new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -33,7 +34,7 @@
     return c;
   };
   const tally = (w, side) => ["now", "soon", "good"].filter((s) => counts(w)[s]).map((s) =>
-    `<span class="wt-count wt-${s}">${counts(w)[s]} ${esc(STATUS[s][side]).toLowerCase()}</span>`).join("");
+    `<span class="wt-count wt-${s}">${counts(w)[s]} ${esc(side === "cust" ? T(STATUS[s][side]) : STATUS[s][side]).toLowerCase()}</span>`).join("");
 
   /** Section in the shop's car sheet. */
   function sheetSection(j) {
@@ -145,16 +146,16 @@
     const keys = ITEMS.map((i) => i.key).filter((k) => [before, after].some((w) => w?.items.some((i) => i.key === k)));
     const get = (w, k) => w?.items.find((i) => i.key === k);
     keys.sort((a, b) => (RANK[get(latest, a)?.status] ?? 3) - (RANK[get(latest, b)?.status] ?? 3));
-    const dot = (it) => it ? `<span class="wt-dot wt-${it.status}">${esc(STATUS[it.status].cust)}</span>` : `<span class="wt-dot wt-none">Not checked</span>`;
+    const dot = (it) => it ? `<span class="wt-dot wt-${it.status}">${esc(T(STATUS[it.status].cust))}</span>` : `<span class="wt-dot wt-none">${T("Not checked")}</span>`;
     const rows = keys.map((k) => {
-      const notes = [both && get(before, k)?.note ? `<small><b>Check-in:</b> ${esc(get(before, k).note)}</small>` : "", get(latest, k)?.note ? `<small>${both ? "<b>After:</b> " : ""}${esc(get(latest, k).note)}</small>` : ""].join("");
-      return `<tr><th scope="row">${esc(LABEL[k])}${notes}${k === "tires" ? treadText(get(latest, k)?.tread) : ""}</th>${both ? `<td data-l="Check-in">${dot(get(before, k))}</td>` : ""}<td${both ? ' data-l="After"' : ""}>${dot(get(latest, k))}</td></tr>`;
+      const notes = [both && get(before, k)?.note ? `<small><b>${T("Check-in")}:</b> ${esc(get(before, k).note)}</small>` : "", get(latest, k)?.note ? `<small>${both ? "<b>" + T("After") + ":</b> " : ""}${esc(get(latest, k).note)}</small>` : ""].join("");
+      return `<tr><th scope="row">${esc(T(LABEL[k]))}${notes}${k === "tires" ? treadText(get(latest, k)?.tread) : ""}</th>${both ? `<td data-l="${T("Check-in")}">${dot(get(before, k))}</td>` : ""}<td${both ? ` data-l="${T("After")}"` : ""}>${dot(get(latest, k))}</td></tr>`;
     }).join("");
     const meta = (w, name) => w ? `<p class="wt-meta"><b>${name}</b> · ${when(w.t)}${w.by ? " · " + esc(w.by) : ""}${w.mileage ? " · " + esc(w.mileage) + " mi" : ""}</p>${w.summary ? `<p class="wt-sum">${esc(w.summary)}</p>` : ""}` : "";
-    return `<div class="c-card wt-card"><h3>Vehicle walk-through</h3>
+    return `<div class="c-card wt-card"><h3>${T("Vehicle walk-through")}</h3>
       <div class="wt-tally">${tally(latest, "cust")}</div>
-      ${meta(after, "After repair")}${meta(before, "At check-in")}
-      <table class="wt-table"><thead><tr><th></th>${both ? "<th>Check-in</th><th>After</th>" : `<th>${after ? "After repair" : "At check-in"}</th>`}</tr></thead><tbody>${rows}</tbody></table></div>`;
+      ${meta(after, T("After repair"))}${meta(before, T("At check-in"))}
+      <table class="wt-table"><thead><tr><th></th>${both ? `<th>${T("Check-in")}</th><th>${T("After")}</th>` : `<th>${after ? T("After repair") : T("At check-in")}</th>`}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
   window.Walkthrough = { ITEMS, sheetSection, draftFor, editor, click, input, body, customerCard };

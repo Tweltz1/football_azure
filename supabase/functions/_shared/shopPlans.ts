@@ -6,9 +6,11 @@
 export type PlanKey = 'starter' | 'pro';
 export type Interval = 'month' | 'year';
 
-export const PLANS: Record<PlanKey, { name: string; month: number; year: number; texts: number; blurb: string; howTo: boolean }> = {
-  starter: { name: 'Starter', month: 89, year: 890, texts: 1000, blurb: '3 staff seats (up to 2 owners), 1,000 texts a month, unlimited email', howTo: false },
-  pro: { name: 'Pro', month: 149, year: 1490, texts: 3000, blurb: '8 staff seats (up to 3 owners), 3,000 texts a month, unlimited email, AI repair how-to assistant and Smart Replies', howTo: true },
+export const PLANS: Record<PlanKey, { name: string; month: number; year: number; texts: number; blurb: string; howTo: boolean; pro: boolean }> = {
+  starter: { name: 'Starter', month: 89, year: 890, texts: 1000, howTo: false, pro: false,
+    blurb: '3 staff seats (up to 2 owners), 1,000 texts a month, unlimited email, online booking, Spanish customer pages and CSV export' },
+  pro: { name: 'Pro', month: 149, year: 1490, texts: 3000, howTo: true, pro: true,
+    blurb: 'Everything in Starter, plus 8 staff seats (up to 3 owners), 3,000 texts a month, the AI how-to assistant, Smart Replies, AI damage marking, AI price list reading, the results dashboard, review requests, your logo and color, and the tech time clock' },
 };
 
 /** Trial rules, kept in the talkshops_settings table so they can be changed without a deploy. */
@@ -69,6 +71,19 @@ export function hasHowTo(p: PlanState | undefined | null, a: Access): boolean {
   if (a.state === 'active' || a.state === 'past_due') return !!(p && p.plan && p.plan !== 'trial' && PLANS[p.plan]?.howTo);
   return false;
 }
+
+/**
+ * Pro features (AI damage marking, AI price reading, results, review requests, branding, time clock).
+ * Same rule as the how-to assistant: Pro, a running free trial, or a shop from before plans existed.
+ */
+export function hasPro(p: PlanState | undefined | null, a: Access): boolean {
+  if (a.state === 'free' || a.state === 'trial') return true;
+  if (a.state === 'active' || a.state === 'past_due') return !!(p && p.plan && p.plan !== 'trial' && PLANS[p.plan]?.pro);
+  return false;
+}
+/** Pro check that doesn't need the trial settings (they only change limits, not which state a shop is in). */
+export const isPro = (p: PlanState | undefined | null, now: Date) => hasPro(p, access(p, now, DEFAULT_TRIAL));
+export const proMessage = (what: string) => `${what} is part of Talk Shops Pro. Switch to Pro on the Plan tab to use it.`;
 export const HOWTO_PRO_MESSAGE = 'The How-to assistant is part of Talk Shops Pro. Switch to Pro on the Plan tab to use it.';
 
 export const lockedMessage = (a: Access) => a.state === 'canceled'

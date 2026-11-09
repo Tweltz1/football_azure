@@ -1,0 +1,49 @@
+/* Growth tools: booking requests, time clock, results, settings panels, customer page extras. */
+.gr-logo{display:block;max-height:52px;max-width:200px;margin-bottom:8px;border-radius:6px;background:#fff;padding:4px}
+.gr-lang{margin-top:-4px}
+.gr-review .btn{width:100%;text-align:center;text-decoration:none}
+.gr-hp{position:absolute!important;left:-9999px;width:1px;height:1px;overflow:hidden}
+.gr-book-page .c-body .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.gr-book-page .form-grid .full{grid-column:1/-1}
+.gr-lock{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13.5px;color:var(--muted)}
+/* Booking requests on the Bay */
+.gr-bookings{border:1px solid color-mix(in srgb,var(--warn,#e59a14) 45%,var(--line));background:color-mix(in srgb,var(--warn,#e59a14) 7%,var(--surface));border-radius:var(--r-lg,14px);padding:12px 14px;margin:10px 0}
+.gr-bk-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.gr-bk-h h3{margin:0;font-size:16px}
+.gr-bookings ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.gr-bookings li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
+.gr-bk-when{margin:2px 0}
+.gr-bk-form{display:grid;gap:8px}
+.gr-bk-form textarea{min-height:76px}
+/* Card marks */
+.gr-on{font-size:12px;font-weight:600;color:#16794c;background:#e5f6ee;border-radius:999px;padding:2px 8px}
+@media (prefers-color-scheme:dark){.gr-on{background:#173a2b;color:#7fe0b0}}
+/* Time clock */
+.gr-clock-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.gr-clock-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px;font-size:13.5px}
+.gr-clock-list li{display:grid;grid-template-columns:minmax(80px,1fr) minmax(0,2fr) auto auto;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:4px}
+.gr-over{color:#c2410c;font-weight:600}.gr-under{color:#16794c;font-weight:600}
+/* Results */
+.gr-dialog{width:min(860px,calc(100vw - 32px))}
+.gr-days{margin-top:10px}
+.gr-dialog .wd-tile small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.gr-h{font-size:15px;margin:16px 0 6px}
+.gr-bars{display:flex;align-items:flex-end;gap:4px;height:120px;border-bottom:1px solid var(--line);padding-bottom:18px;position:relative}
+.gr-bar{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative}
+.gr-bar span{display:block;width:100%;max-width:38px;background:var(--grad,var(--accent));border-radius:5px 5px 0 0}
+.gr-bar small{position:absolute;bottom:-17px;font-size:10.5px;color:var(--muted);white-space:nowrap}
+.gr-table{width:100%;border-collapse:collapse;font-size:14px}
+.gr-table th,.gr-table td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+.gr-table .num{text-align:right;white-space:nowrap}
+.gr-declined{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.gr-declined li{display:grid;grid-template-columns:1fr auto auto;gap:12px;font-size:14px;border-bottom:1px solid var(--line);padding:4px 0}
+.gr-upsell p{margin:10px 0}
+/* Settings */
+.gr-panel{display:flex;flex-direction:column;gap:10px}
+.gr-link{display:flex;gap:6px;flex-wrap:wrap}
+.gr-link input{flex:1;min-width:200px;font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line-strong,var(--line));border-radius:10px;background:var(--surface-2,var(--surface));color:var(--fg)}
+.gr-brand{display:grid;gap:10px}
+.gr-brand-logo{min-height:60px;display:flex;align-items:center;border:1px dashed var(--line-strong,var(--line));border-radius:12px;padding:10px;background:#fff}
+.gr-brand-logo img{max-height:64px;max-width:240px}
+.gr-color span{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.gr-color input[type=color]{width:46px;height:36px;padding:2px;border-radius:8px}

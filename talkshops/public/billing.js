@@ -228,10 +228,11 @@ window.createShopBilling = ({ esc, money, prices }) => {
   }
   function display(b,j) {
     if(!b) return "";
-    return `<section class="c-card final-bill"><h3>Final bill</h3><strong>${esc(b.shopName)}</strong><div>${esc(b.phone)} · ${esc(j.ro)}</div>
+    const T = (x) => (window.tsT ? window.tsT(x) : x);
+    return `<section class="c-card final-bill"><h3>${T("Final bill")}</h3><strong>${esc(b.shopName)}</strong><div>${esc(b.phone)} · ${esc(j.ro)}</div>
     <div>${esc(j.vehicle)} · ${esc(new Date(b.issuedAt).toLocaleDateString())}</div>
     ${b.mode==="generated" ? b.lines.map(r=>`<div class="bill-item"><div>${esc(r.name)}<small>${calculation(r)}</small></div><b>${money(roundLine(r))}</b></div>`).join("") : ""}
-    <div class="total"><span>Total due</span><b>${money(b.total)}</b></div><button class="btn" type="button" data-billing="${b.mode==="upload"?"download":"print"}">${b.mode==="upload"?"Download shop invoice (PDF)":"Print / save PDF"}</button></section>`;
+    <div class="total"><span>${T("Total due")}</span><b>${money(b.total)}</b></div><button class="btn" type="button" data-billing="${b.mode==="upload"?"download":"print"}">${b.mode==="upload"?T("Download shop invoice (PDF)"):T("Print / save PDF")}</button></section>`;
   }
   function fileDownload(pdf,filename) {download(new Blob([Uint8Array.from(atob(pdf),c=>c.charCodeAt(0))],{type:"application/pdf"}),filename);}
   return {editor,calculation,readRows,updateTotal,change,editClick,error,billBody,display,fileDownload,pickSaved,importNote};

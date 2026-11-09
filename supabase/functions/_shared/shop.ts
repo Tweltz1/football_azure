@@ -5,7 +5,7 @@
 import type { Ctx, Res } from './handlers.ts';
 import { salesRoute } from './shopSales.ts';
 
-import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, HOWTO_PRO_MESSAGE, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
+import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, hasPro, HOWTO_PRO_MESSAGE, isPro, lockedMessage, PLANS, planFromSubscription, proMessage, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { howToRoute, type HowToLibrary } from './shopHowTo.ts';
 import { decodeVin, enginesFor, modelsFor, recallsFor, VIN_RE } from './nhtsa.ts';
@@ -14,6 +14,8 @@ import { cleanMarks, isAngle, type DamageFinder, type WalkPhoto } from './shopDa
 import { accountRoute, type AccountStore } from './shopAccount.ts';
 import { ownerOnly, staffRoute, type Seat, type StaffStore } from './shopStaff.ts';
 import type { Narrator } from './dnd.ts';
+import { clockAction, customersCsv, jobsCsv, langOf, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES,
+  type Booking, type BookingStore, type Brand, type ClockEntry, type Grow, type Lang } from './shopGrow.ts';
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
 
 type Body = Record<string, unknown>;
@@ -39,6 +41,12 @@ export interface Shop {
   createdAt: string;
   /** Trial and paid-plan state. Read only here: plan changes go through the store's plan methods. */
   plan?: PlanState;
+  /** Logo and accent color for the customer page and printouts (Pro). */
+  brand?: Brand;
+  /** Review link and online booking settings. */
+  grow?: Grow;
+  /** The public booking link is /?book=<bookingToken>; null when booking is off. */
+  bookingToken?: string | null;
 }
 
 /** How much the shop says a line matters: needed for the concern or safety, advised soon, or can wait. */
@@ -57,7 +65,8 @@ export interface Message { sender?:string; senderId?:string; suggestion?:string;
 
 export interface JobData {
   ro: string;
-  customer: { name: string; phone: string; consent: boolean; email?: string; preference?: Preference; /** When the customer stopped follow-up reminders. */ remindersOff?: string };
+  customer: { name: string; phone: string; consent: boolean; email?: string; preference?: Preference; /** When the customer stopped follow-up reminders. */ remindersOff?: string;
+    /** Language for the customer page and the shop's automatic texts. */ lang?: Lang };
   vehicle: { year: string; make: string; model: string; vin?: string; engine?: string; trim?: string };
   plate: string;
   concern: string;
@@ -88,6 +97,14 @@ export interface JobData {
   service?: string;
   /** Texts to send later: declined work and service reminders. */
   followups?: Followup[];
+  /** Technician time clock (Pro). Shop-only. */
+  clock?: ClockEntry[];
+  /** Review request after pickup (Pro), and when the customer opened the review link. */
+  review?: { askedAt: string; by: string; clickedAt?: string };
+  /** Set when the car came from an online booking request. */
+  booking?: { id: string; day: string; time: string };
+  /** The appointment time the shop confirmed (ISO). */
+  appointment?: string;
 }
 export const URGENCIES = ['low', 'medium', 'high'] as const;
 export type Urgency = typeof URGENCIES[number];
@@ -99,7 +116,6 @@ export const WALK_ITEMS = ['exterior', 'lights', 'wipers', 'tires', 'brakes', 'o
 export type WalkStatus = 'good' | 'soon' | 'now';
 export interface WalkItem { key: string; status: WalkStatus; note?: string; /** Tires only: tread depth in 32nds per wheel. */ tread?: Record<string, number> }
 export interface Walkthrough { t: string; by: string; mileage?: string; items: WalkItem[]; summary?: string; sentAt?: string }
-const WALK_LABEL = { before: 'check-in', after: 'after-repair' } as const;
 const MAX_NOTES = 60;
 
 export type Intake = Pick<JobData, 'vehicle' | 'plate' | 'concern'>;
@@ -120,8 +136,10 @@ export interface Job {
   updatedAt: string;
 }
 
-export interface ShopStore {
+export interface ShopStore extends Partial<BookingStore> {
   pauseSmart?(id:string,paused:boolean):Promise<void>;
+  /** Repairs created at or after `since` without photos or messages, for results and export. */
+  reportJobs?(shopId: string, since: string, limit: number): Promise<Job[]>;
   shopByOwner(ownerId: string): Promise<Shop | null>;
   shopById(id: string): Promise<Shop | null>;
   putShop(shop: Shop): Promise<void>;
@@ -300,18 +318,22 @@ export function normalizePhone(raw: string): string | null {
 const total = (d: JobData, approvedOnly: boolean) =>
   d.estimate.filter((e) => !approvedOnly || e.status === 'approved').reduce((a, e) => a + e.price, 0);
 
-export function fillTemplate(stage: Stage, shop: Shop, job: Job, linkBase: string): string {
+/** The stage text in the customer's language. `reviewUrl` adds a review ask to the picked-up text (Pro, when the shop turned it on). */
+export function fillTemplate(stage: Stage, shop: Shop, job: Job, linkBase: string, reviewUrl?: string): string {
   const d = { ...job.data, ...job.intake };
+  const lang = langOf(job.data), say = SAY[lang];
   const vals: Record<string, string> = {
-    first: d.customer.name.split(/\s+/)[0] || 'there',
+    first: d.customer.name.split(/\s+/)[0] || (lang === 'es' ? '' : 'there'),
     shop: shop.name,
-    vehicle: vehicleName(d) || 'car',
+    vehicle: vehicleName(d) || say.car,
     link: linkBase + job.token,
     total: money(stage === 'ready' && job.bill ? job.bill.total : total(d, stage === 'ready')),
-    eta: d.eta || 'soon',
-    hours: shop.hours || 'during business hours',
+    eta: d.eta || say.soon,
+    hours: shop.hours || say.hours,
   };
-  return TEMPLATES[stage].replace(/\{(\w+)\}/g, (_, k) => vals[k] ?? '');
+  let text = (lang === 'es' ? TEMPLATES_ES : TEMPLATES)[stage].replace(/\{(\w+)\}/g, (_, k) => vals[k] ?? '').replace(/ ,/g, ',').replace(/Hola ,/, 'Hola,');
+  if (stage === 'picked_up' && reviewUrl) text = text.replace(' ' + say.stop, say.reviewTail(reviewUrl) + ' ' + say.stop);
+  return text;
 }
 
 /** What the shop sees. */
@@ -321,8 +343,12 @@ const jobOut = (j: Job, linkBase: string) => ({
 const walkaroundOpen = (j: Job) => !!j.data.walkaroundRequest && j.stage !== 'picked_up' && !j.data.closed && j.shopId !== DEMO_SHOP_ID;
 
 /** What the customer sees: no phone number, no other customers, no internal notes. */
-const customerOut = (j: Job, shop: Shop) => ({
-  shop: { name: shop.name, phone: shop.phone, hours: shop.hours },
+const customerOut = (j: Job, shop: Shop, pro = false) => ({
+  shop: { name: shop.name, phone: shop.phone, hours: shop.hours, ...(pro && shop.brand ? { brand: shop.brand } : {}) },
+  lang: langOf(j.data),
+  // A review button once the car is ready or picked up, when the shop has a review link (Pro).
+  review: pro && shop.grow?.reviewUrl && ['ready', 'picked_up'].includes(j.stage) && !j.data.closed ? { url: shop.grow.reviewUrl } : null,
+  appointment: j.stage === 'invited' ? j.data.appointment ?? null : null,
   ro: j.data.ro,
   stage: j.stage,
   canUploadIntakePhotos: j.shopId !== DEMO_SHOP_ID && ['invited','checked_in'].includes(j.stage),
@@ -356,7 +382,8 @@ async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string
   const channels: Channel[] = preference === 'both' ? ['sms', 'email'] : [preference];
   return Promise.all(channels.map(async (channel): Promise<Message> => {
     const link = deps.linkBase + job.token;
-    const text = channel === 'email' && !body.includes(link) ? body + '\n\nRepair details: ' + link : body;
+    const say = SAY[langOf(job.data)];
+    const text = channel === 'email' && job.token && !body.includes(link) ? body + '\n\n' + say.details + link : body;
     let result: SmsResult;
     if (!c.consent) result = { delivery: 'not_sent', note: 'Customer has not agreed to ' + (channel === 'sms' ? 'texts.' : 'email.') };
     else if (channel === 'sms') {
@@ -366,7 +393,7 @@ async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string
     }
     else if (deps.email && c.email && deps.store.useEmails && !await deps.store.useEmails(shop.id, now.slice(0, 10), emailCap(shop)))
       result = { delivery: 'not_sent', note: `Your shop has sent its ${emailCap(shop)} customer emails for today. Email sending starts again tomorrow (UTC). Texts still work.` };
-    else if (deps.email && c.email) result = await deps.email.send(c.email, shop.name + ' · ' + job.data.ro + ' repair update', text, { fromName: shop.name, replyTo: shop.email || undefined });
+    else if (deps.email && c.email) result = await deps.email.send(c.email, shop.name + ' · ' + (job.data.ro ? job.data.ro + ' ' : '') + say.subject, text, { fromName: shop.name, replyTo: shop.email || undefined });
     else result = { delivery: 'not_sent', note: 'Automatic email is not configured.' };
     return { dir: 'out', channel, t: now, text, ...result };
   }));
@@ -419,7 +446,7 @@ async function sendDueFollowups(deps: ShopDeps, shop: Shop, now: Date, acc: Acce
     if (!at || at > iso || !await store.claimFollowup(job.id, at)) continue;
     for (const f of (job.data.followups ?? []).filter((x) => !x.sentAt && !x.canceledAt && x.due <= iso)) {
       if (job.data.customer.remindersOff) { f.canceledAt = iso; f.canceledBy = 'customer'; continue; }
-      const text = `${f.text} Reply STOP to opt out.`;
+      const text = `${f.text} ${SAY[langOf(job.data)].stop}`;
       const msgs = await notifyCustomer(deps, shop, job, text, iso, acc);
       job.data.messages.push(...msgs.map((m) => ({ ...m, sender: 'Scheduled reminder' })));
       f.sentAt = iso;
@@ -458,17 +485,19 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const job = await store.jobByToken(token);
     const shop = job ? await store.shopById(job.shopId) : null;
     if (!job || !shop) return { status: 404, body: 'This link is not valid.' };
+    const pro = isPro(shop.plan, ctx.now());
+    const cOut = (j: Job) => customerOut(j, shop, pro);
 
     if (method === 'GET' && parts.length === 4 && parts[3] === 'bill-file') {
       if (!['ready', 'picked_up'].includes(job.stage) || job.bill?.mode !== 'upload') return { status: 404 };
       const pdf = await store.getBillPdf?.(job.id);
       return pdf ? ok({ pdf }) : { status: 404 };
     }
-    if (method === 'GET' && parts.length === 3) return ok(customerOut(job, shop));
+    if (method === 'GET' && parts.length === 3) return ok(cOut(job));
 
     if (method === 'POST' && parts.length === 4 && parts[3] === 'intake') {
       const error = await submitIntake(store, job, body);
-      return error ?? ok(customerOut(job, shop));
+      return error ?? ok(cOut(job));
     }
     if (method === 'POST' && parts.length === 4 && parts[3] === 'intake-photo') {
       if (!['invited','checked_in'].includes(job.stage) || job.shopId === DEMO_SHOP_ID) return bad('Photo intake is closed.');
@@ -476,7 +505,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (typeof src !== 'string' || src.length > MAX_PHOTO || !/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+=*$/u.test(src)) return bad('Choose a valid JPEG photo.');
       const photo: Photo = { id: ctx.newId(), src, cap: str(body.cap, 120) || 'Customer photo', source: 'customer', stage: job.stage, addedAt: now };
       if (!await store.intakePhoto?.(job.id, photo, null)) return bad('Photo intake is closed or the six-photo limit was reached.');
-      return ok(customerOut((await store.getJob(job.id)) ?? job, shop));
+      return ok(cOut((await store.getJob(job.id)) ?? job));
     }
     if (method === 'POST' && parts.length === 4 && parts[3] === 'walkaround') {
       if (!walkaroundOpen(job) || !store.walkaround) return bad('Walk-around photos are closed for this repair.');
@@ -484,13 +513,19 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (!isAngle(body.angle)) return bad('Choose which side of the car this is.');
       if (typeof src !== 'string' || src.length > MAX_PHOTO || !/^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]+=*$/u.test(src)) return bad('Choose a valid JPEG photo.');
       if (!await store.walkaround(job.id, { photo: { id: ctx.newId(), angle: body.angle, src, addedAt: now, marks: [] } })) return bad('Walk-around photos are closed for this repair.');
-      return ok(customerOut((await store.getJob(job.id)) ?? job, shop));
+      return ok(cOut((await store.getJob(job.id)) ?? job));
     }
     if (method === 'POST' && parts.length === 4 && parts[3] === 'stop-reminders') {
       stopReminders(job, now, 'customer');
       job.updatedAt = now;
       await store.putJob(job);
-      return ok(customerOut(job, shop));
+      return ok(cOut(job));
+    }
+    if (method === 'POST' && parts.length === 4 && parts[3] === 'review-click') {
+      // Counted for the shop's results; the page opens the review link itself.
+      if (job.data.review && !job.data.review.clickedAt) { job.data.review.clickedAt = now; await store.putJob(job); }
+      else if (!job.data.review && pro && shop.grow?.reviewUrl) { job.data.review = { askedAt: now, by: 'Customer page', clickedAt: now }; await store.putJob(job); }
+      return ok({ url: pro ? shop.grow?.reviewUrl ?? null : null });
     }
     if (method === 'POST' && parts[3] === 'decision') {
       if (job.stage !== 'approval' || job.data.closed) return bad('This estimate is not waiting on a decision.');
@@ -513,9 +548,30 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       job.data.messages.push({ dir: 'in', t: now, text: `Approved ${yes} of ${pending.length} items on the estimate (signed: ${signature}).${declinedRequired.length ? ` Declined required: ${declinedRequired.join(', ')}.` : ''}` });
       job.updatedAt = now;
       await store.putJob(job);
-      return ok(customerOut(job, shop));
+      return ok(cOut(job));
     }
     return { status: 405 };
+  }
+
+  // ---- Online booking (no sign-in): /?book=<token> ----
+  if (parts[1] === 'book' && parts.length === 3) {
+    const token = parts[2] || '';
+    const found = /^[A-Za-z0-9_-]{20,64}$/.test(token) ? await store.bookingShop?.(token) : null;
+    const shop = found ? await store.shopById(found.id) : null;
+    if (!shop || !shop.grow?.bookingOn || shop.bookingToken !== token) return { status: 404, body: 'This booking link is not active. Please call the shop.' };
+    const pro = isPro(shop.plan, ctx.now());
+    if (method === 'GET') return ok({ shop: { name: shop.name, phone: shop.phone, hours: shop.hours, ...(pro && shop.brand ? { brand: shop.brand } : {}) }, note: shop.grow.bookingNote ?? '' });
+    if (method !== 'POST') return { status: 405 };
+    if (str(body.website, 100)) return ok({ ok: true }); // a form robot filled the hidden field
+    if (!store.addBooking || !store.openBookings) return { status: 503, body: 'Booking is unavailable right now. Please call the shop.' };
+    const parsed = parseBooking(body, normalizePhone, now.slice(0, 10));
+    if (typeof parsed === 'string') return bad(parsed);
+    const open = await store.openBookings(shop.id, MAX_OPEN_BOOKINGS + 1);
+    if (open.length >= MAX_OPEN_BOOKINGS) return { status: 429, body: 'The shop has a lot of requests waiting. Please call them to book.' };
+    const same = (b: Booking) => (parsed.customer.phone && b.data.customer.phone === parsed.customer.phone) || (parsed.customer.email && b.data.customer.email.toLowerCase() === parsed.customer.email.toLowerCase());
+    if (open.filter(same).length >= 2) return { status: 429, body: 'You already have requests waiting. The shop will get back to you soon.' };
+    await store.addBooking({ id: ctx.newId(), shopId: shop.id, status: 'open', createdAt: now, updatedAt: now, data: parsed });
+    return ok({ ok: true });
   }
 
   // ---- Guided demo: text a visitor a real customer link (no sign-in, rate limited) ----
@@ -630,7 +686,25 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
           packages.push({ id: str(p.id, 40) || ctx.newId(), name, lines: lines.map((r) => ({ ...copyRate(r), qty: r.qty })), fastLane: p.fastLane === true });
         }
       }
+      // Logo and color (Pro; clearing is always allowed), review link and online booking.
+      let brand = shop?.brand;
+      if (body.brand !== undefined) {
+        const b = parseBrand(body.brand);
+        if (typeof b === 'string') return bad(b);
+        if ((b.logo || b.color) && shop && !isPro(shop.plan, ctx.now())) return { status: 402, body: proMessage('Your logo and color on customer pages') };
+        brand = b;
+      }
+      let grow = shop?.grow, bookingToken = shop?.bookingToken ?? null;
+      if (body.grow !== undefined) {
+        const g = parseGrow(body.grow, shop?.grow);
+        if (typeof g === 'string') return bad(g);
+        if (g.reviewAuto && !shop?.grow?.reviewAuto && shop && !isPro(shop.plan, ctx.now())) return { status: 402, body: proMessage('Asking for reviews') };
+        grow = g;
+        if (g.bookingOn && !bookingToken) bookingToken = deps.newToken();
+      }
+      if (body.newBookingLink === true) bookingToken = deps.newToken();
       const next: Shop = {
+        brand, grow, bookingToken,
         ageSettings, smartTopics, smartSchedule, packages: packages ?? shop?.packages,
         id: shop?.id ?? ctx.newId(),
         ownerId: shop?.ownerId ?? ctx.userId, rates: rates.map(copyRate),
@@ -653,7 +727,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return { status: 405 };
   }
 
-  if (!['jobs', 'archive', 'plan', 'howto', 'price-import', 'vin', 'recalls', 'vehicle-options', 'visits'].includes(parts[1])) return { status: 404 };
+  if (!['jobs', 'archive', 'plan', 'howto', 'price-import', 'vin', 'recalls', 'vehicle-options', 'visits', 'results', 'export', 'bookings'].includes(parts[1])) return { status: 404 };
   const mine = await whoAmI();
   if (!mine) return { status: 409, body: 'Set up your shop first.' };
   const { shop } = mine;
@@ -700,7 +774,81 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   if (parts[1] === 'price-import') {
     if (parts.length !== 2) return { status: 404 };
     if (!owner) return ownerOnly();
+    // The free reader runs in the browser on every plan; this AI reading is Pro.
+    if (method === 'POST' && !isPro(shop.plan, ctx.now())) return { status: 402, body: proMessage('Reading price lists with AI') };
     return priceImportRoute(ctx, deps.priceReader, shop.id, method, body);
+  }
+
+  // Results dashboard (Pro) and CSV export (every plan). Owners only.
+  if (parts[1] === 'results' || parts[1] === 'export') {
+    if (method !== 'POST' || parts.length !== 2) return { status: 405 };
+    if (!owner) return ownerOnly();
+    if (!store.reportJobs) return { status: 503, body: 'Reports are unavailable.' };
+    const history = await store.reportJobs(shop.id, archiveCutoff(ctx.now()), 5000);
+    if (parts[1] === 'export') {
+      const kind = body.kind === 'customers' ? 'customers' : 'jobs';
+      const date = now.slice(0, 10);
+      return ok({ filename: `talkshops-${kind}-${date}.csv`, csv: kind === 'customers' ? customersCsv(history) : jobsCsv(history) });
+    }
+    if (!isPro(shop.plan, ctx.now())) return { status: 402, body: proMessage('The results dashboard') };
+    const days = [7, 30, 90, 365].includes(Number(body.days)) ? Number(body.days) : 30;
+    return ok(results(history, history, days, ctx.now()));
+  }
+
+  // Online booking requests waiting for the shop.
+  if (parts[1] === 'bookings') {
+    if (!store.openBookings || !store.getBooking || !store.putBooking) return { status: 503, body: 'Booking is unavailable.' };
+    if (method === 'GET' && parts.length === 2) return ok({ rows: await store.openBookings(shop.id, MAX_OPEN_BOOKINGS) });
+    if (method !== 'POST' || parts.length !== 3) return { status: 405 };
+    const b = await store.getBooking(parts[2]);
+    if (!b || b.shopId !== shop.id) return { status: 404, body: 'That request is gone.' };
+    if (b.status !== 'open') return bad('That request was already answered.');
+    const by = ctx.displayName || ctx.userEmail || 'Shop staff';
+    const acc = access(shop.plan, ctx.now(), await settings(deps));
+    const bd = b.data, c = bd.customer;
+    if (body.action === 'decline') {
+      b.status = 'declined'; b.data.decidedBy = by; b.data.decidedAt = now; b.updatedAt = now;
+      const msg = str(body.text, 600);
+      let messages: Message[] = [];
+      if (body.send && msg && acc.canWork) {
+        const temp: Job = { id: b.id, shopId: shop.id, token: '', stage: 'invited', createdAt: now, updatedAt: now,
+          data: { ro: '', customer: { ...c }, vehicle: bd.vehicle, plate: bd.plate, concern: bd.concern, eta: '', estimate: [], photos: [], events: [], messages: [], approval: null } };
+        messages = await notifyCustomer(deps, shop, temp, msg, now, acc);
+      }
+      await store.putBooking(b);
+      return ok({ booking: b, messages });
+    }
+    if (body.action !== 'accept') return bad('Accept or decline the request.');
+    if (!acc.canWork) return { status: 402, body: lockedMessage(acc) };
+    if (acc.carLimit !== null && (shop.plan?.carsCreated ?? 0) >= acc.carLimit)
+      return { status: 402, body: `The free trial includes ${acc.carLimit} cars. Choose a plan on the Plan tab to keep checking in cars.` };
+    const when = Date.parse(str(body.when, 40));
+    if (!Number.isFinite(when)) return bad('Pick the appointment day and time.');
+    const whenText = str(body.whenText, 60) || new Date(when).toUTCString().slice(0, 22);
+    const job: Job = {
+      id: ctx.newId(), shopId: shop.id, token: deps.newToken(), stage: 'invited', createdAt: now, updatedAt: now,
+      intake: { vehicle: bd.vehicle, plate: bd.plate, concern: bd.concern },
+      data: {
+        ro: `RO-${await store.nextRo(shop.id)}`,
+        customer: { name: c.name, phone: c.phone, email: c.email, preference: c.preference, consent: c.consent, ...(c.lang === 'es' ? { lang: 'es' as const } : {}) },
+        vehicle: bd.vehicle, plate: bd.plate, concern: bd.concern, eta: '',
+        estimate: [], photos: [], events: [{ stage: 'invited', t: now }], messages: [], approval: null,
+        appointment: new Date(when).toISOString(), promised: undefined,
+        booking: { id: b.id, day: bd.day, time: bd.time },
+      },
+    };
+    delete job.data.promised;
+    if (body.send !== false) {
+      const first = c.name.split(/\s+/)[0] || '';
+      const link = deps.linkBase + job.token, typed = str(body.text, 600);
+      // The shop's own wording still carries the visit link.
+      const msg = typed ? `${typed}${/[.!?:]$/.test(typed) ? '' : '.'} ${link}` : SAY[c.lang === 'es' ? 'es' : 'en'].booked(first, shop.name, whenText, link);
+      job.data.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map((m) => ({ ...m, sender: by, senderId: ctx.userId! })));
+    }
+    await store.putJob(job);
+    b.status = 'accepted'; b.data.jobId = job.id; b.data.decidedBy = by; b.data.decidedAt = now; b.updatedAt = now;
+    await store.putBooking(b);
+    return ok({ booking: b, job: jobOut(job, deps.linkBase) });
   }
 
   if (parts[1] === 'plan' && method !== 'GET' && !owner) return ownerOnly();
@@ -777,7 +925,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         updatedAt: now,
         data: {
           ro: `RO-${await store.nextRo(shop.id)}`,
-          customer: { name, phone: phone ?? '', email: preference === 'sms' ? '' : email, preference, consent: c.consent === true },
+          customer: { name, phone: phone ?? '', email: preference === 'sms' ? '' : email, preference, consent: c.consent === true, ...(c.lang === 'es' ? { lang: 'es' as const } : {}) },
           vehicle,
           plate: str(body.plate, 12).toUpperCase(),
           concern,
@@ -856,6 +1004,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (!photo) return bad('That photo was removed.');
       await store.walkaround(job.id, { marksFor: photo.id, marks: cleanMarks(body.marks, ctx.newId) });
     } else {
+      if (!isPro(shop.plan, ctx.now())) return { status: 402, body: proMessage('AI damage marking') };
       if (!deps.damageFinder) return { status: 503, body: 'AI damage marking is not set up yet.' };
       const todo = photos.filter((p) => body.photoId ? p.id === body.photoId : !p.aiAt);
       if (!todo.length) return bad(photos.length ? 'Every photo has been checked.' : 'No walk-around photos yet.');
@@ -881,7 +1030,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (job.stage === 'picked_up' || d.closed) return bad('This repair is finished.');
       d.walkaroundRequest = { t: now };
       if (body.send) {
-        const msg = `${shop.name} asks for 8 quick photos of your ${vehicleName({ ...d, ...job.intake }) || 'car'} from all sides, so we have a record of its condition. It takes about 2 minutes: ${deps.linkBase}${job.token}`;
+        const say = SAY[langOf(d)];
+        const msg = say.walkaround(shop.name, vehicleName({ ...d, ...job.intake }) || say.car, deps.linkBase + job.token);
         d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
       }
     }
@@ -925,7 +1075,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (!STAGES.includes(stage)) return bad('Unknown stage.');
     const eta = str(body.eta, 40);
     const draft = { ...job, data: { ...d, eta: eta || d.eta } };
-    return ok({ text: fillTemplate(stage, shop, draft, deps.linkBase) });
+    const reviewUrl = shop.grow?.reviewAuto && shop.grow.reviewUrl && !d.review && isPro(shop.plan, ctx.now()) ? shop.grow.reviewUrl : undefined;
+    return ok({ text: fillTemplate(stage, shop, draft, deps.linkBase, reviewUrl) });
   }
 
   if (action === 'customer') {
@@ -940,6 +1091,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if ((email || preference !== 'sms') && (email.length > 254 || !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email))) return bad('Enter a valid email address.');
     if (typeof body.consent !== 'boolean') return bad('Confirm whether the customer agreed to repair updates.');
     d.customer = { ...d.customer, name, phone: phone ?? '', email, preference, consent: body.consent };
+    if (body.lang !== undefined) { if (body.lang === 'es') d.customer.lang = 'es'; else delete d.customer.lang; }
   } else if (action === 'close') {
     if (job.stage === 'picked_up') return bad('This car was already picked up.');
     const reason = str(body.reason, 200);
@@ -965,7 +1117,24 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     job.stage = stage;
     d.events.push({ stage, t: now });
     const msg = str(body.text, 1000);
-    if (body.send && msg) d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
+    if (body.send && msg) {
+      d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
+      if (stage === 'picked_up' && !d.review && shop.grow?.reviewUrl && msg.includes(shop.grow.reviewUrl)) d.review = { askedAt: now, by: ctx.displayName || ctx.userEmail || 'Shop staff' };
+    }
+  } else if (action === 'clock') {
+    if (!isPro(shop.plan, ctx.now())) return { status: 402, body: proMessage('The time clock') };
+    const me = (await crewOf(deps, shop, ctx)).find((m) => m.id === ctx.userId) ?? { id: ctx.userId!, name: ctx.displayName || ctx.userEmail?.split('@')[0] || 'Staff' };
+    const err = clockAction(d, body, { id: me.id, name: me.name }, owner, now, ctx.newId);
+    if (err) return bad(err);
+  } else if (action === 'review') {
+    if (!isPro(shop.plan, ctx.now())) return { status: 402, body: proMessage('Asking for reviews') };
+    const url = shop.grow?.reviewUrl;
+    if (!url) return bad('Add your review link in Settings first.');
+    if (!d.customer.consent) return bad('The customer has not agreed to messages.');
+    const text = str(body.text, 600) || SAY[langOf(d)].review(d.customer.name.split(/\s+/)[0] || '', shop.name, url);
+    if (!text.includes(url)) return bad('Keep your review link in the message.');
+    d.messages.push(...(await notifyCustomer(deps, shop, job, text, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
+    d.review = { askedAt: now, by: ctx.displayName || ctx.userEmail || 'Shop staff' };
   } else if (action === 'eta') {
     d.eta = str(body.eta, 40);
   } else if (action === 'urgency') {
@@ -1021,7 +1190,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const internal = body.internal === true;
     notes.push({ id: ctx.newId(), t: now, text, ...(internal ? { internal: true } : {}), by: ctx.displayName || ctx.userEmail || 'Shop staff' });
     if (body.send && !internal) {
-      const msg = `Update on your ${vehicleName({ ...d, ...job.intake }) || 'car'} from ${shop.name}: ${text.length > 300 ? text.slice(0, 297) + '…' : text} Details: ${deps.linkBase}${job.token}`;
+      const say = SAY[langOf(d)];
+      const msg = say.note(vehicleName({ ...d, ...job.intake }) || say.car, shop.name, text.length > 300 ? text.slice(0, 297) + '…' : text, deps.linkBase + job.token);
       d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
     }
   } else if (action === 'walkthrough') {
@@ -1043,8 +1213,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const w: Walkthrough = { t: now, by: ctx.displayName || ctx.userEmail || 'Shop staff', items, ...(mileage ? { mileage } : {}), ...(summary ? { summary } : {}) };
     if (body.send) {
       const n = (s: WalkStatus) => items.filter((i) => i.status === s).length;
-      const parts = [`${n('good')} good`, n('soon') ? `${n('soon')} to keep an eye on` : '', n('now') ? `${n('now')} that need${n('now') === 1 ? 's' : ''} attention now` : ''].filter(Boolean);
-      const msg = `${shop.name} finished the ${WALK_LABEL[kind]} walk-through of your ${vehicleName({ ...d, ...job.intake }) || 'car'}: ${parts.join(', ')}. See the full report: ${deps.linkBase}${job.token}`;
+      const say = SAY[langOf(d)];
+      const msg = say.walk(shop.name, kind, vehicleName({ ...d, ...job.intake }) || say.car, n('good'), n('soon'), n('now'), deps.linkBase + job.token);
       d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
       w.sentAt = now;
     }
@@ -1123,7 +1293,7 @@ async function planOut(deps: ShopDeps, shop: Shop, now: Date) {
     textsUsed: p && p.textsPeriod === a.period ? p.textsUsed : 0,
     textLimit: a.textLimit ?? (p && p.plan !== 'trial' && p.plan ? PLANS[p.plan].texts : null),
     carsCreated: p?.carsCreated ?? 0, carLimit: a.carLimit,
-    smartReplies:canSmart(shop,now), trial, plans: PLANS, payments: !!deps.stripe, hasBilling: !!p?.stripeCustomerId, howTo: hasHowTo(p, a),
+    smartReplies:canSmart(shop,now), trial, plans: PLANS, payments: !!deps.stripe, hasBilling: !!p?.stripeCustomerId, howTo: hasHowTo(p, a), pro: hasPro(p, a),
   };
 }
 

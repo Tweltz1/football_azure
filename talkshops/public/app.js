@@ -151,6 +151,8 @@
 
   // ==================== Customer page (no sign-in) ====================
   const custToken = new URLSearchParams(location.search).get("c");
+  // Online booking page: /?book=<token>
+  const bookToken = custToken ? "" : (new URLSearchParams(location.search).get("book") || "");
   const cust = { intakeDraft: {}, intakeBusy: false, data: null, draft: {}, sig: "", error: "" };
 
   async function loadCustomer() {
@@ -170,19 +172,21 @@
       ${staff ? `<button type="button" class="linkbtn" data-remove-photo="${esc(p.id)}" aria-label="Remove ${esc(p.cap)}">Remove photo</button>` : ""}</figcaption></figure>`;
   }
 
+  const photoFolderBase = (...a) => photoFolder(...a);
   function photoFolder(key, label, photos, openFolders) {
     if (!photos.length) return "";
     return `<details class="photo-folder" data-folder="${key}" ${openFolders.has(key) ? "open" : ""}>
-      <summary>📁 ${label} · ${photos.length} photo${photos.length === 1 ? "" : "s"}</summary>
+      <summary>📁 ${label} · ${photos.length} ${document.documentElement.lang === "es" ? "foto" : "photo"}${photos.length === 1 ? "" : "s"}</summary>
       <div class="folder-images">${photos.map((p) => photoFigure(p)).join("")}</div></details>`;
   }
 
   function intakeForm() {
+    const T = window.tsT;
     const field = (name,label,max,required=false) => `<label class="field">${label}<input name="${name}" maxlength="${max}" ${required ? "required" : ""} value="${esc(cust.intakeDraft[name] || "")}"></label>`;
     return `<form id="intakeForm" class="form-grid">
-      ${field("year","Vehicle year",4)}${field("make","Make",40,true)}${field("model","Model",40,true)}${field("plate","License plate (optional)",12)}
-      <label class="field full">What should the technician look at?<textarea name="concern" required maxlength="1000">${esc(cust.intakeDraft.concern || "")}</textarea></label>
-      <button class="btn primary" type="submit">Save check-in details</button></form>`;
+      ${field("year",T("Vehicle year"),4)}${field("make",T("Make"),40,true)}${field("model",T("Model"),40,true)}${field("plate",T("License plate (optional)"),12)}
+      <label class="field full">${T("What should the technician look at?")}<textarea name="concern" required maxlength="1000">${esc(cust.intakeDraft.concern || "")}</textarea></label>
+      <button class="btn primary" type="submit">${T("Save check-in details")}</button></form>`;
   }
 
   function renderCustomer() {
@@ -191,18 +195,23 @@
     if (cust.error && !cust.data) { app.innerHTML = `<div class="loading"><p>${esc(cust.error)}</p></div>`; return; }
     if (!cust.data) return;
     const j = cust.data, idx = SI[j.stage];
+    window.Grow.customerSetup(j, custToken);
+    const T = window.tsT;
+    const dayClock = (t) => { const d = new Date(ts(t)), loc = document.documentElement.lang === "es" ? "es-US" : "en-US", tm = d.toLocaleTimeString(loc, { hour: "numeric", minute: "2-digit" });
+      return d.toDateString() === new Date().toDateString() ? tm : d.toLocaleDateString(loc, { month: "short", day: "numeric" }) + ", " + tm; };
+    const photoFolder = (key, label, photos, open) => photoFolderBase(key, T(label), photos, open);
     const openFolders = new Set(Array.from(document.querySelectorAll(".photo-folder[open]"), (el) => el.dataset.folder));
     document.title = j.shop.name + " · Your " + j.vehicle;
-    const outcome = estimateOutcome(j);
-    const heading = j.closed ? "This Repair Was Closed" : j.stage === "invited" && j.intakeReceived ? "Check-In Details Received" :
-      j.stage === "approval" && outcome ? outcome : STAGES[idx].cust;
+    const outcome = estimateOutcome(j) && T(estimateOutcome(j));
+    const heading = j.closed ? T("This Repair Was Closed") : j.stage === "invited" && j.intakeReceived ? T("Check-In Details Received") :
+      j.stage === "approval" && outcome ? outcome : T(STAGES[idx].cust);
     const evAt = (k) => { const e = [...j.events].reverse().find((x) => x.stage === k); return e ? e.t : null; };
     const tl = STAGES.filter(s => s.key !== "invited" || evAt("invited")).filter((s) => s.key !== "picked_up" || evAt(s.key) || j.photos.some((p) => p.stage === s.key)).map((s) => {
       const decided = s.key === "approval" && outcome && evAt(s.key);
       const t = decided && j.approval ? j.approval.t : evAt(s.key);
       const cls = s.key === j.stage ? "current" : (t && SI[s.key] < idx ? "done" : "todo");
       const folder = photoFolder(s.key, "View photos", j.photos.filter((p) => p.stage === s.key), openFolders);
-      return `<li class="${cls}"><span>${decided ? outcome : s.label}</span><time>${t ? dayClock(t) : ""}</time>${folder}</li>`;
+      return `<li class="${cls}"><span>${decided ? outcome : T(s.label)}</span><time>${t ? dayClock(t) : ""}</time>${folder}</li>`;
     }).join("");
     const pending = awaitingDecision(j) && !j.closed;
     let est = "";
@@ -210,40 +219,42 @@
       const items = [...j.estimate].sort((a, b) => (PRI_ORDER[a.priority] ?? 1) - (PRI_ORDER[b.priority] ?? 1)).map((e) => {
         const d = cust.draft[e.id];
         const choice = pending && e.status === "pending"
-          ? `<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d === "approved"}">Approve</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d === "declined"}">Decline</button></div>`
-          : (e.status !== "pending" ? `<span class="pill ${e.status === "approved" ? "ok" : "bad"}">${e.status === "approved" ? "Approved" : "Declined"}</span>` : "");
-        const pri = e.priority && PRI[e.priority] ? `<div class="pri-line">${priPill(e)}<span>${PRI[e.priority].cust}</span></div>` : "";
-        return `<div class="est-item pri-${esc(e.priority || "none")}"><div class="top"><span>${esc(e.item)}${chargeDetail(e)}</span><span>${money(e.price)}</span></div>${pri}${window.repairPhotoFor(e.item, e.status === "declined" ? "Part" : "What's being worked on")}${window.repairGuideFor(e.item, { photo: false })}${choice}</div>`;
+          ? `<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d === "approved"}">${T("Approve")}</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d === "declined"}">${T("Decline")}</button></div>`
+          : (e.status !== "pending" ? `<span class="pill ${e.status === "approved" ? "ok" : "bad"}">${e.status === "approved" ? T("Approved") : T("Declined")}</span>` : "");
+        const pri = e.priority && PRI[e.priority] ? `<div class="pri-line"><span class="pill pri ${PRI[e.priority].cls}">${T(PRI[e.priority].label)}</span><span>${T(PRI[e.priority].cust)}</span></div>` : "";
+        return `<div class="est-item pri-${esc(e.priority || "none")}"><div class="top"><span>${esc(e.item)}${chargeDetail(e)}</span><span>${money(e.price)}</span></div>${pri}${window.repairPhotoFor(e.item, e.status === "declined" ? T("Part") : T("What's being worked on"))}${window.repairGuideFor(e.item, { photo: false })}${choice}</div>`;
       }).join("");
       const allChosen = j.estimate.filter((e) => e.status === "pending").every((e) => cust.draft[e.id]);
       const tot = pending ? j.estimate.reduce((a, e) => a + ((cust.draft[e.id] ?? e.status) === "approved" ? Number(e.price) : 0), 0) : estTotal(j, true);
-      est = `<div class="c-card"><h3>Estimate</h3>${items}<div class="total"><span>${pending ? "Approved so far" : "Approved total"}</span><span>${money(tot)}</span></div>
-        ${pending ? `<label class="field" style="margin-top:10px">Type your full name to sign<input id="sig" autocomplete="name" value="${esc(cust.sig)}"></label>
-        <button class="btn primary" style="width:100%;margin-top:10px" id="submitApproval" ${allChosen ? "" : "disabled"}>Send my decision</button>
-        <p class="muted" style="font-size:12.5px;margin:6px 0 0">${allChosen ? "Your signed decision goes straight to the shop." : "Choose approve or decline for each item."}</p>`
-        : (j.approval ? `<p class="muted" style="font-size:12.5px;margin:8px 0 0">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>` : "")}</div>`;
+      est = `<div class="c-card"><h3>${T("Estimate")}</h3>${items}<div class="total"><span>${pending ? T("Approved so far") : T("Approved total")}</span><span>${money(tot)}</span></div>
+        ${pending ? `<label class="field" style="margin-top:10px">${T("Type your full name to sign")}<input id="sig" autocomplete="name" value="${esc(cust.sig)}"></label>
+        <button class="btn primary" style="width:100%;margin-top:10px" id="submitApproval" ${allChosen ? "" : "disabled"}>${T("Send my decision")}</button>
+        <p class="muted" style="font-size:12.5px;margin:6px 0 0">${allChosen ? T("Your signed decision goes straight to the shop.") : T("Choose approve or decline for each item.")}</p>`
+        : (j.approval ? `<p class="muted" style="font-size:12.5px;margin:8px 0 0">${T("Signed by {0} on {1}", esc(j.approval.by), dayClock(j.approval.t))}</p>` : "")}</div>`;
     }
     const earlierPhotos = photoFolder("earlier", "Earlier photos", j.photos.filter((p) => !Object.hasOwn(SI, p.stage)), openFolders);
-    const extra = j.stage === "parts" && j.eta ? `<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta)}</b>.</p>`
-      : j.stage === "ready" ? `<p style="margin:6px 0 0">${j.bill ? "Total due " + money(j.bill.total) : "Approved estimate " + money(estTotal(j, true))}.${j.shop.hours ? " Open " + esc(j.shop.hours) + "." : ""}</p>` : "";
+    const extra = j.stage === "parts" && j.eta ? `<p style="margin:6px 0 0">${T("Parts expected {0}.", "<b>" + esc(j.eta) + "</b>")}</p>`
+      : j.stage === "ready" ? `<p style="margin:6px 0 0">${j.bill ? T("Total due {0}", money(j.bill.total)) : T("Approved estimate {0}", money(estTotal(j, true)))}.${j.shop.hours ? " " + T("Open {0}.", esc(j.shop.hours)) : ""}</p>` : "";
     app.innerHTML = `<div class="cust-page">
-      <div class="c-head"><small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${heading}</h2><div style="font-size:14px;margin-top:4px">${esc(ShopDisplay.vehicle(j.vehicle))}</div>${extra}</div>
+      <div class="c-head">${window.Grow.customerHead(j)}<small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${heading}</h2><div style="font-size:14px;margin-top:4px">${esc(ShopDisplay.vehicle(j.vehicle))}</div>${extra}</div>
       <div class="c-body">
-        ${j.stage === "invited" ? `<section class="c-card"><h3>Vehicle check-in</h3>${j.intakeReceived ? "<p>Your details have been sent to the shop.</p>" : intakeForm()}</section>` : ""}
-        ${j.canUploadIntakePhotos ? `<section class="c-card"><h3>Photos for your technician</h3>
-          <p>Show the damage, warning light or part you want checked.</p>
-          <button type="button" id="customerPickPhoto" class="btn" ${j.photos.filter(p => p.source === "customer").length >= 6 ? "disabled" : ""}>Add photos</button>
-          <small style="margin-left:10px">${j.photos.filter(p => p.source === "customer").length} of 6 photos added</small><p id="photoStatus" role="status" hidden></p></section>` : ""}
+        ${window.Grow.customerCards(j)}
+        ${j.stage === "invited" ? `<section class="c-card"><h3>${T("Vehicle check-in")}</h3>${j.intakeReceived ? `<p>${T("Your details have been sent to the shop.")}</p>` : intakeForm()}</section>` : ""}
+        ${j.canUploadIntakePhotos ? `<section class="c-card"><h3>${T("Photos for your technician")}</h3>
+          <p>${T("Show the damage, warning light or part you want checked.")}</p>
+          <button type="button" id="customerPickPhoto" class="btn" ${j.photos.filter(p => p.source === "customer").length >= 6 ? "disabled" : ""}>${T("Add photos")}</button>
+          <small style="margin-left:10px">${T("{0} of 6 photos added", j.photos.filter(p => p.source === "customer").length)}</small><p id="photoStatus" role="status" hidden></p></section>` : ""}
         ${window.Walkaround.customerCard(j)}
         ${billing.display(j.bill, j)}${est}
         ${window.Walkthrough.customerCard(j)}
-        ${(j.notes || []).length ? `<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p>${window.repairPhotoFor(n.text, "Part mentioned")}</li>`).join("")}</ul></div>` : ""}
-        <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
-        ${j.concern ? `<div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
+        ${(j.notes || []).length ? `<div class="c-card"><h3>${T("Notes from your technician")}</h3><ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p>${window.repairPhotoFor(n.text, T("Part mentioned"))}</li>`).join("")}</ul></div>` : ""}
+        <div class="c-card"><h3>${T("Progress")}</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
+        ${j.concern ? `<div class="c-card"><h3>${T("Your concern")}</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
         ${window.Workday.customerReminders(j)}
-        ${j.shop.phone ? `<div class="c-card call"><span>Questions? Call the shop</span><b>${esc(j.shop.phone)}</b></div>` : ""}
-        <p class="cust-top">This page updates as your repair progresses.</p>
-        <p class="cust-top"><a href="/privacy.html">Privacy Policy</a></p>
+        ${j.shop.phone ? `<div class="c-card call"><span>${T("Questions? Call the shop")}</span><b>${esc(j.shop.phone)}</b></div>` : ""}
+        <p class="cust-top">${T("This page updates as your repair progresses.")}</p>
+        ${window.Grow.langSwitch(custToken)}
+        <p class="cust-top"><a href="/privacy.html">${T("Privacy Policy")}</a></p>
       </div></div>`;
   }
 
@@ -311,6 +322,15 @@
     toast: (m) => toast(m), filter: () => filterBoard(),
   });
   const upsertJob = (j) => { const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
+  window.Grow?.init({
+    api: (...a) => api(...a), shop: () => shop, plan: () => plan, isOwner: () => role === "owner", me: () => myId, job, jobs: () => jobs,
+    act: (id, action, body) => jobAction(id, action, body), upsert: (j) => upsertJob(j), toast: (m) => toast(m),
+    render: () => render(), renderCustomer: () => renderCustomer(), customerToken: () => custToken,
+    saveShop: async (patch) => {
+      const r = await api("POST", "shop/me", { name: shop.name, phone: shop.phone, hours: shop.hours, email: shop.email || "", ...patch });
+      shop = r.shop; plan = r.plan || plan;
+    },
+  });
 
   async function acceptInvite() {
     if (!joinToken || !session?.access_token) return;
@@ -340,6 +360,7 @@
       role = me.role || null; mainOwner = !!me.mainOwner; crew = me.crew || []; myId = me.me || null; myName = me.myName || "";
       jobs = shop ? await api("GET", "shop/jobs") : [];
       window.Workday?.watch(jobs);
+      if (shop) window.Grow?.loadBookings();
       loadErr = "";
     } catch (e) { loadErr = e.message; }
     loaded = true;
@@ -348,6 +369,7 @@
 
   function render() {
     if (custToken) return renderCustomer();
+    if (bookToken) return window.Grow.renderBooking(bookToken);
     const app = $("#app"), chrome = $("#shopChrome");
     document.title = "Talk Shops" + (shop ? " · " + shop.name : "");
     if (new URLSearchParams(location.search).has("contact")) {
@@ -554,17 +576,27 @@
     ["Email updates", "Unlimited", "Unlimited"],
     ["Reminder texts with STOP opt-out", true, true],
     ["Line-by-line approvals with e-signature", true, true],
+    ["Spanish customer pages and automatic texts", true, true],
     ["Smart Replies answer routine texts", false, true],
+    ["Review requests after pickup", false, true],
     ["Daily work"],
     ["Bay board with urgency, promised-by times and alerts", true, true],
     ["Assign technicians and My Cars", true, true],
     ["Check-in with VIN decode, recalls and returning customers", true, true],
     ["Quick services and fast lane", true, true],
     ["Estimates from your own price list (Excel, CSV, PDF or photo)", true, true],
+    ["AI reading of hard-to-read price lists", false, true],
     ["Before-and-after walk-through with tire tread", true, true],
-    ["Walk-around photos with AI damage marks", true, true],
+    ["Walk-around photos", true, true],
+    ["AI damage marks on walk-around photos", false, true],
     ["Print work orders and bills, Today's Summary, Archive", true, true],
     ["How-To repair assistant with video links", false, true],
+    ["Grow the shop"],
+    ["Online booking link", true, true],
+    ["CSV export of repairs and customers", true, true],
+    ["Results dashboard: approvals, money, on-time and each tech", false, true],
+    ["Your logo and color on customer pages and printouts", false, true],
+    ["Technician time clock", false, true],
     ["Your team"],
     ["Staff seats", "3 (up to 2 owners)", "8 (up to 3 owners)"],
     ["Owner and technician roles", true, true],
@@ -621,8 +653,8 @@
       <section class="front-plans" id="plans"><div class="front-inner">
         <h2>Choose Your Plan</h2><p>Every shop starts with a free trial. Both plans include the Bay board, private customer links, photo updates, walk-through reports, signed estimate decisions, reminder texts, final bills and unlimited email.</p>
         <div class="front-tiers">
-          <article><h3>Talk Shops Starter</h3><strong>$89<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $890/year</small><p><a class="btn primary" href="/?login=signup">Start Free Trial</a></p></article>
-          <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about job status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>How-To Repair Assistant</b> gives technicians steps, tools, typical specs and video links for the job.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Start Free Trial</a></p></article>
+          <article><h3>Talk Shops Starter</h3><strong>$89<small> / month</small></strong><p><b>1,000 texts</b> per month · 3 staff seats · up to 2 owners</p><p>Everything to run the day: the Bay, check-in, photo updates, walk-throughs, signed estimate approvals, reminder texts, quick services, printing and price list upload.</p><p><b>Online booking link</b>, <b>Spanish customer pages</b> and <b>CSV export</b> of your repairs and customers.</p><small>Annual billing: $890/year</small><p><a class="btn primary" href="/?login=signup">Start Free Trial</a></p></article>
+          <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month · 8 staff seats · up to 3 owners</p><p>Everything in Starter, plus the <b>AI How-To Repair Assistant</b>, <b>Smart Replies</b>, <b>AI damage marking</b> on walk-around photos and AI reading of hard price lists.</p><p>The <b>results dashboard</b> (approval rate, money approved and declined, on-time, each tech), <b>review requests</b> after pickup, <b>your logo and color</b> on customer pages, and a <b>tech time clock</b>.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Start Free Trial</a></p></article>
         </div>
         <h3 class="front-market-title">Compare Plans Side by Side</h3>
         <div class="front-compare-wrap"><table class="front-market front-compare"><thead><tr><th scope="col">Feature</th><th scope="col">Starter <small>$89/mo</small></th><th scope="col">Pro <small>$149/mo</small></th></tr></thead><tbody>
@@ -701,7 +733,7 @@
       ${firstTime ? "" : `<div class="btn-row"><button class="btn primary" type="button" data-view="prices">Upload price list (PDF, photo or Excel)</button><button class="btn" type="button" data-billing="rates">Edit saved items (${(shop?.rates || []).length})</button></div>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Next: upload my prices" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
       ${firstTime ? `<small class="muted">Next you can upload your price list (PDF, photo, Excel or CSV) so your labor rate, services and fees fill in for you. You can skip it.</small>` : ""}
-    </form>${firstTime ? "" : (isOwner() ? window.Workday.packagesPanel() : "") + team.panel(render) + recoveryPanel()}</div>`;
+    </form>${firstTime ? "" : (isOwner() ? window.Workday.packagesPanel() + window.Grow.settingsPanels() : "") + team.panel(render) + recoveryPanel()}</div>`;
   }
 
   function joinBanner() {
@@ -735,7 +767,7 @@
     const inShop = active.filter(j => j.stage !== "invited");
     const picked = jobs.filter((j) => j.stage === "picked_up" && !j.closed).length;
     if (!jobs.length) {
-      return `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car, whether it’s in for an oil change, brakes, tires or a bigger repair. The customer gets a private link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check In a Car</button></div>`;
+      return window.Grow.bookingsPanel() + `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car, whether it’s in for an oil change, brakes, tires or a bigger repair. The customer gets a private link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check In a Car</button></div>`;
     }
     const waiting = active.filter(awaitingDecision).length;
     const ready = active.filter((j) => j.stage === "ready").length;
@@ -746,6 +778,7 @@
       <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q || "")}" autocomplete="off"></label>
       <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key, label, count]) => `<button type="button" class="qf ${key === "approval" ? "warn" : key === "ready" ? "ok" : ""}" data-queue="${key}" aria-pressed="${key === (ui.queue || "all")}">${label}<b>${count}</b></button>`).join("")}</div></div>
       ${window.Workday.boardBar(jobs)}
+      ${window.Grow.bookingsPanel()}
       ${window.BayAge.legend(shop)}
       <p class="board-none muted" id="boardNone" hidden></p>
       <div class="board-wrap"><div class="board">`;
@@ -855,6 +888,7 @@
         <label class="field" hidden id="ci-email-label">Email address<input id="ci-email" type="email" maxlength="254" autocomplete="email" disabled></label>
         <p id="ci-email-note" class="muted full" hidden>Automatic email needs a sender connection. After saving, open the email draft in this repair’s Messages.</p>
         <label class="field" id="ci-phone-label">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
+        <label class="field">Customer's language<select id="ci-lang"><option value="en">English</option><option value="es">Spanish (Español)</option></select></label>
         <h3 class="form-sec full" data-staff-intake>Vehicle</h3>
         <label class="field full vin-field" data-staff-intake>VIN <small class="muted">(optional, fills in the car for you)</small><span class="vin-row"><input id="ci-vin" maxlength="17" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="17 characters, on the windshield or door jamb"><button type="button" class="btn" id="ci-vin-go">Decode</button></span><small id="ci-vin-msg" class="muted" aria-live="polite"></small></label>
         <label class="field" data-staff-intake>Year<input id="ci-year" inputmode="numeric" maxlength="4"></label>
@@ -926,6 +960,7 @@
           <div class="btn-row">${isOwner() ? `<button class="btn" data-billing="generated">${j.bill?.mode === "generated" ? "Edit itemized bill" : "Create itemized bill"}</button><button class="btn" data-billing="upload">Upload Shop PDF</button>` : ""}${j.bill?.mode==="upload" ? '<button class="linkbtn" data-billing="download">Download current PDF</button>' : ""}</div>
         </section>`}
         ${window.Workday.followupSection(j)}
+        ${window.Grow.sheetSection(j)}
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
           <button type="button" class="photo-add" id="pickPhoto">+ Add Photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
         ${j.closed || j.stage === "picked_up" && !(j.walkaround || []).length ? "" : window.Walkaround.sheetSection(j)}
@@ -952,6 +987,7 @@
       <label class="field">Notify Customer By<select id="ec-channel"><option value="sms" ${preference === "sms" ? "selected" : ""}>Text message</option><option value="email" ${preference === "email" ? "selected" : ""}>Email</option><option value="both" ${preference === "both" ? "selected" : ""}>Text and email</option></select></label>
       <label class="field">Mobile Number<input id="ec-phone" type="tel" autocomplete="tel" maxlength="30" ${preference !== "email" ? "required" : ""} value="${esc(c.phone || "")}"></label>
       <label class="field">Email Address<input id="ec-email" type="email" autocomplete="email" maxlength="254" ${preference !== "sms" ? "required" : ""} value="${esc(c.email || "")}"></label>
+      <label class="field">Customer's Language<select id="ec-lang"><option value="en">English</option><option value="es" ${c.lang === "es" ? "selected" : ""}>Spanish (Español)</option></select><span class="hint">Their page and the automatic texts use this language.</span></label>
       <label class="chk"><input type="checkbox" id="ec-consent" ${c.consent ? "checked" : ""}> Customer agreed to repair updates through the selected contact method.</label>
       <small class="muted">If you change the contact details or notification method, confirm consent again. Leave unchecked to pause notifications.</small>
       <p id="ec-error" role="alert" class="form-err" hidden></p>
@@ -1315,7 +1351,7 @@
     if (f.id === "customerForm") {
       if (ui.busy) return;
       const id = ui.modal.customerJob;
-      const body = { name: $("#ec-name").value.trim(), phone: $("#ec-phone").value.trim(), email: $("#ec-email").value.trim(), preference: $("#ec-channel").value, consent: $("#ec-consent").checked };
+      const body = { name: $("#ec-name").value.trim(), phone: $("#ec-phone").value.trim(), email: $("#ec-email").value.trim(), preference: $("#ec-channel").value, consent: $("#ec-consent").checked, lang: $("#ec-lang").value };
       const button = f.querySelector('[type="submit"]'), error = $("#ec-error");
       ui.busy = true; button.disabled = true; button.textContent = "Saving…"; error.hidden = true;
       f.setAttribute("aria-busy", "true");
@@ -1361,7 +1397,7 @@
       const invite = $("#ci-method").value === "invite";
       const g = (k) => $("#ci-" + k).value.trim();
       const j = await act(() => api("POST", "shop/jobs", {
-        invite, urgency: document.querySelector('input[name="ciUrgency"]:checked')?.value || "", customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("channel"), consent: $("#ci-consent").checked },
+        invite, urgency: document.querySelector('input[name="ciUrgency"]:checked')?.value || "", customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("channel"), consent: $("#ci-consent").checked, lang: g("lang") },
         ...(invite ? {} : { vehicle: { year: g("year"), make: g("make"), model: g("model"), vin: g("vin").toUpperCase(), engine: g("engine"), trim: g("trim") }, plate: g("plate"), concern: g("concern"), ...window.Workday.checkinValues() }),
       }));
       if (j) {
@@ -1561,6 +1597,7 @@
   });
 
   // ---------------- Start ----------------
+  if (bookToken) { render(); return; }
   if (custToken) {
     loadCustomer();
     setInterval(() => { if (!cust.intakeBusy && !document.activeElement?.closest("#intakeForm") && !Object.keys(cust.draft).length && document.visibilityState === "visible") loadCustomer(); }, 30000);

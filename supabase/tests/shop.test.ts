@@ -6,6 +6,7 @@ import {
   archivedAt, archiveSearchText, createTwilioSender, nextFollowup, normalizePhone, shopRoute, stopReminders, visitRow, type Job, type Shop, type ShopDeps, type ShopStore,
 } from '../functions/_shared/shop.ts';
 import type { PlanState } from '../functions/_shared/shopPlans.ts';
+import type { Booking } from '../functions/_shared/shopGrow.ts';
 import { clearHowToLimits } from '../functions/_shared/shopHowTo.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -17,6 +18,7 @@ function world() {
   const followAt = new Map<string, string | null>();
   const ro = new Map<string, number>();
   const texts: { to: string; body: string }[] = [];
+  const bookings = new Map<string, Booking>();
   let clock = Date.parse('2026-11-07T15:00:00Z');
   let n = 0;
   const store: ShopStore = {
@@ -87,6 +89,12 @@ function world() {
     async claimFollowup(id, at) { if (followAt.get(id) !== at) return false; followAt.set(id, null); return true; },
     async jobsWithFollowupsFor(phone) { return [...jobs.values()].filter((j) => j.data.customer.phone === phone && followAt.get(j.id)).map(clone); },
     async nextRo(shopId) { const v = ro.get(shopId) ?? 1001; ro.set(shopId, v + 1); return v; },
+    async reportJobs(shopId, since, limit) { return [...jobs.values()].filter((j) => j.shopId === shopId && j.createdAt >= since).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit).map(clone); },
+    async bookingShop(token) { const s = [...shops.values()].find((x) => x.bookingToken === token); return s ? { id: s.id } : null; },
+    async addBooking(b) { bookings.set(b.id, clone(b)); },
+    async openBookings(shopId, limit) { return [...bookings.values()].filter((b) => b.shopId === shopId && b.status === 'open').slice(0, limit).map(clone); },
+    async getBooking(id) { const b = bookings.get(id); return b ? clone(b) : null; },
+    async putBooking(b) { bookings.set(b.id, clone(b)); },
   };
   const deps: ShopDeps = {
     store,
@@ -99,7 +107,7 @@ function world() {
     const ctx = { userId, now: () => new Date(clock), newId: () => `id${++n}`, log: { info() {}, warn() {}, error() {} } } as unknown as Ctx;
     return shopRoute(ctx, deps, method, path.split('/'), body ?? null);
   };
-  return { as, texts, jobs, shops, deps, tick: (ms: number) => { clock += ms; } };
+  return { as, texts, jobs, shops, deps, bookings, tick: (ms: number) => { clock += ms; } };
 }
 
 const checkIn = {
@@ -845,4 +853,141 @@ test('customer emails stop at the daily cap and say why', async () => {
   assert.equal(sent.length, 2, 'check-in email and one more');
   assert.equal(j.messages.at(-1)?.delivery, 'not_sent');
   assert.match(j.messages.at(-1)?.note ?? '', /customer emails for today/);
+});
+
+// ---------------- Growth tools (shopGrow.ts) ----------------
+
+const planOf = (w: ReturnType<typeof world>, owner: string, plan: PlanState['plan'], status = 'active') => {
+  const shop = [...w.shops.values()].find((x) => x.ownerId === owner)!;
+  shop.plan = { plan, status, trialEndsAt: null, textsUsed: 0, textsPeriod: '', carsCreated: 0 };
+};
+
+test('Pro features: AI damage marking, AI price reading, results, reviews, branding and the time clock are blocked on Starter', async () => {
+  const w = world();
+  const dan = w.as('owner-s');
+  await dan('POST', 'shop/me', { name: 'Starter Garage', grow: { reviewUrl: 'https://g.page/r/abc/review' } });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string };
+  planOf(w, 'owner-s', 'starter');
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/walkaround-ai`, {}))?.status, 402);
+  assert.equal((await dan('POST', 'shop/price-import', { files: [] }))?.status, 402);
+  assert.equal((await dan('POST', 'shop/results', { days: 30 }))?.status, 402);
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/review`, {}))?.status, 402);
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/clock`, { on: true }))?.status, 402);
+  assert.equal((await dan('POST', 'shop/me', { name: 'Starter Garage', brand: { color: '#123456' } }))?.status, 402);
+  // Every plan: export and booking.
+  assert.equal((await dan('POST', 'shop/export', { kind: 'jobs' }))?.status, 200);
+  assert.equal((await dan('POST', 'shop/me', { name: 'Starter Garage', grow: { bookingOn: true } }))?.status, 200);
+  planOf(w, 'owner-s', 'starter'); // the in-memory store drops plan columns on save
+  assert.equal(((await dan('GET', 'shop/plan'))?.body as { pro: boolean }).pro, false);
+  planOf(w, 'owner-s', 'pro');
+  assert.equal(((await dan('GET', 'shop/plan'))?.body as { pro: boolean }).pro, true);
+  assert.equal((await dan('POST', 'shop/results', { days: 30 }))?.status, 200);
+});
+
+test('time clock: clock in and out, totals by tech, sold labor hours on the results', async () => {
+  const w = world();
+  const dan = w.as('owner-c');
+  await dan('POST', 'shop/me', { name: 'Clock Shop' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string };
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/clock`, { on: true }))?.status, 200);
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/clock`, { on: true }))?.status, 400, 'already clocked in');
+  w.tick(90 * 60_000);
+  const out = (await dan('POST', `shop/jobs/${job.id}/clock`, { on: false }))?.body as { clock: { end?: string }[] };
+  assert.ok(out.clock[0].end);
+  await dan('POST', `shop/jobs/${job.id}/details`, { tech: { id: 'owner-c', name: 'Dan' } });
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { charge: { name: 'Brake labor', kind: 'labor', rate: 120, qty: 2 } });
+  await dan('POST', `shop/jobs/${job.id}/stage`, { stage: 'approval' });
+  const token = (await dan('GET', `shop/jobs/${job.id}`))?.body as { link: string; estimate: { id: string }[] };
+  await w.as(null)('POST', `shop/c/${token.link.split('?c=')[1]}/decision`, { decisions: { [token.estimate[0].id]: 'approved' }, signature: 'Maria Delgado' });
+  const r = (await dan('POST', 'shop/results', { days: 30 }))?.body as { techs: { name: string; hours: number; soldHours: number; approved: number }[]; money: { approved: number } };
+  assert.equal(r.money.approved, 240);
+  assert.equal(r.techs[0].name, 'Dan');
+  assert.equal(r.techs[0].soldHours, 2);
+  assert.ok(r.techs[0].hours >= 1.5 && r.techs[0].hours < 1.6);
+});
+
+test('review request: sends the link, picked-up text can include it, and the customer page counts the click', async () => {
+  const w = world();
+  const dan = w.as('owner-r');
+  const url = 'https://g.page/r/ridgeline/review';
+  await dan('POST', 'shop/me', { name: 'Ridgeline', grow: { reviewUrl: url, reviewAuto: true } });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string; link: string };
+  const preview = (await dan('POST', `shop/jobs/${job.id}/preview`, { stage: 'picked_up' }))?.body as { text: string };
+  assert.ok(preview.text.includes(url));
+  assert.match(preview.text, /Reply STOP to opt out\.$/);
+  await dan('POST', `shop/jobs/${job.id}/stage`, { stage: 'ready' });
+  const sent = (await dan('POST', `shop/jobs/${job.id}/review`, {}))?.body as { review: { askedAt: string } };
+  assert.ok(sent.review.askedAt);
+  assert.ok(w.texts.at(-1)!.body.includes(url));
+  const token = job.link.split('?c=')[1];
+  const page = (await w.as(null)('GET', `shop/c/${token}`))?.body as { review: { url: string } };
+  assert.equal(page.review.url, url);
+  await w.as(null)('POST', `shop/c/${token}/review-click`, {});
+  const r = (await dan('POST', 'shop/results', { days: 30 }))?.body as { reviews: { asked: number; clicked: number } };
+  assert.deepEqual(r.reviews, { asked: 1, clicked: 1 });
+  assert.equal((await dan('POST', 'shop/me', { name: 'Ridgeline', grow: { reviewUrl: 'javascript:alert(1)' } }))?.status, 400);
+});
+
+test('Spanish: stage texts, the customer page language and switching back', async () => {
+  const w = world();
+  const dan = w.as('owner-es');
+  await dan('POST', 'shop/me', { name: 'Taller Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', { ...checkIn, customer: { ...checkIn.customer, lang: 'es' } }))?.body as { id: string; link: string };
+  assert.match(w.texts.at(-1)!.body, /^Hola Maria, Taller Ridgeline ya tiene su 2018 Honda Civic/);
+  const preview = (await dan('POST', `shop/jobs/${job.id}/preview`, { stage: 'parts' }))?.body as { text: string };
+  assert.match(preview.text, /deben llegar pronto/);
+  assert.equal(((await w.as(null)('GET', `shop/c/${job.link.split('?c=')[1]}`))?.body as { lang: string }).lang, 'es');
+  await dan('POST', `shop/jobs/${job.id}/customer`, { name: 'Maria Delgado', phone: '(555) 013-6620', preference: 'sms', consent: true, lang: 'en' });
+  assert.match(((await dan('POST', `shop/jobs/${job.id}/preview`, { stage: 'parts' }))?.body as { text: string }).text, /^Hi Maria/);
+});
+
+test('online booking: public form, spam limits, accept makes an invited car with the details filled in', async () => {
+  const w = world();
+  const dan = w.as('owner-b');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const me = (await dan('POST', 'shop/me', { name: 'Ridgeline', grow: { bookingOn: true, bookingNote: 'We call to confirm.' } }))?.body as { shop: { bookingToken: string } };
+  const token = me.shop.bookingToken;
+  assert.ok(token);
+  const pub = w.as(null);
+  const info = (await pub('GET', `shop/book/${token}`))?.body as { shop: { name: string }; note: string };
+  assert.equal(info.shop.name, 'Ridgeline');
+  assert.equal(info.note, 'We call to confirm.');
+  const form = { customer: { name: 'Lee Park', phone: '555-201-3344', preference: 'sms', consent: true, lang: 'es' }, vehicle: { year: '2016', make: 'Toyota', model: 'Camry' }, concern: 'Oil change and noise', day: '2026-11-12', time: 'morning' };
+  assert.equal((await pub('POST', `shop/book/${token}`, { ...form, day: '2020-01-01' }))?.status, 400);
+  assert.equal((await pub('POST', `shop/book/${token}`, form))?.status, 200);
+  assert.equal((await pub('POST', `shop/book/${token}`, form))?.status, 200);
+  assert.equal((await pub('POST', `shop/book/${token}`, form))?.status, 429, 'two waiting per customer');
+  assert.equal((await pub('POST', `shop/book/${token}`, { ...form, website: 'spam' }))?.status, 200);
+  const list = ((await dan('GET', 'shop/bookings'))?.body as { rows: Booking[] }).rows;
+  assert.equal(list.length, 2);
+  const acc = (await dan('POST', `shop/bookings/${list[0].id}`, { action: 'accept', when: '2026-11-12T15:00:00Z', whenText: 'Thu, Nov 12 at 9:00 AM' }))?.body as { job: { stage: string; intakeReceived: boolean; vehicle: { make: string }; appointment: string } };
+  assert.equal(acc.job.stage, 'invited');
+  assert.equal(acc.job.intakeReceived, true);
+  assert.equal(acc.job.vehicle.make, 'Toyota');
+  assert.match(w.texts.at(-1)!.body, /^Hola Lee, Ridgeline confirmó su cita para el Thu, Nov 12 at 9:00 AM/);
+  await dan('POST', `shop/bookings/${list[1].id}`, { action: 'decline', send: true, text: 'Sorry, we are full that day. Please call us.' });
+  assert.equal(((await dan('GET', 'shop/bookings'))?.body as { rows: unknown[] }).rows.length, 0);
+  assert.equal(w.texts.at(-1)!.body, 'Sorry, we are full that day. Please call us.');
+  // Turning booking off closes the link; a new link replaces the old one.
+  await dan('POST', 'shop/me', { name: 'Ridgeline', grow: { bookingOn: false } });
+  assert.equal((await pub('GET', `shop/book/${token}`))?.status, 404);
+  const again = (await dan('POST', 'shop/me', { name: 'Ridgeline', grow: { bookingOn: true }, newBookingLink: true }))?.body as { shop: { bookingToken: string } };
+  assert.notEqual(again.shop.bookingToken, token);
+  assert.equal((await pub('GET', `shop/book/${token}`))?.status, 404);
+});
+
+test('CSV export: one row per repair and per customer, and formulas are neutralized', async () => {
+  const w = world();
+  const dan = w.as('owner-x');
+  await dan('POST', 'shop/me', { name: 'Export Auto' });
+  await dan('POST', 'shop/jobs', checkIn);
+  await dan('POST', 'shop/jobs', { ...checkIn, concern: '=HYPERLINK("x")' });
+  const jobsFile = (await dan('POST', 'shop/export', { kind: 'jobs' }))?.body as { csv: string; filename: string };
+  assert.match(jobsFile.filename, /^talkshops-jobs-\d{4}-\d{2}-\d{2}\.csv$/);
+  assert.equal(jobsFile.csv.trim().split('\r\n').length, 3);
+  assert.ok(jobsFile.csv.includes(`"'=HYPERLINK(""x"")"`));
+  const people = (await dan('POST', 'shop/export', { kind: 'customers' }))?.body as { csv: string };
+  const rows = people.csv.trim().split('\r\n');
+  assert.equal(rows.length, 2);
+  assert.match(rows[1], /^Maria Delgado,\+15550136620,,English,Yes,2,/);
 });

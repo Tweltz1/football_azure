@@ -12,6 +12,7 @@ import type { AskLogStore } from '../_shared/footballAsk.ts';
 import type { CardGameRow, CardGameStore } from '../_shared/cards.ts';
 import type { HowToLibrary, SavedAnswer } from '../_shared/shopHowTo.ts';
 import { archivedAt, nextFollowup, visitRow, type ArchiveRow, type Job, type JobData, type Shop, type ShopStore } from '../_shared/shop.ts';
+import type { Booking } from '../_shared/shopGrow.ts';
 import { DEFAULT_TRIAL, type PlanState } from '../_shared/shopPlans.ts';
 import type { AccountStore, AuthCode, CodeChannel, CodePurpose } from '../_shared/shopAccount.ts';
 import type { Invite, Member, Role, StaffStore } from '../_shared/shopStaff.ts';
@@ -336,6 +337,7 @@ export function createCardGameStore(db: SupabaseClient): CardGameStore {
 }
 
 interface ShopDb {
+  brand?: Shop['brand'] | null; grow?: Shop['grow'] | null; booking_token?: string | null;
   packages?: Shop['packages'] | null;
   age_settings?: Shop['ageSettings'];
   smart_topics:string[]; smart_schedule:Shop['smartSchedule'];
@@ -343,10 +345,11 @@ interface ShopDb {
   next_ro: number; plan: PlanState['plan']; plan_status: string | null; trial_ends_at: string | null; plan_interval: PlanState['interval'];
   period_end: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null; texts_used: number | null; texts_period: string | null;
 }
-const SHOP_COLUMNS = 'packages,age_settings,smart_schedule,smart_topics,id, owner_id, name, phone, hours, email, rates, created_at, next_ro, plan, plan_status, trial_ends_at, plan_interval, period_end, stripe_customer_id, stripe_subscription_id, texts_used, texts_period';
+const SHOP_COLUMNS = 'brand,grow,booking_token,packages,age_settings,smart_schedule,smart_topics,id, owner_id, name, phone, hours, email, rates, created_at, next_ro, plan, plan_status, trial_ends_at, plan_interval, period_end, stripe_customer_id, stripe_subscription_id, texts_used, texts_period';
 interface JobDb { smart_paused:boolean; sms_thread:JobData['messages']; intake: Job['intake']; intake_photos: Job['intakePhotos']; walkaround: Job['walkaround']; bill: Job['bill']; id: string; shop_id: string; token: string; stage: string; data: JobData; created_at: string; updated_at: string }
 
 const shopRow = (r: ShopDb): Shop => ({
+  brand: r.brand ?? undefined, grow: r.grow ?? undefined, bookingToken: r.booking_token ?? null,
   packages:r.packages ?? undefined,ageSettings:r.age_settings,smartSchedule:r.smart_schedule,smartTopics:r.smart_topics, id: r.id, ownerId: r.owner_id, rates: r.rates, name: r.name, phone: r.phone, hours: r.hours, email: r.email ?? '', createdAt: r.created_at,
   plan: {
     plan: r.plan ?? null, status: r.plan_status ?? '', trialEndsAt: r.trial_ends_at, interval: r.plan_interval, periodEnd: r.period_end,
@@ -358,6 +361,8 @@ const JOB_COLUMNS = 'smart_paused,sms_thread,id,shop_id,token,stage,data,bill,in
 const jobRow = (r: JobDb): Job => ({
   smartPaused:r.smart_paused, smsThread:r.sms_thread, id: r.id, shopId: r.shop_id, intake: r.intake, intakePhotos: r.intake_photos, walkaround: r.walkaround ?? [], bill: r.bill, token: r.token, stage: r.stage as Job['stage'], data: r.data, createdAt: r.created_at, updatedAt: r.updated_at,
 });
+
+const bookingRow = (r: Record<string, any>): Booking => ({ id: r.id, shopId: r.shop_id, status: r.status, data: r.data, createdAt: r.created_at, updatedAt: r.updated_at });
 
 export function createShopStore(db: SupabaseClient): ShopStore {
   const oneShop = async (column: string, value: string) => {
@@ -379,6 +384,7 @@ export function createShopStore(db: SupabaseClient): ShopStore {
     },
     async putShop(shop) {
       const { error } = await db.from('repair_shops').upsert({
+        ...(shop.brand!==undefined?{brand:shop.brand}:{}),...(shop.grow!==undefined?{grow:shop.grow}:{}),...(shop.bookingToken!==undefined?{booking_token:shop.bookingToken}:{}),
         ...(shop.packages!==undefined?{packages:shop.packages}:{}),...(shop.ageSettings!==undefined?{age_settings:shop.ageSettings}:{}), ...(shop.smartSchedule!==undefined?{smart_schedule:shop.smartSchedule}:{}), ...(shop.smartTopics!==undefined?{smart_topics:shop.smartTopics}:{}), id: shop.id, owner_id: shop.ownerId, name: shop.name, phone: shop.phone, hours: shop.hours, email: shop.email ?? '', rates: shop.rates ?? [], created_at: shop.createdAt,
       });
       if (error) throw error;
@@ -506,6 +512,46 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       if (patch.stripeCustomerId !== undefined) row.stripe_customer_id = patch.stripeCustomerId;
       if (patch.stripeSubscriptionId !== undefined) row.stripe_subscription_id = patch.stripeSubscriptionId;
       const { error } = await db.from('repair_shops').update(row).eq('id', shopId);
+      if (error) throw error;
+    },
+    async reportJobs(shopId, since, limit) {
+      // Everything the results and export need, without photos, messages or bill files.
+      const { data, error } = await db.from('repair_jobs')
+        .select('id, shop_id, token, stage, created_at, updated_at, bill, intake, ro:data->>ro, customer:data->customer, vehicle:data->vehicle, plate:data->>plate, concern:data->>concern, estimate:data->estimate, events:data->events, approval:data->approval, closed:data->closed, tech:data->tech, clock:data->clock, review:data->review, followups:data->followups, promised:data->>promised, mileageIn:data->>mileageIn, mileageOut:data->>mileageOut, booking:data->booking, service:data->>service')
+        .eq('shop_id', shopId).gte('created_at', since).order('created_at', { ascending: false }).limit(limit);
+      if (error) throw error;
+      return (data ?? []).map((r: Record<string, any>): Job => ({
+        id: r.id, shopId: r.shop_id, token: r.token, stage: r.stage, createdAt: r.created_at, updatedAt: r.updated_at, bill: r.bill, intake: r.intake,
+        data: {
+          ro: r.ro ?? '', customer: r.customer ?? { name: '', phone: '', consent: false }, vehicle: r.vehicle ?? { year: '', make: '', model: '' }, plate: r.plate ?? '', concern: r.concern ?? '',
+          eta: '', estimate: r.estimate ?? [], photos: [], events: r.events ?? [], messages: [], approval: r.approval ?? null, closed: r.closed ?? null,
+          ...(r.tech ? { tech: r.tech } : {}), ...(r.clock ? { clock: r.clock } : {}), ...(r.review ? { review: r.review } : {}), ...(r.followups ? { followups: r.followups } : {}),
+          ...(r.promised ? { promised: r.promised } : {}), ...(r.mileageIn ? { mileageIn: r.mileageIn } : {}), ...(r.mileageOut ? { mileageOut: r.mileageOut } : {}),
+          ...(r.booking ? { booking: r.booking } : {}), ...(r.service ? { service: r.service } : {}),
+        },
+      }));
+    },
+    async bookingShop(token) {
+      const { data, error } = await db.from('repair_shops').select('id').eq('booking_token', token).maybeSingle();
+      if (error) throw error;
+      return data ? { id: data.id as string } : null;
+    },
+    async addBooking(b) {
+      const { error } = await db.from('repair_bookings').insert({ id: b.id, shop_id: b.shopId, status: b.status, data: b.data, created_at: b.createdAt, updated_at: b.updatedAt });
+      if (error) throw error;
+    },
+    async openBookings(shopId, limit) {
+      const { data, error } = await db.from('repair_bookings').select('*').eq('shop_id', shopId).eq('status', 'open').order('created_at').limit(limit);
+      if (error) throw error;
+      return (data ?? []).map(bookingRow);
+    },
+    async getBooking(id) {
+      const { data, error } = await db.from('repair_bookings').select('*').eq('id', id).maybeSingle();
+      if (error) throw error;
+      return data ? bookingRow(data) : null;
+    },
+    async putBooking(b) {
+      const { error } = await db.from('repair_bookings').update({ status: b.status, data: b.data, updated_at: b.updatedAt }).eq('id', b.id);
       if (error) throw error;
     },
     async nextRo(shopId) {

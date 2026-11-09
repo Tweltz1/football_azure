@@ -26,6 +26,7 @@
   const initials = (n) => String(n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
   const open = (j) => j.stage !== "picked_up" && !j.closed;
   const $ = (s) => document.querySelector(s);
+  const T = (s, ...a) => (window.tsT ? window.tsT(s, ...a) : s.replace(/\{(\d)\}/g, (_, i) => a[+i] ?? ""));
 
   function init(adapter) { A = adapter; }
 
@@ -41,7 +42,8 @@
     const due = st ? `<span class="wd-due wd-${st}" title="Promised by ${esc(new Date(ts(j.promised)).toLocaleString())}">${st === "late" ? "Late · was due " : "Due "}${esc(dueText(j.promised))}</span>` : "";
     const tech = j.tech ? `<span class="wd-tech" title="Technician: ${esc(j.tech.name)}">${esc(initials(j.tech.name))}</span>` : "";
     const svc = j.service ? `<span class="pill">${esc(j.service)}</span>` : "";
-    return tech || due || svc ? `<span class="wd-bits">${tech}${svc}${due}</span>` : "";
+    const more = window.Grow?.cardBits?.(j) || "";
+    return tech || due || svc || more ? `<span class="wd-bits">${tech}${svc}${due}${more}</span>` : "";
   }
   const cardAttrs = (j) => `data-tech="${esc(j.tech?.id || "")}"`;
   /** Cards "My cars" hides. The pages' filters ask this so counts stay right. */
@@ -56,7 +58,7 @@
       ${late || soon ? `<span class="wd-due wd-${late ? "late" : "soon"}">${late ? `${late} late` : ""}${late && soon ? " · " : ""}${soon ? `${soon} due within 2 hours` : ""}</span>` : ""}
       <span class="wd-bar-gap"></span>
       <button type="button" class="btn sm" data-wd-alerts aria-pressed="${ui.alerts}" title="Sound and a notification when a customer replies or approves">${ui.alerts ? "🔔 Alerts On" : "🔕 Alerts Off"}</button>
-      ${A.isOwner() ? `<button type="button" class="btn sm" data-wd-today>Today's Summary</button>` : ""}
+      ${A.isOwner() ? `<button type="button" class="btn sm" data-wd-today>Today's Summary</button>` : ""}${window.Grow?.resultsButton?.() || ""}
     </div>`;
   }
 
@@ -140,7 +142,7 @@
     const c = r.customer;
     const pref = c.preference || (c.phone ? "sms" : "email");
     const ch = document.getElementById("ci-channel"); if (ch) { ch.value = pref; ch.dispatchEvent(new Event("change", { bubbles: true })); }
-    set("name", c.name); set("phone", fmtPhone(c.phone)); set("email", c.email || "");
+    set("name", c.name); set("phone", fmtPhone(c.phone)); set("email", c.email || ""); set("lang", c.lang === "es" ? "es" : "en");
     set("year", r.vehicle?.year); set("make", r.vehicle?.make); set("model", r.vehicle?.model); set("plate", r.plate);
     set("vin", r.vehicle?.vin || ""); set("engine", r.vehicle?.engine || "");
     const box = $("#wd-found");
@@ -232,9 +234,11 @@
   function customerReminders(c) {
     const r = c.reminders;
     if (!r || (!r.waiting?.length && !r.off)) return "";
-    return `<div class="c-card"><h3>Reminder texts</h3>${r.off ? `<p class="muted" style="margin:0">You turned off reminder texts from ${esc(c.shop?.name || "this shop")}.</p>`
-      : `<p style="margin:0">${esc(c.shop?.name || "The shop")} will remind you about ${r.waiting.map((w) => `${w.kind === "declined" ? "the work you put off" : "your next service"} around ${shortDate(w.due)}`).join(" and ")}.</p>
-      <button type="button" class="btn" data-wd-stop style="margin-top:10px">Stop reminder texts</button><p class="muted" style="font-size:13px;margin:6px 0 0">You can also reply STOP to any text.</p>`}</div>`;
+    const loc = document.documentElement.lang === "es" ? "es-US" : "en-US";
+    const day = (t) => new Date(ts(t)).toLocaleDateString(loc, { month: "short", day: "numeric", year: "numeric" });
+    return `<div class="c-card"><h3>${T("Reminder texts")}</h3>${r.off ? `<p class="muted" style="margin:0">${T("You turned off reminder texts from {0}.", esc(c.shop?.name || "this shop"))}</p>`
+      : `<p style="margin:0">${T("{0} will remind you about {1}.", esc(c.shop?.name || "The shop"), r.waiting.map((w) => w.kind === "declined" ? T("the work you put off around {0}", day(w.due)) : T("your next service around {0}", day(w.due))).join(T(" and ")))}</p>
+      <button type="button" class="btn" data-wd-stop style="margin-top:10px">${T("Stop reminder texts")}</button><p class="muted" style="font-size:13px;margin:6px 0 0">${T("You can also reply STOP to any text.")}</p>`}</div>`;
   }
 
   // ---------------- Quick services (Settings) ----------------
@@ -291,7 +295,7 @@
       .top{display:flex;justify-content:space-between;gap:20px}.ro{text-align:right}.ro b{font-size:18px}table{border-collapse:collapse;width:100%}th{text-align:left;font-weight:600;padding:3px 8px 3px 0;width:120px;vertical-align:top}td{padding:3px 0}
       .lines th,.lines td{border-bottom:1px solid #ddd;padding:6px 4px;width:auto}.num{text-align:right}.total td{font-weight:700;border:0;font-size:15px}.sig{display:flex;gap:40px;margin-top:40px}.sig div{flex:1;border-top:1px solid #111;padding-top:4px}
       .muted{color:#555}@media print{body{margin:12mm}}</style></head><body>
-      <div class="top"><div><h1>${esc(shop.name || "Repair shop")}</h1><div class="muted">${esc([shop.phone, shop.hours].filter(Boolean).join(" · "))}</div></div>
+      <div class="top"><div>${shop.brand?.logo && window.Grow?.pro?.() ? `<img src="${esc(shop.brand.logo)}" alt="" style="max-height:56px;max-width:220px;display:block;margin-bottom:6px">` : ""}<h1>${esc(shop.name || "Repair shop")}</h1><div class="muted">${esc([shop.phone, shop.hours].filter(Boolean).join(" · "))}</div></div>
       <div class="ro"><b>${kind === "bill" ? "Final Bill" : "Work Order"}</b><br>${esc(j.ro)}<br>${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</div></div>
       <h2>Customer and vehicle</h2><table>${row("Customer", j.customer.name)}${row("Phone", fmtPhone(j.customer.phone))}${row("Email", j.customer.email)}${row("Vehicle", vehicle(j))}${row("VIN", j.vehicle?.vin)}${row("Plate", j.plate)}
         ${row("Mileage in", j.mileageIn && miles(j.mileageIn))}${row("Mileage out", j.mileageOut && miles(j.mileageOut))}${kind === "order" ? row("Promised by", j.promised && new Date(ts(j.promised)).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })) + row("Technician", j.tech?.name) : ""}

@@ -6,6 +6,15 @@
     let interval = "month";
     const fmtDate = (t) => new Date(t).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const usd = (n) => "$" + Number(n).toLocaleString("en-US");
+    // What each plan includes. Keep in step with PLANS in supabase/functions/_shared/shopPlans.ts and the homepage.
+    const FEATURES = {
+      starter: ["3 staff seats (up to 2 owners)", "1,000 texts a month, unlimited email", "Bay board, check-in, photos, walk-throughs and signed estimate approvals",
+        "Returning customers, tech assignment, promised-by times, alerts and shop-only notes", "Quick services, reminder texts, printing and Today's Summary",
+        "Price list upload (free reader), VIN decode and recalls", "Online booking link", "Spanish customer pages and texts", "CSV export of repairs and customers"],
+      pro: ["Everything in Starter", "8 staff seats (up to 3 owners)", "3,000 texts a month, unlimited email", "AI repair how-to assistant and Smart Replies",
+        "AI damage marking on walk-around photos", "AI reading of hard-to-read price lists", "Results dashboard: approvals, money, on-time, techs",
+        "Review requests after pickup", "Your logo and color on customer pages and printouts", "Technician time clock"],
+    };
 
     /** One line above the board. Empty when there is nothing to say. */
     function banner(p) {
@@ -29,7 +38,7 @@
         <h3>${esc(info.name)}</h3>
         <div class="plan-price"><b>${usd(price)}</b><span>/${interval === "year" ? "year" : "month"}</span></div>
         ${interval === "year" ? `<small class="muted">Same as ${usd(Math.round(price / 12))}/month. Two months free.</small>` : `<small class="muted">Billed monthly. Cancel any time.</small>`}
-        <ul><li>${esc(info.blurb)}</li><li>Customer page with estimate approval</li><li>Photos, bills and archive</li></ul>
+        <ul class="plan-feats">${(FEATURES[key] || [info.blurb]).map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
         ${current ? `<button class="btn" data-plan-portal>Current plan · Manage</button>`
           : `<button class="btn ${key === "starter" ? "primary" : ""}" data-plan-buy="${key}" ${p.payments ? "" : "disabled"}>Choose ${esc(info.name)}</button>`}
       </div>`;
