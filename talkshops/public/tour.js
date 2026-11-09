@@ -86,7 +86,7 @@
   // Debug aid: /demo.html?train=bay&tourdebug=1 logs every highlight, tap or typing target that isn't on the page.
   const DEBUG = params.has("tourdebug");
   let sayKey = "";
-  const miss = (what, sel, el) => { if (DEBUG && !el) console.warn("[tour-miss]", sayKey, what, typeof sel === "string" ? sel : String(sel)); };
+  const miss = (what, sel, el) => { if (DEBUG && sel && !el) console.warn("[tour-miss]", sayKey, what, typeof sel === "string" ? sel : String(sel)); };
   function say(key) {
     sayKey = key;
     check();
@@ -335,6 +335,17 @@
   }
   // The tab bar, or on a phone, the More button that holds the rest.
   const tabSel = (view) => shown(q(`.tab[data-view="${view}"]`)) ? `.tab[data-view="${view}"]` : ".tab-more";
+  // Choose an option in a select the way a person would, so the page's change handlers run.
+  async function pick(sel, value) {
+    const el = typeof sel === "string" ? q(sel) : sel; miss("pick", sel, el); if (!el) return;
+    reveal(el); await wait(250); el.value = value; el.dispatchEvent(new Event("change", { bubbles: true })); el.dispatchEvent(new Event("input", { bubbles: true })); await wait(300);
+  }
+  // Open one stage column on the Bay, sort it, then go back to all stages.
+  async function stageView(stage, sort) {
+    await tap(`[data-stage-focus="${stage}"]`); await wait(300);
+    const col = q(`.col[data-stage="${stage}"]`); highlight(col?.querySelector(".stage-controls") || col);
+    if (sort) await pick(col?.querySelector("[data-stage-sort]"), sort);
+  }
   // Show the sign-in page (not a tab) in the demo shop.
   async function page(view) { await closeAll(); window.demoGo?.(view); await wait(300); }
   // Type into a saved-item box, then pick the first suggestion.
@@ -383,8 +394,8 @@
     highlight(".board-top h2");
     await cue(0.17); highlight(".queue-sub");
     await cue(0.33); highlight(".board-wrap");
-    await cue(0.6); highlight(q(".card.age-old") || ".board-wrap");
-    await cue(0.85); highlight(".board-wrap");
+    await cue(0.55); highlight(q(".card.age-old") || ".board-wrap");
+    await cue(0.8); highlight(q(".card .urgency")?.closest(".card") || ".board-wrap");
     await board;
 
     setStep(3);
@@ -394,8 +405,9 @@
     highlight(".board-wrap");
     await cue(0.36); await clearInput("#boardSearch");
     await cue(0.42); highlight('[data-queue="approval"]'); await tap('[data-queue="approval"]'); await wait(300); highlight(".board-wrap");
-    await cue(0.6); await tap('[data-queue="all"]'); highlight(".queue-filters");
-    await cue(0.7); highlight(".tabs");
+    await cue(0.52); await tap('[data-queue="all"]'); highlight(".queue-filters");
+    await cue(0.58); await stageView("in_progress", "urgency");
+    await cue(0.72); await tap("[data-stage-back]"); await wait(250); highlight(".tabs");
     await sr;
 
     setStep(4);
@@ -548,14 +560,18 @@
       }
       step(); {
         const c = say("bay-3"); highlight(".board-wrap");
-        await cue(0.4); highlight(q(".col.is-approval .card") || ".col.is-approval");
-        await cue(0.6); highlight(q(".col.is-ready .card") || ".col.is-ready");
-        await cue(0.8); highlight(".board-wrap");
+        await cue(0.28); highlight(q('[data-stage-focus="diagnosing"]') || ".board-wrap");
+        await cue(0.33); await stageView("diagnosing");
+        await cue(0.45); await pick('.col[data-stage="diagnosing"] [data-stage-sort]', "stage");
+        await cue(0.55); await pick('.col[data-stage="diagnosing"] [data-stage-sort]', "urgency");
+        await cue(0.68); highlight('.col[data-stage="diagnosing"] [data-stage-filter]');
+        await cue(0.86); await tap("[data-stage-back]"); await wait(250); highlight(".board-wrap");
         await c;
       }
       step(); {
         const c = say("bay-4"); highlight(".board .card");
-        await cue(0.35); highlight(qa(".card").find((x) => x.querySelector(".pill.bad")) || ".board .card");
+        await cue(0.25); highlight(qa(".card").find((x) => x.querySelector(".pill.bad")) || ".board .card");
+        await cue(0.33); highlight(q(".card .urgency")?.closest(".card") || ".board .card");
         await cue(0.6); highlight(q(".card.age-ok") || ".board .card");
         await cue(0.7); highlight(q(".card.age-mid") || ".board .card");
         await cue(0.82); highlight(q(".card.age-old") || ".board .card");
@@ -571,7 +587,7 @@
       step(); { const c = say("bay-6"); highlight('[data-open="RO-1041"]'); await cue(0.4); await tap('[data-open="RO-1041"]'); highlight(".sheet"); await c; }
     },
     async checkin() {
-      STEPS = 6; await begin("board");
+      STEPS = 7; await begin("board");
       step(); { const c = say("ci-1"); await tab("checkin"); highlight(q("#ci-method")?.closest("label")); await c; }
       step(); { const c = say("ci-2"); highlight(q("#ci-method")?.closest("label")); await cue(0.6); highlight("#ci-help"); await c; }
       step(); {
@@ -584,7 +600,8 @@
       step(); {
         const c = say("ci-4"); highlight("#checkinForm .form-grid");
         await type("#ci-year", "2014"); await type("#ci-make", "Mazda"); await type("#ci-model", "CX-5"); await type("#ci-plate", "3CXF882");
-        await cue(0.55); highlight(q("#ci-concern")?.closest("label")); await type("#ci-concern", "Squealing belt on cold starts");
+        await cue(0.5); highlight(q("#ci-concern")?.closest("label")); await type("#ci-concern", "Squealing belt on cold starts");
+        await cue(0.78); highlight(".urgency-field"); const m = q('.urgency-field input[value="medium"]'); if (m) await tap(m.closest("label") || m);
         await c;
       }
       step(); {
@@ -593,6 +610,14 @@
         await c;
       }
       step(); { const c = say("ci-6"); highlight(".sheet .thread"); await cue(0.6); await tap(".sheet .x"); highlight(".board .col"); await c; }
+      step(); {
+        const c = say("ci-7"); await openSheet("RO-1044"); highlight("[data-edit-customer]");
+        await cue(0.2); await tap("[data-edit-customer]"); await wait(250); highlight("#customerForm");
+        await cue(0.4); await pick("#ec-channel", "sms"); highlight(q("#ec-channel")?.closest("label"));
+        await cue(0.6); highlight(q("#ec-consent")?.closest("label")); await tap("#ec-consent");
+        await cue(0.85); await tap("#customerForm .btn.primary"); await wait(250); highlight(".sheet-h");
+        await c;
+      }
     },
     async stages() {
       STEPS = 5; await begin("board");
@@ -782,7 +807,7 @@
       step(); { const c = say("ar-4"); await tap(".archive-row"); highlight(".sheet"); await cue(0.55); highlight("#archivedNote"); await c; }
     },
     async settings() {
-      STEPS = 4; await begin("board");
+      STEPS = 5; await begin("board");
       step(); { const c = say("se-1"); await tab("settings"); highlight("#setupForm"); await c; }
       step(); { const c = say("se-2"); highlight(q("#sh-email")?.closest("label")); await c; }
       step(); {
@@ -792,6 +817,19 @@
         await c;
       }
       step(); { const c = say("se-4"); highlight("#importBox"); await cue(0.75); highlight("#rateTemplate"); await c; }
+      step(); {
+        const c = say("se-5"); q(".age-settings")?.scrollIntoView({ block: "center" }); highlight(".age-settings");
+        await cue(0.3); highlight(".age-thresholds"); await type('[name="ageWarningDays"]', "2"); q('[name="ageWarningDays"]')?.dispatchEvent(new Event("input", { bubbles: true }));
+        await cue(0.5); highlight(".age-color-pickers");
+        await cue(0.65); highlight(".age-preview");
+        await cue(0.85); highlight("#setupForm .btn.primary"); await tap("#setupForm .btn.primary");
+        await c;
+      }
+    },
+    async help() {
+      STEPS = 2; await begin("board");
+      step(); { const c = say("hp-1"); await tab("help"); highlight(".help-heading"); await cue(0.3); highlight("#help-guides"); const d = q("#help-guides details"); if (d) await tap(d.querySelector("summary")); await cue(0.75); highlight(q(".help-center details:not(#help-guides details)")?.closest("section") || "#help-training"); await c; }
+      step(); { const c = say("hp-2"); q("#help-support")?.scrollIntoView({ block: "start" }); highlight("#help-support"); await cue(0.5); highlight("#helpForm"); await c; }
     },
     async team() {
       STEPS = 5; await begin("board");
@@ -833,7 +871,7 @@
     },
     async signin() {
       STEPS = 5; await begin("board");
-      step(); { const c = say("si-1"); await page("signin"); highlight("#signinCard"); await cue(0.6); highlight("#demoGoogle"); await cue(0.8); highlight("#demoSignin"); await c; }
+      step(); { const c = say("si-1"); await page("signin"); highlight("#signinCard"); await cue(0.42); highlight("#demoGoogle"); await cue(0.55); highlight("#demoSignin"); await cue(0.72); highlight("#demoSignup"); await c; }
       step(); { const c = say("si-2"); highlight("#forgotPw"); await cue(0.2); await tap("#forgotPw"); highlight("#forgotForm"); await c; }
       step(); {
         const c = say("si-3"); await tap("#fpText"); await wait(300); highlight("#signinCard");
@@ -868,7 +906,7 @@
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
       fetch("/tour/lines.json?v=4").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
-      fetch("/tour/caption-cues.json?v=2").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+      fetch("/tour/caption-cues.json?v=3").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">

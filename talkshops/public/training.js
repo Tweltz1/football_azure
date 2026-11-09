@@ -18,6 +18,7 @@ window.TALKSHOPS_TRAINING = (() => {
     { id: "settings", title: "Shop settings and price lists", mins: 2, desc: "Shop details, the reply email, saved items, and importing Excel or CSV." },
     { id: "team", title: "Your team: owners and technicians", mins: 2, desc: "What each role can do, staff seats, inviting people, and changing roles." },
     { id: "signin", title: "Signing in and password reset", mins: 2, desc: "Signing in, resetting a forgotten password by email or text, and adding a reset phone." },
+    { id: "help", title: "Help and support", mins: 1, desc: "Quick guides, common questions, and contacting the Talk Shops team." },
     { id: "plan", title: "Free trial and plans", mins: 1, desc: "Trial limits, Starter and Pro, staff seats, paying through Stripe, and managing billing." },
   ];
   const cap = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>`;
