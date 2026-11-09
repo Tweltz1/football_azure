@@ -342,11 +342,21 @@
   function openToday() {
     let d = document.getElementById("wd-today");
     if (!d) { d = document.createElement("dialog"); d.id = "wd-today"; d.className = "wd-dialog"; document.body.appendChild(d); }
-    d.innerHTML = `<form method="dialog"><div class="wd-dialog-h"><h2>Today at ${esc(A.shop()?.name || "the shop")}</h2><button class="x" aria-label="Close">×</button></div>${todaySummary(A.jobs())}<div class="btn-row"><button class="btn primary">Done</button></div></form>`;
+    d.innerHTML = `<form method="dialog"><div class="wd-dialog-h"><h2>Today at ${esc(A.shop()?.name || "the shop")}</h2><button type="button" class="x" data-dlg-close aria-label="Close">×</button></div>${todaySummary(A.jobs())}<div class="btn-row"><button type="button" class="btn primary" data-dlg-close>Done</button></div></form>`;
     d.showModal();
   }
 
   // ---------------- Events ----------------
+  // Pop-up close buttons (Today's Summary, Results). Closed directly so a page-wide
+  // submit handler can never swallow them, and a tap on the dimmed backdrop closes too.
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest?.("[data-dlg-close]");
+    const d = b ? b.closest("dialog") : e.target.matches?.("dialog.wd-dialog") ? e.target : null;
+    if (!d) return;
+    if (!b) { const r = d.getBoundingClientRect(); if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return; }
+    e.preventDefault();
+    if (d.open) d.close(); else d.removeAttribute("open");
+  });
   document.addEventListener("click", async (e) => {
     if (!A) return;
     const t = e.target.closest("[data-wd-mine],[data-wd-alerts],[data-wd-today],[data-wd-fill],[data-wd-print],[data-wd-due],[data-wd-schedule],[data-wd-cancel],[data-wd-stop],[data-wd-pk-add],[data-wd-pk-del],[data-wd-pk-edit],[data-wd-pk-cancel],[data-wd-pk-use]");

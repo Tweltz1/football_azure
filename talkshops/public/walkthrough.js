@@ -69,7 +69,7 @@
     }).join("");
     const done = Object.keys(d.items).length;
     return `<div class="modal"><form class="modal-card wt-modal" id="walkForm" role="dialog" aria-modal="true" aria-labelledby="wtTitle">
-      <h2 id="wtTitle">${KIND[d.kind].title}</h2>
+      <div style="display:flex;align-items:center;gap:10px"><h2 id="wtTitle" style="margin-right:auto">${KIND[d.kind].title}</h2><button type="button" class="x" data-cancel aria-label="Close">×</button></div>
       <p class="muted" style="margin:0">${esc(opt.vehicle)} · ${d.copied ? "Copied from check-in. Change what's different." : "Tap what you checked and skip the rest."}</p>
       <div class="wt-bar"><span id="wtDone">${done} of ${ITEMS.length} checked</span><button type="button" class="linkbtn" data-walk-allgood>Mark the rest good</button></div>
       <ul class="wt-list">${rows}</ul>

@@ -300,12 +300,17 @@
   let navPush = false;
   if (pathView()) ui.view = pathView();
   const team = window.createShopTeam({ esc, api: (...a) => api(...a), toast: (m) => toast(m) });
-  // Staff invite link: /?join=<token>. Kept in this browser until it's used, so it survives signing up by email.
-  const JOIN_KEY = "talkshops-join";
+  // Staff invite link: /?join=<token>. The join screens only show while the link is in the address bar.
+  // A copy is kept for one hour, used only after a sign-in, in case a confirm-email link lands on plain "/".
+  // (Older versions kept it forever and let it force the sign-up screen on every visit to talkshops.app.)
+  const JOIN_KEY = "talkshops-join", JOIN_TTL = 3600000;
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) { /* private mode */ } } };
-  let joinToken = new URLSearchParams(location.search).get("join") || store.get(JOIN_KEY) || "";
-  if (!/^[A-Za-z0-9_-]{20,64}$/.test(joinToken)) joinToken = "";
-  store.set(JOIN_KEY, joinToken);
+  const okToken = (t) => /^[A-Za-z0-9_-]{20,64}$/.test(t || "");
+  let joinToken = new URLSearchParams(location.search).get("join") || "";
+  if (!okToken(joinToken)) joinToken = "";
+  let savedJoin = "";
+  try { const v = JSON.parse(store.get(JOIN_KEY) || "null"); if (v && okToken(v.t) && Date.now() - v.at < JOIN_TTL) savedJoin = v.t; } catch (e) { /* old plain value */ }
+  if (joinToken) { savedJoin = ""; store.set(JOIN_KEY, JSON.stringify({ t: joinToken, at: Date.now() })); } else if (!savedJoin) store.set(JOIN_KEY, "");
   const join = { info: null, err: "" };
   const authRedirect = () => location.origin + (pathView() ? location.pathname : "/") + (joinToken ? "?join=" + encodeURIComponent(joinToken) : "");
   let session = null, shop = null, emailConfigured = false, jobs = [], loaded = false, loadErr = "";
@@ -333,6 +338,12 @@
   });
 
   async function acceptInvite() {
+    if (!joinToken && savedJoin && session?.access_token) {
+      // Saved from a link opened earlier: try it once, quietly, and never block the app on it.
+      const t = savedJoin; savedJoin = ""; store.set(JOIN_KEY, "");
+      try { const r = await api("POST", "shop/join/" + encodeURIComponent(t)); setTimeout(() => toast(`Welcome to ${r.shopName}. You're signed in as ${r.role === "owner" ? "an owner" : "a technician"}.`), 400); } catch (e) { /* wrong account or used: ignore */ }
+      return;
+    }
     if (!joinToken || !session?.access_token) return;
     try {
       const r = await api("POST", "shop/join/" + encodeURIComponent(joinToken));
@@ -563,6 +574,7 @@
       ${joinToken ? `<button class="linkbtn" id="authSwap" type="button">${signup ? "Already have an account? Sign in" : "Create an account"}</button>` : `<a class="linkbtn" href="${signup ? "/?login" : "/?login=signup"}">${signup ? "Already have an account? Sign in" : "Create an account"}</a>`}
       <small class="muted">Customers use their private link. Only shop staff need an account.</small>
       ${signInHelp}
+      ${joinToken ? `<button class="linkbtn" id="dropInvite" type="button" style="align-self:flex-start">Not now, go to the Talk Shops homepage</button>` : ""}
       <a class="login-home" href="/">← Back to Talk Shops</a>
     </section></div>`;
   }
@@ -1126,7 +1138,13 @@
     }
     if (t.id === "authSwap") { ui.authMode = ui.authMode === "signup" ? "signin" : "signup"; ui.authErr = ui.authMsg = ""; render(); return; }
     if (t.id === "signOut" || t.id === "signOut2") { if (sb) await sb.auth.signOut(); return; }
-    if (t.id === "skipInvite") { joinToken = ""; store.set(JOIN_KEY, ""); join.err = ""; join.info = null; loaded = false; render(); loadShop(); return; }
+    if (t.id === "dropInvite") { location.href = "/"; return; }
+    if (t.id === "skipInvite") {
+      joinToken = ""; store.set(JOIN_KEY, ""); join.err = ""; join.info = null; loaded = false;
+      const q = new URLSearchParams(location.search); q.delete("join");
+      history.replaceState(history.state, "", (pathView() ? location.pathname : "/") + (q.toString() ? "?" + q : "") + location.hash);
+      render(); loadShop(); return;
+    }
     if (t.id === "retry") { loadShop(); return; }
     if (t.dataset.archiveOpen) { openArchived(t.dataset.archiveOpen); return; }
     if (t.hasAttribute("data-archive-retry")) { archive.error = ""; renderArchiveRows(); searchArchive(); return; }
@@ -1203,8 +1221,9 @@
   });
 
   document.addEventListener("submit", async (e) => {
-    e.preventDefault();
     const f = e.target;
+    if (f.getAttribute("method") === "dialog") return; // let <dialog> forms close themselves
+    e.preventDefault();
     if (f.id === "myNameForm") {
       const name = ($("#myNameIn")?.value || "").trim();
       const r = await act(() => api("POST", "shop/staff/my-name", { name }), "Name saved");

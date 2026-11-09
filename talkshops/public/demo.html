@@ -248,7 +248,7 @@ a.btn.primary{color:var(--accent-fg)}
 <link rel="stylesheet" href="/team.css?v=1">
 <link rel="stylesheet" href="/help.css?v=1">
 <link rel="stylesheet" href="/howto.css?v=4">
-<link rel="stylesheet" href="/workday.css?v=2">
+<link rel="stylesheet" href="/workday.css?v=3">
 <link rel="stylesheet" href="/grow.css?v=1">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
 <style>
@@ -314,10 +314,10 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/display.js?v=1"></script>
 <script src="/age-settings.js?v=1"></script>
 <script src="/board-tools.js?v=4"></script>
-<script src="/walkthrough.js?v=5"></script>
-<script src="/workday.js?v=4"></script>
+<script src="/walkthrough.js?v=6"></script>
+<script src="/workday.js?v=5"></script>
 <script src="/walkaround.js?v=3"></script>
-<script src="/grow.js?v=2"></script>
+<script src="/grow.js?v=3"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
@@ -1147,7 +1147,7 @@ document.addEventListener("click",e=>{
     save();toast("Sent to "+SHOP.name);render();return}
 });
 document.addEventListener("submit",e=>{
-  e.preventDefault();const f=e.target;
+  const f=e.target;if(f.getAttribute("method")==="dialog")return;e.preventDefault();
   if(howTo.submit(f,render))return;
   if(f.id==="billingForm"){state.rates=billing.readRows(f,true).sort((a,b)=>a.name.localeCompare(b.name));ui.modal=null;save();render();toast(`Saved ${state.rates.length} items`);return}
   if(f.id==="walkForm"){const m=ui.modal,body=window.Walkthrough.body(m.walk),j=job(m.job);

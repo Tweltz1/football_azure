@@ -304,9 +304,9 @@
           ${r.techs.map((t) => `<tr><td>${esc(t.name)}</td><td class="num">${t.cars}</td><td class="num">${money0(t.approved)}</td><td class="num">${t.hours ? t.hours + " h" : "–"}</td><td class="num">${t.soldHours ? t.soldHours + " h" : "–"}${t.hours && t.soldHours ? ` <small class="muted">(${Math.round(t.soldHours / t.hours * 100)}%)</small>` : ""}</td><td class="num">${pct(t.onTime)}</td></tr>`).join("")}</tbody></table></div>` : ""}
         ${r.topDeclined.length ? `<h3 class="gr-h">Most declined work</h3><ul class="gr-declined">${r.topDeclined.map((x) => `<li><span>${esc(x.item)}</span><span class="muted">${x.count}×</span><b>${money0(x.money)}</b></li>`).join("")}</ul><p class="muted" style="font-size:13px">Schedule reminder texts on cars with declined work to bring it back.</p>` : ""}`;
     }
-    d.innerHTML = `<form method="dialog"><div class="wd-dialog-h"><h2>Results</h2><button class="x" aria-label="Close">×</button></div>
+    d.innerHTML = `<form method="dialog"><div class="wd-dialog-h"><h2>Results</h2><button type="button" class="x" data-dlg-close aria-label="Close">×</button></div>
       ${pro() ? `<div class="plan-toggle gr-days" role="group" aria-label="Period">${[[7, "7 days"], [30, "30 days"], [90, "90 days"], [365, "Year"]].map(([n, l]) => `<button type="button" class="btn sm" data-gr-days="${n}" aria-pressed="${ui.days === n}">${l}</button>`).join("")}</div>` : ""}
-      ${body}<div class="btn-row"><button class="btn primary">Done</button></div></form>`;
+      ${body}<div class="btn-row"><button type="button" class="btn primary" data-dlg-close>Done</button></div></form>`;
   }
 
   // ==================== Settings (owners) ====================
