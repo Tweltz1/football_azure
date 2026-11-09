@@ -1,7 +1,7 @@
 // NHTSA VIN decoding and recalls: `node --test supabase/tests/nhtsa.test.ts`
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clearNhtsaCache, decodeVin, recallsFor } from '../functions/_shared/nhtsa.ts';
+import { clearNhtsaCache, decodeVin, enginesFor, epaEngineText, modelsFor, recallsFor } from '../functions/_shared/nhtsa.ts';
 
 const fakeFetch = (body: unknown, calls: string[] = [], status = 200) => (async (url: string) => {
   calls.push(String(url));
@@ -34,4 +34,31 @@ test('lists recalls for a year, make and model', async () => {
   assert.deepEqual(await recallsFor('', 'Honda', 'Civic', f, 0), []);
   clearNhtsaCache();
   assert.deepEqual(await recallsFor('2016', 'Honda', 'Nope', fakeFetch({}, [], 400), 0), []);
+});
+
+test('turns EPA menu text into engine labels', () => {
+  assert.equal(epaEngineText('Auto 10-spd, 6 cyl, 3.5 L, Turbo'), '3.5L 6 Cyl. Turbo');
+  assert.equal(epaEngineText('Auto (AV-S7), 4 cyl, 2.0 L'), '2.0L 4 Cyl.');
+  assert.equal(epaEngineText('Auto (AV), 4 cyl, 2.5 L, Hybrid'), '2.5L 4 Cyl. Hybrid');
+  assert.equal(epaEngineText('Auto (S8), 8 cyl, 6.2 L, SIDI; Supercharged'), '6.2L 8 Cyl. Supercharged');
+  assert.equal(epaEngineText('Auto (A1)'), '');
+});
+
+test('lists models for a make and year, and engines for a model', async () => {
+  clearNhtsaCache();
+  const models = await modelsFor('2019', 'Ford', fakeFetch({ Results: [{ Model_Name: 'F-150' }, { Model_Name: 'Escape' }, { Model_Name: 'F-150' }] }), 0);
+  assert.deepEqual(models, ['Escape', 'F-150']);
+  const calls: string[] = [];
+  const f = (async (url: string) => {
+    calls.push(String(url));
+    const body = /menu\/model\?/.test(url)
+      ? { menuItem: [{ text: 'Escape FWD', value: 'Escape FWD' }, { text: 'F150 Pickup 2WD', value: 'F150 Pickup 2WD' }, { text: 'F150 Pickup 4WD', value: 'F150 Pickup 4WD' }] }
+      : /2WD/.test(decodeURIComponent(url).replace(/\+/g, ' ')) ? { menuItem: [{ text: 'Auto 10-spd, 6 cyl, 3.5 L, Turbo', value: '1' }, { text: 'Auto 10-spd, 8 cyl, 5.0 L', value: '2' }] }
+      : { menuItem: { text: 'Auto 10-spd, 6 cyl, 2.7 L, Turbo', value: '3' } };
+    return new Response(JSON.stringify(body));
+  }) as unknown as typeof fetch;
+  assert.deepEqual(await enginesFor('2019', 'ford', 'F-150', f, 0), ['2.7L 6 Cyl. Turbo', '3.5L 6 Cyl. Turbo', '5.0L 8 Cyl.']);
+  assert.ok(calls[0].includes('make=Ford'));
+  assert.equal(calls.length, 3, 'model menu + two matching models');
+  assert.deepEqual(await enginesFor('', 'Ford', 'F-150', f, 0), []);
 });

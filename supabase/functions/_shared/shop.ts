@@ -8,7 +8,7 @@ import { salesRoute } from './shopSales.ts';
 import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, HOWTO_PRO_MESSAGE, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { howToRoute, type HowToLibrary } from './shopHowTo.ts';
-import { decodeVin, recallsFor, VIN_RE } from './nhtsa.ts';
+import { decodeVin, enginesFor, modelsFor, recallsFor, VIN_RE } from './nhtsa.ts';
 import { priceImportRoute, type PriceReader } from './shopPriceImport.ts';
 import { cleanMarks, isAngle, type DamageFinder, type WalkPhoto } from './shopDamage.ts';
 import { accountRoute, type AccountStore } from './shopAccount.ts';
@@ -523,11 +523,25 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return { status: 405 };
   }
 
-  if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan' && parts[1] !== 'howto' && parts[1] !== 'price-import' && parts[1] !== 'vin' && parts[1] !== 'recalls') return { status: 404 };
+  if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan' && parts[1] !== 'howto' && parts[1] !== 'price-import' && parts[1] !== 'vin' && parts[1] !== 'recalls' && parts[1] !== 'vehicle-options') return { status: 404 };
   const mine = await whoAmI();
   if (!mine) return { status: 409, body: 'Set up your shop first.' };
   const { shop } = mine;
   const owner = mine.seat.role === 'owner';
+
+  // Type-ahead lists for the vehicle fields: models for the make, engines for the year, make and model.
+  // A failed lookup just returns empty lists; the page still offers its built-in common makes and engines.
+  if (parts[1] === 'vehicle-options') {
+    if (method !== 'POST' || parts.length !== 2) return { status: 405 };
+    const f = deps.fetchFn ?? fetch, now = ctx.now().getTime();
+    const year = str(body.year, 4), make = str(body.make, 40), model = str(body.model, 40);
+    const safe = async (p: Promise<string[]>) => { try { return await p; } catch (error) { ctx.log.warn('Vehicle options lookup failed', { error: String(error) }); return []; } };
+    const [models, engines] = await Promise.all([
+      body.want === 'engines' ? Promise.resolve([]) : safe(modelsFor(year, make, f, now)),
+      body.want === 'models' ? Promise.resolve([]) : safe(enginesFor(year, make, model, f, now)),
+    ]);
+    return ok({ models, engines });
+  }
 
   // Free NHTSA lookups for staff: decode a VIN, and recalls for a year, make and model.
   if (parts[1] === 'vin' || parts[1] === 'recalls') {

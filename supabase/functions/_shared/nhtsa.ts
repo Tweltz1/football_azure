@@ -63,3 +63,60 @@ export async function recallsFor(year: string, make: string, model: string, fetc
     })).filter((r) => r.campaign);
   });
 }
+
+// Type-ahead help at check-in and on the How-To tab (free, no key):
+// - Models for a make (and year) from vPIC.
+// - Engines for a year, make and model from fueleconomy.gov (US EPA), whose menu text reads like
+//   "Auto 10-spd, 6 cyl, 3.5 L, Turbo". Each one becomes "3.5L 6 Cyl. Turbo", the VIN decoder's style.
+const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+const menu = (j: unknown) => {
+  const m = (j as { menuItem?: unknown })?.menuItem;
+  return (Array.isArray(m) ? m : m ? [m] : []) as { text?: string; value?: string }[];
+};
+
+export function epaEngineText(text: string): string {
+  const liters = text.match(/(\d+(?:\.\d+)?)\s*L\b/);
+  const cyl = text.match(/(\d+)\s*cyl/i);
+  const parts = [liters ? `${Number(liters[1]).toFixed(1)}L` : '', cyl ? `${cyl[1]} Cyl.` : '',
+    /turbo/i.test(text) ? 'Turbo' : /s-?charge|supercharg/i.test(text) ? 'Supercharged' : '',
+    /hybrid|\bhev\b|phev/i.test(text) ? 'Hybrid' : ''];
+  const out = parts.filter(Boolean).join(' ');
+  return out || (/electric|\bev\b|kw/i.test(text) ? 'Electric' : '');
+}
+
+export async function modelsFor(year: string, make: string, fetchFn: typeof fetch, now: number): Promise<string[]> {
+  const y = s(year, 4), mk = s(make, 40);
+  if (!mk) return [];
+  const path = /^\d{4}$/.test(y) ? `GetModelsForMakeYear/make/${encodeURIComponent(mk)}/modelyear/${y}` : `GetModelsForMake/${encodeURIComponent(mk)}`;
+  return cached(`models:${y}|${mk.toLowerCase()}`, now, async () => {
+    const res = await fetchFn(`https://vpic.nhtsa.dot.gov/api/vehicles/${path}?format=json`, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) throw new Error(`vPIC ${res.status}`);
+    const list = ((await res.json())?.Results ?? []) as Record<string, unknown>[];
+    return [...new Set(list.map((r) => s(r.Model_Name, 40)).filter(Boolean))].sort((a, b) => a.localeCompare(b)).slice(0, 400);
+  });
+}
+
+export async function enginesFor(year: string, make: string, model: string, fetchFn: typeof fetch, now: number): Promise<string[]> {
+  const y = s(year, 4), mk = title(s(make, 40)), md = norm(s(model, 40));
+  if (!/^\d{4}$/.test(y) || !mk || !md) return [];
+  return cached(`engines:${y}|${mk.toLowerCase()}|${md}`, now, async () => {
+    const get = async (path: string) => {
+      const res = await fetchFn(`https://www.fueleconomy.gov/ws/rest/vehicle/menu/${path}`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) throw new Error(`fueleconomy.gov ${res.status}`);
+      const text = await res.text();
+      return text.trim() ? menu(JSON.parse(text)) : [];
+    };
+    // EPA splits models ("F150 Pickup 2WD", "F150 Pickup 4WD"), so take every one that starts with the typed model.
+    const models = (await get(`model?${new URLSearchParams({ year: y, make: mk })}`)).map((m) => s(m.text ?? m.value, 80)).filter(Boolean);
+    const hits = models.filter((m) => norm(m).startsWith(md));
+    const pick = (hits.length ? hits : models.filter((m) => norm(m).includes(md))).slice(0, 6);
+    const engines = new Set<string>();
+    for (const m of pick) {
+      for (const o of await get(`options?${new URLSearchParams({ year: y, make: mk, model: m })}`)) {
+        const e = epaEngineText(s(o.text, 120));
+        if (e) engines.add(e);
+      }
+    }
+    return [...engines].sort((a, b) => parseFloat(a) - parseFloat(b) || a.localeCompare(b));
+  });
+}

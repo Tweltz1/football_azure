@@ -28,6 +28,7 @@
   const pricesStep = { busy: false, status: "", err: "" };
   let plan = null;
   const planUi = window.createShopPlan({ esc, api: (...a) => api(...a), toast: (m) => toast(m) });
+  window.TalkShopsVehicleOptions = (body) => api("POST", "shop/vehicle-options", body);
   const howTo = window.createShopHowTo({ esc, api: (...a) => api(...a), toast: (m) => toast(m), cars: () => (jobs || []).filter((j) => j.stage !== "picked_up" && !j.closed), locked: () => !!plan && plan.howTo === false });
   const chargeDetail = e => e.charge ? `<small class="charge-detail">${esc(billing.calculation(e.charge))}</small>` : "";
   const ts = (t) => (typeof t === "number" ? t : Date.parse(t));
