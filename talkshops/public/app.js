@@ -961,7 +961,7 @@
         if (ui.authMode === "signup") {
           const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: authRedirect() } });
           if (error) throw error;
-          if (!data.session) ui.authMsg = "Check your email for a link to finish creating your account.";
+          if (!data.session) ui.authMsg = "If a new account can be created with this email, check your inbox and spam for a confirmation link. Already signed up with Google? Choose Continue with Google. For an existing email/password account, sign in or use Forgot password.";
         } else {
           const { error } = await sb.auth.signInWithPassword({ email, password });
           if (error) throw error;
