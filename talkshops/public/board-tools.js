@@ -27,7 +27,7 @@
       button.setAttribute('aria-label', `View all vehicles in ${heading.textContent}`);
       heading.replaceWith(button); button.append(heading, count);
       const controls = document.createElement('div'); controls.className = 'stage-controls';
-      controls.innerHTML = `<label>Sort<select data-stage-sort aria-label="Sort ${heading.textContent}">${option('default','Default Order')}${option('stage','Longest in Stage')}${option('oldest','Oldest in Shop')}${option('newest','Newest Arrivals')}${option('priority','Priority First')}</select></label><label>Filter<select data-stage-filter aria-label="Filter ${heading.textContent}">${option('all','All Vehicles')}${option('required','Required Work')}${option('reply','Customer Reply')}${option('aged','In Shop 3+ Days')}</select></label><p class="stage-empty muted" hidden>No vehicles match these filters.</p>`;
+      controls.innerHTML = `<label>Sort<select data-stage-sort aria-label="Sort ${heading.textContent}">${option('default','Default Order')}${option('stage','Longest in Stage')}${option('oldest','Oldest in Shop')}${option('newest','Newest Arrivals')}${option('priority','Priority First')}</select></label><label>Filter<select data-stage-filter aria-label="Filter ${heading.textContent}">${option('all','All Vehicles')}${option('required','Required Work')}${option('reply','Customer Reply')}${option('aged',`In Shop ${app.dataset.ageOverdueDays || 3}+ Days`)}</select></label><p class="stage-empty muted" hidden>No vehicles match these filters.</p>`;
       col.querySelector('.col-h').after(controls);
       const choice = choices.get(key) || {sort:'default',filter:'all'};
       controls.querySelector('[data-stage-sort]').value = choice.sort;
@@ -63,7 +63,7 @@
       let shown = 0;
       cards.forEach(card => {
         const match = query.every(term => card.dataset.s.includes(term)) && (queue === 'all' || card.dataset.queueKey === queue);
-        const local = choice.filter === 'all' || (choice.filter === 'required' && card.dataset.priority === '0') || (choice.filter === 'reply' && card.dataset.reply === '1') || (choice.filter === 'aged' && Date.now() - +card.dataset.arrived >= 3 * 86400000);
+        const local = choice.filter === 'all' || (choice.filter === 'required' && card.dataset.priority === '0') || (choice.filter === 'reply' && card.dataset.reply === '1') || (choice.filter === 'aged' && Date.now() - +card.dataset.arrived >= Number(app.dataset.ageOverdueDays || 3) * 86400000);
         card.hidden = !(match && local); if (!card.hidden) shown++;
       });
       col.classList.remove('search-hide');

@@ -597,3 +597,27 @@ test('customer edits validate contacts and are restricted to the signed-in shop'
   assert.equal((await owner('POST', `shop/jobs/${id}/customer`, { ...customer, preference: 'email', phone: '', email: 'emailonly@example.com' }))?.status, 200);
   assert.equal(jobs.get(id)!.data.customer.phone, '');
 });
+
+test('vehicle age settings persist for the shop and survive unrelated settings saves', async () => {
+  const { as } = world();
+  const owner = as('age-owner'), other = as('other-owner');
+  const ageSettings = { warningDays:2, overdueDays:5, colors:['#123ABC','#CC7700','#DD2255'] };
+  const saved = await owner('POST','shop/me',{name:'Age Shop',ageSettings});
+  assert.equal(saved?.status,200);
+  const expected = {...ageSettings,colors:ageSettings.colors.map(c=>c.toLowerCase())};
+  assert.deepEqual((saved?.body as {shop:Shop}).shop.ageSettings,expected);
+  assert.equal((await owner('POST','shop/me',{name:'Renamed Shop'}))?.status,200);
+  assert.deepEqual(((await owner('GET','shop/me'))?.body as {shop:Shop}).shop.ageSettings,expected);
+  await other('POST','shop/me',{name:'Other Shop'});
+  assert.equal(((await other('GET','shop/me'))?.body as {shop:Shop}).shop.ageSettings,undefined);
+});
+
+test('invalid age thresholds and colors are rejected without changing saved preferences', async () => {
+  const { as } = world(); const owner=as('age-owner');
+  const good={warningDays:1,overdueDays:3,colors:['#16a36a','#e59a14','#e5484d']};
+  await owner('POST','shop/me',{name:'Age Shop',ageSettings:good});
+  for (const invalid of [null,{}, {...good,warningDays:0}, {...good,warningDays:1.5}, {...good,warningDays:366,overdueDays:400}, {...good,overdueDays:1}, {...good,overdueDays:3651}, {...good,colors:['red','orange','green']}, {...good,colors:['#112233']}, {...good,colors:['#112233','#445566','<script>']}]) {
+    assert.equal((await owner('POST','shop/me',{name:'Age Shop',ageSettings:invalid}))?.status,400);
+  }
+  assert.deepEqual(((await owner('GET','shop/me'))?.body as {shop:Shop}).shop.ageSettings,good);
+});

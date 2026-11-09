@@ -19,7 +19,9 @@ type Body = Record<string, unknown>;
 export const STAGES = ['invited', 'checked_in', 'diagnosing', 'approval', 'parts', 'in_progress', 'qc', 'ready', 'picked_up'] as const;
 export type Stage = typeof STAGES[number];
 
+export interface AgeSettings { warningDays: number; overdueDays: number; colors: string[] }
 export interface Shop {
+  ageSettings?: AgeSettings;
   smartSchedule?: { afterHours:boolean; zone:string; days:number[]; open:string; close:string; signature:string };
   smartTopics?: string[];
   id: string;
@@ -462,6 +464,12 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const name = str(body.name, 80);
       if (!name) return bad('Enter your shop name.');
       if (body.email !== undefined && str(body.email, 254) && !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(str(body.email, 254))) return bad('Enter a valid shop email, or leave it blank.');
+      let ageSettings = shop?.ageSettings;
+      if (body.ageSettings !== undefined) {
+        const a = body.ageSettings as AgeSettings | null;
+        if (!a || !Number.isInteger(a.warningDays) || a.warningDays < 1 || a.warningDays > 365 || !Number.isInteger(a.overdueDays) || a.overdueDays <= a.warningDays || a.overdueDays > 3650 || !Array.isArray(a.colors) || a.colors.length !== 3 || !a.colors.every(c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c))) return bad('Choose whole-day thresholds with overdue after warning, and three valid colors.');
+        ageSettings = { warningDays:a.warningDays, overdueDays:a.overdueDays, colors:a.colors.map(c => c.toLowerCase()) };
+      }
       const rates = body.rates ?? shop?.rates ?? [];
       if (!Array.isArray(rates) || rates.length > 250 || !rates.every(validRate)) return bad('Check your rate list (up to 250 rates).');
       let smartSchedule:Shop['smartSchedule'];
@@ -480,7 +488,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         }
       }
       const next: Shop = {
-        smartTopics, smartSchedule,
+        ageSettings, smartTopics, smartSchedule,
         id: shop?.id ?? ctx.newId(),
         ownerId: shop?.ownerId ?? ctx.userId, rates: rates.map(copyRate),
         name,

@@ -528,6 +528,7 @@
       <div class="btn-row">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>`<label><input type="checkbox" name="sr-day" value="${i+1}" ${(s.smartSchedule?.days||[1,2,3,4,5]).includes(i+1)?"checked":""}>${d}</label>`).join("")}</div>
       <div class="btn-row"><label>Opens <input type="time" id="sr-open" value="${esc(s.smartSchedule?.open || "08:00")}"></label><label>Closes <input type="time" id="sr-close" value="${esc(s.smartSchedule?.close || "17:00")}"></label></div></details><a href="/demo.html?smart=1" target="_blank" rel="noopener">Try sample customer texts</a></fieldset>` : ""}
       <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
+      ${firstTime ? "" : window.BayAge.fields(s)}
       ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Saved items: labor, parts and fees (import Excel or CSV)</button>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
     </form>${firstTime ? "" : team.panel(render) + recoveryPanel()}</div>`;
@@ -559,6 +560,7 @@
   }
 
   function boardView() {
+    window.BayAge.apply(shop);
     const active = jobs.filter((j) => j.stage !== "picked_up" && !j.closed);
     const inShop = active.filter(j => j.stage !== "invited");
     const picked = jobs.filter((j) => j.stage === "picked_up" && !j.closed).length;
@@ -573,7 +575,7 @@
     let h = `<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${inShop.length} car${inShop.length === 1 ? "" : "s"} in the shop · ${sent} update${sent === 1 ? "" : "s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check In Vehicle</button></div>
       <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q || "")}" autocomplete="off"></label>
       <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key, label, count]) => `<button type="button" class="qf ${key === "approval" ? "warn" : key === "ready" ? "ok" : ""}" data-queue="${key}" aria-pressed="${key === (ui.queue || "all")}">${label}<b>${count}</b></button>`).join("")}</div></div>
-      <div class="age-key" aria-label="Time in shop"><span class="age-ok">Under 1 day</span><span class="age-mid">1 to 3 days</span><span class="age-old">Over 3 days</span></div>
+      ${window.BayAge.legend(shop)}
       <p class="board-none muted" id="boardNone" hidden></p>
       <div class="board-wrap"><div class="board">`;
     STAGES.filter((s) => s.key !== "picked_up").forEach((s) => {
@@ -608,8 +610,8 @@
   const bayName = () => (shop && shop.name ? shop.name + " Bay" : "Shop bay");
   // Time in the shop since check-in: green under a day, amber 1 to 3 days, red after that.
   function ageOf(j) {
-    const start = ts(j.createdAt || j.events[0]?.t), hrs = (Date.now() - start) / 3600000;
-    return { label: since(start), cls: hrs < 24 ? "age-ok" : hrs < 72 ? "age-mid" : "age-old" };
+    const start = ts(j.createdAt || j.events[0]?.t);
+    return { label: since(start), cls: window.BayAge.bucket(start, shop) };
   }
   // Filters cards in place, so typing never re-renders the board or drops the keyboard.
   function filterBoard() {
@@ -1126,7 +1128,9 @@
       return;
     }
     if (f.id === "setupForm") {
-      const body = { name: $("#sh-name").value, phone: $("#sh-phone").value, hours: $("#sh-hours").value, email: $("#sh-email").value };
+      const ageSettings = f.querySelector(".age-settings") ? window.BayAge.read(f) : undefined;
+      if (ageSettings === null) return;
+      const body = { ageSettings, name: $("#sh-name").value, phone: $("#sh-phone").value, hours: $("#sh-hours").value, email: $("#sh-email").value };
       if($("#sr-zone")) body.smartSchedule={afterHours:$("#sr-after").checked,zone:$("#sr-zone").value,days:Array.from(f.querySelectorAll('[name="sr-day"]:checked'),e=>Number(e.value)),open:$("#sr-open").value,close:$("#sr-close").value,signature:$("#sr-sign").value};
       if(f.querySelector('[name="smartTopic"]')) body.smartTopics=Array.from(f.querySelectorAll('[name="smartTopic"]:checked'),el=>el.value);
       const r = await act(() => api("POST", "shop/me", body), "Saved");
