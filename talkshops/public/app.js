@@ -331,13 +331,13 @@
     if (q.has("join")) { q.delete("join"); history.replaceState(history.state, "", (pathView() ? location.pathname : "/") + (q.toString() ? "?" + q : "") + location.hash); }
   }
 
-  let crew = [], myId = null;
+  let crew = [], myId = null, myName = "";
   async function loadShop() {
     try {
       await acceptInvite();
       const me = await api("GET", "shop/me");
       shop = me.shop; emailConfigured = !!me.emailConfigured; plan = me.plan || null;
-      role = me.role || null; mainOwner = !!me.mainOwner; crew = me.crew || []; myId = me.me || null;
+      role = me.role || null; mainOwner = !!me.mainOwner; crew = me.crew || []; myId = me.me || null; myName = me.myName || "";
       jobs = shop ? await api("GET", "shop/jobs") : [];
       window.Workday?.watch(jobs);
       loadErr = "";
@@ -400,6 +400,8 @@
     $("#shopName").textContent = shop.name + (isOwner() ? "" : " · Technician");
     const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "")
       + (join.err ? `<div class="notice">${esc(join.err)}</div>` : "")
+      // Until someone saves a name, the Technician list shows the start of their email.
+      + (!myName && (ui.view === "board" || ui.view === "settings") ? `<form class="notice name-ask" id="myNameForm"><span><b>Add your name</b> so your team sees who's working on each car.</span><input id="myNameIn" maxlength="60" placeholder="e.g. Sam Lee" autocomplete="name" aria-label="Your name" required><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Save</button></form>` : "")
       + (ui.view === "plan" || ui.view === "training" || ui.view === "help" ? "" : isOwner() ? planUi.banner(plan) : techBanner(plan));
     app.innerHTML = err + (ui.view === "help" ? helpView() : ui.view === "checkin" ? checkinView() : ui.view === "settings" ? (isOwner() ? setupView(false) : techSettingsView()) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : ui.view === "prices" && isOwner() ? pricesView() : boardView());
     if (ui.view === "board") filterBoard();
@@ -1127,6 +1129,12 @@
   document.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target;
+    if (f.id === "myNameForm") {
+      const name = ($("#myNameIn")?.value || "").trim();
+      const r = await act(() => api("POST", "shop/staff/my-name", { name }), "Name saved");
+      if (r) { myName = r.name; try { crew = (await api("GET", "shop/me")).crew || crew; } catch {} render(); }
+      return;
+    }
     if (f.id === "helpForm") {
       const button = f.querySelector('[type="submit"]'), status = $("#helpStatus");
       if (button.disabled) return;

@@ -603,6 +603,10 @@ export function createStaffStore(db: SupabaseClient): StaffStore {
       const { error } = await db.from('repair_shop_members').update({ role }).eq('shop_id', shopId).eq('user_id', userId);
       if (error) throw error;
     },
+    async setName(shopId, userId, name) {
+      const { error } = await db.from('repair_shop_members').update({ name }).eq('shop_id', shopId).eq('user_id', userId);
+      if (error) throw error;
+    },
     async removeMember(shopId, userId) {
       const { error } = await db.from('repair_shop_members').delete().eq('shop_id', shopId).eq('user_id', userId);
       if (error) throw error;

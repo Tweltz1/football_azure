@@ -579,7 +579,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (method === 'GET') {
       if (shop) await store.purgeArchive?.(shop.id, archiveCutoff(ctx.now())).catch((e) => ctx.log.warn('archive purge failed', { error: String(e) }));
       return ok({ shop: shop && publicShop(shop), role: mine?.seat.role ?? null, mainOwner: mine?.seat.primary ?? false, emailConfigured: !!deps.email, plan: shop ? await planOut(deps, shop, ctx.now()) : null,
-        me: ctx.userId, crew: shop ? await crewOf(deps, shop, ctx) : [] });
+        me: ctx.userId, crew: shop ? await crewOf(deps, shop, ctx) : [],
+        myName: shop ? ((await deps.staff?.listMembers(shop.id).catch(() => []))?.find((m) => m.userId === ctx.userId)?.name || '') : '' });
     }
     if (method === 'POST') {
       if (mine && mine.seat.role !== 'owner') return ownerOnly();

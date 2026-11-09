@@ -32,6 +32,7 @@ function world() {
     async listMembers(shopId) { return [...members.values()].filter((m) => m.shopId === shopId).map(clone); },
     async addMember(m) { if (members.has(m.userId)) return false; members.set(m.userId, clone(m)); return true; },
     async setRole(shopId, u, role) { const m = members.get(u); if (m?.shopId === shopId) m.role = role; },
+    async setName(shopId, u, name) { const m = members.get(u); if (m?.shopId === shopId) m.name = name; },
     async removeMember(shopId, u) { if (members.get(u)?.shopId === shopId) members.delete(u); },
     async saveInvite(i) { invites.push(clone(i)); },
     async listInvites(shopId) { return invites.filter((i) => i.shopId === shopId && !i.acceptedAt).reverse().map(clone); },
@@ -206,4 +207,21 @@ test('Starter counts the primary owner and pending invitations in staff and owne
   const id=(invite?.body as {invites:{id:string}[]}).invites[0].id;
   assert.equal((await owner('DELETE','shop/staff/invites/'+id))?.status,200);
   assert.equal((await owner('POST','shop/staff/members/tech1',{role:'owner'}))?.status,200);
+});
+
+test('team members set their own name, and it shows in the crew list', async () => {
+  const { w, owner, tech } = await shopWithTech();
+  const before = (await owner('GET', 'shop/me'))?.body as { myName: string };
+  assert.equal(before.myName, '');
+  assert.equal((await tech('POST', 'shop/staff/my-name', { name: 'tech@shop.com' }))?.status, 400);
+  assert.equal((await tech('POST', 'shop/staff/my-name', { name: '  Sam   Lee-Ortiz ' }))?.status, 200);
+  assert.equal(w.members.get('tech1')?.name, 'Sam Lee-Ortiz');
+  assert.equal((await owner('POST', 'shop/staff/my-name', { name: 'Tyler' }))?.status, 200);
+  const me = (await owner('GET', 'shop/me'))?.body as { myName: string; crew: { id: string; name: string }[] };
+  assert.equal(me.myName, 'Tyler');
+  assert.deepEqual(me.crew.map((c) => c.name).sort(), ['Sam Lee-Ortiz', 'Tyler']);
+  // A legacy main owner with no member row gets one.
+  w.shops.set('old', { id: 'old', ownerId: 'legacy', name: 'Old Shop', phone: '', hours: '', createdAt: '2026-01-01T00:00:00Z' } as never);
+  assert.equal((await w.as('legacy', 'legacy@shop.com')('POST', 'shop/staff/my-name', { name: 'Pat' }))?.status, 200);
+  assert.equal(w.members.get('legacy')?.role, 'owner');
 });

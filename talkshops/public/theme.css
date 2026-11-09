@@ -691,3 +691,9 @@ main:has(.queue-top) .board.stage-focused>.col:not([hidden]){display:grid;grid-t
   main .training{max-width:none}
   main .help-center{max-width:1400px}
 }
+
+/* "Add your name" prompt above the Bay until a team member saves one */
+.notice.name-ask{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.notice.name-ask span{flex:1 1 260px}
+.notice.name-ask input{flex:0 1 220px;min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--surface);color:var(--fg)}
+.notice.name-ask .btn{min-height:36px}

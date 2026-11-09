@@ -26,6 +26,8 @@ export interface StaffStore {
   /** Adds the account to a shop. False when the account already belongs to one. */
   addMember(m: Member): Promise<boolean>;
   setRole(shopId: string, userId: string, role: Role): Promise<void>;
+  /** Changes the name the team sees for one member. */
+  setName?(shopId: string, userId: string, name: string): Promise<void>;
   removeMember(shopId: string, userId: string): Promise<void>;
   saveInvite(inv: Invite): Promise<void>;
   /** Invites not yet accepted, newest first (expired ones included, so owners can see and resend them). */
@@ -132,6 +134,18 @@ export async function staffRoute(
   if (!ctx.userId) return { status: 401, body: 'Sign in first.' };
   const me = await whoAmI();
   if (!me) return { status: 409, body: 'Set up your shop first.' };
+
+  // Anyone on the team sets their own name (shown in the Technician list and on notes). The main owner of an
+  // older shop may have no member row yet, so one is added for them.
+  if (parts[2] === 'my-name' && parts.length === 3 && method === 'POST') {
+    const name = str(body.name, 60).replace(/\s+/g, ' ');
+    if (name.length < 2) return bad('Enter your name.');
+    if (/@/.test(name)) return bad('Enter your name, not your email.');
+    const mine = (await store.listMembers(me.shop.id)).find((m) => m.userId === ctx.userId);
+    if (mine) { if (!store.setName) return { status: 503, body: 'Names can’t be saved right now.' }; await store.setName(me.shop.id, ctx.userId, name); }
+    else await store.addMember({ userId: ctx.userId, shopId: me.shop.id, role: me.seat.role, email: (ctx.userEmail ?? '').toLowerCase(), name, addedAt: now });
+    return ok({ name });
+  }
   if (me.seat.role !== 'owner') return ownerOnly();
   const { shop } = me;
 
