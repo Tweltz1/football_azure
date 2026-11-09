@@ -670,3 +670,22 @@ main:has(.queue-top) .board.stage-focused>.col:not([hidden]){display:grid;grid-t
 .urgency-pick .urg-medium input:checked+span{background:var(--warn);border-color:var(--warn);color:var(--surface)}
 .urgency-pick .urg-low input:checked+span{background:var(--muted);border-color:var(--muted);color:var(--surface)}
 .urgency-pick .urg-none input:checked+span{background:var(--fg);border-color:var(--fg);color:var(--surface)}
+
+/* Wide screens: settings and other pages use the room beside them. Phones keep the single column. */
+@media (min-width:1100px){
+  .settings-wrap{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;align-items:start;max-width:none}
+  .settings-wrap>.panel{max-width:none;margin-top:0!important}
+  .settings-wrap>:first-child{grid-column:1;grid-row:1 / span 6}
+  .settings-wrap>:not(:first-child){grid-column:2}
+  #setupForm.panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 18px;align-content:start}
+  #setupForm.panel>*{grid-column:1/-1}
+  #setupForm.panel>label.field{grid-column:auto}
+  #setupForm.panel>.btn{justify-self:start}
+  main .plan-page{max-width:1100px}
+  main .archive{max-width:none}
+  main .archive-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:12px}
+  main .archive-list>li{min-width:0}
+  main .howto{max-width:1100px}
+  main .training{max-width:none}
+  main .help-center{max-width:1400px}
+}

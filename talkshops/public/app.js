@@ -532,7 +532,7 @@
 
   function setupView(firstTime) {
     const s = shop || {};
-    return `<div class="${firstTime ? "login-wrap" : ""}"><form class="${firstTime ? "login" : "panel"}" id="setupForm">
+    return `<div class="${firstTime ? "login-wrap" : "settings-wrap"}"><form class="${firstTime ? "login" : "panel"}" id="setupForm">
       ${firstTime ? brand() : ""}
       ${firstTime && join.err ? `<p class="form-err" role="alert">${esc(join.err)}</p><p class="muted" style="margin:0">Joining someone else's shop? Ask the owner to send a new invite to the email you signed in with. Or set up your own shop below.</p>` : ""}
       <h2>${firstTime ? "Set up your shop" : "Shop Settings"}</h2>
@@ -566,7 +566,7 @@
   function techSettingsView() {
     const s = shop || {};
     const row = (k, v) => v ? `<div class="ro-row"><span class="muted">${k}</span><b>${esc(v)}</b></div>` : "";
-    return `<div><section class="panel" style="display:flex;flex-direction:column;gap:10px">
+    return `<div class="settings-wrap"><section class="panel" style="display:flex;flex-direction:column;gap:10px">
       <h2>Shop Settings</h2>
       ${row("Shop name", s.name)}${row("Shop phone", s.phone)}${row("Hours", s.hours)}${row("Shop email", s.email)}
       <p class="muted" style="margin:0">You're signed in as a <b>technician</b>. A shop owner can change these details, prices, the plan and the team.</p>
