@@ -59,7 +59,13 @@ async function fromOsm(lat: number, lon: number): Promise<NearbyStore[]> {
         body: `data=${encodeURIComponent(query)}`,
       });
       if (res.ok) {
-        body = await res.json();
+        const json = await res.json();
+        // Overpass reports timeouts and query errors as a "remark" on an otherwise empty 200 reply.
+        if (json.remark && !json.elements?.length) {
+          errors.push(`${new URL(server).host} ${String(json.remark).slice(0, 120)}`);
+          continue;
+        }
+        body = json;
         break;
       }
       errors.push(`${new URL(server).host} ${res.status}`);

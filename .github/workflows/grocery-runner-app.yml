@@ -89,6 +89,10 @@ jobs:
               --data-urlencode "sql=$SQL" | python3 -c 'import json,sys; [print(r.get("t"), str(r.get("event_message"))[:300]) for r in json.load(sys.stdin).get("result", [])]' || true
             exit 1; }
           cat nearby.json | python3 -c 'import json,sys,collections; d=json.load(sys.stdin); print(len(d), "stores near Madison:", dict(collections.Counter(s["chain"] for s in d)))'
+          # The same Overpass query straight from this runner, to tell Overpass problems from function problems.
+          Q='[out:json][timeout:20];nwr["shop"~"^(supermarket|wholesale|department_store)$"]["name"~"aldi|woodman",i](around:15000,43.0731,-89.4012);out tags center 50;'
+          curl -sS -A "GroceryRunner/1.0 (+https://github.com/Tweltz1/football_azure)" -H "Accept: application/json" \
+            --data-urlencode "data=$Q" https://overpass-api.de/api/interpreter | head -c 600; echo
           curl -fsS "${H[@]}" -H "Content-Type: application/json" -d '{"action":"aisles","store":"woodmans:osm-test","items":["milk"]}' "$FN"; echo
 
   build:
