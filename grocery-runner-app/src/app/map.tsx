@@ -88,7 +88,15 @@ export default function MapScreen() {
   };
 
   const shopHere = (s: MapStore) => {
-    setStore({ id: s.key, chain: s.chain, name: s.name, address: s.address || undefined, aisleCount: chainInfo(s.chain).aisles });
+    setStore({
+      id: s.key,
+      chain: s.chain,
+      name: s.name,
+      address: s.address || undefined,
+      aisleCount: chainInfo(s.chain).aisles,
+      lat: s.lat,
+      lon: s.lon,
+    });
     router.dismissAll();
   };
 

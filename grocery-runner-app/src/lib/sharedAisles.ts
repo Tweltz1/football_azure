@@ -19,12 +19,19 @@ export async function fetchSharedAisles(store: Store, names: string[]): Promise<
   return out;
 }
 
-export function voteAisle(store: Store, item: string, device: string, location: ItemLocation) {
+/** `learned` = from check-off order (half a vote, never replaces this phone's typed answer). */
+export function voteAisle(
+  store: Store,
+  item: string,
+  device: string,
+  location: ItemLocation,
+  kind: 'typed' | 'learned' = 'typed',
+) {
   if (location.kind === 'unknown') return Promise.resolve();
   const body =
     location.kind === 'aisle'
-      ? { action: 'vote', store: store.id, item, device, aisle: location.aisle }
-      : { action: 'vote', store: store.id, item, device, department: location.department };
+      ? { action: 'vote', store: store.id, item, device, kind, aisle: location.aisle }
+      : { action: 'vote', store: store.id, item, device, kind, department: location.department };
   return callBackend({ body }).then(() => undefined);
 }
 

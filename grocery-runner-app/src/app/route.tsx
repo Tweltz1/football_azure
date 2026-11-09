@@ -1,21 +1,91 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import * as Location from 'expo-location';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { StoreMap } from '../components/StoreMap';
 import { Card, tap } from '../components/ui';
+import { metresBetween } from '../lib/chainMatch';
 import { locationLabel } from '../lib/labels';
+import { Checkoff, learnFromTrip } from '../lib/learnAisles';
+import { isShared, voteAisle } from '../lib/sharedAisles';
+import { ListItem, Store } from '../lib/types';
 import { planRoute } from '../lib/routing/planRoute';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
 
 const FEET_PER_CELL = 5;
+// About 500 ft: big-box stores plus GPS error, but not the house down the road.
+const IN_STORE_M = 150;
+
+/** True when the phone is at the store. Needs location permission and a store picked on the map. */
+async function atStore(store: Store): Promise<boolean> {
+  if (store.lat == null || store.lon == null) return false;
+  try {
+    const { granted } = await Location.getForegroundPermissionsAsync();
+    if (!granted) return false;
+    const pos =
+      (await Location.getLastKnownPositionAsync({ maxAge: 60_000, requiredAccuracy: 200 })) ??
+      (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+    return metresBetween({ lat: pos.coords.latitude, lon: pos.coords.longitude }, { lat: store.lat, lon: store.lon }) <= IN_STORE_M;
+  } catch {
+    return false;
+  }
+}
+
+/** Notes when and where an item was checked off (time first, then the slower GPS check). */
+function recordCheckoff(log: Map<string, Checkoff>, item: ListItem, store: Store) {
+  const at = Date.now();
+  const aisle = knownAisle(item);
+  atStore(store).then((inStore) => log.set(item.id, { itemId: item.id, name: item.name, at, aisle, inStore }));
+}
+
+const knownAisle = (i: ListItem) =>
+  i.location.kind === 'aisle' && i.location.source !== 'guess' ? i.location.aisle : undefined;
 
 export default function RouteScreen() {
   const t = useTheme();
-  const { items, store, coldLast, setColdLast, toggleItem } = useData();
+  const { items, store, coldLast, setColdLast, toggleItem, deviceId } = useData();
   // Plan once from the items left when the screen opens, so checking items off doesn't reshuffle the walk.
   const [snapshot] = useState(() => items.filter((i) => !i.checked));
   const route = useMemo(() => planRoute(snapshot, store?.aisleCount ?? 20, { coldLast }), [snapshot, store, coldLast]);
+
+  // Learning aisles from check-off order (rules in lib/learnAisles.ts). Only for shared stores
+  // picked on the map, so we know where the store is.
+  const learning = isShared(store) && store.lat != null;
+  const checkoffs = useRef(new Map<string, Checkoff>());
+  const latest = useRef({ items, store, deviceId });
+  useEffect(() => {
+    latest.current = { items, store, deviceId };
+  });
+
+  useEffect(() => {
+    if (learning) Location.requestForegroundPermissionsAsync().catch(() => {});
+  }, [learning]);
+
+  // When the shopper leaves the Route screen, turn the trip into learned aisle votes.
+  useEffect(() => {
+    const log = checkoffs.current;
+    return () => {
+      const { items: now, store: s, deviceId: device } = latest.current;
+      if (!isShared(s)) return;
+      for (const l of learnFromTrip([...log.values()])) {
+        const item = now.find((i) => i.id === l.itemId);
+        if (!item || (item.location.kind !== 'unknown' && item.location.source === 'user')) continue;
+        voteAisle(s, item.name, device, { kind: 'aisle', aisle: l.aisle, source: 'community' }, 'learned').catch(() => {});
+      }
+    };
+  }, []);
+
+  const toggle = (item: ListItem) => {
+    const nowChecked = !item.checked;
+    toggleItem(item.id);
+    if (!learning || !store) return;
+    if (!nowChecked) {
+      checkoffs.current.delete(item.id);
+      return;
+    }
+    recordCheckoff(checkoffs.current, item, store);
+  };
 
   const checked = new Set(items.filter((i) => i.checked).map((i) => i.id));
   const done = new Set(route.stops.flatMap((s, i) => (s.items.every((it) => checked.has(it.id)) ? [i] : [])));
@@ -57,7 +127,7 @@ export default function RouteScreen() {
                 accessibilityState={{ checked: checked.has(it.id) }}
                 onPress={() => {
                   tap();
-                  toggleItem(it.id);
+                  toggle(items.find((i) => i.id === it.id) ?? it);
                 }}
                 style={styles.itemRow}
               >

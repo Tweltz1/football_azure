@@ -16,7 +16,7 @@ export async function sharedAisles(store: unknown, items: unknown) {
   const keys = [...new Set(items.filter((i) => typeof i === 'string').map(itemKey).filter(Boolean))].slice(0, 100);
   if (!keys.length) return {};
   const q = new URLSearchParams({
-    select: 'item_key,aisle,department,updated_at',
+    select: 'item_key,aisle,department,updated_at,kind',
     store_key: `eq.${storeKey}`,
     item_key: `in.(${keys.map(quote).join(',')})`,
   });
@@ -33,6 +33,21 @@ export async function voteAisle(body: Record<string, unknown>) {
   const department =
     typeof body.department === 'string' && DEPARTMENTS.includes(body.department) ? body.department : null;
   if (!storeKey || !item || !device || (!aisle && !department)) throw new Error('Invalid aisle report.');
+  const kind = body.kind === 'learned' ? 'learned' : 'typed';
+
+  // A learned guess never replaces something this phone typed in.
+  if (kind === 'learned') {
+    const q = new URLSearchParams({
+      select: 'kind',
+      store_key: `eq.${storeKey}`,
+      item_key: `eq.${item}`,
+      device_id: `eq.${device}`,
+    });
+    const existing = await fetch(`${TABLE}?${q}`, { headers: auth });
+    if (existing.ok && ((await existing.json()) as { kind: string }[]).some((r) => r.kind !== 'learned')) {
+      return { ok: true, skipped: true };
+    }
+  }
 
   const res = await fetch(`${TABLE}?on_conflict=store_key,item_key,device_id`, {
     method: 'POST',
@@ -43,6 +58,7 @@ export async function voteAisle(body: Record<string, unknown>) {
       device_id: device,
       aisle,
       department,
+      kind,
       updated_at: new Date().toISOString(),
     }),
   });
