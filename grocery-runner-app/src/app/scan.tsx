@@ -48,7 +48,9 @@ export default function ScanScreen() {
 
   const submitText = () => {
     const v = text.trim();
-    if (/^https?:\/\/\S+$/i.test(v)) read({ url: v });
+    // Links shared from Safari or a recipe app often come with the page title around them.
+    const url = v.match(/https?:\/\/[^\s<>"]+/i)?.[0];
+    if (url && v.split(/\r?\n/).filter((l) => l.trim()).length <= 3) read({ url: url.replace(/[).,]+$/, '') });
     else read({ text: v });
   };
 

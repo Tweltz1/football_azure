@@ -218,7 +218,7 @@ export function parseRecipePage(html: string): ParsedRecipe {
       }
     } catch {}
   }
-  const title = decode(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '').split(/[|–-]/)[0];
+  const title = decode(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '').split(/\s[|–—-]\s|\|/)[0];
   const text = html
     .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<(br|\/p|\/li|\/h\d|\/div|\/tr)[^>]*>/gi, '\n');

@@ -22,10 +22,14 @@ export default function RecipeScreen() {
 
   if (!recipe) return null;
 
-  const chosen = newItems(
-    recipe.items.filter((_, n) => picked.has(n)).map((i) => i.item),
-    items.filter((i) => !i.checked).map((i) => i.name),
+  const chosenNames = new Set(
+    newItems(
+      recipe.items.filter((_, n) => picked.has(n)).map((i) => i.item),
+      items.filter((i) => !i.checked).map((i) => i.name),
+    ).map(itemKey),
   );
+  // One entry per new item, with the recipe's amount so the list can show it.
+  const chosen = recipe.items.filter((it, n) => picked.has(n) && chosenNames.delete(itemKey(it.item)));
   const toggle = (n: number) => {
     tap();
     setPicked((s) => {
@@ -37,7 +41,7 @@ export default function RecipeScreen() {
   };
 
   const add = (then: 'list' | 'suggest') => {
-    addItems(chosen);
+    addItems(chosen.map((it) => ({ name: it.item, amount: it.amount })));
     if (then === 'suggest') router.push('/suggest');
     else router.dismissTo('/');
   };

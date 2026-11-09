@@ -34,17 +34,26 @@ type Ctx = Data & {
   ready: boolean;
   addItem: (name: string) => void;
   /** Adds several items at once (a recipe) and looks their aisles up together. */
-  addItems: (names: string[]) => void;
+  addItems: (entries: (string | NewItem)[]) => void;
+  /** Changes an item's name; its aisle is looked up again for the new name. */
+  renameItem: (id: string, name: string) => void;
+  /** The items removed most recently (one swipe, or "Clear checked"), for Undo. */
+  lastRemoved: Removed | null;
+  undoRemove: () => void;
   saveRecipe: (recipe: Recipe) => void;
   deleteRecipe: (id: string) => void;
   removeItem: (id: string) => void;
   toggleItem: (id: string) => void;
   /** The shopper's own answer: remembered here and, for real stores, shared with other shoppers. */
-  setLocation: (id: string, location: ItemLocation) => void;
+  setLocation: (id: string, location: ItemLocation, name?: string) => void;
   clearChecked: () => void;
   setStore: (store: Store) => void;
   setColdLast: (on: boolean) => void;
 };
+
+/** An item to add, with the amount a recipe calls for. */
+export type NewItem = { name: string; amount?: string };
+type Removed = { items: { item: ListItem; index: number }[]; at: number };
 
 const StoreContext = createContext<Ctx | null>(null);
 
@@ -148,14 +157,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   const addItems = useCallback(
-    (names: string[]) => {
+    (entries: (string | NewItem)[]) => {
       const store = data.store;
-      const added: ListItem[] = names
-        .map((n) => n.trim())
-        .filter(Boolean)
-        .map((name) => ({
+      const added: ListItem[] = entries
+        .map((e) => (typeof e === 'string' ? { name: e } : e))
+        .map((e) => ({ name: e.name.trim(), amount: e.amount?.trim() || undefined }))
+        .filter((e) => e.name)
+        .map(({ name, amount }) => ({
           id: newId(),
           name,
+          ...(amount ? { amount } : {}),
           checked: false,
           location: (store && data.remembered[store.id]?.[itemKey(name)]) || { kind: 'unknown' },
         }));
@@ -166,9 +177,52 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [data.store, data.remembered, resolve],
   );
 
-  const setLocation = useCallback(
-    (id: string, location: ItemLocation) => {
+  const renameItem = useCallback(
+    (id: string, name: string) => {
+      const trimmed = name.trim().slice(0, 80);
       const item = data.items.find((i) => i.id === id);
+      if (!trimmed || !item || trimmed === item.name) return;
+      const store = data.store;
+      const sameThing = itemKey(trimmed) === itemKey(item.name);
+      // A new name is a different product: start from what this shopper set for it, then look it up.
+      const location: ItemLocation = sameThing
+        ? item.location
+        : (store && data.remembered[store.id]?.[itemKey(trimmed)]) || { kind: 'unknown' };
+      const renamed: ListItem = { ...item, name: trimmed, location };
+      setData((d) => ({ ...d, items: d.items.map((i) => (i.id === id ? renamed : i)) }));
+      if (store && location.kind === 'unknown') resolve(store, [renamed]);
+    },
+    [data.items, data.store, data.remembered, resolve],
+  );
+
+  const [lastRemoved, setLastRemoved] = useState<Removed | null>(null);
+  const removeWhere = useCallback((gone: (i: ListItem) => boolean) => {
+    setData((d) => {
+      const removed = d.items.flatMap((item, index) => (gone(item) ? [{ item, index }] : []));
+      if (removed.length) setLastRemoved({ items: removed, at: Date.now() });
+      return removed.length ? { ...d, items: d.items.filter((i) => !gone(i)) } : d;
+    });
+  }, []);
+  const undoRemove = useCallback(() => {
+    setLastRemoved((r) => {
+      if (r) {
+        setData((d) => {
+          const items = [...d.items];
+          for (const { item, index } of r.items) {
+            if (!items.some((i) => i.id === item.id)) items.splice(Math.min(index, items.length), 0, item);
+          }
+          return { ...d, items };
+        });
+      }
+      return null;
+    });
+  }, []);
+
+  const setLocation = useCallback(
+    (id: string, location: ItemLocation, name?: string) => {
+      // `name` is the item's new name when it is renamed in the same step.
+      const found = data.items.find((i) => i.id === id);
+      const item = found && name?.trim() ? { ...found, name: name.trim() } : found;
       const store = data.store;
       if (item && isShared(store)) voteAisle(store, item.name, data.deviceId, location).catch(() => {});
       setData((d) => {
@@ -201,18 +255,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ready,
       addItem,
       addItems,
+      renameItem,
+      lastRemoved,
+      undoRemove,
       setLocation,
       setStore,
       saveRecipe: (recipe) =>
         setData((d) => ({ ...d, myRecipes: [recipe, ...d.myRecipes.filter((r) => r.id !== recipe.id)].slice(0, 50) })),
       deleteRecipe: (id) => setData((d) => ({ ...d, myRecipes: d.myRecipes.filter((r) => r.id !== id) })),
-      removeItem: (id) => setData((d) => ({ ...d, items: d.items.filter((i) => i.id !== id) })),
+      removeItem: (id) => removeWhere((i) => i.id === id),
       toggleItem: (id) =>
         setData((d) => ({ ...d, items: d.items.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)) })),
-      clearChecked: () => setData((d) => ({ ...d, items: d.items.filter((i) => !i.checked) })),
+      clearChecked: () => removeWhere((i) => i.checked),
       setColdLast: (coldLast) => setData((d) => ({ ...d, coldLast })),
     }),
-    [data, ready, addItem, addItems, setLocation, setStore],
+    [data, ready, addItem, addItems, renameItem, lastRemoved, undoRemove, removeWhere, setLocation, setStore],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
