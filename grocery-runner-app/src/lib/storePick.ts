@@ -80,6 +80,8 @@ export const toStore = (s: MapStore): Store => ({
   name: s.name,
   address: s.address || undefined,
   aisleCount: chainInfo(s.chain).aisles,
+  lat: s.lat,
+  lon: s.lon,
 });
 
 /** Checks stock at nearby Kroger stores and shared aisles at the others, then ranks them. */

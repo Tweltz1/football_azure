@@ -47,6 +47,9 @@ export type Store = {
   address?: string;
   /** Number of numbered aisles, used to build the generic grid layout. */
   aisleCount: number;
+  /** Where the store is, when it was picked on the map. Used to tell if the shopper is inside it. */
+  lat?: number;
+  lon?: number;
 };
 
 export type Cell = { x: number; y: number };

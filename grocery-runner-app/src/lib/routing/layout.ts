@@ -1,3 +1,4 @@
+import type { StoreProfile } from '../storeProfile';
 import { Cell, Department, ItemLocation } from '../types';
 import { StoreGrid } from './grid';
 
@@ -15,6 +16,11 @@ import { StoreGrid } from './grid';
  *
  * Aisle 1 sits on the left next to dairy and is used for frozen when an item
  * has no aisle number. Numbered aisles run front to back.
+ *
+ * Two things can adjust it per store:
+ * - `profile`: departments shoppers have placed in numbered aisles move there (storeProfile.ts).
+ * - `mirror`: the whole plan flipped left to right, for stores whose entrance is on the left
+ *   (from the building outline, footprint.ts). The grid itself is symmetric, so only cells move.
  */
 export type StoreLayout = {
   grid: StoreGrid;
@@ -32,7 +38,9 @@ const FRONT_ROWS = 2; // y = 0 and 1 are the front cross-aisle
 const SHELF_LENGTH = 12; // cells per aisle run
 export const MAX_BAY = SHELF_LENGTH;
 
-export function buildGenericLayout(aisleCount: number): StoreLayout {
+export type LayoutOptions = { profile?: StoreProfile; mirror?: boolean };
+
+export function buildGenericLayout(aisleCount: number, opts: LayoutOptions = {}): StoreLayout {
   const n = Math.max(1, Math.floor(aisleCount));
   // x: 0 dairy wall, 1 left walkway, then shelf/aisle pairs, right walkway, produce wall.
   const width = 2 * n + 5;
@@ -53,38 +61,45 @@ export function buildGenericLayout(aisleCount: number): StoreLayout {
   // Gondolas: even x between the aisles, from x = 2 to x = 2n + 2.
   for (let x = 2; x <= 2 * n + 2; x += 2) grid.blockRect(x, shelfTop, x, shelfBottom);
 
+  const m = (c: Cell): Cell => (opts.mirror ? { x: width - 1 - c.x, y: c.y } : c);
+
   const aisleCell = (aisle: number, bay = Math.ceil(SHELF_LENGTH / 2)): Cell => {
     const a = Math.min(Math.max(1, Math.round(aisle)), n);
     const b = Math.min(Math.max(1, Math.round(bay)), SHELF_LENGTH);
-    return { x: 2 * a + 1, y: shelfTop + b - 1 };
+    return m({ x: 2 * a + 1, y: shelfTop + b - 1 });
   };
 
   const mid = (a: number, b: number) => Math.floor((a + b) / 2);
   const departmentCell: Record<Department, Cell> = {
-    produce: { x: rightWalk, y: shelfTop + 2 },
-    bakery: { x: rightWalk, y: mid(shelfTop, shelfBottom) + 1 },
-    deli: { x: rightWalk, y: shelfBottom },
-    meat: { x: mid(1, rightWalk), y: backWalk },
+    produce: m({ x: rightWalk, y: shelfTop + 2 }),
+    bakery: m({ x: rightWalk, y: mid(shelfTop, shelfBottom) + 1 }),
+    deli: m({ x: rightWalk, y: shelfBottom }),
+    meat: m({ x: mid(1, rightWalk), y: backWalk }),
     pantry: aisleCell(Math.ceil(n / 2)),
     frozen: aisleCell(1),
-    dairy: { x: 1, y: mid(shelfTop, shelfBottom) },
+    dairy: m({ x: 1, y: mid(shelfTop, shelfBottom) }),
     other: aisleCell(Math.ceil(n / 2)),
   };
+  const wallLabels: { dept: Department; text: string; at: Cell }[] = [
+    { dept: 'dairy', text: 'Dairy', at: m({ x: 0, y: mid(shelfTop, backWall) }) },
+    { dept: 'meat', text: 'Meat & Seafood', at: m({ x: mid(0, width - 1), y: backWall }) },
+    { dept: 'produce', text: 'Produce', at: m({ x: width - 1, y: shelfTop + 2 }) },
+    { dept: 'bakery', text: 'Bakery', at: m({ x: width - 1, y: mid(shelfTop, shelfBottom) + 1 }) },
+    { dept: 'deli', text: 'Deli', at: m({ x: width - 1, y: shelfBottom }) },
+  ];
+
+  // Departments shoppers placed in a numbered aisle at this store.
+  const placed = Object.entries(opts.profile?.departmentAisle ?? {}) as [Department, number][];
+  for (const [dept, aisle] of placed) departmentCell[dept] = aisleCell(aisle);
 
   return {
     grid,
     aisleCount: n,
-    entrance: { x: rightWalk, y: 0 },
-    checkout: { x: 3, y: 0 },
+    entrance: m({ x: rightWalk, y: 0 }),
+    checkout: m({ x: 3, y: 0 }),
     aisleCell,
     departmentCell,
-    labels: [
-      { text: 'Dairy', at: { x: 0, y: mid(shelfTop, backWall) } },
-      { text: 'Meat & Seafood', at: { x: mid(0, width - 1), y: backWall } },
-      { text: 'Produce', at: { x: width - 1, y: shelfTop + 2 } },
-      { text: 'Bakery', at: { x: width - 1, y: mid(shelfTop, shelfBottom) + 1 } },
-      { text: 'Deli', at: { x: width - 1, y: shelfBottom } },
-    ],
+    labels: wallLabels.filter((l) => !placed.some(([d]) => d === l.dept)).map(({ text, at }) => ({ text, at })),
   };
 }
 

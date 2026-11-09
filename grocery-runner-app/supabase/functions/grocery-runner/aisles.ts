@@ -16,7 +16,7 @@ export async function sharedAisles(store: unknown, items: unknown) {
   const keys = [...new Set(items.filter((i) => typeof i === 'string').map(itemKey).filter(Boolean))].slice(0, 100);
   if (!keys.length) return {};
   const q = new URLSearchParams({
-    select: 'item_key,aisle,department,updated_at',
+    select: 'item_key,aisle,department,updated_at,kind',
     store_key: `eq.${storeKey}`,
     item_key: `in.(${keys.map(quote).join(',')})`,
   });
@@ -33,6 +33,21 @@ export async function voteAisle(body: Record<string, unknown>) {
   const department =
     typeof body.department === 'string' && DEPARTMENTS.includes(body.department) ? body.department : null;
   if (!storeKey || !item || !device || (!aisle && !department)) throw new Error('Invalid aisle report.');
+  const kind = body.kind === 'learned' ? 'learned' : 'typed';
+
+  // A learned guess never replaces something this phone typed in.
+  if (kind === 'learned') {
+    const q = new URLSearchParams({
+      select: 'kind',
+      store_key: `eq.${storeKey}`,
+      item_key: `eq.${item}`,
+      device_id: `eq.${device}`,
+    });
+    const existing = await fetch(`${TABLE}?${q}`, { headers: auth });
+    if (existing.ok && ((await existing.json()) as { kind: string }[]).some((r) => r.kind !== 'learned')) {
+      return { ok: true, skipped: true };
+    }
+  }
 
   const res = await fetch(`${TABLE}?on_conflict=store_key,item_key,device_id`, {
     method: 'POST',
@@ -43,9 +58,30 @@ export async function voteAisle(body: Record<string, unknown>) {
       device_id: device,
       aisle,
       department,
+      kind,
       updated_at: new Date().toISOString(),
     }),
   });
   if (!res.ok) throw new Error(`Saving the aisle failed (${res.status}).`);
   return { ok: true };
+}
+
+/**
+ * Every item with a shared aisle answer at one store, as item + aisle. The app uses it to learn the
+ * store's layout (which aisle is frozen, dairy, ...). Capped to the most recent votes.
+ */
+export async function storeAisles(store: unknown) {
+  const storeKey = cleanStoreKey(store);
+  if (!storeKey) throw new Error('store is required.');
+  const q = new URLSearchParams({
+    select: 'item_key,aisle,department,updated_at,kind',
+    store_key: `eq.${storeKey}`,
+    aisle: 'not.is.null',
+    order: 'updated_at.desc',
+    limit: '3000',
+  });
+  const res = await fetch(`${TABLE}?${q}`, { headers: auth });
+  if (!res.ok) throw new Error(`Store aisles lookup failed (${res.status}).`);
+  const best = tallyVotes((await res.json()) as VoteRow[]);
+  return Object.entries(best).flatMap(([item, s]) => (s.aisle ? [{ item, aisle: s.aisle, votes: s.votes }] : []));
 }

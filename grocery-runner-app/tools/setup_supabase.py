@@ -21,6 +21,9 @@ create table if not exists public.grocery_aisle_votes (
   primary key (store_key, item_key, device_id),
   check (aisle is not null or department is not null)
 );
+-- "typed" (typed in or read from a screenshot) or "learned" (from check-off order, half weight).
+alter table public.grocery_aisle_votes add column if not exists kind text not null default 'typed'
+  check (kind in ('typed', 'learned'));
 alter table public.grocery_aisle_votes enable row level security;
 revoke all on public.grocery_aisle_votes from anon, authenticated;
 -- Items with shared aisles per store, for the store map.

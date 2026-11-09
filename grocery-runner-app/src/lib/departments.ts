@@ -37,13 +37,18 @@ const KEYWORDS: [Department, string[]][] = [
   ['produce', ['apple', 'banana', 'lettuce', 'tomato', 'onion', 'potato', 'carrot', 'pepper', 'avocado', 'lemon', 'lime', 'berries', 'strawberries', 'grapes', 'spinach', 'celery', 'cucumber', 'garlic', 'broccoli', 'orange', 'cilantro', 'mushroom', 'salad']],
 ];
 
-/** Best guess at a department from an item's name. Falls back to the center aisles. */
-export function guessDepartment(name: string): Department {
+/** The department an item's name clearly points to, or null when no keyword matches. */
+export function matchDepartment(name: string): Department | null {
   const text = ` ${name.toLowerCase()} `;
   for (const [dept, words] of KEYWORDS) {
     if (words.some((w) => new RegExp(`\\b${w}s?\\b`).test(text))) return dept;
   }
-  return 'pantry';
+  return null;
+}
+
+/** Best guess at a department from an item's name. Falls back to the center aisles. */
+export function guessDepartment(name: string): Department {
+  return matchDepartment(name) ?? 'pantry';
 }
 
 /** Maps a Kroger product category (e.g. "Dairy", "Frozen") to our department. */

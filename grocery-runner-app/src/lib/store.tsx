@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { backendConfigured } from './api';
+import { BuildingInfo } from './footprint';
 import { locationFromKroger, searchKrogerProducts } from './kroger';
+import { fetchBuildingInfo } from './osmBuilding';
 import { fetchSharedAisles, isShared, itemKey, voteAisle } from './sharedAisles';
 import { deletePhoto } from './recipePhotos';
 import { Recipe } from './recipes';
@@ -19,10 +21,15 @@ type Data = {
   deviceId: string;
   /** Recipes this shopper scanned, linked or pasted. Newest first. */
   myRecipes: Recipe[];
+  /** Building outline facts per store id, from OpenStreetMap (null = no building mapped). */
+  buildings: Record<string, { info: BuildingInfo | null; at: number }>;
 };
 
 export const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-const fresh = (): Data => ({ items: [], store: null, coldLast: true, remembered: {}, deviceId: newId(), myRecipes: [] });
+const fresh = (): Data => ({ items: [], store: null, coldLast: true, remembered: {}, deviceId: newId(), myRecipes: [], buildings: {} });
+
+/** Stores with no building mapped are checked again after this long, in case someone maps it. */
+const RECHECK_MISSING_MS = 14 * 24 * 3600_000;
 
 type Ctx = Data & {
   ready: boolean;
@@ -94,6 +101,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (ready) AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch(() => {});
   }, [data, ready]);
+
+  // Fetch the chosen store's building outline once (used to size and orient the store map).
+  const { store: current, buildings } = data;
+  useEffect(() => {
+    if (!ready || !current || current.lat == null || current.lon == null) return;
+    const cached = buildings[current.id];
+    if (cached && (cached.info || Date.now() - cached.at < RECHECK_MISSING_MS)) return;
+    const { id, lat, lon } = current;
+    fetchBuildingInfo({ lat, lon })
+      .then((info) => setData((d) => ({ ...d, buildings: { ...d.buildings, [id]: { info, at: Date.now() } } })))
+      .catch(() => {}); // offline or server busy: try again next time
+  }, [ready, current, buildings]);
 
   /** Looks up the given items and fills in any that are still unknown at the same store. */
   const resolve = useCallback(async (store: Store, items: ListItem[]) => {
