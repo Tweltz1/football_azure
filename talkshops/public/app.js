@@ -77,8 +77,7 @@
     if (!CFG.apiUrl) throw new Error("This site is missing its server settings.");
     const headers = { "Content-Type": "application/json" };
     if (sb) {
-      const { data } = await sb.auth.getSession();
-      const token = data?.session?.access_token;
+      const token = session?.access_token || (await sb.auth.getSession()).data?.session?.access_token;
       if (token) headers.Authorization = "Bearer " + token;
     }
     const url = path.startsWith("shop/")
@@ -253,12 +252,12 @@
   const upsertJob = (j) => { const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
 
   async function acceptInvite() {
-    if (!joinToken) return;
+    if (!joinToken || !session?.access_token) return;
     try {
       const r = await api("POST", "shop/join/" + encodeURIComponent(joinToken));
       setTimeout(() => toast(`Welcome to ${r.shopName}. You're signed in as ${r.role === "owner" ? "an owner" : "a technician"}.`), 400);
       join.err = "";
-    } catch (e) { join.err = e.message; }
+    } catch (e) { join.err = e.message; throw e; }
     joinToken = ""; store.set(JOIN_KEY, "");
     const q = new URLSearchParams(location.search);
     if (q.has("join")) { q.delete("join"); history.replaceState(history.state, "", "/" + (q.toString() ? "?" + q : "") + location.hash); }
@@ -295,7 +294,7 @@
       return;
     }
     // The sign-in page is /?login (a real file the host always serves); /login forwards there.
-    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join");
+    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join") || !!joinToken;
     if (!session) {
       chrome.hidden = true;
       if (onLoginPage) document.title = ui.authMode === "signup" ? "Create Your Account · Talk Shops" : "Shop Sign In · Talk Shops";
@@ -305,6 +304,18 @@
     }
     if (onLoginPage) { const q = new URLSearchParams(location.search); q.delete("login"); history.replaceState(history.state, "", "/" + (q.toString() ? "?" + q : "") + location.hash); }
     if (!loaded) { chrome.hidden = true; app.innerHTML = `<div class="loading">Loading your shop…</div>`; return; }
+    if (joinToken) {
+      chrome.hidden = true;
+      app.innerHTML = `<div class="login-wrap"><section class="login">${brand()}<h2>Join Your Shop</h2>${joinBanner()}
+        <p class="muted">Signed in as ${esc(session.user.email || "your account")}. Your invitation stays saved until you join successfully.</p>
+        <div class="btn-row"><button class="btn primary" id="retry">Try Again</button><button class="btn" id="signOut">Use a Different Account</button></div></section></div>`;
+      return;
+    }
+    if (!shop && loadErr) {
+      chrome.hidden = true;
+      app.innerHTML = `<div class="login-wrap"><section class="login">${brand()}<p class="form-err" role="alert">${esc(loadErr)}</p><button class="btn primary" id="retry">Try Again</button><button class="btn" id="signOut">Sign Out</button></section></div>`;
+      return;
+    }
     if (!shop) { chrome.hidden = true; app.innerHTML = setupView(true); renderLayer(); return; }
     if (!isOwner() && ui.view === "plan") ui.view = "board";
     chrome.hidden = false;
@@ -447,7 +458,7 @@
       <button class="btn google" id="google" type="button">${googleIcon} Continue with Google</button>
       <div class="or">or use email</div>
       <form class="auth-alt" id="emailForm">
-        <label class="field">Work email<input id="au-email" type="email" required autocomplete="username" value="${esc(join.info?.email || "")}"></label>
+        <label class="field">Work email<input id="au-email" type="email" required autocomplete="username" value="${esc(join.info?.email || "")}" ${join.info ? "readonly" : ""}></label>
         <label class="field">Password<input id="au-pass" type="password" required minlength="8" autocomplete="${signup ? "new-password" : "current-password"}"></label>
         ${signup ? `<label class="field">Confirm password<input id="au-confirm" type="password" required autocomplete="new-password"></label>` : ""}
         <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create my account" : "Sign in"}</button>
@@ -1095,7 +1106,7 @@
         if (ui.authMode === "signup") {
           const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: authRedirect() } });
           if (error) throw error;
-          if (!data.session) ui.authMsg = "If a new account can be created with this email, check your inbox and spam for a confirmation link. Already signed up with Google? Choose Continue with Google. For an existing email/password account, sign in or use Forgot password.";
+          if (!data.session) ui.authMsg = joinToken ? "Check your inbox and spam for your account confirmation email. Open its link to finish signing up and go directly to your invited shop. Already have an account? Sign in below." : "If a new account can be created with this email, check your inbox and spam for a confirmation link. Already signed up with Google? Choose Continue with Google. For an existing email/password account, sign in or use Forgot password.";
         } else {
           const { error } = await sb.auth.signInWithPassword({ email, password });
           if (error) throw error;
@@ -1354,10 +1365,11 @@
   }
   if (!sb) { render(); return; }
   if (joinToken) {
-    if (new URLSearchParams(location.search).has("join")) ui.authMode = "signup";
+    ui.authMode = "signup";
+    const checkingToken = joinToken;
     api("GET", "shop/join/" + encodeURIComponent(joinToken))
-      .then((i) => { join.info = i; })
-      .catch((e) => { join.err = e.message; joinToken = ""; store.set(JOIN_KEY, ""); })
+      .then((i) => { if (joinToken === checkingToken) join.info = i; })
+      .catch((e) => { if (joinToken === checkingToken) join.err = e.message; })
       .finally(() => { if (!session) { render(); const em = $("#au-email"); if (em && join.info && !em.value) em.value = join.info.email; } });
   }
   // Show the public page before session recovery or refresh finishes.
@@ -1371,7 +1383,11 @@
   sb.auth.onAuthStateChange((_event, s) => {
     const was = session?.user?.id;
     session = s;
-    if (s && s.user.id !== was) { loaded = false; render(); loadShop(); }
+    if (s && s.user.id !== was) {
+      loaded = false; render();
+      // Run after Supabase releases its auth lock; use this event's session for API authorization.
+      setTimeout(() => { if (session?.user.id === s.user.id) loadShop(); }, 0);
+    }
     else if (!s) { Object.assign(recovery, { data: null, pending: "", err: "" }); team.reset(); role = null; mainOwner = false; join.err = ""; shop = null; jobs = []; loaded = false; ui.openJob = null; ui.modal = ui.modal === "video" ? "video" : null; if (was || !$("#emailForm")) render(); }
   });
   sb.auth.getSession().then(({ data }) => { if (!data.session && !$("#emailForm")) render(); });
