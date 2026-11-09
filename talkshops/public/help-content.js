@@ -13,7 +13,7 @@
     ]},
     { id: "checkin", title: "Checking In Cars", lesson: "checkin", qs: [
       ["How do I check in a car?", "Open Check In, enter the customer and vehicle, the concern and the mileage in, and confirm the customer agreed to receive updates. Talk Shops creates the repair order and sends the customer their private link."],
-      ["How do I find a returning customer?", "At the top of Check In, use Returning customer? and search by name, phone, plate or VIN. Pick the match and the customer and vehicle details fill in for you."],
+      ["How do I find a returning customer?", "Start typing their name, mobile number or plate in Check In and their name pops up. Tap it to fill in their details, then tap the car that is here today or A Different Car. Returning customer? at the top also searches by VIN."],
       ["How does Talk Shops track multiple visits for the same car?", "Visits are matched by the customer's phone number, plate or VIN. Open any car and look at Past Visits to see earlier repair orders, the mileage on each visit, and work the customer declined last time."],
       ["Can I decode a VIN?", "Yes. Type or paste the 17-character VIN at check-in (it is on the windshield or door jamb) and tap Decode. The year, make, model and engine fill in from the free NHTSA database."],
       ["Does it show recalls?", "Yes. Each car's screen lists open NHTSA recalls for that model, with a link to check the exact VIN. Not every car of that model is affected, so confirm by VIN."],

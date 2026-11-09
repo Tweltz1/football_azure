@@ -453,7 +453,7 @@
 
   function helpView() {
     const guides = [
-      ["Checking In a Vehicle", "Open Check In and search Returning customer? first. Otherwise choose your check-in method, enter the customer and vehicle (or decode the VIN), the mileage in and the concern. Confirm permission to send updates, then send the customer their private repair link.", "checkin"],
+      ["Checking In a Vehicle", "Open Check In and start typing the customer name or phone; tap a returning customer to fill their details and pick their car. Otherwise choose your check-in method, enter the customer and vehicle (or decode the VIN), the mileage in and the concern. Confirm permission to send updates, then send the customer their private repair link.", "checkin"],
       ["Updating Customer Information", "Open a vehicle in the Bay and select Edit Customer Info. Update the name, phone, email or notification preference, confirm consent when contact details change, and save.", "checkin"],
       ["Sending an Estimate", "Open the vehicle, add estimate items and their prices, and choose Required, Recommended or Optional. An owner can send the estimate for approval; customers review and sign from their repair link.", "estimates"],
       ["Moving Cars Through the Bay", "Open a vehicle and choose its next stage. Review the customer notification before sending. Use the Bay search and filters to find repairs that need attention.", "stages"],

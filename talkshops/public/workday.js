@@ -138,6 +138,9 @@
       : `<ul class="wd-found">${uniq.slice(0, 6).map((r, i) => `<li><button type="button" class="wd-hit" data-wd-fill="${i}"><b>${esc(r.customer.name)}</b><span>${esc(vehicle(r) || "Vehicle")}${r.plate ? " · " + esc(r.plate) : ""}</span><small class="muted">Last visit ${shortDate(r.createdAt)}${r.mileage ? " · " + miles(r.mileage) : ""} · ${rows.filter((x) => x.customer.name === r.customer.name).length} visit(s)</small></button></li>`).join("")}</ul>`;
   }
   function fill(r) {
+    ui.filling = true; try { fillRow(r); } finally { ui.filling = false; }
+  }
+  function fillRow(r) {
     const set = (k, v) => { const el = document.getElementById("ci-" + k); if (el && v != null) { el.value = v; el.dispatchEvent(new Event("input", { bubbles: true })); } };
     const c = r.customer;
     const pref = c.preference || (c.phone ? "sms" : "email");
@@ -149,6 +152,75 @@
     if (box) box.innerHTML = `<p class="wd-note">Filled from ${esc(r.ro)} (${shortDate(r.createdAt)}).${r.mileage ? ` Last mileage ${miles(r.mileage)}.` : ""}${r.declined?.length ? ` <b>Declined last time:</b> ${esc(r.declined.join(", "))}.` : ""} Confirm consent below before saving.</p>`;
   }
   const fmtPhone = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ""); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : p || ""; };
+
+  // Type-ahead on the check-in Name, Mobile number and Plate fields: pick a returning customer, then one of their cars.
+  // Same shop/visits search as "Returning customer?" above, so it only ever sees this shop's customers.
+  const digits = (s) => String(s || "").replace(/\D/g, "").slice(-10);
+  const sameName = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+  const carKey = (r) => (r.vehicle?.vin || "").toUpperCase() || (r.plate || "").toUpperCase().replace(/[^A-Z0-9]/g, "") || vehicle(r).toLowerCase();
+  /** Rows (newest first) grouped into customers: same phone (or email) AND same name, each with their cars. */
+  function customersOf(rows) {
+    const by = new Map();
+    for (const r of rows) {
+      const c = r.customer || {}, k = (digits(c.phone) || String(c.email || "").toLowerCase()) + "|" + String(c.name || "").trim().toLowerCase();
+      if (!by.has(k)) by.set(k, { c, visits: 0, cars: new Map() });
+      const g = by.get(k); g.visits++;
+      const ck = carKey(r); if (ck && !g.cars.has(ck)) g.cars.set(ck, r);
+    }
+    return [...by.values()].map((g) => ({ ...g, cars: [...g.cars.values()] }));
+  }
+  const SUG_FIELDS = { "ci-name": "name", "ci-phone": "phone", "ci-plate": "plate" };
+  function closeSuggest() { document.querySelectorAll(".wd-sug").forEach((el) => el.remove()); ui.sugFor = null; }
+  async function suggest(input) {
+    const kind = SUG_FIELDS[input.id], raw = input.value.trim();
+    const q = kind === "phone" ? digits(raw) : raw;
+    if (q.length < (kind === "phone" ? 3 : 2)) { closeSuggest(); return; }
+    let rows = [];
+    try { rows = await A.visits({ q }); } catch { closeSuggest(); return; }
+    if (document.activeElement !== input || input.value.trim() !== raw) return;
+    const list = customersOf(rows).slice(0, 5);
+    closeSuggest();
+    if (!list.length) return;
+    ui.sug = list; ui.sugFor = input.id;
+    const box = document.createElement("div");
+    box.className = "wd-sug"; box.setAttribute("role", "listbox"); box.setAttribute("aria-label", "Returning customers");
+    box.innerHTML = `<p class="wd-sug-h">Returning customer? Tap to fill in</p>${list.map((g, i) => `<button type="button" role="option" class="wd-sug-row" data-wd-cust="${i}">
+      <b>${esc(g.c.name || "No name")}</b><span>${esc(fmtPhone(g.c.phone) || g.c.email || "")}</span>
+      <small class="muted">${g.cars.map((r) => esc(vehicle(r) || r.plate || "Vehicle")).slice(0, 3).join(" · ")}${g.cars.length > 3 ? ` +${g.cars.length - 3}` : ""} · ${g.visits} visit${g.visits === 1 ? "" : "s"}</small></button>`).join("")}`;
+    input.closest("label")?.appendChild(box);
+  }
+  /** Fills the customer half of the form and offers their cars. */
+  function pickCustomer(g) {
+    closeSuggest();
+    const c = g.c, set = (k, v) => { const el = document.getElementById("ci-" + k); if (el && v != null) { el.value = v; el.dispatchEvent(new Event("input", { bubbles: true })); } };
+    ui.filling = true;
+    const ch = document.getElementById("ci-channel"); if (ch) { ch.value = c.preference || (c.phone ? "sms" : "email"); ch.dispatchEvent(new Event("change", { bubbles: true })); }
+    set("name", c.name); set("phone", fmtPhone(c.phone)); set("email", c.email || ""); set("lang", c.lang === "es" ? "es" : "en");
+    ui.filling = false;
+    ui.pickCars = g.cars;
+    document.getElementById("wd-cars")?.remove();
+    const anchor = document.getElementById("ci-lang")?.closest("label"); if (!anchor) return;
+    const box = document.createElement("div");
+    box.id = "wd-cars"; box.className = "wd-cars full"; box.setAttribute("data-staff-intake", "");
+    box.hidden = document.getElementById("ci-method")?.value === "invite";
+    box.innerHTML = `<p class="wd-sug-h">${g.cars.length === 1 ? `Same car as last time? ${esc(first(c.name) || "This customer")} has one on file.` : `${esc(first(c.name) || "This customer")} has ${g.cars.length} cars on file. Which one is here today?`}</p>
+      <div class="wd-cars-row">${g.cars.map((r, i) => `<button type="button" class="wd-car" data-wd-car="${i}"><b>${esc(vehicle(r) || "Vehicle")}</b><small class="muted">${r.plate ? esc(r.plate) + " · " : ""}Last in ${shortDate(r.createdAt)}${r.mileage ? " · " + miles(r.mileage) : ""}</small></button>`).join("")}
+      <button type="button" class="wd-car wd-car-new" data-wd-car="new"><b>+ A Different Car</b><small class="muted">Enter it below</small></button></div>`;
+    anchor.after(box);
+  }
+  function pickCar(i) {
+    const box = document.getElementById("wd-cars"); if (!box) return;
+    const set = (k, v) => { const el = document.getElementById("ci-" + k); if (el) { el.value = v ?? ""; el.dispatchEvent(new Event("input", { bubbles: true })); } };
+    box.querySelectorAll(".wd-car").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.wdCar === i)));
+    ui.filling = true;
+    if (i === "new") { ["year", "make", "model", "plate", "vin", "engine"].forEach((k) => set(k, "")); ui.filling = false; (document.getElementById("ci-vin") || document.getElementById("ci-year"))?.focus(); box.querySelector(".wd-note")?.remove(); return; }
+    const r = ui.pickCars?.[+i]; if (!r) { ui.filling = false; return; }
+    set("year", r.vehicle?.year); set("make", r.vehicle?.make); set("model", r.vehicle?.model); set("plate", r.plate);
+    set("vin", r.vehicle?.vin || ""); set("engine", r.vehicle?.engine || "");
+    ui.filling = false;
+    box.querySelector(".wd-note")?.remove();
+    box.insertAdjacentHTML("beforeend", `<p class="wd-note">Filled from ${esc(r.ro)} (${shortDate(r.createdAt)}).${r.mileage ? ` Last mileage ${miles(r.mileage)}.` : ""}${r.declined?.length ? ` <b>Declined last time:</b> ${esc(r.declined.join(", "))}.` : ""}</p>`);
+  }
 
   // ---------------- Car sheet ----------------
   function sheetDetails(j) {
@@ -180,10 +252,20 @@
     if (!v) { setTimeout(() => loadVisits(j), 0); return `<section class="sec" id="wd-visits"><h3>Past Visits</h3><p class="muted" style="margin:0">Looking up past visits…</p></section>`; }
     if (v.err) return `<section class="sec" id="wd-visits"><h3>Past Visits</h3><p class="muted" style="margin:0">${esc(v.err)}</p></section>`;
     if (!v.rows.length) return `<section class="sec" id="wd-visits"><h3>Past Visits</h3><p class="muted" style="margin:0">First visit. Past visits by this phone number, plate or VIN show here.</p></section>`;
-    return `<section class="sec" id="wd-visits"><h3>Past Visits <span class="sec-sub">${v.rows.length}</span></h3><ul class="wd-visits">${v.rows.slice(0, 8).map((r) => `<li>
+    // History matches by phone number, plate or VIN, so a household sharing one phone shows up together.
+    // Split it into this car and the other cars on the number, and name whoever it was when it wasn't this customer.
+    const mine = (r) => (j.vehicle?.vin && r.vehicle?.vin && j.vehicle.vin.toUpperCase() === r.vehicle.vin.toUpperCase())
+      || (j.plate && r.plate && j.plate.toUpperCase().replace(/[^A-Z0-9]/g, "") === r.plate.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+      || (!!vehicle(r) && vehicle(r).toLowerCase() === vehicle(j).toLowerCase());
+    const rows = v.rows.slice(0, 12), car = rows.filter(mine), other = rows.filter((r) => !mine(r));
+    const item = (r, showCar) => `<li>
       <div><b>${shortDate(r.createdAt)}</b> · <span class="mono">${esc(r.ro)}</span>${r.mileage ? " · " + miles(r.mileage) : ""}${r.total ? " · " + money(r.total) : ""}</div>
-      <div>${esc(r.concern || "")}${vehicle(r) && vehicle(r) !== vehicle(j) ? ` <small class="muted">(${esc(vehicle(r))})</small>` : ""}</div>
-      ${r.declined?.length ? `<div class="wd-declined">Declined: ${esc(r.declined.join(", "))}</div>` : ""}</li>`).join("")}</ul></section>`;
+      <div>${esc(r.concern || "")}${showCar && vehicle(r) ? ` <small class="muted">(${esc(vehicle(r))})</small>` : ""}</div>
+      ${!sameName(r.customer?.name, j.customer?.name) ? `<div class="wd-who">${esc(r.customer?.name || "No name")}${digits(r.customer?.phone) && digits(r.customer?.phone) === digits(j.customer?.phone) ? " · same phone number" : ""}</div>` : ""}
+      ${r.declined?.length ? `<div class="wd-declined">Declined: ${esc(r.declined.join(", "))}</div>` : ""}</li>`;
+    return `<section class="sec" id="wd-visits"><h3>Past Visits <span class="sec-sub">${v.rows.length}</span></h3>
+      ${car.length ? `<p class="wd-sub">This car</p><ul class="wd-visits">${car.map((r) => item(r, false)).join("")}</ul>` : `<p class="muted" style="margin:0 0 6px">First visit for this car.</p>`}
+      ${other.length ? `<p class="wd-sub">Other cars on this phone number</p><ul class="wd-visits">${other.map((r) => item(r, true)).join("")}</ul>` : ""}</section>`;
   }
   async function loadVisits(j) {
     if (ui.visits[j.id]) return;
@@ -359,7 +441,7 @@
   });
   document.addEventListener("click", async (e) => {
     if (!A) return;
-    const t = e.target.closest("[data-wd-mine],[data-wd-alerts],[data-wd-today],[data-wd-fill],[data-wd-print],[data-wd-due],[data-wd-schedule],[data-wd-cancel],[data-wd-stop],[data-wd-pk-add],[data-wd-pk-del],[data-wd-pk-edit],[data-wd-pk-cancel],[data-wd-pk-use]");
+    const t = e.target.closest("[data-wd-mine],[data-wd-alerts],[data-wd-today],[data-wd-fill],[data-wd-cust],[data-wd-car],[data-wd-print],[data-wd-due],[data-wd-schedule],[data-wd-cancel],[data-wd-stop],[data-wd-pk-add],[data-wd-pk-del],[data-wd-pk-edit],[data-wd-pk-cancel],[data-wd-pk-use]");
     if (!t) return;
     if (t.hasAttribute("data-wd-mine")) {
       if (!A.me()) return;
@@ -373,6 +455,8 @@
       A.toast?.(ui.alerts ? "You'll hear a chime when a customer replies or approves" : "Alerts off"); return;
     }
     if (t.hasAttribute("data-wd-today")) { openToday(); return; }
+    if (t.dataset.wdCust) { const g = ui.sug?.[+t.dataset.wdCust]; if (g) pickCustomer(g); return; }
+    if (t.dataset.wdCar) { pickCar(t.dataset.wdCar); return; }
     if (t.dataset.wdFill) { const r = ui.found?.[+t.dataset.wdFill]; if (r) fill(r); return; }
     const jobId = t.closest("[data-wd-job]")?.dataset.wdJob || t.closest("[data-job]")?.dataset.job;
     if (t.dataset.wdPrint) { const j = A.job(jobId); if (j) print(t.dataset.wdPrint, j); return; }
@@ -442,11 +526,21 @@
     if (t.id === "wd-fu-kind") { const j = A.job(t.closest("[data-wd-job]")?.dataset.wdJob); if (j) $("#wd-fu-text").value = reminderText(j, t.value); }
   });
   document.addEventListener("input", (e) => {
-    if (!A || e.target.id !== "wd-find") return;
+    if (!A || ui.filling) return;
+    if (SUG_FIELDS[e.target.id]) { clearTimeout(ui.sugT); const el = e.target; ui.sugT = setTimeout(() => suggest(el), 250); return; }
+    if (e.target.id !== "wd-find") return;
     clearTimeout(ui.lookupT);
     const q = e.target.value;
     ui.lookupT = setTimeout(() => lookup(q), 300);
   });
+
+  // Close the returning-customer list on Escape, or when focus leaves the field and its list.
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && ui.sugFor) closeSuggest(); });
+  document.addEventListener("focusout", (e) => {
+    if (!ui.sugFor || !SUG_FIELDS[e.target.id] && !e.target.closest?.(".wd-sug")) return;
+    setTimeout(() => { const a = document.activeElement; if (!a?.closest?.(".wd-sug") && a?.id !== ui.sugFor) closeSuggest(); }, 150);
+  });
+  document.addEventListener("change", (e) => { if (e.target.id === "ci-method") { const b = document.getElementById("wd-cars"); if (b) b.hidden = e.target.value === "invite"; } });
 
   /** Forget cached visit lists (after a check-in, say). */
   const forget = (id) => { if (id) delete ui.visits[id]; else ui.visits = {}; };
