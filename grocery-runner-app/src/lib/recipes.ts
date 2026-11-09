@@ -1,4 +1,3 @@
-import { callBackend } from './api';
 import { itemKey } from './sharedAisles';
 
 export type RecipeItem = {
@@ -20,10 +19,6 @@ export type Recipe = {
   /** "suggested" ships with the app; "mine" came from a photo, link or pasted text. */
   source: 'suggested' | 'mine';
 };
-
-/** Reads a recipe photo (base64 JPEG), web link or pasted text on the server (Claude API). */
-export const readRecipe = (input: { image: string } | { url: string } | { text: string }) =>
-  callBackend<Omit<Recipe, 'id' | 'source'>>({ body: { action: 'read-recipe', ...(input as Record<string, string>) } });
 
 /** Recipe items not already on the list (by normalised name), in recipe order, without repeats. */
 export function newItems(names: string[], onList: string[]): string[] {

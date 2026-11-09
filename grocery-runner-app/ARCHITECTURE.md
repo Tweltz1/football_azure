@@ -108,12 +108,20 @@ aisle label parsing, department guessing, stop order, grouping and the cold-last
 - **Suggested recipes** (`src/lib/recipes.ts`): 16 weeknight recipes ship with the app, so they work offline
   and cost nothing. Opening one ticks every ingredient except pantry staples (salt, oil, ...) and things
   already on the list; "Add" puts the ticked items on the list, where aisles are looked up as usual.
-- **Your recipes** (`src/app/scan.tsx`): a photo (camera or library, scaled to 1600 px JPEG on the phone),
-  a recipe link, or pasted text goes to the `read-recipe` action of the `grocery-runner` function. The
-  function calls the Claude API (`supabase/functions/grocery-runner/recipes.ts`, key `ANTHROPIC_API_KEY` in
-  Supabase only) with a JSON schema, and gets back store-ready item names, amounts and a pantry flag.
-  For links, the function first looks for the page's schema.org Recipe data (most recipe sites have it)
-  and only falls back to page text. Only public https links are fetched. Read recipes are kept on the phone.
+- **Your recipes** (`src/app/scan.tsx`, `src/lib/readRecipe.ts`): read entirely on the phone, with no AI
+  service and no API key (the same idea as Talk Shops' free price sheet reader).
+  - Photo (camera or library): Apple's built-in text recognition (Vision `VNRecognizeTextRequest`, local
+    module `modules/recipe-reader`) returns each text line with its position. On a two-column cookbook page,
+    only the column under the "Ingredients" heading is used; the tallest text near the top is the title.
+  - Link: the phone downloads the page and uses its schema.org Recipe data (`recipeIngredient`), which
+    nearly every recipe site publishes; otherwise it falls back to the page text.
+  - Pasted text: used as is.
+  - `src/lib/recipeText.ts` then takes the lines after "Ingredients" (up to "Directions"), or every line that
+    starts with an amount, joins lines OCR split in two, and splits each into amount + item by rules for
+    numbers, fractions, units and preparation words ("2 cups shredded cheddar cheese, divided" becomes
+    "cheddar cheese", "2 cups"). Staples are marked pantry; repeats are merged. Tests: `tests/recipeText.test.ts`.
+  - Read recipes are kept on the phone. The shopper reviews every item before it goes on the list, which
+    covers the rules' misses (odd layouts, handwriting).
 - **Where to shop** (`src/lib/storePick.ts`, `src/app/suggest.tsx`): for the unchecked items on the list,
   the app compares the 3 closest official Kroger-family stores and the closest store of each other chain
   within 15 miles.
@@ -123,8 +131,6 @@ aisle label parsing, department guessing, stop order, grouping and the cold-last
     section 1), so the app says so and counts how many of the items shoppers have mapped there.
   - Score: Kroger = 100 x share of items in stock; others = 50 + 20 x share of items mapped; minus 3 per
     mile. A Kroger with everything wins unless it is much farther; one missing several items does not.
-- Known gap: `read-recipe` is reachable with the public anon key, so someone could spend the Claude API
-  budget. Add sign in with Apple and a per-user daily limit with the vote rate limits below.
 
 ## 5. Next steps
 1. Sign in with Apple and rate limits on shared aisle votes.

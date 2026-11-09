@@ -1,16 +1,11 @@
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button, Card, SectionTitle } from '../components/ui';
-import { backendConfigured } from '../lib/api';
-import { readRecipe } from '../lib/recipes';
+import { readRecipe } from '../lib/readRecipe';
 import { newId, useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
-
-// Claude reads text fine at this width, and the upload stays small (a few hundred KB).
-const PHOTO_WIDTH = 1600;
 
 export default function ScanScreen() {
   const t = useTheme();
@@ -48,19 +43,7 @@ export default function ScanScreen() {
     const result =
       from === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
     if (result.canceled || !result.assets[0]) return;
-    setBusy(true);
-    try {
-      const asset = result.assets[0];
-      // Decoded straight to at most PHOTO_WIDTH wide, so a 48 MP photo never sits in memory.
-      const ctx = ImageManipulator.manipulate(asset.uri, { maxWidth: PHOTO_WIDTH });
-      const image = await ctx.renderAsync();
-      const saved = await image.saveAsync({ base64: true, compress: 0.7, format: SaveFormat.JPEG });
-      if (!saved.base64) throw new Error('Could not read that photo.');
-      await read({ image: saved.base64 });
-    } catch (e) {
-      setError((e as Error).message);
-      setBusy(false);
-    }
+    await read({ photoUri: result.assets[0].uri });
   };
 
   const submitText = () => {
@@ -69,20 +52,12 @@ export default function ScanScreen() {
     else read({ text: v });
   };
 
-  if (!backendConfigured) {
-    return (
-      <View style={{ padding: 16 }}>
-        <Text style={{ color: t.textMuted }}>Recipe reading needs the online service, which is not set up in this build.</Text>
-      </View>
-    );
-  }
-
   if (busy) {
     return (
       <View style={styles.busy}>
         <ActivityIndicator size="large" color={t.primary} />
         <Text style={{ color: t.text, fontSize: 17, fontWeight: '600' }}>Reading your recipe…</Text>
-        <Text style={{ color: t.textMuted }}>This takes a few seconds.</Text>
+        <Text style={{ color: t.textMuted }}>Read on your phone. Nothing is uploaded.</Text>
       </View>
     );
   }
@@ -93,8 +68,8 @@ export default function ScanScreen() {
         <>
           <Card style={{ gap: 10 }}>
             <Text style={{ color: t.textMuted }}>
-              Take a photo of a cookbook page, a recipe card or a screenshot. Shop Stride turns the ingredients into a
-              shopping list.
+              Take a photo of a cookbook page, a recipe card or a screenshot. Shop Stride reads it on your phone and turns
+              the ingredients into a shopping list.
             </Text>
             <Button title="Take a photo" icon="camera" onPress={() => photo('camera')} />
             <Button title="Choose a photo" icon="images" variant="secondary" onPress={() => photo('library')} />

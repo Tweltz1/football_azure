@@ -8,14 +8,12 @@
 //   GET  ?action=status                          which lookups are switched on
 //   POST {action:"aisles", store, items:[...]}   shared shopper aisles for a list
 //   POST {action:"vote", store, item, device, aisle | department}
-//   POST {action:"read-recipe", image (base64 JPEG) | url | text}   shopping list from a recipe (Claude API)
 //   POST {action:"kroger-stock", locationId, items:[...]}           stock + price per item at one Kroger store
 //
 // Deployed by .github/workflows/grocery-runner-app.yml.
 import { sharedAisles, voteAisle } from './aisles.ts';
 import { krogerProducts, krogerReady, krogerStock, krogerStores } from './kroger.ts';
 import { coverage, officialStoresNear } from './nearby.ts';
-import { readRecipe, recipesReady } from './recipes.ts';
 import { walmartReady, walmartStores } from './walmart.ts';
 
 const cors = {
@@ -36,7 +34,6 @@ Deno.serve(async (req) => {
       if (body.action === 'aisles') return json(await sharedAisles(body.store, body.items));
       if (body.action === 'vote') return json(await voteAisle(body));
       if (body.action === 'coverage') return json(await coverage(body.stores));
-      if (body.action === 'read-recipe') return json(await readRecipe(body));
       if (body.action === 'kroger-stock') return json(await krogerStock(body.locationId, body.items));
       return json({ error: 'Unknown action.' }, 400);
     }
@@ -45,7 +42,7 @@ Deno.serve(async (req) => {
     const zip = q.get('zip');
     switch (q.get('action')) {
       case 'status':
-        return json({ kroger: krogerReady(), walmart: walmartReady(), shared: true, recipes: recipesReady() });
+        return json({ kroger: krogerReady(), walmart: walmartReady(), shared: true });
       case 'kroger-stores':
         if (!zipOk(zip)) return json({ error: 'Enter a 5-digit ZIP code.' }, 400);
         return json(await krogerStores(zip));
