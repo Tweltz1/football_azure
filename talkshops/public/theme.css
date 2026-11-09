@@ -550,31 +550,66 @@ main:has(>.auth){padding:0;max-width:none}
 .sheet .sheet-h {align-items:flex-start;padding:16px 20px;background:var(--surface)}
 .sheet-h h2 {font-size:clamp(1.35rem,4.5vw,1.7rem);line-height:1.2;margin:3px 0}
 .sheet-h .mono {font-size:.76rem;letter-spacing:.04em}
-.sheet .sheet-body {gap:0;padding:0 20px 28px}
-.sheet-body > .sec {padding:18px 0;border-bottom:1px solid var(--line)}
-.sheet-body > .sec:last-child {border-bottom:0}
-.sheet-body .sec h3 {display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;color:var(--fg);font-size:1rem;letter-spacing:0;text-transform:none;margin:0 0 10px}
+/* Car sheet: every section is its own card on a soft background, with one header style and one inner rhythm. */
+.sheet .sheet-h {border-bottom:1px solid var(--line)}
+.sheet .sheet-h .linkbtn {margin-top:6px;padding:0;font-size:.88rem}
+.sheet .sheet-body {gap:12px;padding:14px 16px 28px;background:var(--bg)}
+.sheet-body > .sec {background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.sheet-body > .sec > :last-child {margin-bottom:0}
+.sheet-body .sec h3 {display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;color:var(--fg);font-size:1rem;font-weight:650;letter-spacing:-.01em;text-transform:none;margin:0 0 12px}
 .sheet-body .sec-sub {margin:0;font-size:.76rem;font-weight:400;color:var(--muted)}
-.stage-picker summary {cursor:pointer;padding:8px 0;font-weight:650;color:var(--fg)}
-.stage-picker summary strong {display:inline-block;margin-left:10px;padding:3px 10px;border-radius:14px;background:var(--accent-soft,var(--surface-2));color:var(--accent-ink);font-size:.82rem}
-.stage-picker[open] .stepper {margin-top:8px}
-.stage-picker + .btn-row {display:flex;flex-wrap:wrap;gap:8px}
+.stage-picker summary {cursor:pointer;padding:0;font-weight:650;color:var(--fg);display:flex;align-items:center;gap:10px;list-style:none}
+.stage-picker summary::-webkit-details-marker {display:none}
+.stage-picker summary::before {content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;margin:0 2px}
+.stage-picker[open] summary::before {transform:rotate(45deg)}
+.stage-picker summary strong {display:inline-block;margin-left:auto;padding:3px 10px;border-radius:14px;background:var(--accent-soft,var(--surface-2));color:var(--accent-ink);font-size:.82rem}
+.stage-picker[open] .stepper {margin-top:12px}
+.sheet-body .stage-picker + .btn-row {display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px !important}
 .stage-picker + .btn-row .btn {min-height:44px}
-.stage-picker + .btn-row :is([data-close-job],#closeJobBtn) {background:transparent;border-color:transparent;box-shadow:none;color:var(--muted)}
-.sheet-body > .howto-link {text-align:left;margin:0;padding:8px 0 12px;border-bottom:1px solid var(--line)}
-.sheet-body .howto-link button {min-height:40px;padding:0}
-.sheet-body .wt-slots {grid-template-columns:1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.sheet-body .wt-slot {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;row-gap:2px;padding:12px;background:var(--surface);border:0;border-radius:0}
+.stage-picker + .btn-row :is([data-close-job],#closeJobBtn) {background:transparent;border-color:transparent;box-shadow:none;color:var(--muted);padding-inline:8px}
+.stage-picker + .btn-row :is([data-close-job],#closeJobBtn):hover {color:var(--bad);background:transparent}
+.sheet-body .sec .urgency-field {margin:14px 0 0;padding-top:14px;border-top:1px solid var(--line);display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px 14px}
+.sheet-body .sec .urgency-field > span {margin:0;font-size:.82rem;font-weight:600;color:var(--muted);min-width:64px}
+.sheet-body .sec > label.field {margin-top:14px !important}
+.sheet-body .concern-text {line-height:1.5}
+.sheet-body .howto-link {margin:12px 0 0;padding-top:12px;border-top:1px solid var(--line);text-align:left}
+.sheet-body .sec-guide .howto-link {margin:0;padding:0;border:0}
+.sheet-body .howto-link button {min-height:32px;padding:0;font-weight:600}
+.sheet-body .wt-slots {grid-template-columns:1fr;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.sheet-body .wt-slot {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;row-gap:4px;padding:12px 14px;background:var(--surface);border:0;border-radius:0}
 .sheet-body .wt-slot + .wt-slot {border-top:1px solid var(--line)}
 .sheet-body .wt-slot > :not(button) {grid-column:1}
-.sheet-body .wt-slot > button {grid-column:2;grid-row:1 / span 3;min-height:44px;align-self:center}
+.sheet-body .wt-slot-h {justify-content:flex-start;gap:10px;align-items:baseline}
+.sheet-body .wt-slot > button {grid-column:2;grid-row:1 / span 3;min-height:40px;min-width:104px;justify-content:center;align-self:center}
+/* Estimate: aligned columns, a ruled total and a tidy quick-add panel. */
+.sheet-body table.est {margin-top:-4px}
+.sheet-body table.est th:last-child,.sheet-body table.est td:last-child {width:1%;padding-left:12px}
+.sheet-body table.est td:nth-child(2),.sheet-body table.est th:nth-child(2) {width:1%;white-space:nowrap;padding-right:12px}
+.sheet-body table.est tbody tr:last-child td {border-bottom:0}
+.sheet-body .sec .total {border-top:1px solid var(--line);margin-top:4px;padding-top:12px}
+.sheet-body .sec .total.sub {border-top:0;margin-top:0;padding-top:2px}
+.sheet-body .est-add {margin-top:14px;padding:14px;gap:12px}
+.sheet-body .est-add-h {font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.sheet-body .est-add .add-line {row-gap:10px}
+.sheet-body .est-add .add-line {grid-template-columns:minmax(0,1fr) minmax(0,100px) auto}
+.sheet-body .est-add .pri-pick {grid-column:1 / 2}
+.sheet-body .est-add .save-chk {grid-column:2 / -1;justify-self:end;align-self:center;text-align:right;min-width:0}
+.sheet-body .est-add-more {background:var(--surface)}
+.sheet-body .est-send {width:100%;justify-content:center;margin-top:14px;min-height:46px}
+.sheet-body .est-send-note {margin:14px 0 0}
+.sheet-body .sec > .btn-row:not(:first-child) {margin-top:10px}
+.sheet-body .sec > :is(.btn,.btn-row) + .chk {margin-top:10px}
+.sheet-body > .sec.closed-note {background:var(--bad-bg);border-color:color-mix(in srgb,var(--bad) 25%,var(--line))}
+.sheet-body > .sec.danger-zone {background:transparent;border-style:dashed;box-shadow:none;padding-block:10px}
 .sheet .bubble.out.unsent {border:1px solid var(--line);border-left:3px solid #b84e28;background:var(--surface-2);box-shadow:none}
 .delivery-state {display:block;font-size:.8rem;color:#973c1e;margin-top:6px}
 .delivery-detail {margin-top:3px;font-size:.8rem}
 .delivery-detail summary {cursor:pointer;font-weight:550}
 .delivery-detail p {margin:6px 0 0;color:var(--muted)}
 @media(max-width:540px){
-  .sheet .sheet-body {padding-inline:16px}
+  .sheet .sheet-body {padding:10px 10px 24px;gap:10px}
+  .sheet-body > .sec {padding:14px}
+  .sheet-body .est-add .pri-pick,.sheet-body .est-add .save-chk {grid-column:1 / -1;justify-self:start;white-space:normal}
   .stage-picker + .btn-row .primary {flex:1 1 100%}
   .sheet-body .stepper {grid-template-columns:repeat(2,minmax(0,1fr))}
   .sheet-body .step {min-height:44px}
