@@ -281,11 +281,29 @@ export default function ToteDetail() {
             <Pressable onPress={add} style={[styles.addBtn, { backgroundColor: t.primary }]}>
               <Text style={{ color: t.onPrimary, fontWeight: '700' }}>Add</Text>
             </Pressable>
+          ) : ToteNative ? (
+            <Pressable
+              accessibilityLabel="Snap a photo to add items"
+              onPress={() => router.push(`/tote/snap?id=${tote.id}`)}
+              style={[styles.addBtn, { backgroundColor: t.primary, flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+            >
+              <Ionicons name="camera" size={18} color={t.onPrimary} />
+              <Text style={{ color: t.onPrimary, fontWeight: '700' }}>Snap</Text>
+            </Pressable>
           ) : null}
         </View>
 
         {tote.items.length === 0 ? (
-          <Text style={[styles.emptyItems, { color: t.textMuted }]}>No items yet. Type above and hit return to add things quickly.</Text>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={[styles.emptyItems, { color: t.textMuted }]}>
+              {ToteNative
+                ? 'No items yet. Type above, or tap Snap to take a photo of the open tote and pick from what your iPhone sees.'
+                : 'No items yet. Type above and hit return to add things quickly.'}
+            </Text>
+            {ToteNative ? (
+              <Button title="Snap a photo of what's inside" icon="camera" variant="secondary" onPress={() => router.push(`/tote/snap?id=${tote.id}`)} style={{ marginTop: 14, alignSelf: 'stretch' }} />
+            ) : null}
+          </View>
         ) : (
           <Card style={{ padding: 0, marginTop: 12 }}>
             {tote.items.map((item, idx) => (
