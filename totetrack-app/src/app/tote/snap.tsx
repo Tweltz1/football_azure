@@ -10,7 +10,7 @@ import { suggestionsFrom } from '../../lib/snap';
 import { useTotes } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 
-type Suggestion = { name: string; from: 'photo' | 'text'; on: boolean };
+type Suggestion = { name: string; from: 'photo' | 'text'; sure: boolean; on: boolean };
 
 export default function Snap() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -39,7 +39,7 @@ export default function Snap() {
       setSuggestions(
         suggestionsFrom(result)
           .filter((s) => !existing.has(s.name.toLowerCase()))
-          .map((s) => ({ ...s, on: s.from === 'photo' })),
+          .map((s) => ({ ...s, on: s.sure })),
       );
     } catch (e) {
       Alert.alert("Couldn't read that photo", e instanceof Error ? e.message : String(e));
@@ -107,25 +107,33 @@ export default function Snap() {
 
         {suggestions && suggestions.length > 0 ? (
           <>
-            <SectionTitle>Tap to choose what to add</SectionTitle>
-            <View style={styles.wrap}>
-              {suggestions.map((s, i) => (
-                <Pressable
-                  key={s.name}
-                  onPress={() => {
-                    tap();
-                    setSuggestions((prev) => prev!.map((x, j) => (j === i ? { ...x, on: !x.on } : x)));
-                  }}
-                  style={[styles.chip, { backgroundColor: s.on ? t.primary : t.card, borderColor: s.on ? t.primary : t.border }]}
-                >
-                  <Ionicons name={s.on ? 'checkmark' : s.from === 'text' ? 'text' : 'add'} size={15} color={s.on ? t.onPrimary : t.textMuted} />
-                  <Text style={{ color: s.on ? t.onPrimary : t.text, fontWeight: '600', fontSize: 15 }}>{s.name}</Text>
-                </Pressable>
-              ))}
-            </View>
+            {(['photo', 'text'] as const).map((kind) =>
+              suggestions.some((x) => x.from === kind) ? (
+                <View key={kind}>
+                  <SectionTitle>{kind === 'photo' ? 'Things spotted in the photo' : 'Words on labels and packaging'}</SectionTitle>
+                  <View style={styles.wrap}>
+                    {suggestions.map((s, i) =>
+                      s.from !== kind ? null : (
+                        <Pressable
+                          key={s.name}
+                          onPress={() => {
+                            tap();
+                            setSuggestions((prev) => prev!.map((x, j) => (j === i ? { ...x, on: !x.on } : x)));
+                          }}
+                          style={[styles.chip, { backgroundColor: s.on ? t.primary : t.card, borderColor: s.on ? t.primary : t.border }]}
+                        >
+                          <Ionicons name={s.on ? 'checkmark' : 'add'} size={15} color={s.on ? t.onPrimary : t.textMuted} />
+                          <Text style={{ color: s.on ? t.onPrimary : t.text, fontWeight: '600', fontSize: 15 }}>{s.name}</Text>
+                        </Pressable>
+                      ),
+                    )}
+                  </View>
+                </View>
+              ) : null,
+            )}
             <Text style={{ color: t.textMuted, fontSize: 13, marginTop: 12, lineHeight: 18 }}>
-              Suggestions come from your iPhone, so the photo never leaves your phone. Items marked with the text icon were read from labels and packaging.
-              You can rename anything after adding it.
+              Tap the ones you want. Only confident matches start ticked. Everything is worked out on your iPhone, so the photo never leaves your
+              phone. You can rename anything after adding it, and a closer photo of one or two things at a time works best.
             </Text>
             <Button
               title={chosen.length ? `Add ${chosen.length} item${chosen.length === 1 ? '' : 's'}` : 'Choose items to add'}
