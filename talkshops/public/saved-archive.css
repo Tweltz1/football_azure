@@ -108,3 +108,5 @@
 .recalls .recall-note{font-size:13px}
 .import-note .import-how{display:block;margin-top:6px;color:var(--muted)}
 .import-note .import-how .linkbtn{font-weight:650}
+.notice.prices-hint{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+.notice.prices-hint span{flex:1 1 260px}

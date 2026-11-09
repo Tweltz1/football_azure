@@ -94,7 +94,7 @@ window.createPriceImport = ({ api }) => {
     const lines = [];
     for (let n = 1; n <= Math.min(doc.numPages, 10); n++) {
       const page = await doc.getPage(n), content = await page.getTextContent();
-      lines.push(...window.PriceRules.toLines(content.items.map((t) => ({ str: t.str, x: t.transform[4], y: t.transform[5], h: Math.abs(t.transform[3]) || t.height }))));
+      lines.push(...window.PriceRules.toLines(content.items.map((t) => ({ str: t.str, x: t.transform[4], y: t.transform[5], w: t.width, h: Math.abs(t.transform[3]) || t.height }))));
     }
     return lines;
   }
@@ -174,15 +174,20 @@ window.createPriceImport = ({ api }) => {
     c.getContext("2d").putImageData(img, 0, 0);
     return c;
   }
+  // Tesseract settings; the bench (talkshops/bench) can try others through window.PRICE_OCR_PARAMS.
+  const OCR_PARAMS = {};
   async function ocrLines(canvases, onStatus) {
     await script(LIB.ocr);
     onStatus("Reading the text on this device (the first time downloads the free reader)…");
     const worker = await window.Tesseract.createWorker("eng", 1, { workerPath: LIB.ocrWorker, corePath: LIB.ocrCore, langPath: LIB.ocrLang });
     try {
+      await worker.setParameters({ preserve_interword_spaces: "1", ...OCR_PARAMS, ...(window.PRICE_OCR_PARAMS || {}) });
       const lines = [];
       for (const c of canvases) {
         const { data } = await worker.recognize(c);
-        lines.push(...(data.lines?.length ? data.lines.map((l) => l.text) : String(data.text || "").split("\n")));
+        // Words with positions, so wide gaps (columns, cards) are kept the same way as for PDFs.
+        const words = data.words?.length ? data.words.map((w) => ({ str: w.text, x: w.bbox.x0, w: w.bbox.x1 - w.bbox.x0, y: -(w.bbox.y0 + w.bbox.y1) / 2, h: w.bbox.y1 - w.bbox.y0 })) : null;
+        lines.push(...(words ? window.PriceRules.toLines(words) : data.lines?.length ? data.lines.map((l) => l.text) : String(data.text || "").split("\n")));
       }
       return lines;
     } finally { worker.terminate(); }

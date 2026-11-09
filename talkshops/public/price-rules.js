@@ -9,7 +9,9 @@
   const HOURS = /(\d{1,2}(?:\.\d{1,2})?)\s?(?:hrs?|hours?)\b\.?/i;
   const LABOR_RATE = /\b(labou?r(?:\s+rate)?|shop\s+rate|hourly(?:\s+rate)?|per\s+hour|\/\s?hr|an?\s+hour)\b/i;
   const CHECK_WORDS = /\b(starting\s+at|starts\s+at|from|and\s+up|call|varies|estimate|approx\.?|plus\s+parts|\+\s*parts)\b/i;
-  const PART_WORDS = /\b(filter|pads?|rotors?|blades?|bulbs?|battery|hose|plugs?|sensor|fluid|oil\s+\(per|per\s+qt|per\s+quart|each|ea\.?)\b/i;
+  const PART_WORDS = /\b(filter|blades?|bulbs?|sensor|valve\s+stem|per\s+qt|per\s+quart|each|ea\.?)\b|\((?:per\s+)?(?:qt|quart|pair)\)/i;
+  // Work done (a service), even when a part is named: "Front brake pads", "Battery replacement", "Coolant flush".
+  const SERVICE_WORDS = /\b(replace(?:ment)?|install(?:ation)?|service|repair|flush|change|inspection|test|diagnos\w*|alignment|rotation|recharge|restoration|pads|rotors|disposal|fee|labou?r|mount)\b/i;
   const JUNK = /(\(\d{3}\)\s?\d{3}-\d{4}|\b\d{3}[-.]\d{3}[-.]\d{4}\b|www\.|https?:|@\w|\b(total|subtotal|tax|invoice|date|phone|fax|page\s+\d)\b)/i;
 
   const cents = (n) => Math.round(n * 100) / 100;
@@ -92,7 +94,7 @@
   function parse(lines, opts = {}) {
     const rows = [];
     let pendingName = "";
-    for (const raw of lines.flatMap((l) => splitColumns(l))) {
+    for (const raw of pairCells(lines).flatMap((l) => splitColumns(l))) {
       const r = readLine(opts.ocr ? fixWords(String(raw)) : raw);
       if (!r) { pendingName = ""; continue; }
       if (!r.prices.length && r.pct === null && r.hours === null) {
@@ -129,7 +131,7 @@
       const list = r.range ? [r.prices[0]] : r.prices;
       list.forEach((p, i) => {
         const name = (r.hours ? `${r.name} (${r.hours} hr)` : r.name) + (list.length > 1 ? ` (option ${i + 1})` : "");
-        const kind = PART_WORDS.test(r.name) && !r.hours ? "part" : "fee";
+        const kind = PART_WORDS.test(r.name) && !SERVICE_WORDS.test(r.name) && !r.hours ? "part" : "fee";
         const note = why || (list.length > 1 ? "Several prices on one line" : "");
         add({ name, kind, rate: p.value, ...(note ? { check: true, note } : {}) });
       });
@@ -146,7 +148,29 @@
       if (last && Math.abs(last.y - p.y) <= Math.max(2, (p.h || 10) * 0.45)) last.parts.push(p);
       else lines.push({ y: p.y, parts: [p] });
     }
-    return lines.map((l) => l.parts.sort((a, b) => a.x - b.x).map((p) => p.str.trim()).join(" "));
+    // A wide gap between pieces (another column or card) becomes a tab, so cards can be paired up in parse().
+    return lines.map((l) => l.parts.sort((a, b) => a.x - b.x).reduce((out, p, i, all) => {
+      const prev = all[i - 1], gap = prev && prev.w ? p.x - (prev.x + prev.w) : 0;
+      return out + (i ? (gap > Math.max(24, 2 * (p.h || 10)) ? "\t" : " ") : "") + p.str.trim();
+    }, ""));
+  }
+
+  const hasPrice = (s) => /\$\s?\d|\b\d[\d,]*\.\d{2}\b|\d\s?%|\b\d{1,2}(?:\.\d{1,2})?\s?(?:hrs?|hours?)\b/i.test(s);
+  /**
+   * Cards or columns side by side: a line of names ("Oil change <tab> Tire rotation") followed by a line of prices
+   * ("$49.95 <tab> $24.99") is paired cell by cell. Other tab gaps are just spaces.
+   */
+  function pairCells(lines) {
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+      const cells = String(lines[i]).split("\t").map((c) => c.trim()).filter(Boolean);
+      const next = i + 1 < lines.length ? String(lines[i + 1]).split("\t").map((c) => c.trim()).filter(Boolean) : [];
+      if (cells.length >= 2 && next.length === cells.length && cells.every((c) => !hasPrice(c) && /[a-z]{3}/i.test(c)) && next.every(hasPrice)) {
+        cells.forEach((c, k) => out.push(c + " " + next[k]));
+        i++;
+      } else out.push(cells.join(" "));
+    }
+    return out;
   }
 
   root.PriceRules = { parse, readLine, toLines, fixWords };

@@ -402,7 +402,9 @@
       + (join.err ? `<div class="notice">${esc(join.err)}</div>` : "")
       // Until someone saves a name, the Technician list shows the start of their email.
       + (!myName && (ui.view === "board" || ui.view === "settings") ? `<form class="notice name-ask" id="myNameForm"><span><b>Add your name</b> so your team sees who's working on each car.</span><input id="myNameIn" maxlength="60" placeholder="e.g. Sam Lee" autocomplete="name" aria-label="Your name" required><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Save</button></form>` : "")
-      + (ui.view === "plan" || ui.view === "training" || ui.view === "help" ? "" : isOwner() ? planUi.banner(plan) : techBanner(plan));
+      + (ui.view === "plan" || ui.view === "training" || ui.view === "help" ? "" : isOwner() ? planUi.banner(plan) : techBanner(plan))
+      // Owners who haven't brought in prices yet get a pointer to the upload page on the Bay.
+      + (isOwner() && ui.view === "board" && !(shop.rates || []).length && store.get("talkshops-prices-hint") !== "off" ? `<div class="notice prices-hint"><span><b>Upload your price list</b> (PDF, photo or Excel) so estimates fill in your labor rate, services and fees.</span><button class="btn primary" type="button" data-view="prices">Upload prices</button><button class="linkbtn" type="button" id="hidePricesHint">Not now</button></div>` : "");
     app.innerHTML = err + (ui.view === "help" ? helpView() : ui.view === "checkin" ? checkinView() : ui.view === "settings" ? (isOwner() ? setupView(false) : techSettingsView()) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : ui.view === "prices" && isOwner() ? pricesView() : boardView());
     if (ui.view === "board") filterBoard();
     if (ui.view === "settings" && !recovery.data && !recovery.loading && !recovery.err) loadRecovery();
@@ -623,8 +625,8 @@
   function pricesView() {
     const n = (shop.rates || []).length;
     return `<div class="settings-wrap prices-step"><section class="panel">
-      <p class="step-label">Step 2 of 2 · Optional</p>
-      <h2>Bring in your prices</h2>
+      ${pricesStep.fromSetup ? `<p class="step-label">Step 2 of 2 · Optional</p>` : ""}
+      <h2>${n ? "Upload your price list" : "Bring in your prices"}</h2>
       <p class="muted">Upload the price list you already use, in whatever layout you have: a PDF, a photo of your price board or service menu, an Excel sheet or a CSV. Talk Shops finds your labor rate, services, parts and fees. You check every item before anything is saved.</p>
       <label class="price-drop${pricesStep.busy ? " busy" : ""}" for="priceFiles">
         <b>${pricesStep.busy ? esc(pricesStep.status || "Reading your price list…") : "Choose files or drop them here"}</b>
@@ -634,7 +636,7 @@
       ${pricesStep.err ? `<p class="form-err" role="alert">${esc(pricesStep.err)}</p>` : ""}
       ${n ? `<p class="form-ok">${n} saved item${n === 1 ? "" : "s"} so far.</p>` : ""}
       <div class="btn-row"><button class="btn${n ? " primary" : ""}" type="button" data-view="board">${n ? "Done, open my shop board" : "Skip for now"}</button></div>
-      <small class="muted">You can do this any time in Settings → Saved items. Saved items show up as suggestions when you build estimates and bills.</small>
+      <small class="muted">Come back any time from Settings → Upload price list. Your prices show up as suggestions when you build estimates and bills.</small>
     </section></div>`;
   }
   async function readPriceFiles(files) {
@@ -652,6 +654,7 @@
     return `<div class="${firstTime ? "login-wrap" : "settings-wrap"}"><form class="${firstTime ? "login" : "panel"}" id="setupForm">
       ${firstTime ? brand() : ""}
       ${firstTime && join.err ? `<p class="form-err" role="alert">${esc(join.err)}</p><p class="muted" style="margin:0">Joining someone else's shop? Ask the owner to send a new invite to the email you signed in with. Or set up your own shop below.</p>` : ""}
+      ${firstTime ? `<p class="step-label">Step 1 of 2</p>` : ""}
       <h2>${firstTime ? "Set up your shop" : "Shop Settings"}</h2>
       <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
@@ -665,8 +668,9 @@
       <div class="btn-row"><label>Opens <input type="time" id="sr-open" value="${esc(s.smartSchedule?.open || "08:00")}"></label><label>Closes <input type="time" id="sr-close" value="${esc(s.smartSchedule?.close || "17:00")}"></label></div></details><a href="/demo.html?smart=1" target="_blank" rel="noopener">Try sample customer texts</a></fieldset>` : ""}
       <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
       ${firstTime ? "" : window.BayAge.fields(s)}
-      ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Saved items: labor, parts and fees (import your price list)</button>`}
-      <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
+      ${firstTime ? "" : `<div class="btn-row"><button class="btn primary" type="button" data-view="prices">Upload price list (PDF, photo or Excel)</button><button class="btn" type="button" data-billing="rates">Edit saved items (${(shop?.rates || []).length})</button></div>`}
+      <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Next: upload my prices" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
+      ${firstTime ? `<small class="muted">Next you can upload your price list (PDF, photo, Excel or CSV) so your labor rate, services and fees fill in for you. You can skip it.</small>` : ""}
     </form>${firstTime ? "" : (isOwner() ? window.Workday.packagesPanel() : "") + team.panel(render) + recoveryPanel()}</div>`;
   }
 
@@ -1063,6 +1067,8 @@
     if (t.id === "ci-vin-go") { decodeVinInto("ci"); return; }
     if (t.dataset.howtoJob) { const j = job(t.dataset.howtoJob); if (j) howTo.openFor(j); navPush = ui.view !== "howto"; ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.view === "plan") api("GET", "shop/plan").then((p) => { plan = p; if (ui.view === "plan") render(); }).catch(() => {});
+    if (t.id === "hidePricesHint") { store.set("talkshops-prices-hint", "off"); render(); return; }
+    if (t.dataset.view === "prices") pricesStep.fromSetup = false;
     if (t.dataset.view) { navPush = t.dataset.view !== ui.view; ui.view = t.dataset.view; ui.openJob = null; if (ui.view === "archive") archive.rows = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); return; }
     if (t.hasAttribute("data-close")) { ui.openJob = null; renderLayer(); return; }
@@ -1296,7 +1302,7 @@
       if(f.querySelector('[name="smartTopic"]')) body.smartTopics=Array.from(f.querySelectorAll('[name="smartTopic"]:checked'),el=>el.value);
       const isNew = !shop;
       const r = await act(() => api("POST", "shop/me", body), isNew ? "" : "Saved");
-      if (r) { shop = r.shop; if (r.plan) plan = r.plan; if (r.role) { role = r.role; mainOwner = !!r.mainOwner; } ui.view = isNew && isOwner() ? "prices" : "board"; render(); window.scrollTo(0, 0); }
+      if (r) { shop = r.shop; if (r.plan) plan = r.plan; if (r.role) { role = r.role; mainOwner = !!r.mainOwner; } ui.view = isNew && isOwner() ? "prices" : "board"; pricesStep.fromSetup = isNew; render(); window.scrollTo(0, 0); }
       return;
     }
     if (f.id === "intakeForm") {

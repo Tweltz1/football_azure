@@ -25,7 +25,7 @@ const type = (f) => f.endsWith('.wasm') ? 'application/wasm' : f.endsWith('.js')
 
 // BENCH_FILTER=regex limits the run to matching "source format layout" (e.g. "photo"), to iterate faster.
 const only = process.env.BENCH_FILTER ? new RegExp(process.env.BENCH_FILTER) : null;
-const cases = JSON.parse(fs.readFileSync(path.join(outDir, 'cases.json'), 'utf8')).filter((c) => !only || only.test(`${c.source} ${c.formats[0]} ${c.layout}`));
+const cases = JSON.parse(fs.readFileSync(path.join(outDir, 'cases.json'), 'utf8')).filter((c) => !only || only.test(`${c.source} ${c.formats[0]} ${c.layout}`)).slice(0, Number(process.env.BENCH_MAX) || Infinity);
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1000, height: 1400 } });
 await ctx.route(/cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net/, (r) => {
@@ -80,6 +80,8 @@ function score(c, found) {
 
 const page = await ctx.newPage();
 await page.goto('https://bench.test/');
+// BENCH_OCR='{"tessedit_pageseg_mode":"6"}' tries other Tesseract settings.
+if (process.env.BENCH_OCR) await page.evaluate((p) => { window.PRICE_OCR_PARAMS = p; }, JSON.parse(process.env.BENCH_OCR));
 const results = [];
 for (const c of cases) {
   const fmt = c.formats[0], file = c.id + '.' + (fmt === 'photo' ? 'jpg' : fmt);
