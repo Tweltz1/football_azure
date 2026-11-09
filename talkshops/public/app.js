@@ -207,7 +207,14 @@
   }
 
   // ==================== Shop app (signed in) ====================
-  const ui = { noteDraft: {}, view: "board", openJob: null, modal: null, authMode: new URLSearchParams(location.search).get("login") === "signup" ? "signup" : "signin", authMsg: "", authErr: "", busy: false, reset: null };
+  // Each tab has its own address (talkshops.app/settings, /bay, ...) so refresh, Back and links keep the tab.
+  // The host serves index.html for any path that isn't a file (wrangler.jsonc not_found_handling).
+  const VIEW_PATHS = { board: "/bay", checkin: "/check-in", archive: "/archive", howto: "/how-to", settings: "/settings", plan: "/plan", training: "/training", help: "/help" };
+  const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).map(([v, p]) => [p, v]));
+  Object.assign(PATH_VIEWS, { "/board": "board", "/checkin": "checkin", "/howto": "howto" });
+  const pathView = () => PATH_VIEWS[location.pathname.replace(/\/+$/, "").toLowerCase()] || "";
+  let navPush = false;
+  const ui = { noteDraft: {}, view: pathView() || "board", openJob: null, modal: null, authMode: new URLSearchParams(location.search).get("login") === "signup" ? "signup" : "signin", authMsg: "", authErr: "", busy: false, reset: null };
   // Shop Settings: the phone that can get password reset codes.
   const recovery = { data: null, loading: false, pending: "", err: "" };
   const dictation = window.createDictation({ toast });
@@ -247,7 +254,7 @@
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(joinToken)) joinToken = "";
   store.set(JOIN_KEY, joinToken);
   const join = { info: null, err: "" };
-  const authRedirect = () => location.origin + "/" + (joinToken ? "?join=" + encodeURIComponent(joinToken) : "");
+  const authRedirect = () => location.origin + (pathView() ? location.pathname : "/") + (joinToken ? "?join=" + encodeURIComponent(joinToken) : "");
   let session = null, shop = null, emailConfigured = false, jobs = [], loaded = false, loadErr = "";
   const job = (id) => jobs.find((j) => j.id === id);
   const upsertJob = (j) => { const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
@@ -268,7 +275,7 @@
     }
     joinToken = ""; store.set(JOIN_KEY, "");
     const q = new URLSearchParams(location.search);
-    if (q.has("join")) { q.delete("join"); history.replaceState(history.state, "", "/" + (q.toString() ? "?" + q : "") + location.hash); }
+    if (q.has("join")) { q.delete("join"); history.replaceState(history.state, "", (pathView() ? location.pathname : "/") + (q.toString() ? "?" + q : "") + location.hash); }
   }
 
   async function loadShop() {
@@ -294,7 +301,7 @@
       app.innerHTML = salesView();
       return;
     }
-    if (new URLSearchParams(location.search).has("help")) {
+    if (new URLSearchParams(location.search).has("help") || (!session && pathView() === "help")) {
       ui.view = "help";
       chrome.hidden = true;
       document.title = "Help & Support · Talk Shops";
@@ -302,7 +309,7 @@
       return;
     }
     // The sign-in page is /?login (a real file the host always serves); /login forwards there.
-    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join") || !!joinToken;
+    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join") || !!joinToken || !!pathView();
     if (!session) {
       chrome.hidden = true;
       if (onLoginPage) document.title = ui.authMode === "signup" ? "Create Your Account · Talk Shops" : "Shop Sign In · Talk Shops";
@@ -310,7 +317,7 @@
       renderLayer();
       return;
     }
-    if (onLoginPage) { const q = new URLSearchParams(location.search); q.delete("login"); history.replaceState(history.state, "", "/" + (q.toString() ? "?" + q : "") + location.hash); }
+    if (onLoginPage) { const q = new URLSearchParams(location.search); q.delete("login"); history.replaceState(history.state, "", (pathView() ? location.pathname : "/") + (q.toString() ? "?" + q : "") + location.hash); }
     if (!loaded) { chrome.hidden = true; app.innerHTML = `<div class="loading">Loading your shop…</div>`; return; }
     if (joinToken) {
       chrome.hidden = true;
@@ -326,6 +333,10 @@
     }
     if (!shop) { chrome.hidden = true; app.innerHTML = setupView(true); renderLayer(); return; }
     if (!isOwner() && ui.view === "plan") ui.view = "board";
+    if (!VIEW_PATHS[ui.view]) ui.view = "board";
+    const want = VIEW_PATHS[ui.view];
+    if (location.pathname !== want) history[navPush ? "pushState" : "replaceState"](history.state, "", want + location.search + location.hash);
+    navPush = false;
     chrome.hidden = false;
     $("#shopName").textContent = shop.name;
     $("#bayTab").textContent = bayName();
@@ -931,9 +942,9 @@
     if (await team.click(t, render)) return;
     if (await planUi.click(t, render)) return;
     if (howTo.click(t, render)) return;
-    if (t.dataset.howtoJob) { const j = job(t.dataset.howtoJob); if (j) howTo.openFor(j); ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); return; }
+    if (t.dataset.howtoJob) { const j = job(t.dataset.howtoJob); if (j) howTo.openFor(j); navPush = ui.view !== "howto"; ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.view === "plan") api("GET", "shop/plan").then((p) => { plan = p; if (ui.view === "plan") render(); }).catch(() => {});
-    if (t.dataset.view) { ui.view = t.dataset.view; ui.openJob = null; if (ui.view === "archive") archive.rows = null; render(); window.scrollTo(0, 0); return; }
+    if (t.dataset.view) { navPush = t.dataset.view !== ui.view; ui.view = t.dataset.view; ui.openJob = null; if (ui.view === "archive") archive.rows = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); return; }
     if (t.hasAttribute("data-close")) { ui.openJob = null; renderLayer(); return; }
     if (t.hasAttribute("data-cancel")) { if (ui.busy) return; ui.modal = ui.modal?.pickup || null; renderLayer(); return; }
@@ -1386,6 +1397,15 @@
       .catch((e) => { if (joinToken === checkingToken) join.err = e.message; })
       .finally(() => { if (!session) { render(); const em = $("#au-email"); if (em && join.info && !em.value) em.value = join.info.email; } });
   }
+  // Back and Forward move between tabs.
+  addEventListener("popstate", () => {
+    if (custToken || !session || !shop) return;
+    const v = pathView() || "board";
+    if (v === ui.view) return;
+    ui.view = v; ui.openJob = null; ui.modal = null;
+    if (v === "archive") archive.rows = null;
+    render(); window.scrollTo(0, 0);
+  });
   // Show the public page before session recovery or refresh finishes.
   render();
   // Back from Stripe: say so, and refresh the plan a few times while Stripe's confirmation arrives.
@@ -1402,7 +1422,7 @@
       // Run after Supabase releases its auth lock; use this event's session for API authorization.
       setTimeout(() => { if (session?.user.id === s.user.id) loadShop(); }, 0);
     }
-    else if (!s) { Object.assign(recovery, { data: null, pending: "", err: "" }); team.reset(); role = null; mainOwner = false; join.err = ""; shop = null; jobs = []; loaded = false; ui.openJob = null; ui.modal = ui.modal === "video" ? "video" : null; if (was || !$("#emailForm")) render(); }
+    else if (!s) { if (was && pathView()) history.replaceState(null, "", "/"); Object.assign(recovery, { data: null, pending: "", err: "" }); team.reset(); role = null; mainOwner = false; join.err = ""; shop = null; jobs = []; loaded = false; ui.openJob = null; ui.modal = ui.modal === "video" ? "video" : null; if (was || !$("#emailForm")) render(); }
   });
   sb.auth.getSession().then(({ data }) => { if (!data.session && !$("#emailForm")) render(); });
   setInterval(async () => {
