@@ -545,6 +545,31 @@
     </section></div>`;
   }
 
+  // Homepage plan table: [feature, Starter, Pro]; true = included, false = not included, text = shown as is.
+  // A one-item row is a group heading. Only list features that are live.
+  const PLAN_ROWS = [
+    ["Customers and messages"],
+    ["Private progress page by text and email", true, true],
+    ["Texts per month", "1,000", "3,000"],
+    ["Email updates", "Unlimited", "Unlimited"],
+    ["Reminder texts with STOP opt-out", true, true],
+    ["Line-by-line approvals with e-signature", true, true],
+    ["Smart Replies answer routine texts", false, true],
+    ["Daily work"],
+    ["Bay board with urgency, promised-by times and alerts", true, true],
+    ["Assign technicians and My Cars", true, true],
+    ["Check-in with VIN decode, recalls and returning customers", true, true],
+    ["Quick services and fast lane", true, true],
+    ["Estimates from your own price list (Excel, CSV, PDF or photo)", true, true],
+    ["Before-and-after walk-through with tire tread", true, true],
+    ["Walk-around photos with AI damage marks", true, true],
+    ["Print work orders and bills, Today's Summary, Archive", true, true],
+    ["How-To repair assistant with video links", false, true],
+    ["Your team"],
+    ["Staff seats", "3 (up to 2 owners)", "8 (up to 3 owners)"],
+    ["Owner and technician roles", true, true],
+  ];
+
   function homeView() {
     return `<div class="front">
       <header class="front-nav"><div class="front-inner">
@@ -599,14 +624,19 @@
           <article><h3>Talk Shops Starter</h3><strong>$89<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $890/year</small><p><a class="btn primary" href="/?login=signup">Start Free Trial</a></p></article>
           <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about job status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>How-To Repair Assistant</b> gives technicians steps, tools, typical specs and video links for the job.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Start Free Trial</a></p></article>
         </div>
-        <h3 class="front-market-title">Plan Comparison</h3>
-        <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
-          <tr><th scope="row">Talk Shops Starter</th><td>$89</td><td>Customer updates, approvals and 1,000 texts</td></tr>
-          <tr><th scope="row">Talk Shops Pro</th><td>$149</td><td>Everything in Starter, plus Smart Replies, the AI repair assistant and higher staff and text limits</td></tr>
-          <tr><th scope="row"><a href="https://www.shopmonkey.io/pricing">Shopmonkey Basic</a></th><td>$239</td><td>Shop management, two-way texting and electronic signatures</td></tr>
-          <tr><th scope="row"><a href="https://www.tekmetric.com/pricing">Tekmetric Scale</a></th><td>$439</td><td>Shop management, two-way texting and technician board</td></tr>
+        <h3 class="front-market-title">Compare Plans Side by Side</h3>
+        <div class="front-compare-wrap"><table class="front-market front-compare"><thead><tr><th scope="col">Feature</th><th scope="col">Starter <small>$89/mo</small></th><th scope="col">Pro <small>$149/mo</small></th></tr></thead><tbody>
+          ${PLAN_ROWS.map((r) => r.length === 1 ? `<tr class="front-compare-group"><th colspan="3" scope="colgroup">${r[0]}</th></tr>` : `<tr><th scope="row">${r[0]}</th>${[r[1], r[2]].map((v) => `<td>${v === true ? '<span class="front-yes" aria-label="Included">✓</span>' : v === false ? '<span class="front-no" aria-label="Not included">–</span>' : v}</td>`).join("")}</tr>`).join("")}
+        </tbody></table></div>
+        <small class="front-source">The free trial includes Pro features, so you can try everything before you choose.</small>
+        <h3 class="front-market-title front-vs-title">Talk Shops vs. Full Shop-Management Suites</h3>
+        <table class="front-market front-vs"><thead><tr><th scope="col"></th><th scope="col">Talk Shops</th><th scope="col">Full shop-management suites</th></tr></thead><tbody>
+          <tr><th scope="row">Monthly price</th><td><b>$89 or $149</b></td><td>Often $200 to $450 or more at list price</td></tr>
+          <tr><th scope="row">Built for</th><td>Customer updates, approvals, inspections and the shop board</td><td>Running the whole business, from parts ordering to accounting</td></tr>
+          <tr><th scope="row">Getting started</th><td>Upload your price list and check in your first car the same day</td><td>Usually a larger setup to move over customers, parts and history</td></tr>
+          <tr><th scope="row">Already have one?</th><td colspan="2">Talk Shops works alongside it. Upload the invoice your system makes as the customer's final bill.</td></tr>
         </tbody></table>
-        <small class="front-source">Selected plans at month-to-month list prices, checked November 8, 2026. Competitor plans include additional shop-management features.</small>
+        <small class="front-source">Suite prices are month-to-month list prices for popular systems, checked November 2026. Those systems include more back-office features.</small>
       </div></section>
       <section class="front-faq"><div class="front-inner">
         <h2>Questions Shops Ask</h2>
