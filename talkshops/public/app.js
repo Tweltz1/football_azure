@@ -244,7 +244,7 @@
   const isOwner = () => role === "owner";
   // Each tab has its own address (talkshops.app/settings, /bay, ...) so refresh, Back and links keep the tab.
   // The host serves index.html for any path that isn't a file (wrangler.jsonc not_found_handling).
-  const VIEW_PATHS = { board: "/bay", checkin: "/check-in", archive: "/archive", howto: "/how-to", settings: "/settings", plan: "/plan", training: "/training", help: "/help" };
+  const VIEW_PATHS = { board: "/bay", checkin: "/check-in", archive: "/archive", howto: "/how-to", settings: "/settings", plan: "/plan", training: "/training", help: "/help", prices: "/prices" };
   const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).map(([v, p]) => [p, v]));
   Object.assign(PATH_VIEWS, { "/board": "board", "/checkin": "checkin", "/howto": "howto" });
   const pathView = () => PATH_VIEWS[(location.pathname || "/").replace(/\/+$/, "").toLowerCase()] || "";
@@ -336,7 +336,7 @@
       return;
     }
     if (!shop) { chrome.hidden = true; app.innerHTML = setupView(true); renderLayer(); return; }
-    if (!isOwner() && ui.view === "plan") ui.view = "board";
+    if (!isOwner() && (ui.view === "plan" || ui.view === "prices")) ui.view = "board";
     if (!VIEW_PATHS[ui.view]) ui.view = "board";
     const want = VIEW_PATHS[ui.view];
     if (location.pathname !== want) history[navPush ? "pushState" : "replaceState"](history.state, "", want + location.search + location.hash);
