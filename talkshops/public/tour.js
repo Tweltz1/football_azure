@@ -115,7 +115,7 @@
       audio.ontimeupdate = () => showAt(audio.currentTime);
       audio.onended = finish;
       audio.onerror = useFallback;
-      audio.src = "/tour/" + key + ".mp3?v=8";
+      audio.src = "/tour/" + key + ".mp3?v=9";
       audio.muted = muted;
       const p = audio.play();
       if (p && p.catch) p.catch(useFallback);
@@ -218,6 +218,8 @@
 
   // Takeaways stay on screen after the narration so staff can consult them at the counter.
   const takeaways = {
+    booking: "Put your booking link on your website and your Google profile. Requests wait at the top of the Bay until you confirm a time or decline. Booking and Spanish are on every plan.",
+    results: "Results, the time clock, review requests and your logo are Pro tools, and your free trial includes them. Export Your Data is on every plan.",
     bay: "Use Awaiting approval to find estimates with an unanswered line. A signed estimate can stay in Estimate review until the shop moves the car.",
     checkin: "For an after-hours drop-off, invite the customer by link. Open their repair when the intake arrives and move it to Checked in when the vehicle is at the shop.",
     estimates: "Open the diagram on a matching estimate line to explain the part. For evidence from this particular car, attach a technician photo. A shop owner sends the finished estimate.",
@@ -794,7 +796,7 @@
       }
       step(); {
         const c = say("wa-3"); await tap("#backToShop"); await wait(300); await openSheet("RO-1043"); q("#waSec")?.scrollIntoView({ block: "center" }); highlight("#waSec");
-        await cue(0.3); highlight("[data-wa-ai]"); await tap("[data-wa-ai]"); await wait(2200); highlight("#waSec .wa-grid");
+        await cue(0.5); highlight("[data-wa-ai]"); await cue(0.78); await tap("[data-wa-ai]"); await wait(2200); highlight("#waSec .wa-grid");
         await c;
       }
       step(); {
@@ -990,13 +992,82 @@
       }
       step(); { const c = say("si-5"); await cue(0.05); await type("#rc-code", "123456"); await tap("#recoveryCodeForm .btn.primary"); await wait(300); highlight("#recoveryPanel"); await c; }
     },
+    async booking() {
+      STEPS = 5; await begin("board");
+      const bk = (id, what) => `[data-gr-bk="${id}"] [data-gr-bk-open="${what}"]`;
+      step(); {
+        const c = say("bk-1"); await wait(300); highlight("#gr-bookings");
+        await cue(0.78); highlight('[data-gr-bk="bk1"]');
+        await c;
+      }
+      step(); {
+        const c = say("bk-2"); highlight(bk("bk1", "accept")); await cue(0.03); await tap(bk("bk1", "accept")); await wait(250);
+        highlight(q("#gr-bk-when")?.closest("label")); await cue(0.16); highlight(q("#gr-bk-text")?.closest("label"));
+        await cue(0.47); await tap("[data-gr-bk-accept]"); await wait(450); highlight(q('[data-open="RO-1047"]') || ".board-wrap");
+        await cue(0.68); q("#gr-bookings")?.scrollIntoView({ block: "center" }); highlight(bk("bk2", "decline"));
+        await c;
+      }
+      step(); {
+        const c = say("bk-3"); await tab("settings"); q("#gr-booking")?.scrollIntoView({ block: "center" }); highlight("#gr-booking");
+        await cue(0.45); highlight('[data-gr-grow="bookingOn"]'); await cue(0.6); highlight("#gr-booking .gr-link"); await cue(0.78); highlight(q("#gr-book-note")?.closest("label"));
+        await c;
+      }
+      step(); {
+        const lang = () => q("#ci-lang")?.closest("label");
+        const c = say("bk-4"); await tab("checkin"); lang()?.scrollIntoView({ block: "center" }); highlight(lang());
+        await cue(0.22); await pick("#ci-lang", "es"); highlight(lang());
+        await c;
+      }
+      step(); {
+        const c = say("bk-5"); await openSheet("RO-1047"); await tap("#viewAsCust"); await wait(400); highlight(".c-head");
+        await cue(0.2); highlight(".cust-page .c-body"); await cue(0.38); highlight(".gr-appt");
+        await cue(0.6); q(".gr-lang")?.scrollIntoView({ block: "center" }); highlight(".gr-lang");
+        await c; await tap("#backToShop"); await wait(200); await closeAll();
+      }
+    },
+    async results() {
+      STEPS = 5; await begin("board");
+      // Shown as a plain (not modal) dialog so the tour's own controls stay usable.
+      const plain = () => { const d = q("#gr-results"); if (d?.open) { d.close(); d.show(); } };
+      const show = (sel) => { const el = typeof sel === "string" ? q(sel) : sel; el?.scrollIntoView({ block: "center" }); highlight(el); return el; };
+      step(); {
+        const c = say("rs-1"); await wait(300); highlight(".wd-bar");
+        await cue(0.85); highlight("[data-gr-results]");
+        await c;
+      }
+      step(); {
+        const c = say("rs-2"); await tap("[data-gr-results]"); await wait(450); plain(); show("#gr-results .wd-tiles");
+        await cue(0.5); show("#gr-results .gr-bars"); await cue(0.58); show("#gr-results .gr-table"); await cue(0.66); show("#gr-results .gr-declined");
+        await cue(0.8); show("#gr-results .gr-days"); await cue(0.9); await tap('[data-gr-days="90"]'); await wait(350); plain(); show("#gr-results .gr-days");
+        await c; q("#gr-results")?.close();
+      }
+      step(); {
+        const c = say("rs-3"); await openSheet("RO-1043"); show(".gr-clock");
+        await cue(0.2); await tap('[data-gr-clock="on"]'); await wait(300); show(".gr-clock");
+        await cue(0.36); await tap('[data-gr-clock="off"]'); await wait(300); show(".gr-clock");
+        await cue(0.82); await closeAll(); await wait(250); show(q('[data-open="RO-1043"] .gr-on') || q('[data-open="RO-1043"]'));
+        await c;
+      }
+      step(); {
+        const c = say("rs-4"); await openSheet("RO-1045"); show(sec(/Ask for a Review/));
+        await cue(0.2); await tap("[data-gr-review-ask]"); await wait(300); show(q("#msgSec .thread .bubble:last-of-type") || "#msgSec");
+        await cue(0.58); await tap("#viewAsCust"); await wait(400); show(".gr-review");
+        await cue(0.82); await tap("#backToShop"); await wait(250); await tab("settings"); show(q("#gr-review-url")?.closest("section"));
+        await c;
+      }
+      step(); {
+        const c = say("rs-5"); if (!q("#gr-review-url")) await tab("settings"); show(qa(".gr-panel")[2]);
+        await cue(0.52); show(qa(".gr-panel")[3]);
+        await c;
+      }
+    },
     async plan() {
       STEPS = 4; await begin("board");
       step(); { const c = say("pl-1"); highlight(".plan-banner"); await c; }
       step(); {
         const c = say("pl-2"); await tab("plan"); highlight(".plan-cards");
-        await cue(0.25); highlight(qa(".plan-card")[0]); await cue(0.55); highlight(qa(".plan-card")[1]);
-        await cue(0.82); await tap('[data-plan-interval="year"]'); highlight(".plan-cards");
+        await cue(0.1); highlight(qa(".plan-card")[0]); await cue(0.4); highlight(qa(".plan-card")[1]);
+        await cue(0.88); await tap('[data-plan-interval="year"]'); highlight(".plan-cards");
         await c;
       }
       step(); { const c = say("pl-3"); highlight(".plan-fine"); await c; }
@@ -1007,8 +1078,8 @@
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
-      fetch("/tour/lines.json?v=5").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
-      fetch("/tour/caption-cues.json?v=5").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+      fetch("/tour/lines.json?v=6").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
+      fetch("/tour/caption-cues.json?v=6").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">

@@ -40,7 +40,7 @@
     "Vehicle check-in": "Registro del vehículo", "Your details have been sent to the shop.": "Sus datos se enviaron al taller.",
     "Vehicle year": "Año del vehículo", "Make": "Marca", "Model": "Modelo", "License plate (optional)": "Placa (opcional)",
     "What should the technician look at?": "¿Qué debe revisar el técnico?", "Save check-in details": "Guardar datos",
-    "Photos for your technician": "Fotos para su técnico", "Show the damage, warning light or part you want checked.": "Muestre el daño, la luz de advertencia o la pieza que quiere que revisen.",
+    "Photos for your technician": "Fotos para su técnico", "Photos from your technician": "Fotos de su técnico", "Show the damage, warning light or part you want checked.": "Muestre el daño, la luz de advertencia o la pieza que quiere que revisen.",
     "Add photos": "Agregar fotos", "{0} of 6 photos added": "{0} de 6 fotos agregadas",
     "Notes from your technician": "Notas de su técnico", "Progress": "Avance", "View photos": "Ver fotos", "Earlier photos": "Fotos anteriores",
     "Your concern": "Su consulta", "Questions? Call the shop": "¿Preguntas? Llame al taller", "This page updates as your repair progresses.": "Esta página se actualiza a medida que avanza su reparación.",
@@ -113,7 +113,7 @@
   function customerCards(c) {
     let h = "";
     if (c.appointment) h += `<div class="c-card gr-appt"><h3>${tsT("Your appointment")}</h3><p style="margin:0">${tsT("{0} confirmed your appointment for {1}.", esc(c.shop.name),
-      esc(new Date(ts(c.appointment)).toLocaleString(dateLocale(), { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })))}</p></div>`;
+      esc(new Date(ts(c.appointment)).toLocaleString(dateLocale(), { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).replace(/\.$/, "")))}</p></div>`;
     if (c.review?.url) h += `<div class="c-card gr-review"><h3>${tsT("How did we do?")}</h3><p style="margin:0 0 10px">${tsT("Thanks for choosing {0}. If we earned it, a quick review helps a small shop a lot.", esc(c.shop.name))}</p>
       <a class="btn primary" href="${esc(c.review.url)}" target="_blank" rel="noopener" data-gr-review>${tsT("Leave a review")} ★</a></div>`;
     return h;

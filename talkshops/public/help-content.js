@@ -86,7 +86,7 @@
       ["How do I change or cancel my plan?", "Owners open Plan and use Manage Billing to change plans, update the card or cancel."],
       ["What if we run out of texts?", "Emails stay unlimited. Upgrade to Pro for more texts, or contact us if you need a higher limit."],
     ]},
-    { id: "grow", title: "Booking, Reviews, Results and Spanish", lesson: "", qs: [
+    { id: "grow", title: "Booking, Reviews, Results and Spanish", lesson: "booking", qs: [
       ["Can customers book online?", "Yes, on every plan. Owners turn on Settings → Online Booking and share the link on their website or Google profile. Customers ask for a day and part of the day. The request shows at the top of the Bay; confirm a time and the car is added with the customer's details filled in, and they get a link to follow the visit."],
       ["Can customers see their page in Spanish?", "Yes, on every plan. Pick Spanish as the customer's language at check-in or in Edit Customer Info. Their page and the automatic texts (stage updates, walk-throughs, reminders, review requests) are in Spanish. Customers can also switch languages at the bottom of their page. Messages you type yourself are sent as written."],
       ["How do I ask for reviews?", "Pro. Paste your Google review link in Settings → Reviews. When a car is ready or picked up, tap Ask for a Review on its screen, or turn on adding the link to the Picked up thank-you text. The customer's page shows a review button too, and Results counts how many opened it."],

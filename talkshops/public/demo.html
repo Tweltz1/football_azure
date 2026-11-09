@@ -249,6 +249,7 @@ a.btn.primary{color:var(--accent-fg)}
 <link rel="stylesheet" href="/help.css?v=1">
 <link rel="stylesheet" href="/howto.css?v=4">
 <link rel="stylesheet" href="/workday.css?v=2">
+<link rel="stylesheet" href="/grow.css?v=1">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
 <style>
 .queue-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -306,7 +307,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=2"></script>
-<script src="/training.js?v=6"></script>
+<script src="/training.js?v=7"></script>
 <script src="/howto.js?v=6"></script>
 <script src="/vehicle-typeahead.js?v=1"></script>
 <script src="/team.js?v=3"></script>
@@ -316,6 +317,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/walkthrough.js?v=5"></script>
 <script src="/workday.js?v=4"></script>
 <script src="/walkaround.js?v=3"></script>
+<script src="/grow.js?v=2"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
@@ -360,9 +362,19 @@ const WA_ANGLES=["front","front_right","right","rear_right","rear","rear_left","
 const estTotal=(j,onlyApproved)=>j.estimate.filter(e=>!onlyApproved||e.status==="approved").reduce((a,e)=>a+Number(e.price),0);
 const contact=c=>c.channel==="email"?c.email:c.channel==="both"?c.phone+" · "+c.email:c.phone;
 const bayName=()=>SHOP.name+" Bay";
+// Customers marked as Spanish speakers get their automatic texts in Spanish (same wording as the real app).
+const TEMPLATES_ES={
+ checked_in:"Hola {first}, {shop} ya tiene su {vehicle}. Le mantendremos al tanto del avance. Siga su reparación aquí: {link}",
+ diagnosing:"Hola {first}, un técnico está revisando su {vehicle} ahora. Pronto le enviaremos lo que encontremos.",
+ approval:"Hola {first}, encontramos lo que tiene su {vehicle}. Por favor revise y apruebe el presupuesto ({total}): {link}",
+ parts:"Hola {first}, las piezas para su {vehicle} ya están pedidas y deben llegar {eta}. Le avisaremos cuando lleguen.",
+ in_progress:"Buenas noticias, {first}: ya estamos reparando su {vehicle}.",
+ qc:"Hola {first}, la reparación está terminada. Estamos haciendo la revisión final y la prueba de manejo de su {vehicle}.",
+ ready:"¡Su {vehicle} está listo para recoger! Total {total}. Horario: {hours}. Detalles: {link}",
+ picked_up:"¡Gracias por elegir {shop}, {first}! ¿Cómo lo hicimos? Responda con sus comentarios."};
 function fillTemplate(stage,j){
   const total=stage==="ready"?(j.bill?j.bill.total:estTotal(j,true)):estTotal(j,false);
-  return TEMPLATES[stage].replace(/\{(\w+)\}/g,(_,k)=>({first:first(j.customer.name),shop:SHOP.name,vehicle:vehicleStr(j),link:linkOf(j),total:money(total),eta:j.eta||"soon",hours:SHOP.hours}[k]??""));
+  return (j.customer.lang==="es"?TEMPLATES_ES:TEMPLATES)[stage].replace(/\{(\w+)\}/g,(_,k)=>({first:first(j.customer.name),shop:SHOP.name,vehicle:vehicleStr(j),link:linkOf(j),total:money(total),eta:j.eta||"soon",hours:SHOP.hours}[k]??""));
 }
 
 /* --- sample data --- */
@@ -454,6 +466,24 @@ function workdaySamples(st){
   st.wd1=1;
 }
 if(!state.wd1){workdaySamples(state);try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+// Growth samples (two online booking requests, a tech on the clock, a review link). Added once to saved demos too.
+function growSamples(st){
+  const now=Date.now(),H=3600000,D=86400000,g=ro=>st.jobs.find(j=>j.ro===ro)||{};
+  const day=n=>{const d=new Date(now+n*D);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+  st.grow={bookingOn:true,bookingNote:"Drop-offs from 7:30am. We text to confirm your time.",reviewUrl:"https://g.page/r/ridgeline-auto-repair/review",reviewAuto:false};
+  st.brand=st.brand||{};
+  st.bookings=[
+    {id:"bk1",createdAt:now-40*60000,data:{customer:{name:"Sofia Ramirez",phone:"(555) 010-4471",email:"",preference:"sms",consent:true,lang:"es"},vehicle:{year:"2017",make:"Toyota",model:"Corolla"},plate:"6SRZ218",concern:"Cambio de aceite y un chillido al frenar",day:day(1),time:"morning"}},
+    {id:"bk2",createdAt:now-3*H,data:{customer:{name:"Derek Olsen",phone:"(555) 019-7730",email:"derek.olsen@example.com",preference:"both",consent:true,lang:"en"},vehicle:{year:"2014",make:"GMC",model:"Sierra"},plate:"",concern:"Oil change, and a vibration at highway speed",day:day(2),time:"afternoon"}}];
+  const jess={id:"u-jess",name:"Jess Park"},marcus={id:"u-marcus",name:"Marcus Hill"};
+  g("RO-1043").clock=[{id:"ck1",by:jess,start:now-3.4*H,end:now-1.6*H},{id:"ck2",by:jess,start:now-35*60000}];
+  g("RO-1040").clock=[{id:"ck3",by:marcus,start:now-5*H,end:now-2.4*H}];
+  const labor=(ro,item,qty)=>{const e=(g(ro).estimate||[]).find(x=>x.item===item);if(e)e.charge={kind:"labor",qty}};
+  labor("RO-1043","Timing cover gasket",3.5);labor("RO-1040","Front strut assemblies (pair)",2.4);
+  g("RO-1039").review={askedAt:now-3*D+2*H,clickedAt:now-3*D+5*H,url:st.grow.reviewUrl};
+  st.gr1=1;
+}
+if(!state.gr1){growSamples(state);try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 if(state.shop)SHOP={...SHOP,...state.shop};
 const save=()=>{try{state.shop=SHOP;localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
 const startView=new URLSearchParams(location.search).get("view");
@@ -490,9 +520,67 @@ window.Workday.init({
   toast:m=>toast(m),filter:()=>filterBoard(),
 });
 
+/* --- booking, results, reviews, time clock, branding and export (grow.js) against the demo's saved state --- */
+const growJob=j=>({...j,createdAt:j.events[0]?.t,stage:j.archivedAt&&!j.closed?"picked_up":j.stage});
+const bookToken="demo-ridgeline";
+function demoResults(days){
+  const k=days/30,n=x=>Math.round(x*k),D=86400000,wk=[2140,3320,2890,4410,3760,5120,4380,4960];
+  const weeks=wk.slice(-Math.max(1,Math.min(8,Math.round(days/7)))).map((a,i,arr)=>({start:Date.now()-(arr.length-i)*7*D,approved:a,in:9+((i*5)%7)}));
+  return{cars:{in:n(46),out:n(41),open:state.jobs.filter(onBoard).length},money:{approved:n(18420),declined:n(4310),avgTicket:412,billed:n(16890)},
+    approvalRate:.81,lineApproval:.74,avgDays:1.8,onTime:.88,promisedCount:n(34),reminders:{sent:n(14),declinedSent:n(9),cameBack:n(4),cameBackMoney:n(1265)},
+    reviews:{asked:n(22),clicked:n(13)},bookings:{fromBooking:n(11)},weeks,
+    techs:[{name:"Marcus Hill",cars:n(19),approved:n(8140),hours:n(52),soldHours:n(57),onTime:.93},{name:"Jess Park",cars:n(17),approved:n(6920),hours:n(49),soldHours:n(44),onTime:.86},{name:"Dana Ruiz",cars:n(10),approved:n(3360),hours:n(21),soldHours:n(20),onTime:.8}],
+    topDeclined:[{item:"Brake fluid flush",count:Math.max(1,n(6)),money:n(714)},{item:"Throttle body cleaning",count:Math.max(1,n(5)),money:n(475)},{item:"Cabin air filter",count:Math.max(1,n(4)),money:n(136)}]};
+}
+const csvCell=v=>{v=String(v??"");if(/^[=+\-@]/.test(v)&&!/^\+?\d+$/.test(v))v="'"+v;return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+async function growApi(method,path,body){
+  if(path==="shop/bookings")return{rows:state.bookings||[]};
+  if(path.startsWith("shop/bookings/")){
+    const id=decodeURIComponent(path.split("/")[2]),b=(state.bookings||[]).find(x=>x.id===id);if(!b)throw new Error("That request was already handled.");
+    state.bookings=state.bookings.filter(x=>x.id!==id);
+    if(body.action!=="accept"){save();return{ok:true}}
+    const d=b.data,t=Date.now(),ch=d.customer.preference||"sms";
+    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:d.customer.name,phone:d.customer.phone,email:d.customer.email,channel:ch,consent:d.customer.consent,lang:d.customer.lang},vehicle:d.vehicle,plate:d.plate,concern:d.concern,
+      stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[{stage:"checked_in",t}],messages:[],appointment:Date.parse(body.when),booking:{day:d.day,time:d.time}};
+    state.nextRO++;plan.carsCreated++;if(body.send&&body.text)notify(j,body.text+" "+linkOf(j),t);
+    state.jobs.push(j);save();return{job:j};
+  }
+  if(path.startsWith("shop/book/")){
+    if(method==="GET")return{shop:{name:SHOP.name,phone:SHOP.phone,hours:SHOP.hours,brand:state.brand||{}},note:state.grow?.bookingNote||""};
+    if(!body.customer?.name||!body.vehicle?.make||!body.concern)throw new Error("Fill in your name, vehicle and what it needs.");
+    state.bookings=[{id:"bk"+Date.now(),createdAt:Date.now(),data:{customer:body.customer,vehicle:body.vehicle,plate:body.plate,concern:body.concern,day:body.day,time:body.time}},...(state.bookings||[])];save();return{ok:true};
+  }
+  if(path==="shop/results")return demoResults(body.days||30);
+  if(path==="shop/export"){
+    const rows=body.kind==="customers"?[["Name","Phone","Email","Last vehicle","Visits"],...Object.values(state.jobs.reduce((a,j)=>{const k=j.customer.name;a[k]=a[k]||[j.customer.name,j.customer.phone||"",j.customer.email||"",vehicleStr(j),0];a[k][4]++;return a},{}))]
+      :[["RO","Checked in","Stage","Customer","Vehicle","Plate","Concern","Approved total"],...state.jobs.map(j=>[j.ro,new Date(j.events[0]?.t).toISOString().slice(0,10),j.closed?"Closed":STAGES[SI[j.stage]].label,j.customer.name,vehicleStr(j),j.plate||"",j.concern,estTotal(j,true).toFixed(2)])];
+    return{filename:"ridgeline-"+(body.kind==="customers"?"customers":"repairs")+".csv",csv:rows.map(r=>r.map(csvCell).join(",")).join("\r\n")};
+  }
+  if(path.endsWith("/review-click")){const j=job(ui.custJob);if(j?.review){j.review.clickedAt=Date.now();save()}return{ok:true}}
+  throw new Error("Not available in the demo shop.");
+}
+window.Grow.init({
+  api:growApi,shop:()=>({...SHOP,grow:state.grow||{},brand:state.brand||{},bookingToken:bookToken}),plan:()=>plan,isOwner:()=>true,me:()=>"u-dana",
+  job:id=>growJob(job(id)),jobs:()=>state.jobs.map(growJob),
+  async act(id,action,body){
+    const j=job(id);if(!j)return null;const me={id:"u-dana",name:"Dana Ruiz"},t=Date.now();
+    if(action==="clock"){j.clock=j.clock||[];
+      if(body.remove)j.clock=j.clock.filter(e=>e.id!==body.remove);
+      else if(body.on){if(!j.clock.some(e=>!e.end&&e.by.id===me.id))j.clock.push({id:"ck"+t,by:me,start:t})}
+      else{const e=body.entry?j.clock.find(x=>x.id===body.entry):j.clock.find(x=>!x.end&&x.by.id===me.id);if(e)e.end=t}}
+    if(action==="review"){const url=state.grow?.reviewUrl;if(!url){toast("Add your review link in Settings first");return null}
+      j.review={askedAt:t,url};const f=first(j.customer.name);
+      notify(j,j.customer.lang==="es"?`¡Gracias por elegir ${SHOP.name}, ${f}! Si quedó contento, ¿nos dejaría una reseña rápida? Ayuda mucho a un taller pequeño: ${url}`:`Thanks for choosing ${SHOP.name}, ${f}! If we earned it, would you leave us a quick review? It helps a small shop a lot: ${url}`,t)}
+    save();renderLayer();if(ui.view==="board")render();return growJob(j);},
+  upsert(){},toast:m=>toast(m),render:()=>render(),renderCustomer:()=>render(),customerToken:()=>job(ui.custJob)?.token,
+  async saveShop(patch){if(patch.grow)state.grow={...(state.grow||{}),...patch.grow};if(patch.brand)state.brand=patch.brand;save();},
+});
+// A request sent from the booking page in another tab shows up here.
+window.addEventListener("storage",e=>{if(e.key!==KEY||!e.newValue)return;try{state.bookings=JSON.parse(e.newValue).bookings||[]}catch(err){return}window.Grow.loadBookings()});
+
 /* --- plan (demo: a shop on its free trial; checkout is not available) --- */
-const plan={state:"trial",daysLeft:12,trialEndsAt:Date.now()+12*86400000,textLimit:150,carLimit:25,textsUsed:38,carsCreated:9,payments:true,hasBilling:false,
-  plans:{starter:{name:"Starter",month:89,year:890,blurb:"3 staff seats (up to 2 owners), 1,000 texts a month, unlimited email"},pro:{name:"Pro",month:149,year:1490,blurb:"8 staff seats (up to 3 owners), 3,000 texts a month, unlimited email, AI repair how-to assistant and Smart Replies",howTo:true}}};
+const plan={state:"trial",pro:true,daysLeft:12,trialEndsAt:Date.now()+12*86400000,textLimit:150,carLimit:25,textsUsed:38,carsCreated:9,payments:true,hasBilling:false,
+  plans:{starter:{name:"Starter",month:89,year:890,blurb:"3 staff seats (up to 2 owners), 1,000 texts a month, unlimited email, online booking, Spanish customer pages and CSV export"},pro:{name:"Pro",month:149,year:1490,blurb:"Everything in Starter, plus 8 staff seats (up to 3 owners), 3,000 texts a month, the AI how-to assistant, Smart Replies, AI damage marking, AI price list reading, the results dashboard, review requests, your logo and color, and the tech time clock",howTo:true,pro:true}}};
 const planUi=window.createShopPlan({esc,toast,api:async()=>{throw new Error("Demo shop: in your shop, this opens Stripe's secure checkout. Nothing is charged here.")}});
 // The demo reads price lists for free in this browser (no AI); the sample shows what a photo of a price board gives.
 const priceImport=window.createPriceImport({api:async()=>{throw Error("The demo reads price lists for free on this device only. The AI reader, for sheets the free reader can't make out, comes with a Talk Shops account.")}});
@@ -618,6 +706,7 @@ function customerModal(){
       <label class="field">Notify Customer By<select id="ec-channel"><option value="sms" ${preference === "sms" ? "selected" : ""}>Text message</option><option value="email" ${preference === "email" ? "selected" : ""}>Email</option><option value="both" ${preference === "both" ? "selected" : ""}>Text and email</option></select></label>
       <label class="field">Mobile Number<input id="ec-phone" type="tel" autocomplete="tel" maxlength="30" ${preference !== "email" ? "required" : ""} value="${esc(c.phone || "")}"></label>
       <label class="field">Email Address<input id="ec-email" type="email" autocomplete="email" maxlength="254" ${preference !== "sms" ? "required" : ""} value="${esc(c.email || "")}"></label>
+      <label class="field">Customer's Language<select id="ec-lang"><option value="en">English</option><option value="es" ${c.lang === "es" ? "selected" : ""}>Spanish (Español)</option></select><span class="hint">Their page and the automatic texts use this language.</span></label>
       <label class="chk"><input type="checkbox" id="ec-consent" ${c.consent ? "checked" : ""}> Customer agreed to repair updates through the selected contact method.</label>
       <small class="muted">If you change the contact details or notification method, confirm consent again. Leave unchecked to pause notifications.</small>
       <p id="ec-error" role="alert" class="form-err" hidden></p>
@@ -668,6 +757,8 @@ function render(){
   const app=$("#app"),chrome=$("#shopChrome");
   const h=location.hash.slice(1);
   const cj=h.startsWith("s-")?state.jobs.find(j=>j.token===h.slice(2)):null;
+  if(new URLSearchParams(location.search).get("book")){$("#layer").innerHTML="";window.Grow.renderBooking(bookToken);return}
+  if(!cj)window.Grow.customerSetup({},"");
   if(cj){ // customer link: no login, no shop screens
     ui.custJob=cj.id;ui.openJob=null;ui.modal=null;chrome.hidden=true;
     document.title=SHOP.name+" · Your "+vehicleStr(cj);
@@ -697,6 +788,7 @@ function boardView(){
       <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q)}" autocomplete="off"></label>
     <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key,label,count])=>`<button type="button" class="qf ${key==="approval"?"warn":key==="ready"?"ok":""}" data-queue="${key}" aria-pressed="${key===(ui.queue||"all")}">${label}<b>${count}</b></button>`).join("")}</div></div>
     ${window.Workday.boardBar(state.jobs.filter(onBoard))}
+    ${window.Grow.bookingsPanel()}
     ${window.BayAge.legend(SHOP)}
     <p class="board-none muted" id="boardNone" hidden></p>
     <div class="board-wrap"><div class="board">`;
@@ -767,6 +859,7 @@ function checkinView(){
     <label class="field">Notify customer by<select id="ci-channel"><option value="sms">Text message</option><option value="email">Email</option><option value="both">Text and email</option></select></label>
     <label class="field" id="ci-phone-label">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
     <label class="field" id="ci-email-label" hidden>Email address<input id="ci-email" type="email" placeholder="name@example.com" disabled></label>
+    <label class="field">Customer's language<select id="ci-lang"><option value="en">English</option><option value="es">Spanish (Español)</option></select></label>
     <h3 class="form-sec full">Vehicle</h3>
     <label class="field">Year<input id="ci-year" required inputmode="numeric" placeholder="2019"></label>
     <label class="field">Make<input id="ci-make" required placeholder="Toyota"></label>
@@ -805,7 +898,7 @@ function settingsView(){
     <div style="overflow-x:auto;margin-top:10px"><table class="rates"><thead><tr><th>Name</th><th>Type</th><th class="num">Rate</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
     <form class="rate-add" id="rateForm"><input id="r-name" placeholder="New item, e.g. Wiper blades" aria-label="Item name" required><select id="r-kind" aria-label="Type"><option value="part">Part</option><option value="labor">Labor</option><option value="fee">Fee</option><option value="percent">Percent</option></select><input id="r-rate" inputmode="decimal" placeholder="Rate" aria-label="Rate" required><button class="btn" type="submit">Add</button></form>
     <div class="import-box" id="importBox"><button class="btn" type="button" id="openImport">Edit, Import or Download List</button><button class="linkbtn" type="button" id="sampleImport">Try a Sample Price List</button><button class="linkbtn" type="button" id="rateTemplate">Download Example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
-  </section>${window.Workday.packagesPanel()}${team.panel(render)}${recoveryPanel()}</div>`;
+  </section>${window.Workday.packagesPanel()}${window.Grow.settingsPanels().replaceAll("/?book=","/demo.html?book=")}${team.panel(render)}${recoveryPanel()}</div>`;
 }
 // Artwork belongs to the named sample repair and line item, including in saved demos.
 function sampleIllustration(j, item) {
@@ -823,46 +916,48 @@ function sampleIllustration(j, item) {
 }
 const guide=item=>window.repairGuideFor?window.repairGuideFor(item):"";
 function customerView(j){
+  window.Grow.customerSetup({lang:j.customer.lang,shop:{brand:state.brand||{}}},j.token);const T=window.tsT;
   const idx=SI[j.stage];
   const evAt=k=>{const e=[...j.events].reverse().find(e=>e.stage===k);return e?e.t:null};
   const path=STAGES.filter(s=>s.key!=="picked_up"||evAt(s.key));
   const tl=path.map(s=>{const t=evAt(s.key);const cls=s.key===j.stage?"current":(t&&SI[s.key]<idx?"done":"todo");
-    return `<li class="${cls}"><span>${s.label}</span><time>${t?dayClock(t):""}</time></li>`}).join("");
+    return `<li class="${cls}"><span>${T(s.label)}</span><time>${t?dayClock(t):""}</time></li>`}).join("");
   const pending=j.stage==="approval"&&j.estimate.some(e=>e.status==="pending");
   let est="";
   if(j.estimate.length){
     const items=[...j.estimate].sort((a,b)=>(PRI_ORDER[a.priority]??1)-(PRI_ORDER[b.priority]??1)).map(e=>{
       const d=ui.draft[j.id+"-"+e.id];
-      const choice=pending&&e.status==="pending"?`<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d==="approved"}">Approve</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d==="declined"}">Decline</button></div>`
-        :(e.status!=="pending"?`<span class="pill ${e.status==="approved"?"ok":"bad"}">${e.status==="approved"?"Approved":"Declined"}</span>`:"");
-      const pri=e.priority&&PRI[e.priority]?`<div class="pri-line">${priPill(e)}<span>${PRI[e.priority].cust}</span></div>`:"";
+      const choice=pending&&e.status==="pending"?`<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d==="approved"}">${T("Approve")}</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d==="declined"}">${T("Decline")}</button></div>`
+        :(e.status!=="pending"?`<span class="pill ${e.status==="approved"?"ok":"bad"}">${T(e.status==="approved"?"Approved":"Declined")}</span>`:"");
+      const pri=e.priority&&PRI[e.priority]?`<div class="pri-line"><span class="pill pri ${PRI[e.priority].cls}">${T(PRI[e.priority].label)}</span><span>${T(PRI[e.priority].cust)}</span></div>`:"";
       return `<div class="est-item pri-${esc(e.priority||"none")}"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${pri}${sampleIllustration(j,e)}${guide(e.item)}${choice}</div>`}).join("");
     const allChosen=j.estimate.filter(e=>e.status==="pending").every(e=>ui.draft[j.id+"-"+e.id]);
     const tot=pending?j.estimate.reduce((a,e)=>a+((ui.draft[j.id+"-"+e.id]??e.status)==="approved"?Number(e.price):0),0):estTotal(j,true);
-    est=`<div class="c-card"><h3>Estimate</h3>${items}<div class="total"><span>${pending?"Approved so far":"Approved total"}</span><span>${money(tot)}</span></div>
-      ${pending?`<label class="field" style="margin-top:10px">Type your full name to sign<input id="sig" placeholder="${esc(ShopDisplay.name(j.customer.name))}" value="${esc(ui.draft[j.id+"-sig"]||"")}"></label>
-      <button class="btn primary" style="width:100%;margin-top:10px" id="submitApproval" ${allChosen?"":"disabled"}>Send my decision</button>
-      <p class="muted" style="font-size:12.5px;margin:6px 0 0">${allChosen?"Your signed decision goes straight to the shop.":"Choose approve or decline for each item."}</p>`
-      :(j.approval?`<p class="muted" style="font-size:12.5px;margin:8px 0 0">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:"")}</div>`;
+    est=`<div class="c-card"><h3>${T("Estimate")}</h3>${items}<div class="total"><span>${T(pending?"Approved so far":"Approved total")}</span><span>${money(tot)}</span></div>
+      ${pending?`<label class="field" style="margin-top:10px">${T("Type your full name to sign")}<input id="sig" placeholder="${esc(ShopDisplay.name(j.customer.name))}" value="${esc(ui.draft[j.id+"-sig"]||"")}"></label>
+      <button class="btn primary" style="width:100%;margin-top:10px" id="submitApproval" ${allChosen?"":"disabled"}>${T("Send my decision")}</button>
+      <p class="muted" style="font-size:12.5px;margin:6px 0 0">${T(allChosen?"Your signed decision goes straight to the shop.":"Choose approve or decline for each item.")}</p>`
+      :(j.approval?`<p class="muted" style="font-size:12.5px;margin:8px 0 0">${T("Signed by {0} on {1}",esc(j.approval.by),dayClock(j.approval.t))}</p>`:"")}</div>`;
   }
-  const photos=j.photos.length?`<div class="c-card"><h3>Photos from your technician</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}</div></div>`:"";
+  const photos=j.photos.length?`<div class="c-card"><h3>${T("Photos from your technician")}</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}</div></div>`:"";
   const shared=(j.notes||[]).filter(n=>!n.internal);
-  const notes=shared.length?`<div class="c-card"><h3>Notes from your technician</h3><ul class="notes">${[...shared].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p></li>`).join("")}</ul></div>`:"";
-  const bill=j.bill?`<div class="c-card"><h3>Final Bill</h3><div class="total"><span>Total due</span><span>${money(j.bill.total)}</span></div></div>`:"";
+  const notes=shared.length?`<div class="c-card"><h3>${T("Notes from your technician")}</h3><ul class="notes">${[...shared].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p></li>`).join("")}</ul></div>`:"";
+  const bill=j.bill?`<div class="c-card"><h3>${T("Final bill")}</h3><div class="total"><span>${T("Total due")}</span><span>${money(j.bill.total)}</span></div></div>`:"";
   const stage=STAGES[idx];
-  const extra=j.stage==="parts"?`<p style="margin:6px 0 0">Parts expected <b>${esc(j.eta||"soon")}</b>.</p>`:j.stage==="ready"?`<p style="margin:6px 0 0">Total due ${money(j.bill?j.bill.total:estTotal(j,true))}. Open ${esc(SHOP.hours)}.</p>`:"";
+  const extra=j.stage==="parts"?`<p style="margin:6px 0 0">${T("Parts expected {0}.","<b>"+esc(j.eta||"soon")+"</b>")}</p>`:j.stage==="ready"?`<p style="margin:6px 0 0">${T("Total due {0}",money(j.bill?j.bill.total:estTotal(j,true)))}. ${T("Open {0}.",esc(SHOP.hours))}</p>`:"";
   return `<div class="cust-demo"><span><b>Demo:</b> this is the page ${esc(first(j.customer.name))} opens from the link. No login needed.</span><button class="linkbtn" id="backToShop" style="margin-left:auto">Back to shop</button></div>
    <div class="cust-page">
-    <div class="c-head"><small>${esc(SHOP.name)} · <span class="mono">${j.ro}</span></small><h2>${j.closed?"This Repair Was Closed":stage.cust}</h2><div style="font-size:14px;margin-top:4px">${esc(vehicleStr(j))}</div>${extra}</div>
+    <div class="c-head">${window.Grow.customerHead({shop:{name:SHOP.name,brand:state.brand||{}}})}<small>${esc(SHOP.name)} · <span class="mono">${j.ro}</span></small><h2>${T(j.closed?"This Repair Was Closed":stage.cust)}</h2><div style="font-size:14px;margin-top:4px">${esc(vehicleStr(j))}</div>${extra}</div>
     <div class="c-body">
-      ${est}${bill}${window.Walkthrough.customerCard(j)}${window.Walkaround.customerCard(waCustomer(j))}${photos}${notes}
-      <div class="c-card"><h3>Progress</h3><ul class="tl">${tl}</ul></div>
-      <div class="c-card"><h3>Your concern</h3><div style="font-size:14px">${esc(j.concern)}</div>${sampleIllustration(j)}</div>
+      ${window.Grow.customerCards({shop:{name:SHOP.name},review:j.review?.url?{url:j.review.url}:null,appointment:j.appointment&&j.stage==="checked_in"?j.appointment:null})}${est}${bill}${window.Walkthrough.customerCard(j)}${window.Walkaround.customerCard(waCustomer(j))}${photos}${notes}
+      <div class="c-card"><h3>${T("Progress")}</h3><ul class="tl">${tl}</ul></div>
+      <div class="c-card"><h3>${T("Your concern")}</h3><div style="font-size:14px">${esc(j.concern)}</div>${sampleIllustration(j)}</div>
       ${window.Workday.customerReminders({shop:{name:SHOP.name},reminders:{off:!!j.customer.remindersOff,waiting:(j.followups||[]).filter(f=>!f.sentAt&&!f.canceledAt).map(f=>({kind:f.kind,due:f.due}))}})}
-      <div class="c-card call"><span>Questions? Call the shop</span><b>${esc(SHOP.phone)}</b></div>
+      <div class="c-card call"><span>${T("Questions? Call the shop")}</span><b>${esc(SHOP.phone)}</b></div>
     </div>
-    <p class="cust-top">This page updates as your repair progresses.</p>
-    <p class="cust-top"><a href="/privacy.html" id="privacyLink" target="_blank" rel="noopener">Privacy policy</a></p></div>`;
+    <p class="cust-top">${T("This page updates as your repair progresses.")}</p>
+    ${window.Grow.langSwitch(j.token)}
+    <p class="cust-top"><a href="/privacy.html" id="privacyLink" target="_blank" rel="noopener">${T("Privacy Policy")}</a></p></div>`;
 }
 const chName=m=>m.ch==="email"?"Email":m.ch==="both"?"Text and email":"Text";
 const mic=`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`;
@@ -907,6 +1002,7 @@ function sheetView(j){
     </section>
     ${window.Workday.visitsSection(j)}
     ${window.Workday.followupSection(j)}
+    ${window.Grow.sheetSection(growJob(j))}
     <section class="sec" id="photoSec"><h3>Photos</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}
       <label class="photo-add" for="photoIn">+ Add Photo<br><span style="font-weight:400">Customer sees it on their page</span></label></div></section>
     <section class="sec" id="noteSec"><h3>Technician Notes <span class="sec-sub">Shared with customer unless marked shop only</span></h3>
@@ -1018,7 +1114,7 @@ document.addEventListener("click",e=>{
     if(auto&&suggestion)j.messages.push({dir:"out",ch:"sms",t:Date.now(),text:suggestion,autoReply:true});
     save();renderLayer();$("#smartDemo").open=true;$("#demoAuto").checked=auto;$("#sampleSms").value=topic;$("#msgSec").scrollIntoView();return;
   }
-  if(t.id==="resetBtn"){state=seed();workdaySamples(state);SHOP={...state.shop};save();ui={...ui,openJob:null,modal:null,draft:{},q:"",aq:"",queue:"all"};render();toast("Sample data reset");return}
+  if(t.id==="resetBtn"){state=seed();workdaySamples(state);growSamples(state);SHOP={...state.shop};save();window.Grow.loadBookings();ui={...ui,openJob:null,modal:null,draft:{},q:"",aq:"",queue:"all"};render();toast("Sample data reset");return}
   if(t.dataset.open){ui.openJob=t.dataset.open;renderLayer();setTimeout(()=>$(".x")?.focus({preventScroll:true}),0);return}
   if(t.hasAttribute("data-close")){closeJobSheet();return}
   if(t.hasAttribute("data-cancel")){ui.modal=null;renderLayer();return}
@@ -1064,7 +1160,7 @@ document.addEventListener("submit",e=>{
   if(f.id==="customerForm"){const j=job(ui.modal.customerJob),ch=$("#ec-channel").value,phone=$("#ec-phone").value.trim(),email=$("#ec-email").value.trim();
     if(ch!=="email"&&phone.replace(/\D/g,"").length<10){const e=$("#ec-error");e.textContent="Enter a 10-digit mobile number.";e.hidden=false;return}
     if(ch!=="sms"&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){const e=$("#ec-error");e.textContent="Enter a valid email address.";e.hidden=false;return}
-    j.customer={...j.customer,name:$("#ec-name").value.trim()||j.customer.name,phone,email,channel:ch,preference:ch,consent:$("#ec-consent").checked};
+    j.customer={...j.customer,name:$("#ec-name").value.trim()||j.customer.name,phone,email,channel:ch,preference:ch,consent:$("#ec-consent").checked,lang:$("#ec-lang").value};
     ui.modal=null;save();render();renderLayer();toast("Customer info saved");return}
   if(f.id==="teamInviteForm"){team.submit(f,render);return}
   if(f.id==="recoveryPhoneForm"){const ph=$("#rc-phone").value.trim();if(ph.replace(/\D/g,"").length<10){toast("Enter a 10-digit mobile number");return}Object.assign(recov(),{phone:ph,pending:ph});save();render();toast("Demo shop: no text is sent. Use code 123456.");$("#rc-code")?.focus();return}
@@ -1078,7 +1174,7 @@ document.addEventListener("submit",e=>{
   if(f.id==="checkinForm"){
     const g=k=>$("#ci-"+k).value.trim();const ch=g("channel");
     if(!$("#ci-consent").checked){toast("Confirm the customer agreed to updates first");return}
-    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:g("name"),phone:ch!=="email"?g("phone"):"",email:ch!=="sms"?g("email"):"",channel:ch,consent:true},vehicle:{year:g("year"),make:g("make"),model:g("model")},plate:g("plate"),concern:g("concern"),urgency:document.querySelector('input[name="ciUrgency"]:checked')?.value||"",stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[],messages:[]};
+    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:g("name"),phone:ch!=="email"?g("phone"):"",email:ch!=="sms"?g("email"):"",channel:ch,consent:true,lang:g("lang")},vehicle:{year:g("year"),make:g("make"),model:g("model")},plate:g("plate"),concern:g("concern"),urgency:document.querySelector('input[name="ciUrgency"]:checked')?.value||"",stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[],messages:[]};
     state.nextRO++;plan.carsCreated++;const t=Date.now();j.events.push({stage:"checked_in",t});
     const wd=window.Workday.checkinValues();if(wd.mileageIn)j.mileageIn=digits(wd.mileageIn);if(wd.promised)j.promised=Date.parse(wd.promised);if(wd.tech)j.tech=wd.tech;
     const pk=wd.service&&(state.packages||[]).find(p=>p.id===wd.service);
@@ -1165,6 +1261,7 @@ window.Walkaround.init({esc,toast,first,encode:waEncode,sendResult:()=>"Customer
   token:()=>job(ui.custJob)?.token,customer:()=>{const j=job(ui.custJob);return j?waCustomer(j):null},setCustomer:()=>{},renderCustomer:()=>render(),
   job,openJob:()=>ui.openJob,onJob:()=>save(),render:()=>{if(location.hash.startsWith("#s-"))render();else renderLayer()}});
 setInterval(()=>{if(ui.view==="board"&&!ui.openJob&&!ui.modal&&document.activeElement?.id!=="boardSearch"&&!window.TOUR_ACTIVE)render()},60000);
+window.Grow.loadBookings();
 render();
 if(new URLSearchParams(location.search).has("smart")){
   const j=job("RO-1041")||state.jobs.find(onBoard);
@@ -1172,7 +1269,7 @@ if(new URLSearchParams(location.search).has("smart")){
 }
 </script>
 <script src="/config.js"></script>
-<script src="/tour.js?v=211"></script>
+<script src="/tour.js?v=212"></script>
 <script src="/shell.js?v=1"></script>
 </body>
 </html>
