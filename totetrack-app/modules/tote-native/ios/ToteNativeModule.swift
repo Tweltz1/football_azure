@@ -1,3 +1,4 @@
+import CoreML
 import CoreSpotlight
 import ExpoModulesCore
 import UIKit
@@ -59,12 +60,20 @@ public class ToteNativeModule: Module {
           if labels.count >= 30 { break }
         }
         var lines: [String] = []
+        var textInfo: [[String: Any]] = []
         for observation in text.results ?? [] {
           if let best = observation.topCandidates(1).first, best.confidence >= 0.5 {
             lines.append(best.string)
+            // Height is a share of the photo (0-1): big print is usually the product name,
+            // tiny print is usually legal or packaging small print.
+            textInfo.append([
+              "text": best.string,
+              "confidence": Double(best.confidence),
+              "height": Double(observation.boundingBox.height),
+            ])
           }
         }
-        promise.resolve(["labels": labels, "text": lines])
+        promise.resolve(["labels": labels, "text": lines, "textInfo": textInfo, "objects": detectObjects(handler: handler, cgImage: cgImage, orientation: cgOrientation(image.imageOrientation))])
       }
     }
 
@@ -156,4 +165,83 @@ private func cgOrientation(_ orientation: UIImage.Orientation) -> CGImagePropert
   case .rightMirrored: return .rightMirrored
   @unknown default: return .up
   }
+}
+
+// MARK: - Finding each separate item (on-device object detection)
+
+/// Apple's free YOLOv3 Tiny Core ML model, downloaded and compiled by the build workflow. It finds
+/// and outlines each separate object it knows (about 80 common kinds), so a box of stuff can come
+/// back as "Bowl", "Cup", "Scissors" instead of one guess for the whole photo.
+private let detectorName = "YOLOv3TinyInt8LUT"
+
+private let detector: VNCoreMLModel? = {
+  let config = MLModelConfiguration()
+  config.computeUnits = .all
+  for url in detectorURLs() {
+    do {
+      let compiled = url.pathExtension == "mlmodelc" ? url : try MLModel.compileModel(at: url)
+      return try VNCoreMLModel(for: MLModel(contentsOf: compiled, configuration: config))
+    } catch {
+      NSLog("ToteNative: couldn't load \(url.lastPathComponent): \(error.localizedDescription)")
+    }
+  }
+  NSLog("ToteNative: no object detection model in the app; Snap to add uses whole-photo labels only")
+  return nil
+}()
+
+private func detectorURLs() -> [URL] {
+  var bundles = [Bundle.main, Bundle(for: ToteNativeModule.self)]
+  bundles += Bundle.allBundles + Bundle.allFrameworks
+  var urls: [URL] = []
+  for bundle in bundles {
+    for ext in ["mlmodelc", "mlmodel"] {
+      if let url = bundle.url(forResource: detectorName, withExtension: ext), !urls.contains(url) {
+        urls.append(url)
+      }
+    }
+  }
+  return urls
+}
+
+/// Each object found: what it is, how sure the model is, where it is (0-1, origin bottom-left),
+/// and up to 5 more specific names from Apple's classifier looking at just that spot.
+private func detectObjects(handler: VNImageRequestHandler, cgImage: CGImage, orientation: CGImagePropertyOrientation) -> [[String: Any]] {
+  guard let detector else { return [] }
+  let request = VNCoreMLRequest(model: detector)
+  request.imageCropAndScaleOption = .scaleFill
+  do {
+    try handler.perform([request])
+  } catch {
+    NSLog("ToteNative: object detection failed: \(error.localizedDescription)")
+    return []
+  }
+  let found = (request.results as? [VNRecognizedObjectObservation] ?? [])
+    .filter { ($0.labels.first?.confidence ?? 0) >= 0.25 }
+    .sorted { $0.confidence > $1.confidence }
+    .prefix(12)
+
+  var objects: [[String: Any]] = []
+  for observation in found {
+    guard let top = observation.labels.first else { continue }
+    let box = observation.boundingBox
+    var refined: [[String: Any]] = []
+    // Look closer at just this object for a more specific name ("mug" rather than "cup").
+    if box.width * box.height >= 0.01 {
+      let classify = VNClassifyImageRequest()
+      classify.regionOfInterest = box.insetBy(dx: -box.width * 0.05, dy: -box.height * 0.05)
+        .intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
+      if (try? VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:]).perform([classify])) != nil {
+        for c in (classify.results ?? []).prefix(5) where c.confidence >= 0.2 {
+          refined.append(["label": c.identifier, "confidence": Double(c.confidence)])
+        }
+      }
+    }
+    objects.append([
+      "label": top.identifier,
+      "confidence": Double(top.confidence),
+      "box": ["x": Double(box.minX), "y": Double(box.minY), "width": Double(box.width), "height": Double(box.height)],
+      "refined": refined,
+    ])
+  }
+  return objects
 }

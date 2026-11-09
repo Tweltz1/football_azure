@@ -6,11 +6,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ToteNative } from '../../../modules/tote-native';
 import { Button, EmptyState, IconButton, SectionTitle, tap } from '../../components/ui';
-import { suggestionsFrom } from '../../lib/snap';
+import { type SnapSuggestion, suggestionsFrom } from '../../lib/snap';
 import { useTotes } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 
-type Suggestion = { name: string; from: 'photo' | 'text'; on: boolean };
+type Suggestion = SnapSuggestion;
 
 export default function Snap() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -38,8 +38,7 @@ export default function Snap() {
       const existing = new Set((tote?.items ?? []).map((i) => i.name.toLowerCase()));
       setSuggestions(
         suggestionsFrom(result)
-          .filter((s) => !existing.has(s.name.toLowerCase()))
-          .map((s) => ({ ...s, on: s.from === 'photo' })),
+          .filter((s) => !existing.has(s.name.toLowerCase())),
       );
     } catch (e) {
       Alert.alert("Couldn't read that photo", e instanceof Error ? e.message : String(e));
@@ -63,7 +62,7 @@ export default function Snap() {
 
   const chosen = suggestions?.filter((s) => s.on) ?? [];
   const addAll = () => {
-    for (const s of chosen) store.addItem(tote.id, s.name, 1);
+    for (const s of chosen) store.addItem(tote.id, s.name, s.qty);
     tap();
     router.back();
   };
@@ -118,13 +117,14 @@ export default function Snap() {
                   }}
                   style={[styles.chip, { backgroundColor: s.on ? t.primary : t.card, borderColor: s.on ? t.primary : t.border }]}
                 >
-                  <Ionicons name={s.on ? 'checkmark' : s.from === 'text' ? 'text' : 'add'} size={15} color={s.on ? t.onPrimary : t.textMuted} />
+                  <Ionicons name={s.on ? 'checkmark' : s.from === 'text' ? 'text' : s.from === 'fallback' ? 'cube-outline' : s.from === 'object' ? 'scan-outline' : 'add'} size={15} color={s.on ? t.onPrimary : t.textMuted} />
                   <Text style={{ color: s.on ? t.onPrimary : t.text, fontWeight: '600', fontSize: 15 }}>{s.name}</Text>
+                  {s.qty > 1 ? <Text style={{ color: s.on ? t.onPrimary : t.textMuted, fontSize: 13, fontWeight: '600' }}>×{s.qty}</Text> : null}
                 </Pressable>
               ))}
             </View>
             <Text style={{ color: t.textMuted, fontSize: 13, marginTop: 12, lineHeight: 18 }}>
-              Suggestions come from your iPhone, so the photo never leaves your phone. Items marked with the text icon were read from labels and packaging.
+              Suggestions come from your iPhone, so the photo never leaves your phone. Items with the scan icon were each spotted separately in the photo. Items with the text icon were read from labels and packaging, so check them before adding.
               You can rename anything after adding it.
             </Text>
             <Button
