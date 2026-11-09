@@ -1,1 +1,14 @@
 .help-center{max-width:1100px;margin:0 auto;padding:28px 18px 60px;display:grid;gap:22px}.help-heading{display:flex;justify-content:space-between;align-items:center;gap:20px}.help-heading h2{font-size:clamp(27px,4vw,38px);margin:6px 0}.help-heading p{margin:6px 0}.help-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.help-actions a{text-decoration:none;color:inherit;display:grid;gap:8px}.help-actions span{color:var(--muted);font-size:14px}.help-center h3{font-size:21px;margin:0 0 16px}.help-center details{border-top:1px solid var(--line,#dce2e6);padding:16px 0}.help-center summary{cursor:pointer;font-weight:650;line-height:1.5}.help-center details p{line-height:1.7;margin:12px 0}.help-lessons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin-top:20px}.help-lessons a{padding:13px 0;border-bottom:1px solid var(--line,#dce2e6);display:flex;justify-content:space-between;gap:12px;line-height:1.5}.help-lessons small{white-space:nowrap}.help-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.help-wide{grid-column:1/-1}.help-center .panel{scroll-margin-top:100px}.help-center .panel>p{line-height:1.6}.help-form textarea{resize:vertical}.help-center a:focus-visible,.help-center summary:focus-visible{outline:3px solid var(--accent,#2576c0);outline-offset:4px}@media(max-width:760px){.tabs.has-icons .tab[data-view="help"]{display:none}.help-heading{align-items:flex-start;flex-direction:column}.help-actions,.help-lessons,.help-form{grid-template-columns:1fr}.help-center{padding:20px 12px 100px}.help-heading .btn{align-self:flex-start}}
+
+/* Help: 4 entry cards, searchable common questions grouped by topic */
+.help-actions{grid-template-columns:repeat(4,minmax(0,1fr))}
+.help-faq-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}.help-faq-head h3{margin:0}
+.help-search{min-width:min(340px,100%);margin:0}.help-search input{width:100%}
+.help-topics{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 6px}
+.help-topics a{font-size:13px;font-weight:600;padding:6px 11px;border:1px solid var(--line,#dce2e6);border-radius:999px;text-decoration:none;color:inherit;background:var(--surface-2,transparent)}
+.help-topics a:hover{border-color:var(--accent,#2576c0)}
+.help-group{scroll-margin-top:100px;margin-top:22px}.help-group h4{font-size:15px;margin:0 0 2px;color:var(--accent-ink,inherit);letter-spacing:0}
+.help-lesson-link{display:inline-block;font-size:14px;margin-top:6px}
+#helpNone{margin:16px 0 0}
+@media(max-width:1000px){.help-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.help-actions{grid-template-columns:1fr}.help-faq-head{align-items:stretch;flex-direction:column}}

@@ -416,27 +416,21 @@
 
   function helpView() {
     const guides = [
-      ["Checking In a Vehicle", "Open Check In, choose your check-in method, and enter the customer and vehicle details. Confirm permission to send updates, then send the customer their private repair link.", "checkin"],
+      ["Checking In a Vehicle", "Open Check In and search Returning customer? first. Otherwise choose your check-in method, enter the customer and vehicle (or decode the VIN), the mileage in and the concern. Confirm permission to send updates, then send the customer their private repair link.", "checkin"],
       ["Updating Customer Information", "Open a vehicle in the Bay and select Edit Customer Info. Update the name, phone, email or notification preference, confirm consent when contact details change, and save.", "checkin"],
       ["Sending an Estimate", "Open the vehicle, add estimate items and their prices, and choose Required, Recommended or Optional. An owner can send the estimate for approval; customers review and sign from their repair link.", "estimates"],
       ["Moving Cars Through the Bay", "Open a vehicle and choose its next stage. Review the customer notification before sending. Use the Bay search and filters to find repairs that need attention.", "stages"],
       ["Finishing a Repair", "An owner can prepare the final bill, mark the car Ready for Pickup and confirm pickup. Find past repairs in Archive.", "pickup"],
+      ["Bringing In Your Price List", "Owners open Settings → Saved items and choose Import. Upload Excel, CSV, a PDF or a photo of your price sheet, review what Talk Shops found, then save.", "settings"],
+      ["Scheduling a Reminder Text", "Open a car and use Schedule a reminder for the next service or for work the customer declined. Pick the date and Talk Shops sends the text then. Customers can reply STOP to opt out.", "customer"],
       ["Inviting Your Team", "Owners can open Settings → Team to invite staff as owners or technicians. Each person signs in with the email address that received the invitation.", "team"],
     ];
-    const faqs = [
-      ["Do customers need an account?", "No. Customers open the private repair link sent by the shop to view updates, photos and estimates."],
-      ["I did not receive my account confirmation email.", "Check that you entered the correct email address and look in spam or junk. If you signed up through Google, use Continue with Google with that same account. Contact support below if you still cannot get in."],
-      ["How do I reset my password?", "Choose Forgot password? on Shop Sign In. Request a code by email, or by text if you previously verified a reset phone in Settings."],
-      ["A customer did not receive an update. What should I check?", "Open the repair and review the message delivery result. Verify the customer’s phone, email, notification preference and consent through Edit Customer Info. Correct the details before sending another update."],
-      ["Where can I manage my subscription?", "Shop owners can open Plan to review their plan and use Manage Billing. Technicians can ask an owner for help with billing."],
-      ["What can technicians do?", "Technicians can work on repairs and customer updates. Owners handle shop settings, team invitations, billing, estimate approval requests and closing repairs."],
-    ];
     return `<section class="help-center">
-      <header class="help-heading"><div><p class="muted">Talk Shops Support</p><h2>How Can We Help?</h2><p class="muted">Quick answers and practical guides for your shop.</p></div><a class="btn" href="${session ? "/" : "/?login"}">${session ? "Back to My Shop" : "Shop Sign In"}</a></header>
-      <div class="help-actions"><a class="panel" href="#help-guides"><b>Quick Guides</b><span>Find the steps for everyday tasks.</span></a><a class="panel" href="#help-training"><b>Walkthroughs &amp; Training</b><span>Follow along with sample vehicles.</span></a><a class="panel" href="#help-support"><b>Contact Support</b><span>Get help from our team by email.</span></a></div>
+      <header class="help-heading"><div><p class="muted">Talk Shops Support</p><h2>How Can We Help?</h2><p class="muted">Answers to common questions, step-by-step guides and narrated lessons for your whole team.</p></div><a class="btn" href="${session ? "/" : "/?login"}">${session ? "Back to My Shop" : "Shop Sign In"}</a></header>
+      <div class="help-actions"><a class="panel" href="#help-faq"><b>Common Questions</b><span>${window.TALKSHOPS_HELP.count} answers, searchable by topic.</span></a><a class="panel" href="#help-guides"><b>Quick Guides</b><span>Find the steps for everyday tasks.</span></a><a class="panel" href="#help-training"><b>Walkthroughs &amp; Training</b><span>Follow along with sample vehicles.</span></a><a class="panel" href="#help-support"><b>Contact Support</b><span>Get help from our team by email.</span></a></div>
+      ${window.TALKSHOPS_HELP.view(esc)}
       <section class="panel" id="help-guides"><h3>Quick Guides</h3>${guides.map(([title, body, lesson]) => `<details><summary>${esc(title)}</summary><p>${esc(body)}</p><a href="/demo.html?train=${lesson}">Watch the Lesson →</a></details>`).join("")}</section>
       <section class="panel" id="help-training"><h3>Walkthroughs &amp; Training</h3><p class="muted">Narrated lessons use a demo shop with sample cars. Turn your sound on to follow along.</p><a class="btn primary" href="/demo.html?tour=1">Start the Guided Tour</a><div class="help-lessons">${window.TALKSHOPS_TRAINING.lessons.map(l => `<a href="/demo.html?train=${esc(l.id)}">${esc(l.title)} <small class="muted">${l.mins} min</small></a>`).join("")}</div></section>
-      <section class="panel"><h3>Common Questions</h3>${faqs.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("")}</section>
       <section class="panel" id="help-support"><h3>Contact Support</h3><p class="muted">Describe what happened and what you were trying to do. We’ll reply to the email below. Please leave out passwords and customer information.</p>
         <form id="helpForm" class="help-form">
           <label class="field">Your Name<input name="name" autocomplete="name" required maxlength="100" value="${esc(session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "")}"></label>
@@ -551,12 +545,13 @@
     return `<div class="front">
       <header class="front-nav"><div class="front-inner">
         <a class="front-wordmark" href="#top" aria-label="Talk Shops home"><span class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</span>Talk Shops</a>
-        <nav aria-label="Main navigation"><a href="/?help">Help</a><a href="#plans">Compare Plans</a><a class="front-sign" href="/?login">Shop Sign In</a></nav>
+        <nav aria-label="Main navigation"><a class="front-nav-extra" href="${DEMO_PAGE}">Demo</a><a href="/?help">Help</a><a href="#plans">Pricing</a><a class="front-sign" href="/?login">Shop Sign In</a></nav>
       </div></header>
       <section class="front-hero" id="top"><div class="front-inner">
-        <div class="front-intro"><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
-          <p>Built for every kind of auto shop: oil changes, brakes, tires, engine work, general repair and body work. See which cars are waiting on approval and which are ready for pickup, all from one board. Send customers a private link by text or email so they can see photos, approve work and open their final bill. No customer account required.</p>
+        <div class="front-intro"><p class="front-kicker">Shop board + customer updates for every auto shop</p><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
+          <p>Talk Shops texts and emails your customers a private link that shows their car’s progress, photos and estimate. They approve work from their phone, and your team runs every car from one board. No customer app or account needed.</p>
           <div class="front-actions"><a class="front-cta" href="${DEMO_PAGE}">Explore Demo Shop <span aria-hidden="true">↗</span></a><a class="front-tour" href="${DEMO_PAGE}?tour=1">Take the Guided Tour →</a></div>
+          <ul class="front-proof"><li>Free trial, no card needed</li><li>Set up in minutes</li><li>Plans from $89/month</li></ul>
         </div>
         <div class="front-preview" aria-label="Example customer page">
           <div class="front-window"><span>Customer view</span><span>Sample repair</span></div>
@@ -565,23 +560,40 @@
           <div class="front-estimate"><div><b>Front brake pads</b><small>Approved by customer</small></div><strong>$240.00</strong></div>
         </div>
       </div></section>
+      <section class="front-kinds" aria-label="Shops that use Talk Shops"><div class="front-inner"><span>Built for</span><ul><li>Oil change &amp; quick lube</li><li>Tires &amp; alignment</li><li>Brakes &amp; exhaust</li><li>Engine &amp; transmission</li><li>General repair</li><li>Body &amp; collision</li></ul></div></section>
+      <section class="front-why"><div class="front-inner">
+        <h2>Fewer phone calls. Faster yeses. More cars out the door.</h2>
+        <div class="front-why-grid">
+          <div><b>Stop playing phone tag</b><p>Customers see where their car is and what was found without calling the counter. Updates go out as your team moves the car.</p></div>
+          <div><b>Get approvals in minutes</b><p>Photos, notes and a clear estimate marked Required, Recommended or Optional help customers say yes, and they sign right on their phone.</p></div>
+          <div><b>Bring declined work back</b><p>Schedule reminder texts for the next service or work the customer put off. Past visits show what they declined last time.</p></div>
+        </div>
+      </div></section>
       <section class="front-work"><div class="front-inner">
-        <div class="front-workflow"><h2>From the Service Counter to the Customer’s Phone</h2>
-          <p>Whether it’s a quick oil change or a major repair, your team works from one repair order. The customer follows the job through the same private link from drop-off to pickup.</p>
-          <dl><div><dt>Get the Story Before Drop-Off</dt><dd>Invite customers to describe the concern and upload photos, so the technician can see what they’re coming in for.</dd></div>
-          <div><dt>See Which Cars Need Attention</dt><dd>Search the Bay by customer, vehicle or repair order. Filter for estimates awaiting a decision or cars ready for pickup.</dd></div>
-          <div><dt>Show What the Technician Found</dt><dd>Record the vehicle’s condition with walk-around photos and before-and-after checklists. Share findings with technician notes and repair diagrams.</dd></div>
-          <div><dt>Know What the Customer Approved</dt><dd>Customers approve or decline each estimate item and sign on their phone. The shop sees their choices, the approved total and when they signed.</dd></div>
-          <div><dt>Quote Using Your Shop’s Rates</dt><dd>Import labor, parts and fees from Excel or CSV. Reuse saved prices and enter hours or quantities when building an estimate.</dd></div>
-          <div><dt>Make Pickup Easier</dt><dd>Send the final total with an itemized bill or your own PDF. Look up past visits in the archive when the customer comes back.</dd></div></dl>
+        <div class="front-workflow"><h2>How It Works</h2>
+          <ol class="front-steps">
+            <li><b>Check in</b><p>Find a returning customer by name, phone, plate or VIN, or decode a new VIN. Pick a quick service, add mileage, urgency and a promised-by time.</p></li>
+            <li><b>Inspect &amp; quote</b><p>Do a before-and-after walk-through with tire tread depths, collect walk-around photos and let AI mark likely damage. Build the estimate from your own prices.</p></li>
+            <li><b>Customer approves</b><p>The customer opens their link, sees photos and notes, approves or declines each line, and signs. You get an alert the moment they answer.</p></li>
+            <li><b>Pick up &amp; come back</b><p>Print the bill or send your own PDF, record mileage out, and schedule a reminder text so they come back for the next service.</p></li>
+          </ol>
           <button class="linkbtn" id="watchDemo" type="button">Watch the walkthrough video →</button>
         </div>
       </div></section>
+      <section class="front-features"><div class="front-inner">
+        <h2>Everything Your Counter and Your Bays Need</h2>
+        <div class="front-feature-grid">
+          <article><h3>Run the floor</h3><ul><li>One board for every car, by stage</li><li>Low, Medium and High urgency marks</li><li>Assign technicians, with My Cars for each tech</li><li>Promised-by times with due-soon and late warnings</li><li>Alerts when a customer replies or approves</li><li>Today’s Summary of cars, totals and techs</li></ul></article>
+          <article><h3>Talk to customers</h3><ul><li>Private progress page by text or email</li><li>Line-by-line approvals with e-signature</li><li>Before-and-after walk-through report</li><li>Walk-around photos with AI damage marks</li><li>Smart Replies answer routine texts (Pro)</li><li>Reminder texts with one-tap STOP opt-out</li></ul></article>
+          <article><h3>Help your techs</h3><ul><li>How-To repair assistant with steps, tools and specs (Pro)</li><li>YouTube and CarCareKiosk video links for the job</li><li>VIN decode and NHTSA recall check</li><li>Shop-only notes your customers never see</li><li>Voice typing for notes</li><li>Printable work orders</li></ul></article>
+          <article><h3>Set up in minutes</h3><ul><li>Import your price list from Excel, CSV, PDF or a photo</li><li>Quick services and a fast lane for oil changes and tires</li><li>Labor hours times your shop rate</li><li>Owner and technician roles</li><li>Archive and past visits for returning customers</li><li>Works on any phone, tablet or computer</li></ul></article>
+        </div>
+      </div></section>
       <section class="front-plans" id="plans"><div class="front-inner">
-        <h2>Choose Your Plan</h2><p>Both plans include the Bay board, private customer links, photo updates, signed estimate decisions, final bills and unlimited email.</p>
+        <h2>Choose Your Plan</h2><p>Every shop starts with a free trial. Both plans include the Bay board, private customer links, photo updates, walk-through reports, signed estimate decisions, reminder texts, final bills and unlimited email.</p>
         <div class="front-tiers">
           <article><h3>Talk Shops Starter</h3><strong>$89<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $890/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
-          <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about job status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>AI Repair Assistant</b> gives technicians a starting point for service and repair procedures and tool lists.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
+          <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about job status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>How-To Repair Assistant</b> gives technicians steps, tools, typical specs and video links for the job.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
         </div>
         <h3 class="front-market-title">Plan Comparison</h3>
         <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
@@ -592,6 +604,16 @@
         </tbody></table>
         <small class="front-source">Selected plans at month-to-month list prices, checked November 8, 2026. Competitor plans include additional shop-management features.</small>
       </div></section>
+      <section class="front-faq"><div class="front-inner">
+        <h2>Questions Shops Ask</h2>
+        <details><summary>Do my customers need to download an app?</summary><p>No. They get a text or email with a private link that opens in any browser. No account or password.</p></details>
+        <details><summary>Does it replace my shop management system?</summary><p>It can work alongside it. Talk Shops handles the board, customer updates, approvals, inspections and bills. If your current system makes your invoices, upload that PDF as the final bill.</p></details>
+        <details><summary>Will it work for a quick lube or tire shop?</summary><p>Yes. Set up quick services like “Oil change + rotation”. Fast lane jobs skip diagnosis and approval because the customer agreed at the counter, so the car moves straight to the bay.</p></details>
+        <details><summary>How long does setup take?</summary><p>Most shops are ready in a few minutes. Upload your price list as a spreadsheet, PDF or photo, review it, and start checking in cars.</p></details>
+        <details><summary>Can my technicians use it without seeing billing?</summary><p>Yes. Technicians work on cars. Settings, prices, team and billing stay with owners.</p></details>
+        <p><a href="/?help">See all questions in Help &amp; Support →</a></p>
+      </div></section>
+      <section class="front-final"><div class="front-inner"><h2>See it with your own shop’s cars.</h2><p>Start a free trial, or click through the demo shop first.</p><div class="front-actions"><a class="front-cta" href="/?login=signup">Start Free Trial <span aria-hidden="true">→</span></a><a class="front-tour" href="${DEMO_PAGE}">Explore Demo Shop</a><a class="front-tour" href="/?contact=sales">Talk to Sales</a></div></div></section>
       <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="/?help">Help &amp; Support</a><a href="/?contact=sales">Contact Sales</a><a href="/privacy.html">Privacy Policy</a></div></footer>
     </div>`;
   }
