@@ -33,7 +33,10 @@ Return JSON:
 "specs": typical specs, each labeled as typical and to verify (empty if none apply).
 "partNumbers": up to 8 parts, each {"part": what it is, "brand": the OEM brand or empty, "number": the OEM part number or empty, "altBrand": an aftermarket brand or empty, "altNumber": that brand's part number or empty, "note": what to check, short or empty}.
 "safety": safety cautions for this job (at least one for any hands-on procedure).
-"ideas": two or three short follow-up questions a tech might ask next, each under 60 characters.`;
+"ideas": two or three short follow-up questions a tech might ask next, each under 60 characters.
+"title": the question rewritten as a short, generic how-to title other shops could reuse, under 80 characters, e.g. "Replace front brake pads and rotors". Leave out every person's name, the shop, phone numbers, emails, VINs, plates and order numbers.
+
+Privacy: answers are saved and shown to other shops. Never repeat a customer's or anyone else's name, phone number, email, plate or VIN in any field; say "the customer" instead.`;
 
 /** Gemini's response schema for how-to answers (OpenAPI subset). */
 export const HOWTO_SCHEMA = {
@@ -50,6 +53,7 @@ export const HOWTO_SCHEMA = {
     },
     safety: { type: 'ARRAY', items: { type: 'STRING' } },
     ideas: { type: 'ARRAY', items: { type: 'STRING' } },
+    title: { type: 'STRING' },
   },
   required: ['answer', 'steps', 'tools', 'parts', 'specs', 'safety', 'ideas'],
 };
@@ -286,7 +290,9 @@ export async function howToRoute(ctx: Ctx, narrator: Narrator | null | undefined
     if (lib && k.makeModel && qKey && !followUp) {
       try {
         // Only the vehicle (no VIN or plate), the cleaned-up question and the AI's answer are saved for sharing.
-        const shared = cleanQuestion(question);
+        // Prefer the AI's generic title (no names) over the tech's own words; fall back to the scrubbed question.
+        const title = cleanQuestion(str(parsed.title, 120));
+        const shared = title.length >= 3 && !hasPersonalInfo(title) ? title : cleanQuestion(question);
         if (shared.length >= 3) libraryId = await lib.save({ shopId, makeModel: k.makeModel, year: k.year, engine: k.engine, qKey, question: shared, vehicle, answer: out, ratings: {}, uses: 1, retired: false });
       } catch (error) { ctx.log.warn('Saving the how-to answer failed.', error); }
     }

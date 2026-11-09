@@ -145,3 +145,15 @@ test('public sales form sends only to support with requester Reply-To', async ()
   assert.equal(sent.length, 0);
   assert.equal((await send(body, { ...deps, email: { send: async () => ({ delivery: 'failed' as any }) } }))?.status, 502);
 });
+
+test('reset codes are capped at ten a day, even spread across hours', async () => {
+  const w = world();
+  const anon = w.as(null);
+  for (let i = 0; i < 10; i++) {
+    assert.equal((await anon('POST', 'shop/auth/forgot', { email: 'owner@shop.com' }))?.status, 200);
+    if (i % 5 === 4) w.tick(61 * 60_000);
+  }
+  assert.equal((await anon('POST', 'shop/auth/forgot', { email: 'owner@shop.com' }))?.status, 429, 'eleventh code in a day');
+  w.tick(24 * 3_600_000);
+  assert.equal((await anon('POST', 'shop/auth/forgot', { email: 'owner@shop.com' }))?.status, 200, 'next day is fine');
+});

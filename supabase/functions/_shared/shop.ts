@@ -148,6 +148,8 @@ export interface ShopStore {
   startTrial?(shopId: string, endsAt: string): Promise<void>;
   /** Counts `n` texts in `period`; false (and nothing counted) when that would pass `limit`. */
   useTexts?(shopId: string, n: number, period: string, limit: number | null): Promise<boolean>;
+  /** Counts one customer email for the shop on `day` (UTC date); false (nothing counted) when over `limit`. */
+  useEmails?(shopId: string, day: string, limit: number): Promise<boolean>;
   /** Saves plan columns that Stripe reported. */
   setPlan?(shopId: string, patch: Partial<PlanState>): Promise<void>;
   /** Past and current visits: every term in the search text, or (history) the same phone digits, plate or VIN. Newest first. */
@@ -345,6 +347,10 @@ const customerOut = (j: Job, shop: Shop) => ({
   bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
 });
 
+/** Most customer emails a shop can send per day: lower during the free trial, so a new signup can't send bulk mail. */
+export const EMAIL_CAP = { trial: 75, paid: 500 } as const;
+const emailCap = (shop: Shop) => (shop.plan?.plan === 'trial' ? EMAIL_CAP.trial : EMAIL_CAP.paid);
+
 async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string, now: string, acc?: Access): Promise<Message[]> {
   const c = job.data.customer, preference = c.preference ?? 'sms';
   const channels: Channel[] = preference === 'both' ? ['sms', 'email'] : [preference];
@@ -358,6 +364,8 @@ async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string
       result = counted ? await deps.sms.send(c.phone, text)
         : { delivery: 'not_sent', note: acc!.canWork ? `The free trial includes ${acc!.textLimit} texts and they're used up. Choose a plan on the Plan tab to keep texting.` : lockedMessage(acc!) };
     }
+    else if (deps.email && c.email && deps.store.useEmails && !await deps.store.useEmails(shop.id, now.slice(0, 10), emailCap(shop)))
+      result = { delivery: 'not_sent', note: `Your shop has sent its ${emailCap(shop)} customer emails for today. Email sending starts again tomorrow (UTC). Texts still work.` };
     else if (deps.email && c.email) result = await deps.email.send(c.email, shop.name + ' · ' + job.data.ro + ' repair update', text, { fromName: shop.name, replyTo: shop.email || undefined });
     else result = { delivery: 'not_sent', note: 'Automatic email is not configured.' };
     return { dir: 'out', channel, t: now, text, ...result };

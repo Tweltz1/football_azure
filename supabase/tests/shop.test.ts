@@ -829,3 +829,20 @@ test('a note sent to the customer counts against the plan text allowance like ot
   assert.equal(j.messages.at(-1)?.delivery, 'not_sent');
   assert.ok(j.messages.at(-1)?.sender);
 });
+
+test('customer emails stop at the daily cap and say why', async () => {
+  const w = world();
+  let used = 0;
+  w.deps.store.useEmails = async (_shop, _day, limit) => (used < limit ? (used++, true) : false);
+  const sent: string[] = [];
+  w.deps.email = { async send(to) { sent.push(to); return { delivery: 'sent' }; } };
+  const dan = w.as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', { ...checkIn, customer: { ...checkIn.customer, email: 'c@example.com', preference: 'email' } }))?.body as { id: string };
+  used = 499;
+  await dan('POST', `shop/jobs/${job.id}/message`, { text: 'One more' });
+  const j = (await dan('POST', `shop/jobs/${job.id}/message`, { text: 'Over the cap' }))?.body as { messages: { delivery?: string; note?: string }[] };
+  assert.equal(sent.length, 2, 'check-in email and one more');
+  assert.equal(j.messages.at(-1)?.delivery, 'not_sent');
+  assert.match(j.messages.at(-1)?.note ?? '', /customer emails for today/);
+});

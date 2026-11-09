@@ -163,3 +163,15 @@ test('nothing that identifies a customer or shop is shared', async () => {
   const sug = (await libAsk(null, lib, { vehicle: civic, q: '' }, 's9', 'suggest')).body;
   assert.ok(!JSON.stringify(sug).includes('s1'));
 });
+
+test('the shared library saves the AI generic title, not a question with a customer name', async () => {
+  clearHowToLimits();
+  const { lib, rows } = memLib();
+  const titled = JSON.stringify({ ...JSON.parse(good), title: 'Diagnose a brake squeal' });
+  const { narrator } = fake(titled);
+  await libAsk(narrator, lib, { question: 'John Peterson says his brakes squeal when stopping', vehicle: civic });
+  assert.equal(rows.at(-1)?.question, 'Diagnose a brake squeal');
+  const { narrator: noTitle } = fake(good);
+  await libAsk(noTitle, lib, { question: 'cabin filter swap call 555-123-4567', vehicle: civic });
+  assert.equal(rows.at(-1)?.question, 'cabin filter swap call');
+});

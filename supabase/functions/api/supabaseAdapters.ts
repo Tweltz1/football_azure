@@ -487,6 +487,11 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       const { error } = await db.from('repair_shops').update({ plan: 'trial', plan_status: 'trialing', trial_ends_at: endsAt }).eq('id', shopId);
       if (error) throw error;
     },
+    async useEmails(shopId, day, limit) {
+      const { data, error } = await db.rpc('repair_use_emails', { p_shop: shopId, p_day: day, p_limit: limit });
+      if (error) throw error;
+      return data === true;
+    },
     async useTexts(shopId, n, period, limit) {
       const { data, error } = await db.rpc('repair_use_texts', { p_shop: shopId, p_n: n, p_period: period, p_limit: limit });
       if (error) throw error;

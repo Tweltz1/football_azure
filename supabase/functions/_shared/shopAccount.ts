@@ -50,6 +50,8 @@ type Body = Record<string, unknown>;
 const CODE_MINUTES = 15;
 const MAX_TRIES = 5;
 const MAX_SENDS_PER_HOUR = 5;
+/** Caps guessing over time: at most 10 codes (50 tries) a day for one account. */
+const MAX_SENDS_PER_DAY = 10;
 const ok = (body?: unknown): Res => ({ status: 200, body });
 const bad = (message: string): Res => ({ status: 400, body: message });
 const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -71,6 +73,7 @@ export async function hashCode(userId: string, code: string): Promise<string> {
 async function issueCode(ctx: Ctx, deps: AccountDeps, store: AccountStore, userId: string, purpose: CodePurpose, channel: CodeChannel, target: string): Promise<SmsResult | 'limited'> {
   const now = ctx.now();
   if (await store.countCodes(userId, new Date(now.getTime() - 3_600_000).toISOString()) >= MAX_SENDS_PER_HOUR) return 'limited';
+  if (await store.countCodes(userId, new Date(now.getTime() - 86_400_000).toISOString()) >= MAX_SENDS_PER_DAY) return 'limited';
   const code = (deps.newCode ?? randomCode)();
   await store.saveCode({
     id: ctx.newId(), userId, purpose, channel, target, codeHash: await hashCode(userId, code), attempts: 0,
@@ -129,7 +132,7 @@ export async function accountRoute(ctx: Ctx, deps: AccountDeps, method: string, 
         target = phone.phone;
       }
       const sent = await issueCode(ctx, deps, store, user.id, 'reset', channel, target);
-      if (sent === 'limited') return { status: 429, body: 'Too many codes were sent. Wait an hour, then try again.' };
+      if (sent === 'limited') return { status: 429, body: 'Too many codes were sent. Wait an hour (or until tomorrow if you have asked for many today), then try again.' };
       if (sent.delivery !== 'sent') ctx.log.warn('reset code not sent', { channel, delivery: sent.delivery, note: sent.note });
       return ok(generic);
     }
@@ -159,7 +162,7 @@ export async function accountRoute(ctx: Ctx, deps: AccountDeps, method: string, 
     const phone = normalizePhone(str(body.phone, 30));
     if (!phone) return bad('Enter a valid mobile number.');
     const sent = await issueCode(ctx, deps, store, ctx.userId, 'phone', 'sms', phone);
-    if (sent === 'limited') return { status: 429, body: 'Too many codes were sent. Wait an hour, then try again.' };
+    if (sent === 'limited') return { status: 429, body: 'Too many codes were sent. Wait an hour (or until tomorrow if you have asked for many today), then try again.' };
     if (sent.delivery !== 'sent') {
       const why = sent.delivery === 'not_sent' ? 'Texting is not set up on the server yet.' : (sent.note || 'The texting service turned it down.');
       return { status: 502, body: `We couldn't text that number. ${why}` };
