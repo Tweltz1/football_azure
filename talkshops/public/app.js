@@ -257,7 +257,14 @@
       const r = await api("POST", "shop/join/" + encodeURIComponent(joinToken));
       setTimeout(() => toast(`Welcome to ${r.shopName}. You're signed in as ${r.role === "owner" ? "an owner" : "a technician"}.`), 400);
       join.err = "";
-    } catch (e) { join.err = e.message; throw e; }
+    } catch (e) {
+      // Not valid, used, expired, or this account is already in a shop: the invite can never work, so drop it
+      // and open the account normally. Other failures (wrong email, network) keep it for a retry.
+      if (![404, 409, 410].includes(e.status)) { join.err = e.message; throw e; }
+      const msg = e.message;
+      setTimeout(() => toast(msg), 400);
+      join.err = "";
+    }
     joinToken = ""; store.set(JOIN_KEY, "");
     const q = new URLSearchParams(location.search);
     if (q.has("join")) { q.delete("join"); history.replaceState(history.state, "", "/" + (q.toString() ? "?" + q : "") + location.hash); }
@@ -308,7 +315,7 @@
       chrome.hidden = true;
       app.innerHTML = `<div class="login-wrap"><section class="login">${brand()}<h2>Join Your Shop</h2>${joinBanner()}
         <p class="muted">Signed in as ${esc(session.user.email || "your account")}. Your invitation stays saved until you join successfully.</p>
-        <div class="btn-row"><button class="btn primary" id="retry">Try Again</button><button class="btn" id="signOut">Use a Different Account</button></div></section></div>`;
+        <div class="btn-row"><button class="btn primary" id="retry">Try Again</button><button class="btn" id="signOut">Use a Different Account</button><button class="btn" id="skipInvite">Skip This Invite</button></div></section></div>`;
       return;
     }
     if (!shop && loadErr) {
@@ -911,6 +918,7 @@
     }
     if (t.id === "authSwap") { ui.authMode = ui.authMode === "signup" ? "signin" : "signup"; ui.authErr = ui.authMsg = ""; render(); return; }
     if (t.id === "signOut" || t.id === "signOut2") { if (sb) await sb.auth.signOut(); return; }
+    if (t.id === "skipInvite") { joinToken = ""; store.set(JOIN_KEY, ""); join.err = ""; join.info = null; loaded = false; render(); loadShop(); return; }
     if (t.id === "retry") { loadShop(); return; }
     if (t.dataset.archiveOpen) { openArchived(t.dataset.archiveOpen); return; }
     if (t.hasAttribute("data-archive-retry")) { archive.error = ""; renderArchiveRows(); searchArchive(); return; }

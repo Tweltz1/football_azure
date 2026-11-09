@@ -55,7 +55,7 @@ test('signed-in technician joins with the event token before loading their shop'
   assert.equal(flow.state().joinToken, '');
 });
 
-for (const status of [401, 403, 410, 502]) test(`join failure ${status} retains invite and blocks shop setup; retry can succeed`, async () => {
+for (const status of [401, 403, 502]) test(`join failure ${status} retains invite and blocks shop setup; retry can succeed`, async () => {
   let failed = true;
   const { flow, saved, calls } = app(url => failed ? [status, 'Join failed'] : url.includes('/join/')
     ? [200, { shopName: 'Tyler Auto', role: 'tech' }]
@@ -70,4 +70,17 @@ for (const status of [401, 403, 410, 502]) test(`join failure ${status} retains 
   await flow.loadShop();
   assert.equal(flow.state().joinToken, '');
   assert.equal(flow.state().role, 'tech');
+});
+
+for (const status of [404, 409, 410]) test(`join failure ${status} drops the dead invite and opens the account's own shop`, async () => {
+  const { flow, saved, calls } = app(url => url.includes('/join/')
+    ? [status, 'This invite was already used.']
+    : url.endsWith('/me') ? [200, { shop: { name: 'Own Shop' }, role: 'owner' }] : [200, []]);
+  flow.signIn('owner@example.com');
+  await flow.loadShop();
+  assert.equal(flow.state().joinToken, '');
+  assert.equal(saved.has('talkshops-join'), false);
+  assert.equal(flow.state().loadErr, '');
+  assert.equal(flow.state().shop.name, 'Own Shop');
+  assert.ok(calls.some(c => c.url.endsWith('/me')));
 });

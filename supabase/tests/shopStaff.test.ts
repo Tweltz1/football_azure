@@ -197,7 +197,7 @@ test('re-inviting replaces the old link; cancelling an invite kills it; members 
 test('Starter counts the primary owner and pending invitations in staff and owner limits',async()=>{
   const {w,owner}=await shopWithTech();
   const s=[...w.shops.values()][0];
-  s.plan={plan:'starter',status:'active',trialEndsAt:null,textsUsed:0,carsCreated:0};
+  s.plan={plan:'starter',status:'active',trialEndsAt:null,textsUsed:0,textsPeriod:'',carsCreated:0};
   const invite=await owner('POST','shop/staff/invite',{email:'partner@test.invalid',role:'owner'});
   assert.equal(invite?.status,200);
   assert.deepEqual((invite?.body as {limits:unknown}).limits,{staff:3,owners:2});
