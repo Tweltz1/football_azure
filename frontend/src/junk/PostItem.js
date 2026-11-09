@@ -44,6 +44,8 @@ export default function PostItem() {
   // Several things in one post, each claimable and taken on its own.
   const [pieces, setPieces] = useState([]);
   const multi = pieces.length > 0;
+  const piecesRef = useRef(pieces);
+  piecesRef.current = pieces;
   const fileRef = useRef(null);
   const detectAsked = useRef(false);
   const touchedRef = useRef(touched);
@@ -79,6 +81,38 @@ export default function PostItem() {
   const applyDetection = (d) => {
     if (!d) return;
     const t = touchedRef.current;
+    // A photo of several things: each becomes its own row in the post, with its part of the photo, so people
+    // can claim them one by one. Same kind twice gets numbered ("Battery 1", "Battery 2").
+    const found = (d.things || []).filter((x) => x.title).slice(0, MAX_PIECES);
+    const seen = {};
+    found.forEach((x) => { seen[x.title] = (seen[x.title] || 0) + 1; });
+    const counter = {};
+    const things = found.map((x) => (seen[x.title] > 1 ? { ...x, title: `${x.title} ${(counter[x.title] = (counter[x.title] || 0) + 1)}` } : x));
+    const blank = (list) => list.every((p) => !p.title.trim());
+    if (things.length >= 2) {
+      setPieces((list) => (list.length && !blank(list) ? list : things.map((x) => newPiece({ title: x.title, category: x.category, box: x.box, photo: 0 }))));
+      setForm((f) => ({
+        ...f,
+        description: t.description && f.description ? f.description : d.description || f.description,
+        condition: t.condition ? f.condition : d.condition || f.condition,
+        tags: d.tags && d.tags.length ? d.tags : f.tags,
+      }));
+      setDetected(true);
+      setAiNote(`Found ${things.length} things, each listed separately`);
+      return;
+    }
+    // Listing several things already: the one thing found goes in the first empty row, not the post's name.
+    if (piecesRef.current.length) {
+      if (d.title) {
+        setPieces((list) => {
+          const k = list.findIndex((p) => !p.title.trim());
+          return k < 0 ? list : list.map((p, n) => (n === k ? { ...p, title: d.title, category: d.category || p.category } : p));
+        });
+      }
+      setDetected(true);
+      setAiNote(d.title ? `Looks like: ${d.title}` : '');
+      return;
+    }
     setForm((f) => ({
       ...f,
       title: t.title && f.title ? f.title : d.title || f.title,
@@ -88,18 +122,6 @@ export default function PostItem() {
       tags: d.tags && d.tags.length ? d.tags : f.tags,
     }));
     setDetected(true);
-    // A photo of several things: offer them as one post with each thing listed.
-    // Each one becomes its own thing in the post ("Chair 1", "Chair 2"), so people can claim them one by one.
-    const things = (d.spotted || []).filter((x) => x.title).flatMap((x) => {
-      const boxes = x.boxes && x.boxes.length ? x.boxes : [x.box || null];
-      if (boxes.length < 2) return [{ title: x.title, category: x.category, box: boxes[0] }];
-      return boxes.map((box, n) => ({ title: `${x.title} ${n + 1}`, category: x.category, box }));
-    }).slice(0, MAX_PIECES);
-    if (things.length >= 2) {
-      setPieces((list) => (list.length ? list : things.map((x) => newPiece(x))));
-      setAiNote(`Spotted ${things.length} things, each listed separately below`);
-      return;
-    }
     setAiNote(d.title ? `Looks like: ${d.title}` : '');
   };
 
@@ -108,8 +130,12 @@ export default function PostItem() {
     const next = list.filter((p) => p.key !== key);
     return next.length < 2 && !editing ? [] : next;
   });
-  const startMulti = () => setPieces((list) => (list.length ? list
-    : [newPiece({ title: form.title.trim(), category: form.category }), newPiece()]));
+  // Listing several things by hand: what's in the name box becomes the first thing, and the post is named after them.
+  const startMulti = () => {
+    if (pieces.length) return;
+    setPieces([newPiece({ title: form.title.trim(), category: form.category }), newPiece()]);
+    setForm((f) => ({ ...f, title: '' }));
+  };
   const named = pieces.filter((p) => p.title.trim().length >= 2);
 
   const addFiles = async (fileList) => {
@@ -221,8 +247,8 @@ export default function PostItem() {
             <ul className="jk-pieces-edit">
               {pieces.map((p, n) => (
                 <li key={p.key} className={p.gone ? 'is-gone' : ''}>
-                  <PieceThumb photo={photos[p.photo]} box={p.box} />
-                  <input value={p.title} onChange={(e) => setPiece(p.key, { title: e.target.value })} placeholder={n ? 'Another thing' : 'Floor lamp'} maxLength={60} aria-label={`Thing ${n + 1}`} />
+                  <PieceThumb photo={p.box ? photos[p.photo] : null} box={p.box} category={p.category} />
+                  <input value={p.title} onChange={(e) => setPiece(p.key, { title: e.target.value })} placeholder="Name this thing" maxLength={60} aria-label={`Thing ${n + 1}`} />
                   <select value={p.category || 'other'} onChange={(e) => setPiece(p.key, { category: e.target.value })} aria-label="Category">
                     {CATEGORIES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
                   </select>
@@ -300,7 +326,7 @@ export default function PostItem() {
         {error && <p className="jk-error" role="alert">{error}</p>}
         <div className="jk-form-actions">
           <button type="submit" className="jk-btn jk-btn-primary jk-full" disabled={saving || detecting}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : multi ? `Post ${named.length} things for free` : 'Post it for free'}
+            {saving ? 'Saving…' : editing ? 'Save changes' : multi && named.length >= 2 ? `Post ${named.length} things for free` : 'Post it for free'}
           </button>
         </div>
       </form>

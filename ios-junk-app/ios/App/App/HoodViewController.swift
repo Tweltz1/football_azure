@@ -210,6 +210,99 @@ public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
         return detector
     }
 
+    /// Boxes (Vision coordinates, origin bottom left) of the separate things Apple sees in the photo.
+    private static func thingBoxes(handler: VNImageRequestHandler) -> [CGRect] {
+        var boxes: [CGRect] = []
+        if #available(iOS 17.0, *) {
+            // Each foreground object gets its own number in a mask; the box around each number is one thing.
+            let instances = VNGenerateForegroundInstanceMaskRequest()
+            if (try? handler.perform([instances])) != nil, let obs = instances.results?.first {
+                boxes += maskBoxes(obs.instanceMask)
+            }
+        }
+        let saliency = VNGenerateObjectnessBasedSaliencyImageRequest()
+        if (try? handler.perform([saliency])) != nil,
+           let obs = saliency.results?.first as? VNSaliencyImageObservation {
+            boxes += (obs.salientObjects ?? []).map { $0.boundingBox }
+        }
+        // Not tiny specks, not the whole scene, and each thing once.
+        var kept: [CGRect] = []
+        for box in boxes {
+            let area = box.width * box.height
+            if area < 0.004 || area > 0.6 { continue }
+            if kept.contains(where: { overlap($0, box) > 0.6 }) { continue }
+            kept.append(box)
+            if kept.count >= 10 { break }
+        }
+        return kept
+    }
+
+    /// Intersection over union of two boxes.
+    private static func overlap(_ a: CGRect, _ b: CGRect) -> CGFloat {
+        let i = a.intersection(b)
+        if i.isNull || i.isEmpty { return 0 }
+        let inter = i.width * i.height
+        return inter / (a.width * a.height + b.width * b.height - inter)
+    }
+
+    /// The box around each numbered object in an instance mask (one byte per pixel, 0 is background).
+    private static func maskBoxes(_ mask: CVPixelBuffer) -> [CGRect] {
+        CVPixelBufferLockBaseAddress(mask, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(mask, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(mask) else { return [] }
+        let width = CVPixelBufferGetWidth(mask), height = CVPixelBufferGetHeight(mask)
+        let rowBytes = CVPixelBufferGetBytesPerRow(mask)
+        let pixels = base.assumingMemoryBound(to: UInt8.self)
+        var minX = [Int](repeating: Int.max, count: 256), minY = minX
+        var maxX = [Int](repeating: -1, count: 256), maxY = maxX
+        for y in 0..<height {
+            let row = pixels + y * rowBytes
+            for x in 0..<width {
+                let label = Int(row[x])
+                if label == 0 { continue }
+                if x < minX[label] { minX[label] = x }
+                if x > maxX[label] { maxX[label] = x }
+                if y < minY[label] { minY[label] = y }
+                if y > maxY[label] { maxY[label] = y }
+            }
+        }
+        var boxes: [CGRect] = []
+        for label in 1..<256 where maxX[label] >= 0 {
+            let w = CGFloat(width), h = CGFloat(height)
+            // Mask rows run top to bottom; Vision boxes start at the bottom.
+            boxes.append(CGRect(x: CGFloat(minX[label]) / w, y: 1 - CGFloat(maxY[label] + 1) / h,
+                                width: CGFloat(maxX[label] - minX[label] + 1) / w, height: CGFloat(maxY[label] - minY[label] + 1) / h))
+        }
+        return boxes
+    }
+
+    /// Each separate thing: where it is (top left origin, 0 to 1) and Apple's labels for just that part.
+    private static func regions(data: Data) -> [[String: Any]] {
+        let handler = VNImageRequestHandler(data: data, options: [:])
+        let boxes = thingBoxes(handler: handler)
+        if boxes.isEmpty { return [] }
+        let requests: [VNClassifyImageRequest] = boxes.map { box in
+            let request = VNClassifyImageRequest()
+            // A little room around the thing helps the classifier.
+            let padded = box.insetBy(dx: -box.width * 0.08, dy: -box.height * 0.08)
+                .intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
+            request.regionOfInterest = padded
+            return request
+        }
+        guard (try? handler.perform(requests)) != nil else { return [] }
+        return zip(boxes, requests).map { box, request in
+            let labels = (request.results ?? [])
+                .filter { $0.confidence >= 0.05 }
+                .sorted { $0.confidence > $1.confidence }
+                .prefix(12)
+                .map { ["label": $0.identifier, "confidence": Double($0.confidence)] as [String: Any] }
+            return [
+                "box": ["x": Double(box.minX), "y": Double(1 - box.maxY), "w": Double(box.width), "h": Double(box.height)],
+                "labels": Array(labels),
+            ]
+        }
+    }
+
     @objc func classify(_ call: CAPPluginCall) {
         guard let image = call.getString("image") else {
             call.reject("image is required")
@@ -255,7 +348,10 @@ public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
                     if objects.count > 20 { objects = Array(objects.prefix(20)) }
                 }
             }
-            call.resolve(["labels": Array(labels), "objects": objects, "detector": model != nil])
+            // Any separate thing, whatever it is (the detector above only knows 80 kinds): Apple finds where the
+            // things are, then names each one from its own part of the photo.
+            let regions = ItemVisionPlugin.regions(data: data)
+            call.resolve(["labels": Array(labels), "objects": objects, "regions": regions, "detector": model != nil])
         }
     }
 }

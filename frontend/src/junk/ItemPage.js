@@ -94,7 +94,7 @@ function PieceList({ item, myIds, pick, onPick, onToggleTaken, busy }) {
         const state = p.gone ? 'Taken' : mine ? 'You\'re coming for this' : p.held ? (item.firstCome ? 'Someone\'s heading over' : 'Someone\'s on the way') : '';
         return (
           <li key={p.id} className={p.gone ? 'is-gone' : p.held && !item.firstCome && !mine ? 'is-held' : ''}>
-            <PieceThumb url={item.photos[p.photo] || item.photos[0]} box={p.box} />
+            <PieceThumb url={p.box ? item.photos[p.photo] || item.photos[0] : null} box={p.box} category={p.category} />
             <span className="jk-piece-text">
               <b>{p.title}</b>
               <small>{categoryIcon(p.category)} {categoryLabel(p.category)}{state ? ` · ${state}` : ''}</small>

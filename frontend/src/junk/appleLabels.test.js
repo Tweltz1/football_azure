@@ -70,3 +70,23 @@ test('the detector finds separate items worth listing, grouped by kind', () => {
   expect(spottedTitle(s[1])).toBe('TV');
   expect(spottedItems(null)).toEqual([]);
 });
+
+test('every separate thing in a photo, named from its own part, even kinds the detector does not know', () => {
+  const { thingsInPhoto } = require('./appleLabels');
+  const things = thingsInPhoto({
+    // The detector calls the red tape measure case a suitcase; Apple's label for that part wins.
+    objects: [
+      { label: 'suitcase', confidence: 0.6, box: { x: 0.55, y: 0.5, w: 0.3, h: 0.3 } },
+      { label: 'bottle', confidence: 0.7, box: { x: 0.05, y: 0.1, w: 0.1, h: 0.3 } },
+    ],
+    regions: [
+      { box: { x: 0.56, y: 0.52, w: 0.3, h: 0.28 }, labels: [{ label: 'tape_measure', confidence: 0.5 }, { label: 'tool', confidence: 0.6 }] },
+      { box: { x: 0.25, y: 0.55, w: 0.15, h: 0.2 }, labels: [{ label: 'battery', confidence: 0.45 }] },
+      { box: { x: 0.4, y: 0.1, w: 0.1, h: 0.1 }, labels: [{ label: 'tool', confidence: 0.4 }] },
+      { box: { x: 0.7, y: 0.05, w: 0.1, h: 0.1 }, labels: [{ label: 'wall', confidence: 0.9 }] },
+    ],
+  });
+  expect(things.map((t) => t.title)).toEqual(['Bottle', 'Tool', 'Battery', 'Tape measure']);
+  expect(things.find((t) => t.title === 'Tape measure').box.x).toBeCloseTo(0.56);
+  expect(things.find((t) => t.title === 'Tool').category).toBe('tools');
+});

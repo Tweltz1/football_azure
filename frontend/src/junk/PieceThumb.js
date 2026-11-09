@@ -1,17 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { categoryIcon } from './device';
 
-/** The part of the photo showing one thing (from the phone's object detector), or nothing. */
-export default function PieceThumb({ photo, box, url }) {
+/**
+ * One thing's part of the photo (the box the phone found it in), zoomed to fill a square. Without a box it
+ * shows the thing's category icon instead of the whole photo.
+ */
+export default function PieceThumb({ photo, box, url, category }) {
   const src = url || (photo && (photo.preview || photo.url));
-  if (!src) return <span className="jk-piece-thumb is-empty" aria-hidden="true" />;
-  if (!box) return <span className="jk-piece-thumb" style={{ backgroundImage: `url("${src}")`, backgroundSize: 'cover', backgroundPosition: 'center' }} aria-hidden="true" />;
-  // Zoom the photo so the thing fills the square, centered on it (keeps the photo's shape).
-  const side = Math.min(1, Math.max(box.w, box.h, 0.08));
-  const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
-  const style = {
-    backgroundImage: `url("${src}")`,
-    backgroundSize: `${100 / side}% auto`,
-    backgroundPosition: `${side >= 1 ? 50 : Math.min(100, Math.max(0, ((cx - side / 2) / (1 - side)) * 100))}% ${Math.round(cy * 100)}%`,
-  };
-  return <span className="jk-piece-thumb" style={style} aria-hidden="true" />;
+  const [size, setSize] = useState(null); // the photo's own width and height, once loaded
+  if (!src || !box) return <span className="jk-piece-thumb is-empty" aria-hidden="true">{category ? categoryIcon(category) : null}</span>;
+  let style = { visibility: 'hidden' };
+  if (size) {
+    const { w: W, h: H } = size;
+    // A square around the thing, a little bigger than it, in photo pixels.
+    const side = Math.max(box.w * W, box.h * H, 8) * 1.12;
+    const cx = (box.x + box.w / 2) * W, cy = (box.y + box.h / 2) * H;
+    style = {
+      width: `${(W / side) * 100}%`,
+      height: `${(H / side) * 100}%`,
+      left: `${(-(cx - side / 2) / side) * 100}%`,
+      top: `${(-(cy - side / 2) / side) * 100}%`,
+    };
+  }
+  return (
+    <span className="jk-piece-thumb is-crop" aria-hidden="true">
+      <img src={src} alt="" style={style} onLoad={(e) => setSize({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} />
+    </span>
+  );
 }
