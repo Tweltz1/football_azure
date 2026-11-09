@@ -1,10 +1,12 @@
 import { requireOptionalNativeModule } from 'expo';
 
+export type TextLine = { text: string; confidence: number; x: number; y: number; w: number; h: number };
 export type PhotoAnalysis = {
-  labels: { label: string; confidence: number }[];
+  /** confidence: best seen in any part of the photo; regions: how many parts it was seen in; whole: seen in the full photo. */
+  labels: { label: string; confidence: number; regions?: number; whole?: boolean }[];
+  /** Printed text lines with their position (0-1, top-left origin). */
+  lines?: TextLine[];
   text: string[];
-  /** Same lines as `text` with how sure Vision was and how tall the print is (share of the photo). Older builds leave it out. */
-  textInfo?: { text: string; confidence: number; height: number }[];
   /**
    * Each separate thing the object detector outlined, with more specific names from looking at just
    * that spot. Empty when the detector model isn't in the build; older builds leave it out.
@@ -14,6 +16,7 @@ export type PhotoAnalysis = {
 export type DetectedObject = {
   label: string;
   confidence: number;
+  /** 0-1, origin bottom-left (Vision's). */
   box: { x: number; y: number; width: number; height: number };
   refined: { label: string; confidence: number }[];
 };

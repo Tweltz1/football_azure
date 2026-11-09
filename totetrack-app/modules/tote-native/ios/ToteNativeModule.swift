@@ -32,48 +32,16 @@ public class ToteNativeModule: Module {
       self.nfc.start(writing: nil, promise: promise)
     }.runOnQueue(.main)
 
-    // Snap to inventory: what Apple's on-device Vision sees in a photo, plus any printed text.
-    // Nothing leaves the phone.
+    // Snap to inventory: finds the separate things in a photo and names each one with Apple's
+    // on-device Vision, and reads printed text. Nothing leaves the phone.
     AsyncFunction("analyzePhoto") { (uri: String, promise: Promise) in
       DispatchQueue.global(qos: .userInitiated).async {
         let url = URL(string: uri) ?? URL(fileURLWithPath: uri)
-        guard let data = try? Data(contentsOf: url), let image = UIImage(data: data), let cgImage = image.cgImage else {
+        guard let data = try? Data(contentsOf: url), let original = UIImage(data: data), let image = uprightImage(original, maxSide: 1600) else {
           promise.reject("E_PHOTO", "Couldn't open that photo")
           return
         }
-        let handler = VNImageRequestHandler(cgImage: cgImage, orientation: cgOrientation(image.imageOrientation), options: [:])
-        let classify = VNClassifyImageRequest()
-        let text = VNRecognizeTextRequest()
-        text.recognitionLevel = .accurate
-        text.usesLanguageCorrection = true
-        do {
-          try handler.perform([classify, text])
-        } catch {
-          promise.reject("E_VISION", error.localizedDescription)
-          return
-        }
-        var labels: [[String: Any]] = []
-        for observation in classify.results ?? [] where observation.confidence >= 0.08 {
-          if observation.hasMinimumPrecision(0.5, forRecall: 0.3) || observation.confidence >= 0.3 {
-            labels.append(["label": observation.identifier, "confidence": Double(observation.confidence)])
-          }
-          if labels.count >= 30 { break }
-        }
-        var lines: [String] = []
-        var textInfo: [[String: Any]] = []
-        for observation in text.results ?? [] {
-          if let best = observation.topCandidates(1).first, best.confidence >= 0.5 {
-            lines.append(best.string)
-            // Height is a share of the photo (0-1): big print is usually the product name,
-            // tiny print is usually legal or packaging small print.
-            textInfo.append([
-              "text": best.string,
-              "confidence": Double(best.confidence),
-              "height": Double(observation.boundingBox.height),
-            ])
-          }
-        }
-        promise.resolve(["labels": labels, "text": lines, "textInfo": textInfo, "objects": detectObjects(handler: handler, cgImage: cgImage, orientation: cgOrientation(image.imageOrientation))])
+        promise.resolve(analyze(image))
       }
     }
 
@@ -153,18 +121,113 @@ public class ToteNativeModule: Module {
   }
 }
 
-private func cgOrientation(_ orientation: UIImage.Orientation) -> CGImagePropertyOrientation {
-  switch orientation {
-  case .up: return .up
-  case .down: return .down
-  case .left: return .left
-  case .right: return .right
-  case .upMirrored: return .upMirrored
-  case .downMirrored: return .downMirrored
-  case .leftMirrored: return .leftMirrored
-  case .rightMirrored: return .rightMirrored
-  @unknown default: return .up
+/// Redraws the photo upright (camera photos carry a rotation flag) and no bigger than maxSide.
+private func uprightImage(_ image: UIImage, maxSide: CGFloat) -> CGImage? {
+  let scale = min(1, maxSide / max(image.size.width, image.size.height))
+  let size = CGSize(width: floor(image.size.width * scale), height: floor(image.size.height * scale))
+  let format = UIGraphicsImageRendererFormat()
+  format.scale = 1
+  return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+    image.draw(in: CGRect(origin: .zero, size: size))
+  }.cgImage
+}
+
+/// Vision's normalized rect (origin bottom-left) to a pixel rect (origin top-left), padded a little.
+private func pixelRect(_ r: CGRect, width: Int, height: Int, pad: CGFloat = 0.06) -> CGRect {
+  let w = CGFloat(width), h = CGFloat(height)
+  var rect = CGRect(x: r.minX * w, y: (1 - r.maxY) * h, width: r.width * w, height: r.height * h)
+  rect = rect.insetBy(dx: -rect.width * pad, dy: -rect.height * pad)
+  return rect.intersection(CGRect(x: 0, y: 0, width: w, height: h)).integral
+}
+
+/// Boxes around the separate objects in the photo: Apple's foreground-object finder (iOS 17+),
+/// the "objectness" saliency boxes, and a few overlapping tiles as a fallback.
+private func objectRegions(_ image: CGImage) -> [CGRect] {
+  let width = image.width, height = image.height
+  var regions: [CGRect] = []
+  let handler = VNImageRequestHandler(cgImage: image, orientation: .up, options: [:])
+
+  if #available(iOS 17.0, *) {
+    let instances = VNGenerateForegroundInstanceMaskRequest()
+    if (try? handler.perform([instances])) != nil, let result = instances.results?.first {
+      let mask = result.instanceMask
+      CVPixelBufferLockBaseAddress(mask, .readOnly)
+      if let base = CVPixelBufferGetBaseAddress(mask) {
+        let mw = CVPixelBufferGetWidth(mask), mh = CVPixelBufferGetHeight(mask)
+        let stride = CVPixelBufferGetBytesPerRow(mask)
+        let pixels = base.assumingMemoryBound(to: UInt8.self)
+        var boxes: [Int: (Int, Int, Int, Int)] = [:]
+        for y in 0..<mh {
+          for x in 0..<mw {
+            let label = Int(pixels[y * stride + x])
+            if label == 0 { continue }
+            if let b = boxes[label] {
+              boxes[label] = (min(b.0, x), min(b.1, y), max(b.2, x), max(b.3, y))
+            } else {
+              boxes[label] = (x, y, x, y)
+            }
+          }
+        }
+        for (_, b) in boxes {
+          let r = CGRect(
+            x: CGFloat(b.0) / CGFloat(mw), y: 1 - CGFloat(b.3 + 1) / CGFloat(mh),
+            width: CGFloat(b.2 - b.0 + 1) / CGFloat(mw), height: CGFloat(b.3 - b.1 + 1) / CGFloat(mh))
+          if r.width * r.height > 0.01 { regions.append(pixelRect(r, width: width, height: height)) }
+        }
+      }
+      CVPixelBufferUnlockBaseAddress(mask, .readOnly)
+    }
   }
+
+  let saliency = VNGenerateObjectnessBasedSaliencyImageRequest()
+  if (try? handler.perform([saliency])) != nil {
+    for object in (saliency.results?.first?.salientObjects ?? []).prefix(6) where object.boundingBox.width * object.boundingBox.height > 0.01 {
+      regions.append(pixelRect(object.boundingBox, width: width, height: height))
+    }
+  }
+
+  // Overlapping 2x2 tiles (each 60% of the photo) so smaller things in a cluttered tote get a look too.
+  for (x, y) in [(0.0, 0.0), (0.4, 0.0), (0.0, 0.4), (0.4, 0.4)] {
+    regions.append(pixelRect(CGRect(x: x, y: y, width: 0.6, height: 0.6), width: width, height: height, pad: 0))
+  }
+  return Array(regions.filter { $0.width >= 64 && $0.height >= 64 }.prefix(16))
+}
+
+private func analyze(_ image: CGImage) -> [String: Any] {
+  // Name the whole photo, then each region. A thing seen clearly in any region counts.
+  var best: [String: (confidence: Float, regions: Int, whole: Bool)] = [:]
+  func classify(_ cg: CGImage, whole: Bool) {
+    let request = VNClassifyImageRequest()
+    guard (try? VNImageRequestHandler(cgImage: cg, orientation: .up, options: [:]).perform([request])) != nil else { return }
+    for o in request.results ?? [] where o.confidence >= 0.12 {
+      let prev = best[o.identifier]
+      best[o.identifier] = (max(prev?.confidence ?? 0, o.confidence), (prev?.regions ?? 0) + 1, (prev?.whole ?? false) || whole)
+    }
+  }
+  classify(image, whole: true)
+  for rect in objectRegions(image) {
+    if let crop = image.cropping(to: rect) { classify(crop, whole: false) }
+  }
+  let labels: [[String: Any]] = best
+    .sorted { $0.value.confidence > $1.value.confidence }
+    .prefix(40)
+    .map { ["label": $0.key, "confidence": Double($0.value.confidence), "regions": $0.value.regions, "whole": $0.value.whole] }
+
+  // Printed text, with where each line sits so nearby lines can be joined into phrases.
+  let text = VNRecognizeTextRequest()
+  text.recognitionLevel = .accurate
+  text.usesLanguageCorrection = true
+  try? VNImageRequestHandler(cgImage: image, orientation: .up, options: [:]).perform([text])
+  var lines: [[String: Any]] = []
+  for observation in text.results ?? [] {
+    guard let candidate = observation.topCandidates(1).first, candidate.confidence >= 0.4 else { continue }
+    let b = observation.boundingBox
+    lines.append([
+      "text": candidate.string, "confidence": Double(candidate.confidence),
+      "x": Double(b.minX), "y": Double(1 - b.maxY), "w": Double(b.width), "h": Double(b.height),
+    ])
+  }
+  return ["labels": labels, "lines": lines, "text": lines.map { $0["text"] as! String }, "objects": detectObjects(image)]
 }
 
 // MARK: - Finding each separate item (on-device object detection)
@@ -205,8 +268,9 @@ private func detectorURLs() -> [URL] {
 
 /// Each object found: what it is, how sure the model is, where it is (0-1, origin bottom-left),
 /// and up to 5 more specific names from Apple's classifier looking at just that spot.
-private func detectObjects(handler: VNImageRequestHandler, cgImage: CGImage, orientation: CGImagePropertyOrientation) -> [[String: Any]] {
+private func detectObjects(_ cgImage: CGImage) -> [[String: Any]] {
   guard let detector else { return [] }
+  let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:])
   let request = VNCoreMLRequest(model: detector)
   request.imageCropAndScaleOption = .scaleFill
   do {
@@ -230,7 +294,7 @@ private func detectObjects(handler: VNImageRequestHandler, cgImage: CGImage, ori
       let classify = VNClassifyImageRequest()
       classify.regionOfInterest = box.insetBy(dx: -box.width * 0.05, dy: -box.height * 0.05)
         .intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
-      if (try? VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:]).perform([classify])) != nil {
+      if (try? VNImageRequestHandler(cgImage: cgImage, orientation: .up, options: [:]).perform([classify])) != nil {
         for c in (classify.results ?? []).prefix(5) where c.confidence >= 0.2 {
           refined.append(["label": c.identifier, "confidence": Double(c.confidence)])
         }
