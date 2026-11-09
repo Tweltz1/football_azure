@@ -753,3 +753,13 @@ main:has(.queue-top) .col-h .stage-heading{padding:4px 2px;gap:6px}
   .linkbtn{position:relative}
   .linkbtn::after{content:"";position:absolute;inset:-9px -3px}
 }
+
+/* 2026-11-09 bolder box headings and labels so each section reads at a glance */
+.sheet-body .sec h3,.stage-picker summary>span{font-weight:800;font-size:1.1rem;letter-spacing:-.015em;color:var(--fg)}
+.sheet-body .sec-sub{font-weight:500}
+.sheet-body .field,.sheet-body .sec .urgency-field>span{font-weight:650;color:var(--fg)}
+.step{font-weight:600;color:var(--fg)}
+.step.current{font-weight:700}
+.panel h3,.settings-wrap h3,legend{font-weight:750;color:var(--fg)}
+.form-sec{font-weight:750;color:color-mix(in srgb,var(--fg) 70%,var(--muted))}
+main .field{font-weight:650}
