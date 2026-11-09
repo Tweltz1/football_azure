@@ -114,10 +114,19 @@
     // Video links cost no AI: shown as soon as there's a car and a job, before anyone presses Ask.
     function videosHtml() {
       const q = (document.getElementById("howtoQ")?.value || "").trim(), v = st.vehicle, vl = label({ ...v, engine: "" });
-      if (!v.make || !v.model || q.length < 3) return "";
-      const t = { v, vehicle: vl, q };
-      return `<span>Watch First, No AI Needed:</span><a href="${esc(ytLink(vl, q))}" target="_blank" rel="noopener">YouTube Videos</a><a href="${esc(videoLink(t))}" target="_blank" rel="noopener">CarCareKiosk Videos</a>`;
+      if (!v.make || !v.model) return "";
+      // As soon as a car is set: videos for the car; once a job is typed, YouTube narrows to that job.
+      const job = q.length >= 3 ? q : "";
+      const t = { v, vehicle: vl, q: job };
+      return `<span>Watch It Done${job ? "" : ` <small>(type a job to narrow YouTube)</small>`}:</span><a href="${esc(ytLink(vl, job || "repair"))}" target="_blank" rel="noopener">YouTube Videos</a><a href="${esc(videoLink(t))}" target="_blank" rel="noopener">CarCareKiosk Videos</a>`;
     }
+    // Same links for a car's detail sheet, next to "Open Repair Guide" (vehicle + concern).
+    window.TalkShopsVideoLinks = (veh, job) => {
+      const v = { year: String(veh?.year || ""), make: veh?.make || "", model: veh?.model || "" };
+      if (!v.make || !v.model) return "";
+      const vl = label(v), q = String(job || "").replace(/\s+/g, " ").trim().slice(0, 70);
+      return `<a class="linkbtn" href="${esc(ytLink(vl, q || "repair"))}" target="_blank" rel="noopener">YouTube Videos</a><a class="linkbtn" href="${esc(videoLink({ v, vehicle: vl, q }))}" target="_blank" rel="noopener">CarCareKiosk Videos</a>`;
+    };
     function paintVideos() { const el = document.getElementById("howtoVideos"); if (el) el.innerHTML = videosHtml(); }
     function videoLink(t) {
       const v = t.v || {};
@@ -174,7 +183,7 @@
       const history = st.turns.filter((t) => t.res && t.vehicle === vl).slice(-3).map((t) => ({ q: t.q, a: [t.res.answer, ...t.res.steps].join(" ").slice(0, 900) }));
       const t = { q, vehicle: vl, v: vehicle, loading: true };
       st.turns.push(t); st.busy = true;
-      const qi = document.getElementById("howtoQ"); if (qi) qi.value = "";
+      const qi = document.getElementById("howtoQ"); if (qi) qi.value = ""; paintVideos();
       if (!document.getElementById("howtoThread")) render(); else paint();
       document.getElementById("howtoThread")?.scrollIntoView({ behavior: "smooth", block: "start" });
       try { t.res = await api("POST", "shop/howto", { question: q, vehicle, history: opts.answerId || opts.fresh ? [] : history, ...opts }); }

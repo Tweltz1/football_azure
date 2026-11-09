@@ -241,7 +241,7 @@ a.btn.primary{color:var(--accent-fg)}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
 <link rel="stylesheet" href="/saved-archive.css?v=9">
-<link rel="stylesheet" href="/theme.css?v=17">
+<link rel="stylesheet" href="/theme.css?v=18">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
 <link rel="stylesheet" href="/training.css?v=1">
@@ -307,7 +307,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=1"></script>
 <script src="/training.js?v=4"></script>
-<script src="/howto.js?v=5"></script>
+<script src="/howto.js?v=6"></script>
 <script src="/vehicle-typeahead.js?v=1"></script>
 <script src="/team.js?v=2"></script>
 <script src="/display.js?v=1"></script>
@@ -879,7 +879,7 @@ function sheetView(j){
       ${j.stage==="parts"&&live?`<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
     </section>
     ${window.Workday.sheetDetails({...j,createdAt:j.events[0]?.t,stage:j.archivedAt&&!j.closed?"picked_up":j.stage})}
-    <section class="sec"><h3>Concern</h3><div class="concern-text">${esc(j.concern)}</div>${sampleIllustration(j)}${live?`<p class="howto-link"><button class="linkbtn" data-howto-job="${j.id}">Open Repair Guide →</button></p>`:""}</section>
+    <section class="sec"><h3>Concern</h3><div class="concern-text">${esc(j.concern)}</div>${sampleIllustration(j)}${live?`<p class="howto-link"><button class="linkbtn" data-howto-job="${j.id}">Open Repair Guide →</button>${window.TalkShopsVideoLinks?window.TalkShopsVideoLinks(j.vehicle,j.concern):""}</p>`:""}</section>
     ${window.Walkthrough.sheetSection(j).replace('<section class="sec">','<section class="sec" id="walkSec">')}
     ${j.closed?"":window.Walkaround.sheetSection(j).replace('<section class="sec">','<section class="sec" id="waSec">')}
     <section class="sec" id="estSec"><h3>Estimate</h3>

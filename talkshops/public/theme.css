@@ -575,6 +575,8 @@ main:has(>.auth){padding:0;max-width:none}
 .sheet-body .howto-link {margin:12px 0 0;padding-top:12px;border-top:1px solid var(--line);text-align:left}
 .sheet-body .sec-guide .howto-link {margin:0;padding:0;border:0}
 .sheet-body .howto-link button {min-height:32px;padding:0;font-weight:600}
+.sheet-body .howto-link {display:flex;flex-wrap:wrap;align-items:center;gap:4px 18px}
+.sheet-body .howto-link a.linkbtn {font-weight:600;font-size:14px}
 .sheet-body .wt-slots {grid-template-columns:1fr;gap:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .sheet-body .wt-slot {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;row-gap:4px;padding:12px 14px;background:var(--surface);border:0;border-radius:0}
 .sheet-body .wt-slot + .wt-slot {border-top:1px solid var(--line)}

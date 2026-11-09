@@ -862,7 +862,7 @@
         ${j.stage === "invited" && !j.intakeReceived ? "" : window.Workday.sheetDetails(j)}
         ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
         ${(() => {
-          const guide = vehicleStr(j) && !j.closed && j.stage !== "picked_up" ? `<p class="howto-link"><button class="linkbtn" data-howto-job="${esc(j.id)}">Open Repair Guide →</button></p>` : "";
+          const guide = vehicleStr(j) && !j.closed && j.stage !== "picked_up" ? `<p class="howto-link"><button class="linkbtn" data-howto-job="${esc(j.id)}">Open Repair Guide →</button>${window.TalkShopsVideoLinks ? window.TalkShopsVideoLinks(j.vehicle, j.concern) : ""}</p>` : "";
           return j.concern ? `<section class="sec"><h3>Concern</h3><div class="concern-text">${esc(j.concern)}</div>${guide}</section>` : guide ? `<section class="sec sec-guide">${guide}</section>` : "";
         })()}
         ${window.Workday.visitsSection(j)}
