@@ -10,7 +10,7 @@
     /** One line above the board. Empty when there is nothing to say. */
     function banner(p) {
       if (!p) return "";
-      const go = `<button class="btn primary sm" data-view="plan">See plans</button>`;
+      const go = `<button class="btn primary sm" data-view="plan">See Plans</button>`;
       if (p.state === "trial") {
         const soon = p.daysLeft <= 5;
         return `<div class="plan-banner ${soon ? "soon" : ""}"><span><b>Free trial: ${p.daysLeft} day${p.daysLeft === 1 ? "" : "s"} left.</b>
@@ -18,7 +18,7 @@
       }
       if (p.state === "trial_ended") return `<div class="plan-banner ended"><span><b>Your free trial has ended.</b> Your board and customer links still work. Choose a plan to send updates again.</span>${go}</div>`;
       if (p.state === "canceled") return `<div class="plan-banner ended"><span><b>Your plan has ended.</b> Choose a plan to send updates again.</span>${go}</div>`;
-      if (p.state === "past_due") return `<div class="plan-banner soon"><span><b>Your last payment didn't go through.</b> Update your card to keep your plan.</span><button class="btn primary sm" data-plan-portal>Update card</button></div>`;
+      if (p.state === "past_due") return `<div class="plan-banner soon"><span><b>Your last payment didn't go through.</b> Update your card to keep your plan.</span><button class="btn primary sm" data-plan-portal>Update Card</button></div>`;
       return "";
     }
 

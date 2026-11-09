@@ -103,15 +103,15 @@
 
   // ---------------- Check-in ----------------
   function checkinLookup() {
-    return `<div class="wd-lookup"><label class="field">Returning customer? <small class="muted">(search name, phone, plate or VIN)</small>
-      <input id="wd-find" type="search" autocomplete="off" placeholder="e.g. Delgado, 555-013 or 7KDL294"></label><div id="wd-found" aria-live="polite"></div></div>`;
+    return `<div class="wd-lookup"><label class="field">Returning customer?
+      <input id="wd-find" type="search" autocomplete="off" placeholder="Search by name, phone, plate or VIN"></label><div id="wd-found" aria-live="polite"></div></div>`;
   }
   function checkinFields() {
     const pk = A.shop()?.packages || [], crew = A.crew() || [];
-    return `${pk.length ? `<label class="field full">Quick service <small class="muted">(optional, adds its items to the estimate)</small><select id="wd-svc"><option value="">None, diagnose the concern</option>${pk.map((p) => `<option value="${esc(p.id)}" data-fast="${p.fastLane ? 1 : 0}">${esc(p.name)} · ${money(p.lines.reduce((a, l) => a + l.rate * l.qty, 0))}</option>`).join("")}</select></label>
+    return `${pk.length ? `<label class="field full">Quick service<select id="wd-svc"><option value="">None, diagnose the concern</option>${pk.map((p) => `<option value="${esc(p.id)}" data-fast="${p.fastLane ? 1 : 0}">${esc(p.name)} · ${money(p.lines.reduce((a, l) => a + l.rate * l.qty, 0))}</option>`).join("")}</select></label>
       <label class="chk full" id="wd-fast-row" hidden><input type="checkbox" id="wd-fast" checked> Fast lane: customer okayed the price at the counter, so skip diagnosis and approval and start the work</label>` : ""}
       <label class="field">Mileage in<input id="wd-miles" inputmode="numeric" maxlength="9" placeholder="e.g. 48,210"></label>
-      <label class="field">Promised by <small class="muted">(optional)</small><input id="wd-promised" type="datetime-local"></label>
+      <label class="field">Promised by<input id="wd-promised" type="datetime-local"></label>
       ${crew.length ? `<label class="field">Technician<select id="wd-tech"><option value="">Not assigned</option>${crew.map((m) => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("")}</select></label>` : ""}`;
   }
   function checkinValues() {
@@ -204,7 +204,7 @@
     const can = j.customer.consent && !off;
     return `<section class="sec" data-wd-job="${esc(j.id)}"><h3>Reminder Texts</h3>
       ${rows ? `<ul class="wd-fu">${rows}</ul>` : `<p class="muted" style="margin:0">${declined.length ? `${esc(first(j.customer.name))} declined ${esc(declined.join(", "))}. Schedule a friendly reminder to bring them back.` : "Schedule an oil change or next-service reminder."}</p>`}
-      ${off ? `<p class="muted">${esc(first(j.customer.name))} turned off reminder texts.</p>` : !j.customer.consent ? `<p class="muted">The customer has not agreed to messages.</p>` : `<details class="wd-fu-add"${!rows && declined.length ? " open" : ""}><summary>Schedule a reminder</summary>
+      ${off ? `<p class="muted">${esc(first(j.customer.name))} turned off reminder texts.</p>` : !j.customer.consent ? `<p class="muted">The customer has not agreed to messages.</p>` : `<details class="wd-fu-add"${!rows && declined.length ? " open" : ""}><summary>Schedule a Reminder</summary>
         <div class="wd-grid"><label class="field">Type<select id="wd-fu-kind"><option value="declined" ${declined.length ? "selected" : ""}>Declined work</option><option value="service" ${declined.length ? "" : "selected"}>Next service</option></select></label>
         <label class="field">Send on<input type="date" id="wd-fu-due" value="${dateIn(declined.length ? 30 : 90)}" min="${dateIn(1)}" max="${dateIn(360)}"></label></div>
         <div class="btn-row wd-chips">${[[30, "1 month"], [90, "3 months"], [180, "6 months"]].map(([d, l]) => `<button type="button" class="btn sm" data-wd-due="${d}">${l}</button>`).join("")}</div>
@@ -252,7 +252,7 @@
     if (!edit) ui.pkEdit = null;
     const choices = pkChoices(edit), inEdit = (r) => edit?.lines.some((l) => l.name.toLowerCase() === r.name.toLowerCase());
     return `<section class="panel" id="wd-packages"><h2>Quick Services</h2>
-      <p class="muted" style="margin:0">Bundles like "Oil change + rotation" that check in with one tap and add their items to the estimate. You can also add one to a car that's already in the bay from its estimate. Fast lane ones skip diagnosis and approval because the customer okays the price at the counter.</p>
+      <p class="muted" style="margin:0">Bundles like "Oil change + rotation" that check in with one tap and add their items to the estimate. You can also add one to a car that's already in the bay from its estimate. Fast lane services skip diagnosis and approval because the customer okays the price at the counter.</p>
       ${pk.length ? `<ul class="wd-pk">${pk.map((p) => `<li${edit?.id === p.id ? ' class="wd-pk-editing"' : ""}><div><b>${esc(p.name)}</b>${p.fastLane ? ' <span class="pill ok">Fast lane</span>' : ""}<small class="muted">${esc(p.lines.map((l) => l.name).join(" · "))}</small></div><span>${money(pkTotal(p))}</span><span class="wd-pk-act"><button type="button" class="linkbtn" data-wd-pk-edit="${esc(p.id)}">Edit</button><button type="button" class="linkbtn" data-wd-pk-del="${esc(p.id)}">Remove</button></span></li>`).join("")}</ul>` : ""}
       ${choices.length ? `<details class="wd-pk-add"${pk.length && !edit ? "" : " open"}><summary>${edit ? "Edit " + esc(edit.name) : "Add a quick service"}</summary>
         <label class="field">Name<input id="wd-pk-name" maxlength="60" placeholder="e.g. Oil change + tire rotation" value="${esc(edit?.name || "")}"></label>
@@ -274,7 +274,7 @@
   function estimatePackages(j) {
     const pk = (A.shop() || {}).packages || [];
     if (!pk.length || !open(j)) return "";
-    return `<div class="wd-pk-est" data-wd-job="${esc(j.id)}"><label class="field">Add a quick service<select id="wd-pk-pick"><option value="">Pick a bundle…</option>${pk.map((p) => `<option value="${esc(p.id)}">${esc(p.name)} · ${p.lines.length} item${p.lines.length === 1 ? "" : "s"} · ${money(pkTotal(p))}</option>`).join("")}</select></label><button type="button" class="btn" data-wd-pk-use>Add items</button></div>`;
+    return `<div class="wd-pk-est" data-wd-job="${esc(j.id)}"><label class="field">Add a quick service<select id="wd-pk-pick"><option value="">Pick a bundle…</option>${pk.map((p) => `<option value="${esc(p.id)}">${esc(p.name)} · ${p.lines.length} item${p.lines.length === 1 ? "" : "s"} · ${money(pkTotal(p))}</option>`).join("")}</select></label><button type="button" class="btn" data-wd-pk-use>Add Items</button></div>`;
   }
   async function savePackages(list) { await A.saveShop({ packages: list }); }
 

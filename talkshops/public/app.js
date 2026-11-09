@@ -10,7 +10,7 @@
     { key: "invited", label: "Customer invited", cust: "Check In for Your Repair" },
     { key: "checked_in", label: "Checked In", cust: "We Have Your Car" },
     { key: "diagnosing", label: "Diagnosing", cust: "Inspecting Your Car" },
-    { key: "approval", label: "Approval Needed", cust: "Waiting on Your Approval" },
+    { key: "approval", label: "Estimate Review", cust: "Waiting on Your Approval" },
     { key: "parts", label: "Waiting on Parts", cust: "Waiting on Parts" },
     { key: "in_progress", label: "In Progress", cust: "Repairs Underway" },
     { key: "qc", label: "Quality Check", cust: "Final Check and Road Test" },
@@ -94,7 +94,7 @@
         .then((r) => { recallCache[key] = { list: r.recalls || [] }; }, () => { recallCache[key] = { error: true }; })
         .then(() => { const el = document.getElementById("recalls-" + j.id); if (el) el.innerHTML = recallBody(recallCache[key], j); if (recallCache[key].error) setTimeout(() => { if (recallCache[key]?.error) delete recallCache[key]; }, 60000); });
     }
-    return `<section class="sec recalls"><h3>Safety recalls <span class="sec-sub">from NHTSA</span></h3><div id="recalls-${esc(j.id)}">${recallBody(recallCache[key], j)}</div></section>`;
+    return `<section class="sec recalls"><h3>Safety Recalls <span class="sec-sub">from NHTSA</span></h3><div id="recalls-${esc(j.id)}">${recallBody(recallCache[key], j)}</div></section>`;
   }
   const first = (name) => String(name || "").split(/\s+/)[0];
 
@@ -425,7 +425,7 @@
       ["Sending an Estimate", "Open the vehicle, add estimate items and their prices, and choose Required, Recommended or Optional. An owner can send the estimate for approval; customers review and sign from their repair link.", "estimates"],
       ["Moving Cars Through the Bay", "Open a vehicle and choose its next stage. Review the customer notification before sending. Use the Bay search and filters to find repairs that need attention.", "stages"],
       ["Finishing a Repair", "An owner can prepare the final bill, mark the car Ready for Pickup and confirm pickup. Find past repairs in Archive.", "pickup"],
-      ["Bringing In Your Price List", "Owners open Settings → Saved items and choose Import. Upload Excel, CSV, a PDF or a photo of your price sheet, review what Talk Shops found, then save.", "settings"],
+      ["Bringing In Your Price List", "Owners open Settings → Saved Items and choose Import. Upload Excel, CSV, a PDF or a photo of your price sheet, review what Talk Shops found, then save.", "settings"],
       ["Scheduling a Reminder Text", "Open a car and use Schedule a reminder for the next service or for work the customer declined. Pick the date and Talk Shops sends the text then. Customers can reply STOP to opt out.", "customer"],
       ["Inviting Your Team", "Owners can open Settings → Team to invite staff as owners or technicians. Each person signs in with the email address that received the invitation.", "team"],
     ];
@@ -473,12 +473,12 @@
     const ask = r.step === "ask";
     return `<div class="login-wrap"><section class="login">
       ${brand()}
-      <h2>Reset your password</h2>
+      <h2>Reset Your Password</h2>
       ${ask ? `<p class="muted" style="margin:0">Enter the email you sign in with. We'll send a 6-digit code to that email, or by text to the phone you verified in Shop Settings.</p>
       <form class="auth-alt" id="forgotForm">
         <label class="field">Work email<input id="fp-email" type="email" required autocomplete="username" value="${esc(r.email || "")}"></label>
         <button class="btn primary" type="submit" name="channel" value="email" ${ui.busy ? "disabled" : ""}>Email me a code</button>
-        <button class="btn" type="submit" name="channel" value="sms" ${ui.busy ? "disabled" : ""}>Text me a code</button>
+        <button class="btn" type="submit" name="channel" value="sms" ${ui.busy ? "disabled" : ""}>Text Me a Code</button>
       </form>` : `<p class="form-ok" role="status" style="margin:0">${esc(r.msg || "")}</p>
       <form class="auth-alt" id="resetForm">
         <label class="field">6-digit code<input id="fp-code" inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7" required autocomplete="one-time-code"></label>
@@ -503,9 +503,9 @@
       <div class="btn-row"><button class="btn" type="button" id="rcChange">Use a different phone</button><button class="btn" type="button" id="rcRemove">Remove</button></div>`;
     else body = `<p class="muted" style="margin:0">Add a mobile number so you can get a text if you forget your password. We'll text a code to confirm it's yours.</p>
       <form id="recoveryPhoneForm" class="auth-alt"><label class="field">Mobile number<input id="rc-phone" inputmode="tel" maxlength="30" required autocomplete="tel" placeholder="(555) 014-2290"></label>
-      <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Text me a code</button></div></form>`;
+      <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Text Me a Code</button></div></form>`;
     return `<section class="panel" id="recoveryPanel" style="margin-top:18px;display:flex;flex-direction:column;gap:12px">
-      <h2 style="font-size:20px">Password reset phone</h2>
+      <h2 style="font-size:20px">Password Reset Phone</h2>
       ${body}
       ${d && recovery.err ? `<p class="form-err" role="alert">${esc(recovery.err)}</p>` : ""}
       <p class="muted" style="margin:0;font-size:13.5px">You can always reset your password by email from the sign-in page.</p>
@@ -533,7 +533,7 @@
         <label class="field">Work email<input id="au-email" type="email" required autocomplete="username" value="${esc(join.info?.email || "")}" ${join.info ? "readonly" : ""}></label>
         <label class="field">Password<input id="au-pass" type="password" required minlength="8" autocomplete="${signup ? "new-password" : "current-password"}"></label>
         ${signup ? `<label class="field">Confirm password<input id="au-confirm" type="password" required autocomplete="new-password"></label>` : ""}
-        <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create my account" : "Sign in"}</button>
+        <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create My Account" : "Sign In"}</button>
       </form>
       ${signup ? "" : `<button class="linkbtn" id="forgotPw" type="button" style="align-self:flex-start">Forgot password?</button>`}
       ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
@@ -554,7 +554,7 @@
       <section class="front-hero" id="top"><div class="front-inner">
         <div class="front-intro"><p class="front-kicker">Shop board + customer updates for every auto shop</p><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
           <p>Talk Shops texts and emails your customers a private link that shows their car’s progress, photos and estimate. They approve work from their phone, and your team runs every car from one board. No customer app or account needed.</p>
-          <div class="front-actions"><a class="front-cta" href="${DEMO_PAGE}">Explore Demo Shop <span aria-hidden="true">↗</span></a><a class="front-tour" href="${DEMO_PAGE}?tour=1">Take the Guided Tour →</a></div>
+          <div class="front-actions"><a class="front-cta" href="/?login=signup">Start Free Trial <span aria-hidden="true">→</span></a><a class="front-cta front-cta-alt" href="${DEMO_PAGE}">Explore Demo Shop</a><a class="front-tour" href="${DEMO_PAGE}?tour=1">Take the Guided Tour →</a></div>
           <ul class="front-proof"><li>Free trial, no card needed</li><li>Set up in minutes</li><li>Plans from $89/month</li></ul>
         </div>
         <div class="front-preview" aria-label="Example customer page">
@@ -596,8 +596,8 @@
       <section class="front-plans" id="plans"><div class="front-inner">
         <h2>Choose Your Plan</h2><p>Every shop starts with a free trial. Both plans include the Bay board, private customer links, photo updates, walk-through reports, signed estimate decisions, reminder texts, final bills and unlimited email.</p>
         <div class="front-tiers">
-          <article><h3>Talk Shops Starter</h3><strong>$89<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $890/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
-          <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about job status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>How-To Repair Assistant</b> gives technicians steps, tools, typical specs and video links for the job.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
+          <article><h3>Talk Shops Starter</h3><strong>$89<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $890/year</small><p><a class="btn primary" href="/?login=signup">Start Free Trial</a></p></article>
+          <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about job status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>How-To Repair Assistant</b> gives technicians steps, tools, typical specs and video links for the job.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Start Free Trial</a></p></article>
         </div>
         <h3 class="front-market-title">Plan Comparison</h3>
         <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
@@ -660,7 +660,7 @@
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
       <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
       <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(s.hours || "")}" placeholder="Mon–Fri 7:30am–6pm"></label>
-      ${!firstTime && plan?.smartReplies ? `<fieldset><legend>Smart Replies</legend><p class="hint">Choose questions Talk Shops may answer automatically by text. Leave all unchecked for staff review.</p>${[["status","Repair status"],["hours","Posted shop hours"],["link","Resend estimate link"]].map(([key,label])=>`<label class="chk"><input type="checkbox" name="smartTopic" value="${key}" ${s.smartTopics?.includes(key)?"checked":""}>${label}</label>`).join("")}<details><summary>Schedule and signature</summary>
+      ${!firstTime && plan?.smartReplies ? `<fieldset><legend>Smart Replies</legend><p class="hint">Choose questions Talk Shops may answer automatically by text. Leave all unchecked for staff review.</p>${[["status","Repair status"],["hours","Posted shop hours"],["link","Resend estimate link"]].map(([key,label])=>`<label class="chk"><input type="checkbox" name="smartTopic" value="${key}" ${s.smartTopics?.includes(key)?"checked":""}>${label}</label>`).join("")}<details><summary>Schedule and Signature</summary>
       <label class="field">Sign replies as<input id="sr-sign" maxlength="60" value="${esc(s.smartSchedule?.signature || "")}" placeholder="Service team"></label>
       <label class="chk"><input type="checkbox" id="sr-after" ${s.smartSchedule?.afterHours?"checked":""}>Auto-send only outside these shop hours</label>
       <label class="field">Time zone<input id="sr-zone" value="${esc(s.smartSchedule?.zone || Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago")}"></label>
@@ -705,14 +705,14 @@
     const inShop = active.filter(j => j.stage !== "invited");
     const picked = jobs.filter((j) => j.stage === "picked_up" && !j.closed).length;
     if (!jobs.length) {
-      return `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car, whether it’s in for an oil change, brakes, tires or a bigger repair. The customer gets a private link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check in a car</button></div>`;
+      return `<div class="empty-board"><h2>No cars yet</h2><p class="muted" style="margin:0;max-width:420px">Check in your first car, whether it’s in for an oil change, brakes, tires or a bigger repair. The customer gets a private link to follow along and approve work.</p><button class="btn primary" data-view="checkin">Check In a Car</button></div>`;
     }
     const waiting = active.filter(awaitingDecision).length;
     const ready = active.filter((j) => j.stage === "ready").length;
     const today = new Date().toDateString();
     const sent = jobs.reduce((a, j) => a + j.messages.filter((m) => m.dir === "out" && m.delivery === "sent" && new Date(m.t).toDateString() === today).length, 0);
     const filters = [["all", "All Cars", inShop.length], ["approval", "Awaiting Approval", waiting], ["ready", "Ready for Pickup", ready]];
-    let h = `<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${inShop.length} car${inShop.length === 1 ? "" : "s"} in the shop · ${sent} update${sent === 1 ? "" : "s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check In Vehicle</button></div>
+    let h = `<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${inShop.length} car${inShop.length === 1 ? "" : "s"} in the shop · ${sent} update${sent === 1 ? "" : "s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check In<span class="qa-long">Vehicle</span></button></div>
       <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q || "")}" autocomplete="off"></label>
       <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key, label, count]) => `<button type="button" class="qf ${key === "approval" ? "warn" : key === "ready" ? "ok" : ""}" data-queue="${key}" aria-pressed="${key === (ui.queue || "all")}">${label}<b>${count}</b></button>`).join("")}</div></div>
       ${window.Workday.boardBar(jobs)}
@@ -748,7 +748,7 @@
     return h;
   }
 
-  const bayName = () => (shop && shop.name ? shop.name + " Bay" : "Shop bay");
+  const bayName = () => (shop && shop.name ? shop.name + " Bay" : "Shop Bay");
   // Time in the shop since check-in: green under a day, amber 1 to 3 days, red after that.
   function ageOf(j) {
     const start = ts(j.createdAt || j.events[0]?.t);
@@ -819,11 +819,13 @@
       <label class="field">Check-in method<select id="ci-method"><option value="staff">Enter vehicle details at the shop</option><option value="invite">Invite customer by link</option></select></label>
       <p id="ci-help" class="muted">The customer gets a tracking link and can upload photos for the technician.</p>
       <div class="form-grid">
+        <h3 class="form-sec full">Customer</h3>
         <label class="field">Customer name<input id="ci-name" required maxlength="80"></label>
         <label class="field">Notify customer by<select id="ci-channel"><option value="sms">Text message</option><option value="email">Email</option><option value="both">Text and email</option></select></label>
         <label class="field" hidden id="ci-email-label">Email address<input id="ci-email" type="email" maxlength="254" autocomplete="email" disabled></label>
         <p id="ci-email-note" class="muted full" hidden>Automatic email needs a sender connection. After saving, open the email draft in this repair’s Messages.</p>
         <label class="field" id="ci-phone-label">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
+        <h3 class="form-sec full" data-staff-intake>Vehicle</h3>
         <label class="field full vin-field" data-staff-intake>VIN <small class="muted">(optional, fills in the car for you)</small><span class="vin-row"><input id="ci-vin" maxlength="17" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="17 characters, on the windshield or door jamb"><button type="button" class="btn" id="ci-vin-go">Decode</button></span><small id="ci-vin-msg" class="muted" aria-live="polite"></small></label>
         <label class="field" data-staff-intake>Year<input id="ci-year" inputmode="numeric" maxlength="4"></label>
         <label class="field" data-staff-intake>Make<input id="ci-make" required maxlength="40"></label>
@@ -831,9 +833,10 @@
         <label class="field" data-staff-intake>Engine <small class="muted">(optional)</small><input id="ci-engine" maxlength="40" placeholder="e.g. 2.0L 4 Cyl."></label>
         <input type="hidden" id="ci-trim">
         <label class="field" data-staff-intake>License plate<input id="ci-plate" maxlength="12"></label>
+        <h3 class="form-sec full" data-staff-intake>This Visit</h3>
         <div class="form-grid full wd-ci" data-staff-intake>${window.Workday.checkinFields()}</div>
         <label class="field full" data-staff-intake>What's the concern?<textarea id="ci-concern" required maxlength="1000"></textarea></label>
-        <div class="field full urgency-field"><span>Urgency <small class="muted">(for example, the customer needs the car back within the hour)</small></span>${window.BayBoard.urgencyPicker("", "ciUrgency")}</div>
+        <div class="field full urgency-field"><span>Urgency <small class="muted">(how soon the customer needs the car back)</small></span>${window.BayBoard.urgencyPicker("", "ciUrgency")}</div>
         <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
       </div>
       <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Check In and Notify Customer</button></div>
@@ -843,7 +846,7 @@
   function bubble(m, j) {
     const unsent = m.dir === "out" && m.delivery && m.delivery !== "sent";
     const who = m.dir === "out" ? (m.autoReply ? "Auto-replied" : channelName(m) + " to customer" + (m.sender ? " · "+esc(m.sender) : "")) : esc(first(j.customer.name));
-    const status = unsent ? `<strong class="delivery-state">${m.delivery === "failed" ? "Delivery failed" : "Message not sent"}</strong>${m.note ? `<details class="delivery-detail"><summary>Delivery details</summary><p>${esc(m.note)}</p></details>` : ""}` : "";
+    const status = unsent ? `<strong class="delivery-state">${m.delivery === "failed" ? "Delivery failed" : "Message not sent"}</strong>${m.note ? `<details class="delivery-detail"><summary>Delivery Details</summary><p>${esc(m.note)}</p></details>` : ""}` : "";
     const text = !j.link ? esc(m.text) : esc(m.text).replace(esc(j.link), `<a href="${esc(j.link)}" target="_blank" rel="noopener" title="${esc(j.link)}">Customer Page</a>`);
     const draft = unsent && m.channel === "email" && j.customer.email && j.customer.consent
       ? `<a class="btn" href="mailto:${esc(encodeURIComponent(j.customer.email))}?subject=${esc(encodeURIComponent(shop.name + " · " + j.ro))}&amp;body=${esc(encodeURIComponent(m.text))}">Open email draft</a>` : "";
@@ -866,7 +869,7 @@
           ${j.stage === "parts" ? `<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
         </section>
         ${j.stage === "invited" && !j.intakeReceived ? "" : window.Workday.sheetDetails(j)}
-        ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
+        ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting Customer Intake</h3><details><summary>Enter Details at the Shop</summary>${intakeForm()}</details></section>` : ""}
         ${(() => {
           const guide = vehicleStr(j) && !j.closed && j.stage !== "picked_up" ? `<p class="howto-link"><button class="linkbtn" data-howto-job="${esc(j.id)}">Open Repair Guide →</button>${window.TalkShopsVideoLinks ? window.TalkShopsVideoLinks(j.vehicle, j.concern) : ""}</p>` : "";
           return j.concern ? `<section class="sec"><h3>Concern</h3><div class="concern-text">${esc(j.concern)}</div>${guide}</section>` : guide ? `<section class="sec sec-guide">${guide}</section>` : "";
@@ -886,15 +889,15 @@
             <button class="btn est-add-more" type="button" data-billing="quote">Add labor, parts or fees with hours and rates</button>
             ${window.Workday.estimatePackages(j)}
           </div>
-          ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? (isOwner() ? `<button class="btn primary est-send" data-stage="approval">Send estimate for approval</button>` : `<p class="muted est-send-note">A shop owner reviews these lines and sends the estimate to ${esc(first(j.customer.name))}.</p>`) : ""}
+          ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? (isOwner() ? `<button class="btn primary est-send" data-stage="approval">Send Estimate for Approval</button>` : `<p class="muted est-send-note">A shop owner reviews these lines and sends the estimate to ${esc(first(j.customer.name))}.</p>`) : ""}
         </section>
         <section class="sec"><h3>Final Bill</h3>
           ${j.bill ? `<p>${j.bill.mode === "upload" ? "Shop PDF" : "Itemized bill"} · ${money(j.bill.total)}</p>` : isOwner() ? "" : `<p class="muted" style="margin:0">No final bill yet. A shop owner creates it.</p>`}
-          <div class="btn-row">${isOwner() ? `<button class="btn" data-billing="generated">${j.bill?.mode === "generated" ? "Edit itemized bill" : "Create itemized bill"}</button><button class="btn" data-billing="upload">Upload shop PDF</button>` : ""}${j.bill?.mode==="upload" ? '<button class="linkbtn" data-billing="download">Download current PDF</button>' : ""}</div>
+          <div class="btn-row">${isOwner() ? `<button class="btn" data-billing="generated">${j.bill?.mode === "generated" ? "Edit itemized bill" : "Create itemized bill"}</button><button class="btn" data-billing="upload">Upload Shop PDF</button>` : ""}${j.bill?.mode==="upload" ? '<button class="linkbtn" data-billing="download">Download current PDF</button>' : ""}</div>
         </section>`}
         ${window.Workday.followupSection(j)}
         <section class="sec"><h3>Photos</h3><div class="photos">${j.photos.map((p) => photoFigure(p, true)).join("")}
-          <button type="button" class="photo-add" id="pickPhoto">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
+          <button type="button" class="photo-add" id="pickPhoto">+ Add Photo<br><span style="font-weight:400">Customer sees it on their page</span></button><p id="photoStatus" role="status" hidden></p></div></section>
         ${j.closed || j.stage === "picked_up" && !(j.walkaround || []).length ? "" : window.Walkaround.sheetSection(j)}
         <section class="sec"><h3>Technician Notes <span class="sec-sub">Shared with customer unless marked shop only</span></h3>
           ${(j.notes || []).length ? `<ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}${n.by ? " · " + esc(n.by) : ""}</time><p>${window.Workday.noteBadge(n)}${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${esc(n.id)}">Remove</button></li>`).join("")}</ul>` : ""}
@@ -906,7 +909,7 @@
           ${plan?.smartReplies ? `<div class="btn-row"><button class="linkbtn" type="button" data-smart-pause>${j.smartPaused?"Resume auto-replies":"Pause auto-replies for this repair"}</button>${j.messages.at(-1)?.incomingSms && j.messages.at(-1)?.suggestion ? '<button class="btn sm" type="button" data-smart-draft>Use suggested reply</button>' : j.messages.at(-1)?.incomingSms ? '<button class="btn sm" type="button" data-smart-ai>Draft reply for review</button>' : ""}</div>` : ""}
           <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto auto"><input id="replyIn" maxlength="1000" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button type="button" class="btn mic" data-dictate="#replyIn" aria-pressed="false" aria-label="Voice typing"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button class="btn primary" type="submit">Send</button></form></section>
         <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
-        ${isOwner() ? `<section class="sec danger-zone"><details class="repair-management"><summary>Manage Repair</summary><button class="linkbtn danger" data-delete-job>Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></details></section>` : ""}
+        ${isOwner() ? `<section class="sec danger-zone"><details class="repair-management"><summary>Manage Repair</summary><button class="linkbtn danger" data-delete-job>Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close Without Repair instead.</p></details></section>` : ""}
       </div></aside>`;
   }
 
@@ -953,10 +956,10 @@
       ${m.stage === "parts" ? `<label class="field">Parts ETA<input id="m-eta" value="${esc(m.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
       ${m.stage === "picked_up" ? window.Workday.pickupField(j) : ""}
       ${m.stage === "ready" ? `<div><strong>Final Bill</strong><p>${j.bill ? money(j.bill.total) + " due at pickup" : "Optional. Customers can open their bill from the pickup link."}</p>
-        ${isOwner() ? `<div class="btn-row"><button class="btn" type="button" data-billing="generated">Create / edit bill</button><button class="btn" type="button" data-billing="upload">Upload shop PDF</button></div>` : ""}</div>` : ""}
+        ${isOwner() ? `<div class="btn-row"><button class="btn" type="button" data-billing="generated">Create / edit bill</button><button class="btn" type="button" data-billing="upload">Upload Shop PDF</button></div>` : ""}</div>` : ""}
       <label class="field">Message<textarea id="m-text" maxlength="1000">${esc(m.text)}</textarea></label>
       <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent ? "checked" : "disabled"}> Notify customer ${j.customer.consent ? "" : "(customer has not agreed to notifications)"}</label>
-      <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Update stage</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+      <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Update Stage</button><button class="btn" type="button" data-cancel>Cancel</button></div>
     </form></div>`;
   }
 
@@ -1489,7 +1492,7 @@
     }
     if (e.target.id === "ci-method") {
       const invite = e.target.value === "invite", form = e.target.form;
-      form.querySelectorAll("[data-staff-intake]").forEach(el => { el.hidden = invite; el.querySelector("input,textarea").disabled = invite; });
+      form.querySelectorAll("[data-staff-intake]").forEach(el => { el.hidden = invite; const f = el.querySelector("input,textarea"); if (f) f.disabled = invite; });
       form.querySelector('[type="submit"]').textContent = invite ? "Send check-in link" : "Check in and notify customer";
       $("#ci-consent").required = invite;
       $("#ci-help").textContent = invite ? "Send a private link for vehicle details, the reason for the visit and photos." : "The customer gets a tracking link and can upload photos for the technician.";

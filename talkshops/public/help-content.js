@@ -7,7 +7,7 @@
       ["What is Talk Shops?", "Talk Shops keeps your customers updated from check-in to pickup. Your team tracks every car on one board, and each customer gets a private link by text or email where they can see progress, photos and the estimate, approve or decline work, and view the final bill."],
       ["What kinds of shops is it for?", "Every kind of auto service shop: quick lube and oil change, tire shops, brake and muffler, engine and transmission, general repair, diesel, and body and collision. Use the stages, quick services and saved prices that fit how your shop works."],
       ["Do my customers need to download an app or make an account?", "No. Customers just open the link you send. It works in any phone or computer browser."],
-      ["How do I set up my shop?", "Create your shop account, add your shop name, phone, hours and labor rate, then bring in your price list (Settings → Saved items). Invite your team from Settings → Team. Most shops are ready in a few minutes."],
+      ["How do I set up my shop?", "Create your shop account, add your shop name, phone, hours and labor rate, then bring in your price list (Settings → Saved Items). Invite your team from Settings → Team. Most shops are ready in a few minutes."],
       ["Can I try it before I set up my own shop?", "Yes. Open the Demo Shop from the homepage to click around with sample cars, or take the narrated Guided Tour. Nothing you do in the demo is sent to anyone."],
       ["Does it work on a phone or tablet?", "Yes. Talk Shops runs in the browser on phones, tablets and computers. On a phone the main tabs sit in the bottom bar: Bay, Check In, Archive, How-To and More."],
     ]},
@@ -23,9 +23,9 @@
       ["How do I mark how urgent a car is?", "Choose Low, Medium or High urgency at check-in or on the car's screen. The mark shows on the Bay, and you can sort a column so the most urgent cars come first."],
     ]},
     { id: "bay", title: "The Bay and Your Workday", lesson: "bay", qs: [
-      ["What is the Bay?", "The Bay is your shop board. Every open car sits in a column for its stage: Checked In, Diagnosing, Approval Needed, Waiting on Parts, In Progress, Quality Check and Ready for Pickup."],
+      ["What is the Bay?", "The Bay is your shop board. Every open car sits in a column for its stage: Checked In, Diagnosing, Estimate Review, Waiting on Parts, In Progress, Quality Check and Ready for Pickup."],
       ["How do I move a car to the next stage?", "Open the car and choose its next stage. You can review the update before it goes to the customer, so they always know where their car is."],
-      ["How do I find a car fast?", "Use the search at the top of the Bay to find a car by customer, vehicle or repair order. Click a stage heading to sort or filter that column."],
+      ["How do I find a car fast?", "Use the search at the top of the Bay to find a car by customer, vehicle or repair order. Tap a stage name to see only that stage, or tap the small sort button beside it to sort or filter that column."],
       ["What do the colors on the Bay cards mean?", "Cards change color as a car sits longer in the shop, so slow jobs stand out. Owners can set the time limits and colors in Settings."],
       ["How do I assign a car to a technician?", "Open the car and pick a name under Technician. Each technician can tap My Cars on the Bay to see only the cars assigned to them."],
       ["Can I set a promised-by time?", "Yes. Set Promised by on the car's screen. The Bay warns you when a car is due within two hours, and marks it Late once the time has passed."],
@@ -44,9 +44,9 @@
     { id: "estimates", title: "Estimates and Prices", lesson: "estimates", qs: [
       ["How do I build an estimate?", "Open the car and add line items. Type a few letters to pick from your saved items, enter hours or quantity, and mark each line Required, Recommended or Optional so the customer knows what matters most."],
       ["How do customers approve work?", "They open their link, approve or decline each line, and sign on their phone. You see what they picked, the approved total and when they signed."],
-      ["How do I bring in my price list?", "New shops see a Bring in your prices step during setup, and owners can do it any time in Settings → Saved items. Upload an Excel or CSV file, a PDF, or a photo of your printed price sheet. Talk Shops reads it and lets you review every item before anything is saved."],
+      ["How do I bring in my price list?", "New shops see a Bring in your prices step during setup, and owners can do it any time in Settings → Saved Items. Upload an Excel or CSV file, a PDF, or a photo of your printed price sheet. Talk Shops reads it and lets you review every item before anything is saved."],
       ["What if my price sheet has an unusual layout?", "Talk Shops reads most sheets on its own. If it finds only a few items, try Read it with AI instead. Anything it is unsure about is highlighted so you can check it before saving."],
-      ["Can I download or replace my saved items?", "Yes. In Saved items, use Import or download your list to download it as Excel or CSV, edit it, and upload it again to replace your whole list."],
+      ["Can I download or replace my saved items?", "Yes. In Saved Items, use Import or download your list to download it as Excel or CSV, edit it, and upload it again to replace your whole list."],
       ["Can I use labor hours from a labor guide?", "Yes. Saved labor items can carry hours. When you add one to an estimate, the price is your rate times the hours."],
     ]},
     { id: "customers", title: "Texts, Emails and Your Customers", lesson: "customer", qs: [
@@ -60,7 +60,7 @@
     ]},
     { id: "howto", title: "How-To Repair Assistant", lesson: "howto", qs: [
       ["What is the How-To tab?", "A repair assistant for your technicians. Pick a car in the Bay or enter one, ask how to do a job, and get steps, tools, parts, typical specs and safety notes."],
-      ["Can it find videos?", "Yes. Each answer has Watch First links to YouTube and CarCareKiosk videos for that vehicle and job."],
+      ["Can it find videos?", "Yes. Once you pick a car, Watch It Done links open YouTube and CarCareKiosk videos for that vehicle and job."],
       ["Does it give part numbers?", "When it is confident, it lists part numbers with links to look them up. Always confirm parts by VIN with your supplier."],
       ["Can I trust the specs?", "Use them as a starting point. Specs are labeled typical, and every answer reminds you to confirm torque values and procedures in the manufacturer's service information."],
       ["Which plan includes How-To?", "Pro, and the free trial. Starter shops can upgrade any time from Plan."],

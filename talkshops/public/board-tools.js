@@ -1,6 +1,7 @@
 /* Shared stage views for the live Bay and demo. All choices stay local to this page. */
 (() => {
   const choices = new Map();
+  const opened = new Set();
   let focused = '';
   const app = document.querySelector('#app');
   const time = value => { const n = typeof value === 'number' ? value : Date.parse(value); return Number.isFinite(n) ? n : Date.now(); };
@@ -30,14 +31,20 @@
     board.dataset.enhanced = 'true';
     const bar = document.createElement('div');
     bar.className = 'stage-view-bar';
-    bar.innerHTML = '<button type="button" class="btn" data-stage-back hidden>← All Stages</button><p class="muted stage-help">Select a stage heading to view all its vehicles. Priority uses estimate items that have not been declined.</p><p class="stage-results" role="status" aria-live="polite"></p>';
+    bar.innerHTML = '<button type="button" class="btn" data-stage-back hidden>← All Stages</button><p class="stage-results" role="status" aria-live="polite"></p>';
     board.parentElement.before(bar);
     board.querySelectorAll('.col[data-stage]').forEach(col => {
       const key = col.dataset.stage, heading = col.querySelector('h3'), count = col.querySelector('.col-h>span');
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'stage-heading'; button.dataset.stageFocus = key;
       button.setAttribute('aria-label', `View all vehicles in ${heading.textContent}`);
+      button.title = 'Show only this stage';
       heading.replaceWith(button); button.append(heading, count);
+      const tune = document.createElement('button');
+      tune.type = 'button'; tune.className = 'stage-tune'; tune.dataset.stageTune = key;
+      tune.setAttribute('aria-label', `Sort or filter ${heading.textContent}`); tune.title = 'Sort or filter this stage';
+      tune.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>';
+      button.after(tune);
       const controls = document.createElement('div'); controls.className = 'stage-controls';
       controls.innerHTML = `<label>Sort<select data-stage-sort aria-label="Sort ${heading.textContent}">${option('default','Default Order')}${option('stage','Waiting Longest in This Step')}${option('oldest','Checked In First')}${option('newest','Newest Arrivals')}${option('urgency','Most Urgent First')}${option('priority','Priority First')}</select></label><label>Filter<select data-stage-filter aria-label="Filter ${heading.textContent}">${option('all','All Vehicles')}${option('required','Required Work')}${option('urgent','High Urgency')}${option('reply','Customer Reply')}${option('aged',`In Shop ${app.dataset.ageOverdueDays || 3}+ Days`)}</select></label><p class="stage-empty muted" hidden>No vehicles match these filters.</p>`;
       col.querySelector('.col-h').after(controls);
@@ -84,12 +91,19 @@
       col.querySelector('.stage-heading').setAttribute('aria-pressed', String(focused === key));
       col.querySelector('.stage-heading>span').textContent = shown === cards.length ? String(shown) : `${shown}/${cards.length}`;
       col.querySelector('.stage-empty').hidden = shown > 0 || cards.length === 0;
+      const changed = choice.sort !== 'default' || choice.filter !== 'all', show = focused === key || opened.has(key) || changed;
+      col.querySelector('.stage-controls').hidden = !show;
+      const tune = col.querySelector('.stage-tune'); tune.setAttribute('aria-expanded', String(show)); tune.classList.toggle('on', changed); tune.hidden = focused === key;
       if (!col.hidden) total += shown;
     });
-    bar.querySelector('.stage-results').textContent = `${total} vehicle${total === 1 ? '' : 's'} shown`;
+    const all = board.querySelectorAll('.card[data-s]').length;
+    bar.querySelector('.stage-results').textContent = total === all ? '' : `Showing ${total} of ${all} vehicles`;
+    bar.hidden = !focused && total === all;
     const none = app.querySelector('#boardNone'); if (none) none.hidden = true;
   }
   document.addEventListener('click', event => {
+    const tune = event.target.closest('[data-stage-tune]');
+    if (tune) { const key = tune.dataset.stageTune; if (opened.has(key)) { opened.delete(key); choices.delete(key); const c = tune.closest('.col'); c.querySelector('[data-stage-sort]').value = 'default'; c.querySelector('[data-stage-filter]').value = 'all'; } else opened.add(key); apply(); return; }
     const button = event.target.closest('[data-stage-focus],[data-stage-back]');
     if (button) {
       focused = button.hasAttribute('data-stage-back') ? '' : button.dataset.stageFocus;

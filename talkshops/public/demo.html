@@ -241,7 +241,7 @@ a.btn.primary{color:var(--accent-fg)}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
 <link rel="stylesheet" href="/saved-archive.css?v=10">
-<link rel="stylesheet" href="/theme.css?v=19">
+<link rel="stylesheet" href="/theme.css?v=20">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
 <link rel="stylesheet" href="/training.css?v=1">
@@ -293,7 +293,7 @@ a.btn.primary{color:var(--accent-fg)}
     <a class="signout" id="signOutLink" href="/" style="text-decoration:none;color:inherit">Exit Demo</a>
   </div>
 </header>
-<div class="demo-note"><span><b>Demo shop.</b> Sample cars and customers, saved only in this browser. No real notifications are sent; each one shows in the car's message thread.</span><span style="display:flex;gap:14px;flex-wrap:wrap"><a class="linkbtn" href="?tour=1" style="text-decoration:none">▶ Guided tour</a><button class="linkbtn" id="resetBtn">Reset sample data</button></span></div>
+<div class="demo-note"><span><b>Demo shop.</b> Sample cars and customers<span class="dn-long">, saved only in this browser. No real notifications are sent; each one shows in the car's message thread</span>.</span><span style="display:flex;gap:14px;flex-wrap:wrap"><a class="linkbtn" href="?tour=1" style="text-decoration:none">▶ Guided tour</a><button class="linkbtn" id="resetBtn">Reset sample data</button></span></div>
 </div>
 <main id="app"></main>
 <div id="layer"></div>
@@ -305,24 +305,24 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/billing.js?v=6"></script>
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
-<script src="/plan.js?v=1"></script>
+<script src="/plan.js?v=2"></script>
 <script src="/training.js?v=6"></script>
 <script src="/howto.js?v=6"></script>
 <script src="/vehicle-typeahead.js?v=1"></script>
-<script src="/team.js?v=2"></script>
+<script src="/team.js?v=3"></script>
 <script src="/display.js?v=1"></script>
 <script src="/age-settings.js?v=1"></script>
-<script src="/board-tools.js?v=3"></script>
+<script src="/board-tools.js?v=4"></script>
 <script src="/walkthrough.js?v=4"></script>
-<script src="/workday.js?v=2"></script>
-<script src="/walkaround.js?v=1"></script>
+<script src="/workday.js?v=3"></script>
+<script src="/walkaround.js?v=2"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
 const STAGES=[
  {key:"checked_in",label:"Checked In",cust:"We Have Your Car"},
  {key:"diagnosing",label:"Diagnosing",cust:"Inspecting Your Car"},
- {key:"approval",label:"Approval Needed",cust:"Waiting on Your Approval"},
+ {key:"approval",label:"Estimate Review",cust:"Waiting on Your Approval"},
  {key:"parts",label:"Waiting on Parts",cust:"Waiting on Parts"},
  {key:"in_progress",label:"In Progress",cust:"Repairs Underway"},
  {key:"qc",label:"Quality Check",cust:"Final Check and Road Test"},
@@ -562,7 +562,7 @@ function smartFieldset(){
   const on=SHOP.smartTopics||[],sch=SHOP.smartSchedule||{};
   return `<fieldset id="smartSettings"><legend>Smart Replies</legend><p class="hint" style="margin:0">Choose questions Talk Shops may answer automatically by text. Leave all unchecked for staff review.</p>
     ${[["status","Repair status"],["hours","Posted shop hours"],["link","Resend estimate link"]].map(([key,label])=>`<label class="chk"><input type="checkbox" name="smartTopic" value="${key}" ${on.includes(key)?"checked":""}>${label}</label>`).join("")}
-    <details id="smartSchedule"><summary>Schedule and signature</summary>
+    <details id="smartSchedule"><summary>Schedule and Signature</summary>
       <label class="field">Sign replies as<input id="sr-sign" maxlength="60" value="${esc(sch.signature||"")}" placeholder="Service team"></label>
       <label class="chk"><input type="checkbox" id="sr-after" ${sch.afterHours?"checked":""}>Auto-send only outside these shop hours</label>
       <div class="btn-row">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>`<label><input type="checkbox" name="sr-day" value="${i+1}" ${(sch.days||[1,2,3,4,5]).includes(i+1)?"checked":""}>${d}</label>`).join("")}</div>
@@ -577,9 +577,9 @@ function recoveryPanel(){
     <div class="btn-row"><button class="btn" type="button" id="rcChange">Use a different phone</button><button class="btn" type="button" id="rcRemove">Remove</button></div>`;
   else body=`<p class="muted" style="margin:0">Add a mobile number so you can get a text if you forget your password. We'll text a code to confirm it's yours.</p>
     <form id="recoveryPhoneForm" class="auth-alt"><label class="field">Mobile number<input id="rc-phone" inputmode="tel" maxlength="30" required autocomplete="tel" placeholder="(555) 014-2290"></label>
-    <div class="btn-row"><button class="btn primary" type="submit">Text me a code</button></div></form>`;
+    <div class="btn-row"><button class="btn primary" type="submit">Text Me a Code</button></div></form>`;
   return `<section class="panel" id="recoveryPanel" style="display:flex;flex-direction:column;gap:12px">
-    <h2 style="font-size:20px">Password reset phone</h2>${body}
+    <h2 style="font-size:20px">Password Reset Phone</h2>${body}
     <p class="muted" style="margin:0;font-size:13.5px">You can always reset your password by email from the sign-in page.</p></section>`;
 }
 // The sign-in page as shops see it, so training can show signing in and resetting a password.
@@ -588,11 +588,11 @@ function signinView(){
   const brand=`<div class="brand"><div class="brand-mark" aria-hidden="true">${document.querySelector(".brand-mark")?.innerHTML||""}</div><div><h1>Talk Shops</h1></div></div>`;
   const help=`<p class="muted" style="margin:0">Need help? <button class="linkbtn" type="button" data-view="help">Visit Help &amp; Support</button></p>`;
   const back=`<button class="linkbtn" type="button" data-view="board" style="align-self:flex-start">← Back to the demo shop</button>`;
-  if(r)return `<div class="login-wrap"><section class="login" id="signinCard">${brand}<h2>Reset your password</h2>
+  if(r)return `<div class="login-wrap"><section class="login" id="signinCard">${brand}<h2>Reset Your Password</h2>
     ${r.step==="ask"?`<p class="muted" style="margin:0">Enter the email you sign in with. We'll send a 6-digit code to that email, or by text to the phone you verified in Shop settings.</p>
     <form class="auth-alt" id="forgotForm"><label class="field">Work email<input id="fp-email" type="email" required autocomplete="username" value="${esc(r.email||"")}"></label>
       <button class="btn primary" type="submit" name="channel" value="email">Email me a code</button>
-      <button class="btn" type="submit" name="channel" value="sms" id="fpText">Text me a code</button></form>`
+      <button class="btn" type="submit" name="channel" value="sms" id="fpText">Text Me a Code</button></form>`
     :`<p class="form-ok" role="status" style="margin:0">${esc(r.msg)}</p>
     <form class="auth-alt" id="resetForm"><label class="field">6-digit code<input id="fp-code" inputmode="numeric" maxlength="7" required autocomplete="one-time-code"></label>
       <label class="field">New password<input id="fp-pass" type="password" required minlength="8" maxlength="72" autocomplete="new-password"><span class="hint">At least 8 characters.</span></label>
@@ -603,9 +603,9 @@ function signinView(){
     <button class="btn google" id="demoGoogle" type="button">Continue with Google</button><div class="or">or use email</div>
     <form class="auth-alt" id="demoSignin"><label class="field">Work email<input id="au-email" type="email" required autocomplete="username" value="dana@ridgelineauto.com"></label>
       <label class="field">Password<input id="au-pass" type="password" required minlength="8" autocomplete="current-password"></label>
-      <button class="btn primary" type="submit">Sign in</button></form>
+      <button class="btn primary" type="submit">Sign In</button></form>
     <button class="linkbtn" id="forgotPw" type="button" style="align-self:flex-start">Forgot password?</button>
-    <button class="linkbtn" id="demoSignup" type="button" style="align-self:flex-start">Create an account</button>
+    <button class="linkbtn" id="demoSignup" type="button" style="align-self:flex-start">Create an Account</button>
     <small class="muted">Customers use their repair link. Only shop staff need an account.</small>${help}${back}</section></div>`;
 }
 
@@ -693,7 +693,7 @@ function boardView(){
   const today=new Date().toDateString();
   const sent=state.jobs.reduce((a,j)=>a+j.messages.filter(m=>m.dir==="out"&&new Date(m.t).toDateString()===today).length,0);
   const filters=[["all","All Cars",active.length],["approval","Awaiting Approval",waiting],["ready","Ready for Pickup",ready]];
-  let h=`<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${active.length} car${active.length===1?"":"s"} in the shop · ${sent} update${sent===1?"":"s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check In Vehicle</button></div>
+  let h=`<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${active.length} car${active.length===1?"":"s"} in the shop · ${sent} update${sent===1?"":"s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check In<span class="qa-long">Vehicle</span></button></div>
       <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q)}" autocomplete="off"></label>
     <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key,label,count])=>`<button type="button" class="qf ${key==="approval"?"warn":key==="ready"?"ok":""}" data-queue="${key}" aria-pressed="${key===(ui.queue||"all")}">${label}<b>${count}</b></button>`).join("")}</div></div>
     ${window.Workday.boardBar(state.jobs.filter(onBoard))}
@@ -702,7 +702,7 @@ function boardView(){
     <div class="board-wrap"><div class="board">`;
   STAGES.filter(s=>s.key!=="picked_up").forEach(s=>{
     const list=active.filter(j=>j.stage===s.key);
-    h+=`<section data-stage="${s.key}" class="col ${s.key==="approval"?"is-approval":""} ${s.key==="ready"?"is-ready":""}"><div class="col-h"><h3>${s.key==="approval"?"Estimate review":s.label}</h3><span>${list.length}</span></div>`;
+    h+=`<section data-stage="${s.key}" class="col ${s.key==="approval"?"is-approval":""} ${s.key==="ready"?"is-ready":""}"><div class="col-h"><h3>${s.key==="approval"?"Estimate Review":s.label}</h3><span>${list.length}</span></div>`;
     if(!list.length)h+=`<div class="empty-col">No cars</div>`;
     list.forEach(j=>{
       const ev=j.events[j.events.length-1];
@@ -711,7 +711,7 @@ function boardView(){
       let status=s.label, detail=since(ev.t)+" in stage";
       if(pending)status="Awaiting Approval";
       else if(j.stage==="approval"){
-        status=!j.estimate.length?"Estimate review":approved===j.estimate.length?"Estimate Approved":approved?"Partially approved":"Estimate Declined";
+        status=!j.estimate.length?"Estimate Review":approved===j.estimate.length?"Estimate Approved":approved?"Partially Approved":"Estimate Declined";
         if(j.approval)detail=(approved?money(estTotal(j,true))+" approved":"Decision received")+" · "+dayClock(j.approval.t);
       }else if(j.stage==="parts"&&j.eta)detail="Parts ETA · "+j.eta;
       const unread=j.messages.length&&j.messages[j.messages.length-1].dir==="in";
@@ -722,12 +722,12 @@ function boardView(){
         <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${j.ro}</span></span>
         <span class="row"><span>${esc(j.concern)}</span></span>
         <span class="row"><span>${esc(detail)}</span>${unread?`<span class="pill bad">New reply</span>`:""}</span>
-        ${window.Workday.cardBits(j)}<span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill ${pending?"warn":""}">${esc(status)}</span></span></button>`;
+        ${window.Workday.cardBits(j)}<span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill ${pending?"warn":"stage-pill"}">${esc(status)}</span></span></button>`;
     });
     h+=`</section>`;
   });
   const picked=state.jobs.filter(j=>j.archivedAt&&!j.closed&&Date.now()-j.archivedAt<2*86400000).length;
-  h+=`</div></div><p class="muted" style="font-size:13px;margin-top:10px">${sent} updates sent today · ${picked?picked+" picked up in the last 2 days. ":""}Tap a car to update its stage, build an estimate or message the customer. <button class="linkbtn" data-view="archive">Search picked-up cars</button></p>`;
+  h+=`</div></div><p class="muted" style="font-size:13px;margin-top:10px">${picked?picked+" picked up in the last 2 days. ":""}Tap a car to update its stage, build an estimate or message the customer. <button class="linkbtn" data-view="archive">Search picked-up cars</button></p>`;
   return h;
 }
 function filterBoard(){
@@ -762,17 +762,20 @@ function checkinView(){
    <label class="field">Check-in method<select id="ci-method"><option value="staff">Enter vehicle details at the shop</option><option value="invite">Invite customer by link</option></select></label>
    <p id="ci-help" class="muted">The customer gets a tracking link as soon as you save.</p>
    <div class="form-grid">
+    <h3 class="form-sec full">Customer</h3>
     <label class="field">Customer name<input id="ci-name" required maxlength="80" placeholder="e.g. Sam Ortiz"></label>
     <label class="field">Notify customer by<select id="ci-channel"><option value="sms">Text message</option><option value="email">Email</option><option value="both">Text and email</option></select></label>
     <label class="field" id="ci-phone-label">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
     <label class="field" id="ci-email-label" hidden>Email address<input id="ci-email" type="email" placeholder="name@example.com" disabled></label>
+    <h3 class="form-sec full">Vehicle</h3>
     <label class="field">Year<input id="ci-year" required inputmode="numeric" placeholder="2019"></label>
     <label class="field">Make<input id="ci-make" required placeholder="Toyota"></label>
     <label class="field">Model<input id="ci-model" required placeholder="Camry"></label>
     <label class="field">License plate<input id="ci-plate" placeholder="ABC1234"></label>
+    <h3 class="form-sec full">This Visit</h3>
     <div class="form-grid full wd-ci">${window.Workday.checkinFields()}</div>
     <label class="field full">What's the concern?<textarea id="ci-concern" required placeholder="Customer's description of the problem"></textarea></label>
-    <div class="field full urgency-field"><span>Urgency <small class="muted">(for example, the customer needs the car back within the hour)</small></span>${window.BayBoard.urgencyPicker("","ciUrgency")}</div>
+    <div class="field full urgency-field"><span>Urgency <small class="muted">(how soon the customer needs the car back)</small></span>${window.BayBoard.urgencyPicker("","ciUrgency")}</div>
     <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
    </div>
    <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit">Check In and Notify Customer</button><button class="btn" type="button" id="ci-fill">Fill Sample Customer</button></div>
@@ -787,7 +790,7 @@ function syncChannel(){
 function settingsView(){
   const rows=state.rates.map((r,i)=>`<tr><td>${esc(r.name)}</td><td>${esc({labor:"Labor",part:"Part",fee:"Fee",percent:"Percent"}[r.kind]||r.kind)}</td><td class="num">${r.kind==="percent"?r.rate+"%":money(r.rate)+(r.kind==="labor"?"/hr":"")+(r.hours?` · ${r.hours} hr`:"")}</td><td class="num"><button class="linkbtn" data-del-rate="${i}" aria-label="Remove ${esc(r.name)}">Remove</button></td></tr>`).join("");
   return `<div class="settings-wrap"><form class="panel" id="setupForm">
-    <h2>Shop settings</h2>
+    <h2>Shop Settings</h2>
     <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
     <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(SHOP.name)}"></label>
     <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(SHOP.phone)}"></label>
@@ -797,11 +800,11 @@ function settingsView(){
     ${smartFieldset()}
     <div class="btn-row"><button class="btn primary" type="submit">Save</button></div>
   </form>
-  <section class="panel" id="savedItems"><h2>Saved items</h2>
+  <section class="panel" id="savedItems"><h2>Saved Items</h2>
     <p class="muted" style="margin:0">Labor rates, parts and fees you use often. They show up as suggestions when you build an estimate or a bill.</p>
     <div style="overflow-x:auto;margin-top:10px"><table class="rates"><thead><tr><th>Name</th><th>Type</th><th class="num">Rate</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
     <form class="rate-add" id="rateForm"><input id="r-name" placeholder="New item, e.g. Wiper blades" aria-label="Item name" required><select id="r-kind" aria-label="Type"><option value="part">Part</option><option value="labor">Labor</option><option value="fee">Fee</option><option value="percent">Percent</option></select><input id="r-rate" inputmode="decimal" placeholder="Rate" aria-label="Rate" required><button class="btn" type="submit">Add</button></form>
-    <div class="import-box" id="importBox"><button class="btn" type="button" id="openImport">Edit, import or download list</button><button class="linkbtn" type="button" id="sampleImport">Try a sample price list</button><button class="linkbtn" type="button" id="rateTemplate">Download example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
+    <div class="import-box" id="importBox"><button class="btn" type="button" id="openImport">Edit, Import or Download List</button><button class="linkbtn" type="button" id="sampleImport">Try a Sample Price List</button><button class="linkbtn" type="button" id="rateTemplate">Download Example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
   </section>${window.Workday.packagesPanel()}${team.panel(render)}${recoveryPanel()}</div>`;
 }
 // Artwork belongs to the named sample repair and line item, including in saved demos.
@@ -896,27 +899,27 @@ function sheetView(j){
         <button class="btn est-add-more" type="button" id="laborBtn">Add labor, parts or fees with hours and rates</button>
         ${window.Workday.estimatePackages(j)}
       </div>`:""}
-      ${j.estimate.some(e=>e.status==="pending")&&j.stage!=="approval"&&live?`<button class="btn primary est-send" data-stage="approval">Send estimate for approval</button>`:""}
+      ${j.estimate.some(e=>e.status==="pending")&&j.stage!=="approval"&&live?`<button class="btn primary est-send" data-stage="approval">Send Estimate for Approval</button>`:""}
     </section>
     <section class="sec" id="billSec"><h3>Final Bill</h3>
       ${j.bill?`<p>Itemized bill · ${money(j.bill.total)}</p>`:""}
-      <div class="btn-row"><button class="btn" id="makeBill">${j.bill?"Edit itemized bill":"Create itemized bill"}</button><button class="btn" id="uploadBill">Upload shop PDF</button></div>
+      <div class="btn-row"><button class="btn" id="makeBill">${j.bill?"Edit itemized bill":"Create itemized bill"}</button><button class="btn" id="uploadBill">Upload Shop PDF</button></div>
     </section>
     ${window.Workday.visitsSection(j)}
     ${window.Workday.followupSection(j)}
     <section class="sec" id="photoSec"><h3>Photos</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}
-      <label class="photo-add" for="photoIn">+ Add photo<br><span style="font-weight:400">Customer sees it on their page</span></label></div></section>
+      <label class="photo-add" for="photoIn">+ Add Photo<br><span style="font-weight:400">Customer sees it on their page</span></label></div></section>
     <section class="sec" id="noteSec"><h3>Technician Notes <span class="sec-sub">Shared with customer unless marked shop only</span></h3>
       ${(j.notes||[]).length?`<ul class="notes">${[...j.notes].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${window.Workday.noteBadge(n)}${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${n.id}">Remove</button></li>`).join("")}</ul>`:""}
       <form id="noteForm" class="note-form"><textarea id="noteIn" maxlength="2000" placeholder="Describe your findings…" aria-label="Technician note"></textarea>
         <div class="btn-row"><button type="button" class="btn mic" data-dictate="#noteIn" aria-pressed="false" aria-label="Voice typing">${mic}<span class="mic-label">Speak</span></button><button class="btn primary" type="submit">Post Note</button></div>
         ${window.Workday.noteToggle()}
         <label class="chk"><input type="checkbox" id="noteSend"> Notify ${esc(ShopDisplay.name(first(j.customer.name)))} about this note</label></form></section>
-    <section class="sec" id="msgSec"><h3>Messages</h3><details id="smartDemo"><summary>Try Smart Replies</summary><p class="muted">Choose a sample customer text. The conversation stays in this demo.</p><label class="field">Sample text<select id="sampleSms"><option value="status">How’s my car coming?</option><option value="hours">What are your hours?</option><option value="link">Can you resend the estimate?</option><option value="review">Is my car safe to drive?</option></select></label><label class="chk"><input id="demoAuto" type="checkbox">Auto-reply to routine questions</label><button type="button" id="simulateSms" class="btn">Try sample text</button></details><div class="thread">${msgs||'<p class="muted">No messages yet.</p>'}</div>
+    <section class="sec" id="msgSec"><h3>Messages</h3><details id="smartDemo"><summary>Try Smart Replies</summary><p class="muted">Choose a sample customer text. The conversation stays in this demo.</p><label class="field">Sample text<select id="sampleSms"><option value="status">How’s my car coming?</option><option value="hours">What are your hours?</option><option value="link">Can you resend the estimate?</option><option value="review">Is my car safe to drive?</option></select></label><label class="chk"><input id="demoAuto" type="checkbox">Auto-reply to routine questions</label><button type="button" id="simulateSms" class="btn">Try Sample Text</button></details><div class="thread">${msgs||'<p class="muted">No messages yet.</p>'}</div>
       ${j.messages.at(-1)?.testSms ? (j.messages.at(-1).suggestion ? '<button class="linkbtn" id="demoDraft">Use suggested reply</button>' : '<small class="muted">Needs staff review</small>') : ""}
       <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto auto"><input id="replyIn" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button type="button" class="btn mic" data-dictate="#replyIn" aria-pressed="false" aria-label="Voice typing">${mic}</button><button class="btn primary" type="submit">Send</button></form></section>
     <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
-    <section class="sec danger-zone" id="dangerSec"><details class="repair-management"><summary>Manage Repair</summary><button class="linkbtn danger" data-delete-job="${j.id}">Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close without repair instead.</p></details></section>
+    <section class="sec danger-zone" id="dangerSec"><details class="repair-management"><summary>Manage Repair</summary><button class="linkbtn danger" data-delete-job="${j.id}">Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close Without Repair instead.</p></details></section>
    </div></aside>`;
 }
 function linkify(s,j){return s.replace(esc(linkOf(j)),`<button class="lnk" data-golink="${j.id}">${esc(linkOf(j))}</button>`)}
@@ -930,7 +933,7 @@ function stageModal(){
     ${m.stage==="ready"?`<div><strong>Final Bill</strong><p style="margin:4px 0 0">${j.bill?money(j.bill.total)+" due at pickup":"Optional. Customers can open their bill from the pickup link."}</p></div>`:""}
     <label class="field">Message<textarea id="m-text">${esc(m.text)}</textarea></label>
     <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent?"checked":"disabled"}> Notify customer ${j.customer.consent?"":"(customer has not agreed to notifications)"}</label>
-    <div class="btn-row"><button class="btn primary" type="submit">Update stage</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+    <div class="btn-row"><button class="btn primary" type="submit">Update Stage</button><button class="btn" type="button" data-cancel>Cancel</button></div>
   </form></div>`;
 }
 function closeModal(){
@@ -1169,7 +1172,7 @@ if(new URLSearchParams(location.search).has("smart")){
 }
 </script>
 <script src="/config.js"></script>
-<script src="/tour.js?v=210"></script>
+<script src="/tour.js?v=211"></script>
 <script src="/shell.js?v=1"></script>
 </body>
 </html>

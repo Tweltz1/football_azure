@@ -115,7 +115,7 @@
       audio.ontimeupdate = () => showAt(audio.currentTime);
       audio.onended = finish;
       audio.onerror = useFallback;
-      audio.src = "/tour/" + key + ".mp3?v=7";
+      audio.src = "/tour/" + key + ".mp3?v=8";
       audio.muted = muted;
       const p = audio.play();
       if (p && p.catch) p.catch(useFallback);
@@ -1007,8 +1007,8 @@
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
-      fetch("/tour/lines.json?v=4").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
-      fetch("/tour/caption-cues.json?v=4").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+      fetch("/tour/lines.json?v=5").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
+      fetch("/tour/caption-cues.json?v=5").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">

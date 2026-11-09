@@ -81,7 +81,7 @@
   // ---------------- Shop car sheet ----------------
   function sheetSection(j) {
     const req = j.walkaroundRequest, photos = j.walkaround || [];
-    if (!req && !photos.length) return `<section class="sec"><h3>Walk-around photos <span class="sec-sub">For body work and condition records</span></h3>
+    if (!req && !photos.length) return `<section class="sec"><h3>Walk-Around Photos <span class="sec-sub">For body work and condition records</span></h3>
       <p class="muted" style="margin:0 0 8px">The customer's page guides them through 8 photos of the car. AI suggests damage and you confirm it before they see it.</p>
       <div class="btn-row"><button type="button" class="btn" data-wa-request>Ask ${esc(cfg.first(j.customer.name))} for walk-around photos</button></div>
       <label class="chk"><input type="checkbox" id="wa-send" ${j.customer.consent ? "checked" : "disabled"}> Notify the customer with the link${j.customer.consent ? "" : " (customer has not agreed to notifications)"}</label></section>`;
@@ -95,7 +95,7 @@
           ${p.marks.some((m) => !m.confirmed) ? `<span class="wa-flag">${p.marks.filter((m) => !m.confirmed).length} to review</span>` : ""}<span class="wa-l">${esc(a.label)}</span></button>`
         : `<div class="wa-tile empty">${guide(a.key)}<span class="wa-l">${esc(a.label)}</span></div>`;
     }).join("");
-    return `<section class="sec" id="waSec"><h3>Walk-around photos <span class="sec-sub">${photos.length} of 8 from the customer</span></h3>
+    return `<section class="sec" id="waSec"><h3>Walk-Around Photos <span class="sec-sub">${photos.length} of 8 from the customer</span></h3>
       ${photos.length ? `<p class="wa-sum">${confirmed ? `<span class="wa-pill ok">${confirmed} confirmed</span>` : ""}${pending ? `<span class="wa-pill warn">${pending} AI suggestion${pending === 1 ? "" : "s"} to review</span>` : ""}${!confirmed && !pending && !unscanned ? '<span class="wa-pill">No damage marked</span>' : ""}</p>` : `<p class="muted" style="margin:0 0 8px">Waiting on the customer. They'll see the guide on their page${req ? "" : "."}${req ? ` (asked ${new Date(req.t).toLocaleDateString([], { month: "short", day: "numeric" })}).` : ""}</p>`}
       <div class="wa-grid">${tiles}</div>
       <div class="btn-row">${unscanned ? `<button type="button" class="btn primary" data-wa-ai ${busy ? "disabled" : ""}>${busy ? "Checking photos…" : `Find damage with AI (${unscanned} photo${unscanned === 1 ? "" : "s"})`}</button>` : ""}

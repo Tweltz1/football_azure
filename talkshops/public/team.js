@@ -45,13 +45,13 @@
           You can also text them the link. It works once and expires in 7 days.</span>
           <span class="team-copy"><input readonly value="${esc(link.url)}" aria-label="Invite link" id="teamLinkIn"><button class="btn sm" type="button" data-team-copy>Copy link</button></span></div>` : ""}
         <form id="teamInviteForm" class="team-form" autocomplete="off">
-          <h3>Invite someone</h3>
+          <h3>Invite Someone</h3>
           <div class="form-grid">
             <label class="field">Email<input id="tm-email" type="email" required maxlength="254" placeholder="tech@yourshop.com"></label>
             <label class="field">Name (optional)<input id="tm-name" maxlength="80" placeholder="Sam Lee"></label>
             <label class="field">Role<select id="tm-role"><option value="tech">Technician</option><option value="owner">Owner</option></select></label>
           </div>
-          <div class="btn-row"><button class="btn primary" type="submit" ${st.busy ? "disabled" : ""}>Send invite</button></div>
+          <div class="btn-row"><button class="btn primary" type="submit" ${st.busy ? "disabled" : ""}>Send Invite</button></div>
           <small class="muted">They sign in or create an account with that email, and your shop opens for them.</small>
         </form>
       </section>`;

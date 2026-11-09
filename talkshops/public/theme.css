@@ -697,3 +697,35 @@ main:has(.queue-top) .board.stage-focused>.col:not([hidden]){display:grid;grid-t
 .notice.name-ask span{flex:1 1 260px}
 .notice.name-ask input{flex:0 1 220px;min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--surface);color:var(--fg)}
 .notice.name-ask .btn{min-height:36px}
+
+/* 2026-11-09 usability pass: quieter Bay. Column sort and filter sit behind a small button, and phones get to the cars sooner. */
+.col-h{gap:4px}
+.col-h .stage-heading{flex:1;min-width:0}
+.stage-heading h3{text-decoration:none}
+.stage-heading:hover h3{text-decoration:underline;text-underline-offset:4px}
+.stage-tune{flex:none;display:grid;place-items:center;width:24px;height:28px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted);padding:0}
+.stage-tune svg{width:16px;height:16px}
+.stage-tune:hover,.stage-tune[aria-expanded="true"]{background:var(--surface);border-color:var(--line);color:var(--fg)}
+.stage-tune.on{color:var(--accent-ink,var(--accent));border-color:var(--accent);background:var(--accent-soft)}
+.stage-view-bar{margin:0 0 10px}
+.stage-results{font-weight:600}
+.board .card .wd-bits{margin-top:2px}
+@media (max-width:760px){
+  .demo-note .dn-long,.queue-add .qa-long{display:none}
+  .demo-note{justify-content:space-between}
+  body .plan-banner{flex-wrap:nowrap;padding:8px 12px;font-size:13px;gap:10px;margin-bottom:12px}
+  body .plan-banner .btn{flex:none;padding:7px 11px;font-size:13px;white-space:nowrap}
+  .queue-top{margin-bottom:10px}
+  .queue-top h2{font-size:21px!important;line-height:1.2}
+  body .wd-bar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:8px -16px 2px;padding:2px 16px}
+  .wd-bar::-webkit-scrollbar{display:none}
+  body .wd-bar>*{flex:none!important;white-space:nowrap}
+  body .wd-bar-gap{display:none}
+  .age-key{font-size:12px;margin-bottom:10px!important}
+}
+.wd-bar+.age-key{margin:8px 0 14px}
+.queue-add .qa-long{margin-left:-4px}
+main:has(.queue-top) .col-h .stage-heading{padding:4px 2px;gap:6px}
+.board .stage-pill{display:none}
+.form-sec{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:10px 0 -2px;padding-top:14px;border-top:1px solid var(--line)}
+.form-grid>.form-sec:first-child{border-top:0;padding-top:0;margin-top:2px}
