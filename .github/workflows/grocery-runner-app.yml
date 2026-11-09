@@ -65,9 +65,9 @@ jobs:
             echo "::notice::No Walmart affiliate keys; Walmart stores are picked by ZIP."
           fi
           if [ ${#SET[@]} -gt 0 ]; then
-            npx -y supabase@latest secrets set --project-ref "$SUPABASE_PROJECT_ID" "${SET[@]}"
+            npx -y supabase@latest secrets set --project-ref "$SUPABASE_PROJECT_ID" --yes "${SET[@]}"
           fi
-          npx -y supabase@latest functions deploy grocery-runner --project-ref "$SUPABASE_PROJECT_ID" --use-api
+          npx -y supabase@latest functions deploy grocery-runner --project-ref "$SUPABASE_PROJECT_ID" --use-api --yes
 
   build:
     runs-on: macos-26
