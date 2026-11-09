@@ -240,7 +240,7 @@ a.btn.primary{color:var(--accent-fg)}
 .import-box{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
-<link rel="stylesheet" href="/saved-archive.css?v=6">
+<link rel="stylesheet" href="/saved-archive.css?v=7">
 <link rel="stylesheet" href="/theme.css?v=17">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
@@ -299,8 +299,8 @@ a.btn.primary{color:var(--accent-fg)}
 <input type="file" id="photoIn" accept="image/*" hidden>
 
 <script src="/sheet-import.js?v=1"></script>
-<script src="/price-import.js?v=1"></script>
-<script src="/billing.js?v=4"></script>
+<script src="/price-import.js?v=2"></script>
+<script src="/billing.js?v=5"></script>
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=1"></script>
@@ -743,7 +743,7 @@ function settingsView(){
     <p class="muted" style="margin:0">Labor rates, parts and fees you use often. They show up as suggestions when you build an estimate or a bill.</p>
     <div style="overflow-x:auto;margin-top:10px"><table class="rates"><thead><tr><th>Name</th><th>Type</th><th class="num">Rate</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
     <form class="rate-add" id="rateForm"><input id="r-name" placeholder="New item, e.g. Wiper blades" aria-label="Item name" required><select id="r-kind" aria-label="Type"><option value="part">Part</option><option value="labor">Labor</option><option value="fee">Fee</option><option value="percent">Percent</option></select><input id="r-rate" inputmode="decimal" placeholder="Rate" aria-label="Rate" required><button class="btn" type="submit">Add</button></form>
-    <div class="import-box" id="importBox"><button class="btn" type="button" id="openImport">Import your price list</button><button class="linkbtn" type="button" id="sampleImport">Try a sample price list</button><button class="linkbtn" type="button" id="rateTemplate">Download example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
+    <div class="import-box" id="importBox"><button class="btn" type="button" id="openImport">Edit, import or download list</button><button class="linkbtn" type="button" id="sampleImport">Try a sample price list</button><button class="linkbtn" type="button" id="rateTemplate">Download example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
   </section>${team.panel(render)}${recoveryPanel()}</div>`;
 }
 // Artwork belongs to the named sample repair and line item, including in saved demos.

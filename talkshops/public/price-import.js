@@ -37,17 +37,20 @@ window.createPriceImport = ({ api }) => {
   // and goes to the AI, which also copes with categories, price ranges, labor times and odd layouts.
   function readLocal(records) {
     for (let at = 0; at < Math.min(records.length, 15); at++) {
-      const head = records[at].map(norm), ni = col(head, "name"), ri = col(head, "rate"), ti = col(head, "type");
+      const head = records[at].map(norm), ni = col(head, "name"), ri = col(head, "rate"), ti = col(head, "type"), hi = col(head, "hours");
       if (ni < 0 || ri < 0) continue;
-      // Extra columns (category, hours, notes) or labor times: let the AI work out what they mean.
-      if (head.some((h, i) => h && ![ni, ri, ti].includes(i))) return null;
+      // Extra columns (category, notes): let the AI work out what they mean. Hours are read here only with a type column
+      // (the layout of Download my list), so a time on a flat-priced job isn't mistaken for labor.
+      if (head.some((h, i) => h && ![ni, ri, ti, hi].includes(i)) || (hi >= 0 && ti < 0)) return null;
       const items = [];
       for (const row of records.slice(at + 1)) {
         const name = String(row[ni] || "").replace(/\s+/g, " ").trim(), raw = String(row[ri] || "").replace(/[$,%\s]/g, "");
         if (!name && !raw) continue;
         const kind = ti < 0 || !String(row[ti] || "").trim() ? "part" : kinds[String(row[ti]).trim().toLowerCase()];
         if (!name || name.length > 120 || !kind || !/^\d+(\.\d{1,2})?$/.test(raw) || Number(raw) > (kind === "percent" ? 100 : 1000000)) return null;
-        items.push({ name, kind, rate: Number(raw) });
+        const hrs = hi < 0 ? "" : String(row[hi] || "").trim();
+        if (hrs && (kind !== "labor" || !/^\d+(\.\d{1,2})?$/.test(hrs) || Number(hrs) > 1000)) return null;
+        items.push({ name, kind, rate: Number(raw), ...(Number(hrs) > 0 ? { hours: Number(hrs) } : {}) });
       }
       return items.length ? items : null;
     }

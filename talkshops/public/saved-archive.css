@@ -86,3 +86,15 @@
   .billing-editor[data-mode="rates"] .charge-row>.hours-field{grid-column:4}
   .billing-editor[data-mode="rates"] .charge-row>button{grid-column:5;align-self:center;justify-self:end;white-space:nowrap}
 }
+/* Saved items: quick add, search, import/download */
+.qa-row{display:grid;grid-template-columns:minmax(0,2.4fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:center;padding:12px;border-radius:12px;background:var(--accent-soft)}
+.qa-row input,.qa-row select,.rates-find input{min-width:0;width:100%;box-sizing:border-box;border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);border-radius:10px;padding:10px 12px;font:inherit}
+.rates-find{display:flex;align-items:center;gap:12px}.rates-find input{flex:1}.rates-find span{white-space:nowrap;font-size:13px}
+.rates-io{border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.rates-io summary{cursor:pointer;font-weight:650}
+.rates-io[open]{display:flex;flex-direction:column;gap:10px}
+.rates-io[open] summary{margin-bottom:2px}
+.io-links{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.charge-row.just-added{background:var(--ok-bg);border-radius:6px;padding-left:8px;padding-right:8px}
+.billing-editor[data-mode="rates"]>.btn-row{position:sticky;bottom:-26px;background:var(--surface);padding:12px 0;margin-bottom:-12px;border-top:1px solid var(--line);z-index:1}
+@media (max-width:719px){.qa-row{grid-template-columns:1fr 1fr}.qa-row input[data-qa="name"]{grid-column:1/-1}.qa-row .btn{grid-column:1/-1}}
