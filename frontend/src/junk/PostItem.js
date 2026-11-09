@@ -3,10 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { SignInPrompt, useJunk } from './JunkApp';
 import { createItem, getItem, updateItem, uploadPhoto } from './junkApi';
 import { CATEGORIES, CONDITIONS, photoToJpeg } from './device';
+import { appleDetect, hasAppleDetection } from './appleLabels';
 import { BackButton } from './ItemPage';
 import { IconCamera, IconClose, IconPin, IconSparkle } from './icons';
 
 const MAX_PHOTOS = 6;
+// Item detection runs on the phone with Apple Vision (free, no limit; Tyler's choice 2026-11-09).
+// Gemini is only used where Apple detection isn't available (the website during development).
+// Set to true to also ask Gemini when Apple isn't sure what the photo shows.
+const GEMINI_BACKUP = false;
+
 const EMPTY = { title: '', description: '', category: '', condition: 'good', tags: [], pickup: '' };
 
 export default function PostItem() {
@@ -53,7 +59,7 @@ export default function PostItem() {
     setTouched((t) => ({ ...t, [key]: true }));
   };
 
-  // Fill in whatever the person hasn't typed yet with what Gemini saw.
+  // Fill in whatever the person hasn't typed yet with what Apple or Gemini saw.
   const applyDetection = (d) => {
     if (!d) return;
     const t = touchedRef.current;
@@ -87,9 +93,14 @@ export default function PostItem() {
       const detect = !editing && !detectAsked.current;
       if (detect) { detectAsked.current = true; setDetecting(true); }
       try {
-        const res = await uploadPhoto(preview, detect);
+        const apple = detect && hasAppleDetection() ? await appleDetect(preview) : null;
+        const askGemini = detect && (!apple || !apple.confident) && (GEMINI_BACKUP || !hasAppleDetection());
+        const res = await uploadPhoto(preview, askGemini);
         setPhotos((list) => list.map((p) => (p.key === key ? { ...p, path: res.path, url: res.url, uploading: false } : p)));
-        if (detect) applyDetection(res.detected);
+        if (detect) {
+          if (!res.detected && apple && apple.person) setAiNote('Make sure the photo shows just the item');
+          else applyDetection(res.detected || apple);
+        }
       } catch (err) {
         setPhotos((list) => list.filter((p) => p.key !== key));
         setError(err.message);

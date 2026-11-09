@@ -2,6 +2,7 @@ import UIKit
 import Capacitor
 import AuthenticationServices
 import CoreLocation
+import Vision
 
 // Registers the app's own native plugins with the web view.
 class HoodViewController: CAPBridgeViewController {
@@ -9,6 +10,7 @@ class HoodViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(NearbyPlugin())
         bridge?.registerPluginInstance(AuthSessionPlugin())
         bridge?.registerPluginInstance(TripPlugin())
+        bridge?.registerPluginInstance(ItemVisionPlugin())
     }
 }
 
@@ -158,5 +160,44 @@ public class TripPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDelegate 
 
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         // Keeps trying; the server releases the claim if positions stop coming for too long.
+    }
+}
+
+// Curbsy item detection on the phone with Apple's Vision framework (free, no limit, nothing leaves the phone).
+// Returns Vision's labels for a photo ("chair", "bicycle", ...); frontend/src/junk/appleLabels.js turns
+// them into a title, category and tags.
+@objc(ItemVisionPlugin)
+public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "ItemVisionPlugin"
+    public let jsName = "ItemVision"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "classify", returnType: CAPPluginReturnPromise),
+    ]
+
+    @objc func classify(_ call: CAPPluginCall) {
+        guard let image = call.getString("image") else {
+            call.reject("image is required")
+            return
+        }
+        let base64 = image.components(separatedBy: ",").last ?? image
+        guard let data = Data(base64Encoded: base64) else {
+            call.reject("Couldn't read the photo")
+            return
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let request = VNClassifyImageRequest()
+            let handler = VNImageRequestHandler(data: data, options: [:])
+            do {
+                try handler.perform([request])
+                let labels = (request.results ?? [])
+                    .filter { $0.confidence >= 0.03 }
+                    .sorted { $0.confidence > $1.confidence }
+                    .prefix(30)
+                    .map { ["label": $0.identifier, "confidence": Double($0.confidence)] as [String: Any] }
+                call.resolve(["labels": Array(labels)])
+            } catch {
+                call.reject(error.localizedDescription)
+            }
+        }
     }
 }
