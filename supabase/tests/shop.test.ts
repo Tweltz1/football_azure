@@ -765,6 +765,15 @@ test('workday: quick service fast lane checks in with approved lines and goes st
   assert.deepEqual(j.estimate.map((e: any) => [e.status, e.price]), [['approved', 69.95], ['approved', 20]]);
   assert.match(texts.at(-1)!.body, /has your 2018 Honda Civic/);
   assert.equal((await dan('POST', 'shop/jobs', { ...checkIn, service: 'gone' }))?.status, 400);
+
+  // A bundle can be edited (same id kept) and added to a car that's already in, as lines waiting on the customer.
+  const edited = (await dan('POST', 'shop/me', { name: 'Quick Lube', packages: [{ ...pkg, name: 'Oil + rotation + wipers', lines: [...pkg.lines, { name: 'Wiper blades', kind: 'part', rate: 24, qty: 2 }] }] }))?.body as Record<string, any>;
+  assert.equal(edited.shop.packages[0].id, pkg.id);
+  assert.equal(edited.shop.packages[0].lines.length, 3);
+  const other = (await dan('POST', 'shop/jobs', checkIn))?.body as Record<string, any>;
+  const withPkg = (await dan('POST', `shop/jobs/${other.id}/estimate`, { package: pkg.id }))?.body as Record<string, any>;
+  assert.deepEqual(withPkg.estimate.map((e: any) => [e.item, e.status, e.price]), [['Synthetic oil change', 'pending', 69.95], ['Tire rotation', 'pending', 20], ['Wiper blades', 'pending', 48]]);
+  assert.equal((await dan('POST', `shop/jobs/${other.id}/estimate`, { package: 'gone' }))?.status, 400);
 });
 
 test('workday: reminders send when due, once, with STOP, and the customer can stop them', async () => {

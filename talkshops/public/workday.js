@@ -238,18 +238,43 @@
   }
 
   // ---------------- Quick services (Settings) ----------------
+  const pkTotal = (p) => p.lines.reduce((a, l) => a + l.rate * l.qty, 0);
+  const rateText = (r) => r.kind === "labor" ? money(r.rate) + "/hr" + (r.hours ? " × " + r.hours : "") : money(r.rate);
+  // The items a bundle can hold: the saved list, plus any lines of the bundle being edited that are no longer saved.
+  function pkChoices(edit) {
+    const rates = ((A.shop() || {}).rates || []).filter((r) => r.kind !== "percent");
+    const extra = edit ? edit.lines.filter((l) => !rates.some((r) => r.name.toLowerCase() === l.name.toLowerCase())) : [];
+    return [...rates, ...extra];
+  }
   function packagesPanel() {
     const shop = A.shop() || {}, pk = shop.packages || [];
-    const rates = (shop.rates || []).filter((r) => r.kind !== "percent");
+    const edit = ui.pkEdit ? pk.find((p) => p.id === ui.pkEdit) : null;
+    if (!edit) ui.pkEdit = null;
+    const choices = pkChoices(edit), inEdit = (r) => edit?.lines.some((l) => l.name.toLowerCase() === r.name.toLowerCase());
     return `<section class="panel" id="wd-packages"><h2>Quick Services</h2>
-      <p class="muted" style="margin:0">Bundles like "Oil change + rotation" that check in with one tap and add their items to the estimate. Fast lane ones skip diagnosis and approval because the customer okays the price at the counter.</p>
-      ${pk.length ? `<ul class="wd-pk">${pk.map((p) => `<li><div><b>${esc(p.name)}</b>${p.fastLane ? ' <span class="pill ok">Fast lane</span>' : ""}<small class="muted">${esc(p.lines.map((l) => l.name).join(" · "))}</small></div><span>${money(p.lines.reduce((a, l) => a + l.rate * l.qty, 0))}</span><button type="button" class="linkbtn" data-wd-pk-del="${esc(p.id)}">Remove</button></li>`).join("")}</ul>` : ""}
-      ${rates.length ? `<details class="wd-pk-add"${pk.length ? "" : " open"}><summary>Add a quick service</summary>
-        <label class="field">Name<input id="wd-pk-name" maxlength="60" placeholder="e.g. Oil change + tire rotation"></label>
-        <fieldset class="wd-pk-items"><legend>Items from your saved list</legend>${rates.map((r, i) => `<label class="chk"><input type="checkbox" data-wd-pk-item="${i}"> ${esc(r.name)} <span class="muted">${r.kind === "labor" ? money(r.rate) + "/hr" + (r.hours ? " × " + r.hours : "") : money(r.rate)}</span></label>`).join("")}</fieldset>
-        <label class="chk"><input type="checkbox" id="wd-pk-fast" checked> Fast lane (skip diagnosis and approval)</label>
-        <button type="button" class="btn primary" data-wd-pk-add>Save Quick Service</button></details>` : `<p class="muted">Add saved items first, then bundle them here.</p>`}
+      <p class="muted" style="margin:0">Bundles like "Oil change + rotation" that check in with one tap and add their items to the estimate. You can also add one to a car that's already in the bay from its estimate. Fast lane ones skip diagnosis and approval because the customer okays the price at the counter.</p>
+      ${pk.length ? `<ul class="wd-pk">${pk.map((p) => `<li${edit?.id === p.id ? ' class="wd-pk-editing"' : ""}><div><b>${esc(p.name)}</b>${p.fastLane ? ' <span class="pill ok">Fast lane</span>' : ""}<small class="muted">${esc(p.lines.map((l) => l.name).join(" · "))}</small></div><span>${money(pkTotal(p))}</span><span class="wd-pk-act"><button type="button" class="linkbtn" data-wd-pk-edit="${esc(p.id)}">Edit</button><button type="button" class="linkbtn" data-wd-pk-del="${esc(p.id)}">Remove</button></span></li>`).join("")}</ul>` : ""}
+      ${choices.length ? `<details class="wd-pk-add"${pk.length && !edit ? "" : " open"}><summary>${edit ? "Edit " + esc(edit.name) : "Add a quick service"}</summary>
+        <label class="field">Name<input id="wd-pk-name" maxlength="60" placeholder="e.g. Oil change + tire rotation" value="${esc(edit?.name || "")}"></label>
+        <label class="field wd-pk-find">Find an item<input id="wd-pk-find" type="search" autocomplete="off" placeholder="Type to narrow the list"></label>
+        <fieldset class="wd-pk-items"><legend>Items from your saved list <small class="muted" id="wd-pk-count"></small></legend>${choices.map((r, i) => `<label class="chk"><input type="checkbox" data-wd-pk-item="${i}"${inEdit(r) ? " checked" : ""}> ${esc(r.name)} <span class="muted">${rateText(r)}</span></label>`).join("")}</fieldset>
+        <label class="chk"><input type="checkbox" id="wd-pk-fast"${!edit || edit.fastLane ? " checked" : ""}> Fast lane (skip diagnosis and approval)</label>
+        <div class="btn-row"><button type="button" class="btn primary" data-wd-pk-add>${edit ? "Save changes" : "Save Quick Service"}</button>${edit ? '<button type="button" class="btn" data-wd-pk-cancel>Cancel</button>' : ""}</div></details>` : `<p class="muted">Add saved items first, then bundle them here.</p>`}
     </section>`;
+  }
+  function redrawPackages() {
+    const el = document.getElementById("wd-packages");
+    if (el) { el.outerHTML = packagesPanel(); pkCount(); }
+  }
+  function pkCount() {
+    const n = document.querySelectorAll("[data-wd-pk-item]:checked").length, el = document.getElementById("wd-pk-count");
+    if (el) el.textContent = n ? `(${n} picked)` : "";
+  }
+  // On a car's estimate: add a saved quick service's items in one go.
+  function estimatePackages(j) {
+    const pk = (A.shop() || {}).packages || [];
+    if (!pk.length || !open(j)) return "";
+    return `<div class="wd-pk-est" data-wd-job="${esc(j.id)}"><label class="field">Add a quick service<select id="wd-pk-pick"><option value="">Pick a bundle…</option>${pk.map((p) => `<option value="${esc(p.id)}">${esc(p.name)} · ${p.lines.length} item${p.lines.length === 1 ? "" : "s"} · ${money(pkTotal(p))}</option>`).join("")}</select></label><button type="button" class="btn" data-wd-pk-use>Add items</button></div>`;
   }
   async function savePackages(list) { await A.saveShop({ packages: list }); }
 
@@ -320,7 +345,7 @@
   // ---------------- Events ----------------
   document.addEventListener("click", async (e) => {
     if (!A) return;
-    const t = e.target.closest("[data-wd-mine],[data-wd-alerts],[data-wd-today],[data-wd-fill],[data-wd-print],[data-wd-due],[data-wd-schedule],[data-wd-cancel],[data-wd-stop],[data-wd-pk-add],[data-wd-pk-del]");
+    const t = e.target.closest("[data-wd-mine],[data-wd-alerts],[data-wd-today],[data-wd-fill],[data-wd-print],[data-wd-due],[data-wd-schedule],[data-wd-cancel],[data-wd-stop],[data-wd-pk-add],[data-wd-pk-del],[data-wd-pk-edit],[data-wd-pk-cancel],[data-wd-pk-use]");
     if (!t) return;
     if (t.hasAttribute("data-wd-mine")) {
       if (!A.me()) return;
@@ -349,19 +374,51 @@
     if (t.dataset.wdCancel) { const j = await A.act(jobId, "followup", { cancel: t.dataset.wdCancel }); if (j) A.toast?.("Reminder canceled"); return; }
     if (t.hasAttribute("data-wd-stop")) { t.disabled = true; try { await A.stopReminders(); A.toast?.("Reminder texts are off"); } catch (err) { A.toast?.(err.message); t.disabled = false; } return; }
     if (t.hasAttribute("data-wd-pk-add")) {
-      const name = $("#wd-pk-name").value.trim(), rates = (A.shop().rates || []).filter((r) => r.kind !== "percent");
-      const lines = [...document.querySelectorAll("[data-wd-pk-item]:checked")].map((c) => rates[+c.dataset.wdPkItem]).filter(Boolean)
-        .map((r) => ({ name: r.name, kind: r.kind, rate: r.rate, ...(r.hours ? { hours: r.hours } : {}), qty: r.kind === "labor" && r.hours ? r.hours : 1 }));
+      const pk = A.shop().packages || [], edit = ui.pkEdit ? pk.find((p) => p.id === ui.pkEdit) : null;
+      const name = $("#wd-pk-name").value.trim(), choices = pkChoices(edit);
+      const lines = [...document.querySelectorAll("[data-wd-pk-item]:checked")].map((c) => choices[+c.dataset.wdPkItem]).filter(Boolean)
+        // An item already in the bundle keeps its quantity; a newly picked one comes from the saved list.
+        .map((r) => edit?.lines.find((l) => l.name.toLowerCase() === r.name.toLowerCase() && l.kind === r.kind && l.rate === r.rate)
+          || ({ name: r.name, kind: r.kind, rate: r.rate, ...(r.hours ? { hours: r.hours } : {}), qty: r.kind === "labor" && r.hours ? r.hours : 1 }));
       if (!name || !lines.length) { A.toast?.("Name it and pick at least one item"); return; }
-      try { await savePackages([...(A.shop().packages || []), { name, lines, fastLane: $("#wd-pk-fast").checked }]); A.toast?.("Quick service saved"); } catch (err) { A.toast?.(err.message); }
+      if (lines.length > 12) { A.toast?.("A quick service can hold up to 12 items"); return; }
+      const fastLane = $("#wd-pk-fast").checked;
+      const next = edit ? pk.map((p) => p.id === edit.id ? { ...p, name, lines, fastLane } : p) : [...pk, { name, lines, fastLane }];
+      t.disabled = true;
+      try { ui.pkEdit = null; await savePackages(next); A.toast?.(edit ? "Quick service updated" : "Quick service saved"); redrawPackages(); }
+      catch (err) { ui.pkEdit = edit?.id || null; A.toast?.(err.message); t.disabled = false; }
       return;
     }
-    if (t.dataset.wdPkDel) { try { await savePackages((A.shop().packages || []).filter((p) => p.id !== t.dataset.wdPkDel)); A.toast?.("Removed"); } catch (err) { A.toast?.(err.message); } return; }
+    if (t.dataset.wdPkEdit) {
+      ui.pkEdit = t.dataset.wdPkEdit; redrawPackages();
+      document.querySelector("#wd-packages details.wd-pk-add")?.scrollIntoView({ block: "nearest", behavior: "smooth" }); $("#wd-pk-name")?.focus({ preventScroll: true });
+      return;
+    }
+    if (t.hasAttribute("data-wd-pk-cancel")) { ui.pkEdit = null; redrawPackages(); return; }
+    if (t.dataset.wdPkDel) {
+      if (ui.pkEdit === t.dataset.wdPkDel) ui.pkEdit = null;
+      try { await savePackages((A.shop().packages || []).filter((p) => p.id !== t.dataset.wdPkDel)); A.toast?.("Removed"); redrawPackages(); } catch (err) { A.toast?.(err.message); } return;
+    }
+    if (t.hasAttribute("data-wd-pk-use")) {
+      const id = $("#wd-pk-pick")?.value, p = ((A.shop() || {}).packages || []).find((x) => x.id === id);
+      if (!p) { A.toast?.("Pick a quick service first"); return; }
+      t.disabled = true;
+      const j = await A.act(jobId, "estimate", { package: p.id });
+      t.disabled = false;
+      if (j) A.toast?.(`Added ${p.name} (${p.lines.length} item${p.lines.length === 1 ? "" : "s"})`);
+      return;
+    }
+  });
+  document.addEventListener("input", (e) => {
+    if (e.target.id !== "wd-pk-find") return;
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll("#wd-packages .wd-pk-items label.chk").forEach((l) => { l.hidden = !!q && !l.textContent.toLowerCase().includes(q) && !l.querySelector("input").checked; });
   });
   document.addEventListener("change", (e) => {
     if (!A) return;
     const t = e.target;
     if (t.dataset?.wdSet) { saveDetail(t); return; }
+    if (t.dataset?.wdPkItem !== undefined) { pkCount(); return; }
     if (t.id === "wd-svc") {
       const opt = t.selectedOptions[0], row = document.getElementById("wd-fast-row"), concern = document.getElementById("ci-concern");
       if (row) row.hidden = !t.value || opt.dataset.fast !== "1";
@@ -381,5 +438,5 @@
   const forget = (id) => { if (id) delete ui.visits[id]; else ui.visits = {}; };
 
   window.Workday = { init, cardBits, cardAttrs, hidden, boardBar, watch, checkinLookup, checkinFields, checkinValues, sheetDetails, visitsSection, followupSection,
-    noteToggle, noteBadge, pickupField, pickupValue, customerReminders, packagesPanel, print, todaySummary, forget, promiseState };
+    noteToggle, noteBadge, pickupField, pickupValue, customerReminders, packagesPanel, estimatePackages, print, todaySummary, forget, promiseState };
 })();

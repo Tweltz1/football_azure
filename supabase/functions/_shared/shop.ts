@@ -974,6 +974,11 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const before = d.estimate.length;
       d.estimate = d.estimate.filter((e) => !(e.id === body.remove && e.status === 'pending'));
       if (d.estimate.length === before) return bad('Only pending lines can be removed.');
+    } else if (body.package !== undefined) {
+      // A saved quick service added to a car that's already in: all its lines, waiting on the customer like any other.
+      const pkg = (shop.packages ?? []).find((p) => p.id === body.package);
+      if (!pkg) return bad('That quick service is no longer saved.');
+      for (const r of pkg.lines) d.estimate.push({ id: ctx.newId(), item: r.name, price: lineCents(r) / 100, status: 'pending', charge: { ...copyRate(r), qty: r.qty }, priority: priorityOf(body.priority) });
     } else if (body.charge !== undefined) {
       const r = body.charge;
       if (!validCharge(r)) return bad('Check the description, quantity and rate.');

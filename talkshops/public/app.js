@@ -884,6 +884,7 @@
               ${isOwner() ? `<label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label>` : ""}</form>
             <div class="est-add-or"><span>or</span></div>
             <button class="btn est-add-more" type="button" data-billing="quote">Add labor, parts or fees with hours and rates</button>
+            ${window.Workday.estimatePackages(j)}
           </div>
           ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? (isOwner() ? `<button class="btn primary est-send" data-stage="approval">Send estimate for approval</button>` : `<p class="muted est-send-note">A shop owner reviews these lines and sends the estimate to ${esc(first(j.customer.name))}.</p>`) : ""}
         </section>

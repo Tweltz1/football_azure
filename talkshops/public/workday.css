@@ -43,3 +43,10 @@
 .wt-tread input{width:44px;font:inherit;text-align:center;border:1px solid var(--line-strong);border-radius:8px;padding:5px;background:var(--surface);color:var(--fg)}
 .wt-tread-out{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px}
 @media (max-width:640px){.wd-bar .btn{flex:1 1 auto}}
+.wd-pk li.wd-pk-editing{border-color:var(--accent,#2563eb);box-shadow:0 0 0 1px var(--accent,#2563eb)}
+.wd-pk-act{display:flex;gap:12px}
+.wd-pk-find{margin:8px 0 6px}
+.wd-pk-add .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.wd-pk-est{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.wd-pk-est .field{flex:1 1 220px;margin:0}
+@media (max-width:560px){.wd-pk li{grid-template-columns:1fr auto}.wd-pk-act{grid-column:1/-1}}

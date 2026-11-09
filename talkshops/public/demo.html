@@ -248,7 +248,7 @@ a.btn.primary{color:var(--accent-fg)}
 <link rel="stylesheet" href="/team.css?v=1">
 <link rel="stylesheet" href="/help.css?v=1">
 <link rel="stylesheet" href="/howto.css?v=4">
-<link rel="stylesheet" href="/workday.css?v=1">
+<link rel="stylesheet" href="/workday.css?v=2">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
 <style>
 .queue-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -314,7 +314,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/age-settings.js?v=1"></script>
 <script src="/board-tools.js?v=3"></script>
 <script src="/walkthrough.js?v=4"></script>
-<script src="/workday.js?v=1"></script>
+<script src="/workday.js?v=2"></script>
 <script src="/walkaround.js?v=1"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script>
@@ -477,6 +477,8 @@ window.Workday.init({
       if(body.cancel){const f=j.followups.find(x=>x.id===body.cancel);if(f){f.canceledAt=Date.now();f.canceledBy="shop"}}
       else{if(!body.due||Date.parse(body.due)<Date.now()){toast("Pick a date from tomorrow on");return null}if((body.text||"").length<10){toast("Write the reminder text");return null}
         j.followups.push({id:"fu"+Date.now(),kind:body.kind,due:Date.parse(body.due+"T09:00:00"),text:body.text,createdAt:Date.now(),by:"Dana Ruiz"})}}
+    if(action==="estimate"&&body.package){const p=(state.packages||[]).find(x=>x.id===body.package);if(!p){toast("That quick service is no longer saved");return null}
+      for(const l of p.lines)j.estimate.push({id:Date.now()+Math.random(),item:l.name,price:Math.round(l.rate*l.qty*100)/100,status:"pending",priority:"recommended"});}
     save();renderLayer();if(ui.view==="board")render();return j;},
   async visits(body){
     const rows=state.jobs.filter(j=>{
@@ -892,6 +894,7 @@ function sheetView(j){
           <label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label></form>
         <div class="est-add-or"><span>or</span></div>
         <button class="btn est-add-more" type="button" id="laborBtn">Add labor, parts or fees with hours and rates</button>
+        ${window.Workday.estimatePackages(j)}
       </div>`:""}
       ${j.estimate.some(e=>e.status==="pending")&&j.stage!=="approval"&&live?`<button class="btn primary est-send" data-stage="approval">Send estimate for approval</button>`:""}
     </section>
