@@ -25,7 +25,8 @@ params.algorithm = .transferLearning(.objectPrint(revision: 1))
 
 let started = Date()
 print("Training for up to \(iterations) iterations…")
-let detector = try MLObjectDetector(trainingData: train, parameters: params)
+let detector = try MLObjectDetector(trainingData: train, parameters: params,
+                                    annotationType: .boundingBox(units: .pixel, origin: .topLeft, anchor: .center))
 let minutes = Int(Date().timeIntervalSince(started) / 60)
 print("Trained in \(minutes) min")
 print("Training: \(detector.trainingMetrics)")
