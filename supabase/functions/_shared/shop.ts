@@ -289,26 +289,26 @@ const LABEL: Record<Stage, string> = {
 // Texts are written to fit one 160-character segment (see smsFit.ts). SHORT is the fallback wording when a long
 // shop name, vehicle or hours would push the full one over; fillTemplate picks the first that fits.
 const TEMPLATES: Record<Stage, string> = {
-  invited: "Hi {first}, {shop} invites you to check in your vehicle and add photos: {link} Reply STOP to opt out",
-  checked_in: "Hi {first}, {shop} has your {vehicle}. Track it and add photos: {link} Reply STOP to opt out",
-  diagnosing: "Hi {first}, a technician is inspecting your {vehicle} now. We'll send what we find soon.",
-  approval: "Hi {first}, your {vehicle} estimate ({total}) is ready. Please review and approve: {link}",
-  parts: "Hi {first}, parts for your {vehicle} are on order, expected {eta}. We'll let you know when they arrive.",
-  in_progress: 'Good news, {first}: repairs on your {vehicle} are underway.',
-  qc: "Hi {first}, repairs are done. We're doing a final check and road test on your {vehicle}.",
-  ready: "Your {vehicle} is ready for pickup! Total {total}. Hours: {hours}. Details: {link}",
-  picked_up: 'Thanks for choosing {shop}, {first}! How did we do? Reply with any feedback. Reply STOP to opt out.',
+  invited: "{shop}: check in your vehicle and add photos here: {link} Reply STOP to opt out",
+  checked_in: "{shop} has your {vehicle}. Track it here: {link} Reply STOP to opt out",
+  diagnosing: "Hi {first}, we're inspecting your {vehicle} now.",
+  approval: "Your {vehicle} estimate ({total}) is ready to approve: {link}",
+  parts: "Parts for your {vehicle} are ordered, due {eta}.",
+  in_progress: 'Repairs on your {vehicle} have started.',
+  qc: 'Repairs on your {vehicle} are done. Final check underway.',
+  ready: "Your {vehicle} is ready! Total {total}. Hours: {hours}. {link}",
+  picked_up: 'Thanks for choosing {shop}! How did we do? Reply STOP to opt out.',
 };
 const SHORT: Record<Stage, string> = {
-  invited: '{shop}: check in your vehicle here: {link} Reply STOP to opt out',
-  checked_in: '{shop} has your vehicle. Track it here: {link} Reply STOP to opt out',
-  diagnosing: 'Hi {first}, a technician is inspecting your vehicle now.',
-  approval: 'Your estimate ({total}) is ready to review and approve: {link}',
-  parts: 'Parts for your vehicle are on order, expected {eta}.',
-  in_progress: 'Good news: repairs on your vehicle are underway.',
-  qc: "Repairs are done. We're doing a final check and road test.",
-  ready: 'Your vehicle is ready for pickup! Total {total}. Details: {link}',
-  picked_up: 'Thanks for choosing {shop}! How did we do? Reply with any feedback. Reply STOP to opt out.',
+  invited: '{shop}: check in here: {link} Reply STOP to opt out',
+  checked_in: '{shop} has your vehicle: {link} Reply STOP to opt out',
+  diagnosing: "We're inspecting your vehicle now.",
+  approval: 'Your estimate ({total}) is ready to approve: {link}',
+  parts: 'Parts are ordered, due {eta}.',
+  in_progress: 'Repairs on your vehicle have started.',
+  qc: 'Repairs are done. Final check underway.',
+  ready: 'Your vehicle is ready! Total {total}. {link}',
+  picked_up: 'Thanks for choosing us! How did we do? Reply STOP to opt out.',
 };
 
 const MAX_PHOTO = 400_000; // a 640px JPEG data URL is ~60-120 KB

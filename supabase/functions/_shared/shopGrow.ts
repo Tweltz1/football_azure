@@ -55,26 +55,26 @@ export const langOf = (d: Pick<JobData, 'customer'>): Lang => (d.customer.lang =
 
 // Spanish texts are sent without the accents GSM texting lacks (á, í, ó, ú), so they stay one 160-character segment.
 export const TEMPLATES_ES = {
-  invited: 'Hola {first}, {shop} le invita a registrar su vehículo y subir fotos: {link} Responda STOP para salir',
-  checked_in: 'Hola {first}, {shop} ya tiene su {vehicle}. Sígalo y suba fotos: {link} Responda STOP para salir',
-  diagnosing: 'Hola {first}, un técnico está revisando su {vehicle} ahora. Pronto le enviaremos lo que encontremos.',
-  approval: 'Hola {first}, el presupuesto de su {vehicle} ({total}) está listo. Revíselo y apruébelo: {link}',
-  parts: 'Hola {first}, las piezas para su {vehicle} están pedidas y deben llegar {eta}. Le avisaremos cuando lleguen.',
-  in_progress: 'Buenas noticias, {first}: ya estamos reparando su {vehicle}.',
-  qc: 'Hola {first}, la reparación está terminada. Estamos haciendo la revisión final de su {vehicle}.',
-  ready: '¡Su {vehicle} está listo para recoger! Total {total}. Horario: {hours}. Detalles: {link}',
-  picked_up: '¡Gracias por elegir {shop}, {first}! ¿Cómo lo hicimos? Responda con sus comentarios. Responda STOP para salir.',
+  invited: '{shop}: registre su vehículo y suba fotos aquí: {link} Responda STOP para salir',
+  checked_in: '{shop} ya tiene su {vehicle}. Sígalo aquí: {link} Responda STOP para salir',
+  diagnosing: 'Hola {first}, estamos revisando su {vehicle} ahora.',
+  approval: 'El presupuesto de su {vehicle} ({total}) está listo para aprobar: {link}',
+  parts: 'Las piezas de su {vehicle} están pedidas, llegan {eta}.',
+  in_progress: 'Ya empezamos a reparar su {vehicle}.',
+  qc: 'La reparación de su {vehicle} está lista. Revisión final en curso.',
+  ready: '¡Su {vehicle} está listo! Total {total}. Horario: {hours}. {link}',
+  picked_up: '¡Gracias por elegir {shop}! ¿Cómo lo hicimos? Responda STOP para salir.',
 } as const;
 export const SHORT_ES = {
-  invited: '{shop}: registre su vehículo aquí: {link} Responda STOP para salir',
-  checked_in: '{shop} ya tiene su vehículo. Sígalo aquí: {link} Responda STOP para salir',
-  diagnosing: 'Hola {first}, un técnico está revisando su vehículo ahora.',
-  approval: 'Su presupuesto ({total}) está listo para revisar y aprobar: {link}',
-  parts: 'Las piezas para su vehículo están pedidas y deben llegar {eta}.',
-  in_progress: 'Buenas noticias: ya estamos reparando su vehículo.',
-  qc: 'La reparación está terminada. Estamos haciendo la revisión final.',
-  ready: '¡Su vehículo está listo para recoger! Total {total}. Detalles: {link}',
-  picked_up: '¡Gracias por elegir {shop}! ¿Cómo lo hicimos? Responda con sus comentarios. Responda STOP para salir.',
+  invited: '{shop}: regístrese aquí: {link} Responda STOP para salir',
+  checked_in: '{shop} ya tiene su vehículo: {link} Responda STOP para salir',
+  diagnosing: 'Estamos revisando su vehículo ahora.',
+  approval: 'Su presupuesto ({total}) está listo para aprobar: {link}',
+  parts: 'Las piezas están pedidas, llegan {eta}.',
+  in_progress: 'Ya empezamos a reparar su vehículo.',
+  qc: 'La reparación está lista. Revisión final en curso.',
+  ready: '¡Su vehículo está listo! Total {total}. {link}',
+  picked_up: '¡Gracias por elegirnos! ¿Cómo lo hicimos? Responda STOP para salir.',
 } as const;
 
 /** Words the server puts into its own texts, by language. */

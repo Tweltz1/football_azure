@@ -933,9 +933,9 @@ test('Spanish: stage texts, the customer page language and switching back', asyn
   const dan = w.as('owner-es');
   await dan('POST', 'shop/me', { name: 'Taller Ridgeline' });
   const job = (await dan('POST', 'shop/jobs', { ...checkIn, customer: { ...checkIn.customer, lang: 'es' } }))?.body as { id: string; link: string };
-  assert.match(w.texts.at(-1)!.body, /^Hola Maria, Taller Ridgeline ya tiene su 2018 Honda Civic/);
+  assert.match(w.texts.at(-1)!.body, /^Taller Ridgeline ya tiene su 2018 Honda Civic/);
   const preview = (await dan('POST', `shop/jobs/${job.id}/preview`, { stage: 'parts' }))?.body as { text: string };
-  assert.match(preview.text, /deben llegar pronto/);
+  assert.match(preview.text, /llegan pronto/);
   assert.equal(((await w.as(null)('GET', `shop/c/${job.link.split('?c=')[1]}`))?.body as { lang: string }).lang, 'es');
   await dan('POST', `shop/jobs/${job.id}/customer`, { name: 'Maria Delgado', phone: '(555) 013-6620', preference: 'sms', consent: true, lang: 'en' });
   assert.match(((await dan('POST', `shop/jobs/${job.id}/preview`, { stage: 'parts' }))?.body as { text: string }).text, /^Hi Maria/);
