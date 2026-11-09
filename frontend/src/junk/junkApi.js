@@ -3,10 +3,10 @@ import { SUPABASE_URL, supabase } from '../supabaseClient';
 // Junk App calls go to the site's API (/api/junk/*). Browsing works signed out; the rest sends the
 // sign-in token so the server knows who's posting.
 
-const API_BASE = process.env.REACT_APP_API_URL
+export const API_BASE = process.env.REACT_APP_API_URL
   || (SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/api` : 'http://localhost:54321/functions/v1/api');
 
-const token = async () => {
+export const token = async () => {
   try {
     const { data } = await supabase.auth.getSession();
     return data?.session?.access_token || null;
@@ -52,6 +52,13 @@ export const inbox = () => call('GET', 'inbox');
 export const getChat = (itemId, otherId) => call('GET', `chat/${encodeURIComponent(itemId)}/${encodeURIComponent(otherId)}`);
 export const sendMessage = (itemId, otherId, body) => call('POST', `chat/${encodeURIComponent(itemId)}/${encodeURIComponent(otherId)}`, { body });
 export const deleteAccount = () => call('DELETE', 'account');
+// "I'm on my way" claims (see trip.js).
+export const claimItem = (id, here) => call('POST', `items/${encodeURIComponent(id)}/claim`, { lat: here.lat, lng: here.lng });
+export const releaseClaim = (id) => call('POST', `items/${encodeURIComponent(id)}/release`, {});
+export const myClaim = () => call('GET', 'claim');
+export const pingClaim = (here) => call('POST', 'claim/ping', { lat: here.lat, lng: here.lng });
+export const cancelClaim = () => call('POST', 'claim/cancel', {});
+export const finishClaim = () => call('POST', 'claim/done', {});
 
 /** Signs out on this phone and stays in the Junk App (Hood League's sign-out goes to its own front page). */
 export const junkSignOut = async () => {

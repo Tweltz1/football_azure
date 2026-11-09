@@ -7,7 +7,11 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Choose photos of something you're giving away so neighbors can see it.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Curbsy shows free stuff near you and lists your items at your area. Others only see how far away an item is, never your address.</string>
+	<string>Curbsy shows free stuff near you and lists your items at your area. When you tap I'm on my way, it checks you're heading to the item so the claim stays yours. Others only see how far away you are, never where.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
   <key>CAPACITOR_DEBUG</key>

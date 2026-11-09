@@ -2,6 +2,25 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.49.4';
 import type { JunkItem, JunkMessage, JunkPhotos, JunkStore } from '../_shared/junk.ts';
+import type { JunkClaim } from '../_shared/junkClaims.ts';
+
+interface ClaimDb {
+  id: string; item_id: string; owner_id: string; claimer_id: string; claimer_name: string; status: string; reason: string;
+  start_km: number; best_km: number; best_at: string; last_km: number; last_ping_at: string; created_at: string;
+  deadline_at: string; arrived_at: string | null; ended_at: string | null;
+}
+const claimRow = (r: ClaimDb): JunkClaim => ({
+  id: r.id, itemId: r.item_id, ownerId: r.owner_id, claimerId: r.claimer_id, claimerName: r.claimer_name,
+  status: r.status as JunkClaim['status'], reason: r.reason, startKm: r.start_km, bestKm: r.best_km, bestAt: r.best_at,
+  lastKm: r.last_km, lastPingAt: r.last_ping_at, createdAt: r.created_at, deadlineAt: r.deadline_at,
+  arrivedAt: r.arrived_at, endedAt: r.ended_at,
+});
+const claimDb = (c: JunkClaim): ClaimDb => ({
+  id: c.id, item_id: c.itemId, owner_id: c.ownerId, claimer_id: c.claimerId, claimer_name: c.claimerName, status: c.status,
+  reason: c.reason, start_km: c.startKm, best_km: c.bestKm, best_at: c.bestAt, last_km: c.lastKm, last_ping_at: c.lastPingAt,
+  created_at: c.createdAt, deadline_at: c.deadlineAt, arrived_at: c.arrivedAt, ended_at: c.endedAt,
+});
+const OPEN = ['active', 'arrived'];
 
 interface ItemDb {
   id: string; owner_id: string; owner_name: string; title: string; description: string; category: string; tags: string[];
@@ -83,6 +102,38 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
     async markRead(userId, itemId, otherId, at) {
       must(await db.from('junk_messages').update({ read_at: at }).eq('to_id', userId).eq('item_id', itemId).eq('from_id', otherId).is('read_at', null));
     },
+    async insertClaim(c) {
+      const { error } = await db.from('junk_claims').insert(claimDb(c));
+      if (error && (error as { code?: string }).code === '23505') return false; // item or person already has an open claim
+      if (error) throw error;
+      return true;
+    },
+    async updateClaim(c) {
+      must(await db.from('junk_claims').update(claimDb(c)).eq('id', c.id));
+    },
+    async openClaimForItem(itemId) {
+      const data = must(await db.from('junk_claims').select('*').eq('item_id', itemId).in('status', OPEN).maybeSingle());
+      return data ? claimRow(data as ClaimDb) : null;
+    },
+    async openClaimsForItems(itemIds) {
+      if (!itemIds.length) return [];
+      const data = must(await db.from('junk_claims').select('*').in('item_id', itemIds).in('status', OPEN));
+      return ((data ?? []) as ClaimDb[]).map(claimRow);
+    },
+    async latestClaimForUser(userId) {
+      const data = must(await db.from('junk_claims').select('*').eq('claimer_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle());
+      return data ? claimRow(data as ClaimDb) : null;
+    },
+    async countClaimsSince(userId, since) {
+      const { count, error } = await db.from('junk_claims').select('id', { count: 'exact', head: true }).eq('claimer_id', userId).gte('created_at', since);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    async lastEndedClaim(userId, itemId) {
+      const data = must(await db.from('junk_claims').select('*').eq('claimer_id', userId).eq('item_id', itemId)
+        .not('ended_at', 'is', null).order('ended_at', { ascending: false }).limit(1).maybeSingle());
+      return data ? claimRow(data as ClaimDb) : null;
+    },
     async countUploadsSince(userId, since) {
       const { count, error } = await db.from('junk_uploads').select('path', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since);
       if (error) throw error;
@@ -100,6 +151,7 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_reports').delete().eq('reporter_id', userId));
       must(await db.from('junk_blocks').delete().or(`user_id.eq.${userId},blocked_id.eq.${userId}`));
       must(await db.from('junk_uploads').delete().eq('user_id', userId));
+      must(await db.from('junk_claims').delete().or(`claimer_id.eq.${userId},owner_id.eq.${userId}`));
       return paths;
     },
   };

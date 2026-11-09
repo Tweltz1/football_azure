@@ -640,3 +640,72 @@ body.jk-body::before { background: #f5f3ee; }
 @media (prefers-color-scheme: dark) {
   body.jk-body, body.jk-body::before { background: #11130f; }
 }
+
+/* ---------- "I'm on my way" trips ---------- */
+
+.jk-trip-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--jk-surface);
+  box-shadow: var(--jk-shadow);
+  border-left: 4px solid var(--jk-warn);
+}
+.jk-trip-card > :not(.jk-trip-dot) { grid-column: 2; }
+.jk-trip-card .jk-trip-dot { grid-row: 1 / span 2; }
+.jk-trip-card.is-mine { border-left-color: var(--jk-accent); }
+.jk-trip-card.is-ended { grid-template-columns: 1fr; border-left-color: var(--jk-ink-3); }
+.jk-trip-card.is-ended > * { grid-column: 1; }
+.jk-trip-card strong { font-weight: 750; }
+.jk-trip-card span { color: var(--jk-ink-2); font-size: 14px; }
+.jk-trip-card small { color: var(--jk-ink-3); font-size: 12px; margin-top: 4px; }
+.jk-trip-dot {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--jk-warn-soft);
+  color: var(--jk-warn);
+}
+.jk-trip-card.is-mine .jk-trip-dot, .jk-trip-banner .jk-trip-dot { background: var(--jk-accent-soft); color: var(--jk-accent); }
+.jk-link-btn {
+  justify-self: start;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--jk-danger);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.jk-trip-banner {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--jk-safe-bottom) + 74px);
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 736px;
+  margin: 0 auto;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--jk-surface);
+  box-shadow: 0 8px 24px rgba(27, 29, 24, 0.18);
+  color: var(--jk-ink);
+  text-decoration: none;
+}
+.jk-trip-banner.is-ended { border-left: 4px solid var(--jk-ink-3); }
+.jk-trip-text { display: grid; gap: 1px; min-width: 0; flex: 1; }
+.jk-trip-text strong { font-weight: 750; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jk-trip-text span { color: var(--jk-ink-2); font-size: 13px; }
+.jk-app.has-trip .jk-page { padding-bottom: calc(var(--jk-safe-bottom) + 160px); }
