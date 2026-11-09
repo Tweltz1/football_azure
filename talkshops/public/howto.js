@@ -105,6 +105,19 @@
         ${p.note ? `<small>${esc(p.note)}</small>` : ""}</li>`).join("")}</ul></div>`;
     }
 
+    // CarCareKiosk (link only; their terms don't allow reusing their content). Its page for a car is
+    // /videos/<Make>/<Model>/<Year>, e.g. /videos/Ford/F-150/2017; without a full vehicle, a site search.
+    const UPPER = new Set(["bmw", "gmc", "rav4", "mdx", "rdx", "tlx", "ilx", "tsx", "srx", "cts", "ats", "xt5", "es", "is", "gs", "rx", "nx", "gx", "lx", "fj", "gti", "suv"]);
+    const cap = (w) => w.split(/(\s+|-)/).map((p) => UPPER.has(p.toLowerCase()) ? p.toUpperCase() : p.length > 3 || /^[a-z]+$/i.test(p) && p.length > 2 ? p.charAt(0).toUpperCase() + p.slice(1) : p.toUpperCase()).join("");
+    function videoLink(t) {
+      const v = t.v || {};
+      if (v.make && v.model && /^\d{4}$/.test(v.year || "")) {
+        const seg = (x) => encodeURIComponent(cap(String(x).trim()).replace(/\s+/g, "_"));
+        return `https://www.carcarekiosk.com/videos/${seg(v.make)}/${seg(v.model)}/${v.year}`;
+      }
+      return search(`site:carcarekiosk.com ${t.vehicle} ${t.q}`.trim());
+    }
+
     function turn(t, i) {
       const head = `<div class="howto-q"><b>${esc(t.q)}</b>${t.vehicle ? `<span class="pill">${esc(t.vehicle)}</span>` : ""}</div>`;
       if (t.loading) return `<article class="howto-card is-loading">${head}<p class="muted">Looking it up. Longer jobs can take up to half a minute…</p></article>`;
@@ -119,7 +132,7 @@
         ${r.steps.length ? `<div class="howto-block"><h4>Steps</h4><ol class="howto-steps">${r.steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>` : ""}
         <div class="howto-foot">
           ${r.ideas.length ? `<div class="howto-quick">${r.ideas.map((q) => `<button type="button" class="howto-chip" data-howto-ask="${esc(q)}">${esc(q)}</button>`).join("")}</div>` : ""}
-          <span class="howto-links"><a class="linkbtn" href="${esc(search(`site:carcarekiosk.com ${t.vehicle} ${t.q}`.trim()))}" target="_blank" rel="noopener">Find a video</a>
+          <span class="howto-links"><a class="linkbtn" href="${esc(videoLink(t))}" target="_blank" rel="noopener">${t.v && t.v.make && t.v.model && /^\d{4}$/.test(t.v.year) ? "Videos for this car" : "Find a video"}</a>
           <button type="button" class="linkbtn" data-howto-copy="${i}">Copy</button></span>
         </div>
         ${feedback(r, i)}
@@ -149,7 +162,7 @@
       const vehicle = { ...st.vehicle }, vl = label(vehicle);
       // Earlier answers about the same vehicle give follow-ups their context.
       const history = st.turns.filter((t) => t.res && t.vehicle === vl).slice(-3).map((t) => ({ q: t.q, a: [t.res.answer, ...t.res.steps].join(" ").slice(0, 900) }));
-      const t = { q, vehicle: vl, loading: true };
+      const t = { q, vehicle: vl, v: vehicle, loading: true };
       st.turns.push(t); st.busy = true;
       const qi = document.getElementById("howtoQ"); if (qi) qi.value = "";
       if (!document.getElementById("howtoThread")) render(); else paint();
