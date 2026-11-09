@@ -11,7 +11,7 @@ const CATEGORY_WORDS = {
     'oven', 'stove', 'heater', 'fan', 'air_conditioner', 'vacuum', 'humidifier', 'dehumidifier'],
   electronics: ['television', 'tv', 'computer', 'laptop', 'monitor', 'keyboard', 'printer', 'speaker', 'speakers',
     'phone', 'tablet', 'camera', 'console', 'game_console', 'stereo', 'radio', 'headphones', 'electronics', 'router',
-    'projector', 'cable', 'watch', 'wristwatch', 'smartwatch', 'cellphone'],
+    'projector', 'cable', 'watch', 'wristwatch', 'smartwatch', 'cellphone', 'battery', 'batteries', 'charger', 'flashlight'],
   home: ['lamp', 'light', 'chandelier', 'mirror', 'rug', 'carpet', 'curtain', 'blanket', 'vase', 'frame', 'picture_frame',
     'clock', 'kitchen', 'cookware', 'pot', 'pan', 'dish', 'dishware', 'plate', 'bowl', 'cup', 'mug', 'glass', 'utensil',
     'basket', 'box', 'storage', 'bin', 'trash', 'garbage', 'wastebasket', 'recycling', 'container', 'candle', 'decoration', 'artwork', 'painting', 'blender', 'toaster',
@@ -24,7 +24,8 @@ const CATEGORY_WORDS = {
     'snowboard', 'kayak', 'canoe', 'treadmill', 'weights', 'dumbbell', 'exercise', 'tent', 'camping', 'fishing',
     'surfboard', 'helmet', 'scooter', 'sled', 'racket', 'tennis'],
   tools: ['tool', 'tools', 'hammer', 'saw', 'drill', 'wrench', 'screwdriver', 'ladder', 'toolbox', 'power_tool',
-    'workbench', 'compressor', 'generator'],
+    'workbench', 'compressor', 'generator', 'tape_measure', 'measure', 'measuring', 'glue', 'adhesive', 'tape', 'pliers',
+    'clamp', 'level', 'nail', 'nails', 'screw', 'screws', 'bolt', 'sandpaper', 'caulk', 'toolkit'],
   garden: ['lawn_mower', 'mower', 'plant', 'flowerpot', 'pot_plant', 'planter', 'wheelbarrow', 'hose', 'rake', 'shovel',
     'grill', 'barbecue', 'patio', 'garden', 'firewood', 'birdhouse'],
   building: ['lumber', 'wood', 'plank', 'brick', 'bricks', 'tile', 'tiles', 'door', 'window', 'pipe', 'paint', 'fence',
@@ -177,27 +178,80 @@ const plugin = () => (typeof window !== 'undefined' && window.Capacitor?.Plugins
 /** True in iPhone app builds that have Apple detection. */
 export const hasAppleDetection = () => !!plugin();
 
+// One of a kind ("Bottle", not "Bottles") for a single detected thing.
+const ONE = { Bottles: 'Bottle', Cups: 'Cup', Bowls: 'Bowl', 'Wine glasses': 'Wine glass', Books: 'Book', Ties: 'Tie' };
+
+/** Intersection over union of two top-left boxes. */
+const iou = (a, b) => {
+  const x1 = Math.max(a.x, b.x), y1 = Math.max(a.y, b.y);
+  const x2 = Math.min(a.x + a.w, b.x + b.w), y2 = Math.min(a.y + a.h, b.y + b.h);
+  const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+  return inter ? inter / (a.w * a.h + b.w * b.h - inter) : 0;
+};
+const isBox = (b) => b && [b.x, b.y, b.w, b.h].every(Number.isFinite) && b.w > 0 && b.h > 0;
+
+/** A name for one region from Apple's labels for just that part of the photo, even a broad one ("Tool"). */
+function regionThing(region) {
+  const named = fromAppleLabels(region.labels);
+  if (named && named.title && !named.person) return { title: named.title, category: named.category, confidence: named.confidence };
+  const top = (Array.isArray(region.labels) ? region.labels : [])
+    .filter((l) => l && typeof l.label === 'string' && l.confidence >= 0.3)
+    .map((l) => l.label.toLowerCase())
+    .find((l) => !SKIP.has(l) && !NOT_AN_ITEM.has(l) && !['object', 'household_items', 'structure'].includes(l));
+  if (!top) return null;
+  return { title: human(top), category: (named && named.category) || categoryOf(top) || 'other', confidence: 0.3 };
+}
+
+/**
+ * Every separate thing in the photo, one entry each: [{ title, category, box, confidence }] (box 0-1, top left).
+ * From the object detector (80 known kinds) and Apple's own "where are the things" regions, each named from
+ * its own part of the photo. Apple's name wins where both found the same thing.
+ */
+export function thingsInPhoto(res) {
+  const out = [];
+  const add = (t) => {
+    if (!t || !t.title || !isBox(t.box)) return;
+    const same = out.findIndex((o) => iou(o.box, t.box) > 0.5);
+    if (same >= 0) { if (t.fromApple && !out[same].fromApple) out[same] = t; return; }
+    out.push(t);
+  };
+  for (const o of Array.isArray(res && res.objects) ? res.objects : []) {
+    if (!o || typeof o.label !== 'string' || !(o.confidence >= OBJECT_MIN)) continue;
+    const known = OBJECTS[o.label.toLowerCase().replace(/_/g, ' ')] || OBJECTS[o.label.toLowerCase()];
+    if (known) add({ title: ONE[known[0]] || known[0], category: known[1], box: o.box, confidence: o.confidence });
+  }
+  for (const r of Array.isArray(res && res.regions) ? res.regions : []) {
+    const named = r && regionThing(r);
+    if (named) add({ ...named, box: r.box, fromApple: true });
+  }
+  // Left to right, top to bottom, the way people read the photo.
+  return out
+    .sort((a, b) => (Math.abs(a.box.y - b.box.y) > 0.25 ? a.box.y - b.box.y : a.box.x - b.box.x))
+    .slice(0, 12)
+    .map(({ fromApple, ...t }) => t);
+}
+
 /** Asks Apple Vision on the phone what's in the photo (a JPEG data URL). Null when it can't tell. */
 export async function appleDetect(jpegDataUrl) {
   const ItemVision = plugin();
   if (!ItemVision) return null;
   try {
     const res = await ItemVision.classify({ image: jpegDataUrl });
-    const spotted = spottedItems(res && res.objects);
+    const things = thingsInPhoto(res);
     const whole = fromAppleLabels(res && res.labels);
-    if (!spotted.length) return whole;
-    // The detector is surer about its own objects than the whole-photo label, so its best item leads.
-    const top = spotted[0];
-    return {
-      ...(whole || { tags: [], description: '', person: false }),
-      title: spottedTitle(top),
-      category: top.category,
-      tags: [...new Set([...spotted.map((x) => x.title.toLowerCase()), ...((whole && whole.tags) || [])])].slice(0, 10),
-      confidence: top.confidence,
-      confident: true,
-      person: false,
-      spotted,
-    };
+    if (things.length >= 2) {
+      // Several things: no one name for the whole photo (the post is named after what's in it).
+      return {
+        title: '', category: things[0].category, description: '', person: false, confidence: things[0].confidence, confident: true,
+        tags: [...new Set([...things.map((x) => x.title.toLowerCase()), ...((whole && whole.tags) || [])])].slice(0, 10),
+        things,
+      };
+    }
+    if (things.length === 1 && (!whole || !whole.title || whole.confidence < things[0].confidence)) {
+      const t = things[0];
+      return { ...(whole || { tags: [], description: '', person: false }), title: t.title, category: t.category, confidence: t.confidence, confident: t.confidence >= CONFIDENT, person: false };
+    }
+    return whole;
   } catch (error) {
     return null;
   }

@@ -762,3 +762,6 @@ body.jk-body::before { background: #f5f3ee; }
 .jk-app .jk-piece-pick:checked::after, .jk-app .jk-toggle input:checked::after {
   content: ''; width: 6px; height: 11px; margin-top: -2px; border: solid var(--jk-accent-ink); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
 }
+.jk-piece-thumb.is-empty { display: grid; place-items: center; font-size: 22px; }
+.jk-piece-thumb.is-crop { position: relative; overflow: hidden; }
+.jk-piece-thumb.is-crop img { position: absolute; max-width: none; display: block; }
