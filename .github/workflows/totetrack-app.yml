@@ -15,6 +15,7 @@ on:
   push:
     paths:
       - 'totetrack-app/**'
+      - '!totetrack-app/tools/detector/**'
       - '.github/workflows/totetrack-app.yml'
   workflow_dispatch:
     inputs:
