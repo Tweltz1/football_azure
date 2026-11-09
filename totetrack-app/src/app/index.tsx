@@ -23,7 +23,7 @@ import { useAuth } from "../lib/auth";
 import { itemCount, timeAgo, useTotes } from "../lib/store";
 import { radius, useTheme } from "../lib/theme";
 import { Tote } from "../lib/types";
-import { reminderCount, reminders } from "../lib/extras";
+import { placeOf, reminderCount, reminders } from "../lib/extras";
 import { shareInventoryReport } from "../lib/report";
 
 type Row = { tote: Tote; matches: string[]; header?: string };
@@ -52,7 +52,7 @@ export default function Home() {
   const rows = useMemo<Row[]>(() => {
     const sorted = [...totes].sort((a, b) => b.updatedAt - a.updatedAt);
     if (byPlace) {
-      const place = (x: Tote) => x.location.trim() || "No place set";
+      const place = (x: Tote) => placeOf(x.location) || "No place set";
       sorted.sort(
         (a, b) =>
           Number(!a.location.trim()) - Number(!b.location.trim()) ||
@@ -79,7 +79,7 @@ export default function Home() {
     if (!byPlace) return filtered;
     let last = "";
     return filtered.map((r) => {
-      const p = r.tote.location.trim() || "No place set";
+      const p = placeOf(r.tote.location) || "No place set";
       const header = p.toLowerCase() !== last ? p : undefined;
       last = p.toLowerCase();
       return { ...r, header };
@@ -87,7 +87,7 @@ export default function Home() {
   }, [totes, query, byPlace]);
 
   const totalItems = totes.reduce((n, x) => n + itemCount(x), 0);
-  const locations = new Set(totes.map((x) => x.location.trim()).filter(Boolean))
+  const locations = new Set(totes.map((x) => placeOf(x.location).toLowerCase()).filter(Boolean))
     .size;
 
   return (

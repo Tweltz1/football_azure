@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/ui';
 import { parseScan, presetQuery } from '../lib/qr';
 import { useTotes } from '../lib/store';
+import { ToteNative } from '../../modules/tote-native';
 
 const FRAME = 260;
 
@@ -86,6 +87,17 @@ export default function Scan() {
     router.replace(getTote(id) ? `/tote/${id}` : `/tote/edit?claim=${id}${presetQuery(preset)}`);
   };
 
+  const readNfc = async () => {
+    try {
+      const url = await ToteNative?.readNfc();
+      if (!url) return;
+      onScanned({ data: url } as BarcodeScanningResult);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : String(e));
+      setTimeout(() => setMessage(null), 2600);
+    }
+  };
+
   if (!permission) return <View style={styles.black} />;
 
   if (!permission.granted) {
@@ -153,13 +165,16 @@ export default function Scan() {
       </View>
       <View style={[styles.topBar, { top: insets.top + 8 }]}>
         <RoundButton icon="close" label="Close" onPress={() => router.back()} />
-        <RoundButton icon={torch ? 'flashlight' : 'flashlight-outline'} label="Flashlight" onPress={() => setTorch((v) => !v)} />
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          {ToteNative?.nfcAvailable() && !find && !unloading ? <RoundButton icon="radio-outline" label="Tap an NFC sticker" onPress={readNfc} /> : null}
+          <RoundButton icon={torch ? 'flashlight' : 'flashlight-outline'} label="Flashlight" onPress={() => setTorch((v) => !v)} />
+        </View>
       </View>
     </View>
   );
 }
 
-function RoundButton({ icon, label, onPress }: { icon: 'close' | 'flashlight' | 'flashlight-outline'; label: string; onPress: () => void }) {
+function RoundButton({ icon, label, onPress }: { icon: 'close' | 'flashlight' | 'flashlight-outline' | 'radio-outline'; label: string; onPress: () => void }) {
   return (
     <Pressable accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.round, { opacity: pressed ? 0.6 : 1 }]}>
       <Ionicons name={icon} size={24} color="#fff" />

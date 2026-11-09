@@ -70,3 +70,20 @@ else:
         },
     )
     print("Sign in with Apple: turned on")
+
+# NFC tag reading must be on for the App ID before a build with the NFC entitlement can be signed.
+caps = request(f"{BASE}/{bundle_id}/bundleIdCapabilities").get("data", [])
+if any(c["attributes"].get("capabilityType") == "NFC_TAG_READING" for c in caps):
+    print("NFC tag reading: already on")
+else:
+    request(
+        "https://api.appstoreconnect.apple.com/v1/bundleIdCapabilities",
+        {
+            "data": {
+                "type": "bundleIdCapabilities",
+                "attributes": {"capabilityType": "NFC_TAG_READING"},
+                "relationships": {"bundleId": {"data": {"type": "bundleIds", "id": bundle_id}}},
+            }
+        },
+    )
+    print("NFC tag reading: turned on")

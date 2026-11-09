@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../lib/auth';
 import { ListsProvider } from '../lib/lists';
+import { NativeBridge } from '../lib/native';
 import { ToteProvider } from '../lib/store';
 import { SyncProvider } from '../lib/sync';
 import { useTheme } from '../lib/theme';
@@ -14,6 +15,7 @@ export default function RootLayout() {
     <SyncProvider>
     <ListsProvider>
       <StatusBar style="auto" />
+      <NativeBridge />
       <Stack
         screenOptions={{
           headerTintColor: t.primary,
@@ -36,6 +38,7 @@ export default function RootLayout() {
         <Stack.Screen name="lists/index" options={{ title: 'Packing lists' }} />
         <Stack.Screen name="lists/[id]" options={{ title: '' }} />
         <Stack.Screen name="moving" options={{ title: 'Moving' }} />
+        <Stack.Screen name="tote/snap" options={{ presentation: 'modal', title: 'Snap to add' }} />
       </Stack>
     </ListsProvider>
     </SyncProvider>

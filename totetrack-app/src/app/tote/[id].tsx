@@ -12,6 +12,7 @@ import { radius, useTheme } from '../../lib/theme';
 import { Item } from '../../lib/types';
 import { addMonths, daysUntil, daysUntilSeason, expiryLabel, money, parseDate, parseMoney, toteValue } from '../../lib/extras';
 import { useLists } from '../../lib/lists';
+import { ToteNative } from '../../../modules/tote-native';
 
 export default function ToteDetail() {
   const { id, name: presetName, loc, c } = useLocalSearchParams<{ id: string; name?: string; loc?: string; c?: string }>();
@@ -252,7 +253,18 @@ export default function ToteDetail() {
           {tote.notes ? <Text style={[styles.notes, { color: t.text, borderColor: t.border }]}>{tote.notes}</Text> : null}
         </Card>
 
-        <SectionTitle>What’s inside</SectionTitle>
+        <SectionTitle
+          right={
+            ToteNative ? (
+              <Pressable onPress={() => router.push(`/tote/snap?id=${tote.id}`)} hitSlop={8} style={styles.snap}>
+                <Ionicons name="camera" size={16} color={t.primary} />
+                <Text style={{ color: t.primary, fontWeight: '700', fontSize: 14 }}>Snap to add</Text>
+              </Pressable>
+            ) : null
+          }
+        >
+          What’s inside
+        </SectionTitle>
         <View style={[styles.addRow, { backgroundColor: t.card, borderColor: t.primary + '55' }]}>
           <Ionicons name="add-circle" size={24} color={t.primary} />
           <TextInput
@@ -269,11 +281,29 @@ export default function ToteDetail() {
             <Pressable onPress={add} style={[styles.addBtn, { backgroundColor: t.primary }]}>
               <Text style={{ color: t.onPrimary, fontWeight: '700' }}>Add</Text>
             </Pressable>
+          ) : ToteNative ? (
+            <Pressable
+              accessibilityLabel="Snap a photo to add items"
+              onPress={() => router.push(`/tote/snap?id=${tote.id}`)}
+              style={[styles.addBtn, { backgroundColor: t.primary, flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+            >
+              <Ionicons name="camera" size={18} color={t.onPrimary} />
+              <Text style={{ color: t.onPrimary, fontWeight: '700' }}>Snap</Text>
+            </Pressable>
           ) : null}
         </View>
 
         {tote.items.length === 0 ? (
-          <Text style={[styles.emptyItems, { color: t.textMuted }]}>No items yet. Type above and hit return to add things quickly.</Text>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={[styles.emptyItems, { color: t.textMuted }]}>
+              {ToteNative
+                ? 'No items yet. Type above, or tap Snap to take a photo of the open tote and pick from what your iPhone sees.'
+                : 'No items yet. Type above and hit return to add things quickly.'}
+            </Text>
+            {ToteNative ? (
+              <Button title="Snap a photo of what's inside" icon="camera" variant="secondary" onPress={() => router.push(`/tote/snap?id=${tote.id}`)} style={{ marginTop: 14, alignSelf: 'stretch' }} />
+            ) : null}
+          </View>
         ) : (
           <Card style={{ padding: 0, marginTop: 12 }}>
             {tote.items.map((item, idx) => (
@@ -342,6 +372,22 @@ export default function ToteDetail() {
           <View style={{ flex: 1, gap: 10 }}>
             <Text style={[styles.code, { color: t.textMuted }]}>{shortCode(tote.id)}</Text>
             <Button title="Print label" icon="print-outline" onPress={() => router.push(`/print?ids=${tote.id}`)} style={{ height: 44 }} />
+            {ToteNative?.nfcAvailable() ? (
+              <Button
+                title="Write NFC sticker"
+                icon="radio-outline"
+                variant="secondary"
+                onPress={async () => {
+                  try {
+                    const ok = await ToteNative!.writeNfc(qrPayload(tote.id));
+                    if (ok) tap();
+                  } catch (e) {
+                    Alert.alert("Couldn't write the sticker", e instanceof Error ? e.message : String(e));
+                  }
+                }}
+                style={{ height: 44 }}
+              />
+            ) : null}
           </View>
         </Card>
 
@@ -362,6 +408,7 @@ function Tag({ icon, text, color }: { icon: React.ComponentProps<typeof Ionicons
 
 const styles = StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  snap: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
   hero: { height: 10 },
   photo: { width: '100%', height: 200 },
