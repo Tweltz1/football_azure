@@ -144,3 +144,22 @@ export function timeSince(ts: number): string {
   if (d < 60) return `${Math.floor(d / 7)} weeks`;
   return `${Math.floor(d / 30)} months`;
 }
+
+/** Starter places offered before you've made your own. */
+export const PLACE_PRESETS = ['Home', 'Basement', 'Garage', 'Attic', 'Storage unit', 'Closet', 'Shed', 'Office'];
+
+/** A tote's location is "Place, spot" (e.g. "Basement, shelf 2"). The place is the part before the first comma. */
+export function placeOf(location: string): string {
+  return location.split(',')[0].trim();
+}
+
+export function spotOf(location: string): string {
+  const i = location.indexOf(',');
+  return i < 0 ? '' : location.slice(i + 1).trim();
+}
+
+export function joinLocation(place: string, spot: string): string {
+  const p = place.trim();
+  const s = spot.trim();
+  return p && s ? `${p}, ${s}` : p || s;
+}

@@ -9,7 +9,7 @@ import { deletePhoto, photoUri, savePhoto } from '../../lib/photos';
 import { shortCode } from '../../lib/qr';
 import { useTotes } from '../../lib/store';
 import { radius, TOTE_COLORS, TOTE_ICONS, useTheme } from '../../lib/theme';
-import { SEASONS } from '../../lib/extras';
+import { joinLocation, PLACE_PRESETS, placeOf, SEASONS, spotOf } from '../../lib/extras';
 
 export default function EditTote() {
   const { id, claim, name: presetName, loc, c } = useLocalSearchParams<{ id?: string; claim?: string; name?: string; loc?: string; c?: string }>();
@@ -18,7 +18,9 @@ export default function EditTote() {
   const existing = id ? store.getTote(id) : undefined;
 
   const [name, setName] = useState(existing?.name ?? presetName ?? '');
-  const [location, setLocation] = useState(existing?.location ?? loc ?? '');
+  const [place, setPlace] = useState(placeOf(existing?.location ?? loc ?? ''));
+  const [spot, setSpot] = useState(spotOf(existing?.location ?? loc ?? ''));
+  const location = joinLocation(place, spot);
   const [color, setColor] = useState(existing?.color ?? (c && /^[0-9a-f]{6}$/i.test(c) ? `#${c}` : TOTE_COLORS[store.totes.length % TOTE_COLORS.length]));
   const [icon, setIcon] = useState<string>(existing?.icon ?? 'cube');
   const [notes, setNotes] = useState(existing?.notes ?? '');
@@ -26,13 +28,15 @@ export default function EditTote() {
   const [photo, setPhoto] = useState<string | undefined>(existing?.photo);
   const [busy, setBusy] = useState(false);
 
-  const recentLocations = useMemo(() => {
-    const seen = new Set<string>();
+  // Your own places first (most recently used), then starter places you haven't used yet.
+  const places = useMemo(() => {
+    const seen = new Map<string, string>();
     for (const x of [...store.totes].sort((a, b) => b.updatedAt - a.updatedAt)) {
-      const l = x.location.trim();
-      if (l) seen.add(l);
+      const p = placeOf(x.location);
+      if (p && !seen.has(p.toLowerCase())) seen.set(p.toLowerCase(), p);
     }
-    return [...seen].slice(0, 8);
+    for (const p of PLACE_PRESETS) if (!seen.has(p.toLowerCase())) seen.set(p.toLowerCase(), p);
+    return [...seen.values()];
   }, [store.totes]);
 
   const pickPhoto = async (camera: boolean) => {
@@ -131,31 +135,43 @@ export default function EditTote() {
           />
         </Field>
 
-        <Field label="Where it's stored">
+        <Field label="Place">
+          <View style={styles.wrap}>
+            {places.map((p) => {
+              const on = p.toLowerCase() === place.trim().toLowerCase();
+              return (
+                <Pressable
+                  key={p}
+                  onPress={() => {
+                    tap();
+                    setPlace(on ? '' : p);
+                  }}
+                  style={[styles.chip, { backgroundColor: on ? t.primary : t.cardAlt }]}
+                >
+                  <Text style={{ color: on ? t.onPrimary : t.text, fontWeight: '600', fontSize: 14 }}>{p}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <TextInput
-            value={location}
-            onChangeText={setLocation}
-            placeholder="e.g. Garage, top shelf"
+            value={place}
+            onChangeText={(v) => setPlace(v.replace(/,/g, ''))}
+            placeholder="Or type a new place (e.g. Mom's house)"
+            placeholderTextColor={t.textMuted}
+            autoCapitalize="words"
+            style={[styles.input, { backgroundColor: t.card, color: t.text, borderColor: t.border, marginTop: 10 }]}
+          />
+        </Field>
+
+        <Field label="Spot (optional)">
+          <TextInput
+            value={spot}
+            onChangeText={setSpot}
+            placeholder="e.g. Shelf 2, unit #14, under the stairs"
             placeholderTextColor={t.textMuted}
             autoCapitalize="sentences"
             style={[styles.input, { backgroundColor: t.card, color: t.text, borderColor: t.border }]}
           />
-          {recentLocations.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 10 }}>
-              {recentLocations.map((l) => (
-                <Pressable
-                  key={l}
-                  onPress={() => {
-                    tap();
-                    setLocation(l);
-                  }}
-                  style={[styles.chip, { backgroundColor: l === location ? t.primary : t.cardAlt }]}
-                >
-                  <Text style={{ color: l === location ? t.onPrimary : t.text, fontWeight: '600', fontSize: 14 }}>{l}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          )}
         </Field>
 
         <SectionTitle>Color</SectionTitle>
