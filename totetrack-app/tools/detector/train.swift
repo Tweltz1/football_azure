@@ -19,13 +19,15 @@ let test = MLObjectDetector.DataSource.directoryWithImagesAndJsonAnnotation(at: 
 let parameters = MLObjectDetector.ModelParameters(
     validation: .split(strategy: .automatic),
     batchSize: 32,
-    maximumIterations: iterations,
+    maxIterations: iterations,
     algorithm: .transferLearning(.objectPrint(revision: 1))
 )
 
 let started = Date()
 print("Training for up to \(iterations) iterations…")
-let detector = try MLObjectDetector(trainingData: train, parameters: parameters)
+// prepare_lvis.py writes pixel boxes, measured from the top left, given by their centers.
+let annotationType = MLObjectDetector.AnnotationType.boundingBox(units: .pixel, origin: .topLeft, anchor: .center)
+let detector = try MLObjectDetector(trainingData: train, parameters: parameters, annotationType: annotationType)
 print(String(format: "Trained in %.0f minutes", Date().timeIntervalSince(started) / 60))
 print("Training metrics: \(detector.trainingMetrics)")
 print("Validation metrics: \(detector.validationMetrics)")

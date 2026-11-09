@@ -26,7 +26,9 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 MAX_SIDE = 512  # images are shrunk to this; plenty for a phone photo of a tote and much faster to train
 MIN_BOX = 0.04  # a box must be at least 4% of the image's width and height to count
-MIN_IMAGES = 25  # a label needs this many images or it's dropped
+MIN_IMAGES = 15  # a label needs this many images or it's dropped
+# LVIS categories whose synonyms collide with ours ("cap" is also a bottle cap).
+EXCLUDE = {"bottle_cap"}
 
 
 def norm(s: str) -> str:
@@ -68,6 +70,8 @@ def main():
     cat_label = {}
     with json_member(args.lvis_zip) as f:
         for c in ijson.items(f, "categories.item"):
+            if c["name"] in EXCLUDE:
+                continue
             names = [c["name"], *c.get("synonyms", [])]
             for n in names:
                 label = wanted.get(norm(n))

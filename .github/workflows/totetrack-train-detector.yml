@@ -38,8 +38,10 @@ jobs:
         run: |
           xcodebuild -version
           sysctl -n machdep.cpu.brand_string hw.ncpu hw.memsize
-          IFACE=$(ls "$(xcrun --sdk macosx --show-sdk-path)"/System/Library/Frameworks/CreateML.framework/Modules/CreateML.swiftmodule/*.swiftinterface | head -1)
-          grep -n -E "MLObjectDetector|objectPrint|maximumIterations|ModelAlgorithmType|FeatureExtractorType" "$IFACE" | head -80 || true
+          SDK="$(xcrun --sdk macosx --show-sdk-path)"
+          grep -rh -A3 -E "MLObjectDetector|AnnotationType|BoundingBox" "$SDK"/System/Library/Frameworks/CreateML.framework/Modules/ | grep -E "init\(|func |case |enum " | sort -u | head -80 || true
+          # Fails in a minute instead of after the dataset download if train.swift doesn't compile.
+          xcrun swiftc -typecheck train.swift
 
       - uses: actions/setup-python@v5
         with:
