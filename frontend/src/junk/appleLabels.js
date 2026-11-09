@@ -11,10 +11,10 @@ const CATEGORY_WORDS = {
     'oven', 'stove', 'heater', 'fan', 'air_conditioner', 'vacuum', 'humidifier', 'dehumidifier'],
   electronics: ['television', 'tv', 'computer', 'laptop', 'monitor', 'keyboard', 'printer', 'speaker', 'speakers',
     'phone', 'tablet', 'camera', 'console', 'game_console', 'stereo', 'radio', 'headphones', 'electronics', 'router',
-    'projector', 'cable'],
+    'projector', 'cable', 'watch', 'wristwatch', 'smartwatch', 'cellphone'],
   home: ['lamp', 'light', 'chandelier', 'mirror', 'rug', 'carpet', 'curtain', 'blanket', 'vase', 'frame', 'picture_frame',
     'clock', 'kitchen', 'cookware', 'pot', 'pan', 'dish', 'dishware', 'plate', 'bowl', 'cup', 'mug', 'glass', 'utensil',
-    'basket', 'box', 'storage', 'bin', 'container', 'candle', 'decoration', 'artwork', 'painting', 'blender', 'toaster',
+    'basket', 'box', 'storage', 'bin', 'trash', 'garbage', 'wastebasket', 'recycling', 'container', 'candle', 'decoration', 'artwork', 'painting', 'blender', 'toaster',
     'kettle', 'coffee'],
   kids: ['crib', 'stroller', 'pram', 'car_seat', 'high_chair', 'baby', 'diaper', 'playpen', 'bassinet'],
   clothing: ['clothing', 'clothes', 'shirt', 'jacket', 'coat', 'dress', 'pants', 'jeans', 'shoe', 'shoes', 'boot', 'boots',
@@ -39,7 +39,7 @@ const SKIP = new Set(['outdoor', 'indoor', 'sky', 'grass', 'tree', 'trees', 'roa
   'person', 'adult', 'child', 'baby_face', 'face', 'hand', 'animal', 'dog', 'cat', 'pet', 'vehicle', 'car', 'land',
   'plant_other', 'foliage', 'yard', 'lawn', 'material', 'textile', 'wood_processed', 'wood_natural', 'raw_glass',
   'raw_metal', 'metal', 'plastic', 'document', 'screenshot', 'text', 'night_sky', 'snow', 'water', 'cloudy', 'sunset_sunrise',
-  'liquid', 'machine', 'conveyance', 'equipment', 'consumer_electronics', 'container', 'decoration']);
+  'liquid', 'machine', 'conveyance', 'equipment']);
 
 // Labels that mean the photo isn't of a giveaway item (Curbsy doesn't list people or animals).
 export const NOT_AN_ITEM = new Set(['people', 'person', 'adult', 'child', 'animal', 'dog', 'cat', 'pet', 'screenshot', 'document']);
@@ -57,11 +57,33 @@ const human = (label) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-/** Confidence above which Apple's best guess is used without asking Gemini. */
+// Vision's labels form a tree: a photo of a chair also gets "furniture" (with an equal or higher score), a
+// watch gets "wearable", and so on. These broad parent labels only hint at the category; they never become
+// the title, or every indoor photo would be called "Furniture".
+const BROAD = new Set(['furniture', 'appliance', 'home_appliance', 'kitchen_appliance', 'electronics', 'consumer_electronics',
+  'clothing', 'apparel', 'accessory', 'accessories', 'wearable', 'jewelry', 'tool', 'tools', 'hand_tool', 'power_tool', 'toy',
+  'toys', 'container', 'housewares', 'kitchenware', 'cookware', 'tableware', 'dishware', 'utensil', 'decoration', 'machine',
+  'equipment', 'sports_equipment', 'structure', 'object', 'device', 'appliances', 'vehicle', 'conveyance', 'household_items']);
+
+// Friendlier titles and categories for labels that need it.
+const NAMES = {
+  trash_can: ['Trash can', 'home'], garbage_can: ['Trash can', 'home'], wastebasket: ['Trash can', 'home'],
+  waste_container: ['Trash can', 'home'], recycling_bin: ['Recycling bin', 'home'],
+  watch: ['Watch', 'electronics'], wristwatch: ['Watch', 'electronics'], smartwatch: ['Smartwatch', 'electronics'],
+  television: ['TV', 'electronics'], tv: ['TV', 'electronics'], cellphone: ['Phone', 'electronics'], mobile_phone: ['Phone', 'electronics'],
+  sofa: ['Couch', 'furniture'], teddy_bear: ['Teddy bear', 'toys'],
+};
+
+/** A specific label at least this sure becomes the title. Below it the title stays empty. */
+export const TITLE_MIN = 0.2;
+/** A broad label at least this sure can still pick the category. */
+const HINT_MIN = 0.3;
+/** Confidence above which Apple's guess is trusted without asking Gemini (only when Gemini backup is on). */
 export const CONFIDENT = 0.35;
 
 /**
  * From Vision labels [{ label, confidence }] to { title, category, tags, confidence, confident, person }.
+ * The title is the most likely specific label ("Trash can", "Watch"), or empty when Apple isn't sure.
  * Returns null when nothing usable was found.
  */
 export function fromAppleLabels(labels) {
@@ -69,25 +91,30 @@ export function fromAppleLabels(labels) {
     .filter((l) => l && typeof l.label === 'string' && Number.isFinite(l.confidence))
     .map((l) => ({ label: l.label.toLowerCase(), confidence: l.confidence }))
     .sort((a, b) => b.confidence - a.confidence);
-  const person = list.some((l) => NOT_AN_ITEM.has(l.label) && l.confidence >= 0.6);
-  const things = list.filter((l) => !SKIP.has(l.label));
-  if (!things.length) return null;
-  // The best label that maps to a category wins; otherwise the best label at all.
-  const known = things.filter((l) => categoryOf(l.label));
-  const best = known.find((l) => l.confidence >= 0.15) || things[0];
-  const category = categoryOf(best.label) || 'other';
-  const tags = [...new Set(things
-    .filter((l) => l.confidence >= 0.1)
-    .slice(0, 8)
-    .map((l) => l.label.replace(/_/g, ' '))
-    .concat(category === 'other' ? [] : [category]))].slice(0, 10);
+  const things = list.filter((l) => !SKIP.has(l.label) && !NOT_AN_ITEM.has(l.label));
+  const specific = things.filter((l) => !BROAD.has(l.label));
+  const best = specific.find((l) => l.confidence >= TITLE_MIN) || null;
+  // A person in the frame is fine (a watch on a wrist); it only matters when there's no item at all.
+  const person = !best && list.some((l) => NOT_AN_ITEM.has(l.label) && l.confidence >= 0.6);
+  const named = best ? NAMES[best.label] : null;
+  let category = named ? named[1] : best ? categoryOf(best.label) : null;
+  if (!category) {
+    const hint = things.find((l) => l.confidence >= HINT_MIN && categoryOf(l.label));
+    category = hint ? categoryOf(hint.label) : null;
+  }
+  if (!best && !category) return person ? { title: '', category: '', tags: [], description: '', confidence: 0, confident: false, person } : null;
+  const tags = [...new Set(specific
+    .filter((l) => l.confidence >= 0.15)
+    .slice(0, 6)
+    .map((l) => (NAMES[l.label] ? NAMES[l.label][0].toLowerCase() : l.label.replace(/_/g, ' ')))
+    .concat(category && category !== 'other' ? [category] : []))].slice(0, 10);
   return {
-    title: human(best.label),
-    category,
+    title: best ? (named ? named[0] : human(best.label)) : '',
+    category: category || 'other',
     tags,
     description: '',
-    confidence: best.confidence,
-    confident: best.confidence >= CONFIDENT && categoryOf(best.label) !== null && !person,
+    confidence: best ? best.confidence : 0,
+    confident: !!best && best.confidence >= CONFIDENT && !!category,
     person,
   };
 }
