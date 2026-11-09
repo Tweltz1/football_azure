@@ -1,0 +1,1402 @@
+{
+ "_comment": "Things people give away or store, for the shared household-item detector (Curbsy and ToteTrack). key = model label, title/category = what the apps show, lvis/oi = matching names in LVIS v1 (name or synonym) and Open Images boxable classes. item = worth suggesting as a thing to list or store (all are; the field lets apps turn classes off).",
+ "classes": [
+  {
+   "key": "tape_measure",
+   "title": "Tape measure",
+   "category": "tools",
+   "lvis": [
+    "tape_measure",
+    "measuring_tape"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "battery",
+   "title": "Batteries",
+   "category": "electronics",
+   "lvis": [
+    "battery"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "screwdriver",
+   "title": "Screwdriver",
+   "category": "tools",
+   "lvis": [
+    "screwdriver"
+   ],
+   "oi": [
+    "Screwdriver"
+   ],
+   "item": true
+  },
+  {
+   "key": "hammer",
+   "title": "Hammer",
+   "category": "tools",
+   "lvis": [
+    "hammer"
+   ],
+   "oi": [
+    "Hammer"
+   ],
+   "item": true
+  },
+  {
+   "key": "wrench",
+   "title": "Wrench",
+   "category": "tools",
+   "lvis": [
+    "wrench",
+    "spanner"
+   ],
+   "oi": [
+    "Wrench"
+   ],
+   "item": true
+  },
+  {
+   "key": "pliers",
+   "title": "Pliers",
+   "category": "tools",
+   "lvis": [
+    "pliers",
+    "plyers"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "drill",
+   "title": "Drill",
+   "category": "tools",
+   "lvis": [
+    "drill"
+   ],
+   "oi": [
+    "Drill (Tool)"
+   ],
+   "item": true
+  },
+  {
+   "key": "saw",
+   "title": "Saw",
+   "category": "tools",
+   "lvis": [
+    "saw",
+    "handsaw",
+    "chain_saw",
+    "chainsaw"
+   ],
+   "oi": [
+    "Chainsaw",
+    "Handsaw"
+   ],
+   "item": true
+  },
+  {
+   "key": "toolbox",
+   "title": "Toolbox",
+   "category": "tools",
+   "lvis": [
+    "toolbox"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "ladder",
+   "title": "Ladder",
+   "category": "tools",
+   "lvis": [
+    "ladder"
+   ],
+   "oi": [
+    "Ladder"
+   ],
+   "item": true
+  },
+  {
+   "key": "flashlight",
+   "title": "Flashlight",
+   "category": "tools",
+   "lvis": [
+    "flashlight",
+    "torch"
+   ],
+   "oi": [
+    "Flashlight"
+   ],
+   "item": true
+  },
+  {
+   "key": "tape",
+   "title": "Tape",
+   "category": "tools",
+   "lvis": [
+    "tape_(sticky_cloth_or_paper)",
+    "duct_tape",
+    "masking_tape"
+   ],
+   "oi": [
+    "Adhesive tape"
+   ],
+   "item": true
+  },
+  {
+   "key": "glue",
+   "title": "Glue",
+   "category": "tools",
+   "lvis": [
+    "glue"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "paintbrush",
+   "title": "Paintbrush",
+   "category": "building",
+   "lvis": [
+    "paintbrush"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "paint_can",
+   "title": "Paint can",
+   "category": "building",
+   "lvis": [
+    "paint_can",
+    "can_of_paint"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "extension_cord",
+   "title": "Extension cord",
+   "category": "electronics",
+   "lvis": [
+    "extension_cord",
+    "power_strip"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "light_bulb",
+   "title": "Light bulbs",
+   "category": "home",
+   "lvis": [
+    "lightbulb",
+    "light_bulb"
+   ],
+   "oi": [
+    "Light bulb"
+   ],
+   "item": true
+  },
+  {
+   "key": "scissors",
+   "title": "Scissors",
+   "category": "home",
+   "lvis": [
+    "scissors"
+   ],
+   "oi": [
+    "Scissors"
+   ],
+   "item": true
+  },
+  {
+   "key": "ruler",
+   "title": "Ruler",
+   "category": "tools",
+   "lvis": [
+    "ruler",
+    "measuring_stick",
+    "yardstick"
+   ],
+   "oi": [
+    "Ruler"
+   ],
+   "item": true
+  },
+  {
+   "key": "marker",
+   "title": "Markers",
+   "category": "home",
+   "lvis": [
+    "marker",
+    "felt-tip_pen"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "pen",
+   "title": "Pens",
+   "category": "home",
+   "lvis": [
+    "pen",
+    "ballpoint_pen",
+    "pencil"
+   ],
+   "oi": [
+    "Pen"
+   ],
+   "item": true
+  },
+  {
+   "key": "stapler",
+   "title": "Stapler",
+   "category": "home",
+   "lvis": [
+    "stapler_(stapling_machine)",
+    "stapler"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "lawn_mower",
+   "title": "Lawn mower",
+   "category": "garden",
+   "lvis": [
+    "lawn_mower"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "shovel",
+   "title": "Shovel",
+   "category": "garden",
+   "lvis": [
+    "shovel",
+    "spade"
+   ],
+   "oi": [
+    "Shovel"
+   ],
+   "item": true
+  },
+  {
+   "key": "rake",
+   "title": "Rake",
+   "category": "garden",
+   "lvis": [
+    "rake"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "hose",
+   "title": "Garden hose",
+   "category": "garden",
+   "lvis": [
+    "hose",
+    "hosepipe",
+    "garden_hose"
+   ],
+   "oi": [
+    "Hose"
+   ],
+   "item": true
+  },
+  {
+   "key": "watering_can",
+   "title": "Watering can",
+   "category": "garden",
+   "lvis": [
+    "watering_can"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "flowerpot",
+   "title": "Flower pot",
+   "category": "garden",
+   "lvis": [
+    "flowerpot"
+   ],
+   "oi": [
+    "Flowerpot"
+   ],
+   "item": true
+  },
+  {
+   "key": "wheelbarrow",
+   "title": "Wheelbarrow",
+   "category": "garden",
+   "lvis": [
+    "wheelbarrow"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "grill",
+   "title": "Grill",
+   "category": "garden",
+   "lvis": [
+    "grill",
+    "barbecue",
+    "barbecue_grill"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "chair",
+   "title": "Chair",
+   "category": "furniture",
+   "lvis": [
+    "chair",
+    "armchair",
+    "folding_chair",
+    "rocking_chair",
+    "highchair"
+   ],
+   "oi": [
+    "Chair"
+   ],
+   "item": true
+  },
+  {
+   "key": "sofa",
+   "title": "Couch",
+   "category": "furniture",
+   "lvis": [
+    "sofa",
+    "couch",
+    "loveseat"
+   ],
+   "oi": [
+    "Couch",
+    "Sofa bed",
+    "Studio couch"
+   ],
+   "item": true
+  },
+  {
+   "key": "table",
+   "title": "Table",
+   "category": "furniture",
+   "lvis": [
+    "table",
+    "dining_table",
+    "coffee_table",
+    "kitchen_table",
+    "card_table"
+   ],
+   "oi": [
+    "Table",
+    "Coffee table",
+    "Kitchen & dining room table"
+   ],
+   "item": true
+  },
+  {
+   "key": "desk",
+   "title": "Desk",
+   "category": "furniture",
+   "lvis": [
+    "desk"
+   ],
+   "oi": [
+    "Desk"
+   ],
+   "item": true
+  },
+  {
+   "key": "shelf",
+   "title": "Shelf",
+   "category": "furniture",
+   "lvis": [
+    "bookcase",
+    "shelf"
+   ],
+   "oi": [
+    "Bookcase",
+    "Shelf"
+   ],
+   "item": true
+  },
+  {
+   "key": "cabinet",
+   "title": "Cabinet",
+   "category": "furniture",
+   "lvis": [
+    "cabinet",
+    "file_cabinet",
+    "chest_of_drawers_(furniture)",
+    "dresser",
+    "bureau_(furniture)"
+   ],
+   "oi": [
+    "Cabinetry",
+    "Chest of drawers",
+    "Filing cabinet"
+   ],
+   "item": true
+  },
+  {
+   "key": "stool",
+   "title": "Stool",
+   "category": "furniture",
+   "lvis": [
+    "stool",
+    "step_stool"
+   ],
+   "oi": [
+    "Stool"
+   ],
+   "item": true
+  },
+  {
+   "key": "bench",
+   "title": "Bench",
+   "category": "furniture",
+   "lvis": [
+    "bench"
+   ],
+   "oi": [
+    "Bench"
+   ],
+   "item": true
+  },
+  {
+   "key": "bed",
+   "title": "Bed",
+   "category": "furniture",
+   "lvis": [
+    "bed",
+    "bunk_bed",
+    "mattress"
+   ],
+   "oi": [
+    "Bed",
+    "Infant bed"
+   ],
+   "item": true
+  },
+  {
+   "key": "lamp",
+   "title": "Lamp",
+   "category": "home",
+   "lvis": [
+    "lamp",
+    "table_lamp",
+    "floor_lamp",
+    "lampshade"
+   ],
+   "oi": [
+    "Lamp"
+   ],
+   "item": true
+  },
+  {
+   "key": "mirror",
+   "title": "Mirror",
+   "category": "home",
+   "lvis": [
+    "mirror"
+   ],
+   "oi": [
+    "Mirror"
+   ],
+   "item": true
+  },
+  {
+   "key": "clock",
+   "title": "Clock",
+   "category": "home",
+   "lvis": [
+    "clock",
+    "wall_clock",
+    "alarm_clock"
+   ],
+   "oi": [
+    "Clock",
+    "Alarm clock",
+    "Wall clock"
+   ],
+   "item": true
+  },
+  {
+   "key": "vase",
+   "title": "Vase",
+   "category": "home",
+   "lvis": [
+    "vase"
+   ],
+   "oi": [
+    "Vase"
+   ],
+   "item": true
+  },
+  {
+   "key": "picture_frame",
+   "title": "Picture frame",
+   "category": "home",
+   "lvis": [
+    "picture",
+    "photograph",
+    "poster"
+   ],
+   "oi": [
+    "Picture frame"
+   ],
+   "item": true
+  },
+  {
+   "key": "pillow",
+   "title": "Pillow",
+   "category": "home",
+   "lvis": [
+    "pillow",
+    "cushion"
+   ],
+   "oi": [
+    "Pillow"
+   ],
+   "item": true
+  },
+  {
+   "key": "blanket",
+   "title": "Blanket",
+   "category": "home",
+   "lvis": [
+    "blanket",
+    "quilt"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "rug",
+   "title": "Rug",
+   "category": "home",
+   "lvis": [
+    "rug",
+    "mat_(gym_equipment)"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "basket",
+   "title": "Basket",
+   "category": "home",
+   "lvis": [
+    "basket",
+    "hamper",
+    "laundry_basket"
+   ],
+   "oi": [
+    "Basket"
+   ],
+   "item": true
+  },
+  {
+   "key": "bucket",
+   "title": "Bucket",
+   "category": "home",
+   "lvis": [
+    "bucket",
+    "pail"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "storage_box",
+   "title": "Storage bin",
+   "category": "home",
+   "lvis": [
+    "box",
+    "carton",
+    "crate",
+    "plastic_bag"
+   ],
+   "oi": [
+    "Box"
+   ],
+   "item": true
+  },
+  {
+   "key": "trash_can",
+   "title": "Trash can",
+   "category": "home",
+   "lvis": [
+    "trash_can",
+    "garbage_can",
+    "wastebasket"
+   ],
+   "oi": [
+    "Waste container"
+   ],
+   "item": true
+  },
+  {
+   "key": "candle",
+   "title": "Candles",
+   "category": "home",
+   "lvis": [
+    "candle",
+    "candle_holder"
+   ],
+   "oi": [
+    "Candle"
+   ],
+   "item": true
+  },
+  {
+   "key": "pot",
+   "title": "Pots and pans",
+   "category": "home",
+   "lvis": [
+    "pot",
+    "saucepan",
+    "frying_pan",
+    "wok",
+    "crock_pot",
+    "kettle",
+    "teakettle"
+   ],
+   "oi": [
+    "Frying pan",
+    "Wok",
+    "Kettle"
+   ],
+   "item": true
+  },
+  {
+   "key": "dishes",
+   "title": "Dishes",
+   "category": "home",
+   "lvis": [
+    "plate",
+    "bowl",
+    "mug",
+    "cup",
+    "teacup",
+    "wineglass",
+    "glass_(drink_container)"
+   ],
+   "oi": [
+    "Plate",
+    "Bowl",
+    "Mug",
+    "Coffee cup",
+    "Wine glass"
+   ],
+   "item": true
+  },
+  {
+   "key": "bottle",
+   "title": "Bottle",
+   "category": "home",
+   "lvis": [
+    "bottle",
+    "water_bottle",
+    "jar",
+    "spray_bottle"
+   ],
+   "oi": [
+    "Bottle"
+   ],
+   "item": true
+  },
+  {
+   "key": "toaster",
+   "title": "Toaster",
+   "category": "appliances",
+   "lvis": [
+    "toaster",
+    "toaster_oven"
+   ],
+   "oi": [
+    "Toaster"
+   ],
+   "item": true
+  },
+  {
+   "key": "microwave",
+   "title": "Microwave",
+   "category": "appliances",
+   "lvis": [
+    "microwave_oven"
+   ],
+   "oi": [
+    "Microwave oven"
+   ],
+   "item": true
+  },
+  {
+   "key": "blender",
+   "title": "Blender",
+   "category": "appliances",
+   "lvis": [
+    "blender",
+    "food_processor",
+    "mixer_(kitchen_tool)"
+   ],
+   "oi": [
+    "Blender",
+    "Mixer",
+    "Food processor"
+   ],
+   "item": true
+  },
+  {
+   "key": "coffee_maker",
+   "title": "Coffee maker",
+   "category": "appliances",
+   "lvis": [
+    "coffee_maker",
+    "coffeepot"
+   ],
+   "oi": [
+    "Coffeemaker"
+   ],
+   "item": true
+  },
+  {
+   "key": "fan",
+   "title": "Fan",
+   "category": "appliances",
+   "lvis": [
+    "fan"
+   ],
+   "oi": [
+    "Ceiling fan",
+    "Mechanical fan"
+   ],
+   "item": true
+  },
+  {
+   "key": "vacuum",
+   "title": "Vacuum",
+   "category": "appliances",
+   "lvis": [
+    "vacuum_cleaner"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "iron",
+   "title": "Iron",
+   "category": "appliances",
+   "lvis": [
+    "iron_(for_clothing)"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "hair_dryer",
+   "title": "Hair dryer",
+   "category": "appliances",
+   "lvis": [
+    "hair_dryer"
+   ],
+   "oi": [
+    "Hair dryer"
+   ],
+   "item": true
+  },
+  {
+   "key": "refrigerator",
+   "title": "Refrigerator",
+   "category": "appliances",
+   "lvis": [
+    "refrigerator"
+   ],
+   "oi": [
+    "Refrigerator"
+   ],
+   "item": true
+  },
+  {
+   "key": "tv",
+   "title": "TV",
+   "category": "electronics",
+   "lvis": [
+    "television_set",
+    "monitor_(computer_equipment) computer_monitor",
+    "computer_monitor"
+   ],
+   "oi": [
+    "Television",
+    "Computer monitor"
+   ],
+   "item": true
+  },
+  {
+   "key": "laptop",
+   "title": "Laptop",
+   "category": "electronics",
+   "lvis": [
+    "laptop_computer"
+   ],
+   "oi": [
+    "Laptop"
+   ],
+   "item": true
+  },
+  {
+   "key": "keyboard",
+   "title": "Keyboard",
+   "category": "electronics",
+   "lvis": [
+    "computer_keyboard"
+   ],
+   "oi": [
+    "Computer keyboard"
+   ],
+   "item": true
+  },
+  {
+   "key": "mouse",
+   "title": "Computer mouse",
+   "category": "electronics",
+   "lvis": [
+    "mouse_(computer_equipment)",
+    "computer_mouse"
+   ],
+   "oi": [
+    "Computer mouse"
+   ],
+   "item": true
+  },
+  {
+   "key": "phone",
+   "title": "Phone",
+   "category": "electronics",
+   "lvis": [
+    "cellular_telephone",
+    "telephone",
+    "cordless_phone"
+   ],
+   "oi": [
+    "Mobile phone",
+    "Telephone"
+   ],
+   "item": true
+  },
+  {
+   "key": "headphones",
+   "title": "Headphones",
+   "category": "electronics",
+   "lvis": [
+    "headset",
+    "earphone",
+    "headphones"
+   ],
+   "oi": [
+    "Headphones"
+   ],
+   "item": true
+  },
+  {
+   "key": "speaker",
+   "title": "Speaker",
+   "category": "electronics",
+   "lvis": [
+    "speaker_(stereo_equipment)",
+    "loudspeaker"
+   ],
+   "oi": [
+    "Loudspeaker"
+   ],
+   "item": true
+  },
+  {
+   "key": "remote",
+   "title": "Remote",
+   "category": "electronics",
+   "lvis": [
+    "remote_control"
+   ],
+   "oi": [
+    "Remote control"
+   ],
+   "item": true
+  },
+  {
+   "key": "camera",
+   "title": "Camera",
+   "category": "electronics",
+   "lvis": [
+    "camera",
+    "digital_camera"
+   ],
+   "oi": [
+    "Camera"
+   ],
+   "item": true
+  },
+  {
+   "key": "cable",
+   "title": "Cables",
+   "category": "electronics",
+   "lvis": [
+    "cable",
+    "power_cable",
+    "electric_cord"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "printer",
+   "title": "Printer",
+   "category": "electronics",
+   "lvis": [
+    "printer"
+   ],
+   "oi": [
+    "Printer"
+   ],
+   "item": true
+  },
+  {
+   "key": "game_console",
+   "title": "Game controller",
+   "category": "electronics",
+   "lvis": [
+    "joystick",
+    "game_controller"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "book",
+   "title": "Books",
+   "category": "books",
+   "lvis": [
+    "book",
+    "booklet",
+    "magazine",
+    "notebook"
+   ],
+   "oi": [
+    "Book"
+   ],
+   "item": true
+  },
+  {
+   "key": "toy",
+   "title": "Toys",
+   "category": "toys",
+   "lvis": [
+    "toy",
+    "teddy_bear",
+    "doll",
+    "rubber_duck",
+    "stuffed_animal"
+   ],
+   "oi": [
+    "Toy",
+    "Teddy bear",
+    "Doll"
+   ],
+   "item": true
+  },
+  {
+   "key": "ball",
+   "title": "Ball",
+   "category": "sports",
+   "lvis": [
+    "ball",
+    "soccer_ball",
+    "basketball",
+    "football_(American)",
+    "tennis_ball",
+    "volleyball",
+    "beachball"
+   ],
+   "oi": [
+    "Ball",
+    "Football",
+    "Tennis ball",
+    "Volleyball (Ball)"
+   ],
+   "item": true
+  },
+  {
+   "key": "bicycle",
+   "title": "Bicycle",
+   "category": "sports",
+   "lvis": [
+    "bicycle"
+   ],
+   "oi": [
+    "Bicycle"
+   ],
+   "item": true
+  },
+  {
+   "key": "helmet",
+   "title": "Helmet",
+   "category": "sports",
+   "lvis": [
+    "helmet",
+    "football_helmet",
+    "bicycle_helmet"
+   ],
+   "oi": [
+    "Helmet",
+    "Bicycle helmet"
+   ],
+   "item": true
+  },
+  {
+   "key": "racket",
+   "title": "Racket",
+   "category": "sports",
+   "lvis": [
+    "tennis_racket",
+    "racket"
+   ],
+   "oi": [
+    "Tennis racket",
+    "Racket"
+   ],
+   "item": true
+  },
+  {
+   "key": "skateboard",
+   "title": "Skateboard",
+   "category": "sports",
+   "lvis": [
+    "skateboard"
+   ],
+   "oi": [
+    "Skateboard"
+   ],
+   "item": true
+  },
+  {
+   "key": "dumbbell",
+   "title": "Weights",
+   "category": "sports",
+   "lvis": [
+    "dumbbell",
+    "barbell"
+   ],
+   "oi": [
+    "Dumbbell"
+   ],
+   "item": true
+  },
+  {
+   "key": "cooler",
+   "title": "Cooler",
+   "category": "sports",
+   "lvis": [
+    "cooler_(for_food)",
+    "ice_chest"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "backpack",
+   "title": "Backpack",
+   "category": "clothing",
+   "lvis": [
+    "backpack",
+    "knapsack"
+   ],
+   "oi": [
+    "Backpack"
+   ],
+   "item": true
+  },
+  {
+   "key": "bag",
+   "title": "Bag",
+   "category": "clothing",
+   "lvis": [
+    "handbag",
+    "tote_bag",
+    "shoulder_bag",
+    "duffel_bag",
+    "purse"
+   ],
+   "oi": [
+    "Handbag"
+   ],
+   "item": true
+  },
+  {
+   "key": "suitcase",
+   "title": "Suitcase",
+   "category": "clothing",
+   "lvis": [
+    "suitcase",
+    "luggage"
+   ],
+   "oi": [
+    "Suitcase"
+   ],
+   "item": true
+  },
+  {
+   "key": "shoes",
+   "title": "Shoes",
+   "category": "clothing",
+   "lvis": [
+    "shoe",
+    "sneaker",
+    "boot",
+    "sandal_(type_of_shoe)",
+    "slipper_(footwear)"
+   ],
+   "oi": [
+    "Footwear",
+    "Boot",
+    "High heels",
+    "Sandal"
+   ],
+   "item": true
+  },
+  {
+   "key": "jacket",
+   "title": "Jacket",
+   "category": "clothing",
+   "lvis": [
+    "jacket",
+    "coat",
+    "ski_parka",
+    "sweater",
+    "sweatshirt"
+   ],
+   "oi": [
+    "Coat",
+    "Jacket"
+   ],
+   "item": true
+  },
+  {
+   "key": "hat",
+   "title": "Hat",
+   "category": "clothing",
+   "lvis": [
+    "hat",
+    "baseball_cap",
+    "cowboy_hat",
+    "sunhat"
+   ],
+   "oi": [
+    "Hat",
+    "Fedora",
+    "Sun hat",
+    "Cowboy hat"
+   ],
+   "item": true
+  },
+  {
+   "key": "stroller",
+   "title": "Stroller",
+   "category": "kids",
+   "lvis": [
+    "stroller",
+    "baby_buggy"
+   ],
+   "oi": [
+    "Stroller"
+   ],
+   "item": true
+  },
+  {
+   "key": "guitar",
+   "title": "Guitar",
+   "category": "other",
+   "lvis": [
+    "guitar"
+   ],
+   "oi": [
+    "Guitar"
+   ],
+   "item": true
+  },
+  {
+   "key": "umbrella",
+   "title": "Umbrella",
+   "category": "other",
+   "lvis": [
+    "umbrella"
+   ],
+   "oi": [
+    "Umbrella"
+   ],
+   "item": true
+  },
+  {
+   "key": "string_lights",
+   "title": "String lights",
+   "category": "home",
+   "lvis": [
+    "Christmas_lights",
+    "string_lights",
+    "fairy_lights"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "ornament",
+   "title": "Ornaments",
+   "category": "home",
+   "lvis": [
+    "ornament",
+    "Christmas_ornament",
+    "bauble"
+   ],
+   "oi": [
+    "Christmas tree"
+   ],
+   "item": true
+  },
+  {
+   "key": "wreath",
+   "title": "Wreath",
+   "category": "home",
+   "lvis": [
+    "wreath"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "gloves",
+   "title": "Gloves",
+   "category": "clothing",
+   "lvis": [
+    "glove",
+    "work_glove",
+    "mitten"
+   ],
+   "oi": [
+    "Glove"
+   ],
+   "item": true
+  },
+  {
+   "key": "towel",
+   "title": "Towels",
+   "category": "home",
+   "lvis": [
+    "towel",
+    "bath_towel",
+    "dish_towel",
+    "beach_towel"
+   ],
+   "oi": [
+    "Towel"
+   ],
+   "item": true
+  },
+  {
+   "key": "board_game",
+   "title": "Board game",
+   "category": "toys",
+   "lvis": [
+    "chessboard",
+    "jigsaw_puzzle",
+    "board_game",
+    "dice"
+   ],
+   "oi": [
+    "Chess",
+    "Dice",
+    "Jigsaw puzzle"
+   ],
+   "item": true
+  },
+  {
+   "key": "lantern",
+   "title": "Lantern",
+   "category": "sports",
+   "lvis": [
+    "lantern"
+   ],
+   "oi": [
+    "Lantern"
+   ],
+   "item": true
+  },
+  {
+   "key": "tent",
+   "title": "Tent",
+   "category": "sports",
+   "lvis": [
+    "tent"
+   ],
+   "oi": [
+    "Tent"
+   ],
+   "item": true
+  },
+  {
+   "key": "food_container",
+   "title": "Food containers",
+   "category": "home",
+   "lvis": [
+    "Tupperware",
+    "container",
+    "canister",
+    "lunch_box"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "paint_roller",
+   "title": "Paint roller",
+   "category": "building",
+   "lvis": [
+    "paint_roller"
+   ],
+   "oi": [],
+   "item": true
+  },
+  {
+   "key": "clothes",
+   "title": "Clothes",
+   "category": "clothing",
+   "lvis": [
+    "shirt",
+    "T-shirt",
+    "jean",
+    "trousers",
+    "dress",
+    "skirt",
+    "polo_shirt"
+   ],
+   "oi": [
+    "Shirt",
+    "Jeans",
+    "Dress",
+    "Shorts",
+    "Skirt",
+    "Trousers"
+   ],
+   "item": true
+  }
+ ]
+}

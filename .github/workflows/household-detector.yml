@@ -1,0 +1,96 @@
+# Trains the shared household-item detector (ml/household-detector) on a Mac with Create ML, and
+# optionally publishes it as a release the Curbsy and ToteTrack builds download.
+name: Household detector
+
+on:
+  # A push that changes the trainer runs a trial with the settings in ml/household-detector/run.json.
+  push:
+    paths:
+      - 'ml/household-detector/**'
+      - '.github/workflows/household-detector.yml'
+  workflow_dispatch:
+    inputs:
+      per_class:
+        description: Training photos per kind of thing
+        default: '150'
+      iterations:
+        description: Training iterations
+        default: '3000'
+      only:
+        description: Only these class keys (comma separated), for a quick trial run
+        default: ''
+      version:
+        description: Release version number (publishes household-detector-vN); leave empty to only train
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: household-detector
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: macos-15
+    timeout-minutes: 350
+    defaults:
+      run:
+        working-directory: ml/household-detector
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Settings
+        id: s
+        run: |
+          # Manual runs use the form; pushes use run.json.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "per_class=${{ steps.s.outputs.per_class }}" >> "$GITHUB_OUTPUT"
+            echo "iterations=${{ steps.s.outputs.iterations }}" >> "$GITHUB_OUTPUT"
+            echo "only=${{ steps.s.outputs.only }}" >> "$GITHUB_OUTPUT"
+            echo "version=${{ steps.s.outputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            python3 -c "import json; r=json.load(open('run.json')); [print(f'{k}={v}') for k, v in r.items()]" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
+      - name: Keep downloaded annotation files between runs
+        uses: actions/cache@v4
+        with:
+          path: ml/household-detector/cache
+          key: household-detector-cache-v1
+
+      - name: Get training photos
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install --quiet pillow ijson
+          python prepare.py --out data --cache cache --per-class "${{ steps.s.outputs.per_class }}" --only "${{ steps.s.outputs.only }}"
+          du -sh data
+
+      - name: Train with Create ML
+        env:
+          MODEL_VERSION: ${{ steps.s.outputs.version || 'trial' }}
+        run: |
+          swift train.swift data out "${{ steps.s.outputs.iterations }}"
+          cp data/labels.json out/
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: household-detector
+          path: |
+            ml/household-detector/out/HouseholdDetector.mlmodel
+            ml/household-detector/out/labels.json
+            ml/household-detector/out/metrics.json
+
+      - name: Publish the model
+        if: ${{ steps.s.outputs.version != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="household-detector-v${{ steps.s.outputs.version }}"
+          gh release create "$tag" out/HouseholdDetector.mlmodel out/labels.json out/metrics.json \
+            --title "Household detector v${{ steps.s.outputs.version }}" \
+            --notes "On-device household-item detector for Curbsy and ToteTrack. Trained with Create ML on LVIS (CC BY 4.0) and Open Images (CC BY). Per-class photos: ${{ steps.s.outputs.per_class }}, iterations: ${{ steps.s.outputs.iterations }}." \
+            --target "${{ github.sha }}"
