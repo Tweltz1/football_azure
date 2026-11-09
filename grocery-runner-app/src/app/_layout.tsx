@@ -18,7 +18,7 @@ export default function RootLayout() {
           headerBackButtonDisplayMode: 'minimal',
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'Grocery Runner' }} />
+        <Stack.Screen name="index" options={{ title: 'Shop Stride' }} />
         <Stack.Screen name="route" options={{ title: 'Your route' }} />
         <Stack.Screen name="store" options={{ presentation: 'modal', title: 'Choose store' }} />
         <Stack.Screen name="map" options={{ presentation: 'modal', title: 'Stores near you' }} />

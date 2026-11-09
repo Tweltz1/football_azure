@@ -1,4 +1,4 @@
-"""Registers the Grocery Runner bundle ID with Apple using the repo's App Store Connect secrets,
+"""Registers the Shop Stride bundle ID with Apple using the repo's App Store Connect secrets,
 so it shows up in App Store Connect > New App. Safe to re-run. Never prints the key or token."""
 import json
 import os
@@ -10,7 +10,7 @@ import urllib.request
 import jwt
 
 IDENTIFIER = "com.tweltz1.groceryrunner"
-NAME = "Grocery Runner"
+NAME = "Shop Stride"
 
 now = int(time.time())
 token = jwt.encode(

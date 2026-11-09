@@ -58,7 +58,7 @@ export default function ListScreen() {
         contentContainerStyle={{ padding: 16, paddingTop: 4, gap: 8 }}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: t.textMuted }]}>
-            Add what you need. Grocery Runner sorts it into the shortest walk through the store.
+            Add what you need. Shop Stride sorts it into the shortest walk through the store.
           </Text>
         }
         renderItem={({ item }) => {

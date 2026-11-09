@@ -1,4 +1,4 @@
-# Builds the Grocery Runner iPhone app (grocery-runner-app/, Expo + React Native) on a GitHub macOS
+# Builds the Shop Stride iPhone app (grocery-runner-app/, Expo + React Native) on a GitHub macOS
 # machine, so no Mac is needed. Same Apple secrets as ToteTrack and the Hood League apps:
 #   APPLE_TEAM_ID, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_KEY
 # Online lookups (Kroger aisles, Walmart store search, shared shopper aisles) go through the
@@ -12,7 +12,7 @@
 # - A push whose commit message contains [grocery-upload] (or "Run workflow" with "Upload to
 #   TestFlight" ticked) signs the app and sends it to App Store Connect. The app record
 #   (bundle ID com.tweltz1.groceryrunner) must exist in App Store Connect first.
-name: Grocery Runner iPhone app
+name: Shop Stride iPhone app
 
 on:
   push:
@@ -49,7 +49,7 @@ jobs:
       - name: Shared aisle table, lookup secrets and the grocery-runner function
         run: |
           if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
-            echo "::warning::SUPABASE_ACCESS_TOKEN is not set, so the Grocery Runner backend was not deployed."
+            echo "::warning::SUPABASE_ACCESS_TOKEN is not set, so the Shop Stride backend was not deployed."
             exit 0
           fi
           python3 tools/setup_supabase.py
@@ -151,7 +151,7 @@ jobs:
         if: env.UPLOAD != 'true'
         run: |
           set -o pipefail
-          xcodebuild -workspace ios/GroceryRunner.xcworkspace -scheme GroceryRunner -configuration Release \
+          xcodebuild -workspace ios/ShopStride.xcworkspace -scheme ShopStride -configuration Release \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build > "$RUNNER_TEMP/build.log" 2>&1 \
             || { grep -E "error:" -A4 "$RUNNER_TEMP/build.log" | head -n 120; tail -n 30 "$RUNNER_TEMP/build.log"; exit 1; }
@@ -160,7 +160,7 @@ jobs:
       - name: Screenshots on a simulated iPhone
         if: env.UPLOAD != 'true'
         run: |
-          APP="$RUNNER_TEMP/dd/Build/Products/Release-iphonesimulator/GroceryRunner.app"
+          APP="$RUNNER_TEMP/dd/Build/Products/Release-iphonesimulator/ShopStride.app"
           mkdir -p shots
           read -r DEV NAME < <(xcrun simctl list devices available -j | python3 -c '
           import json, sys
@@ -176,7 +176,7 @@ jobs:
           xcrun simctl launch "$DEV" com.tweltz1.groceryrunner
           sleep 15
           xcrun simctl io "$DEV" screenshot "shots/$NAME-1-home.png"
-          xcrun simctl spawn "$DEV" log show --start "$START" --style compact --predicate 'process == "GroceryRunner"' > "shots/app-log.txt" 2>&1 || true
+          xcrun simctl spawn "$DEV" log show --start "$START" --style compact --predicate 'process == "ShopStride"' > "shots/app-log.txt" 2>&1 || true
           xcrun simctl shutdown "$DEV"
           cd shots
           git init -q -b grocery-runner-screenshots
@@ -211,8 +211,8 @@ jobs:
                 -authenticationKeyIssuerID "$ISSUER_ID")
 
           # Archive unsigned; the export below signs it for the App Store with Apple's cloud signing.
-          xcodebuild -workspace ios/GroceryRunner.xcworkspace -scheme GroceryRunner -configuration Release \
-            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/GroceryRunner.xcarchive" \
+          xcodebuild -workspace ios/ShopStride.xcworkspace -scheme ShopStride -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/ShopStride.xcarchive" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGNING_ALLOWED=NO \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             archive > "$RUNNER_TEMP/archive.log" 2>&1 \
@@ -230,7 +230,7 @@ jobs:
           </dict></plist>
           PLIST
 
-          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/GroceryRunner.xcarchive" \
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/ShopStride.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}"
           rm -f "$KEY_PATH"

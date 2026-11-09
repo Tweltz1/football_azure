@@ -1,4 +1,4 @@
-# Grocery Runner iPhone app
+# Shop Stride iPhone app (code name Grocery Runner)
 
 Type your grocery list, pick your store, and get the shortest walk through it: a numbered stop list and
 a store map with the route drawn on it. Built with Expo (React Native). GitHub builds it on a macOS
@@ -31,7 +31,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how locations are sourced and how rou
 - `app.json` name, bundle ID `com.tweltz1.groceryrunner`. `ios/` is generated on the build machine and not committed.
 
 ## One-time setup
-1. **App Store Connect**: My Apps > + > New App, platform iOS, name "Grocery Runner", bundle ID
+1. **App Store Connect**: My Apps > + > New App, platform iOS, name "Shop Stride", bundle ID
    `com.tweltz1.groceryrunner` (the workflow registers the bundle ID on its first run, so run it once
    first if it isn't in the list).
 2. **Kroger API keys** (free): sign up at https://developer.kroger.com, create an app with the
@@ -48,7 +48,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how locations are sourced and how rou
 - Any push touching `grocery-runner-app/` runs the tests, builds for the simulator and pushes
   screenshots to the `grocery-runner-screenshots` branch. It also creates the shared aisle table and
   deploys the `grocery-runner` function when `SUPABASE_ACCESS_TOKEN` is set.
-- Put `[grocery-upload]` in a commit message (or Actions > Grocery Runner iPhone app > Run workflow >
+- Put `[grocery-upload]` in a commit message (or Actions > Shop Stride iPhone app > Run workflow >
   tick "Upload to TestFlight") to send a build to TestFlight.
 
 ## Local dev (optional)

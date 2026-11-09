@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Grocery Runner",
+    "name": "Shop Stride",
     "slug": "grocery-runner",
     "scheme": "groceryrunner",
     "version": "1.0.0",
@@ -24,7 +24,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Grocery Runner uses your location to show supported grocery stores near you."
+          "locationWhenInUsePermission": "Shop Stride uses your location to show supported grocery stores near you."
         }
       ],
       [

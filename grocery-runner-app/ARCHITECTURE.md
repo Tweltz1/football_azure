@@ -1,4 +1,4 @@
-# Grocery Runner: architecture
+# Shop Stride (Grocery Runner): architecture
 
 ## 1. Where item locations come from
 
