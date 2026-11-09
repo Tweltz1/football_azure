@@ -58,8 +58,19 @@
   const priPill = (e) => e.priority && PRI[e.priority] ? `<span class="pill pri ${PRI[e.priority].cls}">${PRI[e.priority].label}</span>` : "";
   const first = (name) => String(name || "").split(/\s+/)[0];
 
+  // Keep account requests on the site's domain for networks that block Supabase.
+  function accountFetch(input, options) {
+    const request = new Request(input, options);
+    const url = new URL(request.url);
+    if (url.origin === new URL(CFG.supabaseUrl).origin && url.pathname.startsWith("/auth/v1/")) {
+      const local = new URL("/account-api/" + url.pathname.slice("/auth/v1/".length), location.origin);
+      local.search = url.search;
+      return fetch(new Request(local, request));
+    }
+    return fetch(request);
+  }
   const sb = window.supabase && CFG.supabaseUrl && CFG.supabaseAnonKey
-    ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
+    ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }, global: { fetch: accountFetch } })
     : null;
 
   async function api(method, path, body) {
