@@ -55,6 +55,8 @@ export interface JobData {
   plate: string;
   concern: string;
   eta: string;
+  /** How soon the customer needs the car back, set by staff. Shop-only; the customer never sees it. */
+  urgency?: Urgency;
   estimate: EstimateLine[];
   photos: Photo[];
   events: StageEvent[];
@@ -69,6 +71,9 @@ export interface JobData {
   /** Set when the shop asks the customer for walk-around photos (body work, check-in condition records). */
   walkaroundRequest?: { t: string } | null;
 }
+export const URGENCIES = ['low', 'medium', 'high'] as const;
+export type Urgency = typeof URGENCIES[number];
+const urgencyOf = (v: unknown): Urgency | undefined => URGENCIES.includes(v as Urgency) ? v as Urgency : undefined;
 export interface Note { id: string; t: string; text: string }
 /** Walk-through checklist points. The page shows the labels; keep the keys in step with talkshops/public/walkthrough.js. */
 export const WALK_ITEMS = ['exterior', 'lights', 'wipers', 'tires', 'brakes', 'oil', 'fluids', 'battery', 'belts', 'leaks', 'dash'] as const;
@@ -577,6 +582,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
           plate: str(body.plate, 12).toUpperCase(),
           concern,
           eta: '',
+          ...(urgencyOf(body.urgency) ? { urgency: urgencyOf(body.urgency) } : {}),
           estimate: [],
           photos: [],
           events: [{ stage: inviting ? 'invited' : 'checked_in', t: now }],
@@ -753,6 +759,10 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (body.send && msg) d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
   } else if (action === 'eta') {
     d.eta = str(body.eta, 40);
+  } else if (action === 'urgency') {
+    if (body.urgency !== '' && body.urgency != null && !urgencyOf(body.urgency)) return bad('Urgency must be low, medium or high.');
+    const u = urgencyOf(body.urgency);
+    if (u) d.urgency = u; else delete d.urgency;
   } else if (action === 'estimate') {
     if (body.setPriority) {
       const line = d.estimate.find((e) => e.id === body.setPriority);

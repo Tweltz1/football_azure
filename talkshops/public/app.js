@@ -614,7 +614,7 @@
         const hay = [vehicleStr(j), j.customer.name, j.customer.phone, j.customer.email, j.ro, j.concern, j.plate, j.vehicle?.plate, j.vehicle?.vin].filter(Boolean).join(" ").toLowerCase();
         const qk = awaitingDecision(j) ? "approval" : j.stage === "ready" ? "ready" : "other";
         h += `<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
-          <span class="veh queue-vehicle">${esc(vehicleStr(j) || "Vehicle details pending")}<span class="chev" aria-hidden="true">›</span></span>
+          ${window.BayBoard.urgencyBadge(j)}<span class="veh queue-vehicle">${esc(vehicleStr(j) || "Vehicle details pending")}<span class="chev" aria-hidden="true">›</span></span>
           <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${esc(j.ro)}</span></span>
           ${j.concern ? `<span class="row concern"><span>${esc(j.concern)}</span></span>` : ""}
           <span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill stage-pill">${esc(s.key === "approval" ? "Estimate Review" : s.label)}</span>${pill}${reply ? `<span class="pill bad">New reply</span>` : ""}<span class="in-stage">${since(ev.t)} in stage</span></span></button>`;
@@ -705,6 +705,7 @@
         <label class="field" data-staff-intake>Model<input id="ci-model" required maxlength="40"></label>
         <label class="field" data-staff-intake>License plate<input id="ci-plate" maxlength="12"></label>
         <label class="field full" data-staff-intake>What's the concern?<textarea id="ci-concern" required maxlength="1000"></textarea></label>
+        <div class="field full urgency-field"><span>Urgency <small class="muted">(for example, the customer needs the car back within the hour)</small></span>${window.BayBoard.urgencyPicker("", "ciUrgency")}</div>
         <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
       </div>
       <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Check In and Notify Customer</button></div>
@@ -733,6 +734,7 @@
         ${j.closed ? `<section class="sec closed-note"><p><b>Closed without repair</b> · ${esc(j.closed.reason)} · ${dayClock(j.closed.t)}</p><p class="muted">This car is in the Archive.</p>${isOwner() ? `<div class="btn-row"><button class="btn" data-reopen>Reopen and put back on the board</button><button class="btn danger" data-delete-job>Delete permanently</button></div>` : ""}</section>` : ""}
         <section class="sec"><details class="stage-picker" ${window.TOUR_ACTIVE ? "open" : ""}><summary><span>Repair Stage</span><strong>${STAGES[idx].key === "approval" ? estimateOutcome(j) || STAGES[idx].label : STAGES[idx].label}</strong></summary><div class="stepper">${steps}</div></details>
           <div class="btn-row" style="margin-top:10px">${next && (j.stage !== "invited" || j.intakeReceived) && (next.key !== "approval" || isOwner()) ? `<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>` : ""}<a class="btn" href="${esc(j.link)}" target="_blank" rel="noopener" style="text-decoration:none">Customer Page</a>${j.stage !== "picked_up" && !j.closed && isOwner() ? `<button class="btn" data-close-job>Close Without Repair</button>` : ""}</div>
+          ${j.stage !== "picked_up" && !j.closed ? `<div class="field urgency-field" style="margin-top:10px"><span>Urgency</span>${window.BayBoard.urgencyPicker(j.urgency, "jobUrgency")}</div>` : ""}
           ${j.stage === "parts" ? `<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
         </section>
         ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting customer intake</h3><details><summary>Enter details at the shop</summary>${intakeForm()}</details></section>` : ""}
@@ -1178,7 +1180,7 @@
       const invite = $("#ci-method").value === "invite";
       const g = (k) => $("#ci-" + k).value.trim();
       const j = await act(() => api("POST", "shop/jobs", {
-        invite, customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("channel"), consent: $("#ci-consent").checked },
+        invite, urgency: document.querySelector('input[name="ciUrgency"]:checked')?.value || "", customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("channel"), consent: $("#ci-consent").checked },
         ...(invite ? {} : { vehicle: { year: g("year"), make: g("make"), model: g("model") }, plate: g("plate"), concern: g("concern") }),
       }));
       if (j) {
@@ -1341,6 +1343,7 @@
       return;
     }
     if (ui.modal?.billing) { billing.change(e, shop); return; }
+    if (e.target.name === "jobUrgency") { jobAction(ui.openJob, "urgency", { urgency: e.target.value }, e.target.value ? "Urgency set to " + window.BayBoard.URGENCY[e.target.value][0] : "Urgency cleared"); return; }
     if (e.target.id === "eta") jobAction(ui.openJob, "eta", { eta: e.target.value.trim() }, "ETA saved");
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });

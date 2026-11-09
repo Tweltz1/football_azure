@@ -621,3 +621,21 @@ test('invalid age thresholds and colors are rejected without changing saved pref
   }
   assert.deepEqual(((await owner('GET','shop/me'))?.body as {shop:Shop}).shop.ageSettings,good);
 });
+
+test('staff set low, medium or high urgency at check-in and on the car; customers never see it', async () => {
+  const { as } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', { ...checkIn, urgency: 'high' }))?.body as { id: string; link: string; urgency?: string };
+  assert.equal(job.urgency, 'high');
+  const lowered = (await dan('POST', `shop/jobs/${job.id}/urgency`, { urgency: 'low' }))?.body as { urgency?: string };
+  assert.equal(lowered.urgency, 'low');
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/urgency`, { urgency: 'asap' }))?.status, 400);
+  const cleared = (await dan('POST', `shop/jobs/${job.id}/urgency`, { urgency: '' }))?.body as { urgency?: string };
+  assert.equal(cleared.urgency, undefined);
+  const plain = (await dan('POST', 'shop/jobs', { ...checkIn, urgency: 'whenever' }))?.body as { urgency?: string };
+  assert.equal(plain.urgency, undefined);
+  await dan('POST', `shop/jobs/${job.id}/urgency`, { urgency: 'medium' });
+  const view = (await as(null)('GET', `shop/c/${job.link.split('?c=')[1]}`))?.body as Record<string, unknown>;
+  assert.equal('urgency' in view, false);
+});

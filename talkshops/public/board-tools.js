@@ -4,11 +4,23 @@
   let focused = '';
   const app = document.querySelector('#app');
   const time = value => { const n = typeof value === 'number' ? value : Date.parse(value); return Number.isFinite(n) ? n : Date.now(); };
+  const URGENCY = {high:['High','urg-high'],medium:['Medium','urg-medium'],low:['Low','urg-low']};
+  const urgencyRank = job => ({high:0,medium:1,low:2})[job.urgency] ?? 3;
   window.BayBoard = {
+    URGENCY,
+    /** Small mark for the top right of a Bay card. Nothing when the shop has not set one. */
+    urgencyBadge(job) {
+      const u = URGENCY[job.urgency];
+      return u ? `<span class="urgency ${u[1]}" title="${u[0]} urgency">${u[0]}</span>` : '';
+    },
+    /** Low / Medium / High choice for the car sheet and check-in. */
+    urgencyPicker(value, name = 'urgency') {
+      return `<div class="urgency-pick" role="radiogroup" aria-label="Urgency">${[['', 'Not Set'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']].map(([key, text]) => `<label class="${key ? URGENCY[key][1] : 'urg-none'}"><input type="radio" name="${name}" value="${key}" ${String(value || '') === key ? 'checked' : ''}><span>${text}</span></label>`).join('')}</div>`;
+    },
     metadata(job) {
       const work = (job.estimate || []).filter(item => item.status !== 'declined');
       const rank = work.reduce((best, item) => Math.min(best, ({required:0,recommended:1,optional:2})[item.priority] ?? 3), 3);
-      return `data-arrived="${time(job.createdAt || job.events?.[0]?.t)}" data-stage-at="${time(job.events?.at(-1)?.t)}" data-priority="${rank}" data-reply="${job.messages?.at(-1)?.dir === 'in' ? 1 : 0}"`;
+      return `data-arrived="${time(job.createdAt || job.events?.[0]?.t)}" data-stage-at="${time(job.events?.at(-1)?.t)}" data-priority="${rank}" data-reply="${job.messages?.at(-1)?.dir === 'in' ? 1 : 0}" data-urgency="${urgencyRank(job)}"`;
     }
   };
   const option = (value, text) => `<option value="${value}">${text}</option>`;
@@ -27,7 +39,7 @@
       button.setAttribute('aria-label', `View all vehicles in ${heading.textContent}`);
       heading.replaceWith(button); button.append(heading, count);
       const controls = document.createElement('div'); controls.className = 'stage-controls';
-      controls.innerHTML = `<label>Sort<select data-stage-sort aria-label="Sort ${heading.textContent}">${option('default','Default Order')}${option('stage','Waiting Longest in This Step')}${option('oldest','Checked In First')}${option('newest','Newest Arrivals')}${option('priority','Priority First')}</select></label><label>Filter<select data-stage-filter aria-label="Filter ${heading.textContent}">${option('all','All Vehicles')}${option('required','Required Work')}${option('reply','Customer Reply')}${option('aged',`In Shop ${app.dataset.ageOverdueDays || 3}+ Days`)}</select></label><p class="stage-empty muted" hidden>No vehicles match these filters.</p>`;
+      controls.innerHTML = `<label>Sort<select data-stage-sort aria-label="Sort ${heading.textContent}">${option('default','Default Order')}${option('stage','Waiting Longest in This Step')}${option('oldest','Checked In First')}${option('newest','Newest Arrivals')}${option('urgency','Most Urgent First')}${option('priority','Priority First')}</select></label><label>Filter<select data-stage-filter aria-label="Filter ${heading.textContent}">${option('all','All Vehicles')}${option('required','Required Work')}${option('urgent','High Urgency')}${option('reply','Customer Reply')}${option('aged',`In Shop ${app.dataset.ageOverdueDays || 3}+ Days`)}</select></label><p class="stage-empty muted" hidden>No vehicles match these filters.</p>`;
       col.querySelector('.col-h').after(controls);
       const choice = choices.get(key) || {sort:'default',filter:'all'};
       controls.querySelector('[data-stage-sort]').value = choice.sort;
@@ -56,6 +68,7 @@
         if (choice.sort === 'stage') return +a.dataset.stageAt - +b.dataset.stageAt;
         if (choice.sort === 'oldest') return +a.dataset.arrived - +b.dataset.arrived;
         if (choice.sort === 'newest') return +b.dataset.arrived - +a.dataset.arrived;
+        if (choice.sort === 'urgency') return +a.dataset.urgency - +b.dataset.urgency || +a.dataset.arrived - +b.dataset.arrived;
         if (choice.sort === 'priority') return +a.dataset.priority - +b.dataset.priority || +a.dataset.stageAt - +b.dataset.stageAt;
         return +a.dataset.initialOrder - +b.dataset.initialOrder;
       };
@@ -63,7 +76,7 @@
       let shown = 0;
       cards.forEach(card => {
         const match = query.every(term => card.dataset.s.includes(term)) && (queue === 'all' || card.dataset.queueKey === queue);
-        const local = choice.filter === 'all' || (choice.filter === 'required' && card.dataset.priority === '0') || (choice.filter === 'reply' && card.dataset.reply === '1') || (choice.filter === 'aged' && Date.now() - +card.dataset.arrived >= Number(app.dataset.ageOverdueDays || 3) * 86400000);
+        const local = choice.filter === 'all' || (choice.filter === 'required' && card.dataset.priority === '0') || (choice.filter === 'urgent' && card.dataset.urgency === '0') || (choice.filter === 'reply' && card.dataset.reply === '1') || (choice.filter === 'aged' && Date.now() - +card.dataset.arrived >= Number(app.dataset.ageOverdueDays || 3) * 86400000);
         card.hidden = !(match && local); if (!card.hidden) shown++;
       });
       col.classList.remove('search-hide');

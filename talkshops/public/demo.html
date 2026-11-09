@@ -241,7 +241,7 @@ a.btn.primary{color:var(--accent-fg)}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
 <link rel="stylesheet" href="/saved-archive.css?v=5">
-<link rel="stylesheet" href="/theme.css?v=14">
+<link rel="stylesheet" href="/theme.css?v=15">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
 <link rel="stylesheet" href="/training.css?v=1">
@@ -306,7 +306,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/team.js?v=2"></script>
 <script src="/display.js?v=1"></script>
 <script src="/age-settings.js?v=1"></script>
-<script src="/board-tools.js?v=2"></script>
+<script src="/board-tools.js?v=3"></script>
 <script src="/walkthrough.js?v=3"></script>
 <script src="/walkaround.js?v=1"></script>
 <script src="/repair-guide.js?v=4"></script>
@@ -394,6 +394,8 @@ function seed(){
   maria.notes=[{id:1,t:now-60*M,text:"Front pads are down to 2 mm and the left rotor is scored. Recommend pads and rotors on the front axle, plus a fluid flush (fluid tested dark)."}];
   maria.messages.push({dir:"in",t:now-30*M,text:"Thanks! Is it safe to drive home if I wait on this?"});
   maria.messages.push({dir:"out",ch:"sms",t:now-26*M,text:"It's drivable short distance, but the pads are close to metal. We'd recommend doing it today. – Dan, service advisor"});
+  // Sample urgency marks: Maria needs her Civic back this afternoon.
+  maria.urgency="high";jobs.find(j=>j.ro==="RO-1046").urgency="medium";jobs.find(j=>j.ro==="RO-1045").urgency="low";
   const james=jobs.find(j=>j.ro==="RO-1042");
   james.approval={by:"James Whitaker",t:now-1350*M};
   james.messages.splice(3,0,{dir:"in",t:now-1350*M,text:"Approved the coils and plugs. Skip the throttle body for now."});
@@ -588,7 +590,7 @@ function boardView(){
       const age=ageOf(j);
       const hay=[vehicleStr(j),j.customer.name,j.customer.phone,j.customer.email,j.ro,j.concern,j.plate].filter(Boolean).join(" ").toLowerCase();
       h+=`<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} data-open="${j.id}" data-queue-key="${pending?"approval":j.stage==="ready"?"ready":"other"}" data-s="${esc(hay)}">
-        <span class="veh queue-vehicle">${esc(vehicleStr(j))}<span aria-hidden="true">›</span></span>
+        ${window.BayBoard.urgencyBadge(j)}<span class="veh queue-vehicle">${esc(vehicleStr(j))}<span aria-hidden="true">›</span></span>
         <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${j.ro}</span></span>
         <span class="row"><span>${esc(j.concern)}</span></span>
         <span class="row"><span>${esc(detail)}</span>${unread?`<span class="pill bad">New reply</span>`:""}</span>
@@ -640,6 +642,7 @@ function checkinView(){
     <label class="field">Model<input id="ci-model" required placeholder="Camry"></label>
     <label class="field">License plate<input id="ci-plate" placeholder="ABC1234"></label>
     <label class="field full">What's the concern?<textarea id="ci-concern" required placeholder="Customer's description of the problem"></textarea></label>
+    <div class="field full urgency-field"><span>Urgency <small class="muted">(for example, the customer needs the car back within the hour)</small></span>${window.BayBoard.urgencyPicker("","ciUrgency")}</div>
     <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
    </div>
    <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit">Check In and Notify Customer</button><button class="btn" type="button" id="ci-fill">Fill Sample Customer</button></div>
@@ -742,6 +745,7 @@ function sheetView(j){
     ${j.archivedAt?`<section class="sec closed-note" id="archivedNote"><p><b>${j.closed?"Closed without repair":"Picked up"}</b> · ${esc(j.closed?j.closed.reason:"")}${j.closed?" · ":""}${dayClock(j.archivedAt)}</p><p class="muted">This car is in the Archive until ${longDate(j.archivedAt+365*86400000)}.</p><div class="btn-row"><button class="btn" id="reopenBtn">Reopen and put back on the board</button><button class="btn danger" data-delete-job="${j.id}">Delete permanently</button></div></section>`:""}
     <section class="sec"><details class="stage-picker" ${window.TOUR_ACTIVE ? "open" : ""}><summary><span>Repair Stage</span><strong>${STAGES[idx].label}</strong></summary><div class="stepper">${steps}</div></details>
       <div class="btn-row" style="margin-top:10px">${next&&live?`<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>`:""}<button class="btn" id="viewAsCust">Customer Page</button>${live?`<button class="btn" id="closeJobBtn">Close Without Repair</button>`:""}</div>
+      ${live?`<div class="field urgency-field" style="margin-top:10px"><span>Urgency</span>${window.BayBoard.urgencyPicker(j.urgency,"jobUrgency")}</div>`:""}
       ${j.stage==="parts"&&live?`<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
     </section>
     <section class="sec"><h3>Concern</h3><div>${esc(j.concern)}</div>${sampleIllustration(j)}</section>
@@ -921,7 +925,7 @@ document.addEventListener("submit",e=>{
   if(f.id==="checkinForm"){
     const g=k=>$("#ci-"+k).value.trim();const ch=g("channel");
     if(!$("#ci-consent").checked){toast("Confirm the customer agreed to updates first");return}
-    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:g("name"),phone:ch!=="email"?g("phone"):"",email:ch!=="sms"?g("email"):"",channel:ch,consent:true},vehicle:{year:g("year"),make:g("make"),model:g("model")},plate:g("plate"),concern:g("concern"),stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[],messages:[]};
+    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:g("name"),phone:ch!=="email"?g("phone"):"",email:ch!=="sms"?g("email"):"",channel:ch,consent:true},vehicle:{year:g("year"),make:g("make"),model:g("model")},plate:g("plate"),concern:g("concern"),urgency:document.querySelector('input[name="ciUrgency"]:checked')?.value||"",stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[],messages:[]};
     state.nextRO++;plan.carsCreated++;const t=Date.now();j.events.push({stage:"checked_in",t});
     notify(j,fillTemplate("checked_in",j),t);
     state.jobs.push(j);save();ui.view="board";ui.openJob=j.id;render();window.scrollTo(0,0);toast("Checked in. "+first(j.customer.name)+" was notified.");return}
@@ -955,6 +959,7 @@ document.addEventListener("change",async e=>{
   if(e.target.dataset?.teamRole){team.change(e.target,render);return}
   if(e.target.dataset?.pri&&ui.openJob){const j=job(ui.openJob),x=j&&j.estimate.find(l=>String(l.id)===e.target.dataset.pri);if(x){x.priority=e.target.value;save();renderLayer();toast("Priority updated")}return}
   if(e.target.id==="c-send")$("#c-text-wrap").hidden=!e.target.checked;
+  if(e.target.name==="jobUrgency"){const j=job(ui.openJob);j.urgency=e.target.value;save();render();toast(j.urgency?"Urgency set to "+window.BayBoard.URGENCY[j.urgency][0]:"Urgency cleared");return}
   if(e.target.id==="eta"){const j=job(ui.openJob);j.eta=e.target.value.trim();save();render()}
   if(e.target.id==="rateFile"){const file=e.target.files[0];if(!file)return;
     try{const list=await billing.readRateFile(file);const by=new Map(state.rates.map(r=>[r.name.toLowerCase(),r]));list.forEach(r=>by.set(r.name.toLowerCase(),r));state.rates=[...by.values()].sort((a,b)=>a.name.localeCompare(b.name));save();render();toast(`Imported ${list.length} item${list.length===1?"":"s"}`)}

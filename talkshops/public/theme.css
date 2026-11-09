@@ -616,3 +616,22 @@ main:has(.queue-top) .board.stage-focused>.col:not([hidden]){display:grid;grid-t
 .age-color-pickers>.field{flex:1 1 110px}
 .age-color-pickers input[type="color"]{width:100%;height:44px;padding:4px;cursor:pointer}
 .age-settings .linkbtn{justify-self:start;text-align:left}
+
+/* Urgency: staff mark how soon the customer needs the car back (top right of a Bay card). */
+.card>.urgency{align-self:flex-end;margin:-4px -4px -2px 0}
+.urgency{flex:none;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;padding:3px 8px;border-radius:999px;line-height:1.2;border:1px solid transparent}
+.urgency::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.urgency.urg-high{color:var(--bad);background:var(--bad-bg);border-color:color-mix(in srgb,var(--bad) 35%,transparent)}
+.urgency.urg-medium{color:var(--warn);background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
+.urgency.urg-low{color:var(--muted);background:color-mix(in srgb,var(--muted) 10%,transparent)}
+.card:has(.urg-high){border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
+.urgency-field>span{display:block;margin-bottom:6px}
+.urgency-pick{display:flex;flex-wrap:wrap;gap:6px}
+.urgency-pick label{position:relative;cursor:pointer}
+.urgency-pick input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.urgency-pick span{display:inline-block;padding:7px 14px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);font-size:13px;font-weight:600;color:var(--fg)}
+.urgency-pick input:focus-visible+span{outline:2px solid var(--accent,#3d5afe);outline-offset:2px}
+.urgency-pick .urg-high input:checked+span{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.urgency-pick .urg-medium input:checked+span{background:var(--warn);border-color:var(--warn);color:var(--surface)}
+.urgency-pick .urg-low input:checked+span{background:var(--muted);border-color:var(--muted);color:var(--surface)}
+.urgency-pick .urg-none input:checked+span{background:var(--fg);border-color:var(--fg);color:var(--surface)}
