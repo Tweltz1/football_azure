@@ -47,7 +47,7 @@ function TripCard({ claim, onRelease, busy }) {
         {claim.state === 'arrived'
           ? <><strong>{claim.claimerName} is there now</strong><span>Mark it taken once it's gone.</span></>
           : <><strong>{claim.claimerName} is on the way</strong><span>{distanceLabel(claim.km)} · about {claim.etaMin} min · {TREND[claim.trend] || 'tracking'}</span></>}
-        <button type="button" className="jk-link-btn" disabled={busy} onClick={onRelease}>Release their claim</button>
+        <button type="button" className="jk-link-btn" disabled={busy} onClick={onRelease}>Cancel their claim</button>
       </div>
     );
   }
@@ -282,6 +282,9 @@ export default function ItemPage() {
         {item.mine ? (
           <>
             <Link to={`/junk/edit/${item.id}`} className="jk-btn jk-btn-icon" aria-label="Edit"><IconEdit /></Link>
+            {item.status !== 'gone' && (
+              <button type="button" className="jk-btn jk-btn-icon" aria-label="Delete listing" disabled={busy} onClick={() => setMenu('confirm-delete')}><IconTrash /></button>
+            )}
             {item.status === 'available' && <button type="button" className="jk-btn" disabled={busy} onClick={() => setStatus('pending')}>Pending</button>}
             {item.status !== 'available' && <button type="button" className="jk-btn" disabled={busy} onClick={() => setStatus('available')}>Relist</button>}
             {item.status !== 'gone'
@@ -356,6 +359,9 @@ export default function ItemPage() {
           <div className="jk-sheet" role="dialog" aria-modal="true" aria-label="Delete listing" onClick={(e) => e.stopPropagation()}>
             <h2>Delete this listing?</h2>
             <p className="jk-muted">The photos are deleted too. This can't be undone.</p>
+            {claimOpen && claim.forMyItem && (
+              <p className="jk-muted">{claim.claimerName} is on the way. We'll let them know it's no longer available.</p>
+            )}
             <button type="button" className="jk-btn jk-btn-danger jk-full" disabled={busy} onClick={remove}>Delete</button>
             <button type="button" className="jk-btn jk-full" onClick={() => setMenu(null)}>Keep it</button>
           </div>
