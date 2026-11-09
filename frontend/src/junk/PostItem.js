@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { SignInPrompt, useJunk } from './JunkApp';
-import { createItem, getItem, updateItem, uploadPhoto } from './junkApi';
+import { createItem, getItem, getMember, updateItem, uploadPhoto } from './junkApi';
+import { TermsSheet, checkPhoto } from './Safety';
 import { CATEGORIES, CONDITIONS, inJunkApp, photoToJpeg } from './device';
 import { appleDetect, hasAppleDetection } from './appleLabels';
 import { BackButton } from './ItemPage';
@@ -41,6 +42,11 @@ export default function PostItem() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(!editing);
+  // Curbsy rules: agreed once before the first post (the server asks again if it hasn't been).
+  const [askTerms, setAskTerms] = useState(false);
+  const retryAfterTerms = useRef(null);
+  // What the phone's photo check saw (sent with the listing so the server can check it too).
+  const photoLabels = useRef([]);
   // Several things in one post, each claimable and taken on its own.
   const [pieces, setPieces] = useState([]);
   const multi = pieces.length > 0;
@@ -50,6 +56,11 @@ export default function PostItem() {
   const detectAsked = useRef(false);
   const touchedRef = useRef(touched);
   touchedRef.current = touched;
+
+  useEffect(() => {
+    if (!me || editing) return;
+    getMember().then((m) => { if (m && !m.terms) setAskTerms(true); }).catch(() => {});
+  }, [me, editing]);
 
   useEffect(() => {
     if (!editing || !me) return;
@@ -151,6 +162,13 @@ export default function PostItem() {
         setError(err.message);
         continue;
       }
+      // Free on-phone check (explicit photos, weapons, drugs) before anything is uploaded.
+      const safe = await checkPhoto(preview);
+      if (!safe.ok) {
+        setError(safe.reason);
+        continue;
+      }
+      photoLabels.current = [...photoLabels.current, ...(safe.labels || [])].slice(-60);
       setPhotos((list) => [...list, { key, preview, uploading: true }]);
       // Only the first photo of a new listing is sent for detection.
       const detect = !editing && !detectAsked.current;
@@ -193,12 +211,18 @@ export default function PostItem() {
         pieces: multi ? named.map((p) => ({ id: p.id, title: p.title.trim(), category: p.category || 'other', box: p.box, photo: p.photo, gone: !!p.gone })) : [],
         photos: photos.map((p) => p.path).filter(Boolean),
         aiDetected: detected,
+        labels: photoLabels.current,
       };
       const item = editing ? await updateItem(id, fields) : await createItem({ ...fields, lat: spot.lat, lng: spot.lng });
       navigate(`/junk/item/${item.id}`, { replace: true });
     } catch (err) {
-      setError(err.message);
       setSaving(false);
+      if (err.status === 428) {
+        retryAfterTerms.current = () => submit(e);
+        setAskTerms(true);
+        return;
+      }
+      setError(err.message);
     }
   };
 
@@ -330,6 +354,22 @@ export default function PostItem() {
           </button>
         </div>
       </form>
+
+      {askTerms && (
+        <TermsSheet
+          onDone={() => {
+            setAskTerms(false);
+            const retry = retryAfterTerms.current;
+            retryAfterTerms.current = null;
+            if (retry) retry();
+          }}
+          onCancel={() => {
+            setAskTerms(false);
+            if (!retryAfterTerms.current) navigate('/junk', { replace: true });
+            retryAfterTerms.current = null;
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -4,6 +4,7 @@ import { SignInPrompt, useJunk } from './JunkApp';
 import { deleteAccount, junkSignOut as signOut, myItems } from './junkApi';
 import { ItemCard } from './Browse';
 import { IconBox, IconPlus } from './icons';
+import { ContactSheet } from './Safety';
 
 export default function Me() {
   const { me, authLoading } = useJunk();
@@ -11,6 +12,7 @@ export default function Me() {
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [contact, setContact] = useState(false);
 
   useEffect(() => {
     if (!me) return;
@@ -69,11 +71,13 @@ export default function Me() {
 
       <div className="jk-settings">
         <button type="button" className="jk-row-btn" onClick={() => signOut()}>Sign out</button>
+        <button type="button" className="jk-row-btn" onClick={() => setContact(true)}>Contact Curbsy</button>
         <a className="jk-row-btn" href="/junk-terms.html">Terms of Use</a>
         <a className="jk-row-btn" href="/junk-privacy.html">Privacy Policy</a>
         <button type="button" className="jk-row-btn jk-danger-text" onClick={() => setConfirm(true)}>Delete my account</button>
       </div>
 
+      {contact && <ContactSheet onClose={() => setContact(false)} />}
       {confirm && (
         <div className="jk-sheet-backdrop" role="presentation" onClick={() => setConfirm(false)}>
           <div className="jk-sheet" role="dialog" aria-modal="true" aria-label="Delete account" onClick={(e) => e.stopPropagation()}>

@@ -37,7 +37,8 @@ jobs:
             query="update public.junk_items set status = 'hidden' where id = '$HIDE_ITEM' returning id, title"
           else
             [[ "$BAN_USER" =~ $uuid ]] || { echo "ban_user must be an owner id"; exit 1; }
-            query="update public.junk_items set status = 'hidden' where owner_id = '$BAN_USER' returning id, title"
+            # Hides everything they posted and stops them posting or messaging again (junk_members.banned_at).
+            query="with ban as (insert into public.junk_members (user_id, banned_at, ban_reason) values ('$BAN_USER', now(), 'banned from the reports review') on conflict (user_id) do update set banned_at = now(), ban_reason = excluded.ban_reason) update public.junk_items set status = 'hidden' where owner_id = '$BAN_USER' returning id, title"
           fi
           curl --fail --silent --show-error \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
@@ -55,7 +56,17 @@ jobs:
           n=$(jq length reports.json)
           echo "Reports in the last day: $n"
           jq -r '.[] | "----\n\(.created_at)  \(.reason)\n  listing: \(.title) [\(.status), \(.reports) reports]  id \(.item_id)\n  posted by: \(.owner_name)  owner id \(.owner_id)\n  \(.description | .[0:300])"' reports.json
+          # Messages people sent with Contact Curbsy (or "Report this person" in a chat).
+          query="select created_at, user_id, user_name, body from public.junk_feedback where created_at > now() - interval '1 day' order by created_at"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "$(jq -n --arg q "$query" '{query: $q}')" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" > feedback.json || echo '[]' > feedback.json
+          f=$(jq length feedback.json)
+          echo "Contact messages in the last day: $f"
+          jq -r '.[] | "----\n\(.created_at)  from \(.user_name) (user id \(.user_id))\n  \(.body | .[0:1000])"' feedback.json
+          n=$((n + f))
           if [ "$n" -gt 0 ]; then
-            echo "::error::$n Junk App report(s) to review. Hide a listing or user by running this workflow with hide_item or ban_user."
+            echo "::error::$n Curbsy report(s) or contact message(s) to review. Hide a listing or user by running this workflow with hide_item or ban_user."
             exit 1
           fi

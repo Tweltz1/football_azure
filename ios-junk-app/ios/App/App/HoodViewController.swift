@@ -12,6 +12,7 @@ class HoodViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(AuthSessionPlugin())
         bridge?.registerPluginInstance(TripPlugin())
         bridge?.registerPluginInstance(ItemVisionPlugin())
+        bridge?.registerPluginInstance(PhotoSafetyPlugin())
     }
 }
 
@@ -352,6 +353,83 @@ public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
             // things are, then names each one from its own part of the photo.
             let regions = ItemVisionPlugin.regions(data: data)
             call.resolve(["labels": Array(labels), "objects": objects, "regions": regions, "detector": model != nil])
+        }
+    }
+}
+
+// Free on-phone photo check before a Curbsy photo is uploaded (App Store guideline 1.2): a small explicit-image
+// model (NSFWDetector by LOVOO, BSD license, ios-junk-app/models/NSFW.mlmodel) plus Apple's own photo labels,
+// so the web page can refuse weapons, drugs and explicit photos. Nothing leaves the phone.
+// JS: frontend/src/junk/Safety.js
+@objc(PhotoSafetyPlugin)
+public class PhotoSafetyPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "PhotoSafetyPlugin"
+    public let jsName = "PhotoSafety"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "check", returnType: CAPPluginReturnPromise),
+    ]
+
+    private static let modelName = "NSFW"
+    private static var model: VNCoreMLModel?
+    private static var modelTried = false
+    private static let lock = NSLock()
+
+    /// Compiles the bundled model once (cached in Application Support) and keeps it loaded.
+    private static func loadModel() -> VNCoreMLModel? {
+        lock.lock()
+        defer { lock.unlock() }
+        if modelTried { return model }
+        modelTried = true
+        guard let source = Bundle.main.url(forResource: modelName, withExtension: "mlmodel", subdirectory: "public/models") else {
+            return nil
+        }
+        do {
+            let fm = FileManager.default
+            let size = ((try? fm.attributesOfItem(atPath: source.path)[.size]) as? NSNumber)?.intValue ?? 0
+            let dir = try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            let compiled = dir.appendingPathComponent("\(modelName)-\(size).mlmodelc")
+            if !fm.fileExists(atPath: compiled.path) {
+                let temp = try MLModel.compileModel(at: source)
+                try? fm.removeItem(at: compiled)
+                try fm.moveItem(at: temp, to: compiled)
+            }
+            model = try VNCoreMLModel(for: MLModel(contentsOf: compiled))
+        } catch {
+            model = nil
+        }
+        return model
+    }
+
+    @objc func check(_ call: CAPPluginCall) {
+        guard let image = call.getString("image") else {
+            call.reject("image is required")
+            return
+        }
+        let base64 = image.components(separatedBy: ",").last ?? image
+        guard let data = Data(base64Encoded: base64) else {
+            call.reject("Couldn't read the photo")
+            return
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Explicit-image score, 0 (fine) to 1 (explicit); -1 when the model isn't in this build.
+            var nsfw: Double = -1
+            if let model = PhotoSafetyPlugin.loadModel() {
+                let request = VNCoreMLRequest(model: model)
+                request.imageCropAndScaleOption = .centerCrop
+                if (try? VNImageRequestHandler(data: data, options: [:]).perform([request])) != nil,
+                   let results = request.results as? [VNClassificationObservation],
+                   let hit = results.first(where: { $0.identifier == "NSFW" }) {
+                    nsfw = Double(hit.confidence)
+                }
+            }
+            let classify = VNClassifyImageRequest()
+            try? VNImageRequestHandler(data: data, options: [:]).perform([classify])
+            let labels = (classify.results ?? [])
+                .filter { $0.confidence >= 0.3 }
+                .sorted { $0.confidence > $1.confidence }
+                .prefix(20)
+                .map { ["label": $0.identifier, "confidence": Double($0.confidence)] as [String: Any] }
+            call.resolve(["nsfw": nsfw, "labels": Array(labels)])
         }
     }
 }

@@ -26,6 +26,11 @@ function world(detection: JunkDetection | null = null) {
   const stored = new Set<string>();
   const deletedAccounts: string[] = [];
   const claims: JunkClaim[] = [];
+  // Everyone in these tests agreed to the Terms already, unless a test says otherwise.
+  const members = new Map<string, { termsAt: string | null; bannedAt: string | null }>(
+    [ALICE, BOB, CARL].map((id) => [id, { termsAt: '2026-11-01T00:00:00Z', bannedAt: null }]),
+  );
+  const feedback: { userId: string; body: string; createdAt: string }[] = [];
   const isOpen = (c: JunkClaim) => c.status === 'active' || c.status === 'arrived';
   let clock = Date.parse('2026-11-08T15:00:00Z');
   let seq = 0;
@@ -82,6 +87,10 @@ function world(detection: JunkDetection | null = null) {
       for (let k = messages.length - 1; k >= 0; k--) if (messages[k].fromId === userId || messages[k].toId === userId) messages.splice(k, 1);
       return paths;
     },
+    async member(userId) { const m = members.get(userId); return m ? clone(m) : null; },
+    async acceptTerms(userId, at) { members.set(userId, { bannedAt: null, ...members.get(userId), termsAt: at }); },
+    async addFeedback(f) { feedback.push({ userId: f.userId, body: f.body, createdAt: f.createdAt }); },
+    async countFeedbackSince(userId, since) { return feedback.filter((f) => f.userId === userId && f.createdAt >= since).length; },
   };
   const deps: JunkDeps = {
     store,
@@ -112,7 +121,7 @@ function world(detection: JunkDetection | null = null) {
     assert.equal(res?.status, 200, String(res?.body));
     return res!.body as { id: string; photos: string[] };
   };
-  return { call, post, items, stored, messages, deletedAccounts, claims, tick: (ms: number) => { clock += ms; } };
+  return { call, post, items, stored, messages, deletedAccounts, claims, members, feedback, tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -519,4 +528,68 @@ test('multi-item post: claim some things or take it all, each is taken on its ow
   await w.call(CARL, 'POST', 'junk/claim/done');
   now = w.items.get(item.id)!;
   assert.deepEqual([now.status, now.pieces.every((p) => p.gone)], ['gone', true]);
+});
+
+test('refuses listings for things that can\'t be given away, and lets lookalikes through', async () => {
+  const w = world();
+  const refused = async (fields: Record<string, unknown>, why: RegExp) => {
+    const up = await w.call(ALICE, 'POST', 'junk/photos', { image: JPEG });
+    const res = await w.call(ALICE, 'POST', 'junk/items', {
+      title: 'Thing', description: '', category: 'other', tags: [], pickup: '', photos: [(up?.body as { path: string }).path], ...HOME, ...fields,
+    });
+    assert.equal(res?.status, 400, JSON.stringify(fields));
+    assert.match(String(res?.body), why);
+  };
+  await refused({ title: 'Hunting rifle' }, /Weapons/);
+  await refused({ title: 'Old dresser', description: 'Also have some w33d edibles' }, /Drugs/);
+  await refused({ title: 'Free puppies' }, /Live animals/);
+  await refused({ title: 'Kitchen stuff', tags: ['vape'] }, /Tobacco/);
+  await refused({ title: 'Box of stuff', pieces: [{ title: 'Lamp' }, { title: 'Case of beer' }] }, /Alcohol/);
+  await refused({ title: 'Drop side crib' }, /Recalled/);
+  await refused({ title: 'Couch', labels: [{ label: 'handgun', confidence: 0.9 }] }, /Weapons/);
+
+  for (const title of ['Hot glue gun', 'Dog crate', 'Wine rack', 'Weed eater', 'Medicine cabinet', 'Nerf gun blaster', 'Fish tank', 'Cat5 cable', 'Drain snake']) {
+    await w.post(ALICE, { title });
+  }
+  // A dog in the description, or a low-confidence photo label, is fine.
+  await w.post(ALICE, { title: 'Recliner', description: 'My dog chewed one corner.', labels: [{ label: 'gun', confidence: 0.1 }] });
+
+  // Editing a listing is checked too.
+  const item = await w.post(ALICE);
+  const res = await w.call(ALICE, 'POST', `junk/items/${item.id}`, { title: 'Pistol' });
+  assert.equal(res?.status, 400);
+});
+
+test('posting and messaging need the Terms agreed to, and banned people can\'t do either', async () => {
+  const w = world();
+  w.members.delete(BOB);
+  let res = await w.call(BOB, 'GET', 'junk/member');
+  assert.deepEqual(res?.body, { terms: false, banned: false });
+  res = await w.call(BOB, 'POST', 'junk/items', { title: 'Lamp', photos: [], ...HOME });
+  assert.equal(res?.status, 428);
+  const item = await w.post(ALICE);
+  res = await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Still there?' });
+  assert.equal(res?.status, 428);
+
+  res = await w.call(BOB, 'POST', 'junk/terms', { agree: true });
+  assert.equal(res?.status, 200);
+  res = await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Still there?' });
+  assert.equal(res?.status, 200);
+  // Slurs don't go through in chat.
+  res = await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'you r3tard' });
+  assert.equal(res?.status, 400);
+
+  w.members.set(BOB, { termsAt: '2026-11-01T00:00:00Z', bannedAt: '2026-11-08T00:00:00Z' });
+  res = await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Hello?' });
+  assert.equal(res?.status, 403);
+  res = await w.call(BOB, 'GET', 'junk/member');
+  assert.deepEqual(res?.body, { terms: true, banned: true });
+});
+
+test('Contact Curbsy saves the message, a few a day', async () => {
+  const w = world();
+  for (let k = 0; k < 5; k++) assert.equal((await w.call(BOB, 'POST', 'junk/contact', { body: `Problem ${k}` }))?.status, 200);
+  assert.equal((await w.call(BOB, 'POST', 'junk/contact', { body: 'One more' }))?.status, 429);
+  assert.equal(w.feedback.length, 5);
+  assert.equal((await w.call(null, 'POST', 'junk/contact', { body: 'Hi' }))?.status, 401);
 });

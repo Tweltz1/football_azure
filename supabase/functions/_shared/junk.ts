@@ -11,6 +11,7 @@ import {
   CLAIMS_PER_DAY, MAX_CLAIM_KM, OPEN_CLAIM, RECLAIM_COOLDOWN_MIN, claimOut, etaMinutes, judgeClaim, newClaim, pingClaim,
   type ClaimStore, type JunkClaim,
 } from './junkClaims.ts';
+import { CHAT_RULES, LABEL_MIN_CONFIDENCE, LABEL_RULES, SAFETY_RULES, checkText } from './junkSafety.ts';
 
 export const JUNK_CATEGORIES = [
   'furniture', 'appliances', 'electronics', 'home', 'kids', 'clothing', 'books', 'sports', 'tools', 'garden',
@@ -106,7 +107,14 @@ export interface JunkStore extends ClaimStore {
   latestClaimForUser(userId: string): Promise<JunkClaim | null>;
   /** Removes the user's items, messages, reports, blocks, claims and upload log; returns their photo paths. */
   deleteUserData(userId: string): Promise<string[]>;
+  /** When the person agreed to the Terms and whether they're banned (null: never seen). */
+  member(userId: string): Promise<JunkMember | null>;
+  acceptTerms(userId: string, at: string): Promise<void>;
+  addFeedback(f: { id: string; userId: string; userName: string; body: string; createdAt: string }): Promise<void>;
+  countFeedbackSince(userId: string, since: string): Promise<number>;
 }
+
+export interface JunkMember { termsAt: string | null; bannedAt: string | null }
 
 export interface JunkPhotos {
   put(path: string, jpeg: Uint8Array): Promise<void>;
@@ -144,6 +152,7 @@ export const MAX_KM = 160;
 export const FRESH_DAYS = 45;
 export const HIDE_AFTER_REPORTS = 3;
 export const MAX_PIECES = 12;
+export const FEEDBACK_PER_DAY = 5;
 
 const ok = (body?: unknown): Res => ({ status: 200, body });
 const bad = (message: string): Res => ({ status: 400, body: message });
@@ -332,7 +341,29 @@ function readFields(body: Body, userId: string, prev: JunkItem | null): { fields
     if (prev.status === 'hidden') return { error: 'This listing was hidden after reports.' };
     fields.status = body.status as JunkStatus;
   }
+  const unsafe = listingProblem(fields, body);
+  if (unsafe) return { error: unsafe };
   return { fields };
+}
+
+const ALL_RULES = SAFETY_RULES.map((r) => r.key);
+/** Why a listing can't be posted (see junkSafety.ts), or null. Names, tags and the phone's photo labels get every
+ *  rule; longer text skips plain animal names ("my dog chewed one leg" is fine). */
+export function listingProblem(fields: Partial<JunkItem>, body: Body = {}): string | null {
+  const strict = [fields.title ?? '', ...(fields.tags ?? []), ...(fields.pieces ?? []).map((p) => p.title)].join(' . ');
+  const loose = [fields.description ?? '', fields.pickup ?? ''].join(' . ');
+  const labels = Array.isArray(body.labels)
+    ? body.labels
+      .filter((l): l is { label: string; confidence: number } => !!l && typeof (l as Body).label === 'string' && typeof (l as Body).confidence === 'number')
+      .filter((l) => l.confidence >= LABEL_MIN_CONFIDENCE)
+      .slice(0, 40)
+      .map((l) => l.label.replace(/_/g, ' '))
+      .join(' . ')
+    : '';
+  const hit = checkText(strict, ALL_RULES)
+    || checkText(loose, ALL_RULES.filter((k) => k !== 'animal_names'))
+    || (labels ? checkText(labels, LABEL_RULES) : null);
+  return hit ? `${hit.reason} If we got this wrong, change the wording and try again.` : null;
 }
 
 export async function junkRoute(
@@ -409,6 +440,34 @@ export async function junkRoute(
   // ---- Everything below needs a sign-in ----
   if (!me) return needSignIn;
   const myName = str(ctx.displayName, 40) || 'Neighbor';
+  /** Posting and messaging need the Terms agreed to (App Store guideline 1.2), and no ban. */
+  const gate = async (): Promise<Res | null> => {
+    const m = await store.member(me);
+    if (m?.bannedAt) return { status: 403, body: 'Your account can\'t post or send messages on Curbsy because it broke the Terms. Use Contact Curbsy in the Me tab if you think this is a mistake.' };
+    if (!m?.termsAt) return { status: 428, body: 'Please agree to the Curbsy Terms first.' };
+    return null;
+  };
+
+  if (section === 'member' && !a && method === 'GET') {
+    const m = await store.member(me);
+    return ok({ terms: !!m?.termsAt, banned: !!m?.bannedAt });
+  }
+  if (section === 'terms' && !a && method === 'POST') {
+    if (body.agree !== true) return bad('Agree to the Terms to continue.');
+    await store.acceptTerms(me, nowIso);
+    return ok({ terms: true });
+  }
+  // "Contact Curbsy": questions and complaints for the person running the app (listed by the daily review).
+  if (section === 'contact' && !a && method === 'POST') {
+    const text = longStr(body.body, 2000);
+    if (text.length < 3) return bad('Type a message.');
+    if (await store.countFeedbackSince(me, daysAgo(now, 1)) >= FEEDBACK_PER_DAY) {
+      return { status: 429, body: 'Thanks, we have your messages. Try again tomorrow if there\'s more.' };
+    }
+    await store.addFeedback({ id: ctx.newId(), userId: me, userName: myName, body: text, createdAt: nowIso });
+    ctx.log.warn(`junk: contact message from ${me}`);
+    return ok({ sent: true });
+  }
 
   // Upload one photo; the first photo of a listing also asks Gemini what the item is.
   if (section === 'photos' && !a && method === 'POST') {
@@ -436,6 +495,8 @@ export async function junkRoute(
   }
 
   if (section === 'items' && !a && method === 'POST') {
+    const stop = await gate();
+    if (stop) return stop;
     if (await store.countItemsSince(me, daysAgo(now, 1)) >= ITEMS_PER_DAY) {
       return { status: 429, body: 'You\'ve posted a lot today. Try again tomorrow.' };
     }
@@ -708,6 +769,10 @@ export async function junkRoute(
       }
       const text = longStr(body.body, 1000);
       if (!text) return bad('Type a message.');
+      const stop = await gate();
+      if (stop) return stop;
+      const rude = checkText(text, CHAT_RULES);
+      if (rude) return bad(rude.reason);
       const msg: JunkMessage = { id: ctx.newId(), itemId: a, fromId: me, toId: other, fromName: myName, body: text, createdAt: nowIso, readAt: null };
       await store.addMessage(msg);
       return ok({ id: msg.id, body: msg.body, mine: true, createdAt: msg.createdAt });

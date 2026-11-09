@@ -148,7 +148,27 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_blocks').delete().or(`user_id.eq.${userId},blocked_id.eq.${userId}`));
       must(await db.from('junk_uploads').delete().eq('user_id', userId));
       must(await db.from('junk_claims').delete().or(`claimer_id.eq.${userId},owner_id.eq.${userId}`));
+      must(await db.from('junk_feedback').delete().eq('user_id', userId));
+      // A ban outlives the account's data (a deleted account can't come back under the same id anyway).
+      must(await db.from('junk_members').delete().eq('user_id', userId).is('banned_at', null));
       return paths;
+    },
+    async member(userId) {
+      const r = must(await db.from('junk_members').select('terms_at, banned_at').eq('user_id', userId).maybeSingle()) as
+        { terms_at: string | null; banned_at: string | null } | null;
+      return r ? { termsAt: r.terms_at, bannedAt: r.banned_at } : null;
+    },
+    async acceptTerms(userId, at) {
+      // Keeps any ban: only terms_at is written on a conflict.
+      must(await db.from('junk_members').upsert({ user_id: userId, terms_at: at }, { onConflict: 'user_id' }));
+    },
+    async addFeedback(f) {
+      must(await db.from('junk_feedback').insert({ id: f.id, user_id: f.userId, user_name: f.userName, body: f.body, created_at: f.createdAt }));
+    },
+    async countFeedbackSince(userId, since) {
+      const { count, error } = await db.from('junk_feedback').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since);
+      if (error) throw error;
+      return count ?? 0;
     },
   };
 }

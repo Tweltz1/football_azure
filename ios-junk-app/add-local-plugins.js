@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const LOCAL_PLUGINS = ['AuthSessionPlugin', 'TripPlugin', 'ItemVisionPlugin'];
+const LOCAL_PLUGINS = ['AuthSessionPlugin', 'TripPlugin', 'ItemVisionPlugin', 'PhotoSafetyPlugin'];
 const file = path.join(__dirname, 'ios/App/App/capacitor.config.json');
 const config = JSON.parse(fs.readFileSync(file, 'utf8'));
 config.packageClassList = [...new Set([...(config.packageClassList || []).filter((c) => c !== 'NearbyPlugin'), ...LOCAL_PLUGINS])];

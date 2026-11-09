@@ -72,3 +72,8 @@ export const junkSignOut = async () => {
   } catch (error) { /* signed out locally anyway */ }
   window.location.assign('/junk');
 };
+
+// Safety (App Store guideline 1.2): Terms agreement, bans, and "Contact Curbsy".
+export const getMember = () => call('GET', 'member');
+export const agreeToTerms = () => call('POST', 'terms', { agree: true });
+export const contactCurbsy = (body) => call('POST', 'contact', { body });
