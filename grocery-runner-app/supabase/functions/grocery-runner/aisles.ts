@@ -65,3 +65,23 @@ export async function voteAisle(body: Record<string, unknown>) {
   if (!res.ok) throw new Error(`Saving the aisle failed (${res.status}).`);
   return { ok: true };
 }
+
+/**
+ * Every item with a shared aisle answer at one store, as item + aisle. The app uses it to learn the
+ * store's layout (which aisle is frozen, dairy, ...). Capped to the most recent votes.
+ */
+export async function storeAisles(store: unknown) {
+  const storeKey = cleanStoreKey(store);
+  if (!storeKey) throw new Error('store is required.');
+  const q = new URLSearchParams({
+    select: 'item_key,aisle,department,updated_at,kind',
+    store_key: `eq.${storeKey}`,
+    aisle: 'not.is.null',
+    order: 'updated_at.desc',
+    limit: '3000',
+  });
+  const res = await fetch(`${TABLE}?${q}`, { headers: auth });
+  if (!res.ok) throw new Error(`Store aisles lookup failed (${res.status}).`);
+  const best = tallyVotes((await res.json()) as VoteRow[]);
+  return Object.entries(best).flatMap(([item, s]) => (s.aisle ? [{ item, aisle: s.aisle, votes: s.votes }] : []));
+}

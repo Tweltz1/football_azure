@@ -96,6 +96,21 @@ cross-aisles and the perimeter are walkable. An aisle number maps to that aisle'
 number moves the stop along the aisle. Later, a store can get its own layout (same `StoreLayout` shape)
 without changing the router.
 
+Two sources adjust the generic plan per store:
+- **What shoppers' aisles say** (`src/lib/storeProfile.ts`). The `store-aisles` action returns the
+  majority aisle for every item mapped at the store; with this phone's own aisles and the list's, each
+  item name is matched to a department by keyword. When two or more items of a department sit within
+  one aisle of each other (and are most of that department's answers), the department moves there:
+  "frozen waffles" with no aisle goes to the aisle where shoppers put peas and ice cream, and that
+  aisle counts as cold for "frozen and dairy last".
+- **The building outline** (`src/lib/footprint.ts`, `src/lib/osmBuilding.ts`). Satellite photos only
+  show the roof, and Apple's and Google's imagery may not be analysed, so the phone downloads the store's
+  building outline, mapped entrances and parking lots from OpenStreetMap (Overpass, once per store, kept
+  on the phone, credited on the route screen). The front wall is the one with the entrance, else the one
+  facing the biggest parking lot. Its width gives an aisle estimate ((width − 25 m) / 3.4 m), and an
+  entrance at the left end mirrors the plan. Overpass is called from the phone, not Supabase, which
+  Overpass servers refused earlier.
+
 ## 3. Routing
 
 `planRoute()` in `src/lib/routing/planRoute.ts`:
@@ -144,4 +159,4 @@ aisle label parsing, department guessing, stop order, grouping and the cold-last
 1. Sign in with Apple and rate limits on shared aisle votes.
 2. Cache Kroger lookups per store + item.
 3. Let the shopper pick the exact Kroger product when the first search result is wrong.
-4. Per-store layouts for the most-used stores.
+4. Learn where perimeter departments are (produce left or right) from check-off order.

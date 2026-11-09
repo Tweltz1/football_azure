@@ -109,6 +109,7 @@ jobs:
           echo "status: $(curl -fsS "${H[@]}" "$FN?action=status")"
           echo "official stores near Madison, WI: $(curl -fsS "${H[@]}" "$FN?action=nearby&lat=43.0731&lon=-89.4012" | head -c 300)"
           echo "coverage: $(curl -fsS "${H[@]}" -H "Content-Type: application/json" -d '{"action":"coverage","stores":["woodmans:g43073xm89401"]}' "$FN")"
+          echo "store-aisles: $(curl -fsS "${H[@]}" -H "Content-Type: application/json" -d '{"action":"store-aisles","store":"woodmans:g43073xm89401"}' "$FN")"
           curl -fsS "${H[@]}" -H "Content-Type: application/json" -d '{"action":"aisles","store":"woodmans:osm-test","items":["milk"]}' "$FN"; echo
 
   build:

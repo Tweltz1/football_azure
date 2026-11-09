@@ -1,4 +1,5 @@
 import { COLD_DEPARTMENTS, guessDepartment } from '../departments';
+import { coldDepartmentOfAisle, StoreProfile } from '../storeProfile';
 import { Cell, ItemLocation, ListItem } from '../types';
 import { buildGenericLayout, cellForLocation, parseAisleNumber, StoreLayout } from './layout';
 import { orderStops, walkPath } from './tour';
@@ -19,9 +20,13 @@ export function effectiveLocation(item: ListItem): ItemLocation {
   return { kind: 'department', department: guessDepartment(item.name), source: 'guess' };
 }
 
-function isCold(loc: ItemLocation): boolean {
+function isCold(loc: ItemLocation, profile?: StoreProfile): boolean {
   if (loc.kind === 'department') return COLD_DEPARTMENTS.includes(loc.department);
-  return loc.kind === 'aisle' && !!loc.department && COLD_DEPARTMENTS.includes(loc.department);
+  if (loc.kind !== 'aisle') return false;
+  if (loc.department) return COLD_DEPARTMENTS.includes(loc.department);
+  // An aisle shoppers have shown to be the frozen or dairy aisle at this store.
+  const n = parseAisleNumber(loc.aisle);
+  return n !== null && !!coldDepartmentOfAisle(profile, n);
 }
 
 /**
@@ -31,7 +36,7 @@ function isCold(loc: ItemLocation): boolean {
 export function planRoute(
   items: ListItem[],
   aisleCount: number,
-  opts: { coldLast?: boolean } = {},
+  opts: { coldLast?: boolean; profile?: StoreProfile; mirror?: boolean } = {},
 ): PlannedRoute {
   const todo = items.filter((i) => !i.checked);
 
@@ -39,8 +44,9 @@ export function planRoute(
   const highest = Math.max(
     aisleCount,
     ...todo.map((i) => (i.location.kind === 'aisle' ? parseAisleNumber(i.location.aisle) ?? 0 : 0)),
+    ...Object.values(opts.profile?.departmentAisle ?? {}),
   );
-  const layout = buildGenericLayout(highest);
+  const layout = buildGenericLayout(highest, { profile: opts.profile, mirror: opts.mirror });
 
   // Group items that are picked from the same spot.
   const byCell = new Map<string, RouteStop & { cold: boolean }>();
@@ -51,7 +57,7 @@ export function planRoute(
     const key = `${cell.x},${cell.y}`;
     const stop = byCell.get(key) ?? { cell, items: [], cold: true };
     stop.items.push(item);
-    stop.cold = stop.cold && isCold(loc);
+    stop.cold = stop.cold && isCold(loc, opts.profile);
     byCell.set(key, stop);
   }
   const all = [...byCell.values()];

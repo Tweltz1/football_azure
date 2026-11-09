@@ -4,7 +4,7 @@ import { PlannedRoute } from '../lib/routing/planRoute';
 import { useTheme } from '../lib/theme';
 import { Cell } from '../lib/types';
 
-/** Top-down store map: back wall at the top, entrance at the bottom right. */
+/** Top-down store map: back wall at the top, entrance at the bottom (right unless the store is mirrored). */
 export function StoreMap({ route, done }: { route: PlannedRoute; done: Set<number> }) {
   const t = useTheme();
   const { width: screen } = useWindowDimensions();
@@ -60,7 +60,13 @@ export function StoreMap({ route, done }: { route: PlannedRoute; done: Set<numbe
           </G>
         );
       })}
-      <SvgText x={px(route.layout.entrance).x} y={H - 2} fontSize={font} fill={t.text} textAnchor="end">
+      <SvgText
+        x={px(route.layout.entrance).x}
+        y={H - 2}
+        fontSize={font}
+        fill={t.text}
+        textAnchor={route.layout.entrance.x < grid.width / 2 ? 'start' : 'end'}
+      >
         In
       </SvgText>
       <SvgText x={px(route.layout.checkout).x} y={H - 2} fontSize={font} fill={t.text} textAnchor="middle">

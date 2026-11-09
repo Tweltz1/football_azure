@@ -7,8 +7,10 @@ import { Card, tap } from '../components/ui';
 import { metresBetween } from '../lib/chainMatch';
 import { locationLabel } from '../lib/labels';
 import { Checkoff, learnFromTrip } from '../lib/learnAisles';
-import { isShared, voteAisle } from '../lib/sharedAisles';
-import { ListItem, Store } from '../lib/types';
+import { DEPARTMENT_LABEL } from '../lib/departments';
+import { fetchStoreAisles, isShared, voteAisle } from '../lib/sharedAisles';
+import { buildProfile } from '../lib/storeProfile';
+import { Department, ListItem, Store } from '../lib/types';
 import { planRoute } from '../lib/routing/planRoute';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
@@ -44,10 +46,40 @@ const knownAisle = (i: ListItem) =>
 
 export default function RouteScreen() {
   const t = useTheme();
-  const { items, store, coldLast, setColdLast, toggleItem, deviceId } = useData();
+  const { items, store, coldLast, setColdLast, toggleItem, deviceId, remembered, buildings } = useData();
   // Plan once from the items left when the screen opens, so checking items off doesn't reshuffle the walk.
   const [snapshot] = useState(() => items.filter((i) => !i.checked));
-  const route = useMemo(() => planRoute(snapshot, store?.aisleCount ?? 20, { coldLast }), [snapshot, store, coldLast]);
+
+  // This store's layout as shoppers have shown it: every shared item + aisle answer, plus this
+  // phone's own and the aisles already on the list (lib/storeProfile.ts).
+  const [sharedAnswers, setSharedAnswers] = useState<{ name: string; aisle: string }[]>([]);
+  useEffect(() => {
+    if (isShared(store)) fetchStoreAisles(store).then(setSharedAnswers).catch(() => {});
+  }, [store]);
+  const profile = useMemo(() => {
+    const mine = Object.entries((store && remembered[store.id]) ?? {}).flatMap(([name, loc]) =>
+      loc.kind === 'aisle' ? [{ name, aisle: loc.aisle }] : [],
+    );
+    const onList = snapshot.flatMap((i) =>
+      i.location.kind === 'aisle' && i.location.source !== 'guess' ? [{ name: i.name, aisle: i.location.aisle }] : [],
+    );
+    return buildProfile([...mine, ...onList, ...sharedAnswers]);
+  }, [store, remembered, snapshot, sharedAnswers]);
+
+  // The building outline sizes the map and puts the entrance on the right side.
+  const building = store ? buildings[store.id]?.info : null;
+  const route = useMemo(
+    () =>
+      planRoute(snapshot, building?.aisleEstimate ?? store?.aisleCount ?? 20, {
+        coldLast,
+        profile,
+        mirror: building?.entranceSide === 'left',
+      }),
+    [snapshot, store, coldLast, profile, building],
+  );
+  const placed = (Object.entries(profile.departmentAisle) as [Department, number][])
+    .map(([d, a]) => `${DEPARTMENT_LABEL[d]} ${a}`)
+    .join(', ');
 
   // Learning aisles from check-off order (rules in lib/learnAisles.ts). Only for shared stores
   // picked on the map, so we know where the store is.
@@ -99,6 +131,17 @@ export default function RouteScreen() {
           About {Math.round((route.distance * FEET_PER_CELL) / 10) * 10} ft · {route.stops.length} stops
           {store?.chain === 'kroger' ? '' : ' · store layout is approximate'}
         </Text>
+        {!!placed && (
+          <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+            Learned from shopper aisles: {placed}
+          </Text>
+        )}
+        {building && (
+          <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+            Building about {Math.round(building.frontageM * 3.28)} ft wide
+            {building.entranceSide ? `, entrance on the ${building.entranceSide}` : ''} · © OpenStreetMap contributors
+          </Text>
+        )}
       </Card>
 
       <View style={[styles.toggle, { backgroundColor: t.card }]}>

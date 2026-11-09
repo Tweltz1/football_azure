@@ -44,3 +44,9 @@ export function itemKey(name: string): string {
     .trim()
     .slice(0, 80);
 }
+
+/** Every shared item + aisle answer at a store (for learning its layout). */
+export async function fetchStoreAisles(store: Store): Promise<{ name: string; aisle: string }[]> {
+  const rows = await callBackend<{ item: string; aisle: string }[]>({ body: { action: 'store-aisles', store: store.id } });
+  return Array.isArray(rows) ? rows.map((r) => ({ name: r.item, aisle: r.aisle })) : [];
+}
