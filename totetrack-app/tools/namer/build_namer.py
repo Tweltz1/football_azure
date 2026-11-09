@@ -57,7 +57,7 @@ class ImageEncoder(torch.nn.Module):
 
     def forward(self, image):
         x = (image - self.mean) / self.std
-        f = self.model.get_image_features(pixel_values=x)
+        f = self.model.visual_projection(self.model.vision_model(pixel_values=x).pooler_output)
         return f / f.norm(dim=-1, keepdim=True)
 
 
@@ -76,7 +76,7 @@ def main():
         for name, descs in items:
             prompts = [t.format(d) for d in descs for t in TEMPLATES]
             tok = processor(text=prompts, return_tensors="pt", padding=True)
-            e = model.get_text_features(**tok)
+            e = model.text_projection(model.text_model(**tok).pooler_output)
             e = e / e.norm(dim=-1, keepdim=True)
             e = e.mean(0)
             rows.append((e / e.norm()).numpy())

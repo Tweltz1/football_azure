@@ -31,11 +31,12 @@ jobs:
 
       - name: Install
         run: |
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install transformers coremltools pillow numpy
+          pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install 'transformers>=4.40' coremltools pillow numpy
 
       - name: Build
         run: |
+          set -o pipefail
           python build_namer.py "$RUNNER_TEMP/namer" 2>&1 | tee build.log
           cd "$RUNNER_TEMP/namer" && zip -qr ToteNamer.mlpackage.zip ToteNamer.mlpackage && ls -lh
 
