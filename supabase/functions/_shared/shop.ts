@@ -2,6 +2,7 @@
 // through stages; each change can text the customer. Customers never sign in: their text carries a
 // link with a long random token that opens their car's page, where they can approve or decline work.
 
+import { gsmText, smsSegments } from './smsFit.ts';
 import type { Ctx, Res } from './handlers.ts';
 import { salesRoute } from './shopSales.ts';
 
@@ -14,7 +15,7 @@ import { cleanMarks, isAngle, type DamageFinder, type WalkPhoto } from './shopDa
 import { accountRoute, type AccountStore } from './shopAccount.ts';
 import { ownerOnly, staffRoute, type Seat, type StaffStore } from './shopStaff.ts';
 import type { Narrator } from './dnd.ts';
-import { clockAction, customersCsv, jobsCsv, langOf, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES,
+import { clockAction, customersCsv, jobsCsv, langOf, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES, SHORT_ES,
   type Booking, type BookingStore, type Brand, type ClockEntry, type Grow, type Lang } from './shopGrow.ts';
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
 
@@ -285,16 +286,29 @@ const LABEL: Record<Stage, string> = {
   in_progress: 'In progress', qc: 'Quality check', ready: 'Ready for pickup', picked_up: 'Picked up',
 };
 
+// Texts are written to fit one 160-character segment (see smsFit.ts). SHORT is the fallback wording when a long
+// shop name, vehicle or hours would push the full one over; fillTemplate picks the first that fits.
 const TEMPLATES: Record<Stage, string> = {
-  invited: "Hi {first}, {shop} invites you to check in for your repair. Add your vehicle, describe the issue and upload photos for your technician: {link}",
-  checked_in: "Hi {first}, {shop} has your {vehicle}. We'll keep you updated as work moves along. Track your repair and add photos for your technician: {link}",
+  invited: "Hi {first}, {shop} invites you to check in your vehicle and add photos: {link} Reply STOP to opt out",
+  checked_in: "Hi {first}, {shop} has your {vehicle}. Track it and add photos: {link} Reply STOP to opt out",
   diagnosing: "Hi {first}, a technician is inspecting your {vehicle} now. We'll send what we find soon.",
-  approval: "Hi {first}, we found what's going on with your {vehicle}. Please review and approve the estimate ({total}): {link}",
-  parts: "Hi {first}, parts for your {vehicle} are on order and expected {eta}. We'll let you know when they arrive.",
+  approval: "Hi {first}, your {vehicle} estimate ({total}) is ready. Please review and approve: {link}",
+  parts: "Hi {first}, parts for your {vehicle} are on order, expected {eta}. We'll let you know when they arrive.",
   in_progress: 'Good news, {first}: repairs on your {vehicle} are underway.',
   qc: "Hi {first}, repairs are done. We're doing a final check and road test on your {vehicle}.",
-  ready: "Your {vehicle} is ready for pickup! Total {total}. We're open {hours}. Details: {link}",
+  ready: "Your {vehicle} is ready for pickup! Total {total}. Hours: {hours}. Details: {link}",
   picked_up: 'Thanks for choosing {shop}, {first}! How did we do? Reply with any feedback. Reply STOP to opt out.',
+};
+const SHORT: Record<Stage, string> = {
+  invited: '{shop}: check in your vehicle here: {link} Reply STOP to opt out',
+  checked_in: '{shop} has your vehicle. Track it here: {link} Reply STOP to opt out',
+  diagnosing: 'Hi {first}, a technician is inspecting your vehicle now.',
+  approval: 'Your estimate ({total}) is ready to review and approve: {link}',
+  parts: 'Parts for your vehicle are on order, expected {eta}.',
+  in_progress: 'Good news: repairs on your vehicle are underway.',
+  qc: "Repairs are done. We're doing a final check and road test.",
+  ready: 'Your vehicle is ready for pickup! Total {total}. Details: {link}',
+  picked_up: 'Thanks for choosing {shop}! How did we do? Reply with any feedback. Reply STOP to opt out.',
 };
 
 const MAX_PHOTO = 400_000; // a 640px JPEG data URL is ~60-120 KB
@@ -331,9 +345,13 @@ export function fillTemplate(stage: Stage, shop: Shop, job: Job, linkBase: strin
     eta: d.eta || say.soon,
     hours: shop.hours || say.hours,
   };
-  let text = (lang === 'es' ? TEMPLATES_ES : TEMPLATES)[stage].replace(/\{(\w+)\}/g, (_, k) => vals[k] ?? '').replace(/ ,/g, ',').replace(/Hola ,/, 'Hola,');
-  if (stage === 'picked_up' && reviewUrl) text = text.replace(' ' + say.stop, say.reviewTail(reviewUrl) + ' ' + say.stop);
-  return text;
+  const fill = (t: string) => {
+    let text = t.replace(/\{(\w+)\}/g, (_, k) => vals[k] ?? '').replace(/ ,/g, ',').replace(/Hola ,/, 'Hola,');
+    if (stage === 'picked_up' && reviewUrl) text = text.replace(' ' + say.stop, say.reviewTail(reviewUrl) + ' ' + say.stop);
+    return text;
+  };
+  const full = fill((lang === 'es' ? TEMPLATES_ES : TEMPLATES)[stage]);
+  return smsSegments(gsmText(full)) === 1 ? full : fill((lang === 'es' ? SHORT_ES : SHORT)[stage]);
 }
 
 /** What the shop sees. */
@@ -383,7 +401,8 @@ async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string
   return Promise.all(channels.map(async (channel): Promise<Message> => {
     const link = deps.linkBase + job.token;
     const say = SAY[langOf(job.data)];
-    const text = channel === 'email' && job.token && !body.includes(link) ? body + '\n\n' + say.details + link : body;
+    // Texts go out plain (no curly quotes, bullets or emoji) so each one bills as few segments as possible.
+    const text = channel === 'email' && job.token && !body.includes(link) ? body + '\n\n' + say.details + link : channel === 'sms' ? gsmText(body) : body;
     let result: SmsResult;
     if (!c.consent) result = { delivery: 'not_sent', note: 'Customer has not agreed to ' + (channel === 'sms' ? 'texts.' : 'email.') };
     else if (channel === 'sms') {
@@ -604,7 +623,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         messages: [], approval: null,
       },
     };
-    const text = `Talk Shops demo: Ridgeline Auto Repair found what's going on with your 2012 Chevrolet Malibu. Review and approve the estimate ($813.00): ${deps.linkBase}${job.token} Reply STOP to opt out.`;
+    const text = `Talk Shops demo: your 2012 Chevrolet Malibu estimate ($813.00) is ready. Review and approve: ${deps.linkBase}${job.token} Reply STOP to opt out`;
     const sent = await deps.sms.send(phone, text);
     job.data.messages.push({ dir: 'out', t: now, text, delivery: sent.delivery, ...(sent.note ? { note: sent.note } : {}) });
     await store.putJob(job);

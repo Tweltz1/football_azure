@@ -1574,7 +1574,25 @@
   document.addEventListener("dragover", (e) => { const z = e.target.closest?.(".price-drop"); if (z) { e.preventDefault(); z.classList.add("over"); } });
   document.addEventListener("dragleave", (e) => e.target.closest?.(".price-drop")?.classList.remove("over"));
   document.addEventListener("drop", (e) => { if (!e.target.closest?.(".price-drop")) return; e.preventDefault(); readPriceFiles(Array.from(e.dataTransfer.files)); });
+  // Texts are billed per 160-character part. Tell staff when a typed message runs over (the server sends texts in
+  // plain characters, so curly quotes and emoji don't count against them; same rules as supabase/functions/_shared/smsFit.ts).
+  const GSM = new Set([..."@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà^{}\\[~]|€"]);
+  const smsParts = (text) => {
+    const plain = [...text.replace(/[‘’‚‛′`´]/g, "'").replace(/[“”„″«»]/g, '"').replace(/[–—―‐‑−•·]/g, "-").replace(/…/g, "...")]
+      .map((c) => GSM.has(c) ? c : c.normalize("NFD").replace(/[\u0300-\u036f]/g, "")).filter((c) => c && [...c].every((x) => GSM.has(x))).join("").replace(/ {2,}/g, " ").trim();
+    const len = [...plain].reduce((n, c) => n + ("^{}\\[~]|€".includes(c) ? 2 : 1), 0);
+    return { len, parts: len <= 160 ? 1 : Math.ceil(len / 153) };
+  };
+  function smsHint(el) {
+    const anchor = el.id === "replyIn" ? el.form : el;
+    let hint = anchor.nextElementSibling?.classList.contains("sms-hint") ? anchor.nextElementSibling : null;
+    const { len, parts } = smsParts(el.value);
+    if (parts < 2) { hint?.remove(); return; }
+    if (!hint) { hint = document.createElement("small"); hint.className = "sms-hint muted"; anchor.after(hint); }
+    hint.textContent = `As a text this sends as ${parts} messages (${len} characters). Under 160 sends as 1.`;
+  }
   document.addEventListener("input", (e) => {
+    if (e.target.id === "m-text" || e.target.id === "c-text" || e.target.id === "replyIn") smsHint(e.target);
     if (e.target.id === "ci-vin") { const v = e.target.value.trim(); if (v.length === 17) decodeVinInto("ci"); else $("#ci-vin-msg").textContent = ""; }
     if (e.target.id === "ec-phone" || e.target.id === "ec-email") { customerContactChanged(); return; }
     if (e.target.id === "noteIn" && ui.openJob) { ui.noteDraft[ui.openJob] = e.target.value; return; }

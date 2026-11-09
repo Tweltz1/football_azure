@@ -1,3 +1,4 @@
+import { gsmText } from './smsFit.ts';
 // Deliberately match the customer's whole question. Compound requests stay with an advisor.
 export function smsTopic(text: string): string {
   const q = text.toLowerCase().trim().replace(/[’']/g, '').replace(/[?!.]+$/, '').replace(/\s+/g,' ');
@@ -27,6 +28,7 @@ export async function incomingSms(req: Request, cfg: SmsConfig, receive: (sid:st
   }
   if (/^(?:SM|MM)[a-f\d]{32}$/i.test(sid) && /^\+[1-9]\d{7,14}$/.test(phone) && text && !params.get('OptOutType') && !/^(stop(all)?|cancel|end|quit|unsubscribe|revoke|optout|start|unstop|help|info|yes)$/i.test(text)) {
     reply=await receive(sid,phone,text,Number(params.get('NumMedia')||0)>0?'review':smsTopic(text));
+    if(reply) reply=gsmText(reply); // plain characters: a bullet or dash would bill the reply as Unicode
   }
   const xml=reply?'<Message>'+reply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</Message>':'';
   return new Response('<Response>'+xml+'</Response>',{headers:{'Content-Type':'text/xml; charset=utf-8'}});

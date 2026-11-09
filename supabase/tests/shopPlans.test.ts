@@ -45,7 +45,7 @@ function world(trial: TrialSettings = { trialDays: 15, trialTexts: 3, trialCars:
     store,
     sms: { async send(_to, body) { texts.push(body); return { delivery: 'sent' }; } },
     linkBase: 'https://talkshops.app/?c=',
-    newToken: () => `tok${String(++n).padStart(24, '0')}`,
+    newToken: () => `tok${String(++n).padStart(17, '0')}`,
     siteUrl: 'https://talkshops.app',
     stripeWebhookSecret: 'whsec_test',
     stripe: {

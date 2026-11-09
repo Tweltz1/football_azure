@@ -6,6 +6,7 @@
 // - Spanish texts for customers who prefer Spanish (every plan).
 
 import type { Job, JobData } from './shop.ts';
+import { fitOne } from './smsFit.ts';
 
 type Body = Record<string, unknown>;
 const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -52,16 +53,28 @@ export function parseGrow(v: unknown, old: Grow | undefined): Grow | string {
 export type Lang = 'en' | 'es';
 export const langOf = (d: Pick<JobData, 'customer'>): Lang => (d.customer.lang === 'es' ? 'es' : 'en');
 
+// Spanish texts are sent without the accents GSM texting lacks (á, í, ó, ú), so they stay one 160-character segment.
 export const TEMPLATES_ES = {
-  invited: 'Hola {first}, {shop} le invita a registrar su vehículo para la reparación. Agregue su vehículo, describa el problema y suba fotos para su técnico: {link}',
-  checked_in: 'Hola {first}, {shop} ya tiene su {vehicle}. Le mantendremos al tanto del avance. Siga su reparación y agregue fotos para su técnico: {link}',
+  invited: 'Hola {first}, {shop} le invita a registrar su vehículo y subir fotos: {link} Responda STOP para salir',
+  checked_in: 'Hola {first}, {shop} ya tiene su {vehicle}. Sígalo y suba fotos: {link} Responda STOP para salir',
   diagnosing: 'Hola {first}, un técnico está revisando su {vehicle} ahora. Pronto le enviaremos lo que encontremos.',
-  approval: 'Hola {first}, encontramos lo que tiene su {vehicle}. Por favor revise y apruebe el presupuesto ({total}): {link}',
-  parts: 'Hola {first}, las piezas para su {vehicle} ya están pedidas y deben llegar {eta}. Le avisaremos cuando lleguen.',
+  approval: 'Hola {first}, el presupuesto de su {vehicle} ({total}) está listo. Revíselo y apruébelo: {link}',
+  parts: 'Hola {first}, las piezas para su {vehicle} están pedidas y deben llegar {eta}. Le avisaremos cuando lleguen.',
   in_progress: 'Buenas noticias, {first}: ya estamos reparando su {vehicle}.',
-  qc: 'Hola {first}, la reparación está terminada. Estamos haciendo la revisión final y la prueba de manejo de su {vehicle}.',
+  qc: 'Hola {first}, la reparación está terminada. Estamos haciendo la revisión final de su {vehicle}.',
   ready: '¡Su {vehicle} está listo para recoger! Total {total}. Horario: {hours}. Detalles: {link}',
-  picked_up: '¡Gracias por elegir {shop}, {first}! ¿Cómo lo hicimos? Responda con sus comentarios. Responda STOP para no recibir más mensajes.',
+  picked_up: '¡Gracias por elegir {shop}, {first}! ¿Cómo lo hicimos? Responda con sus comentarios. Responda STOP para salir.',
+} as const;
+export const SHORT_ES = {
+  invited: '{shop}: registre su vehículo aquí: {link} Responda STOP para salir',
+  checked_in: '{shop} ya tiene su vehículo. Sígalo aquí: {link} Responda STOP para salir',
+  diagnosing: 'Hola {first}, un técnico está revisando su vehículo ahora.',
+  approval: 'Su presupuesto ({total}) está listo para revisar y aprobar: {link}',
+  parts: 'Las piezas para su vehículo están pedidas y deben llegar {eta}.',
+  in_progress: 'Buenas noticias: ya estamos reparando su vehículo.',
+  qc: 'La reparación está terminada. Estamos haciendo la revisión final.',
+  ready: '¡Su vehículo está listo para recoger! Total {total}. Detalles: {link}',
+  picked_up: '¡Gracias por elegir {shop}! ¿Cómo lo hicimos? Responda con sus comentarios. Responda STOP para salir.',
 } as const;
 
 /** Words the server puts into its own texts, by language. */
@@ -69,24 +82,26 @@ export const SAY = {
   en: {
     car: 'car', soon: 'soon', hours: 'during business hours', subject: 'repair update', details: 'Repair details: ',
     stop: 'Reply STOP to opt out.',
-    walkaround: (shop: string, car: string, link: string) => `${shop} asks for 8 quick photos of your ${car} from all sides, so we have a record of its condition. It takes about 2 minutes: ${link}`,
-    note: (car: string, shop: string, text: string, link: string) => `Update on your ${car} from ${shop}: ${text} Details: ${link}`,
+    walkaround: (shop: string, car: string, link: string) => fitOne([`${shop} asks for 8 quick photos of your ${car} to record its condition (about 2 min): ${link}`, `${shop}: please take 8 quick photos of your vehicle: ${link}`]),
+    note: (car: string, shop: string, text: string, link: string) => fitOne([`Update on your ${car} from ${shop}: ${text} Details: ${link}`, `${shop}: ${text} ${link}`]),
     walk: (shop: string, kind: 'before' | 'after', car: string, good: number, soon: number, now: number, link: string) =>
-      `${shop} finished the ${kind === 'before' ? 'check-in' : 'after-repair'} walk-through of your ${car}: ${[`${good} good`, soon ? `${soon} to keep an eye on` : '', now ? `${now} that need${now === 1 ? 's' : ''} attention now` : ''].filter(Boolean).join(', ')}. See the full report: ${link}`,
-    review: (first: string, shop: string, url: string) => `Thanks for choosing ${shop}, ${first}! If we earned it, would you leave us a quick review? It helps a small shop a lot: ${url}`,
-    reviewTail: (url: string) => ` If we earned it, we'd love a quick review: ${url}`,
-    booked: (first: string, shop: string, when: string, link: string) => `Hi ${first}, ${shop} confirmed your appointment for ${when}. See your visit and add photos for your technician: ${link}`,
+      fitOne([`${shop} finished the ${kind === 'before' ? 'check-in' : 'after-repair'} walk-through of your ${car}: ${[`${good} good`, soon ? `${soon} to keep an eye on` : '', now ? `${now} that need${now === 1 ? 's' : ''} attention now` : ''].filter(Boolean).join(', ')}. Full report: ${link}`,
+        `${shop} ${kind === 'before' ? 'check-in' : 'after-repair'} walk-through: ${[`${good} good`, soon ? `${soon} to watch` : '', now ? `${now} need${now === 1 ? 's' : ''} attention` : ''].filter(Boolean).join(', ')}. ${link}`]),
+    review: (first: string, shop: string, url: string) => fitOne([`Thanks for choosing ${shop}, ${first}! If we earned it, would you leave us a quick review? ${url}`, `Thanks for choosing ${shop}! Would you leave us a quick review? ${url}`]),
+    reviewTail: (url: string) => ` Leave us a review: ${url}`,
+    booked: (first: string, shop: string, when: string, link: string) => fitOne([`Hi ${first}, ${shop} confirmed your appointment for ${when}. Details and photos: ${link}`, `${shop}: appointment confirmed for ${when}. ${link}`]),
   },
   es: {
     car: 'vehículo', soon: 'pronto', hours: 'en horario de atención', subject: 'actualización de su reparación', details: 'Detalles de la reparación: ',
-    stop: 'Responda STOP para no recibir más mensajes.',
-    walkaround: (shop: string, car: string, link: string) => `${shop} le pide 8 fotos rápidas de su ${car} por todos los lados, para dejar constancia de su estado. Toma unos 2 minutos: ${link}`,
-    note: (car: string, shop: string, text: string, link: string) => `Novedades sobre su ${car} de ${shop}: ${text} Detalles: ${link}`,
+    stop: 'Responda STOP para salir.',
+    walkaround: (shop: string, car: string, link: string) => fitOne([`${shop} le pide 8 fotos rápidas de su ${car} por todos los lados. Toma unos 2 minutos: ${link}`, `${shop}: tome 8 fotos rápidas de su vehículo: ${link}`]),
+    note: (car: string, shop: string, text: string, link: string) => fitOne([`Novedades sobre su ${car} de ${shop}: ${text} Detalles: ${link}`, `${shop}: ${text} ${link}`]),
     walk: (shop: string, kind: 'before' | 'after', car: string, good: number, soon: number, now: number, link: string) =>
-      `${shop} terminó la revisión ${kind === 'before' ? 'de entrada' : 'después de la reparación'} de su ${car}: ${[`${good} bien`, soon ? `${soon} para vigilar` : '', now ? `${now} que necesita${now === 1 ? '' : 'n'} atención ya` : ''].filter(Boolean).join(', ')}. Vea el informe completo: ${link}`,
-    review: (first: string, shop: string, url: string) => `¡Gracias por elegir ${shop}, ${first}! Si quedó contento, ¿nos dejaría una reseña rápida? Ayuda mucho a un taller pequeño: ${url}`,
-    reviewTail: (url: string) => ` Si quedó contento, nos encantaría una reseña rápida: ${url}`,
-    booked: (first: string, shop: string, when: string, link: string) => `Hola ${first}, ${shop} confirmó su cita para el ${when}. Vea su visita y agregue fotos para su técnico: ${link}`,
+      fitOne([`${shop} terminó la revisión ${kind === 'before' ? 'de entrada' : 'después de la reparación'} de su ${car}: ${[`${good} bien`, soon ? `${soon} para vigilar` : '', now ? `${now} que necesita${now === 1 ? '' : 'n'} atención ya` : ''].filter(Boolean).join(', ')}. Informe: ${link}`,
+        `${shop}, revisión ${kind === 'before' ? 'de entrada' : 'final'}: ${[`${good} bien`, soon ? `${soon} para vigilar` : '', now ? `${now} urgente${now === 1 ? '' : 's'}` : ''].filter(Boolean).join(', ')}. ${link}`]),
+    review: (first: string, shop: string, url: string) => fitOne([`¡Gracias por elegir ${shop}, ${first}! Si quedó contento, ¿nos dejaría una reseña rápida? ${url}`, `¡Gracias por elegir ${shop}! ¿Nos dejaría una reseña? ${url}`]),
+    reviewTail: (url: string) => ` Déjenos una reseña: ${url}`,
+    booked: (first: string, shop: string, when: string, link: string) => fitOne([`Hola ${first}, ${shop} confirmó su cita para el ${when}. Detalles y fotos: ${link}`, `${shop}: cita confirmada para el ${when}. ${link}`]),
   },
 } as const;
 

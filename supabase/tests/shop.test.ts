@@ -99,8 +99,8 @@ function world() {
   const deps: ShopDeps = {
     store,
     sms: { async send(to, body) { texts.push({ to, body }); return { delivery: 'sent' }; } },
-    linkBase: 'https://hood-league.com/shop/?c=',
-    newToken: () => `tok${String(++n).padStart(24, '0')}`,
+    linkBase: 'https://talkshops.app/?c=',
+    newToken: () => `tok${String(++n).padStart(17, '0')}`,
   };
   const as = (userId: string | null) => (method: string, path: string, body?: unknown) => {
     clock += 60_000;
@@ -458,7 +458,7 @@ test('before and after walk-throughs show on the customer page and can notify th
   assert.equal(a.walkthroughs.before.sentAt, undefined);
   await dan('POST', `shop/jobs/${job.id}/walkthrough`, { kind: 'after', items: [{ key: 'brakes', status: 'good' }, { key: 'tires', status: 'good' }], send: true });
   assert.equal(texts.length, sent + 1);
-  assert.match(texts.at(-1)!.body, /Ridgeline finished the after-repair walk-through of your 2018 Honda Civic: 2 good\. See the full report: https:/);
+  assert.match(texts.at(-1)!.body, /Ridgeline finished the after-repair walk-through of your 2018 Honda Civic: 2 good\. Full report: https:/);
   const token = job.link.split('?c=')[1];
   const page = (await as(null)('GET', `shop/c/${token}`))?.body as { walkthroughs: { before: { summary: string }; after: { sentAt: string } } };
   assert.equal(page.walkthroughs.before.summary, 'Brakes need work.');
@@ -964,7 +964,7 @@ test('online booking: public form, spam limits, accept makes an invited car with
   assert.equal(acc.job.stage, 'invited');
   assert.equal(acc.job.intakeReceived, true);
   assert.equal(acc.job.vehicle.make, 'Toyota');
-  assert.match(w.texts.at(-1)!.body, /^Hola Lee, Ridgeline confirmó su cita para el Thu, Nov 12 at 9:00 AM/);
+  assert.match(w.texts.at(-1)!.body, /^Hola Lee, Ridgeline confirm[oó] su cita para el Thu, Nov 12 at 9:00 AM/);
   await dan('POST', `shop/bookings/${list[1].id}`, { action: 'decline', send: true, text: 'Sorry, we are full that day. Please call us.' });
   assert.equal(((await dan('GET', 'shop/bookings'))?.body as { rows: unknown[] }).rows.length, 0);
   assert.equal(w.texts.at(-1)!.body, 'Sorry, we are full that day. Please call us.');

@@ -66,7 +66,8 @@ const shop: ShopDeps = {
   howToLibrary: createHowToLibrary(db),
   damageFinder: GEMINI_KEY ? geminiDamageFinder(GEMINI_KEY, fetch) : null,
   priceReader: GEMINI_KEY ? geminiPriceReader(GEMINI_KEY, fetch) : null,
-  newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),
+  // 20 random letters/digits (about 119 bits): unguessable, and short enough to keep the text link in one segment.
+  newToken: () => Array.from(crypto.getRandomValues(new Uint8Array(40)), (b) => b).filter((b) => b < 248).slice(0, 20).map((b) => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'[b % 62]).join('').padEnd(20, 'x'),
 };
 // Junk App: free stuff nearby. Gemini names the item in the first photo of a listing.
 const junk: JunkDeps = {
