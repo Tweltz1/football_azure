@@ -241,13 +241,13 @@ a.btn.primary{color:var(--accent-fg)}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
 <link rel="stylesheet" href="/saved-archive.css?v=10">
-<link rel="stylesheet" href="/theme.css?v=20">
+<link rel="stylesheet" href="/theme.css?v=21">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
 <link rel="stylesheet" href="/training.css?v=1">
 <link rel="stylesheet" href="/team.css?v=1">
 <link rel="stylesheet" href="/help.css?v=1">
-<link rel="stylesheet" href="/howto.css?v=4">
+<link rel="stylesheet" href="/howto.css?v=8">
 <link rel="stylesheet" href="/workday.css?v=3">
 <link rel="stylesheet" href="/grow.css?v=1">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
@@ -783,7 +783,7 @@ function boardView(){
   const ready=active.filter(j=>j.stage==="ready").length;
   const today=new Date().toDateString();
   const sent=state.jobs.reduce((a,j)=>a+j.messages.filter(m=>m.dir==="out"&&new Date(m.t).toDateString()===today).length,0);
-  const filters=[["all","All Cars",active.length],["approval","Awaiting Approval",waiting],["ready","Ready for Pickup",ready]];
+  const filters=[["all","All<span class=\"qf-long\"> Cars</span>",active.length],["approval","<span class=\"qf-long\">Awaiting </span>Approval",waiting],["ready","Ready<span class=\"qf-long\"> for Pickup</span>",ready]];
   let h=`<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${active.length} car${active.length===1?"":"s"} in the shop · ${sent} update${sent===1?"":"s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check In<span class="qa-long">Vehicle</span></button></div>
       <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q)}" autocomplete="off"></label>
     <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key,label,count])=>`<button type="button" class="qf ${key==="approval"?"warn":key==="ready"?"ok":""}" data-queue="${key}" aria-pressed="${key===(ui.queue||"all")}">${label}<b>${count}</b></button>`).join("")}</div></div>

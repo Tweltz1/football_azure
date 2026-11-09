@@ -36,7 +36,6 @@
 @media (max-width:760px){
   .howto-veh{grid-template-columns:1fr 1fr}
   .howto-cols{grid-template-columns:1fr}
-  .tabs.has-icons{grid-template-columns:repeat(6,minmax(0,1fr))!important}
 }
 .howto-veh .field,.howto-form .field{min-width:0}
 .howto-veh input,.howto-veh select,.howto-form textarea{width:100%;min-width:0;box-sizing:border-box}
