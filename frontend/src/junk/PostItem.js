@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { SignInPrompt, useJunk } from './JunkApp';
 import { createItem, getItem, updateItem, uploadPhoto } from './junkApi';
-import { CATEGORIES, CONDITIONS, photoToJpeg } from './device';
+import { CATEGORIES, CONDITIONS, inJunkApp, photoToJpeg } from './device';
 import { appleDetect, hasAppleDetection } from './appleLabels';
 import { BackButton } from './ItemPage';
 import { IconCamera, IconClose, IconPin, IconSparkle } from './icons';
@@ -94,7 +94,8 @@ export default function PostItem() {
       if (detect) { detectAsked.current = true; setDetecting(true); }
       try {
         const apple = detect && hasAppleDetection() ? await appleDetect(preview) : null;
-        const askGemini = detect && (!apple || !apple.confident) && (GEMINI_BACKUP || !hasAppleDetection());
+        // Never Gemini inside the iPhone app (Apple only); only the website during development falls back to it.
+        const askGemini = detect && (!apple || !apple.confident) && (GEMINI_BACKUP || (!hasAppleDetection() && !inJunkApp()));
         const res = await uploadPhoto(preview, askGemini);
         setPhotos((list) => list.map((p) => (p.key === key ? { ...p, path: res.path, url: res.url, uploading: false } : p)));
         if (detect) {
