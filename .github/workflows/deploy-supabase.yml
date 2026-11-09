@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: "22"
       - name: Run API tests
-        run: node --test supabase/tests/handlers.test.ts supabase/tests/dnd.test.ts supabase/tests/cards.test.ts supabase/tests/junk.test.ts supabase/tests/footballAsk.test.ts supabase/tests/shop.test.ts supabase/tests/shopPlans.test.ts supabase/tests/shopHowTo.test.ts supabase/tests/nhtsa.test.ts supabase/tests/shopAccount.test.ts supabase/tests/shopStaff.test.ts
+        run: node --test supabase/tests/handlers.test.ts supabase/tests/dnd.test.ts supabase/tests/cards.test.ts supabase/tests/junk.test.ts supabase/tests/footballAsk.test.ts supabase/tests/shop.test.ts supabase/tests/shopPlans.test.ts supabase/tests/shopHowTo.test.ts supabase/tests/nhtsa.test.ts supabase/tests/shopAccount.test.ts supabase/tests/shopStaff.test.ts supabase/tests/shopSms.test.ts supabase/tests/smsFit.test.ts supabase/tests/smsTopicModel.test.ts
 
   deploy:
     name: Deploy database and API

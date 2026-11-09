@@ -1,6 +1,12 @@
 import { gsmText } from './smsFit.ts';
-// Deliberately match the customer's whole question. Compound requests stay with an advisor.
+import { autoTopic } from './smsTopicModel.ts';
+// Exact everyday phrasings first, then the trained text sorter (smsTopicModel.ts), which answers only when it is
+// very sure and the text has nothing a person should see (safety, money, a time, several questions).
 export function smsTopic(text: string): string {
+  const exact = exactTopic(text);
+  return exact !== 'review' ? exact : autoTopic(text);
+}
+function exactTopic(text: string): string {
   const q = text.toLowerCase().trim().replace(/[’']/g, '').replace(/[?!.]+$/, '').replace(/\s+/g,' ');
   if (/^(?:status|(?:any |an? )?updates?(?: on (?:my|the) (?:car|vehicle|repair))?|(?:whats|what is) (?:the |my )?(?:repair )?status|hows (?:my|the) (?:car|repair|vehicle)(?: coming| doing)?|is my (?:car|vehicle) ready)$/.test(q)) return 'status';
   if (/^(?:hours|(?:what are|whats) your (?:shop |business )?hours|when (?:do you (?:open|close)|are you open)|are you (?:still )?open)$/.test(q)) return 'hours';
