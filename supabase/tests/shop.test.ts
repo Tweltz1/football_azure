@@ -639,3 +639,47 @@ test('staff set low, medium or high urgency at check-in and on the car; customer
   const view = (await as(null)('GET', `shop/c/${job.link.split('?c=')[1]}`))?.body as Record<string, unknown>;
   assert.equal('urgency' in view, false);
 });
+
+test('price list import reads a file with AI and saved items keep labor hours', async () => {
+  const { as, deps } = world();
+  const dan = as('user-dan');
+  assert.equal((await dan('POST', 'shop/price-import', { text: 'Oil change\t49.99' }))?.status, 409, 'set up the shop first');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  assert.equal((await dan('POST', 'shop/price-import', { mime: 'application/msword', data: 'AAAA' }))?.status, 400);
+  assert.equal((await dan('POST', 'shop/price-import', { mime: 'application/pdf', data: 'not base64!' }))?.status, 400);
+  assert.equal((await dan('POST', 'shop/price-import', { text: 'Oil change\t49.99' }))?.status, 503, 'no AI key yet');
+
+  const seen: unknown[] = [];
+  deps.priceReader = { async read(input) {
+    seen.push(input);
+    return { laborRate: 135, items: [
+      { name: 'Labor', kind: 'labor', rate: 135 },
+      { name: ' Front  brake pads ', kind: 'labor', rate: 135, hours: 1.5 },
+      { name: 'Synthetic oil change', kind: 'fee', rate: 79.999 },
+      { name: 'Synthetic oil change', kind: 'fee', rate: 80 },
+      { name: 'Shop supplies', kind: 'percent', rate: 250 },
+      { name: 'Timing belt', kind: 'labor', rate: 0, hours: 4 },
+      { name: 'Wiper blades', kind: 'part', rate: 24, check: true, note: 'Price is a range' },
+      { name: '', kind: 'part', rate: 5 },
+      { name: 'Mystery', kind: 'thing' as 'part', rate: 5 },
+    ] };
+  } };
+  const res = await dan('POST', 'shop/price-import', { mime: 'application/pdf', data: 'JVBERi0xLjQK' });
+  assert.equal(res?.status, 200);
+  const out = res?.body as { laborRate: number; items: { name: string; kind: string; rate: number; hours?: number; check?: boolean; note?: string }[] };
+  assert.equal(out.laborRate, 135);
+  assert.deepEqual(out.items.map((i) => i.name), ['Labor', 'Front brake pads', 'Synthetic oil change', 'Timing belt', 'Wiper blades']);
+  assert.equal(out.items[1].hours, 1.5);
+  assert.equal(out.items[2].rate, 80);
+  assert.equal(out.items[3].check, true, 'labor time with no rate needs a look');
+  assert.equal(out.items[4].note, 'Price is a range');
+  assert.deepEqual(seen[0], { file: { mime: 'application/pdf', data: 'JVBERi0xLjQK' } });
+
+  // The owner saves the reviewed list; labor hours stay with the saved item.
+  const saved = (await dan('POST', 'shop/me', { name: 'Ridgeline', rates: [{ name: 'Front brake pads', kind: 'labor', rate: 135, hours: 1.5 }, { name: 'Oil', kind: 'part', rate: 9 }] }))?.body as { shop: { rates: unknown[] } };
+  assert.deepEqual(saved.shop.rates, [{ name: 'Front brake pads', kind: 'labor', rate: 135, hours: 1.5 }, { name: 'Oil', kind: 'part', rate: 9 }]);
+  assert.equal((await dan('POST', 'shop/me', { name: 'Ridgeline', rates: [{ name: 'Bad', kind: 'labor', rate: 135, hours: -1 }] }))?.status, 400);
+
+  deps.priceReader = { async read() { throw new Error('Gemini 500'); } };
+  assert.equal((await dan('POST', 'shop/price-import', { text: 'a\tb' }))?.status, 502);
+});

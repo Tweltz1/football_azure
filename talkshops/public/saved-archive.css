@@ -56,3 +56,33 @@
 .pill.pri{font-size:11px}
 .pri-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:12.5px;color:var(--muted)}
 .est-item.pri-required{border-left:3px solid var(--bad);padding-left:10px}
+/* Price list import: setup step 2 and the review list */
+.prices-step .panel{display:flex;flex-direction:column;gap:14px;max-width:720px}
+.prices-step .panel>p{margin:0;line-height:1.55}
+.step-label{font-size:12.5px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--accent-ink)}
+.price-drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;min-height:150px;padding:22px 16px;border:2px dashed var(--line-strong);border-radius:14px;background:var(--surface-2);cursor:pointer;transition:border-color .15s,background .15s}
+.price-drop b{font-size:16px}.price-drop span{font-size:13px;color:var(--muted)}
+.price-drop:hover,.price-drop.over,.price-drop:focus-within{border-color:var(--accent);background:var(--accent-soft)}
+.price-drop.busy{cursor:progress;border-style:solid;border-color:var(--accent)}
+.price-drop.busy b::before{content:"";display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:-2px;border:2px solid var(--accent);border-right-color:transparent;border-radius:50%;animation:price-spin .8s linear infinite}
+@keyframes price-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.price-drop.busy b::before{animation:none}}
+.import-status{margin:0;font-size:13.5px}
+.import-note{line-height:1.5;padding:10px 12px;border-radius:10px;background:var(--ok-bg)}
+.import-note .flag-count{color:var(--warn);font-weight:650}
+.charge-row.needs-check{background:var(--warn-bg);border-left:3px solid var(--warn);padding-left:10px;padding-right:8px;border-radius:6px}
+.charge-row .row-note{grid-column:1/-1;margin:0;font-size:12.5px;font-weight:650;color:var(--warn)}
+.billing-editor{max-height:90dvh;overflow:auto;width:min(620px,100%);overscroll-behavior:contain}
+.charge-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
+.charge-row>label:first-of-type{grid-column:1/-1}.charge-row button{justify-self:start}
+/* Saved items list: one compact line per item on wider screens, so a long imported list is quick to check. */
+@media (min-width:720px){
+  .billing-editor[data-mode="rates"]{width:min(900px,100%)}
+  .billing-editor[data-mode="rates"] .charge-row{grid-template-columns:minmax(0,2.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 6.5em;align-items:end;padding:8px 0}
+  .billing-editor[data-mode="rates"] .charge-row>label:first-of-type{grid-column:auto}
+  .billing-editor[data-mode="rates"] .charge-row.needs-check{padding:8px 8px 8px 10px}
+  .billing-editor[data-mode="rates"] .charge-row>label:nth-of-type(2){grid-column:2}
+  .billing-editor[data-mode="rates"] .charge-row>label:nth-of-type(3){grid-column:3}
+  .billing-editor[data-mode="rates"] .charge-row>.hours-field{grid-column:4}
+  .billing-editor[data-mode="rates"] .charge-row>button{grid-column:5;align-self:center;justify-self:end;white-space:nowrap}
+}

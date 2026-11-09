@@ -240,7 +240,7 @@ a.btn.primary{color:var(--accent-fg)}
 .import-box{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
-<link rel="stylesheet" href="/saved-archive.css?v=5">
+<link rel="stylesheet" href="/saved-archive.css?v=6">
 <link rel="stylesheet" href="/theme.css?v=17">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
@@ -299,7 +299,8 @@ a.btn.primary{color:var(--accent-fg)}
 <input type="file" id="photoIn" accept="image/*" hidden>
 
 <script src="/sheet-import.js?v=1"></script>
-<script src="/billing.js?v=2"></script>
+<script src="/price-import.js?v=1"></script>
+<script src="/billing.js?v=4"></script>
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=1"></script>
@@ -439,7 +440,22 @@ const onBoard=j=>!j.archivedAt;
 const plan={state:"trial",daysLeft:12,trialEndsAt:Date.now()+12*86400000,textLimit:150,carLimit:25,textsUsed:38,carsCreated:9,payments:true,hasBilling:false,
   plans:{starter:{name:"Starter",month:89,year:890,blurb:"3 staff seats (up to 2 owners), 1,000 texts a month, unlimited email"},pro:{name:"Pro",month:149,year:1490,blurb:"8 staff seats (up to 3 owners), 3,000 texts a month, unlimited email, AI repair how-to assistant and Smart Replies",howTo:true}}};
 const planUi=window.createShopPlan({esc,toast,api:async()=>{throw new Error("Demo shop: in your shop, this opens Stripe's secure checkout. Nothing is charged here.")}});
-const billing=window.createShopBilling({esc,money});
+// The demo keeps everything in this browser, so only sheets with clear columns are read; the sample shows what the AI finds.
+const priceImport=window.createPriceImport({api:async()=>{throw Error("The demo keeps everything on this device, so PDFs, photos and free-form sheets aren't read here. Sign up to import yours, or press Try a sample price list to see how it works.")}});
+const billing=window.createShopBilling({esc,money,prices:priceImport});
+const SAMPLE_PRICES={source:"sample price board photo",laborRate:139,items:[
+  {name:"Labor",kind:"labor",rate:139},
+  {name:"Synthetic oil change (up to 5 qt)",kind:"fee",rate:79.95},
+  {name:"Conventional oil change (up to 5 qt)",kind:"fee",rate:49.95},
+  {name:"Tire rotation",kind:"fee",rate:24.99},
+  {name:"Front brake pads",kind:"labor",rate:139,hours:1.5},
+  {name:"Timing belt and water pump",kind:"labor",rate:139,hours:4.2},
+  {name:"Check engine light diagnosis",kind:"fee",rate:139},
+  {name:"4-wheel alignment",kind:"fee",rate:129.99},
+  {name:"Coolant flush",kind:"fee",rate:149,check:true,note:"Says \"starting at\""},
+  {name:"Cabin air filter",kind:"part",rate:34},
+  {name:"Wiper blades (pair)",kind:"part",rate:29.99,check:true,note:"Price is a range, used the low end"},
+  {name:"Shop supplies",kind:"percent",rate:8}]};
 const dictation=window.createDictation({toast});
 // How-to assistant: in the demo, answers are samples (the real shop asks the assistant live).
 const DEMO_HOWTO={
@@ -458,7 +474,7 @@ const howTo=window.createShopHowTo({esc,toast,cars:()=>state.jobs.filter(onBoard
 const suggest=window.createSuggest({esc,money,items:()=>state.rates||[],
   onPick(input,r){const price=$("#li-price");input.value=r.name;
     if(r.kind==="percent"){price.value="";toast("Percent items need a base amount.");price.focus();return}
-    price.value=Number(r.rate).toFixed(2);price.focus();price.select();}});
+    price.value=Number(r.hours?r.rate*r.hours:r.rate).toFixed(2);price.focus();price.select();}});
 
 /* --- team, Smart Replies settings, password reset phone and sign-in (demo: kept in this browser; nothing is sent) --- */
 const teamData=()=>state.team||(state.team={members:[
@@ -711,7 +727,7 @@ function syncChannel(){
   $("#ci-email-label").hidden=!email;$("#ci-email").disabled=!email;$("#ci-email").required=email;
 }
 function settingsView(){
-  const rows=state.rates.map((r,i)=>`<tr><td>${esc(r.name)}</td><td>${esc({labor:"Labor",part:"Part",fee:"Fee",percent:"Percent"}[r.kind]||r.kind)}</td><td class="num">${r.kind==="percent"?r.rate+"%":money(r.rate)+(r.kind==="labor"?"/hr":"")}</td><td class="num"><button class="linkbtn" data-del-rate="${i}" aria-label="Remove ${esc(r.name)}">Remove</button></td></tr>`).join("");
+  const rows=state.rates.map((r,i)=>`<tr><td>${esc(r.name)}</td><td>${esc({labor:"Labor",part:"Part",fee:"Fee",percent:"Percent"}[r.kind]||r.kind)}</td><td class="num">${r.kind==="percent"?r.rate+"%":money(r.rate)+(r.kind==="labor"?"/hr":"")+(r.hours?` · ${r.hours} hr`:"")}</td><td class="num"><button class="linkbtn" data-del-rate="${i}" aria-label="Remove ${esc(r.name)}">Remove</button></td></tr>`).join("");
   return `<div class="settings-wrap"><form class="panel" id="setupForm">
     <h2>Shop settings</h2>
     <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
@@ -727,7 +743,7 @@ function settingsView(){
     <p class="muted" style="margin:0">Labor rates, parts and fees you use often. They show up as suggestions when you build an estimate or a bill.</p>
     <div style="overflow-x:auto;margin-top:10px"><table class="rates"><thead><tr><th>Name</th><th>Type</th><th class="num">Rate</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
     <form class="rate-add" id="rateForm"><input id="r-name" placeholder="New item, e.g. Wiper blades" aria-label="Item name" required><select id="r-kind" aria-label="Type"><option value="part">Part</option><option value="labor">Labor</option><option value="fee">Fee</option><option value="percent">Percent</option></select><input id="r-rate" inputmode="decimal" placeholder="Rate" aria-label="Rate" required><button class="btn" type="submit">Add</button></form>
-    <div class="import-box" id="importBox"><label class="btn" for="rateFile" style="cursor:pointer">Import Excel or CSV</label><input type="file" id="rateFile" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden><button class="linkbtn" type="button" id="rateTemplate">Download example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
+    <div class="import-box" id="importBox"><button class="btn" type="button" id="openImport">Import your price list</button><button class="linkbtn" type="button" id="sampleImport">Try a sample price list</button><button class="linkbtn" type="button" id="rateTemplate">Download example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
   </section>${team.panel(render)}${recoveryPanel()}</div>`;
 }
 // Artwork belongs to the named sample repair and line item, including in saved demos.
@@ -868,6 +884,7 @@ function renderLayer(){
   if(ui.openJob&&(ui.view==="board"||ui.view==="archive")){const j=job(ui.openJob);if(j)h+=sheetView(j)}
   if(ui.modal?.walk){const j=job(ui.modal.job);h+=window.Walkthrough.editor(j,ui.modal.walk,{vehicle:vehicleStr(j)||j.ro,first:first(j.customer.name),consent:j.customer.consent!==false,busy:false})}
   else if(ui.modal?.customerJob)h+=customerModal();
+  else if(ui.modal?.rates)h+=billing.editor("rates",{rates:state.rates},null,ui.modal.imported);
   else if(ui.modal?.closeJob)h+=closeModal();else if(ui.modal)h+=stageModal();
   const prev=$(".sheet-body"),keep=prev&&prev.dataset.job===ui.openJob?prev.scrollTop:null;
     const stageOpen = keep !== null && prev.querySelector(".stage-picker")?.open;
@@ -936,6 +953,8 @@ document.addEventListener("click",e=>{
   if(t.dataset.open){ui.openJob=t.dataset.open;renderLayer();setTimeout(()=>$(".x")?.focus({preventScroll:true}),0);return}
   if(t.hasAttribute("data-close")){closeJobSheet();return}
   if(t.hasAttribute("data-cancel")){ui.modal=null;renderLayer();return}
+  if(t.id==="openImport"||t.id==="sampleImport"){ui.modal={rates:true,imported:t.id==="sampleImport"?SAMPLE_PRICES:null};renderLayer();return}
+  if(t.dataset.billing&&t.closest("#billingForm")){billing.editClick(t,t.closest("#billingForm"));return}
   if(t.dataset.deleteJob){deleteJob(t.dataset.deleteJob);return}
   if(t.dataset.stage){const j=job(ui.openJob);if(!j||j.archivedAt||t.dataset.stage===j.stage)return;
     if(t.dataset.stage==="approval"&&!j.estimate.some(e=>e.status==="pending")){toast("Add at least one estimate line first");$("#li-item")?.focus();return}
@@ -965,6 +984,7 @@ document.addEventListener("click",e=>{
 document.addEventListener("submit",e=>{
   e.preventDefault();const f=e.target;
   if(howTo.submit(f,render))return;
+  if(f.id==="billingForm"){state.rates=billing.readRows(f,true).sort((a,b)=>a.name.localeCompare(b.name));ui.modal=null;save();render();toast(`Saved ${state.rates.length} items`);return}
   if(f.id==="walkForm"){const m=ui.modal,body=window.Walkthrough.body(m.walk),j=job(m.job);
     if(!body.items.length){toast("Mark at least one item first");return}
     const w={t:Date.now(),by:"Marcus Hill",mileage:body.mileage,summary:body.summary,items:body.items};
@@ -1026,9 +1046,7 @@ document.addEventListener("change",async e=>{
   if(e.target.id==="c-send")$("#c-text-wrap").hidden=!e.target.checked;
   if(e.target.name==="jobUrgency"){const j=job(ui.openJob);j.urgency=e.target.value;save();render();toast(j.urgency?"Urgency set to "+window.BayBoard.URGENCY[j.urgency][0]:"Urgency cleared");return}
   if(e.target.id==="eta"){const j=job(ui.openJob);j.eta=e.target.value.trim();save();render()}
-  if(e.target.id==="rateFile"){const file=e.target.files[0];if(!file)return;
-    try{const list=await billing.readRateFile(file);const by=new Map(state.rates.map(r=>[r.name.toLowerCase(),r]));list.forEach(r=>by.set(r.name.toLowerCase(),r));state.rates=[...by.values()].sort((a,b)=>a.name.localeCompare(b.name));save();render();toast(`Imported ${list.length} item${list.length===1?"":"s"}`)}
-    catch(x){toast(x.message)}}
+  if(ui.modal?.rates&&e.target.closest("#billingForm")){billing.change(e,{rates:state.rates});return}
   if(e.target.id==="photoIn"){const file=e.target.files[0];if(!file)return;const j=job(ui.openJob);if(!j)return;const r=new FileReader();
     r.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");const s=Math.min(1,640/img.width);c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);
       j.photos.push({src:c.toDataURL("image/jpeg",.8),cap:file.name.replace(/\.[^.]+$/,"")});save();renderLayer();toast("Photo added to customer's page")};img.src=r.result};r.readAsDataURL(file);e.target.value=""}

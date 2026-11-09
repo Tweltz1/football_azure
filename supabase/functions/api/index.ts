@@ -17,6 +17,7 @@ import { createStripe } from '../_shared/shopPlans.ts';
 import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator.ts';
 import { geminiDamageFinder } from '../_shared/shopDamage.ts';
 import { HOWTO_SCHEMA } from '../_shared/shopHowTo.ts';
+import { geminiPriceReader } from '../_shared/shopPriceImport.ts';
 import { createTurn } from './turn.ts';
 import {
   createAccountStore, createAskLogStore, createStaffStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
@@ -63,6 +64,7 @@ const shop: ShopDeps = {
     ? geminiNarrator(GEMINI_KEY, DEFAULT_GEMINI_MODEL, fetch, { schema: HOWTO_SCHEMA, primaryTimeoutMs: 25_000, timeoutMs: 40_000, maxTokens: 8192, temperature: 0.4 })
     : null,
   damageFinder: GEMINI_KEY ? geminiDamageFinder(GEMINI_KEY, fetch) : null,
+  priceReader: GEMINI_KEY ? geminiPriceReader(GEMINI_KEY, fetch) : null,
   newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),
 };
 // Junk App: free stuff nearby. Gemini names the item in the first photo of a listing.

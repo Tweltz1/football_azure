@@ -8,6 +8,7 @@ import { salesRoute } from './shopSales.ts';
 import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, HOWTO_PRO_MESSAGE, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { howToRoute } from './shopHowTo.ts';
+import { priceImportRoute, type PriceReader } from './shopPriceImport.ts';
 import { cleanMarks, isAngle, type DamageFinder, type WalkPhoto } from './shopDamage.ts';
 import { accountRoute, type AccountStore } from './shopAccount.ts';
 import { ownerOnly, staffRoute, type Seat, type StaffStore } from './shopStaff.ts';
@@ -197,6 +198,8 @@ export interface ShopDeps {
   howTo?: Narrator | null;
   /** Gemini vision that suggests damage marks on walk-around photos. */
   damageFinder?: DamageFinder | null;
+  /** Gemini, which reads an uploaded price list into saved items (shop/price-import). */
+  priceReader?: PriceReader | null;
   /** Forgot password and the reset phone (shopAccount.ts). */
   account?: AccountStore | null;
   /** Test hook: predictable reset codes. */
@@ -515,7 +518,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return { status: 405 };
   }
 
-  if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan' && parts[1] !== 'howto') return { status: 404 };
+  if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan' && parts[1] !== 'howto' && parts[1] !== 'price-import') return { status: 404 };
   const mine = await whoAmI();
   if (!mine) return { status: 409, body: 'Set up your shop first.' };
   const { shop } = mine;
@@ -525,6 +528,12 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (parts.length !== 2) return { status: 404 };
     if (!hasHowTo(shop.plan, access(shop.plan, ctx.now(), await settings(deps)))) return { status: 402, body: HOWTO_PRO_MESSAGE };
     return howToRoute(ctx, deps.howTo, shop.id, method, body);
+  }
+
+  if (parts[1] === 'price-import') {
+    if (parts.length !== 2) return { status: 404 };
+    if (!owner) return ownerOnly();
+    return priceImportRoute(ctx, deps.priceReader, shop.id, method, body);
   }
 
   if (parts[1] === 'plan' && method !== 'GET' && !owner) return ownerOnly();

@@ -22,7 +22,10 @@
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const money = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const billing = window.createShopBilling({ esc, money });
+  const priceImport = window.createPriceImport({ api: (...a) => api(...a) });
+  const billing = window.createShopBilling({ esc, money, prices: priceImport });
+  // New-shop setup, step 2: bring in the shop's own price list (optional).
+  const pricesStep = { busy: false, status: "", err: "" };
   let plan = null;
   const planUi = window.createShopPlan({ esc, api: (...a) => api(...a), toast: (m) => toast(m) });
   const howTo = window.createShopHowTo({ esc, api: (...a) => api(...a), toast: (m) => toast(m), cars: () => (jobs || []).filter((j) => j.stage !== "picked_up" && !j.closed), locked: () => !!plan && plan.howTo === false });
@@ -220,7 +223,7 @@
         input.value = r.name;
         if (r.kind === "percent") { form.dataset.pick = ""; price.value = ""; toast("Percent items need a base amount. Use Add labor, parts or fees."); price.focus(); return; }
         form.dataset.pick = JSON.stringify(r);
-        price.value = r.rate.toFixed(2);
+        price.value = (r.hours ? Math.round(r.rate * r.hours * 100) / 100 : r.rate).toFixed(2);
         price.focus(); price.select();
         return;
       }
@@ -347,7 +350,7 @@
     const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "")
       + (join.err ? `<div class="notice">${esc(join.err)}</div>` : "")
       + (ui.view === "plan" || ui.view === "training" || ui.view === "help" ? "" : isOwner() ? planUi.banner(plan) : techBanner(plan));
-    app.innerHTML = err + (ui.view === "help" ? helpView() : ui.view === "checkin" ? checkinView() : ui.view === "settings" ? (isOwner() ? setupView(false) : techSettingsView()) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : boardView());
+    app.innerHTML = err + (ui.view === "help" ? helpView() : ui.view === "checkin" ? checkinView() : ui.view === "settings" ? (isOwner() ? setupView(false) : techSettingsView()) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : ui.view === "prices" && isOwner() ? pricesView() : boardView());
     if (ui.view === "board") filterBoard();
     if (ui.view === "settings" && !recovery.data && !recovery.loading && !recovery.err) loadRecovery();
     if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
@@ -542,6 +545,33 @@
     </div>`;
   }
 
+  function pricesView() {
+    const n = (shop.rates || []).length;
+    return `<div class="settings-wrap prices-step"><section class="panel">
+      <p class="step-label">Step 2 of 2 · Optional</p>
+      <h2>Bring in your prices</h2>
+      <p class="muted">Upload the price list you already use, in whatever layout you have: a PDF, a photo of your price board or service menu, an Excel sheet or a CSV. Talk Shops finds your labor rate, services, parts and fees. You check every item before anything is saved.</p>
+      <label class="price-drop${pricesStep.busy ? " busy" : ""}" for="priceFiles">
+        <b>${pricesStep.busy ? esc(pricesStep.status || "Reading your price list…") : "Choose files or drop them here"}</b>
+        <span>${pricesStep.busy ? "This can take up to a minute for a PDF or photo." : "PDF, photo, Excel .xlsx or CSV · up to 5 files, like several pages of a menu"}</span>
+        <input id="priceFiles" type="file" multiple accept="${priceImport.accept}" ${pricesStep.busy ? "disabled" : ""} hidden>
+      </label>
+      ${pricesStep.err ? `<p class="form-err" role="alert">${esc(pricesStep.err)}</p>` : ""}
+      ${n ? `<p class="form-ok">${n} saved item${n === 1 ? "" : "s"} so far.</p>` : ""}
+      <div class="btn-row"><button class="btn${n ? " primary" : ""}" type="button" data-view="board">${n ? "Done, open my shop board" : "Skip for now"}</button></div>
+      <small class="muted">You can do this any time in Settings → Saved items. Saved items show up as suggestions when you build estimates and bills.</small>
+    </section></div>`;
+  }
+  async function readPriceFiles(files) {
+    if (pricesStep.busy || !files?.length) return;
+    Object.assign(pricesStep, { busy: true, status: "", err: "" }); render();
+    try {
+      const imported = await priceImport.readFiles(files, (msg) => { pricesStep.status = msg; const b = $(".price-drop b"); if (b) b.textContent = msg; });
+      ui.modal = { billing: "rates", imported };
+    } catch (err) { pricesStep.err = err.message; }
+    pricesStep.busy = false; render();
+  }
+
   function setupView(firstTime) {
     const s = shop || {};
     return `<div class="${firstTime ? "login-wrap" : "settings-wrap"}"><form class="${firstTime ? "login" : "panel"}" id="setupForm">
@@ -560,7 +590,7 @@
       <div class="btn-row"><label>Opens <input type="time" id="sr-open" value="${esc(s.smartSchedule?.open || "08:00")}"></label><label>Closes <input type="time" id="sr-close" value="${esc(s.smartSchedule?.close || "17:00")}"></label></div></details><a href="/demo.html?smart=1" target="_blank" rel="noopener">Try sample customer texts</a></fieldset>` : ""}
       <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
       ${firstTime ? "" : window.BayAge.fields(s)}
-      ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Saved items: labor, parts and fees (import Excel or CSV)</button>`}
+      ${firstTime ? "" : `<button class="btn" type="button" data-billing="rates">Saved items: labor, parts and fees (import your price list)</button>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Open my shop board" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
     </form>${firstTime ? "" : team.panel(render) + recoveryPanel()}</div>`;
   }
@@ -842,7 +872,7 @@
     let h = "";
     if (session && shop && ui.openJob && (ui.view === "board" || ui.view === "archive")) { const j = job(ui.openJob); if (j) h += sheetView(j); }
     if (ui.modal === "video") h += videoModal();
-    else if (ui.modal?.billing) h += billing.editor(ui.modal.billing, shop, job(ui.modal.job));
+    else if (ui.modal?.billing) h += billing.editor(ui.modal.billing, shop, job(ui.modal.job), ui.modal.imported);
     else if (ui.modal?.customerJob) h += customerModal();
     else if (ui.modal?.closeJob) h += closeModal();
     else if (ui.modal?.walk) { const j = job(ui.modal.job); h += window.Walkthrough.editor(j, ui.modal.walk, { vehicle: vehicleStr(j) || j.ro, first: first(j.customer.name), consent: j.customer.consent, busy: ui.busy }); }
@@ -1051,6 +1081,7 @@
       try {
         if (m.billing === "rates") {
           shop = (await api("POST", "shop/me", { name: shop.name, phone: shop.phone, hours: shop.hours, rates: billing.readRows(f,true) })).shop;
+          if (ui.view === "prices") { ui.view = "board"; pricesStep.err = ""; }
         } else if (m.billing === "quote") {
           const [charge] = billing.readRows(f);
           if (!charge) throw Error("Add an estimate line first.");
@@ -1169,8 +1200,9 @@
       const body = { ageSettings, name: $("#sh-name").value, phone: $("#sh-phone").value, hours: $("#sh-hours").value, email: $("#sh-email").value };
       if($("#sr-zone")) body.smartSchedule={afterHours:$("#sr-after").checked,zone:$("#sr-zone").value,days:Array.from(f.querySelectorAll('[name="sr-day"]:checked'),e=>Number(e.value)),open:$("#sr-open").value,close:$("#sr-close").value,signature:$("#sr-sign").value};
       if(f.querySelector('[name="smartTopic"]')) body.smartTopics=Array.from(f.querySelectorAll('[name="smartTopic"]:checked'),el=>el.value);
-      const r = await act(() => api("POST", "shop/me", body), "Saved");
-      if (r) { shop = r.shop; if (r.plan) plan = r.plan; if (r.role) { role = r.role; mainOwner = !!r.mainOwner; } ui.view = "board"; render(); }
+      const isNew = !shop;
+      const r = await act(() => api("POST", "shop/me", body), isNew ? "" : "Saved");
+      if (r) { shop = r.shop; if (r.plan) plan = r.plan; if (r.role) { role = r.role; mainOwner = !!r.mainOwner; } ui.view = isNew && isOwner() ? "prices" : "board"; render(); window.scrollTo(0, 0); }
       return;
     }
     if (f.id === "intakeForm") {
@@ -1225,7 +1257,10 @@
       let pick = null; try { pick = f.dataset.pick ? JSON.parse(f.dataset.pick) : null; } catch { /* none */ }
       const save = !!$("#li-save")?.checked;
       const priority = ui.lastPri = $("#li-pri")?.value || "recommended";
-      const body = pick && pick.name === item ? { charge: { name: item, kind: pick.kind, rate: Math.round(price * 100) / 100, qty: 1 }, save, priority } : { item, price, save, priority };
+      // A saved labor item with book hours goes on as hours × rate while its price is left as picked.
+      const byHours = pick && pick.name === item && pick.hours && Math.round(price * 100) === Math.round(pick.rate * pick.hours * 100);
+      const body = byHours ? { charge: { name: item, kind: pick.kind, rate: pick.rate, qty: pick.hours }, save, priority }
+        : pick && pick.name === item ? { charge: { name: item, kind: pick.kind, rate: Math.round(price * 100) / 100, qty: 1 }, save, priority } : { item, price, save, priority };
       if (await jobAction(ui.openJob, "estimate", body)) {
         if (save) rememberLocal([{ name: item, kind: pick && pick.name === item ? pick.kind : "part", rate: Math.round(price * 100) / 100 }]);
         render(); $("#li-item")?.focus();
@@ -1357,11 +1392,16 @@
       $("#ci-help").textContent = invite ? "Send a private link for vehicle details, the reason for the visit and photos." : "The customer gets a tracking link and can upload photos for the technician.";
       return;
     }
+    if (e.target.id === "priceFiles") { readPriceFiles(Array.from(e.target.files)); e.target.value = ""; return; }
     if (ui.modal?.billing) { billing.change(e, shop); return; }
     if (e.target.name === "jobUrgency") { jobAction(ui.openJob, "urgency", { urgency: e.target.value }, e.target.value ? "Urgency set to " + window.BayBoard.URGENCY[e.target.value][0] : "Urgency cleared"); return; }
     if (e.target.id === "eta") jobAction(ui.openJob, "eta", { eta: e.target.value.trim() }, "ETA saved");
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
+  // Drop files on the price list step.
+  document.addEventListener("dragover", (e) => { const z = e.target.closest?.(".price-drop"); if (z) { e.preventDefault(); z.classList.add("over"); } });
+  document.addEventListener("dragleave", (e) => e.target.closest?.(".price-drop")?.classList.remove("over"));
+  document.addEventListener("drop", (e) => { if (!e.target.closest?.(".price-drop")) return; e.preventDefault(); readPriceFiles(Array.from(e.dataTransfer.files)); });
   document.addEventListener("input", (e) => {
     if (e.target.id === "ec-phone" || e.target.id === "ec-email") { customerContactChanged(); return; }
     if (e.target.id === "noteIn" && ui.openJob) { ui.noteDraft[ui.openJob] = e.target.value; return; }
