@@ -6,23 +6,34 @@ import { CATEGORIES, MILES, distanceLabel, milesToKm, timeAgo } from './device';
 import { IconBox, IconClose, IconPin, IconSearch } from './icons';
 
 export function ItemCard({ item }) {
+  const pieces = item.pieces || [];
+  const shared = item.firstCome || pieces.length > 0;
+  const mineOpen = !!(item.claim && item.claim.open && item.claim.mine);
+  // A listing is held only when one person's trip covers everything (never on first come, first served).
+  const held = !item.firstCome && (pieces.length
+    ? pieces.every((p) => p.gone || p.held)
+    : !!(item.claim && item.claim.open));
+  const left = pieces.filter((p) => !p.gone).length;
+  const tag = item.status === 'pending' ? 'Pending pickup'
+    : mineOpen ? 'You\'re on the way'
+      : held ? 'Someone\'s on the way'
+        : shared && item.onTheWay > 0 ? `${item.onTheWay} on the way` : '';
   return (
-    <Link to={`/junk/item/${item.id}`} className={`jk-card${item.status === 'pending' || (item.claim && item.claim.open) ? ' is-pending' : ''}`}>
+    <Link to={`/junk/item/${item.id}`} className={`jk-card${item.status === 'pending' || (held && !mineOpen) ? ' is-pending' : ''}`}>
       <div className="jk-card-photo">
         {item.photos[0]
           ? <img src={item.photos[0]} alt="" loading="lazy" />
           : <div className="jk-card-nophoto"><IconBox size={32} /></div>}
         <span className="jk-free-tag">FREE</span>
-        {item.status === 'pending' && <span className="jk-status-tag">Pending pickup</span>}
-        {item.status !== 'pending' && item.claim && item.claim.open && (
-          <span className="jk-status-tag">{item.claim.mine ? 'You\'re on the way' : 'Someone\'s on the way'}</span>
-        )}
+        {tag && <span className="jk-status-tag">{tag}</span>}
+        {pieces.length > 0 && <span className="jk-count-tag">{left} {left === 1 ? 'thing' : 'things'}</span>}
       </div>
       <div className="jk-card-body">
         <h3>{item.title}</h3>
         <p className="jk-card-meta">
           {item.km !== undefined && <span>{distanceLabel(item.km)}</span>}
           <span>{timeAgo(item.createdAt)}</span>
+          {item.firstCome && <span>First come</span>}
         </p>
       </div>
     </Link>

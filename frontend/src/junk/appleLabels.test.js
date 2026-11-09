@@ -55,3 +55,18 @@ test('people only are flagged and nothing usable gives null', () => {
   expect(fromAppleLabels([{ label: 'sky', confidence: 0.9 }])).toBeNull();
   expect(fromAppleLabels(null)).toBeNull();
 });
+
+test('the detector finds separate items worth listing, grouped by kind', () => {
+  const { spottedItems, spottedTitle } = require('./appleLabels');
+  const s = spottedItems([
+    { label: 'chair', confidence: 0.8, box: { x: 0, y: 0, w: 0.3, h: 0.5 } },
+    { label: 'chair', confidence: 0.6, box: { x: 0.4, y: 0, w: 0.3, h: 0.5 } },
+    { label: 'person', confidence: 0.95, box: { x: 0, y: 0, w: 1, h: 1 } },
+    { label: 'tv', confidence: 0.7, box: { x: 0.5, y: 0.5, w: 0.2, h: 0.2 } },
+    { label: 'potted plant', confidence: 0.2, box: { x: 0, y: 0, w: 0.1, h: 0.1 } },
+  ]);
+  expect(s.map((x) => [x.title, x.category, x.count])).toEqual([['Chair', 'furniture', 2], ['TV', 'electronics', 1]]);
+  expect(spottedTitle(s[0])).toBe('2 Chairs');
+  expect(spottedTitle(s[1])).toBe('TV');
+  expect(spottedItems(null)).toEqual([]);
+});

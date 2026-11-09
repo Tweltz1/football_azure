@@ -60,12 +60,11 @@ function world(detection: JunkDetection | null = null) {
     async countUploadsSince(userId, since) { return uploads.filter((u) => u.userId === userId && u.at >= since).length; },
     async logUpload(userId, path, at) { uploads.push({ userId, path, at }); },
     async insertClaim(c) {
-      if (claims.some((x) => isOpen(x) && (x.itemId === c.itemId || x.claimerId === c.claimerId))) return false;
+      if (claims.some((x) => isOpen(x) && ((x.itemId === c.itemId && !x.shared && !c.shared) || x.claimerId === c.claimerId))) return false;
       claims.push(clone(c));
       return true;
     },
     async updateClaim(c) { const k = claims.findIndex((x) => x.id === c.id); if (k >= 0) claims[k] = clone(c); },
-    async openClaimForItem(itemId) { const c = claims.find((x) => x.itemId === itemId && isOpen(x)); return c ? clone(c) : null; },
     async openClaimsForItems(ids) { return claims.filter((x) => ids.includes(x.itemId) && isOpen(x)).map(clone); },
     async latestClaimForUser(userId) {
       const mine = claims.filter((x) => x.claimerId === userId);
@@ -438,4 +437,86 @@ test('ended claims stop showing to the claimer after an hour', async () => {
   await w.call(BOB, 'POST', 'junk/claim/cancel');
   w.tick(61 * MIN);
   assert.equal(((await w.call(BOB, 'GET', 'junk/claim'))?.body as { claim: unknown }).claim, null);
+});
+
+test('first come, first served: several people can be on the way, the listing stays up', async () => {
+  const w = world();
+  const item = await w.post(ALICE, { firstCome: true });
+  assert.equal(w.items.get(item.id)!.firstCome, true);
+  assert.equal((await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(3)))?.status, 200);
+  assert.equal((await w.call(CARL, 'POST', `junk/items/${item.id}/claim`, north(2)))?.status, 200);
+
+  const dave = '44444444-4444-4444-8444-444444444444';
+  const seen = (await w.call(dave, 'GET', `junk/items/${item.id}`))?.body as { claim: unknown; onTheWay: number; firstCome: boolean };
+  assert.deepEqual([seen.claim, seen.onTheWay, seen.firstCome], [null, 2, true]);
+  const mine = (await w.call(BOB, 'GET', `junk/items/${item.id}`))?.body as { claim: ClaimOut };
+  assert.equal(mine.claim.mine, true);
+  const owner = (await w.call(ALICE, 'GET', `junk/items/${item.id}`))?.body as { claimers: (ClaimOut & { id: string; claimerName: string })[] };
+  assert.deepEqual(owner.claimers.map((c) => c.claimerName), ['Bob', 'Carl']);
+
+  // Shown in place in the feed, not pushed to the end.
+  const other = await w.post(CARL, { title: 'Bike', lat: north(3).lat });
+  const feed = (await w.call(null, 'GET', 'junk/items', undefined, { ...HOME, km: 10 }))?.body as { id: string }[];
+  assert.deepEqual(feed.map((f) => f.id), [item.id, other.id]);
+
+  // Picking some up doesn't take the pile down.
+  w.tick(2 * MIN);
+  await w.call(BOB, 'POST', 'junk/claim/ping', north(0.1));
+  assert.equal(((await w.call(BOB, 'POST', 'junk/claim/done'))?.body as { claim: ClaimOut }).claim.state, 'picked_up');
+  assert.equal(w.items.get(item.id)!.status, 'available');
+
+  // The poster can cancel one person's claim.
+  await w.call(ALICE, 'POST', `junk/items/${item.id}/release`, { claimId: owner.claimers[1].id });
+  assert.equal(((await w.call(CARL, 'GET', 'junk/claim'))?.body as { claim: ClaimOut }).claim.state, 'owner_released');
+});
+
+test('multi-item post: claim some things or take it all, each is taken on its own, the post goes when all are', async () => {
+  const w = world();
+  const item = await w.post(ALICE, {
+    title: '', category: undefined,
+    pieces: [{ title: 'Chair', category: 'furniture', box: { x: 0.1, y: 0.2, w: 0.3, h: 0.4 } }, { title: 'Lamp', category: 'home' }, { title: 'Box fan', category: 'appliances' }, { title: 'x' }],
+  });
+  type Piece = { id: string; title: string; gone: boolean; held: boolean; mine: boolean; box: unknown };
+  type Out = { title: string; category: string; status: string; pieces: Piece[]; claim: ClaimOut | null; onTheWay: number };
+  const saved = w.items.get(item.id)!;
+  assert.equal(saved.title, 'Chair, lamp and box fan');
+  assert.equal(saved.category, 'furniture');
+  assert.deepEqual(saved.pieces.map((p) => p.id), ['p1', 'p2', 'p3']);
+  assert.deepEqual(saved.pieces[0].box, { x: 0.1, y: 0.2, w: 0.3, h: 0.4 });
+  assert.match(saved.searchText, /box fan/);
+  // Found by a word from any thing in it.
+  const found = (await w.call(null, 'GET', 'junk/items', undefined, { ...HOME, km: 10, q: 'lamp' }))?.body as { id: string }[];
+  assert.deepEqual(found.map((f) => f.id), [item.id]);
+
+  // Bob heads over for the lamp only; Carl can still come for the rest, but not the lamp.
+  assert.equal((await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, { ...north(3), pieces: ['p2'] }))?.status, 200);
+  assert.match(w.messages.at(-1)!.body, /pick up Lamp,/);
+  assert.equal((await w.call(CARL, 'POST', `junk/items/${item.id}/claim`, { ...north(2), pieces: ['p2'] }))?.status, 409);
+  const carl = await w.call(CARL, 'POST', `junk/items/${item.id}/claim`, north(2)); // "Take it all" = everything left
+  assert.equal(carl?.status, 200);
+  assert.deepEqual((carl?.body as { claim: ClaimOut & { pieceIds: string[] } }).claim.pieceIds, ['p1', 'p3']);
+  const dave = '44444444-4444-4444-8444-444444444444';
+  assert.equal((await w.call(dave, 'POST', `junk/items/${item.id}/claim`, north(2)))?.status, 409);
+  const seen = (await w.call(BOB, 'GET', `junk/items/${item.id}`))?.body as Out;
+  assert.deepEqual(seen.pieces.map((p) => [p.held, p.mine]), [[true, false], [true, true], [true, false]]);
+  assert.equal(seen.onTheWay, 2);
+  assert.equal(seen.claim?.mine, true);
+
+  // Bob picks up the lamp: just the lamp is taken.
+  w.tick(2 * MIN);
+  await w.call(BOB, 'POST', 'junk/claim/ping', north(0.1));
+  await w.call(BOB, 'POST', 'junk/claim/done');
+  let now = w.items.get(item.id)!;
+  assert.deepEqual([now.status, now.pieces.map((p) => p.gone)], ['available', [false, true, false]]);
+
+  // The poster marks the fan taken by hand; Carl's trip for chair and fan keeps going.
+  const edit = await w.call(ALICE, 'POST', `junk/items/${item.id}`, { pieces: now.pieces.map((p) => (p.id === 'p3' ? { ...p, gone: true } : p)) });
+  assert.equal(edit?.status, 200);
+  assert.equal(((await w.call(CARL, 'GET', 'junk/claim'))?.body as { claim: ClaimOut }).claim.state, 'active');
+
+  // Carl gets the chair: everything is gone, so the post is.
+  await w.call(CARL, 'POST', 'junk/claim/ping', north(0.1));
+  await w.call(CARL, 'POST', 'junk/claim/done');
+  now = w.items.get(item.id)!;
+  assert.deepEqual([now.status, now.pieces.every((p) => p.gone)], ['gone', true]);
 });

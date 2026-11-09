@@ -5,18 +5,18 @@ import type { JunkItem, JunkMessage, JunkPhotos, JunkStore } from '../_shared/ju
 import type { JunkClaim } from '../_shared/junkClaims.ts';
 
 interface ClaimDb {
-  id: string; item_id: string; owner_id: string; claimer_id: string; claimer_name: string; status: string; reason: string;
+  id: string; item_id: string; owner_id: string; claimer_id: string; claimer_name: string; shared: boolean; piece_ids?: string[]; status: string; reason: string;
   start_km: number; best_km: number; best_at: string; last_km: number; last_ping_at: string; created_at: string;
   deadline_at: string; arrived_at: string | null; ended_at: string | null;
 }
 const claimRow = (r: ClaimDb): JunkClaim => ({
-  id: r.id, itemId: r.item_id, ownerId: r.owner_id, claimerId: r.claimer_id, claimerName: r.claimer_name,
+  id: r.id, itemId: r.item_id, ownerId: r.owner_id, claimerId: r.claimer_id, claimerName: r.claimer_name, shared: !!r.shared, pieceIds: r.piece_ids ?? [],
   status: r.status as JunkClaim['status'], reason: r.reason, startKm: r.start_km, bestKm: r.best_km, bestAt: r.best_at,
   lastKm: r.last_km, lastPingAt: r.last_ping_at, createdAt: r.created_at, deadlineAt: r.deadline_at,
   arrivedAt: r.arrived_at, endedAt: r.ended_at,
 });
 const claimDb = (c: JunkClaim): ClaimDb => ({
-  id: c.id, item_id: c.itemId, owner_id: c.ownerId, claimer_id: c.claimerId, claimer_name: c.claimerName, status: c.status,
+  id: c.id, item_id: c.itemId, owner_id: c.ownerId, claimer_id: c.claimerId, claimer_name: c.claimerName, shared: c.shared, piece_ids: c.pieceIds, status: c.status,
   reason: c.reason, start_km: c.startKm, best_km: c.bestKm, best_at: c.bestAt, last_km: c.lastKm, last_ping_at: c.lastPingAt,
   created_at: c.createdAt, deadline_at: c.deadlineAt, arrived_at: c.arrivedAt, ended_at: c.endedAt,
 });
@@ -24,7 +24,7 @@ const OPEN = ['active', 'arrived'];
 
 interface ItemDb {
   id: string; owner_id: string; owner_name: string; title: string; description: string; category: string; tags: string[];
-  condition: string; pickup: string; photos: string[]; lat: number; lng: number; status: string; ai_detected: boolean;
+  condition: string; pickup: string; photos: string[]; lat: number; lng: number; status: string; ai_detected: boolean; first_come?: boolean; pieces?: JunkItem['pieces'];
   reports: number; search_text: string; created_at: string; updated_at: string;
 }
 interface MessageDb { id: string; item_id: string; from_id: string; to_id: string; from_name: string; body: string; created_at: string; read_at: string | null }
@@ -33,12 +33,12 @@ const itemRow = (r: ItemDb): JunkItem => ({
   id: r.id, ownerId: r.owner_id, ownerName: r.owner_name, title: r.title, description: r.description,
   category: r.category as JunkItem['category'], tags: r.tags ?? [], condition: r.condition as JunkItem['condition'],
   pickup: r.pickup, photos: r.photos ?? [], lat: r.lat, lng: r.lng, status: r.status as JunkItem['status'],
-  aiDetected: r.ai_detected, reports: r.reports, searchText: r.search_text, createdAt: r.created_at, updatedAt: r.updated_at,
+  aiDetected: r.ai_detected, firstCome: !!r.first_come, pieces: Array.isArray(r.pieces) ? r.pieces : [], reports: r.reports, searchText: r.search_text, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const itemDb = (i: JunkItem): ItemDb => ({
   id: i.id, owner_id: i.ownerId, owner_name: i.ownerName, title: i.title, description: i.description, category: i.category,
   tags: i.tags, condition: i.condition, pickup: i.pickup, photos: i.photos, lat: i.lat, lng: i.lng, status: i.status,
-  ai_detected: i.aiDetected, reports: i.reports, search_text: i.searchText, created_at: i.createdAt, updated_at: i.updatedAt,
+  ai_detected: i.aiDetected, first_come: !!i.firstCome, pieces: i.pieces, reports: i.reports, search_text: i.searchText, created_at: i.createdAt, updated_at: i.updatedAt,
 });
 const messageRow = (r: MessageDb): JunkMessage => ({
   id: r.id, itemId: r.item_id, fromId: r.from_id, toId: r.to_id, fromName: r.from_name, body: r.body, createdAt: r.created_at, readAt: r.read_at,
@@ -110,10 +110,6 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
     },
     async updateClaim(c) {
       must(await db.from('junk_claims').update(claimDb(c)).eq('id', c.id));
-    },
-    async openClaimForItem(itemId) {
-      const data = must(await db.from('junk_claims').select('*').eq('item_id', itemId).in('status', OPEN).maybeSingle());
-      return data ? claimRow(data as ClaimDb) : null;
     },
     async openClaimsForItems(itemIds) {
       if (!itemIds.length) return [];

@@ -39,11 +39,26 @@ export interface JunkItem {
   lng: number;
   status: JunkStatus;
   aiDetected: boolean;
+  /** First come, first served: "I'm on my way" doesn't hold it, several people can head over at once. */
+  firstCome: boolean;
+  /** A multi-item post: the separate things in it (empty for a single item). */
+  pieces: JunkPiece[];
   reports: number;
   /** Lower-case title, description, category and tags, for search. */
   searchText: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface JunkPiece {
+  id: string;
+  title: string;
+  category: JunkCategory;
+  /** Taken already (picked up, or the poster marked it). */
+  gone: boolean;
+  /** Which photo shows it, and where in it (0 to 1, from the top left), when the phone spotted it. */
+  photo: number;
+  box: { x: number; y: number; w: number; h: number } | null;
 }
 
 export interface JunkMessage {
@@ -128,6 +143,7 @@ export const ITEMS_PER_DAY = 25;
 export const MAX_KM = 160;
 export const FRESH_DAYS = 45;
 export const HIDE_AFTER_REPORTS = 3;
+export const MAX_PIECES = 12;
 
 const ok = (body?: unknown): Res => ({ status: 200, body });
 const bad = (message: string): Res => ({ status: 400, body: message });
@@ -163,8 +179,43 @@ export function cleanTags(v: unknown): string[] {
   return [...new Set(v.map((t) => str(t, 30).toLowerCase()).filter(Boolean))].slice(0, 12);
 }
 
-export const searchTextOf = (i: Pick<JunkItem, 'title' | 'description' | 'category' | 'tags'>) =>
-  [i.title, i.description, i.category, ...i.tags].join(' ').toLowerCase();
+export const searchTextOf = (i: Pick<JunkItem, 'title' | 'description' | 'category' | 'tags'> & { pieces?: JunkPiece[] }) =>
+  [i.title, i.description, i.category, ...i.tags, ...(i.pieces ?? []).filter((p) => !p.gone).flatMap((p) => [p.title, p.category])]
+    .join(' ').toLowerCase();
+
+/** Pieces of a multi-item post that someone's open claim is for (a claim with no pieces is for all of them). */
+export const heldPieces = (i: JunkItem, claims: JunkClaim[]) =>
+  new Set(claims.flatMap((c) => (c.pieceIds?.length ? c.pieceIds : (i.pieces ?? []).map((p) => p.id))));
+
+const unit = (v: unknown) => { const n = num(v); return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : NaN; };
+
+/** Reads the pieces of a multi-item post, keeping the ids (and taken flags) the listing already had. */
+function readPieces(v: unknown, prev: JunkPiece[]): JunkPiece[] | { error: string } {
+  if (v == null) return [];
+  if (!Array.isArray(v)) return { error: 'Bad item list.' };
+  if (v.length > MAX_PIECES) return { error: `Up to ${MAX_PIECES} things in one post.` };
+  const used = new Set(prev.map((p) => p.id));
+  let next = prev.reduce((m, p) => Math.max(m, Number(p.id.replace(/^p/, '')) || 0), 0);
+  const out: JunkPiece[] = [];
+  for (const raw of v) {
+    const r = (raw && typeof raw === 'object' ? raw : {}) as Body;
+    const title = str(r.title, 60);
+    if (title.length < 2) continue;
+    const old = typeof r.id === 'string' ? prev.find((p) => p.id === r.id) : undefined;
+    const box = r.box && typeof r.box === 'object' ? r.box as Body : null;
+    const b = box ? { x: unit(box.x), y: unit(box.y), w: unit(box.w), h: unit(box.h) } : null;
+    let id = old?.id;
+    if (!id) { do { id = `p${++next}`; } while (used.has(id)); used.add(id); }
+    out.push({
+      id, title, category: asCategory(r.category) ?? old?.category ?? 'other',
+      gone: 'gone' in r ? r.gone === true : old?.gone ?? false,
+      photo: Math.max(0, Math.min(MAX_PHOTOS - 1, Math.floor(num(r.photo)) || 0)),
+      box: b && Object.values(b).every(Number.isFinite) && b.w > 0 && b.h > 0 ? b : old?.box ?? null,
+    });
+  }
+  // One thing isn't a multi-item post.
+  return out.length >= 2 ? out : [];
+}
 
 /** Great-circle distance in km. */
 export function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -188,7 +239,7 @@ const decodeJpeg = (v: unknown): Uint8Array | null => {
   }
 };
 
-const itemOut = (deps: JunkDeps, i: JunkItem, me: string | null, km?: number, claim?: JunkClaim | null) => ({
+const itemOut = (deps: JunkDeps, i: JunkItem, me: string | null, km?: number, claims: JunkClaim[] = []) => ({
   id: i.id,
   title: i.title,
   description: i.description,
@@ -207,9 +258,31 @@ const itemOut = (deps: JunkDeps, i: JunkItem, me: string | null, km?: number, cl
   ...(km === undefined ? {} : { km: Math.round(km * 10) / 10 }),
   // Only the owner gets the saved spot back (to edit it); everyone else just sees the distance.
   ...(me !== null && me === i.ownerId ? { lat: i.lat, lng: i.lng } : {}),
-  // Someone tapped "I'm on my way" (only open claims are passed in).
-  claim: claim ? claimOut(claim, me) : null,
+  firstCome: !!i.firstCome,
+  // A multi-item post: each thing, whether it's taken, and whether someone is on the way for it.
+  pieces: (() => {
+    const held = heldPieces(i, claims);
+    const mineIds = new Set(claims.filter((c) => c.claimerId === me).flatMap((c) => (c.pieceIds?.length ? c.pieceIds : (i.pieces ?? []).map((p) => p.id))));
+    return (i.pieces ?? []).map((p) => ({ ...p, held: !p.gone && held.has(p.id), mine: mineIds.has(p.id) }));
+  })(),
+  // People who tapped "I'm on my way" (only open claims are passed in). On a normal listing the one claim
+  // holds it; on a first come, first served listing `claim` is only your own trip.
+  claim: (() => {
+    const shared = i.firstCome || (i.pieces ?? []).length > 0;
+    const c = shared ? claims.find((x) => x.claimerId === me) : claims[0];
+    return c ? claimOut(c, me) : null;
+  })(),
+  onTheWay: claims.length,
+  ...(me !== null && me === i.ownerId ? { claimers: claims.map((c) => claimOut(c, me)) } : {}),
 });
+
+/** "Chair and lamp", "Chair, lamp and 3 more". */
+export function bundleTitle(pieces: Pick<JunkPiece, 'title'>[]): string {
+  const names = pieces.map((p, n) => (n ? p.title.charAt(0).toLowerCase() + p.title.slice(1) : p.title));
+  if (names.length <= 2) return names.join(' and ');
+  if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]}`;
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more`.slice(0, 80);
+}
 
 const readSpot = (body: Body): { lat: number; lng: number } | null => {
   const lat = num(body.lat), lng = num(body.lng);
@@ -219,6 +292,14 @@ const readSpot = (body: Body): { lat: number; lng: number } | null => {
 /** Reads and checks the editable fields of a listing. */
 function readFields(body: Body, userId: string, prev: JunkItem | null): { fields: Partial<JunkItem> } | { error: string } {
   const fields: Partial<JunkItem> = {};
+  if (!prev || 'pieces' in body) {
+    const pieces = readPieces(body.pieces, prev?.pieces ?? []);
+    if ('error' in pieces) return pieces;
+    fields.pieces = pieces;
+    // A post of several things can go without its own name: "Chair, lamp and 2 more".
+    if (pieces.length && !str(body.title, 80) && !prev) body = { ...body, title: bundleTitle(pieces) };
+    if (pieces.length && !asCategory(body.category) && !prev) body = { ...body, category: pieces[0].category };
+  }
   if (!prev || 'title' in body) {
     const title = str(body.title, 80);
     if (title.length < 2) return { error: 'Give it a name (like "Wood dresser").' };
@@ -230,6 +311,7 @@ function readFields(body: Body, userId: string, prev: JunkItem | null): { fields
   if (!prev || 'tags' in body) fields.tags = cleanTags(body.tags);
   if (!prev || 'pickup' in body) fields.pickup = longStr(body.pickup, 300);
   if (!prev || 'aiDetected' in body) fields.aiDetected = body.aiDetected === true;
+  if (!prev || 'firstCome' in body) fields.firstCome = body.firstCome === true;
   if (!prev || 'photos' in body) {
     if (!Array.isArray(body.photos)) return { error: 'Photos missing.' };
     const photos = [...new Set(body.photos.filter((p): p is string => typeof p === 'string'))];
@@ -272,6 +354,18 @@ export async function junkRoute(
     if (judged !== c) await store.updateClaim(judged);
     return OPEN_CLAIM.includes(judged.status) ? judged : null;
   };
+  /** Open claims on these items as they stand now, by item. */
+  const liveClaimsFor = async (itemIds: string[]) => {
+    const byItem = new Map<string, JunkClaim[]>();
+    if (!itemIds.length) return byItem;
+    for (const c of await store.openClaimsForItems(itemIds)) {
+      const live = await liveClaim(c);
+      if (live) byItem.set(live.itemId, [...(byItem.get(live.itemId) ?? []), live]);
+    }
+    for (const list of byItem.values()) list.sort((x, y) => x.createdAt.localeCompare(y.createdAt));
+    return byItem;
+  };
+  const liveClaimsOn = async (itemId: string) => (await liveClaimsFor([itemId])).get(itemId) ?? [];
   const endClaim = async (c: JunkClaim, status: JunkClaim['status'], reason: string) => {
     const ended: JunkClaim = { ...c, status, reason, endedAt: nowIso };
     await store.updateClaim(ended);
@@ -293,16 +387,12 @@ export async function junkRoute(
     });
     const hidden = new Set(me ? await store.blocked(me) : []);
     const shown = rows.filter((r) => !hidden.has(r.ownerId)).slice(0, limit);
-    const claims = new Map<string, JunkClaim>();
-    if (shown.length) {
-      for (const c of await store.openClaimsForItems(shown.map((r) => r.id))) {
-        const live = await liveClaim(c);
-        if (live) claims.set(live.itemId, live);
-      }
-    }
+    const claims = await liveClaimsFor(shown.map((r) => r.id));
     // Items someone is already driving to go after the ones still up for grabs (the order is otherwise kept).
+    // First come, first served listings stay where they are.
     const out = shown.map((r) => itemOut(deps, r, me, r.km, claims.get(r.id)));
-    return ok([...out.filter((o) => !o.claim), ...out.filter((o) => o.claim)]);
+    const held = (o: typeof out[number]) => !o.firstCome && o.onTheWay > 0 && o.pieces.every((p) => p.gone || p.held);
+    return ok([...out.filter((o) => !held(o)), ...out.filter(held)]);
   }
 
   if (section === 'items' && a && !b && method === 'GET') {
@@ -311,7 +401,7 @@ export async function junkRoute(
     if (!item || (item.status === 'hidden' && item.ownerId !== me)) return notFound;
     const lat = num(params?.get('lat')), lng = num(params?.get('lng'));
     const km = isLat(lat) && isLng(lng) ? distanceKm(lat, lng, item.lat, item.lng) : undefined;
-    return ok(itemOut(deps, item, me, km, await liveClaim(await store.openClaimForItem(item.id))));
+    return ok(itemOut(deps, item, me, km, await liveClaimsOn(item.id)));
   }
 
   if (section === 'categories' && method === 'GET') return ok({ categories: JUNK_CATEGORIES, conditions: JUNK_CONDITIONS });
@@ -355,7 +445,8 @@ export async function junkRoute(
     const item: JunkItem = {
       id: ctx.newId(), ownerId: me, ownerName: myName,
       title: f.title!, description: f.description!, category: f.category!, tags: f.tags!, condition: f.condition!,
-      pickup: f.pickup!, photos: f.photos!, lat: f.lat!, lng: f.lng!, aiDetected: f.aiDetected!,
+      pickup: f.pickup!, photos: f.photos!, lat: f.lat!, lng: f.lng!, aiDetected: f.aiDetected!, firstCome: f.firstCome!,
+      pieces: f.pieces ?? [],
       status: 'available', reports: 0, searchText: '', createdAt: nowIso, updatedAt: nowIso,
     };
     item.searchText = searchTextOf(item);
@@ -368,8 +459,7 @@ export async function junkRoute(
     if (!item) return notFound;
     if (item.ownerId !== me) return { status: 403, body: 'Only the person who posted it can change it.' };
     if (method === 'DELETE') {
-      const open = await store.openClaimForItem(item.id);
-      if (open) await endClaim(open, 'item_gone', 'The poster took the listing down.');
+      for (const open of await store.openClaimsForItems([item.id])) await endClaim(open, 'item_gone', 'The poster took the listing down.');
       await store.deleteItem(item.id);
       await photos.remove(item.photos).catch((error) => ctx.log.warn('junk: photo cleanup failed', error));
       return ok({ deleted: true });
@@ -377,16 +467,27 @@ export async function junkRoute(
     const read = readFields(body, me, item);
     if ('error' in read) return bad(read.error);
     const next: JunkItem = { ...item, ...read.fields, ownerName: myName, updatedAt: nowIso };
+    // A multi-item post is taken once everything in it is; marking something back up reopens it.
+    if (next.pieces?.length && next.status !== 'hidden') {
+      if (next.pieces.every((p) => p.gone)) next.status = 'gone';
+      else if (item.status === 'gone' && !('status' in body)) next.status = 'available';
+    }
     next.searchText = searchTextOf(next);
     await store.putItem(next);
     const dropped = item.photos.filter((p) => !next.photos.includes(p));
     if (dropped.length) await photos.remove(dropped).catch((error) => ctx.log.warn('junk: photo cleanup failed', error));
-    let claim = await liveClaim(await store.openClaimForItem(item.id));
-    if (claim && next.status === 'gone') {
-      await endClaim(claim, 'item_gone', 'The poster marked it taken.');
-      claim = null;
+    let claims = await liveClaimsOn(item.id);
+    if (claims.length && next.status === 'gone') {
+      for (const c of claims) await endClaim(c, 'item_gone', 'The poster marked it taken.');
+      claims = [];
     }
-    return ok(itemOut(deps, next, me, undefined, claim));
+    // Trips for things the poster just marked taken end too.
+    const gone = new Set((next.pieces ?? []).filter((p) => p.gone).map((p) => p.id));
+    for (const c of claims) {
+      if (c.pieceIds?.length && c.pieceIds.every((id) => gone.has(id))) await endClaim(c, 'item_gone', 'The poster marked it taken.');
+    }
+    if (gone.size) claims = await liveClaimsOn(item.id);
+    return ok(itemOut(deps, next, me, undefined, claims));
   }
 
   // ---- "I'm on my way": claim an item while you drive over; the trip is tracked ----
@@ -408,7 +509,20 @@ export async function junkRoute(
     const mine = latest && OPEN_CLAIM.includes(latest.status) ? await liveClaim(latest) : null;
     if (mine && mine.itemId === item.id) return ok({ claim: claimOut(mine, me) });
     if (mine) return { status: 409, body: 'You\'re already on your way to something. Finish or cancel that trip first.' };
-    if (await liveClaim(await store.openClaimForItem(item.id))) return { status: 409, body: 'Someone else is already on the way.' };
+    // A multi-item post: the trip is for some of the things in it ("pieces"), or all that are still up for grabs.
+    const bundle = (item.pieces ?? []).length > 0;
+    let pieceIds: string[] = [];
+    if (bundle) {
+      const others = (await liveClaimsOn(item.id)).filter((c) => c.claimerId !== me);
+      const held = item.firstCome ? new Set<string>() : heldPieces(item, others);
+      const free = item.pieces.filter((p) => !p.gone && !held.has(p.id)).map((p) => p.id);
+      const asked = Array.isArray(body.pieces) ? body.pieces.filter((x): x is string => typeof x === 'string') : null;
+      pieceIds = asked ? free.filter((id) => asked.includes(id)) : free;
+      if (!pieceIds.length) return { status: 409, body: asked ? 'Someone else is already on the way for that.' : 'Everything here is spoken for.' };
+      if (asked && pieceIds.length < new Set(asked).size) return { status: 409, body: 'Someone else is already on the way for some of that. Take another look.' };
+    } else if (!item.firstCome && (await liveClaimsOn(item.id)).length) {
+      return { status: 409, body: 'Someone else is already on the way.' };
+    }
     const last = await store.lastEndedClaim(me, item.id);
     if (last && last.status !== 'cancelled' && last.endedAt && now.getTime() - Date.parse(last.endedAt) < RECLAIM_COOLDOWN_MIN * 60_000) {
       return { status: 429, body: 'Your last claim on this was released. Give others a chance for a bit, or message the poster.' };
@@ -416,12 +530,19 @@ export async function junkRoute(
     if (await store.countClaimsSince(me, daysAgo(now, 1)) >= CLAIMS_PER_DAY) {
       return { status: 429, body: 'That\'s a lot of trips today. Try again tomorrow.' };
     }
-    const claim = newClaim({ id: ctx.newId(), itemId: item.id, ownerId: item.ownerId, claimerId: me, claimerName: myName, km, now });
+    const claim = newClaim({ id: ctx.newId(), itemId: item.id, ownerId: item.ownerId, claimerId: me, claimerName: myName, km, now, shared: !!item.firstCome || bundle, pieceIds });
     if (!await store.insertClaim(claim)) return { status: 409, body: 'Someone else just claimed it.' };
     // Let the poster know in the item's chat.
     await store.addMessage({
       id: ctx.newId(), itemId: item.id, fromId: me, toId: item.ownerId, fromName: myName, createdAt: nowIso, readAt: null,
-      body: claim.status === 'arrived' ? 'I\'m here to pick this up! (sent by Curbsy)' : `I'm on my way to pick this up, about ${etaMinutes(km)} min out. (sent by Curbsy)`,
+      body: (() => {
+        const what = bundle && pieceIds.length < item.pieces.filter((p) => !p.gone).length
+          ? item.pieces.filter((p) => pieceIds.includes(p.id)).map((p) => p.title).join(', ')
+          : bundle ? 'all of it' : 'this';
+        return claim.status === 'arrived'
+          ? `I'm here to pick up ${what}! (sent by Curbsy)`
+          : `I'm on my way to pick up ${what}, about ${etaMinutes(km)} min out. (sent by Curbsy)`;
+      })(),
     }).catch((error) => ctx.log.warn('junk: claim message failed', error));
     return ok({ claim: claimOut(claim, me) });
   }
@@ -431,9 +552,13 @@ export async function junkRoute(
     const item = await store.getItem(a);
     if (!item) return notFound;
     if (item.ownerId !== me) return { status: 403, body: 'Only the person who posted it can release a claim.' };
-    const claim = await liveClaim(await store.openClaimForItem(item.id));
-    if (claim) await endClaim(claim, 'owner_released', 'The poster released your claim.');
-    return ok(itemOut(deps, item, me));
+    // One person's claim (claimId), or everyone's.
+    const which = str(body.claimId, 64);
+    const claims = await liveClaimsOn(item.id);
+    for (const c of claims) {
+      if (!which || c.id === which) await endClaim(c, 'owner_released', 'The poster released your claim.');
+    }
+    return ok(itemOut(deps, item, me, undefined, await liveClaimsOn(item.id)));
   }
 
   if (section === 'claim' && !a && method === 'GET') {
@@ -458,8 +583,10 @@ export async function junkRoute(
     if (a === 'ping') {
       if (!open) return ok({ claim: latest ? claimOut(latest, me) : null, tracking: false });
       const item = await store.getItem(open.itemId);
-      if (!item || item.status === 'gone' || item.status === 'hidden') {
-        const ended = await endClaim(open, 'item_gone', 'The item isn\'t available anymore.');
+      const piecesGone = !!open.pieceIds?.length && !!item?.pieces?.length
+        && open.pieceIds.every((id) => item.pieces.find((p) => p.id === id)?.gone !== false);
+      if (!item || item.status === 'gone' || item.status === 'hidden' || piecesGone) {
+        const ended = await endClaim(open, 'item_gone', piecesGone ? 'Someone else got there first.' : 'The item isn\'t available anymore.');
         return ok({ claim: claimOut(ended, me), tracking: false });
       }
       const here = readSpot(body);
@@ -482,8 +609,18 @@ export async function junkRoute(
       if (!live) return { status: 409, body: 'Your claim already ended.' };
       if (live.status !== 'arrived' && live.lastKm > 0.6) return bad('Tap "Got it" once you\'re there.');
       const ended = await endClaim(live, 'picked_up', 'Picked up. Enjoy!');
+      // A first come, first served pile stays up for the next person; the poster takes it down when it's empty.
+      // On a multi-item post only the things this trip was for are taken; the post goes once all of it has.
       const item = await store.getItem(live.itemId);
-      if (item && item.status !== 'hidden') await store.putItem({ ...item, status: 'gone', updatedAt: nowIso });
+      if (item && item.status !== 'hidden' && item.pieces?.length) {
+        const took = new Set(live.pieceIds?.length ? live.pieceIds : item.pieces.map((p) => p.id));
+        const pieces = item.pieces.map((p) => (took.has(p.id) ? { ...p, gone: true } : p));
+        const next: JunkItem = { ...item, pieces, status: pieces.every((p) => p.gone) ? 'gone' : item.status, updatedAt: nowIso };
+        next.searchText = searchTextOf(next);
+        await store.putItem(next);
+      } else if (item && item.status !== 'hidden' && !item.firstCome) {
+        await store.putItem({ ...item, status: 'gone', updatedAt: nowIso });
+      }
       return ok({ claim: claimOut(ended, me) });
     }
   }

@@ -709,3 +709,56 @@ body.jk-body::before { background: #f5f3ee; }
 .jk-trip-text strong { font-weight: 750; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .jk-trip-text span { color: var(--jk-ink-2); font-size: 13px; }
 .jk-app.has-trip .jk-page { padding-bottom: calc(var(--jk-safe-bottom) + 160px); }
+
+/* Multi-item posts and first come, first served */
+.jk-count-tag {
+  position: absolute; right: 8px; bottom: 8px; padding: 3px 8px; border-radius: 8px;
+  background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 11px; font-weight: 700;
+}
+.jk-pill-fcfs { background: var(--jk-accent-soft); color: var(--jk-accent); }
+.jk-chip-small { min-height: 30px; padding: 0 10px; font-size: 13px; }
+.jk-hint { margin: 6px 0 0; color: var(--jk-ink-3); font-size: 13px; }
+.jk-multi-link { align-self: flex-start; margin-top: -6px; text-align: left; }
+.jk-piece-thumb {
+  flex: none; width: 44px; height: 44px; border-radius: 10px; background-color: var(--jk-surface-2);
+  background-repeat: no-repeat;
+}
+.jk-pieces, .jk-pieces-edit { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; }
+.jk-pieces li, .jk-pieces-edit li {
+  display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 14px;
+  background: var(--jk-surface); border: 1px solid var(--jk-line); min-width: 0;
+}
+.jk-pieces li.is-gone, .jk-pieces-edit li.is-gone { opacity: 0.55; }
+.jk-pieces li.is-gone b { text-decoration: line-through; }
+.jk-pieces li.is-held { border-color: var(--jk-warn); }
+.jk-piece-text { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.jk-piece-text b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jk-piece-text small { color: var(--jk-ink-2); font-size: 12px; }
+.jk-piece-pick { flex: none; width: 24px; height: 24px; accent-color: var(--jk-accent); }
+.jk-pieces-edit input { flex: 1; min-width: 0; padding: 8px 0; font-size: 16px; }
+.jk-pieces-edit select {
+  flex: none; max-width: 112px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--jk-line);
+  background: var(--jk-surface-2); color: var(--jk-ink); font: inherit; font-size: 13px;
+}
+.jk-piece-x { position: static; flex: none; }
+.jk-sheet .jk-pieces { margin: 4px 0 12px; max-height: 40vh; overflow-y: auto; }
+.jk-toggle {
+  display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 14px;
+  background: var(--jk-surface); border: 1px solid var(--jk-line);
+}
+.jk-toggle input { flex: none; width: 22px; height: 22px; margin-top: 1px; accent-color: var(--jk-accent); }
+.jk-toggle span { display: grid; gap: 2px; }
+.jk-toggle small { color: var(--jk-ink-2); font-size: 13px; }
+.jk-claimers ul { grid-column: 2; list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; }
+.jk-claimers li { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.jk-claimers li > span { display: grid; gap: 1px; color: var(--jk-ink); font-size: 14px; min-width: 0; }
+.jk-claimers li small { margin-top: 0; }
+.jk-fcfs-note { margin: 0; font-size: 14px; }
+.jk-app .jk-piece-pick, .jk-app .jk-toggle input {
+  appearance: none; -webkit-appearance: none; display: grid; place-items: center; cursor: pointer;
+  border: 2px solid var(--jk-ink-3); border-radius: 7px; background: var(--jk-surface);
+}
+.jk-app .jk-piece-pick:checked, .jk-app .jk-toggle input:checked { border-color: var(--jk-accent); background: var(--jk-accent); }
+.jk-app .jk-piece-pick:checked::after, .jk-app .jk-toggle input:checked::after {
+  content: ''; width: 6px; height: 11px; margin-top: -2px; border: solid var(--jk-accent-ink); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+}
