@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/ui';
-import { parseScan } from '../lib/qr';
+import { parseScan, presetQuery } from '../lib/qr';
 import { useTotes } from '../lib/store';
 
 const FRAME = 260;
@@ -26,8 +26,8 @@ export default function Scan() {
 
   const onScanned = ({ data }: BarcodeScanningResult) => {
     if (handled.current) return;
-    const id = parseScan(data);
-    if (!id) {
+    const scanned = parseScan(data);
+    if (!scanned) {
       if (lastBad.current !== data) {
         lastBad.current = data;
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
@@ -39,7 +39,8 @@ export default function Scan() {
     handled.current = true;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     // Known tote: open it. Unknown (a blank pre-printed label): go straight to setup.
-    router.replace(getTote(id) ? `/tote/${id}` : `/tote/edit?claim=${id}`);
+    const { id, preset } = scanned;
+    router.replace(getTote(id) ? `/tote/${id}` : `/tote/edit?claim=${id}${presetQuery(preset)}`);
   };
 
   if (!permission) return <View style={styles.black} />;

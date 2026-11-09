@@ -11,14 +11,14 @@ import { useTotes } from '../../lib/store';
 import { radius, TOTE_COLORS, TOTE_ICONS, useTheme } from '../../lib/theme';
 
 export default function EditTote() {
-  const { id, claim } = useLocalSearchParams<{ id?: string; claim?: string }>();
+  const { id, claim, name: presetName, loc, c } = useLocalSearchParams<{ id?: string; claim?: string; name?: string; loc?: string; c?: string }>();
   const t = useTheme();
   const store = useTotes();
   const existing = id ? store.getTote(id) : undefined;
 
-  const [name, setName] = useState(existing?.name ?? '');
-  const [location, setLocation] = useState(existing?.location ?? '');
-  const [color, setColor] = useState(existing?.color ?? TOTE_COLORS[store.totes.length % TOTE_COLORS.length]);
+  const [name, setName] = useState(existing?.name ?? presetName ?? '');
+  const [location, setLocation] = useState(existing?.location ?? loc ?? '');
+  const [color, setColor] = useState(existing?.color ?? (c && /^[0-9a-f]{6}$/i.test(c) ? `#${c}` : TOTE_COLORS[store.totes.length % TOTE_COLORS.length]));
   const [icon, setIcon] = useState<string>(existing?.icon ?? 'cube');
   const [notes, setNotes] = useState(existing?.notes ?? '');
   const [photo, setPhoto] = useState<string | undefined>(existing?.photo);

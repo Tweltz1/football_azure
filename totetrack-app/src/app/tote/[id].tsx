@@ -6,13 +6,13 @@ import { ActionSheetIOS, Alert, Platform, Pressable, ScrollView, StyleSheet, Tex
 import { QRCodeView } from '../../components/QRCodeView';
 import { Button, Card, EmptyState, IconButton, SectionTitle, tap, ToteBadge } from '../../components/ui';
 import { photoUri } from '../../lib/photos';
-import { qrPayload, shortCode } from '../../lib/qr';
+import { presetQuery, qrPayload, shortCode } from '../../lib/qr';
 import { itemCount, timeAgo, useTotes } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 import { Item } from '../../lib/types';
 
 export default function ToteDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, name: presetName, loc, c } = useLocalSearchParams<{ id: string; name?: string; loc?: string; c?: string }>();
   const t = useTheme();
   const store = useTotes();
   const tote = store.getTote(id);
@@ -28,7 +28,7 @@ export default function ToteDetail() {
           icon="qr-code-outline"
           title="This label isn't set up yet"
           body={`Label ${shortCode(id)} isn't linked to a tote. Set it up now and it'll open this tote every time you scan it.`}
-          action={<Button title="Set up this tote" icon="add" onPress={() => router.replace(`/tote/edit?claim=${id}`)} />}
+          action={<Button title="Set up this tote" icon="add" onPress={() => router.replace(`/tote/edit?claim=${id}${presetQuery({ name: presetName, location: loc, color: c ? `#${c}` : undefined })}`)} />}
         />
       </>
     );

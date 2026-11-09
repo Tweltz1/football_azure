@@ -4,12 +4,13 @@ import * as Print from 'expo-print';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, IconButton, SectionTitle, tap, ToteBadge } from '../components/ui';
-import { buildLabelHtml, LabelLayoutId, LabelSpec, LAYOUTS } from '../lib/labels';
+import { QRCodeView } from '../components/QRCodeView';
+import { buildLabelHtml, LabelLayout, LabelLayoutId, LabelOptions, LabelSpec, labelText, LAYOUTS } from '../lib/labels';
 import { useTotes } from '../lib/store';
-import { radius, useTheme } from '../lib/theme';
+import { radius, TOTE_COLORS, useTheme } from '../lib/theme';
 
 export default function PrintLabels() {
   const params = useLocalSearchParams<{ ids?: string }>();
@@ -25,6 +26,16 @@ export default function PrintLabels() {
   const [includeContents, setIncludeContents] = useState(true);
   const [outlines, setOutlines] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Blank label text and look
+  const [blankName, setBlankName] = useState('');
+  const [blankLoc, setBlankLoc] = useState('');
+  const [blankColor, setBlankColor] = useState<string | undefined>(undefined);
+  const [numbered, setNumbered] = useState(false);
+  const [startNum, setStartNum] = useState(1);
+  // What every label shows
+  const [showLocation, setShowLocation] = useState(true);
+  const [showCode, setShowCode] = useState(true);
+  const [size, setSize] = useState<'S' | 'M' | 'L'>('M');
 
   const layout = LAYOUTS.find((l) => l.id === layoutId)!;
   const perSheet = layout.cols * layout.rows;
@@ -35,14 +46,29 @@ export default function PrintLabels() {
   // Blank label ids are stable while this screen is open so a preview and the print match.
   const blankIds = useMemo(() => Array.from({ length: 200 }, () => Crypto.randomUUID()), []);
 
+  const options: LabelOptions = { includeContents, outlines, showLocation, showCode, textScale: { S: 0.8, M: 1, L: 1.25 }[size] };
+
+  const blankSpecs = (): LabelSpec[] =>
+    blankIds.slice(0, blanks).map((id, i) => {
+      const base = blankName.trim() || (numbered ? 'Tote' : '');
+      return {
+        id,
+        preset: {
+          name: numbered ? `${base} ${startNum + i}` : base || undefined,
+          location: blankLoc.trim() || undefined,
+          color: blankColor,
+        },
+      };
+    });
+
+  const allSpecs = (): LabelSpec[] => [...chosen.map((tote) => ({ id: tote.id, tote })), ...blankSpecs()];
+
   const build = () => {
-    const specs: (LabelSpec | null)[] = [
-      ...Array.from({ length: skip }, () => null),
-      ...chosen.map((tote) => ({ id: tote.id, tote })),
-      ...blankIds.slice(0, blanks).map((id) => ({ id })),
-    ];
-    return buildLabelHtml(specs, layout, { includeContents, outlines });
+    const specs: (LabelSpec | null)[] = [...Array.from({ length: skip }, () => null), ...allSpecs()];
+    return buildLabelHtml(specs, layout, options);
   };
+
+  const previewSpec: LabelSpec = allSpecs()[0] ?? { id: blankIds[0], preset: { name: blankName.trim() || undefined, location: blankLoc.trim() || undefined, color: blankColor } };
 
   const toggle = (id: string) => {
     tap();
@@ -145,21 +171,96 @@ export default function PrintLabels() {
           </>
         )}
 
-        <SectionTitle>Options</SectionTitle>
+        <SectionTitle>Preview</SectionTitle>
+        <LabelPreview spec={previewSpec} layout={layout} options={options} />
+
+        <SectionTitle>Blank labels</SectionTitle>
         <Card style={{ padding: 0 }}>
           <Stepper
-            label="Blank labels"
+            label="How many"
             hint="Stick them on now, scan later to set up the tote"
             value={blanks}
             onChange={setBlanks}
             max={200}
             step={layout.id === 'large' ? 1 : layout.cols}
           />
-          {perSheet > 1 && (
-            <Stepper label="Skip used labels" hint="For a partly used sheet, start further down" value={skip} onChange={setSkip} max={perSheet - 1} border />
+          {blanks > 0 && (
+            <View style={[styles.custom, { borderTopColor: t.border }]}>
+              <Text style={[styles.fieldLabel, { color: t.textMuted }]}>Label title</Text>
+              <TextInput
+                value={blankName}
+                onChangeText={setBlankName}
+                placeholder={numbered ? 'Tote' : 'New tote'}
+                placeholderTextColor={t.textMuted}
+                autoCapitalize="words"
+                style={[styles.field, { backgroundColor: t.cardAlt, color: t.text }]}
+              />
+              <Text style={[styles.fieldLabel, { color: t.textMuted }]}>Second line</Text>
+              <TextInput
+                value={blankLoc}
+                onChangeText={setBlankLoc}
+                placeholder="e.g. Garage, top shelf"
+                placeholderTextColor={t.textMuted}
+                style={[styles.field, { backgroundColor: t.cardAlt, color: t.text }]}
+              />
+              <Text style={[styles.fieldLabel, { color: t.textMuted }]}>Color</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 2 }}>
+                {[undefined, ...TOTE_COLORS].map((c) => {
+                  const on = c === blankColor;
+                  return (
+                    <Pressable
+                      key={c ?? 'none'}
+                      accessibilityLabel={c ? `Color ${c}` : 'Gray'}
+                      onPress={() => {
+                        tap();
+                        setBlankColor(c);
+                      }}
+                      style={[styles.swatch, { backgroundColor: c ?? '#94A3B8', borderColor: on ? t.text : 'transparent' }]}
+                    >
+                      {on && <Ionicons name="checkmark" size={16} color="#fff" />}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <Text style={[styles.hintSmall, { color: t.textMuted }]}>
+                Scanning one of these sets up a tote with this title, second line and color already filled in.
+              </Text>
+            </View>
           )}
+          {blanks > 0 && <Toggle label="Number them" hint={numbered ? undefined : 'Tote 1, Tote 2, Tote 3…'} value={numbered} onChange={setNumbered} />}
+          {blanks > 0 && numbered && <Stepper label="Start at" value={startNum} onChange={(n) => setStartNum(Math.max(1, n))} max={999} border />}
+        </Card>
+
+        <SectionTitle>Label style</SectionTitle>
+        <Card style={{ padding: 0 }}>
+          <View style={styles.optRow}>
+            <Text style={{ color: t.text, fontSize: 16, fontWeight: '500', flex: 1 }}>Text size</Text>
+            <View style={[styles.segment, { backgroundColor: t.cardAlt }]}>
+              {(['S', 'M', 'L'] as const).map((k) => (
+                <Pressable
+                  key={k}
+                  onPress={() => {
+                    tap();
+                    setSize(k);
+                  }}
+                  style={[styles.segBtn, size === k && { backgroundColor: t.card }]}
+                >
+                  <Text style={{ color: size === k ? t.text : t.textMuted, fontWeight: '700' }}>{k}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+          <Toggle label="Show location" value={showLocation} onChange={setShowLocation} />
+          <Toggle label="Show label code" hint="The short code under the QR, for typing in by hand" value={showCode} onChange={setShowCode} />
           {layout.id === 'large' && <Toggle label="List contents on sign" value={includeContents} onChange={setIncludeContents} />}
-          <Toggle label="Print cut guides" hint="Turn on when printing on plain paper" value={outlines} onChange={setOutlines} />
+        </Card>
+
+        <SectionTitle>Printing</SectionTitle>
+        <Card style={{ padding: 0 }}>
+          {perSheet > 1 && (
+            <Stepper label="Skip used labels" hint="For a partly used sheet, start further down" value={skip} onChange={setSkip} max={perSheet - 1} />
+          )}
+          <Toggle label="Print cut guides" hint="Turn on when printing on plain paper" value={outlines} onChange={setOutlines} first={perSheet === 1} />
         </Card>
         <Text style={[styles.tip, { color: t.textMuted }]}>
           Tip: do a test print on plain paper first and hold it up to the label sheet. In the print dialog, keep scaling at 100%.
@@ -175,6 +276,80 @@ export default function PrintLabels() {
           <Button title="Print" icon="print" onPress={doPrint} disabled={!labelCount} loading={busy} style={{ flex: 2 }} />
         </View>
       </View>
+    </View>
+  );
+}
+
+/** On-screen approximation of one printed label, drawn at the label's real proportions. */
+function LabelPreview({ spec, layout, options }: { spec: LabelSpec; layout: LabelLayout; options: LabelOptions }) {
+  const t = useTheme();
+  const { width } = useWindowDimensions();
+  const info = labelText(spec, options);
+  const big = layout.id === 'large';
+  const square = layout.id === 'avery22806';
+  const maxW = width - 32 - 32;
+  const w = big ? Math.min(maxW, 240) : square ? Math.min(maxW, 180) : maxW;
+  const h = (w * layout.h) / layout.w;
+  const ppi = w / layout.w; // screen points per inch
+  const pt = (n: number) => (n / 72) * ppi * (options.textScale ?? 1);
+  const items = big && options.includeContents && spec.tote ? spec.tote.items.slice(0, 6) : [];
+
+  let body;
+  if (big) {
+    body = (
+      <View style={[styles.pvBig, { borderColor: info.color, borderWidth: Math.max(2, pt(6)) }]}>
+        <Text style={{ fontSize: pt(48), fontWeight: '900', textAlign: 'center', color: '#111' }} numberOfLines={2}>
+          {info.name}
+        </Text>
+        {info.location ? <Text style={{ fontSize: pt(20), color: '#444', textAlign: 'center' }}>{info.location}</Text> : null}
+        <View style={{ marginTop: 6 }}>
+          <QRCodeView value={info.qr} size={w * 0.56} quiet={1} />
+        </View>
+        {info.code ? <Text style={[styles.pvCode, { fontSize: pt(16) }]}>{info.code}</Text> : null}
+        {items.map((i) => (
+          <Text key={i.id} style={{ fontSize: pt(12), color: '#333' }} numberOfLines={1}>
+            {i.qty > 1 ? `${i.qty}× ` : ''}
+            {i.name}
+          </Text>
+        ))}
+      </View>
+    );
+  } else if (square) {
+    body = (
+      <View style={{ alignItems: 'center', padding: ppi * 0.1, flex: 1 }}>
+        <QRCodeView value={info.qr} size={ppi * 1.3} quiet={1} />
+        <Text style={{ fontSize: pt(10), fontWeight: '800', color: '#111', borderBottomWidth: 2.5, borderColor: info.color }} numberOfLines={1}>
+          {info.name}
+        </Text>
+        {info.code ? <Text style={[styles.pvCode, { fontSize: pt(6.5) }]}>{info.code}</Text> : null}
+      </View>
+    );
+  } else {
+    const small = layout.id === 'avery5160';
+    body = (
+      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, padding: ppi * (small ? 0.06 : 0.12), gap: ppi * (small ? 0.06 : 0.12) }}>
+        <QRCodeView value={info.qr} size={h - ppi * (small ? 0.12 : 0.24)} quiet={1} />
+        <View style={{ flex: 1, borderLeftWidth: small ? 3 : 4, borderColor: info.color, paddingLeft: ppi * 0.08 }}>
+          <Text style={{ fontSize: pt(small ? 9.5 : 17), fontWeight: '800', color: '#111' }} numberOfLines={2}>
+            {info.name}
+          </Text>
+          {info.location ? (
+            <Text style={{ fontSize: pt(small ? 7 : 10), color: '#444' }} numberOfLines={1}>
+              {info.location}
+            </Text>
+          ) : null}
+          {info.code ? <Text style={[styles.pvCode, { fontSize: pt(small ? 6 : 8) }]}>{info.code}</Text> : null}
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.pvWrap, { backgroundColor: t.cardAlt }]}>
+      <View style={[styles.pvLabel, { width: w, height: big ? undefined : h, minHeight: big ? h * 0.6 : undefined }]}>{body}</View>
+      <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 8 }}>
+        {spec.tote ? 'First label' : 'Blank label'} · {layout.title}
+      </Text>
     </View>
   );
 }
@@ -220,10 +395,10 @@ function Stepper({ label, hint, value, onChange, max, step = 1, border }: { labe
   );
 }
 
-function Toggle({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ label, hint, value, onChange, first }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void; first?: boolean }) {
   const t = useTheme();
   return (
-    <View style={[styles.optRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border }]}>
+    <View style={[styles.optRow, !first && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border }]}>
       <View style={{ flex: 1 }}>
         <Text style={{ color: t.text, fontSize: 16, fontWeight: '500' }}>{label}</Text>
         {hint ? <Text style={{ color: t.textMuted, fontSize: 13, marginTop: 2 }}>{hint}</Text> : null}
@@ -240,6 +415,17 @@ const styles = StyleSheet.create({
   toteRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 },
   optRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
   stepBtn: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  custom: { padding: 14, paddingTop: 4, borderTopWidth: StyleSheet.hairlineWidth },
+  fieldLabel: { fontSize: 13, fontWeight: '600', marginTop: 12, marginBottom: 6 },
+  field: { height: 44, borderRadius: 10, paddingHorizontal: 12, fontSize: 16 },
+  swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
+  hintSmall: { fontSize: 12, lineHeight: 17, marginTop: 10 },
+  segment: { flexDirection: 'row', borderRadius: 10, padding: 3 },
+  segBtn: { width: 40, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  pvWrap: { borderRadius: radius.md, padding: 16, alignItems: 'center' },
+  pvLabel: { backgroundColor: '#fff', borderRadius: 6, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  pvBig: { flex: 1, alignItems: 'center', padding: 12, borderRadius: 10, gap: 2 },
+  pvCode: { fontFamily: 'Menlo', color: '#555', fontWeight: '600', letterSpacing: 1 },
   tip: { fontSize: 13, lineHeight: 18, marginTop: 12, paddingHorizontal: 4 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
 });

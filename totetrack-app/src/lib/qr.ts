@@ -3,9 +3,30 @@ import * as Linking from 'expo-linking';
 
 export const QR_SCHEME = 'totetrack';
 
+/** Details printed on a blank label, carried in its QR so scanning it pre-fills the new tote. */
+export type LabelPreset = { name?: string; location?: string; color?: string };
+
 /** The text encoded in a tote's QR label. Scanning it with the iPhone camera opens the app. */
-export function qrPayload(toteId: string): string {
-  return `${QR_SCHEME}://tote/${toteId}`;
+export function qrPayload(toteId: string, preset?: LabelPreset): string {
+  const base = `${QR_SCHEME}://tote/${toteId}`;
+  if (!preset) return base;
+  const q: string[] = [];
+  if (preset.name) q.push(`name=${encodeURIComponent(preset.name)}`);
+  if (preset.location) q.push(`loc=${encodeURIComponent(preset.location)}`);
+  if (preset.color) q.push(`c=${preset.color.replace('#', '')}`);
+  return q.length ? `${base}?${q.join('&')}` : base;
+}
+
+/** Query string for the new-tote screen from a scanned label's preset. */
+export function presetQuery(p: LabelPreset): string {
+  return [
+    p.name ? `name=${encodeURIComponent(p.name)}` : '',
+    p.location ? `loc=${encodeURIComponent(p.location)}` : '',
+    p.color ? `c=${p.color.replace('#', '')}` : '',
+  ]
+    .filter(Boolean)
+    .map((x) => `&${x}`)
+    .join('');
 }
 
 /** Short human-readable code printed under the QR, e.g. "A3F9-C2". */
@@ -14,20 +35,23 @@ export function shortCode(toteId: string): string {
   return `${s.slice(0, 4)}-${s.slice(4)}`;
 }
 
-/** Pulls the tote id out of a scanned QR string, or returns null if it isn't one of ours. */
-export function parseScan(data: string): string | null {
+/** Pulls the tote id (and any blank-label preset) out of a scanned QR string, or null if it isn't ours. */
+export function parseScan(data: string): { id: string; preset: LabelPreset } | null {
   const trimmed = data.trim();
-  const direct = trimmed.match(/^totetrack:\/\/+tote\/([A-Za-z0-9-]{8,})/i);
-  if (direct) return direct[1];
   try {
     const parsed = Linking.parse(trimmed);
-    const path = parsed.path ?? '';
-    const m = path.match(/tote\/([A-Za-z0-9-]{8,})/);
-    if (m) return m[1];
+    const m = (parsed.path ?? '').match(/tote\/([A-Za-z0-9-]{8,})/);
+    if (!m && !/^totetrack:/i.test(trimmed)) return null;
+    const id = m?.[1] ?? trimmed.match(/tote\/([A-Za-z0-9-]{8,})/i)?.[1];
+    if (!id) return null;
+    const qp = parsed.queryParams ?? {};
+    const str = (v: unknown) => (typeof v === 'string' && v ? v : undefined);
+    const c = str(qp.c);
+    return { id, preset: { name: str(qp.name), location: str(qp.loc), color: c && /^[0-9a-f]{6}$/i.test(c) ? `#${c}` : undefined } };
   } catch {
-    // not a URL
+    const id = trimmed.match(/^totetrack:\/\/+tote\/([A-Za-z0-9-]{8,})/i)?.[1];
+    return id ? { id, preset: {} } : null;
   }
-  return null;
 }
 
 export type QRMatrix = { size: number; path: string };
