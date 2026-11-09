@@ -10,6 +10,7 @@ import type { DraftHistoryEntry, League, UserProfile } from '../_shared/models.t
 import type { DndCampaignRow, DndCharacterRow, DndStore } from '../_shared/dnd.ts';
 import type { AskLogStore } from '../_shared/footballAsk.ts';
 import type { CardGameRow, CardGameStore } from '../_shared/cards.ts';
+import type { HowToLibrary, SavedAnswer } from '../_shared/shopHowTo.ts';
 import { archivedAt, type ArchiveRow, type Job, type JobData, type Shop, type ShopStore } from '../_shared/shop.ts';
 import { DEFAULT_TRIAL, type PlanState } from '../_shared/shopPlans.ts';
 import type { AccountStore, AuthCode, CodeChannel, CodePurpose } from '../_shared/shopAccount.ts';
@@ -602,6 +603,55 @@ export function createStaffStore(db: SupabaseClient): StaffStore {
     },
     async deleteInvite(shopId, id) {
       const { error } = await db.from('repair_shop_invites').delete().eq('shop_id', shopId).eq('id', id);
+      if (error) throw error;
+    },
+  };
+}
+
+type HowToDb = { id: string; shop_id: string; make_model: string; year: number | null; engine: string; q_key: string; question: string; vehicle: string; answer: Record<string, unknown>; ratings: Record<string, boolean> | null; uses: number; retired: boolean; created_at: string };
+const howToRow = (r: HowToDb): SavedAnswer => ({
+  id: r.id, shopId: r.shop_id, makeModel: r.make_model, year: r.year, engine: r.engine ?? '', qKey: r.q_key, question: r.question,
+  vehicle: r.vehicle ?? '', answer: r.answer ?? {}, ratings: r.ratings ?? {}, uses: r.uses ?? 1, retired: !!r.retired, createdAt: r.created_at,
+});
+
+/** Saved how-to answers for Talk Shops (tables howto_answers and howto_tips). */
+export function createHowToLibrary(db: SupabaseClient): HowToLibrary {
+  return {
+    async candidates(makeModel, { qKey, shopId, since, limit }) {
+      let q = db.from('howto_answers').select('*').eq('make_model', makeModel).eq('retired', false).gte('created_at', since);
+      if (qKey) q = q.eq('q_key', qKey);
+      if (shopId) q = q.eq('shop_id', shopId);
+      const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
+      if (error) throw error;
+      return (data as HowToDb[]).map(howToRow);
+    },
+    async get(id) {
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+      const { data, error } = await db.from('howto_answers').select('*').eq('id', id).maybeSingle();
+      if (error) throw error;
+      return data ? howToRow(data as HowToDb) : null;
+    },
+    async save(r) {
+      const { data, error } = await db.from('howto_answers').insert({
+        shop_id: r.shopId, make_model: r.makeModel, year: r.year, engine: r.engine, q_key: r.qKey, question: r.question,
+        vehicle: r.vehicle, answer: r.answer, ratings: r.ratings, uses: r.uses, retired: r.retired,
+      }).select('id').single();
+      if (error) throw error;
+      return (data as { id: string }).id;
+    },
+    async update(id, patch) {
+      const { error } = await db.from('howto_answers').update(patch).eq('id', id);
+      if (error) throw error;
+    },
+    async tips(answerId, shopId) {
+      let q = db.from('howto_tips').select('text, created_at, shop_id').eq('answer_id', answerId);
+      if (shopId) q = q.eq('shop_id', shopId);
+      const { data, error } = await q.order('created_at', { ascending: true }).limit(50);
+      if (error) throw error;
+      return (data as { text: string; created_at: string; shop_id: string }[]).map((t) => ({ text: t.text, createdAt: t.created_at, shopId: t.shop_id }));
+    },
+    async addTip(answerId, shopId, text) {
+      const { error } = await db.from('howto_tips').insert({ answer_id: answerId, shop_id: shopId, text });
       if (error) throw error;
     },
   };

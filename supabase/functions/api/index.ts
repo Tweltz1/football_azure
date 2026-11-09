@@ -20,7 +20,7 @@ import { HOWTO_SCHEMA } from '../_shared/shopHowTo.ts';
 import { geminiPriceReader } from '../_shared/shopPriceImport.ts';
 import { createTurn } from './turn.ts';
 import {
-  createAccountStore, createAskLogStore, createStaffStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
+  createAccountStore, createAskLogStore, createHowToLibrary, createStaffStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
 } from './supabaseAdapters.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -63,6 +63,7 @@ const shop: ShopDeps = {
   howTo: GEMINI_KEY
     ? geminiNarrator(GEMINI_KEY, DEFAULT_GEMINI_MODEL, fetch, { schema: HOWTO_SCHEMA, primaryTimeoutMs: 25_000, timeoutMs: 40_000, maxTokens: 8192, temperature: 0.4 })
     : null,
+  howToLibrary: createHowToLibrary(db),
   damageFinder: GEMINI_KEY ? geminiDamageFinder(GEMINI_KEY, fetch) : null,
   priceReader: GEMINI_KEY ? geminiPriceReader(GEMINI_KEY, fetch) : null,
   newToken: () => crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8),

@@ -40,6 +40,7 @@
             <label class="field">Engine<input id="howtoEngine" maxlength="40" value="${esc(v.engine)}" placeholder="Optional, e.g. 2.0L"></label>
           </div>
           <label class="field">What do you need to do?<textarea id="howtoQ" rows="2" maxlength="500" placeholder="e.g. Replace the front wheel bearing, or how do I remove the intake manifold?"></textarea></label>
+          <div id="howtoSuggest" class="howto-suggest" aria-live="polite">${suggestHtml()}</div>
           <div class="howto-actions">
             <button type="button" class="btn mic" data-dictate="#howtoQ" aria-pressed="false" aria-label="Voice typing">${MIC}<span class="mic-label">Speak</span></button>
             <button class="btn primary" type="submit" id="howtoAsk" ${st.busy ? "disabled" : ""}>${st.busy ? "Looking it up…" : "Ask"}</button>
@@ -49,6 +50,42 @@
         </form>
         <div id="howtoThread" aria-live="polite">${thread()}</div>
       </section>`;
+    }
+
+    // Saved answers for this vehicle: shown as you type, picked with no AI call.
+    let sugT = 0, sugSeq = 0;
+    st.suggestions = [];
+    function suggestHtml() {
+      if (!st.suggestions.length) return "";
+      return `<span class="howto-suggest-h">Saved answers for this vehicle</span>${st.suggestions.map((x) => `<button type="button" class="howto-chip saved" data-howto-saved="${esc(x.id)}" data-q="${esc(x.question)}">${esc(x.question)}${x.worked ? ` <span class="howto-ok">✓ ${x.worked}</span>` : ""}</button>`).join("")}`;
+    }
+    function loadSuggestions() {
+      clearTimeout(sugT);
+      sugT = setTimeout(async () => {
+        readVehicle();
+        const seq = ++sugSeq;
+        if (!st.vehicle.make || !st.vehicle.model) { st.suggestions = []; } else {
+          try { st.suggestions = (await api("POST", "shop/howto/suggest", { vehicle: st.vehicle, q: document.getElementById("howtoQ")?.value || "" })).suggestions || []; }
+          catch { st.suggestions = []; }
+        }
+        if (seq !== sugSeq) return;
+        const el = document.getElementById("howtoSuggest"); if (el) el.innerHTML = suggestHtml();
+      }, 350);
+    }
+
+    function feedback(r, i) {
+      if (!r.libraryId) return "";
+      const s = r.saved;
+      const tips = (r.tips || []).map((x) => `<li>${esc(x.text)}</li>`).join("");
+      return `<div class="howto-learn">
+        ${s ? `<p class="howto-saved-note"><b>Saved answer</b> · used ${s.uses} time${s.uses === 1 ? "" : "s"}${s.worked ? ` · ${s.worked} shop${s.worked === 1 ? "" : "s"} said it worked` : ""}${s.askedFor && s.askedFor !== r.vehicle ? ` · first asked for a ${esc(s.askedFor)}` : ""} <button type="button" class="linkbtn" data-howto-fresh="${i}">Ask for a fresh answer</button></p>` : ""}
+        <div class="howto-rate"><span>Did this work?</span>
+          <button type="button" class="btn sm" data-howto-rate="${i}" data-worked="1" aria-pressed="${r.myRating === true}">This worked</button>
+          <button type="button" class="btn sm" data-howto-rate="${i}" data-worked="0" aria-pressed="${r.myRating === false}">Not right</button>
+          ${r.retired ? `<small>Thanks. The next person who asks gets a fresh answer.</small>` : ""}</div>
+        <div class="howto-tips"><h4>Tips from techs</h4>${tips ? `<ul>${tips}</ul>` : ""}
+          <div class="howto-tip-add"><input id="howtoTip-${i}" maxlength="300" placeholder="Tip for the next tech, e.g. drop the skid plate first" aria-describedby="howtoTipNote"><button type="button" class="btn sm" data-howto-tip="${i}">Save tip</button></div><small id="howtoTipNote" class="howto-fine">Tips are shared with techs at other shops without your shop name. Leave out customer details.</small></div>
+      </div>`;
     }
 
     const items = (title, arr, cls = "") => arr && arr.length ? `<div class="howto-block ${cls}"><h4>${title}</h4><ul>${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : "";
@@ -82,8 +119,10 @@
         ${r.steps.length ? `<div class="howto-block"><h4>Steps</h4><ol class="howto-steps">${r.steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>` : ""}
         <div class="howto-foot">
           ${r.ideas.length ? `<div class="howto-quick">${r.ideas.map((q) => `<button type="button" class="howto-chip" data-howto-ask="${esc(q)}">${esc(q)}</button>`).join("")}</div>` : ""}
-          <button type="button" class="linkbtn" data-howto-copy="${i}">Copy</button>
+          <span class="howto-links"><a class="linkbtn" href="${esc(search(`site:carcarekiosk.com ${t.vehicle} ${t.q}`.trim()))}" target="_blank" rel="noopener">Find a video</a>
+          <button type="button" class="linkbtn" data-howto-copy="${i}">Copy</button></span>
         </div>
+        ${feedback(r, i)}
         <p class="howto-fine">AI guidance. Confirm specs and procedures in the manufacturer's service information.</p>
       </article>`;
     }
@@ -101,7 +140,7 @@
       st.vehicle = { year: val("howtoYear"), make: val("howtoMake"), model: val("howtoModel"), engine: val("howtoEngine") };
     }
 
-    async function ask(q, render) {
+    async function ask(q, render, opts = {}) {
       if (locked()) { render(); return; }
       q = String(q || "").trim();
       if (q.length < 3) { toast("Type what you need to do"); document.getElementById("howtoQ")?.focus(); return; }
@@ -115,7 +154,7 @@
       const qi = document.getElementById("howtoQ"); if (qi) qi.value = "";
       if (!document.getElementById("howtoThread")) render(); else paint();
       document.getElementById("howtoThread")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      try { t.res = await api("POST", "shop/howto", { question: q, vehicle, history }); }
+      try { t.res = await api("POST", "shop/howto", { question: q, vehicle, history: opts.answerId || opts.fresh ? [] : history, ...opts }); }
       catch (err) { t.error = err.message || "The assistant is unavailable right now."; t.vehicleObj = vehicle; }
       t.loading = false; st.busy = false;
       if (!document.getElementById("howtoThread")) return; // left the tab; the answer shows when they come back
@@ -136,6 +175,25 @@
     function click(t, render) {
       if (t.dataset.howtoAsk) {
         ask(t.dataset.howtoAsk, render); return true;
+      }
+      if (t.dataset.howtoSaved) { ask(t.dataset.q, render, { answerId: t.dataset.howtoSaved }); return true; }
+      if (t.dataset.howtoFresh !== undefined) { const o = st.turns[+t.dataset.howtoFresh]; if (o) ask(o.q, render, { fresh: true }); return true; }
+      if (t.dataset.howtoRate !== undefined) {
+        const o = st.turns[+t.dataset.howtoRate]; if (!o?.res?.libraryId) return true;
+        const worked = t.dataset.worked === "1";
+        api("POST", "shop/howto/rate", { id: o.res.libraryId, worked }).then((r) => {
+          o.res.myRating = worked; o.res.retired = r.retired;
+          if (o.res.saved) Object.assign(o.res.saved, { worked: r.worked, notRight: r.notRight });
+          paint(); toast(worked ? "Thanks, marked as worked" : "Thanks, we'll get a better answer next time");
+        }, (err) => toast(err.message));
+        return true;
+      }
+      if (t.dataset.howtoTip !== undefined) {
+        const o = st.turns[+t.dataset.howtoTip], input = document.getElementById("howtoTip-" + t.dataset.howtoTip);
+        const text = (input?.value || "").trim();
+        if (!o?.res?.libraryId || text.length < 3) { toast("Type a tip first"); input?.focus(); return true; }
+        api("POST", "shop/howto/tip", { id: o.res.libraryId, text }).then((r) => { o.res.tips = r.tips; paint(); toast("Tip saved"); }, (err) => toast(err.message));
+        return true;
       }
       if (t.dataset.howtoRetry !== undefined) {
         const old = st.turns[+t.dataset.howtoRetry]; if (!old || st.busy) return true;
@@ -167,13 +225,18 @@
       st.vehicle = v;
       for (const [id, k] of [["howtoYear", "year"], ["howtoMake", "make"], ["howtoModel", "model"], ["howtoEngine", "engine"]]) { const i = document.getElementById(id); if (i) i.value = v[k]; }
       document.getElementById("howtoQ")?.focus();
+      loadSuggestions();
     });
-    document.addEventListener("input", (e) => { if (/^howto(Year|Make|Model|Engine)$/.test(e.target.id || "")) readVehicle(); });
+    document.addEventListener("input", (e) => {
+      if (/^howto(Year|Make|Model|Engine)$/.test(e.target.id || "")) { readVehicle(); loadSuggestions(); }
+      if (e.target.id === "howtoQ") loadSuggestions();
+    });
 
     /** Opens the tab for one car (from its detail sheet). */
     function openFor(j) {
       st.carId = j.id;
       st.vehicle = { year: j.vehicle?.year || "", make: j.vehicle?.make || "", model: j.vehicle?.model || "", engine: j.vehicle?.engine || "" };
+      st.suggestions = []; loadSuggestions();
     }
 
     return { view, click, submit, openFor };

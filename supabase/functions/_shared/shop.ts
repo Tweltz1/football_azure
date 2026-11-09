@@ -7,7 +7,7 @@ import { salesRoute } from './shopSales.ts';
 
 import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, HOWTO_PRO_MESSAGE, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
-import { howToRoute } from './shopHowTo.ts';
+import { howToRoute, type HowToLibrary } from './shopHowTo.ts';
 import { priceImportRoute, type PriceReader } from './shopPriceImport.ts';
 import { cleanMarks, isAngle, type DamageFinder, type WalkPhoto } from './shopDamage.ts';
 import { accountRoute, type AccountStore } from './shopAccount.ts';
@@ -196,6 +196,8 @@ export interface ShopDeps {
   /** Gemini, for the employee how-to assistant (shop/howto). Null until GEMINI_API_KEY is set. */
   smartClassifier?: Narrator | null;
   howTo?: Narrator | null;
+  /** Saved how-to answers, ratings and tips (tables howto_answers, howto_tips). */
+  howToLibrary?: HowToLibrary | null;
   /** Gemini vision that suggests damage marks on walk-around photos. */
   damageFinder?: DamageFinder | null;
   /** Gemini, which reads an uploaded price list into saved items (shop/price-import). */
@@ -525,9 +527,9 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   const owner = mine.seat.role === 'owner';
 
   if (parts[1] === 'howto') {
-    if (parts.length !== 2) return { status: 404 };
+    if (parts.length > 3) return { status: 404 };
     if (!hasHowTo(shop.plan, access(shop.plan, ctx.now(), await settings(deps)))) return { status: 402, body: HOWTO_PRO_MESSAGE };
-    return howToRoute(ctx, deps.howTo, shop.id, method, body);
+    return howToRoute(ctx, deps.howTo, shop.id, method, body, parts[2], deps.howToLibrary);
   }
 
   if (parts[1] === 'price-import') {

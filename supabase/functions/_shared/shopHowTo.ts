@@ -89,17 +89,176 @@ export function howToPrompt(body: Body) {
   ].filter(Boolean).join('\n');
 }
 
-// Free-tier friendly limits per shop. Kept in memory, like the Start/Sit chat.
+// ---- Saved answers ("how-to library") ----
+// Every standalone answer is saved by vehicle and question. A repeat question for the same make and model
+// (within a few model years, same engine when given) gets the saved answer back with no AI call. Shops rate
+// answers ("this worked" / "not right"); answers rated wrong are retired so the next ask gets a fresh one.
+// Techs can add tips to an answer. Answers expire after a year so specs don't go stale.
+
+/** Answers and tips are shared across all shops (Tyler, 2026-11-09), so nothing shared may identify a shop or
+ * customer: only the vehicle, the cleaned-up question, the AI answer, counts and tips go out. Shop ids stay in
+ * the database (to count one rating per shop) and are never returned. Tips with contact details are refused. */
+export const SHARE_ANSWERS = true;
+export const SHARE_TIPS = true;
+
+const EMAIL = /[^\s@]+@[^\s@]+\.[a-z]{2,}/i;
+const URL_RE = /\b(?:https?:\/\/|www\.)\S+/i;
+const PHONE = /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/;
+const VIN = /\b[A-HJ-NPR-Z0-9]{17}\b/i;
+const RO = /\b(?:RO|R\/O|repair order|invoice|inv)\s*[#:-]?\s*\d{3,}\b/i;
+/** True when text has contact details or a VIN or repair order number that must not be shared. */
+export const hasPersonalInfo = (t: string) => [EMAIL, URL_RE, PHONE, VIN, RO].some((re) => re.test(t));
+/** The question as other shops see it: contact details, VINs, RO numbers and "Maria's" style names removed. */
+export function cleanQuestion(t: string) {
+  let out = t;
+  for (const re of [EMAIL, URL_RE, PHONE, VIN, RO]) out = out.replace(new RegExp(re.source, re.flags + 'g'), '');
+  return out.replace(/\b(?:for|on)\s+(?:mr|mrs|ms|miss|dr)\.?\s+[A-Z][a-z]+\b/g, '').replace(/\b[A-Z][a-z]+'s\b/g, "the customer's")
+    .replace(/\s+([?.!,])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+}
+const MAX_AGE_DAYS = 365;
+const YEAR_WINDOW = 3;
+
+export interface SavedAnswer {
+  id: string; shopId: string; makeModel: string; year: number | null; engine: string; qKey: string;
+  question: string; vehicle: string; answer: Body; ratings: Record<string, boolean>; uses: number; retired: boolean; createdAt: string;
+}
+export interface Tip { text: string; createdAt: string; mine: boolean }
+/** Where saved answers live (Supabase tables howto_answers and howto_tips). */
+export interface HowToLibrary {
+  candidates(makeModel: string, opts: { qKey?: string; shopId?: string; since: string; limit: number }): Promise<SavedAnswer[]>;
+  get(id: string): Promise<SavedAnswer | null>;
+  save(row: Omit<SavedAnswer, 'id' | 'createdAt'>): Promise<string>;
+  update(id: string, patch: { ratings?: Record<string, boolean>; uses?: number; retired?: boolean }): Promise<void>;
+  tips(answerId: string, shopId: string | null): Promise<{ text: string; createdAt: string; shopId: string }[]>;
+  addTip(answerId: string, shopId: string, text: string): Promise<void>;
+}
+
+const norm = (v: unknown) => String(v ?? '').toLowerCase().replace(/[^a-z0-9.]+/g, ' ').replace(/\s+/g, ' ').trim();
+const STOP = new Set('how to do i you we the a an on in for my of with what is are does should can please and it its this that me step steps way best proper properly correct correctly guide procedure need car vehicle'.split(' '));
+const SAME: Record<string, string> = {
+  replacement: 'replace', replacing: 'replace', replaced: 'replace', change: 'replace', changing: 'replace', swap: 'replace', swapping: 'replace', new: 'replace',
+  removal: 'remove', removing: 'remove', take: 'remove', off: 'remove', pull: 'remove', pulling: 'remove',
+  installation: 'install', installing: 'install', put: 'install', diagnose: 'diagnose', diagnosing: 'diagnose', diagnosis: 'diagnose',
+  brakes: 'brake', breaks: 'brake', break: 'brake', tyres: 'tire', tires: 'tire', tyre: 'tire',
+};
+
+export function vehicleKey(v: unknown) {
+  const o = (v && typeof v === 'object' ? v : {}) as Body;
+  const make = norm(o.make), model = norm(o.model);
+  const y = Number(String(o.year ?? '').trim());
+  return {
+    makeModel: make && model ? `${make}|${model}` : '',
+    year: Number.isInteger(y) && y > 1900 && y < 2100 ? y : null,
+    engine: norm(o.engine).replace(/\s+/g, ''),
+    words: new Set([...make.split(' '), ...model.split(' ')].filter(Boolean)),
+  };
+}
+
+/** The question's meaningful words, sorted, so "oil change" and "how do I change the oil" match. */
+export function questionKey(question: string, vehicleWords: Set<string> = new Set()) {
+  const words = norm(question).split(' ')
+    .filter((w) => w && !STOP.has(w) && !vehicleWords.has(w) && !/^(19|20)\d\d$/.test(w) && !/^\d(\.\d)?l?$/.test(w))
+    .map((w) => SAME[w] ?? (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w));
+  return [...new Set(words)].sort().join(' ');
+}
+
+const score = (a: SavedAnswer) => {
+  const r = Object.values(a.ratings || {});
+  return r.filter(Boolean).length * 3 - r.filter((x) => !x).length * 4 + Math.min(a.uses, 50) * 0.1;
+};
+const counts = (a: SavedAnswer) => { const r = Object.values(a.ratings || {}); return { worked: r.filter(Boolean).length, notRight: r.filter((x) => !x).length }; };
+const fits = (a: SavedAnswer, k: ReturnType<typeof vehicleKey>) => !a.retired
+  && (a.year === null || k.year === null || Math.abs(a.year - k.year) <= YEAR_WINDOW)
+  && (!a.engine || !k.engine || a.engine === k.engine);
+const sinceDate = (ctx: Ctx) => new Date(ctx.now().getTime() - MAX_AGE_DAYS * 86_400_000).toISOString();
+
+async function tipsFor(lib: HowToLibrary, answerId: string, shopId: string): Promise<Tip[]> {
+  // Other shops' tips come back with no shop id; only "mine" says which tips this shop wrote.
+  const rows = await lib.tips(answerId, SHARE_TIPS ? null : shopId);
+  return rows.slice(-10).map((t) => ({ text: t.text, createdAt: t.createdAt, mine: t.shopId === shopId }));
+}
+
+async function savedOut(lib: HowToLibrary, a: SavedAnswer, shopId: string, vehicle: string, reused: boolean) {
+  const mine = a.ratings?.[shopId];
+  return {
+    ...a.answer, vehicle: vehicle || a.vehicle, libraryId: a.id,
+    saved: reused ? { uses: a.uses, ...counts(a), firstAsked: a.createdAt, askedFor: a.vehicle, question: a.question } : null,
+    myRating: mine === undefined ? null : mine,
+    tips: await tipsFor(lib, a.id, shopId).catch(() => []),
+  };
+}
+
+// Free-tier friendly limits per shop, for AI calls only (saved answers are free). Kept in memory, like the Start/Sit chat.
 const recent = new Map<string, number[]>();
 export const HOWTO_PER_HOUR = 40;
 export const clearHowToLimits = () => recent.clear();
 
-/** Handles shop/howto for a shop that is already signed in and set up. */
-export async function howToRoute(ctx: Ctx, narrator: Narrator | null | undefined, shopId: string, method: string, data: unknown): Promise<Res> {
+/** Handles shop/howto[/suggest|/rate|/tip] for a shop that is already signed in and set up. */
+export async function howToRoute(ctx: Ctx, narrator: Narrator | null | undefined, shopId: string, method: string, data: unknown,
+  sub?: string, lib?: HowToLibrary | null): Promise<Res> {
   if (method !== 'POST') return { status: 405 };
   const body = (data && typeof data === 'object' ? data : {}) as Body;
+  const k = vehicleKey(body.vehicle);
+  const vehicle = vehicleLabel(body.vehicle);
+
+  if (sub === 'suggest') {
+    if (!lib || !k.makeModel) return { status: 200, body: { suggestions: [] } };
+    const q = questionKey(str(body.q, 200), k.words).split(' ').filter(Boolean);
+    const rows = (await lib.candidates(k.makeModel, { since: sinceDate(ctx), limit: 300, shopId: SHARE_ANSWERS ? undefined : shopId })).filter((a) => fits(a, k));
+    const best = new Map<string, SavedAnswer>();
+    for (const a of rows) { const b = best.get(a.qKey); if (!b || score(a) > score(b)) best.set(a.qKey, a); }
+    const ranked = [...best.values()].map((a) => {
+      const words = a.qKey.split(' ');
+      const hit = q.length ? q.filter((w) => words.some((x) => x.startsWith(w))).length / q.length : 0;
+      return { a, rank: hit * 10 + score(a) };
+    }).filter((x) => !q.length || x.rank >= 5).sort((x, y) => y.rank - x.rank).slice(0, 6);
+    return { status: 200, body: { suggestions: ranked.map(({ a }) => ({ id: a.id, question: a.question, vehicle: a.vehicle, uses: a.uses, ...counts(a) })) } };
+  }
+
+  if (sub === 'rate' || sub === 'tip') {
+    if (!lib) return { status: 503, body: 'Saved answers are not available right now.' };
+    const a = await lib.get(str(body.id, 60));
+    if (!a) return { status: 404, body: 'That answer is no longer saved.' };
+    if (sub === 'rate') {
+      if (typeof body.worked !== 'boolean') return { status: 400, body: 'Choose this worked or not right.' };
+      const ratings = { ...(a.ratings || {}), [shopId]: body.worked };
+      const c = counts({ ...a, ratings });
+      // Retire an answer once shops say it's wrong more than right, so the next ask gets a fresh one.
+      const retired = c.notRight >= 2 && c.notRight > c.worked || (c.notRight >= 1 && c.worked === 0 && a.shopId === shopId);
+      await lib.update(a.id, { ratings, retired });
+      return { status: 200, body: { ...c, myRating: body.worked, retired } };
+    }
+    const text = str(body.text, 300);
+    if (text.length < 3) return { status: 400, body: 'Type a tip for the next tech.' };
+    if (hasPersonalInfo(text)) return { status: 400, body: 'Tips are shared with other shops, so leave out phone numbers, emails, VINs, links and RO numbers.' };
+    await lib.addTip(a.id, shopId, text);
+    return { status: 200, body: { tips: await tipsFor(lib, a.id, shopId) } };
+  }
+  if (sub) return { status: 404 };
+
   const question = str(body.question, 500);
   if (question.length < 3) return { status: 400, body: 'Type a question, like "oil change on a 2018 F-150 5.0".' };
+  const followUp = Array.isArray(body.history) && body.history.length > 0;
+  const qKey = questionKey(question, k.words);
+
+  // A saved answer: picked from the suggestions, or the same question asked before for this vehicle.
+  if (lib && !body.fresh) {
+    try {
+      let hit: SavedAnswer | null = null;
+      if (body.answerId) { const a = await lib.get(str(body.answerId, 60)); if (a && !a.retired) hit = a; }
+      else if (k.makeModel && qKey && !followUp) {
+        hit = (await lib.candidates(k.makeModel, { qKey, since: sinceDate(ctx), limit: 20, shopId: SHARE_ANSWERS ? undefined : shopId }))
+          .filter((a) => fits(a, k) && score(a) > -4).sort((a, b) => score(b) - score(a))[0] ?? null;
+      }
+      if (hit) {
+        hit.uses += 1;
+        await lib.update(hit.id, { uses: hit.uses }).catch(() => {});
+        return { status: 200, body: await savedOut(lib, hit, shopId, vehicle, true) };
+      }
+    } catch (error) {
+      ctx.log.warn('How-to library lookup failed.', error);
+    }
+  }
 
   const now = ctx.now().getTime();
   const times = (recent.get(shopId) || []).filter((t) => now - t < 3600_000);
@@ -110,23 +269,28 @@ export async function howToRoute(ctx: Ctx, narrator: Narrator | null | undefined
 
   if (!narrator) return { status: 503, body: 'The how-to assistant is not set up yet.' };
   try {
-    const parsed = JSON.parse(await narrator.complete({ system: HOWTO_SYSTEM, prompt: howToPrompt(body) })) as Body;
+    const parsed = JSON.parse(await narrator.complete({ system: HOWTO_SYSTEM, prompt: howToPrompt({ ...body, question: cleanQuestion(question) || question }) })) as Body;
     const answer = str(parsed.answer, 1500);
     if (!answer) return { status: 502, body: 'The assistant came back empty. Try asking again.' };
-    return {
-      status: 200,
-      body: {
-        answer,
-        steps: list(parsed.steps, 30, 600),
-        tools: list(parsed.tools, 25, 160),
-        parts: list(parsed.parts, 25, 160),
-        specs: list(parsed.specs, 20, 240),
-        partNumbers: partNumbers(parsed.partNumbers),
-        safety: list(parsed.safety, 10, 400),
-        ideas: list(parsed.ideas, 3, 80),
-        vehicle: vehicleLabel(body.vehicle),
-      },
+    const out = {
+      answer,
+      steps: list(parsed.steps, 30, 600),
+      tools: list(parsed.tools, 25, 160),
+      parts: list(parsed.parts, 25, 160),
+      specs: list(parsed.specs, 20, 240),
+      partNumbers: partNumbers(parsed.partNumbers),
+      safety: list(parsed.safety, 10, 400),
+      ideas: list(parsed.ideas, 3, 80),
     };
+    let libraryId: string | null = null;
+    if (lib && k.makeModel && qKey && !followUp) {
+      try {
+        // Only the vehicle (no VIN or plate), the cleaned-up question and the AI's answer are saved for sharing.
+        const shared = cleanQuestion(question);
+        if (shared.length >= 3) libraryId = await lib.save({ shopId, makeModel: k.makeModel, year: k.year, engine: k.engine, qKey, question: shared, vehicle, answer: out, ratings: {}, uses: 1, retired: false });
+      } catch (error) { ctx.log.warn('Saving the how-to answer failed.', error); }
+    }
+    return { status: 200, body: { ...out, vehicle, libraryId, saved: null, myRating: null, tips: [] } };
   } catch (error) {
     ctx.log.warn('How-to assistant failed.', error);
     return { status: 502, body: 'The assistant is busy right now. Try again in a minute.' };
