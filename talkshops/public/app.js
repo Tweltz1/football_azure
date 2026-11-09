@@ -513,13 +513,13 @@
       <section class="front-plans" id="plans"><div class="front-inner">
         <h2>Choose Your Plan</h2><p>Both plans include the Bay board, customer repair links, photo updates, signed estimate decisions, final bills and unlimited email.</p>
         <div class="front-tiers">
-          <article><h3>Talk Shops Starter</h3><strong>$59<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $590/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
-          <article><h3>Talk Shops Pro</h3><strong>$99<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about repair status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>AI Repair Assistant</b> gives technicians a starting point for repair procedures and tool lists.</p><small>Annual billing: $990/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
+          <article><h3>Talk Shops Starter</h3><strong>$89<small> / month</small></strong><p><b>1,000 texts</b> per month</p><p>3 staff seats · up to 2 owners</p><small>Annual billing: $890/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
+          <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month</p><p>8 staff seats · up to 3 owners</p><p><b>Smart Replies</b> can answer routine texts about repair status, shop hours or estimate links. Your shop chooses which replies go out automatically.</p><p><b>AI Repair Assistant</b> gives technicians a starting point for repair procedures and tool lists.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Create your shop account</a></p></article>
         </div>
         <h3 class="front-market-title">Plan Comparison</h3>
         <table class="front-market"><thead><tr><th scope="col">Plan</th><th scope="col">Monthly</th><th scope="col">Included in this plan</th></tr></thead><tbody>
-          <tr><th scope="row">Talk Shops Starter</th><td>$59</td><td>Customer updates, approvals and 1,000 texts</td></tr>
-          <tr><th scope="row">Talk Shops Pro</th><td>$99</td><td>Everything in Starter, plus Smart Replies, the AI repair assistant and higher staff and text limits</td></tr>
+          <tr><th scope="row">Talk Shops Starter</th><td>$89</td><td>Customer updates, approvals and 1,000 texts</td></tr>
+          <tr><th scope="row">Talk Shops Pro</th><td>$149</td><td>Everything in Starter, plus Smart Replies, the AI repair assistant and higher staff and text limits</td></tr>
           <tr><th scope="row"><a href="https://www.shopmonkey.io/pricing">Shopmonkey Basic</a></th><td>$239</td><td>Shop management, two-way texting and electronic signatures</td></tr>
           <tr><th scope="row"><a href="https://www.tekmetric.com/pricing">Tekmetric Scale</a></th><td>$439</td><td>Shop management, two-way texting and technician board</td></tr>
         </tbody></table>

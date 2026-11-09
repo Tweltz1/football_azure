@@ -7,8 +7,8 @@ export type PlanKey = 'starter' | 'pro';
 export type Interval = 'month' | 'year';
 
 export const PLANS: Record<PlanKey, { name: string; month: number; year: number; texts: number; blurb: string; howTo: boolean }> = {
-  starter: { name: 'Starter', month: 59, year: 590, texts: 1000, blurb: '3 staff seats (up to 2 owners), 1,000 texts a month, unlimited email', howTo: false },
-  pro: { name: 'Pro', month: 99, year: 990, texts: 3000, blurb: '8 staff seats (up to 3 owners), 3,000 texts a month, unlimited email, AI repair how-to assistant and Smart Replies', howTo: true },
+  starter: { name: 'Starter', month: 89, year: 890, texts: 1000, blurb: '3 staff seats (up to 2 owners), 1,000 texts a month, unlimited email', howTo: false },
+  pro: { name: 'Pro', month: 149, year: 1490, texts: 3000, blurb: '8 staff seats (up to 3 owners), 3,000 texts a month, unlimited email, AI repair how-to assistant and Smart Replies', howTo: true },
 };
 
 /** Trial rules, kept in the talkshops_settings table so they can be changed without a deploy. */

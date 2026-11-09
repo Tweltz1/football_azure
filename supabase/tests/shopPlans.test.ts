@@ -137,7 +137,7 @@ test('upgrading goes through Stripe Checkout and only a signed webhook marks the
   assert.equal(checkout?.status, 200);
   assert.equal((checkout?.body as { url: string }).url, 'https://checkout.stripe.com/c/pay/cs_test_1');
   const f = w.stripeCalls[0].fields!;
-  assert.equal(f['line_items[0][price_data][unit_amount]'], '59000');
+  assert.equal(f['line_items[0][price_data][unit_amount]'], '89000');
   assert.equal(f['line_items[0][price_data][recurring][interval]'], 'year');
   assert.equal(f['subscription_data[metadata][shop_id]'], shopId);
   assert.equal(f.customer_email, 'dan@ridgeline.test');
@@ -179,5 +179,5 @@ test('checkout skips the trial carry-over when less than two days remain', () =>
   const now = new Date('2026-11-08T00:00:00Z');
   const f = checkoutFields({ shopId: 's', plan: 'pro', interval: 'month', siteUrl: 'https://talkshops.app', trialEndsAt: '2026-11-09T00:00:00Z', now });
   assert.equal(f['subscription_data[trial_end]'], undefined);
-  assert.equal(f['line_items[0][price_data][unit_amount]'], '9900');
+  assert.equal(f['line_items[0][price_data][unit_amount]'], '14900');
 });

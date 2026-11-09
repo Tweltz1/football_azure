@@ -860,7 +860,7 @@
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
-      fetch("/tour/lines.json?v=3").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
+      fetch("/tour/lines.json?v=4").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
       fetch("/tour/caption-cues.json?v=1").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
