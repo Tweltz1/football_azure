@@ -75,3 +75,58 @@ export async function krogerStoresNear(lat: number, lon: number): Promise<StoreS
   // deno-lint-ignore no-explicit-any
   })).filter((s: any) => typeof s.lat === 'number' && typeof s.lon === 'number');
 }
+
+export type Stock = 'high' | 'low' | 'out' | 'unknown';
+export type StockCheck = {
+  item: string;
+  product: string | null;
+  stock: Stock;
+  /** Regular or sale price in dollars, if Kroger shows one for this store. */
+  price: number | null;
+  aisle: string | null;
+};
+
+// deno-lint-ignore no-explicit-any
+const stockOf = (p: any): Stock => {
+  const level = p.items?.[0]?.inventory?.stockLevel;
+  if (level === 'HIGH') return 'high';
+  if (level === 'LOW') return 'low';
+  if (level === 'TEMPORARILY_OUT_OF_STOCK') return 'out';
+  return 'unknown';
+};
+
+/**
+ * Stock and price per item at one Kroger store. Kroger's product search returns inventory and price only
+ * when a store (locationId) is given. Prefers the first product that is in stock.
+ */
+export async function krogerStock(locationId: unknown, items: unknown): Promise<StockCheck[]> {
+  if (typeof locationId !== 'string' || !/^[0-9a-z]{6,12}$/i.test(locationId)) throw new Error('locationId is required.');
+  if (!Array.isArray(items)) throw new Error('items are required.');
+  const names = [...new Set(items.filter((i): i is string => typeof i === 'string' && i.trim().length > 1))].slice(0, 40);
+
+  const check = async (item: string): Promise<StockCheck> => {
+    try {
+      const body = await get('/products', { 'filter.term': item.slice(0, 60), 'filter.locationId': locationId, 'filter.limit': '5' });
+      // deno-lint-ignore no-explicit-any
+      const list: any[] = body.data ?? [];
+      const best = list.find((p) => stockOf(p) === 'high') ?? list.find((p) => stockOf(p) === 'low') ?? list[0];
+      if (!best) return { item, product: null, stock: 'unknown', price: null, aisle: null };
+      const price = best.items?.[0]?.price;
+      const value = price?.promo || price?.regular;
+      return {
+        item,
+        product: best.description ?? null,
+        stock: stockOf(best),
+        price: typeof value === 'number' && value > 0 ? value : null,
+        aisle: best.aisleLocations?.[0]?.number ?? null,
+      };
+    } catch {
+      return { item, product: null, stock: 'unknown', price: null, aisle: null };
+    }
+  };
+
+  // A few at a time, to stay polite with Kroger's rate limits.
+  const out: StockCheck[] = [];
+  for (let i = 0; i < names.length; i += 6) out.push(...(await Promise.all(names.slice(i, i + 6).map(check))));
+  return out;
+}

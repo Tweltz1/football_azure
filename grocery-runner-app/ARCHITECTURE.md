@@ -103,7 +103,30 @@ without changing the router.
 Tests in `tests/routing.test.ts` cover A* around walls, reachability of every aisle and department,
 aisle label parsing, department guessing, stop order, grouping and the cold-last rule.
 
-## 4. Next steps
+## 4. Recipes
+
+- **Suggested recipes** (`src/lib/recipes.ts`): 16 weeknight recipes ship with the app, so they work offline
+  and cost nothing. Opening one ticks every ingredient except pantry staples (salt, oil, ...) and things
+  already on the list; "Add" puts the ticked items on the list, where aisles are looked up as usual.
+- **Your recipes** (`src/app/scan.tsx`): a photo (camera or library, scaled to 1600 px JPEG on the phone),
+  a recipe link, or pasted text goes to the `read-recipe` action of the `grocery-runner` function. The
+  function calls the Claude API (`supabase/functions/grocery-runner/recipes.ts`, key `ANTHROPIC_API_KEY` in
+  Supabase only) with a JSON schema, and gets back store-ready item names, amounts and a pantry flag.
+  For links, the function first looks for the page's schema.org Recipe data (most recipe sites have it)
+  and only falls back to page text. Only public https links are fetched. Read recipes are kept on the phone.
+- **Where to shop** (`src/lib/storePick.ts`, `src/app/suggest.tsx`): for the unchecked items on the list,
+  the app compares the 3 closest official Kroger-family stores and the closest store of each other chain
+  within 15 miles.
+  - Kroger stores: the `kroger-stock` action asks Kroger's product API per item at that store and returns
+    stock level (high / low / temporarily out), price and aisle. This is the only stock data available.
+  - Walmart, Target, Hy-Vee, Costco, Aldi, Woodman's: none of them publish stock data the app may use (see
+    section 1), so the app says so and counts how many of the items shoppers have mapped there.
+  - Score: Kroger = 100 x share of items in stock; others = 50 + 20 x share of items mapped; minus 3 per
+    mile. A Kroger with everything wins unless it is much farther; one missing several items does not.
+- Known gap: `read-recipe` is reachable with the public anon key, so someone could spend the Claude API
+  budget. Add sign in with Apple and a per-user daily limit with the vote rate limits below.
+
+## 5. Next steps
 1. Sign in with Apple and rate limits on shared aisle votes.
 2. Cache Kroger lookups per store + item.
 3. Let the shopper pick the exact Kroger product when the first search result is wrong.

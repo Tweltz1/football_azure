@@ -6,6 +6,8 @@
 # when SUPABASE_ACCESS_TOKEN is set. Optional: KROGER_CLIENT_ID + KROGER_CLIENT_SECRET (free, from
 # https://developer.kroger.com) and WALMART_CONSUMER_ID + WALMART_PRIVATE_KEY (+ WALMART_KEY_VERSION)
 # from https://walmart.io. Without them the app still builds and falls back to department sorting.
+# Recipe reading (photos, links, pasted text) needs ANTHROPIC_API_KEY (https://platform.claude.com); it is
+# stored only in Supabase secrets, never in the app.
 #
 # - Every push that touches grocery-runner-app/ runs the tests, typechecks, builds for the iPhone
 #   simulator and saves screenshots to the grocery-runner-screenshots branch.
@@ -64,6 +66,7 @@ jobs:
       WALMART_CONSUMER_ID: ${{ secrets.WALMART_CONSUMER_ID }}
       WALMART_KEY_VERSION: ${{ secrets.WALMART_KEY_VERSION }}
       WALMART_PRIVATE_KEY: ${{ secrets.WALMART_PRIVATE_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     defaults:
       run:
         working-directory: grocery-runner-app
@@ -89,6 +92,11 @@ jobs:
           fi
           if [ -n "$WALMART_PRIVATE_KEY" ]; then
             SET+=(WALMART_PRIVATE_KEY="$WALMART_PRIVATE_KEY")
+          fi
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            SET+=(ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY")
+          else
+            echo "::notice::No ANTHROPIC_API_KEY yet; recipe photos and links can't be read (suggested recipes still work)."
           fi
           if [ -z "$WALMART_CONSUMER_ID" ]; then
             echo "::notice::No WALMART_CONSUMER_ID yet; Walmart stores come from Apple Maps only."

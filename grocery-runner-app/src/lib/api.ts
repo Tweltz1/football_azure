@@ -17,7 +17,7 @@ export async function callBackend<T>(params: Record<string, string> | { body: Re
   return body as T;
 }
 
-export type BackendStatus = { kroger: boolean; walmart: boolean; shared: boolean };
+export type BackendStatus = { kroger: boolean; walmart: boolean; shared: boolean; recipes?: boolean };
 export type FoundStore = { id: string; name: string; address: string };
 
 export const backendStatus = () => callBackend<BackendStatus>({ action: 'status' });

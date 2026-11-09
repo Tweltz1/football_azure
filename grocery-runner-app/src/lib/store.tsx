@@ -3,6 +3,7 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, 
 import { backendConfigured } from './api';
 import { locationFromKroger, searchKrogerProducts } from './kroger';
 import { fetchSharedAisles, isShared, itemKey, voteAisle } from './sharedAisles';
+import { Recipe } from './recipes';
 import { ItemLocation, ListItem, Store } from './types';
 
 const STORAGE_KEY = 'grocery-runner:v1';
@@ -15,14 +16,20 @@ type Data = {
   remembered: Record<string, Record<string, ItemLocation>>;
   /** Random id for this install, so each phone gets one vote per item per store. */
   deviceId: string;
+  /** Recipes this shopper scanned, linked or pasted. Newest first. */
+  myRecipes: Recipe[];
 };
 
-const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-const fresh = (): Data => ({ items: [], store: null, coldLast: true, remembered: {}, deviceId: newId() });
+export const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+const fresh = (): Data => ({ items: [], store: null, coldLast: true, remembered: {}, deviceId: newId(), myRecipes: [] });
 
 type Ctx = Data & {
   ready: boolean;
   addItem: (name: string) => void;
+  /** Adds several items at once (a recipe) and looks their aisles up together. */
+  addItems: (names: string[]) => void;
+  saveRecipe: (recipe: Recipe) => void;
+  deleteRecipe: (id: string) => void;
   removeItem: (id: string) => void;
   toggleItem: (id: string) => void;
   /** The shopper's own answer: remembered here and, for real stores, shared with other shoppers. */
@@ -114,6 +121,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [data.store, data.remembered, resolve],
   );
 
+  const addItems = useCallback(
+    (names: string[]) => {
+      const store = data.store;
+      const added: ListItem[] = names
+        .map((n) => n.trim())
+        .filter(Boolean)
+        .map((name) => ({
+          id: newId(),
+          name,
+          checked: false,
+          location: (store && data.remembered[store.id]?.[itemKey(name)]) || { kind: 'unknown' },
+        }));
+      if (!added.length) return;
+      setData((d) => ({ ...d, items: [...d.items, ...added] }));
+      if (store) resolve(store, added.filter((i) => i.location.kind === 'unknown'));
+    },
+    [data.store, data.remembered, resolve],
+  );
+
   const setLocation = useCallback(
     (id: string, location: ItemLocation) => {
       const item = data.items.find((i) => i.id === id);
@@ -148,15 +174,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...data,
       ready,
       addItem,
+      addItems,
       setLocation,
       setStore,
+      saveRecipe: (recipe) =>
+        setData((d) => ({ ...d, myRecipes: [recipe, ...d.myRecipes.filter((r) => r.id !== recipe.id)].slice(0, 50) })),
+      deleteRecipe: (id) => setData((d) => ({ ...d, myRecipes: d.myRecipes.filter((r) => r.id !== id) })),
       removeItem: (id) => setData((d) => ({ ...d, items: d.items.filter((i) => i.id !== id) })),
       toggleItem: (id) =>
         setData((d) => ({ ...d, items: d.items.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)) })),
       clearChecked: () => setData((d) => ({ ...d, items: d.items.filter((i) => !i.checked) })),
       setColdLast: (coldLast) => setData((d) => ({ ...d, coldLast })),
     }),
-    [data, ready, addItem, setLocation, setStore],
+    [data, ready, addItem, addItems, setLocation, setStore],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
