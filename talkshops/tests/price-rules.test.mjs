@@ -50,3 +50,10 @@ test('photo text: one-letter misreads are fixed and lost decimals in labor times
   assert.deepEqual(r.items.map(i => [i.name, i.kind, i.rate, i.hours ?? null, !!i.check]), [
     ['Labor rate', 'labor', 139, null, false], ['Coolant flush', 'fee', 149, null, false], ['Cabin air filter', 'part', 34, null, false], ['Front brake pads', 'labor', 139, 1.5, true]]);
 });
+
+test('two columns on one line are split, and OCR leader dots and "S" for "$" are cleaned up', () => {
+  assert.deepEqual(parse(['Labor rate $139/hr Front brake pads 1.5 hrs Cabin filter $34', 'Wiper blades $24 - $39 Tire rotation $19.99']).items.map(i => [i.name, i.rate, i.hours ?? null]),
+    [['Labor rate', 139, null], ['Front brake pads', 139, 1.5], ['Cabin filter', 34, null], ['Wiper blades', 24, null], ['Tire rotation', 19.99, null]]);
+  assert.deepEqual(parse(['Electrical diagnosis ocsmsmsssisnsmssmmssssienss S208.99', 'State inspection covvervcrinirmiessssressessarssmsssssnssssensensense $32'], { ocr: true }).items.map(i => [i.name, i.rate]),
+    [['Electrical diagnosis', 208.99], ['State inspection', 32]]);
+});

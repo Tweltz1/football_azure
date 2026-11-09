@@ -119,41 +119,58 @@ window.createPriceImport = ({ api }) => {
     } finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
   }
   /**
-   * Photo cleanup before OCR, the classic image-analysis steps: grayscale, contrast stretch, straighten (the angle whose
-   * rows of text line up best), and an adaptive threshold that evens out glare and shadow.
+   * Photo cleanup before OCR, the same steps used on microscope images: grayscale, flat-field correction (divide by the
+   * blurred background so shadows and glare even out), contrast stretch, and straightening (the angle at which rows of
+   * text line up best). The result stays grayscale; Tesseract does its own black-and-white step.
    */
-  function cleanForOcr(src) {
-    const scale = Math.min(1, 2400 / Math.max(src.width || src.naturalWidth, src.height || src.naturalHeight));
-    const W = Math.round((src.naturalWidth || src.width) * scale), H = Math.round((src.naturalHeight || src.height) * scale);
-    const gray = (canvas) => { const d = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data, out = new Float32Array(canvas.width * canvas.height); for (let i = 0; i < out.length; i++) out[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]; return out; };
-    const draw = (w, h, angle) => { const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.translate(w / 2, h / 2); g.rotate(angle); g.drawImage(src, -w / 2, -h / 2, w, h); return c; };
-
-    // Straighten: on a small copy, try angles from -8 to 8 degrees and keep the one with the sharpest row profile.
-    const sw = Math.min(500, W), sh = Math.round(H * sw / W);
-    let best = 0, bestScore = -1;
-    for (let deg = -8; deg <= 8; deg += 1) {
-      const px = gray(draw(sw, sh, deg * Math.PI / 180));
-      let mean = 0; const rows = new Float32Array(sh);
-      for (let y = 0; y < sh; y++) { let dark = 0; for (let x = 0; x < sw; x++) if (px[y * sw + x] < 128) dark++; rows[y] = dark; mean += dark; }
-      mean /= sh; let score = 0; for (const r of rows) score += (r - mean) ** 2;
-      if (score > bestScore) { bestScore = score; best = deg; }
-    }
-    const c = draw(W, H, best * Math.PI / 180), px = gray(c);
-    // Contrast stretch between the 2nd and 98th percentile.
-    const hist = new Uint32Array(256); for (const v of px) hist[v | 0]++;
-    let lo = 0, hi = 255, acc = 0; for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > px.length * 0.02) { lo = v; break; } }
-    acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > px.length * 0.02) { hi = v; break; } }
-    const span = Math.max(1, hi - lo); for (let i = 0; i < px.length; i++) px[i] = Math.min(255, Math.max(0, (px[i] - lo) * 255 / span));
-    // Adaptive threshold: compare each pixel with the mean of its neighborhood (integral image), so uneven light doesn't matter.
-    const r = Math.max(8, Math.round(Math.min(W, H) / 40)), sum = new Float64Array((W + 1) * (H + 1));
+  const toGray = (canvas) => { const d = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data, out = new Float32Array(canvas.width * canvas.height); for (let i = 0; i < out.length; i++) out[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]; return out; };
+  function flatField(px, W, H, r) {
+    const sum = new Float64Array((W + 1) * (H + 1));
     for (let y = 0; y < H; y++) { let row = 0; for (let x = 0; x < W; x++) { row += px[y * W + x]; sum[(y + 1) * (W + 1) + x + 1] = sum[y * (W + 1) + x + 1] + row; } }
-    const img = c.getContext("2d").createImageData(W, H);
+    const out = new Float32Array(W * H);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const x0 = Math.max(0, x - r), x1 = Math.min(W, x + r + 1), y0 = Math.max(0, y - r), y1 = Math.min(H, y + r + 1);
       const mean = (sum[y1 * (W + 1) + x1] - sum[y0 * (W + 1) + x1] - sum[y1 * (W + 1) + x0] + sum[y0 * (W + 1) + x0]) / ((x1 - x0) * (y1 - y0));
-      const v = px[y * W + x] < mean - 12 ? 0 : 255, i = (y * W + x) * 4;
-      img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
+      out[y * W + x] = Math.min(255, 255 * px[y * W + x] / Math.max(1, mean + 12));
     }
+    return out;
+  }
+  function boxBlur(px, W, H, r) {
+    const sum = new Float64Array((W + 1) * (H + 1)), out = new Float32Array(W * H);
+    for (let y = 0; y < H; y++) { let row = 0; for (let x = 0; x < W; x++) { row += px[y * W + x]; sum[(y + 1) * (W + 1) + x + 1] = sum[y * (W + 1) + x + 1] + row; } }
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const x0 = Math.max(0, x - r), x1 = Math.min(W, x + r + 1), y0 = Math.max(0, y - r), y1 = Math.min(H, y + r + 1);
+      out[y * W + x] = (sum[y1 * (W + 1) + x1] - sum[y0 * (W + 1) + x1] - sum[y1 * (W + 1) + x0] + sum[y0 * (W + 1) + x0]) / ((x1 - x0) * (y1 - y0));
+    }
+    return out;
+  }
+  function cleanForOcr(src) {
+    const w0 = src.naturalWidth || src.width, h0 = src.naturalHeight || src.height;
+    const scale = Math.min(2.5, 2400 / Math.max(w0, h0)); // enlarge small photos: OCR reads best with tall letters
+    const W = Math.round(w0 * scale), H = Math.round(h0 * scale);
+    const draw = (w, h, angle) => { const c = document.createElement("canvas"); c.width = w; c.height = h; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.translate(w / 2, h / 2); g.rotate(angle); g.drawImage(src, -w / 2, -h / 2, w, h); return c; };
+
+    // Straighten: on a small flat-fielded copy, try -8 to 8 degrees and keep the angle with the sharpest row profile.
+    const sw = Math.min(600, W), sh = Math.round(H * sw / W);
+    let best = 0, bestScore = -1;
+    for (let deg = -8; deg <= 8; deg += 0.5) {
+      const px = flatField(toGray(draw(sw, sh, deg * Math.PI / 180)), sw, sh, 12);
+      const rows = new Float32Array(sh); let mean = 0;
+      for (let y = 0; y < sh; y++) { let dark = 0; for (let x = 0; x < sw; x++) if (px[y * sw + x] < 150) dark++; rows[y] = dark; mean += dark; }
+      mean /= sh; let score = 0; for (const v of rows) score += (v - mean) ** 2;
+      if (score > bestScore) { bestScore = score; best = deg; }
+    }
+    const c = draw(W, H, best * Math.PI / 180);
+    const px = flatField(toGray(c), W, H, Math.max(15, Math.round(Math.min(W, H) / 25)));
+    // Sharpen (unsharp mask): soft phone photos and enlarged text get crisper edges.
+    const soft = boxBlur(px, W, H, Math.max(1, Math.round(scale)));
+    for (let i = 0; i < px.length; i++) px[i] = Math.min(255, Math.max(0, px[i] + 1.2 * (px[i] - soft[i])));
+    // Contrast stretch between the 1st and 99th percentile.
+    const hist = new Uint32Array(256); for (const v of px) hist[v | 0]++;
+    let lo = 0, hi = 255, acc = 0; for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > px.length * 0.01) { lo = v; break; } }
+    acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > px.length * 0.01) { hi = v; break; } }
+    const span = Math.max(1, hi - lo), img = c.getContext("2d").createImageData(W, H);
+    for (let i = 0; i < px.length; i++) { const v = Math.min(255, Math.max(0, (px[i] - lo) * 255 / span)); img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; }
     c.getContext("2d").putImageData(img, 0, 0);
     return c;
   }
@@ -251,5 +268,7 @@ window.createPriceImport = ({ api }) => {
   const canRetryWithAi = () => lastFiles.length > 0;
   const retryWithAi = (onStatus) => readFiles(lastFiles, onStatus, { ai: "always" });
 
-  return { accept, readFiles, readLocal, csvRecords, canRetryWithAi, retryWithAi, cleanForOcr };
+  /** Bench hook (talkshops/bench): the OCR text of a photo, with or without the cleanup. */
+  const ocrText = async (file, clean = true) => { const img = await loadImage(file); return ocrLines([clean ? cleanForOcr(img) : photoCanvas(img)], () => {}); };
+  return { accept, readFiles, readLocal, csvRecords, canRetryWithAi, retryWithAi, cleanForOcr, ocrText };
 };

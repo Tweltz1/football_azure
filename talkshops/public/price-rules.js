@@ -40,7 +40,14 @@
     }
     return hit;
   }
-  const fixWords = (line) => line.replace(/[A-Za-z]{3,}/g, (w) => {
+  // OCR clean-up: dotted leaders come out as runs like "ocsmsmssss" or "......:", and "$" is often read as "S" or "§".
+  const leader = (w) => {
+    const lw = w.toLowerCase().replace(/[^a-z.:,;'`~_«»-]/g, "");
+    if (lw.length < 8 || VOCAB.has(lw.replace(/[^a-z]/g, ""))) return false;
+    const share = [...lw].filter((ch) => "cmnorsuvwie.:,;'`~_«»-".includes(ch)).length / lw.length;
+    return share >= 0.85 && ((lw.match(/(.)\1/g) || []).length >= 2 || lw.length >= 14 || /^[«.:,]/.test(lw));
+  };
+  const fixWords = (line) => line.replace(/[§]|\bS(?=\d)/g, "$").split(/\s+/).filter((w) => !leader(w) && !/^[.·•:_—–«»-]{2,}$/.test(w) && w !== "ee").join(" ").replace(/[A-Za-z]{3,}/g, (w) => {
     const lw = w.toLowerCase();
     if (VOCAB.has(lw)) return w;
     const fix = near(lw);
@@ -64,10 +71,28 @@
    * Lines of a price sheet to items. A name alone on a line is joined to a price on the next line.
    * Returns { items, laborRate, lines } where `lines` counts lines that looked like prices, to judge how well it went.
    */
+  // Two columns side by side come out as one line ("Oil change $49.95   Tire rotation $24.99"): cut after each price
+  // (or labor time, or percent) that is followed by more words.
+  const END = /(?:\$\s?\d[\d,]*(?:\.\d{2})?|\b\d[\d,]*\.\d{2}\b|\b\d{1,2}(?:\.\d{1,2})?\s?(?:hrs?|hours?)\b\.?|\b\d{1,2}(?:\.\d{1,2})?\s?%)(?:\s*(?:\/\s?(?:hr|hour)|per\s+hour|an\s+hour|of\s+(?:labou?r|parts)(?:\s+and\s+(?:labou?r|parts))?|each|ea\.?))?/gi;
+  function splitColumns(line) {
+    const text = String(line), out = [];
+    let start = 0;
+    for (const m of text.matchAll(END)) {
+      const end = m.index + m[0].length, rest = text.slice(end);
+      // More words (not just more prices or a range) after this price: a new item starts here.
+      if (/^\s*[-–—]\s*\$?\d/.test(rest) || /^\s*(?:to)\s+\$?\d/i.test(rest)) continue;
+      const next = rest.search(/[A-Za-z]{3,}/), nextNum = rest.search(/\d/);
+      if (next < 0 || (nextNum >= 0 && nextNum < next && !/^[\s$\d.,]*$/.test(rest.slice(0, next)))) continue;
+      out.push(text.slice(start, end)); start = end;
+    }
+    out.push(text.slice(start));
+    return out.map((s) => s.trim()).filter(Boolean);
+  }
+
   function parse(lines, opts = {}) {
     const rows = [];
     let pendingName = "";
-    for (const raw of lines) {
+    for (const raw of lines.flatMap((l) => splitColumns(l))) {
       const r = readLine(opts.ocr ? fixWords(String(raw)) : raw);
       if (!r) { pendingName = ""; continue; }
       if (!r.prices.length && r.pct === null && r.hours === null) {
