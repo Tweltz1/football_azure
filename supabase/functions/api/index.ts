@@ -40,6 +40,11 @@ const cardGames = createCardGameStore(db);
 const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('Gemini_API_KEY') || undefined;
 const shop: ShopDeps = {
   store: createShopStore(db),
+  claimSalesRequest: async (email) => {
+    const { data, error } = await db.rpc('claim_talkshops_sales_request', { p_email: email });
+    if (error) throw error;
+    return data === true;
+  },
   account: createAccountStore(db),
   staff: createStaffStore(db),
   email: createShopEmailSender(Deno.env.get('RESEND_API_KEY'), Deno.env.get('TALKSHOPS_EMAIL_FROM')),

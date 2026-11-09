@@ -122,3 +122,26 @@ test('text codes only go to a phone the shop verified in settings', async () => 
   assert.equal((await anon('GET', 'shop/recovery'))?.status, 401);
 });
 
+
+test('public sales form sends only to support with requester Reply-To', async () => {
+  let sent: unknown[] = [];
+  const deps = { store: {} as ShopStore, sms: { send: async () => ({ delivery: 'sent' as const }) }, linkBase: '', newToken: () => '',
+    claimSalesRequest: async () => true,
+    email: { send: async (...args: unknown[]) => { sent = args; return { delivery: 'sent' as const }; } } };
+  const ctx = { userId: null, now: () => new Date() } as Ctx;
+  const body = { name: 'Tyler', email: 'Owner@shop.com', shop: 'Test Shop', phone: '555-123-4567', message: 'Can we schedule a demo?', to: 'attacker@example.com' };
+  const send = (data: unknown, d = deps) => shopRoute(ctx, d, 'POST', ['shop', 'sales'], data);
+  assert.equal((await send(body))?.status, 200);
+  assert.equal(sent[0], 'support@talkshops.app');
+  assert.deepEqual(sent[3], { replyTo: 'owner@shop.com' });
+  assert.match(String(sent[2]), /Test Shop/);
+  assert.match(String(sent[2]), /schedule a demo/);
+  sent = [];
+  assert.equal((await send({ ...body, email: 'bad\r\nBcc: x@example.com' }))?.status, 400);
+  assert.equal((await send({ ...body, message: 'x'.repeat(4001) }))?.status, 400);
+  assert.equal((await send({ ...body, website: 'spam' }))?.status, 200);
+  assert.equal(sent.length, 0);
+  assert.equal((await send(body, { ...deps, claimSalesRequest: async () => false }))?.status, 429);
+  assert.equal(sent.length, 0);
+  assert.equal((await send(body, { ...deps, email: { send: async () => ({ delivery: 'failed' as any }) } }))?.status, 502);
+});

@@ -281,6 +281,12 @@
     if (custToken) return renderCustomer();
     const app = $("#app"), chrome = $("#shopChrome");
     document.title = "Talk Shops" + (shop ? " · " + shop.name : "");
+    if (new URLSearchParams(location.search).has("contact")) {
+      chrome.hidden = true;
+      document.title = "Contact Sales · Talk Shops";
+      app.innerHTML = salesView();
+      return;
+    }
     // The sign-in page is /?login (a real file the host always serves); /login forwards there.
     const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join");
     if (!session) {
@@ -315,6 +321,24 @@
 
   const supportEmail = "support@talkshops.app";
   const signInHelp = `<p class="muted" style="margin:0">Need help signing in? <a class="login-home" href="mailto:${supportEmail}?subject=Talk%20Shops%20sign-in%20help">Contact Us</a></p>`;
+
+  function salesView() {
+    return `<div class="login-wrap"><section class="login" style="width:min(520px,100%)">
+      ${brand()}<h2>Contact Sales</h2>
+      <p class="muted">Tell us about your shop and how we can help. Our team will reply by email.</p>
+      <form class="auth-alt" id="salesForm">
+        <label class="field">Your Name<input name="name" autocomplete="name" required maxlength="100"></label>
+        <label class="field">Work Email<input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+        <label class="field">Shop Name<input name="shop" autocomplete="organization" required maxlength="160"></label>
+        <label class="field">Phone Number (Optional)<input name="phone" type="tel" autocomplete="tel" maxlength="40"></label>
+        <label class="field">How Can We Help?<textarea name="message" required maxlength="4000" rows="5" placeholder="Tell us what you’re looking for or ask a question."></textarea></label>
+        <div hidden aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+        <p id="salesStatus" role="status" aria-live="polite" style="margin:0"></p>
+        <button class="btn primary" type="submit">Send Request</button>
+      </form>
+      <a href="/">Back to Home</a>
+    </section></div>`;
+  }
 
   function forgotView() {
     const r = ui.reset || { step: "ask", email: "" };
@@ -438,7 +462,7 @@
         </tbody></table>
         <small class="front-source">Selected plans at month-to-month list prices, checked November 8, 2026. Competitor plans include additional shop-management features.</small>
       </div></section>
-      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="mailto:${supportEmail}?subject=Talk%20Shops%20sales%20inquiry">Contact Sales</a><a href="/privacy.html">Privacy Policy</a></div></footer>
+      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="/?contact=sales">Contact Sales</a><a href="/privacy.html">Privacy Policy</a></div></footer>
     </div>`;
   }
 
@@ -880,6 +904,21 @@
   document.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target;
+    if (f.id === "salesForm") {
+      const button = f.querySelector('[type="submit"]'), status = $("#salesStatus");
+      if (button.disabled) return;
+      const data = Object.fromEntries(new FormData(f));
+      button.disabled = true; button.textContent = "Sending…"; status.textContent = "";
+      try {
+        await api("POST", "shop/sales", data);
+        f.innerHTML = '<p class="form-ok" role="status">Your request has been sent. Our team will reply to your email.</p>';
+      } catch (error) {
+        status.textContent = error.message;
+        status.className = "form-err";
+        button.disabled = false; button.textContent = "Send Request";
+      }
+      return;
+    }
     if (howTo.submit(f, render)) return;
     if (await team.submit(f, render)) return;
     if (f.id === "billingForm") {

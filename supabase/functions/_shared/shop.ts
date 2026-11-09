@@ -3,6 +3,7 @@
 // link with a long random token that opens their car's page, where they can approve or decline work.
 
 import type { Ctx, Res } from './handlers.ts';
+import { salesRoute } from './shopSales.ts';
 
 import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, HOWTO_PRO_MESSAGE, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
@@ -171,6 +172,7 @@ export interface SmsSender { send(to: string, text: string): Promise<SmsResult> 
 
 export interface ShopDeps {
   store: ShopStore;
+  claimSalesRequest?: (email: string) => Promise<boolean>;
   sms: SmsSender;
   email?: { send(to: string, subject: string, text: string, opts?: { fromName?: string; replyTo?: string }): Promise<SmsResult> };
   /** Customer links are this plus the job's token, e.g. https://hood-league.com/shop/?c= */
@@ -321,6 +323,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   const { store } = deps;
   const body = (data && typeof data === 'object' ? data : {}) as Body;
   const now = ctx.now().toISOString();
+
+  if (parts[1] === 'sales' && parts.length === 2) return salesRoute(deps, method, body);
 
   // ---- Customer link (no sign-in) ----
   if (parts[1] === 'c') {
