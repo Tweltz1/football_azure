@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button, Card, SectionTitle } from '../components/ui';
 import { readRecipe } from '../lib/readRecipe';
+import { keepPhoto } from '../lib/recipePhotos';
 import { newId, useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
 
@@ -21,7 +22,9 @@ export default function ScanScreen() {
     try {
       const recipe = await readRecipe(input);
       const id = `m-${newId()}`;
-      saveRecipe({ ...recipe, id, source: 'mine' });
+      // The scanned photo becomes the recipe's picture.
+      const photo = 'photoUri' in input ? await keepPhoto(input.photoUri, id) : undefined;
+      saveRecipe({ ...recipe, id, photo, source: 'mine' });
       router.replace(`/recipe/${id}`);
     } catch (e) {
       setError((e as Error).message);

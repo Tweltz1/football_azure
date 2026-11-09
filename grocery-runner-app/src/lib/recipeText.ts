@@ -4,7 +4,7 @@ import type { TextLine } from '../../modules/recipe-reader';
 import type { RecipeItem } from './recipes';
 import { itemKey } from './sharedAisles';
 
-export type ParsedRecipe = { title: string; servings: string; items: RecipeItem[] };
+export type ParsedRecipe = { title: string; servings: string; items: RecipeItem[]; imageUrl?: string };
 
 const INGREDIENTS_HEADING = /^\s*(ingredients?|what you('|’)?ll need|you('|’)?ll need|shopping list)\s*:?\s*$/i;
 const STOP_HEADING =
@@ -205,6 +205,7 @@ export function parseRecipePage(html: string): ParsedRecipe {
         const parsed = parseRecipeLines(['Ingredients', ...lines.map((l) => decode(String(l)))], decode(String(recipe.name ?? '')));
         const yieldText = Array.isArray(recipe.recipeYield) ? recipe.recipeYield[0] : recipe.recipeYield;
         if (yieldText && !parsed.servings) parsed.servings = String(yieldText).slice(0, 40);
+        parsed.imageUrl = imageOf(recipe.image) ?? ogImage(html);
         return parsed;
       }
     } catch {}
@@ -213,8 +214,27 @@ export function parseRecipePage(html: string): ParsedRecipe {
   const text = html
     .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<(br|\/p|\/li|\/h\d|\/div|\/tr)[^>]*>/gi, '\n');
-  return parseRecipeLines(decode(text).split('\n'), title);
+  return { ...parseRecipeLines(decode(text).split('\n'), title), imageUrl: ogImage(html) };
 }
+
+const httpsOnly = (u: unknown) => (typeof u === 'string' && /^https:\/\/\S+$/.test(u) ? u : undefined);
+
+/** schema.org image: a URL, an ImageObject, or a list of either. */
+// deno-lint-ignore no-explicit-any
+function imageOf(img: any): string | undefined {
+  if (Array.isArray(img)) return imageOf(img[0]);
+  if (img && typeof img === 'object') return httpsOnly(img.url ?? img.contentUrl);
+  return httpsOnly(img);
+}
+
+const ogImage = (html: string) =>
+  httpsOnly(
+    decode(
+      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
+        html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)?.[1] ??
+        '',
+    ),
+  );
 
 /** Pasted text: the first short line is taken as the title when it isn't an ingredient. */
 export function parsePastedText(text: string): ParsedRecipe {
