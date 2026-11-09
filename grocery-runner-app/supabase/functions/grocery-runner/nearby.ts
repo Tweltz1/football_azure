@@ -5,7 +5,12 @@ import { Chain, chainOf, osmStoreKey } from './chains.ts';
 import { krogerReady, krogerStoresNear } from './kroger.ts';
 import { walmartReady, walmartStoresNear } from './walmart.ts';
 
-const OVERPASS = 'https://overpass-api.de/api/interpreter';
+// Public Overpass servers, tried in order (the main one sometimes refuses or is busy).
+const OVERPASS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
 const RADIUS_M = 15000;
 
 export type NearbyStore = {
@@ -27,19 +32,33 @@ const cache = new Map<string, { at: number; stores: NearbyStore[] }>();
 
 async function fromOsm(lat: number, lon: number): Promise<NearbyStore[]> {
   const query = `[out:json][timeout:20];nwr["shop"~"^(supermarket|wholesale|department_store|grocery)$"](around:${RADIUS_M},${lat},${lon});out center tags 300;`;
-  const res = await fetch(OVERPASS, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'GroceryRunner/1.0 (github.com/Tweltz1/football_azure)' },
-    body: `data=${encodeURIComponent(query)}`,
-  });
-  if (!res.ok) {
-    const detail = (await res.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 160);
-    throw new Error(`Store map lookup failed (${res.status}): ${detail}`);
+  let body: { elements?: unknown[] } | null = null;
+  const errors: string[] = [];
+  for (const server of OVERPASS) {
+    try {
+      const res = await fetch(server, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json',
+          'User-Agent': 'GroceryRunner/1.0 (+https://github.com/Tweltz1/football_azure)',
+        },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+      if (res.ok) {
+        body = await res.json();
+        break;
+      }
+      errors.push(`${new URL(server).host} ${res.status}`);
+    } catch (e) {
+      errors.push(`${new URL(server).host} ${(e as Error).message.slice(0, 60)}`);
+    }
   }
-  const body = await res.json();
+  if (!body) throw new Error(`Store map lookup failed (${errors.join('; ')}).`);
+
   const out: NearbyStore[] = [];
   // deno-lint-ignore no-explicit-any
-  for (const el of body.elements ?? []) {
+  for (const el of (body.elements ?? []) as any[]) {
     const tags = el.tags ?? {};
     const chain = chainOf(tags);
     const la = el.lat ?? el.center?.lat;
