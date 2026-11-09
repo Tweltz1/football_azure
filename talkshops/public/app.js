@@ -287,6 +287,13 @@
       app.innerHTML = salesView();
       return;
     }
+    if (new URLSearchParams(location.search).has("help")) {
+      ui.view = "help";
+      chrome.hidden = true;
+      document.title = "Help & Support · Talk Shops";
+      app.innerHTML = helpView();
+      return;
+    }
     // The sign-in page is /?login (a real file the host always serves); /login forwards there.
     const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join");
     if (!session) {
@@ -308,8 +315,8 @@
     $("#shopName").textContent = shop.name + (isOwner() ? "" : " · Technician");
     const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "")
       + (join.err ? `<div class="notice">${esc(join.err)}</div>` : "")
-      + (ui.view === "plan" || ui.view === "training" ? "" : isOwner() ? planUi.banner(plan) : techBanner(plan));
-    app.innerHTML = err + (ui.view === "checkin" ? checkinView() : ui.view === "settings" ? (isOwner() ? setupView(false) : techSettingsView()) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : boardView());
+      + (ui.view === "plan" || ui.view === "training" || ui.view === "help" ? "" : isOwner() ? planUi.banner(plan) : techBanner(plan));
+    app.innerHTML = err + (ui.view === "help" ? helpView() : ui.view === "checkin" ? checkinView() : ui.view === "settings" ? (isOwner() ? setupView(false) : techSettingsView()) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : boardView());
     if (ui.view === "board") filterBoard();
     if (ui.view === "settings" && !recovery.data && !recovery.loading && !recovery.err) loadRecovery();
     if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
@@ -320,7 +327,45 @@
   const brand = () => `<div class="brand"><div class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</div><div><h1>Talk Shops</h1><small>For repair shops</small></div></div>`;
 
   const supportEmail = "support@talkshops.app";
-  const signInHelp = `<p class="muted" style="margin:0">Need help signing in? <a class="login-home" href="mailto:${supportEmail}?subject=Talk%20Shops%20sign-in%20help">Contact Us</a></p>`;
+  const signInHelp = `<p class="muted" style="margin:0">Need help? <a class="login-home" href="/?help">Visit Help &amp; Support</a></p>`;
+
+  function helpView() {
+    const guides = [
+      ["Checking In a Vehicle", "Open Check In, choose your check-in method, and enter the customer and vehicle details. Confirm permission to send updates, then send the customer their private repair link.", "checkin"],
+      ["Updating Customer Information", "Open a vehicle in the Bay and select Edit Customer Info. Update the name, phone, email or notification preference, confirm consent when contact details change, and save.", "checkin"],
+      ["Sending an Estimate", "Open the vehicle, add estimate items and their prices, and choose Required, Recommended or Optional. An owner can send the estimate for approval; customers review and sign from their repair link.", "estimates"],
+      ["Moving Cars Through the Bay", "Open a vehicle and choose its next stage. Review the customer notification before sending. Use the Bay search and filters to find repairs that need attention.", "stages"],
+      ["Finishing a Repair", "An owner can prepare the final bill, mark the car Ready for Pickup and confirm pickup. Find past repairs in Archive.", "pickup"],
+      ["Inviting Your Team", "Owners can open Settings → Team to invite staff as owners or technicians. Each person signs in with the email address that received the invitation.", "team"],
+    ];
+    const faqs = [
+      ["Do customers need an account?", "No. Customers open the private repair link sent by the shop to view updates, photos and estimates."],
+      ["I did not receive my account confirmation email.", "Check that you entered the correct email address and look in spam or junk. If you signed up through Google, use Continue with Google with that same account. Contact support below if you still cannot get in."],
+      ["How do I reset my password?", "Choose Forgot password? on Shop Sign In. Request a code by email, or by text if you previously verified a reset phone in Settings."],
+      ["A customer did not receive an update. What should I check?", "Open the repair and review the message delivery result. Verify the customer’s phone, email, notification preference and consent through Edit Customer Info. Correct the details before sending another update."],
+      ["Where can I manage my subscription?", "Shop owners can open Plan to review their plan and use Manage Billing. Technicians can ask an owner for help with billing."],
+      ["What can technicians do?", "Technicians can work on repairs and customer updates. Owners handle shop settings, team invitations, billing, estimate approval requests and closing repairs."],
+    ];
+    return `<section class="help-center">
+      <header class="help-heading"><div><p class="muted">Talk Shops Support</p><h2>How Can We Help?</h2><p class="muted">Quick answers and practical guides for your shop.</p></div><a class="btn" href="${session ? "/" : "/?login"}">${session ? "Back to My Shop" : "Shop Sign In"}</a></header>
+      <div class="help-actions"><a class="panel" href="#help-guides"><b>Quick Guides</b><span>Find the steps for everyday tasks.</span></a><a class="panel" href="#help-training"><b>Walkthroughs &amp; Training</b><span>Follow along with sample vehicles.</span></a><a class="panel" href="#help-support"><b>Contact Support</b><span>Get help from our team by email.</span></a></div>
+      <section class="panel" id="help-guides"><h3>Quick Guides</h3>${guides.map(([title, body, lesson]) => `<details><summary>${esc(title)}</summary><p>${esc(body)}</p><a href="/demo.html?train=${lesson}">Watch the Lesson →</a></details>`).join("")}</section>
+      <section class="panel" id="help-training"><h3>Walkthroughs &amp; Training</h3><p class="muted">Narrated lessons use a demo shop with sample cars. Turn your sound on to follow along.</p><a class="btn primary" href="/demo.html?tour=1">Start the Guided Tour</a><div class="help-lessons">${window.TALKSHOPS_TRAINING.lessons.map(l => `<a href="/demo.html?train=${esc(l.id)}">${esc(l.title)} <small class="muted">${l.mins} min</small></a>`).join("")}</div></section>
+      <section class="panel"><h3>Common Questions</h3>${faqs.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("")}</section>
+      <section class="panel" id="help-support"><h3>Contact Support</h3><p class="muted">Describe what happened and what you were trying to do. We’ll reply to the email below. Please leave out passwords and customer information.</p>
+        <form id="helpForm" class="help-form">
+          <label class="field">Your Name<input name="name" autocomplete="name" required maxlength="100" value="${esc(session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "")}"></label>
+          <label class="field">Reply Email<input name="email" type="email" autocomplete="email" required maxlength="254" value="${esc(session?.user?.email || "")}"></label>
+          <label class="field">Shop Name<input name="shop" autocomplete="organization" required maxlength="160" value="${esc(shop?.name || "")}"></label>
+          <label class="field">Phone Number (Optional)<input name="phone" type="tel" autocomplete="tel" maxlength="40" value="${esc(shop?.phone || "")}"></label>
+          <label class="field help-wide">Topic<select name="topic"><option>Using Talk Shops</option><option>Account or Sign-In</option><option>Customer Notifications</option><option>Plans and Billing</option><option>Report a Problem</option><option>Feature Request</option></select></label>
+          <label class="field help-wide">How Can We Help?<textarea name="message" required maxlength="3400" rows="5"></textarea></label>
+          <div hidden aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+          <p id="helpStatus" class="help-wide" role="status" aria-live="polite"></p><button class="btn primary" type="submit">Send to Support</button>
+        </form><p class="muted">You can also email <a href="mailto:${supportEmail}">${supportEmail}</a>.</p>
+      </section>
+    </section>`;
+  }
 
   function salesView() {
     return `<div class="login-wrap"><section class="login" style="width:min(520px,100%)">
@@ -421,7 +466,7 @@
     return `<div class="front">
       <header class="front-nav"><div class="front-inner">
         <a class="front-wordmark" href="#top" aria-label="Talk Shops home"><span class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</span>Talk Shops</a>
-        <nav aria-label="Main navigation"><a href="#plans">Compare Plans</a><a class="front-sign" href="/?login">Shop Sign In</a></nav>
+        <nav aria-label="Main navigation"><a href="/?help">Help</a><a href="#plans">Compare Plans</a><a class="front-sign" href="/?login">Shop Sign In</a></nav>
       </div></header>
       <section class="front-hero" id="top"><div class="front-inner">
         <div class="front-intro"><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
@@ -462,7 +507,7 @@
         </tbody></table>
         <small class="front-source">Selected plans at month-to-month list prices, checked November 8, 2026. Competitor plans include additional shop-management features.</small>
       </div></section>
-      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="/?contact=sales">Contact Sales</a><a href="/privacy.html">Privacy Policy</a></div></footer>
+      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="/?help">Help &amp; Support</a><a href="/?contact=sales">Contact Sales</a><a href="/privacy.html">Privacy Policy</a></div></footer>
     </div>`;
   }
 
@@ -928,6 +973,22 @@
   document.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target;
+    if (f.id === "helpForm") {
+      const button = f.querySelector('[type="submit"]'), status = $("#helpStatus");
+      if (button.disabled) return;
+      const data = Object.fromEntries(new FormData(f));
+      data.message = `Support request: ${data.topic}\nShop ID: ${shop?.id || "Not signed in"}\nRole: ${role || "Visitor"}\n\n${data.message}`;
+      button.disabled = true; button.textContent = "Sending…"; status.textContent = "";
+      f.setAttribute("aria-busy", "true");
+      try {
+        await api("POST", "shop/sales", data);
+        f.innerHTML = '<p class="form-ok help-wide" role="status">Your support request has been sent. Our team will reply to your email.</p>';
+      } catch (error) {
+        status.textContent = error.message; status.className = "form-err help-wide";
+        button.disabled = false; button.textContent = "Send to Support";
+      } finally { f.removeAttribute("aria-busy"); }
+      return;
+    }
     if (f.id === "salesForm") {
       const button = f.querySelector('[type="submit"]'), status = $("#salesStatus");
       if (button.disabled) return;
