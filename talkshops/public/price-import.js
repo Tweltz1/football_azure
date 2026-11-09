@@ -88,7 +88,7 @@ window.createPriceImport = ({ api }) => {
   async function pdfDoc(file) {
     await script(LIB.pdf);
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = LIB.pdfWorker;
-    return window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    return window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
   }
   async function pdfLines(doc) {
     const lines = [];

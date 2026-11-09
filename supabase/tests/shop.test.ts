@@ -814,3 +814,18 @@ test('workday: reminders send when due, once, with STOP, and the customer can st
   stopReminders(job, '2027-01-01T00:00:00Z', 'customer');
   assert.ok(job.data.followups!.every((f) => f.sentAt || f.canceledAt));
 });
+
+test('a note sent to the customer counts against the plan text allowance like other texts', async () => {
+  const w = world();
+  const counted: number[] = [];
+  w.deps.store.useTexts = async (_shop, n) => { counted.push(n); return false; };
+  const dan = w.as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string };
+  const before = counted.length, sent = w.texts.length;
+  const j = (await dan('POST', `shop/jobs/${job.id}/note`, { text: 'Rotors are scored too.', send: true }))?.body as { messages: { delivery?: string; sender?: string }[] };
+  assert.equal(counted.length, before + 1, 'the note text was counted');
+  assert.equal(w.texts.length, sent, 'over the allowance, nothing is sent');
+  assert.equal(j.messages.at(-1)?.delivery, 'not_sent');
+  assert.ok(j.messages.at(-1)?.sender);
+});

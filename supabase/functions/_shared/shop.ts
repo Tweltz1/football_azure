@@ -1002,7 +1002,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     d.photos = d.photos.filter((p) => p.id !== id);
   } else if (action === 'photo') {
     const src = typeof body.src === 'string' ? body.src : '';
-    if (!/^data:image\/(jpeg|png|webp);base64,/.test(src) || src.length > MAX_PHOTO) return bad('That photo could not be added.');
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(src) || src.length > MAX_PHOTO) return bad('That photo could not be added.');
     if (d.photos.length >= MAX_PHOTOS) return bad(`Up to ${MAX_PHOTOS} photos per car.`);
     d.photos.push({ id: ctx.newId(), src, cap: str(body.cap, 120) || 'Photo', stage: job.stage, addedAt: now });
   } else if (action === 'note') {
@@ -1014,7 +1014,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     notes.push({ id: ctx.newId(), t: now, text, ...(internal ? { internal: true } : {}), by: ctx.displayName || ctx.userEmail || 'Shop staff' });
     if (body.send && !internal) {
       const msg = `Update on your ${vehicleName({ ...d, ...job.intake }) || 'car'} from ${shop.name}: ${text.length > 300 ? text.slice(0, 297) + '…' : text} Details: ${deps.linkBase}${job.token}`;
-      d.messages.push(...await notifyCustomer(deps, shop, job, msg, now));
+      d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
     }
   } else if (action === 'walkthrough') {
     const kind = body.kind === 'before' || body.kind === 'after' ? body.kind : null;
