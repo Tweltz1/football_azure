@@ -246,6 +246,7 @@ a.btn.primary{color:var(--accent-fg)}
 <link rel="stylesheet" href="/plan.css?v=1">
 <link rel="stylesheet" href="/training.css?v=1">
 <link rel="stylesheet" href="/team.css?v=1">
+<link rel="stylesheet" href="/help.css?v=1">
 <link rel="stylesheet" href="/howto.css?v=4">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
 <style>
@@ -285,6 +286,7 @@ a.btn.primary{color:var(--accent-fg)}
       <button class="tab" data-view="howto"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3.6 17.2a1.9 1.9 0 0 0 2.7 2.7l5.7-5.7a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span class="tab-l">How-To</span></button>
       <button class="tab" data-view="settings"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="tab-l">Settings</span></button>
       <button class="tab" data-view="plan"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg><span class="tab-l">Plan</span></button>
+      <button class="tab" data-view="help"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4M12 17h.01"/></svg><span class="tab-l">Help</span></button>
       <button class="tab" data-view="training"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg><span class="tab-l">Training</span></button>
     </nav>
     <a class="signout" id="signOutLink" href="/" style="text-decoration:none;color:inherit">Exit Demo</a>
@@ -429,7 +431,7 @@ if(!state||!state.jobs||!state.rates)state=seed();
 if(state.shop)SHOP={...SHOP,...state.shop};
 const save=()=>{try{state.shop=SHOP;localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
 const startView=new URLSearchParams(location.search).get("view");
-let ui={view:["board","checkin","archive","howto","settings","plan","training","signin"].includes(startView)?startView:"board",openJob:null,custJob:null,modal:null,draft:{},q:"",aq:""};
+let ui={view:["board","checkin","archive","howto","settings","plan","training","help","signin"].includes(startView)?startView:"board",openJob:null,custJob:null,modal:null,draft:{},q:"",aq:""};
 const job=id=>state.jobs.find(j=>j.id===id);
 const onBoard=j=>!j.archivedAt;
 
@@ -514,7 +516,7 @@ function recoveryPanel(){
 function signinView(){
   const r=ui.reset;
   const brand=`<div class="brand"><div class="brand-mark" aria-hidden="true">${document.querySelector(".brand-mark")?.innerHTML||""}</div><div><h1>Talk Shops</h1></div></div>`;
-  const help=`<p class="muted" style="margin:0">Need help signing in? <a href="mailto:support@talkshops.app?subject=Talk%20Shops%20sign-in%20help">Contact us</a></p>`;
+  const help=`<p class="muted" style="margin:0">Need help? <button class="linkbtn" type="button" data-view="help">Visit Help &amp; Support</button></p>`;
   const back=`<button class="linkbtn" type="button" data-view="board" style="align-self:flex-start">← Back to the demo shop</button>`;
   if(r)return `<div class="login-wrap"><section class="login" id="signinCard">${brand}<h2>Reset your password</h2>
     ${r.step==="ask"?`<p class="muted" style="margin:0">Enter the email you sign in with. We'll send a 6-digit code to that email, or by text to the phone you verified in Shop settings.</p>
@@ -527,15 +529,69 @@ function signinView(){
       <button class="btn primary" type="submit">Set new password and sign in</button></form>
     <button class="linkbtn" id="fpAgain" type="button" style="align-self:flex-start">Didn't get it? Send another code</button>`}
     ${help}<button class="linkbtn" id="fpBack" type="button" style="align-self:flex-start">← Back to sign in</button></section></div>`;
-  return `<div class="login-wrap"><section class="login" id="signinCard">${brand}<h2>Shop sign in</h2>
+  return `<div class="login-wrap"><section class="login" id="signinCard">${brand}<h2>Shop Sign In</h2>
     <button class="btn google" id="demoGoogle" type="button">Continue with Google</button><div class="or">or use email</div>
     <form class="auth-alt" id="demoSignin"><label class="field">Work email<input id="au-email" type="email" required autocomplete="username" value="dana@ridgelineauto.com"></label>
       <label class="field">Password<input id="au-pass" type="password" required minlength="8" autocomplete="current-password"></label>
       <button class="btn primary" type="submit">Sign in</button></form>
     <button class="linkbtn" id="forgotPw" type="button" style="align-self:flex-start">Forgot password?</button>
+    <button class="linkbtn" id="demoSignup" type="button" style="align-self:flex-start">Create an account</button>
     <small class="muted">Customers use their repair link. Only shop staff need an account.</small>${help}${back}</section></div>`;
 }
 
+function customerModal(){
+    const c=job(ui.modal.customerJob).customer,preference=c.preference||c.channel||"sms";
+    return `<div class="modal"><form class="modal-card customer-editor" id="customerForm" role="dialog" aria-modal="true" aria-labelledby="ecTitle">
+      <h2 id="ecTitle">Edit Customer Info</h2>
+      <p class="muted" style="margin:0">Changes apply to this repair and future updates. Saving does not send a message.</p>
+      <label class="field">Customer Name<input id="ec-name" autocomplete="name" required maxlength="80" value="${esc(c.name)}"></label>
+      <label class="field">Notify Customer By<select id="ec-channel"><option value="sms" ${preference === "sms" ? "selected" : ""}>Text message</option><option value="email" ${preference === "email" ? "selected" : ""}>Email</option><option value="both" ${preference === "both" ? "selected" : ""}>Text and email</option></select></label>
+      <label class="field">Mobile Number<input id="ec-phone" type="tel" autocomplete="tel" maxlength="30" ${preference !== "email" ? "required" : ""} value="${esc(c.phone || "")}"></label>
+      <label class="field">Email Address<input id="ec-email" type="email" autocomplete="email" maxlength="254" ${preference !== "sms" ? "required" : ""} value="${esc(c.email || "")}"></label>
+      <label class="chk"><input type="checkbox" id="ec-consent" ${c.consent ? "checked" : ""}> Customer agreed to repair updates through the selected contact method.</label>
+      <small class="muted">If you change the contact details or notification method, confirm consent again. Leave unchecked to pause notifications.</small>
+      <p id="ec-error" role="alert" class="form-err" hidden></p>
+      <div class="btn-row"><button class="btn primary" type="submit">Save Changes</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+    </form></div>`;
+  }
+
+function helpView(){
+    const guides = [
+      ["Checking In a Vehicle", "Open Check In, choose your check-in method, and enter the customer and vehicle details. Confirm permission to send updates, then send the customer their private repair link.", "checkin"],
+      ["Updating Customer Information", "Open a vehicle in the Bay and select Edit Customer Info. Update the name, phone, email or notification preference, confirm consent when contact details change, and save.", "checkin"],
+      ["Sending an Estimate", "Open the vehicle, add estimate items and their prices, and choose Required, Recommended or Optional. An owner can send the estimate for approval; customers review and sign from their repair link.", "estimates"],
+      ["Moving Cars Through the Bay", "Open a vehicle and choose its next stage. Review the customer notification before sending. Use the Bay search and filters to find repairs that need attention.", "stages"],
+      ["Finishing a Repair", "An owner can prepare the final bill, mark the car Ready for Pickup and confirm pickup. Find past repairs in Archive.", "pickup"],
+      ["Inviting Your Team", "Owners can open Settings → Team to invite staff as owners or technicians. Each person signs in with the email address that received the invitation.", "team"],
+    ];
+    const faqs = [
+      ["Do customers need an account?", "No. Customers open the private repair link sent by the shop to view updates, photos and estimates."],
+      ["I did not receive my account confirmation email.", "Check that you entered the correct email address and look in spam or junk. If you signed up through Google, use Continue with Google with that same account. Contact support below if you still cannot get in."],
+      ["How do I reset my password?", "Choose Forgot password? on Shop Sign In. Request a code by email, or by text if you previously verified a reset phone in Settings."],
+      ["A customer did not receive an update. What should I check?", "Open the repair and review the message delivery result. Verify the customer’s phone, email, notification preference and consent through Edit Customer Info. Correct the details before sending another update."],
+      ["Where can I manage my subscription?", "Shop owners can open Plan to review their plan and use Manage Billing. Technicians can ask an owner for help with billing."],
+      ["What can technicians do?", "Technicians can work on repairs and customer updates. Owners handle shop settings, team invitations, billing, estimate approval requests and closing repairs."],
+    ];
+    return `<section class="help-center">
+      <header class="help-heading"><div><p class="muted">Talk Shops Support</p><h2>How Can We Help?</h2><p class="muted">Quick answers and practical guides for your shop.</p></div><button class="btn" type="button" data-view="board">Back to the Bay</button></header>
+      <div class="help-actions"><a class="panel" href="#help-guides"><b>Quick Guides</b><span>Find the steps for everyday tasks.</span></a><a class="panel" href="#help-training"><b>Walkthroughs &amp; Training</b><span>Follow along with sample vehicles.</span></a><a class="panel" href="#help-support"><b>Contact Support</b><span>Get help from our team by email.</span></a></div>
+      <section class="panel" id="help-guides"><h3>Quick Guides</h3>${guides.map(([title, body, lesson]) => `<details><summary>${esc(title)}</summary><p>${esc(body)}</p><a href="/demo.html?train=${lesson}">Watch the Lesson →</a></details>`).join("")}</section>
+      <section class="panel" id="help-training"><h3>Walkthroughs &amp; Training</h3><p class="muted">Narrated lessons use a demo shop with sample cars. Turn your sound on to follow along.</p><a class="btn primary" href="/demo.html?tour=1">Start the Guided Tour</a><div class="help-lessons">${window.TALKSHOPS_TRAINING.lessons.map(l => `<a href="/demo.html?train=${esc(l.id)}">${esc(l.title)} <small class="muted">${l.mins} min</small></a>`).join("")}</div></section>
+      <section class="panel"><h3>Common Questions</h3>${faqs.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("")}</section>
+      <section class="panel" id="help-support"><h3>Contact Support</h3><p class="muted">Describe what happened and what you were trying to do. We’ll reply to the email below. Please leave out passwords and customer information.</p>
+        <form id="helpForm" class="help-form">
+          <label class="field">Your Name<input name="name" autocomplete="name" required maxlength="100" value="Dana Ruiz"></label>
+          <label class="field">Reply Email<input name="email" type="email" autocomplete="email" required maxlength="254" value="dana@ridgelineauto.com"></label>
+          <label class="field">Shop Name<input name="shop" autocomplete="organization" required maxlength="160" value="${esc(SHOP.name)}"></label>
+          <label class="field">Phone Number (Optional)<input name="phone" type="tel" autocomplete="tel" maxlength="40" value="${esc(SHOP.phone)}"></label>
+          <label class="field help-wide">Topic<select name="topic"><option>Using Talk Shops</option><option>Account or Sign-In</option><option>Customer Notifications</option><option>Plans and Billing</option><option>Report a Problem</option><option>Feature Request</option></select></label>
+          <label class="field help-wide">How Can We Help?<textarea name="message" required maxlength="3400" rows="5"></textarea></label>
+          <div hidden aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+          <p id="helpStatus" class="help-wide" role="status" aria-live="polite"></p><button class="btn primary" type="submit">Send to Support</button>
+        </form><p class="muted">You can also email <a href="mailto:support@talkshops.app">support@talkshops.app</a>.</p>
+      </section>
+    </section>`;
+}
 /* --- views --- */
 function render(){
   const app=$("#app"),chrome=$("#shopChrome");
@@ -551,8 +607,8 @@ function render(){
   chrome.hidden=false;
   $("#shopName").textContent=SHOP.name;$("#bayTab").textContent=bayName();
   document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-current",b.dataset.view===ui.view?"page":"false"));
-  const banner=ui.view==="plan"||ui.view==="training"?"":planUi.banner(plan);
-  app.innerHTML=banner+(ui.view==="checkin"?checkinView():ui.view==="archive"?archiveView():ui.view==="settings"?settingsView():ui.view==="plan"?planUi.view(plan):ui.view==="howto"?howTo.view():ui.view==="training"?window.TALKSHOPS_TRAINING.view(esc,{demo:true}):boardView());
+  const banner=ui.view==="plan"||ui.view==="training"||ui.view==="help"?"":planUi.banner(plan);
+  app.innerHTML=banner+(ui.view==="checkin"?checkinView():ui.view==="archive"?archiveView():ui.view==="settings"?settingsView():ui.view==="plan"?planUi.view(plan):ui.view==="howto"?howTo.view():ui.view==="help"?helpView():ui.view==="training"?window.TALKSHOPS_TRAINING.view(esc,{demo:true}):boardView());
   if(ui.view==="board")filterBoard();
   if(ui.view==="archive")renderArchiveRows();
   renderLayer();
@@ -740,7 +796,7 @@ function sheetView(j){
   const log=[...j.events].reverse().map(e=>`<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
   const live=!j.archivedAt;
   return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-   <div class="sheet-h"><div><div class="mono muted">${j.ro} · ${esc(j.plate||"")}</div><h2 id="sheetTitle">${esc(vehicleStr(j))}</h2><div class="muted">${esc(ShopDisplay.name(j.customer.name))} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
+   <div class="sheet-h"><div><div class="mono muted">${j.ro} · ${esc(j.plate||"")}</div><h2 id="sheetTitle">${esc(vehicleStr(j))}</h2><div class="muted">${esc(ShopDisplay.name(j.customer.name))} · ${esc(contact(j.customer))}</div><button type="button" class="linkbtn" data-edit-customer>Edit Customer Info</button></div><button class="x" data-close aria-label="Close">×</button></div>
    <div class="sheet-body" data-job="${j.id}">
     ${j.archivedAt?`<section class="sec closed-note" id="archivedNote"><p><b>${j.closed?"Closed without repair":"Picked up"}</b> · ${esc(j.closed?j.closed.reason:"")}${j.closed?" · ":""}${dayClock(j.archivedAt)}</p><p class="muted">This car is in the Archive until ${longDate(j.archivedAt+365*86400000)}.</p><div class="btn-row"><button class="btn" id="reopenBtn">Reopen and put back on the board</button><button class="btn danger" data-delete-job="${j.id}">Delete permanently</button></div></section>`:""}
     <section class="sec"><details class="stage-picker" ${window.TOUR_ACTIVE ? "open" : ""}><summary><span>Repair Stage</span><strong>${STAGES[idx].label}</strong></summary><div class="stepper">${steps}</div></details>
@@ -811,6 +867,7 @@ function renderLayer(){
   let h="";
   if(ui.openJob&&(ui.view==="board"||ui.view==="archive")){const j=job(ui.openJob);if(j)h+=sheetView(j)}
   if(ui.modal?.walk){const j=job(ui.modal.job);h+=window.Walkthrough.editor(j,ui.modal.walk,{vehicle:vehicleStr(j)||j.ro,first:first(j.customer.name),consent:j.customer.consent!==false,busy:false})}
+  else if(ui.modal?.customerJob)h+=customerModal();
   else if(ui.modal?.closeJob)h+=closeModal();else if(ui.modal)h+=stageModal();
   const prev=$(".sheet-body"),keep=prev&&prev.dataset.job===ui.openJob?prev.scrollTop:null;
     const stageOpen = keep !== null && prev.querySelector(".stage-picker")?.open;
@@ -847,12 +904,14 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("button,[data-close],[data-open]");if(!t)return;
   if(t.closest(".plan-page,.plan-banner")&&(t.dataset.planInterval||t.dataset.planBuy!==undefined||t.dataset.planPortal!==undefined)){planUi.click(t,render).then(()=>{t.disabled=false});return}
   if(howTo.click(t,render))return;
+  if(t.hasAttribute("data-edit-customer")){ui.modal={customerJob:ui.openJob};renderLayer();$("#ec-name")?.focus();return}
   if(ui.modal?.walk&&window.Walkthrough.click(t,ui.modal.walk))return;
   if(t.dataset.walk){const j=job(ui.openJob);if(j){ui.modal={walk:window.Walkthrough.draftFor(j,t.dataset.walk),job:j.id};renderLayer()}return}
   if(t.closest("[data-team-retry],[data-team-copy],[data-team-remove],[data-team-cancel],[data-team-resend]")){team.click(t,render);return}
   if(t.id==="rcChange"){Object.assign(recov(),{verified:false,pending:""});save();render();$("#rc-phone")?.focus();return}
   if(t.id==="rcCancel"){recov().pending="";save();render();return}
   if(t.id==="rcRemove"){Object.assign(recov(),{phone:"",verified:false,pending:""});save();render();toast("Reset phone removed");return}
+  if(t.id==="demoSignup"){toast("Demo shop: in Talk Shops, this opens the form to create your shop account.");return}
   if(t.id==="demoGoogle"){toast("Demo shop: in your shop, this opens Google sign-in.");return}
   if(t.id==="forgotPw"){ui.reset={step:"ask",email:$("#au-email")?.value.trim()||""};render();$("#fp-email")?.focus();return}
   if(t.id==="fpBack"){ui.reset=null;render();return}
@@ -912,6 +971,12 @@ document.addEventListener("submit",e=>{
     if(body.send){w.sentAt=Date.now();notify(j,`Hi ${first(j.customer.name)}, your ${body.kind==="before"?"check-in":"after-repair"} walk-through for your ${vehicleStr(j)} is ready: ${linkOf(j)}`)}
     (j.walkthroughs||={})[body.kind]=w;
     ui.modal=null;save();renderLayer();toast("Walk-through saved"+(body.send?". Customer notified.":" to the customer's page"));return}
+  if(f.id==="helpForm"){const st=$("#helpStatus");if(st)st.textContent="Demo shop: nothing is sent. In your shop, this goes to Talk Shops support, and we reply by email.";toast("Demo shop: support message not sent");return}
+  if(f.id==="customerForm"){const j=job(ui.modal.customerJob),ch=$("#ec-channel").value,phone=$("#ec-phone").value.trim(),email=$("#ec-email").value.trim();
+    if(ch!=="email"&&phone.replace(/\D/g,"").length<10){const e=$("#ec-error");e.textContent="Enter a 10-digit mobile number.";e.hidden=false;return}
+    if(ch!=="sms"&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){const e=$("#ec-error");e.textContent="Enter a valid email address.";e.hidden=false;return}
+    j.customer={...j.customer,name:$("#ec-name").value.trim()||j.customer.name,phone,email,channel:ch,preference:ch,consent:$("#ec-consent").checked};
+    ui.modal=null;save();render();renderLayer();toast("Customer info saved");return}
   if(f.id==="teamInviteForm"){team.submit(f,render);return}
   if(f.id==="recoveryPhoneForm"){const ph=$("#rc-phone").value.trim();if(ph.replace(/\D/g,"").length<10){toast("Enter a 10-digit mobile number");return}Object.assign(recov(),{phone:ph,pending:ph});save();render();toast("Demo shop: no text is sent. Use code 123456.");$("#rc-code")?.focus();return}
   if(f.id==="recoveryCodeForm"){if($("#rc-code").value.replace(/\D/g,"")!=="123456"){toast("That code doesn't match. In the demo, use 123456.");return}Object.assign(recov(),{verified:true,pending:""});save();render();toast("Phone verified");return}
@@ -955,6 +1020,7 @@ document.addEventListener("submit",e=>{
 });
 document.addEventListener("change",async e=>{
   if(e.target.id==="ci-channel")syncChannel();
+  if(["ec-channel","ec-phone","ec-email"].includes(e.target.id)&&$("#ec-consent")){$("#ec-consent").checked=false;$("#ec-phone").required=$("#ec-channel").value!=="email";$("#ec-email").required=$("#ec-channel").value!=="sms";return}
   if(e.target.dataset?.teamRole){team.change(e.target,render);return}
   if(e.target.dataset?.pri&&ui.openJob){const j=job(ui.openJob),x=j&&j.estimate.find(l=>String(l.id)===e.target.dataset.pri);if(x){x.priority=e.target.value;save();renderLayer();toast("Priority updated")}return}
   if(e.target.id==="c-send")$("#c-text-wrap").hidden=!e.target.checked;

@@ -83,7 +83,12 @@
     check();
   }
   let clip = null; // {key, done:Promise, t0, est}
+  // Debug aid: /demo.html?train=bay&tourdebug=1 logs every highlight, tap or typing target that isn't on the page.
+  const DEBUG = params.has("tourdebug");
+  let sayKey = "";
+  const miss = (what, sel, el) => { if (DEBUG && !el) console.warn("[tour-miss]", sayKey, what, typeof sel === "string" ? sel : String(sel)); };
   function say(key) {
+    sayKey = key;
     check();
     const words = (LINES[key] || "").split(/\s+/).length;
     const est = Math.max(3, words / 2.4); // fallback seconds if audio can't play
@@ -141,6 +146,7 @@
   function highlight(sel) {
     spotSel = sel;
     const el = sel && (typeof sel === "string" ? q(sel) : sel);
+    miss("highlight", sel, el);
     reveal(el);
   }
   (function track() {
@@ -167,6 +173,7 @@
   async function tap(sel) {
     check();
     const el = typeof sel === "string" ? q(sel) : sel;
+    miss("tap", sel, el);
     if (!el) return;
     reveal(el);
     await wait(250);
@@ -181,7 +188,7 @@
     await wait(250);
   }
   async function type(sel, text) {
-    const el = q(sel); if (!el) return;
+    const el = q(sel); miss("type", sel, el); if (!el) return;
     el.focus({ preventScroll: true });
     reveal(el, "instant");
     el.value = "";

@@ -345,7 +345,7 @@ main:has(>.auth){padding:0;max-width:none}
 
 @media (max-width:760px){
   .tabs.has-icons{grid-auto-flow:unset;grid-template-columns:repeat(5,minmax(0,1fr))}
-  .tabs.has-icons .tab[data-view="settings"],.tabs.has-icons .tab[data-view="plan"],.tabs.has-icons .tab[data-view="training"]{display:none}
+  .tabs.has-icons .tab[data-view="settings"],.tabs.has-icons .tab[data-view="plan"],.tabs.has-icons .tab[data-view="training"],.tabs.has-icons .tab[data-view="help"]{display:none}
   .tab-more{display:flex!important}
   .tabs.has-icons .tab.more-on{background:var(--accent-soft);color:var(--accent-ink)}
   .tabs.has-icons .tab.more-on .tab-i{color:var(--accent);opacity:1}
