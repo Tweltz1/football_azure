@@ -1,13 +1,6 @@
+import { callBackend } from './api';
 import { departmentFromKrogerCategory } from './departments';
 import { ItemLocation } from './types';
-
-// Set these in a .env file (see README). Both are safe to ship in the app.
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const SUPABASE_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-export const krogerConfigured = Boolean(SUPABASE_URL && SUPABASE_KEY);
-
-export type KrogerStore = { locationId: string; name: string; chain: string; address: string };
 
 export type KrogerAisle = {
   number?: string;
@@ -25,19 +18,8 @@ export type KrogerProduct = {
   aisleLocations: KrogerAisle[];
 };
 
-async function call<T>(params: Record<string, string>): Promise<T> {
-  if (!krogerConfigured) throw new Error('Kroger lookup is not set up yet. Add the Supabase values to .env.');
-  const url = `${SUPABASE_URL}/functions/v1/kroger?${new URLSearchParams(params)}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY! } });
-  const body = await res.json();
-  if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status}).`);
-  return body as T;
-}
-
-export const findKrogerStores = (zip: string) => call<KrogerStore[]>({ action: 'locations', zip });
-
 export const searchKrogerProducts = (term: string, locationId: string) =>
-  call<KrogerProduct[]>({ action: 'products', term, locationId });
+  callBackend<KrogerProduct[]>({ action: 'kroger-products', term, locationId });
 
 /** Converts a Kroger product to a routable location. Prefers the first numbered aisle. */
 export function locationFromKroger(p: KrogerProduct): ItemLocation {

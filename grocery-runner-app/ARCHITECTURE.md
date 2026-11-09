@@ -8,17 +8,37 @@ the app can show how much to trust it (`Aisle 14 · Kroger`, `Produce · guess`)
 | Tier | Stores | Source | Status |
 |---|---|---|---|
 | 1. Official API | Kroger family (Kroger, Fry's, King Soopers, Ralphs, Smith's, Fred Meyer, Harris Teeter, ...) | Kroger Public API `GET /v1/products?filter.term=...&filter.locationId=...` returns `aisleLocations` (aisle number, side, bay, shelf) per store | Built |
-| 2. Shopper-entered aisles | Any store | The shopper types an aisle once; it is remembered per store and item | Built (on the phone) |
-| 3. Department fallback | Any store | Item name → department by keyword (`departments.ts`), placed on a generic floor plan | Built |
-| 4. Shared aisle data | Any store | Tier 2 entries pooled across shoppers in Supabase, majority vote per store + item | Planned |
+| 2. Your own aisles | Any store | The shopper types an aisle once; it is remembered on the phone per store and item, and always wins | Built |
+| 3. Shared shopper aisles | Walmart, Target, Hy-Vee, Costco, Aldi (and Kroger items the API misses) | Every aisle a shopper types is a vote in Supabase; the majority answer per store + item is used, shown as "Aisle 7 · 3 shoppers" | Built |
+| 4. Department fallback | Any store | Item name → department by keyword (`departments.ts`), placed on a generic floor plan | Built |
 
-### Kroger request flow
+### Request flow
 ```
-iPhone app ──(public anon key)──▶ Supabase function `kroger` ──(client secret, OAuth2)──▶ api.kroger.com
+iPhone app ──(public anon key)──▶ Supabase function `grocery-runner` ──┬─(OAuth2)──────▶ api.kroger.com
+                                                                     ├─(RSA-signed)──▶ Walmart affiliate Store Locator
+                                                                     └─(service role)─▶ grocery_aisle_votes table
 ```
-The Kroger client secret lives only in Supabase secrets. The function caches its OAuth token and returns
+All secrets (Kroger, Walmart, service role) live only in Supabase. The function caches its OAuth token and returns
 a trimmed product list. Kroger's free tier allows 10,000 product calls per day, which is plenty for an
 early app; the next step is caching results per store + item in a Supabase table.
+
+### Shared shopper aisles
+- Store identity: Kroger and Walmart stores come from their official store search (`kroger:<locationId>`,
+  `walmart:<store number>`). Target, Hy-Vee, Costco and Aldi are identified by chain + ZIP, plus a street
+  when a ZIP has two (`target:50309-ingersoll`). "Other" stores stay on the phone and are never shared.
+- Table `grocery_aisle_votes` (`tools/setup_supabase.py`): one row per store + item + phone; voting again
+  replaces your old vote. Row level security is on with no policies, so only the function can touch it.
+- Item names are normalised (`peanut butter!` = `Peanut  Butter`), aisles are cleaned to short
+  values like `14` or `A14`, and the majority answer wins (aisle beats department on a tie, newer beats older).
+- Known gap: a random phone id is easy to fake. Before a public launch, add sign in with Apple and
+  rate limits so one person can't flood a store with wrong answers.
+
+### Affiliate APIs: what they give us
+- **Walmart** (walmart.io affiliate API): used for its **Store Locator** (real store numbers near a ZIP), so
+  votes are shared per actual store. Its product APIs have no aisle data, so they are not used.
+- **Target**: no public developer API. Its affiliate side moved to creator programs (Club Target,
+  Target Ambassadors with LTK, May 2026), which are for links and commissions, not product data.
+- **Hy-Vee**: no public API or affiliate data feed. A partnership request is the only path.
 
 ### Walmart, Target, Hy-Vee: why there is no "automated extraction" tier
 The original proposal had the backend query the private product endpoints that those retailers' own
@@ -30,11 +50,8 @@ apps and websites use. That is not built, on purpose:
 - Home Depot is in the same group: it has no public developer API, only an affiliate program.
 
 Compliant ways to cover these stores, best first:
-1. **Shared aisle data** (tier 4): every aisle a shopper confirms at a Walmart helps the next shopper at
-   that same store. This is how the app gets better over time, and the data is the app's own.
-2. **Partner or affiliate APIs**: Walmart (walmart.io affiliate API) and Target (Partners/Impact) have
-   affiliate programs. As far as I know they give product and price data but not aisle numbers, so they
-   help with product search and naming, not location. Worth checking each program's current fields.
+1. **Shared shopper aisles** (tier 3, built).
+2. **Affiliate APIs** (Walmart Store Locator, built; see above).
 3. **Ask the retailer**: Hy-Vee is regional and partners with app makers. A data-sharing request is a
    realistic ask once the app has users.
 
@@ -74,7 +91,7 @@ Tests in `tests/routing.test.ts` cover A* around walls, reachability of every ai
 aisle label parsing, department guessing, stop order, grouping and the cold-last rule.
 
 ## 4. Next steps
-1. Shared aisle data in Supabase (tier 4) with sign in with Apple.
+1. Sign in with Apple and rate limits on shared aisle votes.
 2. Cache Kroger lookups per store + item.
 3. Let the shopper pick the exact Kroger product when the first search result is wrong.
 4. Per-store layouts for the most-used stores.

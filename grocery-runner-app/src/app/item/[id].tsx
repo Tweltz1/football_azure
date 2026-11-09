@@ -55,7 +55,7 @@ export default function ItemScreen() {
           <Button title="Save" onPress={saveAisle} disabled={!aisle.trim()} />
         </View>
         {store && (
-          <Text style={{ color: t.textMuted, marginTop: 8 }}>Remembered for {store.name} next time.</Text>
+          <Text style={{ color: t.textMuted, marginTop: 8 }}>{store.id.startsWith("custom:") ? `Remembered for ${store.name} next time.` : `Remembered, and shared with other shoppers at ${store.name}.`}</Text>
         )}
       </Card>
 

@@ -18,8 +18,10 @@ export type ItemLocation =
       /** Department the aisle belongs to, if known (used for "cold items last"). */
       department?: Department;
       source: LocationSource;
+      /** For shared shopper aisles: how many shoppers agree. */
+      votes?: number;
     }
-  | { kind: 'department'; department: Department; source: LocationSource }
+  | { kind: 'department'; department: Department; source: LocationSource; votes?: number }
   | { kind: 'unknown' };
 
 /** Where the location came from, so the UI can show how much to trust it. */
@@ -32,10 +34,14 @@ export type ListItem = {
   location: ItemLocation;
 };
 
-export type StoreChain = 'kroger' | 'other';
+export type StoreChain = 'kroger' | 'walmart' | 'target' | 'hyvee' | 'costco' | 'aldi' | 'other';
 
 export type Store = {
-  id: string; // "kroger:01400943" or "custom:<uuid>"
+  /**
+   * "kroger:01400943", "walmart:1234" (real store numbers), "target:50309" (chain + ZIP),
+   * or "custom:<name>" for a store kept on this phone only. All but custom share aisles with other shoppers.
+   */
+  id: string;
   chain: StoreChain;
   name: string;
   address?: string;

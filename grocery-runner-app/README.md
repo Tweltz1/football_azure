@@ -9,8 +9,9 @@ machine (`.github/workflows/grocery-runner-app.yml`), so no Mac is needed.
 - **Store**:
   - Kroger family stores (Kroger, Fry's, King Soopers, Ralphs, Smith's, Fred Meyer, ...): find by ZIP.
     Aisles fill in automatically from the official Kroger API.
-  - Any other store (Walmart, Hy-Vee, Target, Costco, local grocers): name + number of aisles. Items are
-    sorted by department, and any aisle you type is remembered for that store next time.
+  - Walmart (store search by ZIP), Target, Hy-Vee, Costco, Aldi: aisles other shoppers entered at that
+    store fill in automatically ("Aisle 7 · 3 shoppers"). Any aisle you type is remembered and shared.
+  - Other stores: kept on the phone. Items sort by department and your aisles are remembered.
 - **Route**: A* walking paths on a store grid, stops ordered for the shortest total walk, with
   "Frozen and dairy last" on by default. Items at the same spot are grouped into one stop.
 - Data stays on the phone (no account).
@@ -22,7 +23,8 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how locations are sourced and how rou
 - `src/lib/routing/` the routing engine: `grid.ts`, `astar.ts`, `layout.ts` (generic store floor plan),
   `tour.ts` (stop order), `planRoute.ts` (ties it together).
 - `src/lib/` `kroger.ts` client, `departments.ts` keyword guesses and walk order, `store.tsx` app data.
-- `supabase/functions/kroger/` the server side of Kroger lookup, so the Kroger secret never ships in the app.
+- `supabase/functions/grocery-runner/` the server side: Kroger lookup, Walmart store search, shared aisles.
+  No secret ever ships in the app. `tools/setup_supabase.py` creates the shared aisle table.
 - `tests/` routing tests (`npm test`).
 - `app.json` name, bundle ID `com.tweltz1.groceryrunner`. `ios/` is generated on the build machine and not committed.
 
@@ -32,14 +34,18 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how locations are sourced and how rou
    first if it isn't in the list).
 2. **Kroger API keys** (free): sign up at https://developer.kroger.com, create an app with the
    **Product** scope (public, production environment), and copy its client ID and secret.
-3. In GitHub: repo **Settings > Secrets and variables > Actions > New repository secret**, add
-   `KROGER_CLIENT_ID` and `KROGER_CLIENT_SECRET`. The Apple and Supabase secrets are already there from
-   the other apps.
+3. **Walmart affiliate keys** (optional, free): sign up at https://walmart.io, create an application, and
+   upload a public key (`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out walmart.pem`,
+   then `openssl pkey -in walmart.pem -pubout`). Note the consumer ID and key version.
+4. In GitHub: repo **Settings > Secrets and variables > Actions > New repository secret**, add
+   `KROGER_CLIENT_ID`, `KROGER_CLIENT_SECRET`, and optionally `WALMART_CONSUMER_ID`, `WALMART_KEY_VERSION`,
+   `WALMART_PRIVATE_KEY` (the whole walmart.pem text). The Apple secrets are already there from the other
+   apps; `SUPABASE_ACCESS_TOKEN` must be set for the backend to deploy.
 
 ## Builds (TestFlight)
 - Any push touching `grocery-runner-app/` runs the tests, builds for the simulator and pushes
-  screenshots to the `grocery-runner-screenshots` branch. It also deploys the Kroger function once
-  the Kroger secrets exist.
+  screenshots to the `grocery-runner-screenshots` branch. It also creates the shared aisle table and
+  deploys the `grocery-runner` function when `SUPABASE_ACCESS_TOKEN` is set.
 - Put `[grocery-upload]` in a commit message (or Actions > Grocery Runner iPhone app > Run workflow >
   tick "Upload to TestFlight") to send a build to TestFlight.
 
