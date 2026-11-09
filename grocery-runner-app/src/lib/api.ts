@@ -24,16 +24,17 @@ export const backendStatus = () => callBackend<BackendStatus>({ action: 'status'
 export const findStores = (chain: 'kroger' | 'walmart', zip: string) =>
   callBackend<FoundStore[]>({ action: `${chain}-stores`, zip });
 
-export type NearbyStore = {
+export type OfficialStore = {
   key: string;
-  chain: 'kroger' | 'walmart' | 'target' | 'hyvee' | 'costco' | 'aldi' | 'woodmans';
+  chain: 'kroger' | 'walmart';
   name: string;
   address: string;
   lat: number;
   lon: number;
-  coverage: 'kroger' | 'shared';
-  items: number;
 };
 
-export const nearbyStores = (lat: number, lon: number) =>
-  callBackend<NearbyStore[]>({ action: 'nearby', lat: lat.toFixed(4), lon: lon.toFixed(4) });
+export const officialStoresNear = (lat: number, lon: number) =>
+  callBackend<OfficialStore[]>({ action: 'nearby', lat: lat.toFixed(4), lon: lon.toFixed(4) });
+
+export const storeCoverage = (keys: string[]) =>
+  callBackend<Record<string, number>>({ body: { action: 'coverage', stores: keys } });

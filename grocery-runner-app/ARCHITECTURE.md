@@ -34,12 +34,17 @@ early app; the next step is caching results per store + item in a Supabase table
   rate limits so one person can't flood a store with wrong answers.
 
 ### Store map
-`GET ?action=nearby&lat&lon` returns supported stores within about 15 km: Kroger and Walmart from their
-official store APIs when those keys are set (so ids match aisle lookup), everything else from
-OpenStreetMap through the Overpass API (credited on the map, as its license requires). Each store
-carries its coverage: Kroger aisle data, or how many items shoppers have mapped there (view
-`grocery_store_coverage`). Stores picked on the map are keyed by OSM id (`woodmans:osm-w123`), which
-is more precise than chain + ZIP. Results are cached per ~1 km for 30 minutes in the function.
+Store pins come from **Apple Maps search on the phone** (`modules/store-search`, a small Swift module
+using MKLocalSearch): free, no API key, no server load, and fine for App Store apps. The app searches
+each supported chain name near the map center and keeps places whose name matches a chain
+(`src/lib/chainMatch.ts`), dropping gas stations, pharmacies and Sam's Club. The server adds the official
+Kroger and Walmart store lists (when those keys are set); an official store within 400 m replaces the
+Apple Maps pin so its id matches Kroger aisle lookup. Other stores are keyed by chain + position rounded
+to ~100 m (`aldi:g43073xm89401`). Each pin is colored by coverage: Kroger aisle data, items mapped by
+shoppers (view `grocery_store_coverage`), or not mapped yet.
+
+A first version used OpenStreetMap's public Overpass servers from the Supabase function; they refused
+or timed out from Supabase, so that was dropped.
 
 ### Affiliate APIs: what they give us
 - **Walmart** (walmart.io affiliate API): used for its **Store Locator** (real store numbers near a ZIP), so

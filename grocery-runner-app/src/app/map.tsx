@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import { Button, Chip } from '../components/ui';
-import { NearbyStore, nearbyStores } from '../lib/api';
 import { chainInfo } from '../lib/chains';
+import { MapStore, storesNear } from '../lib/nearby';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
 
@@ -19,17 +19,17 @@ export default function MapScreen() {
   const t = useTheme();
   const { setStore } = useData();
   const map = useRef<MapView>(null);
-  const [stores, setStores] = useState<NearbyStore[]>([]);
+  const [stores, setStores] = useState<MapStore[]>([]);
   const [center, setCenter] = useState<{ lat: number; lon: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<NearbyStore | null>(null);
+  const [selected, setSelected] = useState<MapStore | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const lastFetch = useRef<{ lat: number; lon: number } | null>(null);
 
-  const colorFor = (s: NearbyStore) => (s.coverage === 'kroger' ? t.primary : s.items > 0 ? t.stop : t.textMuted);
-  const coverageText = (s: NearbyStore) =>
+  const colorFor = (s: MapStore) => (s.coverage === 'kroger' ? t.primary : s.items > 0 ? t.stop : t.textMuted);
+  const coverageText = (s: MapStore) =>
     s.coverage === 'kroger'
       ? 'Aisles for every item, from Kroger'
       : s.items > 0
@@ -41,7 +41,7 @@ export default function MapScreen() {
     setBusy(true);
     setError(null);
     try {
-      setStores(await nearbyStores(lat, lon));
+      setStores(await storesNear(lat, lon));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -87,7 +87,7 @@ export default function MapScreen() {
     }
   };
 
-  const shopHere = (s: NearbyStore) => {
+  const shopHere = (s: MapStore) => {
     setStore({ id: s.key, chain: s.chain, name: s.name, address: s.address || undefined, aisleCount: chainInfo(s.chain).aisles });
     router.dismissAll();
   };
@@ -136,6 +136,11 @@ export default function MapScreen() {
           <Chip label="With aisles" selected={filter === 'mapped'} onPress={() => setFilter('mapped')} />
         </View>
         {error && <Text style={[styles.note, { color: t.danger, backgroundColor: t.card }]}>{error}</Text>}
+        {center && !busy && !error && stores.length === 0 && (
+          <Text style={[styles.note, { color: t.textMuted, backgroundColor: t.card }]}>
+            No supported stores found here. Try another ZIP code or city.
+          </Text>
+        )}
         {!center && !error && (
           <Text style={[styles.note, { color: t.textMuted, backgroundColor: t.card }]}>
             Search a ZIP code or city, or allow location to see stores near you.
@@ -161,7 +166,6 @@ export default function MapScreen() {
             <Legend color={t.textMuted} text="Not mapped yet" />
           </View>
         )}
-        <Text style={[styles.credit, { color: t.textMuted }]}>Store locations © OpenStreetMap contributors</Text>
       </View>
     </View>
   );
@@ -189,5 +193,4 @@ const styles = StyleSheet.create({
   coverage: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 6 },
   dot: { width: 12, height: 12, borderRadius: 6 },
   legend: { flexDirection: 'row', justifyContent: 'space-around', padding: 12, borderRadius: radius.lg },
-  credit: { fontSize: 11, textAlign: 'center' },
 });

@@ -1,143 +1,43 @@
-// Supported stores near a point, for the map. Kroger and Walmart come from their official store APIs
-// when those keys are set (so their ids match aisle lookup); every other chain comes from
-// OpenStreetMap via the Overpass API (data © OpenStreetMap contributors, ODbL; the app shows this credit).
-import { Chain, chainOf, osmStoreKey } from './chains.ts';
+// For the store map. Store pins come from Apple Maps on the phone; this adds the official Kroger and
+// Walmart store lists (when those keys are set, so their ids match aisle lookup) and how many items
+// shoppers have mapped at each store.
 import { krogerReady, krogerStoresNear } from './kroger.ts';
 import { walmartReady, walmartStoresNear } from './walmart.ts';
 
-// Public Overpass servers, tried in order (the main one sometimes refuses or is busy).
-const OVERPASS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-];
-const RADIUS_M = 15000;
-// Names of supported chains, including Kroger's banners (chainOf() does the exact matching).
-const NAME_PATTERN = [
-  'walmart', 'target', 'hy-?vee', 'costco', 'aldi', 'woodman', 'kroger', 'fry', 'king soopers', 'ralphs', 'smith',
-  'fred meyer', 'harris teeter', 'dillons', 'qfc', 'mariano', 'pick .?n.? save', 'metro market', 'city market',
-  'food 4 less', 'foods co', 'baker', 'gerbes', 'jay c', 'pay less', 'ruler',
-].join('|');
-
-export type NearbyStore = {
+export type OfficialStore = {
   key: string;
-  chain: Chain;
+  chain: 'kroger' | 'walmart';
   name: string;
   address: string;
   lat: number;
   lon: number;
-  /** "kroger" = full aisle data from Kroger; "shared" = aisles from shoppers (see items). */
-  coverage: 'kroger' | 'shared';
-  /** Items with shared shopper aisles at this store. */
-  items: number;
 };
 
-// Small in-memory cache so panning the map doesn't hit Overpass every time. Lives as long as the
-// function instance (minutes), which is fine for store locations.
-const cache = new Map<string, { at: number; stores: NearbyStore[] }>();
-
-async function fromOsm(lat: number, lon: number): Promise<NearbyStore[]> {
-  // Filter by chain name on the Overpass server so the reply stays small (edge functions have tight CPU limits).
-  const shops = '["shop"~"^(supermarket|wholesale|department_store)$"]';
-  const around = `(around:${RADIUS_M},${lat},${lon})`;
-  const query =
-    `[out:json][timeout:20];(` +
-    `nwr${shops}["brand"~"${NAME_PATTERN}",i]${around};` +
-    `nwr${shops}["name"~"${NAME_PATTERN}",i]${around};` +
-    `);out tags center 200;`;
-  let body: { elements?: unknown[] } | null = null;
-  const errors: string[] = [];
-  for (const server of OVERPASS) {
-    try {
-      const res = await fetch(server, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept: 'application/json',
-          'User-Agent': 'GroceryRunner/1.0 (+https://github.com/Tweltz1/football_azure)',
-        },
-        body: `data=${encodeURIComponent(query)}`,
-      });
-      if (res.ok) {
-        const json = await res.json();
-        // Overpass reports timeouts and query errors as a "remark" on an otherwise empty 200 reply.
-        if (json.remark && !json.elements?.length) {
-          errors.push(`${new URL(server).host} ${String(json.remark).slice(0, 120)}`);
-          continue;
-        }
-        body = json;
-        break;
-      }
-      errors.push(`${new URL(server).host} ${res.status}`);
-    } catch (e) {
-      errors.push(`${new URL(server).host} ${(e as Error).message.slice(0, 60)}`);
-    }
-  }
-  if (!body) throw new Error(`Store map lookup failed (${errors.join('; ')}).`);
-
-  const out: NearbyStore[] = [];
-  // deno-lint-ignore no-explicit-any
-  for (const el of (body.elements ?? []) as any[]) {
-    const tags = el.tags ?? {};
-    const chain = chainOf(tags);
-    const la = el.lat ?? el.center?.lat;
-    const lo = el.lon ?? el.center?.lon;
-    if (!chain || la == null || lo == null) continue;
-    out.push({
-      key: osmStoreKey(chain, el.type, el.id),
-      chain,
-      name: tags.name ?? tags.brand ?? chain,
-      address: [tags['addr:housenumber'], tags['addr:street'], tags['addr:city']].filter(Boolean).join(' '),
-      lat: la,
-      lon: lo,
-      coverage: 'shared',
-      items: 0,
-    });
-  }
-  return out;
+export async function officialStoresNear(lat: number, lon: number): Promise<OfficialStore[]> {
+  const [kroger, walmart] = await Promise.all([
+    krogerReady() ? krogerStoresNear(lat, lon).catch(() => []) : [],
+    walmartReady() ? walmartStoresNear(lat, lon).catch(() => []) : [],
+  ]);
+  return [
+    ...kroger.map((s) => ({ ...s, key: `kroger:${s.id.toLowerCase()}`, chain: 'kroger' as const })),
+    ...walmart.map((s) => ({ ...s, key: `walmart:${s.id}`, chain: 'walmart' as const })),
+  ];
 }
 
-async function krogerNear(lat: number, lon: number): Promise<NearbyStore[]> {
-  return (await krogerStoresNear(lat, lon)).map((s) => ({ ...s, key: `kroger:${s.id.toLowerCase()}`, chain: 'kroger' as const, coverage: 'kroger' as const, items: 0 }));
-}
-
-async function walmartNear(lat: number, lon: number): Promise<NearbyStore[]> {
-  return (await walmartStoresNear(lat, lon)).map((s) => ({ ...s, key: `walmart:${s.id}`, chain: 'walmart' as const, coverage: 'shared' as const, items: 0 }));
-}
-
-async function coverage(stores: NearbyStore[]) {
+/** Items with shared shopper aisles per store key (view grocery_store_coverage). */
+export async function coverage(keys: unknown): Promise<Record<string, number>> {
+  const clean = Array.isArray(keys)
+    ? [...new Set(keys.filter((k) => typeof k === 'string' && /^[a-z]+:[a-z0-9-]{3,40}$/.test(k)))].slice(0, 200)
+    : [];
+  if (!clean.length) return {};
   const url = Deno.env.get('SUPABASE_URL')!;
   const service = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const keys = stores.filter((s) => s.coverage === 'shared').map((s) => `"${s.key}"`);
-  if (!keys.length) return;
-  const q = new URLSearchParams({ select: 'store_key,items', store_key: `in.(${keys.join(',')})` });
-  const res = await fetch(`${url}/rest/v1/grocery_store_coverage?${q}`, { headers: { apikey: service, Authorization: `Bearer ${service}` } });
-  if (!res.ok) return; // the map still works without counts
-  const counts = new Map<string, number>((await res.json()).map((r: { store_key: string; items: number }) => [r.store_key, r.items]));
-  for (const s of stores) s.items = counts.get(s.key) ?? 0;
-}
-
-export async function nearbyStores(lat: number, lon: number): Promise<NearbyStore[]> {
-  // Round to ~1 km so nearby requests share a cache entry.
-  const cacheKey = `${lat.toFixed(2)},${lon.toFixed(2)}`;
-  const hit = cache.get(cacheKey);
-  let stores: NearbyStore[];
-  if (hit && Date.now() - hit.at < 30 * 60_000) {
-    stores = hit.stores.map((s) => ({ ...s }));
-  } else {
-    const [osm, kroger, walmart] = await Promise.all([
-      fromOsm(lat, lon),
-      krogerReady() ? krogerNear(lat, lon).catch(() => null) : null,
-      walmartReady() ? walmartNear(lat, lon).catch(() => null) : null,
-    ]);
-    // Official lists replace the OSM copies of the same chain, so ids match aisle lookup.
-    stores = [
-      ...osm.filter((s) => !(kroger && s.chain === 'kroger') && !(walmart && s.chain === 'walmart')),
-      ...(kroger ?? []),
-      ...(walmart ?? []),
-    ];
-    cache.set(cacheKey, { at: Date.now(), stores: stores.map((s) => ({ ...s })) });
-  }
-  await coverage(stores);
-  return stores;
+  const q = new URLSearchParams({ select: 'store_key,items', store_key: `in.(${clean.map((k) => `"${k}"`).join(',')})` });
+  const res = await fetch(`${url}/rest/v1/grocery_store_coverage?${q}`, {
+    headers: { apikey: service, Authorization: `Bearer ${service}` },
+  });
+  if (!res.ok) throw new Error(`Coverage lookup failed (${res.status}).`);
+  const out: Record<string, number> = {};
+  for (const r of (await res.json()) as { store_key: string; items: number }[]) out[r.store_key] = r.items;
+  return out;
 }
