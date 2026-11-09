@@ -41,6 +41,7 @@
           </div>
           <label class="field">What do you need to do?<textarea id="howtoQ" rows="2" maxlength="500" placeholder="e.g. Replace the front wheel bearing, or how do I remove the intake manifold?"></textarea></label>
           <div id="howtoSuggest" class="howto-suggest" aria-live="polite">${suggestHtml()}</div>
+          <div id="howtoVideos" class="howto-videos">${videosHtml()}</div>
           <div class="howto-actions">
             <button type="button" class="btn mic" data-dictate="#howtoQ" aria-pressed="false" aria-label="Voice typing">${MIC}<span class="mic-label">Speak</span></button>
             <button class="btn primary" type="submit" id="howtoAsk" ${st.busy ? "disabled" : ""}>${st.busy ? "Looking it up…" : "Ask"}</button>
@@ -109,6 +110,15 @@
     // /videos/<Make>/<Model>/<Year>, e.g. /videos/Ford/F-150/2017; without a full vehicle, a site search.
     const UPPER = new Set(["bmw", "gmc", "rav4", "mdx", "rdx", "tlx", "ilx", "tsx", "srx", "cts", "ats", "xt5", "es", "is", "gs", "rx", "nx", "gx", "lx", "fj", "gti", "suv"]);
     const cap = (w) => w.split(/(\s+|-)/).map((p) => UPPER.has(p.toLowerCase()) ? p.toUpperCase() : p.length > 3 || /^[a-z]+$/i.test(p) && p.length > 2 ? p.charAt(0).toUpperCase() + p.slice(1) : p.toUpperCase()).join("");
+    const ytLink = (vl, q) => "https://www.youtube.com/results?search_query=" + encodeURIComponent(`${vl} ${q}`.trim());
+    // Video links cost no AI: shown as soon as there's a car and a job, before anyone presses Ask.
+    function videosHtml() {
+      const q = (document.getElementById("howtoQ")?.value || "").trim(), v = st.vehicle, vl = label({ ...v, engine: "" });
+      if (!v.make || !v.model || q.length < 3) return "";
+      const t = { v, vehicle: vl, q };
+      return `<span>Watch first, no AI needed:</span><a href="${esc(ytLink(vl, q))}" target="_blank" rel="noopener">YouTube videos</a><a href="${esc(videoLink(t))}" target="_blank" rel="noopener">CarCareKiosk</a>`;
+    }
+    function paintVideos() { const el = document.getElementById("howtoVideos"); if (el) el.innerHTML = videosHtml(); }
     function videoLink(t) {
       const v = t.v || {};
       if (v.make && v.model && /^\d{4}$/.test(v.year || "")) {
@@ -132,7 +142,7 @@
         ${r.steps.length ? `<div class="howto-block"><h4>Steps</h4><ol class="howto-steps">${r.steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>` : ""}
         <div class="howto-foot">
           ${r.ideas.length ? `<div class="howto-quick">${r.ideas.map((q) => `<button type="button" class="howto-chip" data-howto-ask="${esc(q)}">${esc(q)}</button>`).join("")}</div>` : ""}
-          <span class="howto-links"><a class="linkbtn" href="${esc(videoLink(t))}" target="_blank" rel="noopener">${t.v && t.v.make && t.v.model && /^\d{4}$/.test(t.v.year) ? "Videos for this car" : "Find a video"}</a>
+          <span class="howto-links"><a class="linkbtn" href="${esc(ytLink(label({ ...(t.v || {}), engine: "" }) || t.vehicle, t.q))}" target="_blank" rel="noopener">YouTube</a><a class="linkbtn" href="${esc(videoLink(t))}" target="_blank" rel="noopener">${t.v && t.v.make && t.v.model && /^\d{4}$/.test(t.v.year) ? "Videos for this car" : "Find a video"}</a>
           <button type="button" class="linkbtn" data-howto-copy="${i}">Copy</button></span>
         </div>
         ${feedback(r, i)}
@@ -238,11 +248,11 @@
       st.vehicle = v;
       for (const [id, k] of [["howtoYear", "year"], ["howtoMake", "make"], ["howtoModel", "model"], ["howtoEngine", "engine"]]) { const i = document.getElementById(id); if (i) i.value = v[k]; }
       document.getElementById("howtoQ")?.focus();
-      loadSuggestions();
+      loadSuggestions(); paintVideos();
     });
     document.addEventListener("input", (e) => {
-      if (/^howto(Year|Make|Model|Engine)$/.test(e.target.id || "")) { readVehicle(); loadSuggestions(); }
-      if (e.target.id === "howtoQ") loadSuggestions();
+      if (/^howto(Year|Make|Model|Engine)$/.test(e.target.id || "")) { readVehicle(); loadSuggestions(); paintVideos(); }
+      if (e.target.id === "howtoQ") { loadSuggestions(); paintVideos(); }
     });
 
     /** Opens the tab for one car (from its detail sheet). */

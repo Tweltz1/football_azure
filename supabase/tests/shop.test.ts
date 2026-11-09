@@ -683,3 +683,23 @@ test('price list import reads a file with AI and saved items keep labor hours', 
   deps.priceReader = { async read() { throw new Error('Gemini 500'); } };
   assert.equal((await dan('POST', 'shop/price-import', { text: 'a\tb' }))?.status, 502);
 });
+
+test('VIN decoding and recalls for signed-in staff, and check-in keeps the VIN and engine', async () => {
+  const w = world();
+  const dan = w.as('user-dan');
+  assert.equal((await w.as(null)('POST', 'shop/vin', { vin: '19XFC2F5XGE000000' }))?.status, 401);
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  w.deps.fetchFn = (async (url: string) => new Response(JSON.stringify(String(url).includes('vpic')
+    ? { Results: [{ ModelYear: '2016', Make: 'HONDA', Model: 'Civic', Trim: 'LX', DisplacementL: '2.0', EngineCylinders: '4' }] }
+    : { results: [{ NHTSACampaignNumber: '16V999000', Component: 'BRAKES' }] }))) as unknown as typeof fetch;
+  assert.equal((await dan('POST', 'shop/vin', { vin: 'short' }))?.status, 400);
+  const v = (await dan('POST', 'shop/vin', { vin: '19xfc2f5xge000000' }))?.body as { make: string; engine: string };
+  assert.equal(v.make, 'Honda'); assert.equal(v.engine, '2L 4 Cyl.');
+  const r = (await dan('POST', 'shop/recalls', { year: '2016', make: 'Honda', model: 'Civic' }))?.body as { recalls: { campaign: string }[] };
+  assert.equal(r.recalls[0].campaign, '16V999000');
+  const job = (await dan('POST', 'shop/jobs', { ...checkIn, vehicle: { ...checkIn.vehicle, vin: '19XFC2F5XGE000000', engine: '2L 4 Cyl.', trim: 'LX' } }))?.body as { id: string; vehicle: { vin: string; engine: string }; link: string };
+  assert.equal(job.vehicle.vin, '19XFC2F5XGE000000');
+  assert.equal(job.vehicle.engine, '2L 4 Cyl.');
+  const page = await w.as(null)('GET', `shop/c/${job.link.split('?c=')[1]}`);
+  assert.ok(!JSON.stringify(page?.body).includes('19XFC2F5XGE000000'), 'the customer page does not show the VIN');
+});

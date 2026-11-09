@@ -67,3 +67,7 @@
 .howto-tip-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}
 .howto-tip-add input{border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);border-radius:10px;padding:8px 10px;font:inherit;font-size:14px;min-width:0}
 .howto-links{display:flex;gap:14px;align-items:center}
+.howto-videos{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13.5px}
+.howto-videos:empty{display:none}
+.howto-videos span{color:var(--muted)}
+.howto-videos a{color:var(--accent-ink);font-weight:600}

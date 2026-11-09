@@ -8,6 +8,7 @@ import { salesRoute } from './shopSales.ts';
 import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, HOWTO_PRO_MESSAGE, lockedMessage, PLANS, planFromSubscription, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { howToRoute, type HowToLibrary } from './shopHowTo.ts';
+import { decodeVin, recallsFor, VIN_RE } from './nhtsa.ts';
 import { priceImportRoute, type PriceReader } from './shopPriceImport.ts';
 import { cleanMarks, isAngle, type DamageFinder, type WalkPhoto } from './shopDamage.ts';
 import { accountRoute, type AccountStore } from './shopAccount.ts';
@@ -52,7 +53,7 @@ export interface Message { sender?:string; senderId?:string; suggestion?:string;
 export interface JobData {
   ro: string;
   customer: { name: string; phone: string; consent: boolean; email?: string; preference?: Preference };
-  vehicle: { year: string; make: string; model: string };
+  vehicle: { year: string; make: string; model: string; vin?: string; engine?: string; trim?: string };
   plate: string;
   concern: string;
   eta: string;
@@ -198,6 +199,8 @@ export interface ShopDeps {
   howTo?: Narrator | null;
   /** Saved how-to answers, ratings and tips (tables howto_answers, howto_tips). */
   howToLibrary?: HowToLibrary | null;
+  /** For NHTSA VIN decoding and recalls (free, no key). Defaults to the global fetch. */
+  fetchFn?: typeof fetch;
   /** Gemini vision that suggests damage marks on walk-around photos. */
   damageFinder?: DamageFinder | null;
   /** Gemini, which reads an uploaded price list into saved items (shop/price-import). */
@@ -520,11 +523,29 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return { status: 405 };
   }
 
-  if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan' && parts[1] !== 'howto' && parts[1] !== 'price-import') return { status: 404 };
+  if (parts[1] !== 'jobs' && parts[1] !== 'archive' && parts[1] !== 'plan' && parts[1] !== 'howto' && parts[1] !== 'price-import' && parts[1] !== 'vin' && parts[1] !== 'recalls') return { status: 404 };
   const mine = await whoAmI();
   if (!mine) return { status: 409, body: 'Set up your shop first.' };
   const { shop } = mine;
   const owner = mine.seat.role === 'owner';
+
+  // Free NHTSA lookups for staff: decode a VIN, and recalls for a year, make and model.
+  if (parts[1] === 'vin' || parts[1] === 'recalls') {
+    if (method !== 'POST' || parts.length !== 2) return { status: 405 };
+    const f = deps.fetchFn ?? fetch;
+    try {
+      if (parts[1] === 'vin') {
+        const vin = str(body.vin, 20).toUpperCase().replace(/\s+/g, '');
+        if (!VIN_RE.test(vin)) return bad('A VIN is 17 letters and numbers (no I, O or Q).');
+        const v = await decodeVin(vin, f, ctx.now().getTime());
+        return v ? ok(v) : bad("NHTSA couldn't decode that VIN. Check it and try again, or enter the car by hand.");
+      }
+      return ok({ recalls: await recallsFor(str(body.year, 4), str(body.make, 40), str(body.model, 40), f, ctx.now().getTime()) });
+    } catch (error) {
+      ctx.log.warn('NHTSA lookup failed', { error: String(error) });
+      return { status: 502, body: 'The NHTSA lookup is not answering right now. Try again in a minute.' };
+    }
+  }
 
   if (parts[1] === 'howto') {
     if (parts.length > 3) return { status: 404 };
@@ -573,7 +594,9 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (preference !== 'email' && !phone) return bad('Enter a valid mobile number.');
       const email = str(c.email, 255);
       if (preference !== 'sms' && (email.length > 254 || !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email))) return bad('Enter a valid email address.');
-      const vehicle = { year: str(v.year, 4), make: str(v.make, 40), model: str(v.model, 40) };
+      const vin = str(v.vin, 20).toUpperCase();
+      const vehicle = { year: str(v.year, 4), make: str(v.make, 40), model: str(v.model, 40),
+        ...(VIN_RE.test(vin) ? { vin } : {}), ...(str(v.engine, 40) ? { engine: str(v.engine, 40) } : {}), ...(str(v.trim, 60) ? { trim: str(v.trim, 60) } : {}) };
       const inviting = body.invite === true;
       if (inviting && c.consent !== true) return bad('Confirm the customer agreed to receive check-in notifications.');
       if (!inviting && (!vehicle.make || !vehicle.model)) return bad('Enter the make and model.');

@@ -59,6 +59,42 @@
   const PRI_ORDER = { required: 0, recommended: 1, optional: 2 };
   const priOptions = (v) => Object.entries(PRI).map(([k, p]) => `<option value="${k}" ${k === (v || "recommended") ? "selected" : ""}>${p.label}</option>`).join("");
   const priPill = (e) => e.priority && PRI[e.priority] ? `<span class="pill pri ${PRI[e.priority].cls}">${PRI[e.priority].label}</span>` : "";
+  // Free NHTSA data: decode a VIN at check-in, and recalls for the car on its screen.
+  async function decodeVinInto(prefix) {
+    const vinIn = $("#" + prefix + "-vin"), msg = $("#" + prefix + "-vin-msg");
+    const vin = (vinIn?.value || "").trim().toUpperCase().replace(/\s+/g, "");
+    if (!vinIn) return;
+    if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin)) { msg.textContent = "A VIN is 17 letters and numbers (no I, O or Q)."; return; }
+    msg.textContent = "Looking up the VIN…";
+    try {
+      const v = await api("POST", "shop/vin", { vin });
+      for (const k of ["year", "make", "model", "engine", "trim"]) { const el = $("#" + prefix + "-" + k); if (el && v[k]) el.value = v[k]; }
+      msg.textContent = "Found: " + [v.year, v.make, v.model, v.trim, v.engine].filter(Boolean).join(" ") + ". Check it matches the car.";
+    } catch (err) { msg.textContent = err.message; }
+  }
+  const recallCache = {};
+  function recallBody(c, j) {
+    const name = vehicleStr(j);
+    const vinLink = `<a href="https://www.nhtsa.gov/recalls${j.vehicle?.vin ? "?vin=" + encodeURIComponent(j.vehicle.vin) : ""}" target="_blank" rel="noopener">${j.vehicle?.vin ? "Check this VIN on NHTSA" : "Check a VIN on NHTSA"}</a>`;
+    if (!c || c.loading) return `<p class="muted">Checking NHTSA for recalls…</p>`;
+    if (c.error) return `<p class="muted">Couldn't reach NHTSA right now. ${vinLink}</p>`;
+    if (!c.list.length) return `<p class="muted">No recalls on file for the ${esc(name)}. ${vinLink}</p>`;
+    return `<p class="muted recall-note">${c.list.length} recall${c.list.length === 1 ? "" : "s"} for the ${esc(name)} model. Not every car is affected, and some may already be fixed. ${vinLink}</p>
+      ${c.list.map((r) => `<details class="recall${r.parkIt ? " park" : ""}"><summary><b>${esc(r.component || "Recall")}</b> <span class="mono">${esc(r.campaign)}</span>${r.parkIt ? ` <span class="pill bad">Park it</span>` : ""}</summary>
+        ${r.summary ? `<p>${esc(r.summary)}</p>` : ""}${r.consequence ? `<p><b>Risk:</b> ${esc(r.consequence)}</p>` : ""}${r.remedy ? `<p><b>Fix:</b> ${esc(r.remedy)}</p>` : ""}${r.date ? `<p class="muted">Reported ${esc(r.date)}</p>` : ""}</details>`).join("")}`;
+  }
+  function recallSection(j) {
+    const v = j.vehicle || {};
+    if (!/^\d{4}$/.test(v.year || "") || !v.make || !v.model) return "";
+    const key = [v.year, v.make, v.model].join("|").toLowerCase();
+    if (!recallCache[key]) {
+      recallCache[key] = { loading: true };
+      api("POST", "shop/recalls", { year: v.year, make: v.make, model: v.model })
+        .then((r) => { recallCache[key] = { list: r.recalls || [] }; }, () => { recallCache[key] = { error: true }; })
+        .then(() => { const el = document.getElementById("recalls-" + j.id); if (el) el.innerHTML = recallBody(recallCache[key], j); if (recallCache[key].error) setTimeout(() => { if (recallCache[key]?.error) delete recallCache[key]; }, 60000); });
+    }
+    return `<section class="sec recalls"><h3>Safety recalls <span class="sec-sub">from NHTSA</span></h3><div id="recalls-${esc(j.id)}">${recallBody(recallCache[key], j)}</div></section>`;
+  }
   const first = (name) => String(name || "").split(/\s+/)[0];
 
   // Keep account requests on the site's domain for networks that block Supabase.
@@ -743,9 +779,12 @@
         <label class="field" hidden id="ci-email-label">Email address<input id="ci-email" type="email" maxlength="254" autocomplete="email" disabled></label>
         <p id="ci-email-note" class="muted full" hidden>Automatic email needs a sender connection. After saving, open the email draft in this repair’s Messages.</p>
         <label class="field" id="ci-phone-label">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
+        <label class="field full vin-field" data-staff-intake>VIN <small class="muted">(optional, fills in the car for you)</small><span class="vin-row"><input id="ci-vin" maxlength="17" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="17 characters, on the windshield or door jamb"><button type="button" class="btn" id="ci-vin-go">Decode</button></span><small id="ci-vin-msg" class="muted" aria-live="polite"></small></label>
         <label class="field" data-staff-intake>Year<input id="ci-year" inputmode="numeric" maxlength="4"></label>
         <label class="field" data-staff-intake>Make<input id="ci-make" required maxlength="40"></label>
         <label class="field" data-staff-intake>Model<input id="ci-model" required maxlength="40"></label>
+        <label class="field" data-staff-intake>Engine <small class="muted">(optional)</small><input id="ci-engine" maxlength="40" placeholder="e.g. 2.0L 4 Cyl."></label>
+        <input type="hidden" id="ci-trim">
         <label class="field" data-staff-intake>License plate<input id="ci-plate" maxlength="12"></label>
         <label class="field full" data-staff-intake>What's the concern?<textarea id="ci-concern" required maxlength="1000"></textarea></label>
         <div class="field full urgency-field"><span>Urgency <small class="muted">(for example, the customer needs the car back within the hour)</small></span>${window.BayBoard.urgencyPicker("", "ciUrgency")}</div>
@@ -785,6 +824,7 @@
           const guide = vehicleStr(j) && !j.closed && j.stage !== "picked_up" ? `<p class="howto-link"><button class="linkbtn" data-howto-job="${esc(j.id)}">Open Repair Guide →</button></p>` : "";
           return j.concern ? `<section class="sec"><h3>Concern</h3><div class="concern-text">${esc(j.concern)}</div>${guide}</section>` : guide ? `<section class="sec sec-guide">${guide}</section>` : "";
         })()}
+        ${j.closed || j.stage === "picked_up" ? "" : recallSection(j)}
         ${j.stage === "invited" && !j.intakeReceived ? "" : window.Walkthrough.sheetSection(j)}
         ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3>
           ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some((e) => e.status !== "pending") ? `<div class="total"><span>Approved total</span><span>${money(estTotal(j, true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}` : `<p class="muted" style="margin:0">No line items yet.</p>`}
@@ -973,6 +1013,7 @@
     if (await team.click(t, render)) return;
     if (await planUi.click(t, render)) return;
     if (howTo.click(t, render)) return;
+    if (t.id === "ci-vin-go") { decodeVinInto("ci"); return; }
     if (t.dataset.howtoJob) { const j = job(t.dataset.howtoJob); if (j) howTo.openFor(j); navPush = ui.view !== "howto"; ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.view === "plan") api("GET", "shop/plan").then((p) => { plan = p; if (ui.view === "plan") render(); }).catch(() => {});
     if (t.dataset.view) { navPush = t.dataset.view !== ui.view; ui.view = t.dataset.view; ui.openJob = null; if (ui.view === "archive") archive.rows = null; render(); window.scrollTo(0, 0); return; }
@@ -1228,7 +1269,7 @@
       const g = (k) => $("#ci-" + k).value.trim();
       const j = await act(() => api("POST", "shop/jobs", {
         invite, urgency: document.querySelector('input[name="ciUrgency"]:checked')?.value || "", customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("channel"), consent: $("#ci-consent").checked },
-        ...(invite ? {} : { vehicle: { year: g("year"), make: g("make"), model: g("model") }, plate: g("plate"), concern: g("concern") }),
+        ...(invite ? {} : { vehicle: { year: g("year"), make: g("make"), model: g("model"), vin: g("vin").toUpperCase(), engine: g("engine"), trim: g("trim") }, plate: g("plate"), concern: g("concern") }),
       }));
       if (j) {
         upsertJob(j); ui.view = "board"; ui.openJob = j.id; render();
@@ -1403,6 +1444,7 @@
   document.addEventListener("dragleave", (e) => e.target.closest?.(".price-drop")?.classList.remove("over"));
   document.addEventListener("drop", (e) => { if (!e.target.closest?.(".price-drop")) return; e.preventDefault(); readPriceFiles(Array.from(e.dataTransfer.files)); });
   document.addEventListener("input", (e) => {
+    if (e.target.id === "ci-vin") { const v = e.target.value.trim(); if (v.length === 17) decodeVinInto("ci"); else $("#ci-vin-msg").textContent = ""; }
     if (e.target.id === "ec-phone" || e.target.id === "ec-email") { customerContactChanged(); return; }
     if (e.target.id === "noteIn" && ui.openJob) { ui.noteDraft[ui.openJob] = e.target.value; return; }
     if (ui.modal?.walk && window.Walkthrough.input(e.target, ui.modal.walk)) return;
