@@ -61,6 +61,7 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--per-class", type=int, default=120)
     ap.add_argument("--test-share", type=float, default=0.1)
+    ap.add_argument("--min-images", type=int, default=MIN_IMAGES)
     args = ap.parse_args()
     random.seed(7)
 
@@ -119,7 +120,7 @@ def main():
             chosen.add(img)
             for l in {b[0] for b in boxes[img]}:
                 count[l] += 1
-    keep = {l for l, n in count.items() if n >= MIN_IMAGES}
+    keep = {l for l, n in count.items() if n >= args.min_images}
     print(f"{len(chosen)} images chosen; {len(keep)} labels kept; dropped for too few images: "
           f"{sorted(set(by_label) - keep)}")
 

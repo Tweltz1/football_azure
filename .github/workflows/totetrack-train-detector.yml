@@ -1,6 +1,6 @@
 # Trains ToteTrack's own item detector for Snap to add, for free, on a GitHub macOS machine.
-# Data: LVIS v1 box annotations (CC BY 4.0) on COCO 2017 images, limited to the household and garage
-# items in totetrack-app/tools/detector/classes.txt. Training: Apple Create ML (transfer learning).
+# Data: LVIS v1 box annotations (CC BY 4.0) on COCO 2017 images, plus Open Images V7 boxes (CC BY 4.0,
+# images CC BY 2.0), limited to the household and garage items in totetrack-app/tools/detector/classes.txt. Training: Apple Create ML (transfer learning).
 # Runs when anything in totetrack-app/tools/detector changes. The model is published as a GitHub
 # release named totetrack-detector-<run number>, with classes.json and the training log.
 name: ToteTrack train detector
@@ -50,22 +50,27 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/lvis
-          key: lvis-v1-train-json
+          key: lvis-v1-openimages-v7
 
       - name: Download LVIS annotations
         run: |
           mkdir -p ~/lvis
           [ -f ~/lvis/lvis_v1_train.json.zip ] || curl -fL --retry 4 -o ~/lvis/lvis_v1_train.json.zip https://dl.fbaipublicfiles.com/LVIS/lvis_v1_train.json.zip
+          [ -f ~/lvis/oidv6-train-annotations-bbox.csv ] || curl -fL --retry 4 -o ~/lvis/oidv6-train-annotations-bbox.csv https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-bbox.csv
+          [ -f ~/lvis/oidv7-class-descriptions-boxable.csv ] || curl -fL --retry 4 -o ~/lvis/oidv7-class-descriptions-boxable.csv https://storage.googleapis.com/openimages/v7/oidv7-class-descriptions-boxable.csv
           ls -lh ~/lvis
 
       - name: Build the dataset
         run: |
           pip install ijson pillow
-          python prepare_lvis.py ~/lvis/lvis_v1_train.json.zip "$RUNNER_TEMP/data" --per-class "$PER_CLASS" 2>&1 | tee prepare.log
+          set -o pipefail
+          python prepare_lvis.py ~/lvis/lvis_v1_train.json.zip "$RUNNER_TEMP/data" --per-class "$PER_CLASS" --min-images 1 2>&1 | tee prepare.log
+          python prepare_openimages.py ~/lvis/oidv6-train-annotations-bbox.csv ~/lvis/oidv7-class-descriptions-boxable.csv "$RUNNER_TEMP/data" --per-class "$PER_CLASS" 2>&1 | tee -a prepare.log
           du -sh "$RUNNER_TEMP/data"
 
       - name: Train
         run: |
+          set -o pipefail
           xcrun swift train.swift "$RUNNER_TEMP/data" "$RUNNER_TEMP/ToteDetector.mlmodel" "$MAX_ITERATIONS" 2>&1 | tee train.log
           ls -lh "$RUNNER_TEMP/ToteDetector.mlmodel"
 
