@@ -6,6 +6,7 @@ import {
   cleanDetection, distanceKm, junkRoute, searchWords,
   type JunkDetection, type JunkDeps, type JunkItem, type JunkMessage, type JunkStore,
 } from '../functions/_shared/junk.ts';
+import type { JunkClaim } from '../functions/_shared/junkClaims.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 const ALICE = '11111111-1111-4111-8111-111111111111';
@@ -24,6 +25,8 @@ function world(detection: JunkDetection | null = null) {
   const uploads: { userId: string; path: string; at: string }[] = [];
   const stored = new Set<string>();
   const deletedAccounts: string[] = [];
+  const claims: JunkClaim[] = [];
+  const isOpen = (c: JunkClaim) => c.status === 'active' || c.status === 'arrived';
   let clock = Date.parse('2026-11-08T15:00:00Z');
   let seq = 0;
 
@@ -56,7 +59,25 @@ function world(detection: JunkDetection | null = null) {
     },
     async countUploadsSince(userId, since) { return uploads.filter((u) => u.userId === userId && u.at >= since).length; },
     async logUpload(userId, path, at) { uploads.push({ userId, path, at }); },
+    async insertClaim(c) {
+      if (claims.some((x) => isOpen(x) && (x.itemId === c.itemId || x.claimerId === c.claimerId))) return false;
+      claims.push(clone(c));
+      return true;
+    },
+    async updateClaim(c) { const k = claims.findIndex((x) => x.id === c.id); if (k >= 0) claims[k] = clone(c); },
+    async openClaimForItem(itemId) { const c = claims.find((x) => x.itemId === itemId && isOpen(x)); return c ? clone(c) : null; },
+    async openClaimsForItems(ids) { return claims.filter((x) => ids.includes(x.itemId) && isOpen(x)).map(clone); },
+    async latestClaimForUser(userId) {
+      const mine = claims.filter((x) => x.claimerId === userId);
+      return mine.length ? clone(mine[mine.length - 1]) : null;
+    },
+    async countClaimsSince(userId, since) { return claims.filter((x) => x.claimerId === userId && x.createdAt >= since).length; },
+    async lastEndedClaim(userId, itemId) {
+      const ended = claims.filter((x) => x.claimerId === userId && x.itemId === itemId && x.endedAt);
+      return ended.length ? clone(ended[ended.length - 1]) : null;
+    },
     async deleteUserData(userId) {
+      for (let k = claims.length - 1; k >= 0; k--) if (claims[k].claimerId === userId || claims[k].ownerId === userId) claims.splice(k, 1);
       const paths = [...uploads.filter((u) => u.userId === userId).map((u) => u.path)];
       for (const [id, i] of items) if (i.ownerId === userId) items.delete(id);
       for (let k = messages.length - 1; k >= 0; k--) if (messages[k].fromId === userId || messages[k].toId === userId) messages.splice(k, 1);
@@ -92,7 +113,7 @@ function world(detection: JunkDetection | null = null) {
     assert.equal(res?.status, 200, String(res?.body));
     return res!.body as { id: string; photos: string[] };
   };
-  return { call, post, items, stored, messages, deletedAccounts, tick: (ms: number) => { clock += ms; } };
+  return { call, post, items, stored, messages, deletedAccounts, claims, tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -248,4 +269,173 @@ test('search words drop wildcards and plurals', () => {
   assert.deepEqual(searchWords('Dressers %_ and  TABLES!'), ['dresser', 'table']);
   assert.deepEqual(searchWords('glass'), ['glass']);
   assert.deepEqual(searchWords('I want to find a free dresser'), ['dresser']);
+});
+
+// ---- "I'm on my way" claims ----
+
+// Points due north of HOME, `km` away (1 degree of latitude is about 111.2 km).
+const north = (km: number) => ({ lat: HOME.lat + km / 111.2, lng: HOME.lng });
+type ClaimOut = { state: string; open: boolean; etaMin: number; mine: boolean; reason?: string; km?: number; claimerName?: string; trend?: string };
+const MIN = 60_000;
+
+test('claiming: the item shows as on the way, the poster gets a message, others cannot claim it', async () => {
+  const w = world();
+  const item = await w.post(ALICE);
+  assert.equal((await w.call(null, 'POST', `junk/items/${item.id}/claim`, north(5)))?.status, 401);
+  assert.equal((await w.call(ALICE, 'POST', `junk/items/${item.id}/claim`, north(5)))?.status, 400, 'not your own');
+  assert.equal((await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, {}))?.status, 400, 'needs a location');
+
+  const res = await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(5));
+  assert.equal(res?.status, 200, String(res?.body));
+  const claim = (res?.body as { claim: ClaimOut }).claim;
+  assert.deepEqual([claim.state, claim.mine, claim.etaMin], ['active', true, 8]);
+
+  assert.equal((await w.call(CARL, 'POST', `junk/items/${item.id}/claim`, north(1)))?.status, 409);
+  const seen = (await w.call(CARL, 'GET', `junk/items/${item.id}`))?.body as { claim: ClaimOut & { claimerName?: string } };
+  assert.equal(seen.claim.state, 'active');
+  assert.equal(seen.claim.claimerName, undefined, 'strangers do not see who');
+  assert.equal(seen.claim.km, undefined);
+
+  const owner = (await w.call(ALICE, 'GET', `junk/items/${item.id}`))?.body as { claim: ClaimOut };
+  assert.equal(owner.claim.claimerName, 'Bob');
+  assert.equal(owner.claim.km, 5);
+  assert.match(w.messages[0].body, /on my way/);
+  assert.equal(w.messages[0].toId, ALICE);
+
+  // Items someone is driving to go after the rest of the feed.
+  const other = await w.post(CARL, { title: 'Bike' , lat: north(3).lat });
+  const feed = (await w.call(null, 'GET', 'junk/items', undefined, { ...HOME, km: 10 }))?.body as { id: string; claim: ClaimOut | null }[];
+  assert.deepEqual(feed.map((f) => f.id), [other.id, item.id]);
+  assert.equal(feed[1].claim?.state, 'active');
+});
+
+test('claiming: one trip at a time', async () => {
+  const w = world();
+  const a = await w.post(ALICE);
+  const b = await w.post(CARL);
+  assert.equal((await w.call(BOB, 'POST', `junk/items/${a.id}/claim`, north(5)))?.status, 200);
+  assert.equal((await w.call(BOB, 'POST', `junk/items/${b.id}/claim`, north(5)))?.status, 409);
+  assert.equal((await w.call(BOB, 'POST', `junk/items/${a.id}/claim`, north(5)))?.status, 200, 'claiming again is a no-op');
+  assert.equal(w.claims.length, 1);
+});
+
+test('driving toward it: closer and closer, then arrive and tap Got it', async () => {
+  const w = world();
+  const item = await w.post(ALICE);
+  await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(8));
+  for (const km of [7, 5.5, 4, 2.5, 1]) {
+    w.tick(2 * MIN);
+    const r = (await w.call(BOB, 'POST', 'junk/claim/ping', north(km)))?.body as { claim: ClaimOut; tracking: boolean };
+    assert.equal(r.tracking, true, `still tracking at ${km} km`);
+    assert.equal(r.claim.trend, 'closer');
+  }
+  assert.equal((await w.call(BOB, 'POST', 'junk/claim/done'))?.status, 400, 'not there yet');
+  w.tick(2 * MIN);
+  const r = (await w.call(BOB, 'POST', 'junk/claim/ping', north(0.1)))?.body as { claim: ClaimOut };
+  assert.equal(r.claim.state, 'arrived');
+  const done = (await w.call(BOB, 'POST', 'junk/claim/done'))?.body as { claim: ClaimOut };
+  assert.equal(done.claim.state, 'picked_up');
+  assert.equal(w.items.get(item.id)!.status, 'gone');
+});
+
+test('heading the other way releases the claim', async () => {
+  const w = world();
+  const item = await w.post(ALICE);
+  await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(4));
+  w.tick(MIN);
+  await w.call(BOB, 'POST', 'junk/claim/ping', north(4.5));
+  w.tick(MIN);
+  let r = (await w.call(BOB, 'POST', 'junk/claim/ping', north(5.5)))?.body as { claim: ClaimOut; tracking: boolean };
+  assert.equal(r.tracking, true, 'no judging in the first few minutes');
+  w.tick(3 * MIN);
+  r = (await w.call(BOB, 'POST', 'junk/claim/ping', north(6.5)))?.body as typeof r;
+  assert.equal(r.tracking, false);
+  assert.equal(r.claim.state, 'released');
+  assert.match(r.claim.reason!, /heading away/);
+  const seen = (await w.call(CARL, 'GET', `junk/items/${item.id}`))?.body as { claim: unknown };
+  assert.equal(seen.claim, null, 'up for grabs again');
+  assert.equal((await w.call(CARL, 'POST', `junk/items/${item.id}/claim`, north(1)))?.status, 200);
+});
+
+test('not getting closer releases the claim', async () => {
+  const w = world();
+  const item = await w.post(ALICE);
+  await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(5));
+  for (let k = 0; k < 6; k++) {
+    w.tick(2 * MIN);
+    await w.call(BOB, 'POST', 'junk/claim/ping', north(5.1));
+  }
+  w.tick(2 * MIN);
+  const r = (await w.call(BOB, 'POST', 'junk/claim/ping', north(5)))?.body as { claim: ClaimOut; tracking: boolean };
+  assert.equal(r.claim.state, 'released');
+  assert.match(r.claim.reason!, /closer/);
+});
+
+test('no location from the phone releases the claim, even if nobody pings', async () => {
+  const w = world();
+  const item = await w.post(ALICE);
+  await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(5));
+  w.tick(13 * MIN);
+  const seen = (await w.call(CARL, 'GET', `junk/items/${item.id}`))?.body as { claim: unknown };
+  assert.equal(seen.claim, null);
+  const mine = (await w.call(BOB, 'GET', 'junk/claim'))?.body as { claim: ClaimOut };
+  assert.equal(mine.claim.state, 'released');
+  assert.match(mine.claim.reason!, /location/);
+  // A released claimer waits before claiming the same item again.
+  assert.equal((await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(1)))?.status, 429);
+  w.tick(31 * MIN);
+  assert.equal((await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(1)))?.status, 200);
+});
+
+test('a slow trip is released at the deadline, an arrival without pickup after the window', async () => {
+  let w = world();
+  let item = await w.post(ALICE);
+  await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(2)); // 21 minutes allowed
+  for (const km of [1.7, 1.4, 1.1, 0.8, 0.55, 0.32]) {
+    w.tick(4 * MIN);
+    await w.call(BOB, 'POST', 'junk/claim/ping', north(km));
+  }
+  let mine = (await w.call(BOB, 'GET', 'junk/claim'))?.body as { claim: ClaimOut };
+  assert.equal(mine.claim.state, 'released');
+  assert.match(mine.claim.reason!, /too long/);
+
+  w = world();
+  item = await w.post(ALICE);
+  await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(0.1));
+  mine = (await w.call(BOB, 'GET', 'junk/claim'))?.body as { claim: ClaimOut };
+  assert.equal(mine.claim.state, 'arrived');
+  w.tick(46 * MIN);
+  mine = (await w.call(BOB, 'GET', 'junk/claim'))?.body as { claim: ClaimOut };
+  assert.equal(mine.claim.state, 'released');
+});
+
+test('the poster can release a claim; cancelling tells the poster; marking taken ends it', async () => {
+  const w = world();
+  const item = await w.post(ALICE);
+  await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(5));
+  assert.equal((await w.call(CARL, 'POST', `junk/items/${item.id}/release`))?.status, 403);
+  await w.call(ALICE, 'POST', `junk/items/${item.id}/release`);
+  let mine = (await w.call(BOB, 'GET', 'junk/claim'))?.body as { claim: ClaimOut };
+  assert.equal(mine.claim.state, 'owner_released');
+
+  await w.call(CARL, 'POST', `junk/items/${item.id}/claim`, north(3));
+  await w.call(CARL, 'POST', 'junk/claim/cancel');
+  assert.match(w.messages[w.messages.length - 1].body, /not coming/);
+  mine = (await w.call(CARL, 'GET', 'junk/claim'))?.body as { claim: ClaimOut };
+  assert.equal(mine.claim.state, 'cancelled');
+  assert.equal((await w.call(CARL, 'POST', `junk/items/${item.id}/claim`, north(3)))?.status, 200, 'no wait after cancelling yourself');
+
+  await w.call(ALICE, 'POST', `junk/items/${item.id}`, { status: 'gone' });
+  mine = (await w.call(CARL, 'GET', 'junk/claim'))?.body as { claim: ClaimOut };
+  assert.equal(mine.claim.state, 'item_gone');
+  assert.equal((await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(3)))?.status, 409, 'taken items cannot be claimed');
+});
+
+test('ended claims stop showing to the claimer after an hour', async () => {
+  const w = world();
+  const item = await w.post(ALICE);
+  await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(5));
+  await w.call(BOB, 'POST', 'junk/claim/cancel');
+  w.tick(61 * MIN);
+  assert.equal(((await w.call(BOB, 'GET', 'junk/claim'))?.body as { claim: unknown }).claim, null);
 });

@@ -7,6 +7,10 @@
 // Locations are rounded to about 100 m before they are saved, and only distances are shown to others.
 
 import type { Ctx, Res } from './handlers.ts';
+import {
+  CLAIMS_PER_DAY, MAX_CLAIM_KM, OPEN_CLAIM, RECLAIM_COOLDOWN_MIN, claimOut, etaMinutes, judgeClaim, newClaim, pingClaim,
+  type ClaimStore, type JunkClaim,
+} from './junkClaims.ts';
 
 export const JUNK_CATEGORIES = [
   'furniture', 'appliances', 'electronics', 'home', 'kids', 'clothing', 'books', 'sports', 'tools', 'garden',
@@ -66,7 +70,7 @@ export interface JunkSearch {
   since: string;
 }
 
-export interface JunkStore {
+export interface JunkStore extends ClaimStore {
   getItem(id: string): Promise<JunkItem | null>;
   putItem(item: JunkItem): Promise<void>;
   deleteItem(id: string): Promise<void>;
@@ -83,7 +87,9 @@ export interface JunkStore {
   markRead(userId: string, itemId: string, otherId: string, at: string): Promise<void>;
   countUploadsSince(userId: string, since: string): Promise<number>;
   logUpload(userId: string, path: string, at: string): Promise<void>;
-  /** Removes the user's items, messages, reports, blocks and upload log; returns their photo paths. */
+  /** The person's most recent claim (open or ended), or null. */
+  latestClaimForUser(userId: string): Promise<JunkClaim | null>;
+  /** Removes the user's items, messages, reports, blocks, claims and upload log; returns their photo paths. */
   deleteUserData(userId: string): Promise<string[]>;
 }
 
@@ -182,7 +188,7 @@ const decodeJpeg = (v: unknown): Uint8Array | null => {
   }
 };
 
-const itemOut = (deps: JunkDeps, i: JunkItem, me: string | null, km?: number) => ({
+const itemOut = (deps: JunkDeps, i: JunkItem, me: string | null, km?: number, claim?: JunkClaim | null) => ({
   id: i.id,
   title: i.title,
   description: i.description,
@@ -201,7 +207,14 @@ const itemOut = (deps: JunkDeps, i: JunkItem, me: string | null, km?: number) =>
   ...(km === undefined ? {} : { km: Math.round(km * 10) / 10 }),
   // Only the owner gets the saved spot back (to edit it); everyone else just sees the distance.
   ...(me !== null && me === i.ownerId ? { lat: i.lat, lng: i.lng } : {}),
+  // Someone tapped "I'm on my way" (only open claims are passed in).
+  claim: claim ? claimOut(claim, me) : null,
 });
+
+const readSpot = (body: Body): { lat: number; lng: number } | null => {
+  const lat = num(body.lat), lng = num(body.lng);
+  return isLat(lat) && isLng(lng) ? { lat, lng } : null;
+};
 
 /** Reads and checks the editable fields of a listing. */
 function readFields(body: Body, userId: string, prev: JunkItem | null): { fields: Partial<JunkItem> } | { error: string } {
@@ -252,6 +265,19 @@ export async function junkRoute(
   const nowIso = now.toISOString();
   const [, section, a, b] = parts;
 
+  /** An open claim as it stands now: ended (and saved) first when the trip rules say so. */
+  const liveClaim = async (c: JunkClaim | null): Promise<JunkClaim | null> => {
+    if (!c) return null;
+    const judged = judgeClaim(c, now);
+    if (judged !== c) await store.updateClaim(judged);
+    return OPEN_CLAIM.includes(judged.status) ? judged : null;
+  };
+  const endClaim = async (c: JunkClaim, status: JunkClaim['status'], reason: string) => {
+    const ended: JunkClaim = { ...c, status, reason, endedAt: nowIso };
+    await store.updateClaim(ended);
+    return ended;
+  };
+
   // ---- Browse (no sign-in needed) ----
   if (section === 'items' && !a && method === 'GET') {
     const lat = num(params?.get('lat')), lng = num(params?.get('lng'));
@@ -266,7 +292,17 @@ export async function junkRoute(
       since: daysAgo(now, FRESH_DAYS),
     });
     const hidden = new Set(me ? await store.blocked(me) : []);
-    return ok(rows.filter((r) => !hidden.has(r.ownerId)).slice(0, limit).map((r) => itemOut(deps, r, me, r.km)));
+    const shown = rows.filter((r) => !hidden.has(r.ownerId)).slice(0, limit);
+    const claims = new Map<string, JunkClaim>();
+    if (shown.length) {
+      for (const c of await store.openClaimsForItems(shown.map((r) => r.id))) {
+        const live = await liveClaim(c);
+        if (live) claims.set(live.itemId, live);
+      }
+    }
+    // Items someone is already driving to go after the ones still up for grabs (the order is otherwise kept).
+    const out = shown.map((r) => itemOut(deps, r, me, r.km, claims.get(r.id)));
+    return ok([...out.filter((o) => !o.claim), ...out.filter((o) => o.claim)]);
   }
 
   if (section === 'items' && a && !b && method === 'GET') {
@@ -275,7 +311,7 @@ export async function junkRoute(
     if (!item || (item.status === 'hidden' && item.ownerId !== me)) return notFound;
     const lat = num(params?.get('lat')), lng = num(params?.get('lng'));
     const km = isLat(lat) && isLng(lng) ? distanceKm(lat, lng, item.lat, item.lng) : undefined;
-    return ok(itemOut(deps, item, me, km));
+    return ok(itemOut(deps, item, me, km, await liveClaim(await store.openClaimForItem(item.id))));
   }
 
   if (section === 'categories' && method === 'GET') return ok({ categories: JUNK_CATEGORIES, conditions: JUNK_CONDITIONS });
@@ -332,6 +368,8 @@ export async function junkRoute(
     if (!item) return notFound;
     if (item.ownerId !== me) return { status: 403, body: 'Only the person who posted it can change it.' };
     if (method === 'DELETE') {
+      const open = await store.openClaimForItem(item.id);
+      if (open) await endClaim(open, 'item_gone', 'The poster took the listing down.');
       await store.deleteItem(item.id);
       await photos.remove(item.photos).catch((error) => ctx.log.warn('junk: photo cleanup failed', error));
       return ok({ deleted: true });
@@ -343,7 +381,111 @@ export async function junkRoute(
     await store.putItem(next);
     const dropped = item.photos.filter((p) => !next.photos.includes(p));
     if (dropped.length) await photos.remove(dropped).catch((error) => ctx.log.warn('junk: photo cleanup failed', error));
-    return ok(itemOut(deps, next, me));
+    let claim = await liveClaim(await store.openClaimForItem(item.id));
+    if (claim && next.status === 'gone') {
+      await endClaim(claim, 'item_gone', 'The poster marked it taken.');
+      claim = null;
+    }
+    return ok(itemOut(deps, next, me, undefined, claim));
+  }
+
+  // ---- "I'm on my way": claim an item while you drive over; the trip is tracked ----
+  if (section === 'items' && a && b === 'claim' && method === 'POST') {
+    if (!UUID.test(a)) return notFound;
+    const item = await store.getItem(a);
+    if (!item || item.status === 'hidden') return notFound;
+    if (item.ownerId === me) return bad('That\'s your own listing.');
+    if (item.status === 'gone') return { status: 409, body: 'Someone already took it.' };
+    if (item.status === 'pending') return { status: 409, body: 'The poster has it on hold for someone. Message them to ask.' };
+    const here = readSpot(body);
+    if (!here) return bad('Turn on location so the poster can see you\'re on the way.');
+    const km = distanceKm(here.lat, here.lng, item.lat, item.lng);
+    if (km > MAX_CLAIM_KM) return bad('That\'s too far away to claim. Get a little closer first.');
+    if ((await store.blocked(item.ownerId)).includes(me) || (await store.blocked(me)).includes(item.ownerId)) {
+      return { status: 403, body: 'You can\'t claim this person\'s items.' };
+    }
+    const latest = await store.latestClaimForUser(me);
+    const mine = latest && OPEN_CLAIM.includes(latest.status) ? await liveClaim(latest) : null;
+    if (mine && mine.itemId === item.id) return ok({ claim: claimOut(mine, me) });
+    if (mine) return { status: 409, body: 'You\'re already on your way to something. Finish or cancel that trip first.' };
+    if (await liveClaim(await store.openClaimForItem(item.id))) return { status: 409, body: 'Someone else is already on the way.' };
+    const last = await store.lastEndedClaim(me, item.id);
+    if (last && last.status !== 'cancelled' && last.endedAt && now.getTime() - Date.parse(last.endedAt) < RECLAIM_COOLDOWN_MIN * 60_000) {
+      return { status: 429, body: 'Your last claim on this was released. Give others a chance for a bit, or message the poster.' };
+    }
+    if (await store.countClaimsSince(me, daysAgo(now, 1)) >= CLAIMS_PER_DAY) {
+      return { status: 429, body: 'That\'s a lot of trips today. Try again tomorrow.' };
+    }
+    const claim = newClaim({ id: ctx.newId(), itemId: item.id, ownerId: item.ownerId, claimerId: me, claimerName: myName, km, now });
+    if (!await store.insertClaim(claim)) return { status: 409, body: 'Someone else just claimed it.' };
+    // Let the poster know in the item's chat.
+    await store.addMessage({
+      id: ctx.newId(), itemId: item.id, fromId: me, toId: item.ownerId, fromName: myName, createdAt: nowIso, readAt: null,
+      body: claim.status === 'arrived' ? 'I\'m here to pick this up! (sent by Curbsy)' : `I'm on my way to pick this up, about ${etaMinutes(km)} min out. (sent by Curbsy)`,
+    }).catch((error) => ctx.log.warn('junk: claim message failed', error));
+    return ok({ claim: claimOut(claim, me) });
+  }
+
+  if (section === 'items' && a && b === 'release' && method === 'POST') {
+    if (!UUID.test(a)) return notFound;
+    const item = await store.getItem(a);
+    if (!item) return notFound;
+    if (item.ownerId !== me) return { status: 403, body: 'Only the person who posted it can release a claim.' };
+    const claim = await liveClaim(await store.openClaimForItem(item.id));
+    if (claim) await endClaim(claim, 'owner_released', 'The poster released your claim.');
+    return ok(itemOut(deps, item, me));
+  }
+
+  if (section === 'claim' && !a && method === 'GET') {
+    let claim = await store.latestClaimForUser(me);
+    if (claim && OPEN_CLAIM.includes(claim.status)) {
+      const judged = judgeClaim(claim, now);
+      if (judged !== claim) await store.updateClaim(judged);
+      claim = judged;
+    }
+    const item = claim ? await store.getItem(claim.itemId) : null;
+    if (claim && OPEN_CLAIM.includes(claim.status) && (!item || item.status === 'gone' || item.status === 'hidden')) {
+      claim = await endClaim(claim, 'item_gone', 'The item isn\'t available anymore.');
+    }
+    // Ended claims are shown for an hour so the claimer learns why.
+    if (!claim || (claim.endedAt && now.getTime() - Date.parse(claim.endedAt) > 3_600_000)) return ok({ claim: null });
+    return ok({ claim: claimOut(claim, me), item: item && item.status !== 'hidden' ? itemOut(deps, item, me) : null });
+  }
+
+  if (section === 'claim' && a && method === 'POST') {
+    const latest = await store.latestClaimForUser(me);
+    const open = latest && OPEN_CLAIM.includes(latest.status) ? latest : null;
+    if (a === 'ping') {
+      if (!open) return ok({ claim: latest ? claimOut(latest, me) : null, tracking: false });
+      const item = await store.getItem(open.itemId);
+      if (!item || item.status === 'gone' || item.status === 'hidden') {
+        const ended = await endClaim(open, 'item_gone', 'The item isn\'t available anymore.');
+        return ok({ claim: claimOut(ended, me), tracking: false });
+      }
+      const here = readSpot(body);
+      if (!here) return bad('Location missing.');
+      const next = pingClaim(open, distanceKm(here.lat, here.lng, item.lat, item.lng), now);
+      await store.updateClaim(next);
+      return ok({ claim: claimOut(next, me), tracking: OPEN_CLAIM.includes(next.status) });
+    }
+    if (a === 'cancel') {
+      if (!open) return ok({ claim: null });
+      const ended = await endClaim(open, 'cancelled', 'You cancelled the trip.');
+      await store.addMessage({
+        id: ctx.newId(), itemId: open.itemId, fromId: me, toId: open.ownerId, fromName: myName, createdAt: nowIso, readAt: null,
+        body: 'Change of plans, I\'m not coming for this after all. (sent by Curbsy)',
+      }).catch((error) => ctx.log.warn('junk: claim message failed', error));
+      return ok({ claim: claimOut(ended, me) });
+    }
+    if (a === 'done') {
+      const live = open ? await liveClaim(open) : null;
+      if (!live) return { status: 409, body: 'Your claim already ended.' };
+      if (live.status !== 'arrived' && live.lastKm > 0.6) return bad('Tap "Got it" once you\'re there.');
+      const ended = await endClaim(live, 'picked_up', 'Picked up. Enjoy!');
+      const item = await store.getItem(live.itemId);
+      if (item && item.status !== 'hidden') await store.putItem({ ...item, status: 'gone', updatedAt: nowIso });
+      return ok({ claim: claimOut(ended, me) });
+    }
   }
 
   if (section === 'items' && a && b === 'report' && method === 'POST') {

@@ -7,13 +7,16 @@ import { IconBox, IconClose, IconPin, IconSearch } from './icons';
 
 export function ItemCard({ item }) {
   return (
-    <Link to={`/junk/item/${item.id}`} className={`jk-card${item.status === 'pending' ? ' is-pending' : ''}`}>
+    <Link to={`/junk/item/${item.id}`} className={`jk-card${item.status === 'pending' || (item.claim && item.claim.open) ? ' is-pending' : ''}`}>
       <div className="jk-card-photo">
         {item.photos[0]
           ? <img src={item.photos[0]} alt="" loading="lazy" />
           : <div className="jk-card-nophoto"><IconBox size={32} /></div>}
         <span className="jk-free-tag">FREE</span>
         {item.status === 'pending' && <span className="jk-status-tag">Pending pickup</span>}
+        {item.status !== 'pending' && item.claim && item.claim.open && (
+          <span className="jk-status-tag">{item.claim.mine ? 'You\'re on the way' : 'Someone\'s on the way'}</span>
+        )}
       </div>
       <div className="jk-card-body">
         <h3>{item.title}</h3>

@@ -1,9 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { signIn, useAuth } from '../AuthContext';
-import { lastSpot, locate } from './device';
-import { inbox as fetchInbox } from './junkApi';
-import { IconChat, IconClose, IconGrid, IconPlus, IconUser } from './icons';
+import { distanceLabel, lastSpot, locate } from './device';
+import { inbox as fetchInbox, myClaim } from './junkApi';
+import { refreshTripToken, startTrip, stopTrip } from './trip';
+import { IconCar, IconChat, IconClose, IconGrid, IconPlus, IconUser } from './icons';
 import Browse from './Browse';
 import ItemPage from './ItemPage';
 import PostItem from './PostItem';
@@ -66,6 +67,36 @@ function TabBar({ unread }) {
   );
 }
 
+/** "On your way to …" strip above the tabs while a claim is open, or why it ended. */
+function TripBanner({ trip, onDismiss }) {
+  const { pathname } = useLocation();
+  if (!trip || !trip.claim) return null;
+  const { claim, item } = trip;
+  // Full-screen pages (an item, a chat, the post form) have their own bar at the bottom; the item page shows the trip itself.
+  if (/^\/junk\/(item|chat|post|edit)\b/.test(pathname)) return null;
+  if (!claim.open) {
+    if (claim.state === 'picked_up' || claim.state === 'cancelled') return null;
+    return (
+      <div className="jk-trip-banner is-ended" role="status">
+        <div className="jk-trip-text">
+          <strong>Your claim was released</strong>
+          <span>{item ? `${item.title}: ` : ''}{claim.reason || 'It\'s up for grabs again.'}</span>
+        </div>
+        <button type="button" className="jk-icon-btn" onClick={onDismiss} aria-label="Dismiss"><IconClose /></button>
+      </div>
+    );
+  }
+  return (
+    <Link to={`/junk/item/${claim.itemId}`} className="jk-trip-banner" role="status">
+      <span className="jk-trip-dot" aria-hidden="true"><IconCar size={20} /></span>
+      <div className="jk-trip-text">
+        <strong>{claim.state === 'arrived' ? 'You\'re there! Tap Got it once it\'s loaded' : `On your way to ${item ? item.title : 'your pickup'}`}</strong>
+        {claim.state === 'active' && <span>{distanceLabel(claim.km)} · about {claim.etaMin} min</span>}
+      </div>
+    </Link>
+  );
+}
+
 function Shell() {
   const { user, loading } = useAuth();
   // Hood League's offline/guest fallbacks aren't real sign-ins; the Junk App needs a live account.
@@ -76,6 +107,8 @@ function Shell() {
   const [radiusMi, setRadiusMiState] = useState(readRadius);
   const [signInReason, setSignInReason] = useState(null);
   const [unread, setUnread] = useState(0);
+  const [trip, setTrip] = useState(null); // { claim, item } for my latest "I'm on my way"
+  const [dismissedTrip, setDismissedTrip] = useState(null);
 
   const refreshSpot = useCallback(async () => {
     setLocating(true);
@@ -118,14 +151,39 @@ function Shell() {
     return () => window.clearInterval(t);
   }, [refreshUnread]);
 
+  const refreshTrip = useCallback(async () => {
+    if (!me) { setTrip(null); return; }
+    try {
+      const t = await myClaim();
+      setTrip(t && t.claim ? t : null);
+    } catch (error) { /* keep what we had */ }
+  }, [me]);
+
+  useEffect(() => { refreshTrip(); }, [refreshTrip]);
+
+  // While a claim is open: keep the position going to the server and check on it every 20 seconds.
+  const tripOpen = !!(trip && trip.claim && trip.claim.open);
+  useEffect(() => {
+    if (!tripOpen) { stopTrip(); return undefined; }
+    startTrip((res) => {
+      if (res && res.claim) setTrip((prev) => (prev ? { ...prev, claim: res.claim } : prev));
+    }).catch(() => {});
+    const t = window.setInterval(() => { refreshTrip(); refreshTripToken(); }, 20000);
+    const onShow = () => { if (document.visibilityState === 'visible') { refreshTrip(); refreshTripToken(); } };
+    document.addEventListener('visibilitychange', onShow);
+    return () => { window.clearInterval(t); document.removeEventListener('visibilitychange', onShow); };
+  }, [tripOpen, refreshTrip]);
+
   const value = useMemo(() => ({
     me, authLoading: loading, spot, spotError, locating, refreshSpot, radiusMi, setRadiusMi,
-    askSignIn: (reason) => setSignInReason(reason || ''), refreshUnread,
-  }), [me, loading, spot, spotError, locating, refreshSpot, radiusMi, refreshUnread]);
+    askSignIn: (reason) => setSignInReason(reason || ''), refreshUnread, trip, setTrip, refreshTrip,
+  }), [me, loading, spot, spotError, locating, refreshSpot, radiusMi, refreshUnread, trip, refreshTrip]);
+
+  const showTrip = trip && trip.claim && dismissedTrip !== trip.claim.id ? trip : null;
 
   return (
     <JunkContext.Provider value={value}>
-      <div className="jk-app">
+      <div className={`jk-app${showTrip ? ' has-trip' : ''}`}>
         <Routes>
           <Route path="/junk" element={<Browse />} />
           <Route path="/junk/item/:id" element={<ItemPage />} />
@@ -136,6 +194,7 @@ function Shell() {
           <Route path="/junk/me" element={<Me />} />
           <Route path="*" element={<Browse />} />
         </Routes>
+        <TripBanner trip={showTrip} onDismiss={() => setDismissedTrip(trip.claim.id)} />
         <TabBar unread={unread} />
         {signInReason !== null && !me && <SignInSheet reason={signInReason} onClose={() => setSignInReason(null)} />}
       </div>
