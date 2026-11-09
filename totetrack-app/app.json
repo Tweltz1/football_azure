@@ -14,7 +14,15 @@
       "config": {
         "usesNonExemptEncryption": false
       },
-      "usesAppleSignIn": true
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NFCReaderUsageDescription": "ToteTrack writes and reads the NFC stickers on your totes so a tap opens what's inside."
+      },
+      "entitlements": {
+        "com.apple.developer.nfc.readersession.formats": [
+          "TAG"
+        ]
+      }
     },
     "android": {
       "package": "com.tweltz1.totetrack",

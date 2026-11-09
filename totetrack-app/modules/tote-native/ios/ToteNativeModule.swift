@@ -12,8 +12,24 @@ private let reminderPrefix = "totetrack."
 var pendingSpotlightToteId: String?
 
 public class ToteNativeModule: Module {
+  private let nfc = ToteNFC()
+
   public func definition() -> ModuleDefinition {
     Name("ToteNative")
+
+    Function("nfcAvailable") { () -> Bool in
+      ToteNFC.available
+    }
+
+    /// Resolves true when written, null if cancelled.
+    AsyncFunction("writeNfc") { (url: String, promise: Promise) in
+      self.nfc.start(writing: url, promise: promise)
+    }.runOnQueue(.main)
+
+    /// Resolves the link on the sticker, or null if cancelled.
+    AsyncFunction("readNfc") { (promise: Promise) in
+      self.nfc.start(writing: nil, promise: promise)
+    }.runOnQueue(.main)
 
     // Snap to inventory: what Apple's on-device Vision sees in a photo, plus any printed text.
     // Nothing leaves the phone.

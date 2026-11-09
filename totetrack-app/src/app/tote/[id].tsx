@@ -354,6 +354,22 @@ export default function ToteDetail() {
           <View style={{ flex: 1, gap: 10 }}>
             <Text style={[styles.code, { color: t.textMuted }]}>{shortCode(tote.id)}</Text>
             <Button title="Print label" icon="print-outline" onPress={() => router.push(`/print?ids=${tote.id}`)} style={{ height: 44 }} />
+            {ToteNative?.nfcAvailable() ? (
+              <Button
+                title="Write NFC sticker"
+                icon="radio-outline"
+                variant="secondary"
+                onPress={async () => {
+                  try {
+                    const ok = await ToteNative!.writeNfc(qrPayload(tote.id));
+                    if (ok) tap();
+                  } catch (e) {
+                    Alert.alert("Couldn't write the sticker", e instanceof Error ? e.message : String(e));
+                  }
+                }}
+                style={{ height: 44 }}
+              />
+            ) : null}
           </View>
         </Card>
 
