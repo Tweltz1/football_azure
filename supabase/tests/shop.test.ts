@@ -549,3 +549,51 @@ test('estimate lines carry required, recommended or optional, and the shop can c
   assert.deepEqual(view.estimate.map((e) => e.priority), ['required', 'optional']);
   assert.equal((await dan('POST', `shop/jobs/${job.id}/estimate`, { setPriority: 'nope', priority: 'optional' }))?.status, 400);
 });
+
+test('customer edits preserve the repair and link, send nothing, and route future updates to the saved contact', async () => {
+  const { as, jobs, texts, deps } = world();
+  const owner = as('owner');
+  await owner('POST', 'shop/me', { name: 'Ridgeline' });
+  const created = (await owner('POST', 'shop/jobs', checkIn))!.body as { id: string; link: string };
+  await owner('POST', `shop/jobs/${created.id}/estimate`, { item: 'Pads', price: 180 });
+  await owner('POST', `shop/jobs/${created.id}/note`, { text: 'Inspection complete' });
+  const before = clone(jobs.get(created.id)!);
+  const customer = { name: 'Updated Customer', phone: '(555) 222-3333', email: 'updated@example.com', preference: 'both', consent: true };
+  assert.equal((await owner('POST', `shop/jobs/${created.id}/customer`, customer))?.status, 200);
+  const after = jobs.get(created.id)!;
+  assert.deepEqual(after.data.customer, { ...customer, phone: '+15552223333' });
+  assert.deepEqual({ ...after, updatedAt: before.updatedAt, data: { ...after.data, customer: before.data.customer } }, before);
+  assert.equal(texts.length, 1, 'saving never sends notifications');
+  const emails: string[] = [];
+  deps.email = { async send(to) { emails.push(to); return { delivery: 'sent' }; } };
+  await owner('POST', `shop/jobs/${created.id}/message`, { text: 'Ready for your review' });
+  assert.equal(texts.at(-1)!.to, '+15552223333');
+  assert.deepEqual(emails, ['updated@example.com']);
+  const token = created.link.split('?c=')[1];
+  const page = (await as(null)('GET', `shop/c/${token}`))!.body as { firstName: string };
+  assert.equal(page.firstName, 'Updated');
+  await owner('POST', `shop/jobs/${created.id}/customer`, { ...customer, consent: false });
+  const count = texts.length;
+  await owner('POST', `shop/jobs/${created.id}/message`, { text: 'Do not deliver' });
+  assert.equal(texts.length, count);
+  assert.equal(emails.length, 1);
+});
+
+test('customer edits validate contacts and are restricted to the signed-in shop', async () => {
+  const { as, jobs } = world();
+  const owner = as('owner'), other = as('other');
+  await owner('POST', 'shop/me', { name: 'Ridgeline' });
+  await other('POST', 'shop/me', { name: 'Another shop' });
+  const id = ((await owner('POST', 'shop/jobs', checkIn))!.body as { id: string }).id;
+  const before = clone(jobs.get(id)!);
+  const customer = { ...checkIn.customer, email: '', preference: 'sms' };
+  for (const patch of [{ name: '' }, { phone: 'invalid' }, { preference: 'fax' }, { preference: 'email', email: '' }, { preference: 'both', email: 'wrong' }, { email: 'bad address' }, { consent: 'yes' }, { consent: undefined }]) {
+    assert.equal((await owner('POST', `shop/jobs/${id}/customer`, { ...customer, ...patch }))?.status, 400);
+    assert.deepEqual(jobs.get(id), before, 'invalid edits do not persist');
+  }
+  assert.equal((await other('POST', `shop/jobs/${id}/customer`, customer))?.status, 404);
+  assert.equal((await as(null)('POST', `shop/jobs/${id}/customer`, customer))?.status, 401);
+  assert.deepEqual(jobs.get(id), before);
+  assert.equal((await owner('POST', `shop/jobs/${id}/customer`, { ...customer, preference: 'email', phone: '', email: 'emailonly@example.com' }))?.status, 200);
+  assert.equal(jobs.get(id)!.data.customer.phone, '');
+});

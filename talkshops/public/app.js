@@ -663,7 +663,7 @@
     const rows = j.estimate.map((e) => `<tr><td>${esc(e.item)}${chargeDetail(e)}<div class="pri-cell">${e.status === "pending" ? `<select class="pri-sel" data-pri="${esc(e.id)}" aria-label="Priority for ${esc(e.item)}">${priOptions(e.priority)}</select>` : priPill(e)}</div>${window.repairGuideFor(e.item)}</td><td>${e.status === "pending" ? '<span class="pill warn">Pending</span>' : e.status === "approved" ? '<span class="pill ok">Approved</span>' : '<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status === "pending" && j.stage !== "approval" ? `<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>` : ""}</td></tr>`).join("");
     const log = [...j.events].reverse().map((e) => `<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
     return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-      <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(ShopDisplay.name(j.customer.name))} · ${esc(contact(j.customer))}</div></div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="sheet-h"><div><div class="mono muted">${esc(j.ro)}${j.plate ? " · " + esc(j.plate) : ""}</div><h2 id="sheetTitle">${esc(vehicleStr(j) || "Vehicle details pending")}</h2><div class="muted">${esc(ShopDisplay.name(j.customer.name))} · ${esc(contact(j.customer))}</div><button type="button" class="linkbtn" data-edit-customer>Edit Customer Info</button></div><button class="x" data-close aria-label="Close">×</button></div>
       <div class="sheet-body" data-job="${esc(j.id)}">
         ${j.closed ? `<section class="sec closed-note"><p><b>Closed without repair</b> · ${esc(j.closed.reason)} · ${dayClock(j.closed.t)}</p><p class="muted">This car is in the Archive.</p>${isOwner() ? `<div class="btn-row"><button class="btn" data-reopen>Reopen and put back on the board</button><button class="btn danger" data-delete-job>Delete permanently</button></div>` : ""}</section>` : ""}
         <section class="sec"><details class="stage-picker" ${window.TOUR_ACTIVE ? "open" : ""}><summary><span>Repair Stage</span><strong>${STAGES[idx].key === "approval" ? estimateOutcome(j) || STAGES[idx].label : STAGES[idx].label}</strong></summary><div class="stepper">${steps}</div></details>
@@ -707,6 +707,28 @@
       </div></aside>`;
   }
 
+  function customerModal() {
+    const c = job(ui.modal.customerJob).customer, preference = c.preference || "sms";
+    return `<div class="modal"><form class="modal-card customer-editor" id="customerForm" role="dialog" aria-modal="true" aria-labelledby="ecTitle">
+      <h2 id="ecTitle">Edit Customer Info</h2>
+      <p class="muted" style="margin:0">Changes apply to this repair and future updates. Saving does not send a message.</p>
+      <label class="field">Customer Name<input id="ec-name" autocomplete="name" required maxlength="80" value="${esc(c.name)}"></label>
+      <label class="field">Notify Customer By<select id="ec-channel"><option value="sms" ${preference === "sms" ? "selected" : ""}>Text message</option><option value="email" ${preference === "email" ? "selected" : ""}>Email</option><option value="both" ${preference === "both" ? "selected" : ""}>Text and email</option></select></label>
+      <label class="field">Mobile Number<input id="ec-phone" type="tel" autocomplete="tel" maxlength="30" ${preference !== "email" ? "required" : ""} value="${esc(c.phone || "")}"></label>
+      <label class="field">Email Address<input id="ec-email" type="email" autocomplete="email" maxlength="254" ${preference !== "sms" ? "required" : ""} value="${esc(c.email || "")}"></label>
+      <label class="chk"><input type="checkbox" id="ec-consent" ${c.consent ? "checked" : ""}> Customer agreed to repair updates through the selected contact method.</label>
+      <small class="muted">If you change the contact details or notification method, confirm consent again. Leave unchecked to pause notifications.</small>
+      <p id="ec-error" role="alert" class="form-err" hidden></p>
+      <div class="btn-row"><button class="btn primary" type="submit">Save Changes</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+    </form></div>`;
+  }
+
+  function customerContactChanged() {
+    $("#ec-consent").checked = false;
+    $("#ec-phone").required = $("#ec-channel").value !== "email";
+    $("#ec-email").required = $("#ec-channel").value !== "sms";
+  }
+
   function closeModal() {
     const j = job(ui.modal.closeJob);
     const text = `Hi ${first(j.customer.name)}, we've closed out repair order ${j.ro} for your ${vehicleStr(j) || "vehicle"}. Thanks for considering ${shop.name}. Call us anytime if you change your mind.`;
@@ -739,6 +761,7 @@
     if (session && shop && ui.openJob && (ui.view === "board" || ui.view === "archive")) { const j = job(ui.openJob); if (j) h += sheetView(j); }
     if (ui.modal === "video") h += videoModal();
     else if (ui.modal?.billing) h += billing.editor(ui.modal.billing, shop, job(ui.modal.job));
+    else if (ui.modal?.customerJob) h += customerModal();
     else if (ui.modal?.closeJob) h += closeModal();
     else if (ui.modal?.walk) { const j = job(ui.modal.job); h += window.Walkthrough.editor(j, ui.modal.walk, { vehicle: vehicleStr(j) || j.ro, first: first(j.customer.name), consent: j.customer.consent, busy: ui.busy }); }
     else if (ui.modal) h += stageModal();
@@ -860,6 +883,7 @@
       t.disabled = false;
       return;
     }
+    if (t.hasAttribute("data-edit-customer")) { ui.modal = { customerJob: ui.openJob }; renderLayer(); $("#ec-name")?.focus(); return; }
     if (t.hasAttribute("data-close-job")) { ui.modal = { closeJob: ui.openJob }; renderLayer(); $("#c-reason")?.focus(); return; }
     if (t.hasAttribute("data-reopen")) {
       const j = await jobAction(ui.openJob, "reopen", {}, "Reopened. It's back on the board.");
@@ -1022,6 +1046,22 @@
         render();
         if (ui.authErr && $("#au-email")) $("#au-email").value = email;
       }
+      return;
+    }
+    if (f.id === "customerForm") {
+      if (ui.busy) return;
+      const id = ui.modal.customerJob;
+      const body = { name: $("#ec-name").value.trim(), phone: $("#ec-phone").value.trim(), email: $("#ec-email").value.trim(), preference: $("#ec-channel").value, consent: $("#ec-consent").checked };
+      const button = f.querySelector('[type="submit"]'), error = $("#ec-error");
+      ui.busy = true; button.disabled = true; button.textContent = "Saving…"; error.hidden = true;
+      f.setAttribute("aria-busy", "true");
+      try {
+        const updated = await api("POST", `shop/jobs/${id}/customer`, body);
+        upsertJob(updated); ui.modal = null;
+        if (archive.rows) archive.rows = archive.rows.map((r) => r.id === id ? { ...r, customer: updated.customer } : r);
+        render(); toast("Customer info saved"); $("[data-edit-customer]")?.focus();
+      } catch (err) { error.textContent = err.message; error.hidden = false; }
+      finally { ui.busy = false; button.disabled = false; button.textContent = "Save Changes"; f.removeAttribute("aria-busy"); }
       return;
     }
     if (f.id === "setupForm") {
@@ -1195,6 +1235,7 @@
     }
   }
   document.addEventListener("change", (e) => {
+    if (e.target.id === "ec-channel") { customerContactChanged(); return; }
     if (e.target.dataset?.teamRole) { team.change(e.target, render); return; }
     if (e.target.dataset?.pri && ui.openJob) { jobAction(ui.openJob, "estimate", { setPriority: e.target.dataset.pri, priority: e.target.value }, "Priority updated"); return; }
     if (e.target.id === "intakePhotoIn") return uploadIntakePhotos(e.target);
@@ -1220,6 +1261,7 @@
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
   document.addEventListener("input", (e) => {
+    if (e.target.id === "ec-phone" || e.target.id === "ec-email") { customerContactChanged(); return; }
     if (e.target.id === "noteIn" && ui.openJob) { ui.noteDraft[ui.openJob] = e.target.value; return; }
     if (ui.modal?.walk && window.Walkthrough.input(e.target, ui.modal.walk)) return;
     if (e.target.id === "boardSearch") { ui.q = e.target.value; filterBoard(); return; }

@@ -710,7 +710,19 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return ok({ text: fillTemplate(stage, shop, draft, deps.linkBase) });
   }
 
-  if (action === 'close') {
+  if (action === 'customer') {
+    const name = str(body.name, 80);
+    const rawPhone = str(body.phone, 30);
+    const phone = normalizePhone(rawPhone);
+    const email = str(body.email, 255);
+    const preference = body.preference;
+    if (!name) return bad('Enter the customer name.');
+    if (preference !== 'sms' && preference !== 'email' && preference !== 'both') return bad('Choose text, email, or both.');
+    if ((rawPhone || preference !== 'email') && !phone) return bad('Enter a valid mobile number.');
+    if ((email || preference !== 'sms') && (email.length > 254 || !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email))) return bad('Enter a valid email address.');
+    if (typeof body.consent !== 'boolean') return bad('Confirm whether the customer agreed to repair updates.');
+    d.customer = { ...d.customer, name, phone: phone ?? '', email, preference, consent: body.consent };
+  } else if (action === 'close') {
     if (job.stage === 'picked_up') return bad('This car was already picked up.');
     const reason = str(body.reason, 200);
     if (!reason) return bad('Choose why the repair is closed.');
