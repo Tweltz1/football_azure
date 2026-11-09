@@ -92,6 +92,23 @@ jobs:
           echo "EXPO_PUBLIC_SUPABASE_URL=https://$SUPABASE_PROJECT_ID.supabase.co" >> "$GITHUB_ENV"
           echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$KEY" >> "$GITHUB_ENV"
 
+      # Snap to add finds each separate item with Apple's free YOLOv3 Tiny Core ML model
+      # (developer.apple.com/machine-learning/models). It's downloaded here, not kept in git, and
+      # compiled so the app can load it straight away. If Apple's download is ever unavailable, the
+      # app still builds and Snap to add falls back to whole-photo labels and printed text.
+      - name: Add the on-device object detector
+        run: |
+          DIR=modules/tote-native/ios/models
+          NAME=YOLOv3TinyInt8LUT
+          URL="https://ml-assets.apple.com/coreml/models/Image/ObjectDetection/YOLOv3Tiny/$NAME.mlmodel"
+          if curl -fsSL --retry 3 -o "$RUNNER_TEMP/$NAME.mlmodel" "$URL"; then
+            shasum -a 256 "$RUNNER_TEMP/$NAME.mlmodel"
+            xcrun coremlc compile "$RUNNER_TEMP/$NAME.mlmodel" "$DIR"
+            ls -la "$DIR"
+          else
+            echo "::warning::Couldn't download $NAME; Snap to add will build without per-item detection"
+          fi
+
       - name: Generate the Xcode project
         run: npx expo prebuild --platform ios --clean
 
