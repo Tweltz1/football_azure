@@ -23,6 +23,10 @@ create table if not exists public.grocery_aisle_votes (
 );
 alter table public.grocery_aisle_votes enable row level security;
 revoke all on public.grocery_aisle_votes from anon, authenticated;
+-- Items with shared aisles per store, for the store map.
+create or replace view public.grocery_store_coverage as
+  select store_key, count(distinct item_key)::int as items from public.grocery_aisle_votes group by store_key;
+revoke all on public.grocery_store_coverage from anon, authenticated;
 """
 
 req = urllib.request.Request(
@@ -35,4 +39,4 @@ try:
     urllib.request.urlopen(req, timeout=60).read()
 except urllib.error.HTTPError as e:
     raise SystemExit(f"Supabase returned {e.code}: {e.read().decode('utf-8', 'replace')[:300]}")
-print("grocery_aisle_votes table: ready")
+print("grocery_aisle_votes table and grocery_store_coverage view: ready")

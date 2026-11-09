@@ -9,7 +9,7 @@ the app can show how much to trust it (`Aisle 14 · Kroger`, `Produce · guess`)
 |---|---|---|---|
 | 1. Official API | Kroger family (Kroger, Fry's, King Soopers, Ralphs, Smith's, Fred Meyer, Harris Teeter, ...) | Kroger Public API `GET /v1/products?filter.term=...&filter.locationId=...` returns `aisleLocations` (aisle number, side, bay, shelf) per store | Built |
 | 2. Your own aisles | Any store | The shopper types an aisle once; it is remembered on the phone per store and item, and always wins | Built |
-| 3. Shared shopper aisles | Walmart, Target, Hy-Vee, Costco, Aldi (and Kroger items the API misses) | Every aisle a shopper types is a vote in Supabase; the majority answer per store + item is used, shown as "Aisle 7 · 3 shoppers" | Built |
+| 3. Shared shopper aisles | Walmart, Target, Hy-Vee, Costco, Aldi, Woodman's (and Kroger items the API misses) | Every aisle a shopper types is a vote in Supabase; the majority answer per store + item is used, shown as "Aisle 7 · 3 shoppers" | Built |
 | 4. Department fallback | Any store | Item name → department by keyword (`departments.ts`), placed on a generic floor plan | Built |
 
 ### Request flow
@@ -24,7 +24,7 @@ early app; the next step is caching results per store + item in a Supabase table
 
 ### Shared shopper aisles
 - Store identity: Kroger and Walmart stores come from their official store search (`kroger:<locationId>`,
-  `walmart:<store number>`). Target, Hy-Vee, Costco and Aldi are identified by chain + ZIP, plus a street
+  `walmart:<store number>`). Target, Hy-Vee, Costco, Aldi and Woodman's are identified by chain + ZIP, plus a street
   when a ZIP has two (`target:50309-ingersoll`). "Other" stores stay on the phone and are never shared.
 - Table `grocery_aisle_votes` (`tools/setup_supabase.py`): one row per store + item + phone; voting again
   replaces your old vote. Row level security is on with no policies, so only the function can touch it.
@@ -32,6 +32,14 @@ early app; the next step is caching results per store + item in a Supabase table
   values like `14` or `A14`, and the majority answer wins (aisle beats department on a tie, newer beats older).
 - Known gap: a random phone id is easy to fake. Before a public launch, add sign in with Apple and
   rate limits so one person can't flood a store with wrong answers.
+
+### Store map
+`GET ?action=nearby&lat&lon` returns supported stores within about 15 km: Kroger and Walmart from their
+official store APIs when those keys are set (so ids match aisle lookup), everything else from
+OpenStreetMap through the Overpass API (credited on the map, as its license requires). Each store
+carries its coverage: Kroger aisle data, or how many items shoppers have mapped there (view
+`grocery_store_coverage`). Stores picked on the map are keyed by OSM id (`woodmans:osm-w123`), which
+is more precise than chain + ZIP. Results are cached per ~1 km for 30 minutes in the function.
 
 ### Affiliate APIs: what they give us
 - **Walmart** (walmart.io affiliate API): used for its **Store Locator** (real store numbers near a ZIP), so

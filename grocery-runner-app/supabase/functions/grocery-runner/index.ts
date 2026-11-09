@@ -3,6 +3,7 @@
 //   GET  ?action=kroger-stores&zip=50309
 //   GET  ?action=kroger-products&term=milk&locationId=01400943
 //   GET  ?action=walmart-stores&zip=50309
+//   GET  ?action=nearby&lat=41.6&lon=-93.6       supported stores near a point, for the map
 //   GET  ?action=status                          which lookups are switched on
 //   POST {action:"aisles", store, items:[...]}   shared shopper aisles for a list
 //   POST {action:"vote", store, item, device, aisle | department}
@@ -10,6 +11,7 @@
 // Deployed by .github/workflows/grocery-runner-app.yml.
 import { sharedAisles, voteAisle } from './aisles.ts';
 import { krogerProducts, krogerReady, krogerStores } from './kroger.ts';
+import { nearbyStores } from './nearby.ts';
 import { walmartReady, walmartStores } from './walmart.ts';
 
 const cors = {
@@ -45,6 +47,12 @@ Deno.serve(async (req) => {
         const locationId = q.get('locationId') ?? '';
         if (term.length < 2 || !locationId) return json({ error: 'term and locationId are required.' }, 400);
         return json(await krogerProducts(term, locationId));
+      }
+      case 'nearby': {
+        const lat = Number(q.get('lat'));
+        const lon = Number(q.get('lon'));
+        if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) return json({ error: 'lat and lon are required.' }, 400);
+        return json(await nearbyStores(lat, lon));
       }
       case 'walmart-stores':
         if (!zipOk(zip)) return json({ error: 'Enter a 5-digit ZIP code.' }, 400);

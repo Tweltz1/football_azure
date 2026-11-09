@@ -69,6 +69,20 @@ jobs:
           fi
           npx -y supabase@latest functions deploy grocery-runner --project-ref "$SUPABASE_PROJECT_ID" --use-api --yes
 
+      - name: Smoke test the live function
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then exit 0; fi
+          KEY=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/api-keys" \
+            | python3 -c 'import json,sys; print(next((k["api_key"] for k in json.load(sys.stdin) if k.get("name") == "anon"), ""))')
+          FN="https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/grocery-runner"
+          H=(-H "Authorization: Bearer $KEY" -H "apikey: $KEY")
+          echo "status: $(curl -fsS "${H[@]}" "$FN?action=status")"
+          # Madison, WI has Woodman's, Aldi, Walmart, Target, Costco and Pick 'n Save (Kroger).
+          curl -fsS "${H[@]}" "$FN?action=nearby&lat=43.0731&lon=-89.4012" \
+            | python3 -c 'import json,sys,collections; d=json.load(sys.stdin); print(len(d), "stores near Madison:", dict(collections.Counter(s["chain"] for s in d)))'
+          curl -fsS "${H[@]}" -H "Content-Type: application/json" -d '{"action":"aisles","store":"woodmans:osm-test","items":["milk"]}' "$FN"; echo
+
   build:
     runs-on: macos-26
     timeout-minutes: 60

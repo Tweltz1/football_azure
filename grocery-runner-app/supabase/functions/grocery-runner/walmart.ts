@@ -51,3 +51,20 @@ export async function walmartStores(zip: string) {
     address: [s.streetAddress, s.city, s.stateProvCode].filter(Boolean).join(', '),
   }));
 }
+
+export async function walmartStoresNear(
+  lat: number,
+  lon: number,
+): Promise<{ id: string; name: string; address: string; lat: number; lon: number }[]> {
+  const res = await fetch(`${STORES}?lat=${lat}&lon=${lon}`, { headers: await headers() });
+  if (!res.ok) throw new Error(`Walmart store search failed (${res.status}).`);
+  const body = await res.json();
+  // deno-lint-ignore no-explicit-any
+  return (Array.isArray(body) ? body : []).filter((s: any) => Array.isArray(s.coordinates)).map((s: any) => ({
+    id: String(s.no),
+    name: s.name ?? `Walmart #${s.no}`,
+    address: [s.streetAddress, s.city].filter(Boolean).join(', '),
+    lon: Number(s.coordinates[0]),
+    lat: Number(s.coordinates[1]),
+  }));
+}

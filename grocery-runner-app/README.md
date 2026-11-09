@@ -9,9 +9,11 @@ machine (`.github/workflows/grocery-runner-app.yml`), so no Mac is needed.
 - **Store**:
   - Kroger family stores (Kroger, Fry's, King Soopers, Ralphs, Smith's, Fred Meyer, ...): find by ZIP.
     Aisles fill in automatically from the official Kroger API.
-  - Walmart (store search by ZIP), Target, Hy-Vee, Costco, Aldi: aisles other shoppers entered at that
+  - Walmart (store search by ZIP), Target, Hy-Vee, Costco, Aldi, Woodman's: aisles other shoppers entered at that
     store fill in automatically ("Aisle 7 · 3 shoppers"). Any aisle you type is remembered and shared.
   - Other stores: kept on the phone. Items sort by department and your aisles are remembered.
+- **Store map**: supported stores near you or any ZIP/city, colored by how much aisle data each has
+  (green: Kroger aisles, orange: shopper aisles, gray: not mapped yet). Tap one and "Shop here".
 - **Route**: A* walking paths on a store grid, stops ordered for the shortest total walk, with
   "Frozen and dairy last" on by default. Items at the same spot are grouped into one stop.
 - Data stays on the phone (no account).
@@ -19,7 +21,7 @@ machine (`.github/workflows/grocery-runner-app.yml`), so no Mac is needed.
 See [ARCHITECTURE.md](ARCHITECTURE.md) for how locations are sourced and how routing works.
 
 ## Layout
-- `src/app/` screens (Expo Router): `index` list, `store` picker, `item/[id]` set location, `route` map.
+- `src/app/` screens (Expo Router): `index` list, `store` picker, `map` store map, `item/[id]` set location, `route` map.
 - `src/lib/routing/` the routing engine: `grid.ts`, `astar.ts`, `layout.ts` (generic store floor plan),
   `tour.ts` (stop order), `planRoute.ts` (ties it together).
 - `src/lib/` `kroger.ts` client, `departments.ts` keyword guesses and walk order, `store.tsx` app data.

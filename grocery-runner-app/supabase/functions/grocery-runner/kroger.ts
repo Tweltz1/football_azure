@@ -60,3 +60,18 @@ export async function krogerProducts(term: string, locationId: string) {
     })),
   }));
 }
+
+export type StoreSpot = { id: string; name: string; address: string; lat: number; lon: number };
+
+export async function krogerStoresNear(lat: number, lon: number): Promise<StoreSpot[]> {
+  const body = await get('/locations', { 'filter.latLong.near': `${lat},${lon}`, 'filter.radiusInMiles': '10', 'filter.limit': '50' });
+  // deno-lint-ignore no-explicit-any
+  return (body.data ?? []).map((l: any) => ({
+    id: String(l.locationId),
+    name: l.name,
+    address: [l.address?.addressLine1, l.address?.city].filter(Boolean).join(', '),
+    lat: l.geolocation?.latitude,
+    lon: l.geolocation?.longitude,
+  // deno-lint-ignore no-explicit-any
+  })).filter((s: any) => typeof s.lat === 'number' && typeof s.lon === 'number');
+}

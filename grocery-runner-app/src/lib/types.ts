@@ -34,7 +34,7 @@ export type ListItem = {
   location: ItemLocation;
 };
 
-export type StoreChain = 'kroger' | 'walmart' | 'target' | 'hyvee' | 'costco' | 'aldi' | 'other';
+export type StoreChain = 'kroger' | 'walmart' | 'target' | 'hyvee' | 'costco' | 'aldi' | 'woodmans' | 'other';
 
 export type Store = {
   /**

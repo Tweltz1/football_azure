@@ -23,3 +23,17 @@ export type FoundStore = { id: string; name: string; address: string };
 export const backendStatus = () => callBackend<BackendStatus>({ action: 'status' });
 export const findStores = (chain: 'kroger' | 'walmart', zip: string) =>
   callBackend<FoundStore[]>({ action: `${chain}-stores`, zip });
+
+export type NearbyStore = {
+  key: string;
+  chain: 'kroger' | 'walmart' | 'target' | 'hyvee' | 'costco' | 'aldi' | 'woodmans';
+  name: string;
+  address: string;
+  lat: number;
+  lon: number;
+  coverage: 'kroger' | 'shared';
+  items: number;
+};
+
+export const nearbyStores = (lat: number, lon: number) =>
+  callBackend<NearbyStore[]>({ action: 'nearby', lat: lat.toFixed(4), lon: lon.toFixed(4) });

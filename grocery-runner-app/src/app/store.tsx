@@ -3,19 +3,11 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button, Card, Chip, SectionTitle } from '../components/ui';
 import { backendConfigured, BackendStatus, backendStatus, findStores, FoundStore } from '../lib/api';
+import { CHAINS } from '../lib/chains';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
 import { StoreChain } from '../lib/types';
 
-const CHAINS: { chain: StoreChain; label: string }[] = [
-  { chain: 'kroger', label: 'Kroger family' },
-  { chain: 'walmart', label: 'Walmart' },
-  { chain: 'target', label: 'Target' },
-  { chain: 'hyvee', label: 'Hy-Vee' },
-  { chain: 'costco', label: 'Costco' },
-  { chain: 'aldi', label: 'Aldi' },
-  { chain: 'other', label: 'Other' },
-];
 
 const slug = (s: string) =>
   s
@@ -34,7 +26,7 @@ export default function StoreScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [which, setWhich] = useState('');
-  const [aisles, setAisles] = useState('20');
+  const [aisles, setAisles] = useState('24');
 
   useEffect(() => {
     if (backendConfigured) backendStatus().then(setStatus).catch(() => {});
@@ -50,6 +42,7 @@ export default function StoreScreen() {
 
   const choose = (c: StoreChain) => {
     setChain(c);
+    setAisles(String(CHAINS.find((x) => x.chain === c)!.aisles));
     setResults(null);
     setError(null);
   };
@@ -99,7 +92,10 @@ export default function StoreScreen() {
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-      <SectionTitle>Store</SectionTitle>
+      {backendConfigured && (
+        <Button title="Find stores on a map" icon="map" onPress={() => router.push('/map')} />
+      )}
+      <SectionTitle>Or pick by ZIP</SectionTitle>
       <View style={styles.chips}>
         {CHAINS.map((c) => (
           <Chip key={c.chain} label={c.label} selected={chain === c.chain} onPress={() => choose(c.chain)} />
