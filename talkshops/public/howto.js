@@ -4,7 +4,7 @@
 (function () {
   "use strict";
   const MIC = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`;
-  const QUICK = ["Oil and filter change", "Front brake pads and rotors", "Replace serpentine belt", "Replace battery", "Replace spark plugs", "Cabin air filter", "What does code P0420 mean?"];
+  const QUICK = ["Oil and Filter Change", "Front Brake Pads and Rotors", "Replace Serpentine Belt", "Replace Battery", "Replace Spark Plugs", "Cabin Air Filter", "What Does Code P0420 Mean?"];
 
   window.createShopHowTo = function ({ esc, api, toast, cars, locked = () => false }) {
     const st = { carId: "", vehicle: { year: "", make: "", model: "", engine: "" }, turns: [], busy: false };
@@ -17,8 +17,8 @@
     // Starter shops see what the assistant does and how to get it (it's a Pro feature).
     function upsell() {
       return `<section class="howto">
-        <div class="howto-head"><h2>Repair how-to</h2><p class="muted">Ask how to do a job and get steps, tools, parts, typical specs and safety notes.</p></div>
-        <div class="howto-pro"><b>The How-to assistant is part of Talk Shops Pro.</b>
+        <div class="howto-head"><h2>Repair How-To</h2><p class="muted">Ask how to do a job and get steps, tools, parts, typical specs and safety notes.</p></div>
+        <div class="howto-pro"><b>The How-To Assistant is part of Talk Shops Pro.</b>
           <p>Your techs can ask how to do any job on the car in the bay, by typing or speaking, and get step-by-step guidance in seconds. Pro also includes 3,000 texts a month.</p>
           <button class="btn primary" data-view="plan">See Pro on the Plan tab</button></div>
       </section>`;
@@ -29,23 +29,23 @@
       const list = cars().filter((j) => j.vehicle && (j.vehicle.make || j.vehicle.model));
       const v = st.vehicle;
       return `<section class="howto">
-        <div class="howto-head"><h2>Repair how-to</h2><p class="muted">Ask how to do a job and get steps, tools, parts, typical specs and safety notes.</p></div>
+        <div class="howto-head"><h2>Repair How-To</h2><p class="muted">Ask how to do a job and get steps, tools, parts, typical specs and safety notes.</p></div>
         ${safetyNote()}
         <form id="howtoForm" class="howto-form" autocomplete="off">
           <div class="howto-veh">
-            ${list.length ? `<label class="field howto-car">Car in the bay<select id="howtoCar"><option value="">Another vehicle</option>${list.map((j) => `<option value="${esc(j.id)}" ${st.carId === j.id ? "selected" : ""}>${esc([j.vehicle.year, j.vehicle.make, j.vehicle.model].filter(Boolean).join(" "))}${j.ro ? " · " + esc(j.ro) : ""}</option>`).join("")}</select></label>` : ""}
+            ${list.length ? `<label class="field howto-car">Car in the Bay<select id="howtoCar"><option value="">Another Vehicle</option>${list.map((j) => `<option value="${esc(j.id)}" ${st.carId === j.id ? "selected" : ""}>${esc([j.vehicle.year, j.vehicle.make, j.vehicle.model].filter(Boolean).join(" "))}${j.ro ? " · " + esc(j.ro) : ""}</option>`).join("")}</select></label>` : ""}
             <label class="field">Year<input id="howtoYear" inputmode="numeric" maxlength="4" value="${esc(v.year)}" placeholder="2016"></label>
             <label class="field">Make<input id="howtoMake" maxlength="30" value="${esc(v.make)}" placeholder="Honda"></label>
             <label class="field">Model<input id="howtoModel" maxlength="40" value="${esc(v.model)}" placeholder="Civic"></label>
             <label class="field">Engine<input id="howtoEngine" maxlength="40" value="${esc(v.engine)}" placeholder="Optional, e.g. 2.0L"></label>
           </div>
-          <label class="field">What do you need to do?<textarea id="howtoQ" rows="2" maxlength="500" placeholder="e.g. Replace the front wheel bearing, or how do I remove the intake manifold?"></textarea></label>
+          <label class="field">What Do You Need to Do?<textarea id="howtoQ" rows="2" maxlength="500" placeholder="e.g. Replace the front wheel bearing, or how do I remove the intake manifold?"></textarea></label>
           <div id="howtoSuggest" class="howto-suggest" aria-live="polite">${suggestHtml()}</div>
           <div id="howtoVideos" class="howto-videos">${videosHtml()}</div>
           <div class="howto-actions">
             <button type="button" class="btn mic" data-dictate="#howtoQ" aria-pressed="false" aria-label="Voice typing">${MIC}<span class="mic-label">Speak</span></button>
             <button class="btn primary" type="submit" id="howtoAsk" ${st.busy ? "disabled" : ""}>${st.busy ? "Looking it up…" : "Ask"}</button>
-            ${st.turns.length ? `<button type="button" class="linkbtn" data-howto-clear>Clear answers</button>` : ""}
+            ${st.turns.length ? `<button type="button" class="linkbtn" data-howto-clear>Clear Answers</button>` : ""}
           </div>
           <div class="howto-quick" aria-label="Common jobs">${QUICK.map((q) => `<button type="button" class="howto-chip" data-howto-ask="${esc(q)}">${esc(q)}</button>`).join("")}</div>
         </form>
@@ -58,7 +58,7 @@
     st.suggestions = [];
     function suggestHtml() {
       if (!st.suggestions.length) return "";
-      return `<span class="howto-suggest-h">Saved answers for this vehicle</span>${st.suggestions.map((x) => `<button type="button" class="howto-chip saved" data-howto-saved="${esc(x.id)}" data-q="${esc(x.question)}">${esc(x.question)}${x.worked ? ` <span class="howto-ok">✓ ${x.worked}</span>` : ""}</button>`).join("")}`;
+      return `<span class="howto-suggest-h">Saved Answers for This Vehicle</span>${st.suggestions.map((x) => `<button type="button" class="howto-chip saved" data-howto-saved="${esc(x.id)}" data-q="${esc(x.question)}">${esc(x.question)}${x.worked ? ` <span class="howto-ok">✓ ${x.worked}</span>` : ""}</button>`).join("")}`;
     }
     function loadSuggestions() {
       clearTimeout(sugT);
@@ -79,13 +79,13 @@
       const s = r.saved;
       const tips = (r.tips || []).map((x) => `<li>${esc(x.text)}</li>`).join("");
       return `<div class="howto-learn">
-        ${s ? `<p class="howto-saved-note"><b>Saved answer</b> · used ${s.uses} time${s.uses === 1 ? "" : "s"}${s.worked ? ` · ${s.worked} shop${s.worked === 1 ? "" : "s"} said it worked` : ""}${s.askedFor && s.askedFor !== r.vehicle ? ` · first asked for a ${esc(s.askedFor)}` : ""} <button type="button" class="linkbtn" data-howto-fresh="${i}">Ask for a fresh answer</button></p>` : ""}
-        <div class="howto-rate"><span>Did this work?</span>
-          <button type="button" class="btn sm" data-howto-rate="${i}" data-worked="1" aria-pressed="${r.myRating === true}">This worked</button>
-          <button type="button" class="btn sm" data-howto-rate="${i}" data-worked="0" aria-pressed="${r.myRating === false}">Not right</button>
+        ${s ? `<p class="howto-saved-note"><b>Saved Answer</b> · used ${s.uses} time${s.uses === 1 ? "" : "s"}${s.worked ? ` · ${s.worked} shop${s.worked === 1 ? "" : "s"} said it worked` : ""}${s.askedFor && s.askedFor !== r.vehicle ? ` · first asked for a ${esc(s.askedFor)}` : ""} <button type="button" class="linkbtn" data-howto-fresh="${i}">Ask for a Fresh Answer</button></p>` : ""}
+        <div class="howto-rate"><span>Did This Work?</span>
+          <button type="button" class="btn sm" data-howto-rate="${i}" data-worked="1" aria-pressed="${r.myRating === true}">This Worked</button>
+          <button type="button" class="btn sm" data-howto-rate="${i}" data-worked="0" aria-pressed="${r.myRating === false}">Not Right</button>
           ${r.retired ? `<small>Thanks. The next person who asks gets a fresh answer.</small>` : ""}</div>
-        <div class="howto-tips"><h4>Tips from techs</h4>${tips ? `<ul>${tips}</ul>` : ""}
-          <div class="howto-tip-add"><input id="howtoTip-${i}" maxlength="300" placeholder="Tip for the next tech, e.g. drop the skid plate first" aria-describedby="howtoTipNote"><button type="button" class="btn sm" data-howto-tip="${i}">Save tip</button></div><small id="howtoTipNote" class="howto-fine">Tips are shared with techs at other shops without your shop name. Leave out customer details.</small></div>
+        <div class="howto-tips"><h4>Tips From Techs</h4>${tips ? `<ul>${tips}</ul>` : ""}
+          <div class="howto-tip-add"><input id="howtoTip-${i}" maxlength="300" placeholder="Tip for the next tech, e.g. drop the skid plate first" aria-describedby="howtoTipNote"><button type="button" class="btn sm" data-howto-tip="${i}">Save Tip</button></div><small id="howtoTipNote" class="howto-fine">Tips are shared with techs at other shops without your shop name. Leave out customer details.</small></div>
       </div>`;
     }
 
@@ -98,10 +98,10 @@
       if (!list.length) return "";
       const line = (kind, brand, number) => {
         const num = [brand, number].filter(Boolean).join(" ");
-        return `<span class="pn-kind">${kind}</span><b class="pn-num">${esc(num)}</b><a href="${esc(search(`${num} ${t.vehicle}`.trim()))}" target="_blank" rel="noopener">Look up</a>`;
+        return `<span class="pn-kind">${kind}</span><b class="pn-num">${esc(num)}</b><a href="${esc(search(`${num} ${t.vehicle}`.trim()))}" target="_blank" rel="noopener">Look Up</a>`;
       };
-      return `<div class="howto-block pn"><h4>Part numbers <span class="muted">· verify by VIN with your parts supplier</span></h4><ul class="howto-pn">${list.map((p) => `<li><span class="pn-part">${esc(p.part)}</span>
-        ${p.number ? line("OEM", p.brand, p.number) : p.altNumber ? "" : `<span class="pn-kind">OEM</span><span class="muted">Varies; check by VIN</span><a href="${esc(search(`${t.vehicle} ${p.part} OEM part number`.trim()))}" target="_blank" rel="noopener">Find it</a>`}
+      return `<div class="howto-block pn"><h4>Part Numbers <span class="muted">· verify by VIN with your parts supplier</span></h4><ul class="howto-pn">${list.map((p) => `<li><span class="pn-part">${esc(p.part)}</span>
+        ${p.number ? line("OEM", p.brand, p.number) : p.altNumber ? "" : `<span class="pn-kind">OEM</span><span class="muted">Varies; check by VIN</span><a href="${esc(search(`${t.vehicle} ${p.part} OEM part number`.trim()))}" target="_blank" rel="noopener">Find It</a>`}
         ${p.altNumber ? line("Aftermarket", p.altBrand, p.altNumber) : ""}
         ${p.note ? `<small>${esc(p.note)}</small>` : ""}</li>`).join("")}</ul></div>`;
     }
@@ -116,7 +116,7 @@
       const q = (document.getElementById("howtoQ")?.value || "").trim(), v = st.vehicle, vl = label({ ...v, engine: "" });
       if (!v.make || !v.model || q.length < 3) return "";
       const t = { v, vehicle: vl, q };
-      return `<span>Watch first, no AI needed:</span><a href="${esc(ytLink(vl, q))}" target="_blank" rel="noopener">YouTube videos</a><a href="${esc(videoLink(t))}" target="_blank" rel="noopener">CarCareKiosk</a>`;
+      return `<span>Watch First, No AI Needed:</span><a href="${esc(ytLink(vl, q))}" target="_blank" rel="noopener">YouTube Videos</a><a href="${esc(videoLink(t))}" target="_blank" rel="noopener">CarCareKiosk Videos</a>`;
     }
     function paintVideos() { const el = document.getElementById("howtoVideos"); if (el) el.innerHTML = videosHtml(); }
     function videoLink(t) {
@@ -135,15 +135,15 @@
       const r = t.res;
       return `<article class="howto-card">${head}
         <p class="howto-answer">${esc(r.answer)}</p>
+        <div class="howto-videos"><span>Watch It Done:</span><a href="${esc(ytLink(label({ ...(t.v || {}), engine: "" }) || t.vehicle, t.q))}" target="_blank" rel="noopener">YouTube Videos</a><a href="${esc(videoLink(t))}" target="_blank" rel="noopener">CarCareKiosk Videos</a></div>
         ${items("Safety", r.safety, "warn")}
-        ${r.specs.length ? `<div class="howto-block specs"><h4>Typical specs <span class="muted">· verify in service info</span></h4><ul>${r.specs.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
-        <div class="howto-cols">${items("Tools", r.tools)}${items("Parts and fluids", r.parts)}</div>
+        ${r.specs.length ? `<div class="howto-block specs"><h4>Typical Specs <span class="muted">· verify in service info</span></h4><ul>${r.specs.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+        <div class="howto-cols">${items("Tools", r.tools)}${items("Parts and Fluids", r.parts)}</div>
         ${partNumbers(t)}
         ${r.steps.length ? `<div class="howto-block"><h4>Steps</h4><ol class="howto-steps">${r.steps.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>` : ""}
         <div class="howto-foot">
           ${r.ideas.length ? `<div class="howto-quick">${r.ideas.map((q) => `<button type="button" class="howto-chip" data-howto-ask="${esc(q)}">${esc(q)}</button>`).join("")}</div>` : ""}
-          <span class="howto-links"><a class="linkbtn" href="${esc(ytLink(label({ ...(t.v || {}), engine: "" }) || t.vehicle, t.q))}" target="_blank" rel="noopener">YouTube</a><a class="linkbtn" href="${esc(videoLink(t))}" target="_blank" rel="noopener">${t.v && t.v.make && t.v.model && /^\d{4}$/.test(t.v.year) ? "Videos for this car" : "Find a video"}</a>
-          <button type="button" class="linkbtn" data-howto-copy="${i}">Copy</button></span>
+          <span class="howto-links"><button type="button" class="linkbtn" data-howto-copy="${i}">Copy</button></span>
         </div>
         ${feedback(r, i)}
         <p class="howto-fine">AI guidance. Confirm specs and procedures in the manufacturer's service information.</p>
@@ -183,7 +183,7 @@
       if (!document.getElementById("howtoThread")) return; // left the tab; the answer shows when they come back
       paint();
       const clear = document.querySelector("[data-howto-clear]");
-      if (!clear) { const a = document.querySelector(".howto-actions"); if (a) a.insertAdjacentHTML("beforeend", `<button type="button" class="linkbtn" data-howto-clear>Clear answers</button>`); }
+      if (!clear) { const a = document.querySelector(".howto-actions"); if (a) a.insertAdjacentHTML("beforeend", `<button type="button" class="linkbtn" data-howto-clear>Clear Answers</button>`); }
     }
 
     function copyText(t) {
