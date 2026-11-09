@@ -1,0 +1,7 @@
+{
+  "name": "tote-native",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ToteTrack's iPhone-only extras: on-device photo recognition, Spotlight search and local reminders",
+  "main": "index.ts"
+}

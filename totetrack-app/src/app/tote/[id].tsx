@@ -12,6 +12,7 @@ import { radius, useTheme } from '../../lib/theme';
 import { Item } from '../../lib/types';
 import { addMonths, daysUntil, daysUntilSeason, expiryLabel, money, parseDate, parseMoney, toteValue } from '../../lib/extras';
 import { useLists } from '../../lib/lists';
+import { ToteNative } from '../../../modules/tote-native';
 
 export default function ToteDetail() {
   const { id, name: presetName, loc, c } = useLocalSearchParams<{ id: string; name?: string; loc?: string; c?: string }>();
@@ -252,7 +253,18 @@ export default function ToteDetail() {
           {tote.notes ? <Text style={[styles.notes, { color: t.text, borderColor: t.border }]}>{tote.notes}</Text> : null}
         </Card>
 
-        <SectionTitle>What’s inside</SectionTitle>
+        <SectionTitle
+          right={
+            ToteNative ? (
+              <Pressable onPress={() => router.push(`/tote/snap?id=${tote.id}`)} hitSlop={8} style={styles.snap}>
+                <Ionicons name="camera" size={16} color={t.primary} />
+                <Text style={{ color: t.primary, fontWeight: '700', fontSize: 14 }}>Snap to add</Text>
+              </Pressable>
+            ) : null
+          }
+        >
+          What’s inside
+        </SectionTitle>
         <View style={[styles.addRow, { backgroundColor: t.card, borderColor: t.primary + '55' }]}>
           <Ionicons name="add-circle" size={24} color={t.primary} />
           <TextInput
@@ -362,6 +374,7 @@ function Tag({ icon, text, color }: { icon: React.ComponentProps<typeof Ionicons
 
 const styles = StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  snap: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
   hero: { height: 10 },
   photo: { width: '100%', height: 200 },
