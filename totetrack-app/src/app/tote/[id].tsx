@@ -234,7 +234,7 @@ export default function ToteDetail() {
                     {tote.season}
                     {(() => {
                       const d = daysUntilSeason(tote.season);
-                      return d === undefined ? '' : d === 0 ? ' · starts today' : ` · in ${d} day${d === 1 ? '' : 's'}`;
+                      return d === undefined ? '' : d === 0 ? ' · get it out today' : ` · get it out in ${d} day${d === 1 ? '' : 's'}`;
                     })()}
                   </Text>
                 </View>

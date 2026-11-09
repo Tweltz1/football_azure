@@ -4,11 +4,11 @@ import * as Print from 'expo-print';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Card, IconButton, SectionTitle, tap, ToteBadge } from '../components/ui';
 import { QRCodeView } from '../components/QRCodeView';
-import { buildLabelHtml, LabelLayout, LabelLayoutId, LabelOptions, LabelSpec, contentsLine, labelText, LAYOUTS } from '../lib/labels';
+import { buildLabelHtml, LabelLayout, LabelLayoutId, LabelOptions, LabelSpec, contentsLine, fitsContents, labelText, LAYOUTS } from '../lib/labels';
 import { useTotes } from '../lib/store';
 import { radius, TOTE_COLORS, useTheme } from '../lib/theme';
 
@@ -16,12 +16,13 @@ export default function PrintLabels() {
   const params = useLocalSearchParams<{ ids?: string }>();
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const { totes } = useTotes();
+  const { totes, ready } = useTotes();
 
   const initial = params.ids ? params.ids.split(',') : [];
   const [selected, setSelected] = useState<Set<string>>(new Set(initial));
   const [layoutId, setLayoutId] = useState<LabelLayoutId>(initial.length === 1 ? 'large' : 'avery5163');
-  const [blanks, setBlanks] = useState(totes.length === 0 ? 10 : 0);
+  // Nothing to print yet? Start with a sheet of blank labels.
+  const [blanks, setBlanks] = useState(ready && totes.length === 0 ? 10 : 0);
   const [skip, setSkip] = useState(0);
   const [includeContents, setIncludeContents] = useState(true);
   const [outlines, setOutlines] = useState(false);
@@ -68,7 +69,10 @@ export default function PrintLabels() {
     return buildLabelHtml(specs, layout, options);
   };
 
-  const previewSpec: LabelSpec = allSpecs()[0] ?? { id: blankIds[0], preset: { name: blankName.trim() || undefined, location: blankLoc.trim() || undefined, color: blankColor } };
+  const specsNow = allSpecs();
+  const previewSpecs: LabelSpec[] = specsNow.length
+    ? specsNow
+    : [{ id: blankIds[0], preset: { name: blankName.trim() || undefined, location: blankLoc.trim() || undefined, color: blankColor } }];
 
   const toggle = (id: string) => {
     tap();
@@ -136,7 +140,13 @@ export default function PrintLabels() {
           <>
             <SectionTitle
               right={
-                <Pressable onPress={() => setSelected(selected.size === totes.length ? new Set() : new Set(totes.map((x) => x.id)))}>
+                <Pressable
+                  hitSlop={8}
+                  onPress={() => {
+                    tap();
+                    setSelected(selected.size === totes.length ? new Set() : new Set(totes.map((x) => x.id)));
+                  }}
+                >
                   <Text style={{ color: t.primary, fontWeight: '600' }}>{selected.size === totes.length ? 'Select none' : 'Select all'}</Text>
                 </Pressable>
               }
@@ -172,7 +182,7 @@ export default function PrintLabels() {
         )}
 
         <SectionTitle>Preview</SectionTitle>
-        <LabelPreview spec={previewSpec} layout={layout} options={options} />
+        <LabelPreview specs={previewSpecs} layout={layout} options={options} example={!specsNow.length} />
 
         <SectionTitle>Blank labels</SectionTitle>
         <Card style={{ padding: 0 }}>
@@ -252,7 +262,15 @@ export default function PrintLabels() {
           </View>
           <Toggle label="Show location" value={showLocation} onChange={setShowLocation} />
           <Toggle label="Show label code" hint="The short code under the QR, for typing in by hand" value={showCode} onChange={setShowCode} />
-          {layout.id === 'large' && <Toggle label="List contents on sign" value={includeContents} onChange={setIncludeContents} />}
+          {fitsContents(layout.id) ? (
+            <Toggle label="List what's inside" hint="A short list of the tote's items" value={includeContents} onChange={setIncludeContents} />
+          ) : (
+            <View style={[styles.optRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border }]}>
+              <Text style={{ color: t.textMuted, fontSize: 13, flex: 1 }}>
+                {'These labels are too small to list what\u2019s inside. Use the big sign or 2" × 4" labels for that. Scanning any label shows the full list.'}
+              </Text>
+            </View>
+          )}
         </Card>
 
         <SectionTitle>Printing</SectionTitle>
@@ -280,29 +298,75 @@ export default function PrintLabels() {
   );
 }
 
-/** On-screen approximation of one printed label, drawn at the label's real proportions. */
-function LabelPreview({ spec, layout, options }: { spec: LabelSpec; layout: LabelLayout; options: LabelOptions }) {
+/** Every label that will print, one per page; swipe sideways to check them all. */
+function LabelPreview({ specs, layout, options, example }: { specs: LabelSpec[]; layout: LabelLayout; options: LabelOptions; example?: boolean }) {
   const t = useTheme();
   const { width } = useWindowDimensions();
-  const info = labelText(spec, options);
+  const listKey = `${layout.id}-${specs.length}`;
+  // The page you're on, forgotten when the label type or count changes (the list starts over).
+  const [pos, setPos] = useState({ key: listKey, i: 0 });
+  const index = pos.key === listKey ? pos.i : 0;
+  const pageW = width - 32; // the screen's side padding
   const big = layout.id === 'large';
   const square = layout.id === 'avery22806';
-  const maxW = width - 32 - 32;
-  const w = big ? Math.min(maxW, 240) : square ? Math.min(maxW, 180) : maxW;
+  const maxW = pageW - 32;
+  const w = big ? Math.min(maxW, 240) : square ? Math.min(maxW, 190) : Math.min(maxW, 380);
+  const h = (w * layout.h) / layout.w;
+  const shown = Math.min(index, specs.length - 1);
+  const blank = !specs[shown]?.tote;
+  return (
+    <View style={[styles.pvWrap, { backgroundColor: t.cardAlt }]}>
+      <FlatList
+        key={listKey}
+        data={specs}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(s, i) => `${s.id}-${i}`}
+        getItemLayout={(_, i) => ({ length: pageW, offset: pageW * i, index: i })}
+        initialNumToRender={2}
+        windowSize={3}
+        onMomentumScrollEnd={(e) => setPos({ key: listKey, i: Math.round(e.nativeEvent.contentOffset.x / pageW) })}
+        style={{ width: pageW, height: h + 32 }}
+        renderItem={({ item }) => (
+          <View style={{ width: pageW, height: h + 32, alignItems: 'center', justifyContent: 'center' }}>
+            <LabelCard spec={item} layout={layout} options={options} w={w} />
+          </View>
+        )}
+      />
+      <Text style={{ color: t.textMuted, fontSize: 12, marginBottom: 12 }}>
+        {example
+          ? 'Example · pick totes or add blank labels'
+          : specs.length > 1
+          ? `Label ${shown + 1} of ${specs.length}${blank ? ' (blank)' : ''} · swipe to see the others`
+          : `${blank ? 'Blank label' : 'Your label'} · ${layout.title}`}
+      </Text>
+    </View>
+  );
+}
+
+/** On-screen copy of one printed label at its real proportions, laid out with fixed sizes so nothing gets cut off. */
+function LabelCard({ spec, layout, options, w }: { spec: LabelSpec; layout: LabelLayout; options: LabelOptions; w: number }) {
+  const info = labelText(spec, options);
   const h = (w * layout.h) / layout.w;
   const ppi = w / layout.w; // screen points per inch
   const pt = (n: number) => (n / 72) * ppi * (options.textScale ?? 1);
-  const contents = big && options.includeContents && spec.tote ? contentsLine(spec.tote, 14) : '';
+  const showContents = !!options.includeContents && fitsContents(layout.id) && !!spec.tote?.items.length;
 
   let body;
-  if (big) {
+  if (layout.id === 'large') {
+    const contents = showContents && spec.tote ? contentsLine(spec.tote, 14) : '';
     body = (
       <View style={[styles.pvBig, { borderColor: info.color, borderWidth: Math.max(2, pt(6)) }]}>
         <Text style={{ fontSize: pt(48), fontWeight: '900', textAlign: 'center', color: '#111' }} numberOfLines={2}>
           {info.name}
         </Text>
-        {info.location ? <Text style={{ fontSize: pt(20), color: '#444', textAlign: 'center' }}>{info.location}</Text> : null}
-        <View style={{ marginTop: 6 }}>
+        {info.location ? (
+          <Text style={{ fontSize: pt(20), color: '#444', textAlign: 'center' }} numberOfLines={1}>
+            {info.location}
+          </Text>
+        ) : null}
+        <View style={{ marginTop: 6, width: w * 0.56, height: w * 0.56 }}>
           <QRCodeView value={info.qr} size={w * 0.56} quiet={1} />
         </View>
         {info.code ? <Text style={[styles.pvCode, { fontSize: pt(16) }]}>{info.code}</Text> : null}
@@ -313,44 +377,55 @@ function LabelPreview({ spec, layout, options }: { spec: LabelSpec; layout: Labe
         ) : null}
       </View>
     );
-  } else if (square) {
+  } else if (layout.id === 'avery22806') {
+    const qr = ppi * 1.12;
     body = (
-      <View style={{ alignItems: 'center', padding: ppi * 0.1, flex: 1 }}>
-        <QRCodeView value={info.qr} size={ppi * 1.3} quiet={1} />
-        <Text style={{ fontSize: pt(10), fontWeight: '800', color: '#111', borderBottomWidth: 2.5, borderColor: info.color }} numberOfLines={1}>
+      <View style={{ flex: 1, alignItems: 'center', paddingTop: ppi * 0.1, paddingHorizontal: ppi * 0.12 }}>
+        <View style={{ alignSelf: 'stretch', height: ppi * 0.09, borderRadius: ppi * 0.045, backgroundColor: info.color }} />
+        <View style={{ width: qr, height: qr, marginTop: ppi * 0.05 }}>
+          <QRCodeView value={info.qr} size={qr} quiet={1} />
+        </View>
+        <Text style={{ fontSize: pt(12), lineHeight: pt(13.2), fontWeight: '800', color: '#111', textAlign: 'center', marginTop: pt(3) }} numberOfLines={2}>
           {info.name}
         </Text>
-        {info.code ? <Text style={[styles.pvCode, { fontSize: pt(6.5) }]}>{info.code}</Text> : null}
+        {info.code ? <Text style={[styles.pvCode, { fontSize: pt(6.5), marginTop: pt(2) }]}>{info.code}</Text> : null}
       </View>
     );
   } else {
     const small = layout.id === 'avery5160';
+    const padY = ppi * (small ? 0.06 : 0.12);
+    const padX = ppi * (small ? 0.08 : 0.16);
+    const gap = ppi * (small ? 0.06 : 0.12);
+    const qr = h - padY * 2;
+    const contents = showContents && spec.tote ? contentsLine(spec.tote, 4) : '';
     body = (
-      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, padding: ppi * (small ? 0.06 : 0.12), gap: ppi * (small ? 0.06 : 0.12) }}>
-        <QRCodeView value={info.qr} size={h - ppi * (small ? 0.12 : 0.24)} quiet={1} />
-        <View style={{ flex: 1, borderLeftWidth: small ? 3 : 4, borderColor: info.color, paddingLeft: ppi * 0.08 }}>
-          <Text style={{ fontSize: pt(small ? 9.5 : 17), fontWeight: '800', color: '#111' }} numberOfLines={2}>
-            {info.name}
-          </Text>
-          {info.location ? (
-            <Text style={{ fontSize: pt(small ? 7 : 10), color: '#444' }} numberOfLines={1}>
-              {info.location}
-            </Text>
-          ) : null}
-          {info.code ? <Text style={[styles.pvCode, { fontSize: pt(small ? 6 : 8) }]}>{info.code}</Text> : null}
+      <>
+        <View style={{ position: 'absolute', left: padX, top: padY, width: qr, height: qr }}>
+          <QRCodeView value={info.qr} size={qr} quiet={1} />
         </View>
-      </View>
+        <View style={{ position: 'absolute', left: padX + qr + gap, right: padX, top: padY, bottom: padY, justifyContent: 'center' }}>
+          <View style={{ borderLeftWidth: small ? 3 : 4, borderColor: info.color, paddingLeft: ppi * (small ? 0.05 : 0.1) }}>
+            <Text style={{ fontSize: pt(small ? 9.5 : 17), fontWeight: '800', color: '#111' }} numberOfLines={2}>
+              {info.name}
+            </Text>
+            {info.location ? (
+              <Text style={{ fontSize: pt(small ? 7 : 10), color: '#444' }} numberOfLines={1}>
+                {info.location}
+              </Text>
+            ) : null}
+            {info.code ? <Text style={[styles.pvCode, { fontSize: pt(small ? 6 : 8) }]}>{info.code}</Text> : null}
+            {contents ? (
+              <Text style={{ fontSize: pt(8.5), color: '#333', marginTop: pt(3) }} numberOfLines={2}>
+                {contents}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      </>
     );
   }
 
-  return (
-    <View style={[styles.pvWrap, { backgroundColor: t.cardAlt }]}>
-      <View style={[styles.pvLabel, { width: w, height: h }]}>{body}</View>
-      <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 8 }}>
-        {spec.tote ? 'First label' : 'Blank label'} · {layout.title}
-      </Text>
-    </View>
-  );
+  return <View style={[styles.pvLabel, { width: w, height: h }]}>{body}</View>;
 }
 
 function SheetPreview({ cols, rows, active }: { cols: number; rows: number; active: boolean }) {
@@ -421,7 +496,7 @@ const styles = StyleSheet.create({
   hintSmall: { fontSize: 12, lineHeight: 17, marginTop: 10 },
   segment: { flexDirection: 'row', borderRadius: 10, padding: 3 },
   segBtn: { width: 40, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  pvWrap: { borderRadius: radius.md, padding: 16, alignItems: 'center' },
+  pvWrap: { borderRadius: radius.md, alignItems: 'center', overflow: 'hidden' },
   pvLabel: { backgroundColor: '#fff', borderRadius: 6, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
   pvBig: { flex: 1, alignItems: 'center', padding: 12, borderRadius: 10, gap: 2 },
   pvCode: { fontFamily: 'Menlo', color: '#555', fontWeight: '600', letterSpacing: 1 },

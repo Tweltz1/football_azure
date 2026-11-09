@@ -48,6 +48,11 @@ export function contentsLine(tote: Tote, max: number): string {
   return shown.join(', ') + (extra > 0 ? `  +${extra} more` : '');
 }
 
+/** Label types with room for a contents line. */
+export function fitsContents(id: LabelLayoutId): boolean {
+  return id === 'large' || id === 'avery5163';
+}
+
 /** What a label shows; shared by the printed HTML and the on-screen preview. */
 export function labelText(spec: LabelSpec, opts: LabelOptions = {}) {
   const t = spec.tote;
@@ -91,16 +96,23 @@ function labelInner(spec: LabelSpec, layout: LabelLayout, opts: LabelOptions): s
   }
 
   if (layout.id === 'avery22806') {
-    return `<div class="sq"><div class="sq-qr">${qr}</div><div class="sq-name" style="border-color:${color}">${name}</div>${code ? `<div class="code">${code}</div>` : ''}</div>`;
+    return `<div class="sq">
+      <div class="sq-bar" style="background:${color}"></div>
+      <div class="sq-qr">${qr}</div>
+      <div class="sq-name">${name}</div>
+      ${code ? `<div class="code">${code}</div>` : ''}
+    </div>`;
   }
 
   const small = layout.id === 'avery5160';
+  const contents = !small && includeContents && t && t.items.length ? contentsLine(t, 4) : '';
   return `<div class="row ${small ? 'small' : ''}">
     <div class="row-qr">${qr}</div>
     <div class="row-text" style="border-color:${color}">
       <div class="row-name">${name}</div>
       ${loc ? `<div class="row-loc">${loc}</div>` : ''}
       ${code ? `<div class="code">${code}</div>` : ''}
+      ${contents ? `<div class="row-items">${esc(contents)}</div>` : ''}
     </div>
   </div>`;
 }
@@ -148,9 +160,12 @@ export function buildLabelHtml(specs: (LabelSpec | null)[], layout: LabelLayout,
   .row.small .row-loc { font-size: calc(7pt * var(--s, 1)); margin-top: 0; }
   .row.small .code { font-size: calc(6pt * var(--s, 1)); margin-top: 1pt; }
 
-  .sq { display: flex; flex-direction: column; align-items: center; height: 100%; padding: 0.1in; }
-  .sq-qr { width: 1.3in; height: 1.3in; }
-  .sq-name { font-size: calc(10pt * var(--s, 1)); font-weight: 800; text-align: center; margin-top: 2pt; border-bottom: 2.5pt solid; padding-bottom: 1pt; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-items { font-size: calc(8.5pt * var(--s, 1)); line-height: 1.25; color: #333; margin-top: 4pt; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+  .sq { display: flex; flex-direction: column; align-items: center; height: 100%; padding: 0.1in 0.12in 0.08in; }
+  .sq-bar { width: 100%; height: 0.09in; border-radius: 0.045in; flex-shrink: 0; }
+  .sq-qr { width: 1.12in; height: 1.12in; margin-top: 0.05in; flex-shrink: 0; }
+  .sq-name { font-size: calc(12pt * var(--s, 1)); font-weight: 800; line-height: 1.1; text-align: center; margin-top: 3pt; max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
   .sq .code { font-size: calc(6.5pt * var(--s, 1)); margin-top: 2pt; }
 
   .big { height: 100%; border: 6pt solid; border-radius: 0.3in; display: flex; flex-direction: column; align-items: center; padding: 0.5in 0.5in 0.4in; position: relative; overflow: hidden; }
