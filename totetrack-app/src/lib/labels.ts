@@ -38,6 +38,16 @@ export type LabelOptions = {
   textScale?: number;
 };
 
+/**
+ * The tote's items as one wrapped line ("3× Towels, Tent, Lantern … +4 more"), so a long list
+ * never makes the label grow. Scanning the label shows the full list.
+ */
+export function contentsLine(tote: Tote, max: number): string {
+  const shown = tote.items.slice(0, max).map((i) => (i.qty > 1 ? `${i.qty}× ${i.name}` : i.name));
+  const extra = tote.items.length - shown.length;
+  return shown.join(', ') + (extra > 0 ? `  +${extra} more` : '');
+}
+
 /** What a label shows; shared by the printed HTML and the on-screen preview. */
 export function labelText(spec: LabelSpec, opts: LabelOptions = {}) {
   const t = spec.tote;
@@ -67,13 +77,8 @@ function labelInner(spec: LabelSpec, layout: LabelLayout, opts: LabelOptions): s
   const qr = qrSvg(info.qr);
 
   if (layout.id === 'large') {
-    const items =
-      includeContents && t && t.items.length
-        ? `<ul class="items">${t.items
-            .slice(0, 18)
-            .map((i) => `<li>${i.qty > 1 ? `<b>${i.qty}×</b> ` : ''}${esc(i.name)}</li>`)
-            .join('')}${t.items.length > 18 ? `<li class="more">+ ${t.items.length - 18} more — scan for full list</li>` : ''}</ul>`
-        : '';
+    const contents = includeContents && t ? contentsLine(t, 14) : '';
+    const items = contents ? `<div class="items">${esc(contents)}</div>` : '';
     return `<div class="big" style="border-color:${color}">
       <div class="big-bar" style="background:${color}"></div>
       <div class="big-name">${name}</div>
@@ -154,9 +159,8 @@ export function buildLabelHtml(specs: (LabelSpec | null)[], layout: LabelLayout,
   .big-loc { font-size: calc(20pt * var(--s, 1)); color: #444; margin-top: 0.08in; text-align: center; }
   .big-qr { width: 4.2in; height: 4.2in; margin-top: 0.3in; }
   .big-code { font: 700 calc(16pt * var(--s, 1)) ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #555; margin-top: 0.08in; }
-  .items { columns: 2; column-gap: 0.4in; list-style: none; font-size: calc(12pt * var(--s, 1)); margin-top: 0.25in; width: 100%; }
-  .items li { padding: 2pt 0; break-inside: avoid; border-bottom: 0.5pt solid #ddd; }
-  .items li.more { color: #666; font-style: italic; }
+  .items { font-size: calc(13pt * var(--s, 1)); line-height: 1.35; color: #333; text-align: center; margin-top: 0.2in; max-width: 100%;
+    overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
   .big-hint { margin-top: auto; font-size: calc(10pt * var(--s, 1)); color: #777; }
 </style></head><body style="--s:${scale}">${pages.join('')}</body></html>`;
 }
