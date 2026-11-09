@@ -1,6 +1,7 @@
 // Trains the ToteTrack item detector with Create ML (transfer learning on Apple's ObjectPrint features).
 // Usage: swift train.swift DATA_DIR OUT.mlmodel [MAX_ITERATIONS]
 // DATA_DIR holds train/ and test/ from prepare_lvis.py.
+import Combine
 import CreateML
 import Foundation
 
@@ -18,7 +19,8 @@ let test = MLObjectDetector.DataSource.directoryWithImagesAndJsonAnnotation(at: 
 
 let parameters = MLObjectDetector.ModelParameters(
     validation: .split(strategy: .automatic),
-    batchSize: 32,
+    // Small batches: GitHub's Mac has a virtual GPU that times out on big ones.
+    batchSize: 8,
     maxIterations: iterations,
     algorithm: .transferLearning(.objectPrint(revision: 1))
 )
@@ -27,7 +29,31 @@ let started = Date()
 print("Training for up to \(iterations) iterations…")
 // prepare_lvis.py writes pixel boxes, measured from the top left, given by their centers.
 let annotationType = MLObjectDetector.AnnotationType.boundingBox(units: .pixel, origin: .topLeft, anchor: .center)
-let detector = try MLObjectDetector(trainingData: train, parameters: parameters, annotationType: annotationType)
+let session = MLTrainingSessionParameters(
+    sessionDirectory: URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("tote-detector-session"),
+    reportInterval: 50,
+    checkpointInterval: 500,
+    iterations: iterations
+)
+let job = try MLObjectDetector.train(
+    trainingData: train, parameters: parameters, annotationType: annotationType, sessionParameters: session)
+var outcome: Result<MLObjectDetector, Error>?
+let subscription = job.result.sink(
+    receiveCompletion: { if case .failure(let e) = $0 { outcome = .failure(e) } },
+    receiveValue: { outcome = .success($0) })
+var lastShown = -1.0
+while outcome == nil {
+    RunLoop.main.run(until: Date().addingTimeInterval(20))
+    let done = job.progress.fractionCompleted
+    if done - lastShown >= 0.01 {
+        lastShown = done
+        let minutes = Date().timeIntervalSince(started) / 60
+        print(String(format: "%5.1f%% after %.0f min  %@", done * 100, minutes, job.progress.localizedAdditionalDescription ?? ""))
+        fflush(stdout)
+    }
+}
+subscription.cancel()
+let detector = try outcome!.get()
 print(String(format: "Trained in %.0f minutes", Date().timeIntervalSince(started) / 60))
 print("Training metrics: \(detector.trainingMetrics)")
 print("Validation metrics: \(detector.validationMetrics)")

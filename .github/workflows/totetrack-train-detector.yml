@@ -23,7 +23,7 @@ jobs:
       contents: write
     env:
       PER_CLASS: 150
-      MAX_ITERATIONS: 3000
+      MAX_ITERATIONS: 6000
     defaults:
       run:
         working-directory: totetrack-app/tools/detector
