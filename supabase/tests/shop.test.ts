@@ -938,7 +938,7 @@ test('Spanish: stage texts, the customer page language and switching back', asyn
   assert.match(preview.text, /llegan pronto/);
   assert.equal(((await w.as(null)('GET', `shop/c/${job.link.split('?c=')[1]}`))?.body as { lang: string }).lang, 'es');
   await dan('POST', `shop/jobs/${job.id}/customer`, { name: 'Maria Delgado', phone: '(555) 013-6620', preference: 'sms', consent: true, lang: 'en' });
-  assert.match(((await dan('POST', `shop/jobs/${job.id}/preview`, { stage: 'parts' }))?.body as { text: string }).text, /^Hi Maria/);
+  assert.match(((await dan('POST', `shop/jobs/${job.id}/preview`, { stage: 'parts' }))?.body as { text: string }).text, /^Parts for your/);
 });
 
 test('online booking: public form, spam limits, accept makes an invited car with the details filled in', async () => {
