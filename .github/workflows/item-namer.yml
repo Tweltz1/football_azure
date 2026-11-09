@@ -1,0 +1,100 @@
+# Trains the item namer (ml/item-namer): a Create ML image classifier that names each thing the phone
+# finds in a photo, for Curbsy and ToteTrack. Optionally publishes it as release item-namer-vN.
+name: Item namer
+
+on:
+  # A push that changes the trainer runs with the settings in ml/item-namer/run.json.
+  push:
+    paths:
+      - 'ml/item-namer/**'
+      - '.github/workflows/item-namer.yml'
+  workflow_dispatch:
+    inputs:
+      per_class:
+        description: Training crops per kind of thing
+        default: '80'
+      min_class:
+        description: Leave out kinds with fewer examples than this
+        default: '15'
+      iterations:
+        description: Training iterations
+        default: '25'
+      limit_classes:
+        description: Only the N biggest kinds (0 = all), for quick runs
+        default: '0'
+      version:
+        description: Release version number (publishes item-namer-vN); leave empty to only train
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: item-namer
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: macos-15
+    timeout-minutes: 350
+    defaults:
+      run:
+        working-directory: ml/item-namer
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Settings
+        id: s
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "per_class=${{ inputs.per_class }}" >> "$GITHUB_OUTPUT"
+            echo "min_class=${{ inputs.min_class }}" >> "$GITHUB_OUTPUT"
+            echo "iterations=${{ inputs.iterations }}" >> "$GITHUB_OUTPUT"
+            echo "limit_classes=${{ inputs.limit_classes }}" >> "$GITHUB_OUTPUT"
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            python3 -c "import json; r=json.load(open('run.json')); [print(f'{k}={v}') for k, v in r.items()]" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
+      - name: Keep downloaded annotation files between runs
+        uses: actions/cache@v4
+        with:
+          path: ml/item-namer/cache
+          key: item-namer-cache-v1
+
+      - name: Get training crops
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install --quiet pillow ijson nltk
+          python prepare.py --out crops --cache cache --per-class "${{ steps.s.outputs.per_class }}" \
+            --min-class "${{ steps.s.outputs.min_class }}" --limit-classes "${{ steps.s.outputs.limit_classes }}"
+          du -sh crops
+
+      - name: Train with Create ML
+        env:
+          MODEL_VERSION: ${{ steps.s.outputs.version || 'trial' }}
+        run: |
+          swift train.swift crops out "${{ steps.s.outputs.iterations }}"
+          cp crops/labels.json out/
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: item-namer
+          path: |
+            ml/item-namer/out/ItemNamer.mlmodel
+            ml/item-namer/out/labels.json
+            ml/item-namer/out/metrics.json
+
+      - name: Publish the model
+        if: ${{ steps.s.outputs.version != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="item-namer-v${{ steps.s.outputs.version }}"
+          gh release create "$tag" out/ItemNamer.mlmodel out/labels.json out/metrics.json \
+            --title "Item namer v${{ steps.s.outputs.version }}" \
+            --notes "Names each thing the phone finds in a photo, for Curbsy and ToteTrack. Create ML image classifier trained on LVIS (CC BY 4.0) crops. $(cat out/metrics.json | tr -d '\n')" \
+            --target "${{ github.sha }}"
