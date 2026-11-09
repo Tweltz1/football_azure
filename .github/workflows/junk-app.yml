@@ -65,6 +65,20 @@ jobs:
           npm ci --no-audit --no-fund
           CI=false npm run build
 
+      # Free on-device object detector (Apple's Core ML build of YOLOv3-Tiny) so a photo of a curb pile can
+      # list each thing separately. A failed download only means this build labels the whole photo instead.
+      - name: Download the object detection model
+        working-directory: ios-junk-app
+        run: |
+          mkdir -p models
+          for name in YOLOv3Tiny YOLOv3TinyInt8LUT; do
+            if curl -fsSL --retry 3 -o models/YOLOv3Tiny.mlmodel "https://ml-assets.apple.com/coreml/models/Image/ObjectDetection/YOLOv3Tiny/$name.mlmodel"; then
+              if [ "$(wc -c < models/YOLOv3Tiny.mlmodel)" -gt 1000000 ]; then echo "Got $name"; break; fi
+            fi
+            rm -f models/YOLOv3Tiny.mlmodel
+          done
+          ls -l models || true
+
       - name: Copy the website into the iPhone project
         working-directory: ios-junk-app
         run: |

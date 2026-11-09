@@ -5,6 +5,7 @@ import { createItem, getItem, updateItem, uploadPhoto } from './junkApi';
 import { CATEGORIES, CONDITIONS, inJunkApp, photoToJpeg } from './device';
 import { appleDetect, hasAppleDetection } from './appleLabels';
 import { BackButton } from './ItemPage';
+import PieceThumb from './PieceThumb';
 import { IconCamera, IconClose, IconPin, IconSparkle } from './icons';
 
 const MAX_PHOTOS = 6;
@@ -13,7 +14,18 @@ const MAX_PHOTOS = 6;
 // Set to true to also ask Gemini when Apple isn't sure what the photo shows.
 const GEMINI_BACKUP = false;
 
-const EMPTY = { title: '', description: '', category: '', condition: 'good', tags: [], pickup: '' };
+const EMPTY = { title: '', description: '', category: '', condition: 'good', tags: [], pickup: '', firstCome: false };
+const MAX_PIECES = 12;
+let pieceSeq = 0;
+const newPiece = (fields = {}) => ({ key: `n${++pieceSeq}`, title: '', category: '', box: null, photo: 0, gone: false, ...fields });
+
+/** "Chair and lamp", "Chair, lamp and 3 more" (same as the server's name for a post of several things). */
+export function bundleTitle(pieces) {
+  const names = pieces.map((p, n) => (n ? p.title.charAt(0).toLowerCase() + p.title.slice(1) : p.title));
+  if (names.length <= 2) return names.join(' and ');
+  if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]}`;
+  return `${names[0]}, ${names[1]} and ${names.length - 2} more`.slice(0, 80);
+}
 
 export default function PostItem() {
   const { id } = useParams();
@@ -29,6 +41,9 @@ export default function PostItem() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(!editing);
+  // Several things in one post, each claimable and taken on its own.
+  const [pieces, setPieces] = useState([]);
+  const multi = pieces.length > 0;
   const fileRef = useRef(null);
   const detectAsked = useRef(false);
   const touchedRef = useRef(touched);
@@ -38,7 +53,8 @@ export default function PostItem() {
     if (!editing || !me) return;
     getItem(id).then((item) => {
       if (!item.mine) { navigate(`/junk/item/${id}`, { replace: true }); return; }
-      setForm({ title: item.title, description: item.description, category: item.category, condition: item.condition, tags: item.tags, pickup: item.pickup });
+      setForm({ title: item.title, description: item.description, category: item.category, condition: item.condition, tags: item.tags, pickup: item.pickup, firstCome: !!item.firstCome });
+      setPieces((item.pieces || []).map((p) => ({ ...newPiece(), ...p, key: p.id })));
       setPhotos(item.photos.map((url) => ({ key: url, url, preview: url, path: decodeURIComponent(url.split('/junk-photos/')[1] || '') })));
       setDetected(item.aiDetected);
       setLoaded(true);
@@ -72,8 +88,29 @@ export default function PostItem() {
       tags: d.tags && d.tags.length ? d.tags : f.tags,
     }));
     setDetected(true);
+    // A photo of several things: offer them as one post with each thing listed.
+    // Each one becomes its own thing in the post ("Chair 1", "Chair 2"), so people can claim them one by one.
+    const things = (d.spotted || []).filter((x) => x.title).flatMap((x) => {
+      const boxes = x.boxes && x.boxes.length ? x.boxes : [x.box || null];
+      if (boxes.length < 2) return [{ title: x.title, category: x.category, box: boxes[0] }];
+      return boxes.map((box, n) => ({ title: `${x.title} ${n + 1}`, category: x.category, box }));
+    }).slice(0, MAX_PIECES);
+    if (things.length >= 2) {
+      setPieces((list) => (list.length ? list : things.map((x) => newPiece(x))));
+      setAiNote(`Spotted ${things.length} things, each listed separately below`);
+      return;
+    }
     setAiNote(d.title ? `Looks like: ${d.title}` : '');
   };
+
+  const setPiece = (key, patch) => setPieces((list) => list.map((p) => (p.key === key ? { ...p, ...patch } : p)));
+  const dropPiece = (key) => setPieces((list) => {
+    const next = list.filter((p) => p.key !== key);
+    return next.length < 2 && !editing ? [] : next;
+  });
+  const startMulti = () => setPieces((list) => (list.length ? list
+    : [newPiece({ title: form.title.trim(), category: form.category }), newPiece()]));
+  const named = pieces.filter((p) => p.title.trim().length >= 2);
 
   const addFiles = async (fileList) => {
     const files = [...fileList].slice(0, MAX_PHOTOS - photos.length);
@@ -118,13 +155,16 @@ export default function PostItem() {
     e.preventDefault();
     setError('');
     if (photos.some((p) => p.uploading)) { setError('Hang on, photos are still uploading.'); return; }
-    if (!form.title.trim()) { setError('Give it a name, like "Wood dresser".'); return; }
+    if (multi && named.length < 2) { setError('Name at least two things, or remove the extra rows.'); return; }
+    if (!multi && !form.title.trim()) { setError('Give it a name, like "Wood dresser".'); return; }
     if (!editing && !spot) { setError('Turn on location so people nearby can find it.'); return; }
     setSaving(true);
     try {
       const fields = {
         ...form,
-        category: form.category || 'other',
+        title: form.title.trim() || (multi ? bundleTitle(named) : ''),
+        category: multi ? (named[0].category || 'other') : form.category || 'other',
+        pieces: multi ? named.map((p) => ({ id: p.id, title: p.title.trim(), category: p.category || 'other', box: p.box, photo: p.photo, gone: !!p.gone })) : [],
         photos: photos.map((p) => p.path).filter(Boolean),
         aiDetected: detected,
       };
@@ -175,12 +215,38 @@ export default function PostItem() {
           {!detecting && aiNote && <p className="jk-ai-status"><IconSparkle size={16} /> {aiNote}. Edit anything below.</p>}
         </section>
 
-        <label className="jk-field">
-          <span>What is it?</span>
-          <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Wood dresser" maxLength={80} />
-        </label>
+        {multi ? (
+          <div className="jk-field">
+            <span>What's in it</span>
+            <ul className="jk-pieces-edit">
+              {pieces.map((p, n) => (
+                <li key={p.key} className={p.gone ? 'is-gone' : ''}>
+                  <PieceThumb photo={photos[p.photo]} box={p.box} />
+                  <input value={p.title} onChange={(e) => setPiece(p.key, { title: e.target.value })} placeholder={n ? 'Another thing' : 'Floor lamp'} maxLength={60} aria-label={`Thing ${n + 1}`} />
+                  <select value={p.category || 'other'} onChange={(e) => setPiece(p.key, { category: e.target.value })} aria-label="Category">
+                    {CATEGORIES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                  </select>
+                  {editing && p.id ? (
+                    <button type="button" className={`jk-chip jk-chip-small${p.gone ? ' is-on' : ''}`} onClick={() => setPiece(p.key, { gone: !p.gone })}>{p.gone ? 'Taken' : 'Mark taken'}</button>
+                  ) : (
+                    <button type="button" className="jk-thumb-x jk-piece-x" onClick={() => dropPiece(p.key)} aria-label="Remove"><IconClose size={14} /></button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {pieces.length < MAX_PIECES && <button type="button" className="jk-link" onClick={() => setPieces((list) => [...list, newPiece()])}>+ Add another thing</button>}
+            <p className="jk-hint">People can claim one thing or take it all. Each one comes off the list when it's picked up.</p>
+          </div>
+        ) : null}
 
-        <div className="jk-field">
+        <label className="jk-field">
+          <span>{multi ? <>Name for the post <em>optional</em></> : 'What is it?'}</span>
+          <input value={form.title} onChange={(e) => set('title', e.target.value)} maxLength={80}
+            placeholder={multi ? (named.length >= 2 ? bundleTitle(named) : 'Garage cleanout') : 'Wood dresser'} />
+        </label>
+        {!multi && <button type="button" className="jk-link jk-multi-link" onClick={startMulti}>+ Giving away several things? List them in one post</button>}
+
+        {!multi && <div className="jk-field">
           <span>Category</span>
           <div className="jk-choice-row">
             {CATEGORIES.map(([key, label, icon]) => (
@@ -189,7 +255,7 @@ export default function PostItem() {
               </button>
             ))}
           </div>
-        </div>
+        </div>}
 
         <div className="jk-field">
           <span>Condition</span>
@@ -212,6 +278,14 @@ export default function PostItem() {
             placeholder="On the curb, grab it anytime. Or: message me to set a time." />
         </label>
 
+        <label className="jk-toggle">
+          <input type="checkbox" checked={form.firstCome} onChange={(e) => set('firstCome', e.target.checked)} />
+          <span>
+            <strong>First come, first served</strong>
+            <small>"I'm on my way" won't hold it for one person. Everyone still sees it, with how many are heading over.</small>
+          </span>
+        </label>
+
         {!editing && (
           <div className="jk-location-note">
             <IconPin size={18} />
@@ -226,10 +300,11 @@ export default function PostItem() {
         {error && <p className="jk-error" role="alert">{error}</p>}
         <div className="jk-form-actions">
           <button type="submit" className="jk-btn jk-btn-primary jk-full" disabled={saving || detecting}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : 'Post it for free'}
+            {saving ? 'Saving…' : editing ? 'Save changes' : multi ? `Post ${named.length} things for free` : 'Post it for free'}
           </button>
         </div>
       </form>
     </main>
   );
 }
+

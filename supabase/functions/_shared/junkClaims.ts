@@ -20,6 +20,10 @@ export interface JunkClaim {
   ownerId: string;
   claimerId: string;
   claimerName: string;
+  /** On a first come, first served listing: several people can be on the way at once. */
+  shared: boolean;
+  /** On a multi-item post, the things this trip is for (empty means the whole listing). */
+  pieceIds: string[];
   status: ClaimStatus;
   /** Why it ended, in words for the people involved. */
   reason: string;
@@ -36,10 +40,9 @@ export interface JunkClaim {
 }
 
 export interface ClaimStore {
-  /** Saves a new open claim; false when the item or the claimer already has one (unique indexes). */
+  /** Saves a new open claim; false when the claimer already has one, or (unless shared) the item does. */
   insertClaim(c: JunkClaim): Promise<boolean>;
   updateClaim(c: JunkClaim): Promise<void>;
-  openClaimForItem(itemId: string): Promise<JunkClaim | null>;
   openClaimsForItems(itemIds: string[]): Promise<JunkClaim[]>;
   countClaimsSince(userId: string, since: string): Promise<number>;
   /** When this person's last claim on this item ended without a pickup (for the cool-down), or null. */
@@ -110,11 +113,11 @@ export function pingClaim(c: JunkClaim, km: number, now: Date): JunkClaim {
   return judgeClaim(next, now);
 }
 
-export function newClaim(f: { id: string; itemId: string; ownerId: string; claimerId: string; claimerName: string; km: number; now: Date }): JunkClaim {
+export function newClaim(f: { id: string; itemId: string; ownerId: string; claimerId: string; claimerName: string; km: number; now: Date; shared?: boolean; pieceIds?: string[] }): JunkClaim {
   const nowIso = f.now.toISOString();
   const arrived = f.km <= ARRIVE_KM;
   return {
-    id: f.id, itemId: f.itemId, ownerId: f.ownerId, claimerId: f.claimerId, claimerName: f.claimerName,
+    id: f.id, itemId: f.itemId, ownerId: f.ownerId, claimerId: f.claimerId, claimerName: f.claimerName, shared: !!f.shared, pieceIds: f.pieceIds ?? [],
     status: arrived ? 'arrived' : 'active', reason: '',
     startKm: f.km, bestKm: f.km, bestAt: nowIso, lastKm: f.km, lastPingAt: nowIso,
     createdAt: nowIso, deadlineAt: new Date(f.now.getTime() + tripMinutes(f.km) * MIN).toISOString(),
@@ -135,6 +138,7 @@ export function claimOut(c: JunkClaim, me: string | null) {
     open,
     etaMin: open && c.status === 'active' ? etaMinutes(c.lastKm) : 0,
     since: c.createdAt,
+    pieceIds: c.pieceIds ?? [],
   };
   if (me === c.claimerId) {
     return {

@@ -119,6 +119,59 @@ export function fromAppleLabels(labels) {
   };
 }
 
+// The bundled object detector (YOLOv3-Tiny, trained on the 80 COCO objects) finds separate items. Only the
+// ones people give away count; people, animals, cars and food are ignored.
+const OBJECTS = {
+  chair: ['Chair', 'furniture'], couch: ['Couch', 'furniture'], sofa: ['Couch', 'furniture'], bed: ['Bed', 'furniture'],
+  'dining table': ['Table', 'furniture'], diningtable: ['Table', 'furniture'], bench: ['Bench', 'furniture'],
+  tv: ['TV', 'electronics'], tvmonitor: ['TV', 'electronics'], laptop: ['Laptop', 'electronics'], mouse: ['Computer mouse', 'electronics'],
+  remote: ['Remote', 'electronics'], keyboard: ['Keyboard', 'electronics'], 'cell phone': ['Phone', 'electronics'],
+  microwave: ['Microwave', 'appliances'], oven: ['Oven', 'appliances'], toaster: ['Toaster', 'home'], sink: ['Sink', 'building'],
+  refrigerator: ['Refrigerator', 'appliances'], 'hair drier': ['Hair dryer', 'appliances'], toilet: ['Toilet', 'building'],
+  book: ['Books', 'books'], clock: ['Clock', 'home'], vase: ['Vase', 'home'], 'potted plant': ['Potted plant', 'garden'],
+  pottedplant: ['Potted plant', 'garden'], bottle: ['Bottles', 'home'], 'wine glass': ['Wine glasses', 'home'], cup: ['Cups', 'home'],
+  bowl: ['Bowls', 'home'], fork: ['Silverware', 'home'], knife: ['Silverware', 'home'], spoon: ['Silverware', 'home'],
+  scissors: ['Scissors', 'home'], 'teddy bear': ['Teddy bear', 'toys'], kite: ['Kite', 'toys'], frisbee: ['Frisbee', 'sports'],
+  bicycle: ['Bicycle', 'sports'], motorcycle: ['Motorcycle', 'other'], motorbike: ['Motorcycle', 'other'], skis: ['Skis', 'sports'],
+  snowboard: ['Snowboard', 'sports'], 'sports ball': ['Ball', 'sports'], 'baseball bat': ['Baseball bat', 'sports'],
+  'baseball glove': ['Baseball glove', 'sports'], skateboard: ['Skateboard', 'sports'], surfboard: ['Surfboard', 'sports'],
+  'tennis racket': ['Tennis racket', 'sports'], backpack: ['Backpack', 'clothing'], umbrella: ['Umbrella', 'clothing'],
+  handbag: ['Handbag', 'clothing'], tie: ['Ties', 'clothing'], suitcase: ['Suitcase', 'clothing'],
+};
+
+/** Below this the detector's guess isn't shown. */
+export const OBJECT_MIN = 0.4;
+
+/**
+ * From detector objects [{ label, confidence, box: { x, y, w, h } }] (box 0-1, top left origin) to the
+ * separate items worth listing: [{ title, category, count, confidence, box }], best first, one entry per
+ * kind of item (the box of the surest one), at most 6.
+ */
+export function spottedItems(objects) {
+  const byTitle = new Map();
+  for (const o of Array.isArray(objects) ? objects : []) {
+    if (!o || typeof o.label !== 'string' || !(o.confidence >= OBJECT_MIN)) continue;
+    const known = OBJECTS[o.label.toLowerCase().replace(/_/g, ' ')] || OBJECTS[o.label.toLowerCase()];
+    if (!known) continue;
+    const [title, category] = known;
+    const prev = byTitle.get(title);
+    if (prev) {
+      prev.count += 1;
+      prev.boxes.push(o.box || null);
+      if (o.confidence > prev.confidence) Object.assign(prev, { confidence: o.confidence, box: o.box });
+    } else {
+      byTitle.set(title, { title, category, count: 1, confidence: o.confidence, box: o.box || null, boxes: [o.box || null] });
+    }
+  }
+  return [...byTitle.values()].sort((a, b) => b.confidence - a.confidence).slice(0, 6);
+}
+
+/** Title for a spotted item, with the count when there are several ("3 Chairs"). */
+export const spottedTitle = (s) => {
+  if (s.count < 2 || /s$/.test(s.title)) return s.title;
+  return `${s.count} ${s.title}${/(sh|ch|x)$/.test(s.title) ? 'es' : 's'}`;
+};
+
 const plugin = () => (typeof window !== 'undefined' && window.Capacitor?.Plugins?.ItemVision) || null;
 
 /** True in iPhone app builds that have Apple detection. */
@@ -130,7 +183,21 @@ export async function appleDetect(jpegDataUrl) {
   if (!ItemVision) return null;
   try {
     const res = await ItemVision.classify({ image: jpegDataUrl });
-    return fromAppleLabels(res && res.labels);
+    const spotted = spottedItems(res && res.objects);
+    const whole = fromAppleLabels(res && res.labels);
+    if (!spotted.length) return whole;
+    // The detector is surer about its own objects than the whole-photo label, so its best item leads.
+    const top = spotted[0];
+    return {
+      ...(whole || { tags: [], description: '', person: false }),
+      title: spottedTitle(top),
+      category: top.category,
+      tags: [...new Set([...spotted.map((x) => x.title.toLowerCase()), ...((whole && whole.tags) || [])])].slice(0, 10),
+      confidence: top.confidence,
+      confident: true,
+      person: false,
+      spotted,
+    };
   } catch (error) {
     return null;
   }

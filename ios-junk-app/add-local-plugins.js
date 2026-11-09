@@ -18,3 +18,14 @@ const startDir = path.join(__dirname, 'ios/App/App/public/junk');
 fs.mkdirSync(startDir, { recursive: true });
 fs.writeFileSync(path.join(startDir, 'README.txt'), 'Placeholder so Capacitor finds the app start path; the page is /index.html.\n');
 console.log('App start path: /junk');
+
+// On-phone object detector (see ItemVisionPlugin): the build downloads the Core ML model into models/;
+// copy it into the app's bundled files. Without it the app still runs, with Apple's classifier only.
+const modelsDir = path.join(__dirname, 'models');
+const outDir = path.join(__dirname, 'ios/App/App/public/models');
+const models = fs.existsSync(modelsDir) ? fs.readdirSync(modelsDir).filter((f) => f.endsWith('.mlmodel')) : [];
+if (models.length) {
+  fs.mkdirSync(outDir, { recursive: true });
+  for (const m of models) fs.copyFileSync(path.join(modelsDir, m), path.join(outDir, m));
+}
+console.log(`Object detection models: ${models.join(', ') || 'none'}`);

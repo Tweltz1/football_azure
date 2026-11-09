@@ -53,8 +53,10 @@ export const getChat = (itemId, otherId) => call('GET', `chat/${encodeURICompone
 export const sendMessage = (itemId, otherId, body) => call('POST', `chat/${encodeURIComponent(itemId)}/${encodeURIComponent(otherId)}`, { body });
 export const deleteAccount = () => call('DELETE', 'account');
 // "I'm on my way" claims (see trip.js).
-export const claimItem = (id, here) => call('POST', `items/${encodeURIComponent(id)}/claim`, { lat: here.lat, lng: here.lng });
-export const releaseClaim = (id) => call('POST', `items/${encodeURIComponent(id)}/release`, {});
+// pieces: on a multi-item post, the ids of the things you're coming for (leave out to take all that's left).
+export const claimItem = (id, here, pieces) => call('POST', `items/${encodeURIComponent(id)}/claim`, { lat: here.lat, lng: here.lng, ...(pieces ? { pieces } : {}) });
+// claimId: one person's trip; leave out to release everyone's.
+export const releaseClaim = (id, claimId) => call('POST', `items/${encodeURIComponent(id)}/release`, claimId ? { claimId } : {});
 export const myClaim = () => call('GET', 'claim');
 export const pingClaim = (here) => call('POST', 'claim/ping', { lat: here.lat, lng: here.lng });
 export const cancelClaim = () => call('POST', 'claim/cancel', {});

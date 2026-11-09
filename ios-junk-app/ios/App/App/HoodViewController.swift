@@ -3,6 +3,7 @@ import Capacitor
 import AuthenticationServices
 import CoreLocation
 import Vision
+import CoreML
 
 // Registers the app's own native plugins with the web view.
 class HoodViewController: CAPBridgeViewController {
@@ -163,9 +164,13 @@ public class TripPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDelegate 
     }
 }
 
-// Curbsy item detection on the phone with Apple's Vision framework (free, no limit, nothing leaves the phone).
-// Returns Vision's labels for a photo ("chair", "bicycle", ...); frontend/src/junk/appleLabels.js turns
-// them into a title, category and tags.
+// Curbsy item detection on the phone (free, no limit, nothing leaves the phone), in two parts:
+//  - Apple Vision's built-in classifier labels the whole photo ("chair", "trash_can", ...).
+//  - A bundled object detector (YOLOv3-Tiny for Core ML, 80 common objects) finds each separate item and
+//    where it is, so a photo of a curb pile can become several listings. The model file is downloaded by
+//    the build (.github/workflows/junk-app.yml) and copied into public/models by add-local-plugins.js;
+//    without it only the classifier runs.
+// frontend/src/junk/appleLabels.js turns both into titles, categories and tags.
 @objc(ItemVisionPlugin)
 public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "ItemVisionPlugin"
@@ -173,6 +178,37 @@ public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "classify", returnType: CAPPluginReturnPromise),
     ]
+
+    private static let modelName = "YOLOv3Tiny"
+    private static var detector: VNCoreMLModel?
+    private static var detectorTried = false
+    private static let lock = NSLock()
+
+    /// Compiles the bundled model once (cached in Application Support) and keeps it loaded.
+    private static func loadDetector() -> VNCoreMLModel? {
+        lock.lock()
+        defer { lock.unlock() }
+        if detectorTried { return detector }
+        detectorTried = true
+        guard let source = Bundle.main.url(forResource: modelName, withExtension: "mlmodel", subdirectory: "public/models") else {
+            return nil
+        }
+        do {
+            let fm = FileManager.default
+            let size = ((try? fm.attributesOfItem(atPath: source.path)[.size]) as? NSNumber)?.intValue ?? 0
+            let dir = try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            let compiled = dir.appendingPathComponent("\(modelName)-\(size).mlmodelc")
+            if !fm.fileExists(atPath: compiled.path) {
+                let temp = try MLModel.compileModel(at: source)
+                try? fm.removeItem(at: compiled)
+                try fm.moveItem(at: temp, to: compiled)
+            }
+            detector = try VNCoreMLModel(for: MLModel(contentsOf: compiled))
+        } catch {
+            detector = nil
+        }
+        return detector
+    }
 
     @objc func classify(_ call: CAPPluginCall) {
         guard let image = call.getString("image") else {
@@ -185,19 +221,41 @@ public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         DispatchQueue.global(qos: .userInitiated).async {
-            let request = VNClassifyImageRequest()
-            let handler = VNImageRequestHandler(data: data, options: [:])
+            let classify = VNClassifyImageRequest()
             do {
-                try handler.perform([request])
-                let labels = (request.results ?? [])
-                    .filter { $0.confidence >= 0.03 }
-                    .sorted { $0.confidence > $1.confidence }
-                    .prefix(30)
-                    .map { ["label": $0.identifier, "confidence": Double($0.confidence)] as [String: Any] }
-                call.resolve(["labels": Array(labels)])
+                try VNImageRequestHandler(data: data, options: [:]).perform([classify])
             } catch {
                 call.reject(error.localizedDescription)
+                return
             }
+            let labels = (classify.results ?? [])
+                .filter { $0.confidence >= 0.03 }
+                .sorted { $0.confidence > $1.confidence }
+                .prefix(30)
+                .map { ["label": $0.identifier, "confidence": Double($0.confidence)] as [String: Any] }
+
+            // Separate items, if the detector is in this build. Its failure never loses the labels above.
+            var objects: [[String: Any]] = []
+            let model = ItemVisionPlugin.loadDetector()
+            if let model = model {
+                let detect = VNCoreMLRequest(model: model)
+                detect.imageCropAndScaleOption = .scaleFill
+                if (try? VNImageRequestHandler(data: data, options: [:]).perform([detect])) != nil {
+                    // Boxes come back with the origin at the bottom left; flip to top left for the web page.
+                    objects = ((detect.results as? [VNRecognizedObjectObservation]) ?? [])
+                        .compactMap { obs -> [String: Any]? in
+                            guard let top = obs.labels.first, top.confidence >= 0.25 else { return nil }
+                            let b = obs.boundingBox
+                            return [
+                                "label": top.identifier,
+                                "confidence": Double(top.confidence),
+                                "box": ["x": Double(b.minX), "y": Double(1 - b.maxY), "w": Double(b.width), "h": Double(b.height)],
+                            ]
+                        }
+                    if objects.count > 20 { objects = Array(objects.prefix(20)) }
+                }
+            }
+            call.resolve(["labels": Array(labels), "objects": objects, "detector": model != nil])
         }
     }
 }
