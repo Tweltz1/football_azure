@@ -131,13 +131,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     (name: string) => {
       const trimmed = name.trim();
       if (!trimmed) return;
+      // Typing something already on the list doesn't add it twice; a checked-off copy is un-checked instead.
+      const same = data.items.filter((i) => itemKey(i.name) === itemKey(trimmed));
+      if (same.some((i) => !i.checked)) return;
+      if (same.length) {
+        setData((d) => ({ ...d, items: d.items.map((i) => (i.id === same[0].id ? { ...i, checked: false } : i)) }));
+        return;
+      }
       const store = data.store;
       const mine = store ? data.remembered[store.id]?.[itemKey(trimmed)] : undefined;
       const item: ListItem = { id: newId(), name: trimmed, checked: false, location: mine ?? { kind: 'unknown' } };
       setData((d) => ({ ...d, items: [...d.items, item] }));
       if (store && !mine) resolve(store, [item]);
     },
-    [data.store, data.remembered, resolve],
+    [data.items, data.store, data.remembered, resolve],
   );
 
   const addItems = useCallback(
