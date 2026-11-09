@@ -956,7 +956,12 @@
       }
       ui.busy = true;
       ui.authErr = ui.authMsg = "";
-      f.querySelector("[type=submit]").disabled = true;
+      const submit = f.querySelector("[type=submit]");
+      submit.disabled = true;
+      submit.textContent = ui.authMode === "signup" ? "Creating account…" : "Signing in…";
+      f.setAttribute("aria-busy", "true");
+      $(".form-err")?.remove();
+      $(".form-ok")?.remove();
       try {
         if (ui.authMode === "signup") {
           const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: authRedirect() } });
@@ -1206,6 +1211,8 @@
       .catch((e) => { join.err = e.message; joinToken = ""; store.set(JOIN_KEY, ""); })
       .finally(() => { if (!session) { render(); const em = $("#au-email"); if (em && join.info && !em.value) em.value = join.info.email; } });
   }
+  // Show the public page before session recovery or refresh finishes.
+  render();
   // Back from Stripe: say so, and refresh the plan a few times while Stripe's confirmation arrives.
   const planNote = planUi.returned();
   if (planNote) {
@@ -1216,9 +1223,9 @@
     const was = session?.user?.id;
     session = s;
     if (s && s.user.id !== was) { loaded = false; render(); loadShop(); }
-    else if (!s) { Object.assign(recovery, { data: null, pending: "", err: "" }); team.reset(); role = null; mainOwner = false; join.err = ""; shop = null; jobs = []; loaded = false; ui.openJob = null; ui.modal = ui.modal === "video" ? "video" : null; render(); }
+    else if (!s) { Object.assign(recovery, { data: null, pending: "", err: "" }); team.reset(); role = null; mainOwner = false; join.err = ""; shop = null; jobs = []; loaded = false; ui.openJob = null; ui.modal = ui.modal === "video" ? "video" : null; if (was || !$("#emailForm")) render(); }
   });
-  sb.auth.getSession().then(({ data }) => { if (!data.session) render(); });
+  sb.auth.getSession().then(({ data }) => { if (!data.session && !$("#emailForm")) render(); });
   setInterval(async () => {
     if (!session || !shop || cust.intakeBusy || ui.view !== "board" || ui.modal || dictation.active() || document.visibilityState !== "visible") return;
     const pickerActive = () => $("#photoIn:disabled");
