@@ -9,6 +9,7 @@ import { deletePhoto, photoUri, savePhoto } from '../../lib/photos';
 import { shortCode } from '../../lib/qr';
 import { useTotes } from '../../lib/store';
 import { radius, TOTE_COLORS, TOTE_ICONS, useTheme } from '../../lib/theme';
+import { SEASONS } from '../../lib/extras';
 
 export default function EditTote() {
   const { id, claim, name: presetName, loc, c } = useLocalSearchParams<{ id?: string; claim?: string; name?: string; loc?: string; c?: string }>();
@@ -21,6 +22,7 @@ export default function EditTote() {
   const [color, setColor] = useState(existing?.color ?? (c && /^[0-9a-f]{6}$/i.test(c) ? `#${c}` : TOTE_COLORS[store.totes.length % TOTE_COLORS.length]));
   const [icon, setIcon] = useState<string>(existing?.icon ?? 'cube');
   const [notes, setNotes] = useState(existing?.notes ?? '');
+  const [season, setSeason] = useState<string | undefined>(existing?.season);
   const [photo, setPhoto] = useState<string | undefined>(existing?.photo);
   const [busy, setBusy] = useState(false);
 
@@ -62,7 +64,7 @@ export default function EditTote() {
     ]);
 
   const save = () => {
-    const input = { name: name.trim(), location: location.trim(), color, icon, notes: notes.trim(), photo };
+    const input = { name: name.trim(), location: location.trim(), color, icon, notes: notes.trim(), photo, season };
     if (!input.name) return Alert.alert('Give your tote a name', 'Something like “Christmas lights” or “Camping gear”.');
     if (existing) {
       if (existing.photo && existing.photo !== photo) deletePhoto(existing.photo);
@@ -193,6 +195,29 @@ export default function EditTote() {
           })}
         </View>
 
+        <SectionTitle>Season or holiday</SectionTitle>
+        <Text style={{ color: t.textMuted, fontSize: 14, marginTop: -4, marginBottom: 10 }}>
+          ToteTrack reminds you a few weeks before it comes up.
+        </Text>
+        <View style={styles.wrap}>
+          {[{ name: 'None', icon: 'close' }, ...SEASONS].map((s) => {
+            const on = s.name === 'None' ? !season : s.name === season;
+            return (
+              <Pressable
+                key={s.name}
+                onPress={() => {
+                  tap();
+                  setSeason(s.name === 'None' ? undefined : s.name);
+                }}
+                style={[styles.chip, { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: on ? t.primary : t.cardAlt }]}
+              >
+                <Ionicons name={s.icon as IconName} size={15} color={on ? t.onPrimary : t.textMuted} />
+                <Text style={{ color: on ? t.onPrimary : t.text, fontWeight: '600', fontSize: 14 }}>{s.name}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <Field label="Notes">
           <TextInput
             value={notes}
@@ -235,7 +260,7 @@ const styles = StyleSheet.create({
   input: { fontSize: 17, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, height: 52 },
   multiline: { height: 110, paddingTop: 14, textAlignVertical: 'top' },
   chip: { paddingHorizontal: 14, height: 34, borderRadius: 17, justifyContent: 'center' },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   swatch: { width: 44, height: 44, borderRadius: 22, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   iconCell: { width: 52, height: 52, borderRadius: 14, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
 });

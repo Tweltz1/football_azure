@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BarcodeScanningResult, CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,7 +18,22 @@ export default function Scan() {
   const [message, setMessage] = useState<string | null>(null);
   const handled = useRef(false);
   const lastBad = useRef<string>('');
-  const { getTote } = useTotes();
+  const { getTote, totes, updateTote } = useTotes();
+  // find: the tote to look for (Scan to find it). mode=unload: moving day, mark each scanned tote as unloaded.
+  const { find, item, mode } = useLocalSearchParams<{ find?: string; item?: string; mode?: string }>();
+  const target = find ? getTote(find) : undefined;
+  const unloading = mode === 'unload';
+  const [result, setResult] = useState<{ ok: boolean; title: string; body?: string } | null>(null);
+  const resultTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const lastHit = useRef<{ id: string; at: number }>({ id: '', at: 0 });
+  const moving = totes.filter((x) => x.moveTo);
+  const unloadedCount = moving.filter((x) => x.unloadedAt).length;
+
+  const show = (r: { ok: boolean; title: string; body?: string }) => {
+    setResult(r);
+    clearTimeout(resultTimer.current);
+    resultTimer.current = setTimeout(() => setResult(null), 2600);
+  };
 
   useEffect(() => {
     if (permission && !permission.granted && permission.canAskAgain) requestPermission();
@@ -36,10 +51,38 @@ export default function Scan() {
       }
       return;
     }
+    const { id, preset } = scanned;
+    if (find || unloading) {
+      // Keep the camera running; ignore the same label for a moment so one look doesn't fire repeatedly.
+      const now = Date.now();
+      if (lastHit.current.id === id && now - lastHit.current.at < 2500) return;
+      lastHit.current = { id, at: now };
+      const tote = getTote(id);
+      if (find) {
+        if (id === find) {
+          handled.current = true;
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          show({ ok: true, title: 'Found it!', body: item ? `“${item}” is in this tote.` : undefined });
+          setTimeout(() => router.replace(`/tote/${id}`), 1200);
+        } else {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+          show({ ok: false, title: 'Not this one', body: tote ? `This is “${tote.name}”. Keep looking.` : 'Keep looking.' });
+        }
+        return;
+      }
+      if (!tote) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+        show({ ok: false, title: 'Unknown label', body: "This label isn't linked to a tote." });
+        return;
+      }
+      if (!tote.unloadedAt) updateTote(id, { unloadedAt: Date.now() });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      show({ ok: true, title: tote.name || 'Tote', body: tote.moveTo ? `Goes to: ${tote.moveTo}` : 'No room set for this tote.' });
+      return;
+    }
     handled.current = true;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     // Known tote: open it. Unknown (a blank pre-printed label): go straight to setup.
-    const { id, preset } = scanned;
     router.replace(getTote(id) ? `/tote/${id}` : `/tote/edit?claim=${id}${presetQuery(preset)}`);
   };
 
@@ -77,7 +120,30 @@ export default function Scan() {
           <View style={[styles.corner, { bottom: 0, left: 0, borderBottomWidth: 5, borderLeftWidth: 5, borderBottomLeftRadius: 24 }]} />
           <View style={[styles.corner, { bottom: 0, right: 0, borderBottomWidth: 5, borderRightWidth: 5, borderBottomRightRadius: 24 }]} />
         </View>
-        <Text style={styles.hint}>Point at a tote’s QR label</Text>
+        {target ? (
+          <View style={styles.findBox}>
+            <Text style={styles.findSmall}>{item ? `Looking for “${item}” in` : 'Looking for'}</Text>
+            <Text style={styles.findBig}>{target.name || 'Untitled tote'}</Text>
+            {target.location ? <Text style={styles.findSmall}>{target.location}</Text> : null}
+          </View>
+        ) : unloading ? (
+          <View style={styles.findBox}>
+            <Text style={styles.findSmall}>Moving day</Text>
+            <Text style={styles.findBig}>
+              {unloadedCount} of {moving.length} unloaded
+            </Text>
+          </View>
+        ) : null}
+        <Text style={styles.hint}>{target ? 'Sweep the camera across your tote labels' : unloading ? 'Scan each tote as it comes off the truck' : 'Point at a tote’s QR label'}</Text>
+        {result && (
+          <View style={[styles.result, { backgroundColor: result.ok ? 'rgba(48,164,108,0.95)' : 'rgba(229,72,77,0.95)' }]}>
+            <Ionicons name={result.ok ? 'checkmark-circle' : 'close-circle'} size={34} color="#fff" />
+            <View style={{ flexShrink: 1 }}>
+              <Text style={styles.resultTitle}>{result.title}</Text>
+              {result.body ? <Text style={styles.resultBody}>{result.body}</Text> : null}
+            </View>
+          </View>
+        )}
         {message && (
           <View style={styles.toast}>
             <Ionicons name="alert-circle" size={18} color="#fff" />
@@ -117,6 +183,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 14,
   },
+  findBox: { position: 'absolute', top: 120, left: 24, right: 24, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 18, padding: 14 },
+  findSmall: { color: '#ddd', fontSize: 14 },
+  findBig: { color: '#fff', fontSize: 22, fontWeight: '800', marginVertical: 2, textAlign: 'center' },
+  result: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18, marginHorizontal: 24, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 18 },
+  resultTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  resultBody: { color: '#fff', fontSize: 15, marginTop: 2 },
   toastText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   topBar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
   round: { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },

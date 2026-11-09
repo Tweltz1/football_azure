@@ -2,7 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
 import { useMemo, useState } from "react";
 import {
+  Alert,
   FlatList,
+  ScrollView,
   Pressable,
   StyleSheet,
   Text,
@@ -21,21 +23,47 @@ import { useAuth } from "../lib/auth";
 import { itemCount, timeAgo, useTotes } from "../lib/store";
 import { radius, useTheme } from "../lib/theme";
 import { Tote } from "../lib/types";
+import { reminderCount, reminders } from "../lib/extras";
+import { shareInventoryReport } from "../lib/report";
 
-type Row = { tote: Tote; matches: string[] };
+type Row = { tote: Tote; matches: string[]; header?: string };
 
 export default function Home() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { totes, ready } = useTotes();
   const [query, setQuery] = useState("");
+  const [byPlace, setByPlace] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const { session } = useAuth();
+  const attention = useMemo(() => reminderCount(reminders(totes)), [totes]);
+
+  const report = async () => {
+    setReporting(true);
+    try {
+      await shareInventoryReport(totes);
+    } catch (e) {
+      Alert.alert("Couldn't make the report", e instanceof Error ? e.message : String(e));
+    } finally {
+      setReporting(false);
+    }
+  };
 
   const rows = useMemo<Row[]>(() => {
     const sorted = [...totes].sort((a, b) => b.updatedAt - a.updatedAt);
+    if (byPlace) {
+      const place = (x: Tote) => x.location.trim() || "No place set";
+      sorted.sort(
+        (a, b) =>
+          Number(!a.location.trim()) - Number(!b.location.trim()) ||
+          place(a).localeCompare(place(b), undefined, { sensitivity: "base" }) ||
+          a.name.localeCompare(b.name),
+      );
+    }
     const q = query.trim().toLowerCase();
-    if (!q) return sorted.map((tote) => ({ tote, matches: [] }));
-    return sorted
+    const filtered: Row[] = !q
+      ? sorted.map((tote) => ({ tote, matches: [] }))
+      : sorted
       .map((tote) => {
         const matches = tote.items
           .filter((i) => i.name.toLowerCase().includes(q))
@@ -48,7 +76,15 @@ export default function Home() {
         return hit ? { tote, matches } : null;
       })
       .filter((r): r is Row => r !== null);
-  }, [totes, query]);
+    if (!byPlace) return filtered;
+    let last = "";
+    return filtered.map((r) => {
+      const p = r.tote.location.trim() || "No place set";
+      const header = p.toLowerCase() !== last ? p : undefined;
+      last = p.toLowerCase();
+      return { ...r, header };
+    });
+  }, [totes, query, byPlace]);
 
   const totalItems = totes.reduce((n, x) => n + itemCount(x), 0);
   const locations = new Set(totes.map((x) => x.location.trim()).filter(Boolean))
@@ -95,6 +131,33 @@ export default function Home() {
                   <Stat label="Items" value={totalItems} icon="list" />
                   <Stat label="Places" value={locations} icon="location" />
                 </View>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.tools}
+                >
+                  <Tool
+                    icon="notifications"
+                    label="Reminders"
+                    badge={attention}
+                    onPress={() => router.push("/reminders")}
+                  />
+                  <Tool
+                    icon="bag-check"
+                    label="Packing lists"
+                    onPress={() => router.push("/lists")}
+                  />
+                  <Tool
+                    icon="car"
+                    label="Moving"
+                    onPress={() => router.push("/moving")}
+                  />
+                  <Tool
+                    icon="document-text"
+                    label={reporting ? "Making…" : "Inventory PDF"}
+                    onPress={() => !reporting && report()}
+                  />
+                </ScrollView>
                 <View
                   style={[
                     styles.search,
@@ -112,13 +175,52 @@ export default function Home() {
                     returnKeyType="search"
                     autoCorrect={false}
                   />
+                  <Pressable
+                    accessibilityLabel={byPlace ? "Sort by recent" : "Group by place"}
+                    hitSlop={8}
+                    onPress={() => {
+                      tap();
+                      setByPlace((v) => !v);
+                    }}
+                    style={[
+                      styles.groupBtn,
+                      { backgroundColor: byPlace ? t.primary : t.cardAlt },
+                    ]}
+                  >
+                    <Ionicons
+                      name="location"
+                      size={14}
+                      color={byPlace ? t.onPrimary : t.textMuted}
+                    />
+                    <Text
+                      style={{
+                        color: byPlace ? t.onPrimary : t.textMuted,
+                        fontWeight: "600",
+                        fontSize: 13,
+                      }}
+                    >
+                      By place
+                    </Text>
+                  </Pressable>
                 </View>
               </View>
             ) : null}
           </View>
         }
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        renderItem={({ item }) => <ToteRow row={item} query={query} />}
+        renderItem={({ item }) => (
+          <View>
+            {item.header ? (
+              <View style={styles.placeHeader}>
+                <Ionicons name="location" size={15} color={t.primary} />
+                <Text style={[styles.placeText, { color: t.text }]}>
+                  {item.header}
+                </Text>
+              </View>
+            ) : null}
+            <ToteRow row={item} query={query} />
+          </View>
+        )}
         ListEmptyComponent={
           !ready ? undefined : totes.length === 0 ? (
             <EmptyState
@@ -187,6 +289,42 @@ function Stat({
   );
 }
 
+function Tool({
+  icon,
+  label,
+  badge,
+  onPress,
+}: {
+  icon: "notifications" | "bag-check" | "car" | "document-text";
+  label: string;
+  badge?: number;
+  onPress: () => void;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={() => {
+        tap();
+        onPress();
+      }}
+      style={({ pressed }) => [
+        styles.tool,
+        { backgroundColor: t.card, opacity: pressed ? 0.8 : 1 },
+      ]}
+    >
+      <Ionicons name={icon} size={17} color={t.primary} />
+      <Text style={{ color: t.text, fontWeight: "600", fontSize: 14 }}>
+        {label}
+      </Text>
+      {badge ? (
+        <View style={[styles.badge, { backgroundColor: t.danger }]}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
+
 function ToteRow({ row, query }: { row: Row; query: string }) {
   const t = useTheme();
   const { tote, matches } = row;
@@ -224,12 +362,29 @@ function ToteRow({ row, query }: { row: Row; query: string }) {
           </View>
         ) : null}
         {query.trim() && matches.length ? (
-          <Text
-            style={[styles.rowSub, { color: t.primary, fontWeight: "600" }]}
-            numberOfLines={2}
-          >
-            Has: {matches.join(", ")}
-          </Text>
+          <View style={{ gap: 6 }}>
+            <Text
+              style={[styles.rowSub, { color: t.primary, fontWeight: "600" }]}
+              numberOfLines={2}
+            >
+              Has: {matches.join(", ")}
+            </Text>
+            <Pressable
+              hitSlop={6}
+              onPress={() => {
+                tap();
+                router.push(
+                  `/scan?find=${tote.id}&item=${encodeURIComponent(matches[0])}`,
+                );
+              }}
+              style={[styles.findBtn, { backgroundColor: t.primarySoft }]}
+            >
+              <Ionicons name="scan" size={14} color={t.primary} />
+              <Text style={{ color: t.primary, fontWeight: "700", fontSize: 13 }}>
+                Find it with the camera
+              </Text>
+            </Pressable>
+          </View>
         ) : preview ? (
           <Text
             style={[styles.rowSub, { color: t.textMuted }]}
@@ -274,6 +429,49 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   searchInput: { flex: 1, fontSize: 16 },
+  tools: { gap: 8, paddingTop: 12 },
+  tool: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    height: 38,
+    borderRadius: 19,
+  },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  groupBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    height: 28,
+    borderRadius: 14,
+  },
+  placeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  placeText: { fontSize: 17, fontWeight: "800" },
+  findBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    height: 28,
+    borderRadius: 14,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",

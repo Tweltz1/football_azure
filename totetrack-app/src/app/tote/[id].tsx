@@ -10,12 +10,15 @@ import { presetQuery, qrPayload, shortCode } from '../../lib/qr';
 import { itemCount, timeAgo, useTotes } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 import { Item } from '../../lib/types';
+import { addMonths, daysUntil, daysUntilSeason, expiryLabel, money, parseDate, parseMoney, toteValue } from '../../lib/extras';
+import { useLists } from '../../lib/lists';
 
 export default function ToteDetail() {
   const { id, name: presetName, loc, c } = useLocalSearchParams<{ id: string; name?: string; loc?: string; c?: string }>();
   const t = useTheme();
   const store = useTotes();
   const tote = store.getTote(id);
+  const lists = useLists();
   const [draft, setDraft] = useState('');
 
   if (!store.ready) return null;
@@ -81,12 +84,94 @@ export default function ToteDetail() {
     }
   };
 
+  const sheet = (title: string, choices: { label: string; run: () => void; destructive?: boolean }[], message?: string) => {
+    const options = [...choices.map((c) => c.label), 'Cancel'];
+    const destructive = choices.findIndex((c) => c.destructive);
+    ActionSheetIOS.showActionSheetWithOptions(
+      { title, message, options, cancelButtonIndex: choices.length, destructiveButtonIndex: destructive >= 0 ? destructive : undefined },
+      (i) => choices[i]?.run(),
+    );
+  };
+
+  const lend = (item: Item) =>
+    Alert.prompt(
+      `Who has “${item.name}”?`,
+      'Or where it went, like “Mike” or “the cabin”. It stays listed here, marked as out.',
+      (text) => {
+        if (!text?.trim()) return;
+        store.updateItem(tote.id, item.id, { out: { to: text.trim(), at: Date.now() } });
+        tap();
+      },
+      'plain-text',
+    );
+
+  const typeExpiry = (item: Item) =>
+    Alert.prompt('Expiration date', 'For example 3/2027, 3/15/2027 or March 2027.', (text) => {
+      if (!text?.trim()) return;
+      const d = parseDate(text);
+      if (!d) return Alert.alert("Couldn't read that date", 'Try something like 3/15/2027 or March 2027.');
+      store.updateItem(tote.id, item.id, { expires: d });
+    }, 'plain-text', item.expires ?? '');
+
+  const expiry = (item: Item) =>
+    sheet(
+      'Expiration date',
+      [
+        ...[1, 3, 6, 12, 24].map((m) => ({
+          label: m < 12 ? `In ${m} month${m > 1 ? 's' : ''}` : `In ${m / 12} year${m > 12 ? 's' : ''}`,
+          run: () => store.updateItem(tote.id, item.id, { expires: addMonths(m) }),
+        })),
+        { label: 'Type a date…', run: () => typeExpiry(item) },
+        ...(item.expires ? [{ label: 'Clear date', destructive: true, run: () => store.updateItem(tote.id, item.id, { expires: undefined }) }] : []),
+      ],
+      item.expires ? expiryLabel(item.expires) : 'You’ll see it on the Reminders screen a month before.',
+    );
+
+  const setValue = (item: Item) =>
+    Alert.prompt(
+      'Value of one',
+      'Used for the home inventory report (handy for insurance or a move).',
+      (text) => {
+        if (text === undefined) return;
+        if (!text.trim()) return store.updateItem(tote.id, item.id, { value: undefined });
+        const v = parseMoney(text);
+        if (v === null) return Alert.alert("Couldn't read that amount");
+        store.updateItem(tote.id, item.id, { value: v || undefined });
+      },
+      'plain-text',
+      item.value ? String(item.value) : '',
+      'decimal-pad',
+    );
+
+  const addToList = (item: Item) => {
+    const entry = { toteId: tote.id, itemId: item.id, name: item.name };
+    const make = () =>
+      Alert.prompt('New packing list', 'Like “Camping trip” or “Beach weekend”.', (text) => {
+        if (!text?.trim()) return;
+        const l = lists.createList(text);
+        lists.addEntry(l.id, entry);
+        tap();
+      });
+    if (!lists.lists.length) return make();
+    sheet(`Add “${item.name}” to…`, [
+      ...lists.lists.map((l) => ({ label: l.name, run: () => (lists.addEntry(l.id, entry), tap()) })),
+      { label: 'New list…', run: make },
+    ]);
+  };
+
   const itemMenu = (item: Item) => {
     if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { title: item.name, options: ['Rename', 'Move to another tote', 'Remove', 'Cancel'], destructiveButtonIndex: 2, cancelButtonIndex: 3 },
-        (i) => [() => rename(item), () => move(item), () => remove(item)][i]?.(),
-      );
+      sheet(item.name, [
+        item.out
+          ? { label: 'Mark as back in the tote', run: () => (store.updateItem(tote.id, item.id, { out: undefined }), tap()) }
+          : { label: 'Lend out / take out…', run: () => lend(item) },
+        { label: item.expires ? 'Change expiration date' : 'Add expiration date', run: () => expiry(item) },
+        { label: item.value ? `Change value (${money(item.value)})` : 'Add value', run: () => setValue(item) },
+        { label: 'Add to packing list', run: () => addToList(item) },
+        { label: 'Rename', run: () => rename(item) },
+        { label: 'Move to another tote', run: () => move(item) },
+        { label: 'Remove', destructive: true, run: () => remove(item) },
+      ], item.out ? `Out with ${item.out.to} since ${new Date(item.out.at).toLocaleDateString()}` : undefined);
     } else {
       Alert.alert(item.name, undefined, [
         { text: 'Move', onPress: () => move(item) },
@@ -139,8 +224,29 @@ export default function ToteDetail() {
                 </View>
               ) : null}
               <Text style={[styles.metaText, { color: t.textMuted, marginTop: 2 }]}>
-                {itemCount(tote)} items · updated {timeAgo(tote.updatedAt)}
+                {itemCount(tote)} items{toteValue(tote) ? ` · ${money(toteValue(tote))}` : ''} · updated {timeAgo(tote.updatedAt)}
               </Text>
+              {tote.season ? (
+                <View style={styles.meta}>
+                  <Ionicons name="calendar-outline" size={14} color={t.primary} />
+                  <Text style={[styles.metaText, { color: t.primary, fontWeight: '600' }]}>
+                    {tote.season}
+                    {(() => {
+                      const d = daysUntilSeason(tote.season);
+                      return d === undefined ? '' : d === 0 ? ' · starts today' : ` · in ${d} day${d === 1 ? '' : 's'}`;
+                    })()}
+                  </Text>
+                </View>
+              ) : null}
+              {tote.moveTo ? (
+                <View style={styles.meta}>
+                  <Ionicons name="arrow-forward-circle-outline" size={14} color={t.textMuted} />
+                  <Text style={[styles.metaText, { color: t.textMuted }]}>
+                    Moving to {tote.moveTo}
+                    {tote.unloadedAt ? ' · unloaded' : ''}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
           {tote.notes ? <Text style={[styles.notes, { color: t.text, borderColor: t.border }]}>{tote.notes}</Text> : null}
@@ -179,9 +285,24 @@ export default function ToteDetail() {
                   { borderTopColor: t.border, borderTopWidth: idx ? StyleSheet.hairlineWidth : 0, backgroundColor: pressed ? t.cardAlt : 'transparent' },
                 ]}
               >
-                <Text style={[styles.itemName, { color: t.text }]} numberOfLines={2}>
-                  {item.name}
-                </Text>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={[styles.itemName, { color: item.out ? t.textMuted : t.text }]} numberOfLines={2}>
+                    {item.name}
+                  </Text>
+                  {item.out || item.expires || item.value ? (
+                    <View style={styles.tags}>
+                      {item.out ? <Tag icon="arrow-redo-outline" text={`Out: ${item.out.to}`} color="#B45309" /> : null}
+                      {item.expires ? (
+                        <Tag
+                          icon="hourglass-outline"
+                          text={expiryLabel(item.expires)}
+                          color={daysUntil(item.expires) < 0 ? t.danger : daysUntil(item.expires) <= 30 ? '#B45309' : t.textMuted}
+                        />
+                      ) : null}
+                      {item.value ? <Tag icon="pricetag-outline" text={money(item.value)} color={t.textMuted} /> : null}
+                    </View>
+                  ) : null}
+                </View>
                 <View style={[styles.stepper, { backgroundColor: t.cardAlt }]}>
                   <Pressable
                     hitSlop={6}
@@ -230,7 +351,18 @@ export default function ToteDetail() {
   );
 }
 
+function Tag({ icon, text, color }: { icon: React.ComponentProps<typeof Ionicons>['name']; text: string; color: string }) {
+  return (
+    <View style={[styles.tag, { backgroundColor: color + '1A' }]}>
+      <Ionicons name={icon} size={12} color={color} />
+      <Text style={{ color, fontSize: 12, fontWeight: '600' }}>{text}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  tag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
   hero: { height: 10 },
   photo: { width: '100%', height: 200 },
   title: { fontSize: 24, fontWeight: '800' },
@@ -242,7 +374,7 @@ const styles = StyleSheet.create({
   addBtn: { paddingHorizontal: 16, height: 40, borderRadius: 10, justifyContent: 'center' },
   emptyItems: { fontSize: 15, textAlign: 'center', marginTop: 20, paddingHorizontal: 24, lineHeight: 21 },
   item: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 16, gap: 12, minHeight: 56 },
-  itemName: { flex: 1, fontSize: 16, fontWeight: '500' },
+  itemName: { fontSize: 16, fontWeight: '500' },
   stepper: { flexDirection: 'row', alignItems: 'center', borderRadius: 12 },
   stepBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   qty: { minWidth: 24, textAlign: 'center', fontSize: 16, fontWeight: '700' },
