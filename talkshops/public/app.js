@@ -271,7 +271,7 @@
     const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join");
     if (!session) {
       chrome.hidden = true;
-      if (onLoginPage) document.title = "Shop Sign In · Talk Shops";
+      if (onLoginPage) document.title = ui.authMode === "signup" ? "Create Your Account · Talk Shops" : "Shop Sign In · Talk Shops";
       app.innerHTML = onLoginPage ? loginView() : homeView();
       renderLayer();
       return;
@@ -366,12 +366,13 @@
       <form class="auth-alt" id="emailForm">
         <label class="field">Work email<input id="au-email" type="email" required autocomplete="username" value="${esc(join.info?.email || "")}"></label>
         <label class="field">Password<input id="au-pass" type="password" required minlength="8" autocomplete="${signup ? "new-password" : "current-password"}"></label>
-        <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create account" : "Sign in"}</button>
+        ${signup ? `<label class="field">Confirm password<input id="au-confirm" type="password" required autocomplete="new-password"></label>` : ""}
+        <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create my account" : "Sign in"}</button>
       </form>
       ${signup ? "" : `<button class="linkbtn" id="forgotPw" type="button" style="align-self:flex-start">Forgot password?</button>`}
       ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
       ${ui.authMsg ? `<p class="form-ok" role="status">${esc(ui.authMsg)}</p>` : ""}
-      <button class="linkbtn" id="authSwap" type="button" style="align-self:flex-start">${signup ? "Already have an account? Sign in" : "New shop? Create an account"}</button>
+      ${joinToken ? `<button class="linkbtn" id="authSwap" type="button">${signup ? "Already have an account? Sign in" : "Create an account"}</button>` : `<a class="linkbtn" href="${signup ? "/?login" : "/?login=signup"}">${signup ? "Already have an account? Sign in" : "Create an account"}</a>`}
       <small class="muted">Customers use their repair link. Only shop staff need an account.</small>
       ${signInHelp}
       <a class="login-home" href="/">← Back to Talk Shops</a>
@@ -933,18 +934,36 @@
       return;
     }
     if (f.id === "emailForm") {
-      if (!sb) return;
+      if (!sb || ui.busy) return;
       const email = $("#au-email").value.trim(), password = $("#au-pass").value;
-      ui.busy = true; ui.authErr = ui.authMsg = ""; render();
-      if (ui.authMode === "signup") {
-        const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: authRedirect() } });
-        if (error) ui.authErr = error.message;
-        else if (!data.session) ui.authMsg = "Check your email for a link to finish creating your account.";
-      } else {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) ui.authErr = error.message === "Invalid login credentials" ? "That email and password don't match." : error.message;
+      const confirm = $("#au-confirm");
+      if (confirm && confirm.value !== password) {
+        confirm.setCustomValidity("Enter the same password in both fields.");
+        confirm.reportValidity();
+        confirm.setCustomValidity("");
+        return;
       }
-      ui.busy = false; render();
+      ui.busy = true;
+      ui.authErr = ui.authMsg = "";
+      f.querySelector("[type=submit]").disabled = true;
+      try {
+        if (ui.authMode === "signup") {
+          const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: authRedirect() } });
+          if (error) throw error;
+          if (!data.session) ui.authMsg = "Check your email for a link to finish creating your account.";
+        } else {
+          const { error } = await sb.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+        }
+      } catch (err) {
+        ui.authErr = /failed to fetch|load failed|networkerror/i.test(err.message)
+          ? "We couldn't reach the account service. Check your connection and try again."
+          : err.message === "Invalid login credentials" ? "That email and password don't match." : err.message;
+      } finally {
+        ui.busy = false;
+        render();
+        if (ui.authErr && $("#au-email")) $("#au-email").value = email;
+      }
       return;
     }
     if (f.id === "setupForm") {
