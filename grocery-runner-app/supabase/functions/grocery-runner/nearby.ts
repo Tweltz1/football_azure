@@ -32,7 +32,10 @@ async function fromOsm(lat: number, lon: number): Promise<NearbyStore[]> {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'GroceryRunner/1.0 (github.com/Tweltz1/football_azure)' },
     body: `data=${encodeURIComponent(query)}`,
   });
-  if (!res.ok) throw new Error(`Store map lookup failed (${res.status}).`);
+  if (!res.ok) {
+    const detail = (await res.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 160);
+    throw new Error(`Store map lookup failed (${res.status}): ${detail}`);
+  }
   const body = await res.json();
   const out: NearbyStore[] = [];
   // deno-lint-ignore no-explicit-any

@@ -79,8 +79,9 @@ jobs:
           H=(-H "Authorization: Bearer $KEY" -H "apikey: $KEY")
           echo "status: $(curl -fsS "${H[@]}" "$FN?action=status")"
           # Madison, WI has Woodman's, Aldi, Walmart, Target, Costco and Pick 'n Save (Kroger).
-          curl -fsS "${H[@]}" "$FN?action=nearby&lat=43.0731&lon=-89.4012" \
-            | python3 -c 'import json,sys,collections; d=json.load(sys.stdin); print(len(d), "stores near Madison:", dict(collections.Counter(s["chain"] for s in d)))'
+          curl -sS "${H[@]}" "$FN?action=nearby&lat=43.0731&lon=-89.4012" -o nearby.json
+          python3 -c 'import json; d=json.load(open("nearby.json")); assert isinstance(d, list), d' || { cat nearby.json; exit 1; }
+          cat nearby.json | python3 -c 'import json,sys,collections; d=json.load(sys.stdin); print(len(d), "stores near Madison:", dict(collections.Counter(s["chain"] for s in d)))'
           curl -fsS "${H[@]}" -H "Content-Type: application/json" -d '{"action":"aisles","store":"woodmans:osm-test","items":["milk"]}' "$FN"; echo
 
   build:
