@@ -115,7 +115,7 @@
       audio.ontimeupdate = () => showAt(audio.currentTime);
       audio.onended = finish;
       audio.onerror = useFallback;
-      audio.src = "/tour/" + key + ".mp3?v=6";
+      audio.src = "/tour/" + key + ".mp3?v=7";
       audio.muted = muted;
       const p = audio.play();
       if (p && p.catch) p.catch(useFallback);
@@ -188,7 +188,7 @@
     await wait(250);
   }
   async function type(sel, text) {
-    const el = q(sel); miss("type", sel, el); if (!el) return;
+    const el = typeof sel === "string" ? q(sel) : sel; miss("type", sel, el); if (!el) return;
     el.focus({ preventScroll: true });
     reveal(el, "instant");
     el.value = "";
@@ -652,13 +652,114 @@
       step(); { const c = say("es-5"); highlight(".est-send"); await cue(0.2); await tap(".est-send"); highlight("#sendForm"); await cue(0.6); await tap("#sendForm .btn.primary"); highlight(".sheet .stepper"); await c; }
       step(); { const c = say("es-6"); await openSheet("RO-1042"); highlight("#estSec"); await c; }
     },
-    async walk() {
+    async workday() {
+      STEPS = 4; await begin("board");
+      step(); {
+        const c = say("wd-1"); highlight(".wd-bar");
+        await cue(0.4); await tap("[data-wd-mine]"); highlight(".board-wrap");
+        await cue(0.85); await tap("[data-wd-mine]"); highlight(".wd-bar");
+        await c;
+      }
+      step(); {
+        const c = say("wd-2"); highlight(".wd-due");
+        await cue(0.3); highlight(q('.card[data-open="RO-1043"]') || q('[data-open="RO-1043"]') || ".board-wrap");
+        await cue(0.75); highlight(".wd-due");
+        await c;
+      }
+      step(); { const c = say("wd-3"); highlight("[data-wd-alerts]"); await c; }
+      step(); {
+        const c = say("wd-4"); highlight("[data-wd-today]"); await cue(0.12); await tap("[data-wd-today]"); await wait(300);
+        // Shown as a plain (not modal) dialog so the tour's own controls stay usable.
+        { const d = q("#wd-today"); if (d?.open) { d.close(); d.show(); } } highlight("#wd-today form");
+        await cue(0.3); highlight(q("#wd-today .wd-tiles") || "#wd-today form");
+        await cue(0.75); highlight("#wd-today form");
+        await cue(0.88); await tap("#wd-today .btn.primary"); q("#wd-today")?.close(); highlight(".wd-bar");
+        await c;
+      }
+    },
+    async quick() {
       STEPS = 5; await begin("board");
+      step(); {
+        const c = say("qc-1"); await tab("checkin"); highlight(q("#wd-find")?.closest("label"));
+        await cue(0.45); await type("#wd-find", "whitaker"); await wait(600); highlight("#wd-found");
+        await cue(0.8); await tap('[data-wd-fill="0"]'); highlight("#checkinForm .form-grid");
+        await c;
+      }
+      step(); {
+        const c = say("qc-2"); highlight(q("#ci-make")?.closest("label"));
+        await cue(0.25); highlight(q("#ci-model")?.closest("label"));
+        await c;
+      }
+      step(); {
+        const c = say("qc-3"); highlight(q("#wd-svc")?.closest("label"));
+        await cue(0.2); await pick("#wd-svc", q("#wd-svc option[data-fast='1']")?.value || ""); highlight(q("#wd-svc")?.closest("label"));
+        await cue(0.45); highlight("#wd-fast-row");
+        await cue(0.6); if (!q("#wd-fast")?.checked) await tap("#wd-fast"); highlight("#wd-fast-row");
+        await c;
+      }
+      step(); {
+        const c = say("qc-4"); highlight(q("#wd-miles")?.closest("label")); await type("#wd-miles", "98,950");
+        await cue(0.25); highlight(q("#wd-promised")?.closest("label"));
+        { const el = q("#wd-promised"); if (el) { const d = new Date(Date.now() + 4 * 3600000); d.setMinutes(0); el.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); el.dispatchEvent(new Event("change", { bubbles: true })); } }
+        await cue(0.45); await pick("#wd-tech", qa("#wd-tech option").find((o) => /Marcus/.test(o.textContent))?.value || ""); highlight(q("#wd-tech")?.closest("label"));
+        await c;
+      }
+      step(); {
+        const c = say("qc-5"); await tab("settings"); q("#wd-packages")?.scrollIntoView({ block: "start" }); highlight("#wd-packages");
+        await cue(0.25); { const d = q("#wd-packages details.wd-pk-add"); if (d) { d.open = true; await wait(200); } } highlight("#wd-packages details.wd-pk-add");
+        await type("#wd-pk-name", "Brake fluid flush special");
+        await cue(0.45); { const i = qa("[data-wd-pk-item]").find((x) => /brake fluid/i.test(x.closest("label")?.textContent || "")) || q("[data-wd-pk-item]"); if (i) await tap(i); }
+        await cue(0.65); highlight(q("#wd-pk-fast")?.closest("label")); if (!q("#wd-pk-fast")?.checked) await tap("#wd-pk-fast");
+        await cue(0.85); await tap("[data-wd-pk-add]"); await wait(300); highlight("#wd-packages .wd-pk");
+        await c;
+      }
+    },
+    async jobs() {
+      STEPS = 6; await begin("board");
+      const sec = (sel) => { const el = typeof sel === "string" ? q(sel) : sel; el?.scrollIntoView({ block: "center" }); highlight(el); return el; };
+      step(); {
+        const c = say("jd-1"); await openSheet("RO-1041"); sec(".wd-details");
+        await cue(0.5); await pick('[data-wd-set="tech"]', "u-dana"); highlight(".wd-details");
+        await cue(0.8); highlight(q('[data-wd-set="mileageOut"]')?.closest("label")); await type('[data-wd-set="mileageOut"]', "48,236"); q('[data-wd-set="mileageOut"]')?.dispatchEvent(new Event("change", { bubbles: true }));
+        await c;
+      }
+      step(); { const c = say("jd-2"); highlight('[data-wd-print="order"]'); await cue(0.5); highlight(q('[data-wd-print="bill"]') || '[data-wd-print="order"]'); await c; }
+      step(); { const c = say("jd-3"); sec("#wd-visits"); await c; }
+      step(); {
+        const c = say("jd-4"); sec("#noteSec");
+        await cue(0.2); highlight(q("#noteInternal")?.closest("label")); await tap("#noteInternal");
+        await cue(0.45); await type("#noteIn", "Used OEM pads, part number in the bill. Recheck rotor runout at next visit.");
+        await cue(0.8); await tap("#noteSec .btn.primary"); highlight("#noteSec .notes");
+        await c;
+      }
+      step(); {
+        const c = say("jd-5"); await openSheet("RO-1042"); const r = q("#wd-fu-text")?.closest("section"); const det = q("#wd-fu-text")?.closest("details"); if (det) det.open = true; sec(r);
+        await cue(0.4); await tap('[data-wd-due="90"]'); highlight(q("#wd-fu-due")?.closest("label") || r);
+        await cue(0.6); highlight(q("#wd-fu-text")?.closest("label") || r);
+        await cue(0.75); await tap("[data-wd-schedule]"); await wait(300); highlight(q("#wd-fu-text")?.closest("section"));
+        await cue(0.9); highlight(q("[data-wd-cancel]") || q("#wd-fu-text")?.closest("section"));
+        await c;
+      }
+      step(); {
+        const c = say("jd-6"); await tap("#viewAsCust"); await wait(400); const b = q("[data-wd-stop]"); b?.scrollIntoView({ block: "center" }); highlight(b?.parentElement || b);
+        await cue(0.85); await tap("#backToShop");
+        await c;
+      }
+    },
+    async walk() {
+      STEPS = 6; await begin("board");
       step(); { const c = say("wk-1"); await openSheet("RO-1046"); q("#walkSec")?.scrollIntoView({ block: "center" }); highlight("#walkSec"); await c; }
       step(); {
         const c = say("wk-2"); await tap('[data-walk="before"]'); await wait(300); highlight(".wt-list");
         await cue(0.55); highlight('[data-walk-row="battery"]'); await tap('[data-walk-set="battery"][data-v="now"]');
         await cue(0.75); await type('[data-walk-note="battery"]', "Battery tested weak at 9.8 volts");
+        await c;
+      }
+      step(); {
+        const c = say("wk-6"); const t = q(".wt-tread"); t?.scrollIntoView({ block: "center" }); highlight(t?.closest("li") || t);
+        const tr = qa("[data-walk-tread]"); const v = ["7", "6", "4", "2"];
+        for (let i = 0; i < tr.length; i++) { await cue(0.2 + i * 0.1); await type(tr[i], v[i] || "6"); }
+        await cue(0.75); highlight(t);
         await c;
       }
       step(); {
@@ -752,7 +853,7 @@
       step(); { const c = say("ph-4"); highlight(q("#noteSend")?.closest("label")); await tap("#noteSend"); await cue(0.60); highlight("#noteSec .btn.primary"); await tap("#noteSec .btn.primary"); highlight("#noteSec .notes"); await c; }
     },
     async howto() {
-      STEPS = 5; await begin("board");
+      STEPS = 6; await begin("board");
       step(); { const c = say("ht-1"); highlight('.tab[data-view="howto"]'); await c; }
       step(); {
         const c = say("ht-2"); await cue(0.2); await openSheet("RO-1046"); highlight(".howto-link");
@@ -780,6 +881,7 @@
         await c;
       }
       step(); { const c = say("ht-5"); highlight(".howto-safety"); await cue(0.8); highlight(".howto-fine"); await c; }
+      step(); { const c = say("ht-6"); const v = q("#howtoVideos"); v?.scrollIntoView({ block: "center" }); highlight(v); await cue(0.4); highlight(q(".howto-answer") || v); await c; }
     },
     async pickup() {
       STEPS = 4; await begin("board");
@@ -816,7 +918,7 @@
         await tap("#rateForm .btn"); highlight("#savedItems");
         await c;
       }
-      step(); { const c = say("se-4"); highlight("#importBox"); await cue(0.75); highlight("#rateTemplate"); await c; }
+      step(); { const c = say("se-4"); highlight("#importBox"); await cue(0.15); highlight("#openImport"); await cue(0.75); highlight("#sampleImport"); await c; }
       step(); {
         const c = say("se-5"); q(".age-settings")?.scrollIntoView({ block: "center" }); highlight(".age-settings");
         await cue(0.3); highlight(".age-thresholds"); await type('[name="ageWarningDays"]', "2"); q('[name="ageWarningDays"]')?.dispatchEvent(new Event("input", { bubbles: true }));
@@ -906,7 +1008,7 @@
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
       fetch("/tour/lines.json?v=4").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
-      fetch("/tour/caption-cues.json?v=3").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+      fetch("/tour/caption-cues.json?v=4").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">
