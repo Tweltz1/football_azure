@@ -101,3 +101,19 @@ test('only real name or category changes count as fixes for the learning loop', 
   expect(wasFixed(null, 'Chair', 'furniture')).toBe(false);
   expect(wasFixed(guess, '', 'other')).toBe(false);
 });
+
+test('our item namer names a thing when it is sure, and Apple names it otherwise', () => {
+  const { thingsInPhoto, namerThing } = require('./appleLabels');
+  const guess = (title, category, confidence) => ({ guesses: [{ label: title.toLowerCase(), title, category, item: true, confidence }] });
+  expect(namerThing(guess('Clothespin', 'home', 0.82))).toMatchObject({ title: 'Clothespin', category: 'home', source: 'namer' });
+  expect(namerThing(guess('Clothespin', 'home', 0.4))).toBeNull();
+  expect(namerThing(guess('Thing', 'nonsense', 0.9)).category).toBe('other');
+  const things = thingsInPhoto({
+    regions: [
+      { box: { x: 0.1, y: 0.1, w: 0.3, h: 0.3 }, labels: [{ label: 'tool', confidence: 0.6 }], namer: guess('Pliers', 'tools', 0.91) },
+      { box: { x: 0.6, y: 0.1, w: 0.3, h: 0.3 }, labels: [{ label: 'battery', confidence: 0.5 }], namer: guess('Remote control', 'electronics', 0.3) },
+    ],
+  });
+  expect(things.map((t) => t.title)).toEqual(['Pliers', 'Battery']);
+  expect(things[0].source).toBe('namer');
+});
