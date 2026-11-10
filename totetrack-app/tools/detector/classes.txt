@@ -1,0 +1,184 @@
+# Item types the ToteTrack detector learns.
+# Format: Name shown in the app: LVIS category names or synonyms (lower case, spaces or underscores, parentheses ignored).
+# Several LVIS categories can feed one name. Names with no match in LVIS are reported and skipped.
+
+# Tools and garage
+Screwdriver: screwdriver
+Hammer: hammer
+Wrench: wrench, spanner
+Pliers: pliers
+Scissors: scissors, shears
+Tape measure: tape measure, measuring tape
+Drill: drill, power drill, drill tool
+Saw: saw, handsaw
+Flashlight: flashlight, torch
+Batteries: battery
+Extension cord: extension cord
+Light bulbs: lightbulb, light bulb
+Tape: tape, duct tape, masking tape, scotch tape, adhesive tape
+Paintbrush: paintbrush
+Glue: glue
+Rope: rope
+Gloves: glove, work glove
+Helmet: helmet, football helmet, bicycle helmet
+Bucket: bucket, pail
+Hose: hose, garden hose
+Shovel: shovel
+Broom: broom
+Toolbox: toolbox, tool box
+Padlock: padlock, lock
+
+# Holidays and decor
+Christmas ornaments: christmas ornament, ornament, bauble
+Candles: candle, candle holder, candlestick
+Wreath: wreath
+Pumpkin: pumpkin, jack-o-lantern, jack-o'-lantern
+Gifts: gift wrap, present, gift
+Vase: vase
+Picture frame: picture frame, frame
+Basket: basket
+
+# Kitchen
+Bottles: bottle, water bottle, wine bottle, beer bottle
+Jars: jar
+Mugs: mug, coffee mug, coffee cup
+Cups: cup, paper cup, teacup
+Bowls: bowl, soup bowl
+Plates: plate, platter, saucer
+Pots and pans: pot, saucepan, frying pan, wok, cooking pan, slow cooker
+Kettle: kettle, teakettle, teapot
+Blender: blender, mixer
+Toaster: toaster
+Cutting board: chopping board, cutting board
+Utensils: fork, spoon, spatula, ladle, whisk, tongs, chopsticks, kitchen utensil
+Knives: knife, kitchen knife, steak knife
+Thermos: thermos bottle, thermos
+Lunch box: lunch box, lunchbox
+Food containers: tupperware, plastic container, food container
+
+# Linens and clothes
+Towels: towel, bath towel, dishtowel, dish towel, hand towel
+Blankets: blanket, quilt
+Pillows: pillow, cushion
+Shirts: shirt, t-shirt, tee shirt, polo shirt
+Jackets: jacket, coat, raincoat
+Sweaters: sweater, sweatshirt, hoodie
+Pants: trousers, jean, jeans, pants
+Dresses: dress
+Hats: hat, cap, baseball cap, beanie, cowboy hat, sunhat, sun hat, fedora, sombrero
+Scarves: scarf
+Socks: sock
+Shoes: shoe, sneaker, sandal, high heels
+Boots: boot
+Bags: bag, handbag, backpack, tote bag, duffel bag, shopping bag, paper bag, plastic bag, luggage and bags
+Suitcase: suitcase
+
+# Electronics
+Laptop: laptop computer, laptop
+Keyboard: computer keyboard, keyboard
+Mouse: mouse, computer mouse
+Headphones: headset, earphone, headphones
+Phone: cellular telephone, cell phone, telephone, mobile phone, corded phone
+Remote: remote control
+Camera: camera
+Speaker: loudspeaker, speaker
+Chargers: charger
+Cables: cable, cord, electric cord
+Game controller: joystick, game controller
+Lamp: lamp, table lamp
+Clock: clock, alarm clock, wall clock
+Fan: fan, electric fan
+
+# Toys, books and sports
+Stuffed animals: teddy bear, stuffed animal, stuffed toy
+Toys: toy
+Dolls: doll
+Balls: ball, soccer ball, basketball, football, tennis ball, baseball, volleyball, rugby ball, golf ball, cricket ball
+Books: book
+Magazines: magazine
+Notebooks: notebook, notepad
+Pens: pen, ballpoint pen
+Pencils: pencil
+Markers: marker
+Crayons: crayon
+Baseball glove: baseball glove
+Bat: baseball bat
+Tennis racket: tennis racket, racket
+Skateboard: skateboard
+Frisbee: frisbee
+Kite: kite
+Umbrella: umbrella
+Sunglasses: sunglasses
+Watch: wristwatch, watch
+
+# Bathroom and medicine
+Pill bottles: pill bottle
+Toothbrush: toothbrush
+Toothpaste: toothpaste
+Soap: soap, bar soap, soap dispenser, bathroom accessory
+Spray bottle: spray bottle, spray can, aerosol can
+Tissues: tissue paper, kleenex, facial tissue holder
+Hair dryer: hair dryer, hairdryer
+
+# Added with Open Images
+Ladder: ladder
+Tent: tent
+Christmas tree: christmas tree
+Lantern: lantern
+Axe: axe, hatchet
+Chainsaw: chainsaw
+Tools: tool
+Nails: nail
+Power plugs: power plugs and sockets, plug, power strip
+Tripod: tripod
+Printer: printer
+Tablet: tablet computer, tablet
+Microphone: microphone
+Guitar: guitar
+Music keyboard: musical keyboard
+Violin: violin
+Drum: drum
+Brass and woodwinds: trumpet, saxophone, flute, trombone, french horn, oboe, harmonica
+Balloons: balloon
+Mirror: mirror
+Curtains: curtain
+Flower pots: flowerpot, planter
+Coffee maker: coffeemaker, coffee maker
+Measuring cups: measuring cup
+Pitchers: pitcher, jug
+Wine glasses: wine glass
+Mixing bowls: mixing bowl
+Platters: serving tray, platter, cake stand
+Salt and pepper: salt and pepper shakers
+Cans: tin can
+Briefcase: briefcase
+Skis: ski
+Snowboard: snowboard
+Surfboard: surfboard
+Roller skates: roller skates
+Goggles: goggles
+Glasses: glasses
+Jewelry: necklace, earrings, bracelet, tiara, crown
+Belts: belt
+Ties: tie
+Swimsuits: swimwear
+Shorts: shorts
+Skirts: miniskirt, skirt
+Perfume: perfume
+Makeup: cosmetics, lipstick
+Toilet paper: toilet paper
+Paper towels: paper towel
+Binoculars: binoculars
+Dumbbells: dumbbell
+Calculator: calculator
+Stapler: stapler
+Ruler: ruler
+Envelopes: envelope
+Pencil case: pencil case
+Dice: dice
+Flags: flag
+Picnic basket: picnic basket
+Dog bed: dog bed
+Bow and arrow: bow and arrow
+Paddle: paddle
+Accordion: accordion

@@ -12,7 +12,13 @@ export type PhotoAnalysis = {
    * that spot. Empty when the detector model isn't in the build; older builds leave it out.
    */
   objects?: DetectedObject[];
+  /**
+   * What ToteTrack's own namer called each spot in the photo, best first: confidence is its best
+   * probability, spots how many places it was the top answer. Empty when the namer isn't in the build.
+   */
+  named?: NamedItem[];
 };
+export type NamedItem = { name: string; confidence: number; similarity: number; spots: number };
 export type DetectedObject = {
   label: string;
   confidence: number;
