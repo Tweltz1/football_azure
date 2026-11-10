@@ -484,7 +484,8 @@ export async function junkRoute(
       verified: new Set(partners).size >= VERIFIED_PICKUPS,
     };
   };
-  const newAccount = () => crowdedDevice || (!!ctx.userCreatedAt && now.getTime() - Date.parse(ctx.userCreatedAt) < NEW_ACCOUNT_HOURS * 3_600_000);
+  // Curbsy signs in with Apple or Google only (both check a phone number). Older GitHub sign-ins keep new-account limits.
+  const newAccount = () => crowdedDevice || ctx.userProvider === 'github' || (!!ctx.userCreatedAt && now.getTime() - Date.parse(ctx.userCreatedAt) < NEW_ACCOUNT_HOURS * 3_600_000);
 
   // ---- Browse (no sign-in needed) ----
   if (section === 'items' && !a && method === 'GET') {

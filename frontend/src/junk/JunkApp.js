@@ -38,7 +38,6 @@ function SignInSheet({ reason, onClose }) {
           <button type="button" className="jk-provider" onClick={() => signIn('google')}>
             <span className="jk-g" aria-hidden="true">G</span> Continue with Google
           </button>
-          <button type="button" className="jk-provider" onClick={() => signIn('github')}>Continue with GitHub</button>
         </div>
         <p className="jk-legal">
           By continuing you agree to the <a href="/junk-terms.html">Terms</a> and <a href="/junk-privacy.html">Privacy Policy</a>.
