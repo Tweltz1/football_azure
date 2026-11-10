@@ -7,6 +7,7 @@ import { CATEGORIES, CONDITIONS, inJunkApp, photoToJpeg } from './device';
 import { appleDetect, hasAppleDetection } from './appleLabels';
 import { BackButton } from './ItemPage';
 import PieceThumb from './PieceThumb';
+import PostPreview from './PostPreview';
 import { sendFixes, wasFixed } from './learning';
 import { IconCamera, IconClose, IconPin, IconSparkle } from './icons';
 
@@ -44,6 +45,8 @@ export default function PostItem() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(!editing);
+  // A new post is shown the way neighbors will see it before it goes live.
+  const [previewing, setPreviewing] = useState(false);
   // Curbsy rules: agreed once before the first post (the server asks again if it hasn't been).
   const [askTerms, setAskTerms] = useState(false);
   const retryAfterTerms = useRef(null);
@@ -204,13 +207,35 @@ export default function PostItem() {
 
   const removePhoto = (key) => setPhotos((list) => list.filter((p) => p.key !== key));
 
-  const submit = async (e) => {
+  // What's wrong with the form, or '' when it's ready to post.
+  const problem = () => {
+    if (photos.some((p) => p.uploading)) return 'Hang on, photos are still uploading.';
+    if (multi && named.length < 2) return 'Name at least two things, or remove the extra rows.';
+    if (!multi && !form.title.trim()) return 'Give it a name, like "Wood dresser".';
+    if (!editing && !spot) return 'Turn on location so people nearby can find it.';
+    return '';
+  };
+
+  const submit = (e) => {
     e.preventDefault();
+    const wrong = problem();
+    setError(wrong);
+    if (wrong) return;
+    if (editing) { save(); return; }
+    setPreviewing(true);
+    window.scrollTo(0, 0);
+  };
+
+  const backToForm = () => {
+    setPreviewing(false);
     setError('');
-    if (photos.some((p) => p.uploading)) { setError('Hang on, photos are still uploading.'); return; }
-    if (multi && named.length < 2) { setError('Name at least two things, or remove the extra rows.'); return; }
-    if (!multi && !form.title.trim()) { setError('Give it a name, like "Wood dresser".'); return; }
-    if (!editing && !spot) { setError('Turn on location so people nearby can find it.'); return; }
+    window.scrollTo(0, 0);
+  };
+
+  const save = async () => {
+    const wrong = problem();
+    setError(wrong);
+    if (wrong) return;
     setSaving(true);
     try {
       const fields = {
@@ -233,7 +258,7 @@ export default function PostItem() {
     } catch (err) {
       setSaving(false);
       if (err.status === 428) {
-        retryAfterTerms.current = () => submit(e);
+        retryAfterTerms.current = () => save();
         setAskTerms(true);
         return;
       }
@@ -242,6 +267,38 @@ export default function PostItem() {
   };
 
   if (!loaded) return <main className="jk-page"><div className="jk-topbar"><BackButton /></div></main>;
+
+  const terms = askTerms && (
+    <TermsSheet
+      onDone={() => {
+        setAskTerms(false);
+        const retry = retryAfterTerms.current;
+        retryAfterTerms.current = null;
+        if (retry) retry();
+      }}
+      onCancel={() => {
+        setAskTerms(false);
+        if (!retryAfterTerms.current) navigate('/junk', { replace: true });
+        retryAfterTerms.current = null;
+      }}
+    />
+  );
+
+  if (previewing) {
+    const title = form.title.trim() || (multi ? bundleTitle(named) : '');
+    return (
+      <>
+        <PostPreview
+          item={{ ...form, title, pieces: multi ? named : [], photos: photos.filter((p) => p.path), aiDetected: detected }}
+          saving={saving}
+          error={error}
+          onEdit={backToForm}
+          onPost={save}
+        />
+        {terms}
+      </>
+    );
+  }
 
   return (
     <main className="jk-page jk-post">
@@ -383,26 +440,12 @@ export default function PostItem() {
         {error && <p className="jk-error" role="alert">{error}</p>}
         <div className="jk-form-actions">
           <button type="submit" className="jk-btn jk-btn-primary jk-full" disabled={saving || detecting}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : multi && named.length >= 2 ? `Post ${named.length} things for free` : 'Post it for free'}
+            {saving ? 'Saving…' : editing ? 'Save changes' : 'Preview your post'}
           </button>
         </div>
       </form>
 
-      {askTerms && (
-        <TermsSheet
-          onDone={() => {
-            setAskTerms(false);
-            const retry = retryAfterTerms.current;
-            retryAfterTerms.current = null;
-            if (retry) retry();
-          }}
-          onCancel={() => {
-            setAskTerms(false);
-            if (!retryAfterTerms.current) navigate('/junk', { replace: true });
-            retryAfterTerms.current = null;
-          }}
-        />
-      )}
+      {terms}
     </main>
   );
 }
