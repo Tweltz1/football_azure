@@ -120,11 +120,12 @@ function world(detection: JunkDetection | null = null) {
   };
   const joined = new Map<string, string>();
   let phone: string | null = null;
+  const providers = new Map<string, string>();
   const call = (who: string | null, method: string, path: string, body?: unknown, query: Record<string, unknown> = {}) => {
     clock += 60_000;
     const ctx = {
       userCreatedAt: who ? joined.get(who) ?? '2026-01-01T00:00:00Z' : null,
-      userProvider: who ? 'apple' : null,
+      userProvider: who ? providers.get(who) ?? 'apple' : null,
       deviceId: phone,
       userId: who, displayName: who === ALICE ? 'Alice' : who === BOB ? 'Bob' : 'Carl',
       now: () => new Date(clock), newId: () => `00000000-0000-4000-8000-${String(++seq).padStart(12, '0')}`,
@@ -142,7 +143,7 @@ function world(detection: JunkDetection | null = null) {
     assert.equal(res?.status, 200, String(res?.body));
     return res!.body as { id: string; photos: string[] };
   };
-  return { call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
+  return { call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, providers, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -735,4 +736,13 @@ test('banned or warned people can appeal, and see where they stand', async () =>
   const alices = await w.post(ALICE);
   res = await w.call(BOB, 'POST', 'junk/appeal', { body: 'Please look', itemId: alices.id });
   assert.equal(res?.status, 404);
+});
+
+test('GitHub sign-ins keep new-account limits (Curbsy is Apple or Google only)', async () => {
+  const w = world();
+  w.providers.set(CARL, 'github');
+  for (let k = 0; k < 3; k++) await w.post(CARL, { title: `Chair ${k}` });
+  const up = await w.call(CARL, 'POST', 'junk/photos', { image: JPEG });
+  const res = await w.call(CARL, 'POST', 'junk/items', { title: 'Chair 4', photos: [(up?.body as { path: string }).path], ...HOME });
+  assert.equal(res?.status, 429);
 });
