@@ -10,11 +10,16 @@
 //   POST {action:"vote", store, item, device, aisle | department}
 //   POST {action:"store-aisles", store}          every item's shared aisle at one store (layout learning)
 //   POST {action:"kroger-stock", locationId, items:[...]}           stock + price per item at one Kroger store
+//   POST {action:"deals", store, items:[...]}    this week's deals from a partner store that match the list
+//
+// Partner stores (store-portal function) send their own aisle list, which "aisles" and "store-aisles"
+// return ahead of shopper votes, marked {official: true}.
 //
 // Deployed by .github/workflows/grocery-runner-app.yml.
 import { sharedAisles, storeAisles, voteAisle } from './aisles.ts';
 import { krogerProducts, krogerReady, krogerStock, krogerStores } from './kroger.ts';
 import { coverage, officialStoresNear } from './nearby.ts';
+import { listDeals } from './partners.ts';
 import { walmartReady, walmartStores } from './walmart.ts';
 
 const cors = {
@@ -36,6 +41,7 @@ Deno.serve(async (req) => {
       if (body.action === 'vote') return json(await voteAisle(body));
       if (body.action === 'store-aisles') return json(await storeAisles(body.store));
       if (body.action === 'coverage') return json(await coverage(body.stores));
+      if (body.action === 'deals') return json(await listDeals(body.store, body.items));
       if (body.action === 'kroger-stock') return json(await krogerStock(body.locationId, body.items));
       return json({ error: 'Unknown action.' }, 400);
     }
@@ -44,7 +50,7 @@ Deno.serve(async (req) => {
     const zip = q.get('zip');
     switch (q.get('action')) {
       case 'status':
-        return json({ kroger: krogerReady(), walmart: walmartReady(), shared: true });
+        return json({ kroger: krogerReady(), walmart: walmartReady(), shared: true, partners: true });
       case 'kroger-stores':
         if (!zipOk(zip)) return json({ error: 'Enter a 5-digit ZIP code.' }, 400);
         return json(await krogerStores(zip));

@@ -6,6 +6,7 @@
 import { callBackend } from './api';
 import { metresBetween } from './chainMatch';
 import type { MapStore } from './mergeStores';
+import { fetchDeals } from './deals';
 import { fetchSharedAisles } from './sharedAisles';
 import { Store } from './types';
 import { chainInfo } from './chains';
@@ -19,8 +20,10 @@ export type StoreOption = {
   items: number;
   /** Kroger stores: stock per item. Missing for stores without stock data. */
   stock?: StockCheck[];
-  /** Items with a known aisle here (Kroger data or other shoppers). */
+  /** Items with a known aisle here (Kroger data, the store's own list or other shoppers). */
   mapped: number;
+  /** Items on this week's deals at a partner store. */
+  onSale?: number;
   score: number;
 };
 
@@ -44,12 +47,14 @@ export function estimate(s: StockCheck[]): { total: number; priced: number } | n
 /**
  * Higher is better. A store confirmed to have everything scores 100; a store whose stock can't be
  * checked scores 50 plus up to 20 for aisles shoppers have mapped there. Each mile costs 3 points, so a
- * Kroger with everything in stock wins unless it is much farther away.
+ * Kroger with everything in stock wins unless it is much farther away. Items on sale at a partner store
+ * add 2 points each, up to 10.
  */
 export function scoreOption(o: Omit<StoreOption, 'score'>): number {
   const n = Math.max(o.items, 1);
   const base = o.stock ? (100 * available(o.stock)) / n + (5 * o.mapped) / n : 50 + (20 * o.mapped) / n;
-  return Math.round((base - 3 * o.miles) * 10) / 10;
+  const sale = Math.min(10, 2 * (o.onSale ?? 0));
+  return Math.round((base + sale - 3 * o.miles) * 10) / 10;
 }
 
 export const rankOptions = (options: Omit<StoreOption, 'score'>[]): StoreOption[] =>
@@ -87,21 +92,26 @@ export const toStore = (s: MapStore): Store => ({
 /** Checks stock at nearby Kroger stores and shared aisles at the others, then ranks them. */
 export async function compareStores(stores: MapStore[], at: { lat: number; lon: number }, items: string[]) {
   const { kroger, others } = candidates(stores, at);
+  const saleCount = (key: string) =>
+    fetchDeals(key, items)
+      .then((d) => Object.keys(d).length)
+      .catch(() => 0);
   const checks = await Promise.all([
     ...kroger.map(async ({ store, miles }) => {
       try {
-        const stock = await krogerStock(store.key.replace('kroger:', ''), items);
-        return { store, miles, items: items.length, stock, mapped: stock.filter((c) => c.aisle).length };
+        const [stock, onSale] = await Promise.all([krogerStock(store.key.replace('kroger:', ''), items), saleCount(store.key)]);
+        return { store, miles, items: items.length, stock, mapped: stock.filter((c) => c.aisle).length, onSale };
       } catch {
         return { store, miles, items: items.length, mapped: 0 };
       }
     }),
     ...others.map(async ({ store, miles }) => {
       let mapped = 0;
+      const onSale = saleCount(store.key);
       try {
         mapped = Object.keys(await fetchSharedAisles(toStore(store), items)).length;
       } catch {}
-      return { store, miles, items: items.length, mapped };
+      return { store, miles, items: items.length, mapped, onSale: await onSale };
     }),
   ]);
   return rankOptions(checks);

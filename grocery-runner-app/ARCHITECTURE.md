@@ -168,3 +168,12 @@ aisle label parsing, department guessing, stop order, grouping and the cold-last
 2. Cache Kroger lookups per store + item.
 3. Let the shopper pick the exact Kroger product when the first search result is wrong.
 4. Learn where perimeter departments are (produce left or right) from check-off order.
+
+## Partner stores (layouts and deals)
+
+Stores that partner with Shop Stride send their own data through `portal/index.html` (a private link
+per store) or the `store-portal` API; see `portal/README.md`. Tables `grocery_partner_stores`,
+`grocery_partner_aisles`, `grocery_partner_deals` (`tools/setup_supabase.py`), service role only.
+The store's category list ranks above every other shared source (source `store` in the app), and its
+current deals become "On sale" badges. Parsing and matching live in
+`supabase/functions/grocery-runner/partnerData.ts` (tested in `tests/partnerData.test.ts`).
