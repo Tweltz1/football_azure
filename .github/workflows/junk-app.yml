@@ -79,6 +79,22 @@ jobs:
           done
           ls -l models || true
 
+      # Our own item namer (ml/item-namer, release item-namer-vN): names each thing in a photo from Apple's
+      # feature print. A failed download only means this build uses Apple's labels alone.
+      - name: Download the item namer
+        working-directory: ios-junk-app
+        env:
+          NAMER: item-namer-v1
+        run: |
+          mkdir -p models
+          base="https://github.com/${{ github.repository }}/releases/download/$NAMER"
+          if curl -fsSL --retry 3 -o models/namer.f32 "$base/namer.f32" && curl -fsSL --retry 3 -o models/namer-labels.json "$base/labels.json"; then
+            echo "Got $NAMER ($(wc -c < models/namer.f32) bytes)"
+          else
+            rm -f models/namer.f32 models/namer-labels.json
+            echo "::warning::Item namer not downloaded; this build names things with Apple's labels only"
+          fi
+
       # Free on-device explicit-photo check (NSFWDetector by LOVOO, BSD 3-clause, 17 KB) used by PhotoSafetyPlugin
       # before a photo is uploaded. Checked against a known hash; a failed download only skips that one check.
       - name: Download the photo safety model

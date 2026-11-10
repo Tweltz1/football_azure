@@ -23,7 +23,7 @@ console.log('App start path: /junk');
 // copy it into the app's bundled files. Without it the app still runs, with Apple's classifier only.
 const modelsDir = path.join(__dirname, 'models');
 const outDir = path.join(__dirname, 'ios/App/App/public/models');
-const models = fs.existsSync(modelsDir) ? fs.readdirSync(modelsDir).filter((f) => f.endsWith('.mlmodel')) : [];
+const models = fs.existsSync(modelsDir) ? fs.readdirSync(modelsDir).filter((f) => f.endsWith('.mlmodel') || f.endsWith('.f32') || f === 'namer-labels.json') : [];
 if (models.length) {
   fs.mkdirSync(outDir, { recursive: true });
   for (const m of models) fs.copyFileSync(path.join(modelsDir, m), path.join(outDir, m));

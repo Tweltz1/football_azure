@@ -191,8 +191,22 @@ const iou = (a, b) => {
 };
 const isBox = (b) => b && [b.x, b.y, b.w, b.h].every(Number.isFinite) && b.w > 0 && b.h > 0;
 
+// Our own item namer (ml/item-namer, 485 kinds). Its top guess is trusted only when it's at least this sure:
+// on test pictures it was right 86% of the time then (about 1 in 6 things), and 95% at 0.9.
+export const NAMER_SURE = 0.7;
+const CATEGORY_KEYS = new Set(['furniture', 'appliances', 'electronics', 'home', 'kids', 'clothing', 'books', 'sports', 'tools', 'garden', 'building', 'toys', 'other']);
+
+/** The namer's guess when it's sure: { title, label, category, confidence, source: 'namer' }, or null. */
+export function namerThing(namer) {
+  const g = namer && Array.isArray(namer.guesses) ? namer.guesses[0] : null;
+  if (!g || typeof g.title !== 'string' || !(g.confidence >= NAMER_SURE) || g.item === false) return null;
+  return { title: g.title, label: g.label, category: CATEGORY_KEYS.has(g.category) ? g.category : 'other', confidence: g.confidence, source: 'namer' };
+}
+
 /** A name for one region from Apple's labels for just that part of the photo, even a broad one ("Tool"). */
 function regionThing(region) {
+  const sure = namerThing(region.namer);
+  if (sure) return sure;
   const named = fromAppleLabels(region.labels);
   if (named && named.title && !named.person) return { title: named.title, label: named.label, category: named.category, confidence: named.confidence };
   const top = (Array.isArray(region.labels) ? region.labels : [])
@@ -223,7 +237,7 @@ export function thingsInPhoto(res) {
   }
   for (const r of Array.isArray(res && res.regions) ? res.regions : []) {
     const named = r && regionThing(r);
-    if (named) add({ ...named, source: 'region', box: r.box, fromApple: true });
+    if (named) add({ ...named, source: named.source || 'region', box: r.box, fromApple: true });
   }
   // Left to right, top to bottom, the way people read the photo.
   return out
@@ -239,7 +253,13 @@ export async function appleDetect(jpegDataUrl) {
   try {
     const res = await ItemVision.classify({ image: jpegDataUrl });
     const things = thingsInPhoto(res);
-    const whole = fromAppleLabels(res && res.labels);
+    const apple = fromAppleLabels(res && res.labels);
+    // The namer's name for a photo of one thing, when it's sure; Apple's tags and description stay.
+    const sure = namerThing(res && res.namer);
+    const whole = sure && !(apple && apple.person)
+      ? { ...(apple || { tags: [], description: '', person: false }), ...sure, confident: true,
+        tags: [...new Set([sure.title.toLowerCase(), ...((apple && apple.tags) || [])])].slice(0, 10) }
+      : apple;
     if (things.length >= 2) {
       // Several things: no one name for the whole photo (the post is named after what's in it).
       return {
@@ -255,7 +275,7 @@ export async function appleDetect(jpegDataUrl) {
         category: t.category, confidence: t.confidence, confident: t.confidence >= CONFIDENT, person: false,
       };
     }
-    return whole && { ...whole, source: 'photo' };
+    return whole && { ...whole, source: whole.source || 'photo' };
   } catch (error) {
     return null;
   }

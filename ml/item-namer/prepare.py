@@ -93,6 +93,9 @@ def lvis_json(cache, split):
     return target
 
 
+MIN_SIDE = 96
+
+
 def title_of(name):
     """LVIS 'iron_(for_clothing)' -> 'Iron'."""
     s = re.sub(r'_?\(.*?\)', '', name).replace('_', ' ').strip()
@@ -202,7 +205,17 @@ def main():
             pad = 0.1
             box = (max(0, x - w * pad), max(0, y - h * pad), min(W, x + w * (1 + pad)), min(H, y + h * (1 + pad)))
             crop = img.crop(tuple(int(v) for v in box))
+            cw, ch = crop.size
+            if cw < 16 or ch < 16:
+                continue
+            # Create ML can't read tiny images (the first run crashed on a 0x0 picture), so small crops are
+            # scaled up to at least MIN_SIDE on the short side; big ones are shrunk to --size.
+            if min(cw, ch) < MIN_SIDE:
+                k = MIN_SIDE / min(cw, ch)
+                crop = crop.resize((max(MIN_SIDE, round(cw * k)), max(MIN_SIDE, round(ch * k))), Image.BICUBIC)
             crop.thumbnail((a.size, a.size))
+            if min(crop.size) < 16:
+                continue
             d = os.path.join(a.out, split, label)
             os.makedirs(d, exist_ok=True)
             crop.save(os.path.join(d, f'{iid}_{n}.jpg'), 'JPEG', quality=88)

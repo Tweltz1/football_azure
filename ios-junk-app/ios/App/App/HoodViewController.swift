@@ -216,6 +216,67 @@ public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
         return detector
     }
 
+    // Our item namer (ml/item-namer): Apple's image feature print of a part of the photo (iOS 17+), times our
+    // weights (namer.f32: float32, (dims + 1) x kinds, bias last), softmax. Labels come from namer-labels.json.
+    private static var namerWeights: [Float] = []
+    private static var namerKinds: [[String: Any]] = []
+    private static var namerTried = false
+
+    private static func loadNamer() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if namerTried { return !namerKinds.isEmpty }
+        namerTried = true
+        guard let wURL = Bundle.main.url(forResource: "namer", withExtension: "f32", subdirectory: "public/models"),
+              let lURL = Bundle.main.url(forResource: "namer-labels", withExtension: "json", subdirectory: "public/models"),
+              let blob = try? Data(contentsOf: wURL),
+              let kinds = (try? JSONSerialization.jsonObject(with: Data(contentsOf: lURL))) as? [[String: Any]],
+              !kinds.isEmpty, blob.count % (4 * kinds.count) == 0 else { return false }
+        namerWeights = blob.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+        namerKinds = kinds
+        return true
+    }
+
+    /// The namer's best guesses for one part of the photo (Vision coordinates), or nil.
+    private static func nameRegion(handler: VNImageRequestHandler, box: CGRect) -> [String: Any]? {
+        guard #available(iOS 17.0, *), loadNamer() else { return nil }
+        let request = VNGenerateImageFeaturePrintRequest()
+        request.revision = VNGenerateImageFeaturePrintRequestRevision2
+        request.imageCropAndScaleOption = .scaleFill
+        // Same room around the thing as the training crops (10% each side).
+        request.regionOfInterest = box.insetBy(dx: -box.width * 0.1, dy: -box.height * 0.1)
+            .intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
+        guard (try? handler.perform([request])) != nil,
+              let obs = request.results?.first, obs.elementType == .float else { return nil }
+        var x: [Float] = obs.data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+        let kinds = namerKinds.count
+        let dims = namerWeights.count / kinds - 1
+        guard x.count == dims else { return nil }
+        let norm = sqrt(x.reduce(0) { $0 + $1 * $1 }) + 1e-8
+        for i in 0..<dims { x[i] /= norm }
+        var scores = Array(namerWeights[(dims * kinds)..<((dims + 1) * kinds)])
+        namerWeights.withUnsafeBufferPointer { w in
+            for i in 0..<dims {
+                let xi = x[i]
+                if xi == 0 { continue }
+                let row = i * kinds
+                for k in 0..<kinds { scores[k] += xi * w[row + k] }
+            }
+        }
+        let top = scores.max() ?? 0
+        var probs = scores.map { exp($0 - top) }
+        let sum = probs.reduce(0, +)
+        probs = probs.map { $0 / sum }
+        let best = probs.indices.sorted { probs[$0] > probs[$1] }.prefix(3)
+        return [
+            "guesses": best.map { k -> [String: Any] in
+                var g = namerKinds[k]
+                g["confidence"] = Double(probs[k])
+                return g
+            },
+        ]
+    }
+
     /// Boxes (Vision coordinates, origin bottom left) of the separate things Apple sees in the photo.
     private static func thingBoxes(handler: VNImageRequestHandler) -> [CGRect] {
         var boxes: [CGRect] = []
@@ -302,10 +363,12 @@ public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
                 .sorted { $0.confidence > $1.confidence }
                 .prefix(12)
                 .map { ["label": $0.identifier, "confidence": Double($0.confidence)] as [String: Any] }
-            return [
+            var region: [String: Any] = [
                 "box": ["x": Double(box.minX), "y": Double(1 - box.maxY), "w": Double(box.width), "h": Double(box.height)],
                 "labels": Array(labels),
             ]
+            if let named = nameRegion(handler: handler, box: box) { region["namer"] = named }
+            return region
         }
     }
 
@@ -357,7 +420,12 @@ public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
             // Any separate thing, whatever it is (the detector above only knows 80 kinds): Apple finds where the
             // things are, then names each one from its own part of the photo.
             let regions = ItemVisionPlugin.regions(data: data)
-            call.resolve(["labels": Array(labels), "objects": objects, "regions": regions, "detector": model != nil])
+            var result: [String: Any] = ["labels": Array(labels), "objects": objects, "regions": regions, "detector": model != nil]
+            // The namer's guess for the whole photo (a photo of one thing).
+            if let named = ItemVisionPlugin.nameRegion(handler: VNImageRequestHandler(data: data, options: [:]), box: CGRect(x: 0, y: 0, width: 1, height: 1)) {
+                result["namer"] = named
+            }
+            call.resolve(result)
         }
     }
 }
