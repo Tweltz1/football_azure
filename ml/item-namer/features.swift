@@ -24,6 +24,20 @@ for split in ["train", "test"] {
 }
 print("pictures: \(files.count)"); fflush(stdout)
 
+// Feature prints from an earlier run (restored from the Actions cache) are reused by file path, so only
+// new pictures (for example name fixes from the apps) are read again.
+var previous: [String: [Float]] = [:]
+if let idx = try? JSONSerialization.jsonObject(with: Data(contentsOf: out.appendingPathComponent("index.json"))) as? [[String]],
+   let blob = try? Data(contentsOf: out.appendingPathComponent("features.f32")), !idx.isEmpty, idx[0].count >= 3 {
+    let dims = blob.count / 4 / idx.count
+    blob.withUnsafeBytes { raw in
+        let all = raw.bindMemory(to: Float.self)
+        for (k, row) in idx.enumerated() { previous[row[2]] = Array(all[(k * dims)..<((k + 1) * dims)]) }
+    }
+    print("feature prints kept from the last run: \(previous.count)"); fflush(stdout)
+}
+func key(_ f: (String, String, URL)) -> String { "\(f.0)/\(f.1)/\(f.2.lastPathComponent)" }
+
 var rows = [[Float]?](repeating: nil, count: files.count)
 let lock = NSLock()
 var done = 0, failed = 0
@@ -32,6 +46,11 @@ let workers = max(2, ProcessInfo.processInfo.activeProcessorCount)
 DispatchQueue.concurrentPerform(iterations: workers) { w in
     var k = w
     while k < files.count {
+        if let kept = previous[key(files[k])] {
+            lock.lock(); rows[k] = kept; done += 1; lock.unlock()
+            k += workers
+            continue
+        }
         autoreleasepool {
             var row: [Float]? = nil
             let req = VNGenerateImageFeaturePrintRequest()
@@ -66,7 +85,7 @@ var index: [[String]] = []
 for (k, row) in rows.enumerated() {
     guard let row, row.count == dims else { continue }
     row.withUnsafeBufferPointer { data.append(Data(buffer: $0)) }
-    index.append([files[k].0, files[k].1])
+    index.append([files[k].0, files[k].1, key(files[k])])
 }
 try data.write(to: out.appendingPathComponent("features.f32"))
 try JSONSerialization.data(withJSONObject: index).write(to: out.appendingPathComponent("index.json"))

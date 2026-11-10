@@ -85,6 +85,14 @@ jobs:
             echo "No SUPABASE_ACCESS_TOKEN: training without name fixes"
           fi
 
+      # Feature prints take about an hour for 30,000 pictures; earlier ones are kept and reused by file.
+      - name: Keep feature prints between runs
+        uses: actions/cache@v4
+        with:
+          path: ml/item-namer/feats
+          key: item-namer-feats-v1-${{ steps.s.outputs.per_class }}-${{ steps.s.outputs.min_class }}-${{ github.run_id }}
+          restore-keys: item-namer-feats-v1-${{ steps.s.outputs.per_class }}-${{ steps.s.outputs.min_class }}-
+
       - name: Feature prints (Apple Vision)
         run: swift features.swift crops feats
 

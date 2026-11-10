@@ -21,7 +21,7 @@ def main():
     p.add_argument('--crops', default='crops')
     p.add_argument('--out', default='out')
     p.add_argument('--epochs', type=int, default=400)
-    p.add_argument('--decay', type=float, default=1e-4)
+    p.add_argument('--decays', default='0.001,0.003,0.01,0.03,0.1', help='weight decays to try; the best on validation wins')
     a = p.parse_args()
     os.makedirs(a.out, exist_ok=True)
     rng = np.random.default_rng(5)
@@ -31,12 +31,12 @@ def main():
     X /= np.linalg.norm(X, axis=1, keepdims=True) + 1e-8
     dims = X.shape[1]
     labels_info = {l['label']: l for l in json.load(open(os.path.join(a.crops, 'labels.json')))}
-    kinds = sorted({lab for split, lab in index if split == 'train' and lab in labels_info})
+    kinds = sorted({r[1] for r in index if r[0] == 'train' and r[1] in labels_info})
     col = {k: n for n, k in enumerate(kinds)}
-    keep = np.array([lab in col for _, lab in index])
-    y = np.array([col.get(lab, -1) for _, lab in index])
-    is_test = np.array([s == 'test' for s, _ in index]) & keep
-    train_all = np.where(np.array([s == 'train' for s, _ in index]) & keep)[0]
+    keep = np.array([r[1] in col for r in index])
+    y = np.array([col.get(r[1], -1) for r in index])
+    is_test = np.array([r[0] == 'test' for r in index]) & keep
+    train_all = np.where(np.array([r[0] == 'train' for r in index]) & keep)[0]
     rng.shuffle(train_all)
     n_val = len(train_all) // 10
     val, tr = train_all[:n_val], train_all[n_val:]
@@ -46,47 +46,64 @@ def main():
     mean = X[tr].mean(0)
     scale = X[tr].std(0) + 1e-6
     Z = (X - mean) / scale
-    W = np.zeros((dims, len(kinds)), dtype=np.float32)
-    b = np.zeros(len(kinds), dtype=np.float32)
     Y = np.zeros((len(tr), len(kinds)), dtype=np.float32)
     Y[np.arange(len(tr)), y[tr]] = 1
-    # Adam on full batches (30k x 768 fits easily).
-    mW, vW, mb, vb = (np.zeros_like(W), np.zeros_like(W), np.zeros_like(b), np.zeros_like(b))
-    lr, b1, b2 = 0.01, 0.9, 0.999
-
-    def acc(idx, top=1):
-        s = Z[idx] @ W + b
-        best = np.argsort(-s, axis=1)[:, :top]
-        return float((best == y[idx][:, None]).any(1).mean()) if len(idx) else 0.0
-
-    best_val, best = -1, (W.copy(), b.copy())
     Zt = Z[tr]
-    for t in range(1, a.epochs + 1):
-        s = Zt @ W + b
+
+    def probs(W, b, idx):
+        s = Z[idx] @ W + b
         s -= s.max(1, keepdims=True)
         P = np.exp(s)
-        P /= P.sum(1, keepdims=True)
-        G = (P - Y) / len(tr)
-        gW = Zt.T @ G + a.decay * W
-        gb = G.sum(0)
-        mW = b1 * mW + (1 - b1) * gW; vW = b2 * vW + (1 - b2) * gW * gW
-        mb = b1 * mb + (1 - b1) * gb; vb = b2 * vb + (1 - b2) * gb * gb
-        W -= lr * (mW / (1 - b1 ** t)) / (np.sqrt(vW / (1 - b2 ** t)) + 1e-8)
-        b -= lr * (mb / (1 - b1 ** t)) / (np.sqrt(vb / (1 - b2 ** t)) + 1e-8)
-        if t % 25 == 0:
-            v = acc(val)
-            print(f'  epoch {t}: training {acc(tr[:5000]) * 100:.1f}%, validation {v * 100:.1f}%', flush=True)
-            if v > best_val:
-                best_val, best = v, (W.copy(), b.copy())
-    W, b = best
+        return P / P.sum(1, keepdims=True)
+
+    def acc(W, b, idx, top=1):
+        if not len(idx):
+            return 0.0
+        best = np.argsort(-(Z[idx] @ W + b), axis=1)[:, :top]
+        return float((best == y[idx][:, None]).any(1).mean())
+
+    def train(decay):
+        W = np.zeros((dims, len(kinds)), dtype=np.float32)
+        b = np.zeros(len(kinds), dtype=np.float32)
+        mW, vW, mb, vb = (np.zeros_like(W), np.zeros_like(W), np.zeros_like(b), np.zeros_like(b))
+        lr, b1, b2 = 0.01, 0.9, 0.999
+        best_val, best = -1, (W.copy(), b.copy())
+        for t in range(1, a.epochs + 1):
+            P = probs(W, b, tr)
+            G = (P - Y) / len(tr)
+            gW = Zt.T @ G + decay * W
+            gb = G.sum(0)
+            mW = b1 * mW + (1 - b1) * gW; vW = b2 * vW + (1 - b2) * gW * gW
+            mb = b1 * mb + (1 - b1) * gb; vb = b2 * vb + (1 - b2) * gb * gb
+            W -= lr * (mW / (1 - b1 ** t)) / (np.sqrt(vW / (1 - b2 ** t)) + 1e-8)
+            b -= lr * (mb / (1 - b1 ** t)) / (np.sqrt(vb / (1 - b2 ** t)) + 1e-8)
+            if t % 25 == 0:
+                v = acc(W, b, val)
+                if v > best_val:
+                    best_val, best = v, (W.copy(), b.copy())
+        print(f'  decay {decay}: training {acc(*best, tr[:5000]) * 100:.1f}%, validation {best_val * 100:.1f}%', flush=True)
+        return best_val, best
+
+    results = [(train(float(d)), float(d)) for d in a.decays.split(',')]
+    (best_val, (W, b)), decay = max(results, key=lambda r: r[0][0])
     test_idx = np.where(is_test)[0]
+    # How often the top name is right when the namer is at least this sure (the app only trusts it then).
+    P = probs(W, b, test_idx)
+    conf, pick = P.max(1), P.argmax(1)
+    sure = {}
+    for th in (0.3, 0.5, 0.7, 0.9):
+        m = conf >= th
+        sure[str(th)] = {'share': round(float(m.mean()) * 100, 1),
+                         'accuracy': round(float((pick[m] == y[test_idx][m]).mean()) * 100, 1) if m.any() else None}
     metrics = {
         'kinds': len(kinds),
         'trainingPictures': int(len(tr)),
         'testPictures': int(len(test_idx)),
         'validationAccuracy': round(best_val * 100, 1),
-        'testAccuracy': round(acc(test_idx) * 100, 1),
-        'testTop3Accuracy': round(acc(test_idx, 3) * 100, 1),
+        'decay': decay,
+        'testAccuracy': round(acc(W, b, test_idx) * 100, 1),
+        'testTop3Accuracy': round(acc(W, b, test_idx, 3) * 100, 1),
+        'whenSure': sure,
         'features': 'VNGenerateImageFeaturePrintRequest revision 2, L2-normalized',
     }
     print(json.dumps(metrics))
