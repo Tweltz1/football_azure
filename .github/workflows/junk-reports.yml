@@ -1,22 +1,34 @@
 name: Curbsy reports
 
-# Apple requires acting on reported content within 24 hours. This runs every morning and lists Junk App
-# listings reported in the last day. It FAILS (so GitHub emails you) when there are any, so they get seen.
-# Listings with 3 reports are already hidden automatically.
+# Apple requires acting on reported content within 24 hours. This runs every morning and lists Curbsy
+# listings reported in the last day, plus Contact Curbsy messages and appeals. It FAILS (so GitHub emails
+# you) when there are any, so they get seen. Listings with 3 reports are already hidden automatically
+# (no strike until you confirm it with hide_item).
 #
-# To take something down, run it from the Actions tab with:
-#   hide_item: a listing id from the report list (hides that listing), or
-#   ban_user:  an owner id from the report list (hides every listing that person posted).
+# Two strikes and you're out. Run it from the Actions tab with ONE of:
+#   hide_item:    a listing id that breaks the rules. Hides it and gives its poster a strike; the
+#                 second strike bans them (and the phones they used).
+#   ban_user:     an owner id, for something serious. Bans them right away and hides all their listings.
+#   restore_item: a listing id that was reported or hidden by mistake. Puts it back up, and takes back
+#                 the strike if it had one.
+#   unban_user:   a user id, after an appeal. Lifts the ban, clears their strikes, and unbans their phones.
+#                 Their listings stay hidden; restore any that were fine with restore_item.
 on:
   schedule:
     - cron: '0 14 * * *'
   workflow_dispatch:
     inputs:
       hide_item:
-        description: 'Listing id to hide'
+        description: 'Listing id to hide (gives a strike)'
         default: ''
       ban_user:
-        description: 'Owner id whose listings to hide'
+        description: 'Owner id to ban right away'
+        default: ''
+      restore_item:
+        description: 'Listing id to put back up (takes back its strike)'
+        default: ''
+      unban_user:
+        description: 'User id to unban after an appeal'
         default: ''
 
 jobs:
@@ -27,47 +39,80 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
       HIDE_ITEM: ${{ github.event.inputs.hide_item }}
       BAN_USER: ${{ github.event.inputs.ban_user }}
+      RESTORE_ITEM: ${{ github.event.inputs.restore_item }}
+      UNBAN_USER: ${{ github.event.inputs.unban_user }}
+      ACTING: ${{ github.event.inputs.hide_item != '' || github.event.inputs.ban_user != '' || github.event.inputs.restore_item != '' || github.event.inputs.unban_user != '' }}
     steps:
-      - name: Take down
-        if: ${{ github.event.inputs.hide_item != '' || github.event.inputs.ban_user != '' }}
+      - name: Take action
+        if: ${{ env.ACTING == 'true' }}
         run: |
           uuid='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          sql() {
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+              -d "$(jq -n --arg q "$1" '{query: $q}')" \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query"
+          }
           if [ -n "$HIDE_ITEM" ]; then
             [[ "$HIDE_ITEM" =~ $uuid ]] || { echo "hide_item must be a listing id"; exit 1; }
-            query="update public.junk_items set status = 'hidden' where id = '$HIDE_ITEM' returning id, title"
-          else
-            [[ "$BAN_USER" =~ $uuid ]] || { echo "ban_user must be an owner id"; exit 1; }
-            # Hides everything they posted and stops them posting or messaging again (junk_members.banned_at),
-            # on any account from the phones they used (junk_devices.banned).
-            query="with ban as (insert into public.junk_members (user_id, banned_at, ban_reason) values ('$BAN_USER', now(), 'banned from the reports review') on conflict (user_id) do update set banned_at = now(), ban_reason = excluded.ban_reason), phones as (update public.junk_devices set banned = true where device_id in (select device_id from public.junk_devices where user_id = '$BAN_USER')) update public.junk_items set status = 'hidden' where owner_id = '$BAN_USER' returning id, title"
+            # Hide it; a strike for the poster only the first time this listing is confirmed.
+            sql "with item as (update public.junk_items set status = 'hidden', strike = true where id = '$HIDE_ITEM' returning id, title, owner_id, (select strike from public.junk_items where id = '$HIDE_ITEM') as had_strike),
+              m as (insert into public.junk_members (user_id, strikes, last_strike_at) select owner_id, 1, now() from item where not had_strike
+                on conflict (user_id) do update set strikes = public.junk_members.strikes + 1, last_strike_at = now()
+                returning user_id, strikes)
+              select item.title, item.owner_id, coalesce(m.strikes, 0) as strikes from item left join m on m.user_id = item.owner_id" > out.json
+            jq -r '.[] | "Hidden: \(.title). Poster \(.owner_id) now has \(.strikes) strike(s)."' out.json
+            OWNER=$(jq -r '.[0].owner_id // empty' out.json)
+            STRIKES=$(jq -r '.[0].strikes // 0' out.json)
+            if [ -n "$OWNER" ] && [ "$STRIKES" -ge 2 ]; then
+              BAN_USER="$OWNER"; BAN_REASON="second strike"
+            fi
           fi
-          curl --fail --silent --show-error \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
-            -d "$(jq -n --arg q "$query" '{query: $q}')" \
-            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" | jq -r '.[] | "Hidden: \(.title) (\(.id))"'
+          if [ -n "$BAN_USER" ]; then
+            [[ "$BAN_USER" =~ $uuid ]] || { echo "ban_user must be an owner id"; exit 1; }
+            REASON="${BAN_REASON:-banned from the reports review}"
+            # Hides everything they posted and stops them posting or messaging again, on any account from the
+            # phones they used.
+            sql "with ban as (insert into public.junk_members (user_id, banned_at, ban_reason) values ('$BAN_USER', now(), '$REASON') on conflict (user_id) do update set banned_at = now(), ban_reason = excluded.ban_reason),
+              phones as (update public.junk_devices set banned = true where device_id in (select device_id from public.junk_devices where user_id = '$BAN_USER'))
+              update public.junk_items set status = 'hidden' where owner_id = '$BAN_USER' returning id, title" | jq -r '.[] | "Hidden: \(.title) (\(.id))"'
+            echo "Banned $BAN_USER ($REASON)."
+          fi
+          if [ -n "$RESTORE_ITEM" ]; then
+            [[ "$RESTORE_ITEM" =~ $uuid ]] || { echo "restore_item must be a listing id"; exit 1; }
+            sql "with old as (select owner_id, strike from public.junk_items where id = '$RESTORE_ITEM'),
+              m as (update public.junk_members set strikes = greatest(strikes - 1, 0) where user_id = (select owner_id from old) and (select strike from old) returning strikes)
+              update public.junk_items set status = 'available', reports = 0, strike = false, updated_at = now() where id = '$RESTORE_ITEM' returning title" | jq -r '.[] | "Back up: \(.title)"'
+            sql "delete from public.junk_reports where item_id = '$RESTORE_ITEM'" > /dev/null
+          fi
+          if [ -n "$UNBAN_USER" ]; then
+            [[ "$UNBAN_USER" =~ $uuid ]] || { echo "unban_user must be a user id"; exit 1; }
+            sql "with phones as (update public.junk_devices set banned = false where device_id in (select device_id from public.junk_devices where user_id = '$UNBAN_USER'))
+              update public.junk_members set banned_at = null, ban_reason = '', strikes = 0 where user_id = '$UNBAN_USER' returning user_id" | jq -r '.[] | "Unbanned \(.user_id). Restore any listings that were fine with restore_item."'
+          fi
 
-      - name: Reports from the last day
-        if: ${{ github.event.inputs.hide_item == '' && github.event.inputs.ban_user == '' }}
+      - name: Reports, messages and appeals from the last day
+        if: ${{ env.ACTING != 'true' }}
         run: |
-          query="select r.created_at, r.reason, i.id as item_id, i.title, i.status, i.reports, i.owner_id, i.owner_name, i.description from public.junk_reports r join public.junk_items i on i.id = r.item_id where r.created_at > now() - interval '1 day' order by r.created_at"
-          curl --fail --silent --show-error \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
-            -d "$(jq -n --arg q "$query" '{query: $q}')" \
-            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" > reports.json
+          sql() {
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+              -d "$(jq -n --arg q "$1" '{query: $q}')" \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query"
+          }
+          sql "select r.created_at, r.reason, i.id as item_id, i.title, i.status, i.reports, i.owner_id, i.owner_name, i.description from public.junk_reports r join public.junk_items i on i.id = r.item_id where r.created_at > now() - interval '1 day' order by r.created_at" > reports.json
           n=$(jq length reports.json)
           echo "Reports in the last day: $n"
           jq -r '.[] | "----\n\(.created_at)  \(.reason)\n  listing: \(.title) [\(.status), \(.reports) reports]  id \(.item_id)\n  posted by: \(.owner_name)  owner id \(.owner_id)\n  \(.description | .[0:300])"' reports.json
-          # Messages people sent with Contact Curbsy (or "Report this person" in a chat).
-          query="select created_at, user_id, user_name, body from public.junk_feedback where created_at > now() - interval '1 day' order by created_at"
-          curl --fail --silent --show-error \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
-            -d "$(jq -n --arg q "$query" '{query: $q}')" \
-            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" > feedback.json || echo '[]' > feedback.json
+          # Contact Curbsy messages ("Report this person" in chats too) and appeals, with the person's strikes.
+          sql "select f.created_at, f.kind, f.item_id, f.user_id, f.user_name, f.body, coalesce(m.strikes, 0) as strikes, m.banned_at, i.title as item_title, i.status as item_status
+            from public.junk_feedback f left join public.junk_members m on m.user_id = f.user_id left join public.junk_items i on i.id = f.item_id
+            where f.created_at > now() - interval '1 day' order by f.created_at" > feedback.json || echo '[]' > feedback.json
           f=$(jq length feedback.json)
-          echo "Contact messages in the last day: $f"
-          jq -r '.[] | "----\n\(.created_at)  from \(.user_name) (user id \(.user_id))\n  \(.body | .[0:1000])"' feedback.json
+          echo "Contact messages and appeals in the last day: $f"
+          jq -r '.[] | "----\n\(.created_at)  \(if .kind == "appeal" then "APPEAL" else "Contact" end) from \(.user_name) (user id \(.user_id), \(.strikes) strike(s)\(if .banned_at then ", BANNED" else "" end))\(if .item_id then "\n  about listing: \(.item_title) [\(.item_status)]  id \(.item_id)" else "" end)\n  \(.body | .[0:1000])"' feedback.json
           n=$((n + f))
           if [ "$n" -gt 0 ]; then
-            echo "::error::$n Curbsy report(s) or contact message(s) to review. Hide a listing or user by running this workflow with hide_item or ban_user."
+            echo "::error::$n Curbsy report(s), message(s) or appeal(s) to review. Run this workflow with hide_item, ban_user, restore_item or unban_user."
             exit 1
           fi

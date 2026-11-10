@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { agreeToTerms, contactCurbsy } from './junkApi';
+import { agreeToTerms, appealCurbsy, contactCurbsy } from './junkApi';
 import { IconClose, IconPin } from './icons';
 
 // Curbsy's free safety checks on the phone, plus the Terms and Contact sheets (App Store guideline 1.2).
@@ -77,7 +77,8 @@ export function TermsSheet({ onDone, onCancel }) {
 }
 
 /** "Contact Curbsy": questions, complaints and problem reports go to the person running the app. */
-export function ContactSheet({ onClose }) {
+/** appeal: true for "Appeal" (a ban, a strike, or with itemId a hidden listing). */
+export function ContactSheet({ onClose, appeal = false, itemId = null }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -88,7 +89,8 @@ export function ContactSheet({ onClose }) {
     setBusy(true);
     setError('');
     try {
-      await contactCurbsy(text.trim());
+      if (appeal) await appealCurbsy(text.trim(), itemId);
+      else await contactCurbsy(text.trim());
       setSent(true);
     } catch (err) {
       setError(err.message);
@@ -100,16 +102,22 @@ export function ContactSheet({ onClose }) {
     <div className="jk-sheet-backdrop" role="presentation" onClick={onClose}>
       <form className="jk-sheet" role="dialog" aria-modal="true" aria-label="Contact Curbsy" onClick={(e) => e.stopPropagation()} onSubmit={send}>
         <button type="button" className="jk-icon-btn jk-sheet-close" onClick={onClose} aria-label="Close"><IconClose /></button>
-        <h2>Contact Curbsy</h2>
+        <h2>{appeal ? 'Appeal' : 'Contact Curbsy'}</h2>
         {sent ? (
           <>
-            <p className="jk-muted">Thanks, we got it. Problems with listings or people are looked at within 24 hours.</p>
+            <p className="jk-muted">
+              {appeal ? 'Thanks. A person reviews every appeal within 24 hours. If it was a mistake, the warning or ban is lifted.' : 'Thanks, we got it. Problems with listings or people are looked at within 24 hours.'}
+            </p>
             <button type="button" className="jk-btn jk-full" onClick={onClose}>Done</button>
           </>
         ) : (
           <>
-            <p className="jk-muted">Report a person or a problem, or ask a question. To report a listing, you can also use the flag on its page.</p>
-            <textarea className="jk-input jk-contact-text" value={text} onChange={(e) => setText(e.target.value)} rows={5} maxLength={2000} placeholder="What's going on?" aria-label="Message" />
+            <p className="jk-muted">
+              {appeal
+                ? 'Think this was a mistake? Tell us what happened. A person reads every appeal.'
+                : 'Report a person or a problem, or ask a question. To report a listing, you can also use the flag on its page.'}
+            </p>
+            <textarea className="jk-input jk-contact-text" value={text} onChange={(e) => setText(e.target.value)} rows={5} maxLength={2000} placeholder={appeal ? 'What happened?' : 'What\'s going on?'} aria-label="Message" />
             {error && <p className="jk-error">{error}</p>}
             <button type="submit" className="jk-btn jk-btn-primary jk-full" disabled={busy || text.trim().length < 3}>{busy ? 'Sending…' : 'Send'}</button>
           </>
@@ -204,4 +212,28 @@ export async function shareTrip(item, claim) {
     if (error && error.name === 'AbortError') return;
   }
   window.location.href = `sms:&body=${encodeURIComponent(text)}`;
+}
+
+/** Me tab: a warning after one strike, or the ban notice, each with Appeal. Nothing when in good standing. */
+export function StandingNotice({ member, onAppeal }) {
+  if (!member) return null;
+  if (member.banned) {
+    return (
+      <div className="jk-standing is-banned" role="status">
+        <strong>Your account is paused</strong>
+        <p>You can browse, but not post, message or claim, after repeated or serious rule breaks. If we got it wrong, appeal and a person will review it within 24 hours.</p>
+        <button type="button" className="jk-btn jk-full" onClick={onAppeal}>Appeal</button>
+      </div>
+    );
+  }
+  if (member.strikes > 0) {
+    return (
+      <div className="jk-standing" role="status">
+        <strong>You have 1 warning</strong>
+        <p>One of your listings broke the Curbsy rules and was taken down. A second one pauses your account. If this was a mistake, appeal it.</p>
+        <button type="button" className="jk-btn jk-full" onClick={onAppeal}>Appeal</button>
+      </div>
+    );
+  }
+  return null;
 }

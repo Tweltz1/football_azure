@@ -6,7 +6,7 @@ import {
 } from './junkApi';
 import { categoryIcon, categoryLabel, conditionLabel, distanceLabel, locate, timeAgo } from './device';
 import PieceThumb from './PieceThumb';
-import { MemberCard, SafetyTipsSheet, SpotCard, shareTrip, tipsSeen } from './Safety';
+import { ContactSheet, MemberCard, SafetyTipsSheet, SpotCard, shareTrip, tipsSeen } from './Safety';
 import { IconBack, IconBox, IconCar, IconChat, IconCheck, IconEdit, IconFlag, IconSparkle, IconTrash } from './icons';
 
 const TREND = { closer: 'getting closer', steady: 'not much closer yet', away: 'heading away' };
@@ -172,6 +172,7 @@ export default function ItemPage() {
   // which: on a multi-item post, the ids picked (leave out to take everything that's left).
   // The first time, safety tips come before the trip starts.
   const [tipsFor, setTipsFor] = useState(null);
+  const [appealing, setAppealing] = useState(false);
   const startClaim = async (which) => {
     if (!tipsSeen()) { setMenu(null); setTipsFor({ which }); return; }
     setMenu(null);
@@ -354,6 +355,13 @@ export default function ItemPage() {
           {item.aiDetected && <span className="jk-pill jk-pill-ai"><IconSparkle size={14} /> Auto-detected</span>}
           <span className="jk-pill">{item.handoff === 'meet' ? 'Meet in person' : 'Porch pickup (no contact)'}</span>
         </div>
+        {item.mine && item.status === 'hidden' && (
+          <div className="jk-standing" role="status">
+            <strong>Hidden after reports</strong>
+            <p>Neighbors reported this listing, so it's hidden while a person reviews it. If it follows the rules, ask for a review and we'll put it back up.</p>
+            <button type="button" className="jk-btn jk-full" onClick={() => setAppealing(true)}>Ask for a review</button>
+          </div>
+        )}
         <h1>{item.title}</h1>
         <p className="jk-item-meta">
           {item.km !== undefined && <span>{distanceLabel(item.km)}</span>}
@@ -453,6 +461,7 @@ export default function ItemPage() {
         )}
       </div>
 
+      {appealing && <ContactSheet appeal itemId={item.id} onClose={() => setAppealing(false)} />}
       {tipsFor && (
         <SafetyTipsSheet
           handoff={item.handoff}

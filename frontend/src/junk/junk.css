@@ -785,3 +785,6 @@ body.jk-body::before { background: #f5f3ee; }
 .jk-bubble-warn { display: block; font-size: 12px; margin-top: 4px; color: var(--jk-warn, #b26b00); }
 .jk-pill-verified { background: var(--jk-accent-soft); color: var(--jk-accent); font-weight: 700; }
 .jk-learn-toggle { margin-top: 28px; }
+.jk-standing { margin: 12px 0; padding: 14px; border-radius: 14px; background: var(--jk-surface-2); border: 1px solid var(--jk-line); }
+.jk-standing p { margin: 4px 0 10px; font-size: 14px; line-height: 1.4; }
+.jk-standing.is-banned { border-color: var(--jk-danger, #c0392b); }

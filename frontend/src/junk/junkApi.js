@@ -89,4 +89,6 @@ export const junkSignOut = async () => {
 export const getMember = () => call('GET', 'member');
 export const agreeToTerms = () => call('POST', 'terms', { agree: true });
 export const contactCurbsy = (body) => call('POST', 'contact', { body });
+// Appeal a ban, a strike, or (with itemId) a listing hidden after reports.
+export const appealCurbsy = (body, itemId) => call('POST', 'appeal', itemId ? { body, itemId } : { body });
 export const sendLabelFix = (fix) => call('POST', 'labels', fix);

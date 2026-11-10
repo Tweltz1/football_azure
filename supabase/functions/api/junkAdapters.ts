@@ -157,9 +157,9 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       return paths;
     },
     async member(userId) {
-      const r = must(await db.from('junk_members').select('terms_at, banned_at, joined_at, provider').eq('user_id', userId).maybeSingle()) as
-        { terms_at: string | null; banned_at: string | null; joined_at: string | null; provider: string | null } | null;
-      return r ? { termsAt: r.terms_at, bannedAt: r.banned_at, joinedAt: r.joined_at, provider: r.provider } : null;
+      const r = must(await db.from('junk_members').select('terms_at, banned_at, joined_at, provider, strikes, ban_reason').eq('user_id', userId).maybeSingle()) as
+        { terms_at: string | null; banned_at: string | null; joined_at: string | null; provider: string | null; strikes: number | null; ban_reason: string | null } | null;
+      return r ? { termsAt: r.terms_at, bannedAt: r.banned_at, joinedAt: r.joined_at, provider: r.provider, strikes: r.strikes ?? 0, banReason: r.ban_reason ?? '' } : null;
     },
     async seeDevice(userId, deviceId, at, since) {
       must(await db.from('junk_devices').upsert({ device_id: deviceId, user_id: userId, seen_at: at }, { onConflict: 'device_id,user_id' }));
@@ -183,7 +183,9 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_members').upsert({ user_id: userId, terms_at: at }, { onConflict: 'user_id' }));
     },
     async addFeedback(f) {
-      must(await db.from('junk_feedback').insert({ id: f.id, user_id: f.userId, user_name: f.userName, body: f.body, created_at: f.createdAt }));
+      must(await db.from('junk_feedback').insert({
+        id: f.id, user_id: f.userId, user_name: f.userName, body: f.body, created_at: f.createdAt, kind: f.kind ?? 'contact', item_id: f.itemId ?? null,
+      }));
     },
     async countFeedbackSince(userId, since) {
       const { count, error } = await db.from('junk_feedback').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since);
