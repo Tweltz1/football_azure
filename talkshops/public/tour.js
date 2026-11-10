@@ -1028,8 +1028,14 @@
       }
     },
     async help() {
-      STEPS = 2; await begin("board");
+      STEPS = 3; await begin("board");
       step(); { const c = say("hp-1"); await tab("help"); highlight(".help-heading"); await cue(0.3); highlight("#help-guides"); const d = q("#help-guides details"); if (d) await tap(d.querySelector("summary")); await cue(0.75); highlight(q(".help-center details:not(#help-guides details)")?.closest("section") || "#help-training"); await c; }
+      step(); {
+        const c = say("hp-3"); window.scrollTo(0, 0); highlight("#askFab"); await wait(500); await tap("#askFab");
+        await cue(0.2); await type("#hcQ", "how do I send an estimate"); await tap("#hcForm .btn.primary"); highlight(".hc-panel");
+        await cue(0.55); highlight(".hc-panel"); await cue(0.75); highlight(".hc-foot"); await c;
+        q("[data-hc-close]")?.click();
+      }
       step(); { const c = say("hp-2"); q("#help-support")?.scrollIntoView({ block: "start" }); highlight("#help-support"); await cue(0.5); highlight("#helpForm"); await c; }
     },
     async team() {
@@ -1182,8 +1188,8 @@
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
-      fetch("/tour/lines.json?v=10").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
-      fetch("/tour/caption-cues.json?v=10").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+      fetch("/tour/lines.json?v=11").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
+      fetch("/tour/caption-cues.json?v=11").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">

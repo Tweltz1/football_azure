@@ -332,6 +332,17 @@
   }
   let role = null, mainOwner = false;
   const isOwner = () => role === "owner";
+  window.TalkShopsHelpChat?.configure({
+    isOwner: () => !session || isOwner(),
+    signedIn: () => !!(session && shop),
+    openHowTo: (q) => { howTo.prefill(q); navPush = ui.view !== "howto"; ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); },
+    contact: (q) => {
+      try { sessionStorage.setItem("ts-help-msg", q || ""); } catch {}
+      if (session && shop && !new URLSearchParams(location.search).has("help")) { navPush = ui.view !== "help"; ui.view = "help"; ui.openJob = null; render(); }
+      else if (document.getElementById("helpForm")) window.TalkShopsHelpChat.fillContact();
+      else location.href = "/?help#help-support";
+    },
+  });
   // Each tab has its own address (talkshops.app/settings, /bay, ...) so refresh, Back and links keep the tab.
   // The host serves index.html for any path that isn't a file (wrangler.jsonc not_found_handling).
   const VIEW_PATHS = { board: "/bay", checkin: "/check-in", archive: "/archive", howto: "/how-to", settings: "/settings", plan: "/plan", training: "/training", help: "/help", prices: "/prices" };
@@ -422,6 +433,9 @@
   function render() {
     if (custToken) return renderCustomer();
     if (bookToken) return window.Grow.renderBooking(bookToken);
+    // The "Ask" help chat: inside the shop once it's loaded, and on the public Help page.
+    const publicHelp = new URLSearchParams(location.search).has("help") || (!session && pathView() === "help");
+    window.TalkShopsHelpChat?.show(publicHelp || !!(session && shop && myName && !joinToken));
     const app = $("#app"), chrome = $("#shopChrome");
     document.title = "Talk Shops" + (shop ? " · " + shop.name : "");
     // Any other address (a typo, an old link) gets a plain "not found" page instead of quietly opening something else.
@@ -444,6 +458,7 @@
       chrome.hidden = true;
       document.title = "Help & Support · Talk Shops";
       app.innerHTML = helpView();
+      window.TalkShopsHelpChat?.fillContact();
       return;
     }
     // The sign-in page is /?login (a real file the host always serves); /login forwards there.
@@ -493,6 +508,7 @@
     if (!myName && !loadErr) { app.innerHTML = err + nameView(); renderLayer(); return; }
     app.innerHTML = err + (ui.view === "help" ? helpView() : ui.view === "checkin" ? checkinView() : ui.view === "settings" ? (isOwner() ? setupView(false) : techSettingsView()) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : ui.view === "prices" && isOwner() ? pricesView() : boardView());
     if (ui.view === "board") filterBoard();
+    if (ui.view === "help") window.TalkShopsHelpChat?.fillContact();
     if (ui.view === "settings" && !recovery.data && !recovery.loading && !recovery.err) loadRecovery();
     if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
     renderLayer();
@@ -518,6 +534,9 @@
     return `<section class="help-center">
       <header class="help-heading"><div><p class="muted">Talk Shops Support</p><h2>How Can We Help?</h2><p class="muted">Answers to common questions, step-by-step guides and narrated lessons for your whole team.</p></div><a class="btn" href="${session ? "/" : "/?login"}">${session ? "Back to My Shop" : "Shop Sign In"}</a></header>
       <div class="help-actions"><a class="panel" href="#help-faq"><b>Common Questions</b><span>${window.TALKSHOPS_HELP.count} answers, searchable by topic.</span></a><a class="panel" href="#help-guides"><b>Quick Guides</b><span>Find the steps for everyday tasks.</span></a><a class="panel" href="#help-training"><b>Walkthroughs &amp; Training</b><span>Follow along with sample vehicles.</span></a><a class="panel" href="#help-support"><b>Contact Support</b><span>Get help from our team by email.</span></a></div>
+      <section class="panel" id="help-ask"><h3>Ask a Question</h3>
+        <form class="help-ask" id="helpAskForm"><input id="helpAskQ" type="text" maxlength="300" autocomplete="off" placeholder="e.g. How do I send an estimate?" aria-label="Your question"><button class="btn primary" type="submit">Ask</button></form>
+        <p class="muted help-ask-note">Answers come from these Help pages, right on your device. Car repair questions go in How-to.</p></section>
       ${window.TALKSHOPS_HELP.view(esc)}
       <section class="panel" id="help-guides"><h3>Quick Guides</h3>${guides.map(([title, body, lesson]) => `<details><summary>${esc(title)}</summary><p>${esc(body)}</p><a href="/demo.html?train=${lesson}">Watch the Lesson →</a></details>`).join("")}</section>
       <section class="panel" id="help-training"><h3>Walkthroughs &amp; Training</h3><p class="muted">Narrated lessons use a demo shop with sample cars. Turn your sound on to follow along.</p><a class="btn primary" href="/demo.html?tour=1">Start the Guided Tour</a><div class="help-lessons">${window.TALKSHOPS_TRAINING.lessons.map(l => `<a href="/demo.html?train=${esc(l.id)}">${esc(l.title)} <small class="muted">${l.mins} min</small></a>`).join("")}</div></section>

@@ -25,4 +25,5 @@ supabase/.branches
 /ios-app/node_modules
 /ios-games-app/node_modules
 ml/sms-topics/.cache/
+ml/help-chat/.cache/
 __pycache__/
