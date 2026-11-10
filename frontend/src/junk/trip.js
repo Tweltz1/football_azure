@@ -5,7 +5,7 @@
 // sending, so it keeps going with the screen locked or Maps open. On the website (local development) the
 // page watches the position itself while it is open.
 
-import { API_BASE, pingClaim, token } from './junkApi';
+import { API_BASE, freshToken, pingClaim } from './junkApi';
 
 const nativeTrip = () => (typeof window !== 'undefined' && window.Capacitor?.Plugins?.Trip) || null;
 const PING_SECONDS = 45;
@@ -20,7 +20,7 @@ export async function startTrip(onUpdate) {
   notify = onUpdate || null;
   const Trip = nativeTrip();
   if (Trip) {
-    const t = await token();
+    const t = await freshToken();
     if (!t) return;
     if (!listener && Trip.addListener) {
       try { listener = await Trip.addListener('trip', (data) => notify && notify(data)); } catch (error) { listener = null; }
@@ -44,7 +44,7 @@ export async function startTrip(onUpdate) {
 export async function refreshTripToken() {
   const Trip = nativeTrip();
   if (!Trip) return;
-  const t = await token();
+  const t = await freshToken();
   if (t) await Trip.update({ token: t }).catch(() => {});
 }
 

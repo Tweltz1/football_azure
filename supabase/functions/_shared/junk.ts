@@ -118,6 +118,8 @@ export interface JunkStore extends ClaimStore, PlusStore {
   /** When the person agreed to the Terms and whether they're banned (null: never seen). */
   member(userId: string): Promise<JunkMember | null>;
   acceptTerms(userId: string, at: string): Promise<void>;
+  /** The name the person picked to show on Curbsy ('' goes back to their sign-in first name). */
+  setName(userId: string, name: string): Promise<void>;
   /** Saves when the account was made and how they sign in, for the member card others see. */
   touchMember(userId: string, joinedAt: string | null, provider: string | null): Promise<void>;
   /** Notes that this account used this phone; returns whether the phone is banned and how many accounts used it lately. */
@@ -150,6 +152,8 @@ export interface JunkMember {
   termsAt: string | null; bannedAt: string | null; joinedAt?: string | null; provider?: string | null;
   /** Confirmed rule breaks (the daily review's hide_item). The second one bans the account. */
   strikes?: number; banReason?: string;
+  /** The name they picked to show on Curbsy (empty: their sign-in first name). */
+  name?: string;
 }
 
 export interface JunkPhotos {
@@ -219,6 +223,16 @@ const isLng = (n: number) => Number.isFinite(n) && n >= -180 && n <= 180;
 /** About 110 m: close enough to judge the drive, not enough to find someone's door. */
 const fuzz = (n: number) => Math.round(n * 1000) / 1000;
 const daysAgo = (now: Date, days: number) => new Date(now.getTime() - days * 86_400_000).toISOString();
+
+/**
+ * The name others see: the first name from the sign-in, never an email address (Apple sign-in often gives no
+ * name, and the privacy policy promises others only see a first name or a name the person picked).
+ */
+export function publicName(raw: unknown): string {
+  const s = str(raw, 80);
+  if (!s || s.includes('@')) return '';
+  return s.split(' ')[0].slice(0, 30);
+}
 
 export const asCategory = (v: unknown): JunkCategory | null => ((JUNK_CATEGORIES as readonly string[]).includes(v as string) ? v as JunkCategory : null);
 export const asCondition = (v: unknown): JunkCondition => ((JUNK_CONDITIONS as readonly string[]).includes(v as string) ? v as JunkCondition : 'good');
@@ -531,7 +545,11 @@ export async function junkRoute(
 
   // ---- Everything below needs a sign-in ----
   if (!me) return needSignIn;
-  const myName = str(ctx.displayName, 40) || 'Neighbor';
+  // Others see the name picked in the Me tab, else the first name from the sign-in (never an email).
+  const myMember = await store.member(me);
+  const myName = myMember?.name || publicName(ctx.displayName) || 'Neighbor';
+  // Contact messages and appeals are private to the person running Curbsy, so they keep the full sign-in name.
+  const contactName = str(ctx.displayName, 80) || myName;
   /** Posting and messaging need the Terms agreed to (App Store guideline 1.2), and no ban. */
   let crowdedDevice = false;
   const gate = async (): Promise<Res | null> => {
@@ -551,9 +569,20 @@ export async function junkRoute(
     // A ban that came from a banned phone (another account) shows as banned too.
     const phone = ctx.deviceId ? await store.seeDevice(me, ctx.deviceId, nowIso, daysAgo(now, 30)) : null;
     return ok({
-      terms: !!m?.termsAt, banned: !!m?.bannedAt || !!phone?.banned, strikes: m?.strikes ?? 0,
+      terms: !!m?.termsAt, banned: !!m?.bannedAt || !!phone?.banned, strikes: m?.strikes ?? 0, name: myName, customName: !!m?.name,
       ...(m?.banReason ? { reason: m.banReason } : {}),
     });
+  }
+  // "Your name on Curbsy": what neighbors see on listings, messages and trips. Empty goes back to the sign-in first name.
+  if (section === 'name' && !a && method === 'POST') {
+    const name = str(body.name, 30);
+    if (name && name.length < 2) return bad('Use at least 2 letters.');
+    if (name && (name.includes('@') || personalDetails(name) || listingProblem({ title: name }))) return bad('Pick a different name. No emails, phone numbers or rude words.');
+    await store.setName(me, name);
+    const shown = name || publicName(ctx.displayName) || 'Neighbor';
+    // Their listings show the new name right away.
+    for (const item of await store.byOwner(me)) if (item.ownerName !== shown) await store.putItem({ ...item, ownerName: shown });
+    return ok({ name: shown, customName: !!name });
   }
   if (section === 'terms' && !a && method === 'POST') {
     if (body.agree !== true) return bad('Agree to the Terms to continue.');
@@ -567,7 +596,7 @@ export async function junkRoute(
     if (await store.countFeedbackSince(me, daysAgo(now, 1)) >= FEEDBACK_PER_DAY) {
       return { status: 429, body: 'Thanks, we have your messages. Try again tomorrow if there\'s more.' };
     }
-    await store.addFeedback({ id: ctx.newId(), userId: me, userName: myName, body: text, createdAt: nowIso });
+    await store.addFeedback({ id: ctx.newId(), userId: me, userName: contactName, body: text, createdAt: nowIso });
     ctx.log.warn(`junk: contact message from ${me}`);
     return ok({ sent: true });
   }
@@ -583,7 +612,7 @@ export async function junkRoute(
     if (await store.countFeedbackSince(me, daysAgo(now, 1)) >= FEEDBACK_PER_DAY) {
       return { status: 429, body: 'We have your appeal. We\'ll look at it within 24 hours.' };
     }
-    await store.addFeedback({ id: ctx.newId(), userId: me, userName: myName, body: text, createdAt: nowIso, kind: 'appeal', itemId });
+    await store.addFeedback({ id: ctx.newId(), userId: me, userName: contactName, body: text, createdAt: nowIso, kind: 'appeal', itemId });
     ctx.log.warn(`junk: appeal from ${me}`);
     return ok({ sent: true });
   }
@@ -614,6 +643,7 @@ export async function junkRoute(
 
   // Upload one photo; the first photo of a listing also asks Gemini what the item is.
   if (section === 'photos' && !a && method === 'POST') {
+    if (myMember?.bannedAt) return { status: 403, body: 'Your account can\'t post on Curbsy after repeated or serious rule breaks. If that\'s a mistake, tap Appeal in the Me tab.' };
     const jpeg = decodeJpeg(body.image);
     if (!jpeg) return bad('Send the photo as a JPEG.');
     if (jpeg.length > MAX_PHOTO_BYTES) return bad('That photo is too big.');
@@ -669,6 +699,11 @@ export async function junkRoute(
       await store.deleteItem(item.id);
       await photos.remove(item.photos).catch((error) => ctx.log.warn('junk: photo cleanup failed', error));
       return ok({ deleted: true });
+    }
+    // Changing what a listing says or shows needs good standing, like posting (marking it taken or deleting doesn't).
+    if (['title', 'description', 'pickup', 'spot', 'photos', 'tags', 'category'].some((k) => k in body)) {
+      const stop = await gate();
+      if (stop) return stop;
     }
     const read = readFields(body, me, item);
     if ('error' in read) return bad(read.error);

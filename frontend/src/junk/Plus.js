@@ -89,7 +89,7 @@ export function PlusSheet({ reason, onClose }) {
         {error && <p className="jk-error">{error}</p>}
         {plus && plus.plus ? (
           <>
-            <p className="jk-muted jk-center">Renews {endDate(plus.expiresAt)} unless you cancel.</p>
+            <p className="jk-muted jk-center">Paid through {endDate(plus.expiresAt)}. It renews monthly unless you cancel.</p>
             <button type="button" className="jk-btn jk-full" onClick={() => manageSubscription()}>Manage subscription</button>
             <button type="button" className="jk-btn jk-btn-primary jk-full" onClick={onClose}>Done</button>
           </>
