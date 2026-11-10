@@ -5,6 +5,7 @@ import { BuildingInfo } from './footprint';
 import { locationFromKroger, searchKrogerProducts } from './kroger';
 import { fetchBuildingInfo } from './osmBuilding';
 import { fetchSharedAisles, isShared, itemKey, voteAisle } from './sharedAisles';
+import { deletePhoto } from './recipePhotos';
 import { Recipe } from './recipes';
 import { ItemLocation, ListItem, Store } from './types';
 
@@ -264,7 +265,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setStore,
       saveRecipe: (recipe) =>
         setData((d) => ({ ...d, myRecipes: [recipe, ...d.myRecipes.filter((r) => r.id !== recipe.id)].slice(0, 50) })),
-      deleteRecipe: (id) => setData((d) => ({ ...d, myRecipes: d.myRecipes.filter((r) => r.id !== id) })),
+      deleteRecipe: (id) => {
+        deletePhoto(data.myRecipes.find((r) => r.id === id)?.photo);
+        setData((d) => ({ ...d, myRecipes: d.myRecipes.filter((r) => r.id !== id) }));
+      },
       removeItem: (id) => removeWhere((i) => i.id === id),
       toggleItem: (id) =>
         setData((d) => ({ ...d, items: d.items.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)) })),
