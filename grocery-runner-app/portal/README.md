@@ -32,4 +32,6 @@ Add `"check": true` to see how input is read without saving. Limits: 3,000 layou
 
 ## Hosting
 Supabase won't serve web pages, so the page must be hosted elsewhere as a plain static file
-(for example the Hood League Azure Static Web App under `/stores/`). It has no secrets in it.
+It has no secrets in it. It is hosted on the Hood League Azure Static Web App as a copy at
+`frontend/public/stores/index.html` on `main` (deploys on push to main): after changing this file,
+copy it there too.
