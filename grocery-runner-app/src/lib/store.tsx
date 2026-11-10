@@ -4,10 +4,10 @@ import { backendConfigured } from './api';
 import { BuildingInfo } from './footprint';
 import { locationFromKroger, searchKrogerProducts } from './kroger';
 import { fetchBuildingInfo } from './osmBuilding';
-import { fetchSharedAisles, isShared, itemKey, voteAisle } from './sharedAisles';
+import { fetchSharedAisles, fetchSharedDepartments, isShared, itemKey, voteAisle, voteDepartment } from './sharedAisles';
 import { deletePhoto } from './recipePhotos';
 import { Recipe } from './recipes';
-import { ItemLocation, ListItem, Store } from './types';
+import { Department, ItemLocation, ListItem, Store } from './types';
 
 const STORAGE_KEY = 'grocery-runner:v1';
 
@@ -17,6 +17,8 @@ type Data = {
   coldLast: boolean;
   /** Aisles this shopper set, per store, keyed by itemKey(name). Always wins over other sources. */
   remembered: Record<string, Record<string, ItemLocation>>;
+  /** Departments this shopper picked, keyed by itemKey(name). Used at every store, before other shoppers' answers. */
+  myDepartments: Record<string, Department>;
   /** Random id for this install, so each phone gets one vote per item per store. */
   deviceId: string;
   /** Recipes this shopper scanned, linked or pasted. Newest first. */
@@ -26,7 +28,7 @@ type Data = {
 };
 
 export const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-const fresh = (): Data => ({ items: [], store: null, coldLast: true, remembered: {}, deviceId: newId(), myRecipes: [], buildings: {} });
+const fresh = (): Data => ({ items: [], store: null, coldLast: true, remembered: {}, myDepartments: {}, deviceId: newId(), myRecipes: [], buildings: {} });
 
 /** Stores with no building mapped are checked again after this long, in case someone maps it. */
 const RECHECK_MISSING_MS = 14 * 24 * 3600_000;
@@ -62,12 +64,37 @@ const StoreContext = createContext<Ctx | null>(null);
 
 /**
  * Finds locations for items that have none, best source first:
- * Kroger's own aisle data (Kroger stores), then the shared shopper answers for this store.
- * Items keep a department guess if neither knows. Network errors are ignored (offline is fine).
+ * Kroger's own aisle data (Kroger stores), then the shared shopper answers for this store, then the
+ * department this shopper picked for the item before, then the department other shoppers agree on.
+ * Items keep the keyword guess if none of those knows. Network errors are ignored (offline is fine).
  */
-async function lookUp(store: Store, items: ListItem[]): Promise<Record<string, ItemLocation>> {
+async function lookUp(
+  store: Store | null,
+  items: ListItem[],
+  myDepartments: Record<string, Department>,
+): Promise<Record<string, ItemLocation>> {
   const found: Record<string, ItemLocation> = {};
-  if (!backendConfigured || !items.length) return found;
+  if (!items.length) return found;
+  const fillDepartments = async () => {
+    const rest = items.filter((i) => !found[i.id]);
+    for (const item of rest) {
+      const mine = myDepartments[itemKey(item.name)];
+      if (mine) found[item.id] = { kind: 'department', department: mine, source: 'user' };
+    }
+    const unknown = rest.filter((i) => !found[i.id]);
+    if (!backendConfigured || !unknown.length) return;
+    try {
+      const shared = await fetchSharedDepartments(unknown.map((i) => i.name));
+      for (const item of unknown) {
+        const loc = shared[itemKey(item.name)];
+        if (loc) found[item.id] = loc;
+      }
+    } catch {}
+  };
+  if (!backendConfigured || !store) {
+    await fillDepartments();
+    return found;
+  }
 
   if (store.chain === 'kroger') {
     const locationId = store.id.replace('kroger:', '');
@@ -95,6 +122,7 @@ async function lookUp(store: Store, items: ListItem[]): Promise<Record<string, I
       }
     } catch {}
   }
+  await fillDepartments();
   return found;
 }
 
@@ -126,11 +154,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [ready, current, buildings]);
 
   /** Looks up the given items and fills in any that are still unknown at the same store. */
-  const resolve = useCallback(async (store: Store, items: ListItem[]) => {
-    const found = await lookUp(store, items);
+  const resolve = useCallback(async (store: Store | null, items: ListItem[], myDepartments: Record<string, Department>) => {
+    const found = await lookUp(store, items, myDepartments);
     if (!Object.keys(found).length) return;
     setData((d) =>
-      d.store?.id !== store.id
+      (d.store?.id ?? null) !== (store?.id ?? null)
         ? d // the shopper switched stores meanwhile
         : {
             ...d,
@@ -154,9 +182,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const mine = store ? data.remembered[store.id]?.[itemKey(trimmed)] : undefined;
       const item: ListItem = { id: newId(), name: trimmed, checked: false, location: mine ?? { kind: 'unknown' } };
       setData((d) => ({ ...d, items: [...d.items, item] }));
-      if (store && !mine) resolve(store, [item]);
+      if (!mine) resolve(store, [item], data.myDepartments);
     },
-    [data.items, data.store, data.remembered, resolve],
+    [data.items, data.store, data.remembered, data.myDepartments, resolve],
   );
 
   const addItems = useCallback(
@@ -175,9 +203,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }));
       if (!added.length) return;
       setData((d) => ({ ...d, items: [...d.items, ...added] }));
-      if (store) resolve(store, added.filter((i) => i.location.kind === 'unknown'));
+      resolve(store, added.filter((i) => i.location.kind === 'unknown'), data.myDepartments);
     },
-    [data.store, data.remembered, resolve],
+    [data.store, data.remembered, data.myDepartments, resolve],
   );
 
   const renameItem = useCallback(
@@ -193,9 +221,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         : (store && data.remembered[store.id]?.[itemKey(trimmed)]) || { kind: 'unknown' };
       const renamed: ListItem = { ...item, name: trimmed, location };
       setData((d) => ({ ...d, items: d.items.map((i) => (i.id === id ? renamed : i)) }));
-      if (store && location.kind === 'unknown') resolve(store, [renamed]);
+      if (location.kind === 'unknown') resolve(store, [renamed], data.myDepartments);
     },
-    [data.items, data.store, data.remembered, resolve],
+    [data.items, data.store, data.remembered, data.myDepartments, resolve],
   );
 
   const [lastRemoved, setLastRemoved] = useState<Removed | null>(null);
@@ -228,12 +256,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const item = found && name?.trim() ? { ...found, name: name.trim() } : found;
       const store = data.store;
       if (item && isShared(store)) voteAisle(store, item.name, data.deviceId, location).catch(() => {});
+      // A department the shopper picks is also a vote for that item at every store, so the guess
+      // improves for everyone once enough shoppers agree.
+      const pickedDepartment = location.kind === 'department' && location.source === 'user' ? location.department : null;
+      if (item && pickedDepartment && backendConfigured) {
+        voteDepartment(item.name, data.deviceId, pickedDepartment).catch(() => {});
+      }
       setData((d) => {
         const remembered =
           item && d.store
             ? { ...d.remembered, [d.store.id]: { ...d.remembered[d.store.id], [itemKey(item.name)]: location } }
             : d.remembered;
-        return { ...d, remembered, items: d.items.map((i) => (i.id === id ? { ...i, location } : i)) };
+        const myDepartments =
+          item && pickedDepartment ? { ...d.myDepartments, [itemKey(item.name)]: pickedDepartment } : d.myDepartments;
+        return { ...d, remembered, myDepartments, items: d.items.map((i) => (i.id === id ? { ...i, location } : i)) };
       });
     },
     [data.items, data.store, data.deviceId],
@@ -247,9 +283,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         location: data.remembered[store.id]?.[itemKey(i.name)] ?? ({ kind: 'unknown' } as ItemLocation),
       }));
       setData((d) => ({ ...d, store, items }));
-      resolve(store, items.filter((i) => i.location.kind === 'unknown'));
+      resolve(store, items.filter((i) => i.location.kind === 'unknown'), data.myDepartments);
     },
-    [data.items, data.remembered, resolve],
+    [data.items, data.remembered, data.myDepartments, resolve],
   );
 
   const value = useMemo<Ctx>(

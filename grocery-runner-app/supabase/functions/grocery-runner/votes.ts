@@ -90,3 +90,36 @@ export function tallyVotes(rows: VoteRow[]): Record<string, SharedLocation> {
   }
   return out;
 }
+
+// ---- Shared department corrections ----
+// When a shopper fixes an item's department ("oat milk" is Dairy, not Center aisles), that is a vote
+// for the item everywhere, not just at one store. One vote per phone per item; voting again replaces it.
+
+export type DepartmentVoteRow = { item_key: string; department: string; updated_at: string };
+
+/** Shoppers who must agree before their answer replaces the built-in keyword guess. */
+export const MIN_DEPARTMENT_VOTES = 2;
+
+export type SharedDepartment = { department: string; votes: number; total: number };
+
+/**
+ * The shoppers' department per item. An answer is used only when at least MIN_DEPARTMENT_VOTES phones
+ * gave it and it has more than half of all answers for that item, so one phone, or a split crowd,
+ * never changes the guess. Among equal counts (can't be a majority) nothing is returned.
+ */
+export function tallyDepartments(rows: DepartmentVoteRow[]): Record<string, SharedDepartment> {
+  const byItem = new Map<string, Map<string, number>>();
+  for (const r of rows) {
+    if (!DEPARTMENTS.includes(r.department)) continue;
+    const counts = byItem.get(r.item_key) ?? new Map<string, number>();
+    counts.set(r.department, (counts.get(r.department) ?? 0) + 1);
+    byItem.set(r.item_key, counts);
+  }
+  const out: Record<string, SharedDepartment> = {};
+  for (const [item, counts] of byItem) {
+    const total = [...counts.values()].reduce((n, c) => n + c, 0);
+    const [department, votes] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (votes >= MIN_DEPARTMENT_VOTES && votes * 2 > total) out[item] = { department, votes, total };
+  }
+  return out;
+}

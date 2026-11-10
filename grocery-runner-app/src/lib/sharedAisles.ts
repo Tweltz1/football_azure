@@ -50,3 +50,23 @@ export async function fetchStoreAisles(store: Store): Promise<{ name: string; ai
   const rows = await callBackend<{ item: string; aisle: string }[]>({ body: { action: 'store-aisles', store: store.id } });
   return Array.isArray(rows) ? rows.map((r) => ({ name: r.item, aisle: r.aisle })) : [];
 }
+
+/**
+ * Department fixes shared across all stores. The server only answers for items where 2+ shoppers agree
+ * and they are a majority (tallyDepartments in supabase/functions/grocery-runner/votes.ts).
+ */
+export async function fetchSharedDepartments(names: string[]): Promise<Record<string, ItemLocation>> {
+  const raw = await callBackend<Record<string, { department: string; votes: number }>>({
+    body: { action: 'departments', items: names },
+  });
+  const out: Record<string, ItemLocation> = {};
+  for (const [key, s] of Object.entries(raw ?? {})) {
+    out[key] = { kind: 'department', department: s.department as Department, source: 'community', votes: s.votes };
+  }
+  return out;
+}
+
+/** This phone's department for an item (any store). Voting again replaces the old vote. */
+export function voteDepartment(item: string, device: string, department: Department) {
+  return callBackend({ body: { action: 'department-vote', item, device, department } }).then(() => undefined);
+}
