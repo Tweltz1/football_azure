@@ -6,7 +6,15 @@ import { itemKey } from './sharedAisles';
 
 export type ParsedRecipe = { title: string; servings: string; items: RecipeItem[]; imageUrl?: string };
 
-const INGREDIENTS_HEADING = /^\s*(ingredients?|what you('|’)?ll need|you('|’)?ll need|shopping list)\s*:?\s*$/i;
+// Recipe sites print scale and unit buttons next to the heading ("Ingredients 1x 2x 3x", "US Customary Metric").
+const SITE_BUTTONS = String.raw`(?:\s*(?:\d+(?:\.\d+)?\s*x|us customary|us|metric|imperial|scale|servings?|\||·))*`;
+const INGREDIENTS_HEADING = new RegExp(
+  String.raw`^\s*(ingredients?|what you('|’)?ll need|you('|’)?ll need|shopping list)\s*:?${SITE_BUTTONS}\s*$`,
+  'i',
+);
+// Buttons and labels recipe sites and apps put around the ingredient list. Seen in screenshots and page text.
+const SITE_CHROME =
+  /^(?:us customary|us|metric|imperial|us\s*\/\s*metric|\d+(?:\.\d+)?x(?:\s+\d+(?:\.\d+)?x)*|scale|cook mode|prevent your screen from going dark|keep screen awake|print( recipe)?|pin( recipe)?|save( recipe)?|share|jump to recipe|rate (this )?recipe|leave a review|add to (shopping )?list|add all to (shopping )?list|shop ingredients|on sale|check all|uncheck all|copy ingredients|convert units|original recipe.*|ingredient substitutions|video|watch( video)?|gather (your )?ingredients|advertisement|ad|sponsored|skip to content|jump to video|serves?|servings?|yield|cups?|grams|oz|ounces?)$/i;
 const STOP_HEADING =
   /^\s*(directions?|instructions?|method|steps?|preparation|how to make( it)?|to make|notes?|nutrition( facts| information)?|equipment|step 1\b)\s*:?/i;
 const SERVINGS = /\b(serves|servings?|makes|yield)\b\s*:?\s*([\d½¼¾⅓⅔ -]+[a-z ]{0,20})/i;
@@ -25,7 +33,7 @@ const UNITS = [
 const UNIT = new RegExp(String.raw`^(?:${UNITS.join('|')})(?=\s|$|\))`, 'i');
 // Removed from the item name: they say how to prepare it, not what to buy.
 const PREP =
-  /\b(finely|coarsely|roughly|thinly|freshly|lightly|well|very|chopped|diced|minced|sliced|grated|shredded|crushed|peeled|seeded|cored|trimmed|halved|quartered|cubed|melted|softened|beaten|divided|drained|rinsed|packed|sifted|toasted|cooked|uncooked|room temperature|at room temperature|cut into [^,]+|plus more[^,]*|or more[^,]*|to taste|for serving|for garnish|for topping|for dusting|optional|if desired|as needed)\b/gi;
+  /\b(finely|coarsely|roughly|thinly|freshly|lightly|well|very|chopped|(?:diced|crushed|stewed)(?!\s+(?:tomato|red pepper|pineapple))|minced|sliced|grated|shredded|peeled|seeded|cored|trimmed|halved|quartered|cubed|melted|softened|beaten|divided|drained|rinsed|packed|sifted|toasted|cooked|uncooked|room temperature|at room temperature|cut into [^,]+|plus more[^,]*|or more[^,]*|to taste|for serving|for garnish|for topping|for dusting|optional|if desired|as needed)\b/gi;
 const PANTRY = new Set(
   [
     'salt', 'kosher salt', 'sea salt', 'pepper', 'black pepper', 'ground black pepper', 'salt and pepper',
@@ -51,6 +59,7 @@ const startsWithAmount = (line: string) => QTY.test(normalise(line)) || /^(a|an|
 export function parseIngredient(raw: string): RecipeItem | null {
   let line = normalise(raw);
   if (!line || line.length > 120 || STOP_HEADING.test(line) || INGREDIENTS_HEADING.test(line)) return null;
+  if (SITE_CHROME.test(line.replace(/[.:!]+$/, '').trim()) || /^(serves|servings?|makes|yield)\b/i.test(line)) return null;
   if (/^for the\b.*:$/i.test(line) || /:$/.test(line)) return null; // sub-headings like "For the sauce:"
 
   const amount: string[] = [];
@@ -90,7 +99,7 @@ export function parseIngredient(raw: string): RecipeItem | null {
     .replace(/[\s.:,]+$/, '')
     .trim()
     .toLowerCase();
-  if (name.length < 2 || !/[a-z]/.test(name) || NOT_AN_ITEM.test(name)) return null;
+  if (name.length < 2 || !/[a-z]/.test(name) || NOT_AN_ITEM.test(name) || SITE_CHROME.test(name)) return null;
   if (name.split(' ').length > 6) return null; // a sentence, not an ingredient
   name = name.slice(0, 60);
   return { item: name, amount: amount.join(' ').replace(/\s+/g, ' ').trim(), pantry: PANTRY.has(itemKey(name)) };
@@ -210,7 +219,7 @@ export function parseRecipePage(html: string): ParsedRecipe {
       }
     } catch {}
   }
-  const title = decode(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '').split(/[|–-]/)[0];
+  const title = decode(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '').split(/\s[|–—-]\s|\|/)[0];
   const text = html
     .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<(br|\/p|\/li|\/h\d|\/div|\/tr)[^>]*>/gi, '\n');

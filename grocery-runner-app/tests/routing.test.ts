@@ -83,3 +83,40 @@ test('route grows the layout for aisle numbers above the store aisle count', () 
   const route = planRoute([item('a', aisle('30'))], 10);
   assert.equal(route.layout.aisleCount, 30);
 });
+
+test('department guesses: shelf-stable forms, spices and plurals', () => {
+  const cases: [string, string][] = [
+    ['celery seed', 'pantry'],
+    ['chicken bouillon paste', 'pantry'],
+    ['chicken broth', 'pantry'],
+    ['garlic powder', 'pantry'],
+    ['ground cumin', 'pantry'],
+    ['black pepper', 'pantry'],
+    ['onion soup mix', 'pantry'],
+    ['tomato sauce', 'pantry'],
+    ['diced tomatoes', 'pantry'],
+    ['coconut milk', 'pantry'],
+    ['egg noodles', 'pantry'],
+    ['tortilla chips', 'pantry'],
+    ['sliced almonds', 'pantry'],
+    ['tomatoes', 'produce'],
+    ['blueberries', 'produce'],
+    ['sweet potatoes', 'produce'],
+    ['zucchini', 'produce'],
+    ['fresh parsley', 'produce'],
+    ['salad mix', 'produce'],
+    ['sliced mushrooms', 'produce'],
+    ['celery', 'produce'],
+    ['flour tortillas', 'bakery'],
+    ['hamburger buns', 'bakery'],
+    ['rotisserie chicken', 'deli'],
+    ['deli turkey', 'deli'],
+    ['pepperoni', 'deli'],
+    ['chuck roast', 'meat'],
+    ['boneless skinless chicken breasts', 'meat'],
+    ['unsalted butter', 'dairy'],
+    ['pizza dough', 'dairy'],
+    ['frozen broccoli', 'frozen'],
+  ];
+  for (const [name, dept] of cases) assert.equal(guessDepartment(name), dept, name);
+});

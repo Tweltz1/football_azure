@@ -30,6 +30,8 @@ export type LocationSource = 'kroger' | 'user' | 'community' | 'guess';
 export type ListItem = {
   id: string;
   name: string;
+  /** How much, when it came from a recipe ("2 cups"). */
+  amount?: string;
   checked: boolean;
   location: ItemLocation;
 };

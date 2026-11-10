@@ -6,7 +6,7 @@ const item = (line: string) => parseIngredient(line);
 
 test('splits amounts, units and preparation from the thing to buy', () => {
   assert.deepEqual(item('2 cups shredded cheddar cheese, divided'), { item: 'cheddar cheese', amount: '2 cups', pantry: false });
-  assert.deepEqual(item('1 (14 oz) can diced tomatoes, drained'), { item: 'tomatoes', amount: '1 (14 oz) can', pantry: false });
+  assert.deepEqual(item('1 (14 oz) can diced tomatoes, drained'), { item: 'diced tomatoes', amount: '1 (14 oz) can', pantry: false });
   assert.deepEqual(item('½ teaspoon kosher salt'), { item: 'kosher salt', amount: '1/2 teaspoon', pantry: true });
   assert.deepEqual(item('1 1/2 lbs boneless chicken thighs'), { item: 'boneless chicken thighs', amount: '1 1/2 lbs', pantry: false });
   assert.deepEqual(item('3 cloves garlic, minced'), { item: 'garlic', amount: '3 cloves', pantry: false });
@@ -76,4 +76,35 @@ test('recipe web pages: uses the published schema.org ingredient list', () => {
     ['lettuce', false],
     ['salt & pepper', false],
   ]);
+});
+
+test('recipe-site buttons around the ingredient list are not shopping items', () => {
+  // Text read from a screenshot of a typical recipe-blog card (unit toggle, scale buttons, cook mode).
+  const r = parsePastedText(`Chicken Noodle Soup
+Servings: 6
+Ingredients 1x 2x 3x
+US Customary
+Metric
+Cook Mode
+Prevent your screen from going dark
+2 tablespoons butter
+1 onion, diced
+3 stalks celery, sliced
+1 teaspoon celery seed
+1 tablespoon chicken bouillon paste
+1 lb boneless skinless chicken breasts
+1 (14.5 oz) can diced tomatoes
+1/2 teaspoon crushed red pepper
+Instructions
+Melt the butter.`);
+  assert.deepEqual(
+    r.items.map((i) => i.item),
+    ['butter', 'onion', 'celery', 'celery seed', 'chicken bouillon paste', 'boneless skinless chicken breasts', 'diced tomatoes', 'crushed red pepper'],
+  );
+  assert.equal(r.items.find((i) => i.item === 'crushed red pepper')?.pantry, true);
+});
+
+test('the Ingredients heading is found even with the unit toggle on the same line', () => {
+  const r = parsePastedText('Ingredients US Customary | Metric\nsalt and pepper\n2 carrots');
+  assert.deepEqual(r.items.map((i) => i.item), ['salt and pepper', 'carrots']);
 });
