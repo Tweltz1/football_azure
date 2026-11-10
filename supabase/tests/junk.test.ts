@@ -31,6 +31,7 @@ function world(detection: JunkDetection | null = null) {
     [ALICE, BOB, CARL].map((id) => [id, { termsAt: '2026-11-01T00:00:00Z', bannedAt: null }]),
   );
   const feedback: { userId: string; body: string; createdAt: string }[] = [];
+  const devices = new Map<string, { banned: boolean; at: string }>();
   const isOpen = (c: JunkClaim) => c.status === 'active' || c.status === 'arrived';
   let clock = Date.parse('2026-11-08T15:00:00Z');
   let seq = 0;
@@ -89,6 +90,15 @@ function world(detection: JunkDetection | null = null) {
     },
     async member(userId) { const m = members.get(userId); return m ? clone(m) : null; },
     async acceptTerms(userId, at) { members.set(userId, { bannedAt: null, ...members.get(userId), termsAt: at }); },
+    async seeDevice(userId, deviceId, at, since) {
+      devices.set(`${deviceId}/${userId}`, { banned: devices.get(`${deviceId}/${userId}`)?.banned ?? false, at });
+      const rows = [...devices].filter(([k]) => k.startsWith(`${deviceId}/`));
+      return { banned: rows.some(([, v]) => v.banned), accounts: rows.filter(([, v]) => v.at >= since).length };
+    },
+    async pickupPartners(userId) {
+      return claims.filter((c) => c.status === 'picked_up' && (c.claimerId === userId || c.ownerId === userId))
+        .map((c) => (c.ownerId === userId ? c.claimerId : c.ownerId));
+    },
     async touchMember(userId, joinedAt, provider) { members.set(userId, { termsAt: null, bannedAt: null, ...members.get(userId), joinedAt, provider } as never); },
     async addFeedback(f) { feedback.push({ userId: f.userId, body: f.body, createdAt: f.createdAt }); },
     async countFeedbackSince(userId, since) { return feedback.filter((f) => f.userId === userId && f.createdAt >= since).length; },
@@ -104,11 +114,13 @@ function world(detection: JunkDetection | null = null) {
     deleteAccount: async (id) => { deletedAccounts.push(id); },
   };
   const joined = new Map<string, string>();
+  let phone: string | null = null;
   const call = (who: string | null, method: string, path: string, body?: unknown, query: Record<string, unknown> = {}) => {
     clock += 60_000;
     const ctx = {
       userCreatedAt: who ? joined.get(who) ?? '2026-01-01T00:00:00Z' : null,
       userProvider: who ? 'apple' : null,
+      deviceId: phone,
       userId: who, displayName: who === ALICE ? 'Alice' : who === BOB ? 'Bob' : 'Carl',
       now: () => new Date(clock), newId: () => `00000000-0000-4000-8000-${String(++seq).padStart(12, '0')}`,
       log: { info() {}, warn() {}, error() {} },
@@ -125,7 +137,7 @@ function world(detection: JunkDetection | null = null) {
     assert.equal(res?.status, 200, String(res?.body));
     return res!.body as { id: string; photos: string[] };
   };
-  return { call, post, items, stored, messages, deletedAccounts, claims, members, feedback, joined, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
+  return { call, post, items, stored, messages, deletedAccounts, claims, members, feedback, joined, devices, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -509,6 +521,7 @@ test('multi-item post: claim some things or take it all, each is taken on its ow
   assert.equal(carl?.status, 200);
   assert.deepEqual((carl?.body as { claim: ClaimOut & { pieceIds: string[] } }).claim.pieceIds, ['p1', 'p3']);
   const dave = '44444444-4444-4444-8444-444444444444';
+  w.members.set(dave, { termsAt: '2026-11-01T00:00:00Z', bannedAt: null });
   assert.equal((await w.call(dave, 'POST', `junk/items/${item.id}/claim`, north(2)))?.status, 409);
   const seen = (await w.call(BOB, 'GET', `junk/items/${item.id}`))?.body as Out;
   assert.deepEqual(seen.pieces.map((p) => [p.held, p.mine]), [[true, false], [true, true], [true, false]]);
@@ -644,6 +657,7 @@ test('brand-new accounts get tighter limits, and listings show a member card', a
   assert.equal(card.provider, 'apple');
   assert.equal(card.isNew, false);
   assert.equal(card.given, 0);
+  assert.equal((card as { verified?: boolean }).verified, false);
   const bobs = (await w.call(CARL, 'GET', 'junk/mine'))?.body;
   assert.ok(bobs);
 });
@@ -656,4 +670,27 @@ test('chat refuses money asks and flags phone numbers', async () => {
   res = await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Text me at 612-555-1234' });
   assert.equal(res?.status, 200);
   assert.equal((res?.body as { offApp?: boolean }).offApp, true);
+});
+
+test('a banned phone stays banned for new accounts, and a crowded phone gets new-account limits', async () => {
+  const w = world();
+  const PHONE = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  w.usePhone(PHONE);
+  await w.post(BOB);
+  w.devices.set(`${PHONE}/${BOB}`, { banned: true, at: w.now() });
+  // Carl (another account) on the same phone can't post.
+  const res = await w.call(CARL, 'POST', 'junk/items', { title: 'Lamp', photos: [], ...HOME });
+  assert.equal(res?.status, 403);
+
+  const w2 = world();
+  w2.usePhone(PHONE);
+  for (const id of ['44444444-4444-4444-8444-444444444441', '44444444-4444-4444-8444-444444444442', '44444444-4444-4444-8444-444444444443']) {
+    w2.members.set(id, { termsAt: '2026-11-01T00:00:00Z', bannedAt: null });
+    await w2.call(id, 'POST', 'junk/items', { title: 'x', photos: [], ...HOME });
+  }
+  w2.members.set(ALICE, { termsAt: '2026-11-01T00:00:00Z', bannedAt: null });
+  for (let k = 0; k < 3; k++) await w2.post(ALICE, { title: `Chair ${k}` });
+  const up = await w2.call(ALICE, 'POST', 'junk/photos', { image: JPEG });
+  const fourth = await w2.call(ALICE, 'POST', 'junk/items', { title: 'Chair 4', photos: [(up?.body as { path: string }).path], ...HOME });
+  assert.equal(fourth?.status, 429);
 });

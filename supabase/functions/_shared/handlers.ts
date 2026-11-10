@@ -50,6 +50,8 @@ export interface Ctx {
   /** When the sign-in account was made, and how they sign in (apple, google, github). */
   userCreatedAt?: string | null;
   userProvider?: string | null;
+  /** The phone's lasting id from the Curbsy app (X-Curbsy-Device header), used to keep banned people off that phone. */
+  deviceId?: string | null;
 }
 
 export interface Res {

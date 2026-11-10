@@ -149,6 +149,8 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_uploads').delete().eq('user_id', userId));
       must(await db.from('junk_claims').delete().or(`claimer_id.eq.${userId},owner_id.eq.${userId}`));
       must(await db.from('junk_feedback').delete().eq('user_id', userId));
+      // Phones stay on record when banned, so a deleted-and-remade account can't come back on the same phone.
+      must(await db.from('junk_devices').delete().eq('user_id', userId).eq('banned', false));
       // A ban outlives the account's data (a deleted account can't come back under the same id anyway).
       must(await db.from('junk_members').delete().eq('user_id', userId).is('banned_at', null));
       return paths;
@@ -157,6 +159,20 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       const r = must(await db.from('junk_members').select('terms_at, banned_at, joined_at, provider').eq('user_id', userId).maybeSingle()) as
         { terms_at: string | null; banned_at: string | null; joined_at: string | null; provider: string | null } | null;
       return r ? { termsAt: r.terms_at, bannedAt: r.banned_at, joinedAt: r.joined_at, provider: r.provider } : null;
+    },
+    async seeDevice(userId, deviceId, at, since) {
+      must(await db.from('junk_devices').upsert({ device_id: deviceId, user_id: userId, seen_at: at }, { onConflict: 'device_id,user_id' }));
+      const rows = must(await db.from('junk_devices').select('user_id, banned, seen_at').eq('device_id', deviceId).limit(100)) as
+        { user_id: string; banned: boolean; seen_at: string }[] | null;
+      return {
+        banned: (rows ?? []).some((r) => r.banned),
+        accounts: new Set((rows ?? []).filter((r) => r.seen_at >= since).map((r) => r.user_id)).size,
+      };
+    },
+    async pickupPartners(userId) {
+      const data = must(await db.from('junk_claims').select('owner_id, claimer_id').eq('status', 'picked_up')
+        .or(`claimer_id.eq.${userId},owner_id.eq.${userId}`).limit(500)) as { owner_id: string; claimer_id: string }[] | null;
+      return (data ?? []).map((r) => (r.owner_id === userId ? r.claimer_id : r.owner_id));
     },
     async touchMember(userId, joinedAt, provider) {
       must(await db.from('junk_members').upsert({ user_id: userId, joined_at: joinedAt, provider }, { onConflict: 'user_id' }));

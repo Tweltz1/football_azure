@@ -179,7 +179,8 @@ export function MemberCard({ name, owner }) {
       <div className="jk-avatar jk-avatar-sm" aria-hidden="true">{(name || '?').slice(0, 1).toUpperCase()}</div>
       <div>
         <strong>{name}</strong>
-        {owner.isNew && <span className="jk-pill jk-pill-warn">New member</span>}
+        {owner.verified && <span className="jk-pill jk-pill-verified">✓ Verified neighbor</span>}
+        {owner.isNew && !owner.verified && <span className="jk-pill jk-pill-warn">New member</span>}
         <p className="jk-muted">
           {[
             owner.since ? `Joined ${monthYear(owner.since)}` : null,

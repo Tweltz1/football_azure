@@ -119,6 +119,10 @@ export interface JunkStore extends ClaimStore {
   acceptTerms(userId: string, at: string): Promise<void>;
   /** Saves when the account was made and how they sign in, for the member card others see. */
   touchMember(userId: string, joinedAt: string | null, provider: string | null): Promise<void>;
+  /** Notes that this account used this phone; returns whether the phone is banned and how many accounts used it lately. */
+  seeDevice(userId: string, deviceId: string, at: string, since: string): Promise<{ banned: boolean; accounts: number }>;
+  /** The other people in this person's finished pickups ("Got it" at the spot), as giver or taker. */
+  pickupPartners(userId: string): Promise<string[]>;
   addFeedback(f: { id: string; userId: string; userName: string; body: string; createdAt: string }): Promise<void>;
   countFeedbackSince(userId: string, since: string): Promise<number>;
 }
@@ -168,6 +172,10 @@ export const NEW_ITEMS_PER_DAY = 3;
 export const NEW_CLAIMS_PER_DAY = 3;
 export const NEW_CHATS_PER_DAY = 5;
 export const CHATS_PER_DAY = 40;
+/** A phone that several accounts post or message from is treated like a brand-new account (throwaway accounts). */
+export const ACCOUNTS_PER_DEVICE = 3;
+/** "Verified neighbor": finished pickups (checked at the spot by location) with this many different people. */
+export const VERIFIED_PICKUPS = 3;
 /** A member card says "New member" for this long. */
 export const NEW_MEMBER_DAYS = 14;
 
@@ -265,7 +273,7 @@ const decodeJpeg = (v: unknown): Uint8Array | null => {
   }
 };
 
-export interface OwnerCard { since: string | null; provider: string | null; given: number; isNew: boolean }
+export interface OwnerCard { since: string | null; provider: string | null; given: number; isNew: boolean; verified: boolean }
 
 const itemOut = (
   deps: JunkDeps, i: JunkItem, me: string | null, km?: number, claims: JunkClaim[] = [],
@@ -441,16 +449,17 @@ export async function junkRoute(
     return (await store.messagesFor(me, 500)).some((m) => m.itemId === item.id && m.fromId === item.ownerId && m.toId === me);
   };
   const ownerCard = async (ownerId: string): Promise<OwnerCard> => {
-    const [m, theirs] = await Promise.all([store.member(ownerId), store.byOwner(ownerId)]);
+    const [m, theirs, partners] = await Promise.all([store.member(ownerId), store.byOwner(ownerId), store.pickupPartners(ownerId)]);
     const since = m?.joinedAt ?? null;
     return {
       since,
       provider: m?.provider ?? null,
       given: theirs.filter((x) => x.status === 'gone').length,
       isNew: !since || now.getTime() - Date.parse(since) < NEW_MEMBER_DAYS * 86_400_000,
+      verified: new Set(partners).size >= VERIFIED_PICKUPS,
     };
   };
-  const newAccount = () => !!ctx.userCreatedAt && now.getTime() - Date.parse(ctx.userCreatedAt) < NEW_ACCOUNT_HOURS * 3_600_000;
+  const newAccount = () => crowdedDevice || (!!ctx.userCreatedAt && now.getTime() - Date.parse(ctx.userCreatedAt) < NEW_ACCOUNT_HOURS * 3_600_000);
 
   // ---- Browse (no sign-in needed) ----
   if (section === 'items' && !a && method === 'GET') {
@@ -491,9 +500,12 @@ export async function junkRoute(
   if (!me) return needSignIn;
   const myName = str(ctx.displayName, 40) || 'Neighbor';
   /** Posting and messaging need the Terms agreed to (App Store guideline 1.2), and no ban. */
+  let crowdedDevice = false;
   const gate = async (): Promise<Res | null> => {
     const m = await store.member(me);
-    if (m?.bannedAt) return { status: 403, body: 'Your account can\'t post or send messages on Curbsy because it broke the Terms. Use Contact Curbsy in the Me tab if you think this is a mistake.' };
+    const phone = ctx.deviceId ? await store.seeDevice(me, ctx.deviceId, nowIso, daysAgo(now, 30)) : null;
+    crowdedDevice = !!phone && phone.accounts > ACCOUNTS_PER_DEVICE;
+    if (m?.bannedAt || phone?.banned) return { status: 403, body: 'Your account can\'t post or send messages on Curbsy because it broke the Terms. Use Contact Curbsy in the Me tab if you think this is a mistake.' };
     if (!m?.termsAt) return { status: 428, body: 'Please agree to the Curbsy Terms first.' };
     if (ctx.userCreatedAt && (m.joinedAt !== ctx.userCreatedAt || (m.provider ?? null) !== (ctx.userProvider ?? null))) {
       await store.touchMember(me, ctx.userCreatedAt, ctx.userProvider ?? null);
@@ -607,6 +619,8 @@ export async function junkRoute(
   // ---- "I'm on my way": claim an item while you drive over; the trip is tracked ----
   if (section === 'items' && a && b === 'claim' && method === 'POST') {
     if (!UUID.test(a)) return notFound;
+    const stop = await gate();
+    if (stop) return stop;
     const item = await store.getItem(a);
     if (!item || item.status === 'hidden') return notFound;
     if (item.ownerId === me) return bad('That\'s your own listing.');

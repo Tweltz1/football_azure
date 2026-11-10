@@ -28,3 +28,16 @@ alter table public.junk_members add column if not exists provider text;
 -- people the poster wrote back to can see. Porch (no-contact) pickup is the default.
 alter table public.junk_items add column if not exists private_spot text not null default '';
 alter table public.junk_items add column if not exists handoff text not null default 'porch';
+
+-- Phones (a lasting id the Curbsy app keeps in the iPhone keychain) each account used. Banning someone bans
+-- their phones too, so they can't come back with a new account on the same phone.
+create table if not exists public.junk_devices (
+  device_id uuid not null,
+  user_id uuid not null,
+  seen_at timestamptz not null default now(),
+  banned boolean not null default false,
+  primary key (device_id, user_id)
+);
+create index if not exists junk_devices_user_idx on public.junk_devices (user_id);
+alter table public.junk_devices enable row level security;
+revoke all on public.junk_devices from anon, authenticated;

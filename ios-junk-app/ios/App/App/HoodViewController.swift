@@ -13,6 +13,7 @@ class HoodViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(TripPlugin())
         bridge?.registerPluginInstance(ItemVisionPlugin())
         bridge?.registerPluginInstance(PhotoSafetyPlugin())
+        bridge?.registerPluginInstance(DeviceTrustPlugin())
     }
 }
 
@@ -431,5 +432,54 @@ public class PhotoSafetyPlugin: CAPPlugin, CAPBridgedPlugin {
                 .map { ["label": $0.identifier, "confidence": Double($0.confidence)] as [String: Any] }
             call.resolve(["nsfw": nsfw, "labels": Array(labels)])
         }
+    }
+}
+
+// A lasting id for this iPhone, kept in the keychain so it survives deleting and reinstalling the app. Curbsy
+// sends it with each request so a banned person can't come back on the same phone with a new account.
+// JS: frontend/src/junk/junkApi.js
+@objc(DeviceTrustPlugin)
+public class DeviceTrustPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "DeviceTrustPlugin"
+    public let jsName = "DeviceTrust"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "deviceId", returnType: CAPPluginReturnPromise),
+    ]
+
+    private static let service = "com.hoodleague.junk.device"
+    private static let account = "device-id"
+
+    private static func read() -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var out: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &out) == errSecSuccess, let data = out as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func save(_ id: String) {
+        let item: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecValueData as String: Data(id.utf8),
+        ]
+        SecItemAdd(item as CFDictionary, nil)
+    }
+
+    @objc func deviceId(_ call: CAPPluginCall) {
+        if let existing = DeviceTrustPlugin.read() {
+            call.resolve(["id": existing])
+            return
+        }
+        let fresh = UUID().uuidString.lowercased()
+        DeviceTrustPlugin.save(fresh)
+        call.resolve(["id": DeviceTrustPlugin.read() ?? fresh])
     }
 }

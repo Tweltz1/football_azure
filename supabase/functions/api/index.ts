@@ -98,7 +98,7 @@ const broadcaster = createBroadcaster(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-curbsy-device',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
 };
 
@@ -199,6 +199,7 @@ Deno.serve(async (req) => {
       userEmail: user?.email ?? null,
       userCreatedAt: user?.createdAt ?? null,
       userProvider: user?.provider ?? null,
+      deviceId: /^[0-9A-Fa-f-]{36}$/.test(req.headers.get('X-Curbsy-Device') ?? '') ? req.headers.get('X-Curbsy-Device')!.toLowerCase() : null,
     };
 
     const parts = path.split('/').filter(Boolean).map((p) => decodeURIComponent(p));

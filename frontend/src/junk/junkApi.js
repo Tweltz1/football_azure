@@ -15,10 +15,22 @@ export const token = async () => {
   }
 };
 
+// The phone's lasting id from the iPhone app (keeps banned people off that phone); none on the website.
+let deviceIdPromise = null;
+const deviceId = () => {
+  if (!deviceIdPromise) {
+    const plugin = typeof window !== 'undefined' && window.Capacitor?.Plugins?.DeviceTrust;
+    deviceIdPromise = plugin ? plugin.deviceId().then((r) => (r && r.id) || null).catch(() => null) : Promise.resolve(null);
+  }
+  return deviceIdPromise;
+};
+
 const call = async (method, path, body) => {
   const headers = {};
   const t = await token();
   if (t) headers.Authorization = `Bearer ${t}`;
+  const device = await deviceId();
+  if (device) headers['X-Curbsy-Device'] = device;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   let res;
   try {
