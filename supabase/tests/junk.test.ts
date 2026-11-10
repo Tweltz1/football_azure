@@ -27,7 +27,7 @@ function world(detection: JunkDetection | null = null) {
   const deletedAccounts: string[] = [];
   const claims: JunkClaim[] = [];
   // Everyone in these tests agreed to the Terms already, unless a test says otherwise.
-  const members = new Map<string, { termsAt: string | null; bannedAt: string | null }>(
+  const members = new Map<string, { termsAt: string | null; bannedAt: string | null; joinedAt?: string | null; provider?: string | null }>(
     [ALICE, BOB, CARL].map((id) => [id, { termsAt: '2026-11-01T00:00:00Z', bannedAt: null }]),
   );
   const feedback: { userId: string; body: string; createdAt: string }[] = [];
@@ -89,6 +89,7 @@ function world(detection: JunkDetection | null = null) {
     },
     async member(userId) { const m = members.get(userId); return m ? clone(m) : null; },
     async acceptTerms(userId, at) { members.set(userId, { bannedAt: null, ...members.get(userId), termsAt: at }); },
+    async touchMember(userId, joinedAt, provider) { members.set(userId, { termsAt: null, bannedAt: null, ...members.get(userId), joinedAt, provider } as never); },
     async addFeedback(f) { feedback.push({ userId: f.userId, body: f.body, createdAt: f.createdAt }); },
     async countFeedbackSince(userId, since) { return feedback.filter((f) => f.userId === userId && f.createdAt >= since).length; },
   };
@@ -102,9 +103,12 @@ function world(detection: JunkDetection | null = null) {
     detector: detection ? { async detect() { return detection; } } : null,
     deleteAccount: async (id) => { deletedAccounts.push(id); },
   };
+  const joined = new Map<string, string>();
   const call = (who: string | null, method: string, path: string, body?: unknown, query: Record<string, unknown> = {}) => {
     clock += 60_000;
     const ctx = {
+      userCreatedAt: who ? joined.get(who) ?? '2026-01-01T00:00:00Z' : null,
+      userProvider: who ? 'apple' : null,
       userId: who, displayName: who === ALICE ? 'Alice' : who === BOB ? 'Bob' : 'Carl',
       now: () => new Date(clock), newId: () => `00000000-0000-4000-8000-${String(++seq).padStart(12, '0')}`,
       log: { info() {}, warn() {}, error() {} },
@@ -121,7 +125,7 @@ function world(detection: JunkDetection | null = null) {
     assert.equal(res?.status, 200, String(res?.body));
     return res!.body as { id: string; photos: string[] };
   };
-  return { call, post, items, stored, messages, deletedAccounts, claims, members, feedback, tick: (ms: number) => { clock += ms; } };
+  return { call, post, items, stored, messages, deletedAccounts, claims, members, feedback, joined, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -592,4 +596,64 @@ test('Contact Curbsy saves the message, a few a day', async () => {
   assert.equal((await w.call(BOB, 'POST', 'junk/contact', { body: 'One more' }))?.status, 429);
   assert.equal(w.feedback.length, 5);
   assert.equal((await w.call(null, 'POST', 'junk/contact', { body: 'Hi' }))?.status, 401);
+});
+
+test('the pickup address stays private until someone is coming, and addresses can\'t go in the public text', async () => {
+  const w = world();
+  let res = await w.call(ALICE, 'POST', 'junk/items', { title: 'Lamp', pickup: 'At 1234 Maple St, side door', photos: [], ...HOME });
+  assert.equal(res?.status, 400);
+  assert.match(String(res?.body), /Exact spot/);
+  res = await w.call(ALICE, 'POST', 'junk/items', { title: 'Lamp', description: 'Text me 612-555-1234', photos: [], ...HOME });
+  assert.equal(res?.status, 400);
+
+  const item = await w.post(ALICE, { spot: '1234 Maple St, side door', handoff: 'porch' });
+  const look = async (who: string | null) => (await w.call(who, 'GET', `junk/items/${item.id}`))?.body as Record<string, unknown>;
+  assert.equal((await look(ALICE)).spot, '1234 Maple St, side door');
+  let bob = await look(BOB);
+  assert.equal(bob.spot, undefined);
+  assert.equal(bob.lat, undefined);
+  assert.equal(bob.hasSpot, true);
+  assert.equal(bob.handoff, 'porch');
+  assert.equal(JSON.stringify(await w.call(null, 'GET', 'junk/items', undefined, { ...HOME, km: 5 })).includes('Maple'), false);
+
+  // Bob asks; still private until Alice writes back.
+  await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Still there?' });
+  assert.equal((await look(BOB)).spot, undefined);
+  await w.call(ALICE, 'POST', `junk/chat/${item.id}/${BOB}`, { body: 'Yes, come by' });
+  bob = await look(BOB);
+  assert.equal(bob.spot, '1234 Maple St, side door');
+  assert.equal(typeof bob.lat, 'number');
+
+  // Carl sees it once he's on his way.
+  assert.equal((await look(CARL)).spot, undefined);
+  await w.call(ALICE, 'POST', `junk/items/${item.id}`, { firstCome: true });
+  res = await w.call(CARL, 'POST', `junk/items/${item.id}/claim`, NORTH);
+  assert.equal(res?.status, 200, String(res?.body));
+  assert.equal((await look(CARL)).spot, '1234 Maple St, side door');
+});
+
+test('brand-new accounts get tighter limits, and listings show a member card', async () => {
+  const w = world();
+  w.joined.set(BOB, w.now());
+  for (let k = 0; k < 3; k++) await w.post(BOB, { title: `Chair ${k}` });
+  const up = await w.call(BOB, 'POST', 'junk/photos', { image: JPEG });
+  const res = await w.call(BOB, 'POST', 'junk/items', { title: 'Chair 4', photos: [(up?.body as { path: string }).path], ...HOME });
+  assert.equal(res?.status, 429);
+  const item = await w.post(ALICE);
+  const card = ((await w.call(CARL, 'GET', `junk/items/${item.id}`))?.body as { owner: { provider: string; isNew: boolean; given: number } }).owner;
+  assert.equal(card.provider, 'apple');
+  assert.equal(card.isNew, false);
+  assert.equal(card.given, 0);
+  const bobs = (await w.call(CARL, 'GET', 'junk/mine'))?.body;
+  assert.ok(bobs);
+});
+
+test('chat refuses money asks and flags phone numbers', async () => {
+  const w = world();
+  const item = await w.post(ALICE);
+  let res = await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Can I venmo you for it?' });
+  assert.equal(res?.status, 400);
+  res = await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Text me at 612-555-1234' });
+  assert.equal(res?.status, 200);
+  assert.equal((res?.body as { offApp?: boolean }).offApp, true);
 });

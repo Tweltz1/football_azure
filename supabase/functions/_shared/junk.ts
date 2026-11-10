@@ -11,7 +11,7 @@ import {
   CLAIMS_PER_DAY, MAX_CLAIM_KM, OPEN_CLAIM, RECLAIM_COOLDOWN_MIN, claimOut, etaMinutes, judgeClaim, newClaim, pingClaim,
   type ClaimStore, type JunkClaim,
 } from './junkClaims.ts';
-import { CHAT_RULES, LABEL_MIN_CONFIDENCE, LABEL_RULES, SAFETY_RULES, checkText } from './junkSafety.ts';
+import { CHAT_RULES, LABEL_MIN_CONFIDENCE, LABEL_RULES, SAFETY_RULES, checkText, hasContactDetails, personalDetails } from './junkSafety.ts';
 
 export const JUNK_CATEGORIES = [
   'furniture', 'appliances', 'electronics', 'home', 'kids', 'clothing', 'books', 'sports', 'tools', 'garden',
@@ -20,6 +20,8 @@ export const JUNK_CATEGORIES = [
 export type JunkCategory = typeof JUNK_CATEGORIES[number];
 export const JUNK_CONDITIONS = ['like_new', 'good', 'fair', 'needs_work', 'for_parts'] as const;
 export type JunkCondition = typeof JUNK_CONDITIONS[number];
+export const JUNK_HANDOFFS = ['porch', 'meet'] as const;
+export type JunkHandoff = typeof JUNK_HANDOFFS[number];
 export const JUNK_STATUSES = ['available', 'pending', 'gone'] as const;
 export type JunkStatus = typeof JUNK_STATUSES[number] | 'hidden';
 
@@ -42,6 +44,11 @@ export interface JunkItem {
   aiDetected: boolean;
   /** First come, first served: "I'm on my way" doesn't hold it, several people can head over at once. */
   firstCome: boolean;
+  /** Private pickup details (street address, which door): only the poster, whoever is on the way, and people the
+   *  poster has written back to see it. */
+  spot?: string;
+  /** "porch": left out for no-contact pickup (the default); "meet": handed over in person. */
+  handoff?: JunkHandoff;
   /** A multi-item post: the separate things in it (empty for a single item). */
   pieces: JunkPiece[];
   reports: number;
@@ -110,11 +117,13 @@ export interface JunkStore extends ClaimStore {
   /** When the person agreed to the Terms and whether they're banned (null: never seen). */
   member(userId: string): Promise<JunkMember | null>;
   acceptTerms(userId: string, at: string): Promise<void>;
+  /** Saves when the account was made and how they sign in, for the member card others see. */
+  touchMember(userId: string, joinedAt: string | null, provider: string | null): Promise<void>;
   addFeedback(f: { id: string; userId: string; userName: string; body: string; createdAt: string }): Promise<void>;
   countFeedbackSince(userId: string, since: string): Promise<number>;
 }
 
-export interface JunkMember { termsAt: string | null; bannedAt: string | null }
+export interface JunkMember { termsAt: string | null; bannedAt: string | null; joinedAt?: string | null; provider?: string | null }
 
 export interface JunkPhotos {
   put(path: string, jpeg: Uint8Array): Promise<void>;
@@ -153,6 +162,14 @@ export const FRESH_DAYS = 45;
 export const HIDE_AFTER_REPORTS = 3;
 export const MAX_PIECES = 12;
 export const FEEDBACK_PER_DAY = 5;
+/** Accounts younger than this get tighter daily limits (bots and throwaway accounts are usually brand new). */
+export const NEW_ACCOUNT_HOURS = 48;
+export const NEW_ITEMS_PER_DAY = 3;
+export const NEW_CLAIMS_PER_DAY = 3;
+export const NEW_CHATS_PER_DAY = 5;
+export const CHATS_PER_DAY = 40;
+/** A member card says "New member" for this long. */
+export const NEW_MEMBER_DAYS = 14;
 
 const ok = (body?: unknown): Res => ({ status: 200, body });
 const bad = (message: string): Res => ({ status: 400, body: message });
@@ -248,7 +265,12 @@ const decodeJpeg = (v: unknown): Uint8Array | null => {
   }
 };
 
-const itemOut = (deps: JunkDeps, i: JunkItem, me: string | null, km?: number, claims: JunkClaim[] = []) => ({
+export interface OwnerCard { since: string | null; provider: string | null; given: number; isNew: boolean }
+
+const itemOut = (
+  deps: JunkDeps, i: JunkItem, me: string | null, km?: number, claims: JunkClaim[] = [],
+  extra: { spotOk?: boolean; owner?: OwnerCard } = {},
+) => ({
   id: i.id,
   title: i.title,
   description: i.description,
@@ -268,6 +290,10 @@ const itemOut = (deps: JunkDeps, i: JunkItem, me: string | null, km?: number, cl
   // Only the owner gets the saved spot back (to edit it); everyone else just sees the distance.
   ...(me !== null && me === i.ownerId ? { lat: i.lat, lng: i.lng } : {}),
   firstCome: !!i.firstCome,
+  handoff: i.handoff === 'meet' ? 'meet' : 'porch',
+  // The private spot (and the rounded map point) for the poster, whoever is on the way, and people the poster wrote to.
+  ...((me !== null && me === i.ownerId) || extra.spotOk ? { spot: i.spot ?? '', spotOk: true, lat: i.lat, lng: i.lng } : { spotOk: false, hasSpot: !!i.spot }),
+  ...(extra.owner ? { owner: extra.owner } : {}),
   // A multi-item post: each thing, whether it's taken, and whether someone is on the way for it.
   pieces: (() => {
     const held = heldPieces(i, claims);
@@ -321,6 +347,8 @@ function readFields(body: Body, userId: string, prev: JunkItem | null): { fields
   if (!prev || 'pickup' in body) fields.pickup = longStr(body.pickup, 300);
   if (!prev || 'aiDetected' in body) fields.aiDetected = body.aiDetected === true;
   if (!prev || 'firstCome' in body) fields.firstCome = body.firstCome === true;
+  if (!prev || 'spot' in body) fields.spot = longStr(body.spot, 300);
+  if (!prev || 'handoff' in body) fields.handoff = body.handoff === 'meet' ? 'meet' : 'porch';
   if (!prev || 'photos' in body) {
     if (!Array.isArray(body.photos)) return { error: 'Photos missing.' };
     const photos = [...new Set(body.photos.filter((p): p is string => typeof p === 'string'))];
@@ -343,6 +371,8 @@ function readFields(body: Body, userId: string, prev: JunkItem | null): { fields
   }
   const unsafe = listingProblem(fields, body);
   if (unsafe) return { error: unsafe };
+  const personal = personalDetails([fields.title ?? '', fields.description ?? '', fields.pickup ?? '', ...(fields.pieces ?? []).map((p) => p.title)].join('\n'));
+  if (personal) return { error: personal };
   return { fields };
 }
 
@@ -351,7 +381,7 @@ const ALL_RULES = SAFETY_RULES.map((r) => r.key);
  *  rule; longer text skips plain animal names ("my dog chewed one leg" is fine). */
 export function listingProblem(fields: Partial<JunkItem>, body: Body = {}): string | null {
   const strict = [fields.title ?? '', ...(fields.tags ?? []), ...(fields.pieces ?? []).map((p) => p.title)].join(' . ');
-  const loose = [fields.description ?? '', fields.pickup ?? ''].join(' . ');
+  const loose = [fields.description ?? '', fields.pickup ?? '', fields.spot ?? ''].join(' . ');
   const labels = Array.isArray(body.labels)
     ? body.labels
       .filter((l): l is { label: string; confidence: number } => !!l && typeof (l as Body).label === 'string' && typeof (l as Body).confidence === 'number')
@@ -403,6 +433,25 @@ export async function junkRoute(
     return ended;
   };
 
+  /** Whether `me` may see the listing's private pickup spot: they're on the way, or the poster wrote to them about it. */
+  const canSeeSpot = async (item: JunkItem, claims: JunkClaim[]) => {
+    if (!me) return false;
+    if (me === item.ownerId) return true;
+    if (claims.some((c) => c.claimerId === me)) return true;
+    return (await store.messagesFor(me, 500)).some((m) => m.itemId === item.id && m.fromId === item.ownerId && m.toId === me);
+  };
+  const ownerCard = async (ownerId: string): Promise<OwnerCard> => {
+    const [m, theirs] = await Promise.all([store.member(ownerId), store.byOwner(ownerId)]);
+    const since = m?.joinedAt ?? null;
+    return {
+      since,
+      provider: m?.provider ?? null,
+      given: theirs.filter((x) => x.status === 'gone').length,
+      isNew: !since || now.getTime() - Date.parse(since) < NEW_MEMBER_DAYS * 86_400_000,
+    };
+  };
+  const newAccount = () => !!ctx.userCreatedAt && now.getTime() - Date.parse(ctx.userCreatedAt) < NEW_ACCOUNT_HOURS * 3_600_000;
+
   // ---- Browse (no sign-in needed) ----
   if (section === 'items' && !a && method === 'GET') {
     const lat = num(params?.get('lat')), lng = num(params?.get('lng'));
@@ -432,7 +481,8 @@ export async function junkRoute(
     if (!item || (item.status === 'hidden' && item.ownerId !== me)) return notFound;
     const lat = num(params?.get('lat')), lng = num(params?.get('lng'));
     const km = isLat(lat) && isLng(lng) ? distanceKm(lat, lng, item.lat, item.lng) : undefined;
-    return ok(itemOut(deps, item, me, km, await liveClaimsOn(item.id)));
+    const claims = await liveClaimsOn(item.id);
+    return ok(itemOut(deps, item, me, km, claims, { spotOk: await canSeeSpot(item, claims), owner: await ownerCard(item.ownerId) }));
   }
 
   if (section === 'categories' && method === 'GET') return ok({ categories: JUNK_CATEGORIES, conditions: JUNK_CONDITIONS });
@@ -445,6 +495,9 @@ export async function junkRoute(
     const m = await store.member(me);
     if (m?.bannedAt) return { status: 403, body: 'Your account can\'t post or send messages on Curbsy because it broke the Terms. Use Contact Curbsy in the Me tab if you think this is a mistake.' };
     if (!m?.termsAt) return { status: 428, body: 'Please agree to the Curbsy Terms first.' };
+    if (ctx.userCreatedAt && (m.joinedAt !== ctx.userCreatedAt || (m.provider ?? null) !== (ctx.userProvider ?? null))) {
+      await store.touchMember(me, ctx.userCreatedAt, ctx.userProvider ?? null);
+    }
     return null;
   };
 
@@ -497,7 +550,7 @@ export async function junkRoute(
   if (section === 'items' && !a && method === 'POST') {
     const stop = await gate();
     if (stop) return stop;
-    if (await store.countItemsSince(me, daysAgo(now, 1)) >= ITEMS_PER_DAY) {
+    if (await store.countItemsSince(me, daysAgo(now, 1)) >= (newAccount() ? NEW_ITEMS_PER_DAY : ITEMS_PER_DAY)) {
       return { status: 429, body: 'You\'ve posted a lot today. Try again tomorrow.' };
     }
     const read = readFields(body, me, null);
@@ -507,7 +560,7 @@ export async function junkRoute(
       id: ctx.newId(), ownerId: me, ownerName: myName,
       title: f.title!, description: f.description!, category: f.category!, tags: f.tags!, condition: f.condition!,
       pickup: f.pickup!, photos: f.photos!, lat: f.lat!, lng: f.lng!, aiDetected: f.aiDetected!, firstCome: f.firstCome!,
-      pieces: f.pieces ?? [],
+      pieces: f.pieces ?? [], spot: f.spot ?? '', handoff: f.handoff ?? 'porch',
       status: 'available', reports: 0, searchText: '', createdAt: nowIso, updatedAt: nowIso,
     };
     item.searchText = searchTextOf(item);
@@ -588,7 +641,7 @@ export async function junkRoute(
     if (last && last.status !== 'cancelled' && last.endedAt && now.getTime() - Date.parse(last.endedAt) < RECLAIM_COOLDOWN_MIN * 60_000) {
       return { status: 429, body: 'Your last claim on this was released. Give others a chance for a bit, or message the poster.' };
     }
-    if (await store.countClaimsSince(me, daysAgo(now, 1)) >= CLAIMS_PER_DAY) {
+    if (await store.countClaimsSince(me, daysAgo(now, 1)) >= (newAccount() ? NEW_CLAIMS_PER_DAY : CLAIMS_PER_DAY)) {
       return { status: 429, body: 'That\'s a lot of trips today. Try again tomorrow.' };
     }
     const claim = newClaim({ id: ctx.newId(), itemId: item.id, ownerId: item.ownerId, claimerId: me, claimerName: myName, km, now, shared: !!item.firstCome || bundle, pieceIds });
@@ -753,7 +806,7 @@ export async function junkRoute(
       return ok({
         item: item ? itemOut(deps, item, me) : null,
         otherName: msgs.find((m) => m.fromId === other)?.fromName || (item?.ownerId === other ? item.ownerName : 'Neighbor'),
-        messages: msgs.map((m) => ({ id: m.id, body: m.body, mine: m.fromId === me, createdAt: m.createdAt })),
+        messages: msgs.map((m) => ({ id: m.id, body: m.body, mine: m.fromId === me, createdAt: m.createdAt, ...(hasContactDetails(m.body) ? { offApp: true } : {}) })),
       });
     }
     if (method === 'POST') {
@@ -773,9 +826,21 @@ export async function junkRoute(
       if (stop) return stop;
       const rude = checkText(text, CHAT_RULES);
       if (rude) return bad(rude.reason);
+      // Starting a new conversation: a few a day for brand-new accounts, so bots can't message everyone.
+      const mine = await store.messagesFor(me, 500);
+      if (!mine.some((m) => m.itemId === a && (m.fromId === other || m.toId === other))) {
+        const started = new Set<string>();
+        const since = daysAgo(now, 1);
+        const firsts = new Map<string, JunkMessage>();
+        for (const m of mine) firsts.set(`${m.itemId}/${m.fromId === me ? m.toId : m.fromId}`, m); // oldest wins (list is newest first)
+        for (const [k, m] of firsts) if (m.fromId === me && m.createdAt >= since) started.add(k);
+        if (started.size >= (newAccount() ? NEW_CHATS_PER_DAY : CHATS_PER_DAY)) {
+          return { status: 429, body: 'That\'s a lot of new conversations today. Try again tomorrow.' };
+        }
+      }
       const msg: JunkMessage = { id: ctx.newId(), itemId: a, fromId: me, toId: other, fromName: myName, body: text, createdAt: nowIso, readAt: null };
       await store.addMessage(msg);
-      return ok({ id: msg.id, body: msg.body, mine: true, createdAt: msg.createdAt });
+      return ok({ id: msg.id, body: msg.body, mine: true, createdAt: msg.createdAt, ...(hasContactDetails(text) ? { offApp: true } : {}) });
     }
   }
 

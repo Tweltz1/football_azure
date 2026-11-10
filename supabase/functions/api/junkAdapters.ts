@@ -24,7 +24,7 @@ const OPEN = ['active', 'arrived'];
 
 interface ItemDb {
   id: string; owner_id: string; owner_name: string; title: string; description: string; category: string; tags: string[];
-  condition: string; pickup: string; photos: string[]; lat: number; lng: number; status: string; ai_detected: boolean; first_come?: boolean; pieces?: JunkItem['pieces'];
+  condition: string; pickup: string; photos: string[]; lat: number; lng: number; status: string; ai_detected: boolean; first_come?: boolean; pieces?: JunkItem['pieces']; private_spot?: string; handoff?: string;
   reports: number; search_text: string; created_at: string; updated_at: string;
 }
 interface MessageDb { id: string; item_id: string; from_id: string; to_id: string; from_name: string; body: string; created_at: string; read_at: string | null }
@@ -33,12 +33,12 @@ const itemRow = (r: ItemDb): JunkItem => ({
   id: r.id, ownerId: r.owner_id, ownerName: r.owner_name, title: r.title, description: r.description,
   category: r.category as JunkItem['category'], tags: r.tags ?? [], condition: r.condition as JunkItem['condition'],
   pickup: r.pickup, photos: r.photos ?? [], lat: r.lat, lng: r.lng, status: r.status as JunkItem['status'],
-  aiDetected: r.ai_detected, firstCome: !!r.first_come, pieces: Array.isArray(r.pieces) ? r.pieces : [], reports: r.reports, searchText: r.search_text, createdAt: r.created_at, updatedAt: r.updated_at,
+  aiDetected: r.ai_detected, firstCome: !!r.first_come, pieces: Array.isArray(r.pieces) ? r.pieces : [], spot: r.private_spot ?? '', handoff: r.handoff === 'meet' ? 'meet' : 'porch', reports: r.reports, searchText: r.search_text, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const itemDb = (i: JunkItem): ItemDb => ({
   id: i.id, owner_id: i.ownerId, owner_name: i.ownerName, title: i.title, description: i.description, category: i.category,
   tags: i.tags, condition: i.condition, pickup: i.pickup, photos: i.photos, lat: i.lat, lng: i.lng, status: i.status,
-  ai_detected: i.aiDetected, first_come: !!i.firstCome, pieces: i.pieces, reports: i.reports, search_text: i.searchText, created_at: i.createdAt, updated_at: i.updatedAt,
+  ai_detected: i.aiDetected, first_come: !!i.firstCome, pieces: i.pieces, private_spot: i.spot ?? '', handoff: i.handoff ?? 'porch', reports: i.reports, search_text: i.searchText, created_at: i.createdAt, updated_at: i.updatedAt,
 });
 const messageRow = (r: MessageDb): JunkMessage => ({
   id: r.id, itemId: r.item_id, fromId: r.from_id, toId: r.to_id, fromName: r.from_name, body: r.body, createdAt: r.created_at, readAt: r.read_at,
@@ -154,9 +154,12 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       return paths;
     },
     async member(userId) {
-      const r = must(await db.from('junk_members').select('terms_at, banned_at').eq('user_id', userId).maybeSingle()) as
-        { terms_at: string | null; banned_at: string | null } | null;
-      return r ? { termsAt: r.terms_at, bannedAt: r.banned_at } : null;
+      const r = must(await db.from('junk_members').select('terms_at, banned_at, joined_at, provider').eq('user_id', userId).maybeSingle()) as
+        { terms_at: string | null; banned_at: string | null; joined_at: string | null; provider: string | null } | null;
+      return r ? { termsAt: r.terms_at, bannedAt: r.banned_at, joinedAt: r.joined_at, provider: r.provider } : null;
+    },
+    async touchMember(userId, joinedAt, provider) {
+      must(await db.from('junk_members').upsert({ user_id: userId, joined_at: joinedAt, provider }, { onConflict: 'user_id' }));
     },
     async acceptTerms(userId, at) {
       // Keeps any ban: only terms_at is written on a conflict.

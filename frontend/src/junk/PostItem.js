@@ -15,7 +15,7 @@ const MAX_PHOTOS = 6;
 // Set to true to also ask Gemini when Apple isn't sure what the photo shows.
 const GEMINI_BACKUP = false;
 
-const EMPTY = { title: '', description: '', category: '', condition: 'good', tags: [], pickup: '', firstCome: false };
+const EMPTY = { title: '', description: '', category: '', condition: 'good', tags: [], pickup: '', spot: '', handoff: 'porch', firstCome: false };
 const MAX_PIECES = 12;
 let pieceSeq = 0;
 const newPiece = (fields = {}) => ({ key: `n${++pieceSeq}`, title: '', category: '', box: null, photo: 0, gone: false, ...fields });
@@ -66,7 +66,7 @@ export default function PostItem() {
     if (!editing || !me) return;
     getItem(id).then((item) => {
       if (!item.mine) { navigate(`/junk/item/${id}`, { replace: true }); return; }
-      setForm({ title: item.title, description: item.description, category: item.category, condition: item.condition, tags: item.tags, pickup: item.pickup, firstCome: !!item.firstCome });
+      setForm({ title: item.title, description: item.description, category: item.category, condition: item.condition, tags: item.tags, pickup: item.pickup, spot: item.spot || '', handoff: item.handoff || 'porch', firstCome: !!item.firstCome });
       setPieces((item.pieces || []).map((p) => ({ ...newPiece(), ...p, key: p.id })));
       setPhotos(item.photos.map((url) => ({ key: url, url, preview: url, path: decodeURIComponent(url.split('/junk-photos/')[1] || '') })));
       setDetected(item.aiDetected);
@@ -326,6 +326,24 @@ export default function PostItem() {
           <span>Pickup details <em>optional</em></span>
           <textarea value={form.pickup} onChange={(e) => set('pickup', e.target.value)} rows={2} maxLength={300}
             placeholder="On the curb, grab it anytime. Or: message me to set a time." />
+        </label>
+
+        <div className="jk-field">
+          <span>How does pickup work?</span>
+          <div className="jk-seg jk-seg-wide" role="group" aria-label="Pickup style">
+            <button type="button" className={form.handoff !== 'meet' ? 'is-on' : ''} onClick={() => set('handoff', 'porch')}>Porch / curb (no contact)</button>
+            <button type="button" className={form.handoff === 'meet' ? 'is-on' : ''} onClick={() => set('handoff', 'meet')}>Meet in person</button>
+          </div>
+          <small className="jk-muted">
+            {form.handoff === 'meet' ? 'Safest in a public place in daylight, like a store parking lot.' : 'Safest: leave it out and nobody has to meet.'}
+          </small>
+        </div>
+
+        <label className="jk-field">
+          <span>Exact spot <em>private</em></span>
+          <textarea value={form.spot} onChange={(e) => set('spot', e.target.value)} rows={2} maxLength={300}
+            placeholder="Street address, which door or side of the house" />
+          <small className="jk-muted">Only shown to someone on their way to get it, or someone you've written back to. Everyone else sees the distance.</small>
         </label>
 
         <label className="jk-toggle">

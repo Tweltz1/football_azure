@@ -47,6 +47,9 @@ export interface Ctx {
   displayName: string | null;
   /** Signed-in user's email (Talk Shops staff invites check it). */
   userEmail?: string | null;
+  /** When the sign-in account was made, and how they sign in (apple, google, github). */
+  userCreatedAt?: string | null;
+  userProvider?: string | null;
 }
 
 export interface Res {

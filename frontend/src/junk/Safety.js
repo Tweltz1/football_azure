@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { agreeToTerms, contactCurbsy } from './junkApi';
-import { IconClose } from './icons';
+import { IconClose, IconPin } from './icons';
 
 // Curbsy's free safety checks on the phone, plus the Terms and Contact sheets (App Store guideline 1.2).
 // The server checks every listing's words too (supabase/functions/_shared/junkSafety.ts).
@@ -117,4 +117,90 @@ export function ContactSheet({ onClose }) {
       </form>
     </div>
   );
+}
+
+// ---- Safer pickups ----
+
+const TIPS_KEY = 'junk.safetyTipsSeen';
+export const tipsSeen = () => {
+  try { return window.localStorage.getItem(TIPS_KEY) === '1'; } catch (error) { return false; }
+};
+const markTipsSeen = () => {
+  try { window.localStorage.setItem(TIPS_KEY, '1'); } catch (error) { /* private mode: shown again next time */ }
+};
+
+/** Shown before someone's first "I'm on my way". */
+export function SafetyTipsSheet({ handoff, onDone, onCancel }) {
+  return (
+    <div className="jk-sheet-backdrop" role="presentation" onClick={onCancel}>
+      <div className="jk-sheet" role="dialog" aria-modal="true" aria-label="Pickup safety" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="jk-icon-btn jk-sheet-close" onClick={onCancel} aria-label="Close"><IconClose /></button>
+        <h2>Before you head over</h2>
+        <ul className="jk-rules">
+          {handoff === 'meet'
+            ? <li>This one is handed over in person. Meet somewhere public in daylight, like a store parking lot.</li>
+            : <li>This is a porch or curb pickup. Grab it from where it's left, and don't go inside anyone's home.</li>}
+          <li>Tell a friend where you're going. "Share my trip" sends them the spot and your arrival time.</li>
+          <li>Bring someone along for big items.</li>
+          <li>Everything on Curbsy is free. Never send money, deposits or codes, and keep chatting in the app.</li>
+          <li>If something feels off, leave, then report or block the person.</li>
+        </ul>
+        <button type="button" className="jk-btn jk-btn-primary jk-full" onClick={() => { markTipsSeen(); onDone(); }}>Got it, I'm on my way</button>
+      </div>
+    </div>
+  );
+}
+
+/** The private pickup spot, or where it will show up. */
+export function SpotCard({ item }) {
+  if (item.spotOk && (item.spot || typeof item.lat === 'number')) {
+    const map = typeof item.lat === 'number' ? `https://maps.apple.com/?ll=${item.lat},${item.lng}&q=${encodeURIComponent(item.title)}` : null;
+    return (
+      <div className="jk-pickup jk-spot">
+        <span className="jk-fact-label">Exact spot {item.mine ? '(private)' : '(shared with you)'}</span>
+        {item.spot ? <p>{item.spot}</p> : <p className="jk-muted">No exact spot added.</p>}
+        {map && !item.mine && <a className="jk-link" href={map} target="_blank" rel="noreferrer"><IconPin size={16} /> Open in Maps</a>}
+      </div>
+    );
+  }
+  if (item.hasSpot) {
+    return <p className="jk-muted jk-spot-note">The exact spot is shared once you tap "I'm on my way" or the poster messages you back.</p>;
+  }
+  return null;
+}
+
+const PROVIDERS = { apple: 'Apple', google: 'Google', github: 'GitHub' };
+const monthYear = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+
+/** Who's giving it away: how long they've been here, how they sign in, and what they've given. */
+export function MemberCard({ name, owner }) {
+  return (
+    <div className="jk-member">
+      <div className="jk-avatar jk-avatar-sm" aria-hidden="true">{(name || '?').slice(0, 1).toUpperCase()}</div>
+      <div>
+        <strong>{name}</strong>
+        {owner.isNew && <span className="jk-pill jk-pill-warn">New member</span>}
+        <p className="jk-muted">
+          {[
+            owner.since ? `Joined ${monthYear(owner.since)}` : null,
+            owner.provider && PROVIDERS[owner.provider] ? `Signed in with ${PROVIDERS[owner.provider]}` : null,
+            `${owner.given} given away`,
+          ].filter(Boolean).join(' · ')}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** "Share my trip": sends a friend where you're going and roughly when you'll get there. */
+export async function shareTrip(item, claim) {
+  const map = typeof item.lat === 'number' ? ` https://maps.apple.com/?ll=${item.lat},${item.lng}` : '';
+  const eta = claim && claim.etaMin ? `, about ${claim.etaMin} min away` : '';
+  const text = `I'm picking up "${item.title}" through Curbsy${eta}.${item.spot ? ` Spot: ${item.spot}.` : ''}${map}`;
+  try {
+    if (navigator.share) { await navigator.share({ text }); return; }
+  } catch (error) {
+    if (error && error.name === 'AbortError') return;
+  }
+  window.location.href = `sms:&body=${encodeURIComponent(text)}`;
 }

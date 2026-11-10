@@ -190,6 +190,17 @@ export const SAFETY_RULES: SafetyRule[] = [
     allow: [],
   },
   {
+    // Everything on Curbsy is free, so asking for money is how scams start.
+    key: 'money',
+    reason: 'Everything on Curbsy is free, so payments, deposits and fees can\'t be asked for.',
+    words: [
+      'venmo', 'zelle', 'cashapp', 'cash app', 'paypal', 'apple pay me', 'deposit', 'holding fee', 'small fee', 'shipping fee',
+      'pay for shipping', 'pay shipping', 'delivery fee', 'send money', 'wire transfer', 'western union', 'moneygram', 'bitcoin',
+      'crypto', 'gift card code', 'verification code', 'verify code', 'google voice code', 'obo', 'or best offer',
+    ],
+    allow: ['no deposit', 'no deposits'],
+  },
+  {
     key: 'hate',
     reason: 'Hateful or abusive language isn\'t allowed on Curbsy.',
     words: [
@@ -209,7 +220,7 @@ export const SAFETY_RULES: SafetyRule[] = [
 ];
 
 /** Rules that also apply to private chat messages (the rest only matter for public listings). */
-export const CHAT_RULES = ['hate'];
+export const CHAT_RULES = ['hate', 'money'];
 
 // Look-alike characters inside a word ("w33d", "p0rn", "c@nnabis"). Only these, so "cat5" or "2x4" stay as they are.
 const LEET: Record<string, string> = { '0': 'o', '1': 'i', '3': 'e', '@': 'a', '$': 's' };
@@ -264,3 +275,25 @@ export function checkText(text: string, only?: string[]): SafetyHit | null {
 export const LABEL_MIN_CONFIDENCE = 0.5;
 /** Photo label rules: only the clear-cut ones (a dog lying next to a couch shouldn't stop the post). */
 export const LABEL_RULES = ['weapons', 'drugs', 'tobacco', 'adult'];
+
+// ---- Personal details in public listings ----
+
+const STREET = '(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|ct|court|way|pl|place|ter|terrace|cir|circle|pkwy|parkway|hwy|highway|trl|trail|sq|square|cres|crescent)';
+/** "1234 Maple St", "55 N Elm Avenue", "Apt 4B", "unit #12". A number right before a street word ("3 way lamp") doesn't count. */
+const ADDRESS = new RegExp(`\\b\\d{1,6}\\s+(?:[nsew]\\.?\\s+)?[a-z][a-z0-9.'-]*(?:\\s+[a-z0-9.'-]+){0,3}\\s+${STREET}\\b\\.?|\\b(?:apt|apartment|unit|suite|ste)\\.?\\s*#?\\s*\\d+[a-z]?\\b`, 'i');
+const PHONE = /(?:\+?1[\s.-]?)?\(?\b\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}\b/;
+const EMAIL = /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/i;
+
+/** Why this public text shouldn't hold personal details, or null. */
+export function personalDetails(text: string): string | null {
+  if (ADDRESS.test(text)) {
+    return 'Keep your street address out of the public listing. Put it in "Exact spot (private)" instead: only the person coming to pick it up sees it.';
+  }
+  if (PHONE.test(text) || EMAIL.test(text)) {
+    return 'Keep phone numbers and emails out of the public listing. People can message you in Curbsy.';
+  }
+  return null;
+}
+
+/** Off-app contact details in a chat message (allowed, but the app suggests staying in Curbsy). */
+export const hasContactDetails = (text: string) => PHONE.test(text) || EMAIL.test(text);

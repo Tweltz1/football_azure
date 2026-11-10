@@ -104,6 +104,7 @@ export function Chat() {
       const sent = await sendMessage(itemId, otherId, msg);
       setChat((c) => ({ ...c, messages: [...(c?.messages || []), sent] }));
       setText('');
+      if (sent.offApp) setError('Tip: keep chatting in Curbsy. If something goes wrong, we can only help with messages sent here.');
     } catch (err) {
       if (err.status === 428) {
         retryAfterTerms.current = () => send(msg);
@@ -160,6 +161,7 @@ export function Chat() {
         {chat && chat.messages.map((m) => (
           <div key={m.id} className={`jk-bubble${m.mine ? ' is-mine' : ''}`}>
             <p>{m.body}</p>
+            {m.offApp && !m.mine && <small className="jk-bubble-warn">Careful moving off Curbsy. Never send money or codes.</small>}
             <time dateTime={m.createdAt}>{timeAgo(m.createdAt)}</time>
           </div>
         ))}

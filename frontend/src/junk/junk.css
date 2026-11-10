@@ -772,3 +772,14 @@ body.jk-body::before { background: #f5f3ee; }
   width: 100%; box-sizing: border-box; margin: 4px 0 12px; padding: 12px; border-radius: 12px;
   border: 1px solid var(--jk-line); background: var(--jk-surface); color: inherit; font: inherit; resize: vertical;
 }
+.jk-seg-wide { display: flex; width: 100%; margin: 4px 0; }
+.jk-seg-wide button { flex: 1; padding: 9px 8px; }
+.jk-spot { border: 1px dashed var(--jk-line); border-radius: 12px; padding: 10px 12px; }
+.jk-spot .jk-link { display: inline-flex; gap: 4px; align-items: center; margin-top: 4px; }
+.jk-spot-note { font-size: 13px; margin: 6px 0; }
+.jk-member { display: flex; gap: 12px; align-items: center; margin: 14px 0 6px; padding: 12px; border-radius: 14px; background: var(--jk-surface-2); }
+.jk-member strong { margin-right: 8px; }
+.jk-member p { margin: 2px 0 0; font-size: 13px; }
+.jk-avatar-sm { width: 40px; height: 40px; font-size: 17px; flex: none; }
+.jk-share-trip { display: block; margin-top: 6px; font-size: 14px; }
+.jk-bubble-warn { display: block; font-size: 12px; margin-top: 4px; color: var(--jk-warn, #b26b00); }

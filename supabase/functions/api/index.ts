@@ -112,6 +112,8 @@ interface SignedInUser {
   id: string;
   displayName: string | null;
   email: string | null;
+  createdAt: string | null;
+  provider: string | null;
 }
 
 async function getSignedInUser(req: Request): Promise<SignedInUser | null> {
@@ -128,6 +130,8 @@ async function getSignedInUser(req: Request): Promise<SignedInUser | null> {
     id: data.user.id,
     displayName: pick('user_name', 'preferred_username', 'full_name', 'name') ?? data.user.email ?? null,
     email: data.user.email ?? null,
+    createdAt: data.user.created_at ?? null,
+    provider: typeof data.user.app_metadata?.provider === 'string' ? data.user.app_metadata.provider : null,
   };
 }
 
@@ -193,6 +197,8 @@ Deno.serve(async (req) => {
       userId: user?.id ?? null,
       displayName: user?.displayName ?? null,
       userEmail: user?.email ?? null,
+      userCreatedAt: user?.createdAt ?? null,
+      userProvider: user?.provider ?? null,
     };
 
     const parts = path.split('/').filter(Boolean).map((p) => decodeURIComponent(p));
