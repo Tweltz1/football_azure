@@ -41,16 +41,20 @@ export function ToteProvider({ children }: { children: ReactNode }) {
   const loaded = useRef(false);
 
   useEffect(() => {
-    Promise.all([AsyncStorage.getItem(KEY), AsyncStorage.getItem(TOMB_KEY)])
-      .then(([raw, tomb]) => {
+    (async () => {
+      let raw: string | null = null;
+      try {
+        raw = await AsyncStorage.getItem(KEY);
         if (raw) setTotes(JSON.parse(raw));
+        const tomb = await AsyncStorage.getItem(TOMB_KEY);
         if (tomb) setTombstones(JSON.parse(tomb));
-      })
-      .catch(() => {})
-      .finally(() => {
-        loaded.current = true;
-        setReady(true);
-      });
+      } catch {
+        // Never let a bad read turn into saving an empty list over the real one: keep a copy first.
+        if (raw) await AsyncStorage.setItem(`${KEY}.backup.${Date.now()}`, raw).catch(() => {});
+      }
+      loaded.current = true;
+      setReady(true);
+    })();
   }, []);
 
   useEffect(() => {

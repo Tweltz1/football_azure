@@ -89,3 +89,48 @@ if patch:
     print("Auth settings updated: " + ", ".join(sorted(patch)))
 else:
     print("Auth settings: already set")
+
+# In-app account deletion (App Store guideline 5.1.1(v)). The sign-in is shared with Hood League, so
+# the sign-in itself is only deleted when no other app's table still has rows for this person.
+ACCOUNT_SQL = """
+create or replace function public.totetrack_delete_account() returns text
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  r record;
+  shared boolean := false;
+begin
+  if uid is null then
+    raise exception 'Not signed in';
+  end if;
+  delete from public.totetrack_totes where user_id = uid;
+  if to_regclass('public.totetrack_photos') is not null then
+    execute 'delete from public.totetrack_photos where user_id = $1' using uid;
+  end if;
+  for r in
+    select c.conrelid::regclass as tbl, a.attname as col
+    from pg_constraint c
+    join pg_class k on k.oid = c.conrelid
+    join pg_namespace n on n.oid = k.relnamespace
+    join pg_attribute a on a.attrelid = c.conrelid and a.attnum = c.conkey[1]
+    where c.contype = 'f'
+      and c.confrelid = 'auth.users'::regclass
+      and n.nspname not in ('auth', 'storage')
+      and k.relname not like 'totetrack\\_%'
+  loop
+    execute format('select exists (select 1 from %s where %I = $1)', r.tbl, r.col) into shared using uid;
+    exit when shared;
+  end loop;
+  if shared then
+    return 'data';
+  end if;
+  delete from auth.users where id = uid;
+  return 'account';
+end;
+$$;
+revoke all on function public.totetrack_delete_account() from public, anon;
+grant execute on function public.totetrack_delete_account() to authenticated;
+"""
+
+call("POST", "/database/query", {"query": ACCOUNT_SQL})
+print("totetrack_delete_account function: ready")

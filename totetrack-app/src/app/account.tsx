@@ -43,17 +43,23 @@ export default function Account() {
 
   const deleteAccount = () =>
     Alert.alert(
-      'Delete your ToteTrack account data?',
-      'This permanently deletes every tote and photo backed up to your account and signs you out. Totes on this phone are kept.',
+      'Delete your ToteTrack account?',
+      'This permanently deletes your account and every tote and photo backed up to it, then signs you out. Totes on this phone are kept.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Delete account',
           style: 'destructive',
           onPress: async () => {
             try {
-              await sync.deleteCloudData();
+              const what = await sync.deleteAccount();
               await auth.signOut();
+              Alert.alert(
+                what === 'account' ? 'Account deleted' : 'Backup deleted',
+                what === 'account'
+                  ? 'Your account and everything backed up to it are gone.'
+                  : 'Everything ToteTrack backed up is gone. Your sign-in is also used by another of our apps, so it was kept for that app.',
+              );
             } catch (e) {
               Alert.alert("Couldn't delete", e instanceof Error ? e.message : String(e));
             }
@@ -90,12 +96,15 @@ export default function Account() {
               <SyncBadge />
             </Card>
             <Text style={[styles.note, { color: t.textMuted }]}>
-              Your {totes.length} totes and {items} items are backed up. Sign in with the same account on a new phone and they come right back.
+              {sync.status === 'error'
+                ? `Your ${totes.length} totes and ${items} items are saved on this phone. The last backup didn’t go through, so ToteTrack will keep trying.`
+                : `Your ${totes.length} totes and ${items} items are backed up. Sign in with the same account on a new phone and they come right back.`}
+              {' '}Packing lists stay on this phone.
             </Text>
             <Button title="Sync now" icon="sync" variant="secondary" onPress={sync.syncNow} style={{ marginTop: 16 }} />
             <Button title="Sign out" icon="log-out-outline" variant="secondary" onPress={signOut} style={{ marginTop: 10 }} />
             <Pressable onPress={deleteAccount} style={{ alignSelf: 'center', marginTop: 28, padding: 8 }}>
-              <Text style={{ color: t.danger, fontWeight: '600' }}>Delete account data</Text>
+              <Text style={{ color: t.danger, fontWeight: '600' }}>Delete account</Text>
             </Pressable>
           </>
         ) : (
