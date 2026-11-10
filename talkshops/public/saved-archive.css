@@ -3,7 +3,7 @@
 .suggest-wrap input{flex:1;min-width:0;padding-right:36px}
 .suggest-btn{position:absolute;right:3px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);width:30px;height:30px;border-radius:6px;font-size:13px}
 .suggest-btn:hover{background:var(--surface-2);color:var(--fg)}
-.suggest{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:50;background:var(--surface);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px rgba(10,15,22,.18);max-height:min(260px,45vh);overflow-y:auto;overscroll-behavior:contain;font-weight:400}
+.suggest{position:absolute;left:0;right:0;min-width:min(320px,calc(100vw - 56px));top:calc(100% + 4px);z-index:50;background:var(--surface);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 24px rgba(10,15,22,.18);max-height:min(260px,45vh);overflow-y:auto;overscroll-behavior:contain;font-weight:400}
 .suggest-h{position:sticky;top:0;background:var(--surface-2);border-bottom:1px solid var(--line);padding:6px 10px;font-size:12px;color:var(--muted);font-weight:600}
 .suggest-o{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;font-size:14px;border-bottom:1px solid var(--line)}
 .suggest-o:last-child{border-bottom:0}

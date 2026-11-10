@@ -139,35 +139,108 @@
   const spot = document.createElement("div"); spot.id = "tourSpot";
   const block = document.createElement("div"); block.id = "tourBlock";
   function reveal(el, behavior = "smooth") {
-    if (!el?.scrollIntoView || el.closest(".tabs,.topbar")) return;
+    if (!el?.scrollIntoView) return;
+    // The tab bar and the top bar are not scrolled into the middle; on a wide screen, scroll back up to them if they are out of sight.
+    if (el.closest(".tabs,.topbar")) { if (el.getBoundingClientRect().bottom < 0) window.scrollTo({ top: 0, behavior }); return; }
     const mobile = window.matchMedia("(max-width:760px)").matches;
-    el.scrollIntoView({ block: mobile ? "center" : "nearest", inline: "nearest", behavior });
+    const tall = el.getBoundingClientRect().height > document.documentElement.clientHeight - 200;
+    el.scrollIntoView({ block: tall ? "start" : mobile ? "center" : "nearest", inline: "nearest", behavior });
+  }
+  // How to find a highlighted element again after the page re-draws it (the demo re-renders on most changes).
+  let spotLoc = null;
+  const textOf = (e) => (e.textContent || "").replace(/\s+/g, " ").trim().slice(0, 60);
+  function locator(el) {
+    const path = []; let e = el;
+    while (e && e !== document.body && !e.id) { const p = e.parentElement; if (!p) break; path.unshift([...p.children].indexOf(e)); e = p; }
+    const sig = el.tagName.toLowerCase() + [...el.classList].map((c) => "." + CSS.escape(c)).join("");
+    return { root: e && e !== document.body && e.id ? e.id : null, path, tag: el.tagName, cls: el.classList[0] || "", sig, text: textOf(el), idx: qa(sig).indexOf(el) };
+  }
+  function relocate(loc) {
+    let e = loc.root ? document.getElementById(loc.root) : document.body;
+    for (const i of loc.path) e = e && e.children[i];
+    if (e && e.tagName === loc.tag && (!loc.cls || e.classList.contains(loc.cls)) && textOf(e) === loc.text) return e;
+    // The page changed shape: find the same kind of element with the same words, or failing that, the one in the same place.
+    const all = loc.cls ? qa(loc.sig.split(".").slice(0, 2).join(".")) : [];
+    return all.find((x) => textOf(x) === loc.text) || all.find((x) => x.tagName === loc.tag && textOf(x).slice(0, 20) === loc.text.slice(0, 20)) || null;
+  }
+  function closeSuggest() {
+    const list = q("#suggestList"); if (!list) return;
+    const input = list.closest(".suggest-wrap")?.querySelector("input");
+    if (input && document.activeElement === input) input.blur();
+    else list.closest(".suggest-wrap")?.querySelector("[data-suggest-open]")?.click();
   }
   function highlight(sel) {
     spotSel = sel;
     const el = sel && (typeof sel === "string" ? q(sel) : sel);
+    spotLoc = sel && typeof sel !== "string" && el ? locator(el) : null;
     miss("highlight", sel, el);
+    // A saved-items list left open would sit over the next thing we point at, so close it first.
+    const list = q("#suggestList");
+    if (list && el && !list.contains(el) && !el.contains(list)) closeSuggest();
     reveal(el);
   }
+  // While the page (or a scroll box holding the highlighted thing) is scrolling, hide the box instead of letting it lag behind.
+  const scrolls = new Map();
+  document.addEventListener("scroll", (e) => scrolls.set(e.target, performance.now()), { capture: true, passive: true });
+  const scrollingNow = (el) => {
+    const now = performance.now();
+    for (const [t, at] of scrolls) {
+      if (now - at > 160) { scrolls.delete(t); continue; }
+      if (t === document || t === document.documentElement || t === document.scrollingElement || (t.contains && t.contains(el))) return true;
+    }
+    return false;
+  };
+  window.visualViewport?.addEventListener("scroll", () => scrolls.set(document, performance.now()));
   (function track() {
     let el = spotSel && (typeof spotSel === "string" ? q(spotSel) : spotSel);
+    if (el && !el.isConnected && spotLoc) { const again = relocate(spotLoc); if (again) { spotSel = again; el = again; } }
     // While a pop-up is open, light up the pop-up rather than something it covers.
     const modal = q(".modal-card");
     if (el && modal && !modal.contains(el)) el = modal;
-    if (el && el.isConnected) {
-      const r = el.getBoundingClientRect(), pad = 6;
-      Object.assign(spot.style, { left: r.left - pad + "px", top: r.top - pad + "px", width: r.width + pad * 2 + "px", height: r.height + pad * 2 + "px" });
-      spot.classList.add("on");
+    if (DEBUG) window.__tourSpot = { el: el || null, key: sayKey, step: stepNo };
+    let box = null;
+    if (el && el.isConnected && !scrollingNow(el)) {
+      const r = el.getBoundingClientRect(), pad = 6, ring = 4;
+      const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+      // The part of it you can actually see: inside the screen, inside any scroll box around it, and above the phone tab bar.
+      const L = r.left, T = r.top, R = r.right, B = r.bottom;
+      let cl = 0, ct = 0, cr = vw, cb = vh;
+      for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+        const c = getComputedStyle(a);
+        if (c.overflowX !== "visible" || c.overflowY !== "visible") {
+          const ar = a.getBoundingClientRect();
+          cl = Math.max(cl, ar.left); ct = Math.max(ct, ar.top); cr = Math.min(cr, ar.right); cb = Math.min(cb, ar.bottom);
+        }
+        if (c.position === "fixed") break;
+      }
+      const bar = q(".tabs.has-icons");
+      if (bar && !bar.contains(el) && !el.contains(bar) && getComputedStyle(bar).position === "fixed") {
+        const br = bar.getBoundingClientRect();
+        if (br.height && br.top > vh / 2 && (!el.closest(".sheet,.modal,.more-layer,dialog"))) cb = Math.min(cb, br.top);
+      }
+      if (r.width >= 1 && r.height >= 1 && Math.min(R, cr) - Math.max(L, cl) >= 1 && Math.min(B, cb) - Math.max(T, ct) >= 1) {
+        // Pad it, but where it runs past the screen, a scroll box or the tab bar, draw that edge just inside the visible part.
+        box = {
+          l: L < cl ? cl + ring : Math.max(L - pad, ring - 1),
+          t: T < ct ? ct + ring : Math.max(T - pad, ring - 1),
+          r: R > cr ? cr - ring : Math.min(R + pad, vw - ring + 1),
+          b: B > cb ? cb - ring : Math.min(B + pad, vh - ring + 1),
+        };
+        Object.assign(spot.style, { left: box.l + "px", top: box.t + "px", width: Math.max(0, box.r - box.l) + "px", height: Math.max(0, box.b - box.t) + "px" });
+      }
+    }
+    spot.classList.toggle("on", !!box);
+    if (box) {
       const P = document.getElementById("tourPanel");
       if (P && !P.querySelector("input:focus")) {
         const pr = P.getBoundingClientRect();
-        if (r.top < pr.bottom + 8 && r.bottom > pr.top - 8) {
-          const roomAbove = r.top;
-          const roomBelow = document.documentElement.clientHeight - r.bottom;
+        if (box.t < pr.bottom + 8 && box.b > pr.top - 8) {
+          const roomAbove = box.t;
+          const roomBelow = document.documentElement.clientHeight - box.b;
           P.classList.toggle("top", roomAbove > roomBelow);
         }
       }
-    } else spot.classList.remove("on");
+    }
     requestAnimationFrame(track);
   })();
   async function tap(sel) {
@@ -203,7 +276,8 @@
     <button class="t-btn" id="tEnd" type="button">${lesson ? "End lesson" : "End tour"}</button></div>
     <div class="t-cap" id="tCap" aria-live="polite"></div><div id="tExtra"></div>`;
   function setCaption(t) { q("#tCap").textContent = t; }
-  function setStep(n) { stepNo = n; q("#tStep").textContent = lesson ? `Lesson ${lessonIx + 1}: ${lesson.title} · ${n} of ${STEPS}` : `Guided tour · ${n} of ${STEPS}`; }
+  // A new step starts with no box, so the last step's highlight isn't left on screen while the page moves on.
+  function setStep(n) { stepNo = n; spotSel = null; spotLoc = null; q("#tStep").textContent = lesson ? `Lesson ${lessonIx + 1}: ${lesson.title} · ${n} of ${STEPS}` : `Guided tour · ${n} of ${STEPS}`; }
   function extra(html) { q("#tExtra").innerHTML = html || ""; }
   panel.addEventListener("click", (e) => {
     const id = e.target.id;
@@ -358,7 +432,9 @@
     await wait(700);
     const opt = q("#suggestList .suggest-o");
     if (opt) await tap(opt);
-    await wait(300);
+    await wait(200);
+    closeSuggest(); // picking can re-open the full list; close it so it doesn't sit over what comes next
+    await wait(200);
   }
   async function search(sel, text) {
     await type(sel, text);
