@@ -20,4 +20,6 @@ export const supabase = createClient(url, anonKey || 'missing-anon-key', {
 });
 
 export const TABLE = 'totetrack_totes';
+/** Photos of what's inside totes, one row per photo (base64 JPEG), keyed by file name. */
+export const PHOTO_TABLE = 'totetrack_photos';
 export const AUTH_REDIRECT = 'totetrack://auth';

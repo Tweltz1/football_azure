@@ -1,6 +1,6 @@
 """Sets up ToteTrack's cloud backup in the Hood League Supabase project. Safe to re-run.
 
-- Creates the totetrack_totes table (each user can only read and write their own rows).
+- Creates the totetrack_totes and totetrack_photos tables (each user can only read and write their own rows).
 - Adds totetrack://auth to the sign-in return addresses (for Google sign-in).
 - Adds the app's bundle ID to the Apple sign-in client IDs.
 Only ever adds to existing settings. Never prints the access token."""
@@ -31,6 +31,21 @@ create policy "totetrack own totes" on public.totetrack_totes
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
 grant select, insert, update, delete on public.totetrack_totes to authenticated;
+
+create table if not exists public.totetrack_photos (
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  name text not null,
+  data text,
+  updated_at bigint not null,
+  primary key (user_id, name)
+);
+alter table public.totetrack_photos enable row level security;
+drop policy if exists "totetrack own photos" on public.totetrack_photos;
+create policy "totetrack own photos" on public.totetrack_photos
+  for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+grant select, insert, update, delete on public.totetrack_photos to authenticated;
 """
 
 
@@ -51,7 +66,7 @@ def call(method, path, payload=None):
 
 
 call("POST", "/database/query", {"query": SQL})
-print("totetrack_totes table: ready")
+print("totetrack_totes and totetrack_photos tables: ready")
 
 auth = call("GET", "/config/auth")
 patch = {}

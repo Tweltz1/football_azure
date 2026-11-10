@@ -3,7 +3,9 @@ import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActionSheetIOS, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { InsidePhotos } from '../../components/InsidePhotos';
 import { QRCodeView } from '../../components/QRCodeView';
+import { SwipeRow } from '../../components/SwipeRow';
 import { Button, Card, EmptyState, IconButton, SectionTitle, tap, ToteBadge } from '../../components/ui';
 import { photoUri } from '../../lib/photos';
 import { presetQuery, qrPayload, shortCode } from '../../lib/qr';
@@ -79,6 +81,25 @@ export default function ToteDetail() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => store.removeItem(tote.id, item.id) },
     ]);
+
+  const removeAll = () => {
+    const n = itemCount(tote);
+    Alert.alert(
+      `Remove all ${n} item${n === 1 ? '' : 's'}?`,
+      `This empties the item list for “${tote.name || 'this tote'}”. The tote, its photos and its label stay.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove all',
+          style: 'destructive',
+          onPress: () => {
+            store.clearItems(tote.id);
+            tap();
+          },
+        },
+      ],
+    );
+  };
 
   const move = (item: Item) => {
     const others = store.totes.filter((x) => x.id !== tote.id);
@@ -317,10 +338,12 @@ export default function ToteDetail() {
             ) : null}
           </View>
         ) : (
+          <>
           <Card style={{ padding: 0, marginTop: 12 }}>
+            <View style={{ borderRadius: radius.lg, overflow: 'hidden' }}>
             {tote.items.map((item, idx) => (
+              <SwipeRow key={item.id} color={t.danger} background={t.card} label="Remove" onDelete={() => store.removeItem(tote.id, item.id)}>
               <Pressable
-                key={item.id}
                 onPress={() => itemMenu(item)}
                 style={({ pressed }) => [
                   styles.item,
@@ -372,9 +395,21 @@ export default function ToteDetail() {
                   </Pressable>
                 </View>
               </Pressable>
+              </SwipeRow>
             ))}
+            </View>
           </Card>
+          <View style={styles.listFoot}>
+            <Text style={[styles.hint, { color: t.textMuted }]}>Swipe an item left to remove it.</Text>
+            <Pressable onPress={removeAll} hitSlop={8} accessibilityLabel="Remove all items">
+              <Text style={{ color: t.danger, fontWeight: '600', fontSize: 14 }}>Remove all</Text>
+            </Pressable>
+          </View>
+          </>
         )}
+
+        <SectionTitle>Photos of what’s inside</SectionTitle>
+        <InsidePhotos tote={tote} />
 
         <SectionTitle>QR label</SectionTitle>
         <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
@@ -419,6 +454,8 @@ function Tag({ icon, text, color }: { icon: React.ComponentProps<typeof Ionicons
 }
 
 const styles = StyleSheet.create({
+  listFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingHorizontal: 4 },
+  hint: { fontSize: 13 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   snap: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
