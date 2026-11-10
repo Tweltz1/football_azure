@@ -1,4 +1,4 @@
-"""Creates Grocery Runner's shared aisle table in the Hood League Supabase project. Safe to re-run.
+"""Creates Grocery Runner's shared aisle and partner store tables in the Hood League Supabase project. Safe to re-run.
 
 Row level security is on with no policies, so the phone app can't read or write the table directly;
 only the grocery-runner function (service role) can. Never prints the access token."""
@@ -30,6 +30,44 @@ revoke all on public.grocery_aisle_votes from anon, authenticated;
 create or replace view public.grocery_store_coverage as
   select store_key, count(distinct item_key)::int as items from public.grocery_aisle_votes group by store_key;
 revoke all on public.grocery_store_coverage from anon, authenticated;
+
+-- Partner stores (store-portal function): a store's own aisle list and weekly deals.
+-- key_hash is a SHA-256 of the store's private link key; the key itself is never saved.
+create table if not exists public.grocery_partner_stores (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (char_length(name) <= 80),
+  chain text not null check (char_length(chain) <= 20),
+  lat double precision,
+  lon double precision,
+  store_key text check (char_length(store_key) <= 48),
+  key_hash text not null unique,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  layout_updated_at timestamptz,
+  deals_updated_at timestamptz
+);
+create table if not exists public.grocery_partner_aisles (
+  partner_id uuid not null references public.grocery_partner_stores (id) on delete cascade,
+  category text not null check (char_length(category) <= 80),
+  aisle text check (char_length(aisle) <= 12),
+  department text check (char_length(department) <= 20),
+  primary key (partner_id, category),
+  check (aisle is not null or department is not null)
+);
+create table if not exists public.grocery_partner_deals (
+  id bigint generated always as identity primary key,
+  partner_id uuid not null references public.grocery_partner_stores (id) on delete cascade,
+  item text not null check (char_length(item) <= 80),
+  price text check (char_length(price) <= 40),
+  starts_on date,
+  ends_on date
+);
+create index if not exists grocery_partner_deals_partner on public.grocery_partner_deals (partner_id);
+alter table public.grocery_partner_stores enable row level security;
+alter table public.grocery_partner_aisles enable row level security;
+alter table public.grocery_partner_deals enable row level security;
+revoke all on public.grocery_partner_stores, public.grocery_partner_aisles, public.grocery_partner_deals
+  from anon, authenticated;
 """
 
 req = urllib.request.Request(
@@ -42,4 +80,4 @@ try:
     urllib.request.urlopen(req, timeout=60).read()
 except urllib.error.HTTPError as e:
     raise SystemExit(f"Supabase returned {e.code}: {e.read().decode('utf-8', 'replace')[:300]}")
-print("grocery_aisle_votes table and grocery_store_coverage view: ready")
+print("grocery_aisle_votes, grocery_store_coverage and partner store tables: ready")

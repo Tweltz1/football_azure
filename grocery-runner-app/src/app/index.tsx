@@ -3,7 +3,9 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SaleBadge } from '../components/SaleBadge';
 import { Button, tap } from '../components/ui';
+import { dealFor, useDeals } from '../lib/deals';
 import { locationLabel } from '../lib/labels';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
@@ -13,6 +15,7 @@ export default function ListScreen() {
   const { items, store, addItem, toggleItem, removeItem, clearChecked } = useData();
   const [draft, setDraft] = useState('');
   const left = items.filter((i) => !i.checked).length;
+  const deals = useDeals(store, items.filter((i) => !i.checked).map((i) => i.name));
 
   const submit = () => {
     addItem(draft);
@@ -111,6 +114,7 @@ export default function ListScreen() {
                   {item.name}
                 </Text>
                 <Text style={{ color: label.guessed ? t.warn : t.textMuted, fontSize: 13 }}>{label.text}</Text>
+                {!item.checked && <SaleBadge deal={dealFor(deals, item.name)} name={item.name} />}
               </Pressable>
               <Pressable accessibilityLabel={`Remove ${item.name}`} hitSlop={10} onPress={() => removeItem(item.id)}>
                 <Ionicons name="close" size={20} color={t.textMuted} />

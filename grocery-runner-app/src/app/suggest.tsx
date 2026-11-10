@@ -89,8 +89,9 @@ export default function SuggestScreen() {
       if (est) lines.push({ text: `About $${est.total.toFixed(2)} for ${est.priced} item${est.priced === 1 ? '' : 's'} (Kroger prices)` });
     } else {
       lines.push({ text: `${chainInfo(o.store.chain).label} doesn't share stock, so it can't be checked`, tone: 'muted' });
-      lines.push({ text: o.mapped ? `${o.mapped} of ${o.items} aisles known from shoppers` : 'No aisles mapped yet for these items' });
+      lines.push({ text: o.mapped ? `${o.mapped} of ${o.items} aisles known` : 'No aisles mapped yet for these items' });
     }
+    if (o.onSale) lines.push({ text: `${o.onSale} item${o.onSale === 1 ? '' : 's'} on sale this week`, tone: 'good' });
     return lines;
   };
 

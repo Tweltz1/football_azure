@@ -1,6 +1,7 @@
 // Shared shopper aisles, stored in the grocery_aisle_votes table (see tools/setup_supabase.py).
 // The table has row level security on and no policies, so only this function (service role) can
 // read or write it. One vote per phone per store + item; voting again replaces the old vote.
+import { officialAisles, officialStoreAisles, partnerFor } from './partners.ts';
 import { cleanAisle, cleanStoreKey, DEPARTMENTS, itemKey, tallyVotes, VoteRow } from './votes.ts';
 
 const URL_ = Deno.env.get('SUPABASE_URL')!;
@@ -13,8 +14,12 @@ const quote = (s: string) => `"${s.replace(/["\\]/g, '')}"`;
 export async function sharedAisles(store: unknown, items: unknown) {
   const storeKey = cleanStoreKey(store);
   if (!storeKey || !Array.isArray(items)) throw new Error('store and items are required.');
-  const keys = [...new Set(items.filter((i) => typeof i === 'string').map(itemKey).filter(Boolean))].slice(0, 100);
-  if (!keys.length) return {};
+  const names = items.filter((i): i is string => typeof i === 'string').slice(0, 100);
+  // A partner store's own aisle list wins over shopper votes.
+  const partner = await partnerFor(storeKey);
+  const official = partner ? await officialAisles(partner, names).catch(() => ({})) : {};
+  const keys = [...new Set(names.map(itemKey).filter(Boolean))].filter((k) => !(k in official));
+  if (!keys.length) return official;
   const q = new URLSearchParams({
     select: 'item_key,aisle,department,updated_at,kind',
     store_key: `eq.${storeKey}`,
@@ -22,7 +27,7 @@ export async function sharedAisles(store: unknown, items: unknown) {
   });
   const res = await fetch(`${TABLE}?${q}`, { headers: auth });
   if (!res.ok) throw new Error(`Shared aisles lookup failed (${res.status}).`);
-  return tallyVotes((await res.json()) as VoteRow[]);
+  return { ...tallyVotes((await res.json()) as VoteRow[]), ...official };
 }
 
 export async function voteAisle(body: Record<string, unknown>) {
@@ -83,5 +88,10 @@ export async function storeAisles(store: unknown) {
   const res = await fetch(`${TABLE}?${q}`, { headers: auth });
   if (!res.ok) throw new Error(`Store aisles lookup failed (${res.status}).`);
   const best = tallyVotes((await res.json()) as VoteRow[]);
-  return Object.entries(best).flatMap(([item, s]) => (s.aisle ? [{ item, aisle: s.aisle, votes: s.votes }] : []));
+  const shoppers = Object.entries(best).flatMap(([item, s]) => (s.aisle ? [{ item, aisle: s.aisle, votes: s.votes }] : []));
+  // A partner store's category list comes first and replaces shopper answers for the same name.
+  const partner = await partnerFor(storeKey);
+  const official = partner ? await officialStoreAisles(partner).catch(() => []) : [];
+  const taken = new Set(official.map((o) => o.item));
+  return [...official, ...shoppers.filter((s) => !taken.has(s.item))];
 }

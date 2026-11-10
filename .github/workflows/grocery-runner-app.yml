@@ -64,6 +64,8 @@ jobs:
       WALMART_CONSUMER_ID: ${{ secrets.WALMART_CONSUMER_ID }}
       WALMART_KEY_VERSION: ${{ secrets.WALMART_KEY_VERSION }}
       WALMART_PRIVATE_KEY: ${{ secrets.WALMART_PRIVATE_KEY }}
+      # Admin password for the store portal (portal/index.html#admin), chosen by you, 12+ characters.
+      STORE_ADMIN_KEY: ${{ secrets.STORE_ADMIN_KEY }}
     defaults:
       run:
         working-directory: grocery-runner-app
@@ -93,10 +95,17 @@ jobs:
           if [ -z "$WALMART_CONSUMER_ID" ]; then
             echo "::notice::No WALMART_CONSUMER_ID yet; Walmart stores come from Apple Maps only."
           fi
+          if [ -n "$STORE_ADMIN_KEY" ]; then
+            SET+=(STORE_ADMIN_KEY="$STORE_ADMIN_KEY")
+          else
+            echo "::notice::No STORE_ADMIN_KEY yet; the store portal's admin page (adding stores) is off."
+          fi
           if [ ${#SET[@]} -gt 0 ]; then
             npx -y supabase@latest secrets set --project-ref "$SUPABASE_PROJECT_ID" --yes "${SET[@]}"
           fi
           npx -y supabase@latest functions deploy grocery-runner --project-ref "$SUPABASE_PROJECT_ID" --use-api --yes
+          # Partner stores send layouts and deals here with their own key, so no Supabase login is needed.
+          npx -y supabase@latest functions deploy store-portal --project-ref "$SUPABASE_PROJECT_ID" --use-api --no-verify-jwt --yes
 
       - name: Smoke test the live function
         run: |
@@ -111,6 +120,12 @@ jobs:
           echo "coverage: $(curl -fsS "${H[@]}" -H "Content-Type: application/json" -d '{"action":"coverage","stores":["woodmans:g43073xm89401"]}' "$FN")"
           echo "store-aisles: $(curl -fsS "${H[@]}" -H "Content-Type: application/json" -d '{"action":"store-aisles","store":"woodmans:g43073xm89401"}' "$FN")"
           curl -fsS "${H[@]}" -H "Content-Type: application/json" -d '{"action":"aisles","store":"woodmans:osm-test","items":["milk"]}' "$FN"; echo
+          echo "deals: $(curl -fsS "${H[@]}" -H "Content-Type: application/json" -d '{"action":"deals","store":"woodmans:g43073xm89401","items":["milk"]}' "$FN")"
+          # A request without a store key must be refused.
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' -H "Content-Type: application/json" -d '{"action":"store"}' \
+            "https://$SUPABASE_PROJECT_ID.supabase.co/functions/v1/store-portal")
+          echo "store-portal without a key: $CODE (expect 401)"
+          [ "$CODE" = "401" ]
 
   build:
     runs-on: macos-26

@@ -24,8 +24,8 @@ export type ItemLocation =
   | { kind: 'department'; department: Department; source: LocationSource; votes?: number }
   | { kind: 'unknown' };
 
-/** Where the location came from, so the UI can show how much to trust it. */
-export type LocationSource = 'kroger' | 'user' | 'community' | 'guess';
+/** Where the location came from, so the UI can show how much to trust it. `store` = the store's own aisle list. */
+export type LocationSource = 'kroger' | 'user' | 'community' | 'store' | 'guess';
 
 export type ListItem = {
   id: string;
