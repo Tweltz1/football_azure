@@ -1,3 +1,4 @@
+import { myName } from './learning';
 // Turns Apple Vision's photo labels (ItemVisionPlugin in the iPhone app) into a Curbsy title, category and
 // tags. Vision's labels are lower-case identifiers like "chair", "washing_machine" or "teddy_bear", each with
 // a confidence from 0 to 1, and they include the scene too ("outdoor", "grass", "sky"), which we skip.
@@ -252,14 +253,14 @@ export async function appleDetect(jpegDataUrl) {
   if (!ItemVision) return null;
   try {
     const res = await ItemVision.classify({ image: jpegDataUrl });
-    const things = thingsInPhoto(res);
+    const things = thingsInPhoto(res).map(myName);
     const apple = fromAppleLabels(res && res.labels);
     // The namer's name for a photo of one thing, when it's sure; Apple's tags and description stay.
     const sure = namerThing(res && res.namer);
-    const whole = sure && !(apple && apple.person)
+    const whole = myName(sure && !(apple && apple.person)
       ? { ...(apple || { tags: [], description: '', person: false }), ...sure, confident: true,
         tags: [...new Set([sure.title.toLowerCase(), ...((apple && apple.tags) || [])])].slice(0, 10) }
-      : apple;
+      : apple);
     if (things.length >= 2) {
       // Several things: no one name for the whole photo (the post is named after what's in it).
       return {

@@ -1,8 +1,8 @@
-// Learning loop: when the phone guessed a name and the person changed it, the guess and their fix are sent
-// so the item recognition models can be retrained. A small picture of just that item goes along only when
-// they said yes when agreeing to the rules, or turned on "Help improve item recognition" in the Me tab (off by
-// default). The full photo, location
-// and everything else stay on the phone.
+// Learning loop: when the phone guessed a name and the person changed it (or, if they share pictures, kept
+// it), the guess and their final name are sent so the item recognition models can be retrained. A small
+// picture of just that item goes along only when they said yes when agreeing to the rules, or turned on
+// "Help improve item recognition" in the Me tab (off by default). The full photo, location and everything
+// else stay on the phone.
 import { sendLabelFix } from './junkApi';
 
 const SHARE_KEY = 'jk-share-crops';
@@ -22,6 +22,51 @@ export function wasFixed(guess, title, category) {
   if (!guess || !guess.title) return false;
   if (norm(guess.title) !== norm(title)) return !!norm(title);
   return !!guess.category && !!category && guess.category !== category;
+}
+
+// Learning on this phone: when someone renames the same guess to the same thing twice ("Suitcase" -> "Tool
+// chest"), the phone uses their name for that guess from then on. Kept only on this phone, never sent.
+const MINE_KEY = 'jk-my-names';
+const MINE_MAX = 200;
+export const MINE_AFTER = 2;
+
+function readMine() {
+  try { return JSON.parse(window.localStorage.getItem(MINE_KEY) || '{}') || {}; } catch (error) { return {}; }
+}
+
+/** Remembers the names this person changed (items: [{ guess, title, category }]). */
+export function rememberNames(items) {
+  const mine = readMine();
+  for (const p of items) {
+    if (!p.guess || !p.guess.title || !wasFixed(p.guess, p.title, p.category)) continue;
+    const key = norm(p.guess.original || p.guess.title);
+    const title = String(p.title).trim().replace(/\s+\d+$/, '');
+    const was = mine[key];
+    mine[key] = was && norm(was.title) === norm(title)
+      ? { ...was, title, category: p.category || was.category, n: was.n + 1, at: Date.now() }
+      : { title, category: p.category || 'other', n: 1, at: Date.now() };
+  }
+  const keys = Object.keys(mine).sort((a, b) => mine[b].at - mine[a].at).slice(0, MINE_MAX);
+  try { window.localStorage.setItem(MINE_KEY, JSON.stringify(Object.fromEntries(keys.map((k) => [k, mine[k]])))); } catch (error) { /* private mode */ }
+}
+
+/** A guess with this person's own name for it, when they've given it that name often enough. */
+export function myName(thing) {
+  if (!thing || !thing.title) return thing;
+  const m = readMine()[norm(thing.title)];
+  if (!m || m.n < MINE_AFTER || norm(m.title) === norm(thing.title)) return thing;
+  return { ...thing, original: thing.title, title: m.title, category: m.category || thing.category, source: 'you' };
+}
+
+/**
+ * What to teach from a finished post: every name the person changed, and, when they share item pictures,
+ * also every guess they kept (a picture with a name they confirmed teaches as much as a fix).
+ * items: [{ guess, title, category }]
+ */
+export function namesToTeach(items, share = sharesCrops()) {
+  return items
+    .filter((p) => p.guess && p.guess.title && norm(p.title) && (wasFixed(p.guess, p.title, p.category) || share))
+    .map((p) => ({ guess: p.guess, title: String(p.title).trim(), category: p.category }));
 }
 
 /** The part of a JPEG data URL inside box (0-1, top left), squared up with a little room, as a small JPEG. */
