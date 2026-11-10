@@ -164,16 +164,21 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_label_fixes').delete().eq('user_id', userId));
       must(await db.from('junk_saved_searches').delete().eq('user_id', userId));
       must(await db.from('junk_push_tokens').delete().eq('user_id', userId));
+      // Purchase records and sponsor/hauler taps go too (the privacy policy says so; Apple keeps its own billing record).
+      must(await db.from('junk_plus').delete().eq('user_id', userId));
+      must(await db.from('junk_tips').delete().eq('user_id', userId));
+      must(await db.from('junk_partner_taps').update({ user_id: null }).eq('user_id', userId));
       // Phones stay on record when banned, so a deleted-and-remade account can't come back on the same phone.
       must(await db.from('junk_devices').delete().eq('user_id', userId).eq('banned', false));
       // A ban outlives the account's data (a deleted account can't come back under the same id anyway).
       must(await db.from('junk_members').delete().eq('user_id', userId).is('banned_at', null));
+      must(await db.from('junk_members').update({ name: '' }).eq('user_id', userId));
       return paths;
     },
     async member(userId) {
-      const r = must(await db.from('junk_members').select('terms_at, banned_at, joined_at, provider, strikes, ban_reason').eq('user_id', userId).maybeSingle()) as
-        { terms_at: string | null; banned_at: string | null; joined_at: string | null; provider: string | null; strikes: number | null; ban_reason: string | null } | null;
-      return r ? { termsAt: r.terms_at, bannedAt: r.banned_at, joinedAt: r.joined_at, provider: r.provider, strikes: r.strikes ?? 0, banReason: r.ban_reason ?? '' } : null;
+      const r = must(await db.from('junk_members').select('terms_at, banned_at, joined_at, provider, strikes, ban_reason, name').eq('user_id', userId).maybeSingle()) as
+        { terms_at: string | null; banned_at: string | null; joined_at: string | null; provider: string | null; strikes: number | null; ban_reason: string | null; name: string | null } | null;
+      return r ? { termsAt: r.terms_at, bannedAt: r.banned_at, joinedAt: r.joined_at, provider: r.provider, strikes: r.strikes ?? 0, banReason: r.ban_reason ?? '', name: r.name ?? '' } : null;
     },
     async seeDevice(userId, deviceId, at, since) {
       must(await db.from('junk_devices').upsert({ device_id: deviceId, user_id: userId, seen_at: at }, { onConflict: 'device_id,user_id' }));
@@ -191,6 +196,9 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
     },
     async touchMember(userId, joinedAt, provider) {
       must(await db.from('junk_members').upsert({ user_id: userId, joined_at: joinedAt, provider }, { onConflict: 'user_id' }));
+    },
+    async setName(userId, name) {
+      must(await db.from('junk_members').upsert({ user_id: userId, name }, { onConflict: 'user_id' }));
     },
     async acceptTerms(userId, at) {
       // Keeps any ban: only terms_at is written on a conflict.

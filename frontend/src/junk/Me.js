@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SignInPrompt, useJunk } from './JunkApp';
-import { deleteAccount, deleteSavedSearch, getMember, junkSignOut as signOut, myItems, savedSearches } from './junkApi';
+import { deleteAccount, deleteSavedSearch, getMember, junkSignOut as signOut, myItems, savedSearches, setCurbsyName } from './junkApi';
 import { ItemCard } from './Browse';
 import { IconBox, IconClose, IconPlus } from './icons';
 import { ContactSheet, StandingNotice } from './Safety';
 import { setSharesCrops, sharesCrops } from './learning';
 import { TipSheet } from './Plus';
-import { PLUS_PRICE, alertStatus, canBuy, restore, turnOnAlerts } from './store';
+import { PLUS_PRICE, alertStatus, canBuy, manageSubscription, restore, turnOnAlerts } from './store';
 import { CATEGORIES } from './device';
 
 const savedLabel = (s) => {
@@ -79,8 +79,40 @@ function SavedSearches() {
   );
 }
 
+/** "Your name on Curbsy": what neighbors see on listings, messages and trips. */
+function NameSheet({ current, onSaved, onClose }) {
+  const [name, setName] = useState(current || '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const save = async (value) => {
+    setBusy(true);
+    setError('');
+    try {
+      onSaved(await setCurbsyName(value));
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="jk-sheet-backdrop" role="presentation" onClick={onClose}>
+      <form className="jk-sheet" role="dialog" aria-modal="true" aria-label="Your name on Curbsy" onClick={(e) => e.stopPropagation()}
+        onSubmit={(e) => { e.preventDefault(); if (name.trim().length >= 2) save(name.trim()); }}>
+        <button type="button" className="jk-icon-btn jk-sheet-close" onClick={onClose} aria-label="Close"><IconClose /></button>
+        <h2>Your name on Curbsy</h2>
+        <p className="jk-muted">Neighbors see this on your listings, messages and trips. A first name or nickname is plenty.</p>
+        <input className="jk-input" value={name} onChange={(e) => setName(e.target.value)} maxLength={30} placeholder="First name or nickname" aria-label="Name" autoFocus />
+        {error && <p className="jk-error">{error}</p>}
+        <button type="submit" className="jk-btn jk-btn-primary jk-full" disabled={busy || name.trim().length < 2}>{busy ? 'Saving…' : 'Save'}</button>
+        <button type="button" className="jk-btn jk-full" disabled={busy} onClick={() => save('')}>Use my sign-in first name</button>
+      </form>
+    </div>
+  );
+}
+
 export default function Me() {
-  const { me, authLoading, setPlus } = useJunk();
+  const { me, authLoading, setPlus, plus } = useJunk();
+  const [naming, setNaming] = useState(false);
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState(false);
@@ -121,14 +153,17 @@ export default function Me() {
     );
   }
 
+  // The name neighbors see (never the sign-in email); the sign-in name only until the server answers.
+  const shownName = (member && member.name) || (me.userDetails && !me.userDetails.includes('@') ? me.userDetails.split(' ')[0] : 'You');
   const live = (items || []).filter((i) => i.status !== 'gone');
   const gone = (items || []).filter((i) => i.status === 'gone');
   return (
     <main className="jk-page">
       <header className="jk-page-head jk-me-head">
-        <div className="jk-avatar" aria-hidden="true">{(me.userDetails || '?').slice(0, 1).toUpperCase()}</div>
+        <div className="jk-avatar" aria-hidden="true">{shownName.slice(0, 1).toUpperCase()}</div>
         <div>
-          <h1>{me.userDetails || 'You'}</h1>
+          <h1>{shownName}</h1>
+          <button type="button" className="jk-link" onClick={() => setNaming(true)}>Change the name neighbors see</button>
           <p className="jk-muted">{items ? `${live.length} up for grabs · ${gone.length} given away` : ' '}</p>
         </div>
       </header>
@@ -186,6 +221,13 @@ export default function Me() {
         <button type="button" className="jk-row-btn jk-danger-text" onClick={() => setConfirm(true)}>Delete my account</button>
       </div>
 
+      {naming && (
+        <NameSheet
+          current={member && member.customName ? member.name : ''}
+          onSaved={(r) => { setMember((m) => ({ ...(m || {}), name: r.name, customName: r.customName })); setNaming(false); }}
+          onClose={() => setNaming(false)}
+        />
+      )}
       {contact && <ContactSheet onClose={() => setContact(false)} />}
       {appeal && <ContactSheet appeal onClose={() => setAppeal(false)} />}
       {business && <ContactSheet business onClose={() => setBusiness(false)} />}
@@ -198,6 +240,13 @@ export default function Me() {
               Your listings, photos and messages are deleted, and so is your sign-in. This also removes the account from
               Hood League and Hood Games, since they share it. This can't be undone.
             </p>
+            {plus && plus.plus && (
+              <p className="jk-muted">
+                <strong>Deleting your account doesn't cancel Curbsy Plus.</strong> Apple bills it, so cancel it first in
+                Settings &gt; your name &gt; Subscriptions.{' '}
+                <button type="button" className="jk-link" onClick={() => manageSubscription()}>Manage subscription</button>
+              </p>
+            )}
             <button type="button" className="jk-btn jk-btn-danger jk-full" disabled={deleting} onClick={removeAccount}>
               {deleting ? 'Deleting…' : 'Delete everything'}
             </button>

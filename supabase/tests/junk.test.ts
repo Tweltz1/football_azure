@@ -101,6 +101,7 @@ function world(detection: JunkDetection | null = null) {
     },
     async member(userId) { const m = members.get(userId); return m ? clone(m) : null; },
     async acceptTerms(userId, at) { members.set(userId, { bannedAt: null, ...members.get(userId), termsAt: at }); },
+    async setName(userId, name) { members.set(userId, { termsAt: null, bannedAt: null, ...members.get(userId), name } as never); },
     async seeDevice(userId, deviceId, at, since) {
       devices.set(`${deviceId}/${userId}`, { banned: devices.get(`${deviceId}/${userId}`)?.banned ?? false, at });
       const rows = [...devices].filter(([k]) => k.startsWith(`${deviceId}/`));
@@ -160,13 +161,14 @@ function world(detection: JunkDetection | null = null) {
   const joined = new Map<string, string>();
   let phone: string | null = null;
   const providers = new Map<string, string>();
+  const names = new Map<string, string>();
   const call = (who: string | null, method: string, path: string, body?: unknown, query: Record<string, unknown> = {}) => {
     clock += 60_000;
     const ctx = {
       userCreatedAt: who ? joined.get(who) ?? '2026-01-01T00:00:00Z' : null,
       userProvider: who ? providers.get(who) ?? 'apple' : null,
       deviceId: phone,
-      userId: who, displayName: who === ALICE ? 'Alice' : who === BOB ? 'Bob' : 'Carl',
+      userId: who, displayName: who && names.has(who) ? names.get(who) : who === ALICE ? 'Alice' : who === BOB ? 'Bob' : 'Carl',
       now: () => new Date(clock), newId: () => `00000000-0000-4000-8000-${String(++seq).padStart(12, '0')}`,
       log: { info() {}, warn() {}, error() {} },
     } as unknown as Ctx;
@@ -186,7 +188,7 @@ function world(detection: JunkDetection | null = null) {
     if (saved && !fields.fresh) saved.createdAt = new Date(Date.parse(saved.createdAt) - 20 * 60_000).toISOString();
     return out;
   };
-  return { plusRows, tips, saved, tokens, partners, taps, pushed, call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, providers, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
+  return { names, plusRows, tips, saved, tokens, partners, taps, pushed, call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, providers, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -630,7 +632,7 @@ test('posting and messaging need the Terms agreed to, and banned people can\'t d
   const w = world();
   w.members.delete(BOB);
   let res = await w.call(BOB, 'GET', 'junk/member');
-  assert.deepEqual(res?.body, { terms: false, banned: false, strikes: 0 });
+  assert.deepEqual(res?.body, { terms: false, banned: false, strikes: 0, name: 'Bob', customName: false });
   res = await w.call(BOB, 'POST', 'junk/items', { title: 'Lamp', photos: [], ...HOME });
   assert.equal(res?.status, 428);
   const item = await w.post(ALICE);
@@ -649,7 +651,7 @@ test('posting and messaging need the Terms agreed to, and banned people can\'t d
   res = await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Hello?' });
   assert.equal(res?.status, 403);
   res = await w.call(BOB, 'GET', 'junk/member');
-  assert.deepEqual(res?.body, { terms: true, banned: true, strikes: 0 });
+  assert.deepEqual(res?.body, { terms: true, banned: true, strikes: 0, name: 'Bob', customName: false });
 });
 
 test('Contact Curbsy saves the message, a few a day', async () => {
@@ -769,7 +771,7 @@ test('banned or warned people can appeal, and see where they stand', async () =>
   const item = await w.post(BOB);
   w.members.set(BOB, { termsAt: '2026-11-01T00:00:00Z', bannedAt: '2026-11-08T00:00:00Z', strikes: 2, banReason: 'second strike' } as never);
   let res = await w.call(BOB, 'GET', 'junk/member');
-  assert.deepEqual(res?.body, { terms: true, banned: true, strikes: 2, reason: 'second strike' });
+  assert.deepEqual(res?.body, { terms: true, banned: true, strikes: 2, reason: 'second strike', name: 'Bob', customName: false });
   // Still allowed while banned.
   res = await w.call(BOB, 'POST', 'junk/appeal', { body: 'That was a toy gun, not a real one.', itemId: item.id });
   assert.equal(res?.status, 200);
@@ -914,4 +916,33 @@ test('GitHub sign-ins keep new-account limits (Curbsy is Apple or Google only)',
   const up = await w.call(CARL, 'POST', 'junk/photos', { image: JPEG });
   const res = await w.call(CARL, 'POST', 'junk/items', { title: 'Chair 4', photos: [(up?.body as { path: string }).path], ...HOME });
   assert.equal(res?.status, 429);
+});
+
+test('never shows an email address as a public name, and people can pick their own name', async () => {
+  const w = world();
+  w.names.set(ALICE, 'alice.smith@privaterelay.appleid.com');
+  await w.call(ALICE, 'POST', 'junk/terms', { agree: true });
+  const item = await w.post(ALICE);
+  assert.equal(w.items.get(item.id)?.ownerName, 'Neighbor');
+  w.names.set(BOB, 'Bob Jones');
+  await w.call(BOB, 'POST', 'junk/terms', { agree: true });
+  await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Still there?' });
+  assert.equal(w.messages.at(-1)?.fromName, 'Bob');
+  assert.equal((await w.call(ALICE, 'POST', 'junk/name', { name: 'call 612-555-1234' }))?.status, 400);
+  const named = await w.call(ALICE, 'POST', 'junk/name', { name: 'Ali' });
+  assert.deepEqual(named?.body, { name: 'Ali', customName: true });
+  assert.equal(w.items.get(item.id)?.ownerName, 'Ali');
+  assert.equal(((await w.call(ALICE, 'GET', 'junk/member'))?.body as { name: string }).name, 'Ali');
+  const reset = await w.call(ALICE, 'POST', 'junk/name', { name: '' });
+  assert.deepEqual(reset?.body, { name: 'Neighbor', customName: false });
+});
+
+test('a banned account can mark its listing taken but not rewrite it or upload photos', async () => {
+  const w = world();
+  await w.call(ALICE, 'POST', 'junk/terms', { agree: true });
+  const item = await w.post(ALICE);
+  w.members.set(ALICE, { ...w.members.get(ALICE)!, bannedAt: w.now() });
+  assert.equal((await w.call(ALICE, 'POST', `junk/items/${item.id}`, { title: 'Something else' }))?.status, 403);
+  assert.equal((await w.call(ALICE, 'POST', 'junk/photos', { image: JPEG }))?.status, 403);
+  assert.equal((await w.call(ALICE, 'POST', `junk/items/${item.id}`, { status: 'gone' }))?.status, 200);
 });

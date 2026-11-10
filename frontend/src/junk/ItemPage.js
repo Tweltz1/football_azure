@@ -232,7 +232,8 @@ export default function ItemPage() {
   const release = async (claimId) => {
     setBusy(true);
     try {
-      setItem(await releaseClaim(item.id, typeof claimId === 'string' ? claimId : undefined));
+      const next = await releaseClaim(item.id, typeof claimId === 'string' ? claimId : undefined);
+      setItem((prev) => ({ ...prev, ...next }));
       setNotice('Released. It\'s up for grabs again.');
     } catch (err) {
       setNotice(err.message);
@@ -244,7 +245,9 @@ export default function ItemPage() {
   const setStatus = async (status) => {
     setBusy(true);
     try {
-      setItem(await updateItem(item.id, { status }));
+      // Keep the distance and member card the page already had (the save answer doesn't repeat them).
+      const next = await updateItem(item.id, { status });
+      setItem((prev) => ({ ...prev, ...next }));
       setNotice(status === 'gone' ? 'Marked as taken. It\'s off the map.' : status === 'pending' ? 'Marked as pending pickup.' : 'Back up for grabs.');
     } catch (err) {
       setNotice(err.message);
@@ -258,7 +261,7 @@ export default function ItemPage() {
     setBusy(true);
     try {
       const next = await updateItem(item.id, { pieces: pieces.map((p) => ({ ...p, gone: p.id === piece.id ? !p.gone : p.gone })) });
-      setItem(next);
+      setItem((prev) => ({ ...prev, ...next }));
       setNotice(next.status === 'gone' ? 'Everything\'s taken. It\'s off the map.' : piece.gone ? `${piece.title} is back up for grabs.` : `${piece.title} marked taken.`);
     } catch (err) {
       setNotice(err.message);
@@ -419,8 +422,9 @@ export default function ItemPage() {
               <button type="button" className="jk-btn jk-btn-icon" aria-label="Delete listing" disabled={busy} onClick={() => setMenu('confirm-delete')}><IconTrash /></button>
             )}
             {item.status === 'available' && <button type="button" className="jk-btn" disabled={busy} onClick={() => setStatus('pending')}>Pending</button>}
-            {item.status !== 'available' && <button type="button" className="jk-btn" disabled={busy} onClick={() => setStatus('available')}>Relist</button>}
-            {item.status !== 'gone'
+            {/* A listing hidden after reports stays down until a person reviews it (Ask for a review above). */}
+            {item.status !== 'available' && item.status !== 'hidden' && <button type="button" className="jk-btn" disabled={busy} onClick={() => setStatus('available')}>Relist</button>}
+            {item.status !== 'gone' && item.status !== 'hidden'
               ? <button type="button" className="jk-btn jk-btn-primary jk-grow" disabled={busy} onClick={() => setStatus('gone')}><IconCheck /> Mark taken</button>
               : <button type="button" className="jk-btn jk-btn-danger jk-grow" disabled={busy} onClick={() => setMenu('confirm-delete')}><IconTrash /> Delete</button>}
           </>

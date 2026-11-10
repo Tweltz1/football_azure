@@ -32,7 +32,7 @@ export function Inbox() {
         <div className="jk-empty">
           <div className="jk-empty-art" aria-hidden="true"><IconChat size={34} /></div>
           <h2>No messages yet</h2>
-          <p className="jk-muted">Tap “I want it” on something you like to message the person giving it away.</p>
+          <p className="jk-muted">Open something you like and tap the message button to ask the person giving it away.</p>
           <Link to="/junk" className="jk-btn jk-btn-primary">Browse free stuff</Link>
         </div>
       )}

@@ -800,7 +800,7 @@ body.jk-body::before { background: #f5f3ee; }
 
 /* Safety: Curbsy rules and Contact sheets */
 .jk-rules { margin: 4px 0 14px; padding-left: 20px; display: grid; gap: 8px; line-height: 1.4; }
-.jk-contact-text {
+.jk-contact-text, .jk-sheet input.jk-input {
   width: 100%; box-sizing: border-box; margin: 4px 0 12px; padding: 12px; border-radius: 12px;
   border: 1px solid var(--jk-line); background: var(--jk-surface); color: inherit; font: inherit; resize: vertical;
 }

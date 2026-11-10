@@ -15,6 +15,23 @@ export const token = async () => {
   }
 };
 
+/**
+ * A sign-in token good for at least `minutes` more (refreshed first when it isn't). The trip sender keeps
+ * using the token it was given while the app is in the background, where the page can't refresh it.
+ */
+export const freshToken = async (minutes = 45) => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const session = data?.session;
+    if (!session) return null;
+    if (session.expires_at && session.expires_at * 1000 - Date.now() > minutes * 60_000) return session.access_token;
+    const { data: next } = await supabase.auth.refreshSession();
+    return next?.session?.access_token || session.access_token;
+  } catch (error) {
+    return token();
+  }
+};
+
 // The phone's lasting id from the iPhone app (keeps banned people off that phone); none on the website.
 let deviceIdPromise = null;
 const deviceId = () => {
@@ -88,6 +105,8 @@ export const junkSignOut = async () => {
 // Safety (App Store guideline 1.2): Terms agreement, bans, and "Contact Curbsy".
 export const getMember = () => call('GET', 'member');
 export const agreeToTerms = () => call('POST', 'terms', { agree: true });
+// The name neighbors see ('' goes back to the sign-in first name).
+export const setCurbsyName = (name) => call('POST', 'name', { name });
 export const contactCurbsy = (body) => call('POST', 'contact', { body });
 // Appeal a ban, a strike, or (with itemId) a listing hidden after reports.
 export const appealCurbsy = (body, itemId) => call('POST', 'appeal', itemId ? { body, itemId } : { body });
