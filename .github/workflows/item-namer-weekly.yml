@@ -1,0 +1,28 @@
+# Learning loop, every week: retrains the item namer on the live Curbsy branch with the newest name fixes from
+# the apps (item-namer.yml). The new namer reaches phones only if it's at least as good (promote.py).
+# Scheduled workflows only run from the default branch, so this file also lives on main.
+name: Item namer weekly
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BRANCH: claude/project-thread-6lgsrr
+    steps:
+      - name: Start training with the live settings
+        run: |
+          cfg=$(gh api "repos/${{ github.repository }}/contents/ml/item-namer/run.json?ref=$BRANCH" --jq .content | base64 -d)
+          per=$(echo "$cfg" | python3 -c 'import json,sys; print(json.load(sys.stdin)["per_class"])')
+          min=$(echo "$cfg" | python3 -c 'import json,sys; print(json.load(sys.stdin)["min_class"])')
+          gh workflow run item-namer.yml -R "${{ github.repository }}" --ref "$BRANCH" \
+            -f per_class="$per" -f min_class="$min" -f limit_classes=0 -f version=auto
+          echo "Started item-namer.yml on $BRANCH (per_class $per, min_class $min)"
