@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SwipeRow } from '../components/SwipeRow';
 import { Button, tap } from '../components/ui';
@@ -12,7 +12,7 @@ import { radius, useTheme } from '../lib/theme';
 
 export default function ListScreen() {
   const t = useTheme();
-  const { items, store, addItem, toggleItem, removeItem, clearChecked, lastRemoved, undoRemove } = useData();
+  const { items, store, addItem, toggleItem, removeItem, clearChecked, clearAll, lastRemoved, undoRemove } = useData();
   const [draft, setDraft] = useState('');
   const left = items.filter((i) => !i.checked).length;
   const sections = useMemo(() => groupList(items), [items]);
@@ -32,8 +32,44 @@ export default function ListScreen() {
     setDraft('');
   };
 
+  // The ••• menu: start over, and shortcuts to every other part of the app.
+  const openMenu = () => {
+    const actions: { title: string; run: () => void; destructive?: boolean }[] = [
+      { title: 'Start a new list', run: clearAll, destructive: true },
+      ...(items.some((i) => i.checked) ? [{ title: 'Clear checked items', run: clearChecked }] : []),
+      { title: store ? 'Change store' : 'Choose store', run: () => router.push('/store') },
+      { title: 'Stores on a map', run: () => router.push('/map') },
+      { title: 'Recipes', run: () => router.push('/recipes') },
+    ];
+    const usable = items.length ? actions : actions.filter((a) => a.title !== 'Start a new list');
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [...usable.map((a) => a.title), 'Cancel'],
+          cancelButtonIndex: usable.length,
+          destructiveButtonIndex: usable.findIndex((a) => a.destructive),
+        },
+        (i) => usable[i]?.run(),
+      );
+    } else {
+      Alert.alert('Shop Stride', undefined, [
+        ...usable.map((a) => ({ text: a.title, onPress: a.run, style: a.destructive ? ('destructive' as const) : undefined })),
+        { text: 'Cancel', style: 'cancel' as const },
+      ]);
+    }
+  };
+
   return (
     <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable accessibilityRole="button" accessibilityLabel="Menu" hitSlop={12} onPress={openMenu}>
+              <Ionicons name="ellipsis-horizontal-circle" size={26} color={t.primary} />
+            </Pressable>
+          ),
+        }}
+      />
       <Pressable
         accessibilityRole="button"
         onPress={() => router.push('/store')}

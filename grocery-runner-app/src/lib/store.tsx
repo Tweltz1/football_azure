@@ -47,6 +47,8 @@ type Ctx = Data & {
   /** The shopper's own answer: remembered here and, for real stores, shared with other shoppers. */
   setLocation: (id: string, location: ItemLocation, name?: string) => void;
   clearChecked: () => void;
+  /** Empties the list for a new trip (Undo brings it back). */
+  clearAll: () => void;
   setStore: (store: Store) => void;
   setColdLast: (on: boolean) => void;
 };
@@ -267,6 +269,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       toggleItem: (id) =>
         setData((d) => ({ ...d, items: d.items.map((i) => (i.id === id ? { ...i, checked: !i.checked } : i)) })),
       clearChecked: () => removeWhere((i) => i.checked),
+      clearAll: () => removeWhere(() => true),
       setColdLast: (coldLast) => setData((d) => ({ ...d, coldLast })),
     }),
     [data, ready, addItem, addItems, renameItem, lastRemoved, undoRemove, removeWhere, setLocation, setStore],
