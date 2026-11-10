@@ -38,12 +38,22 @@ jobs:
           pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cpu
           pip install 'transformers>=4.40' coremltools pillow numpy ijson
 
+      # The crop embeddings take about an hour; they're kept between runs while the photo set is unchanged.
+      - name: Restore crop embeddings
+        id: crops
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/crops.pt
+          key: namer-crops-${{ hashFiles('totetrack-app/tools/detector/*.py', 'totetrack-app/tools/detector/classes.txt') }}
+
       - uses: actions/cache@v4
+        if: steps.crops.outputs.cache-hit != 'true'
         with:
           path: ~/data-src
           key: lvis-v1-openimages-v7
 
       - name: Download LVIS and Open Images annotations
+        if: steps.crops.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/data-src && cd ~/data-src
           [ -f lvis_v1_train.json.zip ] || curl -fL --retry 4 -o lvis_v1_train.json.zip https://dl.fbaipublicfiles.com/LVIS/lvis_v1_train.json.zip
@@ -52,6 +62,7 @@ jobs:
           ls -lh
 
       - name: Build the photo set
+        if: steps.crops.outputs.cache-hit != 'true'
         working-directory: totetrack-app/tools/detector
         run: |
           set -o pipefail
@@ -62,14 +73,35 @@ jobs:
       - name: Train and build
         run: |
           set -o pipefail
-          python build_namer.py "$RUNNER_TEMP/namer" --train "$RUNNER_TEMP/data" 2>&1 | tee build.log
+          python build_namer.py "$RUNNER_TEMP/namer" --train "$RUNNER_TEMP/data" --cache ~/crops.pt 2>&1 | tee build.log
           cd "$RUNNER_TEMP/namer" && zip -qr ToteNamer.mlpackage.zip ToteNamer.mlpackage && ls -lh
+          cp "$GITHUB_WORKSPACE/totetrack-app/tools/namer/build.log" .
+
+      - name: Save crop embeddings
+        if: always() && steps.crops.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: ~/crops.pt
+          key: ${{ steps.crops.outputs.cache-primary-key }}
+
+      # The app build takes the model from here when there's no release.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: totetrack-namer
+          path: |
+            ${{ runner.temp }}/namer/ToteNamer.mlpackage.zip
+            ${{ runner.temp }}/namer/items.json
+            ${{ runner.temp }}/namer/items.bin
+            ${{ runner.temp }}/namer/build.log
+          retention-days: 90
 
       - name: Publish as a release
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp ../detector/prepare.log .
+          [ -f ../detector/prepare.log ] && cp ../detector/prepare.log . || touch prepare.log
           gh release create "totetrack-namer-${{ github.run_number }}" \
             "$RUNNER_TEMP/namer/ToteNamer.mlpackage.zip" "$RUNNER_TEMP/namer/items.json" "$RUNNER_TEMP/namer/items.bin" build.log prepare.log \
             --target "$GITHUB_SHA" --prerelease \

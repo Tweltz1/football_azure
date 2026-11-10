@@ -10,7 +10,9 @@ crop lands next to its label's name. The adapter is built into the Core ML model
 vocabulary, and names that weren't trained still work as before. Test accuracy, before and after, goes to
 the log.
 
-Usage: python build_namer.py OUT_DIR [--train DATA_DIR]
+Usage: python build_namer.py OUT_DIR [--train DATA_DIR] [--cache CROPS.pt]
+--cache keeps the crop embeddings (the slow part, about an hour on a GitHub Linux machine): they're read from
+the file when it exists, and written to it otherwise.
 Writes OUT_DIR/ToteNamer.mlpackage, OUT_DIR/items.json ({"dim": D, "names": [...]}) and
 OUT_DIR/items.bin (float16, len(names) x D, row-major, each row L2-normalized).
 """
@@ -148,21 +150,41 @@ def train_adapter(feats, labels, splits, label_names, label_text):
 
     before = accuracy(xte, yte, text)
     d = feats.shape[1]
-    W = torch.nn.Parameter(torch.eye(d))
-    opt = torch.optim.AdamW([W], lr=1e-3, weight_decay=0)
-    for epoch in range(40):
-        perm = torch.randperm(len(xtr))
-        for i in range(0, len(xtr), 256):
-            idx = perm[i:i + 256]
-            f = xtr[idx] @ W.T
-            f = f / f.norm(dim=-1, keepdim=True)
-            loss = torch.nn.functional.cross_entropy(LOGIT_SCALE * f @ text.T, ytr[idx])
-            # Stay close to the original model so untrained names keep working.
-            loss = loss + 0.05 * ((W - torch.eye(d)) ** 2).sum()
-            opt.zero_grad()
-            loss.backward()
-            opt.step()
-    W = W.detach()
+
+    def fit(x, y, reg, epochs=40):
+        W = torch.nn.Parameter(torch.eye(d))
+        opt = torch.optim.AdamW([W], lr=1e-3, weight_decay=0)
+        for _ in range(epochs):
+            perm = torch.randperm(len(x))
+            for i in range(0, len(x), 256):
+                idx = perm[i:i + 256]
+                f = x[idx] @ W.T
+                f = f / f.norm(dim=-1, keepdim=True)
+                loss = torch.nn.functional.cross_entropy(LOGIT_SCALE * f @ text.T, y[idx])
+                # Stay close to the original model so untrained names keep working.
+                loss = loss + reg * ((W - torch.eye(d)) ** 2).sum()
+                opt.zero_grad()
+                loss.backward()
+                opt.step()
+        return W.detach()
+
+    def adapted_accuracy(W, x, y):
+        f = x @ W.T
+        return accuracy(f / f.norm(dim=-1, keepdim=True), y, text)
+
+    # Pick how far the adapter may move from the original model on a slice of the training crops.
+    torch.manual_seed(3)
+    perm = torch.randperm(len(xtr))
+    n_val = len(xtr) // 10
+    val, fit_idx = perm[:n_val], perm[n_val:]
+    best = None
+    for reg in (0.05, 0.01, 0.002, 0.0005):
+        acc = adapted_accuracy(fit(xtr[fit_idx], ytr[fit_idx], reg), xtr[val], ytr[val])
+        print(f"  strength {reg}: validation {acc[0]:.1%} / {acc[1]:.1%}", flush=True)
+        if best is None or acc[0] > best[1]:
+            best = (reg, acc[0])
+    print(f"Using strength {best[0]}")
+    W = fit(xtr, ytr, best[0])
     adapted = xte @ W.T
     adapted = adapted / adapted.norm(dim=-1, keepdim=True)
     after = accuracy(adapted, yte, text)
@@ -182,6 +204,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out")
     ap.add_argument("--train")
+    ap.add_argument("--cache")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
     model = CLIPModel.from_pretrained(MODEL).eval()
@@ -192,8 +215,14 @@ def main():
     items = load_items()
     adapter = None
     if args.train:
-        print("Embedding crops of every labeled box…", flush=True)
-        feats, labels, splits = embed_crops(ImageEncoder(model).eval(), load_crops(args.train, size))
+        if args.cache and os.path.exists(args.cache):
+            feats, labels, splits = torch.load(args.cache)
+            print(f"Read {len(labels)} crop embeddings from {args.cache}")
+        else:
+            print("Embedding crops of every labeled box…", flush=True)
+            feats, labels, splits = embed_crops(ImageEncoder(model).eval(), load_crops(args.train, size))
+            if args.cache:
+                torch.save((feats, labels, splits), args.cache)
         label_names = sorted(set(labels))
         label_text = np.stack([embed_text(model, processor, items.get(n, [n.lower()])) for n in label_names])
         adapter = train_adapter(feats, labels, splits, label_names, label_text)
