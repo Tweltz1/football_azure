@@ -236,18 +236,20 @@ private func analyze(_ image: CGImage) -> [String: Any] {
     ])
   }
   let objects = detectObjects(image)
+  let naming = nameItems(image, regions: regions, objects: objects)
   return [
     "labels": labels, "lines": lines, "text": lines.map { $0["text"] as! String }, "objects": objects,
-    "named": nameItems(image, regions: regions, objects: objects),
+    "named": naming.named, "looks": naming.looks,
   ]
 }
 
 // MARK: - Naming each thing with ToteTrack's own namer
 
-/// Runs the namer on every region and every detected object. Each name keeps its best probability and
-/// how many separate spots it was the top answer for.
-private func nameItems(_ image: CGImage, regions: [CGRect], objects: [[String: Any]]) -> [[String: Any]] {
-  guard ToteNamer.shared.available else { return [] }
+/// Runs the namer on every region and every detected object. Each name keeps its best probability, how
+/// many separate spots it was the top answer for, and the embedding of its best spot. Also returns every
+/// spot's embedding, so the app can match spots against what your own things look like.
+private func nameItems(_ image: CGImage, regions: [CGRect], objects: [[String: Any]]) -> (named: [[String: Any]], looks: [[Double]]) {
+  guard ToteNamer.shared.available else { return ([], []) }
   var rects = regions
   for o in objects {
     if let b = o["box"] as? [String: Double] {
@@ -255,15 +257,26 @@ private func nameItems(_ image: CGImage, regions: [CGRect], objects: [[String: A
       rects.append(pixelRect(r, width: image.width, height: image.height, pad: 0.1))
     }
   }
-  var best: [String: (probability: Float, similarity: Float, spots: Int)] = [:]
+  var best: [String: (probability: Float, similarity: Float, spots: Int, embedding: [Float])] = [:]
+  var looks: [[Double]] = []
+  let rounded = { (v: [Float]) in v.map { (Double($0) * 1000).rounded() / 1000 } }
   for rect in rects where rect.width >= 48 && rect.height >= 48 {
-    guard let crop = image.cropping(to: rect), let top = ToteNamer.shared.name(crop, top: 1).first else { continue }
+    guard let crop = image.cropping(to: rect), let look = ToteNamer.shared.look(crop, top: 1), let top = look.names.first else { continue }
+    looks.append(rounded(look.embedding))
     let prev = best[top.name]
-    best[top.name] = (max(prev?.probability ?? 0, top.probability), max(prev?.similarity ?? 0, top.similarity), (prev?.spots ?? 0) + 1)
+    let better = top.probability > (prev?.probability ?? -1)
+    best[top.name] = (
+      max(prev?.probability ?? 0, top.probability), max(prev?.similarity ?? 0, top.similarity), (prev?.spots ?? 0) + 1,
+      better ? look.embedding : prev!.embedding
+    )
   }
-  return best.sorted { $0.value.probability > $1.value.probability }.prefix(20).map {
-    ["name": $0.key, "confidence": Double($0.value.probability), "similarity": Double($0.value.similarity), "spots": $0.value.spots]
+  let named: [[String: Any]] = best.sorted { $0.value.probability > $1.value.probability }.prefix(20).map {
+    [
+      "name": $0.key, "confidence": Double($0.value.probability), "similarity": Double($0.value.similarity),
+      "spots": $0.value.spots, "embedding": rounded($0.value.embedding),
+    ]
   }
+  return (named, looks)
 }
 
 // MARK: - Finding each separate item (on-device object detection)

@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 import { ToteNative } from '../../../modules/tote-native';
 import { Button, EmptyState, IconButton, SectionTitle, tap } from '../../components/ui';
 import { suggestionsFrom } from '../../lib/snap';
+import { forgetLooks, loadLooks, matchLooks, rememberLooks } from '../../lib/snapLooks';
 import { applyMemory, forgetSnapMemory, type LearnedSuggestion, learnedCount, loadSnapMemory, rememberSnap, type SnapMemory } from '../../lib/snapMemory';
 import { useTotes } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
@@ -48,8 +49,12 @@ export default function Snap() {
       const existing = new Set((tote?.items ?? []).map((i) => i.name.toLowerCase()));
       // What you've renamed, added and skipped before shapes what Snap offers now.
       const mem = await loadSnapMemory();
+      // Things that look like ones you've added before come first, under your name for them.
+      const yours = matchLooks(await loadLooks(), result.looks ?? []);
+      const taken = new Set(yours.map((s) => s.name.toLowerCase()));
+      const fresh = suggestionsFrom(result).filter((s) => !taken.has(s.name.toLowerCase()));
       setSuggestions(
-        applyMemory(mem, suggestionsFrom(result))
+        applyMemory(mem, [...yours, ...fresh])
           .filter((s) => !existing.has(s.name.toLowerCase()))
           .map((s) => ({ ...s, on: s.sure && !s.skipped })),
       );
@@ -82,6 +87,7 @@ export default function Snap() {
     for (const s of chosen) store.addItem(tote.id, s.name, s.qty);
     // Only what you saw counts, so hidden suggestions aren't marked as skipped again.
     rememberSnap(visible.map((s) => ({ key: s.key, name: s.name, added: s.on })));
+    rememberLooks(chosen.map((s) => ({ name: s.name, look: s.look })));
     tap();
     router.back();
   };
@@ -103,13 +109,14 @@ export default function Snap() {
   };
 
   const resetLearning = () =>
-    Alert.alert('Reset what Snap learned?', 'Snap forgets the names you gave things and what you usually skip.', [
+    Alert.alert('Reset what Snap learned?', 'Snap forgets the names you gave things, what you usually skip, and what your things look like.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reset',
         style: 'destructive',
         onPress: async () => {
           await forgetSnapMemory();
+          await forgetLooks();
           setMemory(await loadSnapMemory());
         },
       },

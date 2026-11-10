@@ -4,7 +4,14 @@ import type { DetectedObject, PhotoAnalysis, TextLine } from '../../modules/tote
  * `object`: a separate item the object detector outlined; `photo`: what Apple's classifier saw in the
  * photo or part of it; `text`: read off packaging; `fallback`: the catch-all for a jumbled photo.
  */
-export type Suggestion = { name: string; from: 'object' | 'photo' | 'text' | 'fallback'; sure: boolean; qty: number };
+export type Suggestion = {
+  name: string;
+  from: 'object' | 'photo' | 'text' | 'fallback';
+  sure: boolean;
+  qty: number;
+  /** What this thing looks like to the namer, so Snap can remember it if you add it (see snapLooks.ts). */
+  look?: number[];
+};
 
 /** What we offer when the photo is a jumble and nothing stands out clearly. */
 export const MIXED_ITEMS = 'Box of mixed items';
@@ -201,7 +208,7 @@ export function suggestionsFrom(result: PhotoAnalysis): Suggestion[] {
 
   // ToteTrack's own namer knows the most item types, so its answers come first.
   for (const n of (result.named ?? []).filter((x) => x.confidence >= MIN_NAMED_CONFIDENCE).slice(0, MAX_OBJECTS)) {
-    push({ name: n.name, from: 'object', sure: n.confidence >= SURE_NAMED_CONFIDENCE, qty: 1 });
+    push({ name: n.name, from: 'object', sure: n.confidence >= SURE_NAMED_CONFIDENCE, qty: 1, look: n.embedding });
   }
 
   // Separate items the object detector outlined come next, grouped by name with a count ("Mug" x 2).
