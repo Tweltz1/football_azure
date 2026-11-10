@@ -219,9 +219,6 @@ jobs:
           xcrun simctl launch "$DEV" com.tweltz1.groceryrunner
           sleep 15
           xcrun simctl io "$DEV" screenshot "shots/$NAME-1-home.png"
-          # The other two tabs, opened through the app's link scheme.
-          xcrun simctl openurl "$DEV" "groceryrunner:///recipes" && sleep 4 && xcrun simctl io "$DEV" screenshot "shots/$NAME-2-recipes.png" || true
-          xcrun simctl openurl "$DEV" "groceryrunner:///stores?view=map" && sleep 6 && xcrun simctl io "$DEV" screenshot "shots/$NAME-3-stores.png" || true
           xcrun simctl spawn "$DEV" log show --start "$START" --style compact --predicate 'process == "ShopStride"' > "shots/app-log.txt" 2>&1 || true
           xcrun simctl shutdown "$DEV"
           cd shots
