@@ -14,6 +14,8 @@ export type PlannedRoute = {
   distance: number;
 };
 
+const MAX_AISLES = 80;
+
 /** Location to route with: the item's own, else a department guessed from its name. */
 export function effectiveLocation(item: ListItem): ItemLocation {
   if (item.location.kind !== 'unknown') return item.location;
@@ -41,9 +43,13 @@ export function planRoute(
   const todo = items.filter((i) => !i.checked);
 
   // Make room for any aisle number higher than the store's aisle count.
+  // A typo like "140" or "2026" is not an aisle: ignore numbers past MAX_AISLES when sizing the map.
   const highest = Math.max(
     aisleCount,
-    ...todo.map((i) => (i.location.kind === 'aisle' ? parseAisleNumber(i.location.aisle) ?? 0 : 0)),
+    ...todo.map((i) => {
+      const n = i.location.kind === 'aisle' ? parseAisleNumber(i.location.aisle) ?? 0 : 0;
+      return n <= MAX_AISLES ? n : 0;
+    }),
     ...Object.values(opts.profile?.departmentAisle ?? {}),
   );
   const layout = buildGenericLayout(highest, { profile: opts.profile, mirror: opts.mirror });
