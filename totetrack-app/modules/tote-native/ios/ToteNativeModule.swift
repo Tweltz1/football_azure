@@ -14,9 +14,50 @@ var pendingSpotlightToteId: String?
 
 public class ToteNativeModule: Module {
   private let nfc = ToteNFC()
+  private var storeUpdates: Task<Void, Never>?
 
   public func definition() -> ModuleDefinition {
     Name("ToteNative")
+
+    // ToteTrack Pro (StoreKit 2). JavaScript re-checks the subscription when this fires.
+    Events("onPurchasesChanged")
+
+    OnCreate {
+      self.storeUpdates = ToteStore.listen { [weak self] in
+        self?.sendEvent("onPurchasesChanged", [:])
+      }
+    }
+
+    OnDestroy {
+      self.storeUpdates?.cancel()
+    }
+
+    AsyncFunction("storeProducts") { (ids: [String], promise: Promise) in
+      Task {
+        do { promise.resolve(try await ToteStore.products(ids)) } catch { promise.reject("E_STORE", error.localizedDescription) }
+      }
+    }
+
+    AsyncFunction("storeEntitlements") { (promise: Promise) in
+      Task { promise.resolve(await ToteStore.entitlements()) }
+    }
+
+    AsyncFunction("storePurchase") { (id: String, promise: Promise) in
+      Task {
+        do { promise.resolve(try await ToteStore.purchase(id)) } catch { promise.reject("E_STORE", error.localizedDescription) }
+      }
+    }
+
+    AsyncFunction("storeRestore") { (promise: Promise) in
+      Task {
+        do {
+          try await ToteStore.restore()
+          promise.resolve(await ToteStore.entitlements())
+        } catch {
+          promise.reject("E_STORE", error.localizedDescription)
+        }
+      }
+    }
 
     Function("nfcAvailable") { () -> Bool in
       ToteNFC.available

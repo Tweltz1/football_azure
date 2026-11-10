@@ -20,6 +20,7 @@ import {
   ToteBadge,
 } from "../components/ui";
 import { useAuth } from "../lib/auth";
+import { usePro } from "../lib/pro";
 import { itemCount, timeAgo, useTotes } from "../lib/store";
 import { radius, useTheme } from "../lib/theme";
 import { Tote } from "../lib/types";
@@ -36,6 +37,7 @@ export default function Home() {
   const [byPlace, setByPlace] = useState(false);
   const [reporting, setReporting] = useState(false);
   const { session } = useAuth();
+  const pro = usePro();
   const attention = useMemo(() => reminderCount(reminders(totes)), [totes]);
 
   const report = async () => {
@@ -131,6 +133,23 @@ export default function Home() {
                   <Stat label="Items" value={totalItems} icon="list" />
                   <Stat label="Places" value={locations} icon="location" />
                 </View>
+                {pro.freeLeft !== null && pro.freeLeft <= 3 ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => router.push("/pro")}
+                    style={[styles.proHint, { backgroundColor: t.primarySoft }]}
+                  >
+                    <Ionicons name="star" size={16} color={t.primary} />
+                    <Text style={{ color: t.text, flex: 1, fontSize: 14 }}>
+                      {pro.freeLeft === 0
+                        ? "You've used all your free totes"
+                        : `${pro.freeLeft} free tote${pro.freeLeft === 1 ? "" : "s"} left`}
+                    </Text>
+                    <Text style={{ color: t.primary, fontWeight: "700", fontSize: 14 }}>
+                      Get Pro
+                    </Text>
+                  </Pressable>
+                ) : null}
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -407,6 +426,15 @@ function ToteRow({ row, query }: { row: Row; query: string }) {
 }
 
 const styles = StyleSheet.create({
+  proHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 12,
+  },
   pageTitle: {
     fontSize: 34,
     fontWeight: "800",

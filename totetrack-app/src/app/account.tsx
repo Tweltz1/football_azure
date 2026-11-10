@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Button, Card, IconButton, SectionTitle } from '../components/ui';
 import { useAuth } from '../lib/auth';
+import { FREE_TOTE_LIMIT, usePro } from '../lib/pro';
 import { itemCount, timeAgo, useTotes } from '../lib/store';
 import { cloudConfigured } from '../lib/supabase';
 import { useSync } from '../lib/sync';
@@ -15,6 +16,7 @@ export default function Account() {
   const auth = useAuth();
   const sync = useSync();
   const { totes } = useTotes();
+  const pro = usePro();
   const [busy, setBusy] = useState<'google' | 'apple' | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
@@ -66,6 +68,18 @@ export default function Account() {
     <>
       <Stack.Screen options={{ headerLeft: () => <IconButton icon="close" label="Close" onPress={() => router.back()} color={t.textMuted} /> }} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
+        <Pressable onPress={() => router.push('/pro')} accessibilityRole="button">
+          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <Ionicons name="star" size={22} color={t.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }}>{pro.isPro ? 'ToteTrack Pro' : 'Get ToteTrack Pro'}</Text>
+              <Text style={{ color: t.textMuted, fontSize: 14 }}>
+                {pro.isPro ? 'Unlimited totes. Tap to manage.' : `${Math.min(totes.length, FREE_TOTE_LIMIT)} of ${FREE_TOTE_LIMIT} free totes used. Pro adds unlimited.`}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={t.textMuted} />
+          </Card>
+        </Pressable>
         {auth.session ? (
           <>
             <Card style={{ alignItems: 'center', gap: 8, paddingVertical: 24 }}>
