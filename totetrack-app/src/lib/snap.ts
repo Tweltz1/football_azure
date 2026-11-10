@@ -24,7 +24,7 @@ const MAX_OBJECTS = 10;
  * held-out photos of the 152 types it was trained on): names at or above this are offered, and ticked from
  * SURE_NAMED up.
  */
-const MIN_NAMED_CONFIDENCE = 0.3;
+const MIN_NAMED_CONFIDENCE = 0.25;
 const SURE_NAMED_CONFIDENCE = 0.5;
 /** When the namer is in the build, Apple's broad labels are only extras: never ticked, and at most this many. */
 const MAX_PHOTO_LABELS_WITH_NAMER = 4;
@@ -208,7 +208,10 @@ export function suggestionsFrom(result: PhotoAnalysis): Suggestion[] {
 
   // ToteTrack's own namer knows the most item types, so its answers come first.
   for (const n of (result.named ?? []).filter((x) => x.confidence >= MIN_NAMED_CONFIDENCE).slice(0, MAX_OBJECTS)) {
-    push({ name: n.name, from: 'object', sure: n.confidence >= SURE_NAMED_CONFIDENCE, qty: 1, look: n.embedding });
+    // Seen as the same thing in two or more spots counts for a lot, since the namer splits its odds between
+    // similar names ("Laptop" vs "Computer").
+    const sure = n.confidence >= SURE_NAMED_CONFIDENCE || (n.confidence >= 0.3 && n.spots >= 2);
+    push({ name: n.name, from: 'object', sure, qty: 1, look: n.embedding });
   }
 
   // Separate items the object detector outlined come next, grouped by name with a count ("Mug" x 2).
