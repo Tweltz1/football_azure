@@ -127,7 +127,19 @@ def age_rating():
             attrs[k] = "NONE"
         elif k in YES_NO:
             attrs[k] = False
-    call("PATCH", f"/ageRatingDeclarations/{decl['id']}", {"data": {"type": "ageRatingDeclarations", "id": decl["id"], "attributes": attrs}})
+    # Apple adds questions over time. When it names one this script doesn't know, answer it
+    # "no" (or "none" if it turns out to be a how-often question) and try again.
+    import re
+    for _ in range(25):
+        try:
+            call("PATCH", f"/ageRatingDeclarations/{decl['id']}", {"data": {"type": "ageRatingDeclarations", "id": decl["id"], "attributes": attrs}})
+            break
+        except RuntimeError as e:
+            m = re.search(r"attribute '(\w+)'", str(e))
+            if not m or attrs.get(m.group(1)) == "NONE":
+                raise
+            attrs[m.group(1)] = "NONE" if m.group(1) in attrs else False
+    print("      answered: " + ", ".join(f"{k}={v}" for k, v in sorted(attrs.items())))
     after = call("GET", f"/appInfos/{info['id']}/ageRatingDeclaration")["data"]["attributes"]
     blank = [k for k, v in after.items() if v is None and k not in ("kidsAgeBand", "ageRatingOverride", "koreaAgeRatingOverride", "developerAgeRatingInfoUrl")]
     if blank:
