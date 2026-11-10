@@ -106,7 +106,8 @@ def main():
         if g not in tote_known:
             continue
         for f in sorted(os.listdir(os.path.join(tdir, label))):
-            if not f.endswith(".jpg") or int(f.split("_")[0]) not in val_ids:
+            iid = f.split("_")[0]
+            if not f.endswith(".jpg") or not iid.isdigit() or int(iid) not in val_ids:
                 continue
             key = f"test/{label}/{f}"
             if key in feat_of:

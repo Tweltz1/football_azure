@@ -9,7 +9,7 @@ order; `metrics.json`).
 Create ML's own image classifier crashed twice on this data (a 0x0 picture error after 1.5 to 2.5 hours),
 so the feature prints are made one picture at a time and unreadable ones are skipped.
 
-- `prepare.py`: crops of everyday made things from LVIS v1 (CC BY 4.0), picked with WordNet.
+- `prepare.py`: crops of everyday made things from LVIS v1 (CC BY 4.0), picked with WordNet, plus Open Images V7 (boxes CC BY 4.0, photos CC BY 2.0) for common curb finds LVIS has few or none of (`OPEN_IMAGES`). `SPLIT` keeps curb finds like mattresses and dressers apart from the broader kinds the hand-made list merges them into.
 - `fixes.py`: the learning loop. Adds the name fixes people sent from the apps (`junk_label_fixes` in
   Supabase; a picture only from people who turned on "Help improve item recognition") and reports the most
   common mix-ups in `fixes.json`.
