@@ -156,7 +156,7 @@ export default function Me() {
         <input type="checkbox" checked={shareCrops} onChange={(e) => { setSharesCrops(e.target.checked); setShareCrops(e.target.checked); }} />
         <span>
           <strong>Help improve item recognition</strong>
-          <small>When you fix a name Curbsy guessed, also send a small picture of just that item so it learns. Your full photo and location stay on your phone. Off unless you turn it on.</small>
+          <small>When you fix a name Curbsy guessed, also send a small picture of just that item so it learns. Your full photo and location stay on your phone. Off unless you choose it.</small>
         </span>
       </label>
 

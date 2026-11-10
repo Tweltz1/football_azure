@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { agreeToTerms, appealCurbsy, contactCurbsy } from './junkApi';
+import { setSharesCrops } from './learning';
 import { IconClose, IconPin } from './icons';
 
 // Curbsy's free safety checks on the phone, plus the Terms and Contact sheets (App Store guideline 1.2).
@@ -40,15 +41,19 @@ export async function checkPhoto(jpegDataUrl) {
   }
 }
 
-/** One-time "I agree" before posting or messaging. */
+/**
+ * One-time "I agree" before posting or messaging. It also asks, as a separate choice with two equal buttons,
+ * whether item pictures may be shared to teach item recognition (the Me tab switch changes it later).
+ */
 export function TermsSheet({ onDone, onCancel }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const agree = async () => {
+  const agree = async (share) => {
     setBusy(true);
     setError('');
     try {
       await agreeToTerms();
+      setSharesCrops(share);
       onDone();
     } catch (err) {
       setError(err.message);
@@ -66,11 +71,20 @@ export function TermsSheet({ onDone, onCancel }) {
           <li>No hateful, sexual, violent or abusive posts or messages. There's zero tolerance.</li>
           <li>Report anything that breaks the rules. Reported listings are reviewed within 24 hours, and people who break the rules are removed.</li>
         </ul>
+        <div className="jk-learn-ask">
+          <strong>Help Curbsy learn what things are?</strong>
+          <p className="jk-muted">When you name an item, Curbsy can send a small picture of just that item so it gets better at
+            naming things for everyone. Your full photo and location stay on your phone. You can change this any time
+            in the Me tab.</p>
+        </div>
         {error && <p className="jk-error">{error}</p>}
-        <button type="button" className="jk-btn jk-btn-primary jk-full" disabled={busy} onClick={agree}>
-          {busy ? 'Saving…' : 'I agree'}
+        <button type="button" className="jk-btn jk-btn-primary jk-full" disabled={busy} onClick={() => agree(true)}>
+          {busy ? 'Saving…' : 'I agree, and help Curbsy learn'}
         </button>
-        <p className="jk-legal">Read the full <a href="/junk-terms.html">Terms of Use</a>.</p>
+        <button type="button" className="jk-btn jk-full jk-terms-only" disabled={busy} onClick={() => agree(false)}>
+          I agree, without sharing pictures
+        </button>
+        <p className="jk-legal">Read the full <a href="/junk-terms.html">Terms of Use</a> and <a href="/junk-privacy.html">Privacy Policy</a>.</p>
       </div>
     </div>
   );
