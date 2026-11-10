@@ -16,6 +16,7 @@ import type { Booking } from '../_shared/shopGrow.ts';
 import { DEFAULT_TRIAL, type PlanState } from '../_shared/shopPlans.ts';
 import type { AccountStore, AuthCode, CodeChannel, CodePurpose } from '../_shared/shopAccount.ts';
 import type { Invite, Member, Role, StaffStore } from '../_shared/shopStaff.ts';
+import { IDLE_DAYS, MAX_DEVICES, type SessionStore } from '../_shared/shopSessions.ts';
 
 const rowToStored = (row: { data: League; version: number }): StoredLeague => ({ league: row.data, version: Number(row.version) });
 
@@ -635,6 +636,31 @@ const inviteRow = (r: InviteDb): Invite => ({
   id: r.id, shopId: r.shop_id, email: r.email, name: r.name, role: r.role, tokenHash: r.token_hash, invitedBy: r.invited_by,
   createdAt: r.created_at, expiresAt: r.expires_at, acceptedAt: r.accepted_at,
 });
+
+/** Talk Shops device limit (talkshops_sessions + talkshops_claim_session). */
+export function createSessionStore(db: SupabaseClient): SessionStore {
+  return {
+    async claim(userId, sessionId, userAgent) {
+      const { data, error } = await db.rpc('talkshops_claim_session', { p_user: userId, p_session: sessionId, p_max: MAX_DEVICES, p_idle_days: IDLE_DAYS, p_agent: userAgent });
+      if (error) throw error;
+      return data === 'ended' || data === 'idle' ? data : 'ok';
+    },
+    async end(userId, sessionId, keep) {
+      const { data, error } = await db.rpc('talkshops_end_sessions', { p_user: userId, p_session: sessionId, p_keep: keep });
+      if (error) throw error;
+      return Number(data) || 0;
+    },
+    async counts(userIds) {
+      if (!userIds.length) return {};
+      const since = new Date(Date.now() - IDLE_DAYS * 86_400_000).toISOString();
+      const { data, error } = await db.from('talkshops_sessions').select('user_id').in('user_id', userIds).gte('last_seen', since);
+      if (error) throw error;
+      const out: Record<string, number> = {};
+      for (const r of (data ?? []) as { user_id: string }[]) out[r.user_id] = (out[r.user_id] ?? 0) + 1;
+      return out;
+    },
+  };
+}
 
 export function createStaffStore(db: SupabaseClient): StaffStore {
   return {

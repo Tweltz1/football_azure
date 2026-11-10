@@ -19,3 +19,7 @@
 .est-send-note{margin:10px 0 0;font-size:13.5px}
 .step:disabled{opacity:.55;cursor:not-allowed}
 @media (max-width:560px){.team-row{grid-template-columns:minmax(0,1fr) auto}.team-act{grid-column:1/-1;justify-content:flex-start}}
+.team-act{flex-wrap:wrap}
+.team-dev{font-size:12.5px}
+.signed-out-note{margin:0}
+.team-who small.team-dev{white-space:normal}

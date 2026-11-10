@@ -7,6 +7,7 @@
 
 import type { Ctx, Res } from './handlers.ts';
 import type { SmsResult } from './shop.ts';
+import type { SessionStore } from './shopSessions.ts';
 
 export type Role = 'owner' | 'tech';
 export const ROLES: readonly Role[] = ['owner', 'tech'];
@@ -43,6 +44,8 @@ export interface StaffDeps {
   email?: { send(to: string, subject: string, text: string, opts?: { fromName?: string; replyTo?: string }): Promise<SmsResult> };
   newToken: () => string;
   siteUrl?: string;
+  /** Devices each login is signed in on (shopSessions.ts). */
+  sessions?: SessionStore | null;
 }
 
 /** What the signed-in account is in its shop. */
@@ -71,13 +74,14 @@ const inviteOut = (i: Invite, now: string) => ({ id: i.id, email: i.email, name:
 
 interface ShopLite { id: string; ownerId: string; name: string; email?: string; plan?: { plan: string | null } }
 
-async function team(store: StaffStore, shop: ShopLite, me: string, now: string) {
+async function team(store: StaffStore, shop: ShopLite, me: string, now: string, sessions?: SessionStore | null) {
   const members = await store.listMembers(shop.id);
   if (!members.some((m) => m.userId === shop.ownerId))
     members.unshift({ userId: shop.ownerId, shopId: shop.id, role: 'owner', email: '', name: '', addedAt: '' });
   members.sort((a, b) => (a.userId === shop.ownerId ? -1 : b.userId === shop.ownerId ? 1 : a.role === b.role ? a.addedAt.localeCompare(b.addedAt) : a.role === 'owner' ? -1 : 1));
   const limits = shop.plan?.plan === 'starter' ? {staff:3,owners:2} : shop.plan?.plan ? {staff:8,owners:3} : {staff:MAX_STAFF,owners:MAX_STAFF};
-  return { limits, members: members.map((m) => memberOut(m, shop.ownerId, me)), invites: (await store.listInvites(shop.id)).map((i) => inviteOut(i, now)), roles: ROLE_LABEL };
+  const devices = sessions ? await sessions.counts(members.map((m) => m.userId)).catch(() => ({} as Record<string, number>)) : null;
+  return { limits, members: members.map((m) => ({ ...memberOut(m, shop.ownerId, me), ...(devices ? { devices: devices[m.userId] ?? 0 } : {}) })), invites: (await store.listInvites(shop.id)).map((i) => inviteOut(i, now)), roles: ROLE_LABEL };
 }
 
 async function sendInvite(deps: StaffDeps, shop: ShopLite, inv: Invite, token: string): Promise<SmsResult> {
@@ -121,11 +125,11 @@ export async function staffRoute(
     if (current) return { status: 409, body: `This account already belongs to ${current.shop.name}. Use a different email for ${shop.name}, or ask its owner to remove you first.` };
     if ((await store.listMembers(inv.shopId)).length >= MAX_STAFF) return { status: 409, body: `${shop.name} already has ${MAX_STAFF} staff accounts.` };
     if (store.acceptReserved) {
-      if (!await store.acceptReserved(inv,ctx.userId,mine,ctx.displayName || '')) return {status:409,body:'This invitation can no longer be accepted.'};
+      if (!await store.acceptReserved(inv,ctx.userId,mine,inv.name || '')) return {status:409,body:'This invitation can no longer be accepted.'};
       return ok({joined:true,...info});
     }
     if (!await store.claimInvite(inv.id, now)) return { status: 410, body: 'This invite was already used.' };
-    const added = await store.addMember({ userId: ctx.userId, shopId: inv.shopId, role: inv.role, email: mine, name: inv.name || ctx.displayName || '', addedAt: now });
+    const added = await store.addMember({ userId: ctx.userId, shopId: inv.shopId, role: inv.role, email: mine, name: inv.name || '', addedAt: now });
     if (!added) return { status: 409, body: 'This account already belongs to a shop.' };
     return ok({ joined: true, ...info });
   }
@@ -149,7 +153,7 @@ export async function staffRoute(
   if (me.seat.role !== 'owner') return ownerOnly();
   const { shop } = me;
 
-  if (parts.length === 2 && method === 'GET') return ok(await team(store, shop, ctx.userId, now));
+  if (parts.length === 2 && method === 'GET') return ok(await team(store, shop, ctx.userId, now, deps.sessions));
 
   if (parts[2] === 'invite' && parts.length === 3 && method === 'POST') {
     const email = str(body.email, 254).toLowerCase();
@@ -159,7 +163,7 @@ export async function staffRoute(
     const members = await store.listMembers(shop.id);
     if (members.some((m) => m.email.toLowerCase() === email)) return bad(`${email} is already on your team.`);
     const invites = await store.listInvites(shop.id);
-    const panel=await team(store,shop,ctx.userId,now);
+    const panel=await team(store,shop,ctx.userId,now,deps.sessions);
     const reserved=invites.filter(i=>i.expiresAt>now && i.email!==email);
     if (panel.members.length+reserved.length>=panel.limits.staff) return bad(`All ${panel.limits.staff} staff seats are occupied or reserved.`);
     if (role==='owner' && [...panel.members,...reserved].filter(m=>m.role==='owner').length>=panel.limits.owners) return bad(`All ${panel.limits.owners} owner seats are occupied or reserved.`);
@@ -174,12 +178,22 @@ export async function staffRoute(
     await store.saveInvite(inv);
     const sent = await sendInvite(deps, shop, inv, token);
     if (sent.delivery !== 'sent') ctx.log.warn('staff invite not emailed', { delivery: sent.delivery, note: sent.note });
-    return ok({ ...(await team(store, shop, ctx.userId, now)), link: joinLink(deps, token), emailed: sent.delivery === 'sent', note: sent.note ?? null });
+    return ok({ ...(await team(store, shop, ctx.userId, now, deps.sessions)), link: joinLink(deps, token), emailed: sent.delivery === 'sent', note: sent.note ?? null });
   }
 
   if (parts[2] === 'invites' && parts[3] && parts.length === 4 && method === 'DELETE') {
     await store.deleteInvite(shop.id, parts[3]);
-    return ok(await team(store, shop, ctx.userId, now));
+    return ok(await team(store, shop, ctx.userId, now, deps.sessions));
+  }
+
+  // Sign out all of a team member's devices (a lost phone, someone who left, or a login being shared).
+  if (parts[2] === 'members' && parts[3] && parts[4] === 'signout' && parts.length === 5 && method === 'POST') {
+    const target = parts[3];
+    if (target === ctx.userId) return bad('Use Sign Out on your own devices.');
+    if (target === shop.ownerId) return bad("The shop's main owner can't be signed out by someone else.");
+    if (!(await store.listMembers(shop.id)).some((x) => x.userId === target)) return { status: 404, body: 'That person is not on your team.' };
+    const ended = deps.sessions ? await deps.sessions.end(target, null, null) : 0;
+    return ok({ ...(await team(store, shop, ctx.userId, now, deps.sessions)), signedOut: ended });
   }
 
   if (parts[2] === 'members' && parts[3] && parts.length === 4 && (method === 'POST' || method === 'DELETE')) {
@@ -188,16 +202,16 @@ export async function staffRoute(
     if (target === ctx.userId) return bad("You can't change your own access. Ask another owner.");
     const m = (await store.listMembers(shop.id)).find((x) => x.userId === target);
     if (!m) return { status: 404, body: 'That person is not on your team.' };
-    if (method === 'DELETE') await store.removeMember(shop.id, target);
+    if (method === 'DELETE') { await store.removeMember(shop.id, target); await deps.sessions?.end(target, null, null).catch(() => 0); }
     else {
       if (body.role !== 'owner' && body.role !== 'tech') return bad('Choose Owner or Technician.');
       if (body.role==='owner' && m.role!=='owner') {
-        const panel=await team(store,shop,ctx.userId,now);
+        const panel=await team(store,shop,ctx.userId,now,deps.sessions);
         if ([...panel.members,...panel.invites.filter(i=>!i.expired)].filter(x=>x.role==='owner').length>=panel.limits.owners) return bad(`All ${panel.limits.owners} owner seats are occupied or reserved.`);
       }
       await store.setRole(shop.id, target, body.role);
     }
-    return ok(await team(store, shop, ctx.userId, now));
+    return ok(await team(store, shop, ctx.userId, now, deps.sessions));
   }
   return { status: 404 };
 }

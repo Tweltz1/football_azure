@@ -75,6 +75,7 @@
   "tm-3": "Your plan sets how many seats you have. Starter has three staff seats, with up to two owners. Pro has eight, with up to three owners. A pending invite holds a seat until it's accepted or canceled.",
   "tm-4": "To add someone, type their email and name, pick a role, and tap send invite. They get an email with a link. You can also copy the link and text it to them. It works once, and expires in seven days.",
   "tm-5": "Need a change? Switch a person's role right here. Send an invite again, or cancel it. And when someone leaves, tap remove, and they lose access to your shop right away.",
+  "tm-6": "Each person needs their own login, because their name goes on their notes, messages, and time clock. One login works on two devices at a time, like a phone and a shop computer. Signing in on a third device signs out the oldest one. You can see how many devices each person is on, and tap sign out all devices if a phone goes missing.",
   "sm-1": "Smart Replies is a Pro feature, and it's included in your free trial. When customers text your shop, it can answer the routine questions for you. Open a car, and scroll to Messages.",
   "sm-2": "In this demo, you can try a sample customer text. Let's send, how's my car coming. With auto-reply off, Talk Shops drafts a suggested answer, with the car's current stage.",
   "sm-3": "Now turn on auto-reply, and try, what are your hours. This time, the answer goes out right away, with your posted shop hours. Routine questions get answered, even when the front desk is busy.",

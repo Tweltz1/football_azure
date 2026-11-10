@@ -22,7 +22,7 @@ import { HOWTO_SCHEMA } from '../_shared/shopHowTo.ts';
 import { geminiPriceReader } from '../_shared/shopPriceImport.ts';
 import { createTurn } from './turn.ts';
 import {
-  createAccountStore, createAskLogStore, createHowToLibrary, createStaffStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
+  createAccountStore, createAskLogStore, createSessionStore, createHowToLibrary, createStaffStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
 } from './supabaseAdapters.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -50,6 +50,7 @@ const shop: ShopDeps = {
   },
   account: createAccountStore(db),
   staff: createStaffStore(db),
+  sessions: createSessionStore(db),
   email: createShopEmailSender(Deno.env.get('RESEND_API_KEY'), Deno.env.get('TALKSHOPS_EMAIL_FROM')),
   sms: createTwilioSender(Deno.env.get('TWILIO_ACCOUNT_SID'), Deno.env.get('TWILIO_AUTH_TOKEN'), Deno.env.get('TWILIO_FROM')),
   linkBase: Deno.env.get('SHOP_LINK_BASE') || 'https://talkshops.app/?c=',
@@ -119,11 +120,24 @@ const log = {
 
 interface SignedInUser {
   id: string;
+  /** The sign-in session (one per device), from the token's session_id claim. */
+  sessionId: string | null;
   displayName: string | null;
   email: string | null;
   createdAt: string | null;
   provider: string | null;
 }
+
+function tokenSessionId(token: string): string | null {
+  try {
+    const part = token.split('.')[1] ?? '';
+    const claims = JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=')));
+    return typeof claims?.session_id === 'string' && /^[0-9a-f-]{36}$/i.test(claims.session_id) ? claims.session_id.toLowerCase() : null;
+  } catch { return null; }
+}
+
+/** False when the request had no sign-in token. Null user with a token means the sign-in was ended or expired. */
+const sentToken = (req: Request) => (req.headers.get('Authorization') ?? '').startsWith('Bearer ') && (req.headers.get('Authorization') ?? '').length > 7;
 
 async function getSignedInUser(req: Request): Promise<SignedInUser | null> {
   const header = req.headers.get('Authorization') ?? '';
@@ -137,6 +151,7 @@ async function getSignedInUser(req: Request): Promise<SignedInUser | null> {
   const pick = (...keys: string[]) => keys.map((k) => meta[k]).find((v) => typeof v === 'string' && v.trim()) as string | undefined;
   return {
     id: data.user.id,
+    sessionId: tokenSessionId(token),
     displayName: pick('user_name', 'preferred_username', 'full_name', 'name') ?? data.user.email ?? null,
     email: data.user.email ?? null,
     createdAt: data.user.created_at ?? null,
@@ -204,6 +219,9 @@ Deno.serve(async (req) => {
       playerPool: getInitialPlayerPool,
       fetchJson,
       userId: user?.id ?? null,
+      sessionId: user?.sessionId ?? null,
+      userAgent: (req.headers.get('User-Agent') ?? '').slice(0, 300),
+      signInRejected: !user && sentToken(req),
       displayName: user?.displayName ?? null,
       userEmail: user?.email ?? null,
       userCreatedAt: user?.createdAt ?? null,

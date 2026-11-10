@@ -1033,7 +1033,7 @@
       step(); { const c = say("hp-2"); q("#help-support")?.scrollIntoView({ block: "start" }); highlight("#help-support"); await cue(0.5); highlight("#helpForm"); await c; }
     },
     async team() {
-      STEPS = 5; await begin("board");
+      STEPS = 6; await begin("board");
       step(); { const c = say("tm-1"); await tab("settings"); highlight("#teamPanel"); await wait(600); highlight("#teamPanel"); await c; }
       step(); { const c = say("tm-2"); highlight("#teamPanel > p"); await cue(0.55); highlight(".team-list"); await c; }
       step(); { const c = say("tm-3"); highlight(q("#teamPanel p strong")?.closest("p") || "#teamPanel"); await c; }
@@ -1046,6 +1046,13 @@
         await c;
       }
       step(); { const c = say("tm-5"); highlight(q("[data-team-role]")?.closest(".team-row") || ".team-list"); await cue(0.45); highlight(q(".team-row.pending") || ".team-list"); await cue(0.7); highlight(q("[data-team-remove]") || ".team-list"); await c; }
+      step(); {
+        const c = say("tm-6"); highlight(".team-list");
+        await cue(0.45); highlight(q(".team-dev")?.closest(".team-row") || ".team-list");
+        await cue(0.62); q("#devicesPanel")?.scrollIntoView({ block: "center" }); highlight("#devicesPanel");
+        await cue(0.82); q("[data-team-signout]")?.scrollIntoView({ block: "center" }); highlight(q("[data-team-signout]") || ".team-list");
+        await c;
+      }
     },
     async smart() {
       STEPS = 5; await begin("board");
@@ -1175,8 +1182,8 @@
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
-      fetch("/tour/lines.json?v=9").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
-      fetch("/tour/caption-cues.json?v=9").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+      fetch("/tour/lines.json?v=10").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
+      fetch("/tour/caption-cues.json?v=10").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">

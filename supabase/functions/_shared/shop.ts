@@ -16,6 +16,7 @@ import { priceImportRoute, type PriceReader } from './shopPriceImport.ts';
 import { cleanMarks, isAngle, type DamageFinder, type WalkPhoto } from './shopDamage.ts';
 import { accountRoute, type AccountStore } from './shopAccount.ts';
 import { ownerOnly, staffRoute, type Seat, type StaffStore } from './shopStaff.ts';
+import { checkDevice, sessionRoute, type SessionStore } from './shopSessions.ts';
 import type { Narrator } from './dnd.ts';
 import { clockAction, customersCsv, jobsCsv, langOf, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES, SHORT_ES,
   type Booking, type BookingStore, type Brand, type ClockEntry, type Grow, type Lang } from './shopGrow.ts';
@@ -298,6 +299,8 @@ export interface ShopDeps {
   newCode?: () => string;
   /** Owners and technicians (shopStaff.ts). Without it, only the account that created the shop can sign in to it. */
   staff?: StaffStore | null;
+  /** Devices signed in per login (shopSessions.ts). Without it there is no device limit. */
+  sessions?: SessionStore | null;
 }
 
 export const DEMO_SHOP_ID = 'demo-shop';
@@ -658,6 +661,12 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return ok({ token: job.token });
   }
 
+  // ---- Signed-in requests: this device must still be one of the login's devices ----
+  const deviceRes = await checkDevice(ctx, deps.sessions);
+  if (deviceRes) return deviceRes;
+  const sessionRes = await sessionRoute(ctx, deps.sessions, method, parts);
+  if (sessionRes) return sessionRes;
+
   // ---- Forgot password (signed out) and the reset phone (signed in) ----
   const accountRes = await accountRoute(ctx, deps, method, parts, body, normalizePhone);
   if (accountRes) return accountRes;
@@ -666,8 +675,12 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   const whoAmI = async (): Promise<{ shop: Shop; seat: Seat } | null> => {
     if (!ctx.userId) return null;
     const owned = await store.shopByOwner(ctx.userId);
+    const m = owned
+      ? (await deps.staff?.listMembers(owned.id).catch(() => []))?.find((x) => x.userId === ctx.userId)
+      : await deps.staff?.memberOf(ctx.userId);
+    // Notes, messages, the time clock and walk-throughs are signed with the name the person saved on their team.
+    ctx.displayName = staffName(m?.name, ctx);
     if (owned) return { shop: owned, seat: { role: 'owner', primary: true } };
-    const m = await deps.staff?.memberOf(ctx.userId);
     const shop = m ? await store.shopById(m.shopId) : null;
     return m && shop ? { shop, seat: { role: m.role, primary: false } } : null;
   };
@@ -686,7 +699,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (shop) await store.purgeArchive?.(shop.id, archiveCutoff(ctx.now())).catch((e) => ctx.log.warn('archive purge failed', { error: String(e) }));
       return ok({ shop: shop && publicShop(shop), role: mine?.seat.role ?? null, mainOwner: mine?.seat.primary ?? false, emailConfigured: !!deps.email, plan: shop ? await planOut(deps, shop, ctx.now()) : null,
         me: ctx.userId, crew: shop ? await crewOf(deps, shop, ctx) : [],
-        myName: shop ? ((await deps.staff?.listMembers(shop.id).catch(() => []))?.find((m) => m.userId === ctx.userId)?.name || '') : '' });
+        myName: shop ? realName((await deps.staff?.listMembers(shop.id).catch(() => []))?.find((m) => m.userId === ctx.userId)?.name) : '' });
     }
     if (method === 'POST') {
       if (mine && mine.seat.role !== 'owner') return ownerOnly();
@@ -758,7 +771,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         createdAt: shop?.createdAt ?? now,
       };
       await store.putShop(next);
-      if (!shop) await deps.staff?.addMember({ userId: ctx.userId, shopId: next.id, role: 'owner', email: (ctx.userEmail ?? '').toLowerCase(), name: ctx.displayName ?? '', addedAt: now })
+      if (!shop) await deps.staff?.addMember({ userId: ctx.userId, shopId: next.id, role: 'owner', email: (ctx.userEmail ?? '').toLowerCase(), name: '', addedAt: now })
         .catch((e) => ctx.log.warn('owner member row not saved', { error: String(e) }));
       if (!shop && store.startTrial) {
         const trial = await settings(deps);
@@ -1335,10 +1348,16 @@ function smartDraft(intent: string, shop: Shop, job: Job, linkBase: string) {
 }
 const canSmart = (s:Shop,now:Date) => s.plan?.plan==='pro' && ['active','past_due','trialing'].includes(s.plan.status) ||
   s.plan?.plan==='trial' && !!s.plan.trialEndsAt && Date.parse(s.plan.trialEndsAt)>now.getTime();
+/** A saved person's name, or '' when what's there is really an email address (older accounts saved those). */
+export const realName = (name: string | null | undefined) => (name && !name.includes('@') ? name.trim() : '');
+/** The name a signed-in person's work is signed with: their team name, else their sign-in name, else the start of their email. */
+function staffName(saved: string | null | undefined, ctx: Ctx): string {
+  return realName(saved) || realName(ctx.displayName) || (ctx.userEmail ?? '').split('@')[0] || 'Shop staff';
+}
 /** Everyone who can be assigned a car: id and a short name. */
 async function crewOf(deps: ShopDeps, shop: Shop, ctx: Ctx & { displayName?: string | null; userEmail?: string | null }): Promise<{ id: string; name: string; role: string }[]> {
   const members = await deps.staff?.listMembers(shop.id).catch(() => []) ?? [];
-  const label = (name: string, email: string) => name || email.split('@')[0] || 'Owner';
+  const label = (name: string, email: string) => realName(name) || email.split('@')[0] || 'Owner';
   const list = members.map((m) => ({ id: m.userId, name: label(m.name, m.email), role: m.role }));
   if (!list.some((m) => m.id === shop.ownerId))
     list.unshift({ id: shop.ownerId, name: shop.ownerId === ctx.userId ? label(ctx.displayName ?? '', ctx.userEmail ?? '') : 'Owner', role: 'owner' });

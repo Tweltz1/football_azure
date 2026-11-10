@@ -114,7 +114,9 @@
     ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }, global: { fetch: accountFetch } })
     : null;
 
-  async function api(method, path, body) {
+  // Set when this device was signed out by the server (newer sign-in elsewhere, an owner, or 14 days unused).
+  let signedOutNote = "";
+  async function api(method, path, body, retried) {
     if (!CFG.apiUrl) throw new Error("This site is missing its server settings.");
     const headers = { "Content-Type": "application/json" };
     if (sb) {
@@ -128,8 +130,21 @@
     const text = await res.text();
     let data = text;
     try { data = text ? JSON.parse(text) : null; } catch (e) { /* plain text */ }
-    if (!res.ok) { const err = new Error(typeof data === "string" && data ? data : "Something went wrong (" + res.status + ")."); err.status = res.status; throw err; }
+    if (res.status === 401 && data && data.code === "session_ended" && sb) {
+      // An expired token gets one refresh and retry. A device that was signed out can't refresh, so it signs out here.
+      if (!retried && data.reason === "rejected") { const r = await sb.auth.refreshSession().catch(() => ({ error: true })); if (!r.error && r.data?.session) { session = r.data.session; return api(method, path, body, true); } }
+      signedOutNote = data.message || "You were signed out. Please sign in again.";
+      await sb.auth.signOut({ scope: "local" }).catch(() => {});
+      const err = new Error(signedOutNote); err.status = 401; throw err;
+    }
+    if (!res.ok) { const err = new Error(typeof data === "string" && data ? data : (data && data.message) || "Something went wrong (" + res.status + ")."); err.status = res.status; throw err; }
     return data;
+  }
+  /** Sign Out on this device only. Ends this device's sign-in on the server first, so it stops counting toward the 2 devices. */
+  async function signOutHere() {
+    if (!sb) return;
+    try { await api("POST", "shop/session/end"); } catch (e) { /* still sign out here */ }
+    await sb.auth.signOut({ scope: "local" }).catch(() => {});
   }
 
   let toastT;
@@ -400,7 +415,7 @@
       return;
     }
     // The sign-in page is /?login (a real file the host always serves); /login forwards there.
-    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join") || !!joinToken || !!pathView();
+    const onLoginPage = location.pathname === "/login" || location.pathname === "/login/" || new URLSearchParams(location.search).has("login") || new URLSearchParams(location.search).has("join") || !!joinToken || !!pathView() || !!signedOutNote;
     if (!session) {
       chrome.hidden = true;
       if (onLoginPage) document.title = ui.authMode === "signup" ? "Create Your Account · Talk Shops" : "Shop Sign In · Talk Shops";
@@ -433,14 +448,17 @@
     $("#bayTab").textContent = bayName();
     document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.view === ui.view ? "page" : "false"));
     const planTab = document.querySelector('.tab[data-view="plan"]'); if (planTab) planTab.hidden = !isOwner();
-    $("#shopName").textContent = shop.name + (isOwner() ? "" : " · Technician");
+    // Who is signed in, so a login being passed around shows on every screen.
+    $("#shopName").textContent = shop.name + (myName ? " · " + myName : "") + (isOwner() ? "" : myName ? " (Technician)" : " · Technician");
     const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "")
       + (join.err ? `<div class="notice">${esc(join.err)}</div>` : "")
       // Until someone saves a name, the Technician list shows the start of their email.
-      + (!myName && (ui.view === "board" || ui.view === "settings") ? `<form class="notice name-ask" id="myNameForm"><span><b>Add your name</b> so your team sees who's working on each car.</span><input id="myNameIn" maxlength="60" placeholder="e.g. Sam Lee" autocomplete="name" aria-label="Your name" required><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Save</button></form>` : "")
+
       + (ui.view === "plan" || ui.view === "training" || ui.view === "help" ? "" : isOwner() ? planUi.banner(plan) : techBanner(plan))
       // Owners who haven't brought in prices yet get a pointer to the upload page on the Bay.
       + (isOwner() && ui.view === "board" && !(shop.rates || []).length && store.get("talkshops-prices-hint") !== "off" ? `<div class="notice prices-hint"><span><b>Upload your price list</b> (PDF, photo or Excel) so estimates fill in your labor rate, services and fees.</span><button class="btn primary" type="button" data-view="prices">Upload prices</button><button class="linkbtn" type="button" id="hidePricesHint">Not now</button></div>` : "");
+    // Everyone saves their own name first: it signs their notes, messages, time clock and My Cars.
+    if (!myName && !loadErr) { app.innerHTML = err + nameView(); renderLayer(); return; }
     app.innerHTML = err + (ui.view === "help" ? helpView() : ui.view === "checkin" ? checkinView() : ui.view === "settings" ? (isOwner() ? setupView(false) : techSettingsView()) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : ui.view === "prices" && isOwner() ? pricesView() : boardView());
     if (ui.view === "board") filterBoard();
     if (ui.view === "settings" && !recovery.data && !recovery.loading && !recovery.err) loadRecovery();
@@ -562,6 +580,7 @@
       ${brand()}
       ${joinBanner()}
       <h2>${signup ? (joinToken ? "Create your account" : "Create your shop account") : "Shop Sign In"}</h2>
+      ${signedOutNote && !signup ? `<p class="notice signed-out-note" role="status">${esc(signedOutNote)}</p>` : ""}
       ${sb ? "" : `<p class="form-err">Sign-in isn't available on this copy of the site.</p>`}
       <button class="btn google" id="google" type="button">${googleIcon} Continue with Google</button>
       <div class="or">or use email</div>
@@ -750,7 +769,7 @@
       ${firstTime ? "" : `<div class="btn-row"><button class="btn primary" type="button" data-view="prices">Upload price list (PDF, photo or Excel)</button><button class="btn" type="button" data-billing="rates">Edit saved items (${(shop?.rates || []).length})</button></div>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Next: upload my prices" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
       ${firstTime ? `<small class="muted">Next you can upload your price list (PDF, photo, Excel or CSV) so your labor rate, services and fees fill in for you. You can skip it.</small>` : ""}
-    </form>${firstTime ? "" : (isOwner() ? window.Workday.packagesPanel() + window.Grow.settingsPanels() : "") + team.panel(render) + recoveryPanel()}</div>`;
+    </form>${firstTime ? "" : (isOwner() ? window.Workday.packagesPanel() + window.Grow.settingsPanels() : "") + team.panel(render) + devicesPanel() + recoveryPanel()}</div>`;
   }
 
   function joinBanner() {
@@ -763,6 +782,24 @@
   }
 
   // Technicians see the shop's details but can't change them; the reset phone is their own.
+  function nameView() {
+    return `<div class="login-wrap"><form class="login name-gate" id="myNameForm">
+      <h2>What's your name?</h2>
+      <p class="muted" style="margin:0">Your name goes on your notes, messages to customers, the time clock and the cars assigned to you, so everyone knows who did what. Use your own name, not the shop's.</p>
+      <label class="field">Your name<input id="myNameIn" maxlength="60" placeholder="e.g. Sam Lee" autocomplete="name" required autofocus></label>
+      <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Save and Continue</button>
+      <small class="muted">Each person on your team gets their own login. One login works on up to 2 devices at a time.</small>
+      <button class="linkbtn" type="button" id="signOut2" style="align-self:flex-start">Not you? Sign out</button>
+    </form></div>`;
+  }
+  /** Settings: this login's devices. */
+  function devicesPanel() {
+    return `<section class="panel" style="display:flex;flex-direction:column;gap:8px">
+      <h2 style="font-size:20px">Your Devices</h2>
+      <p class="muted" style="margin:0">Signed in as <b>${esc(myName || session?.user?.email || "")}</b>${myName && session?.user?.email ? ` (${esc(session.user.email)})` : ""}. Your login works on up to <b>2 devices</b> at a time. Signing in on a third device signs out the one that signed in longest ago, and a device not used for 14 days signs out by itself.</p>
+      <div class="btn-row"><button class="btn" type="button" id="signOutOthers">Sign Out My Other Devices</button><button class="btn" type="button" id="signOut2">Sign Out Here</button></div>
+    </section>`;
+  }
   function techSettingsView() {
     const s = shop || {};
     const row = (k, v) => v ? `<div class="ro-row"><span class="muted">${k}</span><b>${esc(v)}</b></div>` : "";
@@ -770,7 +807,7 @@
       <h2>Shop Settings</h2>
       ${row("Shop name", s.name)}${row("Shop phone", s.phone)}${row("Hours", s.hours)}${row("Shop email", s.email)}
       <p class="muted" style="margin:0">You're signed in as a <b>technician</b>. A shop owner can change these details, prices, the plan and the team.</p>
-    </section>${recoveryPanel()}</div>`;
+    </section>${devicesPanel()}${recoveryPanel()}</div>`;
   }
 
   function techBanner(p) {
@@ -1143,7 +1180,13 @@
       ui.busy = false; render(); return;
     }
     if (t.id === "authSwap") { ui.authMode = ui.authMode === "signup" ? "signin" : "signup"; ui.authErr = ui.authMsg = ""; render(); return; }
-    if (t.id === "signOut" || t.id === "signOut2") { if (sb) await sb.auth.signOut(); return; }
+    if (t.id === "signOut" || t.id === "signOut2") { await signOutHere(); return; }
+    if (t.id === "signOutOthers") {
+      if (!window.confirm("Sign this login out on every other phone and computer? This one stays signed in.")) return;
+      const r = await act(() => api("POST", "shop/session/others"));
+      if (r) toast(r.ended ? `Signed out ${r.ended} other device${r.ended === 1 ? "" : "s"}` : "No other devices were signed in");
+      return;
+    }
     if (t.id === "dropInvite") { location.href = "/"; return; }
     if (t.id === "skipInvite") {
       joinToken = ""; store.set(JOIN_KEY, ""); join.err = ""; join.info = null; loaded = false;
@@ -1678,6 +1721,7 @@
   sb.auth.onAuthStateChange((_event, s) => {
     const was = session?.user?.id;
     session = s;
+    if (s) signedOutNote = "";
     if (s && s.user.id !== was) {
       loaded = false; render();
       // Run after Supabase releases its auth lock; use this event's session for API authorization.

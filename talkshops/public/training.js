@@ -21,7 +21,7 @@ window.TALKSHOPS_TRAINING = (() => {
     { id: "archive", title: "The Archive", mins: 1, desc: "Searching past repairs, one-year retention, and reopening a car." },
     { id: "results", title: "Results, time clock, reviews and your logo", mins: 2, desc: "The results dashboard, clocking in on a car, asking for reviews, your logo and color, and exporting your data." },
     { id: "settings", title: "Shop settings and price lists", mins: 2, desc: "Shop details, the reply email, saved items, importing a price list from Excel, CSV, PDF or a photo, and time-in-shop colors." },
-    { id: "team", title: "Your team: owners and technicians", mins: 2, desc: "What each role can do, staff seats, inviting people, and changing roles." },
+    { id: "team", title: "Your team: owners and technicians", mins: 3, desc: "What each role can do, staff seats, inviting people, changing roles, and one login per person on up to 2 devices." },
     { id: "signin", title: "Signing in and password reset", mins: 2, desc: "Signing in, resetting a forgotten password by email or text, and adding a reset phone." },
     { id: "help", title: "Help and support", mins: 1, desc: "Quick guides, common questions, and contacting the Talk Shops team." },
     { id: "plan", title: "Free trial and plans", mins: 1, desc: "Trial limits, Starter and Pro, staff seats, paying through Stripe, and managing billing." },

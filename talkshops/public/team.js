@@ -20,8 +20,11 @@
       const fixed = m.primary || m.you;
       const role = fixed ? `<span class="pill ${m.role === "owner" ? "ok" : ""}">${m.primary ? "Main owner" : ROLE[m.role]}</span>`
         : `<select data-team-role="${esc(m.userId)}" aria-label="Role for ${esc(m.name || m.email)}">${Object.keys(ROLE).map((r) => `<option value="${r}" ${r === m.role ? "selected" : ""}>${ROLE[r]}</option>`).join("")}</select>`;
-      return `<li class="team-row"><span class="team-who">${who}${tag}</span><span class="team-role">${role}</span>
-        <span class="team-act">${fixed ? "" : `<button class="linkbtn danger" type="button" data-team-remove="${esc(m.userId)}">Remove</button>`}</span></li>`;
+      // Devices signed in on this login in the last 14 days (each login works on up to 2).
+      const dev = typeof m.devices === "number" ? `<small class="team-dev">${m.devices ? `Signed in on ${m.devices} device${m.devices === 1 ? "" : "s"}` : "Not signed in"}</small>` : "";
+      const out = !fixed && m.devices ? `<button class="linkbtn" type="button" data-team-signout="${esc(m.userId)}">Sign out all devices</button>` : "";
+      return `<li class="team-row"><span class="team-who">${who}${tag}${dev}</span><span class="team-role">${role}</span>
+        <span class="team-act">${out}${fixed ? "" : `<button class="linkbtn danger" type="button" data-team-remove="${esc(m.userId)}">Remove</button>`}</span></li>`;
     }
     function invite(i) {
       return `<li class="team-row pending"><span class="team-who"><b>${esc(i.name || i.email)}</b>${i.name ? `<small>${esc(i.email)}</small>` : ""}</span>
@@ -38,6 +41,7 @@
         <h2 style="font-size:20px">Team</h2>
         <p class="muted" style="margin:0"><b>Owners</b> manage shop settings, saved prices, the plan and billing, final bills and the team, and send estimates for approval.
           <b>Technicians</b> work the cars: check-ins, stages, notes, photos, estimate lines, messages and How-to.</p>
+        <p class="muted" style="margin:0">Give each person their own login. Their name goes on their notes, messages and time clock, and one login works on up to 2 devices at a time.</p>
         ${d?.limits ? `<p><strong>${d.members.length+d.invites.filter(i=>!i.expired).length} of ${d.limits.staff} staff seats used</strong> · up to ${d.limits.owners} owners. Pending invites reserve seats.</p>` : ""}
         ${st.err ? `<p class="form-err" role="alert">${esc(st.err)} <button class="linkbtn" type="button" data-team-retry>Try again</button></p>` : ""}
         ${d ? `<ul class="team-list">${d.members.map(member).join("")}${d.invites.map(invite).join("")}</ul>` : st.err ? "" : `<p class="muted" style="margin:0">Loading…</p>`}
@@ -82,6 +86,12 @@
         const m = st.data?.members.find((x) => x.userId === t.dataset.teamRemove);
         if (!m || !window.confirm(`Remove ${m.name || m.email} from your shop? They won't be able to open your board anymore.`)) return true;
         await run(() => api("DELETE", "shop/staff/members/" + encodeURIComponent(m.userId)), render, "Removed");
+        return true;
+      }
+      if (t.dataset.teamSignout) {
+        const m = st.data?.members.find((x) => x.userId === t.dataset.teamSignout);
+        if (!m || !window.confirm(`Sign ${m.name || m.email} out on every phone and computer? They can sign in again with their password.`)) return true;
+        await run(() => api("POST", "shop/staff/members/" + encodeURIComponent(m.userId) + "/signout"), render, "Signed out on all devices");
         return true;
       }
       if (t.dataset.teamCancel) { await run(() => api("DELETE", "shop/staff/invites/" + encodeURIComponent(t.dataset.teamCancel)), render, "Invite canceled"); st.lastLink = null; render(); return true; }

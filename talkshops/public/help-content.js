@@ -76,6 +76,8 @@
       ["How do I add my team?", "Owners open Settings → Team and invite people by email as an owner or a technician. Each person signs in with the email that got the invitation."],
       ["What can technicians do?", "Technicians work on cars: check in, update stages, add photos and notes, build estimates and use How-To. Owners also handle shop settings, prices, quick services, team invitations, billing, approval requests and closing jobs."],
       ["How many people can use Talk Shops?", "Starter includes 3 staff seats with up to 2 owners. Pro includes 8 staff seats with up to 3 owners."],
+      ["Can my team share one login?", "No. Each person needs their own login, because their name goes on their notes, messages to customers, the time clock and My Cars. One login works on up to 2 devices at a time, such as a phone and a shop computer. Signing in on a third device signs out the one that signed in longest ago, and a device not used for 14 days signs out by itself."],
+      ["How do I sign someone out of every device?", "Owners open Settings → Team and tap Sign out all devices next to the person, for example when a phone is lost or someone leaves. To sign yourself out everywhere else, open Settings → Your Devices and tap Sign Out My Other Devices. Sign Out at the top only signs out the device you're on."],
       ["How do I reset my password?", "Choose Forgot password? on Shop Sign In. Get a code by email, or by text if you verified a reset phone number in Settings."],
       ["I did not get my account confirmation email.", "Check the address you typed and look in spam or junk. If you signed up with Google, use Continue with Google with that same account. Still stuck? Contact support below."],
     ]},

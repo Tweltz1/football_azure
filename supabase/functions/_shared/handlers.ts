@@ -43,6 +43,11 @@ export interface Ctx {
   fetchJson: FetchJson;
   /** Signed-in user's id, or null when the request had no valid token. */
   userId: string | null;
+  /** The signed-in device's session (token session_id claim). Talk Shops limits how many a login can have. */
+  sessionId?: string | null;
+  userAgent?: string;
+  /** The request carried a sign-in token the auth server turned down (signed out elsewhere, or expired). */
+  signInRejected?: boolean;
   /** Name from the sign-in provider, used when a profile is first created. */
   displayName: string | null;
   /** Signed-in user's email (Talk Shops staff invites check it). */
