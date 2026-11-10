@@ -17,8 +17,17 @@ export type PhotoAnalysis = {
    * probability, spots how many places it was the top answer. Empty when the namer isn't in the build.
    */
   named?: NamedItem[];
+  /** The namer's embedding of every spot it looked at (unit length), for matching your own things. */
+  looks?: number[][];
 };
-export type NamedItem = { name: string; confidence: number; similarity: number; spots: number };
+export type NamedItem = {
+  name: string;
+  confidence: number;
+  similarity: number;
+  spots: number;
+  /** The embedding of the spot where this name scored best. */
+  embedding?: number[];
+};
 export type DetectedObject = {
   label: string;
   confidence: number;

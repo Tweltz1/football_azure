@@ -4,7 +4,14 @@ import type { DetectedObject, PhotoAnalysis, TextLine } from '../../modules/tote
  * `object`: a separate item the object detector outlined; `photo`: what Apple's classifier saw in the
  * photo or part of it; `text`: read off packaging; `fallback`: the catch-all for a jumbled photo.
  */
-export type Suggestion = { name: string; from: 'object' | 'photo' | 'text' | 'fallback'; sure: boolean; qty: number };
+export type Suggestion = {
+  name: string;
+  from: 'object' | 'photo' | 'text' | 'fallback';
+  sure: boolean;
+  qty: number;
+  /** What this thing looks like to the namer, so Snap can remember it if you add it (see snapLooks.ts). */
+  look?: number[];
+};
 
 /** What we offer when the photo is a jumble and nothing stands out clearly. */
 export const MIXED_ITEMS = 'Box of mixed items';
@@ -17,8 +24,10 @@ const MAX_OBJECTS = 10;
  * held-out photos of the 152 types it was trained on): names at or above this are offered, and ticked from
  * SURE_NAMED up.
  */
-const MIN_NAMED_CONFIDENCE = 0.3;
-const SURE_NAMED_CONFIDENCE = 0.6;
+const MIN_NAMED_CONFIDENCE = 0.25;
+const SURE_NAMED_CONFIDENCE = 0.5;
+/** When the namer is in the build, Apple's broad labels are only extras: never ticked, and at most this many. */
+const MAX_PHOTO_LABELS_WITH_NAMER = 4;
 /** Lots of separate print in one photo means lots of separate packaging, so the tote is a mix. */
 const BUSY_TEXT_LINES = 8;
 
@@ -36,6 +45,8 @@ const SKIP = new Set([
   'conveyance', 'vehicle', 'screenshot', 'text', 'document', 'printed_page', 'liquid', 'decoration', 'structure_other',
   'storage_box', 'box', 'container', 'gate', 'entrance', 'arch', 'archway', 'architecture', 'stairs', 'staircase',
   'hallway', 'living_room', 'warehouse', 'store', 'shop', 'retail', 'restaurant', 'cityscape', 'sign', 'logo', 'label',
+  'raw_glass', 'glass', 'sky', 'blue_sky', 'cloudy', 'grass', 'plant', 'tree', 'rocks', 'rock', 'automobile', 'car',
+  'carton', 'sunlight', 'shadow', 'light', 'reflection', 'window_glass', 'landscape', 'parking_lot', 'road',
 ]);
 
 /**
@@ -197,7 +208,10 @@ export function suggestionsFrom(result: PhotoAnalysis): Suggestion[] {
 
   // ToteTrack's own namer knows the most item types, so its answers come first.
   for (const n of (result.named ?? []).filter((x) => x.confidence >= MIN_NAMED_CONFIDENCE).slice(0, MAX_OBJECTS)) {
-    push({ name: n.name, from: 'object', sure: n.confidence >= SURE_NAMED_CONFIDENCE, qty: 1 });
+    // Seen as the same thing in two or more spots counts for a lot, since the namer splits its odds between
+    // similar names ("Laptop" vs "Computer").
+    const sure = n.confidence >= SURE_NAMED_CONFIDENCE || (n.confidence >= 0.3 && n.spots >= 2);
+    push({ name: n.name, from: 'object', sure, qty: 1, look: n.embedding });
   }
 
   // Separate items the object detector outlined come next, grouped by name with a count ("Mug" x 2).
@@ -219,9 +233,11 @@ export function suggestionsFrom(result: PhotoAnalysis): Suggestion[] {
     .filter((l) => l.confidence >= 0.3 || (l.confidence >= 0.2 && (l.regions ?? 1) >= 2))
     .sort((a, b) => b.score - a.score);
   const photoStart = out.length;
+  const hasNamer = (result.named?.length ?? 0) > 0;
   for (const l of things) {
-    push({ name: friendly(l.label), from: 'photo', sure: l.confidence >= 0.6 || (l.confidence >= 0.45 && (l.regions ?? 1) >= 2), qty: 1 });
-    if (out.length - photoStart >= 12) break;
+    const sure = !hasNamer && (l.confidence >= 0.6 || (l.confidence >= 0.45 && (l.regions ?? 1) >= 2));
+    push({ name: friendly(l.label), from: 'photo', sure, qty: 1 });
+    if (out.length - photoStart >= (hasNamer ? MAX_PHOTO_LABELS_WITH_NAMER : 12)) break;
   }
 
   // A jumbled photo where nothing stands out clearly gets one ticked catch-all, so one tap still records something.

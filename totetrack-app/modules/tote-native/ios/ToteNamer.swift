@@ -65,13 +65,19 @@ final class ToteNamer {
 
   /// The best few names for a picture of one thing: (name, probability, cosine similarity).
   func name(_ image: CGImage, top: Int = 3) -> [(name: String, probability: Float, similarity: Float)] {
-    guard let model, dim > 0 else { return [] }
+    look(image, top: top)?.names ?? []
+  }
+
+  /// The picture's embedding (unit length; it's how the app remembers what your own things look like)
+  /// and its best few names.
+  func look(_ image: CGImage, top: Int = 3) -> (embedding: [Float], names: [(name: String, probability: Float, similarity: Float)])? {
+    guard let model, dim > 0 else { return nil }
     let request = VNCoreMLRequest(model: model)
     request.imageCropAndScaleOption = .scaleFill
     guard (try? VNImageRequestHandler(cgImage: image, orientation: .up, options: [:]).perform([request])) != nil,
       let array = (request.results?.first as? VNCoreMLFeatureValueObservation)?.featureValue.multiArrayValue,
       array.count == dim
-    else { return [] }
+    else { return nil }
 
     var embedding = [Float](repeating: 0, count: dim)
     for i in 0..<dim { embedding[i] = array[i].floatValue }
@@ -89,9 +95,10 @@ final class ToteNamer {
     let best = sims.max() ?? 0
     var total: Float = 0
     for s in sims { total += exp(logitScale * (s - best)) }
-    return sims.indices.sorted { sims[$0] > sims[$1] }.prefix(top).map {
-      (names[$0], exp(logitScale * (sims[$0] - best)) / total, sims[$0])
+    let ranked = sims.indices.sorted { sims[$0] > sims[$1] }.prefix(top).map {
+      (name: names[$0], probability: exp(logitScale * (sims[$0] - best)) / total, similarity: sims[$0])
     }
+    return (embedding, Array(ranked))
   }
 }
 

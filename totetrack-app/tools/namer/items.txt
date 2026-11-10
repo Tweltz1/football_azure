@@ -273,6 +273,8 @@ Cups
 Drinking glasses
 Wine glasses
 Water bottles
+Shaker bottle | a protein shaker bottle with a lid
+Tumblers | insulated tumbler cups with lids
 Travel mugs
 Thermos
 Silverware
@@ -580,7 +582,6 @@ Yearbooks
 Diplomas | framed diplomas and certificates
 Trophies
 Medals
-Backpacks
 Pencil case
 Lunch bags
 Desk organizer
@@ -730,7 +731,6 @@ Kettlebell
 Resistance bands
 Foam roller
 Exercise ball
-Water bottle
 Whistle
 Stopwatch
 Cones | sports training cones
@@ -770,7 +770,6 @@ Vacuum storage bags
 Shoe boxes
 Organizer trays
 Drawer dividers
-Hooks | wall hooks
 Shelf brackets
 Curtain rods
 Furniture feet | furniture leg pads
@@ -779,7 +778,6 @@ Light fixtures
 Lamp shades
 Ceiling fan parts
 Air filters
-Water filters
 Fire extinguisher
 Doorstop
 Door hardware | door knobs and hinges

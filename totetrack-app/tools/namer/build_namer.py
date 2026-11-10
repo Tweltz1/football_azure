@@ -39,7 +39,7 @@ TEMPLATES = [
     "a close-up photo of {}.",
     "{} on a table.",
 ]
-CROPS_PER_LABEL = 400
+CROPS_PER_LABEL = 700
 LOGIT_SCALE = 50.0
 
 
@@ -140,15 +140,20 @@ def embed_crops(enc, crops):
     return torch.cat(feats), labels, splits
 
 
-def train_adapter(feats, labels, splits, label_names, label_text):
+def train_adapter(feats, labels, splits, label_names, label_text, other_text):
+    """label_text: one row per trained label. other_text: every other name in the app's vocabulary. Training
+    picks each crop's label out of the whole vocabulary, as the app does, so it also learns not to drift
+    toward names it has no photos of."""
     index = {n: i for i, n in enumerate(label_names)}
     labels = torch.tensor([index[l] for l in labels])
     is_train = torch.tensor([s == "train" for s in splits])
-    text = torch.from_numpy(label_text)
+    closed = torch.from_numpy(label_text)
+    text = torch.cat([closed, torch.from_numpy(other_text)])
     xtr, ytr, xte, yte = feats[is_train], labels[is_train], feats[~is_train], labels[~is_train]
     print(f"{len(xtr)} training crops, {len(xte)} test crops, {len(label_names)} labels")
 
     before = accuracy(xte, yte, text)
+    before_closed = accuracy(xte, yte, closed)
     d = feats.shape[1]
 
     def fit(x, y, reg, epochs=40):
@@ -188,7 +193,11 @@ def train_adapter(feats, labels, splits, label_names, label_text):
     adapted = xte @ W.T
     adapted = adapted / adapted.norm(dim=-1, keepdim=True)
     after = accuracy(adapted, yte, text)
+    after_closed = accuracy(adapted, yte, closed)
     print(f"Test accuracy over {len(label_names)} trained item types (top-1 / top-5):")
+    print(f"  before training: {before_closed[0]:.1%} / {before_closed[1]:.1%}")
+    print(f"  after training:  {after_closed[0]:.1%} / {after_closed[1]:.1%}")
+    print(f"Test accuracy picking from all {len(text)} names, as the app does (top-1 / top-5):")
     print(f"  before training: {before[0]:.1%} / {before[1]:.1%}")
     print(f"  after training:  {after[0]:.1%} / {after[1]:.1%}")
     pred = (adapted @ text.T).argmax(1)
@@ -224,8 +233,12 @@ def main():
             if args.cache:
                 torch.save((feats, labels, splits), args.cache)
         label_names = sorted(set(labels))
-        label_text = np.stack([embed_text(model, processor, items.get(n, [n.lower()])) for n in label_names])
-        adapter = train_adapter(feats, labels, splits, label_names, label_text)
+        by_lower = {n.lower(): n for n in items}
+        label_text = np.stack([embed_text(model, processor, items.get(by_lower.get(n.lower(), n), [n.lower()]))
+                               for n in label_names])
+        labelled = {n.lower() for n in label_names}
+        other_text = np.stack([embed_text(model, processor, d) for n, d in items.items() if n.lower() not in labelled])
+        adapter = train_adapter(feats, labels, splits, label_names, label_text, other_text)
         lower = {n.lower() for n in items}
         for n in label_names:
             if n.lower() not in lower:
