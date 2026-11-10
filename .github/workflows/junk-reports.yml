@@ -37,8 +37,9 @@ jobs:
             query="update public.junk_items set status = 'hidden' where id = '$HIDE_ITEM' returning id, title"
           else
             [[ "$BAN_USER" =~ $uuid ]] || { echo "ban_user must be an owner id"; exit 1; }
-            # Hides everything they posted and stops them posting or messaging again (junk_members.banned_at).
-            query="with ban as (insert into public.junk_members (user_id, banned_at, ban_reason) values ('$BAN_USER', now(), 'banned from the reports review') on conflict (user_id) do update set banned_at = now(), ban_reason = excluded.ban_reason) update public.junk_items set status = 'hidden' where owner_id = '$BAN_USER' returning id, title"
+            # Hides everything they posted and stops them posting or messaging again (junk_members.banned_at),
+            # on any account from the phones they used (junk_devices.banned).
+            query="with ban as (insert into public.junk_members (user_id, banned_at, ban_reason) values ('$BAN_USER', now(), 'banned from the reports review') on conflict (user_id) do update set banned_at = now(), ban_reason = excluded.ban_reason), phones as (update public.junk_devices set banned = true where device_id in (select device_id from public.junk_devices where user_id = '$BAN_USER')) update public.junk_items set status = 'hidden' where owner_id = '$BAN_USER' returning id, title"
           fi
           curl --fail --silent --show-error \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
