@@ -1,7 +1,8 @@
 import { callBackend } from './api';
 import { Department, ItemLocation, Store } from './types';
 
-type Shared = { aisle?: string; department?: string; votes: number; total: number };
+/** `official`: from the store's own aisle list (partner stores), which the server puts ahead of votes. */
+type Shared = { aisle?: string; department?: string; votes: number; total: number; official?: boolean };
 
 /** Stores whose aisles are pooled with other shoppers. */
 export const isShared = (store: Store | null): store is Store => !!store && !store.id.startsWith('custom:');
@@ -11,10 +12,9 @@ export async function fetchSharedAisles(store: Store, names: string[]): Promise<
   const raw = await callBackend<Record<string, Shared>>({ body: { action: 'aisles', store: store.id, items: names } });
   const out: Record<string, ItemLocation> = {};
   for (const [key, s] of Object.entries(raw)) {
-    if (s.aisle) out[key] = { kind: 'aisle', aisle: s.aisle, source: 'community', votes: s.votes };
-    else if (s.department) {
-      out[key] = { kind: 'department', department: s.department as Department, source: 'community', votes: s.votes };
-    }
+    const from = s.official ? { source: 'store' as const } : { source: 'community' as const, votes: s.votes };
+    if (s.aisle) out[key] = { kind: 'aisle', aisle: s.aisle, ...from };
+    else if (s.department) out[key] = { kind: 'department', department: s.department as Department, ...from };
   }
   return out;
 }

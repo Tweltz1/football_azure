@@ -3,8 +3,10 @@ import { router, Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActionSheetIOS, Alert, Platform, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SaleBadge } from '../components/SaleBadge';
 import { SwipeRow } from '../components/SwipeRow';
 import { Button, tap } from '../components/ui';
+import { dealFor, useDeals } from '../lib/deals';
 import { locationLabel } from '../lib/labels';
 import { groupList } from '../lib/listGroups';
 import { useData } from '../lib/store';
@@ -15,6 +17,7 @@ export default function ListScreen() {
   const { items, store, addItem, toggleItem, removeItem, clearChecked, clearAll, lastRemoved, undoRemove } = useData();
   const [draft, setDraft] = useState('');
   const left = items.filter((i) => !i.checked).length;
+  const deals = useDeals(store, items.filter((i) => !i.checked).map((i) => i.name));
   const sections = useMemo(() => groupList(items), [items]);
 
   // "Undo" shows for a few seconds after something is removed.
@@ -171,6 +174,7 @@ export default function ListScreen() {
                     {!!item.amount && <Text style={{ color: t.text }}>{item.amount} · </Text>}
                     <Text style={{ color: label.guessed ? t.warn : t.textMuted }}>{label.text}</Text>
                   </Text>
+                  {!item.checked && <SaleBadge deal={dealFor(deals, item.name)} name={item.name} />}
                 </Pressable>
                 <Pressable accessibilityLabel={`Remove ${item.name}`} hitSlop={10} onPress={() => removeItem(item.id)}>
                   <Ionicons name="close" size={20} color={t.textMuted} />

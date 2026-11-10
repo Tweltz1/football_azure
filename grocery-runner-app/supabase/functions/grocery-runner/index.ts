@@ -12,12 +12,17 @@
 //   POST {action:"kroger-stock", locationId, items:[...]}           stock + price per item at one Kroger store
 //   POST {action:"departments", items:[...]}     shoppers' department per item (any store), when 2+ agree
 //   POST {action:"department-vote", item, device, department}   a shopper's department fix
+//   POST {action:"deals", store, items:[...]}    this week's deals from a partner store that match the list
+//
+// Partner stores (store-portal function) send their own aisle list, which "aisles" and "store-aisles"
+// return ahead of shopper votes, marked {official: true}.
 //
 // Deployed by .github/workflows/grocery-runner-app.yml.
 import { sharedAisles, storeAisles, voteAisle } from './aisles.ts';
 import { sharedDepartments, voteDepartment } from './departments.ts';
 import { krogerProducts, krogerReady, krogerStock, krogerStores } from './kroger.ts';
 import { coverage, officialStoresNear } from './nearby.ts';
+import { listDeals } from './partners.ts';
 import { walmartReady, walmartStores } from './walmart.ts';
 
 const cors = {
@@ -41,6 +46,7 @@ Deno.serve(async (req) => {
       if (body.action === 'departments') return json(await sharedDepartments(body.items));
       if (body.action === 'department-vote') return json(await voteDepartment(body));
       if (body.action === 'coverage') return json(await coverage(body.stores));
+      if (body.action === 'deals') return json(await listDeals(body.store, body.items));
       if (body.action === 'kroger-stock') return json(await krogerStock(body.locationId, body.items));
       return json({ error: 'Unknown action.' }, 400);
     }
@@ -49,7 +55,7 @@ Deno.serve(async (req) => {
     const zip = q.get('zip');
     switch (q.get('action')) {
       case 'status':
-        return json({ kroger: krogerReady(), walmart: walmartReady(), shared: true });
+        return json({ kroger: krogerReady(), walmart: walmartReady(), shared: true, partners: true });
       case 'kroger-stores':
         if (!zipOk(zip)) return json({ error: 'Enter a 5-digit ZIP code.' }, 400);
         return json(await krogerStores(zip));

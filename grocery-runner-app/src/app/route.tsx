@@ -3,10 +3,12 @@ import * as Location from 'expo-location';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { StoreMap } from '../components/StoreMap';
+import { SaleBadge } from '../components/SaleBadge';
 import { Card, tap } from '../components/ui';
 import { metresBetween } from '../lib/chainMatch';
 import { locationLabel } from '../lib/labels';
 import { Checkoff, learnFromTrip } from '../lib/learnAisles';
+import { dealFor, useDeals } from '../lib/deals';
 import { DEPARTMENT_LABEL } from '../lib/departments';
 import { fetchStoreAisles, isShared, voteAisle } from '../lib/sharedAisles';
 import { buildProfile } from '../lib/storeProfile';
@@ -49,6 +51,7 @@ export default function RouteScreen() {
   const { items, store, coldLast, setColdLast, toggleItem, deviceId, remembered, buildings } = useData();
   // Plan once from the items left when the screen opens, so checking items off doesn't reshuffle the walk.
   const [snapshot] = useState(() => items.filter((i) => !i.checked));
+  const deals = useDeals(store, snapshot.map((i) => i.name));
 
   // This store's layout as shoppers have shown it: every shared item + aisle answer, plus this
   // phone's own and the aisles already on the list (lib/storeProfile.ts).
@@ -102,7 +105,8 @@ export default function RouteScreen() {
       if (!isShared(s)) return;
       for (const l of learnFromTrip([...log.values()])) {
         const item = now.find((i) => i.id === l.itemId);
-        if (!item || (item.location.kind !== 'unknown' && item.location.source === 'user')) continue;
+        // Never second-guess the shopper's own aisle or the store's own list.
+        if (!item || (item.location.kind !== 'unknown' && ['user', 'store'].includes(item.location.source))) continue;
         voteAisle(s, item.name, device, { kind: 'aisle', aisle: l.aisle, source: 'community' }, 'learned').catch(() => {});
       }
     };
@@ -179,9 +183,12 @@ export default function RouteScreen() {
                   size={24}
                   color={checked.has(it.id) ? t.primary : t.textMuted}
                 />
-                <Text style={{ color: t.text, fontSize: 17, textDecorationLine: checked.has(it.id) ? 'line-through' : 'none' }}>
-                  {it.name}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: t.text, fontSize: 17, textDecorationLine: checked.has(it.id) ? 'line-through' : 'none' }}>
+                    {it.name}
+                  </Text>
+                  {!checked.has(it.id) && <SaleBadge deal={dealFor(deals, it.name)} name={it.name} />}
+                </View>
               </Pressable>
             ))}
           </View>

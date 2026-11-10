@@ -5,6 +5,7 @@ const SOURCE: Record<LocationSource, string> = {
   kroger: 'Kroger',
   user: 'you',
   community: 'shoppers',
+  store: 'store',
   guess: 'guess',
 };
 
