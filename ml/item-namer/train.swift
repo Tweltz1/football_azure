@@ -18,8 +18,12 @@ var params = MLImageClassifier.ModelParameters()
 params.maxIterations = iterations
 params.validation = .split(strategy: .automatic)
 params.featureExtractor = .scenePrint(revision: 2)
-// Slight crops, rotation and blur so it copes with phone photos, not just the data set's.
-params.augmentationOptions = [.crop, .rotation, .blur, .exposure, .flip]
+// Augmentation (slight crops, rotation, blur) makes training many times slower, and the first full run
+// crashed inside it after 2.5 hours, so it's only on when AUGMENT=1.
+if ProcessInfo.processInfo.environment["AUGMENT"] == "1" {
+    params.augmentationOptions = [.crop, .rotation, .blur, .exposure, .flip]
+}
+print("Training on \(crops.path)/train, \(iterations) iterations, augmentation \(params.augmentationOptions.isEmpty ? "off" : "on")")
 
 let started = Date()
 let classifier = try MLImageClassifier(trainingData: .labeledDirectories(at: crops.appendingPathComponent("train")), parameters: params)
