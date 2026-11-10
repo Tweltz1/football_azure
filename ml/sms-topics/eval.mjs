@@ -8,7 +8,7 @@ import { smsTopic } from '../../supabase/functions/_shared/shopSms.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const summary = {};
-for (const file of ['heldout.json', 'heldout-fresh.json']) {
+for (const file of ['heldout.json', 'heldout-fresh.json', 'heldout-tech.json']) {
   console.log('\n== ' + file);
   summary[file] = report(JSON.parse(readFileSync(join(here, file), 'utf8')).texts, classifyText, autoTopic);
 }

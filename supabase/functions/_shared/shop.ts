@@ -1010,7 +1010,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         intent=JSON.parse(response).intent;
       } catch { /* A human can still handle the message. */ }
     }
-    return ok({draft:smartDraft(intent,shop,job,deps.linkBase)});
+    // A car question: staff also get a shortcut to look it up in How-to.
+    return ok({draft:smartDraft(intent,shop,job,deps.linkBase),intent,howTo:sorted.topic==='tech'});
   }
   if (action === 'smart-pause') {
     if (!canSmart(shop,ctx.now()) || !store.pauseSmart || typeof body.paused!=='boolean') return bad('Smart Replies is unavailable.');

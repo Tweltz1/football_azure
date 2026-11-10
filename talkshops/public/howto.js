@@ -39,7 +39,7 @@
             <label class="field">Model<input id="howtoModel" maxlength="40" value="${esc(v.model)}" placeholder="Civic"></label>
             <label class="field">Engine<input id="howtoEngine" maxlength="40" value="${esc(v.engine)}" placeholder="Optional, e.g. 2.0L"></label>
           </div>
-          <label class="field">What Do You Need to Do?<textarea id="howtoQ" rows="2" maxlength="500" placeholder="e.g. Replace the front wheel bearing, or how do I remove the intake manifold?"></textarea></label>
+          <label class="field">What Do You Need to Do?<textarea id="howtoQ" rows="2" maxlength="500" placeholder="e.g. Replace the front wheel bearing, or how do I remove the intake manifold?">${esc(st.prefill || "")}</textarea></label>
           <div id="howtoSuggest" class="howto-suggest" aria-live="polite">${suggestHtml()}</div>
           <div id="howtoVideos" class="howto-videos">${videosHtml()}</div>
           <div class="howto-actions">
@@ -173,6 +173,7 @@
     }
 
     async function ask(q, render, opts = {}) {
+      st.prefill = "";
       if (locked()) { render(); return; }
       q = String(q || "").trim();
       if (q.length < 3) { toast("Type what you need to do"); document.getElementById("howtoQ")?.focus(); return; }
@@ -265,8 +266,9 @@
     });
 
     /** Opens the tab for one car (from its detail sheet). */
-    function openFor(j) {
+    function openFor(j, question = "") {
       st.carId = j.id;
+      st.prefill = String(question).slice(0, 500);
       st.vehicle = { year: j.vehicle?.year || "", make: j.vehicle?.make || "", model: j.vehicle?.model || "", engine: j.vehicle?.engine || "" };
       st.suggestions = []; loadSuggestions();
     }

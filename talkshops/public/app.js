@@ -1086,6 +1086,7 @@
       const id=ui.openJob, at=job(id)?.messages.at(-1)?.t, input=$("#replyIn"), before=input.value;t.disabled=true;
       try {const result=await api("POST","shop/jobs/"+id+"/smart-draft",{at});
         if(ui.openJob===id && input.isConnected && input.value===before){input.value=result.draft;input.focus();}
+        if(result.howTo && plan?.howTo && t.isConnected && !t.parentNode.querySelector("[data-howto-q]")){const b=document.createElement("button");b.type="button";b.className="linkbtn";b.dataset.howtoJob=id;b.dataset.howtoQ=job(id)?.messages.at(-1)?.text||"";b.textContent="Car question? Look it up in How-to →";t.parentNode.append(b);}
       }catch(e){toast(e.message);}finally{t.disabled=false;}return;
     }
     if(t.hasAttribute("data-smart-draft")) {const input=$("#replyIn");input.value=job(ui.openJob)?.messages.at(-1)?.suggestion || "";input.focus();return;}
@@ -1155,7 +1156,7 @@
     if (await planUi.click(t, render)) return;
     if (howTo.click(t, render)) return;
     if (t.id === "ci-vin-go") { decodeVinInto("ci"); return; }
-    if (t.dataset.howtoJob) { const j = job(t.dataset.howtoJob); if (j) howTo.openFor(j); navPush = ui.view !== "howto"; ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); return; }
+    if (t.dataset.howtoJob) { const j = job(t.dataset.howtoJob); if (j) howTo.openFor(j, t.dataset.howtoQ || ""); navPush = ui.view !== "howto"; ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.view === "plan") api("GET", "shop/plan").then((p) => { plan = p; if (ui.view === "plan") render(); }).catch(() => {});
     if (t.id === "hidePricesHint") { store.set("talkshops-prices-hint", "off"); render(); return; }
     if (t.dataset.view === "prices") pricesStep.fromSetup = false;

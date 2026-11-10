@@ -121,6 +121,20 @@ const PATTERNS = {
   ],
 };
 
+// Customer-style car questions for the tech detector (smsTechModel), kept apart so the main sorter's data is unchanged.
+const TECH_PATTERNS = [
+    'why is {my} {car} making a grinding noise{q}', 'whats that squeak when i brake{q}', 'is it normal for {my} {car} to shake at highway speed{q}', 'what does the check engine light mean{q}',
+    'what oil should i use in {my} {car}{q}', 'how often should i do the {job}{q}', 'what is a {job}{q}', 'why does {my} {car} pull to the right{q}', 'my {car} smells like gas is that bad{q}',
+    'what would cause {my} {car} to overheat{q}', 'why is my battery light on{q}', 'should i get synthetic oil{q}', 'do i need premium gas{q}', 'what does the {job} do{q}',
+    'is a timing chain better than a belt{q}', 'why do my brakes feel spongy{q}', 'whats the tire pressure supposed to be{q}', 'what does the abs light mean{q}',
+    'por que suena el freno{q}', 'que aceite usa mi carro{q}', 'que significa la luz del motor{q}',
+  ];
+export function techTexts(rng, perPattern = 12) {
+  const out = [];
+  for (const pt of TECH_PATTERNS) for (let n = 0; n < perPattern; n++) out.push({ text: noise(rng, fill(rng, pt), 'tech'), topic: 'tech' });
+  return out;
+}
+
 function pick(rng, list) { return list[Math.floor(rng() * list.length)]; }
 
 function fill(rng, pattern) {
@@ -158,6 +172,40 @@ export function shopTexts(rng, perPattern = 12) {
     for (const p of list) for (let n = 0; n < perPattern; n++) out.push({ text: noise(rng, fill(rng, p), topic), topic });
   }
   return out;
+}
+
+// Extra sentences people add around the question, so long and chatty texts sort the same way.
+const BEFORE = ['sorry to bug you again.', 'hope your day is going well!', 'quick one.', 'hey its me again.', 'not trying to rush you but', 'my boss is asking,',
+  'ok so', 'sorry for all the texts.', 'my wife wanted me to ask', 'just got off work.', 'following up on my last text.', 'hi, from the white truck this morning.'];
+const AFTER = ['i need it for work.', 'no rush.', 'thanks guys!', 'let me know.', 'appreciate you.', 'kids need picking up later.', 'text back when you can.',
+  'just trying to plan my day.', 'gracias!', 'have a good one.', '🙏', 'ty ty'];
+/** Longer, chattier copies of shop texts: a sentence before and/or after. Same label. */
+export function chattyTexts(rng, base, n) {
+  const out = [];
+  const keep = base.filter((r) => r.topic !== 'review');
+  for (let i = 0; i < n; i++) {
+    const r = keep[Math.floor(rng() * keep.length)], a = rng();
+    const text = (a < 0.4 ? pick(rng, BEFORE) + ' ' + r.text : a < 0.75 ? r.text + ' ' + pick(rng, AFTER) : pick(rng, BEFORE) + ' ' + r.text + ' ' + pick(rng, AFTER));
+    out.push({ text, topic: r.topic });
+  }
+  return out;
+}
+
+/**
+ * Real car questions from Mechanics Stack Exchange (CC BY-SA 4.0, via the flax-sentence-embeddings
+ * stackexchange_title_body_jsonl mirror): titles and the first question sentence of each post, labeled tech.
+ */
+export function mechanicsTexts(rng, lines, n) {
+  const out = [];
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const [title, body = ''] = JSON.parse(line).texts;
+    out.push(title);
+    const q = body.replace(/\s+/g, ' ').split(/(?<=[?])\s/).find((s) => s.endsWith('?') && s.length > 15 && s.length < 160);
+    if (q) out.push(q);
+  }
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+  return out.slice(0, n).map((text) => ({ text: rng() < 0.4 ? text.toLowerCase() : text, topic: 'tech' }));
 }
 
 /** CLINC150 texts (general assistant questions plus out-of-scope ones), all labeled review. */

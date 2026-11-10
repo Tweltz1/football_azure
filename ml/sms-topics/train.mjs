@@ -7,7 +7,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { clincTexts, mulberry32, shopTexts } from './data.mjs';
+import { chattyTexts, clincTexts, mulberry32, shopTexts } from './data.mjs';
 import { DIM, TOPICS, features } from '../../supabase/functions/_shared/smsTopicModel.ts';
 import { execFileSync } from 'node:child_process';
 
@@ -26,16 +26,17 @@ const rng = mulberry32(20261109);
 const shop = shopTexts(rng, 14);
 // Every 3rd CLINC text is enough variety without drowning the shop texts.
 const general = clincTexts(clinc).filter((_, i) => i % 3 === 0);
+const chatty = chattyTexts(rng, shop, Number(process.env.CHATTY_TEXTS ?? 0));
 // Real customer texts (already scrubbed, no shop or customer attached) from talkshops_learn_texts, when the monthly
 // workflow passes them in LEARN_ROWS. A row counts when staff sent the suggested reply as is (the sorter was right)
 // or when someone labeled it by hand. Never print these texts: the repo and its build logs are public.
 const real = process.env.LEARN_ROWS && existsSync(process.env.LEARN_ROWS)
   ? JSON.parse(readFileSync(process.env.LEARN_ROWS, 'utf8')).map((r) => ({ text: r.text, topic: r.label || (r.outcome === 'used' ? r.topic : null) }))
-    .filter((r) => r.text && TOPICS.includes(r.topic))
+    .filter((r) => r.text && TOPICS.includes(r.topic)) // tech rows go to train-tech.mjs
   : [];
 if (real.length) console.log('real texts used', real.length);
 // Each real text counts three times: there are few of them and they are the real thing.
-const rows = [...shop, ...general, ...real, ...real, ...real].map((r) => ({ f: features(r.text), y: TOPICS.indexOf(r.topic) }));
+const rows = [...shop, ...chatty, ...general, ...real, ...real, ...real].map((r) => ({ f: features(r.text), y: TOPICS.indexOf(r.topic) }));
 const counts = TOPICS.map((_, k) => rows.filter((r) => r.y === k).length);
 console.log('training texts', rows.length, Object.fromEntries(TOPICS.map((t, k) => [t, counts[k]])));
 const classWeight = counts.map((c) => rows.length / (TOPICS.length * c));

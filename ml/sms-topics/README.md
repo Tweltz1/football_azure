@@ -35,3 +35,18 @@ deleted. Table: `talkshops_learn_texts` (service role only).
 labeled by hand (`label` column, set in the Supabase SQL editor), needs at least 100, retrains, and publishes only
 if the fresh test texts score at least as well with zero wrong automatic replies. It prints counts, never texts:
 this repo and its Actions logs are public, so real texts must never be committed or logged.
+
+## Car questions ("tech"), 2026-11-10
+
+`train-tech.mjs` trains a second small model that spots car questions ("why does it shake when I brake?",
+"what does P0300 mean") among texts the main sorter leaves for staff. It never changes an automatic reply; staff
+get a "Car question? Look it up in How-to" shortcut after Draft reply. Data: 8,000 real questions from Mechanics
+Stack Exchange (CC BY-SA 4.0; credit to the mechanics.stackexchange.com community, via the
+flax-sentence-embeddings/stackexchange_title_body_jsonl mirror) plus generated customer car questions, against
+generated shop texts and CLINC150. Hand-written test: `heldout-tech.json` (written before training).
+
+Results: tech test 22.5% -> 85% sorted right; detector at 0.9 catches 32 of 33 car questions with 9 false alarms in
+98 texts that need a person. Automatic replies unchanged (fresh 28 of 38, 0 wrong). Tried and NOT kept: 3,000-8,000
+more generated "chatty" variants of shop texts (no gain at 3,000, worse at 8,000: the model learns the generator's
+phrasing); putting tech into the main sorter (cost 2-4 points on status texts); CLINC car intents as tech (worse).
+The weekly retrain only retrains the main sorter; rerun train-tech.mjs by hand.

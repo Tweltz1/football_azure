@@ -1,136 +1,529 @@
 {
   "_about": "Hand-written test texts, written separately from the patterns in data.mjs and never used for training. 'auto' is what the shop would want sent with no person looking: a topic, or review.",
   "texts": [
-    ["Hey just wanted to see if the Jeep is finished", "status"],
-    ["Any progress on the Honda?", "status"],
-    ["Morning! How's the truck looking today", "status"],
-    ["Is my wife's Sienna about done", "status"],
-    ["u guys done w my car yet", "status"],
-    ["wondering if my car will be ready by 5", "status"],
-    ["Did you get a chance to look at my Audi", "status"],
-    ["Has anyone looked at it yet?", "status"],
-    ["What's going on with the Silverado", "status"],
-    ["Hi there, any idea when the Malibu will be finished?", "status"],
-    ["Status on the F-250 please", "status"],
-    ["Hows it going with my brakes", "status"],
-    ["Is the alignment done", "status"],
-    ["Did the transmission part show up yet?", "status"],
-    ["Are we still waiting on that part", "status"],
-    ["Hi this is Tom, checking in on my Camry", "status"],
-    ["Hello! Wanted to get an update on my vehicle", "status"],
-    ["Is the van ready to be picked up?", "status"],
-    ["is she ready", "status"],
-    ["Any word yet?", "status"],
-    ["how close are you to being done", "status"],
-    ["When can I expect my car back?", "status"],
-    ["did yall figure out the noise", "status"],
-    ["Were you able to find out what's wrong?", "status"],
-    ["Whats the latest on my Equinox", "status"],
-    ["still working on it?", "status"],
-    ["Ready for me yet?", "status"],
-    ["Hey, is my oil change finished", "status"],
-    ["How far along is the repair?", "status"],
-    ["Can I come grab my truck", "status"],
-    ["Just checking on the Accord. Thanks!", "status"],
-    ["Is the diagnosis done yet", "status"],
-    ["yo is the ram ready", "status"],
-    ["Any updates on my mom's car?", "status"],
-    ["Has the work started", "status"],
-    ["Ya esta mi camioneta?", "status"],
-    ["What time do you guys shut down tonight?", "hours"],
-    ["Open Saturday morning?", "hours"],
-    ["What time does the shop open on Monday", "hours"],
-    ["What are your weekend hours", "hours"],
-    ["how late are yall open", "hours"],
-    ["When are you guys open", "hours"],
-    ["Hi what time do you close today", "hours"],
-    ["Are you open Sundays at all?", "hours"],
-    ["till what time are you there", "hours"],
-    ["Is anyone at the shop right now", "hours"],
-    ["What time do you start in the morning?", "hours"],
-    ["Hours on Friday?", "hours"],
-    ["are you open on the 4th of july", "hours"],
-    ["Hasta que hora estan abiertos?", "hours"],
-    ["When are you open tomorrow", "hours"],
-    ["What time do you guys open up", "hours"],
-    ["Can you text me that estimate again", "link"],
-    ["Hey I can't find the estimate you sent", "link"],
-    ["Resend the quote please", "link"],
-    ["Where do I go to look at the estimate?", "link"],
-    ["The link expired or something can you send a new one", "link"],
-    ["Could you send the repair link again", "link"],
-    ["I never got anything, can you send the estimate", "link"],
-    ["Where's the page to approve stuff", "link"],
-    ["send me the quote again", "link"],
-    ["How do I look at the estimate", "link"],
-    ["Can I get that link one more time", "link"],
-    ["Me puede mandar el link otra vez", "link"],
-    ["Yes please go ahead with the brakes", "approval"],
-    ["Ok do the front brakes and the oil change", "approval"],
-    ["Go ahead with everything you listed", "approval"],
-    ["Just do the battery for now", "approval"],
-    ["We'll skip the tires this time", "approval"],
-    ["Approve the alignment, decline the wipers", "approval"],
-    ["yes fix the AC", "approval"],
-    ["Ok let's do it", "approval"],
-    ["Go ahead and replace the water pump", "approval"],
-    ["Hold off on the struts for now", "approval"],
-    ["Yeah go ahead with the timing belt", "approval"],
-    ["Sounds good, please proceed", "approval"],
-    ["Is it safe to drive with the brakes like that?", "review"],
-    ["How much is it going to be total", "review"],
-    ["What do I owe you", "review"],
-    ["Can I pick it up at 4:30?", "review"],
-    ["I'll swing by around 5", "review"],
-    ["Can you guys squeeze me in tomorrow for an oil change", "review"],
-    ["Can you call me when you get a chance", "review"],
-    ["The noise came back after I picked it up", "review"],
-    ["My check engine light is on again", "review"],
-    ["Is it done? And how much?", "review"],
-    ["Is my car ready and can you check the tire pressure too", "review"],
-    ["Thanks!", "review"],
-    ["ok", "review"],
-    ["Sounds good", "review"],
-    ["👍", "review"],
-    ["Who is this", "review"],
-    ["Do you take Apple Pay", "review"],
-    ["Can I pay with a card over the phone", "review"],
-    ["Do you guys have a loaner I could use", "review"],
-    ["Why is the estimate so high", "review"],
-    ["Can you price match the tire place down the road", "review"],
-    ["Does the warranty cover this", "review"],
-    ["I left my sunglasses in the car", "review"],
-    ["Can you also do a tire rotation while it's there", "review"],
-    ["Do I really need the transmission flush?", "review"],
-    ["Let me talk to my husband and get back to you", "review"],
-    ["Hold on I'll call you", "review"],
-    ["Can I get my invoice emailed", "review"],
-    ["Please stop texting this number", "review"],
-    ["My car won't start, can you tow it?", "review"],
-    ["Do you work on motorcycles", "review"],
-    ["how long does an oil change take", "review"],
-    ["Can I drop my car off Thursday", "review"],
-    ["Do you need my spare key", "review"],
-    ["What does the diagnostic fee cover", "review"],
-    ["Wrong number", "review"],
-    ["Can you send me a picture of the brakes", "review"],
-    ["I want to speak to the manager", "review"],
-    ["This is taking way too long", "review"],
-    ["Cuanto va a costar", "review"],
-    ["Is it ok if I come at 6", "review"],
-    ["What's the weather supposed to be like tomorrow", "review"],
-    ["Can you recommend a good restaurant near the shop", "review"],
-    ["Is it ready? Also can you check my wipers", "review"],
-    ["The car is pulling to the left after the alignment", "review"],
-    ["What kind of oil did you put in", "review"],
-    ["My insurance company will call you", "review"],
-    ["Do I need to bring anything", "review"],
-    ["ok thanks, see you then", "review"],
-    ["Perfect thank you so much", "review"],
-    ["can you guys do inspections", "review"],
-    ["Hey can you explain what a CV axle is", "review"],
-    ["Not yet, let me think about it", "review"],
-    ["no", "review"],
-    ["yes", "review"]
+    [
+      "Hey just wanted to see if the Jeep is finished",
+      "status"
+    ],
+    [
+      "Any progress on the Honda?",
+      "status"
+    ],
+    [
+      "Morning! How's the truck looking today",
+      "status"
+    ],
+    [
+      "Is my wife's Sienna about done",
+      "status"
+    ],
+    [
+      "u guys done w my car yet",
+      "status"
+    ],
+    [
+      "wondering if my car will be ready by 5",
+      "status"
+    ],
+    [
+      "Did you get a chance to look at my Audi",
+      "status"
+    ],
+    [
+      "Has anyone looked at it yet?",
+      "status"
+    ],
+    [
+      "What's going on with the Silverado",
+      "status"
+    ],
+    [
+      "Hi there, any idea when the Malibu will be finished?",
+      "status"
+    ],
+    [
+      "Status on the F-250 please",
+      "status"
+    ],
+    [
+      "Hows it going with my brakes",
+      "status"
+    ],
+    [
+      "Is the alignment done",
+      "status"
+    ],
+    [
+      "Did the transmission part show up yet?",
+      "status"
+    ],
+    [
+      "Are we still waiting on that part",
+      "status"
+    ],
+    [
+      "Hi this is Tom, checking in on my Camry",
+      "status"
+    ],
+    [
+      "Hello! Wanted to get an update on my vehicle",
+      "status"
+    ],
+    [
+      "Is the van ready to be picked up?",
+      "status"
+    ],
+    [
+      "is she ready",
+      "status"
+    ],
+    [
+      "Any word yet?",
+      "status"
+    ],
+    [
+      "how close are you to being done",
+      "status"
+    ],
+    [
+      "When can I expect my car back?",
+      "status"
+    ],
+    [
+      "did yall figure out the noise",
+      "status"
+    ],
+    [
+      "Were you able to find out what's wrong?",
+      "status"
+    ],
+    [
+      "Whats the latest on my Equinox",
+      "status"
+    ],
+    [
+      "still working on it?",
+      "status"
+    ],
+    [
+      "Ready for me yet?",
+      "status"
+    ],
+    [
+      "Hey, is my oil change finished",
+      "status"
+    ],
+    [
+      "How far along is the repair?",
+      "status"
+    ],
+    [
+      "Can I come grab my truck",
+      "status"
+    ],
+    [
+      "Just checking on the Accord. Thanks!",
+      "status"
+    ],
+    [
+      "Is the diagnosis done yet",
+      "status"
+    ],
+    [
+      "yo is the ram ready",
+      "status"
+    ],
+    [
+      "Any updates on my mom's car?",
+      "status"
+    ],
+    [
+      "Has the work started",
+      "status"
+    ],
+    [
+      "Ya esta mi camioneta?",
+      "status"
+    ],
+    [
+      "What time do you guys shut down tonight?",
+      "hours"
+    ],
+    [
+      "Open Saturday morning?",
+      "hours"
+    ],
+    [
+      "What time does the shop open on Monday",
+      "hours"
+    ],
+    [
+      "What are your weekend hours",
+      "hours"
+    ],
+    [
+      "how late are yall open",
+      "hours"
+    ],
+    [
+      "When are you guys open",
+      "hours"
+    ],
+    [
+      "Hi what time do you close today",
+      "hours"
+    ],
+    [
+      "Are you open Sundays at all?",
+      "hours"
+    ],
+    [
+      "till what time are you there",
+      "hours"
+    ],
+    [
+      "Is anyone at the shop right now",
+      "hours"
+    ],
+    [
+      "What time do you start in the morning?",
+      "hours"
+    ],
+    [
+      "Hours on Friday?",
+      "hours"
+    ],
+    [
+      "are you open on the 4th of july",
+      "hours"
+    ],
+    [
+      "Hasta que hora estan abiertos?",
+      "hours"
+    ],
+    [
+      "When are you open tomorrow",
+      "hours"
+    ],
+    [
+      "What time do you guys open up",
+      "hours"
+    ],
+    [
+      "Can you text me that estimate again",
+      "link"
+    ],
+    [
+      "Hey I can't find the estimate you sent",
+      "link"
+    ],
+    [
+      "Resend the quote please",
+      "link"
+    ],
+    [
+      "Where do I go to look at the estimate?",
+      "link"
+    ],
+    [
+      "The link expired or something can you send a new one",
+      "link"
+    ],
+    [
+      "Could you send the repair link again",
+      "link"
+    ],
+    [
+      "I never got anything, can you send the estimate",
+      "link"
+    ],
+    [
+      "Where's the page to approve stuff",
+      "link"
+    ],
+    [
+      "send me the quote again",
+      "link"
+    ],
+    [
+      "How do I look at the estimate",
+      "link"
+    ],
+    [
+      "Can I get that link one more time",
+      "link"
+    ],
+    [
+      "Me puede mandar el link otra vez",
+      "link"
+    ],
+    [
+      "Yes please go ahead with the brakes",
+      "approval"
+    ],
+    [
+      "Ok do the front brakes and the oil change",
+      "approval"
+    ],
+    [
+      "Go ahead with everything you listed",
+      "approval"
+    ],
+    [
+      "Just do the battery for now",
+      "approval"
+    ],
+    [
+      "We'll skip the tires this time",
+      "approval"
+    ],
+    [
+      "Approve the alignment, decline the wipers",
+      "approval"
+    ],
+    [
+      "yes fix the AC",
+      "approval"
+    ],
+    [
+      "Ok let's do it",
+      "approval"
+    ],
+    [
+      "Go ahead and replace the water pump",
+      "approval"
+    ],
+    [
+      "Hold off on the struts for now",
+      "approval"
+    ],
+    [
+      "Yeah go ahead with the timing belt",
+      "approval"
+    ],
+    [
+      "Sounds good, please proceed",
+      "approval"
+    ],
+    [
+      "Is it safe to drive with the brakes like that?",
+      "review"
+    ],
+    [
+      "How much is it going to be total",
+      "review"
+    ],
+    [
+      "What do I owe you",
+      "review"
+    ],
+    [
+      "Can I pick it up at 4:30?",
+      "review"
+    ],
+    [
+      "I'll swing by around 5",
+      "review"
+    ],
+    [
+      "Can you guys squeeze me in tomorrow for an oil change",
+      "review"
+    ],
+    [
+      "Can you call me when you get a chance",
+      "review"
+    ],
+    [
+      "The noise came back after I picked it up",
+      "review"
+    ],
+    [
+      "My check engine light is on again",
+      "review"
+    ],
+    [
+      "Is it done? And how much?",
+      "review"
+    ],
+    [
+      "Is my car ready and can you check the tire pressure too",
+      "review"
+    ],
+    [
+      "Thanks!",
+      "review"
+    ],
+    [
+      "ok",
+      "review"
+    ],
+    [
+      "Sounds good",
+      "review"
+    ],
+    [
+      "👍",
+      "review"
+    ],
+    [
+      "Who is this",
+      "review"
+    ],
+    [
+      "Do you take Apple Pay",
+      "review"
+    ],
+    [
+      "Can I pay with a card over the phone",
+      "review"
+    ],
+    [
+      "Do you guys have a loaner I could use",
+      "review"
+    ],
+    [
+      "Why is the estimate so high",
+      "review"
+    ],
+    [
+      "Can you price match the tire place down the road",
+      "review"
+    ],
+    [
+      "Does the warranty cover this",
+      "review"
+    ],
+    [
+      "I left my sunglasses in the car",
+      "review"
+    ],
+    [
+      "Can you also do a tire rotation while it's there",
+      "review"
+    ],
+    [
+      "Do I really need the transmission flush?",
+      "tech"
+    ],
+    [
+      "Let me talk to my husband and get back to you",
+      "review"
+    ],
+    [
+      "Hold on I'll call you",
+      "review"
+    ],
+    [
+      "Can I get my invoice emailed",
+      "review"
+    ],
+    [
+      "Please stop texting this number",
+      "review"
+    ],
+    [
+      "My car won't start, can you tow it?",
+      "review"
+    ],
+    [
+      "Do you work on motorcycles",
+      "review"
+    ],
+    [
+      "how long does an oil change take",
+      "review"
+    ],
+    [
+      "Can I drop my car off Thursday",
+      "review"
+    ],
+    [
+      "Do you need my spare key",
+      "review"
+    ],
+    [
+      "What does the diagnostic fee cover",
+      "review"
+    ],
+    [
+      "Wrong number",
+      "review"
+    ],
+    [
+      "Can you send me a picture of the brakes",
+      "review"
+    ],
+    [
+      "I want to speak to the manager",
+      "review"
+    ],
+    [
+      "This is taking way too long",
+      "review"
+    ],
+    [
+      "Cuanto va a costar",
+      "review"
+    ],
+    [
+      "Is it ok if I come at 6",
+      "review"
+    ],
+    [
+      "What's the weather supposed to be like tomorrow",
+      "review"
+    ],
+    [
+      "Can you recommend a good restaurant near the shop",
+      "review"
+    ],
+    [
+      "Is it ready? Also can you check my wipers",
+      "review"
+    ],
+    [
+      "The car is pulling to the left after the alignment",
+      "review"
+    ],
+    [
+      "What kind of oil did you put in",
+      "review"
+    ],
+    [
+      "My insurance company will call you",
+      "review"
+    ],
+    [
+      "Do I need to bring anything",
+      "review"
+    ],
+    [
+      "ok thanks, see you then",
+      "review"
+    ],
+    [
+      "Perfect thank you so much",
+      "review"
+    ],
+    [
+      "can you guys do inspections",
+      "review"
+    ],
+    [
+      "Hey can you explain what a CV axle is",
+      "tech"
+    ],
+    [
+      "Not yet, let me think about it",
+      "review"
+    ],
+    [
+      "no",
+      "review"
+    ],
+    [
+      "yes",
+      "review"
+    ]
   ]
 }

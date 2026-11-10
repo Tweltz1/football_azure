@@ -16,3 +16,11 @@ test('anything a person should see stays with staff', () => {
     assert.equal(autoTopic(text), 'review', text);
   }
 });
+
+test('car questions are marked tech for a How-to shortcut, and are never answered automatically', () => {
+  for (const text of ['Why does my car shake when I brake on the highway?', 'what does code P0300 mean', 'my car shakes at idle, why?']) {
+    assert.equal(classifyText(text).topic, 'tech', text);
+    assert.equal(autoTopic(text), 'review', text);
+  }
+  assert.equal(classifyText('Any update on the Civic?').topic, 'status');
+});
