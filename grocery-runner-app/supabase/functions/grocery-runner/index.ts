@@ -10,9 +10,12 @@
 //   POST {action:"vote", store, item, device, aisle | department}
 //   POST {action:"store-aisles", store}          every item's shared aisle at one store (layout learning)
 //   POST {action:"kroger-stock", locationId, items:[...]}           stock + price per item at one Kroger store
+//   POST {action:"departments", items:[...]}     shoppers' department per item (any store), when 2+ agree
+//   POST {action:"department-vote", item, device, department}   a shopper's department fix
 //
 // Deployed by .github/workflows/grocery-runner-app.yml.
 import { sharedAisles, storeAisles, voteAisle } from './aisles.ts';
+import { sharedDepartments, voteDepartment } from './departments.ts';
 import { krogerProducts, krogerReady, krogerStock, krogerStores } from './kroger.ts';
 import { coverage, officialStoresNear } from './nearby.ts';
 import { walmartReady, walmartStores } from './walmart.ts';
@@ -35,6 +38,8 @@ Deno.serve(async (req) => {
       if (body.action === 'aisles') return json(await sharedAisles(body.store, body.items));
       if (body.action === 'vote') return json(await voteAisle(body));
       if (body.action === 'store-aisles') return json(await storeAisles(body.store));
+      if (body.action === 'departments') return json(await sharedDepartments(body.items));
+      if (body.action === 'department-vote') return json(await voteDepartment(body));
       if (body.action === 'coverage') return json(await coverage(body.stores));
       if (body.action === 'kroger-stock') return json(await krogerStock(body.locationId, body.items));
       return json({ error: 'Unknown action.' }, 400);

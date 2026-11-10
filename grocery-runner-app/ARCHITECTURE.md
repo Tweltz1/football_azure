@@ -10,7 +10,8 @@ the app can show how much to trust it (`Aisle 14 · Kroger`, `Produce · guess`)
 | 1. Official API | Kroger family (Kroger, Fry's, King Soopers, Ralphs, Smith's, Fred Meyer, Harris Teeter, ...) | Kroger Public API `GET /v1/products?filter.term=...&filter.locationId=...` returns `aisleLocations` (aisle number, side, bay, shelf) per store | Built |
 | 2. Your own aisles | Any store | The shopper types an aisle once; it is remembered on the phone per store and item, and always wins | Built |
 | 3. Shared shopper aisles | Walmart, Target, Hy-Vee, Costco, Aldi, Woodman's (and Kroger items the API misses) | Every aisle a shopper types is a vote in Supabase; the majority answer per store + item is used, shown as "Aisle 7 · 3 shoppers" | Built |
-| 4. Department fallback | Any store | Item name → department by keyword (`departments.ts`), placed on a generic floor plan | Built |
+| 4. Shared department fixes | Any store | When a shopper picks an item's department, that is a vote for the item at every store; once 2+ shoppers agree and are a majority, it replaces the keyword guess, shown as "Dairy · 3 shoppers" | Built |
+| 5. Department fallback | Any store | Item name → department by keyword (`departments.ts`), placed on a generic floor plan | Built |
 
 ### Request flow
 ```
@@ -32,6 +33,17 @@ early app; the next step is caching results per store + item in a Supabase table
   values like `14` or `A14`, and the majority answer wins (aisle beats department on a tie, newer beats older).
 - Known gap: a random phone id is easy to fake. Before a public launch, add sign in with Apple and
   rate limits so one person can't flood a store with wrong answers.
+
+### Shared department fixes
+- Table `grocery_department_votes` (`tools/setup_supabase.py`): one row per item + phone, not per store, since
+  an item sits in the same department everywhere. Same lockdown as the aisle table (RLS on, no policies).
+- Only a department the shopper picks on the item screen is a vote. Aisles and check-off learning are not,
+  because an aisle number doesn't say which department it is.
+- `tallyDepartments()` in `votes.ts`: an answer is used only with at least 2 phones behind it and more than
+  half of all answers for that item. One phone, or a split crowd, leaves the keyword guess alone.
+- Order on the phone: this store's aisles (Kroger, then shoppers), then the department this shopper picked
+  before (kept on the phone, any store), then the shared department, then the keyword guess. The shopper's
+  own answers always win. Same random-phone-id gap as shared aisles.
 
 ### Store map
 Store pins come from **Apple Maps search on the phone** (`modules/store-search`, a small Swift module
