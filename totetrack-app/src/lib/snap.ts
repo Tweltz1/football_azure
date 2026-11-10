@@ -18,7 +18,9 @@ const MAX_OBJECTS = 10;
  * SURE_NAMED up.
  */
 const MIN_NAMED_CONFIDENCE = 0.3;
-const SURE_NAMED_CONFIDENCE = 0.6;
+const SURE_NAMED_CONFIDENCE = 0.5;
+/** When the namer is in the build, Apple's broad labels are only extras: never ticked, and at most this many. */
+const MAX_PHOTO_LABELS_WITH_NAMER = 4;
 /** Lots of separate print in one photo means lots of separate packaging, so the tote is a mix. */
 const BUSY_TEXT_LINES = 8;
 
@@ -36,6 +38,8 @@ const SKIP = new Set([
   'conveyance', 'vehicle', 'screenshot', 'text', 'document', 'printed_page', 'liquid', 'decoration', 'structure_other',
   'storage_box', 'box', 'container', 'gate', 'entrance', 'arch', 'archway', 'architecture', 'stairs', 'staircase',
   'hallway', 'living_room', 'warehouse', 'store', 'shop', 'retail', 'restaurant', 'cityscape', 'sign', 'logo', 'label',
+  'raw_glass', 'glass', 'sky', 'blue_sky', 'cloudy', 'grass', 'plant', 'tree', 'rocks', 'rock', 'automobile', 'car',
+  'carton', 'sunlight', 'shadow', 'light', 'reflection', 'window_glass', 'landscape', 'parking_lot', 'road',
 ]);
 
 /**
@@ -219,9 +223,11 @@ export function suggestionsFrom(result: PhotoAnalysis): Suggestion[] {
     .filter((l) => l.confidence >= 0.3 || (l.confidence >= 0.2 && (l.regions ?? 1) >= 2))
     .sort((a, b) => b.score - a.score);
   const photoStart = out.length;
+  const hasNamer = (result.named?.length ?? 0) > 0;
   for (const l of things) {
-    push({ name: friendly(l.label), from: 'photo', sure: l.confidence >= 0.6 || (l.confidence >= 0.45 && (l.regions ?? 1) >= 2), qty: 1 });
-    if (out.length - photoStart >= 12) break;
+    const sure = !hasNamer && (l.confidence >= 0.6 || (l.confidence >= 0.45 && (l.regions ?? 1) >= 2));
+    push({ name: friendly(l.label), from: 'photo', sure, qty: 1 });
+    if (out.length - photoStart >= (hasNamer ? MAX_PHOTO_LABELS_WITH_NAMER : 12)) break;
   }
 
   // A jumbled photo where nothing stands out clearly gets one ticked catch-all, so one tap still records something.

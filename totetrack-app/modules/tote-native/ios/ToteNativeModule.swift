@@ -190,7 +190,13 @@ private func objectRegions(_ image: CGImage) -> [CGRect] {
   for (x, y) in [(0.0, 0.0), (0.4, 0.0), (0.0, 0.4), (0.4, 0.4)] {
     regions.append(pixelRect(CGRect(x: x, y: y, width: 0.6, height: 0.6), width: width, height: height, pad: 0))
   }
-  return Array(regions.filter { $0.width >= 64 && $0.height >= 64 }.prefix(16))
+  // A finer 3x3 grid (each 40%) for small things like batteries and markers.
+  for x in [0.0, 0.3, 0.6] {
+    for y in [0.0, 0.3, 0.6] {
+      regions.append(pixelRect(CGRect(x: x, y: y, width: 0.4, height: 0.4), width: width, height: height, pad: 0))
+    }
+  }
+  return Array(regions.filter { $0.width >= 64 && $0.height >= 64 }.prefix(28))
 }
 
 private func analyze(_ image: CGImage) -> [String: Any] {
@@ -206,7 +212,8 @@ private func analyze(_ image: CGImage) -> [String: Any] {
   }
   classify(image, whole: true)
   let regions = objectRegions(image)
-  for rect in regions {
+  // Apple's labels on the bigger regions only; the namer looks at all of them.
+  for rect in regions.prefix(16) {
     if let crop = image.cropping(to: rect) { classify(crop, whole: false) }
   }
   let labels: [[String: Any]] = best
