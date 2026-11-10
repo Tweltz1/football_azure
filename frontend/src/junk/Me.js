@@ -5,6 +5,7 @@ import { deleteAccount, junkSignOut as signOut, myItems } from './junkApi';
 import { ItemCard } from './Browse';
 import { IconBox, IconPlus } from './icons';
 import { ContactSheet } from './Safety';
+import { setSharesCrops, sharesCrops } from './learning';
 
 export default function Me() {
   const { me, authLoading } = useJunk();
@@ -13,6 +14,7 @@ export default function Me() {
   const [confirm, setConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [contact, setContact] = useState(false);
+  const [shareCrops, setShareCrops] = useState(sharesCrops);
 
   useEffect(() => {
     if (!me) return;
@@ -68,6 +70,14 @@ export default function Me() {
           <div className="jk-grid jk-grid-faded">{gone.map((i) => <ItemCard key={i.id} item={i} />)}</div>
         </>
       )}
+
+      <label className="jk-toggle jk-learn-toggle">
+        <input type="checkbox" checked={shareCrops} onChange={(e) => { setSharesCrops(e.target.checked); setShareCrops(e.target.checked); }} />
+        <span>
+          <strong>Help improve item recognition</strong>
+          <small>When you fix a name Curbsy guessed, also send a small picture of just that item so it learns. Your full photo and location stay on your phone. Off unless you turn it on.</small>
+        </span>
+      </label>
 
       <div className="jk-settings">
         <button type="button" className="jk-row-btn" onClick={() => signOut()}>Sign out</button>

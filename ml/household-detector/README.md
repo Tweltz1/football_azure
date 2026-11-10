@@ -15,3 +15,12 @@ batteries, drill, lamp, chair, storage bin, …) so a photo of a pile or a tote 
 Create ML is Apple's own tool, so unlike the Ultralytics YOLO toolkit (AGPL) there are no licence strings
 on shipping the model in App Store apps. Credit for the training data goes in each app's acknowledgements:
 LVIS (CC BY 4.0) and Open Images (CC BY 4.0 annotations, CC BY 2.0 photos).
+
+## Item namer (`ml/item-namer`)
+
+To cover hundreds of kinds of things, naming is split from finding. The phone finds each thing (Apple's
+region finder, plus this detector), then the item namer, a Create ML image classifier trained on LVIS
+crops, names each crop. Every LVIS category that WordNet files as a made object people give away
+(no food, animals, people, buildings or cars) and that has enough examples is included, about 400-500.
+The workflow `.github/workflows/item-namer.yml` publishes release `item-namer-vN` with
+`ItemNamer.mlmodel` and `labels.json`.

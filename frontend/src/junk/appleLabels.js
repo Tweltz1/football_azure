@@ -111,6 +111,7 @@ export function fromAppleLabels(labels) {
     .concat(category && category !== 'other' ? [category] : []))].slice(0, 10);
   return {
     title: best ? (named ? named[0] : human(best.label)) : '',
+    label: best ? best.label : '',
     category: category || 'other',
     tags,
     description: '',
@@ -193,13 +194,13 @@ const isBox = (b) => b && [b.x, b.y, b.w, b.h].every(Number.isFinite) && b.w > 0
 /** A name for one region from Apple's labels for just that part of the photo, even a broad one ("Tool"). */
 function regionThing(region) {
   const named = fromAppleLabels(region.labels);
-  if (named && named.title && !named.person) return { title: named.title, category: named.category, confidence: named.confidence };
+  if (named && named.title && !named.person) return { title: named.title, label: named.label, category: named.category, confidence: named.confidence };
   const top = (Array.isArray(region.labels) ? region.labels : [])
     .filter((l) => l && typeof l.label === 'string' && l.confidence >= 0.3)
     .map((l) => l.label.toLowerCase())
     .find((l) => !SKIP.has(l) && !NOT_AN_ITEM.has(l) && !['object', 'household_items', 'structure'].includes(l));
   if (!top) return null;
-  return { title: human(top), category: (named && named.category) || categoryOf(top) || 'other', confidence: 0.3 };
+  return { title: human(top), label: top, category: (named && named.category) || categoryOf(top) || 'other', confidence: 0.3 };
 }
 
 /**
@@ -218,11 +219,11 @@ export function thingsInPhoto(res) {
   for (const o of Array.isArray(res && res.objects) ? res.objects : []) {
     if (!o || typeof o.label !== 'string' || !(o.confidence >= OBJECT_MIN)) continue;
     const known = OBJECTS[o.label.toLowerCase().replace(/_/g, ' ')] || OBJECTS[o.label.toLowerCase()];
-    if (known) add({ title: ONE[known[0]] || known[0], category: known[1], box: o.box, confidence: o.confidence });
+    if (known) add({ title: ONE[known[0]] || known[0], label: o.label, source: 'detector', category: known[1], box: o.box, confidence: o.confidence });
   }
   for (const r of Array.isArray(res && res.regions) ? res.regions : []) {
     const named = r && regionThing(r);
-    if (named) add({ ...named, box: r.box, fromApple: true });
+    if (named) add({ ...named, source: 'region', box: r.box, fromApple: true });
   }
   // Left to right, top to bottom, the way people read the photo.
   return out
@@ -249,9 +250,12 @@ export async function appleDetect(jpegDataUrl) {
     }
     if (things.length === 1 && (!whole || !whole.title || whole.confidence < things[0].confidence)) {
       const t = things[0];
-      return { ...(whole || { tags: [], description: '', person: false }), title: t.title, category: t.category, confidence: t.confidence, confident: t.confidence >= CONFIDENT, person: false };
+      return {
+        ...(whole || { tags: [], description: '', person: false }), title: t.title, label: t.label, source: t.source, box: t.box,
+        category: t.category, confidence: t.confidence, confident: t.confidence >= CONFIDENT, person: false,
+      };
     }
-    return whole;
+    return whole && { ...whole, source: 'photo' };
   } catch (error) {
     return null;
   }

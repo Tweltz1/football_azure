@@ -7,6 +7,7 @@ import { CATEGORIES, CONDITIONS, inJunkApp, photoToJpeg } from './device';
 import { appleDetect, hasAppleDetection } from './appleLabels';
 import { BackButton } from './ItemPage';
 import PieceThumb from './PieceThumb';
+import { sendFixes, wasFixed } from './learning';
 import { IconCamera, IconClose, IconPin, IconSparkle } from './icons';
 
 const MAX_PHOTOS = 6;
@@ -18,7 +19,8 @@ const GEMINI_BACKUP = false;
 const EMPTY = { title: '', description: '', category: '', condition: 'good', tags: [], pickup: '', spot: '', handoff: 'porch', firstCome: false };
 const MAX_PIECES = 12;
 let pieceSeq = 0;
-const newPiece = (fields = {}) => ({ key: `n${++pieceSeq}`, title: '', category: '', box: null, photo: 0, gone: false, ...fields });
+const newPiece = (fields = {}) => ({ key: `n${++pieceSeq}`, title: '', category: '', box: null, photo: 0, gone: false, guess: null, ...fields });
+const guessOf = (d) => (d && d.title ? { title: d.title, label: d.label || '', source: d.source || '', confidence: d.confidence, category: d.category, box: d.box || null } : null);
 
 /** "Chair and lamp", "Chair, lamp and 3 more" (same as the server's name for a post of several things). */
 export function bundleTitle(pieces) {
@@ -54,6 +56,9 @@ export default function PostItem() {
   piecesRef.current = pieces;
   const fileRef = useRef(null);
   const detectAsked = useRef(false);
+  // What the phone guessed for the post's name, and the photo it looked at (for the learning loop).
+  const guessRef = useRef(null);
+  const guessPhoto = useRef(null);
   const touchedRef = useRef(touched);
   touchedRef.current = touched;
 
@@ -101,7 +106,7 @@ export default function PostItem() {
     const things = found.map((x) => (seen[x.title] > 1 ? { ...x, title: `${x.title} ${(counter[x.title] = (counter[x.title] || 0) + 1)}` } : x));
     const blank = (list) => list.every((p) => !p.title.trim());
     if (things.length >= 2) {
-      setPieces((list) => (list.length && !blank(list) ? list : things.map((x) => newPiece({ title: x.title, category: x.category, box: x.box, photo: 0 }))));
+      setPieces((list) => (list.length && !blank(list) ? list : things.map((x) => newPiece({ title: x.title, category: x.category, box: x.box, photo: 0, guess: guessOf(x) }))));
       setForm((f) => ({
         ...f,
         description: t.description && f.description ? f.description : d.description || f.description,
@@ -117,13 +122,14 @@ export default function PostItem() {
       if (d.title) {
         setPieces((list) => {
           const k = list.findIndex((p) => !p.title.trim());
-          return k < 0 ? list : list.map((p, n) => (n === k ? { ...p, title: d.title, category: d.category || p.category } : p));
+          return k < 0 ? list : list.map((p, n) => (n === k ? { ...p, title: d.title, category: d.category || p.category, guess: guessOf(d) } : p));
         });
       }
       setDetected(true);
       setAiNote(d.title ? `Looks like: ${d.title}` : '');
       return;
     }
+    if (!t.title && d.title) guessRef.current = guessOf(d);
     setForm((f) => ({
       ...f,
       title: t.title && f.title ? f.title : d.title || f.title,
@@ -144,7 +150,7 @@ export default function PostItem() {
   // Listing several things by hand: what's in the name box becomes the first thing, and the post is named after them.
   const startMulti = () => {
     if (pieces.length) return;
-    setPieces([newPiece({ title: form.title.trim(), category: form.category }), newPiece()]);
+    setPieces([newPiece({ title: form.title.trim(), category: form.category, guess: guessRef.current }), newPiece()]);
     setForm((f) => ({ ...f, title: '' }));
   };
   const named = pieces.filter((p) => p.title.trim().length >= 2);
@@ -181,7 +187,10 @@ export default function PostItem() {
         setPhotos((list) => list.map((p) => (p.key === key ? { ...p, path: res.path, url: res.url, uploading: false } : p)));
         if (detect) {
           if (!res.detected && apple && apple.person) setAiNote('Make sure the photo shows just the item');
-          else applyDetection(res.detected || apple);
+          else {
+            if (apple && !res.detected) guessPhoto.current = preview;
+            applyDetection(res.detected || apple);
+          }
         }
       } catch (err) {
         setPhotos((list) => list.filter((p) => p.key !== key));
@@ -214,6 +223,12 @@ export default function PostItem() {
         labels: photoLabels.current,
       };
       const item = editing ? await updateItem(id, fields) : await createItem({ ...fields, lat: spot.lat, lng: spot.lng });
+      if (!editing && guessPhoto.current) {
+        const fixes = multi
+          ? named.filter((p) => wasFixed(p.guess, p.title, p.category)).map((p) => ({ guess: p.guess, title: p.title.trim(), category: p.category }))
+          : wasFixed(guessRef.current, form.title, form.category) ? [{ guess: guessRef.current, title: form.title.trim(), category: form.category }] : [];
+        if (fixes.length) sendFixes(fixes, guessPhoto.current);
+      }
       navigate(`/junk/item/${item.id}`, { replace: true });
     } catch (err) {
       setSaving(false);

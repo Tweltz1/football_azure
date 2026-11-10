@@ -89,3 +89,4 @@ export const junkSignOut = async () => {
 export const getMember = () => call('GET', 'member');
 export const agreeToTerms = () => call('POST', 'terms', { agree: true });
 export const contactCurbsy = (body) => call('POST', 'contact', { body });
+export const sendLabelFix = (fix) => call('POST', 'labels', fix);
