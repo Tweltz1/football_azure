@@ -95,6 +95,139 @@ def lvis_json(cache, split):
 
 MIN_SIDE = 96
 
+# Curb finds that the hand-made list merges into a broader thing ("Mattress" into "Bed") but that people
+# list on their own. LVIS name -> (label, title, category).
+SPLIT = {
+    'mattress': ('mattress', 'Mattress', 'furniture'),
+    'bunk_bed': ('bunk_bed', 'Bunk bed', 'furniture'),
+    'dresser': ('dresser', 'Dresser', 'furniture'),
+    'chest_of_drawers_(furniture)': ('dresser', 'Dresser', 'furniture'),
+    'bureau_(furniture)': ('dresser', 'Dresser', 'furniture'),
+    'file_cabinet': ('filing_cabinet', 'Filing cabinet', 'furniture'),
+    'bookcase': ('bookcase', 'Bookcase', 'furniture'),
+    'monitor_(computer_equipment) computer_monitor': ('computer_monitor', 'Computer monitor', 'electronics'),
+    'computer_monitor': ('computer_monitor', 'Computer monitor', 'electronics'),
+    'armchair': ('armchair', 'Armchair', 'furniture'),
+    'rocking_chair': ('rocking_chair', 'Rocking chair', 'furniture'),
+    'folding_chair': ('folding_chair', 'Folding chair', 'furniture'),
+    'highchair': ('high_chair', 'High chair', 'kids'),
+    'coffee_table': ('coffee_table', 'Coffee table', 'furniture'),
+    'dining_table': ('dining_table', 'Dining table', 'furniture'),
+    'kitchen_table': ('dining_table', 'Dining table', 'furniture'),
+    'floor_lamp': ('floor_lamp', 'Floor lamp', 'home'),
+    'chain_saw': ('chainsaw', 'Chainsaw', 'tools'),
+    'chainsaw': ('chainsaw', 'Chainsaw', 'tools'),
+    'teddy_bear': ('stuffed_animal', 'Stuffed animal', 'toys'),
+    'stuffed_animal': ('stuffed_animal', 'Stuffed animal', 'toys'),
+    'doll': ('doll', 'Doll', 'toys'),
+    'toaster_oven': ('toaster_oven', 'Toaster oven', 'appliances'),
+    'crock_pot': ('slow_cooker', 'Slow cooker', 'appliances'),
+    'food_processor': ('food_processor', 'Food processor', 'appliances'),
+    'laundry_basket': ('laundry_basket', 'Laundry basket', 'home'),
+    'power_strip': ('power_strip', 'Power strip', 'electronics'),
+    'tire': ('tire', 'Tire', 'other'),
+    'crate': ('crate', 'Crate', 'home'),
+}
+
+# Open Images V7 (boxes CC BY 4.0, photos CC BY 2.0) fills in common curb finds that LVIS has few or none of,
+# and adds photos to thin kinds. Open Images class name -> (label, title, category); a label that LVIS also
+# has keeps LVIS's title. Classes missing from Open Images are logged and skipped.
+OPEN_IMAGES = {
+    'Bed': ('bed', 'Bed', 'furniture'), 'Infant bed': ('crib', 'Crib', 'kids'),
+    'Couch': ('sofa', 'Sofa', 'furniture'), 'Sofa bed': ('sofa_bed', 'Sofa bed', 'furniture'),
+    'Studio couch': ('sofa_bed', 'Sofa bed', 'furniture'), 'Loveseat': ('sofa', 'Sofa', 'furniture'),
+    'Chest of drawers': ('dresser', 'Dresser', 'furniture'), 'Filing cabinet': ('filing_cabinet', 'Filing cabinet', 'furniture'),
+    'Bookcase': ('bookcase', 'Bookcase', 'furniture'), 'Nightstand': ('nightstand', 'Nightstand', 'furniture'),
+    'Wardrobe': ('wardrobe', 'Wardrobe', 'furniture'), 'Cupboard': ('cupboard', 'Cupboard', 'furniture'),
+    'Bathroom cabinet': ('bathroom_cabinet', 'Bathroom cabinet', 'furniture'),
+    'Coffee table': ('coffee_table', 'Coffee table', 'furniture'),
+    'Kitchen & dining room table': ('dining_table', 'Dining table', 'furniture'),
+    'Desk': ('desk', 'Desk', 'furniture'), 'Stool': ('stool', 'Stool', 'furniture'), 'Bench': ('bench', 'Bench', 'furniture'),
+    'Billiard table': ('pool_table', 'Pool table', 'sports'), 'Table tennis racket': ('ping_pong_paddle', 'Ping pong paddle', 'sports'),
+    'Computer monitor': ('computer_monitor', 'Computer monitor', 'electronics'), 'Television': ('tv', 'TV', 'electronics'),
+    'Printer': ('printer', 'Printer', 'electronics'), 'Desktop computer': ('desktop_computer', 'Desktop computer', 'electronics'),
+    'Washing machine': ('automatic_washer', 'Washing machine', 'appliances'),
+    'Refrigerator': ('refrigerator', 'Refrigerator', 'appliances'), 'Microwave oven': ('microwave', 'Microwave', 'appliances'),
+    'Oven': ('oven', 'Oven', 'appliances'), 'Gas stove': ('stove', 'Stove', 'appliances'),
+    'Dishwasher': ('dishwasher', 'Dishwasher', 'appliances'), 'Ceiling fan': ('ceiling_fan', 'Ceiling fan', 'home'),
+    'Mechanical fan': ('fan', 'Fan', 'appliances'), 'Humidifier': ('humidifier', 'Humidifier', 'appliances'),
+    'Slow cooker': ('slow_cooker', 'Slow cooker', 'appliances'), 'Pressure cooker': ('pressure_cooker', 'Pressure cooker', 'appliances'),
+    'Waffle iron': ('waffle_iron', 'Waffle iron', 'appliances'), 'Coffeemaker': ('coffee_maker', 'Coffee maker', 'appliances'),
+    'Toaster': ('toaster', 'Toaster', 'appliances'), 'Blender': ('blender', 'Blender', 'appliances'),
+    'Mixer': ('stand_mixer', 'Stand mixer', 'appliances'), 'Food processor': ('food_processor', 'Food processor', 'appliances'),
+    'Kettle': ('kettle', 'Kettle', 'appliances'), 'Sewing machine': ('sewing_machine', 'Sewing machine', 'appliances'),
+    'Lawn mower': ('lawn_mower', 'Lawn mower', 'garden'), 'Tire': ('tire', 'Tire', 'other'), 'Barrel': ('barrel', 'Barrel', 'garden'),
+    'Ladder': ('ladder', 'Ladder', 'tools'), 'Chainsaw': ('chainsaw', 'Chainsaw', 'tools'), 'Drill (Tool)': ('drill', 'Drill', 'tools'),
+    'Toilet': ('toilet', 'Toilet', 'building'), 'Bathtub': ('bathtub', 'Bathtub', 'building'), 'Sink': ('sink', 'Sink', 'building'),
+    'Door': ('door', 'Door', 'building'), 'Window blind': ('window_blinds', 'Window blinds', 'home'),
+    'Stationary bicycle': ('exercise_bike', 'Exercise bike', 'sports'), 'Treadmill': ('treadmill', 'Treadmill', 'sports'),
+    'Indoor rower': ('rowing_machine', 'Rowing machine', 'sports'), 'Dumbbell': ('dumbbell', 'Dumbbell', 'sports'),
+    'Punching bag': ('punching_bag', 'Punching bag', 'sports'), 'Swing': ('swing', 'Swing', 'kids'),
+    'Bicycle': ('bicycle', 'Bicycle', 'sports'), 'Wheelchair': ('wheelchair', 'Wheelchair', 'other'),
+    'Piano': ('piano', 'Piano', 'other'), 'Tent': ('tent', 'Tent', 'sports'), 'Christmas tree': ('christmas_tree', 'Christmas tree', 'home'),
+    'Teddy bear': ('stuffed_animal', 'Stuffed animal', 'toys'), 'Doll': ('doll', 'Doll', 'toys'),
+    'Dog bed': ('pet_bed', 'Pet bed', 'home'), 'Cat furniture': ('cat_tree', 'Cat tree', 'home'),
+    'Suitcase': ('suitcase', 'Suitcase', 'clothing'), 'Box': ('storage_box', 'Box', 'home'),
+    'Flowerpot': ('flowerpot', 'Flowerpot', 'garden'), 'Lamp': ('lamp', 'Lamp', 'home'), 'Mirror': ('mirror', 'Mirror', 'home'),
+    'Guitar': ('guitar', 'Guitar', 'other'), 'Drum': ('drum_musical_instrument', 'Drum', 'other'),
+    'Snowboard': ('snowboard', 'Snowboard', 'sports'), 'Ski': ('ski', 'Ski', 'sports'), 'Golf cart': ('golfcart', 'Golf cart', 'sports'),
+}
+OI_BOXES = {
+    # split -> boxes CSV; photos at https://open-images-dataset.s3.amazonaws.com/<split>/<id>.jpg
+    'validation': 'https://storage.googleapis.com/openimages/v5/validation-annotations-bbox.csv',
+    'test': 'https://storage.googleapis.com/openimages/v5/test-annotations-bbox.csv',
+    'train': 'https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-bbox.csv',
+}
+OI_CLASSES = 'https://storage.googleapis.com/openimages/v7/oidv7-class-descriptions-boxable.csv'
+OI_MIN_BOX = 0.05  # of the photo's width and height
+
+
+def open_images_boxes(cache, labels, have, cap):
+    """Yields (label, (image id, x, y, w, h)) from Open Images for labels with fewer than cap boxes so far.
+    Boxes are 0..1. New labels join `labels`. The boxes we use are kept in cache/oi_boxes.json, since the full
+    training list is a 2 GB download."""
+    import csv
+    store = os.path.join(cache, 'oi_boxes.json')
+    want_sig = sorted(k for k, v in OPEN_IMAGES.items() if v)
+    data = json.load(open(store)) if os.path.exists(store) else None
+    if not data or data.get('classes') != want_sig:
+        mids = {}
+        with urllib.request.urlopen(OI_CLASSES, timeout=120) as r:
+            for row in csv.reader(io.TextIOWrapper(r, encoding='utf-8')):
+                if len(row) == 2 and OPEN_IMAGES.get(row[1]):
+                    mids[row[0]] = row[1]
+        log(f'Open Images classes found: {len(mids)}; missing: {sorted(set(want_sig) - set(mids.values()))}')
+        rows = defaultdict(list)  # class name -> [[split, image, x, y, w, h]]
+        for split, url in OI_BOXES.items():
+            n = 0
+            with urllib.request.urlopen(url, timeout=600) as r:
+                reader = csv.reader(io.TextIOWrapper(r, encoding='utf-8'))
+                h = next(reader)
+                c = {k: h.index(k) for k in ('ImageID', 'LabelName', 'XMin', 'XMax', 'YMin', 'YMax', 'IsGroupOf', 'IsDepiction')}
+                for row in reader:
+                    name = mids.get(row[c['LabelName']])
+                    if not name or row[c['IsGroupOf']] == '1' or row[c['IsDepiction']] == '1':
+                        continue
+                    x0, x1, y0, y1 = (float(row[c[k]]) for k in ('XMin', 'XMax', 'YMin', 'YMax'))
+                    if x1 - x0 < OI_MIN_BOX or y1 - y0 < OI_MIN_BOX or len(rows[name]) >= 1000:
+                        continue
+                    rows[name].append([split, row[c['ImageID']], x0, y0, x1 - x0, y1 - y0])
+                    n += 1
+            log(f'Open Images {split}: {n} boxes kept')
+        data = {'classes': want_sig, 'rows': rows}
+        json.dump(data, open(store, 'w'))
+    added = defaultdict(int)
+    for name, lst in sorted(data['rows'].items()):
+        label, title, category = OPEN_IMAGES[name]
+        if label not in labels:
+            labels[label] = {'label': label, 'title': title, 'category': category}
+        for split, image, x, y, w, h in lst:
+            if have.get(label, 0) + added[label] >= cap:
+                break
+            added[label] += 1
+            yield label, (f'oi-{split}-{image}', x, y, w, h)
+    log('Open Images boxes added: ' + ', '.join(f'{l} {n}' for l, n in sorted(added.items())))
+
 
 def title_of(name):
     """LVIS 'iron_(for_clothing)' -> 'Iron'."""
@@ -142,10 +275,13 @@ def main():
             dropped += 1
             continue
         r = roots(cat.get('synset', ''))
-        if low not in ALWAYS and low not in curated and (not (r & KEEP) or (r & DROP)):
+        if low not in ALWAYS and low not in curated and low not in SPLIT and (not (r & KEEP) or (r & DROP)):
             dropped += 1
             continue
-        if low in curated:
+        if low in SPLIT:
+            key, title, category = SPLIT[low]
+            info = {'label': key, 'title': title, 'category': category}
+        elif low in curated:
             c = curated[low]
             info = {'label': c['key'], 'title': c['title'], 'category': c['category']}
         else:
@@ -178,6 +314,11 @@ def main():
     labels = {}
     for info in classes.values():
         labels[info['label']] = info
+
+    for label, (iid, x, y, w, h) in open_images_boxes(a.cache, labels, {l: len(v) for l, v in boxes.items()}, a.per_class * 2):
+        boxes[label].append((iid, x, y, w, h))
+        images[iid] = 'https://open-images-dataset.s3.amazonaws.com/{}/{}.jpg'.format(*iid[3:].split('-', 1))
+    log('photos per kind after Open Images: ' + ', '.join(f'{l} {len(v)}' for l, v in sorted(boxes.items(), key=lambda kv: len(kv[1]))[:60]))
     usable = {k: v for k, v in boxes.items() if len(v) >= a.min_class}
     if a.limit_classes:
         usable = dict(sorted(usable.items(), key=lambda kv: -len(kv[1]))[:a.limit_classes])
@@ -202,6 +343,8 @@ def main():
         made = 0
         W, H = img.size
         for split, label, n, (x, y, w, h) in crops:
+            if isinstance(iid, str) and iid.startswith('oi-'):  # Open Images boxes are 0..1
+                x, y, w, h = x * W, y * H, w * W, h * H
             pad = 0.1
             box = (max(0, x - w * pad), max(0, y - h * pad), min(W, x + w * (1 + pad)), min(H, y + h * (1 + pad)))
             crop = img.crop(tuple(int(v) for v in box))

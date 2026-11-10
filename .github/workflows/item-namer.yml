@@ -56,7 +56,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ml/item-namer/cache
-          key: item-namer-cache-v1
+          key: item-namer-cache-v2
+          restore-keys: item-namer-cache-
 
       - name: Get training crops
         run: |
@@ -120,5 +121,5 @@ jobs:
           tag="item-namer-v${{ steps.s.outputs.version }}"
           gh release create "$tag" out/namer.f32 out/labels.json out/metrics.json \
             --title "Item namer v${{ steps.s.outputs.version }}" \
-            --notes "Names each thing the phone finds in a photo, for Curbsy and ToteTrack. Softmax weights over Apple Vision feature prints (revision 2), trained on LVIS (CC BY 4.0) crops. $(cat out/metrics.json | tr -d '\n')" \
+            --notes "Names each thing the phone finds in a photo, for Curbsy and ToteTrack. Softmax weights over Apple Vision feature prints (revision 2), trained on LVIS (CC BY 4.0) and Open Images (CC BY 4.0, photos CC BY 2.0) crops. $(cat out/metrics.json | tr -d '\n')" \
             --target "${{ github.sha }}"

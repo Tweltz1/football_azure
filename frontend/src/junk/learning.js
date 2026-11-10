@@ -1,6 +1,7 @@
 // Learning loop: when the phone guessed a name and the person changed it, the guess and their fix are sent
 // so the item recognition models can be retrained. A small picture of just that item goes along only when
-// they turned on "Help improve item recognition" in the Me tab (off by default). The full photo, location
+// they said yes when agreeing to the rules, or turned on "Help improve item recognition" in the Me tab (off by
+// default). The full photo, location
 // and everything else stay on the phone.
 import { sendLabelFix } from './junkApi';
 

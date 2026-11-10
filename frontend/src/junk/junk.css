@@ -884,3 +884,8 @@ body.jk-body::before { background: #f5f3ee; }
 .jk-preview-note { padding: 10px 14px; border-radius: 12px; background: var(--jk-accent-soft); color: var(--jk-ink); font-size: 14px; font-weight: 600; }
 .jk-preview-card-wrap { display: grid; gap: 6px; }
 .jk-preview-card { width: calc(50% - 6px); max-width: 220px; pointer-events: none; }
+
+/* Terms sheet: the separate "help Curbsy learn" choice */
+.jk-learn-ask { margin: 14px 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--jk-bg); border: 1px solid var(--jk-line); }
+.jk-learn-ask p { margin: 6px 0 0; font-size: 0.92em; }
+.jk-terms-only { margin-top: 8px; }
