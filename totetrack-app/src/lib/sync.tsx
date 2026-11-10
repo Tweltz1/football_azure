@@ -4,9 +4,9 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useAuth } from './auth';
-import { photoUri } from './photos';
+import { notifyPhotosChanged, photoUri } from './photos';
 import { RemoteTote, useTotes } from './store';
-import { supabase, TABLE } from './supabase';
+import { PHOTO_TABLE, supabase, TABLE } from './supabase';
 import { Tote } from './types';
 
 /**
@@ -28,11 +28,11 @@ const pushedKey = (uid: string) => `totetrack.pushed.${uid}`;
 
 type Row = { id: string; data: Tote | null; deleted: boolean; updated_at: number };
 
-async function photoBase64(name: string): Promise<string | null> {
+async function photoBase64(name: string, width = 900): Promise<string | null> {
   const uri = photoUri(name);
   if (!uri || !new File(uri).exists) return null;
   try {
-    const ref = await ImageManipulator.manipulate(uri).resize({ width: 900 }).renderAsync();
+    const ref = await ImageManipulator.manipulate(uri).resize({ width }).renderAsync();
     const out = await ref.saveAsync({ base64: true, compress: 0.55, format: SaveFormat.JPEG });
     return out.base64 ?? null;
   } catch {
@@ -46,6 +46,44 @@ async function savePhotoFromCloud(name: string, base64: string) {
   const f = new File(dir, name);
   if (!f.exists) f.create();
   await f.write(base64, { encoding: 'base64' });
+}
+
+/**
+ * Inside photos live in their own table, one row per photo, so a tote's row stays small and each
+ * photo only goes up once. Uploads photos the cloud is missing, downloads ones this phone is
+ * missing, and removes cloud photos no tote uses any more. Failures here never stop tote syncing
+ * (for example before the photos table has been set up).
+ */
+async function syncInsidePhotos(uid: string, totes: Tote[]) {
+  const used = new Set(totes.flatMap((t) => t.insidePhotos ?? []));
+  const { data, error } = await supabase.from(PHOTO_TABLE).select('name,updated_at').eq('user_id', uid);
+  if (error) throw error;
+  const cloud = new Map((data as { name: string; updated_at: number }[]).map((r) => [r.name, Number(r.updated_at)]));
+  let downloaded = false;
+  for (const name of used) {
+    const uri = photoUri(name);
+    const here = !!uri && new File(uri).exists;
+    if (here && !cloud.has(name)) {
+      const b64 = await photoBase64(name, 1200);
+      if (!b64) continue;
+      const { error: upError } = await supabase
+        .from(PHOTO_TABLE)
+        .upsert({ user_id: uid, name, data: b64, updated_at: Date.now() }, { onConflict: 'user_id,name' });
+      if (upError) throw upError;
+    } else if (!here && cloud.has(name)) {
+      const { data: p } = await supabase.from(PHOTO_TABLE).select('data').eq('user_id', uid).eq('name', name).single();
+      if (p?.data) {
+        await savePhotoFromCloud(name, p.data as string);
+        downloaded = true;
+      }
+    }
+  }
+  if (downloaded) notifyPhotosChanged();
+  // Another phone may have uploaded a photo moments before its tote, so leave fresh ones alone.
+  const stale = [...cloud].filter(([name, at]) => !used.has(name) && at < Date.now() - 10 * 60 * 1000).map(([name]) => name);
+  for (let i = 0; i < stale.length; i += 50) {
+    await supabase.from(PHOTO_TABLE).delete().eq('user_id', uid).in('name', stale.slice(i, i + 50));
+  }
 }
 
 export function SyncProvider({ children }: { children: ReactNode }) {
@@ -126,6 +164,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         pushed[u.id as string] = { at: u.updated_at as number, photo: data?.photo };
       }
       await AsyncStorage.setItem(pushedKey(uid), JSON.stringify(pushed));
+
+      // 3. Inside photos, for the totes as they stand after this sync.
+      const incomingIds = new Set(incoming.map((r) => r.id));
+      const after = [...totes.filter((t) => !incomingIds.has(t.id)), ...incoming.flatMap((r) => (!r.deleted && r.data ? [r.data] : []))];
+      await syncInsidePhotos(uid, after).catch(() => {});
       setLastSynced(Date.now());
       setError(undefined);
       setStatus('synced');
@@ -170,6 +213,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         if (!uid) return;
         const { error: delError } = await supabase.from(TABLE).delete().eq('user_id', uid);
         if (delError) throw delError;
+        await supabase.from(PHOTO_TABLE).delete().eq('user_id', uid);
         await AsyncStorage.removeItem(pushedKey(uid));
       },
     }),

@@ -24,6 +24,11 @@ type Store = {
   addItem: (toteId: string, name: string, qty?: number) => void;
   updateItem: (toteId: string, itemId: string, patch: Partial<Omit<Item, 'id'>>) => void;
   removeItem: (toteId: string, itemId: string) => void;
+  /** Empties a tote's item list. */
+  clearItems: (toteId: string) => void;
+  /** Adds saved photo file names to the tote's inside photos (newest first). */
+  addInsidePhotos: (toteId: string, names: string[]) => void;
+  removeInsidePhoto: (toteId: string, name: string) => void;
   moveItem: (fromToteId: string, itemId: string, toToteId: string) => void;
 };
 
@@ -110,6 +115,7 @@ export function ToteProvider({ children }: { children: ReactNode }) {
       deleteTote: (id) => {
         const t = totes.find((x) => x.id === id);
         deletePhoto(t?.photo);
+        t?.insidePhotos?.forEach(deletePhoto);
         setTotes((prev) => prev.filter((x) => x.id !== id));
         setTombstones((prev) => ({ ...prev, [id]: Date.now() }));
       },
@@ -127,6 +133,15 @@ export function ToteProvider({ children }: { children: ReactNode }) {
       updateItem: (toteId, itemId, patch) =>
         mutate(toteId, (t) => ({ ...t, items: t.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)) })),
       removeItem: (toteId, itemId) => mutate(toteId, (t) => ({ ...t, items: t.items.filter((i) => i.id !== itemId) })),
+      clearItems: (toteId) => mutate(toteId, (t) => ({ ...t, items: [] })),
+      addInsidePhotos: (toteId, names) => {
+        if (!names.length) return;
+        mutate(toteId, (t) => ({ ...t, insidePhotos: [...names, ...(t.insidePhotos ?? []).filter((n) => !names.includes(n))] }));
+      },
+      removeInsidePhoto: (toteId, name) => {
+        deletePhoto(name);
+        mutate(toteId, (t) => ({ ...t, insidePhotos: (t.insidePhotos ?? []).filter((n) => n !== name) }));
+      },
       moveItem: (fromToteId, itemId, toToteId) => {
         setTotes((prev) => {
           const item = prev.find((t) => t.id === fromToteId)?.items.find((i) => i.id === itemId);

@@ -19,6 +19,8 @@ export type Tote = {
   notes: string;
   /** File name of the photo inside the app's documents/photos folder. */
   photo?: string;
+  /** File names (same photos folder) of pictures of what's inside the tote, newest first. */
+  insidePhotos?: string[];
   /** Season or holiday this tote is for (see SEASONS), so the app can remind you before it comes up. */
   season?: string;
   /** Moving mode: the room this tote goes to at the new place. */
