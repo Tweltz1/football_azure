@@ -12,7 +12,11 @@ const MIN_OBJECT_CONFIDENCE = 0.3;
 /** Detected items at or above this are ticked for you. */
 const SURE_OBJECT_CONFIDENCE = 0.5;
 const MAX_OBJECTS = 10;
-/** ToteTrack's own namer: names at or above this are offered, and ticked from SURE_NAMED up. */
+/**
+ * ToteTrack's own namer (tools/namer, about 800 item names; 62% right first try and 84% in its top 5 on
+ * held-out photos of the 152 types it was trained on): names at or above this are offered, and ticked from
+ * SURE_NAMED up.
+ */
 const MIN_NAMED_CONFIDENCE = 0.3;
 const SURE_NAMED_CONFIDENCE = 0.6;
 /** Lots of separate print in one photo means lots of separate packaging, so the tote is a mix. */
