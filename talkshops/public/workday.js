@@ -288,11 +288,12 @@
   /** Reminder texts: declined work and the next service. */
   function followupSection(j) {
     if (j.stage === "invited") return "";
-    const list = (j.followups || []).slice().sort((a, b) => ts(b.due) - ts(a.due));
+    // Estimate reminders show while waiting or once sent; ones skipped because the customer answered are left out.
+    const list = (j.followups || []).filter((f) => f.kind !== "nudge" || !f.canceledAt).slice().sort((a, b) => ts(b.due) - ts(a.due));
     const declined = j.estimate.filter((e) => e.status === "declined").map((e) => e.item);
     const off = j.customer.remindersOff;
     const rows = list.map((f) => `<li><span class="pill ${f.sentAt ? "ok" : f.canceledAt ? "bad" : "warn"}">${f.sentAt ? "Sent" : f.canceledAt ? (f.canceledBy === "customer" ? "Customer stopped" : "Canceled") : "Waiting"}</span>
-      <b>${f.kind === "declined" ? "Declined work" : "Next service"}</b> · ${f.sentAt ? shortDate(f.sentAt) : shortDate(f.due)}<p>${esc(f.text)}</p>
+      <b>${f.kind === "declined" ? "Declined work" : f.kind === "nudge" ? "Estimate reminder" : "Next service"}</b> · ${f.sentAt ? shortDate(f.sentAt) : shortDate(f.due)}<p>${esc(f.text)}</p>
       ${!f.sentAt && !f.canceledAt ? `<button type="button" class="linkbtn" data-wd-cancel="${esc(f.id)}">Cancel</button>` : ""}</li>`).join("");
     const can = j.customer.consent && !off;
     return `<section class="sec" data-wd-job="${esc(j.id)}"><h3>Reminder Texts</h3>

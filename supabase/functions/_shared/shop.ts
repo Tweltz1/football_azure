@@ -83,8 +83,8 @@ type Channel = 'sms' | 'email';
 type Preference = Channel | 'both';
 export interface ServicePackage { id: string; name: string; lines: Charge[]; fastLane: boolean }
 /** A text the shop scheduled for later: declined work to revisit, or the next service. */
-export interface Followup { id: string; kind: 'declined' | 'service'; due: string; text: string; createdAt: string; by: string; sentAt?: string; canceledAt?: string; canceledBy?: 'shop' | 'customer' }
-export interface Message { sender?:string; senderId?:string; suggestion?:string; incomingSms?:boolean; autoReply?:boolean; channel?: Channel; dir: 'out' | 'in'; t: string; text: string; delivery?: 'sent' | 'not_sent' | 'failed'; note?: string }
+export interface Followup { id: string; kind: 'declined' | 'service' | 'nudge'; due: string; text: string; createdAt: string; by: string; sentAt?: string; canceledAt?: string; canceledBy?: 'shop' | 'customer' }
+export interface Message { sender?:string; senderId?:string; suggestion?:string; incomingSms?:boolean; autoReply?:boolean; channel?: Channel | 'web'; dir: 'out' | 'in'; t: string; text: string; delivery?: 'sent' | 'not_sent' | 'failed'; note?: string }
 
 export interface JobData {
   ro: string;
@@ -114,6 +114,8 @@ export interface JobData {
   mileageOut?: string;
   /** When the shop promised the car back (ISO time). Shop-only. */
   promised?: string;
+  /** When the customer first opened the page after the estimate was last sent. */
+  viewedAt?: string;
   /** The technician working the car. Shop-only. */
   tech?: { id: string; name: string } | null;
   /** The quick service this car checked in for, if any. */
@@ -203,6 +205,8 @@ export interface ShopStore extends Partial<BookingStore> {
   visits?(shopId: string, q: VisitQuery, limit: number): Promise<VisitRow[]>;
   /** Jobs with a follow-up due at or before `now` (follow_up_at). */
   dueFollowups?(shopId: string, now: string, limit: number): Promise<Job[]>;
+  /** Shops the hourly run looks at: morning email on, or reminders due by `now`. */
+  cronShops?(now: string): Promise<Shop[]>;
   /** Claims one due follow-up so two open browsers never both send it: true only for the first caller. */
   claimFollowup?(jobId: string, at: string): Promise<boolean>;
   /** Jobs (any shop) whose customer phone is `phone` and that still have a follow-up waiting. For texted STOP. */
@@ -396,8 +400,9 @@ const walkaroundOpen = (j: Job) => !!j.data.walkaroundRequest && j.stage !== 'pi
 
 /** What the customer sees: no phone number, no other customers, no internal notes. */
 const customerOut = (j: Job, shop: Shop, pro = false) => ({
-  shop: { name: shop.name, phone: shop.phone, hours: shop.hours, ...(pro && shop.brand ? { brand: shop.brand } : {}) },
+  shop: { name: shop.name, phone: shop.phone, hours: shop.hours, address: shop.grow?.address ?? '', ...(pro && shop.brand ? { brand: shop.brand } : {}) },
   lang: langOf(j.data),
+  canMessage: j.shopId !== DEMO_SHOP_ID && !j.data.closed,
   // A review button once the car is ready or picked up, when the shop has a review link (Pro).
   review: pro && shop.grow?.reviewUrl && ['ready', 'picked_up'].includes(j.stage) && !j.data.closed ? { url: shop.grow.reviewUrl } : null,
   appointment: j.stage === 'invited' ? j.data.appointment ?? null : null,
@@ -416,7 +421,7 @@ const customerOut = (j: Job, shop: Shop, pro = false) => ({
   notes: (j.data.notes ?? []).filter((n) => !n.internal).map(({ id, t, text }) => ({ id, t, text })),
   // Older reports were signed with a staff email; customers only ever see a real name.
   walkthroughs: Object.fromEntries(Object.entries(j.data.walkthroughs ?? {}).map(([k, w]) => [k, w && { ...w, by: realName(w.by) }])),
-  reminders: { off: !!j.data.customer.remindersOff, waiting: (j.data.followups ?? []).filter((f) => !f.sentAt && !f.canceledAt).map((f) => ({ kind: f.kind, due: f.due })) },
+  reminders: { off: !!j.data.customer.remindersOff, waiting: (j.data.followups ?? []).filter((f) => !f.sentAt && !f.canceledAt && f.kind !== 'nudge').map((f) => ({ kind: f.kind, due: f.due })) },
   // Only damage the shop confirmed; AI suggestions stay with the shop.
   walkaround: {
     requested: !!j.data.walkaroundRequest, canUpload: walkaroundOpen(j),
@@ -502,6 +507,19 @@ export function stopReminders(job: Job, now: string, by: 'customer' | 'shop') {
   if (by === 'customer') job.data.customer.remindersOff = now;
 }
 
+/** The one reminder text for an unanswered estimate, when the shop turned it on (Settings). */
+function addNudge(job: Job, shop: Shop, now: string, linkBase: string, newId: () => string) {
+  cancelNudge(job, now);
+  const h = shop.grow?.nudgeHours;
+  if (!h || !job.data.customer.consent || job.data.customer.remindersOff || job.shopId === DEMO_SHOP_ID) return;
+  const say = SAY[langOf(job.data)];
+  (job.data.followups ??= []).push({ id: newId(), kind: 'nudge', due: new Date(Date.parse(now) + h * 3_600_000).toISOString(),
+    text: say.nudge(shop.name, vehicleName({ ...job.data, ...job.intake }) || say.car, linkBase + job.token), createdAt: now, by: 'Estimate reminder' });
+}
+function cancelNudge(job: Job, now: string) {
+  for (const f of job.data.followups ?? []) if (f.kind === 'nudge' && !f.sentAt && !f.canceledAt) { f.canceledAt = now; f.canceledBy = 'shop'; }
+}
+
 /** Sends this shop's reminder texts that came due. Runs when staff open the Bay, so no scheduler is needed. */
 async function sendDueFollowups(deps: ShopDeps, shop: Shop, now: Date, acc: Access): Promise<number> {
   const { store } = deps;
@@ -513,9 +531,11 @@ async function sendDueFollowups(deps: ShopDeps, shop: Shop, now: Date, acc: Acce
     if (!at || at > iso || !await store.claimFollowup(job.id, at)) continue;
     for (const f of (job.data.followups ?? []).filter((x) => !x.sentAt && !x.canceledAt && x.due <= iso)) {
       if (job.data.customer.remindersOff) { f.canceledAt = iso; f.canceledBy = 'customer'; continue; }
+      // An estimate reminder only goes out while the estimate is still unanswered.
+      if (f.kind === 'nudge' && (job.stage !== 'approval' || job.data.closed || !job.data.estimate.some((e) => e.status === 'pending'))) { f.canceledAt = iso; f.canceledBy = 'shop'; continue; }
       const text = `${f.text} ${SAY[langOf(job.data)].stop}`;
       const msgs = await notifyCustomer(deps, shop, job, text, iso, acc);
-      job.data.messages.push(...msgs.map((m) => ({ ...m, sender: 'Scheduled reminder' })));
+      job.data.messages.push(...msgs.map((m) => ({ ...m, sender: f.kind === 'nudge' ? 'Estimate reminder' : 'Scheduled reminder' })));
       f.sentAt = iso;
       sent++;
     }
@@ -560,7 +580,35 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const pdf = await store.getBillPdf?.(job.id);
       return pdf ? ok({ pdf }) : { status: 404 };
     }
-    if (method === 'GET' && parts.length === 3) return ok(cOut(job));
+    if (method === 'GET' && parts.length === 3) {
+      // The shop sees when the customer first opened the estimate. Staff opening the page (signed in) don't count.
+      const sentAt = [...job.data.events].reverse().find((e) => e.stage === 'approval')?.t;
+      if (!ctx.userId && job.stage === 'approval' && !job.data.closed && sentAt && !(job.data.viewedAt && job.data.viewedAt >= sentAt)) {
+        const readAt = job.updatedAt;
+        job.data.viewedAt = now; job.updatedAt = now;
+        await saveJob(store, job, readAt).catch((e) => ctx.log.warn('view not saved', { error: String(e) }));
+      }
+      return ok(cOut(job));
+    }
+    // A note to the shop from the customer page, for customers who'd rather not text.
+    if (method === 'POST' && parts.length === 4 && parts[3] === 'message') {
+      const say = langOf(job.data) === 'es';
+      if (job.shopId === DEMO_SHOP_ID || job.data.closed) return bad(say ? 'Llame al taller, por favor.' : 'Please call the shop.');
+      const text = str(body.text, 1000);
+      if (!text) return bad(say ? 'Escriba su mensaje.' : 'Type your message.');
+      const hourAgo = new Date(ctx.now().getTime() - 3_600_000).toISOString();
+      if (job.data.messages.filter((m) => m.channel === 'web' && m.dir === 'in' && m.t >= hourAgo).length >= 5)
+        return { status: 429, body: say ? 'Ya envió varios mensajes. El taller le responderá pronto.' : 'You sent several messages already. The shop will get back to you soon.' };
+      for (let tries = 0; ; tries++) {
+        const cur = tries ? await store.getJob(job.id) : job;
+        if (!cur) return { status: 404 };
+        const readAt = cur.updatedAt;
+        cur.data.messages.push({ dir: 'in', channel: 'web', t: now, text });
+        cur.updatedAt = now;
+        if (await saveJob(store, cur, readAt)) return ok(cOut(cur));
+        if (tries >= 2) return { status: 409, body: say ? 'Intente de nuevo.' : 'Please try again.' };
+      }
+    }
 
     if (method === 'POST' && parts.length === 4 && parts[3] === 'intake') {
       const error = await submitIntake(store, job, body);
@@ -611,6 +659,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       for (const e of pending) e.status = decisions[e.id] as 'approved' | 'declined';
       const yes = units.filter((u) => u[0].status === 'approved').length;
       job.data.approval = { by: signature, t: now };
+      cancelNudge(job, now);
       const declinedRequired = units.filter((u) => u[0].status === 'declined' && u.some((e) => e.priority === 'required')).map((u) => u[0].group || u[0].item);
       job.data.messages.push({ dir: 'in', t: now, text: `Approved ${yes} of ${units.length} items on the estimate (signed: ${signature}).${declinedRequired.length ? ` Declined required: ${declinedRequired.join(', ')}.` : ''}` });
       const readAt = job.updatedAt;
@@ -1182,6 +1231,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const reason = str(body.reason, 200);
     if (!reason) return bad('Choose why the repair is closed.');
     d.closed = { t: now, reason };
+    cancelNudge(job, now);
     const msg = str(body.text, 1000);
     if (body.send && msg) d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
   } else if (action === 'reopen') {
@@ -1201,6 +1251,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     }
     job.stage = stage;
     d.events.push({ stage, t: now });
+    if (stage === 'approval') { delete d.viewedAt; addNudge(job, shop, now, deps.linkBase, ctx.newId); } else cancelNudge(job, now);
     const msg = str(body.text, 1000);
     if (body.send && msg) {
       d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
@@ -1492,4 +1543,73 @@ export function createTwilioSender(sid?: string, token?: string, from?: string, 
       }
     },
   };
+}
+
+// ---------------- Hourly run (GitHub Actions calls shop/cron) ----------------
+
+const ZONE_DEFAULT = 'America/Chicago';
+/** The shop's local date (YYYY-MM-DD) and hour. */
+function localClock(shop: Shop, now: Date): { day: string; hour: number } {
+  let zone = shop.smartSchedule?.zone || ZONE_DEFAULT;
+  try { new Intl.DateTimeFormat('en', { timeZone: zone }); } catch { zone = ZONE_DEFAULT; }
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' })
+    .formatToParts(now).map((x) => [x.type, x.value]));
+  return { day: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour) };
+}
+
+const agoText = (from: string, now: Date) => { const h = Math.floor((now.getTime() - Date.parse(from)) / 3_600_000); return h < 1 ? 'under an hour ago' : h < 48 ? `${h} hour${h === 1 ? '' : 's'} ago` : `${Math.floor(h / 24)} days ago`; };
+
+/** The morning email: what's in the shop, what's waiting on customers, what was approved, what's late. */
+export function digestText(shop: Shop, jobs: Job[], now: Date, siteUrl: string): { subject: string; text: string } {
+  const live = jobs.filter((j) => j.stage !== 'picked_up' && !j.data.closed && j.stage !== 'invited');
+  const ready = live.filter((j) => j.stage === 'ready');
+  const waiting = live.filter((j) => j.stage === 'approval' && j.data.estimate.some((e) => e.status === 'pending'));
+  const dayAgo = new Date(now.getTime() - 86_400_000).toISOString();
+  const approved = jobs.filter((j) => j.data.approval && j.data.approval.t >= dayAgo)
+    .reduce((a, j) => a + j.data.estimate.filter((e) => e.status === 'approved').reduce((b, e) => b + e.price, 0), 0);
+  const late = live.filter((j) => j.data.promised && j.data.promised < now.toISOString() && j.stage !== 'ready');
+  const car = (j: Job) => `${vehicleName({ ...j.data, ...j.intake }) || 'Vehicle'} (${j.data.customer.name || j.data.ro})`;
+  const lines = [
+    `Good morning. Here's ${shop.name} today:`, '',
+    `- ${live.length} car${live.length === 1 ? '' : 's'} in the shop${ready.length ? `, ${ready.length} ready for pickup` : ''}`,
+    `- ${money(approved)} approved by customers in the last 24 hours`,
+  ];
+  if (waiting.length) {
+    lines.push(`- ${waiting.length} estimate${waiting.length === 1 ? '' : 's'} waiting on the customer:`);
+    for (const j of waiting.slice(0, 10)) {
+      const sent = [...j.data.events].reverse().find((e) => e.stage === 'approval')?.t ?? j.updatedAt;
+      lines.push(`    ${car(j)}: sent ${agoText(sent, now)}, ${j.data.viewedAt ? 'opened' : 'not opened yet'}`);
+    }
+  }
+  if (late.length) {
+    lines.push(`- ${late.length} car${late.length === 1 ? '' : 's'} past the promised time:`);
+    for (const j of late.slice(0, 10)) lines.push(`    ${car(j)}: promised ${agoText(j.data.promised!, now).replace(' ago', '')} ago`);
+  }
+  lines.push('', `Open your Bay: ${siteUrl.replace(/\/$/, '')}/bay`, '', 'To stop this email, turn off "Morning summary email" in Settings.');
+  return { subject: `${shop.name} · Morning summary: ${live.length} in, ${waiting.length} waiting on customers`, text: lines.join('\n') };
+}
+
+/** Hourly: sends due reminder texts (including unanswered-estimate reminders) and each shop's 7am summary email. */
+export async function runCron(deps: ShopDeps, now: Date, log: Ctx['log']): Promise<{ shops: number; reminders: number; digests: number }> {
+  const out = { shops: 0, reminders: 0, digests: 0 };
+  if (!deps.store.cronShops) return out;
+  const trial = await settings(deps);
+  for (const shop of await deps.store.cronShops(now.toISOString())) {
+    if (shop.id === DEMO_SHOP_ID) continue;
+    out.shops++;
+    try {
+      const acc = access(shop.plan, now, trial);
+      if (acc.canWork) out.reminders += await sendDueFollowups(deps, shop, now, acc);
+      const clock = localClock(shop, now);
+      if (!shop.grow?.digest || shop.grow.digestSentOn === clock.day || clock.hour < 7 || clock.hour > 10 || !deps.email) continue;
+      const to = shop.email || (await deps.staff?.listMembers(shop.id).catch(() => []))?.find((m) => m.userId === shop.ownerId)?.email;
+      if (!to) continue;
+      const since = new Date(now.getTime() - 86_400_000).toISOString();
+      const { subject, text } = digestText(shop, await deps.store.listJobs(shop.id, since), now, deps.siteUrl ?? 'https://talkshops.app');
+      const sent = await deps.email.send(to, subject, text, { fromName: 'Talk Shops' });
+      if (sent.delivery === 'sent') { shop.grow = { ...shop.grow, digestSentOn: clock.day }; await deps.store.putShop(shop); out.digests++; }
+      else log.warn('morning email not sent', { shop: shop.id, note: sent.note });
+    } catch (error) { log.warn('hourly run failed for a shop', { shop: shop.id, error: String(error) }); }
+  }
+  return out;
 }

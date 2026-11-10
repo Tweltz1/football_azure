@@ -49,6 +49,10 @@
     "Privacy Policy": "Política de privacidad", "Required": "Necesario", "Recommended": "Recomendado", "Optional": "Opcional",
     "Needed to fix your concern or for safety.": "Necesario para resolver su problema o por seguridad.", "Advised soon to prevent bigger problems.": "Recomendado pronto para evitar problemas mayores.", "Can wait if you prefer.": "Puede esperar si lo prefiere.",
     "Example photo, not your vehicle": "Foto de ejemplo, no es su vehículo", "How it works": "Cómo funciona", "Photo and diagram": "Foto y diagrama", "View larger diagram": "Ver diagrama más grande",
+    "Approve all": "Aprobar todo", "Approve required": "Aprobar lo necesario", "Message the shop": "Mensaje al taller", "Your message": "Su mensaje",
+    "Sent. The shop sees it on their screen and will get back to you.": "Enviado. El taller lo ve en su pantalla y le responderá.",
+    "Ask a question or tell the shop something": "Haga una pregunta o dígale algo al taller", "Send to shop": "Enviar al taller", "Type your message.": "Escriba su mensaje.",
+    "Directions to the shop": "Cómo llegar al taller", "Add to calendar": "Agregar al calendario",
     "Part": "Pieza", "What's being worked on": "Lo que se está reparando", "Part mentioned": "Pieza mencionada",
     // Final bill
     "Final bill": "Factura final", "Total due": "Total a pagar", "Download shop invoice (PDF)": "Descargar factura (PDF)", "Print / save PDF": "Imprimir / guardar PDF",
@@ -113,10 +117,20 @@
   const langSwitch = (token) => `<p class="cust-top gr-lang">${lang === "es"
     ? `<button type="button" class="linkbtn" data-gr-lang="en" data-token="${esc(token)}">View in English</button>`
     : `<button type="button" class="linkbtn" data-gr-lang="es" data-token="${esc(token)}">Ver en español</button>`}</p>`;
+  /** A one-hour calendar event for the appointment, as an .ics file the phone's calendar opens. */
+  function calendarLink(c) {
+    const t = new Date(ts(c.appointment)), stamp = (d) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const clean = (v) => String(v || "").replace(/[\\;,]/g, (m) => "\\" + m).replace(/\r?\n/g, " ");
+    const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Talk Shops//EN", "BEGIN:VEVENT", `UID:${stamp(t)}-${Math.random().toString(36).slice(2)}@talkshops.app`, `DTSTAMP:${stamp(new Date())}`,
+      `DTSTART:${stamp(t)}`, `DTEND:${stamp(new Date(t.getTime() + 3600000))}`, `SUMMARY:${clean(c.shop.name)} appointment${c.vehicle ? " (" + clean(c.vehicle) + ")" : ""}`,
+      ...(c.shop.address ? [`LOCATION:${clean(c.shop.address)}`] : []), ...(c.shop.phone ? [`DESCRIPTION:${clean(c.shop.phone)}`] : []), "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+    return "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
+  }
   function customerCards(c) {
     let h = "";
     if (c.appointment) h += `<div class="c-card gr-appt"><h3>${tsT("Your appointment")}</h3><p style="margin:0">${tsT("{0} confirmed your appointment for {1}.", esc(c.shop.name),
-      esc(new Date(ts(c.appointment)).toLocaleString(dateLocale(), { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).replace(/\.$/, "")))}</p></div>`;
+      esc(new Date(ts(c.appointment)).toLocaleString(dateLocale(), { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }).replace(/\.$/, "")))}</p>
+      <a class="btn sm" style="margin-top:10px" download="appointment.ics" href="${calendarLink(c)}">${tsT("Add to calendar")}</a></div>`;
     if (c.review?.url) h += `<div class="c-card gr-review"><h3>${tsT("How did we do?")}</h3><p style="margin:0 0 10px">${tsT("Thanks for choosing {0}. If we earned it, a quick review helps a small shop a lot.", esc(c.shop.name))}</p>
       <a class="btn primary" href="${esc(c.review.url)}" target="_blank" rel="noopener" data-gr-review>${tsT("Leave a review")} ★</a></div>`;
     return h;
@@ -325,6 +339,13 @@
           <label class="field">Note on your booking page <small class="muted">(optional)</small><input maxlength="300" id="gr-book-note" value="${esc(g.bookingNote || "")}" placeholder="e.g. Drop-offs from 7:30am. We call to confirm."></label>
           <div class="btn-row"><button type="button" class="btn sm" data-gr-save-note>Save note</button><button type="button" class="linkbtn" data-gr-new-link>Make a new link (the old one stops working)</button></div>` : ""}
       </section>
+      <section class="panel gr-panel" id="gr-notify"><h2>Reminders and Morning Email</h2>
+        <label class="field">Shop address <small class="muted">(customers get a Directions button)</small><input id="gr-address" maxlength="160" autocomplete="street-address" value="${esc(g.address || "")}" placeholder="e.g. 1200 Main St, Eau Claire, WI"></label>
+        <label class="field">If a customer hasn't answered an estimate<select id="gr-nudge">${[[0, "Don't remind them"], [2, "Text a reminder after 2 hours"], [4, "Text a reminder after 4 hours"], [24, "Text a reminder the next day"]].map(([v, l]) => `<option value="${v}" ${(g.nudgeHours || 0) === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+        <p class="muted" style="margin:0;font-size:13px">One text, only to customers who agreed to texts, and it's skipped if they answer first. Counts toward your texts.</p>
+        <label class="chk"><input type="checkbox" id="gr-digest" ${g.digest ? "checked" : ""}> Morning summary email at 7am: cars in, estimates waiting, money approved, late promises${s.email ? ` (to ${esc(s.email)})` : " (to the owner's sign-in email; set a Shop email above to change it)"}</label>
+        <div class="btn-row"><button type="button" class="btn sm" data-gr-save-notify>Save</button></div>
+      </section>
       <section class="panel gr-panel"><h2>Reviews ${pro() ? "" : '<span class="pill">Pro</span>'}</h2>
         <p class="muted" style="margin:0">Paste your Google review link (Google Business Profile → Ask for reviews) or Yelp page. You can ask a customer for a review from their car once it's ready, and their page shows a review button.</p>
         <label class="field">Review link<input id="gr-review-url" maxlength="400" inputmode="url" value="${esc(g.reviewUrl || "")}" placeholder="https://g.page/r/…/review"></label>
@@ -377,7 +398,7 @@
   // ==================== Events ====================
   document.addEventListener("click", async (e) => {
     if (!A) return;
-    const t = e.target.closest("[data-gr-lang],[data-gr-book-lang],[data-gr-review],[data-gr-results],[data-gr-days],[data-gr-bk-open],[data-gr-bk-cancel],[data-gr-bk-accept],[data-gr-bk-decline],[data-gr-clock],[data-gr-review-ask],[data-gr-grow],[data-gr-copy],[data-gr-save-note],[data-gr-new-link],[data-gr-save-review],[data-gr-logo],[data-gr-logo-remove],[data-gr-color-save],[data-gr-color-clear],[data-gr-export]");
+    const t = e.target.closest("[data-gr-lang],[data-gr-book-lang],[data-gr-review],[data-gr-results],[data-gr-days],[data-gr-bk-open],[data-gr-bk-cancel],[data-gr-bk-accept],[data-gr-bk-decline],[data-gr-clock],[data-gr-review-ask],[data-gr-grow],[data-gr-copy],[data-gr-save-note],[data-gr-new-link],[data-gr-save-review],[data-gr-save-notify],[data-gr-logo],[data-gr-logo-remove],[data-gr-color-save],[data-gr-color-clear],[data-gr-export]");
     if (!t) return;
     if (t.dataset.grLang) { store.set("ts-lang-" + t.dataset.token, t.dataset.grLang); A.renderCustomer(); return; }
     if (t.dataset.grBookLang) { store.set("ts-book-lang", t.dataset.grBookLang); renderBooking(bk.token); return; }
@@ -426,6 +447,10 @@
     if (t.hasAttribute("data-gr-new-link")) { if (await saveShop({ newBookingLink: true }, "New booking link made. Update it wherever you posted the old one.")) A.render(); return; }
     if (t.hasAttribute("data-gr-save-review")) {
       if (await saveShop({ grow: { reviewUrl: $("#gr-review-url").value.trim(), ...(pro() ? { reviewAuto: $("#gr-review-auto").checked } : {}) } }, "Review settings saved")) A.render();
+      return;
+    }
+    if (t.hasAttribute("data-gr-save-notify")) {
+      if (await saveShop({ grow: { address: $("#gr-address").value.trim(), nudgeHours: Number($("#gr-nudge").value), digest: $("#gr-digest").checked } }, "Saved")) A.render();
       return;
     }
     if (t.hasAttribute("data-gr-logo")) { pickLogo(); return; }

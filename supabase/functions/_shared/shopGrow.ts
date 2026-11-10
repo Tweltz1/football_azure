@@ -17,7 +17,18 @@ const ts = (t: string | undefined | null) => (t ? Date.parse(t) : NaN);
 /** The shop's logo and accent color on the customer page and printouts. Pro. */
 export interface Brand { logo?: string; color?: string }
 /** Review link and online booking. */
-export interface Grow { reviewUrl?: string; reviewAuto?: boolean; bookingOn?: boolean; bookingNote?: string }
+export interface Grow {
+  reviewUrl?: string; reviewAuto?: boolean; bookingOn?: boolean; bookingNote?: string;
+  /** Street address; the customer page links it to map directions. */
+  address?: string;
+  /** Hours after an estimate is sent to text the customer once if they haven't answered. 0 or missing: off. */
+  nudgeHours?: number;
+  /** A short morning email to the shop email: cars in, waiting on approval, approved yesterday, late promises. */
+  digest?: boolean;
+  /** The shop-local day the last morning email went out (YYYY-MM-DD). */
+  digestSentOn?: string;
+}
+export const NUDGE_HOURS = [0, 2, 4, 24] as const;
 
 const MAX_LOGO = 160_000; // a 320px PNG or JPEG logo is well under this
 export function parseBrand(v: unknown): Brand | string {
@@ -45,6 +56,13 @@ export function parseGrow(v: unknown, old: Grow | undefined): Grow | string {
   if (g.reviewAuto !== undefined) out.reviewAuto = g.reviewAuto === true;
   if (g.bookingOn !== undefined) out.bookingOn = g.bookingOn === true;
   if (g.bookingNote !== undefined) { const n = str(g.bookingNote, 300); if (n) out.bookingNote = n; else delete out.bookingNote; }
+  if (g.address !== undefined) { const a = str(g.address, 160).replace(/\s+/g, ' '); if (a) out.address = a; else delete out.address; }
+  if (g.nudgeHours !== undefined) {
+    const h = Number(g.nudgeHours);
+    if (!(NUDGE_HOURS as readonly number[]).includes(h)) return 'Choose when to remind customers about an unanswered estimate.';
+    if (h) out.nudgeHours = h; else delete out.nudgeHours;
+  }
+  if (g.digest !== undefined) out.digest = g.digest === true;
   return out;
 }
 
@@ -90,6 +108,8 @@ export const SAY = {
     review: (first: string, shop: string, url: string) => fitOne([`Thanks for choosing ${shop}, ${first}! If we earned it, would you leave us a quick review? ${url}`, `Thanks for choosing ${shop}! Would you leave us a quick review? ${url}`]),
     reviewTail: (url: string) => ` Leave us a review: ${url}`,
     booked: (first: string, shop: string, when: string, link: string) => fitOne([`Hi ${first}, ${shop} confirmed your appointment for ${when}. Details and photos: ${link}`, `${shop}: appointment confirmed for ${when}. ${link}`]),
+    // Sent with the STOP line added after it, so the choice is made with it included.
+    nudge: (shop: string, car: string, link: string) => fitOne([`${shop}: your ${car} estimate is still waiting for your OK: ${link} Reply STOP to opt out.`, `${shop}: your estimate is still waiting for your OK: ${link} Reply STOP to opt out.`]).replace(/ Reply STOP to opt out\.$/, ''),
   },
   es: {
     car: 'vehículo', soon: 'pronto', hours: 'en horario de atención', subject: 'actualización de su reparación', details: 'Detalles de la reparación: ',
@@ -102,6 +122,7 @@ export const SAY = {
     review: (first: string, shop: string, url: string) => fitOne([`¡Gracias por elegir ${shop}, ${first}! Si quedó contento, ¿nos dejaría una reseña rápida? ${url}`, `¡Gracias por elegir ${shop}! ¿Nos dejaría una reseña? ${url}`]),
     reviewTail: (url: string) => ` Déjenos una reseña: ${url}`,
     booked: (first: string, shop: string, when: string, link: string) => fitOne([`Hola ${first}, ${shop} confirmó su cita para el ${when}. Detalles y fotos: ${link}`, `${shop}: cita confirmada para el ${when}. ${link}`]),
+    nudge: (shop: string, car: string, link: string) => fitOne([`${shop}: el presupuesto de su ${car} sigue esperando su respuesta: ${link} Responda STOP para salir.`, `${shop}: su presupuesto sigue esperando su respuesta: ${link} Responda STOP para salir.`]).replace(/ Responda STOP para salir\.$/, ''),
   },
 } as const;
 

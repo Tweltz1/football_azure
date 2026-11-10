@@ -46,7 +46,7 @@
   }
   const fmtPhone = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ""); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : (p || ""); };
   const contact = c => [c.preference !== "email" && fmtPhone(c.phone), c.preference !== "sms" && c.email].filter(Boolean).join(" and ");
-  const channelName = m => m.channel === "email" ? "Email" : "Text";
+  const channelName = m => m.channel === "email" ? "Email" : m.channel === "web" ? "Customer page" : "Text";
   function sendResult(j) {
     const count = j.customer.preference === "both" ? 2 : 1;
     return j.messages.slice(-count).map(m => m.delivery === "sent" ? channelName(m) + " sent" : channelName(m) + " not sent" + (m.note ? ": " + String(m.note).replace(/[.\s]+$/, "") : "")).join(". ") + ".";
@@ -179,7 +179,7 @@
   const custToken = new URLSearchParams(location.search).get("c");
   // Online booking page: /?book=<token>
   const bookToken = custToken ? "" : (new URLSearchParams(location.search).get("book") || "");
-  const cust = { intakeDraft: {}, intakeBusy: false, data: null, draft: {}, sig: "", error: "" };
+  const cust = { intakeDraft: {}, intakeBusy: false, data: null, draft: {}, sig: "", error: "", msg: "", msgSent: false, msgBusy: false };
 
   async function loadCustomer() {
     try {
@@ -258,7 +258,11 @@
       });
       const allChosen = j.estimate.filter((e) => e.status === "pending").every((e) => cust.draft[e.id]);
       const tot = pending ? j.estimate.reduce((a, e) => a + ((cust.draft[e.id] ?? e.status) === "approved" ? Number(e.price) : 0), 0) : estTotal(j, true);
-      est = `<div class="c-card"><h3>${T("Estimate")}</h3>${items}<div class="total"><span>${pending ? T("Approved so far") : T("Approved total")}</span><span>${money(tot)}</span></div>
+      // Shortcuts for long estimates: approve everything, or just what the shop marked Required.
+      const openUnits = pending ? window.EstGroups.units(j.estimate).filter((u) => u.lines.some((e) => e.status === "pending")) : [];
+      const req = openUnits.filter((u) => u.priority === "required").length;
+      const bulk = openUnits.length > 1 ? `<div class="btn-row cust-bulk"><button type="button" class="btn sm" data-bulk="all">${T("Approve all")}</button>${req && req < openUnits.length ? `<button type="button" class="btn sm" data-bulk="required">${T("Approve required")}</button>` : ""}</div>` : "";
+      est = `<div class="c-card"><h3>${T("Estimate")}</h3>${bulk}${items}<div class="total"><span>${pending ? T("Approved so far") : T("Approved total")}</span><span>${money(tot)}</span></div>
         ${pending ? `<label class="field" style="margin-top:10px">${T("Type your full name to sign")}<input id="sig" autocomplete="name" value="${esc(cust.sig)}"></label>
         <button class="btn primary" style="width:100%;margin-top:10px" id="submitApproval" ${allChosen ? "" : "disabled"}>${T("Send my decision")}</button>
         <p class="muted" style="font-size:12.5px;margin:6px 0 0">${allChosen ? T("Your signed decision goes straight to the shop.") : T("Choose approve or decline for each item.")}</p>`
@@ -283,6 +287,11 @@
         <div class="c-card"><h3>${T("Progress")}</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         ${j.concern ? `<div class="c-card"><h3>${T("Your concern")}</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
         ${window.Workday.customerReminders(j)}
+        ${j.canMessage ? `<section class="c-card cust-msg"><h3>${T("Message the shop")}</h3>
+          ${cust.msgSent ? `<p class="muted" role="status" style="margin:0 0 8px">${T("Sent. The shop sees it on their screen and will get back to you.")}</p>` : ""}
+          <label class="field"><span class="sr-only">${T("Your message")}</span><textarea id="custMsg" maxlength="1000" rows="3" placeholder="${T("Ask a question or tell the shop something")}">${esc(cust.msg)}</textarea></label>
+          <button type="button" class="btn" id="custMsgSend" ${cust.msgBusy ? "disabled" : ""}>${T("Send to shop")}</button></section>` : ""}
+        ${j.shop.address ? `<a class="c-card call dir" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.shop.address)}" target="_blank" rel="noopener"><span>${T("Directions to the shop")}</span><b>${esc(j.shop.address)}</b></a>` : ""}
         ${j.shop.phone ? `<a class="c-card call tel" href="tel:${esc(j.shop.phone.replace(/[^\d+]/g, ""))}"><span>${T("Questions? Call the shop")}</span><b>${esc(j.shop.phone)}</b></a>` : ""}
         <p class="cust-top">${T("This page updates as your repair progresses.")}</p>
         ${window.Grow.langSwitch(custToken)}
@@ -821,7 +830,20 @@
       <h2 style="font-size:20px">Your Devices</h2>
       <p class="muted" style="margin:0">Signed in as <b>${esc(myName || session?.user?.email || "")}</b>${myName && session?.user?.email ? ` (${esc(session.user.email)})` : ""}. Your login works on up to <b>2 devices</b> at a time. Signing in on a third device signs out the one that signed in longest ago, and a device not used for 14 days signs out by itself.</p>
       <div class="btn-row"><button class="btn" type="button" id="signOutOthers">Sign Out My Other Devices</button><button class="btn" type="button" id="signOut2">Sign Out Here</button></div>
-    </section>`;
+    </section>${installPanel()}`;
+  }
+  // "Add to Home Screen": the Bay opens full screen like an app. Chrome and Edge offer an install prompt; iPhone uses Share.
+  let installEvent = null;
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvent = e; if (ui.view === "settings") render(); });
+  window.addEventListener("appinstalled", () => { installEvent = null; toast("Talk Shops is on your home screen"); });
+  function installPanel() {
+    if (matchMedia("(display-mode: standalone)").matches || navigator.standalone) return "";
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const how = installEvent ? `<div class="btn-row"><button class="btn primary" type="button" id="installApp">Add Talk Shops to This Device</button></div>`
+      : ios ? `<p style="margin:0">In Safari, tap the <b>Share</b> button, then <b>Add to Home Screen</b>.</p>`
+      : `<p style="margin:0">In Chrome, open the <b>⋮</b> menu and choose <b>Add to Home screen</b> or <b>Install app</b>.</p>`;
+    return `<section class="panel" style="display:flex;flex-direction:column;gap:8px"><h2 style="font-size:20px">Use It Like an App</h2>
+      <p class="muted" style="margin:0">Put Talk Shops on the home screen of the shop phone or tablet. It opens straight to the Bay, full screen.</p>${how}</section>`;
   }
   function techSettingsView() {
     const s = shop || {};
@@ -869,14 +891,14 @@
         let pill = "";
         if (j.stage === "invited") pill = `<span class="pill">${j.intakeReceived ? "Intake received" : "Awaiting vehicle details"}</span>`;
         else if (j.stage === "approval" && estimateOutcome(j)) pill = `<span class="pill">${estimateOutcome(j)}</span>`;
-        else if (awaitingDecision(j)) pill = `<span class="pill warn">Sent ${since(ev.t)} ago</span>`;
+        else if (awaitingDecision(j)) pill = `<span class="pill warn">Sent ${since(ev.t)} ago${j.viewedAt ? " · Opened" : ""}</span>`;
         else if (j.stage === "parts") pill = `<span class="pill">ETA ${esc(j.eta || "not set")}</span>`;
         const last = j.messages[j.messages.length - 1];
         const reply = last && last.dir === "in";
         const age = ageOf(j);
         const hay = [vehicleStr(j), j.customer.name, j.customer.phone, j.customer.email, j.ro, j.concern, j.plate, j.vehicle?.plate, j.vehicle?.vin].filter(Boolean).join(" ").toLowerCase();
         const qk = awaitingDecision(j) ? "approval" : j.stage === "ready" ? "ready" : "other";
-        h += `<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} ${window.Workday.cardAttrs(j)} data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
+        h += `<button class="card ${age.cls}" draggable="true" ${window.BayBoard.metadata(j)} ${window.Workday.cardAttrs(j)} data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
           ${window.BayBoard.urgencyBadge(j)}<span class="veh queue-vehicle">${esc(vehicleStr(j) || "Vehicle details pending")}<span class="chev" aria-hidden="true">›</span></span>
           <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${esc(j.ro)}</span></span>
           ${j.concern ? `<span class="row concern"><span>${esc(j.concern)}</span></span>` : ""}
@@ -1018,7 +1040,7 @@
         ${window.Workday.visitsSection(j)}
         ${j.closed || j.stage === "picked_up" ? "" : recallSection(j)}
         ${j.stage === "invited" && !j.intakeReceived ? "" : window.Walkthrough.sheetSection(j)}
-        ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3>
+        ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3>${estimateSeen(j)}
           ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some((e) => e.status !== "pending") ? `<div class="total"><span>Approved total</span><span>${money(estTotal(j, true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}` : `<p class="muted" style="margin:0">No line items yet.</p>`}
           ${j.approval ? `<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>` : ""}
           <div class="est-add">
@@ -1137,6 +1159,57 @@
     clearTimeout(planTimer);
     planTimer = setTimeout(async () => { if (!shop) return; try { plan = await api("GET", "shop/plan"); render(); } catch { /* next time */ } }, 1500);
   }
+  /** Opens the "Move to …" window with the suggested customer text (stage buttons and Bay drag-and-drop). */
+  async function openStageMove(j, stage) {
+    if (!j || stage === j.stage || ui.busy) return;
+    if (stage === "approval" && !j.estimate.some((x) => x.status === "pending")) { toast("Add at least one estimate line first"); $("#li-item")?.focus(); return; }
+    if (stage === "approval" && !isOwner()) { toast("A shop owner sends the estimate for approval"); return; }
+    const p = await act(() => api("POST", `shop/jobs/${j.id}/preview`, { stage }));
+    if (!p) return;
+    ui.modal = { job: j.id, stage, text: p.text, eta: j.eta };
+    renderLayer(); $("#m-text")?.focus();
+  }
+  // Desktop Bay: drag a car card onto another stage's column.
+  document.addEventListener("dragstart", (e) => {
+    const card = e.target.closest?.(".col .card[data-open]"); if (!card) return;
+    e.dataTransfer.setData("text/plain", card.dataset.open); e.dataTransfer.effectAllowed = "move"; card.classList.add("dragging");
+  });
+  document.addEventListener("dragend", () => document.querySelectorAll(".dragging,.drop-target").forEach((el) => el.classList.remove("dragging", "drop-target")));
+  document.addEventListener("dragover", (e) => {
+    const col = e.target.closest?.(".col[data-stage]"); if (!col || col.dataset.stage === "invited" || !document.querySelector(".card.dragging")) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = "move";
+    document.querySelectorAll(".drop-target").forEach((el) => el !== col && el.classList.remove("drop-target")); col.classList.add("drop-target");
+  });
+  document.addEventListener("drop", async (e) => {
+    const col = e.target.closest?.(".col[data-stage]"); if (!col) return;
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain"); document.querySelectorAll(".dragging,.drop-target").forEach((el) => el.classList.remove("dragging", "drop-target"));
+    const j = job(id); if (!j || j.stage === col.dataset.stage) return;
+    if (j.stage === "invited" && !j.intakeReceived) { toast("Waiting on the customer's check-in details first"); return; }
+    ui.openJob = j.id; renderLayer(); await openStageMove(j, col.dataset.stage);
+  });
+  /** Runs `run` after 8 seconds unless Undo is pressed. Leaving the page runs it right away so nothing is lost. */
+  let pendingUndo = null;
+  function laterWithUndo(label, run, undo) {
+    pendingUndo?.now();
+    const bar = document.createElement("div");
+    bar.className = "undo-bar"; bar.setAttribute("role", "status");
+    bar.innerHTML = `<span>${esc(label)}…</span><button type="button" class="btn sm">Undo</button>`;
+    document.body.appendChild(bar);
+    const done = () => { clearTimeout(timer); bar.remove(); document.removeEventListener("visibilitychange", onHide); if (pendingUndo === p) pendingUndo = null; };
+    const p = { now: () => { done(); run(); } };
+    const onHide = () => { if (document.visibilityState === "hidden") p.now(); };
+    const timer = setTimeout(p.now, 8000);
+    document.addEventListener("visibilitychange", onHide);
+    bar.querySelector("button").addEventListener("click", () => { done(); undo(); toast("Nothing was sent"); });
+    pendingUndo = p;
+  }
+  /** Whether the customer has opened the estimate since it was sent, so the counter knows whether to call. */
+  function estimateSeen(j) {
+    if (!awaitingDecision(j)) return "";
+    const clock = (t) => new Date(ts(t)).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+    return `<p class="est-seen ${j.viewedAt ? "seen" : ""}">${j.viewedAt ? `Customer opened the estimate ${esc(clock(j.viewedAt))}` : "Customer hasn't opened the estimate yet"}</p>`;
+  }
   async function jobAction(id, action, body, okMsg) {
     act.lastError = null;
     const j = await act(() => api("POST", `shop/jobs/${id}/${action}`, body), okMsg);
@@ -1242,14 +1315,7 @@
     if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); return; }
     if (t.hasAttribute("data-close")) { ui.openJob = null; renderLayer(); return; }
     if (t.hasAttribute("data-cancel")) { if (ui.busy) return; ui.modal = ui.modal?.pickup || null; renderLayer(); return; }
-    if (t.dataset.stage) {
-      const j = job(ui.openJob); if (!j || t.dataset.stage === j.stage) return;
-      if (t.dataset.stage === "approval" && !j.estimate.some((x) => x.status === "pending")) { toast("Add at least one estimate line first"); $("#li-item")?.focus(); return; }
-      const p = await act(() => api("POST", `shop/jobs/${j.id}/preview`, { stage: t.dataset.stage }));
-      if (!p) return;
-      ui.modal = { job: j.id, stage: t.dataset.stage, text: p.text, eta: j.eta };
-      renderLayer(); $("#m-text")?.focus(); return;
-    }
+    if (t.dataset.stage) { await openStageMove(job(ui.openJob), t.dataset.stage); return; }
     if (t.dataset.removePhoto) {
       const id = ui.openJob;
       const photo = job(id)?.photos.find((p) => p.id === t.dataset.removePhoto);
@@ -1290,6 +1356,22 @@
     }
     if (t.dataset.del) { jobAction(ui.openJob, "estimate", { remove: t.dataset.del }); return; }
     // customer page
+    if (t.id === "installApp" && installEvent) { const ev = installEvent; installEvent = null; ev.prompt(); try { await ev.userChoice; } catch { /* dismissed */ } render(); return; }
+    if (t.dataset.bulk && cust.data) {
+      for (const u of window.EstGroups.units(cust.data.estimate)) {
+        if (!u.lines.some((e) => e.status === "pending") || (t.dataset.bulk === "required" && u.priority !== "required")) continue;
+        for (const e of u.lines) if (e.status === "pending") cust.draft[e.id] = "approved";
+      }
+      cust.sig = $("#sig")?.value ?? cust.sig; renderCustomer(); return;
+    }
+    if (t.id === "custMsgSend" && custToken) {
+      const text = ($("#custMsg")?.value || "").trim();
+      if (!text) { toast(window.tsT("Type your message.")); $("#custMsg")?.focus(); return; }
+      cust.msgBusy = true; renderCustomer();
+      try { cust.data = await api("POST", `shop/c/${encodeURIComponent(custToken)}/message`, { text }); cust.msg = ""; cust.msgSent = true; }
+      catch (err) { toast(err.message); }
+      cust.msgBusy = false; renderCustomer(); return;
+    }
     if (t.dataset.decide) { for (const id of window.EstGroups.idsOf(t)) cust.draft[id] = t.dataset.v; cust.sig = $("#sig")?.value ?? cust.sig; renderCustomer(); return; }
     if (t.id === "submitApproval") {
       const sig = ($("#sig").value || "").trim();
@@ -1535,8 +1617,14 @@
       const body = { stage: m.stage, text: $("#m-text").value.trim(), send: $("#m-send").checked };
       if (eta) body.eta = eta.value.trim();
       if (m.stage === "picked_up") Object.assign(body, window.Workday.pickupValue());
-      const j = await jobAction(m.job, "stage", body);
-      if (j) { toast("Moved to " + STAGES[SI[m.stage]].label + (body.send && body.text ? ". " + sendResult(j) : "")); ui.modal = null; if (j.stage === "picked_up") ui.openJob = null; render(); }
+      const move = async () => {
+        const j = await jobAction(m.job, "stage", body);
+        if (j) { toast("Moved to " + STAGES[SI[m.stage]].label + (body.send && body.text ? ". " + sendResult(j) : "")); if (ui.modal === m) ui.modal = null; if (j.stage === "picked_up" && ui.openJob === j.id) ui.openJob = null; render(); }
+        else if (ui.modal !== m) { ui.modal = m; renderLayer(); }
+      };
+      // A text can't be taken back, so a move that messages the customer waits a few seconds with an Undo.
+      if (body.send && body.text) { m.text = body.text; if (eta) m.eta = body.eta; ui.modal = null; renderLayer(); laterWithUndo(`Moving to ${STAGES[SI[m.stage]].label} and messaging ${ShopDisplay.name(first(job(m.job)?.customer.name || "the customer"))}`, move, () => { ui.modal = m; renderLayer(); }); }
+      else await move();
       return;
     }
     if (f.id === "addLine") {
@@ -1738,6 +1826,7 @@
     if (custToken && e.target.form?.id === "intakeForm") cust.intakeDraft[e.target.name] = e.target.value;
     if (ui.modal?.billing) { billing.updateTotal($("#billingForm")); return; }
     if (e.target.id === "sig") cust.sig = e.target.value;
+    if (e.target.id === "custMsg") { cust.msg = e.target.value; cust.msgSent = false; }
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !ui.busy) { if (ui.modal) ui.modal = ui.modal?.pickup || null; else ui.openJob = null; renderLayer(); } });
@@ -1752,7 +1841,7 @@
   if (bookToken) { render(); return; }
   if (custToken) {
     loadCustomer();
-    setInterval(() => { if (!cust.intakeBusy && !document.activeElement?.closest("#intakeForm") && !Object.keys(cust.draft).length && document.visibilityState === "visible") loadCustomer(); }, 30000);
+    setInterval(() => { if (!cust.intakeBusy && !document.activeElement?.closest("#intakeForm") && !Object.keys(cust.draft).length && !cust.msg && document.activeElement?.id !== "custMsg" && document.visibilityState === "visible") loadCustomer(); }, 30000);
     return;
   }
   if (!sb) { render(); return; }

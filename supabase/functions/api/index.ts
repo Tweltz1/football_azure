@@ -13,7 +13,7 @@ import { createJunkPhotos, createJunkStore } from './junkAdapters.ts';
 import { verifyAppleJws } from '../_shared/appleJws.ts';
 import { applePushSender } from '../_shared/applePush.ts';
 import { createShopEmailSender } from '../_shared/shopEmail.ts';
-import { createTwilioSender, shopRoute, stopReminders, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
+import { createTwilioSender, runCron, shopRoute, stopReminders, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
 import { incomingSms } from '../_shared/shopSms.ts';
 import { createStripe } from '../_shared/shopPlans.ts';
 import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator.ts';
@@ -180,6 +180,13 @@ Deno.serve(async (req) => {
         for (const job of await shop.store.jobsWithFollowupsFor?.(phone) ?? []) { stopReminders(job, now, 'customer'); job.updatedAt = now; await shop.store.putJob(job); }
       });
     } catch { return new Response('SMS processing unavailable.',{status:503}); }
+  }
+  // Hourly from GitHub Actions (.github/workflows/talkshops-hourly.yml): reminder texts and morning summary emails.
+  if (req.method === 'POST' && path === 'shop/cron') {
+    const auth = req.headers.get('Authorization') ?? '';
+    if (!SERVICE_ROLE_KEY || auth !== 'Bearer ' + SERVICE_ROLE_KEY) return new Response('Not allowed.', { status: 401 });
+    try { return Response.json(await runCron(shop, new Date(), log)); }
+    catch (error) { log.error('hourly run failed', error); return new Response('Hourly run failed.', { status: 500 }); }
   }
   // Stripe signs the exact bytes it sends, so this route reads the raw body itself.
   if (req.method === 'POST' && path === 'shop/stripe-webhook') {

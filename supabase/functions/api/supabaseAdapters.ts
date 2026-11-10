@@ -480,6 +480,22 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       if (error) throw error;
       return (data ?? []).map((row) => visitRow(jobRow(row as JobDb)));
     },
+    async cronShops(now) {
+      const [digest, due] = await Promise.all([
+        db.from('repair_shops').select(SHOP_COLUMNS).eq('grow->>digest', 'true').limit(500),
+        db.from('repair_jobs').select('shop_id').lte('follow_up_at', now).limit(1000),
+      ]);
+      if (digest.error) throw digest.error;
+      if (due.error) throw due.error;
+      const shops = new Map((digest.data ?? []).map((r) => [(r as ShopDb).id, shopRow(r as ShopDb)]));
+      const more = [...new Set((due.data ?? []).map((r: { shop_id: string }) => r.shop_id))].filter((id) => !shops.has(id));
+      if (more.length) {
+        const { data, error } = await db.from('repair_shops').select(SHOP_COLUMNS).in('id', more.slice(0, 500));
+        if (error) throw error;
+        for (const r of data ?? []) shops.set((r as ShopDb).id, shopRow(r as ShopDb));
+      }
+      return [...shops.values()];
+    },
     async dueFollowups(shopId, now, limit) {
       const { data, error } = await db.from('repair_jobs').select(JOB_COLUMNS).eq('shop_id', shopId).lte('follow_up_at', now).order('follow_up_at').limit(limit);
       if (error) throw error;
