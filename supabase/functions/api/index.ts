@@ -10,6 +10,8 @@ import { askRoute } from '../_shared/footballAsk.ts';
 import { cardsRoute } from '../_shared/cards.ts';
 import { geminiJunkDetector, junkRoute, type JunkDeps } from '../_shared/junk.ts';
 import { createJunkPhotos, createJunkStore } from './junkAdapters.ts';
+import { verifyAppleJws } from '../_shared/appleJws.ts';
+import { applePushSender } from '../_shared/applePush.ts';
 import { createShopEmailSender } from '../_shared/shopEmail.ts';
 import { createTwilioSender, shopRoute, stopReminders, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
 import { incomingSms } from '../_shared/shopSms.ts';
@@ -74,6 +76,13 @@ const junk: JunkDeps = {
   store: createJunkStore(db),
   photos: createJunkPhotos(db, SUPABASE_URL),
   detector: GEMINI_KEY ? geminiJunkDetector(GEMINI_KEY, fetch) : null,
+  // Curbsy Plus and tips: App Store purchases are checked against Apple's signature, no API key needed.
+  verifyPurchase: (jws) => verifyAppleJws(jws),
+  // Saved-search alerts go straight to Apple's notification service (secrets set in Supabase; off without them).
+  push: applePushSender({
+    keyId: Deno.env.get('APNS_KEY_ID'), teamId: Deno.env.get('APNS_TEAM_ID'), privateKey: Deno.env.get('APNS_PRIVATE_KEY'),
+    topic: 'com.hoodleague.junk',
+  }),
   deleteAccount: async (userId) => {
     const { error } = await db.auth.admin.deleteUser(userId);
     if (error) throw error;

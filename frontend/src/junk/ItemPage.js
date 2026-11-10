@@ -8,6 +8,7 @@ import { categoryIcon, categoryLabel, conditionLabel, distanceLabel, locate, tim
 import PieceThumb from './PieceThumb';
 import { ContactSheet, MemberCard, SafetyTipsSheet, SpotCard, shareTrip, tipsSeen } from './Safety';
 import { IconBack, IconBox, IconCar, IconChat, IconCheck, IconEdit, IconFlag, IconSparkle, IconTrash } from './icons';
+import { HaulerCard } from './Plus';
 
 const TREND = { closer: 'getting closer', steady: 'not much closer yet', away: 'heading away' };
 /** Close enough to the item to tap "Got it" (the server agrees at 0.6 km). */
@@ -400,6 +401,7 @@ export default function ItemPage() {
           </div>
         )}
         <SpotCard item={item} />
+        {item.mine && (item.status === 'available' || item.status === 'pending') && <HaulerCard item={item} />}
         {!item.mine && item.owner && <MemberCard name={item.ownerName} owner={item.owner} />}
         {item.tags.length > 0 && <p className="jk-taglist">{item.tags.map((t) => <span key={t}>#{t}</span>)}</p>}
         <p className="jk-safety">

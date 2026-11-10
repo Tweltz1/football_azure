@@ -92,3 +92,17 @@ export const contactCurbsy = (body) => call('POST', 'contact', { body });
 // Appeal a ban, a strike, or (with itemId) a listing hidden after reports.
 export const appealCurbsy = (body, itemId) => call('POST', 'appeal', itemId ? { body, itemId } : { body });
 export const sendLabelFix = (fix) => call('POST', 'labels', fix);
+
+// Curbsy Plus, tips, saved searches and partners (supabase/functions/_shared/junkPlus.ts).
+export const getPlus = () => call('GET', 'plus');
+// Apple-signed transactions from the phone (see store.js); the server checks them before unlocking anything.
+export const sendPurchases = (transactions) => call('POST', 'purchases', { transactions });
+export const savedSearches = () => call('GET', 'searches');
+// { q, category, lat, lng, miles }
+export const saveSearch = (s) => call('POST', 'searches', s);
+export const deleteSavedSearch = (id) => call('DELETE', `searches/${encodeURIComponent(id)}`);
+export const seeSavedSearch = (id) => call('POST', `searches/${encodeURIComponent(id)}/seen`, {});
+export const savePushToken = (token, sandbox) => call('POST', 'push', { token, sandbox });
+// kind: 'hauler' or 'sponsor'
+export const getPartners = (kind, here) => call('GET', `partners?${qs({ kind, lat: here.lat, lng: here.lng })}`);
+export const tapPartner = (id, itemId) => call('POST', `partners/${encodeURIComponent(id)}/tap`, itemId ? { itemId } : {});

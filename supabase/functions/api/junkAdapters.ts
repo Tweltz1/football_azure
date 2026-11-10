@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.49.4';
 import type { JunkItem, JunkMessage, JunkPhotos, JunkStore } from '../_shared/junk.ts';
+import type { JunkPartner, JunkPlus, JunkSaved } from '../_shared/junkPlus.ts';
 import type { JunkClaim } from '../_shared/junkClaims.ts';
 
 interface ClaimDb {
@@ -42,6 +43,17 @@ const itemDb = (i: JunkItem): ItemDb => ({
 });
 const messageRow = (r: MessageDb): JunkMessage => ({
   id: r.id, itemId: r.item_id, fromId: r.from_id, toId: r.to_id, fromName: r.from_name, body: r.body, createdAt: r.created_at, readAt: r.read_at,
+});
+
+interface PlusDb { original_transaction_id: string; user_id: string; product_id: string; expires_at: string; environment: string; updated_at: string }
+interface SavedDb { id: string; user_id: string; q: string; category: string | null; lat: number; lng: number; km: number; created_at: string; seen_at: string }
+const savedRow = (r: SavedDb): JunkSaved => ({
+  id: r.id, userId: r.user_id, q: r.q ?? '', category: (r.category || null) as JunkSaved['category'], lat: r.lat, lng: r.lng, km: r.km, createdAt: r.created_at, seenAt: r.seen_at,
+});
+interface PartnerDb { id: string; kind: string; name: string; blurb: string; phone: string; url: string; lat: number; lng: number; km: number; active: boolean }
+const partnerRow = (r: PartnerDb): JunkPartner => ({
+  id: r.id, kind: r.kind === 'sponsor' ? 'sponsor' : 'hauler', name: r.name, blurb: r.blurb ?? '', phone: r.phone ?? '', url: r.url ?? '',
+  lat: r.lat, lng: r.lng, km: r.km, active: r.active,
 });
 
 export function createJunkStore(db: SupabaseClient): JunkStore {
@@ -150,6 +162,8 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_claims').delete().or(`claimer_id.eq.${userId},owner_id.eq.${userId}`));
       must(await db.from('junk_feedback').delete().eq('user_id', userId));
       must(await db.from('junk_label_fixes').delete().eq('user_id', userId));
+      must(await db.from('junk_saved_searches').delete().eq('user_id', userId));
+      must(await db.from('junk_push_tokens').delete().eq('user_id', userId));
       // Phones stay on record when banned, so a deleted-and-remade account can't come back on the same phone.
       must(await db.from('junk_devices').delete().eq('user_id', userId).eq('banned', false));
       // A ban outlives the account's data (a deleted account can't come back under the same id anyway).
@@ -202,6 +216,81 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       const { count, error } = await db.from('junk_label_fixes').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since);
       if (error) throw error;
       return count ?? 0;
+    },
+    // ---- Curbsy Plus, tips, saved searches, notifications, partners (junkPlus.ts) ----
+    async plusRows(userId) {
+      const data = must(await db.from('junk_plus').select('*').eq('user_id', userId)) as PlusDb[] | null;
+      return (data ?? []).map((r) => ({
+        userId: r.user_id, originalTransactionId: r.original_transaction_id, productId: r.product_id,
+        expiresAt: r.expires_at, environment: r.environment, updatedAt: r.updated_at,
+      }));
+    },
+    async savePlus(p: JunkPlus) {
+      const prev = must(await db.from('junk_plus').select('user_id').eq('original_transaction_id', p.originalTransactionId).maybeSingle()) as { user_id: string } | null;
+      if (prev && prev.user_id !== p.userId) return 'taken';
+      must(await db.from('junk_plus').upsert({
+        original_transaction_id: p.originalTransactionId, user_id: p.userId, product_id: p.productId,
+        expires_at: p.expiresAt, environment: p.environment, updated_at: p.updatedAt,
+      }));
+      return 'ok';
+    },
+    async addTip(t) {
+      const { error } = await db.from('junk_tips').insert({
+        transaction_id: t.transactionId, user_id: t.userId, product_id: t.productId, environment: t.environment, created_at: t.createdAt,
+      });
+      if (error && (error as { code?: string }).code === '23505') return false;
+      if (error) throw error;
+      return true;
+    },
+    async countTips(userId) {
+      const { count, error } = await db.from('junk_tips').select('transaction_id', { count: 'exact', head: true }).eq('user_id', userId);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    async savedSearches(userId) {
+      const data = must(await db.from('junk_saved_searches').select('*').eq('user_id', userId).order('created_at')) as SavedDb[] | null;
+      return (data ?? []).map(savedRow);
+    },
+    async addSavedSearch(s) {
+      must(await db.from('junk_saved_searches').insert({
+        id: s.id, user_id: s.userId, q: s.q, category: s.category, lat: s.lat, lng: s.lng, km: s.km, created_at: s.createdAt, seen_at: s.seenAt,
+      }));
+    },
+    async deleteSavedSearch(userId, id) {
+      must(await db.from('junk_saved_searches').delete().eq('user_id', userId).eq('id', id));
+    },
+    async seeSavedSearch(userId, id, at) {
+      must(await db.from('junk_saved_searches').update({ seen_at: at }).eq('user_id', userId).eq('id', id));
+    },
+    async savedSearchesNear(lat, lng) {
+      // Saved searches reach at most 100 miles: a box that size around the spot, checked exactly by the caller.
+      const dLat = 1.5, dLng = 1.5 / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+      const data = must(await db.from('junk_saved_searches').select('*')
+        .gte('lat', lat - dLat).lte('lat', lat + dLat).gte('lng', lng - dLng).lte('lng', lng + dLng).limit(2000)) as SavedDb[] | null;
+      return (data ?? []).map(savedRow);
+    },
+    async savePushToken(userId, token, sandbox, at) {
+      must(await db.from('junk_push_tokens').upsert({ token, user_id: userId, sandbox, updated_at: at }));
+    },
+    async pushTokens(userIds) {
+      if (!userIds.length) return [];
+      const data = must(await db.from('junk_push_tokens').select('token, user_id, sandbox').in('user_id', userIds)) as { token: string; user_id: string; sandbox: boolean }[] | null;
+      return (data ?? []).map((r) => ({ userId: r.user_id, token: r.token, sandbox: r.sandbox }));
+    },
+    async dropPushTokens(tokens) {
+      if (tokens.length) must(await db.from('junk_push_tokens').delete().in('token', tokens));
+    },
+    async partnersNear(kind, lat, lng) {
+      const data = must(await db.from('junk_partners').select('*').eq('kind', kind).eq('active', true).limit(500)) as PartnerDb[] | null;
+      void lat; void lng; // few rows; the caller checks each one's area
+      return (data ?? []).map(partnerRow);
+    },
+    async getPartner(id) {
+      const data = must(await db.from('junk_partners').select('*').eq('id', id).maybeSingle()) as PartnerDb | null;
+      return data ? partnerRow(data) : null;
+    },
+    async logPartnerTap(t) {
+      must(await db.from('junk_partner_taps').insert({ id: t.id, partner_id: t.partnerId, user_id: t.userId, item_id: t.itemId, created_at: t.createdAt }));
     },
   };
 }

@@ -4,6 +4,8 @@ import AuthenticationServices
 import CoreLocation
 import Vision
 import CoreML
+import StoreKit
+import UserNotifications
 
 // Registers the app's own native plugins with the web view.
 class HoodViewController: CAPBridgeViewController {
@@ -14,6 +16,8 @@ class HoodViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(ItemVisionPlugin())
         bridge?.registerPluginInstance(PhotoSafetyPlugin())
         bridge?.registerPluginInstance(DeviceTrustPlugin())
+        bridge?.registerPluginInstance(StorePlugin())
+        bridge?.registerPluginInstance(PushPlugin())
     }
 }
 
@@ -481,5 +485,203 @@ public class DeviceTrustPlugin: CAPPlugin, CAPBridgedPlugin {
         let fresh = UUID().uuidString.lowercased()
         DeviceTrustPlugin.save(fresh)
         call.resolve(["id": DeviceTrustPlugin.read() ?? fresh])
+    }
+}
+
+
+// MARK: - Curbsy Plus and tips (StoreKit 2)
+// JS: frontend/src/junk/store.js. Every purchase is tagged with the Curbsy account (appAccountToken), and the
+// Apple-signed transaction (jws) goes to the server, which checks Apple's signature before unlocking anything.
+@objc(StorePlugin)
+public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "StorePlugin"
+    public let jsName = "Store"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "products", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "entitlements", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "manage", returnType: CAPPluginReturnPromise),
+    ]
+    private var updates: Task<Void, Never>?
+
+    override public func load() {
+        // Renewals, Ask to Buy approvals and purchases made on another device arrive here.
+        updates = Task.detached { [weak self] in
+            for await result in Transaction.updates {
+                if case .verified(let t) = result { await t.finish() }
+                self?.notifyListeners("transaction", data: ["jws": result.jwsRepresentation], retainUntilConsumed: true)
+            }
+        }
+    }
+
+    deinit { updates?.cancel() }
+
+    @objc func products(_ call: CAPPluginCall) {
+        let ids = call.getArray("ids", String.self) ?? []
+        Task {
+            do {
+                let list = try await Product.products(for: ids)
+                call.resolve(["products": list.map { p -> [String: Any] in
+                    var out: [String: Any] = ["id": p.id, "title": p.displayName, "description": p.description, "price": p.displayPrice]
+                    if let period = p.subscription?.subscriptionPeriod {
+                        out["period"] = period.unit == .month ? (period.value == 1 ? "month" : "\(period.value) months")
+                            : period.unit == .year ? "year" : period.unit == .week ? "week" : "day"
+                    }
+                    return out
+                }])
+            } catch {
+                call.reject("The App Store isn't available right now.")
+            }
+        }
+    }
+
+    @objc func purchase(_ call: CAPPluginCall) {
+        guard let id = call.getString("id"), let account = call.getString("account"), let token = UUID(uuidString: account) else {
+            call.reject("Missing product or account.")
+            return
+        }
+        Task {
+            do {
+                guard let product = try await Product.products(for: [id]).first else {
+                    call.reject("That isn't available in the App Store yet.")
+                    return
+                }
+                let result = try await product.purchase(options: [.appAccountToken(token)])
+                switch result {
+                case .success(let verification):
+                    if case .verified(let t) = verification {
+                        await t.finish()
+                        call.resolve(["status": "purchased", "jws": verification.jwsRepresentation])
+                    } else {
+                        call.resolve(["status": "failed"])
+                    }
+                case .userCancelled:
+                    call.resolve(["status": "cancelled"])
+                case .pending:
+                    call.resolve(["status": "pending"])
+                @unknown default:
+                    call.resolve(["status": "failed"])
+                }
+            } catch {
+                call.reject(error.localizedDescription)
+            }
+        }
+    }
+
+    private static func current() async -> [String] {
+        var out: [String] = []
+        for await result in Transaction.currentEntitlements {
+            if case .verified = result { out.append(result.jwsRepresentation) }
+        }
+        return out
+    }
+
+    @objc func entitlements(_ call: CAPPluginCall) {
+        Task { call.resolve(["transactions": await StorePlugin.current()]) }
+    }
+
+    @objc func restore(_ call: CAPPluginCall) {
+        Task {
+            do { try await AppStore.sync() } catch { /* cancelled sign-in: still send what's on the phone */ }
+            call.resolve(["transactions": await StorePlugin.current()])
+        }
+    }
+
+    @objc func manage(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+                ?? UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                try? await AppStore.showManageSubscriptions(in: scene)
+            }
+            call.resolve()
+        }
+    }
+}
+
+// MARK: - Notifications for saved-search alerts
+// AppDelegate hands the device token and notification taps to PushRouter, which passes them to PushPlugin.
+final class PushRouter: NSObject, UNUserNotificationCenterDelegate {
+    static let shared = PushRouter()
+    var pendingPath: String?
+    var onOpen: ((String) -> Void)?
+    private var waiting: [(Result<String, Error>) -> Void] = []
+
+    func waitForToken(_ done: @escaping (Result<String, Error>) -> Void) { waiting.append(done) }
+    func gotToken(_ data: Data) {
+        let token = data.map { String(format: "%02x", $0) }.joined()
+        let list = waiting; waiting = []
+        list.forEach { $0(.success(token)) }
+    }
+    func failed(_ error: Error) {
+        let list = waiting; waiting = []
+        list.forEach { $0(.failure(error)) }
+    }
+
+    // Show alerts while the app is open too.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound])
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        if let path = response.notification.request.content.userInfo["path"] as? String, path.hasPrefix("/junk") {
+            if let open = onOpen { open(path) } else { pendingPath = path }
+        }
+        completionHandler()
+    }
+}
+
+@objc(PushPlugin)
+public class PushPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "PushPlugin"
+    public let jsName = "Push"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "register", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "status", returnType: CAPPluginReturnPromise),
+    ]
+
+    override public func load() {
+        PushRouter.shared.onOpen = { [weak self] path in
+            self?.notifyListeners("open", data: ["path": path], retainUntilConsumed: true)
+        }
+        if let path = PushRouter.shared.pendingPath {
+            PushRouter.shared.pendingPath = nil
+            notifyListeners("open", data: ["path": path], retainUntilConsumed: true)
+        }
+    }
+
+    #if DEBUG
+    private let sandbox = true
+    #else
+    private let sandbox = false
+    #endif
+
+    @objc func status(_ call: CAPPluginCall) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            let s = settings.authorizationStatus
+            call.resolve(["status": s == .authorized || s == .provisional ? "granted" : s == .denied ? "denied" : "ask"])
+        }
+    }
+
+    /// Asks once for permission, then returns this phone's token for Apple's notification service.
+    @objc func register(_ call: CAPPluginCall) {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            guard granted else {
+                call.resolve(["granted": false])
+                return
+            }
+            let sandbox = self.sandbox
+            DispatchQueue.main.async {
+                PushRouter.shared.waitForToken { result in
+                    switch result {
+                    case .success(let token): call.resolve(["granted": true, "token": token, "sandbox": sandbox])
+                    case .failure(let error): call.reject("Notifications aren't set up for this build: \(error.localizedDescription)")
+                    }
+                }
+                UIApplication.shared.registerForRemoteNotifications()
+            }
+        }
     }
 }

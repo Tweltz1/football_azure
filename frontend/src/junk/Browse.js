@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useJunk } from './JunkApp';
-import { searchItems } from './junkApi';
+import { saveSearch, searchItems, seeSavedSearch } from './junkApi';
+import { SponsorCard, useSponsor } from './Plus';
+import { turnOnAlerts } from './store';
 import { CATEGORIES, MILES, distanceLabel, milesToKm, timeAgo } from './device';
 import { IconBox, IconClose, IconPin, IconSearch } from './icons';
 
@@ -17,7 +19,8 @@ export function ItemCard({ item }) {
   const tag = item.status === 'pending' ? 'Pending pickup'
     : mineOpen ? 'You\'re on the way'
       : held ? 'Someone\'s on the way'
-        : shared && item.onTheWay > 0 ? `${item.onTheWay} on the way` : '';
+        : shared && item.onTheWay > 0 ? `${item.onTheWay} on the way`
+          : item.early ? 'Plus early look' : '';
   return (
     <Link to={`/junk/item/${item.id}`} className={`jk-card${item.status === 'pending' || (held && !mineOpen) ? ' is-pending' : ''}`}>
       <div className="jk-card-photo">
@@ -25,7 +28,7 @@ export function ItemCard({ item }) {
           ? <img src={item.photos[0]} alt="" loading="lazy" />
           : <div className="jk-card-nophoto"><IconBox size={32} /></div>}
         <span className="jk-free-tag">FREE</span>
-        {tag && <span className="jk-status-tag">{tag}</span>}
+        {tag && <span className={`jk-status-tag${tag === 'Plus early look' ? ' is-early' : ''}`}>{tag}</span>}
         {pieces.length > 0 && <span className="jk-count-tag">{left} {left === 1 ? 'thing' : 'things'}</span>}
       </div>
       <div className="jk-card-body">
@@ -43,10 +46,17 @@ export function ItemCard({ item }) {
 const SKELETONS = Array.from({ length: 6 }, (_, i) => i);
 
 export default function Browse() {
-  const { spot, spotError, locating, refreshSpot, radiusMi, setRadiusMi } = useJunk();
-  const [q, setQ] = useState('');
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('');
+  const { spot, spotError, locating, refreshSpot, radiusMi: wantMi, setRadiusMi, maxMiles, askPlus, me, askSignIn, plus } = useJunk();
+  // A saved search opened from the Me tab arrives as ?q=…&category=…&saved=<id>.
+  const [params, setParams] = useSearchParams();
+  const [q, setQ] = useState(() => params.get('q') || '');
+  const [query, setQuery] = useState(() => params.get('q') || '');
+  const [category, setCategory] = useState(() => params.get('category') || '');
+  const [saveNote, setSaveNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const sponsor = useSponsor();
+  // Past 25 miles is Curbsy Plus; a member whose Plus ended drops back to 25.
+  const radiusMi = Math.min(wantMi, maxMiles);
   const [sort, setSort] = useState('near');
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
@@ -71,6 +81,40 @@ export default function Browse() {
   }, [spot, radiusMi, query, category, sort]);
 
   const searching = Boolean(query || category);
+
+  useEffect(() => {
+    const saved = params.get('saved');
+    if (saved) {
+      seeSavedSearch(saved).catch(() => {});
+      setParams({}, { replace: true });
+    }
+  }, [params, setParams]);
+  useEffect(() => { setSaveNote(''); }, [query, category]);
+
+  const pickRadius = (mi) => {
+    if (mi > maxMiles) { askPlus(`Search up to 100 miles with Curbsy Plus. Free accounts search up to ${maxMiles}.`); return; }
+    setRadiusMi(mi);
+    setShowRadius(false);
+  };
+
+  const save = async () => {
+    if (!me) { askSignIn('Sign in to save this search and hear about new matches.'); return; }
+    setSaving(true);
+    try {
+      await saveSearch({ q: query, category, lat: spot.lat, lng: spot.lng, miles: radiusMi });
+      if (plus && plus.plus) {
+        const alerts = await turnOnAlerts();
+        setSaveNote(alerts.ok ? 'Saved. You\'ll get an alert the moment a match is posted.' : `Saved. ${alerts.reason}`);
+      } else {
+        setSaveNote('Saved. New matches show in Me > Saved searches. Get instant alerts with Curbsy Plus.');
+      }
+    } catch (err) {
+      if (err.status === 402) askPlus(err.message);
+      else setSaveNote(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <main className="jk-page jk-browse">
@@ -102,8 +146,8 @@ export default function Browse() {
             <p>Show items within</p>
             <div className="jk-radius-options">
               {MILES.map((mi) => (
-                <button key={mi} type="button" className={`jk-chip${mi === radiusMi ? ' is-on' : ''}`} onClick={() => { setRadiusMi(mi); setShowRadius(false); }}>
-                  {mi} mi
+                <button key={mi} type="button" className={`jk-chip${mi === radiusMi ? ' is-on' : ''}${mi > maxMiles ? ' is-plus' : ''}`} onClick={() => pickRadius(mi)}>
+                  {mi} mi{mi > maxMiles && <small> Plus</small>}
                 </button>
               ))}
             </div>
@@ -140,12 +184,26 @@ export default function Browse() {
               <button type="button" className={sort === 'new' ? 'is-on' : ''} onClick={() => setSort('new')}>Newest</button>
             </div>
           </div>
+          {searching && (
+            <div className="jk-save-search">
+              {saveNote
+                ? <p className="jk-muted" role="status">{saveNote}</p>
+                : <button type="button" className="jk-chip" disabled={saving} onClick={save}><span aria-hidden="true">🔔</span> {saving ? 'Saving…' : 'Save this search'}</button>}
+            </div>
+          )}
           {error && <p className="jk-error">{error}</p>}
           {items === null && (
             <div className="jk-grid">{SKELETONS.map((i) => <div key={i} className="jk-card jk-skeleton" />)}</div>
           )}
           {items && items.length > 0 && (
-            <div className="jk-grid">{items.map((item) => <ItemCard key={item.id} item={item} />)}</div>
+            <div className="jk-grid">
+              {items.map((item, i) => (
+                <React.Fragment key={item.id}>
+                  <ItemCard item={item} />
+                  {sponsor && (i === 5 || (i === items.length - 1 && items.length < 6)) && <SponsorCard sponsor={sponsor} />}
+                </React.Fragment>
+              ))}
+            </div>
           )}
           {items && items.length === 0 && !error && (
             <div className="jk-empty">
@@ -156,8 +214,9 @@ export default function Browse() {
                   ? `No free ${query || 'items'} within ${radiusMi} miles. Try a bigger radius or check back soon.`
                   : 'Be the first! Post something you\'re getting rid of and a neighbor can grab it.'}
               </p>
-              {radiusMi < 50
-                ? <button type="button" className="jk-btn" onClick={() => setRadiusMi(MILES.find((m) => m > radiusMi) || 50)}>Look further</button>
+              {radiusMi < maxMiles
+                ? <button type="button" className="jk-btn" onClick={() => setRadiusMi(MILES.find((m) => m > radiusMi && m <= maxMiles) || maxMiles)}>Look further</button>
+                : radiusMi < 100 ? <button type="button" className="jk-btn" onClick={() => pickRadius(100)}>Look up to 100 miles with Plus</button>
                 : <Link to="/junk/post" className="jk-btn jk-btn-primary">Post an item</Link>}
             </div>
           )}
