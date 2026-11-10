@@ -401,6 +401,16 @@ export function fillTemplate(stage: Stage, shop: Shop, job: Job, linkBase: strin
 const jobOut = (j: Job, linkBase: string) => ({
   id: j.id, stage: j.stage, link: linkBase + j.token, createdAt: j.createdAt, updatedAt: j.updatedAt, bill: j.bill ?? null, ...j.data, ...j.intake, smartPaused:!!j.smartPaused, messages:[...j.data.messages,...(j.smsThread??[])].sort((a,b)=>Date.parse(a.t)-Date.parse(b.t)), intakeReceived: !!j.intake, photos: [...(j.intakePhotos ?? []), ...j.data.photos], walkaround: j.walkaround ?? [],
 });
+/** A car for the Bay list: photo ids, captions and marks stay, the image data does not. */
+const boardOut = (j: ReturnType<typeof jobOut>) => ({
+  ...j,
+  photos: j.photos.map((p) => ({ ...p, src: '' })),
+  walkaround: j.walkaround.map((p) => ({ ...p, src: '' })),
+});
+async function boardVersion(jobs: unknown[]): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(jobs)));
+  return Array.from(new Uint8Array(hash).slice(0, 12), (b) => b.toString(16).padStart(2, '0')).join('');
+}
 const walkaroundOpen = (j: Job) => !!j.data.walkaroundRequest && j.stage !== 'picked_up' && !j.data.closed && j.shopId !== DEMO_SHOP_ID;
 
 /** What the customer sees: no phone number, no other customers, no internal notes. */
@@ -1038,6 +1048,15 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   }
 
   const id = parts[2];
+  // The Bay's 20-second refresh: every car without photo data (the sheet loads one car in full when it
+  // opens), and only a short "same" when nothing changed since the version the screen already has.
+  if (id === 'board' && method === 'GET' && parts.length <= 4) {
+    const since = new Date(ctx.now().getTime() - 2 * 86_400_000).toISOString();
+    if (acc.canWork) await sendDueFollowups(deps, shop, ctx.now(), acc).catch((e) => ctx.log.warn('follow-ups failed', { error: String(e) }));
+    const jobs = (await store.listJobs(shop.id, since)).map((j) => boardOut(jobOut(j, deps.linkBase)));
+    const v = await boardVersion(jobs);
+    return ok(parts[3] === v ? { v, same: true } : { v, jobs });
+  }
   if (!id) {
     if (method === 'GET') {
       // Everything still in the shop, plus cars picked up in the last 2 days.

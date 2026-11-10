@@ -1215,3 +1215,23 @@ test('UX: hourly run sends the morning summary once, at 7am shop time, to the sh
   const late = digestText(shop, [{ ...w.jobs.get(job.id)!, data: { ...w.jobs.get(job.id)!.data, promised: '2026-11-08T10:00:00Z' } }], new Date('2026-11-08T13:00:00Z'), 'https://talkshops.app');
   assert.match(late.text, /1 car past the promised time/);
 });
+
+test('the Bay refresh leaves out image data and answers "same" when nothing changed', async () => {
+  const { as } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string };
+  const src = 'data:image/jpeg;base64,/9j/2Q==';
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/photo`, { src, cap: 'Front' }))?.status, 200);
+  const first = (await dan('GET', 'shop/jobs/board'))?.body as { v: string; jobs: { photos: { src: string; cap: string }[] }[] };
+  assert.equal(first.jobs.length, 1);
+  assert.deepEqual(first.jobs[0].photos.map((p) => [p.src, p.cap]), [['', 'Front']]);
+  assert.deepEqual((await dan('GET', `shop/jobs/board/${first.v}`))?.body, { v: first.v, same: true });
+  const full = (await dan('GET', `shop/jobs/${job.id}`))?.body as { photos: { src: string }[] };
+  assert.equal(full.photos[0].src, src);
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/photo`, { src, cap: 'Rear' }))?.status, 200);
+  const next = (await dan('GET', `shop/jobs/board/${first.v}`))?.body as { v: string; jobs: unknown[] };
+  assert.notEqual(next.v, first.v);
+  assert.equal(next.jobs.length, 1);
+  assert.notEqual((await as('user-other')('GET', 'shop/jobs/board'))?.status, 200);
+});

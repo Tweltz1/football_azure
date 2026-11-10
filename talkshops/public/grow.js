@@ -46,7 +46,7 @@
     "Add photos": "Agregar fotos", "{0} of 6 photos added": "{0} de 6 fotos agregadas",
     "Notes from your technician": "Notas de su técnico", "Progress": "Avance", "View photos": "Ver fotos", "Earlier photos": "Fotos anteriores",
     "Your concern": "Su consulta", "Questions? Call the shop": "¿Preguntas? Llame al taller", "This page updates as your repair progresses.": "Esta página se actualiza a medida que avanza su reparación.",
-    "Privacy Policy": "Política de privacidad", "Required": "Necesario", "Recommended": "Recomendado", "Optional": "Opcional",
+    "Privacy Policy": "Política de privacidad", "Text Terms": "Términos de mensajes", "Required": "Necesario", "Recommended": "Recomendado", "Optional": "Opcional",
     "Needed to fix your concern or for safety.": "Necesario para resolver su problema o por seguridad.", "Advised soon to prevent bigger problems.": "Recomendado pronto para evitar problemas mayores.", "Can wait if you prefer.": "Puede esperar si lo prefiere.",
     "Example photo, not your vehicle": "Foto de ejemplo, no es su vehículo", "How it works": "Cómo funciona", "Photo and diagram": "Foto y diagrama", "View larger diagram": "Ver diagrama más grande",
     "Approve all": "Aprobar todo", "Approve required": "Aprobar lo necesario", "Message the shop": "Mensaje al taller", "Your message": "Su mensaje",
@@ -181,7 +181,7 @@
         <p class="muted full" style="margin:0;font-size:13px">${L("This is a request. The shop confirms the exact time.", "Esto es una solicitud. El taller confirma la hora exacta.")}</p>
       </form>`}
       <p class="cust-top gr-lang"><button type="button" class="linkbtn" data-gr-book-lang="${es ? "en" : "es"}">${es ? "View in English" : "Ver en español"}</button></p>
-      <p class="cust-top"><a href="/privacy.html">${tsT("Privacy Policy")}</a></p>
+      <p class="cust-top"><a href="/privacy.html">${tsT("Privacy Policy")}</a> · <a href="/terms.html#sms">${tsT("Text Terms")}</a></p>
       </div></div>`;
   }
   async function sendBooking(f) {

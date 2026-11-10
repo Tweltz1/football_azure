@@ -295,7 +295,7 @@
         ${j.shop.phone ? `<a class="c-card call tel" href="tel:${esc(j.shop.phone.replace(/[^\d+]/g, ""))}"><span>${T("Questions? Call the shop")}</span><b>${esc(j.shop.phone)}</b></a>` : ""}
         <p class="cust-top">${T("This page updates as your repair progresses.")}</p>
         ${window.Grow.langSwitch(custToken)}
-        <p class="cust-top"><a href="/privacy.html">${T("Privacy Policy")}</a></p>
+        <p class="cust-top"><a href="/privacy.html">${T("Privacy Policy")}</a> · <a href="/terms.html#sms">${T("Text Terms")}</a></p>
       </div></div>`;
   }
 
@@ -379,7 +379,27 @@
     stopReminders: async () => { cust.data = await api("POST", "shop/c/" + encodeURIComponent(custToken) + "/stop-reminders"); renderCustomer(); },
     toast: (m) => toast(m), filter: () => filterBoard(),
   });
-  const upsertJob = (j) => { const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
+  // The Bay list comes without image data; images are kept here by photo id once a car's full record loads.
+  const photoSrc = new Map();
+  let boardV = "";
+  const withPhotos = (j) => {
+    const fill = (p) => { if (p.src) { photoSrc.set(p.id, p.src); return p; } return photoSrc.has(p.id) ? { ...p, src: photoSrc.get(p.id) } : p; };
+    return { ...j, photos: (j.photos || []).map(fill), walkaround: (j.walkaround || []).map(fill) };
+  };
+  const missingPhotos = (j) => !!j && [...(j.photos || []), ...(j.walkaround || [])].some((p) => !p.src);
+  const loadBoard = async () => {
+    let r;
+    try { r = await api("GET", "shop/jobs/board" + (boardV ? "/" + boardV : "")); }
+    catch (e) { boardV = ""; return (await api("GET", "shop/jobs")).map(withPhotos); } // older API while an update rolls out
+    if (r.same) return null;
+    boardV = r.v; return r.jobs.map(withPhotos);
+  };
+  // Opening a car fetches it in full when its images aren't here yet.
+  const fillOpenJob = async (id) => {
+    if (!missingPhotos(job(id))) return;
+    try { upsertJob(await api("GET", "shop/jobs/" + encodeURIComponent(id))); if (ui.openJob === id) renderLayer(); } catch (e) { /* the sheet still works without images */ }
+  };
+  const upsertJob = (j) => { j = withPhotos(j); const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
   window.Grow?.init({
     api: (...a) => api(...a), shop: () => shop, plan: () => plan, isOwner: () => role === "owner", me: () => myId, job, jobs: () => jobs,
     act: (id, action, body) => jobAction(id, action, body), upsert: (j) => upsertJob(j), toast: (m) => toast(m),
@@ -422,7 +442,7 @@
       const me = await api("GET", "shop/me");
       shop = me.shop; emailConfigured = !!me.emailConfigured; plan = me.plan || null;
       role = me.role || null; mainOwner = !!me.mainOwner; crew = me.crew || []; myId = me.me || null; myName = me.myName || "";
-      jobs = shop ? await api("GET", "shop/jobs") : [];
+      boardV = ""; jobs = shop ? (await loadBoard()) || [] : [];
       window.Workday?.watch(jobs);
       if (shop) window.Grow?.loadBookings();
       loadErr = "";
@@ -642,7 +662,7 @@
         ${signup ? `<label class="field">Confirm password<input id="au-confirm" type="password" required autocomplete="new-password"></label>` : ""}
         <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create My Account" : "Sign In"}</button>
       </form>
-      ${signup ? "" : `<button class="linkbtn" id="forgotPw" type="button" style="align-self:flex-start">Forgot password?</button>`}
+      ${signup ? `<p class="muted" style="font-size:13px;margin:0;color:var(--muted)">By creating an account you agree to the <a href="/terms.html" target="_blank" rel="noopener" style="color:inherit">Terms of Service</a> and <a href="/privacy.html" target="_blank" rel="noopener" style="color:inherit">Privacy Policy</a>.</p>` : `<button class="linkbtn" id="forgotPw" type="button" style="align-self:flex-start">Forgot password?</button>`}
       ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
       ${ui.authMsg ? `<p class="form-ok" role="status">${esc(ui.authMsg)}</p>` : ""}
       ${joinToken ? `<button class="linkbtn" id="authSwap" type="button">${signup ? "Already have an account? Sign in" : "Create an account"}</button>` : `<a class="linkbtn" href="${signup ? "/?login" : "/?login=signup"}">${signup ? "Already have an account? Sign in" : "Create an account"}</a>`}
@@ -767,7 +787,7 @@
         <p><a href="/?help">See all questions in Help &amp; Support →</a></p>
       </div></section>
       <section class="front-final"><div class="front-inner"><h2>See it with your own shop’s cars.</h2><p>Start a free trial, or click through the demo shop first.</p><div class="front-actions"><a class="front-cta" href="/?login=signup">Start Free Trial <span aria-hidden="true">→</span></a><a class="front-tour" href="${DEMO_PAGE}">Explore Demo Shop</a><a class="front-tour" href="/?contact=sales">Talk to Sales</a></div></div></section>
-      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="/?help">Help &amp; Support</a><a href="/?contact=sales">Contact Sales</a><a href="/privacy.html">Privacy Policy</a></div></footer>
+      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="/?help">Help &amp; Support</a><a href="/?contact=sales">Contact Sales</a><a href="/privacy.html">Privacy Policy</a><a href="/terms.html">Terms of Service</a></div></footer>
     </div>`;
   }
 
@@ -1206,7 +1226,7 @@
     const id = e.dataTransfer.getData("text/plain"); document.querySelectorAll(".dragging,.drop-target").forEach((el) => el.classList.remove("dragging", "drop-target"));
     const j = job(id); if (!j || j.stage === col.dataset.stage) return;
     if (j.stage === "invited" && !j.intakeReceived) { toast("Waiting on the customer's check-in details first"); return; }
-    ui.openJob = j.id; renderLayer(); await openStageMove(j, col.dataset.stage);
+    ui.openJob = j.id; renderLayer(); fillOpenJob(j.id); await openStageMove(j, col.dataset.stage);
   });
   /** Runs `run` after 8 seconds unless Undo is pressed. Leaving the page runs it right away so nothing is lost. */
   let pendingUndo = null;
@@ -1332,7 +1352,7 @@
     if (t.id === "hidePricesHint") { store.set("talkshops-prices-hint", "off"); render(); return; }
     if (t.dataset.view === "prices") pricesStep.fromSetup = false;
     if (t.dataset.view) { navPush = t.dataset.view !== ui.view; ui.view = t.dataset.view; ui.openJob = null; if (ui.view === "archive") archive.rows = null; render(); window.scrollTo(0, 0); return; }
-    if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); return; }
+    if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); fillOpenJob(t.dataset.open); return; }
     if (t.hasAttribute("data-close")) { ui.openJob = null; renderLayer(); return; }
     if (t.hasAttribute("data-cancel")) { if (ui.busy) return; ui.modal = ui.modal?.pickup || null; renderLayer(); return; }
     if (t.dataset.stage) { await openStageMove(job(ui.openJob), t.dataset.stage); return; }
@@ -1907,8 +1927,9 @@
     const pickerActive = () => $("#photoIn:disabled");
     if (pickerActive()) return;
     try {
-      const latest = await api("GET", "shop/jobs");
-      if (!pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !dictation.active() && !document.activeElement?.matches("input,textarea")) { window.Workday?.watch(latest); if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
+      const latest = await loadBoard();
+      if (latest && !pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !dictation.active() && !document.activeElement?.matches("input,textarea")) { window.Workday?.watch(latest); if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
+      else if (latest) boardV = "";
     } catch (e) { /* try again next time */ }
   }, 20000);
 })();
