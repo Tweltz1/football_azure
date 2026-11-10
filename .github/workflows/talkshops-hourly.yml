@@ -1,0 +1,37 @@
+name: Talk Shops hourly
+
+# Sends Talk Shops reminder texts that came due (including "your estimate is still waiting" reminders)
+# and each shop's 7am morning summary email, for shops that turned them on in Settings.
+# The API checks the service key, which the Supabase CLI reads with the deploy token.
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: talkshops-hourly
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - name: Run reminders and morning emails
+        run: |
+          # reveal=true: without it the Management API masks secret keys. The API accepts the key the
+          # function was given (legacy service_role or a newer sb_secret key), so try each until one works.
+          KEYS=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/api-keys?reveal=true" \
+            | jq -r '.[] | select(.name == "service_role" or .type == "secret") | .api_key // empty')
+          if [ -z "$KEYS" ]; then echo "::error::Could not read the service key."; exit 1; fi
+          for KEY in $KEYS; do echo "::add-mask::$KEY"; done
+          for KEY in $KEYS; do
+            CODE=$(curl --silent --show-error --retry 2 -o out.json -w '%{http_code}' -X POST \
+              -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{}' \
+              "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/api/shop/cron")
+            if [ "$CODE" != "401" ]; then cat out.json; echo; [ "$CODE" = "200" ] && exit 0; echo "::error::Hourly run answered $CODE"; exit 1; fi
+          done
+          echo "::error::No project key was accepted (401)."; exit 1

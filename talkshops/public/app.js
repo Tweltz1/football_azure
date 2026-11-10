@@ -46,7 +46,7 @@
   }
   const fmtPhone = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ""); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : (p || ""); };
   const contact = c => [c.preference !== "email" && fmtPhone(c.phone), c.preference !== "sms" && c.email].filter(Boolean).join(" and ");
-  const channelName = m => m.channel === "email" ? "Email" : "Text";
+  const channelName = m => m.channel === "email" ? "Email" : m.channel === "web" ? "Customer page" : "Text";
   function sendResult(j) {
     const count = j.customer.preference === "both" ? 2 : 1;
     return j.messages.slice(-count).map(m => m.delivery === "sent" ? channelName(m) + " sent" : channelName(m) + " not sent" + (m.note ? ": " + String(m.note).replace(/[.\s]+$/, "") : "")).join(". ") + ".";
@@ -179,7 +179,7 @@
   const custToken = new URLSearchParams(location.search).get("c");
   // Online booking page: /?book=<token>
   const bookToken = custToken ? "" : (new URLSearchParams(location.search).get("book") || "");
-  const cust = { intakeDraft: {}, intakeBusy: false, data: null, draft: {}, sig: "", error: "" };
+  const cust = { intakeDraft: {}, intakeBusy: false, data: null, draft: {}, sig: "", error: "", msg: "", msgSent: false, msgBusy: false };
 
   async function loadCustomer() {
     try {
@@ -258,7 +258,11 @@
       });
       const allChosen = j.estimate.filter((e) => e.status === "pending").every((e) => cust.draft[e.id]);
       const tot = pending ? j.estimate.reduce((a, e) => a + ((cust.draft[e.id] ?? e.status) === "approved" ? Number(e.price) : 0), 0) : estTotal(j, true);
-      est = `<div class="c-card"><h3>${T("Estimate")}</h3>${items}<div class="total"><span>${pending ? T("Approved so far") : T("Approved total")}</span><span>${money(tot)}</span></div>
+      // Shortcuts for long estimates: approve everything, or just what the shop marked Required.
+      const openUnits = pending ? window.EstGroups.units(j.estimate).filter((u) => u.lines.some((e) => e.status === "pending")) : [];
+      const req = openUnits.filter((u) => u.priority === "required").length;
+      const bulk = openUnits.length > 1 ? `<div class="btn-row cust-bulk"><button type="button" class="btn sm" data-bulk="all">${T("Approve all")}</button>${req && req < openUnits.length ? `<button type="button" class="btn sm" data-bulk="required">${T("Approve required")}</button>` : ""}</div>` : "";
+      est = `<div class="c-card"><h3>${T("Estimate")}</h3>${bulk}${items}<div class="total"><span>${pending ? T("Approved so far") : T("Approved total")}</span><span>${money(tot)}</span></div>
         ${pending ? `<label class="field" style="margin-top:10px">${T("Type your full name to sign")}<input id="sig" autocomplete="name" value="${esc(cust.sig)}"></label>
         <button class="btn primary" style="width:100%;margin-top:10px" id="submitApproval" ${allChosen ? "" : "disabled"}>${T("Send my decision")}</button>
         <p class="muted" style="font-size:12.5px;margin:6px 0 0">${allChosen ? T("Your signed decision goes straight to the shop.") : T("Choose approve or decline for each item.")}</p>`
@@ -283,10 +287,15 @@
         <div class="c-card"><h3>${T("Progress")}</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         ${j.concern ? `<div class="c-card"><h3>${T("Your concern")}</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
         ${window.Workday.customerReminders(j)}
+        ${j.canMessage ? `<section class="c-card cust-msg"><h3>${T("Message the shop")}</h3>
+          ${cust.msgSent ? `<p class="muted" role="status" style="margin:0 0 8px">${T("Sent. The shop sees it on their screen and will get back to you.")}</p>` : ""}
+          <label class="field"><span class="sr-only">${T("Your message")}</span><textarea id="custMsg" maxlength="1000" rows="3" placeholder="${T("Ask a question or tell the shop something")}">${esc(cust.msg)}</textarea></label>
+          <button type="button" class="btn" id="custMsgSend" ${cust.msgBusy ? "disabled" : ""}>${T("Send to shop")}</button></section>` : ""}
+        ${j.shop.address ? `<a class="c-card call dir" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.shop.address)}" target="_blank" rel="noopener"><span>${T("Directions to the shop")}</span><b>${esc(j.shop.address)}</b></a>` : ""}
         ${j.shop.phone ? `<a class="c-card call tel" href="tel:${esc(j.shop.phone.replace(/[^\d+]/g, ""))}"><span>${T("Questions? Call the shop")}</span><b>${esc(j.shop.phone)}</b></a>` : ""}
         <p class="cust-top">${T("This page updates as your repair progresses.")}</p>
         ${window.Grow.langSwitch(custToken)}
-        <p class="cust-top"><a href="/privacy.html">${T("Privacy Policy")}</a></p>
+        <p class="cust-top"><a href="/privacy.html">${T("Privacy Policy")}</a> · <a href="/terms.html#sms">${T("Text Terms")}</a></p>
       </div></div>`;
   }
 
@@ -323,6 +332,18 @@
   }
   let role = null, mainOwner = false;
   const isOwner = () => role === "owner";
+  window.TalkShopsHelpChat?.configure({
+    isOwner: () => !session || isOwner(),
+    signedIn: () => !!(session && shop),
+    report: (row) => { if (session && shop && !shop.learnOff) api("POST", "shop/help-miss", row).catch(() => {}); },
+    openHowTo: (q) => { howTo.prefill(q); navPush = ui.view !== "howto"; ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); },
+    contact: (q) => {
+      try { sessionStorage.setItem("ts-help-msg", q || ""); } catch {}
+      if (session && shop && !new URLSearchParams(location.search).has("help")) { navPush = ui.view !== "help"; ui.view = "help"; ui.openJob = null; render(); }
+      else if (document.getElementById("helpForm")) window.TalkShopsHelpChat.fillContact();
+      else location.href = "/?help#help-support";
+    },
+  });
   // Each tab has its own address (talkshops.app/settings, /bay, ...) so refresh, Back and links keep the tab.
   // The host serves index.html for any path that isn't a file (wrangler.jsonc not_found_handling).
   const VIEW_PATHS = { board: "/bay", checkin: "/check-in", archive: "/archive", howto: "/how-to", settings: "/settings", plan: "/plan", training: "/training", help: "/help", prices: "/prices" };
@@ -358,7 +379,27 @@
     stopReminders: async () => { cust.data = await api("POST", "shop/c/" + encodeURIComponent(custToken) + "/stop-reminders"); renderCustomer(); },
     toast: (m) => toast(m), filter: () => filterBoard(),
   });
-  const upsertJob = (j) => { const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
+  // The Bay list comes without image data; images are kept here by photo id once a car's full record loads.
+  const photoSrc = new Map();
+  let boardV = "";
+  const withPhotos = (j) => {
+    const fill = (p) => { if (p.src) { photoSrc.set(p.id, p.src); return p; } return photoSrc.has(p.id) ? { ...p, src: photoSrc.get(p.id) } : p; };
+    return { ...j, photos: (j.photos || []).map(fill), walkaround: (j.walkaround || []).map(fill) };
+  };
+  const missingPhotos = (j) => !!j && [...(j.photos || []), ...(j.walkaround || [])].some((p) => !p.src);
+  const loadBoard = async () => {
+    let r;
+    try { r = await api("GET", "shop/jobs/board" + (boardV ? "/" + boardV : "")); }
+    catch (e) { boardV = ""; return (await api("GET", "shop/jobs")).map(withPhotos); } // older API while an update rolls out
+    if (r.same) return null;
+    boardV = r.v; return r.jobs.map(withPhotos);
+  };
+  // Opening a car fetches it in full when its images aren't here yet.
+  const fillOpenJob = async (id) => {
+    if (!missingPhotos(job(id))) return;
+    try { upsertJob(await api("GET", "shop/jobs/" + encodeURIComponent(id))); if (ui.openJob === id) renderLayer(); } catch (e) { /* the sheet still works without images */ }
+  };
+  const upsertJob = (j) => { j = withPhotos(j); const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
   window.Grow?.init({
     api: (...a) => api(...a), shop: () => shop, plan: () => plan, isOwner: () => role === "owner", me: () => myId, job, jobs: () => jobs,
     act: (id, action, body) => jobAction(id, action, body), upsert: (j) => upsertJob(j), toast: (m) => toast(m),
@@ -401,7 +442,7 @@
       const me = await api("GET", "shop/me");
       shop = me.shop; emailConfigured = !!me.emailConfigured; plan = me.plan || null;
       role = me.role || null; mainOwner = !!me.mainOwner; crew = me.crew || []; myId = me.me || null; myName = me.myName || "";
-      jobs = shop ? await api("GET", "shop/jobs") : [];
+      boardV = ""; jobs = shop ? (await loadBoard()) || [] : [];
       window.Workday?.watch(jobs);
       if (shop) window.Grow?.loadBookings();
       loadErr = "";
@@ -413,6 +454,9 @@
   function render() {
     if (custToken) return renderCustomer();
     if (bookToken) return window.Grow.renderBooking(bookToken);
+    // The "Ask" help chat: inside the shop once it's loaded, and on the public Help page.
+    const publicHelp = new URLSearchParams(location.search).has("help") || (!session && pathView() === "help");
+    window.TalkShopsHelpChat?.show(publicHelp || !!(session && shop && myName && !joinToken));
     const app = $("#app"), chrome = $("#shopChrome");
     document.title = "Talk Shops" + (shop ? " · " + shop.name : "");
     // Any other address (a typo, an old link) gets a plain "not found" page instead of quietly opening something else.
@@ -435,6 +479,7 @@
       chrome.hidden = true;
       document.title = "Help & Support · Talk Shops";
       app.innerHTML = helpView();
+      window.TalkShopsHelpChat?.fillContact();
       return;
     }
     // The sign-in page is /?login (a real file the host always serves); /login forwards there.
@@ -484,6 +529,7 @@
     if (!myName && !loadErr) { app.innerHTML = err + nameView(); renderLayer(); return; }
     app.innerHTML = err + (ui.view === "help" ? helpView() : ui.view === "checkin" ? checkinView() : ui.view === "settings" ? (isOwner() ? setupView(false) : techSettingsView()) : ui.view === "archive" ? archiveView() : ui.view === "plan" ? planUi.view(plan) : ui.view === "howto" ? howTo.view() : ui.view === "training" ? window.TALKSHOPS_TRAINING.view(esc) : ui.view === "prices" && isOwner() ? pricesView() : boardView());
     if (ui.view === "board") filterBoard();
+    if (ui.view === "help") window.TalkShopsHelpChat?.fillContact();
     if (ui.view === "settings" && !recovery.data && !recovery.loading && !recovery.err) loadRecovery();
     if (ui.view === "archive") { renderArchiveRows(); if (!archive.rows && !archive.loading) searchArchive(); }
     renderLayer();
@@ -509,6 +555,9 @@
     return `<section class="help-center">
       <header class="help-heading"><div><p class="muted">Talk Shops Support</p><h2>How Can We Help?</h2><p class="muted">Answers to common questions, step-by-step guides and narrated lessons for your whole team.</p></div><a class="btn" href="${session ? "/" : "/?login"}">${session ? "Back to My Shop" : "Shop Sign In"}</a></header>
       <div class="help-actions"><a class="panel" href="#help-faq"><b>Common Questions</b><span>${window.TALKSHOPS_HELP.count} answers, searchable by topic.</span></a><a class="panel" href="#help-guides"><b>Quick Guides</b><span>Find the steps for everyday tasks.</span></a><a class="panel" href="#help-training"><b>Walkthroughs &amp; Training</b><span>Follow along with sample vehicles.</span></a><a class="panel" href="#help-support"><b>Contact Support</b><span>Get help from our team by email.</span></a></div>
+      <section class="panel" id="help-ask"><h3>Ask a Question</h3>
+        <form class="help-ask" id="helpAskForm"><input id="helpAskQ" type="text" maxlength="300" autocomplete="off" placeholder="e.g. How do I send an estimate?" aria-label="Your question"><button class="btn primary" type="submit">Ask</button></form>
+        <p class="muted help-ask-note">Answers come from these Help pages, right on your device. Car repair questions go in How-to.</p></section>
       ${window.TALKSHOPS_HELP.view(esc)}
       <section class="panel" id="help-guides"><h3>Quick Guides</h3>${guides.map(([title, body, lesson]) => `<details><summary>${esc(title)}</summary><p>${esc(body)}</p><a href="/demo.html?train=${lesson}">Watch the Lesson →</a></details>`).join("")}</section>
       <section class="panel" id="help-training"><h3>Walkthroughs &amp; Training</h3><p class="muted">Narrated lessons use a demo shop with sample cars. Turn your sound on to follow along.</p><a class="btn primary" href="/demo.html?tour=1">Start the Guided Tour</a><div class="help-lessons">${window.TALKSHOPS_TRAINING.lessons.map(l => `<a href="/demo.html?train=${esc(l.id)}">${esc(l.title)} <small class="muted">${l.mins} min</small></a>`).join("")}</div></section>
@@ -613,7 +662,7 @@
         ${signup ? `<label class="field">Confirm password<input id="au-confirm" type="password" required autocomplete="new-password"></label>` : ""}
         <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>${signup ? "Create My Account" : "Sign In"}</button>
       </form>
-      ${signup ? "" : `<button class="linkbtn" id="forgotPw" type="button" style="align-self:flex-start">Forgot password?</button>`}
+      ${signup ? `<p class="muted" style="font-size:13px;margin:0;color:var(--muted)">By creating an account you agree to the <a href="/terms.html" target="_blank" rel="noopener" style="color:inherit">Terms of Service</a> and <a href="/privacy.html" target="_blank" rel="noopener" style="color:inherit">Privacy Policy</a>.</p>` : `<button class="linkbtn" id="forgotPw" type="button" style="align-self:flex-start">Forgot password?</button>`}
       ${ui.authErr ? `<p class="form-err" role="alert">${esc(ui.authErr)}</p>` : ""}
       ${ui.authMsg ? `<p class="form-ok" role="status">${esc(ui.authMsg)}</p>` : ""}
       ${joinToken ? `<button class="linkbtn" id="authSwap" type="button">${signup ? "Already have an account? Sign in" : "Create an account"}</button>` : `<a class="linkbtn" href="${signup ? "/?login" : "/?login=signup"}">${signup ? "Already have an account? Sign in" : "Create an account"}</a>`}
@@ -738,7 +787,7 @@
         <p><a href="/?help">See all questions in Help &amp; Support →</a></p>
       </div></section>
       <section class="front-final"><div class="front-inner"><h2>See it with your own shop’s cars.</h2><p>Start a free trial, or click through the demo shop first.</p><div class="front-actions"><a class="front-cta" href="/?login=signup">Start Free Trial <span aria-hidden="true">→</span></a><a class="front-tour" href="${DEMO_PAGE}">Explore Demo Shop</a><a class="front-tour" href="/?contact=sales">Talk to Sales</a></div></div></section>
-      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="/?help">Help &amp; Support</a><a href="/?contact=sales">Contact Sales</a><a href="/privacy.html">Privacy Policy</a></div></footer>
+      <footer class="front-footer"><div class="front-inner"><b>Talk Shops</b><a href="/?help">Help &amp; Support</a><a href="/?contact=sales">Contact Sales</a><a href="/privacy.html">Privacy Policy</a><a href="/terms.html">Terms of Service</a></div></footer>
     </div>`;
   }
 
@@ -788,7 +837,7 @@
       <div class="btn-row"><label>Opens <input type="time" id="sr-open" value="${esc(s.smartSchedule?.open || "08:00")}"></label><label>Closes <input type="time" id="sr-close" value="${esc(s.smartSchedule?.close || "17:00")}"></label></div></details><a href="/demo.html?smart=1" target="_blank" rel="noopener">Try sample customer texts</a></fieldset>` : ""}
       <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
       ${firstTime ? "" : window.BayAge.fields(s)}
-      ${firstTime ? "" : `<label class="chk"><input type="checkbox" id="sh-learn" ${s.learnOff ? "" : "checked"}>Help improve Talk Shops<span class="hint">When your staff answer a customer's text, Talk Shops keeps a copy of that text with names, phone numbers, emails, addresses and other numbers removed, and nothing that links it to your shop or the customer. It teaches the reply sorter. Kept up to 12 months. <a href="/privacy.html#learning" target="_blank" rel="noopener">More</a></span></label>`}
+      ${firstTime ? "" : `<label class="chk"><input type="checkbox" id="sh-learn" ${s.learnOff ? "" : "checked"}>Help improve Talk Shops<span class="hint">When your staff answer a customer's text, Talk Shops keeps a copy of that text with names, phone numbers, emails, addresses and other numbers removed, and nothing that links it to your shop or the customer. It teaches the reply sorter. Questions the Ask chat couldn't answer are kept the same way, so we can add answers. Kept up to 12 months. <a href="/privacy.html#learning" target="_blank" rel="noopener">More</a></span></label>`}
       ${firstTime ? "" : `<div class="btn-row"><button class="btn primary" type="button" data-view="prices">Upload price list (PDF, photo or Excel)</button><button class="btn" type="button" data-billing="rates">Edit saved items (${(shop?.rates || []).length})</button></div>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Next: upload my prices" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
       ${firstTime ? `<small class="muted">Next you can upload your price list (PDF, photo, Excel or CSV) so your labor rate, services and fees fill in for you. You can skip it.</small>` : ""}
@@ -821,7 +870,20 @@
       <h2 style="font-size:20px">Your Devices</h2>
       <p class="muted" style="margin:0">Signed in as <b>${esc(myName || session?.user?.email || "")}</b>${myName && session?.user?.email ? ` (${esc(session.user.email)})` : ""}. Your login works on up to <b>2 devices</b> at a time. Signing in on a third device signs out the one that signed in longest ago, and a device not used for 14 days signs out by itself.</p>
       <div class="btn-row"><button class="btn" type="button" id="signOutOthers">Sign Out My Other Devices</button><button class="btn" type="button" id="signOut2">Sign Out Here</button></div>
-    </section>`;
+    </section>${installPanel()}`;
+  }
+  // "Add to Home Screen": the Bay opens full screen like an app. Chrome and Edge offer an install prompt; iPhone uses Share.
+  let installEvent = null;
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvent = e; if (ui.view === "settings") render(); });
+  window.addEventListener("appinstalled", () => { installEvent = null; toast("Talk Shops is on your home screen"); });
+  function installPanel() {
+    if (matchMedia("(display-mode: standalone)").matches || navigator.standalone) return "";
+    const ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const how = installEvent ? `<div class="btn-row"><button class="btn primary" type="button" id="installApp">Add Talk Shops to This Device</button></div>`
+      : ios ? `<p style="margin:0">In Safari, tap the <b>Share</b> button, then <b>Add to Home Screen</b>.</p>`
+      : `<p style="margin:0">In Chrome, open the <b>⋮</b> menu and choose <b>Add to Home screen</b> or <b>Install app</b>.</p>`;
+    return `<section class="panel" style="display:flex;flex-direction:column;gap:8px"><h2 style="font-size:20px">Use It Like an App</h2>
+      <p class="muted" style="margin:0">Put Talk Shops on the home screen of the shop phone or tablet. It opens straight to the Bay, full screen.</p>${how}</section>`;
   }
   function techSettingsView() {
     const s = shop || {};
@@ -869,14 +931,14 @@
         let pill = "";
         if (j.stage === "invited") pill = `<span class="pill">${j.intakeReceived ? "Intake received" : "Awaiting vehicle details"}</span>`;
         else if (j.stage === "approval" && estimateOutcome(j)) pill = `<span class="pill">${estimateOutcome(j)}</span>`;
-        else if (awaitingDecision(j)) pill = `<span class="pill warn">Sent ${since(ev.t)} ago</span>`;
+        else if (awaitingDecision(j)) pill = `<span class="pill warn">Sent ${since(ev.t)} ago${j.viewedAt ? " · Opened" : ""}</span>`;
         else if (j.stage === "parts") pill = `<span class="pill">ETA ${esc(j.eta || "not set")}</span>`;
         const last = j.messages[j.messages.length - 1];
         const reply = last && last.dir === "in";
         const age = ageOf(j);
         const hay = [vehicleStr(j), j.customer.name, j.customer.phone, j.customer.email, j.ro, j.concern, j.plate, j.vehicle?.plate, j.vehicle?.vin].filter(Boolean).join(" ").toLowerCase();
         const qk = awaitingDecision(j) ? "approval" : j.stage === "ready" ? "ready" : "other";
-        h += `<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} ${window.Workday.cardAttrs(j)} data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
+        h += `<button class="card ${age.cls}" draggable="true" ${window.BayBoard.metadata(j)} ${window.Workday.cardAttrs(j)} data-open="${j.id}" data-queue-key="${qk}" data-s="${esc(hay)}">
           ${window.BayBoard.urgencyBadge(j)}<span class="veh queue-vehicle">${esc(vehicleStr(j) || "Vehicle details pending")}<span class="chev" aria-hidden="true">›</span></span>
           <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${esc(j.ro)}</span></span>
           ${j.concern ? `<span class="row concern"><span>${esc(j.concern)}</span></span>` : ""}
@@ -1018,7 +1080,7 @@
         ${window.Workday.visitsSection(j)}
         ${j.closed || j.stage === "picked_up" ? "" : recallSection(j)}
         ${j.stage === "invited" && !j.intakeReceived ? "" : window.Walkthrough.sheetSection(j)}
-        ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3>
+        ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3>${estimateSeen(j)}
           ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some((e) => e.status !== "pending") ? `<div class="total"><span>Approved total</span><span>${money(estTotal(j, true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}` : `<p class="muted" style="margin:0">No line items yet.</p>`}
           ${j.approval ? `<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>` : ""}
           <div class="est-add">
@@ -1137,6 +1199,57 @@
     clearTimeout(planTimer);
     planTimer = setTimeout(async () => { if (!shop) return; try { plan = await api("GET", "shop/plan"); render(); } catch { /* next time */ } }, 1500);
   }
+  /** Opens the "Move to …" window with the suggested customer text (stage buttons and Bay drag-and-drop). */
+  async function openStageMove(j, stage) {
+    if (!j || stage === j.stage || ui.busy) return;
+    if (stage === "approval" && !j.estimate.some((x) => x.status === "pending")) { toast("Add at least one estimate line first"); $("#li-item")?.focus(); return; }
+    if (stage === "approval" && !isOwner()) { toast("A shop owner sends the estimate for approval"); return; }
+    const p = await act(() => api("POST", `shop/jobs/${j.id}/preview`, { stage }));
+    if (!p) return;
+    ui.modal = { job: j.id, stage, text: p.text, eta: j.eta };
+    renderLayer(); $("#m-text")?.focus();
+  }
+  // Desktop Bay: drag a car card onto another stage's column.
+  document.addEventListener("dragstart", (e) => {
+    const card = e.target.closest?.(".col .card[data-open]"); if (!card) return;
+    e.dataTransfer.setData("text/plain", card.dataset.open); e.dataTransfer.effectAllowed = "move"; card.classList.add("dragging");
+  });
+  document.addEventListener("dragend", () => document.querySelectorAll(".dragging,.drop-target").forEach((el) => el.classList.remove("dragging", "drop-target")));
+  document.addEventListener("dragover", (e) => {
+    const col = e.target.closest?.(".col[data-stage]"); if (!col || col.dataset.stage === "invited" || !document.querySelector(".card.dragging")) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = "move";
+    document.querySelectorAll(".drop-target").forEach((el) => el !== col && el.classList.remove("drop-target")); col.classList.add("drop-target");
+  });
+  document.addEventListener("drop", async (e) => {
+    const col = e.target.closest?.(".col[data-stage]"); if (!col) return;
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain"); document.querySelectorAll(".dragging,.drop-target").forEach((el) => el.classList.remove("dragging", "drop-target"));
+    const j = job(id); if (!j || j.stage === col.dataset.stage) return;
+    if (j.stage === "invited" && !j.intakeReceived) { toast("Waiting on the customer's check-in details first"); return; }
+    ui.openJob = j.id; renderLayer(); fillOpenJob(j.id); await openStageMove(j, col.dataset.stage);
+  });
+  /** Runs `run` after 8 seconds unless Undo is pressed. Leaving the page runs it right away so nothing is lost. */
+  let pendingUndo = null;
+  function laterWithUndo(label, run, undo) {
+    pendingUndo?.now();
+    const bar = document.createElement("div");
+    bar.className = "undo-bar"; bar.setAttribute("role", "status");
+    bar.innerHTML = `<span>${esc(label)}…</span><button type="button" class="btn sm">Undo</button>`;
+    document.body.appendChild(bar);
+    const done = () => { clearTimeout(timer); bar.remove(); document.removeEventListener("visibilitychange", onHide); if (pendingUndo === p) pendingUndo = null; };
+    const p = { now: () => { done(); run(); } };
+    const onHide = () => { if (document.visibilityState === "hidden") p.now(); };
+    const timer = setTimeout(p.now, 8000);
+    document.addEventListener("visibilitychange", onHide);
+    bar.querySelector("button").addEventListener("click", () => { done(); undo(); toast("Nothing was sent"); });
+    pendingUndo = p;
+  }
+  /** Whether the customer has opened the estimate since it was sent, so the counter knows whether to call. */
+  function estimateSeen(j) {
+    if (!awaitingDecision(j)) return "";
+    const clock = (t) => new Date(ts(t)).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+    return `<p class="est-seen ${j.viewedAt ? "seen" : ""}">${j.viewedAt ? `Customer opened the estimate ${esc(clock(j.viewedAt))}` : "Customer hasn't opened the estimate yet"}</p>`;
+  }
   async function jobAction(id, action, body, okMsg) {
     act.lastError = null;
     const j = await act(() => api("POST", `shop/jobs/${id}/${action}`, body), okMsg);
@@ -1239,17 +1352,10 @@
     if (t.id === "hidePricesHint") { store.set("talkshops-prices-hint", "off"); render(); return; }
     if (t.dataset.view === "prices") pricesStep.fromSetup = false;
     if (t.dataset.view) { navPush = t.dataset.view !== ui.view; ui.view = t.dataset.view; ui.openJob = null; if (ui.view === "archive") archive.rows = null; render(); window.scrollTo(0, 0); return; }
-    if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); return; }
+    if (t.dataset.open) { ui.openJob = t.dataset.open; renderLayer(); setTimeout(() => $(".x")?.focus(), 0); fillOpenJob(t.dataset.open); return; }
     if (t.hasAttribute("data-close")) { ui.openJob = null; renderLayer(); return; }
     if (t.hasAttribute("data-cancel")) { if (ui.busy) return; ui.modal = ui.modal?.pickup || null; renderLayer(); return; }
-    if (t.dataset.stage) {
-      const j = job(ui.openJob); if (!j || t.dataset.stage === j.stage) return;
-      if (t.dataset.stage === "approval" && !j.estimate.some((x) => x.status === "pending")) { toast("Add at least one estimate line first"); $("#li-item")?.focus(); return; }
-      const p = await act(() => api("POST", `shop/jobs/${j.id}/preview`, { stage: t.dataset.stage }));
-      if (!p) return;
-      ui.modal = { job: j.id, stage: t.dataset.stage, text: p.text, eta: j.eta };
-      renderLayer(); $("#m-text")?.focus(); return;
-    }
+    if (t.dataset.stage) { await openStageMove(job(ui.openJob), t.dataset.stage); return; }
     if (t.dataset.removePhoto) {
       const id = ui.openJob;
       const photo = job(id)?.photos.find((p) => p.id === t.dataset.removePhoto);
@@ -1290,6 +1396,22 @@
     }
     if (t.dataset.del) { jobAction(ui.openJob, "estimate", { remove: t.dataset.del }); return; }
     // customer page
+    if (t.id === "installApp" && installEvent) { const ev = installEvent; installEvent = null; ev.prompt(); try { await ev.userChoice; } catch { /* dismissed */ } render(); return; }
+    if (t.dataset.bulk && cust.data) {
+      for (const u of window.EstGroups.units(cust.data.estimate)) {
+        if (!u.lines.some((e) => e.status === "pending") || (t.dataset.bulk === "required" && u.priority !== "required")) continue;
+        for (const e of u.lines) if (e.status === "pending") cust.draft[e.id] = "approved";
+      }
+      cust.sig = $("#sig")?.value ?? cust.sig; renderCustomer(); return;
+    }
+    if (t.id === "custMsgSend" && custToken) {
+      const text = ($("#custMsg")?.value || "").trim();
+      if (!text) { toast(window.tsT("Type your message.")); $("#custMsg")?.focus(); return; }
+      cust.msgBusy = true; renderCustomer();
+      try { cust.data = await api("POST", `shop/c/${encodeURIComponent(custToken)}/message`, { text }); cust.msg = ""; cust.msgSent = true; }
+      catch (err) { toast(err.message); }
+      cust.msgBusy = false; renderCustomer(); return;
+    }
     if (t.dataset.decide) { for (const id of window.EstGroups.idsOf(t)) cust.draft[id] = t.dataset.v; cust.sig = $("#sig")?.value ?? cust.sig; renderCustomer(); return; }
     if (t.id === "submitApproval") {
       const sig = ($("#sig").value || "").trim();
@@ -1535,8 +1657,14 @@
       const body = { stage: m.stage, text: $("#m-text").value.trim(), send: $("#m-send").checked };
       if (eta) body.eta = eta.value.trim();
       if (m.stage === "picked_up") Object.assign(body, window.Workday.pickupValue());
-      const j = await jobAction(m.job, "stage", body);
-      if (j) { toast("Moved to " + STAGES[SI[m.stage]].label + (body.send && body.text ? ". " + sendResult(j) : "")); ui.modal = null; if (j.stage === "picked_up") ui.openJob = null; render(); }
+      const move = async () => {
+        const j = await jobAction(m.job, "stage", body);
+        if (j) { toast("Moved to " + STAGES[SI[m.stage]].label + (body.send && body.text ? ". " + sendResult(j) : "")); if (ui.modal === m) ui.modal = null; if (j.stage === "picked_up" && ui.openJob === j.id) ui.openJob = null; render(); }
+        else if (ui.modal !== m) { ui.modal = m; renderLayer(); }
+      };
+      // A text can't be taken back, so a move that messages the customer waits a few seconds with an Undo.
+      if (body.send && body.text) { m.text = body.text; if (eta) m.eta = body.eta; ui.modal = null; renderLayer(); laterWithUndo(`Moving to ${STAGES[SI[m.stage]].label} and messaging ${ShopDisplay.name(first(job(m.job)?.customer.name || "the customer"))}`, move, () => { ui.modal = m; renderLayer(); }); }
+      else await move();
       return;
     }
     if (f.id === "addLine") {
@@ -1738,6 +1866,7 @@
     if (custToken && e.target.form?.id === "intakeForm") cust.intakeDraft[e.target.name] = e.target.value;
     if (ui.modal?.billing) { billing.updateTotal($("#billingForm")); return; }
     if (e.target.id === "sig") cust.sig = e.target.value;
+    if (e.target.id === "custMsg") { cust.msg = e.target.value; cust.msgSent = false; }
     if (e.target.id === "photoIn") return uploadSelectedPhoto(e.target);
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !ui.busy) { if (ui.modal) ui.modal = ui.modal?.pickup || null; else ui.openJob = null; renderLayer(); } });
@@ -1752,7 +1881,7 @@
   if (bookToken) { render(); return; }
   if (custToken) {
     loadCustomer();
-    setInterval(() => { if (!cust.intakeBusy && !document.activeElement?.closest("#intakeForm") && !Object.keys(cust.draft).length && document.visibilityState === "visible") loadCustomer(); }, 30000);
+    setInterval(() => { if (!cust.intakeBusy && !document.activeElement?.closest("#intakeForm") && !Object.keys(cust.draft).length && !cust.msg && document.activeElement?.id !== "custMsg" && document.visibilityState === "visible") loadCustomer(); }, 30000);
     return;
   }
   if (!sb) { render(); return; }
@@ -1798,8 +1927,9 @@
     const pickerActive = () => $("#photoIn:disabled");
     if (pickerActive()) return;
     try {
-      const latest = await api("GET", "shop/jobs");
-      if (!pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !dictation.active() && !document.activeElement?.matches("input,textarea")) { window.Workday?.watch(latest); if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
+      const latest = await loadBoard();
+      if (latest && !pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !dictation.active() && !document.activeElement?.matches("input,textarea")) { window.Workday?.watch(latest); if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
+      else if (latest) boardV = "";
     } catch (e) { /* try again next time */ }
   }, 20000);
 })();

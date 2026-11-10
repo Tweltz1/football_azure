@@ -247,6 +247,7 @@ a.btn.primary{color:var(--accent-fg)}
 <link rel="stylesheet" href="/training.css?v=1">
 <link rel="stylesheet" href="/team.css?v=2">
 <link rel="stylesheet" href="/help.css?v=1">
+<link rel="stylesheet" href="/help-chat.css?v=1">
 <link rel="stylesheet" href="/howto.css?v=8">
 <link rel="stylesheet" href="/workday.css?v=4">
 <link rel="stylesheet" href="/grow.css?v=1">
@@ -307,8 +308,8 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=2"></script>
-<script src="/training.js?v=8"></script>
-<script src="/howto.js?v=6"></script>
+<script src="/training.js?v=9"></script>
+<script src="/howto.js?v=13"></script>
 <script src="/vehicle-typeahead.js?v=1"></script>
 <script src="/team.js?v=4"></script>
 <script src="/display.js?v=1"></script>
@@ -320,6 +321,10 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/grow.js?v=4"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script src="/est-groups.js?v=1"></script>
+<script src="/help-content.js?v=9"></script>
+<script src="/help-chat-features.js?v=1"></script>
+<script src="/help-chat-model-run.js?v=1"></script>
+<script src="/help-chat.js?v=2"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
 const STAGES=[
@@ -618,6 +623,9 @@ const DEMO_HOWTO={
   ideas:["How do I test the charging system?","Does this model need battery registration?"]},
  generic:{answer:"This is a sample answer in the demo shop. In your shop, the assistant answers your exact question for the vehicle you choose, with steps, tools, parts, typical specs and safety notes.",
   safety:["Confirm procedures and specs in the manufacturer's service information."],specs:[],tools:[],parts:[],steps:["Sign in to your shop and open the How-to tab.","Pick the car in the bay or type the vehicle.","Ask your question, or tap a common job."],ideas:["Replace battery"]}};
+window.TalkShopsHelpChat?.configure({isOwner:()=>true,signedIn:()=>true,
+  openHowTo:q=>{howTo.prefill(q);ui.view="howto";ui.openJob=null;render();window.scrollTo(0,0)},
+  contact:q=>{ui.view="help";ui.openJob=null;render();const box=document.querySelector('#helpForm textarea[name="message"]');if(box&&q)box.value=q;document.getElementById("help-support")?.scrollIntoView({block:"start"})}});
 const howTo=window.createShopHowTo({esc,toast,cars:()=>state.jobs.filter(onBoard),
   api:async(m,path,body)=>{await new Promise(r=>setTimeout(r,1200));return /batter/i.test(body.question)?DEMO_HOWTO.battery:DEMO_HOWTO.generic}});
 const suggest=window.createSuggest({esc,money,items:()=>state.rates||[],
@@ -747,6 +755,9 @@ function helpView(){
     return `<section class="help-center">
       <header class="help-heading"><div><p class="muted">Talk Shops Support</p><h2>How Can We Help?</h2><p class="muted">Quick answers and practical guides for your shop.</p></div><button class="btn" type="button" data-view="board">Back to the Bay</button></header>
       <div class="help-actions"><a class="panel" href="#help-guides"><b>Quick Guides</b><span>Find the steps for everyday tasks.</span></a><a class="panel" href="#help-training"><b>Walkthroughs &amp; Training</b><span>Follow along with sample vehicles.</span></a><a class="panel" href="#help-support"><b>Contact Support</b><span>Get help from our team by email.</span></a></div>
+      <section class="panel" id="help-ask"><h3>Ask a Question</h3>
+        <form class="help-ask" id="helpAskForm"><input id="helpAskQ" type="text" maxlength="300" autocomplete="off" placeholder="e.g. How do I send an estimate?" aria-label="Your question"><button class="btn primary" type="submit">Ask</button></form>
+        <p class="muted help-ask-note">Answers come from the Help pages, right on your device. Car repair questions go in How-to.</p></section>
       <section class="panel" id="help-guides"><h3>Quick Guides</h3>${guides.map(([title, body, lesson]) => `<details><summary>${esc(title)}</summary><p>${esc(body)}</p><a href="/demo.html?train=${lesson}">Watch the Lesson →</a></details>`).join("")}</section>
       <section class="panel" id="help-training"><h3>Walkthroughs &amp; Training</h3><p class="muted">Narrated lessons use a demo shop with sample cars. Turn your sound on to follow along.</p><a class="btn primary" href="/demo.html?tour=1">Start the Guided Tour</a><div class="help-lessons">${window.TALKSHOPS_TRAINING.lessons.map(l => `<a href="/demo.html?train=${esc(l.id)}">${esc(l.title)} <small class="muted">${l.mins} min</small></a>`).join("")}</div></section>
       <section class="panel"><h3>Common Questions</h3>${faqs.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("")}</section>
@@ -767,6 +778,7 @@ function helpView(){
 /* --- views --- */
 function render(){
   window.Workday.watch(state.jobs);
+  window.TalkShopsHelpChat?.show(!location.hash.startsWith("#s-")&&ui.view!=="signin"&&!new URLSearchParams(location.search).get("book"));
   const app=$("#app"),chrome=$("#shopChrome");
   const h=location.hash.slice(1);
   const cj=h.startsWith("s-")?state.jobs.find(j=>j.token===h.slice(2)):null;
@@ -1288,7 +1300,7 @@ if(new URLSearchParams(location.search).has("smart")){
 }
 </script>
 <script src="/config.js"></script>
-<script src="/tour.js?v=218"></script>
+<script src="/tour.js?v=220"></script>
 <script src="/shell.js?v=1"></script>
 </body>
 </html>

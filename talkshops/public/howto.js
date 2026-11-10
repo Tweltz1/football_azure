@@ -303,6 +303,14 @@
       st.suggestions = []; loadSuggestions();
     }
 
-    return { view, click, submit, openFor };
+    /** Opens the tab with a question filled in (from the Help chat), for whichever car is picked. */
+    function prefill(question = "") {
+      st.prefill = String(question).slice(0, 500);
+      st.mech = null;
+      if (st.prefill && window.MechanicsAnswers) window.MechanicsAnswers.search(st.prefill, label(st.vehicle)).then((list) => { st.mech = { list }; paintMech(); }, () => {});
+      loadSuggestions();
+    }
+
+    return { view, click, submit, openFor, prefill };
   };
 })();

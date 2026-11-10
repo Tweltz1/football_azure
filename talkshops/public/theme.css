@@ -786,3 +786,21 @@ main .field{font-weight:650}
 /* Customer page: the shop's number is a tap-to-call link. */
 a.c-card.call{color:inherit;text-decoration:none}
 a.c-card.call b{text-decoration:underline;text-underline-offset:3px}
+
+/* 2026-11-10 UX additions */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.cust-bulk{margin:0 0 10px;gap:8px;flex-wrap:wrap}
+.cust-msg textarea{width:100%;min-height:80px}
+.cust-msg .btn{margin-top:8px}
+a.c-card.call.dir b{font-family:var(--f-body);user-select:text;text-align:right}
+.est-seen{margin:-2px 0 10px;font-size:13px;color:var(--warn);font-weight:600}
+.est-seen.seen{color:var(--ok)}
+/* Undo bar for stage moves that message the customer */
+.undo-bar{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:1000;display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);
+  padding:10px 12px 10px 16px;border-radius:12px;background:var(--fg);color:var(--bg);box-shadow:var(--shadow-lg);font-size:14px}
+.undo-bar .btn{background:var(--surface);color:var(--fg);border-color:transparent;flex:none}
+@media (max-width:760px){.undo-bar{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
+/* Bay drag and drop (desktop) */
+.col .card.dragging{opacity:.45}
+.col.drop-target{outline:2px dashed var(--accent);outline-offset:-4px}
+@media (pointer:coarse){.col .card{-webkit-user-drag:none}}

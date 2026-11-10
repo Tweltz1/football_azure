@@ -10,6 +10,10 @@
       ["How do I set up my shop?", "Create your shop account, add your shop name, phone, hours and labor rate, then bring in your price list (Settings → Saved Items). Invite your team from Settings → Team. Most shops are ready in a few minutes."],
       ["Can I try it before I set up my own shop?", "Yes. Open the Demo Shop from the homepage to click around with sample cars, or take the narrated Guided Tour. Nothing you do in the demo is sent to anyone."],
       ["Does it work on a phone or tablet?", "Yes. Talk Shops runs in the browser on phones, tablets and computers. On a phone the main tabs sit in the bottom bar: Bay, Check In, Archive, How-To and More."],
+      ["How do I change my shop name, hours or labor rate?", "Owners open Settings to change the shop name, phone, hours, time zone and shop email. Your labor rate, parts and fees are saved items: change them in Settings → Saved Items. Technicians can see these details but only an owner can change them."],
+      ["Can I just ask a question?", "Yes. Tap Ask in the corner of any screen, or use Ask a Question at the top of Help, and type it in your own words. It answers from these Help pages, right on your device. If it isn't sure, it shows a few close answers to pick from or lets you ask our team. Car repair questions go in How-to. Questions it can't answer are saved without names or numbers so we can add answers, unless your shop turns off Help improve Talk Shops in Settings."],
+      ["Where are the training lessons?", "Open Training (on a phone it is under More). Each narrated lesson runs in a demo shop with sample cars, so you can follow along without touching real customers. Help → Walkthroughs & Training lists them too."],
+      ["How do I contact the Talk Shops team?", "Open Help and fill in Contact Support at the bottom of the page, or email support@talkshops.app. Describe what happened and what you were trying to do, and leave out passwords and customer details."],
     ]},
     { id: "checkin", title: "Checking In Cars", lesson: "checkin", qs: [
       ["How do I check in a car?", "Open Check In, enter the customer and vehicle, the concern and the mileage in, and confirm the customer agreed to receive updates. Talk Shops creates the repair order and sends the customer their private link."],
@@ -25,6 +29,7 @@
     { id: "bay", title: "The Bay and Your Workday", lesson: "bay", qs: [
       ["What is the Bay?", "The Bay is your shop board. Every open car sits in a column for its stage: Checked In, Diagnosing, Estimate Review, Waiting on Parts, In Progress, Quality Check and Ready for Pickup."],
       ["How do I move a car to the next stage?", "Open the car and choose its next stage. You can review the update before it goes to the customer, so they always know where their car is."],
+      ["Can I change what the customer is told when a car changes stage?", "Yes. Tap a stage on the car's screen and a preview pops up with the message Talk Shops wrote. Edit it however you like. Uncheck Notify customer to change the stage quietly. To say something outside a stage change, use the message box at the bottom of the car."],
       ["How do I find a car fast?", "Use the search at the top of the Bay to find a car by customer, vehicle or repair order. Tap a stage name to see only that stage, or tap the small sort button beside it to sort or filter that column."],
       ["What do the colors on the Bay cards mean?", "Cards change color as a car sits longer in the shop, so slow jobs stand out. Owners can set the time limits and colors in Settings."],
       ["How do I assign a car to a technician?", "Open the car and pick a name under Technician. Each technician can tap My Cars on the Bay to see only the cars assigned to them."],
@@ -42,7 +47,7 @@
       ["Can I keep a note just for my team?", "Yes. Mark a note Shop only and it stays inside your shop. Customers never see shop-only notes."],
     ]},
     { id: "estimates", title: "Estimates and Prices", lesson: "estimates", qs: [
-      ["How do I build an estimate?", "Open the car and add line items. Type a few letters to pick from your saved items, enter hours or quantity, and mark each line Required, Recommended or Optional so the customer knows what matters most. When one fix needs several parts and labor, put them in one repair (each line's Repair menu, or Part of a repair as you add it) so the customer approves or declines them together."],
+      ["How do I build an estimate?", "Open the car and add line items. Type a few letters to pick from your saved items, enter hours or quantity, and mark each line Required, Recommended or Optional so the customer knows what matters most. When one fix needs several parts and labor, put them in one repair (each line's Repair menu, or Part of a repair as you add it) so the customer approves or declines them together. When it's ready, an owner taps Send Estimate for Approval and the customer gets it on their link."],
       ["How do customers approve work?", "They open their link, approve or decline each line, and sign on their phone. You see what they picked, the approved total and when they signed."],
       ["How do I bring in my price list?", "New shops see a Bring in your prices step during setup, and owners can do it any time in Settings → Saved Items. Upload an Excel or CSV file, a PDF, or a photo of your printed price sheet. Talk Shops reads it and lets you review every item before anything is saved."],
       ["What if my price sheet has an unusual layout?", "Talk Shops reads most sheets on its own. If it finds only a few items, try Read it with AI instead. Anything it is unsure about is highlighted so you can check it before saving."],
@@ -53,6 +58,7 @@
       ["What does the customer see?", "Their private page shows the car's progress, photos, technician notes, the walk-through, the estimate to approve, and the final bill. It updates as your team works."],
       ["How do customers get updates?", "By text, email or both, based on the preference you set at check-in. The first message has their private link."],
       ["Can customers text us back?", "Yes. Replies show on the car's screen. With Smart Replies (Pro), Talk Shops can answer routine questions like repair status, shop hours or resending the estimate link. You choose which replies go out automatically, and everything else waits for your team."],
+      ["How do Smart Replies work?", "Pro, and the free trial. When a customer texts, Talk Shops drafts an answer, like the car's current stage. Tap Use suggested reply, edit it and send. Owners choose in Settings which routine questions get answered automatically (repair status, posted shop hours, resending the estimate link) and can auto-send only outside shop hours. Questions that need a person, like whether a car is safe to drive, always wait for your team. To stop automatic answers on one car, choose Pause auto-replies for this repair in Messages."],
       ["What are reminder texts?", "On a car's screen, schedule a reminder for the next service or for work the customer declined. Talk Shops texts them around that date with your shop's details. Today's Summary reminds you when work was declined."],
       ["How do customers stop reminder texts?", "Every reminder ends with Reply STOP to opt out. Customers can also tap Stop reminder texts on their page. Either one cancels their upcoming reminders."],
       ["A customer did not get an update. What should I check?", "Open the car and check the message delivery result. Then use Edit Customer Info to check the phone, email, notification preference and consent, fix anything wrong, and send the update again."],
@@ -71,6 +77,9 @@
       ["Can I print a work order or bill?", "Yes. Open the car and tap Print Work Order or Print Bill. Both include the customer, vehicle, mileage, concern and line items, with a place for a signature."],
       ["Where do finished jobs go?", "Picked-up cars move to the Archive, where you can search by customer, vehicle or repair order. Archived jobs are kept for one year after pickup."],
       ["Can customers pay online?", "Not yet. Customers can see their final bill on their page, and you take payment at the counter as usual."],
+      ["What if the customer doesn't want the repair?", "Open the car and use Close Without Repair. Choose a reason and, if you like, let the customer know. The record goes to the Archive, where you can reopen it later."],
+      ["Can I reopen a finished job?", "Yes. Open the Archive, tap the record and choose Reopen and put back on the board. The car goes right back on the Bay, for example when it comes back for the same problem."],
+      ["How do I delete a repair?", "Open the car and use Delete this repair permanently. It permanently removes the car, its photos, its messages and the customer's link, and it can't be undone. Use Close Without Repair instead whenever you want to keep a record."],
     ]},
     { id: "team", title: "Team, Roles and Sign-In", lesson: "team", qs: [
       ["How do I add my team?", "Owners open Settings → Team and invite people by email as an owner or a technician. Each person signs in with the email that got the invitation."],
@@ -79,6 +88,8 @@
       ["Can my team share one login?", "No. Each person needs their own login, because their name goes on their notes, messages to customers, the time clock and My Cars. One login works on up to 2 devices at a time, such as a phone and a shop computer. Signing in on a third device signs out the one that signed in longest ago, and a device not used for 14 days signs out by itself."],
       ["How do I sign someone out of every device?", "Owners open Settings → Team and tap Sign out all devices next to the person, for example when a phone is lost or someone leaves. To sign yourself out everywhere else, open Settings → Your Devices and tap Sign Out My Other Devices. Sign Out at the top only signs out the device you're on."],
       ["How do I reset my password?", "Choose Forgot password? on Shop Sign In. Get a code by email, or by text if you verified a reset phone number in Settings."],
+      ["How do I get password reset codes by text?", "Open Settings and scroll to Password Reset Phone. Enter your mobile number, tap Text Me a Code, and enter the code to verify it. You can change or remove it any time, and you can always reset by email from the sign-in page."],
+      ["How do I sign out?", "Tap Sign Out at the top of the screen (on a phone it is under More). That signs out only the device you are on. Settings has Sign Out My Other Devices for the rest of your sign-ins."],
       ["I did not get my account confirmation email.", "Check the address you typed and look in spam or junk. If you signed up with Google, use Continue with Google with that same account. Still stuck? Contact support below."],
     ]},
     { id: "plans", title: "Plans and Billing", lesson: "plan", qs: [

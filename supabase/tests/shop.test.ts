@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Ctx } from '../functions/_shared/handlers.ts';
 import {
-  archivedAt, archiveSearchText, createTwilioSender, nextFollowup, normalizePhone, shopRoute, stopReminders, visitRow, type Job, type Shop, type ShopDeps, type ShopStore,
+  archivedAt, archiveSearchText, createTwilioSender, digestText, nextFollowup, normalizePhone, runCron, shopRoute, stopReminders, visitRow, type Job, type Shop, type ShopDeps, type ShopStore,
 } from '../functions/_shared/shop.ts';
 import type { PlanState } from '../functions/_shared/shopPlans.ts';
 import type { Booking } from '../functions/_shared/shopGrow.ts';
@@ -1018,6 +1018,26 @@ test('answering a customer text saves a scrubbed copy for learning, unless the s
   assert.equal(saved.length, 1);
 });
 
+test('help chat questions it could not answer are saved scrubbed, unless the shop turned learning off', async () => {
+  const w = world();
+  const saved: unknown[] = [];
+  w.deps.store.helpMiss = async (row) => { saved.push(row); };
+  const dan = w.as('user-dan');
+  // No shop yet: nothing saved, no error.
+  assert.deepEqual((await dan('POST', 'shop/help-miss', { text: 'how do i do x', kind: 'unsure' }))?.body, { saved: false });
+  await dan('POST', 'shop/me', { name: 'Ridgeline Auto Repair', phone: '(555) 014-2290' });
+  const r = await dan('POST', 'shop/help-miss', { text: 'How do I text Maria at 555-013-6620 about the VIN 1HGCM82633A004352?', kind: 'notit', guess: 'Can customers text us back?' });
+  assert.deepEqual(r?.body, { saved: true });
+  const row = saved[0] as { text: string; kind: string; guess: string };
+  assert.doesNotMatch(row.text, /Maria|555|6620|1HGCM/);
+  assert.equal(row.kind, 'notit');
+  assert.ok(!JSON.stringify(row).includes('Ridgeline'));
+  assert.equal((await dan('POST', 'shop/help-miss', { text: 'hi', kind: 'bogus' }))?.status, 400);
+  await dan('POST', 'shop/me', { name: 'Ridgeline Auto Repair', phone: '(555) 014-2290', learnOff: true });
+  assert.deepEqual((await dan('POST', 'shop/help-miss', { text: 'where is the thing', kind: 'other' }))?.body, { saved: false });
+  assert.equal(saved.length, 1);
+});
+
 test('parts and labor grouped into one repair are approved or declined together', async () => {
   const { as } = world();
   const dan = as('user-dan');
@@ -1121,4 +1141,97 @@ test('audit fixes: old demo cars are cleared before counting demo texts', async 
   w.deps.store.purgeJobs = async (shopId, before) => { purged = shopId + ' ' + before; };
   assert.equal((await w.as(null)('POST', 'shop/demo/text', { phone: '555-201-7788', consent: true }))?.status, 200);
   assert.match(purged, /^demo-shop 2026-11-04T/);
+});
+
+test('UX: estimate reminder text, opened time, and customer page messages', async () => {
+  const w = world();
+  const dan = w.as('owner-ux');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  assert.equal((await dan('POST', 'shop/me', { name: 'Ridgeline', grow: { nudgeHours: 3 } }))?.status, 400);
+  await dan('POST', 'shop/me', { name: 'Ridgeline', grow: { nudgeHours: 4, address: '1200 Main St, Eau Claire, WI' } });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string; link: string };
+  const token = job.link.split('?c=')[1];
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Front pads', price: 180 });
+  await dan('POST', `shop/jobs/${job.id}/stage`, { stage: 'approval', send: true, text: 'Estimate ready' });
+  const nudge = w.jobs.get(job.id)!.data.followups!.find((f) => f.kind === 'nudge')!;
+  assert.match(nudge.text, /^Ridgeline: your 2018 Honda Civic estimate is still waiting for your OK: https:/);
+  // The customer opens the page: the shop sees when, once. A signed-in visit doesn't count.
+  await dan('GET', `shop/c/${token}`);
+  assert.equal(w.jobs.get(job.id)!.data.viewedAt, undefined);
+  const page = (await w.as(null)('GET', `shop/c/${token}`))?.body as { shop: { address: string }; canMessage: boolean; reminders: { waiting: unknown[] } };
+  assert.equal(page.shop.address, '1200 Main St, Eau Claire, WI');
+  assert.equal(page.canMessage, true);
+  assert.equal(page.reminders.waiting.length, 0, 'the estimate reminder is not listed as a reminder text');
+  const seen = w.jobs.get(job.id)!.data.viewedAt;
+  assert.ok(seen);
+  await w.as(null)('GET', `shop/c/${token}`);
+  assert.equal(w.jobs.get(job.id)!.data.viewedAt, seen);
+  // Customer page message.
+  assert.equal((await w.as(null)('POST', `shop/c/${token}/message`, { text: '  ' }))?.status, 400);
+  assert.equal((await w.as(null)('POST', `shop/c/${token}/message`, { text: 'Can you also check the wipers?' }))?.status, 200);
+  const shopView = (await dan('GET', `shop/jobs/${job.id}`))?.body as { messages: { dir: string; channel: string; text: string }[]; viewedAt: string };
+  assert.deepEqual(shopView.messages.at(-1), { ...shopView.messages.at(-1), dir: 'in', channel: 'web', text: 'Can you also check the wipers?' });
+  assert.equal(shopView.viewedAt, seen);
+  for (let i = 0; i < 4; i++) await w.as(null)('POST', `shop/c/${token}/message`, { text: 'again ' + i });
+  assert.equal((await w.as(null)('POST', `shop/c/${token}/message`, { text: 'too many' }))?.status, 429);
+  // The reminder goes out once it's due, unless they answered first.
+  const textsBefore = w.texts.length;
+  w.tick(5 * 3_600_000);
+  await dan('GET', 'shop/jobs');
+  assert.equal(w.texts.length, textsBefore + 1);
+  assert.match(w.texts.at(-1)!.body, /still waiting for your OK: .* Reply STOP to opt out\.$/);
+  // A second estimate that the customer answers in time: no reminder.
+  const job2 = (await dan('POST', 'shop/jobs', { ...checkIn, customer: { ...checkIn.customer, phone: '(555) 013-7777' } }))?.body as { id: string; link: string };
+  await dan('POST', `shop/jobs/${job2.id}/estimate`, { item: 'Wipers', price: 40 });
+  await dan('POST', `shop/jobs/${job2.id}/stage`, { stage: 'approval' });
+  const line = w.jobs.get(job2.id)!.data.estimate[0].id;
+  assert.equal((await w.as(null)('POST', `shop/c/${job2.link.split('?c=')[1]}/decision`, { decisions: { [line]: 'approved' }, signature: 'Maria Delgado' }))?.status, 200);
+  const sent = w.texts.length;
+  w.tick(5 * 3_600_000);
+  await dan('GET', 'shop/jobs');
+  assert.equal(w.texts.length, sent);
+  assert.ok(w.jobs.get(job2.id)!.data.followups!.every((f) => f.canceledAt));
+});
+
+test('UX: hourly run sends the morning summary once, at 7am shop time, to the shop email', async () => {
+  const w = world();
+  const dan = w.as('owner-dg');
+  await dan('POST', 'shop/me', { name: 'Ridgeline', email: 'owner@ridgeline.example', grow: { digest: true } });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string };
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Front pads', price: 180 });
+  await dan('POST', `shop/jobs/${job.id}/stage`, { stage: 'approval' });
+  const mails: { to: string; subject: string; text: string }[] = [];
+  w.deps.email = { async send(to, subject, text) { mails.push({ to, subject, text }); return { delivery: 'sent' }; } };
+  w.deps.store.cronShops = async () => [...w.shops.values()].filter((s) => s.grow?.digest).map((s) => structuredClone(s));
+  const log = { info() {}, warn() {}, error() {} } as unknown as Parameters<typeof runCron>[2];
+  // 12:00 UTC is 6am in Chicago (November): too early.
+  assert.equal((await runCron(w.deps, new Date('2026-11-08T12:00:00Z'), log)).digests, 0);
+  assert.equal((await runCron(w.deps, new Date('2026-11-08T13:05:00Z'), log)).digests, 1);
+  assert.equal((await runCron(w.deps, new Date('2026-11-08T14:05:00Z'), log)).digests, 0, 'once a day');
+  assert.equal(mails[0].to, 'owner@ridgeline.example');
+  assert.match(mails[0].subject, /Ridgeline · Morning summary: 1 in, 1 waiting on customers/);
+  assert.match(mails[0].text, /1 estimate waiting on the customer:\n    2018 Honda Civic \(Maria Delgado\): sent .* ago, not opened yet/);
+  const shop = [...w.shops.values()][0];
+  const late = digestText(shop, [{ ...w.jobs.get(job.id)!, data: { ...w.jobs.get(job.id)!.data, promised: '2026-11-08T10:00:00Z' } }], new Date('2026-11-08T13:00:00Z'), 'https://talkshops.app');
+  assert.match(late.text, /1 car past the promised time/);
+});
+
+test('the Bay refresh leaves out image data and answers "same" when nothing changed', async () => {
+  const { as } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string };
+  const src = 'data:image/jpeg;base64,/9j/2Q==';
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/photo`, { src, cap: 'Front' }))?.status, 200);
+  const first = (await dan('GET', 'shop/jobs/board'))?.body as { v: string; jobs: { photos: { src: string; cap: string }[] }[] };
+  assert.equal(first.jobs.length, 1);
+  assert.deepEqual(first.jobs[0].photos.map((p) => [p.src, p.cap]), [['', 'Front']]);
+  assert.deepEqual((await dan('GET', `shop/jobs/board/${first.v}`))?.body, { v: first.v, same: true });
+  const full = (await dan('GET', `shop/jobs/${job.id}`))?.body as { photos: { src: string }[] };
+  assert.equal(full.photos[0].src, src);
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/photo`, { src, cap: 'Rear' }))?.status, 200);
+  const next = (await dan('GET', `shop/jobs/board/${first.v}`))?.body as { v: string; jobs: unknown[] };
+  assert.notEqual(next.v, first.v);
+  assert.equal(next.jobs.length, 1);
+  assert.notEqual((await as('user-other')('GET', 'shop/jobs/board'))?.status, 200);
 });
