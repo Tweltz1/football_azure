@@ -646,7 +646,7 @@
         <div class="front-workflow"><h2>How It Works</h2>
           <ol class="front-steps">
             <li><b>Check in</b><p>Find a returning customer by name, phone, plate or VIN, or decode a new VIN. Pick a quick service, add mileage, urgency and a promised-by time.</p></li>
-            <li><b>Inspect &amp; quote</b><p>Do a before-and-after walk-through with tire tread depths, collect walk-around photos and let AI mark likely damage. Build the estimate from your own prices.</p></li>
+            <li><b>Inspect &amp; quote</b><p>Do a before-and-after walk-through with tire tread depths, collect walk-around photos and, on Pro, let AI mark likely damage. Build the estimate from your own prices.</p></li>
             <li><b>Customer approves</b><p>The customer opens their link, sees photos and notes, approves or declines each line, and signs. You get an alert the moment they answer.</p></li>
             <li><b>Pick up &amp; come back</b><p>Print the bill or send your own PDF, record mileage out, and schedule a reminder text so they come back for the next service.</p></li>
           </ol>
@@ -656,10 +656,10 @@
       <section class="front-features"><div class="front-inner">
         <h2>Everything Your Counter and Your Bays Need</h2>
         <div class="front-feature-grid">
-          <article><h3>Run the floor</h3><ul><li>One board for every car, by stage</li><li>Low, Medium and High urgency marks</li><li>Assign technicians, with My Cars for each tech</li><li>Promised-by times with due-soon and late warnings</li><li>Alerts when a customer replies or approves</li><li>Today’s Summary of cars, totals and techs</li></ul></article>
-          <article><h3>Talk to customers</h3><ul><li>Private progress page by text or email</li><li>Line-by-line approvals with e-signature</li><li>Before-and-after walk-through report</li><li>Walk-around photos with AI damage marks</li><li>Smart Replies answer routine texts (Pro)</li><li>Reminder texts with one-tap STOP opt-out</li></ul></article>
+          <article><h3>Run the floor</h3><ul><li>One board for every car, by stage</li><li>Low, Medium and High urgency marks</li><li>Assign technicians, with My Cars for each tech</li><li>Promised-by times with due-soon and late warnings</li><li>Alerts when a customer replies or approves</li><li>Results dashboard and a technician time clock (Pro)</li><li>Today’s Summary of cars, totals and techs</li></ul></article>
+          <article><h3>Talk to customers</h3><ul><li>Private progress page by text or email</li><li>Line-by-line approvals with e-signature</li><li>Before-and-after walk-through report</li><li>Walk-around photos, with AI damage marks on Pro</li><li>Spanish customer pages and automatic texts</li><li>Smart Replies and review requests (Pro)</li><li>Reminder texts with one-tap STOP opt-out</li></ul></article>
           <article><h3>Help your techs</h3><ul><li>How-To repair assistant with steps, tools and specs (Pro)</li><li>YouTube and CarCareKiosk video links for the job</li><li>VIN decode and NHTSA recall check</li><li>Shop-only notes your customers never see</li><li>Voice typing for notes</li><li>Printable work orders</li></ul></article>
-          <article><h3>Set up in minutes</h3><ul><li>Import your price list from Excel, CSV, PDF or a photo</li><li>Quick services and a fast lane for oil changes and tires</li><li>Labor hours times your shop rate</li><li>Owner and technician roles</li><li>Archive and past visits for returning customers</li><li>Works on any phone, tablet or computer</li></ul></article>
+          <article><h3>Set up in minutes</h3><ul><li>Import your price list from Excel, CSV, PDF or a photo</li><li>Online booking link for your website and Google profile</li><li>Quick services and a fast lane for oil changes and tires</li><li>Labor hours times your shop rate</li><li>Owner and technician roles</li><li>Your logo and color on customer pages (Pro)</li><li>Archive and past visits for returning customers</li><li>Works on any phone, tablet or computer</li></ul></article>
         </div>
       </div></section>
       <section class="front-plans" id="plans"><div class="front-inner">
@@ -687,6 +687,7 @@
         <details><summary>Do my customers need to download an app?</summary><p>No. They get a text or email with a private link that opens in any browser. No account or password.</p></details>
         <details><summary>Does it replace my shop management system?</summary><p>It can work alongside it. Talk Shops handles the board, customer updates, approvals, inspections and bills. If your current system makes your invoices, upload that PDF as the final bill.</p></details>
         <details><summary>Will it work for a quick lube or tire shop?</summary><p>Yes. Set up quick services like “Oil change + rotation”. Fast lane jobs skip diagnosis and approval because the customer agreed at the counter, so the car moves straight to the bay.</p></details>
+        <details><summary>Can customers book online, or get updates in Spanish?</summary><p>Yes, on every plan. Share your booking link on your website or Google profile, and requests land on your Bay for you to confirm. Mark a customer as a Spanish speaker and their page and automatic texts switch to Spanish.</p></details>
         <details><summary>How long does setup take?</summary><p>Most shops are ready in a few minutes. Upload your price list as a spreadsheet, PDF or photo, review it, and start checking in cars.</p></details>
         <details><summary>Can my technicians use it without seeing billing?</summary><p>Yes. Technicians work on cars. Settings, prices, team and billing stay with owners.</p></details>
         <p><a href="/?help">See all questions in Help &amp; Support →</a></p>
