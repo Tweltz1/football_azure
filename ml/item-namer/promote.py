@@ -47,8 +47,9 @@ def main():
             old = json.load(open(os.path.join(tmp, 'metrics.json')))
 
     def sure(m):
+        # fit.py writes percentages: {"share": 18.5, "accuracy": 89.3}
         s = m.get('whenSure', {}).get(SURE, {})
-        return float(s.get('right') or 0), float(s.get('share') or 0)
+        return float(s.get('accuracy') or 0) / 100, float(s.get('share') or 0) / 100
 
     n_right, n_share = sure(new)
     print(f'candidate {a.tag or a.dir}: {new.get("kinds")} kinds, top-1 {new.get("testAccuracy")}, '
