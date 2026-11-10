@@ -70,3 +70,11 @@
 .howto-videos:empty{display:none}
 .howto-videos span{color:var(--muted)}
 .howto-videos a{color:var(--accent-ink);font-weight:600}
+
+/* Free answers from other mechanics (Mechanics Stack Exchange) */
+.howto-mech { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.howto-mech .howto-suggest-h { width: 100%; }
+.howto-mech-card { width: 100%; margin-top: 6px; }
+.howto-mech-card h3 { margin: 0 0 8px; font-size: 1rem; }
+.howto-mech-answer { border-top: 1px solid var(--line, #ddd); padding-top: 8px; margin-top: 8px; }
+.howto-mech-answer p { margin: 0 0 4px; white-space: normal; overflow-wrap: anywhere; }

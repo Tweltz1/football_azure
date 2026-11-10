@@ -42,6 +42,7 @@
           <label class="field">What Do You Need to Do?<textarea id="howtoQ" rows="2" maxlength="500" placeholder="e.g. Replace the front wheel bearing, or how do I remove the intake manifold?">${esc(st.prefill || "")}</textarea></label>
           <div id="howtoSuggest" class="howto-suggest" aria-live="polite">${suggestHtml()}</div>
           <div id="howtoVideos" class="howto-videos">${videosHtml()}</div>
+          <div id="howtoMech" class="howto-mech" aria-live="polite">${mechHtml()}</div>
           <div class="howto-actions">
             <button type="button" class="btn mic" data-dictate="#howtoQ" aria-pressed="false" aria-label="Voice typing">${MIC}<span class="mic-label">Speak</span></button>
             <button class="btn primary" type="submit" id="howtoAsk" ${st.busy ? "disabled" : ""}>${st.busy ? "Looking it up…" : "Ask"}</button>
@@ -127,6 +128,26 @@
       const vl = label(v), q = String(job || "").replace(/\s+/g, " ").trim().slice(0, 70);
       return `<a class="linkbtn" href="${esc(ytLink(vl, q || "repair"))}" target="_blank" rel="noopener">YouTube Videos</a><a class="linkbtn" href="${esc(videoLink({ v, vehicle: vl, q }))}" target="_blank" rel="noopener">CarCareKiosk Videos</a>`;
     };
+    // Free answers from other mechanics (Mechanics Stack Exchange, CC BY-SA), searched on this device before asking AI.
+    let mechTimer = 0;
+    function mechHtml() {
+      const m = st.mech;
+      if (!m || (!m.list?.length && !m.open)) return "";
+      const list = m.list?.length ? `<span class="howto-suggest-h">Answered by Other Mechanics (free)</span>${m.list.map((x) => `<button type="button" class="howto-chip" data-howto-mech="${x.id}" aria-pressed="${m.open?.id === x.id}">${esc(x.title)}</button>`).join("")}` : "";
+      const o = m.open;
+      const card = o ? `<article class="howto-card howto-mech-card"><h3>${esc(o.title)}</h3>${o.entry ? o.entry.answers.map((a) => `<div class="howto-mech-answer"><p>${esc(a.text).replace(/\n/g, "<br>")}</p><small class="howto-fine">${a.accepted ? "Accepted answer" : "Top answer"} by <a href="${esc(a.profile)}" target="_blank" rel="noopener nofollow">${esc(a.by)}</a> · ${a.score} votes</small></div>`).join("") + `<small class="howto-fine">From <a href="${esc(o.entry.url)}" target="_blank" rel="noopener nofollow">mechanics.stackexchange.com</a>, CC BY-SA 4.0, shortened. Written by volunteers about their own car, not yours: check it fits this vehicle and confirm specs in service info. Not what you need? Ask the AI below.</small>` : `<p class="muted">Loading…</p>`}</article>` : "";
+      return list + card;
+    }
+    function paintMech() { const el = document.getElementById("howtoMech"); if (el) el.innerHTML = mechHtml(); }
+    function findMech() {
+      clearTimeout(mechTimer);
+      mechTimer = setTimeout(async () => {
+        const q = document.getElementById("howtoQ")?.value || "";
+        if (!window.MechanicsAnswers || q.trim().length < 6) { if (st.mech?.list?.length) { st.mech.list = []; paintMech(); } return; }
+        try { const list = await window.MechanicsAnswers.search(q, label(st.vehicle)); st.mech = { ...(st.mech || {}), list }; paintMech(); } catch { /* offline: just skip */ }
+      }, 350);
+    }
+
     function paintVideos() { const el = document.getElementById("howtoVideos"); if (el) el.innerHTML = videosHtml(); }
     function videoLink(t) {
       const v = t.v || {};
@@ -209,6 +230,13 @@
       if (t.dataset.howtoAsk) {
         ask(t.dataset.howtoAsk, render); return true;
       }
+      if (t.dataset.howtoMech) {
+        const id = +t.dataset.howtoMech, item = st.mech?.list?.find((x) => x.id === id);
+        if (st.mech?.open?.id === id) { st.mech.open = null; paintMech(); return true; }
+        st.mech.open = { id, title: item?.title || "", entry: null }; paintMech();
+        window.MechanicsAnswers.get(id).then((entry) => { if (st.mech?.open?.id === id) { st.mech.open.entry = entry; paintMech(); } }, () => toast("Couldn't load that answer"));
+        return true;
+      }
       if (t.dataset.howtoSaved) { ask(t.dataset.q, render, { answerId: t.dataset.howtoSaved }); return true; }
       if (t.dataset.howtoFresh !== undefined) { const o = st.turns[+t.dataset.howtoFresh]; if (o) ask(o.q, render, { fresh: true }); return true; }
       if (t.dataset.howtoRate !== undefined) {
@@ -262,13 +290,15 @@
     });
     document.addEventListener("input", (e) => {
       if (/^howto(Year|Make|Model|Engine)$/.test(e.target.id || "")) { readVehicle(); loadSuggestions(); paintVideos(); }
-      if (e.target.id === "howtoQ") { loadSuggestions(); paintVideos(); }
+      if (e.target.id === "howtoQ") { loadSuggestions(); paintVideos(); findMech(); }
     });
 
     /** Opens the tab for one car (from its detail sheet). */
     function openFor(j, question = "") {
       st.carId = j.id;
       st.prefill = String(question).slice(0, 500);
+      st.mech = null;
+      if (st.prefill && window.MechanicsAnswers) window.MechanicsAnswers.search(st.prefill, label(st.vehicle)).then((list) => { st.mech = { list }; paintMech(); }, () => {});
       st.vehicle = { year: j.vehicle?.year || "", make: j.vehicle?.make || "", model: j.vehicle?.model || "", engine: j.vehicle?.engine || "" };
       st.suggestions = []; loadSuggestions();
     }
