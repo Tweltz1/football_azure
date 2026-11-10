@@ -7,7 +7,7 @@
 //     POST {action:"deals",  csv:"..."} | {rows:[{item, price?, starts?, ends?}]}   replaces the deals
 //     Add "check": true to see how a CSV is read without saving it.
 //
-//   Admin calls (header  x-admin-key: <STORE_ADMIN_KEY secret>)
+//   Admin calls (header  x-admin-key: <admin password>; its SHA-256 is ADMIN_HASH below)
 //     POST {action:"admin-list"}
 //     POST {action:"admin-add", name, chain, lat, lon, store_key?}  -> {store, key} (the key is shown once)
 //     POST {action:"admin-reset", id}                               -> {key} (the old key stops working)
@@ -26,7 +26,10 @@ import { itemKey } from '../grocery-runner/votes.ts';
 
 const URL_ = Deno.env.get('SUPABASE_URL')!;
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const ADMIN = Deno.env.get('STORE_ADMIN_KEY') ?? '';
+// SHA-256 of Tyler's admin password (a random 29-character password, so its hash is safe to publish).
+// To change it, hash a new password and replace this, or set the STORE_ADMIN_KEY secret, which wins.
+const ADMIN_HASH = 'e99f140f9ee08c9dacdd6578ff2dd99b369596f01819064adcc5cf0d221fb967';
+const ADMIN_SECRET = Deno.env.get('STORE_ADMIN_KEY') ?? '';
 const auth = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
 
 const CHAINS = ['kroger', 'walmart', 'target', 'hyvee', 'costco', 'aldi', 'woodmans'];
@@ -185,10 +188,14 @@ async function saveDeals(p: Partner, body: Record<string, unknown>) {
 // ---------------------------------------------------------------------------------------------
 // Admin (Tyler)
 
-function checkAdmin(req: Request) {
+async function adminOk(given: string): Promise<boolean> {
+  if (ADMIN_SECRET.length >= 12) return same(given, ADMIN_SECRET);
+  return same(await sha256(given), ADMIN_HASH);
+}
+
+async function checkAdmin(req: Request) {
   const given = req.headers.get('x-admin-key') ?? '';
-  if (ADMIN.length < 12) throw new HttpError(403, 'Admin is switched off. Set the STORE_ADMIN_KEY secret (12+ characters).');
-  if (!same(given, ADMIN)) throw new HttpError(401, 'Wrong admin password.');
+  if (!(await adminOk(given))) throw new HttpError(401, 'Wrong admin password.');
 }
 
 const uuidOk = (id: unknown): id is string => typeof id === 'string' && /^[0-9a-f-]{36}$/.test(id);
@@ -245,7 +252,7 @@ Deno.serve(async (req) => {
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body || typeof body.action !== 'string') throw new HttpError(400, 'Send JSON with an "action".');
     if (body.action.startsWith('admin-')) {
-      checkAdmin(req);
+      await checkAdmin(req);
       return json(await admin(body.action, body));
     }
     const store = await storeFromKey(req);

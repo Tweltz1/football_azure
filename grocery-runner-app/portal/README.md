@@ -6,8 +6,8 @@
 "Shop Stride iPhone app" workflow deploys with the rest of the backend.
 
 - **Store link:** `<page>#key=ssk_…`, one private key per store. Only a SHA-256 hash is saved.
-- **Admin:** `<page>#admin`. The password is the `STORE_ADMIN_KEY` GitHub secret (12+ characters,
-  copied into Supabase secrets by the workflow). Add a store (name, chain, location), copy its link
+- **Admin:** `<page>#admin`. Only the password's SHA-256 is in the code (`ADMIN_HASH` in the
+  function). A `STORE_ADMIN_KEY` GitHub secret (12+ characters), if set, replaces it. Add a store (name, chain, location), copy its link
   (shown once), make a new link if one leaks, or remove a store (deletes its layout and deals).
 
 ## What the app does with it

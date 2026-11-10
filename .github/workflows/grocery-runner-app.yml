@@ -64,7 +64,7 @@ jobs:
       WALMART_CONSUMER_ID: ${{ secrets.WALMART_CONSUMER_ID }}
       WALMART_KEY_VERSION: ${{ secrets.WALMART_KEY_VERSION }}
       WALMART_PRIVATE_KEY: ${{ secrets.WALMART_PRIVATE_KEY }}
-      # Admin password for the store portal (portal/index.html#admin), chosen by you, 12+ characters.
+      # Optional: replaces the store portal's built-in admin password (portal/index.html#admin), 12+ characters.
       STORE_ADMIN_KEY: ${{ secrets.STORE_ADMIN_KEY }}
     defaults:
       run:
@@ -97,8 +97,6 @@ jobs:
           fi
           if [ -n "$STORE_ADMIN_KEY" ]; then
             SET+=(STORE_ADMIN_KEY="$STORE_ADMIN_KEY")
-          else
-            echo "::notice::No STORE_ADMIN_KEY yet; the store portal's admin page (adding stores) is off."
           fi
           if [ ${#SET[@]} -gt 0 ]; then
             npx -y supabase@latest secrets set --project-ref "$SUPABASE_PROJECT_ID" --yes "${SET[@]}"
