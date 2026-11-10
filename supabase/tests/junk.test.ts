@@ -8,6 +8,7 @@ import {
 } from '../functions/_shared/junk.ts';
 import type { JunkClaim } from '../functions/_shared/junkClaims.ts';
 import type { JunkLabelFix } from '../functions/_shared/junk.ts';
+import type { JunkPartner, JunkPlus, JunkSaved } from '../functions/_shared/junkPlus.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 const ALICE = '11111111-1111-4111-8111-111111111111';
@@ -35,6 +36,13 @@ function world(detection: JunkDetection | null = null) {
   const labelFixes: JunkLabelFix[] = [];
   const devices = new Map<string, { banned: boolean; at: string }>();
   const isOpen = (c: JunkClaim) => c.status === 'active' || c.status === 'arrived';
+  const plusRows: JunkPlus[] = [];
+  const tips: { transactionId: string; userId: string; productId: string }[] = [];
+  const saved: JunkSaved[] = [];
+  const tokens: { userId: string; token: string; sandbox: boolean }[] = [];
+  const partners: JunkPartner[] = [];
+  const taps: { partnerId: string; userId: string | null; itemId: string | null }[] = [];
+  const pushed: { tokens: string[]; title: string; body: string; path?: string }[] = [];
   let clock = Date.parse('2026-11-08T15:00:00Z');
   let seq = 0;
 
@@ -107,6 +115,26 @@ function world(detection: JunkDetection | null = null) {
     async countFeedbackSince(userId, since) { return feedback.filter((f) => f.userId === userId && f.createdAt >= since).length; },
     async addLabelFix(f) { labelFixes.push(clone(f)); },
     async countLabelFixesSince(userId, since) { return labelFixes.filter((f) => f.userId === userId && f.createdAt >= since).length; },
+    async plusRows(userId) { return plusRows.filter((r) => r.userId === userId).map(clone); },
+    async savePlus(row) {
+      const k = plusRows.findIndex((r) => r.originalTransactionId === row.originalTransactionId);
+      if (k >= 0 && plusRows[k].userId !== row.userId) return 'taken';
+      if (k >= 0) plusRows[k] = clone(row); else plusRows.push(clone(row));
+      return 'ok';
+    },
+    async addTip(t) { if (tips.some((x) => x.transactionId === t.transactionId)) return false; tips.push(clone(t)); return true; },
+    async countTips(userId) { return tips.filter((t) => t.userId === userId).length; },
+    async savedSearches(userId) { return saved.filter((s) => s.userId === userId).map(clone); },
+    async addSavedSearch(s) { saved.push(clone(s)); },
+    async deleteSavedSearch(userId, id) { const k = saved.findIndex((s) => s.userId === userId && s.id === id); if (k >= 0) saved.splice(k, 1); },
+    async seeSavedSearch(userId, id, at) { saved.forEach((s) => { if (s.userId === userId && s.id === id) s.seenAt = at; }); },
+    async savedSearchesNear() { return saved.map(clone); },
+    async savePushToken(userId, token, sandbox) { const k = tokens.findIndex((t) => t.token === token); if (k >= 0) tokens.splice(k, 1); tokens.push({ userId, token, sandbox }); },
+    async pushTokens(userIds) { return tokens.filter((t) => userIds.includes(t.userId)).map(clone); },
+    async dropPushTokens(list) { for (let k = tokens.length - 1; k >= 0; k--) if (list.includes(tokens[k].token)) tokens.splice(k, 1); },
+    async partnersNear(kind) { return partners.filter((p) => p.kind === kind).map(clone); },
+    async getPartner(id) { const p = partners.find((x) => x.id === id); return p ? clone(p) : null; },
+    async logPartnerTap(t) { taps.push({ partnerId: t.partnerId, userId: t.userId, itemId: t.itemId }); },
   };
   const deps: JunkDeps = {
     store,
@@ -117,6 +145,17 @@ function world(detection: JunkDetection | null = null) {
     },
     detector: detection ? { async detect() { return detection; } } : null,
     deleteAccount: async (id) => { deletedAccounts.push(id); },
+    // Stand-in for Apple's signature check: "signed.<base64 JSON>" passes, anything else is refused.
+    verifyPurchase: async (jws) => {
+      if (!jws.startsWith('signed.')) throw new Error('not signed by Apple');
+      return JSON.parse(Buffer.from(jws.slice(7), 'base64').toString());
+    },
+    push: {
+      async send(targets, note) {
+        pushed.push({ tokens: targets.map((t) => t.token), ...note });
+        return targets.filter((t) => t.token.startsWith('dead')).map((t) => t.token);
+      },
+    },
   };
   const joined = new Map<string, string>();
   let phone: string | null = null;
@@ -140,9 +179,13 @@ function world(detection: JunkDetection | null = null) {
       condition: 'good', pickup: 'On the curb', photos: [(up?.body as { path: string }).path], ...HOME, ...fields,
     });
     assert.equal(res?.status, 200, String(res?.body));
-    return res!.body as { id: string; photos: string[] };
+    const out = res!.body as { id: string; photos: string[] };
+    // Posted a while ago (past Plus members' early look), so everyone can find it.
+    const saved = items.get(out.id);
+    if (saved && !fields.fresh) saved.createdAt = new Date(Date.parse(saved.createdAt) - 20 * 60_000).toISOString();
+    return out;
   };
-  return { call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
+  return { plusRows, tips, saved, tokens, partners, taps, pushed, call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -735,4 +778,130 @@ test('banned or warned people can appeal, and see where they stand', async () =>
   const alices = await w.post(ALICE);
   res = await w.call(BOB, 'POST', 'junk/appeal', { body: 'Please look', itemId: alices.id });
   assert.equal(res?.status, 404);
+});
+
+// ---- Curbsy Plus, tips, saved searches, haulers and sponsors (junkPlus.ts) ----
+
+const signed = (t: Record<string, unknown>) => `signed.${Buffer.from(JSON.stringify(t)).toString('base64')}`;
+const plusFor = (who: string, extra: Record<string, unknown> = {}) => signed({
+  bundleId: 'com.hoodleague.junk', productId: 'com.hoodleague.junk.plus.monthly', transactionId: `t-${who}`, originalTransactionId: `o-${who}`,
+  expiresDate: Date.parse('2026-12-08T15:00:00Z'), environment: 'Sandbox', appAccountToken: who, ...extra,
+});
+
+test('Curbsy Plus: an Apple-signed subscription for this account unlocks it; fakes and other accounts do not', async () => {
+  const w = world();
+  let res = await w.call(BOB, 'GET', 'junk/plus');
+  assert.deepEqual([(res?.body as { plus: boolean }).plus, (res?.body as { maxMiles: number }).maxMiles], [false, 25]);
+  assert.equal((await w.call(null, 'POST', 'junk/purchases', { transactions: [plusFor(BOB)] }))?.status, 401);
+
+  res = await w.call(BOB, 'POST', 'junk/purchases', { transactions: ['forged', plusFor(BOB, { bundleId: 'com.other.app' }), plusFor(ALICE)] });
+  assert.equal((res?.body as { plus: boolean }).plus, false, 'forged, wrong app, or bought by another account');
+  assert.match((res?.body as { note: string }).note, /different Curbsy account/);
+
+  res = await w.call(BOB, 'POST', 'junk/purchases', { transactions: [plusFor(BOB)] });
+  assert.deepEqual([(res?.body as { plus: boolean }).plus, (res?.body as { maxMiles: number }).maxMiles, (res?.body as { savedSearches: number }).savedSearches], [true, 100, 10]);
+  // The same Apple subscription can't also unlock a second account.
+  res = await w.call(CARL, 'POST', 'junk/purchases', { transactions: [plusFor(CARL, { originalTransactionId: `o-${BOB}` })] });
+  assert.equal((res?.body as { plus: boolean }).plus, false);
+  // Refunded, or run out.
+  w.plusRows.length = 0;
+  res = await w.call(BOB, 'POST', 'junk/purchases', { transactions: [plusFor(BOB, { revocationDate: 1 })] });
+  assert.equal((res?.body as { plus: boolean }).plus, false);
+  res = await w.call(BOB, 'POST', 'junk/purchases', { transactions: [plusFor(BOB, { expiresDate: Date.parse('2026-11-01T00:00:00Z') })] });
+  assert.equal((res?.body as { plus: boolean }).plus, false);
+});
+
+test('tips are recorded once each', async () => {
+  const w = world();
+  const tip = signed({ bundleId: 'com.hoodleague.junk', productId: 'com.hoodleague.junk.tip.small', transactionId: 'tip1', appAccountToken: BOB });
+  let res = await w.call(BOB, 'POST', 'junk/purchases', { transactions: [tip] });
+  assert.deepEqual([(res?.body as { thanks: boolean }).thanks, (res?.body as { tips: number }).tips], [true, 1]);
+  res = await w.call(BOB, 'POST', 'junk/purchases', { transactions: [tip] });
+  assert.deepEqual([(res?.body as { thanks: boolean }).thanks, (res?.body as { tips: number }).tips], [false, 1]);
+});
+
+test('Plus searches up to 100 miles and sees new listings first; everyone else gets 25 miles after 10 minutes', async () => {
+  const w = world();
+  // About 60 miles north.
+  const far = await w.post(ALICE, { title: 'Far table', lat: HOME.lat + 0.87 });
+  const fresh = await w.post(ALICE, { title: 'Fresh lamp', fresh: true });
+  const ids = async (who: string | null, km: number) => ((await w.call(who, 'GET', 'junk/items', undefined, { ...HOME, km }))?.body as { id: string; early?: boolean }[]);
+
+  assert.deepEqual((await ids(BOB, 160)).map((i) => i.id), [], 'free: 25 miles, and the new lamp is still Plus-only');
+  assert.deepEqual((await ids(ALICE, 10)).map((i) => i.id), [fresh.id], 'your own listing always shows');
+  await w.call(BOB, 'POST', 'junk/purchases', { transactions: [plusFor(BOB)] });
+  const plus = await ids(BOB, 160);
+  assert.deepEqual(plus.map((i) => i.id), [fresh.id, far.id]);
+  assert.equal(plus[0].early, true);
+  w.tick(11 * MIN);
+  assert.deepEqual((await ids(CARL, 30)).map((i) => i.id), [fresh.id], 'everyone sees it after 10 minutes');
+});
+
+test('saved searches: 1 free, 10 with Plus; new matches are counted, and Plus members get an alert', async () => {
+  const w = world();
+  assert.equal((await w.call(BOB, 'POST', 'junk/searches', { q: '', ...HOME }))?.status, 400);
+  assert.equal((await w.call(BOB, 'POST', 'junk/searches', { q: 'dresser', ...HOME, miles: 10 }))?.status, 200);
+  assert.equal((await w.call(BOB, 'POST', 'junk/searches', { q: 'dresser', ...HOME }))?.status, 200, 'same search again is fine');
+  assert.equal((await w.call(BOB, 'POST', 'junk/searches', { q: 'bike', ...HOME }))?.status, 402, 'free accounts get one');
+  await w.call(BOB, 'POST', 'junk/push', { token: 'c'.repeat(64) });
+  await w.call(CARL, 'POST', 'junk/searches', { category: 'furniture', ...HOME });
+  await w.call(CARL, 'POST', 'junk/push', { token: 'dead'.padEnd(64, 'e') });
+
+  // Bob isn't Plus: no alert, but the match shows as new in the app (after Plus members' early look).
+  await w.post(ALICE, { fresh: true });
+  assert.equal(w.pushed.length, 0);
+  assert.equal(((await w.call(BOB, 'GET', 'junk/searches'))?.body as { newCount: number }[])[0].newCount, 0);
+  w.tick(11 * MIN);
+  let list = (await w.call(BOB, 'GET', 'junk/searches'))?.body as { id: string; newCount: number; miles: number }[];
+  assert.deepEqual([list.length, list[0].newCount, list[0].miles], [1, 1, 10]);
+  await w.call(BOB, 'POST', `junk/searches/${list[0].id}/seen`);
+  list = (await w.call(BOB, 'GET', 'junk/searches'))?.body as { id: string; newCount: number }[];
+  assert.equal(list[0].newCount, 0);
+
+  // With Plus: an alert right away, only for matching listings; tokens Apple refuses are dropped.
+  await w.call(BOB, 'POST', 'junk/purchases', { transactions: [plusFor(BOB)] });
+  await w.call(CARL, 'POST', 'junk/purchases', { transactions: [plusFor(CARL)] });
+  assert.equal((await w.call(BOB, 'POST', 'junk/searches', { q: 'bike', ...HOME }))?.status, 200);
+  const item = await w.post(ALICE, { title: 'Pine dresser', fresh: true });
+  assert.equal(w.pushed.length, 2);
+  assert.deepEqual(w.pushed.find((p) => p.tokens[0] === 'c'.repeat(64)), {
+    tokens: ['c'.repeat(64)], title: 'Free: Pine dresser', body: 'Right nearby · matches your “dresser” search', path: `/junk/item/${item.id}`,
+  });
+  assert.equal(w.tokens.some((t) => t.token.startsWith('dead')), false);
+  await w.post(ALICE, { title: 'Garden hose', category: 'outdoor', tags: [] });
+  assert.equal(w.pushed.length, 2, 'no match, no alert');
+  // Not your own listings, and not from someone you blocked.
+  await w.call(BOB, 'POST', 'junk/block', { userId: ALICE });
+  await w.post(ALICE, { title: 'Bike' });
+  assert.equal(w.pushed.length, 2);
+
+  await w.call(BOB, 'DELETE', `junk/searches/${list[0].id}`);
+  assert.equal(((await w.call(BOB, 'GET', 'junk/searches'))?.body as unknown[]).length, 1);
+});
+
+test('haulers and sponsors: shown by area, taps are logged, and Plus members skip sponsor cards', async () => {
+  const w = world();
+  const base = { blurb: '', phone: '612-555-0100', url: 'https://example.com', active: true };
+  w.partners.push(
+    { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', kind: 'hauler', name: 'Near Hauling', lat: HOME.lat, lng: HOME.lng, km: 30, ...base },
+    { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', kind: 'hauler', name: 'Far Hauling', lat: 40, lng: -100, km: 30, ...base },
+    { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', kind: 'sponsor', name: 'Thrift Co', lat: HOME.lat, lng: HOME.lng, km: 30, ...base },
+    { id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', kind: 'hauler', name: 'Paused', lat: HOME.lat, lng: HOME.lng, km: 30, ...base, active: false },
+  );
+  const haulers = (await w.call(null, 'GET', 'junk/partners', undefined, { kind: 'hauler', ...NORTH }))?.body as { name: string; km: number }[];
+  assert.deepEqual(haulers.map((h) => h.name), ['Near Hauling']);
+  assert.equal((await w.call(null, 'GET', 'junk/partners', undefined, { kind: 'nope', ...HOME }))?.status, 400);
+  let sponsors = (await w.call(BOB, 'GET', 'junk/partners', undefined, { kind: 'sponsor', ...HOME }))?.body as { name: string }[];
+  assert.deepEqual(sponsors.map((s) => s.name), ['Thrift Co']);
+  await w.call(BOB, 'POST', 'junk/purchases', { transactions: [plusFor(BOB)] });
+  sponsors = (await w.call(BOB, 'GET', 'junk/partners', undefined, { kind: 'sponsor', ...HOME }))?.body as { name: string }[];
+  assert.deepEqual(sponsors, []);
+
+  const item = await w.post(ALICE);
+  await w.call(ALICE, 'POST', 'junk/partners/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/tap', { itemId: item.id });
+  await w.call(null, 'POST', 'junk/partners/cccccccc-cccc-4ccc-8ccc-cccccccccccc/tap');
+  assert.deepEqual(w.taps, [
+    { partnerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', userId: ALICE, itemId: item.id },
+    { partnerId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', userId: null, itemId: null },
+  ]);
 });

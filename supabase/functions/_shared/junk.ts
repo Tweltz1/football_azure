@@ -11,6 +11,7 @@ import {
   CLAIMS_PER_DAY, MAX_CLAIM_KM, OPEN_CLAIM, RECLAIM_COOLDOWN_MIN, claimOut, etaMinutes, judgeClaim, newClaim, pingClaim,
   type ClaimStore, type JunkClaim,
 } from './junkClaims.ts';
+import { alertSavedSearches, isEarly, junkPlusRoute, maxKmFor, plusUntil, type PlusDeps, type PlusStore } from './junkPlus.ts';
 import { CHAT_RULES, LABEL_MIN_CONFIDENCE, LABEL_RULES, SAFETY_RULES, checkText, hasContactDetails, personalDetails } from './junkSafety.ts';
 
 export const JUNK_CATEGORIES = [
@@ -93,7 +94,7 @@ export interface JunkSearch {
   since: string;
 }
 
-export interface JunkStore extends ClaimStore {
+export interface JunkStore extends ClaimStore, PlusStore {
   getItem(id: string): Promise<JunkItem | null>;
   putItem(item: JunkItem): Promise<void>;
   deleteItem(id: string): Promise<void>;
@@ -169,7 +170,7 @@ export interface JunkDetection {
 
 export interface JunkDetector { detect(jpegBase64: string): Promise<JunkDetection> }
 
-export interface JunkDeps {
+export interface JunkDeps extends PlusDeps {
   store: JunkStore;
   photos: JunkPhotos;
   detector: JunkDetector | null;
@@ -434,6 +435,9 @@ export async function junkRoute(
 ): Promise<Res | null> {
   if (parts[0] !== 'junk') return null;
   if (!deps) return { status: 503, body: 'Curbsy is not set up here yet.' };
+  // Curbsy Plus, tips, saved searches, notifications, haulers and sponsors (junkPlus.ts).
+  const money = await junkPlusRoute(ctx, deps, method, parts, data, params);
+  if (money) return money;
   const { store, photos } = deps;
   const me = ctx.userId;
   const body = (data && typeof data === 'object' ? data : {}) as Body;
@@ -490,7 +494,9 @@ export async function junkRoute(
   if (section === 'items' && !a && method === 'GET') {
     const lat = num(params?.get('lat')), lng = num(params?.get('lng'));
     if (!isLat(lat) || !isLng(lng)) return bad('Location needed.');
-    const km = Math.min(MAX_KM, Math.max(0.5, num(params?.get('km')) || 16));
+    // Up to 25 miles, or 100 with Curbsy Plus.
+    const plus = !!(await plusUntil(store, me, now));
+    const km = Math.min(MAX_KM, maxKmFor(plus), Math.max(0.5, num(params?.get('km')) || 16));
     const limit = Math.min(100, Math.max(1, num(params?.get('limit')) || 60));
     const rows = await store.search({
       lat, lng, km, limit: limit + 20,
@@ -500,11 +506,12 @@ export async function junkRoute(
       since: daysAgo(now, FRESH_DAYS),
     });
     const hidden = new Set(me ? await store.blocked(me) : []);
-    const shown = rows.filter((r) => !hidden.has(r.ownerId)).slice(0, limit);
+    // Brand-new listings show to Plus members first (your own always show).
+    const shown = rows.filter((r) => !hidden.has(r.ownerId) && (plus || r.ownerId === me || !isEarly(r.createdAt, now))).slice(0, limit);
     const claims = await liveClaimsFor(shown.map((r) => r.id));
     // Items someone is already driving to go after the ones still up for grabs (the order is otherwise kept).
     // First come, first served listings stay where they are.
-    const out = shown.map((r) => itemOut(deps, r, me, r.km, claims.get(r.id)));
+    const out = shown.map((r) => ({ ...itemOut(deps, r, me, r.km, claims.get(r.id)), ...(plus && r.ownerId !== me && isEarly(r.createdAt, now) ? { early: true } : {}) }));
     const held = (o: typeof out[number]) => !o.firstCome && o.onTheWay > 0 && o.pieces.every((p) => p.gone || p.held);
     return ok([...out.filter((o) => !held(o)), ...out.filter(held)]);
   }
@@ -647,6 +654,8 @@ export async function junkRoute(
     };
     item.searchText = searchTextOf(item);
     await store.putItem(item);
+    // Plus members whose saved search matches hear about it right away.
+    await alertSavedSearches(ctx, deps, item).catch((error) => ctx.log.warn('junk: saved-search alerts failed', error));
     return ok(itemOut(deps, item, me));
   }
 
