@@ -79,6 +79,20 @@ jobs:
           done
           ls -l models || true
 
+      # Free on-device explicit-photo check (NSFWDetector by LOVOO, BSD 3-clause, 17 KB) used by PhotoSafetyPlugin
+      # before a photo is uploaded. Checked against a known hash; a failed download only skips that one check.
+      - name: Download the photo safety model
+        working-directory: ios-junk-app
+        run: |
+          mkdir -p models
+          if curl -fsSL --retry 3 -o models/NSFW.mlmodel "https://raw.githubusercontent.com/lovoo/NSFWDetector/master/NSFWDetector/Classes/NSFW.mlmodel" \
+            && echo "1b872d9620b8d41f10132f29063d751ffb53c6785bae7f601a1d40f4bd873778  models/NSFW.mlmodel" | shasum -a 256 -c -; then
+            echo "Got the photo safety model"
+          else
+            rm -f models/NSFW.mlmodel
+            echo "::warning::Photo safety model not downloaded; this build skips the explicit-photo check"
+          fi
+
       - name: Copy the website into the iPhone project
         working-directory: ios-junk-app
         run: |

@@ -24,7 +24,7 @@ const OPEN = ['active', 'arrived'];
 
 interface ItemDb {
   id: string; owner_id: string; owner_name: string; title: string; description: string; category: string; tags: string[];
-  condition: string; pickup: string; photos: string[]; lat: number; lng: number; status: string; ai_detected: boolean; first_come?: boolean; pieces?: JunkItem['pieces'];
+  condition: string; pickup: string; photos: string[]; lat: number; lng: number; status: string; ai_detected: boolean; first_come?: boolean; pieces?: JunkItem['pieces']; private_spot?: string; handoff?: string;
   reports: number; search_text: string; created_at: string; updated_at: string;
 }
 interface MessageDb { id: string; item_id: string; from_id: string; to_id: string; from_name: string; body: string; created_at: string; read_at: string | null }
@@ -33,12 +33,12 @@ const itemRow = (r: ItemDb): JunkItem => ({
   id: r.id, ownerId: r.owner_id, ownerName: r.owner_name, title: r.title, description: r.description,
   category: r.category as JunkItem['category'], tags: r.tags ?? [], condition: r.condition as JunkItem['condition'],
   pickup: r.pickup, photos: r.photos ?? [], lat: r.lat, lng: r.lng, status: r.status as JunkItem['status'],
-  aiDetected: r.ai_detected, firstCome: !!r.first_come, pieces: Array.isArray(r.pieces) ? r.pieces : [], reports: r.reports, searchText: r.search_text, createdAt: r.created_at, updatedAt: r.updated_at,
+  aiDetected: r.ai_detected, firstCome: !!r.first_come, pieces: Array.isArray(r.pieces) ? r.pieces : [], spot: r.private_spot ?? '', handoff: r.handoff === 'meet' ? 'meet' : 'porch', reports: r.reports, searchText: r.search_text, createdAt: r.created_at, updatedAt: r.updated_at,
 });
 const itemDb = (i: JunkItem): ItemDb => ({
   id: i.id, owner_id: i.ownerId, owner_name: i.ownerName, title: i.title, description: i.description, category: i.category,
   tags: i.tags, condition: i.condition, pickup: i.pickup, photos: i.photos, lat: i.lat, lng: i.lng, status: i.status,
-  ai_detected: i.aiDetected, first_come: !!i.firstCome, pieces: i.pieces, reports: i.reports, search_text: i.searchText, created_at: i.createdAt, updated_at: i.updatedAt,
+  ai_detected: i.aiDetected, first_come: !!i.firstCome, pieces: i.pieces, private_spot: i.spot ?? '', handoff: i.handoff ?? 'porch', reports: i.reports, search_text: i.searchText, created_at: i.createdAt, updated_at: i.updatedAt,
 });
 const messageRow = (r: MessageDb): JunkMessage => ({
   id: r.id, itemId: r.item_id, fromId: r.from_id, toId: r.to_id, fromName: r.from_name, body: r.body, createdAt: r.created_at, readAt: r.read_at,
@@ -148,7 +148,46 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_blocks').delete().or(`user_id.eq.${userId},blocked_id.eq.${userId}`));
       must(await db.from('junk_uploads').delete().eq('user_id', userId));
       must(await db.from('junk_claims').delete().or(`claimer_id.eq.${userId},owner_id.eq.${userId}`));
+      must(await db.from('junk_feedback').delete().eq('user_id', userId));
+      // Phones stay on record when banned, so a deleted-and-remade account can't come back on the same phone.
+      must(await db.from('junk_devices').delete().eq('user_id', userId).eq('banned', false));
+      // A ban outlives the account's data (a deleted account can't come back under the same id anyway).
+      must(await db.from('junk_members').delete().eq('user_id', userId).is('banned_at', null));
       return paths;
+    },
+    async member(userId) {
+      const r = must(await db.from('junk_members').select('terms_at, banned_at, joined_at, provider').eq('user_id', userId).maybeSingle()) as
+        { terms_at: string | null; banned_at: string | null; joined_at: string | null; provider: string | null } | null;
+      return r ? { termsAt: r.terms_at, bannedAt: r.banned_at, joinedAt: r.joined_at, provider: r.provider } : null;
+    },
+    async seeDevice(userId, deviceId, at, since) {
+      must(await db.from('junk_devices').upsert({ device_id: deviceId, user_id: userId, seen_at: at }, { onConflict: 'device_id,user_id' }));
+      const rows = must(await db.from('junk_devices').select('user_id, banned, seen_at').eq('device_id', deviceId).limit(100)) as
+        { user_id: string; banned: boolean; seen_at: string }[] | null;
+      return {
+        banned: (rows ?? []).some((r) => r.banned),
+        accounts: new Set((rows ?? []).filter((r) => r.seen_at >= since).map((r) => r.user_id)).size,
+      };
+    },
+    async pickupPartners(userId) {
+      const data = must(await db.from('junk_claims').select('owner_id, claimer_id').eq('status', 'picked_up')
+        .or(`claimer_id.eq.${userId},owner_id.eq.${userId}`).limit(500)) as { owner_id: string; claimer_id: string }[] | null;
+      return (data ?? []).map((r) => (r.owner_id === userId ? r.claimer_id : r.owner_id));
+    },
+    async touchMember(userId, joinedAt, provider) {
+      must(await db.from('junk_members').upsert({ user_id: userId, joined_at: joinedAt, provider }, { onConflict: 'user_id' }));
+    },
+    async acceptTerms(userId, at) {
+      // Keeps any ban: only terms_at is written on a conflict.
+      must(await db.from('junk_members').upsert({ user_id: userId, terms_at: at }, { onConflict: 'user_id' }));
+    },
+    async addFeedback(f) {
+      must(await db.from('junk_feedback').insert({ id: f.id, user_id: f.userId, user_name: f.userName, body: f.body, created_at: f.createdAt }));
+    },
+    async countFeedbackSince(userId, since) {
+      const { count, error } = await db.from('junk_feedback').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since);
+      if (error) throw error;
+      return count ?? 0;
     },
   };
 }

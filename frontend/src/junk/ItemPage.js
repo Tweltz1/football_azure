@@ -6,6 +6,7 @@ import {
 } from './junkApi';
 import { categoryIcon, categoryLabel, conditionLabel, distanceLabel, locate, timeAgo } from './device';
 import PieceThumb from './PieceThumb';
+import { MemberCard, SafetyTipsSheet, SpotCard, shareTrip, tipsSeen } from './Safety';
 import { IconBack, IconBox, IconCar, IconChat, IconCheck, IconEdit, IconFlag, IconSparkle, IconTrash } from './icons';
 
 const TREND = { closer: 'getting closer', steady: 'not much closer yet', away: 'heading away' };
@@ -13,7 +14,7 @@ const TREND = { closer: 'getting closer', steady: 'not much closer yet', away: '
 const NEAR_KM = 0.6;
 
 /** What's going on with an "I'm on my way" claim, for whoever is looking. */
-function TripCard({ claim, onRelease, busy }) {
+function TripCard({ claim, onRelease, busy, item }) {
   if (!claim) return null;
   if (claim.mine && !claim.open) {
     if (claim.state === 'picked_up' || claim.state === 'cancelled') return null;
@@ -36,6 +37,7 @@ function TripCard({ claim, onRelease, busy }) {
             <strong>You're on your way</strong>
             <span>{distanceLabel(claim.km)} · about {claim.etaMin} min · {TREND[claim.trend] || 'tracking'}</span>
             <small>Keep location on for Curbsy. If you stop heading here, the claim is released so someone else can grab it.</small>
+            {item && <button type="button" className="jk-link jk-share-trip" onClick={() => shareTrip(item, claim)}>Share my trip with a friend</button>}
           </>
         )}
       </div>
@@ -168,7 +170,10 @@ export default function ItemPage() {
   }, [watching, id]);
 
   // which: on a multi-item post, the ids picked (leave out to take everything that's left).
+  // The first time, safety tips come before the trip starts.
+  const [tipsFor, setTipsFor] = useState(null);
   const startClaim = async (which) => {
+    if (!tipsSeen()) { setMenu(null); setTipsFor({ which }); return; }
     setMenu(null);
     setBusy(true);
     setNotice('');
@@ -347,6 +352,7 @@ export default function ItemPage() {
           {item.firstCome && <span className="jk-pill jk-pill-fcfs">First come, first served</span>}
           {shared && othersOnTheWay > 0 && <span className="jk-pill jk-pill-warn">{othersOnTheWay} on the way</span>}
           {item.aiDetected && <span className="jk-pill jk-pill-ai"><IconSparkle size={14} /> Auto-detected</span>}
+          <span className="jk-pill">{item.handoff === 'meet' ? 'Meet in person' : 'Porch pickup (no contact)'}</span>
         </div>
         <h1>{item.title}</h1>
         <p className="jk-item-meta">
@@ -371,7 +377,7 @@ export default function ItemPage() {
 
         {item.mine && shared
           ? <ClaimersCard claimers={item.claimers} pieces={pieces} busy={busy} onRelease={release} />
-          : <TripCard claim={claim} busy={busy} onRelease={release} />}
+          : <TripCard claim={claim} busy={busy} onRelease={release} item={item} />}
         {!item.mine && shared && othersOnTheWay > 0 && !(claimOpen && claim.mine) && (
           <p className="jk-muted jk-fcfs-note">
             {othersOnTheWay === 1 ? '1 person is' : `${othersOnTheWay} people are`} heading over{item.firstCome ? '. First come, first served, so it may go before you get there.' : ' for some of this.'}
@@ -385,8 +391,13 @@ export default function ItemPage() {
             <p>{item.pickup}</p>
           </div>
         )}
+        <SpotCard item={item} />
+        {!item.mine && item.owner && <MemberCard name={item.ownerName} owner={item.owner} />}
         {item.tags.length > 0 && <p className="jk-taglist">{item.tags.map((t) => <span key={t}>#{t}</span>)}</p>}
-        <p className="jk-safety">Meet in daylight, bring a friend for big items, and never send money for free stuff.</p>
+        <p className="jk-safety">
+          {item.handoff === 'meet' ? 'Meet in a public place in daylight, like a store parking lot. ' : ''}
+          Bring a friend for big items, tell someone where you're going, and never send money for free stuff.
+        </p>
         {notice && <p className="jk-notice" role="status">{notice}</p>}
       </section>
 
@@ -442,6 +453,13 @@ export default function ItemPage() {
         )}
       </div>
 
+      {tipsFor && (
+        <SafetyTipsSheet
+          handoff={item.handoff}
+          onDone={() => { const { which } = tipsFor; setTipsFor(null); startClaim(which); }}
+          onCancel={() => setTipsFor(null)}
+        />
+      )}
       {menu === 'report' && (
         <div className="jk-sheet-backdrop" role="presentation" onClick={() => setMenu(null)}>
           <div className="jk-sheet" role="dialog" aria-modal="true" aria-label="Report" onClick={(e) => e.stopPropagation()}>

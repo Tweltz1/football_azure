@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { SignInPrompt, useJunk } from './JunkApp';
-import { createItem, getItem, updateItem, uploadPhoto } from './junkApi';
+import { createItem, getItem, getMember, updateItem, uploadPhoto } from './junkApi';
+import { TermsSheet, checkPhoto } from './Safety';
 import { CATEGORIES, CONDITIONS, inJunkApp, photoToJpeg } from './device';
 import { appleDetect, hasAppleDetection } from './appleLabels';
 import { BackButton } from './ItemPage';
@@ -14,7 +15,7 @@ const MAX_PHOTOS = 6;
 // Set to true to also ask Gemini when Apple isn't sure what the photo shows.
 const GEMINI_BACKUP = false;
 
-const EMPTY = { title: '', description: '', category: '', condition: 'good', tags: [], pickup: '', firstCome: false };
+const EMPTY = { title: '', description: '', category: '', condition: 'good', tags: [], pickup: '', spot: '', handoff: 'porch', firstCome: false };
 const MAX_PIECES = 12;
 let pieceSeq = 0;
 const newPiece = (fields = {}) => ({ key: `n${++pieceSeq}`, title: '', category: '', box: null, photo: 0, gone: false, ...fields });
@@ -41,6 +42,11 @@ export default function PostItem() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(!editing);
+  // Curbsy rules: agreed once before the first post (the server asks again if it hasn't been).
+  const [askTerms, setAskTerms] = useState(false);
+  const retryAfterTerms = useRef(null);
+  // What the phone's photo check saw (sent with the listing so the server can check it too).
+  const photoLabels = useRef([]);
   // Several things in one post, each claimable and taken on its own.
   const [pieces, setPieces] = useState([]);
   const multi = pieces.length > 0;
@@ -52,10 +58,15 @@ export default function PostItem() {
   touchedRef.current = touched;
 
   useEffect(() => {
+    if (!me || editing) return;
+    getMember().then((m) => { if (m && !m.terms) setAskTerms(true); }).catch(() => {});
+  }, [me, editing]);
+
+  useEffect(() => {
     if (!editing || !me) return;
     getItem(id).then((item) => {
       if (!item.mine) { navigate(`/junk/item/${id}`, { replace: true }); return; }
-      setForm({ title: item.title, description: item.description, category: item.category, condition: item.condition, tags: item.tags, pickup: item.pickup, firstCome: !!item.firstCome });
+      setForm({ title: item.title, description: item.description, category: item.category, condition: item.condition, tags: item.tags, pickup: item.pickup, spot: item.spot || '', handoff: item.handoff || 'porch', firstCome: !!item.firstCome });
       setPieces((item.pieces || []).map((p) => ({ ...newPiece(), ...p, key: p.id })));
       setPhotos(item.photos.map((url) => ({ key: url, url, preview: url, path: decodeURIComponent(url.split('/junk-photos/')[1] || '') })));
       setDetected(item.aiDetected);
@@ -151,6 +162,13 @@ export default function PostItem() {
         setError(err.message);
         continue;
       }
+      // Free on-phone check (explicit photos, weapons, drugs) before anything is uploaded.
+      const safe = await checkPhoto(preview);
+      if (!safe.ok) {
+        setError(safe.reason);
+        continue;
+      }
+      photoLabels.current = [...photoLabels.current, ...(safe.labels || [])].slice(-60);
       setPhotos((list) => [...list, { key, preview, uploading: true }]);
       // Only the first photo of a new listing is sent for detection.
       const detect = !editing && !detectAsked.current;
@@ -193,12 +211,18 @@ export default function PostItem() {
         pieces: multi ? named.map((p) => ({ id: p.id, title: p.title.trim(), category: p.category || 'other', box: p.box, photo: p.photo, gone: !!p.gone })) : [],
         photos: photos.map((p) => p.path).filter(Boolean),
         aiDetected: detected,
+        labels: photoLabels.current,
       };
       const item = editing ? await updateItem(id, fields) : await createItem({ ...fields, lat: spot.lat, lng: spot.lng });
       navigate(`/junk/item/${item.id}`, { replace: true });
     } catch (err) {
-      setError(err.message);
       setSaving(false);
+      if (err.status === 428) {
+        retryAfterTerms.current = () => submit(e);
+        setAskTerms(true);
+        return;
+      }
+      setError(err.message);
     }
   };
 
@@ -304,6 +328,24 @@ export default function PostItem() {
             placeholder="On the curb, grab it anytime. Or: message me to set a time." />
         </label>
 
+        <div className="jk-field">
+          <span>How does pickup work?</span>
+          <div className="jk-seg jk-seg-wide" role="group" aria-label="Pickup style">
+            <button type="button" className={form.handoff !== 'meet' ? 'is-on' : ''} onClick={() => set('handoff', 'porch')}>Porch / curb (no contact)</button>
+            <button type="button" className={form.handoff === 'meet' ? 'is-on' : ''} onClick={() => set('handoff', 'meet')}>Meet in person</button>
+          </div>
+          <small className="jk-muted">
+            {form.handoff === 'meet' ? 'Safest in a public place in daylight, like a store parking lot.' : 'Safest: leave it out and nobody has to meet.'}
+          </small>
+        </div>
+
+        <label className="jk-field">
+          <span>Exact spot <em>private</em></span>
+          <textarea value={form.spot} onChange={(e) => set('spot', e.target.value)} rows={2} maxLength={300}
+            placeholder="Street address, which door or side of the house" />
+          <small className="jk-muted">Only shown to someone on their way to get it, or someone you've written back to. Everyone else sees the distance.</small>
+        </label>
+
         <label className="jk-toggle">
           <input type="checkbox" checked={form.firstCome} onChange={(e) => set('firstCome', e.target.checked)} />
           <span>
@@ -330,6 +372,22 @@ export default function PostItem() {
           </button>
         </div>
       </form>
+
+      {askTerms && (
+        <TermsSheet
+          onDone={() => {
+            setAskTerms(false);
+            const retry = retryAfterTerms.current;
+            retryAfterTerms.current = null;
+            if (retry) retry();
+          }}
+          onCancel={() => {
+            setAskTerms(false);
+            if (!retryAfterTerms.current) navigate('/junk', { replace: true });
+            retryAfterTerms.current = null;
+          }}
+        />
+      )}
     </main>
   );
 }

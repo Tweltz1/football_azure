@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { SignInPrompt, useJunk } from './JunkApp';
-import { getChat, inbox, sendMessage } from './junkApi';
+import { blockUser, getChat, inbox, sendMessage } from './junkApi';
+import { ContactSheet, TermsSheet } from './Safety';
 import { timeAgo } from './device';
 import { BackButton } from './ItemPage';
-import { IconBox, IconChat, IconSend } from './icons';
+import { IconBox, IconChat, IconFlag, IconSend } from './icons';
 
 export function Inbox() {
   const { me, authLoading, refreshUnread } = useJunk();
@@ -63,12 +64,17 @@ const QUICK_ASKS = ['Is this still available?', 'I can pick it up today.', 'When
 
 export function Chat() {
   const { itemId, otherId } = useParams();
+  const navigate = useNavigate();
   const { me, authLoading, refreshUnread } = useJunk();
   const [chat, setChat] = useState(null);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const endRef = useRef(null);
+  const [askTerms, setAskTerms] = useState(false);
+  const retryAfterTerms = useRef(null);
+  const [menu, setMenu] = useState(false);
+  const [contact, setContact] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -98,10 +104,26 @@ export function Chat() {
       const sent = await sendMessage(itemId, otherId, msg);
       setChat((c) => ({ ...c, messages: [...(c?.messages || []), sent] }));
       setText('');
+      if (sent.offApp) setError('Tip: keep chatting in Curbsy. If something goes wrong, we can only help with messages sent here.');
     } catch (err) {
-      setError(err.message);
+      if (err.status === 428) {
+        retryAfterTerms.current = () => send(msg);
+        setAskTerms(true);
+      } else {
+        setError(err.message);
+      }
     } finally {
       setSending(false);
+    }
+  };
+
+  const block = async () => {
+    setMenu(false);
+    try {
+      await blockUser(otherId);
+      navigate('/junk/inbox', { replace: true });
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -124,6 +146,7 @@ export function Chat() {
           {item && <Link to={`/junk/item/${item.id}`}>{item.title}{item.status === 'gone' ? ' · taken' : ''}</Link>}
         </div>
         {item && item.photos[0] && <Link to={`/junk/item/${item.id}`} className="jk-chat-thumb"><img src={item.photos[0]} alt="" /></Link>}
+        <button type="button" className="jk-icon-btn" onClick={() => setMenu(true)} aria-label="Report or block"><IconFlag size={20} /></button>
       </div>
 
       <div className="jk-bubbles">
@@ -138,6 +161,7 @@ export function Chat() {
         {chat && chat.messages.map((m) => (
           <div key={m.id} className={`jk-bubble${m.mine ? ' is-mine' : ''}`}>
             <p>{m.body}</p>
+            {m.offApp && !m.mine && <small className="jk-bubble-warn">Careful moving off Curbsy. Never send money or codes.</small>}
             <time dateTime={m.createdAt}>{timeAgo(m.createdAt)}</time>
           </div>
         ))}
@@ -157,6 +181,31 @@ export function Chat() {
         />
         <button type="submit" className="jk-send" disabled={!text.trim() || sending} aria-label="Send"><IconSend size={20} /></button>
       </form>
+
+      {menu && (
+        <div className="jk-sheet-backdrop" role="presentation" onClick={() => setMenu(false)}>
+          <div className="jk-sheet" role="dialog" aria-modal="true" aria-label="Report or block" onClick={(e) => e.stopPropagation()}>
+            <h2>{chat ? chat.otherName : 'This person'}</h2>
+            <div className="jk-sheet-list">
+              <button type="button" onClick={() => { setMenu(false); setContact(true); }}>Report this person to Curbsy</button>
+              <button type="button" className="jk-danger-text" onClick={block}>Block (hide all their posts and messages)</button>
+              <button type="button" onClick={() => setMenu(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {contact && <ContactSheet onClose={() => setContact(false)} />}
+      {askTerms && (
+        <TermsSheet
+          onDone={() => {
+            setAskTerms(false);
+            const retry = retryAfterTerms.current;
+            retryAfterTerms.current = null;
+            if (retry) retry();
+          }}
+          onCancel={() => { setAskTerms(false); retryAfterTerms.current = null; }}
+        />
+      )}
     </main>
   );
 }
