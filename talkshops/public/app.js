@@ -335,6 +335,7 @@
   window.TalkShopsHelpChat?.configure({
     isOwner: () => !session || isOwner(),
     signedIn: () => !!(session && shop),
+    report: (row) => { if (session && shop && !shop.learnOff) api("POST", "shop/help-miss", row).catch(() => {}); },
     openHowTo: (q) => { howTo.prefill(q); navPush = ui.view !== "howto"; ui.view = "howto"; ui.openJob = null; render(); window.scrollTo(0, 0); },
     contact: (q) => {
       try { sessionStorage.setItem("ts-help-msg", q || ""); } catch {}
@@ -816,7 +817,7 @@
       <div class="btn-row"><label>Opens <input type="time" id="sr-open" value="${esc(s.smartSchedule?.open || "08:00")}"></label><label>Closes <input type="time" id="sr-close" value="${esc(s.smartSchedule?.close || "17:00")}"></label></div></details><a href="/demo.html?smart=1" target="_blank" rel="noopener">Try sample customer texts</a></fieldset>` : ""}
       <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
       ${firstTime ? "" : window.BayAge.fields(s)}
-      ${firstTime ? "" : `<label class="chk"><input type="checkbox" id="sh-learn" ${s.learnOff ? "" : "checked"}>Help improve Talk Shops<span class="hint">When your staff answer a customer's text, Talk Shops keeps a copy of that text with names, phone numbers, emails, addresses and other numbers removed, and nothing that links it to your shop or the customer. It teaches the reply sorter. Kept up to 12 months. <a href="/privacy.html#learning" target="_blank" rel="noopener">More</a></span></label>`}
+      ${firstTime ? "" : `<label class="chk"><input type="checkbox" id="sh-learn" ${s.learnOff ? "" : "checked"}>Help improve Talk Shops<span class="hint">When your staff answer a customer's text, Talk Shops keeps a copy of that text with names, phone numbers, emails, addresses and other numbers removed, and nothing that links it to your shop or the customer. It teaches the reply sorter. Questions the Ask chat couldn't answer are kept the same way, so we can add answers. Kept up to 12 months. <a href="/privacy.html#learning" target="_blank" rel="noopener">More</a></span></label>`}
       ${firstTime ? "" : `<div class="btn-row"><button class="btn primary" type="button" data-view="prices">Upload price list (PDF, photo or Excel)</button><button class="btn" type="button" data-billing="rates">Edit saved items (${(shop?.rates || []).length})</button></div>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Next: upload my prices" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
       ${firstTime ? `<small class="muted">Next you can upload your price list (PDF, photo, Excel or CSV) so your labor rate, services and fees fill in for you. You can skip it.</small>` : ""}

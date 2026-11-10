@@ -1,7 +1,8 @@
 // "Ask Talk Shops": a help chat for shop staff about using Talk Shops.
 // Answers come from the Help page (help-content.js), picked by a small trained model that runs on the device
 // (help-chat-model.json from ml/help-chat/train.mjs, run by help-chat-model-run.js). No AI service, no cost per
-// question, and nothing typed here is sent or saved anywhere.
+// question. Questions it can't answer well are saved with names and numbers removed (unless the shop turned off
+// "Help improve Talk Shops"), so we can add Help answers for them.
 // Car repair questions are pointed to How-to; anything else gets a few close answers and the Contact Support form.
 // Pages call TalkShopsHelpChat.configure({...}) and .show(true|false).
 (function () {
@@ -13,7 +14,9 @@
     openHowTo: null,            // (question) => void, when How-to can open with the question filled in
     contact: (q) => { location.href = "/?help#help-support"; try { sessionStorage.setItem("ts-help-msg", q); } catch {} },
     lessonUrl: (id) => "/demo.html?train=" + encodeURIComponent(id),
+    report: null,               // ({text, kind, guess, picked}) => void: questions it couldn't answer well, when the shop allows it
   };
+  const tell = (row) => { try { cfg.report?.(row); } catch {} };
   const st = { open: false, visible: false, model: null, loading: null, failed: false, turns: [] };
   const STARTERS = ["How do I check in a car?", "How do I build an estimate?", "How do I add my team?", "How do customers get updates?"];
 
@@ -29,7 +32,7 @@
   // ---------- model ----------
   function load() {
     if (st.model || st.loading) return st.loading;
-    st.loading = fetch("/help-chat-model.json?v=1").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    st.loading = fetch("/help-chat-model.json?v=2").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then((m) => { st.model = m; }, () => { st.failed = true; }).finally(() => { st.loading = null; paint(); });
     return st.loading;
   }
@@ -67,6 +70,7 @@
   }
   function reply(text) {
     const d = think(text);
+    if (d.kind === "choose" || d.kind === "other") tell({ text, kind: d.kind === "choose" ? "unsure" : "other", guess: d.choices?.[0] || "" });
     if (d.kind === "answer") return { who: "bot", answer: d.label, more: d.choices || [], q: text, alsoRepair: d.alsoRepair };
     return { who: "bot", kind: d.kind, choices: d.choices || [], q: text, alsoRepair: d.alsoRepair };
   }
@@ -79,7 +83,7 @@
       <div class="hc-links">${x.lesson ? `<a href="${esc(cfg.lessonUrl(x.lesson))}">Watch the lesson →</a>` : ""}
       ${turn ? `<button type="button" class="linkbtn" data-hc-not="${turn}">Not what you asked?</button>` : ""}</div></div>`;
   }
-  const choiceBtns = (list) => list.map((q) => `<button type="button" class="hc-chip" data-hc-pick="${esc(q)}">${esc(q)}</button>`).join("");
+  const choiceBtns = (list, from = "") => list.map((q) => `<button type="button" class="hc-chip" data-hc-pick="${esc(q)}" data-hc-from="${from}">${esc(q)}</button>`).join("");
   const howToBtn = (q) => cfg.openHowTo && cfg.signedIn() ? `<button type="button" class="btn sm" data-hc-howto="${esc(q)}">Ask How-to</button>` : "";
   const contactBtn = (q) => `<button type="button" class="linkbtn" data-hc-contact="${esc(q)}">Ask the Talk Shops team</button>`;
   function turnHtml(t, i) {
@@ -88,21 +92,21 @@
     if (t.picked) return `<div class="hc-bot">${answerHtml(t.picked, i)}</div>`;
     if (t.answer) {
       return `<div class="hc-bot">${answerHtml(t.answer, t.notShown ? 0 : i)}
-        ${t.notShown ? `<div class="hc-more"><span>Maybe one of these:</span>${choiceBtns(t.more)}${contactBtn(t.q)}</div>` : ""}
+        ${t.notShown ? `<div class="hc-more"><span>Maybe one of these:</span>${choiceBtns(t.more, i)}${contactBtn(t.q)}</div>` : ""}
         ${t.alsoRepair && !t.notShown ? `<p class="hc-small">Asking how to fix a car? ${howToBtn(t.q) || "How-to answers repair questions."}</p>` : ""}</div>`;
     }
     if (t.kind === "repair") {
       return `<div class="hc-bot"><p>That sounds like a car repair question. ${cfg.signedIn() ? "The How-to tab answers those, with steps, tools and specs." : "Shops on Talk Shops Pro can ask those in the How-to tab."}</p>
         <div class="hc-row">${howToBtn(t.q)}</div>
-        ${t.choices.length ? `<div class="hc-more"><span>Or were you asking about Talk Shops?</span>${choiceBtns(t.choices.slice(0, 2))}</div>` : ""}</div>`;
+        ${t.choices.length ? `<div class="hc-more"><span>Or were you asking about Talk Shops?</span>${choiceBtns(t.choices.slice(0, 2), i)}</div>` : ""}</div>`;
     }
     if (t.kind === "other") {
       return `<div class="hc-bot"><p>I can only help with using Talk Shops, like checking in cars, estimates, customer texts, your team or your plan.</p>
-        ${t.choices.length ? `<div class="hc-more"><span>Were you asking about one of these?</span>${choiceBtns(t.choices.slice(0, 2))}</div>` : ""}
+        ${t.choices.length ? `<div class="hc-more"><span>Were you asking about one of these?</span>${choiceBtns(t.choices.slice(0, 2), i)}</div>` : ""}
         <div class="hc-row">${contactBtn(t.q)}</div></div>`;
     }
     return `<div class="hc-bot"><p>${t.choices.length ? "I'm not sure which you mean. Is it one of these?" : "I don't have an answer for that yet."}</p>
-      <div class="hc-more">${choiceBtns(t.choices)}${contactBtn(t.q)}</div>
+      <div class="hc-more">${choiceBtns(t.choices, i)}${contactBtn(t.q)}</div>
       ${t.alsoRepair ? `<p class="hc-small">Asking how to fix a car? ${howToBtn(t.q) || "How-to answers repair questions."}</p>` : ""}</div>`;
   }
 
@@ -144,8 +148,8 @@
     e.preventDefault();
     if (t.id === "askFab" || t.dataset.hcOpen !== undefined) { open(t.dataset.hcOpen || ""); return; }
     if (t.dataset.hcClose !== undefined) { st.open = false; paint(); return; }
-    if (t.dataset.hcPick) { st.turns.push({ who: "me", text: t.dataset.hcPick }, { who: "bot", picked: t.dataset.hcPick }); st.jump = true; paint(); return; }
-    if (t.dataset.hcNot) { const turn = st.turns[+t.dataset.hcNot]; if (turn) turn.notShown = true; paint(); return; }
+    if (t.dataset.hcPick) { const from = st.turns[+t.dataset.hcFrom]; if (from?.q && t.dataset.hcFrom !== "") tell({ text: from.q, kind: "picked", guess: from.answer || from.choices?.[0] || "", picked: t.dataset.hcPick }); st.turns.push({ who: "me", text: t.dataset.hcPick }, { who: "bot", picked: t.dataset.hcPick }); st.jump = true; paint(); return; }
+    if (t.dataset.hcNot) { const turn = st.turns[+t.dataset.hcNot]; if (turn) { turn.notShown = true; if (turn.q) tell({ text: turn.q, kind: "notit", guess: turn.answer || "" }); } paint(); return; }
     if (t.dataset.hcHowto !== undefined) { st.open = false; paint(); cfg.openHowTo?.(t.dataset.hcHowto); return; }
     if (t.dataset.hcContact !== undefined) { st.open = false; paint(); cfg.contact(t.dataset.hcContact); }
   });

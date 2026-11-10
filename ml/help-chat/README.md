@@ -1,7 +1,10 @@
 # Help chat ("Ask Talk Shops")
 
 A small trained model that answers staff questions about using Talk Shops from the Help page answers
-(`talkshops/public/help-content.js`). It runs in the browser: no AI service, no cost per question, nothing sent or saved.
+(`talkshops/public/help-content.js`). It runs in the browser: no AI service, no cost per question.
+Questions it couldn't answer well (offered choices, off topic, "Not what you asked?", and which choice was picked) are saved
+scrubbed to `talkshops_help_misses` (route shop/help-miss; skipped when the shop turned off "Help improve Talk Shops";
+12-month delete). Review them to add Help answers and questions to `data.mjs`.
 
 - `data.mjs`: hand-written ways to ask each Help question (keys must match the Help questions exactly).
 - `train.mjs`: trains two softmax regressions and writes `talkshops/public/help-chat-model.json` (about 750 KB, 310 KB gzipped):

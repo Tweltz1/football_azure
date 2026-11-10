@@ -3,7 +3,10 @@
 // link with a long random token that opens their car's page, where they can approve or decline work.
 
 import { classifyText } from './smsTopicModel.ts';
-import { learnRow, type LearnRow } from './learnTexts.ts';
+import { learnRow, scrubText, type LearnRow } from './learnTexts.ts';
+
+export interface HelpMiss { text: string; kind: 'unsure' | 'other' | 'notit' | 'picked'; guess: string; picked: string }
+const helpMissLog = new Map<string, number[]>();
 import { gsmText, smsSegments } from './smsFit.ts';
 import type { Ctx, Res } from './handlers.ts';
 import { salesRoute } from './shopSales.ts';
@@ -165,6 +168,8 @@ export interface ShopStore extends Partial<BookingStore> {
   pauseSmart?(id:string,paused:boolean):Promise<void>;
   /** Saves one scrubbed customer text for the text sorter's monthly retrain (no shop or customer attached). */
   learnText?(row: LearnRow): Promise<void>;
+  /** A Help chat question it couldn't answer well, already scrubbed (table talkshops_help_misses). */
+  helpMiss?(row: HelpMiss): Promise<void>;
   /** Repairs created at or after `since` without photos or messages, for results and export. */
   reportJobs?(shopId: string, since: string, limit: number): Promise<Job[]>;
   shopByOwner(ownerId: string): Promise<Shop | null>;
@@ -859,6 +864,24 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       return ok({ shop: publicShop(saved), role: 'owner', mainOwner: mine?.seat.primary ?? true, plan: await planOut(deps, saved, ctx.now()) });
     }
     return { status: 405 };
+  }
+
+  if (parts[1] === 'help-miss') {
+    if (method !== 'POST' || parts.length !== 2) return { status: 405 };
+    const mine = await whoAmI();
+    if (!mine || mine.shop.learnOff || !store.helpMiss) return ok({ saved: false });
+    const kind = String(body.kind ?? '');
+    if (!['unsure', 'other', 'notit', 'picked'].includes(kind)) return bad('Unknown kind.');
+    const text = scrubText(str(body.text, 300));
+    if (text.replace(/\[name\]/g, '').replace(/[^a-z]/gi, '').length < 2) return ok({ saved: false });
+    // A few per shop per hour is plenty; more is someone testing or a stuck page.
+    const key = mine.shop.id, now = ctx.now().getTime();
+    const recent = (helpMissLog.get(key) ?? []).filter((t) => now - t < 3_600_000);
+    if (recent.length >= 30) return ok({ saved: false });
+    helpMissLog.set(key, [...recent, now]);
+    await store.helpMiss({ text, kind: kind as HelpMiss['kind'], guess: str(body.guess, 120), picked: str(body.picked, 120) })
+      .catch((err) => ctx.log.warn('help miss', { error: String(err) }));
+    return ok({ saved: true });
   }
 
   if (!['jobs', 'archive', 'plan', 'howto', 'price-import', 'vin', 'recalls', 'vehicle-options', 'visits', 'results', 'export', 'bookings'].includes(parts[1])) return { status: 404 };

@@ -383,6 +383,10 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       const {error}=await db.rpc('talkshops_learn_add',{p_text:row.text,p_topic:row.topic,p_p:row.p,p_outcome:row.outcome});
       if(error) throw error;
     },
+    async helpMiss(row) {
+      const {error}=await db.rpc('talkshops_help_miss_add',{p_text:row.text,p_kind:row.kind,p_guess:row.guess||null,p_picked:row.picked||null});
+      if(error) throw error;
+    },
     async pauseSmart(id,paused) {
       const {error}=await db.from('repair_jobs').update({smart_paused:paused}).eq('id',id);
       if(error) throw error;

@@ -1018,6 +1018,26 @@ test('answering a customer text saves a scrubbed copy for learning, unless the s
   assert.equal(saved.length, 1);
 });
 
+test('help chat questions it could not answer are saved scrubbed, unless the shop turned learning off', async () => {
+  const w = world();
+  const saved: unknown[] = [];
+  w.deps.store.helpMiss = async (row) => { saved.push(row); };
+  const dan = w.as('user-dan');
+  // No shop yet: nothing saved, no error.
+  assert.deepEqual((await dan('POST', 'shop/help-miss', { text: 'how do i do x', kind: 'unsure' }))?.body, { saved: false });
+  await dan('POST', 'shop/me', { name: 'Ridgeline Auto Repair', phone: '(555) 014-2290' });
+  const r = await dan('POST', 'shop/help-miss', { text: 'How do I text Maria at 555-013-6620 about the VIN 1HGCM82633A004352?', kind: 'notit', guess: 'Can customers text us back?' });
+  assert.deepEqual(r?.body, { saved: true });
+  const row = saved[0] as { text: string; kind: string; guess: string };
+  assert.doesNotMatch(row.text, /Maria|555|6620|1HGCM/);
+  assert.equal(row.kind, 'notit');
+  assert.ok(!JSON.stringify(row).includes('Ridgeline'));
+  assert.equal((await dan('POST', 'shop/help-miss', { text: 'hi', kind: 'bogus' }))?.status, 400);
+  await dan('POST', 'shop/me', { name: 'Ridgeline Auto Repair', phone: '(555) 014-2290', learnOff: true });
+  assert.deepEqual((await dan('POST', 'shop/help-miss', { text: 'where is the thing', kind: 'other' }))?.body, { saved: false });
+  assert.equal(saved.length, 1);
+});
+
 test('parts and labor grouped into one repair are approved or declined together', async () => {
   const { as } = world();
   const dan = as('user-dan');
