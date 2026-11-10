@@ -1,15 +1,13 @@
 # Trains ToteTrack's own item detector for Snap to add, for free, on a GitHub macOS machine.
 # Data: LVIS v1 box annotations (CC BY 4.0) on COCO 2017 images, plus Open Images V7 boxes (CC BY 4.0,
 # images CC BY 2.0), limited to the household and garage items in totetrack-app/tools/detector/classes.txt. Training: Apple Create ML (transfer learning).
-# Runs when anything in totetrack-app/tools/detector changes. The model is published as a GitHub
+# Paused: Create ML's detector training freezes GitHub's virtual Mac GPU, so the photo set now trains the
+# namer on Linux instead (totetrack-build-namer.yml). Kept for a future run on a real Mac. The model is published as a GitHub
 # release named totetrack-detector-<run number>, with classes.json and the training log.
 name: ToteTrack train detector
 
 on:
-  push:
-    paths:
-      - 'totetrack-app/tools/detector/**'
-      - '.github/workflows/totetrack-train-detector.yml'
+  workflow_dispatch:
 
 concurrency:
   group: totetrack-train-${{ github.ref }}
