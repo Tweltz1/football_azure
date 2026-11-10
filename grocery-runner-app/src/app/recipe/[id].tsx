@@ -2,7 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RecipePicture } from '../../components/RecipePicture';
 import { Button, tap } from '../../components/ui';
+import { labelsOf } from '../../lib/diet';
 import { newItems, SUGGESTED } from '../../lib/recipes';
 import { itemKey } from '../../lib/sharedAisles';
 import { useData } from '../../lib/store';
@@ -50,8 +52,18 @@ export default function RecipeScreen() {
     <>
       <Stack.Screen options={{ title: recipe.title }} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 8, gap: 8 }}>
+        <RecipePicture recipe={recipe} size={180} />
+        {labelsOf(recipe).length > 0 && (
+          <Text style={{ color: t.primary, fontWeight: '600' }}>{labelsOf(recipe).join(' · ')}</Text>
+        )}
         <Text style={{ color: t.textMuted }}>
-          {[recipe.servings, recipe.source === 'mine' ? 'From your recipe' : null].filter(Boolean).join(' · ')}
+          {[
+            recipe.minutes ? (recipe.minutes >= 120 ? `${Math.round(recipe.minutes / 60)} hr` : `${recipe.minutes} min`) : null,
+            recipe.servings,
+            recipe.source === 'mine' ? 'From your recipe' : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
           {'\n'}Untick anything you already have.
         </Text>
         {recipe.items.map((it, n) => {
