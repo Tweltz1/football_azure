@@ -205,7 +205,8 @@ private func analyze(_ image: CGImage) -> [String: Any] {
     }
   }
   classify(image, whole: true)
-  for rect in objectRegions(image) {
+  let regions = objectRegions(image)
+  for rect in regions {
     if let crop = image.cropping(to: rect) { classify(crop, whole: false) }
   }
   let labels: [[String: Any]] = best
@@ -227,7 +228,35 @@ private func analyze(_ image: CGImage) -> [String: Any] {
       "x": Double(b.minX), "y": Double(1 - b.maxY), "w": Double(b.width), "h": Double(b.height),
     ])
   }
-  return ["labels": labels, "lines": lines, "text": lines.map { $0["text"] as! String }, "objects": detectObjects(image)]
+  let objects = detectObjects(image)
+  return [
+    "labels": labels, "lines": lines, "text": lines.map { $0["text"] as! String }, "objects": objects,
+    "named": nameItems(image, regions: regions, objects: objects),
+  ]
+}
+
+// MARK: - Naming each thing with ToteTrack's own namer
+
+/// Runs the namer on every region and every detected object. Each name keeps its best probability and
+/// how many separate spots it was the top answer for.
+private func nameItems(_ image: CGImage, regions: [CGRect], objects: [[String: Any]]) -> [[String: Any]] {
+  guard ToteNamer.shared.available else { return [] }
+  var rects = regions
+  for o in objects {
+    if let b = o["box"] as? [String: Double] {
+      let r = CGRect(x: b["x"] ?? 0, y: b["y"] ?? 0, width: b["width"] ?? 0, height: b["height"] ?? 0)
+      rects.append(pixelRect(r, width: image.width, height: image.height, pad: 0.1))
+    }
+  }
+  var best: [String: (probability: Float, similarity: Float, spots: Int)] = [:]
+  for rect in rects where rect.width >= 48 && rect.height >= 48 {
+    guard let crop = image.cropping(to: rect), let top = ToteNamer.shared.name(crop, top: 1).first else { continue }
+    let prev = best[top.name]
+    best[top.name] = (max(prev?.probability ?? 0, top.probability), max(prev?.similarity ?? 0, top.similarity), (prev?.spots ?? 0) + 1)
+  }
+  return best.sorted { $0.value.probability > $1.value.probability }.prefix(20).map {
+    ["name": $0.key, "confidence": Double($0.value.probability), "similarity": Double($0.value.similarity), "spots": $0.value.spots]
+  }
 }
 
 // MARK: - Finding each separate item (on-device object detection)

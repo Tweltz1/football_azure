@@ -12,11 +12,11 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.frameworks = 'Vision', 'CoreML', 'CoreSpotlight', 'UserNotifications', 'UniformTypeIdentifiers', 'CoreNFC'
+  s.frameworks = 'Accelerate', 'Vision', 'CoreML', 'CoreSpotlight', 'UserNotifications', 'UniformTypeIdentifiers', 'CoreNFC'
 
   s.source_files = "**/*.{h,m,swift}"
   # On-device object detector, downloaded and compiled by .github/workflows/totetrack-app.yml (not in git).
-  s.resources = "models/*.mlmodelc"
+  s.resources = "models/*.{mlmodelc,json,bin}"
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'SWIFT_COMPILATION_MODE' => 'wholemodule'
