@@ -221,12 +221,15 @@
     const heading = j.closed ? T("This Repair Was Closed") : j.stage === "invited" && j.intakeReceived ? T("Check-In Details Received") :
       j.stage === "approval" && outcome ? outcome : T(STAGES[idx].cust);
     const evAt = (k) => { const e = [...j.events].reverse().find((x) => x.stage === k); return e ? e.t : null; };
-    const tl = STAGES.filter(s => s.key !== "invited" || evAt("invited")).filter((s) => s.key !== "picked_up" || evAt(s.key) || j.photos.some((p) => p.stage === s.key)).map((s) => {
+    // Customer wording for each step; earlier steps the car skipped (no parts needed, say) are left out.
+    const STEP = { checked_in: "Checked In", diagnosing: "Inspecting", approval: "Your Estimate", parts: "Waiting on Parts", in_progress: "Repairs Underway", qc: "Final Check", ready: "Ready for Pickup", picked_up: "Picked Up" };
+    const tl = STAGES.filter(s => s.key !== "invited" || evAt("invited")).filter((s) => s.key !== "picked_up" || evAt(s.key) || j.photos.some((p) => p.stage === s.key))
+      .filter((s) => SI[s.key] >= idx || evAt(s.key) || j.photos.some((p) => p.stage === s.key)).map((s) => {
       const decided = s.key === "approval" && outcome && evAt(s.key);
       const t = decided && j.approval ? j.approval.t : evAt(s.key);
       const cls = s.key === j.stage ? "current" : (t && SI[s.key] < idx ? "done" : "todo");
       const folder = photoFolder(s.key, "View photos", j.photos.filter((p) => p.stage === s.key), openFolders);
-      return `<li class="${cls}"><span>${decided ? outcome : T(s.label)}</span><time>${t ? dayClock(t) : ""}</time>${folder}</li>`;
+      return `<li class="${cls}"><span>${decided ? outcome : T(STEP[s.key] || s.label)}</span><time>${t ? dayClock(t) : ""}</time>${folder}</li>`;
     }).join("");
     const pending = awaitingDecision(j) && !j.closed;
     let est = "";
@@ -269,7 +272,7 @@
         <div class="c-card"><h3>${T("Progress")}</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
         ${j.concern ? `<div class="c-card"><h3>${T("Your concern")}</h3><div style="font-size:14px">${esc(j.concern)}</div></div>` : ""}
         ${window.Workday.customerReminders(j)}
-        ${j.shop.phone ? `<div class="c-card call"><span>${T("Questions? Call the shop")}</span><b>${esc(j.shop.phone)}</b></div>` : ""}
+        ${j.shop.phone ? `<a class="c-card call tel" href="tel:${esc(j.shop.phone.replace(/[^\d+]/g, ""))}"><span>${T("Questions? Call the shop")}</span><b>${esc(j.shop.phone)}</b></a>` : ""}
         <p class="cust-top">${T("This page updates as your repair progresses.")}</p>
         ${window.Grow.langSwitch(custToken)}
         <p class="cust-top"><a href="/privacy.html">${T("Privacy Policy")}</a></p>
@@ -401,6 +404,15 @@
     if (bookToken) return window.Grow.renderBooking(bookToken);
     const app = $("#app"), chrome = $("#shopChrome");
     document.title = "Talk Shops" + (shop ? " · " + shop.name : "");
+    // Any other address (a typo, an old link) gets a plain "not found" page instead of quietly opening something else.
+    const path = (location.pathname || "/").replace(/\/+$/, "").toLowerCase();
+    if (path && path !== "/index.html" && path !== "/login" && !pathView()) {
+      chrome.hidden = true;
+      document.title = "Page Not Found · Talk Shops";
+      app.innerHTML = `<div class="login-wrap"><section class="login">${brand()}<h2>Page not found</h2><p class="muted">There's nothing at this address. It may have been mistyped or moved.</p>
+        <div class="btn-row"><a class="btn primary" href="${session ? "/bay" : "/"}">${session ? "Open the Bay" : "Go to the home page"}</a><a class="btn" href="/?help">Help</a></div></section></div>`;
+      return;
+    }
     if (new URLSearchParams(location.search).has("contact")) {
       chrome.hidden = true;
       document.title = "Contact Sales · Talk Shops";
@@ -640,7 +652,7 @@
     return `<div class="front">
       <header class="front-nav"><div class="front-inner">
         <a class="front-wordmark" href="#top" aria-label="Talk Shops home"><span class="brand-mark" aria-hidden="true">${$(".brand-mark").innerHTML}</span>Talk Shops</a>
-        <nav aria-label="Main navigation"><a class="front-nav-extra" href="${DEMO_PAGE}">Demo</a><a href="/?help">Help</a><a href="#plans">Pricing</a><a class="front-sign" href="/?login">Shop Sign In</a></nav>
+        <nav aria-label="Main navigation"><a href="${DEMO_PAGE}">Demo</a><a class="front-nav-extra" href="/?help">Help</a><a class="front-nav-extra" href="#plans">Pricing</a><a class="front-sign" href="/?login">Shop Sign In</a></nav>
       </div></header>
       <section class="front-hero" id="top"><div class="front-inner">
         <div class="front-intro"><p class="front-kicker">Shop board + customer updates for every auto shop</p><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
@@ -1105,12 +1117,21 @@
   async function act(fn, okMsg) {
     ui.busy = true;
     try { const r = await fn(); if (okMsg) toast(okMsg); return r; }
-    catch (e) { toast(e.message); return null; }
+    catch (e) { toast(e.message); act.lastError = e; return null; }
     finally { ui.busy = false; }
   }
+  // The trial's "texts used" count changes whenever something is sent; refresh it shortly after.
+  let planTimer = 0;
+  function refreshPlanSoon() {
+    clearTimeout(planTimer);
+    planTimer = setTimeout(async () => { if (!shop) return; try { plan = await api("GET", "shop/plan"); render(); } catch { /* next time */ } }, 1500);
+  }
   async function jobAction(id, action, body, okMsg) {
+    act.lastError = null;
     const j = await act(() => api("POST", `shop/jobs/${id}/${action}`, body), okMsg);
-    if (j) { upsertJob(j); render(); }
+    // Someone else saved this car first: show their version so the change can be made again on top of it.
+    if (!j && act.lastError?.status === 409) { try { upsertJob(await api("GET", `shop/jobs/${id}`)); render(); } catch { /* the Bay refresh will catch up */ } }
+    if (j) { upsertJob(j); render(); if (body?.send || action === "message") refreshPlanSoon(); }
     return j;
   }
 
@@ -1264,7 +1285,15 @@
       if (sig.length < 3) { toast("Type your full name to sign"); $("#sig").focus(); return; }
       t.disabled = true;
       try { cust.data = await api("POST", `shop/c/${encodeURIComponent(custToken)}/decision`, { decisions: cust.draft, signature: sig }); cust.draft = {}; toast("Sent to " + cust.data.shop.name); }
-      catch (err) { toast(err.message); }
+      catch (err) {
+        // The estimate may have changed while the customer decided: load the latest and keep only choices that still apply.
+        toast(err.message);
+        try {
+          cust.data = await api("GET", "shop/c/" + encodeURIComponent(custToken));
+          const open = new Set(cust.data.estimate.filter((x) => x.status === "pending").map((x) => x.id));
+          for (const id of Object.keys(cust.draft)) if (!open.has(id)) delete cust.draft[id];
+        } catch { /* keep what is on screen */ }
+      }
       renderCustomer();
     }
   });
@@ -1464,13 +1493,21 @@
     if (f.id === "checkinForm") {
       if (ui.busy) return;
       const invite = $("#ci-method").value === "invite";
+      // Without consent nothing is sent, so stop once and point at the box before saving a car nobody hears about.
+      if (!invite && !$("#ci-consent").checked && !f.dataset.noConsentOk) {
+        f.dataset.noConsentOk = "1";
+        const box = $("#ci-consent"), label = box.closest("label");
+        if (!$("#ci-consent-warn")) label.insertAdjacentHTML("afterend", `<p class="consent-warn full" id="ci-consent-warn" role="alert"><b>The customer won't get any texts or emails about this car.</b> Ask if they agree to updates and check the box above, or press Check In again to save without updates.</p>`);
+        label.classList.add("consent-ask"); label.scrollIntoView({ block: "center", behavior: "smooth" }); box.focus();
+        return;
+      }
       const g = (k) => $("#ci-" + k).value.trim();
       const j = await act(() => api("POST", "shop/jobs", {
         invite, urgency: document.querySelector('input[name="ciUrgency"]:checked')?.value || "", customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("channel"), consent: $("#ci-consent").checked, lang: g("lang") },
         ...(invite ? {} : { vehicle: { year: g("year"), make: g("make"), model: g("model"), vin: g("vin").toUpperCase(), engine: g("engine"), trim: g("trim") }, plate: g("plate"), concern: g("concern"), ...window.Workday.checkinValues() }),
       }));
       if (j) {
-        upsertJob(j); ui.view = "board"; ui.openJob = j.id; render();
+        upsertJob(j); ui.view = "board"; ui.openJob = j.id; render(); refreshPlanSoon();
         toast("Saved. " + sendResult(j));
       }
       return;
@@ -1627,6 +1664,7 @@
       $("#ci-consent").checked = false;
       return;
     }
+    if (e.target.id === "ci-consent" && e.target.checked) { $("#ci-consent-warn")?.remove(); e.target.closest("label")?.classList.remove("consent-ask"); return; }
     if (e.target.id === "ci-method") {
       const invite = e.target.value === "invite", form = e.target.form;
       form.querySelectorAll("[data-staff-intake]").forEach(el => { el.hidden = invite; const f = el.querySelector("input,textarea"); if (f) f.disabled = invite; });
@@ -1662,7 +1700,21 @@
     if (!hint) { hint = document.createElement("small"); hint.className = "sms-hint muted"; anchor.after(hint); }
     hint.textContent = `As a text this sends as ${parts} messages (${len} characters). Under 160 sends as 1.`;
   }
+  let etaTimer = 0;
   document.addEventListener("input", (e) => {
+    // Typing a parts ETA rewrites the suggested text, unless staff already changed the message.
+    if (e.target.id === "m-eta" && ui.modal?.stage === "parts") {
+      const m = ui.modal, eta = e.target.value.trim();
+      clearTimeout(etaTimer);
+      etaTimer = setTimeout(async () => {
+        const box = $("#m-text"); if (!box || box.value !== m.text) return;
+        try {
+          const p = await api("POST", `shop/jobs/${m.job}/preview`, { stage: "parts", eta });
+          if (ui.modal === m && box.isConnected && box.value === m.text) { m.text = box.value = p.text; m.eta = eta; smsHint(box); }
+        } catch { /* keep the current text */ }
+      }, 350);
+      return;
+    }
     if (e.target.id === "m-text" || e.target.id === "c-text" || e.target.id === "replyIn") smsHint(e.target);
     if (e.target.id === "ci-vin") { const v = e.target.value.trim(); if (v.length === 17) decodeVinInto("ci"); else $("#ci-vin-msg").textContent = ""; }
     if (e.target.id === "ec-phone" || e.target.id === "ec-email") { customerContactChanged(); return; }

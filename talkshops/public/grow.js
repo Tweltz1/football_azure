@@ -28,6 +28,7 @@
     "Final Check and Road Test": "Revisión final y prueba de manejo", "Ready for Pickup": "Listo para recoger", "Picked Up": "Recogido",
     "Customer invited": "Cliente invitado", "Checked In": "Recibido", "Diagnosing": "Diagnóstico", "Estimate Review": "Revisión del presupuesto",
     "In Progress": "En reparación", "Quality Check": "Revisión de calidad",
+    "Inspecting": "Revisión", "Your Estimate": "Su presupuesto", "Final Check": "Revisión final",
     "This Repair Was Closed": "Esta reparación se cerró", "Check-In Details Received": "Recibimos sus datos",
     "Estimate Approved": "Presupuesto aprobado", "Estimate Declined": "Presupuesto rechazado", "Estimate Partially Approved": "Presupuesto aprobado en parte",
     "Approve": "Aprobar", "Decline": "Rechazar", "Approved": "Aprobado", "Declined": "Rechazado",
@@ -47,6 +48,7 @@
     "Your concern": "Su consulta", "Questions? Call the shop": "¿Preguntas? Llame al taller", "This page updates as your repair progresses.": "Esta página se actualiza a medida que avanza su reparación.",
     "Privacy Policy": "Política de privacidad", "Required": "Necesario", "Recommended": "Recomendado", "Optional": "Opcional",
     "Needed to fix your concern or for safety.": "Necesario para resolver su problema o por seguridad.", "Advised soon to prevent bigger problems.": "Recomendado pronto para evitar problemas mayores.", "Can wait if you prefer.": "Puede esperar si lo prefiere.",
+    "Example photo, not your vehicle": "Foto de ejemplo, no es su vehículo", "How it works": "Cómo funciona", "Photo and diagram": "Foto y diagrama", "View larger diagram": "Ver diagrama más grande",
     "Part": "Pieza", "What's being worked on": "Lo que se está reparando", "Part mentioned": "Pieza mencionada",
     // Final bill
     "Final bill": "Factura final", "Total due": "Total a pagar", "Download shop invoice (PDF)": "Descargar factura (PDF)", "Print / save PDF": "Imprimir / guardar PDF",
@@ -128,7 +130,7 @@
     $("#shopChrome") && ($("#shopChrome").hidden = true);
     if (!bk.info && !bk.err) {
       app.innerHTML = `<div class="loading">Loading…</div>`;
-      try { bk.info = await A.api("GET", "shop/book/" + encodeURIComponent(token)); } catch (e) { bk.err = e.message; }
+      try { bk.info = await A.api("GET", "shop/book/" + encodeURIComponent(token)); bk.shownAt = Date.now(); } catch (e) { bk.err = e.message; }
     }
     if (bk.err && !bk.info) { app.innerHTML = `<div class="loading"><p>${esc(bk.err)}</p></div>`; return; }
     const s = bk.info.shop;
@@ -175,6 +177,7 @@
       await A.api("POST", "shop/book/" + encodeURIComponent(bk.token), {
         customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("preference"), consent: f.elements.consent.checked, lang },
         vehicle: { year: g("year"), make: g("make"), model: g("model") }, plate: g("plate"), concern: g("concern"), day: g("day"), time: g("time"), website: g("website"),
+        elapsed: bk.shownAt ? Date.now() - bk.shownAt : null,
       });
       bk.sent = true;
     } catch (e) { bk.err = e.message; }

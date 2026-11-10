@@ -313,6 +313,8 @@ export interface BookingStore {
   putBooking(b: Booking): Promise<void>;
 }
 export const MAX_OPEN_BOOKINGS = 60;
+/** New booking requests one shop takes per hour, so a script can't fill the queue in one go. */
+export const MAX_BOOKINGS_PER_HOUR = 12;
 
 /** Checks the public booking form. Returns the booking data or an error message. */
 export function parseBooking(body: Body, normalizePhone: (s: string) => string | null, today: string): Booking['data'] | string {
@@ -330,7 +332,8 @@ export function parseBooking(body: Body, normalizePhone: (s: string) => string |
   const concern = str(body.concern, 1000);
   if (!concern) return 'Tell the shop what the car needs.';
   const d = str(body.day, 10);
-  const dt = /^\d{4}-\d{2}-\d{2}$/.test(d) ? Date.parse(d + 'T12:00:00Z') : NaN, t0 = Date.parse(today + 'T00:00:00Z');
+  // `today` is the UTC date, which is already tomorrow in the evening across the US, so the customer's today counts too.
+  const dt = /^\d{4}-\d{2}-\d{2}$/.test(d) ? Date.parse(d + 'T12:00:00Z') : NaN, t0 = Date.parse(today + 'T00:00:00Z') - 86_400_000;
   if (!Number.isFinite(dt) || dt < t0 || dt > t0 + 120 * 86_400_000) return 'Pick a day from today up to about four months out.';
   const time = body.time === 'morning' || body.time === 'afternoon' ? body.time : 'any';
   return {

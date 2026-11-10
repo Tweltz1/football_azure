@@ -179,6 +179,12 @@ test('technicians work cars but owner-only actions are refused by the server', a
   assert.equal([...w.shops.values()][0].name, 'Ridgeline Auto');
   assert.equal((await owner('POST', `shop/jobs/${id}/stage`, { stage: 'approval' }))?.status, 200);
   assert.equal((await tech('GET', 'shop/plan'))?.status, 200, 'techs can read the plan state');
+
+  // Moving the stage of a closed repair would reopen it, which is an owner's call.
+  assert.equal((await owner('POST', `shop/jobs/${id}/close`, { reason: 'Customer declined' }))?.status, 200);
+  assert.equal((await tech('POST', `shop/jobs/${id}/stage`, { stage: 'in_progress' }))?.status, 403);
+  assert.ok(w.jobs.get(id)!.data.closed);
+  assert.equal((await owner('POST', `shop/jobs/${id}/stage`, { stage: 'in_progress' }))?.status, 200);
 });
 
 test('owners change roles and remove staff; the main owner is protected', async () => {

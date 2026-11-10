@@ -18,7 +18,7 @@ import { accountRoute, type AccountStore } from './shopAccount.ts';
 import { ownerOnly, staffRoute, type Seat, type StaffStore } from './shopStaff.ts';
 import { checkDevice, sessionRoute, type SessionStore } from './shopSessions.ts';
 import type { Narrator } from './dnd.ts';
-import { clockAction, customersCsv, jobsCsv, langOf, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES, SHORT_ES,
+import { clockAction, customersCsv, jobsCsv, langOf, MAX_BOOKINGS_PER_HOUR, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES, SHORT_ES,
   type Booking, type BookingStore, type Brand, type ClockEntry, type Grow, type Lang } from './shopGrow.ts';
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
 
@@ -173,6 +173,10 @@ export interface ShopStore extends Partial<BookingStore> {
   jobByToken(token: string): Promise<Job | null>;
   putJob(job: Job): Promise<void>;
   deleteJob?(id: string): Promise<void>;
+  /** Saves a job only if nobody saved it since `updatedAt` (the value it was read with); false when someone did. */
+  putJobIf?(job: Job, updatedAt: string): Promise<boolean>;
+  /** Deletes a shop's jobs created before a time. Only used for the public demo shop. */
+  purgeJobs?(shopId: string, before: string): Promise<void>;
   saveIntake?(jobId: string, intake: Intake): Promise<boolean>;
   intakePhoto?(jobId: string, photo: Photo | null, remove: string | null): Promise<boolean>;
   /** Row-locked walk-around change: add/replace a photo by angle, remove one, or set one photo's marks. */
@@ -376,8 +380,12 @@ export function fillTemplate(stage: Stage, shop: Shop, job: Job, linkBase: strin
     if (stage === 'picked_up' && reviewUrl) text = text.replace(' ' + say.stop, say.reviewTail(reviewUrl) + ' ' + say.stop);
     return text;
   };
-  const full = fill((lang === 'es' ? TEMPLATES_ES : TEMPLATES)[stage]);
-  return smsSegments(gsmText(full)) === 1 ? full : fill((lang === 'es' ? SHORT_ES : SHORT)[stage]);
+  // Every text names the shop, so a customer with cars at two places knows who is writing.
+  const named = (t: string) => (t.includes('{shop}') ? t : '{shop}: ' + t);
+  const fits = (t: string) => smsSegments(gsmText(t)) === 1;
+  const full = (lang === 'es' ? TEMPLATES_ES : TEMPLATES)[stage], short = (lang === 'es' ? SHORT_ES : SHORT)[stage];
+  for (const t of [named(full), named(short), full]) { const text = fill(t); if (fits(text)) return text; }
+  return fill(short);
 }
 
 /** What the shop sees. */
@@ -406,7 +414,8 @@ const customerOut = (j: Job, shop: Shop, pro = false) => ({
   events: j.data.events,
   approval: j.data.approval,
   notes: (j.data.notes ?? []).filter((n) => !n.internal).map(({ id, t, text }) => ({ id, t, text })),
-  walkthroughs: j.data.walkthroughs ?? {},
+  // Older reports were signed with a staff email; customers only ever see a real name.
+  walkthroughs: Object.fromEntries(Object.entries(j.data.walkthroughs ?? {}).map(([k, w]) => [k, w && { ...w, by: realName(w.by) }])),
   reminders: { off: !!j.data.customer.remindersOff, waiting: (j.data.followups ?? []).filter((f) => !f.sentAt && !f.canceledAt).map((f) => ({ kind: f.kind, due: f.due })) },
   // Only damage the shop confirmed; AI suggestions stay with the shop.
   walkaround: {
@@ -416,6 +425,17 @@ const customerOut = (j: Job, shop: Shop, pro = false) => ({
   closed: !!j.data.closed,
   bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
 });
+
+export const CHANGED_MEANWHILE = 'Someone else just changed this car, so nothing was saved. The latest version is on your screen now; please try again.';
+/** Saves a job read earlier in this request. When someone else saved it in between, it is not saved (null), unless
+ *  this request already sent the customer something (`sent`): then it is saved anyway so the sent text is on record. */
+async function saveJob(store: ShopStore, job: Job, readAt: string, sent = false): Promise<boolean> {
+  if (!store.putJobIf) { await store.putJob(job); return true; }
+  if (await store.putJobIf(job, readAt)) return true;
+  if (!sent) return false;
+  await store.putJob(job);
+  return true;
+}
 
 /** Most customer emails a shop can send per day: lower during the free trial, so a new signup can't send bulk mail. */
 export const EMAIL_CAP = { trial: 75, paid: 500 } as const;
@@ -428,7 +448,9 @@ async function notifyCustomer(deps: ShopDeps, shop: Shop, job: Job, body: string
     const link = deps.linkBase + job.token;
     const say = SAY[langOf(job.data)];
     // Texts go out plain (no curly quotes, bullets or emoji) so each one bills as few segments as possible.
-    const text = channel === 'email' && job.token && !body.includes(link) ? body + '\n\n' + say.details + link : channel === 'sms' ? gsmText(body) : body;
+    // Emails drop the texting opt-out line ("Reply STOP"), which means nothing in an inbox.
+    const mail = body.replace(/\s*(Reply STOP to opt out|Responda STOP para salir)\.?/g, '');
+    const text = channel === 'email' ? (job.token && !mail.includes(link) ? mail + '\n\n' + say.details + link : mail) : gsmText(body);
     let result: SmsResult;
     if (!c.consent) result = { delivery: 'not_sent', note: 'Customer has not agreed to ' + (channel === 'sms' ? 'texts.' : 'email.') };
     else if (channel === 'sms') {
@@ -591,8 +613,10 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       job.data.approval = { by: signature, t: now };
       const declinedRequired = units.filter((u) => u[0].status === 'declined' && u.some((e) => e.priority === 'required')).map((u) => u[0].group || u[0].item);
       job.data.messages.push({ dir: 'in', t: now, text: `Approved ${yes} of ${units.length} items on the estimate (signed: ${signature}).${declinedRequired.length ? ` Declined required: ${declinedRequired.join(', ')}.` : ''}` });
+      const readAt = job.updatedAt;
       job.updatedAt = now;
-      await store.putJob(job);
+      // If the shop changed the estimate while the customer was deciding, the customer sees the new one first.
+      if (!await saveJob(store, job, readAt)) return { status: 409, body: langOf(job.data) === 'es' ? 'El taller acaba de actualizar el presupuesto. Revise los cambios y envíe su decisión otra vez.' : 'The shop just updated your estimate. Please look it over and send your decision again.' };
       return ok(cOut(job));
     }
     return { status: 405 };
@@ -608,11 +632,14 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (method === 'GET') return ok({ shop: { name: shop.name, phone: shop.phone, hours: shop.hours, ...(pro && shop.brand ? { brand: shop.brand } : {}) }, note: shop.grow.bookingNote ?? '' });
     if (method !== 'POST') return { status: 405 };
     if (str(body.website, 100)) return ok({ ok: true }); // a form robot filled the hidden field
+    if (typeof body.elapsed === 'number' && body.elapsed < 2500) return ok({ ok: true }); // filled in faster than a person can type
     if (!store.addBooking || !store.openBookings) return { status: 503, body: 'Booking is unavailable right now. Please call the shop.' };
     const parsed = parseBooking(body, normalizePhone, now.slice(0, 10));
     if (typeof parsed === 'string') return bad(parsed);
     const open = await store.openBookings(shop.id, MAX_OPEN_BOOKINGS + 1);
     if (open.length >= MAX_OPEN_BOOKINGS) return { status: 429, body: 'The shop has a lot of requests waiting. Please call them to book.' };
+    const hourAgo = new Date(ctx.now().getTime() - 3_600_000).toISOString();
+    if (open.filter((b) => b.createdAt >= hourAgo).length >= MAX_BOOKINGS_PER_HOUR) return { status: 429, body: 'The shop got a lot of requests in the last hour. Please try again later or call them.' };
     const same = (b: Booking) => (parsed.customer.phone && b.data.customer.phone === parsed.customer.phone) || (parsed.customer.email && b.data.customer.email.toLowerCase() === parsed.customer.email.toLowerCase());
     if (open.filter(same).length >= 2) return { status: 429, body: 'You already have requests waiting. The shop will get back to you soon.' };
     await store.addBooking({ id: ctx.newId(), shopId: shop.id, status: 'open', createdAt: now, updatedAt: now, data: parsed });
@@ -630,6 +657,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       await store.putShop(shop);
     }
     const dayAgo = new Date(ctx.now().getTime() - 86_400_000).toISOString();
+    // Demo cars only matter for a day; clearing older ones keeps the daily count below the job list's size limit.
+    await store.purgeJobs?.(DEMO_SHOP_ID, new Date(ctx.now().getTime() - 3 * 86_400_000).toISOString()).catch((error) => ctx.log.warn('demo cleanup failed', error));
     const recent = (await store.listJobs(DEMO_SHOP_ID, dayAgo))
       .filter((j) => j.createdAt >= dayAgo && j.data.messages.some((m) => m.dir === 'out' && m.delivery === 'sent'));
     if (recent.length >= (deps.demoDailyLimit ?? 10)) return { status: 429, body: 'The demo has sent all of its texts for today. You can keep going with the on-screen version.' };
@@ -1009,6 +1038,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   const job = await store.getJob(id);
   if (!job || job.shopId !== shop.id) return { status: 404, body: 'Not found.' };
   const action = parts[3];
+  const readAt = job.updatedAt, sentBefore = job.data.messages.length;
   if (method === 'GET' && action === 'bill-file' && job.bill?.mode === 'upload') {
     const pdf = await store.getBillPdf?.(id);
     return pdf ? ok({ pdf }) : { status: 404 };
@@ -1021,8 +1051,9 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return ok({ deleted: job.id });
   }
   if (method !== 'POST') return { status: 405 };
-  // Technicians work the car; final bills, closing a repair and sending the estimate for approval are owner jobs.
-  if (!owner && (action === 'bill' || action === 'close' || action === 'reopen' || (action === 'stage' && body.stage === 'approval'))) return ownerOnly();
+  // Technicians work the car; final bills, closing or reopening a repair (moving a closed or picked-up car counts) and
+  // sending the estimate for approval are owner jobs.
+  if (!owner && (action === 'bill' || action === 'close' || action === 'reopen' || (action === 'stage' && (body.stage === 'approval' || !!job.data.closed || job.stage === 'picked_up')))) return ownerOnly();
   // Only owners add to the shop's saved price list.
   if (!owner) delete body.save;
   if (!acc.canWork && action !== 'close' && action !== 'reopen') return { status: 402, body: lockedMessage(acc) };
@@ -1090,7 +1121,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       }
     }
     job.updatedAt = now;
-    await store.putJob(job);
+    if (!await saveJob(store, job, readAt, job.data.messages.length > sentBefore)) return { status: 409, body: CHANGED_MEANWHILE };
     return ok(jobOut(job, deps.linkBase));
   }
   if (action === 'intake') {
@@ -1328,7 +1359,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return { status: 404 };
   }
   job.updatedAt = now;
-  await store.putJob(job);
+  if (!await saveJob(store, job, readAt, job.data.messages.length > sentBefore)) return { status: 409, body: CHANGED_MEANWHILE };
   return ok(jobOut(job, deps.linkBase));
 }
 

@@ -137,6 +137,13 @@
     box.innerHTML = !uniq.length ? `<p class="muted">No past visits match. Fill in the form below.</p>`
       : `<ul class="wd-found">${uniq.slice(0, 6).map((r, i) => `<li><button type="button" class="wd-hit" data-wd-fill="${i}"><b>${esc(r.customer.name)}</b><span>${esc(vehicle(r) || "Vehicle")}${r.plate ? " · " + esc(r.plate) : ""}</span><small class="muted">Last visit ${shortDate(r.createdAt)}${r.mileage ? " · " + miles(r.mileage) : ""} · ${rows.filter((x) => x.customer.name === r.customer.name).length} visit(s)</small></button></li>`).join("")}</ul>`;
   }
+  /** A returning customer who agreed to updates last time keeps that, for the same contact details and method. */
+  function keepConsent(c) {
+    const box = document.getElementById("ci-consent"); if (!box) return;
+    box.checked = !!c.consent;
+    const form = box.form; if (form) delete form.dataset.noConsentOk;
+    document.getElementById("ci-consent-warn")?.remove();
+  }
   function fill(r) {
     ui.filling = true; try { fillRow(r); } finally { ui.filling = false; }
   }
@@ -145,11 +152,12 @@
     const c = r.customer;
     const pref = c.preference || (c.phone ? "sms" : "email");
     const ch = document.getElementById("ci-channel"); if (ch) { ch.value = pref; ch.dispatchEvent(new Event("change", { bubbles: true })); }
+    keepConsent(c);
     set("name", c.name); set("phone", fmtPhone(c.phone)); set("email", c.email || ""); set("lang", c.lang === "es" ? "es" : "en");
     set("year", r.vehicle?.year); set("make", r.vehicle?.make); set("model", r.vehicle?.model); set("plate", r.plate);
     set("vin", r.vehicle?.vin || ""); set("engine", r.vehicle?.engine || "");
     const box = $("#wd-found");
-    if (box) box.innerHTML = `<p class="wd-note">Filled from ${esc(r.ro)} (${shortDate(r.createdAt)}).${r.mileage ? ` Last mileage ${miles(r.mileage)}.` : ""}${r.declined?.length ? ` <b>Declined last time:</b> ${esc(r.declined.join(", "))}.` : ""} Confirm consent below before saving.</p>`;
+    if (box) box.innerHTML = `<p class="wd-note">Filled from ${esc(r.ro)} (${shortDate(r.createdAt)}).${r.mileage ? ` Last mileage ${miles(r.mileage)}.` : ""}${r.declined?.length ? ` <b>Declined last time:</b> ${esc(r.declined.join(", "))}.` : ""} ${r.customer.consent ? "They agreed to updates last time; uncheck consent below if that changed." : "Confirm consent below before saving."}</p>`;
   }
   const fmtPhone = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ""); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : p || ""; };
 
@@ -195,6 +203,7 @@
     const c = g.c, set = (k, v) => { const el = document.getElementById("ci-" + k); if (el && v != null) { el.value = v; el.dispatchEvent(new Event("input", { bubbles: true })); } };
     ui.filling = true;
     const ch = document.getElementById("ci-channel"); if (ch) { ch.value = c.preference || (c.phone ? "sms" : "email"); ch.dispatchEvent(new Event("change", { bubbles: true })); }
+    keepConsent(c);
     set("name", c.name); set("phone", fmtPhone(c.phone)); set("email", c.email || ""); set("lang", c.lang === "es" ? "es" : "en");
     ui.filling = false;
     ui.pickCars = g.cars;

@@ -763,3 +763,26 @@ main:has(.queue-top) .col-h .stage-heading{padding:4px 2px;gap:6px}
 .panel h3,.settings-wrap h3,legend{font-weight:750;color:var(--fg)}
 .form-sec{font-weight:750;color:color-mix(in srgb,var(--fg) 70%,var(--muted))}
 main .field{font-weight:650}
+
+/* 2026-11-10 audit fixes */
+/* Check-in: a missed consent box is called out once before saving. */
+.chk.consent-ask{outline:2px solid var(--warn);outline-offset:4px;border-radius:8px}
+.consent-warn{margin:6px 0 0;padding:10px 12px;border-radius:10px;background:var(--warn-bg);color:var(--fg);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);font-size:14px}
+/* Phone: estimate lines stack (item on top; status, price, remove below) instead of running off the side. */
+@media (max-width:560px){
+  .sheet-body table.est thead{display:none}
+  .sheet-body table.est,.sheet-body table.est tbody{display:block;width:100%}
+  .sheet-body div:has(> table.est){overflow-x:visible!important}
+  .sheet-body table.est tr{display:grid;grid-template-columns:1fr auto auto;gap:2px 12px;align-items:center;border-bottom:1px solid var(--line);padding:6px 0}
+  .sheet-body table.est tbody tr:last-child{border-bottom:0}
+  .sheet-body table.est td{border:0;padding:4px 0;width:auto!important}
+  .sheet-body table.est td:first-child{grid-column:1/-1;overflow-wrap:anywhere}
+  .sheet-body table.est td:nth-child(2){padding-right:0}
+  .sheet-body table.est td:last-child{padding-left:0}
+  .sheet-body table.est .pri-cell{display:flex;flex-wrap:wrap;gap:6px}
+  .sheet-body table.est .pri-cell select{max-width:100%;min-width:0}
+}
+.help-lesson-link{display:inline-block;padding:10px 0}
+/* Customer page: the shop's number is a tap-to-call link. */
+a.c-card.call{color:inherit;text-decoration:none}
+a.c-card.call b{text-decoration:underline;text-underline-offset:3px}

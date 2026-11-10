@@ -396,9 +396,10 @@ export function createShopStore(db: SupabaseClient): ShopStore {
     },
     async listJobs(shopId, since) {
       const { data, error } = await db.from('repair_jobs').select('smart_paused,sms_thread,id,shop_id,token,stage,data,bill,intake,intake_photos,walkaround,created_at,updated_at').eq('shop_id', shopId)
-        .or(`and(stage.neq.picked_up,archived_at.is.null),updated_at.gte.${since}`).order('created_at', { ascending: true }).limit(300);
+        .or(`and(stage.neq.picked_up,archived_at.is.null),updated_at.gte.${since}`).order('created_at', { ascending: false }).limit(300);
       if (error) throw error;
-      return (data ?? []).map((r) => jobRow(r as JobDb));
+      // The newest 300, oldest first.
+      return (data ?? []).map((r) => jobRow(r as JobDb)).reverse();
     },
     getJob: (id) => oneJob('id', id),
     jobByToken: (token) => oneJob('token', token),
@@ -408,6 +409,13 @@ export function createShopStore(db: SupabaseClient): ShopStore {
         archived_at: archivedAt(job), follow_up_at: nextFollowup(job),
       });
       if (error) throw error;
+    },
+    async putJobIf(job, updatedAt) {
+      const { data, error } = await db.from('repair_jobs').update({
+        stage: job.stage, data: job.data, updated_at: job.updatedAt, archived_at: archivedAt(job), follow_up_at: nextFollowup(job),
+      }).eq('id', job.id).eq('updated_at', updatedAt).select('id').maybeSingle();
+      if (error) throw error;
+      return !!data;
     },
     async saveIntake(jobId, intake) {
       const { data, error } = await db.from('repair_jobs').update({ intake }).eq('id', jobId).eq('stage','invited').is('intake', null).select('id').maybeSingle();
@@ -434,6 +442,10 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       const { data, error } = await db.from('repair_jobs').select('bill_pdf').eq('id', jobId).single();
       if (error) throw error;
       return data?.bill_pdf ?? null;
+    },
+    async purgeJobs(shopId, before) {
+      const { error } = await db.from('repair_jobs').delete().eq('shop_id', shopId).lt('created_at', before);
+      if (error) throw error;
     },
     async deleteJob(id) {
       const { error } = await db.from('repair_jobs').delete().eq('id', id);
@@ -736,6 +748,11 @@ const howToRow = (r: HowToDb): SavedAnswer => ({
 /** Saved how-to answers for Talk Shops (tables howto_answers and howto_tips). */
 export function createHowToLibrary(db: SupabaseClient): HowToLibrary {
   return {
+    async claimHour(shopId, hour, limit) {
+      const { data, error } = await db.rpc('talkshops_howto_claim', { p_shop: shopId, p_hour: hour, p_limit: limit });
+      if (error) throw error;
+      return data === true;
+    },
     async candidates(makeModel, { qKey, shopId, since, limit }) {
       let q = db.from('howto_answers').select('*').eq('make_model', makeModel).eq('retired', false).gte('created_at', since);
       if (qKey) q = q.eq('q_key', qKey);

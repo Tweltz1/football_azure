@@ -14,8 +14,10 @@ export async function salesRoute(deps: ShopDeps, method: string, body: Record<st
   if (!deps.email || !deps.claimSalesRequest) return { status: 503, body: 'We could not send your request. Please try again or email support@talkshops.app.' };
   try {
     if (!await deps.claimSalesRequest(email)) return { status: 429, body: 'Too many requests. Please try again later or email support@talkshops.app.' };
-    const result = await deps.email.send('support@talkshops.app', 'Talk Shops sales inquiry',
-      `New sales request\n\nName: ${name}\nEmail: ${email}\nShop: ${shop}\nPhone: ${phone || 'Not provided'}\n\nRequest:\n${message}`,
+    // The in-app Help form sends a topic; those are support questions, not sales leads.
+    const topic = read('topic', 80).replace(/[\r\n]/g, ' ');
+    const result = await deps.email.send('support@talkshops.app', topic ? `Talk Shops support: ${topic}` : 'Talk Shops sales inquiry',
+      `New ${topic ? 'support' : 'sales'} request\n\nName: ${name}\nEmail: ${email}\nShop: ${shop}\nPhone: ${phone || 'Not provided'}\n\nRequest:\n${message}`,
       { replyTo: email });
     if (result.delivery === 'sent') return { status: 200, body: { sent: true } };
   } catch { /* Keep provider and database details private; the form preserves the draft for retry. */ }

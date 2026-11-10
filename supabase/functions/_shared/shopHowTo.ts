@@ -129,6 +129,8 @@ export interface SavedAnswer {
 export interface Tip { text: string; createdAt: string; mine: boolean }
 /** Where saved answers live (Supabase tables howto_answers and howto_tips). */
 export interface HowToLibrary {
+  /** Counts one AI question for this shop and UTC hour ("YYYY-MM-DDTHH"); false once the hour's limit is used. Shared by every server copy. */
+  claimHour?(shopId: string, hour: string, limit: number): Promise<boolean>;
   candidates(makeModel: string, opts: { qKey?: string; shopId?: string; since: string; limit: number }): Promise<SavedAnswer[]>;
   get(id: string): Promise<SavedAnswer | null>;
   save(row: Omit<SavedAnswer, 'id' | 'createdAt'>): Promise<string>;
@@ -192,7 +194,8 @@ async function savedOut(lib: HowToLibrary, a: SavedAnswer, shopId: string, vehic
   };
 }
 
-// Free-tier friendly limits per shop, for AI calls only (saved answers are free). Kept in memory, like the Start/Sit chat.
+// Free-tier friendly limits per shop, for AI calls only (saved answers are free). The hourly count lives in the database
+// (talkshops_howto_claim) when the library is connected; this memory copy also stops rapid double-asks.
 const recent = new Map<string, number[]>();
 export const HOWTO_PER_HOUR = 40;
 export const clearHowToLimits = () => recent.clear();
@@ -270,6 +273,10 @@ export async function howToRoute(ctx: Ctx, narrator: Narrator | null | undefined
   if (times.length && now - times[times.length - 1] < 1500) return { status: 429, body: 'One question at a time.' };
   times.push(now);
   recent.set(shopId, times);
+  if (lib?.claimHour) {
+    const ok = await lib.claimHour(shopId, ctx.now().toISOString().slice(0, 13), HOWTO_PER_HOUR).catch((error) => { ctx.log.warn('How-to hourly count failed.', error); return true; });
+    if (!ok) return { status: 429, body: 'Your shop has asked a lot of questions this hour. Try again in a bit.' };
+  }
 
   if (!narrator) return { status: 503, body: 'The how-to assistant is not set up yet.' };
   try {

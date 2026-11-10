@@ -938,7 +938,7 @@ test('Spanish: stage texts, the customer page language and switching back', asyn
   assert.match(preview.text, /llegan pronto/);
   assert.equal(((await w.as(null)('GET', `shop/c/${job.link.split('?c=')[1]}`))?.body as { lang: string }).lang, 'es');
   await dan('POST', `shop/jobs/${job.id}/customer`, { name: 'Maria Delgado', phone: '(555) 013-6620', preference: 'sms', consent: true, lang: 'en' });
-  assert.match(((await dan('POST', `shop/jobs/${job.id}/preview`, { stage: 'parts' }))?.body as { text: string }).text, /^Parts for your/);
+  assert.match(((await dan('POST', `shop/jobs/${job.id}/preview`, { stage: 'parts' }))?.body as { text: string }).text, /^Taller Ridgeline: Parts for your/);
 });
 
 test('online booking: public form, spam limits, accept makes an invited car with the details filled in', async () => {
@@ -1048,4 +1048,77 @@ test('parts and labor grouped into one repair are approved or declined together'
 
   assert.equal((await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Caliper', price: 90, group: 'front brake job' }))?.status, 400, 'a decided repair stays closed');
   assert.equal((await dan('POST', `shop/jobs/${job.id}/estimate`, { setGroup: pads, group: '' }))?.status, 400, 'decided lines stay put');
+});
+
+test('audit fixes: shop name on every text, no STOP line in emails, staff emails hidden from customers', async () => {
+  const w = world();
+  const emails: string[] = [];
+  w.deps.email = { async send(_to, _subject, body) { emails.push(body); return { delivery: 'sent' }; } };
+  const dan = w.as('owner-n');
+  await dan('POST', 'shop/me', { name: 'North Auto' });
+  const job = (await dan('POST', 'shop/jobs', { ...checkIn, customer: { ...checkIn.customer, email: 'c@example.test', preference: 'both' } }))?.body as { id: string; link: string };
+  assert.match(w.texts.at(-1)!.body, /Reply STOP to opt out/);
+  assert.doesNotMatch(emails.at(-1)!, /STOP/);
+  assert.ok(emails.at(-1)!.includes(job.link));
+  const preview = (await dan('POST', `shop/jobs/${job.id}/preview`, { stage: 'parts', eta: 'Tuesday' }))?.body as { text: string };
+  assert.equal(preview.text, 'North Auto: Parts for your 2018 Honda Civic are ordered, due Tuesday.');
+  // A walk-through saved by an older version with the staff email as its signer.
+  w.jobs.get(job.id)!.data.walkthroughs = { before: { t: '2026-11-07T15:00:00Z', by: 'tech@shop.example', items: [] } };
+  const page = (await w.as(null)('GET', `shop/c/${job.link.split('?c=')[1]}`))?.body as { walkthroughs: { before: { by: string } } };
+  assert.equal(page.walkthroughs.before.by, '');
+});
+
+test('audit fixes: a save that lost a race is refused, and the customer is told the estimate changed', async () => {
+  const w = world();
+  // Saves only when the stored copy is still the one this request read.
+  w.deps.store.putJobIf = async (job, updatedAt) => {
+    const cur = w.jobs.get(job.id);
+    if (cur && cur.updatedAt !== updatedAt) return false;
+    await w.deps.store.putJob(job); return true;
+  };
+  const dan = w.as('owner-r');
+  await dan('POST', 'shop/me', { name: 'Race Auto' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string; link: string };
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Front pads', price: 180 });
+  await dan('POST', `shop/jobs/${job.id}/stage`, { stage: 'approval' });
+  const realGet = w.deps.store.getJob;
+  // Someone else saves between this request's read and its write.
+  w.deps.store.getJob = async (id) => { const j = await realGet(id); w.jobs.get(id)!.updatedAt = '2099-01-01T00:00:00.000Z'; return j; };
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/eta`, { eta: 'Fri' }))?.status, 409);
+  w.deps.store.getJob = realGet;
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/eta`, { eta: 'Fri' }))?.status, 200);
+  const token = job.link.split('?c=')[1];
+  const lineId = w.jobs.get(job.id)!.data.estimate[0].id;
+  const realByToken = w.deps.store.jobByToken;
+  w.deps.store.jobByToken = async (t) => { const j = await realByToken(t); if (j) w.jobs.get(j.id)!.updatedAt = '2099-01-02T00:00:00.000Z'; return j; };
+  const res = await w.as(null)('POST', `shop/c/${token}/decision`, { decisions: { [lineId]: 'approved' }, signature: 'Maria Delgado' });
+  assert.equal(res?.status, 409);
+  assert.match(String(res?.body), /updated your estimate/);
+  assert.equal(w.jobs.get(job.id)!.data.estimate[0].status, 'pending');
+});
+
+test('audit fixes: booking requests filled in instantly or in a flood are held back; the customer\'s "today" works', async () => {
+  const w = world();
+  const dan = w.as('owner-bk');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const me = (await dan('POST', 'shop/me', { name: 'Ridgeline', grow: { bookingOn: true } }))?.body as { shop: { bookingToken: string } };
+  const pub = w.as(null), url = `shop/book/${me.shop.bookingToken}`;
+  const form = (i: number) => ({ customer: { name: 'Lee ' + i, phone: `555-201-${String(1000 + i)}`, preference: 'sms', consent: true }, vehicle: { make: 'Toyota', model: 'Camry' }, concern: 'Oil change', day: '2026-11-07', time: 'any', elapsed: 9000 });
+  // The clock is the evening of Nov 7 in the US but already Nov 8 in UTC.
+  w.tick(10 * 3_600_000);
+  assert.equal((await pub('POST', url, form(0)))?.status, 200);
+  assert.equal((await pub('POST', url, { ...form(1), elapsed: 800 }))?.status, 200);
+  assert.equal(w.bookings.size, 1, 'a form sent within a second is dropped quietly');
+  for (let i = 2; i < 13; i++) assert.equal((await pub('POST', url, form(i)))?.status, 200);
+  assert.equal((await pub('POST', url, form(13)))?.status, 429);
+  w.tick(3_600_000);
+  assert.equal((await pub('POST', url, form(14)))?.status, 200);
+});
+
+test('audit fixes: old demo cars are cleared before counting demo texts', async () => {
+  const w = world();
+  let purged = '';
+  w.deps.store.purgeJobs = async (shopId, before) => { purged = shopId + ' ' + before; };
+  assert.equal((await w.as(null)('POST', 'shop/demo/text', { phone: '555-201-7788', consent: true }))?.status, 200);
+  assert.match(purged, /^demo-shop 2026-11-04T/);
 });

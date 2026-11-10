@@ -268,10 +268,12 @@
     "exhaust-flex-pipe":"8985616", "exhaust-hanger":"8985616", "exhaust-manifold-gasket":"8985616", "catalytic-converter":"8985616",
     "ac-compressor":"3822938", "headlight-bulb":"15785276", "wheel-balance":"8986177", "wheel-stud":"8986177", "air-filter":"9381013"
   };
+  // The customer page may be in Spanish; the fixed wording follows it (repair names stay in English for now).
+  const tt = (t) => (window.tsT ? window.tsT(t) : t);
   function photoHtml(e) {
     const id = ENTRY_PHOTO[e.id] || GROUP_PHOTO[e.group];
     if (!id) return "";
-    return `<figure class="repair-photo"><img src="/repair-photos/${id}.jpg" alt="${PHOTO[id]}" loading="lazy" width="800" height="500"><figcaption>Example photo, not your vehicle · <a href="https://www.pexels.com/photo/${id}/" target="_blank" rel="noopener">Pexels</a></figcaption></figure>`;
+    return `<figure class="repair-photo"><img src="/repair-photos/${id}.jpg" alt="${PHOTO[id]}" loading="lazy" width="800" height="500"><figcaption>${tt("Example photo, not your vehicle")} · <a href="https://www.pexels.com/photo/${id}/" target="_blank" rel="noopener">Pexels</a></figcaption></figure>`;
   }
   for (const e of entries) { const drawn = e.illustration; e.drawn = drawn; e.illustration = () => photoHtml(e) + drawn(); }
   function matchEntries(item) {
@@ -283,13 +285,13 @@
   }
   // opts.photo === false leaves the photo out (when repairPhotoFor already shows it).
   window.repairGuideFor = (item, opts = {}) => matchEntries(item).map(e=>
-      `<details class="repair-details"><summary>${opts.photo === false ? "How it works" : "Photo and diagram"} · ${e.title}</summary>${opts.photo === false ? e.drawn() : e.illustration()}<a href="/repair-guide.html#${e.id}" target="_blank" rel="noopener">View larger diagram</a></details>`).join("");
+      `<details class="repair-details"><summary>${tt(opts.photo === false ? "How it works" : "Photo and diagram")} · ${e.title}</summary>${opts.photo === false ? e.drawn() : e.illustration()}<a href="/repair-guide.html#${e.id}" target="_blank" rel="noopener">${tt("View larger diagram")}</a></details>`).join("");
   /** A visible example photo of the part an estimate line or note is about, for the customer's page. */
   window.repairPhotoFor = (text, label = "What's being worked on") => {
     const e = matchEntries(text).find(x => ENTRY_PHOTO[x.id] || GROUP_PHOTO[x.group]);
     if (!e) return "";
     const id = ENTRY_PHOTO[e.id] || GROUP_PHOTO[e.group];
-    return `<figure class="repair-thumb"><img src="/repair-photos/${id}.jpg" alt="${PHOTO[id]}" loading="lazy" width="800" height="500"><figcaption><b>${label}:</b> ${e.title}<span>Example photo, not your vehicle</span></figcaption></figure>`;
+    return `<figure class="repair-thumb"><img src="/repair-photos/${id}.jpg" alt="${PHOTO[id]}" loading="lazy" width="800" height="500"><figcaption><b>${label}:</b> ${e.title}<span>${tt("Example photo, not your vehicle")}</span></figcaption></figure>`;
   };
   const list=document.getElementById("repair-library");
   if(!list) return;
