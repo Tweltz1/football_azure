@@ -9,14 +9,24 @@
     h1 { font-size: 1.7rem; letter-spacing: -0.02em; } h1 span { color: #15803d; }
     h2 { font-size: 1.1rem; margin-top: 1.6em; } a { color: #15803d; }
     @media (prefers-color-scheme: dark) { body { background: #11130f; color: #f1f2ec; } a, h1 span { color: #3fbf6c; } }
+    .app-bar { display: none; }
+    .in-app .app-bar { display: flex; position: sticky; top: 0; z-index: 5; margin: 0 -16px 8px; padding: calc(env(safe-area-inset-top, 0px) + 6px) 8px 6px; background: #f5f3ee; border-bottom: 1px solid #e3dfd4; }
+    .in-app body { margin-top: 0; }
+    .app-bar a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; font-weight: 650; text-decoration: none; }
+    @media (prefers-color-scheme: dark) { .in-app .app-bar { background: #11130f; border-color: #2e3229; } }
   </style>
+  <script>
+    // Opened straight inside the Curbsy app (not in its Terms/Privacy panel): show a way back to the app.
+    if (/JunkApp/.test(navigator.userAgent) && window.self === window.top) document.documentElement.className = 'in-app';
+  </script>
 </head>
 <body>
+  <nav class="app-bar"><a href="/junk">&lsaquo; Back to Curbsy</a></nav>
   <h1>Curb<span>sy</span> Privacy Policy</h1>
   <p>Curbsy lets neighbors give away things they don't need, for free. This page explains what the app collects and why. Last updated November 10, 2026.</p>
   <h2>What we collect</h2>
   <ul>
-    <li><strong>Account.</strong> When you sign in with Apple, Google or GitHub we receive your name, email address and an account ID. Other people only see your first name or display name.</li>
+    <li><strong>Account.</strong> When you sign in with Apple or Google we receive your name, email address and an account ID. Other people only see your first name or display name.</li>
     <li><strong>Location.</strong> Your phone's location is used to show items near you. When you post an item, its location is saved rounded to about 100 meters. Other people only see how far away an item is, never its address or exact spot. Browsing doesn't save your location on our servers.</li>
     <li><strong>"I'm on my way" trips.</strong> When you tap I'm on my way, the app sends your location about once a minute until you pick the item up, cancel, or the claim ends, including while the app is in the background (iOS shows the blue location indicator). We use it only to check you're heading to the item, and save only your distance to it. The person giving the item away sees that distance and a rough arrival time, never where you are. Tracking stops as soon as the trip ends.</li>
     <li><strong>Photos and listings.</strong> The photos, titles, descriptions and pickup notes you post are public to anyone using the app.</li>
