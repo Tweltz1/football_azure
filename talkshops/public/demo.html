@@ -240,7 +240,7 @@ a.btn.primary{color:var(--accent-fg)}
 .import-box{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
-<link rel="stylesheet" href="/saved-archive.css?v=11">
+<link rel="stylesheet" href="/saved-archive.css?v=12">
 <link rel="stylesheet" href="/theme.css?v=22">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
@@ -317,8 +317,9 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/walkthrough.js?v=6"></script>
 <script src="/workday.js?v=6"></script>
 <script src="/walkaround.js?v=3"></script>
-<script src="/grow.js?v=3"></script>
+<script src="/grow.js?v=4"></script>
 <script src="/repair-guide.js?v=4"></script>
+<script src="/est-groups.js?v=1"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
 const STAGES=[
@@ -359,6 +360,8 @@ const first=n=>String(n||"").split(" ")[0];
 const vehicleStr=j=>ShopDisplay.vehicle([j.vehicle.year,j.vehicle.make,j.vehicle.model].filter(Boolean).join(" "));
 const linkOf=j=>`${SHOP.domain}/s/${j.token}`;
 const WA_ANGLES=["front","front_right","right","rear_right","rear","rear_left","left","front_left"];
+// Same rule as the server: spell a repair like the one already on the estimate; null if it was already decided.
+const demoGroup=(j,v)=>{const g=String(v||"").trim().replace(/\s+/g," ").slice(0,60);if(!g)return "";const same=j.estimate.filter(e=>e.group&&e.group.toLowerCase()===g.toLowerCase());if(same.some(e=>e.status!=="pending"))return null;return same[0]?.group||g};
 const estTotal=(j,onlyApproved)=>j.estimate.filter(e=>!onlyApproved||e.status==="approved").reduce((a,e)=>a+Number(e.price),0);
 const contact=c=>c.channel==="email"?c.email:c.channel==="both"?c.phone+" · "+c.email:c.phone;
 const bayName=()=>SHOP.name+" Bay";
@@ -399,7 +402,7 @@ function seed(){
    mk("RO-1046",{name:"Ashley Kim",phone:"(555) 017-3381"},{year:2019,make:"Jeep",model:"Cherokee"},"8MRT551","Battery warning light on dash","checked_in",[["checked_in",12]],[]),
    mk("RO-1044",{name:"Lena Brooks",phone:"(555) 012-9047",email:"lena.brooks@example.com",channel:"both"},{year:2012,make:"Chevrolet",model:"Malibu"},"6BXC118","AC blowing warm air","diagnosing",[["checked_in",95],["diagnosing",34]],[]),
    mk("RO-1041",{name:"Maria Delgado",phone:"(555) 013-6620"},{year:2018,make:"Honda",model:"Civic"},"7KDL294","Grinding noise when braking","approval",[["checked_in",210],["diagnosing",170],["approval",48]],
-     [{id:1,item:"Front brake pads and rotors",price:389,status:"pending",priority:"required"},{id:2,item:"Brake fluid flush",price:119,status:"pending",priority:"recommended"}]),
+     MARIA_EST()),
    mk("RO-1042",{name:"James Whitaker",phone:"(555) 016-4402",email:"j.whitaker@example.com",channel:"email"},{year:2015,make:"Ford",model:"F-150"},"4TWE903","Check engine light, rough idle","parts",[["checked_in",1500],["diagnosing",1440],["approval",1380],["parts",1300]],
      [{id:1,item:"Ignition coils (6) and spark plugs",price:642,status:"approved",priority:"required"},{id:2,item:"Throttle body cleaning",price:95,status:"declined",priority:"optional"}],{eta:"Tue, Nov 10"}),
    mk("RO-1043",{name:"Priya Nair",phone:"(555) 011-7735"},{year:2020,make:"Toyota",model:"RAV4"},"9PLN227","60,000-mile service and timing cover oil leak","in_progress",[["checked_in",4.5*D],["diagnosing",4.4*D],["approval",4.3*D],["parts",4.1*D],["in_progress",150]],
@@ -442,6 +445,8 @@ function seed(){
   return {jobs,nextRO:1047,rates:SAMPLE_RATES.map(r=>({...r})),shop:{...SHOP}};
 }
 const KEY="talkshops-demo-v2";
+// Maria's front brake job is one repair (pads, rotors, labor) she approves as a whole, plus a separate fluid flush.
+function MARIA_EST(){return [{id:1,item:"Front brake pads",price:149,status:"pending",priority:"required",group:"Front brake job"},{id:3,item:"Front brake rotors (pair)",price:168,status:"pending",priority:"required",group:"Front brake job"},{id:4,item:"Front brake labor",price:72,status:"pending",priority:"required",group:"Front brake job"},{id:2,item:"Brake fluid flush",price:119,status:"pending",priority:"recommended"}]}
 let state;
 try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
 if(!state||!state.jobs||!state.rates)state=seed();
@@ -484,6 +489,8 @@ function growSamples(st){
   st.gr1=1;
 }
 if(!state.gr1){growSamples(state);try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+// Saved demos from before repairs could be grouped get Maria's grouped brake job once (if she hasn't decided yet).
+if(!state.grp1){const m=state.jobs.find(j=>j.ro==="RO-1041");if(m&&m.stage==="approval"&&m.estimate.length===2&&m.estimate.every(e=>e.status==="pending")&&m.estimate[0].item==="Front brake pads and rotors")m.estimate=MARIA_EST();state.grp1=1;try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
 if(state.shop)SHOP={...SHOP,...state.shop};
 const save=()=>{try{state.shop=SHOP;localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
 const startView=new URLSearchParams(location.search).get("view");
@@ -925,12 +932,13 @@ function customerView(j){
   const pending=j.stage==="approval"&&j.estimate.some(e=>e.status==="pending");
   let est="";
   if(j.estimate.length){
-    const items=[...j.estimate].sort((a,b)=>(PRI_ORDER[a.priority]??1)-(PRI_ORDER[b.priority]??1)).map(e=>{
+    const extras=lines=>(lines.map(e=>sampleIllustration(j,e)).find(Boolean)||"")+[...new Set(lines.map(e=>guide(e.item)))].join("");
+    const items=window.EstGroups.custList(j.estimate,{T,PRI,pending,draft:id=>ui.draft[j.id+"-"+id],extras},e=>{
       const d=ui.draft[j.id+"-"+e.id];
       const choice=pending&&e.status==="pending"?`<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d==="approved"}">${T("Approve")}</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d==="declined"}">${T("Decline")}</button></div>`
         :(e.status!=="pending"?`<span class="pill ${e.status==="approved"?"ok":"bad"}">${T(e.status==="approved"?"Approved":"Declined")}</span>`:"");
       const pri=e.priority&&PRI[e.priority]?`<div class="pri-line"><span class="pill pri ${PRI[e.priority].cls}">${T(PRI[e.priority].label)}</span><span>${T(PRI[e.priority].cust)}</span></div>`:"";
-      return `<div class="est-item pri-${esc(e.priority||"none")}"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${pri}${sampleIllustration(j,e)}${guide(e.item)}${choice}</div>`}).join("");
+      return `<div class="est-item pri-${esc(e.priority||"none")}"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${pri}${sampleIllustration(j,e)}${guide(e.item)}${choice}</div>`});
     const allChosen=j.estimate.filter(e=>e.status==="pending").every(e=>ui.draft[j.id+"-"+e.id]);
     const tot=pending?j.estimate.reduce((a,e)=>a+((ui.draft[j.id+"-"+e.id]??e.status)==="approved"?Number(e.price):0),0):estTotal(j,true);
     est=`<div class="c-card"><h3>${T("Estimate")}</h3>${items}<div class="total"><span>${T(pending?"Approved so far":"Approved total")}</span><span>${money(tot)}</span></div>
@@ -965,7 +973,7 @@ function sheetView(j){
   const idx=SI[j.stage];
   const steps=STAGES.map((s,i)=>`<button class="step ${i<idx?"done":""} ${i===idx?"current":""}" data-stage="${s.key}" ${i===idx?'aria-current="step"':""}>${s.label}</button>`).join("");
   const next=STAGES[idx+1];
-  const rows=j.estimate.map(e=>`<tr><td>${esc(e.item)}<div class="pri-cell">${e.status==="pending"?`<select class="pri-sel" data-pri="${e.id}" aria-label="Priority for ${esc(e.item)}">${priOptions(e.priority)}</select>`:priPill(e)}</div>${sampleIllustration(j,e)}${guide(e.item)}</td><td>${e.status==="pending"?'<span class="pill warn">Pending</span>':e.status==="approved"?'<span class="pill ok">Approved</span>':'<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status==="pending"&&j.stage!=="approval"?`<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>`:""}</td></tr>`).join("");
+  const rows=window.EstGroups.staffRows(j.estimate,(e,inGroup)=>`<tr${inGroup?' class="grp-line"':""}><td>${esc(e.item)}<div class="pri-cell">${e.status==="pending"?`<select class="pri-sel" data-pri="${e.id}" aria-label="Priority for ${esc(e.item)}">${priOptions(e.priority)}</select>${window.EstGroups.lineSelect(e,j.estimate)}`:priPill(e)}</div>${sampleIllustration(j,e)}${guide(e.item)}</td><td>${e.status==="pending"?'<span class="pill warn">Pending</span>':e.status==="approved"?'<span class="pill ok">Approved</span>':'<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status==="pending"&&j.stage!=="approval"?`<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>`:""}</td></tr>`);
   const msgs=j.messages.map(m=>`<div class="bubble ${m.dir}">${linkify(esc(m.text),j)}<span class="meta">${m.dir==="out"?(m.autoReply?"Auto-replied":chName(m)+" to customer"):esc(first(j.customer.name))} · ${dayClock(m.t)}</span></div>`).join("");
   const log=[...j.events].reverse().map(e=>`<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
   const live=!j.archivedAt;
@@ -989,7 +997,7 @@ function sheetView(j){
         <div class="est-add-h">Quick add</div>
         <form class="add-line" id="addLine"><span class="suggest-wrap"><input id="li-item" data-suggest="quick" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Type or pick a saved item" aria-label="Line item"><button type="button" class="suggest-btn" data-suggest-open aria-label="Show saved items">▾</button></span><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button>
           <label class="pri-pick">Priority<select id="li-pri">${priOptions(ui.lastPri)}</select></label>
-          <label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label></form>
+          <label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label>${window.EstGroups.addField(j.estimate,ui.lastGrp)}</form>
         <div class="est-add-or"><span>or</span></div>
         <button class="btn est-add-more" type="button" id="laborBtn">Add labor, parts or fees with hours and rates</button>
         ${window.Workday.estimatePackages(j)}
@@ -1138,12 +1146,13 @@ document.addEventListener("click",e=>{
   if(t.id==="laborBtn"){toast("In your shop, this opens the line editor: labor hours times your rate, part quantities, fees and percentages.");return}
   if(t.id==="rateTemplate"){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["name,type,rate\nTechnician labor,labor,125.00\nShop supplies,fee,12.50\nOil filter,part,16.00\n"],{type:"text/csv"}));a.download="shop-rates.csv";document.body.appendChild(a);a.click();a.remove();return}
   if(t.id==="ci-fill"){const v={name:"Sam Ortiz",phone:"(555) 019-4410",year:"2014",make:"Mazda",model:"CX-5",plate:"3CXF882",concern:"Squealing belt noise on cold start"};for(const k in v)$("#ci-"+k).value=v[k];$("#ci-consent").checked=true;return}
-  if(t.dataset.decide){const j=job(ui.custJob);ui.draft[j.id+"-"+t.dataset.decide]=t.dataset.v;const sig=$("#sig")?.value;if(sig!=null)ui.draft[j.id+"-sig"]=sig;render();return}
+  if(t.dataset.decide){const j=job(ui.custJob);for(const id of window.EstGroups.idsOf(t))ui.draft[j.id+"-"+id]=t.dataset.v;const sig=$("#sig")?.value;if(sig!=null)ui.draft[j.id+"-sig"]=sig;render();return}
   if(t.id==="submitApproval"){const j=job(ui.custJob);const sig=($("#sig").value||"").trim();
     if(sig.length<3){toast("Type your full name to sign");$("#sig").focus();return}
-    let yes=0;j.estimate.forEach(x=>{if(x.status==="pending"){x.status=ui.draft[j.id+"-"+x.id];if(x.status==="approved")yes++}});
+    j.estimate.forEach(x=>{if(x.status==="pending")x.status=ui.draft[j.id+"-"+x.id]});
+    const units=window.EstGroups.units(j.estimate),yes=units.filter(u=>u.status==="approved").length;
     j.approval={by:sig,t:Date.now()};
-    j.messages.push({dir:"in",t:Date.now(),text:`Approved ${yes} of ${j.estimate.length} items on the estimate (signed: ${sig}).`});
+    j.messages.push({dir:"in",t:Date.now(),text:`Approved ${yes} of ${units.length} items on the estimate (signed: ${sig}).`});
     save();toast("Sent to "+SHOP.name);render();return}
 });
 document.addEventListener("submit",e=>{
@@ -1197,7 +1206,8 @@ document.addEventListener("submit",e=>{
   if(f.id==="addLine"){const j=job(ui.openJob);const item=$("#li-item").value.trim();const price=parseFloat($("#li-price").value.replace(/[$,]/g,""));
     if(!item||!(price>=0)){toast("Enter an item and a price");return}
     const priority=ui.lastPri=$("#li-pri")?.value||"recommended";
-    j.estimate.push({id:Date.now(),item,price,status:"pending",priority});
+    const grp=demoGroup(j,ui.lastGrp=($("#li-grp")?.value||"").trim());if(grp===null){toast("That repair was already decided. Name a new one.");return}
+    j.estimate.push({id:Date.now(),item,price,status:"pending",priority,...(grp?{group:grp}:{})});
     if($("#li-save").checked&&!state.rates.some(r=>r.name.toLowerCase()===item.toLowerCase())){state.rates.push({name:item,kind:"part",rate:price});toast(`Saved "${item}" for next time`)}
     save();renderLayer();$("#li-item").focus({preventScroll:true});return}
   if(f.id==="replyForm"){const j=job(ui.openJob);const v=$("#replyIn").value.trim();if(!v)return;notify(j,v);save();renderLayer();toast("Message sent");return}
@@ -1214,6 +1224,8 @@ document.addEventListener("change",async e=>{
   if(e.target.id==="ci-channel")syncChannel();
   if(["ec-channel","ec-phone","ec-email"].includes(e.target.id)&&$("#ec-consent")){$("#ec-consent").checked=false;$("#ec-phone").required=$("#ec-channel").value!=="email";$("#ec-email").required=$("#ec-channel").value!=="sms";return}
   if(e.target.dataset?.teamRole){team.change(e.target,render);return}
+  if(ui.openJob&&window.EstGroups.onChange(e.target,(id,name)=>{const j=job(ui.openJob),x=j&&j.estimate.find(l=>String(l.id)===String(id));if(!x)return;const grp=demoGroup(j,name);if(grp===null){toast("That repair was already decided. Name a new one.");return}
+    if(grp)x.group=grp;else delete x.group;save();renderLayer();toast(grp?"Added to "+grp:"Line is on its own now")}))return;
   if(e.target.dataset?.pri&&ui.openJob){const j=job(ui.openJob),x=j&&j.estimate.find(l=>String(l.id)===e.target.dataset.pri);if(x){x.priority=e.target.value;save();renderLayer();toast("Priority updated")}return}
   if(e.target.id==="c-send")$("#c-text-wrap").hidden=!e.target.checked;
   if(e.target.name==="jobUrgency"){const j=job(ui.openJob);j.urgency=e.target.value;save();render();toast(j.urgency?"Urgency set to "+window.BayBoard.URGENCY[j.urgency][0]:"Urgency cleared");return}

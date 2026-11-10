@@ -35,6 +35,7 @@
     "Type your full name to sign": "Escriba su nombre completo para firmar", "Send my decision": "Enviar mi decisión",
     "Your signed decision goes straight to the shop.": "Su decisión firmada llega directo al taller.",
     "Choose approve or decline for each item.": "Elija aprobar o rechazar cada concepto.",
+    "One repair: these parts and labor go together, so you approve or decline them as one.": "Una sola reparación: estas piezas y la mano de obra van juntas, así que se aprueban o rechazan en conjunto.",
     "Signed by {0} on {1}": "Firmado por {0} el {1}",
     "Parts expected {0}.": "Piezas esperadas {0}.", "Total due {0}": "Total a pagar {0}", "Approved estimate {0}": "Presupuesto aprobado {0}", "Open {0}.": "Horario: {0}.",
     "Vehicle check-in": "Registro del vehículo", "Your details have been sent to the shop.": "Sus datos se enviaron al taller.",

@@ -1017,3 +1017,35 @@ test('answering a customer text saves a scrubbed copy for learning, unless the s
   await dan('POST', `shop/jobs/${id}/message`, { text: 'Yes!' });
   assert.equal(saved.length, 1);
 });
+
+test('parts and labor grouped into one repair are approved or declined together', async () => {
+  const { as } = world();
+  const dan = as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline' });
+  const job = (await dan('POST', 'shop/jobs', checkIn))?.body as { id: string; link: string };
+  const token = job.link.split('?c=')[1];
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Front brake pads', price: 189, priority: 'required', group: '  Front brake job ' });
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { charge: { name: 'Brake labor', kind: 'labor', rate: 120, qty: 1 }, group: 'front BRAKE job' });
+  await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Front rotors', price: 140 });
+  let est = ((await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Brake fluid flush', price: 119 }))?.body as { estimate: { id: string; group?: string }[] }).estimate;
+  assert.deepEqual(est.map((e) => e.group), ['Front brake job', 'Front brake job', undefined, undefined], 'spelling follows the first line');
+  est = ((await dan('POST', `shop/jobs/${job.id}/estimate`, { setGroup: est[2].id, group: 'Front brake job' }))?.body as { estimate: { id: string; group?: string }[] }).estimate;
+  assert.equal(est[2].group, 'Front brake job');
+  const [pads, labor, rotors, flush] = est.map((e) => e.id);
+
+  await dan('POST', `shop/jobs/${job.id}/stage`, { stage: 'approval', send: true, text: 'Please review' });
+  const page = (await as(null)('GET', `shop/c/${token}`))?.body as { estimate: { group?: string }[] };
+  assert.equal(page.estimate.filter((e) => e.group === 'Front brake job').length, 3, 'the customer page gets the repair names');
+
+  const customer = as(null);
+  const split = await customer('POST', `shop/c/${token}/decision`, { decisions: { [pads]: 'approved', [labor]: 'declined', [rotors]: 'approved', [flush]: 'declined' }, signature: 'Maria Delgado' });
+  assert.equal(split?.status, 400, 'a repair cannot be half approved');
+  const done = await customer('POST', `shop/c/${token}/decision`, { decisions: { [pads]: 'declined', [labor]: 'declined', [rotors]: 'declined', [flush]: 'approved' }, signature: 'Maria Delgado' });
+  assert.equal(done?.status, 200);
+  const view = (await dan('GET', `shop/jobs/${job.id}`))?.body as { estimate: { status: string }[]; messages: { text: string }[] };
+  assert.deepEqual(view.estimate.map((e) => e.status), ['declined', 'declined', 'declined', 'approved']);
+  assert.match(view.messages.at(-1)!.text, /Approved 1 of 2 items.*Declined required: Front brake job\./);
+
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/estimate`, { item: 'Caliper', price: 90, group: 'front brake job' }))?.status, 400, 'a decided repair stays closed');
+  assert.equal((await dan('POST', `shop/jobs/${job.id}/estimate`, { setGroup: pads, group: '' }))?.status, 400, 'decided lines stay put');
+});
