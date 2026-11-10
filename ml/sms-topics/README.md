@@ -22,3 +22,16 @@ answerable texts (74%, the old exact phrases got 1); wrong automatic replies 0. 
 
     node ml/sms-topics/train.mjs
     node --test supabase/tests/smsTopicModel.test.ts
+
+## Learning from real use (since 2026-11-10)
+
+Tyler chose: on by default, a shop can turn it off in Settings ("Help improve Talk Shops"; `repair_shops.learn_off`).
+When staff answer a customer's text, the API (`supabase/functions/_shared/learnTexts.ts`) saves the customer text
+with names, contact details, numbers and addresses removed, the sorter's guess, and whether staff sent the suggestion
+as is (`used`), edited it, or wrote their own. No shop, job or customer id is stored. Rows older than 12 months are
+deleted. Table: `talkshops_learn_texts` (service role only).
+
+`retrain.mjs` runs monthly (`.github/workflows/sms-sorter-retrain.yml`): it uses rows staff `used` or that someone
+labeled by hand (`label` column, set in the Supabase SQL editor), needs at least 100, retrains, and publishes only
+if the fresh test texts score at least as well with zero wrong automatic replies. It prints counts, never texts:
+this repo and its Actions logs are public, so real texts must never be committed or logged.

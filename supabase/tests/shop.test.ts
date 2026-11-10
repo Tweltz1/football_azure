@@ -991,3 +991,29 @@ test('CSV export: one row per repair and per customer, and formulas are neutrali
   assert.equal(rows.length, 2);
   assert.match(rows[1], /^Maria Delgado,\+15550136620,,English,Yes,2,/);
 });
+
+test('answering a customer text saves a scrubbed copy for learning, unless the shop turned it off', async () => {
+  const w = world();
+  const saved: unknown[] = [];
+  w.deps.store.learnText = async (row) => { saved.push(row); };
+  const dan = w.as('user-dan');
+  await dan('POST', 'shop/me', { name: 'Ridgeline Auto Repair', phone: '(555) 014-2290', hours: '7:30am-6pm' });
+  const id = ((await dan('POST', 'shop/jobs', checkIn))?.body as { id: string }).id;
+  const incoming = (text: string) => { const j = w.jobs.get(id)!; j.smsThread = [...(j.smsThread ?? []), { dir: 'in', channel: 'sms', incomingSms: true, t: new Date(Date.parse(j.updatedAt) + 1000).toISOString(), text }]; };
+  incoming('Hi this is Maria, any update on the Civic? 555-013-6620');
+  assert.equal((await dan('POST', `shop/jobs/${id}/message`, { text: 'Almost done, ready by 4!' }))?.status, 200);
+  assert.equal(saved.length, 1);
+  const row = saved[0] as { text: string; topic: string; outcome: string };
+  assert.doesNotMatch(row.text, /Maria|555|6620/);
+  assert.equal(typeof row.topic, 'string');
+  assert.equal(row.outcome, 'own');
+  assert.ok(!JSON.stringify(row).includes(id) && !JSON.stringify(row).includes('Ridgeline'));
+  // A message that is not an answer to a customer text saves nothing.
+  await dan('POST', `shop/jobs/${id}/message`, { text: 'Also your wipers are worn.' });
+  assert.equal(saved.length, 1);
+  // Turned off in Settings.
+  await dan('POST', 'shop/me', { name: 'Ridgeline Auto Repair', phone: '(555) 014-2290', hours: '7:30am-6pm', learnOff: true });
+  incoming('is it ready?');
+  await dan('POST', `shop/jobs/${id}/message`, { text: 'Yes!' });
+  assert.equal(saved.length, 1);
+});

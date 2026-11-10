@@ -340,17 +340,17 @@ interface ShopDb {
   brand?: Shop['brand'] | null; grow?: Shop['grow'] | null; booking_token?: string | null;
   packages?: Shop['packages'] | null;
   age_settings?: Shop['ageSettings'];
-  smart_topics:string[]; smart_schedule:Shop['smartSchedule'];
+  smart_topics:string[]; smart_schedule:Shop['smartSchedule']; learn_off?:boolean;
   rates: Shop['rates']; id: string; owner_id: string; name: string; phone: string; hours: string; email?: string | null; created_at: string;
   next_ro: number; plan: PlanState['plan']; plan_status: string | null; trial_ends_at: string | null; plan_interval: PlanState['interval'];
   period_end: string | null; stripe_customer_id: string | null; stripe_subscription_id: string | null; texts_used: number | null; texts_period: string | null;
 }
-const SHOP_COLUMNS = 'brand,grow,booking_token,packages,age_settings,smart_schedule,smart_topics,id, owner_id, name, phone, hours, email, rates, created_at, next_ro, plan, plan_status, trial_ends_at, plan_interval, period_end, stripe_customer_id, stripe_subscription_id, texts_used, texts_period';
+const SHOP_COLUMNS = 'learn_off,brand,grow,booking_token,packages,age_settings,smart_schedule,smart_topics,id, owner_id, name, phone, hours, email, rates, created_at, next_ro, plan, plan_status, trial_ends_at, plan_interval, period_end, stripe_customer_id, stripe_subscription_id, texts_used, texts_period';
 interface JobDb { smart_paused:boolean; sms_thread:JobData['messages']; intake: Job['intake']; intake_photos: Job['intakePhotos']; walkaround: Job['walkaround']; bill: Job['bill']; id: string; shop_id: string; token: string; stage: string; data: JobData; created_at: string; updated_at: string }
 
 const shopRow = (r: ShopDb): Shop => ({
   brand: r.brand ?? undefined, grow: r.grow ?? undefined, bookingToken: r.booking_token ?? null,
-  packages:r.packages ?? undefined,ageSettings:r.age_settings,smartSchedule:r.smart_schedule,smartTopics:r.smart_topics, id: r.id, ownerId: r.owner_id, rates: r.rates, name: r.name, phone: r.phone, hours: r.hours, email: r.email ?? '', createdAt: r.created_at,
+  packages:r.packages ?? undefined,ageSettings:r.age_settings,smartSchedule:r.smart_schedule,smartTopics:r.smart_topics, learnOff:!!r.learn_off, id: r.id, ownerId: r.owner_id, rates: r.rates, name: r.name, phone: r.phone, hours: r.hours, email: r.email ?? '', createdAt: r.created_at,
   plan: {
     plan: r.plan ?? null, status: r.plan_status ?? '', trialEndsAt: r.trial_ends_at, interval: r.plan_interval, periodEnd: r.period_end,
     stripeCustomerId: r.stripe_customer_id, stripeSubscriptionId: r.stripe_subscription_id,
@@ -378,6 +378,10 @@ export function createShopStore(db: SupabaseClient): ShopStore {
   return {
     shopByOwner: (ownerId) => oneShop('owner_id', ownerId),
     shopById: (id) => oneShop('id', id),
+    async learnText(row) {
+      const {error}=await db.rpc('talkshops_learn_add',{p_text:row.text,p_topic:row.topic,p_p:row.p,p_outcome:row.outcome});
+      if(error) throw error;
+    },
     async pauseSmart(id,paused) {
       const {error}=await db.from('repair_jobs').update({smart_paused:paused}).eq('id',id);
       if(error) throw error;
@@ -385,7 +389,7 @@ export function createShopStore(db: SupabaseClient): ShopStore {
     async putShop(shop) {
       const { error } = await db.from('repair_shops').upsert({
         ...(shop.brand!==undefined?{brand:shop.brand}:{}),...(shop.grow!==undefined?{grow:shop.grow}:{}),...(shop.bookingToken!==undefined?{booking_token:shop.bookingToken}:{}),
-        ...(shop.packages!==undefined?{packages:shop.packages}:{}),...(shop.ageSettings!==undefined?{age_settings:shop.ageSettings}:{}), ...(shop.smartSchedule!==undefined?{smart_schedule:shop.smartSchedule}:{}), ...(shop.smartTopics!==undefined?{smart_topics:shop.smartTopics}:{}), id: shop.id, owner_id: shop.ownerId, name: shop.name, phone: shop.phone, hours: shop.hours, email: shop.email ?? '', rates: shop.rates ?? [], created_at: shop.createdAt,
+        ...(shop.packages!==undefined?{packages:shop.packages}:{}),...(shop.ageSettings!==undefined?{age_settings:shop.ageSettings}:{}), ...(shop.smartSchedule!==undefined?{smart_schedule:shop.smartSchedule}:{}), ...(shop.smartTopics!==undefined?{smart_topics:shop.smartTopics}:{}), ...(shop.learnOff!==undefined?{learn_off:shop.learnOff}:{}), id: shop.id, owner_id: shop.ownerId, name: shop.name, phone: shop.phone, hours: shop.hours, email: shop.email ?? '', rates: shop.rates ?? [], created_at: shop.createdAt,
       });
       if (error) throw error;
     },

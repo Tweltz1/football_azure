@@ -3,6 +3,7 @@
 // link with a long random token that opens their car's page, where they can approve or decline work.
 
 import { classifyText } from './smsTopicModel.ts';
+import { learnRow, type LearnRow } from './learnTexts.ts';
 import { gsmText, smsSegments } from './smsFit.ts';
 import type { Ctx, Res } from './handlers.ts';
 import { salesRoute } from './shopSales.ts';
@@ -30,6 +31,8 @@ export interface Shop {
   ageSettings?: AgeSettings;
   smartSchedule?: { afterHours:boolean; zone:string; days:number[]; open:string; close:string; signature:string };
   smartTopics?: string[];
+  /** The shop turned off "Help improve Talk Shops" (learning from scrubbed customer texts). On by default. */
+  learnOff?: boolean;
   /** Quick services (oil change, tire rotation...): saved bundles of lines a counter can check in with one tap. */
   packages?: ServicePackage[];
   id: string;
@@ -140,6 +143,8 @@ export interface Job {
 
 export interface ShopStore extends Partial<BookingStore> {
   pauseSmart?(id:string,paused:boolean):Promise<void>;
+  /** Saves one scrubbed customer text for the text sorter's monthly retrain (no shop or customer attached). */
+  learnText?(row: LearnRow): Promise<void>;
   /** Repairs created at or after `since` without photos or messages, for results and export. */
   reportJobs?(shopId: string, since: string, limit: number): Promise<Job[]>;
   shopByOwner(ownerId: string): Promise<Shop | null>;
@@ -726,6 +731,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       const next: Shop = {
         brand, grow, bookingToken,
         ageSettings, smartTopics, smartSchedule, packages: packages ?? shop?.packages,
+        learnOff: body.learnOff === undefined ? shop?.learnOff : body.learnOff === true,
         id: shop?.id ?? ctx.newId(),
         ownerId: shop?.ownerId ?? ctx.userId, rates: rates.map(copyRate),
         name,
@@ -1004,12 +1010,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         intent=JSON.parse(response).intent;
       } catch { /* A human can still handle the message. */ }
     }
-    const link=deps.linkBase+job.token;
-    const draft=intent==='hours'&&shop.hours ? 'Our posted shop hours are '+shop.hours+'.' :
-      (intent==='approval'||intent==='link')&&job.data.estimate.length ? 'Please review the estimate and record your choices here: '+link :
-      intent==='status' ? 'You can see the latest recorded repair status here: '+link :
-      'Thanks for your message. Our team will check on that and get back to you.';
-    return ok({draft});
+    return ok({draft:smartDraft(intent,shop,job,deps.linkBase)});
   }
   if (action === 'smart-pause') {
     if (!canSmart(shop,ctx.now()) || !store.pauseSmart || typeof body.paused!=='boolean') return bad('Smart Replies is unavailable.');
@@ -1275,6 +1276,12 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   } else if (action === 'message') {
     const msg = str(body.text, 1000);
     if (!msg) return bad('Type a message.');
+    // Learning from real use: staff answering a customer's text. Scrubbed, with no shop, job or customer attached.
+    const last = jobOut(job, deps.linkBase).messages.at(-1);
+    if (last?.incomingSms && !shop.learnOff && store.learnText) {
+      const row = learnRow(last.text, msg, [last.suggestion ?? '', smartDraft(classifyText(last.text).topic, shop, job, deps.linkBase)]);
+      if (row) await store.learnText(row).catch((err) => ctx.log.warn('learn text', { error: String(err) }));
+    }
     d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map(m=>({...m,sender:ctx.displayName || ctx.userEmail || 'Shop staff',senderId:ctx.userId!})));
   } else {
     return { status: 404 };
@@ -1290,6 +1297,14 @@ async function settings(deps: ShopDeps): Promise<TrialSettings> {
   return (await deps.store.trialSettings?.().catch(() => null)) ?? DEFAULT_TRIAL;
 }
 
+/** The reply drafted for a customer text the sorter put under `intent`. */
+function smartDraft(intent: string, shop: Shop, job: Job, linkBase: string) {
+  const link = linkBase + job.token;
+  return intent === 'hours' && shop.hours ? 'Our posted shop hours are ' + shop.hours + '.' :
+    (intent === 'approval' || intent === 'link') && job.data.estimate.length ? 'Please review the estimate and record your choices here: ' + link :
+    intent === 'status' ? 'You can see the latest recorded repair status here: ' + link :
+    'Thanks for your message. Our team will check on that and get back to you.';
+}
 const canSmart = (s:Shop,now:Date) => s.plan?.plan==='pro' && ['active','past_due','trialing'].includes(s.plan.status) ||
   s.plan?.plan==='trial' && !!s.plan.trialEndsAt && Date.parse(s.plan.trialEndsAt)>now.getTime();
 /** Everyone who can be assigned a car: id and a short name. */
