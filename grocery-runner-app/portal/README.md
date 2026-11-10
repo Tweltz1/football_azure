@@ -32,6 +32,6 @@ Add `"check": true` to see how input is read without saving. Limits: 3,000 layou
 
 ## Hosting
 Supabase won't serve web pages, so the page must be hosted elsewhere as a plain static file
-It has no secrets in it. It is hosted on the Hood League Azure Static Web App as a copy at
-`frontend/public/stores/index.html` on `main` (deploys on push to main): after changing this file,
-copy it there too.
+It has no secrets in it. It is hosted at **hood-league.com/stores/** as a copy at `frontend/public/stores/index.html` on the
+live Hood League branch (`claude/project-thread-6lgsrr`, built by Cloudflare Pages). After changing this
+file, copy it there too.
