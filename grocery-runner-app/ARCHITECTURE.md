@@ -140,9 +140,17 @@ aisle label parsing, department guessing, stop order, grouping and the cold-last
 
 ## 4. Recipes
 
-- **Suggested recipes** (`src/lib/recipes.ts`): 16 weeknight recipes ship with the app, so they work offline
+- **Suggested recipes** (`src/lib/recipes.ts`): 30 weeknight recipes ship with the app, so they work offline
   and cost nothing. Opening one ticks every ingredient except pantry staples (salt, oil, ...) and things
   already on the list; "Add" puts the ticked items on the list, where aisles are looked up as usual.
+- **Pictures**: a scanned recipe keeps its photo (copied into the app's documents folder; only the file
+  name is stored, since iOS moves that folder between updates). A linked recipe uses the page's own
+  picture (schema.org `image` or `og:image`, https only). Built-in recipes show their emoji on a colored
+  tile: no food photos ship with the app, because stock photos need a license that covers app use.
+- **Filters** (`src/lib/diet.ts`): quick (30 min or less), healthy, family, one pot, slow cooker, grill and
+  breakfast are set by hand on built-in recipes. Vegetarian, gluten-free and dairy-free are worked out
+  from the ingredient names (with look-alikes such as corn tortillas, coconut milk and tamari allowed), so
+  scanned and linked recipes get them too. The screen reminds shoppers to check labels on packaged foods.
 - **Your recipes** (`src/app/scan.tsx`, `src/lib/readRecipe.ts`): read entirely on the phone, with no AI
   service and no API key (the same idea as Talk Shops' free price sheet reader).
   - Photo (camera or library): Apple's built-in text recognition (Vision `VNRecognizeTextRequest`, local
