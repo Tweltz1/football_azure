@@ -78,7 +78,7 @@ export function TermsSheet({ onDone, onCancel }) {
 
 /** "Contact Curbsy": questions, complaints and problem reports go to the person running the app. */
 /** appeal: true for "Appeal" (a ban, a strike, or with itemId a hidden listing). */
-export function ContactSheet({ onClose, appeal = false, itemId = null }) {
+export function ContactSheet({ onClose, appeal = false, itemId = null, business = false }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -90,7 +90,7 @@ export function ContactSheet({ onClose, appeal = false, itemId = null }) {
     setError('');
     try {
       if (appeal) await appealCurbsy(text.trim(), itemId);
-      else await contactCurbsy(text.trim());
+      else await contactCurbsy(business ? `[Advertise or partner] ${text.trim()}` : text.trim());
       setSent(true);
     } catch (err) {
       setError(err.message);
@@ -102,7 +102,7 @@ export function ContactSheet({ onClose, appeal = false, itemId = null }) {
     <div className="jk-sheet-backdrop" role="presentation" onClick={onClose}>
       <form className="jk-sheet" role="dialog" aria-modal="true" aria-label="Contact Curbsy" onClick={(e) => e.stopPropagation()} onSubmit={send}>
         <button type="button" className="jk-icon-btn jk-sheet-close" onClick={onClose} aria-label="Close"><IconClose /></button>
-        <h2>{appeal ? 'Appeal' : 'Contact Curbsy'}</h2>
+        <h2>{appeal ? 'Appeal' : business ? 'Advertise on Curbsy' : 'Contact Curbsy'}</h2>
         {sent ? (
           <>
             <p className="jk-muted">
@@ -115,6 +115,7 @@ export function ContactSheet({ onClose, appeal = false, itemId = null }) {
             <p className="jk-muted">
               {appeal
                 ? 'Think this was a mistake? Tell us what happened. A person reads every appeal.'
+                : business ? 'Run a junk hauling, moving, thrift or donation business? Tell us your business name, area, and the best way to reach you.'
                 : 'Report a person or a problem, or ask a question. To report a listing, you can also use the flag on its page.'}
             </p>
             <textarea className="jk-input jk-contact-text" value={text} onChange={(e) => setText(e.target.value)} rows={5} maxLength={2000} placeholder={appeal ? 'What happened?' : 'What\'s going on?'} aria-label="Message" />

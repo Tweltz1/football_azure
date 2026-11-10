@@ -1,14 +1,86 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { SignInPrompt, useJunk } from './JunkApp';
-import { deleteAccount, getMember, junkSignOut as signOut, myItems } from './junkApi';
+import { deleteAccount, deleteSavedSearch, getMember, junkSignOut as signOut, myItems, savedSearches } from './junkApi';
 import { ItemCard } from './Browse';
-import { IconBox, IconPlus } from './icons';
+import { IconBox, IconClose, IconPlus } from './icons';
 import { ContactSheet, StandingNotice } from './Safety';
 import { setSharesCrops, sharesCrops } from './learning';
+import { TipSheet } from './Plus';
+import { PLUS_PRICE, alertStatus, canBuy, restore, turnOnAlerts } from './store';
+import { CATEGORIES } from './device';
+
+const savedLabel = (s) => {
+  const cat = s.category && (CATEGORIES.find(([k]) => k === s.category) || [])[1];
+  return [s.q && `“${s.q}”`, cat].filter(Boolean).join(' in ') || 'Anything';
+};
+
+/** Curbsy Plus status, or the offer. */
+function PlusCard() {
+  const { plus, askPlus } = useJunk();
+  const on = !!(plus && plus.plus);
+  return (
+    <button type="button" className={`jk-plus-card${on ? ' is-on' : ''}`} onClick={() => askPlus('')}>
+      <span className="jk-plus-badge">Curbsy <b>Plus</b></span>
+      <strong>{on ? 'You\'re a Plus member' : 'Instant alerts, first look at new stuff, 100-mile search'}</strong>
+      <small>{on ? 'Manage your subscription' : `${PLUS_PRICE} a month · cancel anytime`}</small>
+    </button>
+  );
+}
+
+/** Saved searches: new matches since you last looked, and alerts for Plus members. */
+function SavedSearches() {
+  const { plus, askPlus } = useJunk();
+  const navigate = useNavigate();
+  const [list, setList] = useState(null);
+  const [alerts, setAlerts] = useState('none');
+  const [note, setNote] = useState('');
+  const on = !!(plus && plus.plus);
+  useEffect(() => {
+    savedSearches().then(setList).catch(() => setList([]));
+    alertStatus().then(setAlerts);
+  }, []);
+  if (!list || !list.length) return null;
+  const open = (s) => {
+    const p = new URLSearchParams({ ...(s.q ? { q: s.q } : {}), ...(s.category ? { category: s.category } : {}), saved: s.id });
+    navigate(`/junk?${p}`);
+  };
+  const remove = async (s) => {
+    setList((prev) => prev.filter((x) => x.id !== s.id));
+    await deleteSavedSearch(s.id).catch(() => {});
+  };
+  return (
+    <>
+      <div className="jk-list-head"><h2>Saved searches</h2></div>
+      <ul className="jk-saved">
+        {list.map((s) => (
+          <li key={s.id}>
+            <button type="button" className="jk-saved-open" onClick={() => open(s)}>
+              <strong>{savedLabel(s)}</strong>
+              <small>Within {s.miles} mi{s.newCount > 0 ? '' : ' · nothing new'}</small>
+            </button>
+            {s.newCount > 0 && <b className="jk-badge jk-saved-count">{s.newCount > 9 ? '9+' : s.newCount} new</b>}
+            <button type="button" className="jk-icon-btn" aria-label={`Delete saved search ${savedLabel(s)}`} onClick={() => remove(s)}><IconClose size={16} /></button>
+          </li>
+        ))}
+      </ul>
+      {note && <p className="jk-muted">{note}</p>}
+      {on && alerts !== 'granted' && alerts !== 'none' && (
+        <button type="button" className="jk-link" onClick={async () => { const r = await turnOnAlerts(); setNote(r.ok ? 'Alerts are on.' : r.reason); alertStatus().then(setAlerts); }}>
+          Turn on alerts for these
+        </button>
+      )}
+      {!on && (
+        <button type="button" className="jk-link" onClick={() => askPlus('Get a notification the moment a match is posted, and save up to 10 searches.')}>
+          Get instant alerts with Curbsy Plus
+        </button>
+      )}
+    </>
+  );
+}
 
 export default function Me() {
-  const { me, authLoading } = useJunk();
+  const { me, authLoading, setPlus } = useJunk();
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState(false);
@@ -17,6 +89,9 @@ export default function Me() {
   const [appeal, setAppeal] = useState(false);
   const [member, setMember] = useState(null);
   const [shareCrops, setShareCrops] = useState(sharesCrops);
+  const [tips, setTips] = useState(false);
+  const [business, setBusiness] = useState(false);
+  const [restoreNote, setRestoreNote] = useState('');
 
   useEffect(() => {
     if (!me) return;
@@ -60,6 +135,8 @@ export default function Me() {
 
       {error && <p className="jk-error">{error}</p>}
       <StandingNotice member={member} onAppeal={() => setAppeal(true)} />
+      <PlusCard />
+      <SavedSearches />
       <div className="jk-list-head"><h2>Your listings</h2><Link to="/junk/post" className="jk-chip"><IconPlus size={16} /> Post</Link></div>
       {items && items.length === 0 && (
         <div className="jk-empty jk-empty-small">
@@ -85,7 +162,25 @@ export default function Me() {
 
       <div className="jk-settings">
         <button type="button" className="jk-row-btn" onClick={() => signOut()}>Sign out</button>
+        <button type="button" className="jk-row-btn" onClick={() => setTips(true)}>💚 Support Curbsy with a tip</button>
+        {canBuy() && (
+          <button
+            type="button"
+            className="jk-row-btn"
+            onClick={async () => {
+              setRestoreNote('Checking…');
+              try {
+                const r = await restore();
+                if (r) setPlus(r);
+                setRestoreNote(r && r.plus ? 'Curbsy Plus is on.' : (r && r.note) || 'Nothing to restore for this Apple ID.');
+              } catch (err) { setRestoreNote(err.message); }
+            }}
+          >
+            Restore purchases{restoreNote && <small className="jk-row-note"> · {restoreNote}</small>}
+          </button>
+        )}
         <button type="button" className="jk-row-btn" onClick={() => setContact(true)}>Contact Curbsy</button>
+        <button type="button" className="jk-row-btn" onClick={() => setBusiness(true)}>Advertise your business on Curbsy</button>
         <a className="jk-row-btn" href="/junk-terms.html">Terms of Use</a>
         <a className="jk-row-btn" href="/junk-privacy.html">Privacy Policy</a>
         <button type="button" className="jk-row-btn jk-danger-text" onClick={() => setConfirm(true)}>Delete my account</button>
@@ -93,6 +188,8 @@ export default function Me() {
 
       {contact && <ContactSheet onClose={() => setContact(false)} />}
       {appeal && <ContactSheet appeal onClose={() => setAppeal(false)} />}
+      {business && <ContactSheet business onClose={() => setBusiness(false)} />}
+      {tips && <TipSheet onClose={() => setTips(false)} />}
       {confirm && (
         <div className="jk-sheet-backdrop" role="presentation" onClick={() => setConfirm(false)}>
           <div className="jk-sheet" role="dialog" aria-modal="true" aria-label="Delete account" onClick={(e) => e.stopPropagation()}>

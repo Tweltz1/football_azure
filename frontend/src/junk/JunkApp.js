@@ -1,8 +1,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { signIn, useAuth } from '../AuthContext';
 import { distanceLabel, lastSpot, locate } from './device';
-import { inbox as fetchInbox, myClaim } from './junkApi';
+import { getPlus, inbox as fetchInbox, myClaim } from './junkApi';
+import { onAlertOpen, onStoreUpdates, refreshAlerts, syncPurchases } from './store';
+import { PlusSheet } from './Plus';
 import { refreshTripToken, startTrip, stopTrip } from './trip';
 import { IconCar, IconChat, IconClose, IconGrid, IconPlus, IconUser } from './icons';
 import Browse from './Browse';
@@ -109,6 +111,9 @@ function Shell() {
   const [unread, setUnread] = useState(0);
   const [trip, setTrip] = useState(null); // { claim, item } for my latest "I'm on my way"
   const [dismissedTrip, setDismissedTrip] = useState(null);
+  const [plus, setPlus] = useState(null); // Curbsy Plus status from the server (see Plus.js)
+  const [plusReason, setPlusReason] = useState(null);
+  const navigate = useNavigate();
 
   const refreshSpot = useCallback(async () => {
     setLocating(true);
@@ -161,6 +166,23 @@ function Shell() {
 
   useEffect(() => { refreshTrip(); }, [refreshTrip]);
 
+  // Curbsy Plus: the phone's App Store subscriptions are sent to the server on sign-in (renewals and
+  // cancellations included), then the server says what's unlocked.
+  const refreshPlus = useCallback(async () => {
+    try {
+      setPlus((await syncPurchases().catch(() => null)) || await getPlus());
+    } catch (error) { /* keep what we had */ }
+  }, []);
+  useEffect(() => {
+    if (!me) { getPlus().then(setPlus).catch(() => {}); return undefined; }
+    refreshPlus();
+    return onStoreUpdates((next) => { if (next) setPlus(next); });
+  }, [me, refreshPlus]);
+  const isPlus = !!(plus && plus.plus);
+  useEffect(() => { if (me && isPlus) refreshAlerts().catch(() => {}); }, [me, isPlus]);
+  // A tapped saved-search alert opens the listing.
+  useEffect(() => onAlertOpen((path) => navigate(path)), [navigate]);
+
   // While a claim is open: keep the position going to the server and check on it every 20 seconds.
   const tripOpen = !!(trip && trip.claim && trip.claim.open);
   useEffect(() => {
@@ -177,7 +199,9 @@ function Shell() {
   const value = useMemo(() => ({
     me, authLoading: loading, spot, spotError, locating, refreshSpot, radiusMi, setRadiusMi,
     askSignIn: (reason) => setSignInReason(reason || ''), refreshUnread, trip, setTrip, refreshTrip,
-  }), [me, loading, spot, spotError, locating, refreshSpot, radiusMi, refreshUnread, trip, refreshTrip]);
+    plus, setPlus, refreshPlus, askPlus: (reason) => setPlusReason(reason || ''),
+    maxMiles: (plus && plus.maxMiles) || 25,
+  }), [me, loading, spot, spotError, locating, refreshSpot, radiusMi, refreshUnread, trip, refreshTrip, plus, refreshPlus]);
 
   const showTrip = trip && trip.claim && dismissedTrip !== trip.claim.id ? trip : null;
 
@@ -197,6 +221,7 @@ function Shell() {
         <TripBanner trip={showTrip} onDismiss={() => setDismissedTrip(trip.claim.id)} />
         <TabBar unread={unread} />
         {signInReason !== null && !me && <SignInSheet reason={signInReason} onClose={() => setSignInReason(null)} />}
+        {plusReason !== null && <PlusSheet reason={plusReason} onClose={() => setPlusReason(null)} />}
       </div>
     </JunkContext.Provider>
   );

@@ -71,7 +71,7 @@ export async function photoToJpeg(file) {
   }
 }
 
-export const MILES = [1, 5, 10, 25, 50];
+export const MILES = [1, 5, 10, 25, 50, 100];
 export const milesToKm = (mi) => mi * 1.609344;
 
 export function distanceLabel(km) {
