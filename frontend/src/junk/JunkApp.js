@@ -6,7 +6,7 @@ import { getPlus, inbox as fetchInbox, myClaim } from './junkApi';
 import { onAlertOpen, onStoreUpdates, refreshAlerts, syncPurchases } from './store';
 import { PlusSheet } from './Plus';
 import { refreshTripToken, startTrip, stopTrip } from './trip';
-import { IconCar, IconChat, IconClose, IconGrid, IconPlus, IconUser } from './icons';
+import { IconBack, IconCar, IconChat, IconClose, IconGrid, IconPlus, IconUser } from './icons';
 import Browse from './Browse';
 import ItemPage from './ItemPage';
 import PostItem from './PostItem';
@@ -40,13 +40,33 @@ function SignInSheet({ reason, onClose }) {
           <button type="button" className="jk-provider" onClick={() => signIn('google')}>
             <span className="jk-g" aria-hidden="true">G</span> Continue with Google
           </button>
-          <button type="button" className="jk-provider" onClick={() => signIn('github')}>Continue with GitHub</button>
         </div>
         <p className="jk-legal">
           By continuing you agree to the <a href="/junk-terms.html">Terms</a> and <a href="/junk-privacy.html">Privacy Policy</a>.
           No hateful, illegal or unsafe items.
         </p>
       </div>
+    </div>
+  );
+}
+
+// The Terms and Privacy pages are plain web pages (they're also the App Store's links). Opening one used to
+// replace the whole app with no way back, so inside the app they open in this full-screen panel instead,
+// with a Done button that always returns to where you were.
+const LEGAL_PAGE = /^\/junk-(terms|privacy)\.html$/;
+
+function LegalPanel({ src, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div className="jk-legal-panel" role="dialog" aria-modal="true" aria-label="Terms and Privacy">
+      <div className="jk-legal-bar">
+        <button type="button" className="jk-legal-done" onClick={onClose}><IconBack size={20} /> Back to Curbsy</button>
+      </div>
+      <iframe className="jk-legal-frame" src={src} title="Terms and Privacy" />
     </div>
   );
 }
@@ -114,6 +134,24 @@ function Shell() {
   const [plus, setPlus] = useState(null); // Curbsy Plus status from the server (see Plus.js)
   const [plusReason, setPlusReason] = useState(null);
   const navigate = useNavigate();
+  const [legal, setLegal] = useState(null); // Terms or Privacy page open in the panel
+  const closeLegal = useCallback(() => setLegal(null), []);
+
+  // Any Terms or Privacy link in the app (sign-in, Me, the Terms check, Curbsy Plus…) opens the panel.
+  useEffect(() => {
+    const onClick = (e) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (!a) return;
+      let url;
+      try { url = new URL(a.getAttribute('href'), window.location.href); } catch (error) { return; }
+      if (url.origin !== window.location.origin || !LEGAL_PAGE.test(url.pathname)) return;
+      e.preventDefault();
+      setLegal(url.pathname + url.hash);
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, []);
 
   const refreshSpot = useCallback(async () => {
     setLocating(true);
@@ -222,6 +260,7 @@ function Shell() {
         <TabBar unread={unread} />
         {signInReason !== null && !me && <SignInSheet reason={signInReason} onClose={() => setSignInReason(null)} />}
         {plusReason !== null && <PlusSheet reason={plusReason} onClose={() => setPlusReason(null)} />}
+        {legal && <LegalPanel src={legal} onClose={closeLegal} />}
       </div>
     </JunkContext.Provider>
   );

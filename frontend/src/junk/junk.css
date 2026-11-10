@@ -443,7 +443,39 @@
   background: var(--jk-surface);
   animation: jk-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.jk-sheet { max-height: calc(100vh - var(--jk-safe-top) - 12px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .jk-sheet h2 { font-size: 22px; font-weight: 800; }
+
+/* Terms / Privacy panel (see LegalPanel in JunkApp.js): always has a way back. */
+.jk-legal-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: var(--jk-bg);
+  animation: jk-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.jk-legal-bar {
+  display: flex;
+  align-items: center;
+  padding: calc(var(--jk-safe-top) + 6px) 12px 6px;
+  border-bottom: 1px solid var(--jk-line);
+  background: var(--jk-surface);
+}
+.jk-legal-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  --b: none; background: var(--b);
+  color: var(--jk-accent);
+  font: inherit;
+  font-weight: 650;
+}
+.jk-legal-frame { flex: 1; width: 100%; border: 0; background: var(--jk-bg); }
 .jk-sheet-close { position: absolute; top: 14px; right: 14px; box-shadow: none; --b: var(--jk-surface-2); background: var(--b); }
 .jk-sheet-mark {
   display: grid;
@@ -837,3 +869,18 @@ body.jk-body::before { background: #f5f3ee; }
 .jk-hauler-row small { display: block; color: var(--jk-ink-2); font-size: 13px; }
 .jk-hauler-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .jk-hauler-actions .jk-chip { text-decoration: none; }
+/* Preview before posting */
+.jk-preview-flag {
+  align-self: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.jk-preview-note { padding: 10px 14px; border-radius: 12px; background: var(--jk-accent-soft); color: var(--jk-ink); font-size: 14px; font-weight: 600; }
+.jk-preview-card-wrap { display: grid; gap: 6px; }
+.jk-preview-card { width: calc(50% - 6px); max-width: 220px; pointer-events: none; }

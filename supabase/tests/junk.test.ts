@@ -159,11 +159,12 @@ function world(detection: JunkDetection | null = null) {
   };
   const joined = new Map<string, string>();
   let phone: string | null = null;
+  const providers = new Map<string, string>();
   const call = (who: string | null, method: string, path: string, body?: unknown, query: Record<string, unknown> = {}) => {
     clock += 60_000;
     const ctx = {
       userCreatedAt: who ? joined.get(who) ?? '2026-01-01T00:00:00Z' : null,
-      userProvider: who ? 'apple' : null,
+      userProvider: who ? providers.get(who) ?? 'apple' : null,
       deviceId: phone,
       userId: who, displayName: who === ALICE ? 'Alice' : who === BOB ? 'Bob' : 'Carl',
       now: () => new Date(clock), newId: () => `00000000-0000-4000-8000-${String(++seq).padStart(12, '0')}`,
@@ -185,7 +186,7 @@ function world(detection: JunkDetection | null = null) {
     if (saved && !fields.fresh) saved.createdAt = new Date(Date.parse(saved.createdAt) - 20 * 60_000).toISOString();
     return out;
   };
-  return { plusRows, tips, saved, tokens, partners, taps, pushed, call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
+  return { plusRows, tips, saved, tokens, partners, taps, pushed, call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, providers, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -904,4 +905,13 @@ test('haulers and sponsors: shown by area, taps are logged, and Plus members ski
     { partnerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', userId: ALICE, itemId: item.id },
     { partnerId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', userId: null, itemId: null },
   ]);
+});
+
+test('GitHub sign-ins keep new-account limits (Curbsy is Apple or Google only)', async () => {
+  const w = world();
+  w.providers.set(CARL, 'github');
+  for (let k = 0; k < 3; k++) await w.post(CARL, { title: `Chair ${k}` });
+  const up = await w.call(CARL, 'POST', 'junk/photos', { image: JPEG });
+  const res = await w.call(CARL, 'POST', 'junk/items', { title: 'Chair 4', photos: [(up?.body as { path: string }).path], ...HOME });
+  assert.equal(res?.status, 429);
 });

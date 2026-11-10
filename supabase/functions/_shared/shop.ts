@@ -58,7 +58,24 @@ export interface Shop {
 export const PRIORITIES = ['required', 'recommended', 'optional'] as const;
 export type Priority = typeof PRIORITIES[number];
 const priorityOf = (v: unknown): Priority => (PRIORITIES as readonly unknown[]).includes(v) ? v as Priority : 'recommended';
-export interface EstimateLine { id: string; item: string; price: number; status: 'pending' | 'approved' | 'declined'; charge?: Charge; priority?: Priority }
+/** `group` names one repair (e.g. "Front brake job"): its lines are approved or declined together. */
+export interface EstimateLine { id: string; item: string; price: number; status: 'pending' | 'approved' | 'declined'; charge?: Charge; priority?: Priority; group?: string }
+const groupOf = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').slice(0, 60) : '');
+/** A repair name for a new or moved line, spelled like the repair already on the estimate; null if that repair was already decided. */
+const groupOn = (estimate: EstimateLine[], v: unknown): { group?: string } | null => {
+  const g = groupOf(v);
+  if (!g) return {};
+  const same = estimate.filter((e) => e.group && e.group.toLowerCase() === g.toLowerCase());
+  if (same.some((e) => e.status !== 'pending')) return null;
+  return { group: same[0]?.group ?? g };
+};
+const DECIDED_GROUP = 'That repair was already decided. Name a new one.';
+/** Decision units: each named repair once, each ungrouped line on its own. */
+const decisionUnits = (lines: EstimateLine[]) => {
+  const units = new Map<string, EstimateLine[]>();
+  for (const e of lines) { const k = e.group ? 'g:' + e.group.toLowerCase() : 'l:' + e.id; units.set(k, [...(units.get(k) ?? []), e]); }
+  return [...units.values()];
+};
 export interface Photo { id: string; src: string; cap: string; stage?: Stage; addedAt?: string; source?: 'customer' }
 export interface StageEvent { stage: Stage; t: string }
 type Channel = 'sms' | 'email';
@@ -563,14 +580,14 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         const v = decisions[e.id];
         if (v !== 'approved' && v !== 'declined') return bad('Choose approve or decline for each item.');
       }
-      let yes = 0;
-      for (const e of pending) {
-        e.status = decisions[e.id] as 'approved' | 'declined';
-        if (e.status === 'approved') yes++;
-      }
+      // Parts and labor grouped into one repair are decided together.
+      const units = decisionUnits(pending);
+      if (units.some((u) => u.some((e) => decisions[e.id] !== decisions[u[0].id]))) return bad('Approve or decline each repair as a whole.');
+      for (const e of pending) e.status = decisions[e.id] as 'approved' | 'declined';
+      const yes = units.filter((u) => u[0].status === 'approved').length;
       job.data.approval = { by: signature, t: now };
-      const declinedRequired = pending.filter((e) => e.status === 'declined' && e.priority === 'required').map((e) => e.item);
-      job.data.messages.push({ dir: 'in', t: now, text: `Approved ${yes} of ${pending.length} items on the estimate (signed: ${signature}).${declinedRequired.length ? ` Declined required: ${declinedRequired.join(', ')}.` : ''}` });
+      const declinedRequired = units.filter((u) => u[0].status === 'declined' && u.some((e) => e.priority === 'required')).map((u) => u[0].group || u[0].item);
+      job.data.messages.push({ dir: 'in', t: now, text: `Approved ${yes} of ${units.length} items on the estimate (signed: ${signature}).${declinedRequired.length ? ` Declined required: ${declinedRequired.join(', ')}.` : ''}` });
       job.updatedAt = now;
       await store.putJob(job);
       return ok(cOut(job));
@@ -1166,11 +1183,21 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const u = urgencyOf(body.urgency);
     if (u) d.urgency = u; else delete d.urgency;
   } else if (action === 'estimate') {
+    const addGroup = groupOn(d.estimate, body.group);
+    if (!addGroup) return bad(DECIDED_GROUP);
     if (body.setPriority) {
       const line = d.estimate.find((e) => e.id === body.setPriority);
       if (!line) return bad('That line is not on the estimate.');
       if (line.status !== 'pending') return bad('Only lines waiting on a decision can change.');
       line.priority = priorityOf(body.priority);
+    } else if (body.setGroup) {
+      // Put a line into a named repair (or back on its own) so the customer approves the parts together.
+      const line = d.estimate.find((e) => e.id === body.setGroup);
+      if (!line) return bad('That line is not on the estimate.');
+      if (line.status !== 'pending') return bad('Only lines waiting on a decision can change.');
+      const g = groupOn(d.estimate, body.group);
+      if (!g) return bad(DECIDED_GROUP);
+      if (g.group) line.group = g.group; else delete line.group;
     } else if (body.remove) {
       const before = d.estimate.length;
       d.estimate = d.estimate.filter((e) => !(e.id === body.remove && e.status === 'pending'));
@@ -1179,18 +1206,18 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       // A saved quick service added to a car that's already in: all its lines, waiting on the customer like any other.
       const pkg = (shop.packages ?? []).find((p) => p.id === body.package);
       if (!pkg) return bad('That quick service is no longer saved.');
-      for (const r of pkg.lines) d.estimate.push({ id: ctx.newId(), item: r.name, price: lineCents(r) / 100, status: 'pending', charge: { ...copyRate(r), qty: r.qty }, priority: priorityOf(body.priority) });
+      for (const r of pkg.lines) d.estimate.push({ id: ctx.newId(), item: r.name, price: lineCents(r) / 100, status: 'pending', charge: { ...copyRate(r), qty: r.qty }, priority: priorityOf(body.priority), ...addGroup });
     } else if (body.charge !== undefined) {
       const r = body.charge;
       if (!validCharge(r)) return bad('Check the description, quantity and rate.');
       if (body.save === true) await rememberRates(store, shop, [r]);
-      d.estimate.push({ id: ctx.newId(), item: r.name.trim(), price: lineCents(r) / 100, status: 'pending', charge: { ...copyRate(r), qty: r.qty }, priority: priorityOf(body.priority) });
+      d.estimate.push({ id: ctx.newId(), item: r.name.trim(), price: lineCents(r) / 100, status: 'pending', charge: { ...copyRate(r), qty: r.qty }, priority: priorityOf(body.priority), ...addGroup });
     } else {
       const item = str(body.item, 120);
       const price = Number(body.price);
       if (!item || !Number.isFinite(price) || price < 0 || price > 1_000_000) return bad('Enter an item and a price.');
       if (body.save === true) await rememberRates(store, shop, [{ name: item, kind: 'part', rate: Math.round(price * 100) / 100 }]);
-      d.estimate.push({ id: ctx.newId(), item, price: Math.round(price * 100) / 100, status: 'pending', priority: priorityOf(body.priority) });
+      d.estimate.push({ id: ctx.newId(), item, price: Math.round(price * 100) / 100, status: 'pending', priority: priorityOf(body.priority), ...addGroup });
     }
   } else if (action === 'remove-photo') {
     const id = str(body.id, 100);

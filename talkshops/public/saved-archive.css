@@ -110,3 +110,15 @@
 .import-note .import-how .linkbtn{font-weight:650}
 .notice.prices-hint{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
 .notice.prices-hint span{flex:1 1 260px}
+/* Repairs: estimate lines grouped so the customer approves them together (est-groups.js) */
+.grp-pick{display:inline-flex;align-items:center;gap:6px;margin-left:8px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.grp-pick select,.grp-pick input{border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px;font-weight:400;max-width:210px}
+.add-line .grp-add{grid-column:1/-1;margin-left:0;font-size:13px}
+.add-line .grp-add input{flex:1;max-width:320px}
+table.est tr.grp-head td{background:var(--surface-2);border-bottom:0;padding-top:10px}
+table.est tr.grp-head .grp-sub{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+table.est tr.grp-line td:first-child{padding-left:16px;border-left:3px solid var(--line-strong)}
+.est-group .grp-note{margin:4px 0 6px;font-size:12.5px;color:var(--muted)}
+.est-group .grp-lines{list-style:none;margin:0;padding:6px 0 2px;border-top:1px dashed var(--line)}
+.est-group .grp-lines li{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:2px 0;color:var(--muted)}
+@media(max-width:540px){.grp-pick{margin-left:0;margin-top:6px;display:flex}}
