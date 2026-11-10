@@ -84,12 +84,20 @@ jobs:
       - name: Download the item namer
         working-directory: ios-junk-app
         env:
-          NAMER: item-namer-v1
+          # item-namer-current is the newest namer that passed the check in item-namer-promote.yml (phones
+          # also download it from there between app updates); item-namer-v1 is the fallback.
+          NAMERS: item-namer-current item-namer-v1
         run: |
           mkdir -p models
-          base="https://github.com/${{ github.repository }}/releases/download/$NAMER"
-          if curl -fsSL --retry 3 -o models/namer.f32 "$base/namer.f32" && curl -fsSL --retry 3 -o models/namer-labels.json "$base/labels.json"; then
-            echo "Got $NAMER ($(wc -c < models/namer.f32) bytes)"
+          got=""
+          for NAMER in $NAMERS; do
+            base="https://github.com/${{ github.repository }}/releases/download/$NAMER"
+            if curl -fsSL --retry 3 -o models/namer.f32 "$base/namer.f32" && curl -fsSL --retry 3 -o models/namer-labels.json "$base/labels.json"; then
+              got="$NAMER"; break
+            fi
+          done
+          if [ -n "$got" ]; then
+            echo "Got $got ($(wc -c < models/namer.f32) bytes)"
           else
             rm -f models/namer.f32 models/namer-labels.json
             echo "::warning::Item namer not downloaded; this build names things with Apple's labels only"

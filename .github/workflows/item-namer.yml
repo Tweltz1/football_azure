@@ -1,5 +1,7 @@
-# Trains the item namer (ml/item-namer): a Create ML image classifier that names each thing the phone
-# finds in a photo, for Curbsy and ToteTrack. Optionally publishes it as release item-namer-vN.
+# Trains the item namer (ml/item-namer): softmax weights over Apple Vision feature prints that name each thing
+# the phone finds in a photo, for Curbsy and ToteTrack, including name fixes people sent from the apps.
+# Optionally publishes it as release item-namer-vN, and makes it the one phones use (item-namer-current) when
+# it's at least as good. item-namer-weekly.yml on main starts it every week.
 name: Item namer
 
 on:
@@ -19,7 +21,7 @@ on:
         description: Only the N biggest kinds (0 = all), for quick runs
         default: '0'
       version:
-        description: Release version number (publishes item-namer-vN); leave empty to only train
+        description: Release version number (publishes item-namer-vN, auto = the next one); leave empty to only train
         default: ''
 
 permissions:
@@ -114,12 +116,26 @@ jobs:
             ml/item-namer/out/fixes.json
 
       - name: Publish the model
+        id: publish
         if: ${{ steps.s.outputs.version != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="item-namer-v${{ steps.s.outputs.version }}"
+          v="${{ steps.s.outputs.version }}"
+          if [ "$v" = "auto" ]; then
+            last=$(gh api "repos/${{ github.repository }}/releases?per_page=100" --jq '.[].tag_name' | sed -n 's/^item-namer-v\([0-9]*\)$/\1/p' | sort -n | tail -1)
+            v=$(( ${last:-0} + 1 ))
+          fi
+          tag="item-namer-v$v"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           gh release create "$tag" out/namer.f32 out/labels.json out/metrics.json \
-            --title "Item namer v${{ steps.s.outputs.version }}" \
+            --title "Item namer v$v" \
             --notes "Names each thing the phone finds in a photo, for Curbsy and ToteTrack. Softmax weights over Apple Vision feature prints (revision 2), trained on LVIS (CC BY 4.0) and Open Images (CC BY 4.0, photos CC BY 2.0) crops. $(cat out/metrics.json | tr -d '\n')" \
             --target "${{ github.sha }}"
+
+      # Phones switch to it (release item-namer-current) only if it's at least as good when it's sure.
+      - name: Let phones use it if it's better
+        if: ${{ steps.publish.outputs.tag != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 promote.py --dir out --tag "${{ steps.publish.outputs.tag }}"
