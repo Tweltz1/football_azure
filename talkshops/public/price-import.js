@@ -171,8 +171,54 @@ window.createPriceImport = ({ api }) => {
     acc = 0; for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > px.length * 0.01) { hi = v; break; } }
     const span = Math.max(1, hi - lo), img = c.getContext("2d").createImageData(W, H);
     for (let i = 0; i < px.length; i++) { const v = Math.min(255, Math.max(0, (px[i] - lo) * 255 / span)); img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v; img.data[i * 4 + 3] = 255; }
+    eraseLeaders(img.data, W, H);
     c.getContext("2d").putImageData(img, 0, 0);
     return c;
+  }
+  /**
+   * Dotted leaders ("Oil change ........ $49.95") and ruled lines are the worst thing on a photographed price list:
+   * OCR reads them as long runs of junk letters and often swallows the "$" and decimal point next to them. Find the
+   * dark blobs; erase rows of 4+ small dots or dashes sitting on one line, and long thin lines. A lone dot (a decimal
+   * point) or hyphen is kept. Works on the RGBA data in place.
+   */
+  function eraseLeaders(data, W, H) {
+    const dark = new Uint8Array(W * H);
+    for (let i = 0; i < dark.length; i++) dark[i] = data[i * 4] < 200 ? 1 : 0;
+    const label = new Int32Array(W * H), blobs = [], stack = [];
+    for (let s = 0; s < dark.length; s++) {
+      if (!dark[s] || label[s]) continue;
+      const b = { x0: W, y0: H, x1: 0, y1: 0, n: 0, id: blobs.length + 1 };
+      label[s] = b.id; stack.push(s);
+      while (stack.length) {
+        const i = stack.pop(), x = i % W, y = (i - x) / W;
+        b.n++; if (x < b.x0) b.x0 = x; if (x > b.x1) b.x1 = x; if (y < b.y0) b.y0 = y; if (y > b.y1) b.y1 = y;
+        for (const j of [i - 1, i + 1, i - W, i + W]) if (j >= 0 && j < dark.length && dark[j] && !label[j] && Math.abs((j % W) - x) <= 1) { label[j] = b.id; stack.push(j); }
+      }
+      blobs.push(b);
+    }
+    // Typical letter height: the median height of blobs that look like letters.
+    const hs = blobs.filter((b) => b.n >= 20 && b.y1 - b.y0 >= 6 && b.y1 - b.y0 < H / 15).map((b) => b.y1 - b.y0 + 1).sort((a, b) => a - b);
+    if (hs.length < 20) return;
+    // Leaders can outnumber letters, so take the median of blobs at least half as tall as the tall ones.
+    const tall = hs[Math.floor(hs.length * 0.9)], letters = hs.filter((h) => h >= tall * 0.5);
+    const th = letters[letters.length >> 1];
+    const erase = new Set();
+    const small = blobs.filter((b) => { const h = b.y1 - b.y0 + 1, w = b.x1 - b.x0 + 1; return h <= th * 0.36 && w <= th * 1.0 && b.n >= 2; });
+    for (const b of blobs) { const h = b.y1 - b.y0 + 1, w = b.x1 - b.x0 + 1; if (h <= th * 0.35 && w >= th * 4) erase.add(b.id); }
+    // Rows of small marks: sort by the middle of each mark, then walk left to right along each line.
+    small.sort((a, b) => (a.y0 + a.y1) - (b.y0 + b.y1) || a.x0 - b.x0);
+    const used = new Set();
+    for (const a of small) {
+      if (used.has(a.id)) continue;
+      const cy = (a.y0 + a.y1) / 2, run = [a];
+      const row = small.filter((b) => !used.has(b.id) && Math.abs((b.y0 + b.y1) / 2 - cy) <= th * 0.3 && b !== a).sort((p, q) => p.x0 - q.x0);
+      let last = a;
+      for (const b of row) { if (b.x0 <= last.x1) continue; if (b.x0 - last.x1 > th * 1.2) { if (run.length >= 4) break; run.length = 0; } run.push(b); last = b; }
+      if (run.length >= 4) for (const b of run) { erase.add(b.id); used.add(b.id); }
+      used.add(a.id);
+    }
+    if (!erase.size) return;
+    for (let i = 0; i < label.length; i++) if (label[i] && erase.has(label[i])) { const k = i * 4; data[k] = data[k + 1] = data[k + 2] = 255; }
   }
   // Tesseract settings; the bench (talkshops/bench) can try others through window.PRICE_OCR_PARAMS.
   const OCR_PARAMS = {};

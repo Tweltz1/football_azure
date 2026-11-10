@@ -8,7 +8,7 @@ import path from 'node:path';
 
 const [outDir = 'bench-out', nyplFile, countArg = '200'] = process.argv.slice(2);
 fs.mkdirSync(outDir, { recursive: true });
-let seed = 42;
+let seed = Number(process.env.BENCH_SEED) || 42; // BENCH_SEED=7 makes a fresh set to check tuning against
 const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 const between = (lo, hi) => lo + rnd() * (hi - lo);
