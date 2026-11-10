@@ -18,16 +18,13 @@ export default function RootLayout() {
           headerBackButtonDisplayMode: 'minimal',
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'Shop Stride' }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, title: 'Shop Stride' }} />
         <Stack.Screen name="route" options={{ title: 'Your route' }} />
         <Stack.Screen name="store" options={{ presentation: 'modal', title: 'Choose store' }} />
-        <Stack.Screen name="map" options={{ presentation: 'modal', title: 'Stores near you' }} />
         <Stack.Screen name="item/[id]" options={{ presentation: 'modal', title: 'Where is it?' }} />
         <Stack.Screen name="aisle-scan" options={{ presentation: 'modal', title: 'Aisles from screenshots' }} />
-        <Stack.Screen name="recipes" options={{ title: 'Recipes' }} />
         <Stack.Screen name="recipe/[id]" options={{ title: 'Recipe' }} />
         <Stack.Screen name="scan" options={{ presentation: 'modal', title: 'Add a recipe' }} />
-        <Stack.Screen name="suggest" options={{ title: 'Where to shop' }} />
       </Stack>
     </DataProvider>
   );

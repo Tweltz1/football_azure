@@ -100,7 +100,7 @@ export default function StoreScreen() {
   return (
     <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
       {backendConfigured && (
-        <Button title="Find stores on a map" icon="map" onPress={() => router.push('/map')} />
+        <Button title="Find stores on a map" icon="map" onPress={() => router.dismissTo('/stores?view=map')} />
       )}
       <SectionTitle>Or pick by ZIP</SectionTitle>
       <View style={styles.chips}>

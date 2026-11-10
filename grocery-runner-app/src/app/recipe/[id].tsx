@@ -44,7 +44,7 @@ export default function RecipeScreen() {
 
   const add = (then: 'list' | 'suggest') => {
     addItems(chosen.map((it) => ({ name: it.item, amount: it.amount })));
-    if (then === 'suggest') router.push('/suggest');
+    if (then === 'suggest') router.dismissTo('/stores?view=compare');
     else router.dismissTo('/');
   };
 
