@@ -15,9 +15,6 @@ on:
       min_class:
         description: Leave out kinds with fewer examples than this
         default: '15'
-      iterations:
-        description: Training iterations
-        default: '25'
       limit_classes:
         description: Only the N biggest kinds (0 = all), for quick runs
         default: '0'
@@ -48,7 +45,6 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "per_class=${{ inputs.per_class }}" >> "$GITHUB_OUTPUT"
             echo "min_class=${{ inputs.min_class }}" >> "$GITHUB_OUTPUT"
-            echo "iterations=${{ inputs.iterations }}" >> "$GITHUB_OUTPUT"
             echo "limit_classes=${{ inputs.limit_classes }}" >> "$GITHUB_OUTPUT"
             echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
           else
@@ -89,19 +85,21 @@ jobs:
             echo "No SUPABASE_ACCESS_TOKEN: training without name fixes"
           fi
 
-      - name: Train with Create ML
-        env:
-          MODEL_VERSION: ${{ steps.s.outputs.version || 'trial' }}
+      - name: Feature prints (Apple Vision)
+        run: swift features.swift crops feats
+
+      - name: Train the namer
         run: |
-          swift train.swift crops out "${{ steps.s.outputs.iterations }}"
-          cp crops/labels.json out/
+          . .venv/bin/activate
+          pip install --quiet numpy
+          python fit.py --feats feats --crops crops --out out
           ls -l out
 
       - uses: actions/upload-artifact@v4
         with:
           name: item-namer
           path: |
-            ml/item-namer/out/ItemNamer.mlmodel
+            ml/item-namer/out/namer.f32
             ml/item-namer/out/labels.json
             ml/item-namer/out/metrics.json
             ml/item-namer/out/fixes.json
@@ -112,7 +110,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="item-namer-v${{ steps.s.outputs.version }}"
-          gh release create "$tag" out/ItemNamer.mlmodel out/labels.json out/metrics.json \
+          gh release create "$tag" out/namer.f32 out/labels.json out/metrics.json \
             --title "Item namer v${{ steps.s.outputs.version }}" \
-            --notes "Names each thing the phone finds in a photo, for Curbsy and ToteTrack. Create ML image classifier trained on LVIS (CC BY 4.0) crops. $(cat out/metrics.json | tr -d '\n')" \
+            --notes "Names each thing the phone finds in a photo, for Curbsy and ToteTrack. Softmax weights over Apple Vision feature prints (revision 2), trained on LVIS (CC BY 4.0) crops. $(cat out/metrics.json | tr -d '\n')" \
             --target "${{ github.sha }}"
