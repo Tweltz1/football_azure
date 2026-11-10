@@ -117,3 +117,28 @@ test('our item namer names a thing when it is sure, and Apple names it otherwise
   expect(things.map((t) => t.title)).toEqual(['Pliers', 'Battery']);
   expect(things[0].source).toBe('namer');
 });
+
+test('a finished post teaches every changed name, and kept guesses too when pictures are shared', () => {
+  const { namesToTeach } = require('./learning');
+  const items = [
+    { guess: { title: 'Suitcase', category: 'other' }, title: 'Tape measure', category: 'tools' },
+    { guess: { title: 'Lamp', category: 'home' }, title: 'Lamp', category: 'home' },
+    { guess: null, title: 'Chair', category: 'furniture' },
+    { guess: { title: 'Box', category: 'home' }, title: '  ', category: 'home' },
+  ];
+  expect(namesToTeach(items, false).map((f) => f.title)).toEqual(['Tape measure']);
+  expect(namesToTeach(items, true).map((f) => f.title)).toEqual(['Tape measure', 'Lamp']);
+});
+
+test('the phone uses your own name for a guess after you give it that name twice', () => {
+  const { rememberNames, myName } = require('./learning');
+  window.localStorage.clear();
+  const fix = { guess: { title: 'Suitcase', category: 'other' }, title: 'Tool chest 2', category: 'tools' };
+  rememberNames([fix]);
+  expect(myName({ title: 'Suitcase', category: 'other' }).title).toBe('Suitcase');
+  rememberNames([fix]);
+  const named = myName({ title: 'Suitcase', category: 'other', box: { x: 0, y: 0, w: 1, h: 1 } });
+  expect(named).toMatchObject({ title: 'Tool chest', category: 'tools', source: 'you', original: 'Suitcase' });
+  expect(myName({ title: 'Lamp', category: 'home' }).title).toBe('Lamp');
+  window.localStorage.clear();
+});

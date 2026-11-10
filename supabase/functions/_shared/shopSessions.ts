@@ -16,19 +16,31 @@ export interface SessionStore {
   end(userId: string, sessionId: string | null, keep: string | null): Promise<number>;
   /** Devices signed in per login, for the owner's Team list. */
   counts(userIds: string[]): Promise<Record<string, number>>;
+  /** Why a device was signed out (kept 30 days), looked up when Supabase turns its token down. */
+  endedReason?(sessionId: string): Promise<EndReason | null>;
 }
+export type EndReason = 'limit' | 'idle' | 'owner' | 'others';
 
 export const SESSION_ENDED = 'session_ended';
+const LIMIT = `You were signed out here because this login was signed in on another device. Each login works on ${MAX_DEVICES} devices at a time, so everyone on the team needs their own login.`;
 const MESSAGES: Record<string, string> = {
-  ended: `You were signed out on this device. Each login can be used on ${MAX_DEVICES} devices at a time, and it was signed in somewhere else (or an owner signed it out).`,
+  ended: LIMIT,
+  limit: LIMIT,
   idle: `You were signed out because this device wasn't used for ${IDLE_DAYS} days.`,
+  owner: 'A shop owner signed this login out on all devices. Sign in again to keep working.',
+  others: 'This login was signed out here from another device (Sign Out My Other Devices).',
   rejected: 'Your sign-in ended. Please sign in again.',
 };
-export const sessionEnded = (why: 'ended' | 'idle' | 'rejected'): Res => ({ status: 401, body: { code: SESSION_ENDED, reason: why, message: MESSAGES[why] } });
+export const sessionEnded = (why: Claim | EndReason | 'rejected'): Res => ({ status: 401, body: { code: SESSION_ENDED, reason: why, message: MESSAGES[why] } });
 
 /** Checks this request's device. A response means stop: the device was signed out. Fails open if the check breaks. */
 export async function checkDevice(ctx: Ctx, sessions: SessionStore | null | undefined): Promise<Res | null> {
-  if (!ctx.userId) return ctx.signInRejected ? sessionEnded('rejected') : null;
+  if (!ctx.userId) {
+    if (!ctx.signInRejected) return null;
+    // The token's session id is unverified here; it only picks which message to show.
+    const why = ctx.sessionId && sessions?.endedReason ? await sessions.endedReason(ctx.sessionId).catch(() => null) : null;
+    return sessionEnded(why ?? 'rejected');
+  }
   if (!sessions || !ctx.sessionId) return null;
   try {
     const r = await sessions.claim(ctx.userId, ctx.sessionId, ctx.userAgent ?? '');

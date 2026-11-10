@@ -4,6 +4,7 @@ import AuthenticationServices
 import CoreLocation
 import Vision
 import CoreML
+import CryptoKit
 import StoreKit
 import UserNotifications
 
@@ -185,6 +186,10 @@ public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "classify", returnType: CAPPluginReturnPromise),
     ]
 
+    override public func load() {
+        ItemVisionPlugin.checkForNewerNamer()
+    }
+
     private static let modelName = "YOLOv3Tiny"
     private static var detector: VNCoreMLModel?
     private static var detectorTried = false
@@ -222,19 +227,97 @@ public class ItemVisionPlugin: CAPPlugin, CAPBridgedPlugin {
     private static var namerKinds: [[String: Any]] = []
     private static var namerTried = false
 
+    /// The namer the phone downloaded last (newer than the app's own copy), in Application Support.
+    private static func downloadedNamerDir() -> URL? {
+        guard let base = try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                                      appropriateFor: nil, create: true) else { return nil }
+        return base.appendingPathComponent("item-namer", isDirectory: true)
+    }
+
+    /// Reads weights + labels and checks they fit together (one column per kind, Apple feature print + bias rows).
+    private static func readNamer(_ wURL: URL, _ lURL: URL) -> ([Float], [[String: Any]])? {
+        guard let blob = try? Data(contentsOf: wURL),
+              let kinds = (try? JSONSerialization.jsonObject(with: Data(contentsOf: lURL))) as? [[String: Any]],
+              !kinds.isEmpty, blob.count % (4 * kinds.count) == 0, blob.count / (4 * kinds.count) > 1 else { return nil }
+        return (blob.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }, kinds)
+    }
+
     private static func loadNamer() -> Bool {
         lock.lock()
         defer { lock.unlock() }
         if namerTried { return !namerKinds.isEmpty }
         namerTried = true
+        // A newer namer downloaded by checkForNewerNamer() wins over the one built into the app.
+        if let dir = downloadedNamerDir(),
+           let got = readNamer(dir.appendingPathComponent("namer.f32"), dir.appendingPathComponent("namer-labels.json")) {
+            (namerWeights, namerKinds) = got
+            return true
+        }
         guard let wURL = Bundle.main.url(forResource: "namer", withExtension: "f32", subdirectory: "public/models"),
               let lURL = Bundle.main.url(forResource: "namer-labels", withExtension: "json", subdirectory: "public/models"),
-              let blob = try? Data(contentsOf: wURL),
-              let kinds = (try? JSONSerialization.jsonObject(with: Data(contentsOf: lURL))) as? [[String: Any]],
-              !kinds.isEmpty, blob.count % (4 * kinds.count) == 0 else { return false }
-        namerWeights = blob.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
-        namerKinds = kinds
+              let got = readNamer(wURL, lURL) else { return false }
+        (namerWeights, namerKinds) = got
         return true
+    }
+
+    /// Where retrained namers are published (see .github/workflows/item-namer-promote.yml). Only versions that
+    /// did at least as well as the one before get there.
+    private static let namerFeed = "https://github.com/Tweltz1/football_azure/releases/download/item-namer-current/"
+    private static var namerChecked = false
+
+    private static func sha256(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Once per launch, in the background: if a newer namer is published, download it, check its fingerprint
+    /// and shape, and use it from the next launch on. Any failure keeps the current one.
+    static func checkForNewerNamer() {
+        lock.lock()
+        if namerChecked { lock.unlock(); return }
+        namerChecked = true
+        lock.unlock()
+        guard let feed = URL(string: namerFeed) else { return }
+        let session = URLSession(configuration: .ephemeral)
+        func get(_ name: String, _ done: @escaping (Data?) -> Void) {
+            session.dataTask(with: feed.appendingPathComponent(name)) { data, response, _ in
+                let ok = ((response as? HTTPURLResponse)?.statusCode ?? 0) == 200
+                done(ok ? data : nil)
+            }.resume()
+        }
+        get("manifest.json") { data in
+            guard let data, let m = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+                  let wantW = m["namerSha256"] as? String, let wantL = m["labelsSha256"] as? String else { return }
+            // The app's own copy is the published one: drop any older download and use the app's.
+            let fm = FileManager.default
+            if let u = Bundle.main.url(forResource: "namer", withExtension: "f32", subdirectory: "public/models"),
+               let d = try? Data(contentsOf: u), sha256(d) == wantW {
+                if let dir = downloadedNamerDir() { try? fm.removeItem(at: dir) }
+                return
+            }
+            // Already downloaded?
+            if let dir = downloadedNamerDir(), let d = try? Data(contentsOf: dir.appendingPathComponent("namer.f32")),
+               sha256(d) == wantW { return }
+            get("namer.f32") { w in
+                guard let w, sha256(w) == wantW else { return }
+                get("labels.json") { l in
+                    guard let l, sha256(l) == wantL, let dir = downloadedNamerDir() else { return }
+                    let tmp = dir.appendingPathComponent("incoming", isDirectory: true)
+                    try? fm.removeItem(at: tmp)
+                    guard (try? fm.createDirectory(at: tmp, withIntermediateDirectories: true)) != nil,
+                          (try? w.write(to: tmp.appendingPathComponent("namer.f32"))) != nil,
+                          (try? l.write(to: tmp.appendingPathComponent("namer-labels.json"))) != nil,
+                          readNamer(tmp.appendingPathComponent("namer.f32"), tmp.appendingPathComponent("namer-labels.json")) != nil
+                    else { return }
+                    // Used from the next launch on (swapping the loaded one mid-scan isn't worth the risk).
+                    lock.lock()
+                    for f in ["namer.f32", "namer-labels.json"] {
+                        try? fm.removeItem(at: dir.appendingPathComponent(f))
+                        try? fm.moveItem(at: tmp.appendingPathComponent(f), to: dir.appendingPathComponent(f))
+                    }
+                    lock.unlock()
+                }
+            }
+        }
     }
 
     /// The namer's best guesses for one part of the photo (Vision coordinates), or nil.

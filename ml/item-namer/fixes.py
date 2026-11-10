@@ -101,7 +101,9 @@ def main():
             new_kinds.append(title)
     json.dump(labels, open(labels_path, 'w'), indent=1)
 
-    pairs = Counter((f['guess_title'] or f['guess_label'], re.sub(r'\s+\d+$', '', f['final_title'].strip())) for f in fixes)
+    # Mix-ups only (people who share pictures also send the guesses they kept, which only add photos).
+    pairs = Counter(p for p in ((f['guess_title'] or f['guess_label'], re.sub(r'\s+\d+$', '', f['final_title'].strip())) for f in fixes)
+                    if norm(p[0]) != norm(p[1]))
     report = {
         'fixes': len(fixes),
         'with_picture': sum(1 for f in fixes if f.get('crop')),

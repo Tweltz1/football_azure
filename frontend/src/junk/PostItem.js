@@ -8,7 +8,7 @@ import { appleDetect, hasAppleDetection } from './appleLabels';
 import { BackButton } from './ItemPage';
 import PieceThumb from './PieceThumb';
 import PostPreview from './PostPreview';
-import { sendFixes, wasFixed } from './learning';
+import { namesToTeach, rememberNames, sendFixes } from './learning';
 import { IconCamera, IconClose, IconPin, IconSparkle } from './icons';
 
 const MAX_PHOTOS = 6;
@@ -249,9 +249,9 @@ export default function PostItem() {
       };
       const item = editing ? await updateItem(id, fields) : await createItem({ ...fields, lat: spot.lat, lng: spot.lng });
       if (!editing && guessPhoto.current) {
-        const fixes = multi
-          ? named.filter((p) => wasFixed(p.guess, p.title, p.category)).map((p) => ({ guess: p.guess, title: p.title.trim(), category: p.category }))
-          : wasFixed(guessRef.current, form.title, form.category) ? [{ guess: guessRef.current, title: form.title.trim(), category: form.category }] : [];
+        const finished = multi ? named : [{ guess: guessRef.current, title: form.title, category: form.category }];
+        rememberNames(finished);
+        const fixes = namesToTeach(finished);
         if (fixes.length) sendFixes(fixes, guessPhoto.current);
       }
       navigate(`/junk/item/${item.id}`, { replace: true });

@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
       playerPool: getInitialPlayerPool,
       fetchJson,
       userId: user?.id ?? null,
-      sessionId: user?.sessionId ?? null,
+      sessionId: user?.sessionId ?? (sentToken(req) ? tokenSessionId((req.headers.get('Authorization') ?? '').slice(7)) : null),
       userAgent: (req.headers.get('User-Agent') ?? '').slice(0, 300),
       signInRejected: !user && sentToken(req),
       displayName: user?.displayName ?? null,
