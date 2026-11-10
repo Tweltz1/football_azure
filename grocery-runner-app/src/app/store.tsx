@@ -19,7 +19,8 @@ const slug = (s: string) =>
 export default function StoreScreen() {
   const t = useTheme();
   const { setStore } = useData();
-  const [chain, setChain] = useState<StoreChain>('kroger');
+  // Kroger only when its lookup is switched on; otherwise start on Walmart so the ZIP picker works.
+  const [chain, setChain] = useState<StoreChain>('walmart');
   const [status, setStatus] = useState<BackendStatus | null>(null);
   const [zip, setZip] = useState('');
   const [results, setResults] = useState<FoundStore[] | null>(null);
@@ -29,7 +30,13 @@ export default function StoreScreen() {
   const [aisles, setAisles] = useState('24');
 
   useEffect(() => {
-    if (backendConfigured) backendStatus().then(setStatus).catch(() => {});
+    if (backendConfigured)
+      backendStatus()
+        .then((s) => {
+          setStatus(s);
+          if (s.kroger) setChain((c) => (c === 'walmart' ? 'kroger' : c));
+        })
+        .catch(() => {});
   }, []);
 
   const label = CHAINS.find((c) => c.chain === chain)!.label;
