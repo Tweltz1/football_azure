@@ -784,3 +784,4 @@ body.jk-body::before { background: #f5f3ee; }
 .jk-share-trip { display: block; margin-top: 6px; font-size: 14px; }
 .jk-bubble-warn { display: block; font-size: 12px; margin-top: 4px; color: var(--jk-warn, #b26b00); }
 .jk-pill-verified { background: var(--jk-accent-soft); color: var(--jk-accent); font-weight: 700; }
+.jk-learn-toggle { margin-top: 28px; }

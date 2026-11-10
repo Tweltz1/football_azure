@@ -7,6 +7,7 @@ import {
   type JunkDetection, type JunkDeps, type JunkItem, type JunkMessage, type JunkStore,
 } from '../functions/_shared/junk.ts';
 import type { JunkClaim } from '../functions/_shared/junkClaims.ts';
+import type { JunkLabelFix } from '../functions/_shared/junk.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 const ALICE = '11111111-1111-4111-8111-111111111111';
@@ -31,6 +32,7 @@ function world(detection: JunkDetection | null = null) {
     [ALICE, BOB, CARL].map((id) => [id, { termsAt: '2026-11-01T00:00:00Z', bannedAt: null }]),
   );
   const feedback: { userId: string; body: string; createdAt: string }[] = [];
+  const labelFixes: JunkLabelFix[] = [];
   const devices = new Map<string, { banned: boolean; at: string }>();
   const isOpen = (c: JunkClaim) => c.status === 'active' || c.status === 'arrived';
   let clock = Date.parse('2026-11-08T15:00:00Z');
@@ -86,6 +88,7 @@ function world(detection: JunkDetection | null = null) {
       const paths = [...uploads.filter((u) => u.userId === userId).map((u) => u.path)];
       for (const [id, i] of items) if (i.ownerId === userId) items.delete(id);
       for (let k = messages.length - 1; k >= 0; k--) if (messages[k].fromId === userId || messages[k].toId === userId) messages.splice(k, 1);
+      for (let k = labelFixes.length - 1; k >= 0; k--) if (labelFixes[k].userId === userId) labelFixes.splice(k, 1);
       return paths;
     },
     async member(userId) { const m = members.get(userId); return m ? clone(m) : null; },
@@ -102,6 +105,8 @@ function world(detection: JunkDetection | null = null) {
     async touchMember(userId, joinedAt, provider) { members.set(userId, { termsAt: null, bannedAt: null, ...members.get(userId), joinedAt, provider } as never); },
     async addFeedback(f) { feedback.push({ userId: f.userId, body: f.body, createdAt: f.createdAt }); },
     async countFeedbackSince(userId, since) { return feedback.filter((f) => f.userId === userId && f.createdAt >= since).length; },
+    async addLabelFix(f) { labelFixes.push(clone(f)); },
+    async countLabelFixesSince(userId, since) { return labelFixes.filter((f) => f.userId === userId && f.createdAt >= since).length; },
   };
   const deps: JunkDeps = {
     store,
@@ -137,7 +142,7 @@ function world(detection: JunkDetection | null = null) {
     assert.equal(res?.status, 200, String(res?.body));
     return res!.body as { id: string; photos: string[] };
   };
-  return { call, post, items, stored, messages, deletedAccounts, claims, members, feedback, joined, devices, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
+  return { call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -609,6 +614,26 @@ test('Contact Curbsy saves the message, a few a day', async () => {
   assert.equal((await w.call(BOB, 'POST', 'junk/contact', { body: 'One more' }))?.status, 429);
   assert.equal(w.feedback.length, 5);
   assert.equal((await w.call(null, 'POST', 'junk/contact', { body: 'Hi' }))?.status, 401);
+});
+
+test('name fixes are saved for retraining, the item picture only when sent, and go with the account', async () => {
+  const w = world();
+  const guess = { label: 'suitcase', title: 'Suitcase', source: 'detector', confidence: 0.62 };
+  assert.equal((await w.call(null, 'POST', 'junk/labels', { guess, title: 'Tape measure' }))?.status, 401);
+  assert.equal((await w.call(BOB, 'POST', 'junk/labels', { guess, title: '' }))?.status, 400);
+  assert.equal((await w.call(BOB, 'POST', 'junk/labels', { guess, title: 'Tape measure', crop: 'not a jpeg' }))?.status, 400);
+  let res = await w.call(BOB, 'POST', 'junk/labels', { guess, title: 'Tape measure', category: 'tools' });
+  assert.deepEqual(res?.body, { saved: true });
+  res = await w.call(BOB, 'POST', 'junk/labels', { app: 'totetrack', guess, title: 'Box fan', crop: 'data:image/jpeg;base64,/9j/4AAQSkZJRg==' });
+  assert.deepEqual(res?.body, { saved: true });
+  assert.equal(w.labelFixes.length, 2);
+  assert.equal(w.labelFixes[0].crop, null);
+  assert.equal(w.labelFixes[0].guessLabel, 'suitcase');
+  assert.equal(w.labelFixes[0].finalCategory, 'tools');
+  assert.equal(w.labelFixes[1].app, 'totetrack');
+  assert.equal(w.labelFixes[1].crop, '/9j/4AAQSkZJRg==');
+  await w.call(BOB, 'DELETE', 'junk/account');
+  assert.equal(w.labelFixes.length, 0);
 });
 
 test('the pickup address stays private until someone is coming, and addresses can\'t go in the public text', async () => {

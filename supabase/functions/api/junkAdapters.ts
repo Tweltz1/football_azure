@@ -149,6 +149,7 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_uploads').delete().eq('user_id', userId));
       must(await db.from('junk_claims').delete().or(`claimer_id.eq.${userId},owner_id.eq.${userId}`));
       must(await db.from('junk_feedback').delete().eq('user_id', userId));
+      must(await db.from('junk_label_fixes').delete().eq('user_id', userId));
       // Phones stay on record when banned, so a deleted-and-remade account can't come back on the same phone.
       must(await db.from('junk_devices').delete().eq('user_id', userId).eq('banned', false));
       // A ban outlives the account's data (a deleted account can't come back under the same id anyway).
@@ -186,6 +187,17 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
     },
     async countFeedbackSince(userId, since) {
       const { count, error } = await db.from('junk_feedback').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    async addLabelFix(f) {
+      must(await db.from('junk_label_fixes').insert({
+        id: f.id, user_id: f.userId, app: f.app, guess_label: f.guessLabel, guess_title: f.guessTitle, guess_source: f.guessSource,
+        guess_confidence: f.guessConfidence, final_title: f.finalTitle, final_category: f.finalCategory, crop: f.crop, created_at: f.createdAt,
+      }));
+    },
+    async countLabelFixesSince(userId, since) {
+      const { count, error } = await db.from('junk_label_fixes').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since);
       if (error) throw error;
       return count ?? 0;
     },

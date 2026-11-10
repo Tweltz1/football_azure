@@ -90,3 +90,14 @@ test('every separate thing in a photo, named from its own part, even kinds the d
   expect(things.find((t) => t.title === 'Tape measure').box.x).toBeCloseTo(0.56);
   expect(things.find((t) => t.title === 'Tool').category).toBe('tools');
 });
+
+test('only real name or category changes count as fixes for the learning loop', () => {
+  const { wasFixed } = require('./learning');
+  const guess = { title: 'Suitcase', category: 'other' };
+  expect(wasFixed(guess, 'Tape measure', 'tools')).toBe(true);
+  expect(wasFixed(guess, 'suitcase', 'other')).toBe(false);
+  expect(wasFixed({ title: 'Battery', category: 'electronics' }, 'Battery 2', 'electronics')).toBe(false);
+  expect(wasFixed(guess, 'Suitcase', 'clothing')).toBe(true);
+  expect(wasFixed(null, 'Chair', 'furniture')).toBe(false);
+  expect(wasFixed(guess, '', 'other')).toBe(false);
+});

@@ -125,6 +125,24 @@ export interface JunkStore extends ClaimStore {
   pickupPartners(userId: string): Promise<string[]>;
   addFeedback(f: { id: string; userId: string; userName: string; body: string; createdAt: string }): Promise<void>;
   countFeedbackSince(userId: string, since: string): Promise<number>;
+  /** Learning loop: a fix to the name or category the phone guessed (see addLabelFix in the handler). */
+  addLabelFix(f: JunkLabelFix): Promise<void>;
+  countLabelFixesSince(userId: string, since: string): Promise<number>;
+}
+
+export interface JunkLabelFix {
+  id: string;
+  userId: string;
+  app: 'curbsy' | 'totetrack';
+  guessLabel: string;
+  guessTitle: string;
+  guessSource: string;
+  guessConfidence: number | null;
+  finalTitle: string;
+  finalCategory: string;
+  /** Base64 JPEG of just the item, only when the person opted in. */
+  crop: string | null;
+  createdAt: string;
 }
 
 export interface JunkMember { termsAt: string | null; bannedAt: string | null; joinedAt?: string | null; provider?: string | null }
@@ -166,6 +184,9 @@ export const FRESH_DAYS = 45;
 export const HIDE_AFTER_REPORTS = 3;
 export const MAX_PIECES = 12;
 export const FEEDBACK_PER_DAY = 5;
+/** Learning loop: name fixes a person can send a day, and the largest item picture kept (base64 JPEG). */
+export const LABEL_FIXES_PER_DAY = 150;
+export const MAX_CROP_CHARS = 80_000;
 /** Accounts younger than this get tighter daily limits (bots and throwaway accounts are usually brand new). */
 export const NEW_ACCOUNT_HOURS = 48;
 export const NEW_ITEMS_PER_DAY = 3;
@@ -532,6 +553,30 @@ export async function junkRoute(
     await store.addFeedback({ id: ctx.newId(), userId: me, userName: myName, body: text, createdAt: nowIso });
     ctx.log.warn(`junk: contact message from ${me}`);
     return ok({ sent: true });
+  }
+
+  // Learning loop: the phone guessed a name and the person changed it. Saved to retrain the item namer; the
+  // picture of just that item comes only when they turned on "Help improve item recognition".
+  if (section === 'labels' && !a && method === 'POST') {
+    const finalTitle = str(body.title, 60);
+    if (!finalTitle) return bad('Name needed.');
+    const guess = (body.guess && typeof body.guess === 'object' ? body.guess : {}) as Body;
+    const conf = num(guess.confidence);
+    let crop: string | null = null;
+    if (typeof body.crop === 'string' && body.crop) {
+      const raw = body.crop.replace(/^data:image\/jpeg;base64,/, '');
+      if (raw.length > MAX_CROP_CHARS || !/^[A-Za-z0-9+/]+=*$/.test(raw) || !raw.startsWith('/9j/')) return bad('Send the picture as a small JPEG.');
+      crop = raw;
+    }
+    if (listingProblem({ title: finalTitle })) return ok({ saved: false });
+    if (await store.countLabelFixesSince(me, daysAgo(now, 1)) >= LABEL_FIXES_PER_DAY) return ok({ saved: false });
+    await store.addLabelFix({
+      id: ctx.newId(), userId: me, app: body.app === 'totetrack' ? 'totetrack' : 'curbsy',
+      guessLabel: str(guess.label, 80), guessTitle: str(guess.title, 60), guessSource: str(guess.source, 20),
+      guessConfidence: Number.isFinite(conf) ? Math.max(0, Math.min(1, conf)) : null,
+      finalTitle, finalCategory: str(body.category, 30), crop, createdAt: nowIso,
+    });
+    return ok({ saved: true });
   }
 
   // Upload one photo; the first photo of a listing also asks Gemini what the item is.

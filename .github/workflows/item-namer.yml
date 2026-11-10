@@ -3,11 +3,10 @@
 name: Item namer
 
 on:
-  # A push that changes the trainer runs with the settings in ml/item-namer/run.json.
+  # A push that changes ml/item-namer/run.json trains with its settings (other edits don't start a long run).
   push:
     paths:
-      - 'ml/item-namer/**'
-      - '.github/workflows/item-namer.yml'
+      - 'ml/item-namer/run.json'
   workflow_dispatch:
     inputs:
       per_class:
@@ -72,6 +71,24 @@ jobs:
             --min-class "${{ steps.s.outputs.min_class }}" --limit-classes "${{ steps.s.outputs.limit_classes }}"
           du -sh crops
 
+      # Learning loop: name fixes people sent from the apps (see fixes.py). The service key is asked from
+      # Supabase with the deploy token and only lives for this step.
+      - name: Add name fixes from the apps
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || 'nkwedlskhnojseeroezm' }}
+        run: |
+          . .venv/bin/activate
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ]; then
+            KEY=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/api-keys" \
+              | python3 -c 'import json,sys; print(next((k["api_key"] for k in json.load(sys.stdin) if k.get("name") == "service_role"), ""))') || KEY=""
+            if [ -n "$KEY" ]; then echo "::add-mask::$KEY"; fi
+            SUPABASE_URL="https://$SUPABASE_PROJECT_ID.supabase.co" SUPABASE_SERVICE_KEY="$KEY" python fixes.py --crops crops --out out || echo "::warning::Couldn't read the name fixes; training without them"
+          else
+            echo "No SUPABASE_ACCESS_TOKEN: training without name fixes"
+          fi
+
       - name: Train with Create ML
         env:
           MODEL_VERSION: ${{ steps.s.outputs.version || 'trial' }}
@@ -87,6 +104,7 @@ jobs:
             ml/item-namer/out/ItemNamer.mlmodel
             ml/item-namer/out/labels.json
             ml/item-namer/out/metrics.json
+            ml/item-namer/out/fixes.json
 
       - name: Publish the model
         if: ${{ steps.s.outputs.version != '' }}
