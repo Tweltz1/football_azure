@@ -820,3 +820,19 @@ body.jk-body::before { background: #f5f3ee; }
 .jk-standing { margin: 12px 0; padding: 14px; border-radius: 14px; background: var(--jk-surface-2); border: 1px solid var(--jk-line); }
 .jk-standing p { margin: 4px 0 10px; font-size: 14px; line-height: 1.4; }
 .jk-standing.is-banned { border-color: var(--jk-danger, #c0392b); }
+
+/* Preview before posting */
+.jk-preview-flag {
+  align-self: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.jk-preview-note { padding: 10px 14px; border-radius: 12px; background: var(--jk-accent-soft); color: var(--jk-ink); font-size: 14px; font-weight: 600; }
+.jk-preview-card-wrap { display: grid; gap: 6px; }
+.jk-preview-card { width: calc(50% - 6px); max-width: 220px; pointer-events: none; }
