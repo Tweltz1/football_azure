@@ -31,7 +31,7 @@ function world(detection: JunkDetection | null = null) {
   const members = new Map<string, { termsAt: string | null; bannedAt: string | null; joinedAt?: string | null; provider?: string | null }>(
     [ALICE, BOB, CARL].map((id) => [id, { termsAt: '2026-11-01T00:00:00Z', bannedAt: null }]),
   );
-  const feedback: { userId: string; body: string; createdAt: string }[] = [];
+  const feedback: { userId: string; body: string; createdAt: string; kind?: string; itemId?: string | null }[] = [];
   const labelFixes: JunkLabelFix[] = [];
   const devices = new Map<string, { banned: boolean; at: string }>();
   const isOpen = (c: JunkClaim) => c.status === 'active' || c.status === 'arrived';
@@ -103,7 +103,7 @@ function world(detection: JunkDetection | null = null) {
         .map((c) => (c.ownerId === userId ? c.claimerId : c.ownerId));
     },
     async touchMember(userId, joinedAt, provider) { members.set(userId, { termsAt: null, bannedAt: null, ...members.get(userId), joinedAt, provider } as never); },
-    async addFeedback(f) { feedback.push({ userId: f.userId, body: f.body, createdAt: f.createdAt }); },
+    async addFeedback(f) { feedback.push({ userId: f.userId, body: f.body, createdAt: f.createdAt, kind: f.kind ?? 'contact', itemId: f.itemId ?? null }); },
     async countFeedbackSince(userId, since) { return feedback.filter((f) => f.userId === userId && f.createdAt >= since).length; },
     async addLabelFix(f) { labelFixes.push(clone(f)); },
     async countLabelFixesSince(userId, since) { return labelFixes.filter((f) => f.userId === userId && f.createdAt >= since).length; },
@@ -586,7 +586,7 @@ test('posting and messaging need the Terms agreed to, and banned people can\'t d
   const w = world();
   w.members.delete(BOB);
   let res = await w.call(BOB, 'GET', 'junk/member');
-  assert.deepEqual(res?.body, { terms: false, banned: false });
+  assert.deepEqual(res?.body, { terms: false, banned: false, strikes: 0 });
   res = await w.call(BOB, 'POST', 'junk/items', { title: 'Lamp', photos: [], ...HOME });
   assert.equal(res?.status, 428);
   const item = await w.post(ALICE);
@@ -605,7 +605,7 @@ test('posting and messaging need the Terms agreed to, and banned people can\'t d
   res = await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Hello?' });
   assert.equal(res?.status, 403);
   res = await w.call(BOB, 'GET', 'junk/member');
-  assert.deepEqual(res?.body, { terms: true, banned: true });
+  assert.deepEqual(res?.body, { terms: true, banned: true, strikes: 0 });
 });
 
 test('Contact Curbsy saves the message, a few a day', async () => {
@@ -718,4 +718,21 @@ test('a banned phone stays banned for new accounts, and a crowded phone gets new
   const up = await w2.call(ALICE, 'POST', 'junk/photos', { image: JPEG });
   const fourth = await w2.call(ALICE, 'POST', 'junk/items', { title: 'Chair 4', photos: [(up?.body as { path: string }).path], ...HOME });
   assert.equal(fourth?.status, 429);
+});
+
+test('banned or warned people can appeal, and see where they stand', async () => {
+  const w = world();
+  const item = await w.post(BOB);
+  w.members.set(BOB, { termsAt: '2026-11-01T00:00:00Z', bannedAt: '2026-11-08T00:00:00Z', strikes: 2, banReason: 'second strike' } as never);
+  let res = await w.call(BOB, 'GET', 'junk/member');
+  assert.deepEqual(res?.body, { terms: true, banned: true, strikes: 2, reason: 'second strike' });
+  // Still allowed while banned.
+  res = await w.call(BOB, 'POST', 'junk/appeal', { body: 'That was a toy gun, not a real one.', itemId: item.id });
+  assert.equal(res?.status, 200);
+  assert.equal(w.feedback[0].kind, 'appeal');
+  assert.equal(w.feedback[0].itemId, item.id);
+  // Only about your own listing.
+  const alices = await w.post(ALICE);
+  res = await w.call(BOB, 'POST', 'junk/appeal', { body: 'Please look', itemId: alices.id });
+  assert.equal(res?.status, 404);
 });

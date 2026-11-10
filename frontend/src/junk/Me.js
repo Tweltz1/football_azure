@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SignInPrompt, useJunk } from './JunkApp';
-import { deleteAccount, junkSignOut as signOut, myItems } from './junkApi';
+import { deleteAccount, getMember, junkSignOut as signOut, myItems } from './junkApi';
 import { ItemCard } from './Browse';
 import { IconBox, IconPlus } from './icons';
-import { ContactSheet } from './Safety';
+import { ContactSheet, StandingNotice } from './Safety';
 import { setSharesCrops, sharesCrops } from './learning';
 
 export default function Me() {
@@ -14,11 +14,14 @@ export default function Me() {
   const [confirm, setConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [contact, setContact] = useState(false);
+  const [appeal, setAppeal] = useState(false);
+  const [member, setMember] = useState(null);
   const [shareCrops, setShareCrops] = useState(sharesCrops);
 
   useEffect(() => {
     if (!me) return;
     myItems().then(setItems).catch((err) => setError(err.message));
+    getMember().then(setMember).catch(() => {});
   }, [me]);
 
   const removeAccount = async () => {
@@ -56,6 +59,7 @@ export default function Me() {
       </header>
 
       {error && <p className="jk-error">{error}</p>}
+      <StandingNotice member={member} onAppeal={() => setAppeal(true)} />
       <div className="jk-list-head"><h2>Your listings</h2><Link to="/junk/post" className="jk-chip"><IconPlus size={16} /> Post</Link></div>
       {items && items.length === 0 && (
         <div className="jk-empty jk-empty-small">
@@ -88,6 +92,7 @@ export default function Me() {
       </div>
 
       {contact && <ContactSheet onClose={() => setContact(false)} />}
+      {appeal && <ContactSheet appeal onClose={() => setAppeal(false)} />}
       {confirm && (
         <div className="jk-sheet-backdrop" role="presentation" onClick={() => setConfirm(false)}>
           <div className="jk-sheet" role="dialog" aria-modal="true" aria-label="Delete account" onClick={(e) => e.stopPropagation()}>

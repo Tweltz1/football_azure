@@ -123,7 +123,7 @@ export interface JunkStore extends ClaimStore {
   seeDevice(userId: string, deviceId: string, at: string, since: string): Promise<{ banned: boolean; accounts: number }>;
   /** The other people in this person's finished pickups ("Got it" at the spot), as giver or taker. */
   pickupPartners(userId: string): Promise<string[]>;
-  addFeedback(f: { id: string; userId: string; userName: string; body: string; createdAt: string }): Promise<void>;
+  addFeedback(f: { id: string; userId: string; userName: string; body: string; createdAt: string; kind?: 'contact' | 'appeal'; itemId?: string | null }): Promise<void>;
   countFeedbackSince(userId: string, since: string): Promise<number>;
   /** Learning loop: a fix to the name or category the phone guessed (see addLabelFix in the handler). */
   addLabelFix(f: JunkLabelFix): Promise<void>;
@@ -145,7 +145,11 @@ export interface JunkLabelFix {
   createdAt: string;
 }
 
-export interface JunkMember { termsAt: string | null; bannedAt: string | null; joinedAt?: string | null; provider?: string | null }
+export interface JunkMember {
+  termsAt: string | null; bannedAt: string | null; joinedAt?: string | null; provider?: string | null;
+  /** Confirmed rule breaks (the daily review's hide_item). The second one bans the account. */
+  strikes?: number; banReason?: string;
+}
 
 export interface JunkPhotos {
   put(path: string, jpeg: Uint8Array): Promise<void>;
@@ -526,7 +530,7 @@ export async function junkRoute(
     const m = await store.member(me);
     const phone = ctx.deviceId ? await store.seeDevice(me, ctx.deviceId, nowIso, daysAgo(now, 30)) : null;
     crowdedDevice = !!phone && phone.accounts > ACCOUNTS_PER_DEVICE;
-    if (m?.bannedAt || phone?.banned) return { status: 403, body: 'Your account can\'t post or send messages on Curbsy because it broke the Terms. Use Contact Curbsy in the Me tab if you think this is a mistake.' };
+    if (m?.bannedAt || phone?.banned) return { status: 403, body: 'Your account can\'t post or send messages on Curbsy after repeated or serious rule breaks. If that\'s a mistake, tap Appeal in the Me tab.' };
     if (!m?.termsAt) return { status: 428, body: 'Please agree to the Curbsy Terms first.' };
     if (ctx.userCreatedAt && (m.joinedAt !== ctx.userCreatedAt || (m.provider ?? null) !== (ctx.userProvider ?? null))) {
       await store.touchMember(me, ctx.userCreatedAt, ctx.userProvider ?? null);
@@ -536,7 +540,12 @@ export async function junkRoute(
 
   if (section === 'member' && !a && method === 'GET') {
     const m = await store.member(me);
-    return ok({ terms: !!m?.termsAt, banned: !!m?.bannedAt });
+    // A ban that came from a banned phone (another account) shows as banned too.
+    const phone = ctx.deviceId ? await store.seeDevice(me, ctx.deviceId, nowIso, daysAgo(now, 30)) : null;
+    return ok({
+      terms: !!m?.termsAt, banned: !!m?.bannedAt || !!phone?.banned, strikes: m?.strikes ?? 0,
+      ...(m?.banReason ? { reason: m.banReason } : {}),
+    });
   }
   if (section === 'terms' && !a && method === 'POST') {
     if (body.agree !== true) return bad('Agree to the Terms to continue.');
@@ -552,6 +561,22 @@ export async function junkRoute(
     }
     await store.addFeedback({ id: ctx.newId(), userId: me, userName: myName, body: text, createdAt: nowIso });
     ctx.log.warn(`junk: contact message from ${me}`);
+    return ok({ sent: true });
+  }
+  // Appeal a ban, a warning or a hidden listing ("I was falsely reported"). Works while banned; the daily review lists it.
+  if (section === 'appeal' && !a && method === 'POST') {
+    const text = longStr(body.body, 2000);
+    if (text.length < 3) return bad('Tell us what happened.');
+    const itemId = typeof body.itemId === 'string' && UUID.test(body.itemId) ? body.itemId : null;
+    if (itemId) {
+      const item = await store.getItem(itemId);
+      if (!item || item.ownerId !== me) return notFound;
+    }
+    if (await store.countFeedbackSince(me, daysAgo(now, 1)) >= FEEDBACK_PER_DAY) {
+      return { status: 429, body: 'We have your appeal. We\'ll look at it within 24 hours.' };
+    }
+    await store.addFeedback({ id: ctx.newId(), userId: me, userName: myName, body: text, createdAt: nowIso, kind: 'appeal', itemId });
+    ctx.log.warn(`junk: appeal from ${me}`);
     return ok({ sent: true });
   }
 
