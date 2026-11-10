@@ -20,7 +20,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 350
+    env:
+      # Photos per item type from each dataset. Part of the crop cache key, so changing it re-collects photos.
+      PER_CLASS: 300
     permissions:
       contents: write
     defaults:
@@ -44,7 +47,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ~/crops.pt
-          key: namer-crops-${{ hashFiles('totetrack-app/tools/detector/*.py', 'totetrack-app/tools/detector/classes.txt') }}
+          key: namer-crops-per${{ env.PER_CLASS }}-${{ hashFiles('totetrack-app/tools/detector/*.py', 'totetrack-app/tools/detector/classes.txt') }}
 
       - uses: actions/cache@v4
         if: steps.crops.outputs.cache-hit != 'true'
@@ -66,8 +69,8 @@ jobs:
         working-directory: totetrack-app/tools/detector
         run: |
           set -o pipefail
-          python prepare_lvis.py ~/data-src/lvis_v1_train.json.zip "$RUNNER_TEMP/data" --per-class 150 --min-images 1 2>&1 | tee prepare.log
-          python prepare_openimages.py ~/data-src/oidv6-train-annotations-bbox.csv ~/data-src/oidv7-class-descriptions-boxable.csv "$RUNNER_TEMP/data" --per-class 150 2>&1 | tee -a prepare.log
+          python prepare_lvis.py ~/data-src/lvis_v1_train.json.zip "$RUNNER_TEMP/data" --per-class "$PER_CLASS" --min-images 1 2>&1 | tee prepare.log
+          python prepare_openimages.py ~/data-src/oidv6-train-annotations-bbox.csv ~/data-src/oidv7-class-descriptions-boxable.csv "$RUNNER_TEMP/data" --per-class "$PER_CLASS" 2>&1 | tee -a prepare.log
           du -sh "$RUNNER_TEMP/data"
 
       - name: Train and build

@@ -5,8 +5,11 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ToteNative } from '../../../modules/tote-native';
+import { ProPaywall } from '../../components/ProPaywall';
 import { Button, EmptyState, IconButton, SectionTitle, tap } from '../../components/ui';
+import { usePro } from '../../lib/pro';
 import { suggestionsFrom } from '../../lib/snap';
+import { forgetLooks, loadLooks, matchLooks, rememberLooks } from '../../lib/snapLooks';
 import { applyMemory, forgetSnapMemory, type LearnedSuggestion, learnedCount, loadSnapMemory, rememberSnap, type SnapMemory } from '../../lib/snapMemory';
 import { useTotes } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
@@ -25,12 +28,16 @@ export default function Snap() {
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
   const [memory, setMemory] = useState<SnapMemory | null>(null);
+  const pro = usePro();
+  // Out of free snaps: the Pro screen shows here, and Snap carries on once subscribed.
+  const [needPro, setNeedPro] = useState(false);
 
   useEffect(() => {
     loadSnapMemory().then(setMemory);
   }, []);
 
   const take = useCallback(async (camera: boolean) => {
+    if (!pro.canSnap) return setNeedPro(true);
     if (camera) {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) return Alert.alert('Camera access needed', 'Allow camera access in Settings to snap your tote.');
@@ -45,11 +52,16 @@ export default function Snap() {
     setBusy(true);
     try {
       const result = await ToteNative!.analyzePhoto(uri);
+      pro.usedSnap();
       const existing = new Set((tote?.items ?? []).map((i) => i.name.toLowerCase()));
       // What you've renamed, added and skipped before shapes what Snap offers now.
       const mem = await loadSnapMemory();
+      // Things that look like ones you've added before come first, under your name for them.
+      const yours = matchLooks(await loadLooks(), result.looks ?? []);
+      const taken = new Set(yours.map((s) => s.name.toLowerCase()));
+      const fresh = suggestionsFrom(result).filter((s) => !taken.has(s.name.toLowerCase()));
       setSuggestions(
-        applyMemory(mem, suggestionsFrom(result))
+        applyMemory(mem, [...yours, ...fresh])
           .filter((s) => !existing.has(s.name.toLowerCase()))
           .map((s) => ({ ...s, on: s.sure && !s.skipped })),
       );
@@ -58,7 +70,7 @@ export default function Snap() {
     } finally {
       setBusy(false);
     }
-  }, [tote]);
+  }, [tote, pro]);
 
   // Open the camera straight away.
   useEffect(() => {
@@ -73,6 +85,20 @@ export default function Snap() {
     return <EmptyState icon="camera-outline" title="Not available here" body="Snap to add needs the ToteTrack app from TestFlight or the App Store." />;
   }
 
+  if (needPro && !pro.isPro) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: 'ToteTrack Pro',
+            headerLeft: () => <IconButton icon="close" label="Cancel" onPress={() => router.back()} color={t.textMuted} />,
+          }}
+        />
+        <ProPaywall reason="snap" />
+      </>
+    );
+  }
+
   const visible = suggestions?.filter((s) => showSkipped || !s.skipped) ?? [];
   const hiddenCount = (suggestions?.length ?? 0) - visible.length;
   const chosen = visible.filter((s) => s.on);
@@ -82,6 +108,7 @@ export default function Snap() {
     for (const s of chosen) store.addItem(tote.id, s.name, s.qty);
     // Only what you saw counts, so hidden suggestions aren't marked as skipped again.
     rememberSnap(visible.map((s) => ({ key: s.key, name: s.name, added: s.on })));
+    rememberLooks(chosen.map((s) => ({ name: s.name, look: s.look })));
     tap();
     router.back();
   };
@@ -103,13 +130,14 @@ export default function Snap() {
   };
 
   const resetLearning = () =>
-    Alert.alert('Reset what Snap learned?', 'Snap forgets the names you gave things and what you usually skip.', [
+    Alert.alert('Reset what Snap learned?', 'Snap forgets the names you gave things, what you usually skip, and what your things look like.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reset',
         style: 'destructive',
         onPress: async () => {
           await forgetSnapMemory();
+          await forgetLooks();
           setMemory(await loadSnapMemory());
         },
       },
@@ -138,6 +166,13 @@ export default function Snap() {
           <Button title={photo ? 'Retake' : 'Take photo'} icon="camera" variant={photo ? 'secondary' : 'primary'} onPress={() => take(true)} style={{ flex: 1 }} />
           <Button title="Library" icon="images-outline" variant="secondary" onPress={() => take(false)} style={{ flex: 1 }} />
         </View>
+        {pro.freeSnapsLeft !== null ? (
+          <Pressable onPress={() => router.push('/pro')} style={{ alignSelf: 'center', marginTop: 10 }}>
+            <Text style={{ color: t.textMuted, fontSize: 13 }}>
+              {pro.freeSnapsLeft} free snap{pro.freeSnapsLeft === 1 ? '' : 's'} left · <Text style={{ color: t.primary, fontWeight: '700' }}>Get Pro</Text>
+            </Text>
+          </Pressable>
+        ) : null}
 
         {busy ? (
           <View style={styles.busy}>

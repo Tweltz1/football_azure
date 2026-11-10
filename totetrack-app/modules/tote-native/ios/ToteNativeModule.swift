@@ -14,9 +14,50 @@ var pendingSpotlightToteId: String?
 
 public class ToteNativeModule: Module {
   private let nfc = ToteNFC()
+  private var storeUpdates: Task<Void, Never>?
 
   public func definition() -> ModuleDefinition {
     Name("ToteNative")
+
+    // ToteTrack Pro (StoreKit 2). JavaScript re-checks the subscription when this fires.
+    Events("onPurchasesChanged")
+
+    OnCreate {
+      self.storeUpdates = ToteStore.listen { [weak self] in
+        self?.sendEvent("onPurchasesChanged", [:])
+      }
+    }
+
+    OnDestroy {
+      self.storeUpdates?.cancel()
+    }
+
+    AsyncFunction("storeProducts") { (ids: [String], promise: Promise) in
+      Task {
+        do { promise.resolve(try await ToteStore.products(ids)) } catch { promise.reject("E_STORE", error.localizedDescription) }
+      }
+    }
+
+    AsyncFunction("storeEntitlements") { (promise: Promise) in
+      Task { promise.resolve(await ToteStore.entitlements()) }
+    }
+
+    AsyncFunction("storePurchase") { (id: String, promise: Promise) in
+      Task {
+        do { promise.resolve(try await ToteStore.purchase(id)) } catch { promise.reject("E_STORE", error.localizedDescription) }
+      }
+    }
+
+    AsyncFunction("storeRestore") { (promise: Promise) in
+      Task {
+        do {
+          try await ToteStore.restore()
+          promise.resolve(await ToteStore.entitlements())
+        } catch {
+          promise.reject("E_STORE", error.localizedDescription)
+        }
+      }
+    }
 
     Function("nfcAvailable") { () -> Bool in
       ToteNFC.available
@@ -190,7 +231,13 @@ private func objectRegions(_ image: CGImage) -> [CGRect] {
   for (x, y) in [(0.0, 0.0), (0.4, 0.0), (0.0, 0.4), (0.4, 0.4)] {
     regions.append(pixelRect(CGRect(x: x, y: y, width: 0.6, height: 0.6), width: width, height: height, pad: 0))
   }
-  return Array(regions.filter { $0.width >= 64 && $0.height >= 64 }.prefix(16))
+  // A finer 3x3 grid (each 40%) for small things like batteries and markers.
+  for x in [0.0, 0.3, 0.6] {
+    for y in [0.0, 0.3, 0.6] {
+      regions.append(pixelRect(CGRect(x: x, y: y, width: 0.4, height: 0.4), width: width, height: height, pad: 0))
+    }
+  }
+  return Array(regions.filter { $0.width >= 64 && $0.height >= 64 }.prefix(28))
 }
 
 private func analyze(_ image: CGImage) -> [String: Any] {
@@ -206,7 +253,8 @@ private func analyze(_ image: CGImage) -> [String: Any] {
   }
   classify(image, whole: true)
   let regions = objectRegions(image)
-  for rect in regions {
+  // Apple's labels on the bigger regions only; the namer looks at all of them.
+  for rect in regions.prefix(16) {
     if let crop = image.cropping(to: rect) { classify(crop, whole: false) }
   }
   let labels: [[String: Any]] = best
@@ -229,18 +277,20 @@ private func analyze(_ image: CGImage) -> [String: Any] {
     ])
   }
   let objects = detectObjects(image)
+  let naming = nameItems(image, regions: regions, objects: objects)
   return [
     "labels": labels, "lines": lines, "text": lines.map { $0["text"] as! String }, "objects": objects,
-    "named": nameItems(image, regions: regions, objects: objects),
+    "named": naming.named, "looks": naming.looks,
   ]
 }
 
 // MARK: - Naming each thing with ToteTrack's own namer
 
-/// Runs the namer on every region and every detected object. Each name keeps its best probability and
-/// how many separate spots it was the top answer for.
-private func nameItems(_ image: CGImage, regions: [CGRect], objects: [[String: Any]]) -> [[String: Any]] {
-  guard ToteNamer.shared.available else { return [] }
+/// Runs the namer on every region and every detected object. Each name keeps its best probability, how
+/// many separate spots it was the top answer for, and the embedding of its best spot. Also returns every
+/// spot's embedding, so the app can match spots against what your own things look like.
+private func nameItems(_ image: CGImage, regions: [CGRect], objects: [[String: Any]]) -> (named: [[String: Any]], looks: [[Double]]) {
+  guard ToteNamer.shared.available else { return ([], []) }
   var rects = regions
   for o in objects {
     if let b = o["box"] as? [String: Double] {
@@ -248,15 +298,26 @@ private func nameItems(_ image: CGImage, regions: [CGRect], objects: [[String: A
       rects.append(pixelRect(r, width: image.width, height: image.height, pad: 0.1))
     }
   }
-  var best: [String: (probability: Float, similarity: Float, spots: Int)] = [:]
+  var best: [String: (probability: Float, similarity: Float, spots: Int, embedding: [Float])] = [:]
+  var looks: [[Double]] = []
+  let rounded = { (v: [Float]) in v.map { (Double($0) * 1000).rounded() / 1000 } }
   for rect in rects where rect.width >= 48 && rect.height >= 48 {
-    guard let crop = image.cropping(to: rect), let top = ToteNamer.shared.name(crop, top: 1).first else { continue }
+    guard let crop = image.cropping(to: rect), let look = ToteNamer.shared.look(crop, top: 1), let top = look.names.first else { continue }
+    looks.append(rounded(look.embedding))
     let prev = best[top.name]
-    best[top.name] = (max(prev?.probability ?? 0, top.probability), max(prev?.similarity ?? 0, top.similarity), (prev?.spots ?? 0) + 1)
+    let better = top.probability > (prev?.probability ?? -1)
+    best[top.name] = (
+      max(prev?.probability ?? 0, top.probability), max(prev?.similarity ?? 0, top.similarity), (prev?.spots ?? 0) + 1,
+      better ? look.embedding : prev!.embedding
+    )
   }
-  return best.sorted { $0.value.probability > $1.value.probability }.prefix(20).map {
-    ["name": $0.key, "confidence": Double($0.value.probability), "similarity": Double($0.value.similarity), "spots": $0.value.spots]
+  let named: [[String: Any]] = best.sorted { $0.value.probability > $1.value.probability }.prefix(20).map {
+    [
+      "name": $0.key, "confidence": Double($0.value.probability), "similarity": Double($0.value.similarity),
+      "spots": $0.value.spots, "embedding": rounded($0.value.embedding),
+    ]
   }
+  return (named, looks)
 }
 
 // MARK: - Finding each separate item (on-device object detection)
