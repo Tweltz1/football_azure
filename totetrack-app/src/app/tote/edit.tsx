@@ -12,6 +12,12 @@ import { radius, TOTE_COLORS, TOTE_ICONS, useTheme } from '../../lib/theme';
 import { joinLocation, PLACE_PRESETS, placeOf, SEASONS, spotOf } from '../../lib/extras';
 
 export default function EditTote() {
+  // The form fills itself from the saved tote once, so wait until the totes have loaded.
+  const { ready } = useTotes();
+  return ready ? <EditToteForm /> : null;
+}
+
+function EditToteForm() {
   const { id, claim, name: presetName, loc, c } = useLocalSearchParams<{ id?: string; claim?: string; name?: string; loc?: string; c?: string }>();
   const t = useTheme();
   const store = useTotes();
@@ -81,6 +87,12 @@ export default function EditTote() {
     }
   };
 
+  const cancel = () => {
+    // A photo taken here but never saved would otherwise sit on the phone forever.
+    if (photo && photo !== existing?.photo) deletePhoto(photo);
+    router.back();
+  };
+
   const uri = photoUri(photo);
 
   return (
@@ -88,7 +100,7 @@ export default function EditTote() {
       <Stack.Screen
         options={{
           title: existing ? 'Edit tote' : 'New tote',
-          headerLeft: () => <IconButton icon="close" label="Cancel" onPress={() => router.back()} color={t.textMuted} />,
+          headerLeft: () => <IconButton icon="close" label="Cancel" onPress={cancel} color={t.textMuted} />,
           headerRight: () => (
             <Pressable onPress={save} hitSlop={10}>
               <Text style={{ color: t.primary, fontSize: 17, fontWeight: '700' }}>Save</Text>

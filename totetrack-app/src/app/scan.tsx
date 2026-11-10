@@ -76,7 +76,7 @@ export default function Scan() {
         show({ ok: false, title: 'Unknown label', body: "This label isn't linked to a tote." });
         return;
       }
-      if (!tote.unloadedAt) updateTote(id, { unloadedAt: Date.now() });
+      if (tote.moveTo && !tote.unloadedAt) updateTote(id, { unloadedAt: Date.now() });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       show({ ok: true, title: tote.name || 'Tote', body: tote.moveTo ? `Goes to: ${tote.moveTo}` : 'No room set for this tote.' });
       return;

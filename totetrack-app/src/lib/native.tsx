@@ -29,7 +29,7 @@ export function plannedReminders(totes: Tote[], now = new Date()): ScheduledRemi
       const names = list.map((t) => t.name).filter(Boolean);
       out.push({
         id: `season.${season}.${year}`,
-        title: `${season} is in 2 weeks`,
+        title: `${season} is coming up`,
         body:
           list.length === 1
             ? `Your “${names[0]}” tote is in ${list[0].location || 'storage'}.`

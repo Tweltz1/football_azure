@@ -12,6 +12,7 @@ import { radius, useTheme } from '../../lib/theme';
 import { Item } from '../../lib/types';
 import { addMonths, daysUntil, daysUntilSeason, expiryLabel, money, parseDate, parseMoney, toteValue } from '../../lib/extras';
 import { useLists } from '../../lib/lists';
+import { rememberRename } from '../../lib/snapMemory';
 import { ToteNative } from '../../../modules/tote-native';
 
 export default function ToteDetail() {
@@ -59,7 +60,18 @@ export default function ToteDetail() {
 
   const rename = (item: Item) => {
     if (Platform.OS !== 'ios') return;
-    Alert.prompt('Rename item', undefined, (text) => text?.trim() && store.updateItem(tote.id, item.id, { name: text.trim() }), 'plain-text', item.name);
+    Alert.prompt(
+      'Rename item',
+      undefined,
+      (text) => {
+        if (!text?.trim()) return;
+        store.updateItem(tote.id, item.id, { name: text.trim() });
+        // If Snap suggested this item, it uses your name next time.
+        rememberRename(item.name, text.trim());
+      },
+      'plain-text',
+      item.name,
+    );
   };
 
   const remove = (item: Item) =>
@@ -234,7 +246,7 @@ export default function ToteDetail() {
                     {tote.season}
                     {(() => {
                       const d = daysUntilSeason(tote.season);
-                      return d === undefined ? '' : d === 0 ? ' · starts today' : ` · in ${d} day${d === 1 ? '' : 's'}`;
+                      return d === undefined ? '' : d === 0 ? ' · get it out today' : ` · get it out in ${d} day${d === 1 ? '' : 's'}`;
                     })()}
                   </Text>
                 </View>

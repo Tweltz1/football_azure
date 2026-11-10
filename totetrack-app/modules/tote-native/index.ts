@@ -7,6 +7,18 @@ export type PhotoAnalysis = {
   /** Printed text lines with their position (0-1, top-left origin). */
   lines?: TextLine[];
   text: string[];
+  /**
+   * Each separate thing the object detector outlined, with more specific names from looking at just
+   * that spot. Empty when the detector model isn't in the build; older builds leave it out.
+   */
+  objects?: DetectedObject[];
+};
+export type DetectedObject = {
+  label: string;
+  confidence: number;
+  /** 0-1, origin bottom-left (Vision's). */
+  box: { x: number; y: number; width: number; height: number };
+  refined: { label: string; confidence: number }[];
 };
 export type SpotlightTote = { id: string; title: string; description: string; keywords: string[] };
 export type ScheduledReminder = { id: string; title: string; body: string; at: number; toteId?: string };

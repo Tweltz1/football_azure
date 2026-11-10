@@ -3,14 +3,17 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ToteNative } from '../../../modules/tote-native';
 import { Button, EmptyState, IconButton, SectionTitle, tap } from '../../components/ui';
 import { suggestionsFrom } from '../../lib/snap';
+import { applyMemory, forgetSnapMemory, type LearnedSuggestion, learnedCount, loadSnapMemory, rememberSnap, type SnapMemory } from '../../lib/snapMemory';
 import { useTotes } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 
-type Suggestion = { name: string; from: 'photo' | 'text'; sure: boolean; on: boolean };
+type Suggestion = LearnedSuggestion & { on: boolean };
+
+const section = (s: Suggestion) => (s.from === 'text' ? 'text' : 'photo');
 
 export default function Snap() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -20,6 +23,12 @@ export default function Snap() {
   const [photo, setPhoto] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[] | null>(null);
+  const [showSkipped, setShowSkipped] = useState(false);
+  const [memory, setMemory] = useState<SnapMemory | null>(null);
+
+  useEffect(() => {
+    loadSnapMemory().then(setMemory);
+  }, []);
 
   const take = useCallback(async (camera: boolean) => {
     if (camera) {
@@ -32,14 +41,17 @@ export default function Snap() {
     const uri = res.assets[0].uri;
     setPhoto(uri);
     setSuggestions(null);
+    setShowSkipped(false);
     setBusy(true);
     try {
       const result = await ToteNative!.analyzePhoto(uri);
       const existing = new Set((tote?.items ?? []).map((i) => i.name.toLowerCase()));
+      // What you've renamed, added and skipped before shapes what Snap offers now.
+      const mem = await loadSnapMemory();
       setSuggestions(
-        suggestionsFrom(result)
+        applyMemory(mem, suggestionsFrom(result))
           .filter((s) => !existing.has(s.name.toLowerCase()))
-          .map((s) => ({ ...s, on: s.sure })),
+          .map((s) => ({ ...s, on: s.sure && !s.skipped })),
       );
     } catch (e) {
       Alert.alert("Couldn't read that photo", e instanceof Error ? e.message : String(e));
@@ -61,12 +73,47 @@ export default function Snap() {
     return <EmptyState icon="camera-outline" title="Not available here" body="Snap to add needs the ToteTrack app from TestFlight or the App Store." />;
   }
 
-  const chosen = suggestions?.filter((s) => s.on) ?? [];
+  const visible = suggestions?.filter((s) => showSkipped || !s.skipped) ?? [];
+  const hiddenCount = (suggestions?.length ?? 0) - visible.length;
+  const chosen = visible.filter((s) => s.on);
+  const learned = memory ? learnedCount(memory) : 0;
+
   const addAll = () => {
-    for (const s of chosen) store.addItem(tote.id, s.name, 1);
+    for (const s of chosen) store.addItem(tote.id, s.name, s.qty);
+    // Only what you saw counts, so hidden suggestions aren't marked as skipped again.
+    rememberSnap(visible.map((s) => ({ key: s.key, name: s.name, added: s.on })));
     tap();
     router.back();
   };
+
+  const rename = (s: Suggestion) => {
+    if (Platform.OS !== 'ios') return;
+    Alert.prompt(
+      'Rename',
+      'Snap will use your name for this next time.',
+      (text) => {
+        const name = text?.trim();
+        if (!name) return;
+        tap();
+        setSuggestions((prev) => prev!.map((x) => (x.key === s.key ? { ...x, name, renamed: name.toLowerCase() !== x.key, on: true } : x)));
+      },
+      'plain-text',
+      s.name,
+    );
+  };
+
+  const resetLearning = () =>
+    Alert.alert('Reset what Snap learned?', 'Snap forgets the names you gave things and what you usually skip.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reset',
+        style: 'destructive',
+        onPress: async () => {
+          await forgetSnapMemory();
+          setMemory(await loadSnapMemory());
+        },
+      },
+    ]);
 
   return (
     <>
@@ -105,25 +152,35 @@ export default function Snap() {
           </Text>
         ) : null}
 
+        {suggestions && suggestions.length > 0 && visible.length === 0 ? (
+          <Text style={{ color: t.textMuted, textAlign: 'center', marginTop: 20, lineHeight: 21 }}>
+            Snap only found things you usually skip.
+          </Text>
+        ) : null}
+
         {suggestions && suggestions.length > 0 ? (
           <>
             {(['photo', 'text'] as const).map((kind) =>
-              suggestions.some((x) => x.from === kind) ? (
+              visible.some((x) => section(x) === kind) ? (
                 <View key={kind}>
                   <SectionTitle>{kind === 'photo' ? 'Things spotted in the photo' : 'Words on labels and packaging'}</SectionTitle>
                   <View style={styles.wrap}>
-                    {suggestions.map((s, i) =>
-                      s.from !== kind ? null : (
+                    {visible.map((s) =>
+                      section(s) !== kind ? null : (
                         <Pressable
-                          key={s.name}
+                          key={s.key}
                           onPress={() => {
                             tap();
-                            setSuggestions((prev) => prev!.map((x, j) => (j === i ? { ...x, on: !x.on } : x)));
+                            setSuggestions((prev) => prev!.map((x) => (x.key === s.key ? { ...x, on: !x.on } : x)));
                           }}
+                          onLongPress={() => rename(s)}
+                          accessibilityHint="Press and hold to rename"
                           style={[styles.chip, { backgroundColor: s.on ? t.primary : t.card, borderColor: s.on ? t.primary : t.border }]}
                         >
-                          <Ionicons name={s.on ? 'checkmark' : 'add'} size={15} color={s.on ? t.onPrimary : t.textMuted} />
+                          <Ionicons name={s.on ? 'checkmark' : s.from === 'object' ? 'scan-outline' : s.from === 'fallback' ? 'cube-outline' : 'add'} size={15} color={s.on ? t.onPrimary : t.textMuted} />
                           <Text style={{ color: s.on ? t.onPrimary : t.text, fontWeight: '600', fontSize: 15 }}>{s.name}</Text>
+                          {s.renamed ? <Ionicons name="sparkles" size={12} color={s.on ? t.onPrimary : t.primary} accessibilityLabel="Your name" /> : null}
+                          {s.qty > 1 ? <Text style={{ color: s.on ? t.onPrimary : t.textMuted, fontSize: 13, fontWeight: '600' }}>×{s.qty}</Text> : null}
                         </Pressable>
                       ),
                     )}
@@ -131,9 +188,17 @@ export default function Snap() {
                 </View>
               ) : null,
             )}
+            {hiddenCount > 0 ? (
+              <Pressable onPress={() => setShowSkipped(true)} hitSlop={8} style={{ marginTop: 12, alignSelf: 'flex-start' }}>
+                <Text style={{ color: t.primary, fontWeight: '600' }}>
+                  Show {hiddenCount} you usually skip
+                </Text>
+              </Pressable>
+            ) : null}
             <Text style={{ color: t.textMuted, fontSize: 13, marginTop: 12, lineHeight: 18 }}>
-              Tap the ones you want. Only confident matches start ticked. Everything is worked out on your iPhone, so the photo never leaves your
-              phone. You can rename anything after adding it, and a closer photo of one or two things at a time works best.
+              Tap the ones you want, or press and hold one to rename it. Snap learns from what you add, skip and rename, so it gets better the more
+              you use it. Everything is worked out on your iPhone, so the photo never leaves your phone, and a closer photo of one or two things at a
+              time works best.
             </Text>
             <Button
               title={chosen.length ? `Add ${chosen.length} item${chosen.length === 1 ? '' : 's'}` : 'Choose items to add'}
@@ -143,6 +208,14 @@ export default function Snap() {
               style={{ marginTop: 20 }}
             />
           </>
+        ) : null}
+
+        {learned > 0 && !busy ? (
+          <Pressable onPress={resetLearning} hitSlop={8} style={{ alignSelf: 'center', marginTop: 24, padding: 6 }}>
+            <Text style={{ color: t.textMuted, fontSize: 13 }}>
+              Snap has learned {learned} thing{learned === 1 ? '' : 's'} from you on this phone. <Text style={{ color: t.primary, fontWeight: '600' }}>Reset</Text>
+            </Text>
+          </Pressable>
         ) : null}
       </ScrollView>
     </>

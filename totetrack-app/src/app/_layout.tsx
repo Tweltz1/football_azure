@@ -7,6 +7,9 @@ import { ToteProvider } from '../lib/store';
 import { SyncProvider } from '../lib/sync';
 import { useTheme } from '../lib/theme';
 
+// Opening the app from a label scan or Spotlight lands on a tote; keep My Totes underneath so Back works.
+export const unstable_settings = { initialRouteName: 'index' };
+
 export default function RootLayout() {
   const t = useTheme();
   return (

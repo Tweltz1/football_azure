@@ -27,9 +27,11 @@ export default function RemindersScreen() {
           {r.seasons.map((s) => (
             <Card key={s.season} style={{ marginBottom: 12 }}>
               <Text style={[styles.big, { color: t.text }]}>
-                {s.season} {s.days === 0 ? 'starts today' : `in ${s.days} day${s.days === 1 ? '' : 's'}`}
+                {s.season}
               </Text>
-              <Text style={{ color: t.textMuted, marginBottom: 8 }}>Time to get these out:</Text>
+              <Text style={{ color: t.textMuted, marginBottom: 8 }}>
+                {s.days === 0 ? 'Time to get these out today:' : `Time to get these out in ${s.days} day${s.days === 1 ? '' : 's'}:`}
+              </Text>
               {s.totes.map((tote) => (
                 <Pressable key={tote.id} onPress={() => router.push(`/tote/${tote.id}`)} style={styles.row}>
                   <ToteBadge color={tote.color} icon={tote.icon} size={36} />
