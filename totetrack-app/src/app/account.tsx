@@ -74,7 +74,7 @@ export default function Account() {
             <View style={{ flex: 1 }}>
               <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }}>{pro.isPro ? 'ToteTrack Pro' : 'Get ToteTrack Pro'}</Text>
               <Text style={{ color: t.textMuted, fontSize: 14 }}>
-                {pro.isPro ? 'Unlimited totes. Tap to manage.' : `${Math.min(totes.length, FREE_TOTE_LIMIT)} of ${FREE_TOTE_LIMIT} free totes used. Pro adds unlimited.`}
+                {pro.isPro ? 'Unlimited totes and Snap to add. Tap to manage.' : `${Math.min(totes.length, FREE_TOTE_LIMIT)} of ${FREE_TOTE_LIMIT} free totes used. Pro adds unlimited totes and Snap to add.`}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={t.textMuted} />

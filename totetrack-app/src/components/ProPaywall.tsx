@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { FALLBACK_PRICES, FREE_TOTE_LIMIT, MANAGE_URL, PRIVACY_URL, PRO_PRODUCTS, TERMS_URL, usePro } from '../lib/pro';
+import { FALLBACK_PRICES, FREE_SNAPS, FREE_TOTE_LIMIT, MANAGE_URL, PRIVACY_URL, PRO_PRODUCTS, TERMS_URL, usePro } from '../lib/pro';
 import { useTotes } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
 import { Button, IconName, tap } from './ui';
@@ -11,15 +11,16 @@ type Plan = keyof typeof PRO_PRODUCTS;
 
 const PERKS: { icon: IconName; text: string }[] = [
   { icon: 'infinite', text: 'Unlimited totes' },
-  { icon: 'lock-open', text: `Your first ${FREE_TOTE_LIMIT} totes and every feature stay free` },
+  { icon: 'camera', text: 'Snap to add: one photo names everything in a tote' },
+  { icon: 'lock-open', text: `Your first ${FREE_TOTE_LIMIT} totes, labels, search and backup stay free` },
   { icon: 'heart', text: 'Supports a small, independent app with no ads' },
 ];
 
 /**
  * The ToteTrack Pro screen. reason "limit" is shown when someone tries to make a tote past the free
- * limit; their existing totes are never locked.
+ * limit (their existing totes are never locked), "snap" when the free Snap to add tries are used up.
  */
-export function ProPaywall({ reason, onClose }: { reason?: 'limit'; onClose?: () => void }) {
+export function ProPaywall({ reason, onClose }: { reason?: 'limit' | 'snap'; onClose?: () => void }) {
   const t = useTheme();
   const pro = usePro();
   const { totes } = useTotes();
@@ -43,7 +44,7 @@ export function ProPaywall({ reason, onClose }: { reason?: 'limit'; onClose?: ()
     try {
       const r = await pro.buy(PRO_PRODUCTS[plan]);
       if (r === 'purchased') {
-        Alert.alert('Welcome to ToteTrack Pro', 'Add as many totes as you like.');
+        Alert.alert('Welcome to ToteTrack Pro', 'Unlimited totes and Snap to add are on.');
         onClose?.();
       } else if (r === 'pending') {
         Alert.alert('Waiting for approval', 'Your purchase is pending. Pro turns on as soon as it’s approved.');
@@ -76,7 +77,7 @@ export function ProPaywall({ reason, onClose }: { reason?: 'limit'; onClose?: ()
         </View>
         <Text style={[styles.title, { color: t.text }]}>You have ToteTrack Pro</Text>
         <Text style={[styles.body, { color: t.textMuted }]}>
-          {pro.plan === PRO_PRODUCTS.yearly ? 'Yearly plan' : 'Monthly plan'} · unlimited totes ({totes.length} so far). Thanks for supporting ToteTrack!
+          {pro.plan === PRO_PRODUCTS.yearly ? 'Yearly plan' : 'Monthly plan'} · unlimited totes ({totes.length} so far) and Snap to add. Thanks for supporting ToteTrack!
         </Text>
         <Button title="Manage subscription" icon="settings-outline" variant="secondary" onPress={() => Linking.openURL(MANAGE_URL)} style={{ marginTop: 24, alignSelf: 'stretch' }} />
       </ScrollView>
@@ -88,10 +89,12 @@ export function ProPaywall({ reason, onClose }: { reason?: 'limit'; onClose?: ()
       <View style={[styles.hero, { backgroundColor: t.primarySoft }]}>
         <Ionicons name="cube" size={44} color={t.primary} />
       </View>
-      <Text style={[styles.title, { color: t.text }]}>{reason === 'limit' ? `You’ve used your ${FREE_TOTE_LIMIT} free totes` : 'ToteTrack Pro'}</Text>
+      <Text style={[styles.title, { color: t.text }]}>{reason === 'limit' ? `You’ve used your ${FREE_TOTE_LIMIT} free totes` : reason === 'snap' ? `You’ve used your ${FREE_SNAPS} free snaps` : 'ToteTrack Pro'}</Text>
       <Text style={[styles.body, { color: t.textMuted }]}>
         {reason === 'limit'
           ? 'All your totes are still here: open, edit, scan and fill them anytime. Go Pro to add more.'
+          : reason === 'snap'
+            ? 'Snap to add is part of ToteTrack Pro. You can still add items by typing them in.'
           : pro.freeLeft === 0
             ? `You’ve used all ${FREE_TOTE_LIMIT} free totes. Go Pro to add as many as you need.`
             : `You have ${pro.freeLeft} of ${FREE_TOTE_LIMIT} free totes left. Go Pro to add as many as you need.`}

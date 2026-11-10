@@ -5,11 +5,13 @@ import { StoreEntitlement, StoreProduct, ToteNative } from '../../modules/tote-n
 import { useTotes } from './store';
 
 /**
- * ToteTrack Pro: the first FREE_TOTE_LIMIT totes are free, Pro allows any number.
+ * ToteTrack Pro: the first FREE_TOTE_LIMIT totes are free, Pro allows any number. Snap to add (naming
+ * what's in a tote from a photo) is a Pro feature with FREE_SNAPS tries for everyone.
  * Nobody ever loses a tote: over the limit you can still open, edit, scan and empty every tote you
  * have; only making another new one asks for Pro. Change the numbers here; prices live in App Store Connect.
  */
 export const FREE_TOTE_LIMIT = 10;
+export const FREE_SNAPS = 5;
 export const PRO_PRODUCTS = {
   monthly: 'com.tweltz1.totetrack.pro.monthly',
   yearly: 'com.tweltz1.totetrack.pro.yearly',
@@ -24,6 +26,7 @@ export const PRIVACY_URL = 'https://github.com/Tweltz1/football_azure/blob/claud
 export const MANAGE_URL = 'https://apps.apple.com/account/subscriptions';
 
 const CACHE_KEY = 'totetrack.pro.v1';
+const SNAPS_KEY = 'totetrack.snapsUsed.v1';
 
 type Cached = { productId: string; expires: number };
 
@@ -38,6 +41,12 @@ type Pro = {
   canAddTote: boolean;
   /** Free totes left, or null with Pro. */
   freeLeft: number | null;
+  /** True while Snap to add can run (Pro, or free tries left). */
+  canSnap: boolean;
+  /** Free Snap to add tries left, or null with Pro. */
+  freeSnapsLeft: number | null;
+  /** Counts one free Snap to add try. */
+  usedSnap: () => void;
   products: StoreProduct[];
   /** False in builds without the native module (Expo Go, web). */
   available: boolean;
@@ -60,6 +69,7 @@ export function ProProvider({ children }: { children: ReactNode }) {
   const [checked, setChecked] = useState(!ToteNative);
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const answered = useRef(false);
+  const [snapsUsed, setSnapsUsed] = useState(0);
 
   const apply = useCallback((list: StoreEntitlement[]) => {
     const a = activeOf(list);
@@ -87,6 +97,9 @@ export function ProProvider({ children }: { children: ReactNode }) {
         if (!answered.current && c && (c.expires === 0 || c.expires > Date.now())) setActive(c);
       })
       .catch(() => {});
+    AsyncStorage.getItem(SNAPS_KEY)
+      .then((raw) => setSnapsUsed(Number(raw) || 0))
+      .catch(() => {});
     ToteNative?.storeEntitlements()
       .then(apply)
       .catch(() => setChecked(true));
@@ -109,6 +122,15 @@ export function ProProvider({ children }: { children: ReactNode }) {
       checked,
       canAddTote: isPro || totes.length < FREE_TOTE_LIMIT,
       freeLeft: isPro ? null : Math.max(0, FREE_TOTE_LIMIT - totes.length),
+      canSnap: isPro || snapsUsed < FREE_SNAPS,
+      freeSnapsLeft: isPro ? null : Math.max(0, FREE_SNAPS - snapsUsed),
+      usedSnap: () => {
+        if (isPro) return;
+        setSnapsUsed((n) => {
+          AsyncStorage.setItem(SNAPS_KEY, String(n + 1)).catch(() => {});
+          return n + 1;
+        });
+      },
       products,
       available: !!ToteNative,
       buy: async (productId) => {
@@ -123,7 +145,7 @@ export function ProProvider({ children }: { children: ReactNode }) {
       },
       refresh,
     };
-  }, [active, checked, totes.length, products, refresh, apply]);
+  }, [active, checked, totes.length, snapsUsed, products, refresh, apply]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
