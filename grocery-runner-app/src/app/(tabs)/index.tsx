@@ -1,16 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, Stack } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActionSheetIOS, Alert, Platform, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SaleBadge } from '../components/SaleBadge';
-import { SwipeRow } from '../components/SwipeRow';
-import { Button, tap } from '../components/ui';
-import { dealFor, useDeals } from '../lib/deals';
-import { locationLabel } from '../lib/labels';
-import { groupList } from '../lib/listGroups';
-import { useData } from '../lib/store';
-import { radius, useTheme } from '../lib/theme';
+import { SaleBadge } from '../../components/SaleBadge';
+import { SwipeRow } from '../../components/SwipeRow';
+import { Button, ScreenHeader, tap } from '../../components/ui';
+import { dealFor, useDeals } from '../../lib/deals';
+import { locationLabel } from '../../lib/labels';
+import { groupList } from '../../lib/listGroups';
+import { useData } from '../../lib/store';
+import { radius, useTheme } from '../../lib/theme';
 
 export default function ListScreen() {
   const t = useTheme();
@@ -35,70 +35,36 @@ export default function ListScreen() {
     setDraft('');
   };
 
-  // The ••• menu: start over, and shortcuts to every other part of the app.
-  const openMenu = () => {
-    const actions: { title: string; run: () => void; destructive?: boolean }[] = [
-      { title: 'Start a new list', run: clearAll, destructive: true },
-      ...(items.some((i) => i.checked) ? [{ title: 'Clear checked items', run: clearChecked }] : []),
-      { title: store ? 'Change store' : 'Choose store', run: () => router.push('/store') },
-      { title: 'Stores on a map', run: () => router.push('/map') },
-      { title: 'Recipes', run: () => router.push('/recipes') },
-    ];
-    const usable = items.length ? actions : actions.filter((a) => a.title !== 'Start a new list');
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: [...usable.map((a) => a.title), 'Cancel'],
-          cancelButtonIndex: usable.length,
-          destructiveButtonIndex: usable.findIndex((a) => a.destructive),
-        },
-        (i) => usable[i]?.run(),
-      );
-    } else {
-      Alert.alert('Shop Stride', undefined, [
-        ...usable.map((a) => ({ text: a.title, onPress: a.run, style: a.destructive ? ('destructive' as const) : undefined })),
-        { text: 'Cancel', style: 'cancel' as const },
-      ]);
-    }
-  };
+  const startOver = () =>
+    Alert.alert('Start a new list?', 'This clears every item on your list.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Clear list', style: 'destructive', onPress: clearAll },
+    ]);
+  const checkedCount = items.length - left;
 
   return (
-    <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="Menu" hitSlop={12} onPress={openMenu}>
-              <Ionicons name="ellipsis-horizontal-circle" size={26} color={t.primary} />
-            </Pressable>
-          ),
-        }}
-      />
+    <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: t.bg }}>
+      <ScreenHeader title="My list" action={items.length ? { label: 'New list', onPress: startOver } : undefined} />
+
       <Pressable
         accessibilityRole="button"
+        accessibilityHint="Choose a different store"
         onPress={() => router.push('/store')}
         style={[styles.store, { backgroundColor: t.card }]}
       >
-        <Ionicons name="storefront" size={22} color={t.primary} />
+        <View style={[styles.storeIcon, { backgroundColor: t.primarySoft }]}>
+          <Ionicons name="storefront" size={18} color={t.primary} />
+        </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.storeName, { color: t.text }]}>{store ? store.name : 'Choose your store'}</Text>
-          <Text style={{ color: t.textMuted }} numberOfLines={1}>
-            {store ? (store.address ?? `${store.aisleCount} aisles`) : 'Pick where you shop to sort your route'}
+          <Text style={[styles.storeName, { color: t.text }]} numberOfLines={1}>
+            {store ? store.name : 'Choose your store'}
+          </Text>
+          <Text style={{ color: t.textMuted, fontSize: 13 }} numberOfLines={1}>
+            {store ? (store.address ?? `${store.aisleCount} aisles`) : 'So your list is sorted in walking order'}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={t.textMuted} />
+        <Text style={{ color: t.primary, fontWeight: '600' }}>{store ? 'Change' : 'Choose'}</Text>
       </Pressable>
-
-      <View style={styles.actions}>
-        <Button title="Recipes" icon="restaurant" variant="secondary" onPress={() => router.push('/recipes')} style={{ flex: 1 }} />
-        <Button
-          title="Where to shop"
-          icon="pricetags"
-          variant="secondary"
-          disabled={!left}
-          onPress={() => router.push('/suggest')}
-          style={{ flex: 1 }}
-        />
-      </View>
 
       {store && store.chain !== 'kroger' && items.some((i) => !i.checked && i.location.kind !== 'aisle') && (
         <Pressable
@@ -112,7 +78,7 @@ export default function ListScreen() {
         </Pressable>
       )}
 
-      <View style={[styles.addRow, { backgroundColor: t.card }]}>
+      <View style={[styles.addRow, { backgroundColor: t.card, borderColor: draft ? t.primary : t.border }]}>
         <TextInput
           value={draft}
           onChangeText={setDraft}
@@ -135,9 +101,30 @@ export default function ListScreen() {
         contentContainerStyle={{ padding: 16, paddingTop: 4 }}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         ListEmptyComponent={
-          <Text style={[styles.empty, { color: t.textMuted }]}>
-            Add what you need, or pick a recipe. Shop Stride sorts it into the shortest walk through the store.
-          </Text>
+          <View style={styles.empty}>
+            <Ionicons name="cart-outline" size={52} color={t.textMuted} />
+            <Text style={[styles.emptyTitle, { color: t.text }]}>Your list is empty</Text>
+            <Text style={[styles.emptyText, { color: t.textMuted }]}>
+              Type what you need above. Shop Stride sorts it into the shortest walk through your store.
+            </Text>
+            <Button
+              title="Add from a recipe"
+              icon="restaurant"
+              variant="secondary"
+              onPress={() => router.navigate('/recipes')}
+              style={{ marginTop: 8, alignSelf: 'center' }}
+            />
+          </View>
+        }
+        ListFooterComponent={
+          checkedCount > 0 ? (
+            <Pressable accessibilityRole="button" hitSlop={8} onPress={clearChecked} style={styles.clearChecked}>
+              <Ionicons name="checkmark-done" size={18} color={t.primary} />
+              <Text style={{ color: t.primary, fontWeight: '600' }}>
+                Clear {checkedCount} checked item{checkedCount === 1 ? '' : 's'}
+              </Text>
+            </Pressable>
+          ) : undefined
         }
         renderSectionHeader={({ section }) => (
           <Text style={[styles.section, { color: t.textMuted }]}>
@@ -196,33 +183,33 @@ export default function ListScreen() {
         </View>
       )}
 
-      <View style={styles.footer}>
-        {items.some((i) => i.checked) && (
-          <Button title="Clear checked" variant="secondary" onPress={clearChecked} style={{ flex: 1 }} />
-        )}
-        <Button
-          title={left ? `Route ${left} item${left === 1 ? '' : 's'}` : 'Route'}
-          icon="navigate"
-          disabled={!left}
-          onPress={() => router.push('/route')}
-          style={{ flex: 2 }}
-        />
-      </View>
+      {left > 0 && (
+        <View style={styles.footer}>
+          <Button
+            title={`Start shopping · ${left} item${left === 1 ? '' : 's'}`}
+            icon="navigate"
+            onPress={() => router.push('/route')}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  store: { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 16, marginBottom: 8, padding: 14, borderRadius: radius.lg },
-  storeName: { fontSize: 17, fontWeight: '700' },
-  actions: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 8 },
+  store: { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 16, marginTop: 10, marginBottom: 10, padding: 12, borderRadius: radius.md },
+  storeIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  storeName: { fontSize: 16, fontWeight: '700' },
   scanLink: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: radius.md },
-  addRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, borderRadius: radius.md },
+  addRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, borderRadius: radius.md, borderWidth: 1.5 },
   input: { flex: 1, fontSize: 17, paddingVertical: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.md },
   itemName: { fontSize: 17, fontWeight: '600' },
   section: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', marginTop: 12, marginBottom: 6, marginLeft: 4 },
   undo: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, padding: 14, borderRadius: radius.md },
-  empty: { textAlign: 'center', marginTop: 40, fontSize: 16, lineHeight: 22, paddingHorizontal: 24 },
-  footer: { flexDirection: 'row', gap: 10, padding: 16, paddingTop: 8 },
+  empty: { alignItems: 'center', gap: 6, marginTop: 36, paddingHorizontal: 24 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', marginTop: 4 },
+  emptyText: { textAlign: 'center', fontSize: 15, lineHeight: 21 },
+  clearChecked: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 16 },
+  footer: { padding: 16, paddingTop: 8 },
 });

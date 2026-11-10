@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Button, Card } from '../components/ui';
+import { Button, Card } from './ui';
 import { backendConfigured } from '../lib/api';
 import { chainInfo } from '../lib/chains';
 import { storesNear } from '../lib/nearby';
@@ -11,7 +10,8 @@ import { useData } from '../lib/store';
 import { available, compareStores, estimate, missing, StoreOption, toStore } from '../lib/storePick';
 import { radius, useTheme } from '../lib/theme';
 
-export default function SuggestScreen() {
+/** Ranks nearby stores for the items still on the list. Shown on the Stores tab. */
+export function CompareStores({ onPicked }: { onPicked: () => void }) {
   const t = useTheme();
   const { items, setStore } = useData();
   const names = items.filter((i) => !i.checked).map((i) => i.name);
@@ -40,7 +40,9 @@ export default function SuggestScreen() {
     [],
   );
 
+  const hasItems = names.length > 0;
   useEffect(() => {
+    if (!hasItems) return;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return setNeedPlace(true);
@@ -50,7 +52,7 @@ export default function SuggestScreen() {
       if (pos) compare(pos.coords.latitude, pos.coords.longitude);
       else setNeedPlace(true);
     })().catch(() => setNeedPlace(true));
-  }, [compare]);
+  }, [compare, hasItems]);
 
   const searchPlace = async () => {
     try {
@@ -64,8 +66,19 @@ export default function SuggestScreen() {
 
   const shopHere = (o: StoreOption) => {
     setStore(toStore(o.store));
-    router.dismissTo('/');
+    onPicked();
   };
+
+  if (!names.length) {
+    return (
+      <View style={{ padding: 16, gap: 8 }}>
+        <Text style={{ color: t.text, fontSize: 17, fontWeight: '600' }}>Add items to compare stores</Text>
+        <Text style={{ color: t.textMuted }}>
+          Once your list has items, this shows which nearby store has the most of them mapped, in stock or on sale.
+        </Text>
+      </View>
+    );
+  }
 
   if (!backendConfigured) {
     return (
@@ -98,7 +111,7 @@ export default function SuggestScreen() {
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }} keyboardShouldPersistTaps="handled">
       <Text style={{ color: t.textMuted }}>
-        {`Comparing stores near you for ${names.length} item${names.length === 1 ? '' : 's'}. Stock and prices come from Kroger and its stores (Pick 'n Save, Fry's, King Soopers…). Other chains don't publish stock, so they are ranked by distance and how many aisles shoppers have mapped.`}
+        {`Best stores near you for your ${names.length} item${names.length === 1 ? '' : 's'}.`}
       </Text>
 
       {needPlace && !options && !busy && (
@@ -148,6 +161,13 @@ export default function SuggestScreen() {
           <Button title="Shop here" icon="navigate" variant={n === 0 ? 'primary' : 'secondary'} onPress={() => shopHere(o)} />
         </Card>
       ))}
+
+      {!!options?.length && (
+        <Text style={{ color: t.textMuted, fontSize: 12 }}>
+          Stock and prices come from Kroger and its stores (Pick &apos;n Save, Fry&apos;s, King Soopers…). Other chains
+          don&apos;t publish stock, so they are ranked by distance and how many aisles shoppers have mapped.
+        </Text>
+      )}
     </ScrollView>
   );
 }

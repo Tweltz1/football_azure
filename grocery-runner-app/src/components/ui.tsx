@@ -72,6 +72,68 @@ export function Chip({ label, selected, onPress }: { label: string; selected?: b
   );
 }
 
+/** Big page title at the top of each tab, with an optional action on the right. */
+export function ScreenHeader({ title, action }: { title: string; action?: { label: string; icon?: IconName; onPress: () => void } }) {
+  const t = useTheme();
+  return (
+    <View style={styles.header}>
+      <Text accessibilityRole="header" style={[styles.headerTitle, { color: t.text }]}>
+        {title}
+      </Text>
+      {action && (
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={12}
+          onPress={() => {
+            tap();
+            action.onPress();
+          }}
+          style={styles.headerAction}
+        >
+          {action.icon && <Ionicons name={action.icon} size={18} color={t.primary} />}
+          <Text style={{ color: t.primary, fontSize: 16, fontWeight: '600' }}>{action.label}</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+/** Two or three side-by-side choices, like the iOS segmented control. */
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  style,
+}: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const t = useTheme();
+  return (
+    <View style={[styles.segmented, { backgroundColor: t.cardAlt }, style]}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <Pressable
+            key={o.value}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            onPress={() => {
+              if (!on) tap();
+              onChange(o.value);
+            }}
+            style={[styles.segment, on && { backgroundColor: t.card, shadowOpacity: 0.12 }]}
+          >
+            <Text style={{ color: on ? t.text : t.textMuted, fontWeight: '600', fontSize: 15 }}>{o.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export function SectionTitle({ children }: { children: ReactNode }) {
   const t = useTheme();
   return <Text style={[styles.section, { color: t.textMuted }]}>{children}</Text>;
@@ -89,5 +151,19 @@ const styles = StyleSheet.create({
   },
   buttonText: { fontSize: 16, fontWeight: '600' },
   chip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999 },
+  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
+  headerTitle: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5 },
+  headerAction: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingBottom: 6 },
+  segmented: { flexDirection: 'row', padding: 3, borderRadius: radius.sm },
+  segment: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: radius.sm - 2,
+    shadowColor: '#000',
+    shadowOpacity: 0,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+  },
   section: { fontSize: 13, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 20, marginBottom: 8 },
 });

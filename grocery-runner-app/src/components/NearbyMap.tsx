@@ -1,10 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
-import { Button, Chip } from '../components/ui';
+import { Button, Chip } from './ui';
 import { chainInfo } from '../lib/chains';
 import { MapStore, storesNear } from '../lib/nearby';
 import { useData } from '../lib/store';
@@ -15,7 +14,8 @@ type Filter = 'all' | 'mapped';
 // Refetch only after the map moves this far (about 8 km), so panning stays quiet.
 const REFETCH_DEG = 0.07;
 
-export default function MapScreen() {
+/** Supported stores near the shopper on a map. Shown on the Stores tab. */
+export function NearbyMap({ onPicked }: { onPicked: () => void }) {
   const t = useTheme();
   const { setStore } = useData();
   const map = useRef<MapView>(null);
@@ -97,7 +97,8 @@ export default function MapScreen() {
       lat: s.lat,
       lon: s.lon,
     });
-    router.dismissAll();
+    setSelected(null);
+    onPicked();
   };
 
   const shown = filter === 'mapped' ? stores.filter((s) => s.coverage === 'kroger' || s.items > 0) : stores;
