@@ -44,7 +44,8 @@ function world() {
   // In-memory copy of talkshops_claim_session: auth holds live sign-ins; tracked holds devices seen by Talk Shops.
   const auth = new Map<string, { user: string; started: number }>();
   const tracked = new Map<string, { user: string; started: number }>();
-  const endAll = (ids: string[]) => { for (const id of ids) { auth.delete(id); tracked.delete(id); } return ids.length; };
+  const why = new Map<string, 'limit' | 'idle' | 'owner' | 'others'>();
+  const endAll = (ids: string[], reason?: 'limit' | 'owner' | 'others') => { for (const id of ids) { auth.delete(id); tracked.delete(id); if (reason) why.set(id, reason); } return ids.length; };
   const sessions: SessionStore = {
     async claim(user, id) {
       const a = auth.get(id);
@@ -53,10 +54,11 @@ function world() {
       tracked.set(id, { ...a });
       const mine = [...tracked.entries()].filter(([, t]) => t.user === user).sort((x, y) => y[1].started - x[1].started);
       const gone = mine.slice(MAX_DEVICES).map(([k]) => k);
-      endAll(gone);
+      endAll(gone, 'limit');
       return gone.includes(id) ? 'ended' : 'ok';
     },
-    async end(user, id, keep) { return endAll([...tracked.entries()].filter(([k, t]) => t.user === user && (!id || k === id) && k !== keep).map(([k]) => k)); },
+    async end(user, id, keep) { return endAll([...tracked.entries()].filter(([k, t]) => t.user === user && (!id || k === id) && k !== keep).map(([k]) => k), id ? undefined : keep ? 'others' : 'owner'); },
+    async endedReason(id) { return why.get(id) ?? null; },
     async counts(users) { const out: Record<string, number> = {}; for (const t of tracked.values()) if (users.includes(t.user)) out[t.user] = (out[t.user] ?? 0) + 1; return out; },
   };
   const signIn = (user: string, id: string) => { auth.set(id, { user, started: clock += 1000 }); return id; };
@@ -268,6 +270,7 @@ test('a third device signs out the oldest; the newest sign-in always wins', asyn
   assert.equal(old?.status, 401);
   assert.equal((old?.body as Ended).code, 'session_ended');
   assert.match((old?.body as Ended).message, /2 devices/);
+  assert.equal((old?.body as Ended).reason, 'ended');
   assert.equal(w.auth.has('dev-a'), false, 'its sign-in is revoked, so it cannot refresh back in');
   assert.equal((await b('GET', 'shop/jobs'))?.status, 200);
 });
@@ -277,6 +280,16 @@ test('a token the auth server turned down is told its sign-in ended; customer pa
   const res = await w.as(null, null, null, true)('GET', 'shop/jobs');
   assert.equal(res?.status, 401);
   assert.equal((res?.body as Ended).code, 'session_ended');
+  assert.equal((res?.body as Ended).reason, 'rejected');
+  // Supabase turns down a device that the 2-device limit signed out; the message says why.
+  const a = w.as('tech1', 'tech@shop.com', w.signIn('tech1', 'dev-a'));
+  await a('GET', 'shop/jobs');
+  for (const d of ['dev-b', 'dev-c']) await w.as('tech1', 'tech@shop.com', w.signIn('tech1', d))('GET', 'shop/jobs');
+  const kicked = await w.as(null, null, 'dev-a', true)('GET', 'shop/jobs');
+  assert.equal((kicked?.body as Ended).reason, 'limit');
+  assert.match((kicked?.body as Ended).message, /another device/);
+  await w.as('owner1', 'owner@shop.com')('POST', 'shop/staff/members/tech1/signout');
+  assert.equal(((await w.as(null, null, 'dev-c', true)('GET', 'shop/jobs'))?.body as Ended).reason, 'owner');
   assert.equal((await w.as(null)('GET', 'shop/jobs'))?.status, 401);
   assert.equal(typeof (await w.as(null)('GET', 'shop/jobs'))?.body, 'string', 'no token at all: the usual Sign in first');
 });

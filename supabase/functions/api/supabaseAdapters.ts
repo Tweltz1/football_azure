@@ -671,6 +671,12 @@ export function createSessionStore(db: SupabaseClient): SessionStore {
       for (const r of (data ?? []) as { user_id: string }[]) out[r.user_id] = (out[r.user_id] ?? 0) + 1;
       return out;
     },
+    async endedReason(sessionId) {
+      const { data, error } = await db.from('talkshops_ended_sessions').select('reason').eq('session_id', sessionId).maybeSingle();
+      if (error) throw error;
+      const r = (data as { reason?: string } | null)?.reason;
+      return r === 'limit' || r === 'idle' || r === 'owner' || r === 'others' ? r : null;
+    },
   };
 }
 

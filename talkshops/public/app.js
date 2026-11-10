@@ -116,6 +116,7 @@
 
   // Set when this device was signed out by the server (newer sign-in elsewhere, an owner, or 14 days unused).
   let signedOutNote = "";
+  try { signedOutNote = sessionStorage.getItem("ts-signed-out") || ""; sessionStorage.removeItem("ts-signed-out"); } catch (e) { /* private mode */ }
   async function api(method, path, body, retried) {
     if (!CFG.apiUrl) throw new Error("This site is missing its server settings.");
     const headers = { "Content-Type": "application/json" };
@@ -134,7 +135,7 @@
       // An expired token gets one refresh and retry. A device that was signed out can't refresh, so it signs out here.
       if (!retried && data.reason === "rejected") { const r = await sb.auth.refreshSession().catch(() => ({ error: true })); if (!r.error && r.data?.session) { session = r.data.session; return api(method, path, body, true); } }
       signedOutNote = data.message || "You were signed out. Please sign in again.";
-      await sb.auth.signOut({ scope: "local" }).catch(() => {});
+      await localSignOut();
       const err = new Error(signedOutNote); err.status = 401; throw err;
     }
     if (!res.ok) { const err = new Error(typeof data === "string" && data ? data : (data && data.message) || "Something went wrong (" + res.status + ")."); err.status = res.status; throw err; }
@@ -144,7 +145,17 @@
   async function signOutHere() {
     if (!sb) return;
     try { await api("POST", "shop/session/end"); } catch (e) { /* still sign out here */ }
-    await sb.auth.signOut({ scope: "local" }).catch(() => {});
+    await localSignOut();
+  }
+  /** Forgets the sign-in on this browser. When the server already ended it, Supabase refuses the sign-out call and
+   *  keeps the saved sign-in, so it is cleared here and the page reloads signed out. */
+  async function localSignOut() {
+    const r = await sb.auth.signOut({ scope: "local" }).catch((e) => ({ error: e }));
+    if (!r?.error) return;
+    try { localStorage.removeItem(sb.auth.storageKey || "sb-" + new URL(CFG.supabaseUrl).hostname.split(".")[0] + "-auth-token"); } catch (e) { /* nothing saved */ }
+    try { if (signedOutNote) sessionStorage.setItem("ts-signed-out", signedOutNote); } catch (e) { /* private mode */ }
+    location.replace(signedOutNote ? "/?login" : "/");
+    await new Promise(() => {}); // the page is reloading
   }
 
   let toastT;
