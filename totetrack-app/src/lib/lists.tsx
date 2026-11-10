@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
+import { DEMO, demoLists } from './demo';
 import { createContext, ReactNode, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 /** One thing to pack. It points at an item in a tote, so the list knows where to grab it from. */
@@ -28,7 +29,7 @@ export function ListsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
-      .then((raw) => raw && setLists(JSON.parse(raw)))
+      .then((raw) => (raw ? setLists(JSON.parse(raw)) : DEMO && setLists(demoLists())))
       .catch(() => {})
       .finally(() => {
         loaded.current = true;

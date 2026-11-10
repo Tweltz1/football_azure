@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { DEMO, demoTotes } from './demo';
 import { deletePhoto } from './photos';
 import { Item, Tote, ToteInput } from './types';
 
@@ -46,6 +47,7 @@ export function ToteProvider({ children }: { children: ReactNode }) {
       try {
         raw = await AsyncStorage.getItem(KEY);
         if (raw) setTotes(JSON.parse(raw));
+        else if (DEMO) setTotes(demoTotes());
         const tomb = await AsyncStorage.getItem(TOMB_KEY);
         if (tomb) setTombstones(JSON.parse(tomb));
       } catch {
