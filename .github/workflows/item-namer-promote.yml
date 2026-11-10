@@ -1,9 +1,13 @@
 # Makes a released item namer (item-namer-vN) the one phones use (release item-namer-current), if it does at
 # least as well as the current one when it's sure. Training runs do this by themselves; this is for doing it
-# by hand (for example force: true to roll back to an older version).
+# by hand (for example force: true to roll back to an older version): either from the Actions tab, or by
+# committing ml/item-namer/promote.json ({"tag": "item-namer-vN", "force": false}).
 name: Item namer promote
 
 on:
+  push:
+    paths:
+      - 'ml/item-namer/promote.json'
   workflow_dispatch:
     inputs:
       tag:
@@ -29,6 +33,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Promote
         run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"; force="${{ inputs.force }}"
+          else
+            tag=$(python3 -c 'import json; print(json.load(open("ml/item-namer/promote.json"))["tag"])')
+            force=$(python3 -c 'import json; print(str(json.load(open("ml/item-namer/promote.json")).get("force", False)).lower())')
+          fi
           mkdir cand
-          gh release download "${{ inputs.tag }}" -D cand -p namer.f32 -p labels.json -p metrics.json
-          python3 ml/item-namer/promote.py --dir cand --tag "${{ inputs.tag }}" ${{ inputs.force && '--force' || '' }}
+          gh release download "$tag" -D cand -p namer.f32 -p labels.json -p metrics.json
+          python3 ml/item-namer/promote.py --dir cand --tag "$tag" $([ "$force" = "true" ] && echo --force)
