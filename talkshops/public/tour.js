@@ -23,6 +23,7 @@
   #tourBlock{position:fixed;inset:0;z-index:60;cursor:default}
   #tourSpot{position:fixed;z-index:61;pointer-events:none;border-radius:12px;box-shadow:0 0 0 3px #f2a650,0 0 0 9999px rgba(8,12,18,.16);transition:opacity .15s ease;opacity:0}
   #tourSpot.on{opacity:1}
+  .toast.tour-under{opacity:.12 !important;transition:opacity .2s}
   .tour-tap{position:fixed;z-index:62;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(242,166,80,.55);border:2px solid #f2a650;pointer-events:none;animation:tourTap .55s ease-out forwards}
   @keyframes tourTap{from{transform:scale(.4);opacity:1}to{transform:scale(1.5);opacity:0}}
   #tourPanel{position:fixed;z-index:63;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(680px,calc(100% - 24px));background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.35);padding:14px 16px;font-family:var(--f-body);box-sizing:border-box}
@@ -230,6 +231,12 @@
       }
     }
     spot.classList.toggle("on", !!box);
+    // A pop-up notice that lands on top of what we're pointing at fades out of the way.
+    for (const t of qa(".toast")) {
+      const tr = t.getBoundingClientRect();
+      const over = !!box && tr.width > 0 && tr.left < box.r && tr.right > box.l && tr.top < box.b && tr.bottom > box.t;
+      t.classList.toggle("tour-under", over);
+    }
     if (box) {
       const P = document.getElementById("tourPanel");
       if (P && !P.querySelector("input:focus")) {
@@ -259,6 +266,8 @@
     const now = typeof sel === "string" ? q(sel) : el;
     if (now && now.isConnected) now.click();
     await wait(250);
+    // Some buttons put focus back in a saved-item box, which pops its list open; close it unless that's what we tapped for.
+    if (q("#suggestList") && now && !now.closest(".suggest-wrap,.suggest")) closeSuggest();
   }
   async function type(sel, text) {
     const el = typeof sel === "string" ? q(sel) : sel; miss("type", sel, el); if (!el) return;
