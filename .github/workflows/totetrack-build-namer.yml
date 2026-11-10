@@ -20,7 +20,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    timeout-minutes: 350
     permissions:
       contents: write
     defaults:
@@ -66,8 +66,8 @@ jobs:
         working-directory: totetrack-app/tools/detector
         run: |
           set -o pipefail
-          python prepare_lvis.py ~/data-src/lvis_v1_train.json.zip "$RUNNER_TEMP/data" --per-class 150 --min-images 1 2>&1 | tee prepare.log
-          python prepare_openimages.py ~/data-src/oidv6-train-annotations-bbox.csv ~/data-src/oidv7-class-descriptions-boxable.csv "$RUNNER_TEMP/data" --per-class 150 2>&1 | tee -a prepare.log
+          python prepare_lvis.py ~/data-src/lvis_v1_train.json.zip "$RUNNER_TEMP/data" --per-class 300 --min-images 1 2>&1 | tee prepare.log
+          python prepare_openimages.py ~/data-src/oidv6-train-annotations-bbox.csv ~/data-src/oidv7-class-descriptions-boxable.csv "$RUNNER_TEMP/data" --per-class 300 2>&1 | tee -a prepare.log
           du -sh "$RUNNER_TEMP/data"
 
       - name: Train and build
