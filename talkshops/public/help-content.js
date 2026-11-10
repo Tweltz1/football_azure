@@ -42,7 +42,7 @@
       ["Can I keep a note just for my team?", "Yes. Mark a note Shop only and it stays inside your shop. Customers never see shop-only notes."],
     ]},
     { id: "estimates", title: "Estimates and Prices", lesson: "estimates", qs: [
-      ["How do I build an estimate?", "Open the car and add line items. Type a few letters to pick from your saved items, enter hours or quantity, and mark each line Required, Recommended or Optional so the customer knows what matters most."],
+      ["How do I build an estimate?", "Open the car and add line items. Type a few letters to pick from your saved items, enter hours or quantity, and mark each line Required, Recommended or Optional so the customer knows what matters most. When one fix needs several parts and labor, put them in one repair (each line's Repair menu, or Part of a repair as you add it) so the customer approves or declines them together."],
       ["How do customers approve work?", "They open their link, approve or decline each line, and sign on their phone. You see what they picked, the approved total and when they signed."],
       ["How do I bring in my price list?", "New shops see a Bring in your prices step during setup, and owners can do it any time in Settings → Saved Items. Upload an Excel or CSV file, a PDF, or a photo of your printed price sheet. Talk Shops reads it and lets you review every item before anything is saved."],
       ["What if my price sheet has an unusual layout?", "Talk Shops reads most sheets on its own. If it finds only a few items, try Read it with AI instead. Anything it is unsure about is highlighted so you can check it before saving."],

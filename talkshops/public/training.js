@@ -12,7 +12,7 @@ window.TALKSHOPS_TRAINING = (() => {
     { id: "walkaround", title: "Walk-around photos and AI damage marks", mins: 2, desc: "Asking for 8 photos, the customer's guide, finding damage with AI, and confirming marks." },
     { id: "stages", title: "Stages and notifications", mins: 1, desc: "Moving a car along, editing what the customer is told, and messaging." },
     { id: "jobs", title: "Job details, past visits and reminder texts", mins: 2, desc: "Tech, promised time and mileage, printing, past visits, shop-only notes, and reminder texts customers can stop." },
-    { id: "estimates", title: "Estimates and saved items", mins: 2, desc: "Quick add, saved items, Required/Recommended/Optional, and sending for approval." },
+    { id: "estimates", title: "Estimates and saved items", mins: 2, desc: "Quick add, saved items, Required/Recommended/Optional, grouping parts into one repair, and sending for approval." },
     { id: "customer", title: "The customer's page", mins: 1, desc: "What customers see, priority labels, approving item by item, and signing." },
     { id: "smart", title: "Smart Replies", mins: 2, desc: "Suggested and automatic answers to customer texts, what needs staff review, and the schedule." },
     { id: "photos", title: "Photos, notes and voice typing", mins: 1, desc: "Show the problem, write or speak technician notes, and notify the customer." },

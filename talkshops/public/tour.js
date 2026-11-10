@@ -116,7 +116,7 @@
       audio.ontimeupdate = () => showAt(audio.currentTime);
       audio.onended = finish;
       audio.onerror = useFallback;
-      audio.src = "/tour/" + key + ".mp3?v=11";
+      audio.src = "/tour/" + key + ".mp3?v=12";
       audio.muted = muted;
       const p = audio.play();
       if (p && p.catch) p.catch(useFallback);
@@ -724,7 +724,7 @@
       }
     },
     async estimates() {
-      STEPS = 7; await begin("board");
+      STEPS = 8; await begin("board");
       step(); { const c = say("es-1"); await openSheet("RO-1044"); highlight("#estSec"); await cue(0.6); highlight(".est-add"); await c; }
       step(); { const c = say("es-2"); highlight(".est-add"); await cue(0.2); await pickSaved("recharge"); highlight(".est-add"); await cue(0.85); await tap("#addLine button[type=submit]"); highlight("#estSec"); await c; }
       step(); { const c = say("es-3"); q("#li-item")?.blur(); await wait(300); highlight(".suggest-btn"); await tap(".suggest-btn"); highlight("#suggestList"); await cue(0.6); await pickSaved("condenser"); await tap("#addLine button[type=submit]"); highlight("#estSec"); await c; }
@@ -733,6 +733,18 @@
         await cue(0.55); const sel = qa(".pri-sel").pop(); highlight(sel?.closest("td"));
         if (sel) { sel.value = "optional"; sel.dispatchEvent(new Event("change", { bubbles: true })); }
         await wait(300); highlight("#estSec table");
+        await c;
+      }
+      step(); {
+        // One fix, several lines: put the recharge and the condenser in one repair the customer approves as a whole.
+        const c = say("es-grp"); const last = qa(".grp-sel").pop(); highlight(last?.closest("td"));
+        await cue(0.22); if (last) { last.value = "__new"; last.dispatchEvent(new Event("change", { bubbles: true })); }
+        await wait(250); const inp = q(".grp-new");
+        if (inp) { highlight(inp.closest("td")); await type(inp, "AC repair"); inp.dispatchEvent(new Event("change", { bubbles: true })); }
+        await cue(0.5); const other = qa(".grp-sel").find((x) => !x.value); highlight(other?.closest("td"));
+        if (other) { await wait(400); other.value = "AC repair"; other.dispatchEvent(new Event("change", { bubbles: true })); }
+        await wait(300); highlight("#estSec table");
+        await cue(0.84); highlight(".grp-add");
         await c;
       }
       step(); { const c = say("es-4"); highlight(q("#li-save")?.closest("label")); await cue(0.55); highlight("#laborBtn"); await c; }
@@ -1163,8 +1175,8 @@
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
-      fetch("/tour/lines.json?v=8").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
-      fetch("/tour/caption-cues.json?v=8").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+      fetch("/tour/lines.json?v=9").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
+      fetch("/tour/caption-cues.json?v=9").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">
