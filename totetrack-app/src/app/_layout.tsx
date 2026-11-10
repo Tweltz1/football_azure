@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../lib/auth';
 import { ListsProvider } from '../lib/lists';
 import { NativeBridge } from '../lib/native';
+import { ProProvider } from '../lib/pro';
 import { ToteProvider } from '../lib/store';
 import { SyncProvider } from '../lib/sync';
 import { useTheme } from '../lib/theme';
@@ -15,6 +16,7 @@ export default function RootLayout() {
   return (
     <AuthProvider>
     <ToteProvider>
+    <ProProvider>
     <SyncProvider>
     <ListsProvider>
       <StatusBar style="auto" />
@@ -42,9 +44,11 @@ export default function RootLayout() {
         <Stack.Screen name="lists/[id]" options={{ title: '' }} />
         <Stack.Screen name="moving" options={{ title: 'Moving' }} />
         <Stack.Screen name="tote/snap" options={{ presentation: 'modal', title: 'Snap to add' }} />
+        <Stack.Screen name="pro" options={{ presentation: 'modal', title: 'ToteTrack Pro' }} />
       </Stack>
     </ListsProvider>
     </SyncProvider>
+    </ProProvider>
     </ToteProvider>
     </AuthProvider>
   );

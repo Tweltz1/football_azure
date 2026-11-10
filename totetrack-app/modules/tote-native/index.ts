@@ -35,6 +35,10 @@ export type DetectedObject = {
   box: { x: number; y: number; width: number; height: number };
   refined: { label: string; confidence: number }[];
 };
+/** A ToteTrack Pro product as the App Store has it (price already in the person's currency). */
+export type StoreProduct = { id: string; price: string; priceValue: number; title: string; period?: string; trial?: string };
+/** An active subscription. expires: ms since 1970, 0 when it never expires. */
+export type StoreEntitlement = { productId: string; expires: number };
 export type SpotlightTote = { id: string; title: string; description: string; keywords: string[] };
 export type ScheduledReminder = { id: string; title: string; body: string; at: number; toteId?: string };
 
@@ -50,6 +54,12 @@ type ToteNativeModule = {
   writeNfc(url: string): Promise<boolean | null>;
   /** The link on the sticker, or null if cancelled. */
   readNfc(): Promise<string | null>;
+  storeProducts(ids: string[]): Promise<StoreProduct[]>;
+  storeEntitlements(): Promise<StoreEntitlement[]>;
+  storePurchase(id: string): Promise<'purchased' | 'pending' | 'cancelled'>;
+  /** Asks the App Store for this Apple ID's purchases, then returns the active ones. */
+  storeRestore(): Promise<StoreEntitlement[]>;
+  addListener(event: 'onPurchasesChanged', listener: () => void): { remove(): void };
 };
 
 /** Null where the native code isn't built in (Expo Go, Android, web). */

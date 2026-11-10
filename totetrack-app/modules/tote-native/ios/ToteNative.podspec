@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name           = 'ToteNative'
   s.version        = '1.0.0'
-  s.summary        = 'ToteTrack on-device photo recognition, Spotlight search and local reminders'
+  s.summary        = 'ToteTrack on-device photo recognition, Spotlight search, local reminders and ToteTrack Pro'
   s.description    = s.summary
   s.license        = 'MIT'
   s.author         = 'Tyler Weltzin'
@@ -12,7 +12,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.frameworks = 'Accelerate', 'Vision', 'CoreML', 'CoreSpotlight', 'UserNotifications', 'UniformTypeIdentifiers', 'CoreNFC'
+  s.frameworks = 'Accelerate', 'Vision', 'CoreML', 'CoreSpotlight', 'UserNotifications', 'UniformTypeIdentifiers', 'CoreNFC', 'StoreKit'
 
   s.source_files = "**/*.{h,m,swift}"
   # On-device object detector, downloaded and compiled by .github/workflows/totetrack-app.yml (not in git).

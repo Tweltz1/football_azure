@@ -4,9 +4,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ProPaywall } from '../../components/ProPaywall';
 import { Button, IconButton, IconName, SectionTitle, tap, ToteBadge } from '../../components/ui';
 import { deletePhoto, photoUri, savePhoto } from '../../lib/photos';
 import { shortCode } from '../../lib/qr';
+import { usePro } from '../../lib/pro';
 import { useTotes } from '../../lib/store';
 import { radius, TOTE_COLORS, TOTE_ICONS, useTheme } from '../../lib/theme';
 import { joinLocation, PLACE_PRESETS, placeOf, SEASONS, spotOf } from '../../lib/extras';
@@ -14,7 +16,27 @@ import { joinLocation, PLACE_PRESETS, placeOf, SEASONS, spotOf } from '../../lib
 export default function EditTote() {
   // The form fills itself from the saved tote once, so wait until the totes have loaded.
   const { ready } = useTotes();
-  return ready ? <EditToteForm /> : null;
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const pro = usePro();
+  const t = useTheme();
+  if (!ready) return null;
+  // A new tote past the free limit asks for Pro first; once subscribed, the form appears in place
+  // (keeping a scanned label to link). Editing an existing tote is always allowed.
+  if (!id && !pro.canAddTote) {
+    return (
+      <>
+        <Stack.Screen
+          options={{
+            title: 'ToteTrack Pro',
+            headerLeft: () => <IconButton icon="close" label="Cancel" onPress={() => router.back()} color={t.textMuted} />,
+            headerRight: () => null,
+          }}
+        />
+        <ProPaywall reason="limit" />
+      </>
+    );
+  }
+  return <EditToteForm />;
 }
 
 function EditToteForm() {
