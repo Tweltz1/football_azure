@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Shop Stride for Stores</title>
+<!--
+  Shop Stride store portal, hosted on this site at /stores/. Copy of grocery-runner-app/portal/index.html
+  on the claude/grocery-runner-app branch; edit that one and copy it here. One static page, no build step. It talks to the store-portal Supabase
+  function. Links look like  .../stores/#key=ssk_...  (the key stays after the #, so it is never sent
+  to the web server or logged). Tyler's admin page is  .../stores/#admin
+-->
+<style>
+  :root {
+    --bg: #F4F6F3; --card: #FFFFFF; --card-alt: #EBEFE9; --text: #121611; --muted: #66705F;
+    --border: #DFE4DC; --primary: #1F9D55; --primary-soft: #DDF3E5; --on-primary: #FFFFFF;
+    --danger: #C9353A; --warn: #A86A08; --radius: 14px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0C0F0C; --card: #161B16; --card-alt: #1F261F; --text: #F1F5EF; --muted: #9AA596;
+      --border: #2A332A; --primary: #3DD68C; --primary-soft: #173524; --on-primary: #06210F;
+      --danger: #FF6369; --warn: #F5B547; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0C0F0C; --card: #161B16; --card-alt: #1F261F; --text: #F1F5EF; --muted: #9AA596;
+    --border: #2A332A; --primary: #3DD68C; --primary-soft: #173524; --on-primary: #06210F;
+    --danger: #FF6369; --warn: #F5B547; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .logo { width: 40px; height: 40px; border-radius: 12px; background: var(--primary); display: grid; place-items: center; flex: none; }
+  .logo svg { width: 22px; height: 22px; }
+  h1 { font-size: 22px; margin: 0; line-height: 1.2; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0; font-size: 14px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  textarea, input, select { width: 100%; font: inherit; color: var(--text); background: var(--card-alt);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  textarea { min-height: 150px; font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
+  label { display: block; font-weight: 600; font-size: 14px; margin: 10px 0 4px; }
+  button, .file { font: inherit; font-weight: 600; border-radius: 10px; padding: 9px 14px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--card-alt); color: var(--text); display: inline-flex; align-items: center; gap: 6px; }
+  button.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+  button.danger { color: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+  .file input { display: none; }
+  .hint { color: var(--muted); font-size: 14px; margin: 6px 0 10px; }
+  .hint code, pre { background: var(--card-alt); border-radius: 6px; padding: 1px 5px; font-size: 13px; }
+  pre { padding: 10px 12px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+  .status { font-size: 14px; margin-top: 10px; min-height: 1.4em; }
+  .status.ok { color: var(--primary); } .status.err { color: var(--danger); } .status.warn { color: var(--warn); }
+  .preview { margin-top: 10px; max-height: 280px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  th { position: sticky; top: 0; background: var(--card); }
+  .pill { display: inline-block; background: var(--primary-soft); color: var(--primary); font-weight: 700;
+    font-size: 12px; border-radius: 999px; padding: 1px 8px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  details summary { cursor: pointer; font-weight: 600; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+  .store-item { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .store-item:last-child { border-bottom: 0; }
+  .link-box { display: flex; gap: 8px; margin-top: 8px; }
+  .link-box input { font: 13px ui-monospace, Menlo, monospace; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2"/><circle cx="10" cy="20.5" r="1.3"/><circle cx="17" cy="20.5" r="1.3"/>
+      </svg>
+    </div>
+    <div>
+      <h1 id="title">Shop Stride for Stores</h1>
+      <p class="sub" id="subtitle">Show shoppers where things are, and what's on sale.</p>
+    </div>
+  </header>
+
+  <!-- No key in the link -->
+  <section id="landing" hidden>
+    <div class="card">
+      <h2>Your store link is missing its key</h2>
+      <p>Each partner store gets its own private link to this page. Please open the full link you were sent
+        (it ends with <code>#key=…</code>). If you've lost it, ask Shop Stride for a new one.</p>
+    </div>
+  </section>
+
+  <!-- Store view -->
+  <section id="store" hidden>
+    <div class="card">
+      <h2>Store layout</h2>
+      <p class="meta" id="layoutMeta"></p>
+      <p class="hint">Which aisle each kind of product is in. Shop Stride uses this instead of shopper guesses and
+        routes shoppers through your store. Paste it below or upload a spreadsheet saved as CSV. Any of these work:</p>
+      <pre>Aisle 7: cereal, oatmeal, pop-tarts
+Aisle 12: frozen pizza, ice cream
+Produce: apples, bananas, salad</pre>
+      <p class="hint">or two columns, <code>Category,Aisle</code> (for example <code>Cereal,7</code>). Saving replaces the whole layout,
+        so include every aisle each time.</p>
+      <textarea id="layoutText" spellcheck="false" placeholder="Aisle 1: bread, peanut butter, jelly&#10;Aisle 2: cereal, coffee"></textarea>
+      <div class="row" style="margin-top:10px">
+        <label class="file">Upload CSV<input type="file" accept=".csv,.txt,text/csv,text/plain" data-into="layoutText"></label>
+        <button data-check="layout">Check</button>
+        <button class="primary" data-save="layout">Save layout</button>
+        <button data-download="layout">Download saved layout</button>
+      </div>
+      <div class="status" id="layoutStatus" role="status"></div>
+      <div class="preview" id="layoutPreview" hidden></div>
+    </div>
+
+    <div class="card">
+      <h2>This week's deals</h2>
+      <p class="meta" id="dealsMeta"></p>
+      <p class="hint">Items on your weekly ad. Shoppers who have them on their list see an <span class="pill">On sale</span>
+        badge. One item per line: <code>item, price, end date</code>. With no end date a deal runs 7 days.
+        Saving replaces last week's list. Save an empty box to clear it.</p>
+      <pre>Item,Price,Ends
+Cheerios 12 oz,$2.99,11/15
+Boneless chicken breast,$1.99/lb,11/15
+Bananas,49¢/lb,</pre>
+      <textarea id="dealsText" spellcheck="false" placeholder="Cheerios 12 oz, $2.99, 11/15"></textarea>
+      <div class="row" style="margin-top:10px">
+        <label class="file">Upload CSV<input type="file" accept=".csv,.txt,text/csv,text/plain" data-into="dealsText"></label>
+        <button data-check="deals">Check</button>
+        <button class="primary" data-save="deals">Save deals</button>
+        <button data-download="deals">Download saved deals</button>
+      </div>
+      <div class="status" id="dealsStatus" role="status"></div>
+      <div class="preview" id="dealsPreview" hidden></div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>For developers: send it from your own system</summary>
+        <p class="hint">The same data can be sent by API, for example from your weekly ad system. Keep your key private;
+          anyone with it can change your store's data.</p>
+        <pre id="apiExample"></pre>
+        <p class="hint">Use <code>"rows": [{"category": "Cereal", "aisle": "7"}]</code> or
+          <code>"rows": [{"item": "Milk", "price": "$2.99", "ends": "2026-11-15"}]</code> instead of <code>csv</code>,
+          add <code>"check": true</code> to test without saving, or send <code>{"action": "store"}</code> to read back what's saved.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- Admin view (Tyler) -->
+  <section id="admin" hidden>
+    <div class="card" id="adminLogin">
+      <h2>Admin</h2>
+      <p class="hint">Use the Shop Stride admin password.</p>
+      <div class="link-box">
+        <input id="adminKey" type="password" autocomplete="current-password" placeholder="Admin password">
+        <button class="primary" id="adminGo">Sign in</button>
+      </div>
+      <div class="status" id="adminLoginStatus" role="status"></div>
+    </div>
+
+    <div id="adminBody" hidden>
+      <div class="card">
+        <h2>Add a partner store</h2>
+        <p class="hint">The store's own link is shown once. Copy it and send it to the store manager.</p>
+        <div class="grid2">
+          <div><label for="newName">Store name</label><input id="newName" placeholder="Woodman's Altoona"></div>
+          <div><label for="newChain">Chain</label>
+            <select id="newChain">
+              <option value="woodmans">Woodman's</option><option value="aldi">Aldi</option>
+              <option value="kroger">Kroger family</option><option value="walmart">Walmart</option>
+              <option value="target">Target</option><option value="hyvee">Hy-Vee</option>
+              <option value="costco">Costco</option>
+            </select></div>
+        </div>
+        <label for="newPlace">Location</label>
+        <input id="newPlace" placeholder="44.8121, -91.4472  (or paste a Google Maps link)">
+        <p class="hint">Right-click the store in Google Maps and click the numbers at the top to copy them. The app matches
+          the store within about 300 m of this spot.</p>
+        <label for="newKey">App store id (optional)</label>
+        <input id="newKey" placeholder="kroger:01400943">
+        <p class="hint">Only for Kroger or Walmart stores, whose app id is their official store number.</p>
+        <div class="row" style="margin-top:10px"><button class="primary" id="addStore">Add store</button></div>
+        <div class="status" id="addStatus" role="status"></div>
+        <div id="newLink" hidden>
+          <div class="link-box"><input id="newLinkText" readonly><button id="copyLink">Copy</button></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Partner stores</h2>
+        <div id="storeList" class="meta">Loading…</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  // The store-portal Supabase function (Hood League Supabase project).
+  const API = 'https://nkwedlskhnojseeroezm.supabase.co/functions/v1/store-portal';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const pageUrl = location.origin + location.pathname;
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const storeKey = hash.get('key');
+  const isAdmin = location.hash === '#admin' || hash.has('admin');
+
+  async function call(body, headers) {
+    const res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Something went wrong (${res.status}). Please try again.`);
+    return data;
+  }
+
+  const when = (iso) => iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : null;
+  const status = (id, text, tone) => { const el = $(id); el.textContent = text; el.className = `status ${tone || ''}`; };
+
+  // Upload buttons fill their text box.
+  document.querySelectorAll('input[type=file][data-into]').forEach((input) => {
+    input.addEventListener('change', async () => {
+      const f = input.files[0];
+      if (!f) return;
+      if (f.size > 500000) return alertInto(input.dataset.into, 'That file is too big. Split it into smaller files.');
+      $(input.dataset.into).value = await f.text();
+      input.value = '';
+    });
+  });
+  function alertInto(boxId, text) { status(boxId.replace('Text', 'Status'), text, 'err'); }
+
+  // ---------------------------------------------------------------- store view
+  let saved = { layout: [], deals: [] };
+
+  function table(kind, rows) {
+    if (!rows.length) return '';
+    if (kind === 'layout') {
+      return '<table><tr><th>Category</th><th>Aisle</th><th>Department</th></tr>' +
+        rows.map((r) => `<tr><td>${esc(r.category)}</td><td>${esc(r.aisle)}</td><td>${esc(r.department)}</td></tr>`).join('') + '</table>';
+    }
+    return '<table><tr><th>Item</th><th>Price</th><th>Ends</th></tr>' +
+      rows.map((r) => `<tr><td>${esc(r.item)}</td><td>${esc(r.price)}</td><td>${esc(r.ends ?? r.ends_on)}</td></tr>`).join('') + '</table>';
+  }
+
+  function showPreview(kind, rows) {
+    const el = $(`${kind}Preview`);
+    el.innerHTML = table(kind, rows);
+    el.hidden = !rows.length;
+  }
+
+  async function loadStore() {
+    const data = await call({ action: 'store' }, { 'x-store-key': storeKey });
+    saved = { layout: data.layout || [], deals: data.deals || [] };
+    $('title').textContent = data.store.name;
+    $('subtitle').textContent = 'Shop Stride for Stores';
+    document.title = `${data.store.name} · Shop Stride for Stores`;
+    const lu = when(data.store.layout_updated_at);
+    $('layoutMeta').textContent = lu ? `${saved.layout.length} categories saved, last updated ${lu}.` : 'No layout saved yet.';
+    const du = when(data.store.deals_updated_at);
+    const n = saved.deals.length;
+    $('dealsMeta').textContent = du ? `${n} current deal${n === 1 ? '' : 's'}, last updated ${du}.` : 'No deals saved yet.';
+  }
+
+  const skippedNote = (skipped) => skipped && skipped.length
+    ? ` ${skipped.length} line${skipped.length === 1 ? ' was' : 's were'} not understood and left out: ${skipped.slice(0, 3).map((s) => `"${s}"`).join(', ')}${skipped.length > 3 ? '…' : ''}`
+    : '';
+
+  async function send(kind, check) {
+    const csv = $(`${kind}Text`).value;
+    if (!csv.trim() && (kind === 'layout' || check)) return status(`${kind}Status`, 'Paste or upload your list first.', 'err');
+    if (!check && kind === 'deals' && !csv.trim() && !confirm('Clear all of this week\'s deals?')) return;
+    const buttons = document.querySelectorAll(`[data-check=${kind}],[data-save=${kind}]`);
+    buttons.forEach((b) => (b.disabled = true));
+    status(`${kind}Status`, check ? 'Checking…' : 'Saving…');
+    try {
+      const r = await call({ action: kind, csv, check }, { 'x-store-key': storeKey });
+      const what = kind === 'layout' ? 'categories' : 'deals';
+      if (check) {
+        showPreview(kind, r.rows);
+        status(`${kind}Status`, `Read ${r.rows.length} ${what}. Nothing is saved yet.${skippedNote(r.skipped)}`, r.skipped.length ? 'warn' : 'ok');
+      } else {
+        await loadStore();
+        showPreview(kind, saved[kind]);
+        status(`${kind}Status`, `Saved ${r.count} ${what}. Shoppers see them right away.${skippedNote(r.skipped)}`, r.skipped.length ? 'warn' : 'ok');
+      }
+    } catch (e) {
+      status(`${kind}Status`, e.message, 'err');
+    } finally {
+      buttons.forEach((b) => (b.disabled = false));
+    }
+  }
+
+  function csvCell(v) { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }
+  function download(kind) {
+    const rows = kind === 'layout'
+      ? [['Category', 'Aisle', 'Department'], ...saved.layout.map((r) => [r.category, r.aisle, r.department])]
+      : [['Item', 'Price', 'Starts', 'Ends'], ...saved.deals.map((r) => [r.item, r.price, r.starts_on, r.ends_on])];
+    const blob = new Blob([rows.map((r) => r.map(csvCell).join(',')).join('\n') + '\n'], { type: 'text/csv' });
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `${kind}.csv` });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function startStore() {
+    $('store').hidden = false;
+    document.querySelectorAll('[data-check]').forEach((b) => b.addEventListener('click', () => send(b.dataset.check, true)));
+    document.querySelectorAll('[data-save]').forEach((b) => b.addEventListener('click', () => send(b.dataset.save, false)));
+    document.querySelectorAll('[data-download]').forEach((b) => b.addEventListener('click', () => download(b.dataset.download)));
+    $('apiExample').textContent =
+`curl ${API} \\
+  -H "x-store-key: ${storeKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"action": "deals", "csv": "Cheerios 12 oz,$2.99,11/15"}'`;
+    loadStore()
+      .then(() => { showPreview('layout', saved.layout); showPreview('deals', saved.deals); })
+      .catch((e) => { status('layoutStatus', e.message, 'err'); document.querySelectorAll('[data-save],[data-check]').forEach((b) => (b.disabled = true)); });
+  }
+
+  // ---------------------------------------------------------------- admin view
+  let adminKey = '';
+  try { adminKey = sessionStorage.getItem('ss-admin') || ''; } catch {}
+  const adminCall = (body) => call(body, { 'x-admin-key': adminKey });
+  const CHAIN_LABEL = { woodmans: "Woodman's", aldi: 'Aldi', kroger: 'Kroger', walmart: 'Walmart', target: 'Target', hyvee: 'Hy-Vee', costco: 'Costco' };
+
+  async function listStores() {
+    const stores = await adminCall({ action: 'admin-list' });
+    const el = $('storeList');
+    if (!stores.length) { el.textContent = 'No partner stores yet.'; return; }
+    el.innerHTML = stores.map((s) => `
+      <div class="store-item">
+        <div><strong>${esc(s.name)}</strong> <span class="meta">${esc(CHAIN_LABEL[s.chain] || s.chain)}${s.store_key ? ' · ' + esc(s.store_key) : ''}</span><br>
+          <span class="meta">Layout: ${esc(when(s.layout_updated_at) || 'not sent yet')} · Deals: ${esc(when(s.deals_updated_at) || 'not sent yet')}</span></div>
+        <div class="row"><button data-reset="${esc(s.id)}">New link</button><button class="danger" data-remove="${esc(s.id)}" data-name="${esc(s.name)}">Remove</button></div>
+      </div>`).join('');
+    el.querySelectorAll('[data-reset]').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('Make a new link for this store? The old link stops working.')) return;
+      try { showLink((await adminCall({ action: 'admin-reset', id: b.dataset.reset })).key, 'New link made. The old one no longer works.'); }
+      catch (e) { status('addStatus', e.message, 'err'); }
+    }));
+    el.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm(`Remove ${b.dataset.name} and delete its layout and deals?`)) return;
+      try { await adminCall({ action: 'admin-remove', id: b.dataset.remove }); listStores(); }
+      catch (e) { status('addStatus', e.message, 'err'); }
+    }));
+  }
+
+  function showLink(key, text) {
+    $('newLink').hidden = false;
+    $('newLinkText').value = `${pageUrl}#key=${key}`;
+    status('addStatus', `${text} Copy it now; it can't be shown again.`, 'ok');
+    listStores().catch(() => {});
+  }
+
+  /** "44.81, -91.44" or a Google Maps link with "@44.81,-91.44" or "!3d44.81!4d-91.44". */
+  function parsePlace(text) {
+    const t = text.trim();
+    let m = t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || t.match(/^(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)$/);
+    if (!m) m = t.match(/[?&](?:q|ll|query)=(-?\d+\.\d+),(-?\d+\.\d+)/);
+    return m ? { lat: Number(m[1]), lon: Number(m[2]) } : null;
+  }
+
+  async function signIn() {
+    try {
+      await listStores();
+      try { sessionStorage.setItem('ss-admin', adminKey); } catch {}
+      $('adminLogin').hidden = true;
+      $('adminBody').hidden = false;
+    } catch (e) {
+      status('adminLoginStatus', e.message, 'err');
+    }
+  }
+
+  function startAdmin() {
+    $('admin').hidden = false;
+    $('title').textContent = 'Shop Stride partner stores';
+    $('subtitle').textContent = 'Add stores and send each one its private link.';
+    $('adminGo').addEventListener('click', () => { adminKey = $('adminKey').value; signIn(); });
+    $('adminKey').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('adminGo').click(); });
+    $('copyLink').addEventListener('click', () => {
+      navigator.clipboard?.writeText($('newLinkText').value).then(() => ($('copyLink').textContent = 'Copied'), () => $('newLinkText').select());
+    });
+    $('addStore').addEventListener('click', async () => {
+      const place = $('newPlace').value.trim() ? parsePlace($('newPlace').value) : null;
+      if ($('newPlace').value.trim() && !place) return status('addStatus', 'Could not read that location. Use "latitude, longitude".', 'err');
+      const body = { action: 'admin-add', name: $('newName').value, chain: $('newChain').value, ...(place || {}) };
+      if ($('newKey').value.trim()) body.store_key = $('newKey').value.trim();
+      try {
+        const r = await adminCall(body);
+        $('copyLink').textContent = 'Copy';
+        showLink(r.key, `${r.store.name} added.`);
+        $('newName').value = ''; $('newPlace').value = ''; $('newKey').value = '';
+      } catch (e) { status('addStatus', e.message, 'err'); }
+    });
+    if (adminKey) signIn();
+  }
+
+  if (isAdmin) startAdmin();
+  else if (storeKey) startStore();
+  else $('landing').hidden = false;
+  window.addEventListener('hashchange', () => location.reload());
+})();
+</script>
+</body>
+</html>
