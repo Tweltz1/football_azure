@@ -36,7 +36,7 @@ let session = MLTrainingSessionParameters(
     iterations: iterations
 )
 let job = try MLObjectDetector.train(
-    trainingData: train, parameters: parameters, annotationType: annotationType, sessionParameters: session)
+    trainingData: train, annotationType: annotationType, parameters: parameters, sessionParameters: session)
 var outcome: Result<MLObjectDetector, Error>?
 let subscription = job.result.sink(
     receiveCompletion: { if case .failure(let e) = $0 { outcome = .failure(e) } },
