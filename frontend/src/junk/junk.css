@@ -443,7 +443,39 @@
   background: var(--jk-surface);
   animation: jk-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.jk-sheet { max-height: calc(100vh - var(--jk-safe-top) - 12px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .jk-sheet h2 { font-size: 22px; font-weight: 800; }
+
+/* Terms / Privacy panel (see LegalPanel in JunkApp.js): always has a way back. */
+.jk-legal-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: var(--jk-bg);
+  animation: jk-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.jk-legal-bar {
+  display: flex;
+  align-items: center;
+  padding: calc(var(--jk-safe-top) + 6px) 12px 6px;
+  border-bottom: 1px solid var(--jk-line);
+  background: var(--jk-surface);
+}
+.jk-legal-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  --b: none; background: var(--b);
+  color: var(--jk-accent);
+  font: inherit;
+  font-weight: 650;
+}
+.jk-legal-frame { flex: 1; width: 100%; border: 0; background: var(--jk-bg); }
 .jk-sheet-close { position: absolute; top: 14px; right: 14px; box-shadow: none; --b: var(--jk-surface-2); background: var(--b); }
 .jk-sheet-mark {
   display: grid;
