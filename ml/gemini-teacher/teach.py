@@ -13,7 +13,7 @@ The set grows a little every run (the free Gemini key has a daily limit) and liv
 Only Open Images *train* photos are used, and both namers add these pictures to training only, never to their
 test photos, so their scores stay honest (checked by people, not by Gemini).
 
-Usage: GEMINI_API_KEY=... python3 teach.py --cache cache --set set --requests 40
+Usage: GEMINI_API_KEY=... python3 teach.py --cache cache --set set --requests 300
   --set: folder with the current set (unzipped teacher.zip); new answers are added to it.
 Without GEMINI_API_KEY it does nothing.
 """
@@ -57,7 +57,8 @@ SOMEWHAT = {'Table', 'Chair', 'Shelf', 'Cabinetry', 'Drawer', 'Box', 'Ball (Obje
 MIN_BOX = 0.15        # of the photo's width and height: big enough to tell what it is
 PER_BROAD = 4000      # candidate boxes kept per broad kind
 BATCH = 20            # pictures per Gemini request (the free key allows ~20 requests a day per model)
-MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest']
+# Flash-Lite first: on the paid training key it names ~35,000 photos for about $2; Flash only if it's out.
+MODELS = ['gemini-flash-lite-latest', 'gemini-flash-latest']
 SIZE = 299
 
 
@@ -202,7 +203,7 @@ def ask(key, system, jpegs, hints):
         'generationConfig': {'responseMimeType': 'application/json', 'responseSchema': SCHEMA, 'temperature': 0.1,
                              'maxOutputTokens': 4096},
     }).encode()
-    # Flash first; when its daily quota is used up, Flash-Lite (its own quota); stop when both are.
+    # The next model when one's daily quota is used up; stop when all are.
     tries = 0
     while MODELS and tries < 6:
         model = MODELS[0]
@@ -246,7 +247,8 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--cache', default='cache')
     p.add_argument('--set', default='set')
-    p.add_argument('--requests', type=int, default=40, help='Gemini requests this run (the free key allows about 20 a day per model)')
+    p.add_argument('--requests', type=int, default=300, help='Gemini requests this run (20 photos each)')
+    p.add_argument('--pause', type=float, default=1, help='seconds between requests')
     p.add_argument('--minutes', type=float, default=75, help='stop asking after this long, so the set is always saved')
     a = p.parse_args()
     key = os.environ.get('GEMINI_API_KEY')
@@ -312,7 +314,7 @@ def main():
                 if sent % 20 == 0:
                     log(f'  {sent} requests, {new} answers, {sure_new} sure')
                     json.dump(asked, open(asked_path, 'w'))  # a cut-short run still keeps its answers
-                time.sleep(7)  # stay under the free key's per-minute limit
+                time.sleep(a.pause)
     json.dump(asked, open(asked_path, 'w'))
     names = defaultdict(int)
     for r in asked:
