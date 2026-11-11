@@ -1,0 +1,70 @@
+name: Merch build (Printful)
+
+# Turns merch/products.json (every product x color x logo) into placed print files, real Printful mockup photos
+# (weltzcraft-site/img/merch/<slug>.webp) and Printful store products with sizes and prices
+# (weltzcraft-site/merch-catalog.json, read by the merch page and the checkout). Unchanged combos are skipped.
+# Needs the PRINTFUL_API_TOKEN secret (optional PRINTFUL_STORE_ID for an account-level token).
+on:
+  push:
+    branches: [main, claude/project-thread-8n3mi5]
+    paths: ['merch/products.json', 'merch/print/logo-*', 'scripts/merch-build.mjs', 'scripts/merch_place.py', '.github/workflows/merch-build.yml']
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Only slugs starting with this (e.g. tee-black). Blank = all.'
+        required: false
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency: { group: merch-build, cancel-in-progress: false }
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PRINTFUL_API_TOKEN: ${{ secrets.PRINTFUL_API_TOKEN }}
+      PRINTFUL_STORE_ID: ${{ secrets.PRINTFUL_STORE_ID }}
+      ONLY: ${{ github.event.inputs.only }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Plan
+        run: node scripts/merch-build.mjs plan
+      - name: Place logos and publish the print files
+        run: |
+          [ -f merch/plan.json ] || exit 0
+          pip install -q pillow
+          python3 scripts/merch_place.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add merch/plan.json merch/print/placed
+          git commit -q -m "Merch: placed print files" || true
+          git pull -q --rebase && git push -q
+          echo "ASSET_BASE=https://raw.githubusercontent.com/${{ github.repository }}/$(git rev-parse HEAD)/merch/print" >> "$GITHUB_ENV"
+      - name: Mockup photos
+        run: |
+          [ -f merch/plan.json ] || exit 0
+          node scripts/merch-build.mjs mockups
+          shopt -s nullglob
+          files=(weltzcraft-site/img/merch/*.jpg)
+          if [ ${#files[@]} -gt 0 ]; then
+            sudo apt-get install -y -qq webp >/dev/null
+            for f in "${files[@]}"; do cwebp -quiet -q 82 -resize 900 0 "$f" -o "${f%.jpg}.webp" && rm -- "$f"; done
+          fi
+      - name: Printful store products
+        run: |
+          [ -f merch/plan.json ] || exit 0
+          node scripts/merch-build.mjs create
+      - name: Commit photos and catalog
+        if: always()
+        run: |
+          git add weltzcraft-site/img/merch merch/mockups.json weltzcraft-site/merch-catalog.json 2>/dev/null || true
+          git commit -q -m "Merch: Printful mockups and catalog" || exit 0
+          git pull -q --rebase && git push -q
+          # Pushes made with GITHUB_TOKEN don't start other workflows, so redeploy the site by hand on main.
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then gh workflow run deploy-weltzcraft-site.yml --ref main; fi
