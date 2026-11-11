@@ -11,6 +11,7 @@ import OfflineDraftStart from '../help/OfflineDraftStart';
 import { nearbySupported } from '../offline/nearbyDraft';
 import { HOOD_GAMES_PATH, inGamesApp } from '../native/gamesApp';
 import { chooseSavedUser, clearSignedOut, guestUser, offlineUser, savedProfiles } from '../offline/storage';
+import StudioCredit from './StudioCredit';
 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
@@ -101,6 +102,7 @@ const Login = () => {
           )}
         </div>
       </section>
+      <StudioCredit />
     </main>
   );
 };

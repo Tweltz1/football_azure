@@ -9,6 +9,7 @@ import { setSharesCrops, sharesCrops } from './learning';
 import { TipSheet } from './Plus';
 import { PLUS_PRICE, alertStatus, canBuy, manageSubscription, restore, turnOnAlerts } from './store';
 import { CATEGORIES } from './device';
+import StudioCredit from '../components/StudioCredit';
 
 const savedLabel = (s) => {
   const cat = s.category && (CATEGORIES.find(([k]) => k === s.category) || [])[1];
@@ -220,6 +221,7 @@ export default function Me() {
         <a className="jk-row-btn" href="/junk-privacy.html">Privacy Policy</a>
         <button type="button" className="jk-row-btn jk-danger-text" onClick={() => setConfirm(true)}>Delete my account</button>
       </div>
+      <StudioCredit />
 
       {naming && (
         <NameSheet

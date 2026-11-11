@@ -6,6 +6,7 @@ import { HOOD_GAMES_PATH, inGamesApp, siteOrigin } from '../native/gamesApp';
 import { currentUser, firstName, signInWithGoogle, signOutHere } from '../party/account';
 import '../party/party.css';
 import './hood.css';
+import StudioCredit from '../components/StudioCredit';
 
 const PLACES = [
   {
@@ -104,6 +105,7 @@ export default function HoodGamesHub() {
       </div>
         </div>
       )}
+      <StudioCredit />
     </div>
   );
 }

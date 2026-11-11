@@ -1,0 +1,14 @@
+.studio-credit {
+  margin: 28px auto 12px;
+  padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 4px);
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: inherit;
+  opacity: 0.55;
+}
+.studio-credit span,
+.studio-credit a {
+  font-weight: 600;
+  color: inherit;
+}

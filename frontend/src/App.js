@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, NavLink, useLocation } from 'react-router-dom';
 import Home from './components/Home';
 import Leagues from './components/Leagues';
 import DraftRoomEnhanced from './components/DraftRoomEnhanced';
@@ -10,6 +10,7 @@ import ClimbBackdrop from './components/ClimbBackdrop';
 import Profile from './components/Profile';
 import StartSit from './components/StartSit';
 import Rankings from './components/Rankings';
+import StudioCredit from './components/StudioCredit';
 import GamesPage from './games/GamesPage';
 import RacePage from './games/race/RacePage';
 import { DraftHistoryDetail, DraftHistoryList } from './components/DraftHistory';
@@ -26,6 +27,14 @@ import './MobileFlow.css';
 // Loaded only when the hub is opened, like the party and Hood Quest pages.
 const HoodGamesHub = lazy(() => import('./hood/HoodGamesHub'));
 const isHubPath = (path) => (path || '').replace(/\/$/, '') === HOOD_GAMES_PATH;
+
+// The studio credit sits under every Hood League page except the live draft room and TV
+// view, which fill the screen.
+function SiteCredit() {
+  const { pathname } = useLocation();
+  if (pathname.startsWith('/draft/')) return null;
+  return <StudioCredit />;
+}
 
 function App() {
   const { user, loading } = useAuth();
@@ -93,6 +102,7 @@ function App() {
               {user && <Route path="/games/race" element={<RacePage />} />}
             </Routes>
           </main>
+          <StudioCredit />
         </div>
       </Router>
     );
@@ -150,6 +160,7 @@ function App() {
             <Route path="/history/:historyId" element={<DraftHistoryDetail userId={userId} />} />
           </Routes>
         </main>
+        <SiteCredit />
       </div>
     </Router>
   );
