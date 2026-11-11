@@ -61,6 +61,8 @@ type ToteNativeModule = {
   storePurchase(id: string): Promise<'purchased' | 'pending' | 'cancelled'>;
   /** Asks the App Store for this Apple ID's purchases, then returns the active ones. */
   storeRestore(): Promise<StoreEntitlement[]>;
+  /** Apple's promo code sheet; returns the active subscriptions once it closes. Older builds don't have it. */
+  storeRedeemCode?(): Promise<StoreEntitlement[]>;
   addListener(event: 'onPurchasesChanged', listener: () => void): { remove(): void };
 };
 
