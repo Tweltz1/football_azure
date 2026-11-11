@@ -306,6 +306,8 @@
 .jk-empty h2 { font-size: 20px; font-weight: 750; }
 .jk-empty p { max-width: 340px; }
 .jk-empty .jk-btn { margin-top: 6px; }
+.jk-empty-actions { display: grid; justify-items: center; gap: 8px; }
+.jk-empty-actions .jk-link { margin-top: 4px; }
 .jk-empty-art {
   display: grid;
   place-items: center;
