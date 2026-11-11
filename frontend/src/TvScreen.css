@@ -1,0 +1,36 @@
+/* TV remote highlight (see tvNavigation.js). Only shown after an arrow key
+   press, so it never appears for mouse or touch users. Plain :focus because
+   old TV browsers don't support :focus-visible. */
+html.tv-keys a:focus,
+html.tv-keys button:focus,
+html.tv-keys input:focus,
+html.tv-keys select:focus,
+html.tv-keys textarea:focus,
+html.tv-keys [tabindex]:focus {
+  outline: 4px solid #ffd23f !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 0 10px rgba(255, 210, 63, 0.3) !important;
+}
+
+html.tv-keys .front-door-card:focus,
+html.tv-keys .lch-card:focus {
+  -webkit-transform: scale(1.06);
+  transform: scale(1.06);
+}
+
+/* TV browsers (html.tv-ua is set in public/index.html from the user agent).
+   Keep the front door centred top to bottom, and make the games landing
+   a little bigger for viewers across the room. */
+html.tv-ua main.front-door {
+  display: -webkit-box;
+  display: flex;
+  -webkit-box-align: center;
+  align-items: center;
+  -webkit-box-pack: start;
+  justify-content: flex-start;
+  min-height: 100vh;
+}
+
+html.tv-ua #lc-root .lch {
+  zoom: 1.15;
+}

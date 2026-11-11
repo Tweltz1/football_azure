@@ -1,0 +1,127 @@
+import { SUPABASE_URL, supabase } from '../supabaseClient';
+
+// Junk App calls go to the site's API (/api/junk/*). Browsing works signed out; the rest sends the
+// sign-in token so the server knows who's posting.
+
+export const API_BASE = process.env.REACT_APP_API_URL
+  || (SUPABASE_URL ? `${SUPABASE_URL}/functions/v1/api` : 'http://localhost:54321/functions/v1/api');
+
+export const token = async () => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.access_token || null;
+  } catch (error) {
+    return null;
+  }
+};
+
+/**
+ * A sign-in token good for at least `minutes` more (refreshed first when it isn't). The trip sender keeps
+ * using the token it was given while the app is in the background, where the page can't refresh it.
+ */
+export const freshToken = async (minutes = 45) => {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const session = data?.session;
+    if (!session) return null;
+    if (session.expires_at && session.expires_at * 1000 - Date.now() > minutes * 60_000) return session.access_token;
+    const { data: next } = await supabase.auth.refreshSession();
+    return next?.session?.access_token || session.access_token;
+  } catch (error) {
+    return token();
+  }
+};
+
+// The phone's lasting id from the iPhone app (keeps banned people off that phone); none on the website.
+let deviceIdPromise = null;
+const deviceId = () => {
+  if (!deviceIdPromise) {
+    const plugin = typeof window !== 'undefined' && window.Capacitor?.Plugins?.DeviceTrust;
+    deviceIdPromise = plugin ? plugin.deviceId().then((r) => (r && r.id) || null).catch(() => null) : Promise.resolve(null);
+  }
+  return deviceIdPromise;
+};
+
+const call = async (method, path, body) => {
+  const headers = {};
+  const t = await token();
+  if (t) headers.Authorization = `Bearer ${t}`;
+  const device = await deviceId();
+  if (device) headers['X-Curbsy-Device'] = device;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/junk/${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  } catch (error) {
+    throw new Error('No connection. Check your internet and try again.');
+  }
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (error) { data = text; }
+  if (!res.ok) {
+    const err = new Error(typeof data === 'string' && data ? data : `Something went wrong (${res.status}).`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+};
+
+const qs = (params) => new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')).toString();
+
+export const searchItems = ({ lat, lng, km, q, category, sort }) => call('GET', `items?${qs({ lat, lng, km, q, category, sort })}`);
+export const getItem = (id, here) => call('GET', `items/${encodeURIComponent(id)}${here ? `?${qs({ lat: here.lat, lng: here.lng })}` : ''}`);
+export const uploadPhoto = (image, detect) => call('POST', 'photos', { image, detect });
+export const createItem = (fields) => call('POST', 'items', fields);
+export const updateItem = (id, fields) => call('POST', `items/${encodeURIComponent(id)}`, fields);
+export const deleteItem = (id) => call('DELETE', `items/${encodeURIComponent(id)}`);
+export const reportItem = (id, reason) => call('POST', `items/${encodeURIComponent(id)}/report`, { reason });
+export const myItems = () => call('GET', 'mine');
+export const blockUser = (userId) => call('POST', 'block', { userId });
+export const inbox = () => call('GET', 'inbox');
+export const getChat = (itemId, otherId) => call('GET', `chat/${encodeURIComponent(itemId)}/${encodeURIComponent(otherId)}`);
+export const sendMessage = (itemId, otherId, body) => call('POST', `chat/${encodeURIComponent(itemId)}/${encodeURIComponent(otherId)}`, { body });
+export const deleteAccount = () => call('DELETE', 'account');
+// "I'm on my way" claims (see trip.js).
+// pieces: on a multi-item post, the ids of the things you're coming for (leave out to take all that's left).
+export const claimItem = (id, here, pieces) => call('POST', `items/${encodeURIComponent(id)}/claim`, { lat: here.lat, lng: here.lng, ...(pieces ? { pieces } : {}) });
+// claimId: one person's trip; leave out to release everyone's.
+export const releaseClaim = (id, claimId) => call('POST', `items/${encodeURIComponent(id)}/release`, claimId ? { claimId } : {});
+export const myClaim = () => call('GET', 'claim');
+export const pingClaim = (here) => call('POST', 'claim/ping', { lat: here.lat, lng: here.lng });
+export const cancelClaim = () => call('POST', 'claim/cancel', {});
+export const finishClaim = () => call('POST', 'claim/done', {});
+
+/** Signs out on this phone and stays in the Junk App (Hood League's sign-out goes to its own front page). */
+export const junkSignOut = async () => {
+  try {
+    await Promise.race([
+      supabase.auth.signOut({ scope: 'local' }),
+      new Promise((resolve) => { window.setTimeout(resolve, 2000); }),
+    ]);
+  } catch (error) { /* signed out locally anyway */ }
+  window.location.assign('/junk');
+};
+
+// Safety (App Store guideline 1.2): Terms agreement, bans, and "Contact Curbsy".
+export const getMember = () => call('GET', 'member');
+export const agreeToTerms = () => call('POST', 'terms', { agree: true });
+// The name neighbors see ('' goes back to the sign-in first name).
+export const setCurbsyName = (name) => call('POST', 'name', { name });
+export const contactCurbsy = (body) => call('POST', 'contact', { body });
+// Appeal a ban, a strike, or (with itemId) a listing hidden after reports.
+export const appealCurbsy = (body, itemId) => call('POST', 'appeal', itemId ? { body, itemId } : { body });
+export const sendLabelFix = (fix) => call('POST', 'labels', fix);
+
+// Curbsy Plus, tips, saved searches and partners (supabase/functions/_shared/junkPlus.ts).
+export const getPlus = () => call('GET', 'plus');
+// Apple-signed transactions from the phone (see store.js); the server checks them before unlocking anything.
+export const sendPurchases = (transactions) => call('POST', 'purchases', { transactions });
+export const savedSearches = () => call('GET', 'searches');
+// { q, category, lat, lng, miles }
+export const saveSearch = (s) => call('POST', 'searches', s);
+export const deleteSavedSearch = (id) => call('DELETE', `searches/${encodeURIComponent(id)}`);
+export const seeSavedSearch = (id) => call('POST', `searches/${encodeURIComponent(id)}/seen`, {});
+export const savePushToken = (token, sandbox) => call('POST', 'push', { token, sandbox });
+// kind: 'hauler' or 'sponsor'
+export const getPartners = (kind, here) => call('GET', `partners?${qs({ kind, lat: here.lat, lng: here.lng })}`);
+export const tapPartner = (id, itemId) => call('POST', `partners/${encodeURIComponent(id)}/tap`, itemId ? { itemId } : {});

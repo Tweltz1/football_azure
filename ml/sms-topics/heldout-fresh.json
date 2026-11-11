@@ -1,0 +1,317 @@
+{
+  "_about": "A second set of hand-written test texts, written AFTER the patterns were adjusted using heldout.json, so this is the honest score. Do not add patterns based on these; write a new set instead.",
+  "texts": [
+    [
+      "Good afternoon, is the Tahoe all done?",
+      "status"
+    ],
+    [
+      "hey whats up with my car",
+      "status"
+    ],
+    [
+      "Curious how the repair is going",
+      "status"
+    ],
+    [
+      "Is my daughter's Corolla ready yet? She needs it tonight",
+      "status"
+    ],
+    [
+      "Did the guys finish with my Subaru",
+      "status"
+    ],
+    [
+      "any news",
+      "status"
+    ],
+    [
+      "Checking in on the Explorer!",
+      "status"
+    ],
+    [
+      "Are you guys finished?",
+      "status"
+    ],
+    [
+      "When is my truck going to be ready",
+      "status"
+    ],
+    [
+      "Hi, is the Kia done",
+      "status"
+    ],
+    [
+      "Any progress?",
+      "status"
+    ],
+    [
+      "How's my Ford doing",
+      "status"
+    ],
+    [
+      "Did you get the parts in for my car",
+      "status"
+    ],
+    [
+      "Is the brake job finished?",
+      "status"
+    ],
+    [
+      "When will the Odyssey be done?",
+      "status"
+    ],
+    [
+      "Are you still waiting on parts for my car",
+      "status"
+    ],
+    [
+      "have you been able to look at my car",
+      "status"
+    ],
+    [
+      "Ready to go?",
+      "status"
+    ],
+    [
+      "is the work done",
+      "status"
+    ],
+    [
+      "Como va la reparacion?",
+      "status"
+    ],
+    [
+      "What time do you close on Saturdays?",
+      "hours"
+    ],
+    [
+      "Are you open today",
+      "hours"
+    ],
+    [
+      "what time you guys open",
+      "hours"
+    ],
+    [
+      "When do you open on Monday?",
+      "hours"
+    ],
+    [
+      "Open late tonight?",
+      "hours"
+    ],
+    [
+      "What are your hours on the weekend",
+      "hours"
+    ],
+    [
+      "Hi are you open right now",
+      "hours"
+    ],
+    [
+      "Is the shop open on Sunday",
+      "hours"
+    ],
+    [
+      "What time do yall close",
+      "hours"
+    ],
+    [
+      "A que hora abren manana?",
+      "hours"
+    ],
+    [
+      "Send me the estimate please",
+      "link"
+    ],
+    [
+      "I lost the text with the estimate",
+      "link"
+    ],
+    [
+      "Can you send me the link to approve",
+      "link"
+    ],
+    [
+      "Where can I see my estimate?",
+      "link"
+    ],
+    [
+      "Resend link pls",
+      "link"
+    ],
+    [
+      "can u send the quote",
+      "link"
+    ],
+    [
+      "Didn't get the estimate, can you send it",
+      "link"
+    ],
+    [
+      "Link isn't working for me",
+      "link"
+    ],
+    [
+      "Go ahead and do the oil change",
+      "approval"
+    ],
+    [
+      "Yes do the tires",
+      "approval"
+    ],
+    [
+      "Please go ahead with the repair",
+      "approval"
+    ],
+    [
+      "Only do the brakes please",
+      "approval"
+    ],
+    [
+      "No on the wiper blades, yes on the rest",
+      "approval"
+    ],
+    [
+      "Go ahead with the alternator",
+      "approval"
+    ],
+    [
+      "You can go ahead with that",
+      "approval"
+    ],
+    [
+      "Let's hold off on the AC",
+      "approval"
+    ],
+    [
+      "How much do I owe",
+      "review"
+    ],
+    [
+      "Is it safe to drive like this",
+      "review"
+    ],
+    [
+      "I'll be there at 3",
+      "review"
+    ],
+    [
+      "Can I bring it in Friday",
+      "review"
+    ],
+    [
+      "Please call me",
+      "review"
+    ],
+    [
+      "The car is still making that clunking noise",
+      "review"
+    ],
+    [
+      "thank u",
+      "review"
+    ],
+    [
+      "Ok cool",
+      "review"
+    ],
+    [
+      "Who is this?",
+      "review"
+    ],
+    [
+      "Can I pay online",
+      "review"
+    ],
+    [
+      "How much for an alignment",
+      "review"
+    ],
+    [
+      "Do you have a shuttle",
+      "review"
+    ],
+    [
+      "Is it ready? How much is it?",
+      "review"
+    ],
+    [
+      "Can you check my brakes while it's there",
+      "review"
+    ],
+    [
+      "I think I left my wallet in the car",
+      "review"
+    ],
+    [
+      "Is the warranty still good on the battery",
+      "review"
+    ],
+    [
+      "Can you email me the bill",
+      "review"
+    ],
+    [
+      "The light came back on",
+      "review"
+    ],
+    [
+      "My tire is flat again",
+      "review"
+    ],
+    [
+      "Can someone give me a ride to work",
+      "review"
+    ],
+    [
+      "Do you guys sell tires",
+      "review"
+    ],
+    [
+      "Why is it taking so long?",
+      "review"
+    ],
+    [
+      "Let me check with my wife",
+      "review"
+    ],
+    [
+      "What does that part do?",
+      "tech"
+    ],
+    [
+      "stop",
+      "review"
+    ],
+    [
+      "Is there a cheaper option for the brakes",
+      "review"
+    ],
+    [
+      "Can my son pick it up",
+      "review"
+    ],
+    [
+      "Do you need anything else from me",
+      "review"
+    ],
+    [
+      "Great, thanks for the update",
+      "review"
+    ],
+    [
+      "What's the best pizza place around here",
+      "review"
+    ],
+    [
+      "Can I get an appointment next week",
+      "review"
+    ],
+    [
+      "Que necesita mi carro?",
+      "review"
+    ]
+  ]
+}

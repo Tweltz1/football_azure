@@ -4,6 +4,7 @@
   align-items: flex-end;
   gap: 16px;
   flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
 .player-board-heading h2 {
@@ -13,14 +14,15 @@
 .board-count {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
-  padding: 7px 11px;
-  border-radius: 8px;
-  color: var(--field-deep);
-  background: rgba(216, 170, 61, 0.2);
-  border: 1px solid rgba(216, 170, 61, 0.34);
-  font-size: 0.82rem;
-  font-weight: 950;
+  min-height: 28px;
+  padding: 3px 11px;
+  border-radius: 999px;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--hairline);
+  font-size: 0.8rem;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
 }
 
 .player-board-controls {
@@ -33,16 +35,18 @@
   flex: 1 1 132px;
   min-width: 132px;
   color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 900;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
 .filter-field select,
 .filter-field input {
   width: 100%;
   min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
 }
@@ -54,7 +58,7 @@
 .player-board-list,
 .favorite-note-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .player-board-row {
@@ -65,8 +69,8 @@
 }
 
 .player-board-row.is-favorite {
-  border-color: rgba(216, 170, 61, 0.55);
-  background: linear-gradient(90deg, rgba(216, 170, 61, 0.17), rgba(255, 255, 255, 0.72));
+  border-color: rgba(245, 184, 74, 0.3);
+  background: linear-gradient(90deg, rgba(245, 184, 74, 0.07), var(--surface-2) 40%);
 }
 
 .player-main {
@@ -80,21 +84,23 @@
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  min-width: 52px;
-  min-height: 36px;
-  padding: 7px 9px;
+  min-width: 44px;
+  min-height: 32px;
+  padding: 4px 8px;
   border-radius: 8px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--field-dark), var(--field));
-  font-size: 0.82rem;
-  font-weight: 950;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .player-subline {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 5px;
+  margin-top: 5px;
 }
 
 .player-data-strip,
@@ -110,25 +116,27 @@
 .note-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 30px;
-  padding: 5px 9px;
-  border-radius: 8px;
-  color: var(--ink);
-  background: rgba(20, 92, 57, 0.08);
-  border: 1px solid rgba(20, 92, 57, 0.13);
-  font-size: 0.78rem;
-  font-weight: 900;
+  min-height: 24px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--hairline);
+  font-size: 0.75rem;
+  font-weight: 550;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .note-badge {
-  color: var(--field-deep);
-  background: rgba(216, 170, 61, 0.2);
-  border-color: rgba(216, 170, 61, 0.34);
+  min-height: 22px;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: rgba(139, 108, 255, 0.22);
 }
 
 .player-row-actions button {
-  min-width: 108px;
+  min-width: 104px;
 }
 
 .unavailable-favorites {
@@ -170,20 +178,7 @@
   width: 100%;
   min-height: 82px;
   resize: vertical;
-  border: 1px solid rgba(17, 24, 22, 0.18);
-  border-radius: 8px;
-  padding: 10px 12px;
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.88);
-  outline: none;
-  font: inherit;
-  line-height: 1.45;
-}
-
-.favorite-note-editor textarea:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 4px rgba(216, 170, 61, 0.22);
-  background: #fff;
+  line-height: 1.5;
 }
 
 @media (max-width: 760px) {
@@ -220,5 +215,9 @@
 
   .rank-chip {
     width: fit-content;
+  }
+
+  .player-board-heading .board-count {
+    align-self: flex-start;
   }
 }

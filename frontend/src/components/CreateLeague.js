@@ -1,15 +1,26 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../api';
 import { useNavigate } from 'react-router-dom';
+import BiddingStyleField from '../whiteboard/BiddingStyleField';
+import { STANDARD, WHITEBOARD_AUTO, WHITEBOARD_MANUAL } from '../whiteboard/biddingStyle';
+import { formatDuration } from '../data/leagueLabels';
+import { useAuth } from '../AuthContext';
+import { createLeagueOnDevice } from '../offline/offlineSync';
+import OfflineNotice from '../help/OfflineNotice';
+import { KickerWithTip } from '../help/InfoTip';
+import { DraftModeHelp, RosterHelp, TimerHelp } from '../help/draftHelp';
+import '../whiteboard/whiteboard.css';
 import '../App.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 
 const CreateLeague = ({ userId }) => {
   const [leagueName, setLeagueName] = useState('');
   const [password, setPassword] = useState('');
   const [draftMode, setDraftMode] = useState('auction');
+  const [biddingMode, setBiddingMode] = useState(STANDARD);
   const navigate = useNavigate();
+  const { user } = useAuth() || {};
   const [rosterSettings, setRosterSettings] = useState({
     qb: 1, rb: 2, wr: 3, te: 1, k: 1, def: 1, flex: 1, superFlex: 1, bench: 6
   });
@@ -30,6 +41,23 @@ const CreateLeague = ({ userId }) => {
   const handleCreateLeague = async (e) => {
     e.preventDefault();
 
+    // No internet (or no account): make the league on this device; it's uploaded after the draft.
+    if (navigator.onLine === false || user?.guest || new URLSearchParams(window.location.search).has('offline')) {
+      try {
+        const leagueId = await createLeagueOnDevice({
+          name: leagueName,
+          draftMode,
+          biddingMode: draftMode === 'manual' ? STANDARD : biddingMode,
+          rosterSettings,
+          draftTimers,
+        }, user);
+        navigate(`/draft/${leagueId}`);
+      } catch (error) {
+        alert(`Failed to create league: ${error.message}`);
+      }
+      return;
+    }
+
     try {
       const uniqueCheck = await axios.get(`${API_BASE_URL}/CheckLeagueName?leagueName=${leagueName}`);
 
@@ -43,6 +71,7 @@ const CreateLeague = ({ userId }) => {
         adminId: userId,
         password,
         draftMode,
+        biddingMode: draftMode === 'manual' ? STANDARD : biddingMode,
         rosterSettings,
         draftTimers
       });
@@ -61,12 +90,14 @@ const CreateLeague = ({ userId }) => {
         <h1>Create League</h1>
         <p>Choose the room name, roster build, and clock speed before inviting the league in.</p>
         <div className="scoreboard-strip">
-          <span>{draftTimers.bidTimer}s bid clock</span>
-          <span>{draftTimers.intermissionTimer}s intermission</span>
-          <span>{draftMode === 'manual' ? 'Manual tracking' : 'Live auction'}</span>
+          <span>{formatDuration(draftTimers.bidTimer)} bid clock</span>
+          <span>{formatDuration(draftTimers.intermissionTimer)} between players</span>
+          <span>{draftMode === 'manual' ? 'Manual tracking' : biddingMode === WHITEBOARD_AUTO ? 'Whiteboard auction, auto-read' : biddingMode === WHITEBOARD_MANUAL ? 'Whiteboard auction' : 'Live auction'}</span>
           <span>{Object.values(rosterSettings).reduce((sum, value) => sum + value, 0)} roster spots</span>
         </div>
       </section>
+
+      <OfflineNotice joinOnly action="A league you make now is saved on this phone, and you upload it once you have internet." />
 
       <section className="card">
         <form onSubmit={handleCreateLeague}>
@@ -84,7 +115,7 @@ const CreateLeague = ({ userId }) => {
 
           <div className="divider" />
 
-          <p className="section-kicker">Draft mode</p>
+          <KickerWithTip title="Draft mode"><DraftModeHelp /></KickerWithTip>
           <div className="button-group" role="group" aria-label="Draft mode">
             <button
               type="button"
@@ -102,9 +133,11 @@ const CreateLeague = ({ userId }) => {
             </button>
           </div>
 
+          {draftMode === 'auction' && <BiddingStyleField value={biddingMode} onChange={setBiddingMode} />}
+
           <div className="divider" />
 
-          <p className="section-kicker">Roster settings</p>
+          <KickerWithTip title="Roster settings"><RosterHelp /></KickerWithTip>
           <div className="settings-grid">
             <label>QB<input type="number" name="qb" value={rosterSettings.qb} onChange={handleRosterChange} /></label>
             <label>RB<input type="number" name="rb" value={rosterSettings.rb} onChange={handleRosterChange} /></label>
@@ -119,7 +152,7 @@ const CreateLeague = ({ userId }) => {
 
           <div className="divider" />
 
-          <p className="section-kicker">Draft timers</p>
+          <KickerWithTip title="Draft timers (seconds)"><TimerHelp /></KickerWithTip>
           <div className="settings-grid">
             <label>Bid Timer<input type="number" name="bidTimer" value={draftTimers.bidTimer} onChange={handleTimerChange} /></label>
             <label>Intermission<input type="number" name="intermissionTimer" value={draftTimers.intermissionTimer} onChange={handleTimerChange} /></label>

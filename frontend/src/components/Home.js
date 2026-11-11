@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { initialPlayerList, playerPoolMeta } from '../data/playerData';
 import { playerInsightsMeta, playerRankMovements, sleeperTrending } from '../data/playerInsights';
+import { usePlayerDataVersion } from '../data/livePlayerData';
 import {
   buildPlayerBoard,
   filterPlayerBoard,
@@ -17,9 +19,10 @@ import { getPlayerAvailability } from '../data/strategyUtils';
 import { subscribeProfileUpdates } from '../profileSync';
 import MockDraftLab from './MockDraftLab';
 import PlayerComparison from './PlayerComparison';
+import UpdatedAt from './UpdatedAt';
+import { ShowMoreButton, useShowMore } from './ShowMore';
 import '../PlayerBoard.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:7071/api';
 const MAX_COMPARE = 3;
 const SLEEPER_TRENDING_BASE_URL = 'https://api.sleeper.app/v1/players/nfl/trending';
 const LIVE_TREND_LIMIT = 8;
@@ -33,7 +36,7 @@ const Home = () => {
   const [sortBy, setSortBy] = useState('rank');
   const [playerLimit, setPlayerLimit] = useState(300);
   const [compareIds, setCompareIds] = useState([]);
-  const [trendData, setTrendData] = useState({ add: [], drop: [], loading: false, error: null });
+  const [trendData, setTrendData] = useState({ add: [], drop: [], loading: false, error: null, fetchedAt: null });
   const navigate = useNavigate();
 
   const fetchProfile = useCallback(async () => {
@@ -58,7 +61,8 @@ const Home = () => {
     return subscribeProfileUpdates(fetchProfile, { includeFocus: true });
   }, [fetchProfile]);
 
-  const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode]);
+  const playersVersion = usePlayerDataVersion();
+  const playerBoard = useMemo(() => buildPlayerBoard(initialPlayerList, scoringMode), [scoringMode, playersVersion]); // eslint-disable-line react-hooks/exhaustive-deps -- recompute when a newer player list arrives
   const rankMovementItems = useMemo(() => ({
     risers: hydrateMovementItems(playerRankMovements.risers, playerBoard),
     fallers: hydrateMovementItems(playerRankMovements.fallers, playerBoard),
@@ -72,6 +76,7 @@ const Home = () => {
     sortBy,
   }), [playerBoard, searchTerm, positionFilter, sortBy]);
   const visiblePlayers = matchingPlayers.slice(0, playerLimit);
+  const playerPage = useShowMore(visiblePlayers, PLAYER_PAGE_SIZE, `${searchTerm}|${positionFilter}|${sortBy}|${playerLimit}|${scoringMode}`);
   const scoringLabel = getScoringLabel(scoringMode);
   const greetingName = userProfile?.displayName || user?.userDetails || 'Commissioner';
   const favoriteSet = useMemo(() => new Set(userProfile?.favoritePlayerIds || []), [userProfile]);
@@ -83,6 +88,7 @@ const Home = () => {
     const fallbackTrends = {
       add: hydrateTrendItems(sleeperTrending.add, playerBoard, LIVE_TREND_LIMIT),
       drop: hydrateTrendItems(sleeperTrending.drop, playerBoard, LIVE_TREND_LIMIT),
+      fetchedAt: playerInsightsMeta.generatedAt || null,
     };
 
     const fetchLiveTrends = async () => {
@@ -100,6 +106,7 @@ const Home = () => {
           drop: hydrateTrendItems(dropItems, playerBoard, LIVE_TREND_LIMIT),
           loading: false,
           error: null,
+          fetchedAt: new Date().toISOString(),
         });
       } catch (error) {
         if (!isActive) return;
@@ -154,7 +161,7 @@ const Home = () => {
           <span>{POSITION_FILTERS.length - 1} board filters</span>
           <span>{scoringLabel}</span>
           <span>{userProfile?.defaultTeamName || 'Team profile ready'}</span>
-          <span>Updated {formatDate(playerPoolMeta.fetchedAt)}</span>
+          <UpdatedAt at={playerPoolMeta.fetchedAt} label="Player pool updated" staleAfterHours={POOL_STALE_HOURS} />
         </div>
       </section>
 
@@ -202,7 +209,7 @@ const Home = () => {
             <h2>Player Pool</h2>
           </div>
           <div className="board-count">
-            Showing {visiblePlayers.length} of {matchingPlayers.length}
+            Showing {playerPage.shown.length} of {matchingPlayers.length}
           </div>
         </div>
 
@@ -259,7 +266,7 @@ const Home = () => {
         />
 
         <ul className="player-list player-board-list">
-          {visiblePlayers.map((player) => {
+          {playerPage.shown.map((player) => {
             const availability = getPlayerAvailability(player);
             const isFavorite = favoriteSet.has(player.id);
             const playerNote = typeof playerNotes[player.id] === 'string' ? playerNotes[player.id].trim() : '';
@@ -271,7 +278,7 @@ const Home = () => {
                   <span>
                     <span className="player-name">{player.name}</span>
                     <span className="player-subline">
-                      <span className="position-badge">{player.position}</span>
+                      <span className={`position-badge pos-${String(player.position || '').toLowerCase()}`}>{player.position}</span>
                       <span className="team-badge">{player.team}</span>
                       <span className={`status-badge ${availability.tone}`} title={availability.text}>{availability.label}</span>
                       {isFavorite && <span className="note-badge">Favorite</span>}
@@ -282,7 +289,7 @@ const Home = () => {
                 </div>
                 <div className="player-data-strip">
                   <span>Bye {player.bye || '-'}</span>
-                  <span>{scoringLabel}</span>
+                  <span className="data-scoring">{scoringLabel}</span>
                   {Number.isFinite(player.rankMovement) && player.rankMovement !== 0 && (
                     <span>{player.rankMovement > 0 ? `Up ${player.rankMovement}` : `Down ${Math.abs(player.rankMovement)}`}</span>
                   )}
@@ -300,6 +307,7 @@ const Home = () => {
             );
           })}
         </ul>
+        <ShowMoreButton hidden={playerPage.hidden} step={PLAYER_PAGE_SIZE} onClick={playerPage.showMore} />
       </section>
     </div>
   );
@@ -313,6 +321,16 @@ const PlayerUpdatesPanel = ({ trends, rankMovements, lookbackHours }) => (
         <h2>Market Watch</h2>
       </div>
       <div className="board-count">Sleeper {lookbackHours}h</div>
+    </div>
+    <div className="updated-row">
+      {!trends.loading && (
+        <UpdatedAt
+          at={trends.fetchedAt}
+          label={trends.error ? 'Trends snapshot taken' : 'Trends updated'}
+          staleAfterHours={trends.error ? lookbackHours : null}
+        />
+      )}
+      <UpdatedAt at={playerInsightsMeta.generatedAt} label="Rank movement updated" staleAfterHours={POOL_STALE_HOURS} />
     </div>
 
     <div className="player-update-grid">
@@ -337,7 +355,7 @@ const PlayerUpdatesPanel = ({ trends, rankMovements, lookbackHours }) => (
         eyebrow="Pool movement"
         items={rankMovements.risers}
         tone="up"
-        emptyText="Rank movement appears after the next pool refresh."
+        emptyText="No big rank moves this past week."
         getMetric={(item) => formatMovementMetric(item)}
       />
       <PlayerUpdateColumn
@@ -345,7 +363,7 @@ const PlayerUpdatesPanel = ({ trends, rankMovements, lookbackHours }) => (
         eyebrow="Pool movement"
         items={rankMovements.fallers}
         tone="down"
-        emptyText="Rank movement appears after the next pool refresh."
+        emptyText="No big rank moves this past week."
         getMetric={(item) => formatMovementMetric(item)}
       />
     </div>
@@ -396,12 +414,14 @@ const hydrateTrendItems = (items, playerBoard, limit = LIVE_TREND_LIMIT) => {
       const sleeperId = item.sleeperId || item.player_id || item.id || String(item.playerId || '').replace(/^sleeper-/, '');
       const playerId = item.playerId || (sleeperId ? `sleeper-${sleeperId}` : null);
       const player = playerId ? playerMap.get(playerId) : null;
-      if (!player && !item.name) return null;
+      // Skip players we can't name (Sleeper sends bare IDs for players outside our pool).
+      const name = player?.name || (item.name && String(item.name) !== String(sleeperId) && !/^\d+$/.test(String(item.name)) ? item.name : null);
+      if (!name) return null;
 
       return {
         playerId,
         sleeperId,
-        name: player?.name || item.name || sleeperId,
+        name,
         position: player?.position || item.position || '-',
         team: player?.team || item.team || '-',
         rank: player?.scoringRank || item.rank || null,
@@ -447,18 +467,15 @@ const formatCompactCount = (value) => {
   return String(count);
 };
 
+// The player pool is rebuilt every morning, so a pool more than two days old has missed updates.
+const POOL_STALE_HOURS = 2 * 24;
+const PLAYER_PAGE_SIZE = 50;
+
 const getTrendLookbackHours = () => toNumber(playerInsightsMeta.trendsLookbackHours, 24) || 24;
 
 const toNumber = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-const formatDate = (value) => {
-  if (!value) return 'recently';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'recently';
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
 export default Home;

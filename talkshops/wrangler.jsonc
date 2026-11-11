@@ -1,0 +1,8 @@
+// Cloudflare Workers settings for talkshops.app: a static site (public/), no server code.
+// App tabs live at their own paths (/bay, /settings, ...); unknown paths serve index.html and app.js picks the tab.
+// Build: `node scripts/build.mjs` (writes public/config.js), then `npx wrangler deploy`.
+{
+  "name": "talkshops",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./public", "not_found_handling": "single-page-application" }
+}

@@ -1,0 +1,1306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}.sample-art{margin:10px 0;max-width:260px}.sample-art img{display:block;width:100%;height:auto;border-radius:8px}.sample-art figcaption{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.4}
+</style>
+<title>Talk Shops Demo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky top bar with view tabs; shop board of stage columns; job detail as a side sheet; customer view in a phone frame */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --surface-2:#f5f7f9; --fg:#17202b; --muted:#5a6676; --line:#d6dce3;
+  --accent:#1d5cbb; --accent-fg:#ffffff; --accent-soft:#e5eefb;
+  --warn:#a85407; --warn-bg:#fcefdc; --ok:#1d7448; --ok-bg:#e1f2e8; --bad:#b3261e; --bad-bg:#fbe7e5;
+  --bubble-out:#1d5cbb; --bubble-out-fg:#ffffff; --bubble-in:#e7ebf0;
+  --shadow:0 1px 2px rgba(20,30,45,.06),0 4px 14px rgba(20,30,45,.06);
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10151b; --surface:#18202a; --surface-2:#1e2833; --fg:#e5eaf0; --muted:#93a1b2; --line:#2b3642;
+  --accent:#6ea3ff; --accent-fg:#0b1322; --accent-soft:#1a2a45;
+  --warn:#f2a650; --warn-bg:#3a2912; --ok:#5fca92; --ok-bg:#14301f; --bad:#ff8a80; --bad-bg:#3d1a18;
+  --bubble-out:#2f6fd6; --bubble-out-fg:#ffffff; --bubble-in:#26313d;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10151b; --surface:#18202a; --surface-2:#1e2833; --fg:#e5eaf0; --muted:#93a1b2; --line:#2b3642;
+  --accent:#6ea3ff; --accent-fg:#0b1322; --accent-soft:#1a2a45;
+  --warn:#f2a650; --warn-bg:#3a2912; --ok:#5fca92; --ok-bg:#14301f; --bad:#ff8a80; --bad-bg:#3d1a18;
+  --bubble-out:#2f6fd6; --bubble-out-fg:#ffffff; --bubble-in:#26313d;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25); color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-size:.82em;letter-spacing:.02em}
+.muted{color:var(--muted)}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0}
+
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar-in{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand-mark{width:30px;height:30px;border-radius:7px;background:var(--accent);display:grid;place-items:center}
+.brand-mark svg{width:18px;height:18px}
+.brand h1{font-size:22px;line-height:1}
+.brand small{display:block;font-size:12px;color:var(--muted);font-family:var(--f-body)}
+.tabs{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:3px}
+.tab{border:0;background:transparent;padding:6px 12px;border-radius:6px;font-weight:600;color:var(--muted);white-space:nowrap}
+.tab[aria-current="page"]{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+
+.demo-note{font-size:12.5px;color:var(--muted);padding-block:6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--surface-2);border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+.linkbtn{border:0;background:none;padding:0;color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:2px}
+
+main{padding-block:18px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.stat b{display:block;font-family:var(--f-display);font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+.stat.warn b{color:var(--warn)} .stat.ok b{color:var(--ok)}
+@media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* board */
+.board-wrap{overflow-x:auto;padding-bottom:6px}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:10px;min-width:min-content}
+.col{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:160px}
+.col-h{display:flex;justify-content:space-between;align-items:baseline;padding:2px 4px 4px}
+.col-h h3{font-size:15px;text-transform:uppercase;letter-spacing:.06em}
+.col-h span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.col.is-approval{background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 35%,var(--line))}
+.col.is-ready{background:var(--ok-bg);border-color:color-mix(in srgb,var(--ok) 35%,var(--line))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 11px;text-align:left;display:flex;flex-direction:column;gap:3px;width:100%;box-shadow:var(--shadow)}
+.card:hover{border-color:var(--accent)}
+.card .veh{font-weight:600}
+.card .row{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted)}
+.empty-col{font-size:13px;color:var(--muted);padding:6px 4px}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);width:max-content}
+.pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.bad{background:var(--bad-bg);color:var(--bad)}
+
+/* side sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,15,22,.45);z-index:20}
+.sheet{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--surface);z-index:21;display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.18);padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet-h{display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border-bottom:1px solid var(--line)}
+.sheet-h h2{font-size:24px;line-height:1.1}
+.sheet-body>*{min-width:0}
+.sheet-body{overflow-y:auto;overflow-x:hidden;padding:16px 18px 30px;display:flex;flex-direction:column;gap:22px}
+.x{margin-left:auto;border:1px solid var(--line);background:var(--surface-2);border-radius:8px;width:34px;height:34px;flex:none;font-size:18px;line-height:1}
+.sec h3{font-size:14px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+
+.stepper{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.step{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:7px 6px;font-size:13px;font-weight:600;color:var(--muted);text-align:center;line-height:1.2}
+.step.done{color:var(--fg)}
+.step.done::before{content:"✓ ";color:var(--ok)}
+.step.current{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.step:not(.current):hover{border-color:var(--accent);color:var(--fg)}
+@media (max-width:420px){.stepper{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px}
+
+table.est{width:100%;border-collapse:collapse;font-size:14px}
+table.est td,table.est th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.est th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+table.est td.num,table.est th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.add-line{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,100px) auto;gap:6px;margin-top:8px}
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}
+.field input,.field select,.field textarea,.add-line input{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 10px;font-weight:400;font-size:15px;min-width:0}
+.field textarea{resize:vertical;min-height:70px}
+
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.photo{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface-2);font-size:12.5px}
+.photo .img{aspect-ratio:4/3;width:100%;display:block;object-fit:cover;max-width:100%}
+.photo figcaption{padding:5px 8px}
+.photo-add{border:1.5px dashed var(--line);border-radius:8px;display:grid;place-items:center;aspect-ratio:4/3;color:var(--muted);font-weight:600;font-size:13px;text-align:center;padding:8px;cursor:pointer;max-width:100%}
+.photo-add:hover{border-color:var(--accent);color:var(--accent)}
+
+.thread{display:flex;flex-direction:column;gap:8px}
+.bubble{max-width:86%;padding:8px 12px;border-radius:14px;font-size:14px;overflow-wrap:anywhere}
+.bubble.out{align-self:flex-end;background:var(--bubble-out);color:var(--bubble-out-fg);border-bottom-right-radius:4px}
+.bubble.in{align-self:flex-start;background:var(--bubble-in);border-bottom-left-radius:4px}
+.bubble .meta{display:block;font-size:11.5px;opacity:.75;margin-top:3px}
+.bubble a,.bubble .lnk{color:inherit;text-decoration:underline;font-weight:600;background:none;border:0;padding:0}
+
+.log{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.log li{display:grid;grid-template-columns:72px 1fr;gap:10px}
+.log time{color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* modal */
+.modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:16px;background:rgba(10,15,22,.5)}
+.modal-card{background:var(--surface);border-radius:12px;width:min(480px,100%);padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow)}
+.modal-card h2{font-size:22px}
+.modal-card textarea{min-height:120px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:14px;font-weight:400}
+
+/* check-in */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:760px}
+.panel h2{font-size:26px;margin-bottom:4px}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.form-grid .full{grid-column:1/-1}
+@media (max-width:560px){.form-grid{grid-template-columns:1fr}}
+
+/* customer phone */
+.cust-wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+.cust-page{width:min(480px,100%);margin:0 auto}
+.cust-page .c-head{border-radius:0 0 14px 14px}
+.cust-demo{font-size:12.5px;color:var(--muted);background:var(--surface-2);border-bottom:1px solid var(--line);padding-block:6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-wrap:wrap;gap:4px 12px}
+.login-wrap{min-height:100%;display:grid;place-items:center;padding-block:48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.login{width:min(400px,100%);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px}
+.login .brand{margin:0}
+.login h2{font-size:28px;margin-top:6px}
+.auth-alt{display:flex;flex-direction:column;gap:8px}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.form-err{color:var(--bad);font-size:13.5px;margin:0}
+.form-ok{color:var(--ok);font-size:13.5px;margin:0}
+#smartSettings{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0;display:flex;flex-direction:column;gap:8px}
+#smartSettings legend{font-weight:700;padding:0 6px}
+#smartSettings .hint{font-size:13px;color:var(--muted)}
+#smartSettings details{display:flex;flex-direction:column;gap:8px}
+#smartSettings .btn-row label{display:inline-flex;gap:4px;align-items:center;font-size:14px}
+.demo-creds{font-size:13px;background:var(--accent-soft);border-radius:8px;padding:8px 10px}
+.signout{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-weight:600}
+@media (max-width:560px){.tabs{order:3;width:100%}.tab{flex:1;padding:6px 8px}}
+.cust-pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px}
+.cust-pick select{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px 8px;max-width:100%}
+.phone{width:min(390px,100%);background:var(--surface);border:1px solid var(--line);border-radius:28px;padding:10px;box-shadow:var(--shadow)}
+.phone-in{border-radius:20px;overflow:hidden;background:var(--bg);border:1px solid var(--line)}
+.url{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);text-align:center;padding:7px 10px;background:var(--surface-2);border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+.c-head{background:var(--accent);color:var(--accent-fg);padding:16px}
+.c-head small{opacity:.85;font-size:13px}
+.c-head h2{font-size:26px;line-height:1.1;margin-top:4px}
+.c-body{padding:14px;display:flex;flex-direction:column;gap:14px}
+.c-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.c-card h3{font-size:16px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.tl{list-style:none;margin:0;padding:0}
+.tl li{display:grid;grid-template-columns:18px 1fr auto;gap:10px;align-items:start;padding:5px 0;position:relative;font-size:14px}
+.tl li::before{content:"";width:12px;height:12px;border-radius:50%;border:2px solid var(--line);background:var(--surface);margin-top:4px;grid-column:1}
+.tl li.done::before{background:var(--ok);border-color:var(--ok)}
+.tl li.current::before{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.tl li:not(:last-child)::after{content:"";position:absolute;left:5px;top:20px;bottom:-6px;width:2px;background:var(--line)}
+.tl li.done:not(:last-child)::after{background:var(--ok)}
+.tl li.todo{color:var(--muted)}
+.tl time{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.decide{display:flex;gap:6px;margin-top:6px}
+.decide button{flex:1;border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px;font-weight:600;font-size:13px}
+.decide button[aria-pressed="true"].yes{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.decide button[aria-pressed="true"].no{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.est-item{padding:8px 0;border-bottom:1px solid var(--line)}
+.est-item:last-of-type{border-bottom:0}
+.est-item .top{display:flex;justify-content:space-between;gap:10px;font-weight:600}
+.est-item .top span:last-child{font-variant-numeric:tabular-nums}
+.total{display:flex;justify-content:space-between;font-weight:700;font-size:16px;padding-top:8px;font-variant-numeric:tabular-nums}
+.call{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px}
+.call b{font-family:var(--f-mono);user-select:all}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:9px;font-weight:600;z-index:40;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px)}}}
+/* matches the real app (index.html) */
+button.stat{text-align:left;color:var(--fg)}
+@media (max-width:700px){.board{grid-auto-flow:row;grid-template-columns:minmax(0,1fr);min-width:0}.col{min-height:0}.col:has(.empty-col){display:none}}
+.photo{margin:0}
+.field .hint{font-weight:400;font-size:12.5px;color:var(--muted)}
+.est-add{margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;gap:10px}
+.est-add-h{font-size:13px;font-weight:600}
+.est-add .add-line{margin-top:0}
+.est-add-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.est-add-or::before,.est-add-or::after{content:"";flex:1;border-top:1px solid var(--line)}
+.est-add-more{width:100%;justify-content:center}
+.est-send{margin-top:12px;width:100%;justify-content:center}
+.total.sub{font-weight:400;font-size:14px;color:var(--muted);padding-top:2px}
+a.btn{color:var(--fg);text-decoration:none;display:inline-flex;align-items:center}
+a.btn.primary{color:var(--accent-fg)}
+.notice{background:var(--warn-bg);color:var(--fg);border-radius:10px;padding:10px 14px;font-size:14px;margin-bottom:14px}
+.empty-board{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:24px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
+.cust-top{font-size:12.5px;color:var(--muted);text-align:center;padding:8px}
+#setupForm.panel{display:flex;flex-direction:column;gap:14px}
+/* demo-only: saved items list in Settings */
+.rates{width:100%;border-collapse:collapse;font-size:14px}
+.rates td,.rates th{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left}
+.rates th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.rates td.num,.rates th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rate-add{display:grid;grid-template-columns:minmax(0,1fr) 110px 100px auto;gap:6px;margin-top:10px}
+.rate-add input,.rate-add select{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 10px;font-size:15px;min-width:0}
+@media (max-width:560px){.rate-add{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.import-box{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
+</style>
+<link rel="stylesheet" href="/saved-archive.css?v=12">
+<link rel="stylesheet" href="/theme.css?v=22">
+<link rel="stylesheet" href="/repair-guide.css?v=4">
+<link rel="stylesheet" href="/plan.css?v=1">
+<link rel="stylesheet" href="/training.css?v=1">
+<link rel="stylesheet" href="/team.css?v=2">
+<link rel="stylesheet" href="/help.css?v=1">
+<link rel="stylesheet" href="/help-chat.css?v=1">
+<link rel="stylesheet" href="/howto.css?v=8">
+<link rel="stylesheet" href="/workday.css?v=4">
+<link rel="stylesheet" href="/grow.css?v=1">
+<script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
+<style>
+.queue-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.queue-top h2{width:auto;flex:1}
+.queue-filters.stats{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 18px}
+.queue-filters .stat{display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:6px 10px;border-radius:12px;color:var(--muted);font-size:13px}
+.queue-filters .stat b{font-size:inherit;color:inherit}
+.queue-filters .stat::after,.queue-filters .stat::before{display:none}
+.queue-filters .stat[aria-pressed=true]{background:var(--fg);color:var(--surface)}
+.queue-vehicle{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.queue-vehicle span{font-size:20px;color:var(--muted);line-height:1}
+@media(max-width:700px){
+ .board-wrap .board{display:block;min-width:0}
+ .board .col{min-height:0;padding:0;border:0;background:transparent;box-shadow:none}
+ .board .col-h,.board .empty-col{display:none}
+ .board .card{width:100%;margin:0 0 9px;padding:14px 16px}
+ .board .card::before{display:none}
+ .queue-top h2{font-size:20px}
+ .board .card .veh{font-size:16px}
+}
+</style>
+</head>
+<body>
+
+<div id="shopChrome" hidden>
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-fg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5v4a1 1 0 0 1-1 1h-1.5M3 13v4a1 1 0 0 0 1 1h1.5M3 13h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/></svg></div>
+      <div><h1>Talk Shops</h1><small id="shopName">Ridgeline Auto Repair</small></div>
+    </div>
+    <nav class="tabs has-icons" aria-label="Views">
+      <button class="tab" data-view="board"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="tab-l tab-full" id="bayTab">Ridgeline Auto Repair Bay</span><span class="tab-l tab-short">Bay</span></button>
+      <button class="tab" data-view="checkin"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span class="tab-l">Check In</span></button>
+      <button class="tab" data-view="archive"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/></svg><span class="tab-l">Archive</span></button>
+      <button class="tab" data-view="howto"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3.6 17.2a1.9 1.9 0 0 0 2.7 2.7l5.7-5.7a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span class="tab-l">How-To</span></button>
+      <button class="tab" data-view="settings"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span class="tab-l">Settings</span></button>
+      <button class="tab" data-view="plan"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg><span class="tab-l">Plan</span></button>
+      <button class="tab" data-view="help"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4M12 17h.01"/></svg><span class="tab-l">Help</span></button>
+      <button class="tab" data-view="training"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg><span class="tab-l">Training</span></button>
+    </nav>
+    <a class="signout" id="signOutLink" href="/" style="text-decoration:none;color:inherit">Exit Demo</a>
+  </div>
+</header>
+<div class="demo-note"><span><b>Demo shop.</b> Sample cars and customers<span class="dn-long">, saved only in this browser. No real notifications are sent; each one shows in the car's message thread</span>.</span><span style="display:flex;gap:14px;flex-wrap:wrap"><a class="linkbtn" href="?tour=1" style="text-decoration:none">▶ Guided tour</a><button class="linkbtn" id="resetBtn">Reset sample data</button></span></div>
+</div>
+<main id="app"></main>
+<div id="layer"></div>
+<input type="file" id="photoIn" accept="image/*" hidden>
+
+<script src="/sheet-import.js?v=1"></script>
+<script src="/price-rules.js?v=3"></script>
+<script src="/price-import.js?v=7"></script>
+<script src="/billing.js?v=7"></script>
+<script src="/suggest.js?v=1"></script>
+<script src="/dictate.js?v=1"></script>
+<script src="/plan.js?v=2"></script>
+<script src="/training.js?v=9"></script>
+<script src="/howto.js?v=13"></script>
+<script src="/vehicle-typeahead.js?v=1"></script>
+<script src="/team.js?v=4"></script>
+<script src="/display.js?v=1"></script>
+<script src="/age-settings.js?v=1"></script>
+<script src="/board-tools.js?v=4"></script>
+<script src="/walkthrough.js?v=6"></script>
+<script src="/workday.js?v=6"></script>
+<script src="/walkaround.js?v=3"></script>
+<script src="/grow.js?v=4"></script>
+<script src="/repair-guide.js?v=4"></script>
+<script src="/est-groups.js?v=1"></script>
+<script src="/help-content.js?v=9"></script>
+<script src="/help-chat-features.js?v=1"></script>
+<script src="/help-chat-model-run.js?v=1"></script>
+<script src="/help-chat.js?v=2"></script>
+<script>
+let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
+const STAGES=[
+ {key:"checked_in",label:"Checked In",cust:"We Have Your Car"},
+ {key:"diagnosing",label:"Diagnosing",cust:"Inspecting Your Car"},
+ {key:"approval",label:"Estimate Review",cust:"Waiting on Your Approval"},
+ {key:"parts",label:"Waiting on Parts",cust:"Waiting on Parts"},
+ {key:"in_progress",label:"In Progress",cust:"Repairs Underway"},
+ {key:"qc",label:"Quality Check",cust:"Final Check and Road Test"},
+ {key:"ready",label:"Ready for Pickup",cust:"Ready for Pickup"},
+ {key:"picked_up",label:"Picked Up",cust:"Picked Up"}];
+const SI=Object.fromEntries(STAGES.map((s,i)=>[s.key,i]));
+const TEMPLATES={
+ checked_in:"{shop} has your {vehicle}. Track it here: {link} Reply STOP to opt out",
+ diagnosing:"Hi {first}, we're inspecting your {vehicle} now.",
+ approval:"Your {vehicle} estimate ({total}) is ready to approve: {link}",
+ parts:"Parts for your {vehicle} are ordered, due {eta}.",
+ in_progress:"Repairs on your {vehicle} have started.",
+ qc:"Repairs on your {vehicle} are done. Final check underway.",
+ ready:"Your {vehicle} is ready! Total {total}. Hours: {hours}. {link}",
+ picked_up:"Thanks for choosing {shop}! How did we do?"};
+// Required / recommended / optional on each estimate line (same as the real app).
+const PRI={required:{label:"Required",cls:"bad",cust:"Needed to fix your concern or for safety."},recommended:{label:"Recommended",cls:"warn",cust:"Advised soon to prevent bigger problems."},optional:{label:"Optional",cls:"",cust:"Can wait if you prefer."}};
+const PRI_ORDER={required:0,recommended:1,optional:2};
+const priOptions=v=>Object.entries(PRI).map(([k,p])=>`<option value="${k}" ${k===(v||"recommended")?"selected":""}>${p.label}</option>`).join("");
+const priPill=e=>e.priority&&PRI[e.priority]?`<span class="pill pri ${PRI[e.priority].cls}">${PRI[e.priority].label}</span>`:"";
+const CHANNELS={sms:"Text message",email:"Email",both:"Text and email"};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=n=>"$"+Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const clock=t=>new Date(t).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+const dayClock=t=>{const d=new Date(t),n=new Date();return d.toDateString()===n.toDateString()?clock(t):d.toLocaleDateString("en-US",{month:"short",day:"numeric"})+", "+clock(t)};
+const longDate=t=>new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+const since=t=>{const m=Math.max(0,Math.round((Date.now()-t)/60000));if(m<60)return m+"m";const h=Math.floor(m/60);if(h<24)return h+"h "+(m%60)+"m";const d=Math.floor(h/24);return d+"d "+(h%24)+"h"};
+const token=()=>Math.random().toString(36).slice(2,8)+Math.random().toString(36).slice(2,8);
+const first=n=>String(n||"").split(" ")[0];
+const vehicleStr=j=>ShopDisplay.vehicle([j.vehicle.year,j.vehicle.make,j.vehicle.model].filter(Boolean).join(" "));
+const linkOf=j=>`${SHOP.domain}/s/${j.token}`;
+const WA_ANGLES=["front","front_right","right","rear_right","rear","rear_left","left","front_left"];
+// Same rule as the server: spell a repair like the one already on the estimate; null if it was already decided.
+const demoGroup=(j,v)=>{const g=String(v||"").trim().replace(/\s+/g," ").slice(0,60);if(!g)return "";const same=j.estimate.filter(e=>e.group&&e.group.toLowerCase()===g.toLowerCase());if(same.some(e=>e.status!=="pending"))return null;return same[0]?.group||g};
+const estTotal=(j,onlyApproved)=>j.estimate.filter(e=>!onlyApproved||e.status==="approved").reduce((a,e)=>a+Number(e.price),0);
+const contact=c=>c.channel==="email"?c.email:c.channel==="both"?c.phone+" · "+c.email:c.phone;
+const bayName=()=>SHOP.name+" Bay";
+// Customers marked as Spanish speakers get their automatic texts in Spanish (same wording as the real app).
+const TEMPLATES_ES={
+ checked_in:"Hola {first}, {shop} ya tiene su {vehicle}. Le mantendremos al tanto del avance. Siga su reparación aquí: {link}",
+ diagnosing:"Hola {first}, un técnico está revisando su {vehicle} ahora. Pronto le enviaremos lo que encontremos.",
+ approval:"Hola {first}, encontramos lo que tiene su {vehicle}. Por favor revise y apruebe el presupuesto ({total}): {link}",
+ parts:"Hola {first}, las piezas para su {vehicle} ya están pedidas y deben llegar {eta}. Le avisaremos cuando lleguen.",
+ in_progress:"Buenas noticias, {first}: ya estamos reparando su {vehicle}.",
+ qc:"Hola {first}, la reparación está terminada. Estamos haciendo la revisión final y la prueba de manejo de su {vehicle}.",
+ ready:"¡Su {vehicle} está listo para recoger! Total {total}. Horario: {hours}. Detalles: {link}",
+ picked_up:"¡Gracias por elegir {shop}, {first}! ¿Cómo lo hicimos? Responda con sus comentarios."};
+function fillTemplate(stage,j){
+  const total=stage==="ready"?(j.bill?j.bill.total:estTotal(j,true)):estTotal(j,false);
+  return (j.customer.lang==="es"?TEMPLATES_ES:TEMPLATES)[stage].replace(/\{(\w+)\}/g,(_,k)=>({first:first(j.customer.name),shop:SHOP.name,vehicle:vehicleStr(j),link:linkOf(j),total:money(total),eta:j.eta||"soon",hours:SHOP.hours}[k]??""));
+}
+
+/* --- sample data --- */
+function photoSVG(label,hue){
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 120'><rect width='160' height='120' fill='hsl(${hue},18%,30%)'/><circle cx='80' cy='60' r='34' fill='none' stroke='hsl(${hue},14%,62%)' stroke-width='10'/><circle cx='80' cy='60' r='12' fill='hsl(${hue},14%,55%)'/><rect x='104' y='40' width='16' height='40' rx='3' fill='hsl(${hue+20},60%,55%)'/><text x='8' y='112' font-family='monospace' font-size='9' fill='white' opacity='.8'>${label}</text></svg>`;
+  return "data:image/svg+xml,"+encodeURIComponent(svg);
+}
+const SAMPLE_RATES=[
+ {name:"AC refrigerant recharge",kind:"fee",rate:189},{name:"AC condenser (replace)",kind:"part",rate:624},
+ {name:"Brake fluid flush",kind:"fee",rate:119},{name:"Cabin air filter",kind:"part",rate:34},
+ {name:"Diagnostic fee",kind:"fee",rate:95},{name:"Engine air filter",kind:"part",rate:29},
+ {name:"Front brake pads and rotors",kind:"part",rate:389},{name:"Serpentine belt (replace)",kind:"part",rate:148},
+ {name:"Shop supplies",kind:"fee",rate:12.5},{name:"Synthetic oil change",kind:"fee",rate:69.95},
+ {name:"Technician labor",kind:"labor",rate:125},{name:"Tire rotation",kind:"fee",rate:20},{name:"Wheel alignment",kind:"fee",rate:129}];
+function seed(){
+  const now=Date.now(),M=60000,D=1440;
+  const mk=(ro,cust,veh,plate,concern,stage,stageTimes,estimate,extra={})=>{
+    const j={id:ro,ro,customer:{consent:true,channel:"sms",...cust},vehicle:veh,plate,concern,stage,token:token(),estimate,photos:[],notes:[],events:[],messages:[],...extra};
+    stageTimes.forEach(([k,ago])=>{const t=now-ago*M;j.events.push({stage:k,t});j.messages.push({dir:"out",ch:j.customer.channel,t,text:fillTemplate(k,j)});});
+    return j;};
+  const jobs=[
+   mk("RO-1046",{name:"Ashley Kim",phone:"(555) 017-3381"},{year:2019,make:"Jeep",model:"Cherokee"},"8MRT551","Battery warning light on dash","checked_in",[["checked_in",12]],[]),
+   mk("RO-1044",{name:"Lena Brooks",phone:"(555) 012-9047",email:"lena.brooks@example.com",channel:"both"},{year:2012,make:"Chevrolet",model:"Malibu"},"6BXC118","AC blowing warm air","diagnosing",[["checked_in",95],["diagnosing",34]],[]),
+   mk("RO-1041",{name:"Maria Delgado",phone:"(555) 013-6620"},{year:2018,make:"Honda",model:"Civic"},"7KDL294","Grinding noise when braking","approval",[["checked_in",210],["diagnosing",170],["approval",48]],
+     MARIA_EST()),
+   mk("RO-1042",{name:"James Whitaker",phone:"(555) 016-4402",email:"j.whitaker@example.com",channel:"email"},{year:2015,make:"Ford",model:"F-150"},"4TWE903","Check engine light, rough idle","parts",[["checked_in",1500],["diagnosing",1440],["approval",1380],["parts",1300]],
+     [{id:1,item:"Ignition coils (6) and spark plugs",price:642,status:"approved",priority:"required"},{id:2,item:"Throttle body cleaning",price:95,status:"declined",priority:"optional"}],{eta:"Tue, Nov 10"}),
+   mk("RO-1043",{name:"Priya Nair",phone:"(555) 011-7735"},{year:2020,make:"Toyota",model:"RAV4"},"9PLN227","60,000-mile service and timing cover oil leak","in_progress",[["checked_in",4.5*D],["diagnosing",4.4*D],["approval",4.3*D],["parts",4.1*D],["in_progress",150]],
+     [{id:1,item:"60k service package",price:449,status:"approved"},{id:2,item:"Timing cover gasket",price:780,status:"approved"}],{eta:"Fri, Nov 6"}),
+   mk("RO-1040",{name:"Marcus Hill",phone:"(555) 015-2268"},{year:2016,make:"Nissan",model:"Altima"},"7HJA640","Clunk over bumps, replace front struts","qc",[["checked_in",2*D],["diagnosing",1.9*D],["approval",1.8*D],["in_progress",250],["qc",22]],
+     [{id:1,item:"Front strut assemblies (pair)",price:712,status:"approved"},{id:2,item:"Wheel alignment",price:129,status:"approved"}]),
+   mk("RO-1045",{name:"Tom Reyes",phone:"(555) 018-5519"},{year:2017,make:"Subaru",model:"Outback"},"5SUB774","Oil change and tire rotation","ready",[["checked_in",140],["in_progress",110],["ready",19]],
+     [{id:1,item:"Synthetic oil change",price:69.95,status:"approved"},{id:2,item:"Tire rotation",price:20,status:"approved"}])];
+  const maria=jobs.find(j=>j.ro==="RO-1041");
+  maria.photos=[{src:photoSVG("FRONT PADS 2MM",210),cap:"Front pads worn to 2 mm (replace at 3 mm)"},{src:photoSVG("ROTOR SCORING",20),cap:"Scoring on left front rotor"}];
+  maria.notes=[{id:1,t:now-60*M,text:"Front pads are down to 2 mm and the left rotor is scored. Recommend pads and rotors on the front axle, plus a fluid flush (fluid tested dark)."}];
+  maria.messages.push({dir:"in",t:now-30*M,text:"Thanks! Is it safe to drive home if I wait on this?"});
+  maria.messages.push({dir:"out",ch:"sms",t:now-26*M,text:"It's drivable short distance, but the pads are close to metal. We'd recommend doing it today. – Dan, service advisor"});
+  // Sample urgency marks: Maria needs her Civic back this afternoon.
+  maria.urgency="high";jobs.find(j=>j.ro==="RO-1046").urgency="medium";jobs.find(j=>j.ro==="RO-1045").urgency="low";
+  const james=jobs.find(j=>j.ro==="RO-1042");
+  james.approval={by:"James Whitaker",t:now-1350*M};
+  james.messages.splice(3,0,{dir:"in",t:now-1350*M,text:"Approved the coils and plugs. Skip the throttle body for now."});
+  const marcus=jobs.find(j=>j.ro==="RO-1040");marcus.approval={by:"Marcus Hill",t:now-1.75*D*M};
+  const priya=jobs.find(j=>j.ro==="RO-1043");priya.approval={by:"Priya Nair",t:now-4.25*D*M};
+  // Priya sent all 8 walk-around photos at check-in (sample illustrations); the AI hasn't checked them yet.
+  priya.walkaroundRequest={t:now-4.5*D*M};
+  priya.walkaround=WA_ANGLES.map((a,i)=>({id:"wa-"+a,angle:a,src:"/demo-art/walkaround/"+a+".svg",t:now-4.45*D*M+i*40000,marks:[],aiAt:null}));
+  // Archive: picked-up cars and one closed without repair
+  const past=(ro,cust,veh,plate,concern,daysAgo,estimate,extra={})=>{
+    const t=now-daysAgo*D*M;
+    const j=mk(ro,cust,veh,plate,concern,"picked_up",[],estimate,extra);
+    j.events=[{stage:"checked_in",t:t-2*D*M},{stage:"in_progress",t:t-1.5*D*M},{stage:"ready",t:t-.2*D*M},{stage:"picked_up",t}];
+    j.messages=[{dir:"out",ch:j.customer.channel,t:t-2*D*M,text:fillTemplate("checked_in",j)},{dir:"out",ch:j.customer.channel,t:t-.2*D*M,text:fillTemplate("ready",j)}];
+    j.archivedAt=t;return j;};
+  jobs.push(
+   past("RO-1039",{name:"Greg Allen",phone:"(555) 014-8812"},{year:2010,make:"Toyota",model:"Tacoma"},"2GRA410","Timing belt and water pump at 120k",3,[{id:1,item:"Timing belt and water pump",price:845,status:"approved"}]),
+   past("RO-1036",{name:"Kevin Park",phone:"(555) 019-2201",email:"kpark@example.com",channel:"both"},{year:2016,make:"Honda",model:"Accord"},"6KPA338","Brakes squeal when stopping",12,[{id:1,item:"Rear brake pads",price:289,status:"approved"}]),
+   past("RO-1031",{name:"Maria Delgado",phone:"(555) 013-6620"},{year:2018,make:"Honda",model:"Civic"},"7KDL294","Oil change, cabin filter smells musty",34,[{id:1,item:"Synthetic oil change",price:69.95,status:"approved"},{id:2,item:"Cabin air filter",price:34,status:"approved"}]),
+   past("RO-1029",{name:"Tom Reyes",phone:"(555) 018-5519"},{year:2017,make:"Subaru",model:"Outback"},"5SUB774","Check engine light on",61,[{id:1,item:"Diagnostic fee",price:95,status:"approved"},{id:2,item:"Purge valve",price:119,status:"approved"}]));
+  const dana=mk("RO-1038",{name:"Dana Lopez",phone:"(555) 012-4477",email:"dana.l@example.com",channel:"email"},{year:2021,make:"Ford",model:"Escape"},"8DLE902","Transmission slipping on the highway","approval",[["checked_in",9*D],["diagnosing",8.9*D],["approval",8.6*D]],
+    [{id:1,item:"Transmission rebuild",price:3850,status:"declined"}]);
+  dana.closed={reason:"Customer went elsewhere",t:now-8*D*M};dana.archivedAt=dana.closed.t;jobs.push(dana);
+  jobs.forEach(j=>j.messages.sort((a,b)=>a.t-b.t));
+  return {jobs,nextRO:1047,rates:SAMPLE_RATES.map(r=>({...r})),shop:{...SHOP}};
+}
+const KEY="talkshops-demo-v2";
+// Maria's front brake job is one repair (pads, rotors, labor) she approves as a whole, plus a separate fluid flush.
+function MARIA_EST(){return [{id:1,item:"Front brake pads",price:149,status:"pending",priority:"required",group:"Front brake job"},{id:3,item:"Front brake rotors (pair)",price:168,status:"pending",priority:"required",group:"Front brake job"},{id:4,item:"Front brake labor",price:72,status:"pending",priority:"required",group:"Front brake job"},{id:2,item:"Brake fluid flush",price:119,status:"pending",priority:"recommended"}]}
+let state;
+try{state=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!state||!state.jobs||!state.rates)state=seed();
+// Workday samples (techs, promised times, mileage, quick services, a reminder). Added once to saved demos too.
+function workdaySamples(st){
+  const now=Date.now(),H=3600000,D=86400000,g=ro=>st.jobs.find(j=>j.ro===ro)||{},tech=(id,name)=>({id,name});
+  Object.assign(g("RO-1041"),{tech:tech("u-marcus","Marcus Hill"),promised:now+1.5*H,mileageIn:"48210"});
+  Object.assign(g("RO-1046"),{tech:tech("u-jess","Jess Park"),promised:now+26*H,mileageIn:"61305"});
+  Object.assign(g("RO-1044"),{tech:tech("u-dana","Dana Ruiz"),promised:now+5*H,mileageIn:"112480"});
+  Object.assign(g("RO-1042"),{tech:tech("u-marcus","Marcus Hill"),mileageIn:"98720",followups:[{id:"fu1",kind:"declined",due:now+28*D,createdAt:now-D,by:"Dana Ruiz",text:"Hi James, it's Ridgeline Auto Repair. When your 2015 Ford F-150 was in, we recommended throttle body cleaning. Want us to take care of it? Call (555) 014-2290 or reply to set up a time."}]});
+  Object.assign(g("RO-1043"),{tech:tech("u-jess","Jess Park"),promised:now-3*H,mileageIn:"60122"});
+  Object.assign(g("RO-1040"),{tech:tech("u-marcus","Marcus Hill"),mileageIn:"87455"});
+  Object.assign(g("RO-1045"),{tech:tech("u-jess","Jess Park"),mileageIn:"74010",service:"Oil change + tire rotation"});
+  Object.assign(g("RO-1031"),{mileageIn:"46950",mileageOut:"46951"});
+  Object.assign(g("RO-1029"),{mileageIn:"70880"});
+  const r=n=>(st.rates||[]).find(x=>x.name===n);
+  const line=x=>x&&{name:x.name,kind:x.kind,rate:x.rate,qty:x.kind==="labor"&&x.hours?x.hours:1};
+  st.packages=st.packages||[
+    {id:"pk1",name:"Oil change + tire rotation",fastLane:true,lines:[line(r("Synthetic oil change")),line(r("Tire rotation"))].filter(Boolean)},
+    {id:"pk2",name:"Cabin and engine air filters",fastLane:true,lines:[line(r("Cabin air filter")),line(r("Engine air filter"))].filter(Boolean)},
+    {id:"pk3",name:"Brake inspection",fastLane:false,lines:[line(r("Diagnostic fee"))].filter(Boolean)}].filter(p=>p.lines.length);
+  st.wd1=1;
+}
+if(!state.wd1){workdaySamples(state);try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+// Growth samples (two online booking requests, a tech on the clock, a review link). Added once to saved demos too.
+function growSamples(st){
+  const now=Date.now(),H=3600000,D=86400000,g=ro=>st.jobs.find(j=>j.ro===ro)||{};
+  const day=n=>{const d=new Date(now+n*D);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)};
+  st.grow={bookingOn:true,bookingNote:"Drop-offs from 7:30am. We text to confirm your time.",reviewUrl:"https://g.page/r/ridgeline-auto-repair/review",reviewAuto:false};
+  st.brand=st.brand||{};
+  st.bookings=[
+    {id:"bk1",createdAt:now-40*60000,data:{customer:{name:"Sofia Ramirez",phone:"(555) 010-4471",email:"",preference:"sms",consent:true,lang:"es"},vehicle:{year:"2017",make:"Toyota",model:"Corolla"},plate:"6SRZ218",concern:"Cambio de aceite y un chillido al frenar",day:day(1),time:"morning"}},
+    {id:"bk2",createdAt:now-3*H,data:{customer:{name:"Derek Olsen",phone:"(555) 019-7730",email:"derek.olsen@example.com",preference:"both",consent:true,lang:"en"},vehicle:{year:"2014",make:"GMC",model:"Sierra"},plate:"",concern:"Oil change, and a vibration at highway speed",day:day(2),time:"afternoon"}}];
+  const jess={id:"u-jess",name:"Jess Park"},marcus={id:"u-marcus",name:"Marcus Hill"};
+  g("RO-1043").clock=[{id:"ck1",by:jess,start:now-3.4*H,end:now-1.6*H},{id:"ck2",by:jess,start:now-35*60000}];
+  g("RO-1040").clock=[{id:"ck3",by:marcus,start:now-5*H,end:now-2.4*H}];
+  const labor=(ro,item,qty)=>{const e=(g(ro).estimate||[]).find(x=>x.item===item);if(e)e.charge={kind:"labor",qty}};
+  labor("RO-1043","Timing cover gasket",3.5);labor("RO-1040","Front strut assemblies (pair)",2.4);
+  g("RO-1039").review={askedAt:now-3*D+2*H,clickedAt:now-3*D+5*H,url:st.grow.reviewUrl};
+  st.gr1=1;
+}
+if(!state.gr1){growSamples(state);try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+// Saved demos from before repairs could be grouped get Maria's grouped brake job once (if she hasn't decided yet).
+if(!state.grp1){const m=state.jobs.find(j=>j.ro==="RO-1041");if(m&&m.stage==="approval"&&m.estimate.length===2&&m.estimate.every(e=>e.status==="pending")&&m.estimate[0].item==="Front brake pads and rotors")m.estimate=MARIA_EST();state.grp1=1;try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+if(state.shop)SHOP={...SHOP,...state.shop};
+const save=()=>{try{state.shop=SHOP;localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
+const startView=new URLSearchParams(location.search).get("view");
+let ui={view:["board","checkin","archive","howto","settings","plan","training","help","signin"].includes(startView)?startView:"board",openJob:null,custJob:null,modal:null,draft:{},q:"",aq:""};
+const job=id=>state.jobs.find(j=>j.id===id);
+const onBoard=j=>!j.archivedAt;
+/* --- workday tools (workday.js) against the demo's saved state --- */
+const demoVisit=j=>({id:j.id,ro:j.ro,createdAt:j.events[0]?.t,archivedAt:j.archivedAt||null,stage:j.stage,customer:{...j.customer,preference:j.customer.channel},vehicle:j.vehicle,plate:j.plate,concern:j.concern,
+  total:j.bill?j.bill.total:j.estimate.filter(e=>e.status==="approved").reduce((a,e)=>a+e.price,0),mileage:j.mileageOut||j.mileageIn||"",declined:j.estimate.filter(e=>e.status==="declined").map(e=>e.item)});
+const digits=s=>String(s||"").replace(/\D/g,"");
+window.Workday.init({
+  job,jobs:()=>state.jobs.map(j=>({...j,createdAt:j.events[0]?.t,stage:j.archivedAt&&!j.closed?"picked_up":j.stage})),
+  shop:()=>({...SHOP,rates:state.rates,packages:state.packages||[]}),
+  crew:()=>teamData().members.map(m=>({id:m.userId,name:m.name,role:m.role})),me:()=>"u-dana",isOwner:()=>true,
+  async act(id,action,body){
+    const j=job(id);if(!j)return null;
+    if(action==="details"){for(const k of ["tech","promised","mileageIn","mileageOut"])if(body[k]!==undefined){
+      let v=body[k];if(k.startsWith("mileage")){v=digits(v);if(v&&!/^\d{1,7}$/.test(v)){toast("Enter the mileage as a number");return null}}
+      if(k==="promised")v=v?Date.parse(v):"";if(v)j[k]=v;else delete j[k];}}
+    if(action==="followup"){j.followups=j.followups||[];
+      if(body.cancel){const f=j.followups.find(x=>x.id===body.cancel);if(f){f.canceledAt=Date.now();f.canceledBy="shop"}}
+      else{if(!body.due||Date.parse(body.due)<Date.now()){toast("Pick a date from tomorrow on");return null}if((body.text||"").length<10){toast("Write the reminder text");return null}
+        j.followups.push({id:"fu"+Date.now(),kind:body.kind,due:Date.parse(body.due+"T09:00:00"),text:body.text,createdAt:Date.now(),by:"Dana Ruiz"})}}
+    if(action==="estimate"&&body.package){const p=(state.packages||[]).find(x=>x.id===body.package);if(!p){toast("That quick service is no longer saved");return null}
+      for(const l of p.lines)j.estimate.push({id:Date.now()+Math.random(),item:l.name,price:Math.round(l.rate*l.qty*100)/100,status:"pending",priority:"recommended"});}
+    save();renderLayer();if(ui.view==="board")render();return j;},
+  async visits(body){
+    const rows=state.jobs.filter(j=>{
+      if(body.q!==undefined){const hay=[vehicleStr(j),j.customer.name,digits(j.customer.phone),j.customer.email,j.ro,j.plate,j.concern].join(" ").toLowerCase();return body.q.toLowerCase().split(/\s+/).filter(Boolean).every(t=>hay.includes(t.replace(/[()\-\s]/g,"")))}
+      return j.id!==body.exclude&&((body.phone&&digits(j.customer.phone)===digits(body.phone))||(body.plate&&j.plate===body.plate));
+    }).sort((a,b)=>(b.events[0]?.t||0)-(a.events[0]?.t||0));return rows.map(demoVisit);},
+  async saveShop(patch){if(patch.packages)state.packages=patch.packages.map((p,i)=>({id:p.id||"pk"+Date.now()+i,...p}));save();render();},
+  async stopReminders(){const j=job(ui.custJob);j.customer.remindersOff=Date.now();(j.followups||[]).forEach(f=>{if(!f.sentAt&&!f.canceledAt){f.canceledAt=Date.now();f.canceledBy="customer"}});save();render();},
+  toast:m=>toast(m),filter:()=>filterBoard(),
+});
+
+/* --- booking, results, reviews, time clock, branding and export (grow.js) against the demo's saved state --- */
+const growJob=j=>({...j,createdAt:j.events[0]?.t,stage:j.archivedAt&&!j.closed?"picked_up":j.stage});
+const bookToken="demo-ridgeline";
+function demoResults(days){
+  const k=days/30,n=x=>Math.round(x*k),D=86400000,wk=[2140,3320,2890,4410,3760,5120,4380,4960];
+  const weeks=wk.slice(-Math.max(1,Math.min(8,Math.round(days/7)))).map((a,i,arr)=>({start:Date.now()-(arr.length-i)*7*D,approved:a,in:9+((i*5)%7)}));
+  return{cars:{in:n(46),out:n(41),open:state.jobs.filter(onBoard).length},money:{approved:n(18420),declined:n(4310),avgTicket:412,billed:n(16890)},
+    approvalRate:.81,lineApproval:.74,avgDays:1.8,onTime:.88,promisedCount:n(34),reminders:{sent:n(14),declinedSent:n(9),cameBack:n(4),cameBackMoney:n(1265)},
+    reviews:{asked:n(22),clicked:n(13)},bookings:{fromBooking:n(11)},weeks,
+    techs:[{name:"Marcus Hill",cars:n(19),approved:n(8140),hours:n(52),soldHours:n(57),onTime:.93},{name:"Jess Park",cars:n(17),approved:n(6920),hours:n(49),soldHours:n(44),onTime:.86},{name:"Dana Ruiz",cars:n(10),approved:n(3360),hours:n(21),soldHours:n(20),onTime:.8}],
+    topDeclined:[{item:"Brake fluid flush",count:Math.max(1,n(6)),money:n(714)},{item:"Throttle body cleaning",count:Math.max(1,n(5)),money:n(475)},{item:"Cabin air filter",count:Math.max(1,n(4)),money:n(136)}]};
+}
+const csvCell=v=>{v=String(v??"");if(/^[=+\-@]/.test(v)&&!/^\+?\d+$/.test(v))v="'"+v;return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+async function growApi(method,path,body){
+  if(path==="shop/bookings")return{rows:state.bookings||[]};
+  if(path.startsWith("shop/bookings/")){
+    const id=decodeURIComponent(path.split("/")[2]),b=(state.bookings||[]).find(x=>x.id===id);if(!b)throw new Error("That request was already handled.");
+    state.bookings=state.bookings.filter(x=>x.id!==id);
+    if(body.action!=="accept"){save();return{ok:true}}
+    const d=b.data,t=Date.now(),ch=d.customer.preference||"sms";
+    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:d.customer.name,phone:d.customer.phone,email:d.customer.email,channel:ch,consent:d.customer.consent,lang:d.customer.lang},vehicle:d.vehicle,plate:d.plate,concern:d.concern,
+      stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[{stage:"checked_in",t}],messages:[],appointment:Date.parse(body.when),booking:{day:d.day,time:d.time}};
+    state.nextRO++;plan.carsCreated++;if(body.send&&body.text)notify(j,body.text+" "+linkOf(j),t);
+    state.jobs.push(j);save();return{job:j};
+  }
+  if(path.startsWith("shop/book/")){
+    if(method==="GET")return{shop:{name:SHOP.name,phone:SHOP.phone,hours:SHOP.hours,brand:state.brand||{}},note:state.grow?.bookingNote||""};
+    if(!body.customer?.name||!body.vehicle?.make||!body.concern)throw new Error("Fill in your name, vehicle and what it needs.");
+    state.bookings=[{id:"bk"+Date.now(),createdAt:Date.now(),data:{customer:body.customer,vehicle:body.vehicle,plate:body.plate,concern:body.concern,day:body.day,time:body.time}},...(state.bookings||[])];save();return{ok:true};
+  }
+  if(path==="shop/results")return demoResults(body.days||30);
+  if(path==="shop/export"){
+    const rows=body.kind==="customers"?[["Name","Phone","Email","Last vehicle","Visits"],...Object.values(state.jobs.reduce((a,j)=>{const k=j.customer.name;a[k]=a[k]||[j.customer.name,j.customer.phone||"",j.customer.email||"",vehicleStr(j),0];a[k][4]++;return a},{}))]
+      :[["RO","Checked in","Stage","Customer","Vehicle","Plate","Concern","Approved total"],...state.jobs.map(j=>[j.ro,new Date(j.events[0]?.t).toISOString().slice(0,10),j.closed?"Closed":STAGES[SI[j.stage]].label,j.customer.name,vehicleStr(j),j.plate||"",j.concern,estTotal(j,true).toFixed(2)])];
+    return{filename:"ridgeline-"+(body.kind==="customers"?"customers":"repairs")+".csv",csv:rows.map(r=>r.map(csvCell).join(",")).join("\r\n")};
+  }
+  if(path.endsWith("/review-click")){const j=job(ui.custJob);if(j?.review){j.review.clickedAt=Date.now();save()}return{ok:true}}
+  throw new Error("Not available in the demo shop.");
+}
+window.Grow.init({
+  api:growApi,shop:()=>({...SHOP,grow:state.grow||{},brand:state.brand||{},bookingToken:bookToken}),plan:()=>plan,isOwner:()=>true,me:()=>"u-dana",
+  job:id=>growJob(job(id)),jobs:()=>state.jobs.map(growJob),
+  async act(id,action,body){
+    const j=job(id);if(!j)return null;const me={id:"u-dana",name:"Dana Ruiz"},t=Date.now();
+    if(action==="clock"){j.clock=j.clock||[];
+      if(body.remove)j.clock=j.clock.filter(e=>e.id!==body.remove);
+      else if(body.on){if(!j.clock.some(e=>!e.end&&e.by.id===me.id))j.clock.push({id:"ck"+t,by:me,start:t})}
+      else{const e=body.entry?j.clock.find(x=>x.id===body.entry):j.clock.find(x=>!x.end&&x.by.id===me.id);if(e)e.end=t}}
+    if(action==="review"){const url=state.grow?.reviewUrl;if(!url){toast("Add your review link in Settings first");return null}
+      j.review={askedAt:t,url};const f=first(j.customer.name);
+      notify(j,j.customer.lang==="es"?`¡Gracias por elegir ${SHOP.name}, ${f}! Si quedó contento, ¿nos dejaría una reseña rápida? Ayuda mucho a un taller pequeño: ${url}`:`Thanks for choosing ${SHOP.name}, ${f}! If we earned it, would you leave us a quick review? It helps a small shop a lot: ${url}`,t)}
+    save();renderLayer();if(ui.view==="board")render();return growJob(j);},
+  upsert(){},toast:m=>toast(m),render:()=>render(),renderCustomer:()=>render(),customerToken:()=>job(ui.custJob)?.token,
+  async saveShop(patch){if(patch.grow)state.grow={...(state.grow||{}),...patch.grow};if(patch.brand)state.brand=patch.brand;save();},
+});
+// A request sent from the booking page in another tab shows up here.
+window.addEventListener("storage",e=>{if(e.key!==KEY||!e.newValue)return;try{state.bookings=JSON.parse(e.newValue).bookings||[]}catch(err){return}window.Grow.loadBookings()});
+
+/* --- plan (demo: a shop on its free trial; checkout is not available) --- */
+const plan={state:"trial",pro:true,daysLeft:12,trialEndsAt:Date.now()+12*86400000,textLimit:150,carLimit:25,textsUsed:38,carsCreated:9,payments:true,hasBilling:false,
+  plans:{starter:{name:"Starter",month:89,year:890,blurb:"3 staff seats (up to 2 owners), 1,000 texts a month, unlimited email, online booking, Spanish customer pages and CSV export"},pro:{name:"Pro",month:149,year:1490,blurb:"Everything in Starter, plus 8 staff seats (up to 3 owners), 3,000 texts a month, the AI how-to assistant, Smart Replies, AI damage marking, AI price list reading, the results dashboard, review requests, your logo and color, and the tech time clock",howTo:true,pro:true}}};
+const planUi=window.createShopPlan({esc,toast,api:async()=>{throw new Error("Demo shop: in your shop, this opens Stripe's secure checkout. Nothing is charged here.")}});
+// The demo reads price lists for free in this browser (no AI); the sample shows what a photo of a price board gives.
+const priceImport=window.createPriceImport({api:async()=>{throw Error("The demo reads price lists for free on this device only. The AI reader, for sheets the free reader can't make out, comes with a Talk Shops account.")}});
+const billing=window.createShopBilling({esc,money,prices:priceImport});
+const SAMPLE_PRICES={source:"sample price board photo",laborRate:139,items:[
+  {name:"Labor",kind:"labor",rate:139},
+  {name:"Synthetic oil change (up to 5 qt)",kind:"fee",rate:79.95},
+  {name:"Conventional oil change (up to 5 qt)",kind:"fee",rate:49.95},
+  {name:"Tire rotation",kind:"fee",rate:24.99},
+  {name:"Front brake pads",kind:"labor",rate:139,hours:1.5},
+  {name:"Timing belt and water pump",kind:"labor",rate:139,hours:4.2},
+  {name:"Check engine light diagnosis",kind:"fee",rate:139},
+  {name:"4-wheel alignment",kind:"fee",rate:129.99},
+  {name:"Coolant flush",kind:"fee",rate:149,check:true,note:"Says \"starting at\""},
+  {name:"Cabin air filter",kind:"part",rate:34},
+  {name:"Wiper blades (pair)",kind:"part",rate:29.99,check:true,note:"Price is a range, used the low end"},
+  {name:"Shop supplies",kind:"percent",rate:8}]};
+const dictation=window.createDictation({toast});
+// How-to assistant: in the demo, answers are samples (the real shop asks the assistant live).
+const DEMO_HOWTO={
+ battery:{answer:"On most compact SUVs like this one, the 12-volt battery sits under the hood and comes out in about 20 to 30 minutes. If the car has engine stop/start, it needs an AGM battery, and some models need the new battery registered with a scan tool so charging works correctly.",
+  safety:["Wear eye protection and gloves; battery acid burns.","Disconnect the negative terminal first and reconnect it last.","Keep metal tools from bridging the positive terminal and the body."],
+  specs:["Terminal nuts: typically about 5 N·m (45 in-lb)","Hold-down: typically 4 to 7 N·m","Battery type: match the group size, and AGM if stop/start equipped"],
+  tools:["10 mm and 13 mm sockets with an extension","Terminal cleaning brush","Memory saver (optional)","Scan tool for battery registration, if required"],
+  parts:["Replacement 12V battery (AGM if stop/start)","Terminal protector spray"],
+  partNumbers:[{part:"12V battery",brand:"",number:"",note:"Match the group size, cold cranking amps and AGM type on the old battery's label"},{part:"Terminal protector spray",brand:"",number:"",altBrand:"CRC",altNumber:"05046",note:"Any battery terminal protector works"}],
+  steps:["Turn the ignition off and remove the key fob from the car.","Remove the battery cover and any air intake duct that blocks access.","Disconnect the negative cable, then the positive cable.","Remove the hold-down clamp and lift the battery out with a strap.","Clean the tray and terminals and check for corrosion.","Set the new battery in place and install the hold-down.","Connect positive first, then negative, and tighten to spec.","Register the battery with a scan tool if the vehicle requires it, then confirm charging voltage of about 13.8 to 14.7 volts with the engine running."],
+  ideas:["How do I test the charging system?","Does this model need battery registration?"]},
+ generic:{answer:"This is a sample answer in the demo shop. In your shop, the assistant answers your exact question for the vehicle you choose, with steps, tools, parts, typical specs and safety notes.",
+  safety:["Confirm procedures and specs in the manufacturer's service information."],specs:[],tools:[],parts:[],steps:["Sign in to your shop and open the How-to tab.","Pick the car in the bay or type the vehicle.","Ask your question, or tap a common job."],ideas:["Replace battery"]}};
+window.TalkShopsHelpChat?.configure({isOwner:()=>true,signedIn:()=>true,
+  openHowTo:q=>{howTo.prefill(q);ui.view="howto";ui.openJob=null;render();window.scrollTo(0,0)},
+  contact:q=>{ui.view="help";ui.openJob=null;render();const box=document.querySelector('#helpForm textarea[name="message"]');if(box&&q)box.value=q;document.getElementById("help-support")?.scrollIntoView({block:"start"})}});
+const howTo=window.createShopHowTo({esc,toast,cars:()=>state.jobs.filter(onBoard),
+  api:async(m,path,body)=>{await new Promise(r=>setTimeout(r,1200));return /batter/i.test(body.question)?DEMO_HOWTO.battery:DEMO_HOWTO.generic}});
+const suggest=window.createSuggest({esc,money,items:()=>state.rates||[],
+  onPick(input,r){const price=$("#li-price");input.value=r.name;
+    if(r.kind==="percent"){price.value="";toast("Percent items need a base amount.");price.focus();return}
+    price.value=Number(r.hours?r.rate*r.hours:r.rate).toFixed(2);price.focus();price.select();}});
+
+/* --- team, Smart Replies settings, password reset phone and sign-in (demo: kept in this browser; nothing is sent) --- */
+const teamData=()=>state.team||(state.team={members:[
+  {userId:"u-dana",name:"Dana Ruiz",email:"dana@ridgelineauto.com",role:"owner",primary:true,you:true,devices:2},
+  {userId:"u-marcus",name:"Marcus Hill",email:"marcus@ridgelineauto.com",role:"tech",devices:1},
+  {userId:"u-jess",name:"Jess Park",email:"jess@ridgelineauto.com",role:"tech",devices:2}],invites:[]});
+const recov=()=>state.recovery||(state.recovery={phone:"",verified:false,pending:""});
+const team=window.createShopTeam({esc,toast,api:async(m,path,body)=>{
+  await new Promise(r=>setTimeout(r,350));const T=teamData();
+  const out=()=>({limits:{staff:8,owners:3},members:T.members,invites:T.invites});
+  if(m==="GET")return out();
+  if(path==="shop/staff/invite"){
+    const email=String(body.email||"").trim().toLowerCase();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw new Error("Enter a valid email.");
+    if(T.members.some(x=>x.email===email))throw new Error(email+" is already on your team.");
+    const live=T.invites.filter(i=>i.email!==email&&!i.expired);
+    if(T.members.length+live.length>=8)throw new Error("All 8 staff seats are occupied or reserved.");
+    if(body.role==="owner"&&[...T.members,...live].filter(x=>x.role==="owner").length>=3)throw new Error("All 3 owner seats are occupied or reserved.");
+    T.invites=T.invites.filter(i=>i.email!==email);
+    T.invites.push({id:"i"+Date.now(),email,name:body.name||"",role:body.role==="owner"?"owner":"tech",createdAt:Date.now(),expired:false});
+    save();return{...out(),link:"https://talkshops.app/?join=demo-sample-invite",emailed:true};
+  }
+  const [,,kind,id]=path.split("/");
+  if(kind==="invites"&&m==="DELETE")T.invites=T.invites.filter(i=>i.id!==id);
+  if(kind==="members"&&m==="DELETE")T.members=T.members.filter(x=>x.userId!==decodeURIComponent(id)||x.primary);
+  if(kind==="members"&&m==="POST"&&path.endsWith("/signout")){const x=T.members.find(x=>x.userId===decodeURIComponent(id));if(x)x.devices=0;save();return{...out(),signedOut:2};}
+  if(kind==="members"&&m==="POST"){const x=T.members.find(x=>x.userId===decodeURIComponent(id));
+    if(x&&body.role==="owner"&&x.role!=="owner"&&T.members.filter(y=>y.role==="owner").length>=3)throw new Error("All 3 owner seats are occupied or reserved.");
+    if(x)x.role=body.role==="owner"?"owner":"tech";}
+  save();return out();
+}});
+function smartFieldset(){
+  const on=SHOP.smartTopics||[],sch=SHOP.smartSchedule||{};
+  return `<fieldset id="smartSettings"><legend>Smart Replies</legend><p class="hint" style="margin:0">Choose questions Talk Shops may answer automatically by text. Leave all unchecked for staff review.</p>
+    ${[["status","Repair status"],["hours","Posted shop hours"],["link","Resend estimate link"]].map(([key,label])=>`<label class="chk"><input type="checkbox" name="smartTopic" value="${key}" ${on.includes(key)?"checked":""}>${label}</label>`).join("")}
+    <details id="smartSchedule"><summary>Schedule and Signature</summary>
+      <label class="field">Sign replies as<input id="sr-sign" maxlength="60" value="${esc(sch.signature||"")}" placeholder="Service team"></label>
+      <label class="chk"><input type="checkbox" id="sr-after" ${sch.afterHours?"checked":""}>Auto-send only outside these shop hours</label>
+      <div class="btn-row">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>`<label><input type="checkbox" name="sr-day" value="${i+1}" ${(sch.days||[1,2,3,4,5]).includes(i+1)?"checked":""}>${d}</label>`).join("")}</div>
+      <div class="btn-row"><label>Opens <input type="time" id="sr-open" value="${esc(sch.open||"08:00")}"></label><label>Closes <input type="time" id="sr-close" value="${esc(sch.close||"17:00")}"></label></div></details></fieldset>`;
+}
+function devicesPanel(){
+  return `<section class="panel" id="devicesPanel" style="display:flex;flex-direction:column;gap:8px"><h2 style="font-size:20px">Your Devices</h2>
+    <p class="muted" style="margin:0">Signed in as <b>Dana Ruiz</b> (dana@ridgelineauto.com). Your login works on up to <b>2 devices</b> at a time. Signing in on a third device signs out the one that signed in longest ago, and a device not used for 14 days signs out by itself.</p>
+    <div class="btn-row"><button class="btn" type="button" id="signOutOthers">Sign Out My Other Devices</button></div></section>`;
+}
+function recoveryPanel(){
+  const r=recov();let body;
+  if(r.pending)body=`<p class="muted" style="margin:0">We texted a code to ${esc(r.pending)}. Enter it to finish. <i>(Demo shop: nothing is sent, so use 123456.)</i></p>
+    <form id="recoveryCodeForm" class="auth-alt"><label class="field">6-digit code<input id="rc-code" inputmode="numeric" maxlength="7" required autocomplete="one-time-code"></label>
+    <div class="btn-row"><button class="btn primary" type="submit">Verify phone</button><button class="btn" type="button" id="rcCancel">Cancel</button></div></form>`;
+  else if(r.verified)body=`<p style="margin:0">Reset codes can be texted to <b>${esc(r.phone)}</b>.</p>
+    <div class="btn-row"><button class="btn" type="button" id="rcChange">Use a different phone</button><button class="btn" type="button" id="rcRemove">Remove</button></div>`;
+  else body=`<p class="muted" style="margin:0">Add a mobile number so you can get a text if you forget your password. We'll text a code to confirm it's yours.</p>
+    <form id="recoveryPhoneForm" class="auth-alt"><label class="field">Mobile number<input id="rc-phone" inputmode="tel" maxlength="30" required autocomplete="tel" placeholder="(555) 014-2290"></label>
+    <div class="btn-row"><button class="btn primary" type="submit">Text Me a Code</button></div></form>`;
+  return `<section class="panel" id="recoveryPanel" style="display:flex;flex-direction:column;gap:12px">
+    <h2 style="font-size:20px">Password Reset Phone</h2>${body}
+    <p class="muted" style="margin:0;font-size:13.5px">You can always reset your password by email from the sign-in page.</p></section>`;
+}
+// The sign-in page as shops see it, so training can show signing in and resetting a password.
+function signinView(){
+  const r=ui.reset;
+  const brand=`<div class="brand"><div class="brand-mark" aria-hidden="true">${document.querySelector(".brand-mark")?.innerHTML||""}</div><div><h1>Talk Shops</h1></div></div>`;
+  const help=`<p class="muted" style="margin:0">Need help? <button class="linkbtn" type="button" data-view="help">Visit Help &amp; Support</button></p>`;
+  const back=`<button class="linkbtn" type="button" data-view="board" style="align-self:flex-start">← Back to the demo shop</button>`;
+  if(r)return `<div class="login-wrap"><section class="login" id="signinCard">${brand}<h2>Reset Your Password</h2>
+    ${r.step==="ask"?`<p class="muted" style="margin:0">Enter the email you sign in with. We'll send a 6-digit code to that email, or by text to the phone you verified in Shop settings.</p>
+    <form class="auth-alt" id="forgotForm"><label class="field">Work email<input id="fp-email" type="email" required autocomplete="username" value="${esc(r.email||"")}"></label>
+      <button class="btn primary" type="submit" name="channel" value="email">Email me a code</button>
+      <button class="btn" type="submit" name="channel" value="sms" id="fpText">Text Me a Code</button></form>`
+    :`<p class="form-ok" role="status" style="margin:0">${esc(r.msg)}</p>
+    <form class="auth-alt" id="resetForm"><label class="field">6-digit code<input id="fp-code" inputmode="numeric" maxlength="7" required autocomplete="one-time-code"></label>
+      <label class="field">New password<input id="fp-pass" type="password" required minlength="8" maxlength="72" autocomplete="new-password"><span class="hint">At least 8 characters.</span></label>
+      <button class="btn primary" type="submit">Set new password and sign in</button></form>
+    <button class="linkbtn" id="fpAgain" type="button" style="align-self:flex-start">Didn't get it? Send another code</button>`}
+    ${help}<button class="linkbtn" id="fpBack" type="button" style="align-self:flex-start">← Back to sign in</button></section></div>`;
+  return `<div class="login-wrap"><section class="login" id="signinCard">${brand}<h2>Shop Sign In</h2>
+    <button class="btn google" id="demoGoogle" type="button">Continue with Google</button><div class="or">or use email</div>
+    <form class="auth-alt" id="demoSignin"><label class="field">Work email<input id="au-email" type="email" required autocomplete="username" value="dana@ridgelineauto.com"></label>
+      <label class="field">Password<input id="au-pass" type="password" required minlength="8" autocomplete="current-password"></label>
+      <button class="btn primary" type="submit">Sign In</button></form>
+    <button class="linkbtn" id="forgotPw" type="button" style="align-self:flex-start">Forgot password?</button>
+    <button class="linkbtn" id="demoSignup" type="button" style="align-self:flex-start">Create an Account</button>
+    <small class="muted">Customers use their repair link. Only shop staff need an account.</small>${help}${back}</section></div>`;
+}
+
+function customerModal(){
+    const c=job(ui.modal.customerJob).customer,preference=c.preference||c.channel||"sms";
+    return `<div class="modal"><form class="modal-card customer-editor" id="customerForm" role="dialog" aria-modal="true" aria-labelledby="ecTitle">
+      <h2 id="ecTitle">Edit Customer Info</h2>
+      <p class="muted" style="margin:0">Changes apply to this repair and future updates. Saving does not send a message.</p>
+      <label class="field">Customer Name<input id="ec-name" autocomplete="name" required maxlength="80" value="${esc(c.name)}"></label>
+      <label class="field">Notify Customer By<select id="ec-channel"><option value="sms" ${preference === "sms" ? "selected" : ""}>Text message</option><option value="email" ${preference === "email" ? "selected" : ""}>Email</option><option value="both" ${preference === "both" ? "selected" : ""}>Text and email</option></select></label>
+      <label class="field">Mobile Number<input id="ec-phone" type="tel" autocomplete="tel" maxlength="30" ${preference !== "email" ? "required" : ""} value="${esc(c.phone || "")}"></label>
+      <label class="field">Email Address<input id="ec-email" type="email" autocomplete="email" maxlength="254" ${preference !== "sms" ? "required" : ""} value="${esc(c.email || "")}"></label>
+      <label class="field">Customer's Language<select id="ec-lang"><option value="en">English</option><option value="es" ${c.lang === "es" ? "selected" : ""}>Spanish (Español)</option></select><span class="hint">Their page and the automatic texts use this language.</span></label>
+      <label class="chk"><input type="checkbox" id="ec-consent" ${c.consent ? "checked" : ""}> Customer agreed to repair updates through the selected contact method.</label>
+      <small class="muted">If you change the contact details or notification method, confirm consent again. Leave unchecked to pause notifications.</small>
+      <p id="ec-error" role="alert" class="form-err" hidden></p>
+      <div class="btn-row"><button class="btn primary" type="submit">Save Changes</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+    </form></div>`;
+  }
+
+function helpView(){
+    const guides = [
+      ["Checking In a Vehicle", "Open Check In, choose your check-in method, and enter the customer and vehicle details. Confirm permission to send updates, then send the customer their private repair link.", "checkin"],
+      ["Updating Customer Information", "Open a vehicle in the Bay and select Edit Customer Info. Update the name, phone, email or notification preference, confirm consent when contact details change, and save.", "checkin"],
+      ["Sending an Estimate", "Open the vehicle, add estimate items and their prices, and choose Required, Recommended or Optional. Put parts and labor for one fix into one repair so the customer approves them together. An owner can send the estimate for approval; customers review and sign from their repair link.", "estimates"],
+      ["Moving Cars Through the Bay", "Open a vehicle and choose its next stage. Review the customer notification before sending. Use the Bay search and filters to find repairs that need attention.", "stages"],
+      ["Finishing a Repair", "An owner can prepare the final bill, mark the car Ready for Pickup and confirm pickup. Find past repairs in Archive.", "pickup"],
+      ["Inviting Your Team", "Owners can open Settings → Team to invite staff as owners or technicians. Each person signs in with the email address that received the invitation.", "team"],
+    ];
+    const faqs = [
+      ["Do customers need an account?", "No. Customers open the private repair link sent by the shop to view updates, photos and estimates."],
+      ["I did not receive my account confirmation email.", "Check that you entered the correct email address and look in spam or junk. If you signed up through Google, use Continue with Google with that same account. Contact support below if you still cannot get in."],
+      ["How do I reset my password?", "Choose Forgot password? on Shop Sign In. Request a code by email, or by text if you previously verified a reset phone in Settings."],
+      ["A customer did not receive an update. What should I check?", "Open the repair and review the message delivery result. Verify the customer’s phone, email, notification preference and consent through Edit Customer Info. Correct the details before sending another update."],
+      ["Where can I manage my subscription?", "Shop owners can open Plan to review their plan and use Manage Billing. Technicians can ask an owner for help with billing."],
+      ["What can technicians do?", "Technicians can work on repairs and customer updates. Owners handle shop settings, team invitations, billing, estimate approval requests and closing repairs."],
+    ];
+    return `<section class="help-center">
+      <header class="help-heading"><div><p class="muted">Talk Shops Support</p><h2>How Can We Help?</h2><p class="muted">Quick answers and practical guides for your shop.</p></div><button class="btn" type="button" data-view="board">Back to the Bay</button></header>
+      <div class="help-actions"><a class="panel" href="#help-guides"><b>Quick Guides</b><span>Find the steps for everyday tasks.</span></a><a class="panel" href="#help-training"><b>Walkthroughs &amp; Training</b><span>Follow along with sample vehicles.</span></a><a class="panel" href="#help-support"><b>Contact Support</b><span>Get help from our team by email.</span></a></div>
+      <section class="panel" id="help-ask"><h3>Ask a Question</h3>
+        <form class="help-ask" id="helpAskForm"><input id="helpAskQ" type="text" maxlength="300" autocomplete="off" placeholder="e.g. How do I send an estimate?" aria-label="Your question"><button class="btn primary" type="submit">Ask</button></form>
+        <p class="muted help-ask-note">Answers come from the Help pages, right on your device. Car repair questions go in How-to.</p></section>
+      <section class="panel" id="help-guides"><h3>Quick Guides</h3>${guides.map(([title, body, lesson]) => `<details><summary>${esc(title)}</summary><p>${esc(body)}</p><a href="/demo.html?train=${lesson}">Watch the Lesson →</a></details>`).join("")}</section>
+      <section class="panel" id="help-training"><h3>Walkthroughs &amp; Training</h3><p class="muted">Narrated lessons use a demo shop with sample cars. Turn your sound on to follow along.</p><a class="btn primary" href="/demo.html?tour=1">Start the Guided Tour</a><div class="help-lessons">${window.TALKSHOPS_TRAINING.lessons.map(l => `<a href="/demo.html?train=${esc(l.id)}">${esc(l.title)} <small class="muted">${l.mins} min</small></a>`).join("")}</div></section>
+      <section class="panel"><h3>Common Questions</h3>${faqs.map(([q, a]) => `<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join("")}</section>
+      <section class="panel" id="help-support"><h3>Contact Support</h3><p class="muted">Describe what happened and what you were trying to do. We’ll reply to the email below. Please leave out passwords and customer information.</p>
+        <form id="helpForm" class="help-form">
+          <label class="field">Your Name<input name="name" autocomplete="name" required maxlength="100" value="Dana Ruiz"></label>
+          <label class="field">Reply Email<input name="email" type="email" autocomplete="email" required maxlength="254" value="dana@ridgelineauto.com"></label>
+          <label class="field">Shop Name<input name="shop" autocomplete="organization" required maxlength="160" value="${esc(SHOP.name)}"></label>
+          <label class="field">Phone Number (Optional)<input name="phone" type="tel" autocomplete="tel" maxlength="40" value="${esc(SHOP.phone)}"></label>
+          <label class="field help-wide">Topic<select name="topic"><option>Using Talk Shops</option><option>Account or Sign-In</option><option>Customer Notifications</option><option>Plans and Billing</option><option>Report a Problem</option><option>Feature Request</option></select></label>
+          <label class="field help-wide">How Can We Help?<textarea name="message" required maxlength="3400" rows="5"></textarea></label>
+          <div hidden aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+          <p id="helpStatus" class="help-wide" role="status" aria-live="polite"></p><button class="btn primary" type="submit">Send to Support</button>
+        </form><p class="muted">You can also email <a href="mailto:support@talkshops.app">support@talkshops.app</a>.</p>
+      </section>
+    </section>`;
+}
+/* --- views --- */
+function render(){
+  window.Workday.watch(state.jobs);
+  window.TalkShopsHelpChat?.show(!location.hash.startsWith("#s-")&&ui.view!=="signin"&&!new URLSearchParams(location.search).get("book"));
+  const app=$("#app"),chrome=$("#shopChrome");
+  const h=location.hash.slice(1);
+  const cj=h.startsWith("s-")?state.jobs.find(j=>j.token===h.slice(2)):null;
+  if(new URLSearchParams(location.search).get("book")){$("#layer").innerHTML="";window.Grow.renderBooking(bookToken);return}
+  if(!cj)window.Grow.customerSetup({},"");
+  if(cj){ // customer link: no login, no shop screens
+    ui.custJob=cj.id;ui.openJob=null;ui.modal=null;chrome.hidden=true;
+    document.title=SHOP.name+" · Your "+vehicleStr(cj);
+    app.innerHTML=customerView(cj);$("#layer").innerHTML="";return;
+  }
+  document.title="Talk Shops · "+SHOP.name;
+  if(ui.view==="signin"){chrome.hidden=true;ui.openJob=null;app.innerHTML=signinView();$("#layer").innerHTML="";return}
+  chrome.hidden=false;
+  $("#shopName").textContent=SHOP.name;$("#bayTab").textContent=bayName();
+  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-current",b.dataset.view===ui.view?"page":"false"));
+  const banner=ui.view==="plan"||ui.view==="training"||ui.view==="help"?"":planUi.banner(plan);
+  app.innerHTML=banner+(ui.view==="checkin"?checkinView():ui.view==="archive"?archiveView():ui.view==="settings"?settingsView():ui.view==="plan"?planUi.view(plan):ui.view==="howto"?howTo.view():ui.view==="help"?helpView():ui.view==="training"?window.TALKSHOPS_TRAINING.view(esc,{demo:true}):boardView());
+  if(ui.view==="board")filterBoard();
+  if(ui.view==="archive")renderArchiveRows();
+  renderLayer();
+}
+function ageOf(j){const start=j.events[0].t;return{label:since(start),cls:window.BayAge.bucket(start,SHOP)}}
+function boardView(){
+  window.BayAge.apply(SHOP);
+  const active=state.jobs.filter(onBoard);
+  const waiting=active.filter(j=>j.stage==="approval"&&j.estimate.some(e=>e.status==="pending")).length;
+  const ready=active.filter(j=>j.stage==="ready").length;
+  const today=new Date().toDateString();
+  const sent=state.jobs.reduce((a,j)=>a+j.messages.filter(m=>m.dir==="out"&&new Date(m.t).toDateString()===today).length,0);
+  const filters=[["all","All<span class=\"qf-long\"> Cars</span>",active.length],["approval","<span class=\"qf-long\">Awaiting </span>Approval",waiting],["ready","Ready<span class=\"qf-long\"> for Pickup</span>",ready]];
+  let h=`<div class="board-top queue-top"><div><h2>${esc(bayName())}</h2><p class="muted queue-sub">${active.length} car${active.length===1?"":"s"} in the shop · ${sent} update${sent===1?"":"s"} sent today</p></div><button class="btn primary queue-add" data-view="checkin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Check In<span class="qa-long">Vehicle</span></button></div>
+      <div class="queue-tools"><label class="board-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="boardSearch" type="search" placeholder="Search name, vehicle, RO, phone…" aria-label="Search cars in the shop" value="${esc(ui.q)}" autocomplete="off"></label>
+    <div class="queue-filters" role="group" aria-label="Filter vehicles">${filters.map(([key,label,count])=>`<button type="button" class="qf ${key==="approval"?"warn":key==="ready"?"ok":""}" data-queue="${key}" aria-pressed="${key===(ui.queue||"all")}">${label}<b>${count}</b></button>`).join("")}</div></div>
+    ${window.Workday.boardBar(state.jobs.filter(onBoard))}
+    ${window.Grow.bookingsPanel()}
+    ${window.BayAge.legend(SHOP)}
+    <p class="board-none muted" id="boardNone" hidden></p>
+    <div class="board-wrap"><div class="board">`;
+  STAGES.filter(s=>s.key!=="picked_up").forEach(s=>{
+    const list=active.filter(j=>j.stage===s.key);
+    h+=`<section data-stage="${s.key}" class="col ${s.key==="approval"?"is-approval":""} ${s.key==="ready"?"is-ready":""}"><div class="col-h"><h3>${s.key==="approval"?"Estimate Review":s.label}</h3><span>${list.length}</span></div>`;
+    if(!list.length)h+=`<div class="empty-col">No cars</div>`;
+    list.forEach(j=>{
+      const ev=j.events[j.events.length-1];
+      const pending=j.stage==="approval"&&j.estimate.some(e=>e.status==="pending");
+      const approved=j.estimate.filter(e=>e.status==="approved").length;
+      let status=s.label, detail=since(ev.t)+" in stage";
+      if(pending)status="Awaiting Approval";
+      else if(j.stage==="approval"){
+        status=!j.estimate.length?"Estimate Review":approved===j.estimate.length?"Estimate Approved":approved?"Partially Approved":"Estimate Declined";
+        if(j.approval)detail=(approved?money(estTotal(j,true))+" approved":"Decision received")+" · "+dayClock(j.approval.t);
+      }else if(j.stage==="parts"&&j.eta)detail="Parts ETA · "+j.eta;
+      const unread=j.messages.length&&j.messages[j.messages.length-1].dir==="in";
+      const age=ageOf(j);
+      const hay=[vehicleStr(j),j.customer.name,j.customer.phone,j.customer.email,j.ro,j.concern,j.plate].filter(Boolean).join(" ").toLowerCase();
+      h+=`<button class="card ${age.cls}" ${window.BayBoard.metadata(j)} ${window.Workday.cardAttrs(j)} data-open="${j.id}" data-queue-key="${pending?"approval":j.stage==="ready"?"ready":"other"}" data-s="${esc(hay)}">
+        ${window.BayBoard.urgencyBadge(j)}<span class="veh queue-vehicle">${esc(vehicleStr(j))}<span aria-hidden="true">›</span></span>
+        <span class="row"><span>${esc(ShopDisplay.name(j.customer.name))}</span><span class="mono">${j.ro}</span></span>
+        <span class="row"><span>${esc(j.concern)}</span></span>
+        <span class="row"><span>${esc(detail)}</span>${unread?`<span class="pill bad">New reply</span>`:""}</span>
+        ${window.Workday.cardBits(j)}<span class="row card-foot"><span class="age-chip" title="Time in the shop">${age.label} in shop</span><span class="pill ${pending?"warn":"stage-pill"}">${esc(status)}</span></span></button>`;
+    });
+    h+=`</section>`;
+  });
+  const picked=state.jobs.filter(j=>j.archivedAt&&!j.closed&&Date.now()-j.archivedAt<2*86400000).length;
+  h+=`</div></div><p class="muted" style="font-size:13px;margin-top:10px">${picked?picked+" picked up in the last 2 days. ":""}Tap a car to update its stage, build an estimate or message the customer. <button class="linkbtn" data-view="archive">Search picked-up cars</button></p>`;
+  return h;
+}
+function filterBoard(){
+  const terms=(ui.q||"").trim().toLowerCase().split(/\s+/).filter(Boolean);let shown=0;
+  document.querySelectorAll(".board .col").forEach(col=>{let n=0;
+    col.querySelectorAll(".card[data-s]").forEach(c=>{const ok=(!ui.queue||ui.queue==="all"||ui.queue===c.dataset.queueKey)&&terms.every(t=>c.dataset.s.includes(t))&&!window.Workday.hidden(c);c.hidden=!ok;if(ok)n++});
+    col.classList.toggle("search-hide",!!((terms.length||(ui.queue&&ui.queue!=="all"))&&!n));const count=col.querySelector(".col-h span");if(count)count.textContent=n;shown+=n;});
+  const none=$("#boardNone");if(none){none.hidden=shown>0;none.textContent=terms.length?`No matching vehicles for "${ui.q.trim()}".`:ui.queue==="approval"?"No vehicles are awaiting approval.":ui.queue==="ready"?"No vehicles are ready for pickup.":"No vehicles in the shop."}
+}
+function archiveView(){
+  return `<section class="archive">
+    <div class="archive-h"><h2>Archive</h2><p class="muted">Picked-up cars and repairs closed without work stay here for one year, then they are deleted automatically.</p></div>
+    <label class="field archive-search">Search<input id="archiveQ" type="search" value="${esc(ui.aq)}" placeholder="Customer, phone, email, vehicle, plate, RO number or concern" autocomplete="off"></label>
+    <div id="archiveRows" aria-live="polite"></div></section>`;
+}
+function renderArchiveRows(){
+  const el=$("#archiveRows");if(!el)return;
+  const terms=ui.aq.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const rows=state.jobs.filter(j=>j.archivedAt).filter(j=>{const hay=[vehicleStr(j),j.customer.name,j.customer.phone,j.customer.email,j.ro,j.concern,j.plate].join(" ").toLowerCase();return terms.every(t=>hay.includes(t))}).sort((a,b)=>b.archivedAt-a.archivedAt);
+  if(!rows.length){el.innerHTML=`<div class="empty-board"><p class="muted" style="margin:0">${terms.length?"No picked-up cars match that search.":"No picked-up cars yet. When you move a car to Picked up, it lands here."}</p></div>`;return}
+  el.innerHTML=`<p class="muted archive-count">${rows.length} car${rows.length===1?"":"s"}</p><ul class="archive-list">${rows.map(r=>`<li class="archive-item"><button class="archive-row" data-open="${r.id}">
+    <span class="a-main"><b>${esc(vehicleStr(r))}</b>${r.plate?`<span class="mono">${esc(r.plate)}</span>`:""}</span>
+    <span class="a-who">${esc(ShopDisplay.name(r.customer.name))}${r.customer.phone?" · "+esc(r.customer.phone):""}${r.customer.email?" · "+esc(r.customer.email):""}</span>
+    <span class="a-concern">${esc(r.concern)}</span>
+    <span class="a-meta"><span class="mono">${esc(r.ro)}</span><span>${r.closed?`<span class="pill bad">Closed</span> ${esc(r.closed.reason)},`:"Picked up"} ${longDate(r.archivedAt)}</span>${estTotal(r,true)?`<span>${money(r.bill?r.bill.total:estTotal(r,true))}</span>`:""}<span class="muted">Deletes ${longDate(r.archivedAt+365*86400000)}</span></span>
+  </button><button class="archive-del" data-delete-job="${r.id}" aria-label="Delete ${esc(r.ro)} permanently">Delete</button></li>`).join("")}</ul>`;
+}
+function checkinView(){
+  return `<form class="panel" id="checkinForm" autocomplete="off">
+   <h2>Customer Check-In</h2>
+   ${window.Workday.checkinLookup()}
+   <label class="field">Check-in method<select id="ci-method"><option value="staff">Enter vehicle details at the shop</option><option value="invite">Invite customer by link</option></select></label>
+   <p id="ci-help" class="muted">The customer gets a tracking link as soon as you save.</p>
+   <div class="form-grid">
+    <h3 class="form-sec full">Customer</h3>
+    <label class="field">Customer name<input id="ci-name" required maxlength="80" placeholder="e.g. Sam Ortiz"></label>
+    <label class="field">Notify customer by<select id="ci-channel"><option value="sms">Text message</option><option value="email">Email</option><option value="both">Text and email</option></select></label>
+    <label class="field" id="ci-phone-label">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>
+    <label class="field" id="ci-email-label" hidden>Email address<input id="ci-email" type="email" placeholder="name@example.com" disabled></label>
+    <label class="field">Customer's language<select id="ci-lang"><option value="en">English</option><option value="es">Spanish (Español)</option></select></label>
+    <h3 class="form-sec full">Vehicle</h3>
+    <label class="field">Year<input id="ci-year" required inputmode="numeric" placeholder="2019"></label>
+    <label class="field">Make<input id="ci-make" required placeholder="Toyota"></label>
+    <label class="field">Model<input id="ci-model" required placeholder="Camry"></label>
+    <label class="field">License plate<input id="ci-plate" placeholder="ABC1234"></label>
+    <h3 class="form-sec full">This Visit</h3>
+    <div class="form-grid full wd-ci">${window.Workday.checkinFields()}</div>
+    <label class="field full">What's the concern?<textarea id="ci-concern" required placeholder="Customer's description of the problem"></textarea></label>
+    <div class="field full urgency-field"><span>Urgency <small class="muted">(how soon the customer needs the car back)</small></span>${window.BayBoard.urgencyPicker("","ciUrgency")}</div>
+    <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
+   </div>
+   <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit">Check In and Notify Customer</button><button class="btn" type="button" id="ci-fill">Fill Sample Customer</button></div>
+  </form>`;
+}
+function syncChannel(){
+  const ch=$("#ci-channel")?.value;if(!ch)return;
+  const phone=ch!=="email",email=ch!=="sms";
+  $("#ci-phone-label").hidden=!phone;$("#ci-phone").disabled=!phone;$("#ci-phone").required=phone;
+  $("#ci-email-label").hidden=!email;$("#ci-email").disabled=!email;$("#ci-email").required=email;
+}
+function settingsView(){
+  const rows=state.rates.map((r,i)=>`<tr><td>${esc(r.name)}</td><td>${esc({labor:"Labor",part:"Part",fee:"Fee",percent:"Percent"}[r.kind]||r.kind)}</td><td class="num">${r.kind==="percent"?r.rate+"%":money(r.rate)+(r.kind==="labor"?"/hr":"")+(r.hours?` · ${r.hours} hr`:"")}</td><td class="num"><button class="linkbtn" data-del-rate="${i}" aria-label="Remove ${esc(r.name)}">Remove</button></td></tr>`).join("");
+  return `<div class="settings-wrap"><form class="panel" id="setupForm">
+    <h2>Shop Settings</h2>
+    <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
+    <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(SHOP.name)}"></label>
+    <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(SHOP.phone)}"></label>
+    <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(SHOP.hours)}"></label>
+    <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" value="${esc(SHOP.email)}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
+    ${window.BayAge.fields(SHOP)}
+    ${smartFieldset()}
+    <div class="btn-row"><button class="btn primary" type="submit">Save</button></div>
+  </form>
+  <section class="panel" id="savedItems"><h2>Saved Items</h2>
+    <p class="muted" style="margin:0">Labor rates, parts and fees you use often. They show up as suggestions when you build an estimate or a bill.</p>
+    <div style="overflow-x:auto;margin-top:10px"><table class="rates"><thead><tr><th>Name</th><th>Type</th><th class="num">Rate</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    <form class="rate-add" id="rateForm"><input id="r-name" placeholder="New item, e.g. Wiper blades" aria-label="Item name" required><select id="r-kind" aria-label="Type"><option value="part">Part</option><option value="labor">Labor</option><option value="fee">Fee</option><option value="percent">Percent</option></select><input id="r-rate" inputmode="decimal" placeholder="Rate" aria-label="Rate" required><button class="btn" type="submit">Add</button></form>
+    <div class="import-box" id="importBox"><button class="btn" type="button" id="openImport">Edit, Import or Download List</button><button class="linkbtn" type="button" id="sampleImport">Try a Sample Price List</button><button class="linkbtn" type="button" id="rateTemplate">Download Example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
+  </section>${window.Workday.packagesPanel()}${window.Grow.settingsPanels().replaceAll("/?book=","/demo.html?book=")}${team.panel(render)}${devicesPanel()}${recoveryPanel()}</div>`;
+}
+// Artwork belongs to the named sample repair and line item, including in saved demos.
+function sampleIllustration(j, item) {
+  let file, caption;
+  if (j.id === "RO-1046" && !item) {
+    file = "battery-warning"; caption = "Check-in illustration · Battery warning light on the dash";
+  } else if (j.id === "RO-1041" && item?.item === "Front brake pads and rotors") {
+    file = "brake-pad"; caption = "Estimate illustration · Front brake pad with 2 mm of friction material";
+  } else if (j.id === "RO-1042" && item?.item === "Ignition coils (6) and spark plugs") {
+    file = "ignition-coil"; caption = "Estimate illustration · Ignition coil and spark plug";
+  } else {
+    return "";
+  }
+  return `<figure class="sample-art"><img src="/demo-art/${file}.svg" width="352" height="204" alt=""><figcaption>${caption}</figcaption></figure>`;
+}
+const guide=item=>window.repairGuideFor?window.repairGuideFor(item):"";
+function customerView(j){
+  window.Grow.customerSetup({lang:j.customer.lang,shop:{brand:state.brand||{}}},j.token);const T=window.tsT;
+  const idx=SI[j.stage];
+  const evAt=k=>{const e=[...j.events].reverse().find(e=>e.stage===k);return e?e.t:null};
+  const path=STAGES.filter(s=>s.key!=="picked_up"||evAt(s.key));
+  const tl=path.map(s=>{const t=evAt(s.key);const cls=s.key===j.stage?"current":(t&&SI[s.key]<idx?"done":"todo");
+    return `<li class="${cls}"><span>${T(s.label)}</span><time>${t?dayClock(t):""}</time></li>`}).join("");
+  const pending=j.stage==="approval"&&j.estimate.some(e=>e.status==="pending");
+  let est="";
+  if(j.estimate.length){
+    const extras=lines=>(lines.map(e=>sampleIllustration(j,e)).find(Boolean)||"")+[...new Set(lines.map(e=>guide(e.item)))].join("");
+    const items=window.EstGroups.custList(j.estimate,{T,PRI,pending,draft:id=>ui.draft[j.id+"-"+id],extras},e=>{
+      const d=ui.draft[j.id+"-"+e.id];
+      const choice=pending&&e.status==="pending"?`<div class="decide"><button class="yes" data-decide="${e.id}" data-v="approved" aria-pressed="${d==="approved"}">${T("Approve")}</button><button class="no" data-decide="${e.id}" data-v="declined" aria-pressed="${d==="declined"}">${T("Decline")}</button></div>`
+        :(e.status!=="pending"?`<span class="pill ${e.status==="approved"?"ok":"bad"}">${T(e.status==="approved"?"Approved":"Declined")}</span>`:"");
+      const pri=e.priority&&PRI[e.priority]?`<div class="pri-line"><span class="pill pri ${PRI[e.priority].cls}">${T(PRI[e.priority].label)}</span><span>${T(PRI[e.priority].cust)}</span></div>`:"";
+      return `<div class="est-item pri-${esc(e.priority||"none")}"><div class="top"><span>${esc(e.item)}</span><span>${money(e.price)}</span></div>${pri}${sampleIllustration(j,e)}${guide(e.item)}${choice}</div>`});
+    const allChosen=j.estimate.filter(e=>e.status==="pending").every(e=>ui.draft[j.id+"-"+e.id]);
+    const tot=pending?j.estimate.reduce((a,e)=>a+((ui.draft[j.id+"-"+e.id]??e.status)==="approved"?Number(e.price):0),0):estTotal(j,true);
+    est=`<div class="c-card"><h3>${T("Estimate")}</h3>${items}<div class="total"><span>${T(pending?"Approved so far":"Approved total")}</span><span>${money(tot)}</span></div>
+      ${pending?`<label class="field" style="margin-top:10px">${T("Type your full name to sign")}<input id="sig" placeholder="${esc(ShopDisplay.name(j.customer.name))}" value="${esc(ui.draft[j.id+"-sig"]||"")}"></label>
+      <button class="btn primary" style="width:100%;margin-top:10px" id="submitApproval" ${allChosen?"":"disabled"}>${T("Send my decision")}</button>
+      <p class="muted" style="font-size:12.5px;margin:6px 0 0">${T(allChosen?"Your signed decision goes straight to the shop.":"Choose approve or decline for each item.")}</p>`
+      :(j.approval?`<p class="muted" style="font-size:12.5px;margin:8px 0 0">${T("Signed by {0} on {1}",esc(j.approval.by),dayClock(j.approval.t))}</p>`:"")}</div>`;
+  }
+  const photos=j.photos.length?`<div class="c-card"><h3>${T("Photos from your technician")}</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}</div></div>`:"";
+  const shared=(j.notes||[]).filter(n=>!n.internal);
+  const notes=shared.length?`<div class="c-card"><h3>${T("Notes from your technician")}</h3><ul class="notes">${[...shared].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p></li>`).join("")}</ul></div>`:"";
+  const bill=j.bill?`<div class="c-card"><h3>${T("Final bill")}</h3><div class="total"><span>${T("Total due")}</span><span>${money(j.bill.total)}</span></div></div>`:"";
+  const stage=STAGES[idx];
+  const extra=j.stage==="parts"?`<p style="margin:6px 0 0">${T("Parts expected {0}.","<b>"+esc(j.eta||"soon")+"</b>")}</p>`:j.stage==="ready"?`<p style="margin:6px 0 0">${T("Total due {0}",money(j.bill?j.bill.total:estTotal(j,true)))}. ${T("Open {0}.",esc(SHOP.hours))}</p>`:"";
+  return `<div class="cust-demo"><span><b>Demo:</b> this is the page ${esc(first(j.customer.name))} opens from the link. No login needed.</span><button class="linkbtn" id="backToShop" style="margin-left:auto">Back to shop</button></div>
+   <div class="cust-page">
+    <div class="c-head">${window.Grow.customerHead({shop:{name:SHOP.name,brand:state.brand||{}}})}<small>${esc(SHOP.name)} · <span class="mono">${j.ro}</span></small><h2>${T(j.closed?"This Repair Was Closed":stage.cust)}</h2><div style="font-size:14px;margin-top:4px">${esc(vehicleStr(j))}</div>${extra}</div>
+    <div class="c-body">
+      ${window.Grow.customerCards({shop:{name:SHOP.name},review:j.review?.url?{url:j.review.url}:null,appointment:j.appointment&&j.stage==="checked_in"?j.appointment:null})}${est}${bill}${window.Walkthrough.customerCard(j)}${window.Walkaround.customerCard(waCustomer(j))}${photos}${notes}
+      <div class="c-card"><h3>${T("Progress")}</h3><ul class="tl">${tl}</ul></div>
+      <div class="c-card"><h3>${T("Your concern")}</h3><div style="font-size:14px">${esc(j.concern)}</div>${sampleIllustration(j)}</div>
+      ${window.Workday.customerReminders({shop:{name:SHOP.name},reminders:{off:!!j.customer.remindersOff,waiting:(j.followups||[]).filter(f=>!f.sentAt&&!f.canceledAt).map(f=>({kind:f.kind,due:f.due}))}})}
+      <div class="c-card call"><span>${T("Questions? Call the shop")}</span><b>${esc(SHOP.phone)}</b></div>
+    </div>
+    <p class="cust-top">${T("This page updates as your repair progresses.")}</p>
+    ${window.Grow.langSwitch(j.token)}
+    <p class="cust-top"><a href="/privacy.html" id="privacyLink" target="_blank" rel="noopener">${T("Privacy Policy")}</a></p></div>`;
+}
+const chName=m=>m.ch==="email"?"Email":m.ch==="both"?"Text and email":"Text";
+const mic=`<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>`;
+function sheetView(j){
+  const idx=SI[j.stage];
+  const steps=STAGES.map((s,i)=>`<button class="step ${i<idx?"done":""} ${i===idx?"current":""}" data-stage="${s.key}" ${i===idx?'aria-current="step"':""}>${s.label}</button>`).join("");
+  const next=STAGES[idx+1];
+  const rows=window.EstGroups.staffRows(j.estimate,(e,inGroup)=>`<tr${inGroup?' class="grp-line"':""}><td>${esc(e.item)}<div class="pri-cell">${e.status==="pending"?`<select class="pri-sel" data-pri="${e.id}" aria-label="Priority for ${esc(e.item)}">${priOptions(e.priority)}</select>${window.EstGroups.lineSelect(e,j.estimate)}`:priPill(e)}</div>${sampleIllustration(j,e)}${guide(e.item)}</td><td>${e.status==="pending"?'<span class="pill warn">Pending</span>':e.status==="approved"?'<span class="pill ok">Approved</span>':'<span class="pill bad">Declined</span>'}</td><td class="num">${money(e.price)}</td><td class="num">${e.status==="pending"&&j.stage!=="approval"?`<button class="linkbtn" data-del="${e.id}" aria-label="Remove ${esc(e.item)}">Remove</button>`:""}</td></tr>`);
+  const msgs=j.messages.map(m=>`<div class="bubble ${m.dir}">${linkify(esc(m.text),j)}<span class="meta">${m.dir==="out"?(m.autoReply?"Auto-replied":chName(m)+" to customer"):esc(first(j.customer.name))} · ${dayClock(m.t)}</span></div>`).join("");
+  const log=[...j.events].reverse().map(e=>`<li><time>${clock(e.t)}</time><span>${STAGES[SI[e.stage]].label}</span></li>`).join("");
+  const live=!j.archivedAt;
+  return `<div class="scrim" data-close></div><aside class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+   <div class="sheet-h"><div><div class="mono muted">${j.ro} · ${esc(j.plate||"")}</div><h2 id="sheetTitle">${esc(vehicleStr(j))}</h2><div class="muted">${esc(ShopDisplay.name(j.customer.name))} · ${esc(contact(j.customer))}</div><button type="button" class="linkbtn" data-edit-customer>Edit Customer Info</button></div><button class="x" data-close aria-label="Close">×</button></div>
+   <div class="sheet-body" data-job="${j.id}">
+    ${j.archivedAt?`<section class="sec closed-note" id="archivedNote"><p><b>${j.closed?"Closed without repair":"Picked up"}</b> · ${esc(j.closed?j.closed.reason:"")}${j.closed?" · ":""}${dayClock(j.archivedAt)}</p><p class="muted">This car is in the Archive until ${longDate(j.archivedAt+365*86400000)}.</p><div class="btn-row"><button class="btn" id="reopenBtn">Reopen and put back on the board</button><button class="btn danger" data-delete-job="${j.id}">Delete permanently</button></div></section>`:""}
+    <section class="sec"><details class="stage-picker" ${window.TOUR_ACTIVE ? "open" : ""}><summary><span>Repair Stage</span><strong>${STAGES[idx].label}</strong></summary><div class="stepper">${steps}</div></details>
+      <div class="btn-row" style="margin-top:10px">${next&&live?`<button class="btn primary" data-stage="${next.key}">Move to ${next.label}</button>`:""}<button class="btn" id="viewAsCust">Customer Page</button>${live?`<button class="btn" id="closeJobBtn">Close Without Repair</button>`:""}</div>
+      ${live?`<div class="field urgency-field"><span>Urgency</span>${window.BayBoard.urgencyPicker(j.urgency,"jobUrgency")}</div>`:""}
+      ${j.stage==="parts"&&live?`<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
+    </section>
+    ${window.Workday.sheetDetails({...j,createdAt:j.events[0]?.t,stage:j.archivedAt&&!j.closed?"picked_up":j.stage})}
+    <section class="sec"><h3>Concern</h3><div class="concern-text">${esc(j.concern)}</div>${sampleIllustration(j)}${live?`<p class="howto-link"><button class="linkbtn" data-howto-job="${j.id}">Open Repair Guide →</button>${window.TalkShopsVideoLinks?window.TalkShopsVideoLinks(j.vehicle,j.concern):""}</p>`:""}</section>
+    ${window.Walkthrough.sheetSection(j).replace('<section class="sec">','<section class="sec" id="walkSec">')}
+    ${j.closed?"":window.Walkaround.sheetSection(j).replace('<section class="sec">','<section class="sec" id="waSec">')}
+    <section class="sec" id="estSec"><h3>Estimate</h3>
+      ${j.estimate.length?`<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some(e=>e.status!=="pending")?`<div class="total"><span>Approved total</span><span>${money(estTotal(j,true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`:`<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}`:`<p class="muted" style="margin:0">No line items yet.</p>`}
+      ${j.approval?`<p id="approvalSignature" class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>`:""}
+      ${live?`<div class="est-add">
+        <div class="est-add-h">Quick add</div>
+        <form class="add-line" id="addLine"><span class="suggest-wrap"><input id="li-item" data-suggest="quick" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="Type or pick a saved item" aria-label="Line item"><button type="button" class="suggest-btn" data-suggest-open aria-label="Show saved items">▾</button></span><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button>
+          <label class="pri-pick">Priority<select id="li-pri">${priOptions(ui.lastPri)}</select></label>
+          <label class="chk save-chk"><input type="checkbox" id="li-save" checked> Save new items for next time</label>${window.EstGroups.addField(j.estimate,ui.lastGrp)}</form>
+        <div class="est-add-or"><span>or</span></div>
+        <button class="btn est-add-more" type="button" id="laborBtn">Add labor, parts or fees with hours and rates</button>
+        ${window.Workday.estimatePackages(j)}
+      </div>`:""}
+      ${j.estimate.some(e=>e.status==="pending")&&j.stage!=="approval"&&live?`<button class="btn primary est-send" data-stage="approval">Send Estimate for Approval</button>`:""}
+    </section>
+    <section class="sec" id="billSec"><h3>Final Bill</h3>
+      ${j.bill?`<p>Itemized bill · ${money(j.bill.total)}</p>`:""}
+      <div class="btn-row"><button class="btn" id="makeBill">${j.bill?"Edit itemized bill":"Create itemized bill"}</button><button class="btn" id="uploadBill">Upload Shop PDF</button></div>
+    </section>
+    ${window.Workday.visitsSection(j)}
+    ${window.Workday.followupSection(j)}
+    ${window.Grow.sheetSection(growJob(j))}
+    <section class="sec" id="photoSec"><h3>Photos</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}
+      <label class="photo-add" for="photoIn">+ Add Photo<br><span style="font-weight:400">Customer sees it on their page</span></label></div></section>
+    <section class="sec" id="noteSec"><h3>Technician Notes <span class="sec-sub">Shared with customer unless marked shop only</span></h3>
+      ${(j.notes||[]).length?`<ul class="notes">${[...j.notes].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${window.Workday.noteBadge(n)}${esc(n.text)}</p><button type="button" class="linkbtn" data-remove-note="${n.id}">Remove</button></li>`).join("")}</ul>`:""}
+      <form id="noteForm" class="note-form"><textarea id="noteIn" maxlength="2000" placeholder="Describe your findings…" aria-label="Technician note"></textarea>
+        <div class="btn-row"><button type="button" class="btn mic" data-dictate="#noteIn" aria-pressed="false" aria-label="Voice typing">${mic}<span class="mic-label">Speak</span></button><button class="btn primary" type="submit">Post Note</button></div>
+        ${window.Workday.noteToggle()}
+        <label class="chk"><input type="checkbox" id="noteSend"> Notify ${esc(ShopDisplay.name(first(j.customer.name)))} about this note</label></form></section>
+    <section class="sec" id="msgSec"><h3>Messages</h3><details id="smartDemo"><summary>Try Smart Replies</summary><p class="muted">Choose a sample customer text. The conversation stays in this demo.</p><label class="field">Sample text<select id="sampleSms"><option value="status">How’s my car coming?</option><option value="hours">What are your hours?</option><option value="link">Can you resend the estimate?</option><option value="review">Is my car safe to drive?</option></select></label><label class="chk"><input id="demoAuto" type="checkbox">Auto-reply to routine questions</label><button type="button" id="simulateSms" class="btn">Try Sample Text</button></details><div class="thread">${msgs||'<p class="muted">No messages yet.</p>'}</div>
+      ${j.messages.at(-1)?.testSms ? (j.messages.at(-1).suggestion ? '<button class="linkbtn" id="demoDraft">Use suggested reply</button>' : '<small class="muted">Needs staff review</small>') : ""}
+      <form class="add-line" id="replyForm" style="grid-template-columns:minmax(0,1fr) auto auto"><input id="replyIn" placeholder="Message ${esc(first(j.customer.name))}…" aria-label="Message"><button type="button" class="btn mic" data-dictate="#replyIn" aria-pressed="false" aria-label="Voice typing">${mic}</button><button class="btn primary" type="submit">Send</button></form></section>
+    <section class="sec"><h3>History</h3><ul class="log">${log}</ul></section>
+    <section class="sec danger-zone" id="dangerSec"><details class="repair-management"><summary>Manage Repair</summary><button class="linkbtn danger" data-delete-job="${j.id}">Delete this repair permanently</button><p class="muted">Removes the car, photos, messages and the customer's link. This can't be undone. To keep a record, use Close Without Repair instead.</p></details></section>
+   </div></aside>`;
+}
+function linkify(s,j){return s.replace(esc(linkOf(j)),`<button class="lnk" data-golink="${j.id}">${esc(linkOf(j))}</button>`)}
+function stageModal(){
+  const m=ui.modal,j=job(m.job),s=STAGES[SI[m.stage]];
+  return `<div class="modal"><form class="modal-card" id="sendForm" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h2 id="mTitle">Move to ${s.label}</h2>
+    <p class="muted" style="margin:0">Notify ${esc(ShopDisplay.name(j.customer.name))} by ${esc(CHANNELS[j.customer.channel].toLowerCase())} at ${esc(contact(j.customer))}</p>
+    ${m.stage==="parts"?`<label class="field">Parts ETA<input id="m-eta" value="${esc(j.eta||"")}" placeholder="e.g. Tue, Nov 10"></label>`:""}
+    ${m.stage==="picked_up"?window.Workday.pickupField(j):""}
+    ${m.stage==="ready"?`<div><strong>Final Bill</strong><p style="margin:4px 0 0">${j.bill?money(j.bill.total)+" due at pickup":"Optional. Customers can open their bill from the pickup link."}</p></div>`:""}
+    <label class="field">Message<textarea id="m-text">${esc(m.text)}</textarea></label>
+    <label class="chk"><input type="checkbox" id="m-send" ${j.customer.consent?"checked":"disabled"}> Notify customer ${j.customer.consent?"":"(customer has not agreed to notifications)"}</label>
+    <div class="btn-row"><button class="btn primary" type="submit">Update Stage</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+  </form></div>`;
+}
+function closeModal(){
+  const j=job(ui.modal.closeJob);
+  const text=`Hi ${first(j.customer.name)}, we've closed out repair order ${j.ro} for your ${vehicleStr(j)}. Thanks for considering ${SHOP.name}. Call us anytime if you change your mind.`;
+  return `<div class="modal"><form class="modal-card" id="closeForm" role="dialog" aria-modal="true" aria-labelledby="cTitle">
+    <h2 id="cTitle">Close Without Repair</h2>
+    <p class="muted" style="margin:0"><b>Archive</b> keeps the record for one year so you can look it up or reopen it. <b>Delete</b> removes it for good.</p>
+    <label class="field">Reason<select id="c-reason">${["Customer declined the repair","Customer didn't bring the car in","Customer went elsewhere","Duplicate or mistake","Other"].map(r=>`<option>${esc(r)}</option>`).join("")}</select></label>
+    <label class="chk"><input type="checkbox" id="c-send"> Let ${esc(first(j.customer.name))} know</label>
+    <label class="field" id="c-text-wrap" hidden>Message<textarea id="c-text">${esc(text)}</textarea></label>
+    <div class="btn-row"><button class="btn primary" type="submit">Archive</button><button class="btn danger" type="button" data-delete-job="${j.id}">Delete permanently</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+  </form></div>`;
+}
+function renderLayer(){
+  let h="";
+  if(ui.openJob&&(ui.view==="board"||ui.view==="archive")){const j=job(ui.openJob);if(j)h+=sheetView(j)}
+  if(ui.modal?.walk){const j=job(ui.modal.job);h+=window.Walkthrough.editor(j,ui.modal.walk,{vehicle:vehicleStr(j)||j.ro,first:first(j.customer.name),consent:j.customer.consent!==false,busy:false})}
+  else if(ui.modal?.customerJob)h+=customerModal();
+  else if(ui.modal?.rates)h+=billing.editor("rates",{rates:state.rates},null,ui.modal.imported);
+  else if(ui.modal?.closeJob)h+=closeModal();else if(ui.modal)h+=stageModal();
+  const prev=$(".sheet-body"),keep=prev&&prev.dataset.job===ui.openJob?prev.scrollTop:null;
+    const stageOpen = keep !== null && prev.querySelector(".stage-picker")?.open;
+  $("#layer").innerHTML=h;
+  if (stageOpen && $(".stage-picker")) $(".stage-picker").open = true;
+    if(keep!==null&&$(".sheet-body")){$(".sheet").classList.add("no-anim");$(".sheet-body").scrollTop=keep}
+  suggest.refresh();
+}
+let toastT;
+function toast(msg){let t=$(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=msg;clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),3200)}
+
+/* --- actions --- */
+function notify(j,text,t=Date.now()){j.messages.push({dir:"out",ch:j.customer.channel,t,text});plan.textsUsed+=j.customer.channel==="email"?0:1}
+function setStage(j,stage,text,send){
+  j.stage=stage;const t=Date.now();j.events.push({stage,t});
+  if(send)notify(j,text,t);
+  if(stage==="picked_up")j.archivedAt=t;
+  save();
+}
+window.demoGo=v=>{ui.reset=null;go(v)};
+function go(view){ui.view=view;if(view!=="board"&&view!=="archive")ui.openJob=null;ui.openJob=null;render();window.scrollTo(0,0)}
+function closeJobSheet(){
+  const id=ui.openJob;
+  ui.openJob=null;
+  renderLayer();
+  if(id)document.querySelector('[data-open="'+CSS.escape(id)+'"]')?.focus({preventScroll:true});
+}
+function deleteJob(id){
+  const j=job(id);if(!j)return;
+  if(!window.TOUR_ACTIVE&&!confirm(`Delete ${j.ro} permanently? The car, photos, messages and the customer's link are removed. This can't be undone.`))return;
+  state.jobs=state.jobs.filter(x=>x.id!==id);ui.openJob=null;ui.modal=null;save();render();toast(j.ro+" deleted");
+}
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button,[data-close],[data-open]");if(!t)return;
+  if(t.closest(".plan-page,.plan-banner")&&(t.dataset.planInterval||t.dataset.planBuy!==undefined||t.dataset.planPortal!==undefined)){planUi.click(t,render).then(()=>{t.disabled=false});return}
+  if(howTo.click(t,render))return;
+  if(t.hasAttribute("data-edit-customer")){ui.modal={customerJob:ui.openJob};renderLayer();$("#ec-name")?.focus();return}
+  if(ui.modal?.walk&&window.Walkthrough.click(t,ui.modal.walk))return;
+  if(t.dataset.walk){const j=job(ui.openJob);if(j){ui.modal={walk:window.Walkthrough.draftFor(j,t.dataset.walk),job:j.id};renderLayer()}return}
+  if(t.closest("[data-team-retry],[data-team-copy],[data-team-remove],[data-team-cancel],[data-team-resend],[data-team-signout]")){team.click(t,render);return}
+  if(t.id==="signOutOthers"){toast("Demo shop: in your shop, this signs your login out on every other phone and computer.");return}
+  if(t.id==="rcChange"){Object.assign(recov(),{verified:false,pending:""});save();render();$("#rc-phone")?.focus();return}
+  if(t.id==="rcCancel"){recov().pending="";save();render();return}
+  if(t.id==="rcRemove"){Object.assign(recov(),{phone:"",verified:false,pending:""});save();render();toast("Reset phone removed");return}
+  if(t.id==="demoSignup"){toast("Demo shop: in Talk Shops, this opens the form to create your shop account.");return}
+  if(t.id==="demoGoogle"){toast("Demo shop: in your shop, this opens Google sign-in.");return}
+  if(t.id==="forgotPw"){ui.reset={step:"ask",email:$("#au-email")?.value.trim()||""};render();$("#fp-email")?.focus();return}
+  if(t.id==="fpBack"){ui.reset=null;render();return}
+  if(t.id==="fpAgain"){ui.reset={...ui.reset,step:"ask"};render();return}
+  if(t.dataset.queue){
+    ui.queue=t.dataset.queue;
+    document.querySelectorAll("[data-queue]").forEach(b=>b.setAttribute("aria-pressed",String(b===t)));
+    filterBoard();return;
+  }
+  if(t.dataset.howtoJob){const j=job(t.dataset.howtoJob);if(j)howTo.openFor(j);ui.view="howto";ui.openJob=null;render();window.scrollTo(0,0);return}
+  if(t.dataset.view){go(t.dataset.view);return}
+  if(t.id==="demoDraft"){const input=$("#replyIn");input.value=job(ui.openJob).messages.at(-1).suggestion;input.focus();return}
+  if(t.id==="simulateSms"){
+    const j=job(ui.openJob),sel=$("#sampleSms"),auto=$("#demoAuto").checked,topic=sel.value;
+    const text=sel.selectedOptions[0].textContent;
+    const suggestion=topic==="hours"&&SHOP.hours ? SHOP.name+" · Our posted shop hours are "+SHOP.hours : topic==="status" ? SHOP.name+" · Current stage: "+STAGES[SI[j.stage]].label+"." : topic==="link"&&j.estimate.length ? SHOP.name+" · Review your estimate: "+linkOf(j) : "";
+    j.messages.push({dir:"in",ch:"sms",t:Date.now(),text,testSms:true,suggestion});
+    if(auto&&suggestion)j.messages.push({dir:"out",ch:"sms",t:Date.now(),text:suggestion,autoReply:true});
+    save();renderLayer();$("#smartDemo").open=true;$("#demoAuto").checked=auto;$("#sampleSms").value=topic;$("#msgSec").scrollIntoView();return;
+  }
+  if(t.id==="resetBtn"){state=seed();workdaySamples(state);growSamples(state);SHOP={...state.shop};save();window.Grow.loadBookings();ui={...ui,openJob:null,modal:null,draft:{},q:"",aq:"",queue:"all"};render();toast("Sample data reset");return}
+  if(t.dataset.open){ui.openJob=t.dataset.open;renderLayer();setTimeout(()=>$(".x")?.focus({preventScroll:true}),0);return}
+  if(t.hasAttribute("data-close")){closeJobSheet();return}
+  if(t.hasAttribute("data-cancel")){ui.modal=null;renderLayer();return}
+  if(t.id==="openImport"||t.id==="sampleImport"){ui.modal={rates:true,imported:t.id==="sampleImport"?SAMPLE_PRICES:null};renderLayer();return}
+  if(t.dataset.billing&&t.closest("#billingForm")){billing.editClick(t,t.closest("#billingForm"));return}
+  if(t.dataset.deleteJob){deleteJob(t.dataset.deleteJob);return}
+  if(t.dataset.stage){const j=job(ui.openJob);if(!j||j.archivedAt||t.dataset.stage===j.stage)return;
+    if(t.dataset.stage==="approval"&&!j.estimate.some(e=>e.status==="pending")){toast("Add at least one estimate line first");$("#li-item")?.focus();return}
+    ui.modal={job:j.id,stage:t.dataset.stage,text:fillTemplate(t.dataset.stage,j)};renderLayer();return}
+  if(t.dataset.del){const j=job(ui.openJob);j.estimate=j.estimate.filter(x=>String(x.id)!==t.dataset.del);save();renderLayer();return}
+  if(t.dataset.delRate){state.rates.splice(Number(t.dataset.delRate),1);save();render();return}
+  if(t.dataset.removeNote){const j=job(ui.openJob);j.notes=j.notes.filter(n=>String(n.id)!==t.dataset.removeNote);save();renderLayer();return}
+  if(t.dataset.dictate)return;
+  if(t.id==="viewAsCust"||t.dataset.golink){const j=job(t.dataset.golink||ui.openJob);ui.backTo=j.id;ui.backView=ui.view;location.hash="s-"+j.token;window.scrollTo(0,0);return}
+  if(t.id==="backToShop"){ui.view=ui.backView||"board";ui.openJob=ui.backTo||null;history.pushState(null,"",location.pathname+location.search);render();return}
+  if(t.id==="closeJobBtn"){ui.modal={closeJob:ui.openJob};renderLayer();return}
+  if(t.id==="reopenBtn"){const j=job(ui.openJob);delete j.archivedAt;delete j.closed;if(j.stage==="picked_up"){j.stage="checked_in";j.events.push({stage:"checked_in",t:Date.now()})}save();ui.view="board";render();toast(j.ro+" is back on the board");return}
+  if(t.id==="makeBill"){const j=job(ui.openJob);const items=j.estimate.filter(e=>e.status==="approved");if(!items.length){toast("Approve at least one estimate line first, or add lines in the bill editor in your shop.");return}
+    j.bill={mode:"generated",total:Math.round(estTotal(j,true)*1.0725*100)/100};save();renderLayer();toast("Itemized bill created from the approved work, with tax");return}
+  if(t.id==="uploadBill"){toast("In your shop, choose the invoice PDF from your shop system. The customer opens it from their link.");return}
+  if(t.id==="laborBtn"){toast("In your shop, this opens the line editor: labor hours times your rate, part quantities, fees and percentages.");return}
+  if(t.id==="rateTemplate"){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["name,type,rate\nTechnician labor,labor,125.00\nShop supplies,fee,12.50\nOil filter,part,16.00\n"],{type:"text/csv"}));a.download="shop-rates.csv";document.body.appendChild(a);a.click();a.remove();return}
+  if(t.id==="ci-fill"){const v={name:"Sam Ortiz",phone:"(555) 019-4410",year:"2014",make:"Mazda",model:"CX-5",plate:"3CXF882",concern:"Squealing belt noise on cold start"};for(const k in v)$("#ci-"+k).value=v[k];$("#ci-consent").checked=true;return}
+  if(t.dataset.decide){const j=job(ui.custJob);for(const id of window.EstGroups.idsOf(t))ui.draft[j.id+"-"+id]=t.dataset.v;const sig=$("#sig")?.value;if(sig!=null)ui.draft[j.id+"-sig"]=sig;render();return}
+  if(t.id==="submitApproval"){const j=job(ui.custJob);const sig=($("#sig").value||"").trim();
+    if(sig.length<3){toast("Type your full name to sign");$("#sig").focus();return}
+    j.estimate.forEach(x=>{if(x.status==="pending")x.status=ui.draft[j.id+"-"+x.id]});
+    const units=window.EstGroups.units(j.estimate),yes=units.filter(u=>u.status==="approved").length;
+    j.approval={by:sig,t:Date.now()};
+    j.messages.push({dir:"in",t:Date.now(),text:`Approved ${yes} of ${units.length} items on the estimate (signed: ${sig}).`});
+    save();toast("Sent to "+SHOP.name);render();return}
+});
+document.addEventListener("submit",e=>{
+  const f=e.target;if(f.getAttribute("method")==="dialog")return;e.preventDefault();
+  if(howTo.submit(f,render))return;
+  if(f.id==="billingForm"){state.rates=billing.readRows(f,true).sort((a,b)=>a.name.localeCompare(b.name));ui.modal=null;save();render();toast(`Saved ${state.rates.length} items`);return}
+  if(f.id==="walkForm"){const m=ui.modal,body=window.Walkthrough.body(m.walk),j=job(m.job);
+    if(!body.items.length){toast("Mark at least one item first");return}
+    const w={t:Date.now(),by:"Marcus Hill",mileage:body.mileage,summary:body.summary,items:body.items};
+    if(body.send){w.sentAt=Date.now();notify(j,`Hi ${first(j.customer.name)}, your ${body.kind==="before"?"check-in":"after-repair"} walk-through for your ${vehicleStr(j)} is ready: ${linkOf(j)}`)}
+    (j.walkthroughs||={})[body.kind]=w;
+    ui.modal=null;save();renderLayer();toast("Walk-through saved"+(body.send?". Customer notified.":" to the customer's page"));return}
+  if(f.id==="helpForm"){const st=$("#helpStatus");if(st)st.textContent="Demo shop: nothing is sent. In your shop, this goes to Talk Shops support, and we reply by email.";toast("Demo shop: support message not sent");return}
+  if(f.id==="customerForm"){const j=job(ui.modal.customerJob),ch=$("#ec-channel").value,phone=$("#ec-phone").value.trim(),email=$("#ec-email").value.trim();
+    if(ch!=="email"&&phone.replace(/\D/g,"").length<10){const e=$("#ec-error");e.textContent="Enter a 10-digit mobile number.";e.hidden=false;return}
+    if(ch!=="sms"&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){const e=$("#ec-error");e.textContent="Enter a valid email address.";e.hidden=false;return}
+    j.customer={...j.customer,name:$("#ec-name").value.trim()||j.customer.name,phone,email,channel:ch,preference:ch,consent:$("#ec-consent").checked,lang:$("#ec-lang").value};
+    ui.modal=null;save();render();renderLayer();toast("Customer info saved");return}
+  if(f.id==="teamInviteForm"){team.submit(f,render);return}
+  if(f.id==="recoveryPhoneForm"){const ph=$("#rc-phone").value.trim();if(ph.replace(/\D/g,"").length<10){toast("Enter a 10-digit mobile number");return}Object.assign(recov(),{phone:ph,pending:ph});save();render();toast("Demo shop: no text is sent. Use code 123456.");$("#rc-code")?.focus();return}
+  if(f.id==="recoveryCodeForm"){if($("#rc-code").value.replace(/\D/g,"")!=="123456"){toast("That code doesn't match. In the demo, use 123456.");return}Object.assign(recov(),{verified:true,pending:""});save();render();toast("Phone verified");return}
+  if(f.id==="demoSignin"){ui.reset=null;go("board");toast("Demo shop: signed in");return}
+  if(f.id==="forgotForm"){const email=$("#fp-email").value.trim(),channel=e.submitter?.value==="sms"?"sms":"email";
+    ui.reset={step:"code",email,msg:channel==="sms"?`If ${email} has a Talk Shops account with a verified phone, we texted a 6-digit code to it.`:`If ${email} has a Talk Shops account, we emailed a 6-digit code to it. Check your spam folder too.`};
+    render();toast("Demo shop: nothing is sent. Any 6 digits work here.");$("#fp-code")?.focus();return}
+  if(f.id==="resetForm"){if($("#fp-code").value.replace(/\D/g,"").length!==6){toast("Enter the 6-digit code");return}if($("#fp-pass").value.length<8){toast("Use at least 8 characters");return}
+    ui.reset=null;go("board");toast("Password changed. You're signed in.");return}
+  if(f.id==="checkinForm"){
+    const g=k=>$("#ci-"+k).value.trim();const ch=g("channel");
+    if(!$("#ci-consent").checked){toast("Confirm the customer agreed to updates first");return}
+    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:g("name"),phone:ch!=="email"?g("phone"):"",email:ch!=="sms"?g("email"):"",channel:ch,consent:true,lang:g("lang")},vehicle:{year:g("year"),make:g("make"),model:g("model")},plate:g("plate"),concern:g("concern"),urgency:document.querySelector('input[name="ciUrgency"]:checked')?.value||"",stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[],messages:[]};
+    state.nextRO++;plan.carsCreated++;const t=Date.now();j.events.push({stage:"checked_in",t});
+    const wd=window.Workday.checkinValues();if(wd.mileageIn)j.mileageIn=digits(wd.mileageIn);if(wd.promised)j.promised=Date.parse(wd.promised);if(wd.tech)j.tech=wd.tech;
+    const pk=wd.service&&(state.packages||[]).find(p=>p.id===wd.service);
+    if(pk){j.service=pk.name;if(!j.concern)j.concern=pk.name;const fast=pk.fastLane&&wd.fastLane;
+      j.estimate=pk.lines.map((l,i)=>({id:t+i,item:l.name,price:Math.round(l.rate*l.qty*100)/100,status:fast?"approved":"pending",priority:"required"}));
+      if(fast){j.approval={by:j.customer.name+" (at the counter)",t};j.stage="in_progress";j.events.push({stage:"in_progress",t})}}
+    notify(j,fillTemplate("checked_in",j),t);
+    state.jobs.push(j);save();ui.view="board";ui.openJob=j.id;render();window.scrollTo(0,0);toast("Checked in. "+first(j.customer.name)+" was notified.");return}
+  if(f.id==="sendForm"){
+    const j=job(ui.modal.job);const eta=$("#m-eta");if(eta)j.eta=eta.value.trim();
+    if(ui.modal.stage==="picked_up"){const mo=window.Workday.pickupValue().mileageOut;if(mo)j.mileageOut=digits(mo)}
+    const lbl=STAGES[SI[ui.modal.stage]].label,sent=$("#m-send").checked;
+    setStage(j,ui.modal.stage,$("#m-text").value.trim(),sent);
+    ui.modal=null;if(j.archivedAt)ui.openJob=null;
+    render();toast(`Moved to ${lbl}${sent?". Customer notified.":". No notification sent."}`);return}
+  if(f.id==="closeForm"){
+    const j=job(ui.modal.closeJob);const t=Date.now();j.closed={reason:$("#c-reason").value,t};j.archivedAt=t;
+    if($("#c-send").checked)notify(j,$("#c-text").value.trim(),t);
+    ui.modal=null;ui.openJob=null;save();render();toast(j.ro+" closed and moved to the Archive");return}
+  if(f.id==="addLine"){const j=job(ui.openJob);const item=$("#li-item").value.trim();const price=parseFloat($("#li-price").value.replace(/[$,]/g,""));
+    if(!item||!(price>=0)){toast("Enter an item and a price");return}
+    const priority=ui.lastPri=$("#li-pri")?.value||"recommended";
+    const grp=demoGroup(j,ui.lastGrp=($("#li-grp")?.value||"").trim());if(grp===null){toast("That repair was already decided. Name a new one.");return}
+    j.estimate.push({id:Date.now(),item,price,status:"pending",priority,...(grp?{group:grp}:{})});
+    if($("#li-save").checked&&!state.rates.some(r=>r.name.toLowerCase()===item.toLowerCase())){state.rates.push({name:item,kind:"part",rate:price});toast(`Saved "${item}" for next time`)}
+    save();renderLayer();$("#li-item").focus({preventScroll:true});return}
+  if(f.id==="replyForm"){const j=job(ui.openJob);const v=$("#replyIn").value.trim();if(!v)return;notify(j,v);save();renderLayer();toast("Message sent");return}
+  if(f.id==="noteForm"){const j=job(ui.openJob);const v=$("#noteIn").value.trim();if(!v)return;j.notes=j.notes||[];const internal=!!$("#noteInternal")?.checked;j.notes.push({id:Date.now(),t:Date.now(),text:v,...(internal?{internal:true}:{})});
+    if(internal){save();renderLayer();toast("Shop-only note saved");return}
+    if($("#noteSend").checked)notify(j,`Hi ${first(j.customer.name)}, your technician added a note about your ${vehicleStr(j)}: ${linkOf(j)}`);
+    save();renderLayer();toast("Note posted to the customer's page");return}
+  if(f.id==="setupForm"){const ageSettings=window.BayAge.read(f);if(!ageSettings)return;SHOP={...SHOP,ageSettings,name:$("#sh-name").value.trim()||SHOP.name,phone:$("#sh-phone").value.trim(),hours:$("#sh-hours").value.trim(),email:$("#sh-email").value.trim(),smartTopics:Array.from(f.querySelectorAll('[name="smartTopic"]:checked'),el=>el.value),
+    smartSchedule:{afterHours:$("#sr-after").checked,days:Array.from(f.querySelectorAll('[name="sr-day"]:checked'),el=>Number(el.value)),open:$("#sr-open").value,close:$("#sr-close").value,signature:$("#sr-sign").value.trim()}};save();render();toast("Shop settings saved");return}
+  if(f.id==="rateForm"){const name=$("#r-name").value.trim(),rate=Number($("#r-rate").value.replace(/[$,%\s]/g,""));if(!name||!(rate>=0)){toast("Enter a name and a rate");return}
+    state.rates.push({name,kind:$("#r-kind").value,rate});state.rates.sort((a,b)=>a.name.localeCompare(b.name));save();render();toast(`Saved "${name}"`);return}
+});
+document.addEventListener("change",async e=>{
+  if(e.target.id==="ci-channel")syncChannel();
+  if(["ec-channel","ec-phone","ec-email"].includes(e.target.id)&&$("#ec-consent")){$("#ec-consent").checked=false;$("#ec-phone").required=$("#ec-channel").value!=="email";$("#ec-email").required=$("#ec-channel").value!=="sms";return}
+  if(e.target.dataset?.teamRole){team.change(e.target,render);return}
+  if(ui.openJob&&window.EstGroups.onChange(e.target,(id,name)=>{const j=job(ui.openJob),x=j&&j.estimate.find(l=>String(l.id)===String(id));if(!x)return;const grp=demoGroup(j,name);if(grp===null){toast("That repair was already decided. Name a new one.");return}
+    if(grp)x.group=grp;else delete x.group;save();renderLayer();toast(grp?"Added to "+grp:"Line is on its own now")}))return;
+  if(e.target.dataset?.pri&&ui.openJob){const j=job(ui.openJob),x=j&&j.estimate.find(l=>String(l.id)===e.target.dataset.pri);if(x){x.priority=e.target.value;save();renderLayer();toast("Priority updated")}return}
+  if(e.target.id==="c-send")$("#c-text-wrap").hidden=!e.target.checked;
+  if(e.target.name==="jobUrgency"){const j=job(ui.openJob);j.urgency=e.target.value;save();render();toast(j.urgency?"Urgency set to "+window.BayBoard.URGENCY[j.urgency][0]:"Urgency cleared");return}
+  if(e.target.id==="eta"){const j=job(ui.openJob);j.eta=e.target.value.trim();save();render()}
+  if(ui.modal?.rates&&e.target.closest("#billingForm")){billing.change(e,{rates:state.rates});return}
+  if(e.target.id==="photoIn"){const file=e.target.files[0];if(!file)return;const j=job(ui.openJob);if(!j)return;const r=new FileReader();
+    r.onload=()=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");const s=Math.min(1,640/img.width);c.width=img.width*s;c.height=img.height*s;c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      j.photos.push({src:c.toDataURL("image/jpeg",.8),cap:file.name.replace(/\.[^.]+$/,"")});save();renderLayer();toast("Photo added to customer's page")};img.src=r.result};r.readAsDataURL(file);e.target.value=""}
+});
+document.addEventListener("input",e=>{
+  if(ui.modal?.walk&&window.Walkthrough.input(e.target,ui.modal.walk))return;
+  if(e.target.id==="sig")ui.draft[ui.custJob+"-sig"]=e.target.value;
+  if(e.target.id==="boardSearch"){ui.q=e.target.value;filterBoard()}
+  if(e.target.id==="archiveQ"){ui.aq=e.target.value;renderArchiveRows()}
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){if(ui.modal){ui.modal=null;renderLayer()}else closeJobSheet()}});
+window.addEventListener("hashchange",render);
+/* --- walk-around photos (demo: the "AI" suggestions are fixed samples for the sample photos) --- */
+const WA_SUGG={
+  rear:[{x:.56,y:.6,w:.16,h:.11,kind:"scratch",note:"Rear bumper, passenger side"}],
+  left:[{x:.26,y:.51,w:.13,h:.11,kind:"dent",note:"Driver rear door"}],
+  front_left:[{x:.82,y:.6,w:.1,h:.08,kind:"scuff",note:"Front bumper, driver corner"}],
+  right:[{x:.29,y:.51,w:.17,h:.09,kind:"scuff",note:"Passenger front door"}]};
+function waCustomer(j){return{shop:{name:SHOP.name},walkaround:{requested:!!j.walkaroundRequest,canUpload:!!j.walkaroundRequest&&!j.closed&&j.stage!=="picked_up",
+  photos:(j.walkaround||[]).map(p=>({...p,marks:p.marks.filter(m=>m.confirmed)}))}}}
+const waEncode=file=>new Promise((ok,bad)=>{const r=new FileReader();r.onerror=()=>bad(new Error("Couldn't read that photo"));r.onload=()=>{const img=new Image();img.onerror=()=>bad(new Error("Couldn't read that photo"));
+  img.onload=()=>{const sc=Math.min(1,1200/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*sc;c.height=img.height*sc;c.getContext("2d").drawImage(img,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.8))};img.src=r.result};r.readAsDataURL(file)});
+window.Walkaround.init({esc,toast,first,encode:waEncode,sendResult:()=>"Customer notified.",
+  api:async(m,path,body)=>{
+    const seg=path.split("/");
+    if(seg[1]==="c"){const j=state.jobs.find(x=>x.token===decodeURIComponent(seg[2]));if(!j||!j.walkaroundRequest)throw new Error("This page isn't asking for photos.");
+      await new Promise(r=>setTimeout(r,500));j.walkaround=(j.walkaround||[]).filter(p=>p.angle!==body.angle);
+      j.walkaround.push({id:"wa-"+body.angle+"-"+Date.now(),angle:body.angle,src:body.src,t:Date.now(),marks:[],aiAt:null});save();return waCustomer(j)}
+    const j=job(decodeURIComponent(seg[2])),action=seg[3];if(!j)throw new Error("Car not found");
+    if(action==="walkaround-request"){
+      if(body.on===false)j.walkaroundRequest=null;
+      else{j.walkaroundRequest={t:Date.now()};if(body.send&&j.customer.consent!==false)notify(j,`Hi ${first(j.customer.name)}, could you take a few photos of your ${vehicleStr(j)} for our records? Your page shows where to stand for each one: ${linkOf(j)}`)}}
+    if(action==="walkaround-ai"){await new Promise(r=>setTimeout(r,1600));
+      for(const p of j.walkaround||[])if(body.photoId?p.id===body.photoId:!p.aiAt){p.aiAt=Date.now();
+        const keep=p.marks.filter(x=>x.confirmed||x.source==="shop");
+        p.marks=[...keep,...(p.src.startsWith("/demo-art/")?(WA_SUGG[p.angle]||[]):[]).map(x=>({...x,source:"ai",confirmed:false}))]}}
+    if(action==="walkaround-marks"){const p=(j.walkaround||[]).find(x=>x.id===body.photoId);if(p)p.marks=body.marks}
+    if(action==="walkaround-remove")j.walkaround=(j.walkaround||[]).filter(x=>x.id!==body.photoId);
+    save();return j},
+  token:()=>job(ui.custJob)?.token,customer:()=>{const j=job(ui.custJob);return j?waCustomer(j):null},setCustomer:()=>{},renderCustomer:()=>render(),
+  job,openJob:()=>ui.openJob,onJob:()=>save(),render:()=>{if(location.hash.startsWith("#s-"))render();else renderLayer()}});
+setInterval(()=>{if(ui.view==="board"&&!ui.openJob&&!ui.modal&&document.activeElement?.id!=="boardSearch"&&!window.TOUR_ACTIVE)render()},60000);
+window.Grow.loadBookings();
+render();
+if(new URLSearchParams(location.search).has("smart")){
+  const j=job("RO-1041")||state.jobs.find(onBoard);
+  if(j){ui.openJob=j.id;renderLayer();const panel=$("#smartDemo");if(panel){panel.open=true;panel.scrollIntoView();}}
+}
+</script>
+<script src="/config.js"></script>
+<script src="/tour.js?v=220"></script>
+<script src="/shell.js?v=1"></script>
+</body>
+</html>

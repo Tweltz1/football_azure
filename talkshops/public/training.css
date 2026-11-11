@@ -1,0 +1,18 @@
+/* Training tab (training.js). Uses the color tokens from the page and theme.css. */
+.training{max-width:860px;display:flex;flex-direction:column;gap:14px}
+.training-h h2{font-size:26px}
+.training-h p{margin:4px 0 0;max-width:640px}
+.training-tour{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:14px;color:#fff;text-decoration:none;background:var(--grad,linear-gradient(135deg,#3d5afe,#9a4dff));box-shadow:var(--shadow)}
+.training-tour b{display:block;font-size:17px}
+.training-tour small{display:block;opacity:.85;font-size:13.5px}
+.tt-ic{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.18);font-size:15px}
+.training-count{margin:4px 0 0;font-size:13px}
+.lessons{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:10px}
+.lesson{display:flex;align-items:flex-start;gap:12px;height:100%;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--fg);text-decoration:none;box-shadow:var(--shadow);transition:border-color .15s,transform .15s}
+.lesson:hover{border-color:var(--accent);transform:translateY(-1px)}
+.l-num{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--accent-soft);color:var(--accent)}
+.l-body{flex:1;min-width:0}
+.l-body b{display:block;font-size:15.5px}
+.l-body small{display:block;color:var(--muted);font-size:13px;margin-top:2px;line-height:1.4}
+.l-go{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.l-go svg{width:16px;height:16px;color:var(--accent)}

@@ -1,0 +1,70 @@
+/* Workday tools (workday.js): Bay chips, check-in lookup, job details, visits, reminders, quick services, summary. */
+.wd-bits{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
+.wd-tech{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:11px;font-weight:700;letter-spacing:.02em}
+.wd-due{display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted)}
+.wd-due.wd-soon{background:var(--warn-bg);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 25%,transparent)}
+.wd-due.wd-late{background:var(--bad-bg);color:var(--bad);border-color:color-mix(in srgb,var(--bad) 30%,transparent)}
+.wd-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px}
+.wd-bar-gap{flex:1}
+.wd-bar .btn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent-ink)}
+.wd-lookup{margin:6px 0 4px;padding:12px;border:1px dashed var(--line-strong);border-radius:var(--r);background:var(--surface-2)}
+.wd-lookup .field{margin:0}
+.wd-found{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.wd-hit{display:grid;gap:2px;width:100%;text-align:left;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer}
+.wd-hit:hover,.wd-hit:focus-visible{border-color:var(--accent);outline:none;box-shadow:var(--ring)}
+.wd-note{margin:8px 0 0;font-size:14px}
+.wd-ci{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.wd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.wd-grid .field{margin:0}
+.wd-visits{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:14px}
+.wd-visits li{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.wd-declined{color:var(--warn);font-size:13px;margin-top:2px}
+.wd-fu{list-style:none;margin:0 0 8px;padding:0;display:grid;gap:8px;font-size:14px}
+.wd-fu li{padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.wd-fu li p{margin:4px 0;color:var(--muted)}
+.wd-fu-add summary,.wd-pk-add summary{cursor:pointer;font-weight:600;margin:6px 0}
+.wd-fu-add textarea{min-height:84px}
+.wd-chips{margin:6px 0}
+.wd-pk{list-style:none;margin:10px 0;padding:0;display:grid;gap:8px}
+.wd-pk li{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.wd-pk li small{display:block}
+.wd-pk-items{border:1px solid var(--line);border-radius:10px;padding:8px 12px;max-height:240px;overflow:auto;display:grid;gap:4px}
+.wd-dialog{max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;border:0;border-radius:var(--r-lg);padding:0;width:min(640px,calc(100vw - 32px));background:var(--surface);color:var(--fg);box-shadow:var(--shadow-lg)}
+.wd-dialog::backdrop{background:rgba(10,14,25,.45)}
+.wd-dialog form{padding:18px}
+.wd-dialog-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.wd-dialog-h h2{margin:0;font-size:19px}
+.wd-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0}
+.wd-tile{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2)}
+.wd-tile b{display:block;font-size:20px}
+.wd-tile span{font-size:12.5px;color:var(--muted)}
+.wt-tread{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;font-size:13px;color:var(--muted)}
+.wt-tread label{display:inline-flex;align-items:center;gap:4px}
+.wt-tread input{width:44px;font:inherit;text-align:center;border:1px solid var(--line-strong);border-radius:8px;padding:5px;background:var(--surface);color:var(--fg)}
+.wt-tread-out{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px}
+@media (max-width:640px){.wd-bar .btn{flex:1 1 auto}}
+.wd-pk li.wd-pk-editing{border-color:var(--accent,#2563eb);box-shadow:0 0 0 1px var(--accent,#2563eb)}
+.wd-pk-act{display:flex;gap:12px}
+.wd-pk-find{margin:8px 0 6px}
+.wd-pk-add .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.wd-pk-est{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.wd-pk-est .field{flex:1 1 220px;margin:0}
+@media (max-width:560px){.wd-pk li{grid-template-columns:1fr auto}.wd-pk-act{grid-column:1/-1}}
+/* Check-in type-ahead: returning customers under Name / Mobile number / Plate, then their cars. */
+label.field:has(> .wd-sug){position:relative}
+.wd-sug{position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:4px;display:grid;gap:4px;padding:6px;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 10px 28px rgba(15,23,42,.18);max-height:min(60vh,340px);overflow:auto;font-weight:400}
+.wd-sug-h{margin:2px 4px 2px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.wd-sug-row{display:grid;gap:1px;width:100%;min-height:48px;text-align:left;font:inherit;color:var(--fg);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer}
+.wd-sug-row:hover,.wd-sug-row:focus-visible{border-color:var(--accent);outline:none;box-shadow:var(--ring)}
+.wd-sug-row span{font-size:14px}
+.wd-cars{padding:10px 12px;border:1px dashed var(--line-strong);border-radius:var(--r);background:var(--surface-2)}
+.wd-cars .wd-sug-h{margin:0 0 8px;font-size:14px;color:var(--fg)}
+.wd-cars-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.wd-car{display:grid;gap:2px;min-height:52px;text-align:left;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer}
+.wd-car:hover,.wd-car:focus-visible{border-color:var(--accent);outline:none;box-shadow:var(--ring)}
+.wd-car[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:var(--ring)}
+.wd-car-new b{color:var(--accent-ink)}
+.wd-sub{margin:10px 0 6px;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.wd-sub:first-of-type{margin-top:0}
+.wd-who{font-size:13px;font-weight:600;color:var(--accent-ink);margin-top:2px}
+@media (max-width:560px){.wd-cars-row{grid-template-columns:1fr}}

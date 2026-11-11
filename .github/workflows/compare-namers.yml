@@ -1,0 +1,83 @@
+# Compares Curbsy's item namer with ToteTrack's on the same test photos (see ml/compare-namers/compare.py).
+# Read-only: it downloads both namers from their releases and changes nothing.
+name: Compare item namers
+
+on:
+  push:
+    paths:
+      - 'ml/compare-namers/**'
+  workflow_dispatch:
+    inputs:
+      ours:
+        description: Curbsy namer release
+        default: item-namer-v1
+      tote:
+        description: ToteTrack namer release
+        default: totetrack-namer-4
+
+jobs:
+  compare:
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      OURS: ${{ inputs.ours || 'item-namer-v1' }}
+      TOTE: ${{ inputs.tote || 'totetrack-namer-4' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Get both namers and ToteTrack's name list
+        run: |
+          mkdir -p work/ours work/tote
+          gh release download "$OURS" -D work/ours -p namer.f32 -p labels.json
+          gh release download "$TOTE" -D work/tote -p ToteNamer.mlpackage.zip -p items.json -p items.bin
+          (cd work/tote && unzip -q ToteNamer.mlpackage.zip)
+          git fetch --depth 1 origin claude/project-thread-ftshkg
+          git show FETCH_HEAD:totetrack-app/tools/detector/classes.txt > work/classes.txt
+          ls -la work/ours work/tote
+
+      - name: Keep downloaded annotation files between runs
+        uses: actions/cache/restore@v4
+        with:
+          path: ml/item-namer/cache
+          key: item-namer-cache-v1
+
+      # Same settings and seed as the item-namer-v1 run, so the test crops are the ones it never trained on.
+      - name: Get the test crops
+        working-directory: ml/item-namer
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install --quiet pillow ijson nltk numpy coremltools
+          python prepare.py --out crops --cache cache --per-class 80 --min-class 15 --limit-classes 0
+          rm -rf crops/train
+          find crops/test -name '*.jpg' | wc -l
+
+      - name: Reuse feature prints from the item-namer-v1 run
+        uses: actions/cache/restore@v4
+        with:
+          path: ml/item-namer/feats
+          key: item-namer-feats-v1-80-15-none
+          restore-keys: item-namer-feats-v1-80-15-
+
+      - name: Curbsy feature prints for the test crops
+        working-directory: ml/item-namer
+        run: swift features.swift crops feats
+
+      - name: Compare
+        working-directory: ml/item-namer
+        run: |
+          . .venv/bin/activate
+          python ../compare-namers/compare.py --crops crops --feats feats --ours ../../work/ours --tote ../../work/tote \
+            --classes ../../work/classes.txt --val-json cache/lvis_v1_val.json --out ../../work/out
+          cat ../../work/out/comparison.json | head -60
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: namer-comparison
+          path: work/out

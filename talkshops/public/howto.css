@@ -1,0 +1,80 @@
+/* Talk Shops how-to assistant (How-to tab). Uses the tokens from theme.css. */
+.howto{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.howto-head h2{margin:0}
+.howto-head p{margin:4px 0 0}
+.howto-safety{background:var(--warn-bg);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);border-radius:var(--r);padding:10px 14px;font-size:13.5px;line-height:1.45}
+.howto-safety b{color:var(--warn)}
+.howto-form{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow)}
+.howto-veh{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.howto-veh .howto-car{grid-column:1/-1}
+.howto-form textarea{resize:vertical;min-height:60px;font:inherit}
+.howto-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.howto-actions .linkbtn{margin-left:auto}
+.howto-quick{display:flex;flex-wrap:wrap;gap:6px}
+.howto-chip{border:1px solid var(--line-strong);background:var(--surface-2);color:var(--fg);border-radius:999px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
+.howto-chip:hover{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent-ink)}
+#howtoThread{display:flex;flex-direction:column;gap:14px;scroll-margin-top:80px}
+.howto-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px}
+.howto-card.is-loading{opacity:.85}
+.howto-card.is-loading p::after{content:"";display:inline-block;width:12px;height:12px;margin-left:8px;border:2px solid var(--accent);border-right-color:transparent;border-radius:50%;animation:howto-spin .8s linear infinite;vertical-align:-2px}
+@keyframes howto-spin{to{transform:rotate(360deg)}}
+.howto-q{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.howto-answer{margin:0;font-size:15.5px}
+.howto-block h4{margin:0 0 6px;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.howto-block ul,.howto-block ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.howto-block.warn{background:var(--warn-bg);border-radius:var(--r);padding:10px 12px}
+.howto-block.warn h4{color:var(--warn)}
+.howto-block.specs{background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
+.howto-block.specs h4 .muted{text-transform:none;letter-spacing:0;font-weight:500}
+.howto-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.howto-cols:empty{display:none}
+.howto-steps li{padding-left:2px}
+.howto-steps li::marker{font-weight:650;color:var(--accent-ink)}
+.howto-foot{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
+.howto-fine{margin:0;font-size:12px;color:var(--muted)}
+.howto-link{margin:0 0 4px}
+@media (max-width:760px){
+  .howto-veh{grid-template-columns:1fr 1fr}
+  .howto-cols{grid-template-columns:1fr}
+}
+.howto-veh .field,.howto-form .field{min-width:0}
+.howto-veh input,.howto-veh select,.howto-form textarea{width:100%;min-width:0;box-sizing:border-box}
+.howto-pro{border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));background:var(--accent-soft);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;max-width:640px}
+.howto-pro p{margin:0;color:var(--fg)}
+.howto-pn{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.howto-pn li{display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:4px 12px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line)}
+.howto-pn li:last-child{border-bottom:0}
+.howto-pn .pn-num{font-family:var(--f-mono);font-size:13.5px}
+.howto-pn .pn-part{grid-column:1/-1;font-weight:600}
+.howto-pn .pn-kind{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.howto-pn small{grid-column:1/-1;color:var(--muted);font-size:12.5px}
+.howto-pn a{font-size:13px;font-weight:600;color:var(--accent)}
+/* Saved answers: suggestions, ratings and tips */
+.howto-suggest{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.howto-suggest:empty{display:none}
+.howto-suggest-h{width:100%;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.howto-chip.saved{border-color:color-mix(in srgb,var(--accent) 30%,transparent);background:var(--accent-soft);color:var(--accent-ink)}
+.howto-ok{color:var(--ok);font-weight:650;margin-left:4px}
+.howto-learn{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:10px}
+.howto-saved-note{margin:0;font-size:13px;color:var(--muted)}
+.howto-saved-note b{color:var(--ok)}
+.howto-rate{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px}
+.howto-rate .btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.howto-rate small{color:var(--muted);width:100%}
+.howto-tips h4{margin:0 0 6px;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.howto-tips ul{margin:0 0 8px;padding-left:20px}
+.howto-tip-add{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}
+.howto-tip-add input{border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);border-radius:10px;padding:8px 10px;font:inherit;font-size:14px;min-width:0}
+.howto-links{display:flex;gap:14px;align-items:center}
+.howto-videos{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13.5px}
+.howto-videos:empty{display:none}
+.howto-videos span{color:var(--muted)}
+.howto-videos a{color:var(--accent-ink);font-weight:600}
+
+/* Free answers from other mechanics (Mechanics Stack Exchange) */
+.howto-mech { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.howto-mech .howto-suggest-h { width: 100%; }
+.howto-mech-card { width: 100%; margin-top: 6px; }
+.howto-mech-card h3 { margin: 0 0 8px; font-size: 1rem; }
+.howto-mech-answer { border-top: 1px solid var(--line, #ddd); padding-top: 8px; margin-top: 8px; }
+.howto-mech-answer p { margin: 0 0 4px; white-space: normal; overflow-wrap: anywhere; }

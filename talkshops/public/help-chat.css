@@ -1,0 +1,43 @@
+/* "Ask Talk Shops" help chat (help-chat.js) */
+#helpChat[hidden]{display:none}
+.hc-fab{position:fixed;right:18px;bottom:18px;z-index:40;display:flex;align-items:center;gap:7px;padding:11px 16px 11px 13px;border-radius:999px;border:0;cursor:pointer;
+  background:var(--grad,var(--accent));color:var(--accent-fg,#fff);font:650 15px var(--f-body);box-shadow:var(--shadow-lg)}
+.hc-fab svg{width:21px;height:21px}
+.hc-fab:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.hc-panel{position:fixed;right:18px;bottom:18px;z-index:46;width:min(400px,calc(100vw - 24px));height:min(620px,calc(100dvh - 36px));display:flex;flex-direction:column;
+  background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:var(--r-lg,16px);box-shadow:var(--shadow-lg);font-family:var(--f-body);overflow:hidden}
+.hc-head{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.hc-head svg{width:24px;height:24px;color:var(--accent)}
+.hc-head div{display:grid;flex:1;line-height:1.25}.hc-head small{color:var(--muted);font-size:12.5px}
+.hc-x{border:0;background:transparent;color:var(--muted);font-size:26px;line-height:1;width:36px;height:36px;border-radius:8px;cursor:pointer}
+.hc-x:hover{background:color-mix(in srgb,var(--fg) 7%,transparent)}
+.hc-log{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px;display:flex;flex-direction:column;gap:10px}
+.hc-me{align-self:flex-end;max-width:85%;background:var(--bubble-out);color:var(--bubble-out-fg);padding:8px 12px;border-radius:14px 14px 4px 14px;line-height:1.4;overflow-wrap:anywhere}
+.hc-bot{align-self:flex-start;max-width:94%;background:var(--bubble-in);padding:10px 12px;border-radius:14px 14px 14px 4px;line-height:1.45;font-size:14.5px}
+.hc-bot p{margin:0}.hc-bot p+p,.hc-bot p+.hc-more,.hc-bot .hc-row{margin-top:8px}
+.hc-wait{color:var(--muted)}
+.hc-ans b{display:block;margin-bottom:4px}
+.hc-note{font-size:13.5px;color:var(--warn);margin-top:8px !important}
+.hc-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13.5px}
+.hc-more{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:8px}
+.hc-more span{font-size:13px;color:var(--muted)}
+.hc-chip{text-align:left;border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);border-radius:10px;padding:7px 10px;font:550 13.5px var(--f-body);cursor:pointer;line-height:1.3}
+.hc-chip:hover{border-color:var(--accent)}
+.hc-small{font-size:13px;color:var(--muted);margin-top:8px !important}
+.hc-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.hc-form{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.hc-form input{flex:1;min-width:0;font:16px var(--f-body);padding:9px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--fg)}
+.hc-form input:focus{outline:none;box-shadow:var(--ring);border-color:var(--accent)}
+.hc-foot{margin:0;padding:0 12px 10px;font-size:12.5px;color:var(--muted)}
+.hc-foot .linkbtn,.hc-bot .linkbtn{font-size:inherit}
+/* the help page's own "Ask a question" box */
+.help-ask{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.help-ask input{flex:1;min-width:220px;font:16px var(--f-body);padding:11px 13px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--fg)}
+.help-ask-note{margin:8px 0 0;font-size:13.5px}
+/* out of the way while a car sheet or dialog is open */
+body:has(#layer > *) .hc-fab{display:none}
+@media (max-width:760px){
+  body:has(.tabs.has-icons) .hc-fab{bottom:calc(80px + env(safe-area-inset-bottom,0px));right:12px;padding:10px 14px 10px 11px}
+  .hc-panel{right:0;left:0;bottom:0;width:100%;height:min(88dvh,640px);border-radius:16px 16px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)}
+}
+@media print{#helpChat{display:none}}
