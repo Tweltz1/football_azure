@@ -308,7 +308,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=2"></script>
-<script src="/training.js?v=9"></script>
+<script src="/training.js?v=10"></script>
 <script src="/howto.js?v=13"></script>
 <script src="/vehicle-typeahead.js?v=3"></script>
 <script src="/team.js?v=4"></script>
@@ -321,10 +321,10 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/grow.js?v=7"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script src="/est-groups.js?v=1"></script>
-<script src="/help-content.js?v=9"></script>
+<script src="/help-content.js?v=10"></script>
 <script src="/help-chat-features.js?v=1"></script>
 <script src="/help-chat-model-run.js?v=1"></script>
-<script src="/help-chat.js?v=2"></script>
+<script src="/help-chat.js?v=3"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
 const STAGES=[
@@ -535,6 +535,10 @@ window.Workday.init({
 /* --- booking, results, reviews, time clock, branding and export (grow.js) against the demo's saved state --- */
 const growJob=j=>({...j,createdAt:j.events[0]?.t,stage:j.archivedAt&&!j.closed?"picked_up":j.stage});
 const bookToken="demo-ridgeline";
+// Vehicle suggestions in the demo come from this small built-in list (the real shop asks NHTSA and EPA for every car).
+const DEMO_MODELS={mazda:["CX-3","CX-30","CX-5","CX-9","MX-5 Miata","Mazda3","Mazda6"],toyota:["4Runner","Camry","Corolla","Highlander","RAV4","Tacoma","Tundra"],honda:["Accord","Civic","CR-V","Odyssey","Pilot"],ford:["Escape","Explorer","F-150","Fusion","Mustang"],chevrolet:["Equinox","Malibu","Silverado 1500","Tahoe","Traverse"]};
+const DEMO_ENGINES={"2015 ford f-150":["2.7L 6 Cyl. Turbo","3.5L 6 Cyl.","3.5L 6 Cyl. Turbo","5.0L 8 Cyl."],"2014 mazda cx-5":["2.0L 4 Cyl.","2.5L 4 Cyl."],"2017 toyota corolla":["1.8L 4 Cyl."],"2018 honda civic":["1.5L 4 Cyl. Turbo","2.0L 4 Cyl."],"2012 chevrolet malibu":["2.4L 4 Cyl.","3.6L 6 Cyl."]};
+window.TalkShopsVehicleOptions=async(b)=>b.want==="models"?{models:DEMO_MODELS[String(b.make).toLowerCase()]||[]}:{engines:DEMO_ENGINES[[b.year,b.make,b.model].join(" ").toLowerCase()]||[]};
 function demoResults(days){
   const k=days/30,n=x=>Math.round(x*k),D=86400000,wk=[2140,3320,2890,4410,3760,5120,4380,4960];
   const weeks=wk.slice(-Math.max(1,Math.min(8,Math.round(days/7)))).map((a,i,arr)=>({start:Date.now()-(arr.length-i)*7*D,approved:a,in:9+((i*5)%7)}));
@@ -895,6 +899,7 @@ function checkinView(){
     <label class="field">Year<input id="ci-year" required inputmode="numeric" placeholder="2019"></label>
     <label class="field">Make<input id="ci-make" required placeholder="Toyota"></label>
     <label class="field">Model<input id="ci-model" required placeholder="Camry"></label>
+    <label class="field">Engine <small class="muted">(optional)</small><input id="ci-engine" maxlength="40" placeholder="e.g. 2.0L 4 Cyl."></label>
     <label class="field">License plate<input id="ci-plate" placeholder="ABC1234"></label>
     <h3 class="form-sec full">This Visit</h3>
     <div class="form-grid full wd-ci">${window.Workday.checkinFields()}</div>
@@ -1170,7 +1175,7 @@ document.addEventListener("click",e=>{
   if(t.id==="uploadBill"){toast("In your shop, choose the invoice PDF from your shop system. The customer opens it from their link.");return}
   if(t.id==="laborBtn"){toast("In your shop, this opens the line editor: labor hours times your rate, part quantities, fees and percentages.");return}
   if(t.id==="rateTemplate"){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["name,type,rate\nTechnician labor,labor,125.00\nShop supplies,fee,12.50\nOil filter,part,16.00\n"],{type:"text/csv"}));a.download="shop-rates.csv";document.body.appendChild(a);a.click();a.remove();return}
-  if(t.id==="ci-fill"){const v={name:"Sam Ortiz",phone:"(555) 019-4410",year:"2014",make:"Mazda",model:"CX-5",plate:"3CXF882",concern:"Squealing belt noise on cold start"};for(const k in v)$("#ci-"+k).value=v[k];$("#ci-consent").checked=true;return}
+  if(t.id==="ci-fill"){const v={name:"Sam Ortiz",phone:"(555) 019-4410",year:"2014",make:"Mazda",model:"CX-5",engine:"2.5L 4 Cyl.",plate:"3CXF882",concern:"Squealing belt noise on cold start"};for(const k in v)$("#ci-"+k).value=v[k];$("#ci-consent").checked=true;return}
   if(t.dataset.decide){const j=job(ui.custJob);for(const id of window.EstGroups.idsOf(t))ui.draft[j.id+"-"+id]=t.dataset.v;const sig=$("#sig")?.value;if(sig!=null)ui.draft[j.id+"-sig"]=sig;render();return}
   if(t.id==="submitApproval"){const j=job(ui.custJob);const sig=($("#sig").value||"").trim();
     if(sig.length<3){toast("Type your full name to sign");$("#sig").focus();return}
@@ -1208,7 +1213,7 @@ document.addEventListener("submit",e=>{
   if(f.id==="checkinForm"){
     const g=k=>$("#ci-"+k).value.trim();const ch=g("channel");
     if(!$("#ci-consent").checked){toast("Confirm the customer agreed to updates first");return}
-    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:g("name"),phone:ch!=="email"?g("phone"):"",email:ch!=="sms"?g("email"):"",channel:ch,consent:true,lang:g("lang")},vehicle:{year:g("year"),make:g("make"),model:g("model")},plate:g("plate"),concern:g("concern"),urgency:document.querySelector('input[name="ciUrgency"]:checked')?.value||"",stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[],messages:[]};
+    const j={id:"RO-"+state.nextRO,ro:"RO-"+state.nextRO,customer:{name:g("name"),phone:ch!=="email"?g("phone"):"",email:ch!=="sms"?g("email"):"",channel:ch,consent:true,lang:g("lang")},vehicle:{year:g("year"),make:g("make"),model:g("model"),engine:g("engine")},plate:g("plate"),concern:g("concern"),urgency:document.querySelector('input[name="ciUrgency"]:checked')?.value||"",stage:"checked_in",token:token(),estimate:[],photos:[],notes:[],events:[],messages:[]};
     state.nextRO++;plan.carsCreated++;const t=Date.now();j.events.push({stage:"checked_in",t});
     const wd=window.Workday.checkinValues();if(wd.mileageIn)j.mileageIn=digits(wd.mileageIn);if(wd.promised)j.promised=Date.parse(wd.promised);if(wd.tech)j.tech=wd.tech;
     const pk=wd.service&&(state.packages||[]).find(p=>p.id===wd.service);
@@ -1306,7 +1311,7 @@ if(new URLSearchParams(location.search).has("smart")){
 }
 </script>
 <script src="/config.js"></script>
-<script src="/tour.js?v=220"></script>
+<script src="/tour.js?v=221"></script>
 <script src="/shell.js?v=1"></script>
 </body>
 </html>
