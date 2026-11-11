@@ -152,9 +152,10 @@
       return;
     }
     if (field === "engine") {
-      if (!options.has(input)) setList(input, ENGINES); // right away, then the exact engines for this car first
+      // Only the engines this year, make and model came with. The common list is the fallback when
+      // the car isn't filled in yet or the lookup finds nothing (they can always type their own).
       const exact = await lookup("engines", g);
-      setList(input, exact.length ? [...exact, ...ENGINES.filter((e) => !exact.includes(e))] : ENGINES);
+      setList(input, exact.length ? exact : ENGINES);
     }
   }
 
