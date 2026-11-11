@@ -140,7 +140,7 @@ export function SectionTitle({ children }: { children: ReactNode }) {
 }
 
 
-// "Powered by Weltzcraft Studios" line at the bottom of the app; the name links to the studio
+// "© <year> Weltzcraft Studios" copyright line at the bottom of the app; the name links to the studio
 // site (clear STUDIO_URL to show plain text).
 export const STUDIO_NAME = 'Weltzcraft Studios';
 export const STUDIO_URL = 'https://weltzcraft.com';
@@ -154,7 +154,7 @@ export function StudioCredit({ style }: { style?: StyleProp<ViewStyle> }) {
   );
   return (
     <View style={[{ paddingVertical: 20, alignItems: 'center' }, style]}>
-      <Text style={{ color: t.textMuted, fontSize: 12, opacity: 0.8 }}>Powered by {name}</Text>
+      <Text style={{ color: t.textMuted, fontSize: 12, opacity: 0.8 }}>© {new Date().getFullYear()} {name}</Text>
     </View>
   );
 }
