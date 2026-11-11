@@ -5,5 +5,10 @@
 	<!-- Saved-search alerts (Curbsy Plus). Signed into the TestFlight build by .github/workflows/junk-app.yml. -->
 	<key>aps-environment</key>
 	<string>production</string>
+	<!-- Sign in with Apple through Apple's own sheet (AuthSessionPlugin.appleSignIn). -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>

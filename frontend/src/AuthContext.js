@@ -42,6 +42,17 @@ export const signIn = async (provider) => {
   }
   // iPhone app: sign in through Apple's sign-in sheet, then hand the result to Supabase here.
   try {
+    if (provider === 'apple' && nativeSignIn.hasAppleSheet()) {
+      const apple = await nativeSignIn.appleSheetSignIn();
+      if (!apple) return null;
+      const signedIn = await supabase.auth.signInWithIdToken({ provider: 'apple', token: apple.token, nonce: apple.rawNonce });
+      if (signedIn.error) throw signedIn.error;
+      // Apple only shares the name the first time; keep it so neighbors see a first name, not "Neighbor".
+      if (apple.fullName && !signedIn.data?.user?.user_metadata?.full_name) {
+        await supabase.auth.updateUser({ data: { full_name: apple.fullName } }).catch(() => {});
+      }
+      return signedIn;
+    }
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: nativeSignIn.APP_REDIRECT, skipBrowserRedirect: true, queryParams },
