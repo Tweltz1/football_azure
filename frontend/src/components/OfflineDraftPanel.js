@@ -133,7 +133,6 @@ const OfflineDraftPanel = ({ league, user }) => {
         {user.guest ? (
           <>
             <button type="button" className="create-button" onClick={() => signIn('google')} disabled={!online}>Sign in with Google to upload</button>
-            <button type="button" className="edit-roster-button" onClick={() => signIn('github')} disabled={!online}>Sign in with GitHub</button>
           </>
         ) : (
           <button type="button" className="create-button" onClick={upload} disabled={busy || !online}>

@@ -12,6 +12,7 @@ import { nearbySupported } from '../offline/nearbyDraft';
 import { HOOD_GAMES_PATH, inGamesApp } from '../native/gamesApp';
 import { chooseSavedUser, clearSignedOut, guestUser, offlineUser, savedProfiles } from '../offline/storage';
 import StudioCredit from './StudioCredit';
+import EmailSignIn from './EmailSignIn';
 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
@@ -67,9 +68,10 @@ const Login = () => {
             </p>
           )}
           <div className="login-actions">
-            <button type="button" onClick={() => signIn('github')}>Login with GitHub</button>
-            <button type="button" className="edit-roster-button" onClick={() => signIn('google')}>Login with Google</button>
+            <button type="button" onClick={() => signIn('google')}>Login with Google</button>
           </div>
+          <p className="email-signin-or">or use your email</p>
+          <EmailSignIn disabled={!online} />
           <button type="button" className="crew-intro-replay" onClick={() => setShowIntro(true)}>Meet the crew</button>
           <p className="login-legal">
             {inGamesApp() && <><a href={HOOD_GAMES_PATH}>← Back to Hood Games</a> · </>}

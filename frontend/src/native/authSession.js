@@ -1,5 +1,5 @@
 // Sign-in inside the Hood League iPhone app (AuthSessionPlugin in ios-app/ios/App/App/HoodViewController.swift).
-// The app's web page can't send people to GitHub/Google and back like the website does, so the sign-in
+// The app's web page can't send people to Google and back like the website does, so the sign-in
 // opens in Apple's sign-in sheet, which returns to the app at APP_REDIRECT. That address must be listed
 // in Supabase under Authentication > URL Configuration > Redirect URLs.
 
