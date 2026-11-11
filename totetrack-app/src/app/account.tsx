@@ -3,7 +3,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, IconButton, SectionTitle } from '../components/ui';
+import { Button, Card, IconButton, SectionTitle, StudioCredit } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { FREE_TOTE_LIMIT, usePro } from '../lib/pro';
 import { itemCount, timeAgo, useTotes } from '../lib/store';
@@ -155,6 +155,7 @@ export default function Account() {
             </Text>
           </>
         )}
+        <StudioCredit style={{ marginTop: 12 }} />
       </ScrollView>
     </>
   );
