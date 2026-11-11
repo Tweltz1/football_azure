@@ -44,6 +44,8 @@ struct ContentView: View {
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
                     Text("Prototype only. Never rely on this app for unattended infant safety monitoring. Secure cameras away from the child and don't operate your phone while driving.")
                         .font(.caption).foregroundStyle(.secondary)
+                    StudioCredit()
+                        .padding(.top, 8)
                 }
                 .padding()
             }
@@ -99,5 +101,21 @@ struct ContentView: View {
                 }
             }
         }
+    }
+}
+
+/// "Powered by Weltzcraft Studios" line at the bottom of the app; the name links to the studio site.
+struct StudioCredit: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("Powered by")
+            Link(destination: URL(string: "https://weltzcraft.com")!) {
+                Text("Weltzcraft Studios").fontWeight(.semibold)
+            }
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .tint(.secondary)
+        .frame(maxWidth: .infinity)
     }
 }
