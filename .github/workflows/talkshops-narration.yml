@@ -1,0 +1,70 @@
+name: Talk Shops narration clips
+
+# Records Training and guided-tour narration in the Ryan voice (Chatterbox, CPU) for the keys listed in
+# talkshops/scripts/narration/queue.txt, then commits the MP3s, the speech check and the caption cues back to
+# the same branch and empties the queue. Runs when a push changes queue.txt (any branch), or by hand.
+on:
+  push:
+    paths:
+      - talkshops/scripts/narration/queue.txt
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: talkshops-narration-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  narrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Read the queue
+        id: q
+        run: |
+          keys=$(grep -v '^#' talkshops/scripts/narration/queue.txt | tr -s ' \n' ' ' | xargs || true)
+          echo "keys=$keys" >> "$GITHUB_OUTPUT"
+          echo "Keys: ${keys:-none}"
+      - uses: actions/setup-python@v5
+        if: steps.q.outputs.keys != ''
+        with:
+          python-version: "3.11"
+      - name: Install Chatterbox and Whisper (CPU)
+        if: steps.q.outputs.keys != ''
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          pip install -q torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -q chatterbox-tts faster-whisper librosa
+      - name: Generate, check and normalize
+        if: steps.q.outputs.keys != ''
+        run: |
+          cd talkshops
+          python scripts/narration/generate.py /tmp/narr ${{ steps.q.outputs.keys }}
+          args=""
+          for k in ${{ steps.q.outputs.keys }}; do
+            ffmpeg -v error -y -i /tmp/narr/$k.wav -af loudnorm=I=-16:TP=-1.5:LRA=11 -ar 24000 -ac 1 -b:a 64k public/tour/$k.mp3
+            args="$args $k=public/tour/$k.mp3"
+          done
+          python scripts/narration/check.py $args --json /tmp/narr/check.json || true
+          python scripts/narration/cues.py $args
+          cp /tmp/narr/report.json /tmp/narr/generate-report.json
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.q.outputs.keys != ''
+        with:
+          name: narration-report
+          path: /tmp/narr/*.json
+      - name: Commit the clips
+        if: steps.q.outputs.keys != ''
+        run: |
+          printf '# Narration keys to record (space or newline separated). The narration workflow empties this.\n' > talkshops/scripts/narration/queue.txt
+          git config user.name "talkshops-narration"
+          git config user.email "actions@users.noreply.github.com"
+          git add talkshops/public/tour talkshops/scripts/narration/queue.txt
+          git commit -m "Talk Shops: record narration (${{ steps.q.outputs.keys }})" || exit 0
+          git pull --rebase origin ${{ github.ref_name }}
+          git push origin HEAD:${{ github.ref_name }}

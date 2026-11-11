@@ -1,0 +1,2 @@
+# Narration keys to record (space or newline separated). The narration workflow empties this.
+booking bk-6 bk-7 bk-8 pl-1 plan qc-2 settings
