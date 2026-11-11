@@ -1,5 +1,6 @@
 import Foundation
 import StoreKit
+import UIKit
 
 /// ToteTrack Pro through Apple's StoreKit 2. Everything is checked on the phone: Apple signs each
 /// transaction and StoreKit verifies it, so there's no server and no account needed to subscribe.
@@ -58,6 +59,17 @@ enum ToteStore {
   /// Asks the App Store for this Apple ID's purchases (Restore purchases). Apple may ask for the password.
   static func restore() async throws {
     try await AppStore.sync()
+  }
+
+  /// Apple's "Redeem code" sheet for promo (offer) codes made in App Store Connect. A redeemed code
+  /// arrives through Transaction.updates, which fires onPurchasesChanged.
+  @MainActor
+  static func redeemCode() async throws {
+    guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+      ?? UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+      throw Failure(message: "Couldn't open the App Store sheet.")
+    }
+    try await AppStore.presentOfferCodeRedeemSheet(in: scene)
   }
 
   /// Renewals, refunds, Ask to Buy approvals and purchases made on another device arrive here.

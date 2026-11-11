@@ -25,7 +25,7 @@ export function ProPaywall({ reason, onClose }: { reason?: 'limit' | 'snap'; onC
   const pro = usePro();
   const { totes } = useTotes();
   const [plan, setPlan] = useState<Plan>('yearly');
-  const [busy, setBusy] = useState<'buy' | 'restore' | null>(null);
+  const [busy, setBusy] = useState<'buy' | 'restore' | 'redeem' | null>(null);
 
   const product = (p: Plan) => pro.products.find((x) => x.id === PRO_PRODUCTS[p]);
   const price = (p: Plan) => product(p)?.price ?? FALLBACK_PRICES[p];
@@ -64,6 +64,20 @@ export function ProPaywall({ reason, onClose }: { reason?: 'limit' | 'snap'; onC
       if (ok) onClose?.();
     } catch (e) {
       Alert.alert("Couldn't restore", e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const redeem = async () => {
+    setBusy('redeem');
+    try {
+      if (await pro.redeem()) {
+        Alert.alert('Welcome to ToteTrack Pro', 'Your promo code worked. Unlimited totes and Snap to add are on.');
+        onClose?.();
+      }
+    } catch (e) {
+      Alert.alert("Couldn't open promo codes", e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
@@ -149,6 +163,9 @@ export function ProPaywall({ reason, onClose }: { reason?: 'limit' | 'snap'; onC
         style={{ marginTop: 20, alignSelf: 'stretch' }}
       />
       <Button title="Restore purchases" variant="ghost" onPress={restore} loading={busy === 'restore'} disabled={!!busy} style={{ marginTop: 4, alignSelf: 'stretch' }} />
+      {pro.canRedeem && (
+        <Button title="Have a promo code?" variant="ghost" onPress={redeem} loading={busy === 'redeem'} disabled={!!busy} style={{ alignSelf: 'stretch' }} />
+      )}
 
       <Text style={[styles.fine, { color: t.textMuted }]}>
         ToteTrack Pro is an auto-renewing subscription: {price(plan)} per {per(plan)}

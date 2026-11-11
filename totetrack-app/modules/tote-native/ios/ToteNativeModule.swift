@@ -59,6 +59,17 @@ public class ToteNativeModule: Module {
       }
     }
 
+    AsyncFunction("storeRedeemCode") { (promise: Promise) in
+      Task {
+        do {
+          try await ToteStore.redeemCode()
+          promise.resolve(await ToteStore.entitlements())
+        } catch {
+          promise.reject("E_STORE", error.localizedDescription)
+        }
+      }
+    }
+
     Function("nfcAvailable") { () -> Bool in
       ToteNFC.available
     }

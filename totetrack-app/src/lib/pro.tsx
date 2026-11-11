@@ -52,6 +52,10 @@ type Pro = {
   available: boolean;
   buy: (productId: string) => Promise<'purchased' | 'pending' | 'cancelled'>;
   restore: () => Promise<boolean>;
+  /** Opens Apple's promo code sheet. True when Pro is on afterwards (a slow code still turns it on later). */
+  redeem: () => Promise<boolean>;
+  /** False in builds without the promo code sheet. */
+  canRedeem: boolean;
   refresh: () => Promise<void>;
 };
 
@@ -143,6 +147,11 @@ export function ProProvider({ children }: { children: ReactNode }) {
         if (!ToteNative) return false;
         return !!apply(await ToteNative.storeRestore());
       },
+      redeem: async () => {
+        if (!ToteNative?.storeRedeemCode) throw new Error('Update ToteTrack from the App Store to use a promo code.');
+        return !!apply(await ToteNative.storeRedeemCode());
+      },
+      canRedeem: !!ToteNative?.storeRedeemCode,
       refresh,
     };
   }, [active, checked, totes.length, snapsUsed, products, refresh, apply]);
