@@ -40,6 +40,20 @@ jobs:
     uses: ./.github/workflows/gemini-teacher.yml
     secrets: inherit
 
+  # ToteTrack's namer learns from the same Gemini-named photos: rebuild it on its branch (it keeps them only
+  # if its test score holds). Only for the scheduled/hand-started weekly runs, not every push.
+  totetrack:
+    needs: teach
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Rebuild ToteTrack's namer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run totetrack-build-namer.yml -R "${{ github.repository }}" --ref claude/totetrack-app || echo "::warning::Couldn't start ToteTrack's namer build"
+
   train:
     needs: teach
     if: ${{ !cancelled() }}
