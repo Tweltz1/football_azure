@@ -1,0 +1,760 @@
+# Names Gemini should prefer when one fits (from ToteTrack's totetrack-app/tools/namer/items.txt).
+# Gemini may answer with another everyday name when none fits.
+Hammer
+Screwdriver
+Screwdriver set
+Wrench
+Adjustable wrench
+Socket set
+Allen keys
+Pliers
+Needle-nose pliers
+Wire cutters
+Wire strippers
+Vise grips
+Tape measure
+Level
+Utility knife
+Hand saw
+Hacksaw
+Power drill
+Drill bits
+Impact driver
+Circular saw
+Jigsaw
+Sander
+Rotary tool
+Heat gun
+Hot glue gun
+Glue sticks
+Stud finder
+Staple gun
+Caulk gun
+Clamps
+Chisel
+Mallet
+Crowbar
+File
+Sandpaper
+Safety glasses
+Work gloves
+Ear protection
+Dust mask
+Tool belt
+Toolbox
+Tool bag
+Screws
+Nails
+Nuts and bolts
+Wall anchors
+Hooks
+Zip ties
+Bungee cords
+Ratchet straps
+Rope
+Twine
+Chain
+Padlock
+Combination lock
+Keys
+Duct tape
+Painter's tape
+Electrical tape
+Packing tape
+Masking tape
+WD-40
+Super glue
+Wood glue
+Epoxy
+Paint can
+Spray paint
+Paintbrushes
+Paint roller
+Paint tray
+Drop cloth
+Putty knife
+Spackle
+Caulk
+Wood stain
+Ladder
+Step stool
+Sawhorse
+Shop vac
+Air compressor
+Bike pump
+Tire gauge
+Jumper cables
+Car jack
+Motor oil
+Funnel
+Gas can
+Ice scraper
+Snow brush
+Extension cord
+Power strip
+Surge protector
+Outlet adapter
+Light bulbs
+Flashlight
+Headlamp
+Lantern
+Batteries
+Battery charger
+Cordless tool battery
+Multimeter
+Soldering iron
+Wire
+Smoke detector
+Light switch
+Electrical outlet cover
+Garden hose
+Hose nozzle
+Sprinkler
+Watering can
+Shovel
+Spade
+Rake
+Hoe
+Trowel
+Pruning shears
+Hedge trimmer
+Leaf blower
+Weed trimmer
+Lawn mower
+Wheelbarrow
+Garden gloves
+Flower pots
+Planters
+Potting soil
+Seeds
+Fertilizer
+Bird feeder
+Bird seed
+Garden stakes
+Tomato cages
+Outdoor lights
+Solar lights
+Citronella candles
+Bug spray
+Sunscreen
+Pool noodles
+Pool floats
+Beach towels
+Beach umbrella
+Beach chairs
+Sand toys
+Cooler
+Ice packs
+Grill tools
+Grill brush
+Charcoal
+Propane tank
+Outdoor cushions
+Tarp
+Doormat
+Tent
+Sleeping bag
+Sleeping pad
+Air mattress
+Camping chairs
+Camping stove
+Camp cookware
+Mess kit
+Water jug
+Water filter
+Hammock
+Backpack
+Hiking boots
+Trekking poles
+Compass
+Binoculars
+First aid kit
+Fire starter
+Matches
+Lighter
+Hatchet
+Pocket knife
+Multi-tool
+Bear spray
+Fishing rod
+Tackle box
+Fishing net
+Life jacket
+Paddle
+Dry bag
+Rain poncho
+Emergency blanket
+Camping lantern
+Tent stakes
+Paracord
+Christmas lights
+Christmas ornaments
+Christmas tree topper
+Artificial Christmas tree
+Tree skirt
+Christmas stockings
+Wreath
+Garland
+Tinsel
+Nativity set
+Christmas village
+Nutcracker
+Santa figurine
+Snowman decoration
+Advent calendar
+Gift wrap
+Gift bags
+Bows and ribbon
+Gift tags
+Christmas cards
+Holiday tablecloth
+Christmas mugs
+Cookie cutters
+Menorah
+Easter baskets
+Easter eggs
+Easter grass
+Halloween costumes
+Halloween masks
+Halloween decorations
+Pumpkins
+Jack-o'-lantern
+Skeleton decoration
+Fake spider webs
+Witch hat
+Candy bowl
+Fall leaves
+Scarecrow
+Thanksgiving decorations
+Fourth of July decorations
+American flag
+Sparklers
+Valentine's decorations
+St. Patrick's decorations
+Birthday decorations
+Balloons
+Party streamers
+Banners
+Party hats
+Paper plates
+Plastic cups
+Plastic utensils
+Napkins
+Tablecloth
+Candles
+Candle holders
+Tea lights
+String lights
+Fake flowers
+Vases
+Picture frames
+Wall art
+Mirror
+Clock
+Throw pillows
+Seasonal decor
+Figurines
+Snow globes
+Plates
+Bowls
+Mugs
+Cups
+Drinking glasses
+Wine glasses
+Water bottles
+Shaker bottle
+Tumblers
+Travel mugs
+Thermos
+Silverware
+Serving utensils
+Knives
+Knife block
+Cutting board
+Pots
+Pans
+Baking sheets
+Baking dishes
+Muffin tin
+Cake pans
+Mixing bowls
+Measuring cups
+Measuring spoons
+Colander
+Strainer
+Whisk
+Spatula
+Ladle
+Tongs
+Can opener
+Bottle opener
+Corkscrew
+Peeler
+Grater
+Rolling pin
+Oven mitts
+Pot holders
+Dish towels
+Aprons
+Placemats
+Table runner
+Food storage containers
+Mason jars
+Lunch boxes
+Ice cube trays
+Pitcher
+Teapot
+Kettle
+Coffee maker
+French press
+Toaster
+Blender
+Hand mixer
+Stand mixer
+Slow cooker
+Instant pot
+Air fryer
+Rice cooker
+Waffle maker
+Food processor
+Juicer
+Electric griddle
+Kitchen scale
+Serving platters
+Serving bowls
+Cake stand
+Trays
+Chopsticks
+Spices
+Cookbooks
+Canned food
+Paper towels
+Aluminum foil
+Plastic wrap
+Ziploc bags
+Trash bags
+Dish soap
+Sponges
+Reusable shopping bags
+Towels
+Washcloths
+Bath mat
+Shower curtain
+Toilet paper
+Tissues
+Shampoo
+Conditioner
+Body wash
+Soap
+Lotion
+Toothbrush
+Toothpaste
+Dental floss
+Mouthwash
+Razors
+Shaving cream
+Deodorant
+Hair dryer
+Hair straightener
+Curling iron
+Hairbrush
+Comb
+Hair ties
+Makeup
+Makeup brushes
+Nail polish
+Perfume
+Cotton balls
+Q-tips
+Medicine bottles
+Vitamins
+Bandages
+Thermometer
+Heating pad
+Humidifier
+Scale
+Cleaning supplies
+Spray bottle
+Bleach
+Laundry detergent
+Dryer sheets
+Clothespins
+Hangers
+Laundry basket
+Iron
+Ironing board
+Broom
+Dustpan
+Mop
+Bucket
+Vacuum cleaner
+Handheld vacuum
+Swiffer
+Feather duster
+Scrub brush
+Rubber gloves
+Microfiber cloths
+Rags
+T-shirts
+Shirts
+Sweaters
+Sweatshirts
+Hoodies
+Jackets
+Winter coats
+Raincoat
+Vest
+Jeans
+Pants
+Shorts
+Leggings
+Dresses
+Skirts
+Suits
+Ties
+Pajamas
+Underwear
+Socks
+Swimsuits
+Baby clothes
+Kids' clothes
+Uniforms
+Costumes
+Shoes
+Sneakers
+Boots
+Snow boots
+Rain boots
+Sandals
+Flip-flops
+Slippers
+High heels
+Hats
+Baseball caps
+Winter hats
+Gloves
+Mittens
+Scarves
+Belts
+Purses
+Handbags
+Wallets
+Sunglasses
+Watches
+Jewelry
+Jewelry box
+Hair accessories
+Umbrellas
+Suitcase
+Duffel bag
+Tote bags
+Garment bag
+Blankets
+Throw blankets
+Quilts
+Comforter
+Duvet cover
+Bed sheets
+Pillowcases
+Pillows
+Mattress pad
+Sleeping mask
+Curtains
+Rugs
+Table linens
+Laptop
+Tablet
+Phone
+Old phones
+Chargers
+Charging cables
+USB cables
+HDMI cables
+Ethernet cables
+Power cords
+Power adapters
+Headphones
+Earbuds
+Bluetooth speaker
+Speakers
+Computer mouse
+Keyboard
+Monitor
+Webcam
+Printer
+Ink cartridges
+Router
+Modem
+External hard drive
+USB flash drives
+Memory cards
+Camera
+Camera lenses
+Tripod
+Drone
+Video game console
+Game controllers
+Video games
+Remote controls
+Streaming stick
+DVDs
+CDs
+Vinyl records
+Cassette tapes
+Record player
+Radio
+Alarm clock
+Smart speaker
+Fitness tracker
+E-reader
+Calculator
+Walkie-talkies
+Portable charger
+Electric fan
+Space heater
+Desk lamp
+Lamps
+Night light
+Ring light
+Microphone
+Old electronics
+Books
+Notebooks
+Binders
+Folders
+File folders
+Documents
+Photos
+Photo albums
+Scrapbooks
+Envelopes
+Stamps
+Pens
+Pencils
+Markers
+Highlighters
+Crayons
+Colored pencils
+Erasers
+Pencil sharpener
+Rulers
+Scissors
+Stapler
+Staples
+Paper clips
+Binder clips
+Rubber bands
+Sticky notes
+Index cards
+Tape dispenser
+Glue
+Printer paper
+Calendars
+Planners
+Maps
+Manuals
+Board books
+Magazines
+Comic books
+Greeting cards
+Yearbooks
+Diplomas
+Trophies
+Medals
+Pencil case
+Lunch bags
+Desk organizer
+Whiteboard
+Dry erase markers
+Globe
+Yarn
+Knitting needles
+Crochet hooks
+Sewing machine
+Sewing kit
+Thread
+Fabric
+Buttons
+Ribbon
+Felt
+Beads
+Embroidery floss
+Pins and needles
+Pin cushion
+Craft paper
+Construction paper
+Cardstock
+Stickers
+Stamps and ink pads
+Paint
+Canvas
+Easel
+Sketchbook
+Watercolors
+Clay
+Glitter
+Pipe cleaners
+Pom-poms
+Popsicle sticks
+Googly eyes
+Craft supplies
+Scrapbook paper
+Cricut
+Model kits
+Puzzles
+Jigsaw puzzles
+Board games
+Card games
+Playing cards
+Dice
+Chess set
+Musical instruments
+Guitar
+Ukulele
+Keyboard piano
+Sheet music
+Harmonica
+Drumsticks
+Toys
+Stuffed animals
+Dolls
+Action figures
+Lego
+Building blocks
+Toy cars
+Hot Wheels
+Train set
+Dollhouse
+Play kitchen
+Play food
+Toy dishes
+Toy tools
+Baby toys
+Rattles
+Teething toys
+Play-Doh
+Kinetic sand
+Slime
+Bubbles
+Chalk
+Water guns
+Nerf guns
+Nerf darts
+Toy swords
+Dress-up clothes
+Kids' books
+Coloring books
+Baby bottles
+Pacifiers
+Bibs
+Diapers
+Wipes
+Baby blankets
+Swaddles
+Baby monitor
+Stroller
+Car seat
+High chair
+Breast pump
+Kids' cups and plates
+Sippy cups
+Baseball
+Baseball bat
+Baseball glove
+Softball
+Basketball
+Football
+Soccer ball
+Volleyball
+Tennis balls
+Tennis racket
+Pickleball paddles
+Badminton set
+Ping pong paddles
+Golf balls
+Golf clubs
+Golf tees
+Hockey stick
+Hockey puck
+Lacrosse stick
+Frisbee
+Kites
+Skateboard
+Scooter
+Roller skates
+Ice skates
+Helmets
+Knee pads
+Shin guards
+Cleats
+Sports jerseys
+Swim goggles
+Snorkel gear
+Skis
+Ski goggles
+Snowboard
+Sled
+Bike helmet
+Bike lock
+Bike lights
+Jump rope
+Yoga mat
+Dumbbells
+Kettlebell
+Resistance bands
+Foam roller
+Exercise ball
+Whistle
+Stopwatch
+Cones
+Ball pump
+Hula hoop
+Cornhole bags
+Croquet set
+Pet food
+Dog toys
+Cat toys
+Dog leash
+Dog collar
+Dog harness
+Pet bowls
+Dog bed
+Cat bed
+Litter box
+Cat litter
+Pet carrier
+Dog crate
+Pet brush
+Pet shampoo
+Poop bags
+Pet treats
+Aquarium supplies
+Bird cage
+Storage bins
+Baskets
+Cardboard boxes
+Bubble wrap
+Packing paper
+Vacuum storage bags
+Shoe boxes
+Organizer trays
+Drawer dividers
+Shelf brackets
+Curtain rods
+Furniture feet
+Furniture parts
+Light fixtures
+Lamp shades
+Ceiling fan parts
+Air filters
+Fire extinguisher
+Doorstop
+Door hardware
+Cabinet knobs
+Spare parts
+Instruction booklets
+Window screens
+Blinds
+Space bags
+Sewing patterns
+Cables and cords
