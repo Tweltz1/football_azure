@@ -148,10 +148,15 @@ export default function ListScreen() {
                   >
                     {item.name}
                   </Text>
-                  <Text style={{ fontSize: 13 }}>
-                    {!!item.amount && <Text style={{ color: t.text }}>{item.amount} · </Text>}
-                    <Text style={{ color: label.guessed ? t.warn : t.textMuted }}>{label.text}</Text>
-                  </Text>
+                  {/* The section header already says where; only add how much and anything worth knowing. */}
+                  {(!!item.amount || (!item.checked && !!label.note)) && (
+                    <Text style={{ fontSize: 13, color: t.textMuted }}>
+                      {[item.amount, item.checked ? null : label.guessed ? null : label.note].filter(Boolean).join(' · ')}
+                      {!item.checked && label.guessed && (
+                        <Text style={{ color: t.warn }}>{item.amount ? ' · ' : ''}Best guess, tap to set the aisle</Text>
+                      )}
+                    </Text>
+                  )}
                   {!item.checked && <SaleBadge deal={dealFor(deals, item.name)} name={item.name} />}
                 </Pressable>
                 <Ionicons name="chevron-forward" size={18} color={t.textMuted} />

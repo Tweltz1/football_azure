@@ -164,7 +164,7 @@ export default function RouteScreen() {
             <Text style={styles.numText}>{i + 1}</Text>
           </View>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text style={{ color: t.textMuted, fontSize: 13 }}>{locationLabel(stop.items[0]).text}</Text>
+            <Text style={{ color: t.textMuted, fontSize: 13 }}>{locationLabel(stop.items[0]).place}</Text>
             {stop.items.map((it) => (
               <Pressable
                 key={it.id}

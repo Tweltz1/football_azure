@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Button, Card } from './ui';
 import { backendConfigured } from '../lib/api';
-import { chainInfo } from '../lib/chains';
 import { storesNear } from '../lib/nearby';
 import { useData } from '../lib/store';
 import { available, compareStores, estimate, missing, StoreOption, toStore } from '../lib/storePick';
@@ -100,9 +99,8 @@ export function CompareStores({ onPicked }: { onPicked: () => void }) {
       if (unknown) lines.push({ text: `${unknown} not found at this store`, tone: 'muted' });
       const est = estimate(o.stock);
       if (est) lines.push({ text: `About $${est.total.toFixed(2)} for ${est.priced} item${est.priced === 1 ? '' : 's'} (Kroger prices)` });
-    } else {
-      lines.push({ text: `${chainInfo(o.store.chain).label} doesn't share stock, so it can't be checked`, tone: 'muted' });
-      lines.push({ text: o.mapped ? `${o.mapped} of ${o.items} aisles known` : 'No aisles mapped yet for these items' });
+    } else if (o.mapped) {
+      lines.push({ text: `${o.mapped} of ${o.items} aisles known` });
     }
     if (o.onSale) lines.push({ text: `${o.onSale} item${o.onSale === 1 ? '' : 's'} on sale this week`, tone: 'good' });
     return lines;
@@ -164,8 +162,7 @@ export function CompareStores({ onPicked }: { onPicked: () => void }) {
 
       {!!options?.length && (
         <Text style={{ color: t.textMuted, fontSize: 12 }}>
-          Stock and prices come from Kroger and its stores (Pick &apos;n Save, Fry&apos;s, King Soopers…). Other chains
-          don&apos;t publish stock, so they are ranked by distance and how many aisles shoppers have mapped.
+          Ranked by distance and how many of your aisles are known. Kroger-family stores also show stock and prices.
         </Text>
       )}
     </ScrollView>
