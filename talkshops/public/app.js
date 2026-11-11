@@ -827,7 +827,7 @@
       <h2>${firstTime ? "Set up your shop" : "Shop Settings"}</h2>
       <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
-      <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
+      <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" ${firstTime ? "required" : ""} value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
       <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(s.hours || "")}" placeholder="Mon–Fri 7:30am–6pm"></label>
       ${!firstTime && plan?.smartReplies ? `<fieldset><legend>Smart Replies</legend><p class="hint">Choose questions Talk Shops may answer automatically by text. Leave all unchecked for staff review.</p>${[["status","Repair status"],["hours","Posted shop hours"],["link","Resend estimate link"]].map(([key,label])=>`<label class="chk"><input type="checkbox" name="smartTopic" value="${key}" ${s.smartTopics?.includes(key)?"checked":""}>${label}</label>`).join("")}<details><summary>Schedule and Signature</summary>
       <label class="field">Sign replies as<input id="sr-sign" maxlength="60" value="${esc(s.smartSchedule?.signature || "")}" placeholder="Service team"></label>
@@ -1606,7 +1606,7 @@
       if(f.querySelector('[name="smartTopic"]')) body.smartTopics=Array.from(f.querySelectorAll('[name="smartTopic"]:checked'),el=>el.value);
       const isNew = !shop;
       const r = await act(() => api("POST", "shop/me", body), isNew ? "" : "Saved");
-      if (r) { shop = r.shop; if (r.plan) plan = r.plan; if (r.role) { role = r.role; mainOwner = !!r.mainOwner; } ui.view = isNew && isOwner() ? "prices" : "board"; pricesStep.fromSetup = isNew; render(); window.scrollTo(0, 0); }
+      if (r) { shop = r.shop; if (r.plan) plan = r.plan; if (r.role) { role = r.role; mainOwner = !!r.mainOwner; } ui.view = isNew && isOwner() ? "prices" : "board"; pricesStep.fromSetup = isNew; render(); window.scrollTo(0, 0);  if (r.trialUsed) toast("This phone number already had a free trial. Choose a plan on the Plan tab to start sending updates."); }
       return;
     }
     if (f.id === "intakeForm") {

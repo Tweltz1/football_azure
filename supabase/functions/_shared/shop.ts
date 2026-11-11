@@ -200,6 +200,8 @@ export interface ShopStore extends Partial<BookingStore> {
   trialSettings?(): Promise<TrialSettings>;
   /** Puts a new shop on the free trial until `endsAt`. */
   startTrial?(shopId: string, endsAt: string): Promise<void>;
+  /** Records that a shop phone (E.164) got a free trial; false when one already did, so each phone gets one trial. */
+  claimTrialPhone?(phone: string, shopId: string): Promise<boolean>;
   /** Counts `n` texts in `period`; false (and nothing counted) when that would pass `limit`. */
   useTexts?(shopId: string, n: number, period: string, limit: number | null): Promise<boolean>;
   /** Counts one customer email for the shop on `day` (UTC date); false (nothing counted) when over `limit`. */
@@ -798,6 +800,9 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (mine && mine.seat.role !== 'owner') return ownerOnly();
       const name = str(body.name, 80);
       if (!name) return bad('Enter your shop name.');
+      // One free trial per shop phone, so a new shop needs a real number when the store can check it.
+      const trialPhone = !shop && store.claimTrialPhone ? normalizePhone(str(body.phone, 30)) : null;
+      if (!shop && store.claimTrialPhone && !trialPhone) return bad('Enter your shop phone number with area code.');
       if (body.email !== undefined && str(body.email, 254) && !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(str(body.email, 254))) return bad('Enter a valid shop email, or leave it blank.');
       let ageSettings = shop?.ageSettings;
       if (body.ageSettings !== undefined) {
@@ -866,12 +871,15 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       await store.putShop(next);
       if (!shop) await deps.staff?.addMember({ userId: ctx.userId, shopId: next.id, role: 'owner', email: (ctx.userEmail ?? '').toLowerCase(), name: '', addedAt: now })
         .catch((e) => ctx.log.warn('owner member row not saved', { error: String(e) }));
+      let trialUsed = false;
       if (!shop && store.startTrial) {
+        // A phone that already had a trial starts with it ended (Choose a plan), not a fresh one.
+        trialUsed = !!(trialPhone && store.claimTrialPhone && !(await store.claimTrialPhone(trialPhone, next.id)));
         const trial = await settings(deps);
-        await store.startTrial(next.id, new Date(ctx.now().getTime() + trial.trialDays * 86_400_000).toISOString());
+        await store.startTrial(next.id, trialUsed ? ctx.now().toISOString() : new Date(ctx.now().getTime() + trial.trialDays * 86_400_000).toISOString());
       }
       const saved = (await store.shopById(next.id)) ?? next;
-      return ok({ shop: publicShop(saved), role: 'owner', mainOwner: mine?.seat.primary ?? true, plan: await planOut(deps, saved, ctx.now()) });
+      return ok({ shop: publicShop(saved), role: 'owner', mainOwner: mine?.seat.primary ?? true, plan: await planOut(deps, saved, ctx.now()), ...(trialUsed ? { trialUsed: true } : {}) });
     }
     return { status: 405 };
   }

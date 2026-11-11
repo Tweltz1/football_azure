@@ -110,6 +110,24 @@ test('a new shop gets the trial length from settings, with car and text limits',
   assert.match(String(third_car?.body), /includes 2 cars/);
 });
 
+test('each shop phone gets one free trial', async () => {
+  const w = world();
+  const used = new Map<string, string>();
+  w.deps.store.claimTrialPhone = async (phone, shopId) => { if (used.has(phone)) return false; used.set(phone, shopId); return true; };
+  type Out = { plan: { state: string }; trialUsed?: boolean };
+  assert.equal((await w.as('dan')('POST', 'shop/me', { name: 'Ridgeline' }))?.status, 400, 'a new shop needs a phone');
+  const first = (await w.as('dan')('POST', 'shop/me', { name: 'Ridgeline', phone: '(555) 014-2290' }))?.body as Out;
+  assert.equal(first.plan.state, 'trial');
+  assert.equal(first.trialUsed, undefined);
+  // Editing the first shop doesn't need the check again.
+  assert.equal((await w.as('dan')('POST', 'shop/me', { name: 'Ridgeline', phone: '' }))?.status, 200);
+  const again = (await w.as('dan2')('POST', 'shop/me', { name: 'Ridgeline Two', phone: '+1 555-014-2290' }))?.body as Out;
+  assert.equal(again.plan.state, 'trial_ended');
+  assert.equal(again.trialUsed, true);
+  const other = (await w.as('eve')('POST', 'shop/me', { name: 'Elsewhere', phone: '555-014-9999' }))?.body as Out;
+  assert.equal(other.plan.state, 'trial');
+});
+
 test('when the trial ends the shop can still look but not send', async () => {
   const w = world();
   const dan = w.as('dan');
