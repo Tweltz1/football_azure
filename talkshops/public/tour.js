@@ -70,15 +70,19 @@
     return words.flatMap((_, i) => i % 8 === 0 ? [[i * estimate / words.length, i]] : []);
   }
   const audio = new Audio();
+  const SILENT = "data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
   audio.preload = "auto";
   let paused = false, ended = false, muted = false;
   let spotSel = null, stepNo = 0;
   let STEPS = 13;
+  let skipStep = 0, onSkip = null; // Skip: run the rest of the current step at full speed, with no narration
+  const skipping = () => skipStep && skipStep === stepNo;
   class Stop extends Error {}
   const check = () => { if (ended) throw new Stop(); };
 
   // ---------- timing ----------
   async function wait(ms) {
+    if (skipping()) { await new Promise((r) => setTimeout(r, Math.min(ms, 40))); check(); return; }
     let left = ms;
     while (left > 0) { check(); await new Promise((r) => setTimeout(r, 100)); if (!paused) left -= 100; }
     check();
@@ -107,12 +111,13 @@
     showAt(0);
     c.done = new Promise((resolve) => {
       let fallbackTimer = null;
-      const finish = () => { clearInterval(fallbackTimer); audio.ontimeupdate = null; audio.onended = audio.onerror = null; resolve(); };
+      const finish = c.finish = () => { clearInterval(fallbackTimer); audio.ontimeupdate = null; audio.onended = audio.onerror = null; resolve(); };
       const useFallback = () => {
         if (c.fallback) return;
         c.fallback = true;
         fallbackTimer = setInterval(() => { if (!paused) c.elapsed += 0.1; showAt(c.elapsed / est * (cues.at(-1)[0] + 2)); if (c.elapsed >= est || ended) finish(); }, 100);
       };
+      if (skipping()) { c.fallback = true; c.elapsed = est; finish(); return; }
       audio.ontimeupdate = () => showAt(audio.currentTime);
       audio.onended = finish;
       audio.onerror = useFallback;
@@ -129,7 +134,7 @@
     const c = clip;
     for (;;) {
       check();
-      if (c !== clip) return;
+      if (c !== clip || skipping()) return;
       const pos = c.fallback ? c.elapsed / c.est : (audio.duration ? audio.currentTime / audio.duration : 0);
       if (pos >= f || audio.ended) return;
       await new Promise((r) => setTimeout(r, 80));
@@ -274,6 +279,7 @@
     el.focus({ preventScroll: true });
     reveal(el, "instant");
     el.value = "";
+    if (skipping()) { el.value = String(text); el.dispatchEvent(new Event("input", { bubbles: true })); return; }
     for (const ch of String(text)) { check(); el.value += ch; el.dispatchEvent(new Event("input", { bubbles: true })); await wait(45); }
   }
 
@@ -281,12 +287,13 @@
   const panel = document.createElement("div"); panel.id = "tourPanel"; panel.setAttribute("role", "region"); panel.setAttribute("aria-label", "Guided tour");
   panel.innerHTML = `<div class="t-top"><span class="t-step" id="tStep"></span>
     <button class="t-btn" id="tPause" type="button">Pause</button>
+    <button class="t-btn" id="tSkipPart" type="button" title="Skip to the next part" aria-label="Skip to the next part">Skip ›</button>
     <button class="t-btn" id="tMute" type="button">Mute</button>
     <button class="t-btn" id="tEnd" type="button">${lesson ? "End lesson" : "End tour"}</button></div>
     <div class="t-cap" id="tCap" aria-live="polite"></div><div id="tExtra"></div>`;
   function setCaption(t) { q("#tCap").textContent = t; }
   // A new step starts with no box, so the last step's highlight isn't left on screen while the page moves on.
-  function setStep(n) { stepNo = n; spotSel = null; spotLoc = null; q("#tStep").textContent = lesson ? `Lesson ${lessonIx + 1}: ${lesson.title} · ${n} of ${STEPS}` : `Guided tour · ${n} of ${STEPS}`; }
+  function setStep(n) { stepNo = n; skipStep = 0; onSkip = null; spotSel = null; spotLoc = null; q("#tStep").textContent = lesson ? `Lesson ${lessonIx + 1}: ${lesson.title} · ${n} of ${STEPS}` : `Guided tour · ${n} of ${STEPS}`; }
   function extra(html) { q("#tExtra").innerHTML = html || ""; }
   panel.addEventListener("click", (e) => {
     const id = e.target.id;
@@ -294,6 +301,13 @@
       paused = !paused;
       e.target.textContent = paused ? "Resume" : "Pause";
       if (paused) audio.pause(); else if (audio.src && !audio.ended && clip && !clip.fallback) audio.play().catch(() => {});
+    }
+    if (id === "tSkipPart" && !ended && stepNo && !skipping()) {
+      skipStep = stepNo;
+      if (paused) { paused = false; q("#tPause").textContent = "Pause"; }
+      try { audio.pause(); } catch (x) { /* ignore */ }
+      clip?.finish?.();
+      onSkip?.();
     }
     if (id === "tMute") { muted = !muted; audio.muted = muted; e.target.textContent = muted ? "Unmute" : "Mute"; }
     if (id === "tEnd") endTour(true);
@@ -359,6 +373,7 @@
           <p class="t-err" id="tErr" hidden></p></form>`);
       const err = (m) => { const p = q("#tErr"); p.textContent = m; p.hidden = !m; };
       q("#tSkip").onclick = () => resolve(null);
+      onSkip = () => { stopPolling(); resolve(null); };
       q("#tPhoneForm").onsubmit = async (e) => {
         e.preventDefault();
         if (!q("#tConsent").checked) { err("Check the box to agree to one demo text."); return; }
@@ -1237,7 +1252,8 @@
       q("#tsGo").onclick = () => {
         gate.remove();
         // Unlock audio on this tap (mobile browsers only allow playback after a user gesture).
-        audio.src = "/tour/intro.mp3"; audio.play().then(() => audio.pause()).catch(() => {});
+        // Use a silent clip: unlocking with the intro itself played its first words ("Hey there"), then the real intro started over.
+        audio.src = SILENT; audio.play().then(() => { if (audio.src === SILENT) audio.pause(); }).catch(() => {});
         const go = lesson ? async () => { await TRAIN[lesson.id](); await wait(400); endTour(false); } : runTour;
         go().catch((e) => { if (!(e instanceof Stop)) { console.error(e); endTour(true); } });
       };
