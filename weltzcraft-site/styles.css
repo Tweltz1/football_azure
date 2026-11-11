@@ -277,6 +277,9 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 .terms span{color:var(--muted);font-size:15.5px}
 .after-h{font-size:24px;margin:56px 0 18px}
 .plans{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin:0 0 40px}
+.tier{padding:24px}
+.tier .plan-price small{font-size:14px}
 .plan{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:28px;box-shadow:var(--shadow)}
 .plan-hot{border:2px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(135deg,var(--ember),var(--ember-2) 45%,#7a5cff) border-box;box-shadow:0 30px 70px -34px color-mix(in srgb,var(--ember) 60%,transparent)}
 .plan-tag{font:600 12px/1 var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--ember);margin-bottom:10px}
@@ -289,7 +292,9 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 .plan li::before{content:"✓";position:absolute;left:0;top:0;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--ok-bg);color:var(--ok)}
 .plan-cta{margin-top:28px}
 @media (max-width:960px){nav{gap:16px}}
+@media (max-width:960px){.tiers{grid-template-columns:1fr 1fr}}
 @media (max-width:760px){.terms,.plans{grid-template-columns:1fr}}
+@media (max-width:480px){.tiers{grid-template-columns:1fr}}
 
 /* ===== interactive: theme toggle, demo phone, estimator ===== */
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
