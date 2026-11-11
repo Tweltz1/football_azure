@@ -56,8 +56,13 @@ const yn = (v) => (v ? 'yes' : 'NO');
     const list = (await get('webhook_endpoints?limit=100')).data || [];
     const lines = list.map((w) => {
       let where = '?';
-      try { const u = new URL(w.url); where = u.hostname.replace(/^[a-z0-9]+\./, '<project>.') + u.pathname; } catch (error) { /* keep ? */ }
-      return `${where} | ${w.status} | livemode ${yn(w.livemode)} | events: ${(w.enabled_events || []).join(', ')}`;
+      try {
+        const u = new URL(w.url);
+        // Both project refs are public (they ship in the websites).
+        const which = u.hostname.startsWith('evpcfkasnbpoajkpltch.') ? 'Talk Shops project' : u.hostname.startsWith('nkwedlskhnojseeroezm.') ? 'OLD shared project' : 'another host';
+        where = `${which} ${u.pathname}`;
+      } catch (error) { /* keep ? */ }
+      return `${where} | ${w.status} | livemode ${yn(w.livemode)} | made ${new Date((w.created || 0) * 1000).toISOString().slice(0, 16)}Z | events: ${(w.enabled_events || []).join(', ')}`;
     });
     return `${list.length}\n     ` + lines.join('\n     ');
   });
