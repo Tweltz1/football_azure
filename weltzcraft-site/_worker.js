@@ -228,6 +228,26 @@ async function merchWebhook(request, env) {
   }
   const existing = await printful(env, '/orders/@' + external_id);
   if (existing.ok) return json(200, { ok: true, duplicate: true });
+  // Stripe rates every payment for fraud. A risky one is saved as a Printful draft (nothing printed or charged)
+  // so Tyler can look before it ships: confirm it in Printful, or refund in Stripe and delete the draft.
+  let risk = 'unknown';
+  try {
+    const pi = typeof s.payment_intent === 'string' ? await stripe(env, 'payment_intents/' + s.payment_intent + '?expand[]=latest_charge') : null;
+    risk = (pi && pi.latest_charge && pi.latest_charge.outcome && pi.latest_charge.outcome.risk_level) || 'unknown';
+  } catch (e) { /* can't read it: treat as normal */ }
+  summary.push('Stripe fraud risk: ' + risk);
+  if (risk === 'elevated' || risk === 'highest') {
+    const d = await printful(env, '/orders', order);
+    await emailSales(env, 'REVIEW merch order (fraud risk ' + risk + '): ' + s.metadata.slug, summary.concat(['',
+      d.ok ? 'Held as a DRAFT in Printful, nothing printed yet. If it looks real, confirm it in Printful > Orders. If not, refund it in Stripe and delete the draft.'
+        : 'Printful refused the draft too. Place it by hand if it looks real.',
+      'Stripe payment: https://dashboard.stripe.com/payments/' + s.payment_intent]).join('\n'));
+    const names = itemNames(s.metadata.slug, await catalog(request, env));
+    await emailBuyer(env, order.recipient.email, 'Your Weltzcraft order is confirmed', ['Hi ' + firstName(order.recipient.name) + ',', '',
+      'Thanks for your order! Here is what we are making for you:', '', ...names.map((n) => '  - ' + n), '',
+      'We will email you a tracking link as soon as it ships. Questions? Just reply to this email.', '', 'Weltzcraft Studios'].join('\n'));
+    return json(200, { ok: true, held: true });
+  }
   let r = await printful(env, '/orders?confirm=true', order);
   let note = 'Sent to Printful and confirmed for printing.';
   if (!r.ok) {
