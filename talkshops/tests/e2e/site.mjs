@@ -87,6 +87,16 @@ try {
       return String(r.status());
     });
   }
+  for (const host of [SITE, 'https://talkshops.app']) {
+    await step(`Latest app code is live on ${new URL(host).host}`, async () => {
+      const r = await fetch(host + '/app.js', { headers: { 'Cache-Control': 'no-cache' } });
+      const t = await r.text();
+      if (r.status !== 200) throw new Error('status ' + r.status);
+      const local = fs.readFileSync(new URL('../../public/app.js', import.meta.url), 'utf8');
+      if (t.trim() !== local.trim()) throw new Error(`differs from the repo (live ${t.length} chars, repo ${local.length}); has trial check: ${t.includes('trialUsed')}, has name prefill: ${t.includes('full_name')}`);
+      return 'matches the repo';
+    });
+  }
   await step('Talk Shops API health', async () => {
     const r = await fetch(SB + '/functions/v1/api/health');
     const j = await r.json();
