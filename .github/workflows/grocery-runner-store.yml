@@ -105,6 +105,7 @@ jobs:
           sips -g pixelWidth -g pixelHeight shots/*.png
           echo "$NAME" > shots/device.txt
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # GitHub's artifact service has outages; the pictures also go to a branch
         with:
           name: grocery-runner-store-shots
           path: grocery-runner-app/shots/

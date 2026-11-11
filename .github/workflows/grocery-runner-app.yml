@@ -229,6 +229,7 @@ jobs:
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" grocery-runner-screenshots
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # GitHub's artifact service has outages; the pictures also go to a branch
         if: env.UPLOAD != 'true'
         with:
           name: grocery-runner-screenshots
