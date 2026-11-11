@@ -192,3 +192,52 @@ export const MORE = {
   "How do you handle consent for texts?": ["permission to text customers", "opt in", "consent checkbox"],
 };
 for (const [q, list] of Object.entries(MORE)) ASK[q].push(...list);
+
+// 2026-11-11 batch: more ways to ask the questions with the fewest examples and the pairs the model mixed up
+// (reopen vs delete vs finish, How-To plan vs How-To tab, tread depth vs car repair, Results vs other screens).
+// Written before heldout-fresh-2.json was scored, without looking at it.
+export const MORE2 = {
+  "How does Talk Shops track multiple visits for the same car?": ["what did we do on this car last time", "look at older jobs for this vehicle", "history of work on a truck", "list of past repair orders for a car", "work done on previous visits"],
+  "Can I set a promised-by time?": ["i promised the car by friday", "add a ready by time", "promise time for the customer", "put in when i said it would be ready", "deadline for a car", "when did we promise this one"],
+  "How will I know when a customer replies or approves?": ["notification when a customer approves", "alert when they reply", "how do i see the customer approved", "does it tell me when they say yes", "where do i see approvals", "does it ping me when they answer"],
+  "What is Today's Summary?": ["daily summary", "what happened today", "end of day recap", "today screen", "summary of the day"],
+  "Can I record mileage?": ["enter the odometer", "miles in and miles out", "log the mileage", "where does mileage go", "odometer reading"],
+  "Can I record tire tread depth?": ["tread depth readings", "log tire tread in 32nds", "where do i put tread measurements", "record how worn the tires are in the app", "tire tread field", "tread depth on the walk-through"],
+  "What are walk-around photos?": ["photos of the car before work", "document existing damage with pictures", "take pictures of scratches at check in", "pre-existing damage photos", "walk around pictures"],
+  "How does AI damage marking work?": ["does it find dents automatically", "auto mark scratches on photos", "ai marks damage on the picture", "how does it spot damage", "automatic damage detection"],
+  "Can I keep a note just for my team?": ["private note", "note the customer won't see", "staff only notes", "internal comment on a job", "hidden note for techs"],
+  "What if my price sheet has an unusual layout?": ["my price list is in a strange format", "price sheet has multiple columns", "weird pdf price list", "it didn't read my price list right", "handwritten price sheet", "price list import came out wrong"],
+  "Can I download or replace my saved items?": ["download my saved parts and labor", "replace all my saved items", "export my price list", "start my price list over", "back up my saved items"],
+  "Can I use labor hours from a labor guide?": ["labor guide hours", "book time for a job", "import labor times", "use standard labor hours", "labor times from my estimating software"],
+  "Can customers text us back?": ["can customers reply to the texts", "what if a customer responds by text", "two way texting", "do replies come to us", "customer answered the text"],
+  "Where do customer email replies go?": ["customer replied to the email", "where do email responses show up", "who gets the email replies", "reply to the update email", "emails back from customers"],
+  "Can it find videos?": ["video for this repair", "youtube how to video", "does how-to show videos", "find a repair video", "show me a video of the job"],
+  "Does it give part numbers?": ["oem part number", "what part number do i need", "does it look up parts", "part numbers in how-to", "find the right part number"],
+  "Can I trust the specs?": ["are the specs right", "how reliable are the torque numbers", "double check fluid capacities", "can i rely on how-to specs", "are the specs verified"],
+  "Which plan includes How-To?": ["is how-to in the basic plan", "do i have to upgrade for how-to", "how-to tab not showing on my plan", "which subscription has how-to", "how-to costs extra", "what plan unlocks how-to"],
+  "Can I use my own invoice?": ["use our own invoices", "we bill in our shop software", "invoice from quickbooks", "do i have to use your invoice", "keep using my pos for billing"],
+  "Can I print a work order or bill?": ["print the repair order", "print an invoice", "printable work order", "paper copy for the customer", "print the estimate"],
+  "Where do finished jobs go?": ["completed jobs", "where did the car go after i finished it", "find a closed job", "history of finished cars", "picked up cars list"],
+  "Can customers pay online?": ["online payment", "pay by card on the link", "take payments through talk shops", "can they pay from the text", "card payments"],
+  "What if the customer doesn't want the repair?": ["customer declined the work", "they said no to the estimate", "customer doesn't want to fix it", "declined repairs", "what to do when they decline"],
+  "Can I reopen a finished job?": ["undo finishing a job", "reopen a closed repair", "bring a finished car back to the board", "finished it too early", "open a completed job again", "unfinish a job"],
+  "How do I delete a repair?": ["remove a job", "delete a duplicate car", "get rid of a test job", "erase a repair order", "delete a car from the board"],
+  "How do I sign someone out of every device?": ["log someone out everywhere", "lost phone sign out", "former employee still logged in", "kick a user off all devices", "end all sessions"],
+  "How do I get password reset codes by text?": ["reset code by sms", "text me the reset code", "password reset by phone", "get the code by text instead of email"],
+  "How do I sign out?": ["log out", "sign off", "where is log out", "how to log off", "exit my account"],
+  "I did not get my account confirmation email.": ["no confirmation email", "didn't get the sign up email", "verify email never came", "confirmation link missing", "resend the confirmation"],
+  "Is there a free trial?": ["free trial", "can i try it free", "how long is the trial", "trial period", "try free before paying"],
+  "What happens when my trial ends?": ["trial expired", "after the trial", "trial is over now what", "do i lose my data when the trial ends", "end of free trial"],
+  "What if we run out of texts?": ["out of texts", "text limit reached", "more texts", "ran out of messages", "buy more texts", "monthly text allowance"],
+  "Can customers book online?": ["online booking", "appointment page", "customers book their own appointment", "booking link", "schedule online"],
+  "Can customers see their page in Spanish?": ["spanish", "espanol", "customer page in another language", "translate for the customer", "spanish speaking customers"],
+  "How do I ask for reviews?": ["review requests", "google reviews", "ask for a review after pickup", "get more reviews", "review link"],
+  "What does the Results dashboard show?": ["results tab", "shop numbers", "how many cars did we finish", "reports", "stats for my shop", "approval rate and revenue"],
+  "How does the time clock work?": ["clock in and out", "track tech hours", "time clock", "punch in", "how long a tech worked on a car"],
+  "Can I add my logo?": ["upload logo", "shop branding", "put our logo on the page", "brand colors", "change the look of the customer page"],
+  "Can I export my data?": ["export", "download all my data", "csv export", "take my data with me", "backup my shop data"],
+  "Who can see a customer's page?": ["who can open the customer link", "is the customer page private", "can someone guess the link", "does the page expire", "link security"],
+  "Do you sell customer information?": ["do you share my customers info", "what do you do with customer phone numbers", "privacy of my customer list", "is my data sold", "who owns my customer data"],
+  "How do you handle consent for texts?": ["do i need permission to text", "texting consent", "tcpa", "customer agreed to texts", "opt out and opt in for texts", "is it legal to text customers"],
+};
+for (const [q, list] of Object.entries(MORE2)) ASK[q].push(...list);

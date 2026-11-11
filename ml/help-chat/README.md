@@ -14,6 +14,10 @@ scrubbed to `talkshops_help_misses` (route shop/help-miss; skipped when the shop
 - `eval.mjs [file]`: scores a test set. `heldout.json` was used while tuning; `heldout-fresh.json` was written afterwards
   and is the honest score (Nov 10 2026: right result first 82%, right answer among the offered choices 88%,
   wrong when it answered outright 4 of 63).
+  Nov 11 2026: added `MORE2` (more ways to ask the 40 questions with the fewest examples or most mix-ups) and wrote
+  `heldout-fresh-2.json` (73 questions, every Help topic) before training. Before -> after: fresh right first 81.1% ->
+  85.3%, answered wrong 3 -> 2; fresh-2 right first 87.7% -> 86.3%, right answer in the offered choices 92.5% -> 94.0%,
+  answered outright 52 -> 56 with 1 wrong both times. Don't train on fresh-2; write a new set for the next change.
 - Runtime: `help-chat-features.js` (words), `help-chat-model-run.js` (scoring + thresholds), `help-chat.js` (the chat).
 
 When you add or rename a Help question, add ways to ask it in `data.mjs` and run `node ml/help-chat/train.mjs`.
