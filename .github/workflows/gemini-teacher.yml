@@ -2,7 +2,8 @@
 # broad kind ("Furniture", "Tool", "Toy") and adds the ones it's sure of to the growing set in the release
 # gemini-teacher (teacher.zip). Curbsy's item namer (item-namer.yml, which runs this first) and ToteTrack's
 # namer (totetrack-build-namer.yml) train on that set; each keeps it only if it scores at least as well on
-# photos people labeled. See ml/gemini-teacher/teach.py. Needs the GEMINI_API_KEY secret; skips without it.
+# photos people labeled. See ml/gemini-teacher/teach.py. Needs the GEMINI_TRAINING_KEY secret (a Gemini key of
+# its own, so training never uses up the live apps' quota); skips without it.
 name: Gemini teacher
 
 on:
@@ -39,7 +40,8 @@ jobs:
         working-directory: ml/gemini-teacher
     env:
       GH_TOKEN: ${{ github.token }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # Its own key, never the live apps' one: the free tier allows only ~20 requests a day per model.
+      GEMINI_API_KEY: ${{ secrets.GEMINI_TRAINING_KEY }}
     steps:
       - uses: actions/checkout@v4
 

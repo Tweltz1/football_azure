@@ -4,7 +4,7 @@ Gemini can't run on the phones (the apps name things on the phone, for free), bu
 namers. `teach.py` takes Open Images V7 boxes that people only labeled with a broad kind ("Furniture", "Tool",
 "Toy", "Kitchenware"), asks Gemini what each one is exactly ("Step stool", "Hand saw", "Toy truck"), and keeps
 the photos it's sure of. Ten photos per request; about 150 requests a run, so the set grows run by run within
-the free key's daily limit.
+the key's daily limit. It uses its own key (GitHub secret `GEMINI_TRAINING_KEY`), never the live apps' one.
 
 - Runs from `.github/workflows/gemini-teacher.yml`: on its own (Actions tab, or a push here to the live
   branch), and first thing in every item namer training (`item-namer.yml`, weekly).
