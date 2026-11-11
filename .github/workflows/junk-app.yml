@@ -222,10 +222,9 @@ jobs:
             find "$APP_PATH/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -exec codesign --force --sign - {} \; 2>/dev/null || true
             codesign --force --sign - "$@" "$APP_PATH"
           }
-          PUSH=0
-          if KEY_P8="$KEY_P8" KEY_ID="$KEY_ID" ISSUER_ID="$ISSUER_ID" node ../../enable-push.js; then
-            adhoc_sign --entitlements App/App.entitlements && PUSH=1
-          fi
+          # The same entitlements file carries Sign in with Apple (Apple's own sheet, AuthSessionPlugin).
+          KEY_P8="$KEY_P8" KEY_ID="$KEY_ID" ISSUER_ID="$ISSUER_ID" node ../../enable-push.js || { rm -f "$KEY_PATH"; exit 1; }
+          adhoc_sign --entitlements App/App.entitlements
 
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -241,12 +240,8 @@ jobs:
           if ! xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}"; then
-            if [ "$PUSH" != 1 ]; then rm -f "$KEY_PATH"; exit 1; fi
-            # Don't hold the whole build back over notifications: upload it without them.
-            echo "::warning::Upload with the notifications entitlement failed; uploading this build without saved-search alerts."
-            codesign --remove-signature "$APP_PATH" && adhoc_sign
-            xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
-              -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
-              -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" || { rm -f "$KEY_PATH"; exit 1; }
+            # No fallback without the entitlements: Sign in with Apple (required next to Google sign-in by
+            # App Store guideline 4.8) needs them, so a build without them must not reach testers.
+            rm -f "$KEY_PATH"; exit 1
           fi
           rm -f "$KEY_PATH"

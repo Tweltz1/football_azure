@@ -35,7 +35,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gemini names a few more photos first (gemini-teacher.yml); training goes ahead even if that fails.
+  teach:
+    uses: ./.github/workflows/gemini-teacher.yml
+    secrets: inherit
+
+  # ToteTrack's namer learns from the same Gemini-named photos: rebuild it on its branch (it keeps them only
+  # if its test score holds). Only for the scheduled/hand-started weekly runs, not every push.
+  totetrack:
+    needs: teach
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Rebuild ToteTrack's namer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run totetrack-build-namer.yml -R "${{ github.repository }}" --ref claude/totetrack-app || echo "::warning::Couldn't start ToteTrack's namer build"
+
   train:
+    needs: teach
+    if: ${{ !cancelled() }}
     runs-on: macos-15
     timeout-minutes: 350
     defaults:
@@ -89,6 +110,21 @@ jobs:
             SUPABASE_URL="https://$SUPABASE_PROJECT_ID.supabase.co" SUPABASE_SERVICE_KEY="$KEY" python fixes.py --crops crops --out out || echo "::warning::Couldn't read the name fixes; training without them"
           else
             echo "No SUPABASE_ACCESS_TOKEN: training without name fixes"
+          fi
+
+      # Photos Gemini named (ml/gemini-teacher): training only, never test photos. promote.py still decides
+      # whether phones get the result, on photos people labeled.
+      - name: Add photos Gemini named
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          . .venv/bin/activate
+          mkdir -p teacher-set
+          if gh release download gemini-teacher -R "${{ github.repository }}" -p teacher.zip -D . 2>/dev/null; then
+            unzip -q teacher.zip -d teacher-set && rm teacher.zip
+            python teacher.py --set teacher-set --crops crops --cap "${{ steps.s.outputs.per_class }}" || echo "::warning::Couldn't add the Gemini-named photos; training without them"
+          else
+            echo "No Gemini-named photos yet"
           fi
 
       # Feature prints take about an hour for 30,000 pictures; earlier ones are kept and reused by file.

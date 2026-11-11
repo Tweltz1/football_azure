@@ -17,14 +17,26 @@
 .gr-bk-form textarea{min-height:76px}
 /* Appointment times on the booking page */
 .gr-slots{display:grid;gap:10px}
-.gr-slot-days{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity}
-.gr-slot-day{flex:0 0 auto;scroll-snap-align:start;display:grid;gap:2px;min-width:72px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:inherit;font:inherit;cursor:pointer;text-align:center}
-.gr-slot-day small{font-size:12px;color:var(--muted)}
 .gr-slot-times{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
 .gr-slot-time{padding:10px 6px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:inherit;font:inherit;font-weight:600;cursor:pointer}
-.gr-slot-day[aria-pressed="true"],.gr-slot-time[aria-pressed="true"]{border-color:var(--accent,#1f6feb);background:var(--accent,#1f6feb);color:#fff}
-.gr-slot-day[aria-pressed="true"] small{color:inherit;opacity:.85}
+.gr-slot-time[aria-pressed="true"]{border-color:var(--accent,#1f6feb);background:var(--accent,#1f6feb);color:#fff}
 .gr-slot-pick{margin:0}
+.gr-cal{border:1px solid var(--line);border-radius:14px;padding:10px;background:var(--surface)}
+.gr-cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.gr-cal-head b{font-size:16px}
+.gr-cal-nav{width:40px;height:40px;border:1px solid var(--line);border-radius:10px;background:transparent;color:inherit;font:inherit;font-size:22px;line-height:1;cursor:pointer}
+.gr-cal-nav:disabled{opacity:.3;cursor:default}
+.gr-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.gr-cal-wd{font-size:12px;font-weight:600;color:var(--muted);padding:2px 0}
+.gr-cal-grid>button,.gr-cal-off{min-height:44px;border-radius:10px;display:grid;place-content:center;gap:0;font:inherit}
+.gr-cal-off{color:var(--muted);opacity:.45}
+.gr-cal-open{border:1px solid var(--accent,#1f6feb);background:transparent;color:inherit;cursor:pointer;padding:2px 0}
+.gr-cal-open b{font-size:15px;line-height:1.1}
+.gr-cal-open small{font-size:11px;line-height:1.1;color:var(--accent,#1f6feb);font-weight:600}
+.gr-cal-open[aria-pressed="true"]{background:var(--accent,#1f6feb);color:#fff}
+.gr-cal-open[aria-pressed="true"] small{color:inherit;opacity:.9}
+.gr-cal-key{margin:8px 2px 0;font-size:12px}
+.gr-cal-day{margin:2px 0 0;font-weight:700}
 .gr-slots-none{padding:10px 12px;border:1px dashed var(--line);border-radius:10px}
 /* Appointment hours (settings) */
 .gr-sched{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
@@ -34,6 +46,19 @@
 .gr-sched-day input[type=time]{max-width:130px}
 .gr-sched-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 @media (max-width:480px){.gr-sched-day{grid-template-columns:104px auto auto auto}.gr-sched-day input[type=time]{max-width:100px}}
+.gr-sched-pause{padding:10px 12px;border:1px solid color-mix(in srgb,var(--warn,#e59a14) 45%,var(--line));background:color-mix(in srgb,var(--warn,#e59a14) 7%,var(--surface));border-radius:10px}
+.gr-sched-smart{display:grid;gap:8px;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.gr-sched-smart h4{margin:0;font-size:15px}
+.gr-load{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.gr-load-day{display:grid;gap:1px;text-align:center;padding:6px 2px;border:1px solid var(--line);border-radius:10px;font-size:13px}
+.gr-load-day small{font-size:11.5px;color:var(--muted)}
+.gr-load-day.is-full{border-color:color-mix(in srgb,var(--warn,#e59a14) 60%,var(--line));background:color-mix(in srgb,var(--warn,#e59a14) 12%,var(--surface))}
+.gr-load-day.is-full small:last-child{color:inherit;font-weight:600}
+.gr-sched-off{display:grid;gap:6px}
+.gr-sched-off-add{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.gr-sched-off-add input{max-width:190px}
+.gr-sched-off-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.gr-sched-off-list li{display:flex;gap:8px;align-items:center;padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:13.5px}
 /* Upcoming appointments on the Bay */
 .gr-appts{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-lg,14px);padding:12px 14px;margin:10px 0}
 .gr-appt-day h4{margin:10px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
@@ -74,3 +99,9 @@
 .gr-brand-logo img{max-height:64px;max-width:240px}
 .gr-color span{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .gr-color input[type=color]{width:46px;height:36px;padding:2px;border-radius:8px}
+/* Appointment rules, moving an appointment (shop) and changing it (customer) */
+.gr-sched-lunch{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.gr-sched-lunch .chk{margin:0}
+.gr-appt-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:8px}
+.gr-c-move{display:grid;gap:10px;margin-top:12px}
+.gr-c-err{margin:8px 0 0;color:var(--bad,#b42318);font-weight:600}

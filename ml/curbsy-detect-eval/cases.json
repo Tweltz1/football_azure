@@ -34,5 +34,10 @@
   {"search": "revolver handgun", "allowed": false},
   {"search": "cigarettes pack", "allowed": false},
   {"search": "pet dog sitting", "allowed": false},
-  {"search": "kitchen knife set block", "category": "home", "allowed": true, "words": ["knife", "knives"]}
+  {"search": "kitchen knife set block", "category": "home", "allowed": true, "words": ["knife", "knives"]},
+  {"search": "dining table and chairs set", "category": "furniture", "words": ["table", "dining", "chair"]},
+  {"search": "box fan electric", "category": "appliances", "words": ["fan"]},
+  {"search": "wheelbarrow garden", "category": "garden", "words": ["wheelbarrow"]},
+  {"search": "wooden pallets stacked", "category": "building", "words": ["pallet"]},
+  {"search": "crib baby bed", "category": "kids", "words": ["crib", "cot"]}
 ]

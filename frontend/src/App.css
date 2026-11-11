@@ -2136,3 +2136,74 @@ hr {
   font-size: 14px;
   line-height: 1.4;
 }
+
+/* Email + password sign-in (Login page) and the "choose a new password" box */
+.email-signin-or {
+  margin: 16px 0 10px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.email-signin {
+  display: grid;
+  gap: 10px;
+}
+
+.modal-content.email-signin {
+  width: min(420px, 100%);
+}
+
+.email-signin label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.email-signin input {
+  width: 100%;
+  font-size: 16px; /* keeps iPhone Safari from zooming in */
+}
+
+.email-signin > button {
+  width: 100%;
+  min-height: 44px;
+}
+
+.email-signin-message {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #fca5a5;
+}
+
+.email-signin-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #86efac;
+}
+
+.email-signin-switch {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.email-signin-switch button {
+  display: inline;
+  width: auto;
+  min-height: 0;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+  font-size: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.email-signin-switch button:hover:not(:disabled) {
+  background: none;
+}

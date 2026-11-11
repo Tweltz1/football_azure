@@ -86,5 +86,10 @@ apart appointments start, cars at the same time, notice needed, how far ahead), 
 customer picks one. Times already booked or waiting on the shop are hidden. The shop can confirm each request or turn on
 instant booking, which puts the car on the Bay as "invited" with the appointment set and sends the confirmation. A reminder
 text goes out 24 hours before (hourly job), only to customers who agreed to messages, and never after STOP.
+A shop that's booked up can pause new appointments with one switch (customers see a note to call; booked cars stay) and can
+list days off (holidays, full days) that drop out of the open times.
+Smart scheduling (optional): the owner sets the most cars wanted in the shop at once and how long a booked car usually
+stays. Each day's expected count is the cars on the Bay (through their promised pickup day) plus appointments; a day at the
+limit takes no bookings. Settings shows the next 7 days against the limit.
 Rules live in `supabase/functions/_shared/shopSchedule.ts`; settings are saved in `repair_shops.grow.schedule`. The Bay lists
 the next week's appointments above the columns. The demo shop works the same way from the browser (`Grow.openSlots`).

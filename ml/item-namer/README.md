@@ -13,6 +13,7 @@ so the feature prints are made one picture at a time and unreadable ones are ski
 - `fixes.py`: the learning loop. Adds the name fixes people sent from the apps (`junk_label_fixes` in
   Supabase; a picture only from people who turned on "Help improve item recognition") and reports the most
   common mix-ups in `fixes.json`.
+- `teacher.py`: adds the Open Images photos Gemini named (`ml/gemini-teacher`) to training, never to test.
 - `features.swift`: Apple Vision feature print for every crop.
 - `fit.py`: softmax classifier on those (numpy), with test accuracy.
 

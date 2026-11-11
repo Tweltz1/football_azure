@@ -118,6 +118,8 @@ export const SAY = {
     // Sent with the STOP line added after it, like the estimate reminder.
     remind: (shop: string, when: string, phone: string) => fitOne([`Reminder: your appointment at ${shop} is tomorrow, ${when}.${phone ? ` To change it, call ${phone}.` : ''} Reply STOP to opt out.`, `Reminder: ${shop} appointment tomorrow, ${when}. Reply STOP to opt out.`]).replace(/ Reply STOP to opt out\.$/, ''),
     booked: (first: string, shop: string, when: string, link: string) => fitOne([`Hi ${first}, ${shop} confirmed your appointment for ${when}. Details and photos: ${link}`, `${shop}: appointment confirmed for ${when}. ${link}`]),
+    moved: (first: string, shop: string, when: string, link: string) => fitOne([`Hi ${first}, ${shop} moved your appointment to ${when}. Reply YES to confirm or pick another time: ${link}`, `${shop} moved your appointment to ${when}. Reply YES or pick another time: ${link}`]),
+    movedOk: (shop: string, when: string) => `Thanks! ${shop} has you down for ${when}.`,
     // Sent with the STOP line added after it, so the choice is made with it included.
     nudge: (shop: string, car: string, link: string) => fitOne([`${shop}: your ${car} estimate is still waiting for your OK: ${link} Reply STOP to opt out.`, `${shop}: your estimate is still waiting for your OK: ${link} Reply STOP to opt out.`]).replace(/ Reply STOP to opt out\.$/, ''),
   },
@@ -133,6 +135,8 @@ export const SAY = {
     reviewTail: (url: string) => ` Déjenos una reseña: ${url}`,
     remind: (shop: string, when: string, phone: string) => fitOne([`Recordatorio: su cita en ${shop} es mañana, ${when}.${phone ? ` Para cambiarla llame al ${phone}.` : ''} Responda STOP para salir.`, `Recordatorio: cita en ${shop} mañana, ${when}. Responda STOP para salir.`]).replace(/ Responda STOP para salir\.$/, ''),
     booked: (first: string, shop: string, when: string, link: string) => fitOne([`Hola ${first}, ${shop} confirmó su cita para el ${when}. Detalles y fotos: ${link}`, `${shop}: cita confirmada para el ${when}. ${link}`]),
+    moved: (first: string, shop: string, when: string, link: string) => fitOne([`Hola ${first}, ${shop} cambió su cita al ${when}. Responda SI para confirmar o elija otra hora: ${link}`, `${shop} cambió su cita al ${when}. Responda SI o elija otra hora: ${link}`]),
+    movedOk: (shop: string, when: string) => `¡Gracias! ${shop} lo espera el ${when}.`,
     nudge: (shop: string, car: string, link: string) => fitOne([`${shop}: el presupuesto de su ${car} sigue esperando su respuesta: ${link} Responda STOP para salir.`, `${shop}: su presupuesto sigue esperando su respuesta: ${link} Responda STOP para salir.`]).replace(/ Responda STOP para salir\.$/, ''),
   },
 } as const;

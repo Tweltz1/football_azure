@@ -814,6 +814,21 @@ test('Curbsy Plus: an Apple-signed subscription for this account unlocks it; fak
   assert.equal((res?.body as { plus: boolean }).plus, false);
 });
 
+test('Curbsy Plus from a promo code (no account tag) goes to the signed-in account, once', async () => {
+  const w = world();
+  const code = plusFor(BOB, { appAccountToken: undefined, offerType: 3, offerIdentifier: 'LAUNCH' });
+  let res = await w.call(BOB, 'POST', 'junk/purchases', { transactions: [code] });
+  assert.equal((res?.body as { plus: boolean }).plus, true);
+  // Another account on the same Apple ID can't take it over.
+  res = await w.call(CARL, 'POST', 'junk/purchases', { transactions: [code] });
+  assert.equal((res?.body as { plus: boolean }).plus, false);
+  assert.match((res?.body as { note: string }).note, /different Curbsy account/);
+  // Tips always come from inside the app, so an untagged tip still doesn't count.
+  const tip = signed({ bundleId: 'com.hoodleague.junk', productId: 'com.hoodleague.junk.tip.small', transactionId: 'tip-untagged' });
+  res = await w.call(CARL, 'POST', 'junk/purchases', { transactions: [tip] });
+  assert.equal((res?.body as { tips: number }).tips, 0);
+});
+
 test('tips are recorded once each', async () => {
   const w = world();
   const tip = signed({ bundleId: 'com.hoodleague.junk', productId: 'com.hoodleague.junk.tip.small', transactionId: 'tip1', appAccountToken: BOB });

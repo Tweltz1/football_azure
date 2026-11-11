@@ -13,6 +13,8 @@ const LEAGUE_PREFIX = 'league:';
 export const LeagueScoringContext = createContext(null);
 const SCORING_SETTING = 'hl-startsit-scoring';
 const SLEEPER_USER_SETTING = 'hl-startsit-sleeper-user';
+/** Sleeper leagues hidden on this device (old or archived ones), by league id. */
+export const HIDDEN_SLEEPER_SETTING = 'hl-sleeper-hidden';
 
 // Points per stat in Sleeper's default scoring, before the reception value.
 const STANDARD_WEIGHTS = {
@@ -179,7 +181,10 @@ export const useSavedSleeperTeams = () => {
       .then((response) => {
         if (cancelled) return;
         // Each team carries when its rosters were read, for "Rosters checked" labels.
-        setTeams((response.data?.teams || []).map((team) => ({ ...team, fetchedAt: response.data.fetchedAt })));
+        const hidden = new Set(readSetting(HIDDEN_SLEEPER_SETTING, []));
+        setTeams((response.data?.teams || [])
+          .filter((team) => !hidden.has(team.leagueId))
+          .map((team) => ({ ...team, fetchedAt: response.data.fetchedAt })));
       })
       .catch(() => { /* Rankings still works with the standard formats. */ });
     return () => { cancelled = true; };

@@ -11,19 +11,21 @@ import { gsmText, smsSegments } from './smsFit.ts';
 import type { Ctx, Res } from './handlers.ts';
 import { salesRoute } from './shopSales.ts';
 
-import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, hasPro, HOWTO_PRO_MESSAGE, isPro, lockedMessage, PLANS, planFromSubscription, proMessage, verifyStripeSignature,
+import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, isLocked, trialKeys, trialNoticeDue, hasPro, HOWTO_PRO_MESSAGE, isPro, lockedMessage, PLANS, planFromSubscription, proMessage, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { howToRoute, type HowToLibrary } from './shopHowTo.ts';
 import { decodeVin, enginesFor, modelsFor, recallsFor, VIN_RE } from './nhtsa.ts';
 import { priceImportRoute, type PriceReader } from './shopPriceImport.ts';
 import { cleanMarks, isAngle, type DamageFinder, type WalkPhoto } from './shopDamage.ts';
 import { accountRoute, type AccountStore } from './shopAccount.ts';
-import { ownerOnly, staffRoute, type Seat, type StaffStore } from './shopStaff.ts';
+import { ownerOnly, staffRoute, type Member, type Seat, type StaffStore } from './shopStaff.ts';
 import { checkDevice, sessionRoute, type SessionStore } from './shopSessions.ts';
 import type { Narrator } from './dnd.ts';
 import { clockAction, customersCsv, jobsCsv, langOf, MAX_BOOKINGS_PER_HOUR, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES, SHORT_ES,
   type Booking, type BookingStore, type Brand, type ClockEntry, type Grow, type Lang } from './shopGrow.ts';
-import { isOpenSlot, localOf, openSlots, reminderDue, slotText } from './shopSchedule.ts';
+import { dayLoad, isOpenSlot, localOf, openSlots, reminderDue, slotText, type Schedule, type ShopCar } from './shopSchedule.ts';
+/** Times a customer can move their own appointment from their page before they need to call. */
+const MAX_CUSTOMER_MOVES = 3;
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
 
 type Body = Record<string, unknown>;
@@ -134,6 +136,10 @@ export interface JobData {
   booking?: { id: string; day: string; time: string };
   /** The appointment time the shop confirmed (ISO). */
   appointment?: string;
+  /** The last time the appointment moved. `waiting`: the shop moved it and the customer hasn't confirmed yet. */
+  reschedule?: { from?: string; t: string; by: string; waiting: boolean; confirmedAt?: string; via?: 'text' | 'page' };
+  /** How many times the customer moved the appointment from their page. */
+  customerMoves?: number;
 }
 export const URGENCIES = ['low', 'medium', 'high'] as const;
 export type Urgency = typeof URGENCIES[number];
@@ -201,8 +207,15 @@ export interface ShopStore extends Partial<BookingStore> {
   trialSettings?(): Promise<TrialSettings>;
   /** Puts a new shop on the free trial until `endsAt`. */
   startTrial?(shopId: string, endsAt: string): Promise<void>;
-  /** Records that a shop phone (E.164) got a free trial; false when one already did, so each phone gets one trial. */
-  claimTrialPhone?(phone: string, shopId: string): Promise<boolean>;
+  /**
+   * Records that these keys (shop phone, sign-in email, account; see trialKeys) got a free trial.
+   * False when any of them already had one, so a phone, an email and an account each get one trial.
+   */
+  claimTrial?(keys: string[], shopId: string): Promise<boolean>;
+  /** Trial shops near or just past their trial end, with which reminder email they already got. */
+  trialNoticeShops?(now: string): Promise<{ shop: Shop; sent: string | null }[]>;
+  /** Records which trial reminder email ("soon" or "ended") a shop got. */
+  setTrialNotice?(shopId: string, notice: string): Promise<void>;
   /** Counts `n` texts in `period`; false (and nothing counted) when that would pass `limit`. */
   useTexts?(shopId: string, n: number, period: string, limit: number | null): Promise<boolean>;
   /** Counts one customer email for the shop on `day` (UTC date); false (nothing counted) when over `limit`. */
@@ -221,6 +234,10 @@ export interface ShopStore extends Partial<BookingStore> {
   jobsWithFollowupsFor?(phone: string): Promise<Job[]>;
   /** Appointments (not closed) the shop has at or after `from` and before `to`, for open booking times. */
   appointmentsBetween?(shopId: string, from: string, to: string): Promise<BookedTime[]>;
+  /** Cars on site now (checked in, not picked up or closed), for the shop's car limit. */
+  carsInShop?(shopId: string): Promise<ShopCar[]>;
+  /** Jobs (any shop) whose customer phone is `phone` and whose moved appointment waits on the customer's YES. */
+  jobsWaitingConfirm?(phone: string): Promise<Job[]>;
 }
 /** One appointment holding a start time: a car on the Bay, or a booking request still waiting. */
 export interface BookedTime { at: string; phone: string; email: string; createdAt: string }
@@ -428,6 +445,11 @@ const customerOut = (j: Job, shop: Shop, pro = false) => ({
   // A review button once the car is ready or picked up, when the shop has a review link (Pro).
   review: pro && shop.grow?.reviewUrl && ['ready', 'picked_up'].includes(j.stage) && !j.data.closed ? { url: shop.grow.reviewUrl } : null,
   appointment: j.stage === 'invited' ? j.data.appointment ?? null : null,
+  // The shop moved the appointment and is waiting for the customer to confirm the new time.
+  apptWaiting: j.stage === 'invited' && !j.data.closed && !!j.data.appointment && !!j.data.reschedule?.waiting,
+  canReschedule: canMoveAppt(j, shop),
+  // Appointment times show in the shop's time zone, where the customer is going.
+  zone: shop.grow?.schedule?.zone ?? null,
   ro: j.data.ro,
   stage: j.stage,
   canUploadIntakePhotos: j.shopId !== DEMO_SHOP_ID && ['invited','checked_in'].includes(j.stage),
@@ -591,6 +613,65 @@ async function bookedTimes(store: ShopStore, shopId: string, now: Date, ahead: n
   return [...jobs, ...waiting];
 }
 
+/** Expected cars on site per day, when the shop set a car limit; otherwise undefined (no limit). */
+async function shopLoad(store: ShopStore, shopId: string, sched: Schedule, now: Date, taken: BookedTime[]): Promise<Record<string, number> | undefined> {
+  if (!sched.capacity) return undefined;
+  const cars: ShopCar[] = store.carsInShop ? await store.carsInShop(shopId)
+    : (await store.listJobs(shopId, now.toISOString())).filter((j) => j.stage !== 'invited' && j.stage !== 'picked_up' && !j.data.closed)
+      .map((j) => ({ stage: j.stage, promised: j.data.promised, since: j.data.events.find((e) => e.stage === 'checked_in')?.t ?? j.createdAt }));
+  return dayLoad(sched, now, cars, taken.map((t) => t.at));
+}
+
+/** True when this customer can pick a new time from their page. */
+function canMoveAppt(j: Job, shop: Shop): boolean {
+  const sched = shop.grow?.schedule;
+  return j.stage === 'invited' && !!j.data.appointment && !j.data.closed && !!sched && !sched.paused && j.shopId !== DEMO_SHOP_ID
+    && (j.data.customerMoves ?? 0) < MAX_CUSTOMER_MOVES;
+}
+/** Sets the appointment time and moves the day-before reminder text with it (when the shop turned reminders on). */
+function setAppointment(job: Job, shop: Shop, when: string, now: string, by: string, newId: () => string) {
+  const d = job.data;
+  d.appointment = when;
+  for (const f of d.followups ?? []) if (f.kind === 'appointment' && !f.sentAt && !f.canceledAt) { f.canceledAt = now; f.canceledBy = 'shop'; }
+  const sched = shop.grow?.schedule, due = reminderDue(when, new Date(now));
+  if (sched?.reminder && due && d.customer.consent && !d.customer.remindersOff) {
+    const lang = langOf(d);
+    (d.followups ??= []).push({ id: newId(), kind: 'appointment', due, createdAt: now, by, text: SAY[lang].remind(shop.name, slotText(when, sched.zone, lang), shop.phone) });
+  }
+}
+/** Booked times without this car's own appointment, so moving it can land on (or near) its current time. */
+function withoutOwn(taken: BookedTime[], j: Job): BookedTime[] {
+  const i = taken.findIndex((t) => t.at === j.data.appointment && t.phone === j.data.customer.phone);
+  return i < 0 ? taken : [...taken.slice(0, i), ...taken.slice(i + 1)];
+}
+/** True when more appointments hold `at` (or its day) than the shop takes: two people booked it in the same moment. */
+function overBooked(sched: Schedule, taken: BookedTime[], at: string): boolean {
+  const ms = Date.parse(at), day = localOf(at, sched.zone).day;
+  if (taken.filter((t) => Date.parse(t.at) === ms).length > sched.perSlot) return true;
+  return !!sched.dayMax && taken.filter((t) => localOf(t.at, sched.zone).day === day).length > sched.dayMax;
+}
+/**
+ * A customer texted YES: confirms each moved appointment that waits on them. Returns the reply text, or null when
+ * nothing was waiting (then the text is handled like any other).
+ */
+export async function confirmBySms(deps: ShopDeps, phone: string, now: Date): Promise<string | null> {
+  const iso = now.toISOString();
+  const jobs = ((await deps.store.jobsWaitingConfirm?.(phone)) ?? [])
+    .filter((j) => j.stage === 'invited' && !j.data.closed && j.data.appointment && j.data.reschedule?.waiting && j.data.appointment > iso);
+  let reply: string | null = null;
+  for (const job of jobs) {
+    const shop = await deps.store.shopById(job.shopId);
+    if (!shop) continue;
+    const lang = langOf(job.data), when = slotText(job.data.appointment!, shop.grow?.schedule?.zone || 'America/Chicago', lang);
+    job.data.reschedule = { ...job.data.reschedule!, waiting: false, confirmedAt: iso, via: 'text' };
+    job.data.messages.push({ dir: 'in', channel: 'sms', t: iso, text: lang === 'es' ? `Confirmó la nueva hora: ${when}` : `Confirmed the new time: ${when}` });
+    job.updatedAt = iso;
+    await deps.store.putJob(job);
+    reply = SAY[lang].movedOk(shop.name, when);
+  }
+  return reply;
+}
+
 /** Turns a booking into an invited car on the Bay with the appointment set, texts the confirmation, and closes the booking. */
 async function bookIn(ctx: Ctx, deps: ShopDeps, shop: Shop, b: Booking, when: string, whenText: string,
   o: { send: boolean; text: string; by: string; byId: string | null; acc: Access }): Promise<Job> {
@@ -604,23 +685,16 @@ async function bookIn(ctx: Ctx, deps: ShopDeps, shop: Shop, b: Booking, when: st
       customer: { name: c.name, phone: c.phone, email: c.email, preference: c.preference, consent: c.consent, ...(c.lang === 'es' ? { lang: 'es' as const } : {}) },
       vehicle: bd.vehicle, plate: bd.plate, concern: bd.concern, eta: '',
       estimate: [], photos: [], events: [{ stage: 'invited', t: now }], messages: [], approval: null,
-      appointment: when,
       booking: { id: b.id, day: bd.day, time: bd.time },
     },
   };
+  setAppointment(job, shop, when, now, o.by, ctx.newId);
   if (o.send) {
     const first = c.name.split(/\s+/)[0] || '';
     const link = deps.linkBase + job.token;
     // The shop's own wording still carries the visit link.
     const msg = o.text ? `${o.text}${/[.!?:]$/.test(o.text) ? '' : '.'} ${link}` : SAY[c.lang === 'es' ? 'es' : 'en'].booked(first, shop.name, whenText, link);
     job.data.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, o.acc)).map((m) => ({ ...m, sender: o.by, ...(o.byId ? { senderId: o.byId } : {}) })));
-  }
-  // Day-before reminder text, when the shop turned it on with its appointment hours.
-  const sched = shop.grow?.schedule, due = reminderDue(when, ctx.now());
-  if (sched?.reminder && due && c.consent) {
-    const lang = c.lang === 'es' ? 'es' : 'en';
-    job.data.followups = [{ id: ctx.newId(), kind: 'appointment', due, createdAt: now, by: o.by,
-      text: SAY[lang].remind(shop.name, slotText(when, sched.zone, lang), shop.phone) }];
   }
   await store.putJob(job);
   b.status = 'accepted'; b.data.jobId = job.id; b.data.decidedBy = o.by; b.data.decidedAt = now; b.updatedAt = now;
@@ -702,6 +776,45 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (!await store.walkaround(job.id, { photo: { id: ctx.newId(), angle: body.angle, src, addedAt: now, marks: [] } })) return bad('Walk-around photos are closed for this repair.');
       return ok(cOut((await store.getJob(job.id)) ?? job));
     }
+    // Moving the appointment from the customer's page: open times, confirming the shop's new time, or picking another.
+    if (parts[3] === 'times' || parts[3] === 'confirm-time' || parts[3] === 'reschedule') {
+      const es = langOf(job.data) === 'es', sched = shop.grow?.schedule;
+      const call = es ? `Llame al taller${shop.phone ? ` al ${shop.phone}` : ''} para cambiar su cita.` : `Please call the shop${shop.phone ? ` at ${shop.phone}` : ''} to change your appointment.`;
+      if (parts[3] === 'confirm-time' && method === 'POST') {
+        if (!job.data.reschedule?.waiting || job.stage !== 'invited' || job.data.closed || !job.data.appointment) return ok(cOut(job));
+        job.data.reschedule = { ...job.data.reschedule, waiting: false, confirmedAt: now, via: 'page' };
+        const when = slotText(job.data.appointment, sched?.zone || 'America/Chicago', es ? 'es' : 'en');
+        job.data.messages.push({ dir: 'in', channel: 'web', t: now, text: es ? `Confirmó la nueva hora: ${when}` : `Confirmed the new time: ${when}` });
+        job.updatedAt = now;
+        await store.putJob(job);
+        return ok(cOut(job));
+      }
+      if (!canMoveAppt(job, shop) || !sched) return bad(call);
+      const taken = withoutOwn(await bookedTimes(store, shop.id, ctx.now(), sched.ahead), job);
+      const load = await shopLoad(store, shop.id, sched, ctx.now(), taken);
+      if (parts[3] === 'times' && method === 'GET') return ok({ zone: sched.zone, shop: { name: shop.name, phone: shop.phone }, slots: openSlots(sched, ctx.now(), taken.map((t) => t.at), load) });
+      if (parts[3] !== 'reschedule' || method !== 'POST') return { status: 405 };
+      const slot = str(body.slot, 40);
+      if (!slot || !Number.isFinite(Date.parse(slot))) return bad(es ? 'Elija una hora.' : 'Pick a time.');
+      const at = new Date(slot).toISOString(), old = job.data.appointment!;
+      if (at === old) return bad(es ? 'Esa ya es la hora de su cita.' : "That's already your appointment time.");
+      if (!isOpenSlot(sched, ctx.now(), taken.map((t) => t.at), at, load)) return { status: 409, body: es ? 'Esa hora se acaba de ocupar. Elija otra.' : 'That time was just taken. Please pick another one.' };
+      const before = structuredClone(job.data);
+      setAppointment(job, shop, at, now, 'Customer', ctx.newId);
+      job.data.reschedule = { from: old, t: now, by: 'Customer', waiting: false, confirmedAt: now, via: 'page' };
+      job.data.customerMoves = (job.data.customerMoves ?? 0) + 1;
+      const lang = es ? 'es' : 'en';
+      job.data.messages.push({ dir: 'in', channel: 'web', t: now, text: es ? `Cambió la cita del ${slotText(old, sched.zone, lang)} al ${slotText(at, sched.zone, lang)}` : `Moved the appointment from ${slotText(old, sched.zone, lang)} to ${slotText(at, sched.zone, lang)}` });
+      job.updatedAt = now;
+      await store.putJob(job);
+      // Two people can pick the same time in the same moment: whoever finds the time over its limit gives it back.
+      if (overBooked(sched, await bookedTimes(store, shop.id, ctx.now(), sched.ahead), at)) {
+        job.data = before;
+        await store.putJob(job);
+        return { status: 409, body: es ? 'Esa hora se acaba de ocupar. Elija otra.' : 'That time was just taken. Please pick another one.' };
+      }
+      return ok(cOut(job));
+    }
     if (method === 'POST' && parts.length === 4 && parts[3] === 'stop-reminders') {
       stopReminders(job, now, 'customer');
       job.updatedAt = now;
@@ -752,9 +865,10 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const pro = isPro(shop.plan, ctx.now());
     const sched = shop.grow.schedule;
     const taken = sched ? await bookedTimes(store, shop.id, ctx.now(), sched.ahead) : [];
+    const load = sched ? await shopLoad(store, shop.id, sched, ctx.now(), taken) : undefined;
     if (method === 'GET') return ok({
       shop: { name: shop.name, phone: shop.phone, hours: shop.hours, ...(pro && shop.brand ? { brand: shop.brand } : {}) }, note: shop.grow.bookingNote ?? '',
-      ...(sched ? { zone: sched.zone, auto: sched.auto, slots: openSlots(sched, ctx.now(), taken.map((t) => t.at)) } : {}),
+      ...(sched ? { zone: sched.zone, auto: sched.auto, ...(sched.paused ? { paused: true } : {}), slots: openSlots(sched, ctx.now(), taken.map((t) => t.at), load) } : {}),
     });
     if (method !== 'POST') return { status: 405 };
     if (str(body.website, 100)) return ok({ ok: true }); // a form robot filled the hidden field
@@ -763,10 +877,11 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     // With appointment hours set, the customer picks an exact open time; the day and part of the day follow from it.
     let slot = '';
     if (sched) {
+      if (sched.paused) return { status: 409, body: `${shop.name} isn't taking new appointments online right now.${shop.phone ? ` Please call ${shop.phone}.` : ' Please call the shop.'}` };
       slot = str(body.slot, 40);
       if (!slot || !Number.isFinite(Date.parse(slot))) return bad('Pick a time for your appointment.');
       slot = new Date(slot).toISOString();
-      if (!isOpenSlot(sched, ctx.now(), taken.map((t) => t.at), slot)) return { status: 409, body: 'That time was just taken. Please pick another one.' };
+      if (!isOpenSlot(sched, ctx.now(), taken.map((t) => t.at), slot, load)) return { status: 409, body: 'That time was just taken. Please pick another one.' };
       const local = localOf(slot, sched.zone);
       body.day = local.day; body.time = local.time < '12:00' ? 'morning' : 'afternoon';
     }
@@ -785,18 +900,24 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (taken.filter((t) => t.createdAt >= hourAgo).length >= MAX_BOOKINGS_PER_HOUR) return { status: 429, body: 'The shop got a lot of bookings in the last hour. Please try again later or call them.' };
     }
     const booking: Booking = { id: ctx.newId(), shopId: shop.id, status: 'open', createdAt: now, updatedAt: now, data: parsed };
+    await store.addBooking(booking);
+    // Two people can press Book for the same time in the same moment. Each checks again once its own request is saved,
+    // and one that finds the time over its limit gives it back, so the time is never double-booked.
+    if (sched && slot && overBooked(sched, await bookedTimes(store, shop.id, ctx.now(), sched.ahead), slot)) {
+      booking.status = 'declined'; booking.data.decidedBy = 'Taken at the same moment'; booking.data.decidedAt = now; booking.updatedAt = now;
+      await store.putBooking!(booking);
+      return { status: 409, body: 'That time was just taken. Please pick another one.' };
+    }
     // Instant booking: the car goes straight onto the Bay and the customer gets the confirmation, unless the shop's
     // plan can't take another car right now; then it waits as a request like any other.
     if (sched?.auto && slot) {
       const acc = access(shop.plan, ctx.now(), await settings(deps));
       if (acc.canWork && (acc.carLimit === null || (shop.plan?.carsCreated ?? 0) < acc.carLimit)) {
         const lang = parsed.customer.lang === 'es' ? 'es' : 'en';
-        await store.addBooking(booking);
         const job = await bookIn(ctx, deps, shop, booking, slot, slotText(slot, sched.zone, lang), { send: true, text: '', by: 'Online booking', byId: null, acc });
         return ok({ ok: true, confirmed: true, when: slotText(slot, sched.zone, lang), at: slot, link: deps.linkBase + job.token });
       }
     }
-    await store.addBooking(booking);
     return ok({ ok: true, ...(slot ? { requested: true, at: slot } : {}) });
   }
 
@@ -855,11 +976,17 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   if (accountRes) return accountRes;
 
   // ---- Which shop the signed-in account works at, and as what ----
+  // A shop's team, read at most once per request (opening the app needs it twice).
+  const teams = new Map<string, Promise<Member[]>>();
+  const teamOf = (shopId: string) => {
+    if (!teams.has(shopId)) teams.set(shopId, deps.staff ? deps.staff.listMembers(shopId).catch(() => []) : Promise.resolve([]));
+    return teams.get(shopId)!;
+  };
   const whoAmI = async (): Promise<{ shop: Shop; seat: Seat } | null> => {
     if (!ctx.userId) return null;
     const owned = await store.shopByOwner(ctx.userId);
     const m = owned
-      ? (await deps.staff?.listMembers(owned.id).catch(() => []))?.find((x) => x.userId === ctx.userId)
+      ? (await teamOf(owned.id)).find((x) => x.userId === ctx.userId)
       : await deps.staff?.memberOf(ctx.userId);
     // Notes, messages, the time clock and walk-throughs are signed with the name the person saved on their team.
     ctx.displayName = staffName(m?.name, ctx);
@@ -879,18 +1006,24 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const mine = await whoAmI();
     const shop = mine?.shop ?? null;
     if (method === 'GET') {
-      if (shop) await store.purgeArchive?.(shop.id, archiveCutoff(ctx.now())).catch((e) => ctx.log.warn('archive purge failed', { error: String(e) }));
-      return ok({ shop: shop && publicShop(shop), role: mine?.seat.role ?? null, mainOwner: mine?.seat.primary ?? false, emailConfigured: !!deps.email, plan: shop ? await planOut(deps, shop, ctx.now()) : null,
-        me: ctx.userId, crew: shop ? await crewOf(deps, shop, ctx) : [],
-        myName: shop ? realName((await deps.staff?.listMembers(shop.id).catch(() => []))?.find((m) => m.userId === ctx.userId)?.name) : '' });
+      // Opening the app waits on this: the archive clean-up, the plan and the team list run side by side,
+      // and the team is read once for both the crew list and this person's name.
+      const [, planInfo, members] = shop ? await Promise.all([
+        store.purgeArchive?.(shop.id, archiveCutoff(ctx.now())).catch((e) => ctx.log.warn('archive purge failed', { error: String(e) })),
+        planOut(deps, shop, ctx.now()),
+        teamOf(shop.id),
+      ]) : [null, null, []];
+      return ok({ shop: shop && publicShop(shop), role: mine?.seat.role ?? null, mainOwner: mine?.seat.primary ?? false, emailConfigured: !!deps.email, plan: planInfo,
+        me: ctx.userId, crew: shop ? crewList(members ?? [], shop, ctx) : [],
+        myName: shop ? realName((members ?? []).find((m) => m.userId === ctx.userId)?.name) : '' });
     }
     if (method === 'POST') {
       if (mine && mine.seat.role !== 'owner') return ownerOnly();
       const name = str(body.name, 80);
       if (!name) return bad('Enter your shop name.');
-      // One free trial per shop phone, so a new shop needs a real number when the store can check it.
-      const trialPhone = !shop && store.claimTrialPhone ? normalizePhone(str(body.phone, 30)) : null;
-      if (!shop && store.claimTrialPhone && !trialPhone) return bad('Enter your shop phone number with area code.');
+      // One free trial per shop phone (and per email and account), so a new shop needs a real number when the store can check it.
+      const trialPhone = !shop && store.claimTrial ? normalizePhone(str(body.phone, 30)) : null;
+      if (!shop && store.claimTrial && !trialPhone) return bad('Enter your shop phone number with area code.');
       if (body.email !== undefined && str(body.email, 254) && !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(str(body.email, 254))) return bad('Enter a valid shop email, or leave it blank.');
       let ageSettings = shop?.ageSettings;
       if (body.ageSettings !== undefined) {
@@ -961,8 +1094,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         .catch((e) => ctx.log.warn('owner member row not saved', { error: String(e) }));
       let trialUsed = false;
       if (!shop && store.startTrial) {
-        // A phone that already had a trial starts with it ended (Choose a plan), not a fresh one.
-        trialUsed = !!(trialPhone && store.claimTrialPhone && !(await store.claimTrialPhone(trialPhone, next.id)));
+        // A phone, email or account that already had a trial starts with it ended (Choose a plan), not a fresh one.
+        trialUsed = !!(trialPhone && store.claimTrial && !(await store.claimTrial(trialKeys({ phone: trialPhone, email: ctx.userEmail, userId: ctx.userId }), next.id)));
         const trial = await settings(deps);
         await store.startTrial(next.id, trialUsed ? ctx.now().toISOString() : new Date(ctx.now().getTime() + trial.trialDays * 86_400_000).toISOString());
       }
@@ -995,6 +1128,12 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   if (!mine) return { status: 409, body: 'Set up your shop first.' };
   const { shop } = mine;
   const owner = mine.seat.role === 'owner';
+  // Trial over (or paid plan ended): the shop is locked until it chooses a plan. Only the Plan routes and the
+  // owner's data export stay open, so nobody can keep using the board for free.
+  if (parts[1] !== 'plan' && parts[1] !== 'export') {
+    const gate = access(shop.plan, ctx.now(), await settings(deps));
+    if (isLocked(gate)) return { status: 402, body: lockedMessage(gate) };
+  }
 
   // Type-ahead lists for the vehicle fields: models for the make, engines for the year, make and model.
   // A failed lookup just returns empty lists; the page still offers its built-in common makes and engines.
@@ -1127,8 +1266,13 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   // opens), and only a short "same" when nothing changed since the version the screen already has.
   if (id === 'board' && method === 'GET' && parts.length <= 4) {
     const since = new Date(ctx.now().getTime() - 2 * 86_400_000).toISOString();
-    if (acc.canWork) await sendDueFollowups(deps, shop, ctx.now(), acc).catch((e) => ctx.log.warn('follow-ups failed', { error: String(e) }));
-    const jobs = (await store.listJobs(shop.id, since)).map((j) => boardOut(jobOut(j, deps.linkBase)));
+    // Due reminder texts go out alongside reading the board, so the Bay doesn't wait on them; anything they
+    // change shows on the next refresh.
+    const [rows] = await Promise.all([
+      store.listJobs(shop.id, since),
+      acc.canWork ? sendDueFollowups(deps, shop, ctx.now(), acc).catch((e) => ctx.log.warn('follow-ups failed', { error: String(e) })) : null,
+    ]);
+    const jobs = rows.map((j) => boardOut(jobOut(j, deps.linkBase)));
     const v = await boardVersion(jobs);
     return ok(parts[3] === v ? { v, same: true } : { v, jobs });
   }
@@ -1493,6 +1637,27 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (body[k] === undefined) continue;
       if (details[k]) (d as unknown as Record<string, unknown>)[k] = details[k]; else delete d[k];
     }
+  } else if (action === 'appointment') {
+    // The shop sets or moves the appointment of a car that isn't checked in yet. Moving it asks the customer to
+    // confirm (reply YES, or tap Confirm on their page) or pick another open time from the link.
+    if (job.stage !== 'invited' || d.closed) return bad('Only a booked car that is not checked in yet has an appointment to move.');
+    const at = Date.parse(str(body.at, 40)), nowMs = ctx.now().getTime();
+    if (!Number.isFinite(at) || at < nowMs) return bad('Pick a day and time from now on.');
+    if (at > nowMs + 366 * 86_400_000) return bad('Pick a time within the next year.');
+    const iso = new Date(at).toISOString(), old = d.appointment;
+    if (iso === old) return bad('That is already the appointment time.');
+    const by = ctx.displayName || ctx.userEmail || 'Shop staff', lang = langOf(d);
+    setAppointment(job, shop, iso, now, by, ctx.newId);
+    const send = body.send !== false && d.customer.consent;
+    d.reschedule = { ...(old ? { from: old } : {}), t: now, by, waiting: send && !!old };
+    if (send) {
+      const zone = shop.grow?.schedule?.zone || str(body.zone, 80);
+      let whenText = '';
+      try { whenText = slotText(iso, zone || 'UTC', lang); } catch { whenText = slotText(iso, 'UTC', lang); }
+      const link = deps.linkBase + job.token, first = d.customer.name.split(/\s+/)[0] || '', own = str(body.text, 600);
+      const msg = own ? `${own}${/[.!?:]$/.test(own) ? '' : '.'} ${link}` : old ? SAY[lang].moved(first, shop.name, whenText, link) : SAY[lang].booked(first, shop.name, whenText, link);
+      d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map((m) => ({ ...m, sender: by, ...(ctx.userId ? { senderId: ctx.userId } : {}) })));
+    }
   } else if (action === 'followup') {
     const list = d.followups ??= [];
     if (body.cancel) {
@@ -1555,7 +1720,9 @@ function staffName(saved: string | null | undefined, ctx: Ctx): string {
 }
 /** Everyone who can be assigned a car: id and a short name. */
 async function crewOf(deps: ShopDeps, shop: Shop, ctx: Ctx & { displayName?: string | null; userEmail?: string | null }): Promise<{ id: string; name: string; role: string }[]> {
-  const members = await deps.staff?.listMembers(shop.id).catch(() => []) ?? [];
+  return crewList(await deps.staff?.listMembers(shop.id).catch(() => []) ?? [], shop, ctx);
+}
+function crewList(members: { userId: string; name: string; email: string; role: string }[], shop: Shop, ctx: Ctx & { displayName?: string | null; userEmail?: string | null }): { id: string; name: string; role: string }[] {
   const label = (name: string, email: string) => realName(name) || email.split('@')[0] || 'Owner';
   const list = members.map((m) => ({ id: m.userId, name: label(m.name, m.email), role: m.role }));
   if (!list.some((m) => m.id === shop.ownerId))
@@ -1740,8 +1907,8 @@ export function digestText(shop: Shop, jobs: Job[], now: Date, siteUrl: string):
 }
 
 /** Hourly: sends due reminder texts (including unanswered-estimate reminders) and each shop's 7am summary email. */
-export async function runCron(deps: ShopDeps, now: Date, log: Ctx['log']): Promise<{ shops: number; reminders: number; digests: number }> {
-  const out = { shops: 0, reminders: 0, digests: 0 };
+export async function runCron(deps: ShopDeps, now: Date, log: Ctx['log']): Promise<{ shops: number; reminders: number; digests: number; trialNotices: number }> {
+  const out = { shops: 0, reminders: 0, digests: 0, trialNotices: 0 };
   if (!deps.store.cronShops) return out;
   const trial = await settings(deps);
   for (const shop of await deps.store.cronShops(now.toISOString())) {
@@ -1761,5 +1928,42 @@ export async function runCron(deps: ShopDeps, now: Date, log: Ctx['log']): Promi
       else log.warn('morning email not sent', { shop: shop.id, note: sent.note });
     } catch (error) { log.warn('hourly run failed for a shop', { shop: shop.id, error: String(error) }); }
   }
+  out.trialNotices = await sendTrialNotices(deps, now, log);
   return out;
+}
+
+/** Emails the shop owner 3 days before the free trial ends, and again when it ends. */
+async function sendTrialNotices(deps: ShopDeps, now: Date, log: Ctx['log']): Promise<number> {
+  if (!deps.email || !deps.store.trialNoticeShops || !deps.store.setTrialNotice) return 0;
+  const site = (deps.siteUrl || 'https://talkshops.app').replace(/\/$/, '');
+  let sent = 0;
+  for (const { shop, sent: already } of await deps.store.trialNoticeShops(now.toISOString())) {
+    if (shop.id === DEMO_SHOP_ID) continue;
+    const due = trialNoticeDue(shop.plan, already, now);
+    if (!due) continue;
+    // A phone or email that already had a trial starts with it ended at sign-up: it sees "choose a plan" right away, no email.
+    if (due === 'ended' && Math.abs(Date.parse(shop.plan!.trialEndsAt!) - Date.parse(shop.createdAt)) < 3_600_000) {
+      await deps.store.setTrialNotice(shop.id, 'ended').catch(() => {});
+      continue;
+    }
+    try {
+      const to = shop.email || (await deps.staff?.listMembers(shop.id).catch(() => []))?.find((m) => m.userId === shop.ownerId)?.email;
+      if (!to) continue;
+      const ends = new Date(shop.plan!.trialEndsAt!);
+      const days = Math.max(1, Math.ceil((ends.getTime() - now.getTime()) / 86_400_000));
+      const subject = due === 'soon'
+        ? `Your Talk Shops free trial ends in ${days} day${days === 1 ? '' : 's'}`
+        : 'Your Talk Shops free trial has ended';
+      const text = due === 'soon'
+        ? `Hi ${shop.name},\n\nYour Talk Shops free trial ends in ${days} day${days === 1 ? '' : 's'}. When it ends, your shop is locked until you choose a plan.\n\n`
+          + `Choose a plan now and nothing changes: your first charge waits until the trial is over.\n\n${site}/plan\n\nStarter is $89 a month and Pro is $149 a month. Reply to this email with any questions.\n\nTalk Shops`
+        : `Hi ${shop.name},\n\nYour Talk Shops free trial has ended, so your shop is locked for now. Nothing was deleted: your cars, customers and settings are all saved, and your customers' links still work.\n\n`
+          + `Choose a plan and your shop opens right back up:\n\n${site}/plan\n\nStarter is $89 a month and Pro is $149 a month. Reply to this email with any questions.\n\nTalk Shops`;
+      const r = await deps.email.send(to, subject, text, { replyTo: 'support@talkshops.app' });
+      if (r.delivery !== 'sent') { log.warn('trial email not sent', { shop: shop.id, note: r.note }); continue; }
+      await deps.store.setTrialNotice(shop.id, due);
+      sent++;
+    } catch (error) { log.warn('trial email failed', { shop: shop.id, error: String(error) }); }
+  }
+  return sent;
 }

@@ -13,7 +13,7 @@ import { createJunkPhotos, createJunkStore } from './junkAdapters.ts';
 import { verifyAppleJws } from '../_shared/appleJws.ts';
 import { applePushSender } from '../_shared/applePush.ts';
 import { createShopEmailSender } from '../_shared/shopEmail.ts';
-import { createSmsSender, runCron, shopRoute, stopReminders, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
+import { confirmBySms, createSmsSender, runCron, shopRoute, stopReminders, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
 import { incomingSms, incomingTelnyxSms } from '../_shared/shopSms.ts';
 import { createStripe } from '../_shared/shopPlans.ts';
 import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator.ts';
@@ -24,6 +24,7 @@ import { createTurn } from './turn.ts';
 import {
   createAccountStore, createAskLogStore, createSessionStore, createHowToLibrary, createStaffStore, createBroadcaster, createCardGameStore, createShopStore, createDndStore, createGameStore, createHistoryStore, createLeagueStore, createProfileStore, createSnapshotStore,
 } from './supabaseAdapters.ts';
+import { gameDay } from './gameDay.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -177,15 +178,17 @@ Deno.serve(async (req) => {
         const now = new Date().toISOString();
         for (const job of await shop.store.jobsWithFollowupsFor?.(phone) ?? []) { stopReminders(job, now, 'customer'); job.updatedAt = now; await shop.store.putJob(job); }
       };
+      // A YES to a moved appointment confirms the new time.
+      const confirm = (phone: string) => confirmBySms(shop, phone, new Date());
       // Telnyx signs its JSON webhooks with Ed25519; anything else is checked as a Twilio webhook.
       if (req.headers.has('telnyx-signature-ed25519')) {
         return await incomingTelnyxSms(req, { publicKey: Deno.env.get('TELNYX_PUBLIC_KEY') || '', to: Deno.env.get('TELNYX_FROM') || '' },
-          receive, optOut, (phone, text) => shop.sms.send(phone, text));
+          receive, optOut, (phone, text) => shop.sms.send(phone, text), confirm);
       }
       return await incomingSms(req, {
         token: Deno.env.get('TWILIO_AUTH_TOKEN') || '', account: Deno.env.get('TWILIO_ACCOUNT_SID') || '',
         to: Deno.env.get('TWILIO_FROM') || '', url: SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/api/shop/incoming-sms',
-      }, receive, optOut);
+      }, receive, optOut, confirm);
     } catch { return new Response('SMS processing unavailable.',{status:503}); }
   }
   // Hourly from GitHub Actions (.github/workflows/talkshops-hourly.yml): reminder texts and morning summary emails.
@@ -216,6 +219,26 @@ Deno.serve(async (req) => {
         return new Response('Invalid JSON payload.', { status: 400, headers: corsHeaders });
       }
     }
+  }
+
+  // Chat bar questions it couldn't answer, saved so new rules can be written for them. No account
+  // details are kept, only the question.
+  if (path === 'ask/miss' && req.method === 'POST') {
+    const question = String((body as Record<string, unknown> | null)?.question ?? '').trim().slice(0, 300);
+    if (question) {
+      const { error } = await db.from('ask_misses').insert({ question });
+      if (error) log.warn('Could not save a missed chat question.', error);
+    }
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  // Vegas lines, weather, headlines and the trade deadline for the chat bar. Public data only.
+  if (path === 'ask/gameday' && req.method === 'GET') {
+    const week = Math.trunc(Number(url.searchParams.get('week')));
+    const leagueId = url.searchParams.get('leagueId') ?? '';
+    if (!(week >= 1 && week <= 18)) return new Response('Pick a week from 1 to 18.', { status: 400, headers: corsHeaders });
+    const data = await gameDay(fetchJson, week, /^[A-Za-z0-9]{1,32}$/.test(leagueId) ? leagueId : null);
+    return new Response(JSON.stringify(data), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 
   try {

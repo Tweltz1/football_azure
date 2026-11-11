@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Ctx } from '../functions/_shared/handlers.ts';
 import { shopRoute, stripeWebhook, type Job, type Shop, type ShopDeps, type ShopStore } from '../functions/_shared/shop.ts';
-import { access, checkoutFields, DEFAULT_TRIAL, type PlanState, type TrialSettings } from '../functions/_shared/shopPlans.ts';
+import { access, checkoutFields, DEFAULT_TRIAL, trialKeys, trialNoticeDue, type PlanState, type TrialSettings } from '../functions/_shared/shopPlans.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 const DAY = 86_400_000;
@@ -60,7 +60,7 @@ function world(trial: TrialSettings = { trialDays: 15, trialTexts: 3, trialCars:
   };
   const as = (userId: string | null) => (method: string, path: string, body?: unknown) => {
     clock += 60_000;
-    const ctx = { userId, now: () => new Date(clock), newId: () => `id${++n}`, log: { info() {}, warn() {}, error() {} } } as unknown as Ctx;
+    const ctx = { userId, userEmail: userId ? `${userId}@shop.test` : undefined, now: () => new Date(clock), newId: () => `id${++n}`, log: { info() {}, warn() {}, error() {} } } as unknown as Ctx;
     return shopRoute(ctx, deps, method, path.split('/'), body ?? null);
   };
   return { as, deps, shops, texts, stripeCalls, subs, now: () => new Date(clock), tick: (ms: number) => { clock += ms; } };
@@ -110,10 +110,15 @@ test('a new shop gets the trial length from settings, with car and text limits',
   assert.match(String(third_car?.body), /includes 2 cars/);
 });
 
+function claims(w: ReturnType<typeof world>) {
+  const used = new Map<string, string>();
+  w.deps.store.claimTrial = async (keys, shopId) => { const fresh = !keys.some((k) => used.has(k)); for (const k of keys) if (!used.has(k)) used.set(k, shopId); return fresh; };
+  return used;
+}
+
 test('each shop phone gets one free trial', async () => {
   const w = world();
-  const used = new Map<string, string>();
-  w.deps.store.claimTrialPhone = async (phone, shopId) => { if (used.has(phone)) return false; used.set(phone, shopId); return true; };
+  claims(w);
   type Out = { plan: { state: string }; trialUsed?: boolean };
   assert.equal((await w.as('dan')('POST', 'shop/me', { name: 'Ridgeline' }))?.status, 400, 'a new shop needs a phone');
   const first = (await w.as('dan')('POST', 'shop/me', { name: 'Ridgeline', phone: '(555) 014-2290' }))?.body as Out;
@@ -128,18 +133,81 @@ test('each shop phone gets one free trial', async () => {
   assert.equal(other.plan.state, 'trial');
 });
 
-test('when the trial ends the shop can still look but not send', async () => {
+test('each sign-in email and account gets one free trial, whatever the phone', async () => {
+  const w = world();
+  const used = claims(w);
+  type Out = { plan: { state: string }; trialUsed?: boolean };
+  const first = (await w.as('dan')('POST', 'shop/me', { name: 'Ridgeline', phone: '555-014-2290' }))?.body as Out;
+  assert.equal(first.plan.state, 'trial');
+  assert.ok(used.has('email:dan@shop.test') && used.has('user:dan') && used.has('+15550142290'));
+  // Same email (another account in a test world can't share it, so claim it by hand), new phone.
+  used.set('email:eve@shop.test', 'old-shop');
+  const eve = (await w.as('eve')('POST', 'shop/me', { name: 'Eve Auto', phone: '555-014-7777' }))?.body as Out;
+  assert.equal(eve.plan.state, 'trial_ended');
+  assert.equal(eve.trialUsed, true);
+});
+
+test('trial keys fold email tricks together', () => {
+  assert.deepEqual(trialKeys({ phone: '+15550142290', email: ' J.Doe+shop2@GoogleMail.com ', userId: 'u1' }), ['+15550142290', 'email:jdoe@gmail.com', 'user:u1']);
+  assert.deepEqual(trialKeys({ email: 'a.b+x@shop.co' }), ['email:a.b@shop.co']);
+  assert.deepEqual(trialKeys({ email: 'nope' }), []);
+});
+
+test('trial reminder emails: one 3 days before, one after it ends', () => {
+  const now = new Date('2026-11-20T12:00:00Z');
+  const p = (endsInDays: number): PlanState => ({ plan: 'trial', status: 'trialing', trialEndsAt: new Date(now.getTime() + endsInDays * DAY).toISOString(), textsUsed: 0, textsPeriod: '', carsCreated: 0 });
+  assert.equal(trialNoticeDue(p(5), null, now), null);
+  assert.equal(trialNoticeDue(p(2.5), null, now), 'soon');
+  assert.equal(trialNoticeDue(p(2.5), 'soon', now), null);
+  assert.equal(trialNoticeDue(p(-0.5), 'soon', now), 'ended');
+  assert.equal(trialNoticeDue(p(-0.5), null, now), 'ended');
+  assert.equal(trialNoticeDue(p(-0.5), 'ended', now), null);
+  assert.equal(trialNoticeDue(p(-5), null, now), null, 'long-ended trials get no late email');
+  assert.equal(trialNoticeDue({ ...p(1), plan: 'starter', status: 'active' }, null, now), null);
+});
+
+test('the hourly run emails the owner before and after the trial ends', async () => {
+  const w = world();
+  await w.as('dan')('POST', 'shop/me', { name: 'Ridgeline', email: 'dan@ridgeline.test' });
+  const shopId = [...w.shops.keys()][0];
+  const notices = new Map<string, string>();
+  const mail: { to: string; subject: string; text: string }[] = [];
+  w.deps.email = { async send(to, subject, text) { mail.push({ to, subject, text }); return { delivery: 'sent' }; } };
+  w.deps.store.cronShops = async () => [];
+  w.deps.store.trialNoticeShops = async () => [...w.shops.values()].map((shop) => ({ shop: clone(shop), sent: notices.get(shop.id) ?? null }));
+  w.deps.store.setTrialNotice = async (id, n) => { notices.set(id, n); };
+  const log = { info() {}, warn() {}, error() {} };
+  const { runCron } = await import('../functions/_shared/shop.ts');
+  assert.equal((await runCron(w.deps, w.now(), log)).trialNotices, 0);
+  w.tick(13 * DAY);
+  assert.equal((await runCron(w.deps, w.now(), log)).trialNotices, 1);
+  assert.equal((await runCron(w.deps, w.now(), log)).trialNotices, 0, 'only once');
+  assert.match(mail[0].subject, /ends in 2 days/);
+  assert.equal(mail[0].to, 'dan@ridgeline.test');
+  w.tick(3 * DAY);
+  assert.equal((await runCron(w.deps, w.now(), log)).trialNotices, 1);
+  assert.match(mail[1].subject, /has ended/);
+  assert.match(mail[1].text, /talkshops\.app\/plan/);
+  assert.equal(notices.get(shopId), 'ended');
+});
+
+test('when the trial ends the shop is locked until it chooses a plan', async () => {
   const w = world();
   const dan = w.as('dan');
   await dan('POST', 'shop/me', { name: 'Ridgeline' });
   const id = ((await dan('POST', 'shop/jobs', car))?.body as { id: string }).id;
   w.tick(16 * DAY);
-  assert.equal((await dan('GET', 'shop/jobs'))?.status, 200);
+  assert.equal((await dan('GET', 'shop/jobs'))?.status, 402, 'the board is locked');
+  assert.equal((await dan('GET', 'shop/bookings'))?.status, 402);
   assert.equal((await dan('POST', `shop/jobs/${id}/message`, { text: 'hi' }))?.status, 402);
   assert.equal((await dan('POST', 'shop/jobs', car))?.status, 402);
   const plan = (await dan('GET', 'shop/plan'))?.body as { state: string; canWork: boolean };
   assert.equal(plan.state, 'trial_ended');
   assert.equal(plan.canWork, false);
+  // The owner can still choose a plan and download their data.
+  assert.equal((await dan('POST', 'shop/plan/checkout', { plan: 'starter' }))?.status, 200);
+  w.deps.store.reportJobs = (shopId) => w.deps.store.listJobs(shopId, '');
+  assert.equal((await dan('POST', 'shop/export', { kind: 'jobs' }))?.status, 200);
   // The customer's link keeps working.
   const token = [...(await w.deps.store.listJobs(w.shops.values().next().value!.id, ''))][0].token;
   assert.equal((await w.as(null)('GET', `shop/c/${token}`))?.status, 200);
