@@ -57,6 +57,35 @@ jobs:
           if [ -z "$RESEND_KEY" ]; then echo "::warning::No WELTZCRAFT_RESEND_API_KEY secret yet; the brief form will fall back to opening an email."; exit 0; fi
           printf '%s' "$RESEND_KEY" | CLOUDFLARE_ACCOUNT_ID=$ACCOUNT npx --yes wrangler@3 pages secret put RESEND_API_KEY --project-name "$PROJECT"
 
+      - name: Merch shop keys (Stripe checkout + Printful orders)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Same Stripe account as Talk Shops unless a separate WELTZCRAFT_STRIPE_SECRET_KEY is added.
+          STRIPE_KEY: ${{ secrets.WELTZCRAFT_STRIPE_SECRET_KEY || secrets.TALKSHOPS_STRIPE_SECRET_KEY }}
+          PRINTFUL_KEY: ${{ secrets.PRINTFUL_API_TOKEN }}
+          PRINTFUL_STORE: ${{ secrets.PRINTFUL_STORE_ID }}
+        run: |
+          put() { CLOUDFLARE_ACCOUNT_ID=$ACCOUNT npx --yes wrangler@3 pages secret put "$1" --project-name "$PROJECT" >/dev/null && echo "set $1"; }
+          [ -n "$PRINTFUL_KEY" ] && printf '%s' "$PRINTFUL_KEY" | put PRINTFUL_API_TOKEN
+          [ -n "$PRINTFUL_STORE" ] && printf '%s' "$PRINTFUL_STORE" | put PRINTFUL_STORE_ID
+          if [ -z "$STRIPE_KEY" ]; then echo "::warning::No Stripe key secret; merch checkout stays closed."; exit 0; fi
+          printf '%s' "$STRIPE_KEY" | put STRIPE_SECRET_KEY
+          # Stripe tells us paid orders at this address. The signing secret is only shown when the endpoint is
+          # made, so if the site doesn't have it yet the endpoint is made again.
+          HOOK="https://$DOMAIN/api/merch/stripe-webhook"
+          st() { curl --silent --show-error -u "$STRIPE_KEY:" "$@"; }
+          have=$(curl --silent -H "Authorization: Bearer $CF_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT/pages/projects/$PROJECT" \
+            | jq -r '.result.deployment_configs.production.env_vars // {} | has("STRIPE_MERCH_WEBHOOK_SECRET")')
+          ids=$(st "https://api.stripe.com/v1/webhook_endpoints?limit=100" | jq -r --arg u "$HOOK" '[.data[]? | select(.url == $u) | .id] | join(" ")')
+          if [ -n "$ids" ] && [ "$have" = "true" ]; then echo "merch webhook ok"; exit 0; fi
+          for id in $ids; do st -X DELETE "https://api.stripe.com/v1/webhook_endpoints/$id" | jq -c '{deleted}'; done
+          r=$(st https://api.stripe.com/v1/webhook_endpoints -d url="$HOOK" -d "enabled_events[]=checkout.session.completed" -d description="weltzcraft.com merch orders to Printful")
+          sec=$(echo "$r" | jq -r '.secret // empty')
+          if [ -z "$sec" ]; then echo "::error::Could not create the Stripe webhook: $(echo "$r" | jq -r '.error.message // "unknown"')"; exit 1; fi
+          echo "::add-mask::$sec"
+          printf '%s' "$sec" | put STRIPE_MERCH_WEBHOOK_SECRET
+          echo "merch webhook created"
+
       - name: Upload the site
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -104,6 +133,9 @@ jobs:
           code=$(curl -s -o out.json -w '%{http_code}' -H 'Content-Type: application/json' -d '{"name":"Check","email":"check@example.com","idea":"check","website":"x","elapsed":9}' "$u" || true)
           echo "bot check -> $code $(cat out.json)"
           [ "$code" = "200" ] || { echo "::error::The brief form endpoint is not answering"; exit 1; }
+          # Merch: a made-up slug must be refused (400), which proves the checkout endpoint and its Stripe key are live.
+          code=$(curl -s -o out.json -w '%{http_code}' -H 'Content-Type: application/json' -d '{"slug":"nope","size":"M"}' "https://$PROJECT.pages.dev/api/merch/checkout" || true)
+          echo "merch checkout check -> $code $(cat out.json)"
           if [ "$TEST_BRIEF" = "true" ]; then
             code=$(curl -s -o out.json -w '%{http_code}' -H 'Content-Type: application/json' -d '{"name":"Deploy test","email":"sales@weltzcraft.com","org":"Test: brief form check","idea":"This is a test of the weltzcraft.com project brief form. No reply needed.","elapsed":9}' "$u" || true)
             echo "test brief -> $code $(cat out.json)"

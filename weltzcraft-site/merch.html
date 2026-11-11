@@ -26,21 +26,32 @@
 .m-hero .lede{margin-top:16px}
 .m-note{display:inline-flex;align-items:center;gap:10px;margin-top:22px;padding:10px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:14.5px;color:var(--muted)}
 .m-note b{color:var(--ink);font-weight:600}
-.m-filters{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 26px}
-.m-filters button{font:500 14.5px/1 var(--f-body);padding:10px 15px;border-radius:999px;border:1.5px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
-.m-filters button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
-.m-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
+.m-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px}
 .m-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)}
-.m-card[hidden]{display:none}
 .m-img{aspect-ratio:1;background:#fff;position:relative}
-.m-img img{width:100%;height:100%;object-fit:cover}
-.m-tag{position:absolute;left:12px;top:12px;font:600 11.5px/1 var(--f-body);padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.92);color:#333}
-.m-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:4px;flex:1}
+.m-img img{width:100%;height:100%;object-fit:cover;transition:opacity .18s}
+.m-img img.loading{opacity:.35}
+.m-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:12px;flex:1}
 .m-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.m-body h3{font-size:19px}
-.m-price{font:700 18px/1 var(--f-display)}
-.m-color{color:var(--muted);font-size:14px}
-.m-body .btn{margin-top:14px;width:100%;padding:12px 18px;font-size:15px}
+.m-body h3{font-size:20px}
+.m-price{font:700 19px/1 var(--f-display)}
+.m-opt{display:flex;flex-direction:column;gap:7px}
+.m-lab{font:600 12.5px/1 var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.m-lab b{font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);margin-left:6px}
+.m-logos{display:flex;flex-wrap:wrap;gap:7px}
+.m-logos{gap:6px}.m-logos button{width:36px;height:36px;border-radius:10px;border:2px solid transparent;background:#141414;padding:4px;cursor:pointer;box-shadow:0 0 0 1px var(--line)}
+.m-logos button img{width:100%;height:100%;object-fit:contain;display:block}
+.m-logos button[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface) inset}
+.m-pills{display:flex;flex-wrap:wrap;gap:6px}
+.m-pills button{font:500 14px/1 var(--f-body);min-width:42px;padding:9px 12px;border-radius:999px;border:1.5px solid var(--line);background:transparent;color:var(--ink);cursor:pointer}
+.m-pills button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.m-buy{display:flex;gap:8px;margin-top:auto;padding-top:4px}
+.m-buy select{font:500 15px var(--f-body);padding:0 10px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+.m-buy .btn{flex:1;padding:12px 18px;font-size:15px}
+.m-buy .btn[disabled]{opacity:.55;cursor:wait}
+.m-err{color:#b3261e;font-size:14px;min-height:0}
+.m-banner{margin-top:22px;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:var(--surface);font-size:15.5px}
+.m-banner[hidden]{display:none}
 .marks{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px;margin-top:8px}
 .marks figure{margin:0;background:#141414;border-radius:16px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;padding:18px}
 .marks img{width:100%;height:100%;object-fit:contain}
@@ -77,19 +88,13 @@
     <p class="eyebrow">Merch</p>
     <h1>Studio gear.</h1>
     <p class="lede">Tees, hoodies, hats, a mug, a tote and stickers from the studio behind Hood League, Curbsy and ToteTrack. Each piece is printed when you order it and shipped straight to your door.</p>
-    <p class="m-note"><span aria-hidden="true">🧵</span> <span><b>The shop opens soon.</b> Tap "Notify me" on anything you want and we'll email you when it's ready.</span></p>
+    <p class="m-note"><span aria-hidden="true">🧵</span> <span><b>Pick any logo on any piece.</b> Every photo is the real product with that logo on it.</span></p>
+    <p class="m-banner" id="m-banner" role="status" hidden></p>
   </div>
 </section>
 
 <section class="section" style="padding-top:8px">
   <div class="wrap">
-    <div class="m-filters" role="group" aria-label="Filter merch">
-      <button type="button" data-f="all" aria-pressed="true">All</button>
-      <button type="button" data-f="tee" aria-pressed="false">Tees</button>
-      <button type="button" data-f="hoodie" aria-pressed="false">Hoodies</button>
-      <button type="button" data-f="hat" aria-pressed="false">Hats</button>
-      <button type="button" data-f="home" aria-pressed="false">Mug, tote &amp; stickers</button>
-    </div>
     <div class="m-grid" id="m-grid"></div>
   </div>
 </section>
@@ -99,7 +104,7 @@
     <div class="section-head">
       <p class="eyebrow">The marks</p>
       <h2>Seven ways to wear the W.</h2>
-      <p class="sub">Monograms, a round seal and a three-stripe W, all drawn in house.</p>
+      <p class="sub">Monograms, a round seal and a three-stripe W, all drawn in house. Every one comes on every piece.</p>
     </div>
     <div class="marks">
       <figure><img src="/img/merch/marks/42-light.webp" alt="Tall W over S monogram" width="180" height="180" loading="lazy"></figure>
@@ -117,7 +122,8 @@
   <div class="wrap">
     <div class="m-faq">
       <div><h3>Made to order</h3><p>Nothing sits in a warehouse. Our print partner makes each piece after you order it, so there's no waste and every size is always in stock.</p></div>
-      <div><h3>Shipping</h3><p>Most orders are printed in 2 to 5 business days, then shipped. You get tracking by email.</p></div>
+      <div><h3>Shipping</h3><p>$5.99 flat to anywhere in the US. Most orders are printed in 2 to 5 business days, then shipped, and you get tracking by email.</p></div>
+      <div><h3>Sizing</h3><p>Tees and hoodies are unisex and fit true to size. 2XL adds $2 and 3XL adds $3. Wrong size? Email us within 30 days.</p></div>
       <div><h3>Questions</h3><p>Email <a href="mailto:hello@weltzcraft.com">hello@weltzcraft.com</a> about sizing, bulk orders for your team, or a custom piece.</p></div>
     </div>
   </div>
@@ -134,37 +140,81 @@
 
 <script>
 (function () {
-  // Images are real Printful product mockups once the "Merch mockups" workflow has run; drawn previews until then.
-  var items = [
-    { slug: 'stripes-cream-tee', type: 'tee', name: 'Stripes Tee', color: 'Cream', price: 28, logo: 'Three-stripe W' },
-    { slug: 'seal-tee', type: 'tee', name: 'Seal Tee', color: 'Black', price: 28, logo: 'Seal + stripes' },
-    { slug: 'stripe-ring-hoodie', type: 'hoodie', name: 'Stripe Ring Hoodie', color: 'Black', price: 54, logo: 'Stripe ring' },
-    { slug: 'corners-hoodie', type: 'hoodie', name: 'Monogram Hoodie', color: 'Sand', price: 54, logo: 'WS monogram' },
-    { slug: 'navy-seal-hat', type: 'hat', name: 'Seal Dad Hat', color: 'Navy, brass thread', price: 30, logo: 'Round seal' },
-    { slug: 'stripes-cap', type: 'hat', name: 'Stripes Cap', color: 'Stone', price: 30, logo: 'Three-stripe W' },
-    { slug: 'monogram-mug', type: 'home', name: 'Monogram Mug', color: 'Black, 11 oz', price: 18, logo: 'Tall monogram' },
-    { slug: 'est-tote', type: 'home', name: 'Est. 2026 Tote', color: 'Black canvas', price: 24, logo: 'WS stamp' },
-    { slug: "stickers", type: "home", name: "Seal Sticker", color: "4 x 4 in, kiss-cut", price: 5, logo: 'Seal + stripes' }
-  ];
+  // Everything comes from /merch-catalog.json, which the "Merch build" workflow writes from merch/products.json:
+  // one real Printful mockup and one Printful product per product x color x logo.
+  var MARK = { '55': '55-brass' };
+  var UP = { '2XL': 2, '3XL': 3, '4XL': 4 };
   var grid = document.getElementById('m-grid');
-  grid.innerHTML = items.map(function (it) {
-    var mail = 'mailto:hello@weltzcraft.com?subject=' + encodeURIComponent('Merch: ' + it.name) +
-      '&body=' + encodeURIComponent('Let me know when the ' + it.name + ' (' + it.color + ') is available. Size (if it applies): ');
-    return '<article class="m-card" data-type="' + it.type + '">' +
-      '<div class="m-img"><img src="/img/merch/' + it.slug + '.webp" alt="' + it.name + ', ' + it.color + '" width="800" height="800" loading="lazy">' +
-      '<span class="m-tag">' + it.logo + '</span></div>' +
-      '<div class="m-body"><div class="m-row"><h3>' + it.name + '</h3><span class="m-price">$' + it.price + '</span></div>' +
-      '<p class="m-color">' + it.color + '</p>' +
-      '<a class="btn" href="' + mail + '">Notify me</a></div></article>';
-  }).join('');
-  var btns = document.querySelectorAll('.m-filters button');
-  btns.forEach(function (b) {
-    b.addEventListener('click', function () {
-      var f = b.getAttribute('data-f');
-      btns.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
-      grid.querySelectorAll('.m-card').forEach(function (c) { c.hidden = f !== 'all' && c.getAttribute('data-type') !== f; });
-    });
+  var banner = document.getElementById('m-banner');
+  var q = new URLSearchParams(location.search).get('order');
+  if (q === 'thanks') { banner.hidden = false; banner.textContent = 'Thanks for your order! A receipt is on its way to your email, and tracking follows once it ships.'; }
+  if (q === 'cancelled') { banner.hidden = false; banner.textContent = 'Checkout was cancelled, nothing was charged.'; }
+  var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+  fetch('/merch-catalog.json', { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(render).catch(function () {
+    grid.innerHTML = '<p class="muted">The shop is restocking. Check back in a few minutes.</p>';
   });
+
+  function render(cat) {
+    var logoKeys = Object.keys(cat.logos);
+    cat.products.forEach(function (p) {
+      if (!p.colors.length) return;
+      var st = { color: p.colors[0].key, logo: p.key === 'hat' ? '55' : (logoKeys.indexOf('58') >= 0 ? '58' : logoKeys[0]), size: p.sizes ? (p.sizes.indexOf('M') >= 0 ? 'M' : p.sizes[0]) : null };
+      var el = document.createElement('article');
+      el.className = 'm-card';
+      el.innerHTML =
+        '<div class="m-img"><img alt="" width="900" height="900" loading="lazy"></div>' +
+        '<div class="m-body"><div class="m-row"><h3>' + esc(p.name) + '</h3><span class="m-price"></span></div>' +
+        '<div class="m-opt"><span class="m-lab">Logo<b data-v="logo"></b></span><div class="m-logos">' +
+          logoKeys.map(function (k) { return '<button type="button" data-logo="' + k + '" title="' + esc(cat.logos[k].name) + '" aria-label="' + esc(cat.logos[k].name) + '"><img src="/img/merch/marks/' + (MARK[k] || k + '-light') + '.webp" alt="" width="32" height="32" loading="lazy"></button>'; }).join('') +
+        '</div></div>' +
+        (p.colors.length > 1 ? '<div class="m-opt"><span class="m-lab">Color<b data-v="color"></b></span><div class="m-pills" data-g="color">' +
+          p.colors.map(function (c) { return '<button type="button" data-color="' + c.key + '">' + esc(c.name) + '</button>'; }).join('') + '</div></div>'
+          : '<div class="m-opt"><span class="m-lab">' + (p.key === 'sticker' ? 'Size' : 'Color') + '<b>' + esc(p.colors[0].name) + '</b></span></div>') +
+        (p.sizes ? '<div class="m-opt"><span class="m-lab">Size</span><div class="m-pills" data-g="size">' +
+          p.sizes.map(function (z) { return '<button type="button" data-size="' + z + '">' + z + '</button>'; }).join('') + '</div></div>' : '') +
+        '<div class="m-buy"><select aria-label="Quantity">' + [1, 2, 3, 4, 5].map(function (n) { return '<option>' + n + '</option>'; }).join('') + '</select>' +
+        '<button type="button" class="btn">Buy</button></div><p class="m-err" role="alert"></p></div>';
+      grid.appendChild(el);
+      var img = el.querySelector('.m-img img'), buy = el.querySelector('.m-buy .btn'), err = el.querySelector('.m-err');
+      function slug() { return p.key + '-' + st.color + '-' + st.logo; }
+      function update() {
+        var s = slug(), item = cat.items[s];
+        var colorName = (p.colors.filter(function (c) { return c.key === st.color; })[0] || {}).name;
+        var src = '/img/merch/' + s + '.webp';
+        if (img.getAttribute('src') !== src) { img.classList.add('loading'); img.src = src; }
+        img.alt = p.name + ', ' + colorName + ', ' + cat.logos[st.logo].name + ' logo';
+        var price = p.price + (UP[st.size] || 0);
+        el.querySelector('.m-price').textContent = '$' + price;
+        el.querySelector('[data-v="logo"]').textContent = cat.logos[st.logo].name;
+        var cv = el.querySelector('[data-v="color"]'); if (cv) cv.textContent = colorName;
+        el.querySelectorAll('[data-logo]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.logo === st.logo)); });
+        el.querySelectorAll('[data-color]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.color === st.color)); });
+        el.querySelectorAll('[data-size]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.size === st.size)); });
+        buy.disabled = !item; buy.textContent = item ? 'Buy · $' + price : 'Coming soon';
+        err.textContent = '';
+      }
+      img.addEventListener('load', function () { img.classList.remove('loading'); });
+      img.addEventListener('error', function () { img.classList.remove('loading'); });
+      el.addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        if (b.dataset.logo) st.logo = b.dataset.logo;
+        else if (b.dataset.color) st.color = b.dataset.color;
+        else if (b.dataset.size) st.size = b.dataset.size;
+        else return;
+        update();
+      });
+      buy.addEventListener('click', function () {
+        buy.disabled = true; var label = buy.textContent; buy.textContent = 'Opening checkout…'; err.textContent = '';
+        fetch('/api/merch/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: slug(), size: st.size, qty: Number(el.querySelector('.m-buy select').value) }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (r) { if (r.ok && r.j.url) { location.href = r.j.url; return; } throw new Error(r.j.error || 'Checkout is not available right now.'); })
+          .catch(function (e) { buy.disabled = false; buy.textContent = label; err.textContent = (e.message || 'Checkout is not available right now.') + ' You can also email hello@weltzcraft.com.'; });
+      });
+      update();
+    });
+  }
 })();
 </script>
 <script src="/site.js?v=312" defer></script>
