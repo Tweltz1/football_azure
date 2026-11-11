@@ -119,20 +119,30 @@ def load_crops(data_dir, size):
 def load_teacher(set_dir, size, items, min_new=20):
     """Yields ("train", label, 224x224 tensor) for each photo Gemini was sure of. Its name joins the item with
     the same name, or becomes a new item once min_new photos agree; at most CROPS_PER_LABEL // 2 per item."""
+    def key(s):  # "Cardboard boxes" and "Cardboard box" are the same item
+        s = " ".join(s.lower().replace("-", " ").split())
+        for end, to in (("ches", "ch"), ("shes", "sh"), ("xes", "x"), ("ies", "y")):
+            if s.endswith(end) and len(s) > 4:
+                return s[:-len(end)] + to
+        return s[:-1] if s.endswith("s") and not s.endswith("ss") and len(s) > 3 else s
+
     rows = [r for r in json.load(open(os.path.join(set_dir, "asked.json"))) if r.get("sure")]
-    by_lower = {n.lower(): n for n in items}
-    groups = defaultdict(list)
+    by_key = {}
+    for n in items:
+        by_key.setdefault(key(n), n)
+    groups, names = defaultdict(list), defaultdict(list)
     for r in rows:
         path = os.path.join(set_dir, "crops", f"{r['id']}.jpg")
         if os.path.exists(path):
-            groups[r["name"].strip().lower()].append(path)
+            groups[key(r["name"])].append(path)
+            names[key(r["name"])].append(r["name"].strip())
     used = 0
     for name, paths in sorted(groups.items()):
-        label = by_lower.get(name)
+        label = by_key.get(name)
         if not label:
             if len(paths) < min_new:
                 continue
-            label = name[:1].upper() + name[1:]
+            label = max(set(names[name]), key=names[name].count)
         for path in paths[:CROPS_PER_LABEL // 2]:
             im = Image.open(path).convert("RGB").resize((size, size), Image.BICUBIC)
             used += 1
