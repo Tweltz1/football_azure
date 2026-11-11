@@ -249,9 +249,12 @@ export async function junkPlusRoute(
         continue;
       }
       if (t.bundleId !== BUNDLE_ID || t.revocationDate) continue;
-      // Every Curbsy purchase is tagged with the account that bought it.
-      if (typeof t.appAccountToken !== 'string' || t.appAccountToken.toLowerCase() !== me.toLowerCase()) { otherAccount = true; continue; }
       const productId = String(t.productId ?? '');
+      // Purchases made in Curbsy are tagged with the account that bought it. A promo (offer) code redeemed
+      // in the App Store has no tag, so a Plus subscription without one goes to the signed-in account,
+      // unless another account already has it (savePlus answers 'taken').
+      const token = typeof t.appAccountToken === 'string' ? t.appAccountToken.toLowerCase() : '';
+      if (token ? token !== me.toLowerCase() : productId !== PLUS_PRODUCT) { otherAccount = true; continue; }
       const environment = String(t.environment ?? 'Production');
       if (productId === PLUS_PRODUCT) {
         const expires = num(t.expiresDate);
