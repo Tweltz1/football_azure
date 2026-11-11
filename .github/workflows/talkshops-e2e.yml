@@ -1,0 +1,48 @@
+# End-to-end check of the live talkshops.app against the Talk Shops Supabase project.
+# Runs talkshops/tests/e2e/site.mjs with a throwaway test owner and deletes everything it made.
+name: Talk Shops end-to-end check
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-om5u4i]
+    paths: [talkshops/tests/e2e/**, .github/workflows/talkshops-e2e.yml]
+permissions:
+  contents: read
+concurrency: talkshops-e2e
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        working-directory: talkshops/tests/e2e
+        run: |
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund playwright@1.48.2 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Get project keys
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ secrets.TALKSHOPS_SUPABASE_PROJECT_ID }}
+        run: |
+          keys=$(curl -sf -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "https://api.supabase.com/v1/projects/$REF/api-keys?reveal=true")
+          anon=$(echo "$keys" | jq -r '[.[] | select(.type=="publishable")][0].api_key // ([.[] | select(.name=="anon")][0].api_key)')
+          service=$(echo "$keys" | jq -r '[.[] | select(.type=="secret")][0].api_key // ([.[] | select(.name=="service_role")][0].api_key)')
+          echo "::add-mask::$service"
+          echo "::add-mask::$anon"
+          { echo "SB_URL=https://$REF.supabase.co"; echo "SB_ANON=$anon"; echo "SB_SERVICE=$service"; } >> "$GITHUB_ENV"
+      - name: Run the check
+        working-directory: talkshops/tests/e2e
+        env:
+          OUT_DIR: ${{ github.workspace }}/e2e-out
+        run: node site.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: talkshops-e2e
+          path: e2e-out
+          retention-days: 7
