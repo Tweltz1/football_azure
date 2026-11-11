@@ -210,8 +210,13 @@
       step++;
       if (step < Q.length) ask(); else build();
     }
+    function siteUrl(intro) {
+      var q = { t: a.type, n: a.name, town: a.town, tag: a.tag, cta: a.cta, h: a.hours, s: a.show.join(','), c: a.color.slice(1) };
+      return '/sample?' + Object.keys(q).filter(function (k) { return q[k]; }).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&') + (intro ? '' : '&intro=0');
+    }
     function build() {
       var t = TYPES[a.type];
+      try { window.open(siteUrl(true), '_blank'); } catch (e) {}
       ws.className = 'ws ws-build';
       ws.innerHTML = '<div class="wb-scene"><span class="wb-w">W</span><div class="wb-log" aria-live="polite"></div><div class="wb-prog"><i></i></div><p class="wb-power">Welcome to the power of the W</p></div>';
       var log = ws.querySelector('.wb-log'), bar = ws.querySelector('.wb-prog i'), per = calm ? 120 : 520;
@@ -240,7 +245,7 @@
         (on('pics') ? '<div class="ws-sec"><h5>Photos</h5><div class="ws-pics">' + t.pics.map(function (p) { return '<span>' + p + '</span>'; }).join('') + '</div></div>' : '') +
         '<div class="ws-sec ws-info"><h5>Visit us</h5><p>📍 ' + esc(town) + '</p><p>🕘 ' + esc(a.hours) + '</p>' + (on('map') ? '<div class="ws-map" aria-hidden="true"><i></i></div>' : '') + '</div>' +
         (on('review') ? '<div class="ws-sec ws-review"><p>“' + t.review + '”</p><small>★★★★★ Google review</small></div>' : '') +
-        '<div class="ws-end"><button type="button" class="wq-go" data-want="1">I want this site</button><small>Starter sites from $500</small></div>' +
+        '<div class="ws-end"><a class="wq-go ws-open" href="' + siteUrl(false) + '" target="_blank" rel="noopener">Open the full site ↗</a><button type="button" class="wq-go ws-want" data-want="1">I want this site</button><small>Starter sites from $500</small></div>' +
         '<p class="ws-foot">© ' + esc(name) + ' · Site by Weltzcraft</p>';
       ws.scrollTop = 0;
     }
@@ -269,6 +274,11 @@
     });
     ws.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.classList.contains('wq-in')) { e.preventDefault(); next(); } });
     reset();
+    var P = new URLSearchParams(location.search);
+    if (P.get('site') && TYPES[P.get('site')]) {
+      a.type = P.get('site'); a.name = P.get('sn') || ''; a.town = P.get('st') || '';
+      setTimeout(want, 300);
+    }
     return { reset: reset };
   })();
 

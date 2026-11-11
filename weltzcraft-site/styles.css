@@ -533,4 +533,6 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 .ws-map i{position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:50% 50% 50% 0;background:var(--wc);transform:translate(-50%,-70%) rotate(-45deg)}
 .ws-end{padding:16px;display:grid;gap:6px;text-align:center}
 .ws-end small{color:#8a8274;font-size:11.5px}
+.ws-open{text-decoration:none;text-align:center;display:block}
+.ws-want{background:#1c1a16;color:#fff;box-shadow:none}
 @media (prefers-reduced-motion:reduce){.wb-w,.ws-power .wb-scene::after,.wq,.ws-site{animation:none}}
