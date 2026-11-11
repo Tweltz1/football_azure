@@ -60,12 +60,14 @@ jobs:
           fi
 
       - name: Ask Gemini
+        timeout-minutes: 95
+        continue-on-error: true
         run: |
           pip install --quiet pillow
           python3 teach.py --cache cache --set set --requests "${{ inputs.requests || '150' }}"
 
       - name: Save the set
-        if: env.GEMINI_API_KEY != ''
+        if: ${{ !cancelled() && env.GEMINI_API_KEY != '' }}
         run: |
           [ -f set/asked.json ] || { echo "Nothing asked yet"; exit 0; }
           (cd set && zip -qr ../teacher.zip .)

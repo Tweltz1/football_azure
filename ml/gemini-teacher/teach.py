@@ -123,6 +123,8 @@ def candidates(cache):
                     photo_done(image, boxes)
                 image, boxes = row[c['ImageID']], []
             n += 1
+            if n % 2000000 == 0:
+                log(f'  {n} boxes read')
             name = names.get(row[c['LabelName']], '')
             x0, x1, y0, y1 = (float(row[c[k]]) for k in ('XMin', 'XMax', 'YMin', 'YMax'))
             ok = (row[c['IsGroupOf']] == '0' and row[c['IsDepiction']] == '0' and row[c['IsTruncated']] == '0'
@@ -241,6 +243,7 @@ def main():
     p.add_argument('--cache', default='cache')
     p.add_argument('--set', default='set')
     p.add_argument('--requests', type=int, default=150, help='Gemini requests this run (the free key allows a few hundred a day)')
+    p.add_argument('--minutes', type=float, default=75, help='stop asking after this long, so the set is always saved')
     a = p.parse_args()
     key = os.environ.get('GEMINI_API_KEY')
     if not key:
@@ -264,15 +267,18 @@ def main():
     log(f'Boxes left to ask: {sum(len(v) for v in queues.values()) + len(todo)}; trying {len(todo)} this run')
 
     system = system_prompt()
+    stop_at = time.time() + a.minutes * 60
     sent, new, sure_new = 0, 0, 0
     with ThreadPoolExecutor(16) as pool:
         for i in range(0, len(todo), BATCH * 4):
-            if sent >= a.requests:
+            if sent >= a.requests or time.time() > stop_at:
+                if time.time() > stop_at:
+                    log('Out of time for this run: saving what we have.')
                 break
             chunk = todo[i:i + BATCH * 4]
             pics = [(b, row, j) for (b, row), j in zip(chunk, pool.map(lambda t: crop(t[1]), chunk)) if j]
             for k in range(0, len(pics), BATCH):
-                if sent >= a.requests:
+                if sent >= a.requests or time.time() > stop_at:
                     break
                 batch = pics[k:k + BATCH]
                 try:
@@ -301,6 +307,7 @@ def main():
                         sure_new += 1
                 if sent % 20 == 0:
                     log(f'  {sent} requests, {new} answers, {sure_new} sure')
+                    json.dump(asked, open(asked_path, 'w'))  # a cut-short run still keeps its answers
                 time.sleep(2)
     json.dump(asked, open(asked_path, 'w'))
     names = defaultdict(int)
