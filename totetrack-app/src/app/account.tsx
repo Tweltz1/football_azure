@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { router, Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Button, Card, IconButton, SectionTitle, StudioCredit } from '../components/ui';
+import { useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SignInButtons } from '../components/SignInButtons';
+import { Button, Card, IconButton, StudioCredit } from '../components/ui';
 import { useAuth } from '../lib/auth';
+import { useLists } from '../lib/lists';
 import { FREE_TOTE_LIMIT, usePro } from '../lib/pro';
 import { itemCount, timeAgo, useTotes } from '../lib/store';
-import { cloudConfigured } from '../lib/supabase';
 import { useSync } from '../lib/sync';
 import { radius, useTheme } from '../lib/theme';
 
@@ -16,32 +16,17 @@ export default function Account() {
   const auth = useAuth();
   const sync = useSync();
   const store = useTotes();
+  const lists = useLists();
   const { totes } = store;
   const [signingOut, setSigningOut] = useState(false);
   const pro = usePro();
-  const [busy, setBusy] = useState<'google' | 'apple' | null>(null);
-  const [appleAvailable, setAppleAvailable] = useState(false);
-
-  useEffect(() => {
-    if (Platform.OS === 'ios') AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
-  }, []);
-
-  const attempt = async (kind: 'google' | 'apple') => {
-    setBusy(kind);
-    try {
-      await (kind === 'google' ? auth.signInWithGoogle() : auth.signInWithApple());
-    } catch (e) {
-      Alert.alert('Sign-in failed', e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(null);
-    }
-  };
 
   // Signed in, your totes belong to your account: signing out backs them up one last time, then clears
   // them off this phone (sign in again to get them back). Nobody else using the phone sees them.
   const finishSignOut = async () => {
     await auth.signOut();
     store.forgetPhone();
+    lists.forgetPhone();
   };
   const signOut = () =>
     Alert.alert('Sign out?', 'Your totes are backed up to your account and removed from this phone. Sign in again to get them back.', [
@@ -69,7 +54,7 @@ export default function Account() {
   const deleteAccount = () =>
     Alert.alert(
       'Delete your ToteTrack account?',
-      'This permanently deletes your account and every tote and photo backed up to it, then signs you out. Totes on this phone are kept.',
+      'This permanently deletes your account and every tote, photo and packing list saved to it, removes them from this phone and signs you out.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -78,7 +63,7 @@ export default function Account() {
           onPress: async () => {
             try {
               const what = await sync.deleteAccount();
-              await auth.signOut();
+              await finishSignOut();
               Alert.alert(
                 what === 'account' ? 'Account deleted' : 'Backup deleted',
                 what === 'account'
@@ -124,7 +109,7 @@ export default function Account() {
               {sync.status === 'error'
                 ? `Your ${totes.length} totes and ${items} items are saved on this phone. The last backup didn’t go through, so ToteTrack will keep trying.`
                 : `Your ${totes.length} totes and ${items} items are backed up. Sign in with the same account on a new phone and they come right back.`}
-              {' '}Packing lists stay on this phone.
+              {' '}Packing lists are backed up too.
             </Text>
             <Button title="Sync now" icon="sync" variant="secondary" onPress={sync.syncNow} style={{ marginTop: 16 }} />
             <Button title={signingOut ? 'Backing up…' : 'Sign out'} icon="log-out-outline" variant="secondary" onPress={signingOut ? () => {} : signOut} style={{ marginTop: 10 }} />
@@ -144,49 +129,7 @@ export default function Account() {
               </Text>
             </View>
 
-            {!cloudConfigured ? (
-              <Text style={[styles.note, { color: t.danger, textAlign: 'center' }]}>Cloud backup isn’t set up in this build.</Text>
-            ) : (
-              <View style={{ gap: 12, marginTop: 28 }}>
-                {appleAvailable &&
-                  (busy === 'apple' ? (
-                    <View style={[styles.loading, { backgroundColor: t.cardAlt }]}>
-                      <ActivityIndicator />
-                    </View>
-                  ) : (
-                    <AppleAuthentication.AppleAuthenticationButton
-                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-                      buttonStyle={
-                        t.bg === '#0C0D12'
-                          ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                          : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-                      }
-                      cornerRadius={radius.md}
-                      style={{ height: 52 }}
-                      onPress={() => attempt('apple')}
-                    />
-                  ))}
-                <Pressable
-                  onPress={() => attempt('google')}
-                  disabled={!!busy}
-                  style={({ pressed }) => [styles.google, { backgroundColor: t.card, borderColor: t.border, opacity: pressed ? 0.8 : 1 }]}
-                >
-                  {busy === 'google' ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <>
-                      <Ionicons name="logo-google" size={20} color={t.text} />
-                      <Text style={[styles.googleText, { color: t.text }]}>Continue with Google</Text>
-                    </>
-                  )}
-                </Pressable>
-              </View>
-            )}
-
-            <SectionTitle>Without an account</SectionTitle>
-            <Text style={[styles.note, { color: t.textMuted, marginTop: 0 }]}>
-              Everything works without signing in. Your totes are just saved on this phone only.
-            </Text>
+            <SignInButtons />
           </>
         )}
         <StudioCredit style={{ marginTop: 12 }} />

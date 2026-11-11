@@ -1,6 +1,7 @@
 import { router, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { SignInGate } from '../components/SignInGate';
 import { AuthProvider } from '../lib/auth';
 import { DEMO, DEMO_DWELL_MS, DEMO_TOUR } from '../lib/demo';
 import { ListsProvider } from '../lib/lists';
@@ -37,12 +38,13 @@ export default function RootLayout() {
   return (
     <AuthProvider>
     <ToteProvider>
+    <ListsProvider>
     <ProProvider>
     <SyncProvider>
-    <ListsProvider>
       <StatusBar style="auto" />
       <NativeBridge />
       {DEMO ? <DemoTour /> : null}
+      <SignInGate>
       <Stack
         screenOptions={{
           headerTintColor: t.primary,
@@ -68,9 +70,10 @@ export default function RootLayout() {
         <Stack.Screen name="tote/snap" options={{ presentation: 'modal', title: 'Snap to add' }} />
         <Stack.Screen name="pro" options={{ presentation: 'modal', title: 'ToteTrack Pro' }} />
       </Stack>
-    </ListsProvider>
+      </SignInGate>
     </SyncProvider>
     </ProProvider>
+    </ListsProvider>
     </ToteProvider>
     </AuthProvider>
   );

@@ -1,28 +1,27 @@
 # ToteTrack Privacy Policy
 
-_Last updated: November 10, 2026_
+_Last updated: November 11, 2026_
 
 ToteTrack helps you keep track of what's in your storage totes. This policy explains what the app
 stores and where.
 
-## Without an account
+## Your account
 
-Everything works without signing in. Your totes, items, locations, notes, photos, packing lists and
-reminders are stored only on your iPhone. Nothing is sent to us.
+ToteTrack asks you to sign in with Apple or Google so your totes belong to your account and are
+there on any phone you sign in on.
 
-## With an account (optional backup)
-
-If you choose to sign in with Apple or Google to back up your totes:
-
-- **What we store:** your email address and an account ID from Apple or Google, plus the totes you
-  create: names, locations, notes, items (with any quantities, expiration dates and values you
-  enter), and the tote photos and photos of what's inside that you add.
-- **Why:** only to back up your totes and bring them back when you sign in on another phone.
-- **Where:** in our cloud database (Supabase). Each person can only read their own data.
+- **What we store:** your email address and an account ID from Apple or Google, plus what you
+  create: tote names, locations, notes, items (with any quantities, expiration dates and values you
+  enter), packing lists, and the tote photos and photos of what's inside that you add.
+- **Why:** only to keep your totes in your account and bring them back when you sign in on another
+  phone.
+- **Where:** in our cloud database (Supabase). Each person can only read their own data. Your
+  iPhone also keeps a working copy so the app works without signal; signing out removes it from the
+  phone.
 - **What we don't do:** no ads, no analytics, no tracking, and we never sell or share your data.
   If you use "Sign in with Apple" and choose to hide your email, we only get Apple's relay address.
 
-Packing lists and what Snap to add learns from you stay on your phone and are not backed up.
+Reminders and what Snap to add learns from you stay on your phone and are not uploaded.
 
 ## Camera, photos, NFC and notifications
 
@@ -35,7 +34,7 @@ Packing lists and what Snap to add learns from you stay on your phone and are no
 ## Deleting your data
 
 - In the app, open **Account & backup > Delete account**. This permanently deletes your account
-  and everything backed up to it. Totes on your phone are kept until you delete them or the app.
+  and everything saved to it, and removes it from your phone.
 - Deleting the app deletes everything stored on the phone.
 
 ## Subscriptions
