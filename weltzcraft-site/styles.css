@@ -371,6 +371,7 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 .est-pick h3{font-size:24px}
 .est-pick .muted{margin:4px 0 18px;font-size:15px}
 .est fieldset{border:0;padding:0;margin:0}
+.est .seg{margin-bottom:16px}
 .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:16px}
 .seg input,.chips input{position:absolute;opacity:0;pointer-events:none}
 .seg span{display:block;padding:8px 18px;white-space:nowrap;text-align:center;border-radius:999px;font-weight:600;font-size:15px;cursor:pointer;transition:background .2s,color .2s}
