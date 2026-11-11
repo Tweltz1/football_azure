@@ -530,6 +530,14 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       const { error } = await db.from('repair_shops').update({ plan: 'trial', plan_status: 'trialing', trial_ends_at: endsAt }).eq('id', shopId);
       if (error) throw error;
     },
+    async claimTrialPhone(phone, shopId) {
+      const { error } = await db.from('talkshops_trial_phones').insert({ phone, shop_id: shopId });
+      if (error?.code === '23505') return false;
+      // The shared hobby project has no such table (Talk Shops runs on its own project): don't block sign-up there.
+      if (error?.code === '42P01' || error?.code === 'PGRST205') return true;
+      if (error) throw error;
+      return true;
+    },
     async useEmails(shopId, day, limit) {
       const { data, error } = await db.rpc('repair_use_emails', { p_shop: shopId, p_day: day, p_limit: limit });
       if (error) throw error;
@@ -715,6 +723,8 @@ export function createStaffStore(db: SupabaseClient): StaffStore {
     async addMember(m) {
       const { error } = await db.from('repair_shop_members').insert({ user_id: m.userId, shop_id: m.shopId, role: m.role, email: m.email, name: m.name, added_at: m.addedAt });
       if (error?.code === '23505') return false;
+      // The shared hobby project has no such table (Talk Shops runs on its own project): don't block sign-up there.
+      if (error?.code === '42P01' || error?.code === 'PGRST205') return true;
       if (error) throw error;
       return true;
     },
