@@ -387,6 +387,47 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
   .est-pick,.est-out{padding:22px}
 }
 @media (prefers-reduced-motion:reduce){.screen,.tt-row,.rt-list li,.bump{animation:none}}
+
+/* website demo */
+.wb-ico{width:36px;height:36px;border-radius:10px;flex:none;display:grid;place-items:center;font-style:normal;font-size:20px;background:linear-gradient(135deg,#2563c9,#7a3fb8)}
+.wb-form{display:grid;gap:14px;margin-top:18px;max-width:440px;padding:18px;border-radius:18px;border:1px solid rgba(255,240,215,.14);background:rgba(255,240,215,.04)}
+.wb-form[hidden]{display:none}
+.wb-form label{display:grid;gap:6px;font-weight:600;font-size:14px}
+.wb-form label small{font-weight:400;color:var(--muted)}
+.wb-form input:not([type=radio]){font:500 16px var(--f-body);padding:10px 12px;border-radius:12px;border:1px solid rgba(255,240,215,.2);background:rgba(255,240,215,.06);color:var(--ink);width:100%;box-sizing:border-box}
+.wb-form input:not([type=radio]):focus{outline:none;border-color:#ff8a3c}
+.wb-form fieldset{border:0;padding:0;margin:0}
+.wb-form legend{font-weight:600;font-size:14px;margin-bottom:8px;padding:0}
+.wb-types{display:flex;flex-wrap:wrap;gap:7px}
+.wb-types input,.wb-colors input{position:absolute;opacity:0;pointer-events:none}
+.wb-types span{display:block;padding:7px 12px;border-radius:999px;border:1px solid rgba(255,240,215,.2);font-size:13.5px;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s}
+.wb-types input:checked+span{background:#ff8a3c;border-color:#ff8a3c;color:#1b1209;font-weight:600}
+.wb-colors{display:flex;gap:10px}
+.wb-colors span{display:block;width:30px;height:30px;border-radius:50%;cursor:pointer;box-shadow:0 0 0 2px rgba(255,240,215,.15)}
+.wb-colors input:checked+span{box-shadow:0 0 0 2px #15130f,0 0 0 4px #fff}
+.wb-types input:focus-visible+span,.wb-colors input:focus-visible+span{outline:3px solid #ff8a3c;outline-offset:2px}
+.wb-form .btn{justify-self:start}
+.s-site{padding:44px 0 0;gap:0}
+.ws{--wc:#e0662a;flex:1;overflow:auto;background:#fff;color:#1c1a16;font-size:13px;scrollbar-width:none}
+.ws::-webkit-scrollbar{display:none}
+.ws-nav{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #eee;position:sticky;top:0;background:#fff;z-index:1}
+.ws-nav b{font:700 13px/1.2 var(--f-display);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ws-nav i{font-style:normal;color:#666}
+.ws-logo{width:26px;height:26px;border-radius:8px;background:var(--wc);color:#fff;display:grid;place-items:center;font:800 11px var(--f-display);flex:none}
+.ws-hero{padding:22px 16px 20px;text-align:center;color:#fff;background:linear-gradient(160deg,var(--wc),color-mix(in srgb,var(--wc) 55%,#000))}
+.ws-emoji{font-size:34px;display:block;margin-bottom:6px}
+.ws-hero h4{font:800 20px/1.15 var(--f-display);margin:0 0 6px;overflow-wrap:anywhere}
+.ws-hero p{margin:0 0 14px;opacity:.92;font-size:13px;line-height:1.4}
+.ws-cta{display:inline-block;background:#fff;color:var(--wc);font-weight:700;padding:9px 16px;border-radius:999px;font-size:13px}
+.ws-sec{padding:14px 16px;border-bottom:1px solid #f0ece4}
+.ws-sec h5{font:700 11px/1 var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--wc);margin:0 0 10px}
+.ws-row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed #eee}
+.ws-row:last-child{border-bottom:0}
+.ws-info p{margin:0 0 4px}
+.ws-review p{margin:0 0 6px;font-style:italic;line-height:1.4}
+.ws-review small{color:#c58a00}
+.ws-foot{margin:0;padding:12px 16px 18px;color:#999;font-size:11px;text-align:center}
+@media (max-width:960px){.wb-form{max-width:none}}
 .s-head b{white-space:nowrap}.s-head span{text-align:right}
 
 /* Merch band on the home page */
