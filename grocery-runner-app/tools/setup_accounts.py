@@ -59,10 +59,25 @@ drop policy if exists "grocery community read" on public.grocery_community_recip
 create policy "grocery community read" on public.grocery_community_recipes
   for select to anon, authenticated
   using (not hidden or user_id = (select auth.uid()));
+-- People banned from sharing (set by the daily reports review, .github/workflows/stride-reports.yml).
+create table if not exists public.grocery_banned_sharers (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  reason text,
+  banned_at timestamptz not null default now()
+);
+alter table public.grocery_banned_sharers enable row level security;
+revoke all on public.grocery_banned_sharers from anon, authenticated;
+create or replace function public.grocery_can_share() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select not exists (select 1 from public.grocery_banned_sharers where user_id = auth.uid());
+$$;
+revoke all on function public.grocery_can_share() from public, anon;
+grant execute on function public.grocery_can_share() to authenticated;
+
 drop policy if exists "grocery community add" on public.grocery_community_recipes;
 create policy "grocery community add" on public.grocery_community_recipes
   for insert to authenticated
-  with check (user_id = (select auth.uid()) and not hidden and reports = 0 and saves = 0);
+  with check (user_id = (select auth.uid()) and not hidden and reports = 0 and saves = 0 and (select public.grocery_can_share()));
 drop policy if exists "grocery community remove" on public.grocery_community_recipes;
 create policy "grocery community remove" on public.grocery_community_recipes
   for delete to authenticated
