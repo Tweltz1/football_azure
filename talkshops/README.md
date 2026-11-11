@@ -37,8 +37,8 @@ set. Dashboard settings for the project: Authentication, URL Configuration (Site
 - Root directory / path: `talkshops`
 - Build command: `node scripts/build.mjs`
 - Deploy command: `npx wrangler deploy` (uses `wrangler.jsonc`, serves `public/`)
-- Build variables: `SUPABASE_URL` (`https://<talkshops project>.supabase.co`) and `SUPABASE_ANON_KEY` (that project's anon key).
-  Without `SUPABASE_URL` the build falls back to the old shared project.
+- Build variables: none needed. `scripts/build.mjs` defaults to the Talk Shops Supabase project (its URL and publishable
+  key are public). `TALKSHOPS_SUPABASE_URL` / `TALKSHOPS_SUPABASE_ANON_KEY` override it; the old `SUPABASE_*` variables are ignored.
 - Custom domain: `talkshops.app`
 
 Supabase: add `https://talkshops.app/**` to Authentication → URL Configuration → Redirect URLs.
