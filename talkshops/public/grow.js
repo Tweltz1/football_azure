@@ -137,7 +137,7 @@
   }
 
   // ==================== Online booking: the public page (/?book=<token>) ====================
-  const bk = { token: "", info: null, err: "", sent: false, busy: false, day: "", slot: "", draft: null, result: null };
+  const bk = { token: "", info: null, err: "", sent: false, busy: false, day: "", month: "", slot: "", draft: null, result: null };
   /** Keeps what the customer typed when the page redraws (picking a time, sending, an error). */
   function keepDraft() {
     const f = document.getElementById("grBookForm");
@@ -165,13 +165,35 @@
     if (!days.some((d) => d.day === bk.day)) bk.day = days[0].day;
     const today = days.find((d) => d.day === bk.day);
     if (bk.slot && !days.some((d) => d.times.some((t) => t.at === bk.slot))) bk.slot = "";
-    return `<div class="full gr-slots"><div class="gr-slot-days" role="group" aria-label="${L("Day", "Día")}">${days.map((d) => {
-        const [wd, rest] = [new Date(d.day + "T12:00:00Z").toLocaleDateString(es ? "es-US" : "en-US", { timeZone: "UTC", weekday: "short" }), new Date(d.day + "T12:00:00Z").toLocaleDateString(es ? "es-US" : "en-US", { timeZone: "UTC", month: "short", day: "numeric" })];
-        return `<button type="button" class="gr-slot-day" data-gr-day="${esc(d.day)}" aria-pressed="${d.day === bk.day}"><small>${esc(wd)}</small><b>${esc(rest)}</b></button>`;
-      }).join("")}</div>
+    return `<div class="full gr-slots">${slotCalendar(L, es, days)}
+      <p class="gr-cal-day">${esc(slotDay(bk.day, es, true))}</p>
       <div class="gr-slot-times" role="group" aria-label="${L("Time", "Hora")}">${today.times.map((t) => `<button type="button" class="gr-slot-time" data-gr-slot="${esc(t.at)}" aria-pressed="${t.at === bk.slot}">${esc(slotTime(t.time))}</button>`).join("")}</div>
       <input type="hidden" name="slot" value="${esc(bk.slot)}">
       ${bk.slot ? `<p class="gr-slot-pick">${L("Your time", "Su hora")}: <b>${esc(slotLabel(bk.slot, es))}</b></p>` : `<p class="muted gr-slot-pick">${L("Pick a time above.", "Elija una hora arriba.")}</p>`}</div>`;
+  }
+  const addDay = (day, n) => new Date(Date.parse(day + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+  /** A month calendar of the open days: days with times are tappable, closed or full days are faded. */
+  function slotCalendar(L, es, days) {
+    const open = new Map(days.map((d) => [d.day, d.times.length]));
+    const months = [];
+    for (let m = days[0].day.slice(0, 7); m <= days[days.length - 1].day.slice(0, 7); m = addDay(m + "-28", 7).slice(0, 7)) months.push(m);
+    if (!months.includes(bk.month)) bk.month = bk.day.slice(0, 7);
+    const i = months.indexOf(bk.month), loc = es ? "es-US" : "en-US";
+    const first = bk.month + "-01", lead = new Date(first + "T12:00:00Z").getUTCDay();
+    const title = new Date(first + "T12:00:00Z").toLocaleDateString(loc, { timeZone: "UTC", month: "long", year: "numeric" }).replace(/^./, (c) => c.toUpperCase());
+    // 2023-01-01 was a Sunday, so these are the weekday names in order.
+    const heads = [0, 1, 2, 3, 4, 5, 6].map((n) => new Date(Date.UTC(2023, 0, 1 + n, 12)).toLocaleDateString(loc, { timeZone: "UTC", weekday: "narrow" }));
+    const cells = Array.from({ length: lead }, () => `<span class="gr-cal-pad"></span>`);
+    for (let day = first; day.startsWith(bk.month); day = addDay(day, 1)) {
+      const n = open.get(day), num = Number(day.slice(8));
+      cells.push(n ? `<button type="button" class="gr-cal-open" data-gr-day="${esc(day)}" aria-pressed="${day === bk.day}" aria-label="${esc(slotDay(day, es, true))}: ${n} ${n === 1 ? L("open time", "hora libre") : L("open times", "horas libres")}"><b>${num}</b><small>${n}</small></button>`
+        : `<span class="gr-cal-off" aria-hidden="true">${num}</span>`);
+    }
+    const nav = (to, label, txt) => `<button type="button" class="gr-cal-nav" ${to ? `data-gr-month="${esc(to)}"` : "disabled"} aria-label="${label}">${txt}</button>`;
+    return `<div class="gr-cal" role="group" aria-label="${L("Open days", "Días disponibles")}">
+      <div class="gr-cal-head">${nav(months[i - 1], L("Previous month", "Mes anterior"), "‹")}<b>${esc(title)}</b>${nav(months[i + 1], L("Next month", "Mes siguiente"), "›")}</div>
+      <div class="gr-cal-grid">${heads.map((h) => `<span class="gr-cal-wd" aria-hidden="true">${esc(h)}</span>`).join("")}${cells.join("")}</div>
+      <p class="muted gr-cal-key">${L("Numbers show how many times are open that day. Faded days are closed or full.", "Los números indican cuántas horas quedan libres ese día. Los días claros están cerrados o llenos.")}</p></div>`;
   }
   async function renderBooking(token) {
     bk.token = token;
@@ -524,10 +546,11 @@
   // ==================== Events ====================
   document.addEventListener("click", async (e) => {
     if (!A) return;
-    const t = e.target.closest("[data-gr-day],[data-gr-slot],[data-gr-sched-save],[data-gr-sched-off-add],[data-gr-sched-off-del],[data-gr-lang],[data-gr-book-lang],[data-gr-review],[data-gr-results],[data-gr-days],[data-gr-bk-open],[data-gr-bk-cancel],[data-gr-bk-accept],[data-gr-bk-decline],[data-gr-clock],[data-gr-review-ask],[data-gr-grow],[data-gr-copy],[data-gr-save-note],[data-gr-new-link],[data-gr-save-review],[data-gr-save-notify],[data-gr-logo],[data-gr-logo-remove],[data-gr-color-save],[data-gr-color-clear],[data-gr-export]");
+    const t = e.target.closest("[data-gr-day],[data-gr-month],[data-gr-slot],[data-gr-sched-save],[data-gr-sched-off-add],[data-gr-sched-off-del],[data-gr-lang],[data-gr-book-lang],[data-gr-review],[data-gr-results],[data-gr-days],[data-gr-bk-open],[data-gr-bk-cancel],[data-gr-bk-accept],[data-gr-bk-decline],[data-gr-clock],[data-gr-review-ask],[data-gr-grow],[data-gr-copy],[data-gr-save-note],[data-gr-new-link],[data-gr-save-review],[data-gr-save-notify],[data-gr-logo],[data-gr-logo-remove],[data-gr-color-save],[data-gr-color-clear],[data-gr-export]");
     if (!t) return;
     if (t.dataset.grLang) { store.set("ts-lang-" + t.dataset.token, t.dataset.grLang); A.renderCustomer(); return; }
     if (t.dataset.grBookLang) { keepDraft(); store.set("ts-book-lang", t.dataset.grBookLang); renderBooking(bk.token); return; }
+    if (t.dataset.grMonth) { keepDraft(); bk.month = t.dataset.grMonth; const d = (bk.info?.slots || []).find((x) => x.day.startsWith(bk.month)); if (d) bk.day = d.day; renderBooking(bk.token); (document.querySelector(`[data-gr-month="${CSS.escape(t.dataset.grMonth)}"]`) || document.querySelector(".gr-cal-open[aria-pressed=true]"))?.focus(); return; }
     if (t.dataset.grDay) { keepDraft(); bk.day = t.dataset.grDay; renderBooking(bk.token); document.querySelector(".gr-slot-times button")?.focus(); return; }
     if (t.dataset.grSlot) { keepDraft(); bk.slot = t.dataset.grSlot; bk.err = ""; renderBooking(bk.token); document.querySelector(`[data-gr-slot="${CSS.escape(bk.slot)}"]`)?.focus(); return; }
     if (t.hasAttribute("data-gr-review")) { const tok = A.customerToken?.(); if (tok) A.api("POST", "shop/c/" + encodeURIComponent(tok) + "/review-click", {}).catch(() => {}); return; }
