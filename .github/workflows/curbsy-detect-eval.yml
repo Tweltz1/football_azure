@@ -1,0 +1,26 @@
+# Scores Curbsy's photo naming instructions (Gemini) on public Wikimedia Commons photos, current vs older.
+# Needs the GEMINI_API_KEY repository secret (the same free key the hobby apps use); without it, it skips.
+name: Curbsy photo naming check
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ml/curbsy-detect-eval/**'
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Score
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node ml/curbsy-detect-eval/eval.mjs
