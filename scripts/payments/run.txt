@@ -1,4 +1,1 @@
-stripe-check
-store-look
-totetrack-products
-store-look
+stripe-portal
