@@ -356,8 +356,14 @@
       <label>Your name
         <input name="name" autocomplete="name" required>
       </label>
+      <label>Your email
+        <input name="email" type="email" autocomplete="email" inputmode="email" required>
+      </label>
       <label>Business or project
         <input name="org" autocomplete="organization">
+      </label>
+      <label class="hp" aria-hidden="true">Website
+        <input name="website" tabindex="-1" autocomplete="off">
       </label>
       <label>What should the app do?
         <textarea name="idea" rows="5" required placeholder="Who uses it, and what problem does it solve?"></textarea>
@@ -380,8 +386,8 @@
           </select>
         </label>
       </div>
-      <button class="btn" type="submit">Email this brief</button>
-      <p class="hint" id="brief-hint">Opens your email app with the brief filled in, addressed to sales@weltzcraft.com.</p>
+      <button class="btn" type="submit">Send this brief</button>
+      <p class="hint" id="brief-hint" role="status">Goes straight to sales@weltzcraft.com. We reply by email, usually within a day.</p>
     </form>
   </div>
 </section>

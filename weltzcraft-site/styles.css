@@ -123,6 +123,8 @@ h2{font-size:clamp(30px,4vw,44px);font-weight:800}
 .brief textarea{resize:vertical}
 .brief input:focus,.brief textarea:focus,.brief select:focus{outline:none;border-color:var(--ember)}
 .brief [aria-invalid="true"]{border-color:#c0392b}
+.brief .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.brief button[disabled]{opacity:.6;cursor:progress}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .hint{color:var(--muted);font-size:13.5px}
 

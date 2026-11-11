@@ -1,4 +1,4 @@
-// Copy-email buttons and the project brief form (builds an email to sales@weltzcraft.com; no server needed).
+// Copy-email buttons and the project brief form (posts to /api/brief, see _worker.js; falls back to an email).
 (function () {
   var yr = document.getElementById('yr');
   if (yr) yr.textContent = new Date().getFullYear();
@@ -49,26 +49,44 @@
 
   var form = document.getElementById('brief');
   if (!form) return;
+  var hint = document.getElementById('brief-hint'), opened = Date.now(), busy = false;
   form.addEventListener('submit', function (e) {
     e.preventDefault();
+    if (busy) return;
     var f = form.elements, ok = true;
-    ['name', 'idea'].forEach(function (k) {
-      var bad = !f[k].value.trim();
+    ['name', 'email', 'idea'].forEach(function (k) {
+      var v = f[k].value.trim();
+      var bad = !v || (k === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v));
       f[k].setAttribute('aria-invalid', bad ? 'true' : 'false');
       if (bad && ok) { f[k].focus(); ok = false; }
     });
-    if (!ok) { document.getElementById('brief-hint').textContent = 'Add your name and a sentence about the app first.'; return; }
-    var org = f.org.value.trim();
-    var subject = 'App project: ' + (org || f.name.value.trim());
-    var body = [
-      'Name: ' + f.name.value.trim(),
-      org ? 'Business or project: ' + org : '',
-      'Platform: ' + f.platform.value,
-      'Timeline: ' + f.timeline.value,
-      '',
-      f.idea.value.trim()
-    ].filter(function (l, i) { return l !== '' || i === 4; }).join('\n');
-    window.location.href = 'mailto:sales@weltzcraft.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-    document.getElementById('brief-hint').textContent = 'Your email app should open now. If it doesn’t, email sales@weltzcraft.com directly.';
+    if (!ok) { hint.textContent = 'Add your name, an email we can reply to, and a sentence about the app.'; return; }
+    var data = {
+      name: f.name.value.trim(), email: f.email.value.trim(), org: f.org.value.trim(), idea: f.idea.value.trim(),
+      platform: f.platform.value, timeline: f.timeline.value, website: f.website.value,
+      elapsed: Math.round((Date.now() - opened) / 1000)
+    };
+    // If the site can't send it (offline, server trouble), fall back to the visitor's own email app.
+    var byEmail = function () {
+      var body = ['Name: ' + data.name, data.org ? 'Business or project: ' + data.org : null,
+        'Platform: ' + data.platform, 'Timeline: ' + data.timeline, '', data.idea]
+        .filter(function (l) { return l !== null; }).join('\n');
+      window.location.href = 'mailto:sales@weltzcraft.com?subject=' + encodeURIComponent('App project: ' + (data.org || data.name)) + '&body=' + encodeURIComponent(body);
+      hint.textContent = 'We couldn\u2019t send it from here, so your email app should open with the brief filled in. If it doesn\u2019t, email sales@weltzcraft.com.';
+    };
+    var btn = form.querySelector('button[type="submit"]');
+    busy = true; btn.disabled = true; btn.textContent = 'Sending\u2026';
+    var done = function () { busy = false; btn.disabled = false; btn.textContent = 'Send this brief'; };
+    if (!window.fetch) { done(); byEmail(); return; }
+    fetch('/api/brief', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      .then(function (r) {
+        if (r.ok) {
+          done(); form.reset(); opened = Date.now();
+          hint.textContent = 'Sent. Thanks, ' + data.name.split(' ')[0] + '. We\u2019ll reply to ' + data.email + ', usually within a day.';
+        } else if (r.status === 400) {
+          return r.json().then(function (j) { done(); hint.textContent = (j && j.error) || 'Check the form and try again.'; });
+        } else { done(); byEmail(); }
+      })
+      .catch(function () { done(); byEmail(); });
   });
 })();
