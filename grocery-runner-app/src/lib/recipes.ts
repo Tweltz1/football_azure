@@ -25,8 +25,17 @@ export type Recipe = {
   /** The recipe page's own picture, for recipes added from a link. */
   imageUrl?: string;
   items: RecipeItem[];
-  /** "suggested" ships with the app; "mine" came from a photo, link or pasted text. */
-  source: 'suggested' | 'mine';
+  /**
+   * "suggested" ships with the app; "mine" is in the shopper's own recipes (added from a photo, link or
+   * pasted text, or saved); "community" was shared by another shopper (lib/community.ts).
+   */
+  source: 'suggested' | 'mine' | 'community';
+  /** Who shared it, for community recipes and saved copies of them. */
+  author?: string;
+  /** The shared recipe's id, for community recipes and saved copies of them. */
+  communityId?: string;
+  /** Community category (lib/community.ts CATEGORIES). */
+  category?: string;
 };
 
 /** Recipe items not already on the list (by normalised name), in recipe order, without repeats. */

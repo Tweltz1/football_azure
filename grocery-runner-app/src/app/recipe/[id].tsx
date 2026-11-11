@@ -1,7 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, ActionSheetIOS, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAuth } from '../../lib/auth';
+import {
+  blockAuthor,
+  cachedCommunityRecipe,
+  categoryLabel,
+  CommunityRecipe,
+  countSave,
+  fetchCommunityRecipe,
+  removeShared,
+  reportRecipe,
+} from '../../lib/community';
 import { RecipePicture } from '../../components/RecipePicture';
 import { Button, tap } from '../../components/ui';
 import { labelsOf } from '../../lib/diet';
@@ -13,16 +24,124 @@ import { radius, useTheme } from '../../lib/theme';
 export default function RecipeScreen() {
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { myRecipes, items, addItems, deleteRecipe } = useData();
-  const recipe = SUGGESTED.find((r) => r.id === id) ?? myRecipes.find((r) => r.id === id);
+  const { myRecipes, items, addItems, deleteRecipe, saveRecipe } = useData();
+  const { session } = useAuth();
+  // Community recipes ("c-<id>") come from the list's cache, or are fetched when opened another way.
+  const [shared, setShared] = useState<CommunityRecipe | null | undefined>(() => (id?.startsWith('c-') ? cachedCommunityRecipe(id) : null));
+  useEffect(() => {
+    if (id?.startsWith('c-') && shared === undefined) fetchCommunityRecipe(id.slice(2)).then(setShared).catch(() => setShared(null));
+  }, [id, shared]);
+  const recipe = SUGGESTED.find((r) => r.id === id) ?? myRecipes.find((r) => r.id === id) ?? shared ?? undefined;
+  const savedCopy = recipe && recipe.source !== 'mine' ? myRecipes.find((r) => r.id === `saved-${recipe.id}`) : undefined;
 
   const onList = useMemo(() => new Set(items.filter((i) => !i.checked).map((i) => itemKey(i.name))), [items]);
   // Staples and things already on the list start unticked.
-  const [picked, setPicked] = useState<Set<number>>(
-    () => new Set(recipe?.items.flatMap((it, n) => (!it.pantry && !onList.has(itemKey(it.item)) ? [n] : [])) ?? []),
-  );
+  // null until the shopper changes something, so a recipe that loads late still gets the default ticks.
+  const [touched, setPicked] = useState<Set<number> | null>(null);
+  const picked =
+    touched ?? new Set(recipe?.items.flatMap((it, n) => (!it.pantry && !onList.has(itemKey(it.item)) ? [n] : [])) ?? []);
 
-  if (!recipe) return null;
+  if (!recipe) {
+    return shared === undefined ? <ActivityIndicator style={{ marginTop: 40 }} /> : (
+      <Text style={{ color: t.textMuted, padding: 24, textAlign: 'center' }}>This recipe was removed.</Text>
+    );
+  }
+  const mine = recipe.source === 'mine';
+  const sharedByMe = !!shared && shared.authorId === session?.user.id;
+
+  const save = () => {
+    if (savedCopy) return router.replace(`/recipe/${savedCopy.id}`);
+    const { id: originalId, ...rest } = recipe;
+    saveRecipe({ ...rest, id: `saved-${originalId}`, source: 'mine' });
+    if (recipe.communityId && recipe.source === 'community') countSave(recipe.communityId);
+    Alert.alert('Saved', `${recipe.title} is in Your recipes${session ? ' and your account' : ''}.`);
+  };
+
+  const needAccount = (what: string) =>
+    Alert.alert('Sign in first', `Sign in to ${what}.`, [
+      { text: 'Not now', style: 'cancel' },
+      { text: 'Sign in', onPress: () => router.push('/account') },
+    ]);
+
+  const report = () => {
+    if (!shared?.communityId) return;
+    if (!session) return needAccount('report recipes');
+    const send = (reason: string) =>
+      reportRecipe(shared.communityId!, reason)
+        .then(() => Alert.alert('Thanks for reporting', 'We review reports every day. Recipes several people report are hidden right away.'))
+        .catch((e) => Alert.alert("Couldn't report", e instanceof Error ? e.message : String(e)));
+    Alert.alert('Report this recipe?', 'Why should it be removed?', [
+      { text: 'Offensive or hateful', onPress: () => send('offensive') },
+      { text: 'Spam or not a recipe', onPress: () => send('spam') },
+      { text: 'Personal information', onPress: () => send('personal info') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const block = () => {
+    if (!shared) return;
+    Alert.alert(`Block ${shared.author}?`, 'You won’t see their recipes on this phone anymore.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Block',
+        style: 'destructive',
+        onPress: async () => {
+          await blockAuthor(shared.authorId);
+          router.back();
+        },
+      },
+    ]);
+  };
+
+  const removeMine = () =>
+    Alert.alert('Remove from Community?', 'Other shoppers who saved it keep their copy.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () =>
+          removeShared(shared!.communityId!)
+            .then(() => router.back())
+            .catch((e) => Alert.alert("Couldn't remove", e instanceof Error ? e.message : String(e))),
+      },
+    ]);
+
+  const more = () => {
+    const options = sharedByMe ? ['Remove from Community', 'Cancel'] : ['Report recipe', `Block ${shared?.author ?? 'author'}`, 'Cancel'];
+    ActionSheetIOS.showActionSheetWithOptions(
+      { options, cancelButtonIndex: options.length - 1, destructiveButtonIndex: 0 },
+      (i) => {
+        if (sharedByMe && i === 0) removeMine();
+        else if (!sharedByMe && i === 0) report();
+        else if (!sharedByMe && i === 1) block();
+      },
+    );
+  };
+
+  const headerRight = () => (
+    <View style={{ flexDirection: 'row', gap: 18, alignItems: 'center' }}>
+      {!mine && (
+        <Pressable accessibilityRole="button" accessibilityLabel={savedCopy ? 'Saved' : 'Save recipe'} hitSlop={10} onPress={save}>
+          <Ionicons name={savedCopy ? 'bookmark' : 'bookmark-outline'} size={22} color={t.primary} />
+        </Pressable>
+      )}
+      {mine && !recipe.communityId && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Share with the community"
+          hitSlop={10}
+          onPress={() => router.push({ pathname: '/share', params: { id: recipe.id } })}
+        >
+          <Ionicons name="share-social-outline" size={22} color={t.primary} />
+        </Pressable>
+      )}
+      {!!shared && (
+        <Pressable accessibilityRole="button" accessibilityLabel="More" hitSlop={10} onPress={more}>
+          <Ionicons name="ellipsis-horizontal-circle" size={24} color={t.primary} />
+        </Pressable>
+      )}
+    </View>
+  );
 
   const chosenNames = new Set(
     newItems(
@@ -35,7 +154,7 @@ export default function RecipeScreen() {
   const toggle = (n: number) => {
     tap();
     setPicked((s) => {
-      const next = new Set(s);
+      const next = new Set(s ?? picked);
       if (next.has(n)) next.delete(n);
       else next.add(n);
       return next;
@@ -49,7 +168,7 @@ export default function RecipeScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: recipe.title }} />
+      <Stack.Screen options={{ title: recipe.title, headerRight }} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 8, gap: 8 }}>
         <RecipePicture recipe={recipe} size={180} />
         {labelsOf(recipe).length > 0 && (
@@ -59,7 +178,7 @@ export default function RecipeScreen() {
           {[
             recipe.minutes ? (recipe.minutes >= 120 ? `${Math.round(recipe.minutes / 60)} hr` : `${recipe.minutes} min`) : null,
             recipe.servings,
-            recipe.source === 'mine' ? 'From your recipe' : null,
+            recipe.author ? `${categoryLabel(recipe.category)} by ${recipe.author}` : mine ? 'Your recipe' : null,
           ]
             .filter(Boolean)
             .join(' · ')}
@@ -93,7 +212,7 @@ export default function RecipeScreen() {
             </Pressable>
           );
         })}
-        {recipe.source === 'mine' && (
+        {mine && (
           <Button
             title="Delete this recipe"
             variant="ghost"

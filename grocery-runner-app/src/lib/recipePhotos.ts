@@ -17,6 +17,16 @@ export async function keepPhoto(fromUri: string, recipeId: string): Promise<stri
 
 export const photoUri = (name: string) => new File(Paths.document, name).uri;
 
+/** False for a photo that lives on another phone (recipes synced from the account). */
+export function hasPhoto(name: string | undefined): boolean {
+  if (!name) return false;
+  try {
+    return new File(Paths.document, name).exists;
+  } catch {
+    return false;
+  }
+}
+
 export function deletePhoto(name: string | undefined) {
   if (!name) return;
   try {

@@ -89,7 +89,7 @@ jobs:
           xcrun simctl launch "$DEV" com.tweltz1.groceryrunner
           # The app shows a new screen every 20 seconds (src/lib/demo.ts); photograph the middle of each.
           sleep 12
-          for SHOT in 1-list 2-route 3-recipes 4-recipe 5-item 6-stores 7-store-picker; do
+          for SHOT in 1-list 2-route 3-recipes 4-recipe 5-community 6-stores 7-account 8-item; do
             xcrun simctl io "$DEV" screenshot "shots/$SHOT.png"
             sleep 19
           done
@@ -98,9 +98,9 @@ jobs:
           sleep 2
           xcrun simctl launch "$DEV" com.tweltz1.groceryrunner
           sleep 12
-          xcrun simctl io "$DEV" screenshot "shots/8-list-dark.png"
+          xcrun simctl io "$DEV" screenshot "shots/9-list-dark.png"
           sleep 20
-          xcrun simctl io "$DEV" screenshot "shots/9-route-dark.png"
+          xcrun simctl io "$DEV" screenshot "shots/10-route-dark.png"
           xcrun simctl shutdown "$DEV"
           sips -g pixelWidth -g pixelHeight shots/*.png
           echo "$NAME" > shots/device.txt

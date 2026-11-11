@@ -1,7 +1,9 @@
 import { router, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { AuthProvider } from '../lib/auth';
 import { DEMO, DEMO_DWELL_MS, DEMO_TOUR } from '../lib/demo';
+import { RecipeSync } from '../lib/recipeSync';
 import { DataProvider, useData } from '../lib/store';
 import { useTheme } from '../lib/theme';
 
@@ -14,7 +16,7 @@ function DemoTour() {
       setTimeout(
         () => {
           if (router.canGoBack()) router.dismissAll();
-          setTimeout(() => router.push(route as never), 600);
+          setTimeout(() => router.navigate(route as never), 600);
         },
         (i + 1) * DEMO_DWELL_MS,
       ),
@@ -27,8 +29,10 @@ function DemoTour() {
 export default function RootLayout() {
   const t = useTheme();
   return (
+    <AuthProvider>
     <DataProvider>
       <StatusBar style="auto" />
+      <RecipeSync />
       {DEMO ? <DemoTour /> : null}
       <Stack
         screenOptions={{
@@ -47,7 +51,10 @@ export default function RootLayout() {
         <Stack.Screen name="aisle-scan" options={{ presentation: 'modal', title: 'Aisles from screenshots' }} />
         <Stack.Screen name="recipe/[id]" options={{ title: 'Recipe' }} />
         <Stack.Screen name="scan" options={{ presentation: 'modal', title: 'Add a recipe' }} />
+        <Stack.Screen name="account" options={{ presentation: 'modal', title: 'Account' }} />
+        <Stack.Screen name="share" options={{ presentation: 'modal', title: 'Share a recipe' }} />
       </Stack>
     </DataProvider>
+    </AuthProvider>
   );
 }

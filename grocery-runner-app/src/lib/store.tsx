@@ -22,14 +22,16 @@ type Data = {
   myDepartments: Record<string, Department>;
   /** Random id for this install, so each phone gets one vote per item per store. */
   deviceId: string;
-  /** Recipes this shopper scanned, linked or pasted. Newest first. */
+  /** Recipes this shopper scanned, linked, pasted or saved. Newest first. */
   myRecipes: Recipe[];
+  /** Ids of recipes deleted here, so account sync doesn't bring them back from another phone. */
+  deletedRecipeIds: string[];
   /** Building outline facts per store id, from OpenStreetMap (null = no building mapped). */
   buildings: Record<string, { info: BuildingInfo | null; at: number }>;
 };
 
 export const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-const fresh = (): Data => ({ items: [], store: null, coldLast: true, remembered: {}, myDepartments: {}, deviceId: newId(), myRecipes: [], buildings: {} });
+const fresh = (): Data => ({ items: [], store: null, coldLast: true, remembered: {}, myDepartments: {}, deviceId: newId(), myRecipes: [], deletedRecipeIds: [], buildings: {} });
 
 /** Stores with no building mapped are checked again after this long, in case someone maps it. */
 const RECHECK_MISSING_MS = 14 * 24 * 3600_000;
@@ -45,6 +47,8 @@ type Ctx = Data & {
   lastRemoved: Removed | null;
   undoRemove: () => void;
   saveRecipe: (recipe: Recipe) => void;
+  /** Account sync: replaces the recipe list with the merged one. */
+  replaceRecipes: (recipes: Recipe[], deletedIds: string[]) => void;
   deleteRecipe: (id: string) => void;
   removeItem: (id: string) => void;
   toggleItem: (id: string) => void;
@@ -302,10 +306,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setLocation,
       setStore,
       saveRecipe: (recipe) =>
-        setData((d) => ({ ...d, myRecipes: [recipe, ...d.myRecipes.filter((r) => r.id !== recipe.id)].slice(0, 50) })),
+        setData((d) => ({
+          ...d,
+          myRecipes: [recipe, ...d.myRecipes.filter((r) => r.id !== recipe.id)].slice(0, 200),
+          deletedRecipeIds: (d.deletedRecipeIds ?? []).filter((x) => x !== recipe.id),
+        })),
+      replaceRecipes: (myRecipes, deletedRecipeIds) => setData((d) => ({ ...d, myRecipes, deletedRecipeIds })),
       deleteRecipe: (id) => {
         deletePhoto(data.myRecipes.find((r) => r.id === id)?.photo);
-        setData((d) => ({ ...d, myRecipes: d.myRecipes.filter((r) => r.id !== id) }));
+        setData((d) => ({
+          ...d,
+          myRecipes: d.myRecipes.filter((r) => r.id !== id),
+          deletedRecipeIds: [id, ...(d.deletedRecipeIds ?? []).filter((x) => x !== id)].slice(0, 300),
+        }));
       },
       removeItem: (id) => removeWhere((i) => i.id === id),
       toggleItem: (id) =>

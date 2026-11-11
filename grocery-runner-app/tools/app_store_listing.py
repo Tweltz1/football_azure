@@ -126,7 +126,7 @@ def age_rating():
         if k in FREQUENCY:
             attrs[k] = "NONE"
         elif k in YES_NO:
-            attrs[k] = False
+            attrs[k] = k in L.get("ageRatingYes", [])
     # Apple adds questions over time. When it names one this script doesn't know, answer it
     # "no" (or "none" if it turns out to be a how-often question) and try again.
     import re
@@ -152,7 +152,7 @@ def content_rights():
 
 step("Categories", categories)
 step("Subtitle and privacy policy URL", info_localization)
-step("Age rating (all none)", age_rating)
+step("Age rating (all none, plus listing.json ageRatingYes)", age_rating)
 step("Content rights", content_rights)
 
 # The version being prepared (1.0 until the first release).
