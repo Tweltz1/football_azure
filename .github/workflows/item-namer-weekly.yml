@@ -5,7 +5,8 @@ name: Item namer weekly
 
 on:
   schedule:
-    - cron: '0 6 * * 1'  # Mondays 06:00 UTC
+    - cron: '0 6 * * 1'  # Mondays 06:00 UTC: retrain the item namers
+    - cron: '30 9 * * *'  # every day 09:30 UTC: Gemini names a few hundred more training photos (free key's daily limit)
   workflow_dispatch:
 
 permissions:
@@ -18,7 +19,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       BRANCH: claude/project-thread-6lgsrr
     steps:
+      - name: Gemini names more training photos (gemini-teacher.yml)
+        if: github.event.schedule == '30 9 * * *'
+        run: gh workflow run gemini-teacher.yml -R "${{ github.repository }}" --ref "$BRANCH"
+
       - name: Start training with the live settings
+        if: github.event.schedule != '30 9 * * *'
         run: |
           cfg=$(gh api "repos/${{ github.repository }}/contents/ml/item-namer/run.json?ref=$BRANCH" --jq .content | base64 -d)
           per=$(echo "$cfg" | python3 -c 'import json,sys; print(json.load(sys.stdin)["per_class"])')
