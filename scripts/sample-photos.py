@@ -9,15 +9,16 @@ from PIL import Image, ImageOps
 
 OUT = 'weltzcraft-site/img/sample'
 Q = {
-  'coffee':  ['coffee shop interior', 'latte art', 'barista coffee', 'croissant coffee'],
+  'coffee':  ['cafe interior wooden tables', 'latte art', 'barista making espresso', 'croissant coffee'],
   'barber':  ['barber shop', 'barber haircut', 'barber tools scissors', 'barber chair'],
-  'auto':    ['auto repair garage', 'mechanic car repair', 'car engine', 'car tire wheel'],
-  'lawn':    ['landscaped garden lawn', 'lawn mower grass', 'garden flowers', 'backyard patio garden'],
-  'bakery':  ['bakery bread', 'croissants', 'cake bakery', 'cookies baking'],
-  'fitness': ['gym fitness', 'fitness class', 'dumbbells weights', 'yoga'],
-  'boutique':['clothing boutique', 'clothes rack fashion', 'handbag fashion', 'fashion shoes'],
-  'running': ['running shoes', 'runner road running', 'trail running', 'marathon runners'],
+  'auto':    ['car repair workshop interior', 'mechanic working on car engine', 'car engine bay open hood', 'tire change garage wheel'],
+  'lawn':    ['suburban house front lawn', 'lawn mower grass', 'garden flowers', 'garden stone path landscaping'],
+  'bakery':  ['bakery bread', 'croissants', 'decorated birthday cake', 'chocolate chip cookies'],
+  'fitness': ['gym fitness', 'group fitness class gym', 'dumbbells rack gym', 'yoga class mat'],
+  'boutique':['clothing store interior', 'clothes on hangers rack', 'leather handbag', 'fashion shoes'],
+  'running': ['running shoes pair', 'woman jogging park', 'trail running', 'marathon runners'],
 }
+BRANDS = re.compile(r'starbucks|chanel|prada|gucci|louis vuitton|mercedes|amg|bmw|nike|adidas|mizuno|asics|puma|fortepan|logo|nebula|ambigram|receipt|invoice', re.I)
 SIZES = {0: (1600, 900), 1: (800, 800), 2: (800, 800), 3: (800, 800)}
 UA = {'User-Agent': 'WeltzcraftSamplePhotos/1.0 (https://weltzcraft.com)'}
 
@@ -60,6 +61,8 @@ def main():
     cpath = f'{OUT}/credits.json'
     credits = json.load(open(cpath)) if os.path.exists(cpath) else {}
     used, missing = {v.get('url') for v in credits.values()}, []
+    rpath = f'{OUT}/rejects.json'
+    rejects = set(json.load(open(rpath))) if os.path.exists(rpath) else set()
     for kind, queries in Q.items():
         for slot, q in enumerate(queries):
             if os.path.exists(f'{OUT}/{kind}-{slot}.webp'): continue
@@ -69,7 +72,7 @@ def main():
             for extra in tries:
                 for r in search(q, extra):
                     url = r.get('url')
-                    if not url or url in used: continue
+                    if not url or url in used or r.get('title') in rejects or BRANDS.search(r.get('title') or ''): continue
                     w, h = r.get('width') or 0, r.get('height') or 0
                     if w and w < want[0] * .75: continue
                     try:
@@ -78,6 +81,8 @@ def main():
                     except Exception as e:
                         print('  skip', url, e); continue
                     if im.width < want[0] * .75 or im.height < want[1] * .75: continue
+                    sat = sum(im.convert('HSV').resize((64, 64)).getchannel('S').getdata()) / 4096
+                    if sat < 40: print('  skip grey', r.get('title')); continue
                     im = ImageOps.fit(im, want, Image.LANCZOS)
                     path = f'{OUT}/{kind}-{slot}.webp'
                     im.save(path, 'WEBP', quality=78, method=6)
