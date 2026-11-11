@@ -1027,7 +1027,7 @@ export const DETECT_SYSTEM = [
   'needs_work = broken or missing parts that need fixing. for_parts = clearly broken, rusted through or only useful for parts or scrap. When unsure, pick good.',
   'allowed: false only when the photo shows nudity or sexual content, graphic violence, weapons or ammunition, drugs or drug gear, alcohol or tobacco, medicine, ' +
   'animals or people offered as the item, a screenshot or picture of text instead of a real item, or contains no item at all; then give a short, polite reason. ' +
-  'A person or pet just standing near the item is fine. Kitchen knives, tools and sports gear are not weapons. Otherwise true.',
+  'A person or pet just standing near the item is fine. Kitchen knives, tools and sports gear are not weapons. A clean, catalog-style or plain-background photo of a real item is fine; do not refuse a photo for looking professional. Otherwise true.',
 ].join('\n');
 
 /** Gemini vision. Tries `models` in order when one is busy. */

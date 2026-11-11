@@ -36,17 +36,21 @@ const score = Object.fromEntries(Object.keys(runs).map((k) => [k, { category: 0,
 for (const c of cases) {
   const img = await photo(c.search).catch(() => null);
   if (!img) { console.log(`skip (no photo) | ${c.search}`); continue; }
-  const line = [c.search];
+  const line = [`${c.search} [${img.title.slice(5, 60)}]`];
   for (const [name, det] of Object.entries(runs)) {
     const s = score[name];
     let d;
-    try { d = await det.detect(img.b64); } catch (e) { s.failed++; line.push(`${name}: failed ${e.status ?? ''}`); continue; }
+    // The free Gemini key is often busy (429/503): wait and try again a few times.
+    for (let t = 0; t < 5 && !d; t++) {
+      try { d = await det.detect(img.b64); } catch (e) { if (t === 4) { s.failed++; line.push(`${name}: failed ${e.status ?? ''}`); } else await new Promise((r) => setTimeout(r, 4000 * 2 ** t)); }
+    }
+    if (!d) continue;
     const wantAllowed = c.allowed ?? true;
     s.allowedOf++; if (d.allowed === wantAllowed) s.allowed++;
     if (wantAllowed && c.category) { s.categoryOf++; if (d.category === c.category) s.category++; }
     if (wantAllowed && c.words?.length) { s.titleOf++; if (c.words.some((w) => d.title.toLowerCase().includes(w))) s.title++; }
-    line.push(`${name}: ${d.allowed ? `${d.category} "${d.title}" ${d.condition}` : 'NOT ALLOWED'}`);
-    await new Promise((r) => setTimeout(r, 1500));
+    line.push(`${name}: ${d.allowed ? `${d.category} "${d.title}" ${d.condition}` : `NOT ALLOWED (${d.reason ?? ''})`}`);
+    await new Promise((r) => setTimeout(r, 3000));
   }
   console.log(line.join(' | '));
 }
