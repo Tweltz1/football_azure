@@ -70,15 +70,19 @@
     return words.flatMap((_, i) => i % 8 === 0 ? [[i * estimate / words.length, i]] : []);
   }
   const audio = new Audio();
+  const SILENT = "data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==";
   audio.preload = "auto";
   let paused = false, ended = false, muted = false;
   let spotSel = null, stepNo = 0;
   let STEPS = 13;
+  let skipStep = 0, onSkip = null; // Skip: run the rest of the current step at full speed, with no narration
+  const skipping = () => skipStep && skipStep === stepNo;
   class Stop extends Error {}
   const check = () => { if (ended) throw new Stop(); };
 
   // ---------- timing ----------
   async function wait(ms) {
+    if (skipping()) { await new Promise((r) => setTimeout(r, Math.min(ms, 40))); check(); return; }
     let left = ms;
     while (left > 0) { check(); await new Promise((r) => setTimeout(r, 100)); if (!paused) left -= 100; }
     check();
@@ -107,16 +111,17 @@
     showAt(0);
     c.done = new Promise((resolve) => {
       let fallbackTimer = null;
-      const finish = () => { clearInterval(fallbackTimer); audio.ontimeupdate = null; audio.onended = audio.onerror = null; resolve(); };
+      const finish = c.finish = () => { clearInterval(fallbackTimer); audio.ontimeupdate = null; audio.onended = audio.onerror = null; resolve(); };
       const useFallback = () => {
         if (c.fallback) return;
         c.fallback = true;
         fallbackTimer = setInterval(() => { if (!paused) c.elapsed += 0.1; showAt(c.elapsed / est * (cues.at(-1)[0] + 2)); if (c.elapsed >= est || ended) finish(); }, 100);
       };
+      if (skipping()) { c.fallback = true; c.elapsed = est; finish(); return; }
       audio.ontimeupdate = () => showAt(audio.currentTime);
       audio.onended = finish;
       audio.onerror = useFallback;
-      audio.src = "/tour/" + key + ".mp3?v=13";
+      audio.src = "/tour/" + key + ".mp3?v=14";
       audio.muted = muted;
       const p = audio.play();
       if (p && p.catch) p.catch(useFallback);
@@ -129,7 +134,7 @@
     const c = clip;
     for (;;) {
       check();
-      if (c !== clip) return;
+      if (c !== clip || skipping()) return;
       const pos = c.fallback ? c.elapsed / c.est : (audio.duration ? audio.currentTime / audio.duration : 0);
       if (pos >= f || audio.ended) return;
       await new Promise((r) => setTimeout(r, 80));
@@ -274,6 +279,7 @@
     el.focus({ preventScroll: true });
     reveal(el, "instant");
     el.value = "";
+    if (skipping()) { el.value = String(text); el.dispatchEvent(new Event("input", { bubbles: true })); return; }
     for (const ch of String(text)) { check(); el.value += ch; el.dispatchEvent(new Event("input", { bubbles: true })); await wait(45); }
   }
 
@@ -281,12 +287,13 @@
   const panel = document.createElement("div"); panel.id = "tourPanel"; panel.setAttribute("role", "region"); panel.setAttribute("aria-label", "Guided tour");
   panel.innerHTML = `<div class="t-top"><span class="t-step" id="tStep"></span>
     <button class="t-btn" id="tPause" type="button">Pause</button>
+    <button class="t-btn" id="tSkipPart" type="button" title="Skip to the next part" aria-label="Skip to the next part">Skip ›</button>
     <button class="t-btn" id="tMute" type="button">Mute</button>
     <button class="t-btn" id="tEnd" type="button">${lesson ? "End lesson" : "End tour"}</button></div>
     <div class="t-cap" id="tCap" aria-live="polite"></div><div id="tExtra"></div>`;
   function setCaption(t) { q("#tCap").textContent = t; }
   // A new step starts with no box, so the last step's highlight isn't left on screen while the page moves on.
-  function setStep(n) { stepNo = n; spotSel = null; spotLoc = null; q("#tStep").textContent = lesson ? `Lesson ${lessonIx + 1}: ${lesson.title} · ${n} of ${STEPS}` : `Guided tour · ${n} of ${STEPS}`; }
+  function setStep(n) { stepNo = n; skipStep = 0; onSkip = null; spotSel = null; spotLoc = null; q("#tStep").textContent = lesson ? `Lesson ${lessonIx + 1}: ${lesson.title} · ${n} of ${STEPS}` : `Guided tour · ${n} of ${STEPS}`; }
   function extra(html) { q("#tExtra").innerHTML = html || ""; }
   panel.addEventListener("click", (e) => {
     const id = e.target.id;
@@ -295,13 +302,21 @@
       e.target.textContent = paused ? "Resume" : "Pause";
       if (paused) audio.pause(); else if (audio.src && !audio.ended && clip && !clip.fallback) audio.play().catch(() => {});
     }
+    if (id === "tSkipPart" && !ended && stepNo && !skipping()) {
+      skipStep = stepNo;
+      if (paused) { paused = false; q("#tPause").textContent = "Pause"; }
+      try { audio.pause(); } catch (x) { /* ignore */ }
+      clip?.finish?.();
+      onSkip?.();
+    }
     if (id === "tMute") { muted = !muted; audio.muted = muted; e.target.textContent = muted ? "Unmute" : "Mute"; }
     if (id === "tEnd") endTour(true);
   });
 
   // Takeaways stay on screen after the narration so staff can consult them at the counter.
   const takeaways = {
-    booking: "Put your booking link on your website and your Google profile. Requests wait at the top of the Bay until you confirm a time or decline. Booking and Spanish are on every plan.",
+    booking: "Put your booking link on your website and your Google profile. Set appointment hours so customers pick an open time, or leave them off and confirm a time for each request. Upcoming appointments and requests wait at the top of the Bay. Booking, appointment reminders and Spanish are on every plan.",
+    plan: "New shops get a 15-day free trial with Pro features and no card needed, one per shop phone number, email and account. Pick a plan any time; the first charge waits until the trial ends.",
     results: "Results, the time clock, review requests and your logo are Pro tools, and your free trial includes them. Export Your Data is on every plan.",
     bay: "Use Awaiting approval to find estimates with an unanswered line. A signed estimate can stay in Estimate review until the shop moves the car.",
     checkin: "For an after-hours drop-off, invite the customer by link. Open their repair when the intake arrives and move it to Checked in when the vehicle is at the shop.",
@@ -358,6 +373,7 @@
           <p class="t-err" id="tErr" hidden></p></form>`);
       const err = (m) => { const p = q("#tErr"); p.textContent = m; p.hidden = !m; };
       q("#tSkip").onclick = () => resolve(null);
+      onSkip = () => { stopPolling(); resolve(null); };
       q("#tPhoneForm").onsubmit = async (e) => {
         e.preventDefault();
         if (!q("#tConsent").checked) { err("Check the box to agree to one demo text."); return; }
@@ -470,7 +486,7 @@
 
   // ---------- the guided tour ----------
   async function runTour() {
-    STEPS = 13;
+    STEPS = 14;
     await begin("board");
     setStep(1);
     highlight(".topbar .brand");
@@ -498,6 +514,16 @@
     await sr;
 
     setStep(4);
+    const bkg = say("booking");
+    q("#gr-bay")?.scrollIntoView({ block: "start" }); highlight("#gr-bookings");
+    await cue(0.36); highlight('[data-gr-bk="bk2"]'); await tap('[data-gr-bk="bk2"] [data-gr-bk-open="accept"]'); await wait(250);
+    highlight(q("#gr-bk-when")?.closest("label"));
+    await cue(0.47); await tap("[data-gr-bk-accept]"); await wait(450);
+    await cue(0.55); if (q(".sheet")) { await tap(".sheet .x"); await wait(200); } q("#gr-bay")?.scrollIntoView({ block: "start" }); highlight("#gr-appts");
+    await cue(0.68); highlight(tabSel("settings"));
+    await bkg;
+
+    setStep(5);
     const ci = say("checkin");
     await tab("checkin");
     highlight("#checkinForm");
@@ -514,14 +540,14 @@
     await cue(0.92); highlight("#checkinForm .btn.primary"); await tap("#checkinForm .btn.primary");
     await ci;
 
-    setStep(5);
+    setStep(6);
     const ft = say("firsttext");
     highlight(".sheet .thread");
     await cue(0.5); highlight(".sheet .thread .bubble");
     await cue(0.75); highlight(".sheet .thread .bubble .meta");
     await ft;
 
-    setStep(6);
+    setStep(7);
     const est = say("estimate");
     spotSel = null;
     await openSheet("RO-1044");
@@ -533,7 +559,7 @@
     await cue(0.85); highlight(q("#li-save")?.closest("label"));
     await est;
 
-    setStep(7);
+    setStep(8);
     const sd = say("send");
     highlight(".est-send"); await tap(".est-send");
     highlight("#sendForm");
@@ -542,7 +568,7 @@
     highlight(".sheet .thread");
     await sd;
 
-    setStep(8);
+    setStep(9);
     highlight(null);
     say("tryit");
     const remote = await textingStep();
@@ -554,7 +580,7 @@
       render();
       await wait(300);
       if (!q(".sheet")) await openSheet("RO-1044");
-      setStep(9);
+      setStep(10);
       const g = say("gotit");
       highlight(".sheet .thread");
       await cue(0.4); highlight("#estSec");
@@ -574,7 +600,7 @@
       await cue(0.76); await tap("#submitApproval");
       await cue(0.84); highlight("#privacyLink");
       await os;
-      setStep(9);
+      setStep(10);
       await tap("#backToShop");
       highlight("#estSec .est");
       await wait(350);
@@ -584,7 +610,7 @@
       await bs;
     }
 
-    setStep(10);
+    setStep(11);
     const al = say("along");
     highlight(".sheet .stepper");
     for (const [stage, f] of [["in_progress", 0.2], ["qc", 0.3], ["ready", 0.62]]) {
@@ -599,7 +625,7 @@
     highlight(".sheet .thread");
     await al;
 
-    setStep(11);
+    setStep(12);
     const ar = say("archive");
     await tab("archive");
     highlight(".archive");
@@ -607,7 +633,7 @@
     await cue(0.75); highlight(".archive-list");
     await ar;
 
-    setStep(12);
+    setStep(13);
     const st = say("settings");
     await tab("settings");
     highlight("#setupForm");
@@ -616,7 +642,7 @@
     await cue(0.75); highlight("#importBox");
     await st;
 
-    setStep(13);
+    setStep(14);
     const pl = say("plan");
     await tab("plan");
     highlight(".plan-page");
@@ -786,7 +812,9 @@
       }
       step(); {
         const c = say("qc-2"); highlight(q("#ci-make")?.closest("label"));
-        await cue(0.25); highlight(q("#ci-model")?.closest("label"));
+        await cue(0.2); highlight(q("#ci-model")?.closest("label"));
+        await cue(0.42); highlight(q("#ci-engine")?.closest("label")); q("#ci-engine")?.focus(); q("#ci-engine")?.dispatchEvent(new Event("input", { bubbles: true })); await wait(600); highlight("#vt-menu");
+        await cue(0.56); const en = qa("#vt-menu li").find((li) => /3\.5L 6 Cyl\. Turbo/.test(li.textContent)) || q("#vt-menu li"); if (en) await tap(en); highlight(q("#ci-engine")?.closest("label"));
         await c;
       }
       step(); {
@@ -1103,7 +1131,7 @@
       step(); { const c = say("si-5"); await cue(0.05); await type("#rc-code", "123456"); await tap("#recoveryCodeForm .btn.primary"); await wait(300); highlight("#recoveryPanel"); await c; }
     },
     async booking() {
-      STEPS = 5; await begin("board");
+      STEPS = 8; await begin("board");
       const bk = (id, what) => `[data-gr-bk="${id}"] [data-gr-bk-open="${what}"]`;
       step(); {
         const c = say("bk-1"); await wait(300); highlight("#gr-bookings");
@@ -1120,6 +1148,27 @@
       step(); {
         const c = say("bk-3"); await tab("settings"); q("#gr-booking")?.scrollIntoView({ block: "center" }); highlight("#gr-booking");
         await cue(0.45); highlight('[data-gr-grow="bookingOn"]'); await cue(0.6); highlight("#gr-booking .gr-link"); await cue(0.78); highlight(q("#gr-book-note")?.closest("label"));
+        await c;
+      }
+      step(); {
+        const c = say("bk-6"); q("#gr-sched")?.scrollIntoView({ block: "center" }); highlight("#gr-sched");
+        await cue(0.2); if (!q("#gr-sched-on")?.checked) await tap("#gr-sched-on"); await wait(350); q("#gr-sched")?.scrollIntoView({ block: "start" }); highlight(".gr-sched-week");
+        await cue(0.5); highlight(q("#gr-sched-step")?.closest("label")); await cue(0.6); highlight(q("#gr-sched-per")?.closest("label"));
+        await cue(0.78); highlight(q("#gr-sched-notice")?.closest("label")); await cue(0.9); highlight(q("#gr-sched-ahead")?.closest("label"));
+        await c;
+      }
+      step(); {
+        const c = say("bk-7"); highlight(q("#gr-sched-auto")?.closest("label"));
+        await cue(0.5); highlight(q("#gr-sched-remind")?.closest("label"));
+        await cue(0.85); highlight("[data-gr-sched-save]"); await tap("[data-gr-sched-save]"); await wait(400);
+        await c;
+      }
+      step(); {
+        const c = say("bk-8"); await closeAll(); window.Grow.renderBooking(bookToken); await wait(600);
+        q(".gr-slot-days")?.scrollIntoView({ block: "center" }); highlight(".gr-slot-days");
+        await cue(0.2); const day = qa(".gr-slot-day")[1]; if (day) await tap(day); await wait(250); highlight(".gr-slot-times");
+        await cue(0.3); const t = qa(".gr-slot-time")[1]; if (t) await tap(t);
+        await cue(0.6); q("#shopChrome").hidden = false; window.Grow.setLang("en"); render(); await tab("board"); q("#gr-bay")?.scrollIntoView({ block: "start" }); highlight("#gr-appts");
         await c;
       }
       step(); {
@@ -1188,8 +1237,8 @@
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
-      fetch("/tour/lines.json?v=13").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
-      fetch("/tour/caption-cues.json?v=13").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+      fetch("/tour/lines.json?v=14").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
+      fetch("/tour/caption-cues.json?v=14").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">
@@ -1203,7 +1252,8 @@
       q("#tsGo").onclick = () => {
         gate.remove();
         // Unlock audio on this tap (mobile browsers only allow playback after a user gesture).
-        audio.src = "/tour/intro.mp3"; audio.play().then(() => audio.pause()).catch(() => {});
+        // Use a silent clip: unlocking with the intro itself played its first words ("Hey there"), then the real intro started over.
+        audio.src = SILENT; audio.play().then(() => { if (audio.src === SILENT) audio.pause(); }).catch(() => {});
         const go = lesson ? async () => { await TRAIN[lesson.id](); await wait(400); endTour(false); } : runTour;
         go().catch((e) => { if (!(e instanceof Stop)) { console.error(e); endTour(true); } });
       };

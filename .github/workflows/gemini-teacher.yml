@@ -1,0 +1,88 @@
+# Gemini as the teacher for the on-phone item namers: names Open Images boxes that people only labeled with a
+# broad kind ("Furniture", "Tool", "Toy") and adds the ones it's sure of to the growing set in the release
+# gemini-teacher (teacher.zip). Curbsy's item namer (item-namer.yml, which runs this first) and ToteTrack's
+# namer (totetrack-build-namer.yml) train on that set; each keeps it only if it scores at least as well on
+# photos people labeled. See ml/gemini-teacher/teach.py. Needs the GEMINI_TRAINING_KEY secret (a Gemini key of
+# its own, so training never uses up the live apps' quota); skips without it.
+name: Gemini teacher
+
+on:
+  workflow_call:
+    inputs:
+      requests:
+        type: string
+        default: '150'
+  workflow_dispatch:
+    inputs:
+      requests:
+        description: Gemini requests this run (10 photos each; the free key allows a few hundred a day)
+        default: '150'
+  push:
+    branches:
+      - claude/project-thread-6lgsrr
+    paths:
+      - 'ml/gemini-teacher/**'
+      - '.github/workflows/gemini-teacher.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gemini-teacher
+  cancel-in-progress: false
+
+jobs:
+  teach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: ml/gemini-teacher
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # Its own key, never the live apps' one: the free tier allows only ~20 requests a day per model.
+      GEMINI_API_KEY: ${{ secrets.GEMINI_TRAINING_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # The 2 GB Open Images box list is read once; the boxes worth asking about are kept here.
+      - name: Keep the candidate boxes between runs
+        uses: actions/cache@v4
+        with:
+          path: ml/gemini-teacher/cache
+          key: gemini-teacher-candidates-v1
+
+      - name: Get the set so far
+        run: |
+          mkdir -p set
+          if gh release download gemini-teacher -R "${{ github.repository }}" -p teacher.zip -D . 2>/dev/null; then
+            unzip -q teacher.zip -d set && rm teacher.zip
+          else
+            echo "No set yet: starting one"
+          fi
+
+      - name: Ask Gemini
+        timeout-minutes: 95
+        continue-on-error: true
+        run: |
+          pip install --quiet pillow
+          # A push here uses run.json (keep it small: the Gemini key is shared with the live apps).
+          req="${{ inputs.requests }}"; min=75
+          if [ -z "$req" ]; then
+            req=$(python3 -c 'import json; print(json.load(open("run.json"))["requests"])')
+            min=$(python3 -c 'import json; print(json.load(open("run.json"))["minutes"])')
+          fi
+          python3 teach.py --cache cache --set set --requests "$req" --minutes "$min"
+
+      - name: Save the set
+        if: ${{ !cancelled() && env.GEMINI_API_KEY != '' }}
+        run: |
+          [ -f set/asked.json ] || { echo "Nothing asked yet"; exit 0; }
+          (cd set && zip -qr ../teacher.zip .)
+          ls -lh teacher.zip
+          if ! gh release view gemini-teacher -R "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create gemini-teacher -R "${{ github.repository }}" --prerelease --target "${{ github.sha }}" \
+              --title "Gemini-named training photos" \
+              --notes "Open Images V7 boxes (boxes CC BY 4.0, photos CC BY 2.0) that people only labeled with a broad kind, named exactly by Gemini. Training photos for the item namers (Curbsy and ToteTrack). Grows every run; see ml/gemini-teacher."
+          fi
+          gh release upload gemini-teacher teacher.zip -R "${{ github.repository }}" --clobber

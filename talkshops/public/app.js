@@ -5,7 +5,7 @@
   "use strict";
   const CFG = window.BAY_CONFIG || {};
   const DEMO_PAGE = "/demo.html";
-  const DEMO_VIDEO = "/demo.mp4?v=4";
+  const DEMO_VIDEO = "/demo.mp4?v=5";
   const STAGES = [
     { key: "invited", label: "Customer invited", cust: "Check In for Your Repair" },
     { key: "checked_in", label: "Checked In", cust: "We Have Your Car" },
@@ -169,7 +169,7 @@
   function videoModal() {
     return `<div class="modal video-modal" data-close-modal><div class="modal-card wide" role="dialog" aria-modal="true" aria-label="Talk Shops demo video">
       <div style="display:flex;align-items:center;gap:10px"><h2 style="margin-right:auto">See Talk Shops in action</h2><button class="x" data-close-modal aria-label="Close">×</button></div>
-      <video src="${DEMO_VIDEO}" controls autoplay playsinline preload="metadata"><track kind="captions" srclang="en" label="English" src="/walkthrough-en.vtt?v=4" default></video>
+      <video src="${DEMO_VIDEO}" controls autoplay playsinline preload="metadata"><track kind="captions" srclang="en" label="English" src="/walkthrough-en.vtt?v=5" default></video>
       <p class="muted" style="margin:0;font-size:13.5px">A walkthrough with narration: checking in a car, sending an estimate, the customer approving it from their text link, and moving the car to ready for pickup. Turn your sound on.</p>
       <div class="btn-row"><a class="btn primary" href="${DEMO_PAGE}" style="text-decoration:none">Explore Demo Shop</a><a class="btn" href="${DEMO_PAGE}?tour=1">Open Interactive Tour</a></div>
     </div></div>`;
@@ -436,15 +436,29 @@
   }
 
   let crew = [], myId = null, myName = "";
+  /** Fetches the plan again; reloads the whole shop when that unlocks it (just paid) or locks it (trial just ended). */
+  async function refreshPlan() {
+    if (!shop) return;
+    const was = planUi.locked(plan);
+    try { plan = await api("GET", "shop/plan"); } catch (e) { return; }
+    if (was !== planUi.locked(plan)) { if (was) toast("Your plan is active. Welcome back!"); await loadShop(); }
+    else render();
+  }
   async function loadShop() {
     try {
       await acceptInvite();
-      const me = await api("GET", "shop/me");
+      // The shop and its Bay load side by side: one wait instead of two. A board that fails here (no shop yet,
+      // or a hiccup) is fetched again once the shop is known.
+      boardV = "";
+      const [me, board] = await Promise.all([api("GET", "shop/me"), loadBoard().catch(() => null)]);
       shop = me.shop; emailConfigured = !!me.emailConfigured; plan = me.plan || null;
       role = me.role || null; mainOwner = !!me.mainOwner; crew = me.crew || []; myId = me.me || null; myName = me.myName || "";
-      boardV = ""; jobs = shop ? (await loadBoard()) || [] : [];
+      // A locked shop (trial or plan ended) only gets the choose-a-plan screen (its board request was refused).
+      const open = shop && !planUi.locked(plan);
+      if (!board) boardV = "";
+      jobs = open ? board || (await loadBoard()) || [] : [];
       window.Workday?.watch(jobs);
-      if (shop) window.Grow?.loadBookings();
+      if (open) window.Grow?.loadBookings();
       loadErr = "";
     } catch (e) { loadErr = e.message; }
     loaded = true;
@@ -492,7 +506,7 @@
       return;
     }
     if (onLoginPage) { const q = new URLSearchParams(location.search); q.delete("login"); history.replaceState(history.state, "", (pathView() ? location.pathname : "/") + (q.toString() ? "?" + q : "") + location.hash); }
-    if (!loaded) { chrome.hidden = true; app.innerHTML = `<div class="loading">Loading your shop…</div>`; return; }
+    if (!loaded) { chrome.hidden = true; app.innerHTML = window.tsLoader ? window.tsLoader("Loading your shop…", true) : `<div class="loading">Loading your shop…</div>`; return; }
     if (joinToken) {
       chrome.hidden = true;
       app.innerHTML = `<div class="login-wrap"><section class="login">${brand()}<h2>Join Your Shop</h2>${joinBanner()}
@@ -506,6 +520,14 @@
       return;
     }
     if (!shop) { chrome.hidden = true; app.innerHTML = setupView(true); renderLayer(); return; }
+    // Trial over (or plan ended): the shop stays hidden behind "choose a plan" until payment goes through.
+    if (planUi.locked(plan)) {
+      chrome.hidden = true;
+      document.title = "Choose a Plan · Talk Shops";
+      if (location.pathname !== "/plan") history.replaceState(history.state, "", "/plan" + location.search + location.hash);
+      app.innerHTML = planUi.lockView(plan, { owner: isOwner(), shopName: shop.name, brand: brand() });
+      return;
+    }
     if (!isOwner() && (ui.view === "plan" || ui.view === "prices")) ui.view = "board";
     if (!VIEW_PATHS[ui.view]) ui.view = "board";
     const want = VIEW_PATHS[ui.view];
@@ -550,6 +572,7 @@
       ["Finishing a Repair", "An owner can prepare the final bill, mark the car Ready for Pickup and confirm pickup. Find past repairs in Archive.", "pickup"],
       ["Bringing In Your Price List", "Owners open Settings → Saved Items and choose Import. Upload Excel, CSV, a PDF or a photo of your price sheet, review what Talk Shops found, then save.", "settings"],
       ["Scheduling a Reminder Text", "Open a car and use Schedule a reminder for the next service or for work the customer declined. Pick the date and Talk Shops sends the text then. Customers can reply STOP to opt out.", "customer"],
+      ["Setting Up Online Booking and Appointment Hours", "Owners open Settings → Online Booking, turn on booking and copy the link for your website or Google profile. To let customers pick an exact time, check Show open times under Appointment hours, choose your days, hours, how often appointments start, cars at the same time, notice and how far ahead, decide whether to confirm each request or book right away, turn on the day-before reminder text, and save. Requests and the week's appointments show at the top of the Bay.", "booking"],
       ["Inviting Your Team", "Owners can open Settings → Team to invite staff as owners or technicians. Each person signs in with the email address that received the invitation.", "team"],
     ];
     return `<section class="help-center">
@@ -698,7 +721,8 @@
     ["Print work orders and bills, Today's Summary, Archive", true, true],
     ["How-To repair assistant with video links", false, true],
     ["Grow the shop"],
-    ["Online booking link", true, true],
+    ["Online booking link: customers pick an open time", true, true],
+    ["Appointment hours, instant booking and day-before reminder texts", true, true],
     ["CSV export of repairs and customers", true, true],
     ["Results dashboard: approvals, money, on-time and each tech", false, true],
     ["Your logo and color on customer pages and printouts", false, true],
@@ -718,7 +742,7 @@
         <div class="front-intro"><p class="front-kicker">Shop board + customer updates for every auto shop</p><h1>Keep customers in the loop, <em>from check-in to pickup.</em></h1>
           <p>Talk Shops texts and emails your customers a private link that shows their car’s progress, photos and estimate. They approve work from their phone, and your team runs every car from one board. No customer app or account needed.</p>
           <div class="front-actions"><a class="front-cta" href="/?login=signup">Start Free Trial <span aria-hidden="true">→</span></a><a class="front-cta front-cta-alt" href="${DEMO_PAGE}">Explore Demo Shop</a><a class="front-tour" href="${DEMO_PAGE}?tour=1">Take the Guided Tour →</a></div>
-          <ul class="front-proof"><li>Free trial, no card needed</li><li>Set up in minutes</li><li>Plans from $89/month</li></ul>
+          <ul class="front-proof"><li>15-day free trial, no card needed</li><li>Set up in minutes</li><li>Plans from $89/month</li></ul>
         </div>
         <div class="front-preview" aria-label="Example customer page">
           <div class="front-window"><span>Customer view</span><span>Sample repair</span></div>
@@ -733,13 +757,14 @@
         <div class="front-why-grid">
           <div><b>Stop playing phone tag</b><p>Customers see where their car is and what was found without calling the counter. Updates go out as your team moves the car.</p></div>
           <div><b>Get approvals in minutes</b><p>Photos, notes and a clear estimate marked Required, Recommended or Optional help customers say yes, and they sign right on their phone.</p></div>
+          <div><b>Fill your schedule online</b><p>Customers pick an open time from your booking link, and a reminder text the day before helps them show up. Requests and the week’s appointments sit at the top of your board.</p></div>
           <div><b>Bring declined work back</b><p>Schedule reminder texts for the next service or work the customer put off. Past visits show what they declined last time.</p></div>
         </div>
       </div></section>
       <section class="front-work"><div class="front-inner">
         <div class="front-workflow"><h2>How It Works</h2>
           <ol class="front-steps">
-            <li><b>Check in</b><p>Find a returning customer by name, phone, plate or VIN, or decode a new VIN. Pick a quick service, add mileage, urgency and a promised-by time.</p></li>
+            <li><b>Book &amp; check in</b><p>Customers book an open time online, or walk in. Find a returning customer by name, phone, plate or VIN, decode a new VIN, or tap the year, make, model and engine as you type. Pick a quick service, add mileage, urgency and a promised-by time.</p></li>
             <li><b>Inspect &amp; quote</b><p>Do a before-and-after walk-through with tire tread depths, collect walk-around photos and, on Pro, let AI mark likely damage. Build the estimate from your own prices.</p></li>
             <li><b>Customer approves</b><p>The customer opens their link, sees photos and notes, approves or declines each line, and signs. You get an alert the moment they answer.</p></li>
             <li><b>Pick up &amp; come back</b><p>Print the bill or send your own PDF, record mileage out, and schedule a reminder text so they come back for the next service.</p></li>
@@ -750,14 +775,14 @@
       <section class="front-features"><div class="front-inner">
         <h2>Everything Your Counter and Your Bays Need</h2>
         <div class="front-feature-grid">
-          <article><h3>Run the floor</h3><ul><li>One board for every car, by stage</li><li>Low, Medium and High urgency marks</li><li>Assign technicians, with My Cars for each tech</li><li>Promised-by times with due-soon and late warnings</li><li>Alerts when a customer replies or approves</li><li>Results dashboard and a technician time clock (Pro)</li><li>Today’s Summary of cars, totals and techs</li></ul></article>
-          <article><h3>Talk to customers</h3><ul><li>Private progress page by text or email</li><li>Line-by-line approvals with e-signature</li><li>Before-and-after walk-through report</li><li>Walk-around photos, with AI damage marks on Pro</li><li>Spanish customer pages and automatic texts</li><li>Smart Replies and review requests (Pro)</li><li>Reminder texts with one-tap STOP opt-out</li></ul></article>
-          <article><h3>Help your techs</h3><ul><li>How-To repair assistant with steps, tools and specs (Pro)</li><li>YouTube and CarCareKiosk video links for the job</li><li>VIN decode and NHTSA recall check</li><li>Shop-only notes your customers never see</li><li>Voice typing for notes</li><li>Printable work orders</li></ul></article>
-          <article><h3>Set up in minutes</h3><ul><li>Import your price list from Excel, CSV, PDF or a photo</li><li>Online booking link for your website and Google profile</li><li>Quick services and a fast lane for oil changes and tires</li><li>Labor hours times your shop rate</li><li>Owner and technician roles</li><li>Your logo and color on customer pages (Pro)</li><li>Archive and past visits for returning customers</li><li>Works on any phone, tablet or computer</li></ul></article>
+          <article><h3>Run the floor</h3><ul><li>One board for every car, by stage</li><li>The week’s appointments and booking requests up top</li><li>Low, Medium and High urgency marks</li><li>Assign technicians, with My Cars for each tech</li><li>Promised-by times with due-soon and late warnings</li><li>Alerts when a customer replies or approves</li><li>Results dashboard and a technician time clock (Pro)</li><li>Today’s Summary of cars, totals and techs</li></ul></article>
+          <article><h3>Talk to customers</h3><ul><li>Private progress page by text or email</li><li>Line-by-line approvals with e-signature</li><li>Before-and-after walk-through report</li><li>Walk-around photos, with AI damage marks on Pro</li><li>Spanish customer pages and automatic texts</li><li>Smart Replies and review requests (Pro)</li><li>Day-before appointment reminders and service reminder texts, with one-tap STOP opt-out</li></ul></article>
+          <article><h3>Help your techs</h3><ul><li>How-To repair assistant with steps, tools and specs (Pro)</li><li>YouTube and CarCareKiosk video links for the job</li><li>VIN decode and NHTSA recall check</li><li>Make, model and engine suggestions that fit the car</li><li>Shop-only notes your customers never see</li><li>Voice typing for notes</li><li>Printable work orders</li></ul></article>
+          <article><h3>Set up in minutes</h3><ul><li>Import your price list from Excel, CSV, PDF or a photo</li><li>Online booking where customers pick an open time</li><li>Sign in with Google or email</li><li>Quick services and a fast lane for oil changes and tires</li><li>Labor hours times your shop rate</li><li>Owner and technician roles</li><li>Your logo and color on customer pages (Pro)</li><li>Archive and past visits for returning customers</li><li>Works on any phone, tablet or computer</li></ul></article>
         </div>
       </div></section>
       <section class="front-plans" id="plans"><div class="front-inner">
-        <h2>Choose Your Plan</h2><p>Every shop starts with a free trial. Both plans include the Bay board, private customer links, photo updates, walk-through reports, signed estimate decisions, reminder texts, final bills and unlimited email.</p>
+        <h2>Choose Your Plan</h2><p>Every shop starts with a 15-day free trial. Both plans include the Bay board, private customer links, photo updates, walk-through reports, signed estimate decisions, reminder texts, final bills and unlimited email.</p>
         <div class="front-tiers">
           <article><h3>Talk Shops Starter</h3><strong>$89<small> / month</small></strong><p><b>1,000 texts</b> per month · 3 staff seats · up to 2 owners</p><p>Everything to run the day: the Bay, check-in, photo updates, walk-throughs, signed estimate approvals, reminder texts, quick services, printing and price list upload.</p><p><b>Online booking link</b>, <b>Spanish customer pages</b> and <b>CSV export</b> of your repairs and customers.</p><small>Annual billing: $890/year</small><p><a class="btn primary" href="/?login=signup">Start Free Trial</a></p></article>
           <article><h3>Talk Shops Pro</h3><strong>$149<small> / month</small></strong><p><b>3,000 texts</b> per month · 8 staff seats · up to 3 owners</p><p>Everything in Starter, plus the <b>AI How-To Repair Assistant</b>, <b>Smart Replies</b>, <b>AI damage marking</b> on walk-around photos and AI reading of hard price lists.</p><p>The <b>results dashboard</b> (approval rate, money approved and declined, on-time, each tech), <b>review requests</b> after pickup, <b>your logo and color</b> on customer pages, and a <b>tech time clock</b>.</p><small>Annual billing: $1,490/year</small><p><a class="btn primary" href="/?login=signup">Start Free Trial</a></p></article>
@@ -766,7 +791,7 @@
         <div class="front-compare-wrap"><table class="front-market front-compare"><thead><tr><th scope="col">Feature</th><th scope="col">Starter <small>$89/mo</small></th><th scope="col">Pro <small>$149/mo</small></th></tr></thead><tbody>
           ${PLAN_ROWS.map((r) => r.length === 1 ? `<tr class="front-compare-group"><th colspan="3" scope="colgroup">${r[0]}</th></tr>` : `<tr><th scope="row">${r[0]}</th>${[r[1], r[2]].map((v) => `<td>${v === true ? '<span class="front-yes" aria-label="Included">✓</span>' : v === false ? '<span class="front-no" aria-label="Not included">–</span>' : v}</td>`).join("")}</tr>`).join("")}
         </tbody></table></div>
-        <small class="front-source">The free trial includes Pro features, so you can try everything before you choose.</small>
+        <small class="front-source">The 15-day free trial includes Pro features, so you can try everything before you choose.</small>
         <h3 class="front-market-title front-vs-title">Talk Shops vs. Full Shop-Management Suites</h3>
         <table class="front-market front-vs"><thead><tr><th scope="col"></th><th scope="col">Talk Shops</th><th scope="col">Full shop-management suites</th></tr></thead><tbody>
           <tr><th scope="row">Monthly price</th><td><b>$89 or $149</b></td><td>Often $200 to $450 or more at list price</td></tr>
@@ -781,7 +806,8 @@
         <details><summary>Do my customers need to download an app?</summary><p>No. They get a text or email with a private link that opens in any browser. No account or password.</p></details>
         <details><summary>Does it replace my shop management system?</summary><p>It can work alongside it. Talk Shops handles the board, customer updates, approvals, inspections and bills. If your current system makes your invoices, upload that PDF as the final bill.</p></details>
         <details><summary>Will it work for a quick lube or tire shop?</summary><p>Yes. Set up quick services like “Oil change + rotation”. Fast lane jobs skip diagnosis and approval because the customer agreed at the counter, so the car moves straight to the bay.</p></details>
-        <details><summary>Can customers book online, or get updates in Spanish?</summary><p>Yes, on every plan. Share your booking link on your website or Google profile, and requests land on your Bay for you to confirm. Mark a customer as a Spanish speaker and their page and automatic texts switch to Spanish.</p></details>
+        <details><summary>Can customers book online, or get updates in Spanish?</summary><p>Yes, on every plan. Share your booking link on your website or Google profile. Set your appointment hours and customers pick an open time themselves; confirm each request or let them book right away, and turn on a reminder text the day before. Mark a customer as a Spanish speaker and their page and automatic texts switch to Spanish.</p></details>
+        <details><summary>How does the free trial work?</summary><p>New shops get 15 days free with every Pro feature and no card needed. There is one free trial per shop phone number, email and account. Pick a plan any time, and the first charge waits until the trial ends. If the trial ends without a plan, your shop is paused until you choose one, and nothing is deleted.</p></details>
         <details><summary>How long does setup take?</summary><p>Most shops are ready in a few minutes. Upload your price list as a spreadsheet, PDF or photo, review it, and start checking in cars.</p></details>
         <details><summary>Can my technicians use it without seeing billing?</summary><p>Yes. Technicians work on cars. Settings, prices, team and billing stay with owners.</p></details>
         <p><a href="/?help">See all questions in Help &amp; Support →</a></p>
@@ -1343,6 +1369,7 @@
       render(); loadShop(); return;
     }
     if (t.id === "retry") { loadShop(); return; }
+    if (t.id === "planRecheck") { t.disabled = true; await refreshPlan(); if (planUi.locked(plan)) { t.disabled = false; toast("No payment yet. If you just paid, give it a minute and check again."); } return; }
     if (t.dataset.archiveOpen) { openArchived(t.dataset.archiveOpen); return; }
     if (t.hasAttribute("data-archive-retry")) { archive.error = ""; renderArchiveRows(); searchArchive(); return; }
     if (t.hasAttribute("data-suggest-open")) return;
@@ -1908,10 +1935,11 @@
   // Show the public page before session recovery or refresh finishes.
   render();
   // Back from Stripe: say so, and refresh the plan a few times while Stripe's confirmation arrives.
+  // A locked shop opens back up on its own as soon as the payment shows.
   const planNote = planUi.returned();
   if (planNote) {
     setTimeout(() => toast(planNote), 600);
-    [3000, 8000, 20000].forEach((ms) => setTimeout(async () => { if (!shop) return; try { plan = await api("GET", "shop/plan"); render(); } catch (e) { /* later */ } }, ms));
+    [2000, 5000, 9000, 15000, 25000, 40000, 60000].forEach((ms) => setTimeout(() => { if (shop && (ms <= 9000 || planUi.locked(plan))) refreshPlan(); }, ms));
   }
   sb.auth.onAuthStateChange((_event, s) => {
     const was = session?.user?.id;
@@ -1933,6 +1961,6 @@
       const latest = await loadBoard();
       if (latest && !pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !dictation.active() && !document.activeElement?.matches("input,textarea")) { window.Workday?.watch(latest); if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
       else if (latest) boardV = "";
-    } catch (e) { /* try again next time */ }
+    } catch (e) { if (e.status === 402) refreshPlan(); /* otherwise try again next time */ }
   }, 20000);
 })();

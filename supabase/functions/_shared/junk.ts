@@ -1000,16 +1000,38 @@ const DETECT_SCHEMA = {
   required: ['allowed', 'title', 'category', 'description', 'tags', 'condition'],
 };
 
-const DETECT_SYSTEM = 'You help people list things they are giving away for free (furniture, appliances, scrap, yard junk and so on). ' +
-  'Look at the photo and describe the main item being given away. ' +
-  'title: a short plain name a neighbor would search for, 2 to 5 words, with material or color when obvious (for example "Oak 6-drawer dresser"). ' +
-  'category: the best fit. description: one or two friendly sentences on what it is and anything visible worth knowing (size, damage, missing parts). Do not invent brands or measurements. ' +
-  'tags: 5 to 10 lower-case search words and synonyms people might type (for "dresser": dresser, chest of drawers, bureau, bedroom, furniture, wood). ' +
-  'condition: your best guess from the photo. ' +
-  'allowed: false only when the photo shows nudity or sexual content, graphic violence, weapons, drugs, animals or people offered as the item, or contains no item at all; then give a short, polite reason. Otherwise true.';
+// The instructions and examples below are the "learning" for the hosted model: Gemini can't be retrained, so
+// mistakes seen in real listings are fixed by adding a rule or an example here. ml/curbsy-detect-eval scores
+// it on public photos (run .github/workflows/curbsy-detect-eval.yml) so a change can be checked before it ships.
+export const DETECT_SYSTEM = [
+  'You help people list things they are giving away for free (furniture, appliances, scrap, yard junk and so on). ' +
+  'Look at the photo and describe the main item being given away.',
+  'Main item: the biggest or most centered thing that is clearly being offered, not the room, wall, floor, curb or car around it. ' +
+  'When several of the same thing are shown, name the group ("Set of 4 dining chairs", "Box of kids books", "Pile of scrap lumber"). ' +
+  'When different things are bundled, name the bundle plainly ("Box of kitchen items", "Lot of garden tools") and list the main pieces in the description.',
+  'title: a short plain name a neighbor would search for, 2 to 5 words, with material or color when obvious (for example "Oak 6-drawer dresser", "Black office chair", "Kids bike with training wheels"). ' +
+  'Use everyday words, not catalog or brand names; no "free", prices, emojis or ALL CAPS.',
+  'category: the best fit. furniture = chairs, sofas, tables, desks, beds, mattresses, dressers, shelves, cabinets. ' +
+  'appliances = fridges, washers, dryers, stoves, microwaves, dishwashers, AC units, dehumidifiers, vacuums. ' +
+  'electronics = TVs, computers, monitors, printers, speakers, phones, game consoles, cables. ' +
+  'home = lamps, rugs, mirrors, curtains, decor, dishes, cookware, small kitchen items, bedding, storage bins. ' +
+  'kids = cribs, strollers, car seats, high chairs, baby gear (toys go in toys). clothing = clothes, shoes, bags. ' +
+  'books = books, magazines, records, DVDs. sports = bikes, exercise equipment, balls, camping and fishing gear. ' +
+  'tools = hand and power tools, ladders, toolboxes, workbenches. garden = mowers, planters, pots, hoses, patio furniture, grills, firewood, plants. ' +
+  'building = lumber, bricks, pavers, tiles, doors, windows, pipe, fencing, scrap metal, leftover paint and supplies. ' +
+  'toys = toys, games, puzzles, stuffed animals, kids play sets. other = only when nothing above fits.',
+  'description: one or two friendly sentences on what it is and anything visible worth knowing (size compared to things around it, color, damage, stains, missing parts). ' +
+  'Do not invent brands, models, measurements, ages or that it works; only say what the photo shows.',
+  'tags: 5 to 10 lower-case search words and synonyms people might type, singular and plural where people use both (for "dresser": dresser, chest of drawers, bureau, drawers, bedroom, furniture, wood).',
+  'condition: your best guess from the photo. like_new = no visible wear. good = light normal wear. fair = clear wear, scratches or stains but usable. ' +
+  'needs_work = broken or missing parts that need fixing. for_parts = clearly broken, rusted through or only useful for parts or scrap. When unsure, pick good.',
+  'allowed: false only when the photo shows nudity or sexual content, graphic violence, weapons or ammunition, drugs or drug gear, alcohol or tobacco, medicine, ' +
+  'animals or people offered as the item, a screenshot or picture of text instead of a real item, or contains no item at all; then give a short, polite reason. ' +
+  'A person or pet just standing near the item is fine. Kitchen knives, tools and sports gear are not weapons. A clean, catalog-style or plain-background photo of a real item is fine; do not refuse a photo for looking professional. Otherwise true.',
+].join('\n');
 
 /** Gemini vision. Tries `models` in order when one is busy. */
-export function geminiJunkDetector(apiKey: string, fetchFn: typeof fetch = fetch, models = ['gemini-flash-latest', 'gemini-flash-lite-latest']): JunkDetector {
+export function geminiJunkDetector(apiKey: string, fetchFn: typeof fetch = fetch, models = ['gemini-flash-latest', 'gemini-flash-lite-latest'], system = DETECT_SYSTEM): JunkDetector {
   return {
     async detect(jpegBase64) {
       let last: unknown;
@@ -1019,7 +1041,7 @@ export function geminiJunkDetector(apiKey: string, fetchFn: typeof fetch = fetch
             method: 'POST',
             headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify({
-              systemInstruction: { parts: [{ text: DETECT_SYSTEM }] },
+              systemInstruction: { parts: [{ text: system }] },
               contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'image/jpeg', data: jpegBase64 } }, { text: 'What is being given away here?' }] }],
               generationConfig: { responseMimeType: 'application/json', responseSchema: DETECT_SCHEMA, temperature: 0.2, maxOutputTokens: 1024 },
             }),

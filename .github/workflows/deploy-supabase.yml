@@ -61,3 +61,25 @@ jobs:
       - name: Deploy API function
         if: steps.secrets.outputs.ready == 'true'
         run: supabase functions deploy api --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+      # Hobby apps sign in with Google, Apple (Curbsy, ToteTrack) or email + password. GitHub sign-in is off.
+      # Prints only counts and on/off settings: this repo is public, so its run logs are too.
+      - name: Sign-in options
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
+          api="https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID"
+          auth=(-H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json")
+          echo "Accounts by sign-in type (before):"
+          curl -fsS "${auth[@]}" -X POST "$api/database/query" -d '{"query":"select provider, count(distinct user_id) as users from auth.identities group by provider order by provider"}' \
+            | jq -r '.[] | "  \(.provider): \(.users)"' || echo "  (couldn't count)"
+          curl -fsS "${auth[@]}" -X POST "$api/database/query" -d '{"query":"select count(*) as n from auth.users u where exists (select 1 from auth.identities i where i.user_id = u.id and i.provider = '"'"'github'"'"') and not exists (select 1 from auth.identities i where i.user_id = u.id and i.provider <> '"'"'github'"'"')"}' \
+            | jq -r '.[0] | "  GitHub-only accounts (can get back in with Forgot password on their GitHub email): \(.n)"' || echo "  (couldn't count)"
+          current=$(curl -fsS "${auth[@]}" "$api/config/auth")
+          allow=$(echo "$current" | jq -r '.uri_allow_list // ""')
+          # Email links (confirm sign-up, reset password) come back to the website.
+          for url in "https://hood-league.com/**" "https://www.hood-league.com/**"; do
+            case ",$allow," in *",$url,"*) ;; *) allow="${allow:+$allow,}$url" ;; esac
+          done
+          body=$(jq -n --arg allow "$allow" '{external_github_enabled: false, external_email_enabled: true, uri_allow_list: $allow}')
+          curl -fsS "${auth[@]}" -X PATCH "$api/config/auth" -d "$body" \
+            | jq '{external_github_enabled, external_google_enabled, external_apple_enabled, external_email_enabled, mailer_autoconfirm, custom_smtp_on: (.smtp_host != null and .smtp_host != "")}'

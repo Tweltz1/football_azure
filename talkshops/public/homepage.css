@@ -75,7 +75,7 @@ main:has(>.front){padding:0;max-width:none}
 .front-kinds li{font-size:.86rem;font-weight:600;padding:6px 12px;border:1px solid var(--line-strong);border-radius:999px;background:var(--surface)}
 .front-why .front-inner{padding-block:clamp(44px,6vw,80px) 0}
 .front-why h2,.front-features h2,.front-faq h2,.front-final h2{font-size:clamp(28px,3.4vw,44px);line-height:1.12;margin:0 0 22px;max-width:22ch}
-.front-why-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.front-why-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .front-why-grid>div{padding:22px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2)}
 .front-why-grid b{font-size:1.08rem}.front-why-grid p{color:var(--muted);line-height:1.55;margin:8px 0 0}
 .front-steps{list-style:none;counter-reset:step;padding:0;margin:22px 0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}

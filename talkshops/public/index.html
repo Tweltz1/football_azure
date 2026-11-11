@@ -247,6 +247,39 @@ a.btn.primary{color:var(--accent-fg)}
 .delivery{display:block;font-size:11.5px;margin-top:3px;opacity:.85}
 .bubble.out.unsent{background:var(--surface-2);color:var(--fg);border:1px dashed var(--line)}
 .loading{display:grid;place-items:center;min-height:60vh;color:var(--muted)}
+/* Loading: a car rolls into the bay, the door comes down, repeat. Still picture for reduced motion. */
+.ts-load{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:60vh;color:var(--muted);text-align:center}
+.ts-load svg{width:184px;height:auto;overflow:visible}
+.ts-load .tl-bay{fill:none;stroke:var(--line);stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.ts-load .tl-in{fill:var(--surface-2)}
+.ts-load .tl-ground{stroke:var(--line);stroke-width:3;stroke-linecap:round}
+.ts-load .tl-dash{stroke:var(--muted);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:8 10;opacity:.5}
+.ts-load .tl-body{fill:var(--accent)}
+.ts-load .tl-glass{fill:var(--accent-soft)}
+.ts-load .tl-light{fill:#ffd36b}
+.ts-load .tl-wheel{fill:var(--fg)}.ts-load .tl-hub{fill:var(--surface);}
+.ts-load .tl-spoke{stroke:var(--surface);stroke-width:1.6;stroke-linecap:round}
+.ts-load .tl-slat{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.ts-load .tl-text{margin:0;font-family:var(--f-display);font-size:19px;letter-spacing:.03em;color:var(--fg);min-height:1.3em}
+.ts-load .tl-bar{width:150px;height:4px;border-radius:4px;background:var(--line);overflow:hidden}
+.ts-load .tl-bar i{display:block;height:100%;width:40%;border-radius:4px;background:var(--accent)}
+.ts-load .tl-door{transform:translateY(-62px)}
+@media (prefers-reduced-motion:no-preference){
+  .ts-load .tl-car{animation:tlCar 2.8s cubic-bezier(.3,.7,.3,1) infinite}
+  .ts-load .tl-door{animation:tlDoor 2.8s ease-in-out infinite}
+  .ts-load .tl-wheels{animation:tlBounce .28s ease-in-out infinite alternate}
+  .ts-load .tl-spin{transform-box:fill-box;transform-origin:center;animation:tlSpin .45s linear infinite}
+  .ts-load .tl-dash{animation:tlRoad .6s linear infinite}
+  .ts-load .tl-bar i{animation:tlBar 1.3s ease-in-out infinite}
+  .ts-load .tl-text{animation:tlFade .4s ease both}
+}
+@keyframes tlCar{0%,18%{transform:translateX(-120px)}52%,100%{transform:translateX(0)}}
+@keyframes tlDoor{0%,4%{transform:translateY(0)}22%,76%{transform:translateY(-62px)}94%,100%{transform:translateY(0)}}
+@keyframes tlBounce{to{transform:translateY(-1.2px)}}
+@keyframes tlSpin{to{transform:rotate(360deg)}}
+@keyframes tlRoad{to{stroke-dashoffset:-18}}
+@keyframes tlBar{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+@keyframes tlFade{from{opacity:0;transform:translateY(4px)}}
 .notice{background:var(--warn-bg);color:var(--fg);border-radius:10px;padding:10px 14px;font-size:14px;margin-bottom:14px}
 .empty-board{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:24px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
 @media (max-width:560px){.tabs{order:3;width:100%}.tab{flex:1;padding:6px 8px}}
@@ -263,8 +296,8 @@ body:has(.final-bill) .cust-page{width:100%}body:has(.final-bill) .c-head,body:h
 <link rel="stylesheet" href="/saved-archive.css?v=12">
 <link rel="stylesheet" href="/theme.css?v=23">
 <link rel="stylesheet" href="/training.css?v=1">
-<link rel="stylesheet" href="/plan.css?v=1">
-<link rel="stylesheet" href="/homepage.css?v=6">
+<link rel="stylesheet" href="/plan.css?v=2">
+<link rel="stylesheet" href="/homepage.css?v=7">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/howto.css?v=9">
@@ -296,7 +329,43 @@ body:has(.final-bill) .cust-page{width:100%}body:has(.final-bill) .c-head,body:h
   </div>
 </header>
 </div>
-<main id="app"><div class="loading">Loading…</div></main>
+<template id="tsLoaderArt"><svg viewBox="0 0 168 112" aria-hidden="true">
+  <defs><clipPath id="tlBayClip"><rect x="30" y="38" width="108" height="58"/></clipPath></defs>
+  <rect class="tl-in" x="30" y="38" width="108" height="58"/>
+  <g clip-path="url(#tlBayClip)">
+    <g class="tl-car"><g class="tl-wheels">
+      <path class="tl-body" d="M50 84v-9c0-2 1.2-3.6 3.2-4.2l9-2.8 7.6-8.4c1.2-1.3 2.8-2 4.6-2h18.4c1.9 0 3.6.8 4.8 2.2l7 8.2 9.6 2.2c2.2.5 3.8 2.5 3.8 4.8V84z"/>
+      <path class="tl-glass" d="M66.5 68l6-6.6c.6-.6 1.3-.9 2.1-.9H83V68zM87 60.5h6.2c.9 0 1.7.4 2.3 1L101 68H87z"/>
+      <rect class="tl-light" x="112.5" y="74" width="5" height="3.4" rx="1.2"/>
+    </g>
+      <g class="tl-spin"><circle class="tl-wheel" cx="66" cy="85" r="7.5"/><circle class="tl-hub" cx="66" cy="85" r="2.6"/><path class="tl-spoke" d="M66 79.6v2.6M66 87.8v2.6M60.6 85h2.6M68.8 85h2.6"/></g>
+      <g class="tl-spin"><circle class="tl-wheel" cx="104" cy="85" r="7.5"/><circle class="tl-hub" cx="104" cy="85" r="2.6"/><path class="tl-spoke" d="M104 79.6v2.6M104 87.8v2.6M98.6 85h2.6M106.8 85h2.6"/></g>
+    </g>
+    <g class="tl-door"><rect class="tl-slat" x="30" y="38" width="108" height="12"/><rect class="tl-slat" x="30" y="50" width="108" height="12"/><rect class="tl-slat" x="30" y="62" width="108" height="12"/><rect class="tl-slat" x="30" y="74" width="108" height="12"/><rect class="tl-slat" x="30" y="86" width="108" height="10"/></g>
+  </g>
+  <path class="tl-bay" d="M22 96V34L84 10l62 24v62"/>
+  <line class="tl-ground" x1="6" y1="96" x2="162" y2="96"/>
+  <line class="tl-dash" x1="10" y1="104" x2="158" y2="104"/>
+</svg></template>
+<script>
+/* The Talk Shops loading screen. window.tsLoader("Loading your shop…", true) returns its HTML; with cycle on,
+   the line under the picture steps through what's happening while it waits. */
+(function () {
+  var steps = ["Opening the bay doors…", "Pulling up today's cars…", "Checking new messages…", "Almost ready…"], timer = 0;
+  window.tsLoader = function (text, cycle) {
+    var art = document.getElementById("tsLoaderArt").innerHTML;
+    if (cycle && !timer) timer = setInterval(function () {
+      var el = document.querySelector(".tl-text[data-cycle]");
+      if (!el) { clearInterval(timer); timer = 0; return; }
+      var n = (+el.dataset.cycle + 1) % steps.length; el.dataset.cycle = n;
+      var next = el.cloneNode(false); next.textContent = steps[n]; el.replaceWith(next);
+    }, 1700);
+    return '<div class="loading ts-load" role="status" aria-live="polite">' + art + '<p class="tl-text"' + (cycle ? ' data-cycle="-1"' : '') + '>' + text + '</p><div class="tl-bar" aria-hidden="true"><i></i></div></div>';
+  };
+})();
+</script>
+<main id="app"></main>
+<script>document.getElementById("app").innerHTML = window.tsLoader("Loading Talk Shops…");</script>
 <div id="layer"></div>
 <input type="file" id="intakePhotoIn" accept="image/jpeg,image/png" multiple hidden>
 <input type="file" id="photoIn" accept="image/jpeg,image/png" hidden>
@@ -308,12 +377,12 @@ body:has(.final-bill) .cust-page{width:100%}body:has(.final-bill) .c-head,body:h
 <script src="/billing.js?v=7"></script>
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
-<script src="/plan.js?v=3"></script>
+<script src="/plan.js?v=5"></script>
 <script src="/repair-guide.js?v=5"></script>
 <script src="/se-answers.js?v=1"></script>
 <script src="/howto.js?v=13"></script>
 <script src="/vehicle-typeahead.js?v=3"></script>
-<script src="/training.js?v=9"></script>
+<script src="/training.js?v=10"></script>
 <script src="/team.js?v=4"></script>
 <script src="/display.js?v=1"></script>
 <script src="/age-settings.js?v=1"></script>
@@ -322,12 +391,12 @@ body:has(.final-bill) .cust-page{width:100%}body:has(.final-bill) .c-head,body:h
 <script src="/workday.js?v=7"></script>
 <script src="/grow.js?v=10"></script>
 <script src="/walkaround.js?v=3"></script>
-<script src="/help-content.js?v=9"></script>
+<script src="/help-content.js?v=11"></script>
 <script src="/help-chat-features.js?v=1"></script>
 <script src="/help-chat-model-run.js?v=1"></script>
-<script src="/help-chat.js?v=2"></script>
+<script src="/help-chat.js?v=3"></script>
 <script src="/est-groups.js?v=1"></script>
-<script src="/app.js?v=259"></script>
+<script src="/app.js?v=262"></script>
 <script src="/hero-video.js?v=1"></script>
 <script src="/shell.js?v=2"></script>
 </body>

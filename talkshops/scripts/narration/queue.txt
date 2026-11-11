@@ -1,0 +1,1 @@
+# Narration keys to record (space or newline separated). The narration workflow empties this.
