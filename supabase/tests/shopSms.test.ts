@@ -8,15 +8,21 @@ test('automatic topics use the complete question; safety, approval and schedulin
 });
 test('inbound webhook authenticates Twilio, excludes opt-outs and escapes returned shop text',async()=>{
   const cfg={url:'https://example.test/sms',token:'unit-test',account:'ACtest',to:'+15555550002'};
+  let waiting=false;
   async function send(text:string,valid=true){
     const form=new URLSearchParams({AccountSid:cfg.account,From:'+15555550001',To:cfg.to,MessageSid:'SM'+'a'.repeat(32),Body:text});
     const payload=cfg.url+[...form.keys()].sort().map(k=>k+form.get(k)).join('');
     const sig=createHmac('sha1',valid?cfg.token:'wrong').update(payload).digest('base64');
-    return incomingSms(new Request(cfg.url,{method:'POST',body:form,headers:{'X-Twilio-Signature':sig}}),cfg,async()=> 'A & B <Shop>');
+    return incomingSms(new Request(cfg.url,{method:'POST',body:form,headers:{'X-Twilio-Signature':sig}}),cfg,async()=> 'A & B <Shop>',undefined,
+      async()=>waiting?(waiting=false,'Thanks! Shop has you down for Tue, Nov 10 at 10:00 AM.'):null);
   }
   assert.equal((await send('status',false)).status,403);
   assert.match(await (await send('status')).text(),/A &amp; B &lt;Shop&gt;/);
   assert.equal(await (await send('STOP')).text(),'<Response></Response>');
+  // YES confirms a moved appointment; with nothing waiting it is a keyword and gets no reply.
+  assert.equal(await (await send('YES')).text(),'<Response></Response>');
+  waiting=true;
+  assert.equal(await (await send('Yes!')).text(),'<Response><Message>Thanks! Shop has you down for Tue, Nov 10 at 10:00 AM.</Message></Response>');
 });
 test('Telnyx inbound webhook checks the Ed25519 signature, age and number, and replies through the API',async()=>{
   const { generateKeyPairSync, sign } = await import('node:crypto');

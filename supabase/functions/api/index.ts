@@ -13,7 +13,7 @@ import { createJunkPhotos, createJunkStore } from './junkAdapters.ts';
 import { verifyAppleJws } from '../_shared/appleJws.ts';
 import { applePushSender } from '../_shared/applePush.ts';
 import { createShopEmailSender } from '../_shared/shopEmail.ts';
-import { createSmsSender, runCron, shopRoute, stopReminders, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
+import { confirmBySms, createSmsSender, runCron, shopRoute, stopReminders, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
 import { incomingSms, incomingTelnyxSms } from '../_shared/shopSms.ts';
 import { createStripe } from '../_shared/shopPlans.ts';
 import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator.ts';
@@ -177,15 +177,17 @@ Deno.serve(async (req) => {
         const now = new Date().toISOString();
         for (const job of await shop.store.jobsWithFollowupsFor?.(phone) ?? []) { stopReminders(job, now, 'customer'); job.updatedAt = now; await shop.store.putJob(job); }
       };
+      // A YES to a moved appointment confirms the new time.
+      const confirm = (phone: string) => confirmBySms(shop, phone, new Date());
       // Telnyx signs its JSON webhooks with Ed25519; anything else is checked as a Twilio webhook.
       if (req.headers.has('telnyx-signature-ed25519')) {
         return await incomingTelnyxSms(req, { publicKey: Deno.env.get('TELNYX_PUBLIC_KEY') || '', to: Deno.env.get('TELNYX_FROM') || '' },
-          receive, optOut, (phone, text) => shop.sms.send(phone, text));
+          receive, optOut, (phone, text) => shop.sms.send(phone, text), confirm);
       }
       return await incomingSms(req, {
         token: Deno.env.get('TWILIO_AUTH_TOKEN') || '', account: Deno.env.get('TWILIO_ACCOUNT_SID') || '',
         to: Deno.env.get('TWILIO_FROM') || '', url: SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/api/shop/incoming-sms',
-      }, receive, optOut);
+      }, receive, optOut, confirm);
     } catch { return new Response('SMS processing unavailable.',{status:503}); }
   }
   // Hourly from GitHub Actions (.github/workflows/talkshops-hourly.yml): reminder texts and morning summary emails.

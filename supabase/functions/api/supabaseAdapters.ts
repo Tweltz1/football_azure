@@ -528,6 +528,12 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       return (data ?? []).filter((r: Record<string, any>) => !r.closed && r.at)
         .map((r: Record<string, any>) => ({ at: r.at, phone: r.phone ?? '', email: r.email ?? '', createdAt: r.created_at }));
     },
+    async jobsWaitingConfirm(phone) {
+      const { data, error } = await db.from('repair_jobs').select(JOB_COLUMNS).eq('data->customer->>phone', phone).eq('stage', 'invited')
+        .eq('data->reschedule->>waiting', 'true').limit(20);
+      if (error) throw error;
+      return (data ?? []).map((row) => jobRow(row as JobDb));
+    },
     async jobsWithFollowupsFor(phone) {
       const { data, error } = await db.from('repair_jobs').select(JOB_COLUMNS).eq('data->customer->>phone', phone).not('follow_up_at', 'is', null).limit(50);
       if (error) throw error;
