@@ -511,6 +511,15 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       if (error) throw error;
       return (data ?? []).length === 1;
     },
+    async carsInShop(shopId) {
+      const { data, error } = await db.from('repair_jobs').select('stage, created_at, promised:data->>promised, closed:data->closed, events:data->events')
+        .eq('shop_id', shopId).not('stage', 'in', '(invited,picked_up)').is('archived_at', null).limit(500);
+      if (error) throw error;
+      return (data ?? []).filter((r: Record<string, any>) => !r.closed).map((r: Record<string, any>) => ({
+        stage: r.stage, ...(r.promised ? { promised: r.promised } : {}),
+        since: (Array.isArray(r.events) ? r.events.find((e: { stage?: string }) => e?.stage === 'checked_in')?.t : null) ?? r.created_at,
+      }));
+    },
     async appointmentsBetween(shopId, from, to) {
       // Appointments are saved as UTC ISO strings, so text order is time order.
       const { data, error } = await db.from('repair_jobs').select('created_at, at:data->>appointment, phone:data->customer->>phone, email:data->customer->>email, closed:data->closed')

@@ -1028,9 +1028,59 @@ test('appointment scheduling: open times, picked slot fills up, instant booking 
   assert.match(w.texts.at(-1)!.body, /^Hola Ana, Ridgeline confirm/);
   assert.equal(((await dan('GET', 'shop/bookings'))?.body as { rows: unknown[] }).rows.length, 0);
   assert.ok([...w.jobs.values()].some((j) => j.data.appointment === next && j.data.customer.name === 'Ana Ruiz'));
+  // A day off drops out; pausing hides every time and turns new bookings away, and booked cars stay.
+  const dayOff = ((await pub('GET', `shop/book/${token}`))?.body as Info).slots[1].day;
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: { ...schedule, closed: [dayOff] } } });
+  const open = (await pub('GET', `shop/book/${token}`))?.body as Info;
+  assert.ok(open.slots.length && !open.slots.some((d) => d.day === dayOff));
+  assert.equal((await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: { ...schedule, closed: ['next friday'] } } }))?.status, 400);
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: { ...schedule, paused: true } } });
+  const paused = (await pub('GET', `shop/book/${token}`))?.body as Info & { paused: boolean };
+  assert.equal(paused.paused, true);
+  assert.equal(paused.slots.length, 0);
+  const no = await pub('POST', `shop/book/${token}`, { ...form, customer: { ...form.customer, phone: '555-201-4444' }, slot: open.slots[0].times[0].at });
+  assert.equal(no?.status, 409);
+  assert.match(String(no?.body), /isn't taking new appointments online right now\. Please call 715-555-0100\./);
+  assert.ok([...w.jobs.values()].some((j) => j.data.appointment === next), 'booked cars stay');
   // Turning appointment hours off goes back to plain requests.
   await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: null } });
   assert.equal(((await pub('GET', `shop/book/${token}`))?.body as { slots?: unknown }).slots, undefined);
+});
+
+test('smart scheduling: the car limit closes days that are expected to be full', async () => {
+  const w = world();
+  const dan = w.as('owner-b');
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100' });
+  const week = [null, ['08:00', '17:00'], ['08:00', '17:00'], ['08:00', '17:00'], ['08:00', '17:00'], ['08:00', '17:00'], null];
+  const schedule = { zone: 'America/Chicago', week, step: 60, perSlot: 3, notice: 0, ahead: 14, auto: true, reminder: false, capacity: 2, stay: 1 };
+  assert.equal((await dan('POST', 'shop/me', { name: 'Ridgeline', grow: { bookingOn: true, schedule: { ...schedule, capacity: 0.5 } } }))?.status, 400);
+  assert.equal((await dan('POST', 'shop/me', { name: 'Ridgeline', grow: { bookingOn: true, schedule: { ...schedule, stay: 4 } } }))?.status, 400);
+  const me = (await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { bookingOn: true, schedule } }))?.body as { shop: { bookingToken: string } };
+  const token = me.shop.bookingToken, pub = w.as(null);
+  type Info = { slots: { day: string; times: { time: string; at: string }[] }[] };
+  const days = async () => ((await pub('GET', `shop/book/${token}`))?.body as Info).slots.map((d) => d.day);
+  assert.equal((await days())[0], '2026-11-09');
+  // Two cars on site, promised back Tuesday Nov 10 at 4pm Central: Monday and Tuesday are full, Wednesday is open.
+  const car = (n: number) => ({ customer: { name: `Pat ${n}`, phone: `555-300-000${n}`, consent: true }, vehicle: { year: '2018', make: 'Ford', model: 'F-150' }, concern: 'Brakes', promised: '2026-11-10T22:00:00Z' });
+  const a = (await dan('POST', 'shop/jobs', car(1)))?.body as { id: string };
+  await dan('POST', 'shop/jobs', car(2));
+  assert.equal((await days())[0], '2026-11-11');
+  // Picking one up early frees both days.
+  await dan('POST', `shop/jobs/${a.id}/details`, { promised: '2026-11-07T23:00:00Z' });
+  assert.equal((await days())[0], '2026-11-09');
+  // One car still there Monday plus one booking fills Monday; Tuesday has only the car, so it stays open.
+  const info = (await pub('GET', `shop/book/${token}`))?.body as Info;
+  const form = { customer: { name: 'Lee Park', phone: '555-201-3344', preference: 'sms', consent: true, lang: 'en' }, vehicle: { year: '2016', make: 'Toyota', model: 'Camry' }, concern: 'Oil change' };
+  assert.equal((await pub('POST', `shop/book/${token}`, { ...form, slot: info.slots[0].times[0].at }))?.status, 200);
+  assert.deepEqual((await days()).slice(0, 2), ['2026-11-10', '2026-11-11'], 'Monday is at the limit');
+  const late = await pub('POST', `shop/book/${token}`, { ...form, customer: { ...form.customer, phone: '555-201-5555' }, slot: info.slots[0].times[1].at });
+  assert.equal(late?.status, 409, 'a page left open cannot book a full day');
+  // Cars that usually stay two days need room on both.
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: { ...schedule, stay: 2 } } });
+  assert.ok(!(await days()).includes('2026-11-09'));
+  // No limit: every open day shows again.
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: { ...schedule, capacity: 0 } } });
+  assert.equal((await days())[0], '2026-11-09');
 });
 
 test('CSV export: one row per repair and per customer, and formulas are neutralized', async () => {

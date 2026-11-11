@@ -23,7 +23,7 @@ import { checkDevice, sessionRoute, type SessionStore } from './shopSessions.ts'
 import type { Narrator } from './dnd.ts';
 import { clockAction, customersCsv, jobsCsv, langOf, MAX_BOOKINGS_PER_HOUR, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES, SHORT_ES,
   type Booking, type BookingStore, type Brand, type ClockEntry, type Grow, type Lang } from './shopGrow.ts';
-import { isOpenSlot, localOf, openSlots, reminderDue, slotText } from './shopSchedule.ts';
+import { dayLoad, isOpenSlot, localOf, openSlots, reminderDue, slotText, type Schedule, type ShopCar } from './shopSchedule.ts';
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
 
 type Body = Record<string, unknown>;
@@ -221,6 +221,8 @@ export interface ShopStore extends Partial<BookingStore> {
   jobsWithFollowupsFor?(phone: string): Promise<Job[]>;
   /** Appointments (not closed) the shop has at or after `from` and before `to`, for open booking times. */
   appointmentsBetween?(shopId: string, from: string, to: string): Promise<BookedTime[]>;
+  /** Cars on site now (checked in, not picked up or closed), for the shop's car limit. */
+  carsInShop?(shopId: string): Promise<ShopCar[]>;
 }
 /** One appointment holding a start time: a car on the Bay, or a booking request still waiting. */
 export interface BookedTime { at: string; phone: string; email: string; createdAt: string }
@@ -591,6 +593,15 @@ async function bookedTimes(store: ShopStore, shopId: string, now: Date, ahead: n
   return [...jobs, ...waiting];
 }
 
+/** Expected cars on site per day, when the shop set a car limit; otherwise undefined (no limit). */
+async function shopLoad(store: ShopStore, shopId: string, sched: Schedule, now: Date, taken: BookedTime[]): Promise<Record<string, number> | undefined> {
+  if (!sched.capacity) return undefined;
+  const cars: ShopCar[] = store.carsInShop ? await store.carsInShop(shopId)
+    : (await store.listJobs(shopId, now.toISOString())).filter((j) => j.stage !== 'invited' && j.stage !== 'picked_up' && !j.data.closed)
+      .map((j) => ({ stage: j.stage, promised: j.data.promised, since: j.data.events.find((e) => e.stage === 'checked_in')?.t ?? j.createdAt }));
+  return dayLoad(sched, now, cars, taken.map((t) => t.at));
+}
+
 /** Turns a booking into an invited car on the Bay with the appointment set, texts the confirmation, and closes the booking. */
 async function bookIn(ctx: Ctx, deps: ShopDeps, shop: Shop, b: Booking, when: string, whenText: string,
   o: { send: boolean; text: string; by: string; byId: string | null; acc: Access }): Promise<Job> {
@@ -752,9 +763,10 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const pro = isPro(shop.plan, ctx.now());
     const sched = shop.grow.schedule;
     const taken = sched ? await bookedTimes(store, shop.id, ctx.now(), sched.ahead) : [];
+    const load = sched ? await shopLoad(store, shop.id, sched, ctx.now(), taken) : undefined;
     if (method === 'GET') return ok({
       shop: { name: shop.name, phone: shop.phone, hours: shop.hours, ...(pro && shop.brand ? { brand: shop.brand } : {}) }, note: shop.grow.bookingNote ?? '',
-      ...(sched ? { zone: sched.zone, auto: sched.auto, slots: openSlots(sched, ctx.now(), taken.map((t) => t.at)) } : {}),
+      ...(sched ? { zone: sched.zone, auto: sched.auto, ...(sched.paused ? { paused: true } : {}), slots: openSlots(sched, ctx.now(), taken.map((t) => t.at), load) } : {}),
     });
     if (method !== 'POST') return { status: 405 };
     if (str(body.website, 100)) return ok({ ok: true }); // a form robot filled the hidden field
@@ -763,10 +775,11 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     // With appointment hours set, the customer picks an exact open time; the day and part of the day follow from it.
     let slot = '';
     if (sched) {
+      if (sched.paused) return { status: 409, body: `${shop.name} isn't taking new appointments online right now.${shop.phone ? ` Please call ${shop.phone}.` : ' Please call the shop.'}` };
       slot = str(body.slot, 40);
       if (!slot || !Number.isFinite(Date.parse(slot))) return bad('Pick a time for your appointment.');
       slot = new Date(slot).toISOString();
-      if (!isOpenSlot(sched, ctx.now(), taken.map((t) => t.at), slot)) return { status: 409, body: 'That time was just taken. Please pick another one.' };
+      if (!isOpenSlot(sched, ctx.now(), taken.map((t) => t.at), slot, load)) return { status: 409, body: 'That time was just taken. Please pick another one.' };
       const local = localOf(slot, sched.zone);
       body.day = local.day; body.time = local.time < '12:00' ? 'morning' : 'afternoon';
     }
