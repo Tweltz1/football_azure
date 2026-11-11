@@ -106,3 +106,52 @@ jobs:
       - name: Health check
         if: steps.secrets.outputs.ready == 'true'
         run: curl --fail --silent --show-error --retry 3 --retry-delay 5 "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/api/health"
+      - name: Configure sign-in (URLs, email sender, Google)
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          RESEND_API_KEY: ${{ secrets.TALKSHOPS_RESEND_API_KEY }}
+          GOOGLE_CLIENT_ID: ${{ secrets.TALKSHOPS_GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.TALKSHOPS_GOOGLE_CLIENT_SECRET }}
+        run: |
+          # Site URL and redirect list always; Resend SMTP when its key is set; Google sign-in when its client is set.
+          BODY=$(jq -n '{site_url: "https://talkshops.app", uri_allow_list: "https://talkshops.app/**,https://*.talkshops.pages.dev/**"}')
+          if [ -n "$RESEND_API_KEY" ]; then
+            BODY=$(echo "$BODY" | jq --arg pass "$RESEND_API_KEY" '. + {smtp_host: "smtp.resend.com", smtp_port: "587", smtp_user: "resend", smtp_pass: $pass, smtp_admin_email: "updates@talkshops.app", smtp_sender_name: "Talk Shops", rate_limit_email_sent: 100}')
+          fi
+          if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
+            BODY=$(echo "$BODY" | jq --arg id "$GOOGLE_CLIENT_ID" --arg secret "$GOOGLE_CLIENT_SECRET" '. + {external_google_enabled: true, external_google_client_id: $id, external_google_secret: $secret}')
+          else
+            echo "::notice::TALKSHOPS_GOOGLE_CLIENT_ID / TALKSHOPS_GOOGLE_CLIENT_SECRET not set, so Google sign-in stays off."
+          fi
+          CODE=$(curl -sS -o out.json -w '%{http_code}' -X PATCH -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "$BODY" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")
+          if [ "$CODE" != "200" ]; then echo "::error::Auth settings answered $CODE"; jq -r '.message // .' out.json; exit 1; fi
+          rm -f out.json
+      - name: Stripe webhook
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.TALKSHOPS_STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.TALKSHOPS_STRIPE_WEBHOOK_SECRET }}
+        run: |
+          # Creates the webhook endpoint for this project once and stores its signing secret straight in the function
+          # secrets (Stripe only shows it at creation). Skipped when TALKSHOPS_STRIPE_WEBHOOK_SECRET is set by hand.
+          if [ -z "$STRIPE_SECRET_KEY" ] || [ -n "$STRIPE_WEBHOOK_SECRET" ]; then echo "Nothing to do."; exit 0; fi
+          URL="https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/api/shop/stripe-webhook"
+          EXISTING=$(curl -fsS -u "$STRIPE_SECRET_KEY:" "https://api.stripe.com/v1/webhook_endpoints?limit=100" | jq -r --arg url "$URL" '[.data[] | select(.url == $url)] | length')
+          if [ "$EXISTING" != "0" ]; then echo "Webhook endpoint already exists for $URL."; exit 0; fi
+          SECRET=$(curl -fsS -u "$STRIPE_SECRET_KEY:" https://api.stripe.com/v1/webhook_endpoints \
+            -d url="$URL" -d description="Talk Shops (own Supabase project)" \
+            -d "enabled_events[]=checkout.session.completed" -d "enabled_events[]=customer.subscription.created" \
+            -d "enabled_events[]=customer.subscription.updated" -d "enabled_events[]=customer.subscription.deleted" | jq -r '.secret')
+          echo "::add-mask::$SECRET"
+          umask 077
+          printf 'STRIPE_WEBHOOK_SECRET="%s"\n' "$SECRET" > "$RUNNER_TEMP/stripe.env"
+          supabase secrets set --workdir talkshops --project-ref "$SUPABASE_PROJECT_ID" --env-file "$RUNNER_TEMP/stripe.env"
+          rm -f "$RUNNER_TEMP/stripe.env"
+          echo "Created the Stripe webhook endpoint for $URL."
+      - name: Show the public anon key for talkshops.app
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          # The anon key is public (it ships in the website); printed so it can go in talkshops/scripts/build.mjs.
+          curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/api-keys" \
+            | jq -r '.[] | select(.name == "anon" or .type == "publishable") | "\(.name): \(.api_key)"'
