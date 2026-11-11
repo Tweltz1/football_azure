@@ -302,7 +302,7 @@
   // Takeaways stay on screen after the narration so staff can consult them at the counter.
   const takeaways = {
     booking: "Put your booking link on your website and your Google profile. Set appointment hours so customers pick an open time, or leave them off and confirm a time for each request. Upcoming appointments and requests wait at the top of the Bay. Booking, appointment reminders and Spanish are on every plan.",
-    plan: "New shops get a 15-day free trial with Pro features and no card needed, one per shop phone number. Pick a plan any time; the first charge waits until the trial ends.",
+    plan: "New shops get a 15-day free trial with Pro features and no card needed, one per shop phone number, email and account. Pick a plan any time; the first charge waits until the trial ends.",
     results: "Results, the time clock, review requests and your logo are Pro tools, and your free trial includes them. Export Your Data is on every plan.",
     bay: "Use Awaiting approval to find estimates with an unanswered line. A signed estimate can stay in Estimate review until the shop moves the car.",
     checkin: "For an after-hours drop-off, invite the customer by link. Open their repair when the intake arrives and move it to Checked in when the vehicle is at the shop.",
