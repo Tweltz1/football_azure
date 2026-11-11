@@ -8,12 +8,14 @@
 #   stripe-old-webhook  deletes the Stripe webhook still pointing at the old shared Supabase project
 #   review-contact      fills in the App Review contact from the APP_REVIEW_* secrets
 #   review-shots        uploads the App Review screenshot for each paid product (Curbsy and ToteTrack)
+#   submit-look         read-only: what Curbsy and ToteTrack 1.0 still need before App Review
+#   submit-review       sends Curbsy and ToteTrack 1.0 (with their in-app purchases) to App Review
 # Logs are public, so the scripts print yes/no answers and setting names only.
 name: Payments setup
 
 on:
   push:
-    branches: ['claude/project-thread-l89ktp']
+    branches: ['claude/project-thread-l89ktp', 'claude/project-thread-jxl3cv']
     paths:
       - 'scripts/payments/**'
       - '.github/workflows/payments-setup.yml'
