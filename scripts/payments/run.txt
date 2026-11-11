@@ -1,2 +1,2 @@
-submit-review
+store-shots
 submit-look

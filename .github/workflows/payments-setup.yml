@@ -10,6 +10,7 @@
 #   review-shots        uploads the App Review screenshot for each paid product (Curbsy and ToteTrack)
 #   submit-look         read-only: what Curbsy and ToteTrack 1.0 still need before App Review
 #   submit-review       sends Curbsy and ToteTrack 1.0 (with their in-app purchases) to App Review
+#   store-shots         uploads Curbsy's App Store screenshots (scripts/payments/store-shots/curbsy/)
 # Logs are public, so the scripts print yes/no answers and setting names only.
 name: Payments setup
 
