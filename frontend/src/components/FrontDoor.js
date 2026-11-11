@@ -1,5 +1,6 @@
 import React from 'react';
 import ClimbBackdrop from './ClimbBackdrop';
+import StudioCredit from './StudioCredit';
 
 /** First thing on the site before signing in: football (the draft site), party games or tabletop adventures. */
 const FrontDoor = ({ onFootball }) => (
@@ -32,6 +33,7 @@ const FrontDoor = ({ onFootball }) => (
         </a>
       </div>
     </section>
+    <StudioCredit />
   </main>
 );
 
