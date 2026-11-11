@@ -1,0 +1,56 @@
+name: Daily app stats
+
+# Read-only usage counts for the hobby apps (shared Supabase project), for the 5 AM Central daily review.
+# Prints one DAILY_STATS_JSON line with counts only: no names, emails or ids (this repo's logs are public).
+on:
+  schedule:
+    # 08:50 UTC, before the morning review.
+    - cron: '50 8 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - name: Usage counts
+        run: |
+          # One number per query; a query that fails (missing table or column) gives null instead of failing the run.
+          n() {
+            curl --fail --silent --show-error --max-time 30 \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+              -d "$(jq -n --arg q "select ($1)::bigint as n" '{query: $q}')" \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query" 2>/dev/null \
+              | jq -e '.[0].n' 2>/dev/null || echo null
+          }
+          day="now() - interval '24 hours'"
+          week="now() - interval '7 days'"
+          out=$(jq -c -n \
+            --argjson users_total "$(n "select count(*) from auth.users")" \
+            --argjson users_new_24h "$(n "select count(*) from auth.users where created_at > $day")" \
+            --argjson users_active_24h "$(n "select count(*) from auth.users where last_sign_in_at > $day")" \
+            --argjson users_active_7d "$(n "select count(*) from auth.users where last_sign_in_at > $week")" \
+            --argjson curbsy_members "$(n "select count(*) from public.junk_members")" \
+            --argjson curbsy_items_total "$(n "select count(*) from public.junk_items")" \
+            --argjson curbsy_items_24h "$(n "select count(*) from public.junk_items where created_at > $day")" \
+            --argjson curbsy_claims_24h "$(n "select count(*) from public.junk_claims where created_at > $day")" \
+            --argjson curbsy_messages_24h "$(n "select count(*) from public.junk_messages where created_at > $day")" \
+            --argjson curbsy_plus "$(n "select count(*) from public.junk_plus")" \
+            --argjson league_leagues_total "$(n "select count(*) from public.leagues")" \
+            --argjson league_leagues_24h "$(n "select count(*) from public.leagues where created_at > $day")" \
+            --argjson league_drafts_24h "$(n "select count(*) from public.draft_history where created_at > $day")" \
+            --argjson league_chat_questions_24h "$(n "select count(*) from public.ask_log where created_at > $day")" \
+            --argjson games_sessions_24h "$(n "select count(*) from public.game_sessions where created_at > $day")" \
+            --argjson games_card_games_24h "$(n "select count(*) from public.card_games where created_at > $day")" \
+            --argjson games_quest_sessions_24h "$(n "select count(*) from public.dnd_sessions where created_at > $day")" \
+            --argjson games_scores_24h "$(n "select count(*) from public.game_scores where created_at > $day")" \
+            --argjson totetrack_totes_total "$(n "select count(*) from public.totetrack_totes")" \
+            --argjson totetrack_users "$(n "select count(distinct user_id) from public.totetrack_totes")" \
+            --argjson shopstride_rows "$(n "select coalesce(sum(n_live_tup), 0) from pg_stat_user_tables where schemaname = 'public' and relname like 'grocery\_%'")" \
+            --argjson protocol_profiles "$(n "select count(*) from public.hood_protocol_profiles")" \
+            '$ARGS.named')
+          echo "DAILY_STATS_JSON $out"
