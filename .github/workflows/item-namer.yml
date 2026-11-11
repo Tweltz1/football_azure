@@ -5,8 +5,11 @@
 name: Item namer
 
 on:
-  # A push that changes ml/item-namer/run.json trains with its settings (other edits don't start a long run).
+  # A push to the live branch that changes ml/item-namer/run.json trains with its settings (other edits don't
+  # start a long run). New work branches made from it used to start a 2.5-hour run each, and fail at the end.
   push:
+    branches:
+      - claude/project-thread-6lgsrr
     paths:
       - 'ml/item-namer/run.json'
   workflow_dispatch:

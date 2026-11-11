@@ -32,7 +32,7 @@
   // ---------- model ----------
   function load() {
     if (st.model || st.loading) return st.loading;
-    st.loading = fetch("/help-chat-model.json?v=2").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    st.loading = fetch("/help-chat-model.json?v=3").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then((m) => { st.model = m; }, () => { st.failed = true; }).finally(() => { st.loading = null; paint(); });
     return st.loading;
   }

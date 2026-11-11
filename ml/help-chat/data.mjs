@@ -74,7 +74,7 @@ export const ASK = {
   "How do I sign out?": ["sign out", "log out", "how do i log off", "where is sign out", "logout button"],
   "I did not get my account confirmation email.": ["didn't get confirmation email", "no confirm email", "verify email not received", "confirmation link not arriving", "never got the signup email", "resend confirmation"],
   "How much does Talk Shops cost?": ["starter plan", "pro plan", "difference between the plans", "compare plans", "starter or pro which one", "how much does it cost", "pricing", "price", "what are the plans", "starter vs pro", "monthly cost", "is there a yearly plan", "how much is pro", "plans", "what does pro include"],
-  "Is there a free trial?": ["free trial", "is it free", "trial period", "do i need a card to try", "how long is the trial", "trial limits"],
+  "Is there a free trial?": ["free trial", "is it free", "trial period", "do i need a card to try", "how long is the trial", "trial limits", "is the trial 15 days", "how many days free", "can i get another trial", "second free trial", "trial for my other shop phone"],
   "What happens when my trial ends?": ["trial ended", "what happens after trial", "trial expired", "will i lose my data after trial", "trial is over"],
   "How do I change or cancel my plan?": ["cancel my plan", "change plan", "upgrade to pro", "downgrade", "update credit card", "cancel subscription", "manage billing", "change payment card", "get invoices from billing"],
   "What if we run out of texts?": ["run out of texts", "text limit", "how many texts", "used all our texts", "text allowance", "need more texts"],
@@ -90,6 +90,12 @@ export const ASK = {
   "How do you handle consent for texts?": ["consent for texts", "permission to text", "tcpa", "texting consent", "customer agreed to texts", "consent box"],
   repair: [], // filled from Mechanics Stack Exchange titles and CLINC car intents in train.mjs, plus these
   other: [],
+  "How do I set appointment hours?": ["set appointment hours", "show open times on my booking page", "let customers pick a time", "how do i set when we take appointments", "change booking hours", "how far apart are appointments", "set slot length", "how much notice for bookings", "how far ahead can customers book", "turn on appointment times", "set up scheduling", "where do i set my schedule for bookings", "closed on saturdays for appointments", "appointment slots"],
+  "Can customers book an appointment without me confirming it?": ["instant booking", "book right away", "auto confirm appointments", "do i have to confirm every booking", "skip confirming requests", "let customers book without approval", "automatically accept bookings", "confirm each request myself"],
+  "Where do I see upcoming appointments?": ["where are my appointments", "upcoming appointments", "who is coming in tomorrow", "see this week's bookings", "appointment list", "what cars are booked today", "schedule for the week", "where do booked cars show up"],
+  "Do customers get a reminder before their appointment?": ["appointment reminder", "remind customers the day before", "reminder text for appointment", "do you text them before they come in", "no show reminders", "turn on appointment reminders", "will customers forget their appointment", "day before text"],
+  "Can two customers book the same time?": ["double booked", "two people booked the same time", "how many cars per time slot", "cars at the same time", "can i take two cars at 9", "stop double booking", "slot is full", "why can't a customer pick that time"],
+  "Can I sign in with Google?": ["sign in with google", "log in with gmail", "continue with google", "use my google account", "google login", "can i use gmail to sign in", "sign up with google", "google sign in not working"],
 };
 
 // Hand-written repair questions (How-to territory) and off-topic chat, on top of the downloaded sets.

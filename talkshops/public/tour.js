@@ -116,7 +116,7 @@
       audio.ontimeupdate = () => showAt(audio.currentTime);
       audio.onended = finish;
       audio.onerror = useFallback;
-      audio.src = "/tour/" + key + ".mp3?v=13";
+      audio.src = "/tour/" + key + ".mp3?v=14";
       audio.muted = muted;
       const p = audio.play();
       if (p && p.catch) p.catch(useFallback);
@@ -301,7 +301,8 @@
 
   // Takeaways stay on screen after the narration so staff can consult them at the counter.
   const takeaways = {
-    booking: "Put your booking link on your website and your Google profile. Requests wait at the top of the Bay until you confirm a time or decline. Booking and Spanish are on every plan.",
+    booking: "Put your booking link on your website and your Google profile. Set appointment hours so customers pick an open time, or leave them off and confirm a time for each request. Upcoming appointments and requests wait at the top of the Bay. Booking, appointment reminders and Spanish are on every plan.",
+    plan: "New shops get a 15-day free trial with Pro features and no card needed, one per shop phone number. Pick a plan any time; the first charge waits until the trial ends.",
     results: "Results, the time clock, review requests and your logo are Pro tools, and your free trial includes them. Export Your Data is on every plan.",
     bay: "Use Awaiting approval to find estimates with an unanswered line. A signed estimate can stay in Estimate review until the shop moves the car.",
     checkin: "For an after-hours drop-off, invite the customer by link. Open their repair when the intake arrives and move it to Checked in when the vehicle is at the shop.",
@@ -470,7 +471,7 @@
 
   // ---------- the guided tour ----------
   async function runTour() {
-    STEPS = 13;
+    STEPS = 14;
     await begin("board");
     setStep(1);
     highlight(".topbar .brand");
@@ -498,6 +499,16 @@
     await sr;
 
     setStep(4);
+    const bkg = say("booking");
+    q("#gr-bay")?.scrollIntoView({ block: "start" }); highlight("#gr-bookings");
+    await cue(0.36); highlight('[data-gr-bk="bk2"]'); await tap('[data-gr-bk="bk2"] [data-gr-bk-open="accept"]'); await wait(250);
+    highlight(q("#gr-bk-when")?.closest("label"));
+    await cue(0.47); await tap("[data-gr-bk-accept]"); await wait(450);
+    await cue(0.55); if (q(".sheet")) { await tap(".sheet .x"); await wait(200); } q("#gr-bay")?.scrollIntoView({ block: "start" }); highlight("#gr-appts");
+    await cue(0.68); highlight(tabSel("settings"));
+    await bkg;
+
+    setStep(5);
     const ci = say("checkin");
     await tab("checkin");
     highlight("#checkinForm");
@@ -514,14 +525,14 @@
     await cue(0.92); highlight("#checkinForm .btn.primary"); await tap("#checkinForm .btn.primary");
     await ci;
 
-    setStep(5);
+    setStep(6);
     const ft = say("firsttext");
     highlight(".sheet .thread");
     await cue(0.5); highlight(".sheet .thread .bubble");
     await cue(0.75); highlight(".sheet .thread .bubble .meta");
     await ft;
 
-    setStep(6);
+    setStep(7);
     const est = say("estimate");
     spotSel = null;
     await openSheet("RO-1044");
@@ -533,7 +544,7 @@
     await cue(0.85); highlight(q("#li-save")?.closest("label"));
     await est;
 
-    setStep(7);
+    setStep(8);
     const sd = say("send");
     highlight(".est-send"); await tap(".est-send");
     highlight("#sendForm");
@@ -542,7 +553,7 @@
     highlight(".sheet .thread");
     await sd;
 
-    setStep(8);
+    setStep(9);
     highlight(null);
     say("tryit");
     const remote = await textingStep();
@@ -554,7 +565,7 @@
       render();
       await wait(300);
       if (!q(".sheet")) await openSheet("RO-1044");
-      setStep(9);
+      setStep(10);
       const g = say("gotit");
       highlight(".sheet .thread");
       await cue(0.4); highlight("#estSec");
@@ -574,7 +585,7 @@
       await cue(0.76); await tap("#submitApproval");
       await cue(0.84); highlight("#privacyLink");
       await os;
-      setStep(9);
+      setStep(10);
       await tap("#backToShop");
       highlight("#estSec .est");
       await wait(350);
@@ -584,7 +595,7 @@
       await bs;
     }
 
-    setStep(10);
+    setStep(11);
     const al = say("along");
     highlight(".sheet .stepper");
     for (const [stage, f] of [["in_progress", 0.2], ["qc", 0.3], ["ready", 0.62]]) {
@@ -599,7 +610,7 @@
     highlight(".sheet .thread");
     await al;
 
-    setStep(11);
+    setStep(12);
     const ar = say("archive");
     await tab("archive");
     highlight(".archive");
@@ -607,7 +618,7 @@
     await cue(0.75); highlight(".archive-list");
     await ar;
 
-    setStep(12);
+    setStep(13);
     const st = say("settings");
     await tab("settings");
     highlight("#setupForm");
@@ -616,7 +627,7 @@
     await cue(0.75); highlight("#importBox");
     await st;
 
-    setStep(13);
+    setStep(14);
     const pl = say("plan");
     await tab("plan");
     highlight(".plan-page");
@@ -786,7 +797,9 @@
       }
       step(); {
         const c = say("qc-2"); highlight(q("#ci-make")?.closest("label"));
-        await cue(0.25); highlight(q("#ci-model")?.closest("label"));
+        await cue(0.2); highlight(q("#ci-model")?.closest("label"));
+        await cue(0.42); highlight(q("#ci-engine")?.closest("label")); q("#ci-engine")?.focus(); q("#ci-engine")?.dispatchEvent(new Event("input", { bubbles: true })); await wait(600); highlight("#vt-menu");
+        await cue(0.56); const en = qa("#vt-menu li").find((li) => /3\.5L 6 Cyl\. Turbo/.test(li.textContent)) || q("#vt-menu li"); if (en) await tap(en); highlight(q("#ci-engine")?.closest("label"));
         await c;
       }
       step(); {
@@ -1103,7 +1116,7 @@
       step(); { const c = say("si-5"); await cue(0.05); await type("#rc-code", "123456"); await tap("#recoveryCodeForm .btn.primary"); await wait(300); highlight("#recoveryPanel"); await c; }
     },
     async booking() {
-      STEPS = 5; await begin("board");
+      STEPS = 8; await begin("board");
       const bk = (id, what) => `[data-gr-bk="${id}"] [data-gr-bk-open="${what}"]`;
       step(); {
         const c = say("bk-1"); await wait(300); highlight("#gr-bookings");
@@ -1120,6 +1133,27 @@
       step(); {
         const c = say("bk-3"); await tab("settings"); q("#gr-booking")?.scrollIntoView({ block: "center" }); highlight("#gr-booking");
         await cue(0.45); highlight('[data-gr-grow="bookingOn"]'); await cue(0.6); highlight("#gr-booking .gr-link"); await cue(0.78); highlight(q("#gr-book-note")?.closest("label"));
+        await c;
+      }
+      step(); {
+        const c = say("bk-6"); q("#gr-sched")?.scrollIntoView({ block: "center" }); highlight("#gr-sched");
+        await cue(0.2); if (!q("#gr-sched-on")?.checked) await tap("#gr-sched-on"); await wait(350); q("#gr-sched")?.scrollIntoView({ block: "start" }); highlight(".gr-sched-week");
+        await cue(0.5); highlight(q("#gr-sched-step")?.closest("label")); await cue(0.6); highlight(q("#gr-sched-per")?.closest("label"));
+        await cue(0.78); highlight(q("#gr-sched-notice")?.closest("label")); await cue(0.9); highlight(q("#gr-sched-ahead")?.closest("label"));
+        await c;
+      }
+      step(); {
+        const c = say("bk-7"); highlight(q("#gr-sched-auto")?.closest("label"));
+        await cue(0.5); highlight(q("#gr-sched-remind")?.closest("label"));
+        await cue(0.85); highlight("[data-gr-sched-save]"); await tap("[data-gr-sched-save]"); await wait(400);
+        await c;
+      }
+      step(); {
+        const c = say("bk-8"); await closeAll(); window.Grow.renderBooking(bookToken); await wait(600);
+        q(".gr-slot-days")?.scrollIntoView({ block: "center" }); highlight(".gr-slot-days");
+        await cue(0.2); const day = qa(".gr-slot-day")[1]; if (day) await tap(day); await wait(250); highlight(".gr-slot-times");
+        await cue(0.3); const t = qa(".gr-slot-time")[1]; if (t) await tap(t);
+        await cue(0.6); q("#shopChrome").hidden = false; window.Grow.setLang("en"); render(); await tab("board"); q("#gr-bay")?.scrollIntoView({ block: "start" }); highlight("#gr-appts");
         await c;
       }
       step(); {
@@ -1188,8 +1222,8 @@
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
-      fetch("/tour/lines.json?v=13").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
-      fetch("/tour/caption-cues.json?v=13").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+      fetch("/tour/lines.json?v=14").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
+      fetch("/tour/caption-cues.json?v=14").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">
