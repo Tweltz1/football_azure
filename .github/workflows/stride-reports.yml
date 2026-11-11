@@ -1,0 +1,91 @@
+name: Shop Stride community reports
+
+# Apple requires acting on reported content within 24 hours. This runs every morning before the 5 AM
+# Central review and prints STRIDE_REVIEW_JSON: community recipes reported in the last day, recipes hidden
+# (3 reports hide one automatically), and new recipes shared. It FAILS (so GitHub emails you) when
+# there are new reports or hidden recipes still waiting on a decision.
+#
+# Run it from the Actions tab with ONE of:
+#   remove_recipe:  a recipe id that breaks the rules. Deletes it.
+#   restore_recipe: a recipe id that was hidden by mistake. Puts it back and clears its reports.
+#   ban_user:       an author id. Deletes all their shared recipes and stops them sharing again.
+#   unban_user:     an author id, after an appeal. Lets them share again.
+on:
+  schedule:
+    - cron: '5 9 * * *'
+  workflow_dispatch:
+    inputs:
+      remove_recipe:
+        description: 'Recipe id to delete'
+        default: ''
+      restore_recipe:
+        description: 'Recipe id to put back'
+        default: ''
+      ban_user:
+        description: 'Author id to ban from sharing'
+        default: ''
+      unban_user:
+        description: 'Author id to unban'
+        default: ''
+
+jobs:
+  reports:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || 'nkwedlskhnojseeroezm' }}
+      REMOVE_RECIPE: ${{ github.event.inputs.remove_recipe }}
+      RESTORE_RECIPE: ${{ github.event.inputs.restore_recipe }}
+      BAN_USER: ${{ github.event.inputs.ban_user }}
+      UNBAN_USER: ${{ github.event.inputs.unban_user }}
+    steps:
+      - name: Review and act
+        run: |
+          set -euo pipefail
+          uuid='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          sql() {
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+              -d "$(jq -n --arg q "$1" '{query: $q}')" \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query"
+          }
+          check() { [[ "$1" =~ $uuid ]] || { echo "$2 must be an id"; exit 1; }; }
+          if [ -n "$REMOVE_RECIPE" ]; then
+            check "$REMOVE_RECIPE" remove_recipe
+            sql "delete from public.grocery_community_recipes where id = '$REMOVE_RECIPE' returning title, user_id" | jq -r '.[] | "Deleted: \(.title) (author \(.user_id))"'
+          fi
+          if [ -n "$RESTORE_RECIPE" ]; then
+            check "$RESTORE_RECIPE" restore_recipe
+            sql "with r as (delete from public.grocery_recipe_reports where recipe_id = '$RESTORE_RECIPE')
+              update public.grocery_community_recipes set hidden = false, reports = 0 where id = '$RESTORE_RECIPE' returning title" | jq -r '.[] | "Restored: \(.title)"'
+          fi
+          if [ -n "$BAN_USER" ]; then
+            check "$BAN_USER" ban_user
+            sql "with b as (insert into public.grocery_banned_sharers (user_id, reason) values ('$BAN_USER', 'reports review') on conflict (user_id) do nothing)
+              delete from public.grocery_community_recipes where user_id = '$BAN_USER' returning title" | jq -r '"Banned. Deleted \(length) recipe(s)."'
+          fi
+          if [ -n "$UNBAN_USER" ]; then
+            check "$UNBAN_USER" unban_user
+            sql "delete from public.grocery_banned_sharers where user_id = '$UNBAN_USER' returning user_id" | jq -r '"Unbanned \(length) account(s)."'
+          fi
+
+          # Titles and reasons are user-written; print them as JSON data only. No emails or names of reporters.
+          sql "select json_build_object(
+            'reports_last_day', coalesce((select json_agg(x) from (
+              select r.recipe_id, c.title, c.author, c.user_id as author_id, c.hidden, c.reports, r.reason, r.created_at
+              from public.grocery_recipe_reports r join public.grocery_community_recipes c on c.id = r.recipe_id
+              where r.created_at > now() - interval '1 day' order by r.created_at desc limit 50) x), '[]'::json),
+            'hidden_waiting', coalesce((select json_agg(x) from (
+              select id, title, author, user_id as author_id, reports from public.grocery_community_recipes where hidden order by created_at desc limit 50) x), '[]'::json),
+            'shared_last_day', (select count(*) from public.grocery_community_recipes where created_at > now() - interval '1 day'),
+            'shared_total', (select count(*) from public.grocery_community_recipes where not hidden),
+            'banned_sharers', (select count(*) from public.grocery_banned_sharers)
+          ) as review" > out.json
+          REVIEW=$(jq -c '.[0].review' out.json)
+          echo "STRIDE_REVIEW_JSON=$REVIEW"
+          echo "$REVIEW" | jq .
+          N=$(echo "$REVIEW" | jq '(.reports_last_day | length) + (.hidden_waiting | length)')
+          if [ "$N" -gt 0 ] && [ -z "$REMOVE_RECIPE$RESTORE_RECIPE$BAN_USER$UNBAN_USER" ]; then
+            echo "::error::$N Shop Stride community report(s) need a decision"
+            exit 1
+          fi
