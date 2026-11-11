@@ -1,0 +1,13 @@
+{
+  "max_dollars": 0.25,
+  "model": "veo-3.1-lite-generate-preview",
+  "resolution": "720p",
+  "clips": [
+    {
+      "id": "test-curbsy-curb",
+      "seconds": 4,
+      "prompt": "Vertical handheld smartphone video, natural daylight, realistic. A friendly woman in her late 20s in a hoodie walks down a quiet suburban sidewalk, spots a wooden chair with a hand-written FREE sign at the curb, smiles, and lifts her phone to snap a photo of it. Casual TikTok style, slight camera shake, autumn leaves, ambient street sound.",
+      "negative": "text overlays, captions, logos, watermarks, distorted hands"
+    }
+  ]
+}
