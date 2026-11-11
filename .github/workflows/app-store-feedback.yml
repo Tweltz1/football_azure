@@ -4,6 +4,11 @@ name: App Store feedback
 # 5 AM Central support review can summarize them and draft replies. Reads only. Uses the same App Store
 # Connect API key as the iPhone build workflows (APP_STORE_CONNECT_KEY_ID / _ISSUER_ID / _KEY).
 on:
+  # Also runs when this workflow or its script changes, as a check that it still works.
+  push:
+    paths:
+      - '.github/workflows/app-store-feedback.yml'
+      - '.github/scripts/app_store_feedback.py'
   schedule:
     # 09:05 UTC = 3:05 AM Central (4:05 in summer), before the 4:47 AM Central review.
     - cron: '5 9 * * *'
