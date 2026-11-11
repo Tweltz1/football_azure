@@ -17,7 +17,19 @@ export const MATCH = 0.86;
 /** A new look this close to one already kept under the same name adds nothing. */
 const DUPLICATE = 0.97;
 
-export type Look = { name: string; v: number[]; at: number };
+/** m: the image model the look came from. Looks saved before this was kept came from the first namer. */
+export type Look = { name: string; v: number[]; at: number; m?: string };
+
+/** The namer's first image model, which made every look saved without one. */
+const FIRST_MODEL = 'wkcn/TinyCLIP-ViT-39M-16-Text-19M-YFCC15M';
+
+/** The image model of the photo looked at last; new looks are kept under it. */
+let currentModel: string | undefined;
+
+/** Looks from a different image model mean nothing to this one, so they are skipped. No model given matches all. */
+export function sameModel(look: Look, model?: string): boolean {
+  return !model || (look.m ?? FIRST_MODEL) === model;
+}
 
 function cosine(a: number[], b: number[]): number {
   let dot = 0;
@@ -33,7 +45,9 @@ function cosine(a: number[], b: number[]): number {
 }
 
 /** Your own things spotted in the photo: each spot matched to the closest remembered look, best first. */
-export function matchLooks(looks: Look[], spots: number[][]): Suggestion[] {
+export function matchLooks(looks: Look[], spots: number[][], model?: string): Suggestion[] {
+  if (model) currentModel = model;
+  looks = looks.filter((l) => sameModel(l, model));
   const best = new Map<string, { name: string; score: number; look: number[] }>();
   for (const spot of spots) {
     let hit: Look | undefined;
@@ -57,14 +71,14 @@ export function matchLooks(looks: Look[], spots: number[][]): Suggestion[] {
 }
 
 /** Keeps the look of each thing you added, under the name you added it as. */
-export function learnLooks(looks: Look[], added: { name: string; look?: number[] }[], now = Date.now()): Look[] {
+export function learnLooks(looks: Look[], added: { name: string; look?: number[] }[], now = Date.now(), model = currentModel): Look[] {
   const next = [...looks];
   for (const a of added) {
     if (!a.look?.length || !a.name.trim()) continue;
     const key = a.name.trim().toLowerCase();
-    const same = next.find((l) => l.name.trim().toLowerCase() === key && cosine(l.v, a.look!) >= DUPLICATE);
+    const same = next.find((l) => l.name.trim().toLowerCase() === key && sameModel(l, model) && cosine(l.v, a.look!) >= DUPLICATE);
     if (same) same.at = now;
-    else next.push({ name: a.name.trim(), v: a.look, at: now });
+    else next.push({ name: a.name.trim(), v: a.look, at: now, ...(model ? { m: model } : {}) });
   }
   return next.sort((a, b) => b.at - a.at).slice(0, MAX_LOOKS);
 }

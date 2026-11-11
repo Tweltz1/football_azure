@@ -19,6 +19,8 @@ export type PhotoAnalysis = {
   named?: NamedItem[];
   /** The namer's embedding of every spot it looked at (unit length), for matching your own things. */
   looks?: number[][];
+  /** The image model the namer was built from; looks are only comparable within one model. */
+  namer?: string;
 };
 export type NamedItem = {
   name: string;
