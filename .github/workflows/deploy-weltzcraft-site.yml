@@ -68,6 +68,14 @@ jobs:
           put() { CLOUDFLARE_ACCOUNT_ID=$ACCOUNT npx --yes wrangler@3 pages secret put "$1" --project-name "$PROJECT" >/dev/null && echo "set $1"; }
           [ -n "$PRINTFUL_KEY" ] && printf '%s' "$PRINTFUL_KEY" | put PRINTFUL_API_TOKEN
           [ -n "$PRINTFUL_STORE" ] && printf '%s' "$PRINTFUL_STORE" | put PRINTFUL_STORE_ID
+          if [ -n "$PRINTFUL_KEY" ]; then
+            # Printful tells the site when a package ships, so the buyer gets the tracking link by email.
+            hk=$(printf 'wc-printful-hook:%s' "$PRINTFUL_KEY" | sha256sum | cut -c1-32); echo "::add-mask::$hk"
+            curl --silent -X POST https://api.printful.com/webhooks -H "Authorization: Bearer $PRINTFUL_KEY" -H 'Content-Type: application/json' \
+              ${PRINTFUL_STORE:+-H "X-PB-Store-Id: $PRINTFUL_STORE"} \
+              -d "{\"url\":\"https://$DOMAIN/api/merch/printful-webhook?key=$hk\",\"types\":[\"package_shipped\"]}" \
+              | jq -c '{printful_webhook: (.code == 200), types: .result.types, error: .error.message}'
+          fi
           if [ -z "$STRIPE_KEY" ]; then echo "::warning::No Stripe key secret; merch checkout stays closed."; exit 0; fi
           printf '%s' "$STRIPE_KEY" | put STRIPE_SECRET_KEY
           # Stripe tells us paid orders at this address. The signing secret is only shown when the endpoint is

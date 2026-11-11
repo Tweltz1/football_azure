@@ -2,7 +2,7 @@
 exact size of that product's print area (from merch/plan.json), using merch/products.json for size and position.
 Writes merch/print/placed/<product>-<color>-<logo>.png."""
 import json, os
-from PIL import Image
+from PIL import Image, ImageFilter
 
 cfg = json.load(open('merch/products.json'))
 plan = json.load(open('merch/plan.json'))
@@ -61,22 +61,25 @@ for prod in cfg['products']:
         AW, AH = p['area']['w'], p['area']['h']
         for lk, logo_cfg in cfg['logos'].items():
             fname = logo_cfg[color['tone']]
+            if p['placement'].startswith('embroidery') and 'hat' in logo_cfg:
+                fname = logo_cfg['hat'][color['tone']]
             if fname not in cache:
                 cache[fname] = Image.open(os.path.join('merch/print', fname)).convert('RGBA')
             logo = cache[fname]
             slots = [0.25, 0.75] if prod.get('wrap') else [0.5]
-            w = round(AW * prod['width'] * logo_cfg.get('scale', 1))
-            h = round(w * logo.height / logo.width)
-            max_h = AH * (0.8 if prod.get('wrap') else 0.9)
-            if h > max_h:
-                h = round(max_h)
-                w = round(h * logo.width / logo.height)
+            # Every logo is fitted into the same box on a product (fractions of the print area), so a wide W, a
+            # round seal and a tall monogram all read about the same size. 'scale' is a small optical nudge.
+            bw, bh = prod['box']
+            k = logo_cfg.get('scale', 1) * min(AW * bw / logo.width, AH * bh / logo.height)
+            w, h = round(logo.width * k), round(logo.height * k)
             img = logo.resize((w, h), Image.LANCZOS)
             slug = f"{prod['key']}-{color['key']}-{lk}"
             if p['placement'].startswith('embroidery'):
+                # Thicken thin lines a touch so small lettering still holds stitches, then use real thread colors.
+                img.putalpha(img.getchannel('A').filter(ImageFilter.MaxFilter(3)))
                 threads[slug] = snap(img)
             canvas = Image.new('RGBA', (AW, AH), (0, 0, 0, 0))
-            top = round(AH * prod['top']) if not prod.get('wrap') else (AH - h) // 2
+            top = round(AH * prod['top']) if 'top' in prod else (AH - h) // 2
             for cx in slots:
                 canvas.paste(img, (round(AW * cx - w / 2), top), img)
             canvas.save(f"merch/print/placed/{slug}.png", optimize=True)
