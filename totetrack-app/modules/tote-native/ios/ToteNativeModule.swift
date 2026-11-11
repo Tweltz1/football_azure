@@ -280,7 +280,7 @@ private func analyze(_ image: CGImage) -> [String: Any] {
   let naming = nameItems(image, regions: regions, objects: objects)
   return [
     "labels": labels, "lines": lines, "text": lines.map { $0["text"] as! String }, "objects": objects,
-    "named": naming.named, "looks": naming.looks,
+    "named": naming.named, "looks": naming.looks, "namer": ToteNamer.shared.modelName,
   ]
 }
 

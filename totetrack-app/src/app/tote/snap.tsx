@@ -57,7 +57,7 @@ export default function Snap() {
       // What you've renamed, added and skipped before shapes what Snap offers now.
       const mem = await loadSnapMemory();
       // Things that look like ones you've added before come first, under your name for them.
-      const yours = matchLooks(await loadLooks(), result.looks ?? []);
+      const yours = matchLooks(await loadLooks(), result.looks ?? [], result.namer || undefined);
       const taken = new Set(yours.map((s) => s.name.toLowerCase()));
       const fresh = suggestionsFrom(result).filter((s) => !taken.has(s.name.toLowerCase()));
       setSuggestions(

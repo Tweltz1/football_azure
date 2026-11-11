@@ -15,6 +15,8 @@ final class ToteNamer {
   private let model: VNCoreMLModel?
   private let names: [String]
   private let dim: Int
+  /// The base image model the namer was built from (items.json "model"); looks from different models don't compare.
+  let modelName: String
   /// names.count x dim, row-major, each row unit length.
   private let vectors: [Float]
 
@@ -22,6 +24,7 @@ final class ToteNamer {
     var model: VNCoreMLModel?
     var names: [String] = []
     var dim = 0
+    var modelName = ""
     var vectors: [Float] = []
     if let modelURL = toteResource("ToteNamer", "mlmodelc"),
       let jsonURL = toteResource("ToteNamerItems", "json"),
@@ -36,6 +39,7 @@ final class ToteNamer {
         model = try VNCoreMLModel(for: MLModel(contentsOf: modelURL, configuration: config))
         names = n
         dim = d
+        modelName = json["model"] as? String ?? ""
         vectors = [Float](repeating: 0, count: n.count * d)
         halves.withUnsafeBytes { raw in
           vectors.withUnsafeMutableBufferPointer { out in
@@ -58,6 +62,7 @@ final class ToteNamer {
     self.model = model
     self.names = names
     self.dim = dim
+    self.modelName = modelName
     self.vectors = vectors
   }
 
