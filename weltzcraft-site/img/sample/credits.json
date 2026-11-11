@@ -17,15 +17,6 @@
   "source": "wikimedia commons",
   "page": "https://commons.wikimedia.org/wiki/File:Cheese_and_tomato_croissant_-_Coffee_at_33_2024-02-23.jpg"
  },
- "barber-0": {
-  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/96/Barber_shop%2C_Quebec_city%2C_Canada.jpg/1920px-Barber_shop%2C_Quebec_city%2C_Canada.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-  "query": "barber shop",
-  "title": "Barber shop, Quebec city, Canada.jpg",
-  "creator": "Wilfredor",
-  "license": "CC0",
-  "source": "wikimedia commons",
-  "page": "https://commons.wikimedia.org/wiki/File:Barber_shop,_Quebec_city,_Canada.jpg"
- },
  "barber-1": {
   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9b/Young_men_with_trendy_haircut_at_barber_shop.jpg/1280px-Young_men_with_trendy_haircut_at_barber_shop.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
   "query": "barber haircut",
@@ -125,15 +116,6 @@
   "source": "wikimedia commons",
   "page": "https://commons.wikimedia.org/wiki/File:Human_running_gait_-_terminal_swing_to_heel_strike_(runner_with_Asics_Metaspeed_Edge_Paris_-_2024_Ljubljana_Marathon).jpg"
  },
- "coffee-0": {
-  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/Google_for_Startups_Campus_Warsaw_cafe_2019.jpg/1920px-Google_for_Startups_Campus_Warsaw_cafe_2019.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-  "query": "cafe interior wooden tables",
-  "title": "Google for Startups Campus Warsaw cafe 2019.jpg",
-  "creator": "Adrian Grycuk",
-  "license": "CC BY-SA 3.0 pl",
-  "source": "wikimedia commons",
-  "page": "https://commons.wikimedia.org/wiki/File:Google_for_Startups_Campus_Warsaw_cafe_2019.jpg"
- },
  "coffee-2": {
   "url": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Girl_Making_Espresso.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
   "query": "barista making espresso",
@@ -142,15 +124,6 @@
   "license": "CC BY 2.0",
   "source": "wikimedia commons",
   "page": "https://commons.wikimedia.org/wiki/File:Girl_Making_Espresso.jpg"
- },
- "auto-0": {
-  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/aa/Rootes_Maidstone_building.jpg/1920px-Rootes_Maidstone_building.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-  "query": "car repair workshop interior",
-  "title": "Rootes Maidstone building.jpg",
-  "creator": "John K  Thorne",
-  "license": "CC0",
-  "source": "wikimedia commons",
-  "page": "https://commons.wikimedia.org/wiki/File:Rootes_Maidstone_building.jpg"
  },
  "auto-1": {
   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/48/Two_mechanic_working_on_a_car_engine.jpg/1280px-Two_mechanic_working_on_a_car_engine.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
@@ -178,15 +151,6 @@
   "license": "CC BY-SA 4.0",
   "source": "wikimedia commons",
   "page": "https://commons.wikimedia.org/wiki/File:The_tire_wheel_of_DeLorean_DMC-12_Mid-year_1981.jpg"
- },
- "lawn-0": {
-  "url": "https://upload.wikimedia.org/wikipedia/commons/7/73/View_of_a_suburban_house_%28AM_82113-2%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
-  "query": "suburban house front lawn",
-  "title": "View of a suburban house (AM 82113-2).jpg",
-  "creator": "Collins, Tudor Washington, 1898-1970, photographer",
-  "license": "CC BY 4.0",
-  "source": "wikimedia commons",
-  "page": "https://commons.wikimedia.org/wiki/File:View_of_a_suburban_house_(AM_82113-2).jpg"
  },
  "lawn-3": {
   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d1/Sonnenberg_Gardens%2C_Canandaigua%2C_New_York_-_20210820_-_11_-_Japanese_Garden_pond_and_stone_bridge.jpg/1280px-Sonnenberg_Gardens%2C_Canandaigua%2C_New_York_-_20210820_-_11_-_Japanese_Garden_pond_and_stone_bridge.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
@@ -268,15 +232,6 @@
   "license": "CC BY 4.0",
   "source": "wikimedia commons",
   "page": "https://commons.wikimedia.org/wiki/File:Leather_handbag_by_Les_cuirs_d%27Agathe_(DSC07738).jpg"
- },
- "running-0": {
-  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e2/Pink_Running_Shoes_%288086978002%29.jpg/1920px-Pink_Running_Shoes_%288086978002%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
-  "query": "running shoes pair",
-  "title": "Pink Running Shoes (8086978002).jpg",
-  "creator": "RichardBH from Hamilton, Canada",
-  "license": "CC BY 2.0",
-  "source": "wikimedia commons",
-  "page": "https://commons.wikimedia.org/wiki/File:Pink_Running_Shoes_(8086978002).jpg"
  },
  "running-1": {
   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d9/Woman_jogging_in_the_park_during_daytime_with_trees_in_the_background.jpg/1280px-Woman_jogging_in_the_park_during_daytime_with_trees_in_the_background.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",

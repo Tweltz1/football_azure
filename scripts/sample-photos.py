@@ -9,16 +9,16 @@ from PIL import Image, ImageOps
 
 OUT = 'weltzcraft-site/img/sample'
 Q = {
-  'coffee':  ['cafe interior wooden tables', 'latte art', 'barista making espresso', 'croissant coffee'],
-  'barber':  ['barber shop', 'barber haircut', 'barber tools scissors', 'barber chair'],
-  'auto':    ['car repair workshop interior', 'mechanic working on car engine', 'car engine bay open hood', 'tire change garage wheel'],
-  'lawn':    ['suburban house front lawn', 'lawn mower grass', 'garden flowers', 'garden stone path landscaping'],
+  'coffee':  ['coffee shop counter cafe interior', 'latte art', 'barista making espresso', 'croissant coffee'],
+  'barber':  ['barbershop interior chairs mirrors', 'barber haircut', 'barber tools scissors', 'barber chair'],
+  'auto':    ['auto mechanic garage car lift', 'mechanic working on car engine', 'car engine bay open hood', 'tire change garage wheel'],
+  'lawn':    ['green lawn front yard house', 'lawn mower grass', 'garden flowers', 'garden stone path landscaping'],
   'bakery':  ['bakery bread', 'croissants', 'decorated birthday cake', 'chocolate chip cookies'],
   'fitness': ['gym fitness', 'group fitness class gym', 'dumbbells rack gym', 'yoga class mat'],
   'boutique':['clothing store interior', 'clothes on hangers rack', 'leather handbag', 'fashion shoes'],
-  'running': ['running shoes pair', 'woman jogging park', 'trail running', 'marathon runners'],
+  'running': ['runner tying running shoes', 'woman jogging park', 'trail running', 'marathon runners'],
 }
-BRANDS = re.compile(r'starbucks|chanel|prada|gucci|louis vuitton|mercedes|amg|bmw|nike|adidas|mizuno|asics|puma|fortepan|logo|nebula|ambigram|receipt|invoice', re.I)
+BRANDS = re.compile(r'starbucks|chanel|prada|gucci|louis vuitton|mercedes|amg|bmw|nike|adidas|mizuno|asics|puma|fortepan|logo|nebula|ambigram|receipt|invoice|google|negative', re.I)
 SIZES = {0: (1600, 900), 1: (800, 800), 2: (800, 800), 3: (800, 800)}
 UA = {'User-Agent': 'WeltzcraftSamplePhotos/1.0 (https://weltzcraft.com)'}
 
