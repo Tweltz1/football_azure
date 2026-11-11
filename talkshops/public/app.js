@@ -855,10 +855,13 @@
 
   // Technicians see the shop's details but can't change them; the reset phone is their own.
   function nameView() {
+    // Google (and other providers) give a full name; offer it so the person only has to confirm.
+    const meta = session?.user?.user_metadata || {};
+    const suggested = String(meta.full_name || meta.name || "").trim().slice(0, 60);
     return `<div class="login-wrap"><form class="login name-gate" id="myNameForm">
       <h2>What's your name?</h2>
       <p class="muted" style="margin:0">Your name goes on your notes, messages to customers, the time clock and the cars assigned to you, so everyone knows who did what. Use your own name, not the shop's.</p>
-      <label class="field">Your name<input id="myNameIn" maxlength="60" placeholder="e.g. Sam Lee" autocomplete="name" required autofocus></label>
+      <label class="field">Your name<input id="myNameIn" maxlength="60" placeholder="e.g. Sam Lee" autocomplete="name" required autofocus value="${esc(suggested)}"></label>
       <button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Save and Continue</button>
       <small class="muted">Each person on your team gets their own login. One login works on up to 2 devices at a time.</small>
       <button class="linkbtn" type="button" id="signOut2" style="align-self:flex-start">Not you? Sign out</button>
