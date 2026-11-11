@@ -239,9 +239,9 @@
       var feats = [].slice.call(box.querySelectorAll('.chips input:checked'));
       var low = +plat.getAttribute('data-p');
       feats.forEach(function (f) { low += +f.getAttribute('data-p'); });
-      var high = Math.round(low * 1.4 / 100) * 100;
-      var w = 2 + feats.length * 0.75 + (plat.value === 'Both' ? 1 : 0), w1 = Math.round(w), w2 = Math.round(w * 1.4) + (Math.round(w * 1.4) === w1 ? 1 : 0);
-      var price = money(low) + ' to ' + (high > 15000 ? '$15,000+' : money(high)), time = 'About ' + w1 + ' to ' + w2 + ' weeks';
+      var high = Math.round(low * 1.4 / 100) * 100, base = +plat.getAttribute('data-w');
+      var w = base + feats.length * 0.75, w1 = Math.round(w), w2 = Math.round(w * 1.4) + (Math.round(w * 1.4) === w1 ? 1 : 0);
+      var price = money(low) + ' to ' + money(high), time = 'About ' + w1 + ' to ' + w2 + ' weeks';
       $('est-price').textContent = price; $('est-time').textContent = time;
       return { plat: plat.value, feats: feats.map(function (f) { return f.value; }), price: price, time: time };
     }

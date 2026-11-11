@@ -270,40 +270,84 @@
   <div class="wrap">
     <div class="section-head" data-reveal>
       <p class="eyebrow">Pricing</p>
-      <h2>Priced by the job. No surprises.</h2>
-      <p class="sub">Every app is a different size, so you get one fixed quote for yours before any work starts. Most projects land between $2,500 and $15,000.</p>
+      <h2>Simple prices. No surprises.</h2>
+      <p class="sub">Launch pricing while we grow our client list. Pick a starting point, and you get one fixed quote for your project before any work starts.</p>
+    </div>
+
+    <div class="tiers" data-reveal>
+      <article class="plan tier">
+        <p class="plan-tag">Website</p>
+        <h3>Starter site</h3>
+        <p class="plan-price">$500</p>
+        <ul>
+          <li>One to three pages</li>
+          <li>Contact form</li>
+          <li>Domain and hosting set up</li>
+        </ul>
+      </article>
+      <article class="plan tier">
+        <p class="plan-tag">Website</p>
+        <h3>Business site</h3>
+        <p class="plan-price">$1,200</p>
+        <ul>
+          <li>Up to about six pages</li>
+          <li>Booking, menu or gallery</li>
+          <li>Basic Google setup</li>
+        </ul>
+      </article>
+      <article class="plan tier">
+        <p class="plan-tag">Web app</p>
+        <h3>Custom tool</h3>
+        <p class="plan-price"><small>From </small>$2,500</p>
+        <ul>
+          <li>Logins and accounts</li>
+          <li>Your own database</li>
+          <li>Payments if you need them</li>
+        </ul>
+      </article>
+      <article class="plan tier">
+        <p class="plan-tag">iPhone app</p>
+        <h3>App Store app</h3>
+        <p class="plan-price"><small>From </small>$3,500</p>
+        <ul>
+          <li>A simple, polished app</li>
+          <li>Built for iPhone</li>
+          <li>Taken all the way through App Store review</li>
+        </ul>
+      </article>
     </div>
 
     <ul class="terms" data-reveal>
       <li><strong>One fixed price</strong><span>A written quote with the feature list and timeline. That's the number you pay.</span></li>
-      <li><strong>Half to start, half at launch</strong><span>You pay the second half when the app is live and working.</span></li>
+      <li><strong>Half to start, half at launch</strong><span>You pay the second half when it is live and working.</span></li>
       <li><strong>Changes quoted separately</strong><span>Want to add something mid-build? You get a small quote first, and you decide.</span></li>
     </ul>
 
     <div class="est" id="est" data-reveal>
       <div class="est-pick">
-        <h3>Ballpark your app</h3>
+        <h3>Ballpark your project</h3>
         <p class="muted">Tap what you need and watch the estimate move.</p>
         <fieldset class="seg"><legend class="sr">Platform</legend>
-          <label><input type="radio" name="est-plat" value="iPhone app" data-p="2500" checked><span>iPhone</span></label>
-          <label><input type="radio" name="est-plat" value="Web app" data-p="2500"><span>Web</span></label>
-          <label><input type="radio" name="est-plat" value="Both" data-p="4500"><span>Both</span></label>
+          <label><input type="radio" name="est-plat" value="Website" data-p="500" data-w="1" checked><span>Website</span></label>
+          <label><input type="radio" name="est-plat" value="Web app" data-p="2500" data-w="2"><span>Web app</span></label>
+          <label><input type="radio" name="est-plat" value="iPhone app" data-p="3500" data-w="3"><span>iPhone</span></label>
+          <label><input type="radio" name="est-plat" value="Both" data-p="5500" data-w="4"><span>Both</span></label>
         </fieldset>
         <fieldset class="chips"><legend class="sr">Features</legend>
-          <label><input type="checkbox" data-p="500" value="Accounts and sign-in"><span>Accounts and sign-in</span></label>
-          <label><input type="checkbox" data-p="1000" value="Payments"><span>Payments</span></label>
-          <label><input type="checkbox" data-p="400" value="Push notifications"><span>Push notifications</span></label>
-          <label><input type="checkbox" data-p="500" value="Camera or photos"><span>Camera or photos</span></label>
-          <label><input type="checkbox" data-p="700" value="Maps or location"><span>Maps or location</span></label>
-          <label><input type="checkbox" data-p="1200" value="Chat or live updates"><span>Chat or live updates</span></label>
-          <label><input type="checkbox" data-p="1000" value="An AI feature"><span>An AI feature</span></label>
-          <label><input type="checkbox" data-p="1000" value="Admin dashboard"><span>Admin dashboard</span></label>
+          <label><input type="checkbox" data-p="400" value="Accounts and sign-in"><span>Accounts and sign-in</span></label>
+          <label><input type="checkbox" data-p="600" value="Payments"><span>Payments</span></label>
+          <label><input type="checkbox" data-p="300" value="Push notifications"><span>Push notifications</span></label>
+          <label><input type="checkbox" data-p="300" value="Camera or photos"><span>Camera or photos</span></label>
+          <label><input type="checkbox" data-p="400" value="Maps or location"><span>Maps or location</span></label>
+          <label><input type="checkbox" data-p="800" value="Chat or live updates"><span>Chat or live updates</span></label>
+          <label><input type="checkbox" data-p="600" value="An AI feature"><span>An AI feature</span></label>
+          <label><input type="checkbox" data-p="600" value="Admin dashboard"><span>Admin dashboard</span></label>
         </fieldset>
       </div>
       <div class="est-out" aria-live="polite">
         <p class="plan-tag">Rough estimate</p>
-        <p class="est-price" id="est-price">$2,500 to $3,500</p>
-        <p class="est-time" id="est-time">About 2 to 3 weeks</p>
+        <p class="est-price" id="est-price">$500 to $700</p>
+        <p class="est-time" id="est-time">About 1 to 2 weeks</p>
         <button class="btn" type="button" id="est-use">Use this in my brief</button>
         <p class="hint">A guide, not a quote. Your fixed price comes after we talk.</p>
       </div>
@@ -326,12 +370,12 @@
       <article class="plan plan-hot" data-reveal>
         <p class="plan-tag">Option 2 · Recommended</p>
         <h3>Care plan</h3>
-        <p class="plan-price">From $250<small> / month</small></p>
+        <p class="plan-price">$49<small> / month</small></p>
         <p>You still own everything. We keep it running so you don't have to think about it.</p>
         <ul>
           <li>Hosting, backups and monitoring handled</li>
-          <li>Fixes and updates for new iPhone versions</li>
-          <li>App Store renewals and review replies</li>
+          <li>Fixes and updates as phones and browsers change</li>
+          <li>App Store renewals and review replies for apps</li>
           <li>Small tweaks each month, cancel any time</li>
         </ul>
       </article>
@@ -372,6 +416,7 @@
         <label>Platform
           <select name="platform">
             <option>Not sure yet</option>
+            <option>Website</option>
             <option>iPhone app</option>
             <option>Web app</option>
             <option>Both</option>
