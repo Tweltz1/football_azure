@@ -1,4 +1,2 @@
-stripe-old-webhook
-review-contact
+review-shots
 store-look
-stripe-check
