@@ -61,6 +61,8 @@ for prod in cfg['products']:
         AW, AH = p['area']['w'], p['area']['h']
         for lk, logo_cfg in cfg['logos'].items():
             fname = logo_cfg[color['tone']]
+            if p['placement'].startswith('embroidery') and 'hat' in logo_cfg:
+                fname = logo_cfg['hat'][color['tone']]
             if fname not in cache:
                 cache[fname] = Image.open(os.path.join('merch/print', fname)).convert('RGBA')
             logo = cache[fname]

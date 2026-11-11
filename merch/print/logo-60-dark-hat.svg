@@ -1,0 +1,6 @@
+<svg id="d" xmlns="http://www.w3.org/2000/svg" width="1800" height="1800" viewBox="0 0 200 200" style="color:#111">
+<circle cx="100" cy="100" r="94" fill="none" stroke="currentColor" stroke-width="5"/>
+<path id="dt" d="M35 100 A65 65 0 0 1 165 100" fill="none"/><path id="db" d="M15 100 A85 85 0 0 0 185 100" fill="none"/>
+<text font-family="Inter" font-weight="800" font-size="25" letter-spacing="1.5" fill="currentColor"><textPath href="#dt" startOffset="50%" text-anchor="middle">WELTZCRAFT</textPath></text>
+<text font-family="Inter" font-weight="800" font-size="25" letter-spacing="1.5" fill="currentColor"><textPath href="#db" startOffset="50%" text-anchor="middle">STUDIOS</textPath></text>
+<polyline points="68,74 84,112 100,86 116,112 132,74" fill="none" stroke="#111" stroke-width="6.5" stroke-linejoin="miter"/><polyline points="68,86 84,124 100,98 116,124 132,86" fill="none" stroke="#facc15" stroke-width="6.5" stroke-linejoin="miter"/><polyline points="68,98 84,136 100,110 116,136 132,98" fill="none" stroke="#ef4444" stroke-width="6.5" stroke-linejoin="miter"/></svg>

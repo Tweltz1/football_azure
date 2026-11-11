@@ -1,0 +1,5 @@
+<svg id="e" xmlns="http://www.w3.org/2000/svg" width="1800" height="1800" viewBox="0 0 200 200" style="color:#e9e1cf">
+<rect x="22" y="20" width="156" height="160" rx="4" fill="none" stroke="currentColor" stroke-width="5"/>
+<g transform="translate(38 48) scale(1.12)"><polyline points="0,0 16,46 32,12 48,46 64,0" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="miter"/><path d="M104 9 C102 2 96 -1 90 -1 C80 -1 76 4 76 11 C76 19 83 21 90 23 C98 25 105 28 105 35 C105 43 99 47 90 47 C81 47 75 43 74 36" fill="none" stroke="currentColor" stroke-width="7"/></g>
+<path d="M44 124 H156" stroke="currentColor" stroke-width="4"/>
+<text x="100" y="160" text-anchor="middle" font-family="Inter" font-weight="800" font-size="24" letter-spacing="1" fill="currentColor">EST 2026</text></svg>

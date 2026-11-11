@@ -1,5 +1,5 @@
 {
-  "_about": "Weltzcraft merch: every product comes in every logo. A buyer picks product, color, logo and size. scripts/merch-build.mjs + scripts/merch_place.py turn this into placed print files, real Printful mockups (weltzcraft-site/img/merch/<product>-<color>-<logo>.webp) and Printful store products (weltzcraft-site/merch-catalog.json). 'tone' picks the logo file: light logos on dark goods, dark logos on light goods. 'box' = [width, height] the logo is fitted into, as shares of the print area (times the logo's own 'scale'); 'top' = gap from the top as a share of its height (no 'top' = centered); 'wrap' prints the logo twice (both sides of a mug). 'price' is US dollars; 2XL adds $2, 3XL adds $3.",
+  "_about": "Weltzcraft merch: every product comes in every logo. A buyer picks product, color, logo and size. scripts/merch-build.mjs + scripts/merch_place.py turn this into placed print files, real Printful mockups (weltzcraft-site/img/merch/<product>-<color>-<logo>.webp) and Printful store products (weltzcraft-site/merch-catalog.json). 'tone' picks the logo file: light logos on dark goods, dark logos on light goods. 'box' = [width, height] the logo is fitted into, as shares of the print area (times the logo's own 'scale'); 'top' = gap from the top as a share of its height (no 'top' = centered); 'wrap' prints the logo twice (both sides of a mug). 'price' is US dollars; 2XL adds $2, 3XL adds $3. A logo's 'hat' files replace its normal ones on embroidered items (bigger, bolder lettering that stitches cleanly).",
   "logos": {
     "42": {
       "name": "Tall monogram",
@@ -17,13 +17,21 @@
       "name": "Est. 2026 stamp",
       "light": "logo-44-light.png",
       "dark": "logo-44-dark.png",
-      "scale": 0.9
+      "scale": 0.9,
+      "hat": {
+        "light": "logo-44-light-hat.png",
+        "dark": "logo-44-dark-hat.png"
+      }
     },
     "55": {
       "name": "Brass seal",
       "light": "logo-55-brass.png",
       "dark": "logo-55-darkbrass.png",
-      "scale": 1.0
+      "scale": 1.0,
+      "hat": {
+        "light": "logo-55-brass-hat.png",
+        "dark": "logo-55-darkbrass-hat.png"
+      }
     },
     "58": {
       "name": "Three-stripe W",
@@ -41,7 +49,11 @@
       "name": "Seal + stripes",
       "light": "logo-60-light.png",
       "dark": "logo-60-dark.png",
-      "scale": 1.0
+      "scale": 1.0,
+      "hat": {
+        "light": "logo-60-light-hat.png",
+        "dark": "logo-60-dark-hat.png"
+      }
     }
   },
   "products": [
