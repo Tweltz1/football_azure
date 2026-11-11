@@ -64,7 +64,13 @@ jobs:
         continue-on-error: true
         run: |
           pip install --quiet pillow
-          python3 teach.py --cache cache --set set --requests "${{ inputs.requests || '150' }}"
+          # A push here uses run.json (keep it small: the Gemini key is shared with the live apps).
+          req="${{ inputs.requests }}"; min=75
+          if [ -z "$req" ]; then
+            req=$(python3 -c 'import json; print(json.load(open("run.json"))["requests"])')
+            min=$(python3 -c 'import json; print(json.load(open("run.json"))["minutes"])')
+          fi
+          python3 teach.py --cache cache --set set --requests "$req" --minutes "$min"
 
       - name: Save the set
         if: ${{ !cancelled() && env.GEMINI_API_KEY != '' }}
