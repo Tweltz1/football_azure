@@ -1,4 +1,4 @@
 # Image model the namer is built on (Hugging Face TinyCLIP, MIT license). build_namer.py reads NAMER_MODEL,
 # which the workflow sets from the first line that isn't a comment. Try another one on a branch named
 # claude/...namer-trial... first. Switching models also changes what the app's remembered "looks" (snapLooks.ts) mean.
-wkcn/TinyCLIP-ViT-39M-16-Text-19M-YFCC15M
+wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M
