@@ -1,0 +1,75 @@
+[
+  {
+    "slug": "stripes-cream-tee",
+    "ok": true,
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "variant_id": 14683,
+    "color": "Natural",
+    "placement": "front"
+  },
+  {
+    "slug": "seal-tee",
+    "ok": true,
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "variant_id": 4017,
+    "color": "Black",
+    "placement": "front"
+  },
+  {
+    "slug": "stripe-ring-hoodie",
+    "ok": true,
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "variant_id": 5531,
+    "color": "Black",
+    "placement": "front"
+  },
+  {
+    "slug": "corners-hoodie",
+    "ok": true,
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "variant_id": 12998,
+    "color": "Sand",
+    "placement": "front"
+  },
+  {
+    "slug": "navy-seal-hat",
+    "ok": false,
+    "error": "no color Navy on \"Adidas Dad Hat\". Colors: Black, White"
+  },
+  {
+    "slug": "stripes-cap",
+    "ok": false,
+    "error": "POST /mockup-generator/create-task/638 -> 400 {\"code\":400,\"result\":\"Invalid file option: thread_colors\",\"error\":{\"reason\":\"BadRequest\",\"message\":\"Invalid file option: thread_colors\",\"api_error_code\":\"MG-4\",\"error_url\":\"https://developers.printful.com/docs/#section/API-Errors/Mockup-Generator-API\"}}"
+  },
+  {
+    "slug": "monogram-mug",
+    "ok": true,
+    "product_id": 300,
+    "product": "Black Glossy Mug",
+    "variant_id": 9323,
+    "color": "Black",
+    "placement": "default"
+  },
+  {
+    "slug": "est-tote",
+    "ok": true,
+    "product_id": 274,
+    "product": "All-Over Print Large Tote Bag w/ Pocket",
+    "variant_id": 9039,
+    "color": "Black",
+    "placement": "default"
+  },
+  {
+    "slug": "stickers",
+    "ok": true,
+    "product_id": 358,
+    "product": "Kiss-Cut Stickers",
+    "variant_id": 10164,
+    "color": "White",
+    "placement": "default"
+  }
+]
