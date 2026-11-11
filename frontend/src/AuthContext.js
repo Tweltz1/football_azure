@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import SetPassword from './components/SetPassword';
 import { supabase } from './supabaseClient';
 import { chosenUser, forgetChosenUser, forgetLastUser, guestUser, isSignedOut, lastSignedInUser, markSignedOut, offlineUser, rememberLastUser } from './offline/storage';
 import * as nativeSignIn from './native/authSession';
@@ -72,6 +73,31 @@ export const signIn = async (provider) => {
   }
 };
 
+// Email links (confirm sign-up, reset password) open on the website, even from the iPhone apps,
+// whose own pages live at capacitor://localhost and can't be linked to from an email.
+const SITE = 'https://hood-league.com';
+const emailLinkBase = () => (nativeSignIn.inApp() ? SITE : window.location.origin);
+
+/** Email + password sign-in. Resolves with { error } like the Supabase calls. */
+export const signInWithEmail = (email, password) => supabase.auth.signInWithPassword({ email: email.trim(), password });
+
+/** New account with email + password. Supabase emails a link to confirm the address first. */
+export const signUpWithEmail = (email, password, name) => supabase.auth.signUp({
+  email: email.trim(),
+  password,
+  options: {
+    emailRedirectTo: `${emailLinkBase()}/`,
+    data: name && name.trim() ? { full_name: name.trim() } : undefined,
+  },
+});
+
+/** Emails a link to set a new password. Also how someone who used to sign in with GitHub gets a password. */
+export const sendPasswordReset = (email) => supabase.auth.resetPasswordForEmail(email.trim(), {
+  redirectTo: `${emailLinkBase()}/?set-password=1`,
+});
+
+export const setNewPassword = (password) => supabase.auth.updateUser({ password });
+
 export const signOut = async () => {
   clearReads();
   forgetLastUser();
@@ -93,6 +119,10 @@ export const signOut = async () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Opened from a "reset your password" email: ask for the new password over whatever page is showing.
+  const [settingPassword, setSettingPassword] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('set-password'),
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -125,6 +155,7 @@ export const AuthProvider = ({ children }) => {
       });
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setSettingPassword(true);
       const nextUser = toAppUser(session?.user);
       // A refresh that failed for lack of internet isn't a sign-out; keep the offline commissioner.
       if (!nextUser && event !== 'SIGNED_OUT') {
@@ -168,6 +199,14 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={value}>
       {children}
+      {settingPassword && user && !user.offline && (
+        <SetPassword onDone={() => {
+          setSettingPassword(false);
+          const url = new URL(window.location.href);
+          url.searchParams.delete('set-password');
+          window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+        }} />
+      )}
     </AuthContext.Provider>
   );
 };
