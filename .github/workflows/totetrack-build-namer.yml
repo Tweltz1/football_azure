@@ -19,6 +19,8 @@ on:
       - 'totetrack-app/tools/namer/**'
       - 'totetrack-app/tools/detector/**'
       - '.github/workflows/totetrack-build-namer.yml'
+  # Weekly, after Gemini named more photos (item-namer.yml on the Curbsy branch starts it), or by hand.
+  workflow_dispatch:
 
 concurrency:
   group: totetrack-namer-${{ github.ref }}
@@ -89,10 +91,23 @@ jobs:
           python prepare_openimages.py ~/data-src/oidv6-train-annotations-bbox.csv ~/data-src/oidv7-class-descriptions-boxable.csv "$RUNNER_TEMP/data" --per-class "$PER_CLASS" 2>&1 | tee -a prepare.log
           du -sh "$RUNNER_TEMP/data"
 
+      # Photos Gemini named (ml/gemini-teacher on the Curbsy branch, release gemini-teacher): training only, kept
+      # only if the test score holds.
+      - name: Get the photos Gemini named
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/teacher"
+          if gh release download gemini-teacher -R "$GITHUB_REPOSITORY" -p teacher.zip -D "$RUNNER_TEMP"; then
+            unzip -q "$RUNNER_TEMP/teacher.zip" -d "$RUNNER_TEMP/teacher"
+          else
+            echo "No Gemini-named photos yet"
+          fi
+
       - name: Train and build
         run: |
           set -o pipefail
-          python build_namer.py "$RUNNER_TEMP/namer" --train "$RUNNER_TEMP/data" --cache ~/crops.pt 2>&1 | tee build.log
+          python build_namer.py "$RUNNER_TEMP/namer" --train "$RUNNER_TEMP/data" --cache ~/crops.pt --teacher "$RUNNER_TEMP/teacher" 2>&1 | tee build.log
           cd "$RUNNER_TEMP/namer" && zip -qr ToteNamer.mlpackage.zip ToteNamer.mlpackage && ls -lh
           cp "$GITHUB_WORKSPACE/totetrack-app/tools/namer/build.log" .
 
