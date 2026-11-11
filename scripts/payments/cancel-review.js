@@ -3,7 +3,7 @@
 const { api, step } = require('../curbsy-store/asc');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 (async () => {
-  for (const bundle of ['com.hoodleague.junk', 'com.tweltz1.totetrack']) {
+  for (const bundle of (process.env.BUNDLES || 'com.hoodleague.junk').split(',')) {
     const app = (await api(`/v1/apps?filter[bundleId]=${bundle}`)).data[0];
     await step(`${app.attributes.name}: pull out of review`, async () => {
       const subs = (await api(`/v1/reviewSubmissions?filter[app]=${app.id}&filter[state]=WAITING_FOR_REVIEW&limit=5`)).data;
