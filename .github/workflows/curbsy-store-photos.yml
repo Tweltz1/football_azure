@@ -1,0 +1,36 @@
+# Makes sample item photos for Curbsy's App Store screenshots (scripts/payments/curbsy-photos.js) and saves
+# them to the curbsy-store-photos branch.
+name: Curbsy store photos
+
+on:
+  push:
+    branches: ['claude/project-thread-jxl3cv']
+    paths:
+      - 'scripts/payments/curbsy-photos.js'
+      - '.github/workflows/curbsy-store-photos.yml'
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Make photos
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PHOTO_OUT: ${{ runner.temp }}/photos
+        run: node scripts/payments/curbsy-photos.js
+      - name: Save to curbsy-store-photos branch
+        run: |
+          cd "$RUNNER_TEMP/photos"
+          ls -la
+          git init -q -b curbsy-store-photos
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A && git commit -qm "Curbsy sample item photos"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" curbsy-store-photos
