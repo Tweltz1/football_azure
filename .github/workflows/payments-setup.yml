@@ -1,0 +1,44 @@
+# Payment setup helpers (scripts/payments/). Runs the scripts named in scripts/payments/run.txt, one per
+# line, when that folder changes on this branch:
+#   stripe-check        read-only: is the Talk Shops Stripe key live, and can the account take money?
+#   store-look          read-only: what App Store Connect has for Curbsy and ToteTrack paid products
+#   totetrack-products  creates ToteTrack Pro (monthly and yearly) in App Store Connect
+# Logs are public, so the scripts print yes/no answers and setting names only.
+name: Payments setup
+
+on:
+  push:
+    branches: ['claude/project-thread-l89ktp']
+    paths:
+      - 'scripts/payments/**'
+      - '.github/workflows/payments-setup.yml'
+
+concurrency:
+  group: payments-setup
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.TALKSHOPS_STRIPE_SECRET_KEY }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY }}
+        run: |
+          while read -r line; do
+            script=$(echo "$line" | tr -cd 'a-z0-9-')
+            [ -z "$script" ] && continue
+            echo "::group::$script"
+            node "scripts/payments/$script.js" || echo "::warning::$script reported a failure"
+            echo "::endgroup::"
+          done < scripts/payments/run.txt
