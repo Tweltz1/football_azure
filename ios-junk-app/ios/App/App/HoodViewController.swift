@@ -700,6 +700,7 @@ public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "entitlements", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restore", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "manage", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "redeemCode", returnType: CAPPluginReturnPromise),
     ]
     private var updates: Task<Void, Never>?
 
@@ -791,6 +792,27 @@ public class StorePlugin: CAPPlugin, CAPBridgedPlugin {
             if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
                 ?? UIApplication.shared.connectedScenes.first as? UIWindowScene {
                 try? await AppStore.showManageSubscriptions(in: scene)
+            }
+            call.resolve()
+        }
+    }
+
+    /// Apple's "Redeem code" sheet for promo (offer) codes made in App Store Connect. The redeemed
+    /// subscription arrives through Transaction.updates like any other purchase.
+    @objc func redeemCode(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            if #available(iOS 16.0, *) {
+                guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+                    ?? UIApplication.shared.connectedScenes.first as? UIWindowScene else {
+                    call.reject("Couldn't open the App Store sheet.")
+                    return
+                }
+                do { try await AppStore.presentOfferCodeRedeemSheet(in: scene) } catch {
+                    call.reject("The App Store isn't available right now.")
+                    return
+                }
+            } else {
+                SKPaymentQueue.default().presentCodeRedemptionSheet()
             }
             call.resolve()
         }
