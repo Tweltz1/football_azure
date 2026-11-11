@@ -43,14 +43,15 @@
 
 <main id="main">
 
-<section class="hero">
+<section class="hero band-dark">
+  <div class="hero-bg" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
   <div class="wrap hero-in">
     <div class="hero-copy">
-      <p class="eyebrow">Independent app studio</p>
+      <p class="eyebrow pill"><span class="dot"></span>App studio · Taking new projects</p>
       <h1>We make apps people actually open.<br><span class="ember">Let's make yours next.</span></h1>
-      <p class="lede">Weltzcraft Studios designs, builds and ships iPhone and web apps: a live fantasy football draft room, a game night hub, a customer-update tool for repair shops, and more. Bring us an idea and we'll take it from sketch to the App Store.</p>
+      <p class="lede">Weltzcraft Studios designs, builds and ships iPhone and web apps: a live fantasy football draft room, a game night hub, a customer-update tool for repair shops, and more. Bring us your idea and we'll take it from a sketch to the App Store.</p>
       <div class="cta-row">
-        <a class="btn" href="#contact">Start a project</a>
+        <a class="btn btn-glow" href="#contact">Start a project <span aria-hidden="true">→</span></a>
         <a class="btn btn-ghost" href="#apps">See our apps</a>
       </div>
       <ul class="facts" aria-label="Studio at a glance">
@@ -60,7 +61,7 @@
       </ul>
     </div>
     <div class="hero-art" aria-hidden="true">
-      <div class="stack">
+      <div class="stack" id="stack">
         <img class="t t1" src="/img/hoodleague.webp" alt="" width="128" height="128">
         <img class="t t2" src="/img/curbsy.webp" alt="" width="128" height="128">
         <img class="t t3" src="/img/hoodgames.webp" alt="" width="128" height="128">
@@ -74,16 +75,18 @@
   </div>
 </section>
 
+<div class="marquee" aria-hidden="true"><div class="marquee-track"><span>Hood League</span><b>✦</b><span>Talk Shops</span><b>✦</b><span>Hood Games</span><b>✦</b><span>Curbsy</span><b>✦</b><span>ToteTrack</span><b>✦</b><span>Shop Stride</span><b>✦</b><span>Hood Protocol</span><b>✦</b><span>Backseat View</span><b>✦</b><span>Hood League</span><b>✦</b><span>Talk Shops</span><b>✦</b><span>Hood Games</span><b>✦</b><span>Curbsy</span><b>✦</b><span>ToteTrack</span><b>✦</b><span>Shop Stride</span><b>✦</b><span>Hood Protocol</span><b>✦</b><span>Backseat View</span><b>✦</b></div></div>
+
 <section id="apps" class="section">
   <div class="wrap">
-    <div class="section-head">
+    <div class="section-head" data-reveal>
       <p class="eyebrow">Our apps</p>
-      <h2>Built here, used for real</h2>
-      <p class="sub">Everything below was designed and built in house, front to back: the app, the server, the sign in, the store listing.</p>
+      <h2>Built here. Used for real.</h2>
+      <p class="sub">Everything below was designed and built in house, front to back: the app, the backend, the sign-in and the store listing.</p>
     </div>
 
     <div class="apps">
-      <article class="app featured">
+      <article class="app featured" style="--glow:#7a5cff" data-reveal>
         <img src="/img/hoodleague.webp" alt="Hood League app icon" width="88" height="88" loading="lazy">
         <div>
           <div class="app-top"><h3>Hood League</h3><span class="chip live">Live</span></div>
@@ -93,7 +96,7 @@
         </div>
       </article>
 
-      <article class="app featured">
+      <article class="app featured" style="--glow:#5b6bff" data-reveal>
         <img src="/img/talkshops.webp" alt="Talk Shops app icon" width="88" height="88" loading="lazy">
         <div>
           <div class="app-top"><h3>Talk Shops</h3><span class="chip live">Live</span></div>
@@ -103,7 +106,7 @@
         </div>
       </article>
 
-      <article class="app">
+      <article class="app" style="--glow:#ff8a2a" data-reveal>
         <img src="/img/hoodgames.webp" alt="Hood Games app icon" width="72" height="72" loading="lazy">
         <div>
           <div class="app-top"><h3>Hood Games</h3><span class="chip live">Live</span></div>
@@ -113,7 +116,7 @@
         </div>
       </article>
 
-      <article class="app">
+      <article class="app" style="--glow:#1fa55a" data-reveal>
         <img src="/img/curbsy.webp" alt="Curbsy app icon" width="72" height="72" loading="lazy">
         <div>
           <div class="app-top"><h3>Curbsy</h3><span class="chip soon">Coming to iPhone</span></div>
@@ -122,7 +125,7 @@
         </div>
       </article>
 
-      <article class="app">
+      <article class="app" style="--glow:#6a5cff" data-reveal>
         <img src="/img/totetrack.webp" alt="ToteTrack app icon" width="72" height="72" loading="lazy">
         <div>
           <div class="app-top"><h3>ToteTrack</h3><span class="chip soon">Coming to iPhone</span></div>
@@ -131,7 +134,7 @@
         </div>
       </article>
 
-      <article class="app">
+      <article class="app" style="--glow:#1fa55a" data-reveal>
         <img src="/img/shopstride.webp" alt="Shop Stride app icon" width="72" height="72" loading="lazy">
         <div>
           <div class="app-top"><h3>Shop Stride</h3><span class="chip soon">Coming to iPhone</span></div>
@@ -140,7 +143,7 @@
         </div>
       </article>
 
-      <article class="app">
+      <article class="app" style="--glow:#c98a4b" data-reveal>
         <img src="/img/hoodprotocol.webp" alt="Hood Protocol app icon" width="72" height="72" loading="lazy">
         <div>
           <div class="app-top"><h3>Hood Protocol</h3><span class="chip beta">In beta · 17+</span></div>
@@ -149,7 +152,7 @@
         </div>
       </article>
 
-      <article class="app">
+      <article class="app" style="--glow:#5b8cff" data-reveal>
         <img src="/img/backseatview.svg" alt="Backseat View app icon" width="72" height="72" loading="lazy">
         <div>
           <div class="app-top"><h3>Backseat View</h3><span class="chip lab">Lab</span></div>
@@ -161,50 +164,50 @@
   </div>
 </section>
 
-<section id="build" class="section build">
+<section id="build" class="section build band-dark">
   <div class="wrap">
-    <div class="section-head">
+    <div class="section-head" data-reveal>
       <p class="eyebrow">Build with us</p>
       <h2>Have an app idea? We'll build it with you.</h2>
       <p class="sub">For small businesses, creators, leagues and clubs, and anyone with a spreadsheet that should really be an app. You get the same studio that built everything above.</p>
     </div>
 
     <div class="services">
-      <div class="svc">
-        <span class="ico" aria-hidden="true">📱</span>
+      <div class="svc" data-reveal>
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>
         <h3>iPhone apps</h3>
         <p>Native SwiftUI or React Native, built and signed in the cloud, tested on TestFlight, and submitted to the App Store for you.</p>
       </div>
-      <div class="svc">
-        <span class="ico" aria-hidden="true">🖥️</span>
+      <div class="svc" data-reveal>
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>
         <h3>Web apps and dashboards</h3>
         <p>Fast sites and tools that work on any phone or laptop: booking, customer portals, live boards, admin dashboards.</p>
       </div>
-      <div class="svc">
-        <span class="ico" aria-hidden="true">🔧</span>
+      <div class="svc" data-reveal>
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 6.5a4 4 0 0 0 5 5L11 20a2.1 2.1 0 0 1-3-3l8.5-8.5"/><path d="M14.5 6.5 17 4l3 3-2.5 2.5"/></svg></span>
         <h3>Tools for your business</h3>
         <p>Customer updates, job boards, staff accounts, morning digests. Talk Shops started exactly like this.</p>
       </div>
-      <div class="svc">
-        <span class="ico" aria-hidden="true">✨</span>
+      <div class="svc" data-reveal>
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z"/></svg></span>
         <h3>AI features that help</h3>
         <p>Photo recognition on the phone, AI chat helpers and AI game hosts, used where they save someone a step, not as decoration.</p>
       </div>
-      <div class="svc">
-        <span class="ico" aria-hidden="true">🗄️</span>
+      <div class="svc" data-reveal>
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>
         <h3>Accounts, data and email</h3>
         <p>Sign in with Apple and Google, databases, real-time multiplayer, payments and branded email, all set up and kept running.</p>
       </div>
-      <div class="svc">
-        <span class="ico" aria-hidden="true">🚀</span>
+      <div class="svc" data-reveal>
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15c-1.5 1.5-2 5-2 5s3.500-.5 5-2M9 15l-1-4c2-5 6-8 12-8 0 6-3 10-8 12l-3-1z"/><circle cx="14.500" cy="9.500" r="1.500"/></svg></span>
         <h3>Launch and after</h3>
         <p>Store listings, privacy pages, support inbox, crash and review monitoring, and updates after launch so the app keeps working.</p>
       </div>
     </div>
 
-    <ol class="steps" aria-label="How a project works">
+    <ol class="steps" aria-label="How a project works" data-reveal>
       <li><span class="n">1</span><div><h3>Talk it through</h3><p>Tell us the problem and who it's for. We'll ask questions and suggest the smallest version worth building first.</p></div></li>
-      <li><span class="n">2</span><div><h3>See it early</h3><p>You get a clickable prototype quickly, so we fix the idea before we build the whole thing.</p></div></li>
+      <li><span class="n">2</span><div><h3>See it early</h3><p>You get a clickable prototype quickly, so we can get the idea right before building the whole thing.</p></div></li>
       <li><span class="n">3</span><div><h3>Build and test</h3><p>Real builds on your phone through TestFlight or a private link, with regular check-ins as it comes together.</p></div></li>
       <li><span class="n">4</span><div><h3>Launch and grow</h3><p>We ship it to the App Store or the web and stay on for fixes, features and support.</p></div></li>
     </ol>
@@ -213,17 +216,17 @@
 
 <section id="contact" class="section contact">
   <div class="wrap contact-in">
-    <div class="contact-copy">
+    <div class="contact-copy" data-reveal>
       <p class="eyebrow">Start a project</p>
       <h2>Tell us what you want to build</h2>
-      <p class="sub">A few sentences is plenty. You'll hear back from a real person with questions and a plan for next steps.</p>
+      <p class="sub">A few sentences is plenty. A real person reads every message and replies with questions and a plan for next steps.</p>
       <p class="mail">
         <a href="mailto:hello@weltzcraft.com?subject=App%20project">hello@weltzcraft.com</a>
         <button type="button" class="copy" data-copy="hello@weltzcraft.com">Copy</button>
       </p>
     </div>
 
-    <form class="brief" id="brief" novalidate>
+    <form class="brief" id="brief" novalidate data-reveal>
       <label>Your name
         <input name="name" autocomplete="name" required>
       </label>
@@ -259,12 +262,12 @@
 
 <section id="support" class="section support">
   <div class="wrap">
-    <div class="section-head">
+    <div class="section-head" data-reveal>
       <p class="eyebrow">App support</p>
       <h2>Need help with one of our apps?</h2>
       <p class="sub">Write to the app's own address and it lands with the people who build it.</p>
     </div>
-    <ul class="support-list">
+    <ul class="support-list" data-reveal>
       <li><span>Hood League, Hood Games, Hood Protocol</span><a href="mailto:hoodgames@weltzcraft.com">hoodgames@weltzcraft.com</a></li>
       <li><span>Curbsy</span><a href="mailto:curbsy@weltzcraft.com">curbsy@weltzcraft.com</a></li>
       <li><span>ToteTrack</span><a href="mailto:totetrack@weltzcraft.com">totetrack@weltzcraft.com</a></li>
@@ -280,7 +283,7 @@
 <footer class="foot">
   <div class="wrap foot-in">
     <p class="brand small"><img src="/favicon.svg" alt="" width="22" height="22"> Weltzcraft Studios</p>
-    <p class="muted">© <span id="yr">2026</span> Weltzcraft Studios. Made by hand, shipped for real.</p>
+    <p class="muted">© <span id="yr">2026</span> Weltzcraft Studios. Built with care, shipped for real.</p>
     <p class="muted links"><a href="https://hood-league.com/privacy.html">Hood League privacy</a><a href="https://talkshops.app/privacy.html">Talk Shops privacy</a><a href="mailto:hello@weltzcraft.com">hello@weltzcraft.com</a></p>
   </div>
 </footer>
