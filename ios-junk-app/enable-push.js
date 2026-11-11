@@ -1,6 +1,7 @@
-// Turns on the Push Notifications capability for com.hoodleague.junk in Apple's developer account, using the
-// App Store Connect API key the TestFlight upload already uses. Exits 0 when the App ID has it (so the build
-// can carry the notifications entitlement for saved-search alerts), 1 when it couldn't be checked or added.
+// Turns on the Push Notifications and Sign in with Apple capabilities for com.hoodleague.junk in Apple's
+// developer account, using the App Store Connect API key the TestFlight upload already uses. Exits 0 when the
+// App ID has both (so the build can carry App/App.entitlements: saved-search alerts and Apple's own sign-in
+// sheet), 1 when they couldn't be checked or added.
 // Env: KEY_ID, ISSUER_ID, KEY_P8.
 const crypto = require('crypto');
 
@@ -32,22 +33,31 @@ async function api(path, init = {}) {
   if (!app) throw new Error(`No App ID ${BUNDLE} in this team`);
   const caps = (found.included || []).filter((c) => c.type === 'bundleIdCapabilities'
     && (app.relationships?.bundleIdCapabilities?.data || []).some((d) => d.id === c.id));
-  if (caps.some((c) => c.attributes.capabilityType === 'PUSH_NOTIFICATIONS')) {
-    console.log('Push Notifications is already on for', BUNDLE);
-    return;
+  const wanted = [
+    { capabilityType: 'PUSH_NOTIFICATIONS' },
+    {
+      capabilityType: 'APPLE_ID_AUTH',
+      settings: [{ key: 'APPLE_ID_AUTH_APP_CONSENT', options: [{ key: 'PRIMARY_APP_CONSENT' }] }],
+    },
+  ];
+  for (const attributes of wanted) {
+    if (caps.some((c) => c.attributes.capabilityType === attributes.capabilityType)) {
+      console.log(`${attributes.capabilityType} is already on for`, BUNDLE);
+      continue;
+    }
+    await api('/bundleIdCapabilities', {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          type: 'bundleIdCapabilities',
+          attributes,
+          relationships: { bundleId: { data: { type: 'bundleIds', id: app.id } } },
+        },
+      }),
+    });
+    console.log(`Turned on ${attributes.capabilityType} for`, BUNDLE);
   }
-  await api('/bundleIdCapabilities', {
-    method: 'POST',
-    body: JSON.stringify({
-      data: {
-        type: 'bundleIdCapabilities',
-        attributes: { capabilityType: 'PUSH_NOTIFICATIONS' },
-        relationships: { bundleId: { data: { type: 'bundleIds', id: app.id } } },
-      },
-    }),
-  });
-  console.log('Turned on Push Notifications for', BUNDLE);
 })().catch((error) => {
-  console.log(`::warning::Couldn't turn on Push Notifications for ${BUNDLE} (${error.message}). This build won't get saved-search alerts.`);
+  console.log(`::warning::Couldn't turn on Push Notifications / Sign in with Apple for ${BUNDLE} (${error.message}).`);
   process.exit(1);
 });
