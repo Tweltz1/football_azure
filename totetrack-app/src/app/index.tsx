@@ -22,6 +22,7 @@ import {
 import { useAuth } from "../lib/auth";
 import { usePro } from "../lib/pro";
 import { itemCount, timeAgo, useTotes } from "../lib/store";
+import { SwipeRow } from "../components/SwipeRow";
 import { radius, useTheme } from "../lib/theme";
 import { Tote } from "../lib/types";
 import { placeOf, reminderCount, reminders } from "../lib/extras";
@@ -32,7 +33,8 @@ type Row = { tote: Tote; matches: string[]; header?: string };
 export default function Home() {
   const t = useTheme();
   const insets = useSafeAreaInsets();
-  const { totes, ready } = useTotes();
+  const store = useTotes();
+  const { totes, ready } = store;
   const [query, setQuery] = useState("");
   const [byPlace, setByPlace] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -237,7 +239,27 @@ export default function Home() {
                 </Text>
               </View>
             ) : null}
-            <ToteRow row={item} query={query} />
+            <SwipeRow
+              color={t.danger}
+              background={t.bg}
+              label="Delete"
+              onDelete={() => store.deleteTote(item.tote.id)}
+              confirm={() =>
+                new Promise<boolean>((done) =>
+                  Alert.alert(
+                    `Delete ${item.tote.name || "this tote"}?`,
+                    "Its item list will be deleted. The printed label can be reused for a new tote.",
+                    [
+                      { text: "Cancel", style: "cancel", onPress: () => done(false) },
+                      { text: "Delete", style: "destructive", onPress: () => done(true) },
+                    ],
+                    { cancelable: true, onDismiss: () => done(false) },
+                  ),
+                )
+              }
+            >
+              <ToteRow row={item} query={query} />
+            </SwipeRow>
           </View>
         )}
         ListEmptyComponent={
