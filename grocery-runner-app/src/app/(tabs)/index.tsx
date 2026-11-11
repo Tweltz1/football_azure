@@ -5,7 +5,7 @@ import { Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SaleBadge } from '../../components/SaleBadge';
 import { SwipeRow } from '../../components/SwipeRow';
-import { Button, ScreenHeader, tap } from '../../components/ui';
+import { Button, ScreenHeader, StudioCredit, tap } from '../../components/ui';
 import { dealFor, useDeals } from '../../lib/deals';
 import { locationLabel } from '../../lib/labels';
 import { groupList } from '../../lib/listGroups';
@@ -117,14 +117,17 @@ export default function ListScreen() {
           </View>
         }
         ListFooterComponent={
-          checkedCount > 0 ? (
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={clearChecked} style={styles.clearChecked}>
-              <Ionicons name="checkmark-done" size={18} color={t.primary} />
-              <Text style={{ color: t.primary, fontWeight: '600' }}>
-                Clear {checkedCount} checked item{checkedCount === 1 ? '' : 's'}
-              </Text>
-            </Pressable>
-          ) : undefined
+          <>
+            {checkedCount > 0 && (
+              <Pressable accessibilityRole="button" hitSlop={8} onPress={clearChecked} style={styles.clearChecked}>
+                <Ionicons name="checkmark-done" size={18} color={t.primary} />
+                <Text style={{ color: t.primary, fontWeight: '600' }}>
+                  Clear {checkedCount} checked item{checkedCount === 1 ? '' : 's'}
+                </Text>
+              </Pressable>
+            )}
+            <StudioCredit />
+          </>
         }
         renderSectionHeader={({ section }) => (
           <Text style={[styles.section, { color: t.textMuted }]}>
