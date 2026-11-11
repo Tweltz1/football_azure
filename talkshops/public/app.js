@@ -447,12 +447,16 @@
   async function loadShop() {
     try {
       await acceptInvite();
-      const me = await api("GET", "shop/me");
+      // The shop and its Bay load side by side: one wait instead of two. A board that fails here (no shop yet,
+      // or a hiccup) is fetched again once the shop is known.
+      boardV = "";
+      const [me, board] = await Promise.all([api("GET", "shop/me"), loadBoard().catch(() => null)]);
       shop = me.shop; emailConfigured = !!me.emailConfigured; plan = me.plan || null;
       role = me.role || null; mainOwner = !!me.mainOwner; crew = me.crew || []; myId = me.me || null; myName = me.myName || "";
-      // A locked shop (trial or plan ended) only gets the choose-a-plan screen, so there's no board to load.
+      // A locked shop (trial or plan ended) only gets the choose-a-plan screen (its board request was refused).
       const open = shop && !planUi.locked(plan);
-      boardV = ""; jobs = open ? (await loadBoard()) || [] : [];
+      if (!board) boardV = "";
+      jobs = open ? board || (await loadBoard()) || [] : [];
       window.Workday?.watch(jobs);
       if (open) window.Grow?.loadBookings();
       loadErr = "";
@@ -502,7 +506,7 @@
       return;
     }
     if (onLoginPage) { const q = new URLSearchParams(location.search); q.delete("login"); history.replaceState(history.state, "", (pathView() ? location.pathname : "/") + (q.toString() ? "?" + q : "") + location.hash); }
-    if (!loaded) { chrome.hidden = true; app.innerHTML = `<div class="loading">Loading your shop…</div>`; return; }
+    if (!loaded) { chrome.hidden = true; app.innerHTML = window.tsLoader ? window.tsLoader("Loading your shop…", true) : `<div class="loading">Loading your shop…</div>`; return; }
     if (joinToken) {
       chrome.hidden = true;
       app.innerHTML = `<div class="login-wrap"><section class="login">${brand()}<h2>Join Your Shop</h2>${joinBanner()}

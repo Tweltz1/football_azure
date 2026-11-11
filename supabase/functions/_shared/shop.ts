@@ -18,7 +18,7 @@ import { decodeVin, enginesFor, modelsFor, recallsFor, VIN_RE } from './nhtsa.ts
 import { priceImportRoute, type PriceReader } from './shopPriceImport.ts';
 import { cleanMarks, isAngle, type DamageFinder, type WalkPhoto } from './shopDamage.ts';
 import { accountRoute, type AccountStore } from './shopAccount.ts';
-import { ownerOnly, staffRoute, type Seat, type StaffStore } from './shopStaff.ts';
+import { ownerOnly, staffRoute, type Member, type Seat, type StaffStore } from './shopStaff.ts';
 import { checkDevice, sessionRoute, type SessionStore } from './shopSessions.ts';
 import type { Narrator } from './dnd.ts';
 import { clockAction, customersCsv, jobsCsv, langOf, MAX_BOOKINGS_PER_HOUR, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES, SHORT_ES,
@@ -862,11 +862,17 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   if (accountRes) return accountRes;
 
   // ---- Which shop the signed-in account works at, and as what ----
+  // A shop's team, read at most once per request (opening the app needs it twice).
+  const teams = new Map<string, Promise<Member[]>>();
+  const teamOf = (shopId: string) => {
+    if (!teams.has(shopId)) teams.set(shopId, deps.staff ? deps.staff.listMembers(shopId).catch(() => []) : Promise.resolve([]));
+    return teams.get(shopId)!;
+  };
   const whoAmI = async (): Promise<{ shop: Shop; seat: Seat } | null> => {
     if (!ctx.userId) return null;
     const owned = await store.shopByOwner(ctx.userId);
     const m = owned
-      ? (await deps.staff?.listMembers(owned.id).catch(() => []))?.find((x) => x.userId === ctx.userId)
+      ? (await teamOf(owned.id)).find((x) => x.userId === ctx.userId)
       : await deps.staff?.memberOf(ctx.userId);
     // Notes, messages, the time clock and walk-throughs are signed with the name the person saved on their team.
     ctx.displayName = staffName(m?.name, ctx);
@@ -886,10 +892,16 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const mine = await whoAmI();
     const shop = mine?.shop ?? null;
     if (method === 'GET') {
-      if (shop) await store.purgeArchive?.(shop.id, archiveCutoff(ctx.now())).catch((e) => ctx.log.warn('archive purge failed', { error: String(e) }));
-      return ok({ shop: shop && publicShop(shop), role: mine?.seat.role ?? null, mainOwner: mine?.seat.primary ?? false, emailConfigured: !!deps.email, plan: shop ? await planOut(deps, shop, ctx.now()) : null,
-        me: ctx.userId, crew: shop ? await crewOf(deps, shop, ctx) : [],
-        myName: shop ? realName((await deps.staff?.listMembers(shop.id).catch(() => []))?.find((m) => m.userId === ctx.userId)?.name) : '' });
+      // Opening the app waits on this: the archive clean-up, the plan and the team list run side by side,
+      // and the team is read once for both the crew list and this person's name.
+      const [, planInfo, members] = shop ? await Promise.all([
+        store.purgeArchive?.(shop.id, archiveCutoff(ctx.now())).catch((e) => ctx.log.warn('archive purge failed', { error: String(e) })),
+        planOut(deps, shop, ctx.now()),
+        teamOf(shop.id),
+      ]) : [null, null, []];
+      return ok({ shop: shop && publicShop(shop), role: mine?.seat.role ?? null, mainOwner: mine?.seat.primary ?? false, emailConfigured: !!deps.email, plan: planInfo,
+        me: ctx.userId, crew: shop ? crewList(members ?? [], shop, ctx) : [],
+        myName: shop ? realName((members ?? []).find((m) => m.userId === ctx.userId)?.name) : '' });
     }
     if (method === 'POST') {
       if (mine && mine.seat.role !== 'owner') return ownerOnly();
@@ -1140,8 +1152,13 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   // opens), and only a short "same" when nothing changed since the version the screen already has.
   if (id === 'board' && method === 'GET' && parts.length <= 4) {
     const since = new Date(ctx.now().getTime() - 2 * 86_400_000).toISOString();
-    if (acc.canWork) await sendDueFollowups(deps, shop, ctx.now(), acc).catch((e) => ctx.log.warn('follow-ups failed', { error: String(e) }));
-    const jobs = (await store.listJobs(shop.id, since)).map((j) => boardOut(jobOut(j, deps.linkBase)));
+    // Due reminder texts go out alongside reading the board, so the Bay doesn't wait on them; anything they
+    // change shows on the next refresh.
+    const [rows] = await Promise.all([
+      store.listJobs(shop.id, since),
+      acc.canWork ? sendDueFollowups(deps, shop, ctx.now(), acc).catch((e) => ctx.log.warn('follow-ups failed', { error: String(e) })) : null,
+    ]);
+    const jobs = rows.map((j) => boardOut(jobOut(j, deps.linkBase)));
     const v = await boardVersion(jobs);
     return ok(parts[3] === v ? { v, same: true } : { v, jobs });
   }
@@ -1568,7 +1585,9 @@ function staffName(saved: string | null | undefined, ctx: Ctx): string {
 }
 /** Everyone who can be assigned a car: id and a short name. */
 async function crewOf(deps: ShopDeps, shop: Shop, ctx: Ctx & { displayName?: string | null; userEmail?: string | null }): Promise<{ id: string; name: string; role: string }[]> {
-  const members = await deps.staff?.listMembers(shop.id).catch(() => []) ?? [];
+  return crewList(await deps.staff?.listMembers(shop.id).catch(() => []) ?? [], shop, ctx);
+}
+function crewList(members: { userId: string; name: string; email: string; role: string }[], shop: Shop, ctx: Ctx & { displayName?: string | null; userEmail?: string | null }): { id: string; name: string; role: string }[] {
   const label = (name: string, email: string) => realName(name) || email.split('@')[0] || 'Owner';
   const list = members.map((m) => ({ id: m.userId, name: label(m.name, m.email), role: m.role }));
   if (!list.some((m) => m.id === shop.ownerId))
