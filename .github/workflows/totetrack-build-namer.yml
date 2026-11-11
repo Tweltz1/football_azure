@@ -12,6 +12,9 @@ on:
   push:
     branches:
       - claude/totetrack-app
+      # Trials: a branch named like this builds with the image model in tools/namer/model.txt and only reports
+      # accuracy (build.log in a "namer-trial" artifact). Nothing is published; the app keeps the current namer.
+      - 'claude/*namer-trial*'
     paths:
       - 'totetrack-app/tools/namer/**'
       - 'totetrack-app/tools/detector/**'
@@ -28,6 +31,7 @@ jobs:
     env:
       # Photos per item type from each dataset. Part of the crop cache key, so changing it re-collects photos.
       PER_CLASS: 300
+      TRIAL: ${{ github.ref != 'refs/heads/claude/totetrack-app' }}
     permissions:
       contents: write
     defaults:
@@ -35,6 +39,14 @@ jobs:
         working-directory: totetrack-app/tools/namer
     steps:
       - uses: actions/checkout@v4
+
+      - name: Image model
+        id: model
+        run: |
+          m=$(grep -v '^#' model.txt | head -1 | tr -d '[:space:]')
+          echo "NAMER_MODEL=$m" >> "$GITHUB_ENV"
+          echo "key=$(echo "$m" | tr '/' '_')" >> "$GITHUB_OUTPUT"
+          echo "Image model: $m (trial: $TRIAL)"
 
       - uses: actions/setup-python@v5
         with:
@@ -51,7 +63,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ~/crops.pt
-          key: namer-crops-per${{ env.PER_CLASS }}-${{ hashFiles('totetrack-app/tools/detector/*.py', 'totetrack-app/tools/detector/classes.txt') }}
+          key: namer-crops-per${{ env.PER_CLASS }}-${{ steps.model.outputs.key != 'wkcn_TinyCLIP-ViT-39M-16-Text-19M-YFCC15M' && format('{0}-', steps.model.outputs.key) || '' }}${{ hashFiles('totetrack-app/tools/detector/*.py', 'totetrack-app/tools/detector/classes.txt') }}
 
       - uses: actions/cache@v4
         if: steps.crops.outputs.cache-hit != 'true'
@@ -93,7 +105,15 @@ jobs:
           key: ${{ steps.crops.outputs.cache-primary-key }}
 
       # The app build takes the model from here when there's no release.
-      - uses: actions/upload-artifact@v4
+      - name: Trial result
+        if: env.TRIAL == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: namer-trial
+          path: totetrack-app/tools/namer/build.log
+
+      - if: env.TRIAL != 'true'
+        uses: actions/upload-artifact@v4
         with:
           name: totetrack-namer
           path: |
@@ -104,6 +124,7 @@ jobs:
           retention-days: 90
 
       - name: Publish as a release
+        if: env.TRIAL != 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
