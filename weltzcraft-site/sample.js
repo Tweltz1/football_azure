@@ -84,7 +84,12 @@
       (on('map') ? '<div class="map" aria-label="Map"><svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid slice"><rect width="600" height="400" fill="#e9ece4"/><path d="M0 120h600M0 280h600M150 0v400M420 0v400" stroke="#fff" stroke-width="18"/><path d="M0 200h600M290 0v400" stroke="#fff" stroke-width="30"/><path d="M-20 360C120 300 200 330 330 250s220-60 300-120" stroke="#cfe1f2" stroke-width="26" fill="none"/><rect x="40" y="20" width="90" height="80" rx="8" fill="#d6e6cf"/><rect x="460" y="300" width="120" height="80" rx="8" fill="#d6e6cf"/></svg><div class="pin"><i></i><span>' + esc(name) + '</span></div></div>'
         : '<div class="about"><div class="ph" style="aspect-ratio:auto;min-height:340px">' + img(3, name) + '</div></div>') + '</div></section>' +
     '<div class="band"><div class="wrap"><h2>' + esc(cta) + ' in under a minute.</h2><p>Questions? We answer every message the same day.</p><a class="btn" href="' + brief + '">' + esc(cta) + '</a></div></div>' +
-    '<footer><div class="wrap"><span>© 2026 ' + esc(name) + ' · ' + esc(town) + '</span><span class="credit">Sample site by <a href="/">Weltzcraft Studios</a> · photos are free stock (CC0)</span></div></footer>';
+    '<footer><div class="wrap"><span>© 2026 ' + esc(name) + ' · ' + esc(town) + '</span><span class="credit">Sample site by <a href="/">Weltzcraft Studios</a> · <span id="pc">Photos: Wikimedia Commons</span></span></div></footer>';
+  fetch('/img/sample/credits.json').then(function (r) { return r.json(); }).then(function (c) {
+    var list = [0, 1, 2, 3].map(function (i) { return c[type + '-' + i]; }).filter(Boolean);
+    if (!list.length) return;
+    document.getElementById('pc').innerHTML = 'Photos: ' + list.map(function (x) { return '<a href="' + esc(x.page || '#') + '" target="_blank" rel="noopener">' + esc((x.creator || 'Unknown').slice(0, 40)) + '</a> (' + esc(x.license || '') + ')'; }).join(', ') + ', via Wikimedia Commons';
+  }).catch(function () {});
 
   // build intro
   var intro = document.getElementById('intro');
