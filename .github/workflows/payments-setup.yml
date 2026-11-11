@@ -5,6 +5,8 @@
 #   totetrack-products  creates ToteTrack Pro (monthly and yearly) in App Store Connect
 #   stripe-portal       sets up Stripe's customer portal when nothing is saved (test mode unless ALLOW_LIVE=1)
 #   shops-billing-look  read-only: counts Talk Shops shops whose Stripe ids don't exist for the key in use
+#   stripe-old-webhook  deletes the Stripe webhook still pointing at the old shared Supabase project
+#   review-contact      fills in the App Review contact from the APP_REVIEW_* secrets
 # Logs are public, so the scripts print yes/no answers and setting names only.
 name: Payments setup
 
@@ -38,6 +40,10 @@ jobs:
           KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_ID: ${{ secrets.TALKSHOPS_SUPABASE_PROJECT_ID }}
+          APP_REVIEW_FIRST_NAME: ${{ secrets.APP_REVIEW_FIRST_NAME }}
+          APP_REVIEW_LAST_NAME: ${{ secrets.APP_REVIEW_LAST_NAME }}
+          APP_REVIEW_PHONE: ${{ secrets.APP_REVIEW_PHONE }}
+          APP_REVIEW_EMAIL: ${{ secrets.APP_REVIEW_EMAIL }}
         run: |
           while read -r line; do
             script=$(echo "$line" | tr -cd 'a-z0-9-')
