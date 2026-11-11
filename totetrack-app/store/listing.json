@@ -1,0 +1,14 @@
+{
+  "locale": "en-US",
+  "name": "ToteTrack: QR Storage",
+  "subtitle": "Know what's in every bin",
+  "privacyPolicyUrl": "https://github.com/Tweltz1/football_azure/blob/claude/totetrack-app/totetrack-app/PRIVACY.md",
+  "supportUrl": "https://github.com/Tweltz1/football_azure/issues",
+  "primaryCategory": "PRODUCTIVITY",
+  "secondaryCategory": "LIFESTYLE",
+  "keywords": "storage,totes,bins,organizer,inventory,qr code,labels,moving,garage,declutter,home",
+  "promotionalText": "Scan a label, see what's inside. Search every tote at once and never dig through bins again.",
+  "description": "Put a QR label on every storage tote and always know what's inside.\n\nScan a label with your iPhone camera to open that tote's list, add or remove things in seconds, and search every tote at once to find the tent stakes or the holiday lights.\n\n- Print labels on Avery sheets or plain paper, or pre-print blank labels\n- Snap a photo of an open tote and pick what to add from what your iPhone sees\n- Photos of each tote and of what's inside\n- Reminders before a season or holiday, and before things expire\n- Lend things out and remember who has them\n- Packing lists that tell you which tote to grab\n- Moving mode: give each tote a room, scan as it comes off the truck\n- Home inventory PDF with item values\n- NFC stickers: tap a tote to open it\n- Back up with Sign in with Apple or Google, or use it without an account\n\nYour first 10 totes are free. ToteTrack Pro adds unlimited totes and Snap to add, monthly or yearly. Payment is charged to your Apple ID and renews automatically unless cancelled at least 24 hours before the end of the period. Manage it in your Apple ID settings.\n\nTerms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+  "reviewNotes": "Signing in is optional; every feature works without an account. To test backup, tap the person icon at the top left and sign in with Apple or Google. Delete account is on the same screen. Labels can be printed from the print icon (top right) and scanned with the Scan button. NFC stickers are optional and need an NTAG sticker. ToteTrack Pro (auto-renewing subscription) unlocks more than 10 totes and Snap to add; the paywall is at Account & backup or appears when creating an 11th tote.",
+  "screenshots": ["1-home.png", "2-tote.png", "3-reminders.png", "4-list.png", "5-moving.png", "6-print.png"]
+}

@@ -18,7 +18,11 @@ type SyncState = {
   lastSynced?: number;
   error?: string;
   syncNow: () => void;
-  deleteCloudData: () => Promise<void>;
+  /**
+   * Deletes everything this account has backed up and, unless the same sign-in is also used by
+   * another of our apps, the account itself. Returns which of the two happened.
+   */
+  deleteAccount: () => Promise<'account' | 'data'>;
 };
 
 const Ctx = createContext<SyncState | null>(null);
@@ -27,6 +31,23 @@ type Pushed = Record<string, { at: number; photo?: string }>;
 const pushedKey = (uid: string) => `totetrack.pushed.${uid}`;
 
 type Row = { id: string; data: Tote | null; deleted: boolean; updated_at: number };
+
+// Supabase returns at most 1000 rows per request, so read the cloud copy a page at a time.
+const PAGE = 500;
+async function pullRows(uid: string): Promise<Row[]> {
+  const rows: Row[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('id,data,deleted,updated_at')
+      .eq('user_id', uid)
+      .order('id')
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    rows.push(...((data ?? []) as Row[]));
+    if (!data || data.length < PAGE) return rows;
+  }
+}
 
 async function photoBase64(name: string, width = 900): Promise<string | null> {
   const uri = photoUri(name);
@@ -56,9 +77,18 @@ async function savePhotoFromCloud(name: string, base64: string) {
  */
 async function syncInsidePhotos(uid: string, totes: Tote[]) {
   const used = new Set(totes.flatMap((t) => t.insidePhotos ?? []));
-  const { data, error } = await supabase.from(PHOTO_TABLE).select('name,updated_at').eq('user_id', uid);
-  if (error) throw error;
-  const cloud = new Map((data as { name: string; updated_at: number }[]).map((r) => [r.name, Number(r.updated_at)]));
+  const cloud = new Map<string, number>();
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from(PHOTO_TABLE)
+      .select('name,updated_at')
+      .eq('user_id', uid)
+      .order('name')
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    for (const r of (data ?? []) as { name: string; updated_at: number }[]) cloud.set(r.name, Number(r.updated_at));
+    if (!data || data.length < PAGE) break;
+  }
   let downloaded = false;
   for (const name of used) {
     const uri = photoUri(name);
@@ -95,6 +125,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string>();
   const running = useRef(false);
   const again = useRef(false);
+  // Set while the account is being deleted, so a sync can't put the totes straight back.
+  const paused = useRef(false);
   const latest = useRef(store);
   useEffect(() => {
     latest.current = store;
@@ -102,7 +134,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization -- re-runs itself via setTimeout
   const run = useCallback(async () => {
-    if (!uid) return;
+    if (!uid || paused.current) return;
     if (running.current) {
       again.current = true;
       return;
@@ -113,9 +145,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const pushed: Pushed = JSON.parse((await AsyncStorage.getItem(pushedKey(uid))) || '{}');
 
       // 1. Pull everything the cloud has (without photos) and merge the newer side in.
-      const { data, error: pullError } = await supabase.from(TABLE).select('id,data,deleted,updated_at').eq('user_id', uid);
-      if (pullError) throw pullError;
-      const remote = new Map<string, Row>((data as Row[]).map((r) => [r.id, r]));
+      const remote = new Map<string, Row>((await pullRows(uid)).map((r) => [r.id, r]));
       const { totes, tombstones } = latest.current;
       const localAt = (id: string) => totes.find((t) => t.id === id)?.updatedAt ?? tombstones[id] ?? 0;
       const incoming: RemoteTote[] = [];
@@ -192,6 +222,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, [uid, store.ready, run]);
 
+  // After a failed sync (no signal, say), try again in a little while.
+  useEffect(() => {
+    if (status !== 'error' || !uid) return;
+    const t = setTimeout(run, 30000);
+    return () => clearTimeout(t);
+  }, [status, uid, run]);
+
   const first = useRef(true);
   useEffect(() => {
     if (first.current) {
@@ -209,12 +246,21 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       lastSynced,
       error,
       syncNow: run,
-      deleteCloudData: async () => {
-        if (!uid) return;
-        const { error: delError } = await supabase.from(TABLE).delete().eq('user_id', uid);
-        if (delError) throw delError;
-        await supabase.from(PHOTO_TABLE).delete().eq('user_id', uid);
-        await AsyncStorage.removeItem(pushedKey(uid));
+      deleteAccount: async () => {
+        if (!uid) return 'data';
+        paused.current = true;
+        try {
+          // Let a sync that's already going finish first.
+          for (let i = 0; running.current && i < 100; i++) await new Promise((r) => setTimeout(r, 150));
+          // tools/setup_supabase.py creates this function. It deletes the backed-up totes and photos,
+          // then the sign-in itself unless another app's data still belongs to it.
+          const { data, error: rpcError } = await supabase.rpc('totetrack_delete_account');
+          if (rpcError) throw rpcError;
+          await AsyncStorage.removeItem(pushedKey(uid));
+          return data === 'account' ? 'account' : 'data';
+        } finally {
+          paused.current = false;
+        }
       },
     }),
     [status, lastSynced, error, run, uid],

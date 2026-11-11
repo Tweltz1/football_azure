@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import { ScheduledReminder, ToteNative } from '../../modules/tote-native';
+import { DEMO } from './demo';
 import { SEASONS } from './extras';
 import { useTotes } from './store';
 import { Tote } from './types';
@@ -90,6 +91,8 @@ export function NativeBridge() {
       } catch {
         // Spotlight is a nice-to-have.
       }
+      // The App Store screenshot build must not pop the notification question over the screens.
+      if (DEMO) return;
       try {
         const reminders = plannedReminders(totes);
         if (!reminders.length) return ToteNative?.scheduleReminders([]);

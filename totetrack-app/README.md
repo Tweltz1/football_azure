@@ -13,7 +13,7 @@ Built with Expo (React Native). GitHub builds it on a macOS machine
 - **Print**: AirPrint or PDF. Big one-per-page tote sign (optionally with contents list), Avery 5163
   (2"×4"), Avery 22806 (2" square) and Avery 5160 (1"×2⅝") sheets, blank labels to pre-print, "skip used
   labels" for partly used sheets, and cut guides for plain paper.
-- Data stays on the phone (no account, no server).
+- Data stays on the phone. Signing in (Apple or Google) is optional and backs totes and photos up to Supabase (`src/lib/sync.tsx`); "Delete account" removes the account and its backup.
 
 ## Layout
 - `src/app/` screens (Expo Router): `index` home, `scan`, `print`, `tote/[id]` detail, `tote/edit`.

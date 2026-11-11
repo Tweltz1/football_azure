@@ -10,7 +10,7 @@
     "ios": {
       "bundleIdentifier": "com.tweltz1.totetrack",
       "buildNumber": "1",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false
       },

@@ -1,0 +1,124 @@
+# ToteTrack's App Store listing, done from GitHub so no Mac or typing into App Store Connect is needed.
+#
+# - A push whose commit message contains [totetrack-shots] builds the app with sample totes
+#   (EXPO_PUBLIC_DEMO=1), photographs six screens on a simulated iPhone Pro Max and saves them to
+#   the totetrack-store-shots branch.
+# - A push whose commit message contains [totetrack-listing] fills in the App Store listing from
+#   totetrack-app/store/listing.json with tools/app_store_listing.py: text, categories, age rating,
+#   review notes, the newest processed build and the saved screenshots.
+# It never sets a price, answers App Privacy, or submits for review.
+name: ToteTrack App Store listing
+
+on:
+  push:
+    paths:
+      - 'totetrack-app/**'
+      - '.github/workflows/totetrack-store.yml'
+
+concurrency:
+  group: totetrack-store-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  screenshots:
+    if: contains(github.event.head_commit.message, '[totetrack-shots]')
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      CI: 1
+      EXPO_PUBLIC_DEMO: 1
+    defaults:
+      run:
+        working-directory: totetrack-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - name: Generate the Xcode project
+        run: npx expo prebuild --platform ios --clean
+      - name: Build for the iPhone simulator (sample totes)
+        run: |
+          set -o pipefail
+          xcodebuild -workspace ios/ToteTrack.xcworkspace -scheme ToteTrack -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" CODE_SIGNING_ALLOWED=NO build > "$RUNNER_TEMP/build.log" 2>&1 \
+            || { grep -E "error:" -A4 "$RUNNER_TEMP/build.log" | head -n 120; tail -n 30 "$RUNNER_TEMP/build.log"; exit 1; }
+          tail -n 5 "$RUNNER_TEMP/build.log"
+      - name: Photograph the screens on an iPhone Pro Max
+        run: |
+          APP="$RUNNER_TEMP/dd/Build/Products/Release-iphonesimulator/ToteTrack.app"
+          mkdir -p shots
+          read -r DEV NAME < <(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)["devices"]
+          ios = sorted((r for r in d if "iOS" in r), key=lambda r: [int(x) for x in r.split("iOS-")[1].split("-")])
+          devs = [x for x in d[ios[-1]] if "Pro Max" in x["name"]] or [x for x in d[ios[-1]] if "Plus" in x["name"]] or d[ios[-1]]
+          print(devs[-1]["udid"], devs[-1]["name"].replace(" ", "_"))')
+          echo "Simulator: $NAME"
+          xcrun simctl boot "$DEV"
+          xcrun simctl bootstatus "$DEV" -b
+          xcrun simctl ui "$DEV" appearance light || true
+          xcrun simctl status_bar "$DEV" override --time 9:41 --batteryLevel 100 --batteryState charged --cellularBars 4 --wifiBars 3 || true
+          xcrun simctl install "$DEV" "$APP"
+          # A first launch to warm up (and save the sample totes), then the real run.
+          xcrun simctl launch "$DEV" com.tweltz1.totetrack
+          sleep 25
+          xcrun simctl terminate "$DEV" com.tweltz1.totetrack || true
+          sleep 3
+          xcrun simctl launch "$DEV" com.tweltz1.totetrack
+          # The app shows a new screen every 20 seconds (src/lib/demo.ts); photograph the middle of each.
+          sleep 12
+          for SHOT in 1-home 2-tote 3-reminders 4-list 5-moving 6-print; do
+            xcrun simctl io "$DEV" screenshot "shots/$SHOT.png"
+            sleep 19
+          done
+          xcrun simctl shutdown "$DEV"
+          sips -g pixelWidth -g pixelHeight shots/*.png
+          echo "$NAME" > shots/device.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: totetrack-store-shots
+          path: totetrack-app/shots/
+      - name: Save the screenshots to the totetrack-store-shots branch
+        run: |
+          cd shots
+          git init -q -b totetrack-store-shots
+          git add -A
+          git -c user.name=github-actions -c user.email=actions@github.com commit -q -m "App Store screenshots from ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" totetrack-store-shots
+
+  listing:
+    if: contains(github.event.head_commit.message, '[totetrack-listing]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the saved screenshots
+        run: |
+          git fetch -q --depth 1 origin totetrack-store-shots && git worktree add -q "$RUNNER_TEMP/shots" FETCH_HEAD \
+            || echo "::warning::No saved screenshots yet; the listing is filled in without them"
+      - name: Fill in the App Store listing
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+        run: |
+          python3 -m venv "$RUNNER_TEMP/apple-api"
+          "$RUNNER_TEMP/apple-api/bin/pip" -q install 'PyJWT[crypto]' pillow
+          SHOTS=""
+          if [ -f "$RUNNER_TEMP/shots/1-home.png" ]; then
+            # App Store screenshots can't have a transparency channel; the simulator's do.
+            SHOTS="$RUNNER_TEMP/shots-rgb"
+            mkdir -p "$SHOTS"
+            "$RUNNER_TEMP/apple-api/bin/python" -c 'import glob, os, sys; from PIL import Image; [Image.open(f).convert("RGB").save(os.path.join(sys.argv[2], os.path.basename(f))) for f in glob.glob(sys.argv[1] + "/*.png")]' "$RUNNER_TEMP/shots" "$SHOTS"
+          fi
+          "$RUNNER_TEMP/apple-api/bin/python" totetrack-app/tools/app_store_listing.py "$SHOTS"
