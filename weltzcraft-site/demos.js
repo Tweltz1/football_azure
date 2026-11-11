@@ -24,6 +24,7 @@
       $('d-' + t.getAttribute('data-demo')).hidden = !on;
     });
     if (name === 'draft') draft.resume(); else draft.pause();
+    var wf = $('wb-form'); if (wf) wf.hidden = name !== 'site';
   }
   tabs.forEach(function (t, i) {
     t.addEventListener('click', function () { show(t.getAttribute('data-demo')); });
@@ -143,6 +144,78 @@
       list.innerHTML = html;
     }
     q.addEventListener('input', render);
+    render();
+  })();
+
+  /* ---- website: answer a few questions, get a sample site ---- */
+  (function () {
+    var ws = $('ws'), form = $('wb-form');
+    if (!ws || !form) return;
+    var TYPES = {
+      coffee: { label: 'Coffee shop', icon: '☕', cta: 'Order ahead', tag: 'Fresh coffee, made by neighbors.', hours: 'Mon to Sat, 6am to 2pm',
+        items: [['Drip coffee', '$3'], ['Oat milk latte', '$5'], ['Breakfast burrito', '$8']], review: 'Best latte in town, and they remember your name.' },
+      barber: { label: 'Barber', icon: '💈', cta: 'Book a cut', tag: 'Sharp cuts, no long waits.', hours: 'Tue to Sat, 9am to 7pm',
+        items: [['Haircut', '$25'], ['Beard trim', '$15'], ['Kids cut', '$18']], review: 'Booked online in ten seconds. Cleanest fade I have had.' },
+      auto: { label: 'Auto repair', icon: '🔧', cta: 'Get a quote', tag: 'Honest repairs, explained in plain English.', hours: 'Mon to Fri, 7:30am to 5:30pm',
+        items: [['Oil change', '$49'], ['Brake check', 'Free'], ['Check engine light', '$89']], review: 'They texted me photos of the problem before fixing anything.' },
+      lawn: { label: 'Landscaping', icon: '🌿', cta: 'Free estimate', tag: 'A yard you are proud of, every week.', hours: 'Mon to Sat, 7am to 6pm',
+        items: [['Weekly mowing', 'from $35'], ['Spring cleanup', '$150'], ['Mulch and beds', 'Quote']], review: 'Showed up every week, on time, and the yard has never looked better.' },
+      bakery: { label: 'Bakery', icon: '🥐', cta: 'Order a cake', tag: 'Baked from scratch before sunrise.', hours: 'Wed to Sun, 7am to 1pm',
+        items: [['Sourdough loaf', '$8'], ['Custom cakes', 'from $45'], ['Cookie dozen', '$18']], review: 'The birthday cake was gone in five minutes. Ordering again.' },
+      fitness: { label: 'Fitness studio', icon: '🏋️', cta: 'Book a class', tag: 'Small classes, real coaching.', hours: 'Mon to Sun, 5am to 8pm',
+        items: [['Drop-in class', '$15'], ['Monthly unlimited', '$89'], ['Personal training', '$60']], review: 'Coaches know everyone by name. Best gym I have joined.' }
+    };
+    var COLORS = [['Ember', '#e0662a'], ['Forest', '#1f8a55'], ['Ocean', '#2563c9'], ['Plum', '#7a3fb8'], ['Charcoal', '#2b2925']];
+    var state = { type: 'coffee', color: COLORS[0][1] };
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    $('wb-types').innerHTML = Object.keys(TYPES).map(function (k, i) {
+      return '<label><input type="radio" name="wb-type" value="' + k + '"' + (i ? '' : ' checked') + '><span>' + TYPES[k].icon + ' ' + TYPES[k].label + '</span></label>';
+    }).join('');
+    $('wb-colors').innerHTML = COLORS.map(function (c, i) {
+      return '<label title="' + c[0] + '"><input type="radio" name="wb-color" value="' + c[1] + '"' + (i ? '' : ' checked') + '><span style="background:' + c[1] + '"><b class="sr">' + c[0] + '</b></span></label>';
+    }).join('');
+    var DEFAULT_NAMES = { coffee: 'Maple Street Coffee', barber: 'Main Street Barbers', auto: 'Riverside Auto', lawn: 'Greenline Lawn Care', bakery: 'Sunrise Bakery', fitness: 'Ironwood Fitness' };
+    function render() {
+      var t = TYPES[state.type], c = state.color;
+      var name = $('wb-name').value.trim() || DEFAULT_NAMES[state.type];
+      var town = $('wb-town').value.trim() || 'your town';
+      var tag = $('wb-tag').value.trim() || t.tag;
+      var initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
+      ws.style.setProperty('--wc', c);
+      ws.innerHTML =
+        '<div class="ws-nav"><span class="ws-logo">' + esc(initials) + '</span><b>' + esc(name) + '</b><i aria-hidden="true">☰</i></div>' +
+        '<div class="ws-hero"><span class="ws-emoji" aria-hidden="true">' + t.icon + '</span><h4>' + esc(name) + '</h4><p>' + esc(tag) + '</p><span class="ws-cta">' + t.cta + '</span></div>' +
+        '<div class="ws-sec"><h5>' + (state.type === 'coffee' || state.type === 'bakery' ? 'Menu' : 'Services') + '</h5>' +
+          t.items.map(function (it) { return '<div class="ws-row"><span>' + it[0] + '</span><b>' + it[1] + '</b></div>'; }).join('') + '</div>' +
+        '<div class="ws-sec ws-info"><h5>Visit us</h5><p>📍 ' + esc(town) + '</p><p>🕘 ' + t.hours + '</p></div>' +
+        '<div class="ws-sec ws-review"><p>“' + t.review + '”</p><small>★★★★★ Google review</small></div>' +
+        '<p class="ws-foot">© ' + esc(name) + ' · Site by Weltzcraft</p>';
+    }
+    function onChange(e) {
+      if (e.target.name === 'wb-type') {
+        var prev = DEFAULT_NAMES[state.type], n = $('wb-name');
+        state.type = e.target.value;
+        if (!n.value.trim() || n.value === prev) n.value = DEFAULT_NAMES[state.type];
+        $('wb-tag').placeholder = TYPES[state.type].tag.replace(/\.$/, '');
+      }
+      if (e.target.name === 'wb-color') state.color = e.target.value;
+      render();
+      if (e.target.type === 'radio') ws.scrollTop = 0;
+    }
+    form.addEventListener('input', onChange);
+    form.addEventListener('change', function (e) { if (e.target.type === 'radio') onChange(e); });
+    $('wb-use').addEventListener('click', function () {
+      var f = $('brief');
+      if (!f) return;
+      var sel = f.elements.platform;
+      [].slice.call(sel.options).forEach(function (o, i) { if (o.text === 'Website') sel.selectedIndex = i; });
+      if (f.elements.org && !f.elements.org.value) f.elements.org.value = $('wb-name').value.trim();
+      var noun = { coffee: 'coffee shop', barber: 'barbershop', auto: 'auto repair shop', lawn: 'landscaping business', bakery: 'bakery', fitness: 'fitness studio' }[state.type];
+      var note = 'Website for my ' + noun + ' in ' + ($('wb-town').value.trim() || 'my town') + '.\n\n';
+      f.elements.idea.value = note + f.elements.idea.value.replace(/^Website for my[\s\S]*?\n\n/, '');
+      $('contact').scrollIntoView({ behavior: calm ? 'auto' : 'smooth' });
+      setTimeout(function () { f.elements.name.focus({ preventScroll: true }); }, 600);
+    });
     render();
   })();
 
