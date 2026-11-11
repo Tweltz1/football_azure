@@ -241,7 +241,7 @@ a.btn.primary{color:var(--accent-fg)}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
 <link rel="stylesheet" href="/saved-archive.css?v=12">
-<link rel="stylesheet" href="/theme.css?v=22">
+<link rel="stylesheet" href="/theme.css?v=26">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=1">
 <link rel="stylesheet" href="/training.css?v=1">
@@ -802,7 +802,7 @@ function render(){
   document.title="Talk Shops · "+SHOP.name;
   if(ui.view==="signin"){chrome.hidden=true;ui.openJob=null;app.innerHTML=signinView();$("#layer").innerHTML="";return}
   chrome.hidden=false;
-  $("#shopName").textContent=SHOP.name;$("#bayTab").textContent=bayName();
+  $("#shopName").textContent=SHOP.name;
   document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-current",b.dataset.view===ui.view?"page":"false"));
   const banner=ui.view==="plan"||ui.view==="training"||ui.view==="help"?"":planUi.banner(plan);
   app.innerHTML=banner+(ui.view==="checkin"?checkinView():ui.view==="archive"?archiveView():ui.view==="settings"?settingsView():ui.view==="plan"?planUi.view(plan):ui.view==="howto"?howTo.view():ui.view==="help"?helpView():ui.view==="training"?window.TALKSHOPS_TRAINING.view(esc,{demo:true}):boardView());
@@ -1312,6 +1312,6 @@ if(new URLSearchParams(location.search).has("smart")){
 </script>
 <script src="/config.js"></script>
 <script src="/tour.js?v=221"></script>
-<script src="/shell.js?v=1"></script>
+<script src="/shell.js?v=3"></script>
 </body>
 </html>
