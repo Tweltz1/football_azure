@@ -115,19 +115,7 @@ jobs:
           RESEND_API_KEY: ${{ secrets.TALKSHOPS_RESEND_API_KEY }}
           GOOGLE_CLIENT_ID: ${{ secrets.TALKSHOPS_GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.TALKSHOPS_GOOGLE_CLIENT_SECRET }}
-          SHARED_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
         run: |
-          # Without TALKSHOPS_GOOGLE_* secrets, reuse the Google client the shared hood-league project already has.
-          if { [ -z "$GOOGLE_CLIENT_ID" ] || [ -z "$GOOGLE_CLIENT_SECRET" ]; } && [ -n "$SHARED_PROJECT_ID" ]; then
-            SHARED=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "https://api.supabase.com/v1/projects/$SHARED_PROJECT_ID/config/auth" || echo '{}')
-            if [ "$(echo "$SHARED" | jq -r '.external_google_enabled // false')" = "true" ]; then
-              GOOGLE_CLIENT_ID=$(echo "$SHARED" | jq -r '.external_google_client_id // empty')
-              GOOGLE_CLIENT_SECRET=$(echo "$SHARED" | jq -r '.external_google_secret // empty')
-              [ -n "$GOOGLE_CLIENT_SECRET" ] && echo "::add-mask::$GOOGLE_CLIENT_SECRET"
-              echo "Using the shared project's Google sign-in client."
-            fi
-            unset SHARED
-          fi
           # Site URL and redirect list always; Resend SMTP when its key is set; Google sign-in when its client is set.
           BODY=$(jq -n '{site_url: "https://talkshops.app", uri_allow_list: "https://talkshops.app/**,https://*.talkshops.pages.dev/**"}')
           if [ -n "$RESEND_API_KEY" ]; then
@@ -136,7 +124,8 @@ jobs:
           if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ]; then
             BODY=$(echo "$BODY" | jq --arg id "$GOOGLE_CLIENT_ID" --arg secret "$GOOGLE_CLIENT_SECRET" '. + {external_google_enabled: true, external_google_client_id: $id, external_google_secret: $secret}')
           else
-            echo "::notice::TALKSHOPS_GOOGLE_CLIENT_ID / TALKSHOPS_GOOGLE_CLIENT_SECRET not set, so Google sign-in stays off."
+            # Without these secrets, Google sign-in is left as set in the dashboard (Authentication, Providers, Google).
+            echo "TALKSHOPS_GOOGLE_* not set; Google sign-in settings left as they are."
           fi
           CODE=$(curl -sS -o out.json -w '%{http_code}' -X PATCH -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
             -d "$BODY" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")
