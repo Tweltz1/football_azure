@@ -13,7 +13,7 @@ import { radius, useTheme } from '../../lib/theme';
 export default function RecipeScreen() {
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { myRecipes, items, store, addItems, deleteRecipe } = useData();
+  const { myRecipes, items, addItems, deleteRecipe } = useData();
   const recipe = SUGGESTED.find((r) => r.id === id) ?? myRecipes.find((r) => r.id === id);
 
   const onList = useMemo(() => new Set(items.filter((i) => !i.checked).map((i) => itemKey(i.name))), [items]);
@@ -42,10 +42,9 @@ export default function RecipeScreen() {
     });
   };
 
-  const add = (then: 'list' | 'suggest') => {
+  const add = () => {
     addItems(chosen.map((it) => ({ name: it.item, amount: it.amount })));
-    if (then === 'suggest') router.dismissTo('/stores?view=compare');
-    else router.dismissTo('/');
+    router.dismissTo('/');
   };
 
   return (
@@ -107,18 +106,10 @@ export default function RecipeScreen() {
       </ScrollView>
       <View style={styles.footer}>
         <Button
-          title={chosen.length ? `Add ${chosen.length} to list` : 'Nothing to add'}
+          title={chosen.length ? `Add ${chosen.length} item${chosen.length === 1 ? '' : 's'} to my list` : 'Nothing to add'}
           icon="add"
-          variant="secondary"
           disabled={!chosen.length}
-          onPress={() => add('list')}
-          style={{ flex: 1 }}
-        />
-        <Button
-          title={store ? 'Add, compare stores' : 'Add, find a store'}
-          icon="storefront"
-          disabled={!chosen.length}
-          onPress={() => add('suggest')}
+          onPress={add}
           style={{ flex: 1 }}
         />
       </View>

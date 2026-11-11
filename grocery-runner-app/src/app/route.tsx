@@ -1,18 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { StoreMap } from '../components/StoreMap';
 import { SaleBadge } from '../components/SaleBadge';
-import { Card, tap } from '../components/ui';
+import { Button, Card, tap } from '../components/ui';
 import { metresBetween } from '../lib/chainMatch';
 import { locationLabel } from '../lib/labels';
 import { Checkoff, learnFromTrip } from '../lib/learnAisles';
 import { dealFor, useDeals } from '../lib/deals';
-import { DEPARTMENT_LABEL } from '../lib/departments';
 import { fetchStoreAisles, isShared, voteAisle } from '../lib/sharedAisles';
 import { buildProfile } from '../lib/storeProfile';
-import { Department, ListItem, Store } from '../lib/types';
+import { ListItem, Store } from '../lib/types';
 import { planRoute } from '../lib/routing/planRoute';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
@@ -48,7 +48,7 @@ const knownAisle = (i: ListItem) =>
 
 export default function RouteScreen() {
   const t = useTheme();
-  const { items, store, coldLast, setColdLast, toggleItem, deviceId, remembered, buildings } = useData();
+  const { items, store, coldLast, setColdLast, toggleItem, clearChecked, deviceId, remembered, buildings } = useData();
   // Plan once from the items left when the screen opens, so checking items off doesn't reshuffle the walk.
   const [snapshot] = useState(() => items.filter((i) => !i.checked));
   const deals = useDeals(store, snapshot.map((i) => i.name));
@@ -80,10 +80,6 @@ export default function RouteScreen() {
       }),
     [snapshot, store, coldLast, profile, building],
   );
-  const placed = (Object.entries(profile.departmentAisle) as [Department, number][])
-    .map(([d, a]) => `${DEPARTMENT_LABEL[d]} ${a}`)
-    .join(', ');
-
   // Learning aisles from check-off order (rules in lib/learnAisles.ts). Only for shared stores
   // picked on the map, so we know where the store is.
   const learning = isShared(store) && store.lat != null;
@@ -132,18 +128,12 @@ export default function RouteScreen() {
       <Card style={{ alignItems: 'center', padding: 12 }}>
         <StoreMap route={route} done={done} />
         <Text style={{ color: t.textMuted, marginTop: 8 }}>
-          About {Math.round((route.distance * FEET_PER_CELL) / 10) * 10} ft · {route.stops.length} stops
-          {store?.chain === 'kroger' ? '' : ' · store layout is approximate'}
+          About {Math.round((route.distance * FEET_PER_CELL) / 10) * 10} ft · {route.stops.length} stop
+          {route.stops.length === 1 ? '' : 's'}
         </Text>
-        {!!placed && (
-          <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
-            Learned from shopper aisles: {placed}
-          </Text>
-        )}
         {building && (
-          <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
-            Building about {Math.round(building.frontageM * 3.28)} ft wide
-            {building.entranceSide ? `, entrance on the ${building.entranceSide}` : ''} · © OpenStreetMap contributors
+          <Text style={{ color: t.textMuted, fontSize: 11, marginTop: 4, textAlign: 'center' }}>
+            Store outline © OpenStreetMap contributors
           </Text>
         )}
       </Card>
@@ -155,9 +145,17 @@ export default function RouteScreen() {
       </View>
 
       {guessed > 0 && (
-        <Text style={{ color: t.warn }}>
-          {guessed} item{guessed === 1 ? '' : 's'} placed by department guess. Tap an item on your list to set its aisle.
-        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/aisle-scan')}
+          style={[styles.hint, { backgroundColor: t.primarySoft }]}
+        >
+          <Ionicons name="scan" size={18} color={t.primary} />
+          <Text style={{ color: t.text, flex: 1 }}>
+            {guessed} item{guessed === 1 ? ' is' : 's are'} placed by department.{' '}
+            <Text style={{ color: t.primary, fontWeight: '600' }}>Find aisles from screenshots</Text>
+          </Text>
+        </Pressable>
       )}
 
       {route.stops.map((stop, i) => (
@@ -194,6 +192,22 @@ export default function RouteScreen() {
           </View>
         </View>
       ))}
+
+      {route.stops.length > 0 && done.size === route.stops.length && (
+        <Card style={{ alignItems: 'center', gap: 10 }}>
+          <Ionicons name="checkmark-circle" size={40} color={t.primary} />
+          <Text style={{ color: t.text, fontSize: 18, fontWeight: '700' }}>All done. Nice shopping!</Text>
+          <Button
+            title="Finish trip"
+            icon="checkmark"
+            onPress={() => {
+              clearChecked();
+              router.back();
+            }}
+            style={{ alignSelf: 'stretch' }}
+          />
+        </Card>
+      )}
     </ScrollView>
   );
 }
@@ -204,4 +218,5 @@ const styles = StyleSheet.create({
   num: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   numText: { color: '#fff', fontWeight: '800' },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  hint: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radius.md },
 });

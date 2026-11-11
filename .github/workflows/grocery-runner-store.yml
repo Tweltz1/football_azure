@@ -115,3 +115,36 @@ jobs:
           git add -A
           git -c user.name=github-actions -c user.email=actions@github.com commit -q -m "App Store screenshots from ${GITHUB_SHA::7}"
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" grocery-runner-store-shots
+
+  listing:
+    if: contains(github.event.head_commit.message, '[stride-listing]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the saved screenshots
+        run: |
+          git fetch -q --depth 1 origin grocery-runner-store-shots && git worktree add -q "$RUNNER_TEMP/shots" FETCH_HEAD \
+            || echo "::warning::No saved screenshots yet; the listing is filled in without them"
+      - name: Fill in the App Store listing
+        env:
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          APP_REVIEW_FIRST_NAME: ${{ secrets.APP_REVIEW_FIRST_NAME }}
+          APP_REVIEW_LAST_NAME: ${{ secrets.APP_REVIEW_LAST_NAME }}
+          APP_REVIEW_PHONE: ${{ secrets.APP_REVIEW_PHONE }}
+          APP_REVIEW_EMAIL: ${{ secrets.APP_REVIEW_EMAIL }}
+        run: |
+          python3 -m venv "$RUNNER_TEMP/apple-api"
+          "$RUNNER_TEMP/apple-api/bin/pip" -q install 'PyJWT[crypto]' pillow
+          SHOTS=""
+          if [ -f "$RUNNER_TEMP/shots/1-list.png" ]; then
+            # App Store screenshots can't have a transparency channel; the simulator's do.
+            SHOTS="$RUNNER_TEMP/shots-rgb"
+            mkdir -p "$SHOTS"
+            "$RUNNER_TEMP/apple-api/bin/python" -c 'import glob, os, sys; from PIL import Image; [Image.open(f).convert("RGB").save(os.path.join(sys.argv[2], os.path.basename(f))) for f in glob.glob(sys.argv[1] + "/*.png")]' "$RUNNER_TEMP/shots" "$SHOTS"
+          fi
+          "$RUNNER_TEMP/apple-api/bin/python" grocery-runner-app/tools/app_store_listing.py "$SHOTS"

@@ -1,0 +1,22 @@
+{
+  "locale": "en-US",
+  "name": "Shop Stride: Grocery Route",
+  "subtitle": "Grocery list in walking order",
+  "privacyPolicyUrl": "https://weltzcraft.com/privacy/shop-stride",
+  "supportUrl": "https://weltzcraft.com",
+  "primaryCategory": "FOOD_AND_DRINK",
+  "secondaryCategory": "SHOPPING",
+  "copyright": "2026 Weltzcraft Studios",
+  "keywords": "grocery,list,shopping,aisle,route,store map,supermarket,recipes,meal plan,checklist",
+  "promotionalText": "Type your list, pick your store, and walk it in the shortest order. Cold stuff last.",
+  "description": "Shop Stride turns your grocery list into the shortest walk through the store.\n\nType what you need, pick your store, and Shop Stride sorts your list by aisle and draws your route on a store map. Frozen and dairy come last so they stay cold.\n\n- Grocery list sorted in walking order, grouped by aisle and department\n- Store map with your route and numbered stops\n- Aisles shared by other shoppers at the same store, and remembered for you\n- Read aisles from screenshots of a store's own app\n- 30 weeknight recipes with filters; add a recipe's ingredients in one tap\n- Add your own recipes from a photo, a link or pasted text\n- Find supported stores near you on a map and see which one is best for your list\n- No account, no ads. Your list stays on your phone.\n\nMade by Weltzcraft Studios.",
+  "reviewNotes": "No account or sign-in is needed. Type items on the List tab (for example milk, bread, eggs), tap the store card to choose a store (pick a chain and enter a US ZIP code such as 53703, or choose Other and type any name), then tap Start shopping to see the route and store map. Tap any item to set its aisle. Recipes tab: open a recipe and add its ingredients to the list. Stores tab uses location only to show nearby stores and works with a typed ZIP or city if location is denied. Contact us is at the bottom of the List tab.",
+  "screenshots": [
+    "1-list.png",
+    "2-route.png",
+    "3-recipes.png",
+    "4-recipe.png",
+    "6-stores.png",
+    "5-item.png"
+  ]
+}

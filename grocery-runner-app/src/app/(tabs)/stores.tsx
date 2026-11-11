@@ -17,20 +17,22 @@ export default function StoresScreen() {
   const params = useLocalSearchParams<{ view?: string }>();
   // The view lives in the address, so other screens can open this tab on it
   // ("Find stores on a map", "Where to shop" after adding a recipe).
-  const view: StoresView = params.view === 'map' ? 'map' : 'compare';
+  const left = items.filter((i) => !i.checked).map((i) => i.name);
+  // Comparing needs a list, so an empty list opens on the map.
+  const view: StoresView = params.view === 'map' || (params.view !== 'compare' && !left.length) ? 'map' : 'compare';
   const setView = (v: StoresView) => router.setParams({ view: v });
 
-  const left = items.filter((i) => !i.checked).map((i) => i.name);
   const backToList = () => router.navigate('/');
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: t.bg }}>
-      <ScreenHeader title="Stores" />
+      <ScreenHeader title="Stores" action={{ label: 'By ZIP', icon: 'keypad', onPress: () => router.push('/store') }} />
 
       <Pressable
         accessibilityRole="button"
-        accessibilityHint="Pick a store by chain and ZIP code"
-        onPress={() => router.push('/store')}
+        accessibilityHint="Back to your list"
+        disabled={!store}
+        onPress={backToList}
         style={[styles.current, { backgroundColor: t.card }]}
       >
         <View style={[styles.icon, { backgroundColor: t.primarySoft }]}>
@@ -41,8 +43,11 @@ export default function StoresScreen() {
           <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }} numberOfLines={1}>
             {store ? store.name : 'No store yet'}
           </Text>
+          {!store && (
+            <Text style={{ color: t.textMuted, fontSize: 13 }}>Tap Shop here on a store below, or pick one by ZIP.</Text>
+          )}
         </View>
-        <Text style={{ color: t.primary, fontWeight: '600' }}>{store ? 'Change' : 'Choose'}</Text>
+        {store && <Ionicons name="checkmark-circle" size={22} color={t.primary} />}
       </Pressable>
 
       <Segmented

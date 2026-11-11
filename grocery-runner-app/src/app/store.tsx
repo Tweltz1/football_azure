@@ -74,7 +74,7 @@ export default function StoreScreen() {
       address: s.address,
       aisleCount: chain === 'kroger' ? 24 : aisleCount(),
     });
-    router.back();
+    router.dismissTo('/');
   };
 
   const pickByZip = () => {
@@ -91,7 +91,7 @@ export default function StoreScreen() {
         aisleCount: aisleCount(),
       });
     }
-    router.back();
+    router.dismissTo('/');
   };
 
   const input = [styles.input, { color: t.text, backgroundColor: t.cardAlt }];
@@ -99,10 +99,7 @@ export default function StoreScreen() {
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-      {backendConfigured && (
-        <Button title="Find stores on a map" icon="map" onPress={() => router.dismissTo('/stores?view=map')} />
-      )}
-      <SectionTitle>Or pick by ZIP</SectionTitle>
+      <SectionTitle>Chain</SectionTitle>
       <View style={styles.chips}>
         {CHAINS.map((c) => (
           <Chip key={c.chain} label={c.label} selected={chain === c.chain} onPress={() => choose(c.chain)} />
@@ -161,9 +158,9 @@ export default function StoreScreen() {
           </>
         )}
 
-        {chain !== 'kroger' && (
+        {chain === 'other' && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>
-            <Text style={{ color: t.text, flex: 1 }}>Number of aisles</Text>
+            <Text style={{ color: t.text, flex: 1 }}>About how many aisles?</Text>
             <TextInput
               value={aisles}
               onChangeText={setAisles}
