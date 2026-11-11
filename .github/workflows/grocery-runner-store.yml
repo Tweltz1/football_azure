@@ -118,7 +118,7 @@ jobs:
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" grocery-runner-store-shots
 
   listing:
-    if: contains(github.event.head_commit.message, '[stride-listing]')
+    if: contains(github.event.head_commit.message, '[stride-listing]') || contains(github.event.head_commit.message, '[stride-submit]')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -138,6 +138,7 @@ jobs:
           APP_REVIEW_LAST_NAME: ${{ secrets.APP_REVIEW_LAST_NAME }}
           APP_REVIEW_PHONE: ${{ secrets.APP_REVIEW_PHONE }}
           APP_REVIEW_EMAIL: ${{ secrets.APP_REVIEW_EMAIL }}
+          SUBMIT: ${{ contains(github.event.head_commit.message, '[stride-submit]') && '1' || '0' }}
         run: |
           python3 -m venv "$RUNNER_TEMP/apple-api"
           "$RUNNER_TEMP/apple-api/bin/pip" -q install 'PyJWT[crypto]' pillow

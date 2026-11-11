@@ -309,6 +309,24 @@ def availability():
 step("Price (free)", price_free)
 step("Availability (every country)", availability)
 
+def submit():
+    open_subs = call("GET", "/reviewSubmissions", query={"filter[app]": app_id, "filter[state]": "READY_FOR_REVIEW,UNRESOLVED_ISSUES", "limit": "5"})["data"]
+    sub = open_subs[0] if open_subs else call("POST", "/reviewSubmissions", {"data": {"type": "reviewSubmissions",
+        "attributes": {"platform": "IOS"}, "relationships": {"app": one("apps", app_id)}}})["data"]
+    if not call("GET", f"/reviewSubmissions/{sub['id']}/items")["data"]:
+        call("POST", "/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems", "relationships": {
+            "reviewSubmission": one("reviewSubmissions", sub["id"]), "appStoreVersion": one("appStoreVersions", vid)}}})
+    call("PATCH", f"/reviewSubmissions/{sub['id']}", {"data": {"type": "reviewSubmissions", "id": sub["id"], "attributes": {"submitted": True}}})
+    print("      " + call("GET", f"/reviewSubmissions/{sub['id']}")["data"]["attributes"]["state"])
+
+
+# Only when asked ([stride-submit] in the commit message): send the version to App Review.
+if os.environ.get("SUBMIT") == "1":
+    before = len(todo)
+    step("Submit for App Review", submit)
+    if len(todo) == before:
+        todo.append("Nothing: submitted. Apple emails when review starts and ends.")
+
 todo += [
     "App Privacy answers (Apple has no API for these)",
     "Press Add for Review, then Submit to App Review",
