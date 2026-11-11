@@ -1,6 +1,7 @@
 // Uploads the App Review screenshot for each paid product (Apple wants a picture of where it's bought in
 // the app). Skips products that already have one, and images that aren't there yet.
-// Curbsy pictures: scripts/payments/shots/ (the real Curbsy sheets, captured on an iPhone-sized screen).
+// Curbsy pictures: scripts/payments/shots/ (the real Curbsy sheets at a full iPhone screen size, 1290x2796;
+// Apple marks other sizes FAILED).
 // ToteTrack picture: 7-pro.png from the totetrack-store-shots branch, fetched by the workflow into TOTE_SHOTS.
 // Env: KEY_ID, ISSUER_ID, KEY_P8, TOTE_SHOTS (folder, optional).
 const fs = require('fs');
