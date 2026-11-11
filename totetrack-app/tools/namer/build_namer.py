@@ -183,7 +183,9 @@ def train_adapter(feats, labels, splits, label_names, label_text, other_text):
     n_val = len(xtr) // 10
     val, fit_idx = perm[:n_val], perm[n_val:]
     best = None
-    for reg in (0.05, 0.01, 0.002, 0.0005):
+    # The last builds picked the weakest setting tried (0.0005), so lighter ones are tried too: with 150+
+    # trained item types the adapter can move further before names it has no photos of suffer.
+    for reg in (0.05, 0.01, 0.002, 0.0005, 0.0001, 0.00002):
         acc = adapted_accuracy(fit(xtr[fit_idx], ytr[fit_idx], reg), xtr[val], ytr[val])
         print(f"  strength {reg}: validation {acc[0]:.1%} / {acc[1]:.1%}", flush=True)
         if best is None or acc[0] > best[1]:
