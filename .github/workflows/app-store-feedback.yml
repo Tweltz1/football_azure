@@ -1,0 +1,35 @@
+name: App Store feedback
+
+# Lists new App Store reviews and TestFlight feedback for every app on the App Store Connect account, so the
+# 5 AM Central support review can summarize them and draft replies. Reads only. Uses the same App Store
+# Connect API key as the iPhone build workflows (APP_STORE_CONNECT_KEY_ID / _ISSUER_ID / _KEY).
+on:
+  # Also runs when this workflow or its script changes, as a check that it still works.
+  push:
+    paths:
+      - '.github/workflows/app-store-feedback.yml'
+      - '.github/scripts/app_store_feedback.py'
+  schedule:
+    # 09:05 UTC = 3:05 AM Central (4:05 in summer), before the 4:47 AM Central review.
+    - cron: '5 9 * * *'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'How many days back to list (default about 1)'
+        default: ''
+
+jobs:
+  feedback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - run: pip install --quiet 'pyjwt[crypto]'
+      - name: Reviews and TestFlight feedback
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          DAYS: ${{ github.event.inputs.days }}
+        run: python3 .github/scripts/app_store_feedback.py
