@@ -17,14 +17,14 @@ import {
 import { suggestWaiverMoves } from '../data/waiverMoves';
 import { initialPlayerList } from '../data/playerData';
 import {
-  LeagueScoringContext, applyLeagueScoring, applyLeagueScoringToMatchup, useLeagueScoring,
+  HIDDEN_SLEEPER_SETTING, LeagueScoringContext, applyLeagueScoring, applyLeagueScoringToMatchup, useLeagueScoring,
 } from '../data/leagueScoring';
 import UpdatedAt, { timeAgo } from './UpdatedAt';
 import { REFRESH_MINUTES, useRefreshTick } from '../autoRefresh';
 import WhyButton, { WhyCard } from './WhyButton';
 import { explainBench, explainPair, explainStarter, explainTrade } from '../data/startSitWhy';
 import { summarizeAccuracy } from '../data/accuracy';
-import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion } from '../data/askModel';
+import { EXAMPLE_QUESTIONS, answerQuestion, isLeagueQuestion, needsGameDay, splitQuestion } from '../data/askModel';
 import { askAi, askData } from '../data/askAi';
 import { applyWeather, shortForecast, weatherEffectText } from '../data/weather';
 import { loadWeather } from '../data/weatherFeed';
@@ -653,6 +653,7 @@ export const AskBar = ({
   const [log, setLog] = useState([]);
   const [busy, setBusy] = useState(false);
   const leagueCache = useRef({ season: null, projections: null, outlook: null });
+  const gameDayCache = useRef({});
   const teamCount = partners.length + 1;
   const marketSettings = useMemo(
     () => (partners.length ? marketSettingsFor({ dynasty, teamCount, rosterSettings, ppr }) : null),
@@ -765,6 +766,7 @@ export const AskBar = ({
 
     return {
       allPlayers: scoredAll,
+      rules: { rosterSettings, ppr, dynasty, teamCount },
       roster,
       lineup,
       partnerNames: partners.map((p) => p.name),
@@ -825,24 +827,50 @@ export const AskBar = ({
     }
   };
 
+  // Vegas lines, forecasts, headlines and the trade deadline, loaded the first time a question needs them.
+  const gameDayFor = async (q) => {
+    if (!needsGameDay(q)) return null;
+    const key = `${week}-${leagueId || ''}`;
+    const cached = gameDayCache.current;
+    if (cached.key === key && Date.now() - cached.at < 30 * 60 * 1000) return cached.data;
+    try {
+      const params = new URLSearchParams({ week: String(week), ...(leagueId ? { leagueId } : {}) });
+      const { data } = await axios.get(`${API_BASE_URL}/ask/gameday?${params}`, { timeout: 8000 });
+      gameDayCache.current = { key, at: Date.now(), data };
+      return data;
+    } catch {
+      return null;
+    }
+  };
+
   const ask = async (text) => {
     const q = String(text || '').trim();
     if (!q || busy) return;
     let answer;
     let failed = false;
+    const more = [];
     try {
       setBusy(true);
-      const previous = log[0]?.answer?.context || null;
-      const league = await leagueFor(q, previous);
-      answer = answerQuestion(q, { ...buildCtx(), league, previous });
+      // A message with several questions gets an answer to each, each one following on from the last.
+      const parts = splitQuestion(q);
+      const ctx = buildCtx();
+      let previous = log[0]?.context || log[0]?.answer?.context || null;
+      for (const part of parts.length ? parts : [q]) {
+        const [league, gameDay] = await Promise.all([leagueFor(part, previous), gameDayFor(part)]);
+        const partAnswer = answerQuestion(part, { ...ctx, league, gameDay, previous });
+        if (partAnswer.miss) axios.post(`${API_BASE_URL}/ask/miss`, { question: part }).catch(() => {});
+        if (answer) more.push({ q: part, answer: partAnswer }); else answer = partAnswer;
+        previous = partAnswer.context || previous;
+      }
     } catch (error) {
       console.error('Ask bar failed:', error);
       failed = true;
       answer = { text: 'Something went wrong working that out. Try asking another way.', examples: EXAMPLE_QUESTIONS };
     }
     setBusy(false);
+    const context = (more[more.length - 1]?.answer || answer).context || null;
     const id = Date.now();
-    setLog((entries) => [{ id, q, answer, ai: failed ? null : 'pending' }, ...entries].slice(0, 5));
+    setLog((entries) => [{ id, q, answer, more, context, ai: failed ? null : 'pending' }, ...entries].slice(0, 5));
     setQuestion('');
     if (answer.scrollTo) window.setTimeout(() => document.getElementById(answer.scrollTo)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     if (failed) return;
@@ -866,6 +894,48 @@ export const AskBar = ({
       {list.map((example) => (
         <button key={example} type="button" className="startsit-chip" onClick={() => ask(example)}>{example}</button>
       ))}
+    </div>
+  );
+
+  const Answer = ({ answer }) => (
+    <div className="ask-answer" data-kind={answer.context?.type || undefined}>
+      <p>{answer.text}</p>
+      {answer.itemsTitle && <p className="startsit-help">{answer.itemsTitle}</p>}
+      {answer.items?.length > 0 && (
+        <ul className="startsit-bench ask-items">
+          {answer.items.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <li key={index}>
+              <div>
+                {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
+                {item.detail && <><br /><small>{item.detail}</small></>}
+              </div>
+              {item.valueText != null && <span className="startsit-points">{item.valueText}</span>}
+              {item.valueText == null && item.value != null && (
+                <span className="startsit-points">{Number(item.value).toFixed(1)}{item.valueLabel && <small> {item.valueLabel}</small>}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {(answer.sections || []).map((section) => (
+        <div key={section.title}>
+          <p className="startsit-help">{section.title}</p>
+          <ul className="startsit-bench ask-items">
+            {section.items.map((item) => (
+              <li key={`${item.label}-${item.name}`}>
+                <div>
+                  {item.label && <small className="ask-item-label">{item.label}</small>} <strong>{item.name}</strong>
+                  {item.detail && <><br /><small>{item.detail}</small></>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {answer.why && <div className="why-pop ask-why"><WhyCard why={answer.why} updatedLabel={updatedLabel} /></div>}
+      {answer.note && <p className="startsit-help">{answer.note}</p>}
+      {answer.examples && <Examples list={answer.examples} />}
     </div>
   );
 
@@ -896,7 +966,7 @@ export const AskBar = ({
         </>
       )}
       <ul className="ask-log">
-        {log.map(({ id, q, answer, ai }) => (
+        {log.map(({ id, q, answer, ai, more = [] }) => (
           <li key={id}>
             <p className="ask-question">{q}</p>
             {ai && ai !== 'pending' && (
@@ -945,6 +1015,12 @@ export const AskBar = ({
               {answer.note && <p className="startsit-help">{answer.note}</p>}
               {answer.examples && !(ai && ai !== 'pending') && <Examples list={answer.examples} />}
             </ModelAnswer>
+            {more.map((part) => (
+              <div key={part.q} className="ask-part">
+                <p className="ask-question">{part.q}</p>
+                <Answer answer={part.answer} />
+              </div>
+            ))}
           </li>
         ))}
       </ul>
@@ -1232,9 +1308,12 @@ const TradeCheck = ({
                   {['get', 'give'].filter((side) => result.adjustment[side]).map((side) => {
                     const adj = result.adjustment[side];
                     const amount = adj.display != null ? Math.abs(adj.display).toLocaleString() : Math.abs(adj.score).toFixed(1);
-                    return side === 'get'
-                      ? `Roster-spot adjustment: −${amount} on your side, since ${adj.players.join(' and ')} wouldn't crack your lineup and you'd have to cut someone to fit them.`
-                      : `Roster-spot adjustment: −${amount} on their side, since ${adj.players.join(' and ')} wouldn't crack their lineup.`;
+                    const whose = side === 'get' ? 'your' : 'their';
+                    const why = [
+                      adj.benched.length ? `${adj.benched.join(' and ')} wouldn't crack ${whose} lineup` : null,
+                      adj.starting.length ? `${adj.starting.join(' and ')} would only push out a starter ${side === 'get' ? 'you' : 'they'} already have` : null,
+                    ].filter(Boolean).join(', and ');
+                    return `Roster-spot adjustment: −${amount} on ${whose} side. It's a ${give.length}-for-${get.length}, and ${why}, so the extra player counts for less (a single better player beats two lesser ones).`;
                   }).join(' ')}
                 </p>
               )}
@@ -1307,7 +1386,9 @@ const StartSit = ({ userId }) => {
   const [sleeperName, setSleeperName] = useState(() => readSetting('hl-startsit-sleeper-user', ''));
   const [sleeperImport, setSleeperImport] = useState(null);
   const [sleeperStatus, setSleeperStatus] = useState('');
-  const sleeperTeams = useMemo(() => sleeperImport?.teams || [], [sleeperImport]);
+  const [hiddenLeagues, setHiddenLeagues] = useState(() => readSetting(HIDDEN_SLEEPER_SETTING, []));
+  const allSleeperTeams = useMemo(() => sleeperImport?.teams || [], [sleeperImport]);
+  const sleeperTeams = useMemo(() => allSleeperTeams.filter((t) => !hiddenLeagues.includes(t.leagueId)), [allSleeperTeams, hiddenLeagues]);
   // Points follow the scoring of the league being looked at (or the standard format picked).
   const {
     choice, setChoice, scoring, profile, options: scoringOptions, leagueValue,
@@ -1367,6 +1448,10 @@ const StartSit = ({ userId }) => {
 
   useEffect(() => writeSetting('hl-startsit-source', source), [source]);
   useEffect(() => writeSetting('hl-startsit-custom', customIds), [customIds]);
+  useEffect(() => writeSetting(HIDDEN_SLEEPER_SETTING, hiddenLeagues), [hiddenLeagues]);
+  const toggleLeague = (leagueId) => setHiddenLeagues((list) => (list.includes(leagueId)
+    ? list.filter((id) => id !== leagueId)
+    : [...list, leagueId]));
 
   const importSleeper = async (username, { selectFirst }) => {
     const name = String(username || '').trim();
@@ -1382,9 +1467,10 @@ const StartSit = ({ userId }) => {
         return;
       }
       setSleeperStatus('');
-      if (selectFirst) {
-        setSource(`${SLEEPER_PREFIX}${data.teams[0].leagueId}`);
-        setChoice(leagueValue(data.teams[0].leagueId));
+      const first = data.teams.find((t) => !hiddenLeagues.includes(t.leagueId));
+      if (selectFirst && first) {
+        setSource(`${SLEEPER_PREFIX}${first.leagueId}`);
+        setChoice(leagueValue(first.leagueId));
       }
     } catch (error) {
       setSleeperStatus(String(error.response?.data || 'Could not reach Sleeper. Please try again.'));
@@ -1606,7 +1692,7 @@ const StartSit = ({ userId }) => {
             <div className="player-board-heading">
               <div>
                 <p className="section-kicker">Sleeper</p>
-                <h2>{sleeperTeams.length ? `Connected as ${sleeperImport.displayName}` : 'Import your Sleeper team'}</h2>
+                <h2>{allSleeperTeams.length ? `Connected as ${sleeperImport.displayName}` : 'Import your Sleeper team'}</h2>
               </div>
               {sleeperTeams.length > 0 && <div className="board-count">{sleeperTeams.length} team{sleeperTeams.length === 1 ? '' : 's'}</div>}
             </div>
@@ -1622,10 +1708,26 @@ const StartSit = ({ userId }) => {
                 autoCorrect="off"
                 onChange={(e) => setSleeperName(e.target.value)}
               />
-              <button type="submit" className="create-button">{sleeperTeams.length ? 'Refresh' : 'Import'}</button>
+              <button type="submit" className="create-button">{allSleeperTeams.length ? 'Refresh' : 'Import'}</button>
             </form>
-            {sleeperTeams.length > 0 && !sleeperStatus && (
+            {allSleeperTeams.length > 0 && !sleeperStatus && (
               <UpdatedAt at={sleeperImport.fetchedAt} label="Rosters loaded from Sleeper" staleAfterHours={24} />
+            )}
+            {allSleeperTeams.length > 1 && (
+              <div className="sleeper-league-list">
+                <p className="startsit-help">Hide old or archived leagues from the league lists here and on Rankings (this device only).</p>
+                {allSleeperTeams.map((t) => {
+                  const hidden = hiddenLeagues.includes(t.leagueId);
+                  return (
+                    <div key={t.leagueId} className={`sleeper-league-row${hidden ? ' is-hidden' : ''}`}>
+                      <span>{t.leagueName}</span>
+                      <button type="button" className="edit-roster-button" onClick={() => toggleLeague(t.leagueId)}>
+                        {hidden ? 'Show' : 'Hide'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
             <p className="startsit-help">
               {sleeperStatus || 'Uses your Sleeper roster, lineup slots and scoring. Only your username is needed, no password.'}

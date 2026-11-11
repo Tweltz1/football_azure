@@ -220,6 +220,15 @@ describe('trade market blend and roster-spot adjustment', () => {
     expect(analyzeTrade(trade(['myWR3'], ['thRB3'])).adjustment).toBeNull();
   });
 
+  test('in a 2-for-1 the extra player counts for less even when they would start', () => {
+    const result = analyzeTrade(trade(['myWR1', 'myRB1'], ['thWR1']));
+    const extra = result.give.find((p) => result.adjustment.give.players.includes(p.name));
+    const fullTotal = result.give.reduce((t, p) => t + p.score, 0);
+    expect(result.adjustment.give.players).toHaveLength(1);
+    expect(result.adjustment.give.starting).toEqual([extra.name]);
+    expect(result.giveTotal).toBeCloseTo(fullTotal - extra.score * 0.25, 0);
+  });
+
   test('market settings follow the league: superflex, team count and points per catch', () => {
     expect(marketSettingsFor({ dynasty: true, teamCount: 10, rosterSettings: SUPERFLEX, ppr: 0.5 }))
       .toEqual({ dynasty: true, teams: 10, qbs: 2, ppr: 0.5 });
