@@ -41,7 +41,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       # Its own key, never the live apps' one: the free tier allows only ~20 requests a day per model.
-      GEMINI_API_KEY: ${{ secrets.GEMINI_TRAINING_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_TRAINING_KEY || secrets.GENINI_TRAINING_KEY }}
     steps:
       - uses: actions/checkout@v4
 
