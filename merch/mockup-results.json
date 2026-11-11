@@ -37,13 +37,21 @@
   },
   {
     "slug": "navy-seal-hat",
-    "ok": false,
-    "error": "no color Navy on \"Adidas Dad Hat\". Colors: Black, White"
+    "ok": true,
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "variant_id": 7857,
+    "color": "Navy",
+    "placement": "embroidery_front_large"
   },
   {
     "slug": "stripes-cap",
-    "ok": false,
-    "error": "POST /mockup-generator/create-task/638 -> 400 {\"code\":400,\"result\":\"Invalid file option: thread_colors\",\"error\":{\"reason\":\"BadRequest\",\"message\":\"Invalid file option: thread_colors\",\"api_error_code\":\"MG-4\",\"error_url\":\"https://developers.printful.com/docs/#section/API-Errors/Mockup-Generator-API\"}}"
+    "ok": true,
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "variant_id": 7859,
+    "color": "Stone",
+    "placement": "embroidery_front_large"
   },
   {
     "slug": "monogram-mug",
@@ -57,11 +65,11 @@
   {
     "slug": "est-tote",
     "ok": true,
-    "product_id": 274,
-    "product": "All-Over Print Large Tote Bag w/ Pocket",
-    "variant_id": 9039,
+    "product_id": 367,
+    "product": "Eco Tote Bag | Econscious EC8000",
+    "variant_id": 10457,
     "color": "Black",
-    "placement": "default"
+    "placement": "front"
   },
   {
     "slug": "stickers",
