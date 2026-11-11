@@ -15,7 +15,7 @@ export const PLANS: Record<PlanKey, { name: string; month: number; year: number;
 
 /** Trial rules, kept in the talkshops_settings table so they can be changed without a deploy. */
 export interface TrialSettings { trialDays: 15 | 30; trialTexts: number; trialCars: number }
-export const DEFAULT_TRIAL: TrialSettings = { trialDays: 30, trialTexts: 150, trialCars: 25 };
+export const DEFAULT_TRIAL: TrialSettings = { trialDays: 15, trialTexts: 150, trialCars: 25 };
 
 /** Billing columns on repair_shops. `plan` null means a shop made before plans existed: no limits. */
 export interface PlanState {
@@ -85,6 +85,39 @@ export function hasPro(p: PlanState | undefined | null, a: Access): boolean {
 export const isPro = (p: PlanState | undefined | null, now: Date) => hasPro(p, access(p, now, DEFAULT_TRIAL));
 export const proMessage = (what: string) => `${what} is part of Talk Shops Pro. Switch to Pro on the Plan tab to use it.`;
 export const HOWTO_PRO_MESSAGE = 'The How-to assistant is part of Talk Shops Pro. Switch to Pro on the Plan tab to use it.';
+
+/** A shop whose trial or paid plan has ended is locked: it only sees "choose a plan" until it pays. */
+export const isLocked = (a: Access) => a.state === 'trial_ended' || a.state === 'canceled';
+
+/**
+ * Keys that each get one free trial: the shop phone (E.164, as stored before), the sign-in email and the account.
+ * Emails are lowercased with any "+tag" removed, and Gmail dots are dropped, so a.b+2@gmail.com counts as ab@gmail.com.
+ */
+export function trialKeys(o: { phone?: string | null; email?: string | null; userId?: string | null }): string[] {
+  const keys: string[] = [];
+  if (o.phone) keys.push(o.phone);
+  const e = (o.email ?? '').trim().toLowerCase();
+  const at = e.lastIndexOf('@');
+  if (at > 0 && at < e.length - 1) {
+    let local = e.slice(0, at).split('+')[0];
+    let domain = e.slice(at + 1);
+    if (domain === 'googlemail.com') domain = 'gmail.com';
+    if (domain === 'gmail.com') local = local.replace(/\./g, '');
+    if (local) keys.push(`email:${local}@${domain}`);
+  }
+  if (o.userId) keys.push(`user:${o.userId}`);
+  return keys;
+}
+
+/** Which trial reminder email a shop is due, if any: "soon" in the last 3 days, "ended" in the 2 days after. */
+export function trialNoticeDue(p: PlanState | undefined | null, sent: string | null | undefined, now: Date): 'soon' | 'ended' | null {
+  if (!p || p.plan !== 'trial' || !p.trialEndsAt) return null;
+  const left = Date.parse(p.trialEndsAt) - now.getTime();
+  if (left > 3 * 86_400_000 || left < -2 * 86_400_000) return null;
+  const due = left > 0 ? 'soon' : 'ended';
+  if (sent === 'ended' || sent === due) return null;
+  return due;
+}
 
 export const lockedMessage = (a: Access) => a.state === 'canceled'
   ? 'Your Talk Shops plan has ended. Choose a plan on the Plan tab to keep sending updates.'

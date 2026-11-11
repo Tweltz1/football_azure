@@ -11,7 +11,7 @@ import { gsmText, smsSegments } from './smsFit.ts';
 import type { Ctx, Res } from './handlers.ts';
 import { salesRoute } from './shopSales.ts';
 
-import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, hasPro, HOWTO_PRO_MESSAGE, isPro, lockedMessage, PLANS, planFromSubscription, proMessage, verifyStripeSignature,
+import { access, checkoutFields, DEFAULT_TRIAL, hasHowTo, isLocked, trialKeys, trialNoticeDue, hasPro, HOWTO_PRO_MESSAGE, isPro, lockedMessage, PLANS, planFromSubscription, proMessage, verifyStripeSignature,
   type Access, type PlanKey, type PlanState, type StripeApi, type TrialSettings } from './shopPlans.ts';
 import { howToRoute, type HowToLibrary } from './shopHowTo.ts';
 import { decodeVin, enginesFor, modelsFor, recallsFor, VIN_RE } from './nhtsa.ts';
@@ -201,8 +201,15 @@ export interface ShopStore extends Partial<BookingStore> {
   trialSettings?(): Promise<TrialSettings>;
   /** Puts a new shop on the free trial until `endsAt`. */
   startTrial?(shopId: string, endsAt: string): Promise<void>;
-  /** Records that a shop phone (E.164) got a free trial; false when one already did, so each phone gets one trial. */
-  claimTrialPhone?(phone: string, shopId: string): Promise<boolean>;
+  /**
+   * Records that these keys (shop phone, sign-in email, account; see trialKeys) got a free trial.
+   * False when any of them already had one, so a phone, an email and an account each get one trial.
+   */
+  claimTrial?(keys: string[], shopId: string): Promise<boolean>;
+  /** Trial shops near or just past their trial end, with which reminder email they already got. */
+  trialNoticeShops?(now: string): Promise<{ shop: Shop; sent: string | null }[]>;
+  /** Records which trial reminder email ("soon" or "ended") a shop got. */
+  setTrialNotice?(shopId: string, notice: string): Promise<void>;
   /** Counts `n` texts in `period`; false (and nothing counted) when that would pass `limit`. */
   useTexts?(shopId: string, n: number, period: string, limit: number | null): Promise<boolean>;
   /** Counts one customer email for the shop on `day` (UTC date); false (nothing counted) when over `limit`. */
@@ -913,9 +920,9 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       if (mine && mine.seat.role !== 'owner') return ownerOnly();
       const name = str(body.name, 80);
       if (!name) return bad('Enter your shop name.');
-      // One free trial per shop phone, so a new shop needs a real number when the store can check it.
-      const trialPhone = !shop && store.claimTrialPhone ? normalizePhone(str(body.phone, 30)) : null;
-      if (!shop && store.claimTrialPhone && !trialPhone) return bad('Enter your shop phone number with area code.');
+      // One free trial per shop phone (and per email and account), so a new shop needs a real number when the store can check it.
+      const trialPhone = !shop && store.claimTrial ? normalizePhone(str(body.phone, 30)) : null;
+      if (!shop && store.claimTrial && !trialPhone) return bad('Enter your shop phone number with area code.');
       if (body.email !== undefined && str(body.email, 254) && !/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(str(body.email, 254))) return bad('Enter a valid shop email, or leave it blank.');
       let ageSettings = shop?.ageSettings;
       if (body.ageSettings !== undefined) {
@@ -986,8 +993,8 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         .catch((e) => ctx.log.warn('owner member row not saved', { error: String(e) }));
       let trialUsed = false;
       if (!shop && store.startTrial) {
-        // A phone that already had a trial starts with it ended (Choose a plan), not a fresh one.
-        trialUsed = !!(trialPhone && store.claimTrialPhone && !(await store.claimTrialPhone(trialPhone, next.id)));
+        // A phone, email or account that already had a trial starts with it ended (Choose a plan), not a fresh one.
+        trialUsed = !!(trialPhone && store.claimTrial && !(await store.claimTrial(trialKeys({ phone: trialPhone, email: ctx.userEmail, userId: ctx.userId }), next.id)));
         const trial = await settings(deps);
         await store.startTrial(next.id, trialUsed ? ctx.now().toISOString() : new Date(ctx.now().getTime() + trial.trialDays * 86_400_000).toISOString());
       }
@@ -1020,6 +1027,12 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   if (!mine) return { status: 409, body: 'Set up your shop first.' };
   const { shop } = mine;
   const owner = mine.seat.role === 'owner';
+  // Trial over (or paid plan ended): the shop is locked until it chooses a plan. Only the Plan routes and the
+  // owner's data export stay open, so nobody can keep using the board for free.
+  if (parts[1] !== 'plan' && parts[1] !== 'export') {
+    const gate = access(shop.plan, ctx.now(), await settings(deps));
+    if (isLocked(gate)) return { status: 402, body: lockedMessage(gate) };
+  }
 
   // Type-ahead lists for the vehicle fields: models for the make, engines for the year, make and model.
   // A failed lookup just returns empty lists; the page still offers its built-in common makes and engines.
@@ -1772,8 +1785,8 @@ export function digestText(shop: Shop, jobs: Job[], now: Date, siteUrl: string):
 }
 
 /** Hourly: sends due reminder texts (including unanswered-estimate reminders) and each shop's 7am summary email. */
-export async function runCron(deps: ShopDeps, now: Date, log: Ctx['log']): Promise<{ shops: number; reminders: number; digests: number }> {
-  const out = { shops: 0, reminders: 0, digests: 0 };
+export async function runCron(deps: ShopDeps, now: Date, log: Ctx['log']): Promise<{ shops: number; reminders: number; digests: number; trialNotices: number }> {
+  const out = { shops: 0, reminders: 0, digests: 0, trialNotices: 0 };
   if (!deps.store.cronShops) return out;
   const trial = await settings(deps);
   for (const shop of await deps.store.cronShops(now.toISOString())) {
@@ -1793,5 +1806,42 @@ export async function runCron(deps: ShopDeps, now: Date, log: Ctx['log']): Promi
       else log.warn('morning email not sent', { shop: shop.id, note: sent.note });
     } catch (error) { log.warn('hourly run failed for a shop', { shop: shop.id, error: String(error) }); }
   }
+  out.trialNotices = await sendTrialNotices(deps, now, log);
   return out;
+}
+
+/** Emails the shop owner 3 days before the free trial ends, and again when it ends. */
+async function sendTrialNotices(deps: ShopDeps, now: Date, log: Ctx['log']): Promise<number> {
+  if (!deps.email || !deps.store.trialNoticeShops || !deps.store.setTrialNotice) return 0;
+  const site = (deps.siteUrl || 'https://talkshops.app').replace(/\/$/, '');
+  let sent = 0;
+  for (const { shop, sent: already } of await deps.store.trialNoticeShops(now.toISOString())) {
+    if (shop.id === DEMO_SHOP_ID) continue;
+    const due = trialNoticeDue(shop.plan, already, now);
+    if (!due) continue;
+    // A phone or email that already had a trial starts with it ended at sign-up: it sees "choose a plan" right away, no email.
+    if (due === 'ended' && Math.abs(Date.parse(shop.plan!.trialEndsAt!) - Date.parse(shop.createdAt)) < 3_600_000) {
+      await deps.store.setTrialNotice(shop.id, 'ended').catch(() => {});
+      continue;
+    }
+    try {
+      const to = shop.email || (await deps.staff?.listMembers(shop.id).catch(() => []))?.find((m) => m.userId === shop.ownerId)?.email;
+      if (!to) continue;
+      const ends = new Date(shop.plan!.trialEndsAt!);
+      const days = Math.max(1, Math.ceil((ends.getTime() - now.getTime()) / 86_400_000));
+      const subject = due === 'soon'
+        ? `Your Talk Shops free trial ends in ${days} day${days === 1 ? '' : 's'}`
+        : 'Your Talk Shops free trial has ended';
+      const text = due === 'soon'
+        ? `Hi ${shop.name},\n\nYour Talk Shops free trial ends in ${days} day${days === 1 ? '' : 's'}. When it ends, your shop is locked until you choose a plan.\n\n`
+          + `Choose a plan now and nothing changes: your first charge waits until the trial is over.\n\n${site}/plan\n\nStarter is $89 a month and Pro is $149 a month. Reply to this email with any questions.\n\nTalk Shops`
+        : `Hi ${shop.name},\n\nYour Talk Shops free trial has ended, so your shop is locked for now. Nothing was deleted: your cars, customers and settings are all saved, and your customers' links still work.\n\n`
+          + `Choose a plan and your shop opens right back up:\n\n${site}/plan\n\nStarter is $89 a month and Pro is $149 a month. Reply to this email with any questions.\n\nTalk Shops`;
+      const r = await deps.email.send(to, subject, text, { replyTo: 'support@talkshops.app' });
+      if (r.delivery !== 'sent') { log.warn('trial email not sent', { shop: shop.id, note: r.note }); continue; }
+      await deps.store.setTrialNotice(shop.id, due);
+      sent++;
+    } catch (error) { log.warn('trial email failed', { shop: shop.id, error: String(error) }); }
+  }
+  return sent;
 }
