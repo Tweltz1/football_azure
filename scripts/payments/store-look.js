@@ -25,17 +25,21 @@ const APPS = ['com.hoodleague.junk', 'com.tweltz1.totetrack'];
       const subs = (g.included || []).filter((x) => x.type === 'subscriptions');
       const lines = [];
       for (const s of subs) {
-        const shot = await api(`/v1/subscriptions/${s.id}/appStoreReviewScreenshot`).then((r) => !!r?.data).catch(() => false);
-        lines.push(`${s.attributes.productId} | ${s.attributes.state} | ${s.attributes.subscriptionPeriod} | level ${s.attributes.groupLevel} | review screenshot ${shot ? 'yes' : 'NO'}`);
+        const shot = await api(`/v1/subscriptions/${s.id}/appStoreReviewScreenshot`).then((r) => r?.data ? (r.data.attributes?.assetDeliveryState?.state || 'yes') : false).catch(() => false);
+        lines.push(`${s.attributes.productId} | ${s.attributes.state} | ${s.attributes.subscriptionPeriod} | level ${s.attributes.groupLevel} | review screenshot ${shot || 'NO'}`);
       }
       return `${subs.length}\n     ` + lines.join('\n     ');
+    });
+    await step('agreements (Paid Apps active?)', async () => {
+      const r = await api(`/v1/apps/${app.id}/appPriceSchedule`).then(() => 'price schedule readable').catch((e) => e.message.slice(0, 160));
+      return r;
     });
     await step('one-time purchases', async () => {
       const p = (await api(`/v1/apps/${app.id}/inAppPurchasesV2?limit=50`)).data;
       const lines = [];
       for (const x of p) {
-        const shot = await api(`/v2/inAppPurchases/${x.id}/appStoreReviewScreenshot`).then((r) => !!r?.data).catch(() => false);
-        lines.push(`${x.attributes.productId} | ${x.attributes.state} | ${x.attributes.inAppPurchaseType} | review screenshot ${shot ? 'yes' : 'NO'}`);
+        const shot = await api(`/v2/inAppPurchases/${x.id}/appStoreReviewScreenshot`).then((r) => r?.data ? (r.data.attributes?.assetDeliveryState?.state || 'yes') : false).catch(() => false);
+        lines.push(`${x.attributes.productId} | ${x.attributes.state} | ${x.attributes.inAppPurchaseType} | review screenshot ${shot || 'NO'}`);
       }
       return `${p.length}\n     ` + lines.join('\n     ');
     });
