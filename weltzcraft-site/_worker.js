@@ -168,6 +168,32 @@ async function emailSales(env, subject, text) {
   }).catch(() => {});
 }
 
+
+// Buyer emails come from the site (Printful's own customer emails aren't on for API stores).
+const SHOP_FROM = 'Weltzcraft Studios <sales@weltzcraft.com>';
+async function emailBuyer(env, to, subject, text) {
+  if (!env.RESEND_API_KEY || !/^[^\s@<>,;]+@[^\s@<>,;]+\.[^\s@<>,;]+$/.test(to || '')) return;
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: SHOP_FROM, to: [to], reply_to: 'sales@weltzcraft.com', subject, text }),
+  }).catch(() => {});
+}
+// "tee-black-58 2XL x1, mug-black-55 x2" -> ["Tee, Black, Three-stripe W logo, size 2XL (x1)", ...]
+function itemNames(labels, cat) {
+  return String(labels || '').split(', ').filter(Boolean).map((l) => {
+    const m = l.match(/^(\S+)(?: (\S+))? x(\d+)$/);
+    if (!m || !cat) return l;
+    const [pk, ck, lk] = m[1].split('-');
+    const prod = (cat.products || []).find((p) => p.key === pk);
+    if (!prod) return l;
+    const color = (prod.colors.find((c) => c.key === ck) || {}).name || ck;
+    return prod.name + ', ' + color + ', ' + ((cat.logos[lk] || {}).name || lk) + ' logo' + (m[2] ? ', size ' + m[2] : '') + ' (x' + m[3] + ')';
+  });
+}
+const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || 'there';
+const printfulHookKey = async (env) => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('wc-printful-hook:' + env.PRINTFUL_API_TOKEN))).slice(0, 32);
+
 async function merchWebhook(request, env) {
   if (request.method !== 'POST') return json(405, { error: 'POST only' });
   if (!env.STRIPE_MERCH_WEBHOOK_SECRET) return json(503, { error: 'Not set up' });
@@ -214,7 +240,42 @@ async function merchWebhook(request, env) {
       : 'Printful refused the order (' + first + '). Place it by hand.';
   }
   await emailSales(env, (r.ok ? 'Merch order: ' : 'Merch order FAILED: ') + s.metadata.slug, summary.concat(['', note]).join('\n'));
+  const names = itemNames(s.metadata.slug, await catalog(request, env));
+  await emailBuyer(env, order.recipient.email, 'Your Weltzcraft order is confirmed', ['Hi ' + firstName(order.recipient.name) + ',', '',
+    'Thanks for your order! Here is what we are making for you:', '', ...names.map((n) => '  - ' + n), '',
+    'Total paid: $' + ((s.amount_total || 0) / 100).toFixed(2),
+    'Shipping to: ' + [order.recipient.name, a.line1, a.line2, [a.city, a.state, a.postal_code].filter(Boolean).join(' ')].filter(Boolean).join(', '), '',
+    'Each piece is printed just for you, which usually takes 2 to 5 business days. We will email you a tracking link as soon as it ships.', '',
+    'Questions? Just reply to this email.', '', 'Weltzcraft Studios', 'https://weltzcraft.com/merch'].join('\n'));
   return r.ok ? json(200, { ok: true }) : json(502, { error: 'Printful refused' });
+}
+
+// POST /api/merch/printful-webhook?key=...: Printful says a package shipped -> email the buyer the tracking link.
+// The key in the URL is derived from the Printful token (the deploy workflow registers the same URL), and the
+// order is read back from Printful, so nothing in the request body is trusted.
+async function printfulWebhook(request, env) {
+  if (request.method !== 'POST') return json(405, { error: 'POST only' });
+  if (!env.PRINTFUL_API_TOKEN) return json(503, { error: 'Not set up' });
+  if (new URL(request.url).searchParams.get('key') !== (await printfulHookKey(env))) return json(403, { error: 'Bad key' });
+  let b;
+  try { b = await request.json(); } catch (e) { return json(400, { error: 'Bad request' }); }
+  if (!b || b.type !== 'package_shipped') return json(200, { ignored: true });
+  const id = Number(b.data && b.data.order && b.data.order.id);
+  if (!id) return json(400, { error: 'No order' });
+  const got = await printful(env, '/orders/' + id);
+  if (!got.ok) return json(502, { error: 'Could not read the order' });
+  const o = got.out.result || {};
+  const want = Number(b.data.shipment && b.data.shipment.id);
+  const sh = (o.shipments || []).find((x) => x.id === want) || (o.shipments || []).slice(-1)[0] || {};
+  if (!sh.tracking_url && !sh.tracking_number) return json(200, { ignored: 'no tracking yet' });
+  const r = o.recipient || {};
+  await emailBuyer(env, r.email, 'Your Weltzcraft order has shipped', ['Hi ' + firstName(r.name) + ',', '',
+    'Good news: your order is on its way.', '',
+    'Carrier: ' + [sh.carrier, sh.service].filter(Boolean).join(' '), 'Tracking number: ' + (sh.tracking_number || '-'),
+    sh.tracking_url ? 'Track it: ' + sh.tracking_url : '', '',
+    'Questions? Just reply to this email.', '', 'Weltzcraft Studios', 'https://weltzcraft.com/merch'].filter((l) => l !== null).join('\n'));
+  await emailSales(env, 'Merch shipped: order ' + (o.external_id || id), 'Printful order ' + id + ' shipped to ' + (r.name || '') + '. Tracking: ' + (sh.tracking_url || sh.tracking_number));
+  return json(200, { ok: true });
 }
 
 export default {
@@ -225,6 +286,9 @@ export default {
     }
     if (url.pathname === '/api/merch/checkout') {
       try { return await merchCheckout(request, env); } catch (e) { return json(502, { error: 'Checkout is not available right now.' }); }
+    }
+    if (url.pathname === '/api/merch/printful-webhook') {
+      try { return await printfulWebhook(request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
     }
     if (url.pathname === '/api/merch/stripe-webhook') {
       try { return await merchWebhook(request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
