@@ -31,6 +31,8 @@ type Store = {
   addInsidePhotos: (toteId: string, names: string[]) => void;
   removeInsidePhoto: (toteId: string, name: string) => void;
   moveItem: (fromToteId: string, itemId: string, toToteId: string) => void;
+  /** Removes every tote and photo from this phone (on sign-out; the account's cloud copy is kept). */
+  forgetPhone: () => void;
 };
 
 const Ctx = createContext<Store | null>(null);
@@ -116,6 +118,14 @@ export function ToteProvider({ children }: { children: ReactNode }) {
           return next;
         });
         return tote;
+      },
+      forgetPhone: () => {
+        for (const t of totes) {
+          deletePhoto(t.photo);
+          t.insidePhotos?.forEach(deletePhoto);
+        }
+        setTotes([]);
+        setTombstones({});
       },
       updateTote: (id, patch) => mutate(id, (t) => ({ ...t, ...patch })),
       deleteTote: (id) => {
