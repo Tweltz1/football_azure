@@ -1,0 +1,82 @@
+name: Deploy weltzcraft.com
+
+# Publishes weltzcraft-site/ (the Weltzcraft Studios website) to Cloudflare Pages project "weltzcraft"
+# and points weltzcraft.com + www.weltzcraft.com at it. Safe to re-run.
+# Needs the CLOUDFLARE_API_TOKEN secret with: Zone weltzcraft.com DNS Edit + Zone Read (already there)
+# and Account > Cloudflare Pages > Edit (needed to create and deploy the Pages project).
+on:
+  push:
+    branches: [main]
+    paths: ['weltzcraft-site/**', '.github/workflows/deploy-weltzcraft-site.yml']
+  workflow_dispatch:
+
+concurrency: { group: weltzcraft-site, cancel-in-progress: false }
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      DOMAIN: weltzcraft.com
+      PROJECT: weltzcraft
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find account and make sure the Pages project exists
+        run: |
+          [ -n "$CF_TOKEN" ] || { echo "::error::Add the CLOUDFLARE_API_TOKEN secret first"; exit 1; }
+          cf() { curl --silent --show-error -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" "$@"; }
+          API=https://api.cloudflare.com/client/v4
+          zone=$(cf "$API/zones?name=$DOMAIN")
+          ZONE=$(echo "$zone" | jq -r '.result[0].id // empty'); ACCOUNT=$(echo "$zone" | jq -r '.result[0].account.id // empty')
+          [ -n "$ZONE" ] || { echo "$zone" | jq -c '.errors'; echo "::error::Token can't see $DOMAIN"; exit 1; }
+          echo "ZONE=$ZONE" >> "$GITHUB_ENV"; echo "ACCOUNT=$ACCOUNT" >> "$GITHUB_ENV"
+          p=$(cf "$API/accounts/$ACCOUNT/pages/projects/$PROJECT")
+          if [ "$(echo "$p" | jq -r .success)" = "true" ]; then echo "Pages project exists."; exit 0; fi
+          if echo "$p" | jq -e '.errors[]? | select(.code == 8000007)' >/dev/null; then
+            r=$(cf -X POST "$API/accounts/$ACCOUNT/pages/projects" -d "$(jq -n --arg n "$PROJECT" '{name:$n, production_branch:"main"}')")
+            echo "$r" | jq -c '{success, errors}'
+            [ "$(echo "$r" | jq -r .success)" = "true" ] && exit 0
+          else
+            echo "$p" | jq -c '.errors'
+          fi
+          echo "::error::The CLOUDFLARE_API_TOKEN can't use Cloudflare Pages. In Cloudflare > My Profile > API Tokens, edit the token and add the permission Account > Cloudflare Pages > Edit, then re-run this workflow."
+          exit 1
+
+      - name: Upload the site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          CLOUDFLARE_ACCOUNT_ID=$ACCOUNT npx --yes wrangler@3 pages deploy weltzcraft-site \
+            --project-name "$PROJECT" --branch main --commit-dirty=true
+
+      - name: Connect weltzcraft.com and www
+        run: |
+          cf() { curl --silent --show-error -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" "$@"; }
+          API=https://api.cloudflare.com/client/v4
+          for host in "$DOMAIN" "www.$DOMAIN"; do
+            # Pages custom domain (ignored if it is already attached)
+            cf -X POST "$API/accounts/$ACCOUNT/pages/projects/$PROJECT/domains" -d "$(jq -n --arg n "$host" '{name:$n}')" \
+              | jq -c --arg h "$host" '{domain:$h, success, errors: [.errors[]?.message]}'
+            # DNS: proxied CNAME to the Pages project (apex CNAME is flattened; email MX/TXT records stay)
+            existing=$(cf "$API/zones/$ZONE/dns_records?name=$host" | jq -c '[.result[] | select(.type=="A" or .type=="AAAA" or .type=="CNAME")]')
+            body=$(jq -n --arg n "$host" --arg c "$PROJECT.pages.dev" '{type:"CNAME", name:$n, content:$c, proxied:true, ttl:1}')
+            if [ "$(echo "$existing" | jq length)" = "0" ]; then
+              cf -X POST "$API/zones/$ZONE/dns_records" -d "$body" | jq -c --arg h "$host" '{dns:$h, added:.success, errors}'
+            elif [ "$(echo "$existing" | jq -r --arg c "$PROJECT.pages.dev" '.[0].type == "CNAME" and .[0].content == $c')" = "true" ]; then
+              echo "dns ok: $host"
+            else
+              id=$(echo "$existing" | jq -r '.[0].id')
+              echo "replacing $(echo "$existing" | jq -c '.[0] | {type, content}') for $host"
+              cf -X PUT "$API/zones/$ZONE/dns_records/$id" -d "$body" | jq -c --arg h "$host" '{dns:$h, updated:.success, errors}'
+            fi
+          done
+          sleep 20
+          cf "$API/accounts/$ACCOUNT/pages/projects/$PROJECT/domains" | jq -c '[.result[]? | {name, status}]'
+
+      - name: Check the live site
+        run: |
+          for u in "https://$PROJECT.pages.dev/" "https://$DOMAIN/"; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$u" || true); echo "$u -> $code"
+          done
+          echo "A new custom domain can take a few minutes to get its certificate; re-run this step later if weltzcraft.com isn't 200 yet."
