@@ -240,7 +240,7 @@
       function update() {
         var s = slug(), item = cat.items[s];
         var colorName = (p.colors.filter(function (c) { return c.key === st.color; })[0] || {}).name;
-        var src = '/img/merch/' + s + '.webp';
+        var src = '/img/merch/' + s + '.webp' + (item && item.hash ? '?v=' + item.hash : '');
         if (img.getAttribute('src') !== src) { img.classList.add('loading'); img.src = src; }
         img.alt = p.name + ', ' + colorName + ', ' + cat.logos[st.logo].name + ' logo';
         var price = p.price + (UP[st.size] || 0);
@@ -297,7 +297,7 @@
     var n = 0, total = 0;
     linesEl.innerHTML = cart.length ? cart.map(function (c, i) {
       var f = info(c); n += c.qty; total += f.price * c.qty;
-      return '<li class="m-line"><img src="/img/merch/' + c.slug + '.webp" alt="" width="64" height="64">' +
+      return '<li class="m-line"><img src="/img/merch/' + c.slug + '.webp?v=' + (CAT.items[c.slug].hash || '') + '" alt="" width="64" height="64">' +
         '<div><h3>' + esc(f.name) + '</h3><p>' + esc(f.sub) + '</p><div class="m-q">' +
         '<button type="button" data-dec="' + i + '" aria-label="One fewer">−</button><span>' + c.qty + '</span>' +
         '<button type="button" data-inc="' + i + '" aria-label="One more">+</button></div>' +
