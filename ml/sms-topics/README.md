@@ -14,6 +14,10 @@ It replaces most Gemini calls for Smart Replies and lets automatic answers cover
   the fresh set, write a new fresh set.
 - Runtime: `supabase/functions/_shared/smsTopicModel.ts` (shared features code, `classifyText`, `autoTopic`).
 
+2026-11-11: `heldout-fresh-2.json` (58 new hand-written texts, written without looking at the model's mistakes):
+sorted right 96.6%, automatic answers 24 of 29 answerable (83%), wrong automatic replies 0. No retrain: the two misses
+("just checking on my car, thanks" went to a person; a complaint after a repair looked like a car question) are safe ones.
+
 Automatic replies need the model to be at least 90% sure, the text to be short and single-question, and none
 of the words that need a person (safety, prices, a time, booking, complaints...). Approvals are never automatic.
 
