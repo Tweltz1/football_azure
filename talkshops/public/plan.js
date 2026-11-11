@@ -46,7 +46,7 @@
 
     /** The Plan tab. */
     function view(p) {
-      if (!p) return `<div class="loading">Loading your plan…</div>`;
+      if (!p) return window.tsLoader ? window.tsLoader("Loading your plan…") : `<div class="loading">Loading your plan…</div>`;
       let status;
       if (p.state === "free") status = "Your shop is on a free plan with no limits.";
       else if (p.state === "trial") status = `You're on the free trial until ${fmtDate(p.trialEndsAt)}. It includes ${p.textLimit} texts and ${p.carLimit} cars; emails are unlimited. If you choose a plan now, the first charge waits until the trial ends.`;
