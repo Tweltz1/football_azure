@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Curbsy Help and Support</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; max-width: 680px; margin: 40px auto; padding: 0 16px; line-height: 1.55; color: #1b1d18; background: #f5f3ee; }
+    h1 { font-size: 1.7rem; letter-spacing: -0.02em; } h1 span { color: #15803d; }
+    h2 { font-size: 1.1rem; margin-top: 1.6em; } a { color: #15803d; }
+    @media (prefers-color-scheme: dark) { body { background: #11130f; color: #f1f2ec; } a, h1 span { color: #3fbf6c; } }
+    .app-bar { display: none; }
+    .in-app .app-bar { display: flex; position: sticky; top: 0; z-index: 5; margin: 0 -16px 8px; padding: calc(env(safe-area-inset-top, 0px) + 6px) 8px 6px; background: #f5f3ee; border-bottom: 1px solid #e3dfd4; }
+    .in-app body { margin-top: 0; }
+    .app-bar a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; font-weight: 650; text-decoration: none; }
+    @media (prefers-color-scheme: dark) { .in-app .app-bar { background: #11130f; border-color: #2e3229; } }
+  </style>
+  <script>
+    // Opened straight inside the Curbsy app (not in its Terms/Privacy panel): show a way back to the app.
+    if (/JunkApp/.test(navigator.userAgent) && window.self === window.top) document.documentElement.className = 'in-app';
+  </script>
+</head>
+<body>
+  <nav class="app-bar"><a href="/junk">&lsaquo; Back to Curbsy</a></nav>
+  <h1>Curb<span>sy</span> Help</h1>
+  <p>Curbsy is an iPhone app for giving away and finding free stuff near you.</p>
+  <h2>Contact us</h2>
+  <p>Open the app and go to <strong>Me &gt; Contact Curbsy</strong>. A person reads every message within 24 hours. To report a listing, tap the flag on its page. To report a person, tap the flag in the chat.</p>
+  <h2>Posting</h2>
+  <p>Tap <strong>+</strong>, take a photo, and check the name Curbsy suggests. You see a preview before anything is shared. Your address is never shown: neighbors see only how far away the item is, and the exact spot only once they are on their way or you write back to them.</p>
+  <h2>Picking something up</h2>
+  <p>Tap <strong>I'm on my way</strong> to hold an item while you drive over. Keep location on for Curbsy during the trip. If you stop heading there, the item goes back up for someone else. Tap <strong>Got it</strong> once it's loaded.</p>
+  <h2>Curbsy Plus and tips</h2>
+  <p>Curbsy Plus is an optional monthly subscription billed by Apple. To cancel, open iPhone <strong>Settings &gt; your name &gt; Subscriptions &gt; Curbsy</strong>. To get it back on a new phone, go to <strong>Me &gt; Restore purchases</strong>. Refunds are handled by Apple at reportaproblem.apple.com.</p>
+  <h2>Warnings, hidden listings and bans</h2>
+  <p>If a listing of yours was hidden or your account was paused and you think it was a mistake, tap <strong>Appeal</strong> in the Me tab or <strong>Ask for a review</strong> on the listing.</p>
+  <h2>Deleting your account</h2>
+  <p>Go to <strong>Me &gt; Delete my account</strong>. Your listings, photos and messages are deleted right away. Cancel Curbsy Plus first, since Apple bills it separately.</p>
+  <p><a href="/junk-terms.html">Terms of Use</a> · <a href="/junk-privacy.html">Privacy Policy</a></p>
+</body>
+</html>

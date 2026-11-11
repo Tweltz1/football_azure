@@ -1,0 +1,35 @@
+# Sets up Curbsy in App Store Connect with the same API key the TestFlight upload uses
+# (scripts/curbsy-store/). Runs the script named in scripts/curbsy-store/run.txt when that folder changes.
+name: Curbsy App Store setup
+
+on:
+  push:
+    branches: ['claude/project-thread-bv36or']
+    paths:
+      - 'scripts/curbsy-store/**'
+      - '.github/workflows/curbsy-store-setup.yml'
+
+concurrency:
+  group: curbsy-store-setup
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY }}
+        run: |
+          script=$(head -n 1 scripts/curbsy-store/run.txt | tr -cd 'a-z0-9-')
+          echo "Running $script"
+          node "scripts/curbsy-store/$script.js"
