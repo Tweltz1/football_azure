@@ -754,7 +754,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const taken = sched ? await bookedTimes(store, shop.id, ctx.now(), sched.ahead) : [];
     if (method === 'GET') return ok({
       shop: { name: shop.name, phone: shop.phone, hours: shop.hours, ...(pro && shop.brand ? { brand: shop.brand } : {}) }, note: shop.grow.bookingNote ?? '',
-      ...(sched ? { zone: sched.zone, auto: sched.auto, slots: openSlots(sched, ctx.now(), taken.map((t) => t.at)) } : {}),
+      ...(sched ? { zone: sched.zone, auto: sched.auto, ...(sched.paused ? { paused: true } : {}), slots: openSlots(sched, ctx.now(), taken.map((t) => t.at)) } : {}),
     });
     if (method !== 'POST') return { status: 405 };
     if (str(body.website, 100)) return ok({ ok: true }); // a form robot filled the hidden field
@@ -763,6 +763,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     // With appointment hours set, the customer picks an exact open time; the day and part of the day follow from it.
     let slot = '';
     if (sched) {
+      if (sched.paused) return { status: 409, body: `${shop.name} isn't taking new appointments online right now.${shop.phone ? ` Please call ${shop.phone}.` : ' Please call the shop.'}` };
       slot = str(body.slot, 40);
       if (!slot || !Number.isFinite(Date.parse(slot))) return bad('Pick a time for your appointment.');
       slot = new Date(slot).toISOString();

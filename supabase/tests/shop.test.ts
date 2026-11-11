@@ -1028,6 +1028,20 @@ test('appointment scheduling: open times, picked slot fills up, instant booking 
   assert.match(w.texts.at(-1)!.body, /^Hola Ana, Ridgeline confirm/);
   assert.equal(((await dan('GET', 'shop/bookings'))?.body as { rows: unknown[] }).rows.length, 0);
   assert.ok([...w.jobs.values()].some((j) => j.data.appointment === next && j.data.customer.name === 'Ana Ruiz'));
+  // A day off drops out; pausing hides every time and turns new bookings away, and booked cars stay.
+  const dayOff = ((await pub('GET', `shop/book/${token}`))?.body as Info).slots[1].day;
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: { ...schedule, closed: [dayOff] } } });
+  const open = (await pub('GET', `shop/book/${token}`))?.body as Info;
+  assert.ok(open.slots.length && !open.slots.some((d) => d.day === dayOff));
+  assert.equal((await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: { ...schedule, closed: ['next friday'] } } }))?.status, 400);
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: { ...schedule, paused: true } } });
+  const paused = (await pub('GET', `shop/book/${token}`))?.body as Info & { paused: boolean };
+  assert.equal(paused.paused, true);
+  assert.equal(paused.slots.length, 0);
+  const no = await pub('POST', `shop/book/${token}`, { ...form, customer: { ...form.customer, phone: '555-201-4444' }, slot: open.slots[0].times[0].at });
+  assert.equal(no?.status, 409);
+  assert.match(String(no?.body), /isn't taking new appointments online right now\. Please call 715-555-0100\./);
+  assert.ok([...w.jobs.values()].some((j) => j.data.appointment === next), 'booked cars stay');
   // Turning appointment hours off goes back to plain requests.
   await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: null } });
   assert.equal(((await pub('GET', `shop/book/${token}`))?.body as { slots?: unknown }).slots, undefined);

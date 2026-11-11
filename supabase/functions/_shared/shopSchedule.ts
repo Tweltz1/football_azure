@@ -23,7 +23,12 @@ export interface Schedule {
   auto: boolean;
   /** Text the customer a reminder the day before. */
   reminder: boolean;
+  /** The shop is booked up: no new appointments online until it switches this off. Booked ones stay. */
+  paused?: boolean;
+  /** Dates (YYYY-MM-DD, shop-local) with no appointments: holidays, days off, a week that's full. */
+  closed?: string[];
 }
+export const MAX_CLOSED = 60;
 export const STEPS = [15, 30, 45, 60, 90, 120] as const;
 export const NOTICE_HOURS = [0, 1, 2, 4, 12, 24, 48] as const;
 export const AHEAD_DAYS = [7, 14, 21, 30, 60] as const;
@@ -58,7 +63,14 @@ export function parseSchedule(v: unknown): Schedule | null | string {
   if (!(NOTICE_HOURS as readonly number[]).includes(notice)) return 'Choose how much notice you need.';
   if (!(AHEAD_DAYS as readonly number[]).includes(ahead)) return 'Choose how far ahead customers can book.';
   for (const d of week) if (d && mins(d[1]) - mins(d[0]) < step) return 'Each open day needs room for at least one appointment.';
-  return { zone, week, step, perSlot, notice, ahead, auto: s.auto === true, reminder: s.reminder !== false };
+  let closed: string[] = [];
+  if (s.closed !== undefined && s.closed !== null) {
+    if (!Array.isArray(s.closed) || s.closed.length > MAX_CLOSED) return `List up to ${MAX_CLOSED} days off.`;
+    for (const d of s.closed) if (typeof d !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(d) || !Number.isFinite(Date.parse(d + 'T12:00:00Z'))) return 'Enter each day off as a date.';
+    closed = [...new Set(s.closed as string[])].sort();
+  }
+  return { zone, week, step, perSlot, notice, ahead, auto: s.auto === true, reminder: s.reminder !== false,
+    ...(s.paused === true ? { paused: true } : {}), ...(closed.length ? { closed } : {}) };
 }
 
 /** The wall-clock parts of an instant in a time zone. */
@@ -94,6 +106,7 @@ export interface OpenDay { day: string; times: { time: string; at: string }[] }
  * appointments already on the books and requests still waiting; a start time is full once it has `perSlot` of them.
  */
 export function openSlots(s: Schedule, now: Date, taken: string[]): OpenDay[] {
+  if (s.paused) return [];
   const count = new Map<number, number>();
   for (const t of taken) { const ms = Date.parse(t); if (Number.isFinite(ms)) count.set(ms, (count.get(ms) ?? 0) + 1); }
   const earliest = now.getTime() + s.notice * 3_600_000;
@@ -102,7 +115,7 @@ export function openSlots(s: Schedule, now: Date, taken: string[]): OpenDay[] {
   for (let i = 0; i <= s.ahead; i++) {
     const day = addDays(today, i);
     const hours = s.week[new Date(day + 'T12:00:00Z').getUTCDay()];
-    if (!hours) continue;
+    if (!hours || s.closed?.includes(day)) continue;
     const times: OpenDay['times'] = [];
     for (let m = mins(hours[0]); m + s.step <= mins(hours[1]); m += s.step) {
       const at = zonedTime(day, hhmm(m), s.zone);

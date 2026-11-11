@@ -14,7 +14,7 @@
   const vehicle = (v) => [v?.year, v?.make, v?.model].filter(Boolean).join(" ");
   const $ = (s) => document.querySelector(s);
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch { /* private mode */ } } };
-  const ui = { schedOpen: false, bookings: null, bkOpen: null, bkMode: "", days: 30, results: null, resultsErr: "", logoBusy: false };
+  const ui = { schedOpen: false, schedClosed: null, bookings: null, bkOpen: null, bkMode: "", days: 30, results: null, resultsErr: "", logoBusy: false };
 
   function init(adapter) { A = adapter; }
   const pro = () => !!A?.plan()?.pro || (A?.plan() == null);
@@ -160,6 +160,7 @@
   }
   function slotPicker(L, es) {
     const days = bk.info.slots || [];
+    if (bk.info.paused) return `<div class="full gr-slots-none"><b>${L(`${esc(bk.info.shop.name)} is booked up and isn't taking new appointments online right now.`, `${esc(bk.info.shop.name)} está completo y no está tomando citas nuevas en línea por ahora.`)}</b> ${bk.info.shop.phone ? L("Please call ", "Llame al ") + `<a href="tel:${esc(bk.info.shop.phone)}">${esc(bk.info.shop.phone)}</a>.` : L("Please check back soon.", "Vuelva a intentarlo pronto.")}</div>`;
     if (!days.length) return `<div class="full gr-slots-none"><b>${L("No open times right now.", "No hay horarios disponibles por ahora.")}</b> ${bk.info.shop.phone ? L("Please call ", "Llame al ") + `<a href="tel:${esc(bk.info.shop.phone)}">${esc(bk.info.shop.phone)}</a>.` : L("Please call the shop.", "Llame al taller.")}</div>`;
     if (!days.some((d) => d.day === bk.day)) bk.day = days[0].day;
     const today = days.find((d) => d.day === bk.day);
@@ -215,7 +216,7 @@
         <label class="gr-hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
         <label class="chk full"><input type="checkbox" name="consent" checked> ${L(`${esc(s.name)} may text or email me about this appointment and my repair. Reply STOP to opt out.`, `${esc(s.name)} puede enviarme mensajes o correos sobre esta cita y mi reparación. Responda STOP para no recibir más.`)}</label>
         ${bk.err ? `<p class="form-err full" role="alert">${esc(bk.err)}</p>` : ""}
-        <button class="btn primary full" type="submit" ${bk.busy ? "disabled" : ""}>${bk.busy ? L("Sending…", "Enviando…") : auto ? L("Book this time", "Reservar esta hora") : slots ? L("Request this time", "Pedir esta hora") : L("Send request", "Enviar solicitud")}</button>
+        <button class="btn primary full" type="submit" ${bk.busy || (slots && !(bk.info.slots || []).length) ? "disabled" : ""}>${bk.busy ? L("Sending…", "Enviando…") : auto ? L("Book this time", "Reservar esta hora") : slots ? L("Request this time", "Pedir esta hora") : L("Send request", "Enviar solicitud")}</button>
         <p class="muted full" style="margin:0;font-size:13px">${auto ? L("You'll get a confirmation right away.", "Recibirá la confirmación enseguida.") : slots ? L("The shop confirms your time.", "El taller confirma su hora.") : L("This is a request. The shop confirms the exact time.", "Esto es una solicitud. El taller confirma la hora exacta.")}</p>
       </form>`}
       <p class="cust-top gr-lang"><button type="button" class="linkbtn" data-gr-book-lang="${es ? "en" : "es"}">${es ? "View in English" : "Ver en español"}</button></p>
@@ -439,10 +440,14 @@
   const browserZone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago"; } catch { return "America/Chicago"; } };
   function schedulePanel(s) {
     const cur = s.grow?.schedule, on = !!cur || ui.schedOpen;
+    const todayIso = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    if (ui.schedClosed == null) ui.schedClosed = (cur?.closed || []).filter((d) => d >= todayIso);
+    const dayOff = (d) => new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
     const sc = cur || { zone: s.smartSchedule?.zone || browserZone(), week: [null, ["08:00", "17:00"], ["08:00", "17:00"], ["08:00", "17:00"], ["08:00", "17:00"], ["08:00", "17:00"], null], step: 60, perSlot: 1, notice: 2, ahead: 14, auto: false, reminder: true };
     const opt = (list, v, fmt) => list.map(([val, l]) => `<option value="${val}" ${v === val ? "selected" : ""}>${esc(fmt ? fmt(l) : l)}</option>`).join("");
     return `<div class="gr-sched" id="gr-sched"><h3>Appointment hours</h3>
       <label class="chk"><input type="checkbox" id="gr-sched-on" ${on ? "checked" : ""}> Show open times so customers pick an exact appointment</label>
+      ${cur ? `<label class="chk gr-sched-pause"><input type="checkbox" id="gr-sched-pause" ${cur.paused ? "checked" : ""}> <span><b>We're booked up: pause new appointments.</b> Customers see a note to call you. Appointments already booked stay on your Bay.</span></label>` : ""}
       ${on ? `<p class="muted" style="margin:0;font-size:13px">Times already booked, or waiting on your OK, are hidden. Times are in ${esc(sc.zone.replace(/_/g, " "))}.</p>
       <div class="gr-sched-week">${DAYS.map((name, i) => { const d = sc.week[i]; return `<div class="gr-sched-day"><label class="chk"><input type="checkbox" data-sched-day="${i}" ${d ? "checked" : ""}> ${name}</label>
         <input type="time" step="900" data-sched-open="${i}" value="${esc(d ? d[0] : "08:00")}" aria-label="${name} opens"><span class="muted">to</span><input type="time" step="900" data-sched-close="${i}" value="${esc(d ? d[1] : "17:00")}" aria-label="${name} closes"></div>`; }).join("")}</div>
@@ -452,6 +457,8 @@
         <label class="field">Notice you need<select id="gr-sched-notice">${opt([[0, "None"], [1, "1 hour"], [2, "2 hours"], [4, "4 hours"], [12, "12 hours"], [24, "1 day"], [48, "2 days"]], sc.notice)}</select></label>
         <label class="field">Customers can book up to<select id="gr-sched-ahead">${opt([[7, "1 week ahead"], [14, "2 weeks ahead"], [21, "3 weeks ahead"], [30, "30 days ahead"], [60, "60 days ahead"]], sc.ahead)}</select></label>
       </div>
+      <div class="gr-sched-off"><label class="field">Days off <small class="muted">(holidays, vacation, days you're full)</small><span class="gr-sched-off-add"><input type="date" id="gr-sched-off-day" min="${todayIso}"><button type="button" class="btn sm" data-gr-sched-off-add>Add day</button></span></label>
+        ${ui.schedClosed.length ? `<ul class="gr-sched-off-list">${ui.schedClosed.map((d) => `<li>${esc(dayOff(d))}<button type="button" class="linkbtn" data-gr-sched-off-del="${esc(d)}" aria-label="Remove ${esc(dayOff(d))}">Remove</button></li>`).join("")}</ul>` : ""}</div>
       <label class="chk"><input type="checkbox" id="gr-sched-auto" ${sc.auto ? "checked" : ""}> Book them right away (no need to confirm each one). Leave off to confirm each request yourself.</label>
       <label class="chk"><input type="checkbox" id="gr-sched-remind" ${sc.reminder ? "checked" : ""}> Text customers a reminder the day before (only those who agreed to texts; counts toward your texts)</label>
       <input type="hidden" id="gr-sched-zone" value="${esc(sc.zone)}">
@@ -461,7 +468,7 @@
   function readSchedule() {
     const n = (id) => Number($(id).value);
     const week = DAYS.map((_, i) => $(`[data-sched-day="${i}"]`).checked ? [$(`[data-sched-open="${i}"]`).value, $(`[data-sched-close="${i}"]`).value] : null);
-    return { zone: $("#gr-sched-zone").value, week, step: n("#gr-sched-step"), perSlot: n("#gr-sched-per"), notice: n("#gr-sched-notice"), ahead: n("#gr-sched-ahead"), auto: $("#gr-sched-auto").checked, reminder: $("#gr-sched-remind").checked };
+    return { zone: $("#gr-sched-zone").value, week, step: n("#gr-sched-step"), perSlot: n("#gr-sched-per"), notice: n("#gr-sched-notice"), ahead: n("#gr-sched-ahead"), auto: $("#gr-sched-auto").checked, reminder: $("#gr-sched-remind").checked, closed: ui.schedClosed || [], paused: !!$("#gr-sched-pause")?.checked };
   }
   async function saveShop(patch, msg) {
     try { await A.saveShop(patch); if (msg) A.toast(msg); return true; } catch (e) { A.toast(e.message); return false; }
@@ -495,7 +502,7 @@
   // ==================== Events ====================
   document.addEventListener("click", async (e) => {
     if (!A) return;
-    const t = e.target.closest("[data-gr-day],[data-gr-slot],[data-gr-sched-save],[data-gr-lang],[data-gr-book-lang],[data-gr-review],[data-gr-results],[data-gr-days],[data-gr-bk-open],[data-gr-bk-cancel],[data-gr-bk-accept],[data-gr-bk-decline],[data-gr-clock],[data-gr-review-ask],[data-gr-grow],[data-gr-copy],[data-gr-save-note],[data-gr-new-link],[data-gr-save-review],[data-gr-save-notify],[data-gr-logo],[data-gr-logo-remove],[data-gr-color-save],[data-gr-color-clear],[data-gr-export]");
+    const t = e.target.closest("[data-gr-day],[data-gr-slot],[data-gr-sched-save],[data-gr-sched-off-add],[data-gr-sched-off-del],[data-gr-lang],[data-gr-book-lang],[data-gr-review],[data-gr-results],[data-gr-days],[data-gr-bk-open],[data-gr-bk-cancel],[data-gr-bk-accept],[data-gr-bk-decline],[data-gr-clock],[data-gr-review-ask],[data-gr-grow],[data-gr-copy],[data-gr-save-note],[data-gr-new-link],[data-gr-save-review],[data-gr-save-notify],[data-gr-logo],[data-gr-logo-remove],[data-gr-color-save],[data-gr-color-clear],[data-gr-export]");
     if (!t) return;
     if (t.dataset.grLang) { store.set("ts-lang-" + t.dataset.token, t.dataset.grLang); A.renderCustomer(); return; }
     if (t.dataset.grBookLang) { keepDraft(); store.set("ts-book-lang", t.dataset.grBookLang); renderBooking(bk.token); return; }
@@ -542,7 +549,17 @@
       try { await navigator.clipboard.writeText(el.value); A.toast("Link copied"); } catch { el.select(); A.toast("Press Ctrl+C or ⌘C to copy"); }
       return;
     }
-    if (t.hasAttribute("data-gr-sched-save")) { t.disabled = true; if (await saveShop({ grow: { schedule: readSchedule() } }, "Appointment hours saved. Your booking page shows open times now.")) A.render(); else t.disabled = false; return; }
+    if (t.hasAttribute("data-gr-sched-save")) { t.disabled = true; if (await saveShop({ grow: { schedule: readSchedule() } }, "Appointment hours saved. Your booking page shows open times now.")) { ui.schedClosed = null; A.render(); } else t.disabled = false; return; }
+    // Days off are part of the hours form: adding or removing one keeps the other edits and saves everything together.
+    if (t.hasAttribute("data-gr-sched-off-add") || t.dataset.grSchedOffDel) {
+      const d = $("#gr-sched-off-day")?.value, draft = readSchedule();
+      if (t.dataset.grSchedOffDel) draft.closed = draft.closed.filter((x) => x !== t.dataset.grSchedOffDel);
+      else if (!d) { A.toast("Pick the day first"); return; }
+      else if (draft.closed.length >= 60) { A.toast("That's the most days off you can list. Remove one first."); return; }
+      else draft.closed = [...new Set([...draft.closed, d])].sort();
+      if (await saveShop({ grow: { schedule: draft } }, t.dataset.grSchedOffDel ? "Day off removed" : "Day off added. Customers can't book that day.")) { ui.schedClosed = null; A.render(); }
+      return;
+    }
     if (t.hasAttribute("data-gr-save-note")) { await saveShop({ grow: { bookingNote: $("#gr-book-note").value.trim() } }, "Booking note saved"); return; }
     if (t.hasAttribute("data-gr-new-link")) { if (await saveShop({ newBookingLink: true }, "New booking link made. Update it wherever you posted the old one.")) A.render(); return; }
     if (t.hasAttribute("data-gr-save-review")) {
@@ -565,6 +582,12 @@
     }
   });
   document.addEventListener("change", async (e) => {
+    if (A && e.target.id === "gr-sched-pause") {
+      const cur = A.shop()?.grow?.schedule, on = e.target.checked;
+      if (!cur) return;
+      if (await saveShop({ grow: { schedule: { ...cur, paused: on } } }, on ? "New appointments are paused. Booked ones stay on your Bay." : "You're taking new appointments again.")) A.render(); else e.target.checked = !on;
+      return;
+    }
     if (A && e.target.id === "gr-sched-on") {
       if (e.target.checked) { ui.schedOpen = true; A.render(); return; }
       ui.schedOpen = false;
@@ -592,9 +615,10 @@
     const zoned = (day, t) => { const g = Date.parse(`${day}T${t}:00Z`); return g - offset(g - offset(g)); };
     const count = new Map(); for (const t of taken) { const ms = ts(t); if (Number.isFinite(ms)) count.set(ms, (count.get(ms) || 0) + 1); }
     const earliest = now.getTime() + sc.notice * 3600000, today = parts(now.getTime()).day, out = [];
+    if (sc.paused) return out;
     for (let i = 0; i <= sc.ahead; i++) {
       const day = new Date(Date.parse(today + "T12:00:00Z") + i * 86400000).toISOString().slice(0, 10), h = sc.week[new Date(day + "T12:00:00Z").getUTCDay()];
-      if (!h) continue;
+      if (!h || (sc.closed || []).includes(day)) continue;
       const times = [];
       for (let m = mn(h[0]); m + sc.step <= mn(h[1]); m += sc.step) {
         const at = zoned(day, hm(m));
