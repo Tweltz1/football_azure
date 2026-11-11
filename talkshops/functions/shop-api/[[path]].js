@@ -5,8 +5,8 @@ export async function onRequest({ request, env }) {
   if (!path.startsWith("shop/") || !/^[a-zA-Z0-9_/-]+$/.test(path) || path.includes("..")) {
     return new Response("Invalid shop route", { status: 400 });
   }
-  const base = env.SUPABASE_URL || env.REACT_APP_SUPABASE_URL || "https://nkwedlskhnojseeroezm.supabase.co";
-  const api = env.API_URL || new URL("/functions/v1/api", base).href;
+  const base = env.TALKSHOPS_SUPABASE_URL || "https://evpcfkasnbpoajkpltch.supabase.co";
+  const api = env.TALKSHOPS_API_URL || new URL("/functions/v1/api", base).href;
   const upstream = new URL(api.replace(/\/$/, "") + "/" + path);
   upstream.search = incoming.search;
   const headers = new Headers();

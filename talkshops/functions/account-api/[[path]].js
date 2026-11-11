@@ -5,7 +5,7 @@ export async function onRequest({ request, env }) {
   if (!/^[a-zA-Z0-9_/-]+$/.test(path) || path.includes("..")) {
     return new Response("Invalid account route", { status: 400 });
   }
-  const base = env.SUPABASE_URL || env.REACT_APP_SUPABASE_URL || "https://nkwedlskhnojseeroezm.supabase.co";
+  const base = env.TALKSHOPS_SUPABASE_URL || "https://evpcfkasnbpoajkpltch.supabase.co";
   const upstream = new URL("/auth/v1/" + path, base);
   upstream.search = incoming.search;
   const headers = new Headers();
