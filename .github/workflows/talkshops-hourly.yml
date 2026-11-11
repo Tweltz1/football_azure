@@ -17,7 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      # Talk Shops' own Supabase project once TALKSHOPS_SUPABASE_PROJECT_ID is set; the shared project until then.
+      SUPABASE_PROJECT_ID: ${{ secrets.TALKSHOPS_SUPABASE_PROJECT_ID || secrets.SUPABASE_PROJECT_ID }}
     steps:
       - name: Run reminders and morning emails
         run: |

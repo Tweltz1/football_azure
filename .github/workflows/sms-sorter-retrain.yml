@@ -16,7 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      # Talk Shops' own Supabase project once TALKSHOPS_SUPABASE_PROJECT_ID is set; the shared project until then.
+      SUPABASE_PROJECT_ID: ${{ secrets.TALKSHOPS_SUPABASE_PROJECT_ID || secrets.SUPABASE_PROJECT_ID }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -37,3 +38,4 @@ jobs:
           git commit -m "Talk Shops: weekly text sorter retrain with real scrubbed texts" || exit 0
           git push origin HEAD:claude/project-thread-6lgsrr
           gh workflow run deploy-supabase.yml --ref claude/project-thread-6lgsrr
+          gh workflow run deploy-talkshops-supabase.yml --ref claude/project-thread-6lgsrr

@@ -1,0 +1,108 @@
+name: Talk Shops Supabase API
+
+# Talk Shops has its own Supabase project (separate from the hobby apps' hood-league project).
+# This applies talkshops/supabase/migrations and deploys the `api` function there, built from
+# supabase/functions/talkshops-api/index.ts plus the shared code it imports.
+# Function secrets come from GitHub secrets (TALKSHOPS_*), so no key is ever typed into a dashboard or chat.
+on:
+  push:
+    branches:
+      - main
+      - claude/project-thread-6lgsrr
+    paths:
+      - "talkshops/supabase/**"
+      - "supabase/functions/talkshops-api/**"
+      - "supabase/functions/_shared/**"
+      - "supabase/functions/api/supabaseAdapters.ts"
+      - "supabase/functions/api/narrator.ts"
+      - ".github/workflows/deploy-talkshops-supabase.yml"
+  pull_request:
+    paths:
+      - "talkshops/supabase/**"
+      - "supabase/functions/talkshops-api/**"
+      - ".github/workflows/deploy-talkshops-supabase.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-talkshops-supabase
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test Talk Shops API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run Talk Shops tests
+        run: node --test supabase/tests/shop.test.ts supabase/tests/shopPlans.test.ts supabase/tests/shopHowTo.test.ts supabase/tests/nhtsa.test.ts supabase/tests/shopAccount.test.ts supabase/tests/shopStaff.test.ts supabase/tests/shopSms.test.ts supabase/tests/smsFit.test.ts supabase/tests/smsTopicModel.test.ts supabase/tests/learnTexts.test.ts
+
+  deploy:
+    name: Deploy Talk Shops database and API
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.TALKSHOPS_SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.TALKSHOPS_SUPABASE_PROJECT_ID }}
+    steps:
+      - name: Check Supabase secrets
+        id: secrets
+        run: |
+          if [ -z "$SUPABASE_PROJECT_ID" ] || [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::notice::TALKSHOPS_SUPABASE_PROJECT_ID / TALKSHOPS_SUPABASE_DB_PASSWORD are not set yet, so nothing was deployed. See talkshops/README.md."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ready == 'true'
+      - uses: supabase/setup-cli@v1
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          version: 2.119.0
+      - name: Put the function code in place
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          mkdir -p talkshops/supabase/functions/api
+          cp -r supabase/functions/_shared talkshops/supabase/functions/_shared
+          cp supabase/functions/talkshops-api/index.ts talkshops/supabase/functions/api/index.ts
+          cp supabase/functions/api/supabaseAdapters.ts supabase/functions/api/narrator.ts talkshops/supabase/functions/api/
+      - name: Link project
+        if: steps.secrets.outputs.ready == 'true'
+        run: supabase link --workdir talkshops --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
+      - name: Apply database changes
+        if: steps.secrets.outputs.ready == 'true'
+        run: supabase db push --workdir talkshops --password "$SUPABASE_DB_PASSWORD"
+      - name: Set function secrets
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          RESEND_API_KEY: ${{ secrets.TALKSHOPS_RESEND_API_KEY }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TALKSHOPS_TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TALKSHOPS_TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM: ${{ secrets.TALKSHOPS_TWILIO_FROM }}
+          STRIPE_SECRET_KEY: ${{ secrets.TALKSHOPS_STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.TALKSHOPS_STRIPE_WEBHOOK_SECRET }}
+          GEMINI_API_KEY: ${{ secrets.TALKSHOPS_GEMINI_API_KEY }}
+          TALKSHOPS_EMAIL_FROM: Talk Shops <updates@talkshops.app>
+          SHOP_LINK_BASE: https://talkshops.app/?c=
+          TALKSHOPS_SITE_URL: https://talkshops.app
+        run: |
+          # Only secrets that have a value are sent; a missing one leaves that feature off (texts, payments, AI).
+          umask 077
+          : > "$RUNNER_TEMP/talkshops.env"
+          for name in RESEND_API_KEY TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET GEMINI_API_KEY TALKSHOPS_EMAIL_FROM SHOP_LINK_BASE TALKSHOPS_SITE_URL; do
+            value="${!name}"
+            if [ -n "$value" ]; then printf '%s="%s"\n' "$name" "$value" >> "$RUNNER_TEMP/talkshops.env"; else echo "::notice::$name is not set."; fi
+          done
+          supabase secrets set --workdir talkshops --project-ref "$SUPABASE_PROJECT_ID" --env-file "$RUNNER_TEMP/talkshops.env"
+          rm -f "$RUNNER_TEMP/talkshops.env"
+      - name: Deploy API function
+        if: steps.secrets.outputs.ready == 'true'
+        run: supabase functions deploy api --workdir talkshops --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+      - name: Health check
+        if: steps.secrets.outputs.ready == 'true'
+        run: curl --fail --silent --show-error --retry 3 --retry-delay 5 "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/api/health"
