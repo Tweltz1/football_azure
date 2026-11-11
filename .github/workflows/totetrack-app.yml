@@ -213,6 +213,19 @@ jobs:
             || { grep -E "error:" -A4 "$RUNNER_TEMP/archive.log" | head -n 120; tail -n 30 "$RUNNER_TEMP/archive.log"; exit 1; }
           tail -n 15 "$RUNNER_TEMP/archive.log"
 
+          # The archive is unsigned, so its entitlements (Sign in with Apple, NFC) aren't in it, and the cloud
+          # signing below only keeps entitlements the app already carries. Without this, Apple's sign-in sheet
+          # fails with "The authorization attempt failed for an unknown reason". Turn the capabilities on for
+          # the App ID, then sign the entitlements in with a throwaway signature that the export replaces.
+          KEY_P8="$KEY_P8" KEY_ID="$KEY_ID" ISSUER_ID="$ISSUER_ID" node tools/enable_capabilities.js || { rm -f "$KEY_PATH"; exit 1; }
+          APP_PATH="$RUNNER_TEMP/ToteTrack.xcarchive/Products/Applications/ToteTrack.app"
+          ENT=ios/ToteTrack/ToteTrack.entitlements
+          test -f "$ENT" || { echo "::error::$ENT not found after prebuild"; rm -f "$KEY_PATH"; exit 1; }
+          cat "$ENT"
+          find "$APP_PATH/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -exec codesign --force --sign - {} \; 2>/dev/null || true
+          codesign --force --sign - --entitlements "$ENT" "$APP_PATH"
+          codesign -d --entitlements - "$APP_PATH" | grep -q applesignin || { echo "::error::Sign in with Apple entitlement missing"; rm -f "$KEY_PATH"; exit 1; }
+
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
