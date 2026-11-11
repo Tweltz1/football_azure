@@ -98,6 +98,8 @@ export async function shareRecipe(recipe: Recipe, category: Category, author: st
     })
     .select('id')
     .single();
+  // Row security refuses accounts banned from sharing (after reported recipes were removed).
+  if (error?.code === '42501') throw new Error('This account can’t share recipes anymore. Contact shopstride@weltzcraft.com if you think that’s a mistake.');
   if (error) throw new Error(error.message);
   return (data as { id: string }).id;
 }
