@@ -74,6 +74,8 @@ struct HomeView: View {
                     .background(Theme.panel, in: RoundedRectangle(cornerRadius: 16))
 
                     NavigationLink("How to play") { RulesView() }
+
+                    StudioCredit()
                         .padding(.bottom, 24)
                 }
                 .padding(.horizontal, 16)
@@ -236,5 +238,21 @@ struct OnlineJoinView: View {
                 .disabled(code.count != 4)
         }
         .padding(24)
+    }
+}
+
+/// "Powered by Weltzcraft Studios" line at the bottom of the app; the name links to the studio site.
+struct StudioCredit: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("Powered by")
+            Link(destination: URL(string: "https://weltzcraft.com")!) {
+                Text("Weltzcraft Studios").fontWeight(.semibold)
+            }
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .tint(.secondary)
+        .frame(maxWidth: .infinity)
     }
 }
