@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { ComponentProps, ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { radius, useTheme } from '../lib/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -111,6 +111,26 @@ export function EmptyState({ icon, title, body, action }: { icon: IconName; titl
       <Text style={[styles.emptyTitle, { color: t.text }]}>{title}</Text>
       <Text style={[styles.emptyBody, { color: t.textMuted }]}>{body}</Text>
       {action}
+    </View>
+  );
+}
+
+
+// "Powered by Weltzcraft Studios" line at the bottom of the app; the name links to the studio
+// site (clear STUDIO_URL to show plain text).
+export const STUDIO_NAME = 'Weltzcraft Studios';
+export const STUDIO_URL = 'https://weltzcraft.com';
+
+export function StudioCredit({ style }: { style?: StyleProp<ViewStyle> }) {
+  const t = useTheme();
+  const name = (
+    <Text style={{ fontWeight: '600' }} onPress={STUDIO_URL ? () => Linking.openURL(STUDIO_URL) : undefined}>
+      {STUDIO_NAME}
+    </Text>
+  );
+  return (
+    <View style={[{ paddingVertical: 20, alignItems: 'center' }, style]}>
+      <Text style={{ color: t.textMuted, fontSize: 12, opacity: 0.8 }}>Powered by {name}</Text>
     </View>
   );
 }
