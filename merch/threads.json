@@ -1,0 +1,57 @@
+{
+ "hat-navy-42": [
+  "#FFFFFF"
+ ],
+ "hat-navy-43": [
+  "#FFFFFF"
+ ],
+ "hat-navy-44": [
+  "#FFFFFF"
+ ],
+ "hat-navy-55": [
+  "#A67843",
+  "#FFCC00"
+ ],
+ "hat-navy-58": [
+  "#E25C27",
+  "#FFCC00",
+  "#FFFFFF"
+ ],
+ "hat-navy-59": [
+  "#FFFFFF",
+  "#E25C27",
+  "#FFCC00"
+ ],
+ "hat-navy-60": [
+  "#FFFFFF",
+  "#E25C27",
+  "#FFCC00"
+ ],
+ "hat-stone-42": [
+  "#000000"
+ ],
+ "hat-stone-43": [
+  "#000000"
+ ],
+ "hat-stone-44": [
+  "#000000"
+ ],
+ "hat-stone-55": [
+  "#A67843"
+ ],
+ "hat-stone-58": [
+  "#E25C27",
+  "#000000",
+  "#FFCC00"
+ ],
+ "hat-stone-59": [
+  "#000000",
+  "#E25C27",
+  "#FFCC00"
+ ],
+ "hat-stone-60": [
+  "#000000",
+  "#E25C27",
+  "#FFCC00"
+ ]
+}

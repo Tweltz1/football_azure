@@ -87,6 +87,7 @@ if (MODE === 'mockups') {
       const v = p.variants.find(x => x.size === 'M') || p.variants[0];
       const task = await pf(`/mockup-generator/create-task/${p.product_id}`, { method: 'POST', body: JSON.stringify({
         variant_ids: [v.id], format: 'jpg',
+        ...(readJson('merch/threads.json', {})[c.slug] ? { options: [readJson('merch/threads.json', {})[c.slug]].map(t => ({ id: p.placement.replace('embroidery_', 'thread_colors_'), value: t })) } : {}),
         files: [{ placement: p.placement, image_url: `${BASE}/placed/${c.slug}.png`,
           position: { area_width: p.area.w, area_height: p.area.h, width: p.area.w, height: p.area.h, top: 0, left: 0 } }],
       }) });
@@ -107,6 +108,7 @@ if (MODE === 'mockups') {
 if (MODE === 'create') {
   const plan = readJson('merch/plan.json', {});
   const mockups = readJson('merch/mockups.json', {});
+  const threads = readJson('merch/threads.json', {});
   const prev = readJson('weltzcraft-site/merch-catalog.json', { items: {} });
   const out = {
     updated: new Date().toISOString(),
@@ -133,6 +135,7 @@ if (MODE === 'create') {
           variant_id: v.id,
           retail_price: (c.prod.price + upcharge(v.size)).toFixed(2),
           files: [{ type: p.placement, url: `${BASE}/placed/${c.slug}.png` }],
+          ...(threads[c.slug] ? { options: [{ id: p.placement.replace('embroidery_', 'thread_colors_'), value: threads[c.slug] }] } : {}),
         })),
       };
       try { await pf('/store/products', { method: 'POST', body: JSON.stringify(body) }); }
