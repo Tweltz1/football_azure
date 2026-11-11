@@ -11,12 +11,12 @@ on:
     inputs:
       requests:
         type: string
-        default: '150'
+        default: '40'
   workflow_dispatch:
     inputs:
       requests:
-        description: Gemini requests this run (10 photos each; the free key allows a few hundred a day)
-        default: '150'
+        description: Gemini requests this run (20 photos each; the free key allows about 20 a day per model, Flash then Flash-Lite)
+        default: '40'
   push:
     branches:
       - claude/project-thread-6lgsrr
@@ -67,7 +67,7 @@ jobs:
         run: |
           pip install --quiet pillow
           # A push here uses run.json (keep it small: the Gemini key is shared with the live apps).
-          req="${{ inputs.requests }}"; min=75
+          req="${{ inputs.requests }}"; min=40
           if [ -z "$req" ]; then
             req=$(python3 -c 'import json; print(json.load(open("run.json"))["requests"])')
             min=$(python3 -c 'import json; print(json.load(open("run.json"))["minutes"])')
