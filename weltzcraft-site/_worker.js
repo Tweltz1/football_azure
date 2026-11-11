@@ -45,7 +45,7 @@ async function brief(request, env) {
 }
 
 // ---- Merch shop -------------------------------------------------------------------------------------------
-// POST /api/merch/checkout {slug, size, qty} -> Stripe Checkout URL. Prices and Printful ids come only from
+// POST /api/merch/checkout {items: [{slug, size, qty}], code?} -> Stripe Checkout URL. Prices and Printful ids come only from
 // /merch-catalog.json (written by the merch build), never from the browser.
 // POST /api/merch/stripe-webhook: Stripe says a merch checkout is paid -> a Printful order for the same items,
 // shipped to the buyer, plus an email to sales@. Pages secrets (set by the deploy workflow): STRIPE_SECRET_KEY,
@@ -55,6 +55,22 @@ const EXTRA_ITEM_CENTS = 150;    // each extra piece
 const SHIPPING_CAP_CENTS = 1499;
 const MAX_QTY = 10;
 const MAX_LINES = 20;
+// Promo codes. FAMILY (or the MERCH_FAMILY_CODE secret) prices every item at what Printful charges us plus
+// FAMILY_MARKUP_CENTS, which covers the Stripe fee. Any other code is looked up as a Stripe promotion code
+// (made in the Stripe dashboard under Product catalog > Coupons). With no code, Stripe's own promo box shows.
+const FAMILY_MARKUP_CENTS = 200;
+const familyCode = (env) => String(env.MERCH_FAMILY_CODE || 'FAMILY').trim().toUpperCase();
+
+/** What Printful charges for one of our store variants, in cents (its catalog price for that blank). */
+async function printfulCostCents(env, syncVariantId) {
+  const sv = await printful(env, '/store/variants/' + syncVariantId);
+  const catalogId = sv.ok && sv.out && sv.out.result && (sv.out.result.variant_id || (sv.out.result.product && sv.out.result.product.variant_id));
+  if (!catalogId) throw new Error('printful variant ' + syncVariantId);
+  const c = await printful(env, '/products/variant/' + catalogId);
+  const price = Number(c.ok && c.out && c.out.result && c.out.result.variant && c.out.result.variant.price);
+  if (!(price > 0)) throw new Error('printful price ' + catalogId);
+  return Math.round(price * 100);
+}
 
 async function catalog(request, env) {
   const r = await env.ASSETS.fetch(new Request(new URL('/merch-catalog.json', request.url)));
@@ -85,6 +101,15 @@ async function merchCheckout(request, env) {
   // A cart is {items: [{slug, size, qty}]}; a single {slug, size, qty} still works.
   const wanted = Array.isArray(b && b.items) ? b.items : [b];
   if (!wanted.length || wanted.length > MAX_LINES) return json(400, { error: 'Your cart can hold up to ' + MAX_LINES + ' different items.' });
+  const code = oneLine(b && b.code, 40).toUpperCase();
+  const family = !!code && code === familyCode(env);
+  let promo = null;
+  if (code && !family) {
+    const found = await stripe(env, 'promotion_codes?active=true&limit=1&code=' + encodeURIComponent(code)).catch(() => null);
+    promo = found && found.data && found.data[0];
+    if (!promo) return json(400, { error: 'That promo code isn\'t valid.' });
+  }
+  if (family && !env.PRINTFUL_API_TOKEN) return json(503, { error: 'Family pricing isn\'t available right now.' });
   const site = new URL(request.url).origin;
   const form = {
     mode: 'payment',
@@ -106,10 +131,16 @@ async function merchCheckout(request, env) {
     const logo = (cat.logos[lk] || {}).name || lk;
     const name = prod.name + (v.size && item.variants.length > 1 ? ' (' + v.size + ')' : '');
     const i = lines.length;
+    let cents = Math.round(v.price * 100);
+    if (family) {
+      let cost;
+      try { cost = await printfulCostCents(env, v.id); } catch (e) { return json(503, { error: 'Family pricing isn\'t available right now. Try again in a minute.' }); }
+      cents = Math.min(cents, cost + FAMILY_MARKUP_CENTS);
+    }
     form['line_items[' + i + '][quantity]'] = String(qty);
     form['line_items[' + i + '][price_data][currency]'] = 'usd';
-    form['line_items[' + i + '][price_data][unit_amount]'] = String(Math.round(v.price * 100));
-    form['line_items[' + i + '][price_data][product_data][name]'] = 'Weltzcraft ' + name;
+    form['line_items[' + i + '][price_data][unit_amount]'] = String(cents);
+    form['line_items[' + i + '][price_data][product_data][name]'] = 'Weltzcraft ' + name + (family ? ' (family price)' : '');
     form['line_items[' + i + '][price_data][product_data][description]'] = color + ' · ' + logo + ' logo';
     form['line_items[' + i + '][price_data][product_data][images][0]'] = site + '/img/merch/' + slug + '.webp';
     lines.push({ id: v.id, qty, label: slug + (v.size && item.variants.length > 1 ? ' ' + v.size : '') + ' x' + qty });
@@ -134,6 +165,9 @@ async function merchCheckout(request, env) {
     'metadata[slug]': lines.map((l) => l.label).join(', ').slice(0, 500),
     'metadata[items]': lines.map((l) => l.id + 'x' + l.qty).join(','),
   });
+  if (family) form['metadata[promo]'] = 'family';
+  else if (promo) { form['discounts[0][promotion_code]'] = promo.id; form['metadata[promo]'] = code; }
+  else form.allow_promotion_codes = 'true';
   const s = await stripe(env, 'checkout/sessions', form);
   return json(200, { url: s.url });
 }

@@ -64,10 +64,13 @@ jobs:
           STRIPE_KEY: ${{ secrets.WELTZCRAFT_STRIPE_SECRET_KEY || secrets.TALKSHOPS_STRIPE_SECRET_KEY }}
           PRINTFUL_KEY: ${{ secrets.PRINTFUL_API_TOKEN }}
           PRINTFUL_STORE: ${{ secrets.PRINTFUL_STORE_ID }}
+          # Optional: replaces the default FAMILY promo code (cost + $2 pricing).
+          FAMILY_CODE: ${{ secrets.MERCH_FAMILY_CODE }}
         run: |
           put() { CLOUDFLARE_ACCOUNT_ID=$ACCOUNT npx --yes wrangler@3 pages secret put "$1" --project-name "$PROJECT" >/dev/null && echo "set $1"; }
           [ -n "$PRINTFUL_KEY" ] && printf '%s' "$PRINTFUL_KEY" | put PRINTFUL_API_TOKEN
           [ -n "$PRINTFUL_STORE" ] && printf '%s' "$PRINTFUL_STORE" | put PRINTFUL_STORE_ID
+          [ -n "$FAMILY_CODE" ] && printf '%s' "$FAMILY_CODE" | put MERCH_FAMILY_CODE
           if [ -n "$PRINTFUL_KEY" ]; then
             # Printful tells the site when a package ships, so the buyer gets the tracking link by email.
             hk=$(printf 'wc-printful-hook:%s' "$PRINTFUL_KEY" | sha256sum | cut -c1-32); echo "::add-mask::$hk"

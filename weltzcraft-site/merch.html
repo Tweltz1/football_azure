@@ -66,6 +66,9 @@
 .m-buy .btn{flex:1;padding:12px 18px;font-size:15px}
 .m-buy .btn[disabled]{opacity:.55;cursor:wait}
 .m-err{color:#b3261e;font-size:14px;min-height:0}
+.m-code{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:15px}
+.m-code span{color:var(--muted)}
+.m-code input{width:150px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:600 14px/1 var(--f-body);text-transform:uppercase}
 .m-cartbtn{position:fixed;right:16px;bottom:16px;z-index:30;display:flex;align-items:center;gap:10px;padding:13px 18px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font:600 15px/1 var(--f-body);cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .m-cartbtn[hidden]{display:none}
 .m-cartbtn b{background:#e0672a;color:#fff;border-radius:999px;padding:3px 8px;font-size:13px}
@@ -181,6 +184,7 @@
     <div class="m-cart-foot">
       <div class="m-row"><span>Subtotal</span><b id="m-sub">$0.00</b></div>
       <div class="m-row"><span>Shipping (US)</span><b id="m-ship">–</b></div>
+      <label class="m-code"><span>Promo code</span><input id="m-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="40" placeholder="Optional"></label>
       <button type="button" class="btn" id="m-checkout" disabled>Checkout</button>
       <p class="m-err" id="m-cart-err" role="alert"></p>
     </div>
@@ -327,7 +331,7 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) closeCart(); });
   go.addEventListener('click', function () {
     go.disabled = true; go.textContent = 'Opening checkout…'; cErr.textContent = '';
-    fetch('/api/merch/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: cart }) })
+    fetch('/api/merch/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: cart, code: (document.getElementById('m-code').value || '').trim() }) })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (r) { if (r.ok && r.j.url) { location.href = r.j.url; return; } throw new Error(r.j.error || 'Checkout is not available right now.'); })
       .catch(function (e) { go.disabled = false; go.textContent = 'Checkout'; cErr.textContent = (e.message || 'Checkout is not available right now.') + ' You can also email hello@weltzcraft.com.'; });
