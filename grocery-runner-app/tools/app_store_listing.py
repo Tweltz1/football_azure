@@ -160,7 +160,12 @@ versions = call("GET", f"/apps/{app_id}/appStoreVersions", query={"filter[platfo
 version = next((v for v in versions if (v["attributes"].get("appVersionState") or v["attributes"].get("appStoreState")) in EDITABLE
                 or v["attributes"].get("appStoreState") in EDITABLE), None)
 if not version:
-    sys.exit("No editable iOS version in App Store Connect (is one already in review?)")
+    for v in versions:
+        print(f"Version {v['attributes']['versionString']}: {v['attributes'].get('appStoreState')}")
+    for r in call("GET", "/reviewSubmissions", query={"filter[app]": app_id, "limit": "5"})["data"]:
+        print(f"Review submission {r['attributes'].get('state')} {r['attributes'].get('submittedDate') or ''}")
+    print("No editable iOS version in App Store Connect (is one already in review?)", flush=True)
+    sys.exit(0)
 vid = version["id"]
 print(f"Version: {version['attributes']['versionString']} ({version['attributes'].get('appStoreState')})")
 
