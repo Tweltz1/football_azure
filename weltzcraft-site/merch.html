@@ -18,6 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" href="/merch-catalog.json" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="/styles.css?v=330">
 <script>try{var t=localStorage.getItem("wc-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <style>
@@ -29,8 +30,23 @@
 .m-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:22px}
 .m-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)}
 .m-img{aspect-ratio:1;background:#fff;position:relative}
-.m-img img{width:100%;height:100%;object-fit:cover;transition:opacity .18s}
-.m-img img.loading{opacity:.35}
+.m-img img{width:100%;height:100%;object-fit:cover;transition:opacity .35s,transform .35s}
+.m-img img.loading{opacity:0;transform:scale(.98)}
+/* While a photo or the catalog loads: a soft shimmer with a stitched W drawing itself */
+.m-img::before,.m-skel{background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.55) 50%,transparent 80%) var(--bg-2);background-size:220% 100%;animation:m-shine 1.3s linear infinite}
+.m-img::before{content:"";position:absolute;inset:0;z-index:0}
+.m-img img{position:relative;z-index:1}
+.m-img .m-w{position:absolute;inset:0;margin:auto;width:34%;height:34%;z-index:0;opacity:.5}
+.m-w path{fill:none;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:6 7;animation:m-stitch 1.6s linear infinite}
+.m-w path:nth-child(1){stroke:#e0672a}.m-w path:nth-child(2){stroke:#f2b31b;animation-delay:-.4s}.m-w path:nth-child(3){stroke:var(--ink);animation-delay:-.8s}
+.m-img.ready::before,.m-img.ready .m-w{display:none}
+@keyframes m-shine{from{background-position:120% 0}to{background-position:-120% 0}}
+@keyframes m-stitch{to{stroke-dashoffset:-26}}
+.m-skel-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.m-skel-card .m-img{aspect-ratio:1}
+.m-skel-line{height:14px;border-radius:7px;margin:16px 18px 0}
+.m-skel-line.s{width:40%}.m-skel-line.l{width:75%;margin-bottom:20px}
+@media (prefers-reduced-motion:reduce){.m-img::before,.m-skel,.m-w path{animation:none}}
 .m-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:12px;flex:1}
 .m-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .m-body h3{font-size:20px}
@@ -122,7 +138,7 @@
 
 <section class="section" style="padding-top:8px">
   <div class="wrap">
-    <div class="m-grid" id="m-grid"></div>
+    <div class="m-grid" id="m-grid" aria-busy="true"><div class="m-skel-card" aria-hidden="true"><div class="m-img"><svg class="m-w" viewBox="0 0 100 80" aria-hidden="true"><path d="M8 10 L30 70 L50 22 L70 70 L92 10"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 12)"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 -4)"/></svg></div><div class="m-skel m-skel-line s"></div><div class="m-skel m-skel-line"></div><div class="m-skel m-skel-line l"></div></div><div class="m-skel-card" aria-hidden="true"><div class="m-img"><svg class="m-w" viewBox="0 0 100 80" aria-hidden="true"><path d="M8 10 L30 70 L50 22 L70 70 L92 10"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 12)"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 -4)"/></svg></div><div class="m-skel m-skel-line s"></div><div class="m-skel m-skel-line"></div><div class="m-skel m-skel-line l"></div></div><div class="m-skel-card" aria-hidden="true"><div class="m-img"><svg class="m-w" viewBox="0 0 100 80" aria-hidden="true"><path d="M8 10 L30 70 L50 22 L70 70 L92 10"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 12)"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 -4)"/></svg></div><div class="m-skel m-skel-line s"></div><div class="m-skel m-skel-line"></div><div class="m-skel m-skel-line l"></div></div><div class="m-skel-card" aria-hidden="true"><div class="m-img"><svg class="m-w" viewBox="0 0 100 80" aria-hidden="true"><path d="M8 10 L30 70 L50 22 L70 70 L92 10"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 12)"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 -4)"/></svg></div><div class="m-skel m-skel-line s"></div><div class="m-skel m-skel-line"></div><div class="m-skel m-skel-line l"></div></div><div class="m-skel-card" aria-hidden="true"><div class="m-img"><svg class="m-w" viewBox="0 0 100 80" aria-hidden="true"><path d="M8 10 L30 70 L50 22 L70 70 L92 10"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 12)"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 -4)"/></svg></div><div class="m-skel m-skel-line s"></div><div class="m-skel m-skel-line"></div><div class="m-skel m-skel-line l"></div></div><div class="m-skel-card" aria-hidden="true"><div class="m-img"><svg class="m-w" viewBox="0 0 100 80" aria-hidden="true"><path d="M8 10 L30 70 L50 22 L70 70 L92 10"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 12)"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 -4)"/></svg></div><div class="m-skel m-skel-line s"></div><div class="m-skel m-skel-line"></div><div class="m-skel m-skel-line l"></div></div></div>
   </div>
 </section>
 
@@ -192,11 +208,12 @@
   if (q === 'cancelled') { banner.hidden = false; banner.textContent = 'Checkout was cancelled, nothing was charged.'; }
   var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
 
-  fetch('/merch-catalog.json', { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(render).catch(function () {
+  fetch('/merch-catalog.json').then(function (r) { return r.json(); }).then(render).catch(function () {
     grid.innerHTML = '<p class="muted">The shop is restocking. Check back in a few minutes.</p>';
   });
 
   function render(cat) {
+    grid.innerHTML = ''; grid.removeAttribute('aria-busy');
     setTimeout(function () { window.__drawCart(cat); }, 0);
     var logoKeys = Object.keys(cat.logos);
     cat.products.forEach(function (p) {
@@ -205,7 +222,7 @@
       var el = document.createElement('article');
       el.className = 'm-card';
       el.innerHTML =
-        '<div class="m-img"><img alt="" width="900" height="900" loading="lazy"></div>' +
+        '<div class="m-img"><svg class="m-w" viewBox="0 0 100 80" aria-hidden="true"><path d="M8 10 L30 70 L50 22 L70 70 L92 10"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 12)"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 -4)"/></svg><img alt="" width="900" height="900"' + (grid.children.length < 3 ? ' fetchpriority="high"' : ' loading="lazy"') + '></div>' +
         '<div class="m-body"><div class="m-row"><h3>' + esc(p.name) + '</h3><span class="m-price"></span></div>' +
         '<div class="m-opt"><span class="m-lab">Logo<b data-v="logo"></b></span><div class="m-logos">' +
           logoKeys.map(function (k) { return '<button type="button" data-logo="' + k + '" title="' + esc(cat.logos[k].name) + '" aria-label="' + esc(cat.logos[k].name) + '"><img src="/img/merch/marks/' + (MARK[k] || k + '-light') + '.webp" alt="" width="32" height="32" loading="lazy"></button>'; }).join('') +
@@ -236,8 +253,8 @@
         buy.disabled = !item; buy.textContent = item ? 'Add to cart · $' + price : 'Coming soon';
         err.textContent = '';
       }
-      img.addEventListener('load', function () { img.classList.remove('loading'); });
-      img.addEventListener('error', function () { img.classList.remove('loading'); });
+      img.addEventListener('load', function () { img.classList.remove('loading'); img.parentNode.classList.add('ready'); });
+      img.addEventListener('error', function () { img.classList.remove('loading'); img.parentNode.classList.add('ready'); });
       el.addEventListener('click', function (e) {
         var b = e.target.closest('button'); if (!b) return;
         if (b.dataset.logo) st.logo = b.dataset.logo;
