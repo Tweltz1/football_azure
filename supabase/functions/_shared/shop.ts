@@ -23,6 +23,7 @@ import { checkDevice, sessionRoute, type SessionStore } from './shopSessions.ts'
 import type { Narrator } from './dnd.ts';
 import { clockAction, customersCsv, jobsCsv, langOf, MAX_BOOKINGS_PER_HOUR, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES, SHORT_ES,
   type Booking, type BookingStore, type Brand, type ClockEntry, type Grow, type Lang } from './shopGrow.ts';
+import { isOpenSlot, localOf, openSlots, reminderDue, slotText } from './shopSchedule.ts';
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
 
 type Body = Record<string, unknown>;
@@ -86,7 +87,7 @@ type Channel = 'sms' | 'email';
 type Preference = Channel | 'both';
 export interface ServicePackage { id: string; name: string; lines: Charge[]; fastLane: boolean }
 /** A text the shop scheduled for later: declined work to revisit, or the next service. */
-export interface Followup { id: string; kind: 'declined' | 'service' | 'nudge'; due: string; text: string; createdAt: string; by: string; sentAt?: string; canceledAt?: string; canceledBy?: 'shop' | 'customer' }
+export interface Followup { id: string; kind: 'declined' | 'service' | 'nudge' | 'appointment'; due: string; text: string; createdAt: string; by: string; sentAt?: string; canceledAt?: string; canceledBy?: 'shop' | 'customer' }
 export interface Message { sender?:string; senderId?:string; suggestion?:string; incomingSms?:boolean; autoReply?:boolean; channel?: Channel | 'web'; dir: 'out' | 'in'; t: string; text: string; delivery?: 'sent' | 'not_sent' | 'failed'; note?: string }
 
 export interface JobData {
@@ -218,7 +219,11 @@ export interface ShopStore extends Partial<BookingStore> {
   claimFollowup?(jobId: string, at: string): Promise<boolean>;
   /** Jobs (any shop) whose customer phone is `phone` and that still have a follow-up waiting. For texted STOP. */
   jobsWithFollowupsFor?(phone: string): Promise<Job[]>;
+  /** Appointments (not closed) the shop has at or after `from` and before `to`, for open booking times. */
+  appointmentsBetween?(shopId: string, from: string, to: string): Promise<BookedTime[]>;
 }
+/** One appointment holding a start time: a car on the Bay, or a booking request still waiting. */
+export interface BookedTime { at: string; phone: string; email: string; createdAt: string }
 
 export interface VisitQuery { terms?: string[]; phone?: string; plate?: string; vin?: string }
 /** One visit for the returning-customer lookup and the car's history. */
@@ -550,9 +555,11 @@ async function sendDueFollowups(deps: ShopDeps, shop: Shop, now: Date, acc: Acce
       if (job.data.customer.remindersOff) { f.canceledAt = iso; f.canceledBy = 'customer'; continue; }
       // An estimate reminder only goes out while the estimate is still unanswered.
       if (f.kind === 'nudge' && (job.stage !== 'approval' || job.data.closed || !job.data.estimate.some((e) => e.status === 'pending'))) { f.canceledAt = iso; f.canceledBy = 'shop'; continue; }
+      // An appointment reminder only goes out while the car is still booked and not yet checked in.
+      if (f.kind === 'appointment' && (job.stage !== 'invited' || job.data.closed || !job.data.appointment || job.data.appointment <= iso)) { f.canceledAt = iso; f.canceledBy = 'shop'; continue; }
       const text = `${f.text} ${SAY[langOf(job.data)].stop}`;
       const msgs = await notifyCustomer(deps, shop, job, text, iso, acc);
-      job.data.messages.push(...msgs.map((m) => ({ ...m, sender: f.kind === 'nudge' ? 'Estimate reminder' : 'Scheduled reminder' })));
+      job.data.messages.push(...msgs.map((m) => ({ ...m, sender: f.kind === 'nudge' ? 'Estimate reminder' : f.kind === 'appointment' ? 'Appointment reminder' : 'Scheduled reminder' })));
       f.sentAt = iso;
       sent++;
     }
@@ -571,6 +578,54 @@ async function submitIntake(store: ShopStore, job: Job, body: Body): Promise<Res
   if (!await store.saveIntake?.(job.id, intake)) return bad('Intake changed. Refresh to see the latest details.');
   job.intake = intake;
   return null;
+}
+
+/** Appointments already holding start times from now through `ahead` days: cars on the Bay and requests still waiting. */
+async function bookedTimes(store: ShopStore, shopId: string, now: Date, ahead: number): Promise<BookedTime[]> {
+  const from = now.toISOString(), to = new Date(now.getTime() + (ahead + 2) * 86_400_000).toISOString();
+  const jobs: BookedTime[] = store.appointmentsBetween ? await store.appointmentsBetween(shopId, from, to)
+    : (await store.listJobs(shopId, from)).filter((j) => j.data.appointment && !j.data.closed && j.data.appointment >= from && j.data.appointment < to)
+      .map((j) => ({ at: j.data.appointment!, phone: j.data.customer.phone, email: j.data.customer.email ?? '', createdAt: j.createdAt }));
+  const waiting = store.openBookings ? (await store.openBookings(shopId, MAX_OPEN_BOOKINGS)).filter((b) => b.data.slot && b.data.slot >= from)
+    .map((b) => ({ at: b.data.slot!, phone: b.data.customer.phone, email: b.data.customer.email, createdAt: b.createdAt })) : [];
+  return [...jobs, ...waiting];
+}
+
+/** Turns a booking into an invited car on the Bay with the appointment set, texts the confirmation, and closes the booking. */
+async function bookIn(ctx: Ctx, deps: ShopDeps, shop: Shop, b: Booking, when: string, whenText: string,
+  o: { send: boolean; text: string; by: string; byId: string | null; acc: Access }): Promise<Job> {
+  const { store } = deps;
+  const now = ctx.now().toISOString(), bd = b.data, c = bd.customer;
+  const job: Job = {
+    id: ctx.newId(), shopId: shop.id, token: deps.newToken(), stage: 'invited', createdAt: now, updatedAt: now,
+    intake: { vehicle: bd.vehicle, plate: bd.plate, concern: bd.concern },
+    data: {
+      ro: `RO-${await store.nextRo(shop.id)}`,
+      customer: { name: c.name, phone: c.phone, email: c.email, preference: c.preference, consent: c.consent, ...(c.lang === 'es' ? { lang: 'es' as const } : {}) },
+      vehicle: bd.vehicle, plate: bd.plate, concern: bd.concern, eta: '',
+      estimate: [], photos: [], events: [{ stage: 'invited', t: now }], messages: [], approval: null,
+      appointment: when,
+      booking: { id: b.id, day: bd.day, time: bd.time },
+    },
+  };
+  if (o.send) {
+    const first = c.name.split(/\s+/)[0] || '';
+    const link = deps.linkBase + job.token;
+    // The shop's own wording still carries the visit link.
+    const msg = o.text ? `${o.text}${/[.!?:]$/.test(o.text) ? '' : '.'} ${link}` : SAY[c.lang === 'es' ? 'es' : 'en'].booked(first, shop.name, whenText, link);
+    job.data.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, o.acc)).map((m) => ({ ...m, sender: o.by, ...(o.byId ? { senderId: o.byId } : {}) })));
+  }
+  // Day-before reminder text, when the shop turned it on with its appointment hours.
+  const sched = shop.grow?.schedule, due = reminderDue(when, ctx.now());
+  if (sched?.reminder && due && c.consent) {
+    const lang = c.lang === 'es' ? 'es' : 'en';
+    job.data.followups = [{ id: ctx.newId(), kind: 'appointment', due, createdAt: now, by: o.by,
+      text: SAY[lang].remind(shop.name, slotText(when, sched.zone, lang), shop.phone) }];
+  }
+  await store.putJob(job);
+  b.status = 'accepted'; b.data.jobId = job.id; b.data.decidedBy = o.by; b.data.decidedAt = now; b.updatedAt = now;
+  await store.putBooking!(b);
+  return job;
 }
 
 export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, method: string, parts: string[], data: unknown): Promise<Res | null> {
@@ -695,21 +750,54 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const shop = found ? await store.shopById(found.id) : null;
     if (!shop || !shop.grow?.bookingOn || shop.bookingToken !== token) return { status: 404, body: 'This booking link is not active. Please call the shop.' };
     const pro = isPro(shop.plan, ctx.now());
-    if (method === 'GET') return ok({ shop: { name: shop.name, phone: shop.phone, hours: shop.hours, ...(pro && shop.brand ? { brand: shop.brand } : {}) }, note: shop.grow.bookingNote ?? '' });
+    const sched = shop.grow.schedule;
+    const taken = sched ? await bookedTimes(store, shop.id, ctx.now(), sched.ahead) : [];
+    if (method === 'GET') return ok({
+      shop: { name: shop.name, phone: shop.phone, hours: shop.hours, ...(pro && shop.brand ? { brand: shop.brand } : {}) }, note: shop.grow.bookingNote ?? '',
+      ...(sched ? { zone: sched.zone, auto: sched.auto, slots: openSlots(sched, ctx.now(), taken.map((t) => t.at)) } : {}),
+    });
     if (method !== 'POST') return { status: 405 };
     if (str(body.website, 100)) return ok({ ok: true }); // a form robot filled the hidden field
     if (typeof body.elapsed === 'number' && body.elapsed < 2500) return ok({ ok: true }); // filled in faster than a person can type
     if (!store.addBooking || !store.openBookings) return { status: 503, body: 'Booking is unavailable right now. Please call the shop.' };
+    // With appointment hours set, the customer picks an exact open time; the day and part of the day follow from it.
+    let slot = '';
+    if (sched) {
+      slot = str(body.slot, 40);
+      if (!slot || !Number.isFinite(Date.parse(slot))) return bad('Pick a time for your appointment.');
+      slot = new Date(slot).toISOString();
+      if (!isOpenSlot(sched, ctx.now(), taken.map((t) => t.at), slot)) return { status: 409, body: 'That time was just taken. Please pick another one.' };
+      const local = localOf(slot, sched.zone);
+      body.day = local.day; body.time = local.time < '12:00' ? 'morning' : 'afternoon';
+    }
     const parsed = parseBooking(body, normalizePhone, now.slice(0, 10));
     if (typeof parsed === 'string') return bad(parsed);
+    if (slot) parsed.slot = slot;
     const open = await store.openBookings(shop.id, MAX_OPEN_BOOKINGS + 1);
     if (open.length >= MAX_OPEN_BOOKINGS) return { status: 429, body: 'The shop has a lot of requests waiting. Please call them to book.' };
     const hourAgo = new Date(ctx.now().getTime() - 3_600_000).toISOString();
     if (open.filter((b) => b.createdAt >= hourAgo).length >= MAX_BOOKINGS_PER_HOUR) return { status: 429, body: 'The shop got a lot of requests in the last hour. Please try again later or call them.' };
     const same = (b: Booking) => (parsed.customer.phone && b.data.customer.phone === parsed.customer.phone) || (parsed.customer.email && b.data.customer.email.toLowerCase() === parsed.customer.email.toLowerCase());
     if (open.filter(same).length >= 2) return { status: 429, body: 'You already have requests waiting. The shop will get back to you soon.' };
-    await store.addBooking({ id: ctx.newId(), shopId: shop.id, status: 'open', createdAt: now, updatedAt: now, data: parsed });
-    return ok({ ok: true });
+    if (sched) {
+      const mine = taken.filter((t) => (parsed.customer.phone && t.phone === parsed.customer.phone) || (parsed.customer.email && t.email.toLowerCase() === parsed.customer.email.toLowerCase()));
+      if (mine.length >= 2) return { status: 429, body: `You already have appointments coming up.${shop.phone ? ` Please call ${shop.phone} to change them.` : ' Please call the shop to change them.'}` };
+      if (taken.filter((t) => t.createdAt >= hourAgo).length >= MAX_BOOKINGS_PER_HOUR) return { status: 429, body: 'The shop got a lot of bookings in the last hour. Please try again later or call them.' };
+    }
+    const booking: Booking = { id: ctx.newId(), shopId: shop.id, status: 'open', createdAt: now, updatedAt: now, data: parsed };
+    // Instant booking: the car goes straight onto the Bay and the customer gets the confirmation, unless the shop's
+    // plan can't take another car right now; then it waits as a request like any other.
+    if (sched?.auto && slot) {
+      const acc = access(shop.plan, ctx.now(), await settings(deps));
+      if (acc.canWork && (acc.carLimit === null || (shop.plan?.carsCreated ?? 0) < acc.carLimit)) {
+        const lang = parsed.customer.lang === 'es' ? 'es' : 'en';
+        await store.addBooking(booking);
+        const job = await bookIn(ctx, deps, shop, booking, slot, slotText(slot, sched.zone, lang), { send: true, text: '', by: 'Online booking', byId: null, acc });
+        return ok({ ok: true, confirmed: true, when: slotText(slot, sched.zone, lang), at: slot, link: deps.linkBase + job.token });
+      }
+    }
+    await store.addBooking(booking);
+    return ok({ ok: true, ...(slot ? { requested: true, at: slot } : {}) });
   }
 
   // ---- Guided demo: text a visitor a real customer link (no sign-in, rate limited) ----
@@ -999,30 +1087,9 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       return { status: 402, body: `The free trial includes ${acc.carLimit} cars. Choose a plan on the Plan tab to keep checking in cars.` };
     const when = Date.parse(str(body.when, 40));
     if (!Number.isFinite(when)) return bad('Pick the appointment day and time.');
-    const whenText = str(body.whenText, 60) || new Date(when).toUTCString().slice(0, 22);
-    const job: Job = {
-      id: ctx.newId(), shopId: shop.id, token: deps.newToken(), stage: 'invited', createdAt: now, updatedAt: now,
-      intake: { vehicle: bd.vehicle, plate: bd.plate, concern: bd.concern },
-      data: {
-        ro: `RO-${await store.nextRo(shop.id)}`,
-        customer: { name: c.name, phone: c.phone, email: c.email, preference: c.preference, consent: c.consent, ...(c.lang === 'es' ? { lang: 'es' as const } : {}) },
-        vehicle: bd.vehicle, plate: bd.plate, concern: bd.concern, eta: '',
-        estimate: [], photos: [], events: [{ stage: 'invited', t: now }], messages: [], approval: null,
-        appointment: new Date(when).toISOString(), promised: undefined,
-        booking: { id: b.id, day: bd.day, time: bd.time },
-      },
-    };
-    delete job.data.promised;
-    if (body.send !== false) {
-      const first = c.name.split(/\s+/)[0] || '';
-      const link = deps.linkBase + job.token, typed = str(body.text, 600);
-      // The shop's own wording still carries the visit link.
-      const msg = typed ? `${typed}${/[.!?:]$/.test(typed) ? '' : '.'} ${link}` : SAY[c.lang === 'es' ? 'es' : 'en'].booked(first, shop.name, whenText, link);
-      job.data.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map((m) => ({ ...m, sender: by, senderId: ctx.userId! })));
-    }
-    await store.putJob(job);
-    b.status = 'accepted'; b.data.jobId = job.id; b.data.decidedBy = by; b.data.decidedAt = now; b.updatedAt = now;
-    await store.putBooking(b);
+    const iso = new Date(when).toISOString(), zone = shop.grow?.schedule?.zone;
+    const whenText = str(body.whenText, 60) || (zone ? slotText(iso, zone, c.lang === 'es' ? 'es' : 'en') : new Date(when).toUTCString().slice(0, 22));
+    const job = await bookIn(ctx, deps, shop, b, iso, whenText, { send: body.send !== false, text: str(body.text, 600), by, byId: ctx.userId, acc });
     return ok({ booking: b, job: jobOut(job, deps.linkBase) });
   }
 
