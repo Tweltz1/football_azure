@@ -45,6 +45,16 @@ export function ItemCard({ item }) {
 
 const SKELETONS = Array.from({ length: 6 }, (_, i) => i);
 
+// The phone's own share sheet, where there is one (the iPhone app and mobile browsers).
+const canInvite = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+function invite() {
+  navigator.share({
+    title: 'Curbsy',
+    text: 'I\'m using Curbsy to give away and pick up free stuff nearby. Post something you\'re getting rid of and a neighbor can grab it.',
+    url: 'https://hood-league.com/junk',
+  }).catch(() => {}); // closing the share sheet is not an error
+}
+
 export default function Browse() {
   const { spot, spotError, locating, refreshSpot, radiusMi: wantMi, setRadiusMi, maxMiles, askPlus, me, askSignIn, plus } = useJunk();
   // A saved search opened from the Me tab arrives as ?q=…&category=…&saved=<id>.
@@ -214,10 +224,15 @@ export default function Browse() {
                   ? `No free ${query || 'items'} within ${radiusMi} miles. Try a bigger radius or check back soon.`
                   : 'Be the first! Post something you\'re getting rid of and a neighbor can grab it.'}
               </p>
-              {radiusMi < maxMiles
-                ? <button type="button" className="jk-btn" onClick={() => setRadiusMi(MILES.find((m) => m > radiusMi && m <= maxMiles) || maxMiles)}>Look further</button>
-                : radiusMi < 100 ? <button type="button" className="jk-btn" onClick={() => pickRadius(100)}>Look up to 100 miles with Plus</button>
-                : <Link to="/junk/post" className="jk-btn jk-btn-primary">Post an item</Link>}
+              <div className="jk-empty-actions">
+                {/* An empty feed is the moment to post or bring a neighbor in, not only to widen the search. */}
+                {!searching && <Link to="/junk/post" className="jk-btn jk-btn-primary">Post an item</Link>}
+                {radiusMi < maxMiles
+                  ? <button type="button" className="jk-btn" onClick={() => setRadiusMi(MILES.find((m) => m > radiusMi && m <= maxMiles) || maxMiles)}>Look further</button>
+                  : radiusMi < 100 ? <button type="button" className="jk-btn" onClick={() => pickRadius(100)}>Look up to 100 miles with Plus</button>
+                  : searching ? <Link to="/junk/post" className="jk-btn jk-btn-primary">Post an item</Link> : null}
+                {!searching && canInvite && <button type="button" className="jk-link" onClick={invite}>Invite a neighbor</button>}
+              </div>
             </div>
           )}
         </>
