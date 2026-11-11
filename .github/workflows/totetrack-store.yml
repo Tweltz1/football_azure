@@ -75,7 +75,7 @@ jobs:
           xcrun simctl launch "$DEV" com.tweltz1.totetrack
           # The app shows a new screen every 20 seconds (src/lib/demo.ts); photograph the middle of each.
           sleep 12
-          for SHOT in 1-home 2-tote 3-reminders 4-list 5-moving 6-print; do
+          for SHOT in 1-home 2-tote 3-reminders 4-list 5-moving 6-print 7-pro; do
             xcrun simctl io "$DEV" screenshot "shots/$SHOT.png"
             sleep 19
           done

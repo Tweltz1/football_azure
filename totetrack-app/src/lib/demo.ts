@@ -94,7 +94,8 @@ export const DEMO_LIST_ID = 'l1570000-demo-4000-8000-000000000001';
 
 /** The screens the screenshot build walks through, one every DEMO_DWELL_MS. */
 export const DEMO_DWELL_MS = 20000;
-export const DEMO_TOUR = ['/', `/tote/${DEMO_TOTE_IDS.camping}`, '/reminders', `/lists/${DEMO_LIST_ID}`, '/moving', '/print'];
+// '/pro' is last: its picture is the App Review screenshot for the ToteTrack Pro subscriptions, not a store screenshot.
+export const DEMO_TOUR = ['/', `/tote/${DEMO_TOTE_IDS.camping}`, '/reminders', `/lists/${DEMO_LIST_ID}`, '/moving', '/print', '/pro'];
 
 export function demoLists(): PackingList[] {
   const totes = demoTotes();
