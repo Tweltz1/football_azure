@@ -1,34 +1,178 @@
 {
   "_about": "Weltzcraft Studios merch. Each item = one Printful catalog product + color + one logo print file from merch/print/. scripts/printful-mockups.mjs reads this to make real photo mockups into weltzcraft-site/img/merch/<slug>.jpg. 'match' is a regex tried against the Printful catalog title/model; 'colors' are tried in order. 'width' is the logo width as a share of the print area; 'top' is the gap from the top of the print area as a share of its height.",
   "items": [
-    { "slug": "stripes-cream-tee", "name": "Stripes Tee", "color_label": "Cream", "price": 28, "logo": 58,
-      "file": "logo-58-dark.png", "match": "Bella \\+ Canvas 3001", "colors": ["Natural", "Vintage White", "Heather Dust", "Soft Cream", "Cream"],
-      "size": "M", "placements": ["front"], "width": 0.62, "top": 0.08 },
-    { "slug": "seal-tee", "name": "Seal Tee", "color_label": "Black", "price": 28, "logo": 60,
-      "file": "logo-60-light.png", "match": "Bella \\+ Canvas 3001", "colors": ["Black"],
-      "size": "M", "placements": ["front"], "width": 0.45, "top": 0.06 },
-    { "slug": "stripe-ring-hoodie", "name": "Stripe Ring Hoodie", "color_label": "Black", "price": 54, "logo": 59,
-      "file": "logo-59-light.png", "match": "Gildan 18500", "colors": ["Black"],
-      "size": "M", "placements": ["front"], "width": 0.4, "top": 0.06 },
-    { "slug": "corners-hoodie", "name": "Monogram Hoodie", "color_label": "Sand", "price": 54, "logo": 43,
-      "file": "logo-43-dark.png", "match": "Gildan 18500", "colors": ["Sand", "White", "Ash", "Light Pink"],
-      "size": "M", "placements": ["front"], "width": 0.36, "top": 0.06 },
-    { "slug": "navy-seal-hat", "name": "Seal Dad Hat", "color_label": "Navy", "price": 30, "logo": 55,
-      "file": "logo-55-brass.png", "match": "Yupoong 6245CM|Dad Hat", "colors": ["Navy"],
-      "placements": ["embroidery_front", "embroidery_front_large"], "width": 0.5, "top": 0.0,
-      "thread_colors": ["#A67843"] },
-    { "slug": "stripes-cap", "name": "Stripes Cap", "color_label": "Stone", "price": 30, "logo": 58,
-      "file": "logo-58-dark.png", "match": "Yupoong 6245CM|Dad Hat", "colors": ["Stone", "Khaki", "White", "Light Blue"],
-      "placements": ["embroidery_front", "embroidery_front_large"], "width": 0.55, "top": 0.05,
-      "thread_colors": ["#000000", "#FFCC00", "#E25C27"] },
-    { "slug": "monogram-mug", "name": "Monogram Mug", "color_label": "Black, 11 oz", "price": 18, "logo": 42,
-      "file": "logo-42-light.png", "match": "Black Glossy Mug|Black Mug", "colors": ["Black"], "size": "11 oz",
-      "placements": ["default"], "width": 0.16, "top": 0.12 },
-    { "slug": "est-tote", "name": "Est. 2026 Tote", "color_label": "Black", "price": 24, "logo": 44,
-      "file": "logo-44-light.png", "match": "Eco Tote Bag|Tote Bag", "colors": ["Black"],
-      "placements": ["default", "front"], "width": 0.5, "top": 0.2 },
-    { "slug": "stickers", "name": "Sticker", "color_label": "4 x 4 in", "price": 5, "logo": 60,
-      "file": "logo-60-dark.png", "match": "Kiss-Cut Stickers|Kiss Cut Stickers", "colors": ["White", ""], "size": "4″×4″",
-      "placements": ["default"], "width": 0.9, "top": 0.05 }
+    {
+      "slug": "stripes-cream-tee",
+      "name": "Stripes Tee",
+      "color_label": "Cream",
+      "price": 28,
+      "logo": 58,
+      "file": "logo-58-dark.png",
+      "match": "Bella \\+ Canvas 3001",
+      "colors": [
+        "Natural",
+        "Vintage White",
+        "Heather Dust",
+        "Soft Cream",
+        "Cream"
+      ],
+      "size": "M",
+      "placements": [
+        "front"
+      ],
+      "width": 0.62,
+      "top": 0.08
+    },
+    {
+      "slug": "seal-tee",
+      "name": "Seal Tee",
+      "color_label": "Black",
+      "price": 28,
+      "logo": 60,
+      "file": "logo-60-light.png",
+      "match": "Bella \\+ Canvas 3001",
+      "colors": [
+        "Black"
+      ],
+      "size": "M",
+      "placements": [
+        "front"
+      ],
+      "width": 0.55,
+      "top": 0.06
+    },
+    {
+      "slug": "stripe-ring-hoodie",
+      "name": "Stripe Ring Hoodie",
+      "color_label": "Black",
+      "price": 54,
+      "logo": 59,
+      "file": "logo-59-light.png",
+      "match": "Gildan 18500",
+      "colors": [
+        "Black"
+      ],
+      "size": "M",
+      "placements": [
+        "front"
+      ],
+      "width": 0.4,
+      "top": 0.06
+    },
+    {
+      "slug": "corners-hoodie",
+      "name": "Monogram Hoodie",
+      "color_label": "Sand",
+      "price": 54,
+      "logo": 43,
+      "file": "logo-43-dark.png",
+      "match": "Gildan 18500",
+      "colors": [
+        "Sand",
+        "White",
+        "Ash",
+        "Light Pink"
+      ],
+      "size": "M",
+      "placements": [
+        "front"
+      ],
+      "width": 0.36,
+      "top": 0.06
+    },
+    {
+      "slug": "navy-seal-hat",
+      "name": "Seal Dad Hat",
+      "color_label": "Navy",
+      "price": 30,
+      "logo": 55,
+      "file": "logo-55-brass.png",
+      "match": "Yupoong 6245CM",
+      "colors": [
+        "Navy"
+      ],
+      "placements": [
+        "embroidery_front",
+        "embroidery_front_large"
+      ],
+      "width": 0.5,
+      "top": 0.0
+    },
+    {
+      "slug": "stripes-cap",
+      "name": "Stripes Cap",
+      "color_label": "Stone",
+      "price": 30,
+      "logo": 58,
+      "file": "logo-58-dark.png",
+      "match": "Yupoong 6245CM",
+      "colors": [
+        "Stone",
+        "Khaki",
+        "White",
+        "Light Blue"
+      ],
+      "placements": [
+        "embroidery_front",
+        "embroidery_front_large"
+      ],
+      "width": 0.55,
+      "top": 0.05
+    },
+    {
+      "slug": "monogram-mug",
+      "name": "Monogram Mug",
+      "color_label": "Black, 11 oz",
+      "price": 18,
+      "logo": 42,
+      "file": "mug-42-light.png",
+      "match": "Black Glossy Mug|Black Mug",
+      "colors": [
+        "Black"
+      ],
+      "size": "11 oz",
+      "placements": [
+        "default"
+      ],
+      "width": 1.0,
+      "top": 0.0
+    },
+    {
+      "slug": "est-tote",
+      "name": "Est. 2026 Tote",
+      "color_label": "Black",
+      "price": 24,
+      "logo": 44,
+      "file": "logo-44-light.png",
+      "match": "Eco Tote Bag|Organic Tote Bag|Large Organic Tote",
+      "colors": [
+        "Black"
+      ],
+      "placements": [
+        "default",
+        "front"
+      ],
+      "width": 0.5,
+      "top": 0.2
+    },
+    {
+      "slug": "stickers",
+      "name": "Sticker",
+      "color_label": "4 x 4 in",
+      "price": 5,
+      "logo": 60,
+      "file": "logo-60-dark.png",
+      "match": "Kiss-Cut Stickers|Kiss Cut Stickers",
+      "colors": [
+        "White",
+        ""
+      ],
+      "size": "4″×4″",
+      "placements": [
+        "default"
+      ],
+      "width": 0.9,
+      "top": 0.05
+    }
   ]
 }
