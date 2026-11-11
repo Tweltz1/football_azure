@@ -1,13 +1,35 @@
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { DataProvider } from '../lib/store';
+import { DEMO, DEMO_DWELL_MS, DEMO_TOUR } from '../lib/demo';
+import { DataProvider, useData } from '../lib/store';
 import { useTheme } from '../lib/theme';
+
+/** Screenshot builds only (EXPO_PUBLIC_DEMO=1): walks through the screens so the build machine can photograph each. */
+function DemoTour() {
+  const { ready } = useData();
+  useEffect(() => {
+    if (!ready) return;
+    const timers = DEMO_TOUR.slice(1).map((route, i) =>
+      setTimeout(
+        () => {
+          if (router.canGoBack()) router.dismissAll();
+          setTimeout(() => router.push(route as never), 600);
+        },
+        (i + 1) * DEMO_DWELL_MS,
+      ),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [ready]);
+  return null;
+}
 
 export default function RootLayout() {
   const t = useTheme();
   return (
     <DataProvider>
       <StatusBar style="auto" />
+      {DEMO ? <DemoTour /> : null}
       <Stack
         screenOptions={{
           headerTintColor: t.primary,

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { backendConfigured } from './api';
+import { DEMO, DEMO_STORE, demoItems } from './demo';
 import { BuildingInfo } from './footprint';
 import { locationFromKroger, searchKrogerProducts } from './kroger';
 import { fetchBuildingInfo } from './osmBuilding';
@@ -127,10 +128,11 @@ async function lookUp(
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<Data>(fresh);
-  const [ready, setReady] = useState(false);
+  const [data, setData] = useState<Data>(() => (DEMO ? { ...fresh(), store: DEMO_STORE, items: demoItems() } : fresh()));
+  const [ready, setReady] = useState(DEMO);
 
   useEffect(() => {
+    if (DEMO) return; // screenshot builds start from the sample list every time
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => raw && setData((d) => ({ ...d, ...JSON.parse(raw) })))
       .catch(() => {})
@@ -138,7 +140,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (ready) AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch(() => {});
+    if (ready && !DEMO) AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch(() => {});
   }, [data, ready]);
 
   // Fetch the chosen store's building outline once (used to size and orient the store map).
