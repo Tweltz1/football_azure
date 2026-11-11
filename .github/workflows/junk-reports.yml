@@ -1,7 +1,8 @@
 name: Curbsy reports
 
 # Apple requires acting on reported content within 24 hours. This runs every morning and lists Curbsy
-# listings reported in the last day, plus Contact Curbsy messages and appeals. It FAILS (so GitHub emails
+# listings reported in the last day, Contact Curbsy messages, appeals, new bans, and anything still waiting
+# on a decision (auto-hidden listings, appeals whose ban or hidden listing is still in place). It FAILS (so GitHub emails
 # you) when there are any, so they get seen. Listings with 3 reports are already hidden automatically
 # (no strike until you confirm it with hide_item).
 #
@@ -15,7 +16,8 @@ name: Curbsy reports
 #                 Their listings stay hidden; restore any that were fine with restore_item.
 on:
   schedule:
-    - cron: '0 14 * * *'
+    # 09:00 UTC = 3 AM Central (4 AM in summer), so it's done before the 5 AM Central support review.
+    - cron: '0 9 * * *'
   workflow_dispatch:
     inputs:
       hide_item:
@@ -91,7 +93,7 @@ jobs:
               update public.junk_members set banned_at = null, ban_reason = '', strikes = 0 where user_id = '$UNBAN_USER' returning user_id" | jq -r '.[] | "Unbanned \(.user_id). Restore any listings that were fine with restore_item."'
           fi
 
-      - name: Reports, messages and appeals from the last day
+      - name: Reports, messages, appeals and blocked accounts
         if: ${{ env.ACTING != 'true' }}
         run: |
           sql() {
@@ -100,19 +102,55 @@ jobs:
               -d "$(jq -n --arg q "$1" '{query: $q}')" \
               "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query"
           }
-          sql "select r.created_at, r.reason, i.id as item_id, i.title, i.status, i.reports, i.owner_id, i.owner_name, i.description from public.junk_reports r join public.junk_items i on i.id = r.item_id where r.created_at > now() - interval '1 day' order by r.created_at" > reports.json
+          # 25 hours so a late scheduled run never leaves a gap between days.
+          sql "select r.created_at, r.reason, i.id as item_id, i.title, i.status, i.reports, i.owner_id, i.owner_name, i.description from public.junk_reports r join public.junk_items i on i.id = r.item_id where r.created_at > now() - interval '25 hours' order by r.created_at" > reports.json
           n=$(jq length reports.json)
           echo "Reports in the last day: $n"
           jq -r '.[] | "----\n\(.created_at)  \(.reason)\n  listing: \(.title) [\(.status), \(.reports) reports]  id \(.item_id)\n  posted by: \(.owner_name)  owner id \(.owner_id)\n  \(.description | .[0:300])"' reports.json
           # Contact Curbsy messages ("Report this person" in chats too) and appeals, with the person's strikes.
-          sql "select f.created_at, f.kind, f.item_id, f.user_id, f.user_name, f.body, coalesce(m.strikes, 0) as strikes, m.banned_at, i.title as item_title, i.status as item_status
+          sql "select f.id, f.created_at, f.kind, f.item_id, f.user_id, f.user_name, f.body, coalesce(m.strikes, 0) as strikes, m.banned_at, m.ban_reason, i.title as item_title, i.status as item_status
             from public.junk_feedback f left join public.junk_members m on m.user_id = f.user_id left join public.junk_items i on i.id = f.item_id
-            where f.created_at > now() - interval '1 day' order by f.created_at" > feedback.json || echo '[]' > feedback.json
+            where f.created_at > now() - interval '25 hours' order by f.created_at" > feedback.json || echo '[]' > feedback.json
           f=$(jq length feedback.json)
           echo "Contact messages and appeals in the last day: $f"
           jq -r '.[] | "----\n\(.created_at)  \(if .kind == "appeal" then "APPEAL" else "Contact" end) from \(.user_name) (user id \(.user_id), \(.strikes) strike(s)\(if .banned_at then ", BANNED" else "" end))\(if .item_id then "\n  about listing: \(.item_title) [\(.item_status)]  id \(.item_id)" else "" end)\n  \(.body | .[0:1000])"' feedback.json
           n=$((n + f))
+
+          # Blocked accounts: everyone banned in the last day, with why and what they posted.
+          sql "select m.user_id, m.banned_at, m.ban_reason, m.strikes, m.name,
+              (select count(*) from public.junk_items i where i.owner_id = m.user_id) as listings,
+              (select count(*) from public.junk_reports r join public.junk_items i on i.id = r.item_id where i.owner_id = m.user_id) as reports_against
+            from public.junk_members m where m.banned_at > now() - interval '25 hours' order by m.banned_at" > bans.json || echo '[]' > bans.json
+          echo "Accounts banned in the last day: $(jq length bans.json)"
+          jq -r '.[] | "----\n\(.banned_at)  BANNED \(.name // "") user id \(.user_id): \(.ban_reason) (\(.strikes) strike(s), \(.listings) listing(s), \(.reports_against) report(s) against them)"' bans.json
+
+          # Waiting on a decision, whatever day they came in, so a missed morning is never lost:
+          # listings hidden by 3 reports but not yet confirmed (hide_item) or put back (restore_item),
+          # and appeals from the last 14 days where the ban, strike or hidden listing is still in place.
+          sql "select i.id as item_id, i.title, i.owner_id, i.owner_name, i.reports, i.updated_at, i.description,
+              (select string_agg(r.reason, ' | ' order by r.created_at) from public.junk_reports r where r.item_id = i.id) as reasons
+            from public.junk_items i left join public.junk_members m on m.user_id = i.owner_id
+            where i.status = 'hidden' and not i.strike and m.banned_at is null order by i.updated_at" > hidden.json || echo '[]' > hidden.json
+          h=$(jq length hidden.json)
+          echo "Auto-hidden listings waiting for hide_item or restore_item: $h"
+          jq -r '.[] | "----\nHIDDEN \(.title)  id \(.item_id)  (\(.reports) reports: \(.reasons // ""))\n  posted by: \(.owner_name)  owner id \(.owner_id)\n  \(.description | .[0:300])"' hidden.json
+          sql "select f.id, f.created_at, f.user_id, f.user_name, f.body, f.item_id, coalesce(m.strikes, 0) as strikes, m.banned_at, m.ban_reason,
+              i.title as item_title, i.status as item_status, i.strike as item_strike,
+              (select string_agg(r.reason, ' | ' order by r.created_at) from public.junk_reports r join public.junk_items x on x.id = r.item_id where x.owner_id = f.user_id) as reports_against
+            from public.junk_feedback f left join public.junk_members m on m.user_id = f.user_id left join public.junk_items i on i.id = f.item_id
+            where f.kind = 'appeal' and f.created_at > now() - interval '14 days'
+              and (m.banned_at is not null or i.status = 'hidden')
+            order by f.created_at" > appeals.json || echo '[]' > appeals.json
+          ap=$(jq length appeals.json)
+          echo "Appeals from the last 14 days whose ban or hidden listing is still in place: $ap"
+          jq -r '.[] | "----\n\(.created_at)  OPEN APPEAL from \(.user_name) (user id \(.user_id), \(.strikes) strike(s)\(if .banned_at then ", BANNED: \(.ban_reason)" else "" end))\(if .item_id then "\n  about listing: \(.item_title) [\(.item_status)\(if .item_strike then ", strike" else "" end)]  id \(.item_id)" else "" end)\n  reports against them: \(.reports_against // "none")\n  \(.body | .[0:1000])"' appeals.json
+          # Older open appeals are listed for the review but don't fail the run again (new ones already count above).
+          n=$((n + h))
+
+          # One line of JSON for the 5 AM Central support review (Claude reads this job log).
+          echo "CURBSY_REVIEW_JSON $(jq -c -n --slurpfile reports reports.json --slurpfile feedback feedback.json --slurpfile bans bans.json --slurpfile hidden hidden.json --slurpfile appeals appeals.json \
+            '{reports: $reports[0], feedback: $feedback[0], bans: $bans[0], hidden_waiting: $hidden[0], open_appeals: $appeals[0]}')"
           if [ "$n" -gt 0 ]; then
-            echo "::error::$n Curbsy report(s), message(s) or appeal(s) to review. Run this workflow with hide_item, ban_user, restore_item or unban_user."
+            echo "::error::$n Curbsy report(s), message(s), appeal(s) or hidden listing(s) to review. Run this workflow with hide_item, ban_user, restore_item or unban_user."
             exit 1
           fi
