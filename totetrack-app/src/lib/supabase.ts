@@ -22,4 +22,6 @@ export const supabase = createClient(url, anonKey || 'missing-anon-key', {
 export const TABLE = 'totetrack_totes';
 /** Photos of what's inside totes, one row per photo (base64 JPEG), keyed by file name. */
 export const PHOTO_TABLE = 'totetrack_photos';
+/** The account's packing lists, one row per user (the whole set as JSON). */
+export const LIST_TABLE = 'totetrack_lists';
 export const AUTH_REDIRECT = 'totetrack://auth';

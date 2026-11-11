@@ -1,6 +1,6 @@
 """Sets up ToteTrack's cloud backup in the Hood League Supabase project. Safe to re-run.
 
-- Creates the totetrack_totes and totetrack_photos tables (each user can only read and write their own rows).
+- Creates the totetrack_totes, totetrack_photos and totetrack_lists tables (each user can only read and write their own rows).
 - Adds totetrack://auth to the sign-in return addresses (for Google sign-in).
 - Adds the app's bundle ID to the Apple sign-in client IDs.
 Only ever adds to existing settings. Never prints the access token."""
@@ -46,6 +46,19 @@ create policy "totetrack own photos" on public.totetrack_photos
   using (user_id = (select auth.uid()))
   with check (user_id = (select auth.uid()));
 grant select, insert, update, delete on public.totetrack_photos to authenticated;
+
+create table if not exists public.totetrack_lists (
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade primary key,
+  data jsonb,
+  updated_at bigint not null
+);
+alter table public.totetrack_lists enable row level security;
+drop policy if exists "totetrack own lists" on public.totetrack_lists;
+create policy "totetrack own lists" on public.totetrack_lists
+  for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+grant select, insert, update, delete on public.totetrack_lists to authenticated;
 """
 
 
@@ -66,7 +79,7 @@ def call(method, path, payload=None):
 
 
 call("POST", "/database/query", {"query": SQL})
-print("totetrack_totes and totetrack_photos tables: ready")
+print("totetrack_totes, totetrack_photos and totetrack_lists tables: ready")
 
 auth = call("GET", "/config/auth")
 patch = {}
@@ -106,6 +119,9 @@ begin
   delete from public.totetrack_totes where user_id = uid;
   if to_regclass('public.totetrack_photos') is not null then
     execute 'delete from public.totetrack_photos where user_id = $1' using uid;
+  end if;
+  if to_regclass('public.totetrack_lists') is not null then
+    execute 'delete from public.totetrack_lists where user_id = $1' using uid;
   end if;
   for r in
     select c.conrelid::regclass as tbl, a.attname as col

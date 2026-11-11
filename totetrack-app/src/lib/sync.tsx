@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PackingList, useLists } from './lists';
 import { Directory, File, Paths } from 'expo-file-system';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -6,7 +7,7 @@ import { AppState } from 'react-native';
 import { useAuth } from './auth';
 import { notifyPhotosChanged, photoUri } from './photos';
 import { RemoteTote, useTotes } from './store';
-import { PHOTO_TABLE, supabase, TABLE } from './supabase';
+import { PHOTO_TABLE, supabase, TABLE, LIST_TABLE } from './supabase';
 import { Tote } from './types';
 
 /**
@@ -130,8 +131,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   // Set while the account is being deleted, so a sync can't put the totes straight back.
   const paused = useRef(false);
   const latest = useRef(store);
+  const lists = useLists();
+  const latestLists = useRef(lists);
   useEffect(() => {
     latest.current = store;
+    latestLists.current = lists;
   });
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization -- re-runs itself via setTimeout
@@ -202,6 +206,24 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const incomingIds = new Set(incoming.map((r) => r.id));
       const after = [...totes.filter((t) => !incomingIds.has(t.id)), ...incoming.flatMap((r) => (!r.deleted && r.data ? [r.data] : []))];
       await syncInsidePhotos(uid, after).catch(() => {});
+
+      // 4. Packing lists: the whole set is one row per account, and the newer side wins.
+      try {
+        const { data: lr, error: listError } = await supabase.from(LIST_TABLE).select('data,updated_at').eq('user_id', uid).maybeSingle();
+        if (listError) throw listError;
+        const L = latestLists.current;
+        const remoteAt = lr ? Number(lr.updated_at) : 0;
+        if (lr && remoteAt > L.updatedAt) {
+          L.replaceAll((lr.data as PackingList[] | null) ?? [], remoteAt);
+        } else if (L.updatedAt > remoteAt) {
+          const { error: upError } = await supabase
+            .from(LIST_TABLE)
+            .upsert({ user_id: uid, data: L.lists, updated_at: L.updatedAt }, { onConflict: 'user_id' });
+          if (upError) throw upError;
+        }
+      } catch {
+        // The lists table may not be set up yet; totes keep syncing either way.
+      }
       setLastSynced(Date.now());
       setError(undefined);
       setStatus('synced');
@@ -221,11 +243,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // Sync on sign-in, when the app comes back to the screen, and shortly after any change.
   useEffect(() => {
-    if (!uid || !store.ready) return;
+    if (!uid || !store.ready || !lists.ready) return;
     run();
     const sub = AppState.addEventListener('change', (s) => s === 'active' && run());
     return () => sub.remove();
-  }, [uid, store.ready, run]);
+  }, [uid, store.ready, lists.ready, run]);
 
   // After a failed sync (no signal, say), try again in a little while.
   useEffect(() => {
@@ -243,7 +265,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     if (!uid) return;
     const t = setTimeout(run, 1500);
     return () => clearTimeout(t);
-  }, [store.totes, store.tombstones, uid, run]);
+  }, [store.totes, store.tombstones, lists.updatedAt, uid, run]);
 
   const value = useMemo<SyncState>(
     () => ({
