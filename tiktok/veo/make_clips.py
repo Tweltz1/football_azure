@@ -47,7 +47,8 @@ def pick_model(wanted, names):
     for n in names:
         if tier(n) == tier(wanted):
             return n
-    sys.exit(f"No Veo model like {wanted}; have {names}")
+    print(f"No Veo model like {wanted} listed; trying it by name anyway")
+    return wanted
 
 
 def main():
@@ -55,9 +56,17 @@ def main():
         sys.exit("No GEMINI_API_KEY")
     cfg = json.load(open(os.path.join(HERE, "clips.json")))
     os.makedirs(OUT, exist_ok=True)
-    models = call("GET", f"{API}/models?pageSize=1000").get("models", [])
-    veo = [m["name"].split("/", 1)[1] for m in models if "veo" in m["name"]]
-    print("Veo models on this key:", veo)
+    models, token = [], ""
+    for _ in range(20):
+        page = call("GET", f"{API}/models?pageSize=100" + (f"&pageToken={token}" if token else ""))
+        models += [m["name"].split("/", 1)[1] for m in page.get("models", [])]
+        token = page.get("nextPageToken")
+        if not token:
+            break
+    veo = [m for m in models if "veo" in m]
+    print(len(models), "models on this key; Veo:", veo)
+    if not veo:
+        print("All models:", models)
     spent = 0.0
     for clip in cfg["clips"]:
         path = os.path.join(OUT, clip["id"] + ".mp4")
