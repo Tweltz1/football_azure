@@ -71,6 +71,8 @@ const shot = (page, name) => page.screenshot({ path: `${OUT}/${String(++shotN).p
 const toastText = async (page) => (await page.locator('.toast').first().textContent({ timeout: 8000 }).catch(() => '')) || '';
 const tab = (page, v) => page.evaluate((v) => { const b = document.querySelector(`.tab[data-view="${v}"]`); if (!b) throw new Error('no tab ' + v); b.click(); }, v);
 
+const jobsNow = async () => { const d = (await shopApi(owner.token, 'GET', 'shop/jobs')).data; return Array.isArray(d) ? d : d?.jobs || []; };
+const clickEl = (page, sel) => page.evaluate((sel) => { const el = document.querySelector(sel); if (!el) throw new Error('not found: ' + sel); el.click(); }, sel);
 const browser = await chromium.launch();
 let owner, shopId, jobLink;
 try {
@@ -143,7 +145,7 @@ try {
     await page.selectOption('#ci-method', 'staff').catch(() => {});
     await page.fill('#ci-vin', '1HGCM82633A004352');
     await page.click('#ci-vin-go');
-    await page.waitForFunction(() => document.querySelector('#ci-vin-msg')?.textContent.trim(), null, { timeout: 20000 });
+    await page.waitForFunction(() => { const t = document.querySelector('#ci-vin-msg')?.textContent.trim(); return t && !/Looking up/i.test(t); }, null, { timeout: 25000 });
     return (await page.textContent('#ci-vin-msg')) + ' · make=' + (await page.inputValue('#ci-make'));
   });
 
@@ -168,7 +170,8 @@ try {
 
   // ---------- Work the repair ----------
   await step('Open the repair sheet', async () => {
-    await page.click('[data-open]');
+    await page.waitForTimeout(3500); // let the "Saved" toast clear
+    await clickEl(page, '[data-open]');
     await page.waitForSelector('.sheet', { timeout: 15000 });
     jobLink = await page.getAttribute('.sheet a:has-text("Customer Page")', 'href');
     if (!jobLink) throw new Error('no customer link');
@@ -192,17 +195,17 @@ try {
     await page.fill('#replyIn', 'Hi Pat, we are looking at your brakes now.');
     await page.click('#replyForm button[type=submit]');
     await page.waitForTimeout(8000);
-    const j = (await shopApi(owner.token, 'GET', 'shop/jobs')).data?.jobs?.[0];
+    const j = (await jobsNow())[0];
     const m = j?.messages?.at(-1);
     if (!m) throw new Error('no message saved');
     return `delivery=${m.delivery}${m.note ? ' (' + m.note + ')' : ''}`;
   });
   await step('Send estimate for approval', async () => {
-    await page.click('.sheet .est-send');
+    await clickEl(page, '.sheet .est-send');
     await page.waitForSelector('#sendForm', { timeout: 10000 });
     await page.click('#sendForm button[type=submit]');
     await page.waitForTimeout(9000); // the move waits a few seconds with an Undo
-    const j = (await shopApi(owner.token, 'GET', 'shop/jobs')).data?.jobs?.[0];
+    const j = (await jobsNow())[0];
     if (j?.stage !== 'approval') throw new Error('stage is ' + j?.stage);
     return 'stage=approval';
   });
@@ -225,7 +228,7 @@ try {
     await c.waitForTimeout(3000);
     await shot(c, 'customer-approved');
     await cctx.close();
-    const j = (await shopApi(owner.token, 'GET', 'shop/jobs')).data?.jobs?.[0];
+    const j = (await jobsNow())[0];
     if (!j?.approval) throw new Error('approval not saved');
     return `approved by signature; customer message ${j.messages.some((m) => m.dir === 'in') ? 'saved' : 'missing'}`;
   });
@@ -235,7 +238,7 @@ try {
     await page.reload({ waitUntil: 'networkidle' });
     const seen = [];
     for (let i = 0; i < 3; i++) {
-      await page.click('[data-open]');
+      if (!(await page.locator('.sheet').count())) await clickEl(page, '[data-open]');
       await page.waitForSelector('.sheet');
       const btn = page.locator('.sheet button.btn.primary[data-stage]').first();
       if (!(await btn.count())) break;
@@ -248,7 +251,7 @@ try {
       await page.keyboard.press('Escape').catch(() => {});
       await page.locator('.sheet [data-close]').first().click().catch(() => {});
     }
-    const j = (await shopApi(owner.token, 'GET', 'shop/jobs')).data?.jobs?.[0];
+    const j = (await jobsNow())[0];
     return seen.join(' → ') + ` · now ${j?.stage}`;
   });
 
@@ -270,11 +273,13 @@ try {
     return await toastText(page);
   });
   await step('Team: invite a technician (test inbox)', async () => {
+    await tab(page, 'settings');
     await page.waitForSelector('#teamInviteForm', { timeout: 10000 });
     await page.fill('#tm-email', 'delivered@resend.dev');
     await page.fill('#tm-name', 'Tech Tester').catch(() => {});
     await page.click('#teamInviteForm button[type=submit]');
-    return await toastText(page);
+    await page.waitForSelector('.team-link, #teamPanel .form-err', { timeout: 20000 });
+    return (await page.locator('.team-link span').first().textContent().catch(() => '')).replace(/https?:\S+/g, '').slice(0, 90) || (await page.locator('#teamPanel .form-err').first().textContent());
   });
   await step('How-to assistant answers', async () => {
     await tab(page, 'howto');
@@ -338,10 +343,10 @@ try {
   });
 
   await step('Sign out', async () => {
+    await tab(page, 'settings');
+    await page.waitForSelector('#signOut2', { timeout: 10000 });
     await page.evaluate(() => document.querySelector('#signOut2, #signOut')?.click());
-    await tab(page, 'settings').catch(() => {});
-    await page.evaluate(() => document.querySelector('#signOut2, #signOut')?.click());
-    await page.waitForSelector('#emailForm, .hero, body', { timeout: 10000 });
+    await page.waitForFunction(() => !document.querySelector('.tab[data-view="board"]')?.offsetParent, null, { timeout: 15000 });
   });
 } finally {
   // ---------- Clean up ----------
