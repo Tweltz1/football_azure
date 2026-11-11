@@ -27,15 +27,56 @@ export async function incomingSms(req: Request, cfg: SmsConfig, receive: (sid:st
   if (!await crypto.subtle.verify('HMAC',key,Uint8Array.from(atob(signature),c=>c.charCodeAt(0)),new TextEncoder().encode(payload)) ||
       params.get('AccountSid')!==cfg.account || params.get('To')!==cfg.to) return denied();
   const sid=params.get('MessageSid')||'', phone=params.get('From')||'', text=(params.get('Body')||'').trim().slice(0,1600);
-  let reply:string|null=null;
-  // STOP and its synonyms: Twilio blocks further texts itself; this also cancels the shop's scheduled reminders.
-  if (optOut && /^\+[1-9]\d{7,14}$/.test(phone) && (params.get('OptOutType')==='STOP' || /^(stop(all)?|cancel|end|quit|unsubscribe|revoke|optout)$/i.test(text))) {
-    try { await optOut(phone); } catch { /* the carrier opt-out still applies */ }
-  }
-  if (/^(?:SM|MM)[a-f\d]{32}$/i.test(sid) && /^\+[1-9]\d{7,14}$/.test(phone) && text && !params.get('OptOutType') && !/^(stop(all)?|cancel|end|quit|unsubscribe|revoke|optout|start|unstop|help|info|yes)$/i.test(text)) {
-    reply=await receive(sid,phone,text,Number(params.get('NumMedia')||0)>0?'review':smsTopic(text));
-    if(reply) reply=gsmText(reply); // plain characters: a bullet or dash would bill the reply as Unicode
-  }
+  const reply=await answer(sid,phone,text,Number(params.get('NumMedia')||0)>0,!!params.get('OptOutType'),params.get('OptOutType')==='STOP',/^(?:SM|MM)[a-f\d]{32}$/i.test(sid),receive,optOut);
   const xml=reply?'<Message>'+reply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</Message>':'';
   return new Response('<Response>'+xml+'</Response>',{headers:{'Content-Type':'text/xml; charset=utf-8'}});
+}
+
+const OPT_OUT=/^(stop(all)?|cancel|end|quit|unsubscribe|revoke|optout)$/i;
+const KEYWORD=/^(stop(all)?|cancel|end|quit|unsubscribe|revoke|optout|start|unstop|help|info|yes)$/i;
+/** Shared by both providers: honor opt-outs, then hand an ordinary text to the shop and return any automatic reply. */
+async function answer(sid:string,phone:string,text:string,hasMedia:boolean,isKeyword:boolean,isStop:boolean,validSid:boolean,
+  receive:(sid:string,phone:string,text:string,topic:string)=>Promise<string|null>, optOut?:(phone:string)=>Promise<void>): Promise<string|null> {
+  // STOP and its synonyms: the carrier/provider blocks further texts itself; this also cancels the shop's scheduled reminders.
+  if (optOut && /^\+[1-9]\d{7,14}$/.test(phone) && (isStop || OPT_OUT.test(text))) {
+    try { await optOut(phone); } catch { /* the carrier opt-out still applies */ }
+  }
+  if (!validSid || !/^\+[1-9]\d{7,14}$/.test(phone) || !text || isKeyword || KEYWORD.test(text)) return null;
+  const reply=await receive(sid,phone,text,hasMedia?'review':smsTopic(text));
+  return reply?gsmText(reply):null; // plain characters: a bullet or dash would bill the reply as Unicode
+}
+
+const b64=(s:string)=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+type TelnyxConfig = { publicKey: string; to: string; now?: () => number };
+/**
+ * Telnyx inbound-message webhook (JSON, signed with Ed25519 over "<timestamp>|<raw body>").
+ * Telnyx has no reply-in-response like Twilio's TwiML, so an automatic reply goes out through `sendReply`.
+ * `to` is TELNYX_FROM: the Talk Shops number (+1...) or its Messaging Profile id.
+ */
+export async function incomingTelnyxSms(req: Request, cfg: TelnyxConfig, receive: (sid:string,phone:string,text:string,topic:string)=>Promise<string|null>,
+  optOut: ((phone:string)=>Promise<void>)|undefined, sendReply: (phone:string,text:string)=>Promise<unknown>): Promise<Response> {
+  if (!cfg.publicKey || !cfg.to) return new Response('SMS is not configured.', {status:503});
+  const raw = await req.text();
+  const signature = req.headers.get('telnyx-signature-ed25519') || '', stamp = req.headers.get('telnyx-timestamp') || '';
+  const denied = () => new Response('Invalid SMS signature.', {status:403});
+  const nowSec = Math.floor((cfg.now?.() ?? Date.now())/1000);
+  // A five-minute window stops an old, captured request from being replayed.
+  if (!/^[A-Za-z0-9+/]{86}==$/.test(signature) || !/^\d{9,11}$/.test(stamp) || Math.abs(nowSec-Number(stamp))>300) return denied();
+  try {
+    const key = await crypto.subtle.importKey('raw', b64(cfg.publicKey), {name:'Ed25519'}, false, ['verify']);
+    if (!await crypto.subtle.verify({name:'Ed25519'}, key, b64(signature), new TextEncoder().encode(stamp+'|'+raw))) return denied();
+  } catch { return denied(); }
+  let event: any;
+  try { event = JSON.parse(raw); } catch { return new Response('Bad JSON.', {status:400}); }
+  const ok = () => Response.json({ok:true});
+  // Delivery reports (message.sent, message.finalized) arrive here too; only incoming texts matter.
+  if (event?.data?.event_type !== 'message.received') return ok();
+  const m = event.data.payload ?? {};
+  const toNumbers: string[] = Array.isArray(m.to) ? m.to.map((t:any)=>t?.phone_number) : [];
+  if (cfg.to.startsWith('+') ? !toNumbers.includes(cfg.to) : m.messaging_profile_id !== cfg.to) return denied();
+  const sid = String(m.id||''), phone = String(m.from?.phone_number||''), text = String(m.text||'').trim().slice(0,1600);
+  const reply = await answer(sid,phone,text,Array.isArray(m.media)&&m.media.length>0,false,false,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid),receive,optOut);
+  if (reply) await sendReply(phone, reply);
+  return ok();
 }

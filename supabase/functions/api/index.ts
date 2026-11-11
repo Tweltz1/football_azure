@@ -13,8 +13,8 @@ import { createJunkPhotos, createJunkStore } from './junkAdapters.ts';
 import { verifyAppleJws } from '../_shared/appleJws.ts';
 import { applePushSender } from '../_shared/applePush.ts';
 import { createShopEmailSender } from '../_shared/shopEmail.ts';
-import { createTwilioSender, runCron, shopRoute, stopReminders, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
-import { incomingSms } from '../_shared/shopSms.ts';
+import { createSmsSender, runCron, shopRoute, stopReminders, stripeWebhook, type ShopDeps } from '../_shared/shop.ts';
+import { incomingSms, incomingTelnyxSms } from '../_shared/shopSms.ts';
 import { createStripe } from '../_shared/shopPlans.ts';
 import { createNarrator, geminiNarrator, DEFAULT_GEMINI_MODEL } from './narrator.ts';
 import { geminiDamageFinder } from '../_shared/shopDamage.ts';
@@ -38,7 +38,7 @@ const snapshots = createSnapshotStore(db);
 const games = createGameStore(db);
 const askLog = createAskLogStore(db);
 const cardGames = createCardGameStore(db);
-// Repair shop app (Test tab). Texts go through Twilio once its three secrets are set.
+// Repair shop app (Test tab). Texts go through Telnyx once TELNYX_API_KEY and TELNYX_FROM are set (Twilio's three secrets still work as a fallback).
 // The Gemini key, under either spelling (the dashboard secret was saved as Gemini_API_KEY).
 const GEMINI_KEY = Deno.env.get('GEMINI_API_KEY') || Deno.env.get('Gemini_API_KEY') || undefined;
 const shop: ShopDeps = {
@@ -52,7 +52,7 @@ const shop: ShopDeps = {
   staff: createStaffStore(db),
   sessions: createSessionStore(db),
   email: createShopEmailSender(Deno.env.get('RESEND_API_KEY'), Deno.env.get('TALKSHOPS_EMAIL_FROM')),
-  sms: createTwilioSender(Deno.env.get('TWILIO_ACCOUNT_SID'), Deno.env.get('TWILIO_AUTH_TOKEN'), Deno.env.get('TWILIO_FROM')),
+  sms: createSmsSender((name) => Deno.env.get(name)),
   linkBase: Deno.env.get('SHOP_LINK_BASE') || 'https://talkshops.app/?c=',
   demoDailyLimit: Number(Deno.env.get('DEMO_TEXT_DAILY_LIMIT')) || 10,
   // Plans: payments switch on once STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are set.
@@ -168,17 +168,24 @@ Deno.serve(async (req) => {
 
   if (req.method === 'POST' && path === 'shop/incoming-sms') {
     try {
-      return await incomingSms(req, {
-        token: Deno.env.get('TWILIO_AUTH_TOKEN') || '', account: Deno.env.get('TWILIO_ACCOUNT_SID') || '',
-        to: Deno.env.get('TWILIO_FROM') || '', url: SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/api/shop/incoming-sms',
-      }, async (sid, phone, text, topic) => {
+      const receive = async (sid: string, phone: string, text: string, topic: string) => {
         const {data,error}=await db.rpc('repair_incoming_sms',{p_sid:sid,p_phone:phone,p_body:text,p_topic:topic,p_base:shop.linkBase});
         if(error) throw error;
         return data;
-      }, async (phone) => {
+      };
+      const optOut = async (phone: string) => {
         const now = new Date().toISOString();
         for (const job of await shop.store.jobsWithFollowupsFor?.(phone) ?? []) { stopReminders(job, now, 'customer'); job.updatedAt = now; await shop.store.putJob(job); }
-      });
+      };
+      // Telnyx signs its JSON webhooks with Ed25519; anything else is checked as a Twilio webhook.
+      if (req.headers.has('telnyx-signature-ed25519')) {
+        return await incomingTelnyxSms(req, { publicKey: Deno.env.get('TELNYX_PUBLIC_KEY') || '', to: Deno.env.get('TELNYX_FROM') || '' },
+          receive, optOut, (phone, text) => shop.sms.send(phone, text));
+      }
+      return await incomingSms(req, {
+        token: Deno.env.get('TWILIO_AUTH_TOKEN') || '', account: Deno.env.get('TWILIO_ACCOUNT_SID') || '',
+        to: Deno.env.get('TWILIO_FROM') || '', url: SUPABASE_URL.replace(/\/$/, '') + '/functions/v1/api/shop/incoming-sms',
+      }, receive, optOut);
     } catch { return new Response('SMS processing unavailable.',{status:503}); }
   }
   // Hourly from GitHub Actions (.github/workflows/talkshops-hourly.yml): reminder texts and morning summary emails.

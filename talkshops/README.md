@@ -22,7 +22,8 @@ It does nothing until these GitHub repository secrets exist (Settings, Secrets a
 - `TALKSHOPS_SUPABASE_PROJECT_ID` (the project's reference id) and `TALKSHOPS_SUPABASE_DB_PASSWORD`.
   `SUPABASE_ACCESS_TOKEN` is shared with the hobby project.
 - Function keys, each optional (the feature stays off without it): `TALKSHOPS_RESEND_API_KEY`,
-  `TALKSHOPS_TWILIO_ACCOUNT_SID`, `TALKSHOPS_TWILIO_AUTH_TOKEN`, `TALKSHOPS_TWILIO_FROM`, `TALKSHOPS_STRIPE_SECRET_KEY`,
+  `TALKSHOPS_TELNYX_API_KEY`, `TALKSHOPS_TELNYX_FROM`, `TALKSHOPS_TELNYX_PUBLIC_KEY` (texting; Twilio's
+  `TALKSHOPS_TWILIO_ACCOUNT_SID`, `TALKSHOPS_TWILIO_AUTH_TOKEN`, `TALKSHOPS_TWILIO_FROM` still work when the Telnyx key is absent), `TALKSHOPS_STRIPE_SECRET_KEY`,
   `TALKSHOPS_STRIPE_WEBHOOK_SECRET`, `TALKSHOPS_GEMINI_API_KEY`.
   `TALKSHOPS_EMAIL_FROM`, `SHOP_LINK_BASE` and `TALKSHOPS_SITE_URL` are set by the workflow itself.
 
@@ -66,6 +67,13 @@ billing, create final bills, close, reopen or delete repairs, send an estimate f
 
 ## Incoming SMS and Smart Replies
 
-For the Talk Shops Twilio number (or its effective Messaging Service inbound handler), select the incoming-message webhook, method POST, and use the exact public URL `https://<project>.supabase.co/functions/v1/api/shop/incoming-sms`. The handler verifies Twilio’s signature, recipient number and account against the existing sender secrets. Confirm any existing inbound integration before changing a shared number. A unique active repair and prior outbound SMS are required to attach an incoming text.
+Texts go through **Telnyx** when `TELNYX_API_KEY` is set (otherwise Twilio). `TELNYX_FROM` is the Talk Shops number in
++1 format (or the Messaging Profile id), and `TELNYX_PUBLIC_KEY` is the account's webhook public key (Mission Control,
+Account Settings, Keys & Credentials, Public Key). In the Telnyx Messaging Profile, set the inbound webhook URL to
+`https://<project>.supabase.co/functions/v1/api/shop/incoming-sms` (API v2). The handler checks the Ed25519 signature,
+rejects requests older than five minutes, checks the receiving number, and sends any automatic reply through the
+Telnyx API. Twilio webhooks to the same URL are still checked with Twilio's signature. US numbers need 10DLC
+registration (brand and campaign) before carriers deliver texts. A unique active repair and prior outbound SMS are
+required to attach an incoming text.
 
 Owners on Pro or an active trial can enable individual automatic topics in Settings, supply a signature and set an after-hours schedule. All topics start off. Staff can review drafts and pause automatic replies on one repair. Automatic texts count against the allowance. The public demo at `/demo.html?smart=1` uses sample messages locally.

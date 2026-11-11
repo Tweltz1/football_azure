@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Ctx } from '../functions/_shared/handlers.ts';
 import {
-  archivedAt, archiveSearchText, createTwilioSender, digestText, nextFollowup, normalizePhone, runCron, shopRoute, stopReminders, visitRow, type Job, type Shop, type ShopDeps, type ShopStore,
+  archivedAt, archiveSearchText, createSmsSender, createTelnyxSender, createTwilioSender, digestText, nextFollowup, normalizePhone, runCron, shopRoute, stopReminders, visitRow, type Job, type Shop, type ShopDeps, type ShopStore,
 } from '../functions/_shared/shop.ts';
 import type { PlanState } from '../functions/_shared/shopPlans.ts';
 import type { Booking } from '../functions/_shared/shopGrow.ts';
@@ -1234,4 +1234,24 @@ test('the Bay refresh leaves out image data and answers "same" when nothing chan
   assert.notEqual(next.v, first.v);
   assert.equal(next.jobs.length, 1);
   assert.notEqual((await as('user-other')('GET', 'shop/jobs/board'))?.status, 200);
+});
+
+test('Telnyx sends texts, explains refusals, and is chosen over Twilio when its key is set', async () => {
+  assert.equal((await createTelnyxSender(undefined, undefined).send('+15550000000', 'hi')).delivery, 'not_sent');
+  let call: { url: string; init: RequestInit } | null = null;
+  const fake = (async (url: string, init: RequestInit) => { call = { url, init }; return new Response('{}', { status: 200 }); }) as unknown as typeof fetch;
+  const env = (vars: Record<string, string>) => (k: string) => vars[k];
+  const sent = await createSmsSender(env({ TELNYX_API_KEY: 'KEY1', TELNYX_FROM: '+15550001111', TWILIO_ACCOUNT_SID: 'AC1', TWILIO_AUTH_TOKEN: 't', TWILIO_FROM: '+1555' }), fake).send('+15550000000', 'hi');
+  assert.equal(sent.delivery, 'sent');
+  assert.equal(call!.url, 'https://api.telnyx.com/v2/messages');
+  assert.equal((call!.init.headers as Record<string, string>).Authorization, 'Bearer KEY1');
+  assert.deepEqual(JSON.parse(call!.init.body as string), { from: '+15550001111', to: '+15550000000', text: 'hi' });
+  await createTelnyxSender('KEY1', '40017f8e-0000-4000-8000-000000000000', fake).send('+15550000000', 'hi');
+  assert.equal(JSON.parse(call!.init.body as string).messaging_profile_id, '40017f8e-0000-4000-8000-000000000000');
+  await createSmsSender(env({ TWILIO_ACCOUNT_SID: 'AC1', TWILIO_AUTH_TOKEN: 't', TWILIO_FROM: '+1555' }), fake).send('+15550000000', 'hi');
+  assert.match(call!.url, /twilio\.com/);
+  const refused = (async () => new Response(JSON.stringify({ errors: [{ code: '40310', title: "Invalid 'to' address", detail: 'The number is not valid.' }] }), { status: 422 })) as unknown as typeof fetch;
+  const r = await createTelnyxSender('KEY1', '+15550001111', refused).send('+15550000000', 'hi');
+  assert.equal(r.delivery, 'failed');
+  assert.match(r.note!, /Invalid 'to' address.*Telnyx error 40310/);
 });
