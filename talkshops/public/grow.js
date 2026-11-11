@@ -497,12 +497,15 @@
   }
 
   // ==================== Settings (owners) ====================
-  function settingsPanels() {
+  /** Owner settings boxes: "customers" (booking, reminders, reviews, logo) or "data" (export). */
+  function settingsPanels(part = "customers") {
     if (!A?.isOwner()) return "";
+    if (part === "data") return exportPanel();
     const s = A.shop() || {}, g = s.grow || {}, b = s.brand || {};
     const link = s.bookingToken ? location.origin + "/?book=" + s.bookingToken : "";
     return `<section class="panel gr-panel" id="gr-booking"><h2>Online Booking</h2>
-        <p class="muted" style="margin:0">Put this link on your website, Google Business profile or social pages. ${g.schedule ? "Customers see your open times and pick one" : "Customers ask for a day; you confirm a time"}, and the car lands on your Bay with their details filled in. Customers can book in English or Spanish.</p>
+        <p class="muted" style="margin:0">Share this link on your website or Google profile so customers can book.</p>
+        <details class="more-info"><summary>How this works</summary><p>Put the link on your website, Google Business profile or social pages. ${g.schedule ? "Customers see your open times and pick one" : "Customers ask for a day; you confirm a time"}, and the car lands on your Bay with their details filled in. Customers can book in English or Spanish.</p></details>
         <label class="chk"><input type="checkbox" data-gr-grow="bookingOn" ${g.bookingOn ? "checked" : ""}> Take booking requests online</label>
         ${g.bookingOn && link ? `<div class="gr-link"><input readonly value="${esc(link)}" aria-label="Your booking link" id="gr-book-link"><button type="button" class="btn sm" data-gr-copy="#gr-book-link">Copy</button><a class="btn sm" href="${esc(link)}" target="_blank" rel="noopener">Open</a></div>
           <label class="field">Note on your booking page <small class="muted">(optional)</small><input maxlength="300" id="gr-book-note" value="${esc(g.bookingNote || "")}" placeholder="e.g. Drop-offs from 7:30am. We call to confirm."></label>
@@ -512,12 +515,12 @@
       <section class="panel gr-panel" id="gr-notify"><h2>Reminders and Morning Email</h2>
         <label class="field">Shop address <small class="muted">(customers get a Directions button)</small><input id="gr-address" maxlength="160" autocomplete="street-address" value="${esc(g.address || "")}" placeholder="e.g. 1200 Main St, Eau Claire, WI"></label>
         <label class="field">If a customer hasn't answered an estimate<select id="gr-nudge">${[[0, "Don't remind them"], [2, "Text a reminder after 2 hours"], [4, "Text a reminder after 4 hours"], [24, "Text a reminder the next day"]].map(([v, l]) => `<option value="${v}" ${(g.nudgeHours || 0) === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
-        <p class="muted" style="margin:0;font-size:13px">One text, only to customers who agreed to texts, and it's skipped if they answer first. Counts toward your texts.</p>
+        <p class="muted" style="margin:0;font-size:13px">One text, only to customers who agreed to texts. Skipped if they answer first.</p>
         <label class="chk"><input type="checkbox" id="gr-digest" ${g.digest ? "checked" : ""}> Morning summary email at 7am: cars in, estimates waiting, money approved, late promises${s.email ? ` (to ${esc(s.email)})` : " (to the owner's sign-in email; set a Shop email above to change it)"}</label>
         <div class="btn-row"><button type="button" class="btn sm" data-gr-save-notify>Save</button></div>
       </section>
       <section class="panel gr-panel"><h2>Reviews ${pro() ? "" : '<span class="pill">Pro</span>'}</h2>
-        <p class="muted" style="margin:0">Paste your Google review link (Google Business Profile → Ask for reviews) or Yelp page. You can ask a customer for a review from their car once it's ready, and their page shows a review button.</p>
+        <p class="muted" style="margin:0">Paste your Google or Yelp review link. Customers get a review button once their car is ready.</p>
         <label class="field">Review link<input id="gr-review-url" maxlength="400" inputmode="url" value="${esc(g.reviewUrl || "")}" placeholder="https://g.page/r/…/review"></label>
         <label class="chk"><input type="checkbox" id="gr-review-auto" ${g.reviewAuto ? "checked" : ""} ${pro() ? "" : "disabled"}> Add the review link to the "Picked up" thank-you text</label>
         ${pro() ? "" : lockNote("Asking for reviews")}
@@ -531,8 +534,11 @@
           <label class="field gr-color">Accent color<span><input type="color" id="gr-color" value="${esc(b.color || "#1f6feb")}"><button type="button" class="btn sm" data-gr-color-save>Save color</button>${b.color ? '<button type="button" class="linkbtn" data-gr-color-clear>Use the standard color</button>' : ""}</span></label>
         </div>` : lockNote("Your logo and color on customer pages")}
       </section>
-      <section class="panel gr-panel"><h2>Export Your Data</h2>
-        <p class="muted" style="margin:0">Download every repair from the last year, or your customer list, as a CSV file for Excel, Google Sheets or your accountant. It's your data.</p>
+`;
+  }
+  function exportPanel() {
+    return `<section class="panel gr-panel"><h2>Export Your Data</h2>
+        <p class="muted" style="margin:0">Your repairs from the last year or your customer list, as a CSV file for Excel or your accountant.</p>
         <div class="btn-row"><button type="button" class="btn sm" data-gr-export="jobs">Download repairs (CSV)</button><button type="button" class="btn sm" data-gr-export="customers">Download customers (CSV)</button></div>
       </section>`;
   }

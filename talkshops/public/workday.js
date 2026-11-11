@@ -348,7 +348,8 @@
     if (!edit) ui.pkEdit = null;
     const choices = pkChoices(edit), inEdit = (r) => edit?.lines.some((l) => l.name.toLowerCase() === r.name.toLowerCase());
     return `<section class="panel" id="wd-packages"><h2>Quick Services</h2>
-      <p class="muted" style="margin:0">Bundles like "Oil change + rotation" that check in with one tap and add their items to the estimate. You can also add one to a car that's already in the bay from its estimate. Fast lane services skip diagnosis and approval because the customer okays the price at the counter.</p>
+      <p class="muted" style="margin:0">One-tap bundles like "Oil change + rotation" that fill in the estimate.</p>
+      <details class="more-info"><summary>How this works</summary><p>Pick a quick service at check-in and its items go on the estimate. You can also add one to a car that's already in the bay from its estimate. Fast lane services skip diagnosis and approval because the customer okays the price at the counter.</p></details>
       ${pk.length ? `<ul class="wd-pk">${pk.map((p) => `<li${edit?.id === p.id ? ' class="wd-pk-editing"' : ""}><div><b>${esc(p.name)}</b>${p.fastLane ? ' <span class="pill ok">Fast lane</span>' : ""}<small class="muted">${esc(p.lines.map((l) => l.name).join(" · "))}</small></div><span>${money(pkTotal(p))}</span><span class="wd-pk-act"><button type="button" class="linkbtn" data-wd-pk-edit="${esc(p.id)}">Edit</button><button type="button" class="linkbtn" data-wd-pk-del="${esc(p.id)}">Remove</button></span></li>`).join("")}</ul>` : ""}
       ${choices.length ? `<details class="wd-pk-add"${pk.length && !edit ? "" : " open"}><summary>${edit ? "Edit " + esc(edit.name) : "Add a quick service"}</summary>
         <label class="field">Name<input id="wd-pk-name" maxlength="60" placeholder="e.g. Oil change + tire rotation" value="${esc(edit?.name || "")}"></label>

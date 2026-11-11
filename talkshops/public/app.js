@@ -534,12 +534,13 @@
     if (location.pathname !== want) history[navPush ? "pushState" : "replaceState"](history.state, "", want + location.search + location.hash);
     navPush = false;
     chrome.hidden = false;
+    // The shop's name leads the top bar; "Talk Shops" and who is signed in sit under it.
     $("#shopName").textContent = shop.name;
-    $("#bayTab").textContent = bayName();
+    $("#shopName").title = shop.name;
     document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.view === ui.view ? "page" : "false"));
     const planTab = document.querySelector('.tab[data-view="plan"]'); if (planTab) planTab.hidden = !isOwner();
     // Who is signed in, so a login being passed around shows on every screen.
-    $("#shopName").textContent = shop.name + (myName ? " · " + myName : "") + (isOwner() ? "" : myName ? " (Technician)" : " · Technician");
+    $("#shopWho").textContent = (myName ? " · " + myName : "") + (isOwner() ? "" : myName ? " (Technician)" : " · Technician");
     const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "")
       + (join.err ? `<div class="notice">${esc(join.err)}</div>` : "")
       // Until someone saves a name, the Technician list shows the start of their email.
@@ -650,7 +651,7 @@
       <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Verify phone</button><button class="btn" type="button" id="rcCancel">Cancel</button></div></form>`;
     else if (d.verified) body = `<p style="margin:0">Reset codes can be texted to <b>${esc(d.phone)}</b>.</p>
       <div class="btn-row"><button class="btn" type="button" id="rcChange">Use a different phone</button><button class="btn" type="button" id="rcRemove">Remove</button></div>`;
-    else body = `<p class="muted" style="margin:0">Add a mobile number so you can get a text if you forget your password. We'll text a code to confirm it's yours.</p>
+    else body = `<p class="muted" style="margin:0">Get a text code if you forget your password.</p>
       <form id="recoveryPhoneForm" class="auth-alt"><label class="field">Mobile number<input id="rc-phone" inputmode="tel" maxlength="30" required autocomplete="tel" placeholder="(555) 014-2290"></label>
       <div class="btn-row"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Text Me a Code</button></div></form>`;
     return `<section class="panel" id="recoveryPanel" style="margin-top:18px;display:flex;flex-direction:column;gap:12px">
@@ -846,28 +847,53 @@
 
   function setupView(firstTime) {
     const s = shop || {};
-    return `<div class="${firstTime ? "login-wrap" : "settings-wrap"}"><form class="${firstTime ? "login" : "panel"}" id="setupForm">
+    if (!firstTime && !SETTINGS_TABS.some(([k]) => k === ui.settingsTab)) ui.settingsTab = SETTINGS_TABS.some(([k]) => k === store.get("ts-settings-tab")) ? store.get("ts-settings-tab") : "shop";
+    return `${firstTime ? "" : settingsTabBar()}<div class="${firstTime ? "login-wrap" : "settings-wrap tabbed"}">${firstTime ? "" : `<div class="stab" data-stab="shop" role="tabpanel" id="stab-shop" aria-labelledby="stab-btn-shop"${ui.settingsTab === "shop" ? "" : " hidden"}>`}<form class="${firstTime ? "login" : "panel"}" id="setupForm">
       ${firstTime ? brand() : ""}
       ${firstTime && join.err ? `<p class="form-err" role="alert">${esc(join.err)}</p><p class="muted" style="margin:0">Joining someone else's shop? Ask the owner to send a new invite to the email you signed in with. Or set up your own shop below.</p>` : ""}
       ${firstTime ? `<p class="step-label">Step 1 of 2</p>` : ""}
       <h2>${firstTime ? "Set up your shop" : "Shop Settings"}</h2>
-      <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
+      <p class="muted" style="margin:0">${firstTime ? "Customers see this name and phone number in notifications and on their car's page." : "Shown to customers in texts and on their car's page."}</p>
       <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(s.name || "")}" placeholder="e.g. Ridgeline Auto Repair"></label>
       <label class="field">Shop phone<input id="sh-phone" inputmode="tel" maxlength="30" ${firstTime ? "required" : ""} value="${esc(s.phone || "")}" placeholder="(555) 014-2290"></label>
       <label class="field">Hours<input id="sh-hours" maxlength="60" value="${esc(s.hours || "")}" placeholder="Mon–Fri 7:30am–6pm"></label>
-      ${!firstTime && plan?.smartReplies ? `<fieldset><legend>Smart Replies</legend><p class="hint">Choose questions Talk Shops may answer automatically by text. Leave all unchecked for staff review.</p>${[["status","Repair status"],["hours","Posted shop hours"],["link","Resend estimate link"]].map(([key,label])=>`<label class="chk"><input type="checkbox" name="smartTopic" value="${key}" ${s.smartTopics?.includes(key)?"checked":""}>${label}</label>`).join("")}<details><summary>Schedule and Signature</summary>
+      ${!firstTime && plan?.smartReplies ? `<fieldset><legend>Smart Replies</legend><p class="hint">Questions Talk Shops can answer by text on its own. Unchecked ones wait for your staff.</p>${[["status","Repair status"],["hours","Posted shop hours"],["link","Resend estimate link"]].map(([key,label])=>`<label class="chk"><input type="checkbox" name="smartTopic" value="${key}" ${s.smartTopics?.includes(key)?"checked":""}>${label}</label>`).join("")}<details><summary>Schedule and Signature</summary>
       <label class="field">Sign replies as<input id="sr-sign" maxlength="60" value="${esc(s.smartSchedule?.signature || "")}" placeholder="Service team"></label>
       <label class="chk"><input type="checkbox" id="sr-after" ${s.smartSchedule?.afterHours?"checked":""}>Auto-send only outside these shop hours</label>
       <label class="field">Time zone<input id="sr-zone" value="${esc(s.smartSchedule?.zone || Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago")}"></label>
       <div class="btn-row">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>`<label><input type="checkbox" name="sr-day" value="${i+1}" ${(s.smartSchedule?.days||[1,2,3,4,5]).includes(i+1)?"checked":""}>${d}</label>`).join("")}</div>
       <div class="btn-row"><label>Opens <input type="time" id="sr-open" value="${esc(s.smartSchedule?.open || "08:00")}"></label><label>Closes <input type="time" id="sr-close" value="${esc(s.smartSchedule?.close || "17:00")}"></label></div></details><a href="/demo.html?smart=1" target="_blank" rel="noopener">Try sample customer texts</a></fieldset>` : ""}
-      <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">When a customer replies to an email update, it goes here.</span></label>
+      <label class="field">Shop email (optional)<input id="sh-email" type="email" maxlength="254" autocomplete="email" value="${esc(s.email || "")}" placeholder="service@yourshop.com"><span class="hint">Customer email replies go here.</span></label>
       ${firstTime ? "" : window.BayAge.fields(s)}
-      ${firstTime ? "" : `<label class="chk"><input type="checkbox" id="sh-learn" ${s.learnOff ? "" : "checked"}>Help improve Talk Shops<span class="hint">When your staff answer a customer's text, Talk Shops keeps a copy of that text with names, phone numbers, emails, addresses and other numbers removed, and nothing that links it to your shop or the customer. It teaches the reply sorter. Questions the Ask chat couldn't answer are kept the same way, so we can add answers. Kept up to 12 months. <a href="/privacy.html#learning" target="_blank" rel="noopener">More</a></span></label>`}
       ${firstTime ? "" : `<div class="btn-row"><button class="btn primary" type="button" data-view="prices">Upload price list (PDF, photo or Excel)</button><button class="btn" type="button" data-billing="rates">Edit saved items (${(shop?.rates || []).length})</button></div>`}
       <div class="btn-row"><button class="btn primary" type="submit">${firstTime ? "Next: upload my prices" : "Save"}</button>${firstTime ? `<button class="btn" type="button" id="signOut2">Sign Out</button>` : ""}</div>
       ${firstTime ? `<small class="muted">Next you can upload your price list (PDF, photo, Excel or CSV) so your labor rate, services and fees fill in for you. You can skip it.</small>` : ""}
-    </form>${firstTime ? "" : (isOwner() ? window.Workday.packagesPanel() + window.Grow.settingsPanels() : "") + team.panel(render) + devicesPanel() + recoveryPanel()}</div>`;
+    </form>${firstTime ? "</div>" : settingsTabs(s)}`;
+  }
+  // Owner Settings in four tabs. Every tab's boxes stay on the page (hidden when not picked), so switching
+  // tabs keeps anything typed and every box's own buttons keep working.
+  const SETTINGS_TABS = [["shop", "Shop"], ["customers", "Customers & Booking"], ["team", "Team & Devices"], ["data", "Data & Privacy"]];
+  function settingsTabs(s) {
+    const tab = (k, html) => `<div class="stab" data-stab="${k}" role="tabpanel" id="stab-${k}" aria-labelledby="stab-btn-${k}"${ui.settingsTab === k ? "" : " hidden"}>${html}</div>`;
+    // Closes the Shop tab (opened before the form in setupView), then the other tabs, then the page.
+    return (isOwner() ? window.Workday.packagesPanel() : "") + `</div>`
+      + tab("customers", isOwner() ? window.Grow.settingsPanels("customers") : "")
+      + tab("team", team.panel(render) + devicesPanel() + recoveryPanel())
+      + tab("data", (isOwner() ? window.Grow.settingsPanels("data") : "") + learnPanel(s)) + `</div>`;
+  }
+  function settingsTabBar() {
+    return `<nav class="set-tabs" role="tablist" aria-label="Settings sections">${SETTINGS_TABS.map(([k, label]) => `<button type="button" role="tab" class="set-tab" id="stab-btn-${k}" data-stab-go="${k}" aria-controls="stab-${k}" aria-selected="${ui.settingsTab === k}">${label}</button>`).join("")}</nav>`;
+  }
+  function showSettingsTab(k) {
+    ui.settingsTab = k; store.set("ts-settings-tab", k);
+    document.querySelectorAll(".set-tab").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.stabGo === k)));
+    document.querySelectorAll(".settings-wrap [data-stab]").forEach((el) => { el.hidden = el.dataset.stab !== k; });
+  }
+  function learnPanel(s) {
+    return `<section class="panel" id="learnPanel"><h2 style="font-size:20px">Help Improve Talk Shops</h2>
+      <label class="chk"><input type="checkbox" id="sh-learn" ${s.learnOff ? "" : "checked"}> Share de-identified customer texts to improve the reply sorter</label>
+      <details class="more-info"><summary>How this works</summary><p>When your staff answer a customer's text, Talk Shops keeps a copy of that text with names, phone numbers, emails, addresses and other numbers removed, and nothing that links it to your shop or the customer. It teaches the reply sorter. Questions the Ask chat couldn't answer are kept the same way, so we can add answers. Kept up to 12 months. <a href="/privacy.html#learning" target="_blank" rel="noopener">Privacy policy</a></p></details>
+    </section>`;
   }
 
   function joinBanner() {
@@ -897,7 +923,8 @@
   function devicesPanel() {
     return `<section class="panel" style="display:flex;flex-direction:column;gap:8px">
       <h2 style="font-size:20px">Your Devices</h2>
-      <p class="muted" style="margin:0">Signed in as <b>${esc(myName || session?.user?.email || "")}</b>${myName && session?.user?.email ? ` (${esc(session.user.email)})` : ""}. Your login works on up to <b>2 devices</b> at a time. Signing in on a third device signs out the one that signed in longest ago, and a device not used for 14 days signs out by itself.</p>
+      <p class="muted" style="margin:0">Signed in as <b>${esc(myName || session?.user?.email || "")}</b>${myName && session?.user?.email ? ` (${esc(session.user.email)})` : ""}. Your login works on <b>2 devices</b> at a time.</p>
+      <details class="more-info"><summary>How this works</summary><p>Signing in on a third device signs out the one that signed in longest ago, and a device not used for 14 days signs out by itself.</p></details>
       <div class="btn-row"><button class="btn" type="button" id="signOutOthers">Sign Out My Other Devices</button><button class="btn" type="button" id="signOut2">Sign Out Here</button></div>
     </section>${installPanel()}`;
   }
@@ -1293,6 +1320,7 @@
     if (e.target.id === "photoIn") return;
     const t = e.target.closest("button,[data-close],[data-open],[data-close-modal]");
     if (!t) return;
+    if (t.dataset.stabGo) { showSettingsTab(t.dataset.stabGo); return; }
     if (t.dataset.queue) { ui.queue = t.dataset.queue; document.querySelectorAll("[data-queue]").forEach((b) => b.setAttribute("aria-pressed", String(b === t))); filterBoard(); return; }
     if (ui.modal?.walk && window.Walkthrough.click(t, ui.modal.walk)) return;
     if (t.dataset.walk) { const j = job(ui.openJob); if (j) { ui.modal = { walk: window.Walkthrough.draftFor(j, t.dataset.walk), job: j.id }; renderLayer(); } return; }
@@ -1819,6 +1847,16 @@
     }
   }
   document.addEventListener("change", (e) => {
+    // "Help improve Talk Shops" (Data & Privacy tab) saves as soon as it's switched.
+    if (e.target.id === "sh-learn" && shop && isOwner()) {
+      const box = e.target, learnOff = !box.checked;
+      box.disabled = true;
+      api("POST", "shop/me", { name: shop.name, phone: shop.phone, hours: shop.hours, email: shop.email || "", learnOff })
+        .then((r) => { shop = r.shop; plan = r.plan || plan; toast(learnOff ? "Sharing turned off" : "Sharing turned on"); })
+        .catch((err) => { box.checked = !box.checked; toast(err.message); })
+        .finally(() => { box.disabled = false; });
+      return;
+    }
     if (e.target.id === "ec-channel") { customerContactChanged(); return; }
     if (e.target.dataset?.teamRole) { team.change(e.target, render); return; }
     if (ui.openJob && window.EstGroups.onChange(e.target, (id, group) => jobAction(ui.openJob, "estimate", { setGroup: id, group }, group ? "Added to " + group : "Line is on its own now"))) return;

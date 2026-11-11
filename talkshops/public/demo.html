@@ -241,7 +241,7 @@ a.btn.primary{color:var(--accent-fg)}
 .settings-wrap{display:flex;flex-direction:column;gap:16px;max-width:760px}
 </style>
 <link rel="stylesheet" href="/saved-archive.css?v=12">
-<link rel="stylesheet" href="/theme.css?v=22">
+<link rel="stylesheet" href="/theme.css?v=26">
 <link rel="stylesheet" href="/repair-guide.css?v=4">
 <link rel="stylesheet" href="/plan.css?v=2">
 <link rel="stylesheet" href="/training.css?v=1">
@@ -283,7 +283,7 @@ a.btn.primary{color:var(--accent-fg)}
       <div><h1>Talk Shops</h1><small id="shopName">Ridgeline Auto Repair</small></div>
     </div>
     <nav class="tabs has-icons" aria-label="Views">
-      <button class="tab" data-view="board"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="tab-l tab-full" id="bayTab">Ridgeline Auto Repair Bay</span><span class="tab-l tab-short">Bay</span></button>
+      <button class="tab" data-view="board"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="tab-l tab-full" id="bayTab">Bay</span><span class="tab-l tab-short">Bay</span></button>
       <button class="tab" data-view="checkin"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span class="tab-l">Check In</span></button>
       <button class="tab" data-view="archive"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/></svg><span class="tab-l">Archive</span></button>
       <button class="tab" data-view="howto"><svg class="tab-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.2L3.6 17.2a1.9 1.9 0 0 0 2.7 2.7l5.7-5.7a4 4 0 0 0 5.2-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span class="tab-l">How-To</span></button>
@@ -803,7 +803,7 @@ function render(){
   document.title="Talk Shops · "+SHOP.name;
   if(ui.view==="signin"){chrome.hidden=true;ui.openJob=null;app.innerHTML=signinView();$("#layer").innerHTML="";return}
   chrome.hidden=false;
-  $("#shopName").textContent=SHOP.name;$("#bayTab").textContent=bayName();
+  $("#shopName").textContent=SHOP.name;
   document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-current",b.dataset.view===ui.view?"page":"false"));
   const banner=ui.view==="plan"||ui.view==="training"||ui.view==="help"?"":planUi.banner(plan);
   app.innerHTML=banner+(ui.view==="checkin"?checkinView():ui.view==="archive"?archiveView():ui.view==="settings"?settingsView():ui.view==="plan"?planUi.view(plan):ui.view==="howto"?howTo.view():ui.view==="help"?helpView():ui.view==="training"?window.TALKSHOPS_TRAINING.view(esc,{demo:true}):boardView());
@@ -1313,6 +1313,6 @@ if(new URLSearchParams(location.search).has("smart")){
 </script>
 <script src="/config.js"></script>
 <script src="/tour.js?v=222"></script>
-<script src="/shell.js?v=1"></script>
+<script src="/shell.js?v=3"></script>
 </body>
 </html>
