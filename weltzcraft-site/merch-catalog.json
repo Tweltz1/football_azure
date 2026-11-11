@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-11T22:04:09.397Z",
+ "updated": "2026-11-11T22:17:43.975Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -1155,23 +1155,23 @@
    ]
   },
   "hat-navy-44": {
-   "hash": "df1184d1bc7c",
+   "hash": "c946dce20c41",
    "price": 26,
    "variants": [
     {
      "size": "One size",
-     "id": 5635393860,
+     "id": 5635408677,
      "price": 26
     }
    ]
   },
   "hat-navy-55": {
-   "hash": "d0709d94cfc1",
+   "hash": "b9d456e8889d",
    "price": 26,
    "variants": [
     {
      "size": "One size",
-     "id": 5635393954,
+     "id": 5635408686,
      "price": 26
     }
    ]
@@ -1199,12 +1199,12 @@
    ]
   },
   "hat-navy-60": {
-   "hash": "20e5f2ceecdd",
+   "hash": "9ea0fcaaef6e",
    "price": 26,
    "variants": [
     {
      "size": "One size",
-     "id": 5635394246,
+     "id": 5635408696,
      "price": 26
     }
    ]
@@ -1232,23 +1232,23 @@
    ]
   },
   "hat-stone-44": {
-   "hash": "0b632d1e2509",
+   "hash": "a05990bf04ed",
    "price": 26,
    "variants": [
     {
      "size": "One size",
-     "id": 5635394625,
+     "id": 5635408805,
      "price": 26
     }
    ]
   },
   "hat-stone-55": {
-   "hash": "691495b4f721",
+   "hash": "0325ba606671",
    "price": 26,
    "variants": [
     {
      "size": "One size",
-     "id": 5635394731,
+     "id": 5635408855,
      "price": 26
     }
    ]
@@ -1276,12 +1276,12 @@
    ]
   },
   "hat-stone-60": {
-   "hash": "40c2627a22b0",
+   "hash": "84459cf66c81",
    "price": 26,
    "variants": [
     {
      "size": "One size",
-     "id": 5635396151,
+     "id": 5635408910,
      "price": 26
     }
    ]
