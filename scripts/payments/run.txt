@@ -1,2 +1,1 @@
-store-shots
 submit-look
