@@ -6,9 +6,9 @@ import { explainAlone, explainBench, explainPair, explainStarter, usageFor } fro
 import { rankLabel } from './rankings.js';
 import { percent, recordText, trajectoryText } from './leagueOdds.js';
 import {
-  answerAvailability, answerBench, answerBestPlayers, answerByes, answerCompareLong, answerDefenses, answerHandcuff,
-  answerMarketList, answerMatchupList, answerNeeds, answerPlan, answerRankings, answerStats, answerTeamInjuries,
-  answerTrending, answerWeakestStarter, bestFreeAgents, freeAgentItems,
+  answerAbout, answerAvailability, answerBench, answerBestPlayers, answerByes, answerCompareLong, answerDefenses, answerHandcuff,
+  answerMarketList, answerMatchupList, answerNeeds, answerNews, answerPlan, answerRankings, answerRules, answerStats, answerVegas, answerWeather,
+  answerTeamInjuries, answerTrending, answerWeakestStarter, bestFreeAgents, freeAgentItems, opinionLead,
 } from './askTeam.js';
 
 export const EXAMPLE_QUESTIONS = [
@@ -30,6 +30,7 @@ const NOT_NAMES = new Set([
   'me', 'find', 'any', 'over', 'this', 'with', 'his', 'him', 'he', 'it', 'will', 'be', 'play', 'team', 'season', 'rest', 'value',
   'keep', 'sell', 'buy', 'hold', 'cut', 'matchup', 'defense', 'injury', 'status', 'win', 'great', 'than', 'more', 'points', 'pts',
   'next', 'last', 'game', 'games', 'free', 'agent', 'waiver', 'waivers', 'help', 'trending', 'healthy', 'playing', 'worth',
+  'tips', 'tip', 'room', 'spot', 'share', 'record', 'joke',
 ]);
 // Short names people use for players, mapped to how the name reads once tidied up.
 const NICKNAMES = {
@@ -89,7 +90,10 @@ const VOCAB = [
   'kickers', 'quarterback', 'quarterbacks', 'receiver', 'receivers', 'running', 'tight', 'superflex', 'release',
   'offer', 'offered', 'accept', 'power', 'toilet', 'title', 'winning', 'improve', 'advice', 'outlook', 'compare',
   'ceiling', 'upside', 'floor', 'safer', 'replace', 'instead', 'weekly', 'record', 'project', 'happened', 'think',
-  'missing', 'thin', 'weak', 'depth', 'needs',
+  'missing', 'thin', 'weak', 'depth', 'needs', 'thank', 'status', 'active', 'valuable', 'droppable', 'contender',
+  'changes', 'replacement', 'scoring', 'reception', 'settings', 'deadline', 'benched', 'demoted', 'timeshare',
+  'facing', 'worst', 'weakness', 'weaknesses', 'latest', 'regular', 'weather', 'raining', 'indoors', 'outdoors', 'favored',
+  'betting', 'headlines', 'forecast', 'spread', 'underdog', 'shootout',
 ];
 const VOCAB_SET = new Set(VOCAB);
 // Everyday words that are never a typo of a player's name.
@@ -101,6 +105,8 @@ const COMMON = new Set([
   'selling', 'getting', 'giving', 'holding', 'keeping', 'dropping', 'adding', 'least', 'worst', 'lately', 'recent',
   'should', 'shoud', 'whats', 'whos', 'hows', 'something', 'anything', 'everyone', 'everything', 'enough', 'deeper',
   'thinking', 'help', 'start', 'sitting', 'benched', 'week', 'weeks', 'score', 'scored', 'scoring', 'total', 'money',
+  'share', 'shares', 'change', 'changes', 'moves', 'record', 'spots', 'room', 'spot', 'adding', 'teams', 'starters',
+  'fills', 'filling', 'takes', 'taking', 'point', 'lines',
 ]);
 // Two-letter words that are never a first name like "AJ" or "Bo".
 const COMMON_SHORT = new Set(['is', 'do', 'at', 'my', 'or', 'vs', 'up', 'of', 'on', 'to', 'in', 'it', 'if', 'me', 'he', 'we', 'us', 'so', 'no', 'an', 'as', 'be', 'by', 'go', 'hi', 'ok', 'am', 'yo', 'ya', 'ur', 'im', 'qb', 'rb', 'wr', 'te', 'ty', 'oh', 'pk', 'id']);
@@ -112,6 +118,7 @@ const SLANG = {
   whos: 'who is', whats: 'what is', hows: 'how is', wheres: 'where is', v: 'vs', w: 'with', b4: 'before', cuz: 'because',
   bc: 'because', pl: 'please', thru: 'through', abt: 'about', dif: 'difference', diff: 'difference', hes: 'he is',
   plyr: 'player', 'w/': 'with', 'w/o': 'without', def: 'defense', dst: 'defense', d: 'defense', wr1: 'wr1', inj: 'injured', ir: 'ir',
+  stll: 'still', stil: 'still', bech: 'bench', bnch: 'bench', tght: 'tight', tite: 'tight',
 };
 
 const protectedCache = new WeakMap();
@@ -149,7 +156,10 @@ export const cleanQuestion = (text, { players = [], teamNames = [] } = {}) => {
       const dist = typoDistance(word, v);
       if (dist < bestDistance) { best = v; bestDistance = dist; ties = 0; } else if (dist === bestDistance && v !== best) ties += 1;
     });
-    return [best && !ties && !keep.has(word) ? best : word];
+    // "ktitle" is Kittle, not "title": a word at least as close to a name is left for findPlayers.
+    const nameAsClose = best && [...keep].some((name) => name.length >= 4 && Math.abs(name.length - word.length) <= bestDistance
+      && typoDistance(word, name) <= bestDistance);
+    return [best && !ties && !keep.has(word) && !nameAsClose ? best : word];
   }).join(' ');
 };
 
@@ -191,9 +201,15 @@ export function findPlayers(text, players, { myIds = new Set(), leagueIds = null
       });
     }
     // First name and a misspelled last name ("tyler algleier").
-    if (!full.length && words[i + 1] && words[i + 1].length >= 5 && !COMMON.has(words[i + 1])) {
+    // First name and a misspelled last name ("tyler algleier", "kyle pits"), or the other way round ("jaeson williams").
+    const looseTypos = (word) => Math.max(1, typosAllowed(word));
+    if (!full.length && words[i + 1] && words[i + 1].length >= 4 && !COMMON.has(words[i + 1])) {
       full = index.filter(({ tokens, first, last, p }) => tokens.length === 2 && first === words[i] && relevant(p)
-        && typoDistance(words[i + 1], last) <= typosAllowed(words[i + 1]));
+        && last.length >= 5 && typoDistance(words[i + 1], last) <= looseTypos(words[i + 1]));
+    }
+    if (!full.length && words[i + 1] && words[i].length >= 4 && !COMMON.has(words[i])) {
+      full = index.filter(({ tokens, first, last, p }) => tokens.length === 2 && last === words[i + 1] && relevant(p)
+        && first.length >= 4 && first[0] === words[i][0] && typoDistance(words[i], first) <= looseTypos(words[i]));
     }
     if (full.length) {
       length = Math.max(...full.map((f) => f.tokens.length));
@@ -218,6 +234,11 @@ export function findPlayers(text, players, { myIds = new Set(), leagueIds = null
           .filter((x) => x.dist <= allowed);
         const closest = Math.min(...near.map((x) => x.dist));
         pick = near.filter((x) => x.dist === closest).map((x) => x.entry);
+      }
+      // A short misspelling of your own player ("jaes" for James): same first letter, one typo off.
+      if (!pick.length && words[i].length === 4 && !COMMON.has(words[i]) && !VOCAB_SET.has(words[i])) {
+        pick = index.filter(({ p, first, last }) => myIds.has(p.id)
+          && [first, last].some((name) => name.length >= 5 && name[0] === words[i][0] && typoDistance(words[i], name) <= 1));
       }
       if (pick.length) {
         match = best(pick);
@@ -261,7 +282,7 @@ export const firstName = (p) => p.name.split(' ')[0];
 const withoutNames = (text, found) => {
   const names = [...new Set(found.flatMap((f) => nameTokens(f.player.name)))];
   const isName = (w) => names.includes(w) || names.includes(w.replace(/s$/, ''))
-    || (w.length >= 5 && !VOCAB_SET.has(w) && names.some((n) => n.length >= 5 && typoDistance(w, n) <= typosAllowed(w)));
+    || (w.length >= 5 && !COMMON.has(w) && names.some((n) => n.length >= 5 && typoDistance(w, n) <= typosAllowed(w)));
   return questionTokens(text).filter((w) => !isName(w)).join(' ');
 };
 
@@ -275,7 +296,25 @@ const forBetween = (text, found) => {
 };
 
 const HELP = /^(help|help me|examples?|what can (you|i ask)|what (questions|kind of questions|else) can|what do you (do|know)|how does this work|how do i use|what should i ask)$|^(what can (you|i ask)|what (questions|kind of questions) can|what do you (do|know)|how does this work|how do i use)\b/;
-const SMALL_TALK = /^(hi|hey|hello|yo|sup|whats up|good (morning|afternoon|evening)|thanks|thank you|thx|ty|cool|ok|okay|nice|great|awesome|perfect|got it|lol)\b/;
+const SMALL_TALK = /^(hi|hey|hello|yo|sup|whats up|what is up|good (morning|afternoon|evening)|thanks|thank you|thx|ty|cool|ok|okay|nice|great|awesome|perfect|got it|lol)\b/;
+// About the chat itself, and feedback on it.
+const ABOUT = /^(who|what) are you\b|\bare you (an? )?(ai|bot|robot|human|real|person|chatgpt|gpt|smart)\b|how do you (work|know|make|come up|decide|figure)|where (do|does) (your|the|you get) ?(numbers|data|projections|info|stats)?|how (smart|good) are you|who (made|built|created|programmed) you|can i trust you|better than (espn|yahoo|sleeper|fantasypros|the experts)|\byou (suck|stink|are (wrong|dumb|bad|trash|useless|stupid)|were wrong|got (it|that) wrong)\b|(bad|wrong|dumb|useless) answer|that (was|is) (wrong|bad|dumb)|(good|great|nice) (job|work|answer)|love (this|it|you)|you (rock|are (great|awesome|the best))|tell me a joke|\bjoke\b|how are you|how is it going|whats good/;
+// "Should I tank?", "is my season over?": how your team stands, said plainly.
+const OPINION = /\btank\b|season (is )?over|\bcontender\b|playoff team|\brebuild|all in\b|\bpanic\b|am i (good|bad|the favorite|screwed|done|cooked|toast|in trouble|a contender)|is my team (good|bad|trash|garbage|any good|legit|done)|how screwed|still make (the )?playoffs|do (i|we) (have|stand) a chance|buying or selling|buy or sell|time to sell|be worried|should i (be )?worr|what if (i|we) lose/;
+// League settings: playoff spots, scoring, lineup slots, how many weeks are left.
+const RULES = /how many teams (make|get in|go to|in|are in)|when do (the )?playoffs (start|begin)|(what|which) week (do )?(the )?playoffs|playoffs start|is (this|it|our league|the league) (a )?(full )?(ppr|half|standard|superflex|dynasty|redraft|keeper)|scoring (set ?up|settings|system|format|rules)|what is (our|the) scoring|how is scoring|points? per (reception|catch)|how many points (for|per) a (catch|reception)|lineup (spots|slots)|roster (spots|slots|size)|flex (spots|slots)|how many (starters|flex|bench spots|roster spots|qbs?|rbs?|wrs?|tes?) (do|can|are|spots|slots)|superflex league|how many teams|how many weeks (are )?left|what week is it|regular season (over|end|ends)|trade deadline|league (settings|rules)/;
+// "Why did he get benched?", "is he losing his job?": what the numbers say, since there are no headlines here.
+const NEWS = /\bbenched\b|get benched|demoted|los(e|ing) (his |the )?(job|role|spot)|still (the )?(starter|starting|the lead|rb1|wr1)|time ?share|committee|lead back|phased out|(lost|losing|lose) (snaps|work|touches|targets)|latest on|getting the ball|more work|less work|score so low|scored so low|(was|so|play(ed)?) (so )?bad\b|been bad|\bsplit\b|role (change|shrink|grow)|getting (more|fewer|less) (targets|carries|touches|work|snaps|looks)|what happened (to |with )?(\w+ )?(last|on) (week|game|sunday|monday|thursday)/;
+const WEATHER = /\bweather\b|\brain(s|ing|y)?\b|\bsnow(s|ing|y)?\b|\bwind(s|y)?\b|cold (weather|games?)|\bfreezing\b|\bdome\b|\bindoors?\b|\boutdoors?\b|\bforecast\b|\btemperature\b|\bstorms?\b/;
+const VEGAS = /\bvegas\b|\bspreads?\b|\bbetting\b|sportsbook|\blines?\b(?! ?up)|\bfavou?red\b|underdog|over ?under|game totals?|point totals?|\bimplied\b|shootout|highest (scoring )?(totals?|games?)|high scoring games?/;
+// "Vegas odds" means the betting line, not the Las Vegas Raiders.
+const VEGAS_RAW = /\bvegas (odds|lines?|spreads?|totals?|says|thinks|has)\b/;
+/** Questions that need this week's lines, forecasts, headlines or the trade deadline loaded first. */
+export const needsGameDay = (raw) => {
+  const t = tidy(cleanQuestion(raw));
+  return WEATHER.test(t) || VEGAS.test(t) || NEWS.test(t) || /\bnews\b|headlines?|latest|what happened|trade deadline|update on|going on with/.test(t);
+};
+const REPLACE = /replace|replacement|instead of|in (his|their) place|fills? in for|takes? (\w+ )?spot|who (plays|starts) (if|when)|if (\w+ )?(sits|is out|cant play|cannot play|doesnt play|wont play|is hurt|gets hurt)|(cant|cannot|doesnt|wont) play\b|\bnow what\b|(gets|got) (hurt|injured)/;
 
 /**
  * What kind of question it is. `found` is findPlayers' result. Questions about one player, two or more
@@ -287,31 +326,39 @@ export function questionType(text, found) {
   const n = found.length;
   if (!raw || HELP.test(raw)) return 'help';
   if (!n && SMALL_TALK.test(raw)) return 'smalltalk';
+  if (!n && ABOUT.test(raw) && !/accura|track record|hit rate/.test(raw)) return 'about';
+  if (!n && RULES.test(t)) return 'rules';
+  if (WEATHER.test(t) && !/\b(trade|drop|pick ?up)\b/.test(t)) return 'weather';
+  if ((VEGAS.test(t) || VEGAS_RAW.test(raw)) && !/\b(trade|drop|pick ?up)\b/.test(t)) return 'vegas';
+  if (!n && /\bnews\b|headlines?|\blatest\b/.test(t)) return 'news';
   if (/accura|track record|report card|hit rate|how (good|right|often) (are|is|have) (you|we|the model|your|the projections)/.test(t)) return 'accuracy';
-  if (/handcuff|\bbackups?\b/.test(t)) return 'handcuff';
+  if (/handcuff|\bbackups?\b|backs? (him )?up\b/.test(t)) return 'handcuff';
   if (/\bbye/.test(t)) return n && /who (do|should) i (start|play)|replace|instead/.test(t) ? 'replace' : 'bye';
+  if (n && REPLACE.test(t)) return 'replace';
   if (n && /trade value/.test(t)) return 'value';
   if (!n && /buy ?low/.test(t)) return 'buylow';
   if (!n && /sell ?high/.test(t)) return 'sellhigh';
   if (/\btrades?\b|\btrading\b|\bdeal\b|\boffer|what would it take|\bget for\b|would you do|\baccept\b|would (\w+ )?take|who wants|interested in|how (do|can|could|would) i get(?! better)|how to get(?! better)/.test(t)) return 'trade';
   if (forBetween(text, found) && !/\b(start|sit|play|flex)\b/.test(t)) return 'trade';
   if (n === 1 && /available|on (the )?waivers|free agent|pick (\w+ )?up|\bpickup\b|\badd\b|\bgrab\b|\bclaim\b|^who (has|owns)\b|\bowned\b|rostered/.test(t)) return 'availability';
-  if (/pick ?up|waiver|free agent|\badd\b|\bgrab\b|stream|\bclaim/.test(t)) return 'pickup';
-  if (/\bdrop\b|\bcut\b|\brelease\b/.test(t)) return 'drop';
+  if (/pick ?up|picking up|waiver|free agent|\badd\b|\badding\b|most added|\bgrab\b|stream|\bclaim/.test(t)) return 'pickup';
+  if (/\bdrop\b|\bcut\b|\brelease\b|droppable|expendable|worst player|least valuable|make room/.test(t)) return 'drop';
   if (!n) {
-    if (/\b(hurt|injur|injured|injuries)/.test(t)) return 'teaminjuries';
+    if (/\b(hurt|injur|injured|injuries)/.test(t) || (/\bout\b/.test(t) && /\b(my team|my roster|anyone|anybody|my guys|my players)\b/.test(t))) return 'teaminjuries';
+    if (/gives? up the most|allows? the most|most points (allowed )?(to|against)|(worst|best|easiest|toughest) (defense|matchup)s? (for|against|vs)/.test(t)
+      && ['QB', 'RB', 'WR', 'TE'].includes(askedPosition(t.replace(/\bdefen[cs]es?\b|\bdst\b/g, '')))) return 'defenses';
     if (/defen[cs]es?|\bdefend|\bdst\b/.test(t) && /give up|giving up|allow|against|\b(to|for) (qb|rb|wr|te)|\bvs\b|versus|defend|worst|best|easiest|toughest|hardest|stingiest|tough|easy|good|bad/.test(t)
       && ['QB', 'RB', 'WR', 'TE'].includes(askedPosition(t.replace(/\bdefen[cs]es?\b|\bdst\b/g, '')))) return 'defenses';
     if (/matchups\b|(easy|easiest|tough|toughest|hard|hardest|good|best|bad|worst) matchup/.test(t)) return 'matchuplist';
     if (/\btop\b|\bbest\b|\brank|\b(qb|rb|wr|te)1\b/.test(t) && askedPosition(t) && !/\bshould\b|\bmy (qb|rb|wr|te)\d/.test(t)) return 'rankings';
     if (/sleeper|best (\w+ )?available|available players/.test(t)) return 'rankings';
-    if (/\bneeds?\b|\bthin\b|\bweak\b|(what|which) position|weakest position|strongest position|weak spot|weakness|\bweak\b|strengths?\b|thin at|\bdeep\b|\bdepth\b|missing|holes?\b/.test(t)) return 'needs';
-    if (/\bbench\b/.test(t) && !/\b(should|who|start|sit)\b/.test(t)) return 'bench';
-    if (/underperform|overperform|\bcold\b|\bhot\b|slump|struggl|trending|breakout|on fire|disappoint/.test(t)) return 'trending';
     if (/weakest (starter|link|player)|worst starter|weak link/.test(t)) return 'weakest';
+    if (/\broom\b|good enough|\bneeds?\b|\bthin\b|\bweak\b|(what|which) position|weakest position|strongest position|weak spot|weakness|\bweak\b|strengths?\b|thin at|\bdeep\b|\bdepth\b|missing|holes?\b/.test(t)) return 'needs';
+    if (/\bbench\b/.test(t) && !/\b(should|start|sit)\b/.test(t)) return 'bench';
+    if (/underperform|overperform|\bcold\b|\bhot\b|slump|struggl|trending|breakout|on fire|disappoint/.test(t)) return 'trending';
     if (/(best|most valuable|top) player|\bmvp\b|my best (guy|asset)/.test(t)) return 'best';
-    if (/start|sit|lineup|bench|\bplay\b|optimi|set my|should be my|put in|goes in|who to play|who(s| is) my (flex|qb|rb|wr|te|kicker|defense)|score this week|points will (i|we)|my projection/.test(t)) return 'lineup';
-    if (/better|improve|help me win|\bwin\b|win (my|the) league|win it all|get better|help my team|what should i do|advice|\btips?\b|upgrade|stinks|sucks|\bbad\b|struggling/.test(t)) return 'plan';
+    if (/start|sit|lineup|bench|\bplay\b|\bflex\b|optimi|set my|should be my|put in|goes in|who to play|who(s| is) my (flex|qb|rb|wr|te|kicker|defense)|score this week|points will (i|we|my team)|my team score|my projection/.test(t)) return 'lineup';
+    if (/better|improve|help me win|\bwin\b|win (my|the) league|win it all|get better|help my team|what (should|do) i do|advice|\btips?\b|upgrade|stinks|sucks|\bbad\b|struggling|\bmoves?\b|fix my team/.test(t)) return 'plan';
     return 'unknown';
   }
   if (n >= 2) {
@@ -322,7 +369,9 @@ export function questionType(text, found) {
     if (/\bsafe|floor|consistent|reliable/.test(t)) return 'comparefloor';
     return 'compare';
   }
-  if (/^who (does|do|is|are|will)\b.*\b(play|playing|facing|face)\b/.test(t)) return 'matchup';
+  if (/^who (does|do|is|are|will)\b.*\b(play|playing|facing|face)\b/.test(t) && !/next (few |\d )?(games|weeks)|upcoming|schedule|coming up|rest of/.test(t)) return 'matchup';
+  if (NEWS.test(t) && !/\b(hurt|injur|injured|status)\b/.test(t)) return 'news';
+  if (/\bnews\b|headlines?/.test(t)) return 'news';
   if (/going on with|what is up with|update on|\bnews\b|^is playing( this week| right now| today| tonight| sunday| monday| thursday)?$|\bplaying (or not|still)\b/.test(t)) return 'injury';
   if (/hurt|injur|\bback\b|return|status|healthy|\bout\b|questionable|doubtful|\bir\b|going to play|gonna play|will (he |they )?play|\bplay(ing)? (this week|sunday|monday|thursday|tonight|today)|suit up|\bactive\b/.test(t)) return 'injury';
   if (/replace|instead of|in (his|their) place|fill in for|who (plays|starts) (if|when)/.test(t)) return 'replace';
@@ -350,6 +399,9 @@ const helpAnswer = (lead, examples = EXAMPLE_QUESTIONS) => ({
   text: lead || 'Ask me about your lineup, a player, a trade or the waiver wire. For example:',
   examples,
 });
+const NOT_FOUND = "I didn't find a player or a question I know in that. Try one of these:";
+// A question the chat couldn't answer: saved (question only) so new rules can be written for it.
+const missed = () => ({ ...helpAnswer(NOT_FOUND), miss: true });
 
 /** "Name (WR12 · BUF vs KC)" style line for one player. */
 export const playerLine = (p) => [
@@ -913,27 +965,48 @@ function answerReplace(found, ctx) {
   };
 }
 
-const LEAGUE_WORDS = /power rank|rank(ing)? (the|all|every) teams|team rank|best team|worst team|strongest team|weakest team|top team|playoff|postseason|championship|\btitle\b|win (it all|the league|the chip)|\bchip\b|toilet|last place|finish last|standings|trajector|my team doing|how (is|are) (my team|we|our team)|win my (matchup|game)|will (i|we) win|who (am i|are we) (playing|facing|up against)|who (do|will) (i|we) (play|face)|my opponent|my (fantasy )?matchup this week/;
+const LEAGUE_WORDS = /power rank|rank(ing)? (all )?(the|every) teams|rank all teams|\brecord\b|\bcontender\b|team rank|best team|worst team|strongest team|weakest team|top team|playoff|postseason|championship|\btitle\b|win (it all|the league|the chip)|\bchip\b|toilet|last place|finish last|standings|trajector|my team doing|how (is|are) (my team|we|our team)|win my (matchup|game)|will (i|we) win|who (am i|are we) (playing|facing|up against)|who (do|will) (i|we) (play|face)|my opponent|my (fantasy )?matchup this week/;
 const ODDS_WORDS = /\bodds\b|\bchances?\b/;
-const NOT_LEAGUE = /\btrade|\bstart\b|\bsit\b|\bdrop\b|pick ?up|waiver|\bbench\b/;
+const NOT_LEAGUE = /\btrade|\bstart\b|\bsit\b|\bdrop\b|pick ?up|waiver|\bbench\b|\bschedule\b/;
 
 /** The league teams named in a question ("my team", "we" or a team's name). */
 const teamsNamed = (text, teams) => {
   const t = ` ${tidy(text)} `;
   return teams.filter((team) => {
     const name = tidy(team.name);
-    return name.length >= 3 && t.includes(` ${name} `);
+    if (name.length < 3) return false;
+    if (t.includes(` ${name} `)) return true;
+    // One misspelled word in a name of two or more ("racing with rggs").
+    const parts = name.split(' ');
+    const words = t.trim().split(' ');
+    if (parts.length < 2) return false;
+    return words.some((_, i) => {
+      const here = words.slice(i, i + parts.length);
+      if (here.length < parts.length) return false;
+      const off = parts.filter((part, k) => part !== here[k]);
+      return off.length === 1 && off[0].length >= 4
+        && typoDistance(here[parts.indexOf(off[0])], off[0]) <= Math.max(1, typosAllowed(off[0]));
+    });
   });
 };
 
+/** The question with each word of a league team's name swapped for "team" (word positions stay put), so they can't match players. */
+const maskTeams = (text, names) => {
+  let t = ` ${tidy(text)} `;
+  names.map(tidy).filter((name) => name.length >= 3).sort((a, b) => b.length - a.length)
+    .forEach((name) => { t = t.split(` ${name} `).join(` ${name.split(' ').map(() => 'team').join(' ')} `); });
+  return t.trim();
+};
+
 /** A question about the league's teams (rankings, odds) rather than a player. teamNames are the league's teams, when known. */
-export const isLeagueQuestion = (raw, teamNames = []) => {
-  const text = cleanQuestion(raw, { teamNames });
+export const isLeagueQuestion = (raw, teamNames = [], players = []) => {
+  const text = cleanQuestion(raw, { teamNames, players });
   const t = tidy(text);
+  if (RULES.test(t)) return true;
   if (NOT_LEAGUE.test(t)) return false;
-  if (LEAGUE_WORDS.test(t)) return true;
+  if (LEAGUE_WORDS.test(t) || OPINION.test(t)) return true;
   if (ODDS_WORDS.test(t) && /\b(my|our|we|team|teams|league)\b/.test(t)) return true;
-  return /doing|outlook|look(ing)?\b|headed|ranked/.test(t) && teamsNamed(text, teamNames.map((name) => ({ name }))).length > 0;
+  return /doing|outlook|look(ing)?\b|headed|ranked|how good|any good|strong|legit/.test(t) && teamsNamed(text, teamNames.map((name) => ({ name }))).length > 0;
 };
 
 const teamLabel = (team) => `${team.name}${team.mine ? ' (you)' : ''}`;
@@ -954,12 +1027,14 @@ function answerWeekMatchup(mine, outlook, note) {
 
 export function answerLeague(text, ctx) {
   const league = ctx.league;
+  const t = tidy(text);
+  const opinion = OPINION.test(t) && !/\b(odds|chances?|title|championship|toilet|power|standings)\b/.test(t);
   if (!league || league.status === 'none') {
+    if (opinion) return { ...answerPlan(ctx), note: 'Pick your Sleeper league at the top of this page and I can tell you your playoff odds too.' };
     return { text: 'Team rankings and odds need a Sleeper league, since they use its schedule and standings. Pick your Sleeper league at the top of this page.' };
   }
   if (league.status === 'error') return { text: `I couldn't load your league's standings: ${league.error}` };
   const outlook = league.outlook;
-  const t = tidy(text);
   const named = teamsNamed(text, outlook.teams);
   const mine = outlook.teams.find((team) => team.mine) || null;
   const asksAboutMe = /\b(my|me|we|us|our|i)\b/.test(t);
@@ -995,6 +1070,9 @@ export function answerLeague(text, ctx) {
       ? `${teamLabel(subject)}: ${percent(subject.title)} to win the title.`
       : `${teamLabel(list[0])} is the title favorite at ${percent(list[0].title)}.`;
     return { text: lead, itemsTitle: 'Chance to win the championship:', items: list.map((team, i) => oddsItem(team, team.title, i + 1)), note };
+  }
+  if (opinion && mine && (!subject || subject === mine)) {
+    return { text: `${opinionLead(mine)} ${trajectoryText(mine, outlook)}`, note };
   }
   if (subject && !/power|best team|strongest|rank/.test(t)) {
     return { text: trajectoryText(subject, outlook), note };
@@ -1052,6 +1130,22 @@ const withPosition = (text, position) => {
  * waiverNote, league, previous }, where trades, waivers and needs are null without a league and league is
  * { status, outlook?, error? } for team questions.
  */
+/**
+ * A message with more than one question in it ("Start Bijan or Puka? Also who do I drop"), split into
+ * its questions so each gets an answer. Pieces shorter than two words stay with the one before.
+ */
+const SPLIT_WORDS = /\s*(?:[?!]+|;|,?\s+also\s+|,?\s+and\s+(?=(?:who|what|whats|should|shud|shld|is|how|where|when|can|do|does|are)\b)|,\s*(?=if not\b))\s*/i;
+export const splitQuestion = (raw) => {
+  // A full stop ends a question, but not one after initials or "St." (J.K. Dobbins, St. Brown).
+  const pieces = String(raw || '').replace(/(\w{3,})\.\s+/g, '$1? ').split(SPLIT_WORDS).map((piece, i) => (i ? piece.trim().replace(/^(also|and|plus)\s+/i, '') : piece.trim())).filter(Boolean);
+  return pieces.reduce((parts, piece) => {
+    if (parts.length && (piece.split(/\s+/).length < 2 || parts[parts.length - 1].split(/\s+/).length < 2)) {
+      parts[parts.length - 1] = `${parts[parts.length - 1]} ${piece}`;
+    } else parts.push(piece);
+    return parts;
+  }, []);
+};
+
 export function answerQuestion(raw, ctx) {
   const text = cleanQuestion(raw, { players: ctx.allPlayers, teamNames: leagueTeamNames(ctx) }) || tidy(raw);
   const answer = answerFresh(text, ctx);
@@ -1071,13 +1165,25 @@ function answerFresh(text, ctx) {
     const followUp = answerFollowUp(text, ctx, previous);
     if (followUp) return followUp;
   }
-  if (isLeagueQuestion(text, leagueTeamNames(ctx))) return { ...answerLeague(text, ctx), context: { type: 'league' } };
-  let found = findPlayers(text, ctx.allPlayers, { myIds: ctx.myIds, leagueIds: ctx.leagueIds, prefer: new Set((previous?.players || []).map((p) => p.id)) });
-  found = matchPositions(found);
+  if (RULES.test(t)) return { ...answerRules(text, ctx), context: { type: 'rules' } };
+  // League team names ("Dicker Lickers") aren't players, so hide them before looking for names.
+  const teamNames = leagueTeamNames(ctx);
+  const playerText = maskTeams(text, teamNames).replace(new RegExp(VEGAS_RAW.source, 'g'), 'betting $1');
+  const lookup = () => matchPositions(findPlayers(playerText, ctx.allPlayers, { myIds: ctx.myIds, leagueIds: ctx.leagueIds, prefer: new Set((previous?.players || []).map((p) => p.id)) }));
+  let found = null;
+  if (isLeagueQuestion(text, teamNames, ctx.allPlayers)) {
+    // "Should I panic about Bijan?" is about the player; "should I panic?" is about the team.
+    const opinionOnly = OPINION.test(t) && !LEAGUE_WORDS.test(t) && !ODDS_WORDS.test(t);
+    const gameDayOnly = (WEATHER.test(t) || VEGAS.test(t)) && !LEAGUE_WORDS.test(t);
+    // "Should I tank?" isn't about Tank Bigsby.
+    found = gameDayOnly ? lookup() : opinionOnly ? lookup().filter((f) => !(questionTokens(playerText)[f.at] === 'tank' && questionTokens(playerText)[f.at + 1] !== 'bigsby')) : [];
+    if (!found.length && !gameDayOnly) return { ...answerLeague(text, ctx), context: { type: 'league' } };
+  }
+  if (!found) found = lookup();
   if (!found.length && previous?.trade && ctx.trades && BACK_TO_TRADE.test(t)) return answerBalance(previous.trade, ctx);
   if (!found.length && previous?.team && /\bneeds?\b/.test(t) && /\b(they|them|their|that team|the other team|he|his)\b/.test(t)) return answerNeeds(text, ctx, previous.team);
   // "Who do I start instead?", "what do I do then?": about the last player, though they aren't named.
-  if (!found.length && previous?.players?.length && /\binstead\b|replace|what (do|should) i do\b|then what|fill in/.test(t)) {
+  if (!found.length && previous?.players?.length && /\binstead\b|replace|what (do|should) i do\b|then what|fill in|\bif not\b/.test(t)) {
     const answer = answerByType('replace', text, previous.players.slice(0, 1).map((player) => ({ player, alternatives: [], at: 0 })), ctx);
     return { ...answer, context: { type: 'replace', players: previous.players.slice(0, 1), ...(answer.context || {}) } };
   }
@@ -1176,7 +1282,7 @@ function answerFollowUp(text, ctx, previous) {
 }
 
 function answerByType(type, text, found, ctx) {
-  const single = (fn) => (found.length ? fn() : helpAnswer("I didn't find a player or a question I know in that. Try one of these:"));
+  const single = (fn) => (found.length ? fn() : missed());
   const t = tidy(text);
   const teamName = () => teamsNamed(text, (ctx.partnerNames || []).map((name) => ({ name })))[0]?.name || null;
   switch (type) {
@@ -1222,6 +1328,11 @@ function answerByType(type, text, found, ctx) {
     case 'value': return single(() => answerValue(text, found, ctx));
     case 'stats': return single(() => answerStats(found, ctx));
     case 'player': return single(() => answerPlayer(found, ctx));
-    default: return helpAnswer("I didn't find a player or a question I know in that. Try one of these:");
+    case 'news': return answerNews(found, ctx);
+    case 'weather': return answerWeather(found, ctx);
+    case 'vegas': return answerVegas(found, ctx);
+    case 'rules': return answerRules(text, ctx);
+    case 'about': return { ...answerAbout(text), context: false };
+    default: return missed();
   }
 }

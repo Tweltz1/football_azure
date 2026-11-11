@@ -119,7 +119,7 @@ const sharesWork = (position, mate) => position === mate
  * played with and without each teammate (when both happened), and how much of the rest of the season
  * that teammate will miss against how much of the player's recent games they missed.
  */
-const roleChanges = (player, ctx, healthy, remaining) => {
+const roleChanges = (player, ctx, healthy, remaining, ownShare = 1) => {
   const position = normalizePosition(player.position);
   if (!['RB', 'WR', 'TE'].includes(position) || !player.team) return [];
   const myGames = (player.recent || []).map((g) => ({ week: g.week, value: pointsOf(g.points, ctx.scoring) }));
@@ -158,7 +158,10 @@ const roleChanges = (player, ctx, healthy, remaining) => {
         const expectedLoss = Math.min(0.85, split.mateShare) * healthy;
         gain = measured == null ? expectedLoss : 0.5 * measured + 0.5 * expectedLoss;
       }
-      const change = gain * shift;
+      // A teammate's return trims what this player scored while they were out. When the player's level
+      // leans on their preseason ranking (set with that teammate healthy), only the share that comes
+      // from those games gets trimmed. A same-position split is worked out from the ranks themselves.
+      const change = gain * shift * (shift < 0 && !split ? ownShare : 1);
       if (Math.abs(change) < 0.4) return null;
 
       let note;
@@ -272,7 +275,7 @@ export const playerOutlook = (player, ctx) => {
   if (own != null && prior != null) base = ownWeight * own + (1 - ownWeight) * prior;
   else base = own ?? prior ?? sleeperAhead ?? 0;
 
-  const roles = roleChanges(player, ctx, base, remaining);
+  const roles = roleChanges(player, ctx, base, remaining, own != null && prior != null ? ownWeight : 1);
   const roleChange = roles.reduce((sum, r) => sum + r.change, 0);
   const schedule = scheduleAhead(player, ctx);
   const healthy = Math.max(0, (base + roleChange) * (schedule?.multiplier ?? 1));
