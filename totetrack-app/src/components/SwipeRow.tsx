@@ -15,9 +15,12 @@ export function SwipeRow({
   color,
   background,
   label = 'Delete',
+  confirm,
 }: {
   children: ReactNode;
   onDelete: () => void;
+  /** Asked before deleting (for bigger things, like a whole tote); a "no" slides the row back. */
+  confirm?: () => Promise<boolean>;
   /** The delete button's color. */
   color: string;
   /** The row's own background, which covers the button until you swipe. */
@@ -29,9 +32,9 @@ export function SwipeRow({
   const offset = useRef(0);
   const deleting = useRef(false);
   const [open, setOpen] = useState(false);
-  const latest = useRef({ onDelete, width });
+  const latest = useRef({ onDelete, width, confirm });
   useEffect(() => {
-    latest.current = { onDelete, width };
+    latest.current = { onDelete, width, confirm };
   });
 
   const settle = (to: number) => {
@@ -44,7 +47,20 @@ export function SwipeRow({
     if (deleting.current) return;
     deleting.current = true;
     tap();
-    Animated.timing(x, { toValue: -latest.current.width, duration: 180, useNativeDriver: true }).start(() => latest.current.onDelete());
+    const ask = latest.current.confirm;
+    if (!ask) {
+      Animated.timing(x, { toValue: -latest.current.width, duration: 180, useNativeDriver: true }).start(() => latest.current.onDelete());
+      return;
+    }
+    settle(-ACTION_WIDTH);
+    ask().then((yes) => {
+      if (yes) {
+        Animated.timing(x, { toValue: -latest.current.width, duration: 180, useNativeDriver: true }).start(() => latest.current.onDelete());
+      } else {
+        deleting.current = false;
+        settle(0);
+      }
+    });
   };
 
   // The refs are only read inside the gesture callbacks, never while rendering.
