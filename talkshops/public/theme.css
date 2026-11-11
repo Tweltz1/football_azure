@@ -804,3 +804,31 @@ a.c-card.call.dir b{font-family:var(--f-body);user-select:text;text-align:right}
 .col .card.dragging{opacity:.45}
 .col.drop-target{outline:2px dashed var(--accent);outline-offset:-4px}
 @media (pointer:coarse){.col .card{-webkit-user-drag:none}}
+
+/* Owner Settings: four tabs, short descriptions, details behind "How this works". */
+.set-tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 16px;padding:2px 0}
+.set-tabs::-webkit-scrollbar{display:none}
+.set-tab{flex:none;font:inherit;font-size:14.5px;font-weight:600;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;white-space:nowrap}
+.set-tab:hover{color:var(--fg)}
+.set-tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.set-tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.settings-wrap.tabbed{display:block}
+.settings-wrap.tabbed>.stab{display:flex;flex-direction:column;gap:18px}
+.settings-wrap.tabbed>.stab[hidden]{display:none}
+.settings-wrap.tabbed>.stab>.panel{margin-top:0!important}
+.more-info{font-size:13.5px;color:var(--muted)}
+.more-info summary{cursor:pointer;color:var(--accent);font-weight:600;width:max-content;list-style:none}
+.more-info summary::-webkit-details-marker{display:none}
+.more-info summary::after{content:" ›";display:inline-block;transition:transform .15s}
+.more-info[open] summary::after{transform:rotate(90deg)}
+.more-info p{margin:6px 0 0;line-height:1.45}
+.age-wrap{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.age-wrap>summary{cursor:pointer;font-weight:650}
+.age-wrap>summary .muted{font-weight:400;font-size:13px}
+.age-wrap[open]>summary{margin-bottom:8px}
+.age-wrap .age-settings{border:0;padding:0;margin:0}
+@media (min-width:1100px){
+  .settings-wrap.tabbed>.stab{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+  .settings-wrap.tabbed>.stab>*{grid-column:auto;grid-row:auto}
+  .settings-wrap.tabbed>.stab:only-child,.settings-wrap.tabbed>.stab>:only-child{grid-column:1/-1}
+}

@@ -39,9 +39,8 @@
       const link = st.lastLink;
       return `<section class="panel team-panel" id="teamPanel">
         <h2 style="font-size:20px">Team</h2>
-        <p class="muted" style="margin:0"><b>Owners</b> manage shop settings, saved prices, the plan and billing, final bills and the team, and send estimates for approval.
-          <b>Technicians</b> work the cars: check-ins, stages, notes, photos, estimate lines, messages and How-to.</p>
-        <p class="muted" style="margin:0">Give each person their own login. Their name goes on their notes, messages and time clock, and one login works on up to 2 devices at a time.</p>
+        <p class="muted" style="margin:0">Give each person their own login. <b>Owners</b> run the shop; <b>Technicians</b> work the cars.</p>
+        <details class="more-info"><summary>How this works</summary><p><b>Owners</b> manage shop settings, saved prices, the plan and billing, final bills and the team, and send estimates for approval. <b>Technicians</b> work the cars: check-ins, stages, notes, photos, estimate lines, messages and How-to. Each person's name goes on their notes, messages and time clock, and one login works on up to 2 devices at a time.</p></details>
         ${d?.limits ? `<p><strong>${d.members.length+d.invites.filter(i=>!i.expired).length} of ${d.limits.staff} staff seats used</strong> · up to ${d.limits.owners} owners. Pending invites reserve seats.</p>` : ""}
         ${st.err ? `<p class="form-err" role="alert">${esc(st.err)} <button class="linkbtn" type="button" data-team-retry>Try again</button></p>` : ""}
         ${d ? `<ul class="team-list">${d.members.map(member).join("")}${d.invites.map(invite).join("")}</ul>` : st.err ? "" : `<p class="muted" style="margin:0">Loading…</p>`}

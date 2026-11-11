@@ -32,11 +32,11 @@
     },
     fields(shop) {
       const settings = get(shop);
-      return `<fieldset class="age-settings"><legend>Vehicle Age Colors</legend><p class="hint">Choose when vehicles change color based on time in the shop. These settings apply to everyone in your shop. A color changes when its day threshold is reached.</p>
+      return `<details class="age-wrap"><summary>Vehicle age colors <span class="muted">· ${labels(settings).join(" · ")}</span></summary><fieldset class="age-settings"><legend class="sr-only">Vehicle Age Colors</legend><p class="hint">Cars on the Bay change color the longer they're in the shop. Applies to everyone in your shop.</p>
         <div class="age-thresholds"><label class="field">Warning starts after (days)<input name="ageWarningDays" type="number" min="1" max="365" step="1" required value="${settings.warningDays}"></label><label class="field">Overdue starts after (days)<input name="ageOverdueDays" type="number" min="2" max="3650" step="1" required value="${settings.overdueDays}"></label></div>
         <div class="age-color-pickers">${['Before Warning','Warning','Overdue'].map((label,index) => `<label class="field">${label}<input type="color" name="ageColor${index}" value="${settings.colors[index]}" aria-label="${label} color"></label>`).join('')}</div>
         <div class="age-key age-preview" aria-label="Color preview">${labels(settings).map((label,index) => `<span style="--age:${settings.colors[index]}">${label}</span>`).join('')}</div>
-        <button class="linkbtn" type="button" data-age-reset>Restore Default Colors and Times</button><p class="hint">Use Save to apply your changes.</p></fieldset>`;
+        <button class="linkbtn" type="button" data-age-reset>Restore Default Colors and Times</button></fieldset></details>`;
     },
     read(form) {
       preview(form);
