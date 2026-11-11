@@ -104,11 +104,11 @@ struct ContentView: View {
     }
 }
 
-/// "Powered by Weltzcraft Studios" line at the bottom of the app; the name links to the studio site.
+/// "© <year> Weltzcraft Studios" copyright line at the bottom of the app; the name links to the studio site.
 struct StudioCredit: View {
     var body: some View {
         HStack(spacing: 4) {
-            Text("Powered by")
+            Text("© \(String(Calendar.current.component(.year, from: Date())))")
             Link(destination: URL(string: "https://weltzcraft.com")!) {
                 Text("Weltzcraft Studios").fontWeight(.semibold)
             }
