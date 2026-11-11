@@ -1,6 +1,6 @@
 {
-  "max_dollars": 0.25,
-  "model": "veo-3.1-lite-generate-preview",
+  "max_dollars": 0.35,
+  "model": "gemini-omni-1.2-flash",
   "resolution": "720p",
   "clips": [
     {
