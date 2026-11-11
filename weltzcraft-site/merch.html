@@ -32,7 +32,7 @@
 .m-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
 .m-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)}
 .m-card[hidden]{display:none}
-.m-img{aspect-ratio:1;background:#ebeae6;position:relative}
+.m-img{aspect-ratio:1;background:#fff;position:relative}
 .m-img img{width:100%;height:100%;object-fit:cover}
 .m-tag{position:absolute;left:12px;top:12px;font:600 11.5px/1 var(--f-body);padding:6px 9px;border-radius:999px;background:rgba(255,255,255,.92);color:#333}
 .m-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:4px;flex:1}
@@ -144,7 +144,7 @@
     { slug: 'stripes-cap', type: 'hat', name: 'Stripes Cap', color: 'Stone', price: 30, logo: 'Three-stripe W' },
     { slug: 'monogram-mug', type: 'home', name: 'Monogram Mug', color: 'Black, 11 oz', price: 18, logo: 'Tall monogram' },
     { slug: 'est-tote', type: 'home', name: 'Est. 2026 Tote', color: 'Black canvas', price: 24, logo: 'WS stamp' },
-    { slug: 'stickers', type: 'home', name: 'Seal Sticker', color: '4 x 4 in', price: 5, logo: 'Seal + stripes' }
+    { slug: "stickers", type: "home", name: "Seal Sticker", color: "4 x 4 in, kiss-cut", price: 5, logo: 'Seal + stripes' }
   ];
   var grid = document.getElementById('m-grid');
   grid.innerHTML = items.map(function (it) {
