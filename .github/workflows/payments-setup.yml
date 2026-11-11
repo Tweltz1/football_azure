@@ -3,6 +3,8 @@
 #   stripe-check        read-only: is the Talk Shops Stripe key live, and can the account take money?
 #   store-look          read-only: what App Store Connect has for Curbsy and ToteTrack paid products
 #   totetrack-products  creates ToteTrack Pro (monthly and yearly) in App Store Connect
+#   stripe-portal       sets up Stripe's customer portal when nothing is saved (test mode unless ALLOW_LIVE=1)
+#   shops-billing-look  read-only: counts Talk Shops shops whose Stripe ids don't exist for the key in use
 # Logs are public, so the scripts print yes/no answers and setting names only.
 name: Payments setup
 
@@ -34,6 +36,8 @@ jobs:
           KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.TALKSHOPS_SUPABASE_PROJECT_ID }}
         run: |
           while read -r line; do
             script=$(echo "$line" | tr -cd 'a-z0-9-')
