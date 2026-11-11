@@ -1,0 +1,66 @@
+name: Weltzcraft email setup
+
+# One-off (safe to re-run) setup of weltzcraft.com email in Cloudflare: the Resend sending records and Email
+# Routing with a catch-all that forwards every address (curbsy@, totetrack@, hello@ ...) to one inbox.
+# Needs the CLOUDFLARE_API_TOKEN secret, scoped to the weltzcraft.com zone only.
+on:
+  workflow_dispatch:
+    inputs:
+      forward_to:
+        description: 'Inbox that every @weltzcraft.com address forwards to'
+        required: true
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      DOMAIN: weltzcraft.com
+      FORWARD_TO: ${{ github.event.inputs.forward_to }}
+    steps:
+      - name: DNS records and Email Routing
+        run: |
+          echo "::add-mask::$FORWARD_TO"
+          [ -n "$CF_TOKEN" ] || { echo "::error::Add the CLOUDFLARE_API_TOKEN secret first"; exit 1; }
+          cf() { curl --silent --show-error -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" "$@"; }
+          API=https://api.cloudflare.com/client/v4
+          zone=$(cf "$API/zones?name=$DOMAIN")
+          ZONE=$(echo "$zone" | jq -r '.result[0].id // empty'); ACCOUNT=$(echo "$zone" | jq -r '.result[0].account.id // empty')
+          [ -n "$ZONE" ] || { echo "$zone" | jq -c '.errors'; echo "::error::Token can't see $DOMAIN"; exit 1; }
+          echo "Zone found."
+
+          # Resend sending records (DKIM, SPF bounce domain, return path). Added only if missing.
+          add() { # type name content [priority]
+            local fq="$2.$DOMAIN"
+            if [ "$(cf "$API/zones/$ZONE/dns_records?type=$1&name=$fq" | jq '.result | length')" != "0" ]; then echo "exists: $1 $fq"; return; fi
+            local body; body=$(jq -n --arg t "$1" --arg n "$fq" --arg c "$3" --arg p "${4:-}" \
+              '{type:$t, name:$n, content:$c, ttl:1, proxied:false} + (if $p != "" then {priority:($p|tonumber)} else {} end)')
+            cf -X POST "$API/zones/$ZONE/dns_records" -d "$body" | jq -r --arg w "$1 $fq" 'if .success then "added: \($w)" else "FAILED \($w): \(.errors|tostring)" end'
+          }
+          add TXT resend._domainkey 'p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDR8EOm531mv6rZykIOFjHVOhrkuzdwgDZTZlfBRDhK78D6xnrISx5V+MqZ+tID+MG6bAvjRsPYI1BkmPYUgHqtnSECF4rhsgAbEPO2SfaLQ72kov9TXrGI9yqYtNHitsQSC6Hohbnk2bdiGORTjsvPqFlQScc/lPj/6cCNVTLD+wIDAQAB'
+          add MX send feedback-smtp.us-east-1.amazonses.com 10
+          add TXT send 'v=spf1 include:amazonses.com ~all'
+          add CNAME rsend send.forge.rmta.net
+
+          # Email Routing: turn it on (adds Cloudflare's own MX + SPF on the root).
+          r=$(cf -X POST "$API/zones/$ZONE/email/routing/dns" -d '{}')
+          if [ "$(echo "$r" | jq -r .success)" != "true" ]; then r=$(cf -X POST "$API/zones/$ZONE/email/routing/enable" -d '{}'); fi
+          echo "Email Routing enable: $(echo "$r" | jq -c '{success, errors}')"
+          cf "$API/zones/$ZONE/email/routing" | jq -c '.result | {enabled, status}'
+
+          # Destination inbox must be verified (it already is if talkshops.app forwards to it).
+          addrs=$(cf "$API/accounts/$ACCOUNT/email/routing/addresses?per_page=50")
+          verified=$(echo "$addrs" | jq -r --arg e "$FORWARD_TO" '[.result[]? | select((.email|ascii_downcase) == ($e|ascii_downcase))][0].verified // empty')
+          if [ -z "$verified" ]; then
+            cf -X POST "$API/accounts/$ACCOUNT/email/routing/addresses" -d "$(jq -n --arg e "$FORWARD_TO" '{email:$e}')" | jq -c '{success, errors}'
+            echo "::warning::Cloudflare sent a verification email to the forwarding inbox. Click its link, then re-run."
+          elif [ "$verified" = "null" ]; then
+            echo "::warning::The forwarding inbox isn't verified yet. Click the Cloudflare link in it, then re-run."
+          else
+            echo "Forwarding inbox is verified."
+          fi
+
+          # Catch-all: every @weltzcraft.com address goes to that inbox.
+          cf -X PUT "$API/zones/$ZONE/email/routing/rules/catch_all" \
+            -d "$(jq -n --arg e "$FORWARD_TO" '{name:"All Weltzcraft addresses", enabled:true, matchers:[{type:"all"}], actions:[{type:"forward", value:[$e]}]}')" \
+            | jq -c '{success, errors, enabled: .result.enabled}'
