@@ -1,11 +1,11 @@
 {
-  "_about": "Weltzcraft Studios merch. Each item = one Printful catalog product + color + one logo print file from merch/print/. scripts/printful-mockups.mjs reads this to make real photo mockups into weltzcraft-site/img/merch/<slug>.jpg. 'match' is a regex tried against the Printful catalog title/model; 'colors' are tried in order. 'width' is the logo width as a share of the print area; 'top' is the gap from the top of the print area as a share of its height.",
+  "_about": "Weltzcraft Studios merch. Each item = one Printful catalog product + color + one logo print file from merch/print/. scripts/printful-mockups.mjs reads this to make real photo mockups into weltzcraft-site/img/merch/<slug>.jpg. 'match' is a regex tried against the Printful catalog title/model; 'colors' are tried in order. 'width' is the logo width as a share of the print area; 'top' is the gap from the top of the print area as a share of its height. 'price' is the US retail price in dollars; 'sizes' lists the sizes to sell (others sell their one variant). 2XL adds $2, 3XL adds $3.",
   "items": [
     {
       "slug": "stripes-cream-tee",
       "name": "Stripes Tee",
       "color_label": "Cream",
-      "price": 28,
+      "price": 24,
       "logo": 58,
       "file": "logo-58-dark.png",
       "match": "Bella \\+ Canvas 3001",
@@ -21,13 +21,21 @@
         "front"
       ],
       "width": 0.62,
-      "top": 0.08
+      "top": 0.08,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ]
     },
     {
       "slug": "seal-tee",
       "name": "Seal Tee",
       "color_label": "Black",
-      "price": 28,
+      "price": 24,
       "logo": 60,
       "file": "logo-60-light.png",
       "match": "Bella \\+ Canvas 3001",
@@ -39,13 +47,21 @@
         "front"
       ],
       "width": 0.55,
-      "top": 0.06
+      "top": 0.06,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ]
     },
     {
       "slug": "stripe-ring-hoodie",
       "name": "Stripe Ring Hoodie",
       "color_label": "Black",
-      "price": 54,
+      "price": 46,
       "logo": 59,
       "file": "logo-59-light.png",
       "match": "Gildan 18500",
@@ -57,13 +73,21 @@
         "front"
       ],
       "width": 0.4,
-      "top": 0.06
+      "top": 0.06,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ]
     },
     {
       "slug": "corners-hoodie",
       "name": "Monogram Hoodie",
       "color_label": "Sand",
-      "price": 54,
+      "price": 46,
       "logo": 43,
       "file": "logo-43-dark.png",
       "match": "Gildan 18500",
@@ -78,13 +102,21 @@
         "front"
       ],
       "width": 0.36,
-      "top": 0.06
+      "top": 0.06,
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ]
     },
     {
       "slug": "navy-seal-hat",
       "name": "Seal Dad Hat",
       "color_label": "Navy",
-      "price": 30,
+      "price": 26,
       "logo": 55,
       "file": "logo-55-brass.png",
       "match": "Yupoong 6245CM",
@@ -102,7 +134,7 @@
       "slug": "stripes-cap",
       "name": "Stripes Cap",
       "color_label": "Stone",
-      "price": 30,
+      "price": 26,
       "logo": 58,
       "file": "logo-58-dark.png",
       "match": "Yupoong 6245CM",
@@ -123,7 +155,7 @@
       "slug": "monogram-mug",
       "name": "Monogram Mug",
       "color_label": "Black, 11 oz",
-      "price": 18,
+      "price": 15,
       "logo": 42,
       "file": "mug-42-light.png",
       "match": "Black Glossy Mug|Black Mug",
@@ -141,7 +173,7 @@
       "slug": "est-tote",
       "name": "Est. 2026 Tote",
       "color_label": "Black",
-      "price": 24,
+      "price": 20,
       "logo": 44,
       "file": "logo-44-light.png",
       "match": "Eco Tote Bag|Organic Tote Bag|Large Organic Tote",
@@ -159,7 +191,7 @@
       "slug": "stickers",
       "name": "Sticker",
       "color_label": "4 x 4 in",
-      "price": 5,
+      "price": 4,
       "logo": 60,
       "file": "logo-60-dark.png",
       "match": "Kiss-Cut Stickers|Kiss Cut Stickers",

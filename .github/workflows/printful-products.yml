@@ -1,0 +1,53 @@
+name: Merch products (Printful)
+
+# Creates (or re-creates) each merch item as a product in the Printful "Weltzcraft Studios" store, with every
+# size and its retail price, and writes weltzcraft-site/merch-catalog.json, which the merch page and checkout read.
+# Needs the PRINTFUL_API_TOKEN secret. Runs when merch/products.json, the logo files or these scripts change.
+on:
+  push:
+    branches: [main, claude/project-thread-8n3mi5]
+    paths: ['merch/products.json', 'merch/print/logo-*', 'merch/print/mug-*', 'scripts/printful-products.mjs', 'scripts/merch_place.py', '.github/workflows/printful-products.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency: { group: printful-products, cancel-in-progress: false }
+
+jobs:
+  products:
+    runs-on: ubuntu-latest
+    env:
+      PRINTFUL_API_TOKEN: ${{ secrets.PRINTFUL_API_TOKEN }}
+      PRINTFUL_STORE_ID: ${{ secrets.PRINTFUL_STORE_ID }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Plan (catalog products, sizes, print areas)
+        run: node scripts/printful-products.mjs plan
+      - name: Make placed print files and publish them
+        run: |
+          [ -f merch/plan.json ] || exit 0
+          pip install -q pillow
+          python3 scripts/merch_place.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add merch/plan.json merch/print/placed
+          git commit -q -m "Merch: placed print files for Printful" || true
+          git pull -q --rebase && git push -q
+          echo "SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Create products in Printful
+        run: |
+          [ -f merch/plan.json ] || exit 0
+          ASSET_BASE="https://raw.githubusercontent.com/${{ github.repository }}/$SHA/merch/print" node scripts/printful-products.mjs create
+      - name: Save the catalog for the site
+        run: |
+          [ -f weltzcraft-site/merch-catalog.json ] || exit 0
+          git add weltzcraft-site/merch-catalog.json
+          git commit -q -m "Merch: Printful product catalog" || exit 0
+          git pull -q --rebase && git push -q
+          # Pushes made with GITHUB_TOKEN don't start other workflows, so redeploy the site by hand on main.
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then gh workflow run deploy-weltzcraft-site.yml --ref main; fi

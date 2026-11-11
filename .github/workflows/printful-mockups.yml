@@ -48,7 +48,7 @@ jobs:
           git config user.email "41898+github-actions[bot]@users.noreply.github.com"
           git add weltzcraft-site/img/merch merch/mockup-results.json
           git commit -m "Merch: real Printful product mockups" || exit 0
-          git push
+          git pull -q --rebase && git push
           # Pushes made with GITHUB_TOKEN don't start other workflows, so redeploy the site by hand on main.
           if [ "${GITHUB_REF_NAME}" = "main" ]; then gh workflow run deploy-weltzcraft-site.yml --ref main; fi
         env:
