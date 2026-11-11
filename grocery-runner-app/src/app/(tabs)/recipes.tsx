@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RecipePicture } from '../../components/RecipePicture';
-import { Chip, ScreenHeader, SectionTitle } from '../../components/ui';
+import { CommunityRecipes } from '../../components/CommunityRecipes';
+import { Chip, ScreenHeader, Segmented, SectionTitle } from '../../components/ui';
+import { useAuth } from '../../lib/auth';
 import { FILTERS, labelsOf, matchesFilters } from '../../lib/diet';
 import { newItems, Recipe, SUGGESTED } from '../../lib/recipes';
 import { useData } from '../../lib/store';
@@ -17,6 +19,11 @@ export default function RecipesScreen() {
   const { myRecipes, items } = useData();
   const [query, setQuery] = useState('');
   const [on, setOn] = useState<string[]>([]);
+  const { session } = useAuth();
+  // The view lives in the address so other screens (and the screenshot build) can open Community.
+  const params = useLocalSearchParams<{ view?: string }>();
+  const view = params.view === 'community' ? 'community' : 'recipes';
+  const setView = (v: 'recipes' | 'community') => router.setParams({ view: v });
 
   const onList = useMemo(() => items.map((i) => i.name), [items]);
   const q = query.trim().toLowerCase();
@@ -64,7 +71,27 @@ export default function RecipesScreen() {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: t.bg }}>
-      <ScreenHeader title="Recipes" action={{ label: 'Add', icon: 'add', onPress: () => router.push('/scan') }} />
+      <ScreenHeader
+        title="Recipes"
+        iconAction={{ icon: session ? 'person-circle' : 'person-circle-outline', label: 'Account', onPress: () => router.push('/account') }}
+        action={
+          view === 'community'
+            ? { label: 'Share', icon: 'share-social', onPress: () => router.push('/share') }
+            : { label: 'Add', icon: 'add', onPress: () => router.push('/scan') }
+        }
+      />
+      <Segmented
+        style={{ marginHorizontal: 16, marginTop: 6, marginBottom: 2 }}
+        value={view}
+        onChange={setView}
+        options={[
+          { value: 'recipes', label: 'Recipes' },
+          { value: 'community', label: 'Community' },
+        ]}
+      />
+      {view === 'community' ? (
+        <CommunityRecipes onShare={() => router.push('/share')} />
+      ) : (
       <ScrollView contentContainerStyle={{ paddingTop: 8, paddingBottom: 24, gap: 8 }} keyboardShouldPersistTaps="handled">
         <View style={styles.pad}>
           <View style={[styles.search, { backgroundColor: t.cardAlt }]}>
@@ -87,6 +114,19 @@ export default function RecipesScreen() {
         </ScrollView>
 
         <View style={styles.pad}>
+          {mine.length > 0 && !session && !q && !on.length && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/account')}
+              style={[styles.row, { backgroundColor: t.primarySoft, marginTop: 8 }]}
+            >
+              <Ionicons name="cloud-upload" size={22} color={t.primary} />
+              <Text style={{ flex: 1, color: t.text }}>
+                <Text style={{ fontWeight: '700' }}>Sign in to save your recipes</Text> so they’re on every phone.
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color={t.primary} />
+            </Pressable>
+          )}
           {mine.length > 0 && <SectionTitle>Your recipes</SectionTitle>}
           <View style={{ gap: 8 }}>{mine.map(row)}</View>
 
@@ -103,11 +143,13 @@ export default function RecipesScreen() {
           )}
           {!mine.length && !q && !on.length && (
             <Text style={{ color: t.textMuted, fontSize: 13, marginTop: 16 }}>
-              Tap Add to save your own recipe from a photo, a link or pasted text.
+              Tap Add to save your own recipe from a photo, a link or pasted text. Sign in (the person icon) to keep your
+              recipes on every phone.
             </Text>
           )}
         </View>
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

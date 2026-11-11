@@ -10,10 +10,11 @@
     "ios": {
       "bundleIdentifier": "com.tweltz1.groceryrunner",
       "buildNumber": "1",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "config": {
         "usesNonExemptEncryption": false
-      }
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.tweltz1.groceryrunner"
@@ -43,7 +44,9 @@
           "resizeMode": "contain",
           "backgroundColor": "#1F9D55"
         }
-      ]
+      ],
+      "expo-apple-authentication",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": false

@@ -78,6 +78,7 @@ jobs:
             exit 0
           fi
           python3 tools/setup_supabase.py
+          python3 tools/setup_accounts.py
           SET=()
           if [ -n "$KROGER_CLIENT_ID" ] && [ -n "$KROGER_CLIENT_SECRET" ]; then
             SET+=(KROGER_CLIENT_ID="$KROGER_CLIENT_ID" KROGER_CLIENT_SECRET="$KROGER_CLIENT_SECRET")
@@ -228,6 +229,7 @@ jobs:
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" grocery-runner-screenshots
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # GitHub's artifact service has outages; the pictures also go to a branch
         if: env.UPLOAD != 'true'
         with:
           name: grocery-runner-screenshots
@@ -261,6 +263,19 @@ jobs:
             archive > "$RUNNER_TEMP/archive.log" 2>&1 \
             || { grep -E "error:" -A4 "$RUNNER_TEMP/archive.log" | head -n 120; tail -n 30 "$RUNNER_TEMP/archive.log"; exit 1; }
           tail -n 15 "$RUNNER_TEMP/archive.log"
+
+          # The archive is unsigned, so its Sign in with Apple entitlement isn't in it, and the cloud signing
+          # below only keeps entitlements the app already carries (without it Apple's sheet fails with "The
+          # authorization attempt failed for an unknown reason"). Turn the capability on for the App ID, then
+          # sign the entitlements in with a throwaway signature that the export replaces.
+          KEY_P8="$KEY_P8" KEY_ID="$KEY_ID" ISSUER_ID="$ISSUER_ID" node tools/enable_capabilities.js || { rm -f "$KEY_PATH"; exit 1; }
+          APP_PATH="$RUNNER_TEMP/ShopStride.xcarchive/Products/Applications/ShopStride.app"
+          ENT=ios/ShopStride/ShopStride.entitlements
+          test -f "$ENT" || { echo "::error::$ENT not found after prebuild"; rm -f "$KEY_PATH"; exit 1; }
+          cat "$ENT"
+          find "$APP_PATH/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -exec codesign --force --sign - {} \; 2>/dev/null || true
+          codesign --force --sign - --entitlements "$ENT" "$APP_PATH"
+          codesign -d --entitlements - "$APP_PATH" | grep -q applesignin || { echo "::error::Sign in with Apple entitlement missing"; rm -f "$KEY_PATH"; exit 1; }
 
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>

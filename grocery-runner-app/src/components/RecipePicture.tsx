@@ -1,5 +1,5 @@
 import { Image, StyleProp, StyleSheet, Text, useColorScheme, View, ViewStyle } from 'react-native';
-import { photoUri } from '../lib/recipePhotos';
+import { hasPhoto, photoUri } from '../lib/recipePhotos';
 import type { Recipe } from '../lib/recipes';
 
 // Soft background colors for recipes without a photo, picked by the recipe id so each keeps its color.
@@ -11,7 +11,7 @@ const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >
 /** The recipe's own photo (scanned or from its web page), else its emoji on a colored tile. */
 export function RecipePicture({ recipe, size, style }: { recipe: Recipe; size: number; style?: StyleProp<ViewStyle> }) {
   const dark = useColorScheme() === 'dark';
-  const uri = recipe.photo ? photoUri(recipe.photo) : recipe.imageUrl;
+  const uri = recipe.photo && hasPhoto(recipe.photo) ? photoUri(recipe.photo) : recipe.imageUrl;
   const palette = dark ? DARK : LIGHT;
   const box = [styles.box, { height: size, backgroundColor: palette[hash(recipe.id) % palette.length] }, style];
   if (uri) {

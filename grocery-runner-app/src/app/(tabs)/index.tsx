@@ -48,8 +48,8 @@ export default function ListScreen() {
 
       <Pressable
         accessibilityRole="button"
-        accessibilityHint="Choose a different store"
-        onPress={() => router.push('/store')}
+        accessibilityHint="Opens Stores, where you pick where to shop"
+        onPress={() => router.navigate(store ? '/stores' : '/stores?view=map')}
         style={[styles.store, { backgroundColor: t.card }]}
       >
         <View style={[styles.storeIcon, { backgroundColor: t.primarySoft }]}>
@@ -65,18 +65,6 @@ export default function ListScreen() {
         </View>
         <Text style={{ color: t.primary, fontWeight: '600' }}>{store ? 'Change' : 'Choose'}</Text>
       </Pressable>
-
-      {store && store.chain !== 'kroger' && items.some((i) => !i.checked && i.location.kind !== 'aisle') && (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push('/aisle-scan')}
-          style={[styles.scanLink, { backgroundColor: t.primarySoft }]}
-        >
-          <Ionicons name="scan" size={18} color={t.primary} />
-          <Text style={{ color: t.primary, fontWeight: '600', flex: 1 }}>Get aisles from store-app screenshots</Text>
-          <Ionicons name="chevron-forward" size={18} color={t.primary} />
-        </Pressable>
-      )}
 
       <View style={[styles.addRow, { backgroundColor: t.card, borderColor: draft ? t.primary : t.border }]}>
         <TextInput
@@ -105,7 +93,7 @@ export default function ListScreen() {
             <Ionicons name="cart-outline" size={52} color={t.textMuted} />
             <Text style={[styles.emptyTitle, { color: t.text }]}>Your list is empty</Text>
             <Text style={[styles.emptyText, { color: t.textMuted }]}>
-              Type what you need above. Shop Stride sorts it into the shortest walk through your store.
+              Type what you need above, pick your store, then tap Start shopping for the shortest walk through it.
             </Text>
             <Button
               title="Add from a recipe"
@@ -160,15 +148,18 @@ export default function ListScreen() {
                   >
                     {item.name}
                   </Text>
-                  <Text style={{ fontSize: 13 }}>
-                    {!!item.amount && <Text style={{ color: t.text }}>{item.amount} · </Text>}
-                    <Text style={{ color: label.guessed ? t.warn : t.textMuted }}>{label.text}</Text>
-                  </Text>
+                  {/* The section header already says where; only add how much and anything worth knowing. */}
+                  {(!!item.amount || (!item.checked && !!label.note)) && (
+                    <Text style={{ fontSize: 13, color: t.textMuted }}>
+                      {[item.amount, item.checked ? null : label.guessed ? null : label.note].filter(Boolean).join(' · ')}
+                      {!item.checked && label.guessed && (
+                        <Text style={{ color: t.warn }}>{item.amount ? ' · ' : ''}Best guess, tap to set the aisle</Text>
+                      )}
+                    </Text>
+                  )}
                   {!item.checked && <SaleBadge deal={dealFor(deals, item.name)} name={item.name} />}
                 </Pressable>
-                <Pressable accessibilityLabel={`Remove ${item.name}`} hitSlop={10} onPress={() => removeItem(item.id)}>
-                  <Ionicons name="close" size={20} color={t.textMuted} />
-                </Pressable>
+                <Ionicons name="chevron-forward" size={18} color={t.textMuted} />
               </View>
             </SwipeRow>
           );
@@ -203,7 +194,6 @@ const styles = StyleSheet.create({
   store: { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 16, marginTop: 10, marginBottom: 10, padding: 12, borderRadius: radius.md },
   storeIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   storeName: { fontSize: 16, fontWeight: '700' },
-  scanLink: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 8, padding: 12, borderRadius: radius.md },
   addRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, borderRadius: radius.md, borderWidth: 1.5 },
   input: { flex: 1, fontSize: 17, paddingVertical: 14 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.md },

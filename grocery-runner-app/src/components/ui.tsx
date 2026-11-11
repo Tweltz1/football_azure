@@ -73,13 +73,37 @@ export function Chip({ label, selected, onPress }: { label: string; selected?: b
 }
 
 /** Big page title at the top of each tab, with an optional action on the right. */
-export function ScreenHeader({ title, action }: { title: string; action?: { label: string; icon?: IconName; onPress: () => void } }) {
+export function ScreenHeader({
+  title,
+  action,
+  iconAction,
+}: {
+  title: string;
+  action?: { label: string; icon?: IconName; onPress: () => void };
+  /** A plain icon button left of the action (e.g. the account). */
+  iconAction?: { icon: IconName; label: string; onPress: () => void };
+}) {
   const t = useTheme();
   return (
     <View style={styles.header}>
       <Text accessibilityRole="header" style={[styles.headerTitle, { color: t.text }]}>
         {title}
       </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 18 }}>
+      {iconAction && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={iconAction.label}
+          hitSlop={12}
+          onPress={() => {
+            tap();
+            iconAction.onPress();
+          }}
+          style={styles.headerAction}
+        >
+          <Ionicons name={iconAction.icon} size={24} color={t.primary} />
+        </Pressable>
+      )}
       {action && (
         <Pressable
           accessibilityRole="button"
@@ -94,6 +118,7 @@ export function ScreenHeader({ title, action }: { title: string; action?: { labe
           <Text style={{ color: t.primary, fontSize: 16, fontWeight: '600' }}>{action.label}</Text>
         </Pressable>
       )}
+      </View>
     </View>
   );
 }
