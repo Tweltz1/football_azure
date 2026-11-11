@@ -7,7 +7,9 @@
 import { chromium, devices } from 'playwright';
 import fs from 'node:fs';
 
-const SITE = process.env.SITE_URL || 'https://talkshops.app';
+// talkshops.app sits behind Cloudflare's bot challenge, which stops headless browsers from
+// GitHub's servers, so the check uses the same deployment at its pages.dev address.
+const SITE = process.env.SITE_URL || 'https://talkshops.pages.dev';
 const SB = process.env.SB_URL;            // https://<ref>.supabase.co
 const ANON = process.env.SB_ANON;         // publishable key
 const SERVICE = process.env.SB_SERVICE;   // secret key, only for creating and deleting test users
@@ -211,7 +213,8 @@ try {
     const cctx = await browser.newContext(devices['iPhone 13']);
     const c = await cctx.newPage();
     watch(c, 'customer');
-    await c.goto(new URL(jobLink, SITE).href, { waitUntil: 'networkidle' });
+    const link = new URL(jobLink, SITE); const here = new URL(SITE); link.protocol = here.protocol; link.host = here.host;
+    await c.goto(link.href, { waitUntil: 'networkidle' });
     await shot(c, 'customer-page');
     await c.click('[data-decide][data-v="approved"]');
     await c.fill('#sig', 'Pat Example');
