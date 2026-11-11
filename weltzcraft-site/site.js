@@ -12,6 +12,29 @@
   });
 
 
+  // Top bar: phone menu, dark-over-hero look, shadow once scrolled.
+  var top = document.getElementById('top');
+  if (top) {
+    var menuBtn = top.querySelector('.menu-btn');
+    var setMenu = function (open) {
+      top.classList.toggle('open', open);
+      if (menuBtn) { menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false'); menuBtn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu'); }
+    };
+    if (menuBtn) menuBtn.addEventListener('click', function () { setMenu(!top.classList.contains('open')); });
+    top.querySelectorAll('#site-nav a').forEach(function (a) { a.addEventListener('click', function () { setMenu(false); }); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && top.classList.contains('open')) { setMenu(false); menuBtn.focus(); } });
+    document.addEventListener('click', function (e) { if (top.classList.contains('open') && !top.contains(e.target)) setMenu(false); });
+    window.addEventListener('resize', function () { if (window.innerWidth > 860) setMenu(false); });
+    var heroEl = document.querySelector('.hero.band-dark');
+    var onScroll = function () {
+      var y = window.scrollY || 0;
+      top.classList.toggle('scrolled', y > 4);
+      if (heroEl) top.classList.toggle('over-dark', heroEl.getBoundingClientRect().bottom > top.offsetHeight);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
   // Motion: scroll reveal, card spotlight, hero icon parallax.
   var root = document.documentElement;
   var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;

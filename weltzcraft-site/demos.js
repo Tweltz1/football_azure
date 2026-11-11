@@ -4,14 +4,13 @@
   var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---- theme ---- */
-  var themeBtn = $('theme');
-  if (themeBtn) themeBtn.addEventListener('click', function () {
+  [].forEach.call(document.querySelectorAll('[data-theme-toggle]'), function (themeBtn) { themeBtn.addEventListener('click', function () {
     var root = document.documentElement, cur = root.getAttribute('data-theme');
     if (!cur) cur = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     var next = cur === 'dark' ? 'light' : 'dark';
     root.setAttribute('data-theme', next);
     try { localStorage.setItem('wc-theme', next); } catch (e) {}
-  });
+  }); });
 
   /* ---- demo tabs ---- */
   var tabs = [].slice.call(document.querySelectorAll('.demo-tabs [role="tab"]'));
