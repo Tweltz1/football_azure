@@ -19,6 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
+<script>try{var t=localStorage.getItem("wc-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Organization","name":"Weltzcraft Studios","url":"https://weltzcraft.com","email":"sales@weltzcraft.com","logo":"https://weltzcraft.com/favicon.svg"}
 </script>
@@ -34,9 +35,11 @@
     </a>
     <nav aria-label="Main">
       <a href="#apps">Apps</a>
+      <a href="#demo">Try it</a>
       <a href="#build">Build with us</a>
       <a href="#pricing">Pricing</a>
       <a href="#support">Support</a>
+      <button type="button" class="theme" id="theme" aria-label="Switch between light and dark"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.900 19.1l1.400-1.400M17.700 6.300l1.400-1.400"/></svg></button>
       <a class="btn btn-sm" href="#contact">Start a project</a>
     </nav>
   </div>
@@ -165,6 +168,54 @@
   </div>
 </section>
 
+<section id="demo" class="section demo band-dark">
+  <div class="wrap demo-in">
+    <div class="demo-copy" data-reveal>
+      <p class="eyebrow">Try it</p>
+      <h2>Don't take our word for it. Tap around.</h2>
+      <p class="sub">Three tiny working slices of our real apps, running right here in the page. This is the kind of detail your app gets too.</p>
+      <div class="demo-tabs" role="tablist" aria-label="Pick a demo">
+        <button role="tab" aria-selected="true" aria-controls="d-draft" id="t-draft" data-demo="draft"><img src="/img/hoodleague.webp" alt="" width="36" height="36"><span><b>Live draft</b><small>Outbid the bots in Hood League</small></span></button>
+        <button role="tab" aria-selected="false" aria-controls="d-totes" id="t-totes" data-demo="totes" tabindex="-1"><img src="/img/totetrack.webp" alt="" width="36" height="36"><span><b>Find anything</b><small>Search every bin in ToteTrack</small></span></button>
+        <button role="tab" aria-selected="false" aria-controls="d-route" id="t-route" data-demo="route" tabindex="-1"><img src="/img/shopstride.webp" alt="" width="36" height="36"><span><b>Shortest walk</b><small>Plan a store route in Shop Stride</small></span></button>
+      </div>
+    </div>
+
+    <div class="phone" data-reveal>
+      <div class="phone-notch" aria-hidden="true"></div>
+      <div class="phone-screen">
+
+        <div class="screen s-draft" id="d-draft" role="tabpanel" aria-labelledby="t-draft">
+          <div class="s-head"><b>Hood League</b><span id="dr-budget">$60 left</span></div>
+          <div class="dr-card">
+            <p class="dr-pos" id="dr-pos">RB</p>
+            <p class="dr-name" id="dr-name">Marcus Hale</p>
+            <div class="dr-timer"><i id="dr-bar"></i></div>
+            <p class="dr-bid"><span id="dr-price">$1</span><small id="dr-who">Opening bid</small></p>
+          </div>
+          <button class="dr-btn" id="dr-btn" type="button">Bid $2</button>
+          <p class="dr-log" id="dr-log" aria-live="polite">Tap to bid before the timer runs out.</p>
+          <div class="dr-team"><small>Your team</small><div id="dr-team"><em>No players yet</em></div></div>
+        </div>
+
+        <div class="screen s-totes" id="d-totes" role="tabpanel" aria-labelledby="t-totes" hidden>
+          <div class="s-head"><b>ToteTrack</b><span id="tt-count">4 totes</span></div>
+          <label class="tt-search"><span class="sr">Search your totes</span><input id="tt-q" type="search" placeholder="Try &quot;tent&quot; or &quot;lights&quot;" autocomplete="off"></label>
+          <div class="tt-list" id="tt-list" aria-live="polite"></div>
+        </div>
+
+        <div class="screen s-route" id="d-route" role="tabpanel" aria-labelledby="t-route" hidden>
+          <div class="s-head"><b>Shop Stride</b><span id="rt-dist"></span></div>
+          <svg class="rt-map" id="rt-map" viewBox="0 0 240 150" role="img" aria-label="Store map with your route"></svg>
+          <ol class="rt-list" id="rt-list"></ol>
+          <button class="dr-btn rt-btn" id="rt-btn" type="button">Plan my route</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="build" class="section build band-dark">
   <div class="wrap">
     <div class="section-head" data-reveal>
@@ -228,6 +279,35 @@
       <li><strong>Half to start, half at launch</strong><span>You pay the second half when the app is live and working.</span></li>
       <li><strong>Changes quoted separately</strong><span>Want to add something mid-build? You get a small quote first, and you decide.</span></li>
     </ul>
+
+    <div class="est" id="est" data-reveal>
+      <div class="est-pick">
+        <h3>Ballpark your app</h3>
+        <p class="muted">Tap what you need and watch the estimate move.</p>
+        <fieldset class="seg"><legend class="sr">Platform</legend>
+          <label><input type="radio" name="est-plat" value="iPhone app" data-p="2500" checked><span>iPhone</span></label>
+          <label><input type="radio" name="est-plat" value="Web app" data-p="2500"><span>Web</span></label>
+          <label><input type="radio" name="est-plat" value="Both" data-p="4500"><span>Both</span></label>
+        </fieldset>
+        <fieldset class="chips"><legend class="sr">Features</legend>
+          <label><input type="checkbox" data-p="500" value="Accounts and sign-in"><span>Accounts and sign-in</span></label>
+          <label><input type="checkbox" data-p="1000" value="Payments"><span>Payments</span></label>
+          <label><input type="checkbox" data-p="400" value="Push notifications"><span>Push notifications</span></label>
+          <label><input type="checkbox" data-p="500" value="Camera or photos"><span>Camera or photos</span></label>
+          <label><input type="checkbox" data-p="700" value="Maps or location"><span>Maps or location</span></label>
+          <label><input type="checkbox" data-p="1200" value="Chat or live updates"><span>Chat or live updates</span></label>
+          <label><input type="checkbox" data-p="1000" value="An AI feature"><span>An AI feature</span></label>
+          <label><input type="checkbox" data-p="1000" value="Admin dashboard"><span>Admin dashboard</span></label>
+        </fieldset>
+      </div>
+      <div class="est-out" aria-live="polite">
+        <p class="plan-tag">Rough estimate</p>
+        <p class="est-price" id="est-price">$2,500 to $3,500</p>
+        <p class="est-time" id="est-time">About 2 to 3 weeks</p>
+        <button class="btn" type="button" id="est-use">Use this in my brief</button>
+        <p class="hint">A guide, not a quote. Your fixed price comes after we talk.</p>
+      </div>
+    </div>
 
     <h3 class="after-h" data-reveal>After launch, you choose</h3>
     <div class="plans">
@@ -335,5 +415,6 @@
 </footer>
 
 <script src="/site.js" defer></script>
+<script src="/demos.js" defer></script>
 </body>
 </html>
