@@ -46,7 +46,7 @@
   };
   var type = T[P.get('t')] ? P.get('t') : 'coffee', t = T[type];
   var name = clip(P.get('n'), 40) || t.name, town = clip(P.get('town'), 40) || 'Springfield', tag = clip(P.get('tag'), 80) || t.tag;
-  var cta = clip(P.get('cta'), 24) || 'Book online', hrs = P.get('h') || '', show = (P.get('s') || 'list,pics,review,map').split(',');
+  var cta = clip(P.get('cta'), 24) || { coffee: 'Order ahead', bakery: 'Order ahead', barber: 'Book online', fitness: 'Book a class', auto: 'Get a quote', lawn: 'Free estimate', boutique: 'Shop online', running: 'Book a fitting' }[type], hrs = P.get('h') || '', show = (P.get('s') || 'list,pics,review,map').split(',');
   var color = /^[0-9a-f]{6}$/i.test(P.get('c') || '') ? '#' + P.get('c') : '#e0662a';
   var on = function (k) { return show.indexOf(k) > -1; };
   function clip(s, n) { return (s || '').trim().slice(0, n); }
