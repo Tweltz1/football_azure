@@ -23,7 +23,19 @@ export interface Schedule {
   auto: boolean;
   /** Text the customer a reminder the day before. */
   reminder: boolean;
+  /** The shop is booked up: no new appointments online until it switches this off. Booked ones stay. */
+  paused?: boolean;
+  /** Dates (YYYY-MM-DD, shop-local) with no appointments: holidays, days off, a week that's full. */
+  closed?: string[];
+  /** Smart scheduling: the most cars the shop wants on site at once. Days expected to be at that number take no bookings. */
+  capacity?: number;
+  /** Days a booked car usually stays (1 = in and out the same day). Used to estimate how full future days are. */
+  stay?: number;
 }
+export const STAY_DAYS = [1, 2, 3, 5, 7] as const;
+/** A car on site now: when it was checked in, its stage, and the pickup time the shop promised (if any). */
+export interface ShopCar { since: string; stage: string; promised?: string }
+export const MAX_CLOSED = 60;
 export const STEPS = [15, 30, 45, 60, 90, 120] as const;
 export const NOTICE_HOURS = [0, 1, 2, 4, 12, 24, 48] as const;
 export const AHEAD_DAYS = [7, 14, 21, 30, 60] as const;
@@ -58,7 +70,23 @@ export function parseSchedule(v: unknown): Schedule | null | string {
   if (!(NOTICE_HOURS as readonly number[]).includes(notice)) return 'Choose how much notice you need.';
   if (!(AHEAD_DAYS as readonly number[]).includes(ahead)) return 'Choose how far ahead customers can book.';
   for (const d of week) if (d && mins(d[1]) - mins(d[0]) < step) return 'Each open day needs room for at least one appointment.';
-  return { zone, week, step, perSlot, notice, ahead, auto: s.auto === true, reminder: s.reminder !== false };
+  let closed: string[] = [];
+  if (s.closed !== undefined && s.closed !== null) {
+    if (!Array.isArray(s.closed) || s.closed.length > MAX_CLOSED) return `List up to ${MAX_CLOSED} days off.`;
+    for (const d of s.closed) if (typeof d !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(d) || !Number.isFinite(Date.parse(d + 'T12:00:00Z'))) return 'Enter each day off as a date.';
+    closed = [...new Set(s.closed as string[])].sort();
+  }
+  let capacity = 0, stay = 1;
+  if (s.capacity !== undefined && s.capacity !== null && s.capacity !== 0 && s.capacity !== '') {
+    capacity = Number(s.capacity);
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 200) return 'Enter how many cars you want in the shop at once (1 to 200), or leave it blank.';
+  }
+  if (s.stay !== undefined && s.stay !== null) {
+    stay = Number(s.stay);
+    if (!(STAY_DAYS as readonly number[]).includes(stay)) return 'Choose how long a booked car usually stays.';
+  }
+  return { zone, week, step, perSlot, notice, ahead, auto: s.auto === true, reminder: s.reminder !== false,
+    ...(s.paused === true ? { paused: true } : {}), ...(closed.length ? { closed } : {}), ...(capacity ? { capacity, stay } : {}) };
 }
 
 /** The wall-clock parts of an instant in a time zone. */
@@ -90,10 +118,41 @@ const addDays = (day: string, n: number) => new Date(Date.parse(day + 'T12:00:00
 export interface OpenDay { day: string; times: { time: string; at: string }[] }
 
 /**
+ * How many cars the shop expects on site each day (shop-local YYYY-MM-DD), from today on:
+ * - a car on site stays through its promised pickup day; one that's late or ready for pickup counts for today only;
+ *   with no promised time it counts for the usual stay from the day it was checked in (at least today);
+ * - each appointment (booked or waiting on the shop) counts from its day for the usual stay.
+ */
+export function dayLoad(s: Schedule, now: Date, cars: ShopCar[], appointments: string[]): Record<string, number> {
+  const load: Record<string, number> = {};
+  const stay = s.stay ?? 1, today = localOf(now.getTime(), s.zone).day, last = addDays(today, s.ahead + stay + 1);
+  const add = (from: string, to: string) => { for (let d = from < today ? today : from, n = 0; d <= to && d <= last && n < 400; d = addDays(d, 1), n++) load[d] = (load[d] ?? 0) + 1; };
+  for (const c of cars) {
+    let end = today;
+    if (c.promised && Number.isFinite(Date.parse(c.promised))) { const p = localOf(c.promised, s.zone).day; if (p > today) end = p; }
+    else if (c.stage !== 'ready' && Number.isFinite(Date.parse(c.since))) { const e = addDays(localOf(c.since, s.zone).day, stay - 1); if (e > today) end = e; }
+    add(today, end);
+  }
+  for (const a of appointments) {
+    if (!Number.isFinite(Date.parse(a))) continue;
+    const d = localOf(a, s.zone).day;
+    if (addDays(d, stay - 1) >= today) add(d, addDays(d, stay - 1));
+  }
+  return load;
+}
+/** True when the shop has room for one more car on that day and for the rest of its usual stay. */
+export function hasRoom(s: Schedule, load: Record<string, number> | undefined, day: string): boolean {
+  if (!s.capacity || !load) return true;
+  for (let k = 0; k < (s.stay ?? 1); k++) if ((load[addDays(day, k)] ?? 0) >= s.capacity) return false;
+  return true;
+}
+
+/**
  * Open appointment times from now through `ahead` days, in the shop's zone. `taken` holds the start times (ISO) of
  * appointments already on the books and requests still waiting; a start time is full once it has `perSlot` of them.
  */
-export function openSlots(s: Schedule, now: Date, taken: string[]): OpenDay[] {
+export function openSlots(s: Schedule, now: Date, taken: string[], load?: Record<string, number>): OpenDay[] {
+  if (s.paused) return [];
   const count = new Map<number, number>();
   for (const t of taken) { const ms = Date.parse(t); if (Number.isFinite(ms)) count.set(ms, (count.get(ms) ?? 0) + 1); }
   const earliest = now.getTime() + s.notice * 3_600_000;
@@ -102,7 +161,7 @@ export function openSlots(s: Schedule, now: Date, taken: string[]): OpenDay[] {
   for (let i = 0; i <= s.ahead; i++) {
     const day = addDays(today, i);
     const hours = s.week[new Date(day + 'T12:00:00Z').getUTCDay()];
-    if (!hours) continue;
+    if (!hours || s.closed?.includes(day) || !hasRoom(s, load, day)) continue;
     const times: OpenDay['times'] = [];
     for (let m = mins(hours[0]); m + s.step <= mins(hours[1]); m += s.step) {
       const at = zonedTime(day, hhmm(m), s.zone);
@@ -117,10 +176,10 @@ export function openSlots(s: Schedule, now: Date, taken: string[]): OpenDay[] {
 }
 
 /** True when `at` is one of the open times right now. */
-export function isOpenSlot(s: Schedule, now: Date, taken: string[], at: string): boolean {
+export function isOpenSlot(s: Schedule, now: Date, taken: string[], at: string, load?: Record<string, number>): boolean {
   const ms = Date.parse(at);
   if (!Number.isFinite(ms)) return false;
-  return openSlots(s, now, taken).some((d) => d.times.some((t) => Date.parse(t.at) === ms));
+  return openSlots(s, now, taken, load).some((d) => d.times.some((t) => Date.parse(t.at) === ms));
 }
 
 /** "Thu, Nov 12 at 9:00 AM" (or Spanish), in the shop's zone. Plain characters so a text stays one segment. */

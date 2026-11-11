@@ -13,7 +13,7 @@ The set grows a little every run (the free Gemini key has a daily limit) and liv
 Only Open Images *train* photos are used, and both namers add these pictures to training only, never to their
 test photos, so their scores stay honest (checked by people, not by Gemini).
 
-Usage: GEMINI_API_KEY=... python3 teach.py --cache cache --set set --requests 150
+Usage: GEMINI_API_KEY=... python3 teach.py --cache cache --set set --requests 300
   --set: folder with the current set (unzipped teacher.zip); new answers are added to it.
 Without GEMINI_API_KEY it does nothing.
 """
@@ -56,8 +56,9 @@ SOMEWHAT = {'Table', 'Chair', 'Shelf', 'Cabinetry', 'Drawer', 'Box', 'Ball (Obje
             'Picture frame', 'Footwear'}
 MIN_BOX = 0.15        # of the photo's width and height: big enough to tell what it is
 PER_BROAD = 4000      # candidate boxes kept per broad kind
-BATCH = 10            # pictures per Gemini request
-MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest']
+BATCH = 20            # pictures per Gemini request (the free key allows ~20 requests a day per model)
+# Flash-Lite first: on the paid training key it names ~35,000 photos for about $2; Flash only if it's out.
+MODELS = ['gemini-flash-lite-latest', 'gemini-flash-latest']
 SIZE = 299
 
 
@@ -200,16 +201,17 @@ def ask(key, system, jpegs, hints):
         'system_instruction': {'parts': [{'text': system}]},
         'contents': [{'role': 'user', 'parts': parts}],
         'generationConfig': {'responseMimeType': 'application/json', 'responseSchema': SCHEMA, 'temperature': 0.1,
-                             'maxOutputTokens': 2048},
+                             'maxOutputTokens': 4096},
     }).encode()
-    busy = 0
-    for attempt in range(8):
-        model = MODELS[min(attempt // 4, len(MODELS) - 1)]
+    # The next model when one's daily quota is used up; stop when all are.
+    tries = 0
+    while MODELS and tries < 6:
+        model = MODELS[0]
         req = urllib.request.Request(
             f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
             data=body, headers={'content-type': 'application/json', 'x-goog-api-key': key})
         try:
-            with urllib.request.urlopen(req, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=180) as r:
                 out = json.load(r)
             text = out['candidates'][0]['content']['parts'][0]['text']
             return json.loads(text).get('photos', [])
@@ -217,14 +219,17 @@ def ask(key, system, jpegs, hints):
             full = e.read().decode('utf-8', 'replace')
             log(f'  Gemini {model} error {e.code}: {" ".join(full.split())[:400]}')
             if e.code == 429 and 'perday' in full.lower():
-                busy += 1
-                if busy >= 2:
-                    raise OutOfQuota(full[:300])
+                log(f'  {model}: daily limit reached')
+                MODELS.pop(0)
+                continue
             if e.code not in (429, 500, 503):
                 return None
         except Exception as e:  # bad JSON, timeouts
             log(f'  Gemini {model} problem: {type(e).__name__}')
-        time.sleep(min(60, 5 * 2 ** (attempt % 4)))
+        tries += 1
+        time.sleep(min(60, 10 * 2 ** (tries - 1)))
+    if not MODELS:
+        raise OutOfQuota('every model is out of requests for today')
     return None
 
 
@@ -242,7 +247,8 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--cache', default='cache')
     p.add_argument('--set', default='set')
-    p.add_argument('--requests', type=int, default=150, help='Gemini requests this run (the free key allows a few hundred a day)')
+    p.add_argument('--requests', type=int, default=300, help='Gemini requests this run (20 photos each)')
+    p.add_argument('--pause', type=float, default=1, help='seconds between requests')
     p.add_argument('--minutes', type=float, default=75, help='stop asking after this long, so the set is always saved')
     a = p.parse_args()
     key = os.environ.get('GEMINI_API_KEY')
@@ -308,7 +314,7 @@ def main():
                 if sent % 20 == 0:
                     log(f'  {sent} requests, {new} answers, {sure_new} sure')
                     json.dump(asked, open(asked_path, 'w'))  # a cut-short run still keeps its answers
-                time.sleep(2)
+                time.sleep(a.pause)
     json.dump(asked, open(asked_path, 'w'))
     names = defaultdict(int)
     for r in asked:

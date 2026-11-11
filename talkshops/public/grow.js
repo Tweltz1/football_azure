@@ -14,7 +14,7 @@
   const vehicle = (v) => [v?.year, v?.make, v?.model].filter(Boolean).join(" ");
   const $ = (s) => document.querySelector(s);
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch { /* private mode */ } } };
-  const ui = { schedOpen: false, bookings: null, bkOpen: null, bkMode: "", days: 30, results: null, resultsErr: "", logoBusy: false };
+  const ui = { schedOpen: false, schedClosed: null, bookings: null, bkOpen: null, bkMode: "", days: 30, results: null, resultsErr: "", logoBusy: false };
 
   function init(adapter) { A = adapter; }
   const pro = () => !!A?.plan()?.pro || (A?.plan() == null);
@@ -137,7 +137,7 @@
   }
 
   // ==================== Online booking: the public page (/?book=<token>) ====================
-  const bk = { token: "", info: null, err: "", sent: false, busy: false, day: "", slot: "", draft: null, result: null };
+  const bk = { token: "", info: null, err: "", sent: false, busy: false, day: "", month: "", slot: "", draft: null, result: null };
   /** Keeps what the customer typed when the page redraws (picking a time, sending, an error). */
   function keepDraft() {
     const f = document.getElementById("grBookForm");
@@ -160,17 +160,40 @@
   }
   function slotPicker(L, es) {
     const days = bk.info.slots || [];
+    if (bk.info.paused) return `<div class="full gr-slots-none"><b>${L(`${esc(bk.info.shop.name)} is booked up and isn't taking new appointments online right now.`, `${esc(bk.info.shop.name)} está completo y no está tomando citas nuevas en línea por ahora.`)}</b> ${bk.info.shop.phone ? L("Please call ", "Llame al ") + `<a href="tel:${esc(bk.info.shop.phone)}">${esc(bk.info.shop.phone)}</a>.` : L("Please check back soon.", "Vuelva a intentarlo pronto.")}</div>`;
     if (!days.length) return `<div class="full gr-slots-none"><b>${L("No open times right now.", "No hay horarios disponibles por ahora.")}</b> ${bk.info.shop.phone ? L("Please call ", "Llame al ") + `<a href="tel:${esc(bk.info.shop.phone)}">${esc(bk.info.shop.phone)}</a>.` : L("Please call the shop.", "Llame al taller.")}</div>`;
     if (!days.some((d) => d.day === bk.day)) bk.day = days[0].day;
     const today = days.find((d) => d.day === bk.day);
     if (bk.slot && !days.some((d) => d.times.some((t) => t.at === bk.slot))) bk.slot = "";
-    return `<div class="full gr-slots"><div class="gr-slot-days" role="group" aria-label="${L("Day", "Día")}">${days.map((d) => {
-        const [wd, rest] = [new Date(d.day + "T12:00:00Z").toLocaleDateString(es ? "es-US" : "en-US", { timeZone: "UTC", weekday: "short" }), new Date(d.day + "T12:00:00Z").toLocaleDateString(es ? "es-US" : "en-US", { timeZone: "UTC", month: "short", day: "numeric" })];
-        return `<button type="button" class="gr-slot-day" data-gr-day="${esc(d.day)}" aria-pressed="${d.day === bk.day}"><small>${esc(wd)}</small><b>${esc(rest)}</b></button>`;
-      }).join("")}</div>
+    return `<div class="full gr-slots">${slotCalendar(L, es, days)}
+      <p class="gr-cal-day">${esc(slotDay(bk.day, es, true))}</p>
       <div class="gr-slot-times" role="group" aria-label="${L("Time", "Hora")}">${today.times.map((t) => `<button type="button" class="gr-slot-time" data-gr-slot="${esc(t.at)}" aria-pressed="${t.at === bk.slot}">${esc(slotTime(t.time))}</button>`).join("")}</div>
       <input type="hidden" name="slot" value="${esc(bk.slot)}">
       ${bk.slot ? `<p class="gr-slot-pick">${L("Your time", "Su hora")}: <b>${esc(slotLabel(bk.slot, es))}</b></p>` : `<p class="muted gr-slot-pick">${L("Pick a time above.", "Elija una hora arriba.")}</p>`}</div>`;
+  }
+  const addDay = (day, n) => new Date(Date.parse(day + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+  /** A month calendar of the open days: days with times are tappable, closed or full days are faded. */
+  function slotCalendar(L, es, days) {
+    const open = new Map(days.map((d) => [d.day, d.times.length]));
+    const months = [];
+    for (let m = days[0].day.slice(0, 7); m <= days[days.length - 1].day.slice(0, 7); m = addDay(m + "-28", 7).slice(0, 7)) months.push(m);
+    if (!months.includes(bk.month)) bk.month = bk.day.slice(0, 7);
+    const i = months.indexOf(bk.month), loc = es ? "es-US" : "en-US";
+    const first = bk.month + "-01", lead = new Date(first + "T12:00:00Z").getUTCDay();
+    const title = new Date(first + "T12:00:00Z").toLocaleDateString(loc, { timeZone: "UTC", month: "long", year: "numeric" }).replace(/^./, (c) => c.toUpperCase());
+    // 2023-01-01 was a Sunday, so these are the weekday names in order.
+    const heads = [0, 1, 2, 3, 4, 5, 6].map((n) => new Date(Date.UTC(2023, 0, 1 + n, 12)).toLocaleDateString(loc, { timeZone: "UTC", weekday: "narrow" }));
+    const cells = Array.from({ length: lead }, () => `<span class="gr-cal-pad"></span>`);
+    for (let day = first; day.startsWith(bk.month); day = addDay(day, 1)) {
+      const n = open.get(day), num = Number(day.slice(8));
+      cells.push(n ? `<button type="button" class="gr-cal-open" data-gr-day="${esc(day)}" aria-pressed="${day === bk.day}" aria-label="${esc(slotDay(day, es, true))}: ${n} ${n === 1 ? L("open time", "hora libre") : L("open times", "horas libres")}"><b>${num}</b><small>${n}</small></button>`
+        : `<span class="gr-cal-off" aria-hidden="true">${num}</span>`);
+    }
+    const nav = (to, label, txt) => `<button type="button" class="gr-cal-nav" ${to ? `data-gr-month="${esc(to)}"` : "disabled"} aria-label="${label}">${txt}</button>`;
+    return `<div class="gr-cal" role="group" aria-label="${L("Open days", "Días disponibles")}">
+      <div class="gr-cal-head">${nav(months[i - 1], L("Previous month", "Mes anterior"), "‹")}<b>${esc(title)}</b>${nav(months[i + 1], L("Next month", "Mes siguiente"), "›")}</div>
+      <div class="gr-cal-grid">${heads.map((h) => `<span class="gr-cal-wd" aria-hidden="true">${esc(h)}</span>`).join("")}${cells.join("")}</div>
+      <p class="muted gr-cal-key">${L("Numbers show how many times are open that day. Faded days are closed or full.", "Los números indican cuántas horas quedan libres ese día. Los días claros están cerrados o llenos.")}</p></div>`;
   }
   async function renderBooking(token) {
     bk.token = token;
@@ -215,7 +238,7 @@
         <label class="gr-hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
         <label class="chk full"><input type="checkbox" name="consent" checked> ${L(`${esc(s.name)} may text or email me about this appointment and my repair. Reply STOP to opt out.`, `${esc(s.name)} puede enviarme mensajes o correos sobre esta cita y mi reparación. Responda STOP para no recibir más.`)}</label>
         ${bk.err ? `<p class="form-err full" role="alert">${esc(bk.err)}</p>` : ""}
-        <button class="btn primary full" type="submit" ${bk.busy ? "disabled" : ""}>${bk.busy ? L("Sending…", "Enviando…") : auto ? L("Book this time", "Reservar esta hora") : slots ? L("Request this time", "Pedir esta hora") : L("Send request", "Enviar solicitud")}</button>
+        <button class="btn primary full" type="submit" ${bk.busy || (slots && !(bk.info.slots || []).length) ? "disabled" : ""}>${bk.busy ? L("Sending…", "Enviando…") : auto ? L("Book this time", "Reservar esta hora") : slots ? L("Request this time", "Pedir esta hora") : L("Send request", "Enviar solicitud")}</button>
         <p class="muted full" style="margin:0;font-size:13px">${auto ? L("You'll get a confirmation right away.", "Recibirá la confirmación enseguida.") : slots ? L("The shop confirms your time.", "El taller confirma su hora.") : L("This is a request. The shop confirms the exact time.", "Esto es una solicitud. El taller confirma la hora exacta.")}</p>
       </form>`}
       <p class="cust-top gr-lang"><button type="button" class="linkbtn" data-gr-book-lang="${es ? "en" : "es"}">${es ? "View in English" : "Ver en español"}</button></p>
@@ -445,10 +468,14 @@
   const browserZone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago"; } catch { return "America/Chicago"; } };
   function schedulePanel(s) {
     const cur = s.grow?.schedule, on = !!cur || ui.schedOpen;
+    const todayIso = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    if (ui.schedClosed == null) ui.schedClosed = (cur?.closed || []).filter((d) => d >= todayIso);
+    const dayOff = (d) => new Date(d + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
     const sc = cur || { zone: s.smartSchedule?.zone || browserZone(), week: [null, ["08:00", "17:00"], ["08:00", "17:00"], ["08:00", "17:00"], ["08:00", "17:00"], ["08:00", "17:00"], null], step: 60, perSlot: 1, notice: 2, ahead: 14, auto: false, reminder: true };
     const opt = (list, v, fmt) => list.map(([val, l]) => `<option value="${val}" ${v === val ? "selected" : ""}>${esc(fmt ? fmt(l) : l)}</option>`).join("");
     return `<div class="gr-sched" id="gr-sched"><h3>Appointment hours</h3>
       <label class="chk"><input type="checkbox" id="gr-sched-on" ${on ? "checked" : ""}> Show open times so customers pick an exact appointment</label>
+      ${cur ? `<label class="chk gr-sched-pause"><input type="checkbox" id="gr-sched-pause" ${cur.paused ? "checked" : ""}> <span><b>We're booked up: pause new appointments.</b> Customers see a note to call you. Appointments already booked stay on your Bay.</span></label>` : ""}
       ${on ? `<p class="muted" style="margin:0;font-size:13px">Times already booked, or waiting on your OK, are hidden. Times are in ${esc(sc.zone.replace(/_/g, " "))}.</p>
       <div class="gr-sched-week">${DAYS.map((name, i) => { const d = sc.week[i]; return `<div class="gr-sched-day"><label class="chk"><input type="checkbox" data-sched-day="${i}" ${d ? "checked" : ""}> ${name}</label>
         <input type="time" step="900" data-sched-open="${i}" value="${esc(d ? d[0] : "08:00")}" aria-label="${name} opens"><span class="muted">to</span><input type="time" step="900" data-sched-close="${i}" value="${esc(d ? d[1] : "17:00")}" aria-label="${name} closes"></div>`; }).join("")}</div>
@@ -458,16 +485,40 @@
         <label class="field">Notice you need<select id="gr-sched-notice">${opt([[0, "None"], [1, "1 hour"], [2, "2 hours"], [4, "4 hours"], [12, "12 hours"], [24, "1 day"], [48, "2 days"]], sc.notice)}</select></label>
         <label class="field">Customers can book up to<select id="gr-sched-ahead">${opt([[7, "1 week ahead"], [14, "2 weeks ahead"], [21, "3 weeks ahead"], [30, "30 days ahead"], [60, "60 days ahead"]], sc.ahead)}</select></label>
       </div>
+      <div class="gr-sched-smart"><h4>Smart scheduling <small class="muted">(optional)</small></h4>
+        <p class="muted" style="margin:0;font-size:13px">Set the most cars you want in the shop at once. Talk Shops counts the cars on your Bay (using each one's promised pickup time) plus booked appointments, and closes any day that's expected to be full.</p>
+        <div class="gr-sched-opts">
+          <label class="field">Most cars in the shop at once<input type="number" id="gr-sched-cap" min="1" max="200" inputmode="numeric" placeholder="No limit" value="${sc.capacity || ""}"></label>
+          <label class="field">A booked car usually stays<select id="gr-sched-stay">${opt([[1, "Same day"], [2, "2 days"], [3, "3 days"], [5, "5 days"], [7, "A week"]], sc.stay || 1)}</select></label>
+        </div>
+        ${cur?.capacity ? loadStrip(cur) : ""}
+      </div>
+      <div class="gr-sched-off"><label class="field">Days off <small class="muted">(holidays, vacation, days you're full)</small><span class="gr-sched-off-add"><input type="date" id="gr-sched-off-day" min="${todayIso}"><button type="button" class="btn sm" data-gr-sched-off-add>Add day</button></span></label>
+        ${ui.schedClosed.length ? `<ul class="gr-sched-off-list">${ui.schedClosed.map((d) => `<li>${esc(dayOff(d))}<button type="button" class="linkbtn" data-gr-sched-off-del="${esc(d)}" aria-label="Remove ${esc(dayOff(d))}">Remove</button></li>`).join("")}</ul>` : ""}</div>
       <label class="chk"><input type="checkbox" id="gr-sched-auto" ${sc.auto ? "checked" : ""}> Book them right away (no need to confirm each one). Leave off to confirm each request yourself.</label>
       <label class="chk"><input type="checkbox" id="gr-sched-remind" ${sc.reminder ? "checked" : ""}> Text customers a reminder the day before (only those who agreed to texts; counts toward your texts)</label>
       <input type="hidden" id="gr-sched-zone" value="${esc(sc.zone)}">
       <div class="btn-row"><button type="button" class="btn sm primary" data-gr-sched-save>Save appointment hours</button></div>` : ""}
     </div>`;
   }
+  /** Cars on the Bay and upcoming appointments, in the shape the load count needs. */
+  function shopCars() {
+    const jobs = (A?.jobs?.() || []).filter((j) => !j.closed && j.stage !== "picked_up");
+    return { cars: jobs.filter((j) => j.stage !== "invited" && !j.appointment).map((j) => ({ stage: j.stage, promised: j.promised, since: (j.events || []).find((e) => e.stage === "checked_in")?.t || j.createdAt })),
+      appts: [...jobs.filter((j) => j.appointment && ts(j.appointment) >= Date.now() - 86400000).map((j) => new Date(ts(j.appointment)).toISOString()), ...(ui.bookings || []).filter((b) => b.data.slot).map((b) => b.data.slot)] };
+  }
+  /** The next 7 days against the car limit, so the owner sees what customers can book. */
+  function loadStrip(sc) {
+    const { cars, appts } = shopCars(), load = dayLoad(sc, new Date(), cars, appts), today = zoneParts(Date.now(), sc.zone).day;
+    return `<div class="gr-load" aria-label="Expected cars in the shop, next 7 days">${Array.from({ length: 7 }, (_, i) => {
+      const day = plusDays(today, i), n = load[day] || 0, full = n >= sc.capacity;
+      return `<div class="gr-load-day ${full ? "is-full" : ""}"><small>${esc(i === 0 ? "Today" : new Date(day + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" }))}</small><b>${n}/${sc.capacity}</b><small>${full ? "Full" : "Open"}</small></div>`;
+    }).join("")}</div>`;
+  }
   function readSchedule() {
     const n = (id) => Number($(id).value);
     const week = DAYS.map((_, i) => $(`[data-sched-day="${i}"]`).checked ? [$(`[data-sched-open="${i}"]`).value, $(`[data-sched-close="${i}"]`).value] : null);
-    return { zone: $("#gr-sched-zone").value, week, step: n("#gr-sched-step"), perSlot: n("#gr-sched-per"), notice: n("#gr-sched-notice"), ahead: n("#gr-sched-ahead"), auto: $("#gr-sched-auto").checked, reminder: $("#gr-sched-remind").checked };
+    return { zone: $("#gr-sched-zone").value, week, step: n("#gr-sched-step"), perSlot: n("#gr-sched-per"), notice: n("#gr-sched-notice"), ahead: n("#gr-sched-ahead"), auto: $("#gr-sched-auto").checked, reminder: $("#gr-sched-remind").checked, closed: ui.schedClosed || [], paused: !!$("#gr-sched-pause")?.checked, capacity: Math.round(Number($("#gr-sched-cap").value)) || 0, stay: n("#gr-sched-stay") };
   }
   async function saveShop(patch, msg) {
     try { await A.saveShop(patch); if (msg) A.toast(msg); return true; } catch (e) { A.toast(e.message); return false; }
@@ -501,10 +552,11 @@
   // ==================== Events ====================
   document.addEventListener("click", async (e) => {
     if (!A) return;
-    const t = e.target.closest("[data-gr-day],[data-gr-slot],[data-gr-sched-save],[data-gr-lang],[data-gr-book-lang],[data-gr-review],[data-gr-results],[data-gr-days],[data-gr-bk-open],[data-gr-bk-cancel],[data-gr-bk-accept],[data-gr-bk-decline],[data-gr-clock],[data-gr-review-ask],[data-gr-grow],[data-gr-copy],[data-gr-save-note],[data-gr-new-link],[data-gr-save-review],[data-gr-save-notify],[data-gr-logo],[data-gr-logo-remove],[data-gr-color-save],[data-gr-color-clear],[data-gr-export]");
+    const t = e.target.closest("[data-gr-day],[data-gr-month],[data-gr-slot],[data-gr-sched-save],[data-gr-sched-off-add],[data-gr-sched-off-del],[data-gr-lang],[data-gr-book-lang],[data-gr-review],[data-gr-results],[data-gr-days],[data-gr-bk-open],[data-gr-bk-cancel],[data-gr-bk-accept],[data-gr-bk-decline],[data-gr-clock],[data-gr-review-ask],[data-gr-grow],[data-gr-copy],[data-gr-save-note],[data-gr-new-link],[data-gr-save-review],[data-gr-save-notify],[data-gr-logo],[data-gr-logo-remove],[data-gr-color-save],[data-gr-color-clear],[data-gr-export]");
     if (!t) return;
     if (t.dataset.grLang) { store.set("ts-lang-" + t.dataset.token, t.dataset.grLang); A.renderCustomer(); return; }
     if (t.dataset.grBookLang) { keepDraft(); store.set("ts-book-lang", t.dataset.grBookLang); renderBooking(bk.token); return; }
+    if (t.dataset.grMonth) { keepDraft(); bk.month = t.dataset.grMonth; const d = (bk.info?.slots || []).find((x) => x.day.startsWith(bk.month)); if (d) bk.day = d.day; renderBooking(bk.token); (document.querySelector(`[data-gr-month="${CSS.escape(t.dataset.grMonth)}"]`) || document.querySelector(".gr-cal-open[aria-pressed=true]"))?.focus(); return; }
     if (t.dataset.grDay) { keepDraft(); bk.day = t.dataset.grDay; renderBooking(bk.token); document.querySelector(".gr-slot-times button")?.focus(); return; }
     if (t.dataset.grSlot) { keepDraft(); bk.slot = t.dataset.grSlot; bk.err = ""; renderBooking(bk.token); document.querySelector(`[data-gr-slot="${CSS.escape(bk.slot)}"]`)?.focus(); return; }
     if (t.hasAttribute("data-gr-review")) { const tok = A.customerToken?.(); if (tok) A.api("POST", "shop/c/" + encodeURIComponent(tok) + "/review-click", {}).catch(() => {}); return; }
@@ -548,7 +600,17 @@
       try { await navigator.clipboard.writeText(el.value); A.toast("Link copied"); } catch { el.select(); A.toast("Press Ctrl+C or ⌘C to copy"); }
       return;
     }
-    if (t.hasAttribute("data-gr-sched-save")) { t.disabled = true; if (await saveShop({ grow: { schedule: readSchedule() } }, "Appointment hours saved. Your booking page shows open times now.")) A.render(); else t.disabled = false; return; }
+    if (t.hasAttribute("data-gr-sched-save")) { t.disabled = true; if (await saveShop({ grow: { schedule: readSchedule() } }, "Appointment hours saved. Your booking page shows open times now.")) { ui.schedClosed = null; A.render(); } else t.disabled = false; return; }
+    // Days off are part of the hours form: adding or removing one keeps the other edits and saves everything together.
+    if (t.hasAttribute("data-gr-sched-off-add") || t.dataset.grSchedOffDel) {
+      const d = $("#gr-sched-off-day")?.value, draft = readSchedule();
+      if (t.dataset.grSchedOffDel) draft.closed = draft.closed.filter((x) => x !== t.dataset.grSchedOffDel);
+      else if (!d) { A.toast("Pick the day first"); return; }
+      else if (draft.closed.length >= 60) { A.toast("That's the most days off you can list. Remove one first."); return; }
+      else draft.closed = [...new Set([...draft.closed, d])].sort();
+      if (await saveShop({ grow: { schedule: draft } }, t.dataset.grSchedOffDel ? "Day off removed" : "Day off added. Customers can't book that day.")) { ui.schedClosed = null; A.render(); }
+      return;
+    }
     if (t.hasAttribute("data-gr-save-note")) { await saveShop({ grow: { bookingNote: $("#gr-book-note").value.trim() } }, "Booking note saved"); return; }
     if (t.hasAttribute("data-gr-new-link")) { if (await saveShop({ newBookingLink: true }, "New booking link made. Update it wherever you posted the old one.")) A.render(); return; }
     if (t.hasAttribute("data-gr-save-review")) {
@@ -571,6 +633,12 @@
     }
   });
   document.addEventListener("change", async (e) => {
+    if (A && e.target.id === "gr-sched-pause") {
+      const cur = A.shop()?.grow?.schedule, on = e.target.checked;
+      if (!cur) return;
+      if (await saveShop({ grow: { schedule: { ...cur, paused: on } } }, on ? "New appointments are paused. Booked ones stay on your Bay." : "You're taking new appointments again.")) A.render(); else e.target.checked = !on;
+      return;
+    }
     if (A && e.target.id === "gr-sched-on") {
       if (e.target.checked) { ui.schedOpen = true; A.render(); return; }
       ui.schedOpen = false;
@@ -590,17 +658,34 @@
   // New booking requests show up without a reload.
   setInterval(() => { if (A?.shop() && document.visibilityState === "visible" && document.getElementById("gr-bay")) loadBookings(); }, 60000);
 
+  // Shop-zone helpers and the car-limit count, the same rules as shopSchedule.ts on the server.
+  const zoneParts = (at, zone) => { const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(at)).map((x) => [x.type, x.value])); return { day: `${p.year}-${p.month}-${p.day}`, min: +p.hour * 60 + +p.minute }; };
+  const plusDays = (day, n) => new Date(Date.parse(day + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+  function dayLoad(sc, now, cars, appts) {
+    const load = {}, stay = sc.stay || 1, today = zoneParts(now.getTime(), sc.zone).day, last = plusDays(today, sc.ahead + stay + 1);
+    const add = (from, to) => { for (let d = from < today ? today : from, n = 0; d <= to && d <= last && n < 400; d = plusDays(d, 1), n++) load[d] = (load[d] || 0) + 1; };
+    for (const c of cars) {
+      let end = today;
+      if (c.promised && Number.isFinite(ts(c.promised))) { const p = zoneParts(ts(c.promised), sc.zone).day; if (p > today) end = p; }
+      else if (c.stage !== "ready" && Number.isFinite(ts(c.since))) { const e = plusDays(zoneParts(ts(c.since), sc.zone).day, stay - 1); if (e > today) end = e; }
+      add(today, end);
+    }
+    for (const a of appts) { if (!Number.isFinite(ts(a))) continue; const d = zoneParts(ts(a), sc.zone).day; if (plusDays(d, stay - 1) >= today) add(d, plusDays(d, stay - 1)); }
+    return load;
+  }
+  const hasRoom = (sc, load, day) => { if (!sc.capacity || !load) return true; for (let k = 0; k < (sc.stay || 1); k++) if ((load[plusDays(day, k)] || 0) >= sc.capacity) return false; return true; };
   /** Open appointment times, worked out in the browser (the demo shop has no server). Same rules as shopSchedule.ts. */
-  function openSlots(sc, now, taken) {
+  function openSlots(sc, now, taken, load) {
     const hm = (m) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"), mn = (t) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
     const parts = (at) => { const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: sc.zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(at)).map((x) => [x.type, x.value])); return { day: `${p.year}-${p.month}-${p.day}`, min: +p.hour * 60 + +p.minute }; };
     const offset = (at) => { const p = parts(at); return Date.parse(p.day + "T" + hm(p.min) + ":00Z") - Math.floor(at / 60000) * 60000; };
     const zoned = (day, t) => { const g = Date.parse(`${day}T${t}:00Z`); return g - offset(g - offset(g)); };
     const count = new Map(); for (const t of taken) { const ms = ts(t); if (Number.isFinite(ms)) count.set(ms, (count.get(ms) || 0) + 1); }
     const earliest = now.getTime() + sc.notice * 3600000, today = parts(now.getTime()).day, out = [];
+    if (sc.paused) return out;
     for (let i = 0; i <= sc.ahead; i++) {
       const day = new Date(Date.parse(today + "T12:00:00Z") + i * 86400000).toISOString().slice(0, 10), h = sc.week[new Date(day + "T12:00:00Z").getUTCDay()];
-      if (!h) continue;
+      if (!h || (sc.closed || []).includes(day) || !hasRoom(sc, load, day)) continue;
       const times = [];
       for (let m = mn(h[0]); m + sc.step <= mn(h[1]); m += sc.step) {
         const at = zoned(day, hm(m));
@@ -612,5 +697,5 @@
     return out;
   }
 
-  window.Grow = { openSlots, init, pro, setLang, customerSetup, customerHead, customerCards, langSwitch, renderBooking, loadBookings, bookingsPanel, cardBits, sheetSection, resultsButton, settingsPanels };
+  window.Grow = { openSlots, dayLoad, init, pro, setLang, customerSetup, customerHead, customerCards, langSwitch, renderBooking, loadBookings, bookingsPanel, cardBits, sheetSection, resultsButton, settingsPanels };
 })();

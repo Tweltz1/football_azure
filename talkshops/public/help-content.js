@@ -95,8 +95,8 @@
     ]},
     { id: "plans", title: "Plans and Billing", lesson: "plan", qs: [
       ["How much does Talk Shops cost?", "Starter is $89 a month ($890 a year) with 1,000 texts a month, 3 staff seats, online booking, Spanish customer pages and CSV export. Pro is $149 a month ($1,490 a year) with 3,000 texts a month, 8 staff seats, and adds the AI How-To assistant, Smart Replies, AI damage marking, AI price list reading, the results dashboard, review requests, your logo and color, and the tech time clock. Every new shop starts with a 15-day free trial that includes Pro features."],
-      ["Is there a free trial?", "Yes. New shops get a 15-day free trial with Pro features and no card needed. It has a set number of texts and cars, and the Plan tab shows how many days you have left. There is one free trial per shop phone number. If you pick a plan during the trial, the first charge waits until the trial ends."],
-      ["What happens when my trial ends?", "Everything you entered stays, and your customers' links still work. Choose a plan to send updates again."],
+      ["Is there a free trial?", "Yes. New shops get a 15-day free trial with Pro features and no card needed. It has a set number of texts and cars, and the Plan tab shows how many days you have left. There is one free trial per shop phone number, email and account. If you pick a plan during the trial, the first charge waits until the trial ends."],
+      ["What happens when my trial ends?", "Your shop is locked until you choose a plan: you'll see the plan choices instead of your board. Nothing is deleted, and your customers' links still work. We email you 3 days before it ends. Once you pay, your shop opens right back up."],
       ["How do I change or cancel my plan?", "Owners open Plan and use Manage Billing to change plans, update the card or cancel."],
       ["What if we run out of texts?", "Emails stay unlimited. Upgrade to Pro for more texts, or contact us if you need a higher limit."],
     ]},

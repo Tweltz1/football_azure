@@ -68,6 +68,21 @@ export const onStoreUpdates = (done) => listen(Store(), 'transaction', ({ jws })
   if (jws) sendPurchases([jws]).then(done).catch(() => {});
 });
 
+/** True in iPhone builds that have Apple's promo code sheet. */
+export const canRedeem = () => { const s = Store(); return !!(s && typeof s.redeemCode === 'function'); };
+
+/**
+ * Opens Apple's "Redeem code" sheet (promo codes made in App Store Connect), then sends what the
+ * phone has to the server. Returns the server's Plus status, or null when nothing came through yet
+ * (a late arrival still reaches onStoreUpdates).
+ */
+export async function redeemCode() {
+  const s = Store();
+  if (!s || typeof s.redeemCode !== 'function') throw new Error('Update Curbsy from the App Store to use a promo code.');
+  await s.redeemCode();
+  return syncPurchases();
+}
+
 export const manageSubscription = () => {
   const s = Store();
   if (s) return s.manage();

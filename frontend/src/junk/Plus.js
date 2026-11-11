@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useJunk } from './JunkApp';
 import { getPartners, tapPartner } from './junkApi';
-import { PLUS_PRICE, PLUS_PRODUCT, TIP_PRODUCTS, buy, canBuy, loadProducts, manageSubscription, restore, turnOnAlerts } from './store';
+import { PLUS_PRICE, PLUS_PRODUCT, TIP_PRODUCTS, buy, canBuy, canRedeem, loadProducts, manageSubscription, redeemCode, restore, turnOnAlerts } from './store';
 import { IconClose } from './icons';
 
 // How Curbsy pays for itself: Curbsy Plus, tips, junk haulers and local sponsors.
@@ -74,6 +74,26 @@ export function PlusSheet({ reason, onClose }) {
     }
   };
 
+  const doRedeem = async () => {
+    if (!me) { onClose(); askSignIn('Sign in first so your promo code stays with your account.'); return; }
+    setBusy(true);
+    setError('');
+    try {
+      const r = await redeemCode();
+      if (r) setPlus(r);
+      if (r && r.plus) {
+        setDone('Welcome to Curbsy Plus!');
+        turnOnAlerts().catch(() => {});
+      } else if (r && r.note) {
+        setError(r.note);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="jk-sheet-backdrop" role="presentation" onClick={onClose}>
       <div className="jk-sheet jk-plus-sheet" role="dialog" aria-modal="true" aria-label="Curbsy Plus" onClick={(e) => e.stopPropagation()}>
@@ -100,6 +120,7 @@ export function PlusSheet({ reason, onClose }) {
             </button>
             {!canBuy() && <p className="jk-muted jk-center">Update Curbsy from the App Store to subscribe.</p>}
             <button type="button" className="jk-link jk-center-block" disabled={busy || !canBuy()} onClick={doRestore}>Restore purchases</button>
+            {canRedeem() && <button type="button" className="jk-link jk-center-block" disabled={busy} onClick={doRedeem}>Have a promo code?</button>}
           </>
         )}
         <p className="jk-legal">

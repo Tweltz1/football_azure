@@ -436,6 +436,14 @@
   }
 
   let crew = [], myId = null, myName = "";
+  /** Fetches the plan again; reloads the whole shop when that unlocks it (just paid) or locks it (trial just ended). */
+  async function refreshPlan() {
+    if (!shop) return;
+    const was = planUi.locked(plan);
+    try { plan = await api("GET", "shop/plan"); } catch (e) { return; }
+    if (was !== planUi.locked(plan)) { if (was) toast("Your plan is active. Welcome back!"); await loadShop(); }
+    else render();
+  }
   async function loadShop() {
     try {
       await acceptInvite();
@@ -445,10 +453,12 @@
       const [me, board] = await Promise.all([api("GET", "shop/me"), loadBoard().catch(() => null)]);
       shop = me.shop; emailConfigured = !!me.emailConfigured; plan = me.plan || null;
       role = me.role || null; mainOwner = !!me.mainOwner; crew = me.crew || []; myId = me.me || null; myName = me.myName || "";
+      // A locked shop (trial or plan ended) only gets the choose-a-plan screen (its board request was refused).
+      const open = shop && !planUi.locked(plan);
       if (!board) boardV = "";
-      jobs = shop ? board || (await loadBoard()) || [] : [];
+      jobs = open ? board || (await loadBoard()) || [] : [];
       window.Workday?.watch(jobs);
-      if (shop) window.Grow?.loadBookings();
+      if (open) window.Grow?.loadBookings();
       loadErr = "";
     } catch (e) { loadErr = e.message; }
     loaded = true;
@@ -510,6 +520,14 @@
       return;
     }
     if (!shop) { chrome.hidden = true; app.innerHTML = setupView(true); renderLayer(); return; }
+    // Trial over (or plan ended): the shop stays hidden behind "choose a plan" until payment goes through.
+    if (planUi.locked(plan)) {
+      chrome.hidden = true;
+      document.title = "Choose a Plan · Talk Shops";
+      if (location.pathname !== "/plan") history.replaceState(history.state, "", "/plan" + location.search + location.hash);
+      app.innerHTML = planUi.lockView(plan, { owner: isOwner(), shopName: shop.name, brand: brand() });
+      return;
+    }
     if (!isOwner() && (ui.view === "plan" || ui.view === "prices")) ui.view = "board";
     if (!VIEW_PATHS[ui.view]) ui.view = "board";
     const want = VIEW_PATHS[ui.view];
@@ -790,7 +808,7 @@
         <details><summary>Does it replace my shop management system?</summary><p>It can work alongside it. Talk Shops handles the board, customer updates, approvals, inspections and bills. If your current system makes your invoices, upload that PDF as the final bill.</p></details>
         <details><summary>Will it work for a quick lube or tire shop?</summary><p>Yes. Set up quick services like “Oil change + rotation”. Fast lane jobs skip diagnosis and approval because the customer agreed at the counter, so the car moves straight to the bay.</p></details>
         <details><summary>Can customers book online, or get updates in Spanish?</summary><p>Yes, on every plan. Share your booking link on your website or Google profile. Set your appointment hours and customers pick an open time themselves; confirm each request or let them book right away, and turn on a reminder text the day before. Mark a customer as a Spanish speaker and their page and automatic texts switch to Spanish.</p></details>
-        <details><summary>How does the free trial work?</summary><p>New shops get 15 days free with every Pro feature and no card needed. There is one free trial per shop phone number. Pick a plan any time, and the first charge waits until the trial ends.</p></details>
+        <details><summary>How does the free trial work?</summary><p>New shops get 15 days free with every Pro feature and no card needed. There is one free trial per shop phone number, email and account. Pick a plan any time, and the first charge waits until the trial ends. If the trial ends without a plan, your shop is paused until you choose one, and nothing is deleted.</p></details>
         <details><summary>How long does setup take?</summary><p>Most shops are ready in a few minutes. Upload your price list as a spreadsheet, PDF or photo, review it, and start checking in cars.</p></details>
         <details><summary>Can my technicians use it without seeing billing?</summary><p>Yes. Technicians work on cars. Settings, prices, team and billing stay with owners.</p></details>
         <p><a href="/?help">See all questions in Help &amp; Support →</a></p>
@@ -1379,6 +1397,7 @@
       render(); loadShop(); return;
     }
     if (t.id === "retry") { loadShop(); return; }
+    if (t.id === "planRecheck") { t.disabled = true; await refreshPlan(); if (planUi.locked(plan)) { t.disabled = false; toast("No payment yet. If you just paid, give it a minute and check again."); } return; }
     if (t.dataset.archiveOpen) { openArchived(t.dataset.archiveOpen); return; }
     if (t.hasAttribute("data-archive-retry")) { archive.error = ""; renderArchiveRows(); searchArchive(); return; }
     if (t.hasAttribute("data-suggest-open")) return;
@@ -1954,10 +1973,11 @@
   // Show the public page before session recovery or refresh finishes.
   render();
   // Back from Stripe: say so, and refresh the plan a few times while Stripe's confirmation arrives.
+  // A locked shop opens back up on its own as soon as the payment shows.
   const planNote = planUi.returned();
   if (planNote) {
     setTimeout(() => toast(planNote), 600);
-    [3000, 8000, 20000].forEach((ms) => setTimeout(async () => { if (!shop) return; try { plan = await api("GET", "shop/plan"); render(); } catch (e) { /* later */ } }, ms));
+    [2000, 5000, 9000, 15000, 25000, 40000, 60000].forEach((ms) => setTimeout(() => { if (shop && (ms <= 9000 || planUi.locked(plan))) refreshPlan(); }, ms));
   }
   sb.auth.onAuthStateChange((_event, s) => {
     const was = session?.user?.id;
@@ -1979,6 +1999,6 @@
       const latest = await loadBoard();
       if (latest && !pickerActive() && ui.view === "board" && !cust.intakeBusy && !ui.modal && !ui.busy && !dictation.active() && !document.activeElement?.matches("input,textarea")) { window.Workday?.watch(latest); if (JSON.stringify(latest) !== JSON.stringify(jobs)) { jobs = latest; render(); } }
       else if (latest) boardV = "";
-    } catch (e) { /* try again next time */ }
+    } catch (e) { if (e.status === 402) refreshPlan(); /* otherwise try again next time */ }
   }, 20000);
 })();

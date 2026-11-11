@@ -511,6 +511,15 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       if (error) throw error;
       return (data ?? []).length === 1;
     },
+    async carsInShop(shopId) {
+      const { data, error } = await db.from('repair_jobs').select('stage, created_at, promised:data->>promised, closed:data->closed, events:data->events')
+        .eq('shop_id', shopId).not('stage', 'in', '(invited,picked_up)').is('archived_at', null).limit(500);
+      if (error) throw error;
+      return (data ?? []).filter((r: Record<string, any>) => !r.closed).map((r: Record<string, any>) => ({
+        stage: r.stage, ...(r.promised ? { promised: r.promised } : {}),
+        since: (Array.isArray(r.events) ? r.events.find((e: { stage?: string }) => e?.stage === 'checked_in')?.t : null) ?? r.created_at,
+      }));
+    },
     async appointmentsBetween(shopId, from, to) {
       // Appointments are saved as UTC ISO strings, so text order is time order.
       const { data, error } = await db.from('repair_jobs').select('created_at, at:data->>appointment, phone:data->customer->>phone, email:data->customer->>email, closed:data->closed')
@@ -538,13 +547,31 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       const { error } = await db.from('repair_shops').update({ plan: 'trial', plan_status: 'trialing', trial_ends_at: endsAt }).eq('id', shopId);
       if (error) throw error;
     },
-    async claimTrialPhone(phone, shopId) {
-      const { error } = await db.from('talkshops_trial_phones').insert({ phone, shop_id: shopId });
-      if (error?.code === '23505') return false;
+    async claimTrial(keys, shopId) {
+      if (!keys.length) return true;
+      // The table's "phone" column holds every trial key: the shop phone, "email:..." and "user:...".
+      const { data, error } = await db.from('talkshops_trial_phones').select('phone').in('phone', keys);
       // The shared hobby project has no such table (Talk Shops runs on its own project): don't block sign-up there.
       if (error?.code === '42P01' || error?.code === 'PGRST205') return true;
       if (error) throw error;
-      return true;
+      const used = (data ?? []).length > 0;
+      const add = await db.from('talkshops_trial_phones')
+        .upsert(keys.map((phone) => ({ phone, shop_id: shopId })), { onConflict: 'phone', ignoreDuplicates: true });
+      if (add.error) throw add.error;
+      return !used;
+    },
+    async trialNoticeShops(now) {
+      const t = Date.parse(now), day = 86_400_000;
+      const { data, error } = await db.from('repair_shops').select(SHOP_COLUMNS + ', trial_notice').eq('plan', 'trial')
+        .gte('trial_ends_at', new Date(t - 2 * day).toISOString()).lte('trial_ends_at', new Date(t + 3 * day).toISOString()).limit(500);
+      // A project without the trial_notice column (the shared hobby project) just skips trial emails.
+      if (error?.code === '42703' || error?.code === 'PGRST204') return [];
+      if (error) throw error;
+      return (data ?? []).map((r) => ({ shop: shopRow(r as unknown as ShopDb), sent: (r as { trial_notice?: string | null }).trial_notice ?? null }));
+    },
+    async setTrialNotice(shopId, notice) {
+      const { error } = await db.from('repair_shops').update({ trial_notice: notice }).eq('id', shopId);
+      if (error) throw error;
     },
     async useEmails(shopId, day, limit) {
       const { data, error } = await db.rpc('repair_use_emails', { p_shop: shopId, p_day: day, p_limit: limit });
