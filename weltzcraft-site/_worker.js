@@ -56,20 +56,33 @@ const SHIPPING_CAP_CENTS = 1499;
 const MAX_QTY = 10;
 const MAX_LINES = 20;
 // Promo codes. FAMILY (or the MERCH_FAMILY_CODE secret) prices every item at what Printful charges us plus
-// FAMILY_MARKUP_CENTS, which covers the Stripe fee. Any other code is looked up as a Stripe promotion code
+// FAMILY_MARKUP_CENTS, which covers the Stripe fee, and shipping at Printful's own rate. Any other code is looked up as a Stripe promotion code
 // (made in the Stripe dashboard under Product catalog > Coupons). With no code, Stripe's own promo box shows.
 const FAMILY_MARKUP_CENTS = 200;
 const familyCode = (env) => String(env.MERCH_FAMILY_CODE || 'FAMILY').trim().toUpperCase();
 
-/** What Printful charges for one of our store variants, in cents (its catalog price for that blank). */
-async function printfulCostCents(env, syncVariantId) {
+/** What Printful charges for one of our store variants: { cents, catalogId } (its catalog price for that blank). */
+async function printfulCost(env, syncVariantId) {
   const sv = await printful(env, '/store/variants/' + syncVariantId);
   const catalogId = sv.ok && sv.out && sv.out.result && (sv.out.result.variant_id || (sv.out.result.product && sv.out.result.product.variant_id));
   if (!catalogId) throw new Error('printful variant ' + syncVariantId);
   const c = await printful(env, '/products/variant/' + catalogId);
   const price = Number(c.ok && c.out && c.out.result && c.out.result.variant && c.out.result.variant.price);
   if (!(price > 0)) throw new Error('printful price ' + catalogId);
-  return Math.round(price * 100);
+  return { cents: Math.round(price * 100), catalogId };
+}
+
+/**
+ * Printful's own STANDARD shipping price for these items in cents (what the webhook's order ships with).
+ * Printful's US standard rates are the same nationwide, so any US state gives the real number.
+ */
+async function printfulShippingCents(env, items) {
+  const r = await printful(env, '/shipping/rates', { recipient: { country_code: 'US', state_code: 'MO', zip: '63101' }, items, currency: 'USD' });
+  const rates = (r.ok && r.out && Array.isArray(r.out.result)) ? r.out.result : [];
+  const rate = rates.find((x) => x.id === 'STANDARD') || rates[0];
+  const cents = Math.round(Number(rate && rate.rate) * 100);
+  if (!(cents > 0)) throw new Error('printful shipping');
+  return cents;
 }
 
 async function catalog(request, env) {
@@ -117,6 +130,7 @@ async function merchCheckout(request, env) {
     cancel_url: site + '/merch?order=cancelled',
   };
   const lines = [];
+  const familyItems = [];
   let count = 0;
   for (const w of wanted) {
     const slug = String(w && w.slug || '');
@@ -134,8 +148,9 @@ async function merchCheckout(request, env) {
     let cents = Math.round(v.price * 100);
     if (family) {
       let cost;
-      try { cost = await printfulCostCents(env, v.id); } catch (e) { return json(503, { error: 'Family pricing isn\'t available right now. Try again in a minute.' }); }
-      cents = Math.min(cents, cost + FAMILY_MARKUP_CENTS);
+      try { cost = await printfulCost(env, v.id); } catch (e) { return json(503, { error: 'Family pricing isn\'t available right now. Try again in a minute.' }); }
+      cents = Math.min(cents, cost.cents + FAMILY_MARKUP_CENTS);
+      familyItems.push({ variant_id: cost.catalogId, quantity: qty });
     }
     form['line_items[' + i + '][quantity]'] = String(qty);
     form['line_items[' + i + '][price_data][currency]'] = 'usd';
@@ -148,7 +163,11 @@ async function merchCheckout(request, env) {
   }
   if (count > MAX_QTY * 2) return json(400, { error: 'That is a big order! Email hello@weltzcraft.com and we will set it up.' });
   // Flat shipping, plus a little for each extra piece (Printful charges per item too).
-  const ship = Math.min(SHIPPING_CENTS + EXTRA_ITEM_CENTS * (count - 1), SHIPPING_CAP_CENTS);
+  // Family orders pay exactly what Printful charges to ship them.
+  let ship = Math.min(SHIPPING_CENTS + EXTRA_ITEM_CENTS * (count - 1), SHIPPING_CAP_CENTS);
+  if (family) {
+    try { ship = await printfulShippingCents(env, familyItems); } catch (e) { return json(503, { error: 'Family pricing isn\'t available right now. Try again in a minute.' }); }
+  }
   Object.assign(form, {
     'shipping_address_collection[allowed_countries][0]': 'US',
     'shipping_options[0][shipping_rate_data][type]': 'fixed_amount',
