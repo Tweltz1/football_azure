@@ -3,25 +3,30 @@
 name: Compare item namers
 
 on:
+  # Only the live branch (new work branches were each starting a run). Pushing a change here compares the
+  # releases named below.
   push:
+    branches:
+      - claude/project-thread-6lgsrr
     paths:
       - 'ml/compare-namers/**'
+      - '.github/workflows/compare-namers.yml'
   workflow_dispatch:
     inputs:
       ours:
         description: Curbsy namer release
-        default: item-namer-v1
+        default: item-namer-v3
       tote:
         description: ToteTrack namer release
-        default: totetrack-namer-4
+        default: totetrack-namer-13
 
 jobs:
   compare:
     runs-on: macos-15
     timeout-minutes: 180
     env:
-      OURS: ${{ inputs.ours || 'item-namer-v1' }}
-      TOTE: ${{ inputs.tote || 'totetrack-namer-4' }}
+      OURS: ${{ inputs.ours || 'item-namer-v3' }}
+      TOTE: ${{ inputs.tote || 'totetrack-namer-13' }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
