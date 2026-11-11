@@ -14,7 +14,7 @@
   const vehicle = (v) => [v?.year, v?.make, v?.model].filter(Boolean).join(" ");
   const $ = (s) => document.querySelector(s);
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch { /* private mode */ } } };
-  const ui = { bookings: null, bkOpen: null, bkMode: "", days: 30, results: null, resultsErr: "", logoBusy: false };
+  const ui = { schedOpen: false, bookings: null, bkOpen: null, bkMode: "", days: 30, results: null, resultsErr: "", logoBusy: false };
 
   function init(adapter) { A = adapter; }
   const pro = () => !!A?.plan()?.pro || (A?.plan() == null);
@@ -137,7 +137,41 @@
   }
 
   // ==================== Online booking: the public page (/?book=<token>) ====================
-  const bk = { token: "", info: null, err: "", sent: false, busy: false };
+  const bk = { token: "", info: null, err: "", sent: false, busy: false, day: "", slot: "", draft: null, result: null };
+  /** Keeps what the customer typed when the page redraws (picking a time, sending, an error). */
+  function keepDraft() {
+    const f = document.getElementById("grBookForm");
+    if (!f) return;
+    bk.draft = {};
+    for (const el of f.elements) if (el.name && el.type !== "submit") bk.draft[el.name] = el.type === "checkbox" ? el.checked : el.value;
+  }
+  function restoreDraft() {
+    const f = document.getElementById("grBookForm");
+    if (!f || !bk.draft) return;
+    for (const [k, v] of Object.entries(bk.draft)) { const el = f.elements[k]; if (!el || el.type === "hidden") continue; if (el.type === "checkbox") el.checked = v; else el.value = v; }
+  }
+  // Appointment times show in the shop's time zone, which is where the customer is going.
+  const slotDay = (day, es, long) => new Date(day + "T12:00:00Z").toLocaleDateString(es ? "es-US" : "en-US", { timeZone: "UTC", weekday: long ? "long" : "short", month: long ? "long" : "short", day: "numeric" });
+  const slotTime = (hm) => { const [h, m] = hm.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+  function slotLabel(at, es) {
+    for (const d of bk.info?.slots || []) for (const t of d.times) if (t.at === at) return `${slotDay(d.day, es, true)}, ${slotTime(t.time)}`;
+    const z = bk.info?.zone;
+    return new Date(at).toLocaleString(es ? "es-US" : "en-US", { timeZone: z || undefined, weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+  function slotPicker(L, es) {
+    const days = bk.info.slots || [];
+    if (!days.length) return `<div class="full gr-slots-none"><b>${L("No open times right now.", "No hay horarios disponibles por ahora.")}</b> ${bk.info.shop.phone ? L("Please call ", "Llame al ") + `<a href="tel:${esc(bk.info.shop.phone)}">${esc(bk.info.shop.phone)}</a>.` : L("Please call the shop.", "Llame al taller.")}</div>`;
+    if (!days.some((d) => d.day === bk.day)) bk.day = days[0].day;
+    const today = days.find((d) => d.day === bk.day);
+    if (bk.slot && !days.some((d) => d.times.some((t) => t.at === bk.slot))) bk.slot = "";
+    return `<div class="full gr-slots"><div class="gr-slot-days" role="group" aria-label="${L("Day", "Día")}">${days.map((d) => {
+        const [wd, rest] = [new Date(d.day + "T12:00:00Z").toLocaleDateString(es ? "es-US" : "en-US", { timeZone: "UTC", weekday: "short" }), new Date(d.day + "T12:00:00Z").toLocaleDateString(es ? "es-US" : "en-US", { timeZone: "UTC", month: "short", day: "numeric" })];
+        return `<button type="button" class="gr-slot-day" data-gr-day="${esc(d.day)}" aria-pressed="${d.day === bk.day}"><small>${esc(wd)}</small><b>${esc(rest)}</b></button>`;
+      }).join("")}</div>
+      <div class="gr-slot-times" role="group" aria-label="${L("Time", "Hora")}">${today.times.map((t) => `<button type="button" class="gr-slot-time" data-gr-slot="${esc(t.at)}" aria-pressed="${t.at === bk.slot}">${esc(slotTime(t.time))}</button>`).join("")}</div>
+      <input type="hidden" name="slot" value="${esc(bk.slot)}">
+      ${bk.slot ? `<p class="gr-slot-pick">${L("Your time", "Su hora")}: <b>${esc(slotLabel(bk.slot, es))}</b></p>` : `<p class="muted gr-slot-pick">${L("Pick a time above.", "Elija una hora arriba.")}</p>`}</div>`;
+  }
   async function renderBooking(token) {
     bk.token = token;
     const app = $("#app");
@@ -152,13 +186,17 @@
     applyColor(s.brand?.color);
     const es = lang === "es", L = (en, sp) => (es ? sp : en);
     document.title = s.name + " · " + L("Book a visit", "Pedir una cita");
+    const slots = Array.isArray(bk.info.slots), auto = slots && bk.info.auto;
     const today = new Date(); today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
     const min = today.toISOString().slice(0, 10), max = new Date(Date.now() + 120 * 86400000).toISOString().slice(0, 10);
     app.innerHTML = `<div class="cust-page gr-book-page">
-      <div class="c-head">${s.brand?.logo ? `<img class="gr-logo" src="${esc(s.brand.logo)}" alt="">` : ""}<small>${esc(s.name)}</small><h2>${L("Request an appointment", "Pida una cita")}</h2>
+      <div class="c-head">${s.brand?.logo ? `<img class="gr-logo" src="${esc(s.brand.logo)}" alt="">` : ""}<small>${esc(s.name)}</small><h2>${auto ? L("Book an appointment", "Haga una cita") : L("Request an appointment", "Pida una cita")}</h2>
         <div style="font-size:14px;margin-top:4px">${esc([s.phone, s.hours].filter(Boolean).join(" · "))}</div></div>
       <div class="c-body">
-      ${bk.sent ? `<div class="c-card"><h3>${L("Request sent", "Solicitud enviada")}</h3><p style="margin:0">${L(`Thanks! ${esc(s.name)} will confirm a time with you soon.`, `¡Gracias! ${esc(s.name)} le confirmará una hora pronto.`)}${s.phone ? " " + L("Need it sooner? Call ", "¿Lo necesita antes? Llame al ") + `<a href="tel:${esc(s.phone)}">${esc(s.phone)}</a>.` : ""}</p></div>` : `
+      ${bk.sent && bk.result?.confirmed ? `<div class="c-card gr-appt"><h3>${L("You're booked", "Su cita está confirmada")}</h3><p style="margin:0">${L(`${esc(s.name)} has you down for <b>${esc(slotLabel(bk.result.at, false))}</b>.`, `${esc(s.name)} lo espera el <b>${esc(slotLabel(bk.result.at, true))}</b>.`)}${s.phone ? " " + L("To change it, call ", "Para cambiarla llame al ") + `<a href="tel:${esc(s.phone)}">${esc(s.phone)}</a>.` : ""}</p>
+        <div class="btn-row" style="margin-top:10px"><a class="btn sm" download="appointment.ics" href="${calendarLink({ appointment: bk.result.at, shop: s, vehicle: bk.result.vehicle })}">${L("Add to calendar", "Agregar al calendario")}</a>${bk.result.link ? `<a class="btn primary sm" href="${esc(bk.result.link)}">${L("See your visit and add photos", "Vea su visita y agregue fotos")}</a>` : ""}</div></div>`
+      : bk.sent && bk.result?.at ? `<div class="c-card"><h3>${L("Request sent", "Solicitud enviada")}</h3><p style="margin:0">${L(`Thanks! You asked for <b>${esc(slotLabel(bk.result.at, false))}</b>. ${esc(s.name)} will confirm with you soon.`, `¡Gracias! Pidió el <b>${esc(slotLabel(bk.result.at, true))}</b>. ${esc(s.name)} se lo confirmará pronto.`)}${s.phone ? " " + L("Questions? Call ", "¿Preguntas? Llame al ") + `<a href="tel:${esc(s.phone)}">${esc(s.phone)}</a>.` : ""}</p></div>`
+      : bk.sent ? `<div class="c-card"><h3>${L("Request sent", "Solicitud enviada")}</h3><p style="margin:0">${L(`Thanks! ${esc(s.name)} will confirm a time with you soon.`, `¡Gracias! ${esc(s.name)} le confirmará una hora pronto.`)}${s.phone ? " " + L("Need it sooner? Call ", "¿Lo necesita antes? Llame al ") + `<a href="tel:${esc(s.phone)}">${esc(s.phone)}</a>.` : ""}</p></div>` : `
       ${bk.info.note ? `<div class="c-card"><p style="margin:0">${esc(bk.info.note)}</p></div>` : ""}
       <form class="c-card form-grid" id="grBookForm">
         <h3 class="full" style="margin:0">${L("You", "Usted")}</h3>
@@ -172,29 +210,40 @@
         <label class="field">${L("Model", "Modelo")}<input name="model" required maxlength="40"></label>
         <label class="field">${L("License plate (optional)", "Placa (opcional)")}<input name="plate" maxlength="12"></label>
         <label class="field full">${L("What does it need?", "¿Qué necesita?")}<textarea name="concern" required maxlength="1000" placeholder="${L("e.g. Oil change, and a squeak when braking", "p. ej. Cambio de aceite y un chillido al frenar")}"></textarea></label>
-        <label class="field">${L("Day you'd like", "Día que prefiere")}<input name="day" type="date" required min="${min}" max="${max}" value="${min}"></label>
-        <label class="field">${L("Time of day", "Hora del día")}<select name="time"><option value="morning">${L("Morning", "Mañana")}</option><option value="afternoon">${L("Afternoon", "Tarde")}</option><option value="any">${L("Any time", "Cualquier hora")}</option></select></label>
+        ${slots ? `<h3 class="full" style="margin:6px 0 0">${L("Pick a time", "Elija una hora")}</h3>${slotPicker(L, es)}` : `<label class="field">${L("Day you'd like", "Día que prefiere")}<input name="day" type="date" required min="${min}" max="${max}" value="${min}"></label>
+        <label class="field">${L("Time of day", "Hora del día")}<select name="time"><option value="morning">${L("Morning", "Mañana")}</option><option value="afternoon">${L("Afternoon", "Tarde")}</option><option value="any">${L("Any time", "Cualquier hora")}</option></select></label>`}
         <label class="gr-hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
         <label class="chk full"><input type="checkbox" name="consent" checked> ${L(`${esc(s.name)} may text or email me about this appointment and my repair. Reply STOP to opt out.`, `${esc(s.name)} puede enviarme mensajes o correos sobre esta cita y mi reparación. Responda STOP para no recibir más.`)}</label>
         ${bk.err ? `<p class="form-err full" role="alert">${esc(bk.err)}</p>` : ""}
-        <button class="btn primary full" type="submit" ${bk.busy ? "disabled" : ""}>${bk.busy ? L("Sending…", "Enviando…") : L("Send request", "Enviar solicitud")}</button>
-        <p class="muted full" style="margin:0;font-size:13px">${L("This is a request. The shop confirms the exact time.", "Esto es una solicitud. El taller confirma la hora exacta.")}</p>
+        <button class="btn primary full" type="submit" ${bk.busy ? "disabled" : ""}>${bk.busy ? L("Sending…", "Enviando…") : auto ? L("Book this time", "Reservar esta hora") : slots ? L("Request this time", "Pedir esta hora") : L("Send request", "Enviar solicitud")}</button>
+        <p class="muted full" style="margin:0;font-size:13px">${auto ? L("You'll get a confirmation right away.", "Recibirá la confirmación enseguida.") : slots ? L("The shop confirms your time.", "El taller confirma su hora.") : L("This is a request. The shop confirms the exact time.", "Esto es una solicitud. El taller confirma la hora exacta.")}</p>
       </form>`}
       <p class="cust-top gr-lang"><button type="button" class="linkbtn" data-gr-book-lang="${es ? "en" : "es"}">${es ? "View in English" : "Ver en español"}</button></p>
       <p class="cust-top"><a href="/privacy.html">${tsT("Privacy Policy")}</a> · <a href="/terms.html#sms">${tsT("Text Terms")}</a></p>
       </div></div>`;
+    restoreDraft();
   }
   async function sendBooking(f) {
     const g = (k) => (f.elements[k]?.value || "").trim();
+    const slots = Array.isArray(bk.info?.slots);
+    if (slots && !bk.slot) { bk.err = lang === "es" ? "Elija una hora para su cita." : "Pick a time for your appointment."; keepDraft(); renderBooking(bk.token); return; }
+    const payload = {
+      customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("preference"), consent: f.elements.consent.checked, lang },
+      vehicle: { year: g("year"), make: g("make"), model: g("model") }, plate: g("plate"), concern: g("concern"), website: g("website"),
+      ...(slots ? { slot: bk.slot } : { day: g("day"), time: g("time") }),
+      elapsed: bk.shownAt ? Date.now() - bk.shownAt : null,
+    };
+    keepDraft();
     bk.busy = true; bk.err = ""; renderBooking(bk.token);
     try {
-      await A.api("POST", "shop/book/" + encodeURIComponent(bk.token), {
-        customer: { name: g("name"), phone: g("phone"), email: g("email"), preference: g("preference"), consent: f.elements.consent.checked, lang },
-        vehicle: { year: g("year"), make: g("make"), model: g("model") }, plate: g("plate"), concern: g("concern"), day: g("day"), time: g("time"), website: g("website"),
-        elapsed: bk.shownAt ? Date.now() - bk.shownAt : null,
-      });
-      bk.sent = true;
-    } catch (e) { bk.err = e.message; }
+      bk.result = await A.api("POST", "shop/book/" + encodeURIComponent(bk.token), payload);
+      if (bk.result) bk.result.vehicle = [payload.vehicle.year, payload.vehicle.make, payload.vehicle.model].filter(Boolean).join(" ");
+      bk.sent = true; bk.draft = null;
+    } catch (e) {
+      bk.err = e.message;
+      // Someone else just took that time: show the times that are still open.
+      if (slots) { try { const fresh = await A.api("GET", "shop/book/" + encodeURIComponent(bk.token)); bk.info = { ...bk.info, slots: fresh.slots }; } catch { /* keep the old list */ } }
+    }
     bk.busy = false; renderBooking(bk.token);
     window.scrollTo(0, 0);
   }
@@ -205,10 +254,11 @@
     try { ui.bookings = (await A.api("GET", "shop/bookings")).rows || []; } catch { ui.bookings = ui.bookings || []; }
     redrawBookings();
   }
-  function redrawBookings() { const el = document.getElementById("gr-bookings"); if (el) el.outerHTML = bookingsPanel(); }
+  function redrawBookings() { const el = document.getElementById("gr-bay"); if (el) el.outerHTML = bookingsPanel(); }
   const partOfDay = (t, es) => ({ morning: es ? "por la mañana" : "morning", afternoon: es ? "por la tarde" : "afternoon", any: es ? "a cualquier hora" : "any time" }[t] || t);
   const dayText = (d, loc = "en-US") => new Date(d + "T12:00:00").toLocaleDateString(loc, { weekday: "short", month: "short", day: "numeric" });
   function defaultWhen(b) {
+    if (b.data.slot) { const d = new Date(b.data.slot); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); }
     const d = new Date(b.data.day + "T" + (b.data.time === "afternoon" ? "13:00" : "08:00"));
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().slice(0, 16);
@@ -225,14 +275,31 @@
     const call = shop.phone ? (es ? ` Llámenos al ${shop.phone} para buscar otro horario.` : ` Please call us at ${shop.phone} to find another time.`) : (es ? " Responda para buscar otro horario." : " Reply to find another time.");
     return es ? `Hola ${f}, gracias por escribir a ${shop.name}. No tenemos espacio el ${dayText(b.data.day, "es-US")}.${call}` : `Hi ${f}, thanks for reaching out to ${shop.name}. We're full on ${dayText(b.data.day)}.${call}`;
   }
-  function bookingsPanel() {
+  /** Upcoming appointments on the Bay: booked cars not checked in yet, from an hour ago through the next week. */
+  function appointmentsPanel() {
+    const from = Date.now() - 3600000, to = Date.now() + 7 * 86400000;
+    const list = (A?.jobs?.() || []).filter((j) => j.stage !== "picked_up" && !j.closed && j.appointment && ts(j.appointment) >= from && ts(j.appointment) < to)
+      .sort((a, b) => ts(a.appointment) - ts(b.appointment));
+    if (!list.length) return "";
+    const dayKey = (t) => new Date(t).toDateString(), todayKey = dayKey(Date.now()), tomorrowKey = dayKey(Date.now() + 86400000);
+    const groups = [];
+    for (const j of list) { const k = dayKey(ts(j.appointment)); if (groups.at(-1)?.k !== k) groups.push({ k, t: ts(j.appointment), rows: [] }); groups.at(-1).rows.push(j); }
+    const label = (g) => g.k === todayKey ? "Today" : g.k === tomorrowKey ? "Tomorrow" : new Date(g.t).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+    const today = list.filter((j) => dayKey(ts(j.appointment)) === todayKey).length;
+    return `<section class="gr-appts" id="gr-appts"><div class="gr-bk-h"><h3>Appointments <span class="pill">${list.length}</span></h3><small class="muted">${today ? `${today} today · ` : ""}next 7 days</small></div>
+      ${groups.map((g) => `<div class="gr-appt-day"><h4>${esc(label(g))}</h4><ul>${g.rows.map((j) => `<li><button type="button" class="gr-appt-row" data-open="${esc(j.id)}"><b class="gr-appt-t">${esc(new Date(ts(j.appointment)).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }))}</b><span>${esc(j.customer?.name || j.ro)}</span><span class="muted">${esc(vehicle(j.vehicle) || "")}</span></button></li>`).join("")}</ul></div>`).join("")}
+    </section>`;
+  }
+  /** Upcoming appointments and booking requests waiting for the shop, at the top of the Bay. */
+  function bookingsPanel() { return `<div id="gr-bay">${appointmentsPanel()}${requestsPanel()}</div>`; }
+  function requestsPanel() {
     const rows = ui.bookings || [];
-    if (!rows.length) return `<div id="gr-bookings" hidden></div>`;
+    if (!rows.length) return "";
     return `<section class="gr-bookings" id="gr-bookings"><div class="gr-bk-h"><h3>Booking Requests <span class="pill warn">${rows.length}</span></h3><small class="muted">From your online booking link</small></div>
       <ul>${rows.map((b) => {
         const d = b.data, c = d.customer, open = ui.bkOpen === b.id;
         return `<li data-gr-bk="${esc(b.id)}"><div class="gr-bk-main"><b>${esc(c.name)}</b>${c.lang === "es" ? ' <span class="pill">Español</span>' : ""} · ${esc(vehicle(d.vehicle))}${d.plate ? " · " + esc(d.plate) : ""}
-          <div class="gr-bk-when">Wants <b>${esc(dayText(d.day))}</b>, ${esc(partOfDay(d.time))}</div>
+          <div class="gr-bk-when">${d.slot ? `Picked <b>${esc(whenText(d.slot, false))}</b>` : `Wants <b>${esc(dayText(d.day))}</b>, ${esc(partOfDay(d.time))}`}</div>
           <div class="muted">${esc(d.concern)}</div><small class="muted">${esc([c.phone, c.email].filter(Boolean).join(" · "))}${c.consent ? "" : " · did not agree to messages"}</small></div>
           ${open ? (ui.bkMode === "accept" ? `<div class="gr-bk-form"><label class="field">Appointment<input type="datetime-local" id="gr-bk-when" value="${esc(defaultWhen(b))}"></label>
               <label class="field">Message to ${esc(first(c.name))}<textarea id="gr-bk-text" maxlength="600">${esc(confirmText(b, defaultWhen(b)))}</textarea><span class="hint">The link to their visit page is added at the end.</span></label>
@@ -333,11 +400,12 @@
     const s = A.shop() || {}, g = s.grow || {}, b = s.brand || {};
     const link = s.bookingToken ? location.origin + "/?book=" + s.bookingToken : "";
     return `<section class="panel gr-panel" id="gr-booking"><h2>Online Booking</h2>
-        <p class="muted" style="margin:0">Put this link on your website, Google Business profile or social pages. Customers ask for a day; you confirm a time and the car lands on your Bay with their details filled in. Customers can book in English or Spanish.</p>
+        <p class="muted" style="margin:0">Put this link on your website, Google Business profile or social pages. ${g.schedule ? "Customers see your open times and pick one" : "Customers ask for a day; you confirm a time"}, and the car lands on your Bay with their details filled in. Customers can book in English or Spanish.</p>
         <label class="chk"><input type="checkbox" data-gr-grow="bookingOn" ${g.bookingOn ? "checked" : ""}> Take booking requests online</label>
         ${g.bookingOn && link ? `<div class="gr-link"><input readonly value="${esc(link)}" aria-label="Your booking link" id="gr-book-link"><button type="button" class="btn sm" data-gr-copy="#gr-book-link">Copy</button><a class="btn sm" href="${esc(link)}" target="_blank" rel="noopener">Open</a></div>
           <label class="field">Note on your booking page <small class="muted">(optional)</small><input maxlength="300" id="gr-book-note" value="${esc(g.bookingNote || "")}" placeholder="e.g. Drop-offs from 7:30am. We call to confirm."></label>
-          <div class="btn-row"><button type="button" class="btn sm" data-gr-save-note>Save note</button><button type="button" class="linkbtn" data-gr-new-link>Make a new link (the old one stops working)</button></div>` : ""}
+          <div class="btn-row"><button type="button" class="btn sm" data-gr-save-note>Save note</button><button type="button" class="linkbtn" data-gr-new-link>Make a new link (the old one stops working)</button></div>
+          ${schedulePanel(s)}` : ""}
       </section>
       <section class="panel gr-panel" id="gr-notify"><h2>Reminders and Morning Email</h2>
         <label class="field">Shop address <small class="muted">(customers get a Directions button)</small><input id="gr-address" maxlength="160" autocomplete="street-address" value="${esc(g.address || "")}" placeholder="e.g. 1200 Main St, Eau Claire, WI"></label>
@@ -365,6 +433,35 @@
         <p class="muted" style="margin:0">Download every repair from the last year, or your customer list, as a CSV file for Excel, Google Sheets or your accountant. It's your data.</p>
         <div class="btn-row"><button type="button" class="btn sm" data-gr-export="jobs">Download repairs (CSV)</button><button type="button" class="btn sm" data-gr-export="customers">Download customers (CSV)</button></div>
       </section>`;
+  }
+  // ==================== Appointment hours (owners) ====================
+  const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const browserZone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago"; } catch { return "America/Chicago"; } };
+  function schedulePanel(s) {
+    const cur = s.grow?.schedule, on = !!cur || ui.schedOpen;
+    const sc = cur || { zone: s.smartSchedule?.zone || browserZone(), week: [null, ["08:00", "17:00"], ["08:00", "17:00"], ["08:00", "17:00"], ["08:00", "17:00"], ["08:00", "17:00"], null], step: 60, perSlot: 1, notice: 2, ahead: 14, auto: false, reminder: true };
+    const opt = (list, v, fmt) => list.map(([val, l]) => `<option value="${val}" ${v === val ? "selected" : ""}>${esc(fmt ? fmt(l) : l)}</option>`).join("");
+    return `<div class="gr-sched" id="gr-sched"><h3>Appointment hours</h3>
+      <label class="chk"><input type="checkbox" id="gr-sched-on" ${on ? "checked" : ""}> Show open times so customers pick an exact appointment</label>
+      ${on ? `<p class="muted" style="margin:0;font-size:13px">Times already booked, or waiting on your OK, are hidden. Times are in ${esc(sc.zone.replace(/_/g, " "))}.</p>
+      <div class="gr-sched-week">${DAYS.map((name, i) => { const d = sc.week[i]; return `<div class="gr-sched-day"><label class="chk"><input type="checkbox" data-sched-day="${i}" ${d ? "checked" : ""}> ${name}</label>
+        <input type="time" step="900" data-sched-open="${i}" value="${esc(d ? d[0] : "08:00")}" aria-label="${name} opens"><span class="muted">to</span><input type="time" step="900" data-sched-close="${i}" value="${esc(d ? d[1] : "17:00")}" aria-label="${name} closes"></div>`; }).join("")}</div>
+      <div class="gr-sched-opts">
+        <label class="field">Appointments start every<select id="gr-sched-step">${opt([[15, "15 minutes"], [30, "30 minutes"], [45, "45 minutes"], [60, "hour"], [90, "90 minutes"], [120, "2 hours"]], sc.step)}</select></label>
+        <label class="field">Cars at the same time<select id="gr-sched-per">${opt([1, 2, 3, 4, 5, 6, 8, 10].map((n) => [n, String(n)]), sc.perSlot)}</select></label>
+        <label class="field">Notice you need<select id="gr-sched-notice">${opt([[0, "None"], [1, "1 hour"], [2, "2 hours"], [4, "4 hours"], [12, "12 hours"], [24, "1 day"], [48, "2 days"]], sc.notice)}</select></label>
+        <label class="field">Customers can book up to<select id="gr-sched-ahead">${opt([[7, "1 week ahead"], [14, "2 weeks ahead"], [21, "3 weeks ahead"], [30, "30 days ahead"], [60, "60 days ahead"]], sc.ahead)}</select></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="gr-sched-auto" ${sc.auto ? "checked" : ""}> Book them right away (no need to confirm each one). Leave off to confirm each request yourself.</label>
+      <label class="chk"><input type="checkbox" id="gr-sched-remind" ${sc.reminder ? "checked" : ""}> Text customers a reminder the day before (only those who agreed to texts; counts toward your texts)</label>
+      <input type="hidden" id="gr-sched-zone" value="${esc(sc.zone)}">
+      <div class="btn-row"><button type="button" class="btn sm primary" data-gr-sched-save>Save appointment hours</button></div>` : ""}
+    </div>`;
+  }
+  function readSchedule() {
+    const n = (id) => Number($(id).value);
+    const week = DAYS.map((_, i) => $(`[data-sched-day="${i}"]`).checked ? [$(`[data-sched-open="${i}"]`).value, $(`[data-sched-close="${i}"]`).value] : null);
+    return { zone: $("#gr-sched-zone").value, week, step: n("#gr-sched-step"), perSlot: n("#gr-sched-per"), notice: n("#gr-sched-notice"), ahead: n("#gr-sched-ahead"), auto: $("#gr-sched-auto").checked, reminder: $("#gr-sched-remind").checked };
   }
   async function saveShop(patch, msg) {
     try { await A.saveShop(patch); if (msg) A.toast(msg); return true; } catch (e) { A.toast(e.message); return false; }
@@ -398,10 +495,12 @@
   // ==================== Events ====================
   document.addEventListener("click", async (e) => {
     if (!A) return;
-    const t = e.target.closest("[data-gr-lang],[data-gr-book-lang],[data-gr-review],[data-gr-results],[data-gr-days],[data-gr-bk-open],[data-gr-bk-cancel],[data-gr-bk-accept],[data-gr-bk-decline],[data-gr-clock],[data-gr-review-ask],[data-gr-grow],[data-gr-copy],[data-gr-save-note],[data-gr-new-link],[data-gr-save-review],[data-gr-save-notify],[data-gr-logo],[data-gr-logo-remove],[data-gr-color-save],[data-gr-color-clear],[data-gr-export]");
+    const t = e.target.closest("[data-gr-day],[data-gr-slot],[data-gr-sched-save],[data-gr-lang],[data-gr-book-lang],[data-gr-review],[data-gr-results],[data-gr-days],[data-gr-bk-open],[data-gr-bk-cancel],[data-gr-bk-accept],[data-gr-bk-decline],[data-gr-clock],[data-gr-review-ask],[data-gr-grow],[data-gr-copy],[data-gr-save-note],[data-gr-new-link],[data-gr-save-review],[data-gr-save-notify],[data-gr-logo],[data-gr-logo-remove],[data-gr-color-save],[data-gr-color-clear],[data-gr-export]");
     if (!t) return;
     if (t.dataset.grLang) { store.set("ts-lang-" + t.dataset.token, t.dataset.grLang); A.renderCustomer(); return; }
-    if (t.dataset.grBookLang) { store.set("ts-book-lang", t.dataset.grBookLang); renderBooking(bk.token); return; }
+    if (t.dataset.grBookLang) { keepDraft(); store.set("ts-book-lang", t.dataset.grBookLang); renderBooking(bk.token); return; }
+    if (t.dataset.grDay) { keepDraft(); bk.day = t.dataset.grDay; renderBooking(bk.token); document.querySelector(".gr-slot-times button")?.focus(); return; }
+    if (t.dataset.grSlot) { keepDraft(); bk.slot = t.dataset.grSlot; bk.err = ""; renderBooking(bk.token); document.querySelector(`[data-gr-slot="${CSS.escape(bk.slot)}"]`)?.focus(); return; }
     if (t.hasAttribute("data-gr-review")) { const tok = A.customerToken?.(); if (tok) A.api("POST", "shop/c/" + encodeURIComponent(tok) + "/review-click", {}).catch(() => {}); return; }
     if (t.hasAttribute("data-gr-results")) { openResults(); return; }
     if (t.dataset.grDays) { ui.days = +t.dataset.grDays; openResults(); return; }
@@ -443,6 +542,7 @@
       try { await navigator.clipboard.writeText(el.value); A.toast("Link copied"); } catch { el.select(); A.toast("Press Ctrl+C or ⌘C to copy"); }
       return;
     }
+    if (t.hasAttribute("data-gr-sched-save")) { t.disabled = true; if (await saveShop({ grow: { schedule: readSchedule() } }, "Appointment hours saved. Your booking page shows open times now.")) A.render(); else t.disabled = false; return; }
     if (t.hasAttribute("data-gr-save-note")) { await saveShop({ grow: { bookingNote: $("#gr-book-note").value.trim() } }, "Booking note saved"); return; }
     if (t.hasAttribute("data-gr-new-link")) { if (await saveShop({ newBookingLink: true }, "New booking link made. Update it wherever you posted the old one.")) A.render(); return; }
     if (t.hasAttribute("data-gr-save-review")) {
@@ -464,7 +564,14 @@
       return;
     }
   });
-  document.addEventListener("change", (e) => {
+  document.addEventListener("change", async (e) => {
+    if (A && e.target.id === "gr-sched-on") {
+      if (e.target.checked) { ui.schedOpen = true; A.render(); return; }
+      ui.schedOpen = false;
+      if (!A.shop()?.grow?.schedule) { A.render(); return; }
+      if (await saveShop({ grow: { schedule: null } }, "Customers ask for a day again, and you confirm the time.")) A.render(); else e.target.checked = true;
+      return;
+    }
     if (!A || e.target.id !== "gr-bk-when") return;
     const b = (ui.bookings || []).find((x) => x.id === ui.bkOpen), text = $("#gr-bk-text");
     if (b && text && e.target.value) text.value = confirmText(b, e.target.value);
@@ -475,7 +582,29 @@
     if (!bk.busy) sendBooking(e.target);
   });
   // New booking requests show up without a reload.
-  setInterval(() => { if (A?.shop() && document.visibilityState === "visible" && document.getElementById("gr-bookings")) loadBookings(); }, 60000);
+  setInterval(() => { if (A?.shop() && document.visibilityState === "visible" && document.getElementById("gr-bay")) loadBookings(); }, 60000);
 
-  window.Grow = { init, pro, setLang, customerSetup, customerHead, customerCards, langSwitch, renderBooking, loadBookings, bookingsPanel, cardBits, sheetSection, resultsButton, settingsPanels };
+  /** Open appointment times, worked out in the browser (the demo shop has no server). Same rules as shopSchedule.ts. */
+  function openSlots(sc, now, taken) {
+    const hm = (m) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"), mn = (t) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+    const parts = (at) => { const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: sc.zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(at)).map((x) => [x.type, x.value])); return { day: `${p.year}-${p.month}-${p.day}`, min: +p.hour * 60 + +p.minute }; };
+    const offset = (at) => { const p = parts(at); return Date.parse(p.day + "T" + hm(p.min) + ":00Z") - Math.floor(at / 60000) * 60000; };
+    const zoned = (day, t) => { const g = Date.parse(`${day}T${t}:00Z`); return g - offset(g - offset(g)); };
+    const count = new Map(); for (const t of taken) { const ms = ts(t); if (Number.isFinite(ms)) count.set(ms, (count.get(ms) || 0) + 1); }
+    const earliest = now.getTime() + sc.notice * 3600000, today = parts(now.getTime()).day, out = [];
+    for (let i = 0; i <= sc.ahead; i++) {
+      const day = new Date(Date.parse(today + "T12:00:00Z") + i * 86400000).toISOString().slice(0, 10), h = sc.week[new Date(day + "T12:00:00Z").getUTCDay()];
+      if (!h) continue;
+      const times = [];
+      for (let m = mn(h[0]); m + sc.step <= mn(h[1]); m += sc.step) {
+        const at = zoned(day, hm(m));
+        if (parts(at).min !== m || at < earliest || (count.get(at) || 0) >= sc.perSlot) continue;
+        times.push({ time: hm(m), at: new Date(at).toISOString() });
+      }
+      if (times.length) out.push({ day, times });
+    }
+    return out;
+  }
+
+  window.Grow = { openSlots, init, pro, setLang, customerSetup, customerHead, customerCards, langSwitch, renderBooking, loadBookings, bookingsPanel, cardBits, sheetSection, resultsButton, settingsPanels };
 })();

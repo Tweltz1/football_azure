@@ -7,6 +7,7 @@
 
 import type { Job, JobData } from './shop.ts';
 import { fitOne } from './smsFit.ts';
+import { parseSchedule, type Schedule } from './shopSchedule.ts';
 
 type Body = Record<string, unknown>;
 const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -27,6 +28,8 @@ export interface Grow {
   digest?: boolean;
   /** The shop-local day the last morning email went out (YYYY-MM-DD). */
   digestSentOn?: string;
+  /** Appointment hours and slots. When set, the booking page shows open times instead of a day and part of the day. */
+  schedule?: Schedule;
 }
 export const NUDGE_HOURS = [0, 2, 4, 24] as const;
 
@@ -63,6 +66,11 @@ export function parseGrow(v: unknown, old: Grow | undefined): Grow | string {
     if (h) out.nudgeHours = h; else delete out.nudgeHours;
   }
   if (g.digest !== undefined) out.digest = g.digest === true;
+  if (g.schedule !== undefined) {
+    const sc = parseSchedule(g.schedule);
+    if (typeof sc === 'string') return sc;
+    if (sc) out.schedule = sc; else delete out.schedule;
+  }
   return out;
 }
 
@@ -107,6 +115,8 @@ export const SAY = {
         `${shop} ${kind === 'before' ? 'check-in' : 'after-repair'} walk-through: ${[`${good} good`, soon ? `${soon} to watch` : '', now ? `${now} need${now === 1 ? 's' : ''} attention` : ''].filter(Boolean).join(', ')}. ${link}`]),
     review: (first: string, shop: string, url: string) => fitOne([`Thanks for choosing ${shop}, ${first}! If we earned it, would you leave us a quick review? ${url}`, `Thanks for choosing ${shop}! Would you leave us a quick review? ${url}`]),
     reviewTail: (url: string) => ` Leave us a review: ${url}`,
+    // Sent with the STOP line added after it, like the estimate reminder.
+    remind: (shop: string, when: string, phone: string) => fitOne([`Reminder: your appointment at ${shop} is tomorrow, ${when}.${phone ? ` To change it, call ${phone}.` : ''} Reply STOP to opt out.`, `Reminder: ${shop} appointment tomorrow, ${when}. Reply STOP to opt out.`]).replace(/ Reply STOP to opt out\.$/, ''),
     booked: (first: string, shop: string, when: string, link: string) => fitOne([`Hi ${first}, ${shop} confirmed your appointment for ${when}. Details and photos: ${link}`, `${shop}: appointment confirmed for ${when}. ${link}`]),
     // Sent with the STOP line added after it, so the choice is made with it included.
     nudge: (shop: string, car: string, link: string) => fitOne([`${shop}: your ${car} estimate is still waiting for your OK: ${link} Reply STOP to opt out.`, `${shop}: your estimate is still waiting for your OK: ${link} Reply STOP to opt out.`]).replace(/ Reply STOP to opt out\.$/, ''),
@@ -121,6 +131,7 @@ export const SAY = {
         `${shop}, revisión ${kind === 'before' ? 'de entrada' : 'final'}: ${[`${good} bien`, soon ? `${soon} para vigilar` : '', now ? `${now} urgente${now === 1 ? '' : 's'}` : ''].filter(Boolean).join(', ')}. ${link}`]),
     review: (first: string, shop: string, url: string) => fitOne([`¡Gracias por elegir ${shop}, ${first}! Si quedó contento, ¿nos dejaría una reseña rápida? ${url}`, `¡Gracias por elegir ${shop}! ¿Nos dejaría una reseña? ${url}`]),
     reviewTail: (url: string) => ` Déjenos una reseña: ${url}`,
+    remind: (shop: string, when: string, phone: string) => fitOne([`Recordatorio: su cita en ${shop} es mañana, ${when}.${phone ? ` Para cambiarla llame al ${phone}.` : ''} Responda STOP para salir.`, `Recordatorio: cita en ${shop} mañana, ${when}. Responda STOP para salir.`]).replace(/ Responda STOP para salir\.$/, ''),
     booked: (first: string, shop: string, when: string, link: string) => fitOne([`Hola ${first}, ${shop} confirmó su cita para el ${when}. Detalles y fotos: ${link}`, `${shop}: cita confirmada para el ${when}. ${link}`]),
     nudge: (shop: string, car: string, link: string) => fitOne([`${shop}: el presupuesto de su ${car} sigue esperando su respuesta: ${link} Responda STOP para salir.`, `${shop}: su presupuesto sigue esperando su respuesta: ${link} Responda STOP para salir.`]).replace(/ Responda STOP para salir\.$/, ''),
   },
@@ -323,6 +334,8 @@ export interface Booking {
     vehicle: { year: string; make: string; model: string }; plate: string; concern: string;
     /** What the customer asked for: a day (YYYY-MM-DD) and a part of the day. */
     day: string; time: 'morning' | 'afternoon' | 'any';
+    /** The exact time the customer picked (ISO), when the shop has appointment hours set. */
+    slot?: string;
     jobId?: string; decidedBy?: string; decidedAt?: string;
   };
 }

@@ -976,6 +976,63 @@ test('online booking: public form, spam limits, accept makes an invited car with
   assert.equal((await pub('GET', `shop/book/${token}`))?.status, 404);
 });
 
+test('appointment scheduling: open times, picked slot fills up, instant booking and the day-before reminder', async () => {
+  const w = world();
+  const dan = w.as('owner-b');
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100' });
+  const week = [null, ['08:00', '17:00'], ['08:00', '17:00'], ['08:00', '17:00'], ['08:00', '17:00'], ['08:00', '17:00'], null];
+  const schedule = { zone: 'America/Chicago', week, step: 60, perSlot: 1, notice: 2, ahead: 14, auto: false, reminder: true };
+  assert.equal((await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { bookingOn: true, schedule: { ...schedule, step: 7 } } }))?.status, 400);
+  assert.equal((await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { bookingOn: true, schedule: { ...schedule, zone: 'Mars/Base' } } }))?.status, 400);
+  const me = (await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { bookingOn: true, schedule } }))?.body as { shop: { bookingToken: string } };
+  const token = me.shop.bookingToken, pub = w.as(null);
+  type Info = { zone: string; slots: { day: string; times: { time: string; at: string }[] }[] };
+  const info = (await pub('GET', `shop/book/${token}`))?.body as Info;
+  // Saturday Nov 7: the first open day is Monday Nov 9, 8am Central (14:00 UTC), nine starts that day.
+  assert.equal(info.zone, 'America/Chicago');
+  assert.equal(info.slots[0].day, '2026-11-09');
+  assert.equal(info.slots[0].times.length, 9);
+  assert.equal(info.slots[0].times[0].at, '2026-11-09T14:00:00.000Z');
+  assert.ok(info.slots.every((d) => !['2026-11-14', '2026-11-15'].includes(d.day)), 'closed on weekends');
+  const at = info.slots[0].times[1].at; // 9am
+  const form = { customer: { name: 'Lee Park', phone: '555-201-3344', preference: 'sms', consent: true, lang: 'en' }, vehicle: { year: '2016', make: 'Toyota', model: 'Camry' }, concern: 'Oil change' };
+  assert.equal((await pub('POST', `shop/book/${token}`, form))?.status, 400, 'a time is required');
+  assert.equal((await pub('POST', `shop/book/${token}`, { ...form, slot: '2026-11-09T14:30:00.000Z' }))?.status, 409, 'not a start time');
+  assert.equal((await pub('POST', `shop/book/${token}`, { ...form, slot: at }))?.status, 200);
+  // The waiting request holds the time, so the next customer can't pick it.
+  const after = (await pub('GET', `shop/book/${token}`))?.body as Info;
+  assert.ok(!after.slots[0].times.some((t) => t.at === at));
+  assert.equal((await pub('POST', `shop/book/${token}`, { ...form, customer: { ...form.customer, phone: '555-201-9999' }, slot: at }))?.status, 409);
+  const list = ((await dan('GET', 'shop/bookings'))?.body as { rows: Booking[] }).rows;
+  assert.equal(list[0].data.slot, at);
+  assert.equal(list[0].data.day, '2026-11-09');
+  assert.equal(list[0].data.time, 'morning');
+  const acc = (await dan('POST', `shop/bookings/${list[0].id}`, { action: 'accept', when: at }))?.body as { job: { id: string; appointment: string } };
+  assert.equal(acc.job.appointment, at);
+  assert.match(w.texts.at(-1)!.body, /^Hi Lee, Ridgeline confirmed your appointment for Mon, Nov 9 at 9:00 AM/);
+  // A reminder is waiting for the day before.
+  const job = w.jobs.get(acc.job.id)!;
+  assert.equal(job.data.followups?.[0].kind, 'appointment');
+  assert.equal(job.data.followups?.[0].due, '2026-11-08T15:00:00.000Z');
+  w.deps.store.cronShops = async () => [...w.shops.values()].map((x) => structuredClone(x));
+  assert.equal((await runCron(w.deps, new Date('2026-11-08T14:30:00Z'), { info() {}, warn() {}, error() {} })).reminders, 0, 'not due yet');
+  assert.equal((await runCron(w.deps, new Date('2026-11-08T15:30:00Z'), { info() {}, warn() {}, error() {} })).reminders, 1);
+  assert.equal(w.texts.at(-1)!.body, 'Reminder: your appointment at Ridgeline is tomorrow, Mon, Nov 9 at 9:00 AM. To change it, call 715-555-0100. Reply STOP to opt out.');
+
+  // Instant booking: the car lands on the Bay right away.
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: { ...schedule, auto: true } } });
+  const next = ((await pub('GET', `shop/book/${token}`))?.body as Info).slots[0].times[0].at;
+  const r = (await pub('POST', `shop/book/${token}`, { ...form, customer: { ...form.customer, name: 'Ana Ruiz', phone: '555-201-7777', lang: 'es' }, slot: next }))?.body as { confirmed: boolean; when: string; link: string };
+  assert.equal(r.confirmed, true);
+  assert.match(r.link, /^https:\/\/talkshops\.app\/\?c=/);
+  assert.match(w.texts.at(-1)!.body, /^Hola Ana, Ridgeline confirm/);
+  assert.equal(((await dan('GET', 'shop/bookings'))?.body as { rows: unknown[] }).rows.length, 0);
+  assert.ok([...w.jobs.values()].some((j) => j.data.appointment === next && j.data.customer.name === 'Ana Ruiz'));
+  // Turning appointment hours off goes back to plain requests.
+  await dan('POST', 'shop/me', { name: 'Ridgeline', phone: '715-555-0100', grow: { schedule: null } });
+  assert.equal(((await pub('GET', `shop/book/${token}`))?.body as { slots?: unknown }).slots, undefined);
+});
+
 test('CSV export: one row per repair and per customer, and formulas are neutralized', async () => {
   const w = world();
   const dan = w.as('owner-x');

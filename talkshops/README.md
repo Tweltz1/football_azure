@@ -77,3 +77,14 @@ registration (brand and campaign) before carriers deliver texts. A unique active
 required to attach an incoming text.
 
 Owners on Pro or an active trial can enable individual automatic topics in Settings, supply a signature and set an after-hours schedule. All topics start off. Staff can review drafts and pause automatic replies on one repair. Automatic texts count against the allowance. The public demo at `/demo.html?smart=1` uses sample messages locally.
+
+## Online booking and appointment hours
+
+Every plan has a public booking link (`/?book=<token>`, Settings, Online Booking). Without appointment hours, customers ask for
+a day and a part of the day and the shop confirms a time. With **Appointment hours** set (open and close per weekday, how far
+apart appointments start, cars at the same time, notice needed, how far ahead), the page shows the open times and the
+customer picks one. Times already booked or waiting on the shop are hidden. The shop can confirm each request or turn on
+instant booking, which puts the car on the Bay as "invited" with the appointment set and sends the confirmation. A reminder
+text goes out 24 hours before (hourly job), only to customers who agreed to messages, and never after STOP.
+Rules live in `supabase/functions/_shared/shopSchedule.ts`; settings are saved in `repair_shops.grow.schedule`. The Bay lists
+the next week's appointments above the columns. The demo shop works the same way from the browser (`Grow.openSlots`).

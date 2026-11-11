@@ -15,6 +15,33 @@
 .gr-bk-when{margin:2px 0}
 .gr-bk-form{display:grid;gap:8px}
 .gr-bk-form textarea{min-height:76px}
+/* Appointment times on the booking page */
+.gr-slots{display:grid;gap:10px}
+.gr-slot-days{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scroll-snap-type:x proximity}
+.gr-slot-day{flex:0 0 auto;scroll-snap-align:start;display:grid;gap:2px;min-width:72px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:inherit;font:inherit;cursor:pointer;text-align:center}
+.gr-slot-day small{font-size:12px;color:var(--muted)}
+.gr-slot-times{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.gr-slot-time{padding:10px 6px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:inherit;font:inherit;font-weight:600;cursor:pointer}
+.gr-slot-day[aria-pressed="true"],.gr-slot-time[aria-pressed="true"]{border-color:var(--accent,#1f6feb);background:var(--accent,#1f6feb);color:#fff}
+.gr-slot-day[aria-pressed="true"] small{color:inherit;opacity:.85}
+.gr-slot-pick{margin:0}
+.gr-slots-none{padding:10px 12px;border:1px dashed var(--line);border-radius:10px}
+/* Appointment hours (settings) */
+.gr-sched{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.gr-sched h3{margin:0;font-size:16px}
+.gr-sched-week{display:grid;gap:6px}
+.gr-sched-day{display:grid;grid-template-columns:130px auto auto auto;justify-content:start;gap:8px;align-items:center}
+.gr-sched-day input[type=time]{max-width:130px}
+.gr-sched-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+@media (max-width:480px){.gr-sched-day{grid-template-columns:104px auto auto auto}.gr-sched-day input[type=time]{max-width:100px}}
+/* Upcoming appointments on the Bay */
+.gr-appts{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-lg,14px);padding:12px 14px;margin:10px 0}
+.gr-appt-day h4{margin:10px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.gr-appt-day ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.gr-appt-row{display:grid;grid-template-columns:80px minmax(0,240px) minmax(0,1fr);gap:10px;align-items:center;width:100%;text-align:left;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.gr-appt-row:hover{border-color:var(--accent,#1f6feb)}
+.gr-appt-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:480px){.gr-appt-row{grid-template-columns:70px 1fr}.gr-appt-row span.muted{display:none}}
 /* Card marks */
 .gr-on{font-size:12px;font-weight:600;color:#16794c;background:#e5f6ee;border-radius:999px;padding:2px 8px}
 @media (prefers-color-scheme:dark){.gr-on{background:#173a2b;color:#7fe0b0}}

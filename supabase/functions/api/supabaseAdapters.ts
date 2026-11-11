@@ -511,6 +511,14 @@ export function createShopStore(db: SupabaseClient): ShopStore {
       if (error) throw error;
       return (data ?? []).length === 1;
     },
+    async appointmentsBetween(shopId, from, to) {
+      // Appointments are saved as UTC ISO strings, so text order is time order.
+      const { data, error } = await db.from('repair_jobs').select('created_at, at:data->>appointment, phone:data->customer->>phone, email:data->customer->>email, closed:data->closed')
+        .eq('shop_id', shopId).gte('data->>appointment', from).lt('data->>appointment', to).limit(1000);
+      if (error) throw error;
+      return (data ?? []).filter((r: Record<string, any>) => !r.closed && r.at)
+        .map((r: Record<string, any>) => ({ at: r.at, phone: r.phone ?? '', email: r.email ?? '', createdAt: r.created_at }));
+    },
     async jobsWithFollowupsFor(phone) {
       const { data, error } = await db.from('repair_jobs').select(JOB_COLUMNS).eq('data->customer->>phone', phone).not('follow_up_at', 'is', null).limit(50);
       if (error) throw error;
