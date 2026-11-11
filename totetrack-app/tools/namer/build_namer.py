@@ -10,7 +10,11 @@ crop lands next to its label's name. The adapter is built into the Core ML model
 vocabulary, and names that weren't trained still work as before. Test accuracy, before and after, goes to
 the log.
 
-Usage: python build_namer.py OUT_DIR [--train DATA_DIR] [--cache CROPS.pt]
+With --teacher SET_DIR (the unzipped teacher.zip from the gemini-teacher release, see ml/gemini-teacher), it
+also trains on photos Gemini named, training only, and keeps them only if the test score (photos people
+labeled) is at least as good as without them.
+
+Usage: python build_namer.py OUT_DIR [--train DATA_DIR] [--cache CROPS.pt] [--teacher SET_DIR]
 --cache keeps the crop embeddings (the slow part, about an hour on a GitHub Linux machine): they're read from
 the file when it exists, and written to it otherwise.
 Writes OUT_DIR/ToteNamer.mlpackage, OUT_DIR/items.json ({"dim": D, "names": [...]}) and
@@ -112,6 +116,40 @@ def load_crops(data_dir, size):
                 per_label[(split, a["label"])] += 1
 
 
+def load_teacher(set_dir, size, items, min_new=20):
+    """Yields ("train", label, 224x224 tensor) for each photo Gemini was sure of. Its name joins the item with
+    the same name, or becomes a new item once min_new photos agree; at most CROPS_PER_LABEL // 2 per item."""
+    def key(s):  # "Cardboard boxes" and "Cardboard box" are the same item
+        s = " ".join(s.lower().replace("-", " ").split())
+        for end, to in (("ches", "ch"), ("shes", "sh"), ("xes", "x"), ("ies", "y")):
+            if s.endswith(end) and len(s) > 4:
+                return s[:-len(end)] + to
+        return s[:-1] if s.endswith("s") and not s.endswith("ss") and len(s) > 3 else s
+
+    rows = [r for r in json.load(open(os.path.join(set_dir, "asked.json"))) if r.get("sure")]
+    by_key = {}
+    for n in items:
+        by_key.setdefault(key(n), n)
+    groups, names = defaultdict(list), defaultdict(list)
+    for r in rows:
+        path = os.path.join(set_dir, "crops", f"{r['id']}.jpg")
+        if os.path.exists(path):
+            groups[key(r["name"])].append(path)
+            names[key(r["name"])].append(r["name"].strip())
+    used = 0
+    for name, paths in sorted(groups.items()):
+        label = by_key.get(name)
+        if not label:
+            if len(paths) < min_new:
+                continue
+            label = max(set(names[name]), key=names[name].count)
+        for path in paths[:CROPS_PER_LABEL // 2]:
+            im = Image.open(path).convert("RGB").resize((size, size), Image.BICUBIC)
+            used += 1
+            yield "train", label, torch.from_numpy(np.asarray(im, dtype=np.float32) / 255.0).permute(2, 0, 1)
+    print(f"Gemini-named photos: {used}")
+
+
 def accuracy(feats, labels, text):
     sims = feats @ text.T
     top = sims.topk(min(5, text.shape[0]), dim=1).indices
@@ -137,6 +175,8 @@ def embed_crops(enc, crops):
             flush()
     if batch:
         flush()
+    if not feats:
+        return torch.zeros(0), labels, splits
     return torch.cat(feats), labels, splits
 
 
@@ -208,7 +248,7 @@ def train_adapter(feats, labels, splits, label_names, label_text, other_text):
     print("Per item type (accuracy, test crops):")
     for acc, n, name in per:
         print(f"  {name}: {acc:.0%} ({n})")
-    return W
+    return W, after
 
 
 def main():
@@ -216,6 +256,7 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--train")
     ap.add_argument("--cache")
+    ap.add_argument("--teacher")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
     model = CLIPModel.from_pretrained(MODEL).eval()
@@ -234,13 +275,32 @@ def main():
             feats, labels, splits = embed_crops(ImageEncoder(model).eval(), load_crops(args.train, size))
             if args.cache:
                 torch.save((feats, labels, splits), args.cache)
-        label_names = sorted(set(labels))
         by_lower = {n.lower(): n for n in items}
-        label_text = np.stack([embed_text(model, processor, items.get(by_lower.get(n.lower(), n), [n.lower()]))
-                               for n in label_names])
-        labelled = {n.lower() for n in label_names}
-        other_text = np.stack([embed_text(model, processor, d) for n, d in items.items() if n.lower() not in labelled])
-        adapter = train_adapter(feats, labels, splits, label_names, label_text, other_text)
+
+        def train(labels):
+            names = sorted(set(labels))
+            label_text = np.stack([embed_text(model, processor, items.get(by_lower.get(n.lower(), n), [n.lower()]))
+                                   for n in names])
+            labelled = {n.lower() for n in names}
+            other_text = np.stack([embed_text(model, processor, d) for n, d in items.items() if n.lower() not in labelled])
+            return names, *train_adapter(feats_, labels, splits_, names, label_text, other_text)
+
+        feats_, splits_ = feats, splits
+        label_names, adapter, score = train(labels)
+        if args.teacher and os.path.exists(os.path.join(args.teacher, "asked.json")):
+            print("Embedding the photos Gemini named…", flush=True)
+            tf, tl, ts = embed_crops(ImageEncoder(model).eval(), load_teacher(args.teacher, size, items))
+            if tl:
+                print("Training again with them:")
+                feats_, splits_ = torch.cat([feats, tf]), splits + ts
+                names2, adapter2, score2 = train(labels + tl)
+                print(f"Test top-1 without Gemini's photos {score[0]:.1%}, with them {score2[0]:.1%} "
+                      f"(top-5 {score[1]:.1%} / {score2[1]:.1%})")
+                if score2[0] >= score[0]:
+                    print("Keeping Gemini's photos")
+                    label_names, adapter = names2, adapter2
+                else:
+                    print("Leaving Gemini's photos out: the test score dropped")
         lower = {n.lower() for n in items}
         for n in label_names:
             if n.lower() not in lower:

@@ -123,7 +123,7 @@ jobs:
           TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=50" \
             --jq '[.[] | select(.tag_name | startswith("totetrack-namer-"))] | sort_by(.created_at) | last | .tag_name // empty' || true)
           # The newest successful namer build on the ToteTrack branch (kept 90 days), else the newest release.
-          RUN=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/totetrack-build-namer.yml/runs?status=success&event=push&branch=claude/totetrack-app&per_page=1" \
+          RUN=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/totetrack-build-namer.yml/runs?status=success&branch=claude/totetrack-app&per_page=1" \
             --jq '.workflow_runs[0].id // empty' || true)
           if { [ -n "$RUN" ] && gh run download "$RUN" --repo "$GITHUB_REPOSITORY" -n totetrack-namer --dir "$RUNNER_TEMP/namer"; } \
              || { [ -n "$TAG" ] && gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/namer" \
