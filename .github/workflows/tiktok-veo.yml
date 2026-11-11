@@ -9,7 +9,7 @@ on:
     branches:
       - claude/project-thread-yawy57
     paths:
-      - 'tiktok/veo/clips.json'
+      - 'tiktok/veo/**'
       - '.github/workflows/tiktok-veo.yml'
 
 permissions:
