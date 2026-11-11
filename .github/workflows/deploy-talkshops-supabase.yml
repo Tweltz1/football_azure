@@ -81,6 +81,9 @@ jobs:
         if: steps.secrets.outputs.ready == 'true'
         env:
           RESEND_API_KEY: ${{ secrets.TALKSHOPS_RESEND_API_KEY }}
+          TELNYX_API_KEY: ${{ secrets.TALKSHOPS_TELNYX_API_KEY }}
+          TELNYX_FROM: ${{ secrets.TALKSHOPS_TELNYX_FROM }}
+          TELNYX_PUBLIC_KEY: ${{ secrets.TALKSHOPS_TELNYX_PUBLIC_KEY }}
           TWILIO_ACCOUNT_SID: ${{ secrets.TALKSHOPS_TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.TALKSHOPS_TWILIO_AUTH_TOKEN }}
           TWILIO_FROM: ${{ secrets.TALKSHOPS_TWILIO_FROM }}
@@ -94,7 +97,7 @@ jobs:
           # Only secrets that have a value are sent; a missing one leaves that feature off (texts, payments, AI).
           umask 077
           : > "$RUNNER_TEMP/talkshops.env"
-          for name in RESEND_API_KEY TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET GEMINI_API_KEY TALKSHOPS_EMAIL_FROM SHOP_LINK_BASE TALKSHOPS_SITE_URL; do
+          for name in RESEND_API_KEY TELNYX_API_KEY TELNYX_FROM TELNYX_PUBLIC_KEY TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_FROM STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET GEMINI_API_KEY TALKSHOPS_EMAIL_FROM SHOP_LINK_BASE TALKSHOPS_SITE_URL; do
             value="${!name}"
             if [ -n "$value" ]; then printf '%s="%s"\n' "$name" "$value" >> "$RUNNER_TEMP/talkshops.env"; else echo "::notice::$name is not set."; fi
           done

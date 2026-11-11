@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { incomingSms, smsTopic } from '../functions/_shared/shopSms.ts';
+import { incomingSms, incomingTelnyxSms, smsTopic } from '../functions/_shared/shopSms.ts';
 import { createHmac } from 'node:crypto';
 
 test('automatic topics use the complete question; safety, approval and scheduling stay with staff',()=>{
@@ -17,4 +17,30 @@ test('inbound webhook authenticates Twilio, excludes opt-outs and escapes return
   assert.equal((await send('status',false)).status,403);
   assert.match(await (await send('status')).text(),/A &amp; B &lt;Shop&gt;/);
   assert.equal(await (await send('STOP')).text(),'<Response></Response>');
+});
+test('Telnyx inbound webhook checks the Ed25519 signature, age and number, and replies through the API',async()=>{
+  const { generateKeyPairSync, sign } = await import('node:crypto');
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  const raw = publicKey.export({ format: 'der', type: 'spki' }).subarray(-32);
+  const now = 1_800_000_000_000;
+  const cfg = { publicKey: raw.toString('base64'), to: '+15555550002', now: () => now };
+  const replies: [string,string][] = [], stops: string[] = [];
+  async function send(text: string, opts: { forge?: boolean; age?: number; to?: string; type?: string } = {}) {
+    const body = JSON.stringify({ data: { event_type: opts.type ?? 'message.received', payload: {
+      id: '0f1e2d3c-4b5a-6978-8a9b-0c1d2e3f4a5b', from: { phone_number: '+15555550001' }, to: [{ phone_number: opts.to ?? cfg.to }], text, media: [] } } });
+    const stamp = String(Math.floor(now / 1000) - (opts.age ?? 0));
+    const sig = sign(null, Buffer.from(stamp + '|' + (opts.forge ? body + ' ' : body)), privateKey).toString('base64');
+    return incomingTelnyxSms(new Request('https://example.test/sms', { method: 'POST', body, headers: { 'telnyx-signature-ed25519': sig, 'telnyx-timestamp': stamp } }),
+      cfg, async () => 'A & B <Shop> — open', async (p) => { stops.push(p); }, async (p, t) => { replies.push([p, t]); });
+  }
+  assert.equal((await send('status', { forge: true })).status, 403);
+  assert.equal((await send('status', { age: 600 })).status, 403, 'too old');
+  assert.equal((await send('status', { to: '+15555550009' })).status, 403, 'another number');
+  assert.equal((await send('status', { type: 'message.finalized' })).status, 200);
+  assert.equal(replies.length, 0);
+  assert.equal((await send('status')).status, 200);
+  assert.deepEqual(replies, [['+15555550001', 'A & B <Shop> - open']]);
+  assert.equal((await send('STOP')).status, 200);
+  assert.deepEqual(stops, ['+15555550001']);
+  assert.equal(replies.length, 1, 'no reply to STOP');
 });

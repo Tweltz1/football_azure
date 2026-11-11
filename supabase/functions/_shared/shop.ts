@@ -288,7 +288,7 @@ export interface ShopDeps {
   /** Customer links are this plus the job's token, e.g. https://hood-league.com/shop/?c= */
   linkBase: string;
   newToken: () => string;
-  /** Most demo texts sent per day across all visitors (protects the Twilio balance). */
+  /** Most demo texts sent per day across all visitors (protects the texting balance). */
   demoDailyLimit?: number;
   /** Stripe, once STRIPE_SECRET_KEY is set. */
   stripe?: StripeApi | null;
@@ -1558,6 +1558,39 @@ export async function stripeWebhook(deps: ShopDeps, raw: string, signature: stri
     return ok({ ignored: 'old subscription' });
   await deps.store.setPlan(shop.id, patch);
   return ok({ updated: shop.id, status: patch.status });
+}
+
+/** Telnyx sender. `from` is the Telnyx number (+1...) or a Messaging Profile id. Without credentials, texts are saved but marked as not sent. */
+export function createTelnyxSender(apiKey?: string, from?: string, fetchImpl: typeof fetch = fetch): SmsSender {
+  return {
+    async send(to, body) {
+      if (!apiKey || !from) return { delivery: 'not_sent', note: 'Texting is not set up yet.' };
+      try {
+        const res = await fetchImpl('https://api.telnyx.com/v2/messages', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(from.startsWith('+') ? { from, to, text: body } : { messaging_profile_id: from, to, text: body }),
+        });
+        if (res.ok) return { delivery: 'sent' };
+        const detail = await res.text().catch(() => '');
+        // Telnyx answers with {"errors":[{"code":"40310","title":"Invalid 'to' address","detail":"..."}]}; keep the readable part.
+        let reason = detail.slice(0, 200);
+        try {
+          const e = JSON.parse(detail)?.errors?.[0];
+          if (e?.title || e?.detail) reason = `${[e.title, e.detail].filter(Boolean).join(': ')}${e.code ? ` (Telnyx error ${e.code})` : ''}`;
+        } catch { /* not JSON */ }
+        return { delivery: 'failed', note: `Text failed (${res.status}): ${reason.slice(0, 240)}` };
+      } catch (error) {
+        return { delivery: 'failed', note: `Text failed: ${(error as Error).message}` };
+      }
+    },
+  };
+}
+
+/** Texts go through Telnyx when TELNYX_API_KEY is set, otherwise through Twilio (kept as a fallback). */
+export function createSmsSender(env: (name: string) => string | undefined, fetchImpl: typeof fetch = fetch): SmsSender {
+  if (env('TELNYX_API_KEY')) return createTelnyxSender(env('TELNYX_API_KEY'), env('TELNYX_FROM'), fetchImpl);
+  return createTwilioSender(env('TWILIO_ACCOUNT_SID'), env('TWILIO_AUTH_TOKEN'), env('TWILIO_FROM'), fetchImpl);
 }
 
 /** Twilio sender. Without credentials, texts are saved on the job but marked as not sent. */
