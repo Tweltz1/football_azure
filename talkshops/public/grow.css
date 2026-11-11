@@ -99,3 +99,9 @@
 .gr-brand-logo img{max-height:64px;max-width:240px}
 .gr-color span{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .gr-color input[type=color]{width:46px;height:36px;padding:2px;border-radius:8px}
+/* Appointment rules, moving an appointment (shop) and changing it (customer) */
+.gr-sched-lunch{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.gr-sched-lunch .chk{margin:0}
+.gr-appt-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:8px}
+.gr-c-move{display:grid;gap:10px;margin-top:12px}
+.gr-c-err{margin:8px 0 0;color:var(--bad,#b42318);font-weight:600}
