@@ -144,6 +144,9 @@ export function SectionTitle({ children }: { children: ReactNode }) {
 // site (clear STUDIO_URL to show plain text).
 export const STUDIO_NAME = 'Weltzcraft Studios';
 export const STUDIO_URL = 'https://weltzcraft.com';
+// Support email (arrives in the studio inbox, replies go out from the same address) and privacy page.
+export const SUPPORT_EMAIL = 'shopstride@weltzcraft.com';
+export const PRIVACY_URL = 'https://weltzcraft.com/privacy/shop-stride';
 
 export function StudioCredit({ style }: { style?: StyleProp<ViewStyle> }) {
   const t = useTheme();
@@ -155,6 +158,19 @@ export function StudioCredit({ style }: { style?: StyleProp<ViewStyle> }) {
   return (
     <View style={[{ paddingVertical: 20, alignItems: 'center' }, style]}>
       <Text style={{ color: t.textMuted, fontSize: 12, opacity: 0.8 }}>© {new Date().getFullYear()} {name}</Text>
+      <Text style={{ color: t.textMuted, fontSize: 12, opacity: 0.8, marginTop: 6 }}>
+        <Text
+          style={{ fontWeight: '600' }}
+          accessibilityRole="link"
+          onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Shop Stride feedback')}`)}
+        >
+          Contact us
+        </Text>
+        {'  ·  '}
+        <Text style={{ fontWeight: '600' }} accessibilityRole="link" onPress={() => Linking.openURL(PRIVACY_URL)}>
+          Privacy
+        </Text>
+      </Text>
     </View>
   );
 }
