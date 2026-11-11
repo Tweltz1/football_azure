@@ -18,6 +18,8 @@ type SyncState = {
   lastSynced?: number;
   error?: string;
   syncNow: () => void;
+  /** Waits for any sync in progress, then syncs once more. True if everything reached the cloud. */
+  finishSync: () => Promise<boolean>;
   /**
    * Deletes everything this account has backed up and, unless the same sign-in is also used by
    * another of our apps, the account itself. Returns which of the two happened.
@@ -133,12 +135,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   });
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization -- re-runs itself via setTimeout
-  const run = useCallback(async () => {
-    if (!uid || paused.current) return;
+  const run = useCallback(async (): Promise<boolean> => {
+    if (!uid || paused.current) return false;
     if (running.current) {
       again.current = true;
-      return;
+      return false;
     }
+    let ok = false;
     running.current = true;
     setStatus('syncing');
     try {
@@ -202,6 +205,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       setLastSynced(Date.now());
       setError(undefined);
       setStatus('synced');
+      ok = true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setStatus('error');
@@ -212,6 +216,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         setTimeout(run, 500);
       }
     }
+    return ok;
   }, [uid]);
 
   // Sync on sign-in, when the app comes back to the screen, and shortly after any change.
@@ -246,6 +251,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       lastSynced,
       error,
       syncNow: run,
+      finishSync: async () => {
+        for (let i = 0; running.current && i < 200; i++) await new Promise((r) => setTimeout(r, 150));
+        again.current = false;
+        return run();
+      },
       deleteAccount: async () => {
         if (!uid) return 'data';
         paused.current = true;

@@ -15,7 +15,9 @@ export default function Account() {
   const t = useTheme();
   const auth = useAuth();
   const sync = useSync();
-  const { totes } = useTotes();
+  const store = useTotes();
+  const { totes } = store;
+  const [signingOut, setSigningOut] = useState(false);
   const pro = usePro();
   const [busy, setBusy] = useState<'google' | 'apple' | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
@@ -35,10 +37,33 @@ export default function Account() {
     }
   };
 
+  // Signed in, your totes belong to your account: signing out backs them up one last time, then clears
+  // them off this phone (sign in again to get them back). Nobody else using the phone sees them.
+  const finishSignOut = async () => {
+    await auth.signOut();
+    store.forgetPhone();
+  };
   const signOut = () =>
-    Alert.alert('Sign out?', 'Your totes stay on this phone. Sign in again anytime to keep backing them up.', [
+    Alert.alert('Sign out?', 'Your totes are backed up to your account and removed from this phone. Sign in again to get them back.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => auth.signOut() },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: async () => {
+          setSigningOut(true);
+          const ok = await sync.finishSync();
+          setSigningOut(false);
+          if (ok) return finishSignOut();
+          Alert.alert(
+            "Couldn't back up your latest changes",
+            'Signing out now would lose changes made since your last backup. Try again when you have signal, or sign out anyway.',
+            [
+              { text: 'Stay signed in', style: 'cancel' },
+              { text: 'Sign out anyway', style: 'destructive', onPress: finishSignOut },
+            ],
+          );
+        },
+      },
     ]);
 
   const deleteAccount = () =>
@@ -102,7 +127,7 @@ export default function Account() {
               {' '}Packing lists stay on this phone.
             </Text>
             <Button title="Sync now" icon="sync" variant="secondary" onPress={sync.syncNow} style={{ marginTop: 16 }} />
-            <Button title="Sign out" icon="log-out-outline" variant="secondary" onPress={signOut} style={{ marginTop: 10 }} />
+            <Button title={signingOut ? 'Backing up…' : 'Sign out'} icon="log-out-outline" variant="secondary" onPress={signingOut ? () => {} : signOut} style={{ marginTop: 10 }} />
             <Pressable onPress={deleteAccount} style={{ alignSelf: 'center', marginTop: 28, padding: 8 }}>
               <Text style={{ color: t.danger, fontWeight: '600' }}>Delete account</Text>
             </Pressable>
