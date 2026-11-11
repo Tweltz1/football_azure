@@ -403,7 +403,7 @@
   window.Grow?.init({
     api: (...a) => api(...a), shop: () => shop, plan: () => plan, isOwner: () => role === "owner", me: () => myId, job, jobs: () => jobs,
     act: (id, action, body) => jobAction(id, action, body), upsert: (j) => upsertJob(j), toast: (m) => toast(m),
-    render: () => render(), renderCustomer: () => renderCustomer(), customerToken: () => custToken,
+    render: () => render(), renderCustomer: () => renderCustomer(), customerToken: () => custToken, setCustomer: (c) => { cust.data = c; },
     saveShop: async (patch) => {
       const r = await api("POST", "shop/me", { name: shop.name, phone: shop.phone, hours: shop.hours, email: shop.email || "", ...patch });
       shop = r.shop; plan = r.plan || plan;
