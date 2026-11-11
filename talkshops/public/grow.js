@@ -457,6 +457,14 @@
         <label class="field">Notice you need<select id="gr-sched-notice">${opt([[0, "None"], [1, "1 hour"], [2, "2 hours"], [4, "4 hours"], [12, "12 hours"], [24, "1 day"], [48, "2 days"]], sc.notice)}</select></label>
         <label class="field">Customers can book up to<select id="gr-sched-ahead">${opt([[7, "1 week ahead"], [14, "2 weeks ahead"], [21, "3 weeks ahead"], [30, "30 days ahead"], [60, "60 days ahead"]], sc.ahead)}</select></label>
       </div>
+      <div class="gr-sched-smart"><h4>Smart scheduling <small class="muted">(optional)</small></h4>
+        <p class="muted" style="margin:0;font-size:13px">Set the most cars you want in the shop at once. Talk Shops counts the cars on your Bay (using each one's promised pickup time) plus booked appointments, and closes any day that's expected to be full.</p>
+        <div class="gr-sched-opts">
+          <label class="field">Most cars in the shop at once<input type="number" id="gr-sched-cap" min="1" max="200" inputmode="numeric" placeholder="No limit" value="${sc.capacity || ""}"></label>
+          <label class="field">A booked car usually stays<select id="gr-sched-stay">${opt([[1, "Same day"], [2, "2 days"], [3, "3 days"], [5, "5 days"], [7, "A week"]], sc.stay || 1)}</select></label>
+        </div>
+        ${cur?.capacity ? loadStrip(cur) : ""}
+      </div>
       <div class="gr-sched-off"><label class="field">Days off <small class="muted">(holidays, vacation, days you're full)</small><span class="gr-sched-off-add"><input type="date" id="gr-sched-off-day" min="${todayIso}"><button type="button" class="btn sm" data-gr-sched-off-add>Add day</button></span></label>
         ${ui.schedClosed.length ? `<ul class="gr-sched-off-list">${ui.schedClosed.map((d) => `<li>${esc(dayOff(d))}<button type="button" class="linkbtn" data-gr-sched-off-del="${esc(d)}" aria-label="Remove ${esc(dayOff(d))}">Remove</button></li>`).join("")}</ul>` : ""}</div>
       <label class="chk"><input type="checkbox" id="gr-sched-auto" ${sc.auto ? "checked" : ""}> Book them right away (no need to confirm each one). Leave off to confirm each request yourself.</label>
@@ -465,10 +473,24 @@
       <div class="btn-row"><button type="button" class="btn sm primary" data-gr-sched-save>Save appointment hours</button></div>` : ""}
     </div>`;
   }
+  /** Cars on the Bay and upcoming appointments, in the shape the load count needs. */
+  function shopCars() {
+    const jobs = (A?.jobs?.() || []).filter((j) => !j.closed && j.stage !== "picked_up");
+    return { cars: jobs.filter((j) => j.stage !== "invited" && !j.appointment).map((j) => ({ stage: j.stage, promised: j.promised, since: (j.events || []).find((e) => e.stage === "checked_in")?.t || j.createdAt })),
+      appts: [...jobs.filter((j) => j.appointment && ts(j.appointment) >= Date.now() - 86400000).map((j) => new Date(ts(j.appointment)).toISOString()), ...(ui.bookings || []).filter((b) => b.data.slot).map((b) => b.data.slot)] };
+  }
+  /** The next 7 days against the car limit, so the owner sees what customers can book. */
+  function loadStrip(sc) {
+    const { cars, appts } = shopCars(), load = dayLoad(sc, new Date(), cars, appts), today = zoneParts(Date.now(), sc.zone).day;
+    return `<div class="gr-load" aria-label="Expected cars in the shop, next 7 days">${Array.from({ length: 7 }, (_, i) => {
+      const day = plusDays(today, i), n = load[day] || 0, full = n >= sc.capacity;
+      return `<div class="gr-load-day ${full ? "is-full" : ""}"><small>${esc(i === 0 ? "Today" : new Date(day + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" }))}</small><b>${n}/${sc.capacity}</b><small>${full ? "Full" : "Open"}</small></div>`;
+    }).join("")}</div>`;
+  }
   function readSchedule() {
     const n = (id) => Number($(id).value);
     const week = DAYS.map((_, i) => $(`[data-sched-day="${i}"]`).checked ? [$(`[data-sched-open="${i}"]`).value, $(`[data-sched-close="${i}"]`).value] : null);
-    return { zone: $("#gr-sched-zone").value, week, step: n("#gr-sched-step"), perSlot: n("#gr-sched-per"), notice: n("#gr-sched-notice"), ahead: n("#gr-sched-ahead"), auto: $("#gr-sched-auto").checked, reminder: $("#gr-sched-remind").checked, closed: ui.schedClosed || [], paused: !!$("#gr-sched-pause")?.checked };
+    return { zone: $("#gr-sched-zone").value, week, step: n("#gr-sched-step"), perSlot: n("#gr-sched-per"), notice: n("#gr-sched-notice"), ahead: n("#gr-sched-ahead"), auto: $("#gr-sched-auto").checked, reminder: $("#gr-sched-remind").checked, closed: ui.schedClosed || [], paused: !!$("#gr-sched-pause")?.checked, capacity: Math.round(Number($("#gr-sched-cap").value)) || 0, stay: n("#gr-sched-stay") };
   }
   async function saveShop(patch, msg) {
     try { await A.saveShop(patch); if (msg) A.toast(msg); return true; } catch (e) { A.toast(e.message); return false; }
@@ -607,8 +629,24 @@
   // New booking requests show up without a reload.
   setInterval(() => { if (A?.shop() && document.visibilityState === "visible" && document.getElementById("gr-bay")) loadBookings(); }, 60000);
 
+  // Shop-zone helpers and the car-limit count, the same rules as shopSchedule.ts on the server.
+  const zoneParts = (at, zone) => { const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(at)).map((x) => [x.type, x.value])); return { day: `${p.year}-${p.month}-${p.day}`, min: +p.hour * 60 + +p.minute }; };
+  const plusDays = (day, n) => new Date(Date.parse(day + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+  function dayLoad(sc, now, cars, appts) {
+    const load = {}, stay = sc.stay || 1, today = zoneParts(now.getTime(), sc.zone).day, last = plusDays(today, sc.ahead + stay + 1);
+    const add = (from, to) => { for (let d = from < today ? today : from, n = 0; d <= to && d <= last && n < 400; d = plusDays(d, 1), n++) load[d] = (load[d] || 0) + 1; };
+    for (const c of cars) {
+      let end = today;
+      if (c.promised && Number.isFinite(ts(c.promised))) { const p = zoneParts(ts(c.promised), sc.zone).day; if (p > today) end = p; }
+      else if (c.stage !== "ready" && Number.isFinite(ts(c.since))) { const e = plusDays(zoneParts(ts(c.since), sc.zone).day, stay - 1); if (e > today) end = e; }
+      add(today, end);
+    }
+    for (const a of appts) { if (!Number.isFinite(ts(a))) continue; const d = zoneParts(ts(a), sc.zone).day; if (plusDays(d, stay - 1) >= today) add(d, plusDays(d, stay - 1)); }
+    return load;
+  }
+  const hasRoom = (sc, load, day) => { if (!sc.capacity || !load) return true; for (let k = 0; k < (sc.stay || 1); k++) if ((load[plusDays(day, k)] || 0) >= sc.capacity) return false; return true; };
   /** Open appointment times, worked out in the browser (the demo shop has no server). Same rules as shopSchedule.ts. */
-  function openSlots(sc, now, taken) {
+  function openSlots(sc, now, taken, load) {
     const hm = (m) => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"), mn = (t) => +t.slice(0, 2) * 60 + +t.slice(3, 5);
     const parts = (at) => { const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: sc.zone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(at)).map((x) => [x.type, x.value])); return { day: `${p.year}-${p.month}-${p.day}`, min: +p.hour * 60 + +p.minute }; };
     const offset = (at) => { const p = parts(at); return Date.parse(p.day + "T" + hm(p.min) + ":00Z") - Math.floor(at / 60000) * 60000; };
@@ -618,7 +656,7 @@
     if (sc.paused) return out;
     for (let i = 0; i <= sc.ahead; i++) {
       const day = new Date(Date.parse(today + "T12:00:00Z") + i * 86400000).toISOString().slice(0, 10), h = sc.week[new Date(day + "T12:00:00Z").getUTCDay()];
-      if (!h || (sc.closed || []).includes(day)) continue;
+      if (!h || (sc.closed || []).includes(day) || !hasRoom(sc, load, day)) continue;
       const times = [];
       for (let m = mn(h[0]); m + sc.step <= mn(h[1]); m += sc.step) {
         const at = zoned(day, hm(m));
@@ -630,5 +668,5 @@
     return out;
   }
 
-  window.Grow = { openSlots, init, pro, setLang, customerSetup, customerHead, customerCards, langSwitch, renderBooking, loadBookings, bookingsPanel, cardBits, sheetSection, resultsButton, settingsPanels };
+  window.Grow = { openSlots, dayLoad, init, pro, setLang, customerSetup, customerHead, customerCards, langSwitch, renderBooking, loadBookings, bookingsPanel, cardBits, sheetSection, resultsButton, settingsPanels };
 })();

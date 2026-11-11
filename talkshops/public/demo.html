@@ -250,7 +250,7 @@ a.btn.primary{color:var(--accent-fg)}
 <link rel="stylesheet" href="/help-chat.css?v=1">
 <link rel="stylesheet" href="/howto.css?v=8">
 <link rel="stylesheet" href="/workday.css?v=4">
-<link rel="stylesheet" href="/grow.css?v=3">
+<link rel="stylesheet" href="/grow.css?v=4">
 <script>document.documentElement.classList.add("ts-intro");setTimeout(function(){document.documentElement.classList.remove("ts-intro")},1600)</script>
 <style>
 .queue-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -318,7 +318,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/walkthrough.js?v=6"></script>
 <script src="/workday.js?v=6"></script>
 <script src="/walkaround.js?v=3"></script>
-<script src="/grow.js?v=8"></script>
+<script src="/grow.js?v=9"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script src="/est-groups.js?v=1"></script>
 <script src="/help-content.js?v=9"></script>
@@ -559,9 +559,10 @@ async function growApi(method,path,body){
   }
   if(path.startsWith("shop/book/")){
     const sc=state.grow?.schedule,taken=[...state.jobs.filter(j=>j.appointment&&!j.closed&&!j.archivedAt).map(j=>new Date(j.appointment).toISOString()),...(state.bookings||[]).filter(b=>b.data.slot).map(b=>b.data.slot)];
-    if(method==="GET")return{shop:{name:SHOP.name,phone:SHOP.phone,hours:SHOP.hours,brand:state.brand||{}},note:state.grow?.bookingNote||"",...(sc?{zone:sc.zone,auto:sc.auto,...(sc.paused?{paused:true}:{}),slots:window.Grow.openSlots(sc,new Date(),taken)}:{})};
+    const load=sc?.capacity?window.Grow.dayLoad(sc,new Date(),state.jobs.filter(j=>onBoard(j)&&!j.closed&&!j.appointment).map(j=>({stage:j.stage,promised:j.promised,since:j.events[0]?.t})),taken):undefined;
+    if(method==="GET")return{shop:{name:SHOP.name,phone:SHOP.phone,hours:SHOP.hours,brand:state.brand||{}},note:state.grow?.bookingNote||"",...(sc?{zone:sc.zone,auto:sc.auto,...(sc.paused?{paused:true}:{}),slots:window.Grow.openSlots(sc,new Date(),taken,load)}:{})};
     if(!body.customer?.name||!body.vehicle?.make||!body.concern)throw new Error("Fill in your name, vehicle and what it needs.");
-    if(sc&&!window.Grow.openSlots(sc,new Date(),taken).some(d=>d.times.some(t=>t.at===body.slot)))throw new Error("That time was just taken. Please pick another one.");
+    if(sc&&!window.Grow.openSlots(sc,new Date(),taken,load).some(d=>d.times.some(t=>t.at===body.slot)))throw new Error("That time was just taken. Please pick another one.");
     const day=body.slot?new Date(body.slot).toLocaleDateString("en-CA",{timeZone:sc.zone}):body.day,time=body.slot?(new Date(body.slot).toLocaleTimeString("en-GB",{timeZone:sc.zone})<"12"?"morning":"afternoon"):body.time;
     const bk={id:"bk"+Date.now(),createdAt:Date.now(),data:{customer:body.customer,vehicle:body.vehicle,plate:body.plate,concern:body.concern,day,time,...(body.slot?{slot:body.slot}:{})}};
     state.bookings=[bk,...(state.bookings||[])];save();
