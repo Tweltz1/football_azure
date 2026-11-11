@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-11T20:29:44.224Z",
+ "updated": "2026-11-11T21:21:56.611Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -1129,6 +1129,160 @@
      "size": "3XL",
      "id": 5635177988,
      "price": 49
+    }
+   ]
+  },
+  "hat-navy-42": {
+   "hash": "4524c6b74700",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635249957,
+     "price": 26
+    }
+   ]
+  },
+  "hat-navy-43": {
+   "hash": "9c537539b741",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635250103,
+     "price": 26
+    }
+   ]
+  },
+  "hat-navy-44": {
+   "hash": "7b8b02667dd2",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635250118,
+     "price": 26
+    }
+   ]
+  },
+  "hat-navy-55": {
+   "hash": "5e92f01d795c",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635250148,
+     "price": 26
+    }
+   ]
+  },
+  "hat-navy-58": {
+   "hash": "bd8b5f73bb2f",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635250254,
+     "price": 26
+    }
+   ]
+  },
+  "hat-navy-59": {
+   "hash": "70755688eba5",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635250319,
+     "price": 26
+    }
+   ]
+  },
+  "hat-navy-60": {
+   "hash": "5cb53c4bcff6",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635250347,
+     "price": 26
+    }
+   ]
+  },
+  "hat-stone-42": {
+   "hash": "e76379f2d7f6",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635250382,
+     "price": 26
+    }
+   ]
+  },
+  "hat-stone-43": {
+   "hash": "d8fe06448cb3",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635250394,
+     "price": 26
+    }
+   ]
+  },
+  "hat-stone-44": {
+   "hash": "45ec08dac043",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635250402,
+     "price": 26
+    }
+   ]
+  },
+  "hat-stone-55": {
+   "hash": "399eac28d92c",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635251898,
+     "price": 26
+    }
+   ]
+  },
+  "hat-stone-58": {
+   "hash": "3e4f90b571bb",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635251903,
+     "price": 26
+    }
+   ]
+  },
+  "hat-stone-59": {
+   "hash": "a2415d657160",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635251927,
+     "price": 26
+    }
+   ]
+  },
+  "hat-stone-60": {
+   "hash": "630fef1ffaee",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5635251942,
+     "price": 26
     }
    ]
   },

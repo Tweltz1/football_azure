@@ -87,7 +87,6 @@ if (MODE === 'mockups') {
       const v = p.variants.find(x => x.size === 'M') || p.variants[0];
       const task = await pf(`/mockup-generator/create-task/${p.product_id}`, { method: 'POST', body: JSON.stringify({
         variant_ids: [v.id], format: 'jpg',
-        ...(readJson('merch/threads.json', {})[c.slug] ? { options: [readJson('merch/threads.json', {})[c.slug]].map(t => ({ id: p.placement.replace('embroidery_', 'thread_colors_'), value: t })) } : {}),
         files: [{ placement: p.placement, image_url: `${BASE}/placed/${c.slug}.png`,
           position: { area_width: p.area.w, area_height: p.area.h, width: p.area.w, height: p.area.h, top: 0, left: 0 } }],
       }) });

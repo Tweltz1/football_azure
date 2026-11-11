@@ -155,7 +155,7 @@ h2{font-size:clamp(30px,4vw,44px);font-weight:800}
 }
 @media (max-width:640px){
   .hero{padding:36px 0 48px}
-  nav a:not(.btn){display:none}
+  nav a:not(.btn):not(.nav-keep){display:none}
   .apps,.services,.steps,.row2{grid-template-columns:1fr}
   .apps .featured:first-child{grid-column:auto}
   .app.featured{flex-direction:column}
@@ -403,3 +403,11 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 }
 @media (prefers-reduced-motion:reduce){.screen,.tt-row,.rt-list li,.bump{animation:none}}
 .s-head b{white-space:nowrap}.s-head span{text-align:right}
+
+/* Merch band on the home page */
+.merch-in{display:grid;grid-template-columns:1fr 1.2fr;gap:40px;align-items:center}
+.merch-in .btn{margin-top:22px}
+.merch-pics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.merch-pics img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:16px;background:#fff;border:1px solid var(--line)}
+@media (max-width:720px){.merch-in{grid-template-columns:1fr;gap:24px}}
+@media (max-width:440px){.top .brand span{display:none}nav{gap:14px}}
