@@ -113,7 +113,12 @@ jobs:
           APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
         run: |
           python3 -m venv "$RUNNER_TEMP/apple-api"
-          "$RUNNER_TEMP/apple-api/bin/pip" -q install 'PyJWT[crypto]'
+          "$RUNNER_TEMP/apple-api/bin/pip" -q install 'PyJWT[crypto]' pillow
           SHOTS=""
-          if [ -f "$RUNNER_TEMP/shots/1-home.png" ]; then SHOTS="$RUNNER_TEMP/shots"; fi
+          if [ -f "$RUNNER_TEMP/shots/1-home.png" ]; then
+            # App Store screenshots can't have a transparency channel; the simulator's do.
+            SHOTS="$RUNNER_TEMP/shots-rgb"
+            mkdir -p "$SHOTS"
+            "$RUNNER_TEMP/apple-api/bin/python" -c 'import glob, os, sys; from PIL import Image; [Image.open(f).convert("RGB").save(os.path.join(sys.argv[2], os.path.basename(f))) for f in glob.glob(sys.argv[1] + "/*.png")]' "$RUNNER_TEMP/shots" "$SHOTS"
+          fi
           "$RUNNER_TEMP/apple-api/bin/python" totetrack-app/tools/app_store_listing.py "$SHOTS"
