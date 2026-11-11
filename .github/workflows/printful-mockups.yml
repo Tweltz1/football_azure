@@ -4,6 +4,7 @@ name: Merch mockups (Printful)
 # as weltzcraft-site/img/merch/<slug>.webp (the merch page already points at those files).
 # Needs the PRINTFUL_API_TOKEN repo secret (a Printful private token for the "Weltzcraft" store).
 # Optional PRINTFUL_STORE_ID secret if the token is account-level instead of store-level.
+# Runs on every push that touches merch files; Actions tab -> "Merch mockups (Printful)" -> Run workflow re-runs it on main.
 on:
   push:
     branches: [main, claude/project-thread-8n3mi5]
