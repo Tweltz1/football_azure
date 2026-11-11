@@ -516,12 +516,13 @@
     if (location.pathname !== want) history[navPush ? "pushState" : "replaceState"](history.state, "", want + location.search + location.hash);
     navPush = false;
     chrome.hidden = false;
+    // The shop's name leads the top bar; "Talk Shops" and who is signed in sit under it.
     $("#shopName").textContent = shop.name;
-    $("#bayTab").textContent = bayName();
+    $("#shopName").title = shop.name;
     document.querySelectorAll(".tab").forEach((b) => b.setAttribute("aria-current", b.dataset.view === ui.view ? "page" : "false"));
     const planTab = document.querySelector('.tab[data-view="plan"]'); if (planTab) planTab.hidden = !isOwner();
     // Who is signed in, so a login being passed around shows on every screen.
-    $("#shopName").textContent = shop.name + (myName ? " · " + myName : "") + (isOwner() ? "" : myName ? " (Technician)" : " · Technician");
+    $("#shopWho").textContent = (myName ? " · " + myName : "") + (isOwner() ? "" : myName ? " (Technician)" : " · Technician");
     const err = (loadErr ? `<div class="notice">${esc(loadErr)} <button class="linkbtn" id="retry">Try again</button></div>` : "")
       + (join.err ? `<div class="notice">${esc(join.err)}</div>` : "")
       // Until someone saves a name, the Technician list shows the start of their email.

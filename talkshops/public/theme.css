@@ -832,3 +832,27 @@ a.c-card.call.dir b{font-family:var(--f-body);user-select:text;text-align:right}
   .settings-wrap.tabbed>.stab>*{grid-column:auto;grid-row:auto}
   .settings-wrap.tabbed>.stab:only-child,.settings-wrap.tabbed>.stab>:only-child{grid-column:1/-1}
 }
+
+/* Top bar: the shop's name leads, in bold; "Talk Shops" and who is signed in sit under it. */
+.topbar .brand{min-width:0}
+.topbar .brand-text{min-width:0}
+.topbar .brand h1{font-size:19px;font-weight:750;letter-spacing:-.02em;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(320px,52vw)}
+.topbar .brand-sub{display:flex;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12.5px;color:var(--muted)}
+.topbar .brand-app{color:var(--accent);font-weight:650}
+.topbar .brand-mark{width:38px;height:38px;border-radius:11px;flex:none}
+.topbar .brand-mark svg{width:21px;height:21px}
+.topbar{box-shadow:0 1px 0 color-mix(in srgb,var(--line) 70%,transparent),0 6px 18px -12px rgba(16,24,40,.18)}
+.signout{display:inline-flex;align-items:center;gap:6px}
+.signout::before{content:"";width:15px;height:15px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'/%3E%3C/svg%3E") center/contain no-repeat;opacity:.75}
+.topbar #shopWho{white-space:pre}
+@media (min-width:1000px){
+  .topbar-in{flex-wrap:nowrap}
+  .topbar .brand{flex:1 1 auto}
+  .topbar .brand h1{max-width:none}
+  .topbar .tabs,.topbar .signout{flex:none}
+}
+/* Mid-size screens: labels only, so all tabs fit beside the shop name. */
+@media (min-width:1000px) and (max-width:1239px){
+  .topbar .tabs .tab-i{display:none}
+  .topbar .tab{padding:7px 11px}
+}
