@@ -1,6 +1,7 @@
 // weltzcraft.com: serves the static site and takes the project brief form.
 // POST /api/brief emails the brief to sales@weltzcraft.com through Resend (RESEND_API_KEY is a Pages secret,
 // set by the deploy workflow). With no key set it answers 503 and the page falls back to opening an email.
+// /api/merch/* is the merch shop (Stripe Checkout, then a Printful order); see below.
 const TO = 'sales@weltzcraft.com';
 const FROM = 'Weltzcraft site <hello@weltzcraft.com>';
 const PLATFORMS = ['Not sure yet', 'iPhone app', 'Web app', 'Both'];
@@ -43,11 +44,171 @@ async function brief(request, env) {
   return json(502, { error: 'Could not send' });
 }
 
+// ---- Merch shop -------------------------------------------------------------------------------------------
+// POST /api/merch/checkout {slug, size, qty} -> Stripe Checkout URL. Prices and Printful ids come only from
+// /merch-catalog.json (written by the merch build), never from the browser.
+// POST /api/merch/stripe-webhook: Stripe says a merch checkout is paid -> a Printful order for the same items,
+// shipped to the buyer, plus an email to sales@. Pages secrets (set by the deploy workflow): STRIPE_SECRET_KEY,
+// STRIPE_MERCH_WEBHOOK_SECRET, PRINTFUL_API_TOKEN, optional PRINTFUL_STORE_ID.
+const SHIPPING_CENTS = 599;
+const MAX_QTY = 10;
+
+async function catalog(request, env) {
+  const r = await env.ASSETS.fetch(new Request(new URL('/merch-catalog.json', request.url)));
+  if (!r.ok) return null;
+  try { return await r.json(); } catch (e) { return null; }
+}
+
+async function stripe(env, path, form) {
+  const r = await fetch('https://api.stripe.com/v1/' + path, {
+    method: form ? 'POST' : 'GET',
+    headers: { Authorization: 'Bearer ' + env.STRIPE_SECRET_KEY, ...(form ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },
+    body: form ? new URLSearchParams(form).toString() : undefined,
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error('stripe ' + r.status + ' ' + (body.error && body.error.message || ''));
+  return body;
+}
+
+async function merchCheckout(request, env) {
+  if (request.method !== 'POST') return json(405, { error: 'POST only' });
+  const origin = request.headers.get('Origin');
+  if (origin && new URL(origin).host !== new URL(request.url).host) return json(403, { error: 'Wrong site' });
+  let b;
+  try { b = await request.json(); } catch (e) { return json(400, { error: 'Bad request' }); }
+  if (!env.STRIPE_SECRET_KEY) return json(503, { error: 'The shop is not open yet' });
+  const cat = await catalog(request, env);
+  const slug = String(b && b.slug || '');
+  const item = cat && cat.items && Object.prototype.hasOwnProperty.call(cat.items, slug) ? cat.items[slug] : null;
+  if (!item) return json(400, { error: 'That one is not available yet.' });
+  const v = item.variants.length === 1 ? item.variants[0] : item.variants.find((x) => x.size === b.size);
+  if (!v) return json(400, { error: 'Pick a size.' });
+  const qty = Math.min(MAX_QTY, Math.max(1, Math.floor(Number(b.qty) || 1)));
+  const [pk, ck, lk] = slug.split('-');
+  const prod = cat.products.find((p) => p.key === pk) || { name: pk, colors: [] };
+  const color = (prod.colors.find((c) => c.key === ck) || {}).name || ck;
+  const logo = (cat.logos[lk] || {}).name || lk;
+  const name = prod.name + (v.size && item.variants.length > 1 ? ' (' + v.size + ')' : '');
+  const site = new URL(request.url).origin;
+  const s = await stripe(env, 'checkout/sessions', {
+    mode: 'payment',
+    success_url: site + '/merch?order=thanks',
+    cancel_url: site + '/merch?order=cancelled',
+    'line_items[0][quantity]': String(qty),
+    'line_items[0][price_data][currency]': 'usd',
+    'line_items[0][price_data][unit_amount]': String(Math.round(v.price * 100)),
+    'line_items[0][price_data][product_data][name]': 'Weltzcraft ' + name,
+    'line_items[0][price_data][product_data][description]': color + ' · ' + logo + ' logo',
+    'line_items[0][price_data][product_data][images][0]': site + '/img/merch/' + slug + '.webp',
+    'shipping_address_collection[allowed_countries][0]': 'US',
+    'shipping_options[0][shipping_rate_data][type]': 'fixed_amount',
+    'shipping_options[0][shipping_rate_data][display_name]': 'Standard shipping',
+    'shipping_options[0][shipping_rate_data][fixed_amount][amount]': String(SHIPPING_CENTS),
+    'shipping_options[0][shipping_rate_data][fixed_amount][currency]': 'usd',
+    'shipping_options[0][shipping_rate_data][delivery_estimate][minimum][unit]': 'business_day',
+    'shipping_options[0][shipping_rate_data][delivery_estimate][minimum][value]': '5',
+    'shipping_options[0][shipping_rate_data][delivery_estimate][maximum][unit]': 'business_day',
+    'shipping_options[0][shipping_rate_data][delivery_estimate][maximum][value]': '10',
+    'phone_number_collection[enabled]': 'true',
+    'payment_intent_data[description]': 'Weltzcraft merch: ' + name + ', ' + color + ', ' + logo + ' x' + qty,
+    'metadata[shop]': 'weltzcraft-merch',
+    'metadata[slug]': slug,
+    'metadata[size]': String(v.size || ''),
+    'metadata[items]': v.id + 'x' + qty,
+  });
+  return json(200, { url: s.url });
+}
+
+const hex = (buf) => [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, '0')).join('');
+async function stripeSignatureOk(raw, header, secret) {
+  const parts = Object.fromEntries((header || '').split(',').map((p) => p.split('=')).filter((p) => p.length === 2 && p[0] === 't'));
+  const sigs = (header || '').split(',').filter((p) => p.startsWith('v1=')).map((p) => p.slice(3));
+  const t = Number(parts.t);
+  if (!t || !sigs.length || Math.abs(Date.now() / 1000 - t) > 600) return false;
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const want = hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(t + '.' + raw)));
+  return sigs.some((s) => s.length === want.length && [...s].reduce((d, c, i) => d | (c.charCodeAt(0) ^ want.charCodeAt(i)), 0) === 0);
+}
+
+async function printful(env, path, body) {
+  const r = await fetch('https://api.printful.com' + path, {
+    method: body ? 'POST' : 'GET',
+    headers: { Authorization: 'Bearer ' + env.PRINTFUL_API_TOKEN, 'Content-Type': 'application/json', ...(env.PRINTFUL_STORE_ID ? { 'X-PB-Store-Id': env.PRINTFUL_STORE_ID } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const out = await r.json().catch(() => ({}));
+  return { ok: r.ok, status: r.status, out };
+}
+
+async function emailSales(env, subject, text) {
+  if (!env.RESEND_API_KEY) return;
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: FROM, to: [TO], subject, text }),
+  }).catch(() => {});
+}
+
+async function merchWebhook(request, env) {
+  if (request.method !== 'POST') return json(405, { error: 'POST only' });
+  if (!env.STRIPE_MERCH_WEBHOOK_SECRET) return json(503, { error: 'Not set up' });
+  const raw = await request.text();
+  if (!(await stripeSignatureOk(raw, request.headers.get('Stripe-Signature'), env.STRIPE_MERCH_WEBHOOK_SECRET))) return json(400, { error: 'Bad signature' });
+  const event = JSON.parse(raw);
+  const s = event.data && event.data.object || {};
+  if (event.type !== 'checkout.session.completed' || s.mode !== 'payment' || (s.metadata || {}).shop !== 'weltzcraft-merch') return json(200, { ignored: true });
+  if (s.payment_status !== 'paid') return json(200, { ignored: 'unpaid' });
+  const ship = s.shipping_details || (s.collected_information || {}).shipping_details || {};
+  const a = ship.address || {};
+  const cust = s.customer_details || {};
+  const items = String(s.metadata.items || '').split(',').map((x) => x.split('x').map(Number))
+    .filter(([id, q]) => id > 0 && q > 0).map(([id, q]) => ({ sync_variant_id: id, quantity: q }));
+  // Printful order ids are short; the Stripe session id hashed keeps a retried webhook from ordering twice.
+  const external_id = 'wc' + hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s.id))).slice(0, 28);
+  const order = {
+    external_id,
+    shipping: 'STANDARD',
+    recipient: {
+      name: ship.name || cust.name || '', address1: a.line1 || '', address2: a.line2 || '', city: a.city || '',
+      state_code: a.state || '', country_code: a.country || 'US', zip: a.postal_code || '',
+      email: cust.email || '', phone: cust.phone || '',
+    },
+    items,
+  };
+  const summary = ['Order ' + s.id, 'Paid: $' + ((s.amount_total || 0) / 100).toFixed(2), 'Item: ' + s.metadata.slug + ' size ' + (s.metadata.size || '-') + ' (' + s.metadata.items + ')',
+    'Ship to: ' + [order.recipient.name, a.line1, a.line2, a.city, a.state, a.postal_code].filter(Boolean).join(', '), 'Buyer: ' + order.recipient.email];
+  if (!env.PRINTFUL_API_TOKEN || !items.length) {
+    await emailSales(env, 'Merch order needs a hand: ' + s.metadata.slug, summary.concat(['', 'Not sent to Printful (no token or no items). Place it by hand.']).join('\n'));
+    return json(200, { ok: true, printful: false });
+  }
+  const existing = await printful(env, '/orders/@' + external_id);
+  if (existing.ok) return json(200, { ok: true, duplicate: true });
+  let r = await printful(env, '/orders?confirm=true', order);
+  let note = 'Sent to Printful and confirmed for printing.';
+  if (!r.ok) {
+    // Most likely no card in Printful billing yet: keep it as a draft so nothing is lost.
+    const first = (r.out && (r.out.error && r.out.error.message || r.out.result)) || r.status;
+    // If Printful made the order but couldn't charge, it already exists; don't make a second one.
+    const made = await printful(env, '/orders/@' + external_id);
+    r = made.ok ? made : await printful(env, '/orders', order);
+    note = r.ok ? 'Saved in Printful as a DRAFT (confirming failed: ' + first + '). Open Printful > Orders and confirm it.'
+      : 'Printful refused the order (' + first + '). Place it by hand.';
+  }
+  await emailSales(env, (r.ok ? 'Merch order: ' : 'Merch order FAILED: ') + s.metadata.slug, summary.concat(['', note]).join('\n'));
+  return r.ok ? json(200, { ok: true }) : json(502, { error: 'Printful refused' });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/api/brief') {
       try { return await brief(request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
+    }
+    if (url.pathname === '/api/merch/checkout') {
+      try { return await merchCheckout(request, env); } catch (e) { return json(502, { error: 'Checkout is not available right now.' }); }
+    }
+    if (url.pathname === '/api/merch/stripe-webhook') {
+      try { return await merchWebhook(request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
     }
     return env.ASSETS.fetch(request);
   },
