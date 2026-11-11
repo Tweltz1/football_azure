@@ -1,4 +1,4 @@
-// Copy-email buttons and the project brief form (builds an email to hello@weltzcraft.com; no server needed).
+// Copy-email buttons and the project brief form (builds an email to sales@weltzcraft.com; no server needed).
 (function () {
   var yr = document.getElementById('yr');
   if (yr) yr.textContent = new Date().getFullYear();
@@ -68,7 +68,7 @@
       '',
       f.idea.value.trim()
     ].filter(function (l, i) { return l !== '' || i === 4; }).join('\n');
-    window.location.href = 'mailto:hello@weltzcraft.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-    document.getElementById('brief-hint').textContent = 'Your email app should open now. If it doesn’t, email hello@weltzcraft.com directly.';
+    window.location.href = 'mailto:sales@weltzcraft.com?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    document.getElementById('brief-hint').textContent = 'Your email app should open now. If it doesn’t, email sales@weltzcraft.com directly.';
   });
 })();

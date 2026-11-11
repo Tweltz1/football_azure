@@ -1,7 +1,7 @@
 # weltzcraft.com
 
 The Weltzcraft Studios website: the apps showcase, custom app-building services, a project brief form
-(builds an email to hello@weltzcraft.com, no server) and per-app support addresses.
+(builds an email to sales@weltzcraft.com, no server) and per-app support addresses.
 
 Plain static files, no build step. Preview: `python3 -m http.server -d weltzcraft-site 8000`.
 
