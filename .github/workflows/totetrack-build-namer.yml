@@ -7,7 +7,11 @@
 name: ToteTrack build namer
 
 on:
+  # Only the ToteTrack branch: new work branches made from it were each starting an hour-long build, and the
+  # app build takes the newest successful one from any branch.
   push:
+    branches:
+      - claude/totetrack-app
     paths:
       - 'totetrack-app/tools/namer/**'
       - 'totetrack-app/tools/detector/**'
