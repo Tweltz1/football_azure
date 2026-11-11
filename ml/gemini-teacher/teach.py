@@ -214,13 +214,13 @@ def ask(key, system, jpegs, hints):
             text = out['candidates'][0]['content']['parts'][0]['text']
             return json.loads(text).get('photos', [])
         except urllib.error.HTTPError as e:
-            msg = e.read().decode('utf-8', 'replace')[:300]
-            if e.code == 429 and ('PerDay' in msg or 'per day' in msg.lower()):
+            full = e.read().decode('utf-8', 'replace')
+            log(f'  Gemini {model} error {e.code}: {" ".join(full.split())[:400]}')
+            if e.code == 429 and 'perday' in full.lower():
                 busy += 1
                 if busy >= 2:
-                    raise OutOfQuota(msg)
+                    raise OutOfQuota(full[:300])
             if e.code not in (429, 500, 503):
-                log(f'  Gemini {model} error {e.code}: {msg}')
                 return None
         except Exception as e:  # bad JSON, timeouts
             log(f'  Gemini {model} problem: {type(e).__name__}')
