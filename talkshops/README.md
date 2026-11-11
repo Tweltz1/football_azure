@@ -9,8 +9,27 @@ link to their car's page (`/?c=<token>`) and approve or decline repairs there wi
   - Training tab (`training.js`, `training.css`): narrated lessons that run in the demo shop at `demo.html?train=<id>`.
     Scripts are in `tour.js` (`TRAIN`); captions and clips are `tour/lines.json` and `tour/<key>.mp3`.
     Voice: Chatterbox (Resemble AI, MIT) cloned from a Piper `en_US-ryan-high` clip (talkshops/voice-reference-ryan.mp3), exaggeration 0.75, cfg weight 0.35, chunks of about 220 characters, 0.3s between chunks; every clip is checked with Whisper speech-to-text and re-generated if words come out wrong. Scripts in `scripts/narration/`: `generate.py` (the TTS input says "Talkshops" as one word so there's no pause between "Talk" and "Shops"; a question always ends its chunk, and each chunk is retried until the words match, there's no odd pause, and yes/no questions rise in pitch), `check.py` (audits clips: wrong words, odd pauses, "Talk Shops" gap, question pitch) and `cues.py` (rebuilds `tour/caption-cues.json`). Bump `?v=` in tour.js after changing clips. MP3 64 kbps mono 24 kHz, loudness normalized to -16 LUFS.
-- Backend: shared with Hood League in this repo. API routes live in `supabase/functions/_shared/shop.ts`
-  (served by the `api` Edge Function at `/api/shop/...`); tables `repair_shops` and `repair_jobs`.
+- Backend: Talk Shops' own Supabase project (database, sign-in, `api` Edge Function), separate from the hobby apps.
+  API routes live in `supabase/functions/_shared/shop*.ts`; the function entry is `supabase/functions/talkshops-api/index.ts`
+  (served at `/functions/v1/api/shop/...`). Database changes go in `talkshops/supabase/migrations`.
+
+## Supabase project (Talk Shops only)
+
+`.github/workflows/deploy-talkshops-supabase.yml` applies `talkshops/supabase/migrations`, sets the function secrets and
+deploys the `api` function on every push to `claude/project-thread-6lgsrr` or `main` that touches this code.
+It does nothing until these GitHub repository secrets exist (Settings, Secrets and variables, Actions):
+
+- `TALKSHOPS_SUPABASE_PROJECT_ID` (the project's reference id) and `TALKSHOPS_SUPABASE_DB_PASSWORD`.
+  `SUPABASE_ACCESS_TOKEN` is shared with the hobby project.
+- Function keys, each optional (the feature stays off without it): `TALKSHOPS_RESEND_API_KEY`,
+  `TALKSHOPS_TWILIO_ACCOUNT_SID`, `TALKSHOPS_TWILIO_AUTH_TOKEN`, `TALKSHOPS_TWILIO_FROM`, `TALKSHOPS_STRIPE_SECRET_KEY`,
+  `TALKSHOPS_STRIPE_WEBHOOK_SECRET`, `TALKSHOPS_GEMINI_API_KEY`.
+  `TALKSHOPS_EMAIL_FROM`, `SHOP_LINK_BASE` and `TALKSHOPS_SITE_URL` are set by the workflow itself.
+
+The hourly job (`talkshops-hourly.yml`) and the weekly text sorter retrain use `TALKSHOPS_SUPABASE_PROJECT_ID` once it is
+set. Dashboard settings for the project: Authentication, URL Configuration (Site URL `https://talkshops.app`, redirect
+`https://talkshops.app/**`); Authentication, SMTP (Resend, sender `Talk Shops <updates@talkshops.app>`); Google sign-in
+(add `https://<project>.supabase.co/auth/v1/callback` to the Google OAuth client).
 
 ## Cloudflare project (Workers, static assets)
 
@@ -18,7 +37,8 @@ link to their car's page (`/?c=<token>`) and approve or decline repairs there wi
 - Root directory / path: `talkshops`
 - Build command: `node scripts/build.mjs`
 - Deploy command: `npx wrangler deploy` (uses `wrangler.jsonc`, serves `public/`)
-- Build variable: `SUPABASE_ANON_KEY` (same value as Hood League's `REACT_APP_SUPABASE_ANON_KEY`)
+- Build variables: `SUPABASE_URL` (`https://<talkshops project>.supabase.co`) and `SUPABASE_ANON_KEY` (that project's anon key).
+  Without `SUPABASE_URL` the build falls back to the old shared project.
 - Custom domain: `talkshops.app`
 
 Supabase: add `https://talkshops.app/**` to Authentication → URL Configuration → Redirect URLs.
@@ -31,7 +51,7 @@ New shops start a free trial; shops created before plans existed have no limits 
   Changes apply to shops that sign up afterwards.
 - Plans and prices: `supabase/functions/_shared/shopPlans.ts` (`PLANS`). Checkout builds the price on the fly, so no
   Stripe products need to be created. Promo codes made in Stripe work on the payment page.
-- Function secrets: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, optional `TALKSHOPS_SITE_URL` (default https://talkshops.app).
+- Function secrets: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (GitHub secrets `TALKSHOPS_STRIPE_*`, see above).
 - Stripe webhook endpoint: `https://<project>.supabase.co/functions/v1/api/shop/stripe-webhook`, events
   `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`.
 - Turn on the customer portal once in Stripe (Settings → Billing → Customer portal) so Manage billing works.

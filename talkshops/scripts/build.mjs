@@ -1,7 +1,7 @@
 // Cloudflare Pages build for talkshops.app: writes public/config.js with the public Supabase settings.
-// Talk Shops shares the Supabase project (database, sign-in, texting API) with Hood League.
-// Set SUPABASE_ANON_KEY in the Pages project's environment variables (same value as Hood League's
-// REACT_APP_SUPABASE_ANON_KEY). It is a public key; the API checks sign-in tokens itself.
+// Talk Shops has its own Supabase project (database, sign-in, texting API). Set SUPABASE_URL and SUPABASE_ANON_KEY
+// in the Cloudflare project's build variables to that project's values. The anon key is public; the API checks
+// sign-in tokens itself. Without SUPABASE_URL this falls back to the old shared hood-league project.
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

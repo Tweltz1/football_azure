@@ -1,0 +1,9 @@
+# Supabase CLI settings for Talk Shops' own Supabase project (separate from the hobby apps' "hood-league" project).
+# Deployed by .github/workflows/deploy-talkshops-supabase.yml with `--workdir talkshops`.
+# New Talk Shops database changes go in talkshops/supabase/migrations, not supabase/migrations.
+# functions/ is filled in at deploy time from supabase/functions (see the workflow), so the code has one home.
+project_id = "talkshops"
+
+[functions.api]
+# Twilio, Stripe and the hourly job call without a sign-in token; the function checks tokens itself.
+verify_jwt = false
