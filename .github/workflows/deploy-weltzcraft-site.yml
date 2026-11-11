@@ -9,6 +9,11 @@ on:
     branches: [main]
     paths: ['weltzcraft-site/**', '.github/workflows/deploy-weltzcraft-site.yml']
   workflow_dispatch:
+    inputs:
+      test_brief:
+        description: 'Send one test brief through the live form (arrives at sales@weltzcraft.com)'
+        type: boolean
+        default: false
 
 concurrency: { group: weltzcraft-site, cancel-in-progress: false }
 
@@ -42,6 +47,15 @@ jobs:
           fi
           echo "::error::The CLOUDFLARE_API_TOKEN can't use Cloudflare Pages. In Cloudflare > My Profile > API Tokens, edit the token and add the permission Account > Cloudflare Pages > Edit, then re-run this workflow."
           exit 1
+
+      - name: Give the brief form its email key
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # A Resend sending key just for this site (limit it to weltzcraft.com).
+          RESEND_KEY: ${{ secrets.WELTZCRAFT_RESEND_API_KEY }}
+        run: |
+          if [ -z "$RESEND_KEY" ]; then echo "::warning::No WELTZCRAFT_RESEND_API_KEY secret yet; the brief form will fall back to opening an email."; exit 0; fi
+          printf '%s' "$RESEND_KEY" | CLOUDFLARE_ACCOUNT_ID=$ACCOUNT npx --yes wrangler@3 pages secret put RESEND_API_KEY --project-name "$PROJECT"
 
       - name: Upload the site
         env:
@@ -80,3 +94,18 @@ jobs:
             code=$(curl -s -o /dev/null -w '%{http_code}' "$u" || true); echo "$u -> $code"
           done
           echo "A new custom domain can take a few minutes to get its certificate; re-run this step later if weltzcraft.com isn't 200 yet."
+
+      - name: Check the brief form
+        env:
+          TEST_BRIEF: ${{ github.event.inputs.test_brief }}
+        run: |
+          u="https://$PROJECT.pages.dev/api/brief"
+          # A filled "website" box marks a bot: the form must answer OK without sending anything.
+          code=$(curl -s -o out.json -w '%{http_code}' -H 'Content-Type: application/json' -d '{"name":"Check","email":"check@example.com","idea":"check","website":"x","elapsed":9}' "$u" || true)
+          echo "bot check -> $code $(cat out.json)"
+          [ "$code" = "200" ] || { echo "::error::The brief form endpoint is not answering"; exit 1; }
+          if [ "$TEST_BRIEF" = "true" ]; then
+            code=$(curl -s -o out.json -w '%{http_code}' -H 'Content-Type: application/json' -d '{"name":"Deploy test","email":"sales@weltzcraft.com","org":"Test: brief form check","idea":"This is a test of the weltzcraft.com project brief form. No reply needed.","elapsed":9}' "$u" || true)
+            echo "test brief -> $code $(cat out.json)"
+            [ "$code" = "200" ] || { echo "::error::The brief form could not send email"; exit 1; }
+          fi

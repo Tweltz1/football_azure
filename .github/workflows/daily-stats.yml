@@ -53,3 +53,28 @@ jobs:
             --argjson shopstride_rows "$(n "select coalesce(sum(n_live_tup), 0) from pg_stat_user_tables where schemaname = 'public' and relname like 'grocery\_%'")" \
             '$ARGS.named')
           echo "DAILY_STATS_JSON $out"
+
+      - name: Website visits
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          # Yesterday's (UTC) requests, page views and unique visitors for each site the token can see.
+          # Cloudflare counts these at its edge, so the pages need no tracking script or cookies.
+          [ -n "$CF_TOKEN" ] || { echo 'SITE_VISITS_JSON {}'; exit 0; }
+          cf() { curl --silent --show-error --max-time 30 -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" "$@"; }
+          day=$(date -u -d yesterday +%F)
+          out='{}'
+          for site in weltzcraft.com hood-league.com talkshops.app; do
+            zone=$(cf "https://api.cloudflare.com/client/v4/zones?name=$site" | jq -r '.result[0].id // empty' 2>/dev/null || true)
+            row=null
+            if [ -n "$zone" ]; then
+              q='query($z:String!,$d:Date!){viewer{zones(filter:{zoneTag:$z}){httpRequests1dGroups(limit:1,filter:{date:$d}){sum{requests pageViews} uniq{uniques}}}}}'
+              r=$(cf https://api.cloudflare.com/client/v4/graphql -d "$(jq -n --arg q "$q" --arg z "$zone" --arg d "$day" '{query:$q, variables:{z:$z, d:$d}}')" || true)
+              row=$(echo "$r" | jq -c '.data.viewer.zones[0].httpRequests1dGroups as $g | if $g == null then null elif ($g | length) == 0 then {requests:0, page_views:0, visitors:0} else {requests:$g[0].sum.requests, page_views:$g[0].sum.pageViews, visitors:$g[0].uniq.uniques} end' 2>/dev/null || echo null)
+              [ "$row" = "null" ] && echo "$site: $(echo "$r" | jq -c '[.errors[]?.message]' 2>/dev/null)"
+            else
+              echo "$site: the token can't see this site"
+            fi
+            out=$(echo "$out" | jq -c --arg s "$site" --argjson v "${row:-null}" '. + {($s): $v}')
+          done
+          echo "SITE_VISITS_JSON $(echo "$out" | jq -c --arg d "$day" '{date:$d} + .')"
