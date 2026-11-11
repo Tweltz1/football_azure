@@ -241,5 +241,50 @@
   "license": "CC BY 2.0",
   "source": "wikimedia commons",
   "page": "https://commons.wikimedia.org/wiki/File:Woman_jogging_in_the_park_during_daytime_with_trees_in_the_background.jpg"
+ },
+ "coffee-0": {
+  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f3/Food_display_case_at_the_counter_of_French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg/1920px-Food_display_case_at_the_counter_of_French_Coffee_Shop%2C_Dieppe_2026-05-11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+  "query": "coffee shop counter cafe interior",
+  "title": "Food display case at the counter of French Coffee Shop, Dieppe 2026-05-11.jpg",
+  "creator": "Andy Li",
+  "license": "CC0",
+  "source": "wikimedia commons",
+  "page": "https://commons.wikimedia.org/wiki/File:Food_display_case_at_the_counter_of_French_Coffee_Shop,_Dieppe_2026-05-11.jpg"
+ },
+ "barber-0": {
+  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/89/DFC_2472_A_cozy_well-worn_neighborhood_barbershop_open_late_with_a_barber_at_work_among_mismatched_chairs_mirrors_and_hanging_portraits.jpg/1920px-DFC_2472_A_cozy_well-worn_neighborhood_barbershop_open_late_with_a_barber_at_work_among_mismatched_chairs_mirrors_and_hanging_portraits.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+  "query": "barbershop interior chairs mirrors",
+  "title": "DFC 2472 A cozy well-worn neighborhood barbershop open late with a barber at work among mismatched chairs mirrors and hanging portraits.jpg",
+  "creator": "PattayaPatrol",
+  "license": "CC BY-SA 4.0",
+  "source": "wikimedia commons",
+  "page": "https://commons.wikimedia.org/wiki/File:DFC_2472_A_cozy_well-worn_neighborhood_barbershop_open_late_with_a_barber_at_work_among_mismatched_chairs_mirrors_and_hanging_portraits.jpg"
+ },
+ "auto-0": {
+  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/42/Car_mechanic_worker_repairing_suspension_of_lifted_automobile_at_auto_repair_garage_shop.jpg/1920px-Car_mechanic_worker_repairing_suspension_of_lifted_automobile_at_auto_repair_garage_shop.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+  "query": "auto mechanic garage car lift",
+  "title": "Car mechanic worker repairing suspension of lifted automobile at auto repair garage shop.jpg",
+  "creator": "Shixart1985",
+  "license": "CC BY 2.0",
+  "source": "wikimedia commons",
+  "page": "https://commons.wikimedia.org/wiki/File:Car_mechanic_worker_repairing_suspension_of_lifted_automobile_at_auto_repair_garage_shop.jpg"
+ },
+ "lawn-0": {
+  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d8/Hellmans_Cross%2C_Great_Canfield%2C_Essex%2C_England_-_%27Deal_Tree_Cottage%27_and_lilac_on_Green_St_01.JPG/1920px-Hellmans_Cross%2C_Great_Canfield%2C_Essex%2C_England_-_%27Deal_Tree_Cottage%27_and_lilac_on_Green_St_01.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+  "query": "green lawn front yard house",
+  "title": "Hellmans Cross, Great Canfield, Essex, England - 'Deal Tree Cottage' and lilac on Green St 01.JPG",
+  "creator": "Acabashi",
+  "license": "CC BY-SA 4.0",
+  "source": "wikimedia commons",
+  "page": "https://commons.wikimedia.org/wiki/File:Hellmans_Cross,_Great_Canfield,_Essex,_England_-_%27Deal_Tree_Cottage%27_and_lilac_on_Green_St_01.JPG"
+ },
+ "running-0": {
+  "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/23/Sprinting_in_Vienna_%28Unsplash%29.jpg/1920px-Sprinting_in_Vienna_%28Unsplash%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+  "query": "runner tying running shoes",
+  "title": "Sprinting in Vienna (Unsplash).jpg",
+  "creator": "Alexander Redl alexanderredl",
+  "license": "CC0",
+  "source": "wikimedia commons",
+  "page": "https://commons.wikimedia.org/wiki/File:Sprinting_in_Vienna_(Unsplash).jpg"
  }
 }
