@@ -149,10 +149,10 @@ jobs:
             sips -s format jpeg -s formatOptions 92 "$RUNNER_TEMP/shots/sized.png" --out "$RUNNER_TEMP/shots/$1.jpg" >/dev/null
           }
           shoot 1-home home 8
-          shoot 2-game game 14
-          shoot 3-game-later game 40
-          shoot 4-looks looks 6
-          shoot 5-rewards rewards 6
+          shoot 2-role role 8
+          shoot 3-game game 12
+          shoot 4-game-later game 45
+          shoot 5-looks looks 6
           shoot 6-rules rules 6
           rm -f "$RUNNER_TEMP/shots/raw.png" "$RUNNER_TEMP/shots/sized.png"
           cd "$RUNNER_TEMP/shots"

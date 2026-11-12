@@ -13,7 +13,7 @@ struct HoodProtocolApp: App {
 
 struct RootView: View {
     @State private var table: Table?
-    /// App Store screenshots only: CI launches the simulator with `-shot game|looks|rewards|rules`.
+    /// App Store screenshots only: CI launches the simulator with `-shot role|game|looks|rewards|rules`.
     private let shot = UserDefaults.standard.string(forKey: "shot")
     @AppStorage("look") private var look = Look.starter().code
 
@@ -36,8 +36,10 @@ struct RootView: View {
         }
         .tint(Theme.accent)
         .onAppear {
-            if shot == "game", table == nil {
-                table = HostTable(name: "You", look: look, mode: .solo, seats: 7)
+            if shot == "game" || shot == "role", table == nil {
+                let made = HostTable(name: "You", look: look, mode: .solo, seats: 7)
+                if shot == "game" { made.hasSeenRole = true }
+                table = made
             }
         }
         .onOpenURL { url in
