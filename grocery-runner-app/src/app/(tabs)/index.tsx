@@ -9,12 +9,15 @@ import { Button, ScreenHeader, StudioCredit, tap } from '../../components/ui';
 import { dealFor, useDeals } from '../../lib/deals';
 import { locationLabel } from '../../lib/labels';
 import { groupList } from '../../lib/listGroups';
+import { useFamily } from '../../lib/family';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 
 export default function ListScreen() {
   const t = useTheme();
   const { items, store, addItem, toggleItem, removeItem, clearChecked, clearAll, lastRemoved, undoRemove } = useData();
+  const family = useFamily();
+  const others = family.info?.members.filter((m) => !m.me).map((m) => m.name) ?? [];
   const [draft, setDraft] = useState('');
   const left = items.filter((i) => !i.checked).length;
   const deals = useDeals(store, items.filter((i) => !i.checked).map((i) => i.name));
@@ -64,6 +67,18 @@ export default function ListScreen() {
           </Text>
         </View>
         <Text style={{ color: t.primary, fontWeight: '600' }}>{store ? 'Change' : 'Choose'}</Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/family')}
+        style={[styles.family, { borderColor: t.border }]}
+      >
+        <Ionicons name={family.info ? 'people' : 'people-outline'} size={16} color={t.primary} />
+        <Text style={{ color: family.info ? t.text : t.primary, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+          {family.info ? (others.length ? `Shared with ${others.join(', ')}` : 'Family list: waiting for others to join') : 'Share this list with your family'}
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color={t.textMuted} />
       </Pressable>
 
       <View style={[styles.addRow, { backgroundColor: t.card, borderColor: draft ? t.primary : t.border }]}>
@@ -192,6 +207,7 @@ export default function ListScreen() {
 
 const styles = StyleSheet.create({
   store: { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 16, marginTop: 10, marginBottom: 10, padding: 12, borderRadius: radius.md },
+  family: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth },
   storeIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   storeName: { fontSize: 16, fontWeight: '700' },
   addRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, borderRadius: radius.md, borderWidth: 1.5 },

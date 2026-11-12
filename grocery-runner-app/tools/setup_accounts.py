@@ -4,6 +4,8 @@
 - grocery_community_recipes: recipes people share, readable by everyone; only the author can change or
   remove theirs. A small word filter rejects offensive titles and items, and a recipe is hidden once
   3 different people report it (grocery_recipe_reports).
+- Family list: people who join with a code share one grocery list (grocery_family_lists, _members, _items;
+  each item is one row, the newer change wins). Only members can read or change a list's items.
 - grocery_delete_account(): in-app account deletion (App Store guideline 5.1.1(v)).
 - Sign-in: groceryrunner://auth as a return address (Google), the bundle ID as an Apple client ID, and
   a 6-digit code in the sign-in emails so email sign-in works inside the app.
@@ -157,6 +159,9 @@ begin
   delete from public.grocery_saved_recipes where user_id = uid;
   delete from public.grocery_recipe_reports where user_id = uid;
   delete from public.grocery_community_recipes where user_id = uid;
+  if to_regprocedure('public.grocery_family_leave()') is not null then
+    perform public.grocery_family_leave();
+  end if;
   for r in
     select c.conrelid::regclass as tbl, a.attname as col
     from pg_constraint c
@@ -198,6 +203,133 @@ def call(method, path, payload=None):
 
 call("POST", "/database/query", {"query": SQL})
 print("Shop Stride account tables, community recipes and grocery_delete_account: ready")
+
+FAMILY_SQL = """
+create table if not exists public.grocery_family_lists (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  created_at timestamptz not null default now()
+);
+create table if not exists public.grocery_family_members (
+  user_id uuid primary key default auth.uid() references auth.users (id) on delete cascade,
+  list_id uuid not null references public.grocery_family_lists (id) on delete cascade,
+  joined_at timestamptz not null default now()
+);
+create index if not exists grocery_family_members_list on public.grocery_family_members (list_id);
+create table if not exists public.grocery_family_items (
+  list_id uuid not null references public.grocery_family_lists (id) on delete cascade,
+  id text not null check (char_length(id) <= 40),
+  data jsonb,
+  deleted boolean not null default false,
+  updated_at bigint not null,
+  primary key (list_id, id)
+);
+alter table public.grocery_family_lists enable row level security;
+alter table public.grocery_family_members enable row level security;
+alter table public.grocery_family_items enable row level security;
+revoke all on public.grocery_family_lists from anon, authenticated;
+revoke all on public.grocery_family_members from anon, authenticated;
+
+create or replace function public.grocery_family_member(list uuid) returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.grocery_family_members m where m.user_id = auth.uid() and m.list_id = list);
+$$;
+revoke all on function public.grocery_family_member(uuid) from public, anon;
+grant execute on function public.grocery_family_member(uuid) to authenticated;
+
+drop policy if exists "grocery family items" on public.grocery_family_items;
+create policy "grocery family items" on public.grocery_family_items
+  for all to authenticated
+  using ((select public.grocery_family_member(list_id)))
+  with check ((select public.grocery_family_member(list_id)));
+grant select, insert, update, delete on public.grocery_family_items to authenticated;
+
+-- The caller's family list, or null: its id, join code and who's in it (the name each picked, else the email name).
+create or replace function public.grocery_family_info() returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  l public.grocery_family_lists;
+begin
+  if uid is null then raise exception 'Not signed in'; end if;
+  select f.* into l from public.grocery_family_lists f join public.grocery_family_members m on m.list_id = f.id where m.user_id = uid;
+  if l.id is null then return null; end if;
+  return jsonb_build_object('id', l.id, 'code', l.code, 'members', (
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'name', coalesce(nullif(u.raw_user_meta_data->>'shopstride_name', ''), nullif(u.raw_user_meta_data->>'full_name', ''), split_part(u.email, '@', 1), 'Shopper'),
+      'me', u.id = uid) order by m.joined_at), '[]'::jsonb)
+    from public.grocery_family_members m join auth.users u on u.id = m.user_id where m.list_id = l.id));
+end;
+$$;
+
+create or replace function public.grocery_family_create() returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  c text;
+  lid uuid;
+begin
+  if uid is null then raise exception 'Not signed in'; end if;
+  if exists (select 1 from public.grocery_family_members where user_id = uid) then return public.grocery_family_info(); end if;
+  loop
+    -- No 0/O or 1/I, so a code read aloud is typed right.
+    select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 1 + floor(random() * 32)::int, 1), '') into c from generate_series(1, 6);
+    exit when not exists (select 1 from public.grocery_family_lists where code = c);
+  end loop;
+  insert into public.grocery_family_lists (code) values (c) returning id into lid;
+  insert into public.grocery_family_members (user_id, list_id) values (uid, lid);
+  return public.grocery_family_info();
+end;
+$$;
+
+create or replace function public.grocery_family_join(invite text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  lid uuid;
+  old uuid;
+begin
+  if uid is null then raise exception 'Not signed in'; end if;
+  select id into lid from public.grocery_family_lists where code = upper(trim(invite));
+  if lid is null then raise exception 'That code isn''t right. Check it with whoever shared it.'; end if;
+  if (select count(*) from public.grocery_family_members where list_id = lid and user_id <> uid) >= 8 then
+    raise exception 'That family list is full (8 people).';
+  end if;
+  select list_id into old from public.grocery_family_members where user_id = uid;
+  insert into public.grocery_family_members (user_id, list_id) values (uid, lid)
+    on conflict (user_id) do update set list_id = excluded.list_id, joined_at = now();
+  if old is not null and old <> lid and not exists (select 1 from public.grocery_family_members where list_id = old) then
+    delete from public.grocery_family_lists where id = old;
+  end if;
+  return public.grocery_family_info();
+end;
+$$;
+
+create or replace function public.grocery_family_leave() returns void
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  lid uuid;
+begin
+  if uid is null then raise exception 'Not signed in'; end if;
+  delete from public.grocery_family_members where user_id = uid returning list_id into lid;
+  if lid is not null and not exists (select 1 from public.grocery_family_members where list_id = lid) then
+    delete from public.grocery_family_lists where id = lid;
+  end if;
+end;
+$$;
+
+revoke all on function public.grocery_family_info() from public, anon;
+revoke all on function public.grocery_family_create() from public, anon;
+revoke all on function public.grocery_family_join(text) from public, anon;
+revoke all on function public.grocery_family_leave() from public, anon;
+grant execute on function public.grocery_family_info() to authenticated;
+grant execute on function public.grocery_family_create() to authenticated;
+grant execute on function public.grocery_family_join(text) to authenticated;
+grant execute on function public.grocery_family_leave() to authenticated;
+"""
+call("POST", "/database/query", {"query": FAMILY_SQL})
+print("Shop Stride family list: ready")
 
 auth = call("GET", "/config/auth")
 patch = {}
