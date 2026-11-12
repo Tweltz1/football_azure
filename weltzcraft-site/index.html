@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/styles.css?v=345">
+<link rel="stylesheet" href="/styles.css?v=347">
 <link rel="prefetch" href="/merch">
 <link rel="prefetch" href="/merch-catalog.json" as="fetch" crossorigin="anonymous">
 <script>try{var t=localStorage.getItem("wc-theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
@@ -39,6 +39,7 @@
       <a href="#apps">Apps</a>
       <a href="#demo">Try it</a>
       <a href="#build">Build with us</a>
+      <a href="/build" class="nav-new">Free sample site <em class="new-pill">New</em></a>
       <a href="#pricing">Pricing</a>
       <a href="/merch">Merch</a>
       <a href="#support">Support</a>
@@ -63,7 +64,7 @@
       <p class="lede">Weltzcraft Studios designs, builds and ships websites, iPhone apps and web apps: a live fantasy football draft room, a game night hub, a customer-update tool for repair shops, and more. Bring us your idea and we'll take it from a sketch to launch.</p>
       <div class="cta-row">
         <a class="btn btn-glow" href="#contact">Start a project <span aria-hidden="true">→</span></a>
-        <a class="btn btn-ghost" href="#apps">See our apps</a>
+        <a class="btn btn-ghost" href="/build">Build a free sample site <span aria-hidden="true">✨</span></a>
       </div>
       <ul class="facts" aria-label="Studio at a glance">
         <li><strong>8</strong><span>apps built</span></li>
@@ -180,12 +181,11 @@
     <div class="demo-copy" data-reveal>
       <p class="eyebrow">Try it</p>
       <h2>Don't take our word for it. Tap around.</h2>
-      <p class="sub">Tiny working slices of our real apps, plus a sample website you can make your own, running right here in the page.</p>
+      <p class="sub">Three tiny working slices of our real apps, running right here in the page. This is the kind of detail your app gets too.</p>
       <div class="demo-tabs" role="tablist" aria-label="Pick a demo">
         <button role="tab" aria-selected="true" aria-controls="d-draft" id="t-draft" data-demo="draft"><img src="/img/hoodleague.webp" alt="" width="36" height="36"><span><b>Live draft</b><small>Outbid the bots in Hood League</small></span></button>
         <button role="tab" aria-selected="false" aria-controls="d-totes" id="t-totes" data-demo="totes" tabindex="-1"><img src="/img/totetrack.webp" alt="" width="36" height="36"><span><b>Find anything</b><small>Search every bin in ToteTrack</small></span></button>
         <button role="tab" aria-selected="false" aria-controls="d-route" id="t-route" data-demo="route" tabindex="-1"><img src="/img/shopstride.webp" alt="" width="36" height="36"><span><b>Shortest walk</b><small>Plan a store route in Shop Stride</small></span></button>
-        <button role="tab" aria-selected="false" aria-controls="d-site" id="t-site" data-demo="site" tabindex="-1"><i class="wb-ico" aria-hidden="true">🌐</i><span><b>Your website</b><small>Answer 8 questions, watch it build</small></span></button>
       </div>
 
     </div>
@@ -220,9 +220,6 @@
           <button class="dr-btn rt-btn" id="rt-btn" type="button">Plan my route</button>
         </div>
 
-        <div class="screen s-site" id="d-site" role="tabpanel" aria-labelledby="t-site" hidden>
-          <div class="ws" id="ws" aria-live="polite"></div>
-        </div>
 
       </div>
     </div>
@@ -279,6 +276,23 @@
   </div>
 </section>
 
+<section id="sample" class="section sample-band band-dark">
+  <div class="wrap sample-in" data-reveal>
+    <div>
+      <p class="eyebrow">Free sample site <em class="new-pill">New</em></p>
+      <h2>See your website before you pay a thing.</h2>
+      <p class="sub">Answer 8 quick questions about your business. Then watch us build a real-looking site for it, with photos, prices, reviews and a map, in about a minute.</p>
+      <a class="btn btn-glow" href="/build">Build my sample site <span aria-hidden="true">→</span></a>
+      <p class="sample-note">Free. No sign-up. Coffee shops, barbers, auto shops, bakeries, gyms, boutiques and more.</p>
+    </div>
+    <a class="sample-peek" href="/build" aria-label="Build a free sample site">
+      <span class="sp-bar"><i></i><i></i><i></i><b>yourbusiness.com</b></span>
+      <span class="sp-hero"><span class="sp-w">W</span><strong>Welcome to the power of the W</strong></span>
+      <span class="sp-rows"><i></i><i></i><i></i></span>
+    </a>
+  </div>
+</section>
+
 <section id="pricing" class="section pricing">
   <div class="wrap">
     <div class="section-head" data-reveal>
@@ -297,6 +311,7 @@
           <li>Contact form</li>
           <li>Domain and hosting set up</li>
         </ul>
+        <a class="tier-try" href="/build">See a free sample →</a>
       </article>
       <article class="plan tier">
         <p class="plan-tag">Website</p>
@@ -494,7 +509,7 @@
   </div>
 </footer>
 
-<script src="/site.js?v=345" defer></script>
-<script src="/demos.js?v=345" defer></script>
+<script src="/site.js?v=347" defer></script>
+<script src="/demos.js?v=347" defer></script>
 </body>
 </html>

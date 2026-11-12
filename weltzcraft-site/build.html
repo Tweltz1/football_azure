@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Build a free sample website · Weltzcraft Studios</title>
+<meta name="description" content="Answer 8 quick questions and watch Weltzcraft Studios build a sample website for your business. Free, no sign-up.">
+<link rel="canonical" href="https://weltzcraft.com/build">
+<meta property="og:title" content="Build a free sample website in 60 seconds">
+<meta property="og:description" content="Answer 8 quick questions and watch Weltzcraft build a site for your business.">
+<meta property="og:image" content="https://weltzcraft.com/og.png">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="prefetch" href="/sample">
+<style>
+:root{--bg:#0f0d0a;--card:#1a1713;--line:rgba(255,240,215,.12);--ink:#f6efe2;--mut:#b4aa98;--em:#ff8a3c;--em2:#ffc061;--fd:"Bricolage Grotesque",system-ui,sans-serif;--fb:"Inter",system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,rgba(255,138,60,.18),transparent 60%),var(--bg);color:var(--ink);font:16px/1.55 var(--fb);-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;min-height:100vh}
+a{color:inherit}
+.top{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;max-width:980px;margin:0 auto;width:100%}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font:800 18px var(--fd)}
+.brand i{width:36px;height:36px;border-radius:10px;background:#1b1a17;border:1px solid rgba(242,163,58,.35);color:#f2a33a;display:grid;place-items:center;font:900 20px var(--fd);font-style:normal}
+.top a.home{color:var(--mut);text-decoration:none;font-size:14.5px}
+main{flex:1;display:grid;place-items:center;padding:12px 20px 40px}
+.card{width:min(620px,100%);background:var(--card);border:1px solid var(--line);border-radius:28px;padding:34px;box-shadow:0 40px 90px -40px rgba(0,0,0,.9),0 0 0 1px rgba(255,138,60,.06)}
+.step{animation:in .35s cubic-bezier(.2,.7,.2,1) both;display:flex;flex-direction:column;gap:18px}
+@keyframes in{from{opacity:0;transform:translateY(12px)}}
+.bar{height:6px;border-radius:9px;background:#2a2620;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--em),var(--em2));transition:width .35s}
+.n{color:var(--mut);font-size:13px;font-weight:600;letter-spacing:.05em}
+h1{font:800 clamp(30px,5.4vw,46px)/1.08 var(--fd);margin:0;letter-spacing:-.01em}
+h2{font:800 clamp(24px,4vw,32px)/1.15 var(--fd);margin:0}
+p.sub{color:var(--mut);margin:0;font-size:17px}
+.big-w{width:84px;height:84px;border-radius:24px;background:#1b1a17;border:1px solid rgba(242,163,58,.4);color:#f2a33a;display:grid;place-items:center;font:900 46px var(--fd);box-shadow:0 0 50px -8px rgba(242,163,58,.6)}
+.perks{display:flex;gap:18px;flex-wrap:wrap;color:var(--mut);font-size:14px;margin:0;padding:0;list-style:none}
+.perks li::before{content:"✓ ";color:var(--em)}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{font:600 15.5px/1.25 var(--fb);padding:16px 14px;border-radius:16px;border:1.5px solid var(--line);background:rgba(255,240,215,.03);color:var(--ink);cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;transition:border-color .15s,background .15s,transform .1s}
+.opt:hover{border-color:var(--em)}
+.opt:active{transform:scale(.98)}
+.opt.on{border-color:var(--em);background:rgba(255,138,60,.14)}
+.opt .e{font-size:22px}
+input.txt{font:500 18px var(--fb);padding:16px;border-radius:16px;border:1.5px solid var(--line);background:rgba(255,240,215,.04);color:var(--ink);width:100%}
+input.txt:focus{outline:none;border-color:var(--em)}
+input.txt::placeholder{color:#7d7464}
+.go{border:0;border-radius:16px;padding:17px 22px;font:800 17px/1 var(--fd);background:linear-gradient(135deg,var(--em),var(--em2));color:#221502;cursor:pointer;box-shadow:0 14px 32px -12px rgba(255,138,60,.9)}
+.go:active{transform:scale(.98)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.back{border:0;background:none;color:var(--mut);font:600 14.5px var(--fb);cursor:pointer;padding:6px 0}
+.colors{display:flex;gap:14px;flex-wrap:wrap}
+.sw{width:56px;height:56px;border-radius:50%;border:0;cursor:pointer;box-shadow:0 0 0 3px var(--card),0 0 0 4px var(--line)}
+.sw.on{box-shadow:0 0 0 3px var(--card),0 0 0 6px #fff}
+button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:3px}
+.foot{text-align:center;color:#7d7464;font-size:13px;padding:0 20px 26px}
+@media (max-width:520px){.card{padding:24px 20px;border-radius:24px}.opt{padding:14px 12px;font-size:14.5px}.sw{width:48px;height:48px}}
+</style>
+</head>
+<body>
+<header class="top"><a class="brand" href="/"><i>W</i>Weltzcraft</a><a class="home" href="/">← Back to weltzcraft.com</a></header>
+<main><div class="card" id="card" aria-live="polite"></div></main>
+<p class="foot">Free sample, no sign-up. The real site is built by a real person, from $500.</p>
+<script>
+(function () {
+  var TYPES = [['coffee', '☕', 'Coffee shop', 'Maple Street Coffee', 'Order ahead'], ['barber', '💈', 'Barber', 'Main Street Barbers', 'Book online'],
+    ['auto', '🔧', 'Auto repair', 'Riverside Auto', 'Get a quote'], ['lawn', '🌿', 'Landscaping', 'Greenline Lawn Care', 'Free estimate'],
+    ['bakery', '🥐', 'Bakery', 'Sunrise Bakery', 'Order ahead'], ['fitness', '🏋️', 'Fitness studio', 'Ironwood Fitness', 'Book a class'],
+    ['boutique', '👗', 'Boutique', 'Willow & Thread', 'Shop online'], ['running', '👟', 'Running store', 'Mile Marker Running', 'Book a fitting']];
+  var TAGS = { coffee: 'Fresh coffee, made by neighbors', barber: 'Sharp cuts, no long waits', auto: 'Honest repairs, explained in plain English', lawn: 'A yard you are proud of, every week',
+    bakery: 'Baked from scratch before sunrise', fitness: 'Small classes, real coaching', boutique: 'Hand-picked styles you won\'t see everywhere', running: 'Shoes fitted by runners, for runners' };
+  var COLORS = [['Ember', '#e0662a'], ['Forest', '#1f8a55'], ['Ocean', '#2563c9'], ['Plum', '#7a3fb8'], ['Rose', '#c2416b'], ['Charcoal', '#2b2925']];
+  var type = function () { return TYPES.filter(function (t) { return t[0] === a.type; })[0]; };
+  var Q = [
+    { k: 'type', q: 'What kind of business is it?', kind: 'pick', opts: function () { return TYPES.map(function (t) { return [t[0], t[1], t[2]]; }); } },
+    { k: 'name', q: 'What is it called?', kind: 'text', ph: function () { return type()[3]; } },
+    { k: 'town', q: 'Where are you located?', kind: 'text', ph: function () { return 'Springfield'; } },
+    { k: 'tag', q: 'What makes you different?', kind: 'text', ph: function () { return TAGS[a.type]; }, skip: true },
+    { k: 'cta', q: 'What should customers do first?', kind: 'pick', opts: function () { var d = type()[4]; return [[d, '⭐', d]].concat([['Book online', '📅', 'Book online'], ['Order ahead', '🛍️', 'Order ahead'], ['Get a quote', '💬', 'Get a quote'], ['Call us', '📞', 'Call us']].filter(function (o) { return o[0] !== d; })).slice(0, 4); } },
+    { k: 'h', q: 'When are you open?', kind: 'pick', opts: function () { return [['Mon to Fri', '🗓️', 'Weekdays'], ['Every day', '☀️', 'Every day'], ['Wed to Sun', '🌙', 'Wed to Sun'], ['By appointment', '📅', 'By appointment']]; } },
+    { k: 's', q: 'What should your site show?', kind: 'multi', opts: function () { return [['list', '🏷️', 'Prices'], ['pics', '📸', 'Photos'], ['review', '⭐', 'Reviews'], ['map', '📍', 'Map']]; } },
+    { k: 'c', q: 'Pick your color', kind: 'color' }
+  ];
+  var a = { type: 'coffee', name: '', town: '', tag: '', cta: '', h: 'Mon to Fri', s: ['list', 'pics', 'review', 'map'], c: COLORS[0][1] };
+  var step = -1, card = document.getElementById('card');
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function intro() {
+    card.innerHTML = '<div class="step"><div class="big-w">W</div><h1>See your website before you pay a thing.</h1><p class="sub">Answer 8 quick questions and watch Weltzcraft build a real-looking site for your business, with photos, prices, reviews and a map.</p>' +
+      '<ul class="perks"><li>About 60 seconds</li><li>Free</li><li>No sign-up</li></ul><button class="go" data-go>Let\'s build it →</button></div>';
+  }
+  function ask() {
+    var q = Q[step], h = '<div class="step"><div class="bar"><i style="width:' + Math.round(step / Q.length * 100) + '%"></i></div><span class="n">QUESTION ' + (step + 1) + ' OF ' + Q.length + '</span><h2>' + q.q + '</h2>';
+    if (q.kind === 'pick') h += '<div class="opts">' + q.opts().map(function (o) { return '<button class="opt' + (a[q.k] === o[0] ? ' on' : '') + '" data-v="' + esc(o[0]) + '"><span class="e">' + o[1] + '</span>' + esc(o[2]) + '</button>'; }).join('') + '</div>';
+    if (q.kind === 'multi') h += '<div class="opts">' + q.opts().map(function (o) { var on = a.s.indexOf(o[0]) > -1; return '<button class="opt' + (on ? ' on' : '') + '" data-m="' + o[0] + '" aria-pressed="' + on + '"><span class="e">' + o[1] + '</span>' + o[2] + '</button>'; }).join('') + '</div><button class="go" data-go>Next →</button>';
+    if (q.kind === 'text') h += '<input class="txt" maxlength="40" value="' + esc(a[q.k]) + '" placeholder="' + esc(q.ph()) + '" aria-label="' + esc(q.q) + '" enterkeyhint="next"><button class="go" data-go>' + (q.skip ? 'Next (or skip) →' : 'Next →') + '</button>';
+    if (q.kind === 'color') h += '<div class="colors">' + COLORS.map(function (c) { return '<button class="sw' + (a.c === c[1] ? ' on' : '') + '" data-c="' + c[1] + '" style="background:' + c[1] + '" aria-label="' + c[0] + '"></button>'; }).join('') + '</div><button class="go" data-go>Build my website ✨</button>';
+    h += '<div class="row"><button class="back" data-back>← Back</button><span></span></div></div>';
+    card.innerHTML = h;
+    var inp = card.querySelector('input');
+    if (inp) inp.focus({ preventScroll: true });
+  }
+  function save() { var inp = card.querySelector('input'); if (inp && step >= 0) a[Q[step].k] = inp.value.trim(); }
+  function next() {
+    save(); step++;
+    if (step < Q.length) return ask();
+    var q = { t: a.type, n: a.name, town: a.town, tag: a.tag, cta: a.cta || type()[4], h: a.h, s: a.s.join(','), c: a.c.slice(1) };
+    location.href = '/sample?' + Object.keys(q).filter(function (k) { return q[k]; }).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&');
+  }
+  card.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var q = Q[step];
+    if (b.dataset.v !== undefined) { a[q.k] = b.dataset.v; if (q.k === 'type') a.cta = ''; next(); }
+    else if (b.dataset.m) { var i = a.s.indexOf(b.dataset.m); if (i > -1) a.s.splice(i, 1); else a.s.push(b.dataset.m); b.classList.toggle('on'); b.setAttribute('aria-pressed', i < 0); }
+    else if (b.dataset.c) { a.c = b.dataset.c; [].forEach.call(card.querySelectorAll('.sw'), function (s) { s.classList.toggle('on', s === b); }); }
+    else if (b.hasAttribute('data-go')) next();
+    else if (b.hasAttribute('data-back')) { save(); step--; step < 0 ? intro() : ask(); }
+  });
+  card.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); next(); } });
+  intro();
+})();
+</script>
+</body>
+</html>
