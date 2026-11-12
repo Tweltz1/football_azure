@@ -11,10 +11,14 @@ Usage: python3 teacher.py --set set --crops crops [--cap 150]
 import argparse
 import json
 import os
+import re
 import shutil
 from collections import Counter, defaultdict
 
 from fixes import norm
+
+# Names too vague to teach a kind of thing ("Spare parts", "Old electronics", "Wall art").
+VAGUE = re.compile(r'\b(parts?|electronics|instruments|accessories|supplies|equipment|items?|stuff|misc|miscellaneous|decor|art|things?|junk|assorted)$', re.I)
 
 
 def main():
@@ -43,7 +47,7 @@ def main():
 
     groups = defaultdict(list)
     for r in sure:
-        if r['image'] in in_test or not os.path.exists(os.path.join(a.set, 'crops', f"{r['id']}.jpg")):
+        if VAGUE.search(r['name']) or r['image'] in in_test or not os.path.exists(os.path.join(a.set, 'crops', f"{r['id']}.jpg")):
             continue
         groups[norm(r['name'])].append(r)
 
