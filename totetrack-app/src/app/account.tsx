@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { HouseholdCard } from '../components/HouseholdCard';
 import { SignInButtons } from '../components/SignInButtons';
 import { Button, Card, IconButton, StudioCredit } from '../components/ui';
 import { useAuth } from '../lib/auth';
@@ -88,9 +89,9 @@ export default function Account() {
           <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <Ionicons name="star" size={22} color={t.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }}>{pro.isPro ? 'ToteTrack Pro' : 'Get ToteTrack Pro'}</Text>
+              <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }}>{pro.isPro || pro.householdPro ? 'ToteTrack Pro' : 'Get ToteTrack Pro'}</Text>
               <Text style={{ color: t.textMuted, fontSize: 14 }}>
-                {pro.isPro ? 'Unlimited totes and Snap to add. Tap to manage.' : `${Math.min(totes.length, FREE_TOTE_LIMIT)} of ${FREE_TOTE_LIMIT} free totes used. Pro adds unlimited totes and Snap to add.`}
+                {pro.isPro ? 'Unlimited totes, Snap to add and household sharing. Tap to manage.' : pro.householdPro ? 'Covered by your household’s Pro subscription.' : `${Math.min(totes.length, FREE_TOTE_LIMIT)} of ${FREE_TOTE_LIMIT} free totes used. Pro adds unlimited totes and Snap to add.`}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={t.textMuted} />
@@ -111,6 +112,7 @@ export default function Account() {
                 : `Your ${totes.length} totes and ${items} items are backed up. Sign in with the same account on a new phone and they come right back.`}
               {' '}Packing lists are backed up too.
             </Text>
+            <HouseholdCard />
             <Button title="Sync now" icon="sync" variant="secondary" onPress={sync.syncNow} style={{ marginTop: 16 }} />
             <Button title={signingOut ? 'Backing up…' : 'Sign out'} icon="log-out-outline" variant="secondary" onPress={signingOut ? () => {} : signOut} style={{ marginTop: 10 }} />
             <Pressable onPress={deleteAccount} style={{ alignSelf: 'center', marginTop: 28, padding: 8 }}>

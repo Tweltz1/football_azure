@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { StoreEntitlement, StoreProduct, ToteNative } from '../../modules/tote-native';
+import { useHousehold } from './household';
 import { useTotes } from './store';
 
 /**
@@ -33,6 +34,8 @@ type Cached = { productId: string; expires: number };
 type Pro = {
   /** Has an active ToteTrack Pro subscription. */
   isPro: boolean;
+  /** Not subscribed, but in a Pro member's household, so Pro limits don't apply. */
+  householdPro: boolean;
   /** Which plan, when Pro. */
   plan?: string;
   /** False until the first App Store check (cached status is used meanwhile). */
@@ -69,6 +72,7 @@ function activeOf(list: StoreEntitlement[]): Cached | null {
 
 export function ProProvider({ children }: { children: ReactNode }) {
   const { totes } = useTotes();
+  const household = useHousehold();
   const [active, setActive] = useState<Cached | null>(null);
   const [checked, setChecked] = useState(!ToteNative);
   const [products, setProducts] = useState<StoreProduct[]>([]);
@@ -120,16 +124,19 @@ export function ProProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Pro>(() => {
     const isPro = !!active;
+    // One Pro subscription covers the household: people who joined it get unlimited totes and Snap to add.
+    const covered = isPro || household.role === 'member';
     return {
       isPro,
+      householdPro: !isPro && covered,
       plan: isPro ? active?.productId : undefined,
       checked,
-      canAddTote: isPro || totes.length < FREE_TOTE_LIMIT,
-      freeLeft: isPro ? null : Math.max(0, FREE_TOTE_LIMIT - totes.length),
-      canSnap: isPro || snapsUsed < FREE_SNAPS,
-      freeSnapsLeft: isPro ? null : Math.max(0, FREE_SNAPS - snapsUsed),
+      canAddTote: covered || totes.length < FREE_TOTE_LIMIT,
+      freeLeft: covered ? null : Math.max(0, FREE_TOTE_LIMIT - totes.length),
+      canSnap: covered || snapsUsed < FREE_SNAPS,
+      freeSnapsLeft: covered ? null : Math.max(0, FREE_SNAPS - snapsUsed),
       usedSnap: () => {
-        if (isPro) return;
+        if (covered) return;
         setSnapsUsed((n) => {
           AsyncStorage.setItem(SNAPS_KEY, String(n + 1)).catch(() => {});
           return n + 1;
@@ -154,7 +161,7 @@ export function ProProvider({ children }: { children: ReactNode }) {
       canRedeem: !!ToteNative?.storeRedeemCode,
       refresh,
     };
-  }, [active, checked, totes.length, snapsUsed, products, refresh, apply]);
+  }, [active, checked, totes.length, snapsUsed, products, refresh, apply, household.role]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

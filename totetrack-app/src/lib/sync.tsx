@@ -5,6 +5,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useAuth } from './auth';
+import { useHousehold } from './household';
 import { notifyPhotosChanged, photoUri } from './photos';
 import { RemoteTote, useTotes } from './store';
 import { PHOTO_TABLE, supabase, TABLE, LIST_TABLE } from './supabase';
@@ -123,6 +124,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const store = useTotes();
   const uid = session?.user.id;
+  // A household member syncs the owner's cloud copy (see household.tsx).
+  const { space } = useHousehold();
   const [status, setStatus] = useState<SyncState['status']>('off');
   const [lastSynced, setLastSynced] = useState<number>();
   const [error, setError] = useState<string>();
@@ -140,7 +143,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization -- re-runs itself via setTimeout
   const run = useCallback(async (): Promise<boolean> => {
-    if (!uid || paused.current) return false;
+    if (!uid || !space || paused.current) return false;
     if (running.current) {
       again.current = true;
       return false;
@@ -149,10 +152,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     running.current = true;
     setStatus('syncing');
     try {
-      const pushed: Pushed = JSON.parse((await AsyncStorage.getItem(pushedKey(uid))) || '{}');
+      const pushed: Pushed = JSON.parse((await AsyncStorage.getItem(pushedKey(space))) || '{}');
 
       // 1. Pull everything the cloud has (without photos) and merge the newer side in.
-      const remote = new Map<string, Row>((await pullRows(uid)).map((r) => [r.id, r]));
+      const remote = new Map<string, Row>((await pullRows(space)).map((r) => [r.id, r]));
       const { totes, tombstones } = latest.current;
       const localAt = (id: string) => totes.find((t) => t.id === id)?.updatedAt ?? tombstones[id] ?? 0;
       const incoming: RemoteTote[] = [];
@@ -167,7 +170,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         if (!name) continue;
         const uri = photoUri(name);
         if (uri && new File(uri).exists) continue;
-        const { data: p } = await supabase.from(TABLE).select('photo').eq('user_id', uid).eq('id', r.id).single();
+        const { data: p } = await supabase.from(TABLE).select('photo').eq('user_id', space).eq('id', r.id).single();
         if (p?.photo) await savePhotoFromCloud(name, p.photo as string);
       }
       latest.current.mergeRemote(incoming);
@@ -177,14 +180,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       for (const t of totes) {
         const r = remote.get(t.id);
         if (r && Number(r.updated_at) >= t.updatedAt) continue;
-        const row: Record<string, unknown> = { user_id: uid, id: t.id, data: t, deleted: false, updated_at: t.updatedAt };
+        const row: Record<string, unknown> = { user_id: space, id: t.id, data: t, deleted: false, updated_at: t.updatedAt };
         if (t.photo !== pushed[t.id]?.photo || !r) row.photo = t.photo ? await photoBase64(t.photo) : null;
         upserts.push(row);
       }
       for (const [id, at] of Object.entries(tombstones)) {
         const r = remote.get(id);
         if (!r || (Number(r.updated_at) < at && !r.deleted)) {
-          upserts.push({ user_id: uid, id, data: null, photo: null, deleted: true, updated_at: at });
+          upserts.push({ user_id: space, id, data: null, photo: null, deleted: true, updated_at: at });
         }
       }
       // Rows with and without a photo column go separately so a missing photo field never clears one.
@@ -200,16 +203,16 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         const data = u.data as Tote | null;
         pushed[u.id as string] = { at: u.updated_at as number, photo: data?.photo };
       }
-      await AsyncStorage.setItem(pushedKey(uid), JSON.stringify(pushed));
+      await AsyncStorage.setItem(pushedKey(space), JSON.stringify(pushed));
 
       // 3. Inside photos, for the totes as they stand after this sync.
       const incomingIds = new Set(incoming.map((r) => r.id));
       const after = [...totes.filter((t) => !incomingIds.has(t.id)), ...incoming.flatMap((r) => (!r.deleted && r.data ? [r.data] : []))];
-      await syncInsidePhotos(uid, after).catch(() => {});
+      await syncInsidePhotos(space, after).catch(() => {});
 
       // 4. Packing lists: the whole set is one row per account, and the newer side wins.
       try {
-        const { data: lr, error: listError } = await supabase.from(LIST_TABLE).select('data,updated_at').eq('user_id', uid).maybeSingle();
+        const { data: lr, error: listError } = await supabase.from(LIST_TABLE).select('data,updated_at').eq('user_id', space).maybeSingle();
         if (listError) throw listError;
         const L = latestLists.current;
         const remoteAt = lr ? Number(lr.updated_at) : 0;
@@ -218,7 +221,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         } else if (L.updatedAt > remoteAt) {
           const { error: upError } = await supabase
             .from(LIST_TABLE)
-            .upsert({ user_id: uid, data: L.lists, updated_at: L.updatedAt }, { onConflict: 'user_id' });
+            .upsert({ user_id: space, data: L.lists, updated_at: L.updatedAt }, { onConflict: 'user_id' });
           if (upError) throw upError;
         }
       } catch {
@@ -239,15 +242,15 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       }
     }
     return ok;
-  }, [uid]);
+  }, [uid, space]);
 
   // Sync on sign-in, when the app comes back to the screen, and shortly after any change.
   useEffect(() => {
-    if (!uid || !store.ready || !lists.ready) return;
+    if (!uid || !space || !store.ready || !lists.ready) return;
     run();
     const sub = AppState.addEventListener('change', (s) => s === 'active' && run());
     return () => sub.remove();
-  }, [uid, store.ready, lists.ready, run]);
+  }, [uid, space, store.ready, lists.ready, run]);
 
   // After a failed sync (no signal, say), try again in a little while.
   useEffect(() => {
@@ -289,13 +292,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
           const { data, error: rpcError } = await supabase.rpc('totetrack_delete_account');
           if (rpcError) throw rpcError;
           await AsyncStorage.removeItem(pushedKey(uid));
+          if (space && space !== uid) await AsyncStorage.removeItem(pushedKey(space));
           return data === 'account' ? 'account' : 'data';
         } finally {
           paused.current = false;
         }
       },
     }),
-    [status, lastSynced, error, run, uid],
+    [status, lastSynced, error, run, uid, space],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
