@@ -1,4 +1,5 @@
 import AuthenticationServices
+import CryptoKit
 import Foundation
 import RogueEngine
 import Security
@@ -87,7 +88,7 @@ enum AccountError: LocalizedError {
     }
 }
 
-/// Sign-in (email and password, or Google) against Supabase Auth, spoken over plain HTTPS
+/// Sign-in (email and password, Apple, or Google) against Supabase Auth, spoken over plain HTTPS
 /// so the app needs no extra packages. Tokens live in the Keychain.
 @MainActor
 final class Account: NSObject, ObservableObject {
@@ -178,6 +179,31 @@ final class Account: NSObject, ObservableObject {
         try await handle(callback)
     }
 
+    /// A one-time nonce for Sign in with Apple: Apple gets its SHA-256 (`hashed`), Supabase the nonce itself.
+    static func appleNonce() -> (raw: String, hashed: String) {
+        let raw = (0..<32).map { _ in String(format: "%02x", UInt8.random(in: 0...255)) }.joined()
+        return (raw, SHA256.hash(data: Data(raw.utf8)).map { String(format: "%02x", $0) }.joined())
+    }
+
+    /// Finishes Sign in with Apple (App Store guideline 4.8: required next to Google) with what Apple's
+    /// sheet returned, exchanging Apple's identity token for a Supabase session.
+    func signInWithApple(_ credential: ASAuthorizationAppleIDCredential, rawNonce: String) async throws {
+        guard let data = credential.identityToken, let idToken = String(data: data, encoding: .utf8) else {
+            throw AccountError.server("Apple didn't send a sign-in token.")
+        }
+        let json = try await auth("token", query: ["grant_type": "id_token"],
+                                  body: ["provider": "apple", "id_token": idToken, "nonce": rawNonce])
+        try await adopt(json)
+        // Apple shares the name only the first time; keep it so the player gets a first name, not "Guest".
+        let name = [credential.fullName?.givenName, credential.fullName?.familyName].compactMap { $0 }.joined(separator: " ")
+        if !name.isEmpty, var current = session, current.fullName == nil {
+            current.fullName = name
+            session = current
+            Keychain.save(current, key: "session")
+            _ = try? await send(request("auth/v1/user", method: "PUT", body: ["data": ["full_name": name]], token: current.accessToken))
+        }
+    }
+
     /// The link in a confirmation or password email, or the Google sign-in coming back.
     func handle(_ url: URL) async throws {
         guard url.scheme == "com.tweltz1.hoodprotocol" else { return }
@@ -200,9 +226,13 @@ final class Account: NSObject, ObservableObject {
         Keychain.delete(key: "session")
     }
 
-    /// Deletes this player's Hood Protocol profile and stats, then signs out.
+    /// Deletes this player's Hood Protocol profile and stats, then the sign-in itself (App Store guideline
+    /// 5.1.1(v)), then signs out. The sign-in is shared with Hood League, Hood Games and Curbsy, so this uses
+    /// the same server route as their Delete account, which removes it everywhere.
     func deleteAccount() async throws {
+        let access = try await token()
         _ = try await rpc("hp_delete_profile", [:])
+        _ = try await send(request("functions/v1/api/junk/account", method: "DELETE", token: access))
         localStats = Stats()
         saveLocal()
         signOut()

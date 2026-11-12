@@ -157,6 +157,13 @@ jobs:
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
             archive | tail -n 65
+          # Sign in with Apple needs the capability on the App ID and the entitlement in the app. The archive
+          # above is unsigned, so sign the entitlement in here (a throwaway signature; the export re-signs it
+          # for the App Store and keeps the entitlement).
+          APP_PATH="$RUNNER_TEMP/HoodProtocol.xcarchive/Products/Applications/HoodProtocol.app"
+          BUNDLE=com.tweltz1.hoodprotocol node "$GITHUB_WORKSPACE/scripts/ios/enable-apple-signin.js" || { rm -f "$KEY_PATH"; exit 1; }
+          find "$APP_PATH/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -exec codesign --force --sign - {} \; 2>/dev/null || true
+          codesign --force --sign - --entitlements "$GITHUB_WORKSPACE/hood-protocol/App/HoodProtocol.entitlements" "$APP_PATH"
           cat > "$RUNNER_TEMP/HoodExport.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

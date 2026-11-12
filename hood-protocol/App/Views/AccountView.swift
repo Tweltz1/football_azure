@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 /// Sign in or register, then see your wins, what you've unlocked, and the leaderboard.
@@ -137,6 +138,8 @@ private struct SignInForm: View {
     @State private var email = ""
     @State private var password = ""
     @State private var busy = false
+    @State private var appleNonce = ""
+    @Environment(\.colorScheme) private var colorScheme
     @State private var message: String?
 
     private var account: Account { .shared }
@@ -180,6 +183,28 @@ private struct SignInForm: View {
         }
 
         Section {
+            SignInWithAppleButton(.continue) { request in
+                let nonce = Account.appleNonce()
+                appleNonce = nonce.raw
+                request.requestedScopes = [.fullName, .email]
+                request.nonce = nonce.hashed
+            } onCompletion: { result in
+                switch result {
+                case let .success(authorization):
+                    guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else { return }
+                    let raw = appleNonce
+                    run {
+                        try await account.signInWithApple(credential, rawNonce: raw)
+                        await account.syncProfile(name: name, look: look)
+                    }
+                case let .failure(error):
+                    if (error as? ASAuthorizationError)?.code != .canceled { message = error.localizedDescription }
+                }
+            }
+            .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+            .frame(height: 44)
+            .listRowInsets(EdgeInsets())
+            .disabled(busy)
             Button {
                 run {
                     try await account.signInWithGoogle()
@@ -236,14 +261,14 @@ private struct AccountActions: View {
         Section {
             Button("Sign out") { Account.shared.signOut() }
             Button("Delete account", role: .destructive) { confirmingDelete = true }
-                .confirmationDialog("Delete your Hood Protocol account?", isPresented: $confirmingDelete, titleVisibility: .visible) {
+                .confirmationDialog("Delete your account?", isPresented: $confirmingDelete, titleVisibility: .visible) {
                     Button("Delete account and stats", role: .destructive) {
                         Task {
                             do { try await Account.shared.deleteAccount() } catch { message = error.localizedDescription }
                         }
                     }
                 } message: {
-                    Text("Your profile, wins and unlocks are removed for good.")
+                    Text("Your sign-in, profile, wins and unlocks are removed for good. Hood League, Hood Games and Curbsy share this sign-in, so it's removed there too.")
                 }
         } footer: {
             if let message { Text(message) }
