@@ -25,6 +25,7 @@ import argparse
 import json
 import os
 import random
+import re
 from collections import defaultdict
 
 import coremltools as ct
@@ -44,6 +45,8 @@ TEMPLATES = [
     "{} on a table.",
 ]
 CROPS_PER_LABEL = 700
+# Gemini names too vague to teach an item ("Spare parts", "Old electronics", "Wall art").
+VAGUE = re.compile(r"\b(parts?|electronics|instruments|accessories|supplies|equipment|items?|stuff|misc|miscellaneous|decor|art|things?|junk|assorted)$", re.I)
 LOGIT_SCALE = 50.0
 
 
@@ -133,7 +136,7 @@ def load_teacher(set_dir, size, items, min_new=20):
     groups, names = defaultdict(list), defaultdict(list)
     for r in rows:
         path = os.path.join(set_dir, "crops", f"{r['id']}.jpg")
-        if os.path.exists(path):
+        if os.path.exists(path) and not VAGUE.search(r["name"].strip()):
             groups[key(r["name"])].append(path)
             names[key(r["name"])].append(r["name"].strip())
     used = 0
