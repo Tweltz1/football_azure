@@ -59,7 +59,12 @@ type Ctx = Data & {
   clearAll: () => void;
   setStore: (store: Store) => void;
   setColdLast: (on: boolean) => void;
+  /** Family list sync: items another phone added or changed (name, amount, checked) and ones it removed. */
+  applyFamily: (changed: SharedItem[], removedIds: string[]) => void;
 };
+
+/** The part of a list item that a family list shares. Aisles stay per phone (each person may shop elsewhere). */
+export type SharedItem = { id: string; name: string; amount?: string; checked: boolean };
 
 /** An item to add, with the amount a recipe calls for. */
 export type NewItem = { name: string; amount?: string };
@@ -294,6 +299,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [data.items, data.remembered, data.myDepartments, resolve],
   );
 
+  const applyFamily = useCallback(
+    (changed: SharedItem[], removedIds: string[]) => {
+      if (!changed.length && !removedIds.length) return;
+      const gone = new Set(removedIds);
+      const store = data.store;
+      // Items whose aisle this phone doesn't know yet (decided from the list as it is now).
+      const known = new Map(data.items.map((i) => [i.id, i]));
+      const lookup: ListItem[] = changed
+        .filter((c) => {
+          const cur = known.get(c.id);
+          return !(cur && itemKey(cur.name) === itemKey(c.name) && cur.location.kind !== 'unknown') && !(store && data.remembered[store.id]?.[itemKey(c.name)]);
+        })
+        .map((c) => ({ id: c.id, name: c.name, checked: c.checked, location: { kind: 'unknown' } }));
+      setData((d) => {
+        const byId = new Map(d.items.map((i) => [i.id, i]));
+        const items = d.items.filter((i) => !gone.has(i.id));
+        for (const c of changed) {
+          const cur = byId.get(c.id);
+          const sameThing = cur && itemKey(cur.name) === itemKey(c.name);
+          const location: ItemLocation = sameThing
+            ? cur.location
+            : (d.store && d.remembered[d.store.id]?.[itemKey(c.name)]) || { kind: 'unknown' };
+          const next: ListItem = { id: c.id, name: c.name, ...(c.amount ? { amount: c.amount } : {}), checked: c.checked, location };
+          const at = items.findIndex((i) => i.id === c.id);
+          if (at >= 0) items[at] = next;
+          else items.push(next);
+        }
+        return { ...d, items };
+      });
+      if (lookup.length) resolve(store, lookup, data.myDepartments);
+    },
+    [data.items, data.store, data.remembered, data.myDepartments, resolve],
+  );
+
   const value = useMemo<Ctx>(
     () => ({
       ...data,
@@ -305,6 +344,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       undoRemove,
       setLocation,
       setStore,
+      applyFamily,
       saveRecipe: (recipe) =>
         setData((d) => ({
           ...d,
@@ -327,7 +367,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       clearAll: () => removeWhere(() => true),
       setColdLast: (coldLast) => setData((d) => ({ ...d, coldLast })),
     }),
-    [data, ready, addItem, addItems, renameItem, lastRemoved, undoRemove, removeWhere, setLocation, setStore],
+    [data, ready, addItem, addItems, renameItem, lastRemoved, undoRemove, removeWhere, setLocation, setStore, applyFamily],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
