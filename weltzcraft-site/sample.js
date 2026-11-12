@@ -65,7 +65,7 @@
   var brief = '/?site=' + encodeURIComponent(type) + '&sn=' + encodeURIComponent(name) + '&st=' + encodeURIComponent(town) + '#contact';
   var navs = [['about', 'About']].concat(on('list') ? [['menu', t.list]] : []).concat(on('pics') ? [['gallery', 'Gallery']] : []).concat(on('review') ? [['reviews', 'Reviews']] : []).concat([['visit', 'Visit']]);
   document.getElementById('site').innerHTML =
-    '<div class="wz"><div class="wrap"><span>✨ Sample site built by <b>Weltzcraft Studios</b> in seconds. The real one starts at $500.</span><span><a class="back" href="/#demo">← Back</a> <a href="' + brief + '">Make it mine</a></span></div></div>' +
+    '<div class="wz"><div class="wrap"><span>✨ Sample site built by <b>Weltzcraft Studios</b> in seconds. The real one starts at $500.</span><span><a class="back" href="/build">↺ Try another</a> <a href="' + brief + '">Make it mine</a></span></div></div>' +
     '<header class="hd"><div class="wrap"><a class="logo" href="#top"><i>' + esc(initials) + '</i><span>' + esc(name) + '</span></a><nav>' +
       navs.map(function (n) { return '<a href="#' + n[0] + '">' + n[1] + '</a>'; }).join('') + '</nav><a class="btn" href="#visit">' + esc(cta) + '</a></div></header>' +
     '<section class="hero" id="top">' + img(0, name) + '<div class="wrap"><p class="eyebrow">' + t.icon + ' ' + esc(town) + '\'s favorite ' + t.noun + '</p><h1>' + esc(name) + '</h1><p class="lead">' + esc(tag) + '</p>' +

@@ -146,140 +146,14 @@
     render();
   })();
 
-  /* ---- website: answer questions in the phone, watch it build ---- */
-  var site = (function () {
-    var ws = $('ws');
-    if (!ws) return { reset: function () {} };
-    var TYPES = {
-      coffee: { label: 'Coffee shop', noun: 'coffee shop', icon: '☕', name: 'Maple Street Coffee', tag: 'Fresh coffee, made by neighbors.', list: 'Menu',
-        items: [['Drip coffee', '$3'], ['Oat milk latte', '$5'], ['Breakfast burrito', '$8']], pics: ['☕', '🥐', '🧁'], review: 'Best latte in town, and they remember your name.' },
-      barber: { label: 'Barber', noun: 'barbershop', icon: '💈', name: 'Main Street Barbers', tag: 'Sharp cuts, no long waits.', list: 'Services',
-        items: [['Haircut', '$25'], ['Beard trim', '$15'], ['Kids cut', '$18']], pics: ['💈', '✂️', '🪒'], review: 'Booked online in ten seconds. Cleanest fade I have had.' },
-      auto: { label: 'Auto repair', noun: 'auto repair shop', icon: '🔧', name: 'Riverside Auto', tag: 'Honest repairs, explained in plain English.', list: 'Services',
-        items: [['Oil change', '$49'], ['Brake check', 'Free'], ['Check engine light', '$89']], pics: ['🚗', '🔧', '🛞'], review: 'They texted me photos of the problem before fixing anything.' },
-      lawn: { label: 'Landscaping', noun: 'landscaping business', icon: '🌿', name: 'Greenline Lawn Care', tag: 'A yard you are proud of, every week.', list: 'Services',
-        items: [['Weekly mowing', 'from $35'], ['Spring cleanup', '$150'], ['Mulch and beds', 'Quote']], pics: ['🌿', '🌷', '🌳'], review: 'On time every week, and the yard has never looked better.' },
-      bakery: { label: 'Bakery', noun: 'bakery', icon: '🥐', name: 'Sunrise Bakery', tag: 'Baked from scratch before sunrise.', list: 'Menu',
-        items: [['Sourdough loaf', '$8'], ['Custom cakes', 'from $45'], ['Cookie dozen', '$18']], pics: ['🥐', '🎂', '🍪'], review: 'The birthday cake was gone in five minutes. Ordering again.' },
-      fitness: { label: 'Fitness studio', noun: 'fitness studio', icon: '🏋️', name: 'Ironwood Fitness', tag: 'Small classes, real coaching.', list: 'Classes',
-        items: [['Drop-in class', '$15'], ['Monthly unlimited', '$89'], ['Personal training', '$60']], pics: ['🏋️', '🧘', '🚴'], review: 'Coaches know everyone by name. Best gym I have joined.' },
-      boutique: { label: 'Boutique', noun: 'boutique', icon: '👗', name: 'Willow & Thread', tag: 'Hand-picked styles you won\'t see everywhere.', list: 'New arrivals',
-        items: [['Linen sundress', '$58'], ['Denim jacket', '$74'], ['Gold hoop earrings', '$22']], pics: ['👗', '👜', '👡'], review: 'Every time I wear something from here, someone asks where it is from.' },
-      running: { label: 'Running store', noun: 'running store', icon: '👟', name: 'Mile Marker Running', tag: 'Shoes fitted by runners, for runners.', list: 'Shop',
-        items: [['Free gait analysis', 'Free'], ['Daily trainers', 'from $130'], ['Thursday group run', 'Free']], pics: ['👟', '🏃', '🏅'], review: 'They watched me run and found the first shoe that did not hurt my knees.' }
-    };
-    var COLORS = [['Ember', '#e0662a'], ['Forest', '#1f8a55'], ['Ocean', '#2563c9'], ['Plum', '#7a3fb8'], ['Charcoal', '#2b2925']];
-    var Q = [
-      { k: 'type', q: 'What kind of business is it?', type: 'pick', opts: Object.keys(TYPES).map(function (k) { return [k, TYPES[k].icon + ' ' + TYPES[k].label]; }) },
-      { k: 'name', q: 'What is it called?', type: 'text', ph: function (a) { return TYPES[a.type].name; } },
-      { k: 'town', q: 'Where are you located?', type: 'text', ph: function () { return 'Springfield'; } },
-      { k: 'tag', q: 'What makes you different?', type: 'text', ph: function (a) { return TYPES[a.type].tag.replace(/\.$/, ''); }, skip: true },
-      { k: 'cta', q: 'What should customers do first?', type: 'pick', opts: [['Book online', '📅 Book online'], ['Order ahead', '🛍️ Order ahead'], ['Shop online', '🛒 Shop online'], ['Get a quote', '💬 Get a quote'], ['Call us', '📞 Call us']] },
-      { k: 'hours', q: 'When are you open?', type: 'pick', opts: [['Mon to Fri, 8am to 5pm', 'Weekdays'], ['Every day, 7am to 7pm', 'Every day'], ['Wed to Sun, 9am to 3pm', 'Wed to Sun'], ['By appointment', 'By appointment']] },
-      { k: 'show', q: 'What should your site show?', type: 'multi', opts: [['list', 'Prices'], ['pics', 'Photos'], ['review', 'Reviews'], ['map', 'Map']] },
-      { k: 'color', q: 'Pick your color', type: 'color' }
-    ];
-    var a, step;
-    var LINES = ['Building your website…', 'Coding the homepage…', 'Mixing your colors…', 'Adding your {list}…', 'Making it fast on phones…', 'Polishing every pixel…', 'Publishing to the web…'];
-    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-    var timers = [];
-    function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
-    function reset() {
-      timers.forEach(clearTimeout); timers = [];
-      a = { type: 'coffee', name: '', town: '', tag: '', cta: 'Book online', hours: 'Mon to Fri, 8am to 5pm', show: ['list', 'review', 'map'], color: COLORS[0][1] };
-      step = -1; intro();
-    }
-    function intro() {
-      ws.className = 'ws ws-q';
-      ws.innerHTML = '<div class="wq"><span class="wq-w">W</span><h4>Your website in 8 questions</h4><p>Answer a few quick questions and watch Weltzcraft build a site for your business.</p><button type="button" class="wq-go" data-go="1">Let\'s go</button></div>';
-    }
-    function ask() {
-      var q = Q[step], h = '<div class="wq"><div class="wq-bar"><i style="width:' + Math.round(step / Q.length * 100) + '%"></i></div><small class="wq-n">Question ' + (step + 1) + ' of ' + Q.length + '</small><h4>' + q.q + '</h4>';
-      if (q.type === 'pick') h += '<div class="wq-opts">' + q.opts.map(function (o) { return '<button type="button" class="wq-opt' + (a[q.k] === o[0] ? ' on' : '') + '" data-v="' + esc(o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
-      if (q.type === 'multi') h += '<div class="wq-opts">' + q.opts.map(function (o) { return '<button type="button" class="wq-opt' + (a.show.indexOf(o[0]) > -1 ? ' on' : '') + '" data-m="' + o[0] + '" aria-pressed="' + (a.show.indexOf(o[0]) > -1) + '">' + o[1] + '</button>'; }).join('') + '</div><button type="button" class="wq-go" data-go="1">Next</button>';
-      if (q.type === 'text') h += '<input class="wq-in" maxlength="40" value="' + esc(a[q.k]) + '" placeholder="' + esc(q.ph(a)) + '" aria-label="' + esc(q.q) + '"><button type="button" class="wq-go" data-go="1">' + (q.skip ? 'Next (or skip)' : 'Next') + '</button>';
-      if (q.type === 'color') h += '<div class="wq-colors">' + COLORS.map(function (c) { return '<button type="button" class="wq-c' + (a.color === c[1] ? ' on' : '') + '" data-c="' + c[1] + '" style="background:' + c[1] + '" aria-label="' + c[0] + '"></button>'; }).join('') + '</div><button type="button" class="wq-go wq-build" data-go="1">Build my website</button>';
-      if (step > 0) h += '<button type="button" class="wq-back" data-back="1">← Back</button>';
-      ws.innerHTML = h + '</div>';
-      var inp = ws.querySelector('.wq-in');
-      if (inp && window.matchMedia('(hover:hover)').matches) inp.focus({ preventScroll: true });
-    }
-    function next() {
-      var inp = ws.querySelector('.wq-in');
-      if (inp) a[Q[step].k] = inp.value.trim();
-      step++;
-      if (step < Q.length) ask(); else build();
-    }
-    function siteUrl(intro) {
-      var q = { t: a.type, n: a.name, town: a.town, tag: a.tag, cta: a.cta, h: a.hours, s: a.show.join(','), c: a.color.slice(1) };
-      return '/sample?' + Object.keys(q).filter(function (k) { return q[k]; }).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&') + (intro ? '' : '&intro=0');
-    }
-    function build() {
-      var t = TYPES[a.type];
-      try { window.open(siteUrl(true), '_blank'); } catch (e) {}
-      ws.className = 'ws ws-build';
-      ws.innerHTML = '<div class="wb-scene"><span class="wb-w">W</span><div class="wb-log" aria-live="polite"></div><div class="wb-prog"><i></i></div><p class="wb-power">Welcome to the power of the W</p></div>';
-      var log = ws.querySelector('.wb-log'), bar = ws.querySelector('.wb-prog i'), per = calm ? 120 : 520;
-      LINES.forEach(function (line, i) {
-        later(function () {
-          var p = document.createElement('p');
-          p.innerHTML = '<b>›</b> ' + esc(line.replace('{list}', t.list.toLowerCase()));
-          log.appendChild(p);
-          [].forEach.call(log.children, function (c, j) { c.className = j < log.children.length - 1 ? 'done' : ''; });
-          bar.style.width = Math.round((i + 1) / LINES.length * 100) + '%';
-        }, i * per);
-      });
-      later(function () { ws.classList.add('ws-power'); }, LINES.length * per + 150);
-      later(render, LINES.length * per + (calm ? 600 : 2300));
-    }
-    function render() {
-      var t = TYPES[a.type], name = a.name || t.name, town = a.town || 'Springfield', tag = a.tag || t.tag;
-      var initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(function (w) { return w[0]; }).join('').toUpperCase();
-      var on = function (k) { return a.show.indexOf(k) > -1; };
-      ws.className = 'ws ws-site';
-      ws.style.setProperty('--wc', a.color);
-      ws.innerHTML =
-        '<div class="ws-nav"><span class="ws-logo">' + esc(initials) + '</span><b>' + esc(name) + '</b><button type="button" class="ws-redo" data-redo="1">↺ Start over</button></div>' +
-        '<div class="ws-hero"><span class="ws-emoji" aria-hidden="true">' + t.icon + '</span><h4>' + esc(name) + '</h4><p>' + esc(tag) + '</p><span class="ws-cta">' + esc(a.cta) + '</span></div>' +
-        (on('list') ? '<div class="ws-sec"><h5>' + t.list + '</h5>' + t.items.map(function (it) { return '<div class="ws-row"><span>' + it[0] + '</span><b>' + it[1] + '</b></div>'; }).join('') + '</div>' : '') +
-        (on('pics') ? '<div class="ws-sec"><h5>Photos</h5><div class="ws-pics">' + t.pics.map(function (p) { return '<span>' + p + '</span>'; }).join('') + '</div></div>' : '') +
-        '<div class="ws-sec ws-info"><h5>Visit us</h5><p>📍 ' + esc(town) + '</p><p>🕘 ' + esc(a.hours) + '</p>' + (on('map') ? '<div class="ws-map" aria-hidden="true"><i></i></div>' : '') + '</div>' +
-        (on('review') ? '<div class="ws-sec ws-review"><p>“' + t.review + '”</p><small>★★★★★ Google review</small></div>' : '') +
-        '<div class="ws-end"><a class="wq-go ws-open" href="' + siteUrl(false) + '" target="_blank" rel="noopener">Open the full site ↗</a><button type="button" class="wq-go ws-want" data-want="1">I want this site</button><small>Starter sites from $500</small></div>' +
-        '<p class="ws-foot">© ' + esc(name) + ' · Site by Weltzcraft</p>';
-      ws.scrollTop = 0;
-    }
-    function want() {
-      var f = $('brief'), t = TYPES[a.type];
-      if (!f) return;
-      var sel = f.elements.platform;
-      [].slice.call(sel.options).forEach(function (o, i) { if (o.text === 'Website') sel.selectedIndex = i; });
-      if (f.elements.org && !f.elements.org.value) f.elements.org.value = a.name || t.name;
-      var note = 'Website for my ' + t.noun + ' in ' + (a.town || 'my town') + '.\n\n';
-      f.elements.idea.value = note + f.elements.idea.value.replace(/^Website for my[\s\S]*?\n\n/, '');
-      $('contact').scrollIntoView({ behavior: calm ? 'auto' : 'smooth' });
-      setTimeout(function () { f.elements.name.focus({ preventScroll: true }); }, 600);
-    }
-    ws.addEventListener('click', function (e) {
-      var b = e.target.closest('button');
-      if (!b) return;
-      var q = Q[step];
-      if (b.dataset.v !== undefined) { a[q.k] = b.dataset.v; if (q.k === 'type') a.cta = { coffee: 'Order ahead', bakery: 'Order ahead', barber: 'Book online', fitness: 'Book online', auto: 'Get a quote', lawn: 'Get a quote', boutique: 'Shop online', running: 'Book a fitting' }[b.dataset.v]; next(); }
-      else if (b.dataset.m) { var i = a.show.indexOf(b.dataset.m); if (i > -1) a.show.splice(i, 1); else a.show.push(b.dataset.m); b.classList.toggle('on'); b.setAttribute('aria-pressed', i < 0); }
-      else if (b.dataset.c) { a.color = b.dataset.c; [].forEach.call(ws.querySelectorAll('.wq-c'), function (c) { c.classList.toggle('on', c === b); }); }
-      else if (b.dataset.go) next();
-      else if (b.dataset.back) { var inp = ws.querySelector('.wq-in'); if (inp) a[q.k] = inp.value.trim(); step--; ask(); }
-      else if (b.dataset.redo) reset();
-      else if (b.dataset.want) want();
-    });
-    ws.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target.classList.contains('wq-in')) { e.preventDefault(); next(); } });
-    reset();
-    var P = new URLSearchParams(location.search);
-    if (P.get('site') && TYPES[P.get('site')]) {
-      a.type = P.get('site'); a.name = P.get('sn') || ''; a.town = P.get('st') || '';
-      setTimeout(want, 300);
-    }
-    return { reset: reset };
+  /* ---- "Make it mine" from /sample: prefill the brief ---- */
+  (function () {
+    var P = new URLSearchParams(location.search), f = $('brief');
+    if (!P.get('site') || !f) return;
+    var noun = { coffee: 'coffee shop', barber: 'barbershop', auto: 'auto repair shop', lawn: 'landscaping business', bakery: 'bakery', fitness: 'fitness studio', boutique: 'boutique', running: 'running store' }[P.get('site')] || 'business';
+    [].slice.call(f.elements.platform.options).forEach(function (o, i) { if (o.text === 'Website') f.elements.platform.selectedIndex = i; });
+    if (f.elements.org && P.get('sn')) f.elements.org.value = P.get('sn').slice(0, 60);
+    f.elements.idea.value = 'Website for my ' + noun + (P.get('st') ? ' in ' + P.get('st').slice(0, 40) : '') + '. I tried the free sample site.\n\n';
   })();
 
   /* ---- route: shortest walk through a store ---- */
