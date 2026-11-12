@@ -21,7 +21,7 @@ const PLACES = [
     href: '/dnd',
     icon: '🐉',
     name: 'Hood Quest',
-    blurb: 'Dungeons and dragons on the TV with an AI narrator. Heroes and the DM join on their phones.',
+    blurb: 'Fantasy tabletop quests on the TV with an AI narrator. Heroes and the DM join on their phones.',
     tone: 'is-quest',
   },
   {
