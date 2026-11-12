@@ -30,7 +30,7 @@ const APPS = [
     support: 'https://weltzcraft.com/support/hood-league',
     marketing: 'https://hood-league.com',
     // Age rating was already answered (17+); leave it.
-    keywords: 'fantasy football,auction draft,draft board,league,commissioner,start sit,trade,rankings,offline draft',
+    keywords: 'fantasy football,auction draft,draft board,league,commissioner,start sit,trade,rankings,offline',
     promo: 'Draft night, your way: run a live auction draft on everyone\'s phones, or offline with phones in the same room.',
     description: `Hood League runs fantasy football auction drafts that feel like draft night should.
 
