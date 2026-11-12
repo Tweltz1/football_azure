@@ -144,7 +144,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          [ -f ../detector/prepare.log ] && cp ../detector/prepare.log . || touch prepare.log
+          [ -f ../detector/prepare.log ] && cp ../detector/prepare.log . || echo "Training photos came from the cache this run; see an earlier release for the prepare log." > prepare.log
           gh release create "totetrack-namer-${{ github.run_number }}" \
             "$RUNNER_TEMP/namer/ToteNamer.mlpackage.zip" "$RUNNER_TEMP/namer/items.json" "$RUNNER_TEMP/namer/items.bin" build.log prepare.log \
             --target "$GITHUB_SHA" --prerelease \
