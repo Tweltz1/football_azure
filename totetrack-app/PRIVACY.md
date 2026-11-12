@@ -1,6 +1,6 @@
 # ToteTrack Privacy Policy
 
-_Last updated: November 11, 2026_
+_Last updated: November 12, 2026_
 
 ToteTrack helps you keep track of what's in your storage totes. This policy explains what the app
 stores and where.
@@ -15,13 +15,21 @@ there on any phone you sign in on.
   enter), packing lists, and the tote photos and photos of what's inside that you add.
 - **Why:** only to keep your totes in your account and bring them back when you sign in on another
   phone.
-- **Where:** in our cloud database (Supabase). Each person can only read their own data. Your
+- **Where:** in our cloud database (Supabase). Each person can only read their own data, unless
+  they choose to share it through Household sharing (below). Your
   iPhone also keeps a working copy so the app works without signal; signing out removes it from the
   phone.
 - **What we don't do:** no ads, no analytics, no tracking, and we never sell or share your data.
   If you use "Sign in with Apple" and choose to hide your email, we only get Apple's relay address.
 
 Reminders and what Snap to add learns from you stay on your phone and are not uploaded.
+
+## Household sharing
+
+If you invite people to your household (or join someone's), everyone in it can see and change the
+same totes, items, photos and packing lists, and sees the email addresses of the others in it. You
+can leave a household, or remove people from yours, at any time in **Account**. Deleting your
+account also ends any household you started or joined.
 
 ## Camera, photos, NFC and notifications
 

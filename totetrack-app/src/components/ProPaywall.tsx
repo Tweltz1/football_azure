@@ -12,6 +12,7 @@ type Plan = keyof typeof PRO_PRODUCTS;
 const PERKS: { icon: IconName; text: string }[] = [
   { icon: 'infinite', text: 'Unlimited totes' },
   { icon: 'camera', text: 'Snap to add: one photo names everything in a tote' },
+  { icon: 'people', text: 'Household sharing: up to 6 people see the same totes, covered by one subscription' },
   { icon: 'lock-open', text: `Your first ${FREE_TOTE_LIMIT} totes, labels, search and backup stay free` },
   { icon: 'heart', text: 'Supports a small, independent app with no ads' },
 ];

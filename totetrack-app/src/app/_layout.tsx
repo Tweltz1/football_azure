@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SignInGate } from '../components/SignInGate';
 import { AuthProvider } from '../lib/auth';
+import { HouseholdProvider } from '../lib/household';
 import { DEMO, DEMO_DWELL_MS, DEMO_TOUR } from '../lib/demo';
 import { ListsProvider } from '../lib/lists';
 import { NativeBridge } from '../lib/native';
@@ -37,6 +38,7 @@ export default function RootLayout() {
   const t = useTheme();
   return (
     <AuthProvider>
+    <HouseholdProvider>
     <ToteProvider>
     <ListsProvider>
     <ProProvider>
@@ -75,6 +77,7 @@ export default function RootLayout() {
     </ProProvider>
     </ListsProvider>
     </ToteProvider>
+    </HouseholdProvider>
     </AuthProvider>
   );
 }
