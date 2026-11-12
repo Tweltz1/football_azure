@@ -55,7 +55,7 @@
     "Directions to the shop": "Cómo llegar al taller", "Add to calendar": "Agregar al calendario",
     "Part": "Pieza", "What's being worked on": "Lo que se está reparando", "Part mentioned": "Pieza mencionada",
     // Final bill
-    "Final bill": "Factura final", "Total due": "Total a pagar", "Download shop invoice (PDF)": "Descargar factura (PDF)", "Print / save PDF": "Imprimir / guardar PDF",
+    "Final bill": "Factura final", "Paid in full": "Pagado por completo", "Total due": "Total a pagar", "Download shop invoice (PDF)": "Descargar factura (PDF)", "Print / save PDF": "Imprimir / guardar PDF",
     // Walk-through
     "Vehicle walk-through": "Revisión del vehículo", "After repair": "Después de la reparación", "At check-in": "Al recibirlo", "Check-in": "Al recibirlo", "After": "Después",
     "Good": "Bien", "Keep an eye on": "Para vigilar", "Needs attention": "Necesita atención", "Not checked": "No revisado", "Tread": "Dibujo",
@@ -540,6 +540,9 @@
     return `<section class="panel gr-panel"><h2>Export Your Data</h2>
         <p class="muted" style="margin:0">Your repairs from the last year or your customer list, as a CSV file for Excel or your accountant.</p>
         <div class="btn-row"><button type="button" class="btn sm" data-gr-export="jobs">Download repairs (CSV)</button><button type="button" class="btn sm" data-gr-export="customers">Download customers (CSV)</button></div>
+        <h3 style="margin:14px 0 4px">QuickBooks</h3>
+        <p class="muted" style="margin:0">Final bills as invoices for QuickBooks Online (Sales, Invoices, Import invoices). Each bill line comes in as Labor, Parts or Shop fees, numbered by RO.</p>
+        <div class="btn-row"><button type="button" class="btn sm" data-gr-export="quickbooks">Download invoices for QuickBooks (CSV)</button></div>
       </section>`;
   }
   // ==================== Appointment hours (owners) ====================

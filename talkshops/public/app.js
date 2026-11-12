@@ -270,7 +270,7 @@
     }
     const earlierPhotos = photoFolder("earlier", "Earlier photos", j.photos.filter((p) => !Object.hasOwn(SI, p.stage)), openFolders);
     const extra = j.stage === "parts" && j.eta ? `<p style="margin:6px 0 0">${T("Parts expected {0}.", "<b>" + esc(j.eta) + "</b>")}</p>`
-      : j.stage === "ready" ? `<p style="margin:6px 0 0">${j.bill ? T("Total due {0}", money(j.bill.total)) : T("Approved estimate {0}", money(estTotal(j, true)))}.${j.shop.hours ? " " + T("Open {0}.", esc(j.shop.hours)) : ""}</p>` : "";
+      : j.stage === "ready" ? `<p style="margin:6px 0 0">${j.bill ? (j.pay && j.pay.due <= 0 ? T("Paid in full") : T("Total due {0}", money(j.pay ? j.pay.due : j.bill.total))) : T("Approved estimate {0}", money(estTotal(j, true)))}.${j.shop.hours ? " " + T("Open {0}.", esc(j.shop.hours)) : ""}</p>` : "";
     app.innerHTML = `<div class="cust-page">
       <div class="c-head">${window.Grow.customerHead(j)}<small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${heading}</h2><div style="font-size:14px;margin-top:4px">${esc(ShopDisplay.vehicle(j.vehicle))}</div>${extra}</div>
       <div class="c-body">
@@ -281,7 +281,7 @@
           <button type="button" id="customerPickPhoto" class="btn" ${j.photos.filter(p => p.source === "customer").length >= 6 ? "disabled" : ""}>${T("Add photos")}</button>
           <small style="margin-left:10px">${T("{0} of 6 photos added", j.photos.filter(p => p.source === "customer").length)}</small><p id="photoStatus" role="status" hidden></p></section>` : ""}
         ${window.Walkaround.customerCard(j)}
-        ${billing.display(j.bill, j)}${est}
+        ${billing.display(j.bill, j)}${window.Pay ? window.Pay.customerCard(j) : ""}${est}
         ${window.Walkthrough.customerCard(j)}
         ${(j.notes || []).length ? `<div class="c-card"><h3>${T("Notes from your technician")}</h3><ul class="notes">${[...j.notes].reverse().map((n) => `<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p>${window.repairPhotoFor(n.text, T("Part mentioned"))}</li>`).join("")}</ul></div>` : ""}
         <div class="c-card"><h3>${T("Progress")}</h3><ul class="tl">${tl}</ul>${earlierPhotos}</div>
@@ -400,7 +400,7 @@
     try { upsertJob(await api("GET", "shop/jobs/" + encodeURIComponent(id))); if (ui.openJob === id) renderLayer(); } catch (e) { /* the sheet still works without images */ }
   };
   const upsertJob = (j) => { j = withPhotos(j); const i = jobs.findIndex((x) => x.id === j.id); if (i >= 0) jobs[i] = j; else jobs.push(j); };
-  window.Grow?.init({
+  const growAdapter = {
     api: (...a) => api(...a), shop: () => shop, plan: () => plan, isOwner: () => role === "owner", me: () => myId, job, jobs: () => jobs,
     act: (id, action, body) => jobAction(id, action, body), upsert: (j) => upsertJob(j), toast: (m) => toast(m),
     render: () => render(), renderCustomer: () => renderCustomer(), customerToken: () => custToken, setCustomer: (c) => { cust.data = c; },
@@ -408,7 +408,9 @@
       const r = await api("POST", "shop/me", { name: shop.name, phone: shop.phone, hours: shop.hours, email: shop.email || "", ...patch });
       shop = r.shop; plan = r.plan || plan;
     },
-  });
+  };
+  window.Grow?.init(growAdapter);
+  window.Pay?.init(growAdapter);
 
   async function acceptInvite() {
     if (!joinToken && savedJoin && session?.access_token) {
@@ -877,7 +879,7 @@
     const tab = (k, html) => `<div class="stab" data-stab="${k}" role="tabpanel" id="stab-${k}" aria-labelledby="stab-btn-${k}"${ui.settingsTab === k ? "" : " hidden"}>${html}</div>`;
     // Closes the Shop tab (opened before the form in setupView), then the other tabs, then the page.
     return (isOwner() ? window.Workday.packagesPanel() : "") + `</div>`
-      + tab("customers", isOwner() ? window.Grow.settingsPanels("customers") : "")
+      + tab("customers", isOwner() ? window.Grow.settingsPanels("customers") + (window.Pay ? window.Pay.settingsPanel() : "") : "")
       + tab("team", team.panel(render) + devicesPanel() + recoveryPanel())
       + tab("data", (isOwner() ? window.Grow.settingsPanels("data") : "") + learnPanel(s)) + `</div>`;
   }
@@ -1151,7 +1153,7 @@
           ${j.estimate.some((e) => e.status === "pending") && j.stage !== "approval" ? (isOwner() ? `<button class="btn primary est-send" data-stage="approval">Send Estimate for Approval</button>` : `<p class="muted est-send-note">A shop owner reviews these lines and sends the estimate to ${esc(first(j.customer.name))}.</p>`) : ""}
         </section>
         <section class="sec"><h3>Final Bill</h3>
-          ${j.bill ? `<p>${j.bill.mode === "upload" ? "Shop PDF" : "Itemized bill"} · ${money(j.bill.total)}</p>` : isOwner() ? "" : `<p class="muted" style="margin:0">No final bill yet. A shop owner creates it.</p>`}
+          ${j.bill ? `<p>${j.bill.mode === "upload" ? "Shop PDF" : "Itemized bill"} · ${money(j.bill.total)}</p>${window.Pay ? window.Pay.shopSection(j) : ""}` : isOwner() ? "" : `<p class="muted" style="margin:0">No final bill yet. A shop owner creates it.</p>`}
           <div class="btn-row">${isOwner() ? `<button class="btn" data-billing="generated">${j.bill?.mode === "generated" ? "Edit itemized bill" : "Create itemized bill"}</button><button class="btn" data-billing="upload">Upload Shop PDF</button>` : ""}${j.bill?.mode==="upload" ? '<button class="linkbtn" data-billing="download">Download current PDF</button>' : ""}</div>
         </section>`}
         ${window.Workday.followupSection(j)}

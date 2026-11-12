@@ -8,6 +8,8 @@
 import type { Job, JobData } from './shop.ts';
 import { fitOne } from './smsFit.ts';
 import { parseSchedule, type Schedule } from './shopSchedule.ts';
+import { balanceDue, paidTotal, type PaySettings } from './shopPay.ts';
+import { lineCents } from './shopBilling.ts';
 
 type Body = Record<string, unknown>;
 const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -30,6 +32,8 @@ export interface Grow {
   digestSentOn?: string;
   /** Appointment hours and slots. When set, the booking page shows open times instead of a day and part of the day. */
   schedule?: Schedule;
+  /** How customers pay the final bill online (shopPay.ts). Changed only through /shop/pay. */
+  pay?: PaySettings;
 }
 export const NUDGE_HOURS = [0, 2, 4, 24] as const;
 
@@ -298,13 +302,39 @@ const STAGE_NAME: Record<string, string> = {
 /** Every repair kept (one year), one row each. */
 export function jobsCsv(jobs: Job[]): string {
   const rows: unknown[][] = [['RO', 'Checked in', 'Status', 'Picked up', 'Customer', 'Phone', 'Email', 'Language', 'Vehicle', 'VIN', 'Plate', 'Mileage in', 'Mileage out',
-    'Concern', 'Technician', 'Approved', 'Declined', 'Bill total', 'Declined items', 'Closed reason']];
+    'Concern', 'Technician', 'Approved', 'Declined', 'Bill total', 'Paid', 'Balance due', 'Declined items', 'Closed reason']];
   for (const j of [...jobs].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
     const d = j.data, s = (st: string) => d.estimate.filter((e) => e.status === st).reduce((a, e) => a + Number(e.price || 0), 0);
     rows.push([d.ro, day(j.createdAt), d.closed ? 'Closed' : STAGE_NAME[j.stage] ?? j.stage, day(pickedAt(j)), d.customer.name, d.customer.phone, d.customer.email ?? '',
       d.customer.lang === 'es' ? 'Spanish' : 'English', car(j), d.vehicle.vin ?? '', j.intake?.plate ?? d.plate ?? '', d.mileageIn ?? '', d.mileageOut ?? '',
       j.intake?.concern ?? d.concern ?? '', d.tech?.name ?? '', money(s('approved')).toFixed(2), money(s('declined')).toFixed(2), j.bill ? j.bill.total.toFixed(2) : '',
+      j.bill ? paidTotal(d.payments).toFixed(2) : '', j.bill ? balanceDue(j.bill.total, d.payments).toFixed(2) : '',
       d.estimate.filter((e) => e.status === 'declined').map((e) => e.item).join('; '), d.closed?.reason ?? '']);
+  }
+  return csv(rows);
+}
+
+const QB_ITEM: Record<string, string> = { labor: 'Labor', part: 'Parts', fee: 'Shop fees', percent: 'Shop fees' };
+const usDate = (t: string) => `${t.slice(5, 7)}/${t.slice(8, 10)}/${t.slice(0, 4)}`;
+/**
+ * Final bills as a QuickBooks Online invoice import (Sales → Invoices → Import invoices): one row per bill line,
+ * invoice number = RO. Uploaded shop PDFs become one "Repair" line for the bill total. Closed repairs are left out.
+ */
+export function quickbooksCsv(jobs: Job[]): string {
+  const rows: unknown[][] = [['InvoiceNo', 'Customer', 'InvoiceDate', 'DueDate', 'Memo', 'Item(Product/Service)', 'ItemDescription', 'ItemQuantity', 'ItemRate', 'ItemAmount']];
+  for (const j of [...jobs].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+    const b = j.bill;
+    if (!b || j.data.closed || !['ready', 'picked_up'].includes(j.stage)) continue;
+    const date = usDate(b.issuedAt || j.updatedAt), who = j.data.customer.name || j.data.customer.phone || 'Customer';
+    const memo = [car(j), j.intake?.plate ?? j.data.plate ?? '', paidTotal(j.data.payments) ? `Paid ${paidTotal(j.data.payments).toFixed(2)} in Talk Shops` : ''].filter(Boolean).join(' · ');
+    const lines = b.mode === 'generated' && b.lines?.length ? b.lines : null;
+    if (!lines) { rows.push([j.data.ro, who, date, date, memo, 'Repair', j.intake?.concern ?? j.data.concern ?? 'Repair', 1, b.total.toFixed(2), b.total.toFixed(2)]); continue; }
+    for (const l of lines) {
+      const amt = lineCents(l) / 100;
+      // A percent fee is a fixed amount on the invoice.
+      const qty = l.kind === 'percent' ? 1 : l.qty, rate = l.kind === 'percent' ? amt : l.rate;
+      rows.push([j.data.ro, who, date, date, memo, QB_ITEM[l.kind] ?? 'Repair', l.name, qty, rate.toFixed(2), amt.toFixed(2)]);
+    }
   }
   return csv(rows);
 }

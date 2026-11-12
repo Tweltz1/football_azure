@@ -21,12 +21,13 @@ import { accountRoute, type AccountStore } from './shopAccount.ts';
 import { ownerOnly, staffRoute, type Member, type Seat, type StaffStore } from './shopStaff.ts';
 import { checkDevice, sessionRoute, type SessionStore } from './shopSessions.ts';
 import type { Narrator } from './dnd.ts';
-import { clockAction, customersCsv, jobsCsv, langOf, MAX_BOOKINGS_PER_HOUR, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES, SHORT_ES,
+import { clockAction, customersCsv, jobsCsv, quickbooksCsv, langOf, MAX_BOOKINGS_PER_HOUR, MAX_OPEN_BOOKINGS, parseBooking, parseBrand, parseGrow, results, SAY, TEMPLATES_ES, SHORT_ES,
   type Booking, type BookingStore, type Brand, type ClockEntry, type Grow, type Lang } from './shopGrow.ts';
 import { dayLoad, isOpenSlot, localOf, openSlots, reminderDue, slotText, type Schedule, type ShopCar } from './shopSchedule.ts';
 /** Times a customer can move their own appointment from their page before they need to call. */
 const MAX_CUSTOMER_MOVES = 3;
 import { amount, validRate, validCharge, copyRate, lineCents, type Bill, type Rate, type Charge } from './shopBilling.ts';
+import { balanceDue, canPayOnline, checkSession, customerPay, MIN_ONLINE, payCheckoutFields, payOf, payRoute, pendingFresh, type Payment, type PayPending, type PaySettings } from './shopPay.ts';
 
 type Body = Record<string, unknown>;
 
@@ -140,6 +141,10 @@ export interface JobData {
   reschedule?: { from?: string; t: string; by: string; waiting: boolean; confirmedAt?: string; via?: 'text' | 'page' };
   /** How many times the customer moved the appointment from their page. */
   customerMoves?: number;
+  /** Payments against the final bill: online by card (shop's own Stripe) or recorded at the counter. */
+  payments?: Payment[];
+  /** A card payment the customer started and may still be finishing. */
+  payPending?: PayPending;
 }
 export const URGENCIES = ['low', 'medium', 'high'] as const;
 export type Urgency = typeof URGENCIES[number];
@@ -438,7 +443,7 @@ async function boardVersion(jobs: unknown[]): Promise<string> {
 const walkaroundOpen = (j: Job) => !!j.data.walkaroundRequest && j.stage !== 'picked_up' && !j.data.closed && j.shopId !== DEMO_SHOP_ID;
 
 /** What the customer sees: no phone number, no other customers, no internal notes. */
-const customerOut = (j: Job, shop: Shop, pro = false) => ({
+const customerOut = (j: Job, shop: Shop, pro = false, stripe?: StripeApi | null) => ({
   shop: { name: shop.name, phone: shop.phone, hours: shop.hours, address: shop.grow?.address ?? '', ...(pro && shop.brand ? { brand: shop.brand } : {}) },
   lang: langOf(j.data),
   canMessage: j.shopId !== DEMO_SHOP_ID && !j.data.closed,
@@ -473,6 +478,10 @@ const customerOut = (j: Job, shop: Shop, pro = false) => ({
   },
   closed: !!j.data.closed,
   bill: ['ready', 'picked_up'].includes(j.stage) ? j.bill ?? null : null,
+  pay: customerPay({
+    billTotal: ['ready', 'picked_up'].includes(j.stage) && j.bill ? j.bill.total : null, payments: j.data.payments, pay: payOf(shop.grow), stripe,
+    open: !j.data.closed && j.shopId !== DEMO_SHOP_ID,
+  }),
 });
 
 export const CHANGED_MEANWHILE = 'Someone else just changed this car, so nothing was saved. The latest version is on your screen now; please try again.';
@@ -719,7 +728,26 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     const shop = job ? await store.shopById(job.shopId) : null;
     if (!job || !shop) return { status: 404, body: 'This link is not valid.' };
     const pro = isPro(shop.plan, ctx.now());
-    const cOut = (j: Job) => customerOut(j, shop, pro);
+    const cOut = (j: Job) => customerOut(j, shop, pro, deps.stripe);
+    const site = (deps.siteUrl || 'https://talkshops.app').replace(/\/$/, '');
+    // Records a card payment once Stripe says the Checkout session was paid. Retries if the car was saved meanwhile.
+    const confirmPaid = async (session: string): Promise<Job | null> => {
+      const account = payOf(shop.grow).stripeAccount;
+      if (!deps.stripe || !account) return null;
+      for (let tries = 0; tries < 3; tries++) {
+        const cur = tries ? await store.getJob(job.id) : job;
+        if (!cur) return null;
+        const p = await checkSession(deps.stripe, account, session, cur.id, cur.data.payments, now, ctx.newId);
+        if (!p) return null;
+        const readAt = cur.updatedAt;
+        cur.data.payments = [...(cur.data.payments ?? []), p];
+        if (cur.data.payPending?.session === session) delete cur.data.payPending;
+        (cur.data.notes ??= []).push({ id: ctx.newId(), t: now, text: `Customer paid ${money(p.amount)} online by card.`, internal: true, by: 'Talk Shops' });
+        cur.updatedAt = now;
+        if (await saveJob(store, cur, readAt)) return cur;
+      }
+      return null;
+    };
 
     if (method === 'GET' && parts.length === 4 && parts[3] === 'bill-file') {
       if (!['ready', 'picked_up'].includes(job.stage) || job.bill?.mode !== 'upload') return { status: 404 };
@@ -734,7 +762,38 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
         job.data.viewedAt = now; job.updatedAt = now;
         await saveJob(store, job, readAt).catch((e) => ctx.log.warn('view not saved', { error: String(e) }));
       }
+      // A card payment started earlier and not confirmed yet (the customer closed the tab on Stripe's page).
+      if (job.data.payPending && pendingFresh(job.data.payPending, now)) {
+        try { const paid = await confirmPaid(job.data.payPending.session); if (paid) return ok(cOut(paid)); }
+        catch (e) { ctx.log.warn('payment check failed', { error: String(e) }); }
+      }
       return ok(cOut(job));
+    }
+    // Pay the final bill by card on the shop's own Stripe account.
+    if (method === 'POST' && parts.length === 4 && (parts[3] === 'pay' || parts[3] === 'pay-check')) {
+      const es = langOf(job.data) === 'es';
+      const pay = payOf(shop.grow);
+      if (!job.bill || !['ready', 'picked_up'].includes(job.stage) || job.data.closed || job.shopId === DEMO_SHOP_ID || !canPayOnline(pay, deps.stripe))
+        return bad(es ? 'El pago en línea no está disponible. Llame al taller, por favor.' : 'Online payment is not available for this bill. Please call the shop.');
+      try {
+        if (parts[3] === 'pay-check') {
+          const paid = await confirmPaid(str(body.session, 220));
+          return ok(cOut(paid ?? (await store.getJob(job.id)) ?? job));
+        }
+        const due = balanceDue(job.bill.total, job.data.payments);
+        if (due < MIN_ONLINE) return bad(es ? 'Esta factura ya está pagada.' : 'This bill is already paid.');
+        const s = await deps.stripe!.call('checkout/sessions', payCheckoutFields({
+          jobId: job.id, shopId: shop.id, ro: job.data.ro, shopName: shop.name, amount: due, siteUrl: site, token, email: job.data.customer.email, lang: langOf(job.data),
+        }), pay.stripeAccount);
+        if (typeof s?.url !== 'string' || typeof s?.id !== 'string') throw new Error('no checkout url');
+        const readAt = job.updatedAt;
+        job.data.payPending = { session: s.id, t: now, amount: due }; job.updatedAt = now;
+        await saveJob(store, job, readAt).catch((e) => ctx.log.warn('pending payment not saved', { error: String(e) }));
+        return ok({ url: s.url });
+      } catch (e) {
+        ctx.log.error('bill payment failed', { error: String(e) });
+        return { status: 502, body: es ? 'No se pudo abrir el pago. Intente de nuevo en un minuto.' : "The payment page didn't open. Please try again in a minute." };
+      }
     }
     // A note to the shop from the customer page, for customers who'd rather not text.
     if (method === 'POST' && parts.length === 4 && parts[3] === 'message') {
@@ -1123,7 +1182,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return ok({ saved: true });
   }
 
-  if (!['jobs', 'archive', 'plan', 'howto', 'price-import', 'vin', 'recalls', 'vehicle-options', 'visits', 'results', 'export', 'bookings'].includes(parts[1])) return { status: 404 };
+  if (!['jobs', 'archive', 'plan', 'howto', 'price-import', 'vin', 'recalls', 'vehicle-options', 'visits', 'results', 'export', 'bookings', 'pay'].includes(parts[1])) return { status: 404 };
   const mine = await whoAmI();
   if (!mine) return { status: 409, body: 'Set up your shop first.' };
   const { shop } = mine;
@@ -1181,6 +1240,16 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     return priceImportRoute(ctx, deps.priceReader, shop.id, method, body);
   }
 
+  // Card payments on the shop's own Stripe account, or the shop's own pay link (every plan). Owners only.
+  if (parts[1] === 'pay') {
+    if (parts.length !== 2) return { status: 404 };
+    if (!owner) return ownerOnly();
+    return payRoute({
+      method, body, stripe: deps.stripe, siteUrl: (deps.siteUrl || 'https://talkshops.app').replace(/\/$/, ''), shop, log: ctx.log,
+      save: async (pay: PaySettings) => { const cur = await store.shopById(shop.id); if (cur) await store.putShop({ ...cur, grow: { ...(cur.grow ?? {}), pay } }); },
+    });
+  }
+
   // Results dashboard (Pro) and CSV export (every plan). Owners only.
   if (parts[1] === 'results' || parts[1] === 'export') {
     if (method !== 'POST' || parts.length !== 2) return { status: 405 };
@@ -1188,9 +1257,9 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     if (!store.reportJobs) return { status: 503, body: 'Reports are unavailable.' };
     const history = await store.reportJobs(shop.id, archiveCutoff(ctx.now()), 5000);
     if (parts[1] === 'export') {
-      const kind = body.kind === 'customers' ? 'customers' : 'jobs';
+      const kind = body.kind === 'customers' ? 'customers' : body.kind === 'quickbooks' ? 'quickbooks' : 'jobs';
       const date = now.slice(0, 10);
-      return ok({ filename: `talkshops-${kind}-${date}.csv`, csv: kind === 'customers' ? customersCsv(history) : jobsCsv(history) });
+      return ok({ filename: `talkshops-${kind}-${date}.csv`, csv: kind === 'customers' ? customersCsv(history) : kind === 'quickbooks' ? quickbooksCsv(history) : jobsCsv(history) });
     }
     if (!isPro(shop.plan, ctx.now())) return { status: 402, body: proMessage('The results dashboard') };
     const days = [7, 30, 90, 365].includes(Number(body.days)) ? Number(body.days) : 30;
@@ -1363,7 +1432,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
   if (method !== 'POST') return { status: 405 };
   // Technicians work the car; final bills, closing or reopening a repair (moving a closed or picked-up car counts) and
   // sending the estimate for approval are owner jobs.
-  if (!owner && (action === 'bill' || action === 'close' || action === 'reopen' || (action === 'stage' && (body.stage === 'approval' || !!job.data.closed || job.stage === 'picked_up')))) return ownerOnly();
+  if (!owner && (action === 'bill' || action === 'payment' || action === 'close' || action === 'reopen' || (action === 'stage' && (body.stage === 'approval' || !!job.data.closed || job.stage === 'picked_up')))) return ownerOnly();
   // Only owners add to the shop's saved price list.
   if (!owner) delete body.save;
   if (!acc.canWork && action !== 'close' && action !== 'reopen') return { status: 402, body: lockedMessage(acc) };
@@ -1463,6 +1532,36 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
     }
     await store.saveBill(job.id, bill, pdf);
     job.bill = bill;
+    return ok(jobOut(job, deps.linkBase));
+  }
+  // Payments against the final bill: record one taken at the counter, remove one recorded by mistake, or ask
+  // Stripe about a card payment the customer started.
+  if (action === 'payment') {
+    if (!job.bill) return bad('Create the final bill first.');
+    if (body.check === true) {
+      const pend = job.data.payPending, account = payOf(shop.grow).stripeAccount;
+      if (!pend || !deps.stripe || !account) return bad('No card payment is waiting.');
+      try {
+        const p = await checkSession(deps.stripe, account, pend.session, job.id, job.data.payments, now, ctx.newId);
+        if (!p) return bad('Stripe has no finished payment for this bill yet.');
+        job.data.payments = [...(job.data.payments ?? []), p];
+        delete job.data.payPending;
+        (d.notes ??= []).push({ id: ctx.newId(), t: now, text: `Customer paid ${money(p.amount)} online by card.`, internal: true, by: 'Talk Shops' });
+      } catch (e) { ctx.log.warn('payment check failed', { error: String(e) }); return { status: 502, body: "Stripe didn't answer. Try again in a minute." }; }
+    } else if (typeof body.remove === 'string') {
+      const list = job.data.payments ?? [], hit = list.find((p) => p.id === body.remove);
+      if (!hit) return bad('That payment is gone already.');
+      if (hit.how === 'online') return bad('Card payments are refunded in your Stripe dashboard.');
+      job.data.payments = list.filter((p) => p !== hit);
+    } else {
+      const due = balanceDue(job.bill.total, job.data.payments);
+      const amt = body.amount === undefined ? due : body.amount;
+      if (!amount(amt, 100_000_000) || (amt as number) <= 0) return bad('Enter the amount paid.');
+      if (due <= 0) return bad('This bill is already paid.');
+      job.data.payments = [...(job.data.payments ?? []), { id: ctx.newId(), t: now, amount: amt as number, how: 'counter', by: ctx.displayName || ctx.userEmail || 'Shop staff' }];
+    }
+    job.updatedAt = now;
+    if (!await saveJob(store, job, readAt)) return { status: 409, body: CHANGED_MEANWHILE };
     return ok(jobOut(job, deps.linkBase));
   }
   if (action === 'preview') {

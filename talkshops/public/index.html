@@ -290,6 +290,9 @@ a.btn.primary{color:var(--accent-fg)}
 .charge-detail,.bill-item small{display:block;color:var(--muted);font-size:13px}
 .bill-item{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:9px 0}
 .final-bill button{margin-top:10px}
+.pay-list{list-style:none;margin:8px 0;padding:0;display:grid;gap:4px;font-size:13.5px}.pay-list li{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.pay-btn{width:100%;margin-top:10px;text-align:center}.pay-note{font-size:12.5px;margin:6px 0 0}.pay-done{font-weight:700;margin:8px 0 0}.pay-thanks{background:var(--accent-soft);border-radius:8px;padding:8px 10px;margin:0 0 8px;font-weight:600}
+.pay-counter{align-items:flex-end}.pay-counter input{max-width:140px}
 @media print{body:has(.final-bill) *{visibility:hidden}body:has(.final-bill) .final-bill,body:has(.final-bill) .final-bill *{visibility:visible}
 body:has(.final-bill) .cust-page{width:100%}body:has(.final-bill) .c-head,body:has(.final-bill) .c-body>:not(.final-bill),.final-bill button{display:none}.final-bill{border:0;color:black;background:white}.bill-item{break-inside:avoid}}
 </style>
@@ -389,14 +392,15 @@ body:has(.final-bill) .cust-page{width:100%}body:has(.final-bill) .c-head,body:h
 <script src="/board-tools.js?v=4"></script>
 <script src="/walkthrough.js?v=6"></script>
 <script src="/workday.js?v=8"></script>
-<script src="/grow.js?v=11"></script>
+<script src="/grow.js?v=12"></script>
+<script src="/pay.js?v=1"></script>
 <script src="/walkaround.js?v=3"></script>
 <script src="/help-content.js?v=11"></script>
 <script src="/help-chat-features.js?v=1"></script>
 <script src="/help-chat-model-run.js?v=1"></script>
 <script src="/help-chat.js?v=3"></script>
 <script src="/est-groups.js?v=1"></script>
-<script src="/app.js?v=265"></script>
+<script src="/app.js?v=266"></script>
 <script src="/hero-video.js?v=1"></script>
 <script src="/shell.js?v=3"></script>
 </body>

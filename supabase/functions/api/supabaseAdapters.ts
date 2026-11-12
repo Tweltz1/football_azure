@@ -603,7 +603,7 @@ export function createShopStore(db: SupabaseClient): ShopStore {
     async reportJobs(shopId, since, limit) {
       // Everything the results and export need, without photos, messages or bill files.
       const { data, error } = await db.from('repair_jobs')
-        .select('id, shop_id, token, stage, created_at, updated_at, bill, intake, ro:data->>ro, customer:data->customer, vehicle:data->vehicle, plate:data->>plate, concern:data->>concern, estimate:data->estimate, events:data->events, approval:data->approval, closed:data->closed, tech:data->tech, clock:data->clock, review:data->review, followups:data->followups, promised:data->>promised, mileageIn:data->>mileageIn, mileageOut:data->>mileageOut, booking:data->booking, service:data->>service')
+        .select('id, shop_id, token, stage, created_at, updated_at, bill, intake, ro:data->>ro, customer:data->customer, vehicle:data->vehicle, plate:data->>plate, concern:data->>concern, estimate:data->estimate, events:data->events, approval:data->approval, closed:data->closed, tech:data->tech, clock:data->clock, review:data->review, followups:data->followups, promised:data->>promised, mileageIn:data->>mileageIn, mileageOut:data->>mileageOut, booking:data->booking, service:data->>service, payments:data->payments')
         .eq('shop_id', shopId).gte('created_at', since).order('created_at', { ascending: false }).limit(limit);
       if (error) throw error;
       return (data ?? []).map((r: Record<string, any>): Job => ({
@@ -614,6 +614,7 @@ export function createShopStore(db: SupabaseClient): ShopStore {
           ...(r.tech ? { tech: r.tech } : {}), ...(r.clock ? { clock: r.clock } : {}), ...(r.review ? { review: r.review } : {}), ...(r.followups ? { followups: r.followups } : {}),
           ...(r.promised ? { promised: r.promised } : {}), ...(r.mileageIn ? { mileageIn: r.mileageIn } : {}), ...(r.mileageOut ? { mileageOut: r.mileageOut } : {}),
           ...(r.booking ? { booking: r.booking } : {}), ...(r.service ? { service: r.service } : {}),
+          ...(r.payments ? { payments: r.payments } : {}),
         },
       }));
     },
