@@ -1,7 +1,7 @@
-// Adds Curbsy's bundle ID to the hobby Supabase project's Apple client IDs, so identity tokens from
-// Apple's own sign-in sheet in the Curbsy app (audience com.hoodleague.junk) are accepted. Additive only.
+// Adds bundle IDs to the hobby Supabase project's Apple client IDs, so identity tokens from Apple's own
+// sign-in sheet in those apps are accepted. Additive only.
 const REF = 'nkwedlskhnojseeroezm';
-const ADD = ['com.hoodleague.junk'];
+const ADD = ['com.hoodleague.draft', 'com.hoodleague.games', 'com.tweltz1.hoodprotocol'];
 const url = `https://api.supabase.com/v1/projects/${REF}/config/auth`;
 const H = { Authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`, 'Content-Type': 'application/json' };
 (async () => {
