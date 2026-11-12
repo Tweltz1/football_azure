@@ -91,10 +91,14 @@ function App() {
                 <small>Draft Games</small>
               </span>
             </a>
-            <div className="nav-links" aria-label="Primary navigation">
+            <div className="nav-links is-slim" aria-label="Primary navigation">
               <a href={homeHref()}>← Back to {homeLabel()}</a>
-              {!user && <button type="button" className="logout-link" onClick={() => signIn('google')}>Sign in</button>}
             </div>
+            {!user && (
+              <div className="nav-user">
+                <button type="button" className="logout-link" onClick={() => signIn('google')}>Sign in</button>
+              </div>
+            )}
           </nav>
           <main className="app-main">
             <Routes>

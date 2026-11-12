@@ -31,7 +31,10 @@ const SCALE = { QB: [25, 11], RB: [21, 4], WR: [20, 4], TE: [16, 4], K: [10, 6],
 const extras = [
   { id: 'sleeper-5859', name: 'A.J. Brown', position: 'WR', team: 'PHI', rank: 40, bye: 10 },
   { id: 'sleeper-11585', name: 'Tank Bigsby', position: 'RB', team: 'PHI', rank: 150, bye: 10 },
-];
+  // The weekly pool update drops players who aren't Active (Puka Nacua left on Nov 11), so the
+  // screenshot league adds back anyone it places by name.
+  { id: 'sleeper-9493', name: 'Puka Nacua', position: 'WR', team: 'LAR', rank: 7, bye: 11 },
+].filter((x) => !initialPlayerList.some((p) => p.name === x.name));
 const pool = [...initialPlayerList, ...extras];
 const nflTeams = [...new Set(pool.map((p) => p.team).filter(Boolean))].sort();
 const opponentOf = new Map();
@@ -87,7 +90,11 @@ nflTeams.forEach((team, i) => {
 });
 const projections = { season: 2026, week: 7, currentWeek: 7, players, defense, fetchedAt: new Date().toISOString() };
 const byId = new Map(players.map((p) => [p.id, p]));
-const byName = (name) => players.find((p) => p.name === name);
+const byName = (name) => {
+  const found = players.find((p) => p.name === name);
+  if (!found) throw new Error(`${name} is placed on a team but missing from the player pool; add them to extras`);
+  return found;
+};
 
 // Ten teams drafted in snake order, with the players from Tyler's screenshots placed where they were.
 const TEAM_NAMES = ['Im gunna ka’imi', 'Racing with Ruggs', 'CumBoys', 'The Mongolian Graycocks', 'The Dicker Lickers',

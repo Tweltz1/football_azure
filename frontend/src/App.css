@@ -2078,6 +2078,17 @@ hr {
   text-align: center;
 }
 
+/* A soft dark halo so the backdrop's moon never shows through the heading. */
+.front-door-panel::before {
+  content: "";
+  position: absolute;
+  inset: -40px 0 auto;
+  height: 260px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, rgba(10, 11, 14, 0.82), rgba(10, 11, 14, 0) 70%);
+}
+
 .front-door-panel h1 {
   margin: 4px 0 6px;
   font-size: clamp(40px, 9vw, 72px);
@@ -2090,7 +2101,8 @@ hr {
 
 .front-door-choices {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  /* Two by two on wider screens (four cards used to leave Hood Quest alone on a second row). */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 16px;
   margin-top: 24px;
 }

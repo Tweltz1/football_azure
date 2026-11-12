@@ -283,6 +283,11 @@
   background: radial-gradient(circle at 50% 0%, #3a1f55, #120c24 75%) fixed;
 }
 #lc-root .lcp * { box-sizing: border-box; }
+/* On a laptop or tablet the phone pages (join a room, card table, Hood Quest hero) keep a phone-width
+   column in the middle instead of stretching inputs and buttons across the whole screen. */
+@media (min-width: 720px) {
+  #lc-root .lcp:not(.lch) { padding-left: max(16px, calc((100% - 600px) / 2)); padding-right: max(16px, calc((100% - 600px) / 2)); }
+}
 #lc-root .lcp-title { text-align: center; font-size: 56px; margin-top: 12px; }
 #lc-root .lcp-join { display: flex; flex-direction: column; gap: 12px; }
 #lc-root .lcp label { display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 15px; }
