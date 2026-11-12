@@ -1,0 +1,138 @@
+name: Weltzcraft sales
+
+# Read-only sales numbers for weltzcraft.com, for the 5 AM Central daily review: merch orders and revenue
+# from the Weltzcraft Studios Stripe account, Printful order status, and studio invoices.
+# Prints one WELTZCRAFT_SALES_JSON line with counts and totals only: no names, emails, addresses or ids
+# (this repo's logs are public). Changes nothing in Stripe or Printful.
+on:
+  schedule:
+    # 08:55 UTC, before the morning review.
+    - cron: '55 8 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  sales:
+    runs-on: ubuntu-latest
+    env:
+      STRIPE_KEY: ${{ secrets.WELTZCRAFT_STRIPE_SECRET_KEY }}
+      PRINTFUL_API_TOKEN: ${{ secrets.PRINTFUL_API_TOKEN }}
+      PRINTFUL_STORE_ID: ${{ secrets.PRINTFUL_STORE_ID }}
+    steps:
+      - name: Sales numbers
+        run: |
+          cat > sales.mjs <<'EOF'
+          import { createHash } from 'node:crypto';
+          const { STRIPE_KEY, PRINTFUL_API_TOKEN, PRINTFUL_STORE_ID } = process.env;
+          const now = Math.floor(Date.now() / 1000), day = now - 86400, week = now - 7 * 86400;
+          const out = { stripe: null, printful: null, invoices: null, stuck: null, notes: [] };
+
+          // Every page of a Stripe list made since `since`; null if the key can't read it.
+          async function stripeList(path, since) {
+            const rows = [];
+            let after = '';
+            for (let page = 0; page < 20; page++) {
+              const sep = path.includes('?') ? '&' : '?';
+              const r = await fetch(`https://api.stripe.com/v1/${path}${sep}limit=100&created[gte]=${since}${after}`,
+                { headers: { Authorization: 'Bearer ' + STRIPE_KEY } });
+              if (!r.ok) { out.notes.push(`stripe ${path.split('?')[0]} ${r.status}`); return null; }
+              const b = await r.json();
+              rows.push(...b.data);
+              if (!b.has_more || !b.data.length) break;
+              after = '&starting_after=' + b.data[b.data.length - 1].id;
+            }
+            return rows;
+          }
+          const dollars = (cents) => Math.round(cents) / 100;
+
+          let paid = null;
+          if (!STRIPE_KEY) out.notes.push('no WELTZCRAFT_STRIPE_SECRET_KEY secret');
+          else {
+            const sessions = await stripeList('checkout/sessions', week);
+            if (sessions) {
+              paid = sessions.filter((s) => s.payment_status === 'paid' && (s.metadata || {}).shop === 'weltzcraft-merch');
+              const sum = (rows) => {
+                const items = {}, logos = {};
+                let pieces = 0;
+                for (const s of rows) {
+                  // metadata.slug is "tee-black-58 2XL x1, mug-black-55 x2": product-color-logo, size, quantity.
+                  for (const label of String(s.metadata.slug || '').split(', ').filter(Boolean)) {
+                    const m = label.match(/^(\S+)(?: \S+)? x(\d+)$/);
+                    if (!m) continue;
+                    const [product, , logo] = m[1].split('-');
+                    const q = Number(m[2]);
+                    items[product] = (items[product] || 0) + q;
+                    if (logo) logos[logo] = (logos[logo] || 0) + q;
+                    pieces += q;
+                  }
+                }
+                return {
+                  orders: rows.length, revenue: dollars(rows.reduce((t, s) => t + (s.amount_total || 0), 0)), pieces,
+                  promo_orders: rows.filter((s) => (s.metadata || {}).promo).length, by_product: items, by_logo: logos,
+                };
+              };
+              out.stripe = { last_24h: sum(paid.filter((s) => s.created >= day)), last_7d: sum(paid) };
+              const refunds = await stripeList('refunds', week);
+              if (refunds) {
+                const amt = (rows) => ({ count: rows.length, amount: dollars(rows.reduce((t, r) => t + (r.amount || 0), 0)) });
+                out.stripe.refunds_24h = amt(refunds.filter((r) => r.created >= day));
+                out.stripe.refunds_7d = amt(refunds);
+              }
+            }
+            const invoices = await stripeList('invoices', now - 90 * 86400);
+            if (invoices) {
+              const paidInv = invoices.filter((i) => i.status === 'paid');
+              const paidAt = (i) => (i.status_transitions || {}).paid_at || 0;
+              const tot = (rows, f) => ({ count: rows.length, amount: dollars(rows.reduce((t, i) => t + (i[f] || 0), 0)) });
+              const open = invoices.filter((i) => i.status === 'open');
+              out.invoices = {
+                paid_24h: tot(paidInv.filter((i) => paidAt(i) >= day), 'amount_paid'),
+                paid_7d: tot(paidInv.filter((i) => paidAt(i) >= week), 'amount_paid'),
+                open: tot(open, 'amount_remaining'),
+                overdue: open.filter((i) => i.due_date && i.due_date < now).length,
+              };
+            }
+          }
+
+          if (!PRINTFUL_API_TOKEN) out.notes.push('no PRINTFUL_API_TOKEN secret');
+          else {
+            const orders = [];
+            let ok = true;
+            for (let offset = 0; offset < 500; offset += 100) {
+              const r = await fetch(`https://api.printful.com/orders?limit=100&offset=${offset}`, { headers: {
+                Authorization: 'Bearer ' + PRINTFUL_API_TOKEN, ...(PRINTFUL_STORE_ID ? { 'X-PB-Store-Id': PRINTFUL_STORE_ID } : {}),
+              } });
+              if (!r.ok) { out.notes.push('printful orders ' + r.status); ok = false; break; }
+              const b = await r.json();
+              orders.push(...(b.result || []));
+              if ((b.result || []).length < 100) break;
+            }
+            if (ok) {
+              const recent = orders.filter((o) => o.created >= week);
+              const by = (rows) => rows.reduce((t, o) => { t[o.status] = (t[o.status] || 0) + 1; return t; }, {});
+              const n = (st, ...names) => names.reduce((t, k) => t + (st[k] || 0), 0);
+              const all = by(orders), wk = by(recent);
+              out.printful = {
+                orders_7d: recent.length, status_7d: wk,
+                // Printful statuses: draft (not confirmed, nothing charged), pending/inprocess/partial (being made),
+                // onhold/failed (needs attention), fulfilled (shipped), canceled.
+                draft: n(all, 'draft'), in_production: n(all, 'pending', 'inprocess', 'partial'),
+                failed_or_on_hold: n(all, 'failed', 'onhold'), shipped_7d: n(wk, 'fulfilled'), canceled_7d: n(wk, 'canceled'),
+              };
+              if (paid) {
+                // The site gives each Printful order an external id made from the Stripe session id.
+                const ext = new Map(orders.map((o) => [o.external_id, o.status]));
+                const idOf = (s) => 'wc' + createHash('sha256').update(s.id).digest('hex').slice(0, 28);
+                out.stuck = {
+                  paid_not_at_printful: paid.filter((s) => !ext.has(idOf(s))).length,
+                  paid_stuck_as_draft: paid.filter((s) => ext.get(idOf(s)) === 'draft').length,
+                  paid_failed_or_on_hold: paid.filter((s) => ['failed', 'onhold'].includes(ext.get(idOf(s)))).length,
+                };
+              }
+            }
+          }
+          if (!out.notes.length) delete out.notes;
+          console.log('WELTZCRAFT_SALES_JSON ' + JSON.stringify(out));
+          EOF
+          node sales.mjs
