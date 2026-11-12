@@ -1,7 +1,7 @@
 import { supabase } from '../supabaseClient';
 import { isLookCode } from './look';
 import { signIn } from '../AuthContext';
-import { inApp } from '../native/authSession';
+import { hasAppleSheet, inApp } from '../native/authSession';
 
 // Saved characters live on the Google account (Supabase auth user metadata), so no new table is needed.
 // If the player has no party character yet but does have a Hood Protocol look, that one is offered.
@@ -49,6 +49,14 @@ export const signInWithGoogle = async (returnTo) => {
     provider: 'google',
     options: { redirectTo: returnTo, queryParams: { prompt: 'select_account' } },
   });
+};
+
+/** Sign in with Apple through Apple's own sheet (iPhone app builds that have it); reloads on success. */
+export const canSignInWithApple = () => inApp() && hasAppleSheet();
+export const signInWithApple = async () => {
+  const result = await signIn('apple');
+  if (result) window.location.reload();
+  return result;
 };
 
 export const signOutHere = () => supabase.auth.signOut({ scope: 'local' }).catch(() => {});

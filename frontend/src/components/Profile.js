@@ -26,6 +26,7 @@ import {
     TIER_DEFINITIONS,
 } from '../data/strategyUtils';
 import TierBoard from './TierBoard';
+import DeleteAccount from './DeleteAccount';
 import { ShowMoreButton, useShowMore } from './ShowMore';
 import { notifyProfileUpdated } from '../profileSync';
 import '../App.css';
@@ -291,6 +292,7 @@ const Profile = () => {
                         <button type="submit" className="create-button">Save Profile</button>
                     </div>
                 </form>
+                {user && !user.offline && <DeleteAccount className="profile-delete-account" />}
             </section>
 
             {unavailableFavoriteIds.length > 0 && (

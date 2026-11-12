@@ -57,7 +57,7 @@ const GamesPage = ({ guest = false }) => {
           <a href="/dnd" className="game-card is-race">
             <span className="game-card-emoji" aria-hidden="true">🐉</span>
             <span className="game-card-text">
-              <strong>Hood Quest (dungeons and dragons)</strong>
+              <strong>Hood Quest (fantasy tabletop adventure)</strong>
               <span>Host a tabletop adventure on the TV: 3D maps, an AI narrator with a human co-DM, and heroes that save to your Google account.</span>
             </span>
           </a>

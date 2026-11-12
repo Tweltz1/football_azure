@@ -29,7 +29,7 @@ const FrontDoor = ({ onFootball }) => (
         <a className="front-door-card is-games is-dnd" href="/dnd">
           <span className="front-door-icon">🐉</span>
           <strong>Hood Quest</strong>
-          <small>Dungeons and dragons on the TV with an AI narrator. Heroes join on their phones.</small>
+          <small>Fantasy tabletop quests on the TV with an AI narrator. Heroes join on their phones.</small>
         </a>
       </div>
     </section>

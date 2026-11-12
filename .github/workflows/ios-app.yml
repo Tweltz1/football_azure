@@ -18,6 +18,7 @@ on:
   push:
     paths:
       - 'ios-app/**'
+      - 'scripts/ios/**'
       - 'frontend/src/offline/**'
       - 'frontend/src/native/**'
       - '.github/workflows/ios-app.yml'
@@ -164,6 +165,14 @@ jobs:
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             archive | tail -n 40
           test ${PIPESTATUS[0]} -eq 0
+
+          # Sign in with Apple (App Store guideline 4.8, next to Google sign-in) needs the capability on the App
+          # ID and the entitlement in the app. The archive above is unsigned, so sign the entitlement in here
+          # (a throwaway signature; the export re-signs it for the App Store and keeps the entitlement).
+          APP_PATH="$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app"
+          BUNDLE=com.hoodleague.draft KEY_P8="$KEY_P8" KEY_ID="$KEY_ID" ISSUER_ID="$ISSUER_ID" node "$GITHUB_WORKSPACE/scripts/ios/enable-apple-signin.js" || { rm -f "$KEY_PATH"; exit 1; }
+          find "$APP_PATH/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -exec codesign --force --sign - {} \; 2>/dev/null || true
+          codesign --force --sign - --entitlements App/App.entitlements "$APP_PATH"
 
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>

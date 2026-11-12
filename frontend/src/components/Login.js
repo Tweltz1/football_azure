@@ -13,10 +13,13 @@ import { HOOD_GAMES_PATH, inGamesApp } from '../native/gamesApp';
 import { chooseSavedUser, clearSignedOut, guestUser, offlineUser, savedProfiles } from '../offline/storage';
 import StudioCredit from './StudioCredit';
 import EmailSignIn from './EmailSignIn';
+import { hasAppleSheet } from '../native/authSession';
 
 const Login = () => {
   const hasInvite = new URLSearchParams(window.location.search).has('join');
   const online = useOnline();
+  // Sign in with Apple: only in iPhone app builds that have Apple's own sign-in sheet (App Store guideline 4.8).
+  const appleSheet = hasAppleSheet();
   // Before anything else: football or games. An invite link goes straight to football, and so does the
   // Hood Games app, whose games hub already asked.
   const [football, setFootball] = useState(() => hasInvite || inGamesApp() || window.location.pathname !== '/');
@@ -69,6 +72,7 @@ const Login = () => {
           )}
           <div className="login-actions">
             <button type="button" onClick={() => signIn('google')}>Login with Google</button>
+            {appleSheet && <button type="button" className="apple-signin-button" onClick={() => signIn('apple')}> Sign in with Apple</button>}
           </div>
           <p className="email-signin-or">or use your email</p>
           <EmailSignIn disabled={!online} />

@@ -3,10 +3,11 @@ import Person from '../party/Person';
 import { randomLook } from '../party/look';
 import { CLASSES } from '../dnd/rules';
 import { HOOD_GAMES_PATH, inGamesApp, siteOrigin } from '../native/gamesApp';
-import { currentUser, firstName, signInWithGoogle, signOutHere } from '../party/account';
+import { canSignInWithApple, currentUser, firstName, signInWithApple, signInWithGoogle, signOutHere } from '../party/account';
 import '../party/party.css';
 import './hood.css';
 import StudioCredit from '../components/StudioCredit';
+import DeleteAccount from '../components/DeleteAccount';
 
 const PLACES = [
   {
@@ -20,7 +21,7 @@ const PLACES = [
     href: '/dnd',
     icon: '🐉',
     name: 'Hood Quest',
-    blurb: 'Dungeons and dragons on the TV with an AI narrator. Heroes and the DM join on their phones.',
+    blurb: 'Fantasy tabletop quests on the TV with an AI narrator. Heroes and the DM join on their phones.',
     tone: 'is-quest',
   },
   {
@@ -84,12 +85,18 @@ export default function HoodGamesHub() {
             <>
               <span>Signed in as <b>{firstName(user) || user.email}</b>. Every game starts with your name (you can still change it) and saves your characters, heroes and scores.</span>
               <button type="button" className="lcp-link" onClick={() => signOutHere().then(() => setUser(null))}>Sign out</button>
+              <DeleteAccount onDeleted={() => setUser(null)} />
             </>
           ) : (
             <>
               <button type="button" className="lcp-google" onClick={() => signInWithGoogle(`${siteOrigin()}${HOOD_GAMES_PATH}`)}>
                 <span className="lcp-g">G</span> Sign in with Google
               </button>
+              {canSignInWithApple() && (
+                <button type="button" className="lcp-google" onClick={() => signInWithApple()}>
+                  <span className="lcp-g"></span> Sign in with Apple
+                </button>
+              )}
               <span>Sign in once here and it counts for every game: your name is filled in for you, and characters, heroes and scores save to your account. Or just play as a guest.</span>
             </>
           )}

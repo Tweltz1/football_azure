@@ -29,7 +29,7 @@ export default function DndHome() {
       <a className="lch-back" href={inGamesApp() ? homeHref() : '/games'}>← {inGamesApp() ? homeLabel() : 'Games'}</a>
       <p className="lch-kicker">Hood League · Tabletop</p>
       <h1 className="dq-title">Hood Quest</h1>
-      <p className="lch-sub">Dungeons and dragons for one TV and your phones. The TV shows a 3D map, an AI narrator tells the story, and one of you co-hosts as the Dungeon Master. Every quest, map and monster lineup is new each time.</p>
+      <p className="lch-sub">A fantasy tabletop adventure for one TV and your phones. The TV shows a 3D map, an AI narrator tells the story, and one of you co-hosts as the Dungeon Master. Every quest, map and monster lineup is new each time.</p>
       <div className="lch-crew">{looks.map((l, i) => <Person key={i} look={l} pose={i === 2 ? 'wave' : 'stand'} className={`lc-bob lc-d${i % 4}`} />)}</div>
       <div className="lch-actions">
         <a className="lch-card" href="/dnd/tv">
