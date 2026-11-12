@@ -400,7 +400,7 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 .brand-name{font:800 19px/1 var(--f-display);letter-spacing:-.015em;white-space:nowrap}
 .brand-name em{font-style:normal;font-weight:500;color:var(--muted);margin-left:1px}
 #site-nav{display:flex;align-items:center;gap:2px}
-#site-nav a{position:relative;text-decoration:none;font:500 15px/1 var(--f-body);color:var(--muted);padding:10px 12px;border-radius:999px;transition:color .15s,background .15s}
+#site-nav a{position:relative;white-space:nowrap;text-decoration:none;font:500 15px/1 var(--f-body);color:var(--muted);padding:10px 12px;border-radius:999px;transition:color .15s,background .15s}
 #site-nav a:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent)}
 #site-nav a[aria-current="page"]{color:var(--ink)}
 #site-nav a[aria-current="page"]::after{content:"";position:absolute;left:12px;right:12px;bottom:3px;height:2px;border-radius:2px;background:var(--ember)}
@@ -426,13 +426,13 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 .top.open .menu-btn i:nth-child(2){opacity:0}
 .top.open .menu-btn i:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
 
-@media (max-width:1000px){
+@media (max-width:1240px){
   .top-in{gap:12px}
   .top-act::before,#site-nav a[href$="#demo"]{display:none}
   #site-nav a{padding:10px 9px}
 }
 /* phones and small tablets: logo + name, Start a project, menu */
-@media (max-width:860px){
+@media (max-width:1120px){
   .top-in{height:62px}
   .brand-name em{display:none}
   .top-act{gap:8px}
