@@ -156,7 +156,8 @@ struct RipResultView: View {
 struct RoleRevealView: View {
     let view: PlayerView
     let onReady: () -> Void
-    @State private var stage = 0
+    // App Store screenshots (`-shot role`) open on the role card.
+    @State private var stage = UserDefaults.standard.string(forKey: "shot") == "role" ? 1 : 0
 
     var body: some View {
         VStack(spacing: 24) {
