@@ -1,7 +1,7 @@
 // How Curbsy pays for itself (/api/junk/plus, purchases, searches, push, partners):
 //
 // - Curbsy Plus, a $4.99 a month App Store subscription: up to 10 saved searches with instant alerts, search
-//   up to 100 miles instead of 25, a 10-minute early look at new listings, and no sponsor cards.
+//   up to 100 miles instead of 25, a 30-minute early look at new listings, and no sponsor cards.
 // - Tips: one-time "Support Curbsy" in-app purchases.
 // - Junk haulers: a poster whose stuff isn't going can call a local hauler; each tap is logged as a lead.
 // - Local sponsors: one card in the Browse feed from a business that paid for the area.
@@ -23,7 +23,7 @@ export const PLUS_MAX_MILES = 100;
 export const FREE_SAVED_SEARCHES = 1;
 export const PLUS_SAVED_SEARCHES = 10;
 /** New listings show only to Plus members for this long. */
-export const EARLY_MINUTES = 10;
+export const EARLY_MINUTES = 30;
 /** Most people one new listing alerts. */
 export const MAX_ALERTS = 200;
 export const PARTNER_KINDS = ['hauler', 'sponsor'] as const;

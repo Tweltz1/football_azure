@@ -9,7 +9,7 @@ import { IconClose } from './icons';
 
 const PERKS = [
   ['🔔', 'Instant alerts', 'Get a notification the moment something you want is posted. Save up to 10 searches.'],
-  ['⏱️', 'First look', 'See new listings 10 minutes before everyone else.'],
+  ['⏱️', 'First look', 'Get a 30-minute head start on new free stuff, before anyone else can see it.'],
   ['🗺️', 'Search up to 100 miles', 'Free accounts search up to 25.'],
   ['✨', 'No sponsor cards', 'Just free stuff in your feed.'],
 ];

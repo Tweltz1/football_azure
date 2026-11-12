@@ -185,7 +185,7 @@ function world(detection: JunkDetection | null = null) {
     const out = res!.body as { id: string; photos: string[] };
     // Posted a while ago (past Plus members' early look), so everyone can find it.
     const saved = items.get(out.id);
-    if (saved && !fields.fresh) saved.createdAt = new Date(Date.parse(saved.createdAt) - 20 * 60_000).toISOString();
+    if (saved && !fields.fresh) saved.createdAt = new Date(Date.parse(saved.createdAt) - 45 * 60_000).toISOString();
     return out;
   };
   return { names, plusRows, tips, saved, tokens, partners, taps, pushed, call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, providers, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
@@ -838,7 +838,7 @@ test('tips are recorded once each', async () => {
   assert.deepEqual([(res?.body as { thanks: boolean }).thanks, (res?.body as { tips: number }).tips], [false, 1]);
 });
 
-test('Plus searches up to 100 miles and sees new listings first; everyone else gets 25 miles after 10 minutes', async () => {
+test('Plus searches up to 100 miles and sees new listings first; everyone else gets 25 miles after 30 minutes', async () => {
   const w = world();
   // About 60 miles north.
   const far = await w.post(ALICE, { title: 'Far table', lat: HOME.lat + 0.87 });
@@ -852,7 +852,9 @@ test('Plus searches up to 100 miles and sees new listings first; everyone else g
   assert.deepEqual(plus.map((i) => i.id), [fresh.id, far.id]);
   assert.equal(plus[0].early, true);
   w.tick(11 * MIN);
-  assert.deepEqual((await ids(CARL, 30)).map((i) => i.id), [fresh.id], 'everyone sees it after 10 minutes');
+  assert.deepEqual((await ids(CARL, 30)).map((i) => i.id), [], 'still Plus-only after 11 minutes');
+  w.tick(20 * MIN);
+  assert.deepEqual((await ids(CARL, 30)).map((i) => i.id), [fresh.id], 'everyone sees it after 30 minutes');
 });
 
 test('saved searches: 1 free, 10 with Plus; new matches are counted, and Plus members get an alert', async () => {
@@ -869,7 +871,7 @@ test('saved searches: 1 free, 10 with Plus; new matches are counted, and Plus me
   await w.post(ALICE, { fresh: true });
   assert.equal(w.pushed.length, 0);
   assert.equal(((await w.call(BOB, 'GET', 'junk/searches'))?.body as { newCount: number }[])[0].newCount, 0);
-  w.tick(11 * MIN);
+  w.tick(31 * MIN);
   let list = (await w.call(BOB, 'GET', 'junk/searches'))?.body as { id: string; newCount: number; miles: number }[];
   assert.deepEqual([list.length, list[0].newCount, list[0].miles], [1, 1, 10]);
   await w.call(BOB, 'POST', `junk/searches/${list[0].id}/seen`);
