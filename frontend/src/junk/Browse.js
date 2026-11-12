@@ -90,6 +90,22 @@ export default function Browse() {
     return () => { live = false; };
   }, [spot, radiusMi, query, category, sort]);
 
+  // Free stuff goes fast: quietly check again every minute, and the moment the app comes back to the front,
+  // so the feed never shows things that were taken while the phone was in a pocket.
+  useEffect(() => {
+    if (!spot) return undefined;
+    let live = true;
+    const again = () => {
+      if (document.visibilityState !== 'visible') return;
+      searchItems({ lat: spot.lat, lng: spot.lng, km: milesToKm(radiusMi).toFixed(1), q: query, category, sort })
+        .then((list) => { if (live) { setItems(list); setError(''); } })
+        .catch(() => {}); // keep what's on screen; the next try may work
+    };
+    const t = window.setInterval(again, 60000);
+    document.addEventListener('visibilitychange', again);
+    return () => { live = false; window.clearInterval(t); document.removeEventListener('visibilitychange', again); };
+  }, [spot, radiusMi, query, category, sort]);
+
   const searching = Boolean(query || category);
 
   useEffect(() => {

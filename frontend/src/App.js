@@ -43,6 +43,12 @@ function App() {
   if (isJunkPath(window.location.pathname)) {
     return <JunkRoutes />;
   }
+  // Curbsy runs only inside its iPhone app. A Curbsy link opened in a browser (a shared invite, say) gets the
+  // page that explains Curbsy, not Hood League's sign-in.
+  if (/^\/junk(\/|$)/.test(window.location.pathname)) {
+    window.location.replace('/curbsy.html');
+    return null;
+  }
   // Hood Games hub (where the Hood Games app opens) needs no sign-in either.
   if (isHubPath(window.location.pathname)) {
     return (
