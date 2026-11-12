@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleDevelopmentRegion</key><string>en</string>
+<key>CFBundleDisplayName</key><string>Hood Protocol</string>
+<key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+<key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+<key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
+<key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+<key>ITSAppUsesNonExemptEncryption</key><false/>
+<key>LSRequiresIPhoneOS</key><true/>
+<key>CFBundleURLTypes</key><array><dict>
+<key>CFBundleURLName</key><string>com.tweltz1.hoodprotocol</string>
+<key>CFBundleURLSchemes</key><array><string>com.tweltz1.hoodprotocol</string></array>
+</dict></array>
+<key>NSLocalNetworkUsageDescription</key><string>Hood Protocol finds friends' phones nearby so you can play together without internet.</string>
+<key>NSBonjourServices</key><array>
+<string>_hood-protocol._tcp</string>
+<string>_hood-protocol._udp</string>
+</array>
+<key>SupabaseURL</key><string>$(SUPABASE_URL)</string>
+<key>SupabaseAnonKey</key><string>$(SUPABASE_ANON_KEY)</string>
+<key>UILaunchScreen</key><dict>
+<key>UIImageName</key><string>LaunchLogo</string>
+<key>UIColorName</key><string>LaunchBackground</string>
+</dict>
+<key>UISupportedInterfaceOrientations</key><array>
+<string>UIInterfaceOrientationPortrait</string>
+<string>UIInterfaceOrientationPortraitUpsideDown</string>
+<string>UIInterfaceOrientationLandscapeLeft</string>
+<string>UIInterfaceOrientationLandscapeRight</string>
+</array>
+<key>UISupportedInterfaceOrientations~ipad</key><array>
+<string>UIInterfaceOrientationPortrait</string>
+<string>UIInterfaceOrientationPortraitUpsideDown</string>
+<string>UIInterfaceOrientationLandscapeLeft</string>
+<string>UIInterfaceOrientationLandscapeRight</string>
+</array>
+</dict></plist>
