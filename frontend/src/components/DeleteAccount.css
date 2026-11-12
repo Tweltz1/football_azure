@@ -1,0 +1,33 @@
+.delete-account-link {
+  background: none;
+  border: 0;
+  color: #d9534f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 0;
+  text-decoration: underline;
+}
+.delete-account-box {
+  border: 1px solid rgba(217, 83, 79, 0.5);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-top: 10px;
+  text-align: left;
+  max-width: 520px;
+}
+.delete-account-box p { margin: 8px 0; font-size: 0.92rem; line-height: 1.45; }
+.delete-account-error { color: #d9534f; }
+.delete-account-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.delete-account-confirm,
+.delete-account-cancel {
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  min-height: 40px;
+  padding: 8px 16px;
+}
+.delete-account-confirm { background: #d9534f; border: 0; color: #fff; }
+.delete-account-confirm:disabled { opacity: 0.6; cursor: default; }
+.delete-account-cancel { background: transparent; border: 1px solid currentColor; color: inherit; }
