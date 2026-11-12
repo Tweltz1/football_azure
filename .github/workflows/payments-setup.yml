@@ -46,6 +46,14 @@ jobs:
           else
             echo "No ToteTrack Pro picture yet."
           fi
+      - name: Get Hood Protocol's store screenshots
+        run: |
+          mkdir -p "$RUNNER_TEMP/hood-protocol-shots"
+          if git fetch -q --depth 1 origin hood-protocol-store-shots; then
+            git --work-tree="$RUNNER_TEMP/hood-protocol-shots" checkout FETCH_HEAD -- . && git reset -q
+          else
+            echo "No Hood Protocol screenshots yet."
+          fi
       - name: Run
         env:
           STRIPE_SECRET_KEY: ${{ secrets.TALKSHOPS_STRIPE_SECRET_KEY }}
@@ -59,6 +67,7 @@ jobs:
           APP_REVIEW_PHONE: ${{ secrets.APP_REVIEW_PHONE }}
           APP_REVIEW_EMAIL: ${{ secrets.APP_REVIEW_EMAIL }}
           TOTE_SHOTS: ${{ runner.temp }}/tote-shots
+          HOOD_PROTOCOL_SHOTS: ${{ runner.temp }}/hood-protocol-shots
         run: |
           while read -r line; do
             script=$(echo "$line" | tr -cd 'a-z0-9-')

@@ -1,9 +1,9 @@
-// Fills in the store settings Curbsy and ToteTrack 1.0 still lack before App Review: copyright, content
+// Fills in the store settings Curbsy, ToteTrack and the Hood apps 1.0 still lack before App Review: copyright, content
 // rights, a free price, and availability in every territory. Only fills what is missing.
 // Env: KEY_ID, ISSUER_ID, KEY_P8.
 const { api, step } = require('../curbsy-store/asc');
 
-const APPS = ['com.hoodleague.junk', 'com.tweltz1.totetrack'];
+const APPS = ['com.hoodleague.junk', 'com.tweltz1.totetrack', 'com.hoodleague.draft', 'com.hoodleague.games', 'com.tweltz1.hoodprotocol'];
 const COPYRIGHT = `${new Date().getUTCFullYear()} Weltzcraft Studios`;
 const one = (type, id) => ({ data: { type, id } });
 
@@ -33,7 +33,8 @@ async function territories() {
       return 'does not use third-party content';
     });
     await step('price (free)', async () => {
-      const has = await api(`/v1/apps/${app.id}/appPriceSchedule`).then(() => true).catch(() => false);
+      // A schedule can exist with no price in it, so look for an actual price.
+      const has = await api(`/v1/apps/${app.id}/appPriceSchedule?include=manualPrices`).then((r) => (r.included || []).some((x) => x.type === 'appPrices')).catch(() => false);
       if (has) return 'already set';
       let free = null;
       let next = `/v1/apps/${app.id}/appPricePoints?filter[territory]=USA&limit=200`;
