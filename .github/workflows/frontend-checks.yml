@@ -1,0 +1,29 @@
+name: hood-league.com checks
+
+# Unit tests plus a layout check of the guest pages (front door, Hood Games hub, Games Night, Card
+# Table, Hood Quest, Draft Games) at phone, tablet and laptop sizes. See frontend/scripts/layout-check.js.
+on:
+  pull_request:
+    paths: ['frontend/**', '.github/workflows/frontend-checks.yml']
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - name: Unit tests
+        run: CI=true npx react-scripts test --watchAll=false
+      - name: Build
+        run: npm run build
+      - name: Layout check
+        run: |
+          npm install --no-save playwright@1.48.2
+          npx playwright install --with-deps chromium
+          node scripts/layout-check.js

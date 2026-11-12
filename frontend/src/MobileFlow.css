@@ -214,6 +214,11 @@
     overflow: visible;
   }
 
+  /* The slim Draft Games header has a single Back link: give it the whole row. */
+  .nav-links.is-slim {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .nav-links a {
     padding: 8px 4px;
     text-align: center;
