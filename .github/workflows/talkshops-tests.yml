@@ -1,0 +1,16 @@
+name: Talk Shops tests
+
+# Runs the Talk Shops unit tests (talkshops/tests/*.test.mjs) on pull requests that touch talkshops/.
+on:
+  pull_request:
+    paths: ['talkshops/**', '.github/workflows/talkshops-tests.yml']
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node --test talkshops/tests/*.test.mjs

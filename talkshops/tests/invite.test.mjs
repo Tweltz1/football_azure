@@ -18,9 +18,13 @@ function app(respond, { search = `?join=${token}`, stored } = {}) {
     history: { replaceState() {} }, window: { createShopTeam: () => ({}) },
     sb: { auth: { getSession: () => { throw Error('Auth lock must not be entered during session handoff'); } } },
     esc: String, toast() {}, render() {}, setTimeout() {},
+    // The plan/billing module (public/plan.js) is outside the sliced code; an open trial never locks the shop.
+    planUi: { locked: () => false },
     fetch: async (url, options) => {
       calls.push({ url, ...options });
-      const [status, body] = respond(url, options);
+      let [status, body] = respond(url, options);
+      // The Bay board now comes back versioned ({ v, jobs }); keep the tests' plain [] meaning "no cars".
+      if (url.includes('/jobs/board') && Array.isArray(body)) body = { v: '1', jobs: body };
       return { ok: status < 400, status, text: async () => JSON.stringify(body) };
     },
   });
