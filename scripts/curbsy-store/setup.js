@@ -31,7 +31,7 @@ SAFER FOR EVERYONE
 Listings and photos are checked for things that aren't allowed. Report or block anyone in a tap, and a person reviews reports within 24 hours.
 
 CURBSY PLUS (OPTIONAL)
-Everything above is free. Curbsy Plus adds instant alerts the moment a match is posted, up to 10 saved searches, a 10-minute early look at new listings, search up to 100 miles, and no sponsor cards. $4.99 a month, charged to your Apple ID. It renews each month unless you cancel at least 24 hours before the period ends, in Settings > your name > Subscriptions.
+Everything above is free. Curbsy Plus adds instant alerts the moment a match is posted, up to 10 saved searches, a 30-minute early look at new listings, search up to 100 miles, and no sponsor cards. $4.99 a month, charged to your Apple ID. It renews each month unless you cancel at least 24 hours before the period ends, in Settings > your name > Subscriptions.
 
 Terms of Use: ${SITE}/junk-terms.html
 Privacy Policy: ${SITE}/junk-privacy.html`;
