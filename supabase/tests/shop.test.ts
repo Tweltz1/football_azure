@@ -1467,3 +1467,98 @@ test('Telnyx sends texts, explains refusals, and is chosen over Twilio when its 
   assert.equal(r.delivery, 'failed');
   assert.match(r.note!, /Invalid 'to' address.*Telnyx error 40310/);
 });
+
+test('customers pay the final bill by card on the shop\'s own Stripe account; counter payments and QuickBooks export', async () => {
+  const w = world();
+  const owner = w.as('pay-owner'), customer = w.as(null);
+  const calls: { path: string; fields: Record<string, string> | null; account?: string }[] = [];
+  const paidSessions = new Set<string>();
+  let accountReady = false;
+  w.deps.siteUrl = 'https://talkshops.app';
+  w.deps.stripe = {
+    async call(path, fields, account) {
+      calls.push({ path, fields, account });
+      if (path === 'accounts') return { id: 'acct_shop1' };
+      if (path === 'accounts/acct_shop1') return { id: 'acct_shop1', charges_enabled: accountReady };
+      if (path === 'account_links') return { url: 'https://connect.stripe.com/setup/abc' };
+      if (path === 'checkout/sessions') return { id: 'cs_test_session0001', url: 'https://checkout.stripe.com/pay/cs_test_session0001' };
+      if (path.startsWith('checkout/sessions/')) {
+        const id = decodeURIComponent(path.split('/')[2]);
+        return { id, payment_status: paidSessions.has(id) ? 'paid' : 'unpaid', amount_total: 24000, metadata: { job_id: jobId } };
+      }
+      throw new Error('unexpected ' + path);
+    },
+  };
+  await owner('POST', 'shop/me', { name: 'North Auto', email: 'owner@north.example' });
+  const job = (await owner('POST', 'shop/jobs', checkIn))?.body as { id: string; link: string };
+  const jobId = job.id;
+  const path = 'shop/jobs/' + job.id, link = 'shop/c/' + job.link.split('?c=')[1];
+  await owner('POST', path + '/bill', { mode: 'generated', lines: [{ name: 'Brake pads', kind: 'part', qty: 1, rate: 140 }, { name: 'Labor', kind: 'labor', qty: 1, rate: 100 }] });
+  await owner('POST', path + '/stage', { stage: 'ready' });
+
+  // No Stripe connection and no pay link: the bill shows what's due, with no pay button.
+  let page = (await customer('GET', link))?.body as { pay: { due: number; online: boolean; link: string | null } };
+  assert.deepEqual([page.pay.due, page.pay.online, page.pay.link], [240, false, null]);
+  assert.equal((await customer('POST', link + '/pay'))?.status, 400);
+
+  // The shop's own pay link from another processor.
+  assert.equal((await owner('POST', 'shop/pay', { action: 'link', link: 'javascript:alert(1)' }))?.status, 400);
+  assert.equal((await owner('POST', 'shop/pay', { action: 'link', link: 'https://square.link/u/north' }))?.status, 200);
+  page = (await customer('GET', link))?.body as typeof page;
+  assert.equal(page.pay.link, 'https://square.link/u/north');
+
+  // Technicians can't change payment settings.
+  const tech = w.as('pay-tech');
+  assert.equal((await tech('GET', 'shop/pay'))?.status, 409);
+
+  // Connect Stripe: an account is made once, then onboarding; card payments start once Stripe says it can charge.
+  const connect = (await owner('POST', 'shop/pay', { action: 'connect' }))?.body as { url: string };
+  assert.equal(connect.url, 'https://connect.stripe.com/setup/abc');
+  assert.equal(calls.find((c) => c.path === 'accounts')?.fields?.type, 'standard');
+  assert.equal(calls.find((c) => c.path === 'account_links')?.fields?.return_url, 'https://talkshops.app/settings?pay=done');
+  assert.equal(((await owner('GET', 'shop/pay'))?.body as { stripe: { ready: boolean } }).stripe.ready, false);
+  assert.equal((await customer('POST', link + '/pay'))?.status, 400);
+  accountReady = true;
+  assert.equal(((await owner('GET', 'shop/pay'))?.body as { stripe: { ready: boolean } }).stripe.ready, true);
+  page = (await customer('GET', link))?.body as typeof page;
+  assert.equal(page.pay.online, true);
+  assert.equal(page.pay.link, null, 'Stripe takes over from the pasted link');
+
+  // A counter payment lowers what's due online.
+  const counter = (await owner('POST', path + '/payment', { amount: 40 }))?.body as Job['data'];
+  assert.equal(counter.payments?.length, 1);
+  const pay = (await customer('POST', link + '/pay'))?.body as { url: string };
+  assert.match(pay.url, /checkout\.stripe\.com/);
+  const checkout = calls.find((c) => c.path === 'checkout/sessions')!;
+  assert.equal(checkout.account, 'acct_shop1', 'charged on the shop\'s own account');
+  assert.equal(checkout.fields?.['line_items[0][price_data][unit_amount]'], '20000');
+  assert.equal(checkout.fields?.mode, 'payment');
+
+  // Not paid yet: nothing is recorded. Once Stripe says paid, the page records it once.
+  page = (await customer('GET', link))?.body as typeof page;
+  assert.equal(page.pay.due, 200);
+  paidSessions.add('cs_test_session0001');
+  assert.equal(((await customer('POST', link + '/pay-check', { session: 'cs_test_session0001' }))?.body as typeof page).pay.due, 0);
+  assert.equal(((await customer('POST', link + '/pay-check', { session: 'cs_test_session0001' }))?.body as typeof page).pay.due, 0);
+  const saved = w.jobs.get(job.id)!;
+  assert.equal(saved.data.payments?.filter((p) => p.how === 'online').length, 1);
+  assert.equal(saved.data.payPending, undefined);
+  assert.ok(saved.data.notes?.some((n) => n.internal && /paid \$240\.00 online/.test(n.text)));
+  assert.equal((await customer('POST', link + '/pay'))?.status, 400, 'nothing left to pay');
+
+  // Card payments can't be removed here; counter ones can.
+  const online = saved.data.payments!.find((p) => p.how === 'online')!, atCounter = saved.data.payments!.find((p) => p.how === 'counter')!;
+  assert.equal((await owner('POST', path + '/payment', { remove: online.id }))?.status, 400);
+  assert.equal((await owner('POST', path + '/payment', { remove: atCounter.id }))?.status, 200);
+
+  // Exports: the repairs CSV shows paid and balance; the QuickBooks file has one row per bill line.
+  const repairs = (await owner('POST', 'shop/export', { kind: 'jobs' }))?.body as { csv: string };
+  assert.match(repairs.csv, /Paid,Balance due/);
+  const qb = (await owner('POST', 'shop/export', { kind: 'quickbooks' }))?.body as { filename: string; csv: string };
+  assert.match(qb.filename, /quickbooks/);
+  const rows = qb.csv.trim().split('\r\n');
+  assert.equal(rows[0], 'InvoiceNo,Customer,InvoiceDate,DueDate,Memo,Item(Product/Service),ItemDescription,ItemQuantity,ItemRate,ItemAmount');
+  assert.equal(rows.length, 3);
+  assert.match(rows[1], /^RO-1001,Maria Delgado,\d\d\/\d\d\/2026,/);
+  assert.match(rows[1], /Parts,Brake pads,1,140\.00,140\.00$/);
+});

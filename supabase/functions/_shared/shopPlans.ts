@@ -126,17 +126,18 @@ export const lockedMessage = (a: Access) => a.state === 'canceled'
 // ---------------- Stripe ----------------
 
 export interface StripeApi {
-  /** POSTs form fields to https://api.stripe.com/v1/<path> (or GETs when fields is null) and returns the JSON. */
-  call(path: string, fields: Record<string, string> | null): Promise<Record<string, any>>;
+  /** POSTs form fields to https://api.stripe.com/v1/<path> (or GETs when fields is null) and returns the JSON.
+   *  `account` makes the call on a shop's connected Stripe account (Stripe-Account header). */
+  call(path: string, fields: Record<string, string> | null, account?: string): Promise<Record<string, any>>;
 }
 
 export function createStripe(secretKey: string | undefined, fetchImpl: typeof fetch = fetch): StripeApi | null {
   if (!secretKey) return null;
   return {
-    async call(path, fields) {
+    async call(path, fields, account) {
       const res = await fetchImpl('https://api.stripe.com/v1/' + path, {
         method: fields ? 'POST' : 'GET',
-        headers: { Authorization: 'Bearer ' + secretKey, ...(fields ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}) },
+        headers: { Authorization: 'Bearer ' + secretKey, ...(fields ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}), ...(account ? { 'Stripe-Account': account } : {}) },
         body: fields ? new URLSearchParams(fields) : undefined,
       });
       const data = await res.json().catch(() => ({}));
