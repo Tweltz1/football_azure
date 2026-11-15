@@ -37,6 +37,19 @@ SCAN_PATH = re.compile(r"\.env|wp-|wordpress|\.php|\.git|xmlrpc|cgi-bin|phpmyadm
                        r"\.sql|\.bak|\.zip|\.tar|/\.well-known/(?!security)|/actuator|/boot|/owa|/autodiscover|"
                        r"/solr|/HNAP|/sdk|/geoserver|/console|\.yml|\.yaml|\.ini|\.config|/backup|/old|/test", re.I)
 
+# Home and mobile internet providers: a browser visit from one of these is very likely a person.
+CONSUMER_ISP = re.compile(r"comcast|charter|spectrum|verizon|cellco|at&t|att-internet|sbc|t-mobile|tmobile|cox-|cox comm|rcn|"
+                          r"wave|windstream|frontier|altice|optimum|cablevision|mediacom|sparklight|cableone|cable one|tds|"
+                          r"penteledata|brightspeed|centurylink-us|qwest|lumen|ziply|wow|wideopenwest|astound|grande|"
+                          r"metronet|consolidated|gci|hughes|viasat|starlink|space exploration|us cellular|uscc|cricket|"
+                          r"bt-uk|sky|virgin|vodafone|orange|telekom|telefonica|movistar|eircom|three|ee-|o2|telus|rogers|"
+                          r"bell canada|bell-|shaw|videotron|skyway|airtel|jio|reliance|excitel|bsnl|act fibernet|"
+                          r"kixs|korea telecom|kt corp|sk broadband|lg |ntt|kddi|softbank|chunghwa|hinet|telstra|optus|"
+                          r"tpg|digi|belpak|ptcl|pakistan telecom|claro|vivo|tim |telmex|totalplay|izzi|megacable|free sas|"
+                          r"proximus|kpn|ziggo|swisscom|sunrise|telia|telenor|tele2|elisa|comhem|bahnhof|liberty|upc|"
+                          r"chinanet-backbone|china unicom|cmnet|china mobile|turk telekom|turkcell|superonline|rostelecom|mts|beeline|kyivstar", re.I)
+PRIVATE_RELAY = re.compile(r"cloudflare|akamai|fastly", re.I)
+
 def ua_family(ua):
     u = ua.lower()
     if not u: return "(none)"
@@ -179,6 +192,15 @@ def analyse(rows):
         else: b = "maybe_people"
         buckets[b].append(p)
     out["counts"] = {k: len(v) for k, v in buckets.items()}
+    real = [p for p in buckets["likely_people"] + buckets["maybe_people"]
+            if CONSUMER_ISP.search(p["asn"]) or (PRIVATE_RELAY.search(p["asn"]) and any("safari" in u.lower() and "chrome" not in u.lower() for u in p["uas"]))]
+    out["real_people"] = len(real)
+    out["real_people_detail"] = {"countries": Counter(p["country"] for p in real).most_common(10),
+                                 "networks": Counter(p["asn"][:50] for p in real).most_common(15),
+                                 "browsers": Counter(ua_family(next(iter(p["uas"]))) for p in real).most_common(8),
+                                 "pages": Counter(x for p in real for x in p["paths"]).most_common(12),
+                                 "loaded_page_assets": sum(1 for p in real if p["assets"] > 0),
+                                 "pages_seen": sorted(Counter(min(len(p["paths"]), 5) for p in real).items())}
 
     def top(ps, key, n=8):
         c = Counter()
@@ -235,7 +257,8 @@ def main():
         for start, rows in per_day:
             day = analyse(rows)
             report["days"].append({"from": start.isoformat()[:16], "visitors_all": day["visitors_all"],
-                                   "requests_all": day["requests_all"], "counts": day["counts"]})
+                                   "requests_all": day["requests_all"], "counts": day["counts"],
+                                   "real_people": day["real_people"], "real_countries": day["real_people_detail"]["countries"][:5]})
         if all_rows:
             report["whole_period"] = analyse(all_rows)
         print("TRAFFIC_JSON " + json.dumps(report))
