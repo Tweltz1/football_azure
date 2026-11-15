@@ -51,16 +51,59 @@ def ua_family(ua):
          "Safari" if "safari" in u else "other"
     return f"{br} on {os_}"
 
+CANDIDATES = ["clientIP", "userAgent", "clientCountryName", "clientRequestPath", "edgeResponseContentTypeName",
+              "edgeResponseStatus", "requestSource", "clientAsn", "clientASNDescription", "clientRefererHost",
+              "clientRequestReferer", "clientRequestHTTPHost", "clientDeviceType", "userAgentBrowser", "userAgentOS",
+              "verifiedBotCategory", "botScore", "clientRequestHTTPMethodName"]
+FIELDS = []
+
+def probe(zone, start, end):
+    ok = []
+    for f in CANDIDATES:
+        q = "query($z:String!,$s:Time!,$e:Time!){viewer{zones(filter:{zoneTag:$z}){httpRequestsAdaptiveGroups(limit:1, filter:{datetime_geq:$s, datetime_lt:$e}){count dimensions{%s}}}}}" % f
+        r = gql(q, {"z": zone, "s": start.isoformat().replace("+00:00", "Z"), "e": end.isoformat().replace("+00:00", "Z")})
+        if not r.get("errors"): ok.append(f)
+        else: print(f"field {f}: {r['errors'][0].get('message','')[:90]}")
+    return ok
+
 def fetch_groups(zone, start, end):
     q = """query($z:String!,$s:Time!,$e:Time!){viewer{zones(filter:{zoneTag:$z}){
       httpRequestsAdaptiveGroups(limit:10000, filter:{datetime_geq:$s, datetime_lt:$e}){
-        count
-        dimensions{ clientIP userAgent clientAsn clientASNDescription clientCountryName clientRequestPath
-                    clientRefererHost edgeResponseContentTypeName edgeResponseStatus requestSource }}}}}"""
+        count dimensions{ %s }}}}}""" % " ".join(FIELDS)
     r = gql(q, {"z": zone, "s": start.isoformat().replace("+00:00", "Z"), "e": end.isoformat().replace("+00:00", "Z")})
     if r.get("errors"):
         return None, [e.get("message") for e in r["errors"]]
-    return r["data"]["viewer"]["zones"][0]["httpRequestsAdaptiveGroups"], None
+    rows = r["data"]["viewer"]["zones"][0]["httpRequestsAdaptiveGroups"]
+    for g in rows:
+        d = g["dimensions"]
+        if "clientAsn" not in d and d.get("clientIP"):
+            a = asn_of(d["clientIP"]); d["clientAsn"], d["clientASNDescription"] = a
+        if not d.get("clientRefererHost") and d.get("clientRequestReferer"):
+            d["clientRefererHost"] = re.sub(r"^https?://([^/]+).*", r"\1", d["clientRequestReferer"])
+    return rows, None
+
+# Offline IP -> network lookup (iptoasn.com, public domain), since the free plan hides the ASN field.
+import bisect, gzip, ipaddress
+_ASN = {"v4": ([], []), "v6": ([], [])}
+def load_asn():
+    for fam, url in (("v4", "https://iptoasn.com/data/ip2asn-v4.tsv.gz"), ("v6", "https://iptoasn.com/data/ip2asn-v6.tsv.gz")):
+        try:
+            data = gzip.decompress(urllib.request.urlopen(url, timeout=120).read()).decode()
+            starts, rows = _ASN[fam]
+            for line in data.splitlines():
+                a, b, n, c, desc = line.split("\t")
+                if n == "0": continue
+                starts.append(int(ipaddress.ip_address(a))); rows.append((int(ipaddress.ip_address(b)), n, desc))
+            print(f"asn db {fam}: {len(starts)} ranges")
+        except Exception as ex:
+            print(f"asn db {fam} failed: {ex}")
+def asn_of(ip):
+    try:
+        x = ipaddress.ip_address(ip); starts, rows = _ASN["v4" if x.version == 4 else "v6"]
+        i = bisect.bisect_right(starts, int(x)) - 1
+        if i >= 0 and int(x) <= rows[i][0]: return rows[i][1], rows[i][2]
+    except Exception: pass
+    return 0, "unknown"
 
 def get_rows(zone, start, end, depth=0):
     rows, err = fetch_groups(zone, start, end)
@@ -77,13 +120,13 @@ def analyse(rows):
                                   "paths": Counter(), "refs": Counter(), "scan": False, "bot_ua": False, "ok_ua": False})
     for g in rows:
         d, n = g["dimensions"], g["count"]
-        if d.get("requestSource") not in (None, "eyeball"):
+        if d.get("requestSource") not in (None, "eyeball") or not d.get("clientIP"):
             continue
         p = per_ip[d["clientIP"]]
         p["req"] += n
         ua = d.get("userAgent") or ""
         p["uas"].add(ua)
-        if BOT_UA.search(ua) or not ua.lower().startswith("mozilla/"): p["bot_ua"] = True
+        if d.get("verifiedBotCategory") or BOT_UA.search(ua) or not ua.lower().startswith("mozilla/"): p["bot_ua"] = True
         else: p["ok_ua"] = True
         p["asn"] = f'AS{d["clientAsn"]} {d.get("clientASNDescription") or ""}'.strip()
         p["country"] = d.get("clientCountryName") or "?"
@@ -140,6 +183,11 @@ def main():
         zone = (z.get("result") or [{}])[0].get("id")
         if not zone:
             print(f"TRAFFIC {site}: token can't see zone"); continue
+        global FIELDS
+        if not FIELDS:
+            FIELDS = probe(zone, now - dt.timedelta(hours=1), now)
+            print("FIELDS " + " ".join(FIELDS))
+            load_asn()
         report = {"site": site, "days": []}
         all_rows = []
         for i in range(DAYS):
@@ -154,6 +202,11 @@ def main():
         if all_rows:
             report["whole_period"] = analyse(all_rows)
         print("TRAFFIC_JSON " + json.dumps(report))
+        # Cloudflare's own daily totals (what the daily review reports today), for comparison.
+        q = """query($z:String!,$s:Date!,$e:Date!){viewer{zones(filter:{zoneTag:$z}){httpRequests1dGroups(limit:10, orderBy:[date_ASC], filter:{date_geq:$s, date_leq:$e}){
+              dimensions{date} sum{requests pageViews browserMap{pageViews uaBrowserFamily} countryMap{clientCountryName requests} contentTypeMap{edgeResponseContentTypeName requests}} uniq{uniques}}}}}"""
+        r = gql(q, {"z": zone, "s": (now - dt.timedelta(days=DAYS)).date().isoformat(), "e": now.date().isoformat()})
+        print("DAILY_JSON " + json.dumps({"site": site, "data": r.get("data"), "errors": [e.get("message") for e in r.get("errors") or []]}))
 
         # Cloudflare Web Analytics (browser beacon), if enabled: counts only real browsers that run JS.
         try:
