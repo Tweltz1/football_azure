@@ -76,8 +76,6 @@ def fetch_groups(zone, start, end):
     rows = r["data"]["viewer"]["zones"][0]["httpRequestsAdaptiveGroups"]
     for g in rows:
         d = g["dimensions"]
-        if "clientAsn" not in d and d.get("clientIP"):
-            a = asn_of(d["clientIP"]); d["clientAsn"], d["clientASNDescription"] = a
         if not d.get("clientRefererHost") and d.get("clientRequestReferer"):
             d["clientRefererHost"] = re.sub(r"^https?://([^/]+).*", r"\1", d["clientRequestReferer"])
     return rows, None
@@ -86,6 +84,7 @@ def fetch_groups(zone, start, end):
 import bisect, gzip, ipaddress
 _ASN = {"v4": ([], []), "v6": ([], [])}
 def load_asn():
+    return  # iptoasn blocks runners; using cymru() instead
     for fam, url in (("v4", "https://iptoasn.com/data/ip2asn-v4.tsv.gz"), ("v6", "https://iptoasn.com/data/ip2asn-v6.tsv.gz")):
         try:
             data = gzip.decompress(urllib.request.urlopen(url, timeout=120).read()).decode()
@@ -97,6 +96,31 @@ def load_asn():
             print(f"asn db {fam}: {len(starts)} ranges")
         except Exception as ex:
             print(f"asn db {fam} failed: {ex}")
+import socket
+def cymru(ips):
+    """Bulk IP -> network name via Team Cymru's public whois service (one TCP connection)."""
+    out = {}
+    ips = sorted(set(ips))
+    for i in range(0, len(ips), 2000):
+        chunk = ips[i:i+2000]
+        try:
+            s = socket.create_connection(("whois.cymru.com", 43), timeout=60)
+            s.sendall(("begin\nverbose\n" + "\n".join(chunk) + "\nend\n").encode())
+            buf = b""
+            while True:
+                b = s.recv(65536)
+                if not b: break
+                buf += b
+            s.close()
+            for line in buf.decode(errors="replace").splitlines():
+                parts = [x.strip() for x in line.split("|")]
+                if len(parts) >= 7 and parts[0].isdigit():
+                    out[parts[1]] = (int(parts[0]), parts[6])
+        except Exception as ex:
+            print(f"cymru failed: {ex}")
+    print(f"networks found for {len(out)}/{len(ips)} visitor addresses")
+    return out
+
 def asn_of(ip):
     try:
         x = ipaddress.ip_address(ip); starts, rows = _ASN["v4" if x.version == 4 else "v6"]
@@ -117,7 +141,7 @@ def get_rows(zone, start, end, depth=0):
 
 def analyse(rows):
     per_ip = defaultdict(lambda: {"req": 0, "html": 0, "assets": 0, "uas": set(), "asn": "", "country": "",
-                                  "paths": Counter(), "refs": Counter(), "scan": False, "bot_ua": False, "ok_ua": False})
+                                  "paths": Counter(), "refs": Counter(), "cts": Counter(), "scan": False, "bot_ua": False, "ok_ua": False})
     for g in rows:
         d, n = g["dimensions"], g["count"]
         if d.get("requestSource") not in (None, "eyeball") or not d.get("clientIP"):
@@ -132,6 +156,7 @@ def analyse(rows):
         p["country"] = d.get("clientCountryName") or "?"
         path = d.get("clientRequestPath") or "/"
         ct = (d.get("edgeResponseContentTypeName") or "").lower()
+        p["cts"][ct or "?"] += n
         if ct == "html": p["html"] += n; p["paths"][path] += n
         elif ct in ("css", "js", "javascript", "png", "jpeg", "jpg", "webp", "svg", "gif", "woff", "woff2", "json", "ico", "avif"):
             p["assets"] += n
@@ -163,14 +188,21 @@ def analyse(rows):
             elif key == "ua": c.update({ua_family(u) for u in p["uas"]})
             elif key == "path": c.update(set(list(p["paths"])[:20]))
             elif key == "ref": c.update(set(p["refs"]))
+            elif key == "ct": c.update(set(p["cts"]))
+            elif key == "npages": c[min(len(p["paths"]), 5)] += 1
         return c.most_common(n)
 
     people = buckets["likely_people"] + buckets["maybe_people"]
     out["people"] = {"countries": top(people, "country"), "networks": top(people, "asn"),
-                     "browsers": top(people, "ua"), "pages": top(people, "path", 10), "referrers": top(people, "ref"),
+                     "browsers": top(people, "ua"), "pages": top(people, "path", 10), "content_types": top(buckets["maybe_people"], "ct", 12),
+                     "likely_networks": top(buckets["likely_people"], "asn", 12), "maybe_networks": top(buckets["maybe_people"], "asn", 15),
+                     "maybe_browsers": top(buckets["maybe_people"], "ua", 10), "likely_browsers": top(buckets["likely_people"], "ua", 10),
+                     "distinct_pages_maybe": sorted(top(buckets["maybe_people"], "npages", 6)),
+                     "distinct_pages_likely": sorted(top(buckets["likely_people"], "npages", 6)),
                      "pages_per_visitor_median": sorted(sum(p["paths"].values()) for p in people)[len(people)//2] if people else 0}
     bots = buckets["bots_by_user_agent"] + buckets["own_checks_or_cloud"] + buckets["scanners"] + buckets["no_page"]
-    out["bots"] = {"user_agents": top(bots, "ua", 15), "networks": top(bots, "asn", 12), "countries": top(bots, "country"),
+    out["bots"] = {"user_agents": top(bots, "ua", 15), "networks": top(bots, "asn", 12), "cloud_networks": top(buckets["own_checks_or_cloud"], "asn", 12),
+                   "cloud_browsers": top(buckets["own_checks_or_cloud"], "ua", 8), "countries": top(bots, "country"),
                    "scanner_paths": top(buckets["scanners"], "path", 8)}
     return out
 
@@ -189,16 +221,21 @@ def main():
             print("FIELDS " + " ".join(FIELDS))
             load_asn()
         report = {"site": site, "days": []}
-        all_rows = []
+        all_rows = []; per_day = []
         for i in range(DAYS):
             end = now - dt.timedelta(days=i); start = end - dt.timedelta(days=1)
             rows, err = get_rows(zone, start, end)
             if err:
                 report["days"].append({"from": start.isoformat(), "error": err[:2]}); continue
-            day = analyse(rows); day["from"] = start.isoformat()[:16]
-            report["days"].append({"from": day["from"], "visitors_all": day["visitors_all"], "requests_all": day["requests_all"],
-                                   "counts": day["counts"]})
-            all_rows += rows
+            per_day.append((start, rows)); all_rows += rows
+        nets = cymru([g["dimensions"]["clientIP"] for g in all_rows if g["dimensions"].get("clientIP")])
+        for g in all_rows:
+            d = g["dimensions"]
+            d["clientAsn"], d["clientASNDescription"] = nets.get(d.get("clientIP"), (0, "unknown"))
+        for start, rows in per_day:
+            day = analyse(rows)
+            report["days"].append({"from": start.isoformat()[:16], "visitors_all": day["visitors_all"],
+                                   "requests_all": day["requests_all"], "counts": day["counts"]})
         if all_rows:
             report["whole_period"] = analyse(all_rows)
         print("TRAFFIC_JSON " + json.dumps(report))
