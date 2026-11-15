@@ -1,0 +1,20 @@
+name: Website traffic breakdown (people vs bots)
+
+# Read-only, one-off investigation. Prints aggregates only: no visitor IPs.
+on:
+  push:
+    branches: [claude/project-thread-itvh8e]
+    paths: ['scripts/traffic-breakdown.py', '.github/workflows/traffic-breakdown.yml']
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  breakdown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/traffic-breakdown.py
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DAYS: '7'
