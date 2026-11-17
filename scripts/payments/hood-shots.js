@@ -14,6 +14,8 @@ const TYPE = ON_IPAD ? 'APP_IPAD_PRO_3GEN_129' : 'APP_IPHONE_67';
 const SOURCES = ON_IPAD ? {
   'com.hoodleague.draft': path.join(__dirname, 'store-shots', 'com.hoodleague.draft', 'ipad'),
   'com.hoodleague.games': path.join(__dirname, 'store-shots', 'com.hoodleague.games', 'ipad'),
+  // Hood Protocol is iPhone-only but Apple still asks for a 13-inch set: its iPhone pictures centred on an iPad-size canvas.
+  'com.tweltz1.hoodprotocol': path.join(__dirname, 'store-shots', 'com.tweltz1.hoodprotocol', 'ipad'),
 } : {
   'com.hoodleague.draft': path.join(__dirname, 'store-shots', 'com.hoodleague.draft'),
   'com.hoodleague.games': path.join(__dirname, 'store-shots', 'com.hoodleague.games'),
