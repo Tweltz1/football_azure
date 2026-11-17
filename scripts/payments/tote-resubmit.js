@@ -13,7 +13,7 @@ const { api } = require('../curbsy-store/asc');
     try {
       await api(`/v1/reviewSubmissionItems/${it.id}`, { method: 'PATCH', body: { data: { type: 'reviewSubmissionItems', id: it.id, attributes: { resolved: true } } } });
       console.log('  marked rejected item resolved', it.id);
-    } catch (e) { console.log('  resolve item REFUSED', (e.body || e.message).replace(/\s+/g, ' ').slice(0, 600)); }
+    } catch (e) { console.log('  resolve item REFUSED'); try { for (const er of JSON.parse(e.body).errors) for (const [k, list] of Object.entries(er.meta?.associatedErrors || {})) for (const a of list) console.log('  WHY', k, a.code, a.detail); } catch { console.log(e.message); } }
   }
   try {
     await api(`/v1/reviewSubmissions/${s.id}`, { method: 'PATCH', body: { data: { type: 'reviewSubmissions', id: s.id, attributes: { submitted: true } } } });
