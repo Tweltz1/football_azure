@@ -245,6 +245,15 @@ test('every question in the corpus gets a real answer', async () => {
   expect(gaps).toEqual([]);
 });
 
+test('pushing back on a trade verdict talks about that trade, not the standings', async () => {
+  renderBar();
+  await ask('Should I trade away Warren for AJ Brown?');
+  const { all } = await ask("But I'm going to make playoffs and AJ Brown is solid");
+  expect(all).toMatch(/The model still says/);
+  expect(all).toMatch(/rest of the season/);
+  expect(all).not.toMatch(/1st of|Standings in/);
+});
+
 // ---- The phrasebook: thousands of wordings of the same questions -----------------------------------
 // Every phrasing in askPhrasebook.js, filled with several players and teams, plain and typed sloppily.
 // Each must get a real answer of a fitting kind. CI asks a fixed sample; ASK_ALL=1 asks all of them.
