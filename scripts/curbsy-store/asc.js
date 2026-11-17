@@ -21,7 +21,19 @@ async function api(path, init = {}) {
   });
   const text = await res.text();
   if (!res.ok) {
-    const err = new Error(`${init.method || 'GET'} ${path.replace(API, '')}: ${res.status} ${text.slice(0, 700)}`);
+    // Apple nests the real reasons under meta.associatedErrors; list every one briefly instead of cutting the JSON off.
+    let why = text.slice(0, 700);
+    try {
+      const lines = [];
+      for (const e of JSON.parse(text).errors || []) {
+        lines.push(`${e.code}: ${e.title}${e.detail ? ` (${e.detail})` : ''}`);
+        for (const list of Object.values(e.meta?.associatedErrors || {})) {
+          for (const a of list) lines.push(`  - ${a.code}: ${a.title}${a.detail && a.detail !== a.title ? ` (${a.detail})` : ''}`);
+        }
+      }
+      if (lines.length) why = lines.join('\n').slice(0, 4000);
+    } catch (e) { /* not JSON: keep the start of the text */ }
+    const err = new Error(`${init.method || 'GET'} ${path.replace(API, '')}: ${res.status} ${why}`);
     err.status = res.status;
     throw err;
   }

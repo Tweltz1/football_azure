@@ -8,8 +8,13 @@ const path = require('path');
 const crypto = require('crypto');
 const { api, step } = require('../curbsy-store/asc');
 
-const TYPE = 'APP_IPHONE_67';
-const SOURCES = {
+// SHOT_SET=ipad uploads the 13-inch iPad pictures from <bundle>/ipad/ (the two web-based apps run on iPad).
+const ON_IPAD = process.env.SHOT_SET === 'ipad';
+const TYPE = ON_IPAD ? 'APP_IPAD_PRO_3GEN_129' : 'APP_IPHONE_67';
+const SOURCES = ON_IPAD ? {
+  'com.hoodleague.draft': path.join(__dirname, 'store-shots', 'com.hoodleague.draft', 'ipad'),
+  'com.hoodleague.games': path.join(__dirname, 'store-shots', 'com.hoodleague.games', 'ipad'),
+} : {
   'com.hoodleague.draft': path.join(__dirname, 'store-shots', 'com.hoodleague.draft'),
   'com.hoodleague.games': path.join(__dirname, 'store-shots', 'com.hoodleague.games'),
   'com.tweltz1.hoodprotocol': process.env.HOOD_PROTOCOL_SHOTS || '',

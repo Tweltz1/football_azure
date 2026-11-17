@@ -7,6 +7,9 @@ const { chromium } = require('playwright');
 
 const SITE = 'https://hood-league.com';
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
+const IPAD = 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148';
+// DEVICE=ipad makes the 13-inch iPad pictures (1032x1376 at 2x = 2064x2752) into <bundle>/ipad/.
+const ON_IPAD = process.env.DEVICE === 'ipad';
 const GUEST = { userId: 'guest-store', userDetails: 'Coach', guest: true };
 
 const SETS = {
@@ -27,10 +30,12 @@ const SETS = {
 (async () => {
   const browser = await chromium.launch();
   for (const [bundle, set] of Object.entries(SETS)) {
-    const dir = path.join(__dirname, bundle);
+    const dir = ON_IPAD ? path.join(__dirname, bundle, 'ipad') : path.join(__dirname, bundle);
     fs.mkdirSync(dir, { recursive: true });
     for (const shot of set.shots) {
-      const ctx = await browser.newContext({ viewport: { width: 430, height: 932 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, userAgent: set.ua, colorScheme: 'dark' });
+      const ua = ON_IPAD ? set.ua.replace(IPHONE, IPAD) : set.ua;
+      const screen = ON_IPAD ? { viewport: { width: 1032, height: 1376 }, deviceScaleFactor: 2 } : { viewport: { width: 430, height: 932 }, deviceScaleFactor: 3 };
+      const ctx = await browser.newContext({ ...screen, isMobile: true, hasTouch: true, userAgent: ua, colorScheme: 'dark' });
       if (shot.guest) await ctx.addInitScript((g) => localStorage.setItem('hl-offline:guest', JSON.stringify(g)), GUEST);
       // No intro animation in screenshots.
       await ctx.addInitScript(() => { try { localStorage.setItem('hl-crew-intro-seen', '1'); } catch (e) { /* ignore */ } });
