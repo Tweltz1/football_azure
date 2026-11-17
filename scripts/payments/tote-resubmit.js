@@ -8,6 +8,13 @@ const { api } = require('../curbsy-store/asc');
   if (!s) { console.log('no open submission'); return; }
   console.log('submission', s.id, s.attributes.state);
   for (const it of (await api(`/v1/reviewSubmissions/${s.id}/items?limit=50`)).data) console.log('  item', it.attributes.state, JSON.stringify(it.relationships ? Object.keys(it.relationships).filter((k) => it.relationships[k].data) : []));
+  for (const it of (await api(`/v1/reviewSubmissions/${s.id}/items?limit=50`)).data) {
+    if (it.attributes.state !== 'REJECTED') continue;
+    try {
+      await api(`/v1/reviewSubmissionItems/${it.id}`, { method: 'PATCH', body: { data: { type: 'reviewSubmissionItems', id: it.id, attributes: { resolved: true } } } });
+      console.log('  marked rejected item resolved', it.id);
+    } catch (e) { console.log('  resolve item REFUSED', (e.body || e.message).replace(/\s+/g, ' ').slice(0, 600)); }
+  }
   try {
     await api(`/v1/reviewSubmissions/${s.id}`, { method: 'PATCH', body: { data: { type: 'reviewSubmissions', id: s.id, attributes: { submitted: true } } } });
     const after = (await api(`/v1/reviewSubmissions/${s.id}`)).data.attributes.state;
