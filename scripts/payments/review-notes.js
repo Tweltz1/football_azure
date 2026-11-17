@@ -2,7 +2,7 @@
 // Curbsy and ToteTrack. Env: KEY_ID, ISSUER_ID, KEY_P8.
 const { api, step } = require('../curbsy-store/asc');
 
-const TOTE = `1. SCREEN RECORDING: attached to this submission (App Review attachment). Recorded on an iPhone with the latest iOS. It starts at app launch and shows sign-in, creating a tote, adding items with Snap to add, printing/scanning a label, ToteTrack Pro, and Delete account.
+const TOTE = `1. SCREEN RECORDING: https://share.icloud.com/photos/07dKvsWIoT1Wq2zL2bkSrNysQ (recorded on a physical iPhone with the latest iOS). It starts at app launch and shows sign-in, the main features, ToteTrack Pro and Delete account.
 
 2. PURPOSE AND AUDIENCE: ToteTrack is for anyone who stores things in bins or boxes (garages, basements, storage units, moving). Each tote gets a QR label; scanning it shows what is inside, and search finds which tote holds an item. It solves "which box is it in?" without opening every bin.
 
@@ -18,7 +18,7 @@ User-generated content: nothing is public. Totes are only seen by the account ho
 
 6. REGULATION: Not a regulated industry and no third-party protected material.`;
 
-const CURBSY = `1. SCREEN RECORDING: attached to this submission (App Review attachment). Recorded on an iPhone with the latest iOS. It starts at app launch and shows sign-in, posting an item, browsing, messaging, report and block, Curbsy Plus, a tip, and Delete account.
+const CURBSY = `1. SCREEN RECORDING: https://share.icloud.com/photos/0d03I4ApSKDVcFbZPxAqn1eUA (recorded on a physical iPhone with the latest iOS). It starts at app launch and shows sign-in, posting and browsing, Curbsy Plus, tips and Delete account. Report and Block are on the flag icon of any listing or chat.
 
 2. PURPOSE AND AUDIENCE: Curbsy is for people who want to give away free stuff they no longer need, or pick up free stuff nearby, instead of throwing it away. Posters snap a photo, the phone suggests a name, and neighbours can claim it and message the poster to arrange pickup.
 
