@@ -8,9 +8,9 @@ const TOTE = `1. SCREEN RECORDING: attached to this submission (App Review attac
 
 3. HOW TO USE / LOGIN: An account is required so totes sync between phones and are backed up. On the first screen tap Sign in with Apple (or Google); no demo account is needed. Then: tap + to make a tote, open it and tap + or Snap to add to add items (the camera suggests a name on the phone). Print labels from the print icon (top right); scan a label with the Scan button. NFC stickers are optional (NTAG). Swipe a tote or item left to delete it. Packing lists open from the Packing lists button on the home screen. Delete account: person icon (top left) > Account & backup > Delete account; this deletes the account and all its data from our server.
 
-PAID FEATURES: ToteTrack Pro (auto-renewing subscription, monthly or yearly) unlocks more than 10 totes and Snap to add. Open it from Account & backup, or create an 11th tote. Restore Purchases is on the same screen. The sandbox account can buy it.
+PAID FEATURES: ToteTrack Pro (auto-renewing subscription, monthly or yearly) unlocks more than 10 totes, Snap to add and household sharing (Account & backup > Household: the owner shares a 6-letter code, family members enter it under "Join a household with a code" and see the same totes; anyone can leave). Open it from Account & backup, or create an 11th tote. Restore Purchases is on the same screen. The sandbox account can buy it.
 
-User-generated content: none is shared between users; each person only sees their own totes.
+User-generated content: nothing is public. Totes are only seen by the account holder and people they invite into their household with a code.
 
 4. EXTERNAL SERVICES: Supabase (account sign-in, database and photo storage for backup/sync), Sign in with Apple, Google Sign-In, Apple In-App Purchase / StoreKit. Item naming runs on the phone (bundled image model); no AI service is called.
 
