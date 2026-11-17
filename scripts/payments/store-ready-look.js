@@ -23,7 +23,9 @@ const { api, step } = require('../curbsy-store/asc');
           const a = l.attributes;
           out.push(`${a.locale}: description ${(a.description || '').length} chars, promo ${a.promotionalText ? 'yes' : 'no'}, keywords ${(a.keywords || '').length} chars, support ${a.supportUrl || 'NO'}, marketing ${a.marketingUrl || '-'}, whatsNew ${a.whatsNew ? 'yes' : 'no'}`);
           const sets = await api(`/v1/appStoreVersionLocalizations/${l.id}/appScreenshotSets`);
-          out.push(`  shots: ${sets.data.map((s) => `${s.attributes.screenshotDisplayType}=${(s.relationships?.appScreenshots?.data || []).length}`).join(', ') || 'NONE'}`);
+          const counts = [];
+          for (const s of sets.data) counts.push(`${s.attributes.screenshotDisplayType}=${(await api(`/v1/appScreenshotSets/${s.id}/appScreenshots`)).data.length}`);
+          out.push(`  shots: ${counts.join(', ') || 'NONE'}`);
           const prev = await api(`/v1/appStoreVersionLocalizations/${l.id}/appPreviewSets`).catch(() => ({ data: [] }));
           out.push(`  previews: ${prev.data.length}`);
         }
