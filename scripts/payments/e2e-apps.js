@@ -53,9 +53,12 @@ const ok = (name, pass, note = '') => { out.push({ name, pass, note }); console.
     const post = await j(A, 'POST', 'items', { title: 'Test wood chair', description: 'Automated test, removed right away.', category: 'furniture', condition: 'good', pickup: 'Porch', photos: ph.d.path ? [ph.d.path] : [], ...SPOT });
     ok('Curbsy: post a listing', post.s === 200 && !!post.d.id, `${post.s} ${typeof post.d === 'string' ? post.d : post.d.title}`);
     const id = post.d.id;
-    const browse = await j(B, 'GET', `items?lat=${SPOT.lat}&lng=${SPOT.lng}&km=40`);
+    // Non-Plus members see new posts after Plus's 30-minute head start, so check from the poster's side and that B doesn't see it yet.
+    const early = await j(B, 'GET', `items?lat=${SPOT.lat}&lng=${SPOT.lng}&km=40`);
+    ok('Curbsy: Plus head start hides brand-new post from free members', early.s === 200 && !early.d.some?.((x) => x.id === id), `${early.s}`);
+    const browse = await j(A, 'GET', `items?lat=${SPOT.lat}&lng=${SPOT.lng}&km=40`);
     ok('Curbsy: listing shows in nearby browse', browse.s === 200 && Array.isArray(browse.d) && browse.d.some((x) => x.id === id), `${browse.s} ${Array.isArray(browse.d) ? browse.d.length + ' found' : browse.d}`);
-    const search = await j(B, 'GET', `items?lat=${SPOT.lat}&lng=${SPOT.lng}&km=40&q=chair`);
+    const search = await j(A, 'GET', `items?lat=${SPOT.lat}&lng=${SPOT.lng}&km=40&q=chair`);
     ok('Curbsy: search finds it', search.s === 200 && Array.isArray(search.d) && search.d.some((x) => x.id === id), `${search.s}`);
     const open = await j(B, 'GET', `items/${id}?lat=${SPOT.lat}&lng=${SPOT.lng}`);
     ok('Curbsy: open listing', open.s === 200 && open.d.title === 'Test wood chair', `${open.s}`);
