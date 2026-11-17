@@ -8,7 +8,7 @@
 // Transcripts: each phone turns its own player's speech into text with the browser's speech recognition,
 // which runs on the device and costs nothing. Only text leaves the phone; no audio is recorded or stored.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { openSignal } from '../party/net';
 import { getIceServers } from './dndApi';
 
@@ -22,7 +22,7 @@ export const isInitiator = (me, other) => String(me) < String(other);
  * microphone (false for the TV). Returns { state, error, needsTap, resume } where resume() retries audio
  * playback after a tap if the browser blocked it.
  */
-export function useVoice({ code, cid, prefix, peers, active, mic = true, muted = false, video = false, recvVideo = false }) {
+export function useVoice({ code, cid, prefix, peers, active, mic = true, muted = false, video = false, recvVideo = false, silenced = [] }) {
   const [state, setState] = useState('off'); // off | starting | on | error
   const [error, setError] = useState('');
   const [needsTap, setNeedsTap] = useState(false);
@@ -31,6 +31,8 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
   const [local, setLocal] = useState(null); // this device's camera stream, when video is on
   const ref = useRef(null); // { stream, signal, ice, pcs: Map(peer -> { pc, audio, pending, timer }) }
   const peersRef = useRef(peers);
+  const silencedRef = useRef(silenced);
+  silencedRef.current = silenced;
   peersRef.current = peers;
   const callRef = useRef(() => {});
 
@@ -84,6 +86,7 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
         document.body.appendChild(entry.audio);
       }
       entry.audio.srcObject = streams[0] || new MediaStream([track]);
+      entry.audio.muted = silencedRef.current.includes(id);
       const played = entry.audio.play();
       if (played && played.catch) played.catch(() => setNeedsTap(true));
     };
@@ -218,6 +221,15 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
     if (stream) stream.getAudioTracks().forEach((t) => { t.enabled = !muted; });
   }, [muted, state]);
 
+  // People this device muted for itself (they can still hear us; we just stop hearing them).
+  const silencedKey = [...silenced].sort().join(',');
+  useEffect(() => {
+    const live = ref.current;
+    if (!live) return;
+    const off = new Set(silencedKey ? silencedKey.split(',') : []);
+    live.pcs.forEach((p, id) => { if (p.audio) p.audio.muted = off.has(id); });
+  }, [silencedKey, state, connected]);
+
   // People joining and leaving voice.
   const peersKey = [...peers].sort().join(',');
   useEffect(() => {
@@ -235,7 +247,13 @@ export function useVoice({ code, cid, prefix, peers, active, mic = true, muted =
     setNeedsTap(false);
   }, []);
 
-  return { state, error, needsTap, resume, connected, videos, local };
+  // Hide the cameras of people we muted. Memoised so callers' effects on `videos` don't loop.
+  const shown = useMemo(() => {
+    if (!silencedKey) return videos;
+    const off = new Set(silencedKey.split(','));
+    return Object.fromEntries(Object.entries(videos).filter(([id]) => !off.has(id)));
+  }, [videos, silencedKey]);
+  return { state, error, needsTap, resume, connected, videos: shown, local };
 }
 
 const Recognition = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;

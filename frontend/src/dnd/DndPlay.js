@@ -3,6 +3,8 @@ import Person from '../party/Person';
 import { crewLook, isLookCode, lookCode, parseLook, randomLook } from '../party/look';
 import { cleanCode, netMode, newCid, openPhone } from '../party/net';
 import { currentUser, firstName, signInWithGoogle, signOutHere } from '../party/account';
+import AppleSignIn from '../party/AppleSignIn';
+import VoiceSafety, { toggleIn } from '../party/VoiceSafety';
 import { PREFIX } from './constants';
 import { canTranscribe, useTranscriber, useVoice } from './voice';
 import PlayerGame from './PlayerGame';
@@ -15,6 +17,8 @@ import '../party/party.css';
 import './dnd.css';
 
 const STORE = `dq-phone${new URLSearchParams(window.location.search).get('seat') || ''}`;
+const AI_OK_KEY = 'dq-ai-ok';
+const aiAgreed = () => { try { return window.localStorage.getItem(AI_OK_KEY) === '1'; } catch (e) { return false; } };
 const readStore = () => {
   try { return JSON.parse(window.localStorage.getItem(STORE) || 'null') || {}; } catch (error) { return {}; }
 };
@@ -98,6 +102,8 @@ export default function DndPlay() {
   const [voiceOn, setVoiceOn] = useState(false);
   const [muted, setMuted] = useState(false);
   const [transcribeOn, setTranscribeOn] = useState(Boolean(stored.transcribe));
+  const [silenced, setSilenced] = useState([]);
+  const [askAi, setAskAi] = useState(false);
   const phoneRef = useRef(null);
   const screenRef = useRef(null);
   const lastHeard = useRef(0);
@@ -199,7 +205,7 @@ export default function DndPlay() {
   // Voice chat and speech to text. The TV learns who is on from every hello, so a refresh can't lose it.
   const live = joined && Boolean(screen) && !lost;
   const voicePeers = (screen?.voice || []).map((v) => v.cid).filter((id) => id !== cid);
-  const voice = useVoice({ code, cid, prefix: PREFIX, peers: voicePeers, active: live && voiceOn, mic: true, muted });
+  const voice = useVoice({ code, cid, prefix: PREFIX, peers: voicePeers, active: live && voiceOn, mic: true, muted, silenced });
   const transcriber = useTranscriber({
     enabled: live && transcribeOn,
     onLine: (text) => phoneRef.current?.send('act', { type: 'speech', text }),
@@ -252,8 +258,9 @@ export default function DndPlay() {
 
   const send = useCallback((event, payload) => phoneRef.current?.send(event, payload), []);
 
+  const keepPlace = () => writeStore({ ...readStore(), code, name, role, cid, joined });
   const googleSignIn = () => {
-    writeStore({ ...readStore(), code, name, role, cid, joined });
+    keepPlace();
     signInWithGoogle(`${window.location.origin}/dnd/play${code ? `?code=${code}` : ''}`);
   };
 
@@ -286,6 +293,14 @@ export default function DndPlay() {
   const join = (e) => {
     e?.preventDefault();
     if (code.length !== 4 || !name.trim()) return;
+    // Once per device: say plainly that table talk goes to a third-party AI (App Store guideline 5.1.2).
+    if (!aiAgreed()) { setAskAi(true); return; }
+    setNote('');
+    setJoined(true);
+  };
+  const agreeAi = () => {
+    try { window.localStorage.setItem(AI_OK_KEY, '1'); } catch (e) { /* private mode: ask again next time */ }
+    setAskAi(false);
     setNote('');
     setJoined(true);
   };
@@ -303,7 +318,10 @@ export default function DndPlay() {
           <button type="button" className="lcp-link" onClick={() => signOutHere().then(() => { setUser(null); setMine(null); })}>Sign out</button>
         </>
       ) : (
-        <button type="button" className="lcp-google" onClick={googleSignIn}><span className="lcp-g">G</span> Sign in with Google to save your hero</button>
+        <>
+          <button type="button" className="lcp-google" onClick={googleSignIn}><span className="lcp-g">G</span> Sign in with Google to save your hero</button>
+          <AppleSignIn label="Sign in with Apple to save your hero" before={keepPlace} />
+        </>
       )}
     </div>
   );
@@ -343,6 +361,14 @@ export default function DndPlay() {
         <div className="lcp">
           <h1 className="dq-title lcp-title">Hood Quest</h1>
           {note && <p className="lcp-note-closed">{note}</p>}
+          {askAi && (
+            <div className="lcp-join dq-ai-ask" role="dialog" aria-label="AI narrator">
+              <b>✨ Hood Quest has an AI narrator</b>
+              <p>To tell the story, what you type at the table (your hero's actions, and your words if you turn on "Transcribe me") is sent as text to an AI service, Google Gemini or Anthropic Claude. Your voice audio is never sent. Don't share personal details at the table. <a href="/privacy.html">Privacy policy</a></p>
+              <button type="button" className="lc-btn lc-btn-big" onClick={agreeAi}>OK, join the table</button>
+              <button type="button" className="lcp-link" onClick={() => setAskAi(false)}>Not now</button>
+            </div>
+          )}
           <form className="lcp-join" onSubmit={join}>
             <label>Table code
               <input value={code} onChange={(e) => setCode(cleanCode(e.target.value))} placeholder="ABCD" autoCapitalize="characters" autoComplete="off" maxLength={4} className="lcp-code" />
@@ -418,7 +444,7 @@ export default function DndPlay() {
       </div>
     );
   } else if (role === 'dm') {
-    body = <DmConsole screen={screen} send={send} header={header} user={user} onSignIn={googleSignIn} />;
+    body = <DmConsole screen={screen} send={send} header={header} user={user} onSignIn={googleSignIn} beforeApple={keepPlace} />;
   } else {
     body = <PlayerGame view={screen.game} send={send} header={header} toast={toast} />;
   }
@@ -441,6 +467,7 @@ export default function DndPlay() {
           </button>
         )}
       </div>
+      {voiceOn && <VoiceSafety people={others} silenced={silenced} onToggle={(id) => setSilenced((l) => toggleIn(l, id))} code={code} />}
       {voiceOn && <div className="dqv-note">{voice.state === 'starting' ? 'Connecting voice…' : others.length ? `In voice: ${others.map((v) => `${v.name}${v.muted ? ' (muted)' : ''}`).join(', ')}` : 'Nobody else is on voice yet.'}</div>}
       {voice.needsTap && <button type="button" className="dqv-btn is-on" onClick={voice.resume}>🔊 Tap to hear the others</button>}
       {(voice.error || transcriber.error) && <div className="dqv-note is-error">{voice.error || transcriber.error}</div>}

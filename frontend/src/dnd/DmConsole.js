@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import AppleSignIn from '../party/AppleSignIn';
 import MiniMap from './MiniMap';
 import { MONSTERS, SKILLS } from './rules';
 import { SETTINGS, settingFor } from './settings';
@@ -33,7 +34,7 @@ const useNarrator = (ai, user) => {
   }, [ai, user]);
 };
 
-export default function DmConsole({ screen, send, header, user, onSignIn }) {
+export default function DmConsole({ screen, send, header, user, onSignIn, beforeApple }) {
   const dm = screen.dm;
   const [tab, setTab] = useState('story');
   const [auto, setAuto] = useState(readAuto);
@@ -319,6 +320,7 @@ export default function DmConsole({ screen, send, header, user, onSignIn }) {
             <>
               <p>Sign in with Google to keep a campaign: every session's recap, plus each hero's level, loot and history over time.</p>
               <button type="button" className="lcp-google" onClick={onSignIn}><span className="lcp-g">G</span> Sign in with Google</button>
+              <AppleSignIn before={beforeApple} />
             </>
           ) : (
             <>

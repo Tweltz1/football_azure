@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Person from '../party/Person';
 import { randomLook } from '../party/look';
 import { currentUser, firstName, signInWithGoogle, signOutHere } from '../party/account';
+import AppleSignIn from '../party/AppleSignIn';
 import { SETTINGS } from './settings';
 import { CLASSES } from './rules';
 import { homeHref, homeLabel, inGamesApp } from '../native/gamesApp';
@@ -43,6 +44,7 @@ export default function DndHome() {
           <small>Type the table code. Play a hero, or be the Dungeon Master.</small>
         </a>
       </div>
+      <p className="lcp-fine dq-ai-note">The story is written by an AI narrator: what heroes and the DM type or say at the table is sent as text to Google Gemini or Anthropic Claude. No audio is sent. <a href="/privacy.html">Privacy</a></p>
       <div className="dq-settings-strip">
         {Object.values(SETTINGS).map((s) => <span key={s.id} className="dq-chip" title={s.blurb}>{s.emoji} {s.name}</span>)}
       </div>
@@ -58,6 +60,7 @@ export default function DndHome() {
               <button type="button" className="lcp-google" onClick={() => signInWithGoogle(`${window.location.origin}/dnd`)}>
                 <span className="lcp-g">G</span> Sign in with Google
               </button>
+              <AppleSignIn />
               <span>Sign in to keep your heroes between sessions. DMs need it for campaigns and the AI narrator.</span>
             </>
           )}
