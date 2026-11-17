@@ -23,6 +23,7 @@ async function api(path, init = {}) {
   if (!res.ok) {
     const err = new Error(`${init.method || 'GET'} ${path.replace(API, '')}: ${res.status} ${text.slice(0, 700)}`);
     err.status = res.status;
+    err.body = text;
     throw err;
   }
   return text ? JSON.parse(text) : null;
