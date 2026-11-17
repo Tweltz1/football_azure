@@ -12,5 +12,5 @@ const { api } = require('../curbsy-store/asc');
     await api(`/v1/reviewSubmissions/${s.id}`, { method: 'PATCH', body: { data: { type: 'reviewSubmissions', id: s.id, attributes: { submitted: true } } } });
     const after = (await api(`/v1/reviewSubmissions/${s.id}`)).data.attributes.state;
     console.log('OK resubmitted ->', after);
-  } catch (e) { console.log('REFUSED', e.message); }
+  } catch (e) { console.log('REFUSED', e.message.replace(/\s+/g, ' ').slice(0, 3000)); }
 })().catch((e) => { console.log('FAIL', e.message); process.exit(1); });
