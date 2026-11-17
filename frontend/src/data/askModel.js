@@ -30,7 +30,7 @@ const NOT_NAMES = new Set([
   'me', 'find', 'any', 'over', 'this', 'with', 'his', 'him', 'he', 'it', 'will', 'be', 'play', 'team', 'season', 'rest', 'value',
   'keep', 'sell', 'buy', 'hold', 'cut', 'matchup', 'defense', 'injury', 'status', 'win', 'great', 'than', 'more', 'points', 'pts',
   'next', 'last', 'game', 'games', 'free', 'agent', 'waiver', 'waivers', 'help', 'trending', 'healthy', 'playing', 'worth',
-  'tips', 'tip', 'room', 'spot', 'share', 'record', 'joke',
+  'tips', 'tip', 'room', 'spot', 'share', 'record', 'joke', 'long',
 ]);
 // Short names people use for players, mapped to how the name reads once tidied up.
 const NICKNAMES = {
@@ -1103,6 +1103,8 @@ const PRONOUNS = new Set(['he', 'him', 'his', 'hes', 'they', 'them', 'their', 'i
 const ASK_WHY = /^(why|how come|explain|whats the reason|reasons?|how so|what makes you say)\b/;
 const ASK_SURE = /^(are you sure|you sure|really|for real|seriously|how sure|how confident|confident|is that right)\b/;
 const WHAT_ABOUT = /^(what|how) about\b|^and\b|^also\b|\binstead\b|^what if\b|^now\b/;
+// Pushing back on a trade verdict: "but I'm going to make playoffs and Puka is solid", "nah, he's better long term".
+const PUSHBACK = /^(but|yeah but|yea but|ya but|ok but|okay but|sure but|nah|no way|i disagree|disagree|i (still )?(think|feel|want|like)|i dont (care|agree|think)|hmm)\b|\b(is|hes|looks|seems) (solid|good|great|better|elite|a stud|healthy|fine)\b|\b(make|making|made|in|for) (the )?playoffs\b|\b(rest of|for) (the )?season\b|\blong term\b|\bdont care\b/;
 
 /** Just the parts of an answer worth showing again for "why?". */
 const snapshot = (answer) => ({ text: answer.text, why: answer.why || null, items: answer.items || null, itemsTitle: answer.itemsTitle || null, sections: answer.sections || null });
@@ -1235,6 +1237,10 @@ function answerFollowUp(text, ctx, previous) {
     }
     return { text: "It's the model's best read from projections, recent workload, matchups and injuries. Close calls can go either way, so ask \"why?\" for the reasons.", context: previous };
   }
+  if (previous.trade && ctx.trades && PUSHBACK.test(t) && !/^(what|whats|who|whos|how|is|are|should|shud|can|does|do|will|would|which|when|where)\b/.test(t)) {
+    const pushback = answerTradePushback(text, ctx, previous.trade);
+    if (pushback) return pushback;
+  }
   if (!WHAT_ABOUT.test(t)) return null;
 
   const found = matchPositions(findPlayers(text, ctx.allPlayers, { myIds: ctx.myIds, leagueIds: ctx.leagueIds }));
@@ -1279,6 +1285,46 @@ function answerFollowUp(text, ctx, previous) {
     return { ...answer, context: { ...(answer.context || {}), question } };
   }
   return null;
+}
+
+/**
+ * "But I'm making the playoffs and Puka is solid": answers the point about the last trade instead of
+ * treating it as a new question, using rest-of-season values, injuries and playoff odds.
+ */
+function answerTradePushback(text, ctx, trade) {
+  const t = tidy(text);
+  const { give, get } = trade;
+  const inTrade = new Set([...give, ...get].map((p) => p.id));
+  const named = findPlayers(text, ctx.allPlayers, { myIds: ctx.myIds, leagueIds: ctx.leagueIds, prefer: inTrade });
+  if (named.some((f) => !inTrade.has(f.player.id))) return null;
+  const rated = ctx.trades.rate(give, get);
+  if (rated.error) return null;
+  const perGame = (players) => players.reduce((sum, p) => sum + (ctx.outlookOf(p)?.value ?? 0), 0);
+  const names = (players) => players.map((p) => p.name).join(' and ');
+  const lines = [];
+  const mine = ctx.league?.outlook?.teams?.find((team) => team.mine) || null;
+  if (/playoff/.test(t) && mine && mine.playoffs != null) {
+    lines.push(mine.playoffs >= 0.85
+      ? `Fair point: you're at ${percent(mine.playoffs)} to make the playoffs, so this trade is really about the playoff weeks, not getting in.`
+      : `You're at ${percent(mine.playoffs)} to make the playoffs, so the weeks before then still matter too.`);
+  }
+  const giveValue = perGame(give);
+  const getValue = perGame(get);
+  if (giveValue || getValue) {
+    lines.push(`For the rest of the season we have ${names(get)} at about ${getValue.toFixed(1)} pts a game and ${names(give)} at about ${giveValue.toFixed(1)}.`);
+  }
+  const hurt = get.filter((p) => ctx.scored(p).injury || p.injury);
+  hurt.forEach((p) => {
+    lines.push(`${p.name} is listed ${(ctx.scored(p).injury || p.injury).toLowerCase()}, and the model counts the games ${firstName(p)} could miss. If you expect ${firstName(p)} back healthy for the playoffs, it's closer than the verdict says.`);
+  });
+  if (getValue > giveValue + 0.5 && !hurt.length) lines.push(`Long term ${names(get)} ${get.length > 1 ? 'are' : 'is'} ahead, so the verdict comes from how the rest of your lineup fits.`);
+  lines.push(`The model still says ${rated.text.charAt(0).toLowerCase()}${rated.text.slice(1)}`);
+  return {
+    text: lines.join(' '),
+    why: rated.why,
+    note: 'Ask "why?" for the full breakdown, or "what if I add X?" to change the trade.',
+    context: { type: 'trade', trade: { give, get, partnerName: rated.partnerName }, players: [...give, ...get], team: rated.partnerName },
+  };
 }
 
 function answerByType(type, text, found, ctx) {

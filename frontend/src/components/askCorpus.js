@@ -107,6 +107,10 @@ export const ASK_CORPUS = [
   { tag: 'trade', turns: ['Should I trade Jaylen Warren for AJ Brown?'] },
   { tag: 'trade', turns: ['Should I trade Jaylen Warren for aj brown?', 'Who else should I add to that trade?'] },
   { tag: 'trade', turns: ['Warren for AJ Brown, is that fair?'] },
+  // Pushing back on the verdict (asked live 2026-11, the model answered with league standings instead).
+  { tag: 'trade', turns: ['Should I trade away Warren for AJ Brown?', "But I'm going to make playoffs and AJ Brown is solid"] },
+  { tag: 'trade', turns: ['Should I trade Warren for AJ Brown?', 'nah I think AJ Brown is better long term'] },
+  { tag: 'trade', turns: ['Is Warren for AJ Brown a good trade?', 'but im locked into the playoffs'] },
   { tag: 'trade', turns: ['Is Warren for AJ Brown a good trade?'] },
   { tag: 'trade', turns: ['Would you do Warren and Higgins for AJ Brown?'] },
   { tag: 'trade', turns: ['trade evans for brock bowers?'] },
