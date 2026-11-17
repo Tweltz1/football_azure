@@ -7,6 +7,7 @@ import {
 } from './look';
 import { cleanCode, newCid, openPhone } from './net';
 import { currentUser, firstName, loadSaved, saveCharacter, signInWithGoogle, signOutHere } from './account';
+import AppleSignIn from './AppleSignIn';
 import './party.css';
 
 // ?seat=2 keeps a separate player per tab, for trying several phones in one browser.
@@ -231,9 +232,12 @@ export default function PartyPlay() {
           {saveNote && <small>{saveNote}</small>}
         </>
       ) : (
-        <button type="button" className="lcp-google" onClick={googleSignIn}>
-          <span className="lcp-g">G</span> Sign in with Google to save or load your character
-        </button>
+        <>
+          <button type="button" className="lcp-google" onClick={googleSignIn}>
+            <span className="lcp-g">G</span> Sign in with Google to save or load your character
+          </button>
+          <AppleSignIn label="Sign in with Apple to save or load your character" before={() => writeStore({ ...readStore(), code, name, look, cid, joined, loadSaved: true })} />
+        </>
       )}
     </div>
   );

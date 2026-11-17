@@ -3,6 +3,8 @@ import Person from '../party/Person';
 import { crewLook, isLookCode, lookCode } from '../party/look';
 import { cleanCode, newCid, newRoomCode, openHost, openPhone } from '../party/net';
 import { useVoice } from '../dnd/voice';
+import AppleSignIn from '../party/AppleSignIn';
+import VoiceSafety, { toggleIn } from '../party/VoiceSafety';
 import {
   claimSeat, computeStats, GAMES, newGameId, setLook, summarize, wakeUp,
 } from './engines';
@@ -82,8 +84,9 @@ function VoiceBar({ code, me, players, send, onMedia }) {
   const [on, setOn] = useState(false);
   const [muted, setMuted] = useState(false);
   const [cam, setCam] = useState(false);
+  const [silenced, setSilenced] = useState([]);
   const peers = players.filter((p) => p.voice && p.cid !== me).map((p) => p.cid);
-  const voice = useVoice({ code, cid: me, prefix: PREFIX, peers, active: on, mic: true, muted, video: cam, recvVideo: true });
+  const voice = useVoice({ code, cid: me, prefix: PREFIX, peers, active: on, mic: true, muted, video: cam, recvVideo: true, silenced });
   useEffect(() => { send({ type: 'voice', on, muted, video: on && cam }); }, [on, muted, cam, send]);
   // Hand the camera streams to the table, which shows each one in place of that player's name card.
   useEffect(() => { onMedia({ videos: voice.videos, self: voice.local }); }, [voice.videos, voice.local, onMedia]);
@@ -98,6 +101,7 @@ function VoiceBar({ code, me, players, send, onMedia }) {
       <span className="lt-voice-who">
         {inVoice.length ? inVoice.map((p) => `${p.muted ? '🔇' : '🎙️'}${p.name}`).join('  ') : 'Nobody on voice yet'}
       </span>
+      {on && <VoiceSafety people={inVoice.filter((p) => p.cid !== me)} silenced={silenced} onToggle={(cid) => setSilenced((l) => toggleIn(l, cid))} code={code} />}
       {voice.needsTap && <button type="button" className="lt-voice-btn" onClick={voice.resume}>🔊 Tap to hear</button>}
       {voice.error && <small className="lt-voice-err">{voice.error}</small>}
       {on && voice.state === 'on' && peers.length > 0 && <small className="lt-voice-err">Connected to {voice.connected.length} of {peers.length}</small>}
@@ -685,6 +689,7 @@ function Designs({ user, me, onPick, onBack }) {
         <div className="lt-design-signin">
           <p className="lt-note">Sign in to get 10 Starter designs and start unlocking the other {DESIGNS.length - 10} by playing: winning games, making bids in every suit, Nola, Double Nola, big bids, slams and 500 to 0 wins.</p>
           <button type="button" className="lc-btn" onClick={() => signInWithGoogle(window.location.href)}>Sign in with Google</button>
+          <AppleSignIn className="lc-btn" />
         </div>
       )}
       {error && <p className="lt-note">{error}</p>}

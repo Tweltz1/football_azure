@@ -3,6 +3,7 @@ import Person from './Person';
 import { randomLook } from './look';
 import { currentUser, firstName, signInWithGoogle, signOutHere } from './account';
 import { homeHref, homeLabel } from '../native/gamesApp';
+import AppleSignIn from './AppleSignIn';
 import './party.css';
 
 /** Games night landing: host on a TV or join on a phone, signed in with Google or as a guest. */
@@ -52,6 +53,7 @@ export default function PartyHome() {
               <button type="button" className="lcp-google" onClick={() => signInWithGoogle(`${window.location.origin}/games-night`)}>
                 <span className="lcp-g">G</span> Sign in with Google
               </button>
+              <AppleSignIn />
               <span>or just pick a button above to play as a guest. Signing in only saves your character.</span>
             </>
           )}
