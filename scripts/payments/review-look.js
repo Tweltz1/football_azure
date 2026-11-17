@@ -6,6 +6,9 @@ const { api } = require('../curbsy-store/asc');
     const v = (await api(`/v1/apps/${app.id}/appStoreVersions?limit=5`)).data.find((x) => x.attributes.versionString.startsWith('1.0'));
     const b = await api(`/v1/appStoreVersions/${v.id}/build`);
     console.log(`\n== ${app.attributes.name}: version ${v.attributes.appStoreState}, build ${b.data?.attributes?.version}`);
+    for (const x of (await api(`/v1/builds?filter[app]=${app.id}&sort=-uploadedDate&limit=4`)).data) console.log(`  build ${x.attributes.version} ${x.attributes.uploadedDate} ${x.attributes.processingState}`);
+    const rd = await api(`/v1/appStoreVersions/${v.id}/appStoreReviewDetail`).catch(() => null);
+    console.log(`  review notes ${(rd?.data?.attributes?.notes || '').length} chars`);
     for (const s of (await api(`/v1/reviewSubmissions?filter[app]=${app.id}&filter[state]=WAITING_FOR_REVIEW,IN_REVIEW,READY_FOR_REVIEW,UNRESOLVED_ISSUES&limit=5`)).data) {
       const items = await api(`/v1/reviewSubmissions/${s.id}/items?limit=50`);
       console.log(`submission ${s.attributes.state}: ${items.data.length} items`);
