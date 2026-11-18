@@ -24,6 +24,8 @@ export type Recipe = {
   photo?: string;
   /** The recipe page's own picture, for recipes added from a link. */
   imageUrl?: string;
+  /** The web page a recipe was added from. */
+  url?: string;
   items: RecipeItem[];
   /**
    * "suggested" ships with the app; "mine" is in the shopper's own recipes (added from a photo, link or

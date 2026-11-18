@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RecipePicture } from '../../components/RecipePicture';
 import { CommunityRecipes } from '../../components/CommunityRecipes';
-import { Chip, ScreenHeader, Segmented, SectionTitle } from '../../components/ui';
+import { Chip, lift, ScreenHeader, Segmented, SectionTitle } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
 import { FILTERS, labelsOf, matchesFilters } from '../../lib/diet';
 import { newItems, Recipe, SUGGESTED } from '../../lib/recipes';
@@ -47,21 +47,20 @@ export default function RecipesScreen() {
         accessibilityRole="button"
         accessibilityLabel={`${r.title}, ${meta.join(', ')}${labels.length ? `, ${labels.join(', ')}` : ''}`}
         onPress={() => router.push(`/recipe/${r.id}`)}
-        style={({ pressed }) => [styles.row, { backgroundColor: t.card, opacity: pressed ? 0.85 : 1 }]}
+        style={({ pressed }) => [styles.tile, { backgroundColor: t.card, transform: [{ scale: pressed ? 0.98 : 1 }] }, lift(t)]}
       >
-        <RecipePicture recipe={r} size={72} style={{ width: 72 }} />
-        <View style={{ flex: 1, gap: 3 }}>
+        <RecipePicture recipe={r} size={118} style={{ borderRadius: 0, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg }} />
+        <View style={{ padding: 10, gap: 3 }}>
           <Text style={[styles.title, { color: t.text }]} numberOfLines={2}>
             {r.title}
           </Text>
-          <Text style={{ color: t.textMuted, fontSize: 13 }}>{meta.join(' · ')}</Text>
+          <Text style={{ color: t.textMuted, fontSize: 12 }} numberOfLines={1}>{meta.join(' · ')}</Text>
           {labels.length > 0 && (
-            <Text style={{ color: t.primary, fontSize: 12, fontWeight: '600' }} numberOfLines={1}>
-              {labels.join(' · ')}
+            <Text style={{ color: t.primary, fontSize: 11, fontWeight: '700' }} numberOfLines={1}>
+              {labels.slice(0, 2).join(' · ')}
             </Text>
           )}
         </View>
-        <Ionicons name="chevron-forward" size={20} color={t.textMuted} />
       </Pressable>
     );
   };
@@ -128,10 +127,10 @@ export default function RecipesScreen() {
             </Pressable>
           )}
           {mine.length > 0 && <SectionTitle>Your recipes</SectionTitle>}
-          <View style={{ gap: 8 }}>{mine.map(row)}</View>
+          <View style={styles.grid}>{mine.map(row)}</View>
 
           <SectionTitle>{on.length || q ? `Suggested · ${suggested.length} match` : 'Suggested'}</SectionTitle>
-          <View style={{ gap: 8 }}>{suggested.map(row)}</View>
+          <View style={styles.grid}>{suggested.map(row)}</View>
           {!suggested.length && (
             <Text style={{ color: t.textMuted }}>No suggested recipes match. Turn off a filter to see more.</Text>
           )}
@@ -157,7 +156,9 @@ export default function RecipesScreen() {
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: radius.md },
-  title: { fontSize: 16, fontWeight: '600' },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: radius.sm },
+  title: { fontSize: 15, fontWeight: '700', lineHeight: 19, minHeight: 38 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  tile: { width: '47.8%', flexGrow: 1, maxWidth: '48.5%', borderRadius: radius.lg },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderRadius: 999 },
   chips: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
 });

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ActionSheetIOS, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ActionSheetIOS, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../../lib/auth';
 import {
   blockAuthor,
@@ -14,7 +14,7 @@ import {
   reportRecipe,
 } from '../../lib/community';
 import { RecipePicture } from '../../components/RecipePicture';
-import { Button, tap } from '../../components/ui';
+import { Button, lift, tap } from '../../components/ui';
 import { labelsOf } from '../../lib/diet';
 import { newItems, SUGGESTED } from '../../lib/recipes';
 import { itemKey } from '../../lib/sharedAisles';
@@ -168,22 +168,50 @@ export default function RecipeScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: recipe.title, headerRight }} />
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 8, gap: 8 }}>
-        <RecipePicture recipe={recipe} size={180} />
-        {labelsOf(recipe).length > 0 && (
-          <Text style={{ color: t.primary, fontWeight: '600' }}>{labelsOf(recipe).join(' · ')}</Text>
-        )}
-        <Text style={{ color: t.textMuted }}>
+      <Stack.Screen options={{ title: '', headerRight }} />
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 8, gap: 10 }}>
+        <RecipePicture recipe={recipe} size={210} style={{ borderRadius: radius.lg }} />
+        <Text style={[styles.title, { color: t.text }]}>{recipe.title}</Text>
+        <View style={styles.metaRow}>
           {[
-            recipe.minutes ? (recipe.minutes >= 120 ? `${Math.round(recipe.minutes / 60)} hr` : `${recipe.minutes} min`) : null,
-            recipe.servings,
+            recipe.minutes ? `⏱ ${recipe.minutes >= 120 ? `${Math.round(recipe.minutes / 60)} hr` : `${recipe.minutes} min`}` : null,
+            recipe.servings ? `🍽 ${recipe.servings}` : null,
             recipe.author ? `${categoryLabel(recipe.category)} by ${recipe.author}` : mine ? 'Your recipe' : null,
+            ...labelsOf(recipe),
           ]
             .filter(Boolean)
-            .join(' · ')}
-          {'\n'}Untick anything you already have.
-        </Text>
+            .map((m) => (
+              <View key={m} style={[styles.meta, { backgroundColor: t.card, borderColor: t.border }]}>
+                <Text style={{ color: t.text, fontSize: 13, fontWeight: '600' }}>{m}</Text>
+              </View>
+            ))}
+        </View>
+        {!!recipe.url && (
+          <Pressable accessibilityRole="link" onPress={() => Linking.openURL(recipe.url!)} style={styles.source}>
+            <Ionicons name="open-outline" size={15} color={t.primary} />
+            <Text style={{ color: t.primary, fontWeight: '600' }} numberOfLines={1}>
+              From {recipe.url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
+            </Text>
+          </Pressable>
+        )}
+        <View style={styles.ingHead}>
+          <Text style={[styles.ingTitle, { color: t.text }]}>Ingredients</Text>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => {
+              tap();
+              const all = recipe.items.flatMap((it, n) => (onList.has(itemKey(it.item)) ? [] : [n]));
+              setPicked(all.every((n) => picked.has(n)) ? new Set() : new Set(all));
+            }}
+          >
+            <Text style={{ color: t.primary, fontWeight: '700' }}>
+              {recipe.items.every((it, n) => onList.has(itemKey(it.item)) || picked.has(n)) ? 'Untick all' : 'Tick all'}
+            </Text>
+          </Pressable>
+        </View>
+        <Text style={{ color: t.textMuted, marginTop: -6 }}>Untick anything you already have.</Text>
+        <View style={[styles.group, { backgroundColor: t.card }, lift(t)]}>
         {recipe.items.map((it, n) => {
           const already = onList.has(itemKey(it.item));
           const on = picked.has(n);
@@ -194,24 +222,34 @@ export default function RecipeScreen() {
               accessibilityState={{ checked: on, disabled: already }}
               disabled={already}
               onPress={() => toggle(n)}
-              style={[styles.row, { backgroundColor: t.card, opacity: already ? 0.6 : 1 }]}
+              style={[
+                styles.row,
+                { opacity: already ? 0.6 : 1 },
+                n < recipe.items.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border },
+              ]}
             >
-              <Ionicons
-                name={already ? 'checkmark-done' : on ? 'checkbox' : 'square-outline'}
-                size={24}
-                color={on || already ? t.primary : t.textMuted}
-              />
+              <View
+                style={[
+                  styles.check,
+                  on || already ? { backgroundColor: t.primary, borderColor: t.primary } : { borderColor: t.textMuted },
+                ]}
+              >
+                {(on || already) && <Ionicons name={already ? 'checkmark-done' : 'checkmark'} size={15} color={t.onPrimary} />}
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: t.text, fontSize: 16, fontWeight: '600' }}>{it.item}</Text>
-                <Text style={{ color: t.textMuted, fontSize: 13 }}>
-                  {[it.amount, already ? 'Already on your list' : it.pantry ? 'You probably have this' : null]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
+                {(!!it.amount || already || it.pantry) && (
+                  <Text style={{ color: t.textMuted, fontSize: 13 }}>
+                    {[it.amount, already ? 'Already on your list' : it.pantry ? 'You probably have this' : null]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                )}
               </View>
             </Pressable>
           );
         })}
+        </View>
         {mine && (
           <Button
             title="Delete this recipe"
@@ -237,6 +275,14 @@ export default function RecipeScreen() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radius.md },
+  title: { fontSize: 28, fontWeight: '800', letterSpacing: -0.6, marginTop: 4 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  meta: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth },
+  source: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  ingHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+  ingTitle: { fontSize: 20, fontWeight: '800' },
+  group: { borderRadius: radius.lg, overflow: 'visible' },
+  check: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
   footer: { flexDirection: 'row', gap: 10, padding: 16, paddingTop: 8, paddingBottom: 32 },
 });
