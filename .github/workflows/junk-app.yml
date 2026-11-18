@@ -9,7 +9,11 @@
 name: Curbsy iPhone app
 
 on:
+  # Live branch only: a new work branch is compared against main, so every path matched and each
+  # push started a Mac build (10x minutes). Work branches can still run it by hand.
   push:
+    branches:
+      - claude/project-thread-6lgsrr
     paths:
       - 'ios-junk-app/**'
       - 'frontend/src/junk/**'
