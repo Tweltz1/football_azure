@@ -1,6 +1,8 @@
 // A party character's look, as a short code. The first 15 fields are exactly Hood Protocol's Look
 // (hood-protocol/App/Look.swift), so a Hood Protocol look loads here unchanged. Field 16 is a
-// Halloween costume, which Hood Protocol ignores.
+// costume (Halloween or holiday), which Hood Protocol ignores.
+
+import { season } from './season.js';
 
 export const SKINS = [0xF6D7C3, 0xEBB998, 0xD39A6E, 0xB0774B, 0x8A5634, 0x5E3A22, 0xF1C7A5, 0xEABF9B, 0xF4CFB0, 0xE8B892];
 export const HAIR_STYLES = ['Buzz', 'Short', 'Curly', 'Afro', 'Long', 'Bun', 'Bald', 'Mohawk', 'Mullet', 'Spiky', 'Pigtails', 'Dreads'];
@@ -23,7 +25,29 @@ export const PANTS_COLORS = [0x2B3A55, 0x1A1A1A, 0x6E6A60, 0xC2B280, 0x5A6B7A, 0
   0xFF5FA2, 0x4E6B3A, 0xF2F2F2, 0xD4AF37];
 export const SHOE_COLORS = [0xF2F2F2, 0x111111, 0xFF6B6B, 0x2F80ED, 0xF5B84A, 0xD4AF37, 0x39E75F, 0xFF5FA2, 0x8E44AD];
 export const COSTUMES = ['None', 'Vampire cape', 'Skeleton suit', 'Pumpkin head', 'Ghost sheet', 'Witch hat',
-  'Monster bolts', 'Zombie', 'Mummy wraps', 'Black cat'];
+  'Monster bolts', 'Zombie', 'Mummy wraps', 'Black cat',
+  // Holiday costumes (added 2026-11; append only, the index is saved in look codes).
+  'Santa hat', 'Elf hat', 'Reindeer antlers', 'Pilgrim hat', 'Turkey hat', 'Heart glasses', 'Leprechaun hat',
+  'Uncle Sam hat', 'New Year crown', 'Bunny ears'];
+
+// Which costumes are offered and worn by made-up characters, by the theme on now (see season.js).
+// Between holidays every costume is offered. A saved look keeps its costume either way.
+export const SEASON_COSTUMES = {
+  spooky: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+  thanksgiving: [13, 14],
+  christmas: [10, 11, 12],
+  newyear: [18],
+  valentines: [15],
+  stpatricks: [16],
+  easter: [19],
+  july4: [17],
+};
+const ALL_COSTUMES = [...COSTUMES.keys()].slice(1);
+export const costumesNow = () => SEASON_COSTUMES[season()] || ALL_COSTUMES;
+/** The k-th costume of the season, wrapping around. */
+export const seasonCostume = (k = 0) => { const l = costumesNow(); return l[((k % l.length) + l.length) % l.length]; };
+/** Whether a costume shows in the editor right now. */
+export const costumeOffered = (i) => i === 0 || costumesNow().includes(i);
 
 // Kept family friendly: Hood Protocol's beer helmet isn't offered here, and a Hood Protocol look wearing
 // one shows up with a regular cap instead.
@@ -73,6 +97,12 @@ export const stepLook = (look, key, dir) => {
   const count = field[1];
   if (FLAGS.has(key)) return { ...look, [key]: !look[key] };
   let value = look[key] || 0;
+  if (key === 'costume') {
+    const list = [0, ...costumesNow()];
+    const at = list.indexOf(value);
+    const next = at < 0 ? (dir > 0 ? 0 : list.length - 1) : ((at + dir) % list.length + list.length) % list.length;
+    return { ...look, costume: list[next] };
+  }
   do { value = ((value + dir) % count + count) % count; } while (hidden(key, value));
   return { ...look, [key]: value };
 };
@@ -95,7 +125,7 @@ export const randomLook = (rand = Math.random) => {
     shades: rand() < 0.15,
     shorts: rand() < 0.2,
     extra: rand() < 0.3 ? 1 + pick(EXTRAS.length - 1) : 0,
-    costume: rand() < 0.6 ? 1 + pick(COSTUMES.length - 1) : 0,
+    costume: rand() < 0.6 ? seasonCostume(pick(99)) : 0,
   };
 };
 

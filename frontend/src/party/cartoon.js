@@ -23,6 +23,38 @@ const g = (transform, inner, cls) => `<g${transform ? ` transform="${transform}"
 
 const COSTUME_SKIN = { 6: '#8fc27a', 7: '#a3b98f' };
 
+// Holiday costume hats (costume index -> markup). They replace the regular hat. skin is for elf ears.
+const heart = (cx, cy, fill) => path(`M${cx} ${cy + 10} C${cx - 20} ${cy - 2} ${cx - 12} ${cy - 18} ${cx} ${cy - 7} C${cx + 12} ${cy - 18} ${cx + 20} ${cy - 2} ${cx} ${cy + 10} Z`, fill, 3);
+const newYear = () => { const d = new Date(); return d.getMonth() === 11 ? d.getFullYear() + 1 : d.getFullYear(); };
+const COSTUME_HATS = {
+  10: () => path('M-44 -206 Q-32 -264 18 -274 Q58 -272 70 -232 Q50 -250 34 -246 Q40 -226 44 -206 Z', '#d33b3b')
+    + rect(-50, -216, 100, 20, 10, '#fff') + ell(58, -246, 24, 24, '#fff'),
+  11: (skin) => [-1, 1].map((s) => path(`M${48 * s} -186 L${74 * s} -214 L${44 * s} -198 Z`, skin, 4)).join('')
+    + path('M-42 -208 Q-18 -270 44 -304 Q24 -254 42 -208 Z', '#2f9e44') + rect(-48, -216, 96, 16, 6, '#d33b3b')
+    + ell(36, -314, 18, 18, '#f5c542', 3),
+  12: () => [-1, 1].map((s) => {
+    const d = `M${20 * s} -226 L${34 * s} -276 M${28 * s} -252 L${52 * s} -262 M${32 * s} -266 L${22 * s} -290`;
+    return sPath(d, INK, 13) + sPath(d, '#8b5a2b', 7);
+  }).join(''),
+  13: () => ell(-64, -218, 128, 22, '#1e1e24') + path('M-34 -212 L-28 -292 L28 -292 L34 -212 Z', '#1e1e24')
+    + rect(-12, -240, 24, 20, 3, '#f5c542', 3) + fRect(-6, -234, 12, 8, 0, '#1e1e24'),
+  14: () => [-56, -28, 0, 28, 56].map((a, i) => g(`rotate(${a} 0 -222)`, ell(-13, -312, 26, 86, ['#d33b3b', '#f07f1d', '#f5c542', '#f07f1d', '#d33b3b'][i], 4))).join('')
+    + path('M-46 -200 Q-46 -262 0 -262 Q46 -262 46 -200 Z', '#8b5a2b')
+    + ell(26, -284, 22, 26, '#8b5a2b', 4) + fEll(36, -276, 5, 5, INK)
+    + path('M48 -270 L60 -266 L48 -262 Z', '#f5c542', 2) + fEll(44, -264, 7, 14, '#d33b3b'),
+  16: () => ell(-58, -216, 116, 20, '#2f9e44') + rect(-34, -288, 68, 78, 6, '#2f9e44')
+    + fRect(-32, -234, 64, 12, 0, '#1e1e24') + rect(-10, -238, 20, 20, 3, '#f5c542', 3) + fRect(-5, -233, 10, 10, 0, '#2f9e44')
+    + [[-6, -262], [6, -262], [0, -272]].map(([x, y]) => fEll(x - 6, y - 6, 12, 12, '#9be15d')).join(''),
+  17: () => ell(-58, -216, 116, 20, '#2340c8') + rect(-34, -298, 68, 88, 6, '#fff')
+    + [-24, -4, 16].map((x) => fRect(x, -294, 8, 56, 0, '#d33b3b')).join('')
+    + fRect(-32, -240, 64, 16, 0, '#2340c8') + [-18, 0, 18].map((x) => text(x, -232, '★', 12, '#fff')).join(''),
+  18: () => path(poly([[-40, -210], [-44, -262], [-22, -236], [0, -272], [22, -236], [44, -262], [40, -210]]), '#f5c542')
+    + rect(-42, -232, 84, 22, 4, '#1e1e24', 3) + text(0, -221, String(newYear()), 15, '#f5c542')
+    + [[-44, -266], [0, -276], [44, -266]].map(([x, y]) => fEll(x - 5, y - 5, 10, 10, '#fff')).join(''),
+  19: () => [-1, 1].map((s) => g(`translate(${22 * s} -226) rotate(${12 * s})`,
+    ell(-13, -80, 26, 82, '#fff') + fEll(-6, -70, 12, 60, '#ffb6c8'))).join(''),
+};
+
 const hairShows = (look) => [0, 4, 6, 12, 19, 20].includes(look.hat);
 
 /** Where each hand goes for a pose. */
@@ -139,7 +171,10 @@ const head = (look, skin, shirt, face) => {
   const hatColor = hex(CLOTHES[look.hatColor] ?? 0);
   const costume = look.costume || 0;
   const witch = costume === 5;
-  const shows = witch || hairShows(look);
+  const holidayHat = COSTUME_HATS[costume];
+  // The ghost sheet, mummy wraps and cat ears replace the regular hat (it poked through them).
+  const noHat = [4, 8, 9].includes(costume);
+  const shows = witch || Boolean(holidayHat) || noHat || hairShows(look);
   let out = '';
   if (costume === 1) {
     // Vampire collar standing up behind the head
@@ -186,6 +221,8 @@ const head = (look, skin, shirt, face) => {
   }
   if (look.extra === 4 && shows) out += rect(-45, -216, 90, 13, 5, shirt, 3.5);
   if (witch) out += witchHat(hatColor);
+  else if (holidayHat) out += holidayHat(skin);
+  else if (noHat) out += '';
   else if (look.hat >= 1 && look.hat <= 3) out += classicHat(look.hat, hatColor);
   else if (look.hat > 3) out += fancyHat(look.hat, hatColor);
   if (costume === 9) {
@@ -201,7 +238,7 @@ const head = (look, skin, shirt, face) => {
   } else {
     out += g('', fEll(-20, -191, 10, 14, INK) + fEll(10, -191, 10, 14, INK) + fEll(-16, -189, 4, 4, '#fff') + fEll(14, -189, 4, 4, '#fff'), 'lc-eyes');
   }
-  if (look.glasses && !look.shades) out += sEll(-27, -196, 24, 24, INK, 3) + sEll(3, -196, 24, 24, INK, 3);
+  if (look.glasses && !look.shades && costume !== 15 && look.extra !== 7) out += sEll(-27, -196, 24, 24, INK, 3) + sEll(3, -196, 24, 24, INK, 3);
   out += fEll(-33, -175, 14, 14, '#ff7f8f', 0.45) + fEll(19, -175, 14, 14, '#ff7f8f', 0.45);
   if (look.facial === 2) out += path('M-16 -166 Q-8 -172 0 -166 Q8 -172 16 -166 Q8 -160 0 -164 Q-8 -160 -16 -166 Z', '#3a2418', 2);
   if (face === 'scared') {
@@ -217,7 +254,7 @@ const head = (look, skin, shirt, face) => {
     case 2: out += ell(-9, -182, 18, 18, '#e0302e', 3) + fEll(-4, -178, 5, 5, '#fff', 0.7); break;
     case 3: out += fRect(-26, -176, 16, 5, 2, INK) + fRect(10, -176, 16, 5, 2, INK); break;
     case 5: out += path('M-44 -174 L-38 -167 L-44 -158 L-50 -167 Z', '#bdf4ff', 2); break;
-    case 6: out += sEll(2, -198, 26, 26, '#f5c542', 3.5) + sPath('M27 -180 Q40 -164 34 -142', '#f5c542', 1.5); break;
+    case 6: if (!look.shades && costume !== 15) out += sEll(2, -198, 26, 26, '#f5c542', 3.5) + sPath('M27 -180 Q40 -164 34 -142', '#f5c542', 1.5); break;
     case 7: out += sPath('M-44 -206 L44 -176', INK, 3) + ell(-27, -196, 22, 20, '#1e1e24', 2.5); break;
     case 8: out += text(22, -170, '★', 12, '#2b2b3a'); break;
     case 9: out += [[-30, -172], [-24, -166], [-34, -165], [24, -172], [30, -166], [20, -165], [-6, -176], [6, -176]].map(([x, y]) => fEll(x - 1.6, y - 1.6, 3.2, 3.2, '#9a5a3a', 0.8)).join(''); break;
@@ -233,6 +270,11 @@ const head = (look, skin, shirt, face) => {
     out += [-1, 1].map((s) => rect(44 * s - 9, -152, 18, 12, 3, '#a8adb6', 3)).join('');
   }
   if (costume === 7) out += sPath('M20 -170 L34 -160 M24 -172 L22 -164 M30 -168 L28 -160', INK, 2.5);
+  if (costume === 12) out += ell(-10, -183, 20, 20, '#e0302e', 3) + fEll(-5, -179, 5, 5, '#fff', 0.7);
+  if (costume === 15) out += heart(-15, -186, '#ff4f8b') + heart(15, -186, '#ff4f8b') + sPath('M-5 -188 Q0 -192 5 -188', INK, 3);
+  if (costume === 19) {
+    out += path('M-6 -176 L6 -176 L0 -169 Z', '#ff9ab8', 2) + sPath('M-14 -168 L-44 -174 M-14 -164 L-44 -162 M14 -168 L44 -174 M14 -164 L44 -162', INK, 2);
+  }
   if (costume === 9) {
     out += path('M-6 -176 L6 -176 L0 -169 Z', '#ff9ab8', 2) + sPath('M-14 -168 L-44 -174 M-14 -164 L-44 -162 M14 -168 L44 -174 M14 -164 L44 -162', INK, 2);
   }
@@ -345,8 +387,9 @@ export const personMarkup = (look, pose = { kind: 'stand' }) => {
       body += fEll(-14, -82, 28, 12, '#f2efe6');
     }
     if (costume === 7) body += sPath('M-38 -66 L-30 -74 L-22 -64 L-12 -76 L-2 -64 L8 -74 L18 -64 L28 -74 L38 -66', INK, 3);
-    if (look.chain && !skeleton) body += sPath('M-16 -142 Q0 -112 16 -142', '#f5c542', 5);
   }
+  // The chain goes over every top, the dress and the skeleton suit too (it used to skip the dress).
+  if (look.chain && costume !== 4 && costume !== 8) body += sPath(top === 4 ? 'M-14 -140 Q0 -114 14 -140' : 'M-16 -142 Q0 -112 16 -142', '#f5c542', 5);
 
   // Arms
   const [left, right] = armTargets(pose);

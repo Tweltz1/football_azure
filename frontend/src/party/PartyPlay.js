@@ -3,12 +3,13 @@ import Person from './Person';
 import { GAME_META, metaFor } from './games/meta';
 import { PHONES } from './games/phones';
 import {
-  COSTUMES, crewLook, HIDDEN, CREW_NAMES, EDITOR_ROWS, hex, isLookCode, lookCode, parseLook, randomLook, stepLook,
+  costumeOffered, crewLook, HIDDEN, seasonCostume, CREW_NAMES, EDITOR_ROWS, hex, isLookCode, lookCode, parseLook, randomLook, stepLook,
 } from './look';
 import { cleanCode, newCid, openPhone } from './net';
 import { currentUser, firstName, loadSaved, saveCharacter, signInWithGoogle, signOutHere } from './account';
 import AppleSignIn from './AppleSignIn';
 import './party.css';
+import { fontsHref } from './season';
 
 // ?seat=2 keeps a separate player per tab, for trying several phones in one browser.
 const STORE = `lc-phone${new URLSearchParams(window.location.search).get('seat') || ''}`;
@@ -57,7 +58,7 @@ const Editor = ({ look, onChange }) => {
             )}
             {open === row.key && row.names && row.names.length > 3 && (
               <div className="lcp-chips">
-                {row.names.map((n, i) => (HIDDEN[row.key]?.has(i) ? null : (
+                {row.names.map((n, i) => (HIDDEN[row.key]?.has(i) || (row.key === 'costume' && !costumeOffered(i) && i !== value) ? null : (
                   <button type="button" key={n} className={i === value ? 'is-on' : ''} onClick={() => onChange({ ...parseLook(look), [row.key]: i })}>{n}</button>
                 )))}
               </div>
@@ -75,7 +76,7 @@ export default function PartyPlay() {
   const stored = readStore();
   const [code, setCode] = useState(cleanCode(params.get('code') || stored.code || ''));
   const [name, setName] = useState(stored.name || '');
-  const [look, setLook] = useState(isLookCode(stored.look) ? stored.look : lookCode({ ...crewLook(Math.floor(Math.random() * 10)), costume: 1 + Math.floor(Math.random() * (COSTUMES.length - 1)) }));
+  const [look, setLook] = useState(isLookCode(stored.look) ? stored.look : lookCode({ ...crewLook(Math.floor(Math.random() * 10)), costume: seasonCostume(Math.floor(Math.random() * 99)) }));
   const [cid] = useState(stored.cid || newCid());
   const [joined, setJoined] = useState(Boolean(stored.joined && stored.code && (!params.get('code') || cleanCode(params.get('code')) === stored.code)));
   const [screen, setScreen] = useState(null);
@@ -94,7 +95,7 @@ export default function PartyPlay() {
     document.title = 'Hood Games Night';
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Creepster&family=Fredoka:wght@500;700&display=swap';
+    link.href = fontsHref();
     document.head.appendChild(link);
     return () => link.remove();
   }, []);

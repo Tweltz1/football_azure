@@ -21,6 +21,7 @@ import { CardFace, MediaContext, suits } from './CardPhone';
 import { bidLabel } from './five';
 import '../party/party.css';
 import './cards.css';
+import { fontsHref } from '../party/season';
 
 // The card table: 500 and Dirty Clubs on phones only. One phone opens the table and runs the game; the
 // others join with the room code. Every phone shows the whole table, and there's voice chat for the room.
@@ -778,7 +779,7 @@ export default function CardsApp() {
     document.title = 'Card Table · Hood Games';
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Creepster&family=Fredoka:wght@500;700&display=swap';
+    link.href = fontsHref();
     document.head.appendChild(link);
     return () => link.remove();
   }, []);

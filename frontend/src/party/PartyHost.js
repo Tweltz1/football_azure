@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import qrcode from 'qrcode-generator';
 import Person from './Person';
-import { parseLook, randomLook, lookCode } from './look';
+import { parseLook, randomLook, lookCode, seasonCostume } from './look';
 import { MAX_PLAYERS, newRoomCode, openHost, postToPhone } from './net';
 import { isMuted, setMuted, setMusicIntensity, sfx, startMusic, stopMusic, unlockSound } from './sound';
 import { Backdrop, House } from './scene';
@@ -11,7 +11,8 @@ import { HallBackdrop } from './games/HallwayStage';
 import { GAME_META, gameFor, isPlayable } from './games';
 import './party.css';
 import { siteOrigin } from '../native/gamesApp';
-import { themeInfo } from './season';
+import { themeInfo, fontsHref } from './season';
+import ThemeSky from './ThemeSky';
 
 // The lobby shows the picked game's world behind the picker.
 const LobbyScene = ({ id, now }) => {
@@ -77,7 +78,7 @@ export default function PartyHost() {
   const [connected, setConnected] = useState(false);
   const [, setFrame] = useState(0);
   const [mute, setMute] = useState(isMuted());
-  const [splashLooks] = useState(() => [1, 3, 5, 2].map((costume) => ({ ...randomLook(), costume })));
+  const [splashLooks] = useState(() => [0, 2, 4, 1].map((k) => ({ ...randomLook(), costume: seasonCostume(k) })));
   const gameRef = useRef(null);
   const hostRef = useRef(null);
   const playersRef = useRef(players);
@@ -112,7 +113,7 @@ export default function PartyHost() {
   useEffect(() => {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Creepster&family=Fredoka:wght@500;700&display=swap';
+    link.href = fontsHref();
     document.head.appendChild(link);
     return () => link.remove();
   }, []);
@@ -390,6 +391,7 @@ export default function PartyHost() {
   if (!started) {
     return (
       <div className="lc-tv lc-splash">
+        <ThemeSky />
         <div className="lc-splash-card">
           <h1 className="lc-title">Hood Games Night</h1>
           <p className="lc-sub">{themeInfo().party} for 1 to 12 players.<br />Put this page on the TV. Everyone plays on their phone.</p>
