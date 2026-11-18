@@ -2,9 +2,9 @@
 // be tested on its own. The TV owns the state and calls tick() many times a second.
 
 import { pickQuestions } from '../quizQuestions.js';
-import { isHoliday } from '../season.js';
+import { themeInfo } from '../season.js';
 
-export const QUIZ_CHAMP = isHoliday() ? 'Holiday Quiz Champ' : 'Fright Quiz Champ';
+export const QUIZ_CHAMP = `${themeInfo().quiz.title} Champ`;
 
 export const QUESTION_COUNT = 15;
 export const ROUND_SIZE = 5;

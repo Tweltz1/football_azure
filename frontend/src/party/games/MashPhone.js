@@ -45,7 +45,7 @@ export default function MashPhone({ screen, send, look, header }) {
       <div className="lcp lcp-game">
         {scoreLine}
         <form className="lcp-mash-write" onSubmit={submit}>
-          <span className="lcp-mash-step">{game.final ? 'The Final Fright' : `Prompt ${game.step} of ${game.steps}`} · {Math.ceil(game.left / 1000)}s</span>
+          <span className="lcp-mash-step">{game.final ? ROUNDS[2].title : `Prompt ${game.step} of ${game.steps}`} · {Math.ceil(game.left / 1000)}s</span>
           <p className="lcp-mash-prompt">{game.prompt}</p>
           <textarea value={text} onChange={(e) => setText(e.target.value.slice(0, 60))} maxLength={60} rows={3} placeholder="Something funny…" autoFocus />
           <small>{60 - text.length} letters left · keep it PG-13</small>

@@ -1,0 +1,93 @@
+// Christmas, Hanukkah and winter set: the Monday after Thanksgiving through December 26 (see ../season.js).
+const easy = [
+  ['What color is Rudolph\'s nose?', 'Red', 'Blue', 'Black', 'Gold'],
+  ['How many reindeer pull Santa\'s sleigh, counting Rudolph?', '9', '7', '12', '5'],
+  ['What do people hang over the fireplace for Santa to fill?', 'Stockings', 'Mittens', 'Boots', 'Hats'],
+  ['What is a snowman\'s nose usually made of?', 'A carrot', 'A banana', 'A pickle', 'A pine cone'],
+  ['Where does Santa live?', 'The North Pole', 'The South Pole', 'Hawaii', 'The Moon'],
+  ['Who helps Santa make toys?', 'Elves', 'Gnomes', 'Trolls', 'Robots'],
+  ['What do you call a gingerbread house\'s "glue"?', 'Icing', 'Gravy', 'Mustard', 'Syrup'],
+  ['How many nights does Hanukkah last?', '8', '7', '12', '3'],
+  ['What green plant do people kiss under?', 'Mistletoe', 'Holly', 'Ivy', 'Basil'],
+  ['What shape is a classic candy cane?', 'A hook', 'A circle', 'A star', 'A square'],
+  ['What does Frosty the Snowman wear on his head?', 'A top hat', 'A baseball cap', 'A crown', 'A helmet'],
+  ['Which Peanuts kid gets a tiny, droopy Christmas tree?', 'Charlie Brown', 'Linus', 'Lucy', 'Peppermint Patty'],
+];
+const medium = [
+  ['Which grumpy green character tried to steal Christmas?', 'The Grinch', 'Shrek', 'Oscar the Grouch', 'Kermit'],
+  ['In "Home Alone", what city does Kevin\'s family fly to?', 'Paris', 'London', 'Rome', 'Miami'],
+  ['In "Elf", what is Buddy\'s favorite food group?', 'Candy', 'Pizza', 'Cheese', 'Bacon'],
+  ['What is the name of the Hanukkah spinning top?', 'Dreidel', 'Menorah', 'Latke', 'Gelt'],
+  ['What potato pancakes are a Hanukkah favorite?', 'Latkes', 'Hash browns', 'Tater tots', 'Pierogi'],
+  ['Which reindeer shares a name with a Valentine\'s Day figure?', 'Cupid', 'Comet', 'Dasher', 'Prancer'],
+  ['What song mentions "a partridge in a pear tree"?', 'The Twelve Days of Christmas', 'Jingle Bells', 'Deck the Halls', 'Silent Night'],
+  ['Which country gave the U.S. the Christmas tree tradition, through immigrants?', 'Germany', 'Brazil', 'Japan', 'Egypt'],
+  ['What is the African American holiday that starts December 26?', 'Kwanzaa', 'Boxing Day', 'Diwali', 'Epiphany'],
+  ['In "A Christmas Story", what does Ralphie want?', 'A Red Ryder BB gun', 'A bike', 'A puppy', 'A sled'],
+  ['What is eggnog mostly made with?', 'Milk, eggs and sugar', 'Orange juice', 'Coffee', 'Lemonade'],
+];
+const hard = [
+  ['Who wrote "A Christmas Carol"?', 'Charles Dickens', 'Mark Twain', 'Jane Austen', 'Dr. Seuss'],
+  ['In "A Christmas Carol", what is Scrooge\'s first name?', 'Ebenezer', 'Jacob', 'Bob', 'Tiny'],
+  ['What is the name of the candle holder used on Hanukkah?', 'A menorah (hanukkiah)', 'A dreidel', 'A shofar', 'A mezuzah'],
+  ['What are Hanukkah\'s chocolate coins called?', 'Gelt', 'Latkes', 'Sufganiyot', 'Challah'],
+  ['In "It\'s a Wonderful Life", what happens every time a bell rings?', 'An angel gets his wings', 'It snows', 'Santa appears', 'A wish comes true'],
+  ['What is the name of the Grinch\'s dog, who wears a single antler?', 'Max', 'Spot', 'Rex', 'Buddy'],
+  ['How many gifts in total are given in "The Twelve Days of Christmas"?', '364', '78', '144', '12'],
+  ['Which country sends a giant Christmas tree to London\'s Trafalgar Square every year?', 'Norway', 'Canada', 'Sweden', 'Finland'],
+  ['What jelly doughnuts are eaten on Hanukkah?', 'Sufganiyot', 'Beignets', 'Paczki', 'Churros'],
+  ['In "Elf", which actor plays Buddy?', 'Will Ferrell', 'Jim Carrey', 'Adam Sandler', 'Jack Black'],
+];
+const expert = [
+  ['Which reindeer is NOT in the 1823 poem "A Visit from St. Nicholas"?', 'Rudolph', 'Blitzen', 'Vixen', 'Comet'],
+  ['In the original poem, two of the reindeer were named "Dunder" and...', 'Blixem', 'Blitzen', 'Donder', 'Bliksem'],
+  ['What is the Twelfth Night of Christmas the eve of?', 'Epiphany', 'New Year\'s Day', 'Boxing Day', 'Candlemas'],
+  ['What is the shortest day of the year called?', 'The winter solstice', 'The equinox', 'Leap day', 'The perihelion'],
+  ['Which composer wrote "The Nutcracker" ballet?', 'Tchaikovsky', 'Mozart', 'Beethoven', 'Bach'],
+  ['What is the Dutch name that became "Santa Claus"?', 'Sinterklaas', 'Kris Kringle', 'Father Frost', 'Pere Noel'],
+  ['"Kris Kringle" comes from the German word for what?', 'Christ Child', 'Gift giver', 'Snow man', 'Red coat'],
+  ['What does the word "Hanukkah" mean?', 'Dedication', 'Light', 'Miracle', 'Oil'],
+];
+
+const set = {
+  levels: [easy, medium, hard, expert],
+  categories: [
+    { name: 'Santa\'s crew', groups: [['Rudolph', 'Dasher', 'Comet', 'Blitzen'], ['Elf', 'Mrs. Claus', 'Snowman', 'Gingerbread man']] },
+    { name: 'Decorations', groups: [['Christmas tree', 'Wreath', 'Garland', 'Mistletoe'], ['String lights', 'Ornament', 'Tinsel', 'Star topper']] },
+    { name: 'Winter fun', groups: [['Sledding', 'Ice skating', 'Skiing', 'Snowboarding'], ['Snowball fight', 'Snow fort', 'Snow angel', 'Snowman']] },
+    { name: 'Holiday movies', groups: [['Home Alone', 'Elf', 'The Grinch', 'The Polar Express'], ['A Christmas Story', 'Jingle All the Way', 'The Santa Clause', 'Christmas Vacation']] },
+    { name: 'Cozy drinks', groups: [['Hot cocoa', 'Eggnog', 'Apple cider', 'Peppermint mocha'], ['Coffee', 'Hot tea', 'Chai', 'Warm milk']] },
+    { name: 'Winter clothes', groups: [['Mittens', 'Gloves', 'Scarf', 'Earmuffs'], ['Ugly sweater', 'Pajamas', 'Hoodie', 'Fuzzy socks']] },
+    { name: 'Gift wrap', groups: [['Wrapping paper', 'Gift bag', 'Tissue paper', 'Gift box'], ['Ribbon', 'Bow', 'Gift tag', 'Tape']] },
+    { name: 'Holiday cookies', groups: [['Sugar cookies', 'Gingerbread', 'Snickerdoodles', 'Shortbread'], ['Fudge', 'Peppermint bark', 'Candy canes', 'Toffee']] },
+    { name: 'Hanukkah', groups: [['Menorah', 'Dreidel', 'Gelt', 'Candles'], ['Latkes', 'Sufganiyot', 'Applesauce', 'Brisket']] },
+  ],
+  prompts: [
+    'A rejected name for one of Santa\'s reindeer',
+    'The most useless gift you could get someone',
+    'A new holiday tradition that would ruin everything',
+    'What Santa\'s elves complain about on break',
+    'The real reason Rudolph\'s nose is red',
+    'What the Grinch puts on his own wish list',
+    'An awkward thing to find in your stocking',
+    'A sign the family group chat has gone too far',
+    'A rejected Christmas movie title',
+    'What the snowman does when nobody is looking',
+    'A holiday song nobody asked for',
+    'A new rule for white elephant gift swaps',
+    'The worst place to hide the presents',
+    'What Santa really thinks of your cookies',
+    'The worst thing to say on Santa\'s lap',
+    'A terrible new flavor of candy cane',
+    'What the elf on the shelf reports back',
+  ],
+  finals: [
+    'Write the first line of this family\'s holiday letter',
+    'Invent a new holiday. What is it called?',
+    'The one thing that would make the holidays even better',
+    'Write a holiday-season rule for the Hood League',
+    'What Santa wrote about this crew on the naughty list',
+  ],
+};
+
+export default set;

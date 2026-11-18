@@ -1,5 +1,5 @@
 // Monster Mash-up prompts: silly, family friendly Halloween writing prompts.
-import { HOLIDAY_FINAL_PROMPTS, HOLIDAY_PROMPTS } from './holidayContent.js';
+import { THEME_SETS } from './themes/index.js';
 import { season } from './season.js';
 
 export const PROMPTS = [
@@ -71,8 +71,8 @@ export const FINAL_PROMPTS = [
 ];
 
 /** The prompt lists for the current theme. */
-export const promptsFor = (theme = season()) => (theme === 'holiday'
-  ? { prompts: HOLIDAY_PROMPTS, finals: HOLIDAY_FINAL_PROMPTS }
+export const promptsFor = (theme = season()) => (THEME_SETS[theme]
+  ? { prompts: THEME_SETS[theme].prompts, finals: THEME_SETS[theme].finals }
   : { prompts: PROMPTS, finals: FINAL_PROMPTS });
 
 // Kept PG-13: a short list of words that get masked on the TV. Answers stay playful, not crude.

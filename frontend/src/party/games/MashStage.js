@@ -3,7 +3,7 @@ import Person from '../Person';
 import { sfx } from '../sound';
 import { PlayerTag, ScenePerson } from '../scene';
 import {
-  awards, FINAL_VOTE_MS, FINAL_WRITE_MS, isFinalRound, options, pointsPerVote, ranking, ROUND_MS, ROUNDS, todo, VOTE_MS, voters, WRITE_MS,
+  awards, FINAL_VOTE_MS, MASH_CHAMP, MASH_TITLE, FINAL_WRITE_MS, isFinalRound, options, pointsPerVote, ranking, ROUND_MS, ROUNDS, todo, VOTE_MS, voters, WRITE_MS,
 } from './mash';
 import { QuizBackdrop } from './QuizStage';
 import { Leaderboard, Podium } from './Results';
@@ -104,7 +104,7 @@ export default function MashStage({ game, players, now, onLobby, onAgain }) {
 
       {game.phase === 'round' && (
         <div className="lc-card lq-round" key={`r${game.round}`}>
-          <div className="lc-card-kicker">Monster Mash-up</div>
+          <div className="lc-card-kicker">{MASH_TITLE}</div>
           <h2 className="lc-title">{ROUNDS[game.round].title}</h2>
           <p>{ROUNDS[game.round].blurb}</p>
           <div className="lc-countdown">{Math.max(1, Math.ceil((ROUND_MS - elapsed) / 1000))}</div>
@@ -180,7 +180,7 @@ export default function MashStage({ game, players, now, onLobby, onAgain }) {
       )}
 
       {game.phase === 'final' && (
-        <Podium ranks={ranks} players={players} awards={awards(game).filter((a) => a.title !== 'Monster Mash Champ')} onLobby={onLobby} onAgain={onAgain} />
+        <Podium ranks={ranks} players={players} awards={awards(game).filter((a) => a.title !== MASH_CHAMP)} onLobby={onLobby} onAgain={onAgain} />
       )}
     </>
   );
