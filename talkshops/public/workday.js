@@ -293,7 +293,7 @@
     const declined = j.estimate.filter((e) => e.status === "declined").map((e) => e.item);
     const off = j.customer.remindersOff;
     const rows = list.map((f) => `<li><span class="pill ${f.sentAt ? "ok" : f.canceledAt ? "bad" : "warn"}">${f.sentAt ? "Sent" : f.canceledAt ? (f.canceledBy === "customer" ? "Customer stopped" : "Canceled") : "Waiting"}</span>
-      <b>${f.kind === "declined" ? "Declined work" : f.kind === "nudge" ? "Estimate reminder" : "Next service"}</b> · ${f.sentAt ? shortDate(f.sentAt) : shortDate(f.due)}<p>${esc(f.text)}</p>
+      <b>${f.kind === "declined" ? "Declined work" : f.kind === "nudge" ? "Estimate reminder" : f.kind === "appointment" ? "Appointment reminder" : "Next service"}</b> · ${f.sentAt ? shortDate(f.sentAt) : shortDate(f.due)}<p>${esc(f.text)}</p>
       ${!f.sentAt && !f.canceledAt ? `<button type="button" class="linkbtn" data-wd-cancel="${esc(f.id)}">Cancel</button>` : ""}</li>`).join("");
     const can = j.customer.consent && !off;
     return `<section class="sec" data-wd-job="${esc(j.id)}"><h3>Reminder Texts</h3>
@@ -329,7 +329,7 @@
     const loc = document.documentElement.lang === "es" ? "es-US" : "en-US";
     const day = (t) => new Date(ts(t)).toLocaleDateString(loc, { month: "short", day: "numeric", year: "numeric" });
     return `<div class="c-card"><h3>${T("Reminder texts")}</h3>${r.off ? `<p class="muted" style="margin:0">${T("You turned off reminder texts from {0}.", esc(c.shop?.name || "this shop"))}</p>`
-      : `<p style="margin:0">${T("{0} will remind you about {1}.", esc(c.shop?.name || "The shop"), r.waiting.map((w) => w.kind === "declined" ? T("the work you put off around {0}", day(w.due)) : T("your next service around {0}", day(w.due))).join(T(" and ")))}</p>
+      : `<p style="margin:0">${T("{0} will remind you about {1}.", esc(c.shop?.name || "The shop"), r.waiting.map((w) => w.kind === "declined" ? T("the work you put off around {0}", day(w.due)) : w.kind === "appointment" ? T("your appointment, the day before") : T("your next service around {0}", day(w.due))).join(T(" and ")))}</p>
       <button type="button" class="btn" data-wd-stop style="margin-top:10px">${T("Stop reminder texts")}</button><p class="muted" style="font-size:13px;margin:6px 0 0">${T("You can also reply STOP to any text.")}</p>`}</div>`;
   }
 

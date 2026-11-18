@@ -206,12 +206,15 @@
       <div class="folder-images">${photos.map((p) => photoFigure(p)).join("")}</div></details>`;
   }
 
-  function intakeForm() {
-    const T = window.tsT;
-    const field = (name,label,max,required=false) => `<label class="field">${label}<input name="${name}" maxlength="${max}" ${required ? "required" : ""} value="${esc(cust.intakeDraft[name] || "")}"></label>`;
+  // Starts with what the shop already has (a booking request fills in the car and the concern), so nobody types it twice.
+  function intakeForm(j) {
+    const T = window.tsT, v = j?.vehicle || {};
+    const known = { year: v.year || "", make: v.make || "", model: v.model || "", plate: j?.plate || "", concern: j?.concern || "" };
+    const val = (name) => cust.intakeDraft[name] ?? known[name] ?? "";
+    const field = (name,label,max,required=false) => `<label class="field">${label}<input name="${name}" maxlength="${max}" ${required ? "required" : ""} value="${esc(val(name))}"></label>`;
     return `<form id="intakeForm" class="form-grid">
       ${field("year",T("Vehicle year"),4)}${field("make",T("Make"),40,true)}${field("model",T("Model"),40,true)}${field("plate",T("License plate (optional)"),12)}
-      <label class="field full">${T("What should the technician look at?")}<textarea name="concern" required maxlength="1000">${esc(cust.intakeDraft.concern || "")}</textarea></label>
+      <label class="field full">${T("What should the technician look at?")}<textarea name="concern" required maxlength="1000">${esc(val("concern"))}</textarea></label>
       <button class="btn primary" type="submit">${T("Save check-in details")}</button></form>`;
   }
 
@@ -266,7 +269,7 @@
         ${pending ? `<label class="field" style="margin-top:10px">${T("Type your full name to sign")}<input id="sig" autocomplete="name" value="${esc(cust.sig)}"></label>
         <button class="btn primary" style="width:100%;margin-top:10px" id="submitApproval" ${allChosen ? "" : "disabled"}>${T("Send my decision")}</button>
         <p class="muted" style="font-size:12.5px;margin:6px 0 0">${allChosen ? T("Your signed decision goes straight to the shop.") : T("Choose approve or decline for each item.")}</p>`
-        : (j.approval ? `<p class="muted" style="font-size:12.5px;margin:8px 0 0">${T("Signed by {0} on {1}", esc(j.approval.by), dayClock(j.approval.t))}</p>` : "")}</div>`;
+        : (j.approval ? `<p class="muted" style="font-size:12.5px;margin:8px 0 0">${T("Signed by {0}, {1}", esc(j.approval.by), dayClock(j.approval.t))}</p>` : "")}</div>`;
     }
     const earlierPhotos = photoFolder("earlier", "Earlier photos", j.photos.filter((p) => !Object.hasOwn(SI, p.stage)), openFolders);
     const extra = j.stage === "parts" && j.eta ? `<p style="margin:6px 0 0">${T("Parts expected {0}.", "<b>" + esc(j.eta) + "</b>")}</p>`
@@ -275,7 +278,7 @@
       <div class="c-head">${window.Grow.customerHead(j)}<small>${esc(j.shop.name)} · <span class="mono">${esc(j.ro)}</span></small><h2>${heading}</h2><div style="font-size:14px;margin-top:4px">${esc(ShopDisplay.vehicle(j.vehicle))}</div>${extra}</div>
       <div class="c-body">
         ${window.Grow.customerCards(j)}
-        ${j.stage === "invited" ? `<section class="c-card"><h3>${T("Vehicle check-in")}</h3>${j.intakeReceived ? `<p>${T("Your details have been sent to the shop.")}</p>` : intakeForm()}</section>` : ""}
+        ${j.stage === "invited" ? `<section class="c-card"><h3>${T("Vehicle check-in")}</h3>${j.intakeReceived ? `<p>${T("Your details have been sent to the shop.")}</p>` : intakeForm(j)}</section>` : ""}
         ${j.canUploadIntakePhotos ? `<section class="c-card"><h3>${T("Photos for your technician")}</h3>
           <p>${T("Show the damage, warning light or part you want checked.")}</p>
           <button type="button" id="customerPickPhoto" class="btn" ${j.photos.filter(p => p.source === "customer").length >= 6 ? "disabled" : ""}>${T("Add photos")}</button>
@@ -1150,7 +1153,7 @@
           ${j.stage === "parts" ? `<label class="field" style="margin-top:10px">Parts ETA<input id="eta" value="${esc(j.eta || "")}" placeholder="e.g. Tue, Nov 10"></label>` : ""}
         </section>
         ${j.stage === "invited" && !j.intakeReceived ? "" : window.Workday.sheetDetails(j)}
-        ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting Customer Intake</h3><details><summary>Enter Details at the Shop</summary>${intakeForm()}</details></section>` : ""}
+        ${j.stage === "invited" && !j.intakeReceived ? `<section class="sec"><h3>Awaiting Customer Intake</h3><details><summary>Enter Details at the Shop</summary>${intakeForm(j)}</details></section>` : ""}
         ${(() => {
           const guide = vehicleStr(j) && !j.closed && j.stage !== "picked_up" ? `<p class="howto-link"><button class="linkbtn" data-howto-job="${esc(j.id)}">Open Repair Guide →</button>${window.TalkShopsVideoLinks ? window.TalkShopsVideoLinks(j.vehicle, j.concern) : ""}</p>` : "";
           return j.concern ? `<section class="sec"><h3>Concern</h3><div class="concern-text">${esc(j.concern)}</div>${guide}</section>` : guide ? `<section class="sec sec-guide">${guide}</section>` : "";
@@ -1160,7 +1163,7 @@
         ${j.stage === "invited" && !j.intakeReceived ? "" : window.Walkthrough.sheetSection(j)}
         ${j.stage === "invited" && !j.intakeReceived ? "" : `<section class="sec"><h3>Estimate</h3>${estimateSeen(j)}
           ${j.estimate.length ? `<div style="overflow-x:auto"><table class="est"><thead><tr><th>Item</th><th>Status</th><th class="num">Price</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>${j.estimate.some((e) => e.status !== "pending") ? `<div class="total"><span>Approved total</span><span>${money(estTotal(j, true))}</span></div><div class="total sub"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>` : `<div class="total"><span>Total quoted</span><span>${money(estTotal(j))}</span></div>`}` : `<p class="muted" style="margin:0">No line items yet.</p>`}
-          ${j.approval ? `<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)} on ${dayClock(j.approval.t)}</p>` : ""}
+          ${j.approval ? `<p class="muted" style="font-size:13px">Signed by ${esc(j.approval.by)}, ${dayClock(j.approval.t)}</p>` : ""}
           <div class="est-add">
             <div class="est-add-h">Quick add</div>
             <form class="add-line" id="addLine"><span class="suggest-wrap"><input id="li-item" data-suggest="quick" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" placeholder="${(shop.rates || []).length ? "Type or pick a saved item" : "Item, e.g. Cabin air filter"}" aria-label="Line item"><button type="button" class="suggest-btn" data-suggest-open aria-label="Show saved items" ${(shop.rates || []).length ? "" : "hidden"}>▾</button></span><input id="li-price" inputmode="decimal" placeholder="Price" aria-label="Price"><button class="btn" type="submit">Add</button>
