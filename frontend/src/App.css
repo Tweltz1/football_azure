@@ -2107,6 +2107,17 @@ hr {
   margin-top: 24px;
 }
 
+.front-door-extra {
+  margin: 18px 0 0;
+  text-align: center;
+}
+
+.front-door-extra a {
+  color: #ffd36e;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .front-door-card {
   display: flex;
   flex-direction: column;

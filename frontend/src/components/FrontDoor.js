@@ -17,11 +17,6 @@ const FrontDoor = ({ onFootball }) => (
           <strong>Football</strong>
           <small>Leagues, auction drafts, rankings and start/sit. Sign in to continue.</small>
         </button>
-        <a className="front-door-card" href="/mock-draft">
-          <span className="front-door-icon">🔨</span>
-          <strong>Mock draft</strong>
-          <small>Practice an auction draft against 9 bots right now. No sign-in.</small>
-        </a>
         <a className="front-door-card is-games" href="/games-night">
           <span className="front-door-icon">{isHoliday() ? '🦃' : '🎃'}</span>
           <strong>Games</strong>
@@ -38,6 +33,7 @@ const FrontDoor = ({ onFootball }) => (
           <small>Fantasy tabletop quests on the TV with an AI narrator. Heroes join on their phones.</small>
         </a>
       </div>
+      <p className="front-door-extra"><a href="/mock-draft">Try a mock auction draft against 9 bots, no sign-in →</a></p>
     </section>
     <StudioCredit />
   </main>
