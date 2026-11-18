@@ -769,3 +769,22 @@
 .vs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 13px; }
 .vs-person { display: inline-flex; align-items: center; gap: 6px; padding: 3px 6px 3px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); }
 .vs-btn { border: 0; border-radius: 999px; padding: 3px 9px; background: rgba(0, 0, 0, 0.25); color: inherit; font: inherit; text-decoration: none; cursor: pointer; }
+
+/* Turkey Trot */
+#lc-root .tt-clock { position: absolute; right: 2%; top: 13%; display: flex; flex-direction: column; align-items: center; padding: 0.3em 0.9em; background: #fff6e3; color: var(--lc-ink); border: 5px solid var(--lc-ink); border-radius: 0.6em; box-shadow: 0 6px 0 var(--lc-ink); font-weight: 800; }
+#lc-root .tt-clock span { font-size: 1.1em; }
+#lc-root .tt-clock b { font: 400 3em/1 var(--lc-spooky); color: #8a2420; }
+#lc-root .tt-clock.is-hurry { animation: lc-shake 0.4s ease-in-out infinite; background: #ffd6c9; }
+#lc-root .tt-phone { align-items: center; }
+#lc-root .tt-phone .lcp-gamehead { align-self: stretch; }
+#lc-root .tt-you { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; }
+#lc-root .tt-swatch { display: inline-block; width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--lc-ink); }
+#lc-root .tt-stick { position: relative; width: min(82vw, 340px); aspect-ratio: 1; margin: 6px auto; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, 0.16) 0 30%, rgba(255, 255, 255, 0.06) 31% 100%); border: 6px solid var(--tt-me, #fff); box-shadow: 0 0 0 4px var(--lc-ink), inset 0 0 0 4px var(--lc-ink); touch-action: none; user-select: none; -webkit-user-select: none; }
+#lc-root .tt-arrow { position: absolute; font-size: 22px; opacity: 0.55; pointer-events: none; }
+#lc-root .tt-arrow.is-up { top: 8px; left: 50%; transform: translateX(-50%); }
+#lc-root .tt-arrow.is-down { bottom: 8px; left: 50%; transform: translateX(-50%); }
+#lc-root .tt-arrow.is-left { left: 10px; top: 50%; transform: translateY(-50%); }
+#lc-root .tt-arrow.is-right { right: 10px; top: 50%; transform: translateY(-50%); }
+#lc-root .tt-knob { position: absolute; left: 50%; top: 50%; width: 38%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 48px; border-radius: 50%; background: var(--tt-me, #ffd23f); border: 5px solid var(--lc-ink); box-shadow: 0 6px 0 var(--lc-ink); pointer-events: none; transition: transform 0.06s linear; }
+#lc-root .tt-demo { width: 220px; border-width: 5px; margin: 10px auto; }
+#lc-root .tt-demo .tt-knob { font-size: 36px; transition: transform 0.4s ease; }

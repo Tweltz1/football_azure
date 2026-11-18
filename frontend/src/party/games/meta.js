@@ -78,11 +78,30 @@ export const GAME_META = [
     ],
     phoneHint: 'Keep your phone hidden. Your secret word (or your fangs) show up here.',
   },
+  // Holiday-only games: each shows up (first in the list) only while its holiday is on. See season.js.
+  {
+    id: 'trot',
+    holiday: 'thanksgiving',
+    title: 'Turkey Trot',
+    emoji: '🦃',
+    tag: 'Co-op',
+    minutes: '5–7 min',
+    blurb: 'The turkeys got loose! Steer your farmer with your phone and herd them into the pen before dinner.',
+    how: [
+      'Your phone is a joystick that walks your farmer around the yard.',
+      'Turkeys run away from you. Get behind one and walk it up into the pen.',
+      'Pen enough turkeys before the dinner bell. Team up to trap them!',
+    ],
+    phoneHint: 'Your phone turns into a joystick in a minute.',
+  },
 ];
 
 // The quiz and the writing game take the name of the theme on now (see season.js): Thanksgiving Quiz,
 // Sweetheart Quiz, Cookout Mash-up and so on. Outside Halloween they lead the list.
 const theme = themeInfo();
+for (let i = GAME_META.length - 1; i >= 0; i -= 1) {
+  if (GAME_META[i].holiday && GAME_META[i].holiday !== theme.id) GAME_META.splice(i, 1);
+}
 if (theme.id !== 'spooky') {
   const themed = {
     quiz: {
@@ -108,7 +127,12 @@ if (theme.id !== 'spooky') {
   };
   GAME_META.forEach((g, i) => { if (themed[g.id]) GAME_META[i] = { ...g, ...themed[g.id] }; });
   GAME_META.sort((a, b) => (themed[b.id] ? 1 : 0) - (themed[a.id] ? 1 : 0));
+  const special = GAME_META.findIndex((g) => g.holiday);
+  if (special > 0) GAME_META.unshift(...GAME_META.splice(special, 1));
 }
 
 export const metaFor = (id) => GAME_META.find((g) => g.id === id) || GAME_META[0];
 export const isPlayable = (id) => GAME_META.some((g) => g.id === id && !g.soon);
+
+/** This holiday's own game, if it has one. */
+export const HOLIDAY_GAME = GAME_META.find((g) => g.holiday) || null;

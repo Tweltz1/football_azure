@@ -7,8 +7,9 @@ import { isMuted, setMuted, setMusicIntensity, sfx, startMusic, stopMusic, unloc
 import { Backdrop, House } from './scene';
 import { QuizBackdrop } from './games/QuizStage';
 import { HallBackdrop } from './games/HallwayStage';
+import { TrotBackdrop } from './games/TrotStage';
 
-import { GAME_META, gameFor, isPlayable } from './games';
+import { GAME_META, HOLIDAY_GAME, gameFor, isPlayable } from './games';
 import './party.css';
 import { siteOrigin } from '../native/gamesApp';
 import { themeInfo, fontsHref } from './season';
@@ -19,6 +20,7 @@ const LobbyScene = ({ id, now }) => {
   if (id === 'quiz') return <QuizBackdrop lights={Math.floor(now / 700)} />;
   if (id === 'mash') return <QuizBackdrop lights={Math.floor(now / 700)} curtain={['#1f4a2e', '#2f6b3f', '#163a24']} />;
   if (id === 'hallway') return <HallBackdrop floor={1} />;
+  if (id === 'trot') return <TrotBackdrop />;
   if (id === 'mask') return <QuizBackdrop lights={Math.floor(now / 700)} curtain={['#3a1f5c', '#5b2d8e', '#2a1645']} />;
   return <><Backdrop /><House candles={5} maxCandles={5} /></>;
 };
@@ -64,7 +66,7 @@ const startingGame = () => {
   const asked = new URLSearchParams(window.location.search).get('game');
   if (isPlayable(asked)) return asked;
   const saved = loadRoom()?.gameId;
-  return isPlayable(saved) ? saved : 'candle';
+  return isPlayable(saved) ? saved : (HOLIDAY_GAME?.id || 'candle');
 };
 
 export default function PartyHost() {

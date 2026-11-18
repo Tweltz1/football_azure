@@ -47,6 +47,7 @@ export const sfx = {
   lost: () => [392, 349, 311, 262].forEach((f, i) => tone(f, i * 0.3, 0.5, { type: 'sawtooth', gain: 0.06 })),
   whoosh: () => { tone(300, 0, 0.45, { type: 'sawtooth', gain: 0.03, slide: 500 }); tone(900, 0.1, 0.35, { type: 'triangle', gain: 0.03, slide: -600 }); },
   tick: () => tone(1320, 0, 0.05, { type: 'square', gain: 0.04 }),
+  gobble: () => [0, 1, 2, 3, 4].forEach((i) => tone(i % 2 ? 420 : 300, i * 0.055, 0.06, { type: 'square', gain: 0.035, slide: i % 2 ? -80 : 60 })),
 };
 
 // Background music: a slow, soft, spooky pad that's made up as it plays, so it never loops.
