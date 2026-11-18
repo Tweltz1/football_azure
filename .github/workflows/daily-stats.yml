@@ -54,6 +54,33 @@ jobs:
             '$ARGS.named')
           echo "DAILY_STATS_JSON $out"
 
+      - name: Talk Shops usage
+        # Read-only counts from Talk Shops' own Supabase project (Tyler OK'd, 2026-11-18). Counts only.
+        env:
+          TS_PROJECT: ${{ secrets.TALKSHOPS_SUPABASE_PROJECT_ID }}
+        run: |
+          [ -n "$TS_PROJECT" ] || { echo 'TALKSHOPS_STATS_JSON {}'; exit 0; }
+          n() {
+            curl --fail --silent --show-error --max-time 30 \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+              -d "$(jq -n --arg q "select ($1)::bigint as n" '{query: $q}')" \
+              "https://api.supabase.com/v1/projects/$TS_PROJECT/database/query" 2>/dev/null \
+              | jq -e '.[0].n' 2>/dev/null || echo null
+          }
+          day="now() - interval '24 hours'"
+          msgs="from public.repair_jobs j, jsonb_array_elements(coalesce(j.data->'messages', '[]'::jsonb)) m where j.updated_at > $day and m->>'dir' = 'out' and (m->>'t')::timestamptz > $day"
+          out=$(jq -c -n \
+            --argjson shops_total "$(n "select count(*) from public.repair_shops")" \
+            --argjson shops_new_24h "$(n "select count(*) from public.repair_shops where created_at > $day")" \
+            --argjson cars_checked_in_24h "$(n "select count(*) from public.repair_jobs where created_at > $day")" \
+            --argjson cars_active_24h "$(n "select count(*) from public.repair_jobs where updated_at > $day")" \
+            --argjson cars_open "$(n "select count(*) from public.repair_jobs where stage <> 'picked_up' and coalesce(jsonb_typeof(data->'closed'), 'null') = 'null'")" \
+            --argjson updates_sent_24h "$(n "select count(*) $msgs")" \
+            --argjson texts_sent_24h "$(n "select count(*) $msgs and m->>'channel' = 'sms' and coalesce(m->>'delivery', 'sent') = 'sent'")" \
+            --argjson bookings_24h "$(n "select count(*) from public.repair_bookings where created_at > $day")" \
+            '$ARGS.named')
+          echo "TALKSHOPS_STATS_JSON $out"
+
       - name: Website visits
         env:
           CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

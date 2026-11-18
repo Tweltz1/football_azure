@@ -1,0 +1,44 @@
+name: Hood League weekly email
+
+# In-season start/sit email to every Hood League team owner (scripts/league-weekly-email.ts on the live branch).
+# Wednesdays 15:00 UTC (9 AM Central), before Thursday night football. Run it by hand for a dry run (counts only)
+# or a preview sent to one address. Each email has a one-click unsubscribe. Logs show counts only.
+on:
+  schedule:
+    - cron: '0 15 * * 3'
+  workflow_dispatch:
+    inputs:
+      send:
+        description: 'Really send to every team owner (off = dry run, counts only)'
+        type: boolean
+        default: false
+      test_to:
+        description: 'Send up to 3 sample emails to this one address instead'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency: { group: league-weekly-email, cancel-in-progress: false }
+
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/project-thread-6lgsrr
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Send
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          RESEND_API_KEY: ${{ secrets.WELTZCRAFT_RESEND_API_KEY }}
+          SEND: ${{ github.event_name == 'schedule' && 'true' || inputs.send && 'true' || 'false' }}
+          TEST_TO: ${{ inputs.test_to }}
+        run: |
+          [ -n "$TEST_TO" ] && echo "::add-mask::$TEST_TO"
+          deno run --allow-net --allow-env scripts/league-weekly-email.ts
