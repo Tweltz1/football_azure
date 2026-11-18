@@ -134,8 +134,8 @@ export function HouseholdCard() {
           <View style={{ gap: 8 }}>
             <TextInput
               value={code}
-              onChangeText={(v) => setCode(v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 6))}
-              placeholder="6-letter code"
+              onChangeText={(v) => setCode(v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 8))}
+              placeholder="Household code"
               placeholderTextColor={t.textMuted}
               autoCapitalize="characters"
               autoCorrect={false}
