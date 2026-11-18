@@ -818,6 +818,15 @@ body.jk-body::before { background: #f5f3ee; }
 .jk-share-trip { display: block; margin-top: 6px; font-size: 14px; }
 .jk-bubble-warn { display: block; font-size: 12px; margin-top: 4px; color: var(--jk-warn, #b26b00); }
 .jk-pill-verified { background: var(--jk-accent-soft); color: var(--jk-accent); font-weight: 700; }
+.jk-pill-trusted { background: var(--jk-free); color: var(--jk-free-ink); font-weight: 700; }
+.jk-member .jk-pill { margin: 2px 6px 2px 0; }
+.jk-trust-line { display: block; font-size: 13px; color: var(--jk-ink-2); }
+.jk-rate { text-align: center; }
+.jk-rate-photo { width: 72px; height: 72px; border-radius: 14px; object-fit: cover; margin: 0 auto; }
+.jk-stars { display: flex; justify-content: center; gap: 6px; margin: 4px 0 8px; }
+.jk-star { width: 52px; height: 52px; border: 0; border-radius: 12px; background: var(--jk-surface-2); color: var(--jk-line); font-size: 30px; line-height: 1; cursor: pointer; }
+.jk-star.is-on { color: #f5a524; }
+.jk-me-card { margin-top: 6px; }
 .jk-learn-toggle { margin-top: 28px; }
 .jk-standing { margin: 12px 0; padding: 14px; border-radius: 14px; background: var(--jk-surface-2); border: 1px solid var(--jk-line); }
 .jk-standing p { margin: 4px 0 10px; font-size: 14px; line-height: 1.4; }

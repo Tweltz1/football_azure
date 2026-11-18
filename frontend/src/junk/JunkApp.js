@@ -2,7 +2,8 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { signIn, useAuth } from '../AuthContext';
 import { distanceLabel, lastSpot, locate } from './device';
-import { getPlus, inbox as fetchInbox, myClaim } from './junkApi';
+import { getPlus, inbox as fetchInbox, myClaim, pendingReviews } from './junkApi';
+import { RateSheet } from './Safety';
 import { onAlertOpen, onStoreUpdates, refreshAlerts, syncPurchases } from './store';
 import { PlusSheet } from './Plus';
 import { refreshTripToken, startTrip, stopTrip } from './trip';
@@ -119,6 +120,13 @@ function TripBanner({ trip, onDismiss }) {
   );
 }
 
+/** The stars sheet, kept off the post form and chats so it never interrupts typing. */
+function RatePrompt({ pickup, onDone }) {
+  const { pathname } = useLocation();
+  if (/^\/junk\/(chat|post|edit)\b/.test(pathname)) return null;
+  return <RateSheet key={pickup.claimId} pickup={pickup} onDone={onDone} />;
+}
+
 function Shell() {
   const { user, loading } = useAuth();
   // Hood League's offline/guest fallbacks aren't real sign-ins; the Junk App needs a live account.
@@ -133,6 +141,7 @@ function Shell() {
   const [dismissedTrip, setDismissedTrip] = useState(null);
   const [plus, setPlus] = useState(null); // Curbsy Plus status from the server (see Plus.js)
   const [plusReason, setPlusReason] = useState(null);
+  const [toRate, setToRate] = useState([]); // finished pickups waiting for stars
   const navigate = useNavigate();
   const [legal, setLegal] = useState(null); // Terms or Privacy page open in the panel
   const closeLegal = useCallback(() => setLegal(null), []);
@@ -204,6 +213,22 @@ function Shell() {
 
   useEffect(() => { refreshTrip(); }, [refreshTrip]);
 
+  // Stars after a pickup: asked once the trip is done (the taker right away, the giver next time they open Curbsy).
+  const refreshReviews = useCallback(async () => {
+    if (!me) { setToRate([]); return; }
+    try {
+      const r = await pendingReviews();
+      setToRate((r && r.pending) || []);
+    } catch (error) { /* ask another time */ }
+  }, [me]);
+  const pickedUp = !!(trip && trip.claim && trip.claim.state === 'picked_up');
+  useEffect(() => { refreshReviews(); }, [refreshReviews, pickedUp]);
+  useEffect(() => {
+    const onShow = () => { if (document.visibilityState === 'visible') refreshReviews(); };
+    document.addEventListener('visibilitychange', onShow);
+    return () => document.removeEventListener('visibilitychange', onShow);
+  }, [refreshReviews]);
+
   // Curbsy Plus: the phone's App Store subscriptions are sent to the server on sign-in (renewals and
   // cancellations included), then the server says what's unlocked.
   const refreshPlus = useCallback(async () => {
@@ -261,6 +286,9 @@ function Shell() {
         {signInReason !== null && !me && <SignInSheet reason={signInReason} onClose={() => setSignInReason(null)} />}
         {plusReason !== null && <PlusSheet reason={plusReason} onClose={() => setPlusReason(null)} />}
         {legal && <LegalPanel src={legal} onClose={closeLegal} />}
+        {me && toRate.length > 0 && !signInReason && plusReason === null && !legal && (
+          <RatePrompt pickup={toRate[0]} onDone={(id) => setToRate((list) => list.filter((p) => p.claimId !== id))} />
+        )}
       </div>
     </JunkContext.Provider>
   );

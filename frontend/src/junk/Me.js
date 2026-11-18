@@ -4,7 +4,7 @@ import { SignInPrompt, useJunk } from './JunkApp';
 import { deleteAccount, deleteSavedSearch, getMember, junkSignOut as signOut, myContactMessages, myItems, savedSearches, setCurbsyName } from './junkApi';
 import { ItemCard } from './Browse';
 import { IconBox, IconClose, IconPlus } from './icons';
-import { ContactSheet, StandingNotice } from './Safety';
+import { ContactSheet, MemberBadges, StandingNotice, starsLabel } from './Safety';
 import { setSharesCrops, sharesCrops } from './learning';
 import { TipSheet } from './Plus';
 import { PLUS_PRICE, alertStatus, canBuy, manageSubscription, restore, turnOnAlerts } from './store';
@@ -169,6 +169,11 @@ export default function Me() {
           <h1>{shownName}</h1>
           <button type="button" className="jk-link" onClick={() => setNaming(true)}>Change the name neighbors see</button>
           <p className="jk-muted">{items ? `${live.length} up for grabs · ${gone.length} given away` : ' '}</p>
+          {member && member.card && (
+            <p className="jk-muted jk-me-card">
+              <MemberBadges card={member.card} /> {starsLabel(member.card)} · {member.card.pickups} {member.card.pickups === 1 ? 'pickup' : 'pickups'}
+            </p>
+          )}
         </div>
       </header>
 

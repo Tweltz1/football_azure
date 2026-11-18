@@ -5,10 +5,13 @@
 // of a listing is uploaded, Gemini (the free GEMINI_API_KEY the other apps use) names the item, picks a
 // category, writes a short description and search tags, and refuses photos that can't be posted.
 // Locations are rounded to about 100 m before they are saved, and only distances are shown to others.
+// Privacy and trust: people show up by a first name or nickname only. During "I'm on my way" nobody sees
+// where the other person is: the poster gets a status and a rough arrival time. After a pickup both sides
+// can leave 1 to 5 stars, and member cards show the rating, completed pickups and a verified badge.
 
 import type { Ctx, Res } from './handlers.ts';
 import {
-  CLAIMS_PER_DAY, MAX_CLAIM_KM, OPEN_CLAIM, RECLAIM_COOLDOWN_MIN, claimOut, etaMinutes, judgeClaim, newClaim, pingClaim,
+  CLAIMS_PER_DAY, MAX_CLAIM_KM, OPEN_CLAIM, RECLAIM_COOLDOWN_MIN, claimOut, etaMinutes, judgeClaim, newClaim, pingClaim, roughEta,
   type ClaimStore, type JunkClaim,
 } from './junkClaims.ts';
 import { alertSavedSearches, isEarly, junkPlusRoute, maxKmFor, plusUntil, type PlusDeps, type PlusStore } from './junkPlus.ts';
@@ -124,8 +127,14 @@ export interface JunkStore extends ClaimStore, PlusStore {
   touchMember(userId: string, joinedAt: string | null, provider: string | null): Promise<void>;
   /** Notes that this account used this phone; returns whether the phone is banned and how many accounts used it lately. */
   seeDevice(userId: string, deviceId: string, at: string, since: string): Promise<{ banned: boolean; accounts: number }>;
-  /** The other people in this person's finished pickups ("Got it" at the spot), as giver or taker. */
-  pickupPartners(userId: string): Promise<string[]>;
+  /** This person's finished pickups ("Got it" at the spot), as giver or taker, newest first. */
+  finishedPickups(userId: string): Promise<JunkClaim[]>;
+  /** Saves stars for one finished pickup; false when this person already rated (or skipped) it. */
+  addReview(r: JunkReview): Promise<boolean>;
+  /** The pickups (claim ids) this person already rated or skipped. */
+  reviewedClaims(reviewerId: string): Promise<string[]>;
+  /** Star ratings others left about this person (skips not counted). */
+  ratingFor(subjectId: string): Promise<{ total: number; count: number }>;
   addFeedback(f: { id: string; userId: string; userName: string; body: string; createdAt: string; kind?: 'contact' | 'appeal'; itemId?: string | null }): Promise<void>;
   countFeedbackSince(userId: string, since: string): Promise<number>;
   /** Learning loop: a fix to the name or category the phone guessed (see addLabelFix in the handler). */
@@ -140,6 +149,11 @@ export interface JunkStore extends ClaimStore, PlusStore {
   wantsNear(lat: number, lng: number, km: number, limit: number): Promise<(JunkWant & { km: number })[]>;
   closeWant(id: string, at: string): Promise<void>;
   countWantsSince(ownerId: string, since: string): Promise<number>;
+}
+
+/** Stars one side of a finished pickup left for the other (0: they skipped it, not counted in ratings). */
+export interface JunkReview {
+  id: string; claimId: string; itemId: string; reviewerId: string; subjectId: string; stars: number; createdAt: string;
 }
 
 export interface JunkFeedbackOut { id: string; body: string; kind: string; createdAt: string; reply: string | null; repliedAt: string | null }
@@ -225,6 +239,10 @@ export const ACCOUNTS_PER_DEVICE = 3;
 export const VERIFIED_PICKUPS = 3;
 /** A member card says "New member" for this long. */
 export const NEW_MEMBER_DAYS = 14;
+/** How long after a pickup each side can rate the other. */
+export const REVIEW_DAYS = 14;
+/** Sign-ins that confirm a real account (Apple and Google both check a phone number): the "Verified" badge. */
+const VERIFIED_PROVIDERS = ['apple', 'google'];
 
 // "Looking for" posts: how far they reach and how many a person can post a day.
 const WANT_KM = 16;
@@ -333,11 +351,23 @@ const decodeJpeg = (v: unknown): Uint8Array | null => {
   }
 };
 
-export interface OwnerCard { since: string | null; provider: string | null; given: number; isNew: boolean; verified: boolean }
+export interface OwnerCard {
+  since: string | null; provider: string | null; given: number; isNew: boolean;
+  /** "Trusted neighbor": finished pickups with VERIFIED_PICKUPS different people (the iPhone app before 1.1 shows
+   *  this as "Verified neighbor"). */
+  verified: boolean;
+  /** Signed in with Apple or Google (both confirm a phone number): the "Verified" badge. */
+  accountVerified: boolean;
+  /** Finished pickups as giver or taker. */
+  pickups: number;
+  /** Average stars from other people (one decimal), null until someone rates them. */
+  rating: number | null;
+  ratings: number;
+}
 
 const itemOut = (
   deps: JunkDeps, i: JunkItem, me: string | null, km?: number, claims: JunkClaim[] = [],
-  extra: { spotOk?: boolean; owner?: OwnerCard } = {},
+  extra: { spotOk?: boolean; owner?: OwnerCard; cards?: Map<string, OwnerCard> } = {},
 ) => ({
   id: i.id,
   title: i.title,
@@ -373,11 +403,15 @@ const itemOut = (
   claim: (() => {
     const shared = i.firstCome || (i.pieces ?? []).length > 0;
     const c = shared ? claims.find((x) => x.claimerId === me) : claims[0];
-    return c ? claimOut(c, me) : null;
+    return c ? withCard(claimOut(c, me), c, me, extra.cards) : null;
   })(),
   onTheWay: claims.length,
-  ...(me !== null && me === i.ownerId ? { claimers: claims.map((c) => claimOut(c, me)) } : {}),
+  ...(me !== null && me === i.ownerId ? { claimers: claims.map((c) => withCard(claimOut(c, me), c, me, extra.cards)) } : {}),
 });
+
+/** The poster sees the member card (stars, pickups, badges) of whoever is on the way. */
+const withCard = <T extends object>(out: T, c: JunkClaim, me: string | null, cards?: Map<string, OwnerCard>) =>
+  (me === c.ownerId && cards?.get(c.claimerId) ? { ...out, card: cards.get(c.claimerId) } : out);
 
 /** "Chair and lamp", "Chair, lamp and 3 more". */
 export function bundleTitle(pieces: Pick<JunkPiece, 'title'>[]): string {
@@ -511,17 +545,28 @@ export async function junkRoute(
     if (claims.some((c) => c.claimerId === me)) return true;
     return (await store.messagesFor(me, 500)).some((m) => m.itemId === item.id && m.fromId === item.ownerId && m.toId === me);
   };
-  const ownerCard = async (ownerId: string): Promise<OwnerCard> => {
-    const [m, theirs, partners] = await Promise.all([store.member(ownerId), store.byOwner(ownerId), store.pickupPartners(ownerId)]);
+  /** What others see about a member: when they joined, how they sign in, finished pickups, stars and badges. */
+  const ownerCard = async (userId: string): Promise<OwnerCard> => {
+    const [m, theirs, pickups, stars] = await Promise.all([
+      store.member(userId), store.byOwner(userId), store.finishedPickups(userId), store.ratingFor(userId),
+    ]);
     const since = m?.joinedAt ?? null;
+    const partners = new Set(pickups.map((c) => (c.ownerId === userId ? c.claimerId : c.ownerId)));
     return {
       since,
       provider: m?.provider ?? null,
       given: theirs.filter((x) => x.status === 'gone').length,
       isNew: !since || now.getTime() - Date.parse(since) < NEW_MEMBER_DAYS * 86_400_000,
-      verified: new Set(partners).size >= VERIFIED_PICKUPS,
+      verified: partners.size >= VERIFIED_PICKUPS,
+      accountVerified: VERIFIED_PROVIDERS.includes(m?.provider ?? ''),
+      pickups: pickups.length,
+      rating: stars.count ? Math.round((stars.total / stars.count) * 10) / 10 : null,
+      ratings: stars.count,
     };
   };
+  /** Member cards for everyone on the way to the poster's item. */
+  const claimerCards = async (claims: JunkClaim[]) =>
+    new Map(await Promise.all([...new Set(claims.map((c) => c.claimerId))].map(async (id) => [id, await ownerCard(id)] as const)));
   // Curbsy signs in with Apple or Google only (both check a phone number). Older GitHub sign-ins keep new-account limits.
   const newAccount = () => crowdedDevice || ctx.userProvider === 'github' || (!!ctx.userCreatedAt && now.getTime() - Date.parse(ctx.userCreatedAt) < NEW_ACCOUNT_HOURS * 3_600_000);
 
@@ -558,7 +603,10 @@ export async function junkRoute(
     const lat = num(params?.get('lat')), lng = num(params?.get('lng'));
     const km = isLat(lat) && isLng(lng) ? distanceKm(lat, lng, item.lat, item.lng) : undefined;
     const claims = await liveClaimsOn(item.id);
-    return ok(itemOut(deps, item, me, km, claims, { spotOk: await canSeeSpot(item, claims), owner: await ownerCard(item.ownerId) }));
+    return ok(itemOut(deps, item, me, km, claims, {
+      spotOk: await canSeeSpot(item, claims), owner: await ownerCard(item.ownerId),
+      ...(me && me === item.ownerId && claims.length ? { cards: await claimerCards(claims) } : {}),
+    }));
   }
 
   if (section === 'categories' && method === 'GET') return ok({ categories: JUNK_CATEGORIES, conditions: JUNK_CONDITIONS });
@@ -616,6 +664,8 @@ export async function junkRoute(
     return ok({
       terms: !!m?.termsAt, banned: !!m?.bannedAt || !!phone?.banned, strikes: m?.strikes ?? 0, name: myName, customName: !!m?.name,
       ...(m?.banReason ? { reason: m.banReason } : {}),
+      // What neighbors see about you (Me tab).
+      card: await ownerCard(me),
     });
   }
   // "Your name on Curbsy": what neighbors see on listings, messages and trips. Empty goes back to the sign-in first name.
@@ -868,7 +918,7 @@ export async function junkRoute(
           : bundle ? 'all of it' : 'this';
         return claim.status === 'arrived'
           ? `I'm here to pick up ${what}! (sent by Curbsy)`
-          : `I'm on my way to pick up ${what}, about ${etaMinutes(km)} min out. (sent by Curbsy)`;
+          : `I'm on my way to pick up ${what}, about ${roughEta(etaMinutes(km))} min out. (sent by Curbsy)`;
       })(),
     }).catch((error) => ctx.log.warn('junk: claim message failed', error));
     return ok({ claim: claimOut(claim, me) });
@@ -950,6 +1000,44 @@ export async function junkRoute(
       }
       return ok({ claim: claimOut(ended, me) });
     }
+  }
+
+  // ---- Stars after a pickup: each side rates the other once, within REVIEW_DAYS ----
+  if (section === 'reviews' && !a && method === 'GET') {
+    const since = daysAgo(now, REVIEW_DAYS);
+    const [done, rated, blockedIds] = await Promise.all([store.finishedPickups(me), store.reviewedClaims(me), store.blocked(me)]);
+    const skip = new Set(rated);
+    const hidden = new Set(blockedIds);
+    const pending = done.filter((c) => (c.endedAt ?? c.createdAt) >= since && !skip.has(c.id) && !hidden.has(c.ownerId === me ? c.claimerId : c.ownerId));
+    const out = [];
+    for (const c of pending.slice(0, 5)) {
+      const item = await store.getItem(c.itemId);
+      const gave = c.ownerId === me;
+      out.push({
+        claimId: c.id, itemId: c.itemId, role: gave ? 'gave' : 'got', at: c.endedAt ?? c.createdAt,
+        otherName: gave ? c.claimerName || 'Neighbor' : item?.ownerName || 'Neighbor',
+        title: item?.title ?? 'your pickup', photo: item?.photos[0] ? photos.url(item.photos[0]) : null,
+      });
+    }
+    return ok({ pending: out });
+  }
+  if (section === 'reviews' && !a && method === 'POST') {
+    const claimId = str(body.claimId, 64);
+    if (!UUID.test(claimId)) return bad('Which pickup?');
+    const skip = body.skip === true;
+    const stars = num(body.stars);
+    if (!skip && !(Number.isInteger(stars) && stars >= 1 && stars <= 5)) return bad('Pick 1 to 5 stars.');
+    const c = (await store.finishedPickups(me)).find((x) => x.id === claimId);
+    if (!c) return { status: 404, body: 'You can rate a pickup once it\'s done.' };
+    if ((c.endedAt ?? c.createdAt) < daysAgo(now, REVIEW_DAYS)) return bad('That pickup was too long ago to rate.');
+    const stop = skip ? null : await gate();
+    if (stop) return stop;
+    const subjectId = c.ownerId === me ? c.claimerId : c.ownerId;
+    const saved = await store.addReview({
+      id: ctx.newId(), claimId: c.id, itemId: c.itemId, reviewerId: me, subjectId, stars: skip ? 0 : stars, createdAt: nowIso,
+    });
+    if (!saved) return { status: 409, body: 'You already rated this pickup.' };
+    return ok({ saved: true });
   }
 
   if (section === 'items' && a && b === 'report' && method === 'POST') {

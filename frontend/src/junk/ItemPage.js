@@ -7,7 +7,7 @@ import {
 } from './junkApi';
 import { categoryIcon, categoryLabel, conditionLabel, distanceLabel, locate, timeAgo } from './device';
 import PieceThumb from './PieceThumb';
-import { ContactSheet, MemberCard, SafetyTipsSheet, SpotCard, shareTrip, tipsSeen } from './Safety';
+import { ContactSheet, MemberCard, SafetyTipsSheet, SpotCard, TrustLine, shareTrip, tipsSeen } from './Safety';
 import { IconBack, IconBox, IconCar, IconChat, IconCheck, IconEdit, IconFlag, IconShare, IconSparkle, IconTrash } from './icons';
 import { HaulerCard } from './Plus';
 
@@ -51,7 +51,8 @@ function TripCard({ claim, onRelease, busy, item }) {
         <span className="jk-trip-dot" aria-hidden="true"><IconCar size={20} /></span>
         {claim.state === 'arrived'
           ? <><strong>{claim.claimerName} is there now</strong><span>Mark it taken once it's gone.</span></>
-          : <><strong>{claim.claimerName} is on the way</strong><span>{distanceLabel(claim.km)} · about {claim.etaMin} min · {TREND[claim.trend] || 'tracking'}</span></>}
+          : <><strong>{claim.claimerName} is on the way</strong><span>About {claim.etaMin} min · {TREND[claim.trend] || 'on the way'}</span></>}
+        <TrustLine card={claim.card} />
         <button type="button" className="jk-link-btn" disabled={busy} onClick={onRelease}>Cancel their claim</button>
       </div>
     );
@@ -78,7 +79,8 @@ function ClaimersCard({ claimers, pieces, onRelease, busy }) {
           <li key={c.id}>
             <span>
               <b>{c.claimerName}</b>{names(c.pieceIds) ? ` for ${names(c.pieceIds)}` : ''}
-              <small>{c.state === 'arrived' ? 'There now' : `${distanceLabel(c.km)} · about ${c.etaMin} min · ${TREND[c.trend] || 'tracking'}`}</small>
+              <small>{c.state === 'arrived' ? 'There now' : `About ${c.etaMin} min · ${TREND[c.trend] || 'on the way'}`}</small>
+              <TrustLine card={c.card} />
             </span>
             <button type="button" className="jk-link-btn" disabled={busy} onClick={() => onRelease(c.id)}>Cancel</button>
           </li>
@@ -519,7 +521,7 @@ export default function ItemPage() {
                 : <>We'll mark {multiItem ? 'what you pick' : 'it'} as spoken for and tell {item.ownerName} you're coming.</>} Curbsy checks your location during the trip:
               if you stop heading this way, turn around, or location goes off, the claim is released so someone else can grab it.
             </p>
-            <p className="jk-muted">{item.ownerName} only sees how far away you are, never where you are.</p>
+            <p className="jk-muted">{item.ownerName} only sees that you're on the way and about when you'll get there, never where you are.</p>
             {multiItem ? (
               <>
                 <button type="button" className="jk-btn jk-btn-primary jk-full" disabled={busy || !pick.size} onClick={() => startClaim([...pick])}>
