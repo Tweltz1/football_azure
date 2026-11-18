@@ -229,6 +229,7 @@
   let bkTimer = 0;
   async function refreshTimes() {
     if (!bk.info || !Array.isArray(bk.info.slots) || bk.sent || bk.busy || document.hidden) return;
+    if ($("#shopChrome") && !$("#shopChrome").hidden) return; // left the booking page (the demo goes back to the shop)
     try {
       const fresh = await A.api("GET", "shop/book/" + encodeURIComponent(bk.token));
       if (bk.sent || bk.busy || JSON.stringify(fresh.slots) === JSON.stringify(bk.info.slots) && !!fresh.paused === !!bk.info.paused) return;

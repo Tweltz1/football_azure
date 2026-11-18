@@ -308,7 +308,7 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/suggest.js?v=1"></script>
 <script src="/dictate.js?v=1"></script>
 <script src="/plan.js?v=5"></script>
-<script src="/training.js?v=10"></script>
+<script src="/training.js?v=11"></script>
 <script src="/howto.js?v=13"></script>
 <script src="/vehicle-typeahead.js?v=3"></script>
 <script src="/team.js?v=4"></script>
@@ -318,13 +318,14 @@ a.btn.primary{color:var(--accent-fg)}
 <script src="/walkthrough.js?v=6"></script>
 <script src="/workday.js?v=9"></script>
 <script src="/walkaround.js?v=3"></script>
-<script src="/grow.js?v=13"></script>
+<script src="/grow.js?v=14"></script>
+<script src="/pay.js?v=1"></script>
 <script src="/repair-guide.js?v=4"></script>
 <script src="/est-groups.js?v=1"></script>
-<script src="/help-content.js?v=12"></script>
+<script src="/help-content.js?v=13"></script>
 <script src="/help-chat-features.js?v=1"></script>
 <script src="/help-chat-model-run.js?v=1"></script>
-<script src="/help-chat.js?v=3"></script>
+<script src="/help-chat.js?v=4"></script>
 <script>
 let SHOP={name:"Ridgeline Auto Repair",phone:"(555) 014-2290",hours:"Mon–Fri 7:30am–6pm",email:"service@ridgelineauto.com",domain:"talkshops.app"};
 const STAGES=[
@@ -574,6 +575,11 @@ async function growApi(method,path,body){
     return{ok:true,...(body.slot?{requested:true,at:body.slot}:{})};
   }
   if(path==="shop/results")return demoResults(body.days||30);
+  if(path==="shop/export"&&body.kind==="quickbooks"){
+    const rows=[["InvoiceNo","Customer","InvoiceDate","Item(Product/Service)","ItemAmount"],...state.jobs.filter(j=>j.bill).map(j=>[j.ro,j.customer.name,new Date().toISOString().slice(0,10),"Repair: "+vehicleStr(j),j.bill.total.toFixed(2)])];
+    if(rows.length<2)throw new Error("No final bills yet. Create one on a car first.");
+    return{filename:"ridgeline-quickbooks-invoices.csv",csv:rows.map(r=>r.map(csvCell).join(",")).join("\r\n")};
+  }
   if(path==="shop/export"){
     const rows=body.kind==="customers"?[["Name","Phone","Email","Last vehicle","Visits"],...Object.values(state.jobs.reduce((a,j)=>{const k=j.customer.name;a[k]=a[k]||[j.customer.name,j.customer.phone||"",j.customer.email||"",vehicleStr(j),0];a[k][4]++;return a},{}))]
       :[["RO","Checked in","Stage","Customer","Vehicle","Plate","Concern","Approved total"],...state.jobs.map(j=>[j.ro,new Date(j.events[0]?.t).toISOString().slice(0,10),j.closed?"Closed":STAGES[SI[j.stage]].label,j.customer.name,vehicleStr(j),j.plate||"",j.concern,estTotal(j,true).toFixed(2)])];
@@ -591,6 +597,10 @@ window.Grow.init({
       if(body.remove)j.clock=j.clock.filter(e=>e.id!==body.remove);
       else if(body.on){if(!j.clock.some(e=>!e.end&&e.by.id===me.id))j.clock.push({id:"ck"+t,by:me,start:t})}
       else{const e=body.entry?j.clock.find(x=>x.id===body.entry):j.clock.find(x=>!x.end&&x.by.id===me.id);if(e)e.end=t}}
+    if(action==="appointment"){const was=j.appointment;j.appointment=Date.parse(body.at);
+      if(was){j.reschedule={waiting:!!body.send,at:t,by:"Shop"};}
+      if(body.send){const when=new Date(j.appointment).toLocaleString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}),f=first(j.customer.name);
+        notify(j,was?`Hi ${f}, ${SHOP.name} moved your appointment to ${when}. Reply YES to confirm or pick another time: ${linkOf(j)}`:`Hi ${f}, your appointment at ${SHOP.name} is ${when}: ${linkOf(j)}`,t)}}
     if(action==="review"){const url=state.grow?.reviewUrl;if(!url){toast("Add your review link in Settings first");return null}
       j.review={askedAt:t,url};const f=first(j.customer.name);
       notify(j,j.customer.lang==="es"?`¡Gracias por elegir ${SHOP.name}, ${f}! Si quedó contento, ¿nos dejaría una reseña rápida? Ayuda mucho a un taller pequeño: ${url}`:`Thanks for choosing ${SHOP.name}, ${f}! If we earned it, would you leave us a quick review? It helps a small shop a lot: ${url}`,t)}
@@ -598,6 +608,30 @@ window.Grow.init({
   upsert(){},toast:m=>toast(m),render:()=>render(),renderCustomer:()=>render(),customerToken:()=>job(ui.custJob)?.token,
   async saveShop(patch){if(patch.grow)state.grow={...(state.grow||{}),...patch.grow};if(patch.brand)state.brand=patch.brand;save();},
 });
+/* --- card payments (demo: Stripe shows as connected; no card is ever charged) --- */
+const payPaid=j=>(j.payments||[]).reduce((a,p)=>a+Math.round(p.amount*100),0)/100;
+function demoPayOf(j){if(!j.bill)return null;const paid=payPaid(j),due=Math.max(0,Math.round(j.bill.total*100)-Math.round(paid*100))/100;
+  return{due,paid,payments:j.payments||[],online:state.pay?.stripe!==false,link:state.pay?.link||""}}
+window.Pay.init({
+  api:async(m,path,body)=>{
+    if(path==="shop/pay"){state.pay=state.pay||{};if(body?.action==="link"){state.pay.link=String(body.link||"").trim();save()}
+      if(body?.action==="disconnect"){state.pay.stripe=false;save()}
+      return{available:true,stripe:{connected:state.pay.stripe!==false,ready:state.pay.stripe!==false},link:state.pay.link||""}}
+    throw new Error("Not available in the demo shop.")},
+  isOwner:()=>true,toast:m=>toast(m),render:()=>render(),renderCustomer:()=>render(),customerToken:()=>job(ui.custJob)?.token,
+  async act(id,action,body){const j=job(id);if(!j||action!=="payment")return null;j.payments=j.payments||[];
+    if(body.remove)j.payments=j.payments.filter(p=>p.id!==body.remove);
+    else if(body.amount>0){j.payments.push({id:"pm"+Date.now(),how:"counter",amount:body.amount,t:Date.now(),by:"Dana Ruiz"});toast("Payment recorded")}
+    save();renderLayer();return j}});
+// The demo never opens Stripe: "Pay now" records a sample card payment, and Connect Stripe just explains.
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-pay-now],[data-pay-connect]");if(!t)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  if(t.hasAttribute("data-pay-connect")){state.pay={...(state.pay||{}),stripe:true};save();render();toast("In your real shop, this opens Stripe's sign-up. Here, Stripe is already connected.");return}
+  const j=job(ui.custJob);const p=j&&demoPayOf(j);if(!p||!(p.due>0))return;
+  j.payments=[...(j.payments||[]),{id:"pm"+Date.now(),how:"online",amount:p.due,t:Date.now()}];save();render();
+  toast("Demo: in a real shop, Stripe's secure checkout opens here. No card was charged.");
+},true);
 // A request sent from the booking page in another tab shows up here.
 window.addEventListener("storage",e=>{if(e.key!==KEY||!e.newValue)return;try{state.bookings=JSON.parse(e.newValue).bookings||[]}catch(err){return}window.Grow.loadBookings()});
 
@@ -919,7 +953,10 @@ function syncChannel(){
 }
 function settingsView(){
   const rows=state.rates.map((r,i)=>`<tr><td>${esc(r.name)}</td><td>${esc({labor:"Labor",part:"Part",fee:"Fee",percent:"Percent"}[r.kind]||r.kind)}</td><td class="num">${r.kind==="percent"?r.rate+"%":money(r.rate)+(r.kind==="labor"?"/hr":"")+(r.hours?` · ${r.hours} hr`:"")}</td><td class="num"><button class="linkbtn" data-del-rate="${i}" aria-label="Remove ${esc(r.name)}">Remove</button></td></tr>`).join("");
-  return `<div class="settings-wrap"><form class="panel" id="setupForm">
+  if(!SET_TABS.some(([k])=>k===ui.settingsTab))ui.settingsTab="shop";
+  const tab=(k,html)=>`<div class="stab" data-stab="${k}" role="tabpanel" id="stab-${k}" aria-labelledby="stab-btn-${k}"${ui.settingsTab===k?"":" hidden"}>${html}</div>`;
+  return `<nav class="set-tabs" role="tablist" aria-label="Settings sections">${SET_TABS.map(([k,l])=>`<button type="button" role="tab" class="set-tab" id="stab-btn-${k}" data-stab-go="${k}" aria-controls="stab-${k}" aria-selected="${ui.settingsTab===k}">${l}</button>`).join("")}</nav>
+  <div class="settings-wrap tabbed"><div class="stab" data-stab="shop" role="tabpanel" id="stab-shop" aria-labelledby="stab-btn-shop"${ui.settingsTab==="shop"?"":" hidden"}><form class="panel" id="setupForm">
     <h2>Shop Settings</h2>
     <p class="muted" style="margin:0">Customers see this name and phone number in notifications and on their car's page.</p>
     <label class="field">Shop name<input id="sh-name" required maxlength="80" value="${esc(SHOP.name)}"></label>
@@ -935,8 +972,15 @@ function settingsView(){
     <div style="overflow-x:auto;margin-top:10px"><table class="rates"><thead><tr><th>Name</th><th>Type</th><th class="num">Rate</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
     <form class="rate-add" id="rateForm"><input id="r-name" placeholder="New item, e.g. Wiper blades" aria-label="Item name" required><select id="r-kind" aria-label="Type"><option value="part">Part</option><option value="labor">Labor</option><option value="fee">Fee</option><option value="percent">Percent</option></select><input id="r-rate" inputmode="decimal" placeholder="Rate" aria-label="Rate" required><button class="btn" type="submit">Add</button></form>
     <div class="import-box" id="importBox"><button class="btn" type="button" id="openImport">Edit, Import or Download List</button><button class="linkbtn" type="button" id="sampleImport">Try a Sample Price List</button><button class="linkbtn" type="button" id="rateTemplate">Download Example CSV</button><span class="muted" style="font-size:13px">Columns: name, type (optional), rate</span></div>
-  </section>${window.Workday.packagesPanel()}${window.Grow.settingsPanels().replaceAll("/?book=","/demo.html?book=")}${team.panel(render)}${devicesPanel()}${recoveryPanel()}</div>`;
+  </section>${window.Workday.packagesPanel()}</div>
+  ${tab("customers",window.Grow.settingsPanels("customers").replaceAll("/?book=","/demo.html?book=")+window.Pay.settingsPanel())}
+  ${tab("team",team.panel(render)+devicesPanel()+recoveryPanel())}
+  ${tab("data",window.Grow.settingsPanels("data"))}</div>`;
 }
+// Owner Settings in the same four tabs as the real app. Every tab stays on the page (hidden when not picked).
+const SET_TABS=[["shop","Shop"],["customers","Customers & Booking"],["team","Team & Devices"],["data","Data & Privacy"]];
+function showSettingsTab(k){ui.settingsTab=k;document.querySelectorAll(".set-tab").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.stabGo===k)));document.querySelectorAll(".settings-wrap [data-stab]").forEach(el=>{el.hidden=el.dataset.stab!==k})}
+window.demoSettingsTab=showSettingsTab;
 // Artwork belongs to the named sample repair and line item, including in saved demos.
 function sampleIllustration(j, item) {
   let file, caption;
@@ -980,7 +1024,7 @@ function customerView(j){
   const photos=j.photos.length?`<div class="c-card"><h3>${T("Photos from your technician")}</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}</div></div>`:"";
   const shared=(j.notes||[]).filter(n=>!n.internal);
   const notes=shared.length?`<div class="c-card"><h3>${T("Notes from your technician")}</h3><ul class="notes">${[...shared].reverse().map(n=>`<li><time>${dayClock(n.t)}</time><p>${esc(n.text)}</p></li>`).join("")}</ul></div>`:"";
-  const bill=j.bill?`<div class="c-card"><h3>${T("Final bill")}</h3><div class="total"><span>${T("Total due")}</span><span>${money(j.bill.total)}</span></div></div>`:"";
+  const bill=j.bill?`<div class="c-card"><h3>${T("Final bill")}</h3><div class="total"><span>${T("Total due")}</span><span>${money(j.bill.total)}</span></div></div>${window.Pay.customerCard({shop:{name:SHOP.name},pay:demoPayOf(j)})}`:"";
   const stage=STAGES[idx];
   const extra=j.stage==="parts"?`<p style="margin:6px 0 0">${T("Parts expected {0}.","<b>"+esc(j.eta||"soon")+"</b>")}</p>`:j.stage==="ready"?`<p style="margin:6px 0 0">${T("Total due {0}",money(j.bill?j.bill.total:estTotal(j,true)))}. ${T("Open {0}.",esc(SHOP.hours))}</p>`:"";
   return `<div class="cust-demo"><span><b>Demo:</b> this is the page ${esc(first(j.customer.name))} opens from the link. No login needed.</span><button class="linkbtn" id="backToShop" style="margin-left:auto">Back to shop</button></div>
@@ -1035,12 +1079,12 @@ function sheetView(j){
       ${j.estimate.some(e=>e.status==="pending")&&j.stage!=="approval"&&live?`<button class="btn primary est-send" data-stage="approval">Send Estimate for Approval</button>`:""}
     </section>
     <section class="sec" id="billSec"><h3>Final Bill</h3>
-      ${j.bill?`<p>Itemized bill · ${money(j.bill.total)}</p>`:""}
+      ${j.bill?`<p>Itemized bill · ${money(j.bill.total)}</p>${window.Pay.shopSection(j)}`:""}
       <div class="btn-row"><button class="btn" id="makeBill">${j.bill?"Edit itemized bill":"Create itemized bill"}</button><button class="btn" id="uploadBill">Upload Shop PDF</button></div>
     </section>
     ${window.Workday.visitsSection(j)}
     ${window.Workday.followupSection(j)}
-    ${window.Grow.sheetSection(growJob(j))}
+    ${window.Grow.sheetSection(j.stage==="checked_in"&&j.appointment>Date.now()?{...growJob(j),stage:"invited",intakeReceived:true}:growJob(j))}
     <section class="sec" id="photoSec"><h3>Photos</h3><div class="photos">${j.photos.map(p=>`<figure class="photo"><img class="img" src="${p.src}" alt="${esc(p.cap)}"><figcaption>${esc(p.cap)}</figcaption></figure>`).join("")}
       <label class="photo-add" for="photoIn">+ Add Photo<br><span style="font-weight:400">Customer sees it on their page</span></label></div></section>
     <section class="sec" id="noteSec"><h3>Technician Notes <span class="sec-sub">Shared with customer unless marked shop only</span></h3>
@@ -1124,6 +1168,7 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("button,[data-close],[data-open]");if(!t)return;
   if(t.closest(".plan-page,.plan-banner")&&(t.dataset.planInterval||t.dataset.planBuy!==undefined||t.dataset.planPortal!==undefined)){planUi.click(t,render).then(()=>{t.disabled=false});return}
   if(howTo.click(t,render))return;
+  if(t.dataset.stabGo){showSettingsTab(t.dataset.stabGo);return}
   if(t.hasAttribute("data-edit-customer")){ui.modal={customerJob:ui.openJob};renderLayer();$("#ec-name")?.focus();return}
   if(ui.modal?.walk&&window.Walkthrough.click(t,ui.modal.walk))return;
   if(t.dataset.walk){const j=job(ui.openJob);if(j){ui.modal={walk:window.Walkthrough.draftFor(j,t.dataset.walk),job:j.id};renderLayer()}return}
@@ -1312,7 +1357,7 @@ if(new URLSearchParams(location.search).has("smart")){
 }
 </script>
 <script src="/config.js"></script>
-<script src="/tour.js?v=222"></script>
+<script src="/tour.js?v=223"></script>
 <script src="/shell.js?v=3"></script>
 </body>
 </html>

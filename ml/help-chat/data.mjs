@@ -241,3 +241,17 @@ export const MORE2 = {
   "How do you handle consent for texts?": ["do i need permission to text", "texting consent", "tcpa", "customer agreed to texts", "opt out and opt in for texts", "is it legal to text customers"],
 };
 for (const [q, list] of Object.entries(MORE2)) ASK[q].push(...list);
+
+// Nov 18 2026: Help questions for counter payments, QuickBooks, smart scheduling, pausing, moving appointments,
+// the booking calendar, estimate reminders and the morning email.
+export const NEW_NOV18 = {
+  "Can I record a payment made at the counter?": ["record a payment", "customer paid cash", "paid at the counter", "mark the bill paid", "customer paid by check at the desk", "how do i log a payment", "partial payment", "customer paid half", "mark paid in full", "remove a payment i recorded", "record cash payment", "they paid in person"],
+  "Can I send my bills to QuickBooks?": ["quickbooks", "export invoices to quickbooks", "quickbooks online import", "send bills to my accounting", "download invoices", "accounting software export", "qbo export", "get final bills into quickbooks", "invoices csv", "does it work with quickbooks"],
+  "How do I keep the shop from getting overbooked?": ["too many cars booked", "limit how many cars in the shop", "smart scheduling", "max cars at once", "stop overbooking", "how many cars can we hold", "close full days", "limit appointments per day", "lunch break no appointments", "break between appointments", "most appointments in a day", "shop is too full for more bookings"],
+  "Can I pause online booking or take days off?": ["pause booking", "stop taking appointments", "we are booked up", "turn off booking for a while", "close for a holiday", "days off", "vacation days", "block out a day", "shop closed on a day", "holiday closing", "pause new appointments", "take booking offline for a week"],
+  "How do I move an appointment?": ["move an appointment", "reschedule a customer", "change appointment time", "push an appointment back", "customer needs a different time", "reschedule", "change the booked time", "customer confirm new time", "reply yes to confirm", "how does the customer confirm the new time", "move booking to another day", "the shop needs to change their time"],
+  "What do customers see on the booking page?": ["what does the booking page look like", "booking calendar", "how do customers pick a time", "calendar of open days", "why is a day faded", "what do the numbers on the calendar mean", "do open times update", "customer view of booking", "booking page for customers", "month calendar booking"],
+  "Can Talk Shops remind customers who haven't answered an estimate?": ["customer didn't answer the estimate", "estimate reminder", "remind customer to approve", "nudge customers", "follow up on estimate", "customer never approved", "auto reminder for estimates", "text them again about the estimate", "unanswered estimate", "chase approvals"],
+  "What is the morning summary email?": ["morning email", "daily summary email", "7am email", "what is the 7 am email", "the email at 7 in the morning", "email with cars in and estimates waiting", "morning report", "summary of the day email", "email me every morning", "directions button", "shop address for customers", "daily digest", "morning summary"],
+};
+for (const [q, list] of Object.entries(NEW_NOV18)) ASK[q] = [...(ASK[q] || []), ...list];
