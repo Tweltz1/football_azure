@@ -167,6 +167,7 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_blocks').delete().or(`user_id.eq.${userId},blocked_id.eq.${userId}`));
       must(await db.from('junk_uploads').delete().eq('user_id', userId));
       must(await db.from('junk_claims').delete().or(`claimer_id.eq.${userId},owner_id.eq.${userId}`));
+      must(await db.from('junk_reviews').delete().or(`reviewer_id.eq.${userId},subject_id.eq.${userId}`));
       must(await db.from('junk_feedback').delete().eq('user_id', userId));
       must(await db.from('junk_wants').delete().eq('owner_id', userId));
       must(await db.from('junk_label_fixes').delete().eq('user_id', userId));
@@ -197,10 +198,27 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
         accounts: new Set((rows ?? []).filter((r) => r.seen_at >= since).map((r) => r.user_id)).size,
       };
     },
-    async pickupPartners(userId) {
-      const data = must(await db.from('junk_claims').select('owner_id, claimer_id').eq('status', 'picked_up')
-        .or(`claimer_id.eq.${userId},owner_id.eq.${userId}`).limit(500)) as { owner_id: string; claimer_id: string }[] | null;
-      return (data ?? []).map((r) => (r.owner_id === userId ? r.claimer_id : r.owner_id));
+    async finishedPickups(userId) {
+      const data = must(await db.from('junk_claims').select('*').eq('status', 'picked_up')
+        .or(`claimer_id.eq.${userId},owner_id.eq.${userId}`).order('ended_at', { ascending: false }).limit(500)) as ClaimDb[] | null;
+      return (data ?? []).map(claimRow);
+    },
+    async addReview(r) {
+      const { error } = await db.from('junk_reviews').insert({
+        id: r.id, claim_id: r.claimId, item_id: r.itemId, reviewer_id: r.reviewerId, subject_id: r.subjectId, stars: r.stars, created_at: r.createdAt,
+      });
+      if (error && (error as { code?: string }).code === '23505') return false; // already rated this pickup
+      if (error) throw error;
+      return true;
+    },
+    async reviewedClaims(reviewerId) {
+      const data = must(await db.from('junk_reviews').select('claim_id').eq('reviewer_id', reviewerId).limit(1000)) as { claim_id: string }[] | null;
+      return (data ?? []).map((r) => r.claim_id);
+    },
+    async ratingFor(subjectId) {
+      const data = must(await db.from('junk_reviews').select('stars').eq('subject_id', subjectId).gt('stars', 0).limit(2000)) as { stars: number }[] | null;
+      const rows = data ?? [];
+      return { total: rows.reduce((n, r) => n + r.stars, 0), count: rows.length };
     },
     async touchMember(userId, joinedAt, provider) {
       must(await db.from('junk_members').upsert({ user_id: userId, joined_at: joinedAt, provider }, { onConflict: 'user_id' }));

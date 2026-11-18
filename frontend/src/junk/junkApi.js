@@ -90,6 +90,9 @@ export const myClaim = () => call('GET', 'claim');
 export const pingClaim = (here) => call('POST', 'claim/ping', { lat: here.lat, lng: here.lng });
 export const cancelClaim = () => call('POST', 'claim/cancel', {});
 export const finishClaim = () => call('POST', 'claim/done', {});
+// Stars after a pickup: the finished pickups you haven't rated yet, and rating (or skipping) one.
+export const pendingReviews = () => call('GET', 'reviews');
+export const rateMember = (claimId, stars) => call('POST', 'reviews', stars ? { claimId, stars } : { claimId, skip: true });
 
 /** Signs out on this phone and stays in the Junk App (Hood League's sign-out goes to its own front page). */
 export const junkSignOut = async () => {

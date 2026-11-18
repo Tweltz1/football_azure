@@ -7,7 +7,7 @@ import {
   type JunkDetection, type JunkDeps, type JunkItem, type JunkMessage, type JunkStore,
 } from '../functions/_shared/junk.ts';
 import type { JunkClaim } from '../functions/_shared/junkClaims.ts';
-import type { JunkLabelFix, JunkWant } from '../functions/_shared/junk.ts';
+import type { JunkLabelFix, JunkReview, JunkWant } from '../functions/_shared/junk.ts';
 import type { JunkPartner, JunkPlus, JunkSaved } from '../functions/_shared/junkPlus.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -28,6 +28,7 @@ function world(detection: JunkDetection | null = null) {
   const stored = new Set<string>();
   const deletedAccounts: string[] = [];
   const claims: JunkClaim[] = [];
+  const reviews: JunkReview[] = [];
   // Everyone in these tests agreed to the Terms already, unless a test says otherwise.
   const members = new Map<string, { termsAt: string | null; bannedAt: string | null; joinedAt?: string | null; provider?: string | null }>(
     [ALICE, BOB, CARL].map((id) => [id, { termsAt: '2026-11-01T00:00:00Z', bannedAt: null }]),
@@ -94,6 +95,7 @@ function world(detection: JunkDetection | null = null) {
     },
     async deleteUserData(userId) {
       for (let k = claims.length - 1; k >= 0; k--) if (claims[k].claimerId === userId || claims[k].ownerId === userId) claims.splice(k, 1);
+      for (let k = reviews.length - 1; k >= 0; k--) if (reviews[k].reviewerId === userId || reviews[k].subjectId === userId) reviews.splice(k, 1);
       const paths = [...uploads.filter((u) => u.userId === userId).map((u) => u.path)];
       for (const [id, i] of items) if (i.ownerId === userId) items.delete(id);
       for (let k = messages.length - 1; k >= 0; k--) if (messages[k].fromId === userId || messages[k].toId === userId) messages.splice(k, 1);
@@ -108,9 +110,18 @@ function world(detection: JunkDetection | null = null) {
       const rows = [...devices].filter(([k]) => k.startsWith(`${deviceId}/`));
       return { banned: rows.some(([, v]) => v.banned), accounts: rows.filter(([, v]) => v.at >= since).length };
     },
-    async pickupPartners(userId) {
-      return claims.filter((c) => c.status === 'picked_up' && (c.claimerId === userId || c.ownerId === userId))
-        .map((c) => (c.ownerId === userId ? c.claimerId : c.ownerId));
+    async finishedPickups(userId) {
+      return claims.filter((c) => c.status === 'picked_up' && (c.claimerId === userId || c.ownerId === userId)).reverse().map(clone);
+    },
+    async addReview(r) {
+      if (reviews.some((x) => x.claimId === r.claimId && x.reviewerId === r.reviewerId)) return false;
+      reviews.push(clone(r));
+      return true;
+    },
+    async reviewedClaims(reviewerId) { return reviews.filter((r) => r.reviewerId === reviewerId).map((r) => r.claimId); },
+    async ratingFor(subjectId) {
+      const rows = reviews.filter((r) => r.subjectId === subjectId && r.stars > 0);
+      return { total: rows.reduce((n, r) => n + r.stars, 0), count: rows.length };
     },
     async touchMember(userId, joinedAt, provider) { members.set(userId, { termsAt: null, bannedAt: null, ...members.get(userId), joinedAt, provider } as never); },
     async addFeedback(f) { feedback.push({ userId: f.userId, body: f.body, createdAt: f.createdAt, kind: f.kind ?? 'contact', itemId: f.itemId ?? null }); },
@@ -195,7 +206,7 @@ function world(detection: JunkDetection | null = null) {
     if (saved && !fields.fresh) saved.createdAt = new Date(Date.parse(saved.createdAt) - 45 * 60_000).toISOString();
     return out;
   };
-  return { names, plusRows, tips, saved, tokens, partners, taps, pushed, call, post, items, stored, messages, deletedAccounts, claims, members, feedback, wants, labelFixes, joined, devices, providers, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
+  return { reviews, names, plusRows, tips, saved, tokens, partners, taps, pushed, call, post, items, stored, messages, deletedAccounts, claims, members, feedback, wants, labelFixes, joined, devices, providers, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -359,6 +370,8 @@ test('search words drop wildcards and plurals', () => {
 const north = (km: number) => ({ lat: HOME.lat + km / 111.2, lng: HOME.lng });
 type ClaimOut = { state: string; open: boolean; etaMin: number; mine: boolean; reason?: string; km?: number; claimerName?: string; trend?: string };
 const MIN = 60_000;
+/** The member answer without the member card (tested on its own). */
+const noCard = (b: unknown) => { const { card: _card, ...rest } = b as Record<string, unknown>; return rest; };
 
 test('claiming: the item shows as on the way, the poster gets a message, others cannot claim it', async () => {
   const w = world();
@@ -380,7 +393,12 @@ test('claiming: the item shows as on the way, the poster gets a message, others 
 
   const owner = (await w.call(ALICE, 'GET', `junk/items/${item.id}`))?.body as { claim: ClaimOut };
   assert.equal(owner.claim.claimerName, 'Bob');
-  assert.equal(owner.claim.km, 5);
+  // The poster gets a status and a rough arrival time, never a distance or a position.
+  assert.equal(owner.claim.km, undefined);
+  assert.equal(owner.claim.etaMin, 10);
+  assert.equal((owner.claim as Record<string, unknown>).lat, undefined);
+  assert.equal(((owner.claim as { card?: { pickups: number } }).card)?.pickups, 0, 'the poster sees who is coming');
+  assert.match(w.messages[0].body, /about 10 min/);
   assert.match(w.messages[0].body, /on my way/);
   assert.equal(w.messages[0].toId, ALICE);
 
@@ -639,7 +657,7 @@ test('posting and messaging need the Terms agreed to, and banned people can\'t d
   const w = world();
   w.members.delete(BOB);
   let res = await w.call(BOB, 'GET', 'junk/member');
-  assert.deepEqual(res?.body, { terms: false, banned: false, strikes: 0, name: 'Bob', customName: false });
+  assert.deepEqual(noCard(res?.body), { terms: false, banned: false, strikes: 0, name: 'Bob', customName: false });
   res = await w.call(BOB, 'POST', 'junk/items', { title: 'Lamp', photos: [], ...HOME });
   assert.equal(res?.status, 428);
   const item = await w.post(ALICE);
@@ -658,7 +676,7 @@ test('posting and messaging need the Terms agreed to, and banned people can\'t d
   res = await w.call(BOB, 'POST', `junk/chat/${item.id}/${ALICE}`, { body: 'Hello?' });
   assert.equal(res?.status, 403);
   res = await w.call(BOB, 'GET', 'junk/member');
-  assert.deepEqual(res?.body, { terms: true, banned: true, strikes: 0, name: 'Bob', customName: false });
+  assert.deepEqual(noCard(res?.body), { terms: true, banned: true, strikes: 0, name: 'Bob', customName: false });
 });
 
 test('Contact Curbsy saves the message, a few a day', async () => {
@@ -778,7 +796,7 @@ test('banned or warned people can appeal, and see where they stand', async () =>
   const item = await w.post(BOB);
   w.members.set(BOB, { termsAt: '2026-11-01T00:00:00Z', bannedAt: '2026-11-08T00:00:00Z', strikes: 2, banReason: 'second strike' } as never);
   let res = await w.call(BOB, 'GET', 'junk/member');
-  assert.deepEqual(res?.body, { terms: true, banned: true, strikes: 2, reason: 'second strike', name: 'Bob', customName: false });
+  assert.deepEqual(noCard(res?.body), { terms: true, banned: true, strikes: 2, reason: 'second strike', name: 'Bob', customName: false });
   // Still allowed while banned.
   res = await w.call(BOB, 'POST', 'junk/appeal', { body: 'That was a toy gun, not a real one.', itemId: item.id });
   assert.equal(res?.status, 200);
@@ -1009,4 +1027,53 @@ test('contact messages come back with their replies', async () => {
   await w.call(ALICE, 'POST', 'junk/contact', { body: 'How do I edit a post?' });
   const res = await w.call(ALICE, 'GET', 'junk/contact');
   assert.equal((res?.body as { body: string }[])[0].body, 'How do I edit a post?');
+});
+
+// ---- Stars after a pickup ----
+
+test('after a pickup both sides can rate each other once, and cards show stars, pickups and badges', async () => {
+  const w = world();
+  const item = await w.post(ALICE);
+  assert.deepEqual(((await w.call(BOB, 'GET', 'junk/reviews'))?.body as { pending: unknown[] }).pending, []);
+  await w.call(BOB, 'POST', `junk/items/${item.id}/claim`, north(0.1));
+  const claimId = w.claims[0].id;
+  // Not done yet: nothing to rate.
+  assert.equal((await w.call(BOB, 'POST', 'junk/reviews', { claimId, stars: 5 }))?.status, 404);
+  assert.equal((await w.call(BOB, 'POST', 'junk/claim/done'))?.status, 200);
+
+  const bobs = ((await w.call(BOB, 'GET', 'junk/reviews'))?.body as { pending: { claimId: string; role: string; otherName: string }[] }).pending;
+  assert.deepEqual(bobs.map((p) => [p.claimId, p.role, p.otherName]), [[claimId, 'got', 'Alice']]);
+  const alices = ((await w.call(ALICE, 'GET', 'junk/reviews'))?.body as { pending: { role: string; otherName: string }[] }).pending;
+  assert.deepEqual(alices.map((p) => [p.role, p.otherName]), [['gave', 'Bob']]);
+
+  assert.equal((await w.call(CARL, 'POST', 'junk/reviews', { claimId, stars: 5 }))?.status, 404, 'only the two people in it');
+  assert.equal((await w.call(BOB, 'POST', 'junk/reviews', { claimId, stars: 7 }))?.status, 400);
+  assert.equal((await w.call(BOB, 'POST', 'junk/reviews', { claimId, stars: 4 }))?.status, 200);
+  assert.equal((await w.call(BOB, 'POST', 'junk/reviews', { claimId, stars: 1 }))?.status, 409, 'once per pickup');
+  assert.deepEqual(((await w.call(BOB, 'GET', 'junk/reviews'))?.body as { pending: unknown[] }).pending, []);
+  // Skipping counts as answered but not as a rating.
+  assert.equal((await w.call(ALICE, 'POST', 'junk/reviews', { claimId, skip: true }))?.status, 200);
+  assert.deepEqual(((await w.call(ALICE, 'GET', 'junk/reviews'))?.body as { pending: unknown[] }).pending, []);
+
+  const other = await w.post(ALICE, { title: 'Lamp' });
+  const card = ((await w.call(CARL, 'GET', `junk/items/${other.id}`))?.body as { owner: Record<string, unknown> }).owner;
+  assert.equal(card.rating, 4);
+  assert.equal(card.ratings, 1);
+  assert.equal(card.pickups, 1);
+  assert.equal(card.accountVerified, true);
+  const bobCard = ((await w.call(BOB, 'GET', 'junk/member'))?.body as { card: Record<string, unknown> }).card;
+  assert.deepEqual([bobCard.rating, bobCard.ratings, bobCard.pickups], [null, 0, 1]);
+
+  // Too late to rate after two weeks.
+  const item3 = await w.post(ALICE, { title: 'Rake' });
+  await w.call(CARL, 'POST', `junk/items/${item3.id}/claim`, north(0.1));
+  await w.call(CARL, 'POST', 'junk/claim/done');
+  w.tick(15 * 86_400_000);
+  assert.deepEqual(((await w.call(CARL, 'GET', 'junk/reviews'))?.body as { pending: unknown[] }).pending, []);
+  assert.equal((await w.call(CARL, 'POST', 'junk/reviews', { claimId: w.claims[1].id, stars: 5 }))?.status, 400);
+
+  // Deleting an account removes the stars it gave and got.
+  assert.equal(w.reviews.length, 2);
+  await w.call(BOB, 'DELETE', 'junk/account');
+  assert.equal(w.reviews.length, 0);
 });

@@ -8,8 +8,8 @@
 //   - they stop getting closer for STALL_MIN minutes,
 //   - or the trip takes far longer than the drive should.
 // Rules are checked on every ping and whenever someone looks at the item, so no timer job is needed.
-// Only the claimer's distance to the item is kept (plus their last rounded position while the trip is on);
-// the poster sees "2.1 mi away, getting closer", never where the claimer is.
+// Only the claimer's distance to the item is kept, never their position. The poster sees a status and a
+// rough arrival time ("on the way, about 10 min, getting closer"), not the distance and never where they are.
 
 export type ClaimStatus = 'active' | 'arrived' | 'picked_up' | 'cancelled' | 'released' | 'owner_released' | 'item_gone';
 export const OPEN_CLAIM: ClaimStatus[] = ['active', 'arrived'];
@@ -73,6 +73,8 @@ const MIN = 60_000;
 export const tripMinutes = (km: number) => Math.min(150, Math.round(15 + 3 * km));
 /** Rough drive time shown to people: about 40 km/h in town. */
 export const etaMinutes = (km: number) => Math.max(1, Math.round(1 + (km * 60) / 40));
+/** The rough arrival time the poster and others see: in 5 minute steps, so it can't be turned back into a distance. */
+export const roughEta = (min: number) => Math.max(5, Math.round(min / 5) * 5);
 /** How much farther than the closest point they can drift before it counts as heading away. */
 export const awayAllowanceKm = (startKm: number) => Math.max(1, startKm * 0.25);
 
@@ -136,20 +138,21 @@ export function claimOut(c: JunkClaim, me: string | null) {
     itemId: c.itemId,
     state: c.status,
     open,
-    etaMin: open && c.status === 'active' ? etaMinutes(c.lastKm) : 0,
+    etaMin: open && c.status === 'active' ? roughEta(etaMinutes(c.lastKm)) : 0,
     since: c.createdAt,
     pieceIds: c.pieceIds ?? [],
   };
   if (me === c.claimerId) {
     return {
-      ...base, mine: true, reason: c.reason, km: Math.round(c.lastKm * 100) / 100, startKm: Math.round(c.startKm * 100) / 100,
+      ...base, etaMin: open && c.status === 'active' ? etaMinutes(c.lastKm) : 0, mine: true, reason: c.reason, km: Math.round(c.lastKm * 100) / 100, startKm: Math.round(c.startKm * 100) / 100,
       trend: trend(c), deadlineAt: c.deadlineAt, lastPingAt: c.lastPingAt, arrivedAt: c.arrivedAt,
     };
   }
   if (me === c.ownerId) {
+    // A status and a rough arrival time only: no distance, no position.
     return {
       ...base, mine: false, forMyItem: true, claimerId: c.claimerId, claimerName: c.claimerName, reason: c.reason,
-      km: Math.round(c.lastKm * 10) / 10, trend: trend(c), arrivedAt: c.arrivedAt,
+      trend: trend(c), arrivedAt: c.arrivedAt,
     };
   }
   // Everyone else just learns the item is spoken for.

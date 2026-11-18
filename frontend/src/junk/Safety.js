@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { agreeToTerms, appealCurbsy, contactCurbsy } from './junkApi';
+import { agreeToTerms, appealCurbsy, contactCurbsy, rateMember } from './junkApi';
 import { setSharesCrops } from './learning';
 import { IconClose, IconPin } from './icons';
 
@@ -195,22 +195,90 @@ export function SpotCard({ item }) {
 const PROVIDERS = { apple: 'Apple', google: 'Google', github: 'GitHub' };
 const monthYear = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 
-/** Who's giving it away: how long they've been here, how they sign in, and what they've given. */
+/** "★ 4.8 (12)", or "No ratings yet". */
+export const starsLabel = (card) => (card && card.ratings > 0 && typeof card.rating === 'number'
+  ? `★ ${card.rating.toFixed(1)} (${card.ratings})` : 'No ratings yet');
+const pickupsLabel = (n) => `${n} ${n === 1 ? 'pickup' : 'pickups'}`;
+
+/** The badges on a member: Verified (Apple or Google sign-in), Trusted neighbor (3+ pickups), New member. */
+export function MemberBadges({ card }) {
+  if (!card) return null;
+  return (
+    <>
+      {card.accountVerified && <span className="jk-pill jk-pill-verified" title="Signed in with Apple or Google, which confirm a phone number">✓ Verified</span>}
+      {card.verified && <span className="jk-pill jk-pill-trusted">Trusted neighbor</span>}
+      {card.isNew && !card.verified && <span className="jk-pill jk-pill-warn">New member</span>}
+    </>
+  );
+}
+
+/** Who's giving it away (or coming for it): first name or nickname only, stars, pickups, badges, how long they've been here. */
 export function MemberCard({ name, owner }) {
+  const hasPickups = typeof owner.pickups === 'number';
   return (
     <div className="jk-member">
       <div className="jk-avatar jk-avatar-sm" aria-hidden="true">{(name || '?').slice(0, 1).toUpperCase()}</div>
       <div>
         <strong>{name}</strong>
-        {owner.verified && <span className="jk-pill jk-pill-verified">✓ Verified neighbor</span>}
-        {owner.isNew && !owner.verified && <span className="jk-pill jk-pill-warn">New member</span>}
+        <MemberBadges card={owner} />
         <p className="jk-muted">
           {[
-            owner.since ? `Joined ${monthYear(owner.since)}` : null,
-            owner.provider && PROVIDERS[owner.provider] ? `Signed in with ${PROVIDERS[owner.provider]}` : null,
+            hasPickups ? starsLabel(owner) : null,
+            hasPickups ? pickupsLabel(owner.pickups) : null,
             `${owner.given} given away`,
+            owner.since ? `Joined ${monthYear(owner.since)}` : null,
+            !hasPickups && owner.provider && PROVIDERS[owner.provider] ? `Signed in with ${PROVIDERS[owner.provider]}` : null,
           ].filter(Boolean).join(' · ')}
         </p>
+      </div>
+    </div>
+  );
+}
+
+/** One line about whoever is on the way, for the poster: stars, pickups, Verified. */
+export function TrustLine({ card }) {
+  if (!card) return null;
+  return (
+    <span className="jk-trust-line">
+      {starsLabel(card)} · {pickupsLabel(card.pickups || 0)}
+      {card.accountVerified ? ' · ✓ Verified' : ''}{card.isNew && !card.verified ? ' · New member' : ''}
+    </span>
+  );
+}
+
+/** "How was your pickup with Sam?": 1 to 5 stars after a finished pickup, or Skip. */
+export function RateSheet({ pickup, onDone }) {
+  const [stars, setStars] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const send = async (n) => {
+    setBusy(true);
+    setError('');
+    try {
+      await rateMember(pickup.claimId, n);
+      onDone(pickup.claimId);
+    } catch (e) {
+      // Already rated, or too old: nothing left to do here.
+      if (e.status === 409 || e.status === 404 || e.status === 400) onDone(pickup.claimId);
+      else { setError(e.message); setBusy(false); }
+    }
+  };
+  const who = pickup.otherName || 'your neighbor';
+  return (
+    <div className="jk-sheet-backdrop" role="presentation" onClick={() => !busy && send(0)}>
+      <div className="jk-sheet jk-rate" role="dialog" aria-modal="true" aria-label="Rate your pickup" onClick={(e) => e.stopPropagation()}>
+        {pickup.photo && <img className="jk-rate-photo" src={pickup.photo} alt="" />}
+        <h2>How was your pickup with {who}?</h2>
+        <p className="jk-muted">{pickup.role === 'gave' ? `${who} picked up ${pickup.title}.` : `You got ${pickup.title}.`} Stars help neighbors know who's reliable. {who} won't see which stars you gave.</p>
+        <div className="jk-stars" role="radiogroup" aria-label="Stars">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button key={n} type="button" role="radio" aria-checked={stars === n} aria-label={`${n} ${n === 1 ? 'star' : 'stars'}`}
+              className={`jk-star${n <= stars ? ' is-on' : ''}`} disabled={busy} onClick={() => setStars(n)}>★</button>
+          ))}
+        </div>
+        {error && <p className="jk-error">{error}</p>}
+        <button type="button" className="jk-btn jk-btn-primary jk-full" disabled={busy || !stars} onClick={() => send(stars)}>Send</button>
+        <button type="button" className="jk-link-btn jk-full" disabled={busy} onClick={() => send(0)}>Skip</button>
       </div>
     </div>
   );
