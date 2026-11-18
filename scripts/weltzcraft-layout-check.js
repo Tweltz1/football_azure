@@ -29,6 +29,19 @@ const server = http.createServer((req, res) => {
       const tab = await browser.newPage({ viewport: { width, height: 800 } });
       tab.on('pageerror', (e) => problems.push(`${page} @${width}: script error: ${e.message}`));
       await tab.goto(base + page, { waitUntil: 'load' });
+      // Load lazy images so photos further down the page are checked too.
+      await tab.evaluate(async () => {
+        document.querySelectorAll('img[loading="lazy"]').forEach((i) => { i.loading = 'eager'; });
+        await Promise.all([...document.images].map((i) => (i.complete ? null : new Promise((r) => { i.onload = i.onerror = r; }))));
+      });
+      const squashed = await tab.evaluate(() => [...document.images].filter((i) => {
+        const b = i.getBoundingClientRect();
+        if (!i.naturalWidth || !b.width || !b.height || i.offsetParent === null) return false;
+        if (getComputedStyle(i).objectFit !== 'fill') return false; // contain/cover keep the shape
+        const want = i.naturalWidth / i.naturalHeight, got = b.width / b.height;
+        return Math.abs(got / want - 1) > 0.04;
+      }).map((i) => (i.getAttribute('src') || '').split('?')[0]));
+      if (squashed.length) problems.push(`${page} @${width}: stretched photos: ${squashed.join(', ')}`);
       const r = await tab.evaluate(() => {
         const out = { overflow: document.documentElement.scrollWidth - window.innerWidth, wrapped: [], overlap: false };
         const nav = document.querySelector('#site-nav');
