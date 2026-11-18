@@ -115,7 +115,7 @@ export default function ListScreen() {
           value={draft}
           onChangeText={setDraft}
           onSubmitEditing={submit}
-          placeholder="Add an item or paste a recipe link"
+          placeholder="Add an item or paste a link"
           placeholderTextColor={t.textMuted}
           returnKeyType="done"
           submitBehavior="submit"
