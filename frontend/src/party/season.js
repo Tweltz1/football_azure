@@ -130,3 +130,25 @@ export function season(date = new Date()) {
 export const themeInfo = (date) => ({ id: season(date), ...THEMES[season(date)] });
 
 export const isSpooky = (date) => season(date) === 'spooky';
+
+// The look of Hood Games for each theme: title font (Google Fonts) and what drifts down the home screens.
+// The colors live in themeLook.css, keyed by data-hg-theme on <html>.
+export const LOOKS = {
+  spooky: { font: 'Creepster', fontParam: 'Creepster', sky: ['🦇', '🍂', '🦇'] },
+  thanksgiving: { font: 'Rye', fontParam: 'Rye', sky: ['🍂', '🍁', '🍂'] },
+  christmas: { font: 'Mountains of Christmas', fontParam: 'Mountains+of+Christmas:wght@700', sky: ['❄', '❄', '✦'] },
+  newyear: { font: 'Bungee', fontParam: 'Bungee', sky: ['🎉', '✨', '🎊'] },
+  valentines: { font: 'Pacifico', fontParam: 'Pacifico', sky: ['💕', '❤', '💘'] },
+  stpatricks: { font: 'Uncial Antiqua', fontParam: 'Uncial+Antiqua', sky: ['☘', '🍀', '✨'] },
+  easter: { font: 'Chewy', fontParam: 'Chewy', sky: ['🌸', '🌷', '🥚'] },
+  july4: { font: 'Bungee', fontParam: 'Bungee', sky: ['⭐', '✨', '🎆'] },
+  classic: { font: 'Lilita One', fontParam: 'Lilita+One', sky: ['✨', '⭐', '✨'] },
+};
+
+/** The Google Fonts stylesheet for the party pages: Fredoka for text plus the theme's title font. */
+export const fontsHref = () => `https://fonts.googleapis.com/css2?family=${LOOKS[season()].fontParam}&family=Fredoka:wght@500;700&display=swap`;
+
+/** Marks <html> with the theme so themeLook.css can recolor every Hood Games page. */
+export function applyThemeLook() {
+  try { document.documentElement.setAttribute('data-hg-theme', season()); } catch (e) { /* no document */ }
+}

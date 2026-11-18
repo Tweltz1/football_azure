@@ -114,7 +114,7 @@
 }
 @keyframes lc-drift { from { transform: translateX(-4%); } to { transform: translateX(4%); } }
 
-#lc-root .lc-splash { background: radial-gradient(circle at 50% 30%, #3a1f55, #120c24 70%); }
+#lc-root .lc-splash { background: radial-gradient(circle at 50% 30%, var(--lc-purple), var(--lc-night) 70%); }
 #lc-root .lc-splash-card { text-align: center; padding: 16px; }
 #lc-root .lc-splash .lc-title { font-size: clamp(56px, 11vw, 160px); }
 #lc-root .lc-sub { margin: 0.4em 0 1.2em; font-size: clamp(16px, 2vw, 28px); color: #d8cdee; line-height: 1.4; }
@@ -280,7 +280,7 @@
   padding-top: calc(16px + env(safe-area-inset-top, 0px));
   font-family: var(--lc-font);
   color: var(--lc-cream);
-  background: radial-gradient(circle at 50% 0%, #3a1f55, #120c24 75%) fixed;
+  background: radial-gradient(circle at 50% 0%, var(--lc-purple), var(--lc-night) 75%) fixed;
 }
 #lc-root .lcp * { box-sizing: border-box; }
 /* On a laptop or tablet the phone pages (join a room, card table, Hood Quest hero) keep a phone-width

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { monsterMarkup } from '../monsters';
-import { randomLook, lookCode } from '../look';
+import { randomLook, lookCode, seasonCostume } from '../look';
 import { CHARM } from '../lastCandle';
 import { isMuted, sfx } from '../sound';
 import { charmArt } from '../charmArt';
@@ -153,7 +153,7 @@ export default function HowTo({ players, now, startedAt, onSkip }) {
   const cast = useMemo(() => {
     const list = players.slice(0, 3).map((p) => ({ name: p.name, look: p.look }));
     const fill = ['Boo', 'Spooks', 'Mort'];
-    while (list.length < 3) list.push({ name: fill[list.length], look: lookCode({ ...randomLook(), costume: 1 + list.length }) });
+    while (list.length < 3) list.push({ name: fill[list.length], look: lookCode({ ...randomLook(), costume: seasonCostume(list.length) }) });
     return list;
   }, [players]);
   const sceneIndex = SCENES.reduce((acc, s, i) => (t >= s.at ? i : acc), 0);

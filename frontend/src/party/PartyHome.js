@@ -1,23 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import Person from './Person';
-import { randomLook } from './look';
+import { randomLook, seasonCostume } from './look';
 import { currentUser, firstName, signInWithGoogle, signOutHere } from './account';
 import { homeHref, homeLabel } from '../native/gamesApp';
 import AppleSignIn from './AppleSignIn';
-import { themeInfo } from './season';
+import { themeInfo, fontsHref } from './season';
 import './party.css';
+import ThemeSky from './ThemeSky';
 
 /** Games night landing: host on a TV or join on a phone, signed in with Google or as a guest. */
 export default function PartyHome() {
   const [user, setUser] = useState(null);
   const [checked, setChecked] = useState(false);
-  const [looks] = useState(() => [2, 3, 4, 5, 1].map((costume) => ({ ...randomLook(), costume })));
+  const [looks] = useState(() => [1, 2, 3, 4, 0].map((k) => ({ ...randomLook(), costume: seasonCostume(k) })));
 
   useEffect(() => {
     document.title = 'Hood League Games';
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Creepster&family=Fredoka:wght@500;700&display=swap';
+    link.href = fontsHref();
     document.head.appendChild(link);
     currentUser().then((u) => { setUser(u); setChecked(true); });
     return () => link.remove();
@@ -25,6 +26,7 @@ export default function PartyHome() {
 
   return (
     <div className="lcp lch">
+      <ThemeSky />
       <a className="lch-back" href={homeHref()}>← {homeLabel()}</a>
       <p className="lch-kicker">Hood League Games</p>
       <h1 className="lc-title">Games Night</h1>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import qrcode from 'qrcode-generator';
 import Person from '../party/Person';
-import { randomLook } from '../party/look';
+import { randomLook, seasonCostume } from '../party/look';
 import { CLASSES } from '../dnd/rules';
 import { HOOD_GAMES_PATH, inGamesApp, siteOrigin } from '../native/gamesApp';
 import { canSignInWithApple, currentUser, firstName, signInWithApple, signInWithGoogle, signOutHere } from '../party/account';
@@ -9,7 +9,8 @@ import '../party/party.css';
 import './hood.css';
 import StudioCredit from '../components/StudioCredit';
 import DeleteAccount from '../components/DeleteAccount';
-import { themeInfo } from '../party/season';
+import { themeInfo, fontsHref } from '../party/season';
+import ThemeSky from '../party/ThemeSky';
 
 const THEME = themeInfo();
 
@@ -103,11 +104,11 @@ function QuickStart() {
 /** Hood Games: one front door for the party games, Hood Quest and the Hood League website. */
 export default function HoodGamesHub() {
   const [looks] = useState(() => [
-    { ...randomLook(), costume: 2 },
+    { ...randomLook(), costume: seasonCostume(0) },
     { ...randomLook(), ...CLASSES.wizard.look, costume: 0 },
     { ...randomLook(), costume: 0 },
     { ...randomLook(), ...CLASSES.fighter.look, costume: 0 },
-    { ...randomLook(), costume: 4 },
+    { ...randomLook(), costume: seasonCostume(1) },
   ]);
 
   const [user, setUser] = useState(null);
@@ -121,13 +122,14 @@ export default function HoodGamesHub() {
     document.title = 'Hood Games';
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Creepster&family=Fredoka:wght@500;700&display=swap';
+    link.href = fontsHref();
     document.head.appendChild(link);
     return () => link.remove();
   }, []);
 
   return (
     <div className="lcp lch hg">
+      <ThemeSky />
       {!inGamesApp() && <a className="lch-back" href="/">← Hood League</a>}
       <p className="lch-kicker">Hood League presents</p>
       <h1 className="lc-title hg-title">Hood Games</h1>

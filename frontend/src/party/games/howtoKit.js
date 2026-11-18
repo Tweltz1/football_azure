@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { lookCode, randomLook } from '../look';
+import { lookCode, randomLook, seasonCostume } from '../look';
 import { isMuted } from '../sound';
 
 // Shared pieces for the animated how-to-play intros: timing helpers, the narrator, the cast, and the
@@ -24,7 +24,7 @@ export const speak = (text) => {
 export const useCast = (players, count = 3) => useMemo(() => {
   const list = players.slice(0, count).map((p) => ({ name: p.name, look: p.look }));
   const fill = ['Boo', 'Spooks', 'Mort', 'Fang'];
-  while (list.length < count) list.push({ name: fill[list.length], look: lookCode({ ...randomLook(), costume: 1 + list.length }) });
+  while (list.length < count) list.push({ name: fill[list.length], look: lookCode({ ...randomLook(), costume: seasonCostume(list.length) }) });
   return list;
 }, [players, count]);
 

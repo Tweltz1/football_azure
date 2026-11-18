@@ -1,0 +1,21 @@
+/* Hood Games colors per theme (see LOOKS in season.js). data-hg-theme on <html> is set by applyThemeLook().
+   --lc-top is the glow at the top of the home screens; --lc-spooky is the title font. Halloween keeps
+   the original colors from party.css. */
+:root[data-hg-theme='thanksgiving'] { --lc-night: #1f1208; --lc-purple: #5a2e14; --lc-top: #7a3a12; --lc-orange: #ff9a3c; --lc-gold: #ffd36e; --lc-spooky: 'Rye', 'Fredoka', system-ui, sans-serif; }
+:root[data-hg-theme='christmas'] { --lc-night: #071a12; --lc-purple: #0f3d2a; --lc-top: #1a5c40; --lc-orange: #ff5a5a; --lc-gold: #ffe066; --lc-spooky: 'Mountains of Christmas', 'Fredoka', system-ui, sans-serif; }
+:root[data-hg-theme='newyear'] { --lc-night: #05060f; --lc-purple: #1b1f45; --lc-top: #2b2f6e; --lc-orange: #ffd36e; --lc-gold: #fff1a8; --lc-spooky: 'Bungee', 'Fredoka', system-ui, sans-serif; }
+:root[data-hg-theme='valentines'] { --lc-night: #2a0718; --lc-purple: #6b1238; --lc-top: #8e1d4a; --lc-orange: #ff6fa5; --lc-gold: #ffd1e3; --lc-spooky: 'Pacifico', 'Fredoka', system-ui, sans-serif; }
+:root[data-hg-theme='stpatricks'] { --lc-night: #04170c; --lc-purple: #0e3d21; --lc-top: #146b35; --lc-orange: #7ee08f; --lc-gold: #ffd84a; --lc-spooky: 'Uncial Antiqua', 'Fredoka', system-ui, sans-serif; }
+:root[data-hg-theme='easter'] { --lc-night: #1b1640; --lc-purple: #4b3f8f; --lc-top: #6c5fc7; --lc-orange: #ff9ad5; --lc-gold: #fff1a8; --lc-spooky: 'Chewy', 'Fredoka', system-ui, sans-serif; }
+:root[data-hg-theme='july4'] { --lc-night: #0a1030; --lc-purple: #1f2f7a; --lc-top: #2340c8; --lc-orange: #ff4d4d; --lc-gold: #ffffff; --lc-spooky: 'Bungee', 'Fredoka', system-ui, sans-serif; }
+:root[data-hg-theme='classic'] { --lc-night: #101528; --lc-purple: #2b2f5a; --lc-top: #3a3f80; --lc-orange: #ffb347; --lc-gold: #ffe066; --lc-spooky: 'Lilita One', 'Fredoka', system-ui, sans-serif; }
+
+/* Things drifting down behind the home screens: snow, leaves, hearts, confetti. */
+#lc-root .lch, #lc-root .lc-splash { isolation: isolate; }
+#lc-root .hg-sky { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+#lc-root .hg-sky span { position: absolute; top: -8vh; opacity: 0.55; animation: hg-fall linear infinite; will-change: transform; }
+@keyframes hg-fall {
+  from { transform: translate3d(0, 0, 0) rotate(0deg); }
+  to { transform: translate3d(6vw, 118vh, 0) rotate(300deg); }
+}
+@media (prefers-reduced-motion: reduce) { #lc-root .hg-sky { display: none; } }
