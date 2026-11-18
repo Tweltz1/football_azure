@@ -47,6 +47,14 @@ export const sfx = {
   lost: () => [392, 349, 311, 262].forEach((f, i) => tone(f, i * 0.3, 0.5, { type: 'sawtooth', gain: 0.06 })),
   whoosh: () => { tone(300, 0, 0.45, { type: 'sawtooth', gain: 0.03, slide: 500 }); tone(900, 0.1, 0.35, { type: 'triangle', gain: 0.03, slide: -600 }); },
   tick: () => tone(1320, 0, 0.05, { type: 'square', gain: 0.04 }),
+  kick: () => { tone(120, 0, 0.18, { type: 'sine', gain: 0.22, slide: -80 }); },
+  hat: () => tone(5200, 0, 0.03, { type: 'square', gain: 0.012 }),
+  launch: () => tone(500, 0, 0.35, { type: 'triangle', gain: 0.025, slide: 900 }),
+  pop: (big = 1) => {
+    tone(70, 0, 0.5 + big * 0.2, { type: 'sawtooth', gain: 0.08 + big * 0.05, slide: -40 });
+    [0.08, 0.13, 0.19, 0.26, 0.31].forEach((at, i) => tone(1800 + i * 430, at + big * 0.05, 0.04, { type: 'square', gain: 0.02 }));
+  },
+  dud: () => tone(220, 0, 0.25, { type: 'square', gain: 0.03, slide: -150 }),
   gobble: () => [0, 1, 2, 3, 4].forEach((i) => tone(i % 2 ? 420 : 300, i * 0.055, 0.06, { type: 'square', gain: 0.035, slide: i % 2 ? -80 : 60 })),
 };
 

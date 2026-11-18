@@ -12,6 +12,7 @@ import * as countdown from './countdown';
 import * as admirer from './admirer';
 import * as rainbow from './rainbowRun';
 import * as egg from './eggHunt';
+import * as fireworks from './fireworks';
 import CandleStage from './CandleStage';
 import CandlePhone from './CandlePhone';
 import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
@@ -45,6 +46,9 @@ import RainbowHowTo, { HOWTO_MS as RAINBOW_HOWTO_MS } from './RainbowHowTo';
 import EggStage from './EggStage';
 import EggPhone from './EggPhone';
 import EggHowTo, { HOWTO_MS as EGG_HOWTO_MS } from './EggHowTo';
+import FireworksStage from './FireworksStage';
+import FireworksPhone from './FireworksPhone';
+import FireworksHowTo, { HOWTO_MS as FIREWORKS_HOWTO_MS } from './FireworksHowTo';
 import { GAME_META, HOLIDAY_GAME, isPlayable, metaFor } from './meta';
 
 // The TV remembers which quiz questions it has shown, so the next game picks fresh ones first.
@@ -363,6 +367,32 @@ const ENGINES = {
     Phone: EggPhone,
     HowTo: EggHowTo,
     howToMs: EGG_HOWTO_MS,
+  },
+  fireworks: {
+    create: fireworks.createFireworks,
+    tick: fireworks.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'boom') fireworks.boom(g, cid, Number(msg.ms), now);
+    },
+    over: fireworks.isOver,
+    sceneKey: (g) => (g.phase === 'over' ? 'over' : `s${g.show}`),
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g) => Math.min(1, (g.show + (g.phase === 'show' ? 0.5 : 0)) / fireworks.SHOWS.length),
+    phone: fireworks.phoneView,
+    result(g, cid) {
+      const me = fireworks.ranking(g).find((r) => r.cid === cid);
+      return {
+        rank: me?.rank || g.players.length,
+        score: me?.score || 0,
+        awards: fireworks.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+      };
+    },
+    addPlayer: fireworks.addPlayer,
+    seen: fireworks.seen,
+    Stage: FireworksStage,
+    Phone: FireworksPhone,
+    HowTo: FireworksHowTo,
+    howToMs: FIREWORKS_HOWTO_MS,
   },
 };
 

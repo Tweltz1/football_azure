@@ -932,3 +932,35 @@
 #lc-root .eh-spot.is-gold { background: linear-gradient(180deg, #fff6b0, #e0a400); }
 #lc-root .lq-demo-phone .eh-grid { gap: 4px; }
 #lc-root .lq-demo-phone .eh-spot { min-height: 46px; font-size: 24px; border-width: 2px; border-radius: 10px; box-shadow: 0 3px 0 var(--lc-ink); }
+
+/* Fireworks Show */
+#lc-root .fw-star { animation: fw-twinkle 4s ease-in-out infinite; }
+@keyframes fw-twinkle { 50% { opacity: 0.15; } }
+#lc-root .fw-shimmer { animation: fw-shimmer 3s ease-in-out infinite; }
+@keyframes fw-shimmer { 50% { opacity: 0.05; transform: translateX(14px); } }
+#lc-root .fw-crackle { animation: fw-crackle 0.18s steps(2) infinite; }
+@keyframes fw-crackle { 50% { opacity: 0; } }
+#lc-root .fw-beat { transition: transform 0.08s linear; }
+#lc-root .fw-card p { max-width: 26em; margin: 0.4em auto 0; }
+#lc-root .fw-count { margin-top: 0.2em; font: 400 3.4em var(--lc-spooky); color: #ffe066; }
+#lc-root .fw-banner { bottom: auto; top: 11%; }
+#lc-root .fw-finale { top: 13%; font-size: 3em; animation: lc-shake 0.5s ease-in-out infinite; }
+#lc-root .fw-phone { gap: 10px; }
+#lc-root .fw-chip { display: inline-block; width: 0.9em; height: 0.9em; border: 2px solid var(--lc-ink); border-radius: 50%; vertical-align: middle; }
+#lc-root .fw-pad { display: flex; flex-direction: column; gap: 12px; }
+#lc-root .fw-lane { position: relative; overflow: hidden; background: radial-gradient(circle at 50% 0%, #2b2170, #0a0b24 75%); border: 4px solid var(--lc-ink); border-radius: 18px; }
+#lc-root .fw-target { position: absolute; left: 50%; width: 52px; height: 52px; transform: translate(-50%, -50%); border: 5px dashed var(--fw); border-radius: 50%; }
+#lc-root .fw-approach { position: absolute; left: 50%; width: 52px; height: 52px; border: 4px solid #fff; border-radius: 50%; }
+#lc-root .fw-dot { position: absolute; left: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); background: var(--fw); border: 3px solid #fff; border-radius: 50%; box-shadow: 0 14px 10px -4px rgba(255, 210, 122, 0.7), 0 0 14px var(--fw); }
+#lc-root .fw-beats { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 5px; }
+#lc-root .fw-beats i { width: 9px; height: 9px; background: #ffe066; border-radius: 50%; }
+#lc-root .fw-flash { position: absolute; left: 0; right: 0; top: 52%; text-align: center; font: 400 34px var(--lc-spooky); color: #fff; text-shadow: 0 3px 0 var(--lc-ink); animation: fw-pop 0.3s ease-out; }
+#lc-root .fw-flash.is-perfect { color: #ffe066; }
+#lc-root .fw-flash.is-miss { color: #9a9ab3; }
+#lc-root .fw-flash.is-ready { font-size: 22px; opacity: 0.85; animation: none; }
+@keyframes fw-pop { from { transform: scale(1.5); opacity: 0; } }
+#lc-root .fw-boom { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 170px; font: 400 52px var(--lc-spooky); color: #fff; text-shadow: 0 4px 0 var(--lc-ink); background: radial-gradient(circle at 50% 30%, #fff 0%, var(--fw) 35%, #1b1440 120%); border: 6px solid var(--lc-ink); border-radius: 28px; box-shadow: 0 8px 0 var(--lc-ink); cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+#lc-root .fw-boom small { font: 800 15px var(--lc-font); }
+#lc-root .fw-boom.is-down { transform: translateY(6px); box-shadow: 0 2px 0 var(--lc-ink); filter: brightness(1.3); }
+#lc-root .lq-demo-phone.fw-demo { display: flex; flex-direction: column; gap: 8px; }
+#lc-root .lq-demo-phone .fw-boom { min-height: 70px; font-size: 30px; border-width: 4px; }

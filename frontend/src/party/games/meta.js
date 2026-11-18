@@ -170,6 +170,21 @@ export const GAME_META = [
     ],
     phoneHint: 'Your egg color and the garden spots show up here.',
   },
+  {
+    id: 'fireworks',
+    holiday: 'july4',
+    title: 'Fireworks Show',
+    emoji: '🎆',
+    tag: 'Versus',
+    minutes: '4–5 min',
+    blurb: 'A rhythm game in the night sky. Tap BOOM right on the beat to make the biggest fireworks, then light up the grand finale together.',
+    how: [
+      'Everyone gets a launch tube. Your rockets rise on the beat toward a ring in the sky.',
+      'Tap BOOM on your phone right as your rocket hits its ring. Perfect timing makes the biggest burst.',
+      'Keep a combo going for more points. Mashing BOOM costs points!',
+    ],
+    phoneHint: 'Your BOOM button shows up here.',
+  },
 ];
 
 // The quiz and the writing game take the name of the theme on now (see season.js): Thanksgiving Quiz,
