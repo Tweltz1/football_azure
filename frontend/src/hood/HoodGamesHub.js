@@ -131,6 +131,7 @@ export default function HoodGamesHub() {
       <h1 className="lc-title hg-title">Hood Games</h1>
       <p className="lch-sub">Party games, tabletop quests and the league, all in one place.</p>
       <div className="lch-crew">{looks.map((l, i) => <Person key={i} look={l} pose={i === 2 ? 'wave' : 'stand'} className={`lc-bob lc-d${i % 4}`} />)}</div>
+      <QuickStart />
       {/* The game cards show right away; only the account box waits for the sign-in check. */}
       <div className="hg-places">
         {PLACES.map((p) => (
@@ -141,7 +142,6 @@ export default function HoodGamesHub() {
           </a>
         ))}
       </div>
-      <QuickStart />
       {checked && (
         <div className="lch-account">
           {user ? (
