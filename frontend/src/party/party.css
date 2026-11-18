@@ -788,3 +788,24 @@
 #lc-root .tt-knob { position: absolute; left: 50%; top: 50%; width: 38%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 48px; border-radius: 50%; background: var(--tt-me, #ffd23f); border: 5px solid var(--lc-ink); box-shadow: 0 6px 0 var(--lc-ink); pointer-events: none; transition: transform 0.06s linear; }
 #lc-root .tt-demo { width: 220px; border-width: 5px; margin: 10px auto; }
 #lc-root .tt-demo .tt-knob { font-size: 36px; transition: transform 0.4s ease; }
+
+/* Gift Wrap Rush */
+#lc-root .gr-snow { animation: gr-snow 4s linear infinite; }
+@keyframes gr-snow { from { transform: translateY(-20px); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(110px); opacity: 0.2; } }
+#lc-root .gr-bulb { animation: lc-twinkle 1.4s ease-in-out infinite alternate; }
+#lc-root .gr-b1 { animation-delay: -0.45s; }
+#lc-root .gr-b2 { animation-delay: -0.9s; }
+@media (prefers-reduced-motion: reduce) { #lc-root .gr-snow, #lc-root .gr-bulb { animation: none; } }
+#lc-root .gr-phone { gap: 10px; }
+#lc-root .gr-station { width: 100%; padding: 10px; border: 4px solid var(--lc-ink); border-radius: 18px; background: rgba(255, 255, 255, 0.07); transition: background 0.15s; }
+#lc-root .gr-station.is-live { background: rgba(255, 224, 102, 0.22); border-color: #ffe066; box-shadow: 0 0 18px rgba(255, 224, 102, 0.5); }
+#lc-root .gr-station h3 { margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; font: 400 22px var(--lc-spooky); letter-spacing: 0.04em; }
+#lc-root .gr-station h3 small { font: 700 13px var(--lc-font); color: #ffe066; }
+#lc-root .gr-picks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+#lc-root .gr-pick { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; background: #fff6e3; color: var(--lc-ink); border: 4px solid var(--lc-ink); border-radius: 14px; box-shadow: 0 4px 0 var(--lc-ink); font: 800 13px var(--lc-font); cursor: pointer; touch-action: manipulation; }
+#lc-root .gr-pick:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--lc-ink); }
+#lc-root .gr-pick svg { width: 100%; height: 58px; }
+#lc-root .gr-pick.is-compact svg { height: 40px; }
+#lc-root .gr-flash { min-height: 26px; margin: 0; font-weight: 800; font-size: 18px; text-align: center; }
+#lc-root .gr-flash.is-ok { color: #3ddc97; }
+#lc-root .gr-flash.is-bad { color: #ff7a6e; }
