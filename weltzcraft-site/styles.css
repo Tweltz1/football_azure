@@ -57,7 +57,7 @@ h1{font-size:clamp(38px,6vw,64px);font-weight:800}
 .hero-art{display:flex;justify-content:center}
 .stack{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;transform:rotate(-6deg)}
 .stack .t8{grid-column:2}
-.t{width:112px;height:112px;border-radius:26px;box-shadow:var(--shadow);background:var(--surface);animation:float 7s ease-in-out infinite}
+.t{width:112px;height:112px;border-radius:26px;box-shadow:var(--shadow);background:var(--surface);object-fit:cover;animation:float 7s ease-in-out infinite}
 .t2{animation-delay:-1s}.t3{animation-delay:-2s}.t4{animation-delay:-3s}.t5{animation-delay:-4s}.t6{animation-delay:-5s}.t7{animation-delay:-6s}.t8{animation-delay:-2.5s}
 @keyframes float{50%{transform:translateY(-8px)}}
 @media (prefers-reduced-motion:reduce){.t{animation:none}html{scroll-behavior:auto}}
@@ -485,3 +485,10 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 .faq details[open] summary::after{content:"–"}
 .faq details p{margin:10px 0 0;color:var(--muted)}
 .more + .more{margin-left:16px}
+
+/* Merch band on the home page (dropped by accident in #347, which stretched the photos on phones) */
+.merch-in{display:grid;grid-template-columns:1fr 1.2fr;gap:40px;align-items:center}
+.merch-in .btn{margin-top:22px}
+.merch-pics{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.merch-pics img{width:100%;height:auto;aspect-ratio:1;object-fit:cover;border-radius:16px;background:#fff;border:1px solid var(--line)}
+@media (max-width:720px){.merch-in{grid-template-columns:1fr;gap:24px}}
