@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompareStores } from '../../components/CompareStores';
 import { NearbyMap } from '../../components/NearbyMap';
-import { ScreenHeader, Segmented } from '../../components/ui';
+import { lift, ScreenHeader, Segmented } from '../../components/ui';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 
@@ -33,21 +33,21 @@ export default function StoresScreen() {
         accessibilityHint="Back to your list"
         disabled={!store}
         onPress={backToList}
-        style={[styles.current, { backgroundColor: t.card }]}
+        style={[styles.current, { backgroundColor: t.hero }, lift(t)]}
       >
-        <View style={[styles.icon, { backgroundColor: t.primarySoft }]}>
-          <Ionicons name="storefront" size={18} color={t.primary} />
+        <View style={[styles.icon, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+          <Ionicons name="storefront" size={18} color={t.onHero} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: t.textMuted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' }}>Shopping at</Text>
-          <Text style={{ color: t.text, fontSize: 16, fontWeight: '700' }} numberOfLines={1}>
+          <Text style={{ color: t.onHero, opacity: 0.8, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' }}>Shopping at</Text>
+          <Text style={{ color: t.onHero, fontSize: 17, fontWeight: '800' }} numberOfLines={1}>
             {store ? store.name : 'No store yet'}
           </Text>
           {!store && (
-            <Text style={{ color: t.textMuted, fontSize: 13 }}>Tap Shop here on a store below, or pick one by ZIP.</Text>
+            <Text style={{ color: t.onHero, opacity: 0.8, fontSize: 13 }}>Tap Shop here on a store below, or pick one by ZIP.</Text>
           )}
         </View>
-        {store && <Ionicons name="checkmark-circle" size={22} color={t.primary} />}
+        {store && <Ionicons name="checkmark-circle" size={22} color={t.accent} />}
       </Pressable>
 
       <Segmented
@@ -73,6 +73,6 @@ export default function StoresScreen() {
 }
 
 const styles = StyleSheet.create({
-  current: { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 16, marginTop: 10, marginBottom: 12, padding: 12, borderRadius: radius.md },
+  current: { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 16, marginTop: 10, marginBottom: 12, padding: 14, borderRadius: radius.lg },
   icon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 });

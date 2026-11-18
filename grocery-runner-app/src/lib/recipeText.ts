@@ -4,7 +4,7 @@ import type { TextLine } from '../../modules/recipe-reader';
 import type { RecipeItem } from './recipes';
 import { itemKey } from './sharedAisles';
 
-export type ParsedRecipe = { title: string; servings: string; items: RecipeItem[]; imageUrl?: string };
+export type ParsedRecipe = { title: string; servings: string; items: RecipeItem[]; imageUrl?: string; minutes?: number };
 
 // Recipe sites print scale and unit buttons next to the heading ("Ingredients 1x 2x 3x", "US Customary Metric").
 const SITE_BUTTONS = String.raw`(?:\s*(?:\d+(?:\.\d+)?\s*x|us customary|us|metric|imperial|scale|servings?|\||·))*`;
@@ -187,7 +187,8 @@ const decode = (s: string) =>
     .replace(/&frac12;/g, '½')
     .replace(/&frac14;/g, '¼')
     .replace(/&frac34;/g, '¾')
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 
 // deno-lint-ignore no-explicit-any
 function findRecipe(node: any): any {
@@ -199,27 +200,71 @@ function findRecipe(node: any): any {
     }
     return null;
   }
-  const type = node['@type'];
-  if (type === 'Recipe' || (Array.isArray(type) && type.includes('Recipe'))) return node;
-  return findRecipe(node['@graph']);
+  const types: unknown[] = Array.isArray(node['@type']) ? node['@type'] : [node['@type']];
+  if (types.some((x) => typeof x === 'string' && /(^|[/:])Recipe$/.test(x))) return node;
+  return findRecipe(node['@graph']) ?? findRecipe(node.mainEntity) ?? findRecipe(node.mainEntityOfPage);
+}
+
+/** ISO 8601 durations like "PT1H15M" → 75. */
+export function isoMinutes(v: unknown): number | undefined {
+  const m = typeof v === 'string' ? v.match(/^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?/i) : null;
+  if (!m) return undefined;
+  const total = Number(m[1] ?? 0) * 1440 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0);
+  return total > 0 && total < 7 * 1440 ? total : undefined;
+}
+
+const stripTags = (h: string) => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * Ingredient lines marked up in the page itself, for sites without schema.org data in a script:
+ * microdata (itemprop="recipeIngredient") and the WP Recipe Maker / Tasty Recipes plugins most food blogs use.
+ */
+function markedIngredients(html: string): string[] {
+  const out: string[] = [];
+  const grab = (re: RegExp, from = html) => {
+    for (const m of from.matchAll(re)) {
+      const line = decode(stripTags(m[2] ?? m[1]));
+      if (line && line.length < 200) out.push(line);
+    }
+  };
+  grab(/<(li|span|p|div)[^>]+itemprop=["'](?:recipeIngredient|ingredients)["'][^>]*>([\s\S]*?)<\/\1>/gi);
+  if (!out.length) grab(/<(li)[^>]+class=["'][^"']*\bwprm-recipe-ingredient\b[^"']*["'][^>]*>([\s\S]*?)<\/\1>/gi);
+  if (!out.length) {
+    const block = html.match(/class=["'][^"']*tasty-recipes?-ingredients[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|section)>/i)?.[1];
+    if (block) grab(/<(li)[^>]*>([\s\S]*?)<\/\1>/gi, block);
+  }
+  return out;
 }
 
 /** Recipe sites publish their ingredient list as schema.org Recipe data; use it, else the page's text. */
 export function parseRecipePage(html: string): ParsedRecipe {
   for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
-      const recipe = findRecipe(JSON.parse(m[1]));
-      const lines: unknown[] = recipe?.recipeIngredient ?? recipe?.ingredients ?? [];
+      // Some sites leave raw line breaks inside strings, which JSON doesn't allow.
+      const recipe = findRecipe(JSON.parse(m[1].replace(/^\s*<!--|-->\s*$/g, '').replace(/[\u0000-\u001F]+/g, ' ')));
+      const raw = recipe?.recipeIngredient ?? recipe?.ingredients ?? [];
+      const lines: unknown[] = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(/\r?\n|<br\s*\/?>/i) : [];
       if (lines.length) {
-        const parsed = parseRecipeLines(['Ingredients', ...lines.map((l) => decode(String(l)))], decode(String(recipe.name ?? '')));
+        const parsed = parseRecipeLines(
+          ['Ingredients', ...lines.map((l) => decode(stripTags(String(l))))],
+          decode(stripTags(String(recipe.name ?? ''))),
+        );
         const yieldText = Array.isArray(recipe.recipeYield) ? recipe.recipeYield[0] : recipe.recipeYield;
         if (yieldText && !parsed.servings) parsed.servings = String(yieldText).slice(0, 40);
         parsed.imageUrl = imageOf(recipe.image) ?? ogImage(html);
+        const minutes = isoMinutes(recipe.totalTime) ?? isoMinutes(recipe.cookTime);
+        if (minutes) parsed.minutes = minutes;
         return parsed;
       }
     } catch {}
   }
-  const title = decode(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '').split(/\s[|–—-]\s|\|/)[0];
+  const title = decode(
+    html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
+      html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ??
+      '',
+  ).split(/\s[|–—-]\s|\|/)[0].trim();
+  const marked = markedIngredients(html);
+  if (marked.length) return { ...parseRecipeLines(['Ingredients', ...marked], title), imageUrl: ogImage(html) };
   const text = html
     .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<(br|\/p|\/li|\/h\d|\/div|\/tr)[^>]*>/gi, '\n');
@@ -251,4 +296,11 @@ export function parsePastedText(text: string): ParsedRecipe {
   const first = lines[0] ?? '';
   const title = first && !startsWithAmount(first) && !INGREDIENTS_HEADING.test(first) && first.split(' ').length <= 10 ? first : '';
   return parseRecipeLines(title ? lines.slice(1) : lines, title);
+}
+
+/** "allrecipes.com/recipe/…" or a link with text around it → a full https:// address, else null. */
+export function cleanLink(text: string): string | null {
+  const v = text.trim();
+  const m = v.match(/https?:\/\/[^\s<>"]+/i)?.[0] ?? (/^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+\/\S*$/i.test(v) ? `https://${v}` : null);
+  return m ? m.replace(/[).,]+$/, '') : null;
 }

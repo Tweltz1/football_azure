@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RecipePicture } from './RecipePicture';
-import { Chip, Segmented } from './ui';
+import { Chip, lift, Segmented } from './ui';
 import { DEMO } from '../lib/demo';
 import { categoryLabel, CATEGORIES, CommunityRecipe, fetchCommunity } from '../lib/community';
 import { cloudConfigured } from '../lib/supabase';
@@ -97,7 +97,7 @@ export function CommunityRecipes({ onShare }: { onShare: () => void }) {
             key={r.id}
             accessibilityRole="button"
             onPress={() => router.push(`/recipe/${r.id}`)}
-            style={({ pressed }) => [styles.row, { backgroundColor: t.card, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.row, { backgroundColor: t.card, opacity: pressed ? 0.85 : 1 }, lift(t)]}
           >
             <RecipePicture recipe={r} size={64} style={{ width: 64 }} />
             <View style={{ flex: 1, gap: 3 }}>
@@ -125,8 +125,8 @@ export function CommunityRecipes({ onShare }: { onShare: () => void }) {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: 16 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: radius.md },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: radius.sm },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: radius.lg },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderRadius: 999 },
   chips: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
   share: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: radius.md, borderWidth: 1.5, borderStyle: 'dashed', marginTop: 8 },
 });

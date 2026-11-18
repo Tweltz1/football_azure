@@ -2,7 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { ComponentProps, ReactNode } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { radius, useTheme } from '../lib/theme';
+import { radius, Theme, useTheme } from '../lib/theme';
+
+/** The soft lift under cards (light mode only; dark mode uses the card color alone). */
+export function lift(t: Theme): ViewStyle {
+  return t.bg === '#F7F4EC'
+    ? { shadowColor: '#4A3B1A', shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 4 } }
+    : {};
+}
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -18,15 +25,18 @@ type ButtonProps = {
   disabled?: boolean;
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** For icon-only buttons. */
+  label?: string;
 };
 
-export function Button({ title, onPress, icon, variant = 'primary', disabled, loading, style }: ButtonProps) {
+export function Button({ title, onPress, icon, variant = 'primary', disabled, loading, style, label }: ButtonProps) {
   const t = useTheme();
   const bg = variant === 'primary' ? t.primary : variant === 'secondary' ? t.cardAlt : 'transparent';
   const fg = variant === 'primary' ? t.onPrimary : variant === 'secondary' ? t.text : t.primary;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       disabled={disabled || loading}
       onPress={() => {
         tap();
@@ -43,7 +53,7 @@ export function Button({ title, onPress, icon, variant = 'primary', disabled, lo
       ) : (
         <>
           {icon && <Ionicons name={icon} size={19} color={fg} />}
-          <Text style={[styles.buttonText, { color: fg }]}>{title}</Text>
+          {!!title && <Text style={[styles.buttonText, { color: fg }]}>{title}</Text>}
         </>
       )}
     </Pressable>
@@ -52,7 +62,7 @@ export function Button({ title, onPress, icon, variant = 'primary', disabled, lo
 
 export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const t = useTheme();
-  return <View style={[{ backgroundColor: t.card, borderRadius: radius.lg, padding: 16 }, style]}>{children}</View>;
+  return <View style={[{ backgroundColor: t.card, borderRadius: radius.lg, padding: 16 }, lift(t), style]}>{children}</View>;
 }
 
 export function Chip({ label, selected, onPress }: { label: string; selected?: boolean; onPress: () => void }) {
@@ -65,9 +75,9 @@ export function Chip({ label, selected, onPress }: { label: string; selected?: b
         tap();
         onPress();
       }}
-      style={[styles.chip, { backgroundColor: selected ? t.primary : t.cardAlt }]}
+      style={[styles.chip, selected ? { backgroundColor: t.text, borderColor: t.text } : { backgroundColor: t.card, borderColor: t.border }]}
     >
-      <Text style={{ color: selected ? t.onPrimary : t.text, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ color: selected ? t.bg : t.text, fontWeight: '600' }}>{label}</Text>
     </Pressable>
   );
 }
@@ -75,10 +85,13 @@ export function Chip({ label, selected, onPress }: { label: string; selected?: b
 /** Big page title at the top of each tab, with an optional action on the right. */
 export function ScreenHeader({
   title,
+  subtitle,
   action,
   iconAction,
 }: {
   title: string;
+  /** A short line under the title, like "8 to get". */
+  subtitle?: string;
   action?: { label: string; icon?: IconName; onPress: () => void };
   /** A plain icon button left of the action (e.g. the account). */
   iconAction?: { icon: IconName; label: string; onPress: () => void };
@@ -86,9 +99,16 @@ export function ScreenHeader({
   const t = useTheme();
   return (
     <View style={styles.header}>
-      <Text accessibilityRole="header" style={[styles.headerTitle, { color: t.text }]}>
-        {title}
-      </Text>
+      <View style={{ flexShrink: 1 }}>
+        {!!subtitle && (
+          <Text style={[styles.headerSub, { color: t.accent }]} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        )}
+        <Text accessibilityRole="header" style={[styles.headerTitle, { color: t.text }]}>
+          {title}
+        </Text>
+      </View>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 18 }}>
       {iconAction && (
         <Pressable
@@ -112,10 +132,10 @@ export function ScreenHeader({
             tap();
             action.onPress();
           }}
-          style={styles.headerAction}
+          style={[styles.headerAction, styles.headerPill, { backgroundColor: t.primarySoft }]}
         >
-          {action.icon && <Ionicons name={action.icon} size={18} color={t.primary} />}
-          <Text style={{ color: t.primary, fontSize: 16, fontWeight: '600' }}>{action.label}</Text>
+          {action.icon && <Ionicons name={action.icon} size={17} color={t.primary} />}
+          <Text style={{ color: t.primary, fontSize: 15, fontWeight: '700' }}>{action.label}</Text>
         </Pressable>
       )}
       </View>
@@ -161,7 +181,7 @@ export function Segmented<T extends string>({
 
 export function SectionTitle({ children }: { children: ReactNode }) {
   const t = useTheme();
-  return <Text style={[styles.section, { color: t.textMuted }]}>{children}</Text>;
+  return <Text style={[styles.section, { color: t.text }]}>{children}</Text>;
 }
 
 
@@ -206,25 +226,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    height: 52,
-    paddingHorizontal: 18,
-    borderRadius: radius.md,
+    height: 54,
+    paddingHorizontal: 22,
+    borderRadius: 999,
   },
-  buttonText: { fontSize: 16, fontWeight: '600' },
-  chip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999 },
-  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
-  headerTitle: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5 },
+  buttonText: { fontSize: 16, fontWeight: '700' },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
+  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 6 },
+  headerTitle: { fontSize: 34, fontWeight: '800', letterSpacing: -0.8 },
+  headerSub: { fontSize: 13, fontWeight: '700', letterSpacing: 0.2, marginBottom: 1 },
   headerAction: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingBottom: 6 },
-  segmented: { flexDirection: 'row', padding: 3, borderRadius: radius.sm },
+  headerPill: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, marginBottom: 4 },
+  segmented: { flexDirection: 'row', padding: 3, borderRadius: 999 },
   segment: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
-    borderRadius: radius.sm - 2,
+    borderRadius: 999,
     shadowColor: '#000',
     shadowOpacity: 0,
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 1 },
   },
-  section: { fontSize: 13, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 20, marginBottom: 8 },
+  section: { fontSize: 18, fontWeight: '800', letterSpacing: -0.2, marginTop: 22, marginBottom: 10 },
 });

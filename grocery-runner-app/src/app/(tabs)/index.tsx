@@ -2,24 +2,38 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SaleBadge } from '../../components/SaleBadge';
-import { SwipeRow } from '../../components/SwipeRow';
-import { Button, ScreenHeader, StudioCredit, tap } from '../../components/ui';
+import { closeSwipeRows, SwipeRow } from '../../components/SwipeRow';
+import { Button, lift, ScreenHeader, StudioCredit, tap } from '../../components/ui';
 import { dealFor, useDeals } from '../../lib/deals';
 import { locationLabel } from '../../lib/labels';
 import { groupList } from '../../lib/listGroups';
 import { useFamily } from '../../lib/family';
+import { cleanLink } from '../../lib/recipeText';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 
 // A week's basics across the store, so a first-time shopper can see the walking order before typing anything.
+// A picture for each part of the store, shown next to its heading.
+const SECTION_EMOJI: Record<string, string> = {
+  'dept:produce': '🥬',
+  'dept:bakery': '🥖',
+  'dept:deli': '🥪',
+  'dept:meat': '🥩',
+  'dept:pantry': '🥫',
+  'dept:frozen': '🧊',
+  'dept:dairy': '🥛',
+  'dept:other': '🛒',
+};
+
 const SAMPLE_LIST = ['bananas', 'apples', 'lettuce', 'bread', 'chicken breasts', 'ground beef', 'pasta', 'peanut butter', 'cereal', 'frozen pizza', 'milk', 'eggs', 'cheese', 'paper towels'];
 
 export default function ListScreen() {
   const t = useTheme();
   const { items, store, addItem, addItems, toggleItem, removeItem, clearChecked, clearAll, lastRemoved, undoRemove } = useData();
   const family = useFamily();
+  const insets = useSafeAreaInsets();
   const others = family.info?.members.filter((m) => !m.me).map((m) => m.name) ?? [];
   const [draft, setDraft] = useState('');
   const left = items.filter((i) => !i.checked).length;
@@ -37,8 +51,11 @@ export default function ListScreen() {
   const removedCount = lastRemoved?.items.length ?? 0;
 
   const submit = () => {
-    addItem(draft);
+    const url = cleanLink(draft);
     setDraft('');
+    // A recipe link pasted into the add box opens it, so its ingredients can be added to the list.
+    if (url) router.push({ pathname: '/scan', params: { url } });
+    else addItem(draft);
   };
 
   const startOver = () =>
@@ -50,75 +67,105 @@ export default function ListScreen() {
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: t.bg }}>
-      <ScreenHeader title="My list" action={items.length ? { label: 'New list', onPress: startOver } : undefined} />
+      <ScreenHeader
+        title="My list"
+        subtitle={items.length ? (left ? `${left} to get` : 'All done!') : undefined}
+        action={items.length ? { label: 'New list', icon: 'refresh', onPress: startOver } : undefined}
+      />
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityHint="Opens Stores, where you pick where to shop"
-        onPress={() => router.navigate(store ? '/stores' : '/stores?view=map')}
-        style={[styles.store, { backgroundColor: t.card }]}
-      >
-        <View style={[styles.storeIcon, { backgroundColor: t.primarySoft }]}>
-          <Ionicons name="storefront" size={18} color={t.primary} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.storeName, { color: t.text }]} numberOfLines={1}>
-            {store ? store.name : 'Choose your store'}
+      <View style={[styles.hero, { backgroundColor: t.hero }, lift(t)]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityHint="Opens Stores, where you pick where to shop"
+          onPress={() => router.navigate(store ? '/stores' : '/stores?view=map')}
+          style={styles.heroTop}
+        >
+          <View style={styles.storeIcon}>
+            <Ionicons name="storefront" size={18} color={t.onHero} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.storeName, { color: t.onHero }]} numberOfLines={1}>
+              {store ? store.name : 'Choose your store'}
+            </Text>
+            <Text style={{ color: t.onHero, opacity: 0.8, fontSize: 13 }} numberOfLines={1}>
+              {store ? (store.address ?? `${store.aisleCount} aisles`) : 'So your list is sorted in walking order'}
+            </Text>
+          </View>
+          <View style={styles.heroChip}>
+            <Text style={{ color: t.onHero, fontWeight: '700', fontSize: 13 }}>{store ? 'Change' : 'Choose'}</Text>
+          </View>
+        </Pressable>
+        {items.length > 0 && (
+          <View accessibilityLabel={`${checkedCount} of ${items.length} checked off`} style={styles.progress}>
+            <View style={[styles.progressFill, { width: `${Math.round((checkedCount / items.length) * 100)}%`, backgroundColor: t.accent }]} />
+          </View>
+        )}
+        <Pressable accessibilityRole="button" onPress={() => router.push('/family')} style={styles.heroFamily}>
+          <Ionicons name={family.info ? 'people' : 'people-outline'} size={15} color={t.onHero} />
+          <Text style={{ color: t.onHero, fontWeight: '600', fontSize: 13, flex: 1, opacity: 0.92 }} numberOfLines={1}>
+            {family.info ? (others.length ? `Shared with ${others.join(', ')}` : 'Family list: waiting for others to join') : 'Share this list with your family'}
           </Text>
-          <Text style={{ color: t.textMuted, fontSize: 13 }} numberOfLines={1}>
-            {store ? (store.address ?? `${store.aisleCount} aisles`) : 'So your list is sorted in walking order'}
-          </Text>
-        </View>
-        <Text style={{ color: t.primary, fontWeight: '600' }}>{store ? 'Change' : 'Choose'}</Text>
-      </Pressable>
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push('/family')}
-        style={[styles.family, { borderColor: t.border }]}
-      >
-        <Ionicons name={family.info ? 'people' : 'people-outline'} size={16} color={t.primary} />
-        <Text style={{ color: family.info ? t.text : t.primary, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-          {family.info ? (others.length ? `Shared with ${others.join(', ')}` : 'Family list: waiting for others to join') : 'Share this list with your family'}
-        </Text>
-        <Ionicons name="chevron-forward" size={16} color={t.textMuted} />
-      </Pressable>
+          <Ionicons name="chevron-forward" size={14} color={t.onHero} style={{ opacity: 0.7 }} />
+        </Pressable>
+      </View>
 
       <View style={[styles.addRow, { backgroundColor: t.card, borderColor: draft ? t.primary : t.border }]}>
+        <Ionicons name="add" size={22} color={draft ? t.primary : t.textMuted} />
         <TextInput
           value={draft}
           onChangeText={setDraft}
           onSubmitEditing={submit}
-          placeholder="Add an item, like milk"
+          placeholder="Add an item or paste a link"
           placeholderTextColor={t.textMuted}
           returnKeyType="done"
           submitBehavior="submit"
+          autoCorrect={!draft.startsWith('http')}
+          autoCapitalize={draft.startsWith('http') ? 'none' : 'sentences'}
           style={[styles.input, { color: t.text }]}
         />
-        <Pressable accessibilityLabel="Add item" onPress={submit} hitSlop={10}>
-          <Ionicons name="add-circle" size={32} color={t.primary} />
-        </Pressable>
+        {draft ? (
+          <Pressable accessibilityLabel={cleanLink(draft) ? 'Open recipe link' : 'Add item'} onPress={submit} hitSlop={10}>
+            <Ionicons name={cleanLink(draft) ? 'arrow-forward-circle' : 'add-circle'} size={32} color={t.primary} />
+          </Pressable>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add a recipe from a link"
+            onPress={() => router.push({ pathname: '/scan', params: { mode: 'link' } })}
+            hitSlop={8}
+            style={[styles.linkBtn, { backgroundColor: t.accentSoft }]}
+          >
+            <Ionicons name="link" size={16} color={t.accent} />
+            <Text style={{ color: t.accent, fontWeight: '700', fontSize: 13 }}>Recipe link</Text>
+          </Pressable>
+        )}
       </View>
 
       <SectionList
         sections={sections}
         keyExtractor={(i) => i.id}
         stickySectionHeadersEnabled={false}
-        contentContainerStyle={{ padding: 16, paddingTop: 4 }}
-        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+        contentContainerStyle={{ padding: 16, paddingTop: 2, paddingBottom: 110 }}
+        onScrollBeginDrag={closeSwipeRows}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="cart-outline" size={52} color={t.textMuted} />
+            <Text style={{ fontSize: 56 }}>🧺</Text>
             <Text style={[styles.emptyTitle, { color: t.text }]}>Your list is empty</Text>
             <Text style={[styles.emptyText, { color: t.textMuted }]}>
-              Type what you need above, pick your store, then tap Start shopping for the shortest walk through it.
+              Type what you need above, or paste a link to any recipe and pick its ingredients. Then tap Start shopping for the shortest walk through your store.
             </Text>
             <Button
-              title="Add from a recipe"
+              title="Paste a recipe link"
+              icon="link"
+              onPress={() => router.push({ pathname: '/scan', params: { mode: 'link' } })}
+              style={{ marginTop: 8, alignSelf: 'center' }}
+            />
+            <Button
+              title="Pick a recipe"
               icon="restaurant"
               variant="secondary"
               onPress={() => router.navigate('/recipes')}
-              style={{ marginTop: 8, alignSelf: 'center' }}
+              style={{ alignSelf: 'center' }}
             />
             <Button
               title="Try a sample list"
@@ -142,16 +189,42 @@ export default function ListScreen() {
             <StudioCredit />
           </>
         }
-        renderSectionHeader={({ section }) => (
-          <Text style={[styles.section, { color: t.textMuted }]}>
-            {section.title} · {section.data.length}
-          </Text>
-        )}
-        renderItem={({ item }) => {
-          const label = locationLabel(item);
+        renderSectionHeader={({ section }) => {
+          const aisle = section.key.startsWith('aisle:') ? section.title.replace(/^Aisle\s+/, '') : null;
           return (
-            <SwipeRow onDelete={() => removeItem(item.id)}>
-              <View style={[styles.row, { backgroundColor: t.card }]}>
+            <View style={styles.sectionRow}>
+              <View style={[styles.sectionBadge, { backgroundColor: section.key === 'checked' ? t.primarySoft : t.card }]}>
+                {aisle && aisle.length <= 3 ? (
+                  <Text style={{ color: t.primary, fontWeight: '800', fontSize: 14 }}>{aisle}</Text>
+                ) : (
+                  <Text style={{ fontSize: 16 }}>{section.key === 'checked' ? '✅' : (SECTION_EMOJI[section.key] ?? '🛒')}</Text>
+                )}
+              </View>
+              <Text style={[styles.section, { color: t.text }]}>{section.title}</Text>
+              <Text style={{ color: t.textMuted, fontWeight: '600' }}>{section.data.length}</Text>
+            </View>
+          );
+        }}
+        renderItem={({ item, index, section }) => {
+          const label = locationLabel(item);
+          const first = index === 0;
+          const last = index === section.data.length - 1;
+          const corners = {
+            borderTopLeftRadius: first ? radius.md : 0,
+            borderTopRightRadius: first ? radius.md : 0,
+            borderBottomLeftRadius: last ? radius.md : 0,
+            borderBottomRightRadius: last ? radius.md : 0,
+          };
+          return (
+            <SwipeRow onDelete={() => removeItem(item.id)} style={corners}>
+              <View
+                style={[
+                  styles.row,
+                  corners,
+                  { backgroundColor: t.card },
+                  !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border },
+                ]}
+              >
                 <Pressable
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: item.checked }}
@@ -161,15 +234,31 @@ export default function ListScreen() {
                     toggleItem(item.id);
                   }}
                 >
-                  <Ionicons
-                    name={item.checked ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={26}
-                    color={item.checked ? t.primary : t.textMuted}
-                  />
+                  <View
+                    style={[
+                      styles.check,
+                      item.checked ? { backgroundColor: t.primary, borderColor: t.primary } : { borderColor: t.textMuted },
+                    ]}
+                  >
+                    {item.checked && <Ionicons name="checkmark" size={16} color={t.onPrimary} />}
+                  </View>
                 </Pressable>
-                <Pressable style={{ flex: 1 }} onPress={() => router.push(`/item/${item.id}`)}>
+                <Pressable
+                  style={{ flex: 1 }}
+                  onPress={() => router.push(`/item/${item.id}`)}
+                  onLongPress={() =>
+                    Alert.alert(item.name, undefined, [
+                      { text: 'Where is it?', onPress: () => router.push(`/item/${item.id}`) },
+                      { text: 'Delete', style: 'destructive', onPress: () => removeItem(item.id) },
+                      { text: 'Cancel', style: 'cancel' },
+                    ])
+                  }
+                >
                   <Text
-                    style={[styles.itemName, { color: t.text, textDecorationLine: item.checked ? 'line-through' : 'none' }]}
+                    style={[
+                      styles.itemName,
+                      { color: item.checked ? t.textMuted : t.text, textDecorationLine: item.checked ? 'line-through' : 'none' },
+                    ]}
                   >
                     {item.name}
                   </Text>
@@ -184,7 +273,7 @@ export default function ListScreen() {
                   )}
                   {!item.checked && <SaleBadge deal={dealFor(deals, item.name)} name={item.name} />}
                 </Pressable>
-                <Ionicons name="chevron-forward" size={18} color={t.textMuted} />
+                <Ionicons name="chevron-forward" size={16} color={t.border} />
               </View>
             </SwipeRow>
           );
@@ -192,19 +281,20 @@ export default function ListScreen() {
       />
 
       {showUndo && removedCount > 0 && (
-        <View style={[styles.undo, { backgroundColor: t.text }]}>
+        <View style={[styles.undo, { backgroundColor: t.text, bottom: insets.bottom + (left > 0 ? 82 : 16) }]}>
           <Text style={{ color: t.bg, flex: 1 }} numberOfLines={1}>
             {removedCount === 1 ? `Removed ${lastRemoved!.items[0].item.name}` : `Removed ${removedCount} items`}
           </Text>
           <Pressable accessibilityRole="button" hitSlop={10} onPress={undoRemove}>
-            <Text style={{ color: t.bg, fontWeight: '800' }}>Undo</Text>
+            <Text style={{ color: t.accent, fontWeight: '800' }}>Undo</Text>
           </Pressable>
         </View>
       )}
 
       {left > 0 && (
-        <View style={styles.footer}>
+        <View style={[styles.footer, { bottom: insets.bottom }]} pointerEvents="box-none">
           <Button
+            style={[{ backgroundColor: t.primary }, lift(t), { shadowOpacity: 0.25, shadowColor: t.primary }]}
             title={`Start shopping · ${left} item${left === 1 ? '' : 's'}`}
             icon="navigate"
             onPress={() => router.push('/route')}
@@ -216,19 +306,27 @@ export default function ListScreen() {
 }
 
 const styles = StyleSheet.create({
-  store: { flexDirection: 'row', alignItems: 'center', gap: 12, margin: 16, marginTop: 10, marginBottom: 10, padding: 12, borderRadius: radius.md },
-  family: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth },
-  storeIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  storeName: { fontSize: 16, fontWeight: '700' },
-  addRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 8, paddingHorizontal: 14, borderRadius: radius.md, borderWidth: 1.5 },
-  input: { flex: 1, fontSize: 17, paddingVertical: 14 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.md },
+  hero: { marginHorizontal: 16, marginTop: 6, marginBottom: 12, borderRadius: radius.lg, padding: 14, gap: 12 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  heroChip: { backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  heroFamily: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  progress: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden' },
+  progressFill: { height: 6, borderRadius: 3 },
+  storeIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' },
+  storeName: { fontSize: 17, fontWeight: '800' },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 6, paddingLeft: 14, paddingRight: 8, borderRadius: 999, borderWidth: 1.5 },
+  input: { flex: 1, fontSize: 17, paddingVertical: 13 },
+  linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 13, paddingHorizontal: 14 },
+  check: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   itemName: { fontSize: 17, fontWeight: '600' },
-  section: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', marginTop: 12, marginBottom: 6, marginLeft: 4 },
-  undo: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, padding: 14, borderRadius: radius.md },
-  empty: { alignItems: 'center', gap: 6, marginTop: 36, paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', marginTop: 4 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 16, marginBottom: 8, marginLeft: 2, marginRight: 6 },
+  sectionBadge: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  section: { flex: 1, fontSize: 17, fontWeight: '800', letterSpacing: -0.2 },
+  undo: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, padding: 14, borderRadius: radius.md },
+  empty: { alignItems: 'center', gap: 6, marginTop: 28, paddingHorizontal: 24 },
+  emptyTitle: { fontSize: 22, fontWeight: '800', marginTop: 4 },
   emptyText: { textAlign: 'center', fontSize: 15, lineHeight: 21 },
   clearChecked: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 16 },
-  footer: { padding: 16, paddingTop: 8 },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16, paddingTop: 8 },
 });

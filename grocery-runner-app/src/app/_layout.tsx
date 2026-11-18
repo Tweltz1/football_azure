@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../lib/auth';
 import { DEMO, DEMO_DWELL_MS, DEMO_TOUR } from '../lib/demo';
 import { FamilyProvider } from '../lib/family';
+import { PlanProvider } from '../lib/plan';
 import { RecipeSync } from '../lib/recipeSync';
 import { DataProvider, useData } from '../lib/store';
 import { useTheme } from '../lib/theme';
@@ -33,6 +34,7 @@ export default function RootLayout() {
     <AuthProvider>
     <DataProvider>
     <FamilyProvider>
+    <PlanProvider>
       <StatusBar style="auto" />
       <RecipeSync />
       {DEMO ? <DemoTour /> : null}
@@ -56,7 +58,9 @@ export default function RootLayout() {
         <Stack.Screen name="account" options={{ presentation: 'modal', title: 'Account' }} />
         <Stack.Screen name="share" options={{ presentation: 'modal', title: 'Share a recipe' }} />
         <Stack.Screen name="family" options={{ presentation: 'modal', title: 'Family list' }} />
+        <Stack.Screen name="plan-pick" options={{ presentation: 'modal', title: 'Add a meal' }} />
       </Stack>
+    </PlanProvider>
     </FamilyProvider>
     </DataProvider>
     </AuthProvider>
