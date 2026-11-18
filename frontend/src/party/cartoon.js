@@ -172,7 +172,9 @@ const head = (look, skin, shirt, face) => {
   const costume = look.costume || 0;
   const witch = costume === 5;
   const holidayHat = COSTUME_HATS[costume];
-  const shows = witch || Boolean(holidayHat) || hairShows(look);
+  // The ghost sheet, mummy wraps and cat ears replace the regular hat (it poked through them).
+  const noHat = [4, 8, 9].includes(costume);
+  const shows = witch || Boolean(holidayHat) || noHat || hairShows(look);
   let out = '';
   if (costume === 1) {
     // Vampire collar standing up behind the head
@@ -220,6 +222,7 @@ const head = (look, skin, shirt, face) => {
   if (look.extra === 4 && shows) out += rect(-45, -216, 90, 13, 5, shirt, 3.5);
   if (witch) out += witchHat(hatColor);
   else if (holidayHat) out += holidayHat(skin);
+  else if (noHat) out += '';
   else if (look.hat >= 1 && look.hat <= 3) out += classicHat(look.hat, hatColor);
   else if (look.hat > 3) out += fancyHat(look.hat, hatColor);
   if (costume === 9) {
@@ -235,7 +238,7 @@ const head = (look, skin, shirt, face) => {
   } else {
     out += g('', fEll(-20, -191, 10, 14, INK) + fEll(10, -191, 10, 14, INK) + fEll(-16, -189, 4, 4, '#fff') + fEll(14, -189, 4, 4, '#fff'), 'lc-eyes');
   }
-  if (look.glasses && !look.shades) out += sEll(-27, -196, 24, 24, INK, 3) + sEll(3, -196, 24, 24, INK, 3);
+  if (look.glasses && !look.shades && costume !== 15 && look.extra !== 7) out += sEll(-27, -196, 24, 24, INK, 3) + sEll(3, -196, 24, 24, INK, 3);
   out += fEll(-33, -175, 14, 14, '#ff7f8f', 0.45) + fEll(19, -175, 14, 14, '#ff7f8f', 0.45);
   if (look.facial === 2) out += path('M-16 -166 Q-8 -172 0 -166 Q8 -172 16 -166 Q8 -160 0 -164 Q-8 -160 -16 -166 Z', '#3a2418', 2);
   if (face === 'scared') {
@@ -251,7 +254,7 @@ const head = (look, skin, shirt, face) => {
     case 2: out += ell(-9, -182, 18, 18, '#e0302e', 3) + fEll(-4, -178, 5, 5, '#fff', 0.7); break;
     case 3: out += fRect(-26, -176, 16, 5, 2, INK) + fRect(10, -176, 16, 5, 2, INK); break;
     case 5: out += path('M-44 -174 L-38 -167 L-44 -158 L-50 -167 Z', '#bdf4ff', 2); break;
-    case 6: out += sEll(2, -198, 26, 26, '#f5c542', 3.5) + sPath('M27 -180 Q40 -164 34 -142', '#f5c542', 1.5); break;
+    case 6: if (!look.shades && costume !== 15) out += sEll(2, -198, 26, 26, '#f5c542', 3.5) + sPath('M27 -180 Q40 -164 34 -142', '#f5c542', 1.5); break;
     case 7: out += sPath('M-44 -206 L44 -176', INK, 3) + ell(-27, -196, 22, 20, '#1e1e24', 2.5); break;
     case 8: out += text(22, -170, '★', 12, '#2b2b3a'); break;
     case 9: out += [[-30, -172], [-24, -166], [-34, -165], [24, -172], [30, -166], [20, -165], [-6, -176], [6, -176]].map(([x, y]) => fEll(x - 1.6, y - 1.6, 3.2, 3.2, '#9a5a3a', 0.8)).join(''); break;
@@ -384,8 +387,9 @@ export const personMarkup = (look, pose = { kind: 'stand' }) => {
       body += fEll(-14, -82, 28, 12, '#f2efe6');
     }
     if (costume === 7) body += sPath('M-38 -66 L-30 -74 L-22 -64 L-12 -76 L-2 -64 L8 -74 L18 -64 L28 -74 L38 -66', INK, 3);
-    if (look.chain && !skeleton) body += sPath('M-16 -142 Q0 -112 16 -142', '#f5c542', 5);
   }
+  // The chain goes over every top, the dress and the skeleton suit too (it used to skip the dress).
+  if (look.chain && costume !== 4 && costume !== 8) body += sPath(top === 4 ? 'M-14 -140 Q0 -114 14 -140' : 'M-16 -142 Q0 -112 16 -142', '#f5c542', 5);
 
   // Arms
   const [left, right] = armTargets(pose);

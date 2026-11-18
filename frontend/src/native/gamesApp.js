@@ -8,7 +8,7 @@ export const HOOD_GAMES_PATH = '/hood-games';
 
 // Inside either iPhone app the pages load from capacitor://localhost, which no other phone can open.
 // Links and QR codes meant for other people point at the live website instead.
-export const PUBLIC_SITE = 'https://hood-league.pages.dev';
+export const PUBLIC_SITE = 'https://hood-league.com';
 
 /** Origin for links other people open: the live website in the apps, this page's origin on the web. */
 export const siteOrigin = () => (inApp() ? PUBLIC_SITE : window.location.origin);
