@@ -16,13 +16,14 @@ import EmailSignIn from './EmailSignIn';
 import { hasAppleSheet } from '../native/authSession';
 
 const Login = () => {
-  const hasInvite = new URLSearchParams(window.location.search).has('join');
+  const params = new URLSearchParams(window.location.search);
+  const hasInvite = params.has('join');
   const online = useOnline();
   // Sign in with Apple: only in iPhone app builds that have Apple's own sign-in sheet (App Store guideline 4.8).
   const appleSheet = hasAppleSheet();
   // Before anything else: football or games. An invite link goes straight to football, and so does the
   // Hood Games app, whose games hub already asked.
-  const [football, setFootball] = useState(() => hasInvite || inGamesApp() || window.location.pathname !== '/');
+  const [football, setFootball] = useState(() => hasInvite || params.has('football') || inGamesApp() || window.location.pathname !== '/');
   const [showIntro, setShowIntro] = useState(true);
   // Soft background music once the intro is done; it stops when this page closes.
   useEffect(() => {
@@ -52,6 +53,7 @@ const Login = () => {
           <p className="page-kicker">Auction draft night</p>
           <h1>Hood League</h1>
           <p>Sign in to open your leagues, set your board, and run the live auction room.</p>
+          <p className="login-mock-link"><a href="/mock-draft">Not ready to sign in? Try a free mock auction draft against 9 bots →</a></p>
           <div className="scoreboard-strip">
             <span>Live bidding</span>
             <span>Roster tracking</span>

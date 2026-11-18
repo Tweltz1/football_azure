@@ -26,6 +26,8 @@ import './MobileFlow.css';
 
 // Loaded only when the hub is opened, like the party and Hood Quest pages.
 const HoodGamesHub = lazy(() => import('./hood/HoodGamesHub'));
+const GuestMockDraft = lazy(() => import('./mock/GuestMockDraft'));
+const isMockPath = (path) => (path || '').replace(/\/$/, '') === '/mock-draft';
 const isHubPath = (path) => (path || '').replace(/\/$/, '') === HOOD_GAMES_PATH;
 
 // The studio credit sits under every Hood League page except the live draft room and TV
@@ -57,6 +59,14 @@ function App() {
           <HoodGamesHub />
         </Suspense>
       </div>
+    );
+  }
+  // The practice mock auction draft needs no sign-in (it runs against bots and saves nothing).
+  if (isMockPath(window.location.pathname)) {
+    return (
+      <Suspense fallback={<div style={{ background: '#0f1426', minHeight: '100vh' }} />}>
+        <GuestMockDraft />
+      </Suspense>
     );
   }
   // Party games open without signing in (sign-in there is optional, for saving a character).

@@ -1,6 +1,7 @@
 import React from 'react';
 import ClimbBackdrop from './ClimbBackdrop';
 import StudioCredit from './StudioCredit';
+import { isHoliday } from '../party/season';
 
 /** First thing on the site before signing in: football (the draft site), party games or tabletop adventures. */
 const FrontDoor = ({ onFootball }) => (
@@ -17,9 +18,9 @@ const FrontDoor = ({ onFootball }) => (
           <small>Leagues, auction drafts, rankings and start/sit. Sign in to continue.</small>
         </button>
         <a className="front-door-card is-games" href="/games-night">
-          <span className="front-door-icon">🎃</span>
+          <span className="front-door-icon">{isHoliday() ? '🦃' : '🎃'}</span>
           <strong>Games</strong>
-          <small>Halloween party games for a TV and up to 12 phones. Sign in or play as a guest.</small>
+          <small>{isHoliday() ? 'Holiday' : 'Halloween'} party games for a TV and up to 12 phones. Sign in or play as a guest.</small>
         </a>
         <a className="front-door-card is-games" href="/cards">
           <span className="front-door-icon">🃏</span>
@@ -32,6 +33,7 @@ const FrontDoor = ({ onFootball }) => (
           <small>Fantasy tabletop quests on the TV with an AI narrator. Heroes join on their phones.</small>
         </a>
       </div>
+      <p className="front-door-extra"><a href="/mock-draft">Try a mock auction draft against 9 bots, no sign-in →</a></p>
     </section>
     <StudioCredit />
   </main>
