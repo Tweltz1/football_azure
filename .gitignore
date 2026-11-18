@@ -27,3 +27,5 @@ supabase/.branches
 ml/sms-topics/.cache/
 ml/help-chat/.cache/
 __pycache__/
+/frontend/public/auction-values/
+/frontend/public/sitemap.xml

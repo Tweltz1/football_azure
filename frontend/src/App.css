@@ -2219,3 +2219,4 @@ hr {
 .email-signin-switch button:hover:not(:disabled) {
   background: none;
 }
+.login-mock-link { margin: 6px 0 12px; } .login-mock-link a { color: #ffd36e; font-weight: 700; }

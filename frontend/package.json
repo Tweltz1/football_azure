@@ -14,7 +14,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "prebuild": "node scripts/build-offline-engine.mjs && node scripts/build-player-json.mjs",
+    "prebuild": "node scripts/build-offline-engine.mjs && node scripts/build-player-json.mjs && node scripts/build-rankings-page.mjs",
     "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "postbuild": "node scripts/css-tv-fallbacks.mjs",
     "test": "react-scripts test",
