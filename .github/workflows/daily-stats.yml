@@ -78,3 +78,20 @@ jobs:
             out=$(echo "$out" | jq -c --arg s "$site" --argjson v "${row:-null}" '. + {($s): $v}')
           done
           echo "SITE_VISITS_JSON $(echo "$out" | jq -c --arg d "$day" '{date:$d} + .')"
+
+      - name: weltzcraft.com clicks
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          # First-party click counter: weltzcraft-site/hit.js POSTs /api/hit?e=<event> on intent clicks (Start a project,
+          # brief sent, sample site, merch checkout, app links). Count those POSTs for the last 24 hours, per event.
+          [ -n "$CF_TOKEN" ] || { echo 'SITE_CLICKS_JSON {}'; exit 0; }
+          cf() { curl --silent --show-error --max-time 30 -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" "$@"; }
+          zone=$(cf "https://api.cloudflare.com/client/v4/zones?name=weltzcraft.com" | jq -r '.result[0].id // empty' 2>/dev/null || true)
+          [ -n "$zone" ] || { echo 'SITE_CLICKS_JSON {}'; exit 0; }
+          from=$(date -u -d '24 hours ago' +%FT%TZ); to=$(date -u +%FT%TZ)
+          q='query($z:String!,$a:Time!,$b:Time!){viewer{zones(filter:{zoneTag:$z}){httpRequestsAdaptiveGroups(limit:50,filter:{datetime_geq:$a,datetime_lt:$b,clientRequestPath:"/api/hit",clientRequestHTTPMethodName:"POST",edgeResponseStatus:204}){count dimensions{clientRequestQuery}}}}}'
+          r=$(cf https://api.cloudflare.com/client/v4/graphql -d "$(jq -n --arg q "$q" --arg z "$zone" --arg a "$from" --arg b "$to" '{query:$q, variables:{z:$z, a:$a, b:$b}}')" || true)
+          out=$(echo "$r" | jq -c '[.data.viewer.zones[0].httpRequestsAdaptiveGroups[]? | {k: (.dimensions.clientRequestQuery | sub("^\\??e="; "")), v: .count}] | group_by(.k) | map({key: .[0].k, value: (map(.v) | add)}) | from_entries' 2>/dev/null || echo null)
+          [ "$out" = "null" ] && echo "clicks: $(echo "$r" | jq -c '[.errors[]?.message]' 2>/dev/null)"
+          echo "SITE_CLICKS_JSON $(jq -c -n --arg a "$from" --argjson c "${out:-null}" '{since:$a, clicks:$c}')"
