@@ -5,5 +5,6 @@ import MashPhone from './MashPhone';
 import HallwayPhone from './HallwayPhone';
 import MaskPhone from './MaskPhone';
 import TrotPhone from './TrotPhone';
+import RushPhone from './RushPhone';
 
-export const PHONES = { candle: CandlePhone, quiz: QuizPhone, mash: MashPhone, hallway: HallwayPhone, mask: MaskPhone, trot: TrotPhone };
+export const PHONES = { candle: CandlePhone, quiz: QuizPhone, mash: MashPhone, hallway: HallwayPhone, mask: MaskPhone, trot: TrotPhone, rush: RushPhone };

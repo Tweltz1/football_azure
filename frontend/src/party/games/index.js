@@ -7,6 +7,7 @@ import * as mash from './mash';
 import * as hallway from './hallway';
 import * as mask from './mask';
 import * as trot from './turkeyTrot';
+import * as rush from './giftRush';
 import CandleStage from './CandleStage';
 import CandlePhone from './CandlePhone';
 import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
@@ -25,6 +26,9 @@ import MaskHowTo, { HOWTO_MS as MASK_HOWTO_MS } from './MaskHowTo';
 import TrotStage from './TrotStage';
 import TrotPhone from './TrotPhone';
 import TrotHowTo, { HOWTO_MS as TROT_HOWTO_MS } from './TrotHowTo';
+import RushStage from './RushStage';
+import RushPhone from './RushPhone';
+import RushHowTo, { HOWTO_MS as RUSH_HOWTO_MS } from './RushHowTo';
 import { GAME_META, HOLIDAY_GAME, isPlayable, metaFor } from './meta';
 
 // The TV remembers which quiz questions it has shown, so the next game picks fresh ones first.
@@ -214,6 +218,29 @@ const ENGINES = {
     Phone: TrotPhone,
     HowTo: TrotHowTo,
     howToMs: TROT_HOWTO_MS,
+  },
+  rush: {
+    create: rush.createRush,
+    tick: rush.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'work') rush.work(g, cid, String(msg.job || ''), String(msg.choice || ''), now);
+    },
+    over: rush.isOver,
+    sceneKey: (g) => (g.phase === 'over' ? 'over' : `round${g.round}`),
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g) => Math.min(1, (g.round + g.spawned / rush.ROUNDS[g.round].presents) / rush.ROUNDS.length),
+    phone: rush.phoneView,
+    result: (g, cid) => ({
+      score: g.score,
+      good: g.stats[cid]?.good || 0,
+      awards: rush.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+    }),
+    addPlayer: rush.addPlayer,
+    seen: rush.seen,
+    Stage: RushStage,
+    Phone: RushPhone,
+    HowTo: RushHowTo,
+    howToMs: RUSH_HOWTO_MS,
   },
 };
 

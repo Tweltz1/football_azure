@@ -94,6 +94,21 @@ export const GAME_META = [
     ],
     phoneHint: 'Your phone turns into a joystick in a minute.',
   },
+  {
+    id: 'rush',
+    holiday: 'christmas',
+    title: 'Gift Wrap Rush',
+    emoji: '🎁',
+    tag: 'Co-op',
+    minutes: '5–7 min',
+    blurb: "Run Santa's assembly line together: box, wrap, bow and tag every present before it reaches the sleigh.",
+    how: [
+      'Toys ride the belt past four stations: Box, Wrap, Bow and Tag. Your phone is your station.',
+      "When a present reaches your part of the belt, tap what its order card on the TV asks for.",
+      'Perfect presents fly onto the sleigh. One wrong pick and it goes in the coal bin!',
+    ],
+    phoneHint: 'Your station shows up on this phone in a minute.',
+  },
 ];
 
 // The quiz and the writing game take the name of the theme on now (see season.js): Thanksgiving Quiz,
