@@ -13,9 +13,12 @@ import { useFamily } from '../../lib/family';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 
+// A week's basics across the store, so a first-time shopper can see the walking order before typing anything.
+const SAMPLE_LIST = ['bananas', 'apples', 'lettuce', 'bread', 'chicken breasts', 'ground beef', 'pasta', 'peanut butter', 'cereal', 'frozen pizza', 'milk', 'eggs', 'cheese', 'paper towels'];
+
 export default function ListScreen() {
   const t = useTheme();
-  const { items, store, addItem, toggleItem, removeItem, clearChecked, clearAll, lastRemoved, undoRemove } = useData();
+  const { items, store, addItem, addItems, toggleItem, removeItem, clearChecked, clearAll, lastRemoved, undoRemove } = useData();
   const family = useFamily();
   const others = family.info?.members.filter((m) => !m.me).map((m) => m.name) ?? [];
   const [draft, setDraft] = useState('');
@@ -116,6 +119,13 @@ export default function ListScreen() {
               variant="secondary"
               onPress={() => router.navigate('/recipes')}
               style={{ marginTop: 8, alignSelf: 'center' }}
+            />
+            <Button
+              title="Try a sample list"
+              icon="sparkles"
+              variant="ghost"
+              onPress={() => addItems(SAMPLE_LIST)}
+              style={{ alignSelf: 'center' }}
             />
           </View>
         }

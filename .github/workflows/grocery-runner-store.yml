@@ -5,6 +5,8 @@
 #   saves the pictures to the grocery-runner-store-shots branch.
 # - A push whose commit message contains [stride-listing] fills in the App Store listing from
 #   grocery-runner-app/store/listing.json with tools/app_store_listing.py.
+# - A push whose commit message contains [stride-seed] adds the starter Community recipes
+#   (tools/seed_community.py). Safe to re-run.
 name: Shop Stride App Store listing
 
 on:
@@ -149,3 +151,17 @@ jobs:
             "$RUNNER_TEMP/apple-api/bin/python" -c 'import glob, os, sys; from PIL import Image; [Image.open(f).convert("RGB").save(os.path.join(sys.argv[2], os.path.basename(f))) for f in glob.glob(sys.argv[1] + "/*.png")]' "$RUNNER_TEMP/shots" "$SHOTS"
           fi
           "$RUNNER_TEMP/apple-api/bin/python" grocery-runner-app/tools/app_store_listing.py "$SHOTS"
+
+  seed:
+    if: contains(github.event.head_commit.message, '[stride-seed]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add the starter Community recipes
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || 'nkwedlskhnojseeroezm' }}
+        run: python3 grocery-runner-app/tools/seed_community.py

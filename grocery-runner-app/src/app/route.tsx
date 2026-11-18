@@ -11,6 +11,7 @@ import { locationLabel } from '../lib/labels';
 import { Checkoff, learnFromTrip } from '../lib/learnAisles';
 import { dealFor, useDeals } from '../lib/deals';
 import { fetchStoreAisles, isShared, voteAisle } from '../lib/sharedAisles';
+import { maybeAskForReview } from '../lib/review';
 import { buildProfile } from '../lib/storeProfile';
 import { ListItem, Store } from '../lib/types';
 import { planRoute } from '../lib/routing/planRoute';
@@ -203,6 +204,7 @@ export default function RouteScreen() {
             onPress={() => {
               clearChecked();
               router.back();
+              setTimeout(maybeAskForReview, 1200);
             }}
             style={{ alignSelf: 'stretch' }}
           />
