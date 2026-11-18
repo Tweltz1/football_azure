@@ -173,6 +173,19 @@ Deno.serve(async (req) => {
     return new Response('Talk Shops has moved to talkshops.app.', { status: 410, headers: corsHeaders });
   }
 
+  // Hood League weekly email: one-click unsubscribe (the link in each email, and mail apps' List-Unsubscribe button).
+  if (path === 'league/email-off' && (req.method === 'GET' || req.method === 'POST')) {
+    const u = url.searchParams.get('u') ?? '';
+    const t = url.searchParams.get('t') ?? '';
+    const text = (status: number, body: string) => new Response(body, { status, headers: { ...corsHeaders, 'Content-Type': 'text/plain; charset=utf-8' } });
+    if (!u || !/^[a-f0-9]{32}$/.test(t)) return text(400, 'This unsubscribe link is not complete.');
+    const { data, error } = await db.from('league_email_prefs').update({ weekly_off: true, updated_at: new Date().toISOString() })
+      .eq('user_id', u).eq('token', t).select('user_id');
+    if (error) return text(500, 'Something went wrong. Reply to the email and we will take you off the list.');
+    if (!data?.length) return text(404, 'This unsubscribe link is not valid.');
+    return text(200, "You're unsubscribed from Hood League's weekly start/sit email. You can still use hood-league.com as usual.");
+  }
+
   if (req.method === 'POST' && path === 'shop/incoming-sms') {
     try {
       const receive = async (sid: string, phone: string, text: string, topic: string) => {
