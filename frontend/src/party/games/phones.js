@@ -9,5 +9,6 @@ import RushPhone from './RushPhone';
 import CountdownPhone from './CountdownPhone';
 import AdmirerPhone from './AdmirerPhone';
 import RainbowPhone from './RainbowPhone';
+import EggPhone from './EggPhone';
 
-export const PHONES = { candle: CandlePhone, quiz: QuizPhone, mash: MashPhone, hallway: HallwayPhone, mask: MaskPhone, trot: TrotPhone, rush: RushPhone, countdown: CountdownPhone, admirer: AdmirerPhone, rainbow: RainbowPhone };
+export const PHONES = { candle: CandlePhone, quiz: QuizPhone, mash: MashPhone, hallway: HallwayPhone, mask: MaskPhone, trot: TrotPhone, rush: RushPhone, countdown: CountdownPhone, admirer: AdmirerPhone, rainbow: RainbowPhone, egg: EggPhone };

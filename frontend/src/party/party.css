@@ -902,3 +902,33 @@
 #lc-root .rr-picks .is-on { outline: 6px solid #ffe066; transform: translateY(4px); box-shadow: 0 2px 0 var(--lc-ink); }
 #lc-root .lq-demo-phone .rr-picks > * { min-height: 120px; font-size: 38px; }
 #lc-root .lq-demo-phone .rr-picks b { font-size: 18px; }
+
+/* Egg Hunt */
+#lc-root .eh-banner { bottom: auto; top: 11%; }
+#lc-root .eh-timer { display: inline-block; width: 6em; height: 0.55em; margin-left: 0.6em; vertical-align: middle; background: rgba(255, 255, 255, 0.2); border-radius: 999px; overflow: hidden; }
+#lc-root .eh-timer i { display: block; height: 100%; background: linear-gradient(90deg, #ff6fae, #ffe14d); }
+#lc-root .eh-legend { position: absolute; left: 50%; bottom: 1.5%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35em 0.6em; max-width: 94%; padding: 0.35em 0.9em; font-size: 1.05em; font-weight: 800; background: rgba(22, 18, 43, 0.84); border: 4px solid var(--lc-ink); border-radius: 999px; }
+#lc-root .eh-legend span { display: inline-flex; align-items: center; gap: 0.3em; white-space: nowrap; }
+#lc-root .eh-legend span.is-found { color: #9dff9d; }
+#lc-root .eh-legend i, #lc-root .eh-dot { display: inline-block; width: 0.9em; height: 1.15em; border: 3px solid var(--lc-ink); border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; vertical-align: middle; }
+#lc-root .eh-legend i.is-gold { background: radial-gradient(circle at 35% 30%, #fff6b0, #ffd23f 55%, #e0a400); }
+#lc-root .eh-card p { max-width: 26em; margin: 0.4em auto 0; }
+#lc-root .eh-scores { top: 52%; }
+#lc-root .eh-glow { animation: eh-glow 1.2s ease-in-out infinite alternate; transform-origin: center; transform-box: fill-box; }
+@keyframes eh-glow { from { opacity: 0.25; transform: scale(0.9); } to { opacity: 0.7; transform: scale(1.1); } }
+#lc-root .eh-twinkle { animation: eh-twinkle 0.9s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+@keyframes eh-twinkle { 50% { transform: scale(0.4) rotate(45deg); } }
+#lc-root .eh-hmm { animation: lc-bob 0.6s ease-in-out infinite alternate; }
+#lc-root .eh-phone { gap: 10px; }
+#lc-root .eh-note { margin: 0; padding: 8px 10px; text-align: center; font-weight: 800; font-size: 17px; background: rgba(255, 255, 255, 0.08); border-radius: 12px; }
+#lc-root .eh-note.is-locked { background: rgba(255, 90, 78, 0.25); animation: lc-shake 0.4s ease-in-out; }
+#lc-root .eh-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+#lc-root .eh-grid.is-locked { opacity: 0.55; filter: grayscale(0.6); }
+#lc-root .eh-spot { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 72px; padding: 4px 2px; font-size: 32px; line-height: 1.1; color: #fff; background: linear-gradient(180deg, #7fd36a, #3f9e3a); border: 3px solid var(--lc-ink); border-radius: 14px; box-shadow: 0 4px 0 var(--lc-ink); cursor: pointer; }
+#lc-root .eh-spot small { font: 700 10px var(--lc-font); opacity: 0.95; text-shadow: 0 1px 0 var(--lc-ink); }
+#lc-root .eh-spot:active, #lc-root .eh-spot.is-press { transform: translateY(3px); box-shadow: 0 1px 0 var(--lc-ink); }
+#lc-root .eh-spot.is-miss { background: #5b5470; opacity: 0.6; }
+#lc-root .eh-spot.is-mine { background: linear-gradient(180deg, #ffd1e3, #ff6fae); outline: 4px solid #ffe066; }
+#lc-root .eh-spot.is-gold { background: linear-gradient(180deg, #fff6b0, #e0a400); }
+#lc-root .lq-demo-phone .eh-grid { gap: 4px; }
+#lc-root .lq-demo-phone .eh-spot { min-height: 46px; font-size: 24px; border-width: 2px; border-radius: 10px; box-shadow: 0 3px 0 var(--lc-ink); }
