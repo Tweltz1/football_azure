@@ -891,3 +891,28 @@ body.jk-body::before { background: #f5f3ee; }
 .jk-learn-ask { margin: 14px 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--jk-bg); border: 1px solid var(--jk-line); }
 .jk-learn-ask p { margin: 6px 0 0; font-size: 0.92em; }
 .jk-terms-only { margin-top: 8px; }
+
+/* Share this listing */
+.jk-share-btn { margin-left: auto; margin-right: 8px; }
+.jk-share-card { padding: 14px; border-radius: 14px; background: var(--jk-accent-soft); border: 1px solid var(--jk-line); }
+.jk-share-card p { margin: 4px 0 10px; font-size: 14px; line-height: 1.4; }
+.jk-share-card .jk-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.jk-answering { margin: 0 16px 8px; }
+
+/* "Looking for" posts */
+.jk-wants { margin: 4px 16px 12px; padding: 12px; border-radius: 14px; background: var(--jk-surface-2); border: 1px solid var(--jk-line); }
+.jk-wants-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.jk-wants-head h2 { font-size: 16px; font-weight: 800; margin: 0; }
+.jk-wants-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.jk-wants-list li { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: var(--jk-surface, #fff); }
+.jk-wants-list .jk-want-text { flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; }
+.jk-wants-list .jk-want-text small { display: block; color: var(--jk-muted, #6b6b6b); }
+.jk-wants-list .jk-btn { flex: none; padding: 8px 12px; font-size: 14px; }
+.jk-want-form { display: grid; gap: 8px; margin-top: 10px; }
+.jk-want-form input, .jk-want-form select { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--jk-line); background: var(--jk-surface, #fff); color: inherit; }
+
+/* Replies from Curbsy (Me tab) */
+.jk-replies { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.jk-replies li { padding: 10px 12px; border-radius: 12px; background: var(--jk-surface-2); border: 1px solid var(--jk-line); font-size: 14px; line-height: 1.4; }
+.jk-replies .jk-reply { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--jk-accent-soft); }
+.jk-row-block { padding: 12px 16px; }

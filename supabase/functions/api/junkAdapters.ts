@@ -1,7 +1,8 @@
 // Junk App storage on Supabase: the junk_* tables, the junk_search function and the junk-photos bucket.
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.49.4';
-import type { JunkItem, JunkMessage, JunkPhotos, JunkStore } from '../_shared/junk.ts';
+import type { JunkItem, JunkMessage, JunkPhotos, JunkStore, JunkWant } from '../_shared/junk.ts';
+import { distanceKm } from '../_shared/junk.ts';
 import type { JunkPartner, JunkPlus, JunkSaved } from '../_shared/junkPlus.ts';
 import type { JunkClaim } from '../_shared/junkClaims.ts';
 
@@ -54,6 +55,12 @@ interface PartnerDb { id: string; kind: string; name: string; blurb: string; pho
 const partnerRow = (r: PartnerDb): JunkPartner => ({
   id: r.id, kind: r.kind === 'sponsor' ? 'sponsor' : 'hauler', name: r.name, blurb: r.blurb ?? '', phone: r.phone ?? '', url: r.url ?? '',
   lat: r.lat, lng: r.lng, km: r.km, active: r.active,
+});
+
+interface WantDb { id: string; owner_id: string; owner_name: string; title: string; note: string; category: string; lat: number; lng: number; status: string; created_at: string }
+const wantRow = (r: WantDb): JunkWant => ({
+  id: r.id, ownerId: r.owner_id, ownerName: r.owner_name, title: r.title, note: r.note ?? '', category: r.category as JunkWant['category'],
+  lat: r.lat, lng: r.lng, status: r.status === 'closed' ? 'closed' : 'open', createdAt: r.created_at,
 });
 
 export function createJunkStore(db: SupabaseClient): JunkStore {
@@ -161,6 +168,7 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_uploads').delete().eq('user_id', userId));
       must(await db.from('junk_claims').delete().or(`claimer_id.eq.${userId},owner_id.eq.${userId}`));
       must(await db.from('junk_feedback').delete().eq('user_id', userId));
+      must(await db.from('junk_wants').delete().eq('owner_id', userId));
       must(await db.from('junk_label_fixes').delete().eq('user_id', userId));
       must(await db.from('junk_saved_searches').delete().eq('user_id', userId));
       must(await db.from('junk_push_tokens').delete().eq('user_id', userId));
@@ -208,6 +216,39 @@ export function createJunkStore(db: SupabaseClient): JunkStore {
       must(await db.from('junk_feedback').insert({
         id: f.id, user_id: f.userId, user_name: f.userName, body: f.body, created_at: f.createdAt, kind: f.kind ?? 'contact', item_id: f.itemId ?? null,
       }));
+    },
+    async myFeedback(userId) {
+      const rows = must(await db.from('junk_feedback').select('id, body, kind, created_at, reply, replied_at').eq('user_id', userId)
+        .order('created_at', { ascending: false }).limit(20)) as { id: string; body: string; kind: string; created_at: string; reply: string | null; replied_at: string | null }[] | null;
+      return (rows ?? []).map((r) => ({ id: r.id, body: r.body, kind: r.kind ?? 'contact', createdAt: r.created_at, reply: r.reply ?? null, repliedAt: r.replied_at ?? null }));
+    },
+    async addWant(w) {
+      must(await db.from('junk_wants').insert({
+        id: w.id, owner_id: w.ownerId, owner_name: w.ownerName, title: w.title, note: w.note, category: w.category,
+        lat: w.lat, lng: w.lng, status: w.status, created_at: w.createdAt,
+      }));
+    },
+    async getWant(id) {
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+      const r = must(await db.from('junk_wants').select('*').eq('id', id).maybeSingle()) as WantDb | null;
+      return r ? wantRow(r) : null;
+    },
+    async wantsNear(lat, lng, km, limit) {
+      // A box around the spot, then the real distance. Wants close after 30 days on their own.
+      const dLat = km / 111, dLng = km / (111 * Math.max(0.2, Math.cos((lat * Math.PI) / 180)));
+      const since = new Date(Date.now() - 30 * 86_400_000).toISOString();
+      const rows = must(await db.from('junk_wants').select('*').eq('status', 'open').gte('created_at', since)
+        .gte('lat', lat - dLat).lte('lat', lat + dLat).gte('lng', lng - dLng).lte('lng', lng + dLng)
+        .order('created_at', { ascending: false }).limit(200)) as WantDb[] | null;
+      return (rows ?? []).map((r) => ({ ...wantRow(r), km: distanceKm(lat, lng, r.lat, r.lng) })).filter((w) => w.km <= km).slice(0, limit);
+    },
+    async closeWant(id, at) {
+      must(await db.from('junk_wants').update({ status: 'closed', closed_at: at }).eq('id', id));
+    },
+    async countWantsSince(ownerId, since) {
+      const { count, error } = await db.from('junk_wants').select('id', { count: 'exact', head: true }).eq('owner_id', ownerId).gte('created_at', since);
+      if (error) throw error;
+      return count ?? 0;
     },
     async countFeedbackSince(userId, since) {
       const { count, error } = await db.from('junk_feedback').select('id', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', since);

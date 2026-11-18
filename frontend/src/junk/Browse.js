@@ -6,6 +6,7 @@ import { SponsorCard, useSponsor } from './Plus';
 import { turnOnAlerts } from './store';
 import { CATEGORIES, MILES, distanceLabel, milesToKm, timeAgo } from './device';
 import { IconBox, IconClose, IconPin, IconSearch } from './icons';
+import Wants from './Wants';
 
 export function ItemCard({ item }) {
   const pieces = item.pieces || [];
@@ -203,6 +204,7 @@ export default function Browse() {
 
       {spot && (
         <>
+          {!searching && <Wants />}
           <div className="jk-list-head">
             <h2>{searching ? `${items ? items.length : '…'} ${items && items.length === 1 ? 'match' : 'matches'}` : 'Up for grabs'}</h2>
             <div className="jk-seg" role="group" aria-label="Sort">

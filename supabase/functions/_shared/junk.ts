@@ -131,6 +131,23 @@ export interface JunkStore extends ClaimStore, PlusStore {
   /** Learning loop: a fix to the name or category the phone guessed (see addLabelFix in the handler). */
   addLabelFix(f: JunkLabelFix): Promise<void>;
   countLabelFixesSince(userId: string, since: string): Promise<number>;
+  /** "Contact Curbsy" messages the person sent, newest first, with any reply from Curbsy. */
+  myFeedback(userId: string): Promise<JunkFeedbackOut[]>;
+  /** "Looking for" posts. */
+  addWant(w: JunkWant): Promise<void>;
+  getWant(id: string): Promise<JunkWant | null>;
+  /** Open wants within `km` of a spot, newest first. */
+  wantsNear(lat: number, lng: number, km: number, limit: number): Promise<(JunkWant & { km: number })[]>;
+  closeWant(id: string, at: string): Promise<void>;
+  countWantsSince(ownerId: string, since: string): Promise<number>;
+}
+
+export interface JunkFeedbackOut { id: string; body: string; kind: string; createdAt: string; reply: string | null; repliedAt: string | null }
+
+/** A "Looking for" post: a neighbor asking for something. Neighbors with one tap "I have one" and post it. */
+export interface JunkWant {
+  id: string; ownerId: string; ownerName: string; title: string; note: string; category: JunkCategory;
+  lat: number; lng: number; status: 'open' | 'closed'; createdAt: string;
 }
 
 export interface JunkLabelFix {
@@ -209,6 +226,9 @@ export const VERIFIED_PICKUPS = 3;
 /** A member card says "New member" for this long. */
 export const NEW_MEMBER_DAYS = 14;
 
+// "Looking for" posts: how far they reach and how many a person can post a day.
+const WANT_KM = 16;
+const WANTS_PER_DAY = 5;
 const ok = (body?: unknown): Res => ({ status: 200, body });
 const bad = (message: string): Res => ({ status: 400, body: message });
 const needSignIn: Res = { status: 401, body: 'Sign in first.' };
@@ -543,6 +563,31 @@ export async function junkRoute(
 
   if (section === 'categories' && method === 'GET') return ok({ categories: JUNK_CATEGORIES, conditions: JUNK_CONDITIONS });
 
+  // A shared listing's public web page (hood-league.com/curbsy.html?item=...): what it is and its photos, never who
+  // posted it or where it is. Works signed out.
+  if (section === 'public' && a && !b && method === 'GET') {
+    if (!UUID.test(a)) return notFound;
+    const item = await store.getItem(a);
+    if (!item || item.status === 'hidden') return notFound;
+    return ok({
+      id: item.id, title: item.title, category: item.category, condition: item.condition,
+      description: item.description.slice(0, 300), photos: item.photos.slice(0, 4).map((p) => photos.url(p)),
+      status: item.status, handoff: item.handoff ?? 'porch', firstCome: item.firstCome, pieces: item.pieces.length, postedAt: item.createdAt,
+    });
+  }
+
+  // "Looking for" posts near a spot (browsing needs no sign-in). Only a rough distance, never the spot itself.
+  if (section === 'wants' && !a && method === 'GET') {
+    const lat = num(params?.get('lat')), lng = num(params?.get('lng'));
+    if (!isLat(lat) || !isLng(lng)) return bad('Location needed.');
+    const hidden = new Set(me ? await store.blocked(me) : []);
+    const list = (await store.wantsNear(lat, lng, WANT_KM, 30)).filter((w) => !hidden.has(w.ownerId));
+    return ok(list.map((w) => ({
+      id: w.id, title: w.title, note: w.note, category: w.category, ownerName: w.ownerName, mine: w.ownerId === me,
+      km: Math.round(w.km * 10) / 10, createdAt: w.createdAt,
+    })));
+  }
+
   // ---- Everything below needs a sign-in ----
   if (!me) return needSignIn;
   // Others see the name picked in the Me tab, else the first name from the sign-in (never an email).
@@ -600,6 +645,35 @@ export async function junkRoute(
     ctx.log.warn(`junk: contact message from ${me}`);
     return ok({ sent: true });
   }
+  // Replies from Curbsy to "Contact Curbsy" messages and appeals (written by the daily review), shown in the Me tab.
+  if (section === 'contact' && !a && method === 'GET') {
+    return ok(await store.myFeedback(me));
+  }
+  // Post a "Looking for": a neighbor with one taps "I have one" and posts it, and the asker gets a message.
+  if (section === 'wants' && !a && method === 'POST') {
+    const stop = await gate();
+    if (stop) return stop;
+    if (await store.countWantsSince(me, daysAgo(now, 1)) >= WANTS_PER_DAY) return { status: 429, body: 'You\'ve asked for a lot today. Try again tomorrow.' };
+    const title = str(body.title, 60);
+    const note = longStr(body.note, 300);
+    const spot = readSpot(body);
+    if (title.length < 2) return bad('Say what you\'re looking for.');
+    if (!spot) return bad('Location needed.');
+    const category = (JUNK_CATEGORIES as readonly string[]).includes(String(body.category)) ? body.category as JunkCategory : 'other';
+    const problem = listingProblem({ title, description: note });
+    if (problem) return bad(problem);
+    const want: JunkWant = { id: ctx.newId(), ownerId: me, ownerName: myName, title, note, category, lat: fuzz(spot.lat), lng: fuzz(spot.lng), status: 'open', createdAt: nowIso };
+    await store.addWant(want);
+    return ok({ id: want.id, title, note, category, ownerName: myName, mine: true, km: 0, createdAt: nowIso });
+  }
+  if (section === 'wants' && a && b === 'close' && method === 'POST') {
+    if (!UUID.test(a)) return notFound;
+    const want = await store.getWant(a);
+    if (!want || want.ownerId !== me) return notFound;
+    await store.closeWant(want.id, nowIso);
+    return ok({ closed: true });
+  }
+
   // Appeal a ban, a warning or a hidden listing ("I was falsely reported"). Works while banned; the daily review lists it.
   if (section === 'appeal' && !a && method === 'POST') {
     const text = longStr(body.body, 2000);
@@ -687,6 +761,16 @@ export async function junkRoute(
     await store.putItem(item);
     // Plus members whose saved search matches hear about it right away.
     await alertSavedSearches(ctx, deps, item).catch((error) => ctx.log.warn('junk: saved-search alerts failed', error));
+    // Posted for a "Looking for": tell the asker, in a message about the new listing.
+    if (typeof body.wantId === 'string' && UUID.test(body.wantId)) {
+      const want = await store.getWant(body.wantId);
+      if (want && want.status === 'open' && want.ownerId !== me && !(await store.blocked(want.ownerId)).includes(me)) {
+        await store.addMessage({
+          id: ctx.newId(), itemId: item.id, fromId: me, toId: want.ownerId, fromName: myName,
+          body: `You were looking for ${want.title}. I just posted this one. It's free if you want it!`, createdAt: nowIso, readAt: null,
+        });
+      }
+    }
     return ok(itemOut(deps, item, me));
   }
 

@@ -7,7 +7,7 @@ import {
   type JunkDetection, type JunkDeps, type JunkItem, type JunkMessage, type JunkStore,
 } from '../functions/_shared/junk.ts';
 import type { JunkClaim } from '../functions/_shared/junkClaims.ts';
-import type { JunkLabelFix } from '../functions/_shared/junk.ts';
+import type { JunkLabelFix, JunkWant } from '../functions/_shared/junk.ts';
 import type { JunkPartner, JunkPlus, JunkSaved } from '../functions/_shared/junkPlus.ts';
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -33,6 +33,7 @@ function world(detection: JunkDetection | null = null) {
     [ALICE, BOB, CARL].map((id) => [id, { termsAt: '2026-11-01T00:00:00Z', bannedAt: null }]),
   );
   const feedback: { userId: string; body: string; createdAt: string; kind?: string; itemId?: string | null }[] = [];
+  const wants: JunkWant[] = [];
   const labelFixes: JunkLabelFix[] = [];
   const devices = new Map<string, { banned: boolean; at: string }>();
   const isOpen = (c: JunkClaim) => c.status === 'active' || c.status === 'arrived';
@@ -114,6 +115,12 @@ function world(detection: JunkDetection | null = null) {
     async touchMember(userId, joinedAt, provider) { members.set(userId, { termsAt: null, bannedAt: null, ...members.get(userId), joinedAt, provider } as never); },
     async addFeedback(f) { feedback.push({ userId: f.userId, body: f.body, createdAt: f.createdAt, kind: f.kind ?? 'contact', itemId: f.itemId ?? null }); },
     async countFeedbackSince(userId, since) { return feedback.filter((f) => f.userId === userId && f.createdAt >= since).length; },
+    async myFeedback(userId) { return feedback.filter((f) => f.userId === userId).map((f, i) => ({ id: String(i), body: f.body, kind: f.kind ?? 'contact', createdAt: f.createdAt, reply: null, repliedAt: null })); },
+    async addWant(w) { wants.push(w); },
+    async getWant(id) { return wants.find((w) => w.id === id) ?? null; },
+    async wantsNear(lat, lng, km, limit) { return wants.filter((w) => w.status === 'open').map((w) => ({ ...w, km: distanceKm(lat, lng, w.lat, w.lng) })).filter((w) => w.km <= km).slice(0, limit); },
+    async closeWant(id) { const w = wants.find((x) => x.id === id); if (w) w.status = 'closed'; },
+    async countWantsSince(ownerId, since) { return wants.filter((w) => w.ownerId === ownerId && w.createdAt >= since).length; },
     async addLabelFix(f) { labelFixes.push(clone(f)); },
     async countLabelFixesSince(userId, since) { return labelFixes.filter((f) => f.userId === userId && f.createdAt >= since).length; },
     async plusRows(userId) { return plusRows.filter((r) => r.userId === userId).map(clone); },
@@ -188,7 +195,7 @@ function world(detection: JunkDetection | null = null) {
     if (saved && !fields.fresh) saved.createdAt = new Date(Date.parse(saved.createdAt) - 45 * 60_000).toISOString();
     return out;
   };
-  return { names, plusRows, tips, saved, tokens, partners, taps, pushed, call, post, items, stored, messages, deletedAccounts, claims, members, feedback, labelFixes, joined, devices, providers, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
+  return { names, plusRows, tips, saved, tokens, partners, taps, pushed, call, post, items, stored, messages, deletedAccounts, claims, members, feedback, wants, labelFixes, joined, devices, providers, usePhone: (id: string | null) => { phone = id; }, now: () => new Date(clock).toISOString(), tick: (ms: number) => { clock += ms; } };
 }
 
 test('ignores routes that are not the Junk App', async () => {
@@ -962,4 +969,44 @@ test('a banned account can mark its listing taken but not rewrite it or upload p
   assert.equal((await w.call(ALICE, 'POST', `junk/items/${item.id}`, { title: 'Something else' }))?.status, 403);
   assert.equal((await w.call(ALICE, 'POST', 'junk/photos', { image: JPEG }))?.status, 403);
   assert.equal((await w.call(ALICE, 'POST', `junk/items/${item.id}`, { status: 'gone' }))?.status, 200);
+});
+
+test('a shared listing has a public page without the poster or the spot', async () => {
+  const w = world();
+  const item = await w.post(ALICE);
+  const res = await w.call(null, 'GET', `junk/public/${item.id}`);
+  assert.equal(res?.status, 200);
+  const out = res?.body as Record<string, unknown>;
+  assert.equal(out.title, 'Oak dresser');
+  assert.equal((out.photos as string[]).length, 1);
+  assert.equal(out.lat, undefined);
+  assert.equal(out.ownerId, undefined);
+  assert.equal(out.ownerName, undefined);
+  assert.equal((await w.call(null, 'GET', 'junk/public/nope'))?.status, 404);
+});
+
+test('"Looking for" posts: ask, neighbors see it, posting one tells the asker, asker closes it', async () => {
+  const w = world();
+  let res = await w.call(BOB, 'POST', 'junk/wants', { title: 'Crib', note: 'For a new baby', category: 'kids', ...HOME });
+  assert.equal(res?.status, 200, String(res?.body));
+  const want = res?.body as { id: string };
+  res = await w.call(null, 'GET', 'junk/wants', undefined, NORTH);
+  const list = res?.body as { id: string; title: string; mine: boolean; lat?: number }[];
+  assert.equal(list.length, 1);
+  assert.equal(list[0].title, 'Crib');
+  assert.equal(list[0].lat, undefined);
+  const item = await w.post(ALICE, { title: 'Wooden crib', wantId: want.id });
+  const note = w.messages.find((m) => m.itemId === item.id);
+  assert.ok(note, 'the asker gets a message');
+  assert.equal(note!.toId, BOB);
+  assert.equal((await w.call(ALICE, 'POST', `junk/wants/${want.id}/close`, {}))?.status, 404, 'only the asker can close it');
+  assert.equal((await w.call(BOB, 'POST', `junk/wants/${want.id}/close`, {}))?.status, 200);
+  assert.equal(((await w.call(null, 'GET', 'junk/wants', undefined, NORTH))?.body as unknown[]).length, 0);
+});
+
+test('contact messages come back with their replies', async () => {
+  const w = world();
+  await w.call(ALICE, 'POST', 'junk/contact', { body: 'How do I edit a post?' });
+  const res = await w.call(ALICE, 'GET', 'junk/contact');
+  assert.equal((res?.body as { body: string }[])[0].body, 'How do I edit a post?');
 });

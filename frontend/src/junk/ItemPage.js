@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { shareListing } from './share';
 import { useJunk } from './JunkApp';
 import {
   blockUser, cancelClaim, claimItem, deleteItem, finishClaim, getItem, releaseClaim, reportItem, updateItem,
@@ -7,7 +8,7 @@ import {
 import { categoryIcon, categoryLabel, conditionLabel, distanceLabel, locate, timeAgo } from './device';
 import PieceThumb from './PieceThumb';
 import { ContactSheet, MemberCard, SafetyTipsSheet, SpotCard, shareTrip, tipsSeen } from './Safety';
-import { IconBack, IconBox, IconCar, IconChat, IconCheck, IconEdit, IconFlag, IconSparkle, IconTrash } from './icons';
+import { IconBack, IconBox, IconCar, IconChat, IconCheck, IconEdit, IconFlag, IconShare, IconSparkle, IconTrash } from './icons';
 import { HaulerCard } from './Plus';
 
 const TREND = { closer: 'getting closer', steady: 'not much closer yet', away: 'heading away' };
@@ -138,6 +139,12 @@ export default function ItemPage() {
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState(null); // 'report' | 'confirm-delete' | 'claim'
   const [notice, setNotice] = useState('');
+  // Right after posting: offer to share it (every shared listing is an ad for Curbsy).
+  const justPosted = Boolean(useLocation().state?.justPosted);
+  const share = async () => {
+    const how = await shareListing(item);
+    if (how === 'copied') setNotice('Link copied. Paste it in a text or a Facebook group.');
+  };
   const [pick, setPick] = useState(() => new Set()); // things picked on a multi-item post
 
   useEffect(() => {
@@ -340,6 +347,11 @@ export default function ItemPage() {
         )}
         <div className="jk-gallery-bar">
           <BackButton />
+          {item.status !== 'hidden' && (
+            <button type="button" className="jk-icon-btn jk-share-btn" onClick={share} aria-label="Share this listing">
+              <IconShare />
+            </button>
+          )}
           {!item.mine && (
             <button type="button" className="jk-icon-btn" onClick={() => (me ? setMenu('report') : askSignIn('Sign in to report a listing.'))} aria-label="Report or block">
               <IconFlag />
@@ -364,6 +376,13 @@ export default function ItemPage() {
             <strong>Hidden after reports</strong>
             <p>Neighbors reported this listing, so it's hidden while a person reviews it. If it follows the rules, ask for a review and we'll put it back up.</p>
             <button type="button" className="jk-btn jk-full" onClick={() => setAppealing(true)}>Ask for a review</button>
+          </div>
+        )}
+        {justPosted && item.mine && item.status === 'available' && (
+          <div className="jk-share-card">
+            <strong>It's live! Share it to find a taker faster.</strong>
+            <p>Post it in a neighborhood Facebook group or text it to a friend. The link shows the photo and what it is, never your address.</p>
+            <button type="button" className="jk-btn jk-full" onClick={share}><IconShare size={18} /> Share this listing</button>
           </div>
         )}
         <h1>{item.title}</h1>
