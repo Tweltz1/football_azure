@@ -1,0 +1,20 @@
+name: Talk Shops toll-free verification status
+# Reads the Telnyx toll-free verification request and prints only non-personal fields
+# (website, opt-in, use case, status, reason). Repo logs are public, so no name/address/email/phone.
+on:
+  push:
+    branches: [claude/project-thread-i60gkl]
+    paths: [".github/workflows/talkshops-tf-verification.yml"]
+  workflow_dispatch:
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show verification request
+        env:
+          KEY: ${{ secrets.TALKSHOPS_TELNYX_API_KEY }}
+        run: |
+          curl -sS -H "Authorization: Bearer $KEY" \
+            "https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=20" > r.json
+          jq '{total: .total_records, records: [.records[]? | {id, verificationStatus, reason, corporateWebsite, optInWorkflow, optInWorkflowImageURLs, useCase, useCaseSummary, messageVolume, productionMessageContent, additionalInformation, isvReseller, entityType, createdAt, updatedAt}]}' r.json \
+            || jq 'del(.records)|keys' r.json
