@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, Stack } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -27,6 +27,7 @@ import { radius, useTheme } from "../lib/theme";
 import { Tote } from "../lib/types";
 import { placeOf, reminderCount, reminders } from "../lib/extras";
 import { shareInventoryReport } from "../lib/report";
+import { maybeAskForReview } from "../lib/review";
 
 type Row = { tote: Tote; matches: string[]; header?: string };
 
@@ -89,6 +90,14 @@ export default function Home() {
       return { ...r, header };
     });
   }, [totes, query, byPlace]);
+
+  // A search that found an item is a happy moment: ask for a rating once the person has stopped typing.
+  const found = query.trim().length > 1 && rows.some((r) => r.matches.length > 0);
+  useEffect(() => {
+    if (!found) return;
+    const t = setTimeout(maybeAskForReview, 2500);
+    return () => clearTimeout(t);
+  }, [found]);
 
   const totalItems = totes.reduce((n, x) => n + itemCount(x), 0);
   const locations = new Set(totes.map((x) => placeOf(x.location).toLowerCase()).filter(Boolean))
