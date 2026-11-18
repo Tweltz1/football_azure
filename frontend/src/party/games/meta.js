@@ -109,6 +109,21 @@ export const GAME_META = [
     ],
     phoneHint: 'Your station shows up on this phone in a minute.',
   },
+  {
+    id: 'countdown',
+    holiday: 'newyear',
+    title: 'Countdown Chaos',
+    emoji: '🎆',
+    tag: 'Versus',
+    minutes: '5–6 min',
+    blurb: 'The ball drops and everyone hits STOP as close to midnight as they dare. Go over and you get nothing!',
+    how: [
+      'The ball drops toward midnight. The clock runs on your phone.',
+      'Hit STOP as close to midnight as you dare. Past midnight scores nothing!',
+      'Closest wins the round. Watch out for clocks that go dark, run fast or wobble.',
+    ],
+    phoneHint: 'Your clock and STOP button show up on this phone.',
+  },
 ];
 
 // The quiz and the writing game take the name of the theme on now (see season.js): Thanksgiving Quiz,

@@ -9,11 +9,12 @@ import { QuizBackdrop } from './games/QuizStage';
 import { HallBackdrop } from './games/HallwayStage';
 import { TrotBackdrop } from './games/TrotStage';
 import { WorkshopBackdrop } from './games/RushStage';
+import { City } from './games/CountdownStage';
 
 import { GAME_META, HOLIDAY_GAME, gameFor, isPlayable } from './games';
 import './party.css';
 import { siteOrigin } from '../native/gamesApp';
-import { themeInfo, fontsHref } from './season';
+import { LOOKS, season, themeInfo, fontsHref } from './season';
 import ThemeSky from './ThemeSky';
 
 // The lobby shows the picked game's world behind the picker.
@@ -23,6 +24,7 @@ const LobbyScene = ({ id, now }) => {
   if (id === 'hallway') return <HallBackdrop floor={1} />;
   if (id === 'trot') return <TrotBackdrop />;
   if (id === 'rush') return <WorkshopBackdrop />;
+  if (id === 'countdown') return <City />;
   if (id === 'mask') return <QuizBackdrop lights={Math.floor(now / 700)} curtain={['#3a1f5c', '#5b2d8e', '#2a1645']} />;
   return <><Backdrop /><House candles={5} maxCandles={5} /></>;
 };
@@ -51,6 +53,9 @@ const allReady = (list, now) => {
   const here = list.filter((p) => !isAway(p, now));
   return here.length > 0 && here.every((p) => p.ready);
 };
+
+// The scene-change wipe throws the theme's own confetti (bats at Halloween, snowflakes at Christmas...).
+const WIPE = (LOOKS[season()] || LOOKS.spooky).sky;
 
 const joinUrl = () => `${siteOrigin()}/play`;
 
@@ -442,12 +447,12 @@ export default function PartyHost() {
           <div className="lc-wipe" key={scene.current.n} aria-hidden="true">
             <div className="lc-wipe-band" />
             {Array.from({ length: 14 }, (_, i) => (
-              <span key={i} className="lc-wipe-bat" style={{ top: `${6 + ((i * 37) % 88)}%`, animationDelay: `${(i % 5) * 0.06}s`, fontSize: `${2.4 + (i % 3)}em` }}>🦇</span>
+              <span key={i} className="lc-wipe-bat" style={{ top: `${6 + ((i * 37) % 88)}%`, animationDelay: `${(i % 5) * 0.06}s`, fontSize: `${2.4 + (i % 3)}em` }}>{WIPE[i % WIPE.length]}</span>
             ))}
           </div>
         )}
         <div className="lc-corner">
-          <span>Join at <b>{joinUrl().replace(/^https?:\/\//, '')}</b></span>
+          {mode !== 'howto' && <span>Join at <b>{joinUrl().replace(/^https?:\/\//, '')}</b></span>}
           <span className="lc-corner-code">{code}</span>
           <button type="button" className="lc-mute" onClick={toggleMute} aria-label={mute ? 'Sound on' : 'Mute'}>{mute ? '🔇' : '🔊'}</button>
           {mode === 'lobby' && <button type="button" className="lc-mute lc-newroom" onClick={newRoom}>New code</button>}

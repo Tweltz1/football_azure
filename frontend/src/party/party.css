@@ -402,7 +402,7 @@
   position: absolute;
   top: calc(var(--u) * 1.4);
   left: 50%;
-  width: min(86%, calc(var(--u) * 78));
+  width: min(66%, calc(var(--u) * 78));
   transform: translateX(-50%);
   padding: 0.6em 1.2em;
   text-align: center;
@@ -414,7 +414,7 @@
 }
 @keyframes lc-caption { from { transform: translate(-50%, -30%) scale(0.9); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
 #lc-root .lc-howto-caption p { margin: 0; font-size: 1.55em; font-weight: 700; line-height: 1.3; }
-#lc-root .lc-howto-caption.is-title { top: 28%; background: rgba(29, 21, 48, 0.85); }
+#lc-root .lc-howto-caption.is-title { top: 28%; width: min(86%, calc(var(--u) * 78)); background: rgba(29, 21, 48, 0.85); }
 #lc-root .lc-howto-caption.is-title .lc-title { font-size: 5em; }
 #lc-root .lc-howto-caption.is-title p { font-size: 1.8em; color: #d8cdee; }
 #lc-root .lc-howto-step {
@@ -809,3 +809,36 @@
 #lc-root .gr-flash { min-height: 26px; margin: 0; font-weight: 800; font-size: 18px; text-align: center; }
 #lc-root .gr-flash.is-ok { color: #3ddc97; }
 #lc-root .gr-flash.is-bad { color: #ff7a6e; }
+
+/* Countdown Chaos */
+#lc-root .cc-led { filter: drop-shadow(0 0 10px rgba(255, 79, 109, 0.8)); }
+#lc-root .cc-year { filter: drop-shadow(0 0 22px rgba(255, 210, 63, 0.9)); }
+#lc-root .cc-pop { animation: lq-pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both; transform-box: fill-box; transform-origin: center bottom; }
+#lc-root .cc-results { top: 46%; width: min(92%, 1400px); }
+#lc-root .cc-line { position: relative; height: 17em; margin: 0.6em 0 0.2em; }
+#lc-root .cc-track { position: absolute; left: 0; right: 0; bottom: 0.6em; height: 1.2em; border: 4px solid var(--lc-ink); border-radius: 999px; background: linear-gradient(90deg, rgba(61, 220, 151, 0.25) 0 70%, #3ddc97 82%, #ff5a4e 82.4% 100%); }
+#lc-root .cc-mid { position: absolute; left: 82%; top: 100%; margin-top: 0.2em; transform: translateX(-50%); padding: 0 0.4em; font-weight: 900; color: #ffd23f; white-space: nowrap; }
+#lc-root .cc-mid::after { content: ''; position: absolute; left: 50%; top: 100%; width: 4px; height: 15em; background: #ffd23f; transform: translate(-50%, -16em); opacity: 0.35; }
+#lc-root .cc-bust { position: absolute; right: 0.6em; top: 50%; transform: translateY(-50%); font-size: 0.7em; font-weight: 900; color: #fff; }
+#lc-root .cc-scale { position: absolute; left: 0.6em; top: 50%; transform: translateY(-50%); font-size: 0.7em; font-weight: 900; color: #fff; opacity: 0.7; }
+#lc-root .cc-pin { position: absolute; bottom: calc(3.2em + var(--row, 0) * 4.6em); display: flex; flex-direction: column; align-items: center; width: 7em; margin-left: -3.5em; animation: lq-pop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+#lc-root .cc-pin .lc-person { width: 2.6em; height: 2.6em; }
+#lc-root .cc-pin .lc-person svg { overflow: hidden; }
+#lc-root .cc-pin b { font-size: 0.9em; line-height: 1.1; white-space: nowrap; }
+#lc-root .cc-pin small { font-weight: 800; line-height: 1.1; color: #3ddc97; white-space: nowrap; }
+#lc-root .cc-pin.is-bad small { color: #ff7a6e; }
+#lc-root .cc-pin.is-win b { color: #ffd23f; }
+#lc-root .cc-pin.is-win::before { content: '👑'; font-size: 1.4em; margin-bottom: -0.3em; }
+#lc-root .cc-phone { align-items: stretch; }
+#lc-root .cc-type { margin: 0; text-align: center; font: 400 26px var(--lc-spooky); color: #ffd23f; }
+#lc-root .cc-phone-clock { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+#lc-root .cc-digits { font: 900 84px ui-monospace, Menlo, Consolas, monospace; color: #ff4f6d; text-shadow: 0 0 18px rgba(255, 79, 109, 0.7); letter-spacing: 0.04em; padding: 0.05em 0.3em; background: #0d0b20; border: 5px solid var(--lc-ink); border-radius: 18px; }
+#lc-root .cc-digits.is-hidden { color: #3a3560; text-shadow: none; }
+#lc-root .cc-drop { width: 70%; height: 12px; border: 3px solid var(--lc-ink); border-radius: 999px; background: rgba(255, 255, 255, 0.1); overflow: hidden; position: relative; }
+#lc-root .cc-drop span { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #4ea8ff, #c77dff); }
+#lc-root .cc-stop { width: min(78vw, 300px); aspect-ratio: 1; border-radius: 50%; border: 8px solid var(--lc-ink); background: radial-gradient(circle at 35% 30%, #ff8a9a, #ff4f6d 45%, #c21d3b); color: #fff; font: 400 58px var(--lc-spooky); box-shadow: 0 10px 0 var(--lc-ink); cursor: pointer; touch-action: manipulation; display: flex; align-items: center; justify-content: center; text-shadow: 0 3px 0 var(--lc-ink); }
+#lc-root .cc-stop:active { transform: translateY(8px); box-shadow: 0 2px 0 var(--lc-ink); }
+#lc-root .cc-stop.is-done { background: #3a3560; font-size: 30px; box-shadow: 0 3px 0 var(--lc-ink); transform: translateY(7px); }
+#lc-root .lq-demo-phone .cc-digits { font-size: 48px; }
+#lc-root .lq-demo-phone .cc-stop { width: 170px; font-size: 36px; }
+#lc-root .lq-demo-phone .cc-stop.is-done { font-size: 20px; }
