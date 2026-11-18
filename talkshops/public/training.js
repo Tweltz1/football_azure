@@ -3,11 +3,11 @@
 // Each lesson runs in the demo shop (/demo.html?train=<id>) with sample cars, driven by tour.js.
 window.TALKSHOPS_TRAINING = (() => {
   const lessons = [
-    { id: "bay", title: "The Bay", mins: 2, desc: "Tabs and the More menu, filters, stage columns, time-in-shop colors and search." },
+    { id: "bay", title: "The Bay", mins: 2, desc: "The side menu, the phone tab bar and More menu, filters, stage columns, time-in-shop colors and search." },
     { id: "workday", title: "Your workday: My Cars, alerts and today", mins: 1, desc: "My Cars for each tech, late and due-soon cars, reply alerts, and the end-of-day summary." },
     { id: "checkin", title: "Checking in a car", mins: 2, desc: "Check-in methods, notifying by text, email or both, and customer consent." },
     { id: "quick", title: "Returning customers and quick services", mins: 2, desc: "Finding a past customer, make, model and engine suggestions, quick services, the fast lane, mileage, promised time and tech." },
-    { id: "booking", title: "Online booking, appointment hours and Spanish", mins: 3, desc: "Booking requests on the Bay, your booking link, appointment hours so customers pick an open time, instant booking, reminder texts, upcoming appointments, and Spanish pages and texts." },
+    { id: "booking", title: "Online booking, appointment hours and Spanish", mins: 4, desc: "Booking requests on the Bay, your booking link, appointment hours so customers pick an open time, smart scheduling, pausing and days off, instant booking, reminder texts, the booking calendar, moving an appointment, and Spanish pages and texts." },
     { id: "walk", title: "Before and after walk-through", mins: 2, desc: "The 11-point check at check-in and after the repair, tire tread depth, notes, and what the customer sees." },
     { id: "walkaround", title: "Walk-around photos and AI damage marks", mins: 2, desc: "Asking for 8 photos, the customer's guide, finding damage with AI, and confirming marks." },
     { id: "stages", title: "Stages and notifications", mins: 1, desc: "Moving a car along, editing what the customer is told, and messaging." },
@@ -17,14 +17,15 @@ window.TALKSHOPS_TRAINING = (() => {
     { id: "smart", title: "Smart Replies", mins: 2, desc: "Suggested and automatic answers to customer texts, what needs staff review, and the schedule." },
     { id: "photos", title: "Photos, notes and voice typing", mins: 1, desc: "Show the problem, write or speak technician notes, and notify the customer." },
     { id: "howto", title: "Repair how-to assistant", mins: 2, desc: "Ask how to do a job and get steps, tools, parts, typical specs, safety notes, video links and saved answers." },
+    { id: "pay", title: "Getting paid: card payments and QuickBooks", mins: 2, desc: "Connecting Stripe or your own pay link, the customer's Pay now button, counter payments, and QuickBooks invoices." },
     { id: "pickup", title: "Final bill, pickup and closing a job", mins: 1, desc: "Bills, picked up, close without repair, and deleting a repair." },
     { id: "archive", title: "The Archive", mins: 1, desc: "Searching past repairs, one-year retention, and reopening a car." },
-    { id: "results", title: "Results, time clock, reviews and your logo", mins: 2, desc: "The results dashboard, clocking in on a car, asking for reviews, your logo and color, and exporting your data." },
-    { id: "settings", title: "Shop settings and price lists", mins: 2, desc: "Shop details, the reply email, saved items, importing a price list from Excel, CSV, PDF or a photo, and time-in-shop colors." },
+    { id: "results", title: "Results, time clock, reviews and your logo", mins: 3, desc: "The results dashboard, clocking in on a car, asking for reviews, your logo and color, exporting your data, estimate reminders and the morning email." },
+    { id: "settings", title: "Shop settings and price lists", mins: 2, desc: "The four Settings tabs, shop details, the reply email, saved items, importing a price list from Excel, CSV, PDF or a photo, and time-in-shop colors." },
     { id: "team", title: "Your team: owners and technicians", mins: 3, desc: "What each role can do, staff seats, inviting people, changing roles, and one login per person on up to 2 devices." },
     { id: "signin", title: "Signing in and password reset", mins: 2, desc: "Signing in with Google or email, resetting a forgotten password by email or text, and adding a reset phone." },
     { id: "help", title: "Help and support", mins: 2, desc: "Quick guides, common questions, the Ask chat for quick answers, and contacting the Talk Shops team." },
-    { id: "plan", title: "Free trial and plans", mins: 1, desc: "The 15-day free trial and its limits, Starter and Pro, staff seats, paying through Stripe, and managing billing." },
+    { id: "plan", title: "Free trial and plans", mins: 1, desc: "The 15-day free trial and its limits, Starter and Pro, staff seats, paying through Stripe, managing billing, and what happens when a trial ends." },
   ];
   const cap = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>`;
   /** The Training tab. */

@@ -121,7 +121,7 @@
       audio.ontimeupdate = () => showAt(audio.currentTime);
       audio.onended = finish;
       audio.onerror = useFallback;
-      audio.src = "/tour/" + key + ".mp3?v=14";
+      audio.src = "/tour/" + key + ".mp3?v=15";
       audio.muted = muted;
       const p = audio.play();
       if (p && p.catch) p.catch(useFallback);
@@ -183,6 +183,9 @@
     // A saved-items list left open would sit over the next thing we point at, so close it first.
     const list = q("#suggestList");
     if (list && el && !list.contains(el) && !el.contains(list)) closeSuggest();
+    // Settings is in tabs: open the tab that holds the thing we point at.
+    const stab = el?.closest?.(".stab[hidden]");
+    if (stab) window.demoSettingsTab?.(stab.dataset.stab);
     reveal(el);
   }
   // While the page (or a scroll box holding the highlighted thing) is scrolling, hide the box instead of letting it lag behind.
@@ -324,6 +327,7 @@
     customer: "Customers decide on each pending line and sign once. The approved total includes only the work they accepted. Use the same repair link to check progress later.",
     photos: "In your shop, Add photo accepts a camera shot or a library image. Customers can open View photos at the corresponding stage under Progress. Staff can use Remove photo on the repair to take down a mistaken upload.",
     smart: "Use suggested reply puts the draft in the message box. Edit it, then tap Send. For a conversation that needs a person, choose Pause auto-replies for this repair in Messages.",
+    pay: "Card payments go to the shop's own Stripe account; Talk Shops takes no cut. Only owners record counter payments. QuickBooks invoices download from Settings, Data & Privacy.",
     pickup: "Before notifying the customer, review the approved work and final total. An owner can create an itemized bill or attach the shop’s PDF. Open the customer’s page to check what they will see.",
     settings: "For a price-list import, start with the example CSV. Include name and rate, then set type to labor, part, fee or percent. A row without a type imports as a part.",
     walkaround: "Review each photo yourself. Confirm accurate marks, remove false matches and tap the image to add damage the scan missed. Customers see the marks you confirm."
@@ -1028,6 +1032,40 @@
       }
       step(); { const c = say("pk-4"); await openSheet("RO-1044"); highlight("#dangerSec"); await c; }
     },
+    async pay() {
+      STEPS = 5; await begin("board");
+      step(); {
+        const c = say("pay-1"); await cue(0.25); await tab("settings"); highlight("#pay-settings");
+        await cue(0.45); highlight(q("#pay-settings .pill") || "#pay-settings");
+        await cue(0.75); highlight("#pay-settings");
+        await c;
+      }
+      step(); {
+        const c = say("pay-2"); const d = q("#pay-settings details"); if (d) d.open = true; highlight(d);
+        await cue(0.35); highlight(q("#pay-link")?.closest("label")); await type("#pay-link", "https://square.link/u/ridgeline");
+        await cue(0.6); highlight("[data-pay-save-link]");
+        await c;
+      }
+      step(); {
+        const c = say("pay-3"); await openSheet("RO-1045"); if (!q("#billSec .pay-shop")) { await tap("#makeBill"); await wait(300); }
+        await tap("#viewAsCust"); await wait(400); const card = () => q(".pay-card"); card()?.scrollIntoView({ block: "center" }); highlight(card());
+        await cue(0.2); highlight(".pay-btn"); await cue(0.6); await tap("[data-pay-now]"); await wait(400); card()?.scrollIntoView({ block: "center" }); highlight(card());
+        await c;
+      }
+      step(); {
+        const c = say("pay-4"); await tap("#backToShop"); await wait(300); q("#billSec")?.scrollIntoView({ block: "center" }); highlight("#billSec");
+        await cue(0.32); await openSheet("RO-1042"); if (!q("#billSec .pay-shop")) { await tap("#makeBill"); await wait(300); }
+        q("#billSec")?.scrollIntoView({ block: "center" }); const row = () => q(".pay-counter"); highlight(row() || "#billSec");
+        await cue(0.5); const amt = row()?.querySelector("input"); if (amt) await type(amt, "100");
+        await cue(0.62); await tap("[data-pay-record]"); await wait(400); q("#billSec")?.scrollIntoView({ block: "center" }); highlight("#billSec");
+        await c;
+      }
+      step(); {
+        const c = say("pay-5"); await tab("settings"); await cue(0.2); highlight(q('[data-gr-export="quickbooks"]')?.closest("section"));
+        await cue(0.55); highlight('[data-gr-export="quickbooks"]');
+        await c;
+      }
+    },
     async archive() {
       STEPS = 4; await begin("board");
       step(); { const c = say("ar-1"); await tab("archive"); highlight(".archive"); await c; }
@@ -1131,7 +1169,7 @@
       step(); { const c = say("si-5"); await cue(0.05); await type("#rc-code", "123456"); await tap("#recoveryCodeForm .btn.primary"); await wait(300); highlight("#recoveryPanel"); await c; }
     },
     async booking() {
-      STEPS = 8; await begin("board");
+      STEPS = 11; await begin("board");
       const bk = (id, what) => `[data-gr-bk="${id}"] [data-gr-bk-open="${what}"]`;
       step(); {
         const c = say("bk-1"); await wait(300); highlight("#gr-bookings");
@@ -1158,18 +1196,42 @@
         await c;
       }
       step(); {
+        const c = say("bk-9"); highlight(".gr-sched-smart");
+        await cue(0.12); highlight(q("#gr-sched-cap")?.closest("label")); await type("#gr-sched-cap", "10");
+        await cue(0.24); highlight(q("#gr-sched-stay")?.closest("label"));
+        await cue(0.68); highlight(q("#gr-sched-gap")?.closest("label")); await cue(0.78); highlight(q("#gr-sched-daymax")?.closest("label"));
+        await cue(0.88); highlight(".gr-sched-lunch");
+        await c;
+      }
+      step(); {
         const c = say("bk-7"); highlight(q("#gr-sched-auto")?.closest("label"));
         await cue(0.5); highlight(q("#gr-sched-remind")?.closest("label"));
         await cue(0.85); highlight("[data-gr-sched-save]"); await tap("[data-gr-sched-save]"); await wait(400);
         await c;
       }
       step(); {
-        const c = say("bk-8"); await closeAll(); window.Grow.renderBooking(bookToken); await wait(600);
-        q(".gr-slot-days")?.scrollIntoView({ block: "center" }); highlight(".gr-slot-days");
-        await cue(0.2); const day = qa(".gr-slot-day")[1]; if (day) await tap(day); await wait(250); highlight(".gr-slot-times");
-        await cue(0.3); const t = qa(".gr-slot-time")[1]; if (t) await tap(t);
-        await cue(0.6); q("#shopChrome").hidden = false; window.Grow.setLang("en"); render(); await tab("board"); q("#gr-bay")?.scrollIntoView({ block: "start" }); highlight("#gr-appts");
+        const c = say("bk-10"); const pause = () => q("#gr-sched-pause")?.closest("label"); pause()?.scrollIntoView({ block: "center" }); highlight(pause());
+        await cue(0.55); const off = () => q(".gr-sched-off"); off()?.scrollIntoView({ block: "center" }); highlight(off());
+        const d = new Date(Date.now() + 4 * 86400000); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        await cue(0.72); await type("#gr-sched-off-day", d.toISOString().slice(0, 10)); await tap("[data-gr-sched-off-add]"); await wait(400); highlight(off());
         await c;
+      }
+      step(); {
+        const c = say("bk-8"); await closeAll(); window.Grow.renderBooking(bookToken); await wait(600);
+        q(".gr-cal")?.scrollIntoView({ block: "center" }); highlight(".gr-cal");
+        await cue(0.3); const day = qa(".gr-cal-open")[1]; if (day) await tap(day); await wait(250); highlight(".gr-slot-times");
+        await cue(0.42); const t = qa(".gr-slot-time")[1]; if (t) await tap(t);
+        await cue(0.68); q("#shopChrome").hidden = false; window.Grow.setLang("en"); render(); await tab("board"); q("#gr-bay")?.scrollIntoView({ block: "start" }); highlight("#gr-appts");
+        await c;
+      }
+      step(); {
+        const c = say("bk-11"); await openSheet("RO-1047"); const mv = () => q(".gr-appt-move"); mv()?.scrollIntoView({ block: "center" }); highlight(mv());
+        await cue(0.2); const o = q("#gr-appt-pick")?.options?.[3]; if (o) { await pick("#gr-appt-pick", o.value); highlight(mv()); }
+        await cue(0.36); highlight(q("#gr-appt-text")?.closest("label"));
+        await cue(0.5); await tap("[data-gr-appt-move]"); await wait(400); mv()?.scrollIntoView({ block: "center" }); highlight(mv());
+        await cue(0.6); highlight(q("#msgSec .thread .bubble:last-of-type") || "#msgSec");
+        await cue(0.86); mv()?.scrollIntoView({ block: "center" }); highlight(mv());
+        await c; await closeAll();
       }
       step(); {
         const lang = () => q("#ci-lang")?.closest("label");
@@ -1185,7 +1247,7 @@
       }
     },
     async results() {
-      STEPS = 5; await begin("board");
+      STEPS = 6; await begin("board");
       // Shown as a plain (not modal) dialog so the tour's own controls stay usable.
       const plain = () => { const d = q("#gr-results"); if (d?.open) { d.close(); d.show(); } };
       const show = (sel) => { const el = typeof sel === "string" ? q(sel) : sel; el?.scrollIntoView({ block: "center" }); highlight(el); return el; };
@@ -1215,8 +1277,14 @@
         await c;
       }
       step(); {
-        const c = say("rs-5"); if (!q("#gr-review-url")) await tab("settings"); show(qa(".gr-panel")[2]);
-        await cue(0.52); show(qa(".gr-panel")[3]);
+        const c = say("rs-5"); if (!q("#gr-review-url")) await tab("settings"); show(q("#gr-color")?.closest("section"));
+        await cue(0.55); show(q('[data-gr-export="jobs"]')?.closest("section"));
+        await c;
+      }
+      step(); {
+        const c = say("rs-6"); show("#gr-notify");
+        await cue(0.12); show(q("#gr-nudge")?.closest("label")); await cue(0.42); show(q("#gr-digest")?.closest("label"));
+        await cue(0.8); show(q("#gr-address")?.closest("label"));
         await c;
       }
     },
@@ -1237,8 +1305,8 @@
   function start() {
     const name = lesson ? lesson.title : "Guided demo";
     Promise.all([
-      fetch("/tour/lines.json?v=14").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
-      fetch("/tour/caption-cues.json?v=14").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
+      fetch("/tour/lines.json?v=15").then(r => r.json()).then(lines => { LINES = lines; }).catch(() => {}),
+      fetch("/tour/caption-cues.json?v=15").then(r => r.json()).then(cues => { timings = cues; }).catch(() => {})
     ]).then(() => {
       const gate = document.createElement("div"); gate.id = "tourStart";
       gate.innerHTML = `<div class="card" role="dialog" aria-modal="true" aria-labelledby="tsH">
