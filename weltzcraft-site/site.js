@@ -105,6 +105,7 @@
       .then(function (r) {
         if (r.ok) {
           done(); form.reset(); opened = Date.now();
+          if (window.wcHit) window.wcHit('brief_sent');
           hint.textContent = 'Sent. Thanks, ' + data.name.split(' ')[0] + '. We\u2019ll reply to ' + data.email + ', usually within a day.';
         } else if (r.status === 400) {
           return r.json().then(function (j) { done(); hint.textContent = (j && j.error) || 'Check the form and try again.'; });

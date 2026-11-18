@@ -62,6 +62,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
 <header class="top"><a class="brand" href="/"><i>W</i>Weltzcraft</a><a class="home" href="/">← Back to weltzcraft.com</a></header>
 <main><div class="card" id="card" aria-live="polite"></div></main>
 <p class="foot">Free sample, no sign-up. The real site is built by a real person, from $500.</p>
+<script src="/hit.js?v=1"></script>
 <script>
 (function () {
   var TYPES = [['coffee', '☕', 'Coffee shop', 'Maple Street Coffee', 'Order ahead'], ['barber', '💈', 'Barber', 'Main Street Barbers', 'Book online'],
@@ -105,6 +106,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--em);outline-offset:
     save(); step++;
     if (step < Q.length) return ask();
     var q = { t: a.type, n: a.name, town: a.town, tag: a.tag, cta: a.cta || type()[4], h: a.h, s: a.s.join(','), c: a.c.slice(1) };
+    if (window.wcHit) window.wcHit('build_done');
     location.href = '/sample?' + Object.keys(q).filter(function (k) { return q[k]; }).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&');
   }
   card.addEventListener('click', function (e) {

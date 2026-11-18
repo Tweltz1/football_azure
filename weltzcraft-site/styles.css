@@ -477,3 +477,11 @@ h1{font-size:clamp(40px,6.4vw,72px);letter-spacing:-.025em}
 .tier-try{display:inline-block;margin-top:16px;font-weight:600;font-size:14.5px;color:var(--ember);text-decoration:none}
 .tier-try:hover{text-decoration:underline}
 @media (max-width:860px){.sample-in{grid-template-columns:1fr;gap:36px}.sample-band{padding:64px 0}}
+.faq{max-width:760px}
+.faq details{border-bottom:1px solid var(--line);padding:14px 0}
+.faq summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;gap:12px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--muted);font-weight:500}
+.faq details[open] summary::after{content:"–"}
+.faq details p{margin:10px 0 0;color:var(--muted)}
+.more + .more{margin-left:16px}

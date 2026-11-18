@@ -351,9 +351,20 @@ async function printfulWebhook(request, env) {
   return json(200, { ok: true });
 }
 
+// POST /api/hit?e=<event>: the click counter (hit.js). Answers 204 and stores nothing; the daily review counts
+// these POSTs per event in Cloudflare's analytics. Unknown event names get 400 so they don't pollute the count.
+const HIT_EVENTS = new Set(['start', 'brief_sent', 'build_open', 'build_done', 'sample_mine', 'merch_open', 'merch_checkout', 'appstore', 'app_page', 'app_visit']);
+function hit(request) {
+  if (request.method !== 'POST') return json(405, { error: 'POST only' });
+  const e = new URL(request.url).searchParams.get('e') || '';
+  if (!HIT_EVENTS.has(e)) return json(400, { error: 'Unknown event' });
+  return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/hit') return hit(request);
     if (url.pathname === '/api/brief') {
       try { return await brief(request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
     }
