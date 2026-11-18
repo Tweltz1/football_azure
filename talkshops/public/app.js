@@ -296,6 +296,7 @@
         <p class="cust-top">${T("This page updates as your repair progresses.")}</p>
         ${window.Grow.langSwitch(custToken)}
         <p class="cust-top"><a href="/privacy.html">${T("Privacy Policy")}</a> · <a href="/terms.html#sms">${T("Text Terms")}</a></p>
+        <p class="cust-top cust-by"><a href="/?from=customer">${T("Updates by Talk Shops")}</a></p>
       </div></div>`;
   }
 
@@ -735,6 +736,13 @@
     ["Owner and technician roles", true, true],
   ];
 
+  // Home page savings calculator: hours and dollars a month if customer links answer half the status calls.
+  function calcResult(calls, mins, rate) {
+    const hours = (Math.max(0, calls) * Math.max(0, mins) / 60) * 0.5 * 4.33, money = hours * Math.max(0, rate);
+    const net = money - 89;
+    return `<p><b>${hours.toFixed(1)} hours</b> a month back at the counter</p><p><b>$${Math.round(money).toLocaleString("en-US")}</b> of counter time a month, vs $89 for Starter</p>
+      <p class="front-calc-net">${net >= 0 ? `About <b>$${Math.round(net).toLocaleString("en-US")}</b> a month ahead, before counting faster approvals.` : "Even a quiet shop wins back time for the cars in the bays."}</p>`;
+  }
   function homeView() {
     return `<div class="front">
       <header class="front-nav"><div class="front-inner">
@@ -763,6 +771,18 @@
           <div><b>Fill your schedule online</b><p>Customers pick an open time from your booking link, and a reminder text the day before helps them show up. Requests and the week’s appointments sit at the top of your board.</p></div>
           <div><b>Bring declined work back</b><p>Schedule reminder texts for the next service or work the customer put off. Past visits show what they declined last time.</p></div>
         </div>
+      </div></section>
+      <section class="front-calc" aria-labelledby="calcTitle"><div class="front-inner">
+        <h2 id="calcTitle">What do “is my car ready?” calls cost you?</h2>
+        <div class="front-calc-box">
+          <div class="front-calc-in">
+            <label class="field">Status calls a week<input id="calcCalls" type="number" inputmode="numeric" min="0" max="2000" value="40"></label>
+            <label class="field">Minutes per call<input id="calcMins" type="number" inputmode="numeric" min="1" max="60" value="4"></label>
+            <label class="field">Counter time, $ per hour<input id="calcRate" type="number" inputmode="numeric" min="0" max="500" value="25"></label>
+          </div>
+          <div class="front-calc-out" id="calcOut" aria-live="polite">${calcResult(40, 4, 25)}</div>
+        </div>
+        <small class="front-source">Assumes customer links answer half of those calls. Your numbers will vary; the free trial shows you for real.</small>
       </div></section>
       <section class="front-work"><div class="front-inner">
         <div class="front-workflow"><h2>How It Works</h2>
@@ -1911,6 +1931,11 @@
   }
   let etaTimer = 0;
   document.addEventListener("input", (e) => {
+    if (["calcCalls", "calcMins", "calcRate"].includes(e.target.id)) {
+      const n = (id) => Number($("#" + id)?.value) || 0, out = $("#calcOut");
+      if (out) out.innerHTML = calcResult(n("calcCalls"), n("calcMins"), n("calcRate"));
+      return;
+    }
     // Typing a parts ETA rewrites the suggested text, unless staff already changed the message.
     if (e.target.id === "m-eta" && ui.modal?.stage === "parts") {
       const m = ui.modal, eta = e.target.value.trim();

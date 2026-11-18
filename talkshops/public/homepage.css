@@ -96,6 +96,14 @@ main:has(>.front){padding:0;max-width:none}
 .front-final{background:#101a32;color:#fff}
 .front-final .front-inner{padding-block:clamp(40px,5vw,68px)}
 .front-final h2{color:#fff;margin-bottom:8px}.front-final p{color:#d0d9ea;margin:0 0 22px}
+.front-calc .front-inner{padding-block:clamp(44px,6vw,80px) 0}
+.front-calc h2{font-size:clamp(26px,3vw,38px);line-height:1.15;margin:0 0 18px;max-width:26ch}
+.front-calc-box{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:22px;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface-2)}
+.front-calc-in{display:grid;gap:12px}.front-calc-in input{width:100%;max-width:200px}
+.front-calc-out{align-self:center;border-left:3px solid var(--accent);padding-left:18px}
+.front-calc-out p{margin:0 0 10px;line-height:1.45}.front-calc-out b{font-size:1.15rem}.front-calc-net{color:var(--muted)}
+.front-calc .front-source{display:block;margin-top:10px}
+@media(max-width:740px){.front-calc-box{grid-template-columns:1fr}.front-calc-out{border-left:0;border-top:3px solid var(--accent);padding:14px 0 0}}
 @media(max-width:1000px){.front-feature-grid,.front-steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:740px){.front-why-grid,.front-feature-grid,.front-steps{grid-template-columns:1fr}.front-nav-extra{display:none}}
 
