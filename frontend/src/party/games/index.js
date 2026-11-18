@@ -8,6 +8,7 @@ import * as hallway from './hallway';
 import * as mask from './mask';
 import * as trot from './turkeyTrot';
 import * as rush from './giftRush';
+import * as countdown from './countdown';
 import CandleStage from './CandleStage';
 import CandlePhone from './CandlePhone';
 import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
@@ -29,6 +30,9 @@ import TrotHowTo, { HOWTO_MS as TROT_HOWTO_MS } from './TrotHowTo';
 import RushStage from './RushStage';
 import RushPhone from './RushPhone';
 import RushHowTo, { HOWTO_MS as RUSH_HOWTO_MS } from './RushHowTo';
+import CountdownStage from './CountdownStage';
+import CountdownPhone from './CountdownPhone';
+import CountdownHowTo, { HOWTO_MS as COUNTDOWN_HOWTO_MS } from './CountdownHowTo';
 import { GAME_META, HOLIDAY_GAME, isPlayable, metaFor } from './meta';
 
 // The TV remembers which quiz questions it has shown, so the next game picks fresh ones first.
@@ -241,6 +245,32 @@ const ENGINES = {
     Phone: RushPhone,
     HowTo: RushHowTo,
     howToMs: RUSH_HOWTO_MS,
+  },
+  countdown: {
+    create: countdown.createCountdown,
+    tick: countdown.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'stop') countdown.stop(g, cid, Number(msg.id), Number(msg.ms), now);
+    },
+    over: countdown.isOver,
+    sceneKey: (g) => (g.phase === 'over' ? 'over' : g.phase === 'scores' ? `scores${g.index}` : `count${g.index}`),
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g, now) => Math.min(1, (g.index + (g.phase === 'count' ? Math.min(1, (now - g.phaseAt) / g.round.dur) : 0)) / countdown.PLAN.length),
+    phone: countdown.phoneView,
+    result(g, cid) {
+      const me = countdown.ranking(g).find((r) => r.cid === cid);
+      return {
+        rank: me?.rank || g.players.length,
+        score: me?.score || 0,
+        awards: countdown.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+      };
+    },
+    addPlayer: countdown.addPlayer,
+    seen: countdown.seen,
+    Stage: CountdownStage,
+    Phone: CountdownPhone,
+    HowTo: CountdownHowTo,
+    howToMs: COUNTDOWN_HOWTO_MS,
   },
 };
 
