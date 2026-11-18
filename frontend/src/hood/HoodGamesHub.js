@@ -11,6 +11,7 @@ import StudioCredit from '../components/StudioCredit';
 import DeleteAccount from '../components/DeleteAccount';
 import { themeInfo, fontsHref } from '../party/season';
 import ThemeSky from '../party/ThemeSky';
+import { HOLIDAY_GAME } from '../party/games/meta';
 
 const THEME = themeInfo();
 
@@ -62,6 +63,8 @@ const QUICK = [
   { id: 'mask', icon: '🎭', name: 'Behind the Mask', who: '3 to 12 players', href: '/party?game=mask' },
   { id: 'cards', icon: '🃏', name: 'Card Table', who: '500 or Dirty Clubs', href: '/cards' },
 ];
+// This holiday's own game goes first while it's on.
+if (HOLIDAY_GAME) QUICK.unshift({ id: HOLIDAY_GAME.id, icon: HOLIDAY_GAME.emoji, name: HOLIDAY_GAME.title, who: '1 to 12 players', href: `/party?game=${HOLIDAY_GAME.id}` });
 
 function JoinQr({ text }) {
   const svg = useMemo(() => {

@@ -6,6 +6,7 @@ import * as quiz from './quiz';
 import * as mash from './mash';
 import * as hallway from './hallway';
 import * as mask from './mask';
+import * as trot from './turkeyTrot';
 import CandleStage from './CandleStage';
 import CandlePhone from './CandlePhone';
 import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
@@ -21,7 +22,10 @@ import HallwayHowTo, { HOWTO_MS as HALLWAY_HOWTO_MS } from './HallwayHowTo';
 import MaskStage from './MaskStage';
 import MaskPhone from './MaskPhone';
 import MaskHowTo, { HOWTO_MS as MASK_HOWTO_MS } from './MaskHowTo';
-import { GAME_META, isPlayable, metaFor } from './meta';
+import TrotStage from './TrotStage';
+import TrotPhone from './TrotPhone';
+import TrotHowTo, { HOWTO_MS as TROT_HOWTO_MS } from './TrotHowTo';
+import { GAME_META, HOLIDAY_GAME, isPlayable, metaFor } from './meta';
 
 // The TV remembers which quiz questions it has shown, so the next game picks fresh ones first.
 const SEEN_KEY = 'lq-seen';
@@ -187,6 +191,30 @@ const ENGINES = {
     HowTo: MaskHowTo,
     howToMs: MASK_HOWTO_MS,
   },
+  // Holiday-only games (meta.js shows each one only while its holiday is on).
+  trot: {
+    create: trot.createTrot,
+    tick: trot.tick,
+    act(g, cid, msg) {
+      if (msg.type === 'go') trot.steer(g, cid, msg.dx, msg.dy);
+    },
+    over: trot.isOver,
+    sceneKey: (g) => (g.phase === 'over' ? 'over' : `round${g.round}`),
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g, now) => Math.min(1, (g.round + (g.phase === 'play' ? (now - g.phaseAt) / trot.roundMs(g) : 0)) / trot.ROUNDS.length),
+    phone: trot.phoneView,
+    result: (g, cid) => ({
+      score: g.score,
+      herded: g.stats[cid]?.herded || 0,
+      awards: trot.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+    }),
+    addPlayer: trot.addPlayer,
+    seen: trot.seen,
+    Stage: TrotStage,
+    Phone: TrotPhone,
+    HowTo: TrotHowTo,
+    howToMs: TROT_HOWTO_MS,
+  },
 };
 
 export const gameFor = (id) => {
@@ -194,4 +222,4 @@ export const gameFor = (id) => {
   return { ...meta, ...ENGINES[meta.id] };
 };
 
-export { GAME_META, isPlayable };
+export { GAME_META, HOLIDAY_GAME, isPlayable };
