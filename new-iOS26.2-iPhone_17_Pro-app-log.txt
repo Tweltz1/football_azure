@@ -1,0 +1,782 @@
+getpwuid_r did not find a match for uid 501
+Timestamp               Ty Process[PID:TID]
+2026-11-18 01:01:30.770 Df App[7137:62de] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-18 01:01:30.773 Df App[7137:6312] [com.apple.xpc:connection] [0x1060070d0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-18 01:01:30.785 Df App[7137:62de] [com.apple.BoardServices:XPCErrors] [C:1] Alloc com.apple.frontboard.systemappservices
+2026-11-18 01:01:30.786 Df App[7137:62de] [com.apple.xpc:connection] [0x106008460] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-18 01:01:30.789 Df App[7137:62de] [com.apple.UIKit:Application] Deactivation reason added: 10; deactivation reasons: 0 -> 1024; animating application lifecycle event: 0
+2026-11-18 01:01:30.789 Df App[7137:62de] [com.apple.runningboard:connection] Initializing connection
+2026-11-18 01:01:30.790 Df App[7137:62de] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-18 01:01:30.790 Df App[7137:62de] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.open
+2026-11-18 01:01:30.791 Df App[7137:62de] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.workspace-service
+2026-11-18 01:01:30.795 Df App[7137:62de] [com.apple.FrontBoard:Common] FBSWorkspace registering source: com.apple.frontboard.systemappservices
+2026-11-18 01:01:30.800 Df App[7137:62de] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <BSServiceConnectionEndpoint: 0x600000210be0; target: com.apple.frontboard.systemappservices; service: com.apple.frontboard.workspace-service>
+2026-11-18 01:01:30.801 Df App[7137:62de] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x6000030047e0 com.apple.frontboard.systemappservices> attempting immediate handshake from activate
+2026-11-18 01:01:30.803 Df App[7137:62de] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x6000030047e0 com.apple.frontboard.systemappservices> sent handshake
+2026-11-18 01:01:30.804 Df App[7137:62de] [com.apple.runningboard:general] Added observer for process assertions expiration warning: <_RBSExpirationWarningClient: 0x600000212460>
+2026-11-18 01:01:30.819 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UIApplicationSceneKeyboardSettings on FBSSceneSettings
+2026-11-18 01:01:30.832 Df App[7137:631c] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-18 01:01:30.832 Df App[7137:631c] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-18 01:01:30.832 Df App[7137:631c] [com.apple.xpc:connection] [0x106106c60] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-18 01:01:30.833 A  App[7137:6313] (CoreFoundation) Loading Preferences From User Session CFPrefsD
+2026-11-18 01:01:30.842 Df App[7137:631c] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-18 01:01:30.842 Df App[7137:631c] [com.apple.runningboard:connection] Identity resolved as app<com.hoodleague.games((null))>
+2026-11-18 01:01:30.842 A  App[7137:631d] (RunningBoardServices) didChangeInheritances
+2026-11-18 01:01:30.852 Df App[7137:6312] [com.apple.UIKit:BackgroundTask] Creating new assertion because there is no existing background assertion.
+2026-11-18 01:01:30.852 Df App[7137:6312] [com.apple.UIKit:BackgroundTask] Creating new background assertion
+2026-11-18 01:01:30.852 Df App[7137:6312] [com.apple.UIKit:BackgroundTask] Created new background assertion <BKSProcessAssertion: 0x6000021082d0>
+2026-11-18 01:01:30.854 Df App[7137:6312] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x6000021082d0>
+2026-11-18 01:01:30.860 Df App[7137:6312] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x600001701200>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 540 (elapsed = 0).
+2026-11-18 01:01:30.891 Df App[7137:62de] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x1060096d0> for initial
+2026-11-18 01:01:30.892 Df App[7137:62de] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x1060096d0> for CADisplay KVO
+2026-11-18 01:01:30.900 Df App[7137:62de] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 1, category name = (null)
+2026-11-18 01:01:30.902 Df App[7137:62de] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 0, category name = (null)
+2026-11-18 01:01:30.958 Df App[7137:62de] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-18 01:01:30.959 Df App[7137:62de] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-18 01:01:30.959 Df App[7137:62de] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-18 01:01:30.960 Df App[7137:62de] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-18 01:01:30.962 Df App[7137:62de] [com.apple.UIKit:Application] Deactivation reason added: 11; deactivation reasons: 1024 -> 3072; animating application lifecycle event: 0
+2026-11-18 01:01:30.966 Df App[7137:62de] [com.apple.UIKit:Application] Deactivation reason removed: 10; deactivation reasons: 3072 -> 2048; animating application lifecycle event: 0
+2026-11-18 01:01:30.968 Df App[7137:62de] [com.apple.UIKit:EventBus] Event Timing Profile for Touch: not found, path="/System/Library/EventTimingProfiles/Sim.Touch.plist"
+2026-11-18 01:01:30.968 Df App[7137:62de] [com.apple.UIKit:EventBus] Event Timing Profile for Pencil: not found, path="/System/Library/EventTimingProfiles/Sim.Pencil.plist"
+2026-11-18 01:01:30.968 Df App[7137:62de] [com.apple.UIKit:UpdateScheduler] Selected display: name=LCD (PurpleMain), id=1
+2026-11-18 01:01:30.981 Df App[7137:62de] [com.apple.xpc:connection] [0x106204470] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-18 01:01:30.995 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneOcclusionSettings> on FBSSceneSettings
+2026-11-18 01:01:30.997 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneInterfaceProtectionSettings> on FBSSceneSettings
+2026-11-18 01:01:30.998 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferencesHostSettingsExtension on FBSSceneSettings
+2026-11-18 01:01:31.002 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneSafeAreaSettingsExtension on FBSSceneSettings
+2026-11-18 01:01:31.007 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferenceClientSettingsExtension on FBSSceneClientSettings
+2026-11-18 01:01:31.008 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UIHomeAffordanceHostSceneSettings> on FBSSceneSettings
+2026-11-18 01:01:31.011 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISystemShellSceneHostingEnvironmentSettings on FBSSceneSettings
+2026-11-18 01:01:31.017 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneRenderingEnvironmentSettings on FBSSceneSettings
+2026-11-18 01:01:31.022 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneRenderingEnvironmentClientSettings> on FBSSceneClientSettings
+2026-11-18 01:01:31.026 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneTransitioningHostSettings> on FBSSceneSettings
+2026-11-18 01:01:31.027 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneFocusSystemSettings> on FBSSceneSettings
+2026-11-18 01:01:31.031 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationSettingsExtension on FBSSceneSettings
+2026-11-18 01:01:31.033 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationClientSettingsExtension on FBSSceneClientSettings
+2026-11-18 01:01:31.033 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneWindowingControlClientSettings on FBSSceneClientSettings
+2026-11-18 01:01:31.035 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-18 01:01:31.042 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-18 01:01:31.048 Df App[7137:6312] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingContentSizePreferenceClientSettings> on FBSSceneClientSettings
+2026-11-18 01:01:31.048 Df App[7137:6312] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneHostingTraitCollectionPropagationSettings on FBSSceneSettings
+2026-11-18 01:01:31.051 Df App[7137:6312] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationSettings> on FBSSceneSettings
+2026-11-18 01:01:31.054 Df App[7137:6312] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationClientSettings> on FBSSceneClientSettings
+2026-11-18 01:01:31.054 Df App[7137:6312] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingEventDeferringSettings> on FBSSceneSettings
+2026-11-18 01:01:31.057 Df App[7137:6312] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneSettings
+2026-11-18 01:01:31.058 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneSettings setting counterpart class: UIApplicationSceneSettings
+2026-11-18 01:01:31.058 Df App[7137:6312] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneClientSettings
+2026-11-18 01:01:31.058 Df App[7137:6312] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingViewControllerPreferencePropagationClientSettings> on FBSSceneClientSettings
+2026-11-18 01:01:31.058 Df App[7137:6312] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneZoomTransitionSettings> on FBSSceneSettings
+2026-11-18 01:01:31.059 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneClientSettings setting counterpart class: UIApplicationSceneClientSettings
+2026-11-18 01:01:31.059 Df App[7137:6317] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-18 01:01:31.069 Df App[7137:62de] [com.apple.BoardServices:XPCErrors] [C:2] Alloc com.apple.backboard.hid-services.xpc
+2026-11-18 01:01:31.069 Df App[7137:62de] [com.apple.xpc:connection] [0x106007c40] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-18 01:01:31.087 Df App[7137:62de] [com.apple.UIKit:BackgroundTask] Will add backgroundTask with taskName: Persistent SceneSession Map Update, expirationHandler: <__NSGlobalBlock__: 0x1e61729e0>
+2026-11-18 01:01:31.088 Df App[7137:62de] [com.apple.UIKit:BackgroundTask] Reusing background assertion <BKSProcessAssertion: 0x6000021082d0>
+2026-11-18 01:01:31.088 Df App[7137:62de] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x6000021082d0>
+2026-11-18 01:01:31.088 Df App[7137:62de] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x60000171bc00>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 540 (elapsed = 0).
+2026-11-18 01:01:31.091 Df App[7137:62de] [com.apple.UIKit:Application] Deactivation reason added: 5; deactivation reasons: 2048 -> 2080; animating application lifecycle event: 1
+2026-11-18 01:01:31.093 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Should send trait collection or coordinate space update, interface style 1 -> 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:31.095 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:31.097 Df App[7137:62de] [com.apple.UIKit:HomeAffordanceObservation] Initializing: <_UIHomeAffordanceSceneNotifier: 0x600002905420>; with scene: <UIWindowScene: 0x1061074a0>
+2026-11-18 01:01:31.098 Df App[7137:62de] [com.apple.BacklightServices:scenes] 0x600000c07cc0 setDelegate:<0x600000c1b450 _UIBacklightEnvironment> hasDelegate:YES for environment:sceneID:com.hoodleague.games-default
+2026-11-18 01:01:31.099 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:31.100 Df App[7137:62de] [com.apple.UIKit:EventDeferring] [0x600002904b60] Initialized with scene: <UIWindowScene: 0x1061074a0>; behavior: <_UIEventDeferringBehavior_iOS: 0x600000216ac0>; availableForProcess: 1, systemShellManagesKeyboardFocus: 1
+2026-11-18 01:01:31.103 Df App[7137:62de] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x600002606a60; process scope; status: target> was:none
+2026-11-18 01:01:31.104 Df App[7137:62de] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomPhone to LastOneWins
+2026-11-18 01:01:31.104 Df App[7137:62de] [com.apple.UIKit:KeyWindow] Scene target of keyboard event deferring environment did change: 1; scene: UIWindowScene: 0x1061074a0; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.hoodleague.games-default
+2026-11-18 01:01:31.105 Df App[7137:62de] [com.apple.UIKit:EventDeferring] [0x600002904b60] Scene target of event deferring environments did update: scene: 0x1061074a0; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-11-18 01:01:31.106 Df App[7137:62de] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x1061074a0; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.hoodleague.games-default
+2026-11-18 01:01:31.106 Df App[7137:62de] [com.apple.UIKit:KeyWindow] Stack[KeyWindow] 0x600000c16af0: Taking no further action for migration from LastOneWins -> SystemShellManaged as there are no scenes
+2026-11-18 01:01:31.106 Df App[7137:62de] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomPhone to SystemShellManaged
+2026-11-18 01:01:31.107 Df App[7137:62de] [com.apple.UIKit:KeyWindow] Key window needs update: 0; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x1061074a0; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x0; reason: UIWindowScene: 0x1061074a0: Window scene became target of keyboard environment
+2026-11-18 01:01:31.108 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:31.110 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:31.111 Df App[7137:631c] [com.apple.BackBoard:EventDelivery] BKSHIDEventObserver - connection activation
+2026-11-18 01:01:31.111 Df App[7137:6312] [com.apple.BackBoard:EventDelivery] BKSHIDEventDeliveryManager - connection activation
+2026-11-18 01:01:31.113 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:31.368 Df App[7137:62de] [com.apple.CFNetwork:Default] Initializing NSHTTPCookieStorage singleton
+2026-11-18 01:01:31.370 Df App[7137:62de] [com.apple.CFNetwork:Default] Initializing CFHTTPCookieStorage singleton
+2026-11-18 01:01:31.370 Df App[7137:62de] [com.apple.CFNetwork:Default] Creating default cookie storage with process/bundle identifier
+2026-11-18 01:01:31.371 Df App[7137:62de] (CFNetwork) DiskCookieStorage changing policy from 2 to 0, cookie file: file:///Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/Cookies/com.hoodleague.games.binarycookies
+2026-11-18 01:01:31.428 Df App[7137:62de] (WebKit) 0x106011be8 - WebsiteDataStore::WebsiteDataStore sessionID=1 identifier=null
+2026-11-18 01:01:31.459 Df App[7137:62de] (WebKit) 0x113094100 - NetworkProcessProxy::NetworkProcessProxy
+2026-11-18 01:01:31.462 A  App[7137:6314] (libsystem_containermanager.dylib) container_system_group_path_for_identifier
+2026-11-18 01:01:31.462 Df App[7137:6314] [com.apple.containermanager:xpc] Requesting container lookup; class = 13, identifier = (null), group_identifier = systemgroup.com.apple.configurationprofiles, create = 1, temp = 0, euid = 501, uid = 501
+2026-11-18 01:01:31.462 A  App[7137:6314] (libsystem_containermanager.dylib) container_query_t
+2026-11-18 01:01:31.462 Df App[7137:6314] [com.apple.containermanager:xpc] Query; euid = 501, uid = 501, class = 13, identifier = [(null)](0), flags = 900000003
+2026-11-18 01:01:31.470 Df App[7137:631d] [com.apple.extensionkit:launch] Launching process with config: bundleID: com.apple.WebKit.Networking instance ID: Optional([_EXExtensionInstanceIdentifier: 9D3970A2-F807-4162-B978-D63FEF70E950])
+2026-11-18 01:01:31.477 E  App[7137:631d] [com.apple.extensionkit:default] Failed to resolve host network app id to config: bundleID: com.apple.WebKit.Networking instance ID: Optional([_EXExtensionInstanceIdentifier: 9D3970A2-F807-4162-B978-D63FEF70E950])
+2026-11-18 01:01:31.482 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/WebKit/com.hoodleague.games/WebsiteData/ResourceLoadStatistics'
+2026-11-18 01:01:31.484 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/Caches/com.hoodleague.games/WebKit/NetworkCache'
+2026-11-18 01:01:31.484 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/Caches/com.hoodleague.games/WebKit/HSTS'
+2026-11-18 01:01:31.485 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/WebKit/com.hoodleague.games/WebsiteData/ResourceMonitorThrottler'
+2026-11-18 01:01:31.489 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/WebKit/com.hoodleague.games/WebsiteData/LocalStorage'
+2026-11-18 01:01:31.489 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/WebKit/com.hoodleague.games/WebsiteData/IndexedDB'
+2026-11-18 01:01:31.489 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/WebKit/com.hoodleague.games/WebsiteData/Default'
+2026-11-18 01:01:31.489 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/Caches/com.hoodleague.games/WebKit/CacheStorage'
+2026-11-18 01:01:31.490 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/Caches/com.hoodleague.games/WebKit/ServiceWorkers'
+2026-11-18 01:01:31.491 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/Caches/com.hoodleague.games/WebKit/AlternativeServices'
+2026-11-18 01:01:31.491 Df App[7137:6314] [com.apple.containermanager:unspecified] _container_query_get_result_at_index: success
+2026-11-18 01:01:31.497 Df App[7137:62de] [com.apple.network:] networkd_settings_read_from_file initialized networkd settings by reading plist directly
+2026-11-18 01:01:31.497 Df App[7137:62de] [com.apple.network:] networkd_settings_read_from_file initialized networkd settings by reading plist directly
+2026-11-18 01:01:31.500 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/Cookies'
+2026-11-18 01:01:31.502 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/Caches/com.apple.WebKit.Networking'
+2026-11-18 01:01:31.503 Df App[7137:62de] (WebKit) Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Bundle/Application/678134CE-32C9-49CC-A50C-2E0C6165788D/App.app'
+2026-11-18 01:01:31.511 Df App[7137:62de] (WebKit) 0x1130c40c0 - [PID=0, throttler=0x113094190] ProcessThrottler::Activity::Activity: Starting foreground activity / 'Process initialization'
+2026-11-18 01:01:31.541 A  App[7137:6314] (libsystem_containermanager.dylib) container_copy_object
+2026-11-18 01:01:31.581 A  App[7137:62de] (TCC) TCCAccessRequest() IPC
+2026-11-18 01:01:31.582 Df App[7137:62de] [com.apple.xpc:connection] [0x1061110b0] activating connection: mach=true listener=false peer=false name=com.apple.tccd
+2026-11-18 01:01:31.609 Df App[7137:6314] [com.apple.containermanager:unspecified] container_system_group_path_for_identifier: success
+2026-11-18 01:01:31.611 Df App[7137:6314] [com.apple.ManagedConfiguration:MC] Got system group container path from MCM for systemgroup.com.apple.configurationprofiles: /Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Shared/SystemGroup/systemgroup.com.apple.configurationprofiles
+2026-11-18 01:01:31.624 Df App[7137:6314] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 2
+2026-11-18 01:01:31.624 Df App[7137:6314] [com.apple.UIKit:BackgroundTask] Ending task with identifier 2 and description: <_UIBackgroundTaskInfo: 0x60000171bc00>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 540 (elapsed = 1), _expireHandler: <__NSGlobalBlock__: 0x1e61729e0>
+2026-11-18 01:01:31.624 Df App[7137:6314] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x6000021082d0> (used by background task with identifier 2: <_UIBackgroundTaskInfo: 0x60000171bc00>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 540 (elapsed = 1))
+2026-11-18 01:01:31.625 Df App[7137:62de] [com.apple.xpc:connection] [0x1061110b0] invalidated after the last release of the connection object
+2026-11-18 01:01:31.663 Df App[7137:62de] (WebKit) 0x1130dc0e0 - [PID=0] WebProcessCache::updateCapacity: Cache is disabled because process swap on navigation is disabled
+2026-11-18 01:01:31.683 Df App[7137:62de] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-18 01:01:31.705 Df App[7137:6312] [com.apple.xpc:connection] [0x106112fc0] activating connection: mach=true listener=false peer=false name=com.apple.webprivacyd
+2026-11-18 01:01:31.707 Df App[7137:62de] [com.apple.WebKit:Process] 0x106112918 - PageConfiguration::delaysWebProcessLaunchUntilFirstLoad() -> false because of associated processPool value
+2026-11-18 01:01:31.707 Df App[7137:62de] [com.apple.WebKit:Process] 0x106834608 - WebProcessPool::createWebPage: Not delaying WebProcess launch
+2026-11-18 01:01:31.707 Df App[7137:62de] [com.apple.WebKit:Process] 0x1130e80c0 - [PID=0] WebProcessProxy::constructor:
+2026-11-18 01:01:31.714 Df App[7137:62de] [com.apple.WebKit:Sandbox] Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Bundle/Application/678134CE-32C9-49CC-A50C-2E0C6165788D/App.app'
+2026-11-18 01:01:31.731 Df App[7137:62de] [com.apple.avkit:AVKit] +[AVPictureInPicturePlatformAdapter isPictureInPictureSupported]_block_invoke isPictureInPictureSupported NO
+2026-11-18 01:01:31.743 Df App[7137:62de] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-18 01:01:31.744 Df App[7137:62de] [com.apple.xpc:connection] [0x106112cb0] activating connection: mach=true listener=false peer=false name=com.apple.IOSurface.Remote
+2026-11-18 01:01:31.746 Df App[7137:62de] [com.apple.WebKit:Sandbox] Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/WebKit/com.hoodleague.games/WebsiteData/MediaKeys/v1'
+2026-11-18 01:01:31.747 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c4120 - [PID=0, throttler=0x1130e8150] ProcessThrottler::Activity::Activity: Starting foreground activity / 'Process initialization'
+2026-11-18 01:01:31.748 Df App[7137:6314] [com.apple.extensionkit:launch] Launching process with config: bundleID: com.apple.WebKit.WebContent instance ID: Optional([_EXExtensionInstanceIdentifier: 1C12597D-A332-4408-A01A-CA7F4B0E7C9C])
+2026-11-18 01:01:31.762 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=0] WebPageProxy::constructor, site isolation enabled 0
+2026-11-18 01:01:31.764 Df App[7137:62de] [com.apple.WebKit:Media] PlaybackSessionManagerProxy::PlaybackSessionManagerProxy(2906663760)
+2026-11-18 01:01:31.764 Df App[7137:62de] [com.apple.WebKit:Fullscreen] PlaybackSessionManagerProxy::VideoPresentationManagerProxy(2906663760)
+2026-11-18 01:01:31.772 Df App[7137:62de] [com.apple.WebKit:Process] 0x1130e80c0 - [PID=0] WebProcessProxy::addExistingWebPage: webPage=0x105043018, pageProxyID=7, webPageID=8
+2026-11-18 01:01:31.775 Df App[7137:62de] [com.apple.WebKit:Storage] WebsiteDataStore::propagateSettingUpdates (0x106011be8) sessionID=1, OptInCookiePartitioning enabled, setting ThirdPartyCookieBlockingMode::AllExceptPartitioned
+2026-11-18 01:01:31.775 Df App[7137:62de] [com.apple.WebKit:ProcessSwapping] 0x1130dc0e0 - [PID=0] WebProcessCache::updateCapacity: Cache is disabled by client
+2026-11-18 01:01:31.776 Df App[7137:6313] [com.apple.xpc:connection] [0x10611a100] activating connection: mach=true listener=false peer=false name=com.apple.accessibility.mediaaccessibilityd
+2026-11-18 01:01:31.778 Df App[7137:62de] [com.apple.WebKit:Sandbox] Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/Caches/com.apple.WebKit.GPU'
+2026-11-18 01:01:31.778 Df App[7137:62de] [com.apple.WebKit:Sandbox] Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/tmp/com.apple.WebKit.GPU'
+2026-11-18 01:01:31.778 Df App[7137:62de] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-18 01:01:31.778 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c4210 - [PID=0, throttler=0x11311c270] ProcessThrottler::Activity::Activity: Starting foreground activity / 'Process initialization'
+2026-11-18 01:01:31.781 Df App[7137:6317] [com.apple.extensionkit:launch] Launching process with config: bundleID: com.apple.WebKit.GPU instance ID: Optional([_EXExtensionInstanceIdentifier: 20B1657B-CD33-4B08-866A-41DA2E65D5D2])
+2026-11-18 01:01:31.787 Df App[7137:62de] [com.apple.WebKit:TextInteraction] Conforming to BrowserEngineKit text input protocol
+2026-11-18 01:01:31.817 Df App[7137:62de] [com.apple.UserNotifications:Connections] [com.hoodleague.games] Creating a user notification center
+2026-11-18 01:01:31.871 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=0] WebPageProxy::loadRequest:
+2026-11-18 01:01:31.875 Df App[7137:62de] [com.apple.runningboard:connection] Creating side-channel connection to com.apple.runningboard
+2026-11-18 01:01:31.875 Df App[7137:62de] [com.apple.xpc:connection] [0x10601adb0] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-18 01:01:31.878 Df App[7137:62de] [com.apple.runningboard:process] Hit the server for a process handle 1b68f93100001be1 that resolved to: [app<com.hoodleague.games((null))>:7137]
+2026-11-18 01:01:31.879 Df App[7137:62de] [com.apple.WebKit:Process] 0x105043018 - [pageProxyID=7, webPageID=8, PID=0] WebPageProxy::WebPageProxy::shouldForceForegroundPriorityForClientNavigation() returns 1 based on PageClient::canTakeForegroundAssertions()
+2026-11-18 01:01:31.881 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c42d0 - [PID=0, throttler=0x1130e8150] ProcessThrottler::Activity::Activity: Starting foreground activity / 'Client navigation'
+2026-11-18 01:01:31.881 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=0] WebPageProxy::loadRequestWithNavigationShared:
+2026-11-18 01:01:31.884 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x113134100 - NavigationState is taking a process network assertion because a page load started
+2026-11-18 01:01:31.884 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c4300 - [PID=0, throttler=0x1130e8150] ProcessThrottler::Activity::Activity: Starting background activity / 'Page Load'
+2026-11-18 01:01:31.890 Df App[7137:6319] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 1
+2026-11-18 01:01:31.890 Df App[7137:6319] [com.apple.UIKit:BackgroundTask] Ending task with identifier 1 and description: <_UIBackgroundTaskInfo: 0x600001701200>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 540 (elapsed = 1), _expireHandler: (null)
+2026-11-18 01:01:31.891 Df App[7137:6319] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x6000021082d0> (used by background task with identifier 1: <_UIBackgroundTaskInfo: 0x600001701200>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 540 (elapsed = 1))
+2026-11-18 01:01:31.891 Df App[7137:6319] [com.apple.UIKit:BackgroundTask] Will invalidate assertion: <BKSProcessAssertion: 0x6000021082d0> for task identifier: 1
+2026-11-18 01:01:31.904 Df App[7137:62de] [com.apple.WebKit:ViewState] 0x1130e4100 - ApplicationStateTracker: add observers for scene
+2026-11-18 01:01:31.904 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x113144130 - ProcessStateMonitor::ProcessStateMonitor
+2026-11-18 01:01:31.907 Df App[7137:62de] [com.apple.runningboard:monitor] Updating configuration of monitor M7137-1
+2026-11-18 01:01:31.911 Df App[7137:62de] [com.apple.WebKit:ViewState] 0x105039e00 - WKApplicationStateTrackingView: View with page [0x105043018, pageProxyID=7] was added to a window, _lastObservedStateWasBackground=0, isNowBackground=1
+2026-11-18 01:01:31.911 Df App[7137:62de] [com.apple.WebKit:ViewState] 0x105043018 - [pageProxyID=7, webPageID=8, PID=0] WebPageProxy::applicationDidEnterBackground: isSuspendedUnderLock? 0
+2026-11-18 01:01:31.985 Df App[7137:62de] [com.apple.WebKit:ViewState] 0x105043018 - [pageProxyID=7, webPageID=8, PID=0] WebPageProxy::viewIsBecomingInvisible:
+2026-11-18 01:01:32.035 Df App[7137:62de] [com.apple.WebKit:ScreenTime] Screen Time has updated to use the system shield for any blocked URL.
+2026-11-18 01:01:32.035 Df App[7137:62de] [com.apple.WebKit:RemoteLayerTree] RemoteLayerTreeDrawingAreaProxy(10)::hideContentUntilAnyUpdate
+2026-11-18 01:01:32.037 Df App[7137:62de] [com.apple.WebKit:ViewState] 0x106846600 (pageProxyID=7) -[WKWebView _endLiveResize]
+2026-11-18 01:01:32.040 Df App[7137:62de] [com.apple.UIKit:Orientation] <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081) Scene updated orientation preferences: none -> ( Pu Ll Lr )
+2026-11-18 01:01:32.050 Df App[7137:62de] [com.apple.UIKit:KeyWindow] Key window API is scene-level: YES
+2026-11-18 01:01:32.051 Df App[7137:62de] [com.apple.UIKit:KeyWindow] UIWindowScene: 0x1061074a0: Window became key in scene: UIWindow: 0x10610c950; contextId: 0xF37A4A06: reason: UIWindowScene: 0x1061074a0: Window requested to become key in scene: 0x10610c950
+2026-11-18 01:01:32.051 Df App[7137:62de] [com.apple.UIKit:KeyWindow] Key window needs update: 1; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x1061074a0; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x10610c950; reason: UIWindowScene: 0x1061074a0: Window requested to become key in scene: 0x10610c950
+2026-11-18 01:01:32.052 Df App[7137:62de] [com.apple.UIKit:KeyWindow] Window did become application key: UIWindow: 0x10610c950; contextId: 0xF37A4A06; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.hoodleague.games-default
+2026-11-18 01:01:32.052 Df App[7137:62de] [com.apple.UIKit:EventDeferring] [0x600002904b60] Begin local event deferring requested for token: 0x600002610720; environments: 1; reason: UIWindowScene: 0x1061074a0: Begin event deferring in keyboardFocus for window: 0x10610c950
+2026-11-18 01:01:32.055 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:32.056 Df App[7137:62de] [com.apple.WebKit:ViewState] 0x1130e4100 - ApplicationStateTracker: UISceneWillEnterForeground
+2026-11-18 01:01:32.057 Df App[7137:62de] [com.apple.WebKit:ViewState] 0x1130e4100 - ApplicationStateTracker::setIsInBackground: 0
+2026-11-18 01:01:32.057 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x113144130 - ProcessStateMonitor::~ProcessStateMonitor
+2026-11-18 01:01:32.058 Df App[7137:62de] [com.apple.runningboard:monitor] unsubscribing configuration of monitor M7137-1
+2026-11-18 01:01:32.058 Df App[7137:62de] [com.apple.WebKit:ViewState] 0x105043018 - [pageProxyID=7, webPageID=8, PID=0] WebPageProxy::applicationWillEnterForeground: isSuspendedUnderLock? 0
+2026-11-18 01:01:32.066 Df App[7137:62de] [com.apple.BackBoard:Keyboard] Activating connection to server: (null)
+2026-11-18 01:01:32.067 Df App[7137:62de] [com.apple.BackBoard:Keyboard] server remote target <BSXPCServiceConnectionProxy<BKSKeyboardServiceClientToServerIPC>: 0x6000029208c0>
+2026-11-18 01:01:32.067 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:32.068 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x6000002602a0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.068 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:32.069 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x6000002602a0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.069 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:32.070 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x60000025ea00> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.070 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:32.071 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x60000025ea00> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.075 A  App[7137:631c] (RunningBoardServices) observedProcessStatesDidChange
+2026-11-18 01:01:32.079 Df App[7137:62de] [com.apple.UIKit:HardwareKeyboard] -[UIApplication GSKeyboardForHWLayout:senderID:forceRebuild:createIfNeeded:], New hardware layout is created with US layout and 0 standardType.
+2026-11-18 01:01:32.080 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:32.081 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x60000025ef00> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.081 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:32.081 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x60000025ef00> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.082 Df App[7137:62de] [com.apple.WebKit:ViewState] 0x105043018 - [pageProxyID=7, webPageID=8, PID=0] WebPageProxy::updateActivityState: view visibility state changed 0 -> 1
+2026-11-18 01:01:32.082 Df App[7137:62de] [com.apple.WebKit:ViewState] 0x105043018 - [pageProxyID=7, webPageID=8, PID=0] WebPageProxy::viewIsBecomingVisible:
+2026-11-18 01:01:32.082 Df App[7137:62de] [com.apple.WebKit:ScreenTime] Screen Time has updated to use the system shield for any blocked URL.
+2026-11-18 01:01:32.082 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x105043018 - [pageProxyID=7, webPageID=8, PID=0] WebPageProxy::updateThrottleState: UIProcess is taking a foreground assertion because the view is visible
+2026-11-18 01:01:32.082 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c43c0 - [PID=0, throttler=0x1130e8150] ProcessThrottler::Activity::Activity: Starting foreground activity / 'View is visible'
+2026-11-18 01:01:32.088 Df App[7137:62de] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.hoodleague.games-default  persistentID: 781D2B20-E7EB-433B-9714-790AA1093081
+2026-11-18 01:01:32.089 Df App[7137:62de] [com.apple.UIKit:Application] Ignoring already applied deactivation reason: 5; deactivation reasons: 2080
+2026-11-18 01:01:32.090 Df App[7137:62de] [com.apple.UIKit:Application] Deactivation reason added: 12; deactivation reasons: 2080 -> 6176; animating application lifecycle event: 1
+2026-11-18 01:01:32.091 Df App[7137:631c] [com.apple.runningboard:monitor] Received state update for 7137 (app<com.hoodleague.games((null))>, unknown-NotVisible
+2026-11-18 01:01:32.093 Df App[7137:62de] [com.apple.UIKit:Application] Deactivation reason removed: 11; deactivation reasons: 6176 -> 4128; animating application lifecycle event: 1
+2026-11-18 01:01:32.094 Df App[7137:62de] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneIntelligenceSupportSettings> on FBSSceneSettings
+2026-11-18 01:01:32.098 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:32.156 Df App[7137:6316] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x600002606a60; token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.hoodleague.games-default; status: ancestor> was:target
+2026-11-18 01:01:32.167 A  App[7137:6319] (RunningBoardServices) didChangeInheritances
+2026-11-18 01:01:32.169 Df App[7137:631d] [com.apple.runningboard:process] Starting death monitoring for handle [xpcservice<com.apple.WebKit.Networking([app<com.hoodleague.games((null))>:7137])>{vt hash: 114736818}[uuid:9D3970A2-F807-4162-B978-D63FEF70E950]{definition:com.apple.WebKit.Networking[extension][client]}:7141]
+2026-11-18 01:01:32.178 Df App[7137:62de] [com.apple.network:activity] Create activity from XPC object <nw_activity 50:1 [453386A8-B1D9-49A5-A52C-A7452ECEE013] (reporting strategy default)>
+2026-11-18 01:01:32.178 Df App[7137:62de] [com.apple.network:activity] Create activity from XPC object <nw_activity 50:2 [7D96A5F1-8AE8-4A2E-A1F8-BE5C40B23697] (reporting strategy default)>
+2026-11-18 01:01:32.178 Df App[7137:62de] [com.apple.network:activity] Set activity <nw_activity 50:1 [453386A8-B1D9-49A5-A52C-A7452ECEE013] (reporting strategy default)> as the global parent
+2026-11-18 01:01:32.178 Df App[7137:62de] [com.apple.Accessibility:AXCommon] Read Per-App on Init: Smart invert = (null)
+2026-11-18 01:01:32.187 Df App[7137:62de] [com.apple.gamecontroller:Session] Creating the shared game controller session...
+2026-11-18 01:01:32.198 Df App[7137:62de] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x600002600300; process scope; status: target> was:none
+2026-11-18 01:01:32.198 A  App[7137:62de] (GameController) [GCDeviceSession] Activate
+2026-11-18 01:01:32.200 Df App[7137:62de] [com.apple.UIKit:EventDeferring] [0x600002904b60] Scene target of event deferring environments did update: scene: 0x1061074a0; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-11-18 01:01:32.201 Df App[7137:62de] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x1061074a0; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.hoodleague.games-default
+2026-11-18 01:01:32.201 Df App[7137:62de] [com.apple.UIKit:UpdateScheduler] Target list changed: <CADisplay:LCD PurpleMain>
+2026-11-18 01:01:32.202 Df App[7137:62de] [com.apple.WebKit:TextInput] Started deferring input view updates (01)
+2026-11-18 01:01:32.204 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] Reloading input views for key-window scene responder: <WKContentView: 0x105039e00; frame = (0 0; 0 0); opaque = NO; > force:N
+2026-11-18 01:01:32.205 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] _reloadInputViewsForKeyWindowSceneResponder: 1 force: 0, fromBecomeFirstResponder: 1 (automaticKeyboard: 1, reloadIdentifier: CDA78158-17E8-4422-98A0-A9903A5A1C1A)
+2026-11-18 01:01:32.205 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] _inputViewsForResponder: <WKContentView: 0x105039e00; frame = (0 0; 0 0); opaque = NO; >, automaticKeyboard: 1, force: 0
+2026-11-18 01:01:32.205 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] _inputViewsForResponder, disableAutomaticKeyboardUI return empty
+2026-11-18 01:01:32.216 Df App[7137:62de] [com.apple.UIKit:TrackingElementWindowController] Change from input view set: (null)
+2026-11-18 01:01:32.216 Df App[7137:62de] [com.apple.UIKit:TrackingElementWindowController] Change to input view set: (null)
+2026-11-18 01:01:32.217 Df App[7137:62de] [com.apple.UIKit:KeyboardLayoutGuide] _moveGuideOffscreenAtEdge: 4
+2026-11-18 01:01:32.217 Df App[7137:62de] [com.apple.UIKit:KeyboardLayoutGuide] changeOffsetConstants: offset is changing to {0, 0} [previous offset: {-1, -1}]
+2026-11-18 01:01:32.218 Df App[7137:62de] [com.apple.UIKit:KeyboardLayoutGuide] changeSizingConstants: size is changing [not transitioning] to {402, 0} [previous size: {1, 0}]
+2026-11-18 01:01:32.227 Df App[7137:62de] [com.apple.UIKit:KeyboardUI] -[_UIKeyboardStateManager initWithPresentationDelegateView:forCustomInputView:] UIDevice.currentDevice._hardwareKeyboardAvailable = YES
+2026-11-18 01:01:32.228 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:32.228 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x60000021f540> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.228 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:32.229 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x60000021f540> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.266 Df App[7137:62de] [com.apple.xpc:connection] [0x106116030] activating connection: mach=true listener=false peer=false name=com.apple.TextInput
+2026-11-18 01:01:32.271 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:32.272 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x600000260580> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.272 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:32.273 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x600000260580> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.295 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:32.295 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x6000002642a0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.295 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:32.296 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x6000002642a0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.298 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:32.299 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x600000261640> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.299 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:32.299 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x600000261640> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.303 A  App[7137:62de] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.307 Df App[7137:62de] [com.apple.UIKit:UIKBFeedbackGenerator] <_UIKBFeedbackGenerator: 0x600003508160>: Updating mode. Haptics: unsupported. Haptics: disabled. Ringer: on. Sound: enabled. Mode: audio only
+2026-11-18 01:01:32.310 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:32.311 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x6000002646e0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.312 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:32.312 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x6000002646e0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.313 Df App[7137:62de] [com.apple.UIKit:InputSessionChange] -_teardownExistingDelegate:(nil) forSetDelegate:<WKContentView: 0x105039e00> force:NO delayEndInputSession:YES
+2026-11-18 01:01:32.313 Df App[7137:62de] [com.apple.UIKit:InputSessionChange] endInputSession completion is disabled
+2026-11-18 01:01:32.318 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] [Interface Orientation] was:Interface Unknown now:UIInterfaceOrientationPortrait reason:Using key window scene
+2026-11-18 01:01:32.325 Df App[7137:62de] [com.apple.UIKit:SmartReply] Handling responseContextDidChange - existing: (null), new: (null)
+2026-11-18 01:01:32.349 A  App[7137:632f] (RunningBoardServices) didChangeInheritances
+2026-11-18 01:01:32.352 Df App[7137:631d] [com.apple.extensionkit:launch] Created new process ExtensionProcess: bundleID: com.apple.WebKit.Networking instance ID: Optional([_EXExtensionInstanceIdentifier: 9D3970A2-F807-4162-B978-D63FEF70E950]) pid: 7141.
+2026-11-18 01:01:32.353 Df App[7137:631d] [com.apple.WebKit:Process] AssertionCapability::AssertionCapability: taking assertion Foreground
+2026-11-18 01:01:32.361 Df App[7137:631d] [com.apple.xpc:connection] [0x10601fc70] activating connection: mach=true listener=false peer=false name=com.apple.fontservicesd
+2026-11-18 01:01:32.377 Df App[7137:6319] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-18 01:01:32.379 Df App[7137:6319] [com.apple.xpc:session] [0x600002113390] Session created.
+2026-11-18 01:01:32.379 Df App[7137:6319] [com.apple.xpc:session] [0x600002113390] Session created from connection [0x106210e90]
+2026-11-18 01:01:32.380 Df App[7137:6319] [com.apple.xpc:connection] [0x106210e90] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-18 01:01:32.380 Df App[7137:6319] [com.apple.xpc:session] [0x600002113390] Session activated
+2026-11-18 01:01:32.496 Df App[7137:6314] [com.apple.runningboard:process] Starting death monitoring for handle [xpcservice<com.apple.WebKit.WebContent([app<com.hoodleague.games((null))>:7137])>{vt hash: 71395982}[uuid:1C12597D-A332-4408-A01A-CA7F4B0E7C9C]{definition:com.apple.WebKit.WebContent[extension][client]}:7144]
+2026-11-18 01:01:32.521 Df App[7137:6314] [com.apple.extensionkit:launch] Created new process ExtensionProcess: bundleID: com.apple.WebKit.WebContent instance ID: Optional([_EXExtensionInstanceIdentifier: 1C12597D-A332-4408-A01A-CA7F4B0E7C9C]) pid: 7144.
+2026-11-18 01:01:32.521 Df App[7137:631c] [com.apple.WebKit:Process] AssertionCapability::AssertionCapability: taking assertion Foreground
+2026-11-18 01:01:32.603 Df App[7137:62de] [com.apple.TextInputUI:DynamicKeyplaneView] <TUIKeyplaneView: 0x106227050> changed keyplane size to {402, 216}; docked
+2026-11-18 01:01:32.603 Df App[7137:62de] [com.apple.TextInputUI:DynamicKeyplaneView] Setting dynamic keyplane: Dynamic-QWERTY-British-Small_Capital-Letters
+2026-11-18 01:01:32.635 Df App[7137:631c] [com.apple.TextInputUI:CandidateGeneration] -[TUIKeyboardCandidateMultiplexer installGeneratorForSource:]_block_invoke: Multiplexer is installing generator for source: 1
+2026-11-18 01:01:32.635 Df App[7137:631c] [com.apple.TextInputUI:CandidateGeneration] -[TUIKeyboardCandidateMultiplexer installGeneratorForSource:]_block_invoke: Multiplexer is installing generator for source: 3
+2026-11-18 01:01:32.635 Df App[7137:62de] [com.apple.UIKit:KeyboardUI] Creating a new RTI client
+2026-11-18 01:01:32.638 Df App[7137:62de] [com.apple.BoardServices:XPCErrors] [C:3] Alloc com.apple.inputservice.input-ui-host
+2026-11-18 01:01:32.648 Df App[7137:62de] [com.apple.xpc:connection] [0x106241980] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-18 01:01:32.658 Df App[7137:62de] [com.apple.UIKit:KeyboardUI] creating new AutofillUI connection
+2026-11-18 01:01:32.663 Df App[7137:62de] [PrototypeTools:domain] Not observing PTDefaults on customer install.
+2026-11-18 01:01:32.669 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient beginAllowingRemoteTextInput:]  Begin allowing remote text input: C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:32.721 Df App[7137:631c] [com.apple.calls.callkit:Default] Call host has no calls
+2026-11-18 01:01:32.823 Df App[7137:62de] [com.apple.UIKit:UIPeripheralHost] endPlacementForInputViewSet: <<UIInputViewSet: 0x600003708f00>; (empty)> windowScene: <UIWindowScene: 0x1061074a0; role: UIWindowSceneSessionRoleApplication; persistentIdentifier: 781D2B20-E7EB-433B-9714-790AA1093081; activationState: UISceneActivationStateForegroundInactive>
+2026-11-18 01:01:32.845 Df App[7137:62de] [com.apple.UIKit:KeyboardArbiterClientLog] isWritingToolsHandlingKeyboardTracking:Y (WT ready:Y, Arbiter ready:Y)
+2026-11-18 01:01:32.845 Df App[7137:62de] [com.apple.UIKit:KeyboardArbiterClientLog] -[_UIRemoteKeyboards prepareToMoveKeyboard:withIAV:isIAVRelevant:showing:notifyRemote:forScene:] position: {{0, 0}, {0, 0}} visible: 0; notifyRemote: 1; isMinimized: NO
+2026-11-18 01:01:32.846 Df App[7137:62de] [com.apple.UIKit:KeyboardVisualMode] Show keyboard with visual mode windowed (0)
+2026-11-18 01:01:32.862 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] Reloading input views for key-window scene responder: <WKContentView: 0x105039e00; frame = (0 0; 0 0); opaque = NO; > force:N
+2026-11-18 01:01:32.864 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:32.865 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x6000002840a0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.865 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:32.865 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x6000002840a0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.865 Df App[7137:62de] [com.apple.UIKit:InputSessionChange] -_teardownExistingDelegate:<WKContentView: 0x105039e00> forSetDelegate:(nil) force:NO delayEndInputSession:NO
+2026-11-18 01:01:32.867 Df App[7137:6319] [com.apple.xpc:connection] [0x1062124a0] activating connection: mach=true listener=false peer=false name=com.apple.SystemConfiguration.NetworkInformation_sim
+2026-11-18 01:01:32.867 E  App[7137:62de] [com.apple.RemoteTextInput:RTILog] -[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  Can only perform input operation for an active session. sessionID = C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:32.869 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient endAllowingRemoteTextInput:completion:]  End allowing remote text input: C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:32.870 Df App[7137:62de] [com.apple.UIKit:SmartReply] Handling responseContextDidChange - existing: (null), new: (null)
+2026-11-18 01:01:32.871 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] _reloadInputViewsForKeyWindowSceneResponder: 1 force: 0, fromBecomeFirstResponder: 0 (automaticKeyboard: 1, reloadIdentifier: EB4569EA-CFFA-4CA3-807C-CDE034E8DF74)
+2026-11-18 01:01:32.871 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] _inputViewsForResponder: <WKContentView: 0x105039e00; frame = (0 0; 0 0); opaque = NO; >, automaticKeyboard: 1, force: 0
+2026-11-18 01:01:32.872 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] _inputViewsForResponder, disableAutomaticKeyboardUI return empty
+2026-11-18 01:01:32.872 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:32.873 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x60000027afc0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.873 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:32.874 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x60000027afc0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:32.874 Df App[7137:62de] [com.apple.UIKit:InputSessionChange] -_teardownExistingDelegate:(nil) forSetDelegate:<WKContentView: 0x105039e00> force:NO delayEndInputSession:NO
+2026-11-18 01:01:32.876 Df App[7137:62de] [com.apple.purplebuddy:launch] BYSetupAssistantHasCompletedInitialRun is YES in the simulator.
+2026-11-18 01:01:32.882 Df App[7137:62de] [com.apple.UIKit:SmartReply] Handling responseContextDidChange - existing: (null), new: (null)
+2026-11-18 01:01:32.912 Df App[7137:62de] [com.apple.xpc:connection] [0x10620d280] activating connection: mach=true listener=false peer=false name=com.apple.TextInput.preferences
+2026-11-18 01:01:32.924 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient beginAllowingRemoteTextInput:]  Begin allowing remote text input: C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:32.928 Df App[7137:62de] [com.apple.UIKit:UIPeripheralHost] endPlacementForInputViewSet: <<UIInputViewSet: 0x600003708f00>; (empty)> windowScene: <UIWindowScene: 0x1061074a0; role: UIWindowSceneSessionRoleApplication; persistentIdentifier: 781D2B20-E7EB-433B-9714-790AA1093081; activationState: UISceneActivationStateForegroundInactive>
+2026-11-18 01:01:32.929 Df App[7137:62de] [com.apple.UIKit:KeyboardArbiterClientLog] -[_UIRemoteKeyboards prepareToMoveKeyboard:withIAV:isIAVRelevant:showing:notifyRemote:forScene:] position: {{0, 0}, {0, 0}} visible: 0; notifyRemote: 1; isMinimized: NO
+2026-11-18 01:01:32.929 Df App[7137:62de] [com.apple.UIKit:KeyboardVisualMode] Show keyboard with visual mode windowed (0)
+2026-11-18 01:01:32.929 Df App[7137:62de] [com.apple.RemoteTextInput:RTILog] -[RTIInputSystemClient remoteTextInputSessionWithID:textSuggestionsChanged:]  Text input session suggestions changed. sessionID = C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:32.929 E  App[7137:62de] [com.apple.RemoteTextInput:RTILog] -[RTIInputSystemClient remoteTextInputSessionWithID:textSuggestionsChanged:]  Can only set suggestions for an active session. sessionID = C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:32.930 Df App[7137:62de] [com.apple.xpc:connection] [0x106162480] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-18 01:01:32.930 Df App[7137:62de] [com.apple.xpc:connection] [0x106129d30] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-18 01:01:32.932 Df App[7137:62de] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.hoodleague.games-default  persistentID: 781D2B20-E7EB-433B-9714-790AA1093081
+2026-11-18 01:01:32.932 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:32.934 Df App[7137:62de] [com.apple.FrontBoard:SceneExtension] Realizing settings extension SBUISecureRenderingSettingsExtension on FBSSceneSettings
+2026-11-18 01:01:32.939 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:32.940 Df App[7137:62de] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x1061074a0> (781D2B20-E7EB-433B-9714-790AA1093081)
+2026-11-18 01:01:32.940 Df App[7137:62de] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.hoodleague.games-default  persistentID: 781D2B20-E7EB-433B-9714-790AA1093081
+2026-11-18 01:01:32.940 Df App[7137:62de] [com.apple.UIKit:Application] Deactivation reason removed: 12; deactivation reasons: 4128 -> 32; animating application lifecycle event: 1
+2026-11-18 01:01:32.940 Df App[7137:62de] [com.apple.KeyboardArbiter:Client] Send setDeactivating: N (-DeactivationReason:SuspendedEventsOnly)
+2026-11-18 01:01:32.941 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient _modifyTextEditingAllowedForReason:notify:animated:modifyAllowancesBlock:completion:]  Text editing allowed did change (editingAllowedAfter = YES)
+2026-11-18 01:01:32.941 Df App[7137:62de] [com.apple.UIKit:Application] Deactivation reason removed: 5; deactivation reasons: 32 -> 0; animating application lifecycle event: 0
+2026-11-18 01:01:32.941 Df App[7137:62de] [com.apple.WebKit:Fullscreen] PlaybackSessionManagerProxy::applicationDidBecomeActive(2906663760)
+2026-11-18 01:01:32.942 A  App[7137:62de] (GameController) Notify ApplicationDidBecomeActive
+2026-11-18 01:01:32.946 A  App[7137:632f] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.948 A  App[7137:632f] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.950 A  App[7137:632f] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.957 A  App[7137:632f] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.961 A  App[7137:632f] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.965 A  App[7137:632f] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.971 A  App[7137:632f] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.975 A  App[7137:632f] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.978 A  App[7137:632f] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.980 A  App[7137:632f] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-18 01:01:32.983 Df App[7137:62de] [com.apple.gamecontroller:Session] Connected devices changed (2 added, 0 removed) -> [2] {(
+    <GCController 0x600003d043c0 'MFi'/'Gamepad'>,
+    <GCKeyboard 0x6000002722a0 'Generic Keyboard'>
+)}
+2026-11-18 01:01:32.984 Df App[7137:62de] [com.apple.CoreAnalytics:client] No XPC connection in Simulator
+2026-11-18 01:01:32.985 Df App[7137:62de] [com.apple.gamecontroller:Session] Connected devices changed (0 added, 0 removed) -> [2] {(
+    <GCController 0x600003d043c0 'MFi'/'Gamepad'>,
+    <GCKeyboard 0x6000002722a0 'Generic Keyboard'>
+)}
+2026-11-18 01:01:32.985 Df App[7137:62de] [com.apple.gamecontroller:Session] Connected devices changed (0 added, 0 removed) -> [2] {(
+    <GCController 0x600003d043c0 'MFi'/'Gamepad'>,
+    <GCKeyboard 0x6000002722a0 'Generic Keyboard'>
+)}
+2026-11-18 01:01:32.986 A  App[7137:62de] (GameControllerFoundation) [HID Event System Client] Activate
+2026-11-18 01:01:32.990 Df App[7137:62de] [com.apple.WebKit:Process] 0x113094100 - NetworkProcessProxy::didFinishLaunching
+2026-11-18 01:01:32.990 F  App[7137:62de] [com.apple.WebKit:Process] Networking process (0x113094100) took 1.531433 seconds to launch
+2026-11-18 01:01:32.990 A  App[7137:62de] (libsystem_trace.dylib) Activity for state dumps
+2026-11-18 01:01:32.990 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x113094190 - [PID=7141] ProcessThrottler::didConnectToProcess
+2026-11-18 01:01:32.990 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x113094190 - [PID=7141] ProcessThrottler::setThrottleState: Updating process assertion type to 3 (foregroundActivities=1, backgroundActivities=3)
+2026-11-18 01:01:32.991 Df App[7137:62de] [com.apple.WebKit:Process] AssertionCapability::AssertionCapability: taking assertion Foreground
+2026-11-18 01:01:32.991 Df App[7137:6314] [com.apple.WebKit:ProcessSuspension] 0x113124160 - ProcessAssertion::acquireSync Trying to take RBS assertion 'NetworkProcess Foreground Assertion' for process with PID=7141
+2026-11-18 01:01:32.991 Df App[7137:62de] [com.apple.WebKit:Process] 0x1130e80c0 - [PID=7144] WebProcessProxy::didFinishLaunching:
+2026-11-18 01:01:32.991 F  App[7137:62de] [com.apple.WebKit:Process] WebContent process (0x1130e80c0) took 1.280524 seconds to launch
+2026-11-18 01:01:32.991 A  App[7137:62de] (libsystem_trace.dylib) Activity for state dumps
+2026-11-18 01:01:32.991 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130e8150 - [PID=7144] ProcessThrottler::didConnectToProcess
+2026-11-18 01:01:32.991 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130e8150 - [PID=7144] ProcessThrottler::setThrottleState: Updating process assertion type to 3 (foregroundActivities=3, backgroundActivities=10)
+2026-11-18 01:01:32.992 Df App[7137:62de] [com.apple.WebKit:Process] AssertionCapability::AssertionCapability: taking assertion Foreground
+2026-11-18 01:01:32.992 Df App[7137:6314] [com.apple.WebKit:ProcessSuspension] 0x113124160 - ProcessAssertion() Successfully granted capability
+2026-11-18 01:01:32.994 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x60000172d1c0 - WKProcessAssertionBackgroundTaskManager: beginBackgroundTaskWithName
+2026-11-18 01:01:32.994 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] WKProcessAssertionBackgroundTaskManager: Took a FinishTaskInterruptable assertion for own process
+2026-11-18 01:01:32.994 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130e80c0 - [PID=7144] WebProcessProxy::didChangeThrottleState: type=2
+2026-11-18 01:01:32.995 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130e80c0 - [PID=7144] WebProcessProxy::didChangeThrottleState(Foreground) Taking foreground assertion for network process
+2026-11-18 01:01:32.995 Df App[7137:6314] [com.apple.WebKit:ProcessSuspension] 0x11317c0c0 - ProcessAssertion::acquireSync Trying to take RBS assertion 'WebProcess Foreground Assertion' for process with PID=7144
+2026-11-18 01:01:32.995 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c4480 - [PID=7141, throttler=0x113094190] ProcessThrottler::Activity::Activity: Starting foreground activity / 'Networking for foreground view(s)'
+2026-11-18 01:01:32.997 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c44b0 - [PID=0, throttler=0x11311c270] ProcessThrottler::Activity::Activity: Starting foreground activity / 'GPU for foreground view(s)'
+2026-11-18 01:01:32.997 Df App[7137:62de] [com.apple.WebKit:Process] 0x113094100 - NetworkProcessProxy::sendXPCEndpointToProcess(0x1130e80c0) state = 1 has connection = 1 XPC endpoint message = 0x0
+2026-11-18 01:01:32.997 Df App[7137:62de] (WebKit) WebContent[7144] Installed launch log hook
+2026-11-18 01:01:32.997 Df App[7137:62de] [com.apple.WebKit:Process] 0x113094100 - NetworkProcessProxy::sendXPCEndpointToProcess(0x1130e80c0) state = 1 has connection = 1 XPC endpoint message = 0x600003e13e00
+2026-11-18 01:01:32.998 Df App[7137:62de] [com.apple.WebKit:Process] 0x113094100 - NetworkProcessProxy::sendXPCEndpointToProcess(0x11311c1e0) state = 0 has connection = 0 XPC endpoint message = 0x600003e13e00
+2026-11-18 01:01:33.000 Df App[7137:62de] [com.apple.KeyboardArbiter:Client] startConnection
+2026-11-18 01:01:33.000 Sd App[7137:0] (79E72B83-2384-3A91-8EE7-4315E85E9A91) IOHIDManager State
+{
+    DispatchQueue = 0;
+    RunLoop = 1;
+    createOptions = 0;
+    isOpen = 0;
+    openOptions = 0;
+}
+2026-11-18 01:01:33.003 Df App[7137:62de] [com.apple.xpc:connection] [0x106126ec0] activating connection: mach=true listener=false peer=false name=com.apple.UIKit.KeyboardManagement.hosted
+2026-11-18 01:01:33.006 Df App[7137:62de] [com.apple.xpc:connection] WebContent[7144] [0x1049054c0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-18 01:01:33.010 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c4120 - [PID=7144, throttler=0x1130e8150] ProcessThrottler::Activity::invalidate: Ending foreground activity / 'Process initialization'
+2026-11-18 01:01:33.010 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x113094100 - NetworkProcessProxy::getNetworkProcessConnection: Taking a background assertion because web process pid 7144 (core identifier 3) is requesting a connection
+2026-11-18 01:01:33.010 Df App[7137:62de] [com.apple.WebKit:Process] WebContent[7144] getNetworkProcessConnection: Request connection for core identifier 3
+2026-11-18 01:01:33.014 Df App[7137:6314] [com.apple.WebKit:ProcessSuspension] 0x11317c0c0 - ProcessAssertion() Successfully granted capability
+2026-11-18 01:01:33.014 Df App[7137:62de] [com.apple.KeyboardArbiter:Client] handleKeyboardChange: set currentKeyboard:N (wasKeyboard:N)
+2026-11-18 01:01:33.035 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c40c0 - [PID=7141, throttler=0x113094190] ProcessThrottler::Activity::invalidate: Ending foreground activity / 'Process initialization'
+2026-11-18 01:01:33.055 Df App[7137:62de] [com.apple.network:activity] <nw_activity 50:1 [453386A8-B1D9-49A5-A52C-A7452ECEE013] (global parent) (reporting strategy default) complete (reason success)> complete with reason 2 (success), duration 3463ms
+2026-11-18 01:01:33.055 Df App[7137:62de] [com.apple.network:activity] <nw_activity 50:2 [7D96A5F1-8AE8-4A2E-A1F8-BE5C40B23697] (reporting strategy default) complete (reason success)> complete with reason 2 (success), duration 3463ms
+2026-11-18 01:01:33.055 Df App[7137:62de] [com.apple.network:activity] Unsetting the global parent activity <nw_activity 50:1 [453386A8-B1D9-49A5-A52C-A7452ECEE013] (global parent) (reporting strategy default) complete (reason success)>
+2026-11-18 01:01:33.055 Df App[7137:62de] [com.apple.network:activity] Unset the global parent activity
+2026-11-18 01:01:33.144 Df App[7137:62de] [com.apple.WebKit:Loading] WebContent[7144] Received Launch Services database
+2026-11-18 01:01:33.144 Df App[7137:62de] [com.apple.WebKit:Process] WebContent[7144] 0x110060150 - [sessionID=1] WebProcess::initializeLogForwarding: Debug logging enabled: 0
+2026-11-18 01:01:33.148 Df App[7137:62de] [com.apple.WebKit:Process] WebContent[7144] WebProcess::platformInitializeWebProcess
+2026-11-18 01:01:33.158 Df App[7137:62de] [com.apple.xpc:connection] WebContent[7144] [0x104905370] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-18 01:01:33.158 Df App[7137:62de] [com.apple.xpc:connection] WebContent[7144] [0x104905370] Connection returned listener port: 0x3a03
+2026-11-18 01:01:33.158 Df App[7137:62de] [com.apple.xpc:connection] WebContent[7144] [0x104905890] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-18 01:01:33.158 Df App[7137:62de] [com.apple.xpc:connection] WebContent[7144] [0x1047058c0] activating connection: mach=false listener=false peer=true name=com.apple.xpc.anonymous.0x104905370.peer[7144].0x1047058c0
+2026-11-18 01:01:33.208 Df App[7137:62de] [com.apple.Accessibility:AXSupportCommon] WebContent[7144] Application accessibility enabled: 0, (
+	0   libAccessibility.dylib              0x000000019215585c _AXSApplicationAccessibilitySetEnabled + 76
+	1   WebKit                              0x000000018e01aa24 _ZN6WebKit10WebProcess28platformInitializeWebProcessERNS_28WebProcessCreationParametersE + 2096
+	2   WebKit                              0x000000018e1fcc94 _ZN6WebKit10WebProcess20initializeWebProcessEONS_28WebProcessCreationParametersEON3WTF17CompletionHandlerIFvN7WebCore15ProcessIdentityEEEE + 188
+	3   WebKit                              0x000000018db9b684 _ZN3IPC18handleMessageAsyncIN8Messages10WebProcess20InitializeWebProcessENS_10ConnectionEN6WebKit10WebProcessES6_FvONS5_28WebProcessCreationParametersEON3WTF17CompletionHandlerIFvN7WebCore15ProcessIdentityEEEEEEEvRT0_RNS_7DecoderEPT1_MT2_T3_ + 224
+	4   WebKit                              0x000000018e5c03cc _ZN3IPC10Connection15dispatchMessageEN3WTF9UniqueRefINS_7DecoderEEE + 556
+	5   WebKit                              0x000000018e5db49c _Z<…>
+2026-11-18 01:01:33.208 Df App[7137:62de] [com.apple.Accessibility:AXSupportCommon] WebContent[7144] Stored App AX setting: 0
+2026-11-18 01:01:33.211 Df App[7137:62de] [com.apple.Accessibility:AXSupportCommon] WebContent[7144] AXS AccessibilityEnabled: (app ax: 0), ax settings: 0, cached: 0
+2026-11-18 01:01:33.214 Df App[7137:6319] [com.apple.xpc:connection] [0x106129d30] Re-initialization successful; calling out to event handler with XPC_ERROR_CONNECTION_INTERRUPTED
+2026-11-18 01:01:33.352 Df App[7137:62de] [com.apple.WebKit:TextInput] Stopped deferring all input view updates (01)
+2026-11-18 01:01:33.444 Df App[7137:6317] [com.apple.runningboard:process] Starting death monitoring for handle [xpcservice<com.apple.WebKit.GPU([app<com.hoodleague.games((null))>:7137])>{vt hash: 223737757}[uuid:20B1657B-CD33-4B08-866A-41DA2E65D5D2]{definition:com.apple.WebKit.GPU[extension][client]}:7145]
+2026-11-18 01:01:33.462 Df App[7137:6317] [com.apple.extensionkit:launch] Created new process ExtensionProcess: bundleID: com.apple.WebKit.GPU instance ID: Optional([_EXExtensionInstanceIdentifier: 20B1657B-CD33-4B08-866A-41DA2E65D5D2]) pid: 7145.
+2026-11-18 01:01:33.463 Df App[7137:6317] [com.apple.WebKit:Process] AssertionCapability::AssertionCapability: taking assertion Foreground
+2026-11-18 01:01:33.466 Df App[7137:62de] [com.apple.xpc:connection] [0x106219200] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-18 01:01:33.665 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::decidePolicyForNavigationAction: frameID=8589934593, isMainFrame=1, navigationID=22
+2026-11-18 01:01:33.679 A  App[7137:6317] (CoreFoundation) Loading Preferences From User Session CFPrefsD
+2026-11-18 01:01:33.683 Df App[7137:62de] [com.apple.WebKit:AppSSO] 0x1130d40f0 - SOAuthorizationCoordinator::tryAuthorize
+2026-11-18 01:01:33.700 A  App[7137:62de] (AppSSO) canPerformAuthorizationWithURL
+2026-11-18 01:01:33.701 Df App[7137:6317] [com.apple.xpc:connection] [0x10601a270] activating connection: mach=true listener=false peer=false name=com.apple.Safari.SafeBrowsing.Service
+2026-11-18 01:01:33.701 A  App[7137:62de] (AppSSOCore) canPerformAuthorizationWithURL
+2026-11-18 01:01:33.706 Df App[7137:62de] [com.apple.authkit:nto] Fetching native takeover URLs
+2026-11-18 01:01:33.711 Df App[7137:62de] [com.apple.xpc:connection] [0x106230320] activating connection: mach=true listener=false peer=false name=com.apple.ak.authorizationservices.xpc
+2026-11-18 01:01:33.731 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient _beginSessionWithID:forServices:force:]  Begin text input session. sessionID = C7C0D0A9-7815-4297-B761-2A4B1A21605B, options = <RTISessionOptions: 0x60000028e300; shouldResign = NO; animated = YES; offscreenDirection = 0; enhancedWindowingModeEnabled = NO
+2026-11-18 01:01:33.737 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient beginRemoteTextInputSessionWithID:options:documentTraits:initialDocumentState:]  Cannot begin a session that is already active. session = C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:33.751 Df App[7137:6347] [com.apple.WebKit:RemoteLayerBuffers] WebContent[7144]: [renderingBackend=11] Created rendering backend for pageProxyID=7, webPageID=8
+2026-11-18 01:01:33.752 Df App[7137:6347] [com.apple.WebKit:Process] WebContent[7144] GPUProcessConnection::create - 0x1100ea300
+2026-11-18 01:01:33.827 Df App[7137:62de] [com.apple.WebKit:Sandbox] Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/tmp/com.hoodleague.games/WebKit/MediaCache'
+2026-11-18 01:01:33.827 Df App[7137:62de] [com.apple.WebKit:Sandbox] Successfully created a sandbox extension for '/Users/runner/Library/Developer/CoreSimulator/Devices/99E406B3-2E85-4D79-B09A-563B1443F247/data/Containers/Data/Application/983825B9-5D0E-4029-BF97-F2BC7B48252B/Library/WebKit/com.hoodleague.games/WebsiteData/MediaKeys/v1'
+2026-11-18 01:01:33.828 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x11311c1e0 - GPUProcessProxy is taking a background assertion because a web process is requesting a connection
+2026-11-18 01:01:33.841 Df App[7137:62de] [com.apple.WebKit:Process] 0x11311c1e0 - GPUProcessProxy::didFinishLaunching:
+2026-11-18 01:01:33.842 F  App[7137:62de] [com.apple.WebKit:Process] GPU process (0x11311c1e0) took 2.064393 seconds to launch
+2026-11-18 01:01:33.842 A  App[7137:62de] (libsystem_trace.dylib) Activity for state dumps
+2026-11-18 01:01:33.842 Df App[7137:62de] [com.apple.WebKit:Process] 0x11311c1e0 - GPUProcessProxy::connectionWillOpen:
+2026-11-18 01:01:33.842 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x11311c270 - [PID=7145] ProcessThrottler::didConnectToProcess
+2026-11-18 01:01:33.844 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x11311c270 - [PID=7145] ProcessThrottler::setThrottleState: Updating process assertion type to 3 (foregroundActivities=2, backgroundActivities=2)
+2026-11-18 01:01:33.844 Df App[7137:62de] [com.apple.WebKit:Process] AssertionCapability::AssertionCapability: taking assertion Foreground
+2026-11-18 01:01:33.844 Df App[7137:62de] [com.apple.WebKit:Process] 0x113094100 - NetworkProcessProxy::sendXPCEndpointToProcess(0x11311c1e0) state = 1 has connection = 1 XPC endpoint message = 0x600003e13e00
+2026-11-18 01:01:33.844 Df App[7137:6313] [com.apple.WebKit:ProcessSuspension] 0x11317c180 - ProcessAssertion::acquireSync Trying to take RBS assertion 'GPUProcess Foreground Assertion' for process with PID=7145
+2026-11-18 01:01:33.847 A  App[7137:6317] (CoreServicesInternal) CFURLCreateBookmarkData
+2026-11-18 01:01:33.850 Df App[7137:6319] [com.apple.authkit:nto] URL shouldn't be processed
+2026-11-18 01:01:33.851 Df App[7137:6319] [com.apple.AppSSO:SOConfigurationClient] -[SOConfigurationClient init]  on <SOConfigurationClient: 0x6000002907e0>
+2026-11-18 01:01:33.853 Df App[7137:6319] [com.apple.xpc:connection] [0x106030540] activating connection: mach=true listener=false peer=false name=com.apple.AppSSO.service-xpc
+2026-11-18 01:01:33.854 Df App[7137:6319] [com.apple.AppSSO:SOServiceConnection] <SOServiceConnection: 0x60000028e5c0>: new XPC connection
+2026-11-18 01:01:33.856 Df App[7137:6313] [com.apple.WebKit:ProcessSuspension] 0x11317c180 - ProcessAssertion() Successfully granted capability
+2026-11-18 01:01:33.859 Df App[7137:6319] [com.apple.AppSSO:SOConfigurationClient] -[SOConfigurationClient _reloadConfig]  on <SOConfigurationClient: 0x6000002907e0>
+2026-11-18 01:01:33.859 Df App[7137:6319] [com.apple.AppSSO:SOClient] -[SOClient configurationWithCompletion:]  on <SOClient: 0x600000009fe0>
+2026-11-18 01:01:34.042 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c4210 - [PID=7145, throttler=0x11311c270] ProcessThrottler::Activity::invalidate: Ending foreground activity / 'Process initialization'
+2026-11-18 01:01:34.648 Df App[7137:62de] [com.apple.WebKit:Process] 0x11311c1e0 - GPUProcessProxy::didCreateContextForVisibilityPropagation: webPageProxyID: 7, pagePID: 8, contextID: 3
+2026-11-18 01:01:34.649 Df App[7137:62de] [com.apple.WebKit:Process] Created visibility propagation interaction <_UIVisibilityPropagationInteraction: 0x600002606400> for process with PID=7145
+2026-11-18 01:01:34.652 Df App[7137:6347] [com.apple.WebKit:Process] WebContent[7144] 0x1100ea300 - GPUProcessConnection::didInitialize
+2026-11-18 01:01:34.655 Df App[7137:6313] [com.apple.TextInputUI:CandidateGeneration] All generators are not complete.
+2026-11-18 01:01:34.659 Df App[7137:6347] [com.apple.Accessibility:AXCommon] WebContent[7144] Read Per-App on Init: Smart invert = (null)
+2026-11-18 01:01:34.682 Df App[7137:631d] [com.apple.TextInputUI:CandidateGeneration] All generators are not complete.
+2026-11-18 01:01:34.730 Df App[7137:62de] [com.apple.RemoteTextInput:RTILog] -[RTIInputSystemClient remoteTextInputSessionWithID:textSuggestionsChanged:]  Text input session suggestions changed. sessionID = C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:34.741 Df App[7137:631d] [com.apple.TextInputUI:CandidateGeneration] All generators are not complete.
+2026-11-18 01:01:34.742 Df App[7137:631d] [com.apple.TextInputUI:CandidateGeneration] All generators are not complete.
+2026-11-18 01:01:34.910 E  App[7137:631d] [com.apple.TextInputUI:CandidateGeneration] Result accumulator timeout: 0.250000, exceeded.
+2026-11-18 01:01:34.910 Df App[7137:6313] [com.apple.TextInputUI:CandidateGeneration] Assigning candidates of source type kbd to `containerToPush, for autocorrection flow only` - 2801E93A
+2026-11-18 01:01:34.911 Df App[7137:6313] [com.apple.TextInputUI:CandidateGeneration] Preparing to push <_TUIKeyboardCandidateContainer: 0x600000295580> to candidate receiver, for request token: 2801E93A
+2026-11-18 01:01:34.911 Df App[7137:6314] [com.apple.TextInputUI:CandidateGeneration] containerToPush has an autocorrection list.  pushing to candidate receiver with request token. 2801E93A.
+2026-11-18 01:01:34.994 E  App[7137:6317] [com.apple.TextInputUI:CandidateGeneration] Result accumulator timeout: 0.250000, exceeded.
+2026-11-18 01:01:34.994 Df App[7137:631d] [com.apple.TextInputUI:CandidateGeneration] Assigning candidates of source type kbd to `containerToPush, for autocorrection flow only` - EE9500B1
+2026-11-18 01:01:34.994 Df App[7137:631d] [com.apple.TextInputUI:CandidateGeneration] Preparing to push <_TUIKeyboardCandidateContainer: 0x60000029caa0> to candidate receiver, for request token: EE9500B1
+2026-11-18 01:01:34.994 Df App[7137:631d] [com.apple.TextInputUI:CandidateGeneration] Performing delayed generation for token=EE9500B1
+2026-11-18 01:01:34.995 Df App[7137:6314] [com.apple.TextInputUI:CandidateGeneration] containerToPush has an autocorrection list.  pushing to candidate receiver with request token. EE9500B1.
+2026-11-18 01:01:35.336 Df App[7137:62de] [com.apple.WebKit:RemoteLayerTree] RemoteLayerTreeDrawingAreaProxy(10) Unhiding layer tree
+2026-11-18 01:01:35.437 Df App[7137:6319] [com.apple.AppSSO:SOClient] configurationWithCompletion: success = YES, error = (null)
+2026-11-18 01:01:35.438 Df App[7137:62de] [com.apple.WebKit:AppSSO] SOAuthorizationCoordinator::tryAuthorize: The requested URL is not registered for AppSSO handling. No further action needed.
+2026-11-18 01:01:35.994 E  App[7137:62de] [com.apple.WebKit:ResourceLoadStatistics] Failed to request storage access quirks from WebPrivacy.
+2026-11-18 01:01:35.994 E  App[7137:62de] [com.apple.WebKit:ResourceLoadStatistics] Failed to request storage access user agent string quirks from WebPrivacy.
+2026-11-18 01:01:35.994 E  App[7137:62de] [com.apple.WebKit:ResourceLoadStatistics] Failed to request known fingerprinting scripts from WebPrivacy: Error Domain=WebPrivacyErrorDomain Code=1001 "List data not found" UserInfo={NSLocalizedDescription=List data not found}
+2026-11-18 01:01:35.994 E  App[7137:62de] [com.apple.WebKit:ResourceLoadStatistics] Failed to request query parameters from WebPrivacy.
+2026-11-18 01:01:35.994 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::decidePolicyForNavigationAction: listener called: frameID=8589934593, isMainFrame=1, navigationID=22, policyAction=Use, isAppBoundDomain=0, wasNavigationIntercepted=0
+2026-11-18 01:01:35.994 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::receivedNavigationActionPolicyDecision: frameID=8589934593, isMainFrame=1, navigationID=22, policyAction=Use
+2026-11-18 01:01:35.996 Df App[7137:62de] [com.apple.WebKit:ProcessSwapping] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::decidePolicyForNavigationAction: keep using process 7144 for navigation, reason=Process has not yet committed any provisional loads
+2026-11-18 01:01:35.996 Df App[7137:62de] [com.apple.WebKit:Process] 0x1130e80c0 - [PID=7144] WebProcessProxy::canTerminateAuxiliaryProcess: returns false (pageCount=1, provisionalPageCount=0, suspendedPageCount=0, m_isInProcessCache=0, m_shutdownPreventingScopeCounter=0)
+2026-11-18 01:01:35.996 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webFrameID=8589934593, webPageID=8] WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction: Got policyAction Use from async IPC
+2026-11-18 01:01:35.997 Df App[7137:6347] [com.apple.WebKit:Loading] WebContent[7144] 0x11007c700 - [pageID=8, frameID=8589934593] PolicyChecker::checkNavigationPolicy: continuing because this policyAction from dispatchDecidePolicyForNavigationAction is Use
+2026-11-18 01:01:35.997 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8 frameID=8589934593 isMainFrame=1] FrameLoader::stopAllLoaders: m_provisionalDocumentLoader=0, m_documentLoader=4581265408
+2026-11-18 01:01:35.998 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, isMainFrame=1] DocumentLoader::stopLoading
+2026-11-18 01:01:35.998 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8 frameID=8589934593 isMainFrame=1] FrameLoader::setProvisionalDocumentLoader: Setting provisional document loader to 4581257216 (was 0)
+2026-11-18 01:01:35.998 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8 frameID=8589934593 isMainFrame=1] FrameLoader::continueLoadAfterNavigationPolicy: Setting provisional document loader (m_provisionalDocumentLoader=4581257216)
+2026-11-18 01:01:35.998 Df App[7137:6347] [com.apple.WebKit:ProcessSuspension] WebContent[7144]: [webPageID=8] WebPage::freezeLayerTree: Adding a reason to freeze layer tree (reason=1, new=1, old=0)
+2026-11-18 01:01:35.998 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8 frameID=8589934593 isMainFrame=1] FrameLoader::setPolicyDocumentLoader: Setting policy document loader to 0 (was 4581257216)
+2026-11-18 01:01:35.998 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8 frameID=8589934593 isMainFrame=1] FrameLoader::prepareForLoadStart: Starting frame load
+2026-11-18 01:01:35.998 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: ProgressTracker::progressStarted: frameID 8589934593, value 0.100000, tracked frames 1, originating frameID 8589934593, isMainLoad 1
+2026-11-18 01:01:35.999 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, isMainFrame=1] DocumentLoader::startLoadingMainResource: Starting load
+2026-11-18 01:01:35.999 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::didStartProvisionalLoadForFrame: frameID=8589934593, isMainFrame=1
+2026-11-18 01:01:35.999 Df App[7137:62de] [com.apple.WebKit:Loading] 0x1130e80c0 - [PID=7144] WebProcessProxy::didStartProvisionalLoadForMainFrame:
+2026-11-18 01:01:36.001 E  App[7137:6347] [com.apple.WebKit:ResourceLoadStatistics] WebContent[7144] Unable to filter tracking query parameters (missing data)
+2026-11-18 01:01:36.004 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=18] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:36.004 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=18 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:36.004 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] 0x1100680e0 - [resourceLoader=0x1110c0000, frameLoader=0x1101cc100, frame=0x110029ba0, webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::tryLoadingUsingURLSchemeHandler: URL will be handled by a UIProcess URL scheme handler
+2026-11-18 01:01:36.004 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=18] WebURLSchemeTaskProxy::startLoading
+2026-11-18 01:01:36.014 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=18] WebURLSchemeTaskProxy::didReceiveData: Received data during response processing, queuing it.
+2026-11-18 01:01:36.014 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=18] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:36.450 Df App[7137:6317] [com.apple.FrontBoard:Common] [FBSSystemService][0xd9ae] Sending request to open "com.apple.iMessageAppsViewService"
+2026-11-18 01:01:37.321 Df App[7137:6319] [com.apple.FrontBoard:Common] [FBSSystemService][0xd9ae] Request successful: <BSProcessHandle: 0x600000c745a0; iMessageAppsVie:7182; valid: YES>
+2026-11-18 01:01:37.791 Df App[7137:6317] [com.apple.FrontBoard:Common] [FBSSystemService][0x2530] Sending request to open "com.apple.iMessageAppsViewService"
+2026-11-18 01:01:37.798 Df App[7137:6319] [com.apple.FrontBoard:Common] [FBSSystemService][0x2530] Request successful: <BSProcessHandle: 0x600000c74e70; iMessageAppsVie:7182; valid: YES>
+2026-11-18 01:01:37.963 Df App[7137:6317] [com.apple.FrontBoard:Common] [FBSSystemService][0xea1f] Sending request to open "com.apple.iMessageAppsViewService"
+2026-11-18 01:01:38.000 Df App[7137:6314] [com.apple.FrontBoard:Common] [FBSSystemService][0xea1f] Request successful: <BSProcessHandle: 0x600000c66cd0; iMessageAppsVie:7182; valid: YES>
+2026-11-18 01:01:38.001 Df App[7137:6317] [com.apple.xpc:connection] [0x10610ab60] activating connection: mach=true listener=false peer=false name=com.apple.iMessageAppsViewService.warmup-connection
+2026-11-18 01:01:38.272 Df App[7137:6317] [com.apple.xpc:connection] [0x1062550e0] activating connection: mach=true listener=false peer=false name=com.apple.iMessageAppsViewService.warmup-connection
+2026-11-18 01:01:38.347 Df App[7137:6317] [com.apple.xpc:connection] [0x106255230] activating connection: mach=true listener=false peer=false name=com.apple.iMessageAppsViewService.warmup-connection
+2026-11-18 01:01:38.394 Df App[7137:632f] [com.apple.Safari.SafeBrowsing:Database] Service did finish database update with protection type 1 and provider 1
+2026-11-18 01:01:38.394 Df App[7137:632f] [com.apple.Safari.SafeBrowsing:Database] Service did finish database update with protection type 1 and provider 1
+2026-11-18 01:01:38.537 E  App[7137:6319] [com.apple.TextInputUI:CandidateGeneration] Attempted to update accumulator from source type: 0, after completion has already been called for token:[EE9500B1]. This is an error and will be ignored.
+2026-11-18 01:01:38.563 Df App[7137:62de] [com.apple.WebKit:ResourceLoadStatistics] StorageAccessPromptQuirkController::didUpdateCachedListData: Loaded 1 storage access prompt(s) quirks from WebPrivacy.
+2026-11-18 01:01:38.815 A  App[7137:62de] (libsystem_containermanager.dylib) container_system_group_path_for_identifier
+2026-11-18 01:01:38.815 Df App[7137:62de] [com.apple.containermanager:xpc] Requesting container lookup; class = 13, identifier = com.apple.nsurlsessiond, group_identifier = systemgroup.com.apple.nsurlstoragedresources, create = 1, temp = 0, euid = 501, uid = 501
+2026-11-18 01:01:38.815 A  App[7137:62de] (libsystem_containermanager.dylib) container_query_t
+2026-11-18 01:01:38.816 Df App[7137:62de] [com.apple.containermanager:xpc] Query; euid = 501, uid = 501, class = 13, identifier = [com.apple.nsurlsessiond](1), flags = 900000003
+2026-11-18 01:01:38.817 Df App[7137:62de] [com.apple.containermanager:unspecified] _container_query_get_result_at_index: success
+2026-11-18 01:01:38.817 A  App[7137:62de] (libsystem_containermanager.dylib) container_copy_object
+2026-11-18 01:01:38.817 Df App[7137:62de] [com.apple.containermanager:unspecified] container_system_group_path_for_identifier: success
+2026-11-18 01:01:42.492 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8 frameID=8589934593 isMainFrame=1] FrameLoader::setDocumentLoader: Setting document loader to 4581257216 (was 4581265408)
+2026-11-18 01:01:42.493 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, isMainFrame=1] DocumentLoader::detachFromFrame
+2026-11-18 01:01:42.493 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, isMainFrame=1] DocumentLoader::stopLoading
+2026-11-18 01:01:42.493 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8 frameID=8589934593 isMainFrame=1] FrameLoader::transitionToCommitted: Clearing provisional document loader (m_provisionalDocumentLoader=4581257216)
+2026-11-18 01:01:42.493 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8 frameID=8589934593 isMainFrame=1] FrameLoader::setProvisionalDocumentLoader: Setting provisional document loader to 0 (was 4581257216)
+2026-11-18 01:01:42.497 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::didNavigateWithNavigationDataShared:
+2026-11-18 01:01:42.508 E  App[7137:6347] [com.apple.WebKit:ResourceLoadStatistics] WebContent[7144] Unable to hide query parameters from script (missing data)
+2026-11-18 01:01:42.509 Df App[7137:6347] [com.apple.WebKit:ProcessSuspension] WebContent[7144]: [webPageID=8] WebPage::unfreezeLayerTree: Removing a reason to freeze layer tree (reason=128, new=1, old=1)
+2026-11-18 01:01:42.509 Df App[7137:6347] [com.apple.WebKit:ProcessSuspension] WebContent[7144]: [webPageID=8] WebPage::unfreezeLayerTree: Removing a reason to freeze layer tree (reason=128, new=1, old=1)
+2026-11-18 01:01:42.518 Df App[7137:6347] [com.apple.WebKit:ProcessSuspension] WebContent[7144]: [webPageID=8] WebPage::unfreezeLayerTree: Removing a reason to freeze layer tree (reason=32, new=1, old=1)
+2026-11-18 01:01:42.518 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::didCommitLoadForFrame: frameID=8589934593, isMainFrame=1
+2026-11-18 01:01:42.527 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] Reloading input views for key-window scene responder: <WKContentView: 0x105039e00; frame = (0 0; 980 2131); opaque = NO; > force:N
+2026-11-18 01:01:42.527 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:42.530 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x600000291b00> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:42.530 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:42.530 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x600000291b00> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:42.530 Df App[7137:62de] [com.apple.UIKit:InputSessionChange] -_teardownExistingDelegate:<WKContentView: 0x105039e00> forSetDelegate:(nil) force:NO delayEndInputSession:NO
+2026-11-18 01:01:42.544 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient endRemoteTextInputSessionWithID:options:completion:]  Ending text input session. sessionID = C7C0D0A9-7815-4297-B761-2A4B1A21605B, options = <RTISessionOptions: 0x6000002a0100; shouldResign = YES; animated = YES; offscreenDirection = 0; enhancedWindowingModeEnabled = NO
+2026-11-18 01:01:42.544 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient _endSessionWithID:forServices:options:completion:]  End input session: C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:42.548 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient endAllowingRemoteTextInput:completion:]  End allowing remote text input: C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:42.548 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient _modifyTextEditingAllowedForReason:notify:animated:modifyAllowancesBlock:completion:]  Text editing allowed did change (editingAllowedAfter = NO)
+2026-11-18 01:01:42.551 Df App[7137:62de] [com.apple.UIKit:SmartReply] Handling responseContextDidChange - existing: (null), new: (null)
+2026-11-18 01:01:42.553 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] _reloadInputViewsForKeyWindowSceneResponder: 1 force: 0, fromBecomeFirstResponder: 0 (automaticKeyboard: 1, reloadIdentifier: 120963D5-9E0F-46E1-B65D-C3B1DB5A1F2A)
+2026-11-18 01:01:42.554 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] _inputViewsForResponder: <WKContentView: 0x105039e00; frame = (0 0; 980 2131); opaque = NO; >, automaticKeyboard: 1, force: 0
+2026-11-18 01:01:42.554 Df App[7137:62de] [com.apple.UIKit:KeyboardSceneDelegate] _inputViewsForResponder, disableAutomaticKeyboardUI return empty
+2026-11-18 01:01:42.555 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: YES
+2026-11-18 01:01:42.555 Df App[7137:62de] [com.apple.BackBoard:Keyboard] connected: (
+    "<BKSHIDKeyboardDevice: 0x6000002a16c0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:42.556 Df App[7137:62de] [com.apple.BackBoard:Keyboard] currently observing: NO
+2026-11-18 01:01:42.556 Df App[7137:62de] [com.apple.BackBoard:Keyboard] disconnected: (
+    "<BKSHIDKeyboardDevice: 0x6000002a16c0> {\134n    senderID: 0xACEFADE00000003;\134n    transport: <nil>;\134n    language: <nil>;\134n    layout: US;\134n    countryCode: 0;\134n    standardType: 4294967295;\134n    subinterfaceID: 0;\134n    capsLockKeyHasLanguageSwitchLabel: NO;\134n    globeKeyLabelHasGlobeSymbol: NO;\134n}"
+)
+2026-11-18 01:01:42.556 Df App[7137:62de] [com.apple.UIKit:InputSessionChange] -_teardownExistingDelegate:(nil) forSetDelegate:<WKContentView: 0x105039e00> force:NO delayEndInputSession:NO
+2026-11-18 01:01:42.560 Df App[7137:62de] [com.apple.UIKit:SmartReply] Handling responseContextDidChange - existing: (null), new: (null)
+2026-11-18 01:01:42.575 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient beginAllowingRemoteTextInput:]  Begin allowing remote text input: C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:42.575 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient _modifyTextEditingAllowedForReason:notify:animated:modifyAllowancesBlock:completion:]  Text editing allowed did change (editingAllowedAfter = YES)
+2026-11-18 01:01:42.579 Df App[7137:62de] [com.apple.UIKit:UIPeripheralHost] endPlacementForInputViewSet: <<UIInputViewSet: 0x600003708f00>; (empty)> windowScene: <UIWindowScene: 0x1061074a0; role: UIWindowSceneSessionRoleApplication; persistentIdentifier: 781D2B20-E7EB-433B-9714-790AA1093081; activationState: UISceneActivationStateForegroundActive>
+2026-11-18 01:01:42.579 Df App[7137:62de] [com.apple.UIKit:KeyboardArbiterClientLog] -[_UIRemoteKeyboards prepareToMoveKeyboard:withIAV:isIAVRelevant:showing:notifyRemote:forScene:] position: {{0, 0}, {0, 0}} visible: 0; notifyRemote: 1; isMinimized: NO
+2026-11-18 01:01:42.579 Df App[7137:62de] [com.apple.UIKit:KeyboardVisualMode] Show keyboard with visual mode windowed (0)
+2026-11-18 01:01:42.579 Df App[7137:62de] [com.apple.RemoteTextInput:RTILog] -[RTIInputSystemClient remoteTextInputSessionWithID:textSuggestionsChanged:]  Text input session suggestions changed. sessionID = C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:42.580 E  App[7137:62de] [com.apple.RemoteTextInput:RTILog] -[RTIInputSystemClient remoteTextInputSessionWithID:textSuggestionsChanged:]  Can only set suggestions for an active session. sessionID = C7C0D0A9-7815-4297-B761-2A4B1A21605B
+2026-11-18 01:01:42.587 Df App[7137:6319] [com.apple.TextInputUI:CandidateGeneration] All generators are not complete.
+2026-11-18 01:01:42.588 E  App[7137:62de] [com.apple.WebKit:ResourceLoadStatistics] Failed to request allowed query parameters from WebPrivacy.
+2026-11-18 01:01:42.604 Df App[7137:62de] [com.apple.WebKit:Fullscreen] PlaybackSessionManagerProxy::requestHideAndExitFullscreen(2906663760)
+2026-11-18 01:01:42.604 Df App[7137:62de] [com.apple.WebKit:Process] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::makeViewBlankIfUnpaintedSinceLastLoadCommit: Making the view blank because of a JS prompt before the first paint for its page
+2026-11-18 01:01:42.612 Df App[7137:6319] [com.apple.TextInputUI:CandidateGeneration] All generators are not complete.
+2026-11-18 01:01:42.615 Df App[7137:632f] [com.apple.TextInputUI:CandidateGeneration] All generators are complete, dispatching to `completionBlockJustOnce`
+2026-11-18 01:01:42.616 Df App[7137:6313] [com.apple.TextInputUI:CandidateGeneration] Assigning candidates of source type kbd to `containerToPush, for autocorrection flow only` - 65170E83
+2026-11-18 01:01:42.616 Df App[7137:6313] [com.apple.TextInputUI:CandidateGeneration] Preparing to push <_TUIKeyboardCandidateContainer: 0x6000002a41a0> to candidate receiver, for request token: 65170E83
+2026-11-18 01:01:42.617 Df App[7137:6313] [com.apple.TextInputUI:CandidateGeneration] Performing delayed generation for token=65170E83
+2026-11-18 01:01:42.617 Df App[7137:632f] [com.apple.TextInputUI:CandidateGeneration] containerToPush has an autocorrection list.  pushing to candidate receiver with request token. 65170E83.
+2026-11-18 01:01:42.629 Df App[7137:62de] [com.apple.WebKit:Fullscreen] PlaybackSessionManagerProxy::requestHideAndExitFullscreen(2906663760)
+2026-11-18 01:01:42.629 Df App[7137:62de] [com.apple.WebKit:Process] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::makeViewBlankIfUnpaintedSinceLastLoadCommit: Making the view blank because of a JS prompt before the first paint for its page
+2026-11-18 01:01:42.736 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=25] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:42.736 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=25 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:42.736 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] 0x1100680e0 - [resourceLoader=0x11100f800, frameLoader=0x1101cc100, frame=0x110029ba0, webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::tryLoadingUsingURLSchemeHandler: URL will be handled by a UIProcess URL scheme handler
+2026-11-18 01:01:42.736 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=25] WebURLSchemeTaskProxy::startLoading
+2026-11-18 01:01:42.737 Df App[7137:6347] [com.apple.WebKit:ProcessSuspension] WebContent[7144]: [webPageID=8] WebPage::freezeLayerTree: Adding a reason to freeze layer tree (reason=128, new=129, old=1)
+2026-11-18 01:01:42.759 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=28] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:42.759 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=28 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:42.759 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: URL will be scheduled with the NetworkProcess
+2026-11-18 01:01:42.759 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: Resource is being scheduled with the NetworkProcess (priority=3, existingNetworkResourceLoadIdentifierToResume=0)
+2026-11-18 01:01:42.760 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=28] WebResourceLoader::WebResourceLoader
+2026-11-18 01:01:42.776 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=29] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:42.776 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=29 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:42.776 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] 0x1100680e0 - [resourceLoader=0x111012000, frameLoader=0x1101cc100, frame=0x110029ba0, webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::tryLoadingUsingURLSchemeHandler: URL will be handled by a UIProcess URL scheme handler
+2026-11-18 01:01:42.776 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=29] WebURLSchemeTaskProxy::startLoading
+2026-11-18 01:01:42.776 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=30] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:42.776 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=30 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:42.776 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] 0x1100680e0 - [resourceLoader=0x111012800, frameLoader=0x1101cc100, frame=0x110029ba0, webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::tryLoadingUsingURLSchemeHandler: URL will be handled by a UIProcess URL scheme handler
+2026-11-18 01:01:42.776 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=30] WebURLSchemeTaskProxy::startLoading
+2026-11-18 01:01:42.777 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=31] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:42.777 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=31 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:42.777 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] 0x1100680e0 - [resourceLoader=0x111013000, frameLoader=0x1101cc100, frame=0x110029ba0, webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::tryLoadingUsingURLSchemeHandler: URL will be handled by a UIProcess URL scheme handler
+2026-11-18 01:01:42.777 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=31] WebURLSchemeTaskProxy::startLoading
+2026-11-18 01:01:42.777 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=18] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:42.778 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=18 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:42.779 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=25] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:42.779 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=25 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:42.793 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=29] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:42.793 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=29 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:42.796 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=30] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:42.796 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=30 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:42.799 Df App[7137:62de] [com.apple.RemoteTextInput:InputSessionChange] -[RTIInputSystemClient _beginSessionWithID:forServices:force:]  Begin text input session. sessionID = C7C0D0A9-7815-4297-B761-2A4B1A21605B, options = <RTISessionOptions: 0x6000002a4740; shouldResign = NO; animated = YES; offscreenDirection = 0; enhancedWindowingModeEnabled = NO
+2026-11-18 01:01:42.818 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=31] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:42.818 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=31 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:43.020 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=28] WebResourceLoader::didReceiveResponse: (httpStatusCode=200)
+2026-11-18 01:01:43.020 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=28] WebResourceLoader::didReceiveData: Started receiving data
+2026-11-18 01:01:43.020 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=28] WebResourceLoader::didFinishResourceLoad: (length=15054)
+2026-11-18 01:01:43.020 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=28 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:43.020 Df App[7137:6347] [com.apple.WebKit:ProcessSuspension] WebContent[7144]: [webPageID=8] WebPage::unfreezeLayerTree: Removing a reason to freeze layer tree (reason=128, new=1, old=129)
+2026-11-18 01:01:43.044 Df App[7137:6347] [com.apple.WebKit:ProcessSuspension] WebContent[7144]: [webPageID=8] WebPage::freezeLayerTree: Adding a reason to freeze layer tree (reason=128, new=129, old=1)
+2026-11-18 01:01:43.044 Df App[7137:6347] [com.apple.WebKit:ProcessSuspension] WebContent[7144]: [webPageID=8] WebPage::unfreezeLayerTree: Removing a reason to freeze layer tree (reason=128, new=1, old=129)
+2026-11-18 01:01:43.272 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=37] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:43.272 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=37 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:43.272 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: URL will be scheduled with the NetworkProcess
+2026-11-18 01:01:43.272 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: Resource is being scheduled with the NetworkProcess (priority=2, existingNetworkResourceLoadIdentifierToResume=0)
+2026-11-18 01:01:43.272 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=37] WebResourceLoader::WebResourceLoader
+2026-11-18 01:01:43.309 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=44] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:43.309 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=44 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:43.309 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] 0x1100680e0 - [resourceLoader=0x11216e000, frameLoader=0x1101cc100, frame=0x110029ba0, webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::tryLoadingUsingURLSchemeHandler: URL will be handled by a UIProcess URL scheme handler
+2026-11-18 01:01:43.309 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=44] WebURLSchemeTaskProxy::startLoading
+2026-11-18 01:01:43.310 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=45] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:43.310 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=45 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:43.310 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] 0x1100680e0 - [resourceLoader=0x11216f000, frameLoader=0x1101cc100, frame=0x110029ba0, webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::tryLoadingUsingURLSchemeHandler: URL will be handled by a UIProcess URL scheme handler
+2026-11-18 01:01:43.310 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=45] WebURLSchemeTaskProxy::startLoading
+2026-11-18 01:01:43.310 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=46] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:43.310 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=46 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:43.310 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] 0x1100680e0 - [resourceLoader=0x11216f800, frameLoader=0x1101cc100, frame=0x110029ba0, webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::tryLoadingUsingURLSchemeHandler: URL will be handled by a UIProcess URL scheme handler
+2026-11-18 01:01:43.310 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=46] WebURLSchemeTaskProxy::startLoading
+2026-11-18 01:01:43.310 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=47] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:43.311 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=47 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:43.311 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] 0x1100680e0 - [resourceLoader=0x112170000, frameLoader=0x1101cc100, frame=0x110029ba0, webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::tryLoadingUsingURLSchemeHandler: URL will be handled by a UIProcess URL scheme handler
+2026-11-18 01:01:43.311 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=47] WebURLSchemeTaskProxy::startLoading
+2026-11-18 01:01:43.311 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=48] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:43.311 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=48 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:43.311 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] 0x1100680e0 - [resourceLoader=0x112170800, frameLoader=0x1101cc100, frame=0x110029ba0, webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::tryLoadingUsingURLSchemeHandler: URL will be handled by a UIProcess URL scheme handler
+2026-11-18 01:01:43.312 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=48] WebURLSchemeTaskProxy::startLoading
+2026-11-18 01:01:43.325 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::didFinishDocumentLoadForFrame: frameID=8589934593, isMainFrame=1
+2026-11-18 01:01:43.326 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=44] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:43.326 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=44 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:43.333 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=45] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:43.333 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=45 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:43.333 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=46] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:43.333 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=46 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:43.333 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=47] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:43.333 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=47 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:43.333 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144] [schemeHandler=3, webPageID=8, frameID=8589934593, taskID=48] WebURLSchemeTaskProxy::didComplete
+2026-11-18 01:01:43.333 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=48 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:43.387 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=52] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:43.387 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=52 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:43.387 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: URL will be scheduled with the NetworkProcess
+2026-11-18 01:01:43.387 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: Resource is being scheduled with the NetworkProcess (priority=2, existingNetworkResourceLoadIdentifierToResume=0)
+2026-11-18 01:01:43.387 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=52] WebResourceLoader::WebResourceLoader
+2026-11-18 01:01:43.421 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=52] WebResourceLoader::didReceiveResponse: (httpStatusCode=200)
+2026-11-18 01:01:43.421 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=52] WebResourceLoader::didReceiveData: Started receiving data
+2026-11-18 01:01:43.421 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=52] WebResourceLoader::didFinishResourceLoad: (length=48432)
+2026-11-18 01:01:43.421 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=52 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:43.430 Df App[7137:6347] [com.apple.WebKit:ProcessSuspension] WebContent[7144]: [webPageID=8] WebPage::unfreezeLayerTree: Removing a reason to freeze layer tree (reason=1, new=0, old=1)
+2026-11-18 01:01:43.435 Df App[7137:6347] [com.apple.WebKit:Layout] WebContent[7144]: [pageID=8, frameID=8589934593, isMainFrame=1] LocalFrameView::fireLayoutRelatedMilestonesIfNeeded: Firing first visually non-empty layout milestone on the main frame
+2026-11-18 01:01:43.435 Df App[7137:6347] [com.apple.WebKit:Layout] WebContent[7144]: [webFrameID=8589934593, webPageID=8] WebLocalFrameLoaderClient::dispatchDidReachLayoutMilestone: dispatching DidFirstLayoutForFrame
+2026-11-18 01:01:43.435 Df App[7137:6347] [com.apple.WebKit:Layout] WebContent[7144]: [webFrameID=8589934593, webPageID=8] WebLocalFrameLoaderClient::dispatchDidReachLayoutMilestone: dispatching DidReachLayoutMilestone (milestones=DidFirstLayout, DidFirstVisuallyNonEmptyLayout)
+2026-11-18 01:01:43.435 Df App[7137:6347] [com.apple.WebKit:Layout] WebContent[7144]: [webFrameID=8589934593, webPageID=8] WebLocalFrameLoaderClient::dispatchDidReachLayoutMilestone: dispatching DidFirstVisuallyNonEmptyLayoutForFrame
+2026-11-18 01:01:43.435 Df App[7137:6347] [com.apple.WebKit:Layout] WebContent[7144]: [webFrameID=8589934593, webPageID=8] WebLocalFrameLoaderClient::completePageTransitionIfNeeded: dispatching didCompletePageTransition
+2026-11-18 01:01:43.440 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8 frameID=8589934593 isMainFrame=1] FrameLoader::setState: main frame load completed
+2026-11-18 01:01:43.440 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]: Memory usage info dump at MainFrameLoadCompleted:
+2026-11-18 01:01:43.440 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]:   page_count: 1
+2026-11-18 01:01:43.440 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]:   backforward_cache_page_count: 0
+2026-11-18 01:01:43.440 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]:   document_count: 1
+2026-11-18 01:01:43.440 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]:   javascript_gc_heap_capacity_mb: 9
+2026-11-18 01:01:43.440 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]:   javascript_gc_heap_extra_memory_size_mb: 3
+2026-11-18 01:01:43.440 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]:   internal_mb: 38
+2026-11-18 01:01:43.440 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]:   compressed_mb: 2
+2026-11-18 01:01:43.441 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]:   phys_footprint_mb: 43
+2026-11-18 01:01:43.441 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]:   resident_size_mb: 170
+2026-11-18 01:01:43.441 Df App[7137:62de] [com.apple.WebKit:Loading] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::didFinishLoadForFrame: frameID=8589934593, isMainFrame=1
+2026-11-18 01:01:43.441 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x113134100 - NavigationState will release its process network assertion soon because the page load completed
+2026-11-18 01:01:43.441 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]:   virtual_size_mb: 419236
+2026-11-18 01:01:43.441 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: ProgressTracker::progressCompleted: frameID 8589934593, value 0.498583, tracked frames 1, originating frameID 8589934593, isMainLoad 1
+2026-11-18 01:01:43.441 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: ProgressTracker::finalProgressComplete: value 0.498583, tracked frames 0, originating frameID 8589934593, isMainLoad 1, isMainLoadProgressing 0
+2026-11-18 01:01:43.441 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8 frameID=8589934593 isMainFrame=1] FrameLoader::checkLoadCompleteForThisFrame: Finished frame load
+2026-11-18 01:01:43.447 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c42d0 - [PID=7144, throttler=0x1130e8150] ProcessThrottler::Activity::invalidate: Ending foreground activity / 'Client navigation'
+2026-11-18 01:01:43.448 E  App[7137:62de] [com.apple.WebKit:ResourceLoadStatistics] Failed to request restricted opener domains from WebPrivacy
+2026-11-18 01:01:43.501 Df App[7137:6347] [com.apple.WebKit:Layout] WebContent[7144]: [webFrameID=8589934593, webPageID=8] WebLocalFrameLoaderClient::dispatchDidReachLayoutMilestone: dispatching DidReachLayoutMilestone (milestones=DidFirstMeaningfulPaint)
+2026-11-18 01:01:43.506 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=37] WebResourceLoader::didReceiveResponse: (httpStatusCode=200)
+2026-11-18 01:01:43.508 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=37] WebResourceLoader::didReceiveData: Started receiving data
+2026-11-18 01:01:43.508 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=37] WebResourceLoader::didFinishResourceLoad: (length=198569)
+2026-11-18 01:01:43.508 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=37 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:43.513 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=82] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:43.513 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=82 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:43.513 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: URL will be scheduled with the NetworkProcess
+2026-11-18 01:01:43.513 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: Resource is being scheduled with the NetworkProcess (priority=3, existingNetworkResourceLoadIdentifierToResume=0)
+2026-11-18 01:01:43.513 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=82] WebResourceLoader::WebResourceLoader
+2026-11-18 01:01:43.587 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=82] WebResourceLoader::didReceiveResponse: (httpStatusCode=200)
+2026-11-18 01:01:43.587 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=82] WebResourceLoader::didReceiveData: Started receiving data
+2026-11-18 01:01:43.590 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=82] WebResourceLoader::didFinishResourceLoad: (length=2966)
+2026-11-18 01:01:43.591 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=82 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:43.627 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=85] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:43.627 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=85 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:43.627 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: URL will be scheduled with the NetworkProcess
+2026-11-18 01:01:43.627 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: Resource is being scheduled with the NetworkProcess (priority=2, existingNetworkResourceLoadIdentifierToResume=0)
+2026-11-18 01:01:43.627 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=85] WebResourceLoader::WebResourceLoader
+2026-11-18 01:01:43.756 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=85] WebResourceLoader::didReceiveResponse: (httpStatusCode=200)
+2026-11-18 01:01:43.756 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=85] WebResourceLoader::didReceiveData: Started receiving data
+2026-11-18 01:01:43.756 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=85] WebResourceLoader::didFinishResourceLoad: (length=29704)
+2026-11-18 01:01:43.756 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=85 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:44.128 Df App[7137:62de] [com.apple.WebKit:Process] 0x105043018 - [pageProxyID=7, webPageID=8, PID=7144] WebPageProxy::stopMakingViewBlankDueToLackOfRenderingUpdateIfNecessary:
+2026-11-18 01:01:44.409 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=87] ResourceLoader::willSendRequestInternal: calling completion handler
+2026-11-18 01:01:44.409 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=87 SubResourceLoader::willSendRequestInternal: resource load finished; calling completion handler
+2026-11-18 01:01:44.409 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: URL will be scheduled with the NetworkProcess
+2026-11-18 01:01:44.409 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8, resourceID=8] WebLoaderStrategy::scheduleLoad: Resource is being scheduled with the NetworkProcess (priority=2, existingNetworkResourceLoadIdentifierToResume=0)
+2026-11-18 01:01:44.409 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=87] WebResourceLoader::WebResourceLoader
+2026-11-18 01:01:44.463 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=87] WebResourceLoader::didReceiveResponse: (httpStatusCode=200)
+2026-11-18 01:01:44.463 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=87] WebResourceLoader::didReceiveData: Started receiving data
+2026-11-18 01:01:44.463 Df App[7137:6347] [com.apple.WebKit:Network] WebContent[7144]: [webPageID=8, frameID=8589934593, resourceID=87] WebResourceLoader::didFinishResourceLoad: (length=28132)
+2026-11-18 01:01:44.463 Df App[7137:6347] [com.apple.WebKit:ResourceLoading] WebContent[7144]: [pageID=8, frameID=8589934593, resourceID=87 SubResourceLoader::didFinishLoading
+2026-11-18 01:01:46.442 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x113134100 NavigationState is releasing background process assertion because a page load completed
+2026-11-18 01:01:46.442 Df App[7137:62de] [com.apple.WebKit:ProcessSuspension] 0x1130c4300 - [PID=7144, throttler=0x1130e8150] ProcessThrottler::Activity::invalidate: Ending background activity / 'Page Load'
+2026-11-18 01:01:53.441 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]: PerformanceMonitor::measurePostLoadMemoryUsage: Process was using 47620352 bytes of memory after the page load.
+2026-11-18 01:01:58.441 Df App[7137:6347] [com.apple.WebKit:PerformanceLogging] WebContent[7144]: PerformanceMonitor::measurePostLoadCPUUsage: Process was using 11.4% CPU after the page load.
