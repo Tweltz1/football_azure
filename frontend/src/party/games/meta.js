@@ -124,6 +124,22 @@ export const GAME_META = [
     ],
     phoneHint: 'Your clock and STOP button show up on this phone.',
   },
+  {
+    id: 'admirer',
+    holiday: 'valentines',
+    title: 'Secret Admirer',
+    emoji: '💌',
+    tag: 'Versus',
+    minutes: '6–8 min',
+    minPlayers: 3,
+    blurb: 'Write a sweet anonymous note to your secret valentine, then guess who wrote every note in the room.',
+    how: [
+      'Your phone gives you a secret valentine. Write them a sweet note. Try to sound like someone else!',
+      'The notes are read out one by one. Guess who wrote each one on your phone.',
+      'Right guesses score. Fool the room with your own note to score even more!',
+    ],
+    phoneHint: "Keep your phone close. Your secret valentine's name shows up here.",
+  },
 ];
 
 // The quiz and the writing game take the name of the theme on now (see season.js): Thanksgiving Quiz,
