@@ -191,7 +191,7 @@ export function guess(s, cid, pick, now) {
   s.guesses[cid] = pick;
   emit(s, 'guessed', { by: cid });
   const waiting = activePlayers(s, now).some((p) => p.cid !== note.by && !s.guesses[p.cid]);
-  s.closeAt = waiting ? null : now + CLOSE_MS;
+  if (waiting) s.closeAt = null; else if (s.closeAt == null) s.closeAt = now + CLOSE_MS;
   return true;
 }
 

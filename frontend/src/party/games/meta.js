@@ -140,6 +140,21 @@ export const GAME_META = [
     ],
     phoneHint: "Keep your phone close. Your secret valentine's name shows up here.",
   },
+  {
+    id: 'rainbow',
+    holiday: 'stpatricks',
+    title: 'Rainbow Run',
+    emoji: '🌈',
+    tag: 'Versus',
+    minutes: '5–7 min',
+    blurb: 'Climb the rainbow for gold, but head home before it falls. How lucky do you feel?',
+    how: [
+      'Every step, pick CLIMB or HEAD HOME on your phone. Climbers split the gold on each new step.',
+      'Head home to bank your gold. Only banked gold counts!',
+      'If the same hazard shows up twice, the rainbow falls and every climber drops their gold.',
+    ],
+    phoneHint: 'Your CLIMB and HEAD HOME buttons show up here.',
+  },
 ];
 
 // The quiz and the writing game take the name of the theme on now (see season.js): Thanksgiving Quiz,
