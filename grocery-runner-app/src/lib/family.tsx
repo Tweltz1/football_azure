@@ -173,9 +173,11 @@ export function FamilyProvider({ children }: { children: ReactNode }) {
         return d as FamilyInfo;
       },
       join: async (code) => {
-        const { data: d, error } = await supabase.rpc('grocery_family_join', { invite: code.trim().toUpperCase() });
+        const { data: d, error } = await supabase.rpc('grocery_family_join_v2', { invite: code.trim().toUpperCase() });
         if (error) throw friendly(error);
-        keep(d as FamilyInfo);
+        const r = d as { ok: boolean; error?: string; info?: FamilyInfo };
+        if (!r?.ok) throw new Error(r?.error || 'That code isn’t right. Check it with whoever shared it.');
+        keep(r.info as FamilyInfo);
       },
       leave: async () => {
         const { error } = await supabase.rpc('grocery_family_leave');
