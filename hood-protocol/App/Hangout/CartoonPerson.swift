@@ -269,12 +269,13 @@ enum CartoonPerson {
             default:
                 break
             }
-            if look.chain {
-                var chain = Path()
-                chain.move(to: CGPoint(x: -16, y: -142))
-                chain.addQuadCurve(to: CGPoint(x: 16, y: -142), control: CGPoint(x: 0, y: -112))
-                body.stroke(chain, with: .color(Color(hex: 0xF5C542)), lineWidth: 5)
-            }
+        }
+        // The chain goes over every top, the dress too (it used to be skipped on the dress).
+        if look.chain {
+            var chain = Path()
+            chain.move(to: CGPoint(x: look.top == 4 ? -14 : -16, y: look.top == 4 ? -140 : -142))
+            chain.addQuadCurve(to: CGPoint(x: look.top == 4 ? 14 : 16, y: look.top == 4 ? -140 : -142), control: CGPoint(x: 0, y: look.top == 4 ? -114 : -112))
+            body.stroke(chain, with: .color(Color(hex: 0xF5C542)), lineWidth: 5)
         }
 
         // Arms
