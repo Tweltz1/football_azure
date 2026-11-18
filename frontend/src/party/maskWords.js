@@ -1,7 +1,7 @@
 // Who's Behind the Mask? secret words. Each category has two groups of four similar words.
 // Humans get one word; vampires see the other three from its group (close, but never the real one),
 // and a caught vampire tries to pick the real word out of a lineup that leaves those three out.
-import { HOLIDAY_CATEGORIES } from './holidayContent.js';
+import { THEME_SETS } from './themes/index.js';
 import { season } from './season.js';
 
 export const CATEGORIES = [
@@ -20,7 +20,7 @@ export const CATEGORIES = [
 ];
 
 /** The word list for the current theme. */
-export const categoriesFor = (theme = season()) => (theme === 'holiday' ? HOLIDAY_CATEGORIES : CATEGORIES);
+export const categoriesFor = (theme = season()) => (THEME_SETS[theme]?.categories || CATEGORIES);
 
 /** Every word in a category. */
 export const wordsOf = (cat) => cat.groups.flat();

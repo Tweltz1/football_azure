@@ -5,14 +5,15 @@ import { QuizBackdrop } from './QuizStage';
 import { ANSWER_STYLE } from './quizLook';
 import { between, ease, HowToFrame, useCast, useCues } from './howtoKit';
 import { metaFor } from './meta';
-import { isHoliday } from '../season';
+import { season, themeInfo } from '../season';
+import { THEME_SETS } from '../themes/index.js';
 
 // Fright Quiz's how-to-play intro: a pretend question played out by the room's own characters.
 
 export const HOWTO_MS = 38000;
 
 const SCENES = [
-  { at: 0, step: '', title: 'How to play', say: isHoliday() ? 'Welcome to the Holiday Quiz! Holiday trivia, and it\'s every elf for themselves.' : 'Welcome to Fright Quiz! Spooky trivia, and it\'s every ghoul for themselves.' },
+  { at: 0, step: '', title: 'How to play', say: themeInfo().quiz.welcome },
   { at: 5000, step: '1', title: 'A question pops up on the TV. The answers show up on your phone.', say: 'A question pops up on the TV. The answers show up on your phone.' },
   { at: 12000, step: '2', title: 'Tap the right answer. The faster you tap, the more points you get.', say: 'Tap the right answer. The faster you tap, the more points you get.' },
   { at: 20500, step: '3', title: 'First right answer gets a ⚡ Fastest bonus. Three in a row is a 🔥 Hot Streak.', say: 'The first right answer gets a fastest bonus. Get three in a row for a hot streak!' },
@@ -20,7 +21,11 @@ const SCENES = [
   { at: 33500, step: '', title: '15 questions. Highest score wins!', say: 'Fifteen questions. Highest score wins. Good luck!' },
 ];
 
-const DEMO = { text: 'What do kids say at the door on Halloween?', answers: ['Happy birthday!', 'Trick or treat!', 'Knock knock!', 'Merry Christmas!'], correct: 1 };
+// The pretend question: the first easy one from the theme on now, right answer in the second slot.
+const demoRow = THEME_SETS[season()]?.levels[0][0];
+const DEMO = demoRow
+  ? { text: demoRow[0], answers: [demoRow[2], demoRow[1], demoRow[3], demoRow[4]], correct: 1 }
+  : { text: 'What do kids say at the door on Halloween?', answers: ['Happy birthday!', 'Trick or treat!', 'Knock knock!', 'Merry Christmas!'], correct: 1 };
 const SPOTS = [{ x: 640, y: 975 }, { x: 900, y: 975 }, { x: 1160, y: 975 }];
 const TAPS = [{ at: 14000, choice: 1 }, { at: 16000, choice: 1 }, { at: 17200, choice: 2 }];
 const REVEAL_AT = 18200;

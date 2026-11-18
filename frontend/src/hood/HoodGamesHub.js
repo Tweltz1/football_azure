@@ -9,15 +9,17 @@ import '../party/party.css';
 import './hood.css';
 import StudioCredit from '../components/StudioCredit';
 import DeleteAccount from '../components/DeleteAccount';
-import { isHoliday } from '../party/season';
+import { themeInfo } from '../party/season';
+
+const THEME = themeInfo();
 
 const PLACES = [
   {
     href: '/games-night',
-    icon: isHoliday() ? '🦃' : '🎃',
+    icon: THEME.icon,
     name: 'Games Night',
-    blurb: isHoliday()
-      ? 'Holiday party games for one TV and up to 12 phones: Holiday Quiz, Holiday Mash-up, Last Candle and more.'
+    blurb: THEME.id !== 'spooky'
+      ? `${THEME.party} for one TV and up to 12 phones: ${THEME.quiz.title}, ${THEME.mash.title}, Last Candle and more.`
       : 'Party games for one TV and up to 12 phones: Last Candle, Fright Quiz, Who’s Behind the Mask? and more.',
     tone: 'is-party',
   },
@@ -53,8 +55,8 @@ const PLACES = [
 
 // The "start a game in 30 seconds" strip: pick one, open it on the TV, phones join with the code.
 const QUICK = [
-  { id: 'quiz', icon: isHoliday() ? '🦃' : '🎃', name: isHoliday() ? 'Holiday Quiz' : 'Fright Quiz', who: '1 to 12 players', href: '/party?game=quiz' },
-  { id: 'mash', icon: isHoliday() ? '🎁' : '🧟', name: isHoliday() ? 'Holiday Mash-up' : 'Monster Mash-up', who: '3 to 12 players', href: '/party?game=mash' },
+  { id: 'quiz', icon: THEME.quiz.emoji, name: THEME.quiz.title, who: '1 to 12 players', href: '/party?game=quiz' },
+  { id: 'mash', icon: THEME.mash.emoji, name: THEME.mash.title, who: '3 to 12 players', href: '/party?game=mash' },
   { id: 'candle', icon: '🕯️', name: 'Last Candle', who: '1 to 12, team up', href: '/party?game=candle' },
   { id: 'mask', icon: '🎭', name: 'Behind the Mask', who: '3 to 12 players', href: '/party?game=mask' },
   { id: 'cards', icon: '🃏', name: 'Card Table', who: '500 or Dirty Clubs', href: '/cards' },

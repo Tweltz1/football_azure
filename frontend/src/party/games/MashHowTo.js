@@ -4,17 +4,18 @@ import { sfx } from '../sound';
 import { PlayerTag, ScenePerson } from '../scene';
 import { QuizBackdrop } from './QuizStage';
 import { between, ease, HowToFrame, useCast, useCues } from './howtoKit';
+import { MASH_TITLE } from './mash';
 
 // Monster Mash-up's how-to-play intro, acted out by the room's own characters.
 
 export const HOWTO_MS = 36000;
 
 const SCENES = [
-  { at: 0, step: '', title: 'How to play', say: 'Welcome to Monster Mash-up! Write the funniest answers, and win the votes.' },
+  { at: 0, step: '', title: 'How to play', say: `Welcome to ${MASH_TITLE}! Write the funniest answers, and win the votes.` },
   { at: 5000, step: '1', title: 'Your phone gives you a prompt. Write something funny!', say: 'Your phone gives you a prompt. Write something funny!' },
   { at: 12500, step: '2', title: 'Two answers go head to head. Nobody knows who wrote what.', say: 'Then two answers go head to head. Nobody knows who wrote what.' },
   { at: 19000, step: '3', title: 'Everyone else votes for the funniest. Every vote is points!', say: 'Everyone else votes for the funniest one. Every vote is points!' },
-  { at: 26000, step: '4', title: 'Win every vote for a Monster Mash-up bonus. The final round counts triple!', say: 'Win every single vote for a Monster Mash-up bonus. And the final round counts triple!' },
+  { at: 26000, step: '4', title: `Win every vote for a ${MASH_TITLE} bonus. The final round counts triple!`, say: `Win every single vote for a ${MASH_TITLE} bonus. And the final round counts triple!` },
   { at: 32000, step: '', title: 'Three rounds. Funniest monster wins!', say: 'Three rounds. Funniest monster wins!' },
 ];
 
@@ -51,7 +52,7 @@ export default function MashHowTo({ players, now, startedAt, onSkip }) {
   const phoneIn = between(t, 5500, 12500) ? ease((t - 5500) / 500) * (1 - ease((t - 12000) / 500)) : 0;
 
   return (
-    <HowToFrame scenes={SCENES} t={t} total={HOWTO_MS} gameTitle="Monster Mash-up" onSkip={onSkip}>
+    <HowToFrame scenes={SCENES} t={t} total={HOWTO_MS} gameTitle={MASH_TITLE} onSkip={onSkip}>
       <svg className="lc-scene" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet">
         <QuizBackdrop lights={Math.floor(t / 700)} curtain={CURTAIN} />
         {cast.map((p, i) => <ScenePerson key={i} look={p.look} pose={pose(i)} k={0} x={SPOTS[i].x} y={SPOTS[i].y} delay={i} scale={0.72} />)}

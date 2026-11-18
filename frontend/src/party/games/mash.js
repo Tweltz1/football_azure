@@ -2,6 +2,7 @@
 // head-to-head matchups. Pure game logic, no React. The TV owns the state and ticks it.
 
 import { clean, promptsFor } from '../mashPrompts.js';
+import { themeInfo } from '../season.js';
 
 export const MIN_PLAYERS = 3;
 export const ROUND_MS = 6000;
@@ -17,10 +18,15 @@ export const VOTE_POINTS = 100;
 export const MASH_BONUS = 250;
 export const ACTIVE_MS = 30000;
 
+// The game's name follows the theme on now (Monster Mash-up at Halloween, Cookout Mash-up in July, ...).
+const SPOOKY = themeInfo().id === 'spooky';
+export const MASH_TITLE = themeInfo().mash.title;
+export const MASH_CHAMP = SPOOKY ? 'Monster Mash Champ' : `${MASH_TITLE} Champ`;
+
 export const ROUNDS = [
   { title: 'Round 1', blurb: 'Answer two prompts on your phone. Then vote for the funniest answer in each matchup.' },
   { title: 'Round 2', blurb: 'Same again, but every vote is worth double!' },
-  { title: 'The Final Fright', blurb: 'Everyone answers the same prompt. Votes are worth triple. Anyone can still win!' },
+  { title: SPOOKY ? 'The Final Fright' : 'The Final Round', blurb: 'Everyone answers the same prompt. Votes are worth triple. Anyone can still win!' },
 ];
 
 const mulberry = (seed) => {
@@ -304,7 +310,7 @@ export function phoneView(s, cid, now) {
 export function awards(s) {
   const list = [];
   const ranks = ranking(s);
-  if (ranks[0] && ranks[0].score > 0) list.push({ title: 'Monster Mash Champ', cid: ranks[0].cid, value: ranks[0].score, blurb: `${ranks[0].score.toLocaleString()} points` });
+  if (ranks[0] && ranks[0].score > 0) list.push({ title: MASH_CHAMP, cid: ranks[0].cid, value: ranks[0].score, blurb: `${ranks[0].score.toLocaleString()} points` });
   const best = (pick) => {
     let top = null;
     s.players.forEach((p) => {
