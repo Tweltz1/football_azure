@@ -1,0 +1,49 @@
+name: Talk Shops card payments check
+
+# Read-only: can a shop connect Stripe from Settings? Asks Stripe three questions with the Talk Shops key and
+# prints yes/no only. The two write questions send a request Stripe must refuse as invalid, so nothing is created.
+# No ids, names or key text are printed.
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      STRIPE_KEY: ${{ secrets.TALKSHOPS_STRIPE_SECRET_KEY }}
+    steps:
+      - name: Ask Stripe
+        run: |
+          cat > check.mjs <<'JS'
+          const key = process.env.STRIPE_KEY;
+          const out = { key: !key ? 'missing' : key.startsWith('rk_live') || key.startsWith('sk_live') ? 'live' : 'test' };
+          async function ask(method, path, body) {
+            const r = await fetch('https://api.stripe.com/v1/' + path, {
+              method, headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: body ? new URLSearchParams(body) : undefined,
+            });
+            let j = {}; try { j = await r.json(); } catch {}
+            const e = j.error || {};
+            const msg = String(e.message || '');
+            return {
+              status: r.status, type: e.type || null, code: e.code || null,
+              no_permission: r.status === 403 || /does not have the required permissions/i.test(msg),
+              connect_not_set_up: /signed up for connect|sign up for connect|connect is not enabled|platform profile|review the responsibilities/i.test(msg),
+              count: Array.isArray(j.data) ? j.data.length : null,
+            };
+          }
+          if (key) {
+            // 1. Is Connect switched on, and can the key read connected accounts?
+            out.list_accounts = await ask('GET', 'accounts?limit=3');
+            // 2. May the key create connected accounts? An unknown type is refused as invalid before anything is made.
+            out.create_account = await ask('POST', 'accounts', { type: 'not-a-real-type' });
+            // 3. May the key create sign-up links? The account does not exist, so Stripe refuses.
+            out.account_link = await ask('POST', 'account_links', { account: 'acct_0000000000000000', type: 'account_onboarding', refresh_url: 'https://talkshops.app/settings', return_url: 'https://talkshops.app/settings' });
+            // 4. May the key start a card payment? Missing fields, so Stripe refuses.
+            out.checkout = await ask('POST', 'checkout/sessions', { mode: 'not-a-real-mode' });
+          }
+          console.log('TALKSHOPS_CONNECT_JSON ' + JSON.stringify(out));
+          JS
+          node check.mjs
