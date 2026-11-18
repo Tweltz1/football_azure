@@ -12,6 +12,7 @@ import { usePro } from '../../lib/pro';
 import { useTotes } from '../../lib/store';
 import { radius, TOTE_COLORS, TOTE_ICONS, useTheme } from '../../lib/theme';
 import { joinLocation, PLACE_PRESETS, placeOf, SEASONS, spotOf } from '../../lib/extras';
+import { maybeAskForReview } from '../../lib/review';
 
 export default function EditTote() {
   // The form fills itself from the saved tote once, so wait until the totes have loaded.
@@ -106,6 +107,8 @@ function EditToteForm() {
       const created = store.createTote(input, claim);
       router.dismiss();
       router.push(`/tote/${created.id}`);
+      // The 5th tote is a good moment to ask for a rating (after the new tote's page has opened).
+      if (store.totes.length + 1 === 5) setTimeout(maybeAskForReview, 1500);
     }
   };
 
