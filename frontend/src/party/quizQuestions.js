@@ -1,6 +1,8 @@
 // Fright Quiz questions, in four levels from easy to expert. The first answer is the right one;
 // the game shuffles them. A game climbs the levels question by question, and the TV remembers
 // which questions it has shown so repeat games pick fresh ones first.
+import { HOLIDAY_EASY, HOLIDAY_MEDIUM, HOLIDAY_HARD, HOLIDAY_EXPERT } from './holidayContent.js';
+import { season } from './season.js';
 
 export const EASY = [
 ['What do people carve to make a jack-o\'-lantern?', 'A pumpkin', 'A watermelon', 'A potato', 'A coconut'],
@@ -229,6 +231,7 @@ export const EXPERT = [
 ];
 
 export const LEVELS = [EASY, MEDIUM, HARD, EXPERT];
+export const HOLIDAY_LEVELS = [HOLIDAY_EASY, HOLIDAY_MEDIUM, HOLIDAY_HARD, HOLIDAY_EXPERT];
 export const LEVEL_NAMES = ['Easy', 'Medium', 'Hard', 'Expert'];
 export const QUESTIONS = [...EASY, ...MEDIUM, ...HARD, ...EXPERT];
 
@@ -246,11 +249,12 @@ const shuffle = (list, rand) => {
 
 /**
  * Picks `count` questions that get harder as the game goes, with shuffled answers.
+ * theme is 'holiday' or 'spooky' (see season.js).
  * rand() returns [0, 1). `seen` holds question texts already shown on this TV; unseen ones go first.
  */
-export function pickQuestions(rand, count = 12, seen = []) {
+export function pickQuestions(rand, count = 12, seen = [], theme = season()) {
   const shown = new Set(seen);
-  const queues = LEVELS.map((level) => {
+  const queues = (theme === 'holiday' ? HOLIDAY_LEVELS : LEVELS).map((level) => {
     const fresh = shuffle(level.filter((q) => !shown.has(q[0])), rand);
     const old = shuffle(level.filter((q) => shown.has(q[0])), rand);
     return fresh.concat(old);

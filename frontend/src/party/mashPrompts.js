@@ -1,4 +1,6 @@
 // Monster Mash-up prompts: silly, family friendly Halloween writing prompts.
+import { HOLIDAY_FINAL_PROMPTS, HOLIDAY_PROMPTS } from './holidayContent.js';
+import { season } from './season.js';
 
 export const PROMPTS = [
   'The worst thing to find in your trick-or-treat bag',
@@ -67,6 +69,11 @@ export const FINAL_PROMPTS = [
   'The best excuse for eating all of the Halloween candy',
   'Name the haunted house this whole crew would run',
 ];
+
+/** The prompt lists for the current theme. */
+export const promptsFor = (theme = season()) => (theme === 'holiday'
+  ? { prompts: HOLIDAY_PROMPTS, finals: HOLIDAY_FINAL_PROMPTS }
+  : { prompts: PROMPTS, finals: FINAL_PROMPTS });
 
 // Kept PG-13: a short list of words that get masked on the TV. Answers stay playful, not crude.
 const MASK = ['fuck', 'shit', 'bitch', 'cunt', 'dick', 'cock', 'pussy', 'asshole', 'bastard', 'slut', 'whore', 'nigg', 'fag', 'retard', 'beer', 'weed', 'vodka', 'whiskey', 'blunt', 'cigarette', 'vape'];

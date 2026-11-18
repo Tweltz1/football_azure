@@ -3,11 +3,12 @@ import Person from '../Person';
 import { sfx } from '../sound';
 import { PlayerTag, ScenePerson } from '../scene';
 import {
-  ANSWER_MS, awards, multiplier, READ_MS, ranking, ROUND_MS, ROUND_SIZE, ROUNDS, roundOf,
+  ANSWER_MS, awards, multiplier, QUIZ_CHAMP, READ_MS, ranking, ROUND_MS, ROUND_SIZE, ROUNDS, roundOf,
 } from './quiz';
 import { ANSWER_STYLE } from './quizLook';
 import { LEVEL_NAMES } from '../quizQuestions';
 import { Leaderboard, Podium } from './Results';
+import { metaFor } from './meta';
 
 /** A haunted game-show stage: curtains, a moon, footlights made of jack-o'-lanterns. */
 export const QuizBackdrop = ({ lights = 0, curtain = ['#5d1630', '#8e1d2c', '#4a0f24'] }) => (
@@ -202,7 +203,7 @@ export default function QuizStage({ game, players, now, onLobby, onAgain }) {
 
       {game.phase === 'round' && (
         <div className="lc-card lq-round" key={`r${game.index}`}>
-          <div className="lc-card-kicker">Fright Quiz · questions {game.index + 1} to {Math.min(game.questions.length, game.index + ROUND_SIZE)}</div>
+          <div className="lc-card-kicker">{metaFor('quiz').title} · questions {game.index + 1} to {Math.min(game.questions.length, game.index + ROUND_SIZE)}</div>
           <h2 className="lc-title">{ROUNDS[roundOf(game.index)].title}</h2>
           <p>{ROUNDS[roundOf(game.index)].blurb}</p>
           <div className="lc-countdown">{Math.max(1, Math.ceil((ROUND_MS - elapsed) / 1000))}</div>
@@ -219,7 +220,7 @@ export default function QuizStage({ game, players, now, onLobby, onAgain }) {
       )}
 
       {game.phase === 'final' && (
-        <Podium ranks={ranks} players={players} awards={awards(game).filter((a) => a.title !== 'Fright Quiz Champ')} onLobby={onLobby} onAgain={onAgain} />
+        <Podium ranks={ranks} players={players} awards={awards(game).filter((a) => a.title !== QUIZ_CHAMP)} onLobby={onLobby} onAgain={onAgain} />
       )}
     </>
   );

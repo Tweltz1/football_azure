@@ -11,6 +11,7 @@ import { HallBackdrop } from './games/HallwayStage';
 import { GAME_META, gameFor, isPlayable } from './games';
 import './party.css';
 import { siteOrigin } from '../native/gamesApp';
+import { isHoliday } from './season';
 
 // The lobby shows the picked game's world behind the picker.
 const LobbyScene = ({ id, now }) => {
@@ -391,7 +392,7 @@ export default function PartyHost() {
       <div className="lc-tv lc-splash">
         <div className="lc-splash-card">
           <h1 className="lc-title">Hood Games Night</h1>
-          <p className="lc-sub">Halloween party games for 1 to 12 players.<br />Put this page on the TV. Everyone plays on their phone.</p>
+          <p className="lc-sub">{isHoliday() ? 'Holiday' : 'Halloween'} party games for 1 to 12 players.<br />Put this page on the TV. Everyone plays on their phone.</p>
           <button type="button" className="lc-btn lc-btn-big" onClick={openRoom}>Open a new room</button>
           {savedRoom && (
             <button type="button" className="lc-btn lc-splash-reopen" onClick={reopenRoom}>

@@ -4,6 +4,7 @@ import { randomLook } from './look';
 import { currentUser, firstName, signInWithGoogle, signOutHere } from './account';
 import { homeHref, homeLabel } from '../native/gamesApp';
 import AppleSignIn from './AppleSignIn';
+import { isHoliday } from './season';
 import './party.css';
 
 /** Games night landing: host on a TV or join on a phone, signed in with Google or as a guest. */
@@ -27,7 +28,9 @@ export default function PartyHome() {
       <a className="lch-back" href={homeHref()}>← {homeLabel()}</a>
       <p className="lch-kicker">Hood League Games</p>
       <h1 className="lc-title">Games Night</h1>
-      <p className="lch-sub">Halloween party games for one TV and up to 12 phones. Team up in Last Candle, or race your friends in Fright Quiz.</p>
+      <p className="lch-sub">{isHoliday()
+        ? 'Holiday party games for one TV and up to 12 phones. Race the family in the Holiday Quiz, write the funniest answers in the Holiday Mash-up, or team up in Last Candle.'
+        : 'Halloween party games for one TV and up to 12 phones. Team up in Last Candle, or race your friends in Fright Quiz.'}</p>
       <div className="lch-crew">{looks.map((l, i) => <Person key={i} look={l} pose={i === 2 ? 'wave' : 'stand'} className={`lc-bob lc-d${i % 4}`} />)}</div>
       <div className="lch-actions">
         <a className="lch-card" href="/party">

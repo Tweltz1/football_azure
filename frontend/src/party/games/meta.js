@@ -1,4 +1,5 @@
 // What the lobby shows about each game. Light on purpose: the phone page imports this too.
+import { isHoliday } from '../season.js';
 
 export const GAME_META = [
   {
@@ -74,6 +75,35 @@ export const GAME_META = [
     phoneHint: 'Keep your phone hidden. Your secret word (or your fangs) show up here.',
   },
 ];
+
+// November to early January the quiz and the writing game switch to the holiday set (see season.js).
+const HOLIDAY_META = {
+  quiz: {
+    title: 'Holiday Quiz',
+    emoji: '🦃',
+    blurb: 'Thanksgiving, Christmas and New Year\u2019s trivia. The fastest right answer scores the most.',
+    how: [
+      'A holiday question pops up on the TV. The answers show on your phone.',
+      'Tap the right one, fast. The quicker you are, the more points you get.',
+      'First right answer gets a bonus, three in a row is a Hot Streak, and Round 3 counts double.',
+    ],
+  },
+  mash: {
+    title: 'Holiday Mash-up',
+    emoji: '🎁',
+    blurb: 'Write the funniest answers to holiday prompts, then vote for the best.',
+    how: [
+      'Your phone gives you a holiday prompt. Write something funny.',
+      'Answers go head to head on the TV. Nobody knows who wrote what.',
+      'Everyone else votes. Every vote is points, and winning them all is a Holiday Mash-up!',
+    ],
+  },
+};
+if (isHoliday()) {
+  GAME_META.forEach((g, i) => { if (HOLIDAY_META[g.id]) GAME_META[i] = { ...g, ...HOLIDAY_META[g.id] }; });
+  // Lead with the holiday games.
+  GAME_META.sort((a, b) => (HOLIDAY_META[b.id] ? 1 : 0) - (HOLIDAY_META[a.id] ? 1 : 0));
+}
 
 export const metaFor = (id) => GAME_META.find((g) => g.id === id) || GAME_META[0];
 export const isPlayable = (id) => GAME_META.some((g) => g.id === id && !g.soon);

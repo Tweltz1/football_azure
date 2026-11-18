@@ -1,7 +1,7 @@
 // Monster Mash-up: everyone writes funny answers to Halloween prompts, then votes on anonymous
 // head-to-head matchups. Pure game logic, no React. The TV owns the state and ticks it.
 
-import { clean, FINAL_PROMPTS, PROMPTS } from '../mashPrompts.js';
+import { clean, promptsFor } from '../mashPrompts.js';
 
 export const MIN_PLAYERS = 3;
 export const ROUND_MS = 6000;
@@ -75,7 +75,7 @@ function deal(s) {
   }
   s.matchups = groups.map((authors) => {
     const pool = isFinalRound(s) ? s.finalPool : s.pool;
-    const prompt = pool.shift() || 'Write anything spooky';
+    const prompt = pool.shift() || 'Write anything funny';
     return { prompt, authors, answers: {}, votes: {}, result: null };
   });
   s.current = 0;
@@ -87,8 +87,8 @@ export function createMash(players, seed = Date.now(), now = 0) {
   const s = {
     rand,
     players: players.map((p) => ({ cid: p.cid, name: p.name })),
-    pool: shuffle(rand, PROMPTS),
-    finalPool: shuffle(rand, FINAL_PROMPTS),
+    pool: shuffle(rand, promptsFor().prompts),
+    finalPool: shuffle(rand, promptsFor().finals),
     round: 0,
     phase: 'round',
     phaseAt: now,
