@@ -878,3 +878,27 @@
 #lc-root .va-heart.is-on { background: #ffd1e3; }
 #lc-root .va-sus { display: grid; place-items: center; min-height: 56px; border: 4px solid var(--lc-ink); border-radius: 14px; background: #fff6e3; color: var(--lc-ink); font: 800 20px var(--lc-font); }
 #lc-root .va-sus.is-on { background: #ff2d6f; color: #fff; }
+
+/* Rainbow Run */
+#lc-root .rr-cloud { animation: rr-drift 26s ease-in-out infinite alternate; }
+@keyframes rr-drift { from { transform: translateX(-30px); } to { transform: translateX(30px); } }
+#lc-root .rr-hazards { position: absolute; left: 1.2%; top: 11%; display: flex; flex-direction: column; align-items: center; gap: 0.15em; padding: 0.5em 0.6em; background: rgba(22, 18, 43, 0.82); border: 4px solid var(--lc-ink); border-radius: 0.8em; font-size: 1.1em; }
+#lc-root .rr-hazards span { font-size: 2em; line-height: 1.15; opacity: 0.35; filter: grayscale(1); }
+#lc-root .rr-hazards span.is-warn { opacity: 1; filter: none; animation: lc-shake 0.5s ease-in-out infinite; }
+#lc-root .rr-hazards small { max-width: 7em; text-align: center; font-size: 0.65em; opacity: 0.8; }
+#lc-root .rr-banner { position: absolute; left: 50%; bottom: 3%; transform: translateX(-50%); padding: 0.4em 1.2em; font-size: 1.6em; font-weight: 800; background: rgba(22, 18, 43, 0.88); border: 4px solid var(--lc-ink); border-radius: 999px; white-space: nowrap; }
+#lc-root .rr-banner b { color: #ffe066; }
+#lc-root .rr-result { top: 12%; font-size: 2.6em; }
+#lc-root .rr-phone { gap: 12px; }
+#lc-root .rr-carry { margin: 0; text-align: center; font-size: 17px; }
+#lc-root .rr-carry b { color: #ffe066; font-size: 1.3em; }
+#lc-root .rr-warn { margin: 0; padding: 6px 10px; text-align: center; background: rgba(255, 90, 78, 0.18); border: 3px solid #ff5a4e; border-radius: 12px; font-weight: 700; }
+#lc-root .rr-picks { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#lc-root .rr-picks > * { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 190px; padding: 10px; font-size: 54px; border: 5px solid var(--lc-ink); border-radius: 22px; box-shadow: 0 6px 0 var(--lc-ink); color: #fff; cursor: pointer; text-shadow: 0 2px 0 var(--lc-ink); }
+#lc-root .rr-picks b { font: 400 26px var(--lc-spooky); }
+#lc-root .rr-picks small { font: 700 13px var(--lc-font); text-shadow: none; opacity: 0.9; }
+#lc-root .rr-climb { background: linear-gradient(160deg, #e8413a, #f8d02a 40%, #4cc25a 70%, #3a8ef0); }
+#lc-root .rr-home { background: #2f9a4a; }
+#lc-root .rr-picks .is-on { outline: 6px solid #ffe066; transform: translateY(4px); box-shadow: 0 2px 0 var(--lc-ink); }
+#lc-root .lq-demo-phone .rr-picks > * { min-height: 120px; font-size: 38px; }
+#lc-root .lq-demo-phone .rr-picks b { font-size: 18px; }

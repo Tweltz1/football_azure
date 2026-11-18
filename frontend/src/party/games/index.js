@@ -10,6 +10,7 @@ import * as trot from './turkeyTrot';
 import * as rush from './giftRush';
 import * as countdown from './countdown';
 import * as admirer from './admirer';
+import * as rainbow from './rainbowRun';
 import CandleStage from './CandleStage';
 import CandlePhone from './CandlePhone';
 import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
@@ -37,6 +38,9 @@ import CountdownHowTo, { HOWTO_MS as COUNTDOWN_HOWTO_MS } from './CountdownHowTo
 import AdmirerStage from './AdmirerStage';
 import AdmirerPhone from './AdmirerPhone';
 import AdmirerHowTo, { HOWTO_MS as ADMIRER_HOWTO_MS } from './AdmirerHowTo';
+import RainbowStage from './RainbowStage';
+import RainbowPhone from './RainbowPhone';
+import RainbowHowTo, { HOWTO_MS as RAINBOW_HOWTO_MS } from './RainbowHowTo';
 import { GAME_META, HOLIDAY_GAME, isPlayable, metaFor } from './meta';
 
 // The TV remembers which quiz questions it has shown, so the next game picks fresh ones first.
@@ -303,6 +307,32 @@ const ENGINES = {
     Phone: AdmirerPhone,
     HowTo: AdmirerHowTo,
     howToMs: ADMIRER_HOWTO_MS,
+  },
+  rainbow: {
+    create: rainbow.createRainbow,
+    tick: rainbow.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'pick') rainbow.choose(g, cid, String(msg.pick || ''), now);
+    },
+    over: rainbow.isOver,
+    sceneKey: (g) => (g.phase === 'over' ? 'over' : `run${g.run}`),
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g) => Math.min(1, (g.run + g.steps.length / rainbow.MAX_STEPS) / rainbow.RUNS + (Object.values(g.seen).some((n) => n === 1) ? 0.15 : 0)),
+    phone: rainbow.phoneView,
+    result(g, cid) {
+      const me = rainbow.ranking(g).find((r) => r.cid === cid);
+      return {
+        rank: me?.rank || g.players.length,
+        score: me?.score || 0,
+        awards: rainbow.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+      };
+    },
+    addPlayer: rainbow.addPlayer,
+    seen: rainbow.seen,
+    Stage: RainbowStage,
+    Phone: RainbowPhone,
+    HowTo: RainbowHowTo,
+    howToMs: RAINBOW_HOWTO_MS,
   },
 };
 
