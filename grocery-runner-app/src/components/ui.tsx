@@ -25,15 +25,18 @@ type ButtonProps = {
   disabled?: boolean;
   loading?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** For icon-only buttons. */
+  label?: string;
 };
 
-export function Button({ title, onPress, icon, variant = 'primary', disabled, loading, style }: ButtonProps) {
+export function Button({ title, onPress, icon, variant = 'primary', disabled, loading, style, label }: ButtonProps) {
   const t = useTheme();
   const bg = variant === 'primary' ? t.primary : variant === 'secondary' ? t.cardAlt : 'transparent';
   const fg = variant === 'primary' ? t.onPrimary : variant === 'secondary' ? t.text : t.primary;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       disabled={disabled || loading}
       onPress={() => {
         tap();
@@ -50,7 +53,7 @@ export function Button({ title, onPress, icon, variant = 'primary', disabled, lo
       ) : (
         <>
           {icon && <Ionicons name={icon} size={19} color={fg} />}
-          <Text style={[styles.buttonText, { color: fg }]}>{title}</Text>
+          {!!title && <Text style={[styles.buttonText, { color: fg }]}>{title}</Text>}
         </>
       )}
     </Pressable>

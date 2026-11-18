@@ -91,7 +91,7 @@ jobs:
           xcrun simctl launch "$DEV" com.tweltz1.groceryrunner
           # The app shows a new screen every 20 seconds (src/lib/demo.ts); photograph the middle of each.
           sleep 12
-          for SHOT in 1-list 2-route 3-recipes 4-recipe 5-community 6-stores 7-account 8-item; do
+          for SHOT in 1-list 2-route 3-recipes 4-recipe 5-community 6-stores 7-account 8-item 11-plan; do
             xcrun simctl io "$DEV" screenshot "shots/$SHOT.png"
             sleep 19
           done

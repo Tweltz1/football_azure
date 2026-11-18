@@ -10,7 +10,7 @@ export const DEMO = process.env.EXPO_PUBLIC_DEMO === '1';
 /** The screens the screenshot build walks through, one every DEMO_DWELL_MS. */
 export const DEMO_DWELL_MS = 20000;
 export const DEMO_ITEM_ID = 'demo-item-03';
-export const DEMO_TOUR = ['/', '/route', '/recipes?view=recipes', '/recipe/s-tacos', '/recipes?view=community', '/stores', '/account', `/item/${DEMO_ITEM_ID}`];
+export const DEMO_TOUR = ['/', '/route', '/recipes?view=recipes', '/recipe/s-tacos', '/recipes?view=community', '/stores', '/account', `/item/${DEMO_ITEM_ID}`, '/plan'];
 
 export const DEMO_STORE: Store = {
   id: 'custom:Neighborhood Market',

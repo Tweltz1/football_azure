@@ -6,14 +6,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, SectionTitle } from '../components/ui';
 import { cleanLink, readRecipe } from '../lib/readRecipe';
 import { keepPhoto } from '../lib/recipePhotos';
+import { usePlan } from '../lib/plan';
 import { newId, useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
 
 export default function ScanScreen() {
   const t = useTheme();
   // mode "link" (from the list's Recipe link button) shows just the link box; url reads that link straight away.
-  const { mode, url: givenUrl } = useLocalSearchParams<{ mode?: string; url?: string }>();
+  // planDate: opened from the meal plan, so the recipe goes on that day too.
+  const { mode, url: givenUrl, planDate } = useLocalSearchParams<{ mode?: string; url?: string; planDate?: string }>();
   const { saveRecipe } = useData();
+  const { addMeal } = usePlan();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +30,7 @@ export default function ScanScreen() {
       // The scanned photo becomes the recipe's picture.
       const photo = 'photoUri' in input ? await keepPhoto(input.photoUri, id) : undefined;
       saveRecipe({ ...recipe, id, photo, source: 'mine', ...('url' in input ? { url: input.url } : {}) });
+      if (planDate) addMeal(planDate, id);
       // The recipe page ticks what to buy and has "Add N items to my list".
       router.replace(`/recipe/${id}`);
     } catch (e) {

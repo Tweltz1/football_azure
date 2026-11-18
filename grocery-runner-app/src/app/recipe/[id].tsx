@@ -18,6 +18,8 @@ import { Button, lift, tap } from '../../components/ui';
 import { labelsOf } from '../../lib/diet';
 import { newItems, SUGGESTED } from '../../lib/recipes';
 import { itemKey } from '../../lib/sharedAisles';
+import { fromIso, planWeek, WEEKDAYS } from '../../lib/mealPlan';
+import { usePlan } from '../../lib/plan';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 
@@ -26,6 +28,7 @@ export default function RecipeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { myRecipes, items, addItems, deleteRecipe, saveRecipe } = useData();
   const { session } = useAuth();
+  const { plan, addMeal } = usePlan();
   // Community recipes ("c-<id>") come from the list's cache, or are fetched when opened another way.
   const [shared, setShared] = useState<CommunityRecipe | null | undefined>(() => (id?.startsWith('c-') ? cachedCommunityRecipe(id) : null));
   useEffect(() => {
@@ -161,6 +164,30 @@ export default function RecipeScreen() {
     });
   };
 
+  // Plans this recipe on a day of this week (or next); community recipes are saved first so the plan keeps them.
+  const planIt = () => {
+    const days = [...planWeek(plan.prepDay, new Date()), ...planWeek(plan.prepDay, new Date(), 1)].filter(
+      (d) => fromIso(d) >= new Date(new Date().toDateString()),
+    ).slice(0, 7);
+    const labels = days.map((d) => `${WEEKDAYS[fromIso(d).getDay()]} ${fromIso(d).getMonth() + 1}/${fromIso(d).getDate()}`);
+    ActionSheetIOS.showActionSheetWithOptions(
+      { title: 'Plan it for', options: [...labels, 'Cancel'], cancelButtonIndex: labels.length },
+      (i) => {
+        if (i >= days.length) return;
+        let id = recipe.id;
+        if (recipe.source === 'community') {
+          id = `saved-${recipe.id}`;
+          if (!savedCopy) {
+            const { id: _drop, ...rest } = recipe;
+            saveRecipe({ ...rest, id, source: 'mine' });
+          }
+        }
+        addMeal(days[i], id);
+        Alert.alert('Planned', `${recipe.title} is on ${labels[i]}. See it in the Plan tab.`);
+      },
+    );
+  };
+
   const add = () => {
     addItems(chosen.map((it) => ({ name: it.item, amount: it.amount })));
     router.dismissTo('/');
@@ -262,6 +289,7 @@ export default function RecipeScreen() {
         )}
       </ScrollView>
       <View style={styles.footer}>
+        <Button title="" label="Add to meal plan" icon="calendar" variant="secondary" onPress={planIt} style={{ width: 58, paddingHorizontal: 0 }} />
         <Button
           title={chosen.length ? `Add ${chosen.length} item${chosen.length === 1 ? '' : 's'} to my list` : 'Nothing to add'}
           icon="add"
