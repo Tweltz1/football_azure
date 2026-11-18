@@ -92,9 +92,11 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         return String(data);
       },
       join: async (code) => {
-        const { data, error } = await supabase.rpc('totetrack_household_join', { invite: code.trim().toUpperCase() });
+        const { data, error } = await supabase.rpc('totetrack_household_join_v2', { invite: code.trim().toUpperCase() });
         if (error) throw message(error);
-        keep(data as Info);
+        const r = data as { ok: boolean; error?: string; info?: Info };
+        if (!r?.ok) throw new Error(r?.error || 'That code isn’t valid. Ask for a new one.');
+        keep(r.info as Info);
       },
       leave: async (memberId) => {
         const { data, error } = await supabase.rpc('totetrack_household_leave', memberId ? { member: memberId } : {});

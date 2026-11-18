@@ -223,7 +223,10 @@ begin
   end if;
   delete from public.totetrack_invites where owner_id = uid or expires_at < now();
   -- No 0/O or 1/I, so a code read aloud is typed right.
-  select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 1 + floor(random() * 32)::int, 1), '') into c from generate_series(1, 6);
+  -- Cryptographic random characters (gen_random_uuid bytes; 256 is a multiple of 32, so all are equally likely).
+  -- Still 6 long while ToteTrack 1.0 (6-letter box, build 86) is the App Store version; the next version takes 8.
+  select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 1 + (get_byte(decode(replace(gen_random_uuid()::text, '-', ''), 'hex'), i) % 32), 1), '')
+    into c from generate_series(0, 5) i;
   insert into public.totetrack_invites (code, owner_id, expires_at) values (c, uid, now() + interval '7 days');
   return c;
 end;
@@ -251,6 +254,48 @@ begin
 end;
 $$;
 
+-- Wrong codes typed by each person, so nobody can try code after code (10 an hour, 30 a day).
+create table if not exists public.totetrack_join_misses (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists totetrack_join_misses_user on public.totetrack_join_misses (user_id, at desc);
+alter table public.totetrack_join_misses enable row level security;
+revoke all on public.totetrack_join_misses from anon, authenticated;
+
+-- Join with a code. Problems come back as {ok:false, error} instead of an error (an error would undo the miss being
+-- counted). After 10 misses in an hour (30 in a day) every try is turned down for a while.
+create or replace function public.totetrack_household_join_v2(invite text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  own uuid;
+  c text := upper(regexp_replace(coalesce(invite, ''), '[^A-Za-z0-9]', '', 'g'));
+begin
+  if uid is null then raise exception 'Not signed in'; end if;
+  if (select count(*) from public.totetrack_join_misses where user_id = uid and at > now() - interval '1 hour') >= 10
+     or (select count(*) from public.totetrack_join_misses where user_id = uid and at > now() - interval '1 day') >= 30 then
+    return jsonb_build_object('ok', false, 'error', 'Too many wrong codes. Wait an hour and try again.');
+  end if;
+  select owner_id into own from public.totetrack_invites where code = c and expires_at > now();
+  if own is null then
+    insert into public.totetrack_join_misses (user_id) values (uid);
+    delete from public.totetrack_join_misses where at < now() - interval '2 days';
+    return jsonb_build_object('ok', false, 'error', 'That code isn''t valid. Codes work for 7 days; ask for a new one.');
+  end if;
+  if own = uid then return jsonb_build_object('ok', false, 'error', 'That''s your own household code. Share it with family to let them join.'); end if;
+  if exists (select 1 from public.totetrack_household where owner_id = uid) then
+    return jsonb_build_object('ok', false, 'error', 'People already share your totes. Remove them first to join another household.');
+  end if;
+  if (select count(*) from public.totetrack_household where owner_id = own) >= 5 then
+    return jsonb_build_object('ok', false, 'error', 'That household is full (6 people).');
+  end if;
+  insert into public.totetrack_household (member_id, owner_id) values (uid, own)
+    on conflict (member_id) do update set owner_id = excluded.owner_id, joined_at = now();
+  return jsonb_build_object('ok', true, 'info', public.totetrack_household_info());
+end;
+$$;
+
 create or replace function public.totetrack_household_leave(member uuid default null) returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -274,6 +319,9 @@ revoke all on function public.totetrack_household_leave(uuid) from public, anon;
 grant execute on function public.totetrack_household_info() to authenticated;
 grant execute on function public.totetrack_household_invite() to authenticated;
 grant execute on function public.totetrack_household_join(text) to authenticated;
+-- The old join has no limit on wrong codes; it stays only for ToteTrack 1.0 (build 86). Switch it off once the next version is out.
+revoke all on function public.totetrack_household_join_v2(text) from public, anon;
+grant execute on function public.totetrack_household_join_v2(text) to authenticated;
 grant execute on function public.totetrack_household_leave(uuid) to authenticated;
 """
 call("POST", "/database/query", {"query": HOUSEHOLD_SQL})
