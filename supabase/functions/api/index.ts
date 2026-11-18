@@ -167,6 +167,12 @@ Deno.serve(async (req) => {
   // Requests arrive as /api/<route> (the function name, then the route the app asked for).
   const path = url.pathname.replace(/^\/(functions\/v1\/)?api\/?/, '');
 
+  // Talk Shops moved to its own Supabase project (talkshops.app) on 2026-11-11. This shared hobby project no longer
+  // serves any Talk Shops route, so nobody can open a shop, send texts or post Stripe/SMS webhooks through it.
+  if (path === 'shop' || path.startsWith('shop/')) {
+    return new Response('Talk Shops has moved to talkshops.app.', { status: 410, headers: corsHeaders });
+  }
+
   if (req.method === 'POST' && path === 'shop/incoming-sms') {
     try {
       const receive = async (sid: string, phone: string, text: string, topic: string) => {
