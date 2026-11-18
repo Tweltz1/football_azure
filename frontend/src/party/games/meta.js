@@ -155,6 +155,21 @@ export const GAME_META = [
     ],
     phoneHint: 'Your CLIMB and HEAD HOME buttons show up here.',
   },
+  {
+    id: 'egg',
+    holiday: 'easter',
+    title: 'Egg Hunt',
+    emoji: '🥚',
+    tag: 'Versus',
+    minutes: '5–6 min',
+    blurb: 'Watch the Easter Bunny hide everyone\'s eggs, then race to find yours. Grab the golden egg for a bonus!',
+    how: [
+      'Your phone shows your egg color. Watch where the bunny hides it in the garden.',
+      'When the hunt starts, tap that spot on your phone. Faster finds score more.',
+      'Wrong spot freezes you for a moment. The first to find the golden egg gets a bonus!',
+    ],
+    phoneHint: 'Your egg color and the garden spots show up here.',
+  },
 ];
 
 // The quiz and the writing game take the name of the theme on now (see season.js): Thanksgiving Quiz,

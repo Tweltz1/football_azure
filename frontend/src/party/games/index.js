@@ -11,6 +11,7 @@ import * as rush from './giftRush';
 import * as countdown from './countdown';
 import * as admirer from './admirer';
 import * as rainbow from './rainbowRun';
+import * as egg from './eggHunt';
 import CandleStage from './CandleStage';
 import CandlePhone from './CandlePhone';
 import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
@@ -41,6 +42,9 @@ import AdmirerHowTo, { HOWTO_MS as ADMIRER_HOWTO_MS } from './AdmirerHowTo';
 import RainbowStage from './RainbowStage';
 import RainbowPhone from './RainbowPhone';
 import RainbowHowTo, { HOWTO_MS as RAINBOW_HOWTO_MS } from './RainbowHowTo';
+import EggStage from './EggStage';
+import EggPhone from './EggPhone';
+import EggHowTo, { HOWTO_MS as EGG_HOWTO_MS } from './EggHowTo';
 import { GAME_META, HOLIDAY_GAME, isPlayable, metaFor } from './meta';
 
 // The TV remembers which quiz questions it has shown, so the next game picks fresh ones first.
@@ -333,6 +337,32 @@ const ENGINES = {
     Phone: RainbowPhone,
     HowTo: RainbowHowTo,
     howToMs: RAINBOW_HOWTO_MS,
+  },
+  egg: {
+    create: egg.createEggHunt,
+    tick: egg.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'tap') egg.tap(g, cid, Number(msg.spot), now);
+    },
+    over: egg.isOver,
+    sceneKey: (g) => (g.phase === 'over' ? 'over' : `r${g.round}`),
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g) => Math.min(1, (g.round + (g.phase === 'hunt' || g.phase === 'reveal' ? 0.6 : 0)) / egg.ROUNDS),
+    phone: egg.phoneView,
+    result(g, cid) {
+      const me = egg.ranking(g).find((r) => r.cid === cid);
+      return {
+        rank: me?.rank || g.players.length,
+        score: me?.score || 0,
+        awards: egg.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+      };
+    },
+    addPlayer: egg.addPlayer,
+    seen: egg.seen,
+    Stage: EggStage,
+    Phone: EggPhone,
+    HowTo: EggHowTo,
+    howToMs: EGG_HOWTO_MS,
   },
 };
 
