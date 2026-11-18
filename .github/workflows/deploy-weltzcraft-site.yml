@@ -64,8 +64,9 @@ jobs:
           STRIPE_KEY: ${{ secrets.WELTZCRAFT_STRIPE_SECRET_KEY || secrets.TALKSHOPS_STRIPE_SECRET_KEY }}
           PRINTFUL_KEY: ${{ secrets.PRINTFUL_API_TOKEN }}
           PRINTFUL_STORE: ${{ secrets.PRINTFUL_STORE_ID }}
-          # Optional: replaces the default FAMILY promo code (cost + $2 pricing).
-          FAMILY_CODE: ${{ secrets.MERCH_FAMILY_CODE }}
+          # Optional: replaces the default FAMILY promo code (cost + $2 pricing). MERCH_DISCOUNT_CODE is the name to use;
+          # the older MERCH_FAMILY_CODE still works if it's the only one set.
+          FAMILY_CODE: ${{ secrets.MERCH_DISCOUNT_CODE || secrets.MERCH_FAMILY_CODE }}
         run: |
           put() { CLOUDFLARE_ACCOUNT_ID=$ACCOUNT npx --yes wrangler@3 pages secret put "$1" --project-name "$PROJECT" >/dev/null && echo "set $1"; }
           [ -n "$PRINTFUL_KEY" ] && printf '%s' "$PRINTFUL_KEY" | put PRINTFUL_API_TOKEN
