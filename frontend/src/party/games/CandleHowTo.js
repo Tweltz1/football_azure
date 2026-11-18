@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { monsterMarkup } from '../monsters';
 import { randomLook, lookCode, seasonCostume } from '../look';
-import { CHARM } from '../lastCandle';
+import { CHARM, CANDLE_TEXT } from '../lastCandle';
 import { isMuted, sfx } from '../sound';
 import { charmArt } from '../charmArt';
 import { Backdrop, CharmBadge, House, laneY, monsterX, PlayerTag, ScenePerson } from '../scene';
@@ -12,13 +12,13 @@ import { Backdrop, CharmBadge, House, laneY, monsterX, PlayerTag, ScenePerson } 
 export const HOWTO_MS = 57000;
 
 const SCENES = [
-  { at: 0, step: '', title: 'How to play', say: 'Welcome to Last Candle! Tonight, monsters want into the house. Your job: keep the candles lit until dawn.' },
-  { at: 5500, step: '1', title: 'Monsters walk up the paths. If one reaches the house, a candle goes out.', say: 'Monsters walk up the paths. If one reaches the house, a candle goes out. Lose them all and it\'s game over.' },
-  { at: 12500, step: '2', title: 'Each monster shows the charms that banish it. Tap a charm on your phone to throw it.', say: 'Each monster shows the charms that banish it. Tap a charm on your phone to throw it.' },
-  { at: 19500, step: '3', title: 'Nobody has every charm. Shout! Work together!', say: 'Nobody has every charm. So shout! Who has the bell?' },
+  { at: 0, step: '', title: 'How to play', say: `Welcome to Last Candle! Tonight, ${CANDLE_TEXT.foes} want into the house. Your job: keep the candles lit until dawn.` },
+  { at: 5500, step: '1', title: `The ${CANDLE_TEXT.foes} walk up the paths. If one reaches the house, a candle goes out.`, say: `The ${CANDLE_TEXT.foes} walk up the paths. If one reaches the house, a candle goes out. Lose them all and it's game over.` },
+  { at: 12500, step: '2', title: `Each ${CANDLE_TEXT.foe} shows the charms that send it away. Tap a charm on your phone to throw it.`, say: `Each ${CANDLE_TEXT.foe} shows the charms that send it away. Tap a charm on your phone to throw it.` },
+  { at: 19500, step: '3', title: 'Nobody has every charm. Shout! Work together!', say: `Nobody has every charm. So shout! Who has the ${CHARM.bell.name.toLowerCase()}?` },
   { at: 29500, step: '4', title: 'Throw a charm nobody needs and you get spooked for a few seconds.', say: 'Careful. Throw a charm nobody needs, and you get spooked for a few seconds.' },
-  { at: 36000, step: '5', title: 'Fog hides what some monsters need. Only one phone can see it. Call it out!', say: 'On fog night, some monsters hide what they need. Only one phone can see it. Call it out!' },
-  { at: 43500, step: '6', title: 'At midnight comes the Pumpkin King. Throw his charms, then everyone taps SOUL together!', say: 'At midnight, the Pumpkin King arrives. Throw his charms, then everyone tap SOUL, at the same time!' },
+  { at: 36000, step: '5', title: `Fog hides what some ${CANDLE_TEXT.foes} need. Only one phone can see it. Call it out!`, say: `On the second night, some ${CANDLE_TEXT.foes} hide what they need. Only one phone can see it. Call it out!` },
+  { at: 43500, step: '6', title: `On the last night comes the ${CANDLE_TEXT.boss}. Throw its charms, then everyone taps ${CANDLE_TEXT.soul} together!`, say: `On the last night, the ${CANDLE_TEXT.boss} arrives. Throw its charms, then everyone tap ${CANDLE_TEXT.soul}, at the same time!` },
   { at: 52000, step: '', title: 'Survive three nights. Good luck!', say: 'Survive three nights. Good luck!' },
 ];
 
@@ -82,7 +82,7 @@ const Poof = ({ x, y, k, big }) => (k <= 0 || k >= 1 ? null : (
       const d = 30 + k * (big ? 280 : 130);
       return <text key={i} x={Math.cos(a) * d} y={Math.sin(a) * d} fontSize="34" textAnchor="middle">✨</text>;
     })}
-    <text y={-60 - k * 40} fontSize={big ? 110 : 64} fontWeight="900" textAnchor="middle" fill="#ffe066" stroke="#16122b" strokeWidth="6" paintOrder="stroke" fontFamily="Creepster, Arial Black, Arial">POOF!</text>
+    <text y={-60 - k * 40} fontSize={big ? 110 : 64} fontWeight="900" textAnchor="middle" fill="#ffe066" stroke="#16122b" strokeWidth="6" paintOrder="stroke" style={{ fontFamily: 'var(--lc-spooky), Arial Black, Arial' }}>POOF!</text>
   </g>
 ));
 
@@ -116,21 +116,21 @@ const DemoPhone = ({ owner, hand, tapAt, t, spookedAt, secret, soul, show }) => 
       {spooked && (
         <g transform="translate(140 520)">
           <rect x="-120" y="-26" width="240" height="52" rx="14" fill="#d33b3b" stroke="#16122b" strokeWidth="4" />
-          <text y="2" fontSize="24" fontWeight="900" textAnchor="middle" dominantBaseline="central" fill="#fff">👻 SPOOKED!</text>
+          <text y="2" fontSize="24" fontWeight="900" textAnchor="middle" dominantBaseline="central" fill="#fff">{CANDLE_TEXT.spooked}</text>
         </g>
       )}
       {secret && (
         <g transform="translate(140 110)">
           <rect x="-120" y="-40" width="240" height="190" rx="18" fill="#d6d2ee" stroke="#16122b" strokeWidth="5" />
           <text y="-10" fontSize="20" fontWeight="800" textAnchor="middle" fill="#16122b">🌫️ Only you can see</text>
-          <text y="16" fontSize="20" fontWeight="800" textAnchor="middle" fill="#16122b">monster {secret.tag}!</text>
+          <text y="16" fontSize="20" fontWeight="800" textAnchor="middle" fill="#16122b">{CANDLE_TEXT.foe} {secret.tag}!</text>
           {secret.need.map((c, i) => <CharmBadge key={c} id={c} x={-40 + i * 80} y={80} r={34} />)}
         </g>
       )}
       {soul && (
         <g transform="translate(140 300)">
           <rect x="-116" y="-90" width="232" height="180" rx="24" fill={tapped ? '#3ddc97' : '#ffe066'} stroke="#16122b" strokeWidth="5" />
-          <text y="-6" fontSize="54" textAnchor="middle" dominantBaseline="central" fill="#16122b" fontFamily="Creepster, Arial Black, Arial">✨SOUL✨</text>
+          <text y="-6" fontSize="54" textAnchor="middle" dominantBaseline="central" fill="#16122b" style={{ fontFamily: 'var(--lc-spooky), Arial Black, Arial' }}>✨{CANDLE_TEXT.soul}✨</text>
           <text y="52" fontSize="18" fontWeight="800" textAnchor="middle" fill="#16122b">{tapped ? 'All together!' : 'Tap together!'}</text>
         </g>
       )}
@@ -224,13 +224,13 @@ export default function HowTo({ players, now, startedAt, onSkip }) {
         <Throw from={spots[0]} to={ghostTo} charm="garlic" t={t} at={17000} />
         <Throw from={spots[1]} to={ghostTo} charm="bell" t={t} at={26000} />
         <Poof x={ghostTo.x} y={ghostTo.y} k={(t - 26600) / 900} />
-        {between(t, 20500, 25500) && <Bubble x={spots[0].x} y={spots[0].y - 225} text="Who has a bell?!" k={(t - 20500) / 1000} />}
+        {between(t, 20500, 25500) && <Bubble x={spots[0].x} y={spots[0].y - 225} text={`Who has a ${CHARM.bell.name.toLowerCase()}?!`} k={(t - 20500) / 1000} />}
         {between(t, 22800, 26000) && <Bubble x={spots[1].x} y={spots[1].y - 225} text="Me!" k={(t - 22800) / 1000} />}
 
         {/* 4: a star nobody needs */}
         <Throw from={spots[2]} to={{ x: 700, y: 560 }} charm="star" t={t} at={31500} />
         {between(t, 31950, 35500) && (
-          <text x={spots[2].x} y={spots[2].y - 230} fontSize="34" fontWeight="900" textAnchor="middle" fill="#ff6b6b" stroke="#16122b" strokeWidth="5" paintOrder="stroke">SPOOKED!</text>
+          <text x={spots[2].x} y={spots[2].y - 230} fontSize="34" fontWeight="900" textAnchor="middle" fill="#ff6b6b" stroke="#16122b" strokeWidth="5" paintOrder="stroke">{CANDLE_TEXT.spooked}</text>
         )}
 
         {/* 5: fog */}
@@ -249,8 +249,8 @@ export default function HowTo({ players, now, startedAt, onSkip }) {
           />
         )}
         {between(t, 45500, 47200) && (
-          <text x="620" y="560" fontSize="120" fontWeight="900" textAnchor="middle" fill="#ffe066" stroke="#16122b" strokeWidth="8" paintOrder="stroke" fontFamily="Creepster, Arial Black, Arial">
-            {t < 46000 ? '3' : t < 46500 ? '2' : t < 47000 ? '1' : 'SOUL!'}
+          <text x="620" y="560" fontSize="120" fontWeight="900" textAnchor="middle" fill="#ffe066" stroke="#16122b" strokeWidth="8" paintOrder="stroke" style={{ fontFamily: 'var(--lc-spooky), Arial Black, Arial' }}>
+            {t < 46000 ? '3' : t < 46500 ? '2' : t < 47000 ? '1' : `${CANDLE_TEXT.soul}!`}
           </text>
         )}
         <Poof x={kingTo.x} y={kingTo.y} k={(t - 48000) / 1300} big />

@@ -1,3 +1,4 @@
+import { candleSkin } from '../candleSkins.js';
 // Haunted Hallway: a co-op climb through a haunted house. Each floor has a row of doors and only
 // one is safe. Two guides each get some clues on their phone, and everyone has to talk it out and
 // vote. A wrong door costs a lantern. Pure game logic, no React; the TV ticks it.
@@ -17,13 +18,20 @@ export const COLORS = [
   { id: 'purple', name: 'purple', hex: '#8b5cf6' },
   { id: 'orange', name: 'orange', hex: '#ff8a2a' },
 ];
-export const SYMBOLS = [
+
+// The holiday skin swaps the door symbols and the name (see candleSkins.js).
+const HALL = candleSkin().hall;
+export const HALL_TITLE = HALL?.title || 'Haunted Hallway';
+export const HALL_PLACE = HALL?.place || 'the haunted house';
+
+const SPOOKY_SYMBOLS = [
   { id: 'skull', name: 'a skull', icon: '💀' },
   { id: 'moon', name: 'a moon', icon: '🌙' },
   { id: 'bat', name: 'a bat', icon: '🦇' },
   { id: 'spider', name: 'a spider', icon: '🕷️' },
   { id: 'eye', name: 'an eye', icon: '👁️' },
 ];
+export const SYMBOLS = HALL?.symbols || SPOOKY_SYMBOLS;
 export const WINDOWS = [
   { id: 'round', name: 'a round window' },
   { id: 'arch', name: 'a pointy window' },

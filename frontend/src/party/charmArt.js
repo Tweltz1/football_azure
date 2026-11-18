@@ -1,5 +1,7 @@
 // Hand-drawn charm pictures, the same on the TV and the phones. Emoji like 🧄 are missing on some
 // older TV browsers, so the charms are drawn instead. Each fits a 100 x 100 box centered on 0,0.
+import { candleSkin } from './candleSkins.js';
+
 const INK = 'stroke="#16122b" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"';
 
 export const CHARM_ART = {
@@ -31,4 +33,4 @@ export const CHARM_ART = {
 };
 
 /** SVG markup for a charm, or null when there's no drawing (junk uses its emoji). */
-export const charmArt = (id) => CHARM_ART[id] || null;
+export const charmArt = (id) => candleSkin().charms?.[id]?.art || CHARM_ART[id] || null;

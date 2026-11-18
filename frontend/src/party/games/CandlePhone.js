@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Person from '../Person';
-import { CHARM, isJunk } from '../lastCandle';
+import { CHARM, isJunk, CANDLE_TEXT } from '../lastCandle';
 import { charmArt } from '../charmArt';
 
 const CharmIcon = ({ id, className }) => (charmArt(id)
@@ -55,7 +55,7 @@ export default function CandlePhone({ screen, send, look, header }) {
           <h2 className="lc-title">{game.phase === 'won' ? 'You won!' : 'Lights out…'}</h2>
           <p>Team score {result.score}</p>
           {result.awards.map((a) => <div key={a} className="lcp-award">🏆 {a}</div>)}
-          {result.stats && <p className="lcp-fine">You landed {result.stats.landed} charms and finished off {result.stats.banished} monster{result.stats.banished === 1 ? '' : 's'}.</p>}
+          {result.stats && <p className="lcp-fine">You landed {result.stats.landed} charms and finished off {result.stats.banished} {result.stats.banished === 1 ? CANDLE_TEXT.foe : CANDLE_TEXT.foes}.</p>}
           {screen.vip ? <button type="button" className="lc-btn lc-btn-big" onClick={() => send('again')}>Back to the lobby</button> : <p className="lcp-fine">Waiting for 👑 to pick the next game.</p>}
         </div>
       </div>
@@ -82,14 +82,14 @@ export default function CandlePhone({ screen, send, look, header }) {
       </div>
       {game.secrets.map((s) => (
         <div key={s.tag} className="lcp-secret">
-          <b>🌫️ Only you can see monster {s.tag}!</b>
+          <b>🌫️ Only you can see {CANDLE_TEXT.foe} {s.tag}!</b>
           <div className="lcp-secret-need">{s.need.map((c, i) => <span key={i} style={{ background: CHARM[c].color }}><CharmIcon id={c} className="lcp-mini-icon" /><small>{CHARM[c].name}</small></span>)}</div>
           <small>Shout it out to the crew!</small>
         </div>
       ))}
       {game.soul && (
         <button type="button" className={`lcp-soul${game.soul.pressed ? ' is-on' : ''}`} onClick={() => send('act', { type: 'soul' })}>
-          ✨ SOUL ✨
+          ✨ {CANDLE_TEXT.soul} ✨
           <small>{game.soul.pressed ? `Waiting for the others… ${game.soul.count}/${game.soul.total}` : 'Everyone tap together! Count down 3, 2, 1…'}</small>
         </button>
       )}
@@ -116,7 +116,7 @@ export default function CandlePhone({ screen, send, look, header }) {
         })}
       </div>
       <div ref={trashRef} className={`lcp-trash${drag ? ' is-ready' : ''}${drag?.over ? ' is-over' : ''}`}>🗑️ Drag junk here</div>
-      {spooked && <div className="lcp-spooked">👻 SPOOKED! Nobody needed that.</div>}
+      {spooked && <div className="lcp-spooked">{CANDLE_TEXT.spooked} Nobody needed that.</div>}
       <p className="lcp-fine">Tap a charm to throw it. Junk like 🧦 🍌 goes in the trash, don&apos;t throw it!</p>
     </div>
   );
