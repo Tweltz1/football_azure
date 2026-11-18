@@ -4,13 +4,15 @@ import { PlayerTag, ScenePerson } from '../scene';
 import { QuizBackdrop } from './QuizStage';
 import { ANSWER_STYLE } from './quizLook';
 import { between, ease, HowToFrame, useCast, useCues } from './howtoKit';
+import { metaFor } from './meta';
+import { isHoliday } from '../season';
 
 // Fright Quiz's how-to-play intro: a pretend question played out by the room's own characters.
 
 export const HOWTO_MS = 38000;
 
 const SCENES = [
-  { at: 0, step: '', title: 'How to play', say: 'Welcome to Fright Quiz! Spooky trivia, and it\'s every ghoul for themselves.' },
+  { at: 0, step: '', title: 'How to play', say: isHoliday() ? 'Welcome to the Holiday Quiz! Holiday trivia, and it\'s every elf for themselves.' : 'Welcome to Fright Quiz! Spooky trivia, and it\'s every ghoul for themselves.' },
   { at: 5000, step: '1', title: 'A question pops up on the TV. The answers show up on your phone.', say: 'A question pops up on the TV. The answers show up on your phone.' },
   { at: 12000, step: '2', title: 'Tap the right answer. The faster you tap, the more points you get.', say: 'Tap the right answer. The faster you tap, the more points you get.' },
   { at: 20500, step: '3', title: 'First right answer gets a ⚡ Fastest bonus. Three in a row is a 🔥 Hot Streak.', say: 'The first right answer gets a fastest bonus. Get three in a row for a hot streak!' },
@@ -50,7 +52,7 @@ export default function QuizHowTo({ players, now, startedAt, onSkip }) {
   const tapped = answered(0);
 
   return (
-    <HowToFrame scenes={SCENES} t={t} total={HOWTO_MS} gameTitle="Fright Quiz" onSkip={onSkip}>
+    <HowToFrame scenes={SCENES} t={t} total={HOWTO_MS} gameTitle={metaFor('quiz').title} onSkip={onSkip}>
       <svg className="lc-scene" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet">
         <QuizBackdrop lights={Math.floor(t / 700)} />
         {cast.map((p, i) => <ScenePerson key={i} look={p.look} pose={pose(i)} k={0} x={SPOTS[i].x} y={SPOTS[i].y} delay={i} scale={0.8} />)}

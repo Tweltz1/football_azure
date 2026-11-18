@@ -4,7 +4,7 @@
 // guessing the word once they're caught. Pure game logic, no React. The TV owns the state.
 
 import { clean } from '../mashPrompts.js';
-import { CATEGORIES } from '../maskWords.js';
+import { categoriesFor } from '../maskWords.js';
 
 export const MIN_PLAYERS = 3;
 export const ROUNDS = 3;
@@ -90,7 +90,7 @@ function startRound(s, now) {
   s.hints = shuffle(s.rand, group.filter((w) => w !== s.word));
   // The last-bite lineup: the real word, the category's other group, and a few strays, but not the hints.
   const other = cat.groups.filter((_, i) => i !== g).flat();
-  const strays = shuffle(s.rand, CATEGORIES.filter((c) => c !== cat).flatMap((c) => c.groups.flat()))
+  const strays = shuffle(s.rand, s.categories.filter((c) => c !== cat).flatMap((c) => c.groups.flat()))
     .filter((w) => w !== s.word && !group.includes(w) && !other.includes(w)).slice(0, 3);
   s.options = shuffle(s.rand, [s.word, ...other, ...strays]);
   s.clues = {};
@@ -112,7 +112,7 @@ export function createMask(players, seed = Date.now(), now = 0) {
   const s = {
     rand,
     players: players.map((p) => ({ cid: p.cid, name: p.name })),
-    categories: shuffle(rand, CATEGORIES),
+    categories: shuffle(rand, categoriesFor()),
     round: 0,
     phase: 'role',
     phaseAt: now,

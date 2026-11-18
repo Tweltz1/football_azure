@@ -2,6 +2,9 @@
 // be tested on its own. The TV owns the state and calls tick() many times a second.
 
 import { pickQuestions } from '../quizQuestions.js';
+import { isHoliday } from '../season.js';
+
+export const QUIZ_CHAMP = isHoliday() ? 'Holiday Quiz Champ' : 'Fright Quiz Champ';
 
 export const QUESTION_COUNT = 15;
 export const ROUND_SIZE = 5;
@@ -244,7 +247,7 @@ export function phoneView(s, cid, now) {
 export function awards(s) {
   const list = [];
   const ranks = ranking(s);
-  if (ranks[0] && ranks[0].score > 0) list.push({ title: 'Fright Quiz Champ', cid: ranks[0].cid, value: ranks[0].score, blurb: `${ranks[0].score.toLocaleString()} points` });
+  if (ranks[0] && ranks[0].score > 0) list.push({ title: QUIZ_CHAMP, cid: ranks[0].cid, value: ranks[0].score, blurb: `${ranks[0].score.toLocaleString()} points` });
   const best = (pick) => {
     let top = null;
     s.players.forEach((p) => {
