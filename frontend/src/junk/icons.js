@@ -16,6 +16,7 @@ export const IconCamera = (p) => <Svg {...p}><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0
 export const IconSparkle = (p) => <Svg {...p}><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></Svg>;
 export const IconBack = (p) => <Svg {...p}><path d="M15 5l-7 7 7 7" /></Svg>;
 export const IconClose = (p) => <Svg {...p}><path d="M6 6l12 12M18 6 6 18" /></Svg>;
+export const IconShare = (p) => <Svg {...p}><path d="M12 15V3M8 7l4-4 4 4" /><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7" /></Svg>;
 export const IconFlag = (p) => <Svg {...p}><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></Svg>;
 export const IconSend = (p) => <Svg {...p}><path d="M4 12l16-8-6 16-2.5-6.5z" /></Svg>;
 export const IconSliders = (p) => <Svg {...p}><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></Svg>;

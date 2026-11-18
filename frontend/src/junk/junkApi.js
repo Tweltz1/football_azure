@@ -111,6 +111,12 @@ export const contactCurbsy = (body) => call('POST', 'contact', { body });
 // Appeal a ban, a strike, or (with itemId) a listing hidden after reports.
 export const appealCurbsy = (body, itemId) => call('POST', 'appeal', itemId ? { body, itemId } : { body });
 export const sendLabelFix = (fix) => call('POST', 'labels', fix);
+// Your "Contact Curbsy" messages and appeals, with any reply.
+export const myContactMessages = () => call('GET', 'contact');
+// "Looking for" posts near a spot; ask for something; close your own.
+export const nearbyWants = (here) => call('GET', `wants?${qs({ lat: here.lat, lng: here.lng })}`);
+export const askForItem = (fields) => call('POST', 'wants', fields);
+export const closeWant = (id) => call('POST', `wants/${encodeURIComponent(id)}/close`, {});
 
 // Curbsy Plus, tips, saved searches and partners (supabase/functions/_shared/junkPlus.ts).
 export const getPlus = () => call('GET', 'plus');

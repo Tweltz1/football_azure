@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SignInPrompt, useJunk } from './JunkApp';
-import { deleteAccount, deleteSavedSearch, getMember, junkSignOut as signOut, myItems, savedSearches, setCurbsyName } from './junkApi';
+import { deleteAccount, deleteSavedSearch, getMember, junkSignOut as signOut, myContactMessages, myItems, savedSearches, setCurbsyName } from './junkApi';
 import { ItemCard } from './Browse';
 import { IconBox, IconClose, IconPlus } from './icons';
 import { ContactSheet, StandingNotice } from './Safety';
 import { setSharesCrops, sharesCrops } from './learning';
 import { TipSheet } from './Plus';
 import { PLUS_PRICE, alertStatus, canBuy, manageSubscription, restore, turnOnAlerts } from './store';
-import { CATEGORIES } from './device';
+import { CATEGORIES, timeAgo } from './device';
 import StudioCredit from '../components/StudioCredit';
 
 const savedLabel = (s) => {
@@ -125,11 +125,14 @@ export default function Me() {
   const [tips, setTips] = useState(false);
   const [business, setBusiness] = useState(false);
   const [restoreNote, setRestoreNote] = useState('');
+  // Your messages to Curbsy and the replies (shown once there is a reply).
+  const [notes, setNotes] = useState([]);
 
   useEffect(() => {
     if (!me) return;
     myItems().then(setItems).catch((err) => setError(err.message));
     getMember().then(setMember).catch(() => {});
+    myContactMessages().then((list) => setNotes(Array.isArray(list) ? list : [])).catch(() => {});
   }, [me]);
 
   const removeAccount = async () => {
@@ -214,6 +217,19 @@ export default function Me() {
           >
             Restore purchases{restoreNote && <small className="jk-row-note"> · {restoreNote}</small>}
           </button>
+        )}
+        {notes.some((n) => n.reply) && (
+          <div className="jk-row-block">
+            <strong>Replies from Curbsy</strong>
+            <ul className="jk-replies">
+              {notes.filter((n) => n.reply).slice(0, 5).map((n) => (
+                <li key={n.id}>
+                  <span className="jk-muted">You wrote {timeAgo(n.createdAt)}: “{n.body.length > 120 ? `${n.body.slice(0, 120)}…` : n.body}”</span>
+                  <div className="jk-reply">{n.reply}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         <button type="button" className="jk-row-btn" onClick={() => setContact(true)}>Contact Curbsy</button>
         <button type="button" className="jk-row-btn" onClick={() => setBusiness(true)}>Advertise your business on Curbsy</button>

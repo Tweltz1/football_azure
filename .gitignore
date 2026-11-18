@@ -29,3 +29,4 @@ ml/help-chat/.cache/
 __pycache__/
 /frontend/public/auction-values/
 /frontend/public/sitemap.xml
+/frontend/public/site-config.js

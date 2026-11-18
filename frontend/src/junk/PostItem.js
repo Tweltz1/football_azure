@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { SignInPrompt, useJunk } from './JunkApp';
 import { createItem, getItem, getMember, updateItem, uploadPhoto } from './junkApi';
 import { TermsSheet, checkPhoto } from './Safety';
@@ -37,7 +37,13 @@ export default function PostItem() {
   const navigate = useNavigate();
   const { me, authLoading, spot, refreshSpot, locating, spotError } = useJunk();
   const [photos, setPhotos] = useState([]); // { key, path?, url?, preview, uploading, error }
-  const [form, setForm] = useState(EMPTY);
+  // Posting for a neighbor's "Looking for" (from "I have one" in Browse): ?want=<id>&title=…&category=…&who=…
+  const { search } = useLocation();
+  const [answering] = useState(() => {
+    const q = new URLSearchParams(search);
+    return !editing && q.get('want') ? { id: q.get('want'), title: q.get('title') || '', category: q.get('category') || '', who: q.get('who') || 'A neighbor' } : null;
+  });
+  const [form, setForm] = useState(() => (answering ? { ...EMPTY, title: answering.title.slice(0, 60), category: CATEGORIES.some(([key]) => key === answering.category) ? answering.category : '' } : EMPTY));
   const [touched, setTouched] = useState({});
   const [detecting, setDetecting] = useState(false);
   const [detected, setDetected] = useState(false);
@@ -247,14 +253,14 @@ export default function PostItem() {
         aiDetected: detected,
         labels: photoLabels.current,
       };
-      const item = editing ? await updateItem(id, fields) : await createItem({ ...fields, lat: spot.lat, lng: spot.lng });
+      const item = editing ? await updateItem(id, fields) : await createItem({ ...fields, lat: spot.lat, lng: spot.lng, ...(answering ? { wantId: answering.id } : {}) });
       if (!editing && guessPhoto.current) {
         const finished = multi ? named : [{ guess: guessRef.current, title: form.title, category: form.category }];
         rememberNames(finished);
         const fixes = namesToTeach(finished);
         if (fixes.length) sendFixes(fixes, guessPhoto.current);
       }
-      navigate(`/junk/item/${item.id}`, { replace: true });
+      navigate(`/junk/item/${item.id}`, { replace: true, state: editing ? undefined : { justPosted: true } });
     } catch (err) {
       setSaving(false);
       if (err.status === 428) {
@@ -306,6 +312,7 @@ export default function PostItem() {
         <BackButton to={editing ? `/junk/item/${id}` : '/junk'} />
         <h1>{editing ? 'Edit listing' : 'Give something away'}</h1>
       </div>
+      {answering && <p className="jk-notice jk-answering" role="status">{answering.who} is looking for <b>{answering.title}</b>. Post yours and we'll message them.</p>}
 
       <form onSubmit={submit} className="jk-form">
         <section>
