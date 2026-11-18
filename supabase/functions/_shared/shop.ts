@@ -1754,7 +1754,7 @@ export async function shopRoute(ctx: Ctx, deps: ShopDeps | null | undefined, met
       let whenText = '';
       try { whenText = slotText(iso, zone || 'UTC', lang); } catch { whenText = slotText(iso, 'UTC', lang); }
       const link = deps.linkBase + job.token, first = d.customer.name.split(/\s+/)[0] || '', own = str(body.text, 600);
-      const msg = own ? `${own}${/[.!?:]$/.test(own) ? '' : '.'} ${link}` : old ? SAY[lang].moved(first, shop.name, whenText, link) : SAY[lang].booked(first, shop.name, whenText, link);
+      const msg = own ? `${own}${/[.!?:]$/.test(own) ? '' : '.'} ${link}` : old ? SAY[lang].moved(first, shop.name, whenText, link, d.customer.preference !== 'email') : SAY[lang].booked(first, shop.name, whenText, link);
       d.messages.push(...(await notifyCustomer(deps, shop, job, msg, now, acc)).map((m) => ({ ...m, sender: by, ...(ctx.userId ? { senderId: ctx.userId } : {}) })));
     }
   } else if (action === 'followup') {

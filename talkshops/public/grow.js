@@ -37,7 +37,7 @@
     "Your signed decision goes straight to the shop.": "Su decisión firmada llega directo al taller.",
     "Choose approve or decline for each item.": "Elija aprobar o rechazar cada concepto.",
     "One repair: these parts and labor go together, so you approve or decline them as one.": "Una sola reparación: estas piezas y la mano de obra van juntas, así que se aprueban o rechazan en conjunto.",
-    "Signed by {0} on {1}": "Firmado por {0} el {1}",
+    "Signed by {0}, {1}": "Firmado por {0}, {1}",
     "Parts expected {0}.": "Piezas esperadas {0}.", "Total due {0}": "Total a pagar {0}", "Approved estimate {0}": "Presupuesto aprobado {0}", "Open {0}.": "Horario: {0}.",
     "Vehicle check-in": "Registro del vehículo", "Your details have been sent to the shop.": "Sus datos se enviaron al taller.",
     "Vehicle year": "Año del vehículo", "Make": "Marca", "Model": "Modelo", "License plate (optional)": "Placa (opcional)",
@@ -80,7 +80,7 @@
     "Scratch": "Rayón", "Dent": "Abolladura", "Crack": "Grieta", "Chip": "Desportilladura", "Scuff": "Raspón", "Rust": "Óxido", "Broken part": "Pieza rota", "Other damage": "Otro daño",
     // Reminders
     "Reminder texts": "Recordatorios por mensaje", "You turned off reminder texts from {0}.": "Usted desactivó los recordatorios de {0}.",
-    "{0} will remind you about {1}.": "{0} le recordará {1}.", "the work you put off around {0}": "el trabajo que dejó pendiente alrededor del {0}", "your next service around {0}": "su próximo servicio alrededor del {0}",
+    "{0} will remind you about {1}.": "{0} le recordará {1}.", "the work you put off around {0}": "el trabajo que dejó pendiente alrededor del {0}", "your next service around {0}": "su próximo servicio alrededor del {0}", "your appointment, the day before": "su cita, un día antes",
     " and ": " y ", "Stop reminder texts": "No enviarme recordatorios", "You can also reply STOP to any text.": "También puede responder STOP a cualquier mensaje.",
     // Growth tools on the customer page
     "How did we do?": "¿Cómo lo hicimos?", "Thanks for choosing {0}. If we earned it, a quick review helps a small shop a lot.": "Gracias por elegir {0}. Si quedó contento, una reseña rápida ayuda mucho a un taller pequeño.",
@@ -281,7 +281,7 @@
         ${slots ? `<h3 class="full" style="margin:6px 0 0">${L("Pick a time", "Elija una hora")}</h3>${slotPicker(L, es)}` : `<label class="field">${L("Day you'd like", "Día que prefiere")}<input name="day" type="date" required min="${min}" max="${max}" value="${min}"></label>
         <label class="field">${L("Time of day", "Hora del día")}<select name="time"><option value="morning">${L("Morning", "Mañana")}</option><option value="afternoon">${L("Afternoon", "Tarde")}</option><option value="any">${L("Any time", "Cualquier hora")}</option></select></label>`}
         <label class="gr-hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
-        <label class="chk full"><input type="checkbox" name="consent" checked> ${L(`${esc(s.name)} may text or email me about this appointment and my repair. Reply STOP to opt out.`, `${esc(s.name)} puede enviarme mensajes o correos sobre esta cita y mi reparación. Responda STOP para no recibir más.`)}</label>
+        <label class="chk full"><input type="checkbox" name="consent"> ${L(`${esc(s.name)} may text or email me about this appointment and my repair. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.`, `${esc(s.name)} puede enviarme mensajes o correos sobre esta cita y mi reparación. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para no recibir más, HELP para ayuda.`)}</label>
         ${bk.err ? `<p class="form-err full" role="alert">${esc(bk.err)}</p>` : ""}
         <button class="btn primary full" type="submit" ${bk.busy || (slots && !(bk.info.slots || []).length) ? "disabled" : ""}>${bk.busy ? L("Sending…", "Enviando…") : auto ? L("Book this time", "Reservar esta hora") : slots ? L("Request this time", "Pedir esta hora") : L("Send request", "Enviar solicitud")}</button>
         <p class="muted full" style="margin:0;font-size:13px">${auto ? L("You'll get a confirmation right away.", "Recibirá la confirmación enseguida.") : slots ? L("The shop confirms your time.", "El taller confirma su hora.") : L("This is a request. The shop confirms the exact time.", "Esto es una solicitud. El taller confirma la hora exacta.")}</p>
@@ -414,14 +414,14 @@
       opts = days.flatMap((d) => d.times.map((t) => `<option value="${esc(d.day + "T" + t.time)}">${esc(apptText(t.at, zone))}</option>`)).slice(0, 80).join("");
     }
     const cur = j.appointment ? (() => { const p = zoneParts(ts(j.appointment), zone); return p.day + "T" + hm2(p.min); })() : "";
-    const canText = !!j.customer?.consent;
+    const canText = !!j.customer?.consent, byEmail = j.customer?.preference === "email";
     return `<section class="sec gr-appt-move" data-gr-job="${esc(j.id)}"><h3>Appointment</h3>
       <p style="margin:0 0 8px">${j.appointment ? `<b>${esc(apptText(j.appointment, zone))}</b> ${status}` : `<span class="muted">No appointment time yet.</span>`}</p>
       <div class="gr-appt-form">
         ${opts ? `<label class="field">Open times<select id="gr-appt-pick"><option value="">Pick an open time</option>${opts}</select></label>` : ""}
         <label class="field">${opts ? "Or any time" : "Day and time"}<input type="datetime-local" id="gr-appt-when" step="900" value="${esc(cur)}"></label>
       </div>
-      <label class="chk"><input type="checkbox" id="gr-appt-text" ${canText ? "checked" : "disabled"}> ${canText ? (j.appointment ? `Text ${f} the new time. They reply YES to confirm, or pick another open time from their link.` : `Text ${f} the appointment time.`) : `${f} hasn't agreed to texts, so no text goes out.`}</label>
+      <label class="chk"><input type="checkbox" id="gr-appt-text" ${canText ? "checked" : "disabled"}> ${canText ? (j.appointment ? `${byEmail ? "Email" : "Text"} ${f} the new time. They ${byEmail ? "confirm" : "reply YES to confirm"}, or pick another open time from their link.` : `${byEmail ? "Email" : "Text"} ${f} the appointment time.`) : `${f} hasn't agreed to messages, so nothing goes out.`}</label>
       <input type="hidden" id="gr-appt-zone" value="${esc(zone)}">
       <div class="btn-row"><button type="button" class="btn sm primary" data-gr-appt-move>${j.appointment ? "Move appointment" : "Set appointment"}</button></div></section>`;
   }
@@ -611,7 +611,9 @@
     const { cars, appts } = shopCars(), load = dayLoad(sc, new Date(), cars, appts), today = zoneParts(Date.now(), sc.zone).day;
     return `<div class="gr-load" aria-label="Expected cars in the shop, next 7 days">${Array.from({ length: 7 }, (_, i) => {
       const day = plusDays(today, i), n = load[day] || 0, full = n >= sc.capacity;
-      return `<div class="gr-load-day ${full ? "is-full" : ""}"><small>${esc(i === 0 ? "Today" : new Date(day + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" }))}</small><b>${n}/${sc.capacity}</b><small>${full ? "Full" : "Open"}</small></div>`;
+      // A day with no hours or marked as a day off takes no bookings, so it says Closed, not Open.
+      const shut = !sc.week?.[new Date(day + "T12:00:00Z").getUTCDay()] || (sc.closed || []).includes(day);
+      return `<div class="gr-load-day ${full || shut ? "is-full" : ""}"><small>${esc(i === 0 ? "Today" : new Date(day + "T12:00:00Z").toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short" }))}</small><b>${n}/${sc.capacity}</b><small>${shut ? "Closed" : full ? "Full" : "Open"}</small></div>`;
     }).join("")}</div>`;
   }
   function readSchedule() {
