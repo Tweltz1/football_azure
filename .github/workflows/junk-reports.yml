@@ -14,6 +14,8 @@ name: Curbsy reports
 #                 the strike if it had one.
 #   unban_user:   a user id, after an appeal. Lifts the ban, clears their strikes, and unbans their phones.
 #                 Their listings stay hidden; restore any that were fine with restore_item.
+#   reply_to + reply_text: answer a Contact Curbsy message or appeal (its message id, printed below). The reply
+#                 shows in that person's Me tab under "Replies from Curbsy".
 on:
   schedule:
     # 09:00 UTC = 3 AM Central (4 AM in summer), so it's done before the 5 AM Central support review.
@@ -32,6 +34,12 @@ on:
       unban_user:
         description: 'User id to unban after an appeal'
         default: ''
+      reply_to:
+        description: 'Contact message id to answer (shows in their Me tab)'
+        default: ''
+      reply_text:
+        description: 'The reply to that message'
+        default: ''
 
 jobs:
   reports:
@@ -43,7 +51,9 @@ jobs:
       BAN_USER: ${{ github.event.inputs.ban_user }}
       RESTORE_ITEM: ${{ github.event.inputs.restore_item }}
       UNBAN_USER: ${{ github.event.inputs.unban_user }}
-      ACTING: ${{ github.event.inputs.hide_item != '' || github.event.inputs.ban_user != '' || github.event.inputs.restore_item != '' || github.event.inputs.unban_user != '' }}
+      REPLY_TO: ${{ github.event.inputs.reply_to }}
+      REPLY_TEXT: ${{ github.event.inputs.reply_text }}
+      ACTING: ${{ github.event.inputs.hide_item != '' || github.event.inputs.ban_user != '' || github.event.inputs.restore_item != '' || github.event.inputs.unban_user != '' || github.event.inputs.reply_to != '' }}
     steps:
       - name: Take action
         if: ${{ env.ACTING == 'true' }}
@@ -55,6 +65,13 @@ jobs:
               -d "$(jq -n --arg q "$1" '{query: $q}')" \
               "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query"
           }
+          if [ -n "$REPLY_TO" ]; then
+            [[ "$REPLY_TO" =~ $uuid ]] || { echo "reply_to must be a message id"; exit 1; }
+            [ -n "$REPLY_TEXT" ] || { echo "reply_text is empty"; exit 1; }
+            # The text goes in as a JSON string, so quotes in it can't break the SQL.
+            body=$(jq -n --arg t "${REPLY_TEXT:0:2000}" '$t')
+            sql "update public.junk_feedback set reply = ('$(printf '%s' "$body" | sed "s/'/''/g")'::jsonb #>> '{}'), replied_at = now() where id = '$REPLY_TO' returning id" | jq -c '{replied: length}'
+          fi
           if [ -n "$HIDE_ITEM" ]; then
             [[ "$HIDE_ITEM" =~ $uuid ]] || { echo "hide_item must be a listing id"; exit 1; }
             # Hide it; a strike for the poster only the first time this listing is confirmed.
@@ -113,7 +130,7 @@ jobs:
             where f.created_at > now() - interval '25 hours' order by f.created_at" > feedback.json || echo '[]' > feedback.json
           f=$(jq length feedback.json)
           echo "Contact messages and appeals in the last day: $f"
-          jq -r '.[] | "----\n\(.created_at)  \(if .kind == "appeal" then "APPEAL" else "Contact" end) from \(.user_name) (user id \(.user_id), \(.strikes) strike(s)\(if .banned_at then ", BANNED" else "" end))\(if .item_id then "\n  about listing: \(.item_title) [\(.item_status)]  id \(.item_id)" else "" end)\n  \(.body | .[0:1000])"' feedback.json
+          jq -r '.[] | "----\n\(.created_at)  \(if .kind == "appeal" then "APPEAL" else "Contact" end) (message id \(.id)) from \(.user_name) (user id \(.user_id), \(.strikes) strike(s)\(if .banned_at then ", BANNED" else "" end))\(if .item_id then "\n  about listing: \(.item_title) [\(.item_status)]  id \(.item_id)" else "" end)\n  \(.body | .[0:1000])"' feedback.json
           n=$((n + f))
 
           # Blocked accounts: everyone banned in the last day, with why and what they posted.
