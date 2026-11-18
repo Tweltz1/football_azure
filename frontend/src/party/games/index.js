@@ -9,6 +9,7 @@ import * as mask from './mask';
 import * as trot from './turkeyTrot';
 import * as rush from './giftRush';
 import * as countdown from './countdown';
+import * as admirer from './admirer';
 import CandleStage from './CandleStage';
 import CandlePhone from './CandlePhone';
 import CandleHowTo, { HOWTO_MS as CANDLE_HOWTO_MS } from './CandleHowTo';
@@ -33,6 +34,9 @@ import RushHowTo, { HOWTO_MS as RUSH_HOWTO_MS } from './RushHowTo';
 import CountdownStage from './CountdownStage';
 import CountdownPhone from './CountdownPhone';
 import CountdownHowTo, { HOWTO_MS as COUNTDOWN_HOWTO_MS } from './CountdownHowTo';
+import AdmirerStage from './AdmirerStage';
+import AdmirerPhone from './AdmirerPhone';
+import AdmirerHowTo, { HOWTO_MS as ADMIRER_HOWTO_MS } from './AdmirerHowTo';
 import { GAME_META, HOLIDAY_GAME, isPlayable, metaFor } from './meta';
 
 // The TV remembers which quiz questions it has shown, so the next game picks fresh ones first.
@@ -271,6 +275,34 @@ const ENGINES = {
     Phone: CountdownPhone,
     HowTo: CountdownHowTo,
     howToMs: COUNTDOWN_HOWTO_MS,
+  },
+  admirer: {
+    create: admirer.createAdmirer,
+    tick: admirer.tick,
+    act(g, cid, msg, now) {
+      if (msg.type === 'write') admirer.write(g, cid, String(msg.text || ''), now);
+      if (msg.type === 'guess') admirer.guess(g, cid, String(msg.pick || ''), now);
+      if (msg.type === 'heart') admirer.heart(g, cid);
+    },
+    over: admirer.isOver,
+    sceneKey: (g) => (g.phase === 'over' ? 'over' : g.phase === 'write' || g.phase === 'scores' ? `${g.phase}${g.round}` : `letters${g.round}`),
+    has: (g, cid) => g.players.some((p) => p.cid === cid),
+    intensity: (g) => Math.min(1, (g.round + (g.notes.length ? (g.current + 1) / g.notes.length : 0)) / g.rounds),
+    phone: admirer.phoneView,
+    result(g, cid) {
+      const me = admirer.ranking(g).find((r) => r.cid === cid);
+      return {
+        rank: me?.rank || g.players.length,
+        score: me?.score || 0,
+        awards: admirer.awards(g).filter((a) => a.cid === cid).map((a) => a.title),
+      };
+    },
+    addPlayer: admirer.addPlayer,
+    seen: admirer.seen,
+    Stage: AdmirerStage,
+    Phone: AdmirerPhone,
+    HowTo: AdmirerHowTo,
+    howToMs: ADMIRER_HOWTO_MS,
   },
 };
 

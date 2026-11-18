@@ -10,6 +10,7 @@ import { HallBackdrop } from './games/HallwayStage';
 import { TrotBackdrop } from './games/TrotStage';
 import { WorkshopBackdrop } from './games/RushStage';
 import { City } from './games/CountdownStage';
+import { Parlor } from './games/AdmirerStage';
 
 import { GAME_META, HOLIDAY_GAME, gameFor, isPlayable } from './games';
 import './party.css';
@@ -25,6 +26,7 @@ const LobbyScene = ({ id, now }) => {
   if (id === 'trot') return <TrotBackdrop />;
   if (id === 'rush') return <WorkshopBackdrop />;
   if (id === 'countdown') return <City />;
+  if (id === 'admirer') return <Parlor />;
   if (id === 'mask') return <QuizBackdrop lights={Math.floor(now / 700)} curtain={['#3a1f5c', '#5b2d8e', '#2a1645']} />;
   return <><Backdrop /><House candles={5} maxCandles={5} /></>;
 };
