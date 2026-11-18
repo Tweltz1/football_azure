@@ -1,6 +1,7 @@
 import React from 'react';
 import Person from '../Person';
 import { COLORS, HANDLES, SYMBOLS, WINDOWS } from './hallway';
+import { CANDLE_TEXT } from '../lastCandle';
 
 const color = (id) => COLORS.find((c) => c.id === id);
 const icon = (id) => SYMBOLS.find((x) => x.id === id)?.icon;
@@ -71,7 +72,7 @@ export default function HallwayPhone({ screen, send, look, header }) {
     line = game.guide ? "🔦 You're a guide this floor! Your clues are coming up." : `Your guides are ${game.guideNames.join(' & ')}. Listen up!`;
   } else if (game.phase === 'reveal' && game.chosen) {
     face = game.chosen.safe ? 'cheer' : 'scared';
-    big = game.chosen.safe ? '✅ Safe! Up the stairs!' : '👻 A monster! -1 lantern';
+    big = game.chosen.safe ? '✅ Safe! Up the stairs!' : `👻 A ${CANDLE_TEXT.foe}! -1 lantern`;
     line = game.chosen.safe ? '' : `The safe door was number ${game.chosen.safeDoor + 1}.`;
   }
   return (

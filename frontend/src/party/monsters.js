@@ -3,13 +3,8 @@
 
 import { INK } from './cartoon.js';
 
-const st = (fill, w = 5) => `fill="${fill}" stroke="${INK}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
-const ell = (cx, cy, rx, ry, fill, w = 5) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" ${st(fill, w)}/>`;
-const dot = (cx, cy, r, fill) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`;
-const path = (d, fill, w = 5) => `<path d="${d}" ${st(fill, w)}/>`;
-const line = (d, color, w) => `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
-const eyes = (y, dx = 14, r = 7, fill = INK) => `<g class="lc-eyes">${dot(-dx, y, r, fill)}${dot(dx, y, r, fill)}${dot(-dx + 2, y - 2, r * 0.35, '#fff')}${dot(dx + 2, y - 2, r * 0.35, '#fff')}</g>`;
-const shadow = (rx = 46) => `<ellipse cx="0" cy="0" rx="${rx}" ry="10" fill="#000" fill-opacity=".3"/>`;
+import { dot, ell, eyes, line, path, shadow } from './inkArt.js';
+import { candleSkin } from './candleSkins.js';
 
 const ART = {
   ghost: () => shadow(36)
@@ -74,4 +69,4 @@ const ART = {
 };
 
 /** SVG markup (no wrapper) for a monster kind. */
-export const monsterMarkup = (kind) => (ART[kind] || ART.ghost)();
+export const monsterMarkup = (kind) => (candleSkin().monsters?.[kind]?.art || ART[kind] || ART.ghost)();

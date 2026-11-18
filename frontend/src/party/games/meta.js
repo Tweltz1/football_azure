@@ -1,5 +1,9 @@
 // What the lobby shows about each game. Light on purpose: the phone page imports this too.
 import { themeInfo } from '../season.js';
+import { CANDLE_TEXT, CHARMS } from '../lastCandle.js';
+import { HALL_PLACE, HALL_TITLE } from './hallway.js';
+
+const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);
 
 export const GAME_META = [
   {
@@ -10,9 +14,9 @@ export const GAME_META = [
     minutes: '6–8 min',
     blurb: 'Keep the candles lit until dawn. Work together, shout a lot.',
     how: [
-      'Monsters walk up the paths. Each shows the charms that banish it.',
-      'Your phone holds 3 charms. Tap one to throw it. Throw a charm nobody needs and you get spooked.',
-      'Shout! “Who has garlic?!” Fog hides some monsters, and only one phone can see through it.',
+      `${cap(CANDLE_TEXT.foes)} walk up the paths. Each shows the charms that send it away.`,
+      `Your phone holds 3 charms. Tap one to throw it. Throw a charm nobody needs and you get ${CANDLE_TEXT.spooked === 'SPOOKED!' ? 'spooked' : 'stuck for a moment'}.`,
+      `Shout! “Who has ${CHARMS[0].name.toLowerCase()}?!” Fog hides some ${CANDLE_TEXT.foes}, and only one phone can see through it.`,
     ],
     phoneHint: "You'll throw charms from this phone in a minute.",
   },
@@ -47,15 +51,15 @@ export const GAME_META = [
   },
   {
     id: 'hallway',
-    title: 'Haunted Hallway',
+    title: HALL_TITLE,
     emoji: '🚪',
     tag: 'Co-op',
     minutes: '6–10 min',
-    blurb: 'Climb a haunted house together. Only the guides know which door is safe.',
+    blurb: `Climb ${HALL_PLACE} together. Only the guides know which door is safe.`,
     how: [
       'Each floor has a row of doors. Only one is safe.',
       'Two guides get clues on their phones. Neither can solve it alone, so read them out loud!',
-      'Everyone votes for a door. A wrong door lets a monster out and costs a lantern.',
+      `Everyone votes for a door. A wrong door lets a ${CANDLE_TEXT.foe} out and costs a lantern.`,
     ],
     phoneHint: 'You might be a guide! Watch this phone for clues.',
   },

@@ -3,6 +3,8 @@ import Person from '../Person';
 import { monsterMarkup } from '../monsters';
 import { sfx } from '../sound';
 import { PlayerTag, ScenePerson } from '../scene';
+import { candleSkin } from '../candleSkins';
+import { CANDLE_TEXT, MONSTER_NAMES } from '../lastCandle';
 import {
   awards, COLORS, FLOOR_MS, FLOORS, LANTERNS, SYMBOLS, VOTE_MS,
 } from './hallway';
@@ -72,13 +74,16 @@ export const Door = ({ door, index, x, open = 0, inside, monster, highlight, dim
   );
 };
 
+const HALL_WALL = candleSkin().hall?.wall;
+const WALL = HALL_WALL || ['#2b1838', '#36204a', '#4a2d60'];
+
 export const HallBackdrop = ({ floor = 1 }) => (
   <g>
     <defs>
       <pattern id="lh-paper" width="80" height="80" patternUnits="userSpaceOnUse">
-        <rect width="80" height="80" fill="#2b1838" />
-        <path d="M40 0 V80" stroke="#36204a" strokeWidth="18" />
-        <circle cx="40" cy="40" r="6" fill="#4a2d60" />
+        <rect width="80" height="80" fill={WALL[0]} />
+        <path d="M40 0 V80" stroke={WALL[1]} strokeWidth="18" />
+        <circle cx="40" cy="40" r="6" fill={WALL[2]} />
       </pattern>
     </defs>
     <rect width="1920" height="1080" fill="url(#lh-paper)" />
@@ -89,7 +94,7 @@ export const HallBackdrop = ({ floor = 1 }) => (
     <path d="M0 860 H1920" stroke="#16122b" strokeWidth="8" />
     <rect y="800" width="1920" height="60" fill="#3b2a1e" stroke="#16122b" strokeWidth="5" />
     {/* cobwebs */}
-    {[0, 1].map((side) => (
+    {!HALL_WALL && [0, 1].map((side) => (
       <g key={side} transform={side ? 'translate(1920 90) scale(-1 1)' : 'translate(0 90)'} stroke="#cfc6e6" strokeWidth="2" fill="none" opacity="0.45">
         <path d="M0 0 L160 160 M0 0 L80 190 M0 0 L190 70" />
         <path d="M40 40 Q70 25 62 12 M80 80 Q120 60 112 32 M120 120 Q170 95 158 54" />
@@ -105,7 +110,7 @@ export const HallBackdrop = ({ floor = 1 }) => (
     ))}
     <g transform="translate(960 46)">
       <rect x="-150" y="-30" width="300" height="60" rx="10" fill="#8d6a3a" stroke="#16122b" strokeWidth="5" />
-      <text y="2" fontSize="32" fontWeight="900" textAnchor="middle" dominantBaseline="central" fill="#16122b" fontFamily="Creepster, Arial Black, Arial">FLOOR {floor}</text>
+      <text y="2" fontSize="32" fontWeight="900" textAnchor="middle" dominantBaseline="central" fill="#16122b" style={{ fontFamily: 'var(--lc-spooky), Arial Black, Arial' }}>FLOOR {floor}</text>
     </g>
   </g>
 );
@@ -115,7 +120,7 @@ const standAt = (i, n) => {
   return { x: 960 + (i - (n - 1) / 2) * w, y: 1040 };
 };
 
-/** Haunted Hallway on the TV. */
+/** Haunted Hallway (or its holiday version) on the TV. */
 export default function HallwayStage({ game, players, now, onLobby, onAgain }) {
   const lastEvent = useRef(0);
   const elapsed = now - game.phaseAt;
@@ -223,14 +228,14 @@ export default function HallwayStage({ game, players, now, onLobby, onAgain }) {
 
       {chosen && game.phase === 'reveal' && elapsed > 900 && (
         <div className={`lh-result ${chosen.safe ? 'is-safe' : 'is-bad'}`}>
-          {chosen.safe ? 'SAFE! Up the stairs!' : `A ${room.monster}! -1 🏮`}
+          {chosen.safe ? 'SAFE! Up the stairs!' : `A ${MONSTER_NAMES[room.monster] || room.monster}! -1 🏮`}
         </div>
       )}
 
       {(game.phase === 'won' || game.phase === 'lost') && elapsed > 1200 && (
         <div className={`lc-card lc-end ${game.phase}`}>
           <h2 className="lc-title">{game.phase === 'won' ? 'You escaped the house!' : 'Lights out on the stairs…'}</h2>
-          <p>{game.phase === 'won' ? `The crew made it to the top with ${game.lanterns} lantern${game.lanterns === 1 ? '' : 's'} left.` : `The monsters got you on floor ${game.floor}.`} Team score: <b>{game.score.toLocaleString()}</b></p>
+          <p>{game.phase === 'won' ? `The crew made it to the top with ${game.lanterns} lantern${game.lanterns === 1 ? '' : 's'} left.` : `The ${CANDLE_TEXT.foes} got you on floor ${game.floor}.`} Team score: <b>{game.score.toLocaleString()}</b></p>
           <div className="lq-award-chips">
             {awards(game).map((a) => {
               const p = players.find((x) => x.cid === a.cid);

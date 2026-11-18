@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import Person from '../Person';
 import { monsterMarkup } from '../monsters';
-import { awards, CHARM, CHARMS, NIGHTS, SOUL_WINDOW_MS, SPOOK_MS } from '../lastCandle';
+import { awards, CHARM, CHARMS, NIGHTS, SOUL_WINDOW_MS, SPOOK_MS, CANDLE_TEXT } from '../lastCandle';
 import { sfx } from '../sound';
 import { charmArt } from '../charmArt';
 import {
@@ -31,14 +31,14 @@ const Monster = ({ m, now, soulState }) => {
           ? <g key={i} transform={`translate(${-width / 2 + 29 + i * 58} 0)`}><circle r="24" fill="#a9a6c4" stroke="#16122b" strokeWidth="4" /><text y="2" fontSize="30" fontWeight="900" textAnchor="middle" dominantBaseline="central" fill="#16122b">?</text></g>
           : <CharmBadge key={i} id={c} x={-width / 2 + 29 + i * 58} y={0} r={24} />))}
         {need.length === 0 && m.boss && (
-          <text x="0" y="4" fontSize="30" fontWeight="900" textAnchor="middle" dominantBaseline="central" fill="#ffe066">SOUL!</text>
+          <text x="0" y="4" fontSize="30" fontWeight="900" textAnchor="middle" dominantBaseline="central" fill="#ffe066">{CANDLE_TEXT.soul}!</text>
         )}
       </g>
       {m.boss && (
         <g transform={`translate(${Math.max(x, 210)} ${top - 62})`}>
           <rect x="-190" y="-26" width="380" height="52" rx="26" fill="#1d1530" stroke="#16122b" strokeWidth="5" />
           <text x="0" y="2" fontSize="26" fontWeight="800" textAnchor="middle" dominantBaseline="central" fill={soulState?.done ? '#3ddc97' : '#ffe066'}>
-            {soulState?.done ? 'Souls joined! ✨' : soulState ? `SOUL ${soulState.by.length} / ${soulState.total} — hurry!` : 'Everyone tap SOUL together!'}
+            {soulState?.done ? 'Together! ✨' : soulState ? `${CANDLE_TEXT.soul} ${soulState.by.length} / ${soulState.total} — hurry!` : `Everyone tap ${CANDLE_TEXT.soul} together!`}
           </text>
         </g>
       )}
@@ -70,13 +70,13 @@ const Effects = ({ effects, now, players, monsters }) => effects.map((fx) => {
           const d = 30 + k * (fx.boss ? 280 : 130);
           return <text key={i} x={Math.cos(a) * d} y={Math.sin(a) * d} fontSize="34" textAnchor="middle">✨</text>;
         })}
-        <text y={-60 - k * 40} fontSize={fx.boss ? 110 : 64} fontWeight="900" textAnchor="middle" fill="#ffe066" stroke="#16122b" strokeWidth="6" paintOrder="stroke" fontFamily="Creepster, Arial Black, Arial">POOF!</text>
+        <text y={-60 - k * 40} fontSize={fx.boss ? 110 : 64} fontWeight="900" textAnchor="middle" fill="#ffe066" stroke="#16122b" strokeWidth="6" paintOrder="stroke" style={{ fontFamily: 'var(--lc-spooky), Arial Black, Arial' }}>POOF!</text>
       </g>
     );
   }
   if (fx.type === 'spooked') {
     const p = spot(fx.slot);
-    return <text key={fx.id} x={p.x} y={p.y - 130 - k * 20} fontSize="34" fontWeight="900" textAnchor="middle" fill="#ff6b6b" stroke="#16122b" strokeWidth="5" paintOrder="stroke" opacity={1 - k * 0.6}>SPOOKED!</text>;
+    return <text key={fx.id} x={p.x} y={p.y - 130 - k * 20} fontSize="34" fontWeight="900" textAnchor="middle" fill="#ff6b6b" stroke="#16122b" strokeWidth="5" paintOrder="stroke" opacity={1 - k * 0.6}>{CANDLE_TEXT.spooked}</text>;
   }
   if (fx.type === 'trash') {
     const p = spot(fx.slot);
@@ -96,7 +96,7 @@ const Effects = ({ effects, now, players, monsters }) => effects.map((fx) => {
     );
   }
   if (fx.type === 'fail') {
-    return <text key={fx.id} x="960" y="300" fontSize="60" fontWeight="900" textAnchor="middle" fill="#ff6b6b" stroke="#16122b" strokeWidth="7" paintOrder="stroke" opacity={1 - k}>Too slow! Tap SOUL together!</text>;
+    return <text key={fx.id} x="960" y="300" fontSize="60" fontWeight="900" textAnchor="middle" fill="#ff6b6b" stroke="#16122b" strokeWidth="7" paintOrder="stroke" opacity={1 - k}>Too slow! Tap {CANDLE_TEXT.soul} together!</text>;
   }
   return null;
 });
@@ -192,7 +192,7 @@ export default function CandleStage({ game, players, now, onLobby, onAgain }) {
         {game.phase === 'night' && nightLength > 0 && (
           <div className="lc-hud-timer"><span style={{ width: `${Math.max(0, 100 - ((now - game.phaseAt) / nightLength) * 100)}%` }} /><em>until dawn</em></div>
         )}
-        {soulLeft > 0 && <div className="lc-hud-soul">SOUL! {Math.ceil(soulLeft / 1000)}…</div>}
+        {soulLeft > 0 && <div className="lc-hud-soul">{CANDLE_TEXT.soul}! {Math.ceil(soulLeft / 1000)}…</div>}
         <div className="lc-hud-score">{game.score} pts</div>
       </div>
 
@@ -204,8 +204,8 @@ export default function CandleStage({ game, players, now, onLobby, onAgain }) {
           <div className="lc-intro-charms">{CHARMS.slice(0, night.charms).map((c) => <span key={c.id} style={{ background: c.color }}><svg className="lc-intro-icon" viewBox="-50 -50 100 100" aria-hidden="true" dangerouslySetInnerHTML={{ __html: charmArt(c.id) }} /><small>{c.name}</small></span>)}</div>
           <p className="lc-intro-tip">{[
             'Watch out for junk like 🧦 and 🍌. Drag it into the 🗑️ on your phone, never throw it! Fog rolls in on night 2.',
-            'Foggy monsters hide what they need. One phone can see it, so call it out!',
-            'When the Pumpkin King arrives, throw his charms, then everyone taps SOUL together!',
+            `Foggy ${CANDLE_TEXT.foes} hide what they need. One phone can see it, so call it out!`,
+            `When the ${CANDLE_TEXT.boss} arrives, throw its charms, then everyone taps ${CANDLE_TEXT.soul} together!`,
           ][game.night - 1]}</p>
           <div className="lc-countdown">{Math.max(1, Math.ceil((9000 - (now - game.phaseAt)) / 1000))}</div>
         </div>
@@ -220,8 +220,8 @@ export default function CandleStage({ game, players, now, onLobby, onAgain }) {
       )}
       {(game.phase === 'won' || game.phase === 'lost') && (
         <div className={`lc-card lc-end ${game.phase}`}>
-          <h2 className="lc-title">{game.phase === 'won' ? 'The Pumpkin King is banished!' : 'The last candle went out…'}</h2>
-          <p>{game.phase === 'won' ? `The crew made it to dawn with ${game.candles} candle${game.candles === 1 ? '' : 's'} lit.` : `The monsters got in on night ${game.night}.`} Final score: <b>{game.score}</b></p>
+          <h2 className="lc-title">{game.phase === 'won' ? `The ${CANDLE_TEXT.boss} is banished!` : 'The last candle went out…'}</h2>
+          <p>{game.phase === 'won' ? `The crew made it to dawn with ${game.candles} candle${game.candles === 1 ? '' : 's'} lit.` : `The ${CANDLE_TEXT.foes} got in on night ${game.night}.`} Final score: <b>{game.score}</b></p>
           <div className="lc-awards">
             {awards(game).map((a) => {
               const p = players.find((x) => x.cid === a.cid);
@@ -242,7 +242,7 @@ export default function CandleStage({ game, players, now, onLobby, onAgain }) {
         </div>
       )}
       {game.phase === 'night' && game.monsters.some((m) => m.fog) && (
-        <div className="lc-foghint">🌫️ Foggy monster! Check your phone, one of you can see what it needs.</div>
+        <div className="lc-foghint">🌫️ Foggy {CANDLE_TEXT.foe}! Check your phone, one of you can see what it needs.</div>
       )}
     </>
   );

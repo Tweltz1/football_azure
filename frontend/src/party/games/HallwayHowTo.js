@@ -4,17 +4,19 @@ import { sfx } from '../sound';
 import { PlayerTag, ScenePerson } from '../scene';
 import { Door, doorX, HallBackdrop } from './HallwayStage';
 import { between, ease, HowToFrame, useCast, useCues } from './howtoKit';
+import { HALL_PLACE, HALL_TITLE } from './hallway';
+import { CANDLE_TEXT } from '../lastCandle';
 
 // Haunted Hallway's how-to-play intro.
 
 export const HOWTO_MS = 36000;
 
 const SCENES = [
-  { at: 0, step: '', title: 'How to play', say: 'Welcome to Haunted Hallway! Work together to climb the haunted house.' },
+  { at: 0, step: '', title: 'How to play', say: `Welcome to ${HALL_TITLE}! Work together to climb ${HALL_PLACE}.` },
   { at: 5000, step: '1', title: 'Each floor has a row of doors. Only one is safe.', say: 'Each floor has a row of doors. Only one of them is safe.' },
   { at: 11000, step: '2', title: 'Two guides get clues on their phones. Neither can solve it alone!', say: 'Two guides get clues on their phones. Neither one can solve it alone.' },
   { at: 18500, step: '3', title: 'Guides read their clues out loud. Then everyone votes for a door.', say: 'Guides, read your clues out loud. Then everyone votes for a door.' },
-  { at: 25500, step: '4', title: 'The safe door leads upstairs. A wrong door costs a lantern. Lose all 3 and it\'s over!', say: 'The safe door leads upstairs. A wrong door lets a monster out, and costs a lantern. Lose all three and it\'s game over.' },
+  { at: 25500, step: '4', title: 'The safe door leads upstairs. A wrong door costs a lantern. Lose all 3 and it\'s over!', say: `The safe door leads upstairs. A wrong door lets a ${CANDLE_TEXT.foe} out, and costs a lantern. Lose all three and it's game over.` },
   { at: 32000, step: '', title: 'Climb 8 floors to escape!', say: 'Climb eight floors to escape. Good luck!' },
 ];
 
@@ -61,7 +63,7 @@ export default function HallwayHowTo({ players, now, startedAt, onSkip }) {
   const phone = between(t, 11500, 18500) ? (t < 15000 ? 0 : 1) : null;
 
   return (
-    <HowToFrame scenes={SCENES} t={t} total={HOWTO_MS} gameTitle="Haunted Hallway" onSkip={onSkip}>
+    <HowToFrame scenes={SCENES} t={t} total={HOWTO_MS} gameTitle={HALL_TITLE} onSkip={onSkip}>
       <svg className="lc-scene" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet">
         <HallBackdrop floor={t >= MONSTER_AT ? 2 : 1} />
         {showDoors && DOORS.map((d, i) => (

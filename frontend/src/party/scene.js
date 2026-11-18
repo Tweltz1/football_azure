@@ -3,6 +3,7 @@ import { personMarkup } from './cartoon';
 import { parseLook } from './look';
 import { CHARM } from './lastCandle';
 import { charmArt } from './charmArt';
+import { candleSkin } from './candleSkins';
 
 // Pieces of the TV scene shared by the game and the how-to-play intro. The scene is 1920 x 1080.
 
@@ -80,7 +81,10 @@ const SKIES = [
 ];
 
 export const Backdrop = ({ night = 1 }) => {
-  const [top, mid, low, hill, ground, path, moon, crater] = SKIES[Math.min(SKIES.length, Math.max(1, night)) - 1];
+  const yard = candleSkin().yard;
+  const spooky = !yard;
+  const [top, mid, low, hill, ground, path, moon, crater] = (yard?.skies || SKIES)[Math.min(SKIES.length, Math.max(1, night)) - 1];
+  const prop = yard ? yard.prop() : null;
   const graves = night === 2
     ? [[40, 520, 0.9], [70, 700, 1], [40, 880, 0.85], [110, 620, 0.7], [110, 800, 0.75], [250, 430, 0.6], [330, 450, 0.55], [700, 420, 0.5], [860, 440, 0.55], [980, 425, 0.5]]
     : [[40, 520, 0.9], [70, 700, 1], [40, 880, 0.85], [110, 620, 0.7], [110, 800, 0.75]];
@@ -102,7 +106,7 @@ export const Backdrop = ({ night = 1 }) => {
       <circle cx="330" cy="170" r={night === 3 ? 125 : 95} fill={moon} stroke="#16122b" strokeWidth="6" />
       <circle cx="300" cy="150" r="16" fill={crater} /><circle cx="360" cy="200" r="11" fill={crater} /><circle cx="350" cy="130" r="8" fill={crater} />
       {night === 2 && <path d="M120 150 Q330 120 560 160 Q330 190 120 150 Z M180 215 Q380 190 600 225 Q380 250 180 215 Z" fill="#dfe3ee" opacity="0.35" />}
-      {night === 3 && [[560, 120], [640, 90], [720, 140], [1060, 110], [1140, 80]].map(([x, y], i) => (
+      {spooky && night === 3 && [[560, 120], [640, 90], [720, 140], [1060, 110], [1140, 80]].map(([x, y], i) => (
         <path key={i} className="lc-float" style={{ animationDelay: `${i * 0.3}s` }} transform={`translate(${x} ${y})`} d="M0 0 q-14 -14 -30 -4 q12 2 14 12 q4 -8 16 -8 q12 0 16 8 q2 -10 14 -12 q-16 -10 -30 4 z" fill="#16122b" />
       ))}
       {[[620, 90], [800, 160], [980, 70], [1180, 140], [1320, 60], [90, 300], [540, 260], [1080, 250]].map(([x, y], i) => (
@@ -115,8 +119,12 @@ export const Backdrop = ({ night = 1 }) => {
       ))}
       {graves.map(([x, y, sc], i) => (
         <g key={i} transform={`translate(${x} ${y}) scale(${sc})`}>
-          <path d="M-34 0 L-34 -70 Q-34 -104 0 -104 Q34 -104 34 -70 L34 0 Z" fill="#8d8aa0" stroke="#16122b" strokeWidth="6" />
-          <text y="-52" fontSize="22" fontWeight="900" textAnchor="middle" fill="#5d5a70" fontFamily="Arial Black, Arial">RIP</text>
+          {prop ? <g dangerouslySetInnerHTML={{ __html: prop }} /> : (
+            <>
+              <path d="M-34 0 L-34 -70 Q-34 -104 0 -104 Q34 -104 34 -70 L34 0 Z" fill="#8d8aa0" stroke="#16122b" strokeWidth="6" />
+              <text y="-52" fontSize="22" fontWeight="900" textAnchor="middle" fill="#5d5a70" fontFamily="Arial Black, Arial">RIP</text>
+            </>
+          )}
         </g>
       ))}
       <path d="M520 420 L530 330 L490 280 M530 330 L560 260 L600 240 M545 300 L590 300" stroke="#16122b" strokeWidth="14" fill="none" strokeLinecap="round" />
@@ -127,7 +135,7 @@ export const Backdrop = ({ night = 1 }) => {
           ))}
         </g>
       )}
-      {night === 3 && <rect width="1920" height="1080" fill="#ff2040" opacity="0.06" />}
+      {spooky && night === 3 && <rect width="1920" height="1080" fill="#ff2040" opacity="0.06" />}
     </g>
   );
 };

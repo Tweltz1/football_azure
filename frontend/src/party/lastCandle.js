@@ -9,6 +9,15 @@
 //
 // Pure and deterministic given the seed and the calls, so it is testable in Node.
 
+import { candleSkin } from './candleSkins.js';
+
+// The holiday skin on now renames charms, monsters and nights (see candleSkins.js); the ids stay the same.
+const SKIN = candleSkin();
+const skinned = (c) => {
+  const s = SKIN.charms?.[c.id];
+  return s ? { ...c, name: s.name, icon: s.icon, color: s.color } : c;
+};
+
 export const CHARMS = [
   { id: 'garlic', name: 'Garlic', icon: '🧄', color: '#f1ead2' },
   { id: 'salt', name: 'Salt', icon: '🧂', color: '#9ed3ff' },
@@ -18,7 +27,7 @@ export const CHARMS = [
   { id: 'bone', name: 'Bone', icon: '🦴', color: '#e9e3d0' },
   { id: 'herb', name: 'Herb', icon: '🌿', color: '#6fdc8c' },
   { id: 'star', name: 'Star', icon: '⭐', color: '#ffd84a' },
-];
+].map(skinned);
 // Junk nobody needs. It turns up in hands now and then, so tapping everything gets you spooked.
 // Swipe it into the trash to get a fresh charm.
 export const JUNK = [
@@ -36,10 +45,13 @@ export const NIGHTS = [
   { n: 1, title: 'Trick or Treat', blurb: 'Monsters are coming up the paths. Shout out what they need and throw the right charms!', length: 100000, charms: 5, fog: 0 },
   { n: 2, title: 'Fog Night', blurb: 'Foggy monsters hide what they need. One of you sees it on your phone. Call it out!', length: 110000, charms: 6, fog: 0.4 },
   { n: 3, title: 'Midnight', blurb: 'The Pumpkin King is coming. When he shows up, everyone hit SOUL at the same time!', length: 0, charms: 8, fog: 0.25 },
-];
+].map((night, i) => ({ ...night, ...(SKIN.nights?.[i] || {}) }));
 
 export const MONSTER_KINDS = ['ghost', 'bat', 'skeleton', 'zombie', 'spider', 'witch'];
-export const MONSTER_NAMES = { ghost: 'Ghost', bat: 'Bat', skeleton: 'Skeleton', zombie: 'Zombie', spider: 'Spider', witch: 'Witch', king: 'Pumpkin King' };
+export const MONSTER_NAMES = Object.fromEntries(Object.entries({ ghost: 'Ghost', bat: 'Bat', skeleton: 'Skeleton', zombie: 'Zombie', spider: 'Spider', witch: 'Witch', king: 'Pumpkin King' })
+  .map(([k, v]) => [k, SKIN.monsters?.[k]?.name || v]));
+/** Words the screens use: monster(s), the SOUL button, SPOOKED. */
+export const CANDLE_TEXT = { ...SKIN.text, boss: MONSTER_NAMES.king };
 export const LANES = 4;
 export const HAND = 3;
 export const REFILL_MS = 1200;
@@ -414,9 +426,10 @@ export function awards(s) {
     return top;
   };
   const add = (key, title, blurb) => { const b = best(key); if (b) list.push({ title, blurb: blurb(b.value), ...b }); };
-  add('banished', 'Monster Masher', (v) => `Landed the final charm on ${v} monster${v === 1 ? '' : 's'}`);
+  const T = CANDLE_TEXT;
+  add('banished', SKIN.monsters ? 'Top Defender' : 'Monster Masher', (v) => `Landed the final charm on ${v} ${v === 1 ? T.foe : T.foes}`);
   add('landed', 'Charm Slinger', (v) => `${v} charms thrown on target`);
-  add('seer', 'Fog Whisperer', (v) => `Called out ${v} foggy monster${v === 1 ? '' : 's'}`);
+  add('seer', 'Fog Whisperer', (v) => `Called out ${v} foggy ${v === 1 ? T.foe : T.foes}`);
   add('trashed', 'Junk Collector', (v) => `Tossed ${v} piece${v === 1 ? '' : 's'} of junk`);
   add('fizzles', 'Butterfingers', (v) => `Threw ${v} charm${v === 1 ? '' : 's'} at nothing`);
   return list;
