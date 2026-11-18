@@ -5,6 +5,8 @@ name: Household detector
 on:
   # A push that changes the trainer runs a trial with the settings in ml/household-detector/run.json.
   push:
+    branches:
+      - claude/project-thread-6lgsrr
     paths:
       - 'ml/household-detector/**'
       - '.github/workflows/household-detector.yml'
