@@ -1,0 +1,3 @@
+# The public home page is open to search. Everything inside the app marks itself noindex.
+User-agent: *
+Allow: /
