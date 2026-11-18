@@ -115,15 +115,15 @@ export default function FamilyScreen() {
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <TextInput
               value={code}
-              onChangeText={(v) => setCode(v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 6))}
-              placeholder="6-letter code"
+              onChangeText={(v) => setCode(v.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 8))}
+              placeholder="Family list code"
               placeholderTextColor={t.textMuted}
               autoCapitalize="characters"
               autoCorrect={false}
               accessibilityLabel="Family list code"
               style={[styles.input, { color: t.text, backgroundColor: t.card }]}
             />
-            <Button title="Join" variant="secondary" disabled={code.length < 6} loading={busy === 'join'} onPress={join} />
+            <Button title="Join" variant="secondary" disabled={code.length < 8} loading={busy === 'join'} onPress={join} />
           </View>
         </>
       )}

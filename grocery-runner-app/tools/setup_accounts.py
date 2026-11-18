@@ -244,6 +244,37 @@ create policy "grocery family items" on public.grocery_family_items
   with check ((select public.grocery_family_member(list_id)));
 grant select, insert, update, delete on public.grocery_family_items to authenticated;
 
+-- Join codes: 8 letters/digits from a cryptographic random source (gen_random_uuid), about 40 bits, so they
+-- can't be guessed. 256 is a multiple of 32, so every character is equally likely.
+create or replace function public.grocery_family_new_code() returns text
+language sql volatile set search_path = '' as $$
+  select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 1 + (get_byte(decode(replace(gen_random_uuid()::text, '-', ''), 'hex'), i) % 32), 1), '')
+  from generate_series(0, 7) i;
+$$;
+revoke all on function public.grocery_family_new_code() from public, anon, authenticated;
+
+-- Wrong codes typed by each person, so nobody can try code after code (10 an hour, 30 a day).
+create table if not exists public.grocery_family_join_misses (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  at timestamptz not null default now()
+);
+create index if not exists grocery_family_join_misses_user on public.grocery_family_join_misses (user_id, at desc);
+alter table public.grocery_family_join_misses enable row level security;
+revoke all on public.grocery_family_join_misses from anon, authenticated;
+
+-- Older 6-letter codes get a new 8-letter one (people already on the list stay on it).
+do $$
+declare r record; c text;
+begin
+  for r in select id from public.grocery_family_lists where char_length(code) < 8 loop
+    loop
+      c := public.grocery_family_new_code();
+      exit when not exists (select 1 from public.grocery_family_lists where code = c);
+    end loop;
+    update public.grocery_family_lists set code = c where id = r.id;
+  end loop;
+end $$;
+
 -- The caller's family list, or null: its id, join code and who's in it (the name each picked, else the email name).
 create or replace function public.grocery_family_info() returns jsonb
 language plpgsql stable security definer set search_path = '' as $$
@@ -273,7 +304,7 @@ begin
   if exists (select 1 from public.grocery_family_members where user_id = uid) then return public.grocery_family_info(); end if;
   loop
     -- No 0/O or 1/I, so a code read aloud is typed right.
-    select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 1 + floor(random() * 32)::int, 1), '') into c from generate_series(1, 6);
+    c := public.grocery_family_new_code();
     exit when not exists (select 1 from public.grocery_family_lists where code = c);
   end loop;
   insert into public.grocery_family_lists (code) values (c) returning id into lid;
@@ -305,6 +336,40 @@ begin
 end;
 $$;
 
+-- Join with a code. Wrong codes don't raise an error (that would undo the miss being counted): the answer is
+-- {ok:false, error} instead, and after 10 misses in an hour (30 in a day) every try is turned down for a while.
+create or replace function public.grocery_family_join_v2(invite text) returns jsonb
+language plpgsql security definer set search_path = '' as $$
+declare
+  uid uuid := auth.uid();
+  lid uuid;
+  old uuid;
+  c text := upper(regexp_replace(coalesce(invite, ''), '[^A-Za-z0-9]', '', 'g'));
+begin
+  if uid is null then raise exception 'Not signed in'; end if;
+  if (select count(*) from public.grocery_family_join_misses where user_id = uid and at > now() - interval '1 hour') >= 10
+     or (select count(*) from public.grocery_family_join_misses where user_id = uid and at > now() - interval '1 day') >= 30 then
+    return jsonb_build_object('ok', false, 'error', 'Too many wrong codes. Wait an hour and try again.');
+  end if;
+  select id into lid from public.grocery_family_lists where code = c;
+  if lid is null then
+    insert into public.grocery_family_join_misses (user_id) values (uid);
+    delete from public.grocery_family_join_misses where at < now() - interval '2 days';
+    return jsonb_build_object('ok', false, 'error', 'That code isn''t right. Check it with whoever shared it.');
+  end if;
+  if (select count(*) from public.grocery_family_members where list_id = lid and user_id <> uid) >= 8 then
+    return jsonb_build_object('ok', false, 'error', 'That family list is full (8 people).');
+  end if;
+  select list_id into old from public.grocery_family_members where user_id = uid;
+  insert into public.grocery_family_members (user_id, list_id) values (uid, lid)
+    on conflict (user_id) do update set list_id = excluded.list_id, joined_at = now();
+  if old is not null and old <> lid and not exists (select 1 from public.grocery_family_members where list_id = old) then
+    delete from public.grocery_family_lists where id = old;
+  end if;
+  return jsonb_build_object('ok', true, 'info', public.grocery_family_info());
+end;
+$$;
+
 create or replace function public.grocery_family_leave() returns void
 language plpgsql security definer set search_path = '' as $$
 declare
@@ -325,7 +390,10 @@ revoke all on function public.grocery_family_join(text) from public, anon;
 revoke all on function public.grocery_family_leave() from public, anon;
 grant execute on function public.grocery_family_info() to authenticated;
 grant execute on function public.grocery_family_create() to authenticated;
-grant execute on function public.grocery_family_join(text) to authenticated;
+-- The old join (no limit on wrong codes) is switched off; apps use grocery_family_join_v2.
+revoke all on function public.grocery_family_join(text) from authenticated;
+revoke all on function public.grocery_family_join_v2(text) from public, anon;
+grant execute on function public.grocery_family_join_v2(text) to authenticated;
 grant execute on function public.grocery_family_leave() to authenticated;
 """
 call("POST", "/database/query", {"query": FAMILY_SQL})
