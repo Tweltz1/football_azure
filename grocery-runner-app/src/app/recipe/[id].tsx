@@ -16,6 +16,7 @@ import {
 import { RecipePicture } from '../../components/RecipePicture';
 import { Button, lift, tap } from '../../components/ui';
 import { labelsOf } from '../../lib/diet';
+import { bundledPhoto } from '../../lib/recipeAssets';
 import { newItems, SUGGESTED } from '../../lib/recipes';
 import { itemKey } from '../../lib/sharedAisles';
 import { fromIso, planWeek, WEEKDAYS } from '../../lib/mealPlan';
@@ -204,6 +205,16 @@ export default function RecipeScreen() {
       <Stack.Screen options={{ title: '', headerRight }} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 8, gap: 10 }}>
         <RecipePicture recipe={recipe} size={210} style={{ borderRadius: radius.lg }} />
+        {!recipe.photo && !recipe.imageUrl && !!bundledPhoto(recipe.id) && (
+          <Text
+            accessibilityRole="link"
+            onPress={() => bundledPhoto(recipe.id)!.credit.source && Linking.openURL(bundledPhoto(recipe.id)!.credit.source)}
+            style={{ color: t.textMuted, fontSize: 11, marginTop: -4 }}
+            numberOfLines={1}
+          >
+            Photo: {bundledPhoto(recipe.id)!.credit.creator} · {bundledPhoto(recipe.id)!.credit.license}
+          </Text>
+        )}
         <Text style={[styles.title, { color: t.text }]}>{recipe.title}</Text>
         <View style={styles.metaRow}>
           {[

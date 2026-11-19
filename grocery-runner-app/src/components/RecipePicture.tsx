@@ -1,4 +1,5 @@
 import { Image, StyleProp, StyleSheet, Text, useColorScheme, View, ViewStyle } from 'react-native';
+import { bundledPhoto } from '../lib/recipeAssets';
 import { hasPhoto, photoUri } from '../lib/recipePhotos';
 import type { Recipe } from '../lib/recipes';
 
@@ -8,16 +9,17 @@ const DARK = ['#3A2618', '#1E3322', '#3A3216', '#1D2639', '#3A1E2C', '#163330', 
 
 const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
-/** The recipe's own photo (scanned or from its web page), else its emoji on a colored tile. */
+/** The recipe's own photo (scanned or from its web page), else our bundled photo, else its emoji on a colored tile. */
 export function RecipePicture({ recipe, size, style }: { recipe: Recipe; size: number; style?: StyleProp<ViewStyle> }) {
   const dark = useColorScheme() === 'dark';
   const uri = recipe.photo && hasPhoto(recipe.photo) ? photoUri(recipe.photo) : recipe.imageUrl;
   const palette = dark ? DARK : LIGHT;
   const box = [styles.box, { height: size, backgroundColor: palette[hash(recipe.id) % palette.length] }, style];
-  if (uri) {
+  const bundled = !uri ? bundledPhoto(recipe.id) : undefined;
+  if (uri || bundled) {
     return (
       <View style={box}>
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
+        <Image source={uri ? { uri } : bundled!.image} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
       </View>
     );
   }
