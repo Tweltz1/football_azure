@@ -1,3 +1,4 @@
+import { Step, STEPS, totalMinutes } from './recipeSteps';
 import { itemKey } from './sharedAisles';
 
 export type RecipeItem = {
@@ -26,6 +27,8 @@ export type Recipe = {
   photo?: string;
   /** The recipe page's own picture, for recipes added from a link. */
   imageUrl?: string;
+  /** How to make it, with minutes per step (suggested recipes, and linked ones that publish steps). */
+  steps?: Step[];
   /** The web page a recipe was added from. */
   url?: string;
   items: RecipeItem[];
@@ -67,7 +70,11 @@ const r = (
   tags: RecipeTag[],
   items: RecipeItem[],
   servings = '4 servings',
-): Recipe => ({ id: `s-${id}`, title, servings, minutes, emoji, tags, items, source: 'suggested' });
+): Recipe => {
+  const steps = STEPS[id] ?? [];
+  // The time comes from the steps, so it always matches them; `minutes` is only a fallback.
+  return { id: `s-${id}`, title, servings, minutes: steps.length ? totalMinutes(steps) : minutes, emoji, tags, items, steps, source: 'suggested' };
+};
 
 /** Weeknight recipes that ship with the app, so suggestions work offline and cost nothing. */
 export const SUGGESTED: Recipe[] = [

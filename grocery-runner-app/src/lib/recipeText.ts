@@ -4,7 +4,14 @@ import type { TextLine } from '../../modules/recipe-reader';
 import type { RecipeItem } from './recipes';
 import { itemKey } from './sharedAisles';
 
-export type ParsedRecipe = { title: string; servings: string; items: RecipeItem[]; imageUrl?: string; minutes?: number };
+export type ParsedRecipe = {
+  title: string;
+  servings: string;
+  items: RecipeItem[];
+  imageUrl?: string;
+  minutes?: number;
+  steps?: { text: string; minutes: number }[];
+};
 
 // Recipe sites print scale and unit buttons next to the heading ("Ingredients 1x 2x 3x", "US Customary Metric").
 const SITE_BUTTONS = String.raw`(?:\s*(?:\d+(?:\.\d+)?\s*x|us customary|us|metric|imperial|scale|servings?|\||·))*`;
@@ -247,6 +254,31 @@ function findRecipe(node: any): any {
   return findRecipe(node['@graph']) ?? findRecipe(node.mainEntity) ?? findRecipe(node.mainEntityOfPage);
 }
 
+/** Minutes a step mentions: "simmer 20-25 minutes" → 25, "bake for 1 hour" → 60, nothing → 0. */
+export function stepMinutes(text: string): number {
+  let most = 0;
+  for (const m of text.matchAll(/(\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*(\d+(?:\.\d+)?))?\s*(hours?|hrs?|minutes?|mins?)\b/gi)) {
+    const n = Number(m[2] ?? m[1]) * (/^h/i.test(m[3]) ? 60 : 1);
+    if (n < 24 * 60) most = Math.max(most, n);
+  }
+  return Math.round(most);
+}
+
+// deno-lint-ignore no-explicit-any
+function stepsOf(node: any, out: string[] = []): string[] {
+  if (!node) return out;
+  if (typeof node === 'string') {
+    // Some sites put every step in one string, one per line.
+    node.split(/\n+/).forEach((l) => out.push(l));
+  } else if (Array.isArray(node)) node.forEach((n) => stepsOf(n, out));
+  else if (typeof node === 'object') {
+    if (node.itemListElement) stepsOf(node.itemListElement, out); // HowToSection
+    else if (node.text) out.push(String(node.text));
+    else if (node.name) out.push(String(node.name));
+  }
+  return out;
+}
+
 /** ISO 8601 durations like "PT1H15M" → 75. */
 export function isoMinutes(v: unknown): number | undefined {
   const m = typeof v === 'string' ? v.match(/^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?/i) : null;
@@ -295,7 +327,16 @@ export function parseRecipePage(html: string): ParsedRecipe {
         const yieldText = Array.isArray(recipe.recipeYield) ? recipe.recipeYield[0] : recipe.recipeYield;
         if (yieldText && !parsed.servings) parsed.servings = String(yieldText).slice(0, 40);
         parsed.imageUrl = imageOf(recipe.image) ?? ogImage(html);
-        const minutes = isoMinutes(recipe.totalTime) ?? isoMinutes(recipe.cookTime);
+        const steps = stepsOf(recipe.recipeInstructions)
+          .map((t) => decode(stripTags(t)).replace(/\s+/g, ' ').trim())
+          .filter((t) => t.length > 3)
+          .slice(0, 40)
+          .map((text) => ({ text: text.slice(0, 600), minutes: stepMinutes(text) }));
+        if (steps.length) parsed.steps = steps;
+        const minutes =
+          isoMinutes(recipe.totalTime) ??
+          ((isoMinutes(recipe.prepTime) ?? 0) + (isoMinutes(recipe.cookTime) ?? 0) || undefined) ??
+          (steps.reduce((a, st) => a + st.minutes, 0) || undefined);
         if (minutes) parsed.minutes = minutes;
         return parsed;
       }
