@@ -8,6 +8,7 @@ import { DEMO } from '../lib/demo';
 import { categoryLabel, CATEGORIES, CommunityRecipe, fetchCommunity } from '../lib/community';
 import { cloudConfigured } from '../lib/supabase';
 import { radius, useTheme } from '../lib/theme';
+import { titleCase } from '../lib/caps';
 
 /** Recipes other shoppers shared, by category. Shown on the Recipes tab. */
 export function CommunityRecipes({ onShare }: { onShare: () => void }) {
@@ -102,7 +103,7 @@ export function CommunityRecipes({ onShare }: { onShare: () => void }) {
             <RecipePicture recipe={r} size={64} style={{ width: 64 }} />
             <View style={{ flex: 1, gap: 3 }}>
               <Text style={{ color: t.text, fontSize: 16, fontWeight: '600' }} numberOfLines={2}>
-                {r.title}
+                {titleCase(r.title)}
               </Text>
               <Text style={{ color: t.textMuted, fontSize: 13 }} numberOfLines={1}>
                 {categoryLabel(r.category)} · by {r.author}

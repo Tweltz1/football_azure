@@ -1,5 +1,6 @@
 // Weekly meal planning: which week to show, picking meals, the week's shopping list and the prep-day
 // schedule. Pure logic, no React (the screen is app/(tabs)/plan.tsx, saved state in lib/plan.tsx).
+import { capFirst, properNouns, titleCase } from './caps';
 import { guessDepartment } from './departments';
 import { matchesFilters } from './diet';
 import type { Recipe, RecipeItem } from './recipes';
@@ -106,7 +107,8 @@ export function weekShopping(recipes: Recipe[]): WeekItem[] {
   return [...byKey.values()].map(({ amounts, ...row }) => ({ ...row, ...(amounts.length ? { amount: amounts.join(' + ') } : {}) }));
 }
 
-export type PrepTask = { id: string; title: string; detail: string; icon: string };
+/** `lines` break a long task down by meal, so it reads as a short list instead of a wall of text. */
+export type PrepTask = { id: string; title: string; detail: string; icon: string; lines?: { meal: string; items: string }[] };
 
 const GRAINS = /\b(rice|quinoa|pasta|spaghetti|penne|noodles|orzo|couscous|farro|potato(es)?|sweet potato(es)?|beans|lentils)\b/i;
 const SAUCES = /\b(sauce|dressing|marinade|salsa|pesto|vinaigrette)\b/i;
@@ -129,21 +131,31 @@ export function prepSchedule(week: { date: string; recipes: Recipe[] }[]): PrepT
     for (const r of all) for (const i of r.items) if (test(i)) found.push({ item: i.item, meal: r.title });
     return found;
   };
+  // One line per meal: "Chicken Caesar Salad: Romaine lettuce, lemons".
+  const byMeal = (found: { item: string; meal: string }[]) => {
+    const meals = new Map<string, string[]>();
+    for (const f of found) meals.set(f.meal, [...(meals.get(f.meal) ?? []), f.item.toLowerCase()]);
+    return [...meals].map(([meal, items]) => ({ meal: titleCase(meal), items: capFirst(list(items)) }));
+  };
   const tasks: PrepTask[] = [];
   const longCooks = all.filter((r) => r.tags?.includes('slow cooker') || (r.minutes ?? 0) >= 60);
   if (longCooks.length)
-    tasks.push({ id: 'long', icon: '⏲️', title: 'Start the long cooks first', detail: list(longCooks.map((r) => r.title)) });
+    tasks.push({ id: 'long', icon: '⏲️', title: 'Start the long cooks first', detail: list(longCooks.map((r) => titleCase(r.title))) });
   const grains = uses((i) => GRAINS.test(i.item));
   if (grains.length)
-    tasks.push({ id: 'grains', icon: '🍚', title: `Cook a batch of ${list(grains.map((g) => g.item.toLowerCase()))}`, detail: `For ${list(grains.map((g) => g.meal))}` });
+    tasks.push({
+      id: 'grains',
+      icon: '🍚',
+      title: properNouns(`Cook a batch of ${list(grains.map((g) => g.item.toLowerCase()))}`),
+      detail: `For ${list(grains.map((g) => titleCase(g.meal)))}`,
+    });
   const protein = uses((i) => guessDepartment(i.item) === 'meat');
-  if (protein.length)
-    tasks.push({ id: 'protein', icon: '🥩', title: 'Portion and season the meat', detail: protein.map((p) => `${p.item} (${p.meal})`).join(' · ') });
+  if (protein.length) tasks.push({ id: 'protein', icon: '🥩', title: 'Portion and season the meat', detail: 'Bag each meal’s portion', lines: byMeal(protein) });
   const veg = uses((i) => guessDepartment(i.item) === 'produce' && !NOT_CHOPPED.test(i.item));
   if (veg.length)
-    tasks.push({ id: 'chop', icon: '🔪', title: `Wash and chop ${list(veg.map((v) => v.item.toLowerCase()))}`, detail: 'Store each meal’s veggies in its own container' });
+    tasks.push({ id: 'chop', icon: '🔪', title: 'Wash and chop the produce', detail: 'Store each meal’s veggies in its own container', lines: byMeal(veg) });
   const sauces = uses((i) => SAUCES.test(i.item));
-  if (sauces.length) tasks.push({ id: 'sauce', icon: '🥣', title: 'Mix sauces and dressings', detail: list(sauces.map((s) => s.item.toLowerCase())) });
+  if (sauces.length) tasks.push({ id: 'sauce', icon: '🥣', title: 'Mix sauces and dressings', detail: 'Keep them in small jars', lines: byMeal(sauces) });
   const start = fromIso(week[0].date).getTime();
   for (const d of week) {
     if (!d.recipes.length) continue;
@@ -153,7 +165,7 @@ export function prepSchedule(week: { date: string; recipes: Recipe[] }[]): PrepT
     tasks.push({
       id: `pack-${d.date}`,
       icon: later ? '🧊' : '📦',
-      title: `Pack ${day}: ${list(d.recipes.map((r) => r.title))}`,
+      title: `Pack ${day}: ${list(d.recipes.map((r) => titleCase(r.title)))}`,
       detail: later ? 'Freeze it; move it to the fridge the night before' : 'Label it and keep it in the fridge',
     });
   }

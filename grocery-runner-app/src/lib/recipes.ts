@@ -1,5 +1,6 @@
 import { Step, STEPS, totalMinutes } from './recipeSteps';
 import { itemKey } from './sharedAisles';
+import { titleCase } from './caps';
 
 export type RecipeItem = {
   /** What to look for in the store, e.g. "yellow onion". */
@@ -73,7 +74,7 @@ const r = (
 ): Recipe => {
   const steps = STEPS[id] ?? [];
   // The time comes from the steps, so it always matches them; `minutes` is only a fallback.
-  return { id: `s-${id}`, title, servings, minutes: steps.length ? totalMinutes(steps) : minutes, emoji, tags, items, steps, source: 'suggested' };
+  return { id: `s-${id}`, title: titleCase(title), servings, minutes: steps.length ? totalMinutes(steps) : minutes, emoji, tags, items, steps, source: 'suggested' };
 };
 
 /** Weeknight recipes that ship with the app, so suggestions work offline and cost nothing. */

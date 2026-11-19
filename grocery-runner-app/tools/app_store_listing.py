@@ -31,6 +31,7 @@ EDITABLE = {"PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADAT
 
 _token = {"value": "", "at": 0}
 todo = []  # things left for the account holder
+blocking = []  # failures that should stop a submission
 
 
 def token():
@@ -74,6 +75,9 @@ def step(name, fn):
     except Exception as e:  # keep going so one problem doesn't hide the rest
         print(f"FAIL  {name}: {e}")
         todo.append(f"{name} (the API said: {e})")
+        # App info (categories, subtitle, age rating) is locked while the live version uses it; that's fine for an update.
+        if "INVALID_STATE" not in str(e) and "not editable" not in str(e):
+            blocking.append(name)
 
 
 apps = call("GET", "/apps", query={"filter[bundleId]": BUNDLE_ID})["data"]
@@ -157,7 +161,15 @@ step("Content rights", content_rights)
 
 # The version being prepared (1.0 until the first release).
 versions = call("GET", f"/apps/{app_id}/appStoreVersions", query={"filter[platform]": "IOS", "limit": "20"})["data"]
-version = next((v for v in versions if (v["attributes"].get("appVersionState") or v["attributes"].get("appStoreState")) in EDITABLE
+APP_VERSION = json.load(open(os.path.join(HERE, "..", "app.json")))["expo"]["version"]
+if not any(v["attributes"]["versionString"] == APP_VERSION for v in versions):
+    # A new release (app.json's version): make its App Store version. Apple copies the listing over from the last one.
+    made = call("POST", "/appStoreVersions", {"data": {"type": "appStoreVersions", "attributes": {"platform": "IOS", "versionString": APP_VERSION},
+                "relationships": {"app": {"data": {"type": "apps", "id": app_id}}}}})["data"]
+    print(f"Made version {APP_VERSION}")
+    versions = [made] + versions
+version = next((v for v in versions if v["attributes"]["versionString"] == APP_VERSION and (v["attributes"].get("appStoreState") in EDITABLE
+                or v["attributes"].get("appVersionState") in EDITABLE)), None) or next((v for v in versions if (v["attributes"].get("appVersionState") or v["attributes"].get("appStoreState")) in EDITABLE
                 or v["attributes"].get("appStoreState") in EDITABLE), None)
 if not version:
     sys.exit("No editable iOS version in App Store Connect (is one already in review?)")
@@ -177,6 +189,8 @@ vloc = next((x for x in vlocs if x["attributes"]["locale"] == L["locale"]), None
 def version_text():
     global vloc
     attrs = {k: L[k] for k in ("description", "keywords", "supportUrl", "promotionalText")}
+    if L.get("whatsNew") and version["attributes"]["versionString"] != "1.0":
+        attrs["whatsNew"] = L["whatsNew"]
     if vloc:
         call("PATCH", f"/appStoreVersionLocalizations/{vloc['id']}", {"data": {"type": "appStoreVersionLocalizations", "id": vloc["id"], "attributes": attrs}})
     else:
@@ -309,10 +323,26 @@ def availability():
 step("Price (free)", price_free)
 step("Availability (every country)", availability)
 
-todo += [
-    "App Privacy answers (Apple has no API for these)",
-    "Press Add for Review, then Submit to App Review",
-]
+
+
+def submit():
+    """Sends this version to App Review. Only when the workflow sets SUBMIT=1 (the account holder asked for it)."""
+    sub = call("POST", "/reviewSubmissions", {"data": {"type": "reviewSubmissions", "attributes": {"platform": "IOS"},
+               "relationships": {"app": one("apps", app_id)}}})["data"]
+    call("POST", "/reviewSubmissionItems", {"data": {"type": "reviewSubmissionItems",
+         "relationships": {"reviewSubmission": one("reviewSubmissions", sub["id"]), "appStoreVersion": one("appStoreVersions", vid)}}})
+    call("PATCH", f"/reviewSubmissions/{sub['id']}", {"data": {"type": "reviewSubmissions", "id": sub["id"], "attributes": {"submitted": True}}})
+    state = call("GET", f"/reviewSubmissions/{sub['id']}")["data"]["attributes"]["state"]
+    print(f"      submission {state}")
+
+
+if os.environ.get("SUBMIT") == "1" and not blocking:
+    step("Submit to App Review", submit)
+elif os.environ.get("SUBMIT") == "1":
+    print("Not submitting: fix the failed steps above first.")
+else:
+    todo.append("Press Add for Review, then Submit to App Review")
+todo.insert(0, "App Privacy answers, if anything changed (Apple has no API for these)")
 print("\nLeft for the account holder:")
 for t in todo:
     print(" - " + t)

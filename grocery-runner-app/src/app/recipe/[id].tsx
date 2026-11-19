@@ -24,6 +24,7 @@ import { usePlan } from '../../lib/plan';
 import { baseServings, scaleAmount } from '../../lib/scale';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
+import { capFirst, titleCase } from '../../lib/caps';
 
 export default function RecipeScreen() {
   const t = useTheme();
@@ -215,7 +216,7 @@ export default function RecipeScreen() {
             Photo: {bundledPhoto(recipe.id)!.credit.creator} · {bundledPhoto(recipe.id)!.credit.license}
           </Text>
         )}
-        <Text style={[styles.title, { color: t.text }]}>{recipe.title}</Text>
+        <Text style={[styles.title, { color: t.text }]}>{titleCase(recipe.title)}</Text>
         <View style={styles.metaRow}>
           {[
             recipe.minutes ? `⏱ ${fmtTime(recipe.minutes)}` : null,
@@ -307,7 +308,7 @@ export default function RecipeScreen() {
                 {(on || already) && <Ionicons name={already ? 'checkmark-done' : 'checkmark'} size={15} color={t.onPrimary} />}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: t.text, fontSize: 16, fontWeight: '600' }}>{it.item}</Text>
+                <Text style={{ color: t.text, fontSize: 16, fontWeight: '600' }}>{capFirst(it.item)}</Text>
                 {(!!it.amount || !!it.note || already || it.pantry) && (
                   <Text style={{ color: t.textMuted, fontSize: 13 }}>
                     {!!it.amount && <Text style={{ color: t.text, fontWeight: '600' }}>{scaleAmount(it.amount, factor)}</Text>}

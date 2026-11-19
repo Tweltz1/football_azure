@@ -4,7 +4,8 @@
 #   (EXPO_PUBLIC_DEMO=1, src/lib/demo.ts), photographs each screen on a simulated iPhone Pro Max and
 #   saves the pictures to the grocery-runner-store-shots branch.
 # - A push whose commit message contains [stride-listing] fills in the App Store listing from
-#   grocery-runner-app/store/listing.json with tools/app_store_listing.py.
+#   grocery-runner-app/store/listing.json with tools/app_store_listing.py (making the App Store version
+#   for app.json's version when it's new). [stride-submit] does the same, then submits it for App Review.
 # - A push whose commit message contains [stride-seed] adds the starter Community recipes
 #   (tools/seed_community.py). Safe to re-run.
 name: Shop Stride App Store listing
@@ -120,7 +121,7 @@ jobs:
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" grocery-runner-store-shots
 
   listing:
-    if: contains(github.event.head_commit.message, '[stride-listing]')
+    if: contains(github.event.head_commit.message, '[stride-listing]') || contains(github.event.head_commit.message, '[stride-submit]')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -140,6 +141,8 @@ jobs:
           APP_REVIEW_LAST_NAME: ${{ secrets.APP_REVIEW_LAST_NAME }}
           APP_REVIEW_PHONE: ${{ secrets.APP_REVIEW_PHONE }}
           APP_REVIEW_EMAIL: ${{ secrets.APP_REVIEW_EMAIL }}
+          # [stride-submit] also sends the version to App Review; only push it when the account holder asked.
+          SUBMIT: ${{ contains(github.event.head_commit.message, '[stride-submit]') && '1' || '' }}
         run: |
           python3 -m venv "$RUNNER_TEMP/apple-api"
           "$RUNNER_TEMP/apple-api/bin/pip" -q install 'PyJWT[crypto]' pillow

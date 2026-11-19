@@ -19,7 +19,7 @@ export function RecipePicture({ recipe, size, style }: { recipe: Recipe; size: n
   if (uri || bundled) {
     return (
       <View style={box}>
-        <Image source={uri ? { uri } : bundled!.image} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
+        <Image source={uri ? { uri } : bundled!.image} style={styles.fill} resizeMode="cover" accessibilityIgnoresInvertColors />
       </View>
     );
   }
@@ -30,4 +30,8 @@ export function RecipePicture({ recipe, size, style }: { recipe: Recipe; size: n
   );
 }
 
-const styles = StyleSheet.create({ box: { overflow: 'hidden', borderRadius: 14 } });
+const styles = StyleSheet.create({
+  box: { overflow: 'hidden', borderRadius: 14 },
+  // A bundled image otherwise takes its own pixel size as its width and height, showing only one corner.
+  fill: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
+});

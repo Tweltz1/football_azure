@@ -8,6 +8,7 @@ import { Button, Card, SectionTitle, tap } from '../components/ui';
 import { AisleMatch, FoundAisle, findAisles, matchAisles } from '../lib/aisleText';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
+import { capFirst } from '../lib/caps';
 
 /**
  * Aisles from screenshots of a store's own app (Walmart, Woodman's, ...). The shopper picks
@@ -117,7 +118,7 @@ export default function AisleScanScreen() {
                 style={[styles.row, { backgroundColor: t.card }]}
               >
                 <Ionicons name={on ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={on ? t.primary : t.textMuted} />
-                <Text style={{ color: t.text, fontSize: 17, flex: 1 }}>{m.item.name}</Text>
+                <Text style={{ color: t.text, fontSize: 17, flex: 1 }}>{capFirst(m.item.name)}</Text>
                 <Text style={{ color: t.text, fontWeight: '700' }}>
                   Aisle {m.aisle}
                   {m.bay ? ` · ${m.bay}` : ''}

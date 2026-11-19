@@ -13,6 +13,7 @@ import { useFamily } from '../../lib/family';
 import { cleanLink } from '../../lib/recipeText';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
+import { capFirst } from '../../lib/caps';
 
 // A week's basics across the store, so a first-time shopper can see the walking order before typing anything.
 // A picture for each part of the store, shown next to its heading.
@@ -260,7 +261,7 @@ export default function ListScreen() {
                       { color: item.checked ? t.textMuted : t.text, textDecorationLine: item.checked ? 'line-through' : 'none' },
                     ]}
                   >
-                    {item.name}
+                    {capFirst(item.name)}
                   </Text>
                   {/* The section header already says where; only add how much and anything worth knowing. */}
                   {(!!item.amount || (!item.checked && !!label.note)) && (
