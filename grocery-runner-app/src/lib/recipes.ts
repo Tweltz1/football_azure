@@ -150,7 +150,7 @@ export const SUGGESTED: Recipe[] = [
   ]),
   r('pizza', 'Homemade pepperoni pizza', 30, '🍕', ['family'], [
     i('pizza dough', '1 lb'), i('pizza sauce', '1 jar'), i('shredded mozzarella cheese', '2 cups'),
-    i('pepperoni', '6 oz'), i('bagged salad', '1'), p('olive oil', '1 tbsp'), p('all-purpose flour', 'for dusting'),
+    i('pepperoni', '6 oz'), i('bagged salad', '1'), i('salad dressing', '1 bottle'), p('olive oil', '1 tbsp'), p('all-purpose flour', 'for dusting'),
   ]),
   // Added for more healthy, vegetarian, gluten-free and dairy-free choices.
   r('bowls', 'Chicken burrito bowls', 30, '🌯', ['healthy', 'family'], [
