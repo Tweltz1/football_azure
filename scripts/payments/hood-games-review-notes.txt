@@ -1,0 +1,25 @@
+SCREEN RECORDING
+Attached to this submission (App Review attachment): recorded on a physical iPhone running the latest iOS, starting from app launch. It shows: home screen, Sign in with Apple, joining a game with a room code from two phones, a Hood Quest adventure with voice chat, the per-player Mute and Report buttons, and Delete account.
+
+1. PURPOSE AND AUDIENCE
+Hood Games is game night for a group of friends or family who are in the same room or apart. One phone (or a TV) hosts a room, everyone else joins with the room code, and the group plays party games, card games and AI-narrated tabletop adventures (Hood Quest) on the phones they already have. No extra hardware, no ads, no purchases. Audience: adults and teens playing with people they know.
+
+2. HOW TO TEST
+- No login is needed: tap any game on the home screen to play as a guest. Sign in with Apple or Google (home screen, account box) is optional and only saves your name, characters and scores.
+- Most games need 2 or more devices: start a game on one device to get a room code, then enter that code on a second device (another iPhone, or Safari at hood-league.com/hood-games).
+- Hood Quest: tap Hood Quest on the home screen, start a quest, make a hero, and the narrator runs the story. Voice/video chat is optional and only connects people who joined the same private room code.
+- Mute/Report: in voice or video chat, every other player has a Mute button (mutes them just for you) and a Report button (opens a pre-filled report to hoodgames@weltzcraft.com, which we read within a day).
+- Delete account: sign in, then on the home screen under "Signed in as ..." tap Delete account and confirm. This deletes the account and its saved data.
+- There is no paid content or in-app purchase.
+
+3. EXTERNAL SERVICES
+- Supabase: sign-in, saved profiles/characters, and the realtime rooms that link the phones.
+- Sign in with Apple and Google Sign-In: optional login.
+- Google Gemini API: writes the Hood Quest narrator's story text. Players see a one-time notice before their table talk is sent to the AI narrator.
+- Cloudflare: hosts the web content and provides the TURN relay for voice/video chat (audio and video go device to device over WebRTC; nothing is recorded or stored).
+
+4. REGIONS
+The app works the same in every country where it is offered. It is not offered in mainland China.
+
+5. REGULATED OR THIRD-PARTY MATERIAL
+None. The app is not in a regulated industry, has no gambling or real-money features, and all games, characters, art and stories are our own.
