@@ -121,3 +121,18 @@ test('the Ingredients heading is found even with the unit toggle on the same lin
   const r = parsePastedText('Ingredients US Customary | Metric\nsalt and pepper\n2 carrots');
   assert.deepEqual(r.items.map((i) => i.item), ['salt and pepper', 'carrots']);
 });
+
+test('reads step times written the ways recipe sites write them', async () => {
+  const { stepMinutes } = await import('../src/lib/recipeText');
+  assert.equal(stepMinutes('Cook for 1 hr 15 mins, stirring occasionally'), 75);
+  assert.equal(stepMinutes('Cover and cook for 10 to 15 more minutes'), 15);
+  assert.equal(stepMinutes('Microwave the butter for about 40 seconds'), 1);
+  assert.equal(stepMinutes('Fry for 10 mins until golden'), 10);
+  assert.equal(stepMinutes('Serve right away'), 0);
+});
+
+test('UK pack sizes and dangling "and" from prep words', () => {
+  assert.deepEqual(item('2 x 400g tins plum tomatoes'), { item: 'plum tomatoes', amount: '2 x 400g tins', pantry: false });
+  assert.equal(parseIngredient('2 carrots trimmed and finely chopped')?.item, 'carrots');
+  assert.equal(parseIngredient('1 red chilli deseeded and finely chopped (optional)')?.item, 'red chilli');
+});

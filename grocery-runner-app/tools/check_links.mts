@@ -1,7 +1,7 @@
 // Reads real recipe pages with the app's own parser (src/lib/recipeText.ts) and prints what a shopper
 // would get: title, every ingredient, every step with its minutes, and the total. Flags pages where the
 // ingredient or step count doesn't match the page's own recipe data. Run by grocery-runner-store.yml ([stride-links]).
-import { parseRecipePage } from '../src/lib/recipeText';
+import { parseIngredient, parseRecipePage } from '../src/lib/recipeText';
 
 const URLS = [
   'https://tastesbetterfromscratch.com/creamy-white-chicken-chili/',
@@ -24,14 +24,15 @@ const SAFARI =
 
 // The page's own counts, straight from its JSON-LD, to compare with what the parser kept.
 function sourceCounts(html: string) {
-  let ing = 0, steps = 0;
+  let ing = 0, steps = 0, lines: string[] = [];
   for (const m of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
     const t = m[1];
     const i = t.match(/"recipeIngredient"\s*:\s*\[([\s\S]*?)\]/);
-    if (i) ing = Math.max(ing, (i[1].match(/"(?:[^"\\]|\\.)*"/g) ?? []).length);
+    const found = i ? (i[1].match(/"(?:[^"\\]|\\.)*"/g) ?? []).map((q) => { try { return String(JSON.parse(q)); } catch { return q; } }) : [];
+    if (found.length > ing) { ing = found.length; lines = found; }
     steps = Math.max(steps, (t.match(/"@type"\s*:\s*"HowToStep"/g) ?? []).length);
   }
-  return { ing, steps };
+  return { ing, steps, lines };
 }
 
 let problems = 0;
@@ -48,7 +49,12 @@ for (const url of URLS) {
     for (const it of r.items) console.log(`    - [${it.amount}] ${it.item}${it.note ? ` (${it.note})` : ''}${it.pantry ? ' *pantry' : ''}`);
     console.log(`  steps: ${r.steps?.length ?? 0} (page has ${src.steps} HowToSteps)`);
     for (const [n, s] of (r.steps ?? []).entries()) console.log(`    ${n + 1}. (${s.minutes} min) ${s.text.slice(0, 160)}`);
-    if (src.ing && r.items.length < src.ing) { problems++; console.log(`  !! ${src.ing - r.items.length} ingredient lines dropped`); }
+    // A line counts as dropped only if the parser threw it away; the same thing listed twice
+    // ("garlic" in the marinade and the sauce) is merged into one shopping line on purpose.
+    const dropped = src.lines.filter((l) => !parseIngredient(l.replace(/<[^>]+>/g, ' ')));
+    if (src.ing > r.items.length) console.log(`  (${src.ing - r.items.length - dropped.length} repeated ingredient(s) merged into one line)`);
+    for (const l of dropped) console.log(`  -- skipped: ${l}`);
+    if (dropped.length) { problems++; console.log(`  !! ${dropped.length} ingredient line(s) skipped`); }
     if (src.steps && (r.steps?.length ?? 0) < src.steps) { problems++; console.log('  !! steps missing'); }
   } catch (e) {
     problems++;
