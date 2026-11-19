@@ -297,11 +297,16 @@ export default function RecipeScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: t.text, fontSize: 16, fontWeight: '600' }}>{it.item}</Text>
-                {(!!it.amount || already || it.pantry) && (
+                {(!!it.amount || !!it.note || already || it.pantry) && (
                   <Text style={{ color: t.textMuted, fontSize: 13 }}>
-                    {[scaleAmount(it.amount, factor), already ? 'Already on your list' : it.pantry ? 'You probably have this' : null]
-                      .filter(Boolean)
-                      .join(' · ')}
+                    {!!it.amount && <Text style={{ color: t.text, fontWeight: '600' }}>{scaleAmount(it.amount, factor)}</Text>}
+                    {!!it.note && <Text style={{ fontStyle: 'italic' }}>{it.amount ? ' · ' : ''}{it.note}</Text>}
+                    {(already || it.pantry) && (
+                      <Text>
+                        {it.amount || it.note ? ' · ' : ''}
+                        {already ? 'Already on your list' : 'You probably have this'}
+                      </Text>
+                    )}
                   </Text>
                 )}
               </View>

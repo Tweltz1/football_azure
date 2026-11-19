@@ -2,7 +2,20 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { parseIngredient, parsePastedText, parsePhotoText, parseRecipePage } from '../src/lib/recipeText';
 
-const item = (line: string) => parseIngredient(line);
+// Name, amount and pantry only; notes are checked in their own test.
+const item = (line: string) => {
+  const r = parseIngredient(line);
+  if (r) delete r.note;
+  return r;
+};
+
+test('keeps describing words with the name and the rest as a note', () => {
+  assert.deepEqual(parseIngredient('3 boneless, skinless chicken breasts'), { item: 'boneless skinless chicken breasts', amount: '3', pantry: false });
+  assert.equal(parseIngredient('1 small yellow onion ((diced))')?.note, 'diced');
+  assert.equal(parseIngredient('2 (15-oz.) cans white beans, drained and rinsed')?.note, 'drained and rinsed');
+  assert.equal(parseIngredient('2 cups shredded cheddar cheese, divided')?.note, 'shredded, divided');
+  assert.equal(parseIngredient('4 tbsp unsalted butter or margarine, softened')?.note, 'softened, or margarine');
+});
 
 test('splits amounts, units and preparation from the thing to buy', () => {
   assert.deepEqual(item('2 cups shredded cheddar cheese, divided'), { item: 'cheddar cheese', amount: '2 cups', pantry: false });
