@@ -19,7 +19,7 @@ const RESUBMIT = fs.existsSync(path.join(__dirname, 'hood-games-resubmit.txt'));
   const att = await api(`/v1/appStoreReviewDetails/${detail.id}/appStoreReviewAttachments`).catch(() => ({ data: [] }));
   console.log(`review attachments: ${att.data.map((a) => `${a.attributes.fileName} (${a.attributes.assetDeliveryState?.state})`).join(', ') || 'none'}`);
   if (!RESUBMIT) { console.log('Not resubmitting yet (waiting on the screen recording).'); return; }
-  if (!att.data.length) { console.log('No recording attached yet; not resubmitting.'); return; }
+  if (!att.data.length && !NOTES.includes('share.icloud.com')) { console.log('No recording attached or linked yet; not resubmitting.'); return; }
 
   const open = (await api(`/v1/reviewSubmissions?filter[app]=${app.id}&filter[state]=UNRESOLVED_ISSUES,READY_FOR_REVIEW&limit=5`)).data[0];
   if (open) {

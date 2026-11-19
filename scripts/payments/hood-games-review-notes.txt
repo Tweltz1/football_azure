@@ -1,5 +1,6 @@
 SCREEN RECORDING
-Attached to this submission (App Review attachment): recorded on a physical iPhone running the latest iOS, starting from app launch. It shows: home screen, Sign in with Apple, joining a game with a room code from two phones, a Hood Quest adventure with voice chat, the per-player Mute and Report buttons, and Delete account.
+Video: https://share.icloud.com/photos/08cgmk2M0iTqi0pEeCEB5W-2Q
+Recorded on a physical iPhone running the latest iOS, starting from app launch. It shows: home screen, Sign in with Apple, joining a game with a room code from two phones, a Hood Quest adventure with voice chat, the per-player Mute and Report buttons, and Delete account.
 
 1. PURPOSE AND AUDIENCE
 Hood Games is game night for a group of friends or family who are in the same room or apart. One phone (or a TV) hosts a room, everyone else joins with the room code, and the group plays party games, card games and AI-narrated tabletop adventures (Hood Quest) on the phones they already have. No extra hardware, no ads, no purchases. Audience: adults and teens playing with people they know.
