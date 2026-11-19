@@ -11,6 +11,7 @@ import { usePlan } from '../../lib/plan';
 import { newItems } from '../../lib/recipes';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
+import { titleCase } from '../../lib/caps';
 
 const SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -189,7 +190,7 @@ export default function PlanScreen() {
                     <RecipePicture recipe={r} size={44} style={{ width: 44, borderRadius: 12 }} />
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: t.text, fontWeight: '600', fontSize: 15 }} numberOfLines={1}>
-                        {r.title}
+                        {titleCase(r.title)}
                       </Text>
                       {!!r.minutes && <Text style={{ color: t.textMuted, fontSize: 12 }}>{r.minutes} min</Text>}
                     </View>
@@ -241,6 +242,12 @@ export default function PlanScreen() {
                       >
                         {task.title}
                       </Text>
+                      {task.lines?.map((l) => (
+                        <Text key={l.meal} style={{ color: t.text, fontSize: 14, lineHeight: 19 }}>
+                          <Text style={{ fontWeight: '600' }}>{l.meal}: </Text>
+                          {l.items}
+                        </Text>
+                      ))}
                       <Text style={{ color: t.textMuted, fontSize: 13 }}>{task.detail}</Text>
                     </View>
                     <View style={[styles.check, done ? { backgroundColor: t.primary, borderColor: t.primary } : { borderColor: t.textMuted }]}>

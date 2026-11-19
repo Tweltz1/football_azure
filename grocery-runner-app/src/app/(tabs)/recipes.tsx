@@ -11,6 +11,7 @@ import { FILTERS, labelsOf, matchesFilters } from '../../lib/diet';
 import { newItems, Recipe, SUGGESTED } from '../../lib/recipes';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
+import { titleCase } from '../../lib/caps';
 
 const time = (m: number) => (m >= 120 ? `${Math.round(m / 60)} hr` : `${m} min`);
 
@@ -52,7 +53,7 @@ export default function RecipesScreen() {
         <RecipePicture recipe={r} size={118} style={{ borderRadius: 0, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg }} />
         <View style={{ padding: 10, gap: 3 }}>
           <Text style={[styles.title, { color: t.text }]} numberOfLines={2}>
-            {r.title}
+            {titleCase(r.title)}
           </Text>
           <Text style={{ color: t.textMuted, fontSize: 12 }} numberOfLines={1}>{meta.join(' · ')}</Text>
           {labels.length > 0 && (

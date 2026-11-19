@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth';
 import { CATEGORIES, Category, shareRecipe } from '../lib/community';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
+import { titleCase } from '../lib/caps';
 
 /** Shares one of your recipes with the community: pick a category and the name to show. */
 export default function ShareScreen() {
@@ -57,7 +58,7 @@ export default function ShareScreen() {
             >
               <RecipePicture recipe={r} size={56} style={{ width: 56 }} />
               <Text style={{ flex: 1, color: t.text, fontSize: 16, fontWeight: '600' }} numberOfLines={2}>
-                {r.title}
+                {titleCase(r.title)}
               </Text>
               <Ionicons name="chevron-forward" size={20} color={t.textMuted} />
             </Pressable>
@@ -85,7 +86,7 @@ export default function ShareScreen() {
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-      <Text style={{ color: t.text, fontSize: 22, fontWeight: '800' }}>{recipe.title}</Text>
+      <Text style={{ color: t.text, fontSize: 22, fontWeight: '800' }}>{titleCase(recipe.title)}</Text>
       <Text style={{ color: t.textMuted, marginTop: 4 }}>
         {recipe.items.length} ingredient{recipe.items.length === 1 ? '' : 's'} will be shared. Your photo stays on your phone.
       </Text>

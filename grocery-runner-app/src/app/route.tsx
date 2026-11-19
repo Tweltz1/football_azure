@@ -17,6 +17,7 @@ import { ListItem, Store } from '../lib/types';
 import { planRoute } from '../lib/routing/planRoute';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
+import { capFirst } from '../lib/caps';
 
 const FEET_PER_CELL = 5;
 // About 500 ft: big-box stores plus GPS error, but not the house down the road.
@@ -184,7 +185,7 @@ export default function RouteScreen() {
                 />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: t.text, fontSize: 17, textDecorationLine: checked.has(it.id) ? 'line-through' : 'none' }}>
-                    {it.name}
+                    {capFirst(it.name)}
                   </Text>
                   {!checked.has(it.id) && <SaleBadge deal={dealFor(deals, it.name)} name={it.name} />}
                 </View>

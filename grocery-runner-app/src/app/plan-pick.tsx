@@ -8,6 +8,7 @@ import { fromIso, WEEKDAYS } from '../lib/mealPlan';
 import { usePlan } from '../lib/plan';
 import { Recipe } from '../lib/recipes';
 import { radius, useTheme } from '../lib/theme';
+import { titleCase } from '../lib/caps';
 
 /** Pick a recipe for one day of the meal plan (opened from the Plan tab's + buttons). */
 export default function PlanPickScreen() {
@@ -31,7 +32,7 @@ export default function PlanPickScreen() {
       <RecipePicture recipe={r} size={48} style={{ width: 48, borderRadius: 12 }} />
       <View style={{ flex: 1 }}>
         <Text style={{ color: t.text, fontWeight: '600', fontSize: 15 }} numberOfLines={2}>
-          {r.title}
+          {titleCase(r.title)}
         </Text>
         <Text style={{ color: t.textMuted, fontSize: 12 }}>
           {[r.minutes ? `${r.minutes} min` : null, `${r.items.filter((i) => !i.pantry).length} items`].filter(Boolean).join(' · ')}
