@@ -37,6 +37,7 @@ const PREP =
 const PANTRY = new Set(
   [
     'salt', 'kosher salt', 'sea salt', 'pepper', 'black pepper', 'ground black pepper', 'salt and pepper',
+    'salt and black pepper', 'salt and ground black pepper', 'kosher salt and pepper', 'salt and freshly ground black pepper',
     'olive oil', 'extra virgin olive oil', 'vegetable oil', 'canola oil', 'cooking spray', 'oil', 'sugar',
     'granulated sugar', 'white sugar', 'flour', 'all purpose flour', 'baking soda', 'baking powder', 'water',
     'ice', 'ice water', 'hot water', 'warm water', 'cold water', 'vanilla', 'vanilla extract', 'garlic powder',
@@ -74,10 +75,17 @@ export function parseIngredient(raw: string): RecipeItem | null {
       line = line.slice(word[0].length);
     }
   }
-  // "(14 oz)" package sizes right after the amount belong to the amount.
-  const size = line.match(/^\(([^)]{1,25})\)\s*/);
+  // "heaping cups", "scant teaspoon": how full, part of the amount.
+  const fill = line.match(/^(heaping|heaped|level|scant|rounded|generous|good)\s+/i);
+  if (fill) {
+    amount.push(fill[1]);
+    line = line.slice(fill[0].length);
+  }
+  // "(14 oz)" package sizes right after the amount belong to the amount, also written without
+  // brackets as recipe plugins print them: "2 4 oz cans", "1 15-ounce can".
+  const size = line.match(/^\(([^)]{1,25})\)\s*/) ?? line.match(/^(\d+(?:\.\d+)?\s*-?\s*(?:fl\.?\s*oz|oz|ounces?|ml|g|grams?|lbs?|pounds?)\.?)\s+(?=\S)/i);
   if (size) {
-    amount.push(`(${size[1]})`);
+    amount.push(`(${size[1].replace(/\s*-\s*/, ' ')})`);
     line = line.slice(size[0].length);
   }
   for (let n = 0; n < 2; n++) {
@@ -88,8 +96,11 @@ export function parseIngredient(raw: string): RecipeItem | null {
   }
   line = line.replace(/^of\s+/i, '');
 
-  let name = line
-    .replace(/\([^)]*\)/g, ' ') // notes in brackets
+  // Notes in brackets, nested too: WP Recipe Maker writes "onion ((diced))" and "chicken (, cooked)".
+  let bare = line;
+  for (let n = 0; n < 4 && /\([^()]*\)/.test(bare); n++) bare = bare.replace(/\([^()]*\)/g, ' ');
+  bare = bare.replace(/\(.*$/, ' ').replace(/[()]/g, ' ');
+  let name = bare
     .split(/,|;|\s+-\s+|\s+–\s+/)[0] // "onion, diced" → "onion"
     .replace(/\s+or\s+.*$/i, '') // "butter or margarine" → "butter"
     .replace(PREP, ' ')
@@ -126,7 +137,9 @@ function joinWrapped(lines: string[]): string[] {
 }
 
 /** The ingredient lines of a recipe: after an "Ingredients" heading if there is one, else every line that starts with an amount. */
-export function ingredientLines(lines: string[]): string[] {
+export function ingredientLines(lines: string[], structured = false): string[] {
+  // A recipe page's own ingredient data has one ingredient per entry; never join entries together.
+  if (structured) return lines.map((l) => l.trim()).filter((l) => l && !INGREDIENTS_HEADING.test(l));
   const start = lines.findIndex((l) => INGREDIENTS_HEADING.test(l));
   if (start >= 0) {
     const rest = lines.slice(start + 1);
@@ -137,10 +150,10 @@ export function ingredientLines(lines: string[]): string[] {
   return joined.filter((l) => startsWithAmount(l) && normalise(l).split(' ').length <= 14);
 }
 
-export function parseRecipeLines(lines: string[], title = ''): ParsedRecipe {
+export function parseRecipeLines(lines: string[], title = '', structured = false): ParsedRecipe {
   const servings = lines.map((l) => l.match(SERVINGS)).find(Boolean);
   const merged = new Map<string, RecipeItem>();
-  for (const line of ingredientLines(lines)) {
+  for (const line of ingredientLines(lines, structured)) {
     const item = parseIngredient(line);
     if (!item) continue;
     const key = itemKey(item.item);
@@ -246,8 +259,9 @@ export function parseRecipePage(html: string): ParsedRecipe {
       const lines: unknown[] = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(/\r?\n|<br\s*\/?>/i) : [];
       if (lines.length) {
         const parsed = parseRecipeLines(
-          ['Ingredients', ...lines.map((l) => decode(stripTags(String(l))))],
+          lines.map((l) => decode(stripTags(String(l)))),
           decode(stripTags(String(recipe.name ?? ''))),
+          true,
         );
         const yieldText = Array.isArray(recipe.recipeYield) ? recipe.recipeYield[0] : recipe.recipeYield;
         if (yieldText && !parsed.servings) parsed.servings = String(yieldText).slice(0, 40);
@@ -264,7 +278,7 @@ export function parseRecipePage(html: string): ParsedRecipe {
       '',
   ).split(/\s[|–—-]\s|\|/)[0].trim();
   const marked = markedIngredients(html);
-  if (marked.length) return { ...parseRecipeLines(['Ingredients', ...marked], title), imageUrl: ogImage(html) };
+  if (marked.length) return { ...parseRecipeLines(marked, title, true), imageUrl: ogImage(html) };
   const text = html
     .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<(br|\/p|\/li|\/h\d|\/div|\/tr)[^>]*>/gi, '\n');

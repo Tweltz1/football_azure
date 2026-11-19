@@ -37,3 +37,38 @@ test('microdata and WP Recipe Maker pages without JSON-LD', () => {
   assert.equal(r.title, 'Banana Bread');
   assert.deepEqual(r.items.map((i) => i.item), ['ripe bananas', 'flour']);
 });
+
+test('WP Recipe Maker JSON-LD lines (tastesbetterfromscratch white chicken chili)', () => {
+  const lines = [
+    '1 Tablespoon olive oil',
+    '1 small yellow onion ((diced))',
+    '2 garlic cloves ((minced))',
+    '2 1/2 cups low-sodium chicken broth',
+    '2 4 oz cans green chilies',
+    '1 1/2 teaspoons ground cumin',
+    '1/2 small lime ((juiced))',
+    'salt and ground black pepper ((to taste))',
+    '2 15 oz cans great northern beans ((drained and rinsed))',
+    '1 cup corn ((frozen, canned or fresh))',
+    '2 heaping cups chicken ((cooked and shredded))',
+    '1 (14.5 oz) can diced tomatoes (, drained)',
+    '1 15-ounce can black beans',
+  ];
+  const html = `<script type="application/ld+json">${JSON.stringify({ '@type': 'Recipe', name: 'Chili', recipeIngredient: lines })}</script>`;
+  const got = Object.fromEntries(parseRecipePage(html).items.map((i) => [i.item, i.amount]));
+  assert.deepEqual(got, {
+    'olive oil': '1 Tablespoon',
+    'yellow onion': '1 small',
+    'garlic cloves': '2',
+    'low-sodium chicken broth': '2 1/2 cups',
+    'green chilies': '2 (4 oz) cans',
+    'ground cumin': '1 1/2 teaspoons',
+    lime: '1/2 small',
+    'salt and ground black pepper': '',
+    'great northern beans': '2 (15 oz) cans',
+    corn: '1 cup',
+    chicken: '2 heaping cups',
+    'diced tomatoes': '1 (14.5 oz) can',
+    'black beans': '1 (15 ounce) can',
+  });
+});

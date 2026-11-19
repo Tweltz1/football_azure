@@ -1,7 +1,7 @@
 import { NativeTabs } from 'expo-router/native-tabs';
 import { useTheme } from '../../lib/theme';
 
-// The four main parts of the app, always one tap away at the bottom of the screen.
+// The five main parts of the app, always one tap away at the bottom of the screen.
 export default function TabsLayout() {
   const t = useTheme();
   return (
@@ -21,6 +21,10 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="stores">
         <NativeTabs.Trigger.Icon sf={{ default: 'storefront', selected: 'storefront.fill' }} />
         <NativeTabs.Trigger.Label>Stores</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="profile">
+        <NativeTabs.Trigger.Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} />
+        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

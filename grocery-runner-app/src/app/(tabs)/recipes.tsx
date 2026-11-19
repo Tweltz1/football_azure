@@ -72,7 +72,6 @@ export default function RecipesScreen() {
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: t.bg }}>
       <ScreenHeader
         title="Recipes"
-        iconAction={{ icon: session ? 'person-circle' : 'person-circle-outline', label: 'Account', onPress: () => router.push('/account') }}
         action={
           view === 'community'
             ? { label: 'Share', icon: 'share-social', onPress: () => router.push('/share') }
@@ -116,7 +115,7 @@ export default function RecipesScreen() {
           {mine.length > 0 && !session && !q && !on.length && (
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/account')}
+              onPress={() => router.navigate('/profile')}
               style={[styles.row, { backgroundColor: t.primarySoft, marginTop: 8 }]}
             >
               <Ionicons name="cloud-upload" size={22} color={t.primary} />
@@ -142,7 +141,7 @@ export default function RecipesScreen() {
           )}
           {!mine.length && !q && !on.length && (
             <Text style={{ color: t.textMuted, fontSize: 13, marginTop: 16 }}>
-              Tap Add to save your own recipe from a photo, a link or pasted text. Sign in (the person icon) to keep your
+              Tap Add to save your own recipe from a photo, a link or pasted text. Sign in on the Profile tab to keep your
               recipes on every phone.
             </Text>
           )}
