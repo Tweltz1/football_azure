@@ -63,3 +63,4 @@ jobs:
           console.log('TALKSHOPS_CONNECT_E2E ' + JSON.stringify(out, null, 1));
           JS
           node e2e.mjs
+# Re-run 2026-11-19 after Connect platform profile completed.
