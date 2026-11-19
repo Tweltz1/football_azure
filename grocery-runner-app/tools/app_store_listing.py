@@ -31,6 +31,7 @@ EDITABLE = {"PREPARE_FOR_SUBMISSION", "DEVELOPER_REJECTED", "REJECTED", "METADAT
 
 _token = {"value": "", "at": 0}
 todo = []  # things left for the account holder
+blocking = []  # failures that should stop a submission
 
 
 def token():
@@ -74,6 +75,9 @@ def step(name, fn):
     except Exception as e:  # keep going so one problem doesn't hide the rest
         print(f"FAIL  {name}: {e}")
         todo.append(f"{name} (the API said: {e})")
+        # App info (categories, subtitle, age rating) is locked while the live version uses it; that's fine for an update.
+        if "INVALID_STATE" not in str(e) and "not editable" not in str(e):
+            blocking.append(name)
 
 
 apps = call("GET", "/apps", query={"filter[bundleId]": BUNDLE_ID})["data"]
@@ -332,7 +336,7 @@ def submit():
     print(f"      submission {state}")
 
 
-if os.environ.get("SUBMIT") == "1" and not todo:
+if os.environ.get("SUBMIT") == "1" and not blocking:
     step("Submit to App Review", submit)
 elif os.environ.get("SUBMIT") == "1":
     print("Not submitting: fix the failed steps above first.")
