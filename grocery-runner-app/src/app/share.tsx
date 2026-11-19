@@ -44,9 +44,10 @@ export default function ShareScreen() {
         {own.length === 0 ? (
           <>
             <Text style={{ color: t.textMuted, fontSize: 15 }}>
-              Add a recipe first, from a photo of a recipe card, a link or pasted text. Then share it here.
+              Create your own recipe with a photo of the dish, or add one from a recipe card, a link or pasted text. Then share it here.
             </Text>
-            <Button title="Add a recipe" icon="add" onPress={() => router.replace('/scan')} style={{ marginTop: 8 }} />
+            <Button title="Create your own" icon="create" onPress={() => router.replace('/recipe-new')} style={{ marginTop: 8 }} />
+            <Button title="Add from a photo or link" icon="add" variant="secondary" onPress={() => router.replace('/scan')} />
           </>
         ) : (
           own.map((r) => (

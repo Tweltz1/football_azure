@@ -84,9 +84,31 @@ drop policy if exists "grocery community remove" on public.grocery_community_rec
 create policy "grocery community remove" on public.grocery_community_recipes
   for delete to authenticated
   using (user_id = (select auth.uid()));
+-- Steps with minutes, and a photo of the dish. Shared photos live in the grocery-recipe-photos bucket
+-- (in a folder named for the sharer), so a shared recipe can't point at any other site.
+alter table public.grocery_community_recipes add column if not exists steps jsonb
+  check (steps is null or (jsonb_typeof(steps) = 'array' and jsonb_array_length(steps) <= 40));
+alter table public.grocery_community_recipes add column if not exists photo_url text
+  check (photo_url is null or (char_length(photo_url) <= 300
+    and photo_url like 'https://%(ref)s.supabase.co/storage/v1/object/public/grocery-recipe-photos/%%'));
+-- Photographer and license for the starter recipes' photos (set by tools/seed_community.py only).
+alter table public.grocery_community_recipes add column if not exists photo_credit text check (char_length(photo_credit) <= 200);
 revoke all on public.grocery_community_recipes from anon, authenticated;
 grant select on public.grocery_community_recipes to anon, authenticated;
-grant insert (author, title, category, emoji, minutes, servings, items), delete on public.grocery_community_recipes to authenticated;
+grant insert (author, title, category, emoji, minutes, servings, items, steps, photo_url), delete on public.grocery_community_recipes to authenticated;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  values ('grocery-recipe-photos', 'grocery-recipe-photos', true, 3145728, array['image/jpeg'])
+  on conflict (id) do update set public = true, file_size_limit = 3145728, allowed_mime_types = array['image/jpeg'];
+drop policy if exists "grocery recipe photo add" on storage.objects;
+create policy "grocery recipe photo add" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'grocery-recipe-photos' and (storage.foldername(name))[1] = (select auth.uid())::text
+    and (select public.grocery_can_share()));
+drop policy if exists "grocery recipe photo remove" on storage.objects;
+create policy "grocery recipe photo remove" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'grocery-recipe-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 create table if not exists public.grocery_recipe_reports (
   recipe_id uuid not null references public.grocery_community_recipes (id) on delete cascade,
@@ -129,7 +151,7 @@ grant execute on function public.grocery_recipe_saved(uuid) to anon, authenticat
 create or replace function public.grocery_check_recipe() returns trigger
 language plpgsql set search_path = '' as $$
 declare
-  body text := lower(new.title || ' ' || new.author || ' ' || coalesce(new.servings, '') || ' ' || new.items::text);
+  body text := lower(new.title || ' ' || new.author || ' ' || coalesce(new.servings, '') || ' ' || new.items::text || ' ' || coalesce(new.steps::text, ''));
   w text;
 begin
   foreach w in array %(blocked)s loop
@@ -185,7 +207,7 @@ end;
 $$;
 revoke all on function public.grocery_delete_account() from public, anon;
 grant execute on function public.grocery_delete_account() to authenticated;
-""" % {"blocked": "array[" + ",".join("'" + w.replace("'", "''").replace(" ", "\\s+") + "'" for w in BLOCKED) + "]"}
+""" % {"ref": REF, "blocked": "array[" + ",".join("'" + w.replace("'", "''").replace(" ", "\\s+") + "'" for w in BLOCKED) + "]"}
 
 
 def call(method, path, payload=None):

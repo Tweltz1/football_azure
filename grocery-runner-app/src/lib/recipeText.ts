@@ -40,7 +40,7 @@ const UNITS = [
 const UNIT = new RegExp(String.raw`^(?:${UNITS.join('|')})(?=\s|$|\))`, 'i');
 // Removed from the item name: they say how to prepare it, not what to buy.
 const PREP =
-  /\b(finely|coarsely|roughly|thinly|freshly|lightly|well|very|chopped|(?:diced|crushed|stewed)(?!\s+(?:tomato|red pepper|pineapple))|minced|sliced|grated|shredded|peeled|seeded|cored|trimmed|halved|quartered|cubed|melted|softened|beaten|divided|drained|rinsed|packed|sifted|toasted|cooked|uncooked|room temperature|at room temperature|cut into [^,]+|plus more[^,]*|or more[^,]*|to taste|for serving|for garnish|for topping|for dusting|optional|if desired|as needed)\b/gi;
+  /\b(finely|coarsely|roughly|thinly|freshly|lightly|well|very|chopped|(?:diced|crushed|stewed)(?!\s+(?:tomato|red pepper|pineapple))|minced|sliced|grated|shredded|peeled|seeded|cored|trimmed|halved|quartered|picked|deseeded|de-seeded|in half|cubed|melted|softened|beaten|divided|drained|rinsed|packed|sifted|toasted|cooked|uncooked|room temperature|at room temperature|cut into [^,]+|plus more[^,]*|or more[^,]*|to taste|for serving|for garnish|for topping|for dusting|optional|if desired|as needed)\b/gi;
 const PANTRY = new Set(
   [
     'salt', 'kosher salt', 'sea salt', 'pepper', 'black pepper', 'ground black pepper', 'salt and pepper',
@@ -105,6 +105,12 @@ export function parseIngredient(raw: string): RecipeItem | null {
     line = line.slice(unit[0].length).trim();
   }
   line = line.replace(/^of\s+/i, '');
+  // "2 x 400g tins plum tomatoes": the pack size is part of the amount.
+  const packs = line.match(/^x\s+(\d+(?:\.\d+)?\s*(?:fl\.?\s*oz|oz|ml|g|kg|lbs?)\.?)\s+((?:tins?|cans?|packs?|packets?|jars?|bottles?|cartons?|bags?|boxes)\s+)?/i);
+  if (packs) {
+    amount.push(`x ${packs[1].replace(/\s+/g, '')}${packs[2] ? ' ' + packs[2].trim() : ''}`);
+    line = line.slice(packs[0].length);
+  }
 
   // Notes in brackets, nested too: WP Recipe Maker writes "onion ((diced))" and "chicken (, cooked)".
   const notes: string[] = [];
@@ -133,6 +139,7 @@ export function parseIngredient(raw: string): RecipeItem | null {
     .replace(/\*+/g, '')
     .replace(/\s+/g, ' ')
     .replace(/^(and|of|the)\s+/i, '')
+    .replace(/\s+(and|or|of|with|in)\s*$/i, '')
     .replace(/[\s.:,]+$/, '')
     .trim()
     .toLowerCase();
@@ -257,11 +264,16 @@ function findRecipe(node: any): any {
 /** Minutes a step mentions: "simmer 20-25 minutes" → 25, "bake for 1 hour" → 60, nothing → 0. */
 export function stepMinutes(text: string): number {
   let most = 0;
-  for (const m of text.matchAll(/(\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*(\d+(?:\.\d+)?))?\s*(hours?|hrs?|minutes?|mins?)\b/gi)) {
-    const n = Number(m[2] ?? m[1]) * (/^h/i.test(m[3]) ? 60 : 1);
+  // "1 hr 15 mins" → 75, "10 to 15 more minutes" → 15, "40 seconds" → 1.
+  const re =
+    /(\d+(?:\.\d+)?)(?:\s*(?:-|–|to)\s*(\d+(?:\.\d+)?))?\s*(?:more\s+)?(hours?|hrs?|minutes?|mins?|seconds?|secs?)\b(?:,?\s*(?:and\s+)?(\d+)\s*(?:minutes?|mins?)\b)?/gi;
+  for (const m of text.matchAll(re)) {
+    const unit = m[3].toLowerCase();
+    let n = Number(m[2] ?? m[1]) * (unit.startsWith('h') ? 60 : unit.startsWith('s') ? 1 / 60 : 1);
+    if (unit.startsWith('h') && m[4]) n += Number(m[4]);
     if (n < 24 * 60) most = Math.max(most, n);
   }
-  return Math.round(most);
+  return most > 0 && most < 1 ? 1 : Math.round(most);
 }
 
 // deno-lint-ignore no-explicit-any

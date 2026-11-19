@@ -26,8 +26,10 @@ export type Recipe = {
   emoji?: string;
   /** File name in the app's documents folder: the photo a recipe was scanned from. */
   photo?: string;
-  /** The recipe page's own picture, for recipes added from a link. */
+  /** The recipe page's own picture, for recipes added from a link (or a shared recipe's photo). */
   imageUrl?: string;
+  /** Who took the photo and its license, when it isn't the shopper's own. */
+  photoCredit?: string;
   /** How to make it, with minutes per step (suggested recipes, and linked ones that publish steps). */
   steps?: Step[];
   /** The web page a recipe was added from. */
@@ -150,7 +152,7 @@ export const SUGGESTED: Recipe[] = [
   ]),
   r('pizza', 'Homemade pepperoni pizza', 30, '🍕', ['family'], [
     i('pizza dough', '1 lb'), i('pizza sauce', '1 jar'), i('shredded mozzarella cheese', '2 cups'),
-    i('pepperoni', '6 oz'), i('bagged salad', '1'), p('olive oil', '1 tbsp'), p('all-purpose flour', 'for dusting'),
+    i('pepperoni', '6 oz'), i('bagged salad', '1'), i('salad dressing', '1 bottle'), p('olive oil', '1 tbsp'), p('all-purpose flour', 'for dusting'),
   ]),
   // Added for more healthy, vegetarian, gluten-free and dairy-free choices.
   r('bowls', 'Chicken burrito bowls', 30, '🌯', ['healthy', 'family'], [

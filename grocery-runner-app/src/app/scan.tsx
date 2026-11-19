@@ -157,6 +157,17 @@ export default function ScanScreen() {
         <Button title="Read recipe" icon="sparkles" disabled={text.trim().length < 8} onPress={submitText} />
       </Card>
       {error && <Text style={{ color: t.danger, marginTop: 12 }}>{error}</Text>}
+      {mode !== 'text' && (
+        <>
+          <SectionTitle>Or make your own</SectionTitle>
+          <Card style={{ gap: 10 }}>
+            <Text style={{ color: t.textMuted }}>
+              Snap a photo of a dish you make, type the ingredients and steps, and share it with the Community if you want.
+            </Text>
+            <Button title="Create your own" icon="create" variant="secondary" onPress={() => router.replace('/recipe-new')} />
+          </Card>
+        </>
+      )}
     </ScrollView>
   );
 }

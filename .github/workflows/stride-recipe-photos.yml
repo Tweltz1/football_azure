@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - 'grocery-runner-app/tools/fetch_recipe_photos.py'
+      - 'grocery-runner-app/tools/photo_retry.txt'
       - '.github/workflows/stride-recipe-photos.yml'
 
 jobs:
