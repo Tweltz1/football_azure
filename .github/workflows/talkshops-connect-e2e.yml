@@ -23,7 +23,7 @@ jobs:
         run: |
           cat > e2e.mjs <<'JS'
           const key = process.env.STRIPE_KEY;
-          const mask = (s) => String(s || '').replace(/acct_[A-Za-z0-9]+/g, 'acct_***').replace(/[rs]k_(live|test)_[A-Za-z0-9*]+/g, 'key_***').replace(/[\w.+-]+@[\w.-]+/g, 'email_***');
+          const mask = (s) => String(s || '').replace(/acct_[A-Za-z0-9]+/g, 'acct_***').replace(/[rs]k_(live|test)_[A-Za-z0-9*]+/g, 'key_***').replace(/[\w.+-]+@[\w.-]+/g, 'email_***').replace(/mk_[A-Za-z0-9]+/g, 'mk_***').replace(/'[rs]k_live_\.\.\.[A-Za-z0-9]+'/g, "'key_***'");
           async function call(method, path, body) {
             const r = await fetch('https://api.stripe.com/v1/' + path, {
               method, headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -39,7 +39,10 @@ jobs:
             if (!key) throw new Error('no key');
             const list = await call('GET', 'accounts?limit=100');
             out.list_accounts = list.status === 200 ? { ok: true, count: list.j.data.length } : err(list);
-            const a = await call('POST', 'accounts', {
+            // Live Standard accounts can't be deleted by API, so reuse the test account an earlier run left, if any.
+            const prior = list.status === 200 ? list.j.data.find((x) => x.metadata?.talkshops_test === 'connect-e2e') : null;
+            out.reused_test_account = !!prior;
+            const a = prior ? { status: 200, j: prior } : await call('POST', 'accounts', {
               type: 'standard', country: 'US', 'business_profile[name]': 'Talk Shops connect test (delete me)', 'metadata[talkshops_test]': 'connect-e2e',
             });
             out.create_account = a.status === 200 ? { ok: true, type: a.j.type, charges_enabled: a.j.charges_enabled } : err(a);
@@ -51,7 +54,7 @@ jobs:
               out.read_account = g.status === 200 ? { ok: true } : err(g);
             }
           } catch (e) { out.crash = mask(e.message); }
-          if (id) {
+          if (id && !out.reused_test_account && process.env.TRY_DELETE === '1') {
             const d = await call('DELETE', 'accounts/' + id);
             out.delete_account = d.status === 200 ? { ok: true, deleted: d.j.deleted } : err(d);
             if (d.status !== 200) {
@@ -63,4 +66,3 @@ jobs:
           console.log('TALKSHOPS_CONNECT_E2E ' + JSON.stringify(out, null, 1));
           JS
           node e2e.mjs
-# Re-run 2026-11-19 after Connect platform profile completed.
