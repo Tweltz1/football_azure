@@ -1,8 +1,8 @@
 """Adds Shop Stride's starter recipes to the Community tab, so a new shopper never opens it empty. Safe to re-run.
 
 The recipes are posted by a "Shop Stride" account (shopstride@weltzcraft.com) that can't sign in: it has no
-password and is banned from signing in. A recipe already posted by that account with the same title is skipped,
-so re-running only adds new ones. Run by .github/workflows/grocery-runner-store.yml ([stride-seed]).
+password and is banned from signing in. A recipe already posted by that account with the same title is updated
+with the current steps, totals, items and photo (tools/community_photos, credits in credits.json). Run by .github/workflows/grocery-runner-store.yml ([stride-seed]).
 Never prints keys or the access token."""
 import json
 import os
