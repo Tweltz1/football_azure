@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEMO, demoCommunity } from './demo';
+import { File } from 'expo-file-system';
+import { hasPhoto, photoUri } from './recipePhotos';
 import { Recipe, RecipeItem } from './recipes';
+import type { Step } from './recipeSteps';
 import { supabase } from './supabase';
 
 // Recipes shoppers share with each other (table grocery_community_recipes, set up by
@@ -28,13 +31,17 @@ type Row = {
   minutes: number | null;
   servings: string | null;
   items: RecipeItem[];
+  steps: Step[] | null;
+  photo_url: string | null;
+  photo_credit: string | null;
   saves: number;
   created_at: string;
 };
 
 export type CommunityRecipe = Recipe & { authorId: string; saves: number; createdAt: string };
 
-const COLUMNS = 'id,user_id,author,title,category,emoji,minutes,servings,items,saves,created_at';
+const COLUMNS = 'id,user_id,author,title,category,emoji,minutes,servings,items,steps,photo_url,photo_credit,saves,created_at';
+const PHOTOS = 'grocery-recipe-photos';
 
 const toRecipe = (r: Row): CommunityRecipe => ({
   id: `c-${r.id}`,
@@ -44,6 +51,11 @@ const toRecipe = (r: Row): CommunityRecipe => ({
   minutes: r.minutes ?? undefined,
   emoji: r.emoji ?? CATEGORIES.find((c) => c.key === r.category)?.emoji,
   items: Array.isArray(r.items) ? r.items.filter((i) => i && typeof i.item === 'string') : [],
+  steps: Array.isArray(r.steps)
+    ? r.steps.filter((st) => st && typeof st.text === 'string').map((st) => ({ text: st.text, minutes: Number(st.minutes) || 0, ...(st.during ? { during: true } : {}) }))
+    : undefined,
+  imageUrl: r.photo_url ?? undefined,
+  photoCredit: r.photo_credit ?? undefined,
   source: 'community',
   author: r.author,
   category: r.category,
@@ -84,7 +96,20 @@ export async function fetchCommunityRecipe(communityId: string): Promise<Communi
   return r;
 }
 
+/** Uploads the recipe's own photo (taken in the app) so others can see it. Returns its public address. */
+async function uploadPhoto(recipe: Recipe): Promise<string | null> {
+  if (!recipe.photo || !hasPhoto(recipe.photo)) return null;
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return null;
+  const path = `${auth.user.id}/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const bytes = await new File(photoUri(recipe.photo)).bytes();
+  const { error } = await supabase.storage.from(PHOTOS).upload(path, bytes, { contentType: 'image/jpeg' });
+  if (error) throw new Error(`Couldn’t upload the photo: ${error.message}`);
+  return supabase.storage.from(PHOTOS).getPublicUrl(path).data.publicUrl;
+}
+
 export async function shareRecipe(recipe: Recipe, category: Category, author: string): Promise<string> {
+  const photoUrl = await uploadPhoto(recipe);
   const { data, error } = await supabase
     .from('grocery_community_recipes')
     .insert({
@@ -95,6 +120,10 @@ export async function shareRecipe(recipe: Recipe, category: Category, author: st
       minutes: recipe.minutes ?? null,
       servings: recipe.servings?.slice(0, 40) || null,
       items: recipe.items.slice(0, 60).map((i) => ({ item: i.item.slice(0, 80), amount: (i.amount ?? '').slice(0, 40), pantry: !!i.pantry })),
+      steps: recipe.steps?.length
+        ? recipe.steps.slice(0, 40).map((st) => ({ text: st.text.slice(0, 600), minutes: Math.max(0, Math.min(1440, Math.round(st.minutes))), ...(st.during ? { during: true } : {}) }))
+        : null,
+      photo_url: photoUrl,
     })
     .select('id')
     .single();
@@ -105,6 +134,10 @@ export async function shareRecipe(recipe: Recipe, category: Category, author: st
 }
 
 export async function removeShared(communityId: string) {
+  // The photo goes too (it's only stored for this recipe).
+  const url = seen.get(`c-${communityId}`)?.imageUrl;
+  const marker = `/object/public/${PHOTOS}/`;
+  if (url?.includes(marker)) await supabase.storage.from(PHOTOS).remove([url.split(marker)[1]]).catch(() => {});
   const { error } = await supabase.from('grocery_community_recipes').delete().eq('id', communityId);
   if (error) throw new Error(error.message);
   seen.delete(`c-${communityId}`);

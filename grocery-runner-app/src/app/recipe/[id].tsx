@@ -216,6 +216,11 @@ export default function RecipeScreen() {
             Photo: {bundledPhoto(recipe.id)!.credit.creator} · {bundledPhoto(recipe.id)!.credit.license}
           </Text>
         )}
+        {!!recipe.photoCredit && !recipe.photo && (
+          <Text style={{ color: t.textMuted, fontSize: 11, marginTop: -4 }} numberOfLines={1}>
+            Photo: {recipe.photoCredit}
+          </Text>
+        )}
         <Text style={[styles.title, { color: t.text }]}>{titleCase(recipe.title)}</Text>
         <View style={styles.metaRow}>
           {[

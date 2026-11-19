@@ -26,8 +26,10 @@ export type Recipe = {
   emoji?: string;
   /** File name in the app's documents folder: the photo a recipe was scanned from. */
   photo?: string;
-  /** The recipe page's own picture, for recipes added from a link. */
+  /** The recipe page's own picture, for recipes added from a link (or a shared recipe's photo). */
   imageUrl?: string;
+  /** Who took the photo and its license, when it isn't the shopper's own. */
+  photoCredit?: string;
   /** How to make it, with minutes per step (suggested recipes, and linked ones that publish steps). */
   steps?: Step[];
   /** The web page a recipe was added from. */

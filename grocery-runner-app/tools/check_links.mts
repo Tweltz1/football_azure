@@ -1,7 +1,7 @@
 // Reads real recipe pages with the app's own parser (src/lib/recipeText.ts) and prints what a shopper
 // would get: title, every ingredient, every step with its minutes, and the total. Flags pages where the
 // ingredient or step count doesn't match the page's own recipe data. Run by grocery-runner-store.yml ([stride-links]).
-import { parseRecipePage } from '../src/lib/recipeText.ts';
+import { parseRecipePage } from '../src/lib/recipeText';
 
 const URLS = [
   'https://tastesbetterfromscratch.com/creamy-white-chicken-chili/',
