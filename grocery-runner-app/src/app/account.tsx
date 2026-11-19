@@ -10,6 +10,12 @@ import { supabase } from '../lib/supabase';
 import { radius, useTheme } from '../lib/theme';
 
 export default function AccountScreen() {
+  return <AccountContent />;
+}
+
+/** Sign-in or the signed-in account. `embedded` lays it out inside the Profile tab instead of its own screen. */
+export function AccountContent({ embedded = false }: { embedded?: boolean }) {
+  const Box = embedded ? View : ScrollView;
   const t = useTheme();
   const auth = useAuth();
   const { myRecipes } = useData();
@@ -58,7 +64,7 @@ export default function AccountScreen() {
 
   if (!auth.session) {
     return (
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+      <Box {...(embedded ? { style: { paddingVertical: 8 } } : { contentContainerStyle: { padding: 20, paddingBottom: 48 }, keyboardShouldPersistTaps: 'handled' as const })}>
         <View style={{ alignItems: 'center', gap: 10, paddingTop: 8, marginBottom: 28 }}>
           <View style={[styles.hero, { backgroundColor: t.primarySoft }]}>
             <Ionicons name="bookmark" size={40} color={t.primary} />
@@ -70,12 +76,12 @@ export default function AccountScreen() {
           </Text>
         </View>
         <SignInButtons />
-      </ScrollView>
+      </Box>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+    <Box {...(embedded ? {} : { contentContainerStyle: { padding: 16, paddingBottom: 48 }, keyboardShouldPersistTaps: 'handled' as const })}>
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={[styles.avatar, { backgroundColor: t.primarySoft }]}>
           <Ionicons name="person" size={22} color={t.primary} />
@@ -107,11 +113,11 @@ export default function AccountScreen() {
         <Button title="Save" variant="secondary" loading={savingName} disabled={name.trim() === auth.name || !name.trim()} onPress={saveName} />
       </View>
 
-      <Button title="Sign out" icon="log-out-outline" variant="secondary" onPress={() => auth.signOut().then(() => router.back())} style={{ marginTop: 28 }} />
+      <Button title="Sign out" icon="log-out-outline" variant="secondary" onPress={() => auth.signOut().then(() => !embedded && router.back())} style={{ marginTop: 28 }} />
       <Pressable accessibilityRole="button" onPress={deleteAccount} style={{ alignSelf: 'center', marginTop: 28, padding: 8 }}>
         <Text style={{ color: t.danger, fontWeight: '600' }}>Delete account</Text>
       </Pressable>
-    </ScrollView>
+    </Box>
   );
 }
 

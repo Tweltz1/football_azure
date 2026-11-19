@@ -20,6 +20,7 @@ import { newItems, SUGGESTED } from '../../lib/recipes';
 import { itemKey } from '../../lib/sharedAisles';
 import { fromIso, planWeek, WEEKDAYS } from '../../lib/mealPlan';
 import { usePlan } from '../../lib/plan';
+import { baseServings, scaleAmount } from '../../lib/scale';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 
@@ -41,6 +42,8 @@ export default function RecipeScreen() {
   // Staples and things already on the list start unticked.
   // null until the shopper changes something, so a recipe that loads late still gets the default ticks.
   const [touched, setPicked] = useState<Set<number> | null>(null);
+  // Servings the shopper wants; amounts scale from the recipe's own servings (or a ×1, ×2 batch count when it has none).
+  const [wanted, setWanted] = useState<number | null>(null);
   const picked =
     touched ?? new Set(recipe?.items.flatMap((it, n) => (!it.pantry && !onList.has(itemKey(it.item)) ? [n] : [])) ?? []);
 
@@ -50,6 +53,9 @@ export default function RecipeScreen() {
     );
   }
   const mine = recipe.source === 'mine';
+  const base = baseServings(recipe.servings);
+  const servings = wanted ?? base ?? 1;
+  const factor = base ? servings / base : servings;
   const sharedByMe = !!shared && shared.authorId === session?.user.id;
 
   const save = () => {
@@ -63,7 +69,7 @@ export default function RecipeScreen() {
   const needAccount = (what: string) =>
     Alert.alert('Sign in first', `Sign in to ${what}.`, [
       { text: 'Not now', style: 'cancel' },
-      { text: 'Sign in', onPress: () => router.push('/account') },
+      { text: 'Sign in', onPress: () => router.navigate('/profile') },
     ]);
 
   const report = () => {
@@ -189,7 +195,7 @@ export default function RecipeScreen() {
   };
 
   const add = () => {
-    addItems(chosen.map((it) => ({ name: it.item, amount: it.amount })));
+    addItems(chosen.map((it) => ({ name: it.item, amount: scaleAmount(it.amount, factor) })));
     router.dismissTo('/');
   };
 
@@ -202,7 +208,6 @@ export default function RecipeScreen() {
         <View style={styles.metaRow}>
           {[
             recipe.minutes ? `⏱ ${recipe.minutes >= 120 ? `${Math.round(recipe.minutes / 60)} hr` : `${recipe.minutes} min`}` : null,
-            recipe.servings ? `🍽 ${recipe.servings}` : null,
             recipe.author ? `${categoryLabel(recipe.category)} by ${recipe.author}` : mine ? 'Your recipe' : null,
             ...labelsOf(recipe),
           ]
@@ -221,6 +226,33 @@ export default function RecipeScreen() {
             </Text>
           </Pressable>
         )}
+        <View style={[styles.servings, { backgroundColor: t.card }, lift(t)]}>
+          <Text style={{ fontSize: 18 }}>🍽</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: t.text, fontWeight: '800', fontSize: 16 }}>
+              {base ? `${servings} serving${servings === 1 ? '' : 's'}` : `${servings}× batch`}
+            </Text>
+            <Text style={{ color: t.textMuted, fontSize: 12 }}>
+              {factor === 1 ? (base ? 'As written' : 'Change to make more') : base ? `Amounts scaled from ${base}` : `Amounts × ${servings}`}
+            </Text>
+          </View>
+          {[-1, 1].map((d) => (
+            <Pressable
+              key={d}
+              accessibilityRole="button"
+              accessibilityLabel={d < 0 ? 'Fewer servings' : 'More servings'}
+              disabled={d < 0 ? servings <= 1 : servings >= 50}
+              hitSlop={6}
+              onPress={() => {
+                tap();
+                setWanted(Math.min(50, Math.max(1, servings + d)));
+              }}
+              style={[styles.step, { backgroundColor: t.primarySoft, opacity: (d < 0 ? servings <= 1 : servings >= 50) ? 0.4 : 1 }]}
+            >
+              <Ionicons name={d < 0 ? 'remove' : 'add'} size={20} color={t.primary} />
+            </Pressable>
+          ))}
+        </View>
         <View style={styles.ingHead}>
           <Text style={[styles.ingTitle, { color: t.text }]}>Ingredients</Text>
           <Pressable
@@ -267,7 +299,7 @@ export default function RecipeScreen() {
                 <Text style={{ color: t.text, fontSize: 16, fontWeight: '600' }}>{it.item}</Text>
                 {(!!it.amount || already || it.pantry) && (
                   <Text style={{ color: t.textMuted, fontSize: 13 }}>
-                    {[it.amount, already ? 'Already on your list' : it.pantry ? 'You probably have this' : null]
+                    {[scaleAmount(it.amount, factor), already ? 'Already on your list' : it.pantry ? 'You probably have this' : null]
                       .filter(Boolean)
                       .join(' · ')}
                   </Text>
@@ -307,6 +339,8 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   meta: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth },
   source: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  servings: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radius.lg, marginTop: 4 },
+  step: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   ingHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
   ingTitle: { fontSize: 20, fontWeight: '800' },
   group: { borderRadius: radius.lg, overflow: 'visible' },
