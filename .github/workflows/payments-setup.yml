@@ -16,7 +16,7 @@ name: Payments setup
 
 on:
   push:
-    branches: ['claude/project-thread-l89ktp', 'claude/project-thread-jxl3cv', 'claude/project-thread-9hbkuw']
+    branches: ['claude/project-thread-l89ktp', 'claude/project-thread-jxl3cv', 'claude/project-thread-9hbkuw', 'claude/project-thread-54zfkw']
     paths:
       - 'scripts/payments/**'
       - '.github/workflows/payments-setup.yml'
