@@ -26,18 +26,36 @@ const one = (type, id) => ({ data: { type, id } });
   const v = versions.find((x) => x.attributes.versionString.startsWith('1.0'));
   console.log(`version ${v.attributes.versionString}: ${v.attributes.appStoreState}`);
 
-  await step('resubmit for review', async () => {
-    const subs = (await api(`/v1/reviewSubmissions?filter[app]=${app.id}&filter[state]=UNRESOLVED_ISSUES,READY_FOR_REVIEW&limit=5`)).data;
-    console.log(`open submissions: ${subs.map((s) => s.attributes.state).join(',') || 'none'}`);
-    let sub = subs[0];
-    if (!sub) sub = (await api('/v1/reviewSubmissions', { method: 'POST', body: { data: { type: 'reviewSubmissions', attributes: { platform: 'IOS' }, relationships: { app: one('apps', app.id) } } } })).data;
-    const items = (await api(`/v1/reviewSubmissions/${sub.id}/items`)).data;
-    console.log(`items: ${items.map((i) => i.attributes.state).join(',') || 'none'}`);
-    if (!items.length) {
-      await api('/v1/reviewSubmissionItems', { method: 'POST', body: { data: { type: 'reviewSubmissionItems', relationships: { reviewSubmission: one('reviewSubmissions', sub.id), appStoreVersion: one('appStoreVersions', v.id) } } } });
-    }
+  // Retry the open submission first; if Apple still says the version isn't ready, cancel that submission
+  // (a rejected one can't be pulled from) and send the version in a fresh one.
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const newSub = async () => {
+    const sub = (await api('/v1/reviewSubmissions', { method: 'POST', body: { data: { type: 'reviewSubmissions', attributes: { platform: 'IOS' }, relationships: { app: one('apps', app.id) } } } })).data;
+    await api('/v1/reviewSubmissionItems', { method: 'POST', body: { data: { type: 'reviewSubmissionItems', relationships: { reviewSubmission: one('reviewSubmissions', sub.id), appStoreVersion: one('appStoreVersions', v.id) } } } });
+    return sub;
+  };
+  const send = async (sub) => {
     await api(`/v1/reviewSubmissions/${sub.id}`, { method: 'PATCH', body: { data: { type: 'reviewSubmissions', id: sub.id, attributes: { submitted: true } } } });
     return (await api(`/v1/reviewSubmissions/${sub.id}`)).data.attributes.state;
-  });
+  };
+  const open = (await api(`/v1/reviewSubmissions?filter[app]=${app.id}&filter[state]=UNRESOLVED_ISSUES,READY_FOR_REVIEW&limit=5`)).data;
+  console.log(`open submissions: ${open.map((s) => s.attributes.state).join(',') || 'none'}`);
+  let done = false;
+  if (open[0]) done = await step('resubmit open submission', () => send(open[0]));
+  if (done) { console.log('\nDone.'); return; }
+  if (open[0]) {
+    await step('cancel the rejected submission', async () => {
+      await api(`/v1/reviewSubmissions/${open[0].id}`, { method: 'PATCH', body: { data: { type: 'reviewSubmissions', id: open[0].id, attributes: { canceled: true } } } });
+      for (let i = 0; i < 20; i++) {
+        const st = (await api(`/v1/reviewSubmissions/${open[0].id}`)).data.attributes.state;
+        if (!['CANCELING', 'UNRESOLVED_ISSUES'].includes(st)) return st;
+        await sleep(6000);
+      }
+      return 'still canceling';
+    });
+    const vs = (await api(`/v1/appStoreVersions/${v.id}`)).data.attributes.appStoreState;
+    console.log(`version now: ${vs}`);
+  }
+  await step('submit in a fresh submission', async () => send(await newSub()));
   console.log('\nDone.');
 })().catch((e) => { console.log('FAIL', e.message); process.exit(1); });
