@@ -1,0 +1,1 @@
+cpancakes=pancakes%blueberries cburritos=breakfast%burrito cwraps=wrap%sandwich ccaesar=caesar%salad cchili=chili%con%carne cfajitas=chicken%fajitas cmeatballs=spaghetti%meatballs cpotatoes=roasted%potatoes ccarrots=glazed%carrots cqueso=queso%dip cchex=snack%mix cbrownie=brownie%ice%cream ccheesecake=cheesecake csmoothie=berry%smoothie clemonade=lemonade

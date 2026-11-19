@@ -155,6 +155,24 @@ jobs:
           fi
           "$RUNNER_TEMP/apple-api/bin/python" grocery-runner-app/tools/app_store_listing.py "$SHOTS"
 
+  links:
+    # Reads real recipe pages with the app's parser and prints every ingredient and step it keeps.
+    if: contains(github.event.head_commit.message, '[stride-links]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: grocery-runner-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx tsx tools/check_links.mts
+
   seed:
     if: contains(github.event.head_commit.message, '[stride-seed]')
     runs-on: ubuntu-latest
