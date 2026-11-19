@@ -120,5 +120,7 @@ jobs:
           q='query($z:String!,$a:Time!,$b:Time!){viewer{zones(filter:{zoneTag:$z}){httpRequestsAdaptiveGroups(limit:50,filter:{datetime_geq:$a,datetime_lt:$b,clientRequestPath:"/api/hit",clientRequestHTTPMethodName:"POST",edgeResponseStatus:204}){count dimensions{clientRequestQuery}}}}}'
           r=$(cf https://api.cloudflare.com/client/v4/graphql -d "$(jq -n --arg q "$q" --arg z "$zone" --arg a "$from" --arg b "$to" '{query:$q, variables:{z:$z, a:$a, b:$b}}')" || true)
           out=$(echo "$r" | jq -c '[.data.viewer.zones[0].httpRequestsAdaptiveGroups[]? | {k: (.dimensions.clientRequestQuery | sub("^\\??e="; "")), v: .count}] | group_by(.k) | map({key: .[0].k, value: (map(.v) | add)}) | from_entries' 2>/dev/null || echo null)
-          [ "$out" = "null" ] && echo "clicks: $(echo "$r" | jq -c '[.errors[]?.message]' 2>/dev/null)"
+          # Cloudflare answers errors with data:null, which would otherwise read as "no clicks". Say so instead.
+          errs=$(echo "$r" | jq -c '[.errors[]?.message]' 2>/dev/null || echo '["unreadable answer"]')
+          if [ "$out" = "null" ] || [ "${errs:-[]}" != "[]" ]; then echo "clicks: $errs"; out=null; fi
           echo "SITE_CLICKS_JSON $(jq -c -n --arg a "$from" --argjson c "${out:-null}" '{since:$a, clicks:$c}')"
