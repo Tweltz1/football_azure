@@ -1,0 +1,29 @@
+# Finds openly licensed photos for Shop Stride's suggested recipes (grocery-runner-app/tools/fetch_recipe_photos.py)
+# when a push's commit message contains [stride-photos]. Candidates go to the stride-recipe-photo-candidates
+# branch for a person to pick from; the picked ones are then committed into grocery-runner-app/assets/recipes.
+name: Shop Stride recipe photos
+
+on:
+  push:
+    paths:
+      - 'grocery-runner-app/tools/fetch_recipe_photos.py'
+      - '.github/workflows/stride-recipe-photos.yml'
+
+jobs:
+  candidates:
+    if: contains(github.event.head_commit.message, '[stride-photos]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q pillow
+      - run: python3 grocery-runner-app/tools/fetch_recipe_photos.py "$RUNNER_TEMP/out"
+      - name: Save candidates to the stride-recipe-photo-candidates branch
+        run: |
+          cd "$RUNNER_TEMP/out"
+          git init -q -b stride-recipe-photo-candidates
+          git add -A
+          git -c user.name=github-actions -c user.email=actions@github.com commit -q -m "Recipe photo candidates from ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" stride-recipe-photo-candidates
