@@ -7,6 +7,8 @@ export type RecipeItem = {
   amount: string;
   /** A staple most kitchens already have; left unticked so it isn't added by default. */
   pantry: boolean;
+  /** How the recipe wants it, from the recipe's own line: "diced", "drained and rinsed". Shown only. */
+  note?: string;
 };
 
 /** Hand-set labels. Diet labels (gluten-free, dairy-free, vegetarian) are worked out from the items in diet.ts. */

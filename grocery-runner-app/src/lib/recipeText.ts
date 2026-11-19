@@ -45,6 +45,9 @@ const PANTRY = new Set(
     'red pepper flakes', 'crushed red pepper', 'chili powder', 'nonstick cooking spray',
   ].map((s) => itemKey(s)),
 );
+// A first comma part made only of these is still describing the thing: "boneless, skinless chicken".
+const DESCRIBING =
+  /^(?:(?:boneless|skinless|bone-in|skin-on|fresh|large|small|medium|ripe|lean|extra[- ]lean|organic|unsalted|salted|low[- ]sodium|reduced[- ]sodium|plain|whole|raw|dry|hot|sweet|mild|firm|thick[- ]cut|thin[- ]cut|center[- ]cut|seedless|frozen|canned)\s*)+$/i;
 const NOT_AN_ITEM = /^(water|ice|ice cubes|hot water|warm water|cold water|boiling water)$/i;
 
 const normalise = (line: string) =>
@@ -97,23 +100,49 @@ export function parseIngredient(raw: string): RecipeItem | null {
   line = line.replace(/^of\s+/i, '');
 
   // Notes in brackets, nested too: WP Recipe Maker writes "onion ((diced))" and "chicken (, cooked)".
+  const notes: string[] = [];
   let bare = line;
-  for (let n = 0; n < 4 && /\([^()]*\)/.test(bare); n++) bare = bare.replace(/\([^()]*\)/g, ' ');
+  for (let n = 0; n < 4 && /\([^()]*\)/.test(bare); n++) {
+    bare = bare.replace(/\(([^()]*)\)/g, (_, inner: string) => {
+      notes.push(inner);
+      return ' ';
+    });
+  }
   bare = bare.replace(/\(.*$/, ' ').replace(/[()]/g, ' ');
-  let name = bare
-    .split(/,|;|\s+-\s+|\s+–\s+/)[0] // "onion, diced" → "onion"
+  // "onion, diced" → "onion" + note "diced". Leading describing words stay with the name:
+  // "boneless, skinless chicken breasts" is all one thing to buy.
+  const parts = bare.split(/,|;|\s+-\s+|\s+–\s+/);
+  let head = parts.shift() ?? '';
+  while (parts.length && DESCRIBING.test(head.trim()) && parts[0].trim()) head = `${head} ${parts.shift()}`;
+  notes.push(...parts);
+  const prepWords: string[] = [];
+  const alternative = head.match(/\s+or\s+.*$/i)?.[0];
+  let name = head
     .replace(/\s+or\s+.*$/i, '') // "butter or margarine" → "butter"
-    .replace(PREP, ' ')
+    .replace(PREP, (w) => {
+      prepWords.push(w.toLowerCase());
+      return ' ';
+    })
     .replace(/\*+/g, '')
     .replace(/\s+/g, ' ')
     .replace(/^(and|of|the)\s+/i, '')
     .replace(/[\s.:,]+$/, '')
     .trim()
     .toLowerCase();
+  if (prepWords.length) notes.unshift(prepWords.join(' '));
+  if (alternative) notes.push(alternative.trim());
+  const note = notes
+    .map((n) => n.replace(/\*+/g, '').replace(/^[\s,;:-]+|[\s,;:.-]+$/g, '').replace(/\s+/g, ' ').trim())
+    .filter((n) => n && n.length < 60 && /[a-z]/i.test(n))
+    .filter((n, i, all) => all.findIndex((m) => m.toLowerCase() === n.toLowerCase()) === i)
+    .join(', ')
+    .slice(0, 80);
   if (name.length < 2 || !/[a-z]/.test(name) || NOT_AN_ITEM.test(name) || SITE_CHROME.test(name)) return null;
   if (name.split(' ').length > 6) return null; // a sentence, not an ingredient
   name = name.slice(0, 60);
-  return { item: name, amount: amount.join(' ').replace(/\s+/g, ' ').trim(), pantry: PANTRY.has(itemKey(name)) };
+  const out: RecipeItem = { item: name, amount: amount.join(' ').replace(/\s+/g, ' ').trim(), pantry: PANTRY.has(itemKey(name)) };
+  if (note) out.note = note;
+  return out;
 }
 
 /** Joins lines that OCR split in two ("1 can (14 oz) diced" + "tomatoes, drained"). */
