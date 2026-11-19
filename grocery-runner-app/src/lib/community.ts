@@ -103,6 +103,8 @@ async function uploadPhoto(recipe: Recipe): Promise<string | null> {
   if (!auth.user) return null;
   const path = `${auth.user.id}/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.jpg`;
   const bytes = await new File(photoUri(recipe.photo)).bytes();
+  // The bucket takes photos up to 3 MB; a bigger one (a full-size recipe-card scan) shares without a photo.
+  if (bytes.length > 2.9 * 1024 * 1024) return null;
   const { error } = await supabase.storage.from(PHOTOS).upload(path, bytes, { contentType: 'image/jpeg' });
   if (error) throw new Error(`Couldn’t upload the photo: ${error.message}`);
   return supabase.storage.from(PHOTOS).getPublicUrl(path).data.publicUrl;

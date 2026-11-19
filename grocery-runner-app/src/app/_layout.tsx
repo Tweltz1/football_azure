@@ -55,6 +55,7 @@ export default function RootLayout() {
         <Stack.Screen name="aisle-scan" options={{ presentation: 'modal', title: 'Aisles from screenshots' }} />
         <Stack.Screen name="recipe/[id]" options={{ title: 'Recipe' }} />
         <Stack.Screen name="scan" options={{ presentation: 'modal', title: 'Add a recipe' }} />
+        <Stack.Screen name="recipe-new" options={{ presentation: 'modal', title: 'Create your own' }} />
         <Stack.Screen name="account" options={{ presentation: 'modal', title: 'Account' }} />
         <Stack.Screen name="share" options={{ presentation: 'modal', title: 'Share a recipe' }} />
         <Stack.Screen name="family" options={{ presentation: 'modal', title: 'Family list' }} />
