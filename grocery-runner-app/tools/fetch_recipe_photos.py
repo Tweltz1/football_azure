@@ -4,7 +4,7 @@ Only CC0 / public domain / CC BY / CC BY-SA photos, which allow use in a paid ap
 saves up to 4 candidates (resized JPEGs) plus candidates.json with creator, license and source page,
 so a person picks the best one. Run by .github/workflows/stride-recipe-photos.yml ([stride-photos]).
 
-Usage: python fetch_recipe_photos.py OUT_DIR
+Usage: python fetch_recipe_photos.py OUT_DIR [id=query ...]   (only those recipes, with those searches)
 """
 import io, json, os, sys, time, urllib.parse, urllib.request
 from PIL import Image
@@ -36,10 +36,10 @@ def get(url, tries=3):
             time.sleep(2 + n * 3)
 
 
-def main(out):
+def main(out, only=None):
     os.makedirs(out, exist_ok=True)
     found = {}
-    for rid, q in QUERIES.items():
+    for rid, q in (only or QUERIES).items():
         params = urllib.parse.urlencode({'q': q, 'license': ','.join(sorted(OK)), 'category': 'photograph', 'page_size': 20, 'mature': 'false'})
         try:
             data = json.loads(get(f'https://api.openverse.org/v1/images/?{params}'))
@@ -76,4 +76,4 @@ def main(out):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main(sys.argv[1], {k: v.replace('%', ' ') for k, v in (a.split('=', 1) for a in sys.argv[2:])} or None)
