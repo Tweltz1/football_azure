@@ -98,6 +98,30 @@ jobs:
           printf '%s' "$sec" | put STRIPE_MERCH_WEBHOOK_SECRET
           echo "merch webhook created"
 
+      - name: Merch checkout wallets (Apple Pay + Google Pay)
+        # Merch uses Stripe Checkout with no fixed payment method list, so the account's default
+        # payment method settings decide what buyers see. This turns Apple Pay and Google Pay on there
+        # and registers weltzcraft.com as a payment method domain. Never fails the deploy.
+        continue-on-error: true
+        env:
+          STRIPE_KEY: ${{ secrets.WELTZCRAFT_STRIPE_SECRET_KEY }}
+        run: |
+          if [ -z "$STRIPE_KEY" ]; then echo "::warning::No WELTZCRAFT_STRIPE_SECRET_KEY; skipping wallets."; exit 0; fi
+          st() { curl --silent --show-error -u "$STRIPE_KEY:" "$@"; }
+          cfgs=$(st "https://api.stripe.com/v1/payment_method_configurations?limit=100")
+          err=$(echo "$cfgs" | jq -r '.error.message // empty')
+          if [ -n "$err" ]; then echo "::warning::Stripe key can't read payment method settings ($err). Turn on Apple Pay + Google Pay in the Stripe dashboard instead."; fi
+          id=$(echo "$cfgs" | jq -r '[.data[]? | select(.is_default == true and .active == true)][0].id // empty')
+          if [ -n "$id" ]; then
+            r=$(st "https://api.stripe.com/v1/payment_method_configurations/$id"               -d "apple_pay[display_preference][preference]=on"               -d "google_pay[display_preference][preference]=on")
+            echo "$r" | jq -c '{config: .name, card: .card.available, apple_pay: .apple_pay.available, google_pay: .google_pay.available, error: .error.message}'
+          fi
+          for d in "$DOMAIN" "www.$DOMAIN"; do
+            have=$(st "https://api.stripe.com/v1/payment_method_domains?domain_name=$d" | jq -r '.data[0].id // empty')
+            if [ -z "$have" ]; then have=$(st https://api.stripe.com/v1/payment_method_domains -d domain_name="$d" | jq -r '.id // .error.message'); fi
+            st -X POST "https://api.stripe.com/v1/payment_method_domains/$have/validate"               | jq -c '{domain: .domain_name, apple_pay: .apple_pay.status, google_pay: .google_pay.status, error: .error.message}'
+          done
+
       - name: Upload the site
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
