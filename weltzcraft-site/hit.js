@@ -1,10 +1,10 @@
-// First-party click counter. Sends one tiny POST to /api/hit?e=<event> when a visitor clicks something that
+// First-party click counter. Sends one tiny POST to /api/hit/<event> when a visitor clicks something that
 // shows intent (Start a project, build a sample, merch, an app link). No cookies, no ids, nothing personal:
 // the daily review counts these requests in Cloudflare's own analytics, and bots rarely click.
 (function () {
   function hit(e) {
     try {
-      var u = '/api/hit?e=' + encodeURIComponent(e);
+      var u = '/api/hit/' + encodeURIComponent(e);
       if (navigator.sendBeacon) navigator.sendBeacon(u);
       else if (window.fetch) fetch(u, { method: 'POST', keepalive: true });
     } catch (x) {}
