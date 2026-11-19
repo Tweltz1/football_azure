@@ -72,3 +72,24 @@ test('WP Recipe Maker JSON-LD lines (tastesbetterfromscratch white chicken chili
     'black beans': '1 (15 ounce) can',
   });
 });
+
+test('reads steps from the page, with the minutes each one mentions', () => {
+  const html = `<script type="application/ld+json">${JSON.stringify({
+    '@type': 'Recipe',
+    name: 'Soup',
+    prepTime: 'PT10M',
+    cookTime: 'PT30M',
+    recipeIngredient: ['1 onion'],
+    recipeInstructions: [
+      { '@type': 'HowToSection', name: 'Soup', itemListElement: [{ '@type': 'HowToStep', text: 'Cook the onion for 5-7 minutes.' }, { '@type': 'HowToStep', text: 'Simmer 1 hour.' }] },
+      { '@type': 'HowToStep', text: 'Serve.' },
+    ],
+  })}</script>`;
+  const r = parseRecipePage(html);
+  assert.deepEqual(r.steps, [
+    { text: 'Cook the onion for 5-7 minutes.', minutes: 7 },
+    { text: 'Simmer 1 hour.', minutes: 60 },
+    { text: 'Serve.', minutes: 0 },
+  ]);
+  assert.equal(r.minutes, 40);
+});

@@ -16,6 +16,7 @@ import {
 import { RecipePicture } from '../../components/RecipePicture';
 import { Button, lift, tap } from '../../components/ui';
 import { labelsOf } from '../../lib/diet';
+import { bundledPhoto } from '../../lib/recipeAssets';
 import { newItems, SUGGESTED } from '../../lib/recipes';
 import { itemKey } from '../../lib/sharedAisles';
 import { fromIso, planWeek, WEEKDAYS } from '../../lib/mealPlan';
@@ -204,10 +205,20 @@ export default function RecipeScreen() {
       <Stack.Screen options={{ title: '', headerRight }} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 8, gap: 10 }}>
         <RecipePicture recipe={recipe} size={210} style={{ borderRadius: radius.lg }} />
+        {!recipe.photo && !recipe.imageUrl && !!bundledPhoto(recipe.id) && (
+          <Text
+            accessibilityRole="link"
+            onPress={() => bundledPhoto(recipe.id)!.credit.source && Linking.openURL(bundledPhoto(recipe.id)!.credit.source)}
+            style={{ color: t.textMuted, fontSize: 11, marginTop: -4 }}
+            numberOfLines={1}
+          >
+            Photo: {bundledPhoto(recipe.id)!.credit.creator} · {bundledPhoto(recipe.id)!.credit.license}
+          </Text>
+        )}
         <Text style={[styles.title, { color: t.text }]}>{recipe.title}</Text>
         <View style={styles.metaRow}>
           {[
-            recipe.minutes ? `⏱ ${recipe.minutes >= 120 ? `${Math.round(recipe.minutes / 60)} hr` : `${recipe.minutes} min`}` : null,
+            recipe.minutes ? `⏱ ${fmtTime(recipe.minutes)}` : null,
             recipe.author ? `${categoryLabel(recipe.category)} by ${recipe.author}` : mine ? 'Your recipe' : null,
             ...labelsOf(recipe),
           ]
@@ -314,6 +325,40 @@ export default function RecipeScreen() {
           );
         })}
         </View>
+        {!!recipe.steps?.length && (
+          <>
+            <View style={styles.ingHead}>
+              <Text style={[styles.ingTitle, { color: t.text }]}>Steps</Text>
+              {!!recipe.minutes && (
+                <Text style={{ color: t.textMuted, fontWeight: '700' }}>
+                  ⏱ {fmtTime(recipe.minutes)} total
+                </Text>
+              )}
+            </View>
+            <View style={[styles.group, { backgroundColor: t.card }, lift(t)]}>
+              {recipe.steps.map((st, n) => (
+                <View
+                  key={n}
+                  style={[styles.stepRow, n > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border }]}
+                >
+                  <View style={[styles.stepNum, { backgroundColor: st.during ? t.accentSoft : t.primarySoft }]}>
+                    <Text style={{ color: st.during ? t.accent : t.primary, fontWeight: '800', fontSize: 13 }}>{n + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={{ color: t.text, fontSize: 15, lineHeight: 21 }}>{st.text}</Text>
+                    {(st.minutes > 0 || st.during) && (
+                      <Text style={{ color: st.during ? t.accent : t.textMuted, fontSize: 12, fontWeight: '700' }}>
+                        {st.during ? 'Meanwhile' : ''}
+                        {st.during && st.minutes > 0 ? ' · ' : ''}
+                        {st.minutes > 0 ? fmtTime(st.minutes) : ''}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
         {mine && (
           <Button
             title="Delete this recipe"
@@ -339,7 +384,11 @@ export default function RecipeScreen() {
   );
 }
 
+const fmtTime = (m: number) => (m >= 90 ? `${Math.floor(m / 60)} hr${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
+
 const styles = StyleSheet.create({
+  stepRow: { flexDirection: 'row', gap: 12, padding: 14 },
+  stepNum: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   title: { fontSize: 28, fontWeight: '800', letterSpacing: -0.6, marginTop: 4 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   meta: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth },
