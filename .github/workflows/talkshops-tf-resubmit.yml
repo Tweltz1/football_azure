@@ -14,14 +14,7 @@ jobs:
           KEY: ${{ secrets.TALKSHOPS_TELNYX_API_KEY }}
           ID: b706134e-7cbc-5c42-8d5c-8e76f4a7a7d5
           OPTIN: >-
-            Full opt-in description with screenshots: https://talkshops.app/sms .
-            Customers opt in two ways, never pre-checked and never a condition of purchase.
-            (1) At the shop counter: staff enter the customer's mobile number in the Talk Shops check-in form and read this disclosure aloud before ticking the consent box:
-            "[Shop name] will text you updates about your vehicle: check-in, progress, estimates to approve and pickup. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Privacy: talkshops.app/privacy. Terms: talkshops.app/terms."
-            Without the box ticked no texts are sent.
-            (2) Online booking page: the customer enters their number and ticks an unchecked box reading:
-            "[Shop name] may text or email me about this appointment and my repair. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Privacy · Terms" (links to talkshops.app/privacy and talkshops.app/terms).
-            Use case: transactional auto repair updates only, no marketing. Mobile numbers and opt-in data are never shared with third parties for marketing.
+            Verbal at check-in or web booking form (see https://talkshops.app/sms). Staff read, before ticking an unchecked consent box: "[Shop] will text you vehicle updates: check-in, progress, estimates, pickup. Msg frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Privacy: talkshops.app/privacy Terms: talkshops.app/terms". Booking form box shows the same disclosure with links. Not required to buy. No box, no texts.
           HELPMSG: "Talk Shops: repair updates from your auto shop. Msg frequency varies. Msg & data rates may apply. Help: support@talkshops.app. Reply STOP to opt out."
           CONFIRM: "Talk Shops: you're signed up for repair updates from your auto shop. Msg frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to opt out."
         run: |
