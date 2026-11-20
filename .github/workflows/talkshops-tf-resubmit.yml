@@ -1,0 +1,47 @@
+name: Talk Shops toll-free verification resubmit (CTIA opt-in)
+# One-off: adds full CTIA opt-in disclosures to the Telnyx toll-free verification and resubmits.
+# Logs are public: prints only keys/status, never personal fields.
+on:
+  push:
+    branches: [claude/project-thread-i60gkl]
+    paths: [".github/workflows/talkshops-tf-resubmit.yml"]
+jobs:
+  resubmit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resubmit
+        env:
+          KEY: ${{ secrets.TALKSHOPS_TELNYX_API_KEY }}
+          ID: b706134e-7cbc-5c42-8d5c-8e76f4a7a7d5
+          OPTIN: >-
+            Full opt-in description with screenshots: https://talkshops.app/sms .
+            Customers opt in two ways, never pre-checked and never a condition of purchase.
+            (1) At the shop counter: staff enter the customer's mobile number in the Talk Shops check-in form and read this disclosure aloud before ticking the consent box:
+            "[Shop name] will text you updates about your vehicle: check-in, progress, estimates to approve and pickup. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Privacy: talkshops.app/privacy. Terms: talkshops.app/terms."
+            Without the box ticked no texts are sent.
+            (2) Online booking page: the customer enters their number and ticks an unchecked box reading:
+            "[Shop name] may text or email me about this appointment and my repair. Message frequency varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help. Privacy · Terms" (links to talkshops.app/privacy and talkshops.app/terms).
+            Use case: transactional auto repair updates only, no marketing. Mobile numbers and opt-in data are never shared with third parties for marketing.
+          HELPMSG: "Talk Shops: repair updates from your auto shop. Msg frequency varies. Msg & data rates may apply. Help: support@talkshops.app. Reply STOP to opt out."
+          CONFIRM: "Talk Shops: you're signed up for repair updates from your auto shop. Msg frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to opt out."
+        run: |
+          curl -sS -H "Authorization: Bearer $KEY" \
+            "https://api.telnyx.com/v2/messaging_tollfree/verification/requests/$ID" > rec.json
+          jq -c '(.data // .) | {verificationStatus, helpSet: (.helpMessageResponse|tostring|length), confirmSet: (.optInConfirmationResponse|tostring|length)}' rec.json
+          jq --arg o "$OPTIN" --arg h "$HELPMSG" --arg c "$CONFIRM" '(.data // .)
+              | del(.id, .verificationStatus, .reason, .createdAt, .updatedAt, .verificationRequestId, .ticketNumber)
+              | .optInWorkflow = $o
+              | .optInWorkflowImageURLs = [{url: "https://talkshops.app/sms-opt-in.png"}]
+              | .helpMessageResponse = $h
+              | .optInConfirmationResponse = $c
+              | .privacyPolicyURL = "https://talkshops.app/privacy"
+              | .termsAndConditionURL = "https://talkshops.app/terms"
+              | .additionalInformation = ((.additionalInformation // "") + " Public opt-in page: https://talkshops.app/sms")
+              | with_entries(select(.value != null))' rec.json > body.json
+          echo "sending keys:"; jq -c 'keys' body.json
+          code=$(curl -sS -o out.json -w '%{http_code}' -X PATCH \
+            -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+            --data @body.json "https://api.telnyx.com/v2/messaging_tollfree/verification/requests/$ID")
+          echo "HTTP $code"
+          jq '(.data // .) | {verificationStatus, reason, corporateWebsite, updatedAt, errors: (.errors // null | if . then map({code, title, source}) else null end)}' out.json
+          [ "$code" -lt 300 ]
