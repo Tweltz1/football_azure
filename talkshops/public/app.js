@@ -1122,6 +1122,7 @@
         <label class="field full" data-staff-intake>What's the concern?<textarea id="ci-concern" required maxlength="1000"></textarea></label>
         <div class="field full urgency-field"><span>Urgency <small class="muted">(how soon the customer needs the car back)</small></span>${window.BayBoard.urgencyPicker("", "ciUrgency")}</div>
         <label class="chk full"><input type="checkbox" id="ci-consent"> Customer agreed to check-in and repair updates through the selected contact method.</label>
+        <p class="muted full consent-script" style="margin:-4px 0 0;font-size:13px">Read to the customer before checking the box: &ldquo;${esc(shop?.name || "We")} will text you updates about your vehicle: check-in, progress, estimates to approve and pickup. Message frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help. Privacy: talkshops.app/privacy. Terms: talkshops.app/terms.&rdquo;</p>
       </div>
       <div class="btn-row" style="margin-top:14px"><button class="btn primary" type="submit" ${ui.busy ? "disabled" : ""}>Check In and Notify Customer</button></div>
     </form>`;
