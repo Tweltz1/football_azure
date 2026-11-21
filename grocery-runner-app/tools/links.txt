@@ -1,8 +1,8 @@
-# Links the [stride-links] check reads with the app's parser. Collections expand into every recipe.
+# Links the [stride-links] check reads with the app's parser. Collections expand into every recipe;
+# "list:" only shows which recipes a collection links to.
 https://www.foodnetwork.com/healthy/packages/healthy-every-week/quick-and-simple/healthy-dinners-in-40-minutes-or-less
-list: https://www.bbcgoodfood.com/recipes/collection/quick-healthy-dinner-recipes
 list: https://www.delish.com/cooking/recipe-ideas/g3733/healthy-dinner-recipes/
-list: https://www.loveandlemons.com/healthy-dinner-ideas/
-list: https://www.tasteofhome.com/collection/healthy-dinner-recipes/
-list: https://www.recipetineats.com/category/quick-and-easy/
 list: https://www.foodnetwork.com/recipes/photos/our-best-chicken-dinners
+list: https://www.bbcgoodfood.com/recipes/collection/healthy-dinner-recipes
+list: https://www.loveandlemons.com/healthy-dinner-recipes/
+list: https://www.recipetineats.com/category/main-dishes/

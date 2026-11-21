@@ -1,7 +1,7 @@
 // Reads real recipe pages with the app's own parser (src/lib/recipeText.ts) and prints what a shopper
 // would get: title, every ingredient, every step with its minutes, and the total. Flags pages where the
 // ingredient or step count doesn't match the page's own recipe data. Run by grocery-runner-store.yml ([stride-links]).
-import { hasRecipeData, parseCollectionPage, parseIngredient, parseRecipePage } from '../src/lib/recipeText';
+import { hasRecipeData, parseCollectionPage, parseIngredient, parseRecipePage, splitLine } from '../src/lib/recipeText';
 
 const DEFAULT_URLS = [
   'https://tastesbetterfromscratch.com/creamy-white-chicken-chili/',
@@ -72,7 +72,8 @@ for (let qi = 0; qi < queue.length; qi++) {
     for (const [n, s] of (r.steps ?? []).entries()) console.log(`    ${n + 1}. (${s.minutes} min) ${s.text.slice(0, 160)}`);
     // A line counts as dropped only if the parser threw it away; the same thing listed twice
     // ("garlic" in the marinade and the sauce) is merged into one shopping line on purpose.
-    const dropped = src.lines.filter((l) => !parseIngredient(l.replace(/<[^>]+>/g, ' ')));
+    // Water is left out on purpose.
+    const dropped = src.lines.filter((l) => !/^[\d\s\/]*(?:cups?|tablespoons?|teaspoons?)?\s*(?:hot |cold |warm |boiling )?water\b/i.test(l) && splitLine(l.replace(/<[^>]+>/g, ' ')).some((p) => !parseIngredient(p)));
     if (src.ing > r.items.length) console.log(`  (${src.ing - r.items.length - dropped.length} repeated ingredient(s) merged into one line)`);
     for (const l of dropped) console.log(`  -- skipped: ${l}`);
     if (dropped.length) { problems++; console.log(`  !! ${dropped.length} ingredient line(s) skipped`); }
