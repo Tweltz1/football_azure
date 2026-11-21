@@ -67,6 +67,7 @@ export function TermsSheet({ onDone, onCancel }) {
         <h2>Curbsy rules</h2>
         <p className="jk-muted">Listings are public, so before you post or message, please agree to keep it safe:</p>
         <ul className="jk-rules">
+          <li>You're 18 or older. Curbsy is for adults only, since pickups mean meeting people you don't know.</li>
           <li>Only free stuff. No weapons, drugs, alcohol, tobacco, medicine, adult items, recalled or hazardous goods, or animals.</li>
           <li>No hateful, sexual, violent or abusive posts or messages. There's zero tolerance.</li>
           <li>Report anything that breaks the rules. Reported listings are reviewed within 24 hours, and people who break the rules are removed.</li>
