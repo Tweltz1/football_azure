@@ -566,7 +566,8 @@ export function parseCollectionPage(html: string, pageUrl: string): RecipeCollec
     u.search = '';
     const key = u.href.replace(/\/+$/, '');
     if (key === base.href.split(/[?#]/)[0].replace(/\/+$/, '') || NOT_RECIPE_PATH.test(u.pathname)) return;
-    const name = title.replace(/\s+/g, ' ').trim();
+    if (/(?:^|-)(?:app|apps|magazine|subscription|subscribe|podcast|newsletter|giveaway)$/i.test(u.pathname.replace(/\/+$/, ''))) return;
+    const name = title.replace(/\s+/g, ' ').replace(/^(?:view|see|open|go to)\s+/i, '').trim();
     const good = name && !CTA.test(name) && name.length <= 120 ? name : '';
     if (!found.has(key)) found.set(key, good);
     else if (!found.get(key) && good) found.set(key, good);

@@ -62,6 +62,19 @@ for (let qi = 0; qi < queue.length; qi++) {
       for (const m of [...body.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/gi)].slice(0, 400)) console.log(`  A: ${m[0].replace(/\s+/g, ' ').slice(0, 260)}`);
     }
     const maybe = parseCollectionPage(html, url);
+    if (LIST_ONLY.has(url)) {
+      const steps: [string, RegExp][] = [
+        ['script', /<(script|style|noscript|svg|template)[\s\S]*?<\/\1>/gi],
+        ['nav', /<(nav)\b[\s\S]*?<\/\1>/gi],
+        ['footer', /<(footer)\b[\s\S]*?<\/\1>/gi],
+        ['aside', /<(aside)\b[\s\S]*?<\/\1>/gi],
+        ['form', /<(form)\b[\s\S]*?<\/\1>/gi],
+      ];
+      let b = html;
+      for (const [n, re] of steps) { b = b.replace(re, ' '); console.log(`  strip ${n}: ${b.length} chars, ${(b.match(/<a\b/gi) ?? []).length} links`); }
+      const art = b.match(/<(article|main)\b[\s\S]*<\/\1>/i);
+      console.log(`  article/main: ${art?.[1]} at ${art?.index} len ${art?.[0].length} links ${(art?.[0].match(/<a\b/gi) ?? []).length}`);
+    }
     if (LIST_ONLY.has(url)) console.log(`  debug: recipeData=${hasRecipeData(html)} links=${maybe?.recipes.length ?? 0} title=${maybe?.title} own=${r.title}`);
     if (maybe && isRoundup(html, maybe) && qi < URLS.length) {
       const col: typeof maybe | null = maybe;
