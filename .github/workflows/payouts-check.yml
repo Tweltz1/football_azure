@@ -42,6 +42,10 @@ jobs:
               } : { status: a.status, err: a.err };
               const p = await get(key, 'payouts?limit=5');
               out.payouts = p.status === 200 ? p.j.data.map((x) => ({ status: x.status, created: new Date(x.created * 1000).toISOString().slice(0, 10), failure: x.failure_code || null })) : { status: p.status, err: p.err };
+              const t = await get(key, 'tax/settings');
+              out.tax = t.status === 200 ? { status: t.j.status, head_office: !!t.j.head_office, missing: t.j.status_details?.pending?.missing_fields || null, defaults: t.j.defaults || null } : { status: t.status, err: t.err };
+              const rg = await get(key, 'tax/registrations?limit=10');
+              out.tax_registrations = rg.status === 200 ? rg.j.data.map((x) => x.country + (x.country_options?.us?.state ? '-' + x.country_options.us.state : '') + ':' + x.status) : { status: rg.status, err: rg.err };
               const b = await get(key, 'balance');
               out.balance = b.status === 200 ? { has_available: (b.j.available || []).some((x) => x.amount > 0), has_pending: (b.j.pending || []).some((x) => x.amount > 0) } : { status: b.status, err: b.err };
             }
