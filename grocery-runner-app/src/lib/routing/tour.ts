@@ -1,20 +1,25 @@
 import { Cell } from '../types';
-import { astar } from './astar';
+import { astar, MinHeap } from './astar';
 import { sameCell, StoreGrid } from './grid';
 
-/** Walking distance from one cell to every reachable cell (unit-cost BFS). */
-function distancesFrom(grid: StoreGrid, from: Cell): Int32Array {
-  const dist = new Int32Array(grid.width * grid.height).fill(-1);
-  const queue: Cell[] = [from];
+/** Walking cost from one cell to every reachable cell (Dijkstra over cell costs; -1 = unreachable). */
+export function distancesFrom(grid: StoreGrid, from: Cell): Float64Array {
+  const dist = new Float64Array(grid.width * grid.height).fill(-1);
+  const heap = new MinHeap<Cell>();
   dist[grid.index(from)] = 0;
-  for (let head = 0; head < queue.length; head++) {
-    const c = queue[head];
-    const d = dist[grid.index(c)];
+  heap.push(0, from);
+  const done = new Uint8Array(grid.width * grid.height);
+  while (heap.size) {
+    const c = heap.pop()!;
+    const ci = grid.index(c);
+    if (done[ci]) continue;
+    done[ci] = 1;
     for (const n of grid.neighbours(c)) {
       const ni = grid.index(n);
-      if (dist[ni] === -1) {
-        dist[ni] = d + 1;
-        queue.push(n);
+      const nd = dist[ci] + grid.cost(n);
+      if (dist[ni] < 0 || nd < dist[ni]) {
+        dist[ni] = nd;
+        heap.push(nd, n);
       }
     }
   }
@@ -87,4 +92,14 @@ export function walkPath(grid: StoreGrid, waypoints: Cell[]): { path: Cell[]; di
     path.push(...cells);
   }
   return { path, distance };
+}
+
+/** Walking cost through the given waypoints, using shortest distances (no path drawn). */
+export function walkLength(grid: StoreGrid, waypoints: Cell[]): number {
+  let total = 0;
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const v = distancesFrom(grid, waypoints[i])[grid.index(waypoints[i + 1])];
+    total += v < 0 ? 1e6 : v;
+  }
+  return total;
 }

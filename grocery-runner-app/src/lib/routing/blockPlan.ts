@@ -128,6 +128,9 @@ export const TARGET_EAU_CLAIRE: BlockPlan = {
 
 export const BLOCK_PLANS: BlockPlan[] = [WALMART_CHIPPEWA_FALLS, TARGET_EAU_CLAIRE];
 
+/** Crossing a step of open floor (clothing racks, displays) costs this many steps of walkway. */
+const AREA_COST = 4;
+
 /** Grid + cells for a block plan. Departments the map doesn't show are in `unmapped`. */
 export function buildBlockLayout(plan: BlockPlan): StoreLayout {
   const { width, height } = plan;
@@ -140,6 +143,8 @@ export function buildBlockLayout(plan: BlockPlan): StoreLayout {
     if (b.kind === 'void' || b.kind === 'solid') grid.blockRect(b.c1, y(b.r1), b.c2, y(b.r2));
     if (b.kind === 'v' || b.kind === 'lanes') for (let c = b.c1; c <= b.c2; c += 2) grid.blockRect(c, y(b.r1), c, y(b.r2));
     if (b.kind === 'h') for (let r = b.r1; r <= b.r2; r += 2) grid.blockRect(b.c1, y(r), b.c2, y(r));
+    // Racks and displays: shoppers walk around open-floor areas unless they're shopping in one.
+    if (b.kind === 'area') grid.costRect(b.c1, y(b.r1), b.c2, y(b.r2), b.depts?.length ? 1.5 : AREA_COST);
   }
 
   /** The walkable cell nearest the block's middle (breadth-first from the middle, rows before columns). */

@@ -4,7 +4,7 @@ import { Cell, ItemLocation, ListItem } from '../types';
 import { buildGenericLayout, cellForLocation, parseAisleNumber, StoreLayout } from './layout';
 import { buildBlockLayout } from './blockPlan';
 import { AnyPlan, buildPlanLayout, isBlockPlan } from './plan';
-import { orderStops, walkPath } from './tour';
+import { orderStops, walkLength, walkPath } from './tour';
 
 /** `offMap`: items whose department the store's map doesn't show, listed last and not drawn. */
 export type RouteStop = { cell: Cell; items: ListItem[]; offMap?: boolean };
@@ -86,18 +86,25 @@ export function planRoute(
   }
   const all = [...byCell.values()];
 
-  const groups = opts.coldLast ? [all.filter((s) => !s.cold), all.filter((s) => s.cold)] : [all];
+  const warm = opts.coldLast ? all.filter((s) => !s.cold) : all;
+  const cold = opts.coldLast ? all.filter((s) => s.cold) : [];
   const ordered: RouteStop[] = [];
-  let from = layout.entrance;
-  groups.forEach((group, gi) => {
-    if (!group.length) return;
-    // Aim the first group toward where the next one starts, so the hand-off is short.
-    const nextGroup = groups.slice(gi + 1).find((g) => g.length);
-    const to = nextGroup ? nextGroup[0].cell : layout.checkout;
-    const order = orderStops(layout.grid, from, group.map((s) => s.cell), to);
-    for (const i of order) ordered.push({ cell: group[i].cell, items: group[i].items });
-    from = ordered[ordered.length - 1].cell;
-  });
+  const place = (group: typeof all, from: Cell, to: Cell) => orderStops(layout.grid, from, group.map((s) => s.cell), to).map((i) => group[i]);
+  if (!warm.length || !cold.length) {
+    ordered.push(...place(warm.length ? warm : cold, layout.entrance, layout.checkout));
+  } else {
+    // Frozen and dairy last: try handing off to each cold stop and keep the shortest whole walk.
+    let best: { stops: typeof all; length: number } | null = null;
+    for (const handoff of cold) {
+      const first = place(warm, layout.entrance, handoff.cell);
+      const second = place(cold, first[first.length - 1].cell, layout.checkout);
+      const stops = [...first, ...second];
+      const length = walkLength(layout.grid, [layout.entrance, ...stops.map((s) => s.cell), layout.checkout]);
+      if (!best || length < best.length) best = { stops, length };
+    }
+    ordered.push(...best!.stops);
+  }
+  for (let i = 0; i < ordered.length; i++) ordered[i] = { cell: ordered[i].cell, items: ordered[i].items };
 
   const { path, distance } = walkPath(layout.grid, [layout.entrance, ...ordered.map((s) => s.cell), layout.checkout]);
   if (offMap.length) ordered.push({ cell: layout.checkout, items: offMap, offMap: true });

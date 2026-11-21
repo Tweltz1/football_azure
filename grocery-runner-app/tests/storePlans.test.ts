@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { astar } from '../src/lib/routing/astar';
+import { StoreGrid } from '../src/lib/routing/grid';
 import { buildBlockLayout, TARGET_EAU_CLAIRE, WALMART_CHIPPEWA_FALLS } from '../src/lib/routing/blockPlan';
 import { buildPlanLayout, planFor, WOODMANS_ALTOONA } from '../src/lib/routing/plan';
 import { cellForLocation } from '../src/lib/routing/layout';
@@ -77,4 +79,28 @@ test('every plan routes a mixed list to walkable stops with cold last', () => {
 test("a store's own map is not moved by shoppers' answers", () => {
   const w = buildPlanLayout(WOODMANS_ALTOONA, { profile: buildProfile([{ name: 'milk', aisle: '3' }, { name: 'yogurt', aisle: '3' }]) });
   assert.notDeepEqual(w.departmentCell.dairy, w.aisleCell(3));
+});
+
+test('Walmart route keeps to the walkways: no cutting across clothing, frozen and dairy last, ends at checkout', () => {
+  const items = [it('bread'), it('bananas'), it('shampoo'), it('paper towels'), it('dog food'), it('diapers'), it('cereal'), it('chicken'), it('milk'), it('ice cream')];
+  const r = planRoute(items, 20, { coldLast: true, plan: WALMART_CHIPPEWA_FALLS });
+  const H = WALMART_CHIPPEWA_FALLS.height;
+  // Clothing & Shoes is c25-43, rows 10-24 (Baby, c35-43 rows 10-14, is its own stop).
+  const inClothing = r.path.filter((c) => c.x >= 26 && c.x <= 42 && H - 1 - c.y >= 15 && H - 1 - c.y <= 23);
+  assert.equal(inClothing.length, 0, JSON.stringify(inClothing.slice(0, 5)));
+  const names = r.stops.map((s) => s.items.map((i) => i.name).join('/'));
+  assert.deepEqual(names.slice(-2).sort(), ['ice cream', 'milk']);
+  assert.deepEqual(r.path.at(-1), r.layout.checkout);
+});
+
+test('A* goes straight when it can instead of in stair-steps', () => {
+  const p = astar(new StoreGrid(12, 12), { x: 0, y: 0 }, { x: 10, y: 8 })!.path;
+  let turns = 0;
+  for (let i = 2; i < p.length; i++) {
+    const a = [p[i - 1].x - p[i - 2].x, p[i - 1].y - p[i - 2].y];
+    const b = [p[i].x - p[i - 1].x, p[i].y - p[i - 1].y];
+    if (a[0] !== b[0] || a[1] !== b[1]) turns++;
+  }
+  assert.equal(turns, 1);
+  assert.equal(p.length - 1, 18);
 });
