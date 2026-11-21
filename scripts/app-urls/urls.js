@@ -28,7 +28,7 @@ async function patch(type, id, attrs, label) {
   for (const app of apps.data) {
     const { name, bundleId } = app.attributes;
     const want = plan[bundleId];
-    console.log(`\n=== ${name} (${bundleId})${want ? '' : '  [not in plan, read only]'}`);
+    console.log(`\n=== ${name} (${bundleId}) id ${app.id}${want ? '' : '  [not in plan, read only]'}`);
     const infos = await api(`/v1/apps/${app.id}/appInfos`);
     for (const info of infos.data) {
       const state = info.attributes.appStoreState || info.attributes.state;
@@ -40,7 +40,8 @@ async function patch(type, id, attrs, label) {
         const label = `${name} appInfo[${state}] ${l.attributes.locale} privacy ${cur} -> ${want.privacy}`;
         if (REVIEW.has(state)) later.push(label);
         else if (EDITABLE.has(state)) await patch('appInfoLocalizations', l.id, { privacyPolicyUrl: want.privacy }, label);
-        else later.push(`${label} (live metadata; changes with the next version)`);
+        else if (MODE === 'write') { const n = failed.length; await patch('appInfoLocalizations', l.id, { privacyPolicyUrl: want.privacy }, label + ' (live)'); if (failed.length > n) later.push(`${label} (live metadata; Apple refused, changes with the next version)`); }
+        else later.push(`${label} (live)`);
       }
     }
     const vers = await api(`/v1/apps/${app.id}/appStoreVersions?limit=6`);

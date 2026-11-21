@@ -1,1 +1,33 @@
-{}
+{
+  "com.hoodleague.junk": {
+    "privacy": "https://weltzcraft.com/curbsy/privacy",
+    "support": "https://weltzcraft.com/curbsy/support",
+    "marketing": "https://weltzcraft.com/curbsy/",
+    "descriptionReplace": {
+      "https://hood-league.com/junk-terms.html": "https://weltzcraft.com/curbsy/terms",
+      "https://hood-league.com/junk-privacy.html": "https://weltzcraft.com/curbsy/privacy"
+    }
+  },
+  "com.tweltz1.totetrack": {
+    "privacy": "https://weltzcraft.com/totetrack/privacy",
+    "support": "https://weltzcraft.com/totetrack/support",
+    "marketing": "https://weltzcraft.com/totetrack/"
+  },
+  "com.tweltz1.groceryrunner": {
+    "privacy": "https://weltzcraft.com/shopstride/privacy",
+    "support": "https://weltzcraft.com/shopstride/support",
+    "marketing": "https://weltzcraft.com/shopstride/"
+  },
+  "com.hoodleague.games": {
+    "privacy": "https://weltzcraft.com/games/privacy",
+    "support": "https://weltzcraft.com/games/support"
+  },
+  "com.tweltz1.hoodprotocol": {
+    "privacy": "https://weltzcraft.com/hoodprotocol/privacy",
+    "support": "https://weltzcraft.com/hoodprotocol/support",
+    "marketing": "https://weltzcraft.com/hoodprotocol/"
+  },
+  "com.tweltz1.backseatview": {
+    "privacy": "https://weltzcraft.com/backseatview/privacy"
+  }
+}
