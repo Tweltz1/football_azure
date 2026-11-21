@@ -1463,6 +1463,1916 @@
       }
     ]
   },
+  "trucker-navywhite": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Navy/ White",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8755,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-blackwhite": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Black/ White",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8748,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-mosskhaki": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Moss/ Khaki",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8750,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-heathergreywhite": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Heather Grey/White",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 22454,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-brownkhaki": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Brown/ Khaki",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8749,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-charcoalblack": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Charcoal/ Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16709,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-navy": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Navy",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8751,
+        "size": "One size"
+      }
+    ]
+  },
+  "trucker-black": {
+    "product_id": 252,
+    "product": "Retro Trucker Hat | Yupoong 6606",
+    "color": "Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8747,
+        "size": "One size"
+      }
+    ]
+  },
+  "varsity-black": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Black",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 5530,
+        "size": "S"
+      },
+      {
+        "id": 5531,
+        "size": "M"
+      },
+      {
+        "id": 5532,
+        "size": "L"
+      },
+      {
+        "id": 5533,
+        "size": "XL"
+      },
+      {
+        "id": 5534,
+        "size": "2XL"
+      },
+      {
+        "id": 5535,
+        "size": "3XL"
+      }
+    ]
+  },
+  "varsity-maroon": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Maroon",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 5586,
+        "size": "S"
+      },
+      {
+        "id": 5587,
+        "size": "M"
+      },
+      {
+        "id": 5588,
+        "size": "L"
+      },
+      {
+        "id": 5589,
+        "size": "XL"
+      },
+      {
+        "id": 5590,
+        "size": "2XL"
+      },
+      {
+        "id": 5591,
+        "size": "3XL"
+      }
+    ]
+  },
+  "varsity-forestgreen": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Forest Green",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 20570,
+        "size": "S"
+      },
+      {
+        "id": 20571,
+        "size": "M"
+      },
+      {
+        "id": 20572,
+        "size": "L"
+      },
+      {
+        "id": 20573,
+        "size": "XL"
+      },
+      {
+        "id": 20574,
+        "size": "2XL"
+      },
+      {
+        "id": 20575,
+        "size": "3XL"
+      }
+    ]
+  },
+  "varsity-navy": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Navy",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 5594,
+        "size": "S"
+      },
+      {
+        "id": 5595,
+        "size": "M"
+      },
+      {
+        "id": 5596,
+        "size": "L"
+      },
+      {
+        "id": 5597,
+        "size": "XL"
+      },
+      {
+        "id": 5598,
+        "size": "2XL"
+      },
+      {
+        "id": 5599,
+        "size": "3XL"
+      }
+    ]
+  },
+  "varsity-charcoal": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Charcoal",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 16859,
+        "size": "S"
+      },
+      {
+        "id": 16860,
+        "size": "M"
+      },
+      {
+        "id": 16861,
+        "size": "L"
+      },
+      {
+        "id": 16862,
+        "size": "XL"
+      },
+      {
+        "id": 16863,
+        "size": "2XL"
+      },
+      {
+        "id": 16864,
+        "size": "3XL"
+      }
+    ]
+  },
+  "varsity-sportgrey": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Sport Grey",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 5610,
+        "size": "S"
+      },
+      {
+        "id": 5611,
+        "size": "M"
+      },
+      {
+        "id": 5612,
+        "size": "L"
+      },
+      {
+        "id": 5613,
+        "size": "XL"
+      },
+      {
+        "id": 5614,
+        "size": "2XL"
+      },
+      {
+        "id": 5615,
+        "size": "3XL"
+      }
+    ]
+  },
+  "varsity-sand": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Sand",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 12997,
+        "size": "S"
+      },
+      {
+        "id": 12998,
+        "size": "M"
+      },
+      {
+        "id": 12999,
+        "size": "L"
+      },
+      {
+        "id": 13000,
+        "size": "XL"
+      },
+      {
+        "id": 13001,
+        "size": "2XL"
+      },
+      {
+        "id": 13002,
+        "size": "3XL"
+      }
+    ]
+  },
+  "puff-black": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Black",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8936,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-babypink": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Baby Pink",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 17494,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-white": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "White",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8938,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-heathergrey": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Heather Grey",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8937,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-navy": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Navy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8940,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-royal": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Royal",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 17496,
+        "size": "One size"
+      }
+    ]
+  },
+  "puff-darkgrey": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Dark Grey",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 12881,
+        "size": "One size"
+      }
+    ]
+  },
+  "smalltee-black": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Black",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 4016,
+        "size": "S"
+      },
+      {
+        "id": 4017,
+        "size": "M"
+      },
+      {
+        "id": 4018,
+        "size": "L"
+      },
+      {
+        "id": 4019,
+        "size": "XL"
+      },
+      {
+        "id": 4020,
+        "size": "2XL"
+      },
+      {
+        "id": 5295,
+        "size": "3XL"
+      }
+    ]
+  },
+  "smalltee-white": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "White",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 4011,
+        "size": "S"
+      },
+      {
+        "id": 4012,
+        "size": "M"
+      },
+      {
+        "id": 4013,
+        "size": "L"
+      },
+      {
+        "id": 4014,
+        "size": "XL"
+      },
+      {
+        "id": 4015,
+        "size": "2XL"
+      },
+      {
+        "id": 5294,
+        "size": "3XL"
+      }
+    ]
+  },
+  "smalltee-heatherdust": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Heather Dust",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 10360,
+        "size": "S"
+      },
+      {
+        "id": 10361,
+        "size": "M"
+      },
+      {
+        "id": 10362,
+        "size": "L"
+      },
+      {
+        "id": 10363,
+        "size": "XL"
+      },
+      {
+        "id": 10364,
+        "size": "2XL"
+      },
+      {
+        "id": 10365,
+        "size": "3XL"
+      }
+    ]
+  },
+  "smalltee-navy": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Navy",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 4111,
+        "size": "S"
+      },
+      {
+        "id": 4112,
+        "size": "M"
+      },
+      {
+        "id": 4113,
+        "size": "L"
+      },
+      {
+        "id": 4114,
+        "size": "XL"
+      },
+      {
+        "id": 4115,
+        "size": "2XL"
+      },
+      {
+        "id": 12874,
+        "size": "3XL"
+      }
+    ]
+  },
+  "smalltee-natural": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Natural",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 14682,
+        "size": "S"
+      },
+      {
+        "id": 14683,
+        "size": "M"
+      },
+      {
+        "id": 14684,
+        "size": "L"
+      },
+      {
+        "id": 14685,
+        "size": "XL"
+      },
+      {
+        "id": 14686,
+        "size": "2XL"
+      },
+      {
+        "id": 14687,
+        "size": "3XL"
+      }
+    ]
+  },
+  "smalltee-forest": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Forest",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 8451,
+        "size": "S"
+      },
+      {
+        "id": 8452,
+        "size": "M"
+      },
+      {
+        "id": 8453,
+        "size": "L"
+      },
+      {
+        "id": 8454,
+        "size": "XL"
+      },
+      {
+        "id": 8455,
+        "size": "2XL"
+      },
+      {
+        "id": 8456,
+        "size": "3XL"
+      }
+    ]
+  },
+  "smalltee-maroon": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Maroon",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 4106,
+        "size": "S"
+      },
+      {
+        "id": 4107,
+        "size": "M"
+      },
+      {
+        "id": 4108,
+        "size": "L"
+      },
+      {
+        "id": 4109,
+        "size": "XL"
+      },
+      {
+        "id": 4110,
+        "size": "2XL"
+      },
+      {
+        "id": 15792,
+        "size": "3XL"
+      }
+    ]
+  },
+  "smalltee-athleticheather": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Athletic Heather",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 6948,
+        "size": "S"
+      },
+      {
+        "id": 6949,
+        "size": "M"
+      },
+      {
+        "id": 6950,
+        "size": "L"
+      },
+      {
+        "id": 6951,
+        "size": "XL"
+      },
+      {
+        "id": 6952,
+        "size": "2XL"
+      },
+      {
+        "id": 6953,
+        "size": "3XL"
+      }
+    ]
+  },
+  "pixells-white": {
+    "product_id": 356,
+    "product": "Unisex Long Sleeve Tee | Bella + Canvas 3501",
+    "color": "White",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "extras": [
+      {
+        "placement": "sleeve_left",
+        "area": {
+          "w": 450,
+          "h": 1800
+        }
+      }
+    ],
+    "variants": [
+      {
+        "id": 10142,
+        "size": "S"
+      },
+      {
+        "id": 10143,
+        "size": "M"
+      },
+      {
+        "id": 10144,
+        "size": "L"
+      },
+      {
+        "id": 10145,
+        "size": "XL"
+      },
+      {
+        "id": 10146,
+        "size": "2XL"
+      }
+    ]
+  },
+  "pixells-black": {
+    "product_id": 356,
+    "product": "Unisex Long Sleeve Tee | Bella + Canvas 3501",
+    "color": "Black",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "extras": [
+      {
+        "placement": "sleeve_left",
+        "area": {
+          "w": 450,
+          "h": 1800
+        }
+      }
+    ],
+    "variants": [
+      {
+        "id": 10094,
+        "size": "S"
+      },
+      {
+        "id": 10095,
+        "size": "M"
+      },
+      {
+        "id": 10096,
+        "size": "L"
+      },
+      {
+        "id": 10097,
+        "size": "XL"
+      },
+      {
+        "id": 10098,
+        "size": "2XL"
+      }
+    ]
+  },
+  "pixells-navy": {
+    "product_id": 356,
+    "product": "Unisex Long Sleeve Tee | Bella + Canvas 3501",
+    "color": "Navy",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "extras": [
+      {
+        "placement": "sleeve_left",
+        "area": {
+          "w": 450,
+          "h": 1800
+        }
+      }
+    ],
+    "variants": [
+      {
+        "id": 10124,
+        "size": "S"
+      },
+      {
+        "id": 10125,
+        "size": "M"
+      },
+      {
+        "id": 10126,
+        "size": "L"
+      },
+      {
+        "id": 10127,
+        "size": "XL"
+      },
+      {
+        "id": 10128,
+        "size": "2XL"
+      }
+    ]
+  },
+  "pixells-militarygreen": {
+    "product_id": 356,
+    "product": "Unisex Long Sleeve Tee | Bella + Canvas 3501",
+    "color": "Military Green",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "extras": [
+      {
+        "placement": "sleeve_left",
+        "area": {
+          "w": 450,
+          "h": 1800
+        }
+      }
+    ],
+    "variants": [
+      {
+        "id": 10118,
+        "size": "S"
+      },
+      {
+        "id": 10119,
+        "size": "M"
+      },
+      {
+        "id": 10120,
+        "size": "L"
+      },
+      {
+        "id": 10121,
+        "size": "XL"
+      },
+      {
+        "id": 10122,
+        "size": "2XL"
+      }
+    ]
+  },
+  "pixells-maroon": {
+    "product_id": 356,
+    "product": "Unisex Long Sleeve Tee | Bella + Canvas 3501",
+    "color": "Maroon",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "extras": [
+      {
+        "placement": "sleeve_left",
+        "area": {
+          "w": 450,
+          "h": 1800
+        }
+      }
+    ],
+    "variants": [
+      {
+        "id": 10112,
+        "size": "S"
+      },
+      {
+        "id": 10113,
+        "size": "M"
+      },
+      {
+        "id": 10114,
+        "size": "L"
+      },
+      {
+        "id": 10115,
+        "size": "XL"
+      },
+      {
+        "id": 10116,
+        "size": "2XL"
+      }
+    ]
+  },
+  "pixells-athleticheather": {
+    "product_id": 356,
+    "product": "Unisex Long Sleeve Tee | Bella + Canvas 3501",
+    "color": "Athletic Heather",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "extras": [
+      {
+        "placement": "sleeve_left",
+        "area": {
+          "w": 450,
+          "h": 1800
+        }
+      }
+    ],
+    "variants": [
+      {
+        "id": 10088,
+        "size": "S"
+      },
+      {
+        "id": 10089,
+        "size": "M"
+      },
+      {
+        "id": 10090,
+        "size": "L"
+      },
+      {
+        "id": 10091,
+        "size": "XL"
+      },
+      {
+        "id": 10092,
+        "size": "2XL"
+      }
+    ]
+  },
+  "chrome-black": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Black",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 4016,
+        "size": "S"
+      },
+      {
+        "id": 4017,
+        "size": "M"
+      },
+      {
+        "id": 4018,
+        "size": "L"
+      },
+      {
+        "id": 4019,
+        "size": "XL"
+      },
+      {
+        "id": 4020,
+        "size": "2XL"
+      },
+      {
+        "id": 5295,
+        "size": "3XL"
+      }
+    ]
+  },
+  "chrome-navy": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Navy",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 4111,
+        "size": "S"
+      },
+      {
+        "id": 4112,
+        "size": "M"
+      },
+      {
+        "id": 4113,
+        "size": "L"
+      },
+      {
+        "id": 4114,
+        "size": "XL"
+      },
+      {
+        "id": 4115,
+        "size": "2XL"
+      },
+      {
+        "id": 12874,
+        "size": "3XL"
+      }
+    ]
+  },
+  "chrome-asphalt": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Asphalt",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 4031,
+        "size": "S"
+      },
+      {
+        "id": 4032,
+        "size": "M"
+      },
+      {
+        "id": 4033,
+        "size": "L"
+      },
+      {
+        "id": 4034,
+        "size": "XL"
+      },
+      {
+        "id": 4035,
+        "size": "2XL"
+      },
+      {
+        "id": 5297,
+        "size": "3XL"
+      }
+    ]
+  },
+  "chrome-brown": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Brown",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 4046,
+        "size": "S"
+      },
+      {
+        "id": 4047,
+        "size": "M"
+      },
+      {
+        "id": 4048,
+        "size": "L"
+      },
+      {
+        "id": 4049,
+        "size": "XL"
+      },
+      {
+        "id": 4050,
+        "size": "2XL"
+      },
+      {
+        "id": 52810,
+        "size": "3XL"
+      }
+    ]
+  },
+  "chrome-darkgreyheather": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Dark Grey Heather",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 8460,
+        "size": "S"
+      },
+      {
+        "id": 8461,
+        "size": "M"
+      },
+      {
+        "id": 8462,
+        "size": "L"
+      },
+      {
+        "id": 8463,
+        "size": "XL"
+      },
+      {
+        "id": 8464,
+        "size": "2XL"
+      },
+      {
+        "id": 8465,
+        "size": "3XL"
+      }
+    ]
+  },
+  "chrome-forest": {
+    "product_id": 71,
+    "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+    "color": "Forest",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 8451,
+        "size": "S"
+      },
+      {
+        "id": 8452,
+        "size": "M"
+      },
+      {
+        "id": 8453,
+        "size": "L"
+      },
+      {
+        "id": 8454,
+        "size": "XL"
+      },
+      {
+        "id": 8455,
+        "size": "2XL"
+      },
+      {
+        "id": 8456,
+        "size": "3XL"
+      }
+    ]
+  },
+  "wordcrew-sand": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Sand",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 16876,
+        "size": "S"
+      },
+      {
+        "id": 16877,
+        "size": "M"
+      },
+      {
+        "id": 16878,
+        "size": "L"
+      },
+      {
+        "id": 16879,
+        "size": "XL"
+      },
+      {
+        "id": 16880,
+        "size": "2XL"
+      },
+      {
+        "id": 16881,
+        "size": "3XL"
+      }
+    ]
+  },
+  "wordcrew-black": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Black",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 5434,
+        "size": "S"
+      },
+      {
+        "id": 5435,
+        "size": "M"
+      },
+      {
+        "id": 5436,
+        "size": "L"
+      },
+      {
+        "id": 5437,
+        "size": "XL"
+      },
+      {
+        "id": 5438,
+        "size": "2XL"
+      },
+      {
+        "id": 5439,
+        "size": "3XL"
+      }
+    ]
+  },
+  "wordcrew-lightblue": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Light Blue",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 7860,
+        "size": "S"
+      },
+      {
+        "id": 7861,
+        "size": "M"
+      },
+      {
+        "id": 7862,
+        "size": "L"
+      },
+      {
+        "id": 7863,
+        "size": "XL"
+      },
+      {
+        "id": 7864,
+        "size": "2XL"
+      },
+      {
+        "id": 7865,
+        "size": "3XL"
+      }
+    ]
+  },
+  "wordcrew-sportgrey": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Sport Grey",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 5514,
+        "size": "S"
+      },
+      {
+        "id": 5515,
+        "size": "M"
+      },
+      {
+        "id": 5516,
+        "size": "L"
+      },
+      {
+        "id": 5517,
+        "size": "XL"
+      },
+      {
+        "id": 5518,
+        "size": "2XL"
+      },
+      {
+        "id": 5519,
+        "size": "3XL"
+      }
+    ]
+  },
+  "wordcrew-navy": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Navy",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 5498,
+        "size": "S"
+      },
+      {
+        "id": 5499,
+        "size": "M"
+      },
+      {
+        "id": 5500,
+        "size": "L"
+      },
+      {
+        "id": 5501,
+        "size": "XL"
+      },
+      {
+        "id": 5502,
+        "size": "2XL"
+      },
+      {
+        "id": 5503,
+        "size": "3XL"
+      }
+    ]
+  },
+  "wordcrew-forestgreen": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Forest Green",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 18763,
+        "size": "S"
+      },
+      {
+        "id": 18764,
+        "size": "M"
+      },
+      {
+        "id": 18765,
+        "size": "L"
+      },
+      {
+        "id": 18766,
+        "size": "XL"
+      },
+      {
+        "id": 18767,
+        "size": "2XL"
+      },
+      {
+        "id": 18768,
+        "size": "3XL"
+      }
+    ]
+  },
+  "wordcrew-lightpink": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Light Pink",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 7868,
+        "size": "S"
+      },
+      {
+        "id": 7869,
+        "size": "M"
+      },
+      {
+        "id": 7870,
+        "size": "L"
+      },
+      {
+        "id": 7871,
+        "size": "XL"
+      },
+      {
+        "id": 7872,
+        "size": "2XL"
+      },
+      {
+        "id": 7873,
+        "size": "3XL"
+      }
+    ]
+  },
+  "wordcrew-maroon": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Maroon",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 5490,
+        "size": "S"
+      },
+      {
+        "id": 5491,
+        "size": "M"
+      },
+      {
+        "id": 5492,
+        "size": "L"
+      },
+      {
+        "id": 5493,
+        "size": "XL"
+      },
+      {
+        "id": 5494,
+        "size": "2XL"
+      }
+    ]
+  },
+  "pixelhat-black": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7854,
+        "size": "One size"
+      }
+    ]
+  },
+  "pixelhat-stone": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Stone",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7859,
+        "size": "One size"
+      }
+    ]
+  },
+  "pixelhat-navy": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Navy",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7857,
+        "size": "One size"
+      }
+    ]
+  },
+  "pixelhat-spruce": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Spruce",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8745,
+        "size": "One size"
+      }
+    ]
+  },
+  "pixelhat-lightblue": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Light Blue",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7856,
+        "size": "One size"
+      }
+    ]
+  },
+  "pixelhat-pink": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Pink",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7858,
+        "size": "One size"
+      }
+    ]
+  },
+  "pixelhat-darkgrey": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Dark Grey",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 12736,
+        "size": "One size"
+      }
+    ]
+  },
+  "pixelhat-white": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "White",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7853,
+        "size": "One size"
+      }
+    ]
+  },
+  "mascot-white": {
+    "product_id": 593,
+    "product": "Unisex Garment-Dyed Pocket T-Shirt | Comfort Colors 6030",
+    "color": "White",
+    "placement": "pocket",
+    "area": {
+      "w": 450,
+      "h": 300
+    },
+    "variants": [
+      {
+        "id": 15150,
+        "size": "S"
+      },
+      {
+        "id": 15151,
+        "size": "M"
+      },
+      {
+        "id": 15152,
+        "size": "L"
+      },
+      {
+        "id": 15153,
+        "size": "XL"
+      },
+      {
+        "id": 15154,
+        "size": "2XL"
+      }
+    ]
+  },
+  "mascot-black": {
+    "product_id": 593,
+    "product": "Unisex Garment-Dyed Pocket T-Shirt | Comfort Colors 6030",
+    "color": "Black",
+    "placement": "pocket",
+    "area": {
+      "w": 450,
+      "h": 300
+    },
+    "variants": [
+      {
+        "id": 15140,
+        "size": "S"
+      },
+      {
+        "id": 15141,
+        "size": "M"
+      },
+      {
+        "id": 15142,
+        "size": "L"
+      },
+      {
+        "id": 15143,
+        "size": "XL"
+      },
+      {
+        "id": 15144,
+        "size": "2XL"
+      }
+    ]
+  },
+  "mascot-butter": {
+    "product_id": 593,
+    "product": "Unisex Garment-Dyed Pocket T-Shirt | Comfort Colors 6030",
+    "color": "Butter",
+    "placement": "pocket",
+    "area": {
+      "w": 450,
+      "h": 300
+    },
+    "variants": [
+      {
+        "id": 15206,
+        "size": "S"
+      },
+      {
+        "id": 15207,
+        "size": "M"
+      },
+      {
+        "id": 15208,
+        "size": "L"
+      },
+      {
+        "id": 15209,
+        "size": "XL"
+      },
+      {
+        "id": 15210,
+        "size": "2XL"
+      }
+    ]
+  },
+  "mascot-floblue": {
+    "product_id": 593,
+    "product": "Unisex Garment-Dyed Pocket T-Shirt | Comfort Colors 6030",
+    "color": "Flo Blue",
+    "placement": "pocket",
+    "area": {
+      "w": 450,
+      "h": 300
+    },
+    "variants": [
+      {
+        "id": 15211,
+        "size": "S"
+      },
+      {
+        "id": 15212,
+        "size": "M"
+      },
+      {
+        "id": 15213,
+        "size": "L"
+      },
+      {
+        "id": 15214,
+        "size": "XL"
+      },
+      {
+        "id": 15215,
+        "size": "2XL"
+      }
+    ]
+  },
+  "mascot-grey": {
+    "product_id": 593,
+    "product": "Unisex Garment-Dyed Pocket T-Shirt | Comfort Colors 6030",
+    "color": "Grey",
+    "placement": "pocket",
+    "area": {
+      "w": 450,
+      "h": 300
+    },
+    "variants": [
+      {
+        "id": 15216,
+        "size": "S"
+      },
+      {
+        "id": 15217,
+        "size": "M"
+      },
+      {
+        "id": 15218,
+        "size": "L"
+      },
+      {
+        "id": 15219,
+        "size": "XL"
+      },
+      {
+        "id": 15220,
+        "size": "2XL"
+      }
+    ]
+  },
+  "mascot-truenavy": {
+    "product_id": 593,
+    "product": "Unisex Garment-Dyed Pocket T-Shirt | Comfort Colors 6030",
+    "color": "True Navy",
+    "placement": "pocket",
+    "area": {
+      "w": 450,
+      "h": 300
+    },
+    "variants": [
+      {
+        "id": 15221,
+        "size": "S"
+      },
+      {
+        "id": 15222,
+        "size": "M"
+      },
+      {
+        "id": 15223,
+        "size": "L"
+      },
+      {
+        "id": 15224,
+        "size": "XL"
+      },
+      {
+        "id": 15225,
+        "size": "2XL"
+      }
+    ]
+  },
+  "mascot-berry": {
+    "product_id": 593,
+    "product": "Unisex Garment-Dyed Pocket T-Shirt | Comfort Colors 6030",
+    "color": "Berry",
+    "placement": "pocket",
+    "area": {
+      "w": 450,
+      "h": 300
+    },
+    "variants": [
+      {
+        "id": 15196,
+        "size": "S"
+      },
+      {
+        "id": 15197,
+        "size": "M"
+      },
+      {
+        "id": 15198,
+        "size": "L"
+      },
+      {
+        "id": 15199,
+        "size": "XL"
+      },
+      {
+        "id": 15200,
+        "size": "2XL"
+      }
+    ]
+  },
+  "mascot-watermelon": {
+    "product_id": 593,
+    "product": "Unisex Garment-Dyed Pocket T-Shirt | Comfort Colors 6030",
+    "color": "Watermelon",
+    "placement": "pocket",
+    "area": {
+      "w": 450,
+      "h": 300
+    },
+    "variants": [
+      {
+        "id": 15231,
+        "size": "S"
+      },
+      {
+        "id": 15232,
+        "size": "M"
+      },
+      {
+        "id": 15233,
+        "size": "L"
+      },
+      {
+        "id": 15234,
+        "size": "XL"
+      },
+      {
+        "id": 15235,
+        "size": "2XL"
+      }
+    ]
+  },
   "tee-black": {
     "product_id": 71,
     "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
