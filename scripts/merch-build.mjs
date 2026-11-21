@@ -15,6 +15,8 @@ const ONLY = (process.env.ONLY || '').trim();
 const MODE = process.argv[2];
 if (!TOKEN) { console.log('::warning::PRINTFUL_API_TOKEN is not set, skipping.'); process.exit(0); }
 
+// Printful calls the thread option for 'embroidery_front' just 'thread_colors'; other spots add their name.
+const threadOption = pl => pl === 'embroidery_front' ? 'thread_colors' : pl.replace('embroidery_', 'thread_colors_');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function pf(p, opts = {}, okStatuses = []) {
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -136,7 +138,7 @@ if (MODE === 'create') {
           variant_id: v.id,
           retail_price: (c.prod.price + upcharge(v.size)).toFixed(2),
           files: [{ type: p.placement, url: `${BASE}/placed/${c.slug}.png` }],
-          ...(threads[c.slug] ? { options: [{ id: p.placement.replace('embroidery_', 'thread_colors_'), value: threads[c.slug] }] } : {}),
+          ...(threads[c.slug] ? { options: [{ id: threadOption(p.placement), value: threads[c.slug] }] } : {}),
         })),
       };
       try { await pf('/store/products', { method: 'POST', body: JSON.stringify(body) }); }

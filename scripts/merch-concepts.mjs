@@ -14,6 +14,8 @@ const BASE = process.env.ASSET_BASE;
 const ONLY = (process.env.ONLY || '').trim();
 const MODE = process.argv[2];
 if (!TOKEN) { console.log('::warning::PRINTFUL_API_TOKEN is not set, skipping.'); process.exit(0); }
+// Printful calls the thread option for 'embroidery_front' just 'thread_colors'; other spots add their name.
+const threadOption = pl => pl === 'embroidery_front' ? 'thread_colors' : pl.replace('embroidery_', 'thread_colors_');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function pf(p, opts = {}, okStatuses = []) {
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -116,7 +118,7 @@ if (MODE === 'mockups' || MODE === 'create') {
           sync_variants: vs.map(v => ({
             external_id: `${ext}-${String(v.size).replace(/[^A-Za-z0-9]+/g, '')}`, variant_id: v.id, retail_price: Number(it.price).toFixed(2),
             files: placements.map(([placement, f]) => ({ type: placement, url: `${BASE}/placed/${f.file}` })),
-            ...(pl.threads ? { options: Object.entries(pl.threads).map(([placement, t]) => ({ id: placement.replace('embroidery_', 'thread_colors_'), value: t })) } : {}),
+            ...(pl.threads ? { options: Object.entries(pl.threads).map(([placement, t]) => ({ id: threadOption(placement), value: t })) } : {}),
           })),
         };
         try { await pf('/store/products', { method: 'POST', body: JSON.stringify(body) }); }
