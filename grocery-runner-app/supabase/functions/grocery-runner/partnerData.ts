@@ -372,3 +372,79 @@ export function cleanDealRows(rows: unknown, today: string): DealRow[] | null {
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Store manager sign-in (store-portal function)
+
+/** Email domains that each chain's own staff use. A match is a hint for Tyler, never an approval. */
+export const CHAIN_EMAIL_DOMAINS: Record<string, string[]> = {
+  kroger: ['kroger.com', 'marianos.com', 'picknsave.com', 'metromarket.net', 'fredmeyer.com', 'ralphs.com', 'kingsoopers.com', 'smithsfoodanddrug.com', 'frysfood.com', 'qfc.com', 'harristeeter.com'],
+  walmart: ['walmart.com', 'wal-mart.com', 'samsclub.com'],
+  target: ['target.com'],
+  hyvee: ['hy-vee.com', 'hyvee.com'],
+  costco: ['costco.com'],
+  aldi: ['aldi.us', 'aldi.com'],
+  woodmans: ['woodmans-food.com', 'woodmans.com'],
+};
+
+/** Chains a partner store can be (the app's chains). "other" stores can't be matched to Apple Maps pins yet. */
+export const PARTNER_CHAINS = Object.keys(CHAIN_EMAIL_DOMAINS);
+
+export function cleanEmail(email: unknown): string | null {
+  if (typeof email !== 'string') return null;
+  const e = email.trim().toLowerCase();
+  return e.length <= 254 && /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(e) ? e : null;
+}
+
+/** True when the email is at the chain's own domain (or a subdomain of it), like jane@store123.walmart.com. */
+export function isWorkEmail(chain: string, email: string): boolean {
+  const domain = email.split('@')[1] ?? '';
+  return (CHAIN_EMAIL_DOMAINS[chain] ?? []).some((d) => domain === d || domain.endsWith(`.${d}`));
+}
+
+/** "(715) 555-0100" -> "715-555-0100"; null unless it has 10 or 11 digits. */
+export function cleanPhone(phone: unknown): string | null {
+  if (typeof phone !== 'string') return null;
+  let d = phone.replace(/\D/g, '');
+  if (d.length === 11 && d.startsWith('1')) d = d.slice(1);
+  return d.length === 10 ? `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}` : null;
+}
+
+/** Plain short text for names and notes: no control characters, spaces squashed, cut to max. */
+export function cleanText(text: unknown, max: number): string {
+  if (typeof text !== 'string') return '';
+  return text.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+/** A store notice keeps its line breaks (up to 3 lines), 280 characters. */
+export function cleanNotice(text: unknown): string {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((l) => l.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .join('\n')
+    .slice(0, 280);
+}
+
+/**
+ * Out-of-stock marks for this list. Stricter than deals: the words must be the same (sizes and plurals
+ * aside), so "milk" marked out never hides "almond milk", and "almond milk" out never hides "milk".
+ */
+export function matchOuts<T extends { item: string }>(items: string[], outs: T[]): Record<string, T> {
+  const out: Record<string, T> = {};
+  const sig = (name: string) => words(name).sort().join(' ');
+  const bySig = new Map<string, T>();
+  for (const o of outs) {
+    const s = sig(o.item);
+    if (s && !bySig.has(s)) bySig.set(s, o);
+  }
+  for (const name of items) {
+    const key = itemKey(name);
+    const hit = key && bySig.get(sig(name));
+    if (hit && !out[key]) out[key] = hit;
+  }
+  return out;
+}

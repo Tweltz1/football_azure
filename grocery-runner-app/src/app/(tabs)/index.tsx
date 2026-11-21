@@ -3,10 +3,10 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SaleBadge } from '../../components/SaleBadge';
+import { OutBadge, SaleBadge } from '../../components/SaleBadge';
 import { closeSwipeRows, SwipeRow } from '../../components/SwipeRow';
 import { Button, lift, ScreenHeader, StudioCredit, tap } from '../../components/ui';
-import { dealFor, useDeals } from '../../lib/deals';
+import { dealFor, outFor, useDeals, useStoreInfo } from '../../lib/deals';
 import { locationLabel } from '../../lib/labels';
 import { groupList } from '../../lib/listGroups';
 import { useFamily } from '../../lib/family';
@@ -39,6 +39,8 @@ export default function ListScreen() {
   const [draft, setDraft] = useState('');
   const left = items.filter((i) => !i.checked).length;
   const deals = useDeals(store, items.filter((i) => !i.checked).map((i) => i.name));
+  const storeInfo = useStoreInfo(store);
+  const dealCount = storeInfo.deals.length;
   const sections = useMemo(() => groupList(items), [items]);
 
   // "Undo" shows for a few seconds after something is removed.
@@ -96,6 +98,22 @@ export default function ListScreen() {
             <Text style={{ color: t.onHero, fontWeight: '700', fontSize: 13 }}>{store ? 'Change' : 'Choose'}</Text>
           </View>
         </Pressable>
+        {(dealCount > 0 || !!storeInfo.notice) && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint="Shows this store's sales and news"
+            onPress={() => router.push('/deals')}
+            style={styles.heroFamily}
+          >
+            <Ionicons name={dealCount ? 'pricetags' : 'megaphone-outline'} size={15} color={t.onHero} />
+            <Text style={{ color: t.onHero, fontWeight: '700', fontSize: 13, flex: 1 }} numberOfLines={1}>
+              {dealCount
+                ? `${dealCount} deal${dealCount === 1 ? '' : 's'} this week${storeInfo.notice ? ' · store news' : ''}`
+                : storeInfo.notice!.split('\n')[0]}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={t.onHero} style={{ opacity: 0.7 }} />
+          </Pressable>
+        )}
         {items.length > 0 && (
           <View accessibilityLabel={`${checkedCount} of ${items.length} checked off`} style={styles.progress}>
             <View style={[styles.progressFill, { width: `${Math.round((checkedCount / items.length) * 100)}%`, backgroundColor: t.accent }]} />
@@ -273,6 +291,7 @@ export default function ListScreen() {
                     </Text>
                   )}
                   {!item.checked && <SaleBadge deal={dealFor(deals, item.name)} name={item.name} />}
+                  {!item.checked && <OutBadge out={outFor(deals, item.name)} />}
                 </Pressable>
                 <Ionicons name="chevron-forward" size={16} color={t.border} />
               </View>

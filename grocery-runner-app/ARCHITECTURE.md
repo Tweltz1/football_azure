@@ -183,8 +183,8 @@ aisle label parsing, department guessing, stop order, grouping and the cold-last
 
 ## Partner stores (layouts and deals)
 
-Stores that partner with Shop Stride send their own data through `portal/index.html` (a private link
-per store) or the `store-portal` API; see `portal/README.md`. Tables `grocery_partner_stores`,
+Stores that partner with Shop Stride send their own data through `portal/index.html` (store managers sign
+in with an email code and are approved by Tyler; older stores use a private link) or the `store-portal` API; see `portal/README.md`. Tables `grocery_partner_stores`,
 `grocery_partner_aisles`, `grocery_partner_deals` (`tools/setup_supabase.py`), service role only.
 The store's category list ranks above every other shared source (source `store` in the app), and its
 current deals become "On sale" badges. Parsing and matching live in
