@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cleanLink, isoMinutes, parseRecipePage } from '../src/lib/recipeText';
+import { cleanLink, hasRecipeData, isoMinutes, parseCollectionPage, parseRecipePage } from '../src/lib/recipeText';
 
 test('cleanLink finds the link in what people paste', () => {
   assert.equal(cleanLink('https://www.allrecipes.com/recipe/123/tacos/'), 'https://www.allrecipes.com/recipe/123/tacos/');
@@ -92,4 +92,44 @@ test('reads steps from the page, with the minutes each one mentions', () => {
     { text: 'Serve.', minutes: 0 },
   ]);
   assert.equal(r.minutes, 40);
+});
+
+test('a roundup page lists the recipes it links to, not menu links', () => {
+  // Shaped like Food Network's "100 Healthy Dinners" page: menus, then slides with "Get the recipe" buttons.
+  const html = `<meta property="og:title" content="100 Healthy Dinners in 40 Minutes or Less | Food Network">
+    <script type="application/ld+json">{"@type":"Article","mainEntity":{"@type":"ItemList","itemListElement":[{"@type":"ListItem","position":1,"item":{"@type":"Thing","name":"Ideas"}}]}}</script>
+    <header><nav><a href="//www.foodnetwork.com/recipes/dinner">Dinner</a><a href="//www.foodnetwork.com/recipes/main-dish/healthy-main-dishes">Healthy</a></nav></header>
+    <div class="slide"><a href="//www.foodnetwork.com/recipes/herbed-lentils-with-spinach-and-tomatoes-recipe-1953138" title="Herbed Lentils with Spinach and Tomatoes" class="slide-cta"> get the recipe </a></div>
+    <p>Try our <a href="https://www.foodnetwork.com/recipes/quick-and-healthy-turkey-chili-recipe-2120199">Quick and Healthy Turkey Chili</a>.</p>
+    <div class="slide"><a href="//www.foodnetwork.com/recipes/ellie-krieger/pasta-puttanesca-recipe-1945199" title="Pasta Puttanesca" class="slide-cta">Get the Recipe</a></div>
+    <div class="slide"><a href="//www.foodnetwork.com/recipes/ellie-krieger/pasta-puttanesca-recipe-1945199" title="Pasta Puttanesca" class="slide-cta">Get the Recipe</a></div>
+    <footer><a href="/recipes/food-network-kitchen/some-footer-recipe-123">Footer</a></footer>`;
+  assert.equal(hasRecipeData(html), false);
+  const c = parseCollectionPage(html, 'https://www.foodnetwork.com/healthy/packages/healthy-every-week/quick-and-simple/healthy-dinners-in-40-minutes-or-less');
+  assert.equal(c?.title, '100 Healthy Dinners in 40 Minutes or Less');
+  assert.deepEqual(c?.recipes, [
+    { url: 'https://www.foodnetwork.com/recipes/herbed-lentils-with-spinach-and-tomatoes-recipe-1953138', title: 'Herbed Lentils with Spinach and Tomatoes' },
+    { url: 'https://www.foodnetwork.com/recipes/ellie-krieger/pasta-puttanesca-recipe-1945199', title: 'Pasta Puttanesca' },
+  ]);
+  // The page's own text is never read as an ingredient list.
+  assert.ok(!parseRecipePage(html).items.some((i) => i.item === 'dinner'));
+});
+
+test('a roundup with a schema.org ItemList of recipe pages, or plain blog links', () => {
+  const list = `<title>25 Easy Soups - Site</title><script type="application/ld+json">{"@context":"https://schema.org","@type":"ItemList","itemListElement":[
+    {"@type":"ListItem","position":1,"url":"https://www.site.com/recipe/1/chicken-noodle-soup/","name":"Chicken Noodle Soup"},
+    {"@type":"ListItem","position":2,"item":{"@id":"https://www.site.com/recipe/2/lentil-soup/","name":"Lentil Soup"}},
+    {"@type":"ListItem","position":3,"url":"https://other.com/recipe/3/elsewhere/"}]}</script>`;
+  assert.deepEqual(parseCollectionPage(list, 'https://www.site.com/gallery/easy-soups/')?.recipes, [
+    { url: 'https://www.site.com/recipe/1/chicken-noodle-soup', title: 'Chicken Noodle Soup' },
+    { url: 'https://www.site.com/recipe/2/lentil-soup', title: 'Lentil Soup' },
+  ]);
+  const blog = `<h1>12 Weeknight Pastas</h1><article><h2><a href="https://blog.com/creamy-tomato-pasta/">1. Creamy Tomato Pasta</a></h2>
+    <a href="https://blog.com/category/pasta/">Pasta</a><a href="https://blog.com/one-pot-lemon-orzo/">Get the recipe</a><h2>One-Pot Lemon Orzo</h2></article>`;
+  const b = parseCollectionPage(blog, 'https://blog.com/weeknight-pastas/');
+  assert.deepEqual(b?.recipes.map((r) => r.url), ['https://blog.com/creamy-tomato-pasta', 'https://blog.com/one-pot-lemon-orzo']);
+  assert.equal(b?.recipes[1].title, 'One pot lemon orzo');
+  // One recipe page is not a collection.
+  assert.equal(hasRecipeData('<script type="application/ld+json">{"@type":"Recipe","recipeIngredient":["1 egg"]}</script>'), true);
+  assert.equal(parseCollectionPage('<a href="/a-b-c">x</a>', 'https://x.com/'), null);
 });

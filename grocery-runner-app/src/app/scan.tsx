@@ -3,8 +3,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, SectionTitle } from '../components/ui';
-import { cleanLink, readRecipe } from '../lib/readRecipe';
+import { Button, Card, lift, SectionTitle } from '../components/ui';
+import { cleanLink, readLink, readRecipe, RecipeCollection } from '../lib/readRecipe';
+import { titleCase } from '../lib/caps';
 import { keepPhoto } from '../lib/recipePhotos';
 import { usePlan } from '../lib/plan';
 import { newId, useData } from '../lib/store';
@@ -20,12 +21,25 @@ export default function ScanScreen() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A roundup page ("100 healthy dinners"): the shopper ticks the recipes to add.
+  const [collection, setCollection] = useState<RecipeCollection | null>(null);
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const read = async (input: Parameters<typeof readRecipe>[0]) => {
     setBusy(true);
     setError(null);
     try {
-      const recipe = await readRecipe(input);
+      let recipe;
+      if ('url' in input) {
+        const got = await readLink(input.url);
+        if (got.kind === 'collection') {
+          setCollection(got.collection);
+          setPicked(new Set());
+          return;
+        }
+        recipe = got.recipe;
+      } else recipe = await readRecipe(input);
       const id = `m-${newId()}`;
       // The scanned photo becomes the recipe's picture.
       const photo = 'photoUri' in input ? await keepPhoto(input.photoUri, id) : undefined;
@@ -38,6 +52,44 @@ export default function ScanScreen() {
     } finally {
       setBusy(false);
     }
+  };
+
+  /** Reads each ticked recipe, three at a time, and saves the ones that work. */
+  const addPicked = async () => {
+    if (!collection) return;
+    const links = [...picked].sort((a, b) => a - b).map((n) => collection.recipes[n]);
+    setError(null);
+    setProgress({ done: 0, total: links.length });
+    const saved: string[] = [];
+    const failed: string[] = [];
+    let next = 0;
+    let done = 0;
+    const worker = async () => {
+      while (next < links.length) {
+        const link = links[next++];
+        try {
+          const recipe = await readRecipe({ url: link.url });
+          const id = `m-${newId()}`;
+          saveRecipe({ ...recipe, id, source: 'mine', url: link.url });
+          if (planDate) addMeal(planDate, id);
+          saved.push(id);
+        } catch {
+          failed.push(link.title);
+        }
+        setProgress({ done: ++done, total: links.length });
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    setProgress(null);
+    if (failed.length) {
+      setPicked(new Set([...picked].filter((n) => failed.includes(collection.recipes[n].title))));
+      setError(
+        `${saved.length ? `Added ${saved.length} recipe${saved.length === 1 ? '' : 's'}. ` : ''}Couldn't read ${failed.join(', ')}. Try again, or open ${failed.length === 1 ? 'it' : 'them'} one at a time.`,
+      );
+      return;
+    }
+    if (saved.length === 1) router.replace(`/recipe/${saved[0]}`);
+    else router.replace('/recipes');
   };
 
   const photo = async (from: 'camera' | 'library') => {
@@ -87,6 +139,81 @@ export default function ScanScreen() {
     );
   }
 
+  if (progress) {
+    return (
+      <View style={styles.busy}>
+        <ActivityIndicator size="large" color={t.primary} />
+        <Text style={{ color: t.text, fontSize: 17, fontWeight: '600' }}>
+          Adding recipe {Math.min(progress.done + 1, progress.total)} of {progress.total}…
+        </Text>
+        <Text style={{ color: t.textMuted }}>Getting the ingredients for each recipe.</Text>
+      </View>
+    );
+  }
+
+  if (collection) {
+    const all = picked.size === collection.recipes.length;
+    return (
+      <View style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 120 }}>
+          <View style={{ gap: 4 }}>
+            <Text style={{ color: t.text, fontSize: 22, fontWeight: '800' }}>{titleCase(collection.title)}</Text>
+            <Text style={{ color: t.textMuted, lineHeight: 20 }}>
+              This page links to {collection.recipes.length} recipes. Tick the ones you want and Shop Stride adds each to your
+              recipes, ingredients and all.
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setPicked(all ? new Set() : new Set(collection.recipes.map((_, n) => n)))}
+            hitSlop={8}
+          >
+            <Text style={{ color: t.primary, fontWeight: '700' }}>{all ? 'Clear all' : 'Select all'}</Text>
+          </Pressable>
+          {error && <Text style={{ color: t.danger }}>{error}</Text>}
+          <View style={[{ borderRadius: radius.md, backgroundColor: t.card, overflow: 'hidden' }, lift(t)]}>
+            {collection.recipes.map((r, n) => {
+              const on = picked.has(n);
+              return (
+                <Pressable
+                  key={r.url}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}
+                  onPress={() =>
+                    setPicked((p) => {
+                      const s = new Set(p);
+                      if (s.has(n)) s.delete(n);
+                      else s.add(n);
+                      return s;
+                    })
+                  }
+                  style={[
+                    styles.pickRow,
+                    n < collection.recipes.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: t.border },
+                  ]}
+                >
+                  <View style={[styles.check, on ? { backgroundColor: t.primary, borderColor: t.primary } : { borderColor: t.textMuted }]}>
+                    {on && <Ionicons name="checkmark" size={15} color={t.onPrimary} />}
+                  </View>
+                  <Text style={{ flex: 1, color: t.text, fontSize: 16, fontWeight: '600' }}>{titleCase(r.title)}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Button title="Use a different link" variant="ghost" onPress={() => { setCollection(null); setError(null); }} />
+        </ScrollView>
+        <View style={[styles.footer, { backgroundColor: t.bg, borderTopColor: t.border }]}>
+          <Button
+            title={picked.size ? `Add ${picked.size} recipe${picked.size === 1 ? '' : 's'}` : 'Tick the recipes you want'}
+            icon="add-circle"
+            disabled={!picked.size}
+            onPress={addPicked}
+          />
+        </View>
+      </View>
+    );
+  }
+
   if (mode === 'link') {
     const ok = !!cleanLink(text);
     return (
@@ -96,7 +223,7 @@ export default function ScanScreen() {
           <Text style={{ color: t.text, fontSize: 22, fontWeight: '800' }}>Add a recipe from a link</Text>
           <Text style={{ color: t.textMuted, textAlign: 'center', lineHeight: 20 }}>
             Copy the link from Safari, Pinterest or any recipe site and paste it here. You pick which ingredients go on your
-            list.
+            list. A page with many recipes, like “20 easy dinners”, lets you pick which recipes to add.
           </Text>
         </View>
         <View style={[styles.linkRow, { backgroundColor: t.card, borderColor: ok ? t.primary : t.border }]}>
@@ -173,6 +300,9 @@ export default function ScanScreen() {
 }
 
 const styles = StyleSheet.create({
+  pickRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 13 },
+  check: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16, paddingBottom: 28, borderTopWidth: StyleSheet.hairlineWidth },
   busy: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 24 },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1.5 },
   input: { minHeight: 120, fontSize: 16, padding: 12, borderRadius: radius.sm, textAlignVertical: 'top' },

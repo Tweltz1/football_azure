@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseIngredient, parsePastedText, parsePhotoText, parseRecipePage } from '../src/lib/recipeText';
+import { parseIngredient, parsePastedText, parsePhotoText, parseRecipeLines, parseRecipePage } from '../src/lib/recipeText';
 
 // Name, amount and pantry only; notes are checked in their own test.
 const item = (line: string) => {
@@ -135,4 +135,62 @@ test('UK pack sizes and dangling "and" from prep words', () => {
   assert.deepEqual(item('2 x 400g tins plum tomatoes'), { item: 'plum tomatoes', amount: '2 x 400g tins', pantry: false });
   assert.equal(parseIngredient('2 carrots trimmed and finely chopped')?.item, 'carrots');
   assert.equal(parseIngredient('1 red chilli deseeded and finely chopped (optional)')?.item, 'red chilli');
+});
+
+test('Food Network healthy dinners: lines that used to come through wrong', () => {
+  const p = (l: string) => parseIngredient(l);
+  const item = (l: string) => p(l)?.item;
+  assert.equal(item('1 pound peeled and deveined jumbo shrimp'), 'jumbo shrimp');
+  assert.equal(item('1 1/2 pounds large peeled, deveined shrimp (leave the tail sections on)'), 'shrimp');
+  assert.equal(item('2 cups chopped cooked boneless, skinless chicken breast (about 9 ounces)'), 'boneless skinless chicken breast');
+  assert.equal(item('6 ounces fully-cooked chorizo, casings removed, chopped'), 'chorizo');
+  assert.equal(item('3 tablespoons well-drained capers'), 'capers');
+  assert.equal(item('1/2 cup chopped drained water-packed artichoke quarters (about 10 pieces)'), 'artichoke quarters');
+  assert.deepEqual(p('Juice of 1/2 lemon, plus slices for serving'), { item: 'lemon', amount: '1/2', pantry: false, note: 'juice, plus slices for serving' });
+  assert.equal(item('Zest of 1 lemon plus 2 tablespoons juice'), 'lemon');
+  assert.deepEqual(p('1/4 cup plus 3 tablespoons olive oil'), { item: 'olive oil', amount: '1/4 cup plus 3 tablespoons', pantry: true });
+  assert.equal(p('1 packed cup baby spinach')?.amount, '1 packed cup');
+  assert.equal(item('1/2 cup loosely packed fresh cilantro'), 'fresh cilantro');
+  assert.deepEqual(p('Eight 6-inch corn tortillas, warmed'), { item: 'corn tortillas', amount: 'Eight (6-inch)', pantry: false, note: 'warmed' });
+  assert.equal(p('One 1-inch piece fresh ginger, minced')?.amount, 'One 1-inch piece');
+  assert.equal(item('1/2-inch knob fresh ginger, peeled and grated'), 'fresh ginger');
+  assert.equal(item('1 rib celery, thinly sliced'), 'celery');
+  assert.equal(item('2 large ears of corn, kernels removed'), 'corn');
+  assert.equal(item('3/4 box (12 ounces) whole-wheat penne'), 'whole-wheat penne');
+  assert.equal(item('2 strip steaks (about 1-inch thick)'), 'strip steaks');
+  assert.equal(item('1 large carrot (6 ounces) peeled and sliced into strips with a peeler'), 'carrot');
+  assert.equal(item('1/2 cup red onion thinly sliced into half moons'), 'red onion');
+  assert.equal(item('6 black pitted and chopped olives such as Kalamata (about 1 tablespoon)'), 'black olives');
+  assert.equal(item('1/3 cup cubed, peeled butternut squash (about 2 1/2 ounces)'), 'butternut squash');
+  assert.equal(item('1 teaspoon finely chopped seeded chipotle with 1/2 teaspoon adobo'), 'chipotle');
+  assert.equal(item('1 1/2 tablespoons freshly squeezed lime juice'), 'lime juice');
+  // "or": a shared last word stays with the first choice; a whole other thing goes to the note.
+  assert.equal(item('1 cup grape or cherry tomatoes, sliced in 1/2 (6 ounces)'), 'grape tomatoes');
+  assert.equal(item('1/2 cup low-sodium vegetable or chicken broth'), 'low-sodium vegetable broth');
+  assert.equal(item('1 yellow or orange bell pepper, chopped'), 'yellow bell pepper');
+  assert.equal(item('10 ounces white button or cremini (baby bella) mushrooms, sliced'), 'white button mushrooms');
+  assert.equal(item('1 1/2 cups fresh or frozen corn kernels, thawed if frozen'), 'fresh corn kernels');
+  assert.equal(item('3 tablespoons vegetable, canola or other neutral oil'), 'vegetable oil');
+  assert.equal(item('Cooking spray or olive oil, for oiling tortillas'), 'cooking spray');
+  assert.equal(item('Cooked yam, plantains or rice, for serving'), 'yam');
+  assert.equal(item('4 tbsp unsalted butter or margarine, softened'), 'unsalted butter');
+  assert.equal(p('Kosher salt freshly ground black pepper')?.item, 'kosher salt and ground black pepper');
+});
+
+test('lines naming several things become one item each', () => {
+  const names = (lines: string[]) => parseRecipeLines(lines, '', true).items.map((i) => i.item);
+  assert.deepEqual(names(['Suggested toppings: chopped fresh cilantro, diced avocado, shredded cheese, lime juice']), [
+    'fresh cilantro',
+    'avocado',
+    'cheese',
+    'lime juice',
+  ]);
+  assert.deepEqual(names(['Lime wedges and cilantro leaves, for serving']), ['lime wedges', 'cilantro leaves']);
+  assert.deepEqual(names(['Lemon juice and ground cinnamon for tossing']), ['lemon juice', 'ground cinnamon']);
+  assert.deepEqual(names(['Salt and pepper', 'Half and half, for serving']), ['salt and pepper', 'half and half']);
+  assert.deepEqual(
+    names(['2 scallions, cut into 2-inch lengths, white and green parts separated 2 tablespoons thinly sliced fresh ginger (from about a 3/4-inch piece)']),
+    ['scallions', 'fresh ginger'],
+  );
+  assert.deepEqual(names(['1 tablespoon all-purpose flour, dissolved in 3 tablespoons water']), ['all-purpose flour']);
 });

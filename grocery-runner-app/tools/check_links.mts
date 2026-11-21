@@ -1,7 +1,6 @@
 // Reads real recipe pages with the app's own parser (src/lib/recipeText.ts) and prints what a shopper
 // would get: title, every ingredient, every step with its minutes, and the total. Flags pages where the
 // ingredient or step count doesn't match the page's own recipe data. Run by grocery-runner-store.yml ([stride-links]).
-import { readFileSync, existsSync } from 'node:fs';
 import { hasRecipeData, parseCollectionPage, parseIngredient, parseRecipePage } from '../src/lib/recipeText';
 
 const DEFAULT_URLS = [
@@ -22,10 +21,14 @@ const DEFAULT_URLS = [
 ];
 // tools/links.txt (one link per line) replaces the default list when present. A collection page
 // ("20 healthy dinners") is expanded into every recipe it links to.
-const listed = existsSync('tools/links.txt')
-  ? readFileSync('tools/links.txt', 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
+// The app's tsconfig has no Node types, so fs comes in untyped.
+const fs = await import('node:fs' as string);
+const listed: string[] = fs.existsSync('tools/links.txt')
+  ? String(fs.readFileSync('tools/links.txt', 'utf8')).split('\n').map((l: string) => l.trim()).filter((l: string) => l && !l.startsWith('#'))
   : [];
-const URLS = listed.length ? listed : DEFAULT_URLS;
+// "list: <link>" shows the recipes a collection links to without reading each one.
+const LIST_ONLY = new Set(listed.filter((l) => l.startsWith('list:')).map((l) => l.slice(5).trim()));
+const URLS = listed.length ? listed.map((l) => l.replace(/^list:\s*/, '')) : DEFAULT_URLS;
 const SAFARI =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1';
 
@@ -57,7 +60,7 @@ for (let qi = 0; qi < queue.length; qi++) {
       const col = parseCollectionPage(html, url);
       console.log(`  collection: ${col?.title ?? 'none'} | ${col?.recipes.length ?? 0} recipe link(s)`);
       for (const l of col?.recipes ?? []) console.log(`    ${l.title} <${l.url}>`);
-      if (col) queue.push(...col.recipes.map((l) => l.url));
+      if (col && !LIST_ONLY.has(url)) queue.push(...col.recipes.map((l) => l.url));
       if (col) continue;
     }
     const src = sourceCounts(html);

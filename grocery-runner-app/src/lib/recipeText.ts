@@ -33,14 +33,14 @@ const UNITS = [
   'cups?', 'c\\.', 'tablespoons?', 'tbsps?\\.?', 'tbs\\.?', 'T\\.?', 'teaspoons?', 'tsps?\\.?', 't\\.',
   'ounces?', 'oz\\.?', 'fl\\.? oz\\.?', 'pounds?', 'lbs?\\.?', 'grams?', 'g', 'kilograms?', 'kg', 'ml', 'milliliters?',
   'liters?', 'l', 'quarts?', 'qts?\\.?', 'pints?', 'pts?\\.?', 'gallons?', 'gal\\.?', 'cans?', 'jars?', 'bottles?',
-  'packages?', 'pkgs?\\.?', 'packets?', 'envelopes?', 'boxes?', 'bags?', 'containers?', 'sticks?', 'cloves?', 'heads?',
-  'bunch(?:es)?', 'sprigs?', 'stalks?', 'slices?', 'pieces?', 'pinch(?:es)?', 'dash(?:es)?', 'handfuls?', 'large',
+  'packages?', 'pkgs?\\.?', 'packets?', 'envelopes?', 'box(?:es)?', 'bags?', 'containers?', 'sticks?', 'cloves?', 'heads?',
+  'bunch(?:es)?', 'sprigs?', 'stalks?', 'ribs?', 'ears?', 'strips', 'leaves', 'fillets?', 'slices?', 'pieces?', 'pinch(?:es)?', 'dash(?:es)?', 'handfuls?', 'large',
   'medium', 'small',
 ];
 const UNIT = new RegExp(String.raw`^(?:${UNITS.join('|')})(?=\s|$|\))`, 'i');
 // Removed from the item name: they say how to prepare it, not what to buy.
 const PREP =
-  /\b(finely|coarsely|roughly|thinly|freshly|lightly|well|very|chopped|(?:diced|crushed|stewed)(?!\s+(?:tomato|red pepper|pineapple))|minced|sliced|grated|shredded|peeled|seeded|cored|trimmed|halved|quartered|picked|deseeded|de-seeded|in half|cubed|melted|softened|beaten|divided|drained|rinsed|packed|sifted|toasted|cooked|uncooked|room temperature|at room temperature|cut into [^,]+|plus more[^,]*|or more[^,]*|to taste|for serving|for garnish|for topping|for dusting|optional|if desired|as needed)\b/gi;
+  /(?:\b(?:well|fully|loosely|lightly|firmly|tightly|water|oil)[- ](?:drained|cooked|packed)\b|\b(finely|coarsely|roughly|thinly|freshly|lightly|loosely|well|very|chopped|squeezed|bagged|deveined|pitted|stemmed|shelled|(?:diced|crushed|stewed)(?!\s+(?:tomato|red pepper|pineapple))|minced|sliced|grated|shredded|peeled|seeded|cored|trimmed|halved|quartered|picked|deseeded|de-seeded|in half|cubed|melted|softened|beaten|divided|drained|rinsed|packed|sifted|toasted|cooked|uncooked|room temperature|at room temperature|cut into [^,]+|plus more[^,]*|or more[^,]*|to taste|for serving|for garnish|for topping|for dusting|for (?:the )?\w+ing|for the grill|optional|if desired|as needed)\b)/gi;
 const PANTRY = new Set(
   [
     'salt', 'kosher salt', 'sea salt', 'pepper', 'black pepper', 'ground black pepper', 'salt and pepper',
@@ -66,6 +66,14 @@ const normalise = (line: string) =>
 
 const startsWithAmount = (line: string) => QTY.test(normalise(line)) || /^(a|an|one|two|three|a few|pinch|dash)\s/i.test(line);
 
+// Words that end a shared name in "grape or cherry tomatoes" and "vegetable, canola or other neutral oil".
+const SHARED_NOUN =
+  /^(?:broth|stock|olives|ham|cheese|beans|vinegar|wine|rice|pasta|oil|peppers?|onions?|squash|lettuce|mushrooms|sausages?|tomatoes|apples|juice|mustard|sprouts|kernels|corn|greens|noodles|flour|chiles|chilies|potatoes|lentils|nuts|seeds|cabbage|sauce|tortillas|bread|fillets|breasts|thighs|chops|cutlets|steaks?)$/i;
+const NUMBER_WORD = /^(a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a few|a couple of|half an?)\s+/i;
+// "Juice of 1 lemon", "Zest of 1 lemon plus 2 tablespoons juice": the thing to buy is the lemon.
+const JUICE_OF = /^((?:finely\s+)?(?:grated\s+)?(?:zest|juice|zest and juice|juice and zest)) of\s+/i;
+const MARK = '\u0001';
+
 /** Splits "2 cups shredded cheddar cheese, divided" into the amount and the thing to buy. */
 export function parseIngredient(raw: string): RecipeItem | null {
   let line = normalise(raw);
@@ -74,22 +82,34 @@ export function parseIngredient(raw: string): RecipeItem | null {
   if (/^for the\b.*:$/i.test(line) || /:$/.test(line)) return null; // sub-headings like "For the sauce:"
 
   const amount: string[] = [];
+  const notes: string[] = [];
+  const juiceOf = line.match(JUICE_OF);
+  if (juiceOf) {
+    notes.push(juiceOf[1].toLowerCase());
+    line = line.slice(juiceOf[0].length);
+  }
   const qty = line.match(QTY);
   if (qty) {
     amount.push(qty[0]);
     line = line.slice(qty[0].length).trim();
   } else {
-    const word = line.match(/^(a|an|one|two|three|four|a few|a couple of)\s+/i);
+    const word = line.match(NUMBER_WORD);
     if (word) {
       amount.push(word[0].trim());
       line = line.slice(word[0].length);
     }
   }
-  // "heaping cups", "scant teaspoon": how full, part of the amount.
-  const fill = line.match(/^(heaping|heaped|level|scant|rounded|generous|good)\s+/i);
+  // "heaping cups", "scant teaspoon", "packed cup": how full, part of the amount.
+  const fill = line.match(/^((?:heaping|heaped|level|scant|rounded|generous|good|(?:loosely |lightly |firmly |tightly )?packed))\s+(?=(?:cups?|tablespoons?|teaspoons?|tbsps?|tsps?)\b)/i);
   if (fill) {
     amount.push(fill[1]);
     line = line.slice(fill[0].length);
+  }
+  // "1-inch piece fresh ginger", "1/2-inch knob ginger": the piece is the amount.
+  const piece = line.match(/^(?:(\d+(?:\/\d+)?)\s*)?-?\s*inch(?:es)?\s+((?:piece|knob|chunk|length)s?)\s+(?:of\s+)?/i);
+  if (piece) {
+    amount.push(`${piece[1] ?? ''}-inch ${piece[2]}`.replace(/^-/, '').trim());
+    line = line.slice(piece[0].length);
   }
   // "(14 oz)" package sizes right after the amount belong to the amount, also written without
   // brackets as recipe plugins print them: "2 4 oz cans", "1 15-ounce can".
@@ -104,6 +124,18 @@ export function parseIngredient(raw: string): RecipeItem | null {
     amount.push(unit[0]);
     line = line.slice(unit[0].length).trim();
   }
+  // "1/4 cup plus 3 tablespoons olive oil": both amounts.
+  const plus = line.match(new RegExp(String.raw`^plus\s+(${NUM}\s+(?:${UNITS.join('|')}))(?=\s)\s*`, 'i'));
+  if (plus) {
+    amount.push(`plus ${plus[1]}`);
+    line = line.slice(plus[0].length);
+  }
+  // "Eight 6-inch tortillas": the size goes with the amount.
+  const inch = line.match(/^(\d+(?:\.\d+)?-inch)\s+/i);
+  if (inch) {
+    amount.push(`(${inch[1]})`);
+    line = line.slice(inch[0].length);
+  }
   line = line.replace(/^of\s+/i, '');
   // "2 x 400g tins plum tomatoes": the pack size is part of the amount.
   const packs = line.match(/^x\s+(\d+(?:\.\d+)?\s*(?:fl\.?\s*oz|oz|ml|g|kg|lbs?)\.?)\s+((?:tins?|cans?|packs?|packets?|jars?|bottles?|cartons?|bags?|boxes)\s+)?/i);
@@ -113,7 +145,6 @@ export function parseIngredient(raw: string): RecipeItem | null {
   }
 
   // Notes in brackets, nested too: WP Recipe Maker writes "onion ((diced))" and "chicken (, cooked)".
-  const notes: string[] = [];
   let bare = line;
   for (let n = 0; n < 4 && /\([^()]*\)/.test(bare); n++) {
     bare = bare.replace(/\(([^()]*)\)/g, (_, inner: string) => {
@@ -121,29 +152,82 @@ export function parseIngredient(raw: string): RecipeItem | null {
       return ' ';
     });
   }
-  bare = bare.replace(/\(.*$/, ' ').replace(/[()]/g, ' ');
+  bare = bare
+    .replace(/\(.*$/, ' ')
+    .replace(/[()]/g, ' ')
+    // "Kosher salt freshly ground black pepper" (the site lost the "and").
+    .replace(/\bsalt\s+(?=(?:freshly\s+|fresh\s+)?(?:ground|cracked)\b)/i, 'salt and ')
+    // "chipotle with 1/2 teaspoon adobo", "zest of 1 lemon plus 2 tablespoons juice": the rest is a note.
+    .replace(new RegExp(String.raw`^((?:\S+\s+){0,3}?\S+)(\s+(?:with|plus)\s+${NUM}\b.*)$`, 'i'), (_, keep: string, m: string) => {
+      notes.push(m.trim());
+      return keep;
+    })
+    .replace(/$^/, (m) => {
+      notes.push(m.trim());
+      return ' ';
+    })
+    .replace(/\s+(?:such as|like)\s+.*$/i, (m) => {
+      notes.push(m.trim());
+      return ' ';
+    });
   // "onion, diced" → "onion" + note "diced". Leading describing words stay with the name:
   // "boneless, skinless chicken breasts" is all one thing to buy.
   const parts = bare.split(/,|;|\s+-\s+|\s+–\s+/);
   let head = parts.shift() ?? '';
-  while (parts.length && DESCRIBING.test(head.trim()) && parts[0].trim()) head = `${head} ${parts.shift()}`;
+  const describing = (h: string) => {
+    const left = h.replace(PREP, ' ').replace(/\s+/g, ' ').trim();
+    return !left || DESCRIBING.test(left);
+  };
+  // "chopped cooked boneless, skinless chicken", "large peeled, deveined shrimp", "cubed, peeled squash".
+  while (parts.length && describing(head) && parts[0].trim()) head = `${head} ${parts.shift()}`;
+  // "vegetable, canola or other neutral oil" → "vegetable oil".
+  const sharedOr = parts[0]?.match(/\bor\s+(?:other\s+)?((?:[\w-]+\s+)+([\w-]+))\s*$/i);
+  if (
+    sharedOr &&
+    SHARED_NOUN.test(sharedOr[2]) &&
+    !/\b(?:your|favorite|any|store-bought)\b/i.test(parts[0]) &&
+    head.trim().split(/\s+/).length <= 2 &&
+    !/\bor\b/i.test(head)
+  ) {
+    head = `${head} ${sharedOr[2]}`;
+  }
   notes.push(...parts);
   const prepWords: string[] = [];
-  const alternative = head.match(/\s+or\s+.*$/i)?.[0];
-  let name = head
-    .replace(/\s+or\s+.*$/i, '') // "butter or margarine" → "butter"
+  // "grape or cherry tomatoes" → "grape tomatoes"; "butter or margarine" → "butter".
+  let alternative = head.match(/\s+or\s+.*$/i)?.[0];
+  if (alternative) {
+    const alt = alternative.replace(/^\s+or\s+(?:other\s+)?/i, '').trim().split(/\s+/);
+    const tail = alt[alt.length - 1];
+    const before = head.slice(0, head.length - alternative.length);
+    const standsAlone = /\b(?:spray|butter|margarine|oil|stock|broth|water|milk|cream|yogurt|sauce)\s*$/i.test(before);
+    if (alt.length >= 2 && SHARED_NOUN.test(tail) && !standsAlone && !new RegExp(String.raw`\b${tail}\b`, 'i').test(before)) {
+      // "yellow or orange bell pepper" → "yellow bell pepper": the alternative's own first word is swapped out.
+      head = `${before} ${alt.slice(1).join(' ')}`;
+      alternative = alternative.trim();
+    } else head = before;
+  }
+  let marked = head
     .replace(PREP, (w) => {
       prepWords.push(w.toLowerCase());
-      return ' ';
+      return ` ${MARK} `;
     })
+    .replace(new RegExp(`${MARK}(?:\\s*(?:and|&|or|then)?\\s*${MARK})+`, 'g'), MARK);
+  // "red onion thinly sliced into half moons", "carrot peeled and sliced into strips": stop at the prep words.
+  const cut = marked.match(new RegExp(`^(.*?[a-z].*?)\\s*${MARK}\\s*((?:into|in|with|for|to|until|lengthwise|crosswise)\\b.*)$`, 'i'));
+  if (cut) {
+    notes.push(cut[2]);
+    marked = cut[1];
+  }
+  let name = marked
+    .replace(new RegExp(MARK, 'g'), ' ')
     .replace(/\*+/g, '')
     .replace(/\s+/g, ' ')
-    .replace(/^(and|of|the)\s+/i, '')
+    .replace(/^(and|of|the|or)\s+/i, '')
     .replace(/\s+(and|or|of|with|in)\s*$/i, '')
-    .replace(/[\s.:,]+$/, '')
+    .replace(/^[\s-]+|[\s.:,-]+$/g, '')
     .trim()
     .toLowerCase();
-  if (prepWords.length) notes.unshift(prepWords.join(' '));
+  if (prepWords.length) notes.unshift(prepWords.join(' ').replace(/\s+/g, ' '));
   if (alternative) notes.push(alternative.trim());
   const note = notes
     .map((n) => n.replace(/\*+/g, '').replace(/^[\s,;:-]+|[\s,;:.-]+$/g, '').replace(/\s+/g, ' ').trim())
@@ -193,10 +277,41 @@ export function ingredientLines(lines: string[], structured = false): string[] {
   return joined.filter((l) => startsWithAmount(l) && normalise(l).split(' ').length <= 14);
 }
 
+// Pairs that are one thing to buy, not two.
+const ONE_THING = /\b(?:half and half|half-and-half|sweet and sour|mac(?:aroni)? and cheese|salt and[\w\s]*pepper|pepper and salt|oil and vinegar|cookies and cream|surf and turf)\b/i;
+
+/**
+ * Lines that name several things: "Suggested toppings: cilantro, avocado, lime juice" and
+ * "Lime wedges and cilantro leaves, for serving" (no amount) become one line each.
+ */
+export function splitLine(line: string): string[] {
+  const toppings = line.match(/^\s*(?:suggested |optional )?(?:toppings?|garnish(?:es)?|to serve|for serving|serve with)\s*:\s*(.+)$/i);
+  if (toppings) {
+    return toppings[1]
+      .split(/,|;|\s+and\s+|\s+or\s+/i)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => `${p}, for serving`);
+  }
+  const v = normalise(line);
+  // Two ingredients run together by the site: "2 scallions, sliced 2 tablespoons ginger strips".
+  const joined = v.match(
+    /^(.{8,}?[a-z)])\s+(?<!\b(?:about|plus|or|and|from|to|with|of|each|than|into|in|by|x)\s+)(\d+(?:\s+\d\/\d|\/\d+)?\s+(?:tablespoons?|teaspoons?|cups?|pounds?|ounces?)\s.*)$/i,
+  );
+  if (joined && startsWithAmount(v)) return [joined[1], ...splitLine(joined[2])];
+  if (startsWithAmount(v) || ONE_THING.test(v)) return [line];
+  const m = v.match(/^([^,()]+?)\s+and\s+([^,()]+?)((?:,|\s+for\s+|\s*\().*)?$/i);
+  if (!m) return [line];
+  const words = (t: string) => t.trim().split(/\s+/).length;
+  if (words(m[1]) > 3 || words(m[2]) > 3) return [line];
+  const rest = m[3] ? m[3].replace(/^,\s*/, ', ').replace(/^\s+for\s+/i, ', for ') : '';
+  return [`${m[1]}${rest}`, `${m[2]}${rest}`];
+}
+
 export function parseRecipeLines(lines: string[], title = '', structured = false): ParsedRecipe {
   const servings = lines.map((l) => l.match(SERVINGS)).find(Boolean);
   const merged = new Map<string, RecipeItem>();
-  for (const line of ingredientLines(lines, structured)) {
+  for (const line of ingredientLines(lines, structured).flatMap(splitLine)) {
     const item = parseIngredient(line);
     if (!item) continue;
     const key = itemKey(item.item);
@@ -363,6 +478,8 @@ export function parseRecipePage(html: string): ParsedRecipe {
   if (marked.length) return { ...parseRecipeLines(marked, title, true), imageUrl: ogImage(html) };
   const text = html
     .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
+    // Site menus list "Chicken", "Pasta", "7 Ingredients or Less"…: never ingredients.
+    .replace(/<(nav|header|footer|aside)\b[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<(br|\/p|\/li|\/h\d|\/div|\/tr)[^>]*>/gi, '\n');
   return { ...parseRecipeLines(decode(text).split('\n'), title), imageUrl: ogImage(html) };
 }
