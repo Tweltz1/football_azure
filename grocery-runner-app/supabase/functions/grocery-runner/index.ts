@@ -6,7 +6,8 @@
 //   GET  ?action=nearby&lat=41.6&lon=-93.6       official Kroger/Walmart stores near a point, for the map
 //   POST {action:"coverage", stores:[keys]}     items with shared aisles per store
 //   GET  ?action=status                          which lookups are switched on
-//   POST {action:"aisles", store, items:[...]}   shared shopper aisles for a list
+//   POST {action:"aisles", store, items:[...], depts:2}   shared shopper aisles for a list
+//        (depts:2 = the app knows the 1.1 non-food departments; older apps never get them, see forApp)
 //   POST {action:"vote", store, item, device, aisle | department}
 //   POST {action:"store-aisles", store}          every item's shared aisle at one store (layout learning)
 //   POST {action:"kroger-stock", locationId, items:[...]}           stock + price per item at one Kroger store
@@ -23,6 +24,7 @@ import { sharedDepartments, voteDepartment } from './departments.ts';
 import { krogerProducts, krogerReady, krogerStock, krogerStores } from './kroger.ts';
 import { coverage, officialStoresNear } from './nearby.ts';
 import { listDeals } from './partners.ts';
+import { forApp } from './votes.ts';
 import { walmartReady, walmartStores } from './walmart.ts';
 
 const cors = {
@@ -40,10 +42,10 @@ Deno.serve(async (req) => {
   try {
     if (req.method === 'POST') {
       const body = await req.json();
-      if (body.action === 'aisles') return json(await sharedAisles(body.store, body.items));
+      if (body.action === 'aisles') return json(forApp(await sharedAisles(body.store, body.items), body.depts));
       if (body.action === 'vote') return json(await voteAisle(body));
       if (body.action === 'store-aisles') return json(await storeAisles(body.store));
-      if (body.action === 'departments') return json(await sharedDepartments(body.items));
+      if (body.action === 'departments') return json(forApp(await sharedDepartments(body.items), body.depts));
       if (body.action === 'department-vote') return json(await voteDepartment(body));
       if (body.action === 'coverage') return json(await coverage(body.stores));
       if (body.action === 'deals') return json(await listDeals(body.store, body.items));

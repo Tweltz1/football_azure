@@ -153,7 +153,7 @@ export default function ListScreen() {
             <Text style={{ fontSize: 56 }}>🧺</Text>
             <Text style={[styles.emptyTitle, { color: t.text }]}>Your list is empty</Text>
             <Text style={[styles.emptyText, { color: t.textMuted }]}>
-              Type what you need above, or paste a link to any recipe and pick its ingredients. Then tap Start shopping for the shortest walk through your store.
+              Type what you need above (paper towels and dog food too), or paste a link to any recipe and pick its ingredients. Then tap Start shopping for the shortest walk through your store.
             </Text>
             <Button
               title="Paste a recipe link"

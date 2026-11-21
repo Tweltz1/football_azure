@@ -15,7 +15,8 @@ import { StoreGrid } from './grid';
  *   +---- checkout ------------- entrance --+
  *
  * Aisle 1 sits on the left next to dairy and is used for frozen when an item
- * has no aisle number. Numbered aisles run front to back.
+ * has no aisle number. Numbered aisles run front to back. Paper & cleaning, pet, health & beauty
+ * and baby get aisles of their own (see departmentCell) until shoppers' answers place them.
  *
  * Two things can adjust it per store:
  * - `profile`: departments shoppers have placed in numbered aisles move there (storeProfile.ts).
@@ -70,6 +71,9 @@ export function buildGenericLayout(aisleCount: number, opts: LayoutOptions = {})
   };
 
   const mid = (a: number, b: number) => Math.floor((a + b) / 2);
+  // Non-food aisles until the store's own answers place them: paper/cleaning and pet toward the frozen
+  // side, health & beauty and baby toward the entrance (where the pharmacy usually is). Aisle 1 stays frozen.
+  const share = (f: number) => aisleCell(Math.min(n, Math.max(n >= 3 ? 2 : 1, Math.round(n * f))));
   const departmentCell: Record<Department, Cell> = {
     produce: m({ x: rightWalk, y: shelfTop + 2 }),
     bakery: m({ x: rightWalk, y: mid(shelfTop, shelfBottom) + 1 }),
@@ -79,6 +83,10 @@ export function buildGenericLayout(aisleCount: number, opts: LayoutOptions = {})
     frozen: aisleCell(1),
     dairy: m({ x: 1, y: mid(shelfTop, shelfBottom) }),
     other: aisleCell(Math.ceil(n / 2)),
+    household: share(0.3),
+    pet: share(0.2),
+    health: share(0.8),
+    baby: share(0.7),
   };
   const wallLabels: { dept: Department; text: string; at: Cell }[] = [
     { dept: 'dairy', text: 'Dairy', at: m({ x: 0, y: mid(shelfTop, backWall) }) },

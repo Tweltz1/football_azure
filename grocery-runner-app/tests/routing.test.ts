@@ -52,7 +52,7 @@ test('guesses departments from item names', () => {
   assert.equal(guessDepartment('ground beef'), 'meat');
   assert.equal(guessDepartment('peanut butter'), 'pantry');
   assert.equal(guessDepartment('butter'), 'dairy');
-  assert.equal(guessDepartment('paper towels'), 'pantry');
+  assert.equal(guessDepartment('paper towels'), 'household');
 });
 
 test('route visits aisles in walking order, not list order', () => {
