@@ -15,6 +15,8 @@ import { fetchStoreAisles, isShared, voteAisle } from '../lib/sharedAisles';
 import { maybeAskForReview } from '../lib/review';
 import { buildProfile } from '../lib/storeProfile';
 import { ListItem, Store } from '../lib/types';
+import { parseAisleNumber } from '../lib/routing/layout';
+import { planFor } from '../lib/routing/plan';
 import { planRoute } from '../lib/routing/planRoute';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
@@ -74,14 +76,22 @@ export default function RouteScreen() {
 
   // The building outline sizes the map and puts the entrance on the right side.
   const building = store ? buildings[store.id]?.info : null;
+  // The store's own floor plan (Woodman's Altoona) or its chain's usual one (Walmart, Target).
+  const plan = useMemo(() => planFor(store), [store]);
+  // Generic plan: the highest numbered aisle shoppers have seen here beats a guess from the building's size.
+  const knownAisles = useMemo(() => {
+    const nums = sharedAnswers.flatMap((a) => (/^\d{1,2}$/.test(a.aisle.trim()) ? [parseAisleNumber(a.aisle) ?? 0] : []));
+    return nums.length >= 5 ? Math.max(...nums) : null;
+  }, [sharedAnswers]);
   const route = useMemo(
     () =>
-      planRoute(snapshot, building?.aisleEstimate ?? store?.aisleCount ?? 20, {
+      planRoute(snapshot, knownAisles ?? Math.min(40, building?.aisleEstimate ?? store?.aisleCount ?? 20), {
         coldLast,
         profile,
         mirror: building?.entranceSide === 'left',
+        plan,
       }),
-    [snapshot, store, coldLast, profile, building],
+    [snapshot, store, coldLast, profile, building, plan, knownAisles],
   );
   // Learning aisles from check-off order (rules in lib/learnAisles.ts). Only for shared stores
   // picked on the map, so we know where the store is.
@@ -158,7 +168,10 @@ export default function RouteScreen() {
               : 'Shop Stride is still learning this store. Each trip teaches it more.'}
           </Text>
         )}
-        {building && (
+        <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+          {plan ? (plan.typical ? `${plan.name}. Your store may differ a little.` : `${plan.name} floor plan, from the store's map`) : 'Typical grocery layout'}
+        </Text>
+        {building && !plan && (
           <Text style={{ color: t.textMuted, fontSize: 11, marginTop: 4, textAlign: 'center' }}>
             Store outline © OpenStreetMap contributors
           </Text>
