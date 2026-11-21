@@ -1,6 +1,6 @@
 import { recognizeText } from '../../modules/recipe-reader';
 import {
-  hasRecipeData,
+  isRoundup,
   parseCollectionPage,
   parsePastedText,
   parsePhotoText,
@@ -62,9 +62,7 @@ export async function readLink(
   url: string,
 ): Promise<{ kind: 'recipe'; recipe: ParsedRecipe } | { kind: 'collection'; collection: RecipeCollection }> {
   const html = await fetchPage(url);
-  if (!hasRecipeData(html)) {
-    const collection = parseCollectionPage(html, url);
-    if (collection) return { kind: 'collection', collection };
-  }
+  const collection = parseCollectionPage(html, url);
+  if (collection && isRoundup(html, collection)) return { kind: 'collection', collection };
   return { kind: 'recipe', recipe: checked(parseRecipePage(html), 'No ingredient list found on that page. Try pasting the ingredients instead.') };
 }

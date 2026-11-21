@@ -599,7 +599,9 @@ export function parseCollectionPage(html: string, pageUrl: string): RecipeCollec
     found.clear();
     let body = html
       .replace(/<(script|style|noscript|svg|template)[\s\S]*?<\/\1>/gi, ' ')
-      .replace(/<(nav|header|footer|aside|form)\b[\s\S]*?<\/\1>/gi, ' ');
+      .replace(/<(nav|footer|aside|form)\b[\s\S]*?<\/\1>/gi, ' ')
+      // Site headers hold the menus; a card's own <header> (blog archives) holds its link, so it stays.
+      .replace(/<header\b(?:(?!<\/header>)[\s\S])*?<(?:nav|ul)\b[\s\S]*?<\/header>/gi, ' ');
     const article = body.match(/<(article|main)\b[\s\S]*<\/\1>/i)?.[0];
     if (article) body = article;
     const anchors = [...body.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)].map((m) => {
@@ -658,8 +660,23 @@ export function hasRecipeData(html: string): boolean {
   for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
       const r = findRecipe(JSON.parse(m[1].replace(/^\s*<!--|-->\s*$/g, '').replace(/[\u0000-\u001F]+/g, ' ')));
-      if (r && (r.recipeIngredient ?? r.ingredients)) return true;
+      const ing = r?.recipeIngredient ?? r?.ingredients;
+      if (Array.isArray(ing) ? ing.length > 0 : typeof ing === 'string' && ing.trim()) return true;
     } catch {}
   }
-  return /itemprop=["'](?:recipeIngredient|ingredients)["']|\bwprm-recipe-ingredient\b|tasty-recipes?-ingredients/i.test(html);
+  return markedIngredients(html).length > 0;
+}
+
+/**
+ * Whether a page that links to several recipes is a roundup to pick from. A page with no recipe of
+ * its own is. One with its own recipe is only when it's clearly a list ("Healthy Dinner Recipes",
+ * "20 Easy Soups") linking to many, and its recipe isn't the page itself (blogs feature one recipe on
+ * a roundup; a single recipe page links to a few "you might also like" recipes).
+ */
+export function isRoundup(html: string, collection: RecipeCollection): boolean {
+  if (!hasRecipeData(html)) return true;
+  if (collection.recipes.length < 8) return false;
+  const listTitle = /^\s*\d+\b|\b(?:recipes|ideas|dinners|lunches|breakfasts|meals|dishes|soups|salads|desserts)\b/i.test(collection.title);
+  const own = parseRecipePage(html).title;
+  return listTitle && itemKey(own) !== itemKey(collection.title);
 }

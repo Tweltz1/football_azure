@@ -1,7 +1,7 @@
 // Reads real recipe pages with the app's own parser (src/lib/recipeText.ts) and prints what a shopper
 // would get: title, every ingredient, every step with its minutes, and the total. Flags pages where the
 // ingredient or step count doesn't match the page's own recipe data. Run by grocery-runner-store.yml ([stride-links]).
-import { hasRecipeData, parseCollectionPage, parseIngredient, parseRecipePage, splitLine } from '../src/lib/recipeText';
+import { isRoundup, parseCollectionPage, parseIngredient, parseRecipePage, splitLine } from '../src/lib/recipeText';
 
 const DEFAULT_URLS = [
   'https://tastesbetterfromscratch.com/creamy-white-chicken-chili/',
@@ -61,8 +61,9 @@ for (let qi = 0; qi < queue.length; qi++) {
       console.log(`  tags: article=${(body.match(/<article\b/gi) ?? []).length} main=${(body.match(/<main\b/gi) ?? []).length} nav=${(body.match(/<nav\b/gi) ?? []).length} header=${(body.match(/<header\b/gi) ?? []).length} aside=${(body.match(/<aside\b/gi) ?? []).length}`);
       for (const m of [...body.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/gi)].slice(0, 400)) console.log(`  A: ${m[0].replace(/\s+/g, ' ').slice(0, 260)}`);
     }
-    if (!hasRecipeData(html) && qi < URLS.length) {
-      const col = parseCollectionPage(html, url);
+    const maybe = parseCollectionPage(html, url);
+    if (maybe && isRoundup(html, maybe) && qi < URLS.length) {
+      const col: typeof maybe | null = maybe;
       console.log(`  collection: ${col?.title ?? 'none'} | ${col?.recipes.length ?? 0} recipe link(s)`);
       for (const l of col?.recipes ?? []) console.log(`    ${l.title} <${l.url}>`);
       if (col && !LIST_ONLY.has(url)) queue.push(...col.recipes.map((l) => l.url));

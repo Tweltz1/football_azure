@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cleanLink, hasRecipeData, isoMinutes, parseCollectionPage, parseRecipePage } from '../src/lib/recipeText';
+import { cleanLink, hasRecipeData, isoMinutes, isRoundup, parseCollectionPage, parseRecipePage } from '../src/lib/recipeText';
 
 test('cleanLink finds the link in what people paste', () => {
   assert.equal(cleanLink('https://www.allrecipes.com/recipe/123/tacos/'), 'https://www.allrecipes.com/recipe/123/tacos/');
@@ -132,4 +132,15 @@ test('a roundup with a schema.org ItemList of recipe pages, or plain blog links'
   // One recipe page is not a collection.
   assert.equal(hasRecipeData('<script type="application/ld+json">{"@type":"Recipe","recipeIngredient":["1 egg"]}</script>'), true);
   assert.equal(parseCollectionPage('<a href="/a-b-c">x</a>', 'https://x.com/'), null);
+});
+
+test('a roundup that features one recipe is still a roundup; a recipe page with a few related links is not', () => {
+  const links = Array.from({ length: 9 }, (_, n) => `<a href="https://blog.com/dish-number-${n}/">Get the recipe</a>`).join('');
+  const own = '<script type="application/ld+json">{"@type":"Recipe","name":"Broccoli Pasta","recipeIngredient":["8 oz pasta"]}</script>';
+  const roundup = `<meta property="og:title" content="Healthy Dinner Recipes">${own}<article>${links}</article>`;
+  assert.equal(isRoundup(roundup, parseCollectionPage(roundup, 'https://blog.com/healthy-dinner-recipes/')!), true);
+  const single = `<meta property="og:title" content="Broccoli Pasta">${own}<article>${links}</article>`;
+  assert.equal(isRoundup(single, parseCollectionPage(single, 'https://blog.com/broccoli-pasta/')!), false);
+  // WP Recipe Maker's stylesheet names alone don't make a page a recipe.
+  assert.equal(hasRecipeData('<style>.wprm-recipe-ingredient{color:red}</style>'), false);
 });
