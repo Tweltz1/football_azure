@@ -24,7 +24,7 @@ jobs:
           add() { # domain name content (TXT)
             local zone; zone=$(cf "$API/zones?name=$1" | jq -r '.result[0].id // empty')
             if [ -z "$zone" ]; then echo "SKIPPED $2: token can't edit $1"; return; fi
-            local have; have=$(cf "$API/zones/$zone/dns_records?type=TXT&name=$2" | jq -r --arg c "${3%%;*}" '[.result[] | select(.content | ltrimstr("\"") | startswith($c))] | length')
+            local have; have=$(cf "$API/zones/$zone/dns_records?type=TXT&name=$2" | jq -r --arg c "${3%%;*}" '[(.result // [])[] | select(.content | ltrimstr("\"") | startswith($c))] | length')
             if [ "$have" != "0" ]; then echo "exists: $2"; return; fi
             cf -X POST "$API/zones/$zone/dns_records" -d "$(jq -n --arg n "$2" --arg c "$3" '{type:"TXT", name:$n, content:$c, ttl:1}')" \
               | jq -r --arg n "$2" 'if .success then "added: \($n)" else "FAILED \($n): \(.errors|tostring)" end'
