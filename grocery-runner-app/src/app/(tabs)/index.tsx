@@ -11,6 +11,7 @@ import { dealFor, outFor, useDeals, useStoreInfo } from '../../lib/deals';
 import { locationLabel } from '../../lib/labels';
 import { groupList } from '../../lib/listGroups';
 import { useFamily } from '../../lib/family';
+import { openInstacart, useInstacartReady } from '../../lib/instacart';
 import { cleanLink } from '../../lib/recipeText';
 import { useData } from '../../lib/store';
 import { stockFor, useStock } from '../../lib/stock';
@@ -45,6 +46,18 @@ export default function ListScreen() {
   const dealCount = storeInfo.deals.length;
   const stock = useStock(store, items.filter((i) => !i.checked).map((i) => i.name));
   const sections = useMemo(() => groupList(items), [items]);
+  const instacart = useInstacartReady();
+  const [sending, setSending] = useState(false);
+  const shopInstacart = async () => {
+    setSending(true);
+    try {
+      await openInstacart(items);
+    } catch (e) {
+      Alert.alert('Couldn’t open Instacart', (e as Error).message);
+    } finally {
+      setSending(false);
+    }
+  };
 
   // "Undo" shows for a few seconds after something is removed.
   const [expired, setExpired] = useState(0);
@@ -167,7 +180,7 @@ export default function ListScreen() {
         sections={sections}
         keyExtractor={(i) => i.id}
         stickySectionHeadersEnabled={false}
-        contentContainerStyle={{ padding: 16, paddingTop: 2, paddingBottom: 110 }}
+        contentContainerStyle={{ padding: 16, paddingTop: 2, paddingBottom: instacart && left > 0 ? 172 : 110 }}
         onScrollBeginDrag={closeSwipeRows}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -305,7 +318,7 @@ export default function ListScreen() {
       />
 
       {showUndo && removedCount > 0 && (
-        <View style={[styles.undo, { backgroundColor: t.text, bottom: insets.bottom + (left > 0 ? 82 : 16) }]}>
+        <View style={[styles.undo, { backgroundColor: t.text, bottom: insets.bottom + (left > 0 ? (instacart ? 144 : 82) : 16) }]}>
           <Text style={{ color: t.bg, flex: 1 }} numberOfLines={1}>
             {removedCount === 1 ? `Removed ${lastRemoved!.items[0].item.name}` : `Removed ${removedCount} items`}
           </Text>
@@ -317,6 +330,17 @@ export default function ListScreen() {
 
       {left > 0 && (
         <View style={[styles.footer, { bottom: insets.bottom }]} pointerEvents="box-none">
+          {instacart && (
+            <Button
+              variant="secondary"
+              style={[{ marginBottom: 8, backgroundColor: t.card }, lift(t)]}
+              title="Shop on Instacart"
+              icon="basket-outline"
+              loading={sending}
+              label="Shop on Instacart: send this list to Instacart for pickup or delivery"
+              onPress={shopInstacart}
+            />
+          )}
           <Button
             style={[{ backgroundColor: t.primary }, lift(t), { shadowOpacity: 0.25, shadowColor: t.primary }]}
             title={`Start shopping · ${left} item${left === 1 ? '' : 's'}`}
