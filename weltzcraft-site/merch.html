@@ -43,6 +43,7 @@
 .m-img{aspect-ratio:1;background:#fff;position:relative}
 .m-img img{width:100%;height:100%;object-fit:cover;transition:opacity .35s,transform .35s}
 .m-img img.loading{opacity:0;transform:scale(.98)}
+.m-img img.swap{opacity:.55}
 /* While a photo or the catalog loads: a soft shimmer with a stitched W drawing itself */
 .m-img::before,.m-skel{background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.55) 50%,transparent 80%) var(--bg-2);background-size:220% 100%;animation:m-shine 1.3s linear infinite}
 .m-img::before{content:"";position:absolute;inset:0;z-index:0}
@@ -283,7 +284,7 @@
         var s = slug(), item = cat.items[s];
         var colorName = (p.colors.filter(function (c) { return c.key === st.color; })[0] || {}).name;
         var src = '/img/merch/' + s + '.webp' + (item && item.hash ? '?v=' + item.hash : '');
-        if (img.getAttribute('src') !== src) { img.classList.add('loading'); img.src = src; }
+        if (img.getAttribute('src') !== src) show(src);
         if (shownSlug !== s) {
           // Other angles of the same piece (back, side...), swipe or use the arrows.
           shownSlug = s;
@@ -319,8 +320,25 @@
       function go(d) { var n = slides.children.length; slides.scrollTo({ left: ((at() + d + n) % n) * slides.clientWidth, behavior: 'smooth' }); }
       prev.addEventListener('click', function () { go(-1); });
       next.addEventListener('click', function () { go(1); });
-      img.addEventListener('load', function () { img.classList.remove('loading'); img.parentNode.classList.add('ready'); });
-      img.addEventListener('error', function () { img.classList.remove('loading'); img.parentNode.classList.add('ready'); });
+      var box = el.querySelector('.m-img'), want = '';
+      // First photo: shimmer until it arrives. After that, keep the current photo on screen while the next
+      // color loads in the background, then swap it in (no blank flash, and a fast tap-tap-tap shows the last pick).
+      function show(src) {
+        want = src;
+        if (!img.getAttribute('src')) { img.classList.add('loading'); img.src = src; return; }
+        var pre = new Image(), t = setTimeout(function () { if (want === src) img.classList.add('swap'); }, 150);
+        pre.onload = pre.onerror = function () { clearTimeout(t); if (want !== src) return; img.src = src; img.classList.remove('swap'); };
+        pre.src = src;
+      }
+      var warmed = false;
+      function warm() {
+        // Fetch this card's other colors once someone starts using it, so switching is instant.
+        if (warmed) return; warmed = true;
+        p.colors.forEach(function (c) { var it = cat.items[p.key + '-' + c.key + '-' + st.logo]; if (it) (new Image()).src = '/img/merch/' + p.key + '-' + c.key + '-' + st.logo + '.webp' + (it.hash ? '?v=' + it.hash : ''); });
+      }
+      ['pointerenter', 'touchstart', 'focusin'].forEach(function (ev) { el.addEventListener(ev, warm, { passive: true, once: true }); });
+      img.addEventListener('load', function () { img.classList.remove('loading'); box.classList.add('ready'); });
+      img.addEventListener('error', function () { img.classList.remove('loading'); box.classList.add('ready'); });
       el.addEventListener('click', function (e) {
         var b = e.target.closest('button'); if (!b) return;
         if (b.dataset.logo) st.logo = b.dataset.logo;
