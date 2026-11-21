@@ -1,0 +1,37 @@
+# Anti-spoofing email DNS records, requested by Tyler 2026-11-21 in the security review thread.
+# Adds each record only if missing. Undo: delete the record in Cloudflare DNS.
+#   weltzcraft.com, talkshops.app: _dmarc TXT (their real mail is DKIM-signed by Resend, so it still passes)
+#   hood-league.com (sends no mail): SPF "-all" + DMARC reject
+name: email-dns-fix
+on:
+  push:
+    branches: [claude/project-thread-c57m2u]
+    paths: [.github/workflows/email-dns-fix.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dns:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - run: |
+          [ -n "$CF_TOKEN" ] || { echo "::error::No CLOUDFLARE_API_TOKEN"; exit 1; }
+          cf() { curl --silent --show-error -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" "$@"; }
+          API=https://api.cloudflare.com/client/v4
+          echo "Zones this token can see: $(cf "$API/zones?per_page=50" | jq -r '[.result[].name] | join(", ")')"
+          add() { # domain name content (TXT)
+            local zone; zone=$(cf "$API/zones?name=$1" | jq -r '.result[0].id // empty')
+            if [ -z "$zone" ]; then echo "SKIPPED $2: token can't edit $1"; return; fi
+            local have; have=$(cf "$API/zones/$zone/dns_records?type=TXT&name=$2" | jq -r --arg c "${3%%;*}" '[.result[] | select(.content | ltrimstr("\"") | startswith($c))] | length')
+            if [ "$have" != "0" ]; then echo "exists: $2"; return; fi
+            cf -X POST "$API/zones/$zone/dns_records" -d "$(jq -n --arg n "$2" --arg c "$3" '{type:"TXT", name:$n, content:$c, ttl:1}')" \
+              | jq -r --arg n "$2" 'if .success then "added: \($n)" else "FAILED \($n): \(.errors|tostring)" end'
+          }
+          add weltzcraft.com _dmarc.weltzcraft.com 'v=DMARC1; p=quarantine; adkim=r; aspf=r'
+          add talkshops.app _dmarc.talkshops.app 'v=DMARC1; p=quarantine; adkim=r; aspf=r'
+          add hood-league.com hood-league.com 'v=spf1 -all'
+          add hood-league.com _dmarc.hood-league.com 'v=DMARC1; p=reject'
+          sleep 30
+          for n in _dmarc.weltzcraft.com _dmarc.talkshops.app hood-league.com _dmarc.hood-league.com; do echo "now $n: $(dig +short TXT $n @1.1.1.1 | tr '\n' ' ')"; done
