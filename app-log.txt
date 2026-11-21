@@ -1,0 +1,196 @@
+getpwuid_r did not find a match for uid 501
+Timestamp               Ty Process[PID:TID]
+2026-11-21 20:00:19.800 Df ToteTrack[62866:2904b] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-21 20:00:19.801 Df ToteTrack[62866:29072] [com.apple.xpc:connection] [0x10443a8a0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-21 20:00:19.802 Df ToteTrack[62866:2907e] [com.apple.BoardServices:XPCErrors] [C:1] Alloc com.apple.frontboard.systemappservices
+2026-11-21 20:00:19.803 Df ToteTrack[62866:2907e] [com.apple.xpc:connection] [0x10443abe0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-21 20:00:19.806 Df ToteTrack[62866:29072] [com.apple.UIKit:BackgroundTask] Creating new assertion because there is no existing background assertion.
+2026-11-21 20:00:19.806 A  ToteTrack[62866:2907d] (CoreFoundation) Loading Preferences From User Session CFPrefsD
+2026-11-21 20:00:19.815 Df ToteTrack[62866:29072] [com.apple.UIKit:BackgroundTask] Creating new background assertion
+2026-11-21 20:00:19.815 Df ToteTrack[62866:29072] [com.apple.UIKit:BackgroundTask] Created new background assertion <BKSProcessAssertion: 0x10443aed0>
+2026-11-21 20:00:19.815 Df ToteTrack[62866:29072] [com.apple.runningboard:connection] Initializing connection
+2026-11-21 20:00:19.815 Df ToteTrack[62866:29072] [com.apple.runningboard:process] Removing all cached process handles
+2026-11-21 20:00:19.815 Df ToteTrack[62866:29072] [com.apple.runningboard:connection] Creating connection to com.apple.runningboard
+2026-11-21 20:00:19.815 Df ToteTrack[62866:29072] [com.apple.xpc:connection] [0x1069d0280] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-21 20:00:19.815 Df ToteTrack[62866:2907f] [com.apple.runningboard:connection] Sending handshake request attempt #1 to server
+2026-11-21 20:00:19.816 Df ToteTrack[62866:2904b] [com.apple.UIKit:Application] Deactivation reason added: 10; deactivation reasons: 0 -> 1024; animating application lifecycle event: 0
+2026-11-21 20:00:19.816 Df ToteTrack[62866:2904b] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.open
+2026-11-21 20:00:19.817 Df ToteTrack[62866:2904b] [com.apple.BoardServices:Injection] activating monitor for service com.apple.frontboard.workspace-service
+2026-11-21 20:00:19.817 Df ToteTrack[62866:2907f] [com.apple.runningboard:connection] Handshake succeeded
+2026-11-21 20:00:19.817 Df ToteTrack[62866:2907f] [com.apple.runningboard:connection] Identity resolved as app<com.tweltz1.totetrack((null))>
+2026-11-21 20:00:19.817 Df ToteTrack[62866:2904b] [com.apple.FrontBoard:Common] FBSWorkspace registering source: com.apple.frontboard.systemappservices
+2026-11-21 20:00:19.818 Df ToteTrack[62866:29072] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x10443aed0>
+2026-11-21 20:00:19.818 Df ToteTrack[62866:29072] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x1068f8c40>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 2107 (elapsed = 0).
+2026-11-21 20:00:19.818 A  ToteTrack[62866:29084] (RunningBoardServices) didChangeInheritances
+2026-11-21 20:00:19.818 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UIApplicationSceneKeyboardSettings on FBSSceneSettings
+2026-11-21 20:00:19.819 Df ToteTrack[62866:2904b] [com.apple.FrontBoard:Common] FBSWorkspace connected to endpoint : <BSServiceConnectionEndpoint: 0x10699c700; target: com.apple.frontboard.systemappservices; service: com.apple.frontboard.workspace-service>
+2026-11-21 20:00:19.819 Df ToteTrack[62866:2904b] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x106988d20 com.apple.frontboard.systemappservices> attempting immediate handshake from activate
+2026-11-21 20:00:19.820 Df ToteTrack[62866:2904b] [com.apple.FrontBoard:Common] <FBSWorkspaceScenesClient:0x106988d20 com.apple.frontboard.systemappservices> sent handshake
+2026-11-21 20:00:19.820 Df ToteTrack[62866:2904b] [com.apple.runningboard:general] Added observer for process assertions expiration warning: <_RBSExpirationWarningClient: 0x10699cdc0>
+2026-11-21 20:00:19.820 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneOcclusionSettings> on FBSSceneSettings
+2026-11-21 20:00:19.821 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneInterfaceProtectionSettings> on FBSSceneSettings
+2026-11-21 20:00:19.822 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferencesHostSettingsExtension on FBSSceneSettings
+2026-11-21 20:00:19.822 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneSafeAreaSettingsExtension on FBSSceneSettings
+2026-11-21 20:00:19.824 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneLayoutPreferenceClientSettingsExtension on FBSSceneClientSettings
+2026-11-21 20:00:19.824 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UIHomeAffordanceHostSceneSettings> on FBSSceneSettings
+2026-11-21 20:00:19.825 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISystemShellSceneHostingEnvironmentSettings on FBSSceneSettings
+2026-11-21 20:00:19.825 Df ToteTrack[62866:2904b] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x1069d0500> for initial
+2026-11-21 20:00:19.825 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneRenderingEnvironmentSettings on FBSSceneSettings
+2026-11-21 20:00:19.825 Df ToteTrack[62866:2904b] [com.apple.UIKit:UIScreen] Evaluated capturing state as 0 on <UIScreen: 0x1069d0500> for CADisplay KVO
+2026-11-21 20:00:19.826 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneRenderingEnvironmentClientSettings> on FBSSceneClientSettings
+2026-11-21 20:00:19.826 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneTransitioningHostSettings> on FBSSceneSettings
+2026-11-21 20:00:19.826 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneFocusSystemSettings> on FBSSceneSettings
+2026-11-21 20:00:19.826 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationSettingsExtension on FBSSceneSettings
+2026-11-21 20:00:19.826 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneOrientationClientSettingsExtension on FBSSceneClientSettings
+2026-11-21 20:00:19.826 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneWindowingControlClientSettings on FBSSceneClientSettings
+2026-11-21 20:00:19.826 Df ToteTrack[62866:2904b] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 1, category name = (null)
+2026-11-21 20:00:19.827 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingContentSizePreferenceClientSettings> on FBSSceneClientSettings
+2026-11-21 20:00:19.827 Df ToteTrack[62866:2904b] [com.apple.Accessibility:AXSupportCommon] Read CategoryName: per-app = 0, category name = (null)
+2026-11-21 20:00:19.827 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension _UISceneHostingTraitCollectionPropagationSettings on FBSSceneSettings
+2026-11-21 20:00:19.828 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationSettings> on FBSSceneSettings
+2026-11-21 20:00:19.829 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingSheetPresentationClientSettings> on FBSSceneClientSettings
+2026-11-21 20:00:19.829 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingEventDeferringSettings> on FBSSceneSettings
+2026-11-21 20:00:19.830 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneSettings
+2026-11-21 20:00:19.830 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <UIKit__UITypedKeyValueSceneSettings> on FBSSceneClientSettings
+2026-11-21 20:00:19.830 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneHostingViewControllerPreferencePropagationClientSettings> on FBSSceneClientSettings
+2026-11-21 20:00:19.831 Df ToteTrack[62866:29072] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneZoomTransitionSettings> on FBSSceneSettings
+2026-11-21 20:00:19.831 Df ToteTrack[62866:2907f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneSettingsCore on FBSSceneSettings
+2026-11-21 20:00:19.835 Df ToteTrack[62866:2907f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneClientSettingsCore on FBSSceneClientSettings
+2026-11-21 20:00:19.837 Df ToteTrack[62866:2904b] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-21 20:00:19.838 Df ToteTrack[62866:2904b] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-21 20:00:19.838 Df ToteTrack[62866:2904b] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-21 20:00:19.838 Df ToteTrack[62866:2904b] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-21 20:00:19.839 Df ToteTrack[62866:2904b] [com.apple.UIKit:Application] Deactivation reason added: 11; deactivation reasons: 1024 -> 3072; animating application lifecycle event: 0
+2026-11-21 20:00:19.839 Df ToteTrack[62866:2904b] (UIKitCore) You've implemented -[<UIApplicationDelegate> application:performFetchWithCompletionHandler:], but you still need to add "fetch" to the list of your supported UIBackgroundModes in your Info.plist.
+2026-11-21 20:00:19.840 Df ToteTrack[62866:2904b] (UIKitCore) You've implemented -[<UIApplicationDelegate> application:didReceiveRemoteNotification:fetchCompletionHandler:], but you still need to add "remote-notification" to the list of your supported UIBackgroundModes in your Info.plist.
+2026-11-21 20:00:19.844 Df ToteTrack[62866:2904b] (React) _setUpFeatureFlags called with release level 2
+2026-11-21 20:00:19.846 Df ToteTrack[62866:2907f] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneSettings setting counterpart class: UIApplicationSceneSettings
+2026-11-21 20:00:19.846 Df ToteTrack[62866:2907f] [com.apple.FrontBoard:SceneExtension] UIMutableApplicationSceneClientSettings setting counterpart class: UIApplicationSceneClientSettings
+2026-11-21 20:00:19.847 Df ToteTrack[62866:2907f] [com.apple.FrontBoard:SceneExtension] Realizing settings extension FBSSceneTransitionContextCore on FBSSceneTransitionContext
+2026-11-21 20:00:19.849 Df ToteTrack[62866:2904b] [com.apple.UIKit:Application] Deactivation reason removed: 10; deactivation reasons: 3072 -> 2048; animating application lifecycle event: 0
+2026-11-21 20:00:19.850 Df ToteTrack[62866:2904b] [com.apple.UIKit:EventBus] Event Timing Profile for Touch: not found, path="/System/Library/EventTimingProfiles/Sim.Touch.plist"
+2026-11-21 20:00:19.850 Df ToteTrack[62866:2904b] [com.apple.UIKit:EventBus] Event Timing Profile for Pencil: not found, path="/System/Library/EventTimingProfiles/Sim.Pencil.plist"
+2026-11-21 20:00:19.850 Df ToteTrack[62866:2904b] [com.apple.UIKit:UpdateScheduler] Selected display: name=LCD (PurpleMain), id=1
+2026-11-21 20:00:19.855 Df ToteTrack[62866:2904b] [com.apple.xpc:connection] [0x1069d0a00] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-21 20:00:19.896 Df ToteTrack[62866:2904b] [com.apple.BoardServices:XPCErrors] [C:2] Alloc com.apple.backboard.hid-services.xpc
+2026-11-21 20:00:19.896 Df ToteTrack[62866:2904b] [com.apple.xpc:connection] [0x1069d0c80] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-21 20:00:19.899 Df ToteTrack[62866:2907f] [com.apple.BackBoard:EventDelivery] BKSHIDEventDeliveryManager - connection activation
+2026-11-21 20:00:19.900 Df ToteTrack[62866:2904b] [com.apple.app_launch_measurement:ApplicationLaunch] alm_acquire_pageins_recording_assertion: acquired pageins recording assertion!
+2026-11-21 20:00:19.905 Df ToteTrack[62866:2904b] [com.apple.UIKit:BackgroundTask] Will add backgroundTask with taskName: Persistent SceneSession Map Update, expirationHandler: <__NSGlobalBlock__: 0x1e78c84e8>
+2026-11-21 20:00:19.905 Df ToteTrack[62866:2904b] [com.apple.UIKit:BackgroundTask] Reusing background assertion <BKSProcessAssertion: 0x10443aed0>
+2026-11-21 20:00:19.905 Df ToteTrack[62866:2904b] [com.apple.UIKit:BackgroundTask] Incrementing reference count for background assertion <BKSProcessAssertion: 0x10443aed0>
+2026-11-21 20:00:19.905 Df ToteTrack[62866:2904b] [com.apple.UIKit:BackgroundTask] Created background task <_UIBackgroundTaskInfo: 0x106acdbc0>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 2107 (elapsed = 0).
+2026-11-21 20:00:19.906 Df ToteTrack[62866:2904b] [com.apple.UIKit:Application] Deactivation reason added: 5; deactivation reasons: 2048 -> 2080; animating application lifecycle event: 1
+2026-11-21 20:00:19.907 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Should send trait collection or coordinate space update, interface style 1 -> 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:19.908 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:19.908 Df ToteTrack[62866:2904b] [com.apple.UIKit:HomeAffordanceObservation] Initializing: <_UIHomeAffordanceSceneNotifier: 0x106ad9500>; with scene: <UIWindowScene: 0x104445430>
+2026-11-21 20:00:19.909 Df ToteTrack[62866:2904b] [com.apple.BacklightServices:scenes] 0x10687ad90 setDelegate:<0x10687ae50 _UIBacklightEnvironment> hasDelegate:YES for environment:sceneID:com.tweltz1.totetrack-default
+2026-11-21 20:00:19.909 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:19.910 Df ToteTrack[62866:2904b] [com.apple.UIKit:EventDeferring] [0x106ad9490] Initialized with scene: <UIWindowScene: 0x104445430>; behavior: <_UIEventDeferringBehavior_iOS: 0x106bd0340>; availableForProcess: 1, systemShellManagesKeyboardFocus: 1
+2026-11-21 20:00:19.911 Df ToteTrack[62866:29084] [com.apple.BackBoard:EventDelivery] BKSHIDEventObserver - connection activation
+2026-11-21 20:00:19.911 Df ToteTrack[62866:2904b] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x106a5c840; process scope; status: target> was:none
+2026-11-21 20:00:19.911 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomPhone to LastOneWins
+2026-11-21 20:00:19.911 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] Scene target of keyboard event deferring environment did change: 1; scene: UIWindowScene: 0x104445430; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.totetrack-default
+2026-11-21 20:00:19.912 Df ToteTrack[62866:2904b] [com.apple.UIKit:EventDeferring] [0x106ad9490] Scene target of event deferring environments did update: scene: 0x104445430; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-11-21 20:00:19.912 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x104445430; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.totetrack-default
+2026-11-21 20:00:19.912 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] Stack[KeyWindow] 0x10687b330: Taking no further action for migration from LastOneWins -> SystemShellManaged as there are no scenes
+2026-11-21 20:00:19.912 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] Setting default evaluation strategy for UIUserInterfaceIdiomPhone to SystemShellManaged
+2026-11-21 20:00:19.912 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] Key window needs update: 0; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x104445430; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x0; reason: UIWindowScene: 0x104445430: Window scene became target of keyboard environment
+2026-11-21 20:00:19.912 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:19.912 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:19.913 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:19.926 Df ToteTrack[62866:2904b] [com.apple.network:] networkd_settings_read_from_file_locked initialized networkd settings by reading plist directly
+2026-11-21 20:00:19.926 Df ToteTrack[62866:2904b] [com.apple.network:] networkd_settings_read_from_file_locked initialized networkd settings by reading plist directly
+2026-11-21 20:00:20.033 Df ToteTrack[62866:2904b] [com.apple.UIKit:Orientation] <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537) Scene updated orientation preferences: none -> ( Pu )
+2026-11-21 20:00:20.046 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] Key window API is scene-level: YES
+2026-11-21 20:00:20.046 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] UIWindowScene: 0x104445430: Window became key in scene: UIWindow: 0x106a20000; contextId: 0x695A00F7: reason: UIWindowScene: 0x104445430: Window requested to become key in scene: 0x106a20000
+2026-11-21 20:00:20.046 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] Key window needs update: 1; currentKeyWindowScene: 0x0; evaluatedKeyWindowScene: 0x104445430; currentApplicationKeyWindow: 0x0; evaluatedApplicationKeyWindow: 0x106a20000; reason: UIWindowScene: 0x104445430: Window requested to become key in scene: 0x106a20000
+2026-11-21 20:00:20.046 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] Window did become application key: UIWindow: 0x106a20000; contextId: 0x695A00F7; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.totetrack-default
+2026-11-21 20:00:20.046 Df ToteTrack[62866:2904b] [com.apple.UIKit:EventDeferring] [0x106ad9490] Begin local event deferring requested for token: 0x106a5ef40; environments: 1; reason: UIWindowScene: 0x104445430: Begin event deferring in keyboardFocus for window: 0x106a20000
+2026-11-21 20:00:20.048 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:20.050 Df ToteTrack[62866:29072] [com.apple.BackBoard:EventDelivery] policyStatus:<BKSHIDEventDeliveryPolicyObserver: 0x106a5c840; token: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.totetrack-default; status: ancestor> was:target
+2026-11-21 20:00:20.051 Df ToteTrack[62866:2904b] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.totetrack-default  persistentID: D90BEDAC-FBE1-4920-8962-38C70A33D537
+2026-11-21 20:00:20.051 Df ToteTrack[62866:2904b] [com.apple.UIKit:Application] Ignoring already applied deactivation reason: 5; deactivation reasons: 2080
+2026-11-21 20:00:20.051 Df ToteTrack[62866:2904b] [com.apple.UIKit:Application] Deactivation reason added: 12; deactivation reasons: 2080 -> 6176; animating application lifecycle event: 1
+2026-11-21 20:00:20.058 Df ToteTrack[62866:2904b] [com.apple.UIKit:Application] Deactivation reason removed: 11; deactivation reasons: 6176 -> 4128; animating application lifecycle event: 1
+2026-11-21 20:00:20.059 Df ToteTrack[62866:2904b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension <_UISceneIntelligenceSupportSettings> on FBSSceneSettings
+2026-11-21 20:00:20.061 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:20.062 Df ToteTrack[62866:29072] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-21 20:00:20.065 Df ToteTrack[62866:2904b] [com.apple.xpc:connection] [0x1094bca00] activating connection: mach=true listener=false peer=false name=com.apple.IOSurface.Remote
+2026-11-21 20:00:20.070 Df ToteTrack[62866:29072] [com.apple.xpc:session] [0x106a26030] Session created.
+2026-11-21 20:00:20.070 Df ToteTrack[62866:29072] [com.apple.xpc:session] [0x106a26030] Session created from connection [0x1094bcdc0]
+2026-11-21 20:00:20.070 Df ToteTrack[62866:29072] [com.apple.xpc:connection] [0x1094bcdc0] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-21 20:00:20.071 Df ToteTrack[62866:2904b] [com.apple.network:activity] Create activity from XPC object <nw_activity 50:1 [26061547-A789-4DD3-A2C6-19D66DEEF7A8] (reporting strategy default)>
+2026-11-21 20:00:20.071 Df ToteTrack[62866:29072] [com.apple.xpc:session] [0x106a26030] Session activated
+2026-11-21 20:00:20.071 Df ToteTrack[62866:2904b] [com.apple.network:activity] Create activity from XPC object <nw_activity 50:2 [B93E200D-CF72-46DF-8DBE-69B1705A612C] (reporting strategy default)>
+2026-11-21 20:00:20.071 Df ToteTrack[62866:2904b] [com.apple.network:activity] Set activity <nw_activity 50:1 [26061547-A789-4DD3-A2C6-19D66DEEF7A8] (reporting strategy default)> as the global parent
+2026-11-21 20:00:20.071 Df ToteTrack[62866:2904b] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 1
+2026-11-21 20:00:20.071 Df ToteTrack[62866:2904b] [com.apple.UIKit:BackgroundTask] Ending task with identifier 1 and description: <_UIBackgroundTaskInfo: 0x1068f8c40>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 2107 (elapsed = 0), _expireHandler: (null)
+2026-11-21 20:00:20.071 Df ToteTrack[62866:2904b] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x10443aed0> (used by background task with identifier 1: <_UIBackgroundTaskInfo: 0x1068f8c40>: taskID = 1, taskName = Launch Background Task for Coalescing, creationTime = 2107 (elapsed = 0))
+2026-11-21 20:00:20.071 Df ToteTrack[62866:2904b] [com.apple.UIKit:UpdateScheduler] Target list changed: <CADisplay:LCD PurpleMain>
+2026-11-21 20:00:20.072 Df ToteTrack[62866:2904b] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.totetrack-default  persistentID: D90BEDAC-FBE1-4920-8962-38C70A33D537
+2026-11-21 20:00:20.072 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:20.073 Df ToteTrack[62866:2904b] [com.apple.UIKit:EventDeferring] [0x106ad9490] Scene target of event deferring environments did update: scene: 0x104445430; current systemShellManagesKeyboardFocus: 1; systemShellManagesKeyboardFocusForScene: 1; eligibleForRecordRemoval: 1;
+2026-11-21 20:00:20.073 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyWindow] Scene became target of keyboard event deferring environment: UIWindowScene: 0x104445430; scene identity: com.apple.frontboard.systemappservices/FBSceneManager:sceneID%3Acom.tweltz1.totetrack-default
+2026-11-21 20:00:20.073 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:20.074 Df ToteTrack[62866:2904b] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.totetrack-default  persistentID: D90BEDAC-FBE1-4920-8962-38C70A33D537
+2026-11-21 20:00:20.074 Df ToteTrack[62866:2904b] [com.apple.UIKit:Application] Deactivation reason removed: 12; deactivation reasons: 4128 -> 32; animating application lifecycle event: 1
+2026-11-21 20:00:20.074 Df ToteTrack[62866:2904b] [com.apple.KeyboardArbiter:Client] Send setDeactivating: N (-DeactivationReason:SuspendedEventsOnly)
+2026-11-21 20:00:20.074 Df ToteTrack[62866:2904b] [com.apple.UIKit:Application] Deactivation reason removed: 5; deactivation reasons: 32 -> 0; animating application lifecycle event: 0
+2026-11-21 20:00:20.076 Df ToteTrack[62866:2904b] [com.apple.KeyboardArbiter:Client] startConnection
+2026-11-21 20:00:20.078 Df ToteTrack[62866:2904b] [com.apple.xpc:connection] [0x1094bc000] activating connection: mach=true listener=false peer=false name=com.apple.UIKit.KeyboardManagement.hosted
+2026-11-21 20:00:20.082 Df ToteTrack[62866:2904b] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.totetrack-default  persistentID: D90BEDAC-FBE1-4920-8962-38C70A33D537
+2026-11-21 20:00:20.083 Df ToteTrack[62866:2904b] [com.apple.KeyboardArbiter:Client] handleKeyboardChange: set currentKeyboard:N (wasKeyboard:N)
+2026-11-21 20:00:20.092 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyboardSceneDelegate] forceReloadInputViews
+2026-11-21 20:00:20.092 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyboardSceneDelegate] Reloading input views for key-window scene responder: <(null): 0x0; > force:Y
+2026-11-21 20:00:20.093 Df ToteTrack[62866:2904b] [com.apple.UIKit:KeyboardArbiterClientLog] isWritingToolsHandlingKeyboardTracking:Y (WT ready:Y, Arbiter ready:Y)
+2026-11-21 20:00:20.094 Df ToteTrack[62866:2904b] [com.apple.FrontBoard:SceneExtension] Realizing settings extension SBUISecureRenderingSettingsExtension on FBSSceneSettings
+2026-11-21 20:00:20.096 Df ToteTrack[62866:2904b] [com.apple.UIKit:InterfaceStyle] Not push traits update to screen for new style 1, <UIWindowScene: 0x104445430> (D90BEDAC-FBE1-4920-8962-38C70A33D537)
+2026-11-21 20:00:20.096 Df ToteTrack[62866:2904b] [com.apple.UIKit:AppLifecycle] sceneOfRecord: sceneID: sceneID:com.tweltz1.totetrack-default  persistentID: D90BEDAC-FBE1-4920-8962-38C70A33D537
+2026-11-21 20:00:20.101 A  ToteTrack[62866:29084] (RunningBoardServices) didChangeInheritances
+2026-11-21 20:00:20.140 Df ToteTrack[62866:2904b] [com.apple.network:activity] <nw_activity 50:1 [26061547-A789-4DD3-A2C6-19D66DEEF7A8] (global parent) (reporting strategy default) complete (reason success)> complete with reason 2 (success), duration 1622ms
+2026-11-21 20:00:20.140 Df ToteTrack[62866:2904b] [com.apple.network:activity] <nw_activity 50:2 [B93E200D-CF72-46DF-8DBE-69B1705A612C] (reporting strategy default) complete (reason success)> complete with reason 2 (success), duration 1622ms
+2026-11-21 20:00:20.140 Df ToteTrack[62866:2904b] [com.apple.network:activity] Unsetting the global parent activity <nw_activity 50:1 [26061547-A789-4DD3-A2C6-19D66DEEF7A8] (global parent) (reporting strategy default) complete (reason success)>
+2026-11-21 20:00:20.140 Df ToteTrack[62866:2904b] [com.apple.network:activity] Unset the global parent activity
+2026-11-21 20:00:20.140 Df ToteTrack[62866:2904b] [com.apple.app_launch_measurement:ApplicationLaunch] alm_release_pageins_recording_assertion: releasing pageins recording assertion
+2026-11-21 20:00:20.237 A  ToteTrack[62866:2907e] (StoreKit) StoreKit/TransactionUpdateStart
+2026-11-21 20:00:20.237 A  ToteTrack[62866:2907e] (StoreKit) StoreKit/TransactionQuery
+2026-11-21 20:00:20.239 Df ToteTrack[62866:2907e] [com.apple.xpc:connection] [0x1094bc280] activating connection: mach=true listener=false peer=false name=com.apple.storekitd
+2026-11-21 20:00:20.263 Df ToteTrack[62866:2907e] [com.apple.xpc:connection] [0x1094bc500] activating connection: mach=true listener=false peer=false name=com.apple.fontservicesd
+2026-11-21 20:00:20.341 Df ToteTrack[62866:2904b] [com.apple.Accessibility:AXCommon] Read Per-App on Init: Smart invert = (null)
+2026-11-21 20:00:20.358 Df ToteTrack[62866:29084] [com.apple.storekit:Default] [Default] Finished iterating transaction batches
+2026-11-21 20:00:20.359 Df ToteTrack[62866:29084] [com.apple.xpc:connection] [0x1094bc280] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-21 20:00:20.360 Df ToteTrack[62866:2907e] [com.apple.storekit:Default] AAFService connection invalidated
+2026-11-21 20:00:20.360 A  ToteTrack[62866:29084] (StoreKit) StoreKit/TransactionUpdateCheck
+2026-11-21 20:00:20.363 Df ToteTrack[62866:29084] [com.apple.xpc:connection] [0x1094bc280] activating connection: mach=true listener=false peer=false name=com.apple.storekitd
+2026-11-21 20:00:20.400 Df ToteTrack[62866:29072] [com.apple.storekit:Default] [Default] Finished iterating transaction batches
+2026-11-21 20:00:20.402 Df ToteTrack[62866:29072] [com.apple.xpc:connection] [0x1094bc280] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-21 20:00:20.402 Df ToteTrack[62866:2907e] [com.apple.storekit:Default] AAFService connection invalidated
+2026-11-21 20:00:20.404 Df ToteTrack[62866:29072] [com.apple.xpc:connection] [0x1094bc280] activating connection: mach=true listener=false peer=false name=com.apple.lsd.advertisingidentifiers
+2026-11-21 20:00:20.407 Df ToteTrack[62866:29072] [com.apple.storekit:Default] Registering for 'transactionsupdated' daemon notification
+2026-11-21 20:00:20.409 Df ToteTrack[62866:29084] [com.apple.FileURL:default] kExcludedFromBackupXattrName set on path: /Users/runner/Library/Developer/CoreSimulator/Devices/6478AFFB-AE17-412A-A1E5-51BCFFD300B6/data/Containers/Data/Application/FC664C5B-3760-41A5-8D46-5389AB034210/Library/Application Support/com.tweltz1.totetrack/RCTAsyncLocalStorage_V1
+2026-11-21 20:00:20.425 A  ToteTrack[62866:29072] (StoreKit) StoreKit/Products_SK2
+2026-11-21 20:00:20.426 A  ToteTrack[62866:2907e] (StoreKit) StoreKit/TransactionQuery
+2026-11-21 20:00:20.426 Df ToteTrack[62866:29084] [com.apple.UIKit:BackgroundTask] Ending background task with UIBackgroundTaskIdentifier: 2
+2026-11-21 20:00:20.426 Df ToteTrack[62866:2907e] [com.apple.xpc:connection] [0x1094bcf00] activating connection: mach=true listener=false peer=false name=com.apple.storekitd
+2026-11-21 20:00:20.426 Df ToteTrack[62866:29084] [com.apple.UIKit:BackgroundTask] Ending task with identifier 2 and description: <_UIBackgroundTaskInfo: 0x106acdbc0>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 2107 (elapsed = 1), _expireHandler: <__NSGlobalBlock__: 0x1e78c84e8>
+2026-11-21 20:00:20.426 Df ToteTrack[62866:29084] [com.apple.UIKit:BackgroundTask] Decrementing reference count for assertion <BKSProcessAssertion: 0x10443aed0> (used by background task with identifier 2: <_UIBackgroundTaskInfo: 0x106acdbc0>: taskID = 2, taskName = Persistent SceneSession Map Update, creationTime = 2107 (elapsed = 1))
+2026-11-21 20:00:20.428 Df ToteTrack[62866:29084] [com.apple.UIKit:BackgroundTask] Will invalidate assertion: <BKSProcessAssertion: 0x10443aed0> for task identifier: 2
+2026-11-21 20:00:20.428 Df ToteTrack[62866:2904b] [com.apple.runningboard:connection] Creating side-channel connection to com.apple.runningboard
+2026-11-21 20:00:20.428 Df ToteTrack[62866:2904b] [com.apple.xpc:connection] [0x1094bd900] activating connection: mach=true listener=false peer=false name=com.apple.runningboard
+2026-11-21 20:00:20.430 Df ToteTrack[62866:2904b] [com.apple.runningboard:process] Hit the server for a process handle 1de595de0000f592 that resolved to: [app<com.tweltz1.totetrack((null))>:62866]
+2026-11-21 20:00:20.451 Df ToteTrack[62866:29085] [com.apple.storekit:Default] [Default] Finished iterating transaction batches
+2026-11-21 20:00:20.454 E  ToteTrack[62866:2904b] [com.apple.UIKit:UIFocus] RCTScrollViewComponentView implements focusItemsInRect: - caching for linear focus movement is limited as long as this view is on screen.
+2026-11-21 20:00:20.564 Df ToteTrack[62866:2904b] [com.apple.CoreAnalytics:client] No XPC connection in Simulator
+2026-11-21 20:00:20.983 A  ToteTrack[62866:29084] (RunningBoardServices) didChangeInheritances
+2026-11-21 20:00:22.368 A  ToteTrack[62866:29085] (StoreKit) StoreKit/ProductRequest/Parse
+2026-11-21 20:00:22.368 Df ToteTrack[62866:29085] [com.apple.storekit:Default] Received product response
+2026-11-21 20:00:22.368 Df ToteTrack[62866:29084] [com.apple.storekit:Default] Parsing 2 products in response
+2026-11-21 20:00:22.370 Df ToteTrack[62866:29084] [com.apple.xpc:connection] [0x1094bcf00] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-21 20:00:22.370 Df ToteTrack[62866:29085] [com.apple.storekit:Default] AAFService connection invalidated
+2026-11-21 20:00:22.464 Df ToteTrack[62866:29084] [com.apple.corespotlight:index] ((null)) deleteSearchableItemsWithDomainIdentifiers, protectionClass:(null), domainIdentifiers number:1
+2026-11-21 20:00:22.468 A  ToteTrack[62866:29084] (CoreSpotlight) delete-domains
+2026-11-21 20:00:22.469 Df ToteTrack[62866:29084] [com.apple.corespotlight:index] CSInlineDonation:com.tweltz1.totetrack: Skipping donation (feature flag disabled)
+2026-11-21 20:00:22.469 Df ToteTrack[62866:29084] (CoreSpotlight) sConnectionName: com.apple.spotlight.IndexAgent
+2026-11-21 20:00:22.469 Df ToteTrack[62866:29084] (CoreSpotlight) Start service name com.apple.spotlight.IndexAgent
+2026-11-21 20:00:22.470 Df ToteTrack[62866:29084] [com.apple.xpc:connection] [0x1094bcf00] activating connection: mach=true listener=false peer=false name=com.apple.spotlight.IndexAgent
