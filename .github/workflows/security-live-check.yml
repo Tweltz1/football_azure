@@ -71,3 +71,8 @@ jobs:
             echo "=== $u"
             curl -s -o /dev/null -D - "$u" | grep -iE '^(HTTP|strict-transport|x-frame|content-security|x-content-type|referrer-policy)' || true
           done
+      - name: Is the old Azure site still up?
+        run: |
+          for u in https://agreeable-mud-057d38210.azurestaticapps.net/ https://agreeable-mud-057d38210.azurestaticapps.net/api/Health https://agreeable-mud-057d38210.azurestaticapps.net/api/GetLeagues; do
+            echo "$u -> $(curl -s -o /dev/null -w '%{http_code}' -m 20 "$u")"
+          done
