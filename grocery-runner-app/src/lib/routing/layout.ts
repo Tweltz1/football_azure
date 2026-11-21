@@ -33,7 +33,21 @@ export type StoreLayout = {
   departmentCell: Record<Department, Cell>;
   /** Shelf cells per department wall, for drawing the map. */
   labels: { text: string; at: Cell }[];
+  /** Department areas along the walls and front, for drawing: corners inclusive, `side` sets the text direction. */
+  zones?: Zone[];
+  /** Aisle names at the front end of each aisle ("1", "2", "A"). */
+  aisleMarks?: { text: string; at: Cell }[];
+  /** Short lettered aisles in front of the checkouts (Woodman's A-Z). */
+  letterCell?: (letter: string) => Cell | null;
+  /** Spots with a name instead of a number ("SODA"). */
+  named?: Record<string, Cell>;
+  /** Wall aisles: numbered aisles that are really wall cases (Woodman's 24-26 frozen). */
+  wallAisles?: Record<number, Cell>;
+  /** The store's own floor plan was used (not the generic one). */
+  planName?: string;
 };
+
+export type Zone = { text: string; x1: number; y1: number; x2: number; y2: number; side: 'left' | 'right' | 'back' | 'front' };
 
 const FRONT_ROWS = 2; // y = 0 and 1 are the front cross-aisle
 const SHELF_LENGTH = 12; // cells per aisle run
@@ -100,8 +114,26 @@ export function buildGenericLayout(aisleCount: number, opts: LayoutOptions = {})
   const placed = Object.entries(opts.profile?.departmentAisle ?? {}) as [Department, number][];
   for (const [dept, aisle] of placed) departmentCell[dept] = aisleCell(aisle);
 
+  const zone = (dept: Department, text: string, x1: number, y1: number, x2: number, y2: number, side: Zone['side']): Zone | null => {
+    if (placed.some(([d]) => d === dept)) return null;
+    const a = m({ x: x1, y: y1 });
+    const b = m({ x: x2, y: y2 });
+    return { text, x1: Math.min(a.x, b.x), y1, x2: Math.max(a.x, b.x), y2, side };
+  };
+  const third = Math.floor(SHELF_LENGTH / 3);
+  const zones = [
+    zone('dairy', 'Dairy', 0, FRONT_ROWS, 0, backWall - 1, 'left'),
+    zone('meat', 'Meat & Seafood', 0, backWall, width - 1, backWall, 'back'),
+    zone('produce', 'Produce', width - 1, FRONT_ROWS, width - 1, FRONT_ROWS + third, 'right'),
+    zone('bakery', 'Bakery', width - 1, FRONT_ROWS + third + 1, width - 1, FRONT_ROWS + 2 * third, 'right'),
+    zone('deli', 'Deli', width - 1, FRONT_ROWS + 2 * third + 1, width - 1, backWall - 1, 'right'),
+  ].filter((z): z is Zone => !!z);
+  const aisleMarks = Array.from({ length: n }, (_, i) => ({ text: String(i + 1), at: m({ x: 2 * (i + 1) + 1, y: FRONT_ROWS - 1 }) }));
+
   return {
     grid,
+    zones,
+    aisleMarks,
     aisleCount: n,
     entrance: m({ x: rightWalk, y: 0 }),
     checkout: m({ x: 3, y: 0 }),
@@ -133,7 +165,11 @@ const capWord = (s: string) => (s === s.toUpperCase() && s.length > 2 ? s[0] + s
 /** The walkway cell a shopper stands on to pick an item, or null if it has no location. */
 export function cellForLocation(layout: StoreLayout, loc: ItemLocation): Cell | null {
   if (loc.kind === 'aisle') {
+    const name = loc.aisle.trim().toUpperCase().replace(/^AISLE\s*/, '');
+    if (layout.named?.[name]) return layout.named[name];
+    if (layout.letterCell && /^[A-Z]$/.test(name)) return layout.letterCell(name) ?? layout.departmentCell.other;
     const n = parseAisleNumber(loc.aisle);
+    if (n !== null && layout.wallAisles?.[n]) return layout.wallAisles[n];
     return n === null ? layout.departmentCell.other : layout.aisleCell(n, loc.bay);
   }
   if (loc.kind === 'department') return layout.departmentCell[loc.department];
