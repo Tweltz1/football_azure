@@ -85,7 +85,7 @@ export function TermsSheet({ onDone, onCancel }) {
         <button type="button" className="jk-btn jk-full jk-terms-only" disabled={busy} onClick={() => agree(false)}>
           I agree, without sharing pictures
         </button>
-        <p className="jk-legal">Read the full <a href="/junk-terms.html">Terms of Use</a> and <a href="/junk-privacy.html">Privacy Policy</a>.</p>
+        <p className="jk-legal">Read the full <a href="https://weltzcraft.com/curbsy/terms">Terms of Use</a> and <a href="https://weltzcraft.com/curbsy/privacy">Privacy Policy</a>.</p>
       </div>
     </div>
   );

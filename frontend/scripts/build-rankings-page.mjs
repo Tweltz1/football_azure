@@ -92,11 +92,8 @@ ${byPos}
 await mkdir(path.join(root, 'public', 'auction-values'), { recursive: true });
 await writeFile(path.join(root, 'public', 'auction-values', 'index.html'), html);
 
-const pages = ['/', '/auction-values/', '/mock-draft', '/hood-games', '/games-night', '/cards', '/dnd', '/curbsy.html', '/privacy.html', '/terms.html'];
+const pages = ['/', '/auction-values/', '/mock-draft', '/hood-games', '/games-night', '/cards', '/dnd', '/privacy.html', '/terms.html'];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${pages.map((p) => `<url><loc>https://hood-league.com${p}</loc></url>`).join('')}</urlset>\n`;
 await writeFile(path.join(root, 'public', 'sitemap.xml'), sitemap);
 console.log(`auction-values: ${players.length} players, ${updated}`);
 
-// Static pages (curbsy.html's shared-listing card) need the API address, which only the build knows.
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || '';
-await writeFile(path.join(root, 'public', 'site-config.js'), `window.SITE_API = ${JSON.stringify(supabaseUrl ? `${supabaseUrl}/functions/v1/api` : '')};\n`);

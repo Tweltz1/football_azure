@@ -1,0 +1,7 @@
+# Curbsy's web pages moved to weltzcraft.com/curbsy/ (2026-11-21). The App Store listing and shipped apps still
+# link here, so keep these forwards permanently. Hood League stays on hood-league.com.
+/junk-privacy.html https://weltzcraft.com/curbsy/privacy 301
+/junk-support.html https://weltzcraft.com/curbsy/support 301
+/junk-terms.html https://weltzcraft.com/curbsy/terms 301
+/curbsy.html https://weltzcraft.com/curbsy/ 301
+/curbsy https://weltzcraft.com/curbsy/ 301

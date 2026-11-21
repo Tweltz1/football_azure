@@ -33,8 +33,8 @@ Listings and photos are checked for things that aren't allowed. Report or block 
 CURBSY PLUS (OPTIONAL)
 Everything above is free. Curbsy Plus adds instant alerts the moment a match is posted, up to 10 saved searches, a 30-minute early look at new listings, search up to 100 miles, and no sponsor cards. $4.99 a month, charged to your Apple ID. It renews each month unless you cancel at least 24 hours before the period ends, in Settings > your name > Subscriptions.
 
-Terms of Use: ${SITE}/junk-terms.html
-Privacy Policy: ${SITE}/junk-privacy.html`;
+Terms of Use: https://weltzcraft.com/curbsy/terms
+Privacy Policy: https://weltzcraft.com/curbsy/privacy`;
 
 const NOTES = `Curbsy is a free-stuff marketplace. Browsing works without an account. To post or message, use Sign in with Apple or Google (no demo account needed).
 
@@ -154,15 +154,15 @@ async function setUpPage(app) {
       description: DESCRIPTION,
       keywords: 'free stuff,curb alert,giveaway,freebies,free furniture,junk,declutter,donate,reuse,curbside,yard',
       promotionalText: 'Give away what you don\'t need and grab free stuff nearby. Snap a photo, post in seconds, and pick up from the curb.',
-      supportUrl: `${SITE}/junk-support.html`,
-      marketingUrl: `${SITE}/junk-support.html`,
+      supportUrl: 'https://weltzcraft.com/curbsy/support',
+      marketingUrl: 'https://weltzcraft.com/curbsy/',
     } } } });
   });
   const infos = await api(`/v1/apps/${app.id}/appInfos?limit=5`);
   const info = infos.data[0];
   await step('Subtitle and privacy link', async () => {
     const loc = (await api(`/v1/appInfos/${info.id}/appInfoLocalizations`)).data.find((l) => l.attributes.locale === 'en-US');
-    await api(`/v1/appInfoLocalizations/${loc.id}`, { method: 'PATCH', body: { data: { type: 'appInfoLocalizations', id: loc.id, attributes: { subtitle: 'Free stuff near you', privacyPolicyUrl: `${SITE}/junk-privacy.html` } } } });
+    await api(`/v1/appInfoLocalizations/${loc.id}`, { method: 'PATCH', body: { data: { type: 'appInfoLocalizations', id: loc.id, attributes: { subtitle: 'Free stuff near you', privacyPolicyUrl: 'https://weltzcraft.com/curbsy/privacy' } } } });
   });
   await step('Categories (Shopping, Lifestyle)', async () => {
     await api(`/v1/appInfos/${info.id}`, { method: 'PATCH', body: { data: { type: 'appInfos', id: info.id, relationships: { primaryCategory: one('appCategories', 'SHOPPING'), secondaryCategory: one('appCategories', 'LIFESTYLE') } } } });

@@ -52,7 +52,7 @@ function invite() {
   navigator.share({
     title: 'Curbsy',
     text: 'I\'m using Curbsy to give away and pick up free stuff nearby. Post something you\'re getting rid of and a neighbor can grab it.',
-    url: 'https://hood-league.com/junk',
+    url: 'https://weltzcraft.com/curbsy/',
   }).catch(() => {}); // closing the share sheet is not an error
 }
 

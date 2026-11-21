@@ -48,7 +48,7 @@ function App() {
   // Curbsy runs only inside its iPhone app. A Curbsy link opened in a browser (a shared invite, say) gets the
   // page that explains Curbsy, not Hood League's sign-in.
   if (/^\/junk(\/|$)/.test(window.location.pathname)) {
-    window.location.replace('/curbsy.html');
+    window.location.replace('https://weltzcraft.com/curbsy/');
     return null;
   }
   // Weltzcraft Games hub (where the Weltzcraft Games app opens) needs no sign-in either.
