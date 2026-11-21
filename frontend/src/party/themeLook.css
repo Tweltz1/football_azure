@@ -1,4 +1,4 @@
-/* Hood Games colors per theme (see LOOKS in season.js). data-hg-theme on <html> is set by applyThemeLook().
+/* Weltzcraft Games colors per theme (see LOOKS in season.js). data-hg-theme on <html> is set by applyThemeLook().
    --lc-top is the glow at the top of the home screens; --lc-spooky is the title font. Halloween keeps
    the original colors from party.css. */
 :root[data-hg-theme='thanksgiving'] { --lc-night: #1f1208; --lc-purple: #5a2e14; --lc-top: #7a3a12; --lc-orange: #ff9a3c; --lc-gold: #ffd36e; --lc-spooky: 'Rye', 'Fredoka', system-ui, sans-serif; }

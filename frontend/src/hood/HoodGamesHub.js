@@ -104,7 +104,7 @@ function QuickStart() {
   );
 }
 
-/** Hood Games: one front door for the party games, Hood Quest and the Hood League website. */
+/** Weltzcraft Games: one front door for the party games, Hood Quest and the Hood League website. */
 export default function HoodGamesHub() {
   const [looks] = useState(() => [
     { ...randomLook(), costume: seasonCostume(0) },
@@ -122,7 +122,7 @@ export default function HoodGamesHub() {
   }, []);
 
   useEffect(() => {
-    document.title = 'Hood Games';
+    document.title = 'Weltzcraft Games';
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = fontsHref();
@@ -135,7 +135,7 @@ export default function HoodGamesHub() {
       <ThemeSky />
       {!inGamesApp() && <a className="lch-back" href="/">← Hood League</a>}
       <p className="lch-kicker">Hood League presents</p>
-      <h1 className="lc-title hg-title">Hood Games</h1>
+      <h1 className="lc-title hg-title">Weltzcraft Games</h1>
       <p className="lch-sub">Party games, tabletop quests and the league, all in one place.</p>
       <div className="lch-crew">{looks.map((l, i) => <Person key={i} look={l} pose={i === 2 ? 'wave' : 'stand'} className={`lc-bob lc-d${i % 4}`} />)}</div>
       <QuickStart />

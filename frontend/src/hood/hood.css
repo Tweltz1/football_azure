@@ -1,4 +1,4 @@
-/* Hood Games hub (/hood-games): reuses the Games Night landing (.lch-*) with four cards. */
+/* Weltzcraft Games hub (/hood-games): reuses the Games Night landing (.lch-*) with four cards. */
 
 #lc-root .hg { overflow-x: hidden; background: radial-gradient(circle at 50% 0%, var(--lc-top, #4a2560), var(--lc-night) 70%) fixed; }
 #lc-root .hg .hg-title { font-size: 64px; font-size: clamp(56px, 14vw, 112px); line-height: 1; }

@@ -1,6 +1,6 @@
 {
   "appId": "com.hoodleague.games",
-  "appName": "Hood Games",
+  "appName": "Weltzcraft Games",
   "webDir": "../frontend/build",
   "server": {
     "appStartPath": "hood-games"

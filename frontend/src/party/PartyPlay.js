@@ -92,7 +92,7 @@ export default function PartyPlay() {
 
   useEffect(() => { writeStore({ code, name, look, cid, joined }); }, [code, name, look, cid, joined]);
   useEffect(() => {
-    document.title = 'Hood Games Night';
+    document.title = 'Weltzcraft Games Night';
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = fontsHref();

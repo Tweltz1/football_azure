@@ -51,7 +51,7 @@ function App() {
     window.location.replace('/curbsy.html');
     return null;
   }
-  // Hood Games hub (where the Hood Games app opens) needs no sign-in either.
+  // Weltzcraft Games hub (where the Weltzcraft Games app opens) needs no sign-in either.
   if (isHubPath(window.location.pathname)) {
     return (
       <div id="lc-root">
@@ -90,8 +90,8 @@ function App() {
     );
   }
 
-  // The draft mini-games can be practiced without signing in (from the Hood Games hub, say). In the
-  // Hood Games app they always get this slim page, signed in or not, so Back returns to the hub
+  // The draft mini-games can be practiced without signing in (from the Weltzcraft Games hub, say). In the
+  // Weltzcraft Games app they always get this slim page, signed in or not, so Back returns to the hub
   // instead of the whole Hood League site.
   const gamesPath = (window.location.pathname || '').replace(/\/$/, '');
   const slimGames = gamesPath === '/games' || (gamesPath === '/games/race' && user && inGamesApp());
@@ -153,7 +153,7 @@ function App() {
             <NavLink to="/start-sit"><span className="nav-long">Start/Sit &amp; Trades</span><span className="nav-short nav-two-line">Start/Sit &amp; Trade</span></NavLink>
             <NavLink to="/rankings">Rankings</NavLink>
             <NavLink to="/games">Games</NavLink>
-            {inGamesApp() && <a href={HOOD_GAMES_PATH}>Hood Games</a>}
+            {inGamesApp() && <a href={HOOD_GAMES_PATH}>Weltzcraft Games</a>}
             <NavLink to="/history">History</NavLink>
             <NavLink to="/profile">Profile</NavLink>
           </div>

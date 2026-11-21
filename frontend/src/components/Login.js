@@ -22,7 +22,7 @@ const Login = () => {
   // Sign in with Apple: only in iPhone app builds that have Apple's own sign-in sheet (App Store guideline 4.8).
   const appleSheet = hasAppleSheet();
   // Before anything else: football or games. An invite link goes straight to football, and so does the
-  // Hood Games app, whose games hub already asked.
+  // Weltzcraft Games app, whose games hub already asked.
   const [football, setFootball] = useState(() => hasInvite || params.has('football') || inGamesApp() || window.location.pathname !== '/');
   const [showIntro, setShowIntro] = useState(true);
   // Soft background music once the intro is done; it stops when this page closes.
@@ -80,7 +80,7 @@ const Login = () => {
           <EmailSignIn disabled={!online} />
           <button type="button" className="crew-intro-replay" onClick={() => setShowIntro(true)}>Meet the crew</button>
           <p className="login-legal">
-            {inGamesApp() && <><a href={HOOD_GAMES_PATH}>← Back to Hood Games</a> · </>}
+            {inGamesApp() && <><a href={HOOD_GAMES_PATH}>← Back to Weltzcraft Games</a> · </>}
             <a href="/privacy.html">Privacy Policy</a> · <a href="/terms.html">Terms of Service</a>
           </p>
           {savedUser && (
