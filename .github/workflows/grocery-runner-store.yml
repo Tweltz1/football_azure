@@ -175,6 +175,32 @@ jobs:
         env:
           DUMP: ${{ contains(github.event.head_commit.message, '[dump]') && '1' || '' }}
 
+  library:
+    # Builds the built-in recipe library from tools/library_sources.txt and commits it to the branch.
+    if: contains(github.event.head_commit.message, '[stride-library]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: grocery-runner-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx tsx tools/build_library.mts
+      - name: Commit the library
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/libraryData.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "Shop Stride: rebuild the recipe library from tools/library_sources.txt"
+          git push origin HEAD:${{ github.ref_name }}
+
   seed:
     if: contains(github.event.head_commit.message, '[stride-seed]')
     runs-on: ubuntu-latest

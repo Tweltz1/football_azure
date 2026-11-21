@@ -18,6 +18,7 @@ import { Button, lift, tap } from '../../components/ui';
 import { conflictsOf, labelsOf } from '../../lib/diet';
 import { bundledPhoto } from '../../lib/recipeAssets';
 import { newItems, SUGGESTED } from '../../lib/recipes';
+import { LIBRARY, siteName } from '../../lib/library';
 import { itemKey } from '../../lib/sharedAisles';
 import { fromIso, planWeek, WEEKDAYS } from '../../lib/mealPlan';
 import { usePlan } from '../../lib/plan';
@@ -37,7 +38,7 @@ export default function RecipeScreen() {
   useEffect(() => {
     if (id?.startsWith('c-') && shared === undefined) fetchCommunityRecipe(id.slice(2)).then(setShared).catch(() => setShared(null));
   }, [id, shared]);
-  const recipe = SUGGESTED.find((r) => r.id === id) ?? myRecipes.find((r) => r.id === id) ?? shared ?? undefined;
+  const recipe = SUGGESTED.find((r) => r.id === id) ?? LIBRARY.find((r) => r.id === id) ?? myRecipes.find((r) => r.id === id) ?? shared ?? undefined;
   const savedCopy = recipe && recipe.source !== 'mine' ? myRecipes.find((r) => r.id === `saved-${recipe.id}`) : undefined;
 
   const onList = useMemo(() => new Set(items.filter((i) => !i.checked).map((i) => itemKey(i.name))), [items]);
@@ -341,6 +342,21 @@ export default function RecipeScreen() {
           );
         })}
         </View>
+        {!recipe.steps?.length && !!recipe.url && (recipe.id.startsWith('l-') || recipe.id.startsWith('saved-l-')) && (
+          // Library recipes keep only the ingredients; the steps are the site's own, so they open there.
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => Linking.openURL(recipe.url!)}
+            style={[styles.stepsLink, { backgroundColor: t.card }, lift(t)]}
+          >
+            <Ionicons name="book-outline" size={20} color={t.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: t.text, fontWeight: '700', fontSize: 16 }}>See the steps on {siteName(recipe.url)}</Text>
+              <Text style={{ color: t.textMuted, fontSize: 13 }}>Opens the recipe page with how to make it.</Text>
+            </View>
+            <Ionicons name="open-outline" size={18} color={t.textMuted} />
+          </Pressable>
+        )}
         {!!recipe.steps?.length && (
           <>
             <View style={styles.ingHead}>
@@ -403,6 +419,7 @@ export default function RecipeScreen() {
 const fmtTime = (m: number) => (m >= 90 ? `${Math.floor(m / 60)} hr${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
 
 const styles = StyleSheet.create({
+  stepsLink: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.lg, marginTop: 16 },
   stepRow: { flexDirection: 'row', gap: 12, padding: 14 },
   stepNum: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   title: { fontSize: 28, fontWeight: '800', letterSpacing: -0.6, marginTop: 4 },

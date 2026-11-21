@@ -1,0 +1,11 @@
+# Collection pages for the built-in recipe library ([stride-library] reads these with tools/build_library.mts).
+# Each line: tags (comma separated, from RecipeTag) | page. Only titles, servings, times and ingredients are kept;
+# steps and photos stay on the source site, which each recipe links to.
+family | https://www.foodnetwork.com/recipes/packages/comfort-foods/easy-comfort-food-recipes/easy-comfort-food-recipes
+healthy | https://www.foodnetwork.com/healthy/packages/healthy-every-week/quick-and-simple/healthy-dinners-in-40-minutes-or-less
+healthy | https://www.foodnetwork.com/recipes/photos/vegan-recipes
+healthy | https://www.heraldsun.com.au/delicious/recipes/100-healthy-dinners-you-can-cook-in-30-minutes/media-gallery/cb873aedda36ac539e31039502cf86cf
+breakfast, healthy | https://www.foodnetwork.com/recipes/photos/healthy-breakfasts
+breakfast | https://www.foodnetwork.com/recipes/photos/overnight-oats-recipes
+| https://www.101cookbooks.com/vegetarian_recipes/page/60
+| https://www.foodnetwork.com/recipes/photos/favorite-vegetarian-recipes

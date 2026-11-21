@@ -194,3 +194,23 @@ test('lines naming several things become one item each', () => {
   );
   assert.deepEqual(names(['1 tablespoon all-purpose flour, dissolved in 3 tablespoons water']), ['all-purpose flour']);
 });
+
+test('recipe library lines: sizes, ranges and two things on one line', () => {
+  const p = (l: string) => parseIngredient(l);
+  assert.equal(p('One 14- to 16-ounce package extra-firm tofu')?.item, 'extra-firm tofu');
+  assert.equal(p('1 3 1/2-ounce jar capers')?.item, 'capers');
+  assert.equal(p('Two .25-ounce envelopes active dry yeast')?.item, 'active dry yeast');
+  assert.equal(p('One 2- to 2 1/2-pound head cauliflower')?.item, 'cauliflower');
+  assert.equal(p('8 ounces fresh mozzarella, cut into 1/4-inch-thick slices')?.item, 'fresh mozzarella');
+  assert.equal(p('4 1/4-inch-thick slices fresh mozzarella')?.item, 'fresh mozzarella');
+  assert.equal(p('Generous 1/2 teaspoon turmeric powder')?.item, 'turmeric powder');
+  assert.equal(p('2 teaspoons to 1 tablespoon steak seasoning blend')?.item, 'steak seasoning blend');
+  assert.equal(p('Zest of 1 lemon plus juice of 1/2 lemon')?.item, 'lemon');
+  assert.equal(p('Special equipment: grill pan'), null);
+  assert.equal(p('8 hr 10 min'), null);
+  const names = (lines: string[]) => parseRecipeLines(lines, '', true).items.map((i) => i.item);
+  assert.deepEqual(names(['2 large eggs and 4 egg whites']), ['eggs', 'egg whites']);
+  assert.deepEqual(names(['Topping suggestions: almonds, berries']), ['almonds', 'berries']);
+  // Still one thing: "1 cup plus 2 tablespoons flour".
+  assert.deepEqual(names(['1 cup plus 2 tablespoons flour']), ['flour']);
+});
