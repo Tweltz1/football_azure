@@ -188,7 +188,7 @@ export default function RouteScreen() {
 
       <View style={[styles.toggle, { backgroundColor: t.card }]}>
         <Ionicons name="snow" size={20} color={t.primary} />
-        <Text style={{ flex: 1, color: t.text, fontSize: 16 }}>Frozen and dairy last</Text>
+        <Text style={{ flex: 1, color: t.text, fontSize: 16 }}>Cold and fresh food last</Text>
         <Switch value={coldLast} onValueChange={setColdLast} />
       </View>
 

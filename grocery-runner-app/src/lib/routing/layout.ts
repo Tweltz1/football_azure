@@ -28,6 +28,8 @@ export type StoreLayout = {
   aisleCount: number;
   entrance: Cell;
   checkout: Cell;
+  /** Where the walk reaches the checkout lanes from inside the store, when the lanes are drawn. */
+  checkoutIn?: Cell;
   /** Walkway cell for each numbered aisle (1-based) at a given bay. */
   aisleCell: (aisle: number, bay?: number) => Cell;
   departmentCell: Record<Department, Cell>;

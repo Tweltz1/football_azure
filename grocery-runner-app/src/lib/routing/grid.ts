@@ -8,11 +8,25 @@ export class StoreGrid {
   readonly width: number;
   readonly height: number;
   private readonly walkable: boolean[];
+  /** Cost of stepping onto a cell: 1 on walkways and aisles, more across open floor shoppers walk around. */
+  private readonly costs: number[];
 
   constructor(width: number, height: number, fill = true) {
     this.width = width;
     this.height = height;
     this.walkable = new Array(width * height).fill(fill);
+    this.costs = new Array(width * height).fill(1);
+  }
+
+  cost(c: Cell): number {
+    return this.costs[c.y * this.width + c.x];
+  }
+
+  /** Make a filled rectangle (inclusive corners) slower to cross, so paths keep to the walkways. */
+  costRect(x1: number, y1: number, x2: number, y2: number, cost: number): void {
+    for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+      for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) if (this.inBounds({ x, y })) this.costs[y * this.width + x] = cost;
+    }
   }
 
   inBounds(c: Cell): boolean {

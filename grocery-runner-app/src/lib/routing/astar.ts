@@ -2,7 +2,7 @@ import { Cell } from '../types';
 import { manhattan, sameCell, StoreGrid } from './grid';
 
 /** Small binary min-heap keyed by f-score. */
-class MinHeap<T> {
+export class MinHeap<T> {
   private items: { key: number; value: T }[] = [];
   get size() {
     return this.items.length;
@@ -43,10 +43,14 @@ class MinHeap<T> {
 
 export type PathResult = { path: Cell[]; distance: number };
 
+/** A small extra cost per turn, so equal-length paths run straight along aisles instead of in stair-steps. */
+const TURN = 0.25;
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+
 /**
- * A* shortest walking path between two floor cells.
- * Manhattan distance is admissible on a 4-connected grid with unit steps, so the result is optimal.
- * Returns null when the goal cannot be reached (e.g. it is inside a shelf).
+ * A* walking path between two floor cells, over (cell, heading) states so turns cost a little.
+ * Steps cost the cell's cost (1 on walkways), so Manhattan distance stays admissible.
+ * `distance` is the number of steps walked. Returns null when the goal can't be reached.
  */
 export function astar(grid: StoreGrid, start: Cell, goal: Cell): PathResult | null {
   if (!grid.isWalkable(start) || !grid.isWalkable(goal)) return null;
@@ -55,40 +59,48 @@ export function astar(grid: StoreGrid, start: Cell, goal: Cell): PathResult | nu
   const g = new Map<number, number>();
   const cameFrom = new Map<number, number>();
   const closed = new Set<number>();
-  const open = new MinHeap<Cell>();
-
-  const si = grid.index(start);
+  const open = new MinHeap<number>();
   const gi = grid.index(goal);
-  g.set(si, 0);
-  open.push(manhattan(start, goal), start);
+  const cellOf = (state: number) => {
+    const k = state >> 2;
+    return { x: k % grid.width, y: Math.floor(k / grid.width) };
+  };
+
+  // Start with no heading: any first direction is free.
+  const s0 = -1; // the start, before any heading
+  g.set(s0, 0);
+  open.push(manhattan(start, goal), s0);
 
   while (open.size) {
-    const cur = open.pop()!;
+    const st = open.pop()!;
+    if (closed.has(st)) continue;
+    closed.add(st);
+    const cur = st === s0 ? start : cellOf(st);
     const ci = grid.index(cur);
     if (ci === gi) {
       const path: Cell[] = [];
-      let k: number | undefined = ci;
+      let k: number | undefined = st;
       while (k !== undefined) {
-        path.push({ x: k % grid.width, y: Math.floor(k / grid.width) });
+        path.push(k === s0 ? start : cellOf(k));
         k = cameFrom.get(k);
       }
       path.reverse();
-      return { path, distance: g.get(ci)! };
+      return { path, distance: path.length - 1 };
     }
-    if (closed.has(ci)) continue;
-    closed.add(ci);
-
-    const cg = g.get(ci)!;
-    for (const n of grid.neighbours(cur)) {
-      const ni = grid.index(n);
-      if (closed.has(ni)) continue;
-      const tentative = cg + 1;
-      if (tentative < (g.get(ni) ?? Infinity)) {
-        g.set(ni, tentative);
-        cameFrom.set(ni, ci);
-        open.push(tentative + manhattan(n, goal), n);
+    const heading = st === s0 ? -1 : st & 3;
+    const cg = g.get(st)!;
+    DIRS.forEach(([dx, dy], d) => {
+      const n = { x: cur.x + dx, y: cur.y + dy };
+      if (!grid.isWalkable(n)) return;
+      const ns = grid.index(n) * 4 + d;
+      if (closed.has(ns)) return;
+      const tentative = cg + grid.cost(n) + (heading >= 0 && heading !== d ? TURN : 0);
+      if (tentative < (g.get(ns) ?? Infinity)) {
+        g.set(ns, tentative);
+        cameFrom.set(ns, st);
+        open.push(tentative + manhattan(n, goal), ns);
       }
-    }
+    });
   }
   return null;
 }
