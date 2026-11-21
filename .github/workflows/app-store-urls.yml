@@ -1,0 +1,32 @@
+# Reads (and with scripts/app-urls/mode.txt = write, updates) every app's App Store Connect privacy,
+# support and marketing URLs. Never touches a version that is waiting for or in review.
+name: App Store URLs
+
+on:
+  push:
+    branches: ['claude/project-thread-cjzn3i-asc']
+    paths: ['scripts/app-urls/**', '.github/workflows/app-store-urls.yml']
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: read or write
+        default: read
+
+concurrency: { group: app-store-urls, cancel-in-progress: false }
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Run
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          MODE: ${{ inputs.mode }}
+        run: node scripts/app-urls/urls.js
