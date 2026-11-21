@@ -45,9 +45,23 @@ export type StoreLayout = {
   wallAisles?: Record<number, Cell>;
   /** The store's own floor plan was used (not the generic one). */
   planName?: string;
+  /** The map has no aisle numbers (Walmart, Target): items are walked to their department instead. */
+  noAisleNumbers?: boolean;
+  /** Departments the store's map doesn't show: their items are listed as not on the map. */
+  unmapped?: Department[];
 };
 
-export type Zone = { text: string; x1: number; y1: number; x2: number; y2: number; side: 'left' | 'right' | 'back' | 'front' };
+export type Zone = {
+  text: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  /** Wall bands read along the wall; 'block' labels pick whichever way fits. */
+  side: 'left' | 'right' | 'back' | 'front' | 'block';
+  /** How a block is drawn: wall cases, open floor, outside the building, or just its name. */
+  fill?: 'solid' | 'area' | 'void' | 'none';
+};
 
 const FRONT_ROWS = 2; // y = 0 and 1 are the front cross-aisle
 const SHELF_LENGTH = 12; // cells per aisle run
@@ -172,6 +186,6 @@ export function cellForLocation(layout: StoreLayout, loc: ItemLocation): Cell | 
     if (n !== null && layout.wallAisles?.[n]) return layout.wallAisles[n];
     return n === null ? layout.departmentCell.other : layout.aisleCell(n, loc.bay);
   }
-  if (loc.kind === 'department') return layout.departmentCell[loc.department];
+  if (loc.kind === 'department') return layout.unmapped?.includes(loc.department) ? null : layout.departmentCell[loc.department];
   return null;
 }
