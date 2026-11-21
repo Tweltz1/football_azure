@@ -1,5 +1,9 @@
 import { callBackend } from './api';
+import { DEPARTMENT_ORDER } from './departments';
 import { Department, ItemLocation, Store } from './types';
+
+/** A department this version of the app can show (a newer server may know more). */
+const known = (d: string | undefined): d is Department => !!d && (DEPARTMENT_ORDER as string[]).includes(d);
 
 /** `official`: from the store's own aisle list (partner stores), which the server puts ahead of votes. */
 type Shared = { aisle?: string; department?: string; votes: number; total: number; official?: boolean };
@@ -9,12 +13,12 @@ export const isShared = (store: Store | null): store is Store => !!store && !sto
 
 /** Shared shopper answers for these item names, keyed by the server's normalised item key. */
 export async function fetchSharedAisles(store: Store, names: string[]): Promise<Record<string, ItemLocation>> {
-  const raw = await callBackend<Record<string, Shared>>({ body: { action: 'aisles', store: store.id, items: names } });
+  const raw = await callBackend<Record<string, Shared>>({ body: { action: 'aisles', store: store.id, items: names, depts: 2 } });
   const out: Record<string, ItemLocation> = {};
   for (const [key, s] of Object.entries(raw)) {
     const from = s.official ? { source: 'store' as const } : { source: 'community' as const, votes: s.votes };
     if (s.aisle) out[key] = { kind: 'aisle', aisle: s.aisle, ...from };
-    else if (s.department) out[key] = { kind: 'department', department: s.department as Department, ...from };
+    else if (known(s.department)) out[key] = { kind: 'department', department: s.department, ...from };
   }
   return out;
 }
@@ -57,10 +61,11 @@ export async function fetchStoreAisles(store: Store): Promise<{ name: string; ai
  */
 export async function fetchSharedDepartments(names: string[]): Promise<Record<string, ItemLocation>> {
   const raw = await callBackend<Record<string, { department: string; votes: number }>>({
-    body: { action: 'departments', items: names },
+    body: { action: 'departments', items: names, depts: 2 },
   });
   const out: Record<string, ItemLocation> = {};
   for (const [key, s] of Object.entries(raw ?? {})) {
+    if (!known(s.department)) continue;
     out[key] = { kind: 'department', department: s.department as Department, source: 'community', votes: s.votes };
   }
   return out;

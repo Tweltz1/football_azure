@@ -35,10 +35,16 @@ create table if not exists public.grocery_department_votes (
   item_key text not null check (char_length(item_key) <= 80),
   device_id text not null check (char_length(device_id) <= 40),
   department text not null
-    check (department in ('produce', 'bakery', 'deli', 'meat', 'pantry', 'frozen', 'dairy', 'other')),
+    check (department in ('produce', 'bakery', 'deli', 'meat', 'pantry', 'frozen', 'dairy', 'other',
+                          'household', 'health', 'baby', 'pet')),
   updated_at timestamptz not null default now(),
   primary key (item_key, device_id)
 );
+-- 1.1 added non-food departments; tables made before that still have the old check.
+alter table public.grocery_department_votes drop constraint if exists grocery_department_votes_department_check;
+alter table public.grocery_department_votes add constraint grocery_department_votes_department_check
+  check (department in ('produce', 'bakery', 'deli', 'meat', 'pantry', 'frozen', 'dairy', 'other',
+                        'household', 'health', 'baby', 'pet'));
 alter table public.grocery_department_votes enable row level security;
 revoke all on public.grocery_department_votes from anon, authenticated;
 
