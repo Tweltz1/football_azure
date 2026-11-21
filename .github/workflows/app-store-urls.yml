@@ -5,7 +5,7 @@ name: App Store URLs
 on:
   push:
     branches: ['claude/project-thread-cjzn3i-asc']
-    paths: ['scripts/app-urls/**', '.github/workflows/app-store-urls.yml']
+    paths: ['scripts/app-urls/urls.js', 'scripts/app-urls/plan.json', 'scripts/app-urls/mode.txt', '.github/workflows/app-store-urls.yml']
   workflow_dispatch:
     inputs:
       mode:

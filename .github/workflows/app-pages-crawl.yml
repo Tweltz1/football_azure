@@ -1,0 +1,18 @@
+# Crawls every old and new app page address (hood-league.com + weltzcraft.com) after the move to
+# weltzcraft.com/<app>/. Run by hand, or by pushing scripts/app-urls/crawl.mjs on this branch.
+name: App pages crawl
+on:
+  push:
+    branches: ['claude/project-thread-cjzn3i-asc']
+    paths: ['scripts/app-urls/crawl.mjs', 'scripts/app-urls/crawl-run.txt', '.github/workflows/app-pages-crawl.yml']
+  workflow_dispatch:
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/app-urls/crawl.mjs
