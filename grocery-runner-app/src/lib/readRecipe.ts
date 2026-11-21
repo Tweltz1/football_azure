@@ -32,12 +32,12 @@ export async function readRecipe(input: { photoUri: string } | { url: string } |
     );
   }
   if ('url' in input) {
-    return checked(parseRecipePage(await fetchPage(input.url)), 'No ingredient list found on that page. Try pasting the ingredients instead.');
+    return checked(parseRecipePage((await fetchPage(input.url)).html), 'No ingredient list found on that page. Try pasting the ingredients instead.');
   }
   return checked(parsePastedText(input.text), 'No ingredients found. Put one ingredient on each line.');
 }
 
-async function fetchPage(url: string): Promise<string> {
+async function fetchPage(url: string): Promise<{ html: string; url: string }> {
   // Recipe sites turn away requests that don't look like a browser, so ask like Safari on iPhone does.
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20000);
@@ -50,7 +50,8 @@ async function fetchPage(url: string): Promise<string> {
     clearTimeout(timer);
   }
   if (!res.ok) throw new Error(`That site wouldn't open the page (error ${res.status}). Try pasting the ingredients instead.`);
-  return res.text();
+  // After redirects, the address the page really lives at (so links back to itself are skipped).
+  return { html: await res.text(), url: res.url || url };
 }
 
 /**
@@ -61,8 +62,9 @@ async function fetchPage(url: string): Promise<string> {
 export async function readLink(
   url: string,
 ): Promise<{ kind: 'recipe'; recipe: ParsedRecipe } | { kind: 'collection'; collection: RecipeCollection }> {
-  const html = await fetchPage(url);
-  const collection = parseCollectionPage(html, url);
+  const page = await fetchPage(url);
+  const html = page.html;
+  const collection = parseCollectionPage(html, page.url);
   if (collection && isRoundup(html, collection)) return { kind: 'collection', collection };
   return { kind: 'recipe', recipe: checked(parseRecipePage(html), 'No ingredient list found on that page. Try pasting the ingredients instead.') };
 }
