@@ -58,9 +58,6 @@
   "m4": {
    "name": "Pixel W"
   },
-  "m5": {
-   "name": "Chrome W"
-  },
   "m6": {
    "name": "Wordmark"
   },
@@ -72,9 +69,6 @@
   },
   "h1": {
    "name": "Gold script"
-  },
-  "h2": {
-   "name": "Shield"
   },
   "h3": {
    "name": "Northwoods"
@@ -618,48 +612,6 @@
    ]
   },
   {
-   "key": "chrome",
-   "name": "Chrome W Tee",
-   "price": 28,
-   "sizes": [
-    "S",
-    "M",
-    "L",
-    "XL",
-    "2XL",
-    "3XL"
-   ],
-   "logos": [
-    "m5"
-   ],
-   "colors": [
-    {
-     "key": "black",
-     "name": "Black"
-    },
-    {
-     "key": "navy",
-     "name": "Navy"
-    },
-    {
-     "key": "asphalt",
-     "name": "Asphalt"
-    },
-    {
-     "key": "brown",
-     "name": "Brown"
-    },
-    {
-     "key": "darkgreyheather",
-     "name": "Dark Grey Heather"
-    },
-    {
-     "key": "forest",
-     "name": "Forest"
-    }
-   ]
-  },
-  {
    "key": "wordcrew",
    "name": "Wordmark Crew",
    "price": 40,
@@ -841,41 +793,6 @@
     {
      "key": "peachy",
      "name": "Peachy"
-    }
-   ]
-  },
-  {
-   "key": "shield",
-   "name": "Shield Snapback",
-   "price": 28,
-   "sizes": null,
-   "logos": [
-    "h2"
-   ],
-   "colors": [
-    {
-     "key": "black",
-     "name": "Black"
-    },
-    {
-     "key": "darknavy",
-     "name": "Dark Navy"
-    },
-    {
-     "key": "darkgrey",
-     "name": "Dark Grey"
-    },
-    {
-     "key": "maroon",
-     "name": "Maroon"
-    },
-    {
-     "key": "heathergrey",
-     "name": "Heather Grey"
-    },
-    {
-     "key": "naturalblack",
-     "name": "Natural + Black"
     }
    ]
   },
@@ -3312,222 +3229,6 @@
     }
    ]
   },
-  "chrome-black-m5": {
-   "hash": "ff8299c84cf8",
-   "price": 28,
-   "variants": [
-    {
-     "size": "S",
-     "id": 5657387187,
-     "price": 28
-    },
-    {
-     "size": "M",
-     "id": 5657387188,
-     "price": 28
-    },
-    {
-     "size": "L",
-     "id": 5657387189,
-     "price": 28
-    },
-    {
-     "size": "XL",
-     "id": 5657387191,
-     "price": 28
-    },
-    {
-     "size": "2XL",
-     "id": 5657387192,
-     "price": 30
-    },
-    {
-     "size": "3XL",
-     "id": 5657387193,
-     "price": 31
-    }
-   ]
-  },
-  "chrome-navy-m5": {
-   "hash": "ff8299c84cf8",
-   "price": 28,
-   "variants": [
-    {
-     "size": "S",
-     "id": 5657387250,
-     "price": 28
-    },
-    {
-     "size": "M",
-     "id": 5657387264,
-     "price": 28
-    },
-    {
-     "size": "L",
-     "id": 5657387274,
-     "price": 28
-    },
-    {
-     "size": "XL",
-     "id": 5657387275,
-     "price": 28
-    },
-    {
-     "size": "2XL",
-     "id": 5657387284,
-     "price": 30
-    },
-    {
-     "size": "3XL",
-     "id": 5657387285,
-     "price": 31
-    }
-   ]
-  },
-  "chrome-asphalt-m5": {
-   "hash": "ff8299c84cf8",
-   "price": 28,
-   "variants": [
-    {
-     "size": "S",
-     "id": 5657387526,
-     "price": 28
-    },
-    {
-     "size": "M",
-     "id": 5657387527,
-     "price": 28
-    },
-    {
-     "size": "L",
-     "id": 5657387528,
-     "price": 28
-    },
-    {
-     "size": "XL",
-     "id": 5657387529,
-     "price": 28
-    },
-    {
-     "size": "2XL",
-     "id": 5657387530,
-     "price": 30
-    },
-    {
-     "size": "3XL",
-     "id": 5657387531,
-     "price": 31
-    }
-   ]
-  },
-  "chrome-brown-m5": {
-   "hash": "ff8299c84cf8",
-   "price": 28,
-   "variants": [
-    {
-     "size": "S",
-     "id": 5657387868,
-     "price": 28
-    },
-    {
-     "size": "M",
-     "id": 5657387873,
-     "price": 28
-    },
-    {
-     "size": "L",
-     "id": 5657387874,
-     "price": 28
-    },
-    {
-     "size": "XL",
-     "id": 5657387875,
-     "price": 28
-    },
-    {
-     "size": "2XL",
-     "id": 5657387929,
-     "price": 30
-    },
-    {
-     "size": "3XL",
-     "id": 5657387930,
-     "price": 31
-    }
-   ]
-  },
-  "chrome-darkgreyheather-m5": {
-   "hash": "ff8299c84cf8",
-   "price": 28,
-   "variants": [
-    {
-     "size": "S",
-     "id": 5657388875,
-     "price": 28
-    },
-    {
-     "size": "M",
-     "id": 5657388876,
-     "price": 28
-    },
-    {
-     "size": "L",
-     "id": 5657388877,
-     "price": 28
-    },
-    {
-     "size": "XL",
-     "id": 5657388878,
-     "price": 28
-    },
-    {
-     "size": "2XL",
-     "id": 5657388879,
-     "price": 30
-    },
-    {
-     "size": "3XL",
-     "id": 5657388880,
-     "price": 31
-    }
-   ]
-  },
-  "chrome-forest-m5": {
-   "hash": "ff8299c84cf8",
-   "price": 28,
-   "variants": [
-    {
-     "size": "S",
-     "id": 5657388978,
-     "price": 28
-    },
-    {
-     "size": "M",
-     "id": 5657388979,
-     "price": 28
-    },
-    {
-     "size": "L",
-     "id": 5657388980,
-     "price": 28
-    },
-    {
-     "size": "XL",
-     "id": 5657388981,
-     "price": 28
-    },
-    {
-     "size": "2XL",
-     "id": 5657388982,
-     "price": 30
-    },
-    {
-     "size": "3XL",
-     "id": 5657388983,
-     "price": 31
-    }
-   ]
-  },
   "wordcrew-sand-m6": {
    "hash": "7b1d6236ce27",
    "price": 40,
@@ -4232,72 +3933,6 @@
      "size": "One size",
      "id": 5657407918,
      "price": 30
-    }
-   ]
-  },
-  "shield-black-h2": {
-   "hash": "56632f60591d",
-   "price": 28,
-   "variants": [
-    {
-     "size": "One size",
-     "id": 5657407960,
-     "price": 28
-    }
-   ]
-  },
-  "shield-darknavy-h2": {
-   "hash": "56632f60591d",
-   "price": 28,
-   "variants": [
-    {
-     "size": "One size",
-     "id": 5657407967,
-     "price": 28
-    }
-   ]
-  },
-  "shield-darkgrey-h2": {
-   "hash": "56632f60591d",
-   "price": 28,
-   "variants": [
-    {
-     "size": "One size",
-     "id": 5657409045,
-     "price": 28
-    }
-   ]
-  },
-  "shield-maroon-h2": {
-   "hash": "56632f60591d",
-   "price": 28,
-   "variants": [
-    {
-     "size": "One size",
-     "id": 5657409094,
-     "price": 28
-    }
-   ]
-  },
-  "shield-heathergrey-h2": {
-   "hash": "39ca10593333",
-   "price": 28,
-   "variants": [
-    {
-     "size": "One size",
-     "id": 5657409128,
-     "price": 28
-    }
-   ]
-  },
-  "shield-naturalblack-h2": {
-   "hash": "39ca10593333",
-   "price": 28,
-   "variants": [
-    {
-     "size": "One size",
-     "id": 5657409136,
-     "price": 28
     }
    ]
   },
