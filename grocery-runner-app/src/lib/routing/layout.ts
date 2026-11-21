@@ -124,6 +124,12 @@ export function parseAisleNumber(aisle: string): number | null {
   return null;
 }
 
+/** "14" -> "Aisle 14", Woodman's "J" -> "Aisle J"; named spots ("SODA", "Front") stay as they are. */
+export function aisleTitle(aisle: string): string {
+  return /^(\d+[A-Z]?|[A-Z]\d+|[A-Z]{1,2})$/i.test(aisle) ? `Aisle ${aisle}` : capWord(aisle);
+}
+const capWord = (s: string) => (s === s.toUpperCase() && s.length > 2 ? s[0] + s.slice(1).toLowerCase() : s);
+
 /** The walkway cell a shopper stands on to pick an item, or null if it has no location. */
 export function cellForLocation(layout: StoreLayout, loc: ItemLocation): Cell | null {
   if (loc.kind === 'aisle') {

@@ -1,3 +1,4 @@
+import { aisleTitle } from './routing/layout';
 import { DEPARTMENT_LABEL, guessDepartment } from './departments';
 import { ListItem, LocationSource } from './types';
 
@@ -29,7 +30,7 @@ export function locationLabel(item: ListItem): { text: string; place: string; no
   let note: string;
   let guessed = false;
   if (loc.kind === 'aisle') {
-    const aisle = /^\d+$/.test(loc.aisle) ? `Aisle ${loc.aisle}` : loc.aisle;
+    const aisle = aisleTitle(loc.aisle);
     place = `${aisle}${loc.side ? (loc.side === 'L' ? ', left' : ', right') : ''}`;
     note = from(loc);
   } else if (loc.kind === 'department') {

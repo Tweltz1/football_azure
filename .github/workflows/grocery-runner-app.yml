@@ -79,6 +79,7 @@ jobs:
           fi
           python3 tools/setup_supabase.py
           python3 tools/setup_accounts.py
+          python3 tools/seed_directories.py
           SET=()
           if [ -n "$KROGER_CLIENT_ID" ] && [ -n "$KROGER_CLIENT_SECRET" ]; then
             SET+=(KROGER_CLIENT_ID="$KROGER_CLIENT_ID" KROGER_CLIENT_SECRET="$KROGER_CLIENT_SECRET")
