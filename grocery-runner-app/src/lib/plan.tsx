@@ -3,6 +3,7 @@ import { createContext, ReactNode, useContext, useEffect, useMemo, useState } fr
 import { DEMO } from './demo';
 import { EMPTY_PLAN, MealPlan, planWeek } from './mealPlan';
 import { Recipe, SUGGESTED } from './recipes';
+import { LIBRARY } from './library';
 import { useData } from './store';
 
 const KEY = 'shopstride.mealplan.v1';
@@ -44,7 +45,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   }, [plan, ready]);
 
   const api = useMemo<PlanApi>(() => {
-    const pool = [...myRecipes, ...SUGGESTED];
+    const pool = [...myRecipes, ...SUGGESTED, ...LIBRARY];
     return {
       plan,
       update: (change) => setPlan((p) => change(p)),

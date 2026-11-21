@@ -9,6 +9,7 @@ import { Chip, lift, ScreenHeader, Segmented, SectionTitle } from '../../compone
 import { useAuth } from '../../lib/auth';
 import { FILTERS, labelsOf, matchesFilters } from '../../lib/diet';
 import { newItems, Recipe, SUGGESTED } from '../../lib/recipes';
+import { LIBRARY } from '../../lib/library';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
 import { titleCase } from '../../lib/caps';
@@ -20,6 +21,8 @@ export default function RecipesScreen() {
   const { myRecipes, items } = useData();
   const [query, setQuery] = useState('');
   const [on, setOn] = useState<string[]>([]);
+  // The library has hundreds of recipes: show a page at a time.
+  const [libShown, setLibShown] = useState(24);
   const { session } = useAuth();
   // The view lives in the address so other screens (and the screenshot build) can open Community.
   const params = useLocalSearchParams<{ view?: string }>();
@@ -68,6 +71,7 @@ export default function RecipesScreen() {
 
   const mine = myRecipes.filter(matches);
   const suggested = SUGGESTED.filter(matches);
+  const library = useMemo(() => LIBRARY.filter(matches), [q, on]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={{ flex: 1, backgroundColor: t.bg }}>
@@ -134,6 +138,25 @@ export default function RecipesScreen() {
           {!suggested.length && (
             <Text style={{ color: t.textMuted }}>No suggested recipes match. Turn off a filter to see more.</Text>
           )}
+
+          {LIBRARY.length > 0 && (
+            <>
+              <SectionTitle>{`Recipe library · ${library.length}${on.length || q ? ' match' : ''}`}</SectionTitle>
+              <Text style={{ color: t.textMuted, fontSize: 12, marginTop: -4, marginBottom: 8 }}>
+                Ingredients from Food Network and other recipe sites. Each recipe links to its steps on the site.
+              </Text>
+              <View style={styles.grid}>{library.slice(0, libShown).map(row)}</View>
+              {library.length > libShown && (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setLibShown((n) => n + 48)}
+                  style={[styles.more, { borderColor: t.border, backgroundColor: t.card }]}
+                >
+                  <Text style={{ color: t.primary, fontWeight: '700' }}>Show more ({library.length - libShown} left)</Text>
+                </Pressable>
+              )}
+            </>
+          )}
           {on.some((k) => k === 'gluten-free' || k === 'dairy-free') && (
             <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 12 }}>
               Diet labels come from the ingredient names. Check the labels on packaged foods like broth, sausage and
@@ -160,5 +183,6 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tile: { width: '47.8%', flexGrow: 1, maxWidth: '48.5%', borderRadius: radius.lg },
   search: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, borderRadius: 999 },
+  more: { marginTop: 12, paddingVertical: 12, alignItems: 'center', borderRadius: 999, borderWidth: StyleSheet.hairlineWidth },
   chips: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
 });
