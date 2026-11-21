@@ -127,6 +127,11 @@ jobs:
           echo "store-portal without a key: $CODE (expect 401)"
           [ "$CODE" = "401" ]
 
+      # Store manager sign-in end to end (throwaway user + store, deleted after): commit message [stride-portal-e2e].
+      - name: Store portal end-to-end check
+        if: contains(github.event.head_commit.message, '[stride-portal-e2e]')
+        run: python3 tools/e2e_store_portal.py
+
   build:
     runs-on: macos-26
     timeout-minutes: 60
