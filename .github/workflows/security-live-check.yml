@@ -43,6 +43,22 @@ jobs:
           probe hobby-apps https://nkwedlskhnojseeroezm.supabase.co \
             eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5rd2VkbHNraG5vanNlZXJvZXptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MjU1NjQsImV4cCI6MjEwNzQwMTU2NH0.EkQlX9lCkh77PH3n0nxvQva5_qrERVwQIAHopylLCj4
           probe talkshops https://evpcfkasnbpoajkpltch.supabase.co sb_publishable_o9TSIXd0LVAGCycmr-Pt9A_a2FVBA_k
+      - name: Supabase tables an anonymous visitor can read (by name, no data printed)
+        env:
+          TABLES: "ask_log ask_misses card_games dnd_campaigns dnd_characters dnd_sessions draft_history game_scores game_sessions grocery_aisle_votes grocery_banned_sharers grocery_community_recipes grocery_department_votes grocery_family_items grocery_family_join_misses grocery_family_lists grocery_family_members grocery_partner_aisles grocery_partner_changes grocery_partner_deals grocery_partner_outs grocery_partner_stores grocery_recipe_reports grocery_saved_recipes grocery_store_claims grocery_store_managers hood_protocol_profiles howto_answers howto_tips junk_blocks junk_claims junk_devices junk_feedback junk_items junk_label_fixes junk_members junk_messages junk_partner_taps junk_partners junk_plus junk_push_tokens junk_reports junk_reviews junk_saved_searches junk_tips junk_uploads junk_wants league_email_prefs leagues profiles projection_snapshots repair_bookings repair_incoming_receipts repair_jobs repair_shop_invites repair_shop_members repair_shops talkshops_auth_codes talkshops_ended_sessions talkshops_help_misses talkshops_howto_usage talkshops_learn_texts talkshops_recovery_phones talkshops_sales_requests talkshops_sessions talkshops_settings talkshops_trial_phones totetrack_household totetrack_invites totetrack_join_misses totetrack_lists totetrack_photos totetrack_totes"
+        run: |
+          check() {
+            name=$1 url=$2 key=$3
+            echo "=== $name (only tables that answer are listed)"
+            for t in $TABLES; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' "$url/rest/v1/$t?select=*&limit=0" \
+                -H "apikey: $key" -H "Authorization: Bearer $key" -H "Prefer: count=exact" -D /tmp/h.txt)
+              range=$(grep -i '^content-range' /tmp/h.txt | tr -d '\r' | cut -d' ' -f2)
+              [ "$code" = 404 ] || echo "table $t: http $code, range $range"
+            done
+          }
+          check hobby-apps https://nkwedlskhnojseeroezm.supabase.co eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5rd2VkbHNraG5vanNlZXJvZXptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MjU1NjQsImV4cCI6MjEwNzQwMTU2NH0.EkQlX9lCkh77PH3n0nxvQva5_qrERVwQIAHopylLCj4
+          check talkshops https://evpcfkasnbpoajkpltch.supabase.co sb_publishable_o9TSIXd0LVAGCycmr-Pt9A_a2FVBA_k
       - name: Store portal refuses bad keys
         run: |
           u=https://nkwedlskhnojseeroezm.supabase.co/functions/v1/store-portal
