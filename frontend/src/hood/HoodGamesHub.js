@@ -172,6 +172,9 @@ export default function HoodGamesHub() {
           )}
         </div>
       )}
+      <p className="lch-sub" style={{ fontSize: 13 }}>
+        By playing you agree to the <a href="/terms.html">Terms</a>. See the <a href="/privacy.html">Privacy Policy</a>.
+      </p>
       <StudioCredit />
     </div>
   );

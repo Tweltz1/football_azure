@@ -6,7 +6,7 @@
 // - Skill games (Climb Dash, Shred the Summit, Field Goal Gauntlet) run on fixed 1/30 s ticks from a seed. The browser
 //   records each input with its tick and the server replays the run to get the score, so a score can't
 //   just be typed in.
-// - Turn games (Penalty Kicks, Price Is Right, Name That Player) are dealt one turn at a time by the
+// - Turn games (Penalty Kicks, Closest Without Going Over, Name That Player) are dealt one turn at a time by the
 //   server from a seed the browser never sees, and timed by the server's clock, so looking up answers
 //   or reading the keeper ahead of time doesn't work.
 // Everything here uses plain arithmetic (no Math.sin and friends) so every JS engine gets the same result.
@@ -56,7 +56,7 @@ export const GAMES: Record<GameKind, GameInfo> = {
     unit: 'goals',
   },
   price: {
-    title: 'Price Is Right: Fantasy Edition',
+    title: 'Closest Without Going Over',
     blurb: `Guess a player's PPR fantasy points for one season (${TRIVIA_FIRST}-${TRIVIA_LAST}). Closest without going over scores the most. 20 seconds a guess.`,
     style: 'turns',
     unit: 'pts',
@@ -968,7 +968,7 @@ export interface TurnResult {
   /** Penalty Kicks: where the keeper went and what happened, for drawing. */
   keeper?: { column: number; high: boolean };
   outcome?: PenaltyOutcome;
-  /** Price Is Right: the real number. Name That Player: the right name. */
+  /** Closest Without Going Over: the real number. Name That Player: the right name. */
   answer?: number | string;
 }
 
@@ -977,7 +977,7 @@ export const penaltyColumn = (zone: number) => zone % 2;
 export const penaltyHigh = (zone: number) => zone < 2;
 
 /**
- * Grades one turn. `answer` is the player's input: Penalty Kicks {zone, power}, Price Is Right a number,
+ * Grades one turn. `answer` is the player's input: Penalty Kicks {zone, power}, Closest Without Going Over a number,
  * Name That Player a choice index. `seconds` is how long they took (by the server's clock when official).
  * `history` is the zones of earlier kicks, which the keeper uses to read a player who keeps going one way.
  */
