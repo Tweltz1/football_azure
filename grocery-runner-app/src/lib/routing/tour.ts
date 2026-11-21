@@ -26,33 +26,32 @@ export function distancesFrom(grid: StoreGrid, from: Cell): Float64Array {
   return dist;
 }
 
-/**
- * Order of stops that keeps total walking short, for a fixed start and end.
- * Nearest-neighbour to get a decent tour, then 2-opt to remove crossings.
- * Exact TSP is not worth it: lists are small and this is within a few % of optimal.
- * Returns indices into `stops`.
- */
-export function orderStops(grid: StoreGrid, start: Cell, stops: Cell[], end: Cell): number[] {
-  if (stops.length <= 1) return stops.map((_, i) => i);
-  // Node 0 = start, 1..n = stops, n+1 = end.
-  const nodes = [start, ...stops, end];
-  const maps = nodes.map((c) => distancesFrom(grid, c));
-  const d = (a: number, b: number) => {
-    const v = maps[a][grid.index(nodes[b])];
-    return v < 0 ? 1e6 : v; // unreachable stops sink to the end
-  };
+/** Walking cost between every pair of cells (row i = from cells[i]). */
+export function distanceMatrix(grid: StoreGrid, cells: Cell[]): number[][] {
+  return cells.map((c) => {
+    const m = distancesFrom(grid, c);
+    return cells.map((o) => {
+      const v = m[grid.index(o)];
+      return v < 0 ? 1e6 : v; // unreachable stops sink to the end
+    });
+  });
+}
 
-  const n = stops.length;
-  const remaining = new Set(Array.from({ length: n }, (_, i) => i + 1));
+/**
+ * Order of `stops` (node numbers in D) that keeps the walk from `start` to `end` short.
+ * Nearest-neighbour to get a decent tour, then 2-opt to remove crossings.
+ */
+export function orderNodes(D: number[][], start: number, stops: number[], end: number): number[] {
+  if (stops.length <= 1) return [...stops];
+  const remaining = new Set(stops);
   const tour: number[] = [];
-  let cur = 0;
+  let cur = start;
   while (remaining.size) {
     let best = -1;
     let bestD = Infinity;
     for (const r of remaining) {
-      const dist = d(cur, r);
-      if (dist < bestD) {
-        bestD = dist;
+      if (D[cur][r] < bestD) {
+        bestD = D[cur][r];
         best = r;
       }
     }
@@ -60,24 +59,62 @@ export function orderStops(grid: StoreGrid, start: Cell, stops: Cell[], end: Cel
     remaining.delete(best);
     cur = best;
   }
-
-  const full = [0, ...tour, n + 1];
+  const full = [start, ...tour, end];
+  const d = (a: number, b: number) => D[a][b];
   let improved = true;
   while (improved) {
     improved = false;
     for (let i = 1; i < full.length - 2; i++) {
       for (let k = i + 1; k < full.length - 1; k++) {
-        const delta =
-          d(full[i - 1], full[k]) + d(full[i], full[k + 1]) - d(full[i - 1], full[i]) - d(full[k], full[k + 1]);
-        if (delta < 0) {
-          // Reverse full[i..k]. Grid distances are symmetric, so the inner legs do not change.
+        const delta = d(full[i - 1], full[k]) + d(full[i], full[k + 1]) - d(full[i - 1], full[i]) - d(full[k], full[k + 1]);
+        if (delta < -1e-9) {
           full.splice(i, k - i + 1, ...full.slice(i, k + 1).reverse());
           improved = true;
         }
       }
     }
   }
-  return full.slice(1, -1).map((i) => i - 1);
+  return full.slice(1, -1);
+}
+
+/** Length of a walk through nodes of D. */
+export const tourLength = (D: number[][], nodes: number[]) => nodes.slice(1).reduce((sum, n, i) => sum + D[nodes[i]][n], 0);
+
+/**
+ * Visits groups of stops in order (all of tiers[0], then tiers[1], ...), each group in its shortest
+ * order, choosing where each group hands off to the next so the whole walk is shortest.
+ * Returns the stop nodes in walking order.
+ */
+export function orderTiers(D: number[][], start: number, tiers: number[][], end: number): number[] {
+  const groups = tiers.filter((t) => t.length);
+  const plan = (from: number, rest: number[][]): number[] => {
+    if (rest.length === 1) return orderNodes(D, from, rest[0], end);
+    // Only the few nearest hand-off points are worth trying.
+    const candidates = [...rest[1]].sort((a, b) => D[from][a] - D[from][b]).slice(0, 5);
+    let best: number[] | null = null;
+    let bestLen = Infinity;
+    for (const h of candidates) {
+      const first = orderNodes(D, from, rest[0], h);
+      const tail = plan(first[first.length - 1], rest.slice(1));
+      const len = tourLength(D, [from, ...first, ...tail, end]);
+      if (len < bestLen) {
+        bestLen = len;
+        best = [...first, ...tail];
+      }
+    }
+    return best!;
+  };
+  return groups.length ? plan(start, groups) : [];
+}
+
+/**
+ * Order of stops that keeps total walking short, for a fixed start and end.
+ * Returns indices into `stops`.
+ */
+export function orderStops(grid: StoreGrid, start: Cell, stops: Cell[], end: Cell): number[] {
+  if (stops.length <= 1) return stops.map((_, i) => i);
+  const D = distanceMatrix(grid, [start, ...stops, end]);
+  return orderNodes(D, 0, stops.map((_, i) => i + 1), stops.length + 1).map((i) => i - 1);
 }
 
 /** Joins A* legs through the given waypoints into one walking path. */
@@ -94,12 +131,3 @@ export function walkPath(grid: StoreGrid, waypoints: Cell[]): { path: Cell[]; di
   return { path, distance };
 }
 
-/** Walking cost through the given waypoints, using shortest distances (no path drawn). */
-export function walkLength(grid: StoreGrid, waypoints: Cell[]): number {
-  let total = 0;
-  for (let i = 0; i < waypoints.length - 1; i++) {
-    const v = distancesFrom(grid, waypoints[i])[grid.index(waypoints[i + 1])];
-    total += v < 0 ? 1e6 : v;
-  }
-  return total;
-}

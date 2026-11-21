@@ -1,10 +1,10 @@
-import { COLD_DEPARTMENTS, guessDepartment } from '../departments';
+import { COLD_DEPARTMENTS, guessDepartment, NON_FOOD_DEPARTMENTS } from '../departments';
 import { coldDepartmentOfAisle, StoreProfile } from '../storeProfile';
 import { Cell, ItemLocation, ListItem } from '../types';
 import { buildGenericLayout, cellForLocation, parseAisleNumber, StoreLayout } from './layout';
 import { buildBlockLayout } from './blockPlan';
 import { AnyPlan, buildPlanLayout, isBlockPlan } from './plan';
-import { orderStops, walkLength, walkPath } from './tour';
+import { distanceMatrix, orderNodes, orderTiers, tourLength, walkPath } from './tour';
 
 /** `offMap`: items whose department the store's map doesn't show, listed last and not drawn. */
 export type RouteStop = { cell: Cell; items: ListItem[]; offMap?: boolean };
@@ -34,9 +34,23 @@ function isCold(loc: ItemLocation, profile?: StoreProfile): boolean {
   return n !== null && !!coldDepartmentOfAisle(profile, n);
 }
 
+/** How much longer (share, plus steps) the preferred shopping order may make the walk. */
+const EXTRA_WALK = 0.15;
+const EXTRA_STEPS = 12;
+
+/** 0 non-food, 1 shelf-stable food, 2 fresh (produce, meat, deli), 3 frozen and dairy. */
+function tierOf(item: ListItem, loc: ItemLocation, profile?: StoreProfile): number {
+  if (isCold(loc, profile)) return 3;
+  const dept = loc.kind === 'department' ? loc.department : loc.kind === 'aisle' && loc.department ? loc.department : guessDepartment(item.name);
+  if (COLD_DEPARTMENTS.includes(dept)) return 3;
+  if (NON_FOOD_DEPARTMENTS.includes(dept)) return 0;
+  return dept === 'produce' || dept === 'meat' || dept === 'deli' ? 2 : 1;
+}
+
 /**
  * Plans the walk: entrance -> every unchecked item -> checkout.
- * With `coldLast`, frozen and dairy are picked up after everything else.
+ * With `coldLast`, non-food comes first and fresh, frozen and dairy last, where the layout allows it
+ * without much extra walking (frozen and dairy are always last).
  */
 export function planRoute(
   items: ListItem[],
@@ -68,8 +82,8 @@ export function planRoute(
     return { kind: 'department', department: loc.department ?? guessDepartment(item.name), source: 'guess' };
   };
 
-  // Group items that are picked from the same spot.
-  const byCell = new Map<string, RouteStop & { cold: boolean }>();
+  // Group items that are picked from the same spot. A stop's tier is its earliest item's.
+  const byCell = new Map<string, RouteStop & { tier: number }>();
   const offMap: ListItem[] = [];
   for (const item of todo) {
     const loc = placeable(item);
@@ -79,34 +93,38 @@ export function planRoute(
       continue;
     }
     const key = `${cell.x},${cell.y}`;
-    const stop = byCell.get(key) ?? { cell, items: [], cold: true };
+    const stop = byCell.get(key) ?? { cell, items: [], tier: 3 };
     stop.items.push(item);
-    stop.cold = stop.cold && isCold(loc, opts.profile);
+    stop.tier = Math.min(stop.tier, tierOf(item, loc, opts.profile));
     byCell.set(key, stop);
   }
   const all = [...byCell.values()];
 
-  const warm = opts.coldLast ? all.filter((s) => !s.cold) : all;
-  const cold = opts.coldLast ? all.filter((s) => s.cold) : [];
-  const ordered: RouteStop[] = [];
-  const place = (group: typeof all, from: Cell, to: Cell) => orderStops(layout.grid, from, group.map((s) => s.cell), to).map((i) => group[i]);
-  if (!warm.length || !cold.length) {
-    ordered.push(...place(warm.length ? warm : cold, layout.entrance, layout.checkout));
+  // Node 0 = entrance, 1..n = stops, n+1 = the end of the walk (the store side of the checkouts).
+  const end = layout.checkoutIn ?? layout.checkout;
+  const D = distanceMatrix(layout.grid, [layout.entrance, ...all.map((s) => s.cell), end]);
+  const nodes = all.map((_, i) => i + 1);
+  const of = (pick: (tier: number) => boolean) => nodes.filter((n) => pick(all[n - 1].tier));
+  let order: number[];
+  if (!opts.coldLast) {
+    order = orderNodes(D, 0, nodes, all.length + 1);
   } else {
-    // Frozen and dairy last: try handing off to each cold stop and keep the shortest whole walk.
-    let best: { stops: typeof all; length: number } | null = null;
-    for (const handoff of cold) {
-      const first = place(warm, layout.entrance, handoff.cell);
-      const second = place(cold, first[first.length - 1].cell, layout.checkout);
-      const stops = [...first, ...second];
-      const length = walkLength(layout.grid, [layout.entrance, ...stops.map((s) => s.cell), layout.checkout]);
-      if (!best || length < best.length) best = { stops, length };
-    }
-    ordered.push(...best!.stops);
+    // Shopping order, most wanted first: non-food, then shelf-stable food, then fresh, then frozen & dairy.
+    // Each is kept only while it costs little extra walking over the plain "cold last" walk.
+    const options = [
+      [of((t) => t === 0), of((t) => t === 1), of((t) => t === 2), of((t) => t === 3)],
+      [of((t) => t <= 1), of((t) => t === 2), of((t) => t === 3)],
+      [of((t) => t <= 2), of((t) => t === 3)],
+    ].map((tiers) => {
+      const o = orderTiers(D, 0, tiers, all.length + 1);
+      return { order: o, length: tourLength(D, [0, ...o, all.length + 1]) };
+    });
+    const base = options[options.length - 1].length;
+    order = options.find((o) => o.length <= base * (1 + EXTRA_WALK) + EXTRA_STEPS)!.order;
   }
-  for (let i = 0; i < ordered.length; i++) ordered[i] = { cell: ordered[i].cell, items: ordered[i].items };
+  const ordered: RouteStop[] = order.map((n) => ({ cell: all[n - 1].cell, items: all[n - 1].items }));
 
-  const { path, distance } = walkPath(layout.grid, [layout.entrance, ...ordered.map((s) => s.cell), layout.checkout]);
+  const { path, distance } = walkPath(layout.grid, [layout.entrance, ...ordered.map((s) => s.cell), ...(layout.checkoutIn ? [layout.checkoutIn] : []), layout.checkout]);
   if (offMap.length) ordered.push({ cell: layout.checkout, items: offMap, offMap: true });
   return { layout, stops: ordered, path, distance };
 }

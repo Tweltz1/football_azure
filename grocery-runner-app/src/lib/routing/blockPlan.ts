@@ -34,7 +34,9 @@ export type BlockPlan = {
   height: number;
   blocks: Block[];
   entrance: { c: number; r: number };
+  /** Past the checkout lanes, and the lane entry on the store side. */
   checkout: { c: number; r: number };
+  checkoutIn: { c: number; r: number };
 };
 
 /**
@@ -86,7 +88,8 @@ export const WALMART_CHIPPEWA_FALLS: BlockPlan = {
     { kind: 'area', c1: 0, r1: 32, c2: 11, r2: 36, label: 'Garden' },
   ],
   entrance: { c: 45, r: 36 },
-  checkout: { c: 32, r: 30 },
+  checkout: { c: 33, r: 30 },
+  checkoutIn: { c: 33, r: 25 },
 };
 
 /**
@@ -124,6 +127,7 @@ export const TARGET_EAU_CLAIRE: BlockPlan = {
   ],
   entrance: { c: 12, r: 27 },
   checkout: { c: 24, r: 24 },
+  checkoutIn: { c: 24, r: 21 },
 };
 
 export const BLOCK_PLANS: BlockPlan[] = [WALMART_CHIPPEWA_FALLS, TARGET_EAU_CLAIRE];
@@ -188,6 +192,7 @@ export function buildBlockLayout(plan: BlockPlan): StoreLayout {
     aisleCount: 0,
     entrance: cell(plan.entrance.c, plan.entrance.r),
     checkout,
+    checkoutIn: cell(plan.checkoutIn.c, plan.checkoutIn.r),
     aisleCell: () => departmentCell.pantry,
     departmentCell,
     labels: [],
