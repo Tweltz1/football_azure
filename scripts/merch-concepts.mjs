@@ -30,10 +30,11 @@ const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8'))
 const DIR = 'merch/concepts';
 
 if (MODE === 'discover') {
-  const want = [/Bella \+ Canvas 3001\b/, /Comfort Colors 1717/, /ringer/i, /Gildan 18000/, /Gildan 18500/, /6245CM/,
-    /trucker/i, /corduroy/i, /beanie/i, /long sleeve/i, /Comfort Colors/i, /heavyweight/i, /Cotton Heritage/i];
+  const want = [/Bella \+ Canvas 3001\b/, /Bella \+ Canvas 3501/, /Comfort Colors 1717/, /ringer/i, /Gildan 18000/, /Gildan 18500/, /6245CM/,
+    /6606/, /retro trucker/i, /corduroy/i, /cuffed beanie/i, /1501KC/, /Gildan 2400/, /garment.dyed/i];
+  fs.mkdirSync(DIR, { recursive: true });
   const catalog = await pf('/products');
-  const hits = catalog.filter(p => !p.is_discontinued && want.some(re => re.test(`${p.title} ${p.model} ${p.brand || ''}`)));
+  const hits = catalog.filter(p => !p.is_discontinued && !/kids|youth|toddler|baby|all-over/i.test(p.title) && want.some(re => re.test(`${p.title} ${p.model} ${p.brand || ''}`)));
   const out = {};
   for (const p of hits.slice(0, 60)) {
     try {
