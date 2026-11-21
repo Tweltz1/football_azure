@@ -70,6 +70,9 @@ export default function ProfileScreen() {
           { icon: 'calendar', label: 'Meal prep day', value: WEEKDAYS[plan.prepDay], onPress: () => router.navigate('/plan') },
         ])}
 
+        <SectionTitle>For stores</SectionTitle>
+        {group([{ icon: 'briefcase', label: 'Store manager? Claim your store', onPress: () => router.push('/manager') }])}
+
         <SectionTitle>Help</SectionTitle>
         {group([
           {

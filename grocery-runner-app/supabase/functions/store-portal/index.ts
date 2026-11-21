@@ -4,10 +4,16 @@
 //   Manager sign-in (no key needed)
 //     POST {action:"login-code", email}                 emails a 6-digit sign-in code
 //     POST {action:"login-verify", email, code}         -> {access_token, refresh_token, expires_in, email}
+//     POST {action:"login-password", email, password}   -> a session (after the manager made a password)
 //     POST {action:"login-refresh", refresh_token}      -> a fresh session
+//
+//   Approve / Deny buttons in Tyler's request email (signed link, no password)
+//     POST {action:"decide-view", token}                the request
+//     POST {action:"decide", token, choice:"approve"|"reject", note?}
 //
 //   Manager calls (header  x-manager-token: <access_token>)
 //     POST {action:"me"}                                -> {email, stores:[...], claims:[...]}
+//     POST {action:"set-password", password}            so later sign-ins can use email + password
 //     POST {action:"find-stores", chain?, query}        partner stores to ask for, by name
 //     POST {action:"claim", person, title, phone, partner_id? | chain+store_name+lat+lon, address?, note?}
 //          asks Tyler for access to a store; he approves it on the admin page
@@ -51,6 +57,8 @@ import {
   findPartner,
   isWorkEmail,
   LayoutRow,
+  metresBetween,
+  SAME_STORE_METRES,
   PARTNER_CHAINS,
   parseDate,
   parseDeals,
@@ -67,10 +75,14 @@ const ANON = Deno.env.get('SUPABASE_ANON_KEY') || SERVICE;
 const ADMIN_HASH = 'e99f140f9ee08c9dacdd6578ff2dd99b369596f01819064adcc5cf0d221fb967';
 const ADMIN_SECRET = Deno.env.get('STORE_ADMIN_KEY') ?? '';
 // Email is optional: with no Resend key, requests just wait on the admin page.
-const RESEND = Deno.env.get('RESEND_API_KEY') ?? '';
+// STRIDE_RESEND_API_KEY is a Resend key for weltzcraft.com (set by the workflow from WELTZCRAFT_RESEND_API_KEY).
+const RESEND = Deno.env.get('STRIDE_RESEND_API_KEY') ?? '';
+// Signs the Approve / Deny links in request emails. Never leaves the server.
+const DECIDE_SECRET = Deno.env.get('STORE_DECIDE_SECRET') || SERVICE;
 const MAIL_FROM = Deno.env.get('STRIDE_EMAIL_FROM') || 'Shop Stride <shopstride@weltzcraft.com>';
 const NOTIFY_TO = Deno.env.get('STORE_CLAIM_NOTIFY') || 'shopstride@weltzcraft.com';
-const PORTAL_URL = 'https://hood-league.com/stores/';
+const PORTAL_URL = 'https://weltzcraft.com/shopstride/stores/';
+const SUPPORT_EMAIL = 'shopstride@weltzcraft.com';
 const auth = { apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' };
 
 const MAX_LAYOUT = 3000;
@@ -124,13 +136,18 @@ const uuidOk = (id: unknown): id is string => typeof id === 'string' && /^[0-9a-
 const idOk = (id: unknown): id is number => Number.isInteger(id) && (id as number) > 0;
 const today = () => new Date(Date.now() - 6 * 3600_000).toISOString().slice(0, 10);
 
-async function sendEmail(to: string, subject: string, text: string) {
-  if (!RESEND) return;
+const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
+/** The live end-to-end check (tools/e2e_store_portal.py) uses these addresses; it never sends email. */
+const isTest = (email: string) => email.startsWith('stride-e2e-');
+
+async function sendEmail(to: string, subject: string, text: string, html?: string, about?: string) {
+  if (!RESEND || isTest(to) || (about && isTest(about))) return;
   try {
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${RESEND}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: MAIL_FROM, to: [to], subject, text }),
+      body: JSON.stringify({ from: MAIL_FROM, to: [to], subject, text, ...(html ? { html } : {}) }),
     });
   } catch {
     // Email is a nice-to-have; the admin page always shows waiting requests.
@@ -460,6 +477,16 @@ async function login(action: string, body: Record<string, unknown>) {
     if (!r.ok || !r.data.access_token) throw new HttpError(401, 'That code is wrong or too old. Ask for a new one.');
     return session(r.data);
   }
+  if (action === 'login-password') {
+    const email = cleanEmail(body.email);
+    const password = typeof body.password === 'string' ? body.password : '';
+    if (!email || !password) throw new HttpError(400, 'Enter your email and password.');
+    const r = await authCall('token?grant_type=password', { email, password });
+    if (r.status === 429) throw new HttpError(429, 'Too many tries. Wait a minute and try again.');
+    if (!r.ok || !r.data.access_token)
+      throw new HttpError(401, "That email and password don't match. Use \"Email me a code\" if you haven't made a password yet.");
+    return session(r.data);
+  }
   if (action === 'login-refresh') {
     const token = typeof body.refresh_token === 'string' ? body.refresh_token : '';
     if (!token) throw new HttpError(401, 'Please sign in again.');
@@ -480,6 +507,22 @@ async function userFrom(req: Request): Promise<User> {
   const u = (await res.json()) as { id?: string; email?: string };
   if (!u.id || !u.email) throw new HttpError(401, 'Please sign in with an email address.');
   return { id: u.id, email: u.email.toLowerCase() };
+}
+
+async function setPassword(req: Request, body: Record<string, unknown>) {
+  const password = typeof body.password === 'string' ? body.password : '';
+  if (password.length < 8 || password.length > 72) throw new HttpError(400, 'Use 8 to 72 characters.');
+  const res = await fetch(`${URL_}/auth/v1/user`, {
+    method: 'PUT',
+    headers: { apikey: ANON, Authorization: `Bearer ${req.headers.get('x-manager-token')}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) {
+    const d = (await res.json().catch(() => ({}))) as { msg?: string; message?: string };
+    const why = d.msg || d.message || '';
+    throw new HttpError(400, /weak|short|characters/i.test(why) ? `That password is too weak: ${why}` : 'Could not save the password. Try another one.');
+  }
+  return { ok: true };
 }
 
 const CLAIM_COLS = 'id,store_name,chain,address,status,decided_note,created_at,decided_at,partner_id';
@@ -504,7 +547,14 @@ async function findStores(body: Record<string, unknown>) {
   let path = `grocery_partner_stores?select=id,name,chain,address&active=eq.true&order=name.asc&limit=20`;
   if (chain) path += `&chain=eq.${chain}`;
   if (q.length >= 2) path += `&or=(name.ilike.*${encodeURIComponent(q)}*,address.ilike.*${encodeURIComponent(q)}*)`;
-  return db(path);
+  const rows = (await db(path)) as { id: string }[];
+  if (!rows.length) return rows;
+  const ids = rows.map((r) => r.id).join(',');
+  const managed = (await db(`grocery_store_managers?select=partner_id&partner_id=in.(${ids})`)) as { partner_id: string }[];
+  const pending = (await db(`grocery_store_claims?select=partner_id&status=eq.pending&partner_id=in.(${ids})`)) as { partner_id: string }[];
+  const taken = new Set(managed.map((m) => m.partner_id));
+  const asked = new Set(pending.map((m) => m.partner_id));
+  return rows.map((r) => ({ ...r, claimed: taken.has(r.id), pending: !taken.has(r.id) && asked.has(r.id) }));
 }
 
 async function claim(u: User, body: Record<string, unknown>) {
@@ -548,22 +598,148 @@ async function claim(u: User, body: Record<string, unknown>) {
       : { partner_id: null, chain, store_name: name, address, lat, lon, store_key: storeKey };
   }
 
+  // One manager team per store, and one request at a time: no spam for Tyler. A claimed store opens again
+  // only when Tyler removes its manager on the admin page.
+  if (store.partner_id) {
+    const managers = (await db(`grocery_store_managers?select=user_id&partner_id=eq.${store.partner_id}&limit=1`)) as unknown[];
+    if (managers.length)
+      throw new HttpError(409, `${store.store_name} is already claimed by its manager. If that has changed, email ${SUPPORT_EMAIL}.`);
+  }
+  const waiting = (await db(
+    `grocery_store_claims?select=partner_id,chain,lat,lon&status=eq.pending&chain=eq.${store.chain}&limit=500`,
+  )) as { partner_id: string | null; chain: string; lat: number | null; lon: number | null }[];
+  const samePlace = (w: { lat: number | null; lon: number | null }) =>
+    store.lat != null && store.lon != null && w.lat != null && w.lon != null &&
+    metresBetween({ lat: store.lat, lon: store.lon }, { lat: w.lat, lon: w.lon }) <= SAME_STORE_METRES;
+  if (waiting.some((w) => (store.partner_id && w.partner_id === store.partner_id) || samePlace(w)))
+    throw new HttpError(409, `Someone already asked to manage ${store.store_name}. We're checking it now.`);
+
   const work = isWorkEmail(store.chain, u.email);
   const rows = await db(`grocery_store_claims?select=${CLAIM_COLS}`, {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
     body: JSON.stringify({ user_id: u.id, email: u.email, person, title, phone, note: note || null, work_email: work, ...store }),
   });
+  const token = await decideToken(rows[0].id);
+  const link = (choice: string) => `${PORTAL_URL}#decide=${token}&choice=${choice}`;
+  const lines = [
+    `${person} (${title}) asked to manage ${store.store_name}${store.address ? `, ${store.address}` : ''}${store.partner_id ? '' : ' (a new store)'}.`,
+    `Email: ${u.email}${work ? " (the chain's own email domain)" : ' (NOT a work email)'}`,
+    `Store phone they gave: ${phone}`,
+    ...(note ? [`Note: ${note}`] : []),
+    `Before approving, call the store's public number (from Google Maps, not the one above) and ask for ${person}.`,
+  ];
+  const btn = (href: string, text: string, color: string) =>
+    `<a href="${esc(href)}" style="display:inline-block;padding:12px 22px;border-radius:10px;background:${color};color:#fff;font-weight:700;text-decoration:none;margin-right:10px">${text}</a>`;
   await sendEmail(
     NOTIFY_TO,
     `Shop Stride: ${person} asks to manage ${store.store_name}`,
-    `${person} (${title}) asked to edit ${store.store_name}${store.address ? `, ${store.address}` : ''}.\n\n` +
-      `Email: ${u.email}${work ? ' (the chain\'s own email domain)' : ' (NOT a work email)'}\n` +
-      `Store phone they gave: ${phone}\n${note ? `Note: ${note}\n` : ''}\n` +
-      `Before approving, call the store's public number (from Google Maps, not the one above) and ask for ${person}.\n` +
-      `Approve or reject at ${PORTAL_URL}#admin`,
+    `${lines.join('\n')}\n\nApprove: ${link('approve')}\nDeny: ${link('reject')}\n\nOr use ${PORTAL_URL}#admin`,
+    `<div style="font:15px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#121611">` +
+      lines.map((l) => `<p style="margin:0 0 8px">${esc(l)}</p>`).join('') +
+      `<p style="margin:18px 0">${btn(link('approve'), 'Approve', '#1F9D55')}${btn(link('reject'), 'Deny', '#C9353A')}</p>` +
+      `<p style="color:#66705F;font-size:13px">The buttons open the store portal to confirm. They work for ${DECIDE_DAYS} days. ` +
+      `All requests are also on <a href="${PORTAL_URL}#admin">the admin page</a>.</p></div>`,
+    u.email,
   );
   return { ok: true, claim: rows[0] };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Deciding a manager request (admin page, or the Approve / Deny buttons in Tyler's email)
+
+type Claim = {
+  id: string; user_id: string; email: string; person: string; title: string | null; phone: string | null;
+  partner_id: string | null; chain: string; store_name: string; address: string | null;
+  lat: number | null; lon: number | null; store_key: string | null; note: string | null;
+  work_email: boolean; status: string; created_at: string;
+};
+
+async function claimById(id: unknown): Promise<Claim> {
+  if (!uuidOk(id)) throw new HttpError(400, 'Which request?');
+  const rows = (await db(`grocery_store_claims?select=*&id=eq.${id}`)) as Claim[];
+  if (!rows.length) throw new HttpError(404, 'That request was not found.');
+  return rows[0];
+}
+
+async function decideClaim(c: Claim, choice: 'approve' | 'reject', body: Record<string, unknown>) {
+  if (c.status !== 'pending') throw new HttpError(400, `That request was already ${c.status}.`);
+  const decidedAt = new Date().toISOString();
+  if (choice === 'reject') {
+    const note = cleanText(body.note, 300) || null;
+    await db(`grocery_store_claims?id=eq.${c.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'rejected', decided_note: note, decided_at: decidedAt }) });
+    await sendEmail(
+      c.email,
+      `Your Shop Stride request for ${c.store_name}`,
+      `Hi ${c.person},\n\nWe couldn't confirm that you manage ${c.store_name}, so we haven't given access yet.` +
+        `${note ? `\n\n${note}` : ''}\n\nReply to this email if you think this is a mistake.\n\nShop Stride`,
+    );
+    return { ok: true, status: 'rejected' };
+  }
+  // Approve: an existing store (or the one Tyler picked), else make the store from the request.
+  let partnerId = uuidOk(body.partner_id) ? body.partner_id : c.partner_id;
+  if (partnerId) {
+    await partnerById(partnerId);
+  } else {
+    if (c.lat == null || c.lon == null) throw new HttpError(400, 'This request has no map location. Add the store by hand first.');
+    const made = (await db(`grocery_partner_stores?select=id`, {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        name: c.store_name, chain: c.chain, lat: c.lat, lon: c.lon, store_key: c.store_key,
+        address: c.address, phone: c.phone, key_hash: await sha256(newKey()),
+      }),
+    })) as { id: string }[];
+    partnerId = made[0].id;
+  }
+  await db('grocery_store_managers', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
+    body: JSON.stringify({ partner_id: partnerId, user_id: c.user_id, email: c.email, person: c.person, title: c.title }),
+  });
+  await db(`grocery_store_claims?id=eq.${c.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'approved', partner_id: partnerId, decided_at: decidedAt }),
+  });
+  await sendEmail(
+    c.email,
+    `You can now update ${c.store_name} on Shop Stride`,
+    `Hi ${c.person},\n\nYou're approved to keep ${c.store_name} up to date on Shop Stride: where items are, ` +
+      `this week's sales, items that are out of stock, and a short note for shoppers.\n\n` +
+      `Sign in at ${PORTAL_URL}\n\nShop Stride`,
+  );
+  return { ok: true, status: 'approved', partner_id: partnerId };
+}
+
+// The email's buttons carry  <claim id>.<expiry, unix seconds>.<HMAC>  signed with a server-only secret,
+// so only someone with that email can decide. The page still asks for one more click, so a mail
+// scanner that opens links can't approve anyone.
+const DECIDE_DAYS = 14;
+async function hmac(text: string): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(`store-claims:${DECIDE_SECRET}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 40);
+}
+async function decideToken(id: string): Promise<string> {
+  const exp = Math.floor(Date.now() / 1000) + DECIDE_DAYS * 86400;
+  return `${id}.${exp}.${await hmac(`${id}.${exp}`)}`;
+}
+async function claimFromToken(token: unknown): Promise<Claim> {
+  const m = typeof token === 'string' ? token.match(/^([0-9a-f-]{36})\.(\d{10})\.([0-9a-f]{40})$/) : null;
+  if (!m || !same(await hmac(`${m[1]}.${m[2]}`), m[3])) throw new HttpError(401, 'This link is not valid. Use the admin page instead.');
+  if (Number(m[2]) < Date.now() / 1000) throw new HttpError(401, 'This link is too old. Use the admin page instead.');
+  return claimById(m[1]);
+}
+
+async function decideByLink(action: string, body: Record<string, unknown>) {
+  const c = await claimFromToken(body.token);
+  if (action === 'decide-view') {
+    const { user_id: _u, ...shown } = c;
+    return shown;
+  }
+  const choice = body.choice === 'approve' ? 'approve' : body.choice === 'reject' ? 'reject' : null;
+  if (!choice) throw new HttpError(400, 'Approve or deny?');
+  return decideClaim(c, choice, { note: body.note });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -634,60 +810,7 @@ async function admin(action: string, body: Record<string, unknown>) {
     return { pending, decided };
   }
   if (action === 'admin-approve' || action === 'admin-reject') {
-    if (!uuidOk(body.id)) throw new HttpError(400, 'Which request?');
-    const rows = (await db(`grocery_store_claims?select=*&id=eq.${body.id}`)) as Record<string, unknown>[];
-    if (!rows.length) throw new HttpError(404, 'That request was not found.');
-    const c = rows[0] as {
-      id: string; user_id: string; email: string; person: string; title: string | null; phone: string | null;
-      partner_id: string | null; chain: string; store_name: string; address: string | null;
-      lat: number | null; lon: number | null; store_key: string | null; status: string;
-    };
-    if (c.status !== 'pending') throw new HttpError(400, `That request was already ${c.status}.`);
-    const decidedAt = new Date().toISOString();
-    if (action === 'admin-reject') {
-      const note = cleanText(body.note, 300) || null;
-      await db(`grocery_store_claims?id=eq.${c.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'rejected', decided_note: note, decided_at: decidedAt }) });
-      await sendEmail(
-        c.email,
-        `Your Shop Stride request for ${c.store_name}`,
-        `Hi ${c.person},\n\nWe couldn't confirm that you manage ${c.store_name}, so we haven't given access yet.` +
-          `${note ? `\n\n${note}` : ''}\n\nReply to this email if you think this is a mistake.\n\nShop Stride`,
-      );
-      return { ok: true };
-    }
-    // Approve: an existing store (or the one Tyler picked), else make the store from the request.
-    let partnerId = uuidOk(body.partner_id) ? body.partner_id : c.partner_id;
-    if (partnerId) {
-      await partnerById(partnerId);
-    } else {
-      if (c.lat == null || c.lon == null) throw new HttpError(400, 'This request has no map location. Add the store by hand first.');
-      const made = (await db(`grocery_partner_stores?select=id`, {
-        method: 'POST',
-        headers: { Prefer: 'return=representation' },
-        body: JSON.stringify({
-          name: c.store_name, chain: c.chain, lat: c.lat, lon: c.lon, store_key: c.store_key,
-          address: c.address, phone: c.phone, key_hash: await sha256(newKey()),
-        }),
-      })) as { id: string }[];
-      partnerId = made[0].id;
-    }
-    await db('grocery_store_managers', {
-      method: 'POST',
-      headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' },
-      body: JSON.stringify({ partner_id: partnerId, user_id: c.user_id, email: c.email, person: c.person, title: c.title }),
-    });
-    await db(`grocery_store_claims?id=eq.${c.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'approved', partner_id: partnerId, decided_at: decidedAt }),
-    });
-    await sendEmail(
-      c.email,
-      `You can now update ${c.store_name} on Shop Stride`,
-      `Hi ${c.person},\n\nYou're approved to keep ${c.store_name} up to date on Shop Stride: where items are, ` +
-        `this week's sales, items that are out of stock, and a short note for shoppers.\n\n` +
-        `Sign in with this email address at ${PORTAL_URL}\n\nShop Stride`,
-    );
-    return { ok: true, partner_id: partnerId };
+    return decideClaim(await claimById(body.id), action === 'admin-approve' ? 'approve' : 'reject', body);
   }
   if (action === 'admin-remove-manager') {
     if (!uuidOk(body.partner_id) || !uuidOk(body.user_id)) throw new HttpError(400, 'Which manager?');
@@ -743,7 +866,7 @@ async function admin(action: string, body: Record<string, unknown>) {
 
 // ---------------------------------------------------------------------------------------------
 
-const MANAGER_ONLY = new Set(['me', 'find-stores', 'claim']);
+const MANAGER_ONLY = new Set(['me', 'find-stores', 'claim', 'set-password']);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -757,12 +880,14 @@ Deno.serve(async (req) => {
       return json(await admin(action, body));
     }
     if (action.startsWith('login-')) return json(await login(action, body));
+    if (action === 'decide-view' || action === 'decide') return json(await decideByLink(action, body));
 
     if (req.headers.get('x-manager-token')) {
       const u = await userFrom(req);
       if (action === 'me') return json(await me(u));
       if (action === 'find-stores') return json(await findStores(body));
       if (action === 'claim') return json(await claim(u, body));
+      if (action === 'set-password') return json(await setPassword(req, body));
       const store = (await managerStores(u)).find((s) => s.id === body.store_id);
       if (!store) throw new HttpError(403, "You can't edit that store yet. Ask for access first.");
       return json(await storeAction(store, body, { user_id: u.id, label: u.email }));

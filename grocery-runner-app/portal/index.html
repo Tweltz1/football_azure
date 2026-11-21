@@ -8,8 +8,9 @@
 <title>Shop Stride for Stores</title>
 <!--
   Shop Stride store portal. One static page, no build step. It talks to the store-portal Supabase
-  function. Store managers sign in here with an email code and ask for their store; Tyler approves
-  them at  .../stores/#admin . Older private store links  .../stores/#key=ssk_...  still work (the key
+  function. Store managers sign up here (email code, then a password), claim their store, and Tyler
+  approves them from the email's Approve / Deny buttons (.../stores/#decide=...) or at .../stores/#admin .
+  .../stores/#signup opens straight on "Sign up as a store manager". Older private store links  .../stores/#key=ssk_...  still work (the key
   stays after the #, so it is never sent to the web server or logged).
 -->
 <style>
@@ -105,34 +106,76 @@
     <button id="signOut" hidden>Sign out</button>
   </header>
 
-  <!-- Manager sign-in -->
+  <!-- Manager sign-in / sign-up -->
   <section id="login" hidden>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-mode="signin" aria-selected="true">Sign in</button>
+      <button role="tab" data-mode="signup">Sign up as a store manager</button>
+    </div>
     <div class="card">
-      <h2>Store manager sign-in</h2>
-      <p class="hint">Sign in with your email. We'll send you a 6-digit code. Use your work email if you have one;
-        it helps us confirm you work at the store.</p>
-      <div id="loginEmailStep">
-        <label for="loginEmail">Email</label>
-        <div class="link-box">
-          <input id="loginEmail" type="email" autocomplete="email" placeholder="you@yourstore.com">
-          <button class="primary" id="sendCode">Send code</button>
+      <h2 id="loginTitle">Store manager sign-in</h2>
+      <p class="hint" id="loginHint">Sign in to update your store.</p>
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email" autocomplete="email" placeholder="you@yourstore.com">
+      <div id="passwordStep">
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password">
+        <div class="row" style="margin-top:12px">
+          <button class="primary" id="passwordGo">Sign in</button>
+          <button id="useCode">Email me a code instead</button>
         </div>
+      </div>
+      <div id="codeSend" hidden>
+        <div class="row" style="margin-top:12px"><button class="primary" id="sendCode">Send code</button>
+          <button id="usePassword">Use my password</button></div>
       </div>
       <div id="loginCodeStep" hidden>
         <label for="loginCode">Code from the email</label>
         <div class="link-box">
           <input id="loginCode" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
-          <button class="primary" id="verifyCode">Sign in</button>
+          <button class="primary" id="verifyCode">Continue</button>
         </div>
         <p class="hint"><a href="#" id="changeEmail">Use a different email</a></p>
       </div>
       <div class="status" id="loginStatus" role="status"></div>
     </div>
     <div class="card">
-      <h2>What you can do</h2>
-      <p class="hint" style="margin:0">Once we confirm you work at the store, you can keep it current in Shop Stride:
-        which aisle items are in, this week's sales, items that are out of stock, and a short note for shoppers like
-        holiday hours. Shoppers see your changes right away.</p>
+      <h2>Claim your store</h2>
+      <p class="hint" style="margin:0">Managers keep their store current in Shop Stride: which aisle items are in, this
+        week's sales, items that are out of stock, and a short note for shoppers like holiday hours. Sign up, claim your
+        store (or add it if it's new), and we'll check with the store before turning on editing. Shoppers see your
+        changes right away.</p>
+      <div class="row" style="margin-top:12px"><button class="primary" id="goSignup">Sign up as a store manager</button></div>
+    </div>
+  </section>
+
+  <!-- Make a password (after signing up with a code, or from the home page) -->
+  <section id="passwordCard" hidden>
+    <div class="card">
+      <h2>Create a password</h2>
+      <p class="hint">So you can sign in with your email and password next time. At least 8 characters.</p>
+      <label for="newPassword">New password</label>
+      <input id="newPassword" type="password" autocomplete="new-password">
+      <div class="row" style="margin-top:12px"><button class="primary" id="savePassword">Save password</button>
+        <button id="skipPassword">Skip for now</button></div>
+      <div class="status" id="passwordStatus" role="status"></div>
+    </div>
+  </section>
+
+  <!-- Approve / Deny from Tyler's email -->
+  <section id="decide" hidden>
+    <div class="card">
+      <h2>Store manager request</h2>
+      <div id="decideBody" class="meta">Loading…</div>
+      <div id="decideActions" class="row" style="margin-top:12px" hidden>
+        <button class="primary" id="decideApprove">Approve</button>
+        <button class="danger" id="decideReject">Deny</button>
+      </div>
+      <div id="decideNoteRow" hidden>
+        <label for="decideNote">Reason to send them (optional)</label>
+        <input id="decideNote" value="We couldn't reach the store to confirm.">
+      </div>
+      <div class="status" id="decideStatus" role="status"></div>
     </div>
   </section>
 
@@ -141,13 +184,14 @@
     <div class="card">
       <h2>Your stores</h2>
       <p class="meta" id="homeEmail"></p>
+      <p class="meta" style="margin-top:-4px"><a href="#" id="changePassword">Set or change your password</a></p>
       <div id="myStores">Loading…</div>
       <div id="myClaims"></div>
     </div>
     <div class="card" id="claimCard">
-      <h2>Ask to manage a store</h2>
-      <p class="hint">We check every request before giving access, usually by calling the store, so please use the
-        store's main phone number.</p>
+      <h2>Claim your store</h2>
+      <p class="hint">Pick your store, or add it if it isn't listed. We check every request before turning on editing,
+        usually by calling the store, so please use the store's main phone number. You'll get an email when it's approved.</p>
       <div class="grid2">
         <div><label for="cPerson">Your name</label><input id="cPerson" autocomplete="name" placeholder="Jane Smith"></div>
         <div><label for="cTitle">Job title</label><input id="cTitle" placeholder="Store Manager"></div>
@@ -177,7 +221,7 @@
       </div>
       <label for="cNote">Anything else? (optional)</label>
       <input id="cNote" placeholder="Best time to call, or another way to check">
-      <div class="row" style="margin-top:12px"><button class="primary" id="sendClaim">Send request</button></div>
+      <div class="row" style="margin-top:12px"><button class="primary" id="sendClaim">Claim this store</button></div>
       <div class="status" id="claimStatus" role="status"></div>
     </div>
   </section>
@@ -407,7 +451,7 @@ Bananas,49¢/lb,</pre>
       saveSession(await call({ action: 'login-refresh', refresh_token: sessionData.refresh_token }));
     } catch (e) {
       saveSession(null);
-      showLogin('Your sign-in ran out. Please sign in again.');
+      showLogin('Your sign-in ran out. Please sign in again.', 'signin');
       throw e;
     }
   }
@@ -611,8 +655,7 @@ Bananas,49¢/lb,</pre>
 
   function openStore(c) {
     ctx = c;
-    ['login', 'home', 'admin'].forEach((id) => ($(id).hidden = true));
-    $('store').hidden = false;
+    only('store');
     wireEditor();
     loadStore().catch((e) => {
       status('qLayoutStatus', e.message, 'err');
@@ -633,14 +676,49 @@ Bananas,49¢/lb,</pre>
 
   // ---------------------------------------------------------------- manager sign-in and home
   let loginEmail = '';
-  function showLogin(note) {
-    ['home', 'store', 'admin'].forEach((id) => ($(id).hidden = true));
-    $('login').hidden = false;
+  let mode = 'signin'; // or 'signup'
+  const SECTIONS = ['login', 'home', 'store', 'admin', 'passwordCard', 'decide'];
+  const only = (id) => SECTIONS.forEach((x) => ($(x).hidden = x !== id));
+
+  function setMode(m) {
+    mode = m;
+    document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === m)));
+    $('loginTitle').textContent = m === 'signup' ? 'Sign up as a store manager' : 'Store manager sign-in';
+    $('loginHint').textContent = m === 'signup'
+      ? "Enter your email and we'll send a 6-digit code to confirm it. Use your work email if you have one; it helps us confirm you work at the store."
+      : 'Sign in to update your store.';
+    $('passwordStep').hidden = m === 'signup';
+    $('codeSend').hidden = m !== 'signup';
+    $('usePassword').hidden = m === 'signup';
+    $('loginCodeStep').hidden = true;
+    status('loginStatus', '');
+  }
+  function showLogin(note, m) {
+    only('login');
     $('signOut').hidden = true;
     $('title').textContent = 'Shop Stride for Stores';
     $('subtitle').textContent = "Show shoppers where things are, what's on sale, and what's out.";
+    setMode(m || mode);
     if (note) status('loginStatus', note, 'warn');
   }
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  $('goSignup').addEventListener('click', () => { setMode('signup'); $('loginEmail').focus(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+  $('useCode').addEventListener('click', () => { $('passwordStep').hidden = true; $('codeSend').hidden = false; $('usePassword').hidden = false; });
+  $('usePassword').addEventListener('click', () => setMode('signin'));
+
+  $('passwordGo').addEventListener('click', async () => {
+    const email = $('loginEmail').value.trim();
+    if (!email || !$('loginPassword').value) return status('loginStatus', 'Enter your email and password.', 'err');
+    $('passwordGo').disabled = true;
+    try {
+      saveSession(await call({ action: 'login-password', email, password: $('loginPassword').value }));
+      $('loginPassword').value = '';
+      showHome();
+    } catch (e) { status('loginStatus', e.message, 'err'); }
+    finally { $('passwordGo').disabled = false; }
+  });
+  $('loginPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('passwordGo').click(); });
+
   $('sendCode').addEventListener('click', async () => {
     loginEmail = $('loginEmail').value.trim();
     if (!loginEmail) return status('loginStatus', 'Enter your email address.', 'err');
@@ -648,21 +726,24 @@ Bananas,49¢/lb,</pre>
     status('loginStatus', 'Sending…');
     try {
       await call({ action: 'login-code', email: loginEmail });
-      $('loginEmailStep').hidden = true; $('loginCodeStep').hidden = false;
+      $('codeSend').hidden = true; $('loginCodeStep').hidden = false;
       status('loginStatus', `We sent a code to ${loginEmail}. It can take a minute; check spam too.`, 'ok');
       $('loginCode').focus();
     } catch (e) { status('loginStatus', e.message, 'err'); }
     finally { $('sendCode').disabled = false; }
   });
-  $('loginEmail').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('sendCode').click(); });
-  $('changeEmail').addEventListener('click', (e) => { e.preventDefault(); $('loginEmailStep').hidden = false; $('loginCodeStep').hidden = true; status('loginStatus', ''); });
+  $('loginEmail').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    if (!$('codeSend').hidden) $('sendCode').click(); else $('loginPassword').focus();
+  });
+  $('changeEmail').addEventListener('click', (e) => { e.preventDefault(); setMode(mode); });
   $('verifyCode').addEventListener('click', async () => {
     $('verifyCode').disabled = true;
     try {
       saveSession(await call({ action: 'login-verify', email: loginEmail, code: $('loginCode').value }));
       $('loginCode').value = '';
       status('loginStatus', '');
-      showHome();
+      if (mode === 'signup') showPassword(); else showHome();
     } catch (e) { status('loginStatus', e.message, 'err'); }
     finally { $('verifyCode').disabled = false; }
   });
@@ -670,9 +751,64 @@ Bananas,49¢/lb,</pre>
   $('signOut').addEventListener('click', () => { saveSession(null); location.hash = ''; showLogin(); });
   $('backHome').addEventListener('click', () => showHome());
 
+  function showPassword() {
+    only('passwordCard');
+    $('signOut').hidden = false;
+    $('newPassword').value = '';
+    status('passwordStatus', '');
+    $('newPassword').focus();
+  }
+  $('changePassword').addEventListener('click', (e) => { e.preventDefault(); showPassword(); });
+  $('skipPassword').addEventListener('click', () => showHome());
+  $('savePassword').addEventListener('click', async () => {
+    const password = $('newPassword').value;
+    if (password.length < 8) return status('passwordStatus', 'Use at least 8 characters.', 'err');
+    $('savePassword').disabled = true;
+    try {
+      await managerCall({ action: 'set-password', password });
+      status('passwordStatus', 'Saved. Next time sign in with your email and password.', 'ok');
+      setTimeout(showHome, 900);
+    } catch (e) { status('passwordStatus', e.message, 'err'); }
+    finally { $('savePassword').disabled = false; }
+  });
+  $('newPassword').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('savePassword').click(); });
+
+  // ---------------------------------------------------------------- Approve / Deny link from the email
+  function startDecide(token, choice) {
+    only('decide');
+    $('title').textContent = 'Shop Stride partner stores';
+    $('subtitle').textContent = 'Approve or deny a store manager.';
+    call({ action: 'decide-view', token }).then((c) => {
+      $('decideBody').innerHTML = `<p style="margin:0 0 6px;color:var(--text)"><strong>${esc(c.person)}</strong>, ${esc(c.title)} wants to manage
+        <strong>${esc(c.store_name)}</strong>${c.partner_id ? '' : ' <span class="tag bad">new store</span>'}
+        <span class="tag ${c.work_email ? 'good' : 'bad'}">${c.work_email ? 'work email' : 'not a work email'}</span></p>
+        <p style="margin:0">${esc(c.email)} · phone they gave ${esc(c.phone)}<br>${esc(c.address || '')}
+        ${c.lat != null ? `<br><a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.lat + ',' + c.lon)}">Find the store's public phone in Google Maps</a>` : ''}
+        ${c.note ? `<br>Note: ${esc(c.note)}` : ''}</p>
+        <p class="hint">Call the store's public number and ask for ${esc(c.person)} before approving.</p>`;
+      if (c.status !== 'pending') { status('decideStatus', `Already ${c.status}.`, 'warn'); return; }
+      $('decideActions').hidden = false;
+      $('decideNoteRow').hidden = choice !== 'reject';
+      (choice === 'reject' ? $('decideReject') : $('decideApprove')).focus();
+    }).catch((e) => { $('decideBody').textContent = ''; status('decideStatus', e.message, 'err'); });
+    const go = async (pick) => {
+      if (pick === 'reject' && $('decideNoteRow').hidden) { $('decideNoteRow').hidden = false; $('decideNote').focus(); return; }
+      $('decideActions').querySelectorAll('button').forEach((b) => (b.disabled = true));
+      try {
+        await call({ action: 'decide', token, choice: pick, note: $('decideNote').value });
+        $('decideActions').hidden = true; $('decideNoteRow').hidden = true;
+        status('decideStatus', pick === 'approve' ? 'Approved. They were emailed and can sign in now.' : 'Denied. They were emailed.', 'ok');
+      } catch (e) {
+        status('decideStatus', e.message, 'err');
+        $('decideActions').querySelectorAll('button').forEach((b) => (b.disabled = false));
+      }
+    };
+    $('decideApprove').addEventListener('click', () => go('approve'));
+    $('decideReject').addEventListener('click', () => go('reject'));
+  }
+
   async function showHome() {
-    ['login', 'store', 'admin'].forEach((id) => ($(id).hidden = true));
-    $('home').hidden = false;
+    only('home');
     $('signOut').hidden = false;
     $('title').textContent = 'Shop Stride for Stores';
     $('subtitle').textContent = 'Keep your store current for shoppers.';
@@ -713,7 +849,9 @@ Bananas,49¢/lb,</pre>
       const rows = await managerCall({ action: 'find-stores', query, chain: chain || undefined });
       $('cResults').innerHTML = rows.length
         ? rows.map((r) => `<label style="font-weight:400;display:flex;gap:8px;align-items:center;margin:4px 0">
-            <input type="radio" name="pick" value="${esc(r.id)}" style="width:auto"> <span>${esc(r.name)}${r.address ? `<br><span class="meta">${esc(r.address)}</span>` : ''}</span></label>`).join('') +
+            <input type="radio" name="pick" value="${esc(r.id)}" style="width:auto"${r.claimed || r.pending ? ' disabled' : ''}>
+            <span>${esc(r.name)}${r.claimed ? ' <span class="tag bad">already claimed</span>' : r.pending ? ' <span class="tag bad">being checked</span>' : ''}${r.address ? `<br><span class="meta">${esc(r.address)}</span>` : ''}</span></label>`).join('') +
+          (rows.some((r) => r.claimed) ? '<p class="hint">A claimed store already has its manager. If that has changed, email shopstride@weltzcraft.com.</p>' : '') +
           '<label style="font-weight:400;display:flex;gap:8px;align-items:center;margin:4px 0"><input type="radio" name="pick" value="" style="width:auto" checked> My store isn\'t listed</label>'
         : '';
       $('cNew').hidden = false;
@@ -883,10 +1021,11 @@ Bananas,49¢/lb,</pre>
     if (adminKey) adminSignIn();
   }
 
-  if (isAdmin) startAdmin();
+  if (hash.get('decide')) startDecide(hash.get('decide'), hash.get('choice'));
+  else if (isAdmin) startAdmin();
   else if (storeKey) startKey();
   else if (sessionData) showHome();
-  else showLogin();
+  else showLogin(null, hash.has('signup') ? 'signup' : 'signin');
   window.addEventListener('hashchange', () => location.reload());
 })();
 </script>

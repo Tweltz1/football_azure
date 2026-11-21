@@ -54,7 +54,20 @@ top of `supabase/functions/store-portal/index.ts`.
 Add `"check": true` to see how input is read without saving. Limits: 3,000 layout lines, 1,000 deals.
 
 ## Hosting
-Supabase won't serve web pages, so the page must be hosted elsewhere as a plain static file
-It has no secrets in it. It is hosted at **hood-league.com/stores/** as a copy at `frontend/public/stores/index.html` on the
-live Hood League branch (`claude/project-thread-6lgsrr`, built by Cloudflare Pages). After changing this
-file, copy it there too.
+Supabase won't serve web pages, so the page is a plain static file (no secrets in it) hosted at
+**weltzcraft.com/shopstride/stores/**: a copy at `weltzcraft-site/shopstride/stores/index.html` on `main`
+(deployed by deploy-weltzcraft-site.yml). After changing this file, copy it there too. The old address
+hood-league.com/stores/ forwards there, keeping the `#…` part.
+
+## In the app
+Profile → "Store manager? Claim your store" (also under the sign-in buttons) opens the same flow in the app,
+signed in with the shopper's own Shop Stride account: claim the chosen store or find one, then edit aisles,
+sales, out-of-stock and news. "Shop Stride admin" at the bottom unlocks Tyler's approvals with the admin password.
+
+## Rules
+- One request per store at a time, and a store with a manager takes no new requests (search shows "Already
+  claimed") until Tyler removes that manager.
+- Tyler gets an email (STRIDE_RESEND_API_KEY from WELTZCRAFT_RESEND_API_KEY) with Approve / Deny buttons:
+  signed links (`#decide=<id>.<expiry>.<hmac>`, 14 days) that open the page for one more click.
+- Managers can add a password after signing up with an email code, then sign in with email + password.
+- Live end-to-end check: put `[stride-portal-e2e]` in a commit message (tools/e2e_store_portal.py).

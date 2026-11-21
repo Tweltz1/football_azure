@@ -61,6 +61,9 @@ export default function RootLayout() {
         <Stack.Screen name="family" options={{ presentation: 'modal', title: 'Family list' }} />
         <Stack.Screen name="plan-pick" options={{ presentation: 'modal', title: 'Add a meal' }} />
         <Stack.Screen name="deals" options={{ presentation: 'modal', title: 'Store deals' }} />
+        <Stack.Screen name="manager" options={{ title: 'For store managers' }} />
+        <Stack.Screen name="manage-store" options={{ title: 'Your store' }} />
+        <Stack.Screen name="store-admin" options={{ title: 'Approve managers' }} />
       </Stack>
     </PlanProvider>
     </FamilyProvider>

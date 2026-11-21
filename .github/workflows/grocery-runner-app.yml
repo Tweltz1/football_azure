@@ -66,6 +66,10 @@ jobs:
       WALMART_PRIVATE_KEY: ${{ secrets.WALMART_PRIVATE_KEY }}
       # Optional: replaces the store portal's built-in admin password (portal/index.html#admin), 12+ characters.
       STORE_ADMIN_KEY: ${{ secrets.STORE_ADMIN_KEY }}
+      # Store manager emails (requests to Tyler with Approve/Deny, approved/denied to the manager), from weltzcraft.com.
+      WELTZCRAFT_RESEND_API_KEY: ${{ secrets.WELTZCRAFT_RESEND_API_KEY }}
+      # Optional: where new store manager requests are emailed (default shopstride@weltzcraft.com).
+      STORE_CLAIM_NOTIFY: ${{ secrets.STORE_CLAIM_NOTIFY }}
     defaults:
       run:
         working-directory: grocery-runner-app
@@ -99,6 +103,14 @@ jobs:
           fi
           if [ -n "$STORE_ADMIN_KEY" ]; then
             SET+=(STORE_ADMIN_KEY="$STORE_ADMIN_KEY")
+          fi
+          if [ -n "$WELTZCRAFT_RESEND_API_KEY" ]; then
+            SET+=(STRIDE_RESEND_API_KEY="$WELTZCRAFT_RESEND_API_KEY")
+          else
+            echo "::notice::No WELTZCRAFT_RESEND_API_KEY; store manager requests only show on the admin page."
+          fi
+          if [ -n "$STORE_CLAIM_NOTIFY" ]; then
+            SET+=(STORE_CLAIM_NOTIFY="$STORE_CLAIM_NOTIFY")
           fi
           if [ ${#SET[@]} -gt 0 ]; then
             npx -y supabase@latest secrets set --project-ref "$SUPABASE_PROJECT_ID" --yes "${SET[@]}"

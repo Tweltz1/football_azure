@@ -76,6 +76,9 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
           </Text>
         </View>
         <SignInButtons />
+        <Pressable accessibilityRole="button" onPress={() => router.push('/manager')} style={{ alignSelf: 'center', marginTop: 14, padding: 6 }}>
+          <Text style={{ color: t.primary, fontWeight: '700' }}>Store manager? Claim your store</Text>
+        </Pressable>
       </Box>
     );
   }
