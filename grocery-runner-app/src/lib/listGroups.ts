@@ -1,6 +1,6 @@
 // Groups the shopping list into store sections for the list screen. Pure logic, no React.
 import { DEPARTMENT_LABEL, DEPARTMENT_ORDER } from './departments';
-import { parseAisleNumber } from './routing/layout';
+import { aisleTitle, parseAisleNumber } from './routing/layout';
 import { effectiveLocation } from './routing/planRoute';
 import { Department, ListItem } from './types';
 
@@ -25,7 +25,7 @@ export function groupList(items: ListItem[]): ListSection[] {
     const loc = effectiveLocation(item);
     if (loc.kind === 'aisle') {
       const n = parseAisleNumber(loc.aisle);
-      const title = /^\d+$/.test(loc.aisle) ? `Aisle ${loc.aisle}` : loc.aisle;
+      const title = aisleTitle(loc.aisle);
       add(`aisle:${loc.aisle.toUpperCase()}`, title, 100 + (n ?? 999) + (/^\d+$/.test(loc.aisle) ? 0 : 0.5), item);
     } else if (loc.kind === 'department') {
       const d = loc.department;

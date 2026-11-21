@@ -25,7 +25,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Shop Stride uses your location to show supported grocery stores near you."
+          "locationWhenInUsePermission": "Shop Stride uses your location to show grocery stores near you and, while you shop, to check you are at the store, so the order you check items off can teach it which aisle they are in. Your location is not saved or shared."
         }
       ],
       [

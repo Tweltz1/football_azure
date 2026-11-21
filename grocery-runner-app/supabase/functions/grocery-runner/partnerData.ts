@@ -266,14 +266,15 @@ export function words(name: string): string[] {
 /**
  * How well a store's name for something covers a shopper's item: 2 when every word of the store's name
  * is in the item ("frozen pizza" for "digiorno frozen pizza"), 1 when the item's words are most of the
- * store's name ("peanut butter" in "peanut butter & jelly"), else 0. "butter" alone does not match
+ * store's name ("peanut butter" in "peanut butter & jelly") and the item has 2+ words, else 0. "butter" alone does not match
  * "peanut butter & jelly", so it is not sent to the peanut butter aisle.
  */
 function coverage(item: string[], theirs: string[]): number {
   if (!item.length || !theirs.length) return 0;
   const has = (ws: string[], w: string) => ws.includes(w);
   if (theirs.every((w) => has(item, w))) return 2;
-  if (item.every((w) => has(theirs, w)) && item.length * 2 >= theirs.length) return 1;
+  // A one-word item never matches part of a name: "milk" is not "Coconut Milk", "tomatoes" not "Tomatoes-Canned".
+  if (item.length >= 2 && item.every((w) => has(theirs, w)) && item.length * 2 >= theirs.length) return 1;
   return 0;
 }
 
