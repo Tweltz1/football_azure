@@ -1,6 +1,7 @@
 // Weekly meal planning: which week to show, picking meals, the week's shopping list and the prep-day
 // schedule. Pure logic, no React (the screen is app/(tabs)/plan.tsx, saved state in lib/plan.tsx).
 import { capFirst, properNouns, titleCase } from './caps';
+import { addAmounts } from './scale';
 import { guessDepartment } from './departments';
 import { matchesFilters } from './diet';
 import type { Recipe, RecipeItem } from './recipes';
@@ -16,6 +17,10 @@ export type MealPlan = {
   perWeek: number;
   /** Prep tasks ticked off, by task id. */
   done: string[];
+  /** Recipes "Plan my week" suggested lately, newest last, so the next tap (even after Clear) picks others. */
+  recent?: string[];
+  /** How many times "Plan my week" has run: the shuffle's seed, saved so a relaunch doesn't repeat a pick. */
+  fills?: number;
 };
 
 export const EMPTY_PLAN: MealPlan = { prepDay: 0, meals: {}, prefs: [], perWeek: 5, done: [] };
@@ -44,34 +49,45 @@ export function planWeek(prepDay: number, today: Date, weeksAhead = 0): string[]
 
 const shoppable = (r: Recipe) => r.items.filter((i) => !i.pantry);
 
+/** A small seeded random number maker (mulberry32): nearby seeds give unrelated numbers. */
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
+  };
+}
+
 /**
  * Fills the plan up to `count` meals with recipes that fit the preferences, preferring ones that
- * reuse ingredients already planned (less to buy, less waste) and skipping recent repeats.
- * `seed` changes the pick between taps of "Shuffle".
+ * reuse ingredients already planned (less to buy, less waste). Recipes in `avoid` (last week's meals and
+ * the ones suggested lately) only come back when nothing else fits. `seed` changes the pick on every tap.
  */
 export function suggestMeals(
   pool: Recipe[],
   opts: { prefs: string[]; picked: Recipe[]; avoid?: string[]; count: number; seed?: number },
 ): Recipe[] {
   const out: Recipe[] = [];
-  const used = new Set([...opts.picked.map((r) => r.id), ...(opts.avoid ?? [])]);
+  const avoid = new Set(opts.avoid ?? []);
   const keys = new Set(opts.picked.flatMap((r) => shoppable(r).map((i) => itemKey(i.item))));
-  let fits = pool.filter((r) => !used.has(r.id) && matchesFilters(r, opts.prefs) && !r.tags?.includes('breakfast'));
-  // Not enough recipes for the preferences: fall back to repeats the shopper hasn't just had, then anything that fits.
-  if (fits.length < opts.count - opts.picked.length) {
-    const extra = pool.filter((r) => !opts.picked.some((p) => p.id === r.id) && !fits.includes(r) && matchesFilters(r, opts.prefs));
-    fits = [...fits, ...extra];
-  }
-  let seed = (opts.seed ?? 1) >>> 0;
-  const rand = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 2 ** 32;
-  };
+  const seen = new Set<string>();
+  let fits = pool.filter((r) => {
+    // Your own copy of a recipe and ours can share an id; plan each only once.
+    if (seen.has(r.id) || opts.picked.some((p) => p.id === r.id)) return false;
+    seen.add(r.id);
+    return matchesFilters(r, opts.prefs) && !r.tags?.includes('breakfast');
+  });
+  const rand = seededRandom(opts.seed ?? 1);
+  // Each recipe gets one random draw per fill, so the order really changes between taps.
+  const luck = new Map(fits.map((r) => [r.id, rand()]));
   while (out.length + opts.picked.length < opts.count && fits.length) {
     const scored = fits.map((r) => {
       const items = shoppable(r);
       const shared = items.filter((i) => keys.has(itemKey(i.item))).length;
-      return { r, score: shared / Math.max(items.length, 1) + rand() * 0.6 };
+      return { r, score: shared / Math.max(items.length, 1) * 0.5 + luck.get(r.id)! - (avoid.has(r.id) ? 2 : 0) };
     });
     scored.sort((a, b) => b.score - a.score);
     const next = scored[0].r;
@@ -107,66 +123,167 @@ export function weekShopping(recipes: Recipe[]): WeekItem[] {
   return [...byKey.values()].map(({ amounts, ...row }) => ({ ...row, ...(amounts.length ? { amount: amounts.join(' + ') } : {}) }));
 }
 
-/** `lines` break a long task down by meal, so it reads as a short list instead of a wall of text. */
-export type PrepTask = { id: string; title: string; detail: string; icon: string; lines?: { meal: string; items: string }[] };
+/**
+ * `lines` break a long task down so it reads as a short list: one line per ingredient ("Yellow onion × 3 ·
+ * dice", "Chili, Curry and Lentil soup") so each thing is prepped once for every meal that uses it.
+ */
+export type PrepTask = { id: string; title: string; detail: string; icon: string; lines?: { label: string; text: string }[] };
 
-const GRAINS = /\b(rice|quinoa|pasta|spaghetti|penne|noodles|orzo|couscous|farro|potato(es)?|sweet potato(es)?|beans|lentils)\b/i;
-const SAUCES = /\b(sauce|dressing|marinade|salsa|pesto|vinaigrette)\b/i;
-const NOT_CHOPPED = /\b(lettuce mix|spring mix|baby spinach|spinach|berries|strawberries|blueberries|grapes|bananas?)\b/i;
+const RICE = /^(white |jasmine |basmati |long grain |brown )?rice$/i;
+const GRAINS = /\b(rice|quinoa|pasta|spaghetti|penne|noodles|orzo|couscous|farro|potato(es)?|sweet potato(es)?|lentils)\b/i;
+// Canned or cooked-from-dry beans don't need a batch cook; dry lentils do.
+const GROUND = /\bground (beef|turkey|pork|chicken|sausage)\b/i;
+const FRESH = /\b(lettuce|romaine|salad|spring mix|avocados?|cucumber)\b/i;
+const SAUCES = /\b(sauce|dressing|marinade|vinaigrette|tahini)\b/i;
+const JARRED = /\b(jar|bottle|can)\b/i;
+const NOT_CHOPPED = /\b(lettuce mix|spring mix|salad mix|bagged salad|coleslaw mix|baby spinach|spinach|berries|strawberries|blueberries|grapes|bananas?|frozen)\b/i;
+// How each kind of produce is usually prepped, so the line says what to do.
+const PREP_VERBS: [RegExp, string][] = [
+  // Green onions before plain onions.
+  [/\bgreen onions?\b|\bscallions?\b/i, 'slice'],
+  [/\bonions?\b|\bshallots?\b/i, 'dice'],
+  [/\bgarlic\b/i, 'mince'],
+  [/\bginger\b/i, 'grate'],
+  [/\b(cilantro|parsley|basil|thyme|rosemary|dill|mint)\b/i, 'wash and chop'],
+  [/\b(lemons?|limes?)\b/i, 'cut into wedges'],
+  [/\b(broccoli|cauliflower)\b/i, 'cut into florets'],
+  [/\b(potato(es)?|sweet potato(es)?)\b/i, 'cube'],
+  [/\b(lettuce|romaine|kale|cabbage)\b/i, 'wash, dry and chop'],
+  [/\b(avocados?)\b/i, 'slice just before eating'],
+  [/\b(tomato(es)?|cherry tomatoes)\b/i, 'chop'],
+  [/\b(asparagus|green beans|snap peas)\b/i, 'trim'],
+];
+const verbFor = (name: string) => PREP_VERBS.find(([re]) => re.test(name))?.[1] ?? 'chop';
 
 const list = (names: string[]) => {
   const u = [...new Set(names)];
   return u.length <= 2 ? u.join(' and ') : `${u.slice(0, -1).join(', ')} and ${u[u.length - 1]}`;
 };
 
+type Use = { item: string; amount: string; note?: string; meal: string };
+
+/** The same ingredient across meals, once: name, all the amounts added up, and which meals use it. */
+function combine(found: Use[], family: (name: string) => string | null = () => null) {
+  const byKey = new Map<string, { name: string; amounts: string[]; meals: string[]; notes: string[] }>();
+  for (const f of found) {
+    const fam = family(f.item);
+    const key = fam ?? singular(f.item);
+    const row = byKey.get(key) ?? { name: fam ?? f.item, amounts: [], meals: [], notes: [] };
+    row.amounts.push(f.amount);
+    if (!row.meals.includes(f.meal)) row.meals.push(f.meal);
+    if (f.note) row.notes.push(f.note);
+    byKey.set(key, row);
+  }
+  // Things used in the most meals first: those save the most work.
+  return [...byKey.values()]
+    .map((r) => ({ ...r, amount: addAmounts(r.amounts), meals: r.meals.map(titleCase) }))
+    .sort((a, b) => b.meals.length - a.meals.length);
+}
+const named = (name: string, amount: string) => capFirst(amount && /\d/.test(amount) ? `${name}, ${amount}` : name);
+
 /**
- * A prep-day checklist for the week, in a sensible kitchen order: start the long cooks, prep proteins,
- * wash and chop produce for every meal at once, make sauces, then pack each meal with its day.
+ * A prep-day checklist for the week, in an efficient kitchen order: start the long cooks, get one batch of
+ * each grain going, prep each meat once (splitting it between meals), chop each vegetable once for every meal
+ * that uses it, make the sauces, then pack each meal with its day. It works from ingredients alone, so
+ * recipes imported from a link without steps get a plan too.
  */
 export function prepSchedule(week: { date: string; recipes: Recipe[] }[]): PrepTask[] {
   const all = week.flatMap((d) => d.recipes);
   if (!all.length) return [];
-  const uses = (test: (i: RecipeItem) => boolean) => {
-    const found: { item: string; meal: string }[] = [];
-    for (const r of all) for (const i of r.items) if (test(i)) found.push({ item: i.item, meal: r.title });
+  const uses = (test: (i: RecipeItem) => boolean): Use[] => {
+    const found: Use[] = [];
+    for (const r of all) for (const i of r.items) if (test(i)) found.push({ item: i.item.toLowerCase(), amount: i.amount, note: i.note, meal: r.title });
     return found;
-  };
-  // One line per meal: "Chicken Caesar Salad: Romaine lettuce, lemons".
-  const byMeal = (found: { item: string; meal: string }[]) => {
-    const meals = new Map<string, string[]>();
-    for (const f of found) meals.set(f.meal, [...(meals.get(f.meal) ?? []), f.item.toLowerCase()]);
-    return [...meals].map(([meal, items]) => ({ meal: titleCase(meal), items: capFirst(list(items)) }));
   };
   const tasks: PrepTask[] = [];
   const longCooks = all.filter((r) => r.tags?.includes('slow cooker') || (r.minutes ?? 0) >= 60);
   if (longCooks.length)
-    tasks.push({ id: 'long', icon: '⏲️', title: 'Start the long cooks first', detail: list(longCooks.map((r) => titleCase(r.title))) });
-  const grains = uses((i) => GRAINS.test(i.item));
+    tasks.push({ id: 'long', icon: '⏲️', title: 'Start the long cooks first', detail: `${list(longCooks.map((r) => titleCase(r.title)))}. They cook while you do the rest.` });
+
+  // Jasmine, basmati and long grain rice cook the same way: one pot does every meal.
+  const riceKinds = uses((i) => RICE.test(i.item) && !JARRED.test(i.amount));
+  const grains = combine(uses((i) => GRAINS.test(i.item) && !JARRED.test(i.amount)), (n) =>
+    RICE.test(n) && new Set(riceKinds.map((r) => r.item)).size > 1 ? 'rice' : null,
+  );
   if (grains.length)
     tasks.push({
       id: 'grains',
       icon: '🍚',
-      title: properNouns(`Cook a batch of ${list(grains.map((g) => g.item.toLowerCase()))}`),
-      detail: `For ${list(grains.map((g) => titleCase(g.meal)))}`,
+      title: grains.length === 1 ? properNouns(`Cook one batch of ${grains[0].name}`) : 'Get the grains going, one pot of each',
+      detail: [
+        new Set(riceKinds.map((r) => r.item)).size > 1
+          ? `The recipes call for ${list([...new Set(riceKinds.map((r) => r.item))])}; any one works for all of them`
+          : '',
+        grains.some((g) => g.meals.length > 1) ? 'Cook it all at once and split it between the meals' : 'It simmers while you prep the rest',
+      ]
+        .filter(Boolean)
+        .join('. '),
+      lines: grains.map((g) => ({ label: named(g.name, g.amount), text: list(g.meals) })),
     });
-  const protein = uses((i) => guessDepartment(i.item) === 'meat');
-  if (protein.length) tasks.push({ id: 'protein', icon: '🥩', title: 'Portion and season the meat', detail: 'Bag each meal’s portion', lines: byMeal(protein) });
-  const veg = uses((i) => guessDepartment(i.item) === 'produce' && !NOT_CHOPPED.test(i.item));
-  if (veg.length)
-    tasks.push({ id: 'chop', icon: '🔪', title: 'Wash and chop the produce', detail: 'Store each meal’s veggies in its own container', lines: byMeal(veg) });
-  const sauces = uses((i) => SAUCES.test(i.item));
-  if (sauces.length) tasks.push({ id: 'sauce', icon: '🥣', title: 'Mix sauces and dressings', detail: 'Keep them in small jars', lines: byMeal(sauces) });
+
+  const protein = combine(uses((i) => guessDepartment(i.item) === 'meat'));
+  if (protein.length) {
+    // Ground meat browns the same for tacos, chili or sauce, so it cooks once; other cuts are portioned raw.
+    const ground = protein.filter((p) => p.meals.length > 1 && GROUND.test(p.name));
+    const shared = protein.filter((p) => p.meals.length > 1 && !GROUND.test(p.name));
+    tasks.push({
+      id: 'protein',
+      icon: '🥩',
+      title: ground.length || shared.length ? 'Prep each meat once for every meal' : 'Portion and season the meat',
+      detail: [
+        ground.length ? `Brown all the ${list(ground.map((p) => p.name))} in one pan, then split it` : '',
+        shared.length ? `Trim all the ${list(shared.map((p) => p.name))} at once, then season each meal’s portion its own way` : '',
+        'Bag each meal’s portion',
+      ]
+        .filter(Boolean)
+        .join('. '),
+      lines: protein.map((p) => ({ label: named(p.name, p.amount), text: p.meals.length > 1 ? `split: ${list(p.meals)}` : list(p.meals) })),
+    });
+  }
+
+  const veg = combine(uses((i) => guessDepartment(i.item) === 'produce' && !NOT_CHOPPED.test(i.item)));
+  if (veg.length) {
+    const reused = veg.filter((v) => v.meals.length > 1).length;
+    tasks.push({
+      id: 'chop',
+      icon: '🔪',
+      title: reused ? `Chop each vegetable once (${reused} go in more than one meal)` : 'Wash and chop the produce',
+      detail: 'Do each one for every meal at once, then store it by meal in its own container',
+      lines: veg.map((v) => ({
+        label: `${named(v.name, v.amount)} · ${v.notes[0]?.match(/^[a-z ,]+/i)?.[0].trim().toLowerCase() || verbFor(v.name)}`,
+        text: list(v.meals),
+      })),
+    });
+  }
+
+  // Only sauces you mix; a jar or bottle goes in as is.
+  const sauces = combine(uses((i) => SAUCES.test(i.item) && !JARRED.test(i.amount)));
+  if (sauces.length)
+    tasks.push({
+      id: 'sauce',
+      icon: '🥣',
+      title: 'Mix sauces and dressings',
+      detail: 'Keep them in small jars',
+      lines: sauces.map((s) => ({ label: named(s.name, s.amount), text: list(s.meals) })),
+    });
+
   const start = fromIso(week[0].date).getTime();
   for (const d of week) {
     if (!d.recipes.length) continue;
     const day = WEEKDAYS[fromIso(d.date).getDay()];
     // Cooked food keeps about 3-4 days in the fridge; later meals go in the freezer.
     const later = Math.round((fromIso(d.date).getTime() - start) / 86400000) > 3;
+    // Salads and fresh toppings don't freeze: keep the prepped parts cold and put it together that day.
+    const fresh = d.recipes.some((r) => r.items.some((i) => FRESH.test(i.item)));
     tasks.push({
       id: `pack-${d.date}`,
-      icon: later ? '🧊' : '📦',
+      icon: later && !fresh ? '🧊' : '📦',
       title: `Pack ${day}: ${list(d.recipes.map((r) => titleCase(r.title)))}`,
-      detail: later ? 'Freeze it; move it to the fridge the night before' : 'Label it and keep it in the fridge',
+      detail: !later
+        ? 'Label it and keep it in the fridge'
+        : fresh
+          ? 'Freeze anything cooked; keep the greens and toppings in the fridge and put it together that day'
+          : 'Freeze it; move it to the fridge the night before',
     });
   }
   return tasks;

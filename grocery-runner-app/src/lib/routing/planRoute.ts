@@ -2,6 +2,7 @@ import { COLD_DEPARTMENTS, guessDepartment } from '../departments';
 import { coldDepartmentOfAisle, StoreProfile } from '../storeProfile';
 import { Cell, ItemLocation, ListItem } from '../types';
 import { buildGenericLayout, cellForLocation, parseAisleNumber, StoreLayout } from './layout';
+import { buildPlanLayout, StorePlan } from './plan';
 import { orderStops, walkPath } from './tour';
 
 export type RouteStop = { cell: Cell; items: ListItem[] };
@@ -38,7 +39,7 @@ function isCold(loc: ItemLocation, profile?: StoreProfile): boolean {
 export function planRoute(
   items: ListItem[],
   aisleCount: number,
-  opts: { coldLast?: boolean; profile?: StoreProfile; mirror?: boolean } = {},
+  opts: { coldLast?: boolean; profile?: StoreProfile; mirror?: boolean; plan?: StorePlan | null } = {},
 ): PlannedRoute {
   const todo = items.filter((i) => !i.checked);
 
@@ -52,7 +53,9 @@ export function planRoute(
     }),
     ...Object.values(opts.profile?.departmentAisle ?? {}),
   );
-  const layout = buildGenericLayout(highest, { profile: opts.profile, mirror: opts.mirror });
+  const layout = opts.plan
+    ? buildPlanLayout(opts.plan, { profile: opts.profile })
+    : buildGenericLayout(highest, { profile: opts.profile, mirror: opts.mirror });
 
   // Group items that are picked from the same spot.
   const byCell = new Map<string, RouteStop & { cold: boolean }>();

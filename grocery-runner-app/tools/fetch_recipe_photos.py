@@ -20,6 +20,7 @@ QUERIES = {
     'turkeychili': 'white bean chicken chili', 'pulledpork': 'pulled pork sandwich', 'chickentacos': 'chicken tacos',
     'shrimpzoodles': 'shrimp zucchini noodles', 'omelet': 'omelette breakfast', 'oats': 'oatmeal blueberries',
     'macncheese': 'baked macaroni and cheese', 'blackbean': 'vegetarian tacos', 'pestopasta': 'pesto pasta tomatoes',
+    'veggiechili': 'vegetarian bean chili', 'quinoabowls': 'quinoa bowl roasted vegetables', 'minestrone': 'minestrone soup',
 }
 UA = {'User-Agent': 'ShopStride-photo-picker/1.1 (https://weltzcraft.com; recipe photo search)'}
 

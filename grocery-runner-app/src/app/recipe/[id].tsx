@@ -15,7 +15,7 @@ import {
 } from '../../lib/community';
 import { RecipePicture } from '../../components/RecipePicture';
 import { Button, lift, tap } from '../../components/ui';
-import { labelsOf } from '../../lib/diet';
+import { conflictsOf, labelsOf } from '../../lib/diet';
 import { bundledPhoto } from '../../lib/recipeAssets';
 import { newItems, SUGGESTED } from '../../lib/recipes';
 import { LIBRARY, siteName } from '../../lib/library';
@@ -58,6 +58,7 @@ export default function RecipeScreen() {
   const mine = recipe.source === 'mine';
   const base = baseServings(recipe.servings);
   const servings = wanted ?? base ?? 1;
+  const conflicts = conflictsOf(recipe, plan.prefs);
   const factor = base ? servings / base : servings;
   const sharedByMe = !!shared && shared.authorId === session?.user.id;
 
@@ -236,6 +237,15 @@ export default function RecipeScreen() {
               </View>
             ))}
         </View>
+        {conflicts.length > 0 && (
+          <View style={[styles.source, { backgroundColor: t.cardAlt, borderRadius: radius.md, padding: 10 }]}>
+            <Ionicons name="alert-circle" size={16} color={t.accent} />
+            <Text style={{ color: t.text, flex: 1, fontSize: 13 }}>
+              <Text style={{ fontWeight: '700' }}>Doesn’t fit your preferences. </Text>
+              Has {conflicts.join(', ')}.
+            </Text>
+          </View>
+        )}
         {!!recipe.url && (
           <Pressable accessibilityRole="link" onPress={() => Linking.openURL(recipe.url!)} style={styles.source}>
             <Ionicons name="open-outline" size={15} color={t.primary} />
