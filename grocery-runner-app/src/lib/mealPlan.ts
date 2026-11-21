@@ -16,6 +16,8 @@ export type MealPlan = {
   perWeek: number;
   /** Prep tasks ticked off, by task id. */
   done: string[];
+  /** Recipes "Plan my week" suggested lately, newest last, so the next tap (even after Clear) picks others. */
+  recent?: string[];
 };
 
 export const EMPTY_PLAN: MealPlan = { prepDay: 0, meals: {}, prefs: [], perWeek: 5, done: [] };
@@ -44,34 +46,45 @@ export function planWeek(prepDay: number, today: Date, weeksAhead = 0): string[]
 
 const shoppable = (r: Recipe) => r.items.filter((i) => !i.pantry);
 
+/** A small seeded random number maker (mulberry32): nearby seeds give unrelated numbers. */
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 2 ** 32;
+  };
+}
+
 /**
  * Fills the plan up to `count` meals with recipes that fit the preferences, preferring ones that
- * reuse ingredients already planned (less to buy, less waste) and skipping recent repeats.
- * `seed` changes the pick between taps of "Shuffle".
+ * reuse ingredients already planned (less to buy, less waste). Recipes in `avoid` (last week's meals and
+ * the ones suggested lately) only come back when nothing else fits. `seed` changes the pick on every tap.
  */
 export function suggestMeals(
   pool: Recipe[],
   opts: { prefs: string[]; picked: Recipe[]; avoid?: string[]; count: number; seed?: number },
 ): Recipe[] {
   const out: Recipe[] = [];
-  const used = new Set([...opts.picked.map((r) => r.id), ...(opts.avoid ?? [])]);
+  const avoid = new Set(opts.avoid ?? []);
   const keys = new Set(opts.picked.flatMap((r) => shoppable(r).map((i) => itemKey(i.item))));
-  let fits = pool.filter((r) => !used.has(r.id) && matchesFilters(r, opts.prefs) && !r.tags?.includes('breakfast'));
-  // Not enough recipes for the preferences: fall back to repeats the shopper hasn't just had, then anything that fits.
-  if (fits.length < opts.count - opts.picked.length) {
-    const extra = pool.filter((r) => !opts.picked.some((p) => p.id === r.id) && !fits.includes(r) && matchesFilters(r, opts.prefs));
-    fits = [...fits, ...extra];
-  }
-  let seed = (opts.seed ?? 1) >>> 0;
-  const rand = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return seed / 2 ** 32;
-  };
+  const seen = new Set<string>();
+  let fits = pool.filter((r) => {
+    // Your own copy of a recipe and ours can share an id; plan each only once.
+    if (seen.has(r.id) || opts.picked.some((p) => p.id === r.id)) return false;
+    seen.add(r.id);
+    return matchesFilters(r, opts.prefs) && !r.tags?.includes('breakfast');
+  });
+  const rand = seededRandom(opts.seed ?? 1);
+  // Each recipe gets one random draw per fill, so the order really changes between taps.
+  const luck = new Map(fits.map((r) => [r.id, rand()]));
   while (out.length + opts.picked.length < opts.count && fits.length) {
     const scored = fits.map((r) => {
       const items = shoppable(r);
       const shared = items.filter((i) => keys.has(itemKey(i.item))).length;
-      return { r, score: shared / Math.max(items.length, 1) + rand() * 0.6 };
+      return { r, score: shared / Math.max(items.length, 1) * 0.5 + luck.get(r.id)! - (avoid.has(r.id) ? 2 : 0) };
     });
     scored.sort((a, b) => b.score - a.score);
     const next = scored[0].r;

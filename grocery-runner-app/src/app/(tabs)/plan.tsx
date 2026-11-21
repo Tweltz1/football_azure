@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RecipePicture } from '../../components/RecipePicture';
 import { Button, Chip, lift, ScreenHeader, Segmented, SectionTitle, tap } from '../../components/ui';
-import { FILTERS } from '../../lib/diet';
+import { describePrefs, labelOf, matchesFilters, PREF_GROUPS } from '../../lib/diet';
 import { fromIso, planWeek, prepSchedule, suggestMeals, weekShopping, WEEKDAYS } from '../../lib/mealPlan';
 import { usePlan } from '../../lib/plan';
 import { newItems } from '../../lib/recipes';
@@ -15,7 +15,7 @@ import { titleCase } from '../../lib/caps';
 
 const SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const PREF_KEYS = ['quick', 'healthy', 'family', 'vegetarian', 'gluten-free', 'dairy-free', 'one pot', 'slow cooker'];
+const ALLERGY_KEYS = PREF_GROUPS[1].keys;
 
 /**
  * Weekly meal plan: pick a prep day, fill the week (by hand, from links, or "Plan my week" from your
@@ -26,7 +26,6 @@ export default function PlanScreen() {
   const { plan, update, removeMeal, pool, recipeById } = usePlan();
   const { items, addItems } = useData();
   const [ahead, setAhead] = useState<'this' | 'next'>('this');
-  const [seed, setSeed] = useState(1);
   const [showPrefs, setShowPrefs] = useState(false);
   const week = useMemo(() => planWeek(plan.prepDay, new Date(), ahead === 'next' ? 1 : 0), [plan.prepDay, ahead]);
   const days = week.map((date) => ({
@@ -40,12 +39,16 @@ export default function PlanScreen() {
     items.filter((i) => !i.checked).map((i) => i.name),
   );
   const tasks = prepSchedule(days);
+  const dinnerPool = pool.filter((r) => !r.tags?.includes('breakfast'));
+  const dinners = dinnerPool.length;
+  const fitCount = dinnerPool.filter((r) => matchesFilters(r, plan.prefs)).length;
   const today = new Date().toDateString();
 
   const fillWeek = () => {
     // Recipes from the week before aren't repeated straight away.
     const before = planWeek(plan.prepDay, fromIso(week[0]), -1).flatMap((d) => plan.meals[d] ?? []);
-    const picks = suggestMeals(pool, { prefs: plan.prefs, picked: planned, avoid: before, count: plan.perWeek, seed });
+    const recent = plan.recent ?? [];
+    const picks = suggestMeals(pool, { prefs: plan.prefs, picked: planned, avoid: [...before, ...recent], count: plan.perWeek, seed: Date.now() });
     if (!picks.length) {
       Alert.alert('No more recipes fit', 'Turn off a preference, or add your own recipes from a link.');
       return;
@@ -58,9 +61,10 @@ export default function PlanScreen() {
         const date = empty[i] ?? week[(i + 1) % 7];
         meals[date] = [...(meals[date] ?? []), r.id];
       });
-      return { ...p, meals };
+      // Remember about two weeks of suggestions; older ones can come back.
+      const ids = picks.map((r) => r.id);
+      return { ...p, meals, recent: [...(p.recent ?? []).filter((id) => !ids.includes(id)), ...ids].slice(-Math.max(8, p.perWeek * 2)) };
     });
-    setSeed((s) => s + 1);
   };
 
   const clearWeek = () =>
@@ -123,12 +127,22 @@ export default function PlanScreen() {
                 <Chip key={n} label={String(n)} selected={plan.perWeek === n} onPress={() => update((p) => ({ ...p, perWeek: n }))} />
               ))}
             </View>
-            <Text style={[styles.label, { color: t.text }]}>We like</Text>
-            <View style={styles.wrap}>
-              {FILTERS.filter((f) => PREF_KEYS.includes(f.key)).map((f) => (
-                <Chip key={f.key} label={f.label} selected={plan.prefs.includes(f.key)} onPress={() => togglePref(f.key)} />
-              ))}
-            </View>
+            {PREF_GROUPS.map((g) => (
+              <View key={g.title} style={{ gap: 6 }}>
+                <Text style={[styles.label, { color: t.text }]}>{g.title}</Text>
+                <View style={styles.wrap}>
+                  {g.keys.map((k) => (
+                    <Chip key={k} label={labelOf(k)} selected={plan.prefs.includes(k)} onPress={() => togglePref(k)} />
+                  ))}
+                </View>
+              </View>
+            ))}
+            <Text style={{ color: t.textMuted, fontSize: 12, lineHeight: 17 }}>
+              {fitCount} of {dinners} dinner ideas fit.
+              {plan.prefs.some((k) => ALLERGY_KEYS.includes(k))
+                ? ' Allergy labels come from ingredient names, so always check package labels (broth, sauces, sausage, mixes).'
+                : ' Your choices also filter the recipe list and Add a meal.'}
+            </Text>
           </View>
         )}
 
@@ -143,8 +157,8 @@ export default function PlanScreen() {
         </View>
         <Text style={[styles.hint, { color: t.textMuted }]}>
           {plan.prefs.length
-            ? `Picks ${plan.perWeek} dinners that are ${plan.prefs.map((k) => FILTERS.find((f) => f.key === k)?.label.toLowerCase()).join(', ')}, sharing ingredients where it can.`
-            : `Picks ${plan.perWeek} dinners from your recipes and ours, sharing ingredients where it can. Set preferences with Prefs.`}
+            ? `Picks ${plan.perWeek} dinners that are ${describePrefs(plan.prefs)}, sharing ingredients where it can. Each tap picks different ones.`
+            : `Picks ${plan.perWeek} dinners from your recipes and ours, sharing ingredients where it can. Set your diet, allergies and meats to leave out with Prefs.`}
         </Text>
 
         <View style={{ paddingHorizontal: 16, gap: 10 }}>

@@ -217,4 +217,21 @@ export const SUGGESTED: Recipe[] = [
     i('penne pasta', '1 lb'), i('basil pesto', '6 oz jar'), i('cherry tomatoes', '1 pint'), i('fresh mozzarella', '8 oz'),
     i('baby spinach', '5 oz'), i('parmesan cheese', 'for serving'), p('salt'),
   ]),
+  // Added for more vegan choices in the meal plan (also gluten-free, nut-free and egg-free except the minestrone's pasta).
+  r('veggiechili', 'Three-bean veggie chili', 50, '🫘', ['healthy', 'one pot'], [
+    i('kidney beans', '2 cans'), i('black beans', '1 can'), i('pinto beans', '1 can'), i('diced tomatoes', '28 oz can'),
+    i('tomato sauce', '15 oz can'), i('yellow onion', '1'), i('bell peppers', '2'), i('garlic', '3 cloves'),
+    i('frozen corn', '1 cup'), i('chili powder', '3 tbsp'), i('avocados', '2'), i('limes', '1'),
+    p('ground cumin', '2 tsp'), p('olive oil', '2 tbsp'), p('salt'),
+  ], '6 servings'),
+  r('quinoabowls', 'Roasted veggie quinoa bowls with tahini', 50, '🥙', ['healthy'], [
+    i('quinoa', '1.5 cups'), i('chickpeas', '2 cans'), i('cauliflower', '1 head'), i('sweet potatoes', '2'),
+    i('red onion', '1'), i('kale', '1 bunch'), i('tahini', '1/3 cup'), i('lemons', '2'), i('garlic', '1 clove'),
+    p('smoked paprika', '2 tsp'), p('olive oil', '3 tbsp'), p('salt'),
+  ]),
+  r('minestrone', 'Hearty minestrone soup', 40, '🍅', ['family', 'one pot'], [
+    i('ditalini pasta', '1 cup'), i('cannellini beans', '2 cans'), i('vegetable broth', '6 cups'), i('diced tomatoes', '28 oz can'),
+    i('carrots', '2'), i('celery', '2 stalks'), i('zucchini', '1'), i('yellow onion', '1'), i('garlic', '3 cloves'),
+    i('baby spinach', '5 oz'), i('italian seasoning', '2 tsp'), p('olive oil', '2 tbsp'), p('salt'), p('black pepper'),
+  ], '6 servings'),
 ];
