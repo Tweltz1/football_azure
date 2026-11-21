@@ -527,7 +527,7 @@ const CTA = /^(?:get|see|view|read|open|make|try|full|print|go to)?\s*(?:the\s+)
 const CTA_NAMED = /^(?:get|see|view|make)?\s*(?:the\s+)?(.{3,80}?)\s+recipe\s*[»›→>]*$/i;
 // Paths that are never one recipe: site sections, people, shops and account pages.
 const NOT_RECIPE_PATH =
-  /\/(?:category|categories|tag|tags|author|authors|profiles?|about|contact|privacy|terms|shop|store|search|login|account|subscribe|newsletter|videos?|shows?|chefs?|topics?|collections?|packages?|galleries|gallery|wp-content|wp-admin|feed|page\/\d+)(?:\/|$)/i;
+  /\/(?:wprm_print|print|category|categories|tag|tags|author|authors|profiles?|about|contact|privacy|terms|shop|store|search|login|account|subscribe|newsletter|videos?|shows?|chefs?|topics?|collections?|packages?|galleries|gallery|wp-content|wp-admin|feed|page\/\d+)(?:\/|$)/i;
 
 const slugTitle = (path: string) => {
   const slug = decodeURIComponent(path.replace(/\/+$/, '').split('/').pop() ?? '')
@@ -628,10 +628,12 @@ export function parseCollectionPage(html: string, pageUrl: string): RecipeCollec
       const last = path.replace(/\/+$/, '').split('/').pop() ?? '';
       return /\/recipes?\//i.test(path) || /recipe/i.test(last) ? last.split('-').length >= 2 : last.split('-').length >= 3;
     };
-    const isCta = (t: string) => CTA.test(t.trim()) || CTA_NAMED.test(t.trim());
+    // "Print Recipe", "Jump to Recipe" are buttons for the page's own recipe card, not other recipes.
+    const OWN_CARD = /^(?:print|pin|rate|jump to|save|share|email|review|skip to|copy)\b/i;
+    const isCta = (t: string) => !OWN_CARD.test(t.trim()) && (CTA.test(t.trim()) || CTA_NAMED.test(t.trim()));
     // Sites that put a recipe button on every dish: only those links count, not links in the writing.
     const ctas = anchors.filter((a) => isCta(a.text) && looksLikeRecipe(a.href));
-    const pick = ctas.length >= 2 ? ctas : anchors.filter((a) => looksLikeRecipe(a.href));
+    const pick = new Set(ctas.map((a) => a.href)).size >= 2 ? ctas : anchors.filter((a) => looksLikeRecipe(a.href));
     for (const a of pick) {
       const text = a.text.trim();
       add(a.href, CTA.test(text) || !text ? a.title : (text.match(CTA_NAMED)?.[1] ?? text));
