@@ -1,0 +1,51 @@
+name: Payouts check
+
+# Read-only: are the Stripe accounts set up to pay out to a bank? Prints yes/no, counts and statuses only.
+# No ids, bank names, last-4 digits or amounts are printed.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/project-thread-z8vga7]
+    paths: [.github/workflows/payouts-check.yml]
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      TALKSHOPS: ${{ secrets.TALKSHOPS_STRIPE_SECRET_KEY }}
+      WELTZCRAFT: ${{ secrets.WELTZCRAFT_STRIPE_SECRET_KEY }}
+    steps:
+      - name: Ask Stripe
+        run: |
+          cat > check.mjs <<'JS'
+          async function get(key, path) {
+            const r = await fetch('https://api.stripe.com/v1/' + path, { headers: { Authorization: 'Bearer ' + key } });
+            let j = {}; try { j = await r.json(); } catch {}
+            return { status: r.status, j, err: j.error ? String(j.error.message || '').slice(0, 160) : null };
+          }
+          for (const name of ['TALKSHOPS', 'WELTZCRAFT']) {
+            const key = process.env[name];
+            const out = { key: !key ? 'missing' : /^(rk|sk)_live/.test(key) ? 'live' : 'test' };
+            if (key) {
+              const a = await get(key, 'account');
+              out.account = a.status === 200 ? {
+                charges_enabled: a.j.charges_enabled, payouts_enabled: a.j.payouts_enabled, details_submitted: a.j.details_submitted,
+                bank_accounts: (a.j.external_accounts?.data || []).filter((x) => x.object === 'bank_account').length,
+                cards: (a.j.external_accounts?.data || []).filter((x) => x.object === 'card').length,
+                external_total: a.j.external_accounts?.total_count ?? null,
+                bank_status: (a.j.external_accounts?.data || []).map((x) => x.status || x.object),
+                currently_due: a.j.requirements?.currently_due || [], past_due: a.j.requirements?.past_due || [],
+                eventually_due: a.j.requirements?.eventually_due || [], disabled_reason: a.j.requirements?.disabled_reason || null,
+                payout_schedule: a.j.settings?.payouts?.schedule?.interval || null,
+              } : { status: a.status, err: a.err };
+              const p = await get(key, 'payouts?limit=5');
+              out.payouts = p.status === 200 ? p.j.data.map((x) => ({ status: x.status, created: new Date(x.created * 1000).toISOString().slice(0, 10), failure: x.failure_code || null })) : { status: p.status, err: p.err };
+              const b = await get(key, 'balance');
+              out.balance = b.status === 200 ? { has_available: (b.j.available || []).some((x) => x.amount > 0), has_pending: (b.j.pending || []).some((x) => x.amount > 0) } : { status: b.status, err: b.err };
+            }
+            console.log(name + '_PAYOUTS_JSON ' + JSON.stringify(out));
+          }
+          JS
+          node check.mjs
