@@ -15,6 +15,8 @@ export type KrogerProduct = {
   description: string;
   brand?: string;
   categories: string[];
+  /** This store's stock level (servers before 2026-11-21 leave it out). */
+  stock?: 'high' | 'low' | 'out' | 'unknown';
   aisleLocations: KrogerAisle[];
 };
 
