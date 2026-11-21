@@ -109,6 +109,9 @@ jobs:
           else
             echo "::notice::No WELTZCRAFT_RESEND_API_KEY; store manager requests only show on the admin page."
           fi
+          # Signs the Approve / Deny links in request emails. Derived from the deploy token so it is stable
+          # between deploys and the end-to-end check can make a link too; never printed.
+          SET+=(STORE_DECIDE_SECRET="$(printf 'store-decide:%s' "$SUPABASE_ACCESS_TOKEN" | sha256sum | cut -c1-64)")
           if [ -n "$STORE_CLAIM_NOTIFY" ]; then
             SET+=(STORE_CLAIM_NOTIFY="$STORE_CLAIM_NOTIFY")
           fi

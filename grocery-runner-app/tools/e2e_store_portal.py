@@ -101,7 +101,8 @@ try:
 
     # Approve with the email's Approve button (a signed link), like Tyler would.
     exp = int(time.time()) + 3600
-    sig = hmac.new(f"store-claims:{SERVICE}".encode(), f"{claim_id}.{exp}".encode(), hashlib.sha256).hexdigest()[:40]
+    decide_secret = hashlib.sha256(f"store-decide:{TOKEN}".encode()).hexdigest()  # as the workflow sets STORE_DECIDE_SECRET
+    sig = hmac.new(f"store-claims:{decide_secret}".encode(), f"{claim_id}.{exp}".encode(), hashlib.sha256).hexdigest()[:40]
     good = f"{claim_id}.{exp}.{sig}"
     s, r = portal({"action": "decide-view", "token": good[:-1] + ("0" if good[-1] != "0" else "1")})
     check("a tampered approve link is refused", s == 401, s)
@@ -156,7 +157,7 @@ try:
     s, a = req("POST", APPFN, {"action": "aisles", "store": key, "items": ["DiGiorno frozen pizza"], "depts": 2}, app)
     check("app: official aisle", s == 200 and a.get("digiorno frozen pizza", {}).get("aisle") == "12", f"{s} {a}")
 
-    deal_id = st["deals"][0]["id"]
+    deal_id = (st.get("deals") or [{"id": 0}])[0]["id"]
     s, r = portal({"action": "deal-remove", "id": deal_id, **S}, token)
     check("sale removed", s == 200 and r["removed"] == 1, f"{s} {r}")
     _, log = req("GET", f"{BASE}/rest/v1/grocery_partner_changes?select=what,who&partner_id=eq.{made_store}", headers=SVC)
