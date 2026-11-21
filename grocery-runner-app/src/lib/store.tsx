@@ -112,7 +112,10 @@ async function lookUp(
       items.map(async (item) => {
         try {
           const results = await searchKrogerProducts(item.name, locationId);
-          const best = results.find((p) => p.aisleLocations.length) ?? results[0];
+          const best =
+            results.find((p) => p.aisleLocations.length && p.stock !== 'out') ??
+            results.find((p) => p.aisleLocations.length) ??
+            results[0];
           if (best) {
             const loc = locationFromKroger(best);
             if (loc.kind !== 'unknown') found[item.id] = loc;
