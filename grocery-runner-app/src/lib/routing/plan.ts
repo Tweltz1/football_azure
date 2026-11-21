@@ -1,7 +1,8 @@
 // Real floor plans for stores whose layout we know (from the store's own published map).
-// Every other store uses the generic plan in layout.ts. Pure logic, no React.
+// Walmart and Target maps are in blockPlan.ts. Pure logic, no React.
 import type { StoreProfile } from '../storeProfile';
 import { Cell, Department, Store } from '../types';
+import { BLOCK_PLANS, BlockPlan } from './blockPlan';
 import { StoreGrid } from './grid';
 import { MAX_BAY, StoreLayout, Zone } from './layout';
 
@@ -14,12 +15,10 @@ export type Spot =
 
 export type StorePlan = {
   name: string;
-  /** Matched by chain and position (within ~300 m); a plan without a position is the chain's typical layout. */
+  /** Matched by chain and position (within ~300 m). */
   chain: Store['chain'];
   lat?: number;
   lon?: number;
-  /** A chain's usual layout rather than this store's own map: shoppers' answers can move departments. */
-  typical?: boolean;
   /** Numbered center aisles. */
   aisles: number;
   /** Which side aisle 1 is on. */
@@ -65,55 +64,11 @@ export const WOODMANS_ALTOONA: StorePlan = {
   checkout: 'middle',
 };
 
-/**
- * A Walmart Supercenter's grocery side, as on Walmart's own store maps (e.g. Chippewa Falls): produce and
- * bakery at the front corner, deli and meat down the side wall, dairy and frozen across the back, paper,
- * cleaning and pets in the back aisles, baby and health & beauty toward general merchandise.
- */
-export const WALMART_TYPICAL: StorePlan = {
-  name: 'Typical Walmart Supercenter layout',
-  chain: 'walmart',
-  typical: true,
-  aisles: 20,
-  aisleOne: 'right',
-  walls: {
-    produce: { at: 'right-front', label: 'Produce' },
-    bakery: { at: 'front-right', label: 'Bakery' },
-    deli: { at: 'right', label: 'Deli' },
-    meat: { at: 'right-back', label: 'Meat & Seafood' },
-    dairy: { at: 'back-right', label: 'Dairy' },
-    frozen: { at: 'back', label: 'Frozen' },
-    household: { at: 'back-left', label: 'Paper, Cleaning & Pets' },
-    pet: { at: 'back-left', label: '' },
-    baby: { at: 'left-back', label: 'Baby' },
-    health: { at: 'left', label: 'Health & Beauty' },
-  },
-  entrance: 'right',
-  checkout: 'middle',
-};
+export const STORE_PLANS: StorePlan[] = [WOODMANS_ALTOONA];
 
-/** A Target's market side, as on Target's store mode maps: grocery down the right, household at the back. */
-export const TARGET_TYPICAL: StorePlan = {
-  name: 'Typical Target layout',
-  chain: 'target',
-  typical: true,
-  aisles: 16,
-  aisleOne: 'right',
-  walls: {
-    produce: { at: 'right', label: 'Produce' },
-    meat: { at: 'right-front', label: 'Meat' },
-    dairy: { at: 'right-back', label: 'Dairy' },
-    frozen: { at: 'back-right', label: 'Frozen' },
-    household: { at: 'back', label: 'Household' },
-    pet: { at: 'back-left', label: 'Pets' },
-    baby: { at: 'left-back', label: 'Baby' },
-    health: { at: 'left', label: 'Health & Beauty' },
-  },
-  entrance: 'left',
-  checkout: 'middle',
-};
-
-export const STORE_PLANS: StorePlan[] = [WOODMANS_ALTOONA, WALMART_TYPICAL, TARGET_TYPICAL];
+/** A store's own floor plan: numbered aisles (Woodman's) or blocks (Walmart, Target). */
+export type AnyPlan = StorePlan | BlockPlan;
+export const isBlockPlan = (p: AnyPlan): p is BlockPlan => 'blocks' in p;
 
 function metres(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
   const k = Math.PI / 180;
@@ -121,15 +76,19 @@ function metres(a: { lat: number; lon: number }, b: { lat: number; lon: number }
   return Math.hypot(x, (b.lat - a.lat) * k) * 6371000;
 }
 
-/** The known floor plan for this store, if we have one. */
-export function planFor(store: Pick<Store, 'chain' | 'lat' | 'lon'> | null | undefined): StorePlan | null {
+/**
+ * This store's own floor plan, if we have one: matched by chain and position, or by the town in its
+ * address when it has no position. Stores without one get no map at all, never another store's.
+ */
+export function planFor(store: Pick<Store, 'chain' | 'lat' | 'lon'> & { name?: string; address?: string } | null | undefined): AnyPlan | null {
   if (!store) return null;
-  if (store.lat != null && store.lon != null) {
-    const pos = { lat: store.lat, lon: store.lon };
-    const own = STORE_PLANS.find((p) => p.chain === store.chain && p.lat != null && p.lon != null && metres(pos, { lat: p.lat, lon: p.lon }) <= 300);
-    if (own) return own;
-  }
-  return STORE_PLANS.find((p) => p.typical && p.chain === store.chain) ?? null;
+  const pos = store.lat != null && store.lon != null ? { lat: store.lat, lon: store.lon } : null;
+  const own = STORE_PLANS.find((p) => p.chain === store.chain && pos && p.lat != null && p.lon != null && metres(pos, { lat: p.lat, lon: p.lon }) <= 300);
+  if (own) return own;
+  const text = `${store.name ?? ''} ${store.address ?? ''}`;
+  return (
+    BLOCK_PLANS.find((p) => p.chain === store.chain && (pos ? metres(pos, p.near) <= p.near.km * 1000 : p.town.test(text))) ?? null
+  );
 }
 
 const SHELF = MAX_BAY;
@@ -199,11 +158,10 @@ export function buildPlanLayout(plan: StorePlan, opts: { profile?: StoreProfile 
     baby: aisleCell(Math.round(n * 0.7)),
   };
   const zones: Zone[] = [];
-  const learned = plan.typical ? opts.profile?.departmentAisle ?? {} : {};
   for (const [dept, w] of Object.entries(plan.walls) as [Department, { at: Spot; label: string }][]) {
     const sp = spot(w.at);
     departmentCell[dept] = sp.cell;
-    if (w.label && learned[dept] === undefined) zones.push({ text: w.label, ...sp.zone });
+    if (w.label) zones.push({ text: w.label, ...sp.zone });
   }
   const named: Record<string, Cell> = {};
   for (const [name, v] of Object.entries(plan.named ?? {})) {
@@ -234,7 +192,7 @@ export function buildPlanLayout(plan: StorePlan, opts: { profile?: StoreProfile 
 
   // Departments shoppers placed in a numbered aisle at this store still move there.
   for (const [dept, aisle] of Object.entries(opts.profile?.departmentAisle ?? {}) as [Department, number][]) {
-    if (plan.walls[dept] && !plan.typical) continue; // the store's own map wins over answers
+    if (plan.walls[dept]) continue; // the store's own map wins over answers
     departmentCell[dept] = wallAisles[aisle] ?? aisleCell(aisle);
   }
 

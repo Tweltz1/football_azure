@@ -2,10 +2,12 @@ import { COLD_DEPARTMENTS, guessDepartment } from '../departments';
 import { coldDepartmentOfAisle, StoreProfile } from '../storeProfile';
 import { Cell, ItemLocation, ListItem } from '../types';
 import { buildGenericLayout, cellForLocation, parseAisleNumber, StoreLayout } from './layout';
-import { buildPlanLayout, StorePlan } from './plan';
+import { buildBlockLayout } from './blockPlan';
+import { AnyPlan, buildPlanLayout, isBlockPlan } from './plan';
 import { orderStops, walkPath } from './tour';
 
-export type RouteStop = { cell: Cell; items: ListItem[] };
+/** `offMap`: items whose department the store's map doesn't show, listed last and not drawn. */
+export type RouteStop = { cell: Cell; items: ListItem[]; offMap?: boolean };
 
 export type PlannedRoute = {
   layout: StoreLayout;
@@ -39,7 +41,7 @@ function isCold(loc: ItemLocation, profile?: StoreProfile): boolean {
 export function planRoute(
   items: ListItem[],
   aisleCount: number,
-  opts: { coldLast?: boolean; profile?: StoreProfile; mirror?: boolean; plan?: StorePlan | null } = {},
+  opts: { coldLast?: boolean; profile?: StoreProfile; mirror?: boolean; plan?: AnyPlan | null } = {},
 ): PlannedRoute {
   const todo = items.filter((i) => !i.checked);
 
@@ -53,16 +55,29 @@ export function planRoute(
     }),
     ...Object.values(opts.profile?.departmentAisle ?? {}),
   );
-  const layout = opts.plan
-    ? buildPlanLayout(opts.plan, { profile: opts.profile })
-    : buildGenericLayout(highest, { profile: opts.profile, mirror: opts.mirror });
+  const layout = !opts.plan
+    ? buildGenericLayout(highest, { profile: opts.profile, mirror: opts.mirror })
+    : isBlockPlan(opts.plan)
+      ? buildBlockLayout(opts.plan)
+      : buildPlanLayout(opts.plan, { profile: opts.profile });
+
+  // A map without aisle numbers: an item's aisle can't be placed, so walk to its department.
+  const placeable = (item: ListItem): ItemLocation => {
+    const loc = effectiveLocation(item);
+    if (!layout.noAisleNumbers || loc.kind !== 'aisle') return loc;
+    return { kind: 'department', department: loc.department ?? guessDepartment(item.name), source: 'guess' };
+  };
 
   // Group items that are picked from the same spot.
   const byCell = new Map<string, RouteStop & { cold: boolean }>();
+  const offMap: ListItem[] = [];
   for (const item of todo) {
-    const loc = effectiveLocation(item);
+    const loc = placeable(item);
     const cell = cellForLocation(layout, loc);
-    if (!cell) continue;
+    if (!cell) {
+      offMap.push(item);
+      continue;
+    }
     const key = `${cell.x},${cell.y}`;
     const stop = byCell.get(key) ?? { cell, items: [], cold: true };
     stop.items.push(item);
@@ -85,5 +100,6 @@ export function planRoute(
   });
 
   const { path, distance } = walkPath(layout.grid, [layout.entrance, ...ordered.map((s) => s.cell), layout.checkout]);
+  if (offMap.length) ordered.push({ cell: layout.checkout, items: offMap, offMap: true });
   return { layout, stops: ordered, path, distance };
 }

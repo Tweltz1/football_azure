@@ -76,7 +76,7 @@ export default function RouteScreen() {
 
   // The building outline sizes the map and puts the entrance on the right side.
   const building = store ? buildings[store.id]?.info : null;
-  // The store's own floor plan (Woodman's Altoona) or its chain's usual one (Walmart, Target).
+  // The store's own floor plan (Woodman's Altoona, Walmart Chippewa Falls, Target Eau Claire). Other stores get no map.
   const plan = useMemo(() => planFor(store), [store]);
   // Generic plan: the highest numbered aisle shoppers have seen here beats a guess from the building's size.
   const knownAisles = useMemo(() => {
@@ -152,14 +152,25 @@ export default function RouteScreen() {
   const checked = new Set(items.filter((i) => i.checked).map((i) => i.id));
   const done = new Set(route.stops.flatMap((s, i) => (s.items.every((it) => checked.has(it.id)) ? [i] : [])));
   const guessed = snapshot.filter((i) => locationLabel(i).guessed).length;
+  const mapped = route.stops.filter((s) => !s.offMap);
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
       <Card style={{ alignItems: 'center', padding: 12 }}>
-        <StoreMap route={route} done={done} />
+        {plan ? (
+          <StoreMap route={route} done={done} />
+        ) : (
+          <View style={{ alignItems: 'center', gap: 6, paddingVertical: 8 }}>
+            <Ionicons name="map-outline" size={32} color={t.textMuted} />
+            <Text style={{ color: t.text, fontSize: 16, fontWeight: '600', textAlign: 'center' }}>No floor plan for this store yet</Text>
+            <Text style={{ color: t.textMuted, fontSize: 13, textAlign: 'center' }}>
+              Your stops are in the order most grocery stores are laid out.
+            </Text>
+          </View>
+        )}
         <Text style={{ color: t.textMuted, marginTop: 8 }}>
-          About {Math.round((route.distance * FEET_PER_CELL) / 10) * 10} ft · {route.stops.length} stop
-          {route.stops.length === 1 ? '' : 's'}
+          {plan ? `About ${Math.round((route.distance * FEET_PER_CELL) / 10) * 10} ft · ` : ''}
+          {mapped.length} stop{mapped.length === 1 ? '' : 's'}
         </Text>
         {store && (
           <Text style={{ color: t.textMuted, fontSize: 13, marginTop: 4, textAlign: 'center' }}>
@@ -168,12 +179,9 @@ export default function RouteScreen() {
               : 'Shop Stride is still learning this store. Each trip teaches it more.'}
           </Text>
         )}
-        <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
-          {plan ? (plan.typical ? `${plan.name}. Your store may differ a little.` : `${plan.name} floor plan, from the store's map`) : 'Typical grocery layout'}
-        </Text>
-        {building && !plan && (
-          <Text style={{ color: t.textMuted, fontSize: 11, marginTop: 4, textAlign: 'center' }}>
-            Store outline © OpenStreetMap contributors
+        {plan && (
+          <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+            {plan.name} floor plan, from the store&apos;s own map
           </Text>
         )}
       </Card>
@@ -201,10 +209,12 @@ export default function RouteScreen() {
       {route.stops.map((stop, i) => (
         <View key={i} style={[styles.stop, { backgroundColor: t.card, opacity: done.has(i) ? 0.5 : 1 }]}>
           <View style={[styles.num, { backgroundColor: done.has(i) ? t.shelf : t.stop }]}>
-            <Text style={styles.numText}>{i + 1}</Text>
+            {stop.offMap ? <Ionicons name="help" size={18} color="#fff" /> : <Text style={styles.numText}>{i + 1}</Text>}
           </View>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text style={{ color: t.textMuted, fontSize: 13 }}>{locationLabel(stop.items[0]).place}</Text>
+            <Text style={{ color: t.textMuted, fontSize: 13 }}>
+              {stop.offMap ? "Not on this store's map. Ask an employee or check the aisle signs." : locationLabel(stop.items[0]).place}
+            </Text>
             {stop.items.map((it) => (
               <View key={it.id} style={{ gap: 6 }}>
                 <Pressable
