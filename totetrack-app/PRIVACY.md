@@ -57,4 +57,4 @@ ToteTrack is not directed at children under 13 and we don't knowingly collect th
 ## Changes and contact
 
 If this policy changes, we'll update this page and the date above.
-Questions: open an issue at https://github.com/Tweltz1/football_azure/issues
+The published policy is at https://weltzcraft.com/totetrack/privacy. Questions: totetrack@weltzcraft.com or https://weltzcraft.com/totetrack/support

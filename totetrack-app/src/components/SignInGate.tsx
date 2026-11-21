@@ -9,7 +9,7 @@ import { useTheme } from '../lib/theme';
 import { SignInButtons } from './SignInButtons';
 import { StudioCredit } from './ui';
 
-const PRIVACY_URL = 'https://github.com/Tweltz1/football_azure/blob/claude/totetrack-app/totetrack-app/PRIVACY.md';
+const PRIVACY_URL = 'https://weltzcraft.com/totetrack/privacy';
 
 /**
  * ToteTrack needs an account: totes, items, photos and packing lists belong to it, so they're on any

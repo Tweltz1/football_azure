@@ -23,7 +23,7 @@ const PRO_IDS: string[] = Object.values(PRO_PRODUCTS);
 export const FALLBACK_PRICES = { monthly: '$1.99', yearly: '$14.99' };
 
 export const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
-export const PRIVACY_URL = 'https://github.com/Tweltz1/football_azure/blob/claude/totetrack-app/totetrack-app/PRIVACY.md';
+export const PRIVACY_URL = 'https://weltzcraft.com/totetrack/privacy';
 export const MANAGE_URL = 'https://apps.apple.com/account/subscriptions';
 
 const CACHE_KEY = 'totetrack.pro.v1';
