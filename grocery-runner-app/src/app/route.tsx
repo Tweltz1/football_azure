@@ -76,7 +76,7 @@ export default function RouteScreen() {
 
   // The building outline sizes the map and puts the entrance on the right side.
   const building = store ? buildings[store.id]?.info : null;
-  // The store's own floor plan (Woodman's Altoona, Walmart Chippewa Falls, Target Eau Claire). Other stores get no map.
+  // The store's own floor plan (all 21 Woodman's, Walmart Chippewa Falls, Target Eau Claire). Other stores get no map.
   const plan = useMemo(() => planFor(store), [store]);
   // Generic plan: the highest numbered aisle shoppers have seen here beats a guess from the building's size.
   const knownAisles = useMemo(() => {
