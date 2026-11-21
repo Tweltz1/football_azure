@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { StoreMap } from '../components/StoreMap';
 import { SaleBadge } from '../components/SaleBadge';
-import { Button, Card, tap } from '../components/ui';
+import { Button, Card, Chip, tap } from '../components/ui';
+import { aisleChoices, needsAisle } from '../lib/aisleChoices';
 import { metresBetween } from '../lib/chainMatch';
 import { locationLabel } from '../lib/labels';
 import { Checkoff, learnFromTrip } from '../lib/learnAisles';
@@ -50,7 +51,7 @@ const knownAisle = (i: ListItem) =>
 
 export default function RouteScreen() {
   const t = useTheme();
-  const { items, store, coldLast, setColdLast, toggleItem, clearChecked, deviceId, remembered, buildings } = useData();
+  const { items, store, coldLast, setColdLast, toggleItem, clearChecked, deviceId, remembered, buildings, setLocation } = useData();
   // Plan once from the items left when the screen opens, so checking items off doesn't reshuffle the walk.
   const [snapshot] = useState(() => items.filter((i) => !i.checked));
   const deals = useDeals(store, snapshot.map((i) => i.name));
@@ -110,9 +111,26 @@ export default function RouteScreen() {
     };
   }, []);
 
-  const toggle = (item: ListItem) => {
+  // "Which aisle?" under a just-checked item whose place was only a guess. One tap is a typed answer:
+  // it is remembered on this phone and shared with other shoppers at this store (setLocation).
+  const [ask, setAsk] = useState<{ itemId: string; choices: string[] } | null>(null);
+  const answer = (itemId: string, aisle: string) => {
+    setLocation(itemId, { kind: 'aisle', aisle, source: 'user' });
+    setAsk(null);
+  };
+
+  // Items this store's aisles are known for: shared answers plus this phone's own.
+  const knownHere = useMemo(() => {
+    const names = new Set(sharedAnswers.map((a) => a.name.toLowerCase()));
+    for (const [name, loc] of Object.entries((store && remembered[store.id]) ?? {})) if (loc.kind === 'aisle') names.add(name.toLowerCase());
+    return names.size;
+  }, [sharedAnswers, remembered, store]);
+
+  const toggle = (item: ListItem, stopIndex: number) => {
     const nowChecked = !item.checked;
     toggleItem(item.id);
+    if (store && nowChecked && needsAisle(item)) setAsk({ itemId: item.id, choices: aisleChoices(route.stops, stopIndex) });
+    else if (!nowChecked && ask?.itemId === item.id) setAsk(null);
     if (!learning || !store) return;
     if (!nowChecked) {
       checkoffs.current.delete(item.id);
@@ -133,6 +151,13 @@ export default function RouteScreen() {
           About {Math.round((route.distance * FEET_PER_CELL) / 10) * 10} ft · {route.stops.length} stop
           {route.stops.length === 1 ? '' : 's'}
         </Text>
+        {store && (
+          <Text style={{ color: t.textMuted, fontSize: 13, marginTop: 4, textAlign: 'center' }}>
+            {knownHere > 0
+              ? `Shop Stride knows the aisle for ${knownHere} item${knownHere === 1 ? '' : 's'} here. Each trip teaches it more.`
+              : 'Shop Stride is still learning this store. Each trip teaches it more.'}
+          </Text>
+        )}
         {building && (
           <Text style={{ color: t.textMuted, fontSize: 11, marginTop: 4, textAlign: 'center' }}>
             Store outline © OpenStreetMap contributors
@@ -168,28 +193,53 @@ export default function RouteScreen() {
           <View style={{ flex: 1, gap: 6 }}>
             <Text style={{ color: t.textMuted, fontSize: 13 }}>{locationLabel(stop.items[0]).place}</Text>
             {stop.items.map((it) => (
-              <Pressable
-                key={it.id}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: checked.has(it.id) }}
-                onPress={() => {
-                  tap();
-                  toggle(items.find((i) => i.id === it.id) ?? it);
-                }}
-                style={styles.itemRow}
-              >
-                <Ionicons
-                  name={checked.has(it.id) ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={24}
-                  color={checked.has(it.id) ? t.primary : t.textMuted}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: t.text, fontSize: 17, textDecorationLine: checked.has(it.id) ? 'line-through' : 'none' }}>
-                    {capFirst(it.name)}
-                  </Text>
-                  {!checked.has(it.id) && <SaleBadge deal={dealFor(deals, it.name)} name={it.name} />}
-                </View>
-              </Pressable>
+              <View key={it.id} style={{ gap: 6 }}>
+                <Pressable
+                  key={it.id}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: checked.has(it.id) }}
+                  onPress={() => {
+                    tap();
+                    toggle(items.find((i) => i.id === it.id) ?? it, i);
+                  }}
+                  style={styles.itemRow}
+                >
+                  <Ionicons
+                    name={checked.has(it.id) ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={24}
+                    color={checked.has(it.id) ? t.primary : t.textMuted}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: t.text, fontSize: 17, textDecorationLine: checked.has(it.id) ? 'line-through' : 'none' }}>
+                      {capFirst(it.name)}
+                    </Text>
+                    {!checked.has(it.id) && <SaleBadge deal={dealFor(deals, it.name)} name={it.name} />}
+                  </View>
+                </Pressable>
+                {ask?.itemId === it.id && (
+                  <View style={[styles.ask, { backgroundColor: t.primarySoft }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ color: t.text, flex: 1, fontWeight: '600' }}>Which aisle was it in?</Text>
+                      <Pressable accessibilityRole="button" accessibilityLabel="Skip" hitSlop={10} onPress={() => setAsk(null)}>
+                        <Ionicons name="close" size={20} color={t.textMuted} />
+                      </Pressable>
+                    </View>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {ask.choices.map((a) => (
+                        <Chip key={a} label={`Aisle ${a}`} onPress={() => answer(it.id, a)} />
+                      ))}
+                      <Chip
+                        label={ask.choices.length ? 'Other' : 'Enter aisle'}
+                        onPress={() => {
+                          setAsk(null);
+                          router.push({ pathname: '/item/[id]', params: { id: it.id } });
+                        }}
+                      />
+                    </View>
+                    <Text style={{ color: t.textMuted, fontSize: 12 }}>Helps you and other shoppers at this store.</Text>
+                  </View>
+                )}
+              </View>
             ))}
           </View>
         </View>
@@ -221,5 +271,6 @@ const styles = StyleSheet.create({
   num: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   numText: { color: '#fff', fontWeight: '800' },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  ask: { gap: 8, padding: 10, borderRadius: radius.md, marginLeft: 34 },
   hint: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: radius.md },
 });
