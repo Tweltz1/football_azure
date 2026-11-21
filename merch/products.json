@@ -177,6 +177,40 @@
       "light": "logo-m8-light.png",
       "dark": "logo-m8-dark.png",
       "solo": true
+    },
+    "h1": {
+      "name": "Gold script",
+      "light": "logo-h1-gold.png",
+      "dark": "logo-h1-navy.png",
+      "solo": true,
+      "threads": [
+        "#A67843",
+        "#333366",
+        "#FFFFFF"
+      ]
+    },
+    "h2": {
+      "name": "Shield",
+      "light": "logo-h2-gold.png",
+      "dark": "logo-h2-goldwhite.png",
+      "solo": true,
+      "threads": [
+        "#A67843",
+        "#000000",
+        "#FFFFFF"
+      ]
+    },
+    "h3": {
+      "name": "Northwoods",
+      "light": "logo-h3.png",
+      "dark": "logo-h3.png",
+      "solo": true,
+      "threads": [
+        "#7BA35A",
+        "#01784E",
+        "#A67843",
+        "#000000"
+      ]
     }
   },
   "products": [
@@ -1602,6 +1636,224 @@
             "Watermelon"
           ],
           "tone": "dark"
+        }
+      ]
+    },
+    {
+      "key": "rope",
+      "name": "Rope Cap",
+      "type": "hat",
+      "price": 30,
+      "match": "Comfort Colors CCRC0",
+      "placements": [
+        "embroidery_front"
+      ],
+      "logos": [
+        "h1"
+      ],
+      "box": [
+        0.62,
+        0.8
+      ],
+      "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "espresso",
+          "name": "Espresso",
+          "printful": [
+            "Espresso"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "moss",
+          "name": "Moss",
+          "printful": [
+            "Moss"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "granite",
+          "name": "Granite",
+          "printful": [
+            "Granite"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "bluejean",
+          "name": "Blue Jean",
+          "printful": [
+            "Blue Jean"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "chambray",
+          "name": "Chambray",
+          "printful": [
+            "Chambray"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "ivory",
+          "name": "Ivory",
+          "printful": [
+            "Ivory"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "peachy",
+          "name": "Peachy",
+          "printful": [
+            "Peachy"
+          ],
+          "tone": "dark"
+        }
+      ]
+    },
+    {
+      "key": "shield",
+      "name": "Shield Snapback",
+      "type": "hat",
+      "price": 28,
+      "match": "Yupoong 6089M",
+      "placements": [
+        "embroidery_front_large"
+      ],
+      "logos": [
+        "h2"
+      ],
+      "box": [
+        0.3,
+        0.95
+      ],
+      "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "darknavy",
+          "name": "Dark Navy",
+          "printful": [
+            "Dark Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "darkgrey",
+          "name": "Dark Grey",
+          "printful": [
+            "Dark Grey"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "maroon",
+          "name": "Maroon",
+          "printful": [
+            "Maroon"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "heathergrey",
+          "name": "Heather Grey",
+          "printful": [
+            "Heather Grey"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "naturalblack",
+          "name": "Natural + Black",
+          "printful": [
+            "Natural/ Black"
+          ],
+          "tone": "dark"
+        }
+      ]
+    },
+    {
+      "key": "woods",
+      "name": "Northwoods Dad Hat",
+      "type": "hat",
+      "price": 28,
+      "match": "Yupoong 6245CM",
+      "placements": [
+        "embroidery_front_large",
+        "embroidery_front"
+      ],
+      "logos": [
+        "h3"
+      ],
+      "box": [
+        0.62,
+        0.95
+      ],
+      "colors": [
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "stone",
+          "name": "Stone",
+          "printful": [
+            "Stone"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "khaki",
+          "name": "Khaki",
+          "printful": [
+            "Khaki"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "lightblue",
+          "name": "Light Blue",
+          "printful": [
+            "Light Blue"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
         }
       ]
     },
