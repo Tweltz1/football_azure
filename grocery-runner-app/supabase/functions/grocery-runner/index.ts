@@ -13,7 +13,8 @@
 //   POST {action:"kroger-stock", locationId, items:[...]}           stock + price per item at one Kroger store
 //   POST {action:"departments", items:[...]}     shoppers' department per item (any store), when 2+ agree
 //   POST {action:"department-vote", item, device, department}   a shopper's department fix
-//   POST {action:"deals", store, items:[...]}    this week's deals from a partner store that match the list
+//   POST {action:"deals", store, items:[...]}    this week's deals (and out-of-stock marks) from a partner store that match the list
+//   POST {action:"store-info", store}            a partner store's notice and every deal this week
 //
 // Partner stores (store-portal function) send their own aisle list, which "aisles" and "store-aisles"
 // return ahead of shopper votes, marked {official: true}.
@@ -23,7 +24,7 @@ import { sharedAisles, storeAisles, voteAisle } from './aisles.ts';
 import { sharedDepartments, voteDepartment } from './departments.ts';
 import { krogerProducts, krogerReady, krogerStock, krogerStores } from './kroger.ts';
 import { coverage, officialStoresNear } from './nearby.ts';
-import { listDeals } from './partners.ts';
+import { listDeals, storeInfo } from './partners.ts';
 import { forApp } from './votes.ts';
 import { walmartReady, walmartStores } from './walmart.ts';
 
@@ -49,6 +50,7 @@ Deno.serve(async (req) => {
       if (body.action === 'department-vote') return json(await voteDepartment(body));
       if (body.action === 'coverage') return json(await coverage(body.stores));
       if (body.action === 'deals') return json(await listDeals(body.store, body.items));
+      if (body.action === 'store-info') return json(await storeInfo(body.store));
       if (body.action === 'kroger-stock') return json(await krogerStock(body.locationId, body.items));
       return json({ error: 'Unknown action.' }, 400);
     }

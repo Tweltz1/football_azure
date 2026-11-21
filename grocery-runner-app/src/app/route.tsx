@@ -4,14 +4,14 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { StoreMap } from '../components/StoreMap';
-import { SaleBadge } from '../components/SaleBadge';
+import { OutBadge, SaleBadge } from '../components/SaleBadge';
 import { StockBadge } from '../components/StockBadge';
 import { Button, Card, Chip, tap } from '../components/ui';
 import { aisleChoices, needsAisle } from '../lib/aisleChoices';
 import { metresBetween } from '../lib/chainMatch';
 import { locationLabel } from '../lib/labels';
 import { Checkoff, learnFromTrip } from '../lib/learnAisles';
-import { dealFor, useDeals } from '../lib/deals';
+import { dealFor, outFor, useDeals } from '../lib/deals';
 import { stockFor, useStock } from '../lib/stock';
 import { fetchStoreAisles, isShared, voteAisle } from '../lib/sharedAisles';
 import { maybeAskForReview } from '../lib/review';
@@ -240,6 +240,7 @@ export default function RouteScreen() {
                       {capFirst(it.name)}
                     </Text>
                     {!checked.has(it.id) && <SaleBadge deal={dealFor(deals, it.name)} name={it.name} />}
+                    {!checked.has(it.id) && <OutBadge out={outFor(deals, it.name)} />}
                     {!checked.has(it.id) && <StockBadge check={stockFor(stock, it.name)} />}
                   </View>
                 </Pressable>
