@@ -64,6 +64,20 @@ export const LIBRARY: Recipe[] = LIBRARY_DATA.map((r) => ({
   source: 'suggested' as const,
 }));
 
+// Not a dinner: sweets, drinks, sides, dips and snacks, judged by what the dish is ("Chicken with Lemon
+// Sauce" is chicken). Breakfasts carry the 'breakfast' tag already.
+const SIDE_OR_SWEET =
+  /^(?:cakes?|cookies?|brownies?|pie|crumble|cobbler|pudding|cream|fudge|cupcakes?|muffins?|scones?|smoothies?|shakes?|lemonade|cocktail|punch|dip|salsa|dressing|sauce|gravy|biscuits?|cornbread|potatoes|fries|coleslaw|slaw|bars|bites|granola|jam)$/i;
+const isDinner = (r: Recipe) => {
+  if (r.tags?.includes('breakfast')) return false;
+  if (/shepherd'?s pie|pot ?pie|tamale pie|pizza|crab cakes|fish cakes|meatloaf|lasagna|stuffed|curried|chickpeas|burrito/i.test(r.title)) return true;
+  const what = r.title.split(/\s+(?:with|and|topped|on|in|over|plus)\s+/i)[0].trim().split(/\s+/).pop() ?? '';
+  return !SIDE_OR_SWEET.test(what) && !/smoothie|acai|cinnamon rolls/i.test(r.title);
+};
+
+/** Library recipes that make a dinner, for the meal plan (it treats every recipe without 'breakfast' as one). */
+export const LIBRARY_DINNERS: Recipe[] = LIBRARY.filter(isDinner);
+
 /** "Food Network" for a foodnetwork.com address: the site the steps are on. */
 export function siteName(url: string): string {
   const host = url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
