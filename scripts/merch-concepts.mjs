@@ -31,6 +31,28 @@ async function pf(p, opts = {}, okStatuses = []) {
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
 const DIR = 'merch/concepts';
 
+if (MODE === 'discover-extra') {
+  const want = fs.readFileSync(`${DIR}/discover.txt`, 'utf8').split('\n').map(l => l.trim()).filter(Boolean).map(l => new RegExp(l, 'i'));
+  const catalog = await pf('/products');
+  const hits = catalog.filter(p => !p.is_discontinued && want.some(re => re.test(`${p.title} ${p.model} ${p.brand || ''} ${p.type_name || ''}`)));
+  const out = {};
+  for (const p of hits.slice(0, 40)) {
+    try {
+      const full = await pf(`/products/${p.id}`);
+      const pfiles = await pf(`/mockup-generator/printfiles/${p.id}`);
+      const v0 = pfiles.variant_printfiles[0] || { placements: {} };
+      out[p.id] = { title: p.title, type: p.type_name, techniques: (p.techniques || []).map(t => t.key),
+        colors: [...new Set(full.variants.map(v => v.color))].map(c => ({ name: c, hex: full.variants.find(v => v.color === c).color_code })),
+        sizes: [...new Set(full.variants.map(v => v.size))],
+        placements: Object.fromEntries(Object.entries(v0.placements).map(([pl, id]) => { const f = pfiles.printfiles.find(x => x.printfile_id === id); return [pl, f ? `${f.width}x${f.height}` : '?']; })),
+        options: (full.product.options || []).map(o => o.id) };
+      console.log(`${p.id} ${p.title}`);
+    } catch (e) { console.log(`::warning::${p.id}: ${e.message}`); }
+    await sleep(600);
+  }
+  fs.writeFileSync(`${DIR}/catalog-extra.json`, JSON.stringify(out, null, 1) + '\n');
+}
+
 if (MODE === 'discover') {
   const want = [/Bella \+ Canvas 3001\b/, /Bella \+ Canvas 3501/, /Comfort Colors 1717/, /ringer/i, /Gildan 18000/, /Gildan 18500/, /6245CM/,
     /6606/, /retro trucker/i, /corduroy/i, /cuffed beanie/i, /1501KC/, /Gildan 2400/, /garment.dyed/i];

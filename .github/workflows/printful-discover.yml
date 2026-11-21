@@ -1,0 +1,29 @@
+name: Printful catalog lookup
+
+# Lists Printful blanks matching the regexes in merch/concepts/discover.txt (one per line) with their colors and
+# print spots, into merch/concepts/catalog-extra.json. Read-only on Printful.
+on:
+  push:
+    branches: ['claude/project-thread-1lvds4']
+    paths: ['merch/concepts/discover.txt', '.github/workflows/printful-discover.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PRINTFUL_API_TOKEN: ${{ secrets.PRINTFUL_API_TOKEN }}
+      PRINTFUL_STORE_ID: ${{ secrets.PRINTFUL_STORE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node scripts/merch-concepts.mjs discover-extra
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add merch/concepts/catalog-extra.json && git commit -q -m "Printful catalog lookup" || exit 0
+          git pull -q --rebase && git push -q
