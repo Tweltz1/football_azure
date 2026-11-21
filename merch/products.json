@@ -1,5 +1,5 @@
 {
-  "_about": "Weltzcraft merch: every product comes in every logo. A buyer picks product, color, logo and size. scripts/merch-build.mjs + scripts/merch_place.py turn this into placed print files, real Printful mockups (weltzcraft-site/img/merch/<product>-<color>-<logo>.webp) and Printful store products (weltzcraft-site/merch-catalog.json). 'tone' picks the logo file: light logos on dark goods, dark logos on light goods. 'box' = [width, height] the logo is fitted into, as shares of the print area (times the logo's own 'scale'); 'top' = gap from the top as a share of its height (no 'top' = centered); 'wrap' prints the logo twice (both sides of a mug). 'price' is US dollars; 2XL adds $2, 3XL adds $3. A logo's 'hat' files replace its normal ones on embroidered items (bigger, bolder lettering that stitches cleanly). A product's 'logos' limits it to those logos; logos marked 'solo' are only used where a product lists them. A 'tint' logo is one-color art recolored to the color's 'ink' (or a default per tone); 'cx' moves the logo sideways (share of the print area, default centered); a logo's 'threads' limits its embroidery thread colors.",
+  "_about": "Weltzcraft merch: every product comes in every logo. A buyer picks product, color, logo and size. scripts/merch-build.mjs + scripts/merch_place.py turn this into placed print files, real Printful mockups (weltzcraft-site/img/merch/<product>-<color>-<logo>.webp) and Printful store products (weltzcraft-site/merch-catalog.json). 'tone' picks the logo file: light logos on dark goods, dark logos on light goods. 'box' = [width, height] the logo is fitted into, as shares of the print area (times the logo's own 'scale'); 'top' = gap from the top as a share of its height (no 'top' = centered); 'wrap' prints the logo twice (both sides of a mug). 'price' is US dollars; 2XL adds $2, 3XL adds $3. A logo's 'hat' files replace its normal ones on embroidered items (bigger, bolder lettering that stitches cleanly). A product's 'logos' limits it to those logos; logos marked 'solo' are only used where a product lists them. A 'tint' logo is one-color art recolored to the color's 'ink' (or a default per tone); 'cx' moves the logo sideways (share of the print area, default centered); a logo's 'threads' limits its embroidery thread colors. 'extra' adds more print spots to a product (e.g. a sleeve): each has its own file, box, top and tint.",
   "logos": {
     "42": {
       "name": "Tall monogram",
@@ -110,6 +110,72 @@
       "light": "logo-m1.png",
       "dark": "logo-m1.png",
       "tint": true,
+      "solo": true
+    },
+    "v4": {
+      "name": "Patch",
+      "light": "logo-v4.png",
+      "dark": "logo-v4.png",
+      "tint": true,
+      "solo": true
+    },
+    "v6": {
+      "name": "Varsity W",
+      "light": "logo-v6-cream.png",
+      "dark": "logo-v6-navy.png",
+      "solo": true
+    },
+    "m2": {
+      "name": "Bright W",
+      "light": "logo-m1.png",
+      "dark": "logo-m1.png",
+      "tint": true,
+      "solo": true,
+      "threads": [
+        "#3399FF",
+        "#FFFFFF",
+        "#005397",
+        "#333366"
+      ]
+    },
+    "m3": {
+      "name": "Small name",
+      "light": "logo-m3.png",
+      "dark": "logo-m3.png",
+      "tint": true,
+      "solo": true
+    },
+    "m4": {
+      "name": "Pixel W",
+      "light": "logo-m4.png",
+      "dark": "logo-m4.png",
+      "tint": true,
+      "solo": true
+    },
+    "m5": {
+      "name": "Chrome W",
+      "light": "logo-m5.png",
+      "dark": "logo-m5.png",
+      "solo": true
+    },
+    "m6": {
+      "name": "Wordmark",
+      "light": "logo-m6.png",
+      "dark": "logo-m6.png",
+      "tint": true,
+      "solo": true
+    },
+    "m7": {
+      "name": "Pixel W",
+      "light": "logo-m4.png",
+      "dark": "logo-m4.png",
+      "tint": true,
+      "solo": true
+    },
+    "m8": {
+      "name": "Mascot",
+      "light": "logo-m8-light.png",
+      "dark": "logo-m8-dark.png",
       "solo": true
     }
   },
@@ -726,6 +792,816 @@
           ],
           "tone": "light",
           "ink": "#6b5244"
+        }
+      ]
+    },
+    {
+      "key": "trucker",
+      "name": "Patch Trucker",
+      "type": "hat",
+      "price": 26,
+      "match": "Yupoong 6606",
+      "placements": [
+        "embroidery_front_large"
+      ],
+      "logos": [
+        "v4"
+      ],
+      "box": [
+        0.62,
+        0.85
+      ],
+      "colors": [
+        {
+          "key": "navywhite",
+          "name": "Navy + White",
+          "printful": [
+            "Navy/ White"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "blackwhite",
+          "name": "Black + White",
+          "printful": [
+            "Black/ White"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "mosskhaki",
+          "name": "Moss + Khaki",
+          "printful": [
+            "Moss/ Khaki"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "heathergreywhite",
+          "name": "Heather Grey + White",
+          "printful": [
+            "Heather Grey/White"
+          ],
+          "tone": "dark",
+          "ink": "#333366"
+        },
+        {
+          "key": "brownkhaki",
+          "name": "Brown + Khaki",
+          "printful": [
+            "Brown/ Khaki"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "charcoalblack",
+          "name": "Charcoal + Black",
+          "printful": [
+            "Charcoal/ Black"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "key": "varsity",
+      "name": "Varsity Hoodie",
+      "type": "hoodie",
+      "price": 46,
+      "match": "Unisex Heavy Blend Hoodie \\| Gildan 18500",
+      "placements": [
+        "front"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "logos": [
+        "v6"
+      ],
+      "box": [
+        0.42,
+        0.42
+      ],
+      "top": 0.06,
+      "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "maroon",
+          "name": "Maroon",
+          "printful": [
+            "Maroon"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "forestgreen",
+          "name": "Forest Green",
+          "printful": [
+            "Forest Green"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "charcoal",
+          "name": "Charcoal",
+          "printful": [
+            "Charcoal"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "sportgrey",
+          "name": "Sport Grey",
+          "printful": [
+            "Sport Grey"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "sand",
+          "name": "Sand",
+          "printful": [
+            "Sand"
+          ],
+          "tone": "dark"
+        }
+      ]
+    },
+    {
+      "key": "puff",
+      "name": "Bright W Beanie",
+      "type": "beanie",
+      "price": 24,
+      "match": "Yupoong 1501KC",
+      "placements": [
+        "embroidery_front"
+      ],
+      "logos": [
+        "m2"
+      ],
+      "box": [
+        0.3,
+        0.85
+      ],
+      "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#3399FF"
+        },
+        {
+          "key": "babypink",
+          "name": "Baby Pink",
+          "printful": [
+            "Baby Pink"
+          ],
+          "tone": "dark",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark",
+          "ink": "#005397"
+        },
+        {
+          "key": "heathergrey",
+          "name": "Heather Grey",
+          "printful": [
+            "Heather Grey"
+          ],
+          "tone": "dark",
+          "ink": "#333366"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light",
+          "ink": "#3399FF"
+        },
+        {
+          "key": "royal",
+          "name": "Royal",
+          "printful": [
+            "Royal"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "darkgrey",
+          "name": "Dark Grey",
+          "printful": [
+            "Dark Grey"
+          ],
+          "tone": "light",
+          "ink": "#3399FF"
+        }
+      ]
+    },
+    {
+      "key": "smalltee",
+      "name": "Small Name Tee",
+      "type": "tee",
+      "price": 24,
+      "match": "Bella \\+ Canvas 3001",
+      "placements": [
+        "front"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "logos": [
+        "m3"
+      ],
+      "box": [
+        0.24,
+        0.05
+      ],
+      "top": 0.08,
+      "cx": 0.68,
+      "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        },
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark",
+          "ink": "#111111"
+        },
+        {
+          "key": "heatherdust",
+          "name": "Heather Dust",
+          "printful": [
+            "Heather Dust"
+          ],
+          "tone": "dark",
+          "ink": "#111111"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        },
+        {
+          "key": "natural",
+          "name": "Natural",
+          "printful": [
+            "Natural"
+          ],
+          "tone": "dark",
+          "ink": "#111111"
+        },
+        {
+          "key": "forest",
+          "name": "Forest",
+          "printful": [
+            "Forest"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        },
+        {
+          "key": "maroon",
+          "name": "Maroon",
+          "printful": [
+            "Maroon"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        },
+        {
+          "key": "athleticheather",
+          "name": "Athletic Heather",
+          "printful": [
+            "Athletic Heather"
+          ],
+          "tone": "dark",
+          "ink": "#111111"
+        }
+      ]
+    },
+    {
+      "key": "pixells",
+      "name": "Pixel Long Sleeve",
+      "type": "tee",
+      "price": 30,
+      "match": "Bella \\+ Canvas 3501",
+      "placements": [
+        "front"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "logos": [
+        "m4"
+      ],
+      "box": [
+        0.2,
+        0.1
+      ],
+      "top": 0.08,
+      "cx": 0.68,
+      "extra": [
+        {
+          "placement": "sleeve_left",
+          "file": "logo-m4-sleeve.png",
+          "tint": true,
+          "box": [
+            0.5,
+            0.6
+          ],
+          "top": 0.15
+        }
+      ],
+      "colors": [
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark",
+          "ink": "#111111"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#a3e635"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        },
+        {
+          "key": "militarygreen",
+          "name": "Military Green",
+          "printful": [
+            "Military Green"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        },
+        {
+          "key": "maroon",
+          "name": "Maroon",
+          "printful": [
+            "Maroon"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        },
+        {
+          "key": "athleticheather",
+          "name": "Athletic Heather",
+          "printful": [
+            "Athletic Heather"
+          ],
+          "tone": "dark",
+          "ink": "#111111"
+        }
+      ]
+    },
+    {
+      "key": "chrome",
+      "name": "Chrome W Tee",
+      "type": "tee",
+      "price": 28,
+      "match": "Bella \\+ Canvas 3001",
+      "placements": [
+        "front"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "logos": [
+        "m5"
+      ],
+      "box": [
+        0.62,
+        0.36
+      ],
+      "top": 0.08,
+      "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "asphalt",
+          "name": "Asphalt",
+          "printful": [
+            "Asphalt"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "brown",
+          "name": "Brown",
+          "printful": [
+            "Brown"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "darkgreyheather",
+          "name": "Dark Grey Heather",
+          "printful": [
+            "Dark Grey Heather"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "forest",
+          "name": "Forest",
+          "printful": [
+            "Forest"
+          ],
+          "tone": "light"
+        }
+      ]
+    },
+    {
+      "key": "wordcrew",
+      "name": "Wordmark Crew",
+      "type": "crew",
+      "price": 40,
+      "match": "Gildan 18000",
+      "placements": [
+        "front"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "logos": [
+        "m6"
+      ],
+      "box": [
+        0.7,
+        0.12
+      ],
+      "top": 0.12,
+      "colors": [
+        {
+          "key": "sand",
+          "name": "Sand",
+          "printful": [
+            "Sand"
+          ],
+          "tone": "dark",
+          "ink": "#1e293b"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        },
+        {
+          "key": "lightblue",
+          "name": "Light Blue",
+          "printful": [
+            "Light Blue"
+          ],
+          "tone": "dark",
+          "ink": "#1e293b"
+        },
+        {
+          "key": "sportgrey",
+          "name": "Sport Grey",
+          "printful": [
+            "Sport Grey"
+          ],
+          "tone": "dark",
+          "ink": "#1e293b"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        },
+        {
+          "key": "forestgreen",
+          "name": "Forest Green",
+          "printful": [
+            "Forest Green"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        },
+        {
+          "key": "lightpink",
+          "name": "Light Pink",
+          "printful": [
+            "Light Pink"
+          ],
+          "tone": "dark",
+          "ink": "#1e293b"
+        },
+        {
+          "key": "maroon",
+          "name": "Maroon",
+          "printful": [
+            "Maroon"
+          ],
+          "tone": "light",
+          "ink": "#f5f0e6"
+        }
+      ]
+    },
+    {
+      "key": "pixelhat",
+      "name": "Pixel Dad Hat",
+      "type": "hat",
+      "price": 26,
+      "match": "Yupoong 6245CM",
+      "placements": [
+        "embroidery_front_large",
+        "embroidery_front"
+      ],
+      "logos": [
+        "m7"
+      ],
+      "box": [
+        0.32,
+        0.7
+      ],
+      "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "stone",
+          "name": "Stone",
+          "printful": [
+            "Stone"
+          ],
+          "tone": "dark",
+          "ink": "#333366"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "spruce",
+          "name": "Spruce",
+          "printful": [
+            "Spruce"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "lightblue",
+          "name": "Light Blue",
+          "printful": [
+            "Light Blue"
+          ],
+          "tone": "dark",
+          "ink": "#333366"
+        },
+        {
+          "key": "pink",
+          "name": "Pink",
+          "printful": [
+            "Pink"
+          ],
+          "tone": "dark",
+          "ink": "#333366"
+        },
+        {
+          "key": "darkgrey",
+          "name": "Dark Grey",
+          "printful": [
+            "Dark Grey"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark",
+          "ink": "#000000"
+        }
+      ]
+    },
+    {
+      "key": "mascot",
+      "name": "Mascot Pocket Tee",
+      "type": "tee",
+      "price": 28,
+      "match": "Comfort Colors 6030",
+      "placements": [
+        "pocket"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL"
+      ],
+      "logos": [
+        "m8"
+      ],
+      "box": [
+        0.7,
+        0.95
+      ],
+      "colors": [
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "butter",
+          "name": "Butter",
+          "printful": [
+            "Butter"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "floblue",
+          "name": "Flo Blue",
+          "printful": [
+            "Flo Blue"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "grey",
+          "name": "Grey",
+          "printful": [
+            "Grey"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "truenavy",
+          "name": "True Navy",
+          "printful": [
+            "True Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "berry",
+          "name": "Berry",
+          "printful": [
+            "Berry"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "watermelon",
+          "name": "Watermelon",
+          "printful": [
+            "Watermelon"
+          ],
+          "tone": "dark"
         }
       ]
     },

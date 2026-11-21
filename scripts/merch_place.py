@@ -103,6 +103,23 @@ for prod in cfg['products']:
             for cx in slots:
                 canvas.paste(img, (round(AW * (prod.get('cx', cx) if len(slots) == 1 else cx) - w / 2), top), img)
             canvas.save(f"merch/print/placed/{slug}.png", optimize=True)
+            # Extra print spots (e.g. the name down a sleeve), same ink as the main logo.
+            for ex in p.get('extras', []):
+                ec = next(x for x in prod.get('extra', []) if x['placement'] == ex['placement'])
+                EW, EH = ex['area']['w'], ex['area']['h']
+                art = Image.open(os.path.join('merch/print', ec['file'])).convert('RGBA')
+                if ec.get('tint'):
+                    ink = color.get('ink') or ('#1e293b' if color['tone'] == 'dark' else '#f5f0e6')
+                    rgb = tuple(int(ink.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4))
+                    t = Image.new('RGBA', art.size, rgb + (0,))
+                    t.putalpha(art.getchannel('A'))
+                    art = t
+                k2 = min(EW * ec['box'][0] / art.width, EH * ec['box'][1] / art.height)
+                art = art.resize((max(1, round(art.width * k2)), max(1, round(art.height * k2))), Image.LANCZOS)
+                ecan = Image.new('RGBA', (EW, EH), (0, 0, 0, 0))
+                etop = round(EH * ec['top']) if 'top' in ec else (EH - art.height) // 2
+                ecan.paste(art, ((EW - art.width) // 2, etop), art)
+                ecan.save(f"merch/print/placed/{slug}--{ex['placement']}.png", optimize=True)
             n += 1
 json.dump(threads, open('merch/threads.json', 'w'), indent=1)
 print(n, 'placed files,', len(threads), 'embroidered')
