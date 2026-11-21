@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-21T20:24:11.390Z",
+ "updated": "2026-11-21T20:38:32.502Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -1363,6 +1363,149 @@
      "size": "3XL",
      "id": 5657305350,
      "price": 31
+    }
+   ]
+  },
+  "cord-brown-v7": {
+   "hash": "6ad9ce865f24",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657325421,
+     "price": 30
+    }
+   ]
+  },
+  "cord-olive-v7": {
+   "hash": "6ad9ce865f24",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657325445,
+     "price": 30
+    }
+   ]
+  },
+  "cord-navy-v7": {
+   "hash": "6ad9ce865f24",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657325459,
+     "price": 30
+    }
+   ]
+  },
+  "cord-burgundy-v7": {
+   "hash": "6ad9ce865f24",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657325473,
+     "price": 30
+    }
+   ]
+  },
+  "cord-black-v7": {
+   "hash": "6ad9ce865f24",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657325496,
+     "price": 30
+    }
+   ]
+  },
+  "beanie-black-v8": {
+   "hash": "da82f4c8fe44",
+   "price": 24,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657325499,
+     "price": 24
+    }
+   ]
+  },
+  "beanie-navy-v8": {
+   "hash": "da82f4c8fe44",
+   "price": 24,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657325575,
+     "price": 24
+    }
+   ]
+  },
+  "beanie-heathergrey-v8": {
+   "hash": "c8f68393a5e1",
+   "price": 24,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657325663,
+     "price": 24
+    }
+   ]
+  },
+  "beanie-spruce-v8": {
+   "hash": "da82f4c8fe44",
+   "price": 24,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657325674,
+     "price": 24
+    }
+   ]
+  },
+  "beanie-olive-v8": {
+   "hash": "da82f4c8fe44",
+   "price": 24,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657325706,
+     "price": 24
+    }
+   ]
+  },
+  "beanie-brown-v8": {
+   "hash": "da82f4c8fe44",
+   "price": 24,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657326619,
+     "price": 24
+    }
+   ]
+  },
+  "beanie-darkgrey-v8": {
+   "hash": "da82f4c8fe44",
+   "price": 24,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657326654,
+     "price": 24
+    }
+   ]
+  },
+  "beanie-white-v8": {
+   "hash": "c8f68393a5e1",
+   "price": 24,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657326710,
+     "price": 24
     }
    ]
   },
