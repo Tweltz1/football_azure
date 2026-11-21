@@ -409,7 +409,7 @@
   },
   {
    "code": "M3",
-   "name": "Swiss back print tee",
+   "name": "Small name tee",
    "product_id": 71,
    "price": 28,
    "sizes": [
@@ -420,15 +420,6 @@
     "2XL"
    ],
    "layers": [
-    {
-     "placement": "back",
-     "art": "m3-back-{tone}",
-     "box": [
-      0.8,
-      0.7
-     ],
-     "top": 0.05
-    },
     {
      "placement": "front",
      "art": "m3-front",
