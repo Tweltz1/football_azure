@@ -1,7 +1,7 @@
 // Reads real recipe pages with the app's own parser (src/lib/recipeText.ts) and prints what a shopper
 // would get: title, every ingredient, every step with its minutes, and the total. Flags pages where the
 // ingredient or step count doesn't match the page's own recipe data. Run by grocery-runner-store.yml ([stride-links]).
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { parseIngredient, parseRecipePage } from '../src/lib/recipeText';
 
 const DEFAULT_URLS = [
@@ -26,10 +26,6 @@ const listed = existsSync('tools/links.txt')
   ? readFileSync('tools/links.txt', 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
   : [];
 const URLS = listed.length ? listed : DEFAULT_URLS;
-mkdirSync('link-pages', { recursive: true });
-let saved = 0;
-const save = (url: string, html: string) =>
-  writeFileSync(`link-pages/${String(++saved).padStart(2, '0')}-${url.replace(/^https?:\/\//, '').replace(/[^a-z0-9]+/gi, '_').slice(0, 90)}.html`, `<!-- ${url} -->\n${html}`);
 const SAFARI =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1';
 
@@ -55,8 +51,11 @@ for (let qi = 0; qi < queue.length; qi++) {
     const res = await fetch(url, { headers: { 'User-Agent': SAFARI, Accept: 'text/html', 'Accept-Language': 'en-US,en;q=0.9' } });
     if (!res.ok) { console.log(`  HTTP ${res.status} (site refused the runner)`); continue; }
     const html = await res.text();
-    save(url, html);
     const r = parseRecipePage(html);
+    if (process.env.DUMP && qi < URLS.length) {
+      for (const m of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) console.log(`  LD: ${m[1].slice(0, 6000)}`);
+      for (const m of html.matchAll(/<a\b[^>]*href=["']([^"']*\/recipes\/[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)) console.log(`  A: ${m[1]} | ${m[0].slice(0, 300).replace(/\s+/g, ' ')}`);
+    }
     if (!r.items.length && qi < URLS.length) {
       const host = new URL(url).host;
       const links = [...new Set([...html.matchAll(/href=["']([^"'#?]+)/gi).map((m) => new URL(m[1], url).href)])].filter(
