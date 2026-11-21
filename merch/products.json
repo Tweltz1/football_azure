@@ -86,13 +86,6 @@
       "tint": true,
       "solo": true
     },
-    "v7": {
-      "name": "Peaks",
-      "light": "logo-v7.png",
-      "dark": "logo-v7.png",
-      "tint": true,
-      "solo": true
-    },
     "v8": {
       "name": "Stripe W",
       "light": "logo-v8-light.png",
@@ -193,6 +186,18 @@
         "#01784E",
         "#A67843",
         "#000000"
+      ]
+    },
+    "v9": {
+      "name": "Vintage sunrise",
+      "light": "logo-v9-light.png",
+      "dark": "logo-v9-dark.png",
+      "solo": true,
+      "threads": [
+        "#FFFFFF",
+        "#E25C27",
+        "#FFCC00",
+        "#333366"
       ]
     }
   },
@@ -556,11 +561,11 @@
         "embroidery_front"
       ],
       "logos": [
-        "v7"
+        "v9"
       ],
       "box": [
-        0.5,
-        0.85
+        0.6,
+        0.9
       ],
       "colors": [
         {
@@ -1694,6 +1699,30 @@
             "Black"
           ],
           "tone": "light"
+        },
+        {
+          "key": "cranberry",
+          "name": "Cranberry",
+          "printful": [
+            "Cranberry"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "darkgrey",
+          "name": "Dark Grey",
+          "printful": [
+            "Dark Grey"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "spruce",
+          "name": "Spruce",
+          "printful": [
+            "Spruce"
+          ],
+          "tone": "light"
         }
       ]
     },
@@ -1751,6 +1780,65 @@
           "name": "Black",
           "printful": [
             "Black"
+          ],
+          "tone": "light"
+        }
+      ]
+    },
+    {
+      "key": "woodstwo",
+      "name": "Northwoods Two-Tone Cap",
+      "type": "hat",
+      "price": 30,
+      "match": "Otto Cap 18-772",
+      "placements": [
+        "embroidery_front"
+      ],
+      "logos": [
+        "h3"
+      ],
+      "box": [
+        0.62,
+        0.95
+      ],
+      "colors": [
+        {
+          "key": "greenkhaki",
+          "name": "Green + Khaki brim",
+          "printful": [
+            "Dark Green/Khaki"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "navykhaki",
+          "name": "Navy + Khaki brim",
+          "printful": [
+            "Navy/Khaki"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "dustyrose",
+          "name": "Dusty Rose",
+          "printful": [
+            "Dusty Rose"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "gray",
+          "name": "Gray",
+          "printful": [
+            "Gray"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "maroon",
+          "name": "Maroon",
+          "printful": [
+            "Maroon"
           ],
           "tone": "light"
         }
