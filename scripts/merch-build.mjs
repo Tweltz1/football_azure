@@ -34,8 +34,10 @@ const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8'))
 const cfg = readJson('merch/products.json');
 const upcharge = size => ({ '2XL': 2, '3XL': 3, '4XL': 4 }[size] || 0);
 const hashFile = f => crypto.createHash('sha1').update(fs.readFileSync(f)).digest('hex').slice(0, 12);
+// A product can list its own logos; otherwise it gets every logo not marked 'solo' (solo logos belong to one product).
+const logosOf = prod => prod.logos || Object.keys(cfg.logos).filter(k => !cfg.logos[k].solo);
 function* combos() {
-  for (const prod of cfg.products) for (const color of prod.colors) for (const lk of Object.keys(cfg.logos)) {
+  for (const prod of cfg.products) for (const color of prod.colors) for (const lk of logosOf(prod)) {
     const slug = `${prod.key}-${color.key}-${lk}`;
     if (ONLY && !slug.startsWith(ONLY)) continue;
     yield { prod, color, lk, slug, pc: `${prod.key}-${color.key}` };
@@ -112,7 +114,7 @@ if (MODE === 'create') {
   const out = {
     updated: new Date().toISOString(),
     logos: Object.fromEntries(Object.entries(cfg.logos).map(([k, l]) => [k, { name: l.name }])),
-    products: cfg.products.map(p => ({ key: p.key, name: p.name, price: p.price, sizes: p.sizes || null,
+    products: cfg.products.map(p => ({ key: p.key, name: p.name, price: p.price, sizes: p.sizes || null, logos: logosOf(p),
       colors: p.colors.filter(c => plan[`${p.key}-${c.key}`]).map(c => ({ key: c.key, name: c.name })) })),
     items: { ...(ONLY ? prev.items : {}) },
   };

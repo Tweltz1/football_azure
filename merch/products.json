@@ -1,5 +1,5 @@
 {
-  "_about": "Weltzcraft merch: every product comes in every logo. A buyer picks product, color, logo and size. scripts/merch-build.mjs + scripts/merch_place.py turn this into placed print files, real Printful mockups (weltzcraft-site/img/merch/<product>-<color>-<logo>.webp) and Printful store products (weltzcraft-site/merch-catalog.json). 'tone' picks the logo file: light logos on dark goods, dark logos on light goods. 'box' = [width, height] the logo is fitted into, as shares of the print area (times the logo's own 'scale'); 'top' = gap from the top as a share of its height (no 'top' = centered); 'wrap' prints the logo twice (both sides of a mug). 'price' is US dollars; 2XL adds $2, 3XL adds $3. A logo's 'hat' files replace its normal ones on embroidered items (bigger, bolder lettering that stitches cleanly).",
+  "_about": "Weltzcraft merch: every product comes in every logo. A buyer picks product, color, logo and size. scripts/merch-build.mjs + scripts/merch_place.py turn this into placed print files, real Printful mockups (weltzcraft-site/img/merch/<product>-<color>-<logo>.webp) and Printful store products (weltzcraft-site/merch-catalog.json). 'tone' picks the logo file: light logos on dark goods, dark logos on light goods. 'box' = [width, height] the logo is fitted into, as shares of the print area (times the logo's own 'scale'); 'top' = gap from the top as a share of its height (no 'top' = centered); 'wrap' prints the logo twice (both sides of a mug). 'price' is US dollars; 2XL adds $2, 3XL adds $3. A logo's 'hat' files replace its normal ones on embroidered items (bigger, bolder lettering that stitches cleanly). A product's 'logos' limits it to those logos; logos marked 'solo' are only used where a product lists them. A 'tint' logo is one-color art recolored to the color's 'ink' (or a default per tone); 'cx' moves the logo sideways (share of the print area, default centered); a logo's 'threads' limits its embroidery thread colors.",
   "logos": {
     "42": {
       "name": "Tall monogram",
@@ -54,9 +54,681 @@
         "light": "logo-60-light-hat.png",
         "dark": "logo-60-dark-hat.png"
       }
+    },
+    "v1": {
+      "name": "Collegiate",
+      "light": "logo-v1-light.png",
+      "dark": "logo-v1-dark.png",
+      "solo": true
+    },
+    "v2": {
+      "name": "Script",
+      "light": "logo-v2-light.png",
+      "dark": "logo-v2-dark.png",
+      "solo": true,
+      "threads": [
+        "#FFFFFF",
+        "#3399FF",
+        "#333366",
+        "#005397"
+      ]
+    },
+    "v3": {
+      "name": "Sunset",
+      "light": "logo-v3-light.png",
+      "dark": "logo-v3-dark.png",
+      "solo": true
+    },
+    "v5": {
+      "name": "Slab wordmark",
+      "light": "logo-v5.png",
+      "dark": "logo-v5.png",
+      "tint": true,
+      "solo": true
+    },
+    "v7": {
+      "name": "Peaks",
+      "light": "logo-v7.png",
+      "dark": "logo-v7.png",
+      "tint": true,
+      "solo": true
+    },
+    "v8": {
+      "name": "Stripe W",
+      "light": "logo-v8-light.png",
+      "dark": "logo-v8-dark.png",
+      "solo": true,
+      "threads": [
+        "#CC3333",
+        "#FFCC00",
+        "#333366",
+        "#FFFFFF"
+      ]
+    },
+    "m1": {
+      "name": "Tonal W",
+      "light": "logo-m1.png",
+      "dark": "logo-m1.png",
+      "tint": true,
+      "solo": true
     }
   },
   "products": [
+    {
+      "key": "crew",
+      "name": "Collegiate Crew",
+      "type": "crew",
+      "price": 40,
+      "match": "Gildan 18000",
+      "placements": [
+        "front"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "logos": [
+        "v1"
+      ],
+      "box": [
+        0.78,
+        0.34
+      ],
+      "top": 0.1,
+      "colors": [
+        {
+          "key": "sportgrey",
+          "name": "Sport Grey",
+          "printful": [
+            "Sport Grey"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "forestgreen",
+          "name": "Forest Green",
+          "printful": [
+            "Forest Green"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "maroon",
+          "name": "Maroon",
+          "printful": [
+            "Maroon"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "sand",
+          "name": "Sand",
+          "printful": [
+            "Sand"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "lightblue",
+          "name": "Light Blue",
+          "printful": [
+            "Light Blue"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "carolinablue",
+          "name": "Carolina Blue",
+          "printful": [
+            "Carolina Blue"
+          ],
+          "tone": "dark"
+        }
+      ]
+    },
+    {
+      "key": "script",
+      "name": "Script Dad Hat",
+      "type": "hat",
+      "price": 26,
+      "match": "Yupoong 6245CM",
+      "placements": [
+        "embroidery_front_large",
+        "embroidery_front"
+      ],
+      "logos": [
+        "v2"
+      ],
+      "box": [
+        0.8,
+        0.8
+      ],
+      "colors": [
+        {
+          "key": "stone",
+          "name": "Stone",
+          "printful": [
+            "Stone"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "lightblue",
+          "name": "Light Blue",
+          "printful": [
+            "Light Blue"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "spruce",
+          "name": "Spruce",
+          "printful": [
+            "Spruce"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "pink",
+          "name": "Pink",
+          "printful": [
+            "Pink"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "cranberry",
+          "name": "Cranberry",
+          "printful": [
+            "Cranberry"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "khaki",
+          "name": "Khaki",
+          "printful": [
+            "Khaki"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark"
+        }
+      ]
+    },
+    {
+      "key": "sunset",
+      "name": "Sunset Tee",
+      "type": "tee",
+      "price": 28,
+      "match": "Comfort Colors 1717",
+      "placements": [
+        "front"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "logos": [
+        "v3"
+      ],
+      "box": [
+        0.55,
+        0.4
+      ],
+      "top": 0.08,
+      "colors": [
+        {
+          "key": "ivory",
+          "name": "Ivory",
+          "printful": [
+            "Ivory"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "pepper",
+          "name": "Pepper",
+          "printful": [
+            "Pepper"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "sage",
+          "name": "Sage",
+          "printful": [
+            "Sage"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "butter",
+          "name": "Butter",
+          "printful": [
+            "Butter"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "bluejean",
+          "name": "Blue Jean",
+          "printful": [
+            "Blue Jean"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "chalkymint",
+          "name": "Chalky Mint",
+          "printful": [
+            "Chalky Mint"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "brick",
+          "name": "Brick",
+          "printful": [
+            "Brick"
+          ],
+          "tone": "light"
+        }
+      ]
+    },
+    {
+      "key": "ringer",
+      "name": "Ringer Tee",
+      "type": "tee",
+      "price": 28,
+      "match": "Next Level 3604",
+      "placements": [
+        "front"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "logos": [
+        "v5"
+      ],
+      "box": [
+        0.42,
+        0.08
+      ],
+      "top": 0.07,
+      "colors": [
+        {
+          "key": "naturalmidnightnavy",
+          "name": "Natural + Midnight Navy",
+          "printful": [
+            "Natural / Midnight Navy"
+          ],
+          "tone": "dark",
+          "ink": "#1f2a44"
+        },
+        {
+          "key": "naturalforestgreen",
+          "name": "Natural + Forest Green",
+          "printful": [
+            "Natural / Forest Green"
+          ],
+          "tone": "dark",
+          "ink": "#24452f"
+        },
+        {
+          "key": "naturalblack",
+          "name": "Natural + Black",
+          "printful": [
+            "Natural / Black"
+          ],
+          "tone": "dark",
+          "ink": "#111111"
+        },
+        {
+          "key": "whiteblack",
+          "name": "White + Black",
+          "printful": [
+            "White / Black"
+          ],
+          "tone": "dark",
+          "ink": "#111111"
+        },
+        {
+          "key": "heathergrayblack",
+          "name": "Heather Gray + Black",
+          "printful": [
+            "Heather Gray / Black"
+          ],
+          "tone": "dark",
+          "ink": "#111111"
+        }
+      ]
+    },
+    {
+      "key": "cord",
+      "name": "Corduroy Cap",
+      "type": "hat",
+      "price": 30,
+      "match": "Big Accessories BA703",
+      "placements": [
+        "embroidery_front"
+      ],
+      "logos": [
+        "v7"
+      ],
+      "box": [
+        0.5,
+        0.85
+      ],
+      "colors": [
+        {
+          "key": "brown",
+          "name": "Brown",
+          "printful": [
+            "Brown"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "olive",
+          "name": "Olive",
+          "printful": [
+            "Olive"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "burgundy",
+          "name": "Burgundy",
+          "printful": [
+            "Burgundy"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#FFFFFF"
+        }
+      ]
+    },
+    {
+      "key": "beanie",
+      "name": "Stripe Beanie",
+      "type": "beanie",
+      "price": 24,
+      "match": "Yupoong 1501KC",
+      "placements": [
+        "embroidery_front"
+      ],
+      "logos": [
+        "v8"
+      ],
+      "box": [
+        0.42,
+        0.9
+      ],
+      "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "heathergrey",
+          "name": "Heather Grey",
+          "printful": [
+            "Heather Grey"
+          ],
+          "tone": "dark"
+        },
+        {
+          "key": "spruce",
+          "name": "Spruce",
+          "printful": [
+            "Spruce"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "olive",
+          "name": "Olive",
+          "printful": [
+            "Olive"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "brown",
+          "name": "Brown",
+          "printful": [
+            "Brown"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "darkgrey",
+          "name": "Dark Grey",
+          "printful": [
+            "Dark Grey"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "white",
+          "name": "White",
+          "printful": [
+            "White"
+          ],
+          "tone": "dark"
+        }
+      ]
+    },
+    {
+      "key": "tonal",
+      "name": "Tonal Hoodie",
+      "type": "hoodie",
+      "price": 46,
+      "match": "Unisex Heavy Blend Hoodie \\| Gildan 18500",
+      "placements": [
+        "front"
+      ],
+      "sizes": [
+        "S",
+        "M",
+        "L",
+        "XL",
+        "2XL",
+        "3XL"
+      ],
+      "logos": [
+        "m1"
+      ],
+      "box": [
+        0.14,
+        0.1
+      ],
+      "top": 0.1,
+      "cx": 0.7,
+      "colors": [
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light",
+          "ink": "#3d3d3d"
+        },
+        {
+          "key": "sand",
+          "name": "Sand",
+          "printful": [
+            "Sand"
+          ],
+          "tone": "dark",
+          "ink": "#b7a585"
+        },
+        {
+          "key": "militarygreen",
+          "name": "Military Green",
+          "printful": [
+            "Military Green"
+          ],
+          "tone": "light",
+          "ink": "#727a58"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light",
+          "ink": "#3a4867"
+        },
+        {
+          "key": "charcoal",
+          "name": "Charcoal",
+          "printful": [
+            "Charcoal"
+          ],
+          "tone": "light",
+          "ink": "#6e6e6e"
+        },
+        {
+          "key": "maroon",
+          "name": "Maroon",
+          "printful": [
+            "Maroon"
+          ],
+          "tone": "light",
+          "ink": "#7a3343"
+        },
+        {
+          "key": "forestgreen",
+          "name": "Forest Green",
+          "printful": [
+            "Forest Green"
+          ],
+          "tone": "light",
+          "ink": "#3d5e46"
+        },
+        {
+          "key": "sportgrey",
+          "name": "Sport Grey",
+          "printful": [
+            "Sport Grey"
+          ],
+          "tone": "dark",
+          "ink": "#9a9a9a"
+        },
+        {
+          "key": "lightpink",
+          "name": "Light Pink",
+          "printful": [
+            "Light Pink"
+          ],
+          "tone": "dark",
+          "ink": "#d9a9b3"
+        },
+        {
+          "key": "darkchocolate",
+          "name": "Dark Chocolate",
+          "printful": [
+            "Dark Chocolate"
+          ],
+          "tone": "light",
+          "ink": "#6b5244"
+        }
+      ]
+    },
     {
       "key": "tee",
       "name": "Tee",
