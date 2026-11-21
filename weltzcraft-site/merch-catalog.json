@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-21T21:18:42.684Z",
+ "updated": "2026-11-21T21:39:43.184Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -69,6 +69,15 @@
   },
   "m8": {
    "name": "Mascot"
+  },
+  "h1": {
+   "name": "Gold script"
+  },
+  "h2": {
+   "name": "Shield"
+  },
+  "h3": {
+   "name": "Northwoods"
   }
  },
  "products": [
@@ -789,6 +798,119 @@
     {
      "key": "watermelon",
      "name": "Watermelon"
+    }
+   ]
+  },
+  {
+   "key": "rope",
+   "name": "Rope Cap",
+   "price": 30,
+   "sizes": null,
+   "logos": [
+    "h1"
+   ],
+   "colors": [
+    {
+     "key": "black",
+     "name": "Black"
+    },
+    {
+     "key": "espresso",
+     "name": "Espresso"
+    },
+    {
+     "key": "moss",
+     "name": "Moss"
+    },
+    {
+     "key": "granite",
+     "name": "Granite"
+    },
+    {
+     "key": "bluejean",
+     "name": "Blue Jean"
+    },
+    {
+     "key": "chambray",
+     "name": "Chambray"
+    },
+    {
+     "key": "ivory",
+     "name": "Ivory"
+    },
+    {
+     "key": "peachy",
+     "name": "Peachy"
+    }
+   ]
+  },
+  {
+   "key": "shield",
+   "name": "Shield Snapback",
+   "price": 28,
+   "sizes": null,
+   "logos": [
+    "h2"
+   ],
+   "colors": [
+    {
+     "key": "black",
+     "name": "Black"
+    },
+    {
+     "key": "darknavy",
+     "name": "Dark Navy"
+    },
+    {
+     "key": "darkgrey",
+     "name": "Dark Grey"
+    },
+    {
+     "key": "maroon",
+     "name": "Maroon"
+    },
+    {
+     "key": "heathergrey",
+     "name": "Heather Grey"
+    },
+    {
+     "key": "naturalblack",
+     "name": "Natural + Black"
+    }
+   ]
+  },
+  {
+   "key": "woods",
+   "name": "Northwoods Dad Hat",
+   "price": 28,
+   "sizes": null,
+   "logos": [
+    "h3"
+   ],
+   "colors": [
+    {
+     "key": "white",
+     "name": "White"
+    },
+    {
+     "key": "stone",
+     "name": "Stone"
+    },
+    {
+     "key": "khaki",
+     "name": "Khaki"
+    },
+    {
+     "key": "lightblue",
+     "name": "Light Blue"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "black",
+     "name": "Black"
     }
    ]
   },
@@ -4022,6 +4144,226 @@
      "size": "2XL",
      "id": 5657392286,
      "price": 30
+    }
+   ]
+  },
+  "rope-black-h1": {
+   "hash": "25589c457d24",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657407764,
+     "price": 30
+    }
+   ]
+  },
+  "rope-espresso-h1": {
+   "hash": "25589c457d24",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657407801,
+     "price": 30
+    }
+   ]
+  },
+  "rope-moss-h1": {
+   "hash": "25589c457d24",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657407851,
+     "price": 30
+    }
+   ]
+  },
+  "rope-granite-h1": {
+   "hash": "25589c457d24",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657407854,
+     "price": 30
+    }
+   ]
+  },
+  "rope-bluejean-h1": {
+   "hash": "25589c457d24",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657407864,
+     "price": 30
+    }
+   ]
+  },
+  "rope-chambray-h1": {
+   "hash": "05cfcb5a49de",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657407882,
+     "price": 30
+    }
+   ]
+  },
+  "rope-ivory-h1": {
+   "hash": "05cfcb5a49de",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657407905,
+     "price": 30
+    }
+   ]
+  },
+  "rope-peachy-h1": {
+   "hash": "05cfcb5a49de",
+   "price": 30,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657407918,
+     "price": 30
+    }
+   ]
+  },
+  "shield-black-h2": {
+   "hash": "56632f60591d",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657407960,
+     "price": 28
+    }
+   ]
+  },
+  "shield-darknavy-h2": {
+   "hash": "56632f60591d",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657407967,
+     "price": 28
+    }
+   ]
+  },
+  "shield-darkgrey-h2": {
+   "hash": "56632f60591d",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657409045,
+     "price": 28
+    }
+   ]
+  },
+  "shield-maroon-h2": {
+   "hash": "56632f60591d",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657409094,
+     "price": 28
+    }
+   ]
+  },
+  "shield-heathergrey-h2": {
+   "hash": "39ca10593333",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657409128,
+     "price": 28
+    }
+   ]
+  },
+  "shield-naturalblack-h2": {
+   "hash": "39ca10593333",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657409136,
+     "price": 28
+    }
+   ]
+  },
+  "woods-white-h3": {
+   "hash": "d99ca2a1d66c",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657409147,
+     "price": 28
+    }
+   ]
+  },
+  "woods-stone-h3": {
+   "hash": "d99ca2a1d66c",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657409232,
+     "price": 28
+    }
+   ]
+  },
+  "woods-khaki-h3": {
+   "hash": "d99ca2a1d66c",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657409258,
+     "price": 28
+    }
+   ]
+  },
+  "woods-lightblue-h3": {
+   "hash": "d99ca2a1d66c",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657409267,
+     "price": 28
+    }
+   ]
+  },
+  "woods-navy-h3": {
+   "hash": "d99ca2a1d66c",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657409348,
+     "price": 28
+    }
+   ]
+  },
+  "woods-black-h3": {
+   "hash": "d99ca2a1d66c",
+   "price": 28,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657409353,
+     "price": 28
     }
    ]
   },

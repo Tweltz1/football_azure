@@ -726,5 +726,85 @@
   "mascot-watermelon-m8": {
     "hash": "055aef7eb370",
     "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a6c97d95105c120bca5202892bceb3bb/unisex-garment-dyed-pocket-t-shirt-watermelon-front-6b020aa0e804a.jpg"
+  },
+  "rope-black-h1": {
+    "hash": "25589c457d24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e92fdbcbb177e7b094f952f86a2953e7/sunwashed-rope-cap-black-front-6b020d0bd0658.jpg"
+  },
+  "rope-espresso-h1": {
+    "hash": "25589c457d24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/58361f75a4691dfe74e6f4e70081320c/sunwashed-rope-cap-espresso-front-6b020d15701d1.jpg"
+  },
+  "rope-moss-h1": {
+    "hash": "25589c457d24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8de5dc8e14bc3b2f893a9ae72d24fd81/sunwashed-rope-cap-moss-front-6b020d51c00d2.jpg"
+  },
+  "rope-granite-h1": {
+    "hash": "25589c457d24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/dd67338dedbbf05f1bee2a0ee8b83fc6/sunwashed-rope-cap-granite-front-6b020d582954c.jpg"
+  },
+  "rope-bluejean-h1": {
+    "hash": "25589c457d24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ed3007bdaaaa95e2a064a2472622cbcd/sunwashed-rope-cap-blue-jean-front-6b020d957a970.jpg"
+  },
+  "rope-chambray-h1": {
+    "hash": "05cfcb5a49de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/78c1e74d0c8529f1c97b522909cde46e/sunwashed-rope-cap-chambray-front-6b020d9d70d16.jpg"
+  },
+  "rope-ivory-h1": {
+    "hash": "05cfcb5a49de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d0266d42b77ceb69476271dede6984dc/sunwashed-rope-cap-ivory-front-6b020dda92d2e.jpg"
+  },
+  "rope-peachy-h1": {
+    "hash": "05cfcb5a49de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/efb63c610914838d5b31821bb4546ed3/sunwashed-rope-cap-peachy-front-6b020de4c6a6c.jpg"
+  },
+  "shield-black-h2": {
+    "hash": "56632f60591d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/385b16a4dbf362c88d9c84597874c1bb/classic-snapback-black-front-6b020e23bc69d.jpg"
+  },
+  "shield-darknavy-h2": {
+    "hash": "56632f60591d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/f58c557ae6d8671f5c37eb0ca4daf450/classic-snapback-dark-navy-front-6b020e2c2c642.jpg"
+  },
+  "shield-darkgrey-h2": {
+    "hash": "56632f60591d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/3b283fe9f19f947c818ac82dd5aa6253/classic-snapback-dark-grey-front-6b020e69ae8a8.jpg"
+  },
+  "shield-maroon-h2": {
+    "hash": "56632f60591d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/0a1fb02baea136b69b6b105a43bd09fc/classic-snapback-maroon-front-6b020e6faec0f.jpg"
+  },
+  "shield-heathergrey-h2": {
+    "hash": "39ca10593333",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/41345be7dcf750f83b9d59743adc5e38/classic-snapback-heather-grey-front-6b020eafb2ed9.jpg"
+  },
+  "shield-naturalblack-h2": {
+    "hash": "39ca10593333",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9d29b3ba4fb8e9ffc2021378d41ef722/classic-snapback-natural-black-front-6b020eb7e743a.jpg"
+  },
+  "woods-white-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/245990f4c1c00649fd97c12556254f27/classic-dad-hat-white-front-6b020ef67bf8a.jpg"
+  },
+  "woods-stone-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a7ed45907f18403b1faa24971f1a1ede/classic-dad-hat-stone-front-6b020effe0bdb.jpg"
+  },
+  "woods-khaki-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/7c579e1d70aaa7f1dc2f51360082a33a/classic-dad-hat-khaki-front-6b020f3d2ef7d.jpg"
+  },
+  "woods-lightblue-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d2cb485ec92528d885207b7fac0bf233/classic-dad-hat-light-blue-front-6b020f43d6448.jpg"
+  },
+  "woods-navy-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/62069491c2124cb5208a694c5eb65bb5/classic-dad-hat-navy-front-6b020f81276ad.jpg"
+  },
+  "woods-black-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/21daf9910d8cf54e1176b3f73fa9ecca/classic-dad-hat-black-front-6b020f87552b1.jpg"
   }
 }
