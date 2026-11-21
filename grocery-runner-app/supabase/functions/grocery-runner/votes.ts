@@ -21,7 +21,31 @@ export type SharedLocation = {
   total: number;
 };
 
-export const DEPARTMENTS = ['produce', 'bakery', 'deli', 'meat', 'pantry', 'frozen', 'dairy', 'other'];
+export const DEPARTMENTS = [
+  'produce', 'bakery', 'deli', 'meat', 'pantry', 'frozen', 'dairy', 'other',
+  // Shop Stride 1.1: non-food bought on a grocery run.
+  'household', 'health', 'baby', 'pet',
+];
+
+/** Departments an app before 1.1 doesn't know; it would show a blank section for them. */
+export const NEWER_DEPARTMENTS = ['household', 'health', 'baby', 'pet'];
+
+/**
+ * Answers for an app that may not know every department. Apps from 1.1 send `depts: 2` and get
+ * everything; older ones never see a department they can't show (an aisle answer keeps its aisle).
+ */
+export function forApp<T extends { aisle?: string; department?: string }>(
+  answers: Record<string, T>,
+  depts: unknown,
+): Record<string, T> {
+  if (typeof depts === 'number' && depts >= 2) return answers;
+  const out: Record<string, T> = {};
+  for (const [key, a] of Object.entries(answers)) {
+    if (!a.department || !NEWER_DEPARTMENTS.includes(a.department)) out[key] = a;
+    else if (a.aisle) out[key] = { ...a, department: undefined };
+  }
+  return out;
+}
 
 /** Lower-case, single spaces, no punctuation: "Peanut Butter!" and "peanut  butter" match. */
 export function itemKey(name: string): string {

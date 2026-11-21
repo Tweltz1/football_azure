@@ -15,7 +15,8 @@ export type StoreProfile = {
 export const EMPTY_PROFILE: StoreProfile = { departmentAisle: {}, samples: 0 };
 
 /** Departments worth placing. "Center aisles" and "other" are spread over many aisles by nature. */
-const PLACED: Department[] = ['produce', 'bakery', 'deli', 'meat', 'frozen', 'dairy'];
+// Non-food is placed too: at a Target or Walmart it is in its own run of aisles.
+const PLACED: Department[] = ['produce', 'bakery', 'deli', 'meat', 'frozen', 'dairy', 'household', 'health', 'baby', 'pet'];
 const MIN_ITEMS = 2;
 const MIN_SHARE = 0.6;
 

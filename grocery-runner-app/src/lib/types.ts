@@ -4,6 +4,10 @@ export type Department =
   | 'deli'
   | 'meat'
   | 'pantry'
+  | 'household'
+  | 'health'
+  | 'baby'
+  | 'pet'
   | 'frozen'
   | 'dairy'
   | 'other';
