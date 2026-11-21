@@ -152,12 +152,6 @@
       "tint": true,
       "solo": true
     },
-    "m5": {
-      "name": "Chrome W",
-      "light": "logo-m5.png",
-      "dark": "logo-m5.png",
-      "solo": true
-    },
     "m6": {
       "name": "Wordmark",
       "light": "logo-m6.png",
@@ -186,17 +180,6 @@
       "threads": [
         "#A67843",
         "#333366",
-        "#FFFFFF"
-      ]
-    },
-    "h2": {
-      "name": "Shield",
-      "light": "logo-h2-gold.png",
-      "dark": "logo-h2-goldwhite.png",
-      "solo": true,
-      "threads": [
-        "#A67843",
-        "#000000",
         "#FFFFFF"
       ]
     },
@@ -1282,82 +1265,6 @@
       ]
     },
     {
-      "key": "chrome",
-      "name": "Chrome W Tee",
-      "type": "tee",
-      "price": 28,
-      "match": "Bella \\+ Canvas 3001",
-      "placements": [
-        "front"
-      ],
-      "sizes": [
-        "S",
-        "M",
-        "L",
-        "XL",
-        "2XL",
-        "3XL"
-      ],
-      "logos": [
-        "m5"
-      ],
-      "box": [
-        0.62,
-        0.36
-      ],
-      "top": 0.08,
-      "colors": [
-        {
-          "key": "black",
-          "name": "Black",
-          "printful": [
-            "Black"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "navy",
-          "name": "Navy",
-          "printful": [
-            "Navy"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "asphalt",
-          "name": "Asphalt",
-          "printful": [
-            "Asphalt"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "brown",
-          "name": "Brown",
-          "printful": [
-            "Brown"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "darkgreyheather",
-          "name": "Dark Grey Heather",
-          "printful": [
-            "Dark Grey Heather"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "forest",
-          "name": "Forest",
-          "printful": [
-            "Forest"
-          ],
-          "tone": "light"
-        }
-      ]
-    },
-    {
       "key": "wordcrew",
       "name": "Wordmark Crew",
       "type": "crew",
@@ -1717,73 +1624,6 @@
           "name": "Peachy",
           "printful": [
             "Peachy"
-          ],
-          "tone": "dark"
-        }
-      ]
-    },
-    {
-      "key": "shield",
-      "name": "Shield Snapback",
-      "type": "hat",
-      "price": 28,
-      "match": "Yupoong 6089M",
-      "placements": [
-        "embroidery_front_large"
-      ],
-      "logos": [
-        "h2"
-      ],
-      "box": [
-        0.3,
-        0.95
-      ],
-      "colors": [
-        {
-          "key": "black",
-          "name": "Black",
-          "printful": [
-            "Black"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "darknavy",
-          "name": "Dark Navy",
-          "printful": [
-            "Dark Navy"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "darkgrey",
-          "name": "Dark Grey",
-          "printful": [
-            "Dark Grey"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "maroon",
-          "name": "Maroon",
-          "printful": [
-            "Maroon"
-          ],
-          "tone": "light"
-        },
-        {
-          "key": "heathergrey",
-          "name": "Heather Grey",
-          "printful": [
-            "Heather Grey"
-          ],
-          "tone": "dark"
-        },
-        {
-          "key": "naturalblack",
-          "name": "Natural + Black",
-          "printful": [
-            "Natural/ Black"
           ],
           "tone": "dark"
         }
