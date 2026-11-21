@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RecipePicture } from '../components/RecipePicture';
 import { Button, SectionTitle, tap } from '../components/ui';
+import { conflictsOf } from '../lib/diet';
 import { fromIso, WEEKDAYS } from '../lib/mealPlan';
 import { usePlan } from '../lib/plan';
 import { Recipe } from '../lib/recipes';
@@ -14,13 +15,16 @@ import { titleCase } from '../lib/caps';
 export default function PlanPickScreen() {
   const t = useTheme();
   const { date } = useLocalSearchParams<{ date: string }>();
-  const { pool, addMeal } = usePlan();
+  const { pool, addMeal, plan } = usePlan();
   const [q, setQ] = useState('');
   const day = date ? WEEKDAYS[fromIso(date).getDay()] : '';
   const query = q.trim().toLowerCase();
   const match = (r: Recipe) => !query || r.title.toLowerCase().includes(query) || r.items.some((i) => i.item.includes(query));
-  const mine = pool.filter((r) => r.source === 'mine' && match(r));
-  const ours = pool.filter((r) => r.source !== 'mine' && match(r));
+  // Recipes that break the shopper's diet, allergy or "leave out" choices go last, with the reason.
+  const fits = (r: Recipe) => !conflictsOf(r, plan.prefs).length;
+  const mine = pool.filter((r) => r.source === 'mine' && match(r) && fits(r));
+  const ours = pool.filter((r) => r.source !== 'mine' && match(r) && fits(r));
+  const others = pool.filter((r) => match(r) && !fits(r));
 
   const pick = (r: Recipe) => {
     tap();
@@ -37,6 +41,11 @@ export default function PlanPickScreen() {
         <Text style={{ color: t.textMuted, fontSize: 12 }}>
           {[r.minutes ? `${r.minutes} min` : null, `${r.items.filter((i) => !i.pantry).length} items`].filter(Boolean).join(' · ')}
         </Text>
+        {!fits(r) && (
+          <Text style={{ color: t.accent, fontSize: 12 }} numberOfLines={2}>
+            Has {conflictsOf(r, plan.prefs).join(', ')}
+          </Text>
+        )}
       </View>
       <Ionicons name="add-circle" size={26} color={t.primary} />
     </Pressable>
@@ -67,6 +76,9 @@ export default function PlanPickScreen() {
         {mine.map(row)}
         <SectionTitle>Ideas</SectionTitle>
         {ours.map(row)}
+        {!ours.length && <Text style={{ color: t.textMuted }}>No ideas fit your preferences{query ? ' and search' : ''}.</Text>}
+        {others.length > 0 && <SectionTitle>Doesn’t fit your preferences</SectionTitle>}
+        {others.map(row)}
       </ScrollView>
     </>
   );

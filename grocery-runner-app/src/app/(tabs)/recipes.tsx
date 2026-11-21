@@ -7,7 +7,8 @@ import { RecipePicture } from '../../components/RecipePicture';
 import { CommunityRecipes } from '../../components/CommunityRecipes';
 import { Chip, lift, ScreenHeader, Segmented, SectionTitle } from '../../components/ui';
 import { useAuth } from '../../lib/auth';
-import { FILTERS, labelsOf, matchesFilters } from '../../lib/diet';
+import { describePrefs, FILTERS, labelsOf, matchesFilters, RECIPE_CHIPS, rulesOf } from '../../lib/diet';
+import { usePlan } from '../../lib/plan';
 import { newItems, Recipe, SUGGESTED } from '../../lib/recipes';
 import { useData } from '../../lib/store';
 import { radius, useTheme } from '../../lib/theme';
@@ -20,6 +21,11 @@ export default function RecipesScreen() {
   const { myRecipes, items } = useData();
   const [query, setQuery] = useState('');
   const [on, setOn] = useState<string[]>([]);
+  // The meal plan's diet, allergy and "leave out" choices apply here too, unless the shopper shows everything.
+  const { plan } = usePlan();
+  const rules = rulesOf(plan.prefs);
+  const [showAll, setShowAll] = useState(false);
+  const active = showAll ? on : [...new Set([...on, ...rules])];
   const { session } = useAuth();
   // The view lives in the address so other screens (and the screenshot build) can open Community.
   const params = useLocalSearchParams<{ view?: string }>();
@@ -29,7 +35,7 @@ export default function RecipesScreen() {
   const onList = useMemo(() => items.map((i) => i.name), [items]);
   const q = query.trim().toLowerCase();
   const matches = (r: Recipe) =>
-    matchesFilters(r, on) &&
+    matchesFilters(r, active) &&
     (!q || r.title.toLowerCase().includes(q) || labelsOf(r).some((l) => l.toLowerCase().includes(q)) || r.items.some((i) => i.item.includes(q)));
 
   const toggle = (key: string) => setOn((cur) => (cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]));
@@ -107,12 +113,25 @@ export default function RecipesScreen() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-          {FILTERS.map((f) => (
+          {FILTERS.filter((f) => RECIPE_CHIPS.includes(f.key)).map((f) => (
             <Chip key={f.key} label={f.label} selected={on.includes(f.key)} onPress={() => toggle(f.key)} />
           ))}
         </ScrollView>
 
         <View style={styles.pad}>
+          {rules.length > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setShowAll((v) => !v)}
+              style={[styles.row, { backgroundColor: t.primarySoft, marginTop: 4 }]}
+            >
+              <Ionicons name={showAll ? 'eye' : 'leaf'} size={18} color={t.primary} />
+              <Text style={{ flex: 1, color: t.text, fontSize: 13 }}>
+                {showAll ? 'Showing every recipe' : `Showing recipes that are ${describePrefs(rules)}`}
+              </Text>
+              <Text style={{ color: t.primary, fontWeight: '700', fontSize: 13 }}>{showAll ? 'Match my diet' : 'Show all'}</Text>
+            </Pressable>
+          )}
           {mine.length > 0 && !session && !q && !on.length && (
             <Pressable
               accessibilityRole="button"
@@ -129,12 +148,12 @@ export default function RecipesScreen() {
           {mine.length > 0 && <SectionTitle>Your recipes</SectionTitle>}
           <View style={styles.grid}>{mine.map(row)}</View>
 
-          <SectionTitle>{on.length || q ? `Suggested · ${suggested.length} match` : 'Suggested'}</SectionTitle>
+          <SectionTitle>{active.length || q ? `Suggested · ${suggested.length} match` : 'Suggested'}</SectionTitle>
           <View style={styles.grid}>{suggested.map(row)}</View>
           {!suggested.length && (
             <Text style={{ color: t.textMuted }}>No suggested recipes match. Turn off a filter to see more.</Text>
           )}
-          {on.some((k) => k === 'gluten-free' || k === 'dairy-free') && (
+          {active.some((k) => ['gluten-free', 'dairy-free', 'nut-free', 'egg-free', 'vegan'].includes(k)) && (
             <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 12 }}>
               Diet labels come from the ingredient names. Check the labels on packaged foods like broth, sausage and
               seasoning mixes.

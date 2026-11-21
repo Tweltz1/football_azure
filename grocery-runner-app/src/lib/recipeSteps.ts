@@ -231,6 +231,31 @@ export const STEPS: Record<string, Step[]> = {
     s(2, 'Toss the hot pasta with the pesto, spinach and a splash of pasta water until the spinach wilts.'),
     s(1, 'Fold in the tomatoes and mozzarella. Serve with parmesan.'),
   ],
+  veggiechili: [
+    s(8, 'Dice the onion and bell peppers and mince the garlic. Drain and rinse all the beans.'),
+    s(7, 'Cook the onion and peppers in the olive oil in a large pot over medium heat until soft, about 7 minutes.'),
+    s(1, 'Stir in the garlic, chili powder and cumin for 1 minute.'),
+    s(25, 'Add the beans, diced tomatoes, tomato sauce and 1 cup of water. Simmer 25 minutes, stirring now and then.'),
+    d(4, 'Meanwhile dice the avocados and cut the limes into wedges.'),
+    s(5, 'Stir in the corn and simmer 5 minutes more. Salt to taste.'),
+    s(2, 'Serve the chili topped with avocado and a squeeze of lime.'),
+  ],
+  quinoabowls: [
+    s(15, 'Heat the oven to 425°F, about 15 minutes. Meanwhile cut the cauliflower into florets, the sweet potatoes into cubes and the red onion into wedges. Drain, rinse and pat dry the chickpeas.'),
+    s(3, 'Toss the vegetables and chickpeas on two sheet pans with the olive oil, smoked paprika and salt.'),
+    s(25, 'Roast 25 minutes, stirring halfway, until the chickpeas are crisp and the vegetables are browned.'),
+    d(20, 'Meanwhile rinse the quinoa and simmer it in 3 cups of water, covered, 15 minutes. Let it rest 5 minutes off the heat.'),
+    d(5, 'Strip the kale from its stems, chop it, and rub it with a squeeze of lemon and a pinch of salt.'),
+    s(3, 'Whisk the tahini with the juice of the lemons, the grated garlic and enough water to make it pourable.'),
+    s(2, 'Build the bowls: quinoa, kale, the roasted vegetables and chickpeas, drizzled with the tahini sauce.'),
+  ],
+  minestrone: [
+    s(8, 'Dice the onion, carrots, celery and zucchini and mince the garlic. Drain and rinse the beans.'),
+    s(9, 'Cook the onion, carrots and celery in the olive oil in a large pot over medium heat until soft, about 8 minutes. Add the garlic and Italian seasoning for 1 minute.'),
+    s(10, 'Add the broth, diced tomatoes, zucchini and beans. Bring to a boil, then simmer 10 minutes.'),
+    s(9, 'Stir in the pasta and simmer until tender, about 9 minutes.'),
+    s(2, 'Stir in the spinach until it wilts. Season with salt and black pepper.'),
+  ],
 };
 
 /**
