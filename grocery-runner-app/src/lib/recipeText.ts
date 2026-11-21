@@ -400,3 +400,142 @@ export function cleanLink(text: string): string | null {
   const m = v.match(/https?:\/\/[^\s<>"]+/i)?.[0] ?? (/^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+\/\S*$/i.test(v) ? `https://${v}` : null);
   return m ? m.replace(/[).,]+$/, '') : null;
 }
+
+export type LinkedRecipe = { url: string; title: string };
+export type RecipeCollection = { title: string; recipes: LinkedRecipe[] };
+
+// Words that say a link goes to a recipe, without naming it ("Get the recipe").
+const CTA = /^(?:get|see|view|read|open|make|try|full|print|go to)?\s*(?:the\s+)?(?:full\s+)?recipes?(?:\s+here)?\s*[»›→>]*$|^(?:read|see|learn)\s+more$|^here$/i;
+// Paths that are never one recipe: site sections, people, shops and account pages.
+const NOT_RECIPE_PATH =
+  /\/(?:category|categories|tag|tags|author|authors|profiles?|about|contact|privacy|terms|shop|store|search|login|account|subscribe|newsletter|videos?|shows?|chefs?|topics?|collections?|packages?|galleries|gallery|wp-content|wp-admin|feed|page\/\d+)(?:\/|$)/i;
+
+const slugTitle = (path: string) => {
+  const slug = decodeURIComponent(path.replace(/\/+$/, '').split('/').pop() ?? '')
+    .replace(/\.(?:html?|php)$/i, '')
+    .replace(/-?\b(?:recipe\d*)\b-?/gi, ' ')
+    .replace(/-?\d{4,}$/, '')
+    .replace(/[-_]+/g, ' ')
+    .trim();
+  return slug ? slug[0].toUpperCase() + slug.slice(1) : '';
+};
+
+/**
+ * A roundup page ("100 healthy dinners") links to many recipes and has none of its own. Finds those
+ * links in order: the page's schema.org ItemList when it lists recipe pages, else links in the article
+ * body that look like a single recipe on the same site. Returns null for a page with fewer than 2.
+ */
+export function parseCollectionPage(html: string, pageUrl: string): RecipeCollection | null {
+  let base: URL;
+  try {
+    base = new URL(pageUrl);
+  } catch {
+    return null;
+  }
+  const site = (h: string) => h.replace(/^www\./, '');
+  const found = new Map<string, string>();
+  const add = (href: string, title: string) => {
+    let u: URL;
+    try {
+      u = new URL(decode(href).trim(), base);
+    } catch {
+      return;
+    }
+    if (!/^https?:$/.test(u.protocol) || site(u.host) !== site(base.host)) return;
+    u.protocol = 'https:';
+    u.hash = '';
+    u.search = '';
+    const key = u.href.replace(/\/+$/, '');
+    if (key === base.href.split(/[?#]/)[0].replace(/\/+$/, '') || NOT_RECIPE_PATH.test(u.pathname)) return;
+    const name = title.replace(/\s+/g, ' ').trim();
+    const good = name && !CTA.test(name) && name.length <= 120 ? name : '';
+    if (!found.has(key)) found.set(key, good);
+    else if (!found.get(key) && good) found.set(key, good);
+  };
+
+  // 1. schema.org ItemList of pages (Allrecipes, Delish and most news-style roundups publish one).
+  for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const walk = (node: unknown): void => {
+        if (!node || typeof node !== 'object') return;
+        if (Array.isArray(node)) return node.forEach(walk);
+        const n = node as Record<string, unknown>;
+        const type = ([] as unknown[]).concat(n['@type']);
+        if (type.includes('ItemList') && Array.isArray(n.itemListElement)) {
+          for (const el of n.itemListElement as Record<string, unknown>[]) {
+            const item = (el?.item ?? el) as Record<string, unknown>;
+            const url = (item?.url ?? el?.url ?? (typeof item?.['@id'] === 'string' ? item['@id'] : undefined)) as unknown;
+            if (typeof url === 'string') add(url, String(item?.name ?? el?.name ?? ''));
+          }
+        }
+        if (type.includes('BreadcrumbList')) return;
+        Object.values(n).forEach(walk);
+      };
+      walk(JSON.parse(m[1].replace(/^\s*<!--|-->\s*$/g, '').replace(/[\u0000-\u001F]+/g, ' ')));
+    } catch {}
+  }
+
+  // 2. Links in the article itself: menus, headers, footers and sidebars removed first.
+  if (found.size < 2) {
+    found.clear();
+    let body = html
+      .replace(/<(script|style|noscript|svg|template)[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<(nav|header|footer|aside|form)\b[\s\S]*?<\/\1>/gi, ' ');
+    const article = body.match(/<(article|main)\b[\s\S]*<\/\1>/i)?.[0];
+    if (article) body = article;
+    const anchors = [...body.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)].map((m) => {
+      const attrs = m[1];
+      const href = attrs.match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
+      const attrTitle = attrs.match(/\b(?:title|data-track-click|aria-label)\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
+      const text = decode(stripTags(m[2]));
+      return { href, text, title: decode(attrTitle) };
+    });
+    // Recipe-looking paths: "/recipe/…", "…-recipe-123", "/recipes/<who>/<dish>", or a blog post slug.
+    const looksLikeRecipe = (href: string) => {
+      let path: string;
+      try {
+        path = new URL(decode(href), base).pathname;
+      } catch {
+        return false;
+      }
+      const last = path.replace(/\/+$/, '').split('/').pop() ?? '';
+      return /\/recipes?\//i.test(path) || /recipe/i.test(last) ? last.split('-').length >= 2 : last.split('-').length >= 3;
+    };
+    const ctas = anchors.filter((a) => CTA.test(a.text.trim()) && looksLikeRecipe(a.href));
+    const pick = ctas.length >= 2 ? ctas : anchors.filter((a) => looksLikeRecipe(a.href));
+    for (const a of pick) add(a.href, CTA.test(a.text.trim()) || !a.text.trim() ? a.title : a.text);
+    // A link's name from elsewhere on the page ("Turkey Chili" image link next to "Get the recipe").
+    for (const a of anchors) {
+      if (!a.text.trim() || CTA.test(a.text.trim())) continue;
+      try {
+        const key = new URL(decode(a.href), base).href.split(/[?#]/)[0].replace(/^http:/, 'https:').replace(/\/+$/, '');
+        if (found.has(key) && !found.get(key)) found.set(key, a.text.trim());
+      } catch {}
+    }
+  }
+  if (found.size < 2) return null;
+  const title = decode(
+    html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
+      html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ??
+      html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ??
+      '',
+  )
+    .replace(/<[^>]+>/g, '')
+    .split(/\s[|–—]\s|\s-\s|\|/)[0]
+    .trim();
+  return {
+    title: title.slice(0, 100) || 'Recipes',
+    recipes: [...found].slice(0, 120).map(([url, t]) => ({ url, title: (t || slugTitle(new URL(url).pathname) || url).slice(0, 100) })),
+  };
+}
+
+/** True when the page publishes its own recipe data (so it's one recipe, not a roundup). */
+export function hasRecipeData(html: string): boolean {
+  for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const r = findRecipe(JSON.parse(m[1].replace(/^\s*<!--|-->\s*$/g, '').replace(/[\u0000-\u001F]+/g, ' ')));
+      if (r && (r.recipeIngredient ?? r.ingredients)) return true;
+    } catch {}
+  }
+  return /itemprop=["'](?:recipeIngredient|ingredients)["']|\bwprm-recipe-ingredient\b|tasty-recipes?-ingredients/i.test(html);
+}

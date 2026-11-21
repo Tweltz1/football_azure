@@ -2,7 +2,7 @@
 // would get: title, every ingredient, every step with its minutes, and the total. Flags pages where the
 // ingredient or step count doesn't match the page's own recipe data. Run by grocery-runner-store.yml ([stride-links]).
 import { readFileSync, existsSync } from 'node:fs';
-import { parseIngredient, parseRecipePage } from '../src/lib/recipeText';
+import { hasRecipeData, parseCollectionPage, parseIngredient, parseRecipePage } from '../src/lib/recipeText';
 
 const DEFAULT_URLS = [
   'https://tastesbetterfromscratch.com/creamy-white-chicken-chili/',
@@ -48,27 +48,22 @@ for (let qi = 0; qi < queue.length; qi++) {
   const url = queue[qi];
   console.log(`\n=== ${url}`);
   try {
+    if (qi >= URLS.length) await new Promise((ok) => setTimeout(ok, 400)); // gentle on the site
     const res = await fetch(url, { headers: { 'User-Agent': SAFARI, Accept: 'text/html', 'Accept-Language': 'en-US,en;q=0.9' } });
     if (!res.ok) { console.log(`  HTTP ${res.status} (site refused the runner)`); continue; }
     const html = await res.text();
     const r = parseRecipePage(html);
-    if (process.env.DUMP && qi < URLS.length) {
-      for (const m of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) console.log(`  LD: ${m[1].slice(0, 6000)}`);
-      for (const m of html.matchAll(/<a\b[^>]*href=["']([^"']*\/recipes\/[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi)) console.log(`  A: ${m[1]} | ${m[0].slice(0, 300).replace(/\s+/g, ' ')}`);
-    }
-    if (!r.items.length && qi < URLS.length) {
-      const host = new URL(url).host;
-      const links = [...new Set([...html.matchAll(/href=["']([^"'#?]+)/gi).map((m) => new URL(m[1], url).href)])].filter(
-        (h) => new URL(h).host === host && /\/recipes?\/[^/]+\/[^/]+/.test(new URL(h).pathname),
-      );
-      console.log(`  no recipe on this page; ${links.length} recipe link(s) found:`);
-      for (const l of links) console.log(`    ${l}`);
-      queue.push(...links.slice(0, 40));
-      continue;
+    if (!hasRecipeData(html) && qi < URLS.length) {
+      const col = parseCollectionPage(html, url);
+      console.log(`  collection: ${col?.title ?? 'none'} | ${col?.recipes.length ?? 0} recipe link(s)`);
+      for (const l of col?.recipes ?? []) console.log(`    ${l.title} <${l.url}>`);
+      if (col) queue.push(...col.recipes.map((l) => l.url));
+      if (col) continue;
     }
     const src = sourceCounts(html);
     console.log(`  title: ${r.title} | servings: ${r.servings} | total: ${r.minutes ?? '?'} min | image: ${r.imageUrl ? 'yes' : 'no'}`);
     console.log(`  ingredients: ${r.items.length} (page lists ${src.ing})`);
+    if (process.env.DUMP) for (const l of src.lines) console.log(`    > ${l}`);
     for (const it of r.items) console.log(`    - [${it.amount}] ${it.item}${it.note ? ` (${it.note})` : ''}${it.pantry ? ' *pantry' : ''}`);
     console.log(`  steps: ${r.steps?.length ?? 0} (page has ${src.steps} HowToSteps)`);
     for (const [n, s] of (r.steps ?? []).entries()) console.log(`    ${n + 1}. (${s.minutes} min) ${s.text.slice(0, 160)}`);
