@@ -43,7 +43,7 @@ function SignInSheet({ reason, onClose }) {
           </button>
         </div>
         <p className="jk-legal">
-          By continuing you agree to the <a href="/junk-terms.html">Terms</a> and <a href="/junk-privacy.html">Privacy Policy</a>.
+          By continuing you confirm you're 18 or older and agree to the <a href="/junk-terms.html">Terms</a> and <a href="/junk-privacy.html">Privacy Policy</a>.
           No hateful, illegal or unsafe items.
         </p>
       </div>
