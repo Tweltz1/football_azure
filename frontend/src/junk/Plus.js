@@ -126,7 +126,7 @@ export function PlusSheet({ reason, onClose }) {
         <p className="jk-legal">
           Curbsy Plus is {price} a month, charged to your Apple ID. It renews every month unless you cancel at least 24 hours
           before the end of the month, in Settings &gt; your name &gt; Subscriptions. Listing and claiming free stuff stays free for everyone.
-          {' '}<a href="/junk-terms.html">Terms of Use</a> · <a href="/junk-privacy.html">Privacy Policy</a>
+          {' '}<a href="https://weltzcraft.com/curbsy/terms">Terms of Use</a> · <a href="https://weltzcraft.com/curbsy/privacy">Privacy Policy</a>
         </p>
       </div>
     </div>

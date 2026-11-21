@@ -18,7 +18,7 @@ GitHub builds it on a macOS machine (`.github/workflows/junk-app.yml`), so no Ma
 - Backend: the `junk/*` routes of the Supabase `api` function (`supabase/functions/_shared/junk.ts`), the
   `junk_*` tables and the public `junk-photos` Storage bucket (`supabase/migrations/20261108150000_junk_app.sql`).
   Item detection uses the same `GEMINI_API_KEY` function secret as the other apps.
-- Privacy policy and terms: `frontend/public/junk-privacy.html` and `junk-terms.html` (public, for App Store Connect).
+- Privacy policy and terms: `weltzcraft-site/curbsy/privacy.html` and `terms.html` on main, live at https://weltzcraft.com/curbsy/privacy and /curbsy/terms (App Store Connect links; old hood-league.com/junk-*.html addresses forward there).
 
 To send a build to TestFlight: create the app in App Store Connect first (Apps > + > New App, bundle ID
 `com.hoodleague.junk`), then Actions > Junk App iPhone app > Run workflow, tick "Upload to TestFlight".

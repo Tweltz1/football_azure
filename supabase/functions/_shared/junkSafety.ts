@@ -1,5 +1,5 @@
 // Curbsy listing rules: things that can't be given away on a public app (App Store guideline 1.2 and the
-// Terms at /junk-terms.html), checked against what people type and what the phone's photo labels say.
+// Terms at weltzcraft.com/curbsy/terms), checked against what people type and what the phone's photo labels say.
 // Free and instant: plain word rules, no paid service. Reports, blocks and the daily review catch the rest.
 //
 // Each rule is a list of words or phrases (matched as whole words, plurals included). Everyday things that

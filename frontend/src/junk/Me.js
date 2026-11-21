@@ -152,7 +152,7 @@ export default function Me() {
       <main className="jk-page">
         <header className="jk-page-head"><h1>Me</h1></header>
         {!authLoading && <SignInPrompt title="Your stuff" text="Sign in to post items and see what you're giving away." />}
-        <p className="jk-legal jk-center"><a href="/junk-terms.html">Terms</a> · <a href="/junk-privacy.html">Privacy</a></p>
+        <p className="jk-legal jk-center"><a href="https://weltzcraft.com/curbsy/terms">Terms</a> · <a href="https://weltzcraft.com/curbsy/privacy">Privacy</a></p>
       </main>
     );
   }
@@ -238,8 +238,8 @@ export default function Me() {
         )}
         <button type="button" className="jk-row-btn" onClick={() => setContact(true)}>Contact Curbsy</button>
         <button type="button" className="jk-row-btn" onClick={() => setBusiness(true)}>Advertise your business on Curbsy</button>
-        <a className="jk-row-btn" href="/junk-terms.html">Terms of Use</a>
-        <a className="jk-row-btn" href="/junk-privacy.html">Privacy Policy</a>
+        <a className="jk-row-btn" href="https://weltzcraft.com/curbsy/terms">Terms of Use</a>
+        <a className="jk-row-btn" href="https://weltzcraft.com/curbsy/privacy">Privacy Policy</a>
         <button type="button" className="jk-row-btn jk-danger-text" onClick={() => setConfirm(true)}>Delete my account</button>
       </div>
       <StudioCredit />

@@ -43,7 +43,7 @@ function SignInSheet({ reason, onClose }) {
           </button>
         </div>
         <p className="jk-legal">
-          By continuing you confirm you're 18 or older and agree to the <a href="/junk-terms.html">Terms</a> and <a href="/junk-privacy.html">Privacy Policy</a>.
+          By continuing you confirm you're 18 or older and agree to the <a href="https://weltzcraft.com/curbsy/terms">Terms</a> and <a href="https://weltzcraft.com/curbsy/privacy">Privacy Policy</a>.
           No hateful, illegal or unsafe items.
         </p>
       </div>
@@ -51,10 +51,11 @@ function SignInSheet({ reason, onClose }) {
   );
 }
 
-// The Terms and Privacy pages are plain web pages (they're also the App Store's links). Opening one used to
+// The Terms and Privacy pages are plain web pages on weltzcraft.com/curbsy/ (they're also the App Store's links). Opening one used to
 // replace the whole app with no way back, so inside the app they open in this full-screen panel instead,
 // with a Done button that always returns to where you were.
-const LEGAL_PAGE = /^\/junk-(terms|privacy)\.html$/;
+const LEGAL_ORIGIN = 'https://weltzcraft.com';
+const LEGAL_PAGE = /^\/curbsy\/(terms|privacy)$/;
 
 function LegalPanel({ src, onClose }) {
   useEffect(() => {
@@ -154,9 +155,9 @@ function Shell() {
       if (!a) return;
       let url;
       try { url = new URL(a.getAttribute('href'), window.location.href); } catch (error) { return; }
-      if (url.origin !== window.location.origin || !LEGAL_PAGE.test(url.pathname)) return;
+      if (url.origin !== LEGAL_ORIGIN || !LEGAL_PAGE.test(url.pathname)) return;
       e.preventDefault();
-      setLegal(url.pathname + url.hash);
+      setLegal(url.href);
     };
     document.addEventListener('click', onClick, true);
     return () => document.removeEventListener('click', onClick, true);

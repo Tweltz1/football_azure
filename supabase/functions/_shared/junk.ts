@@ -611,7 +611,7 @@ export async function junkRoute(
 
   if (section === 'categories' && method === 'GET') return ok({ categories: JUNK_CATEGORIES, conditions: JUNK_CONDITIONS });
 
-  // A shared listing's public web page (hood-league.com/curbsy.html?item=...): what it is and its photos, never who
+  // A shared listing's public web page (weltzcraft.com/curbsy/?item=...): what it is and its photos, never who
   // posted it or where it is. Works signed out.
   if (section === 'public' && a && !b && method === 'GET') {
     if (!UUID.test(a)) return notFound;
