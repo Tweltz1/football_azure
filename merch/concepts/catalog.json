@@ -1,0 +1,2542 @@
+{
+ "57": {
+  "title": "Unisex Long Sleeve Shirt | Gildan 2400",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Ash",
+    "hex": "#e9e7e4"
+   },
+   {
+    "name": "Black",
+    "hex": "#080808"
+   },
+   {
+    "name": "Forest Green",
+    "hex": "#213b21"
+   },
+   {
+    "name": "Indigo Blue",
+    "hex": "#4e6e93"
+   },
+   {
+    "name": "Irish Green",
+    "hex": "#00B860"
+   },
+   {
+    "name": "Light Blue",
+    "hex": "#9dbfe2"
+   },
+   {
+    "name": "Light Pink",
+    "hex": "#f7b4ce"
+   },
+   {
+    "name": "Maroon",
+    "hex": "#6c152b"
+   },
+   {
+    "name": "Military Green",
+    "hex": "#504e3d"
+   },
+   {
+    "name": "Navy",
+    "hex": "#152438"
+   },
+   {
+    "name": "Red",
+    "hex": "#e41525"
+   },
+   {
+    "name": "Royal",
+    "hex": "#1652ac"
+   },
+   {
+    "name": "Sand",
+    "hex": "#d1bfa4"
+   },
+   {
+    "name": "Sport Grey",
+    "hex": "#9b969c"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "4XL",
+   "5XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "back": "1800x2400",
+   "label_outside": "450x450",
+   "label_inside": "450x450",
+   "sleeve_left": "450x1800",
+   "sleeve_right": "450x1800",
+   "embroidery_wrist_right": "600x900",
+   "embroidery_wrist_left": "600x900"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "thread_colors_wrist_right",
+   "thread_colors_wrist_left",
+   "notes",
+   "lifelike",
+   "license_type"
+  ]
+ },
+ "71": {
+  "title": "Unisex Staple T-Shirt | Bella + Canvas 3001",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Aqua",
+    "hex": "#008db5"
+   },
+   {
+    "name": "Army",
+    "hex": "#5f5849"
+   },
+   {
+    "name": "Ash",
+    "hex": "#f0f1ea"
+   },
+   {
+    "name": "Asphalt",
+    "hex": "#52514f"
+   },
+   {
+    "name": "Athletic Heather",
+    "hex": "#cececc"
+   },
+   {
+    "name": "Autumn",
+    "hex": "#c85313"
+   },
+   {
+    "name": "Baby Blue",
+    "hex": "#c7d7ef"
+   },
+   {
+    "name": "Berry",
+    "hex": "#c02773"
+   },
+   {
+    "name": "Black",
+    "hex": "#0c0c0c"
+   },
+   {
+    "name": "Black Heather",
+    "hex": "#0b0b0b"
+   },
+   {
+    "name": "Brown",
+    "hex": "#322622"
+   },
+   {
+    "name": "Burnt Orange",
+    "hex": "#ed8043"
+   },
+   {
+    "name": "Cardinal",
+    "hex": "#890c1e"
+   },
+   {
+    "name": "Charity Pink",
+    "hex": "#FF6284"
+   },
+   {
+    "name": "Dark Grey",
+    "hex": "#2A2929"
+   },
+   {
+    "name": "Dark Grey Heather",
+    "hex": "#3E3C3D"
+   },
+   {
+    "name": "Forest",
+    "hex": "#223e25"
+   },
+   {
+    "name": "Gold",
+    "hex": "#ff9e00"
+   },
+   {
+    "name": "Heather Aqua",
+    "hex": "#27a8c8"
+   },
+   {
+    "name": "Heather Autumn",
+    "hex": "#D5743F"
+   },
+   {
+    "name": "Heather Brown",
+    "hex": "#6A513A"
+   },
+   {
+    "name": "Heather Carolina Blue",
+    "hex": "#ABC3EF"
+   },
+   {
+    "name": "Heather Clay",
+    "hex": "#994836"
+   },
+   {
+    "name": "Heather Columbia Blue",
+    "hex": "#7D95E8"
+   },
+   {
+    "name": "Heather Deep Teal",
+    "hex": "#447085"
+   },
+   {
+    "name": "Heather Dust",
+    "hex": "#e5d9c9"
+   },
+   {
+    "name": "Heather Emerald",
+    "hex": "#1E2C1C"
+   },
+   {
+    "name": "Heather Forest",
+    "hex": "#425040"
+   },
+   {
+    "name": "Heather Grass Green",
+    "hex": "#477749"
+   },
+   {
+    "name": "Heather Ice Blue",
+    "hex": "#e8fdff"
+   },
+   {
+    "name": "Heather Kelly",
+    "hex": "#00a263"
+   },
+   {
+    "name": "Heather Mauve",
+    "hex": "#B2736F"
+   },
+   {
+    "name": "Heather Midnight Navy",
+    "hex": "#302d4b"
+   },
+   {
+    "name": "Heather Mint",
+    "hex": "#b2ebcf"
+   },
+   {
+    "name": "Heather Natural",
+    "hex": "#F9E9CF"
+   },
+   {
+    "name": "Heather Navy",
+    "hex": "#303643"
+   },
+   {
+    "name": "Heather Olive",
+    "hex": "#5c5531"
+   },
+   {
+    "name": "Heather Orange",
+    "hex": "#ff6f4e"
+   },
+   {
+    "name": "Heather Orchid",
+    "hex": "#c2878e"
+   },
+   {
+    "name": "Heather Prism Dusty Blue",
+    "hex": "#a5c8bc"
+   },
+   {
+    "name": "Heather Prism Ice Blue",
+    "hex": "#c3e2e3"
+   },
+   {
+    "name": "Heather Prism Lilac",
+    "hex": "#deafcd"
+   },
+   {
+    "name": "Heather Prism Mint",
+    "hex": "#aad5b9"
+   },
+   {
+    "name": "Heather Prism Peach",
+    "hex": "#f3c2b2"
+   },
+   {
+    "name": "Heather Raspberry",
+    "hex": "#d23d62"
+   },
+   {
+    "name": "Heather Red",
+    "hex": "#ed5359"
+   },
+   {
+    "name": "Heather Slate",
+    "hex": "#4C626E"
+   },
+   {
+    "name": "Heather Team Purple",
+    "hex": "#B680C1"
+   },
+   {
+    "name": "Heather True Royal",
+    "hex": "#536ba7"
+   },
+   {
+    "name": "Heather Yellow Gold",
+    "hex": "#FFB834"
+   },
+   {
+    "name": "Kelly",
+    "hex": "#1a9462"
+   },
+   {
+    "name": "Leaf",
+    "hex": "#5c9346"
+   },
+   {
+    "name": "Light Blue",
+    "hex": "#cfd5e1"
+   },
+   {
+    "name": "Lilac",
+    "hex": "#efbbe3"
+   },
+   {
+    "name": "Maroon",
+    "hex": "#721d37"
+   },
+   {
+    "name": "Mauve",
+    "hex": "#bf6e6e"
+   },
+   {
+    "name": "Military Green",
+    "hex": "#4d4c36"
+   },
+   {
+    "name": "Mint",
+    "hex": "#a5f4bd"
+   },
+   {
+    "name": "Mustard",
+    "hex": "#eda027"
+   },
+   {
+    "name": "Natural",
+    "hex": "#fef1d1"
+   },
+   {
+    "name": "Navy",
+    "hex": "#212642"
+   },
+   {
+    "name": "Ocean Blue",
+    "hex": "#a9dff6"
+   },
+   {
+    "name": "Olive",
+    "hex": "#5b642f"
+   },
+   {
+    "name": "Orange",
+    "hex": "#ff6f32"
+   },
+   {
+    "name": "Oxblood Black",
+    "hex": "#2c1013"
+   },
+   {
+    "name": "Pebble",
+    "hex": "#9a8479"
+   },
+   {
+    "name": "Pink",
+    "hex": "#fdbfc7"
+   },
+   {
+    "name": "Red",
+    "hex": "#d0071e"
+   },
+   {
+    "name": "Sage",
+    "hex": "#9eab96"
+   },
+   {
+    "name": "Silver",
+    "hex": "#e3e3dd"
+   },
+   {
+    "name": "Soft Cream",
+    "hex": "#e7d4c0"
+   },
+   {
+    "name": "Soft Pink",
+    "hex": "#ffd8e1"
+   },
+   {
+    "name": "Solid White Blend",
+    "hex": "#FCFCFC"
+   },
+   {
+    "name": "Steel Blue",
+    "hex": "#668ea7"
+   },
+   {
+    "name": "Tan",
+    "hex": "#ddb792"
+   },
+   {
+    "name": "Teal",
+    "hex": "#00e3cf"
+   },
+   {
+    "name": "Team Purple",
+    "hex": "#230f46"
+   },
+   {
+    "name": "Toast",
+    "hex": "#cf8d4c"
+   },
+   {
+    "name": "True Royal",
+    "hex": "#01408d"
+   },
+   {
+    "name": "Turquoise",
+    "hex": "#54d9eb"
+   },
+   {
+    "name": "Vintage Black",
+    "hex": "#151515"
+   },
+   {
+    "name": "Vintage White",
+    "hex": "#fcf4e8"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   },
+   {
+    "name": "Yellow",
+    "hex": "#ffd667"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "4XL",
+   "L",
+   "M",
+   "S",
+   "XL",
+   "XS",
+   "5XL"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "front_large": "2250x2700",
+   "back": "1800x2400",
+   "sleeve_left": "600x525",
+   "sleeve_right": "600x525",
+   "label_inside": "450x450",
+   "label_outside": "450x450",
+   "label_inside_dtf": "450x450"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "thread_colors_sleeve_left_top",
+   "thread_colors_sleeve_right_top",
+   "notes",
+   "lifelike",
+   "license_type"
+  ]
+ },
+ "145": {
+  "title": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Ash",
+    "hex": "#ededed"
+   },
+   {
+    "name": "Black",
+    "hex": "#0b0b0b"
+   },
+   {
+    "name": "Carolina Blue",
+    "hex": "#8DB7F6"
+   },
+   {
+    "name": "Charcoal",
+    "hex": "#534E4A"
+   },
+   {
+    "name": "Dark Chocolate",
+    "hex": "#35241b"
+   },
+   {
+    "name": "Dark Heather",
+    "hex": "#46484d"
+   },
+   {
+    "name": "Forest Green",
+    "hex": "#1A3626"
+   },
+   {
+    "name": "Gold",
+    "hex": "#FFAF24"
+   },
+   {
+    "name": "Graphite Heather",
+    "hex": "#686868"
+   },
+   {
+    "name": "Heather Deep Royal",
+    "hex": "#6898f2"
+   },
+   {
+    "name": "Heliconia",
+    "hex": "#F63880"
+   },
+   {
+    "name": "Indigo Blue",
+    "hex": "#395d82"
+   },
+   {
+    "name": "Irish Green",
+    "hex": "#00B365"
+   },
+   {
+    "name": "Light Blue",
+    "hex": "#a1c5e1"
+   },
+   {
+    "name": "Light Pink",
+    "hex": "#f3d4e3"
+   },
+   {
+    "name": "Maroon",
+    "hex": "#651d32"
+   },
+   {
+    "name": "Military Green",
+    "hex": "#7e8560"
+   },
+   {
+    "name": "Navy",
+    "hex": "#050c1d"
+   },
+   {
+    "name": "Orange",
+    "hex": "#ff5723"
+   },
+   {
+    "name": "Purple",
+    "hex": "#4A1C7D"
+   },
+   {
+    "name": "Red",
+    "hex": "#da0a1a"
+   },
+   {
+    "name": "Royal",
+    "hex": "#1D50A4"
+   },
+   {
+    "name": "Sand",
+    "hex": "#e7d3b3"
+   },
+   {
+    "name": "Sport Grey",
+    "hex": "#ccccce"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "4XL",
+   "5XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "back": "1800x2400",
+   "label_outside": "450x450",
+   "sleeve_right": "450x1800",
+   "sleeve_left": "450x1800",
+   "label_inside_dtf": "450x450",
+   "embroidery_wrist_left": "600x900",
+   "embroidery_wrist_right": "600x900"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "thread_colors_wrist_left",
+   "thread_colors_wrist_right",
+   "thread_colors_neckline",
+   "text_thread_colors_neckline",
+   "notes",
+   "lifelike",
+   "license_type"
+  ]
+ },
+ "146": {
+  "title": "Unisex Heavy Blend Hoodie | Gildan 18500",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Ash",
+    "hex": "#dedede"
+   },
+   {
+    "name": "Black",
+    "hex": "#0b0b0b"
+   },
+   {
+    "name": "Carolina Blue",
+    "hex": "#8DB7F6"
+   },
+   {
+    "name": "Charcoal",
+    "hex": "#534E4A"
+   },
+   {
+    "name": "Dark Chocolate",
+    "hex": "#35241b"
+   },
+   {
+    "name": "Dark Heather",
+    "hex": "#47484d"
+   },
+   {
+    "name": "Forest Green",
+    "hex": "#222E1F"
+   },
+   {
+    "name": "Gold",
+    "hex": "#FFAF24"
+   },
+   {
+    "name": "Graphite Heather",
+    "hex": "#686868"
+   },
+   {
+    "name": "Heather Sport Dark Navy",
+    "hex": "#515A6E"
+   },
+   {
+    "name": "Heliconia",
+    "hex": "#F63880"
+   },
+   {
+    "name": "Indigo Blue",
+    "hex": "#395d82"
+   },
+   {
+    "name": "Irish Green",
+    "hex": "#1d9345"
+   },
+   {
+    "name": "Light Blue",
+    "hex": "#a1c5e1"
+   },
+   {
+    "name": "Light Pink",
+    "hex": "#f3d4e3"
+   },
+   {
+    "name": "Maroon",
+    "hex": "#47171c"
+   },
+   {
+    "name": "Military Green",
+    "hex": "#7e8560"
+   },
+   {
+    "name": "Navy",
+    "hex": "#131928"
+   },
+   {
+    "name": "Orange",
+    "hex": "#FF5723"
+   },
+   {
+    "name": "Purple",
+    "hex": "#4A1C7D"
+   },
+   {
+    "name": "Red",
+    "hex": "#da0a1a"
+   },
+   {
+    "name": "Royal",
+    "hex": "#1D50A4"
+   },
+   {
+    "name": "Sand",
+    "hex": "#e7d3b3"
+   },
+   {
+    "name": "Sport Grey",
+    "hex": "#9b969c"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   },
+   {
+    "name": "Azalea",
+    "hex": "#ff9faf"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "4XL",
+   "5XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "2100x2100",
+   "back": "1800x2400",
+   "label_outside": "450x450",
+   "sleeve_right": "450x1800",
+   "sleeve_left": "450x1800",
+   "label_inside_dtf": "450x450",
+   "embroidery_wrist_left": "600x900",
+   "embroidery_wrist_right": "600x900"
+  },
+  "options": [
+   "thread_colors_chest_center",
+   "thread_colors_chest_left",
+   "thread_colors_wrist_left",
+   "thread_colors_wrist_right",
+   "notes",
+   "lifelike",
+   "license_type"
+  ]
+ },
+ "206": {
+  "title": "Classic Dad Hat | Yupoong 6245CM",
+  "type": "EMBROIDERY",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#181717"
+   },
+   {
+    "name": "Green Camo",
+    "hex": "#415446"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#b49771"
+   },
+   {
+    "name": "Light Blue",
+    "hex": "#b5cbda"
+   },
+   {
+    "name": "Navy",
+    "hex": "#182031"
+   },
+   {
+    "name": "Pink",
+    "hex": "#fab2ba"
+   },
+   {
+    "name": "Spruce",
+    "hex": "#183a31"
+   },
+   {
+    "name": "Stone",
+    "hex": "#d6bdad"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   },
+   {
+    "name": "Cranberry",
+    "hex": "#a3001b"
+   },
+   {
+    "name": "Dark Grey",
+    "hex": "#39353a"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front_large": "1650x600",
+   "embroidery_back": "600x300",
+   "embroidery_right": "600x300",
+   "embroidery_left": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors_3d",
+   "thread_colors_front_large",
+   "thread_colors_3d_front_large",
+   "thread_colors_back",
+   "thread_colors_right",
+   "thread_colors_left",
+   "notes",
+   "license_type"
+  ]
+ },
+ "252": {
+  "title": "Retro Trucker Hat | Yupoong 6606",
+  "type": "EMBROIDERY",
+  "techniques": [
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#181818"
+   },
+   {
+    "name": "Black/ White",
+    "hex": "#181818"
+   },
+   {
+    "name": "Brown/ Khaki",
+    "hex": "#4e3c32"
+   },
+   {
+    "name": "Caramel",
+    "hex": "#97622e"
+   },
+   {
+    "name": "Charcoal",
+    "hex": "#3f3c38"
+   },
+   {
+    "name": "Charcoal/ Black",
+    "hex": "#3f3c38"
+   },
+   {
+    "name": "Cranberry",
+    "hex": "#7e293b"
+   },
+   {
+    "name": "Dark Heather Gray",
+    "hex": "#434344"
+   },
+   {
+    "name": "Evergreen",
+    "hex": "#385e3d"
+   },
+   {
+    "name": "Heather Grey/White",
+    "hex": "#a4a3a3"
+   },
+   {
+    "name": "Heather/ Black",
+    "hex": "#a4a3a3"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#b3a58e"
+   },
+   {
+    "name": "Moss/ Khaki",
+    "hex": "#fcd18a"
+   },
+   {
+    "name": "Navy",
+    "hex": "#24303b"
+   },
+   {
+    "name": "Navy/ White",
+    "hex": "#24303b"
+   },
+   {
+    "name": "Pink",
+    "hex": "#dd7d9a"
+   },
+   {
+    "name": "Red",
+    "hex": "#c6172f"
+   },
+   {
+    "name": "Rustic Orange/ Khaki",
+    "hex": "#e55a31"
+   },
+   {
+    "name": "Silver",
+    "hex": "#a4a4a3"
+   },
+   {
+    "name": "White",
+    "hex": "#FFFFFF"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front_large": "1770x600",
+   "addon_embroidery_front": "675x675"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors_3d",
+   "thread_colors_front_large",
+   "thread_colors_3d_front_large",
+   "addon_thread_colors_outline_front",
+   "addon_thread_colors_front",
+   "notes",
+   "license_type"
+  ]
+ },
+ "266": {
+  "title": "Cuffed Beanie | Yupoong 1501KC",
+  "type": "EMBROIDERY",
+  "techniques": [
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Baby Pink",
+    "hex": "#ffc6cd"
+   },
+   {
+    "name": "Black",
+    "hex": "#0c0c0c"
+   },
+   {
+    "name": "Brown",
+    "hex": "#1f0a03"
+   },
+   {
+    "name": "Dark Grey",
+    "hex": "#2d2a2a"
+   },
+   {
+    "name": "Gold",
+    "hex": "#ffa913"
+   },
+   {
+    "name": "Heather Grey",
+    "hex": "#a19f9b"
+   },
+   {
+    "name": "Navy",
+    "hex": "#141323"
+   },
+   {
+    "name": "Olive",
+    "hex": "#41401d"
+   },
+   {
+    "name": "Red",
+    "hex": "#b91616"
+   },
+   {
+    "name": "Royal",
+    "hex": "#222985"
+   },
+   {
+    "name": "Spruce",
+    "hex": "#005234"
+   },
+   {
+    "name": "White",
+    "hex": "#FFFFFF"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1500x525"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "notes",
+   "license_type"
+  ]
+ },
+ "356": {
+  "title": "Unisex Long Sleeve Tee | Bella + Canvas 3501",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Athletic Heather",
+    "hex": "#b5b4b4"
+   },
+   {
+    "name": "Black",
+    "hex": "#131313"
+   },
+   {
+    "name": "Black Heather",
+    "hex": "#0e0e0e"
+   },
+   {
+    "name": "Dark Grey Heather",
+    "hex": "#3e3c3d"
+   },
+   {
+    "name": "Gold",
+    "hex": "#ffa107"
+   },
+   {
+    "name": "Heather Deep Teal",
+    "hex": "#335c6b"
+   },
+   {
+    "name": "Heather Forest",
+    "hex": "#28332e"
+   },
+   {
+    "name": "Heather Mauve",
+    "hex": "#c4736c"
+   },
+   {
+    "name": "Heather Navy",
+    "hex": "#44495b"
+   },
+   {
+    "name": "Maroon",
+    "hex": "#590a1d"
+   },
+   {
+    "name": "Military Green",
+    "hex": "#68664d"
+   },
+   {
+    "name": "Navy",
+    "hex": "#161324"
+   },
+   {
+    "name": "Red",
+    "hex": "#b9091d"
+   },
+   {
+    "name": "Storm",
+    "hex": "#9f9393"
+   },
+   {
+    "name": "True Royal",
+    "hex": "#0a4690"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "L",
+   "M",
+   "S",
+   "XL",
+   "XS"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "back": "1800x2400",
+   "sleeve_left": "450x1800",
+   "sleeve_right": "450x1800",
+   "label_inside": "450x450",
+   "label_outside": "450x450",
+   "label_inside_dtf": "450x450",
+   "embroidery_wrist_left": "600x900",
+   "embroidery_wrist_right": "600x900"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "thread_colors_wrist_left",
+   "thread_colors_wrist_right",
+   "notes",
+   "lifelike",
+   "license_type"
+  ]
+ },
+ "532": {
+  "title": "Corduroy Hat | Beechfield B682",
+  "type": "EMBROIDERY",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#0f0f0f"
+   },
+   {
+    "name": "Camel",
+    "hex": "#b3753d"
+   },
+   {
+    "name": "Dark Olive",
+    "hex": "#374225"
+   },
+   {
+    "name": "Oxford Navy",
+    "hex": "#181e42"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1200x525",
+   "embroidery_back": "600x300",
+   "embroidery_left": "600x300",
+   "embroidery_right": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_back",
+   "thread_colors_left",
+   "thread_colors_right",
+   "notes",
+   "license_type"
+  ]
+ },
+ "586": {
+  "title": "Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Emerald",
+    "hex": "#306d6e"
+   },
+   {
+    "name": "Neon Lemon",
+    "hex": "#efff99"
+   },
+   {
+    "name": "Neon Pink",
+    "hex": "#ff5ea1"
+   },
+   {
+    "name": "Sandstone",
+    "hex": "#938a6f"
+   },
+   {
+    "name": "Wine",
+    "hex": "#816977"
+   },
+   {
+    "name": "Bay",
+    "hex": "#b8bfab"
+   },
+   {
+    "name": "Berry",
+    "hex": "#8e5a7b"
+   },
+   {
+    "name": "Black",
+    "hex": "#1b1b1c"
+   },
+   {
+    "name": "Blossom",
+    "hex": "#ffd6e1"
+   },
+   {
+    "name": "Blue Jean",
+    "hex": "#707e8d"
+   },
+   {
+    "name": "Blue Spruce",
+    "hex": "#4c6151"
+   },
+   {
+    "name": "Brick",
+    "hex": "#8d4b54"
+   },
+   {
+    "name": "Burnt orange",
+    "hex": "#FF7842"
+   },
+   {
+    "name": "Butter",
+    "hex": "#ffe09e"
+   },
+   {
+    "name": "Chalky Mint",
+    "hex": "#a1f2dc"
+   },
+   {
+    "name": "Chambray",
+    "hex": "#d9f3ff"
+   },
+   {
+    "name": "Crimson",
+    "hex": "#bb5151"
+   },
+   {
+    "name": "Crunchberry",
+    "hex": "#ff748e"
+   },
+   {
+    "name": "Denim",
+    "hex": "#565a67"
+   },
+   {
+    "name": "Espresso",
+    "hex": "#87634a"
+   },
+   {
+    "name": "Flo Blue",
+    "hex": "#7888d2"
+   },
+   {
+    "name": "Granite",
+    "hex": "#a6abaa"
+   },
+   {
+    "name": "Grape",
+    "hex": "#644E6D"
+   },
+   {
+    "name": "Graphite",
+    "hex": "#3e3737"
+   },
+   {
+    "name": "Grey",
+    "hex": "#92928f"
+   },
+   {
+    "name": "Hemp",
+    "hex": "#4F5232"
+   },
+   {
+    "name": "Ice Blue",
+    "hex": "#7a9096"
+   },
+   {
+    "name": "Island Reef",
+    "hex": "#b8ffca"
+   },
+   {
+    "name": "Ivory",
+    "hex": "#fff4d9"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#b3ab8b"
+   },
+   {
+    "name": "Lagoon Blue",
+    "hex": "#92dedb"
+   },
+   {
+    "name": "Light Green",
+    "hex": "#608267"
+   },
+   {
+    "name": "Midnight",
+    "hex": "#3a4e63"
+   },
+   {
+    "name": "Moss",
+    "hex": "#6b7053"
+   },
+   {
+    "name": "Mustard",
+    "hex": "#ffbc5a"
+   },
+   {
+    "name": "Mystic Blue",
+    "hex": "#5068AB"
+   },
+   {
+    "name": "Navy",
+    "hex": "#424150"
+   },
+   {
+    "name": "Orchid",
+    "hex": "#ead3f2"
+   },
+   {
+    "name": "Paprika",
+    "hex": "#fe4747"
+   },
+   {
+    "name": "Pepper",
+    "hex": "#514f4c"
+   },
+   {
+    "name": "Red",
+    "hex": "#bb1035"
+   },
+   {
+    "name": "Sage",
+    "hex": "#49482e"
+   },
+   {
+    "name": "Seafoam",
+    "hex": "#69a999"
+   },
+   {
+    "name": "Terracotta",
+    "hex": "#ff9364"
+   },
+   {
+    "name": "True Navy",
+    "hex": "#1e2c4a"
+   },
+   {
+    "name": "Violet",
+    "hex": "#9a8ad2"
+   },
+   {
+    "name": "Washed Denim",
+    "hex": "#98aed1"
+   },
+   {
+    "name": "Watermelon",
+    "hex": "#d15c68"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   },
+   {
+    "name": "Yam",
+    "hex": "#db642f"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "4XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "back": "1800x2400",
+   "sleeve_left": "600x525",
+   "sleeve_right": "600x525",
+   "label_outside": "450x450"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "thread_colors_sleeve_left_top",
+   "thread_colors_sleeve_right_top",
+   "notes",
+   "lifelike",
+   "license_type"
+  ]
+ },
+ "593": {
+  "title": "Unisex Garment-Dyed Pocket T-Shirt | Comfort Colors 6030",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Berry",
+    "hex": "#8e5a7b"
+   },
+   {
+    "name": "Black",
+    "hex": "#1b1b1c"
+   },
+   {
+    "name": "Brick",
+    "hex": "#8d4b54"
+   },
+   {
+    "name": "Butter",
+    "hex": "#ffe09e"
+   },
+   {
+    "name": "Flo Blue",
+    "hex": "#5669be"
+   },
+   {
+    "name": "Grey",
+    "hex": "#92928f"
+   },
+   {
+    "name": "Red",
+    "hex": "#bb1035"
+   },
+   {
+    "name": "True Navy",
+    "hex": "#424150"
+   },
+   {
+    "name": "Violet",
+    "hex": "#9a8ad2"
+   },
+   {
+    "name": "Watermelon",
+    "hex": "#d15c68"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "pocket": "450x300",
+   "back": "1800x2400",
+   "sleeve_left": "600x525",
+   "sleeve_right": "600x525"
+  },
+  "options": [
+   "thread_colors_sleeve_left_top",
+   "thread_colors_sleeve_right_top",
+   "notes",
+   "lifelike",
+   "license_type"
+  ]
+ },
+ "662": {
+  "title": "Vintage Corduroy Cap | Big Accessories BA703",
+  "type": "EMBROIDERY",
+  "techniques": [
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#181818"
+   },
+   {
+    "name": "Brown",
+    "hex": "#70453b"
+   },
+   {
+    "name": "Burgundy",
+    "hex": "#b94a44"
+   },
+   {
+    "name": "Navy",
+    "hex": "#32354c"
+   },
+   {
+    "name": "Olive",
+    "hex": "#5e5a4f"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1650x600",
+   "embroidery_back": "600x300",
+   "embroidery_left": "600x300",
+   "embroidery_right": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_3d_front_large",
+   "thread_colors_back",
+   "thread_colors_left",
+   "thread_colors_right",
+   "notes",
+   "license_type"
+  ]
+ },
+ "753": {
+  "title": "Unisex Garment-Dyed Heavyweight Long Sleeve Shirt | Comfort Colors 6014",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#080808"
+   },
+   {
+    "name": "Blue Jean",
+    "hex": "#6b7c8f"
+   },
+   {
+    "name": "Grey",
+    "hex": "#92928f"
+   },
+   {
+    "name": "Light Green",
+    "hex": "#5e856c"
+   },
+   {
+    "name": "Navy",
+    "hex": "#3e4459"
+   },
+   {
+    "name": "Violet",
+    "hex": "#9a8ad2"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "back": "1800x2400",
+   "sleeve_right": "450x1800",
+   "sleeve_left": "450x1800",
+   "label_outside": "450x450"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "notes",
+   "lifelike",
+   "license_type"
+  ]
+ },
+ "839": {
+  "title": "Unisex Garment-Dyed Sweatshirt | Comfort Colors 1566",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Blue Jean",
+    "hex": "#717b8d"
+   },
+   {
+    "name": "Blue Spruce",
+    "hex": "#4c6151"
+   },
+   {
+    "name": "Butter",
+    "hex": "#ffdc8f"
+   },
+   {
+    "name": "Crimson",
+    "hex": "#bb5151"
+   },
+   {
+    "name": "Denim",
+    "hex": "#565a67"
+   },
+   {
+    "name": "Flo Blue",
+    "hex": "#6673ba"
+   },
+   {
+    "name": "Grey",
+    "hex": "#92928f"
+   },
+   {
+    "name": "Light Green",
+    "hex": "#608267"
+   },
+   {
+    "name": "Orchid",
+    "hex": "#ead3f2"
+   },
+   {
+    "name": "Pepper",
+    "hex": "#514f4c"
+   },
+   {
+    "name": "Seafoam",
+    "hex": "#69a999"
+   },
+   {
+    "name": "True Navy",
+    "hex": "#202845"
+   },
+   {
+    "name": "Violet",
+    "hex": "#a48ad1"
+   },
+   {
+    "name": "Watermelon",
+    "hex": "#f46261"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "back": "1800x2400",
+   "label_outside": "300x300",
+   "sleeve_left": "450x1800",
+   "sleeve_right": "450x1800",
+   "embroidery_wrist_left": "600x900",
+   "embroidery_wrist_right": "600x900"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "thread_colors_wrist_left",
+   "thread_colors_wrist_right",
+   "notes",
+   "license_type"
+  ]
+ },
+ "898": {
+  "title": "Unisex Garment-Dyed Fleece Sweatpants | Comfort Colors 1469",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Blue Jean",
+    "hex": "#7a8998"
+   },
+   {
+    "name": "Espresso",
+    "hex": "#966f56"
+   },
+   {
+    "name": "Hydrangea",
+    "hex": "#e3f3ff"
+   },
+   {
+    "name": "Ivory",
+    "hex": "#fff4d9"
+   },
+   {
+    "name": "Peachy",
+    "hex": "#ffc0a2"
+   },
+   {
+    "name": "Pepper",
+    "hex": "#5c574f"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "leg_front_right": "525x2175",
+   "leg_front_left": "525x2175",
+   "leg_back_right": "525x2175",
+   "leg_back_left": "525x2175"
+  },
+  "options": [
+   "thread_colors_apparel",
+   "notes",
+   "license_type"
+  ]
+ },
+ "907": {
+  "title": "Unisex Garment-Dyed Tank Top | Comfort Colors 9360",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#1b1b1c"
+   },
+   {
+    "name": "Blossom",
+    "hex": "#ffd1d5"
+   },
+   {
+    "name": "Blue Jean",
+    "hex": "#707e8d"
+   },
+   {
+    "name": "Bright Salmon",
+    "hex": "#ff6f4b"
+   },
+   {
+    "name": "Butter",
+    "hex": "#ffe09e"
+   },
+   {
+    "name": "Chalky Mint",
+    "hex": "#a1f2dc"
+   },
+   {
+    "name": "Chambray",
+    "hex": "#d9f3ff"
+   },
+   {
+    "name": "Crimson",
+    "hex": "#bb5151"
+   },
+   {
+    "name": "Crunchberry",
+    "hex": "#ff748e"
+   },
+   {
+    "name": "Denim",
+    "hex": "#565a67"
+   },
+   {
+    "name": "Flo Blue",
+    "hex": "#5669be"
+   },
+   {
+    "name": "Granite",
+    "hex": "#a6abaa"
+   },
+   {
+    "name": "Grape",
+    "hex": "#644e6d"
+   },
+   {
+    "name": "Grey",
+    "hex": "#92928f"
+   },
+   {
+    "name": "Ice Blue",
+    "hex": "#7a9096"
+   },
+   {
+    "name": "Island Reef",
+    "hex": "#b8ffca"
+   },
+   {
+    "name": "Ivory",
+    "hex": "#fff4d9"
+   },
+   {
+    "name": "Lagoon Blue",
+    "hex": "#92dedb"
+   },
+   {
+    "name": "Light Green",
+    "hex": "#608267"
+   },
+   {
+    "name": "Melon",
+    "hex": "#ff9455"
+   },
+   {
+    "name": "Neon Red Orange",
+    "hex": "#ff6c5d"
+   },
+   {
+    "name": "Pepper",
+    "hex": "#53524e"
+   },
+   {
+    "name": "Royal Caribe",
+    "hex": "#2089c5"
+   },
+   {
+    "name": "Sandstone",
+    "hex": "#bbb69c"
+   },
+   {
+    "name": "Sapphire",
+    "hex": "#54c1d6"
+   },
+   {
+    "name": "Seafoam",
+    "hex": "#69a999"
+   },
+   {
+    "name": "Terracotta",
+    "hex": "#ff9364"
+   },
+   {
+    "name": "True Navy",
+    "hex": "#243b59"
+   },
+   {
+    "name": "Violet",
+    "hex": "#9a8ad2"
+   },
+   {
+    "name": "Watermelon",
+    "hex": "#d15c68"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL",
+   "XS"
+  ],
+  "placements": {
+   "front": "4200x4800",
+   "back": "4200x4800"
+  },
+  "options": [
+   "license_type"
+  ]
+ },
+ "959": {
+  "title": "Unisex Ringer T-Shirt | Next Level 3604",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Heather Gray / Black",
+    "hex": "#d5d5d5"
+   },
+   {
+    "name": "Natural / Black",
+    "hex": "#fff1cc"
+   },
+   {
+    "name": "Natural / Forest Green",
+    "hex": "#fff1cc"
+   },
+   {
+    "name": "Natural / Midnight Navy",
+    "hex": "#fff1cc"
+   },
+   {
+    "name": "White / Black",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "back": "1800x2400",
+   "label_inside": "450x450",
+   "label_outside": "450x450",
+   "sleeve_left": "600x525",
+   "sleeve_right": "600x525"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "thread_colors_sleeve_left_top",
+   "thread_colors_sleeve_right_top",
+   "notes",
+   "license_type"
+  ]
+ },
+ "969": {
+  "title": "Unisex Garment-Dyed Lightweight Fleece Hooded Sweatshirt I Comfort Colors 1467",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#272727"
+   },
+   {
+    "name": "Blue Jean",
+    "hex": "#9aa5b3"
+   },
+   {
+    "name": "Butter",
+    "hex": "#ffdc8f"
+   },
+   {
+    "name": "Grey",
+    "hex": "#9e9a96"
+   },
+   {
+    "name": "Hydrangea",
+    "hex": "#ebf6fd"
+   },
+   {
+    "name": "Ivory",
+    "hex": "#fef5df"
+   },
+   {
+    "name": "Peachy",
+    "hex": "#ffc7ad"
+   },
+   {
+    "name": "Pepper",
+    "hex": "#69635a"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "front_large": "2250x2700",
+   "back": "1800x2400",
+   "back_large": "2250x2700",
+   "sleeve_left": "450x1800",
+   "sleeve_right": "450x1800",
+   "label_outside": "450x450"
+  },
+  "options": [
+   "thread_colors_chest_center",
+   "thread_colors_chest_left",
+   "thread_colors_wrist_right",
+   "thread_colors_wrist_left",
+   "notes",
+   "license_type"
+  ]
+ },
+ "970": {
+  "title": "Unisex Garment-Dyed Hooded Sweatshirt I Comfort Colors 1567",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Blue Jean",
+    "hex": "#939dab"
+   },
+   {
+    "name": "Blue Spruce",
+    "hex": "#5a7260"
+   },
+   {
+    "name": "Crimson",
+    "hex": "#c75b5b"
+   },
+   {
+    "name": "Denim",
+    "hex": "#6c6e7a"
+   },
+   {
+    "name": "Flo Blue",
+    "hex": "#8695d4"
+   },
+   {
+    "name": "Grey",
+    "hex": "#9e9a96"
+   },
+   {
+    "name": "Light Green",
+    "hex": "#709875"
+   },
+   {
+    "name": "Pepper",
+    "hex": "#5c574f"
+   },
+   {
+    "name": "Seafoam",
+    "hex": "#79b59f"
+   },
+   {
+    "name": "True Navy",
+    "hex": "#2c334e"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "2100x2100",
+   "back": "1800x2400",
+   "back_large": "2250x2700",
+   "sleeve_left": "450x1800",
+   "sleeve_right": "450x1800",
+   "label_outside": "300x300"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "notes",
+   "license_type"
+  ]
+ },
+ "971": {
+  "title": "Unisex Garment-Dyed Lightweight Fleece Crewneck Sweatshirt I Comfort Colors 1466",
+  "type": "T-SHIRT",
+  "techniques": [
+   "EMBROIDERY",
+   "DTG"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#272727"
+   },
+   {
+    "name": "Blue Jean",
+    "hex": "#9aa5b3"
+   },
+   {
+    "name": "Butter",
+    "hex": "#ffdc8f"
+   },
+   {
+    "name": "Crimson",
+    "hex": "#c25d57"
+   },
+   {
+    "name": "Espresso",
+    "hex": "#966f56"
+   },
+   {
+    "name": "Ivory",
+    "hex": "#fff4d9"
+   },
+   {
+    "name": "Peachy",
+    "hex": "#ffc7ad"
+   },
+   {
+    "name": "Pepper",
+    "hex": "#69655e"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   },
+   {
+    "name": "Yam",
+    "hex": "#d2804e"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "front_large": "2250x2700",
+   "back": "1800x2400",
+   "back_large": "2250x2700",
+   "sleeve_left": "450x1800",
+   "sleeve_right": "450x1800",
+   "label_outside": "450x450"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "notes",
+   "license_type"
+  ]
+ },
+ "975": {
+  "title": "Unisex Urban Hoodie Garment Dyed | Lane Seven LS16001GD",
+  "type": "T-SHIRT",
+  "techniques": [
+   "EMBROIDERY",
+   "DTG"
+  ],
+  "colors": [
+   {
+    "name": "Pigment Burro",
+    "hex": "#deaa76"
+   },
+   {
+    "name": "Pigment Lunar Rock",
+    "hex": "#fff9ec"
+   },
+   {
+    "name": "Pigment Midnight Navy",
+    "hex": "#434c4c"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "2100x2100",
+   "back": "1800x2400",
+   "back_large": "2250x2700",
+   "sleeve_left": "450x1800",
+   "sleeve_right": "450x1800",
+   "label_outside": "450x450"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "thread_colors_wrist_left",
+   "thread_colors_wrist_right",
+   "notes",
+   "license_type"
+  ]
+ },
+ "1472": {
+  "title": "Unisex Garment Dyed Creator 2.0 Vintage T-Shirt | Stanley/Stella SATU041",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG"
+  ],
+  "colors": [
+   {
+    "name": "G. Dyed Anthracite",
+    "hex": "#534f4e"
+   },
+   {
+    "name": "G. Dyed Black Rock",
+    "hex": "#2b2928"
+   },
+   {
+    "name": "G. Dyed Deep Teal",
+    "hex": "#586b7d"
+   },
+   {
+    "name": "G. Dyed Green Bay",
+    "hex": "#7a8f8a"
+   },
+   {
+    "name": "G. Dyed Kaffa Coffee",
+    "hex": "#a7847d"
+   },
+   {
+    "name": "G. Dyed Misty Grey",
+    "hex": "#a4a8a4"
+   },
+   {
+    "name": "G. Dyed Stone",
+    "hex": "#d4cdb7"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "1800x2400",
+   "front_large": "2250x2700",
+   "back": "1800x2400",
+   "back_large": "2250x2700",
+   "label_outside": "450x450",
+   "sleeve_left": "600x525",
+   "sleeve_right": "600x525"
+  },
+  "options": [
+   "license_type"
+  ]
+ },
+ "1589": {
+  "title": "Unisex Garment-Dyed Heavyweight Cotton Tee | American Apparel 1301GD",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Faded Black",
+    "hex": "#55565a"
+   },
+   {
+    "name": "Faded Brown",
+    "hex": "#897561"
+   },
+   {
+    "name": "Faded Cream",
+    "hex": "#FFF9E9"
+   },
+   {
+    "name": "Faded Mustard",
+    "hex": "#D0AB73"
+   },
+   {
+    "name": "Faded Navy",
+    "hex": "#4F5C71"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "4200x4800",
+   "back": "4200x4800",
+   "label_inside_dtf": "750x750"
+  },
+  "options": [
+   "license_type"
+  ]
+ },
+ "1591": {
+  "title": "Unisex Garment-Dyed Quarter-Zip Sweatshirt | Comfort Colors 1580",
+  "type": "DTFILM",
+  "techniques": [
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Blue Jean",
+    "hex": "#788CA1"
+   },
+   {
+    "name": "Crimson",
+    "hex": "#B66A74"
+   },
+   {
+    "name": "Flo Blue",
+    "hex": "#7682C2"
+   },
+   {
+    "name": "Grey",
+    "hex": "#7A7F79"
+   },
+   {
+    "name": "Pepper",
+    "hex": "#5F605B"
+   },
+   {
+    "name": "True Navy",
+    "hex": "#183047"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "chest_left_dtf": "1181x1181",
+   "chest_right_dtf": "1181x1181",
+   "back": "4200x4800"
+  },
+  "options": [
+   "license_type"
+  ]
+ },
+ "1626": {
+  "title": "Unisex Garment-Dyed Drop-Shoulder T-Shirt | Shaka Wear SHGDD",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#000000"
+   },
+   {
+    "name": "Cream",
+    "hex": "#f3eee1"
+   },
+   {
+    "name": "Mocha",
+    "hex": "#77574c"
+   },
+   {
+    "name": "Oatmeal",
+    "hex": "#b7a99a"
+   },
+   {
+    "name": "Peach",
+    "hex": "#ff7276"
+   },
+   {
+    "name": "Shadow",
+    "hex": "#4a4748"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "4500x5100",
+   "back": "4500x5100"
+  },
+  "options": [
+   "license_type"
+  ]
+ },
+ "1659": {
+  "title": "Unisex Garment-Dyed Chaser Vintage Hoodie | Stanley/Stella SASU042/STSU282",
+  "type": "DTFILM",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "G. Dyed Black Rock",
+    "hex": "#303335"
+   },
+   {
+    "name": "G. Dyed Blue Grey",
+    "hex": "#82889e"
+   },
+   {
+    "name": "G. Dyed Blush",
+    "hex": "#dfb6b5"
+   },
+   {
+    "name": "G. Dyed Misty Grey",
+    "hex": "#9ba19d"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "embroidery_chest_left": "1200x1200",
+   "embroidery_chest_center": "1200x1200",
+   "embroidery_large_front": "3000x1800",
+   "embroidery_wrist_left": "600x900",
+   "embroidery_wrist_right": "600x900",
+   "label_inside_dtf": "750x750"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_center",
+   "thread_colors_wrist_left",
+   "thread_colors_wrist_right",
+   "notes",
+   "license_type"
+  ]
+ },
+ "1662": {
+  "title": "Unisex Vintage Garment-Dyed Easer Sweatshirt | Stanley/Stella SASU043",
+  "type": "DTFILM",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "G. Dyed Black Rock",
+    "hex": "#2f3534"
+   },
+   {
+    "name": "G. Dyed Blue Grey",
+    "hex": "#83889f"
+   },
+   {
+    "name": "G. Dyed Blush",
+    "hex": "#dcb3b2"
+   },
+   {
+    "name": "G. Dyed Misty Grey",
+    "hex": "#9ba19e"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL",
+   "XS"
+  ],
+  "placements": {
+   "embroidery_chest_left": "1200x1200",
+   "embroidery_chest_right": "1200x1200",
+   "embroidery_chest_center": "1200x1200",
+   "embroidery_large_front": "3000x1800",
+   "embroidery_wrist_left": "600x900",
+   "embroidery_wrist_right": "600x900"
+  },
+  "options": [
+   "thread_colors_chest_left",
+   "thread_colors_chest_right",
+   "thread_colors_chest_center",
+   "thread_colors_wrist_left",
+   "thread_colors_wrist_right",
+   "notes",
+   "license_type"
+  ]
+ },
+ "1722": {
+  "title": "Men's Staple Ringer Tee | AS Colour 5053",
+  "type": "T-SHIRT",
+  "techniques": [
+   "DTG"
+  ],
+  "colors": [
+   {
+    "name": "White/Black",
+    "hex": "#ffffff"
+   },
+   {
+    "name": "White/Navy",
+    "hex": "#ffffff"
+   },
+   {
+    "name": "White/Red",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "3XL",
+   "L",
+   "M",
+   "S",
+   "XL"
+  ],
+  "placements": {
+   "front": "3600x4110",
+   "back": "3600x4110"
+  },
+  "options": [
+   "license_type"
+  ]
+ }
+}
