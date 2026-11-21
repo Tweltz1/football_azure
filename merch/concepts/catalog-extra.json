@@ -101,37 +101,32 @@
    "license_type"
   ]
  },
- "91": {
-  "title": "Flat Bill Cap | Yupoong 6007",
-  "type": "YuPoong 6007 | YP Classics 5-Panel Cotton Twill Snapback Cap",
+ "81": {
+  "title": "Knit Beanie | Otto Cap 82-480",
+  "type": "Otto Cap 82-480 | 12\" Classic Knit Beanie w/Cuff",
   "techniques": [
-   "EMBROIDERY",
-   "DTFILM"
+   "EMBROIDERY"
   ],
   "colors": [
    {
     "name": "Black",
-    "hex": "#24292f"
+    "hex": "#181818"
    },
    {
-    "name": "Black/ Grey",
-    "hex": "#24292f"
+    "name": "Dark green",
+    "hex": "#2c4632"
    },
    {
-    "name": "Black/ Red",
-    "hex": "#25292e"
+    "name": "Gray",
+    "hex": "#a4a4a4"
    },
    {
-    "name": "Grey",
-    "hex": "#9d9ca1"
+    "name": "Navy",
+    "hex": "#161f29"
    },
    {
     "name": "Red",
-    "hex": "#b81530"
-   },
-   {
-    "name": "Royal Blue",
-    "hex": "#004074"
+    "hex": "#aa0505"
    },
    {
     "name": "White",
@@ -142,7 +137,74 @@
    "One size"
   ],
   "placements": {
-   "embroidery_front_large": "1890x765",
+   "embroidery_front": "1500x525"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "notes",
+   "license_type"
+  ]
+ },
+ "140": {
+  "title": "Closed-Back Structured Cap | Flexfit 6277",
+  "type": "Flexfit 6277 | Wooly Combed Cap",
+  "techniques": [
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#1b1b1b"
+   },
+   {
+    "name": "Dark Grey",
+    "hex": "#554e46"
+   },
+   {
+    "name": "Dark Navy",
+    "hex": "#171822"
+   },
+   {
+    "name": "Grey",
+    "hex": "#717171"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#bdaa97"
+   },
+   {
+    "name": "Multicam Black",
+    "hex": "#131211"
+   },
+   {
+    "name": "Multicam Green",
+    "hex": "#585c30"
+   },
+   {
+    "name": "Olive",
+    "hex": "#483d20"
+   },
+   {
+    "name": "Red",
+    "hex": "#bf0a1b"
+   },
+   {
+    "name": "Royal Blue",
+    "hex": "#0b3466"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "L/XL",
+   "S/M"
+  ],
+  "placements": {
+   "embroidery_front_large": "1770x600",
    "embroidery_back": "600x300",
    "embroidery_right": "600x300",
    "embroidery_left": "600x300"
@@ -160,177 +222,70 @@
    "license_type"
   ]
  },
- "92": {
-  "title": "5 Panel Cap | Yupoong 7005",
-  "type": "YuPoong 7005 | YP Classics Jockey Cap",
+ "221": {
+  "title": "All-Over Print Capri Leggings",
+  "type": "All-Over Print Capri Leggings",
   "techniques": [
-   "EMBROIDERY"
+   "CUT-SEW"
   ],
   "colors": [
-   {
-    "name": "Black",
-    "hex": "#262626"
-   },
-   {
-    "name": "Green Tiger Camo",
-    "hex": "#5e5f56"
-   },
-   {
-    "name": "Grey",
-    "hex": "#7b7979"
-   },
-   {
-    "name": "Khaki",
-    "hex": "#ffd096"
-   },
-   {
-    "name": "Navy",
-    "hex": "#222942"
-   },
-   {
-    "name": "Olive",
-    "hex": "#625c43"
-   },
-   {
-    "name": "Red",
-    "hex": "#ff0024"
-   }
-  ],
-  "sizes": [
-   "One size"
-  ],
-  "placements": {
-   "embroidery_front": "1200x525",
-   "embroidery_back": "600x300"
-  },
-  "options": [
-   "embroidery_type",
-   "thread_colors",
-   "thread_colors_3d",
-   "thread_colors_back",
-   "notes",
-   "license_type"
-  ]
- },
- "99": {
-  "title": "Classic Snapback | Yupoong 6089M",
-  "type": "YuPoong 6089M | YP Classics Premium Snapback Cap",
-  "techniques": [
-   "EMBROIDERY"
-  ],
-  "colors": [
-   {
-    "name": "Black",
-    "hex": "#2a2a2a"
-   },
-   {
-    "name": "Black/ Neon Pink",
-    "hex": "#2a2a2a"
-   },
-   {
-    "name": "Black/ Red",
-    "hex": "#2a2a2a"
-   },
-   {
-    "name": "Black/ Silver",
-    "hex": "#2a2a2a"
-   },
-   {
-    "name": "Black/ Teal",
-    "hex": "#2a2a2a"
-   },
-   {
-    "name": "Dark Grey",
-    "hex": "#666061"
-   },
-   {
-    "name": "Dark Navy",
-    "hex": "#15293a"
-   },
-   {
-    "name": "Green Camo",
-    "hex": "#4d573e"
-   },
-   {
-    "name": "Heather Grey",
-    "hex": "#A8A59E"
-   },
-   {
-    "name": "Heather Grey/ Navy",
-    "hex": "#A8A59E"
-   },
-   {
-    "name": "Heather Grey/ Red",
-    "hex": "#A8A59E"
-   },
-   {
-    "name": "Heather/Black",
-    "hex": "#A8A59E"
-   },
-   {
-    "name": "Maroon",
-    "hex": "#651929"
-   },
-   {
-    "name": "Natural/ Black",
-    "hex": "#f5eee1"
-   },
-   {
-    "name": "Navy",
-    "hex": "#303044"
-   },
-   {
-    "name": "Navy/ Red",
-    "hex": "#303044"
-   },
-   {
-    "name": "Red",
-    "hex": "#dd0b2e"
-   },
-   {
-    "name": "Royal Blue",
-    "hex": "#10337a"
-   },
-   {
-    "name": "Silver",
-    "hex": "#9f9da5"
-   },
-   {
-    "name": "Spruce",
-    "hex": "#183e41"
-   },
    {
     "name": "White",
     "hex": "#ffffff"
    }
   ],
   "sizes": [
-   "One size"
+   "L",
+   "M",
+   "S",
+   "XL",
+   "XS"
   ],
   "placements": {
-   "embroidery_front_large": "1890x765",
-   "embroidery_back": "600x300",
-   "embroidery_right": "600x300",
-   "embroidery_left": "600x300",
-   "addon_embroidery_front": "675x675"
+   "default": "7050x5250",
+   "label_inside": "375x150"
   },
   "options": [
-   "embroidery_type",
-   "thread_colors_3d",
-   "thread_colors_front_large",
-   "thread_colors_3d_front_large",
-   "thread_colors_back",
-   "thread_colors_right",
-   "thread_colors_left",
-   "addon_thread_colors_outline_front",
-   "addon_thread_colors_front",
+   "stitch_color",
    "notes",
    "license_type"
   ]
  },
- "100": {
-  "title": "5 Panel Trucker Cap | Yupoong 6006",
-  "type": "YuPoong 6006 | YP Classics Classic Trucker Cap",
+ "280": {
+  "title": "All-Over Print Yoga Capri Leggings",
+  "type": "All-Over Print Yoga Capri Leggings",
+  "techniques": [
+   "CUT-SEW"
+  ],
+  "colors": [
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "L",
+   "M",
+   "S",
+   "XL",
+   "XS"
+  ],
+  "placements": {
+   "default": "7050x4950",
+   "belt_front": "3000x1050",
+   "belt_back": "3000x1050",
+   "label_inside": "375x150"
+  },
+  "options": [
+   "stitch_color",
+   "inside_pocket",
+   "notes",
+   "license_type"
+  ]
+ },
+ "327": {
+  "title": "Vintage Cap | Otto Cap 18-1248",
+  "type": "Otto Cap 18-1248 | 6 Panel Low Profile Dad Hat",
   "techniques": [
    "EMBROIDERY",
    "DTFILM"
@@ -338,63 +293,37 @@
   "colors": [
    {
     "name": "Black",
-    "hex": "#24292f"
+    "hex": "#262626"
    },
    {
-    "name": "Black/ White",
-    "hex": "#23292e"
-   },
-   {
-    "name": "Black/ White/ Black",
-    "hex": "#e3e7ed"
-   },
-   {
-    "name": "Charcoal",
-    "hex": "#554b56"
-   },
-   {
-    "name": "Charcoal/ White",
-    "hex": "#554b56"
-   },
-   {
-    "name": "Kelly/ White/ Kelly",
-    "hex": "#e3e7ed"
+    "name": "Maroon",
+    "hex": "#7f3f4a"
    },
    {
     "name": "Navy",
-    "hex": "#36435d"
+    "hex": "#3e4657"
    },
    {
-    "name": "Navy/ White",
-    "hex": "#36435d"
+    "name": "Charcoal Grey",
+    "hex": "#a19f9e"
    },
    {
-    "name": "Navy/ White/ Navy",
-    "hex": "#e3e7ed"
+    "name": "Pink",
+    "hex": "#ff7fad"
    },
    {
-    "name": "Red/ White/ Red",
-    "hex": "#e3e7ed"
-   },
-   {
-    "name": "Royal/ White/ Royal",
-    "hex": "#e3e7ed"
-   },
-   {
-    "name": "Silver/ Black",
-    "hex": "#c7bdb2"
-   },
-   {
-    "name": "White",
-    "hex": "#ffffff"
+    "name": "Red",
+    "hex": "#d33a46"
    }
   ],
   "sizes": [
    "One size"
   ],
   "placements": {
-   "embroidery_front_large": "1890x765",
-   "addon_embroidery_front": "675x675"
+   "embroidery_front_large": "1650x600",
+   "embroidery_back": "600x300",
+   "embroidery_left": "600x300",
+   "embroidery_right": "600x300"
   },
   "options": [
    "embroidery_type",
@@ -402,60 +331,235 @@
    "thread_colors_3d",
    "thread_colors_front_large",
    "thread_colors_3d_front_large",
-   "addon_thread_colors_outline_front",
-   "addon_thread_colors_front",
+   "thread_colors_back",
+   "thread_colors_left",
+   "thread_colors_right",
    "notes",
    "license_type"
   ]
  },
- "422": {
-  "title": "Snapback Trucker Cap | Richardson 112",
-  "type": "Richardson 112 | Trucker Hat",
+ "396": {
+  "title": "Distressed Dad Hat | Otto Cap 104-1018",
+  "type": "Otto Cap 104-1018 | 6 Panel Low Profile Dad Hat",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#262626"
+   },
+   {
+    "name": "Charcoal Grey",
+    "hex": "#73726e"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#f6e6c6"
+   },
+   {
+    "name": "Navy",
+    "hex": "#374859"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front_large": "1650x600",
+   "embroidery_back": "600x300",
+   "embroidery_left": "600x300",
+   "embroidery_right": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_front_large",
+   "thread_colors_3d_front_large",
+   "thread_colors_back",
+   "thread_colors_left",
+   "thread_colors_right",
+   "notes",
+   "license_type"
+  ]
+ },
+ "463": {
+  "title": "Denim Hat | Otto Cap 18-204",
+  "type": "Otto Cap 18-204 | 6 Panel Low Profile Dad Hat",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#0d0d0d"
+   },
+   {
+    "name": "Blue",
+    "hex": "#5c839a"
+   },
+   {
+    "name": "Light Blue",
+    "hex": "#c9dddc"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front_large": "1650x600",
+   "embroidery_back": "600x300",
+   "embroidery_left": "600x300",
+   "embroidery_right": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_front_large",
+   "thread_colors_3d_front_large",
+   "thread_colors_back",
+   "thread_colors_left",
+   "thread_colors_right",
+   "notes",
+   "license_type"
+  ]
+ },
+ "481": {
+  "title": "Pastel Baseball Hat | Beechfield B653",
+  "type": "Beechfield B653 | Pastel Baseball Hat",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Pastel Lemon",
+    "hex": "#fffbe1"
+   },
+   {
+    "name": "Pastel Mint",
+    "hex": "#f8fff8"
+   },
+   {
+    "name": "Pastel Pink",
+    "hex": "#fff0ef"
+   },
+   {
+    "name": "Beige",
+    "hex": "#efe7d4"
+   },
+   {
+    "name": "Pastel Blue",
+    "hex": "#e6f2fa"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front_large": "1650x600",
+   "embroidery_back": "600x300",
+   "embroidery_right": "600x300",
+   "embroidery_left": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_front_large",
+   "thread_colors_3d_front_large",
+   "thread_colors_back",
+   "thread_colors_right",
+   "thread_colors_left",
+   "notes",
+   "license_type"
+  ]
+ },
+ "491": {
+  "title": "Organic Baseball Cap | Econscious EC7000",
+  "type": "Econscious EC7000 | Baseball Hat",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#0e0e0e"
+   },
+   {
+    "name": "Charcoal",
+    "hex": "#4c4746"
+   },
+   {
+    "name": "Jungle",
+    "hex": "#928355"
+   },
+   {
+    "name": "Oyster",
+    "hex": "#f3e6cf"
+   },
+   {
+    "name": "Pacific",
+    "hex": "#061226"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front_large": "1650x600",
+   "embroidery_back": "600x300",
+   "embroidery_left": "600x300",
+   "embroidery_right": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_front_large",
+   "thread_colors_3d_front_large",
+   "thread_colors_back",
+   "thread_colors_left",
+   "thread_colors_right",
+   "notes",
+   "license_type"
+  ]
+ },
+ "501": {
+  "title": "Denim Bucket Hat",
+  "type": "Hat",
   "techniques": [
    "EMBROIDERY"
   ],
   "colors": [
    {
-    "name": "Black / Charcoal",
-    "hex": "#000000"
+    "name": "Black Denim",
+    "hex": "#181818"
    },
    {
-    "name": "Black / White",
-    "hex": "#101010"
+    "name": "Classic / Light Denim",
+    "hex": "#0c223c"
    },
    {
-    "name": "Black",
-    "hex": "#101010"
-   },
-   {
-    "name": "Charcoal/Black",
-    "hex": "#616161"
-   },
-   {
-    "name": "Heather Grey / Black",
-    "hex": "#afafb3"
-   },
-   {
-    "name": "Heather Grey/White",
-    "hex": "#a3a3a3"
-   },
-   {
-    "name": "Loden",
-    "hex": "#8e845e"
+    "name": "Light Denim",
+    "hex": "#547da0"
    }
   ],
   "sizes": [
    "One size"
   ],
   "placements": {
-   "embroidery_front_large": "1770x600"
+   "embroidery_front": "1650x600"
   },
   "options": [
    "embroidery_type",
    "thread_colors",
    "thread_colors_3d",
-   "thread_colors_front_large",
-   "thread_colors_3d_front_large",
    "notes",
    "license_type"
   ]
@@ -490,6 +594,265 @@
    "thread_colors_patch_front",
    "notes",
    "thread_colors_outline",
+   "license_type"
+  ]
+ },
+ "532": {
+  "title": "Corduroy Hat | Beechfield B682",
+  "type": "Beechfield B682 | Heritage Cord Cap",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#0f0f0f"
+   },
+   {
+    "name": "Camel",
+    "hex": "#b3753d"
+   },
+   {
+    "name": "Dark Olive",
+    "hex": "#374225"
+   },
+   {
+    "name": "Oxford Navy",
+    "hex": "#181e42"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1200x525",
+   "embroidery_back": "600x300",
+   "embroidery_left": "600x300",
+   "embroidery_right": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_back",
+   "thread_colors_left",
+   "thread_colors_right",
+   "notes",
+   "license_type"
+  ]
+ },
+ "547": {
+  "title": "Organic Bucket Hat",
+  "type": "Capstone | Organic Bucket Hat",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Bio White",
+    "hex": "#ffffff"
+   },
+   {
+    "name": "Black",
+    "hex": "#0c0c0c"
+   },
+   {
+    "name": "Dill",
+    "hex": "#6f8269"
+   },
+   {
+    "name": "Slate Blue",
+    "hex": "#87b0ca"
+   },
+   {
+    "name": "Stone",
+    "hex": "#e4c9b0"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1650x600"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "notes",
+   "license_type"
+  ]
+ },
+ "548": {
+  "title": "Distressed Denim Bucket Hat",
+  "type": "Capstone | Distressed Denim Bucket Hat",
+  "techniques": [
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Classic / Light Denim",
+    "hex": "#0c223c"
+   },
+   {
+    "name": "Classic Denim",
+    "hex": "#0c223c"
+   },
+   {
+    "name": "Light Denim",
+    "hex": "#547da0"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1650x600"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "notes",
+   "license_type"
+  ]
+ },
+ "560": {
+  "title": "Fitted Baseball Cap | Newhattan 1400",
+  "type": "Newhattan 1400 | Stone-Washed Baseball Cap",
+  "techniques": [
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#191919"
+   },
+   {
+    "name": "Burgundy",
+    "hex": "#821f38"
+   },
+   {
+    "name": "Charcoal",
+    "hex": "#59555c"
+   },
+   {
+    "name": "Copper",
+    "hex": "#c47e49"
+   },
+   {
+    "name": "Dark Brown",
+    "hex": "#6B4A44"
+   },
+   {
+    "name": "Dark Green",
+    "hex": "#3c5247"
+   },
+   {
+    "name": "Denim Blue",
+    "hex": "#56585D"
+   },
+   {
+    "name": "Grey",
+    "hex": "#B9ABA6"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#DFC0A2"
+   },
+   {
+    "name": "Mulberry",
+    "hex": "#AC3A65"
+   },
+   {
+    "name": "Navy",
+    "hex": "#2D3344"
+   },
+   {
+    "name": "Olive",
+    "hex": "#756A5C"
+   },
+   {
+    "name": "Orange",
+    "hex": "#FF4D30"
+   },
+   {
+    "name": "Putty",
+    "hex": "#ebdbca"
+   },
+   {
+    "name": "Red",
+    "hex": "#de0034"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1200x525",
+   "embroidery_back": "600x300",
+   "embroidery_right": "600x300",
+   "embroidery_left": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_back",
+   "thread_colors_right",
+   "thread_colors_left",
+   "notes",
+   "license_type"
+  ]
+ },
+ "596": {
+  "title": "Closed-Back Trucker Cap | Flexfit 6511",
+  "type": "Flexfit 6511 | Trucker Mesh Cap",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#181818"
+   },
+   {
+    "name": "Black/White",
+    "hex": "#181818"
+   },
+   {
+    "name": "Caramel",
+    "hex": "#d37941"
+   },
+   {
+    "name": "Charcoal",
+    "hex": "#6b6b6b"
+   },
+   {
+    "name": "Navy",
+    "hex": "#3f5666"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front_large": "1770x600"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_front_large",
+   "thread_colors_3d_front_large",
+   "notes",
    "license_type"
   ]
  },
@@ -620,6 +983,121 @@
    "license_type"
   ]
  },
+ "638": {
+  "title": "Adidas Dad Hat",
+  "type": "Adidas HA9264 | Dad Hat",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#0b0b0b"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front_large": "1770x600",
+   "embroidery_back": "600x300",
+   "embroidery_left": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_front_large",
+   "thread_colors_3d_front_large",
+   "thread_colors_back",
+   "thread_colors_left",
+   "notes",
+   "license_type"
+  ]
+ },
+ "680": {
+  "title": "Camouflage Trucker Hat | Otto Cap 105-1247",
+  "type": "Otto Cap 105-1247 | Camouflage 6 Panel Low Profile Mesh Back Trucker Hat",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Camo/Black",
+    "hex": "#576352"
+   },
+   {
+    "name": "Camo/Brown",
+    "hex": "#696651"
+   },
+   {
+    "name": "Camo/Olive",
+    "hex": "#bbafa8"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front_large": "1770x600"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_front_large",
+   "thread_colors_3d_front_large",
+   "notes",
+   "license_type"
+  ]
+ },
+ "792": {
+  "title": "All-Over Print Recycled Unisex Baseball Jersey",
+  "type": "All-Over Print Recycled Unisex Baseball Jersey",
+  "techniques": [
+   "CUT-SEW"
+  ],
+  "colors": [
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "2XL",
+   "2XS",
+   "3XL",
+   "4XL",
+   "5XL",
+   "6XL",
+   "L",
+   "M",
+   "S",
+   "XL",
+   "XS"
+  ],
+  "placements": {
+   "front": "5700x6900",
+   "back": "5700x6900",
+   "sleeve_right": "5700x2250",
+   "sleeve_left": "5700x2250",
+   "details": "5700x6900",
+   "label_inside": "375x150",
+   "label_outside_front": "450x450",
+   "label_outside_back": "450x450"
+  },
+  "options": [
+   "stitch_color",
+   "notes",
+   "license_type"
+  ]
+ },
  "807": {
   "title": "Golf Rope Cap | Big Accessories BA671",
   "type": "Big Accessories BA671 | Golf Cap",
@@ -705,6 +1183,63 @@
    "license_type"
   ]
  },
+ "864": {
+  "title": "Low Profile Baseball Cap | Otto Cap 18-253",
+  "type": "Otto Cap 18-253 | 6 Panel Low Profile Baseball Cap",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#101010"
+   },
+   {
+    "name": "Dark Green",
+    "hex": "#22331c"
+   },
+   {
+    "name": "Dark Navy",
+    "hex": "#232531"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#fdddb2"
+   },
+   {
+    "name": "Red",
+    "hex": "#c80924"
+   },
+   {
+    "name": "Royal",
+    "hex": "#273171"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front_large": "1650x600",
+   "embroidery_back": "600x300",
+   "embroidery_right": "600x300",
+   "embroidery_left": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors_front_large",
+   "thread_colors_3d_front_large",
+   "thread_colors_back",
+   "thread_colors_right",
+   "thread_colors_left",
+   "notes",
+   "license_type"
+  ]
+ },
  "952": {
   "title": "5 Panel Mid-Profile Baseball Cap | Otto Cap 31-069",
   "type": "Otto Cap 31-069 | 5 Panel Mid Profile Baseball Cap",
@@ -759,6 +1294,67 @@
    "license_type"
   ]
  },
+ "961": {
+  "title": "Otto Cap 18-772 | Garment-Washed Baseball Cap",
+  "type": "Otto Cap 18-772 | 6 Panel Low Profile Dad Hat",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#080808"
+   },
+   {
+    "name": "Dark Green/Khaki",
+    "hex": "#fae2bb"
+   },
+   {
+    "name": "Dusty Rose",
+    "hex": "#f3caca"
+   },
+   {
+    "name": "Gray",
+    "hex": "#c8bdbd"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#fae2bb"
+   },
+   {
+    "name": "Maroon",
+    "hex": "#772c38"
+   },
+   {
+    "name": "Navy",
+    "hex": "#272c3e"
+   },
+   {
+    "name": "Navy/Khaki",
+    "hex": "#fae2bb"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1650x600",
+   "embroidery_back": "600x300",
+   "embroidery_left": "600x300",
+   "embroidery_right": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_back",
+   "thread_colors_left",
+   "thread_colors_right",
+   "notes",
+   "license_type"
+  ]
+ },
  "1439": {
   "title": "Embroidered Tactical Patches",
   "type": "Patch | Embroidered | Tactical",
@@ -788,6 +1384,440 @@
    "thread_colors_patch_front",
    "notes",
    "thread_colors_outline",
+   "license_type"
+  ]
+ },
+ "1574": {
+  "title": "Surf Cap | AS Colour 1114",
+  "type": "Surf Cap | AS Colour 1114",
+  "techniques": [
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Army",
+    "hex": "#383814"
+   },
+   {
+    "name": "Atlantic",
+    "hex": "#003f45"
+   },
+   {
+    "name": "Black",
+    "hex": "#000000"
+   },
+   {
+    "name": "Bone",
+    "hex": "#dad3c5"
+   },
+   {
+    "name": "Ecru",
+    "hex": "#dccdb7"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#a48b4c"
+   },
+   {
+    "name": "Mineral",
+    "hex": "#7f8f8f"
+   },
+   {
+    "name": "Navy",
+    "hex": "#080d16"
+   },
+   {
+    "name": "Petrol Blue",
+    "hex": "#1c2431"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "front": "1350x705"
+  },
+  "options": [
+   "license_type"
+  ]
+ },
+ "1586": {
+  "title": "Adidas Fundamental Alliance Cap | AH607",
+  "type": "Adidas Fundamental Alliance Cap | AH607",
+  "techniques": [
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black / White",
+    "hex": "#151515"
+   },
+   {
+    "name": "Team Dark Grey / White",
+    "hex": "#484a4e"
+   },
+   {
+    "name": "Team Navy Blue / White",
+    "hex": "#1e2a44"
+   },
+   {
+    "name": "White / Black",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "front": "1417x744"
+  },
+  "options": [
+   "license_type"
+  ]
+ },
+ "1593": {
+  "title": "Access Cap | AS Colour 1130",
+  "type": "AS Colour 1130 | Access Cap",
+  "techniques": [
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Atlantic",
+    "hex": "#01545a"
+   },
+   {
+    "name": "Black",
+    "hex": "#0d0d0d"
+   },
+   {
+    "name": "Bone",
+    "hex": "#ded8cc"
+   },
+   {
+    "name": "Coal",
+    "hex": "#414245"
+   },
+   {
+    "name": "Cypress",
+    "hex": "#646d5c"
+   },
+   {
+    "name": "Ecru",
+    "hex": "#e7ded0"
+   },
+   {
+    "name": "Hazy Pink",
+    "hex": "#a67c73"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#b39b78"
+   },
+   {
+    "name": "Midnight Blue",
+    "hex": "#393c51"
+   },
+   {
+    "name": "Walnut",
+    "hex": "#533e32"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "front": "1200x675"
+  },
+  "options": [
+   "license_type"
+  ]
+ },
+ "1594": {
+  "title": "Class Two-Tone Cap | AS Colour 1154",
+  "type": "AS Colour 1154 | Class Two-Tone Cap",
+  "techniques": [
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black / Natural",
+    "hex": "#0d0d0d"
+   },
+   {
+    "name": "Forest / Walnut",
+    "hex": "#20422a"
+   },
+   {
+    "name": "Khaki / Black",
+    "hex": "#c0a576"
+   },
+   {
+    "name": "Light Grey / Midnight",
+    "hex": "#d4cbc6"
+   },
+   {
+    "name": "Midnight / Cardinal",
+    "hex": "#2d2f47"
+   },
+   {
+    "name": "Midnight / Light Grey",
+    "hex": "#2d2f47"
+   },
+   {
+    "name": "Natural / Army",
+    "hex": "#f9f6eb"
+   },
+   {
+    "name": "Natural / Black",
+    "hex": "#f9f6eb"
+   },
+   {
+    "name": "Natural / Cardinal",
+    "hex": "#f9f6eb"
+   },
+   {
+    "name": "Natural / Charlotte",
+    "hex": "#f9f6eb"
+   },
+   {
+    "name": "Natural / Forest",
+    "hex": "#f9f6eb"
+   },
+   {
+    "name": "Natural / Liberty",
+    "hex": "#f9f6eb"
+   },
+   {
+    "name": "Natural / Midnight",
+    "hex": "#f9f6eb"
+   },
+   {
+    "name": "Natural / Shadow",
+    "hex": "#f9f6eb"
+   },
+   {
+    "name": "Natural / Walnut",
+    "hex": "#f9f6eb"
+   },
+   {
+    "name": "Shadow / Black",
+    "hex": "#8c8d88"
+   },
+   {
+    "name": "Walnut / Black",
+    "hex": "#7f664e"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "front": "1350x705"
+  },
+  "options": [
+   "license_type"
+  ]
+ },
+ "1647": {
+  "title": "Classic Dad Hat | Propper",
+  "type": "Classic Dad Hat | Propper",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#000000"
+   },
+   {
+    "name": "Grey",
+    "hex": "#66656c"
+   },
+   {
+    "name": "Khaki",
+    "hex": "#043424"
+   },
+   {
+    "name": "Navy",
+    "hex": "#112240"
+   },
+   {
+    "name": "White",
+    "hex": "#ffffff"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1650x600",
+   "embroidery_back": "600x300",
+   "embroidery_right": "600x300",
+   "embroidery_left": "600x300"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_back",
+   "thread_colors_right",
+   "thread_colors_left",
+   "notes"
+  ]
+ },
+ "1663": {
+  "title": "Sunwashed Cap | Comfort Colors CCSC0",
+  "type": "Comfort Colors CCSC0 | Sunwashed Cap",
+  "techniques": [
+   "DTFILM",
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Bay",
+    "hex": "#c2cfc5"
+   },
+   {
+    "name": "Blossom",
+    "hex": "#ffc7dc"
+   },
+   {
+    "name": "Butter",
+    "hex": "#f5e29e"
+   },
+   {
+    "name": "Chalky Mint",
+    "hex": "#66c1c3"
+   },
+   {
+    "name": "Chambray",
+    "hex": "#bfdceb"
+   },
+   {
+    "name": "Crimson",
+    "hex": "#c35b69"
+   },
+   {
+    "name": "Denim",
+    "hex": "#626a7a"
+   },
+   {
+    "name": "Espresso",
+    "hex": "#816557"
+   },
+   {
+    "name": "Sandstone",
+    "hex": "#9d9d91"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "front_dtf_hat": "1650x750"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_left",
+   "thread_colors_right",
+   "thread_colors_back",
+   "notes",
+   "license_type"
+  ]
+ },
+ "1665": {
+  "title": "Icon Cap | AS Colour 1140",
+  "type": "AS Colour 1140 | Icon Cap",
+  "techniques": [
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#0d0d0d"
+   },
+   {
+    "name": "Bone",
+    "hex": "#ded8cc"
+   },
+   {
+    "name": "Cypress",
+    "hex": "#646d5c"
+   },
+   {
+    "name": "Midnight Blue",
+    "hex": "#393c51"
+   },
+   {
+    "name": "Petrol Blue",
+    "hex": "#3a444f"
+   },
+   {
+    "name": "Sand",
+    "hex": "#b9a483"
+   },
+   {
+    "name": "Walnut",
+    "hex": "#533e32"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "front": "1200x675"
+  },
+  "options": [
+   "license_type"
+  ]
+ },
+ "1666": {
+  "title": "Frame Cap | AS Colour 1160",
+  "type": "AS Colour 1160 | Frame Cap",
+  "techniques": [
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#0d0d0d"
+   },
+   {
+    "name": "Bone",
+    "hex": "#ded8cc"
+   },
+   {
+    "name": "Ecru",
+    "hex": "#e7ded0"
+   },
+   {
+    "name": "Navy",
+    "hex": "#04142a"
+   },
+   {
+    "name": "Storm",
+    "hex": "#b1b1af"
+   },
+   {
+    "name": "Walnut",
+    "hex": "#533e32"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "front": "1200x675"
+  },
+  "options": [
    "license_type"
   ]
  },
@@ -846,6 +1876,189 @@
    "thread_colors_3d",
    "thread_colors_back",
    "thread_colors_left",
+   "notes",
+   "license_type"
+  ]
+ },
+ "1677": {
+  "title": "12\" Cuffed Knit Beanie | Otto Cap 82-404",
+  "type": "Otto Cap 82-404 | 12\" Cuffed Knit Beanie",
+  "techniques": [
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#1b1b1d"
+   },
+   {
+    "name": "Dark Green",
+    "hex": "#102b27"
+   },
+   {
+    "name": "Gold",
+    "hex": "#ffc600"
+   },
+   {
+    "name": "Navy",
+    "hex": "#1d202b"
+   },
+   {
+    "name": "Neon Orange",
+    "hex": "#ff5a12"
+   },
+   {
+    "name": "Neon Yellow",
+    "hex": "#e8ffad"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1500x525"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "notes",
+   "license_type"
+  ]
+ },
+ "1678": {
+  "title": "Sunwashed Trucker Cap | Comfort Colors CCST0",
+  "type": "Comfort Colors CCST0 | Sunwashed Trucker Cap",
+  "techniques": [
+   "EMBROIDERY",
+   "DTFILM"
+  ],
+  "colors": [
+   {
+    "name": "Bay/Tan",
+    "hex": null
+   },
+   {
+    "name": "Black/Tan",
+    "hex": null
+   },
+   {
+    "name": "Blossom/Tan",
+    "hex": null
+   },
+   {
+    "name": "Butter/Tan",
+    "hex": null
+   },
+   {
+    "name": "Crimson/Tan",
+    "hex": null
+   },
+   {
+    "name": "Denim/Tan",
+    "hex": null
+   },
+   {
+    "name": "Espresso/Tan",
+    "hex": null
+   },
+   {
+    "name": "Granite/Tan",
+    "hex": null
+   },
+   {
+    "name": "Hydrangea/Tan",
+    "hex": null
+   },
+   {
+    "name": "Ivory/Ivory",
+    "hex": null
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "embroidery_front": "1770x600"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "notes",
+   "license_type"
+  ]
+ },
+ "1686": {
+  "title": "Coastal Washed Cap | Comfort Colors CCWC0",
+  "type": "Comfort Colors CCWC0 | Coastal Washed Cap",
+  "techniques": [
+   "DTFILM",
+   "EMBROIDERY"
+  ],
+  "colors": [
+   {
+    "name": "Black",
+    "hex": "#000000"
+   },
+   {
+    "name": "Blue Jean",
+    "hex": "#3f506d"
+   },
+   {
+    "name": "Butter",
+    "hex": "#ffe680"
+   },
+   {
+    "name": "Chalky Mint",
+    "hex": "#57c9d4"
+   },
+   {
+    "name": "Crimson",
+    "hex": "#ba274c"
+   },
+   {
+    "name": "Granite",
+    "hex": "#7f868f"
+   },
+   {
+    "name": "Hydrangea",
+    "hex": "#8cbfe5"
+   },
+   {
+    "name": "Ivory",
+    "hex": "#ffebc7"
+   },
+   {
+    "name": "Moss",
+    "hex": "#304736"
+   },
+   {
+    "name": "Orchid",
+    "hex": "#bb9fd1"
+   },
+   {
+    "name": "Peachy",
+    "hex": "#ffb1a3"
+   },
+   {
+    "name": "Sandstone",
+    "hex": "#8e8f7c"
+   }
+  ],
+  "sizes": [
+   "One size"
+  ],
+  "placements": {
+   "front_dtf_hat": "1650x750"
+  },
+  "options": [
+   "embroidery_type",
+   "thread_colors",
+   "thread_colors_3d",
+   "thread_colors_back",
+   "thread_colors_left",
+   "thread_colors_right",
    "notes",
    "license_type"
   ]

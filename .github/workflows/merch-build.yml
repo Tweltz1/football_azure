@@ -23,7 +23,7 @@ concurrency: { group: merch-build, cancel-in-progress: false }
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 330
     env:
       PRINTFUL_API_TOKEN: ${{ secrets.PRINTFUL_API_TOKEN }}
       PRINTFUL_STORE_ID: ${{ secrets.PRINTFUL_STORE_ID }}
@@ -51,7 +51,7 @@ jobs:
           [ -f merch/plan.json ] || exit 0
           node scripts/merch-build.mjs mockups
           shopt -s nullglob
-          files=(weltzcraft-site/img/merch/*.jpg)
+          files=(weltzcraft-site/img/merch/*.jpg weltzcraft-site/img/merch/angles/*.jpg)
           if [ ${#files[@]} -gt 0 ]; then
             sudo apt-get install -y -qq webp >/dev/null
             for f in "${files[@]}"; do cwebp -quiet -q 82 -resize 900 0 "$f" -o "${f%.jpg}.webp" && rm -- "$f"; done

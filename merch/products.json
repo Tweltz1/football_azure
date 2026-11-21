@@ -1698,6 +1698,65 @@
       ]
     },
     {
+      "key": "woodscord",
+      "name": "Northwoods Corduroy Cap",
+      "type": "hat",
+      "price": 30,
+      "match": "Big Accessories BA703",
+      "placements": [
+        "embroidery_front"
+      ],
+      "logos": [
+        "h3"
+      ],
+      "box": [
+        0.62,
+        0.95
+      ],
+      "colors": [
+        {
+          "key": "brown",
+          "name": "Brown",
+          "printful": [
+            "Brown"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "olive",
+          "name": "Olive",
+          "printful": [
+            "Olive"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "navy",
+          "name": "Navy",
+          "printful": [
+            "Navy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "burgundy",
+          "name": "Burgundy",
+          "printful": [
+            "Burgundy"
+          ],
+          "tone": "light"
+        },
+        {
+          "key": "black",
+          "name": "Black",
+          "printful": [
+            "Black"
+          ],
+          "tone": "light"
+        }
+      ]
+    },
+    {
       "key": "tee",
       "name": "Tee",
       "type": "tee",
