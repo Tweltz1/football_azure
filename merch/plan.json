@@ -3381,6 +3381,86 @@
       }
     ]
   },
+  "woodscord-brown": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Brown",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16418,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodscord-olive": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Olive",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16420,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodscord-navy": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Navy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16417,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodscord-burgundy": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Burgundy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16419,
+        "size": "One size"
+      }
+    ]
+  },
+  "woodscord-black": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Black",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16416,
+        "size": "One size"
+      }
+    ]
+  },
   "tee-black": {
     "product_id": 71,
     "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",
