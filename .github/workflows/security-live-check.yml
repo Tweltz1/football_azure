@@ -1,0 +1,57 @@
+# Read-only security check of the live sites. Uses NO secrets: only the public keys already shipped in
+# the web pages. It prints table names, HTTP codes and row counts, never row contents (this repo is public).
+name: security-live-check
+on:
+  push:
+    branches: [claude/project-thread-c57m2u]
+    paths: [.github/workflows/security-live-check.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Email DNS (SPF, DKIM, DMARC, MX)
+        run: |
+          for d in weltzcraft.com hood-league.com talkshops.app; do
+            echo "=== $d"
+            for n in "$d" "_dmarc.$d" "send.$d" "resend._domainkey.$d"; do
+              echo "TXT $n: $(dig +short TXT "$n" | tr '\n' ' ' | cut -c1-200)"
+            done
+            echo "MX $d: $(dig +short MX "$d" | tr '\n' ' ')"
+            echo "MX send.$d: $(dig +short MX "send.$d" | tr '\n' ' ')"
+          done
+      - name: Supabase tables an anonymous visitor can read
+        run: |
+          probe() {
+            name=$1 url=$2 key=$3
+            echo "=== $name"
+            echo "auth settings: $(curl -s "$url/auth/v1/settings" -H "apikey: $key" | jq -c '{disable_signup, mailer_autoconfirm, phone_autoconfirm, external: (.external | to_entries | map(select(.value)) | map(.key))}')"
+            spec=$(curl -s "$url/rest/v1/" -H "apikey: $key" -H "Authorization: Bearer $key")
+            echo "$spec" | jq -r 'if type=="object" and .paths then "openapi ok" else "openapi: \(tostring|.[0:200])" end'
+            tables=$(echo "$spec" | jq -r '.paths // {} | keys[] | select(startswith("/") and (startswith("/rpc/")|not) and .!="/") | ltrimstr("/")')
+            rpcs=$(echo "$spec" | jq -r '.paths // {} | keys[] | select(startswith("/rpc/")) | ltrimstr("/rpc/")' | tr '\n' ' ')
+            echo "rpc functions visible to anon: ${rpcs:-none}"
+            for t in $tables; do
+              code=$(curl -s -o /tmp/r.json -w '%{http_code}' "$url/rest/v1/$t?select=*&limit=1" \
+                -H "apikey: $key" -H "Authorization: Bearer $key" -H "Prefer: count=exact" -D /tmp/h.txt)
+              range=$(grep -i '^content-range' /tmp/h.txt | tr -d '\r' | cut -d' ' -f2)
+              echo "table $t: http $code, rows readable: $range"
+            done
+          }
+          probe hobby-apps https://nkwedlskhnojseeroezm.supabase.co \
+            eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5rd2VkbHNraG5vanNlZXJvZXptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MjU1NjQsImV4cCI6MjEwNzQwMTU2NH0.EkQlX9lCkh77PH3n0nxvQva5_qrERVwQIAHopylLCj4
+          probe talkshops https://evpcfkasnbpoajkpltch.supabase.co sb_publishable_o9TSIXd0LVAGCycmr-Pt9A_a2FVBA_k
+      - name: Store portal refuses bad keys
+        run: |
+          u=https://nkwedlskhnojseeroezm.supabase.co/functions/v1/store-portal
+          for body in '{"action":"admin-list"}' '{"action":"store"}' '{"action":"me"}' '{"action":"decide-view","token":"00000000-0000-0000-0000-000000000000.9999999999.0000000000000000000000000000000000000000"}'; do
+            echo "$body -> $(curl -s -o /dev/null -w '%{http_code}' -X POST "$u" -H 'Content-Type: application/json' -H 'x-admin-key: wrong' -d "$body")"
+          done
+      - name: Security headers on the live sites
+        run: |
+          for u in https://weltzcraft.com/ https://weltzcraft.com/shopstride/stores/ https://hood-league.com/ https://talkshops.app/; do
+            echo "=== $u"
+            curl -s -o /dev/null -D - "$u" | grep -iE '^(HTTP|strict-transport|x-frame|content-security|x-content-type|referrer-policy)' || true
+          done
