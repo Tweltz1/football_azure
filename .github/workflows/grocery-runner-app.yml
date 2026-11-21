@@ -64,6 +64,9 @@ jobs:
       WALMART_CONSUMER_ID: ${{ secrets.WALMART_CONSUMER_ID }}
       WALMART_KEY_VERSION: ${{ secrets.WALMART_KEY_VERSION }}
       WALMART_PRIVATE_KEY: ${{ secrets.WALMART_PRIVATE_KEY }}
+      # Instacart Developer Platform key ("Shop on Instacart" on the list). INSTACART_ENV=production after approval.
+      INSTACART_API_KEY: ${{ secrets.INSTACART_API_KEY }}
+      INSTACART_ENV: ${{ secrets.INSTACART_ENV }}
       # Optional: replaces the store portal's built-in admin password (portal/index.html#admin), 12+ characters.
       STORE_ADMIN_KEY: ${{ secrets.STORE_ADMIN_KEY }}
       # Store manager emails (requests to Tyler with Approve/Deny, approved/denied to the manager), from weltzcraft.com.
@@ -100,6 +103,11 @@ jobs:
           fi
           if [ -z "$WALMART_CONSUMER_ID" ]; then
             echo "::notice::No WALMART_CONSUMER_ID yet; Walmart stores come from Apple Maps only."
+          fi
+          if [ -n "$INSTACART_API_KEY" ]; then
+            SET+=(INSTACART_API_KEY="$INSTACART_API_KEY" INSTACART_ENV="${INSTACART_ENV:-development}")
+          else
+            echo "::notice::No INSTACART_API_KEY yet; the Shop on Instacart button stays hidden."
           fi
           if [ -n "$STORE_ADMIN_KEY" ]; then
             SET+=(STORE_ADMIN_KEY="$STORE_ADMIN_KEY")
