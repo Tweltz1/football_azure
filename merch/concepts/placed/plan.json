@@ -513,63 +513,43 @@
  },
  "m3-black": {
   "files": {
-   "back": {
-    "file": "m3-black-back.png",
-    "w": 1800,
-    "h": 2400
-   },
    "front": {
     "file": "m3-black-front.png",
     "w": 1800,
     "h": 2400
    }
   },
-  "key": "871c4f881e6c"
+  "key": "8101e365495c"
  },
  "m3-white": {
   "files": {
-   "back": {
-    "file": "m3-white-back.png",
-    "w": 1800,
-    "h": 2400
-   },
    "front": {
     "file": "m3-white-front.png",
     "w": 1800,
     "h": 2400
    }
   },
-  "key": "481bc37d6648"
+  "key": "f16e0a4dce70"
  },
  "m3-heather-dust": {
   "files": {
-   "back": {
-    "file": "m3-heather-dust-back.png",
-    "w": 1800,
-    "h": 2400
-   },
    "front": {
     "file": "m3-heather-dust-front.png",
     "w": 1800,
     "h": 2400
    }
   },
-  "key": "481bc37d6648"
+  "key": "f16e0a4dce70"
  },
  "m3-navy": {
   "files": {
-   "back": {
-    "file": "m3-navy-back.png",
-    "w": 1800,
-    "h": 2400
-   },
    "front": {
     "file": "m3-navy-front.png",
     "w": 1800,
     "h": 2400
    }
   },
-  "key": "871c4f881e6c"
+  "key": "8101e365495c"
  },
  "m4-white": {
   "files": {
