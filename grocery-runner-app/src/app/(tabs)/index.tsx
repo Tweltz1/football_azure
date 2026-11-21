@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SaleBadge } from '../../components/SaleBadge';
+import { StockBadge } from '../../components/StockBadge';
 import { closeSwipeRows, SwipeRow } from '../../components/SwipeRow';
 import { Button, lift, ScreenHeader, StudioCredit, tap } from '../../components/ui';
 import { dealFor, useDeals } from '../../lib/deals';
@@ -12,6 +13,7 @@ import { groupList } from '../../lib/listGroups';
 import { useFamily } from '../../lib/family';
 import { cleanLink } from '../../lib/recipeText';
 import { useData } from '../../lib/store';
+import { stockFor, useStock } from '../../lib/stock';
 import { radius, useTheme } from '../../lib/theme';
 import { capFirst } from '../../lib/caps';
 
@@ -39,6 +41,7 @@ export default function ListScreen() {
   const [draft, setDraft] = useState('');
   const left = items.filter((i) => !i.checked).length;
   const deals = useDeals(store, items.filter((i) => !i.checked).map((i) => i.name));
+  const stock = useStock(store, items.filter((i) => !i.checked).map((i) => i.name));
   const sections = useMemo(() => groupList(items), [items]);
 
   // "Undo" shows for a few seconds after something is removed.
@@ -273,6 +276,7 @@ export default function ListScreen() {
                     </Text>
                   )}
                   {!item.checked && <SaleBadge deal={dealFor(deals, item.name)} name={item.name} />}
+                  {!item.checked && <StockBadge check={stockFor(stock, item.name)} />}
                 </Pressable>
                 <Ionicons name="chevron-forward" size={16} color={t.border} />
               </View>

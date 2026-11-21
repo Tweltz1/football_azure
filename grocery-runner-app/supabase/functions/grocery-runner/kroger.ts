@@ -24,12 +24,25 @@ async function getToken(): Promise<string> {
   return token.value;
 }
 
+// Kroger's free tier allows about 10,000 product calls a day. The same list is checked again every time a
+// shopper opens it, so answers are kept for a while per store + search (stock changes slowly enough).
+const CACHE_MS = 30 * 60_000;
+const CACHE_MAX = 3000;
+// deno-lint-ignore no-explicit-any
+const cache = new Map<string, { at: number; body: any }>();
+
 async function get(path: string, params: Record<string, string>) {
   const url = new URL(`${KROGER}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const key = url.toString().toLowerCase();
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.body;
   const res = await fetch(url, { headers: { Accept: 'application/json', Authorization: `Bearer ${await getToken()}` } });
   if (!res.ok) throw new Error(`Kroger ${path} failed (${res.status}).`);
-  return res.json();
+  const body = await res.json();
+  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
+  cache.set(key, { at: Date.now(), body });
+  return body;
 }
 
 export async function krogerStores(zip: string) {
@@ -50,6 +63,7 @@ export async function krogerProducts(term: string, locationId: string) {
     description: p.description,
     brand: p.brand,
     categories: p.categories ?? [],
+    stock: stockOf(p),
     // deno-lint-ignore no-explicit-any
     aisleLocations: (p.aisleLocations ?? []).map((a: any) => ({
       number: a.number,
@@ -102,6 +116,7 @@ const stockOf = (p: any): Stock => {
 export async function krogerStock(locationId: unknown, items: unknown): Promise<StockCheck[]> {
   if (typeof locationId !== 'string' || !/^[0-9a-z]{6,12}$/i.test(locationId)) throw new Error('locationId is required.');
   if (!Array.isArray(items)) throw new Error('items are required.');
+  if (!krogerReady()) return [];
   const names = [...new Set(items.filter((i): i is string => typeof i === 'string' && i.trim().length > 1))].slice(0, 40);
 
   const check = async (item: string): Promise<StockCheck> => {
