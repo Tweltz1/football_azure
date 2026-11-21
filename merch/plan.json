@@ -1,4 +1,1468 @@
 {
+  "crew-sportgrey": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Sport Grey",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 5514,
+        "size": "S"
+      },
+      {
+        "id": 5515,
+        "size": "M"
+      },
+      {
+        "id": 5516,
+        "size": "L"
+      },
+      {
+        "id": 5517,
+        "size": "XL"
+      },
+      {
+        "id": 5518,
+        "size": "2XL"
+      },
+      {
+        "id": 5519,
+        "size": "3XL"
+      }
+    ]
+  },
+  "crew-navy": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Navy",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 5498,
+        "size": "S"
+      },
+      {
+        "id": 5499,
+        "size": "M"
+      },
+      {
+        "id": 5500,
+        "size": "L"
+      },
+      {
+        "id": 5501,
+        "size": "XL"
+      },
+      {
+        "id": 5502,
+        "size": "2XL"
+      },
+      {
+        "id": 5503,
+        "size": "3XL"
+      }
+    ]
+  },
+  "crew-forestgreen": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Forest Green",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 18763,
+        "size": "S"
+      },
+      {
+        "id": 18764,
+        "size": "M"
+      },
+      {
+        "id": 18765,
+        "size": "L"
+      },
+      {
+        "id": 18766,
+        "size": "XL"
+      },
+      {
+        "id": 18767,
+        "size": "2XL"
+      },
+      {
+        "id": 18768,
+        "size": "3XL"
+      }
+    ]
+  },
+  "crew-maroon": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Maroon",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 5490,
+        "size": "S"
+      },
+      {
+        "id": 5491,
+        "size": "M"
+      },
+      {
+        "id": 5492,
+        "size": "L"
+      },
+      {
+        "id": 5493,
+        "size": "XL"
+      },
+      {
+        "id": 5494,
+        "size": "2XL"
+      }
+    ]
+  },
+  "crew-black": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Black",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 5434,
+        "size": "S"
+      },
+      {
+        "id": 5435,
+        "size": "M"
+      },
+      {
+        "id": 5436,
+        "size": "L"
+      },
+      {
+        "id": 5437,
+        "size": "XL"
+      },
+      {
+        "id": 5438,
+        "size": "2XL"
+      },
+      {
+        "id": 5439,
+        "size": "3XL"
+      }
+    ]
+  },
+  "crew-sand": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Sand",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 16876,
+        "size": "S"
+      },
+      {
+        "id": 16877,
+        "size": "M"
+      },
+      {
+        "id": 16878,
+        "size": "L"
+      },
+      {
+        "id": 16879,
+        "size": "XL"
+      },
+      {
+        "id": 16880,
+        "size": "2XL"
+      },
+      {
+        "id": 16881,
+        "size": "3XL"
+      }
+    ]
+  },
+  "crew-lightblue": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Light Blue",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 7860,
+        "size": "S"
+      },
+      {
+        "id": 7861,
+        "size": "M"
+      },
+      {
+        "id": 7862,
+        "size": "L"
+      },
+      {
+        "id": 7863,
+        "size": "XL"
+      },
+      {
+        "id": 7864,
+        "size": "2XL"
+      },
+      {
+        "id": 7865,
+        "size": "3XL"
+      }
+    ]
+  },
+  "crew-carolinablue": {
+    "product_id": 145,
+    "product": "Unisex Crew Neck Sweatshirt | Gildan 18000",
+    "color": "Carolina Blue",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 20594,
+        "size": "S"
+      },
+      {
+        "id": 20595,
+        "size": "M"
+      },
+      {
+        "id": 20596,
+        "size": "L"
+      },
+      {
+        "id": 20597,
+        "size": "XL"
+      },
+      {
+        "id": 20598,
+        "size": "2XL"
+      },
+      {
+        "id": 20599,
+        "size": "3XL"
+      }
+    ]
+  },
+  "script-stone": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Stone",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7859,
+        "size": "One size"
+      }
+    ]
+  },
+  "script-navy": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Navy",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7857,
+        "size": "One size"
+      }
+    ]
+  },
+  "script-black": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7854,
+        "size": "One size"
+      }
+    ]
+  },
+  "script-lightblue": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Light Blue",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7856,
+        "size": "One size"
+      }
+    ]
+  },
+  "script-spruce": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Spruce",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 8745,
+        "size": "One size"
+      }
+    ]
+  },
+  "script-pink": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Pink",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7858,
+        "size": "One size"
+      }
+    ]
+  },
+  "script-cranberry": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Cranberry",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 12735,
+        "size": "One size"
+      }
+    ]
+  },
+  "script-khaki": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Khaki",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7855,
+        "size": "One size"
+      }
+    ]
+  },
+  "script-white": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "White",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7853,
+        "size": "One size"
+      }
+    ]
+  },
+  "sunset-ivory": {
+    "product_id": 586,
+    "product": "Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717",
+    "color": "Ivory",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 16523,
+        "size": "S"
+      },
+      {
+        "id": 16524,
+        "size": "M"
+      },
+      {
+        "id": 16525,
+        "size": "L"
+      },
+      {
+        "id": 16526,
+        "size": "XL"
+      },
+      {
+        "id": 16527,
+        "size": "2XL"
+      },
+      {
+        "id": 16528,
+        "size": "3XL"
+      }
+    ]
+  },
+  "sunset-pepper": {
+    "product_id": 586,
+    "product": "Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717",
+    "color": "Pepper",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 17693,
+        "size": "S"
+      },
+      {
+        "id": 17694,
+        "size": "M"
+      },
+      {
+        "id": 17695,
+        "size": "L"
+      },
+      {
+        "id": 17696,
+        "size": "XL"
+      },
+      {
+        "id": 17697,
+        "size": "2XL"
+      },
+      {
+        "id": 17698,
+        "size": "3XL"
+      }
+    ]
+  },
+  "sunset-sage": {
+    "product_id": 586,
+    "product": "Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717",
+    "color": "Sage",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 21562,
+        "size": "S"
+      },
+      {
+        "id": 21563,
+        "size": "M"
+      },
+      {
+        "id": 21564,
+        "size": "L"
+      },
+      {
+        "id": 21565,
+        "size": "XL"
+      },
+      {
+        "id": 21566,
+        "size": "2XL"
+      },
+      {
+        "id": 21567,
+        "size": "3XL"
+      }
+    ]
+  },
+  "sunset-butter": {
+    "product_id": 586,
+    "product": "Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717",
+    "color": "Butter",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 15166,
+        "size": "S"
+      },
+      {
+        "id": 15167,
+        "size": "M"
+      },
+      {
+        "id": 15168,
+        "size": "L"
+      },
+      {
+        "id": 15169,
+        "size": "XL"
+      },
+      {
+        "id": 15170,
+        "size": "2XL"
+      },
+      {
+        "id": 16328,
+        "size": "3XL"
+      }
+    ]
+  },
+  "sunset-bluejean": {
+    "product_id": 586,
+    "product": "Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717",
+    "color": "Blue Jean",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 16511,
+        "size": "S"
+      },
+      {
+        "id": 16512,
+        "size": "M"
+      },
+      {
+        "id": 16513,
+        "size": "L"
+      },
+      {
+        "id": 16514,
+        "size": "XL"
+      },
+      {
+        "id": 16515,
+        "size": "2XL"
+      },
+      {
+        "id": 16516,
+        "size": "3XL"
+      }
+    ]
+  },
+  "sunset-chalkymint": {
+    "product_id": 586,
+    "product": "Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717",
+    "color": "Chalky Mint",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 21513,
+        "size": "S"
+      },
+      {
+        "id": 21514,
+        "size": "M"
+      },
+      {
+        "id": 21515,
+        "size": "L"
+      },
+      {
+        "id": 21516,
+        "size": "XL"
+      },
+      {
+        "id": 21517,
+        "size": "2XL"
+      },
+      {
+        "id": 21518,
+        "size": "3XL"
+      }
+    ]
+  },
+  "sunset-black": {
+    "product_id": 586,
+    "product": "Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717",
+    "color": "Black",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 15114,
+        "size": "S"
+      },
+      {
+        "id": 15115,
+        "size": "M"
+      },
+      {
+        "id": 15116,
+        "size": "L"
+      },
+      {
+        "id": 15117,
+        "size": "XL"
+      },
+      {
+        "id": 15118,
+        "size": "2XL"
+      },
+      {
+        "id": 16326,
+        "size": "3XL"
+      }
+    ]
+  },
+  "sunset-brick": {
+    "product_id": 586,
+    "product": "Unisex Garment-Dyed Heavyweight T-Shirt | Comfort Colors 1717",
+    "color": "Brick",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 15161,
+        "size": "S"
+      },
+      {
+        "id": 15162,
+        "size": "M"
+      },
+      {
+        "id": 15163,
+        "size": "L"
+      },
+      {
+        "id": 15164,
+        "size": "XL"
+      },
+      {
+        "id": 15165,
+        "size": "2XL"
+      },
+      {
+        "id": 16327,
+        "size": "3XL"
+      }
+    ]
+  },
+  "ringer-naturalmidnightnavy": {
+    "product_id": 959,
+    "product": "Unisex Ringer T-Shirt | Next Level 3604",
+    "color": "Natural / Midnight Navy",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 24482,
+        "size": "S"
+      },
+      {
+        "id": 24477,
+        "size": "M"
+      },
+      {
+        "id": 24487,
+        "size": "L"
+      },
+      {
+        "id": 24492,
+        "size": "XL"
+      },
+      {
+        "id": 24497,
+        "size": "2XL"
+      },
+      {
+        "id": 24502,
+        "size": "3XL"
+      }
+    ]
+  },
+  "ringer-naturalforestgreen": {
+    "product_id": 959,
+    "product": "Unisex Ringer T-Shirt | Next Level 3604",
+    "color": "Natural / Forest Green",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 24481,
+        "size": "S"
+      },
+      {
+        "id": 24476,
+        "size": "M"
+      },
+      {
+        "id": 24486,
+        "size": "L"
+      },
+      {
+        "id": 24491,
+        "size": "XL"
+      },
+      {
+        "id": 24496,
+        "size": "2XL"
+      },
+      {
+        "id": 24501,
+        "size": "3XL"
+      }
+    ]
+  },
+  "ringer-naturalblack": {
+    "product_id": 959,
+    "product": "Unisex Ringer T-Shirt | Next Level 3604",
+    "color": "Natural / Black",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 24480,
+        "size": "S"
+      },
+      {
+        "id": 24475,
+        "size": "M"
+      },
+      {
+        "id": 24485,
+        "size": "L"
+      },
+      {
+        "id": 24490,
+        "size": "XL"
+      },
+      {
+        "id": 24495,
+        "size": "2XL"
+      },
+      {
+        "id": 24500,
+        "size": "3XL"
+      }
+    ]
+  },
+  "ringer-whiteblack": {
+    "product_id": 959,
+    "product": "Unisex Ringer T-Shirt | Next Level 3604",
+    "color": "White / Black",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 24483,
+        "size": "S"
+      },
+      {
+        "id": 24478,
+        "size": "M"
+      },
+      {
+        "id": 24488,
+        "size": "L"
+      },
+      {
+        "id": 24493,
+        "size": "XL"
+      },
+      {
+        "id": 24498,
+        "size": "2XL"
+      },
+      {
+        "id": 24503,
+        "size": "3XL"
+      }
+    ]
+  },
+  "ringer-heathergrayblack": {
+    "product_id": 959,
+    "product": "Unisex Ringer T-Shirt | Next Level 3604",
+    "color": "Heather Gray / Black",
+    "placement": "front",
+    "area": {
+      "w": 1800,
+      "h": 2400
+    },
+    "variants": [
+      {
+        "id": 24479,
+        "size": "S"
+      },
+      {
+        "id": 24474,
+        "size": "M"
+      },
+      {
+        "id": 24484,
+        "size": "L"
+      },
+      {
+        "id": 24489,
+        "size": "XL"
+      },
+      {
+        "id": 24494,
+        "size": "2XL"
+      },
+      {
+        "id": 24499,
+        "size": "3XL"
+      }
+    ]
+  },
+  "cord-brown": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Brown",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16418,
+        "size": "One size"
+      }
+    ]
+  },
+  "cord-olive": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Olive",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16420,
+        "size": "One size"
+      }
+    ]
+  },
+  "cord-navy": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Navy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16417,
+        "size": "One size"
+      }
+    ]
+  },
+  "cord-burgundy": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Burgundy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16419,
+        "size": "One size"
+      }
+    ]
+  },
+  "cord-black": {
+    "product_id": 662,
+    "product": "Vintage Corduroy Cap | Big Accessories BA703",
+    "color": "Black",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 16416,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-black": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Black",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8936,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-navy": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Navy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8940,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-heathergrey": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Heather Grey",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8937,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-spruce": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Spruce",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8941,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-olive": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Olive",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 17495,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-brown": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Brown",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 12880,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-darkgrey": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "Dark Grey",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 12881,
+        "size": "One size"
+      }
+    ]
+  },
+  "beanie-white": {
+    "product_id": 266,
+    "product": "Cuffed Beanie | Yupoong 1501KC",
+    "color": "White",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1500,
+      "h": 525
+    },
+    "variants": [
+      {
+        "id": 8938,
+        "size": "One size"
+      }
+    ]
+  },
+  "tonal-black": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Black",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 5530,
+        "size": "S"
+      },
+      {
+        "id": 5531,
+        "size": "M"
+      },
+      {
+        "id": 5532,
+        "size": "L"
+      },
+      {
+        "id": 5533,
+        "size": "XL"
+      },
+      {
+        "id": 5534,
+        "size": "2XL"
+      },
+      {
+        "id": 5535,
+        "size": "3XL"
+      }
+    ]
+  },
+  "tonal-sand": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Sand",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 12997,
+        "size": "S"
+      },
+      {
+        "id": 12998,
+        "size": "M"
+      },
+      {
+        "id": 12999,
+        "size": "L"
+      },
+      {
+        "id": 13000,
+        "size": "XL"
+      },
+      {
+        "id": 13001,
+        "size": "2XL"
+      },
+      {
+        "id": 13002,
+        "size": "3XL"
+      }
+    ]
+  },
+  "tonal-militarygreen": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Military Green",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 12989,
+        "size": "S"
+      },
+      {
+        "id": 12990,
+        "size": "M"
+      },
+      {
+        "id": 12991,
+        "size": "L"
+      },
+      {
+        "id": 12992,
+        "size": "XL"
+      },
+      {
+        "id": 12993,
+        "size": "2XL"
+      },
+      {
+        "id": 12994,
+        "size": "3XL"
+      }
+    ]
+  },
+  "tonal-navy": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Navy",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 5594,
+        "size": "S"
+      },
+      {
+        "id": 5595,
+        "size": "M"
+      },
+      {
+        "id": 5596,
+        "size": "L"
+      },
+      {
+        "id": 5597,
+        "size": "XL"
+      },
+      {
+        "id": 5598,
+        "size": "2XL"
+      },
+      {
+        "id": 5599,
+        "size": "3XL"
+      }
+    ]
+  },
+  "tonal-charcoal": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Charcoal",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 16859,
+        "size": "S"
+      },
+      {
+        "id": 16860,
+        "size": "M"
+      },
+      {
+        "id": 16861,
+        "size": "L"
+      },
+      {
+        "id": 16862,
+        "size": "XL"
+      },
+      {
+        "id": 16863,
+        "size": "2XL"
+      },
+      {
+        "id": 16864,
+        "size": "3XL"
+      }
+    ]
+  },
+  "tonal-maroon": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Maroon",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 5586,
+        "size": "S"
+      },
+      {
+        "id": 5587,
+        "size": "M"
+      },
+      {
+        "id": 5588,
+        "size": "L"
+      },
+      {
+        "id": 5589,
+        "size": "XL"
+      },
+      {
+        "id": 5590,
+        "size": "2XL"
+      },
+      {
+        "id": 5591,
+        "size": "3XL"
+      }
+    ]
+  },
+  "tonal-forestgreen": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Forest Green",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 20570,
+        "size": "S"
+      },
+      {
+        "id": 20571,
+        "size": "M"
+      },
+      {
+        "id": 20572,
+        "size": "L"
+      },
+      {
+        "id": 20573,
+        "size": "XL"
+      },
+      {
+        "id": 20574,
+        "size": "2XL"
+      },
+      {
+        "id": 20575,
+        "size": "3XL"
+      }
+    ]
+  },
+  "tonal-sportgrey": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Sport Grey",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 5610,
+        "size": "S"
+      },
+      {
+        "id": 5611,
+        "size": "M"
+      },
+      {
+        "id": 5612,
+        "size": "L"
+      },
+      {
+        "id": 5613,
+        "size": "XL"
+      },
+      {
+        "id": 5614,
+        "size": "2XL"
+      },
+      {
+        "id": 5615,
+        "size": "3XL"
+      }
+    ]
+  },
+  "tonal-lightpink": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Light Pink",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 10849,
+        "size": "S"
+      },
+      {
+        "id": 10850,
+        "size": "M"
+      },
+      {
+        "id": 10851,
+        "size": "L"
+      },
+      {
+        "id": 10852,
+        "size": "XL"
+      },
+      {
+        "id": 10853,
+        "size": "2XL"
+      },
+      {
+        "id": 10854,
+        "size": "3XL"
+      }
+    ]
+  },
+  "tonal-darkchocolate": {
+    "product_id": 146,
+    "product": "Unisex Heavy Blend Hoodie | Gildan 18500",
+    "color": "Dark Chocolate",
+    "placement": "front",
+    "area": {
+      "w": 2100,
+      "h": 2100
+    },
+    "variants": [
+      {
+        "id": 5554,
+        "size": "S"
+      },
+      {
+        "id": 5555,
+        "size": "M"
+      },
+      {
+        "id": 5556,
+        "size": "L"
+      },
+      {
+        "id": 5557,
+        "size": "XL"
+      },
+      {
+        "id": 5558,
+        "size": "2XL"
+      },
+      {
+        "id": 5559,
+        "size": "3XL"
+      }
+    ]
+  },
   "tee-black": {
     "product_id": 71,
     "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",

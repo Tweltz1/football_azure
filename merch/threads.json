@@ -1,4 +1,95 @@
 {
+ "script-stone-v2": [
+  "#333366",
+  "#005397"
+ ],
+ "script-navy-v2": [
+  "#FFFFFF",
+  "#3399FF"
+ ],
+ "script-black-v2": [
+  "#FFFFFF",
+  "#3399FF"
+ ],
+ "script-lightblue-v2": [
+  "#333366",
+  "#005397"
+ ],
+ "script-spruce-v2": [
+  "#FFFFFF",
+  "#3399FF"
+ ],
+ "script-pink-v2": [
+  "#333366",
+  "#005397"
+ ],
+ "script-cranberry-v2": [
+  "#FFFFFF",
+  "#3399FF"
+ ],
+ "script-khaki-v2": [
+  "#333366",
+  "#005397"
+ ],
+ "script-white-v2": [
+  "#333366",
+  "#005397"
+ ],
+ "cord-brown-v7": [
+  "#FFFFFF"
+ ],
+ "cord-olive-v7": [
+  "#FFFFFF"
+ ],
+ "cord-navy-v7": [
+  "#FFFFFF"
+ ],
+ "cord-burgundy-v7": [
+  "#FFFFFF"
+ ],
+ "cord-black-v7": [
+  "#FFFFFF"
+ ],
+ "beanie-black-v8": [
+  "#FFFFFF",
+  "#CC3333",
+  "#FFCC00"
+ ],
+ "beanie-navy-v8": [
+  "#FFFFFF",
+  "#CC3333",
+  "#FFCC00"
+ ],
+ "beanie-heathergrey-v8": [
+  "#333366",
+  "#CC3333",
+  "#FFCC00"
+ ],
+ "beanie-spruce-v8": [
+  "#FFFFFF",
+  "#CC3333",
+  "#FFCC00"
+ ],
+ "beanie-olive-v8": [
+  "#FFFFFF",
+  "#CC3333",
+  "#FFCC00"
+ ],
+ "beanie-brown-v8": [
+  "#FFFFFF",
+  "#CC3333",
+  "#FFCC00"
+ ],
+ "beanie-darkgrey-v8": [
+  "#FFFFFF",
+  "#CC3333",
+  "#FFCC00"
+ ],
+ "beanie-white-v8": [
+  "#333366",
+  "#CC3333",
+  "#FFCC00"
+ ],
  "hat-navy-42": [
   "#FFFFFF"
  ],
