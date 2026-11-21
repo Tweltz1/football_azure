@@ -1,0 +1,770 @@
+{
+ "v1-sport-grey": {
+  "key": "da7f9db53f8a",
+  "files": [
+   "merch/concepts/mockups/v1-sport-grey.jpg",
+   "merch/concepts/mockups/v1-sport-grey-2.jpg",
+   "merch/concepts/mockups/v1-sport-grey-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8d0911ad5427010544305c6ffd1ee809/unisex-crew-neck-sweatshirt-sport-grey-front-6b01eec788d5d.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v1-navy": {
+  "key": "89f3eb0ea1f5",
+  "files": [
+   "merch/concepts/mockups/v1-navy.jpg",
+   "merch/concepts/mockups/v1-navy-2.jpg",
+   "merch/concepts/mockups/v1-navy-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5b3b8e5d551411489d76b482e77201f7/unisex-crew-neck-sweatshirt-navy-front-6b01eecf63754.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v1-forest-green": {
+  "key": "89f3eb0ea1f5",
+  "files": [
+   "merch/concepts/mockups/v1-forest-green.jpg",
+   "merch/concepts/mockups/v1-forest-green-2.jpg",
+   "merch/concepts/mockups/v1-forest-green-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/de1b8ce9f179da126ecc40b9b35a08ff/unisex-crew-neck-sweatshirt-forest-green-front-6b01ef0c9a16f.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v1-maroon": {
+  "key": "89f3eb0ea1f5",
+  "files": [
+   "merch/concepts/mockups/v1-maroon.jpg",
+   "merch/concepts/mockups/v1-maroon-2.jpg",
+   "merch/concepts/mockups/v1-maroon-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/80129af08fc7ade9679835f20ea55312/unisex-crew-neck-sweatshirt-maroon-front-6b01ef1724b60.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v2-stone": {
+  "key": "e873eb8ded4c",
+  "files": [
+   "merch/concepts/mockups/v2-stone.jpg",
+   "merch/concepts/mockups/v2-stone-2.jpg",
+   "merch/concepts/mockups/v2-stone-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9b007977df8d74f19a2a26ae0bc613b3/classic-dad-hat-stone-front-6b01ef553278a.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "v2-navy": {
+  "key": "e2d5b20c0481",
+  "files": [
+   "merch/concepts/mockups/v2-navy.jpg",
+   "merch/concepts/mockups/v2-navy-2.jpg",
+   "merch/concepts/mockups/v2-navy-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5a5e776d6fff0497a948d5a30277be1b/classic-dad-hat-navy-front-6b01ef6025a86.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "v2-black": {
+  "key": "e2d5b20c0481",
+  "files": [
+   "merch/concepts/mockups/v2-black.jpg",
+   "merch/concepts/mockups/v2-black-2.jpg",
+   "merch/concepts/mockups/v2-black-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c2e8c2f7f3239154156e6d020a04cf1b/classic-dad-hat-black-front-6b01ef9ad3689.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "v2-light-blue": {
+  "key": "e873eb8ded4c",
+  "files": [
+   "merch/concepts/mockups/v2-light-blue.jpg",
+   "merch/concepts/mockups/v2-light-blue-2.jpg",
+   "merch/concepts/mockups/v2-light-blue-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ef993792678ebcb73900e3d309642260/classic-dad-hat-light-blue-front-6b01efa159213.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "v3-ivory": {
+  "key": "3f6d007a49de",
+  "files": [
+   "merch/concepts/mockups/v3-ivory.jpg",
+   "merch/concepts/mockups/v3-ivory-2.jpg",
+   "merch/concepts/mockups/v3-ivory-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ac82c2b2b7905d42953537a445a9e363/unisex-garment-dyed-heavyweight-t-shirt-ivory-front-6b01efdf827c5.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v3-pepper": {
+  "key": "3f31d2f56ef2",
+  "files": [
+   "merch/concepts/mockups/v3-pepper.jpg",
+   "merch/concepts/mockups/v3-pepper-2.jpg",
+   "merch/concepts/mockups/v3-pepper-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/40e3e2ab207bdee4a591eb60da88fdbd/unisex-garment-dyed-heavyweight-t-shirt-pepper-front-6b01efe632e6d.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v3-sage": {
+  "key": "3f6d007a49de",
+  "files": [
+   "merch/concepts/mockups/v3-sage.jpg",
+   "merch/concepts/mockups/v3-sage-2.jpg",
+   "merch/concepts/mockups/v3-sage-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/355a05a6aea17822934072713d4d6d16/unisex-garment-dyed-heavyweight-t-shirt-sage-front-6b01f024b54f4.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v3-butter": {
+  "key": "3f6d007a49de",
+  "files": [
+   "merch/concepts/mockups/v3-butter.jpg",
+   "merch/concepts/mockups/v3-butter-2.jpg",
+   "merch/concepts/mockups/v3-butter-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/bef6903f24a48a380ee7db0e5ea58eab/unisex-garment-dyed-heavyweight-t-shirt-butter-front-6b01f02b0b38b.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v4-navy-white": {
+  "key": "2b5d8f808312",
+  "files": [
+   "merch/concepts/mockups/v4-navy-white.jpg",
+   "merch/concepts/mockups/v4-navy-white-2.jpg",
+   "merch/concepts/mockups/v4-navy-white-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/73f967f235211e9a12a7de7df9a3dd2a/retro-trucker-hat-navy-white-front-6b01f06879f01.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "v4-black-white": {
+  "key": "2b5d8f808312",
+  "files": [
+   "merch/concepts/mockups/v4-black-white.jpg",
+   "merch/concepts/mockups/v4-black-white-2.jpg",
+   "merch/concepts/mockups/v4-black-white-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a9ca5343b94d2c72694fcb4028ec41c0/retro-trucker-hat-black-white-front-6b01f071c714a.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "v4-moss-khaki": {
+  "key": "2b5d8f808312",
+  "files": [
+   "merch/concepts/mockups/v4-moss-khaki.jpg",
+   "merch/concepts/mockups/v4-moss-khaki-2.jpg",
+   "merch/concepts/mockups/v4-moss-khaki-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d699c30200369199455d9e1a73c17685/retro-trucker-hat-moss-khaki-front-6b01f0aebaaf4.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "v4-heather-grey-white": {
+  "key": "e5d1a486d4b7",
+  "files": [
+   "merch/concepts/mockups/v4-heather-grey-white.jpg",
+   "merch/concepts/mockups/v4-heather-grey-white-2.jpg",
+   "merch/concepts/mockups/v4-heather-grey-white-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/83216db01b67ff687351cf0c645e64a5/retro-trucker-hat-heather-grey-white-front-6b01f0b6ba2ae.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "v5-natural-midnight-navy": {
+  "key": "0597622a31b3",
+  "files": [
+   "merch/concepts/mockups/v5-natural-midnight-navy.jpg",
+   "merch/concepts/mockups/v5-natural-midnight-navy-2.jpg",
+   "merch/concepts/mockups/v5-natural-midnight-navy-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b69db2297ef6bc55e515d1f9dd2fd699/unisex-ringer-t-shirt-natural-midnight-navy-front-6b01f0f3e22c1.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v5-natural-forest-green": {
+  "key": "d680c8e5e5d9",
+  "files": [
+   "merch/concepts/mockups/v5-natural-forest-green.jpg",
+   "merch/concepts/mockups/v5-natural-forest-green-2.jpg",
+   "merch/concepts/mockups/v5-natural-forest-green-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5d6bf120d443249e4ec432a1e760e7b1/unisex-ringer-t-shirt-natural-forest-green-front-6b01f0fa26f31.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v5-white-black": {
+  "key": "9b46b8367adb",
+  "files": [
+   "merch/concepts/mockups/v5-white-black.jpg",
+   "merch/concepts/mockups/v5-white-black-2.jpg",
+   "merch/concepts/mockups/v5-white-black-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6b8ff80a8131fa98ce9fd13b28c9161b/unisex-ringer-t-shirt-white-black-front-6b01f1381a33f.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v5-heather-gray-black": {
+  "key": "9b46b8367adb",
+  "files": [
+   "merch/concepts/mockups/v5-heather-gray-black.jpg",
+   "merch/concepts/mockups/v5-heather-gray-black-2.jpg",
+   "merch/concepts/mockups/v5-heather-gray-black-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2dd119774893bd564c38e7fea8e7082d/unisex-ringer-t-shirt-heather-gray-black-front-6b01f13f4346b.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v6-black": {
+  "key": "58d60d9ad929",
+  "files": [
+   "merch/concepts/mockups/v6-black.jpg",
+   "merch/concepts/mockups/v6-black-2.jpg",
+   "merch/concepts/mockups/v6-black-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d27372bbb67c69966eda9129d3863279/unisex-heavy-blend-hoodie-black-front-6b01f17b6c5f8.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v6-maroon": {
+  "key": "58d60d9ad929",
+  "files": [
+   "merch/concepts/mockups/v6-maroon.jpg",
+   "merch/concepts/mockups/v6-maroon-2.jpg",
+   "merch/concepts/mockups/v6-maroon-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/f3588fc6fd4c58aef6b92a28b28cfa6c/unisex-heavy-blend-hoodie-maroon-front-6b01f1869e9c4.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v6-forest-green": {
+  "key": "58d60d9ad929",
+  "files": [
+   "merch/concepts/mockups/v6-forest-green.jpg",
+   "merch/concepts/mockups/v6-forest-green-2.jpg",
+   "merch/concepts/mockups/v6-forest-green-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/3889d2d56e70df5f4eaf2dfdadadfd31/unisex-heavy-blend-hoodie-forest-green-front-6b01f1c4b4d05.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v6-sport-grey": {
+  "key": "28476dd76acf",
+  "files": [
+   "merch/concepts/mockups/v6-sport-grey.jpg",
+   "merch/concepts/mockups/v6-sport-grey-2.jpg",
+   "merch/concepts/mockups/v6-sport-grey-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/179fa0a913ad12f3d6612941678fa295/unisex-heavy-blend-hoodie-sport-grey-front-6b01f1d0a34ec.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "v7-brown": {
+  "key": "6ad9ce865f24",
+  "files": [
+   "merch/concepts/mockups/v7-brown.jpg",
+   "merch/concepts/mockups/v7-brown-2.jpg",
+   "merch/concepts/mockups/v7-brown-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/dfcbb394078e10bb725813ec3ef39f93/vintage-corduroy-cap-brown-front-6b01f20dc16f6.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "v7-olive": {
+  "key": "6ad9ce865f24",
+  "files": [
+   "merch/concepts/mockups/v7-olive.jpg",
+   "merch/concepts/mockups/v7-olive-2.jpg",
+   "merch/concepts/mockups/v7-olive-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/797d3c6987a020cc3fa225051487c3bd/vintage-corduroy-cap-olive-front-6b01f21739f50.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "v7-navy": {
+  "key": "6ad9ce865f24",
+  "files": [
+   "merch/concepts/mockups/v7-navy.jpg",
+   "merch/concepts/mockups/v7-navy-2.jpg",
+   "merch/concepts/mockups/v7-navy-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a3a675ccc720924bb630fa3e5e6bdb3d/vintage-corduroy-cap-navy-front-6b01f2549530b.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "v7-burgundy": {
+  "key": "6ad9ce865f24",
+  "files": [
+   "merch/concepts/mockups/v7-burgundy.jpg",
+   "merch/concepts/mockups/v7-burgundy-2.jpg",
+   "merch/concepts/mockups/v7-burgundy-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/275379778e453b797d1a02bc6fef9034/vintage-corduroy-cap-burgundy-front-6b01f25b1f874.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "v8-black": {
+  "key": "da82f4c8fe44",
+  "files": [
+   "merch/concepts/mockups/v8-black.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2ea5bf7dd1102089f2f6a28b82b462ee/cuffed-beanie-black-front-6b01f299e9676.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "v8-navy": {
+  "key": "da82f4c8fe44",
+  "files": [
+   "merch/concepts/mockups/v8-navy.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/cb4fa8b13ac07d5acc690bb0049ee130/cuffed-beanie-navy-front-6b01f29f4451b.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "v8-heather-grey": {
+  "key": "c8f68393a5e1",
+  "files": [
+   "merch/concepts/mockups/v8-heather-grey.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8eefcbc82e7ccd5ae89e7246a10f6f1a/cuffed-beanie-heather-grey-front-6b01f2ddc1f89.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "v8-spruce": {
+  "key": "da82f4c8fe44",
+  "files": [
+   "merch/concepts/mockups/v8-spruce.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5a9e5231558727c53c06064c72dc09f1/cuffed-beanie-spruce-front-6b01f2e2899ed.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "m1-black": {
+  "key": "c8530a82205e",
+  "files": [
+   "merch/concepts/mockups/m1-black.jpg",
+   "merch/concepts/mockups/m1-black-2.jpg",
+   "merch/concepts/mockups/m1-black-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/eb6a6190f00148e7f561be82c037f64d/unisex-heavy-blend-hoodie-black-front-6b01f320bcac2.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m1-sand": {
+  "key": "50d508637327",
+  "files": [
+   "merch/concepts/mockups/m1-sand.jpg",
+   "merch/concepts/mockups/m1-sand-2.jpg",
+   "merch/concepts/mockups/m1-sand-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8f3040d22f57bd85c2e8f1f9afbacac4/unisex-heavy-blend-hoodie-sand-front-6b01f32ba494d.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m1-military-green": {
+  "key": "836e11f8e5a8",
+  "files": [
+   "merch/concepts/mockups/m1-military-green.jpg",
+   "merch/concepts/mockups/m1-military-green-2.jpg",
+   "merch/concepts/mockups/m1-military-green-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d970dc17ade236343d870b2b458ce894/unisex-heavy-blend-hoodie-military-green-front-6b01f3688dd2f.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m1-navy": {
+  "key": "b7a5d7f21df0",
+  "files": [
+   "merch/concepts/mockups/m1-navy.jpg",
+   "merch/concepts/mockups/m1-navy-2.jpg",
+   "merch/concepts/mockups/m1-navy-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/09e69c847b9da87093c279f5ef83b800/unisex-heavy-blend-hoodie-navy-front-6b01f373ac9b3.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m2-black": {
+  "key": "d8b6f1c91d90",
+  "files": [
+   "merch/concepts/mockups/m2-black.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b72c1ad8c8aa7e031e16ff70d1dcb561/cuffed-beanie-black-front-6b01f3b21c4e2.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "m2-baby-pink": {
+  "key": "9463a6bf52a6",
+  "files": [
+   "merch/concepts/mockups/m2-baby-pink.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/3e64e058708453a3b621453369a7ae1c/cuffed-beanie-baby-pink-front-6b01f3bab68f0.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "m2-white": {
+  "key": "696db5d93336",
+  "files": [
+   "merch/concepts/mockups/m2-white.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/449b576ae14c1bc5031d3fb967f958da/cuffed-beanie-white-front-6b01f3f73eddb.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "m2-heather-grey": {
+  "key": "1adc215d8dc7",
+  "files": [
+   "merch/concepts/mockups/m2-heather-grey.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2fcbec4fd682d4ed4ceb87294d27fad1/cuffed-beanie-heather-grey-front-6b01f3fd5937f.jpg",
+  "labels": [
+   "embroidery_front"
+  ]
+ },
+ "m3-black": {
+  "key": "871c4f881e6c",
+  "files": [
+   "merch/concepts/mockups/m3-black.jpg",
+   "merch/concepts/mockups/m3-black-2.jpg",
+   "merch/concepts/mockups/m3-black-3.jpg",
+   "merch/concepts/mockups/m3-black-4.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6372c13b4b663e4972589fa033edc9bc/unisex-staple-t-shirt-black-front-6b01f43be317f.jpg",
+  "labels": [
+   "front",
+   "back"
+  ]
+ },
+ "m3-white": {
+  "key": "481bc37d6648",
+  "files": [
+   "merch/concepts/mockups/m3-white.jpg",
+   "merch/concepts/mockups/m3-white-2.jpg",
+   "merch/concepts/mockups/m3-white-3.jpg",
+   "merch/concepts/mockups/m3-white-4.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/92e987c8f94a16f6c25c17daf7cc0283/unisex-staple-t-shirt-white-front-6b01f4475ae1f.jpg",
+  "labels": [
+   "front",
+   "back"
+  ]
+ },
+ "m3-heather-dust": {
+  "key": "481bc37d6648",
+  "files": [
+   "merch/concepts/mockups/m3-heather-dust.jpg",
+   "merch/concepts/mockups/m3-heather-dust-2.jpg",
+   "merch/concepts/mockups/m3-heather-dust-3.jpg",
+   "merch/concepts/mockups/m3-heather-dust-4.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d52a34d04335ece7e7a14fa9766a51ae/unisex-staple-t-shirt-heather-dust-front-6b01f4853b404.jpg",
+  "labels": [
+   "front",
+   "back"
+  ]
+ },
+ "m3-navy": {
+  "key": "871c4f881e6c",
+  "files": [
+   "merch/concepts/mockups/m3-navy.jpg",
+   "merch/concepts/mockups/m3-navy-2.jpg",
+   "merch/concepts/mockups/m3-navy-3.jpg",
+   "merch/concepts/mockups/m3-navy-4.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/deffe50ae99d776008aadb9337db4bc1/unisex-staple-t-shirt-navy-front-6b01f4c093ed3.jpg",
+  "labels": [
+   "front",
+   "back"
+  ]
+ },
+ "m4-white": {
+  "key": "f49720b04ad8",
+  "files": [
+   "merch/concepts/mockups/m4-white.jpg",
+   "merch/concepts/mockups/m4-white-2.jpg",
+   "merch/concepts/mockups/m4-white-3.jpg",
+   "merch/concepts/mockups/m4-white-4.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/175dbfdb3cee413ef55e7575a1499831/unisex-long-sleeve-tee-white-front-6b01f4fc9284b.jpg",
+  "labels": [
+   "front",
+   "sleeve_left"
+  ]
+ },
+ "m4-black": {
+  "key": "b0c894b5a1fc",
+  "files": [
+   "merch/concepts/mockups/m4-black.jpg",
+   "merch/concepts/mockups/m4-black-2.jpg",
+   "merch/concepts/mockups/m4-black-3.jpg",
+   "merch/concepts/mockups/m4-black-4.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/779f10f496448cf279e05aa62a8ee73e/unisex-long-sleeve-tee-black-front-6b01f53a69819.jpg",
+  "labels": [
+   "front",
+   "sleeve_left"
+  ]
+ },
+ "m4-navy": {
+  "key": "0e21e393910a",
+  "files": [
+   "merch/concepts/mockups/m4-navy.jpg",
+   "merch/concepts/mockups/m4-navy-2.jpg",
+   "merch/concepts/mockups/m4-navy-3.jpg",
+   "merch/concepts/mockups/m4-navy-4.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e2785b4f834524279fb4bf93bb79a257/unisex-long-sleeve-tee-navy-front-6b01f577d1f4d.jpg",
+  "labels": [
+   "front",
+   "sleeve_left"
+  ]
+ },
+ "m4-military-green": {
+  "key": "0e21e393910a",
+  "files": [
+   "merch/concepts/mockups/m4-military-green.jpg",
+   "merch/concepts/mockups/m4-military-green-2.jpg",
+   "merch/concepts/mockups/m4-military-green-3.jpg",
+   "merch/concepts/mockups/m4-military-green-4.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/700c95406d42a8dc80b8f2071adec5ae/unisex-long-sleeve-tee-military-green-front-6b01f5b525d92.jpg",
+  "labels": [
+   "front",
+   "sleeve_left"
+  ]
+ },
+ "m5-black": {
+  "key": "ff8299c84cf8",
+  "files": [
+   "merch/concepts/mockups/m5-black.jpg",
+   "merch/concepts/mockups/m5-black-2.jpg",
+   "merch/concepts/mockups/m5-black-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/7af16a3ba2bd48b3d39ef17a51753ff4/unisex-staple-t-shirt-black-front-6b01f5f21ec10.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m5-navy": {
+  "key": "ff8299c84cf8",
+  "files": [
+   "merch/concepts/mockups/m5-navy.jpg",
+   "merch/concepts/mockups/m5-navy-2.jpg",
+   "merch/concepts/mockups/m5-navy-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/63a99fb3e3d40e29437c4abbdabab311/unisex-staple-t-shirt-navy-front-6b01f62f2e64b.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m5-asphalt": {
+  "key": "ff8299c84cf8",
+  "files": [
+   "merch/concepts/mockups/m5-asphalt.jpg",
+   "merch/concepts/mockups/m5-asphalt-2.jpg",
+   "merch/concepts/mockups/m5-asphalt-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c618290ba8734a7991cc4406480a45a0/unisex-staple-t-shirt-asphalt-front-6b01f66c3c574.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m5-brown": {
+  "key": "ff8299c84cf8",
+  "files": [
+   "merch/concepts/mockups/m5-brown.jpg",
+   "merch/concepts/mockups/m5-brown-2.jpg",
+   "merch/concepts/mockups/m5-brown-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2ce44e1cb0da083c678cf694b660b635/unisex-staple-t-shirt-brown-front-6b01f6a8e8c9a.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m6-sand": {
+  "key": "7b1d6236ce27",
+  "files": [
+   "merch/concepts/mockups/m6-sand.jpg",
+   "merch/concepts/mockups/m6-sand-2.jpg",
+   "merch/concepts/mockups/m6-sand-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/cd60613f91c29bb1db67f5c80308d54c/unisex-crew-neck-sweatshirt-sand-front-6b01f6e546886.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m6-black": {
+  "key": "eb2c540f4ce4",
+  "files": [
+   "merch/concepts/mockups/m6-black.jpg",
+   "merch/concepts/mockups/m6-black-2.jpg",
+   "merch/concepts/mockups/m6-black-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/17c41b98f366f594d8e82d153ca46b0a/unisex-crew-neck-sweatshirt-black-front-6b01f72366d3d.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m6-light-blue": {
+  "key": "7b1d6236ce27",
+  "files": [
+   "merch/concepts/mockups/m6-light-blue.jpg",
+   "merch/concepts/mockups/m6-light-blue-2.jpg",
+   "merch/concepts/mockups/m6-light-blue-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2a5da3b76428a4c3446e6a78748ce3b0/unisex-crew-neck-sweatshirt-light-blue-front-6b01f76030e25.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m6-sport-grey": {
+  "key": "7b1d6236ce27",
+  "files": [
+   "merch/concepts/mockups/m6-sport-grey.jpg",
+   "merch/concepts/mockups/m6-sport-grey-2.jpg",
+   "merch/concepts/mockups/m6-sport-grey-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b7a697364bc23cc014229b4f0b278ed9/unisex-crew-neck-sweatshirt-sport-grey-front-6b01f79ed903e.jpg",
+  "labels": [
+   "front"
+  ]
+ },
+ "m7-black": {
+  "key": "ac390db22227",
+  "files": [
+   "merch/concepts/mockups/m7-black.jpg",
+   "merch/concepts/mockups/m7-black-2.jpg",
+   "merch/concepts/mockups/m7-black-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/94dab9a30143c00cd3c9644b6eab1a2d/classic-dad-hat-black-front-6b01f7dbc3ad2.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "m7-stone": {
+  "key": "aac158e0a5ff",
+  "files": [
+   "merch/concepts/mockups/m7-stone.jpg",
+   "merch/concepts/mockups/m7-stone-2.jpg",
+   "merch/concepts/mockups/m7-stone-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/4a02f3e7f73d45eeb2c010c72b406afc/classic-dad-hat-stone-front-6b01f81a5cc01.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "m7-navy": {
+  "key": "ac390db22227",
+  "files": [
+   "merch/concepts/mockups/m7-navy.jpg",
+   "merch/concepts/mockups/m7-navy-2.jpg",
+   "merch/concepts/mockups/m7-navy-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/368cd30334cf5bcc8220d897eb297cb0/classic-dad-hat-navy-front-6b01f857266ad.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "m7-spruce": {
+  "key": "ac390db22227",
+  "files": [
+   "merch/concepts/mockups/m7-spruce.jpg",
+   "merch/concepts/mockups/m7-spruce-2.jpg",
+   "merch/concepts/mockups/m7-spruce-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8db37581cbf873a9f5cebb39f314167e/classic-dad-hat-spruce-front-6b01f8942abbf.jpg",
+  "labels": [
+   "embroidery_front_large"
+  ]
+ },
+ "m8-white": {
+  "key": "055aef7eb370",
+  "files": [
+   "merch/concepts/mockups/m8-white.jpg",
+   "merch/concepts/mockups/m8-white-2.jpg",
+   "merch/concepts/mockups/m8-white-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/4f7f48e09f49330a2df261f465856694/unisex-garment-dyed-pocket-t-shirt-white-front-6b01f8d13498f.jpg",
+  "labels": [
+   "pocket"
+  ]
+ },
+ "m8-black": {
+  "key": "ed91ed4bf8c0",
+  "files": [
+   "merch/concepts/mockups/m8-black.jpg",
+   "merch/concepts/mockups/m8-black-2.jpg",
+   "merch/concepts/mockups/m8-black-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/4a7a138805dde0d789e98ccab320031b/unisex-garment-dyed-pocket-t-shirt-black-front-6b01f90eef099.jpg",
+  "labels": [
+   "pocket"
+  ]
+ },
+ "m8-butter": {
+  "key": "055aef7eb370",
+  "files": [
+   "merch/concepts/mockups/m8-butter.jpg",
+   "merch/concepts/mockups/m8-butter-2.jpg",
+   "merch/concepts/mockups/m8-butter-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/70e34957023cdf6abb1e4e6a8638d4f4/unisex-garment-dyed-pocket-t-shirt-butter-front-6b01f94ce5abb.jpg",
+  "labels": [
+   "pocket"
+  ]
+ },
+ "m8-flo-blue": {
+  "key": "055aef7eb370",
+  "files": [
+   "merch/concepts/mockups/m8-flo-blue.jpg",
+   "merch/concepts/mockups/m8-flo-blue-2.jpg",
+   "merch/concepts/mockups/m8-flo-blue-3.jpg"
+  ],
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a7a4bcbf87047617611cbdb3fef45f7c/unisex-garment-dyed-pocket-t-shirt-flo-blue-front-6b01f98a8f587.jpg",
+  "labels": [
+   "pocket"
+  ]
+ }
+}
