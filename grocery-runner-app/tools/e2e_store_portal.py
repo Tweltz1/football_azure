@@ -6,6 +6,8 @@ tables, since the admin password is not in GitHub), edits layout/sales/out-of-st
 endpoints see it, checks another user is refused, then deletes everything it made. Prints no secrets.
 
 Run by the Shop Stride workflow when a commit message contains [stride-portal-e2e]."""
+import hashlib
+import hmac
 import json
 import os
 import time
@@ -91,13 +93,42 @@ try:
     s, r = portal({"action": "store", "store_id": str(uuid.uuid4())}, token)
     check("no editing before approval", s == 403, s)
 
-    # Approve like admin-approve does.
-    s, made = req("POST", f"{BASE}/rest/v1/grocery_partner_stores?select=id", {
-        "name": f"E2E Test Store {tag}", "chain": "walmart", "lat": 47.5, "lon": -87.5, "address": "1 Test Rd, Nowhere, WI",
-        "key_hash": uuid.uuid4().hex + uuid.uuid4().hex}, {**SVC, "Prefer": "return=representation"})
-    made_store = made[0]["id"]
-    req("POST", f"{BASE}/rest/v1/grocery_store_managers", {"partner_id": made_store, "user_id": uid, "email": f"stride-e2e-{tag}@walmart.com"}, SVC)
-    req("PATCH", f"{BASE}/rest/v1/grocery_store_claims?id=eq.{claim_id}", {"status": "approved", "partner_id": made_store}, SVC)
+    # Only one request per store at a time.
+    token2, _ = sign_in(f"stride-e2e-{tag}-second@gmail.com")
+    s, r = portal({"action": "claim", "person": "Second Person", "title": "Manager", "phone": "715-555-0101",
+                   "chain": "walmart", "store_name": "Same store", "address": "1 Test Rd", "lat": 47.5001, "lon": -87.5001}, token2)
+    check("a second request for a store being checked is refused", s == 409, f"{s} {r}")
+
+    # Approve with the email's Approve button (a signed link), like Tyler would.
+    exp = int(time.time()) + 3600
+    decide_secret = hashlib.sha256(f"store-decide:{TOKEN}".encode()).hexdigest()  # as the workflow sets STORE_DECIDE_SECRET
+    sig = hmac.new(f"store-claims:{decide_secret}".encode(), f"{claim_id}.{exp}".encode(), hashlib.sha256).hexdigest()[:40]
+    good = f"{claim_id}.{exp}.{sig}"
+    s, r = portal({"action": "decide-view", "token": good[:-1] + ("0" if good[-1] != "0" else "1")})
+    check("a tampered approve link is refused", s == 401, s)
+    s, view = portal({"action": "decide-view", "token": good})
+    check("approve link shows the request", s == 200 and view.get("person") == "E2E Tester" and "user_id" not in view, f"{s} {view}")
+    s, r = portal({"action": "decide", "token": good, "choice": "approve"})
+    check("approve link approves (and makes the new store)", s == 200 and r.get("status") == "approved", f"{s} {r}")
+    made_store = r.get("partner_id")
+    s, r = portal({"action": "decide", "token": good, "choice": "approve"})
+    check("the same link can't decide twice", s == 400, s)
+
+    # A claimed store takes no more requests.
+    s, r = portal({"action": "claim", "person": "Second Person", "title": "Manager", "phone": "715-555-0101", "partner_id": made_store}, token2)
+    check("a claimed store refuses new requests", s == 409, f"{s} {r}")
+    s, found = portal({"action": "find-stores", "query": f"E2E Test Store {tag}"}, token2)
+    check("search shows it as claimed", s == 200 and found and found[0].get("claimed") is True, f"{s} {found}")
+
+    # Password sign-in.
+    pw = "e2e-" + uuid.uuid4().hex
+    s, r = portal({"action": "set-password", "password": pw}, token)
+    check("manager sets a password", s == 200, f"{s} {r}")
+    s, r = portal({"action": "login-password", "email": f"stride-e2e-{tag}@walmart.com", "password": pw})
+    check("manager signs in with email + password", s == 200 and r.get("access_token"), f"{s}")
+    s, r = portal({"action": "login-password", "email": f"stride-e2e-{tag}@walmart.com", "password": pw + "x"})
+    check("wrong password is refused", s == 401, s)
+    token = r.get("access_token") or token
 
     s, me = portal({"action": "me"}, token)
     check("approved store shows for the manager", s == 200 and [x["id"] for x in me["stores"]] == [made_store], f"{s} {me}")
@@ -126,7 +157,7 @@ try:
     s, a = req("POST", APPFN, {"action": "aisles", "store": key, "items": ["DiGiorno frozen pizza"], "depts": 2}, app)
     check("app: official aisle", s == 200 and a.get("digiorno frozen pizza", {}).get("aisle") == "12", f"{s} {a}")
 
-    deal_id = st["deals"][0]["id"]
+    deal_id = (st.get("deals") or [{"id": 0}])[0]["id"]
     s, r = portal({"action": "deal-remove", "id": deal_id, **S}, token)
     check("sale removed", s == 200 and r["removed"] == 1, f"{s} {r}")
     _, log = req("GET", f"{BASE}/rest/v1/grocery_partner_changes?select=what,who&partner_id=eq.{made_store}", headers=SVC)
