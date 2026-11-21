@@ -257,9 +257,9 @@ export default function PlanScreen() {
                         {task.title}
                       </Text>
                       {task.lines?.map((l) => (
-                        <Text key={l.meal} style={{ color: t.text, fontSize: 14, lineHeight: 19 }}>
-                          <Text style={{ fontWeight: '600' }}>{l.meal}: </Text>
-                          {l.items}
+                        <Text key={l.label} style={{ color: t.text, fontSize: 14, lineHeight: 19 }}>
+                          <Text style={{ fontWeight: '600' }}>{l.label}</Text>
+                          <Text style={{ color: t.textMuted }}> → {l.text}</Text>
                         </Text>
                       ))}
                       <Text style={{ color: t.textMuted, fontSize: 13 }}>{task.detail}</Text>

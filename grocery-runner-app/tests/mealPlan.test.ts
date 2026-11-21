@@ -65,3 +65,43 @@ test('"Plan my week" picks different meals on each tap, even right after Clear',
   assert.equal(vegan.length, 5);
   assert.ok(vegan.every((r) => matchesFilters(r, ['vegan'])));
 });
+
+test('prep day does each shared thing once for every meal that uses it', () => {
+  const g = (id: string) => SUGGESTED.find((r) => r.id === `s-${id}`)!;
+  const tasks = prepSchedule([
+    { date: '2026-11-22', recipes: [] },
+    { date: '2026-11-23', recipes: [g('tacos')] },
+    { date: '2026-11-24', recipes: [g('stirfry')] },
+    { date: '2026-11-25', recipes: [g('chili')] },
+    { date: '2026-11-26', recipes: [g('curry')] },
+    { date: '2026-11-27', recipes: [g('caesar')] },
+  ]);
+  const task = (id: string) => tasks.find((t) => t.id === id)!;
+  // Jasmine and basmati rice: one pot.
+  assert.deepEqual(task('grains').lines, [{ label: 'Rice, 4 cups', text: 'Chicken and Broccoli Stir-Fry and Chickpea Coconut Curry' }]);
+  // Ground beef for tacos and chili browns once.
+  const beef = task('protein').lines!.find((l) => l.label.startsWith('Ground beef'))!;
+  assert.equal(beef.label, 'Ground beef, 2 1/2 lb');
+  assert.match(beef.text, /^split: Ground Beef Tacos and Easy Beef Chili$/);
+  assert.match(task('protein').detail, /Brown all the ground beef in one pan/);
+  // Each vegetable once, the shared ones first, with what to do.
+  const chop = task('chop').lines!;
+  assert.equal(chop.filter((l) => l.label.startsWith('Yellow onion')).length, 1);
+  assert.ok(chop.slice(0, 3).every((l) => / and /.test(l.text)));
+  assert.ok(chop.some((l) => l.label === 'Garlic, 6 cloves · mince'));
+  assert.ok(chop.some((l) => l.label === 'Green onions, 1 bunch · slice'));
+  // Jarred sauces aren't a mixing job; a salad isn't frozen.
+  assert.ok(!task('sauce').lines!.some((l) => /caesar|tomato/i.test(l.label)));
+  assert.equal(task('pack-2026-11-27').icon, '📦');
+  assert.equal(task('pack-2026-11-26').icon, '🧊');
+});
+
+test('linked recipes with no steps still get a prep plan from their ingredients', () => {
+  const linked = {
+    id: 'm1', title: 'Weeknight stew', servings: '4', source: 'mine' as const,
+    items: [{ item: 'yellow onion', amount: '1', pantry: false, note: 'thinly sliced' }, { item: 'beef stew meat', amount: '2 lb', pantry: false }],
+  };
+  const tasks = prepSchedule([{ date: '2026-11-22', recipes: [linked] }]);
+  assert.ok(tasks.find((t) => t.id === 'chop')!.lines!.some((l) => l.label === 'Yellow onion, 1 · thinly sliced'));
+  assert.ok(tasks.some((t) => t.id === 'protein'));
+});

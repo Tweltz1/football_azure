@@ -42,3 +42,24 @@ export function scaleAmount(amount: string, factor: number): string {
   const low = niceNumber(parseNum(m[1]) * factor);
   return m[3] ? `${low}${m[2] === 'to' ? ' to ' : '-'}${niceNumber(parseNum(m[3]) * factor)}${rest}` : `${low}${rest}`;
 }
+
+/**
+ * Adds amounts of the same thing from several recipes: ["1.5 lb", "1 lb"] → "2 1/2 lb", ["1", "1"] → "2",
+ * ["3 cloves", "4 cloves"] → "7 cloves". Different units stay side by side: "2 cups + 1 can". Blanks and
+ * "for serving" kinds are kept only when nothing else is there.
+ */
+export function addAmounts(amounts: string[]): string {
+  const sums = new Map<string, number>();
+  const other: string[] = [];
+  for (const a of amounts.map((x) => x.trim()).filter(Boolean)) {
+    const m = a.match(new RegExp(String.raw`^(${NUM})(?!\s*(-|–|to)\s*\d)(\s.*)?$`));
+    if (!m) {
+      if (!other.includes(a)) other.push(a);
+      continue;
+    }
+    const unit = (m[3] ?? '').trim().toLowerCase();
+    sums.set(unit, (sums.get(unit) ?? 0) + parseNum(m[1]));
+  }
+  const parts = [...sums].map(([unit, n]) => `${niceNumber(n)}${unit ? ` ${unit}` : ''}`);
+  return [...parts, ...(parts.length ? other.filter((o) => /\d/.test(o)) : other)].join(' + ');
+}

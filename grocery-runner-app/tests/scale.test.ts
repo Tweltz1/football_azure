@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { baseServings, niceNumber, scaleAmount } from '../src/lib/scale';
+import { addAmounts, baseServings, niceNumber, scaleAmount } from '../src/lib/scale';
 
 test('reads the servings number', () => {
   assert.equal(baseServings('4 servings'), 4);
@@ -26,4 +26,13 @@ test('scales the leading amount only', () => {
   assert.equal(scaleAmount('1 lb', 1.5), '1 1/2 lb');
   assert.equal(scaleAmount('to taste', 2), 'to taste');
   assert.equal(scaleAmount('', 2), '');
+});
+
+test('addAmounts adds up the same thing across recipes', () => {
+  assert.equal(addAmounts(['1.5 lb', '1 lb']), '2 1/2 lb');
+  assert.equal(addAmounts(['1', '1', '']), '2');
+  assert.equal(addAmounts(['3 cloves', '4 cloves']), '7 cloves');
+  assert.equal(addAmounts(['2 cups', '1 can']), '2 cups + 1 can');
+  assert.equal(addAmounts(['for serving', '']), 'for serving');
+  assert.equal(addAmounts(['2', 'for garnish']), '2');
 });
