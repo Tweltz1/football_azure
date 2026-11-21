@@ -1,0 +1,67 @@
+name: Merch concepts (Printful mockups)
+
+# Real Printful mockups + Printful store products for merch IDEAS (merch/concepts), so they can be judged before
+# anything goes on weltzcraft.com/merch. Never touches the live merch catalog or deploys the site.
+# Step 1: with no merch/concepts/catalog.json, it lists candidate Printful blanks (colors, print areas).
+# Step 2: with merch/concepts/concepts.json + art, it places the art, makes mockups and creates "Concept ..." products.
+on:
+  push:
+    branches: ['claude/project-thread-1lvds4']
+    paths: ['merch/concepts/concepts.json', 'merch/concepts/art/**', 'merch/concepts/run', 'scripts/merch-concepts.mjs', 'scripts/merch_concepts_place.py', '.github/workflows/merch-concepts.yml']
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Only slugs starting with this (e.g. v1-). Blank = all.'
+        required: false
+
+permissions:
+  contents: write
+
+concurrency: { group: merch-concepts, cancel-in-progress: false }
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PRINTFUL_API_TOKEN: ${{ secrets.PRINTFUL_API_TOKEN }}
+      PRINTFUL_STORE_ID: ${{ secrets.PRINTFUL_STORE_ID }}
+      ONLY: ${{ github.event.inputs.only }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Discover blanks
+        run: |
+          [ -f merch/concepts/catalog.json ] && exit 0
+          node scripts/merch-concepts.mjs discover
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add merch/concepts/catalog.json && git commit -q -m "Merch concepts: Printful catalog" || true
+          git pull -q --rebase && git push -q
+      - name: Place art
+        run: |
+          [ -f merch/concepts/concepts.json ] || exit 0
+          pip install -q pillow
+          python3 scripts/merch_concepts_place.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add merch/concepts/placed && git commit -q -m "Merch concepts: placed print files" || true
+          git pull -q --rebase && git push -q
+          echo "ASSET_BASE=https://raw.githubusercontent.com/${{ github.repository }}/$(git rev-parse HEAD)/merch/concepts" >> "$GITHUB_ENV"
+      - name: Mockups
+        run: |
+          [ -f merch/concepts/concepts.json ] || exit 0
+          node scripts/merch-concepts.mjs mockups
+      - name: Printful products
+        run: |
+          [ -f merch/concepts/concepts.json ] || exit 0
+          node scripts/merch-concepts.mjs create
+      - name: Commit mockups
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git add merch/concepts/mockups merch/concepts/mockups.json 2>/dev/null || true
+          git commit -q -m "Merch concepts: Printful mockups" || exit 0
+          git pull -q --rebase && git push -q
