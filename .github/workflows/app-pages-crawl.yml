@@ -9,10 +9,18 @@ on:
 jobs:
   crawl:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 40
     permissions: { contents: read }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
+      - name: Wait for hood-league.com to publish its forwards (up to 30 minutes)
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -A 'Mozilla/5.0' https://hood-league.com/junk-terms.html)
+            [ "$code" = 301 ] && { echo "hood-league.com forwards are live"; exit 0; }
+            echo "still $code"; sleep 30
+          done
+          echo "::warning::hood-league.com forwards not live yet"
       - run: node scripts/app-urls/crawl.mjs

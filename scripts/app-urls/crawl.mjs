@@ -56,7 +56,8 @@ for (const url of pages) {
     const html = await (await fetch(end.final, { headers: { 'User-Agent': UA } })).text();
     for (const m of html.matchAll(/(?:href|src)="([^"#][^"]*)"/g)) {
       const raw = m[1].replace(/&amp;/g, '&');
-      if (/^(mailto|tel|javascript|data):/.test(raw)) continue;
+      if (/^(mailto|tel|javascript|data):/.test(raw) || raw.includes('/cdn-cgi/l/email-protection')) continue; // Cloudflare hides emails
+      if (/^https:\/\/fonts\.(googleapis|gstatic)\.com\/?$/.test(raw)) continue; // preconnect hints, not links
       links.add(new URL(raw, end.final).href);
     }
     const loc = html.match(/rel="canonical" href="([^"]+)"/);
@@ -74,6 +75,10 @@ for (const url of [...links].sort()) {
   if (/^https:\/\/(apps\.apple\.com|www\.apple\.com)/.test(url)) {
     try { const r = await fetch(url, { headers: { 'User-Agent': UA } }); row(r.status < 400, 'link', url, String(r.status)); } catch (e) { row(false, 'link', url, e.message); }
     continue;
+  }
+  if (/^https:\/\/talkshops\.app/.test(url)) { // Cloudflare bot check blocks GitHub's machines; not part of this move
+    const r = await fetch(url, { headers: { 'User-Agent': UA } }).catch(() => null);
+    results.push(`SKIP link      ${url}  ${r ? r.status : 'no answer'} (talkshops.app blocks automated checks)`); continue;
   }
   try { const end = await follow(url); row(end.status === 200, 'link', url, `${end.chain.join('>')}${end.final !== url ? ' -> ' + end.final : ''}`); }
   catch (e) { row(false, 'link', url, e.message); }
