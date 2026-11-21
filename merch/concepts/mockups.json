@@ -464,59 +464,51 @@
   ]
  },
  "m3-black": {
-  "key": "871c4f881e6c",
+  "key": "8101e365495c",
   "files": [
    "merch/concepts/mockups/m3-black.jpg",
    "merch/concepts/mockups/m3-black-2.jpg",
-   "merch/concepts/mockups/m3-black-3.jpg",
-   "merch/concepts/mockups/m3-black-4.jpg"
+   "merch/concepts/mockups/m3-black-3.jpg"
   ],
-  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6372c13b4b663e4972589fa033edc9bc/unisex-staple-t-shirt-black-front-6b01f43be317f.jpg",
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/61762d878dc0ed127a1cb86fd2caeb45/unisex-staple-t-shirt-black-front-6b02010d7dac9.jpg",
   "labels": [
-   "front",
-   "back"
+   "front"
   ]
  },
  "m3-white": {
-  "key": "481bc37d6648",
+  "key": "f16e0a4dce70",
   "files": [
    "merch/concepts/mockups/m3-white.jpg",
    "merch/concepts/mockups/m3-white-2.jpg",
-   "merch/concepts/mockups/m3-white-3.jpg",
-   "merch/concepts/mockups/m3-white-4.jpg"
+   "merch/concepts/mockups/m3-white-3.jpg"
   ],
-  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/92e987c8f94a16f6c25c17daf7cc0283/unisex-staple-t-shirt-white-front-6b01f4475ae1f.jpg",
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/60d9e46f621f1b6b1d5f4bfb099d9799/unisex-staple-t-shirt-white-front-6b0201142d554.jpg",
   "labels": [
-   "front",
-   "back"
+   "front"
   ]
  },
  "m3-heather-dust": {
-  "key": "481bc37d6648",
+  "key": "f16e0a4dce70",
   "files": [
    "merch/concepts/mockups/m3-heather-dust.jpg",
    "merch/concepts/mockups/m3-heather-dust-2.jpg",
-   "merch/concepts/mockups/m3-heather-dust-3.jpg",
-   "merch/concepts/mockups/m3-heather-dust-4.jpg"
+   "merch/concepts/mockups/m3-heather-dust-3.jpg"
   ],
-  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d52a34d04335ece7e7a14fa9766a51ae/unisex-staple-t-shirt-heather-dust-front-6b01f4853b404.jpg",
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/54d0f05de4d342130c99919ebb09190d/unisex-staple-t-shirt-heather-dust-front-6b020151a7553.jpg",
   "labels": [
-   "front",
-   "back"
+   "front"
   ]
  },
  "m3-navy": {
-  "key": "871c4f881e6c",
+  "key": "8101e365495c",
   "files": [
    "merch/concepts/mockups/m3-navy.jpg",
    "merch/concepts/mockups/m3-navy-2.jpg",
-   "merch/concepts/mockups/m3-navy-3.jpg",
-   "merch/concepts/mockups/m3-navy-4.jpg"
+   "merch/concepts/mockups/m3-navy-3.jpg"
   ],
-  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/deffe50ae99d776008aadb9337db4bc1/unisex-staple-t-shirt-navy-front-6b01f4c093ed3.jpg",
+  "main": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e16a004deea84d4f237f7267e35d88a5/unisex-staple-t-shirt-navy-front-6b020159daaec.jpg",
   "labels": [
-   "front",
-   "back"
+   "front"
   ]
  },
  "m4-white": {
