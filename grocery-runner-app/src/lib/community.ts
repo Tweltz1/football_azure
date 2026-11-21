@@ -122,7 +122,9 @@ export async function shareRecipe(recipe: Recipe, category: Category, author: st
       minutes: recipe.minutes ?? null,
       servings: recipe.servings?.slice(0, 40) || null,
       items: recipe.items.slice(0, 60).map((i) => ({ item: i.item.slice(0, 80), amount: (i.amount ?? '').slice(0, 40), pantry: !!i.pantry })),
-      steps: recipe.steps?.length
+      // Steps from a recipe website are that site's writing, so a recipe added from a link shares its title and
+      // ingredients only (ingredient lists aren't anyone's to own). Recipes people wrote or scanned share their steps.
+      steps: recipe.steps?.length && !recipe.url
         ? recipe.steps.slice(0, 40).map((st) => ({ text: st.text.slice(0, 600), minutes: Math.max(0, Math.min(1440, Math.round(st.minutes))), ...(st.during ? { during: true } : {}) }))
         : null,
       photo_url: photoUrl,
