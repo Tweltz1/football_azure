@@ -260,7 +260,7 @@ extension NearbyPlugin: MCNearbyServiceAdvertiserDelegate {
     }
 
     public func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didNotStartAdvertisingPeer error: Error) {
-        notifyListeners("error", data: ["message": "Couldn't start hosting: \(error.localizedDescription). Check Settings > Privacy & Security > Local Network > Hood Games is on."])
+        notifyListeners("error", data: ["message": "Couldn't start hosting: \(error.localizedDescription). Check Settings > Privacy & Security > Local Network > Weltzcraft Games is on."])
     }
 }
 
@@ -292,7 +292,7 @@ extension NearbyPlugin: MCNearbyServiceBrowserDelegate {
     }
 
     public func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
-        notifyListeners("error", data: ["message": "Couldn't look for nearby phones: \(error.localizedDescription). Check Settings > Privacy & Security > Local Network > Hood Games is on."])
+        notifyListeners("error", data: ["message": "Couldn't look for nearby phones: \(error.localizedDescription). Check Settings > Privacy & Security > Local Network > Weltzcraft Games is on."])
     }
 }
 

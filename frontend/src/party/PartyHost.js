@@ -134,7 +134,7 @@ export default function PartyHost() {
     document.head.appendChild(link);
     return () => link.remove();
   }, []);
-  useEffect(() => { document.title = started ? def.title : 'Hood Games Night'; }, [started, def.title]);
+  useEffect(() => { document.title = started ? def.title : 'Weltzcraft Games Night'; }, [started, def.title]);
 
   const screenFor = useCallback((cid) => {
     const list = playersRef.current;
@@ -410,7 +410,7 @@ export default function PartyHost() {
       <div className="lc-tv lc-splash">
         <ThemeSky />
         <div className="lc-splash-card">
-          <h1 className="lc-title">Hood Games Night</h1>
+          <h1 className="lc-title">Weltzcraft Games Night</h1>
           <p className="lc-sub">{themeInfo().party} for 1 to 12 players.<br />Put this page on the TV. Everyone plays on their phone.</p>
           <button type="button" className="lc-btn lc-btn-big" onClick={openRoom}>Open a new room</button>
           {savedRoom && (

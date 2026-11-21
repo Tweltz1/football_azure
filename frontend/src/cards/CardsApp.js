@@ -763,7 +763,7 @@ export default function CardsApp() {
   const [code, setCode] = useState(cleanCode(params.get('code') || ''));
 
   useEffect(() => { writeJson(ME_KEY, me); }, [me]);
-  // Signed in with Google (on the Hood Games hub or any game): start with the account's first name.
+  // Signed in with Google (on the Weltzcraft Games hub or any game): start with the account's first name.
   // The box stays editable, and a name typed here wins next time.
   useEffect(() => {
     let live = true;
@@ -776,7 +776,7 @@ export default function CardsApp() {
     return () => { live = false; };
   }, []);
   useEffect(() => {
-    document.title = 'Card Table · Hood Games';
+    document.title = 'Card Table · Weltzcraft Games';
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = fontsHref();

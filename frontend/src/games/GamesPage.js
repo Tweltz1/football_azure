@@ -44,7 +44,7 @@ const GamesPage = ({ guest = false }) => {
         />
       ) : (
         <div className="games-grid">
-          {/* Guests come from the Hood Games hub, which already links the party games and Hood Quest. */}
+          {/* Guests come from the Weltzcraft Games hub, which already links the party games and Hood Quest. */}
           {!guest && (
           <>
           <a href="/games-night" className="game-card is-race">

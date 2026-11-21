@@ -131,7 +131,7 @@ export const themeInfo = (date) => ({ id: season(date), ...THEMES[season(date)] 
 
 export const isSpooky = (date) => season(date) === 'spooky';
 
-// The look of Hood Games for each theme: title font (Google Fonts) and what drifts down the home screens.
+// The look of Weltzcraft Games for each theme: title font (Google Fonts) and what drifts down the home screens.
 // The colors live in themeLook.css, keyed by data-hg-theme on <html>.
 export const LOOKS = {
   spooky: { font: 'Creepster', fontParam: 'Creepster', sky: ['🦇', '🍂', '🦇'] },
@@ -148,7 +148,7 @@ export const LOOKS = {
 /** The Google Fonts stylesheet for the party pages: Fredoka for text plus the theme's title font. */
 export const fontsHref = () => `https://fonts.googleapis.com/css2?family=${LOOKS[season()].fontParam}&family=Fredoka:wght@500;700&display=swap`;
 
-/** Marks <html> with the theme so themeLook.css can recolor every Hood Games page. */
+/** Marks <html> with the theme so themeLook.css can recolor every Weltzcraft Games page. */
 export function applyThemeLook() {
   try { document.documentElement.setAttribute('data-hg-theme', season()); } catch (e) { /* no document */ }
 }

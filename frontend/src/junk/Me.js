@@ -261,7 +261,7 @@ export default function Me() {
             <h2>Delete your account?</h2>
             <p className="jk-muted">
               Your listings, photos and messages are deleted, and so is your sign-in. This also removes the account from
-              Hood League and Hood Games, since they share it. This can't be undone.
+              Hood League and Weltzcraft Games, since they share it. This can't be undone.
             </p>
             {plus && plus.plus && (
               <p className="jk-muted">
