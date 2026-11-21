@@ -380,6 +380,16 @@ export default {
     if (url.pathname === '/api/merch/stripe-webhook') {
       try { return await merchWebhook(request, env); } catch (e) { return json(500, { error: 'Something went wrong' }); }
     }
-    return env.ASSETS.fetch(request);
+    const res = await env.ASSETS.fetch(request);
+    // Curbsy's iPhone app shows its Terms and Privacy in an in-app panel (an iframe), so only those two pages
+    // may be framed, and only by the app itself (capacitor://localhost) and hood-league.com.
+    if (CURBSY_FRAMED.has(url.pathname) && res.status === 200) {
+      const framed = new Response(res.body, res);
+      framed.headers.delete('X-Frame-Options');
+      framed.headers.set('Content-Security-Policy', "frame-ancestors 'self' capacitor://localhost https://hood-league.com");
+      return framed;
+    }
+    return res;
   },
 };
+const CURBSY_FRAMED = new Set(['/curbsy/terms', '/curbsy/privacy']);
