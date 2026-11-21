@@ -250,5 +250,561 @@
   "sticker-white-60": {
     "hash": "cf4ba72481f3",
     "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/786652a53ba439aeb6a8e584dc79709a/kiss-cut-stickers-white-4x4-default-6af4e6482a2dc.jpg"
+  },
+  "crew-sportgrey-v1": {
+    "hash": "da7f9db53f8a",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b3523d0d6d51cca150c41073d1afcdc7/unisex-crew-neck-sweatshirt-sport-grey-front-6b01f482087d3.jpg"
+  },
+  "crew-navy-v1": {
+    "hash": "89f3eb0ea1f5",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/659caa287e612c2aaac68f80b458a78b/unisex-crew-neck-sweatshirt-navy-front-6b01f4bfe42fe.jpg"
+  },
+  "crew-forestgreen-v1": {
+    "hash": "89f3eb0ea1f5",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c03b6e8aa84c130919f2e83c1702109e/unisex-crew-neck-sweatshirt-forest-green-front-6b01f4fc5f22f.jpg"
+  },
+  "crew-maroon-v1": {
+    "hash": "89f3eb0ea1f5",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/34266758bf8708a2126af219fe9f77c3/unisex-crew-neck-sweatshirt-maroon-front-6b01f53ab8f1b.jpg"
+  },
+  "crew-black-v1": {
+    "hash": "89f3eb0ea1f5",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/f0bbcafd533be84bda050960aad6214e/unisex-crew-neck-sweatshirt-black-front-6b01f57843e2c.jpg"
+  },
+  "crew-sand-v1": {
+    "hash": "da7f9db53f8a",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/96606ff99ef43143d61ed20e30bc1cda/unisex-crew-neck-sweatshirt-sand-front-6b01f5b44642d.jpg"
+  },
+  "crew-lightblue-v1": {
+    "hash": "da7f9db53f8a",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/24eb9b0c0833d287302f4923e5b89e11/unisex-crew-neck-sweatshirt-light-blue-front-6b01f5f1f3058.jpg"
+  },
+  "crew-carolinablue-v1": {
+    "hash": "da7f9db53f8a",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/301fb5ce76af0f3c6e2eb6ed0e418da4/unisex-crew-neck-sweatshirt-carolina-blue-front-6b01f62e3bf42.jpg"
+  },
+  "script-stone-v2": {
+    "hash": "e873eb8ded4c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6cc4c36727704503bc26cd00c1b4ea43/classic-dad-hat-stone-front-6b01f66cb0a50.jpg"
+  },
+  "script-navy-v2": {
+    "hash": "e2d5b20c0481",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/69e67fc04543b3a9e440da5db2718bd7/classic-dad-hat-navy-front-6b01f6a9648bb.jpg"
+  },
+  "script-black-v2": {
+    "hash": "e2d5b20c0481",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a4e5a6247e4927cd654186f59fc2f084/classic-dad-hat-black-front-6b01f6e5c57e3.jpg"
+  },
+  "script-lightblue-v2": {
+    "hash": "e873eb8ded4c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/f499d5b46ccde1228b722d03341543cc/classic-dad-hat-light-blue-front-6b01f722e1d8a.jpg"
+  },
+  "script-spruce-v2": {
+    "hash": "e2d5b20c0481",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5b23218eb3856b7ee87bb7931093036b/classic-dad-hat-spruce-front-6b01f76060bee.jpg"
+  },
+  "script-pink-v2": {
+    "hash": "e873eb8ded4c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8f1940af470607813219cabb4a5b27fe/classic-dad-hat-pink-front-6b01f79e22e55.jpg"
+  },
+  "script-cranberry-v2": {
+    "hash": "e2d5b20c0481",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5ddfba728ebc333dd2abcc081c93ab4e/classic-dad-hat-cranberry-front-6b01f7dbb9281.jpg"
+  },
+  "script-khaki-v2": {
+    "hash": "e873eb8ded4c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/da5bff066d1fa1e49f0cc0fb3aec4ba8/classic-dad-hat-khaki-front-6b01f8195a875.jpg"
+  },
+  "script-white-v2": {
+    "hash": "e873eb8ded4c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/556d324a378c3c403eebf975474a4573/classic-dad-hat-white-front-6b01f8574c618.jpg"
+  },
+  "sunset-ivory-v3": {
+    "hash": "3f6d007a49de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/950bb5d5cfe8d5f76b3e0c36f04a0269/unisex-garment-dyed-heavyweight-t-shirt-ivory-front-6b01f89518b32.jpg"
+  },
+  "sunset-pepper-v3": {
+    "hash": "3f31d2f56ef2",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e356f3de5732a5bcfc47ee591b38718e/unisex-garment-dyed-heavyweight-t-shirt-pepper-front-6b01f8d2b34f8.jpg"
+  },
+  "sunset-sage-v3": {
+    "hash": "3f6d007a49de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/eabf2f1ad844b09ecc7521ecc0247548/unisex-garment-dyed-heavyweight-t-shirt-sage-front-6b01f90fbbeb9.jpg"
+  },
+  "sunset-butter-v3": {
+    "hash": "3f6d007a49de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ecc87b7030738113d1d342a9c2701abd/unisex-garment-dyed-heavyweight-t-shirt-butter-front-6b01f94e5bac9.jpg"
+  },
+  "sunset-bluejean-v3": {
+    "hash": "3f31d2f56ef2",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/1b04e0e70c236e1e10c4bbddf96886ba/unisex-garment-dyed-heavyweight-t-shirt-blue-jean-front-6b01f98c1022a.jpg"
+  },
+  "sunset-chalkymint-v3": {
+    "hash": "3f6d007a49de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/47e6601fae0a5c393b45394d30b74a1f/unisex-garment-dyed-heavyweight-t-shirt-chalky-mint-front-6b01f9c99557c.jpg"
+  },
+  "sunset-black-v3": {
+    "hash": "3f31d2f56ef2",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9ba8d57661285bf82a73478df415584e/unisex-garment-dyed-heavyweight-t-shirt-black-front-6b01f9d3aa81a.jpg"
+  },
+  "sunset-brick-v3": {
+    "hash": "3f31d2f56ef2",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/0057811cba32253ba21d764eccc35564/unisex-garment-dyed-heavyweight-t-shirt-brick-front-6b01fa1125d79.jpg"
+  },
+  "ringer-naturalmidnightnavy-v5": {
+    "hash": "0597622a31b3",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/1e191b9374fd655c10950bbbe13f8051/unisex-ringer-t-shirt-natural-midnight-navy-front-6b01fa1ba2cfa.jpg"
+  },
+  "ringer-naturalforestgreen-v5": {
+    "hash": "d680c8e5e5d9",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/aa27f734f29c20ca46e3d267dd3a587f/unisex-ringer-t-shirt-natural-forest-green-front-6b01fa5766d26.jpg"
+  },
+  "ringer-naturalblack-v5": {
+    "hash": "9b46b8367adb",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/09a00c3762d96435b59ce2a8af4dab09/unisex-ringer-t-shirt-natural-black-front-6b01fa5d392f1.jpg"
+  },
+  "ringer-whiteblack-v5": {
+    "hash": "9b46b8367adb",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8fd90eaf4de7da25dbaec48aafe2bfb1/unisex-ringer-t-shirt-white-black-front-6b01fa9a987bc.jpg"
+  },
+  "ringer-heathergrayblack-v5": {
+    "hash": "9b46b8367adb",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d7de726a01de17ba678fe30d9991e0dd/unisex-ringer-t-shirt-heather-gray-black-front-6b01faa0bbf0c.jpg"
+  },
+  "cord-brown-v7": {
+    "hash": "6ad9ce865f24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/dca9f568ff70acbf47e6d6fc8d8028dc/vintage-corduroy-cap-brown-front-6b01fadedc608.jpg"
+  },
+  "cord-olive-v7": {
+    "hash": "6ad9ce865f24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a4efcdd1ae91c5556ec62387fc995807/vintage-corduroy-cap-olive-front-6b01fae4a069b.jpg"
+  },
+  "cord-navy-v7": {
+    "hash": "6ad9ce865f24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/21fb9305199882e2b039fb580b38fa4c/vintage-corduroy-cap-navy-front-6b01fb20c5aea.jpg"
+  },
+  "cord-burgundy-v7": {
+    "hash": "6ad9ce865f24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/20c46ae665c133b673214ccca92a68f3/vintage-corduroy-cap-burgundy-front-6b01fb27b7e25.jpg"
+  },
+  "cord-black-v7": {
+    "hash": "6ad9ce865f24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/25642e0cc0d9fdd3db4b576d21e5a47c/vintage-corduroy-cap-black-front-6b01fb6401c38.jpg"
+  },
+  "beanie-black-v8": {
+    "hash": "da82f4c8fe44",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/4b44b0e4107ca06e683ab5732039e69e/cuffed-beanie-black-front-6b01fb6ec2b95.jpg"
+  },
+  "beanie-navy-v8": {
+    "hash": "da82f4c8fe44",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2afa5ab298b33a139bf497daf1f560db/cuffed-beanie-navy-front-6b01fbabd2563.jpg"
+  },
+  "beanie-heathergrey-v8": {
+    "hash": "c8f68393a5e1",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/75d4014f50c72a358f8f477542b6702a/cuffed-beanie-heather-grey-front-6b01fbb33a969.jpg"
+  },
+  "beanie-spruce-v8": {
+    "hash": "da82f4c8fe44",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6669ca0b2137951c88d3b50d2965a28b/cuffed-beanie-spruce-front-6b01fbeec5761.jpg"
+  },
+  "beanie-olive-v8": {
+    "hash": "da82f4c8fe44",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8d1bf5c4b92cdf4c0aa0215ac54a48fb/cuffed-beanie-olive-front-6b01fbf4eb97c.jpg"
+  },
+  "beanie-brown-v8": {
+    "hash": "da82f4c8fe44",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5952b25d4a69e0bbccbe491d01ae10aa/cuffed-beanie-brown-front-6b01fc338306a.jpg"
+  },
+  "beanie-darkgrey-v8": {
+    "hash": "da82f4c8fe44",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/26bc0992f2e9e1d8799750b82d637020/cuffed-beanie-dark-grey-front-6b01fc38b89ed.jpg"
+  },
+  "beanie-white-v8": {
+    "hash": "c8f68393a5e1",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/7403cbadb07b186da2c64b59488defa7/cuffed-beanie-white-front-6b01fc765780e.jpg"
+  },
+  "tonal-black-m1": {
+    "hash": "c8530a82205e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9126f9cbe40a8c3522921dbee673c496/unisex-heavy-blend-hoodie-black-front-6b01fc7d47292.jpg"
+  },
+  "tonal-sand-m1": {
+    "hash": "50d508637327",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c8f8d0dd060e559ff7012a9bf3c173eb/unisex-heavy-blend-hoodie-sand-front-6b01fcbae8570.jpg"
+  },
+  "tonal-militarygreen-m1": {
+    "hash": "836e11f8e5a8",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5063152fa909895ad96f9aff85422d09/unisex-heavy-blend-hoodie-military-green-front-6b01fcc7154bf.jpg"
+  },
+  "tonal-navy-m1": {
+    "hash": "b7a5d7f21df0",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5f468d1b93b990f7ffbaeb3c27b8818d/unisex-heavy-blend-hoodie-navy-front-6b01fd031d3ff.jpg"
+  },
+  "tonal-charcoal-m1": {
+    "hash": "981d9cab429f",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d71a456706f8cb03e7b0cb159bcdd968/unisex-heavy-blend-hoodie-charcoal-front-6b01fd0e14bb2.jpg"
+  },
+  "tonal-maroon-m1": {
+    "hash": "cc00afd1a3bd",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/650370b1c046d74fc0007d602727e732/unisex-heavy-blend-hoodie-maroon-front-6b01fd4b7dd0f.jpg"
+  },
+  "tonal-forestgreen-m1": {
+    "hash": "489f06c55998",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/fcb1992d154a28e59c87b706bc9bed34/unisex-heavy-blend-hoodie-forest-green-front-6b01fd55b0e76.jpg"
+  },
+  "tonal-sportgrey-m1": {
+    "hash": "3142278181b7",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/c5b90a79945d1336280adfe59bb6102e/unisex-heavy-blend-hoodie-sport-grey-front-6b01fd93314e6.jpg"
+  },
+  "tonal-lightpink-m1": {
+    "hash": "22e222c86d00",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/f88e284240a98b4511f3e26e0aa584c6/unisex-heavy-blend-hoodie-light-pink-front-6b01fd9dba5ee.jpg"
+  },
+  "tonal-darkchocolate-m1": {
+    "hash": "598c4f79a1df",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d2d6b4fe1967a5ea1ab6265bef5b2f57/unisex-heavy-blend-hoodie-dark-chocolate-front-6b01fddb1e606.jpg"
+  },
+  "trucker-navywhite-v4": {
+    "hash": "2b5d8f808312",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b96f62d9ed9660628099cf7b2ae9df71/retro-trucker-hat-navy-white-front-6b020206359f6.jpg"
+  },
+  "trucker-blackwhite-v4": {
+    "hash": "2b5d8f808312",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a8d34372551103835bdb0243c36cf499/retro-trucker-hat-black-white-front-6b02020ee8b48.jpg"
+  },
+  "trucker-mosskhaki-v4": {
+    "hash": "2b5d8f808312",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/16a54425afbb01e511f2d276565afd4e/retro-trucker-hat-moss-khaki-front-6b02024c28365.jpg"
+  },
+  "trucker-heathergreywhite-v4": {
+    "hash": "e5d1a486d4b7",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e1fc8af5475cb479e354c69fe696f29f/retro-trucker-hat-heather-grey-white-front-6b020254484f8.jpg"
+  },
+  "trucker-brownkhaki-v4": {
+    "hash": "2b5d8f808312",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/806a63c77f1f310b31d358f5d1f9becc/retro-trucker-hat-brown-khaki-front-6b02028e50c15.jpg"
+  },
+  "trucker-charcoalblack-v4": {
+    "hash": "2b5d8f808312",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/295edcd4e8c3485bce88cb15c9b32ae1/retro-trucker-hat-charcoal-black-front-6b020295939a8.jpg"
+  },
+  "trucker-navy-v4": {
+    "hash": "2b5d8f808312",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6f3dc2966047e6e5764b7cf8dac0111a/retro-trucker-hat-navy-front-6b0202d20c9a1.jpg"
+  },
+  "trucker-black-v4": {
+    "hash": "2b5d8f808312",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/4c42a5cf991fd074e88e6d209f5f113c/retro-trucker-hat-black-front-6b0202d805936.jpg"
+  },
+  "varsity-black-v6": {
+    "hash": "58d60d9ad929",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/12147a2630e8413685b25111556000c5/unisex-heavy-blend-hoodie-black-front-6b02031713477.jpg"
+  },
+  "varsity-maroon-v6": {
+    "hash": "58d60d9ad929",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b65f21e427b1341df983aeb0c4207069/unisex-heavy-blend-hoodie-maroon-front-6b020320dab5f.jpg"
+  },
+  "varsity-forestgreen-v6": {
+    "hash": "58d60d9ad929",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5351ad26791756db8d63c787b4d3f536/unisex-heavy-blend-hoodie-forest-green-front-6b02035dcf540.jpg"
+  },
+  "varsity-navy-v6": {
+    "hash": "58d60d9ad929",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/fe3cd110ac4c09aec0a00a501e166dac/unisex-heavy-blend-hoodie-navy-front-6b0203685db3a.jpg"
+  },
+  "varsity-charcoal-v6": {
+    "hash": "58d60d9ad929",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/088f3d7833152ede2600f67ee538ba12/unisex-heavy-blend-hoodie-charcoal-front-6b0203a5e33f0.jpg"
+  },
+  "varsity-sportgrey-v6": {
+    "hash": "28476dd76acf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d6d47d7835615fca87ca5019c6762012/unisex-heavy-blend-hoodie-sport-grey-front-6b0203afdc771.jpg"
+  },
+  "varsity-sand-v6": {
+    "hash": "28476dd76acf",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b47e0112713a9286846850939b9b3881/unisex-heavy-blend-hoodie-sand-front-6b0203edea5f5.jpg"
+  },
+  "puff-black-m2": {
+    "hash": "d8b6f1c91d90",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/373bcd6d427b27a98960e7581adc77d6/cuffed-beanie-black-front-6b0203f6d4142.jpg"
+  },
+  "puff-babypink-m2": {
+    "hash": "9463a6bf52a6",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a886f6d97333e0efd6bb2882d0788313/cuffed-beanie-baby-pink-front-6b02043552216.jpg"
+  },
+  "puff-white-m2": {
+    "hash": "696db5d93336",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/08ec33b37043eb9ceb35f39741c12c5b/cuffed-beanie-white-front-6b02043e77575.jpg"
+  },
+  "puff-heathergrey-m2": {
+    "hash": "1adc215d8dc7",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6b4c93348171c2970a86972b07c53579/cuffed-beanie-heather-grey-front-6b02047cab210.jpg"
+  },
+  "puff-navy-m2": {
+    "hash": "d8b6f1c91d90",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/b873ec67f1a12785288e4a8fe787ebd4/cuffed-beanie-navy-front-6b020484a7e7d.jpg"
+  },
+  "puff-royal-m2": {
+    "hash": "9463a6bf52a6",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/67c85af156b52775d6fdf68d686361fd/cuffed-beanie-royal-front-6b0204c1c1a0a.jpg"
+  },
+  "puff-darkgrey-m2": {
+    "hash": "d8b6f1c91d90",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6bcc5d3000cecce6de8084a55e450768/cuffed-beanie-dark-grey-front-6b0204c817b73.jpg"
+  },
+  "smalltee-black-m3": {
+    "hash": "8101e365495c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a7624887fb25803c6708eed3350a9c3c/unisex-staple-t-shirt-black-front-6b02050501728.jpg"
+  },
+  "smalltee-white-m3": {
+    "hash": "f16e0a4dce70",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/100e54fd1548e9e11cab07a7b22e09cc/unisex-staple-t-shirt-white-front-6b02050b5e559.jpg"
+  },
+  "smalltee-heatherdust-m3": {
+    "hash": "f16e0a4dce70",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/212537b17d36b7eed610b6777b610034/unisex-staple-t-shirt-heather-dust-front-6b020548b85eb.jpg"
+  },
+  "smalltee-navy-m3": {
+    "hash": "8101e365495c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ed25cb36ff8b3df47044f2cdd965c9f1/unisex-staple-t-shirt-navy-front-6b02054ef220b.jpg"
+  },
+  "smalltee-natural-m3": {
+    "hash": "f16e0a4dce70",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a24deaa2ff54313dbb1d2b9449516af8/unisex-staple-t-shirt-natural-front-6b02058b605a4.jpg"
+  },
+  "smalltee-forest-m3": {
+    "hash": "8101e365495c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ee6264c6c6ddb50c97b797c0082d08de/unisex-staple-t-shirt-forest-front-6b020593ce6a1.jpg"
+  },
+  "smalltee-maroon-m3": {
+    "hash": "8101e365495c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6cb2f9b520bfc2fc5739df07912eaa4f/unisex-staple-t-shirt-maroon-front-6b0205ceecab0.jpg"
+  },
+  "smalltee-athleticheather-m3": {
+    "hash": "f16e0a4dce70",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/55add180a61d5729118b891d7883e4df/unisex-staple-t-shirt-athletic-heather-front-6b0205d542440.jpg"
+  },
+  "pixells-white-m4": {
+    "hash": "57e05bff4a0e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d18c61052e73245a3d7d481351303bd7/unisex-long-sleeve-tee-white-front-6b020612e0b8c.jpg"
+  },
+  "pixells-black-m4": {
+    "hash": "c9a6dc4b4ac4",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/92fbe320da98fbf1adb9e1934cfb232a/unisex-long-sleeve-tee-black-front-6b02061d93c64.jpg"
+  },
+  "pixells-navy-m4": {
+    "hash": "34c72fd5f04a",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/36d1c03c89a81f3bd255378e250f8baf/unisex-long-sleeve-tee-navy-front-6b02065a5dfc8.jpg"
+  },
+  "pixells-militarygreen-m4": {
+    "hash": "34c72fd5f04a",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9f2c963cee44e859b2d316a0a9f28b2c/unisex-long-sleeve-tee-military-green-front-6b02066406642.jpg"
+  },
+  "pixells-maroon-m4": {
+    "hash": "34c72fd5f04a",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/dcda4a90eaca3f3a69a938e78c690148/unisex-long-sleeve-tee-maroon-front-6b0206a0c6d08.jpg"
+  },
+  "pixells-athleticheather-m4": {
+    "hash": "57e05bff4a0e",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/94109650434311ce6d63c1397edbd815/unisex-long-sleeve-tee-athletic-heather-front-6b0206aad7b53.jpg"
+  },
+  "chrome-black-m5": {
+    "hash": "ff8299c84cf8",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/1002c919c1bf10ff1ff630bf7753358c/unisex-staple-t-shirt-black-front-6b0206e860c86.jpg"
+  },
+  "chrome-navy-m5": {
+    "hash": "ff8299c84cf8",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/7925243a3ead848123a12f8faa7b9e9f/unisex-staple-t-shirt-navy-front-6b0206ee9f21b.jpg"
+  },
+  "chrome-asphalt-m5": {
+    "hash": "ff8299c84cf8",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/113625f9d7911e7f0ab8333b0ab6acd1/unisex-staple-t-shirt-asphalt-front-6b02072baec00.jpg"
+  },
+  "chrome-brown-m5": {
+    "hash": "ff8299c84cf8",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/1c8a71bbdccdcd4dfa4665d02f455c25/unisex-staple-t-shirt-brown-front-6b0207329e645.jpg"
+  },
+  "chrome-darkgreyheather-m5": {
+    "hash": "ff8299c84cf8",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/13acbd7b7461262c0981afddb350a8f3/unisex-staple-t-shirt-dark-grey-heather-front-6b02076eb2b95.jpg"
+  },
+  "chrome-forest-m5": {
+    "hash": "ff8299c84cf8",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/3db23a6ac2ff5eb19d07fc6981268fc9/unisex-staple-t-shirt-forest-front-6b020774c0f78.jpg"
+  },
+  "wordcrew-sand-m6": {
+    "hash": "7b1d6236ce27",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e385ca87c33df19480c528537b573620/unisex-crew-neck-sweatshirt-sand-front-6b0207b1d00f2.jpg"
+  },
+  "wordcrew-black-m6": {
+    "hash": "eb2c540f4ce4",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9e46c0d278546f402445f6b36b754002/unisex-crew-neck-sweatshirt-black-front-6b0207b7d1281.jpg"
+  },
+  "wordcrew-lightblue-m6": {
+    "hash": "7b1d6236ce27",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/5f5bf7daa92c69cab7c85ae0e9cb6287/unisex-crew-neck-sweatshirt-light-blue-front-6b0207f5eee0a.jpg"
+  },
+  "wordcrew-sportgrey-m6": {
+    "hash": "7b1d6236ce27",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/782ef4a9881714d1a2652673fee627ae/unisex-crew-neck-sweatshirt-sport-grey-front-6b0207fc13a1d.jpg"
+  },
+  "wordcrew-navy-m6": {
+    "hash": "eb2c540f4ce4",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/181baf6d76fdb4b793d286d0f2f51cc2/unisex-crew-neck-sweatshirt-navy-front-6b020838d4b7f.jpg"
+  },
+  "wordcrew-forestgreen-m6": {
+    "hash": "eb2c540f4ce4",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d54a347afa711c13c417d90ab6bdf29b/unisex-crew-neck-sweatshirt-forest-green-front-6b02083f18209.jpg"
+  },
+  "wordcrew-lightpink-m6": {
+    "hash": "7b1d6236ce27",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/1ec812792f8325452a61da4a304613f6/unisex-crew-neck-sweatshirt-light-pink-front-6b02087d05c3c.jpg"
+  },
+  "wordcrew-maroon-m6": {
+    "hash": "eb2c540f4ce4",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/f4ff23bab1c7f0301ab6a2b67c8d100c/unisex-crew-neck-sweatshirt-maroon-front-6b020882ae51d.jpg"
+  },
+  "pixelhat-black-m7": {
+    "hash": "ac390db22227",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/2a2e11f8c1b32ea0b81eaca698cf327e/classic-dad-hat-black-front-6b0208c1b0a57.jpg"
+  },
+  "pixelhat-stone-m7": {
+    "hash": "aac158e0a5ff",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a8df6b4cbbd79aeefb6197ff3f0521df/classic-dad-hat-stone-front-6b0208caadd67.jpg"
+  },
+  "pixelhat-navy-m7": {
+    "hash": "ac390db22227",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a2078f800d004e3946f7674237fe7ce0/classic-dad-hat-navy-front-6b02090755215.jpg"
+  },
+  "pixelhat-spruce-m7": {
+    "hash": "ac390db22227",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6ba72688d23ea2e293e85db1e85b1c55/classic-dad-hat-spruce-front-6b02090d918dd.jpg"
+  },
+  "pixelhat-lightblue-m7": {
+    "hash": "aac158e0a5ff",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6a40024f569ea5913199d67faeed0dd4/classic-dad-hat-light-blue-front-6b02094be44ec.jpg"
+  },
+  "pixelhat-pink-m7": {
+    "hash": "aac158e0a5ff",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/35341b0e11cd4bb66345b20ec131246a/classic-dad-hat-pink-front-6b0209515be07.jpg"
+  },
+  "pixelhat-darkgrey-m7": {
+    "hash": "ac390db22227",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/65950471f791f05e3d3d6260e67dd3b7/classic-dad-hat-dark-grey-front-6b02098f19c89.jpg"
+  },
+  "pixelhat-white-m7": {
+    "hash": "7f96a11ef3c4",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/770ef4f75e2a027161f3b973fa5d782d/classic-dad-hat-white-front-6b020995a9f24.jpg"
+  },
+  "mascot-white-m8": {
+    "hash": "055aef7eb370",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/24a8c5326553e100f55e7c3bfea94581/unisex-garment-dyed-pocket-t-shirt-white-front-6b0209d10fc3e.jpg"
+  },
+  "mascot-black-m8": {
+    "hash": "ed91ed4bf8c0",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/46677448a669a00efc9689726fe4c234/unisex-garment-dyed-pocket-t-shirt-black-front-6b0209d8b8d60.jpg"
+  },
+  "mascot-butter-m8": {
+    "hash": "055aef7eb370",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/819b054c5dcf32eb909321f5bc27462d/unisex-garment-dyed-pocket-t-shirt-butter-front-6b020a1469449.jpg"
+  },
+  "mascot-floblue-m8": {
+    "hash": "055aef7eb370",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/6bc1edff05d3743e25532d0c127eb7ea/unisex-garment-dyed-pocket-t-shirt-flo-blue-front-6b020a1a66d8b.jpg"
+  },
+  "mascot-grey-m8": {
+    "hash": "055aef7eb370",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a33054f80a4990c90a8f9a0a52973166/unisex-garment-dyed-pocket-t-shirt-grey-front-6b020a5779a6a.jpg"
+  },
+  "mascot-truenavy-m8": {
+    "hash": "ed91ed4bf8c0",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/3be1b000cf8f90daa0dc267c345a8ea9/unisex-garment-dyed-pocket-t-shirt-true-navy-front-6b020a5e56577.jpg"
+  },
+  "mascot-berry-m8": {
+    "hash": "055aef7eb370",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d01b6454891782b4518e0bf44bee939f/unisex-garment-dyed-pocket-t-shirt-berry-front-6b020a9b5f029.jpg"
+  },
+  "mascot-watermelon-m8": {
+    "hash": "055aef7eb370",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a6c97d95105c120bca5202892bceb3bb/unisex-garment-dyed-pocket-t-shirt-watermelon-front-6b020aa0e804a.jpg"
+  },
+  "rope-black-h1": {
+    "hash": "25589c457d24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/e92fdbcbb177e7b094f952f86a2953e7/sunwashed-rope-cap-black-front-6b020d0bd0658.jpg"
+  },
+  "rope-espresso-h1": {
+    "hash": "25589c457d24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/58361f75a4691dfe74e6f4e70081320c/sunwashed-rope-cap-espresso-front-6b020d15701d1.jpg"
+  },
+  "rope-moss-h1": {
+    "hash": "25589c457d24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/8de5dc8e14bc3b2f893a9ae72d24fd81/sunwashed-rope-cap-moss-front-6b020d51c00d2.jpg"
+  },
+  "rope-granite-h1": {
+    "hash": "25589c457d24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/dd67338dedbbf05f1bee2a0ee8b83fc6/sunwashed-rope-cap-granite-front-6b020d582954c.jpg"
+  },
+  "rope-bluejean-h1": {
+    "hash": "25589c457d24",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/ed3007bdaaaa95e2a064a2472622cbcd/sunwashed-rope-cap-blue-jean-front-6b020d957a970.jpg"
+  },
+  "rope-chambray-h1": {
+    "hash": "05cfcb5a49de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/78c1e74d0c8529f1c97b522909cde46e/sunwashed-rope-cap-chambray-front-6b020d9d70d16.jpg"
+  },
+  "rope-ivory-h1": {
+    "hash": "05cfcb5a49de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d0266d42b77ceb69476271dede6984dc/sunwashed-rope-cap-ivory-front-6b020dda92d2e.jpg"
+  },
+  "rope-peachy-h1": {
+    "hash": "05cfcb5a49de",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/efb63c610914838d5b31821bb4546ed3/sunwashed-rope-cap-peachy-front-6b020de4c6a6c.jpg"
+  },
+  "shield-black-h2": {
+    "hash": "56632f60591d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/385b16a4dbf362c88d9c84597874c1bb/classic-snapback-black-front-6b020e23bc69d.jpg"
+  },
+  "shield-darknavy-h2": {
+    "hash": "56632f60591d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/f58c557ae6d8671f5c37eb0ca4daf450/classic-snapback-dark-navy-front-6b020e2c2c642.jpg"
+  },
+  "shield-darkgrey-h2": {
+    "hash": "56632f60591d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/3b283fe9f19f947c818ac82dd5aa6253/classic-snapback-dark-grey-front-6b020e69ae8a8.jpg"
+  },
+  "shield-maroon-h2": {
+    "hash": "56632f60591d",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/0a1fb02baea136b69b6b105a43bd09fc/classic-snapback-maroon-front-6b020e6faec0f.jpg"
+  },
+  "shield-heathergrey-h2": {
+    "hash": "39ca10593333",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/41345be7dcf750f83b9d59743adc5e38/classic-snapback-heather-grey-front-6b020eafb2ed9.jpg"
+  },
+  "shield-naturalblack-h2": {
+    "hash": "39ca10593333",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/9d29b3ba4fb8e9ffc2021378d41ef722/classic-snapback-natural-black-front-6b020eb7e743a.jpg"
+  },
+  "woods-white-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/245990f4c1c00649fd97c12556254f27/classic-dad-hat-white-front-6b020ef67bf8a.jpg"
+  },
+  "woods-stone-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/a7ed45907f18403b1faa24971f1a1ede/classic-dad-hat-stone-front-6b020effe0bdb.jpg"
+  },
+  "woods-khaki-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/7c579e1d70aaa7f1dc2f51360082a33a/classic-dad-hat-khaki-front-6b020f3d2ef7d.jpg"
+  },
+  "woods-lightblue-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/d2cb485ec92528d885207b7fac0bf233/classic-dad-hat-light-blue-front-6b020f43d6448.jpg"
+  },
+  "woods-navy-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/62069491c2124cb5208a694c5eb65bb5/classic-dad-hat-navy-front-6b020f81276ad.jpg"
+  },
+  "woods-black-h3": {
+    "hash": "d99ca2a1d66c",
+    "mockup_url": "https://printful-upload.s3-accelerate.amazonaws.com/tmp/21daf9910d8cf54e1176b3f73fa9ecca/classic-dad-hat-black-front-6b020f87552b1.jpg"
   }
 }

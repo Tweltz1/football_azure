@@ -21,8 +21,19 @@ def nearest(c, allowed):
     return min(allowed, key=lambda i: d(TRGB[i]))
 
 
-def snap(img):
+def snap(img, only=None):
     """Pick the logo's main thread colors from its solid pixels, then redraw every pixel in one of them."""
+    global TRGB
+    base = TRGB
+    if only:  # a logo can bring its own thread colors (all Printful threads), e.g. red + gold stripes
+        TRGB = [tuple(int(t[i:i + 2], 16) for i in (1, 3, 5)) for t in only]
+    try:
+        return _snap(img, only or THREADS)
+    finally:
+        TRGB = base
+
+
+def _snap(img, names):
     px = img.load()
     count, memo = {}, {}
     everything = range(len(TRGB))
@@ -47,7 +58,7 @@ def snap(img):
             if k not in memo:
                 memo[k] = nearest((r, g, b), keep)
             px[x, y] = TRGB[memo[k]] + (255,)
-    return [THREADS[i] for i in keep]
+    return [names[i] for i in keep]
 
 
 threads = {}
@@ -59,13 +70,22 @@ for prod in cfg['products']:
         if not p:
             continue
         AW, AH = p['area']['w'], p['area']['h']
-        for lk, logo_cfg in cfg['logos'].items():
+        lks = prod.get('logos') or [k for k, l in cfg['logos'].items() if not l.get('solo')]
+        for lk in lks:
+            logo_cfg = cfg['logos'][lk]
             fname = logo_cfg[color['tone']]
             if p['placement'].startswith('embroidery') and 'hat' in logo_cfg:
                 fname = logo_cfg['hat'][color['tone']]
             if fname not in cache:
                 cache[fname] = Image.open(os.path.join('merch/print', fname)).convert('RGBA')
             logo = cache[fname]
+            if logo_cfg.get('tint'):
+                # One-color art (drawn white) recolored to this garment's ink, e.g. a tonal print.
+                ink = color.get('ink') or ('#1e293b' if color['tone'] == 'dark' else '#f5f0e6')
+                rgb = tuple(int(ink.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4))
+                tinted = Image.new('RGBA', logo.size, rgb + (0,))
+                tinted.putalpha(logo.getchannel('A'))
+                logo = tinted
             slots = [0.25, 0.75] if prod.get('wrap') else [0.5]
             # Every logo is fitted into the same box on a product (fractions of the print area), so a wide W, a
             # round seal and a tall monogram all read about the same size. 'scale' is a small optical nudge.
@@ -77,12 +97,29 @@ for prod in cfg['products']:
             if p['placement'].startswith('embroidery'):
                 # Thicken thin lines a touch so small lettering still holds stitches, then use real thread colors.
                 img.putalpha(img.getchannel('A').filter(ImageFilter.MaxFilter(3)))
-                threads[slug] = snap(img)
+                threads[slug] = snap(img, logo_cfg.get('threads'))
             canvas = Image.new('RGBA', (AW, AH), (0, 0, 0, 0))
             top = round(AH * prod['top']) if 'top' in prod else (AH - h) // 2
             for cx in slots:
-                canvas.paste(img, (round(AW * cx - w / 2), top), img)
+                canvas.paste(img, (round(AW * (prod.get('cx', cx) if len(slots) == 1 else cx) - w / 2), top), img)
             canvas.save(f"merch/print/placed/{slug}.png", optimize=True)
+            # Extra print spots (e.g. the name down a sleeve), same ink as the main logo.
+            for ex in p.get('extras', []):
+                ec = next(x for x in prod.get('extra', []) if x['placement'] == ex['placement'])
+                EW, EH = ex['area']['w'], ex['area']['h']
+                art = Image.open(os.path.join('merch/print', ec['file'])).convert('RGBA')
+                if ec.get('tint'):
+                    ink = color.get('ink') or ('#1e293b' if color['tone'] == 'dark' else '#f5f0e6')
+                    rgb = tuple(int(ink.lstrip('#')[i:i + 2], 16) for i in (0, 2, 4))
+                    t = Image.new('RGBA', art.size, rgb + (0,))
+                    t.putalpha(art.getchannel('A'))
+                    art = t
+                k2 = min(EW * ec['box'][0] / art.width, EH * ec['box'][1] / art.height)
+                art = art.resize((max(1, round(art.width * k2)), max(1, round(art.height * k2))), Image.LANCZOS)
+                ecan = Image.new('RGBA', (EW, EH), (0, 0, 0, 0))
+                etop = round(EH * ec['top']) if 'top' in ec else (EH - art.height) // 2
+                ecan.paste(art, ((EW - art.width) // 2, etop), art)
+                ecan.save(f"merch/print/placed/{slug}--{ex['placement']}.png", optimize=True)
             n += 1
 json.dump(threads, open('merch/threads.json', 'w'), indent=1)
 print(n, 'placed files,', len(threads), 'embroidered')

@@ -9,7 +9,7 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://weltzcraft.com/merch">
 <meta property="og:title" content="Weltzcraft Studios merch">
-<meta property="og:description" content="Tees, hoodies, hats, a mug, a tote and stickers from the studio behind Hood League, Curbsy and ToteTrack.">
+<meta property="og:description" content="Crewnecks, tees, hoodies, hats, beanies, a mug, a tote and stickers from the studio behind Hood League, Curbsy and ToteTrack.">
 <meta property="og:image" content="https://weltzcraft.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#f6f1e7" media="(prefers-color-scheme: light)">
@@ -133,8 +133,8 @@
   <div class="wrap">
     <p class="eyebrow">Merch</p>
     <h1>Studio gear.</h1>
-    <p class="lede">Tees, hoodies, hats, a mug, a tote and stickers from the studio behind Hood League, Curbsy and ToteTrack. Each piece is printed when you order it and shipped straight to your door.</p>
-    <p class="m-note"><span aria-hidden="true">🧵</span> <span><b>Pick any logo on any piece.</b> Every photo is the real product with that logo on it.</span></p>
+    <p class="lede">Crewnecks, tees, hoodies, hats, beanies, a mug, a tote and stickers from the studio behind Hood League, Curbsy and ToteTrack. Each piece is printed when you order it and shipped straight to your door.</p>
+    <p class="m-note"><span aria-hidden="true">🧵</span> <span><b>New: vintage and modern pieces in lots of colors.</b> The classics come in any logo. Every photo is the real product.</span></p>
     <p class="m-banner" id="m-banner" role="status" hidden></p>
   </div>
 </section>
@@ -223,15 +223,18 @@
     var logoKeys = Object.keys(cat.logos);
     cat.products.forEach(function (p) {
       if (!p.colors.length) return;
-      var st = { color: p.colors[0].key, logo: p.key === 'hat' ? '55' : (logoKeys.indexOf('58') >= 0 ? '58' : logoKeys[0]), size: p.sizes ? (p.sizes.indexOf('M') >= 0 ? 'M' : p.sizes[0]) : null };
+      // A product can come in just its own logo (the newer designs); then there is no logo picker.
+      var pl = (p.logos || logoKeys).filter(function (k) { return cat.logos[k]; });
+      if (!pl.length) return;
+      var st = { color: p.colors[0].key, logo: pl.length === 1 ? pl[0] : p.key === 'hat' ? '55' : (pl.indexOf('58') >= 0 ? '58' : pl[0]), size: p.sizes ? (p.sizes.indexOf('M') >= 0 ? 'M' : p.sizes[0]) : null };
       var el = document.createElement('article');
       el.className = 'm-card';
       el.innerHTML =
         '<div class="m-img"><svg class="m-w" viewBox="0 0 100 80" aria-hidden="true"><path d="M8 10 L30 70 L50 22 L70 70 L92 10"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 12)"/><path d="M8 4 L30 64 L50 16 L70 64 L92 4" transform="translate(0 -4)"/></svg><img alt="" width="900" height="900"' + (grid.children.length < 3 ? ' fetchpriority="high"' : ' loading="lazy"') + '></div>' +
         '<div class="m-body"><div class="m-row"><h3>' + esc(p.name) + '</h3><span class="m-price"></span></div>' +
-        '<div class="m-opt"><span class="m-lab">Logo<b data-v="logo"></b></span><div class="m-logos">' +
-          logoKeys.map(function (k) { return '<button type="button" data-logo="' + k + '" title="' + esc(cat.logos[k].name) + '" aria-label="' + esc(cat.logos[k].name) + '"><img src="/img/merch/marks/' + (MARK[k] || k + '-light') + '.webp" alt="" width="32" height="32" loading="lazy"></button>'; }).join('') +
-        '</div></div>' +
+        (pl.length < 2 ? '' : '<div class="m-opt"><span class="m-lab">Logo<b data-v="logo"></b></span><div class="m-logos">' +
+          pl.map(function (k) { return '<button type="button" data-logo="' + k + '" title="' + esc(cat.logos[k].name) + '" aria-label="' + esc(cat.logos[k].name) + '"><img src="/img/merch/marks/' + (MARK[k] || k + '-light') + '.webp" alt="" width="32" height="32" loading="lazy"></button>'; }).join('') +
+        '</div></div>') +
         (p.colors.length > 1 ? '<div class="m-opt"><span class="m-lab">Color<b data-v="color"></b></span><div class="m-pills" data-g="color">' +
           p.colors.map(function (c) { return '<button type="button" data-color="' + c.key + '">' + esc(c.name) + '</button>'; }).join('') + '</div></div>'
           : '<div class="m-opt"><span class="m-lab">' + (p.key === 'sticker' ? 'Size' : 'Color') + '<b>' + esc(p.colors[0].name) + '</b></span></div>') +
@@ -250,7 +253,7 @@
         img.alt = p.name + ', ' + colorName + ', ' + cat.logos[st.logo].name + ' logo';
         var price = p.price + (UP[st.size] || 0);
         el.querySelector('.m-price').textContent = '$' + price;
-        el.querySelector('[data-v="logo"]').textContent = cat.logos[st.logo].name;
+        var lv = el.querySelector('[data-v="logo"]'); if (lv) lv.textContent = cat.logos[st.logo].name;
         var cv = el.querySelector('[data-v="color"]'); if (cv) cv.textContent = colorName;
         el.querySelectorAll('[data-logo]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.logo === st.logo)); });
         el.querySelectorAll('[data-color]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.color === st.color)); });

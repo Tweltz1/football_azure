@@ -6,7 +6,7 @@ name: Merch build (Printful)
 # Needs the PRINTFUL_API_TOKEN secret (optional PRINTFUL_STORE_ID for an account-level token).
 on:
   push:
-    branches: [main, claude/project-thread-8n3mi5]
+    branches: [main, claude/project-thread-8n3mi5, claude/project-thread-1lvds4]
     paths: ['merch/products.json', 'merch/print/logo-*', 'scripts/merch-build.mjs', 'scripts/merch_place.py', '.github/workflows/merch-build.yml']
   workflow_dispatch:
     inputs:

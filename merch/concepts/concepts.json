@@ -1,0 +1,686 @@
+{
+ "_about": "Merch ideas for Tyler to judge (not on the live site). See scripts/merch-concepts.mjs.",
+ "items": [
+  {
+   "code": "V1",
+   "name": "Collegiate crew",
+   "product_id": 145,
+   "price": 40,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "layers": [
+    {
+     "placement": "front",
+     "art": "v1-{tone}",
+     "box": [
+      0.78,
+      0.34
+     ],
+     "top": 0.1
+    }
+   ],
+   "colors": [
+    {
+     "name": "Sport Grey",
+     "tone": "dark"
+    },
+    {
+     "name": "Navy",
+     "tone": "light"
+    },
+    {
+     "name": "Forest Green",
+     "tone": "light"
+    },
+    {
+     "name": "Maroon",
+     "tone": "light"
+    }
+   ]
+  },
+  {
+   "code": "V2",
+   "name": "Script dad hat",
+   "product_id": 206,
+   "price": 26,
+   "layers": [
+    {
+     "placement": "embroidery_front_large",
+     "art": "v2-{tone}",
+     "box": [
+      0.8,
+      0.8
+     ]
+    }
+   ],
+   "colors": [
+    {
+     "name": "Stone",
+     "tone": "dark"
+    },
+    {
+     "name": "Navy",
+     "tone": "light"
+    },
+    {
+     "name": "Black",
+     "tone": "light"
+    },
+    {
+     "name": "Light Blue",
+     "tone": "dark"
+    }
+   ]
+  },
+  {
+   "code": "V3",
+   "name": "Sunset tee",
+   "product_id": 586,
+   "price": 28,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "layers": [
+    {
+     "placement": "front",
+     "art": "v3-{tone}",
+     "box": [
+      0.55,
+      0.4
+     ],
+     "top": 0.08
+    }
+   ],
+   "colors": [
+    {
+     "name": "Ivory",
+     "tone": "dark"
+    },
+    {
+     "name": "Pepper",
+     "tone": "light"
+    },
+    {
+     "name": "Sage",
+     "tone": "dark"
+    },
+    {
+     "name": "Butter",
+     "tone": "dark"
+    }
+   ]
+  },
+  {
+   "code": "V4",
+   "name": "Patch trucker",
+   "product_id": 252,
+   "price": 26,
+   "layers": [
+    {
+     "placement": "embroidery_front_large",
+     "art": "v4",
+     "tint": true,
+     "box": [
+      0.62,
+      0.85
+     ]
+    }
+   ],
+   "colors": [
+    {
+     "name": "Navy/ White",
+     "tone": "light",
+     "ink": "#FFFFFF"
+    },
+    {
+     "name": "Black/ White",
+     "tone": "light",
+     "ink": "#FFFFFF"
+    },
+    {
+     "name": "Moss/ Khaki",
+     "tone": "light",
+     "ink": "#FFFFFF"
+    },
+    {
+     "name": "Heather Grey/White",
+     "tone": "dark",
+     "ink": "#333366"
+    }
+   ]
+  },
+  {
+   "code": "V5",
+   "name": "Ringer tee",
+   "product_id": 959,
+   "price": 28,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "layers": [
+    {
+     "placement": "front",
+     "art": "v5",
+     "tint": true,
+     "box": [
+      0.42,
+      0.08
+     ],
+     "top": 0.07
+    }
+   ],
+   "colors": [
+    {
+     "name": "Natural / Midnight Navy",
+     "tone": "dark",
+     "ink": "#1f2a44"
+    },
+    {
+     "name": "Natural / Forest Green",
+     "tone": "dark",
+     "ink": "#24452f"
+    },
+    {
+     "name": "White / Black",
+     "tone": "dark",
+     "ink": "#111111"
+    },
+    {
+     "name": "Heather Gray / Black",
+     "tone": "dark",
+     "ink": "#111111"
+    }
+   ]
+  },
+  {
+   "code": "V6",
+   "name": "Varsity W hoodie",
+   "product_id": 146,
+   "price": 46,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "layers": [
+    {
+     "placement": "front",
+     "art": "v6-{tone}",
+     "box": [
+      0.42,
+      0.42
+     ],
+     "top": 0.06
+    }
+   ],
+   "colors": [
+    {
+     "name": "Black",
+     "tone": "dark"
+    },
+    {
+     "name": "Maroon",
+     "tone": "dark"
+    },
+    {
+     "name": "Forest Green",
+     "tone": "dark"
+    },
+    {
+     "name": "Sport Grey",
+     "tone": "light"
+    }
+   ]
+  },
+  {
+   "code": "V7",
+   "name": "Peaks corduroy cap",
+   "product_id": 662,
+   "price": 30,
+   "layers": [
+    {
+     "placement": "embroidery_front",
+     "art": "v7",
+     "tint": true,
+     "box": [
+      0.5,
+      0.85
+     ]
+    }
+   ],
+   "colors": [
+    {
+     "name": "Brown",
+     "tone": "light",
+     "ink": "#FFFFFF"
+    },
+    {
+     "name": "Olive",
+     "tone": "light",
+     "ink": "#FFFFFF"
+    },
+    {
+     "name": "Navy",
+     "tone": "light",
+     "ink": "#FFFFFF"
+    },
+    {
+     "name": "Burgundy",
+     "tone": "light",
+     "ink": "#FFFFFF"
+    }
+   ]
+  },
+  {
+   "code": "V8",
+   "name": "Retro stripe beanie",
+   "product_id": 266,
+   "price": 24,
+   "layers": [
+    {
+     "placement": "embroidery_front",
+     "art": "v8-{tone}",
+     "box": [
+      0.42,
+      0.9
+     ]
+    }
+   ],
+   "colors": [
+    {
+     "name": "Black",
+     "tone": "light"
+    },
+    {
+     "name": "Navy",
+     "tone": "light"
+    },
+    {
+     "name": "Heather Grey",
+     "tone": "dark"
+    },
+    {
+     "name": "Spruce",
+     "tone": "light"
+    }
+   ]
+  },
+  {
+   "code": "M1",
+   "name": "Tonal mini W hoodie",
+   "product_id": 146,
+   "price": 46,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "layers": [
+    {
+     "placement": "front",
+     "art": "mW",
+     "tint": true,
+     "box": [
+      0.14,
+      0.1
+     ],
+     "top": 0.1,
+     "cx": 0.7
+    }
+   ],
+   "colors": [
+    {
+     "name": "Black",
+     "tone": "light",
+     "ink": "#3d3d3d"
+    },
+    {
+     "name": "Sand",
+     "tone": "dark",
+     "ink": "#b7a585"
+    },
+    {
+     "name": "Military Green",
+     "tone": "light",
+     "ink": "#727a58"
+    },
+    {
+     "name": "Navy",
+     "tone": "light",
+     "ink": "#3a4867"
+    }
+   ]
+  },
+  {
+   "code": "M2",
+   "name": "Puff W beanie",
+   "product_id": 266,
+   "price": 24,
+   "layers": [
+    {
+     "placement": "embroidery_front",
+     "art": "mW",
+     "tint": true,
+     "box": [
+      0.3,
+      0.85
+     ]
+    }
+   ],
+   "colors": [
+    {
+     "name": "Black",
+     "tone": "light",
+     "ink": "#3399FF"
+    },
+    {
+     "name": "Baby Pink",
+     "tone": "dark",
+     "ink": "#FFFFFF"
+    },
+    {
+     "name": "White",
+     "tone": "dark",
+     "ink": "#005397"
+    },
+    {
+     "name": "Heather Grey",
+     "tone": "dark",
+     "ink": "#333366"
+    }
+   ]
+  },
+  {
+   "code": "M3",
+   "name": "Small name tee",
+   "product_id": 71,
+   "price": 28,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "layers": [
+    {
+     "placement": "front",
+     "art": "m3-front",
+     "tint": true,
+     "box": [
+      0.24,
+      0.05
+     ],
+     "top": 0.08,
+     "cx": 0.68
+    }
+   ],
+   "colors": [
+    {
+     "name": "Black",
+     "tone": "dark",
+     "ink": "#f5f0e6"
+    },
+    {
+     "name": "White",
+     "tone": "light",
+     "ink": "#111111"
+    },
+    {
+     "name": "Heather Dust",
+     "tone": "light",
+     "ink": "#111111"
+    },
+    {
+     "name": "Navy",
+     "tone": "dark",
+     "ink": "#f5f0e6"
+    }
+   ]
+  },
+  {
+   "code": "M4",
+   "name": "Pixel sleeve long sleeve",
+   "product_id": 356,
+   "price": 30,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "layers": [
+    {
+     "placement": "front",
+     "art": "pixel",
+     "tint": true,
+     "box": [
+      0.2,
+      0.1
+     ],
+     "top": 0.08,
+     "cx": 0.68
+    },
+    {
+     "placement": "sleeve_left",
+     "art": "sleeve",
+     "tint": true,
+     "box": [
+      0.5,
+      0.6
+     ],
+     "top": 0.15
+    }
+   ],
+   "colors": [
+    {
+     "name": "White",
+     "tone": "dark",
+     "ink": "#111111"
+    },
+    {
+     "name": "Black",
+     "tone": "light",
+     "ink": "#a3e635"
+    },
+    {
+     "name": "Navy",
+     "tone": "light",
+     "ink": "#f5f0e6"
+    },
+    {
+     "name": "Military Green",
+     "tone": "light",
+     "ink": "#f5f0e6"
+    }
+   ]
+  },
+  {
+   "code": "M5",
+   "name": "Chrome W tee",
+   "product_id": 71,
+   "price": 28,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "layers": [
+    {
+     "placement": "front",
+     "art": "m5",
+     "box": [
+      0.62,
+      0.36
+     ],
+     "top": 0.08
+    }
+   ],
+   "colors": [
+    {
+     "name": "Black",
+     "tone": "dark"
+    },
+    {
+     "name": "Navy",
+     "tone": "dark"
+    },
+    {
+     "name": "Asphalt",
+     "tone": "dark"
+    },
+    {
+     "name": "Brown",
+     "tone": "dark"
+    }
+   ]
+  },
+  {
+   "code": "M6",
+   "name": "Clean wordmark crew",
+   "product_id": 145,
+   "price": 40,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "layers": [
+    {
+     "placement": "front",
+     "art": "m6",
+     "tint": true,
+     "box": [
+      0.7,
+      0.12
+     ],
+     "top": 0.12
+    }
+   ],
+   "colors": [
+    {
+     "name": "Sand",
+     "tone": "dark",
+     "ink": "#1e293b"
+    },
+    {
+     "name": "Black",
+     "tone": "light",
+     "ink": "#f5f0e6"
+    },
+    {
+     "name": "Light Blue",
+     "tone": "dark",
+     "ink": "#1e293b"
+    },
+    {
+     "name": "Sport Grey",
+     "tone": "dark",
+     "ink": "#1e293b"
+    }
+   ]
+  },
+  {
+   "code": "M7",
+   "name": "Pixel W dad hat",
+   "product_id": 206,
+   "price": 26,
+   "layers": [
+    {
+     "placement": "embroidery_front_large",
+     "art": "pixel",
+     "tint": true,
+     "box": [
+      0.32,
+      0.7
+     ]
+    }
+   ],
+   "colors": [
+    {
+     "name": "Black",
+     "tone": "light",
+     "ink": "#FFFFFF"
+    },
+    {
+     "name": "Stone",
+     "tone": "dark",
+     "ink": "#333366"
+    },
+    {
+     "name": "Navy",
+     "tone": "light",
+     "ink": "#FFFFFF"
+    },
+    {
+     "name": "Spruce",
+     "tone": "light",
+     "ink": "#FFFFFF"
+    }
+   ]
+  },
+  {
+   "code": "M8",
+   "name": "Mascot pocket tee",
+   "product_id": 593,
+   "price": 28,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL"
+   ],
+   "layers": [
+    {
+     "placement": "pocket",
+     "art": "m8-{tone}",
+     "box": [
+      0.7,
+      0.95
+     ]
+    }
+   ],
+   "colors": [
+    {
+     "name": "White",
+     "tone": "dark"
+    },
+    {
+     "name": "Black",
+     "tone": "light"
+    },
+    {
+     "name": "Butter",
+     "tone": "dark"
+    },
+    {
+     "name": "Flo Blue",
+     "tone": "dark"
+    }
+   ]
+  }
+ ]
+}

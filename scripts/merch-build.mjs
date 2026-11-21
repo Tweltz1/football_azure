@@ -15,6 +15,8 @@ const ONLY = (process.env.ONLY || '').trim();
 const MODE = process.argv[2];
 if (!TOKEN) { console.log('::warning::PRINTFUL_API_TOKEN is not set, skipping.'); process.exit(0); }
 
+// Printful calls the thread option for 'embroidery_front' just 'thread_colors'; other spots add their name.
+const threadOption = pl => pl === 'embroidery_front' ? 'thread_colors' : pl.replace('embroidery_', 'thread_colors_');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function pf(p, opts = {}, okStatuses = []) {
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -34,8 +36,14 @@ const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8'))
 const cfg = readJson('merch/products.json');
 const upcharge = size => ({ '2XL': 2, '3XL': 3, '4XL': 4 }[size] || 0);
 const hashFile = f => crypto.createHash('sha1').update(fs.readFileSync(f)).digest('hex').slice(0, 12);
+// Placed file(s) for a combo: the main print plus any extra spots (merch/print/placed/<slug>--<placement>.png).
+const extraFile = (slug, e) => `merch/print/placed/${slug}--${e.placement}.png`;
+const comboHash = (slug, p) => !p.extras ? hashFile(`merch/print/placed/${slug}.png`)
+  : crypto.createHash('sha1').update([`merch/print/placed/${slug}.png`, ...p.extras.map(e => extraFile(slug, e))].map(hashFile).join()).digest('hex').slice(0, 12);
+// A product can list its own logos; otherwise it gets every logo not marked 'solo' (solo logos belong to one product).
+const logosOf = prod => prod.logos || Object.keys(cfg.logos).filter(k => !cfg.logos[k].solo);
 function* combos() {
-  for (const prod of cfg.products) for (const color of prod.colors) for (const lk of Object.keys(cfg.logos)) {
+  for (const prod of cfg.products) for (const color of prod.colors) for (const lk of logosOf(prod)) {
     const slug = `${prod.key}-${color.key}-${lk}`;
     if (ONLY && !slug.startsWith(ONLY)) continue;
     yield { prod, color, lk, slug, pc: `${prod.key}-${color.key}` };
@@ -62,8 +70,13 @@ if (MODE === 'plan') {
       const vp = pfiles.variant_printfiles.find(v => v.variant_id === chosen[0].id) || pfiles.variant_printfiles[0];
       const placement = prod.placements.find(pl => vp.placements[pl]);
       const pfile = pfiles.printfiles.find(f => f.printfile_id === vp.placements[placement]);
+      // Extra print spots (e.g. a sleeve) next to the main one.
+      const extras = (prod.extra || []).filter(x => vp.placements[x.placement]).map(x => {
+        const f = pfiles.printfiles.find(pf => pf.printfile_id === vp.placements[x.placement]);
+        return { placement: x.placement, area: { w: f.width, h: f.height } };
+      });
       plan[`${prod.key}-${color.key}`] = {
-        product_id: cat.id, product: cat.title, color: name, placement, area: { w: pfile.width, h: pfile.height },
+        product_id: cat.id, product: cat.title, color: name, placement, area: { w: pfile.width, h: pfile.height }, ...(extras.length ? { extras } : {}),
         variants: chosen.map(v => ({ id: v.id, size: v.size })),
       };
       console.log(`${prod.key}-${color.key}: ${cat.title} / ${name} / ${placement} ${pfile.width}x${pfile.height} / ${chosen.map(v => v.size).join(',')}`);
@@ -81,19 +94,21 @@ if (MODE === 'mockups') {
   for (const c of combos()) {
     const p = plan[c.pc]; if (!p) continue;
     const placed = `merch/print/placed/${c.slug}.png`;
-    const h = hashFile(placed);
+    const h = comboHash(c.slug, p);
     if (state[c.slug]?.hash === h && fs.existsSync(`weltzcraft-site/img/merch/${c.slug}.webp`)) { skipped++; continue; }
     try {
       const v = p.variants.find(x => x.size === 'M') || p.variants[0];
       const task = await pf(`/mockup-generator/create-task/${p.product_id}`, { method: 'POST', body: JSON.stringify({
         variant_ids: [v.id], format: 'jpg',
         files: [{ placement: p.placement, image_url: `${BASE}/placed/${c.slug}.png`,
-          position: { area_width: p.area.w, area_height: p.area.h, width: p.area.w, height: p.area.h, top: 0, left: 0 } }],
+          position: { area_width: p.area.w, area_height: p.area.h, width: p.area.w, height: p.area.h, top: 0, left: 0 } },
+          ...(p.extras || []).map(e => ({ placement: e.placement, image_url: `${BASE}/placed/${c.slug}--${e.placement}.png`,
+            position: { area_width: e.area.w, area_height: e.area.h, width: e.area.w, height: e.area.h, top: 0, left: 0 } }))],
       }) });
       let done;
       for (let i = 0; i < 45; i++) { await sleep(4000); done = await pf(`/mockup-generator/task?task_key=${encodeURIComponent(task.task_key)}`); if (done.status !== 'pending') break; }
       if (done.status !== 'completed') throw new Error(`task ${done.status} ${done.error || ''}`);
-      const url = done.mockups[0].mockup_url;
+      const url = (done.mockups.find(m => m.placement === p.placement) || done.mockups[0]).mockup_url;
       fs.writeFileSync(`weltzcraft-site/img/merch/${c.slug}.jpg`, Buffer.from(await (await fetch(url)).arrayBuffer()));
       state[c.slug] = { hash: h, mockup_url: url };
       made++; console.log(`✓ mockup ${c.slug}`);
@@ -112,7 +127,7 @@ if (MODE === 'create') {
   const out = {
     updated: new Date().toISOString(),
     logos: Object.fromEntries(Object.entries(cfg.logos).map(([k, l]) => [k, { name: l.name }])),
-    products: cfg.products.map(p => ({ key: p.key, name: p.name, price: p.price, sizes: p.sizes || null,
+    products: cfg.products.map(p => ({ key: p.key, name: p.name, price: p.price, sizes: p.sizes || null, logos: logosOf(p),
       colors: p.colors.filter(c => plan[`${p.key}-${c.key}`]).map(c => ({ key: c.key, name: c.name })) })),
     items: { ...(ONLY ? prev.items : {}) },
   };
@@ -120,7 +135,7 @@ if (MODE === 'create') {
   for (const c of combos()) {
     const p = plan[c.pc]; if (!p) continue;
     const ext = `wc-${c.slug}`;
-    const h = hashFile(`merch/print/placed/${c.slug}.png`);
+    const h = comboHash(c.slug, p);
     const old = prev.items?.[c.slug];
     if (old && old.hash === h && old.price === c.prod.price && old.variants?.length === p.variants.length) { out.items[c.slug] = old; kept++; continue; }
     try {
@@ -133,8 +148,8 @@ if (MODE === 'create') {
           external_id: `${ext}-${String(v.size).replace(/[^A-Za-z0-9]+/g, '')}`,
           variant_id: v.id,
           retail_price: (c.prod.price + upcharge(v.size)).toFixed(2),
-          files: [{ type: p.placement, url: `${BASE}/placed/${c.slug}.png` }],
-          ...(threads[c.slug] ? { options: [{ id: p.placement.replace('embroidery_', 'thread_colors_'), value: threads[c.slug] }] } : {}),
+          files: [{ type: p.placement, url: `${BASE}/placed/${c.slug}.png` }, ...(p.extras || []).map(e => ({ type: e.placement, url: `${BASE}/placed/${c.slug}--${e.placement}.png` }))],
+          ...(threads[c.slug] ? { options: [{ id: threadOption(p.placement), value: threads[c.slug] }] } : {}),
         })),
       };
       try { await pf('/store/products', { method: 'POST', body: JSON.stringify(body) }); }

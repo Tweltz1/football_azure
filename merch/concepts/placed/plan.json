@@ -1,0 +1,794 @@
+{
+ "v1-sport-grey": {
+  "files": {
+   "front": {
+    "file": "v1-sport-grey-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "da7f9db53f8a"
+ },
+ "v1-navy": {
+  "files": {
+   "front": {
+    "file": "v1-navy-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "89f3eb0ea1f5"
+ },
+ "v1-forest-green": {
+  "files": {
+   "front": {
+    "file": "v1-forest-green-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "89f3eb0ea1f5"
+ },
+ "v1-maroon": {
+  "files": {
+   "front": {
+    "file": "v1-maroon-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "89f3eb0ea1f5"
+ },
+ "v2-stone": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "v2-stone-embroidery_front_large.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#333366",
+    "#005397"
+   ]
+  },
+  "key": "e873eb8ded4c"
+ },
+ "v2-navy": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "v2-navy-embroidery_front_large.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#FFFFFF",
+    "#3399FF"
+   ]
+  },
+  "key": "e2d5b20c0481"
+ },
+ "v2-black": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "v2-black-embroidery_front_large.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#FFFFFF",
+    "#3399FF"
+   ]
+  },
+  "key": "e2d5b20c0481"
+ },
+ "v2-light-blue": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "v2-light-blue-embroidery_front_large.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#333366",
+    "#005397"
+   ]
+  },
+  "key": "e873eb8ded4c"
+ },
+ "v3-ivory": {
+  "files": {
+   "front": {
+    "file": "v3-ivory-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "3f6d007a49de"
+ },
+ "v3-pepper": {
+  "files": {
+   "front": {
+    "file": "v3-pepper-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "3f31d2f56ef2"
+ },
+ "v3-sage": {
+  "files": {
+   "front": {
+    "file": "v3-sage-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "3f6d007a49de"
+ },
+ "v3-butter": {
+  "files": {
+   "front": {
+    "file": "v3-butter-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "3f6d007a49de"
+ },
+ "v4-navy-white": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "v4-navy-white-embroidery_front_large.png",
+    "w": 1770,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "2b5d8f808312"
+ },
+ "v4-black-white": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "v4-black-white-embroidery_front_large.png",
+    "w": 1770,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "2b5d8f808312"
+ },
+ "v4-moss-khaki": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "v4-moss-khaki-embroidery_front_large.png",
+    "w": 1770,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "2b5d8f808312"
+ },
+ "v4-heather-grey-white": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "v4-heather-grey-white-embroidery_front_large.png",
+    "w": 1770,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#333366"
+   ]
+  },
+  "key": "e5d1a486d4b7"
+ },
+ "v5-natural-midnight-navy": {
+  "files": {
+   "front": {
+    "file": "v5-natural-midnight-navy-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "0597622a31b3"
+ },
+ "v5-natural-forest-green": {
+  "files": {
+   "front": {
+    "file": "v5-natural-forest-green-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "d680c8e5e5d9"
+ },
+ "v5-white-black": {
+  "files": {
+   "front": {
+    "file": "v5-white-black-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "9b46b8367adb"
+ },
+ "v5-heather-gray-black": {
+  "files": {
+   "front": {
+    "file": "v5-heather-gray-black-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "9b46b8367adb"
+ },
+ "v6-black": {
+  "files": {
+   "front": {
+    "file": "v6-black-front.png",
+    "w": 2100,
+    "h": 2100
+   }
+  },
+  "key": "58d60d9ad929"
+ },
+ "v6-maroon": {
+  "files": {
+   "front": {
+    "file": "v6-maroon-front.png",
+    "w": 2100,
+    "h": 2100
+   }
+  },
+  "key": "58d60d9ad929"
+ },
+ "v6-forest-green": {
+  "files": {
+   "front": {
+    "file": "v6-forest-green-front.png",
+    "w": 2100,
+    "h": 2100
+   }
+  },
+  "key": "58d60d9ad929"
+ },
+ "v6-sport-grey": {
+  "files": {
+   "front": {
+    "file": "v6-sport-grey-front.png",
+    "w": 2100,
+    "h": 2100
+   }
+  },
+  "key": "28476dd76acf"
+ },
+ "v7-brown": {
+  "files": {
+   "embroidery_front": {
+    "file": "v7-brown-embroidery_front.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "6ad9ce865f24"
+ },
+ "v7-olive": {
+  "files": {
+   "embroidery_front": {
+    "file": "v7-olive-embroidery_front.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "6ad9ce865f24"
+ },
+ "v7-navy": {
+  "files": {
+   "embroidery_front": {
+    "file": "v7-navy-embroidery_front.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "6ad9ce865f24"
+ },
+ "v7-burgundy": {
+  "files": {
+   "embroidery_front": {
+    "file": "v7-burgundy-embroidery_front.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "6ad9ce865f24"
+ },
+ "v8-black": {
+  "files": {
+   "embroidery_front": {
+    "file": "v8-black-embroidery_front.png",
+    "w": 1500,
+    "h": 525
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#FFFFFF",
+    "#CC3333",
+    "#FFCC00"
+   ]
+  },
+  "key": "da82f4c8fe44"
+ },
+ "v8-navy": {
+  "files": {
+   "embroidery_front": {
+    "file": "v8-navy-embroidery_front.png",
+    "w": 1500,
+    "h": 525
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#FFFFFF",
+    "#CC3333",
+    "#FFCC00"
+   ]
+  },
+  "key": "da82f4c8fe44"
+ },
+ "v8-heather-grey": {
+  "files": {
+   "embroidery_front": {
+    "file": "v8-heather-grey-embroidery_front.png",
+    "w": 1500,
+    "h": 525
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#333366",
+    "#CC3333",
+    "#FFCC00"
+   ]
+  },
+  "key": "c8f68393a5e1"
+ },
+ "v8-spruce": {
+  "files": {
+   "embroidery_front": {
+    "file": "v8-spruce-embroidery_front.png",
+    "w": 1500,
+    "h": 525
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#FFFFFF",
+    "#CC3333",
+    "#FFCC00"
+   ]
+  },
+  "key": "da82f4c8fe44"
+ },
+ "m1-black": {
+  "files": {
+   "front": {
+    "file": "m1-black-front.png",
+    "w": 2100,
+    "h": 2100
+   }
+  },
+  "key": "c8530a82205e"
+ },
+ "m1-sand": {
+  "files": {
+   "front": {
+    "file": "m1-sand-front.png",
+    "w": 2100,
+    "h": 2100
+   }
+  },
+  "key": "50d508637327"
+ },
+ "m1-military-green": {
+  "files": {
+   "front": {
+    "file": "m1-military-green-front.png",
+    "w": 2100,
+    "h": 2100
+   }
+  },
+  "key": "836e11f8e5a8"
+ },
+ "m1-navy": {
+  "files": {
+   "front": {
+    "file": "m1-navy-front.png",
+    "w": 2100,
+    "h": 2100
+   }
+  },
+  "key": "b7a5d7f21df0"
+ },
+ "m2-black": {
+  "files": {
+   "embroidery_front": {
+    "file": "m2-black-embroidery_front.png",
+    "w": 1500,
+    "h": 525
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#3399FF"
+   ]
+  },
+  "key": "d8b6f1c91d90"
+ },
+ "m2-baby-pink": {
+  "files": {
+   "embroidery_front": {
+    "file": "m2-baby-pink-embroidery_front.png",
+    "w": 1500,
+    "h": 525
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "9463a6bf52a6"
+ },
+ "m2-white": {
+  "files": {
+   "embroidery_front": {
+    "file": "m2-white-embroidery_front.png",
+    "w": 1500,
+    "h": 525
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#005397"
+   ]
+  },
+  "key": "696db5d93336"
+ },
+ "m2-heather-grey": {
+  "files": {
+   "embroidery_front": {
+    "file": "m2-heather-grey-embroidery_front.png",
+    "w": 1500,
+    "h": 525
+   }
+  },
+  "threads": {
+   "embroidery_front": [
+    "#333366"
+   ]
+  },
+  "key": "1adc215d8dc7"
+ },
+ "m3-black": {
+  "files": {
+   "front": {
+    "file": "m3-black-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "8101e365495c"
+ },
+ "m3-white": {
+  "files": {
+   "front": {
+    "file": "m3-white-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "f16e0a4dce70"
+ },
+ "m3-heather-dust": {
+  "files": {
+   "front": {
+    "file": "m3-heather-dust-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "f16e0a4dce70"
+ },
+ "m3-navy": {
+  "files": {
+   "front": {
+    "file": "m3-navy-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "8101e365495c"
+ },
+ "m4-white": {
+  "files": {
+   "front": {
+    "file": "m4-white-front.png",
+    "w": 1800,
+    "h": 2400
+   },
+   "sleeve_left": {
+    "file": "m4-white-sleeve_left.png",
+    "w": 450,
+    "h": 1800
+   }
+  },
+  "key": "f49720b04ad8"
+ },
+ "m4-black": {
+  "files": {
+   "front": {
+    "file": "m4-black-front.png",
+    "w": 1800,
+    "h": 2400
+   },
+   "sleeve_left": {
+    "file": "m4-black-sleeve_left.png",
+    "w": 450,
+    "h": 1800
+   }
+  },
+  "key": "b0c894b5a1fc"
+ },
+ "m4-navy": {
+  "files": {
+   "front": {
+    "file": "m4-navy-front.png",
+    "w": 1800,
+    "h": 2400
+   },
+   "sleeve_left": {
+    "file": "m4-navy-sleeve_left.png",
+    "w": 450,
+    "h": 1800
+   }
+  },
+  "key": "0e21e393910a"
+ },
+ "m4-military-green": {
+  "files": {
+   "front": {
+    "file": "m4-military-green-front.png",
+    "w": 1800,
+    "h": 2400
+   },
+   "sleeve_left": {
+    "file": "m4-military-green-sleeve_left.png",
+    "w": 450,
+    "h": 1800
+   }
+  },
+  "key": "0e21e393910a"
+ },
+ "m5-black": {
+  "files": {
+   "front": {
+    "file": "m5-black-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "ff8299c84cf8"
+ },
+ "m5-navy": {
+  "files": {
+   "front": {
+    "file": "m5-navy-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "ff8299c84cf8"
+ },
+ "m5-asphalt": {
+  "files": {
+   "front": {
+    "file": "m5-asphalt-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "ff8299c84cf8"
+ },
+ "m5-brown": {
+  "files": {
+   "front": {
+    "file": "m5-brown-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "ff8299c84cf8"
+ },
+ "m6-sand": {
+  "files": {
+   "front": {
+    "file": "m6-sand-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "7b1d6236ce27"
+ },
+ "m6-black": {
+  "files": {
+   "front": {
+    "file": "m6-black-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "eb2c540f4ce4"
+ },
+ "m6-light-blue": {
+  "files": {
+   "front": {
+    "file": "m6-light-blue-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "7b1d6236ce27"
+ },
+ "m6-sport-grey": {
+  "files": {
+   "front": {
+    "file": "m6-sport-grey-front.png",
+    "w": 1800,
+    "h": 2400
+   }
+  },
+  "key": "7b1d6236ce27"
+ },
+ "m7-black": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "m7-black-embroidery_front_large.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "ac390db22227"
+ },
+ "m7-stone": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "m7-stone-embroidery_front_large.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#333366"
+   ]
+  },
+  "key": "aac158e0a5ff"
+ },
+ "m7-navy": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "m7-navy-embroidery_front_large.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "ac390db22227"
+ },
+ "m7-spruce": {
+  "files": {
+   "embroidery_front_large": {
+    "file": "m7-spruce-embroidery_front_large.png",
+    "w": 1650,
+    "h": 600
+   }
+  },
+  "threads": {
+   "embroidery_front_large": [
+    "#FFFFFF"
+   ]
+  },
+  "key": "ac390db22227"
+ },
+ "m8-white": {
+  "files": {
+   "pocket": {
+    "file": "m8-white-pocket.png",
+    "w": 450,
+    "h": 300
+   }
+  },
+  "key": "055aef7eb370"
+ },
+ "m8-black": {
+  "files": {
+   "pocket": {
+    "file": "m8-black-pocket.png",
+    "w": 450,
+    "h": 300
+   }
+  },
+  "key": "ed91ed4bf8c0"
+ },
+ "m8-butter": {
+  "files": {
+   "pocket": {
+    "file": "m8-butter-pocket.png",
+    "w": 450,
+    "h": 300
+   }
+  },
+  "key": "055aef7eb370"
+ },
+ "m8-flo-blue": {
+  "files": {
+   "pocket": {
+    "file": "m8-flo-blue-pocket.png",
+    "w": 450,
+    "h": 300
+   }
+  },
+  "key": "055aef7eb370"
+ }
+}
