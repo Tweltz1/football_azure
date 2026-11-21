@@ -677,6 +677,7 @@ export function isRoundup(html: string, collection: RecipeCollection): boolean {
   if (!hasRecipeData(html)) return true;
   if (collection.recipes.length < 8) return false;
   const listTitle = /^\s*\d+\b|\b(?:recipes|ideas|dinners|lunches|breakfasts|meals|dishes|soups|salads|desserts)\b/i.test(collection.title);
-  const own = parseRecipePage(html).title;
-  return listTitle && itemKey(own) !== itemKey(collection.title);
+  // "This Creamy Tuscan Chicken Is One Of Our Most-Popular Dinner Recipes" is the chicken's own page.
+  const own = itemKey(parseRecipePage(html).title);
+  return listTitle && !!own && !itemKey(collection.title).includes(own);
 }
