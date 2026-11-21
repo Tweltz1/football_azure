@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-11T22:20:02.932Z",
+ "updated": "2026-11-21T20:24:11.390Z",
  "logos": {
   "42": {
    "name": "Tall monogram"
@@ -21,9 +21,347 @@
   },
   "60": {
    "name": "Seal + stripes"
+  },
+  "v1": {
+   "name": "Collegiate"
+  },
+  "v2": {
+   "name": "Script"
+  },
+  "v3": {
+   "name": "Sunset"
+  },
+  "v5": {
+   "name": "Slab wordmark"
+  },
+  "v7": {
+   "name": "Peaks"
+  },
+  "v8": {
+   "name": "Stripe W"
+  },
+  "m1": {
+   "name": "Tonal W"
   }
  },
  "products": [
+  {
+   "key": "crew",
+   "name": "Collegiate Crew",
+   "price": 40,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL",
+    "3XL"
+   ],
+   "logos": [
+    "v1"
+   ],
+   "colors": [
+    {
+     "key": "sportgrey",
+     "name": "Sport Grey"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "forestgreen",
+     "name": "Forest Green"
+    },
+    {
+     "key": "maroon",
+     "name": "Maroon"
+    },
+    {
+     "key": "black",
+     "name": "Black"
+    },
+    {
+     "key": "sand",
+     "name": "Sand"
+    },
+    {
+     "key": "lightblue",
+     "name": "Light Blue"
+    },
+    {
+     "key": "carolinablue",
+     "name": "Carolina Blue"
+    }
+   ]
+  },
+  {
+   "key": "script",
+   "name": "Script Dad Hat",
+   "price": 26,
+   "sizes": null,
+   "logos": [
+    "v2"
+   ],
+   "colors": [
+    {
+     "key": "stone",
+     "name": "Stone"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "black",
+     "name": "Black"
+    },
+    {
+     "key": "lightblue",
+     "name": "Light Blue"
+    },
+    {
+     "key": "spruce",
+     "name": "Spruce"
+    },
+    {
+     "key": "pink",
+     "name": "Pink"
+    },
+    {
+     "key": "cranberry",
+     "name": "Cranberry"
+    },
+    {
+     "key": "khaki",
+     "name": "Khaki"
+    },
+    {
+     "key": "white",
+     "name": "White"
+    }
+   ]
+  },
+  {
+   "key": "sunset",
+   "name": "Sunset Tee",
+   "price": 28,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL",
+    "3XL"
+   ],
+   "logos": [
+    "v3"
+   ],
+   "colors": [
+    {
+     "key": "ivory",
+     "name": "Ivory"
+    },
+    {
+     "key": "pepper",
+     "name": "Pepper"
+    },
+    {
+     "key": "sage",
+     "name": "Sage"
+    },
+    {
+     "key": "butter",
+     "name": "Butter"
+    },
+    {
+     "key": "bluejean",
+     "name": "Blue Jean"
+    },
+    {
+     "key": "chalkymint",
+     "name": "Chalky Mint"
+    },
+    {
+     "key": "black",
+     "name": "Black"
+    },
+    {
+     "key": "brick",
+     "name": "Brick"
+    }
+   ]
+  },
+  {
+   "key": "ringer",
+   "name": "Ringer Tee",
+   "price": 28,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL",
+    "3XL"
+   ],
+   "logos": [
+    "v5"
+   ],
+   "colors": [
+    {
+     "key": "naturalmidnightnavy",
+     "name": "Natural + Midnight Navy"
+    },
+    {
+     "key": "naturalforestgreen",
+     "name": "Natural + Forest Green"
+    },
+    {
+     "key": "naturalblack",
+     "name": "Natural + Black"
+    },
+    {
+     "key": "whiteblack",
+     "name": "White + Black"
+    },
+    {
+     "key": "heathergrayblack",
+     "name": "Heather Gray + Black"
+    }
+   ]
+  },
+  {
+   "key": "cord",
+   "name": "Corduroy Cap",
+   "price": 30,
+   "sizes": null,
+   "logos": [
+    "v7"
+   ],
+   "colors": [
+    {
+     "key": "brown",
+     "name": "Brown"
+    },
+    {
+     "key": "olive",
+     "name": "Olive"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "burgundy",
+     "name": "Burgundy"
+    },
+    {
+     "key": "black",
+     "name": "Black"
+    }
+   ]
+  },
+  {
+   "key": "beanie",
+   "name": "Stripe Beanie",
+   "price": 24,
+   "sizes": null,
+   "logos": [
+    "v8"
+   ],
+   "colors": [
+    {
+     "key": "black",
+     "name": "Black"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "heathergrey",
+     "name": "Heather Grey"
+    },
+    {
+     "key": "spruce",
+     "name": "Spruce"
+    },
+    {
+     "key": "olive",
+     "name": "Olive"
+    },
+    {
+     "key": "brown",
+     "name": "Brown"
+    },
+    {
+     "key": "darkgrey",
+     "name": "Dark Grey"
+    },
+    {
+     "key": "white",
+     "name": "White"
+    }
+   ]
+  },
+  {
+   "key": "tonal",
+   "name": "Tonal Hoodie",
+   "price": 46,
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "2XL",
+    "3XL"
+   ],
+   "logos": [
+    "m1"
+   ],
+   "colors": [
+    {
+     "key": "black",
+     "name": "Black"
+    },
+    {
+     "key": "sand",
+     "name": "Sand"
+    },
+    {
+     "key": "militarygreen",
+     "name": "Military Green"
+    },
+    {
+     "key": "navy",
+     "name": "Navy"
+    },
+    {
+     "key": "charcoal",
+     "name": "Charcoal"
+    },
+    {
+     "key": "maroon",
+     "name": "Maroon"
+    },
+    {
+     "key": "forestgreen",
+     "name": "Forest Green"
+    },
+    {
+     "key": "sportgrey",
+     "name": "Sport Grey"
+    },
+    {
+     "key": "lightpink",
+     "name": "Light Pink"
+    },
+    {
+     "key": "darkchocolate",
+     "name": "Dark Chocolate"
+    }
+   ]
+  },
   {
    "key": "tee",
    "name": "Tee",
@@ -35,6 +373,15 @@
     "XL",
     "2XL",
     "3XL"
+   ],
+   "logos": [
+    "42",
+    "43",
+    "44",
+    "55",
+    "58",
+    "59",
+    "60"
    ],
    "colors": [
     {
@@ -59,6 +406,15 @@
     "2XL",
     "3XL"
    ],
+   "logos": [
+    "42",
+    "43",
+    "44",
+    "55",
+    "58",
+    "59",
+    "60"
+   ],
    "colors": [
     {
      "key": "black",
@@ -75,6 +431,15 @@
    "name": "Dad Hat",
    "price": 26,
    "sizes": null,
+   "logos": [
+    "42",
+    "43",
+    "44",
+    "55",
+    "58",
+    "59",
+    "60"
+   ],
    "colors": [
     {
      "key": "navy",
@@ -91,6 +456,15 @@
    "name": "Mug",
    "price": 15,
    "sizes": null,
+   "logos": [
+    "42",
+    "43",
+    "44",
+    "55",
+    "58",
+    "59",
+    "60"
+   ],
    "colors": [
     {
      "key": "black",
@@ -103,6 +477,15 @@
    "name": "Tote",
    "price": 20,
    "sizes": null,
+   "logos": [
+    "42",
+    "43",
+    "44",
+    "55",
+    "58",
+    "59",
+    "60"
+   ],
    "colors": [
     {
      "key": "black",
@@ -115,6 +498,15 @@
    "name": "Sticker",
    "price": 4,
    "sizes": null,
+   "logos": [
+    "42",
+    "43",
+    "44",
+    "55",
+    "58",
+    "59",
+    "60"
+   ],
    "colors": [
     {
      "key": "white",
@@ -124,6 +516,1216 @@
   }
  ],
  "items": {
+  "crew-sportgrey-v1": {
+   "hash": "da7f9db53f8a",
+   "price": 40,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657301169,
+     "price": 40
+    },
+    {
+     "size": "M",
+     "id": 5657301170,
+     "price": 40
+    },
+    {
+     "size": "L",
+     "id": 5657301171,
+     "price": 40
+    },
+    {
+     "size": "XL",
+     "id": 5657301172,
+     "price": 40
+    },
+    {
+     "size": "2XL",
+     "id": 5657301173,
+     "price": 42
+    },
+    {
+     "size": "3XL",
+     "id": 5657301174,
+     "price": 43
+    }
+   ]
+  },
+  "crew-navy-v1": {
+   "hash": "89f3eb0ea1f5",
+   "price": 40,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657301191,
+     "price": 40
+    },
+    {
+     "size": "M",
+     "id": 5657301192,
+     "price": 40
+    },
+    {
+     "size": "L",
+     "id": 5657301193,
+     "price": 40
+    },
+    {
+     "size": "XL",
+     "id": 5657301194,
+     "price": 40
+    },
+    {
+     "size": "2XL",
+     "id": 5657301195,
+     "price": 42
+    },
+    {
+     "size": "3XL",
+     "id": 5657301196,
+     "price": 43
+    }
+   ]
+  },
+  "crew-forestgreen-v1": {
+   "hash": "89f3eb0ea1f5",
+   "price": 40,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657301201,
+     "price": 40
+    },
+    {
+     "size": "M",
+     "id": 5657301202,
+     "price": 40
+    },
+    {
+     "size": "L",
+     "id": 5657301203,
+     "price": 40
+    },
+    {
+     "size": "XL",
+     "id": 5657301204,
+     "price": 40
+    },
+    {
+     "size": "2XL",
+     "id": 5657301205,
+     "price": 42
+    },
+    {
+     "size": "3XL",
+     "id": 5657301206,
+     "price": 43
+    }
+   ]
+  },
+  "crew-maroon-v1": {
+   "hash": "89f3eb0ea1f5",
+   "price": 40,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657301223,
+     "price": 40
+    },
+    {
+     "size": "M",
+     "id": 5657301224,
+     "price": 40
+    },
+    {
+     "size": "L",
+     "id": 5657301225,
+     "price": 40
+    },
+    {
+     "size": "XL",
+     "id": 5657301226,
+     "price": 40
+    },
+    {
+     "size": "2XL",
+     "id": 5657301228,
+     "price": 42
+    }
+   ]
+  },
+  "crew-black-v1": {
+   "hash": "89f3eb0ea1f5",
+   "price": 40,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657301245,
+     "price": 40
+    },
+    {
+     "size": "M",
+     "id": 5657301246,
+     "price": 40
+    },
+    {
+     "size": "L",
+     "id": 5657301247,
+     "price": 40
+    },
+    {
+     "size": "XL",
+     "id": 5657301248,
+     "price": 40
+    },
+    {
+     "size": "2XL",
+     "id": 5657301249,
+     "price": 42
+    },
+    {
+     "size": "3XL",
+     "id": 5657301250,
+     "price": 43
+    }
+   ]
+  },
+  "crew-sand-v1": {
+   "hash": "da7f9db53f8a",
+   "price": 40,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657301285,
+     "price": 40
+    },
+    {
+     "size": "M",
+     "id": 5657301286,
+     "price": 40
+    },
+    {
+     "size": "L",
+     "id": 5657301287,
+     "price": 40
+    },
+    {
+     "size": "XL",
+     "id": 5657301288,
+     "price": 40
+    },
+    {
+     "size": "2XL",
+     "id": 5657301289,
+     "price": 42
+    },
+    {
+     "size": "3XL",
+     "id": 5657301290,
+     "price": 43
+    }
+   ]
+  },
+  "crew-lightblue-v1": {
+   "hash": "da7f9db53f8a",
+   "price": 40,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657302326,
+     "price": 40
+    },
+    {
+     "size": "M",
+     "id": 5657302327,
+     "price": 40
+    },
+    {
+     "size": "L",
+     "id": 5657302328,
+     "price": 40
+    },
+    {
+     "size": "XL",
+     "id": 5657302329,
+     "price": 40
+    },
+    {
+     "size": "2XL",
+     "id": 5657302330,
+     "price": 42
+    },
+    {
+     "size": "3XL",
+     "id": 5657302331,
+     "price": 43
+    }
+   ]
+  },
+  "crew-carolinablue-v1": {
+   "hash": "da7f9db53f8a",
+   "price": 40,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657302344,
+     "price": 40
+    },
+    {
+     "size": "M",
+     "id": 5657302345,
+     "price": 40
+    },
+    {
+     "size": "L",
+     "id": 5657302346,
+     "price": 40
+    },
+    {
+     "size": "XL",
+     "id": 5657302347,
+     "price": 40
+    },
+    {
+     "size": "2XL",
+     "id": 5657302348,
+     "price": 42
+    },
+    {
+     "size": "3XL",
+     "id": 5657302349,
+     "price": 43
+    }
+   ]
+  },
+  "script-stone-v2": {
+   "hash": "e873eb8ded4c",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657302361,
+     "price": 26
+    }
+   ]
+  },
+  "script-navy-v2": {
+   "hash": "e2d5b20c0481",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657302371,
+     "price": 26
+    }
+   ]
+  },
+  "script-black-v2": {
+   "hash": "e2d5b20c0481",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657303722,
+     "price": 26
+    }
+   ]
+  },
+  "script-lightblue-v2": {
+   "hash": "e873eb8ded4c",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657303807,
+     "price": 26
+    }
+   ]
+  },
+  "script-spruce-v2": {
+   "hash": "e2d5b20c0481",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657303808,
+     "price": 26
+    }
+   ]
+  },
+  "script-pink-v2": {
+   "hash": "e873eb8ded4c",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657303855,
+     "price": 26
+    }
+   ]
+  },
+  "script-cranberry-v2": {
+   "hash": "e2d5b20c0481",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657303856,
+     "price": 26
+    }
+   ]
+  },
+  "script-khaki-v2": {
+   "hash": "e873eb8ded4c",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657303877,
+     "price": 26
+    }
+   ]
+  },
+  "script-white-v2": {
+   "hash": "e873eb8ded4c",
+   "price": 26,
+   "variants": [
+    {
+     "size": "One size",
+     "id": 5657303894,
+     "price": 26
+    }
+   ]
+  },
+  "sunset-ivory-v3": {
+   "hash": "3f6d007a49de",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657303935,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657303936,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657303937,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657303938,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657303939,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657303940,
+     "price": 31
+    }
+   ]
+  },
+  "sunset-pepper-v3": {
+   "hash": "3f31d2f56ef2",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657303941,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657303942,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657303943,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657303944,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657303945,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657303946,
+     "price": 31
+    }
+   ]
+  },
+  "sunset-sage-v3": {
+   "hash": "3f6d007a49de",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657303973,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657303974,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657303987,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657304002,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657304019,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657304041,
+     "price": 31
+    }
+   ]
+  },
+  "sunset-butter-v3": {
+   "hash": "3f6d007a49de",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657305032,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657305033,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657305034,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657305035,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657305037,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657305038,
+     "price": 31
+    }
+   ]
+  },
+  "sunset-bluejean-v3": {
+   "hash": "3f31d2f56ef2",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657305102,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657305103,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657305104,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657305105,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657305106,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657305107,
+     "price": 31
+    }
+   ]
+  },
+  "sunset-chalkymint-v3": {
+   "hash": "3f6d007a49de",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657305152,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657305153,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657305154,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657305155,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657305156,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657305157,
+     "price": 31
+    }
+   ]
+  },
+  "sunset-black-v3": {
+   "hash": "3f31d2f56ef2",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657305201,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657305203,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657305204,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657305205,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657305207,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657305208,
+     "price": 31
+    }
+   ]
+  },
+  "sunset-brick-v3": {
+   "hash": "3f31d2f56ef2",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657305277,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657305281,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657305284,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657305286,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657305288,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657305289,
+     "price": 31
+    }
+   ]
+  },
+  "ringer-naturalmidnightnavy-v5": {
+   "hash": "0597622a31b3",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657305295,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657305296,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657305297,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657305298,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657305299,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657305300,
+     "price": 31
+    }
+   ]
+  },
+  "ringer-naturalforestgreen-v5": {
+   "hash": "d680c8e5e5d9",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657305309,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657305310,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657305311,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657305312,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657305313,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657305314,
+     "price": 31
+    }
+   ]
+  },
+  "ringer-naturalblack-v5": {
+   "hash": "9b46b8367adb",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657305322,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657305323,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657305324,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657305325,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657305326,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657305327,
+     "price": 31
+    }
+   ]
+  },
+  "ringer-whiteblack-v5": {
+   "hash": "9b46b8367adb",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657305333,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657305334,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657305335,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657305336,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657305337,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657305339,
+     "price": 31
+    }
+   ]
+  },
+  "ringer-heathergrayblack-v5": {
+   "hash": "9b46b8367adb",
+   "price": 28,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657305345,
+     "price": 28
+    },
+    {
+     "size": "M",
+     "id": 5657305346,
+     "price": 28
+    },
+    {
+     "size": "L",
+     "id": 5657305347,
+     "price": 28
+    },
+    {
+     "size": "XL",
+     "id": 5657305348,
+     "price": 28
+    },
+    {
+     "size": "2XL",
+     "id": 5657305349,
+     "price": 30
+    },
+    {
+     "size": "3XL",
+     "id": 5657305350,
+     "price": 31
+    }
+   ]
+  },
+  "tonal-black-m1": {
+   "hash": "c8530a82205e",
+   "price": 46,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657314838,
+     "price": 46
+    },
+    {
+     "size": "M",
+     "id": 5657314840,
+     "price": 46
+    },
+    {
+     "size": "L",
+     "id": 5657314847,
+     "price": 46
+    },
+    {
+     "size": "XL",
+     "id": 5657314848,
+     "price": 46
+    },
+    {
+     "size": "2XL",
+     "id": 5657314849,
+     "price": 48
+    },
+    {
+     "size": "3XL",
+     "id": 5657314850,
+     "price": 49
+    }
+   ]
+  },
+  "tonal-sand-m1": {
+   "hash": "50d508637327",
+   "price": 46,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657314869,
+     "price": 46
+    },
+    {
+     "size": "M",
+     "id": 5657314870,
+     "price": 46
+    },
+    {
+     "size": "L",
+     "id": 5657314871,
+     "price": 46
+    },
+    {
+     "size": "XL",
+     "id": 5657314872,
+     "price": 46
+    },
+    {
+     "size": "2XL",
+     "id": 5657314873,
+     "price": 48
+    },
+    {
+     "size": "3XL",
+     "id": 5657314874,
+     "price": 49
+    }
+   ]
+  },
+  "tonal-militarygreen-m1": {
+   "hash": "836e11f8e5a8",
+   "price": 46,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657314888,
+     "price": 46
+    },
+    {
+     "size": "M",
+     "id": 5657314890,
+     "price": 46
+    },
+    {
+     "size": "L",
+     "id": 5657314891,
+     "price": 46
+    },
+    {
+     "size": "XL",
+     "id": 5657314893,
+     "price": 46
+    },
+    {
+     "size": "2XL",
+     "id": 5657314895,
+     "price": 48
+    },
+    {
+     "size": "3XL",
+     "id": 5657314896,
+     "price": 49
+    }
+   ]
+  },
+  "tonal-navy-m1": {
+   "hash": "b7a5d7f21df0",
+   "price": 46,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657314925,
+     "price": 46
+    },
+    {
+     "size": "M",
+     "id": 5657314926,
+     "price": 46
+    },
+    {
+     "size": "L",
+     "id": 5657314928,
+     "price": 46
+    },
+    {
+     "size": "XL",
+     "id": 5657314929,
+     "price": 46
+    },
+    {
+     "size": "2XL",
+     "id": 5657314930,
+     "price": 48
+    },
+    {
+     "size": "3XL",
+     "id": 5657314931,
+     "price": 49
+    }
+   ]
+  },
+  "tonal-charcoal-m1": {
+   "hash": "981d9cab429f",
+   "price": 46,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657315671,
+     "price": 46
+    },
+    {
+     "size": "M",
+     "id": 5657315672,
+     "price": 46
+    },
+    {
+     "size": "L",
+     "id": 5657315673,
+     "price": 46
+    },
+    {
+     "size": "XL",
+     "id": 5657315674,
+     "price": 46
+    },
+    {
+     "size": "2XL",
+     "id": 5657315675,
+     "price": 48
+    },
+    {
+     "size": "3XL",
+     "id": 5657315676,
+     "price": 49
+    }
+   ]
+  },
+  "tonal-maroon-m1": {
+   "hash": "cc00afd1a3bd",
+   "price": 46,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657315731,
+     "price": 46
+    },
+    {
+     "size": "M",
+     "id": 5657315732,
+     "price": 46
+    },
+    {
+     "size": "L",
+     "id": 5657315733,
+     "price": 46
+    },
+    {
+     "size": "XL",
+     "id": 5657315734,
+     "price": 46
+    },
+    {
+     "size": "2XL",
+     "id": 5657315735,
+     "price": 48
+    },
+    {
+     "size": "3XL",
+     "id": 5657315736,
+     "price": 49
+    }
+   ]
+  },
+  "tonal-forestgreen-m1": {
+   "hash": "489f06c55998",
+   "price": 46,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657315737,
+     "price": 46
+    },
+    {
+     "size": "M",
+     "id": 5657315738,
+     "price": 46
+    },
+    {
+     "size": "L",
+     "id": 5657315739,
+     "price": 46
+    },
+    {
+     "size": "XL",
+     "id": 5657315740,
+     "price": 46
+    },
+    {
+     "size": "2XL",
+     "id": 5657315741,
+     "price": 48
+    },
+    {
+     "size": "3XL",
+     "id": 5657315742,
+     "price": 49
+    }
+   ]
+  },
+  "tonal-sportgrey-m1": {
+   "hash": "3142278181b7",
+   "price": 46,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657315876,
+     "price": 46
+    },
+    {
+     "size": "M",
+     "id": 5657315883,
+     "price": 46
+    },
+    {
+     "size": "L",
+     "id": 5657315886,
+     "price": 46
+    },
+    {
+     "size": "XL",
+     "id": 5657315891,
+     "price": 46
+    },
+    {
+     "size": "2XL",
+     "id": 5657315896,
+     "price": 48
+    },
+    {
+     "size": "3XL",
+     "id": 5657315901,
+     "price": 49
+    }
+   ]
+  },
+  "tonal-lightpink-m1": {
+   "hash": "22e222c86d00",
+   "price": 46,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657315968,
+     "price": 46
+    },
+    {
+     "size": "M",
+     "id": 5657315969,
+     "price": 46
+    },
+    {
+     "size": "L",
+     "id": 5657315970,
+     "price": 46
+    },
+    {
+     "size": "XL",
+     "id": 5657315971,
+     "price": 46
+    },
+    {
+     "size": "2XL",
+     "id": 5657315972,
+     "price": 48
+    },
+    {
+     "size": "3XL",
+     "id": 5657315973,
+     "price": 49
+    }
+   ]
+  },
+  "tonal-darkchocolate-m1": {
+   "hash": "598c4f79a1df",
+   "price": 46,
+   "variants": [
+    {
+     "size": "S",
+     "id": 5657316018,
+     "price": 46
+    },
+    {
+     "size": "M",
+     "id": 5657316019,
+     "price": 46
+    },
+    {
+     "size": "L",
+     "id": 5657316023,
+     "price": 46
+    },
+    {
+     "size": "XL",
+     "id": 5657316024,
+     "price": 46
+    },
+    {
+     "size": "2XL",
+     "id": 5657316025,
+     "price": 48
+    },
+    {
+     "size": "3XL",
+     "id": 5657316026,
+     "price": 49
+    }
+   ]
+  },
   "tee-black-42": {
    "hash": "8f9dbb0c5e27",
    "price": 24,
