@@ -35,3 +35,4 @@ jobs:
           add hood-league.com _dmarc.hood-league.com 'v=DMARC1; p=reject'
           sleep 30
           for n in _dmarc.weltzcraft.com _dmarc.talkshops.app hood-league.com _dmarc.hood-league.com; do echo "now $n: $(dig +short TXT $n @1.1.1.1 | tr '\n' ' ')"; done
+# Rerun 2026-11-21 22:40Z after the token got DNS edit on all zones.
