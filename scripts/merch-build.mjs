@@ -95,7 +95,7 @@ if (MODE === 'mockups') {
     const p = plan[c.pc]; if (!p) continue;
     const placed = `merch/print/placed/${c.slug}.png`;
     const h = comboHash(c.slug, p);
-    if (state[c.slug]?.hash === h && fs.existsSync(`weltzcraft-site/img/merch/${c.slug}.webp`)) { skipped++; continue; }
+    if (state[c.slug]?.hash === h && state[c.slug]?.angles && fs.existsSync(`weltzcraft-site/img/merch/${c.slug}.webp`)) { skipped++; continue; }
     try {
       const v = p.variants.find(x => x.size === 'M') || p.variants[0];
       const task = await pf(`/mockup-generator/create-task/${p.product_id}`, { method: 'POST', body: JSON.stringify({
@@ -108,9 +108,14 @@ if (MODE === 'mockups') {
       let done;
       for (let i = 0; i < 45; i++) { await sleep(4000); done = await pf(`/mockup-generator/task?task_key=${encodeURIComponent(task.task_key)}`); if (done.status !== 'pending') break; }
       if (done.status !== 'completed') throw new Error(`task ${done.status} ${done.error || ''}`);
-      const url = (done.mockups.find(m => m.placement === p.placement) || done.mockups[0]).mockup_url;
+      const main = done.mockups.find(m => m.placement === p.placement) || done.mockups[0];
+      const url = main.mockup_url;
       fs.writeFileSync(`weltzcraft-site/img/merch/${c.slug}.jpg`, Buffer.from(await (await fetch(url)).arrayBuffer()));
-      state[c.slug] = { hash: h, mockup_url: url };
+      // Extra angles for the swipe gallery: other sides of the main photo, then other print spots (e.g. a sleeve).
+      const more = [...(main.extra || []).map(e => e.url), ...done.mockups.filter(m => m !== main).map(m => m.mockup_url)].slice(0, 3);
+      fs.mkdirSync('weltzcraft-site/img/merch/angles', { recursive: true });
+      for (const [i, u] of more.entries()) fs.writeFileSync(`weltzcraft-site/img/merch/angles/${c.slug}~${i + 2}.jpg`, Buffer.from(await (await fetch(u)).arrayBuffer()));
+      state[c.slug] = { hash: h, mockup_url: url, angles: 1 + more.length };
       made++; console.log(`✓ mockup ${c.slug}`);
       fs.writeFileSync('merch/mockups.json', JSON.stringify(state, null, 2) + '\n');
     } catch (e) { failed++; console.log(`::warning::mockup ${c.slug}: ${e.message}`); }
@@ -127,7 +132,7 @@ if (MODE === 'create') {
   const out = {
     updated: new Date().toISOString(),
     logos: Object.fromEntries(Object.entries(cfg.logos).map(([k, l]) => [k, { name: l.name }])),
-    products: cfg.products.map(p => ({ key: p.key, name: p.name, price: p.price, sizes: p.sizes || null, logos: logosOf(p),
+    products: cfg.products.map(p => ({ key: p.key, name: p.name, type: p.type, price: p.price, sizes: p.sizes || null, logos: logosOf(p),
       colors: p.colors.filter(c => plan[`${p.key}-${c.key}`]).map(c => ({ key: c.key, name: c.name })) })),
     items: { ...(ONLY ? prev.items : {}) },
   };
@@ -163,6 +168,7 @@ if (MODE === 'create') {
     } catch (e) { failed++; console.log(`::warning::product ${c.slug}: ${e.message}`); }
     await sleep(1200);
   }
+  for (const [slug, it] of Object.entries(out.items)) { const n = mockups[slug]?.angles; if (n > 1) it.angles = n; else delete it.angles; }
   fs.writeFileSync('weltzcraft-site/merch-catalog.json', JSON.stringify(out, null, 1) + '\n');
   console.log(`products: ${made} made, ${kept} unchanged, ${failed} failed`);
 }
