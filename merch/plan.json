@@ -3373,6 +3373,326 @@
       }
     ]
   },
+  "rope-black": {
+    "product_id": 1676,
+    "product": "Sunwashed Rope Cap | Comfort Colors CCRC0",
+    "color": "Black",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 52924,
+        "size": "One size"
+      }
+    ]
+  },
+  "rope-espresso": {
+    "product_id": 1676,
+    "product": "Sunwashed Rope Cap | Comfort Colors CCRC0",
+    "color": "Espresso",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 52927,
+        "size": "One size"
+      }
+    ]
+  },
+  "rope-moss": {
+    "product_id": 1676,
+    "product": "Sunwashed Rope Cap | Comfort Colors CCRC0",
+    "color": "Moss",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 52930,
+        "size": "One size"
+      }
+    ]
+  },
+  "rope-granite": {
+    "product_id": 1676,
+    "product": "Sunwashed Rope Cap | Comfort Colors CCRC0",
+    "color": "Granite",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 52928,
+        "size": "One size"
+      }
+    ]
+  },
+  "rope-bluejean": {
+    "product_id": 1676,
+    "product": "Sunwashed Rope Cap | Comfort Colors CCRC0",
+    "color": "Blue Jean",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 52925,
+        "size": "One size"
+      }
+    ]
+  },
+  "rope-chambray": {
+    "product_id": 1676,
+    "product": "Sunwashed Rope Cap | Comfort Colors CCRC0",
+    "color": "Chambray",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 52926,
+        "size": "One size"
+      }
+    ]
+  },
+  "rope-ivory": {
+    "product_id": 1676,
+    "product": "Sunwashed Rope Cap | Comfort Colors CCRC0",
+    "color": "Ivory",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 52929,
+        "size": "One size"
+      }
+    ]
+  },
+  "rope-peachy": {
+    "product_id": 1676,
+    "product": "Sunwashed Rope Cap | Comfort Colors CCRC0",
+    "color": "Peachy",
+    "placement": "embroidery_front",
+    "area": {
+      "w": 1770,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 52931,
+        "size": "One size"
+      }
+    ]
+  },
+  "shield-black": {
+    "product_id": 99,
+    "product": "Classic Snapback | Yupoong 6089M",
+    "color": "Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1890,
+      "h": 765
+    },
+    "variants": [
+      {
+        "id": 4792,
+        "size": "One size"
+      }
+    ]
+  },
+  "shield-darknavy": {
+    "product_id": 99,
+    "product": "Classic Snapback | Yupoong 6089M",
+    "color": "Dark Navy",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1890,
+      "h": 765
+    },
+    "variants": [
+      {
+        "id": 4798,
+        "size": "One size"
+      }
+    ]
+  },
+  "shield-darkgrey": {
+    "product_id": 99,
+    "product": "Classic Snapback | Yupoong 6089M",
+    "color": "Dark Grey",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1890,
+      "h": 765
+    },
+    "variants": [
+      {
+        "id": 4797,
+        "size": "One size"
+      }
+    ]
+  },
+  "shield-maroon": {
+    "product_id": 99,
+    "product": "Classic Snapback | Yupoong 6089M",
+    "color": "Maroon",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1890,
+      "h": 765
+    },
+    "variants": [
+      {
+        "id": 4799,
+        "size": "One size"
+      }
+    ]
+  },
+  "shield-heathergrey": {
+    "product_id": 99,
+    "product": "Classic Snapback | Yupoong 6089M",
+    "color": "Heather Grey",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1890,
+      "h": 765
+    },
+    "variants": [
+      {
+        "id": 7836,
+        "size": "One size"
+      }
+    ]
+  },
+  "shield-naturalblack": {
+    "product_id": 99,
+    "product": "Classic Snapback | Yupoong 6089M",
+    "color": "Natural/ Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1890,
+      "h": 765
+    },
+    "variants": [
+      {
+        "id": 4801,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-white": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "White",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7853,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-stone": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Stone",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7859,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-khaki": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Khaki",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7855,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-lightblue": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Light Blue",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7856,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-navy": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Navy",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7857,
+        "size": "One size"
+      }
+    ]
+  },
+  "woods-black": {
+    "product_id": 206,
+    "product": "Classic Dad Hat | Yupoong 6245CM",
+    "color": "Black",
+    "placement": "embroidery_front_large",
+    "area": {
+      "w": 1650,
+      "h": 600
+    },
+    "variants": [
+      {
+        "id": 7854,
+        "size": "One size"
+      }
+    ]
+  },
   "tee-black": {
     "product_id": 71,
     "product": "Unisex Staple T-Shirt | Bella + Canvas 3001",

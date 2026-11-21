@@ -159,6 +159,84 @@
  "pixelhat-white-m7": [
   "#000000"
  ],
+ "rope-black-h1": [
+  "#A67843"
+ ],
+ "rope-espresso-h1": [
+  "#A67843"
+ ],
+ "rope-moss-h1": [
+  "#A67843"
+ ],
+ "rope-granite-h1": [
+  "#A67843"
+ ],
+ "rope-bluejean-h1": [
+  "#A67843"
+ ],
+ "rope-chambray-h1": [
+  "#333366"
+ ],
+ "rope-ivory-h1": [
+  "#333366"
+ ],
+ "rope-peachy-h1": [
+  "#333366"
+ ],
+ "shield-black-h2": [
+  "#A67843",
+  "#000000"
+ ],
+ "shield-darknavy-h2": [
+  "#A67843",
+  "#000000"
+ ],
+ "shield-darkgrey-h2": [
+  "#A67843",
+  "#000000"
+ ],
+ "shield-maroon-h2": [
+  "#A67843",
+  "#000000"
+ ],
+ "shield-heathergrey-h2": [
+  "#A67843",
+  "#FFFFFF"
+ ],
+ "shield-naturalblack-h2": [
+  "#A67843",
+  "#FFFFFF"
+ ],
+ "woods-white-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woods-stone-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woods-khaki-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woods-lightblue-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woods-navy-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
+ "woods-black-h3": [
+  "#A67843",
+  "#01784E",
+  "#7BA35A"
+ ],
  "hat-navy-42": [
   "#FFFFFF"
  ],
