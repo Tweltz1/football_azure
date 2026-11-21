@@ -33,14 +33,14 @@ const UNITS = [
   'cups?', 'c\\.', 'tablespoons?', 'tbsps?\\.?', 'tbs\\.?', 'T\\.?', 'teaspoons?', 'tsps?\\.?', 't\\.',
   'ounces?', 'oz\\.?', 'fl\\.? oz\\.?', 'pounds?', 'lbs?\\.?', 'grams?', 'g', 'kilograms?', 'kg', 'ml', 'milliliters?',
   'liters?', 'l', 'quarts?', 'qts?\\.?', 'pints?', 'pts?\\.?', 'gallons?', 'gal\\.?', 'cans?', 'jars?', 'bottles?',
-  'packages?', 'pkgs?\\.?', 'packets?', 'envelopes?', 'boxes?', 'bags?', 'containers?', 'sticks?', 'cloves?', 'heads?',
-  'bunch(?:es)?', 'sprigs?', 'stalks?', 'slices?', 'pieces?', 'pinch(?:es)?', 'dash(?:es)?', 'handfuls?', 'large',
+  'packages?', 'pkgs?\\.?', 'packets?', 'envelopes?', 'box(?:es)?', 'bags?', 'containers?', 'sticks?', 'cloves?', 'heads?',
+  'bunch(?:es)?', 'sprigs?', 'stalks?', 'ribs?', 'ears?', 'strips', 'leaves', 'fillets?', 'slices?', 'pieces?', 'pinch(?:es)?', 'dash(?:es)?', 'handfuls?', 'large',
   'medium', 'small',
 ];
 const UNIT = new RegExp(String.raw`^(?:${UNITS.join('|')})(?=\s|$|\))`, 'i');
 // Removed from the item name: they say how to prepare it, not what to buy.
 const PREP =
-  /\b(finely|coarsely|roughly|thinly|freshly|lightly|well|very|chopped|(?:diced|crushed|stewed)(?!\s+(?:tomato|red pepper|pineapple))|minced|sliced|grated|shredded|peeled|seeded|cored|trimmed|halved|quartered|picked|deseeded|de-seeded|in half|cubed|melted|softened|beaten|divided|drained|rinsed|packed|sifted|toasted|cooked|uncooked|room temperature|at room temperature|cut into [^,]+|plus more[^,]*|or more[^,]*|to taste|for serving|for garnish|for topping|for dusting|optional|if desired|as needed)\b/gi;
+  /(?:\b(?:well|fully|loosely|lightly|firmly|tightly|water|oil)[- ](?:drained|cooked|packed)\b|\b(finely|coarsely|roughly|thinly|freshly|lightly|loosely|well|very|chopped|squeezed|bagged|deveined|pitted|stemmed|shelled|(?:diced|crushed|stewed)(?!\s+(?:tomato|red pepper|pineapple))|minced|sliced|grated|shredded|peeled|seeded|cored|trimmed|halved|quartered|picked|deseeded|de-seeded|in half|cubed|melted|softened|beaten|divided|drained|rinsed|packed|sifted|toasted|cooked|uncooked|room temperature|at room temperature|cut into [^,]+|plus more[^,]*|or more[^,]*|to taste|for serving|for garnish|for topping|for dusting|for (?:the )?\w+ing|for the grill|optional|if desired|as needed)\b)/gi;
 const PANTRY = new Set(
   [
     'salt', 'kosher salt', 'sea salt', 'pepper', 'black pepper', 'ground black pepper', 'salt and pepper',
@@ -66,6 +66,14 @@ const normalise = (line: string) =>
 
 const startsWithAmount = (line: string) => QTY.test(normalise(line)) || /^(a|an|one|two|three|a few|pinch|dash)\s/i.test(line);
 
+// Words that end a shared name in "grape or cherry tomatoes" and "vegetable, canola or other neutral oil".
+const SHARED_NOUN =
+  /^(?:broth|stock|olives|ham|cheese|beans|vinegar|wine|rice|pasta|oil|peppers?|onions?|squash|lettuce|mushrooms|sausages?|tomatoes|apples|juice|mustard|sprouts|kernels|corn|greens|noodles|flour|chiles|chilies|potatoes|lentils|nuts|seeds|cabbage|sauce|tortillas|bread|fillets|breasts|thighs|chops|cutlets|steaks?)$/i;
+const NUMBER_WORD = /^(a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a few|a couple of|half an?)\s+/i;
+// "Juice of 1 lemon", "Zest of 1 lemon plus 2 tablespoons juice": the thing to buy is the lemon.
+const JUICE_OF = /^((?:finely\s+)?(?:grated\s+)?(?:zest|juice|zest and juice|juice and zest)) of\s+/i;
+const MARK = '\u0001';
+
 /** Splits "2 cups shredded cheddar cheese, divided" into the amount and the thing to buy. */
 export function parseIngredient(raw: string): RecipeItem | null {
   let line = normalise(raw);
@@ -74,22 +82,34 @@ export function parseIngredient(raw: string): RecipeItem | null {
   if (/^for the\b.*:$/i.test(line) || /:$/.test(line)) return null; // sub-headings like "For the sauce:"
 
   const amount: string[] = [];
+  const notes: string[] = [];
+  const juiceOf = line.match(JUICE_OF);
+  if (juiceOf) {
+    notes.push(juiceOf[1].toLowerCase());
+    line = line.slice(juiceOf[0].length);
+  }
   const qty = line.match(QTY);
   if (qty) {
     amount.push(qty[0]);
     line = line.slice(qty[0].length).trim();
   } else {
-    const word = line.match(/^(a|an|one|two|three|four|a few|a couple of)\s+/i);
+    const word = line.match(NUMBER_WORD);
     if (word) {
       amount.push(word[0].trim());
       line = line.slice(word[0].length);
     }
   }
-  // "heaping cups", "scant teaspoon": how full, part of the amount.
-  const fill = line.match(/^(heaping|heaped|level|scant|rounded|generous|good)\s+/i);
+  // "heaping cups", "scant teaspoon", "packed cup": how full, part of the amount.
+  const fill = line.match(/^((?:heaping|heaped|level|scant|rounded|generous|good|(?:loosely |lightly |firmly |tightly )?packed))\s+(?=(?:cups?|tablespoons?|teaspoons?|tbsps?|tsps?)\b)/i);
   if (fill) {
     amount.push(fill[1]);
     line = line.slice(fill[0].length);
+  }
+  // "1-inch piece fresh ginger", "1/2-inch knob ginger": the piece is the amount.
+  const piece = line.match(/^(?:(\d+(?:\/\d+)?)\s*)?-?\s*inch(?:es)?\s+((?:piece|knob|chunk|length)s?)\s+(?:of\s+)?/i);
+  if (piece) {
+    amount.push(`${piece[1] ?? ''}-inch ${piece[2]}`.replace(/^-/, '').trim());
+    line = line.slice(piece[0].length);
   }
   // "(14 oz)" package sizes right after the amount belong to the amount, also written without
   // brackets as recipe plugins print them: "2 4 oz cans", "1 15-ounce can".
@@ -104,6 +124,18 @@ export function parseIngredient(raw: string): RecipeItem | null {
     amount.push(unit[0]);
     line = line.slice(unit[0].length).trim();
   }
+  // "1/4 cup plus 3 tablespoons olive oil": both amounts.
+  const plus = line.match(new RegExp(String.raw`^plus\s+(${NUM}\s+(?:${UNITS.join('|')}))(?=\s)\s*`, 'i'));
+  if (plus) {
+    amount.push(`plus ${plus[1]}`);
+    line = line.slice(plus[0].length);
+  }
+  // "Eight 6-inch tortillas": the size goes with the amount.
+  const inch = line.match(/^(\d+(?:\.\d+)?-inch)\s+/i);
+  if (inch) {
+    amount.push(`(${inch[1]})`);
+    line = line.slice(inch[0].length);
+  }
   line = line.replace(/^of\s+/i, '');
   // "2 x 400g tins plum tomatoes": the pack size is part of the amount.
   const packs = line.match(/^x\s+(\d+(?:\.\d+)?\s*(?:fl\.?\s*oz|oz|ml|g|kg|lbs?)\.?)\s+((?:tins?|cans?|packs?|packets?|jars?|bottles?|cartons?|bags?|boxes)\s+)?/i);
@@ -113,7 +145,6 @@ export function parseIngredient(raw: string): RecipeItem | null {
   }
 
   // Notes in brackets, nested too: WP Recipe Maker writes "onion ((diced))" and "chicken (, cooked)".
-  const notes: string[] = [];
   let bare = line;
   for (let n = 0; n < 4 && /\([^()]*\)/.test(bare); n++) {
     bare = bare.replace(/\(([^()]*)\)/g, (_, inner: string) => {
@@ -121,29 +152,82 @@ export function parseIngredient(raw: string): RecipeItem | null {
       return ' ';
     });
   }
-  bare = bare.replace(/\(.*$/, ' ').replace(/[()]/g, ' ');
+  bare = bare
+    .replace(/\(.*$/, ' ')
+    .replace(/[()]/g, ' ')
+    // "Kosher salt freshly ground black pepper" (the site lost the "and").
+    .replace(/\bsalt\s+(?=(?:freshly\s+|fresh\s+)?(?:ground|cracked)\b)/i, 'salt and ')
+    // "chipotle with 1/2 teaspoon adobo", "zest of 1 lemon plus 2 tablespoons juice": the rest is a note.
+    .replace(new RegExp(String.raw`^((?:\S+\s+){0,3}?\S+)(\s+(?:with|plus)\s+${NUM}\b.*)$`, 'i'), (_, keep: string, m: string) => {
+      notes.push(m.trim());
+      return keep;
+    })
+    .replace(/$^/, (m) => {
+      notes.push(m.trim());
+      return ' ';
+    })
+    .replace(/\s+(?:such as|like)\s+.*$/i, (m) => {
+      notes.push(m.trim());
+      return ' ';
+    });
   // "onion, diced" → "onion" + note "diced". Leading describing words stay with the name:
   // "boneless, skinless chicken breasts" is all one thing to buy.
   const parts = bare.split(/,|;|\s+-\s+|\s+–\s+/);
   let head = parts.shift() ?? '';
-  while (parts.length && DESCRIBING.test(head.trim()) && parts[0].trim()) head = `${head} ${parts.shift()}`;
+  const describing = (h: string) => {
+    const left = h.replace(PREP, ' ').replace(/\s+/g, ' ').trim();
+    return !left || DESCRIBING.test(left);
+  };
+  // "chopped cooked boneless, skinless chicken", "large peeled, deveined shrimp", "cubed, peeled squash".
+  while (parts.length && describing(head) && parts[0].trim()) head = `${head} ${parts.shift()}`;
+  // "vegetable, canola or other neutral oil" → "vegetable oil".
+  const sharedOr = parts[0]?.match(/\bor\s+(?:other\s+)?((?:[\w-]+\s+)+([\w-]+))\s*$/i);
+  if (
+    sharedOr &&
+    SHARED_NOUN.test(sharedOr[2]) &&
+    !/\b(?:your|favorite|any|store-bought)\b/i.test(parts[0]) &&
+    head.trim().split(/\s+/).length <= 2 &&
+    !/\bor\b/i.test(head)
+  ) {
+    head = `${head} ${sharedOr[2]}`;
+  }
   notes.push(...parts);
   const prepWords: string[] = [];
-  const alternative = head.match(/\s+or\s+.*$/i)?.[0];
-  let name = head
-    .replace(/\s+or\s+.*$/i, '') // "butter or margarine" → "butter"
+  // "grape or cherry tomatoes" → "grape tomatoes"; "butter or margarine" → "butter".
+  let alternative = head.match(/\s+or\s+.*$/i)?.[0];
+  if (alternative) {
+    const alt = alternative.replace(/^\s+or\s+(?:other\s+)?/i, '').trim().split(/\s+/);
+    const tail = alt[alt.length - 1];
+    const before = head.slice(0, head.length - alternative.length);
+    const standsAlone = /\b(?:spray|butter|margarine|oil|stock|broth|water|milk|cream|yogurt|sauce)\s*$/i.test(before);
+    if (alt.length >= 2 && SHARED_NOUN.test(tail) && !standsAlone && !new RegExp(String.raw`\b${tail}\b`, 'i').test(before)) {
+      // "yellow or orange bell pepper" → "yellow bell pepper": the alternative's own first word is swapped out.
+      head = `${before} ${alt.slice(1).join(' ')}`;
+      alternative = alternative.trim();
+    } else head = before;
+  }
+  let marked = head
     .replace(PREP, (w) => {
       prepWords.push(w.toLowerCase());
-      return ' ';
+      return ` ${MARK} `;
     })
+    .replace(new RegExp(`${MARK}(?:\\s*(?:and|&|or|then)?\\s*${MARK})+`, 'g'), MARK);
+  // "red onion thinly sliced into half moons", "carrot peeled and sliced into strips": stop at the prep words.
+  const cut = marked.match(new RegExp(`^(.*?[a-z].*?)\\s*${MARK}\\s*((?:into|in|with|for|to|until|lengthwise|crosswise)\\b.*)$`, 'i'));
+  if (cut) {
+    notes.push(cut[2]);
+    marked = cut[1];
+  }
+  let name = marked
+    .replace(new RegExp(MARK, 'g'), ' ')
     .replace(/\*+/g, '')
     .replace(/\s+/g, ' ')
-    .replace(/^(and|of|the)\s+/i, '')
+    .replace(/^(and|of|the|or)\s+/i, '')
     .replace(/\s+(and|or|of|with|in)\s*$/i, '')
-    .replace(/[\s.:,]+$/, '')
+    .replace(/^[\s-]+|[\s.:,-]+$/g, '')
     .trim()
     .toLowerCase();
-  if (prepWords.length) notes.unshift(prepWords.join(' '));
+  if (prepWords.length) notes.unshift(prepWords.join(' ').replace(/\s+/g, ' '));
   if (alternative) notes.push(alternative.trim());
   const note = notes
     .map((n) => n.replace(/\*+/g, '').replace(/^[\s,;:-]+|[\s,;:.-]+$/g, '').replace(/\s+/g, ' ').trim())
@@ -193,10 +277,41 @@ export function ingredientLines(lines: string[], structured = false): string[] {
   return joined.filter((l) => startsWithAmount(l) && normalise(l).split(' ').length <= 14);
 }
 
+// Pairs that are one thing to buy, not two.
+const ONE_THING = /\b(?:half and half|half-and-half|sweet and sour|mac(?:aroni)? and cheese|salt and[\w\s]*pepper|pepper and salt|oil and vinegar|cookies and cream|surf and turf)\b/i;
+
+/**
+ * Lines that name several things: "Suggested toppings: cilantro, avocado, lime juice" and
+ * "Lime wedges and cilantro leaves, for serving" (no amount) become one line each.
+ */
+export function splitLine(line: string): string[] {
+  const toppings = line.match(/^\s*(?:suggested |optional )?(?:toppings?|garnish(?:es)?|to serve|for serving|serve with)\s*:\s*(.+)$/i);
+  if (toppings) {
+    return toppings[1]
+      .split(/,|;|\s+and\s+|\s+or\s+/i)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => `${p}, for serving`);
+  }
+  const v = normalise(line);
+  // Two ingredients run together by the site: "2 scallions, sliced 2 tablespoons ginger strips".
+  const joined = v.match(
+    /^(.{8,}?[a-z)])\s+(?<!\b(?:about|plus|or|and|from|to|with|of|each|than|into|in|by|x)\s+)(\d+(?:\s+\d\/\d|\/\d+)?\s+(?:tablespoons?|teaspoons?|cups?|pounds?|ounces?)\s.*)$/i,
+  );
+  if (joined && startsWithAmount(v)) return [joined[1], ...splitLine(joined[2])];
+  if (startsWithAmount(v) || ONE_THING.test(v)) return [line];
+  const m = v.match(/^([^,()]+?)\s+and\s+([^,()]+?)((?:,|\s+for\s+|\s*\().*)?$/i);
+  if (!m) return [line];
+  const words = (t: string) => t.trim().split(/\s+/).length;
+  if (words(m[1]) > 3 || words(m[2]) > 3) return [line];
+  const rest = m[3] ? m[3].replace(/^,\s*/, ', ').replace(/^\s+for\s+/i, ', for ') : '';
+  return [`${m[1]}${rest}`, `${m[2]}${rest}`];
+}
+
 export function parseRecipeLines(lines: string[], title = '', structured = false): ParsedRecipe {
   const servings = lines.map((l) => l.match(SERVINGS)).find(Boolean);
   const merged = new Map<string, RecipeItem>();
-  for (const line of ingredientLines(lines, structured)) {
+  for (const line of ingredientLines(lines, structured).flatMap(splitLine)) {
     const item = parseIngredient(line);
     if (!item) continue;
     const key = itemKey(item.item);
@@ -363,6 +478,8 @@ export function parseRecipePage(html: string): ParsedRecipe {
   if (marked.length) return { ...parseRecipeLines(marked, title, true), imageUrl: ogImage(html) };
   const text = html
     .replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ')
+    // Site menus list "Chicken", "Pasta", "7 Ingredients or Less"…: never ingredients.
+    .replace(/<(nav|header|footer|aside)\b[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<(br|\/p|\/li|\/h\d|\/div|\/tr)[^>]*>/gi, '\n');
   return { ...parseRecipeLines(decode(text).split('\n'), title), imageUrl: ogImage(html) };
 }
@@ -399,4 +516,178 @@ export function cleanLink(text: string): string | null {
   const v = text.trim();
   const m = v.match(/https?:\/\/[^\s<>"]+/i)?.[0] ?? (/^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)+\/\S*$/i.test(v) ? `https://${v}` : null);
   return m ? m.replace(/[).,]+$/, '') : null;
+}
+
+export type LinkedRecipe = { url: string; title: string };
+export type RecipeCollection = { title: string; recipes: LinkedRecipe[] };
+
+// Words that say a link goes to a recipe, without naming it ("Get the recipe").
+const CTA = /^(?:get|see|view|read|open|make|try|full|print|go to)?\s*(?:the\s+)?(?:full\s+)?recipes?(?:\s+here)?\s*[»›→>]*$|^(?:read|see|learn)\s+more$|^here$/i;
+// "Get the Cheesy Bacon Ranch Chicken recipe", "Philly Cheesesteak Wraps recipe": a button that names the dish.
+const CTA_NAMED = /^(?:get|see|view|make)?\s*(?:the\s+)?(.{3,80}?)\s+recipe\s*[»›→>]*$/i;
+// Paths that are never one recipe: site sections, people, shops and account pages.
+const NOT_RECIPE_PATH =
+  /\/(?:wprm_print|print|category|categories|tag|tags|author|authors|profiles?|about|contact|privacy|terms|shop|store|search|login|account|subscribe|newsletter|videos?|shows?|chefs?|topics?|collections?|packages?|galleries|gallery|wp-content|wp-admin|feed|page\/\d+)(?:\/|$)/i;
+
+const slugTitle = (path: string) => {
+  const slug = decodeURIComponent(path.replace(/\/+$/, '').split('/').pop() ?? '')
+    .replace(/\.(?:html?|php)$/i, '')
+    .replace(/-?\b(?:recipe\d*)\b-?/gi, ' ')
+    .replace(/-?\d{4,}$/, '')
+    .replace(/[-_]+/g, ' ')
+    .trim();
+  return slug ? slug[0].toUpperCase() + slug.slice(1) : '';
+};
+
+/**
+ * A roundup page ("100 healthy dinners") links to many recipes and has none of its own. Finds those
+ * links in order: the page's schema.org ItemList when it lists recipe pages, else links in the article
+ * body that look like a single recipe on the same site. Returns null for a page with fewer than 2.
+ */
+export function parseCollectionPage(html: string, pageUrl: string): RecipeCollection | null {
+  let base: URL;
+  try {
+    base = new URL(pageUrl);
+  } catch {
+    return null;
+  }
+  const site = (h: string) => h.replace(/^www\./, '');
+  const found = new Map<string, string>();
+  const add = (href: string, title: string) => {
+    let u: URL;
+    try {
+      u = new URL(decode(href).trim(), base);
+    } catch {
+      return;
+    }
+    if (!/^https?:$/.test(u.protocol) || site(u.host) !== site(base.host)) return;
+    u.protocol = 'https:';
+    u.hash = '';
+    u.search = '';
+    const key = u.href.replace(/\/+$/, '');
+    if (key === base.href.split(/[?#]/)[0].replace(/\/+$/, '') || NOT_RECIPE_PATH.test(u.pathname)) return;
+    if (/(?:^|-)(?:app|apps|magazine|subscription|subscribe|podcast|newsletter|giveaway|cookbook|cookbook-cover|browser|index)$/i.test(u.pathname.replace(/\/+$/, ''))) return;
+    const name = title.replace(/\s+/g, ' ').replace(/^(?:view|see|open|go to)\s+/i, '').replace(/\s*\((?:pictured|shown|see|above|below)[^)]*\)/gi, '').trim();
+    const good = name && !CTA.test(name) && name.length <= 120 ? name : '';
+    if (!found.has(key)) found.set(key, good);
+    else if (!found.get(key) && good) found.set(key, good);
+  };
+
+  // 1. schema.org ItemList of pages (Allrecipes, Delish and most news-style roundups publish one).
+  for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const walk = (node: unknown): void => {
+        if (!node || typeof node !== 'object') return;
+        if (Array.isArray(node)) return node.forEach(walk);
+        const n = node as Record<string, unknown>;
+        const type = ([] as unknown[]).concat(n['@type']);
+        if (type.includes('ItemList') && Array.isArray(n.itemListElement)) {
+          for (const el of n.itemListElement as Record<string, unknown>[]) {
+            const item = (el?.item ?? el) as Record<string, unknown>;
+            const url = (item?.url ?? el?.url ?? (typeof item?.['@id'] === 'string' ? item['@id'] : undefined)) as unknown;
+            if (typeof url === 'string') add(url, String(item?.name ?? el?.name ?? ''));
+          }
+        }
+        if (type.includes('BreadcrumbList')) return;
+        Object.values(n).forEach(walk);
+      };
+      walk(JSON.parse(m[1].replace(/^\s*<!--|-->\s*$/g, '').replace(/[\u0000-\u001F]+/g, ' ')));
+    } catch {}
+  }
+
+  // 2. Links in the article itself: menus, headers, footers and sidebars removed first.
+  if (found.size < 2) {
+    found.clear();
+    let body = html
+      .replace(/<(script|style|noscript|svg|template)[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<(nav|footer|aside|form)\b[\s\S]*?<\/\1>/gi, ' ')
+      // Site headers hold the menus; a card's own <header> (blog archives) holds its link, so it stays.
+      .replace(/<header\b(?:(?!<\/header>)[\s\S])*?<(?:nav|ul)\b[\s\S]*?<\/header>/gi, ' ');
+    const article = body.match(/<(article|main)\b[\s\S]*<\/\1>/i)?.[0];
+    if (article) body = article;
+    const anchors = [...body.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)].map((m) => {
+      const attrs = m[1];
+      // Minified pages leave quotes off: <a href=https://site.com/dish/ >.
+      const attr = (re: string) => {
+        const m = attrs.match(new RegExp(String.raw`\b(?:${re})\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))`, 'i'));
+        return m ? (m[1] ?? m[2] ?? m[3] ?? '') : '';
+      };
+      const href = attr('href');
+      const attrTitle = attr('title|data-track-click|aria-label');
+      const text = decode(stripTags(m[2]));
+      return { href, text, title: decode(attrTitle) };
+    });
+    // Recipe-looking paths: "/recipe/…", "…-recipe-123", "/recipes/<who>/<dish>", or a blog post slug.
+    const looksLikeRecipe = (href: string) => {
+      let path: string;
+      try {
+        path = new URL(decode(href), base).pathname;
+      } catch {
+        return false;
+      }
+      const last = path.replace(/\/+$/, '').split('/').pop() ?? '';
+      return /\/recipes?\//i.test(path) || /recipe/i.test(last) ? last.split('-').length >= 2 : last.split('-').length >= 3;
+    };
+    // "Print Recipe", "Jump to Recipe" are buttons for the page's own recipe card, not other recipes.
+    const OWN_CARD = /^(?:print|pin|rate|jump to|save|share|email|review|skip to|copy)\b/i;
+    const isCta = (t: string) => !OWN_CARD.test(t.trim()) && (CTA.test(t.trim()) || CTA_NAMED.test(t.trim()));
+    // Sites that put a recipe button on every dish: only those links count, not links in the writing.
+    const ctas = anchors.filter((a) => isCta(a.text) && looksLikeRecipe(a.href));
+    const pick = new Set(ctas.map((a) => a.href)).size >= 2 ? ctas : anchors.filter((a) => looksLikeRecipe(a.href));
+    for (const a of pick) {
+      const text = a.text.trim();
+      add(a.href, CTA.test(text) || !text ? a.title : (text.match(CTA_NAMED)?.[1] ?? text));
+    }
+    // A link's name from elsewhere on the page ("Turkey Chili" image link next to "Get the recipe").
+    for (const a of anchors) {
+      if (!a.text.trim() || CTA.test(a.text.trim())) continue;
+      try {
+        const key = new URL(decode(a.href), base).href.split(/[?#]/)[0].replace(/^http:/, 'https:').replace(/\/+$/, '');
+        if (found.has(key) && !found.get(key)) found.set(key, a.text.trim());
+      } catch {}
+    }
+  }
+  if (found.size < 2) return null;
+  const title = decode(
+    html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
+      html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ??
+      html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ??
+      '',
+  )
+    .replace(/<[^>]+>/g, '')
+    .split(/\s[|–—]\s|\s-\s|\|/)[0]
+    .trim();
+  return {
+    title: title.slice(0, 100) || 'Recipes',
+    recipes: [...found].slice(0, 120).map(([url, t]) => ({ url, title: (t || slugTitle(new URL(url).pathname) || url).slice(0, 100) })),
+  };
+}
+
+/** True when the page publishes its own recipe data (so it's one recipe, not a roundup). */
+export function hasRecipeData(html: string): boolean {
+  for (const m of html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const r = findRecipe(JSON.parse(m[1].replace(/^\s*<!--|-->\s*$/g, '').replace(/[\u0000-\u001F]+/g, ' ')));
+      const ing = r?.recipeIngredient ?? r?.ingredients;
+      if (Array.isArray(ing) ? ing.length > 0 : typeof ing === 'string' && ing.trim()) return true;
+    } catch {}
+  }
+  return markedIngredients(html).length > 0;
+}
+
+/**
+ * Whether a page that links to several recipes is a roundup to pick from. A page with no recipe of
+ * its own is. One with its own recipe is only when it's clearly a list ("Healthy Dinner Recipes",
+ * "20 Easy Soups") linking to many, and its recipe isn't the page itself (blogs feature one recipe on
+ * a roundup; a single recipe page links to a few "you might also like" recipes).
+ */
+export function isRoundup(html: string, collection: RecipeCollection): boolean {
+  if (!hasRecipeData(html)) return true;
+  if (collection.recipes.length < 8) return false;
+  const listTitle = /^\s*\d+\b|\b(?:recipes|ideas|dinners|lunches|breakfasts|meals|dishes|soups|salads|desserts)\b/i.test(collection.title);
+  // "This Creamy Tuscan Chicken Is One Of Our Most-Popular Dinner Recipes" is the chicken's own page.
+  // A roundup post's own recipe card is often named after the post ("Healthy Dinner Recipes").
+  const own = itemKey(parseRecipePage(html).title);
+  const title = itemKey(collection.title);
+  return listTitle && (!own || own === title || !title.includes(own));
 }

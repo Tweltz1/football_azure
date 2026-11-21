@@ -159,7 +159,7 @@ jobs:
     # Reads real recipe pages with the app's parser and prints every ingredient and step it keeps.
     if: contains(github.event.head_commit.message, '[stride-links]')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
     defaults:
@@ -172,6 +172,8 @@ jobs:
           node-version: 22
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx tsx tools/check_links.mts
+        env:
+          DUMP: ${{ contains(github.event.head_commit.message, '[dump]') && '1' || '' }}
 
   seed:
     if: contains(github.event.head_commit.message, '[stride-seed]')
