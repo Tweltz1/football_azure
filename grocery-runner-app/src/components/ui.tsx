@@ -191,7 +191,7 @@ export const STUDIO_NAME = 'Weltzcraft Studios';
 export const STUDIO_URL = 'https://weltzcraft.com';
 // Support email (arrives in the studio inbox, replies go out from the same address) and privacy page.
 export const SUPPORT_EMAIL = 'shopstride@weltzcraft.com';
-export const PRIVACY_URL = 'https://weltzcraft.com/privacy/shop-stride';
+export const PRIVACY_URL = 'https://weltzcraft.com/shopstride/privacy';
 
 export function StudioCredit({ style }: { style?: StyleProp<ViewStyle> }) {
   const t = useTheme();
