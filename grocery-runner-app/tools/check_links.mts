@@ -79,7 +79,7 @@ for (let qi = 0; qi < queue.length; qi++) {
     // A line counts as dropped only if the parser threw it away; the same thing listed twice
     // ("garlic" in the marinade and the sauce) is merged into one shopping line on purpose.
     // Water is left out on purpose.
-    const dropped = src.lines.filter((l) => !/^[\d\s\/]*(?:cups?|tablespoons?|teaspoons?)?\s*(?:hot |cold |warm |boiling )?water\b/i.test(l) && splitLine(l.replace(/<[^>]+>/g, ' ')).some((p) => !parseIngredient(p)));
+    const dropped = src.lines.filter((l) => !/^[\d\s\/]*(?:cups?|tablespoons?|teaspoons?)?\s*(?:\([^)]*\)\s*)?(?:hot |cold |warm |boiling )?water\b/i.test(l) && splitLine(l.replace(/<[^>]+>/g, ' ')).some((p) => !parseIngredient(p)));
     if (src.ing > r.items.length) console.log(`  (${src.ing - r.items.length - dropped.length} repeated ingredient(s) merged into one line)`);
     for (const l of dropped) console.log(`  -- skipped: ${l}`);
     if (dropped.length) { problems++; console.log(`  !! ${dropped.length} ingredient line(s) skipped`); }

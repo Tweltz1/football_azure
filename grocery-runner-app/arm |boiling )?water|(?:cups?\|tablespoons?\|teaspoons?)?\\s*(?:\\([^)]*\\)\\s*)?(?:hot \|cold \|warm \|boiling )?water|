@@ -1,0 +1,1 @@
+    const dropped = src.lines.filter((l) => !/^[\d\s\/]*cold |cold |warm |boiling )?water\b/i.test(l) && splitLine(l.replace(/<[^>]+>/g, ' ')).some((p) => !parseIngredient(p)));
