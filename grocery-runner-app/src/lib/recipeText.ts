@@ -606,8 +606,13 @@ export function parseCollectionPage(html: string, pageUrl: string): RecipeCollec
     if (article) body = article;
     const anchors = [...body.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)].map((m) => {
       const attrs = m[1];
-      const href = attrs.match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
-      const attrTitle = attrs.match(/\b(?:title|data-track-click|aria-label)\s*=\s*["']([^"']+)["']/i)?.[1] ?? '';
+      // Minified pages leave quotes off: <a href=https://site.com/dish/ >.
+      const attr = (re: string) => {
+        const m = attrs.match(new RegExp(String.raw`\b(?:${re})\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))`, 'i'));
+        return m ? (m[1] ?? m[2] ?? m[3] ?? '') : '';
+      };
+      const href = attr('href');
+      const attrTitle = attr('title|data-track-click|aria-label');
       const text = decode(stripTags(m[2]));
       return { href, text, title: decode(attrTitle) };
     });
@@ -678,6 +683,8 @@ export function isRoundup(html: string, collection: RecipeCollection): boolean {
   if (collection.recipes.length < 8) return false;
   const listTitle = /^\s*\d+\b|\b(?:recipes|ideas|dinners|lunches|breakfasts|meals|dishes|soups|salads|desserts)\b/i.test(collection.title);
   // "This Creamy Tuscan Chicken Is One Of Our Most-Popular Dinner Recipes" is the chicken's own page.
+  // A roundup post's own recipe card is often named after the post ("Healthy Dinner Recipes").
   const own = itemKey(parseRecipePage(html).title);
-  return listTitle && !!own && !itemKey(collection.title).includes(own);
+  const title = itemKey(collection.title);
+  return listTitle && (!own || own === title || !title.includes(own));
 }

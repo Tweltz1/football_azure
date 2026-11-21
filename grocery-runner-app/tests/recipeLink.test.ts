@@ -144,3 +144,13 @@ test('a roundup that features one recipe is still a roundup; a recipe page with 
   // WP Recipe Maker's stylesheet names alone don't make a page a recipe.
   assert.equal(hasRecipeData('<style>.wprm-recipe-ingredient{color:red}</style>'), false);
 });
+
+test('roundup links without quotes, and a single recipe whose title mentions recipes', () => {
+  const html = `<title>Healthy Dinner Recipes</title><article>${Array.from({ length: 9 }, (_, n) => `<a href=https://blog.com/sweet-potato-stew-${n}/ rel=bookmark>Sweet Potato Stew ${n}<br> </a>`).join('')}</article>`;
+  const c = parseCollectionPage(html, 'https://blog.com/healthy-dinner-ideas/');
+  assert.equal(c?.recipes.length, 9);
+  assert.equal(c?.recipes[0].title, 'Sweet Potato Stew 0');
+  const delish = `<meta property="og:title" content="This Creamy Tuscan Chicken Is One Of Our Most-Popular Dinner Recipes">
+    <script type="application/ld+json">{"@type":"Recipe","name":"Creamy Tuscan Chicken","recipeIngredient":["1 lb chicken"]}</script>${html.replace(/<title>.*<\/title>/, '')}`;
+  assert.equal(isRoundup(delish, parseCollectionPage(delish, 'https://blog.com/creamy-tuscan-chicken/')!), false);
+});
