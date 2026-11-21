@@ -10,6 +10,7 @@ import { CATEGORIES, Category, shareRecipe } from '../lib/community';
 import { useData } from '../lib/store';
 import { radius, useTheme } from '../lib/theme';
 import { titleCase } from '../lib/caps';
+import { hasPhoto } from '../lib/recipePhotos';
 
 /** Shares one of your recipes with the community: pick a category and the name to show. */
 export default function ShareScreen() {
@@ -89,7 +90,11 @@ export default function ShareScreen() {
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
       <Text style={{ color: t.text, fontSize: 22, fontWeight: '800' }}>{titleCase(recipe.title)}</Text>
       <Text style={{ color: t.textMuted, marginTop: 4 }}>
-        {recipe.items.length} ingredient{recipe.items.length === 1 ? '' : 's'} will be shared. Your photo stays on your phone.
+        {`${recipe.items.length} ingredient${recipe.items.length === 1 ? '' : 's'}`
+          + (recipe.steps?.length && !recipe.url ? ' and your steps' : '')
+          + ' will be shared'
+          + (recipe.photo && hasPhoto(recipe.photo) ? ', with your photo.' : '.')
+          + (recipe.url ? ' Steps from the recipe website stay private, since they belong to that site.' : '')}
       </Text>
 
       <SectionTitle>Category</SectionTitle>
