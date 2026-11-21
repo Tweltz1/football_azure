@@ -155,6 +155,9 @@ async function merchCheckout(request, env) {
     form['line_items[' + i + '][quantity]'] = String(qty);
     form['line_items[' + i + '][price_data][currency]'] = 'usd';
     form['line_items[' + i + '][price_data][unit_amount]'] = String(cents);
+    // Sales tax goes on top at checkout (Stripe Tax); clothing and hats use the apparel tax code.
+    form['line_items[' + i + '][price_data][tax_behavior]'] = 'exclusive';
+    form['line_items[' + i + '][price_data][product_data][tax_code]'] = /^(mug|tote|sticker)$/.test(prod.type || pk) ? 'txcd_99999999' : 'txcd_30011000';
     form['line_items[' + i + '][price_data][product_data][name]'] = 'Weltzcraft ' + name + (family ? ' (family price)' : '');
     form['line_items[' + i + '][price_data][product_data][description]'] = color + ' · ' + logo + ' logo';
     form['line_items[' + i + '][price_data][product_data][images][0]'] = site + '/img/merch/' + slug + '.webp';
@@ -174,6 +177,9 @@ async function merchCheckout(request, env) {
     'shipping_options[0][shipping_rate_data][display_name]': 'Standard shipping',
     'shipping_options[0][shipping_rate_data][fixed_amount][amount]': String(ship),
     'shipping_options[0][shipping_rate_data][fixed_amount][currency]': 'usd',
+    'shipping_options[0][shipping_rate_data][tax_behavior]': 'exclusive',
+    'shipping_options[0][shipping_rate_data][tax_code]': 'txcd_92010001',
+    'automatic_tax[enabled]': 'true',
     'shipping_options[0][shipping_rate_data][delivery_estimate][minimum][unit]': 'business_day',
     'shipping_options[0][shipping_rate_data][delivery_estimate][minimum][value]': '5',
     'shipping_options[0][shipping_rate_data][delivery_estimate][maximum][unit]': 'business_day',
@@ -187,7 +193,15 @@ async function merchCheckout(request, env) {
   if (family) form['metadata[promo]'] = 'family';
   else if (promo) { form['discounts[0][promotion_code]'] = promo.id; form['metadata[promo]'] = code; }
   else form.allow_promotion_codes = 'true';
-  const s = await stripe(env, 'checkout/sessions', form);
+  let s;
+  try { s = await stripe(env, 'checkout/sessions', form); }
+  catch (e) {
+    // Stripe Tax not switched on (or no tax registration yet): still sell, just without tax, and say so in the logs.
+    if (!/tax/i.test(e.message)) throw e;
+    console.log('merch checkout without tax: ' + e.message);
+    for (const k of Object.keys(form)) if (/tax_behavior|tax_code|automatic_tax/.test(k)) delete form[k];
+    s = await stripe(env, 'checkout/sessions', form);
+  }
   return json(200, { url: s.url });
 }
 
