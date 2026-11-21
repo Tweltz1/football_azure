@@ -1,0 +1,8 @@
+{
+  "style": "Original artwork for an embroidered baseball cap front, in the style of a detailed vintage embroidered patch: realistic animal portrait with fine fur detail suggested by thread-like strokes, soft natural colors, sitting in front of a soft band of small pine trees. Centered composition, wide landscape format (about 2.5:1), the whole design fits inside the frame with margin. Plain pure white background, no shadow, no border, no text, no letters, no logos, no hat or mockup, just the flat artwork. Use at most 8 distinct colors so it can be stitched.",
+  "items": [
+    { "key": "buck", "count": 3, "prompt": "A realistic white-tailed deer buck, front-facing head and shoulders, looking at the viewer. Its antlers clearly form the letter W: each antler is a V shape (main beam curving outward and up, a tall inner tine straight up), so the pair together reads as a W. Warm tan and brown fur with white throat patch and white muzzle, dark eyes and nose. Behind and around its chest a soft treeline of sage green and deep green pines." },
+    { "key": "bear", "count": 3, "prompt": "A realistic black bear, front-facing head and shoulders, calm and confident, looking at the viewer. Glossy black fur with subtle charcoal highlights, a tan brown muzzle, small rounded ears, dark eyes. Behind and around its chest a soft treeline of sage green and deep green pines." },
+    { "key": "tiger", "count": 3, "prompt": "A realistic white tiger (white Bengal tiger), front-facing head and shoulders, intense and cool, looking at the viewer with ice-blue eyes. White fur with bold black stripes, light grey shading, pink nose. Behind and around its chest a soft treeline of sage green and deep green pines." }
+  ]
+}
