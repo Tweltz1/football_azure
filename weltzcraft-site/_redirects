@@ -1,5 +1,26 @@
 /apps /#apps 302
 /contact /#contact 302
 /support /#support 302
-/privacy/curbsy https://hood-league.com/junk-privacy.html 301
-/support/curbsy https://hood-league.com/junk-support.html 301
+# App pages moved to weltzcraft.com/<app>/ (2026-11-21). App Store listings and shipped apps still link to the
+# old addresses, so keep these forwards permanently.
+/apps/curbsy /curbsy/ 301
+/apps/totetrack /totetrack/ 301
+/apps/shop-stride /shopstride/ 301
+/apps/hood-games /games/ 301
+/apps/weltzcraft-games /games/ 301
+/apps/hood-protocol /hoodprotocol/ 301
+/apps/backseat-view /backseatview/privacy 301
+/privacy/curbsy /curbsy/privacy 301
+/privacy/totetrack /totetrack/privacy 301
+/privacy/shop-stride /shopstride/privacy 301
+/privacy/hood-games /games/privacy 301
+/privacy/hood-protocol /hoodprotocol/privacy 301
+/privacy/backseat-view /backseatview/privacy 301
+/support/curbsy /curbsy/support 301
+/support/totetrack /totetrack/support 301
+/support/shop-stride /shopstride/support 301
+/support/hood-games /games/support 301
+/support/hood-protocol /hoodprotocol/support 301
+/terms/curbsy /curbsy/terms 301
+/backseatview /backseatview/privacy 302
+/backseatview/ /backseatview/privacy 302
