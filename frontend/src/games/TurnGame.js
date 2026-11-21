@@ -117,7 +117,7 @@ const NameTurn = ({ turn, disabled, result, onAnswer }) => {
 };
 
 /**
- * Penalty Kicks, Price Is Right and Name That Player: one turn at a time from `runner` (see gameRunners.js).
+ * Penalty Kicks, Closest Without Going Over and Name That Player: one turn at a time from `runner` (see gameRunners.js).
  * `onEnd(score, board)` runs after the last turn (`board`: the leaderboard standing, for ranked practice).
  */
 const TurnGame = ({ game, runner, onEnd }) => {

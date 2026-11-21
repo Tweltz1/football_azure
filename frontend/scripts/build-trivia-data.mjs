@@ -1,5 +1,5 @@
 // Writes supabase/functions/_shared/triviaData.ts: regular-season stat lines for the best fantasy
-// seasons from 1999 on, for the lobby trivia games (Price Is Right, Name That Player). It downloads
+// seasons from 1999 on, for the lobby trivia games (Closest Without Going Over, Name That Player). It downloads
 // nflverse's season stats, so run it by hand (`node scripts/build-trivia-data.mjs`) once a season ends.
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';

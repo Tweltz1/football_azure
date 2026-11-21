@@ -1685,7 +1685,7 @@ test('mini-games: lobby round from setup to prize, seeds stay secret', async () 
   assert.equal((await world.call('admin', 'POST', `leagues/${leagueId}/minigame/reset`, { challengeId: climb.id, userId: 'cara' })).status, 200);
   assert.equal((await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: climb.id })).status, 200);
 
-  // Price Is Right: dealt and timed by the server; a slow answer scores nothing.
+  // Closest Without Going Over: dealt and timed by the server; a slow answer scores nothing.
   const first = await world.call('cara', 'POST', `leagues/${leagueId}/minigame/start`, { challengeId: price.id });
   assert.equal((first.body as any).turn.index, 0);
   assert.equal((first.body as any).seed, undefined);

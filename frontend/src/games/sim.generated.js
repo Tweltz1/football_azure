@@ -2401,7 +2401,7 @@ var GAMES = {
     unit: "goals"
   },
   price: {
-    title: "Price Is Right: Fantasy Edition",
+    title: "Closest Without Going Over",
     blurb: `Guess a player's PPR fantasy points for one season (${TRIVIA_FIRST}-${TRIVIA_LAST}). Closest without going over scores the most. 20 seconds a guess.`,
     style: "turns",
     unit: "pts"
