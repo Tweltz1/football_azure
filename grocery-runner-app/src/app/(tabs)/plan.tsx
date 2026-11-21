@@ -48,7 +48,7 @@ export default function PlanScreen() {
     // Recipes from the week before aren't repeated straight away.
     const before = planWeek(plan.prepDay, fromIso(week[0]), -1).flatMap((d) => plan.meals[d] ?? []);
     const recent = plan.recent ?? [];
-    const picks = suggestMeals(pool, { prefs: plan.prefs, picked: planned, avoid: [...before, ...recent], count: plan.perWeek, seed: Date.now() });
+    const picks = suggestMeals(pool, { prefs: plan.prefs, picked: planned, avoid: [...before, ...recent], count: plan.perWeek, seed: (plan.fills ?? 0) + 1 });
     if (!picks.length) {
       Alert.alert('No more recipes fit', 'Turn off a preference, or add your own recipes from a link.');
       return;
@@ -63,7 +63,7 @@ export default function PlanScreen() {
       });
       // Remember about two weeks of suggestions; older ones can come back.
       const ids = picks.map((r) => r.id);
-      return { ...p, meals, recent: [...(p.recent ?? []).filter((id) => !ids.includes(id)), ...ids].slice(-Math.max(8, p.perWeek * 2)) };
+      return { ...p, meals, fills: (p.fills ?? 0) + 1, recent: [...(p.recent ?? []).filter((id) => !ids.includes(id)), ...ids].slice(-Math.max(8, p.perWeek * 2)) };
     });
   };
 

@@ -18,6 +18,8 @@ export type MealPlan = {
   done: string[];
   /** Recipes "Plan my week" suggested lately, newest last, so the next tap (even after Clear) picks others. */
   recent?: string[];
+  /** How many times "Plan my week" has run: the shuffle's seed, saved so a relaunch doesn't repeat a pick. */
+  fills?: number;
 };
 
 export const EMPTY_PLAN: MealPlan = { prepDay: 0, meals: {}, prefs: [], perWeek: 5, done: [] };
