@@ -235,7 +235,7 @@
     // Group the shop: shirts, sweatshirts, hats, then everything else, with a filter bar on top.
     var GROUPS = [['shirts', 'Shirts', ['tee']], ['sweats', 'Sweatshirts', ['crew', 'hoodie']], ['hats', 'Hats', ['hat', 'beanie']], ['more', 'Mugs, totes & stickers', []]];
     var TYPE = { crew: 'crew', hoodie: 'hoodie', hat: 'hat', mug: 'mug', tote: 'tote', sticker: 'sticker' };
-    var groupOf = function (p) { var t = p.type || TYPE[p.key] || 'tee'; for (var i = 0; i < 3; i++) if (GROUPS[i][2].indexOf(t) >= 0) return GROUPS[i][0]; return 'more'; };
+    var groupOf = function (p) { var t = p.type || TYPE[p.key] || (/hat|cap|trucker|beanie/i.test(p.name) ? 'hat' : /hoodie|crew/i.test(p.name) ? 'crew' : /mug|tote|sticker/i.test(p.name) ? 'mug' : 'tee'); for (var i = 0; i < 3; i++) if (GROUPS[i][2].indexOf(t) >= 0) return GROUPS[i][0]; return 'more'; };
     var bar = document.createElement('div'); bar.className = 'm-cats'; bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Show');
     bar.innerHTML = '<button type="button" data-cat="all" aria-pressed="true">All</button>' + GROUPS.map(function (g) { return '<button type="button" data-cat="' + g[0] + '" aria-pressed="false">' + (g[0] === 'more' ? 'More' : g[1]) + '</button>'; }).join('');
     grid.className = ''; grid.appendChild(bar);
