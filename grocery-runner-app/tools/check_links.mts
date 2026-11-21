@@ -56,6 +56,11 @@ for (let qi = 0; qi < queue.length; qi++) {
     if (!res.ok) { console.log(`  HTTP ${res.status} (site refused the runner)`); continue; }
     const html = await res.text();
     const r = parseRecipePage(html);
+    if (process.env.DUMP && LIST_ONLY.has(url)) {
+      const body = html.replace(/<(script|style|svg)[\s\S]*?<\/\1>/gi, ' ');
+      console.log(`  tags: article=${(body.match(/<article\b/gi) ?? []).length} main=${(body.match(/<main\b/gi) ?? []).length} nav=${(body.match(/<nav\b/gi) ?? []).length} header=${(body.match(/<header\b/gi) ?? []).length} aside=${(body.match(/<aside\b/gi) ?? []).length}`);
+      for (const m of [...body.matchAll(/<a\b[^>]*>[\s\S]*?<\/a>/gi)].slice(0, 400)) console.log(`  A: ${m[0].replace(/\s+/g, ' ').slice(0, 260)}`);
+    }
     if (!hasRecipeData(html) && qi < URLS.length) {
       const col = parseCollectionPage(html, url);
       console.log(`  collection: ${col?.title ?? 'none'} | ${col?.recipes.length ?? 0} recipe link(s)`);
