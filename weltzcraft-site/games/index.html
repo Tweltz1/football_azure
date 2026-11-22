@@ -13,8 +13,9 @@
 <meta property="og:image" content="https://weltzcraft.com/img/hoodgames.webp">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Hood Games","description":"Hood Games turns a TV and a few phones into a game night. Put the table on the TV, everyone joins with a code, and you are playing in under a minute.","url":"https://weltzcraft.com/games/","applicationCategory":"GameApplication","operatingSystem":"iOS, Web","image":"https://weltzcraft.com/img/hoodgames.webp","author":{"@type":"Organization","name":"Weltzcraft Studios","url":"https://weltzcraft.com"}}</script>
+<script>(function(){var t;try{t=localStorage.getItem("wc-theme")}catch(e){}if(!t){var m=/(?:^|; )wc-theme=(dark|light)/.exec(document.cookie);t=m&&m[1]}if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)})()</script>
 <style>:root{--bg:#f6f1e7;--card:#fffdf8;--fg:#1d1b16;--muted:#625d52;--line:#e4dccb;--accent:#b4441c}
-@media (prefers-color-scheme:dark){:root{--bg:#151410;--card:#1e1c17;--fg:#f1ece1;--muted:#a8a193;--line:#33302a;--accent:#f08a5d}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151410;--card:#1e1c17;--fg:#f1ece1;--muted:#a8a193;--line:#33302a;--accent:#f08a5d}}:root[data-theme="dark"]{--bg:#151410;--card:#1e1c17;--fg:#f1ece1;--muted:#a8a193;--line:#33302a;--accent:#f08a5d}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:880px;margin:0 auto;padding:24px 16px 56px}a{color:var(--accent)}.muted{color:var(--muted);font-size:14px}.back{text-decoration:none}
 .hero{display:flex;gap:20px;align-items:center;margin:22px 0 10px}.icon{border-radius:22px;box-shadow:0 10px 30px -10px var(--glow);flex:none}
