@@ -6,6 +6,10 @@
   const CFG = window.BAY_CONFIG || {};
   const DEMO_PAGE = "/demo.html";
   const DEMO_VIDEO = "/demo.mp4?v=6";
+  // Carriers are still approving the Talk Shops toll-free number (Telnyx verification). While this is true the site says
+  // so on the home page and at check-in, so shops lean on email. Set to false the day texting is approved.
+  const TEXTS_PENDING = true;
+  const TEXTS_PENDING_NOTE = "Text messages are in final carrier approval and may not arrive yet. Email updates work today, so pick Email or Text and email for now.";
   const STAGES = [
     { key: "invited", label: "Customer invited", cust: "Check In for Your Repair" },
     { key: "checked_in", label: "Checked In", cust: "We Have Your Car" },
@@ -834,6 +838,7 @@
         <details><summary>Will it work for a quick lube or tire shop?</summary><p>Yes. Set up quick services like “Oil change + rotation”. Fast lane jobs skip diagnosis and approval because the customer agreed at the counter, so the car moves straight to the bay.</p></details>
         <details><summary>Can customers book online, or get updates in Spanish?</summary><p>Yes, on every plan. Share your booking link on your website or Google profile. Set your appointment hours and customers pick an open time themselves; confirm each request or let them book right away, and turn on a reminder text the day before. Mark a customer as a Spanish speaker and their page and automatic texts switch to Spanish.</p></details>
         <details><summary>How does the free trial work?</summary><p>New shops get 15 days free with every Pro feature and no card needed. There is one free trial per shop phone number, email and account. Pick a plan any time, and the first charge waits until the trial ends. If the trial ends without a plan, your shop is paused until you choose one, and nothing is deleted.</p></details>
+        ${TEXTS_PENDING ? `<details><summary>Are text messages turned on yet?</summary><p>Almost. Phone carriers are finishing approval of the Talk Shops texting number. Until that clears, updates, estimates and appointment confirmations go out by email, and everything else works today. Texting switches on by itself once approved; you don't need to change anything.</p></details>` : ""}
         <details><summary>How long does setup take?</summary><p>Most shops are ready in a few minutes. Upload your price list as a spreadsheet, PDF or photo, review it, and start checking in cars.</p></details>
         <details><summary>Can my technicians use it without seeing billing?</summary><p>Yes. Technicians work on cars. Settings, prices, team and billing stay with owners.</p></details>
         <p><a href="/?help">See all questions in Help &amp; Support →</a></p>
@@ -876,6 +881,7 @@
     return `${firstTime ? "" : settingsTabBar()}<div class="${firstTime ? "login-wrap" : "settings-wrap tabbed"}">${firstTime ? "" : `<div class="stab" data-stab="shop" role="tabpanel" id="stab-shop" aria-labelledby="stab-btn-shop"${ui.settingsTab === "shop" ? "" : " hidden"}>`}<form class="${firstTime ? "login" : "panel"}" id="setupForm">
       ${firstTime ? brand() : ""}
       ${firstTime && join.err ? `<p class="form-err" role="alert">${esc(join.err)}</p><p class="muted" style="margin:0">Joining someone else's shop? Ask the owner to send a new invite to the email you signed in with. Or set up your own shop below.</p>` : ""}
+      ${firstTime && !join.err ? `<p class="muted" style="margin:0">Were you invited to join a shop that's already on Talk Shops? Don't set up a new one. Open the invite link from your email on this device and you'll land in that shop.</p>` : ""}
       ${firstTime ? `<p class="step-label">Step 1 of 2</p>` : ""}
       <h2>${firstTime ? "Set up your shop" : "Shop Settings"}</h2>
       <p class="muted" style="margin:0">${firstTime ? "Customers see this name and phone number in notifications and on their car's page." : "Shown to customers in texts and on their car's page."}</p>
@@ -1105,6 +1111,7 @@
         <h3 class="form-sec full">Customer</h3>
         <label class="field">Customer name<input id="ci-name" required maxlength="80"></label>
         <label class="field">Notify customer by<select id="ci-channel"><option value="sms">Text message</option><option value="email">Email</option><option value="both">Text and email</option></select></label>
+        ${TEXTS_PENDING ? `<p class="muted" style="margin:-4px 0 0;font-size:13px">${TEXTS_PENDING_NOTE}</p>` : ""}
         <label class="field" hidden id="ci-email-label">Email address<input id="ci-email" type="email" maxlength="254" autocomplete="email" disabled></label>
         <p id="ci-email-note" class="muted full" hidden>Automatic email needs a sender connection. After saving, open the email draft in this repair’s Messages.</p>
         <label class="field" id="ci-phone-label">Mobile number<input id="ci-phone" required inputmode="tel" placeholder="(555) 010-0000"></label>

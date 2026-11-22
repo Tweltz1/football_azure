@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: "22"
       - name: Run Talk Shops tests
-        run: node --test supabase/tests/shop.test.ts supabase/tests/shopPlans.test.ts supabase/tests/shopHowTo.test.ts supabase/tests/nhtsa.test.ts supabase/tests/shopAccount.test.ts supabase/tests/shopStaff.test.ts supabase/tests/shopSms.test.ts supabase/tests/smsFit.test.ts supabase/tests/smsTopicModel.test.ts supabase/tests/learnTexts.test.ts
+        run: node --test supabase/tests/shop.test.ts supabase/tests/shopPlans.test.ts supabase/tests/shopHowTo.test.ts supabase/tests/nhtsa.test.ts supabase/tests/shopAccount.test.ts supabase/tests/shopStaff.test.ts supabase/tests/shopSms.test.ts supabase/tests/smsFit.test.ts supabase/tests/smsTopicModel.test.ts supabase/tests/learnTexts.test.ts supabase/tests/shopEmail.test.ts
 
   deploy:
     name: Deploy Talk Shops database and API
@@ -118,6 +118,8 @@ jobs:
         run: |
           # Site URL and redirect list always; Resend SMTP when its key is set; Google sign-in when its client is set.
           BODY=$(jq -n '{site_url: "https://talkshops.app", uri_allow_list: "https://talkshops.app/**,https://*.talkshops.pages.dev/**"}')
+          # The sign-up confirmation email, in the same look as the app's other emails (replaces Supabase's stock template).
+          BODY=$(echo "$BODY" | jq --rawfile html talkshops/supabase/email-confirm.html '. + {mailer_subjects_confirmation: "Confirm your email to open your Talk Shops account", mailer_templates_confirmation_content: $html}')
           if [ -n "$RESEND_API_KEY" ]; then
             BODY=$(echo "$BODY" | jq --arg pass "$RESEND_API_KEY" '. + {smtp_host: "smtp.resend.com", smtp_port: "587", smtp_user: "resend", smtp_pass: $pass, smtp_admin_email: "updates@talkshops.app", smtp_sender_name: "Talk Shops", rate_limit_email_sent: 100}')
           fi
@@ -131,6 +133,40 @@ jobs:
             -d "$BODY" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/config/auth")
           if [ "$CODE" != "200" ]; then echo "::error::Auth settings answered $CODE"; jq -r '.message // .' out.json; exit 1; fi
           rm -f out.json
+      - name: Reminder timer (every 15 minutes, inside the database)
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          # GitHub's scheduled runs are often hours late, so the database's own timer (pg_cron) calls shop/cron instead:
+          # reminder texts, the 7am summary email and trial notices. The GitHub "Talk Shops hourly" job stays as a backup;
+          # the run is safe to repeat. The service key is kept in Supabase Vault, never in the job text or the logs.
+          sql() { curl -sS -o sql-out.json -w '%{http_code}' -X POST -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "$(jq -n --arg q "$1" '{query: $q}')" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/database/query"; }
+          KEYS=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_ID/api-keys?reveal=true" \
+            | jq -r '.[] | select(.name == "service_role" or .type == "secret") | .api_key // empty')
+          for KEY in $KEYS; do echo "::add-mask::$KEY"; done
+          GOOD=""
+          for KEY in $KEYS; do
+            CODE=$(curl -sS --retry 2 -o /dev/null -w '%{http_code}' -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{}' \
+              "https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/api/shop/cron")
+            if [ "$CODE" = "200" ]; then GOOD="$KEY"; break; fi
+          done
+          if [ -z "$GOOD" ]; then echo "::warning::No key was accepted by shop/cron, so the database timer was not set."; exit 0; fi
+          case "$GOOD" in *[!A-Za-z0-9._-]*) echo "::warning::Unexpected key format; database timer not set."; exit 0;; esac
+          CODE=$(sql "create extension if not exists pg_cron; create extension if not exists pg_net;
+            do \$\$ declare sid uuid; begin
+              select id into sid from vault.secrets where name = 'talkshops_cron_key';
+              if sid is null then perform vault.create_secret('$GOOD', 'talkshops_cron_key'); else perform vault.update_secret(sid, '$GOOD'); end if;
+            end \$\$;
+            select cron.schedule('talkshops-reminders', '*/15 * * * *', \$job\$ select net.http_post(
+              url := 'https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/api/shop/cron',
+              headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'talkshops_cron_key')),
+              body := '{}'::jsonb, timeout_milliseconds := 25000) \$job\$);")
+          if [ "$CODE" != "200" ] && [ "$CODE" != "201" ]; then echo "::warning::Setting the database timer answered $CODE"; jq -r '.message // "no message"' sql-out.json | head -c 300; rm -f sql-out.json; exit 0; fi
+          CODE=$(sql "select jobname, schedule, active from cron.job where jobname = 'talkshops-reminders'")
+          echo "Timer check ($CODE):"; jq -c '.' sql-out.json | head -c 300; echo
+          CODE=$(sql "select count(*) as calls_last_day, count(*) filter (where status_code = 200) as ok from net._http_response where created > now() - interval '1 day'")
+          echo "Calls made by the timer in the last day ($CODE):"; jq -c '.' sql-out.json | head -c 200; echo
+          rm -f sql-out.json
       - name: Stripe webhook
         if: steps.secrets.outputs.ready == 'true'
         env:
